@@ -21,12 +21,13 @@ import {
   Mail,
   Plug,
   Puzzle,
+  Send,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { HeaderBar } from "../components/HeaderBar";
 import { NotFoundPage } from "../components/NotFoundPage";
-import { ClerkModuleContext, useClerkModuleLoader } from "../lib/clerk-user";
+import { ClerkModuleContext, getClerkModuleState } from "../lib/clerk-user";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
 import { getClientLang, setClientLang, timeAgo } from "../lib/lang";
@@ -39,23 +40,22 @@ import {
   readerCssVars,
   savePrefs,
 } from "../lib/prefs";
-import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";
+import {
+  SITE_DESCRIPTION,
+  SITE_TITLE,
+  SITE_URL,
+  TELEGRAM_URL,
+} from "../lib/site";
 import type { Lang } from "../lib/types";
 
 /**
- * Mounts the ONE app-wide <ClerkProvider>, dynamically imported, so every
- * consumer (AuthButtons via wrapWithProvider={false}, SuggestTranslation,
- * the submit page) shares it instead of each mounting its own — a second
- * <ClerkProvider> crashes the whole app. If Clerk itself fails to
- * initialize (bad key, network), the ErrorBoundary here degrades to
- * rendering children with no Clerk context at all rather than losing the
- * rest of the page; each individual Clerk consumer has its own boundary
- * on top of that for a fully-signed-out fallback.
+ * Mounts the ONE app-wide <ClerkProvider> (static import for SSR — required
+ * by @clerk/tanstack-react-start SignIn/SignUp). Consumers share it via
+ * ClerkModuleContext; a second <ClerkProvider> crashes the app. If Clerk
+ * fails, ErrorBoundary degrades to children with no Clerk context.
  */
 function ClerkRootProvider({ children }: { children: ReactNode }) {
-  const clerkState = useClerkModuleLoader();
-  // No provider in this subtree, so consumers must not see a module either —
-  // rendering Clerk's SignedIn/SignedOut outside a <ClerkProvider> throws.
+  const clerkState = getClerkModuleState();
   const withoutProvider = (
     <ClerkModuleContext.Provider
       value={{ mod: null, publishableKey: clerkState.publishableKey }}
@@ -143,6 +143,16 @@ function NewsFooter() {
               {link.label}
             </Link>
           ))}
+          <a
+            href={TELEGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2"
+          >
+            <Send className="h-3.5 w-3.5" aria-hidden />
+            Telegram
+            <ExternalLink className="h-3 w-3" aria-hidden />
+          </a>
           <a
             href="https://github.com/duyet/aidr"
             target="_blank"

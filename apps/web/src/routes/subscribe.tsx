@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Mail } from "lucide-react";
+import { Mail, Send } from "lucide-react";
 import { useState } from "react";
 import { useLang } from "../lib/lang-context";
+import { TELEGRAM_HANDLE, TELEGRAM_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
 
 export const Route = createFileRoute("/subscribe")({
@@ -108,6 +109,19 @@ function SubscribePage() {
         {lang === "vi"
           ? "Tối đa 5 tin nổi bật nhất mỗi ngày, gửi vào khoảng 7 giờ sáng theo giờ của bạn."
           : "Top 5 stories a day, delivered around 7:00 AM your local time."}
+      </p>
+      <p className="mt-3 text-sm">
+        <a
+          href={TELEGRAM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 font-semibold text-accent hover:underline hover:underline-offset-2"
+        >
+          <Send className="h-3.5 w-3.5" aria-hidden />
+          {lang === "vi"
+            ? `Theo dõi trên Telegram (${TELEGRAM_HANDLE})`
+            : `Follow on Telegram (${TELEGRAM_HANDLE})`}
+        </a>
       </p>
 
       {status === "done" ? (

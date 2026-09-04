@@ -25,6 +25,8 @@ import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiPublicRouteImport } from './routes/api/public'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiSystemRouteImport } from './routes/api/system'
+import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
+import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
 import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
 
@@ -108,6 +110,16 @@ const ApiSystemRoute = ApiSystemRouteImport.update({
   path: '/api/system',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignInSplatRoute = SignInSplatRouteImport.update({
+  id: '/sign-in/$',
+  path: '/sign-in/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignUpSplatRoute = SignUpSplatRouteImport.update({
+  id: '/sign-up/$',
+  path: '/sign-up/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminSplatRoute = ApiAdminSplatRouteImport.update({
   id: '/api/admin/$',
   path: '/api/admin/$',
@@ -136,6 +148,8 @@ export interface FileRoutesByFullPath {
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/system': typeof ApiSystemRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/story/$id': typeof ApiStoryIdRoute
 }
@@ -156,6 +170,8 @@ export interface FileRoutesByTo {
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/system': typeof ApiSystemRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/story/$id': typeof ApiStoryIdRoute
 }
@@ -177,6 +193,8 @@ export interface FileRoutesById {
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/system': typeof ApiSystemRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/story/$id': typeof ApiStoryIdRoute
 }
@@ -199,6 +217,8 @@ export interface FileRouteTypes {
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/api/admin/$'
     | '/api/story/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -219,6 +239,8 @@ export interface FileRouteTypes {
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/api/admin/$'
     | '/api/story/$id'
   id:
@@ -239,6 +261,8 @@ export interface FileRouteTypes {
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/api/admin/$'
     | '/api/story/$id'
   fileRoutesById: FileRoutesById
@@ -260,6 +284,8 @@ export interface RootRouteChildren {
   ApiPublicRoute: typeof ApiPublicRoute
   ApiSubscribeRoute: typeof ApiSubscribeRoute
   ApiSystemRoute: typeof ApiSystemRoute
+  SignInSplatRoute: typeof SignInSplatRoute
+  SignUpSplatRoute: typeof SignUpSplatRoute
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
 }
@@ -378,6 +404,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sign-in/$': {
+      id: '/sign-in/$'
+      path: '/sign-in/$'
+      fullPath: '/sign-in/$'
+      preLoaderRoute: typeof SignInSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-up/$': {
+      id: '/sign-up/$'
+      path: '/sign-up/$'
+      fullPath: '/sign-up/$'
+      preLoaderRoute: typeof SignUpSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/$': {
       id: '/api/admin/$'
       path: '/api/admin/$'
@@ -412,6 +452,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoute: ApiPublicRoute,
   ApiSubscribeRoute: ApiSubscribeRoute,
   ApiSystemRoute: ApiSystemRoute,
+  SignInSplatRoute: SignInSplatRoute,
+  SignUpSplatRoute: SignUpSplatRoute,
   ApiAdminSplatRoute: ApiAdminSplatRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
 }
@@ -420,10 +462,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

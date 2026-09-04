@@ -60,8 +60,8 @@ ANYROUTER_TRANSLATE_MODEL = "google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclus
 # out both attempts, leaving English bullets on the VI homepage.
 ANYROUTER_TLDR_MODEL = "anyrouter/auto,google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclusionai/ling-3.0-flash"
 # Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix:
-# pk_live_Y2xlcmsuZHV5ZXQubmV0JA -> clerk.duyet.net
-CLERK_ISSUER = "https://clerk.duyet.net"
+# pk_live_Y2xlcmsuYWlkci50b2RheSQ -> clerk.aidr.today
+CLERK_ISSUER = "https://clerk.aidr.today"
 # @duyetbot posts top stories to this channel; TELEGRAM_BOT_TOKEN is a secret.
 TELEGRAM_CHAT_ID = "-1004420104760"
 

@@ -13,7 +13,6 @@ import {
   huggingNewsDetailUrl,
   planBackfillUpdate,
 } from "./backfill.js";
-import { type MirrorRow, mirrorItems } from "./clickhouse.js";
 import {
   buildItemBindArgs,
   buildItemSourceBindArgs,
@@ -945,45 +944,6 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         if (statements.length > 0) {
           await this.env.DB.batch(statements);
         }
-      });
-
-      await safeStep(step, "mirror-clickhouse", undefined, async () => {
-        const rows: MirrorRow[] = newRows.map(({ id, source, item }) => {
-          const score = scored.get(id);
-          const status = mergePlan.merged.has(id)
-            ? "merged"
-            : (score?.relevance ?? 0.5) < RELEVANCE_THRESHOLD
-              ? "rejected"
-              : "published";
-          return {
-            id,
-            source_id: source.id,
-            external_id: item.externalId ?? "",
-            url: item.url,
-            title: item.title,
-            summary: item.summary ?? "",
-            published_at: new Date(item.publishedAt * 1000).toISOString(),
-            fetched_at: new Date(now).toISOString(),
-            points: item.points ?? 0,
-            comments: item.comments ?? 0,
-            llm_relevance: score?.relevance ?? null,
-            llm_importance: score?.importance ?? null,
-            llm_quality: score?.quality ?? null,
-            category: score?.category ?? "",
-            tags: canonicalTagsByItem.get(id) ?? [],
-            rank_score: rankScore({
-              importance: score?.importance ?? 5,
-              quality: score?.quality ?? 5,
-              points: item.points ?? 0,
-              comments: item.comments ?? 0,
-              publishedAt: item.publishedAt * 1000,
-              now,
-            }),
-            status,
-            image_url: item.imageUrl ?? "",
-          };
-        });
-        await mirrorItems(this.env, rows);
       });
 
       // Backfills existing (pre-enrichment) published items still missing a

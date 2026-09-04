@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import Icons from "../Icons";
 
 /** Minimal redirect config — avoids a @duyet/urls dependency. */
@@ -12,6 +12,33 @@ export type UrlsConfig = {
 
 // Track whether a ClerkProvider already exists in the page
 let clerkProviderMounted = false;
+
+type ClerkLike = {
+  ClerkProvider?: (props: {
+    publishableKey: string;
+    children?: ReactNode;
+  }) => ReactNode;
+  SignedOut?: (props: { children?: ReactNode }) => ReactNode;
+  SignedIn?: (props: { children?: ReactNode }) => ReactNode;
+  Show?: (props: {
+    when: "signed-in" | "signed-out";
+    children?: ReactNode;
+  }) => ReactNode;
+  SignInButton?: (props: {
+    mode?: "modal" | "redirect";
+    forceRedirectUrl?: string;
+    children?: ReactNode;
+  }) => ReactNode;
+  SignUpButton?: (props: {
+    mode?: "modal" | "redirect";
+    forceRedirectUrl?: string;
+    children?: ReactNode;
+  }) => ReactNode;
+  UserButton?: (props: {
+    appearance?: { elements?: { avatarBox?: string } };
+    afterSignOutUrl?: string;
+  }) => ReactNode;
+};
 
 /**
  * Auth button component for user authentication.
@@ -28,7 +55,7 @@ let clerkProviderMounted = false;
 export function AuthButtons({
   urls,
   className = "",
-  signInClassName = "h-8 w-8 flex items-center justify-center rounded-full text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors",
+  signInClassName = "rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-foreground hover:border-foreground transition-colors",
   avatarSize = "h-8 w-8",
   signedInContent = null,
   signedOutContent = null,
@@ -39,10 +66,11 @@ export function AuthButtons({
   className?: string;
   signInClassName?: string;
   avatarSize?: string;
-  signedInContent?: React.ReactNode | null;
-  signedOutContent?: React.ReactNode | null;
+  signedInContent?: ReactNode | null;
+  signedOutContent?: ReactNode | null;
   wrapWithProvider?: boolean;
-  clerkModule?: any;
+  /** Host Clerk module. Typed loosely so SDK provider props can drift. */
+  clerkModule?: object | null;
 } = {}) {
   const importMetaEnv =
     typeof import.meta !== "undefined"
@@ -52,16 +80,18 @@ export function AuthButtons({
       : undefined;
   const publishableKey = importMetaEnv?.VITE_CLERK_PUBLISHABLE_KEY;
 
-  const [ownModule, setOwnModule] = useState<any>(null);
+  const [ownModule, setOwnModule] = useState<ClerkLike | null>(null);
   const [currentUrl, setCurrentUrl] = useState("");
   const isOwner = useRef(false);
 
   // When the host app owns the <ClerkProvider> it must hand us the very
   // module that provider was mounted from. Importing our own copy here would
-  // race the host: our import can resolve first and render <SignedOut />
+  // race the host: our import can resolve first and render auth gates
   // before any provider exists, which Clerk throws on.
   const hostOwnsProvider = !wrapWithProvider;
-  const clerkModule = hostOwnsProvider ? providedModule : ownModule;
+  const clerkModule = (
+    hostOwnsProvider ? providedModule : ownModule
+  ) as ClerkLike | null;
 
   useEffect(() => {
     setCurrentUrl(window.location.href);
@@ -75,8 +105,8 @@ export function AuthButtons({
     clerkProviderMounted = true;
     isOwner.current = true;
 
-    import("@clerk/clerk-react")
-      .then((mod) => setOwnModule(mod))
+    import("@clerk/tanstack-react-start")
+      .then((mod) => setOwnModule(mod as ClerkLike))
       .catch(() => {
         // Clerk not available — isOwner stays true so fallback renders
       });
@@ -104,16 +134,30 @@ export function AuthButtons({
     return null;
   }
 
-  const { ClerkProvider, SignedOut, SignedIn, SignInButton, UserButton } =
-    clerkModule;
+  const {
+    ClerkProvider,
+    SignedOut,
+    SignedIn,
+    Show,
+    SignInButton,
+    SignUpButton,
+    UserButton,
+  } = clerkModule;
 
-  if (
-    !ClerkProvider ||
-    !SignedOut ||
-    !SignedIn ||
-    !SignInButton ||
-    !UserButton
-  ) {
+  const GateOut =
+    Show != null
+      ? ({ children }: { children?: ReactNode }) => (
+          <Show when="signed-out">{children}</Show>
+        )
+      : SignedOut;
+  const GateIn =
+    Show != null
+      ? ({ children }: { children?: ReactNode }) => (
+          <Show when="signed-in">{children}</Show>
+        )
+      : SignedIn;
+
+  if (!ClerkProvider || !GateOut || !GateIn || !SignInButton || !UserButton) {
     return (
       <button
         type="button"
@@ -125,25 +169,40 @@ export function AuthButtons({
     );
   }
 
-  const redirectUrl =
-    currentUrl || urls?.apps?.blog || "https://blog.duyet.net";
+  const redirectUrl = currentUrl || urls?.apps?.blog || "https://aidr.today";
 
   const content = (
     <>
-      {signedOutContent && <SignedOut>{signedOutContent}</SignedOut>}
-      {signedInContent && <SignedIn>{signedInContent}</SignedIn>}
-      <SignedOut>
-        <SignInButton mode="modal" redirectUrl={redirectUrl}>
-          <button
-            type="button"
-            className={`${signInClassName} ${className}`.trim()}
-            aria-label="Sign in"
-          >
-            <Icons.UserEmpty className="h-4 w-4" />
-          </button>
-        </SignInButton>
-      </SignedOut>
-      <SignedIn>
+      {signedOutContent && <GateOut>{signedOutContent}</GateOut>}
+      {signedInContent && <GateIn>{signedInContent}</GateIn>}
+      <GateOut>
+        <div className={`flex items-center gap-1.5 ${className}`.trim()}>
+          <SignInButton mode="modal" forceRedirectUrl={redirectUrl}>
+            <button
+              type="button"
+              className={
+                signInClassName ||
+                "rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-foreground hover:border-foreground transition-colors"
+              }
+              aria-label="Sign in"
+            >
+              Sign in
+            </button>
+          </SignInButton>
+          {SignUpButton ? (
+            <SignUpButton mode="modal" forceRedirectUrl={redirectUrl}>
+              <button
+                type="button"
+                className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background hover:opacity-90 transition-opacity"
+                aria-label="Sign up"
+              >
+                Sign up
+              </button>
+            </SignUpButton>
+          ) : null}
+        </div>
+      </GateOut>
+      <GateIn>
         <UserButton
           appearance={{
             elements: {
@@ -152,7 +211,7 @@ export function AuthButtons({
           }}
           afterSignOutUrl={redirectUrl}
         />
-      </SignedIn>
+      </GateIn>
     </>
   );
 

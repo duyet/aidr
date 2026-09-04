@@ -1,97 +1,74 @@
 # aidr / AI;DR
 
-[https://aidr.today](https://aidr.today) — AI news digest (TL;DR + ranked stories).
+[https://aidr.today](https://aidr.today) — AI news digest: TL;DR snapshots plus ranked stories.
 
-Cloudflare **Workers** (not Pages). Worker name: `aidr` on **AnyRouter Inc.** account.
+Cloudflare Worker (`aidr`), TanStack Start frontend, D1 as the primary store.
 
-## Monorepo layout
+## Layout
 
 | Path | Role |
 |------|------|
-| `apps/web` | TanStack Start + Worker (`@aidr/web`) — site, API, ingest workflow |
-| `apps/extension` | Chrome MV3 new-tab extension (`@aidr/extension`) |
+| `apps/web` | Site, API, ingest workflow (`@aidr/web`) |
+| `apps/extension` | Chrome MV3 new-tab (`@aidr/extension`) |
 | `packages/*` | Shared libs / UI |
 
-Pipeline design: [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md).
+Pipeline: [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md).
 
-## Cloudflare IDs (not secrets)
-
-| | |
-|--|--|
-| **Account** | AnyRouter Inc. |
-| **Account ID** | `7df185a18b98382c3240fa7ac4a37075` |
-| **Zone ID** (`aidr.today`) | `e89512b5edc14f2f790aa3eb47f60944` |
-| **D1** | `aidr` (`0c8f3efe-0427-4268-8d9f-bb1a4bcbe427`) — data migrated from legacy `news` D1 |
-
-`account_id` is set in `apps/web/wrangler.toml`. Use the Zone ID for DNS and custom-domain operations in the Cloudflare dashboard / API.
-
-Custom domain: **`aidr.today`**. Legacy `news.duyet.net` stays on the old Worker (Duyet Personal account) until that app is retired.
 ## Local development
 
 ```bash
 pnpm install
-cp .env.example .env.local   # fill values
+cp .env.example .env.local   # fill values (gitignored)
 pnpm --filter @aidr/web dev  # http://localhost:3014
 ```
 
 Extension (unpacked):
 
-1. Open `chrome://extensions` → Developer mode
-2. **Load unpacked** → select `apps/extension`
+1. `chrome://extensions` → Developer mode
+2. **Load unpacked** → `apps/extension`
 
 ## Deploy
 
-Workers via wrangler (builds client + Worker, then `wrangler deploy`):
-
 ```bash
-pnpm --filter @aidr/web deploy
-# or production + smoke:
-pnpm --filter @aidr/web cf:deploy:prod
-# root aliases:
-pnpm run deploy
-pnpm run cf:deploy:prod
+pnpm run deploy              # build + wrangler deploy
+pnpm run cf:deploy:prod      # production env + smoke
 ```
 
-CI: `.github/workflows/deploy-web.yml` deploys on push to `main` when `apps/web`, `apps/extension`, or `packages` change.
+CI: `.github/workflows/deploy-web.yml` on push to `main`/`master` when `apps/web`, `apps/extension`, `packages`, or lockfile change.
 
-Required GitHub secrets for deploy: `CLOUDFLARE_API_TOKEN`, `VITE_CLERK_PUBLISHABLE_KEY`.  
-`CLOUDFLARE_ACCOUNT_ID` is set in the workflow to `7df185a18b98382c3240fa7ac4a37075`.
+GitHub secrets: `CLOUDFLARE_API_TOKEN`, `VITE_CLERK_PUBLISHABLE_KEY`. Account ID for wrangler comes from `apps/web/wrangler.toml` (and the workflow env).
 
-Post-deploy smoke: `curl https://aidr.today/api/public` (workflow also runs this).
+Smoke: `curl https://aidr.today/api/public`
 
 ## Secrets
 
-Worker secrets (API keys, ClickHouse, Telegram bot token, admin token, etc.):
+One command syncs local env → **GitHub Actions** + **Cloudflare Worker**:
 
 ```bash
-# From apps/web, after filling root .env / .env.local / .env.production.local:
-pnpm exec tsx scripts/sync-secrets.ts
-pnpm exec tsx scripts/sync-secrets.ts --dry-run
-
-# Or one at a time:
-cd apps/web && pnpm exec wrangler secret put NEWS_ADMIN_TOKEN
+cp .env.example .env.local   # fill values
+pnpm sync-env                # both targets
+pnpm sync-env --dry-run
+pnpm sync-env --workers      # Worker only
+pnpm sync-env --github       # GitHub only (repo + production env)
 ```
 
-Non-secret config (base URLs, chat id, model chains) can stay in `wrangler.toml` `[vars]`. See `.env.example` for the full key list.
+Alias: `pnpm config`. Non-secret config stays in `wrangler.toml` `[vars]`. Key list: `.env.example`.
 
 ## Extension release
 
-Public zip: `https://aidr.today/aidr.zip` (packed into the Worker build).
+Zip: `https://aidr.today/aidr.zip` (built into the Worker).
 
-Install from zip:
+1. Unzip → load unpacked → select the `aidr/` folder inside
 
-1. Unzip `aidr.zip`
-2. Load unpacked → select the `aidr/` folder inside
-
-Versioning: release-please on `apps/extension` (package-name `aidr`, tags `aidr-v*`, bumps `manifest.json` version).
+Versioning: release-please on `apps/extension` (tags `aidr-v*`).
 
 ## Ingest
 
-Primary cadence: Durable Object alarm (`NewsIngestScheduler`) on the Worker.
+Primary: Durable Object alarm (`NewsIngestScheduler`).
 
-Watchdog: `.github/workflows/ingest.yml` (four cron expressions per hour) POSTs `https://aidr.today/api/admin/ingest` with `NEWS_ADMIN_TOKEN`. Manual: Actions **workflow_dispatch**, or admin POST with `?force=1`.
+Watchdog: `.github/workflows/ingest.yml` POSTs `/api/admin/ingest` with `NEWS_ADMIN_TOKEN`. Manual: Actions **workflow_dispatch**, or admin POST with `?force=1`.
 
-Do not add Worker `[triggers] crons` (Free plan 5-cron cap) or Workflow `schedules` (paid plan).
+No Worker `[triggers] crons` (Free plan limit) and no Workflow `schedules` (paid).
 
 ## Scripts
 
@@ -99,5 +76,5 @@ Do not add Worker `[triggers] crons` (Free plan 5-cron cap) or Workflow `schedul
 pnpm run lint
 pnpm run test
 pnpm run check-types
-pnpm --filter @aidr/web smoke   # live smoke against aidr.today
+pnpm --filter @aidr/web smoke
 ```

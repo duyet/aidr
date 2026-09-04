@@ -15,13 +15,13 @@
     "lint:fix": "biome check --write .",
     "deploy": "pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json",
     "cf:deploy:prod": "dotenv -e ../../.env.production -e ../../.env.production.local -- pnpm run deploy && pnpm run smoke",
-    "config": "tsx scripts/sync-secrets.ts",
+    "config": "tsx ../../scripts/sync-env.ts",
     "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@aidr/libs": "workspace:*",
     "@aidr/ui": "workspace:*",
-    "@clerk/clerk-react": "^5.61.2",
+    "@clerk/tanstack-react-start": "^1.5.12",
     "@tanstack/react-router": "^1.0.0",
     "@tanstack/react-start": "^1.0.0",
     "cn": "^0.2.4",

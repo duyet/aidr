@@ -67,8 +67,8 @@ longer the previous id) and `runsToday > 0`. Do not invent a
               × (1 + log10(1 + points + 0.5·comments))  # engagement, log-damped
    ```
 
-8. **Write** — D1 upserts (`worker/d1-bind.ts` guards every bind), best-effort
-   ClickHouse mirror (never fails the run).
+8. **Write** — D1 upserts (`worker/d1-bind.ts` guards every bind). D1 is the
+   sole primary store.
 9. **Backfill** — up to 15 older published items missing summary or
    score/tags, and up to 45 missing Vietnamese titles, get
    re-fetched/scored/translated per run until the backlog drains.

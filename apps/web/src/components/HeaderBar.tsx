@@ -10,6 +10,7 @@ import {
   WIDE_HEADER_ROW_CLASS,
 } from "../lib/chrome";
 import { useClerkModule } from "../lib/clerk-user";
+import { TELEGRAM_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
 import { LangToggle } from "./LangToggle";
 import { PrefsPanel } from "./PrefsPanel";
@@ -26,6 +27,7 @@ const SITE_LINKS = [
   { href: "/extension", label: "Chrome tab", internal: true },
   { href: "/mcp", label: "MCP", internal: true },
   { href: "/subscribe", label: "Subscribe", internal: true },
+  { href: TELEGRAM_URL, label: "Telegram", internal: false },
   { href: "/data", label: "Data", internal: true },
   { href: "/submit", label: "Submit", internal: true },
   { href: "https://duyet.net", label: "Home", internal: false },
@@ -138,13 +140,12 @@ function PhoneMenu({
               </a>
             )
           )}
-          <div className="mt-1 flex h-11 items-center justify-between border-t border-border px-2 pt-1">
+          <div className="mt-1 flex min-h-11 items-center justify-between gap-2 border-t border-border px-2 pt-1">
             <ErrorBoundary fallback={null}>
               <AuthButtons
                 wrapWithProvider={false}
                 clerkModule={clerkModule}
-                signInClassName={`${PHONE_TAP_TARGET_CLASS} rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors`}
-                avatarSize="h-11 w-11"
+                avatarSize="h-9 w-9"
               />
             </ErrorBoundary>
           </div>
@@ -170,9 +171,9 @@ export function HeaderBar({
   const searchPlaceholder = lang === "vi" ? "Tìm kiếm..." : "Search AI news...";
 
   return (
-    <div className="border-b border-border bg-background">
+    <div className="border-b border-border bg-brand-soft">
       <div
-        className={`${WIDE_HEADER_ROW_CLASS} mx-auto max-w-[1080px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-1.5 sm:px-6 lg:px-8`}
+        className={`${WIDE_HEADER_ROW_CLASS} mx-auto max-w-[1080px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6 lg:px-8`}
       >
         <Link
           to="/"
@@ -193,6 +194,14 @@ export function HeaderBar({
           <SearchBox placeholder={searchPlaceholder} lang={lang} />
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          <a
+            href={TELEGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-semibold text-muted-foreground hover:text-accent"
+          >
+            Telegram
+          </a>
           <Link
             to="/extension"
             className="text-xs font-semibold text-muted-foreground hover:text-accent"
@@ -216,15 +225,14 @@ export function HeaderBar({
             <AuthButtons
               wrapWithProvider={false}
               clerkModule={clerkModule}
-              signInClassName="h-6 w-6 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              avatarSize="h-6 w-6"
+              avatarSize="h-7 w-7"
             />
           </ErrorBoundary>
         </div>
       </div>
 
       <div
-        className={`${COMPACT_CHROME_CLASS} mx-auto max-w-[1080px] items-center gap-1 px-3 py-1`}
+        className={`${COMPACT_CHROME_CLASS} mx-auto max-w-[1080px] items-center gap-1.5 px-3 py-2`}
       >
         <div className="min-w-0 flex-1">
           <SearchBox placeholder={searchPlaceholder} lang={lang} compact />

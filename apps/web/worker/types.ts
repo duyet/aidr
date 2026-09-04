@@ -15,12 +15,8 @@ export interface Env {
    *  ANYROUTER_MODEL when unset. */
   ANYROUTER_QA_MODEL?: string;
   ANYROUTER_API_KEY: string;
-  CLICKHOUSE_HOST?: string;
-  CLICKHOUSE_NEWS_USER?: string;
-  CLICKHOUSE_NEWS_PASSWORD?: string;
-  CLICKHOUSE_DATABASE?: string;
   NEWS_ADMIN_TOKEN: string;
-  /** Clerk instance issuer (frontend API origin), e.g. "https://clerk.duyet.net".
+  /** Clerk instance issuer (frontend API origin), e.g. "https://clerk.aidr.today".
    *  Derived from the VITE_CLERK_PUBLISHABLE_KEY domain. When set, admin
    *  Clerk-JWT verification rejects tokens whose `iss` doesn't match. */
   CLERK_ISSUER?: string;
