@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
 
 /* Scan shared shadcn primitives so Card/Badge/Table utilities emit. */
 @source "../../../packages/ui";
@@ -27,9 +30,31 @@
   /* Popover tokens for dither-kit chart tooltips. */
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --font-sans: var(--editorial-font-sans);
+  --font-sans: "Inter Variable", sans-serif;
   --font-serif: var(--editorial-font-serif);
   --font-mono: var(--editorial-font-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-input: var(--input);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 :root {
@@ -56,34 +81,47 @@
   --content-font-sans:
     "Source Sans 3", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* Standard compatibility variables mapped to the editorial tokens.
-     --accent/--accent-foreground stay a NEUTRAL shadcn-style hover surface
-     here (same convention blog uses) because shared chrome components
-     (SiteHeader's nav buttons) consume these globally — our own amber
-     brand accent is scoped separately under .news-content below so it
-     never leaks into hover/active states on shared duyet.net chrome. */
-  --background: var(--editorial-bg);
-  --foreground: var(--editorial-fg);
-  --card: var(--editorial-bg);
-  --card-foreground: var(--editorial-fg);
-  --popover: var(--editorial-bg);
-  --popover-foreground: var(--editorial-fg);
-  --muted: var(--editorial-faint);
-  --muted-foreground: var(--editorial-muted);
-  --secondary: var(--editorial-faint);
-  --secondary-foreground: var(--editorial-fg);
-  --border: var(--editorial-hairline);
-  --accent: var(--editorial-faint);
-  --accent-foreground: var(--editorial-fg);
-  --primary: var(--editorial-fg);
-  --primary-foreground: var(--editorial-bg);
-  --destructive: #dc2626;
+  /* shadcn preset tokens (amber / neutral radix-rhea). Editorial tokens
+     above stay for reader fonts. --accent stays a NEUTRAL hover surface
+     here because shared chrome (SiteHeader nav buttons) consumes it
+     globally — the news amber brand is scoped under .news-content. */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --border: oklch(0.922 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.555 0.163 48.998);
+  --primary-foreground: oklch(0.987 0.022 95.277);
+  --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: #ffffff;
-  --ring: var(--editorial-fg);
+  --ring: oklch(0.708 0 0);
 
   /* News-only accent for TL;DR rules and trending chips */
   --brand: #f5c518;
   --brand-soft: #fdf6d8;
+  --input: oklch(0.922 0 0);
+  --chart-1: oklch(0.879 0.169 91.605);
+  --chart-2: oklch(0.769 0.188 70.08);
+  --chart-3: oklch(0.666 0.179 58.318);
+  --chart-4: oklch(0.555 0.163 48.998);
+  --chart-5: oklch(0.473 0.137 46.201);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.666 0.179 58.318);
+  --sidebar-primary-foreground: oklch(0.987 0.022 95.277);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 :root.dark,
@@ -95,24 +133,37 @@
   --editorial-hairline: #fafafa14;
   --editorial-accent: #e8926e;
 
-  --background: var(--editorial-bg);
-  --foreground: var(--editorial-fg);
-  --card: var(--editorial-bg);
-  --card-foreground: var(--editorial-fg);
-  --popover: var(--editorial-bg);
-  --popover-foreground: var(--editorial-fg);
-  --muted: var(--editorial-faint);
-  --muted-foreground: var(--editorial-muted);
-  --secondary: var(--editorial-faint);
-  --secondary-foreground: var(--editorial-fg);
-  --border: var(--editorial-hairline);
-  --accent: var(--editorial-faint);
-  --accent-foreground: var(--editorial-fg);
-  --primary: var(--editorial-fg);
-  --primary-foreground: var(--editorial-bg);
-  --destructive: #f87171;
-  --destructive-foreground: #1c1917;
-  --ring: var(--editorial-fg);
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.473 0.137 46.201);
+  --primary-foreground: oklch(0.987 0.022 95.277);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.879 0.169 91.605);
+  --chart-2: oklch(0.769 0.188 70.08);
+  --chart-3: oklch(0.666 0.179 58.318);
+  --chart-4: oklch(0.555 0.163 48.998);
+  --chart-5: oklch(0.473 0.137 46.201);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.769 0.188 70.08);
+  --sidebar-primary-foreground: oklch(0.279 0.077 45.635);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 
   --brand: #f5c518;
   --brand-soft: #292209;
@@ -146,6 +197,15 @@
   .tabular-nums,
   time {
     font-variant-numeric: tabular-nums;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
