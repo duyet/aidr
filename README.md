@@ -1,8 +1,8 @@
 # aidr / AI;DR
 
-[https://aidr.today](https://aidr.today) — AI news digest (TL;DR + ranked stories). Also served at `news.duyet.net` as a custom-domain alias.
+[https://aidr.today](https://aidr.today) — AI news digest (TL;DR + ranked stories).
 
-Cloudflare **Workers** (not Pages). Worker name: `aidr`.
+Cloudflare **Workers** (not Pages). Worker name: `aidr` on **AnyRouter Inc.** account.
 
 ## Monorepo layout
 
@@ -18,16 +18,14 @@ Pipeline design: [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md).
 
 | | |
 |--|--|
+| **Account** | AnyRouter Inc. |
 | **Account ID** | `7df185a18b98382c3240fa7ac4a37075` |
 | **Zone ID** (`aidr.today`) | `e89512b5edc14f2f790aa3eb47f60944` |
+| **D1** | `aidr` (`0c8f3efe-0427-4268-8d9f-bb1a4bcbe427`) — data migrated from legacy `news` D1 |
 
 `account_id` is set in `apps/web/wrangler.toml`. Use the Zone ID for DNS and custom-domain operations in the Cloudflare dashboard / API.
 
-Custom domains (wrangler `[[routes]]`):
-
-- `aidr.today`
-- `news.duyet.net` (alias)
-
+Custom domain: **`aidr.today`**. Legacy `news.duyet.net` stays on the old Worker (Duyet Personal account) until that app is retired.
 ## Local development
 
 ```bash
