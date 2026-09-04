@@ -1,0 +1,12 @@
+node_modules
+dist
+.turbo
+.wrangler
+.dev.vars
+.env
+.env.local
+.env.production.local
+*.log
+.DS_Store
+apps/web/public/aidr.zip
+apps/web/public/news-tab.zip

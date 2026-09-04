@@ -1,0 +1,113 @@
+name: Deploy Web Worker
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "apps/web/**"
+      - "apps/extension/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: Deploy aidr Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://aidr.today
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+
+      - name: Validate required secrets
+        run: |
+          missing=0
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set"
+            missing=1
+          fi
+          if [ -z "$VITE_CLERK_PUBLISHABLE_KEY" ]; then
+            echo "::error::VITE_CLERK_PUBLISHABLE_KEY is not set"
+            missing=1
+          fi
+          if [ "$missing" -eq 1 ]; then
+            exit 1
+          fi
+          echo "Required secrets present"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+
+      - name: Deploy @aidr/web
+        run: pnpm --filter @aidr/web deploy
+        env:
+          NODE_ENV: production
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: "7df185a18b98382c3240fa7ac4a37075"
+
+      - name: Deployment summary
+        run: |
+          echo "### Deployed Worker" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Worker**: aidr" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **URL**: https://aidr.today" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Alias**: https://news.duyet.net" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke — /api/public
+        run: |
+          max_attempts=5
+          attempt=1
+          while [ "$attempt" -le "$max_attempts" ]; do
+            code=$(curl -s -o /tmp/aidr-public.json -w '%{http_code}' \
+              "https://aidr.today/api/public")
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+              echo "OK HTTP $code"
+              head -c 200 /tmp/aidr-public.json || true
+              echo
+              exit 0
+            fi
+            echo "Attempt $attempt/$max_attempts failed (HTTP $code), waiting 5s..."
+            sleep 5
+            attempt=$((attempt + 1))
+          done
+          echo "Smoke failed after $max_attempts attempts" >&2
+          exit 1

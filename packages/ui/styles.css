@@ -1,0 +1,59 @@
+/**
+ * Minimal theme tokens for @aidr/ui primitives + next-themes.
+ * Apps can override these or use their own styles.css and skip this import.
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --muted: #0a0a0a0d;
+  --muted-foreground: #0a0a0a99;
+  --secondary: #0a0a0a0d;
+  --secondary-foreground: #0a0a0a;
+  --border: #0a0a0a14;
+  --accent: #0a0a0a0d;
+  --accent-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --ring: #0a0a0a;
+}
+
+:root.dark,
+.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #0a0a0a;
+  --card-foreground: #fafafa;
+  --popover: #0a0a0a;
+  --popover-foreground: #fafafa;
+  --muted: #fafafa0f;
+  --muted-foreground: #fafafa8c;
+  --secondary: #fafafa0f;
+  --secondary-foreground: #fafafa;
+  --border: #fafafa14;
+  --accent: #fafafa0f;
+  --accent-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #0a0a0a;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --ring: #fafafa;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border, currentcolor);
+  }
+}

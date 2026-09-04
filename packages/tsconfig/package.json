@@ -1,0 +1,11 @@
+{
+  "name": "@aidr/tsconfig",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "files": ["./"],
+  "exports": {
+    "./base.json": "./base.json",
+    "./vite.json": "./vite.json"
+  }
+}

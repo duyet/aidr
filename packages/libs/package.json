@@ -1,0 +1,16 @@
+{
+  "name": "@aidr/libs",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "./utils.ts",
+  "types": "./utils.ts",
+  "exports": {
+    "./utils": "./utils.ts",
+    "./workers-auth": "./workers-auth.ts"
+  },
+  "dependencies": {
+    "cn": "^0.2.4"
+  }
+}

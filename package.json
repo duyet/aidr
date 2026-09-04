@@ -1,0 +1,22 @@
+{
+  "name": "aidr",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "pnpm --filter @aidr/web dev",
+    "build": "pnpm --filter @aidr/web build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "check-types": "pnpm --filter @aidr/web check-types",
+    "deploy": "pnpm --filter @aidr/web deploy",
+    "cf:deploy:prod": "pnpm --filter @aidr/web cf:deploy:prod"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd",
+      "@clerk/shared",
+      "sharp"
+    ]
+  }
+}
