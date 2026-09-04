@@ -16,8 +16,8 @@ not_found_handling = "single-page-application"
 
 # Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus
 # GitHub Actions (`.github/workflows/ingest.yml`) as a watchdog.
-# account_id above is public (Account ID); Zone ID for aidr.today DNS is in
-# the repo README / .env.example (CLOUDFLARE_ZONE_ID).
+# account_id above is public (Account ID). Zone ID for aidr.today DNS is
+# documented in the repo README (not in .env.example).
 # Do not add Worker `[triggers] crons` (Free 5-cron cap breaks deploy)
 # and do not add Workflow `schedules` (paid Workers plan — wrangler
 # deploy exits 1). Manual: Actions workflow_dispatch, admin
