@@ -1,17 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Puzzle } from "lucide-react";
 import type { ReactNode } from "react";
-import { useLang } from "../lib/lang-context";
 import {
+  AIDR_ZIP_ERROR_IMG,
   CHROME_EXTENSIONS_HREF,
   GUIDE_COPY,
-  AIDR_ZIP_ERROR_IMG,
 } from "../lib/aidr-guide";
 import {
   AIDR_ZIP_ERROR_IMG_HEIGHT,
   AIDR_ZIP_ERROR_IMG_WIDTH,
   AIDR_ZIP_HREF,
 } from "../lib/aidr-public";
+import { useLang } from "../lib/lang-context";
 
 export const Route = createFileRoute("/extension")({
   head: () => ({
@@ -61,8 +61,8 @@ function ExtensionPage() {
       </div>
       <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
         {t(
-          "Replaces Chrome's new tab with today's AI;DR and top stories from this site. Production API is https://aidr.today. Not on the Chrome Web Store yet, so you load it unpacked.",
-          "Thay tab mới của Chrome bằng AI;DR hôm nay và tin nổi bật từ site này. API mặc định là https://aidr.today. Chưa lên Chrome Web Store, nên phải load unpacked."
+          "Replaces Chrome's new tab with today's AI;DR and top stories from this site. Production API is https://aidr.today. Not on the Chrome Web Store yet, so you load it unpacked. Chrome never auto-updates unpacked zips; a new-tab banner appears when a newer zip is published. Store installs would auto-update.",
+          "Thay tab mới của Chrome bằng AI;DR hôm nay và tin nổi bật từ site này. API mặc định là https://aidr.today. Chưa lên Chrome Web Store, nên phải load unpacked. Chrome không tự cập nhật zip unpacked; tab mới hiện banner khi có zip mới. Bản trên Store thì tự cập nhật."
         )}
       </p>
 

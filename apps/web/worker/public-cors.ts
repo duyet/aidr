@@ -12,11 +12,14 @@
  */
 
 export const PUBLIC_API_PATH = "/api/public";
+export const EXTENSION_API_PATH = "/api/extension";
+
+const PUBLIC_CORS_PATHS = new Set([PUBLIC_API_PATH, EXTENSION_API_PATH]);
 
 export function isPublicApiPath(request: Request): boolean {
   try {
     const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
-    return path === PUBLIC_API_PATH;
+    return PUBLIC_CORS_PATHS.has(path);
   } catch {
     return false;
   }

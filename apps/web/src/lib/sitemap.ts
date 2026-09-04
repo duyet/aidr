@@ -6,6 +6,7 @@ export const SITEMAP_STATIC_PATHS = [
   "/about",
   "/changelog",
   "/extension",
+  "/privacy",
   "/mcp",
   "/submit",
   "/subscribe",

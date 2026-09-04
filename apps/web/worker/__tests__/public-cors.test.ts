@@ -36,6 +36,15 @@ describe("isPublicApiPath", () => {
       isPublicApiPath(new Request("https://news.duyet.net/api/public/extra"))
     ).toBe(false);
   });
+
+  it("matches /api/extension so the unpacked updater can preflight", () => {
+    expect(
+      isPublicApiPath(new Request("https://aidr.today/api/extension"))
+    ).toBe(true);
+    expect(
+      isPublicApiPath(new Request("https://aidr.today/api/extension/"))
+    ).toBe(true);
+  });
 });
 
 describe("isPublicAllowedOrigin", () => {

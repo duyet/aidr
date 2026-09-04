@@ -21,6 +21,7 @@ import {
   Mail,
   Plug,
   Puzzle,
+  Scale,
   Send,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -87,6 +88,7 @@ const FOOTER_LINKS: {
 }[] = [
   { to: "/about", label: "About", icon: Info },
   { to: "/extension", label: "Chrome tab", icon: Puzzle },
+  { to: "/privacy", label: "Privacy", icon: Scale },
   { to: "/subscribe", label: "Subscribe", icon: Mail },
   { to: "/mcp", label: "MCP", icon: Plug },
   {

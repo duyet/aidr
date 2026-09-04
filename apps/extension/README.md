@@ -9,6 +9,13 @@ app — do not add `wrangler.toml`.
 
 Load this folder **unpacked**. `manifest.json` is the extension root.
 
+Chrome does **not** auto-update unpacked zips. Once listed on the Chrome
+Web Store, Chrome updates CWS installs automatically — do not set
+`update_url` in the manifest. Unpacked installs compare
+`GET https://aidr.today/api/extension` and show a zip banner when newer.
+Store listing copy and first-submit checklist: [`STORE.md`](./STORE.md).
+Privacy URL for the dashboard: `https://aidr.today/privacy`.
+
 ```bash
 pnpm --filter @aidr/extension lint
 pnpm --filter @aidr/extension test

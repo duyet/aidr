@@ -1,4 +1,10 @@
 import { fetchDigest } from "./api.js";
+import {
+  fetchExtensionMeta,
+  installedVersion,
+  isChromeWebStoreInstall,
+  isNewerVersion,
+} from "./update.js";
 import { highlightTitle, tagsForHighlight } from "./highlight.js";
 import { t, uiLang } from "./i18n.js";
 import {
@@ -219,6 +225,41 @@ function setStatus(message, show) {
   const node = $("status");
   node.hidden = !show;
   node.textContent = message || "";
+}
+
+function setUpdateBanner(settings, meta) {
+  const banner = $("update-banner");
+  const text = $("update-text");
+  const link = $("update-link");
+  if (!banner || !text || !link) return;
+  const remote = typeof meta?.version === "string" ? meta.version : "";
+  const local = installedVersion();
+  const store = isChromeWebStoreInstall(
+    globalThis.chrome?.runtime?.getManifest?.()
+  );
+  if (store || !isNewerVersion(remote, local)) {
+    banner.hidden = true;
+    return;
+  }
+  text.textContent = t(settings, "updateAvailable");
+  link.textContent = t(settings, "updateAction");
+  link.href =
+    typeof meta.zip === "string" && meta.zip.startsWith("https://")
+      ? meta.zip
+      : "https://aidr.today/aidr.zip";
+  banner.hidden = false;
+}
+
+async function maybeOfferUnpackedUpdate(settings) {
+  try {
+    if (isChromeWebStoreInstall(globalThis.chrome?.runtime?.getManifest?.())) {
+      return;
+    }
+    const meta = await fetchExtensionMeta(settings.apiBase);
+    setUpdateBanner(settings, meta);
+  } catch {
+    // ignore — digest still works without the version endpoint
+  }
 }
 
 function tldrShown(bullets, settings) {
@@ -507,6 +548,7 @@ async function main() {
       digest = result.digest;
       setStatus(t(settings, "cached"), result.stale);
       render(settings, digest);
+      void maybeOfferUnpackedUpdate(settings);
     } catch {
       setStatus(t(settings, "error"), true);
     }
@@ -543,6 +585,7 @@ async function main() {
   } catch {
     setStatus(t(settings, "error"), true);
   }
+  void maybeOfferUnpackedUpdate(settings);
 }
 
 main();

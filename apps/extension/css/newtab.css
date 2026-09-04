@@ -298,6 +298,24 @@ body {
   font-size: 0.85em;
 }
 
+.update-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0.75rem 0 0;
+  padding: var(--pad) 0.7rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--card);
+  font-size: 0.85em;
+}
+
+.update-banner a {
+  font-weight: 600;
+  color: var(--accent, inherit);
+}
+
 .cat-nav {
   display: flex;
   align-items: center;

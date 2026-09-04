@@ -15,6 +15,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as DataRouteImport } from './routes/data'
 import { Route as ExtensionRouteImport } from './routes/extension'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as MailRouteImport } from './routes/mail'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as SubmitRouteImport } from './routes/submit'
@@ -23,6 +24,7 @@ import { Route as CatSlugRouteImport } from './routes/$cat.$slug'
 import { Route as ApiFeedRouteImport } from './routes/api/feed'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiPublicRouteImport } from './routes/api/public'
+import { Route as ApiExtensionRouteImport } from './routes/api/extension'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiSystemRouteImport } from './routes/api/system'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
@@ -58,6 +60,11 @@ const DataRoute = DataRouteImport.update({
 const ExtensionRoute = ExtensionRouteImport.update({
   id: '/extension',
   path: '/extension',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MailRoute = MailRouteImport.update({
@@ -100,6 +107,11 @@ const ApiPublicRoute = ApiPublicRouteImport.update({
   path: '/api/public',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiExtensionRoute = ApiExtensionRouteImport.update({
+  id: '/api/extension',
+  path: '/api/extension',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSubscribeRoute = ApiSubscribeRouteImport.update({
   id: '/api/subscribe',
   path: '/api/subscribe',
@@ -138,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
+  '/privacy': typeof PrivacyRoute
   '/mail': typeof MailRoute
   '/mcp': typeof McpRoute
   '/submit': typeof SubmitRoute
@@ -146,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
+  '/api/extension': typeof ApiExtensionRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/system': typeof ApiSystemRoute
   '/sign-in/$': typeof SignInSplatRoute
@@ -160,6 +174,7 @@ export interface FileRoutesByTo {
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
+  '/privacy': typeof PrivacyRoute
   '/mail': typeof MailRoute
   '/mcp': typeof McpRoute
   '/submit': typeof SubmitRoute
@@ -168,6 +183,7 @@ export interface FileRoutesByTo {
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
+  '/api/extension': typeof ApiExtensionRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/system': typeof ApiSystemRoute
   '/sign-in/$': typeof SignInSplatRoute
@@ -183,6 +199,7 @@ export interface FileRoutesById {
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
+  '/privacy': typeof PrivacyRoute
   '/mail': typeof MailRoute
   '/mcp': typeof McpRoute
   '/submit': typeof SubmitRoute
@@ -191,6 +208,7 @@ export interface FileRoutesById {
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
+  '/api/extension': typeof ApiExtensionRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/system': typeof ApiSystemRoute
   '/sign-in/$': typeof SignInSplatRoute
@@ -207,6 +225,7 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/data'
     | '/extension'
+    | '/privacy'
     | '/mail'
     | '/mcp'
     | '/submit'
@@ -215,6 +234,7 @@ export interface FileRouteTypes {
     | '/api/feed'
     | '/api/mcp'
     | '/api/public'
+    | '/api/extension'
     | '/api/subscribe'
     | '/api/system'
     | '/sign-in/$'
@@ -229,6 +249,7 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/data'
     | '/extension'
+    | '/privacy'
     | '/mail'
     | '/mcp'
     | '/submit'
@@ -237,6 +258,7 @@ export interface FileRouteTypes {
     | '/api/feed'
     | '/api/mcp'
     | '/api/public'
+    | '/api/extension'
     | '/api/subscribe'
     | '/api/system'
     | '/sign-in/$'
@@ -251,6 +273,7 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/data'
     | '/extension'
+    | '/privacy'
     | '/mail'
     | '/mcp'
     | '/submit'
@@ -259,6 +282,7 @@ export interface FileRouteTypes {
     | '/api/feed'
     | '/api/mcp'
     | '/api/public'
+    | '/api/extension'
     | '/api/subscribe'
     | '/api/system'
     | '/sign-in/$'
@@ -274,6 +298,7 @@ export interface RootRouteChildren {
   ChangelogRoute: typeof ChangelogRoute
   DataRoute: typeof DataRoute
   ExtensionRoute: typeof ExtensionRoute
+  PrivacyRoute: typeof PrivacyRoute
   MailRoute: typeof MailRoute
   McpRoute: typeof McpRoute
   SubmitRoute: typeof SubmitRoute
@@ -282,6 +307,7 @@ export interface RootRouteChildren {
   ApiFeedRoute: typeof ApiFeedRoute
   ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicRoute: typeof ApiPublicRoute
+  ApiExtensionRoute: typeof ApiExtensionRoute
   ApiSubscribeRoute: typeof ApiSubscribeRoute
   ApiSystemRoute: typeof ApiSystemRoute
   SignInSplatRoute: typeof SignInSplatRoute
@@ -332,6 +358,13 @@ declare module '@tanstack/react-router' {
       path: '/extension'
       fullPath: '/extension'
       preLoaderRoute: typeof ExtensionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mail': {
@@ -390,6 +423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/extension': {
+      id: '/api/extension'
+      path: '/api/extension'
+      fullPath: '/api/extension'
+      preLoaderRoute: typeof ApiExtensionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/subscribe': {
       id: '/api/subscribe'
       path: '/api/subscribe'
@@ -442,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChangelogRoute: ChangelogRoute,
   DataRoute: DataRoute,
   ExtensionRoute: ExtensionRoute,
+  PrivacyRoute: PrivacyRoute,
   MailRoute: MailRoute,
   McpRoute: McpRoute,
   SubmitRoute: SubmitRoute,
@@ -450,6 +491,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFeedRoute: ApiFeedRoute,
   ApiMcpRoute: ApiMcpRoute,
   ApiPublicRoute: ApiPublicRoute,
+  ApiExtensionRoute: ApiExtensionRoute,
   ApiSubscribeRoute: ApiSubscribeRoute,
   ApiSystemRoute: ApiSystemRoute,
   SignInSplatRoute: SignInSplatRoute,
