@@ -89,7 +89,7 @@ async function main() {
     assert(res.status === 200, `expected 200, got ${res.status}`);
     const body = await res.text();
     assert(
-      /Sitemap:\s*https:\/\/news\.duyet\.net\/sitemap\.xml/i.test(body),
+      /Sitemap:\s*https:\/\/aidr\.today\/sitemap\.xml/i.test(body),
       "robots.txt missing Sitemap line"
     );
   });
