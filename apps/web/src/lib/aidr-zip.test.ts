@@ -121,9 +121,7 @@ describe("buildAidrZip", () => {
       true
     );
     expect(
-      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString(
-        "utf8"
-      )
+      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString("utf8")
     ).toBe('{"name":"AI News"}');
     expect(names).not.toContain("manifest.json");
   });
@@ -153,9 +151,7 @@ describe("buildAidrZip", () => {
       true
     );
     const manifest = JSON.parse(
-      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString(
-        "utf8"
-      )
+      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString("utf8")
     );
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.chrome_url_overrides.newtab).toBe("newtab.html");

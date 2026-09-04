@@ -72,7 +72,10 @@ export function formatHealthFooter(snapshot: HealthSnapshot): string {
     return `health: all ${snapshot.services.length} ok`;
   }
   return `health: ${down
-    .map((service) => `${service.name}${service.detail ? ` (${service.detail})` : ""}`)
+    .map(
+      (service) =>
+        `${service.name}${service.detail ? ` (${service.detail})` : ""}`
+    )
     .join(", ")} down`;
 }
 
@@ -85,7 +88,8 @@ export function buildHealthSnapshot(input: {
   const now = input.now ?? Date.now();
   const ingestOk = !input.lastRunError;
   const coverage = input.translationCoverage;
-  const translationsOk = coverage === null || coverage === undefined || coverage >= 0.8;
+  const translationsOk =
+    coverage === null || coverage === undefined || coverage >= 0.8;
   return {
     checkedAt: now,
     services: [
@@ -96,7 +100,7 @@ export function buildHealthSnapshot(input: {
           ? input.lastRunFinishedAt
             ? "last run ok"
             : "no run yet"
-          : input.lastRunError ?? "failed",
+          : (input.lastRunError ?? "failed"),
       },
       {
         name: "translations",

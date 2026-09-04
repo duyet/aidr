@@ -15,6 +15,8 @@ export function getClientLang(): Lang {
 
 export function setClientLang(lang: Lang) {
   if (typeof document === "undefined") return;
+  // Cookie Store API is not available on all browsers we still support.
+  // biome-ignore lint/suspicious/noDocumentCookie: lang preference cookie
   document.cookie = `${COOKIE}=${lang}; path=/; max-age=31536000; samesite=lax`;
   try {
     localStorage.setItem(COOKIE, lang);

@@ -230,13 +230,7 @@ function SubmitForm({
   );
 }
 
-function SubmitGate({
-  useUser,
-  useAuth,
-}: {
-  useUser: any;
-  useAuth: any;
-}) {
+function SubmitGate({ useUser, useAuth }: { useUser: any; useAuth: any }) {
   const { user } = useUser();
   const { getToken } = useAuth();
   const lang = useLang();
@@ -264,9 +258,7 @@ function SubmitPage() {
         {lang === "vi" ? "Gửi bài viết" : "Submit a story"}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {lang === "vi"
-          ? "Chia sẻ một bài viết."
-          : "Share an AI story."}
+        {lang === "vi" ? "Chia sẻ một bài viết." : "Share an AI story."}
       </p>
 
       <div className="mt-6 max-w-lg">

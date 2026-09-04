@@ -446,12 +446,15 @@ export async function approveSuggestionById(
     row.field === "title"
       ? (translation?.title ?? null)
       : (translation?.summary ?? null);
-  const { translation: retranslated } = await retranslateFieldWithGuidance(env, {
-    field: row.field,
-    sourceText,
-    currentTranslation: currentForField,
-    suggestion: row.suggestion,
-  });
+  const { translation: retranslated } = await retranslateFieldWithGuidance(
+    env,
+    {
+      field: row.field,
+      sourceText,
+      currentTranslation: currentForField,
+      suggestion: row.suggestion,
+    }
+  );
 
   if (!retranslated) {
     await env.DB.prepare(

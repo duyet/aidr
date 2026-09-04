@@ -28,7 +28,8 @@ const jwksCache = new Map<string, { keys: Jwk[]; fetchedAt: number }>();
 
 function base64UrlDecode(input: string): Uint8Array {
   const padded = input.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
+  const pad =
+    padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
   const binary = atob(padded + pad);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -88,7 +89,10 @@ export async function verifyClerkToken(
 
   const now = Math.floor(Date.now() / 1000);
   if (exp + CLOCK_SKEW_SECONDS < now) return null;
-  if (typeof payload.nbf === "number" && payload.nbf - CLOCK_SKEW_SECONDS > now) {
+  if (
+    typeof payload.nbf === "number" &&
+    payload.nbf - CLOCK_SKEW_SECONDS > now
+  ) {
     return null;
   }
 

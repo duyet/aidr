@@ -3,9 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  AIDR_ZIP_ERROR_IMG,
   CHROME_EXTENSIONS_HREF,
   GUIDE_COPY,
-  AIDR_ZIP_ERROR_IMG,
 } from "./aidr-guide";
 import {
   AIDR_UNPACKED_DIR,

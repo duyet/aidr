@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { notFoundLangFromCookie } from "./not-found-fn";
 import { notFoundCopy } from "./not-found";
+import { notFoundLangFromCookie } from "./not-found-fn";
 import { notFoundHead } from "./seo";
 import { SITE_TITLE } from "./site";
 

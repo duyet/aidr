@@ -61,13 +61,17 @@ describe("highlightTitle", () => {
       "xAI",
       "Grok",
     ]);
-    const highlighted = segments.filter((s) => s.highlighted).map((s) => s.text);
+    const highlighted = segments
+      .filter((s) => s.highlighted)
+      .map((s) => s.text);
     expect(highlighted).toEqual(["Grok"]);
   });
 
   it("still matches when bordered by digits or punctuation", () => {
     const gpt = highlightTitle("New GPT-5.6 model announced", ["GPT"]);
-    expect(gpt.filter((s) => s.highlighted).map((s) => s.text)).toEqual(["GPT"]);
+    expect(gpt.filter((s) => s.highlighted).map((s) => s.text)).toEqual([
+      "GPT",
+    ]);
 
     const qwen = highlightTitle("Qwen3 tops the charts", ["qwen"]);
     expect(qwen.filter((s) => s.highlighted).map((s) => s.text)).toEqual([
@@ -132,8 +136,12 @@ describe("highlightTitle", () => {
         "Anthropic and OpenAI ship GPT-5.6 Sol",
         tags
       );
-      const highlighted = segments.filter((s) => s.highlighted).map((s) => s.text);
-      expect(highlighted).toEqual(expect.arrayContaining(["Anthropic", "OpenAI", "GPT"]));
+      const highlighted = segments
+        .filter((s) => s.highlighted)
+        .map((s) => s.text);
+      expect(highlighted).toEqual(
+        expect.arrayContaining(["Anthropic", "OpenAI", "GPT"])
+      );
     });
 
     it("highlights entities inside a 2-sentence digest bullet", () => {

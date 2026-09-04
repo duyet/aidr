@@ -1,5 +1,5 @@
 import { ExternalLink, TrendingUp } from "lucide-react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import {
   ARTICLE_TITLE_TAG,
@@ -9,10 +9,65 @@ import {
 import { localizedTitle } from "../lib/display-title";
 import { categoryLabel, timeAgo } from "../lib/lang";
 import { storyPath } from "../lib/slug";
-import { topicColor } from "../lib/topic-color";
+import { type TopicColor, topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
 import { HighlightedText } from "./HighlightedText";
 import { StoryDetail } from "./StoryDetail";
+
+function StoryRowHeader({
+  hasDetails,
+  expanded,
+  matchColor,
+  onToggle,
+  children,
+}: {
+  hasDetails: boolean;
+  expanded: boolean;
+  matchColor: TopicColor | null;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const className = `flex items-baseline gap-3 ${
+    hasDetails ? "cursor-pointer" : ""
+  } ${expanded ? "bg-muted/60" : matchColor ? "topic-hl-row" : ""}`;
+  const style = {
+    paddingTop: "var(--reader-pad, 0.5rem)",
+    paddingBottom: "var(--reader-pad, 0.5rem)",
+    ...(matchColor && {
+      "--tc-light": matchColor.light,
+      "--tc-dark": matchColor.dark,
+    }),
+  } as CSSProperties;
+
+  if (hasDetails) {
+    return (
+      // Native <button> cannot wrap the title/source links inside the row.
+      // biome-ignore lint/a11y/useSemanticElements: nested links; div+role=button
+      <div
+        className={className}
+        style={style}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div className={className} style={style}>
+      {children}
+    </div>
+  );
+}
 
 export function StoryRow({
   item,
@@ -50,30 +105,11 @@ export function StoryRow({
 
   return (
     <div id={`item-${item.id}`} className="border-b border-border">
-      <div
-        className={`flex items-baseline gap-3 ${
-          hasDetails ? "cursor-pointer" : ""
-        } ${expanded ? "bg-muted/60" : matchColor ? "topic-hl-row" : ""}`}
-        style={
-          {
-            paddingTop: "var(--reader-pad, 0.5rem)",
-            paddingBottom: "var(--reader-pad, 0.5rem)",
-            ...(matchColor && {
-              "--tc-light": matchColor.light,
-              "--tc-dark": matchColor.dark,
-            }),
-          } as CSSProperties
-        }
-        onClick={() => hasDetails && setExpanded((v) => !v)}
-        onKeyDown={(e) => {
-          if (hasDetails && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            setExpanded((v) => !v);
-          }
-        }}
-        role={hasDetails ? "button" : undefined}
-        tabIndex={hasDetails ? 0 : undefined}
-        aria-expanded={hasDetails ? expanded : undefined}
+      <StoryRowHeader
+        hasDetails={hasDetails}
+        expanded={expanded}
+        matchColor={matchColor}
+        onToggle={() => setExpanded((v) => !v)}
       >
         <span className="w-5 shrink-0 text-right text-sm text-muted-foreground">
           {index}
@@ -133,7 +169,7 @@ export function StoryRow({
         <span className="w-14 shrink-0 text-right text-sm font-bold tabular-nums">
           {item.points}/{item.comments}
         </span>
-      </div>
+      </StoryRowHeader>
 
       {expanded && hasDetails && (
         <div className="border-l-2 border-accent/60 bg-muted/30 px-4 py-2.5 md:mx-6">

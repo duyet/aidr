@@ -384,7 +384,6 @@ export function StoryDetail({
               {lang === "vi" ? "Trang tin" : "Permalink"}
             </a>
           </div>
-
         </aside>
       </div>
     </div>

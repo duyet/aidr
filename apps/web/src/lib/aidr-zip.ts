@@ -8,10 +8,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { deflateRawSync } from "node:zlib";
-import {
-  AIDR_UNPACKED_DIR,
-  AIDR_ZIP_FILENAME,
-} from "./aidr-public";
+import { AIDR_UNPACKED_DIR, AIDR_ZIP_FILENAME } from "./aidr-public";
 
 const SKIP_DIRS = new Set([
   "node_modules",

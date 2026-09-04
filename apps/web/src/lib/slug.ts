@@ -1,9 +1,7 @@
 import type { FeedItem } from "./types";
 
 /** /ai/abc12345 style path for a story — category + 8-char id prefix. */
-export function storyPath(
-  item: Pick<FeedItem, "id" | "category">
-): string {
+export function storyPath(item: Pick<FeedItem, "id" | "category">): string {
   const cat = (item.category ?? "ai").toLowerCase();
   return `/${cat}/${item.id.slice(0, 8)}`;
 }

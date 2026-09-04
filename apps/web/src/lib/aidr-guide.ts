@@ -1,7 +1,4 @@
-import {
-  AIDR_UNPACKED_DIR,
-  AIDR_ZIP_FILENAME,
-} from "./aidr-public";
+import { AIDR_UNPACKED_DIR, AIDR_ZIP_FILENAME } from "./aidr-public";
 
 export {
   AIDR_ZIP_ERROR_IMG,

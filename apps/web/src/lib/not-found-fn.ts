@@ -14,6 +14,6 @@ export function notFoundLangFromCookie(cookieHeader: string | null): Lang {
  */
 export const loadNotFoundLang = createIsomorphicFn()
   .client((): Lang => getClientLang())
-  .server((): Lang =>
-    notFoundLangFromCookie(getRequestHeader("cookie") ?? null)
+  .server(
+    (): Lang => notFoundLangFromCookie(getRequestHeader("cookie") ?? null)
   );
