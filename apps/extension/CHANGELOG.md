@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/duyet/aidr/compare/aidr-v0.1.2...aidr-v0.1.3) (2026-09-04)
+
+
+### ✨ Features
+
+* bootstrap aidr monorepo from news + news-tab ([b1e3e54](https://github.com/duyet/aidr/commit/b1e3e54019a3668f1704da0ab796e459655acff2))
+* **extension:** prepare CWS auto-update and first-review checklist ([b4168a5](https://github.com/duyet/aidr/commit/b4168a5d0d92f8c6a5f6e82e1fee6d01a34a74ab))
+
 ## [0.1.2](https://github.com/duyet/monorepo/compare/news-tab-v0.1.1...news-tab-v0.1.2) (2026-09-03)
 
 
