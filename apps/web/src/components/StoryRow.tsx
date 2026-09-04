@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { ExternalLink, TrendingUp } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
@@ -103,13 +104,22 @@ export function StoryRow({
   // generic accent, so the highlight visually matches the clicked chip.
   const matchColor = isMatch && selectedTag ? topicColor(selectedTag) : null;
 
+  const toggleExpanded = () => {
+    if (!hasDetails) return;
+    setExpanded((v) => {
+      const next = !v;
+      track(next ? "story_expand" : "story_collapse", { item_id: item.id });
+      return next;
+    });
+  };
+
   return (
     <div id={`item-${item.id}`} className="border-b border-border">
       <StoryRowHeader
         hasDetails={hasDetails}
         expanded={expanded}
         matchColor={matchColor}
-        onToggle={() => setExpanded((v) => !v)}
+        onToggle={toggleExpanded}
       >
         <span className="w-5 shrink-0 text-right text-sm text-muted-foreground">
           {index}
@@ -153,7 +163,10 @@ export function StoryRow({
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              track("story_open", { item_id: item.id });
+            }}
             className="text-muted-foreground hover:text-accent"
             aria-label="Open story link"
           >

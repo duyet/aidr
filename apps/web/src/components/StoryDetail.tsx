@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { Clock, Cpu, ExternalLink, Link2 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -18,9 +19,11 @@ export function fmtTime(epochSec: number, lang: Lang): string {
 function SourceRow({
   source,
   lang,
+  itemId,
 }: {
   source: FeedItem["sources"][number];
   lang: Lang;
+  itemId: string;
 }) {
   const label =
     source.kind === "discussion"
@@ -47,6 +50,7 @@ function SourceRow({
           href={source.url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => track("story_open", { item_id: itemId })}
           className="text-accent hover:underline"
           aria-label="Open source"
         >
@@ -309,6 +313,7 @@ export function StoryDetail({
                   key={`${source.kind}-${source.url ?? source.author}`}
                   source={source}
                   lang={lang}
+                  itemId={item.id}
                 />
               ))}
             </div>

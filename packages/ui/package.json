@@ -11,6 +11,7 @@
   "exports": {
     ".": "./index.tsx",
     "./Analytics": "./Analytics.tsx",
+    "./track": "./track.ts",
     "./ThemeProvider": "./ThemeProvider.tsx",
     "./styles.css": "./styles.css"
   },

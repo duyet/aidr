@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Puzzle } from "lucide-react";
 import type { ReactNode } from "react";
@@ -28,7 +29,12 @@ function ZipLink({
   className: string;
 }) {
   return (
-    <a href={AIDR_ZIP_HREF} download="aidr.zip" className={className}>
+    <a
+      href={AIDR_ZIP_HREF}
+      download="aidr.zip"
+      onClick={() => track("extension_download")}
+      className={className}
+    >
       {children}
     </a>
   );

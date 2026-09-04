@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { createFileRoute } from "@tanstack/react-router";
 import { Mail, Send } from "lucide-react";
 import { useState } from "react";
@@ -82,6 +83,7 @@ function SubscribePage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
+    track("subscribe_submit");
     try {
       const res = await fetch("/api/subscribe", {
         method: "POST",
@@ -93,8 +95,15 @@ function SubscribePage() {
           source: "news",
         }),
       });
-      setStatus(res.ok ? "done" : "error");
+      if (res.ok) {
+        track("subscribe_success");
+        setStatus("done");
+      } else {
+        track("subscribe_error");
+        setStatus("error");
+      }
     } catch {
+      track("subscribe_error");
       setStatus("error");
     }
   };

@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { Columns2, ExternalLink, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { localizedTitle } from "../lib/display-title";
@@ -120,6 +121,7 @@ export function StoryDialog({
               target="_blank"
               rel="noopener noreferrer"
               lang={fallbackFromEnglish ? "en" : undefined}
+              onClick={() => track("story_open", { item_id: item.id })}
               className="min-w-0 flex-1 font-semibold leading-snug hover:text-accent"
             >
               {title}
@@ -138,7 +140,10 @@ export function StoryDialog({
               <button
                 type="button"
                 aria-pressed={bilingual}
-                onClick={() => setPrefs({ bilingualDialog: !bilingual })}
+                onClick={() => {
+                  track("prefs_change", { pref: "bilingualDialog" });
+                  setPrefs({ bilingualDialog: !bilingual });
+                }}
                 title={
                   lang === "vi"
                     ? "Xem song song Anh/Việt"

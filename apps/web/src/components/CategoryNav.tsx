@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { categoryLabel } from "../lib/lang";
 import type { Lang } from "../lib/types";
 import { useHorizontalScroll } from "../lib/use-horizontal-scroll";
@@ -25,6 +26,7 @@ export function CategoryNav({
       <button
         type="button"
         onClick={() => {
+          track("topic_filter", { tag: "all" });
           for (const name of selected) onToggle(name);
         }}
         aria-pressed={selected.size === 0}
@@ -42,7 +44,10 @@ export function CategoryNav({
           <button
             key={c.name}
             type="button"
-            onClick={() => onToggle(c.name)}
+            onClick={() => {
+              track("topic_filter", { tag: c.name });
+              onToggle(c.name);
+            }}
             aria-pressed={isSelected}
             className={`shrink-0 rounded-full px-3 py-1 text-sm transition-colors ${
               isSelected

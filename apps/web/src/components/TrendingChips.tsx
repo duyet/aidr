@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { TrendingUp } from "lucide-react";
 import type { CSSProperties } from "react";
 import { topicColor } from "../lib/topic-color";
@@ -35,7 +36,11 @@ export function TrendingChips({
           <button
             key={t.tag}
             type="button"
-            onClick={() => onSelectTag(selected ? null : t.tag)}
+            onClick={() => {
+              const next = selected ? null : t.tag;
+              if (next) track("topic_filter", { tag: next });
+              onSelectTag(next);
+            }}
             aria-pressed={selected}
             className={`topic-colored flex shrink-0 items-baseline gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
               selected ? "border-current" : "border-border hover:border-current"

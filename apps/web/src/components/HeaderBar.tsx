@@ -1,4 +1,5 @@
 import { AuthButtons, ErrorBoundary } from "@aidr/ui";
+import { track } from "@aidr/ui/track";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, Moon, Plus, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -48,7 +49,10 @@ function PhoneThemeButton() {
     <button
       type="button"
       className={`${PHONE_TAP_TARGET_CLASS} rounded-md text-muted-foreground hover:bg-muted hover:text-foreground`}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => {
+        track("prefs_change", { pref: "theme" });
+        setTheme(isDark ? "light" : "dark");
+      }}
       aria-label="Toggle theme"
     >
       {isDark ? (
@@ -123,7 +127,10 @@ function PhoneMenu({
                 key={link.href}
                 to={link.href}
                 role="menuitem"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  track("nav_click", { to: link.href });
+                  setOpen(false);
+                }}
                 className="flex h-11 items-center rounded-md px-3 text-sm hover:bg-muted"
               >
                 {link.label}
@@ -133,7 +140,10 @@ function PhoneMenu({
                 key={link.href}
                 href={link.href}
                 role="menuitem"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  track("nav_click", { to: link.href });
+                  setOpen(false);
+                }}
                 className="flex h-11 items-center rounded-md px-3 text-sm hover:bg-muted"
               >
                 {link.label}
@@ -177,6 +187,7 @@ export function HeaderBar({
       >
         <Link
           to="/"
+          onClick={() => track("nav_click", { to: "/" })}
           className="w-full shrink-0 text-sm font-medium leading-snug text-muted-foreground hover:text-foreground sm:w-auto md:text-base"
         >
           {lang === "vi" ? (
@@ -198,18 +209,21 @@ export function HeaderBar({
             href={TELEGRAM_URL}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => track("nav_click", { to: "telegram" })}
             className="text-xs font-semibold text-muted-foreground hover:text-accent"
           >
             Telegram
           </a>
           <Link
             to="/extension"
+            onClick={() => track("nav_click", { to: "/extension" })}
             className="text-xs font-semibold text-muted-foreground hover:text-accent"
           >
             {lang === "vi" ? "Tab Chrome" : "Chrome tab"}
           </Link>
           <Link
             to="/submit"
+            onClick={() => track("nav_click", { to: "/submit" })}
             className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-muted-foreground hover:border-accent hover:text-accent"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />

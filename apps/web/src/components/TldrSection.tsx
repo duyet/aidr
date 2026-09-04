@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { useState } from "react";
 import { type AidrLayout, DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
@@ -150,7 +151,10 @@ export function TldrSection({
               <button
                 key={o.nominal}
                 type="button"
-                onClick={() => setPrefs({ tldrCount: o.nominal })}
+                onClick={() => {
+                  track("prefs_change", { pref: "tldrCount" });
+                  setPrefs({ tldrCount: o.nominal });
+                }}
                 aria-pressed={selectedOption === o}
                 className={`rounded-md px-1.5 py-0.5 ${
                   selectedOption === o
@@ -254,7 +258,10 @@ export function TldrSection({
       {nextOption ? (
         <button
           type="button"
-          onClick={() => setPrefs({ tldrCount: nextOption.nominal })}
+          onClick={() => {
+            track("prefs_change", { pref: "tldrCount" });
+            setPrefs({ tldrCount: nextOption.nominal });
+          }}
           className="mt-3 text-xs font-semibold text-accent hover:underline"
         >
           {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
@@ -263,7 +270,10 @@ export function TldrSection({
         canCollapse && (
           <button
             type="button"
-            onClick={() => setPrefs({ tldrCount: options[0].nominal })}
+            onClick={() => {
+              track("prefs_change", { pref: "tldrCount" });
+              setPrefs({ tldrCount: options[0].nominal });
+            }}
             className="mt-3 text-xs font-semibold text-accent hover:underline"
           >
             {lang === "vi" ? "Thu gọn" : "Show less ↑"}

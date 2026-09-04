@@ -3,6 +3,7 @@ import "../styles.css";
 
 import { ErrorBoundary } from "@aidr/ui";
 import Analytics from "@aidr/ui/Analytics";
+import { track } from "@aidr/ui/track";
 import ThemeProvider from "@aidr/ui/ThemeProvider";
 import {
   createRootRoute,
@@ -10,6 +11,7 @@ import {
   Link,
   Outlet,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import {
   BarChart3,
@@ -139,6 +141,7 @@ function NewsFooter() {
             <Link
               key={link.to}
               to={link.to}
+              onClick={() => track("nav_click", { to: link.to })}
               className="flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2"
             >
               <link.icon className="h-3.5 w-3.5" aria-hidden />
@@ -149,6 +152,7 @@ function NewsFooter() {
             href={TELEGRAM_URL}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => track("nav_click", { to: "telegram" })}
             className="flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2"
           >
             <Send className="h-3.5 w-3.5" aria-hidden />
@@ -159,6 +163,7 @@ function NewsFooter() {
             href="https://github.com/duyet/aidr"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => track("nav_click", { to: "github" })}
             className="flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2"
           >
             <GitFork className="h-3.5 w-3.5" aria-hidden />
@@ -170,6 +175,7 @@ function NewsFooter() {
             href="https://anyrouter.dev/?ref=aidr.today"
             target="_blank"
             rel="noopener"
+            onClick={() => track("nav_click", { to: "anyrouter" })}
             className="flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2"
           >
             AnyRouter
@@ -235,12 +241,28 @@ export const Route = createRootRoute({
   component: RootComponent,
 });
 
+function PageViewTracker() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const first = useRef(true);
+
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    track("page_view", { page_path: pathname });
+  }, [pathname]);
+
+  return null;
+}
+
 function RootComponent() {
   const [lang, setLang] = useState<Lang>(() => getClientLang());
 
   const handleLangChange = (next: Lang) => {
     setClientLang(next);
     setLang(next);
+    track("lang_change", { lang: next });
   };
 
   // Render defaults on the server / first client paint to avoid a hydration
@@ -312,6 +334,7 @@ function RootComponent() {
           </PrefsContext.Provider>
         </LangContext.Provider>
         <Analytics />
+        <PageViewTracker />
         <Scripts />
       </body>
     </html>

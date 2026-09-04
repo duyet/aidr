@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
+import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import { AArrowDown, AArrowUp, Rows2, Rows4 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -27,6 +28,7 @@ function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
   const { prefs, setPrefs } = usePrefs();
 
   const setBg = (bg: ReaderBg) => {
+    track("prefs_change", { pref: "bg" });
     setPrefs({ bg });
     applyReaderTheme(bg);
   };
@@ -38,7 +40,10 @@ function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
           <button
             key={f}
             type="button"
-            onClick={() => setPrefs({ font: f })}
+            onClick={() => {
+              track("prefs_change", { pref: "font" });
+              setPrefs({ font: f });
+            }}
             aria-pressed={prefs.font === f}
             className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
               prefs.font === f
@@ -69,7 +74,10 @@ function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
             max={1.25}
             step={0.05}
             value={prefs.fontSize}
-            onChange={(e) => setPrefs({ fontSize: Number(e.target.value) })}
+            onChange={(e) => {
+              track("prefs_change", { pref: "fontSize" });
+              setPrefs({ fontSize: Number(e.target.value) });
+            }}
             className="reader-slider w-full"
             aria-label={t("Text size", "Cỡ chữ")}
           />
@@ -89,9 +97,10 @@ function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
             max={2}
             step={1}
             value={DENSITIES.indexOf(prefs.density)}
-            onChange={(e) =>
-              setPrefs({ density: DENSITIES[Number(e.target.value)] })
-            }
+            onChange={(e) => {
+              track("prefs_change", { pref: "density" });
+              setPrefs({ density: DENSITIES[Number(e.target.value)] });
+            }}
             className="reader-slider w-full"
             aria-label={t("Density", "Mật độ")}
           />
@@ -147,7 +156,10 @@ function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
             <button
               key={n}
               type="button"
-              onClick={() => setPrefs({ tldrCount: n })}
+              onClick={() => {
+                track("prefs_change", { pref: "tldrCount" });
+                setPrefs({ tldrCount: n });
+              }}
               aria-pressed={prefs.tldrCount === n}
               className={`flex-1 rounded-md border px-2 py-1 text-xs ${
                 prefs.tldrCount === n
@@ -175,11 +187,12 @@ function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
               <input
                 type="checkbox"
                 checked={prefs.sections[key]}
-                onChange={(e) =>
+                onChange={(e) => {
+                  track("prefs_change", { pref: `sections.${key}` });
                   setPrefs({
                     sections: { ...prefs.sections, [key]: e.target.checked },
-                  })
-                }
+                  });
+                }}
               />
             </label>
           ))}

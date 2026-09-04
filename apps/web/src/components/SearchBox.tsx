@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, Tag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -97,6 +98,7 @@ export function SearchBox({
 
   const selectFilter = () => {
     if (!filterMatch) return;
+    track("topic_filter", { tag: filterMatch.value });
     setOpen(false);
     setQ("");
     navigate({
@@ -115,6 +117,7 @@ export function SearchBox({
 
   const submitFullSearch = () => {
     if (q.trim()) {
+      track("search", { query_len: q.trim().length });
       setOpen(false);
       navigate({ to: "/", search: { q: q.trim() } });
     }
