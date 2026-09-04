@@ -160,16 +160,17 @@ subscriber (table `subscribers`, migration `0004_subscribers.sql`);
 `tldr` step, via the `email-digest` step in `worker/workflow.ts`
 (`worker/subscribe/send.ts`). Sending is gated on that day's
 `tldr_snapshots` row having bullets and not already being marked
-`sent_at`.
+`last_sent_date` (per subscriber, local timezone). `sent_at` on the
+snapshot is a legacy "processed once" flag only.
 
 Email delivery uses the Cloudflare Email Sending Workers binding
-(`[[send_email]] name = "EMAIL"` in `wrangler.toml`, sender
-`news@duyet.net`). **This requires the `duyet.net` domain to be onboarded
-onto Cloudflare Email Sending** (`wrangler email sending enable
-duyet.net`, or via the Cloudflare dashboard) before digests can actually
-be delivered — `sendDailyTldr` no-ops (logs and skips) if `env.EMAIL` is
-missing, so the ingest workflow is never broken by this being
-unconfigured.
+(`[[send_email]] name = "EMAIL"` in `wrangler.toml`, senders
+`digest@aidr.today` / `notes@aidr.today`). **Onboard `aidr.today` onto
+Cloudflare Email Sending** (`wrangler email sending enable aidr.today`,
+or Dashboard → Email Service) before mail can leave the Worker.
+`sendDailyTldr` no-ops (logs and skips) if `env.EMAIL` is missing, so
+ingest is never broken by this being unconfigured. Subscribe also sends
+a best-effort welcome email.
 
 ## Newsletter composer
 
@@ -183,12 +184,9 @@ Pages `not_found_handling = "single-page-application"` otherwise serves
 `index.html` for `OPTIONS`, which browsers treat as a CORS failure.
 
 Custom sends (not the daily digest) are composed at **`/mail`** (Clerk
-admin, same gate as `/system`). Pick a template (Note / New post /
-Digest), pick blog RSS + news stories, optionally paste notes, then **AI
-wrap** fills subject/preheader/body markdown. Preview is a Cursor-like
-HTML email (520px, Inter, near-black on white, 8px CTA). Send from
-`notes@duyet.net`. One-click `List-Unsubscribe` is set on digest and
-campaign mail.
+admin). Pick a template, optionally wrap with AI, then send to the
+confirmed list from `notes@aidr.today`. One-click `List-Unsubscribe` is
+set on digest and campaign mail.
 
 Apply the migration when deploying:
 

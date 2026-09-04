@@ -64,9 +64,15 @@ ANYROUTER_TLDR_MODEL = "anyrouter/auto,google/gemma-4-26b-a4b-it,z-ai/glm-4.7-fl
 CLERK_ISSUER = "https://clerk.aidr.today"
 # @duyetbot posts top stories to this channel; TELEGRAM_BOT_TOKEN is a secret.
 TELEGRAM_CHAT_ID = "-1004420104760"
+# Cloudflare Email Sending. Onboard aidr.today (`wrangler email sending enable aidr.today`)
+# then these From addresses can deliver. Override with EMAIL_FROM / EMAIL_NOTES_FROM.
+EMAIL_FROM = "digest@aidr.today"
+EMAIL_NOTES_FROM = "notes@aidr.today"
+EMAIL_FROM_NAME = "aidr"
 
 [[send_email]]
 name = "EMAIL"
+allowed_sender_addresses = ["digest@aidr.today", "notes@aidr.today"]
 
 # Workers Cache: safe for this surface — only responses with public
 # Cache-Control headers (feed/story APIs, static shell) are cached;
