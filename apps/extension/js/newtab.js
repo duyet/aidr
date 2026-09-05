@@ -252,7 +252,7 @@ function renderFooter(_settings, digest) {
   const year = new Date().getFullYear();
   const stamp = digest.lastFetchedAt || digest.updatedAt;
   const updated = stamp ? ` · Updated ${timeAgo(stamp, "en")}` : "";
-  node.textContent = `© ${year} Duyet · aidr.today${updated}`;
+  node.textContent = `© ${year} AI;DR${updated}`;
 }
 
 function setStatus(message, show) {

@@ -12,7 +12,7 @@ import {
   WIDE_HEADER_ROW_CLASS,
 } from "../lib/chrome";
 import { useClerkModule } from "../lib/clerk-user";
-import { TELEGRAM_URL } from "../lib/site";
+import { DUYET_BLOG_URL, DUYET_URL, TELEGRAM_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
 import { LangToggle } from "./LangToggle";
 import { PrefsPanel } from "./PrefsPanel";
@@ -32,8 +32,8 @@ const SITE_LINKS = [
   { href: TELEGRAM_URL, label: "Telegram", internal: false },
   { href: "/data", label: "Data", internal: true },
   { href: "/submit", label: "Submit", internal: true },
-  { href: "https://duyet.net", label: "Home", internal: false },
-  { href: "https://blog.duyet.net", label: "Blog", internal: false },
+  { href: DUYET_URL, label: "duyet.net", internal: false },
+  { href: DUYET_BLOG_URL, label: "Blog", internal: false },
 ] as const;
 
 function Brand({ lang }: { lang: Lang }) {

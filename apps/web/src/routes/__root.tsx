@@ -37,6 +37,8 @@ import {
   savePrefs,
 } from "../lib/prefs";
 import {
+  DUYET_BLOG_URL,
+  DUYET_URL,
   GITHUB_URL,
   SITE_DESCRIPTION,
   SITE_TITLE,
@@ -173,11 +175,34 @@ function NewsFooter() {
                 GitHub
               </a>
             </div>
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+                More
+              </p>
+              <a
+                href={DUYET_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "duyet.net" })}
+                className={`block ${linkClass}`}
+              >
+                duyet.net
+              </a>
+              <a
+                href={DUYET_BLOG_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "blog.duyet.net" })}
+                className={`block ${linkClass}`}
+              >
+                Blog
+              </a>
+            </div>
           </nav>
         </div>
         <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
           <span>
-            {`© ${year} Duyet · aidr.today`}
+            {`© ${year} AI;DR`}
             {lastFetchedAt !== null && (
               <> · Updated {timeAgo(lastFetchedAt, Date.now(), "en")}</>
             )}

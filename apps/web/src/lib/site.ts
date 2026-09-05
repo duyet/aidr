@@ -11,3 +11,7 @@ export const TELEGRAM_HANDLE = "@aihomnay";
 
 /** Public GitHub repository. */
 export const GITHUB_URL = "https://github.com/duyet/aidr";
+
+/** Author site / blog (footer + menu backlinks). */
+export const DUYET_URL = "https://duyet.net";
+export const DUYET_BLOG_URL = "https://blog.duyet.net";
