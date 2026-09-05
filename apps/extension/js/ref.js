@@ -24,7 +24,8 @@ export function withExtRef(url, content = "link") {
     u.searchParams.set("utm_source", EXT_UTM_SOURCE);
     u.searchParams.set("utm_medium", EXT_UTM_MEDIUM);
     u.searchParams.set("utm_campaign", EXT_UTM_CAMPAIGN);
-    if (content) u.searchParams.set("utm_content", String(content).slice(0, 64));
+    if (content)
+      u.searchParams.set("utm_content", String(content).slice(0, 64));
     return u.toString();
   } catch {
     return url;
@@ -42,6 +43,7 @@ export function tagSiteLinks(root, contentBySelector = {}) {
     "a.sign-in-btn": "sign_in",
     "form.search": "search",
     ".footer-nav a": "footer",
+    ".footer-col a": "footer",
     ".phone-menu-nav a": "menu",
   };
   const map = { ...defaults, ...contentBySelector };

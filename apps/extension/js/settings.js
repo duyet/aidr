@@ -133,7 +133,11 @@ export function applyAppearance(settings) {
       (settings.theme === "system" &&
         globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches)
   );
-  root.style.setProperty("--accent", settings.accent);
+  root.style.setProperty("--editorial-accent", settings.accent);
+  const feed = document.querySelector(".news-content");
+  if (feed instanceof HTMLElement) {
+    feed.style.setProperty("--accent", settings.accent);
+  }
   root.style.setProperty("--size", `${settings.fontSize}px`);
   root.lang = settings.language === "en" ? "en" : "vi";
 }
