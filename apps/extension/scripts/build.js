@@ -64,6 +64,8 @@ const required = [
   "js/preview-shim.js",
   "js/highlight.js",
   "js/topic-color.js",
+  "js/ref.js",
+  "js/update.js",
   "icons/icon16.png",
   "icons/icon32.png",
   "icons/icon48.png",

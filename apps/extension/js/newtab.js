@@ -14,6 +14,7 @@ import {
   saveSettings,
 } from "./settings.js";
 import { bindPrefsPopover } from "./settings-panel.js";
+import { tagSiteLinks, withExtRef } from "./ref.js";
 import { topicColor } from "./topic-color.js";
 
 const NEWS_SITE = "https://aidr.today";
@@ -141,8 +142,8 @@ function thumbNode(src) {
 
 function bulletHref(bullet) {
   const id = bullet.item_ids?.[0];
-  if (id) return `${NEWS_SITE}/ai/${id}`;
-  return NEWS_SITE;
+  if (id) return withExtRef(`${NEWS_SITE}/ai/${id}`, "tldr");
+  return withExtRef(NEWS_SITE, "tldr_home");
 }
 
 function renderThumbRow(digest, bullet, n) {
@@ -580,7 +581,10 @@ function renderStoryRow(settings, story, index, hot) {
   const article = document.createElement("a");
   article.className = "story-article";
   article.href =
-    safeHttpUrl(`${NEWS_SITE}/ai/${story.id}`, NEWS_SITE) || NEWS_SITE;
+    safeHttpUrl(
+      withExtRef(`${NEWS_SITE}/ai/${story.id}`, "story"),
+      withExtRef(NEWS_SITE, "story")
+    ) || withExtRef(NEWS_SITE, "story");
   article.rel = "noreferrer";
   if (fallbackFromEnglish) article.lang = "en";
   appendHighlighted(article, title, story.tags || []);
@@ -599,6 +603,7 @@ function renderStoryRow(settings, story, index, hot) {
 
   const ext = document.createElement("a");
   ext.className = "story-ext";
+  // External publishers: do not stamp aidr utm onto third-party hosts.
   ext.href = safeHttpUrl(story.url, NEWS_SITE) || NEWS_SITE;
   ext.target = "_blank";
   ext.rel = "noopener noreferrer";
@@ -795,6 +800,7 @@ async function main() {
   let settings = await loadSettings();
   applyAppearance(settings);
   applyChrome(settings);
+  tagSiteLinks(document);
 
   let digest =
     globalThis.__NEWS_TAB_DIGEST__ || {

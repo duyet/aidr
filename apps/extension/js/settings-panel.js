@@ -1,4 +1,5 @@
 import { t } from "./i18n.js";
+import { withExtRef } from "./ref.js";
 import {
   allowCustomApiBase,
   ensureHostPermission,
@@ -286,7 +287,7 @@ export function mountSettingsPanel(root, settings, onSaved) {
       el(
         "a",
         {
-          href: "https://aidr.today/privacy",
+          href: withExtRef("https://aidr.today/privacy", "prefs_privacy"),
           rel: "noreferrer",
           target: "_blank",
         },

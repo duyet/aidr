@@ -60,9 +60,13 @@ ANYROUTER_TRANSLATE_MODEL = "google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclus
 # out both attempts, leaving English bullets on the VI homepage.
 ANYROUTER_TLDR_MODEL = "anyrouter/auto,google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclusionai/ling-3.0-flash"
 # Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
-# overridden to the /__clerk Worker proxy (Cloudflare Error 1014 blocks
-# the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).
+# overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014
+# blocks the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).
 CLERK_ISSUER = "https://aidr.today/__clerk"
+# Server-side clerkMiddleware + Vite public env. Relative path is resolved
+# against the request origin so handshakes hit /__clerk, not clerk.aidr.today.
+CLERK_PROXY_URL = "/__clerk"
+VITE_CLERK_PROXY_URL = "/__clerk"
 # @duyetbot posts top stories to this channel; TELEGRAM_BOT_TOKEN is a secret.
 TELEGRAM_CHAT_ID = "-1004420104760"
 # Cloudflare Email Sending. Onboard aidr.today (`wrangler email sending enable aidr.today`)

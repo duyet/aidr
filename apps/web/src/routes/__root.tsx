@@ -15,9 +15,14 @@ import {
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { CLERK_PROXY_PATH } from "../../worker/clerk-proxy";
+import { CLERK_PROXY_URL } from "../../worker/clerk-proxy";
 import { HeaderBar } from "../components/HeaderBar";
 import { NotFoundPage } from "../components/NotFoundPage";
+import {
+  campaignTrackParams,
+  isExtensionCampaign,
+  resolveCampaign,
+} from "../lib/campaign";
 import { ClerkModuleContext, getClerkModuleState } from "../lib/clerk-user";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
@@ -63,7 +68,9 @@ function ClerkRootProvider({ children }: { children: ReactNode }) {
       <ClerkModuleContext.Provider value={clerkState}>
         <clerkState.mod.ClerkProvider
           publishableKey={clerkState.publishableKey}
-          proxyUrl={CLERK_PROXY_PATH}
+          // Absolute URL so handshake redirects never fall back to the
+          // publishable-key host (clerk.aidr.today → CF Error 1000).
+          proxyUrl={CLERK_PROXY_URL}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
           signInFallbackRedirectUrl="/"
@@ -214,15 +221,41 @@ export const Route = createRootRoute({
 
 function PageViewTracker() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const search = useRouterState({ select: (s) => s.location.searchStr });
   const first = useRef(true);
+  const landedExt = useRef(false);
 
   useEffect(() => {
+    const campaign = resolveCampaign({ search, pathname });
+    const campaignParams = campaignTrackParams(campaign);
+
+    if (!landedExt.current && isExtensionCampaign(campaign)) {
+      landedExt.current = true;
+      track("extension_landing", {
+        ...campaignParams,
+        page_path: pathname,
+      });
+    }
+
     if (first.current) {
+      // GA config already sends the initial page_view; enrich SPA navs only.
       first.current = false;
+      // Still fire a dedicated first-touch attribution event when landing
+      // with campaign params (covers hard loads where send_page_view raced).
+      if (campaign && Object.keys(campaignParams).length > 0) {
+        track("campaign_touch", {
+          ...campaignParams,
+          page_path: pathname,
+        });
+      }
       return;
     }
-    track("page_view", { page_path: pathname });
-  }, [pathname]);
+
+    track("page_view", {
+      page_path: pathname,
+      ...campaignParams,
+    });
+  }, [pathname, search]);
 
   return null;
 }
