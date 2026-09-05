@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/duyet/aidr/compare/web-v0.1.1...web-v0.1.2) (2026-09-05)
+
+
+### 🐛 Bug Fixes
+
+* **extension:** clickable Aa prefs dialog and release 0.1.7 ([211be27](https://github.com/duyet/aidr/commit/211be2704156aba2f6f0aaad115a635dcc944391))
+* **web:** Clerk handshake via /__clerk and extension click attribution ([7f68470](https://github.com/duyet/aidr/commit/7f68470af9c33bc01854d86bd5017a723f42c76e))
+
 ## [0.1.1](https://github.com/duyet/aidr/compare/web-v0.1.0...web-v0.1.1) (2026-09-05)
 
 
