@@ -97,7 +97,8 @@ const FOOTER_LINKS: { to: string; label: string }[] = [
   { to: "/terms", label: "Terms" },
 ];
 
-const linkClass = "hover:text-accent hover:underline hover:underline-offset-2";
+const linkClass =
+  "text-sm text-muted-foreground transition-colors hover:text-foreground";
 
 function NewsFooter() {
   const year = new Date().getFullYear();
@@ -119,47 +120,69 @@ function NewsFooter() {
   }, []);
 
   return (
-    <footer className="border-t border-border py-5 text-xs text-muted-foreground">
-      <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-        <span>
-          {`© ${year} Duyet · aidr.today`}
-          {lastFetchedAt !== null && (
-            <> · Updated {timeAgo(lastFetchedAt, Date.now(), "en")}</>
-          )}
-        </span>
-        <nav
-          aria-label="Footer"
-          className="flex flex-wrap items-center gap-x-3 gap-y-1"
-        >
-          {FOOTER_LINKS.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              onClick={() => track("nav_click", { to: link.to })}
-              className={linkClass}
-            >
-              {link.label}
-            </Link>
-          ))}
-          <a
-            href={TELEGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => track("nav_click", { to: "telegram" })}
-            className={linkClass}
+    <footer className="mt-10 border-t border-border/80 bg-card/40 py-12 text-sm text-muted-foreground">
+      <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-8 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
+          <div className="space-y-2">
+            <p className="font-serif text-xl font-medium tracking-tight text-foreground">
+              AI;DR
+            </p>
+            <p className="max-w-xs text-sm leading-relaxed">
+              AI news ranked and translated hourly.
+            </p>
+          </div>
+          <nav
+            aria-label="Footer"
+            className="grid grid-cols-2 gap-x-10 gap-y-3 sm:grid-cols-3"
           >
-            Telegram
-          </a>
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => track("nav_click", { to: "github" })}
-            className={linkClass}
-          >
-            GitHub
-          </a>
-        </nav>
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+                Site
+              </p>
+              {FOOTER_LINKS.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => track("nav_click", { to: link.to })}
+                  className={`block ${linkClass}`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+                Connect
+              </p>
+              <a
+                href={TELEGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "telegram" })}
+                className={`block ${linkClass}`}
+              >
+                Telegram
+              </a>
+              <a
+                href={GITHUB_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "github" })}
+                className={`block ${linkClass}`}
+              >
+                GitHub
+              </a>
+            </div>
+          </nav>
+        </div>
+        <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {`© ${year} Duyet · aidr.today`}
+            {lastFetchedAt !== null && (
+              <> · Updated {timeAgo(lastFetchedAt, Date.now(), "en")}</>
+            )}
+          </span>
+        </div>
       </div>
     </footer>
   );

@@ -56,7 +56,7 @@ const CLAUDE_CODE_EXAMPLE = `claude mcp add --transport http duyet-news \\
 
 function CodeBlock({ code }: { code: string }) {
   return (
-    <pre className="mt-2 max-w-3xl overflow-x-auto rounded-md border border-border bg-muted p-4 text-xs leading-relaxed">
+    <pre className="mt-2 max-w-3xl overflow-x-auto rounded-2xl border border-border/80 bg-card p-4 text-xs leading-relaxed">
       <code>{code}</code>
     </pre>
   );
@@ -81,16 +81,16 @@ function McpPage() {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
 
   return (
-    <div className="py-10">
+    <div className="py-12">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-accent/10 text-accent">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-card text-muted-foreground">
           <Plug className="h-5 w-5" aria-hidden />
         </span>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="font-serif text-3xl font-medium tracking-tight">
           {t("MCP Server", "Máy chủ MCP")}
         </h1>
       </div>
-      <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
         {t(
           "MCP server for pushing news and managing sources. Implements the",
           "Máy chủ MCP để đẩy tin tức và quản lý nguồn tin. Triển khai theo"
@@ -102,7 +102,7 @@ function McpPage() {
       </p>
 
       <section className="mt-6">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <Plug className="h-3.5 w-3.5" aria-hidden />
           {t("Connect", "Kết nối")}
         </h2>
@@ -116,7 +116,7 @@ function McpPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <Terminal className="h-3.5 w-3.5" aria-hidden />
           {t("Use with your app", "Dùng với ứng dụng của bạn")}
         </h2>
@@ -182,7 +182,7 @@ function McpPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {t("Tools", "Công cụ")}
         </h2>
         <div className="mt-2 divide-y divide-border rounded-md border border-border text-sm">
@@ -203,7 +203,7 @@ function McpPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <BookOpen className="h-3.5 w-3.5" aria-hidden />
           {t("REST example", "Ví dụ REST")}
         </h2>

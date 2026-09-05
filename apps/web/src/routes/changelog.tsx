@@ -110,7 +110,7 @@ function ChangelogPage(): ReactElement {
   const vi = lang === "vi";
 
   return (
-    <div className="typeset typeset-page py-6">
+    <div className="typeset typeset-page py-12">
       <h1>{vi ? "Nhật ký thay đổi" : "Changelog"}</h1>
       <p className="text-muted-foreground">
         {vi
@@ -119,14 +119,14 @@ function ChangelogPage(): ReactElement {
       </p>
 
       <section id="website" className="mt-8 scroll-mt-20">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Website
         </h2>
         <EntryList entries={WEBSITE_ENTRIES} />
       </section>
 
       <section id="chrome-extension" className="mt-10 scroll-mt-20">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {vi ? "Tiện ích Chrome" : "Chrome extension"}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">

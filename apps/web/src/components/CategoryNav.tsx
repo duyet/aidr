@@ -21,7 +21,7 @@ export function CategoryNav({
   return (
     <nav
       ref={scrollRef}
-      className="edge-fade-x scrollbar-hide flex items-center gap-1.5 overflow-x-auto whitespace-nowrap border-b border-border py-2.5"
+      className="edge-fade-x scrollbar-hide flex items-center gap-1.5 overflow-x-auto whitespace-nowrap py-3"
     >
       <button
         type="button"
@@ -30,10 +30,10 @@ export function CategoryNav({
           for (const name of selected) onToggle(name);
         }}
         aria-pressed={selected.size === 0}
-        className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold transition-colors ${
+        className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-[background-color,color,opacity] duration-150 ${
           selected.size === 0
-            ? "bg-accent text-accent-foreground"
-            : "text-muted-foreground hover:bg-muted"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
         }`}
       >
         {lang === "vi" ? "Tất cả" : "All"}
@@ -49,10 +49,10 @@ export function CategoryNav({
               onToggle(c.name);
             }}
             aria-pressed={isSelected}
-            className={`shrink-0 rounded-full px-3 py-1 text-sm transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm transition-[background-color,color,opacity] duration-150 ${
               isSelected
-                ? "bg-accent font-semibold text-accent-foreground"
-                : "text-muted-foreground hover:bg-muted"
+                ? "bg-primary font-medium text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             {categoryLabel(c.name, lang)}{" "}

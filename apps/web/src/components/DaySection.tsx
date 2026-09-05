@@ -16,9 +16,9 @@ export function DaySection({
   const more = counts.length - shown.length;
 
   return (
-    <section className="pt-6">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b-2 border-foreground/80 pb-2">
-        <h2 className="text-xl font-bold">
+    <section className="pt-8">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-border pb-3">
+        <h2 className="font-serif text-2xl font-medium tracking-tight">
           {formatDayHeading(day.date, lang)}
         </h2>
         <span className="text-xs text-muted-foreground">
@@ -29,13 +29,13 @@ export function DaySection({
           {shown.map(([name, count]) => (
             <span key={name}>
               {categoryLabel(name, lang)}{" "}
-              <span className="font-semibold">{count}</span>
+              <span className="font-medium text-foreground/80">{count}</span>
             </span>
           ))}
           {more > 0 && <span>+{more} more</span>}
         </span>
       </div>
-      <div>
+      <div className="divide-y divide-border/60">
         {day.items.map((item, i) => (
           <StoryRow
             key={item.id}

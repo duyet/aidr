@@ -16,7 +16,7 @@ export const Route = createFileRoute("/terms")({
 
 function TermsPage() {
   return (
-    <article className="typeset typeset-page py-10">
+    <article className="typeset typeset-page py-12">
       <h1>Terms of use</h1>
       <p className="text-muted-foreground">
         Effective 5 September 2026. These terms cover the website{" "}

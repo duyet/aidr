@@ -40,7 +40,7 @@ function UnsubscribeView({ token, lang }: { token: string; lang: Lang }) {
 
   return (
     <div className="mx-auto max-w-md py-16 text-center">
-      <h1 className="text-2xl font-bold tracking-tight">
+      <h1 className="font-serif text-3xl font-medium tracking-tight">
         {lang === "vi" ? "Hủy đăng ký" : "Unsubscribe"}
       </h1>
       <p className="mt-3 text-sm text-muted-foreground">
@@ -110,7 +110,7 @@ function SubscribePage() {
 
   return (
     <div className="mx-auto max-w-md py-12">
-      <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+      <h1 className="flex items-center gap-2 font-serif text-3xl font-medium tracking-tight">
         <Mail className="h-5 w-5 text-accent" aria-hidden />
         {lang === "vi" ? "Nhận bản tin hằng ngày" : "Daily AI News Digest"}
       </h1>

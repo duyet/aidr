@@ -82,7 +82,7 @@ function StepCard({
   children: ReactNode;
 }) {
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
         <Badge
           variant="secondary"
@@ -90,7 +90,9 @@ function StepCard({
         >
           {step}
         </Badge>
-        <CardTitle className="text-base leading-snug">{title}</CardTitle>
+        <CardTitle className="text-base font-medium leading-snug">
+          {title}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm text-muted-foreground">
         {children}
@@ -104,23 +106,23 @@ function ExtensionPage() {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 py-10">
-      <div className="space-y-4">
+    <div className="mx-auto max-w-3xl space-y-10 py-12">
+      <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="gap-1.5">
+          <Badge variant="secondary" className="gap-1.5 rounded-full">
             <RiChromeLine className="size-3.5" aria-hidden />
             Manifest V3
           </Badge>
-          <Badge variant="outline">
+          <Badge variant="outline" className="rounded-full">
             {t("Unpacked install", "Cài unpacked")}
           </Badge>
         </div>
 
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+        <div className="space-y-3">
+          <h1 className="font-serif text-4xl font-medium tracking-tight text-foreground">
             {t("Chrome new tab", "Tab mới Chrome")}
           </h1>
-          <p className="max-w-2xl text-base text-muted-foreground">
+          <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
             {t(
               "Replace Chrome's new tab with today's AI;DR and top stories from aidr.today. Not on the Chrome Web Store yet — download the zip, unzip, then Load unpacked.",
               "Thay tab mới của Chrome bằng AI;DR hôm nay và tin nổi bật từ aidr.today. Chưa có trên Chrome Web Store — tải zip, giải nén, rồi Load unpacked."
@@ -129,13 +131,13 @@ function ExtensionPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild>
+          <Button size="lg" asChild>
             <ZipLink>
               <Download data-icon="inline-start" aria-hidden />
               {t("Add to Chrome", "Thêm vào Chrome")}
             </ZipLink>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="lg" asChild>
             <ZipLink>
               <Download data-icon="inline-start" aria-hidden />
               {t("Download zip", "Tải zip")}
@@ -179,7 +181,7 @@ function ExtensionPage() {
             title={t(GUIDE_COPY.unzipFirst.en, GUIDE_COPY.unzipFirst.vi)}
           >
             <p>{t(GUIDE_COPY.unzipDetail.en, GUIDE_COPY.unzipDetail.vi)}</p>
-            <figure className="overflow-hidden rounded-lg border border-border bg-muted/30">
+            <figure className="overflow-hidden rounded-2xl border border-border bg-muted/30">
               <img
                 src={AIDR_ZIP_ERROR_IMG}
                 alt={t(GUIDE_COPY.zipErrorAlt.en, GUIDE_COPY.zipErrorAlt.vi)}

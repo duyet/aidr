@@ -23,8 +23,8 @@ export function TrendingChips({
       ref={scrollRef}
       className="edge-fade-x scrollbar-hide flex items-center gap-2 overflow-x-auto whitespace-nowrap py-3"
     >
-      <span className="flex shrink-0 items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-        <TrendingUp className="h-4 w-4 text-accent" aria-hidden />
+      <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
         {label}
       </span>
       {trending.map((t) => {
@@ -42,8 +42,10 @@ export function TrendingChips({
               onSelectTag(next);
             }}
             aria-pressed={selected}
-            className={`topic-colored flex shrink-0 items-baseline gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
-              selected ? "border-current" : "border-border hover:border-current"
+            className={`topic-colored flex shrink-0 items-baseline gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-[border-color,opacity] duration-150 ${
+              selected
+                ? "border-current bg-muted/40"
+                : "border-border/80 hover:border-current"
             }`}
             style={
               {

@@ -17,7 +17,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <article className="typeset typeset-page py-10">
+    <article className="typeset typeset-page py-12">
       <h1>Privacy</h1>
       <p className="text-muted-foreground">
         Effective 4 September 2026. This policy covers the website{" "}

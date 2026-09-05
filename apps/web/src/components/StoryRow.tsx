@@ -119,24 +119,24 @@ export function StoryRow({
   };
 
   return (
-    <div id={`item-${item.id}`} className="border-b border-border">
+    <div id={`item-${item.id}`}>
       <StoryRowHeader
         hasDetails={hasDetails}
         expanded={expanded}
         matchColor={matchColor}
         onToggle={toggleExpanded}
       >
-        <span className="w-5 shrink-0 text-right text-sm text-muted-foreground">
+        <span className="w-5 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
           {index}
         </span>
         <span
-          className={`min-w-0 flex-1 font-semibold leading-snug ${
-            matchColor ? "topic-colored" : ""
+          className={`min-w-0 flex-1 leading-snug ${
+            matchColor ? "topic-colored font-medium" : "font-medium"
           }`}
         >
           {hot && (
             <TrendingUp
-              className="mr-1 inline h-4 w-4 align-[-2px] text-accent"
+              className="mr-1 inline h-4 w-4 align-[-2px] text-muted-foreground"
               aria-hidden
             />
           )}
@@ -154,7 +154,7 @@ export function StoryRow({
           </TitleTag>
           {fallbackFromEnglish && (
             <span
-              className="ml-1 align-middle text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              className="ml-1 align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
               title={
                 lang === "vi"
                   ? "Tiêu đề gốc tiếng Anh — chưa có bản dịch"
@@ -172,7 +172,7 @@ export function StoryRow({
               e.stopPropagation();
               track("story_open", { item_id: item.id });
             }}
-            className="text-muted-foreground hover:text-accent"
+            className="text-muted-foreground hover:text-foreground"
             aria-label="Open story link"
           >
             <ExternalLink className="inline h-3.5 w-3.5 align-baseline" />
@@ -184,13 +184,13 @@ export function StoryRow({
         <span className="hidden w-20 shrink-0 text-right text-sm text-muted-foreground md:block">
           {timeAgo(item.published_at, Date.now(), lang)}
         </span>
-        <span className="w-14 shrink-0 text-right text-sm font-bold tabular-nums">
+        <span className="w-14 shrink-0 text-right text-sm font-medium tabular-nums text-muted-foreground">
           {item.points}/{item.comments}
         </span>
       </StoryRowHeader>
 
       {expanded && hasDetails && (
-        <div className="border-l-2 border-accent/60 bg-muted/30 px-4 py-2.5 md:mx-6">
+        <div className="mb-2 rounded-xl border border-border/60 bg-muted/40 px-4 py-3 md:mx-6">
           <StoryDetail item={item} lang={lang} />
         </div>
       )}

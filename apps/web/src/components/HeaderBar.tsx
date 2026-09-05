@@ -43,7 +43,7 @@ function Brand({ lang }: { lang: Lang }) {
       onClick={() => track("nav_click", { to: "/" })}
       className="flex min-w-0 shrink-0 items-baseline gap-2"
     >
-      <span className="text-base font-semibold tracking-tight text-foreground">
+      <span className="font-serif text-lg font-medium tracking-tight text-foreground">
         AI;DR
       </span>
       <span className="hidden truncate text-sm text-muted-foreground xl:inline">
@@ -111,9 +111,9 @@ function PhoneMenu({
                 role="dialog"
                 aria-modal="true"
                 aria-label="Menu"
-                className="absolute inset-y-0 right-0 flex w-[min(20rem,85vw)] flex-col border-l border-border bg-popover text-popover-foreground shadow-xl"
+                className="absolute inset-y-0 right-0 flex w-[min(20rem,85vw)] flex-col border-l border-border bg-card text-card-foreground shadow-2xl"
               >
-                <div className="border-b border-border px-6 py-4 text-base font-semibold tracking-tight">
+                <div className="border-b border-border px-6 py-5 font-serif text-lg font-medium tracking-tight">
                   AI;DR
                 </div>
                 <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
@@ -199,9 +199,9 @@ export function HeaderBar({
   const searchPlaceholder = lang === "vi" ? "Tìm kiếm..." : "Search AI news...";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/80 backdrop-blur-md transition-[background-color,border-color] duration-150">
       <div
-        className={`${WIDE_HEADER_ROW_CLASS} mx-auto max-w-[1080px] items-center gap-3 px-4 py-2 sm:px-6 lg:px-8`}
+        className={`${WIDE_HEADER_ROW_CLASS} mx-auto max-w-[1080px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8`}
       >
         <Brand lang={lang} />
         <div className="min-w-0 flex-1">
@@ -240,7 +240,7 @@ export function HeaderBar({
               <Send aria-hidden />
             </a>
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="default" size="sm" asChild>
             <Link
               to="/submit"
               onClick={() => track("nav_click", { to: "/submit" })}

@@ -71,8 +71,8 @@ function PipelineDiagram() {
     <div className="-mx-1 flex flex-wrap items-stretch gap-1 gap-y-2 px-1 py-1">
       {STEPS.map((step, i) => (
         <div key={step.en} className="flex shrink-0 items-stretch">
-          <div className="flex w-28 flex-col justify-center rounded-lg border border-border px-2 py-2 text-center">
-            <div className="text-sm font-bold text-foreground">{step.en}</div>
+          <div className="flex w-28 flex-col justify-center rounded-2xl border border-border/80 bg-card px-2 py-2.5 text-center">
+            <div className="text-sm font-medium text-foreground">{step.en}</div>
             <div className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
               {step.subEn}
             </div>
@@ -102,7 +102,7 @@ function Section({
 }) {
   return (
     <section id={id} className="mt-6 scroll-mt-20">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+      <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {title}
       </h2>
       <div className="typeset typeset-page mt-2 text-muted-foreground">
@@ -210,7 +210,7 @@ function AboutPage() {
   const t = (en: string, _vi: string) => en;
 
   return (
-    <div className="py-8">
+    <div className="py-12">
       <div className="typeset typeset-page">
         <h1>{t("About AI News", "Giới thiệu AI News")}</h1>
         <p className="text-muted-foreground">
@@ -221,8 +221,8 @@ function AboutPage() {
         </p>
       </div>
 
-      <section id="how-it-works" className="mt-6 scroll-mt-20">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+      <section id="how-it-works" className="mt-8 scroll-mt-20">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {t("How it works", "Cách hoạt động")}
         </h2>
         <div className="mt-3">
