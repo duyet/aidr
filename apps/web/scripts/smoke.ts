@@ -275,12 +275,18 @@ async function main() {
       /github\.com\/duyet\/aidr\/releases\/download\/aidr-v/.test(loc),
       `unexpected Location: ${loc}`
     );
-    assert(loc.endsWith("/aidr.zip"), `Location should end with /aidr.zip: ${loc}`);
+    assert(
+      loc.endsWith("/aidr.zip"),
+      `Location should end with /aidr.zip: ${loc}`
+    );
   });
 
   await check("GET /aidr.zip follows to a real zip", async () => {
     const res = await fetch(`${base}/aidr.zip`);
-    assert(res.status === 200, `expected 200 after redirect, got ${res.status}`);
+    assert(
+      res.status === 200,
+      `expected 200 after redirect, got ${res.status}`
+    );
     const ctype = res.headers.get("content-type") ?? "";
     assert(!ctype.includes("text/html"), `zip served as HTML (${ctype})`);
     const bytes = new Uint8Array(await res.arrayBuffer());

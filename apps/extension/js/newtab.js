@@ -1,12 +1,7 @@
 import { fetchDigest } from "./api.js";
-import {
-  fetchExtensionMeta,
-  installedVersion,
-  isChromeWebStoreInstall,
-  isNewerVersion,
-} from "./update.js";
 import { highlightTitle, tagsForHighlight } from "./highlight.js";
 import { t, uiLang } from "./i18n.js";
+import { tagSiteLinks, withExtRef } from "./ref.js";
 import {
   applyAppearance,
   loadSettings,
@@ -14,8 +9,13 @@ import {
   saveSettings,
 } from "./settings.js";
 import { bindPrefsPopover } from "./settings-panel.js";
-import { tagSiteLinks, withExtRef } from "./ref.js";
 import { topicColor } from "./topic-color.js";
+import {
+  fetchExtensionMeta,
+  installedVersion,
+  isChromeWebStoreInstall,
+  isNewerVersion,
+} from "./update.js";
 
 const NEWS_SITE = "https://aidr.today";
 const THUMB_MARK = new URL("../icons/thumb-mark.svg", import.meta.url).href;
@@ -246,14 +246,12 @@ function applyChrome(settings) {
   }
 }
 
-function renderFooter(settings, digest) {
+function renderFooter(_settings, digest) {
   const node = $("footer-copy");
   if (!node) return;
   const year = new Date().getFullYear();
   const stamp = digest.lastFetchedAt || digest.updatedAt;
-  const updated = stamp
-    ? ` · Updated ${timeAgo(stamp, "en")}`
-    : "";
+  const updated = stamp ? ` · Updated ${timeAgo(stamp, "en")}` : "";
   node.textContent = `© ${year} Duyet · aidr.today${updated}`;
 }
 
@@ -356,7 +354,11 @@ function renderTldr(settings, digest) {
     list.start = ci === 0 ? 1 : columns[0].length + 1;
     col.forEach((bullet, i) => {
       list.append(
-        renderThumbRow(digest, bullet, (ci === 0 ? 1 : columns[0].length + 1) + i)
+        renderThumbRow(
+          digest,
+          bullet,
+          (ci === 0 ? 1 : columns[0].length + 1) + i
+        )
       );
     });
     cols.append(list);
@@ -613,9 +615,7 @@ function renderStoryRow(settings, story, index, hot) {
 
   const cat = document.createElement("span");
   cat.className = "story-cat";
-  cat.textContent = story.category
-    ? categoryLabel(story.category, lang)
-    : "";
+  cat.textContent = story.category ? categoryLabel(story.category, lang) : "";
 
   const when = document.createElement("span");
   when.className = "story-when";
@@ -729,8 +729,7 @@ function renderStories(settings, digest) {
     const list = document.createElement("div");
     list.className = "day-list";
     day.items.forEach((story, i) => {
-      const hot =
-        i === 0 && story.rank_score > 0 && day.items.length > 1;
+      const hot = i === 0 && story.rank_score > 0 && day.items.length > 1;
       list.append(renderStoryRow(settings, story, i + 1, hot));
     });
     section.append(list);
@@ -802,18 +801,17 @@ async function main() {
   applyChrome(settings);
   tagSiteLinks(document);
 
-  let digest =
-    globalThis.__NEWS_TAB_DIGEST__ || {
-      tldr: null,
-      stories: [],
-      days: [],
-      categories: [],
-      trending: [],
-      items: {},
-      totalStories: 0,
-      lastFetchedAt: 0,
-      updatedAt: 0,
-    };
+  let digest = globalThis.__NEWS_TAB_DIGEST__ || {
+    tldr: null,
+    stories: [],
+    days: [],
+    categories: [],
+    trending: [],
+    items: {},
+    totalStories: 0,
+    lastFetchedAt: 0,
+    updatedAt: 0,
+  };
 
   const refresh = async (next) => {
     settings = next;

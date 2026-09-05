@@ -1,5 +1,5 @@
 import { track } from "@aidr/ui/track";
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   campaignTrackParams,
   isExtensionCampaign,
