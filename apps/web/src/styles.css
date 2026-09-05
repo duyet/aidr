@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
+/* Owned copy of shadcn/typeset — tune fonts/size/leading/flow via presets. */
+@import "./typeset.css";
 
 /* Scan shared shadcn primitives so Card/Badge/Table utilities emit. */
 @source "../../../packages/ui";
@@ -216,9 +218,44 @@
    so it never bleeds into the shared SiteHeader's nav hover/active pills. */
 .news-content {
   font-family: var(--content-font-sans);
-  font-size: calc(15px * var(--reader-font-size, 1));
+  /* Base matches .typeset-reader; reader slider scales both together. */
+  font-size: calc(16px * var(--reader-font-size, 1));
   --accent: var(--editorial-accent);
   --accent-foreground: #fffefb;
+}
+
+/* Reader prose (story summaries): fonts + rhythm from prefs CSS vars. */
+.typeset-reader {
+  --typeset-font-body: var(--content-font-sans);
+  --typeset-font-heading: var(--content-font-sans);
+  --typeset-font-mono: var(--font-mono);
+  --typeset-size: calc(16px * var(--reader-font-size, 1));
+  --typeset-leading: var(--reader-leading, 1.65);
+  --typeset-flow: var(--reader-flow, 1.15em);
+}
+
+.news-content[data-reader-font="serif"] .typeset-reader {
+  --typeset-font-body: var(--editorial-font-serif);
+  --typeset-font-heading: var(--editorial-font-serif);
+}
+
+.dark .typeset-reader {
+  --typeset-leading: var(--reader-leading-dark, 1.75);
+}
+
+/* Long-form pages (about, privacy, changelog, extension guide). */
+.typeset-page {
+  --typeset-font-body: var(--font-sans);
+  --typeset-font-heading: var(--font-heading);
+  --typeset-font-mono: var(--font-mono);
+  --typeset-size: 16px;
+  --typeset-leading: 1.75;
+  --typeset-flow: 1.35em;
+  max-width: 42rem;
+}
+
+.dark .typeset-page {
+  --typeset-leading: 1.85;
 }
 
 /* Pipeline /data dashboard: Geist (shadcn) sans + standard type scale,

@@ -264,7 +264,7 @@ export function StoryDetail({
                       )}
                     </h3>
                     {col.paragraphs.length > 0 && (
-                      <div className="space-y-3 leading-relaxed">
+                      <div className="typeset typeset-reader">
                         {col.paragraphs.map((p) => (
                           <p key={p}>{p}</p>
                         ))}
@@ -277,7 +277,7 @@ export function StoryDetail({
             paragraphs.length > 0 && (
               <div
                 data-suggest-field="summary"
-                className="max-w-3xl space-y-3 leading-relaxed"
+                className="typeset typeset-reader max-w-3xl"
               >
                 {paragraphs.map((p) => (
                   <p key={p}>{p}</p>
@@ -287,7 +287,7 @@ export function StoryDetail({
           )}
 
           {vietnameseVisible && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="not-typeset flex flex-wrap items-center gap-2">
               <SuggestTranslation
                 itemId={item.id}
                 field="summary"
@@ -304,7 +304,7 @@ export function StoryDetail({
           )}
 
           {item.sources.length > 0 && (
-            <div className="space-y-1.5 border-t border-border pt-3">
+            <div className="not-typeset space-y-1.5 border-t border-border pt-3">
               <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {lang === "vi" ? "Nguồn chính" : "Key sources"}
               </div>
@@ -320,7 +320,7 @@ export function StoryDetail({
           )}
         </div>
 
-        <aside className="min-w-0 space-y-4 md:border-l md:border-border md:pl-5">
+        <aside className="not-typeset min-w-0 space-y-4 md:border-l md:border-border md:pl-5">
           {item.image_url && (
             <img
               src={item.image_url}

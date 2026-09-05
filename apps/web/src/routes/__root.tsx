@@ -160,10 +160,10 @@ function NewsFooter() {
             rel="noopener noreferrer"
             onClick={() => track("nav_click", { to: "telegram" })}
             className="flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2"
+            aria-label="Telegram"
+            title="Telegram"
           >
             <Send className="h-3.5 w-3.5" aria-hidden />
-            Telegram
-            <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
           <a
             href="https://github.com/duyet/aidr"

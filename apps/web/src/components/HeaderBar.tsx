@@ -1,7 +1,7 @@
 import { AuthButtons, Button, ErrorBoundary, Separator } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Moon, Plus, Send, Sun } from "lucide-react";
+import { Menu, Moon, Plus, Puzzle, Send, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -237,8 +237,23 @@ export function HeaderBar({
         <div className="flex shrink-0 items-center gap-1">
           <Button
             variant="ghost"
-            size="sm"
-            className="hidden lg:inline-flex"
+            size="icon-sm"
+            className="hidden sm:inline-flex"
+            asChild
+          >
+            <Link
+              to="/extension"
+              onClick={() => track("nav_click", { to: "/extension" })}
+              aria-label={lang === "vi" ? "Tab mới Chrome" : "Chrome new tab"}
+              title={lang === "vi" ? "Tab mới Chrome" : "Chrome new tab"}
+            >
+              <Puzzle aria-hidden />
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="hidden sm:inline-flex"
             asChild
           >
             <a
@@ -246,9 +261,10 @@ export function HeaderBar({
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => track("nav_click", { to: "telegram" })}
+              aria-label="Telegram"
+              title="Telegram"
             >
               <Send aria-hidden />
-              Telegram
             </a>
           </Button>
           <Button variant="outline" size="sm" asChild>
@@ -285,6 +301,36 @@ export function HeaderBar({
         <div className="min-w-0 flex-1">
           <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={PHONE_TAP_TARGET_CLASS}
+          asChild
+        >
+          <Link
+            to="/extension"
+            onClick={() => track("nav_click", { to: "/extension" })}
+            aria-label={lang === "vi" ? "Tab mới Chrome" : "Chrome new tab"}
+          >
+            <Puzzle aria-hidden />
+          </Link>
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={PHONE_TAP_TARGET_CLASS}
+          asChild
+        >
+          <a
+            href={TELEGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => track("nav_click", { to: "telegram" })}
+            aria-label="Telegram"
+          >
+            <Send aria-hidden />
+          </a>
+        </Button>
         <PrefsPanel triggerClassName={PHONE_PREFS_TRIGGER_CLASS} />
         <ThemeButton className={PHONE_TAP_TARGET_CLASS} />
         <PhoneMenu

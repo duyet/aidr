@@ -105,7 +105,7 @@ function Section({
       <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
         {title}
       </h2>
-      <div className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+      <div className="typeset typeset-page mt-2 text-muted-foreground">
         {children}
       </div>
     </section>
@@ -138,7 +138,7 @@ function Sources() {
       ) : names.length === 0 ? (
         <p>No sources configured yet.</p>
       ) : (
-        <ul className="flex flex-wrap gap-2">
+        <ul className="not-typeset flex flex-wrap gap-2">
           {names.map((name) => (
             <li
               key={name}
@@ -211,15 +211,15 @@ function AboutPage() {
 
   return (
     <div className="py-8">
-      <h1 className="text-2xl font-bold tracking-tight">
-        {t("About AI News", "Giới thiệu AI News")}
-      </h1>
-      <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-        {t(
-          "AI News is an LLM-based system: AI stories are fetched hourly, scored, merged, ranked, and translated to Vietnamese — every story links back to its original source.",
-          "AI News là hệ thống tin tức vận hành bởi LLM: tin về AI được thu thập mỗi giờ, chấm điểm, gộp, xếp hạng và dịch sang tiếng Việt — mỗi tin đều dẫn về nguồn gốc."
-        )}
-      </p>
+      <div className="typeset typeset-page">
+        <h1>{t("About AI News", "Giới thiệu AI News")}</h1>
+        <p className="text-muted-foreground">
+          {t(
+            "AI News is an LLM-based system: AI stories are fetched hourly, scored, merged, ranked, and translated to Vietnamese — every story links back to its original source.",
+            "AI News là hệ thống tin tức vận hành bởi LLM: tin về AI được thu thập mỗi giờ, chấm điểm, gộp, xếp hạng và dịch sang tiếng Việt — mỗi tin đều dẫn về nguồn gốc."
+          )}
+        </p>
+      </div>
 
       <section id="how-it-works" className="mt-6 scroll-mt-20">
         <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">

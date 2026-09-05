@@ -97,7 +97,12 @@ export function StoryRow({
     Boolean(summary) || item.tags.length > 0 || item.sources.length > 0;
   const isMatch = Boolean(
     selectedTag &&
-      item.tags.some((tag) => tag.toLowerCase() === selectedTag.toLowerCase())
+      (item.tags.some(
+        (tag) => tag.toLowerCase() === selectedTag.toLowerCase()
+      ) ||
+        item.title.toLowerCase().includes(selectedTag.toLowerCase()) ||
+        (item.title_vi?.toLowerCase().includes(selectedTag.toLowerCase()) ??
+          false))
   );
   // Selected-topic rows tint with THAT topic's own deterministic color
   // (same palette as the in-title keyword highlights) instead of a

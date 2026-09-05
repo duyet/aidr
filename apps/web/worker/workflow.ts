@@ -59,6 +59,7 @@ import { reviewPendingSuggestions } from "./suggestions.js";
 import { toEpochSeconds } from "./time.js";
 import { ensureDailyTldr } from "./tldr.js";
 import { looksVietnamese } from "./tldr-lang.js";
+import { captureAndLearnTopics } from "./topic-learning.js";
 import { MAX_MERGED_TOPICS, normalizeTopics, unionTopics } from "./topics.js";
 import { ratePendingTranslations } from "./translation-qa.js";
 import type { Env } from "./types.js";
@@ -508,6 +509,30 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           LLM_STEP
         )
       );
+
+      // Capture per-day topic frequencies and promote emerging entity /
+      // model tags into learned_keywords for title highlight + trending.
+      await safeStep(step, "learn-topics", undefined, async () => {
+        if (canonicalTagsByItem.size === 0) return;
+        try {
+          const titlesByItem = new Map(
+            newRows.map((row) => [row.id, row.item.title])
+          );
+          const { promoted } = await captureAndLearnTopics(
+            this.env.DB,
+            canonicalTagsByItem,
+            now,
+            titlesByItem
+          );
+          if (promoted.length > 0) {
+            console.log(
+              `learn-topics promoted ${promoted.length}: ${promoted.slice(0, 8).join(", ")}`
+            );
+          }
+        } catch (error) {
+          console.error("learn-topics step failed:", error);
+        }
+      });
 
       const mergePlan = restoreMergePlan(
         await safeStep(

@@ -50,6 +50,8 @@ export interface FeedResponse {
   days: DayGroup[];
   categories: { name: string; count: number }[];
   trending: { tag: string; count: number }[];
+  /** Self-learned entity/model keywords for title highlight. */
+  learnedKeywords?: string[];
   totalStories: number;
   updatedAt: number;
   /** Epoch seconds of the newest fetched item (last successful ingest). */

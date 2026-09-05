@@ -1,7 +1,15 @@
-import { describe, expect, it } from "vitest";
-import { highlightTitle, tagsForHighlight } from "./highlight";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  highlightTitle,
+  setLearnedKeywords,
+  tagsForHighlight,
+} from "./highlight";
 
 describe("highlightTitle", () => {
+  afterEach(() => {
+    setLearnedKeywords([]);
+  });
+
   it("returns a single unhighlighted segment when there are no tags", () => {
     expect(highlightTitle("Anthropic ships Claude 5", [])).toEqual([
       { text: "Anthropic ships Claude 5", highlighted: false },
@@ -160,6 +168,16 @@ describe("highlightTitle", () => {
 
     it("keeps the item's own tags ahead of fallback keywords", () => {
       expect(tagsForHighlight(["openai"])[0]).toBe("openai");
+    });
+
+    it("merges learned keywords after static title keywords", () => {
+      setLearnedKeywords(["Fable", "Windsurf"]);
+      const tags = tagsForHighlight([]);
+      expect(tags).toEqual(expect.arrayContaining(["Fable", "Windsurf"]));
+      const segments = highlightTitle("Cursor and Windsurf race Fable", tags);
+      expect(
+        segments.filter((s) => s.highlighted).map((s) => s.text)
+      ).toEqual(expect.arrayContaining(["Windsurf", "Fable", "Cursor"]));
     });
 
     it("does not attach a tag to unhighlighted segments", () => {

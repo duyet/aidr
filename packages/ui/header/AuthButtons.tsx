@@ -152,7 +152,6 @@ export function AuthButtons({
     SignedIn,
     Show,
     SignInButton,
-    SignUpButton,
     UserButton,
   } = clerkModule;
 
@@ -190,36 +189,21 @@ export function AuthButtons({
       {signedOutContent && <GateOut>{signedOutContent}</GateOut>}
       {signedInContent && <GateIn>{signedInContent}</GateIn>}
       <GateOut>
-        <div
-          className={
-            stacked
-              ? `flex w-full flex-col gap-2 ${className}`.trim()
-              : `flex items-center gap-1.5 ${className}`.trim()
-          }
-        >
-          <SignInButton mode="modal" forceRedirectUrl={redirectUrl}>
-            <Button
-              type="button"
-              variant="outline"
-              size={stacked ? "lg" : "sm"}
-              className={signInClassName}
-              aria-label="Sign in"
-            >
-              Sign in
-            </Button>
-          </SignInButton>
-          {SignUpButton ? (
-            <SignUpButton mode="modal" forceRedirectUrl={redirectUrl}>
-              <Button
-                type="button"
-                size={stacked ? "lg" : "sm"}
-                aria-label="Sign up"
-              >
-                Sign up
-              </Button>
-            </SignUpButton>
-          ) : null}
-        </div>
+        <SignInButton mode="modal" forceRedirectUrl={redirectUrl}>
+          <Button
+            type="button"
+            variant="outline"
+            size={stacked ? "lg" : "sm"}
+            className={
+              stacked
+                ? `w-full ${signInClassName ?? ""} ${className}`.trim()
+                : `${signInClassName ?? ""} ${className}`.trim()
+            }
+            aria-label="Sign in"
+          >
+            Sign in
+          </Button>
+        </SignInButton>
       </GateOut>
       <GateIn>
         <UserButton

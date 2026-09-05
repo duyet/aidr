@@ -39,14 +39,22 @@ longer the previous id) and `runsToday > 0`. Do not invent a
 
 1. **Fetch** — each enabled source row (`sources` table) maps to an adapter
    (`worker/sources/registry.ts`): HN via Algolia (AI-keyword pre-filter),
-   HuggingNews via its `__data.json` (+ per-story detail for body/sources).
+   HuggingNews via its `__data.json` (+ per-story detail for body/sources),
+   Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default).
 2. **Dedupe** — item id = `sha256(url)`; ids already in `items` are dropped.
 3. **Enrich** — missing summary/thumbnail filled from the article page
    (`og:description` / `og:image`), capped and failure-proof (`worker/enrich.ts`).
-   4. **Score (LLM)** — batches of 5, fixed rubric → per item:
+4. **Score (LLM)** — batches of 5, fixed rubric → per item:
    `relevance` 0–1, `importance` 0–10, `quality` 0–10, one `category` from a
    fixed 11-value enum, free-form `tags`.
    **Hide rule:** `relevance < 0.4` → status `rejected` (never shown).
+   Tags are then canonicalized (`normalizeTopics`) and captured into
+   `topic_daily` each ingest (~15 min). Emerging entity/model names that
+   clear a frequency/growth bar promote into `learned_keywords` for title
+   highlight and growth-boosted homepage trending chips
+   (`worker/topic-learning.ts`). Homepage trending prefers versioned
+   model/product names extracted from headlines (e.g. GPT-6 Astra,
+   Fable 5.1) over generic themes like `llm` / `agent`.
 5. **Merge (LLM + title similarity)** — one clustering call compares new
    items with the last 72h of published titles; a deterministic
    title-similarity pass (normalized headlines / high token overlap) runs

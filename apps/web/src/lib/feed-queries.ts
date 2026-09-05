@@ -1,5 +1,12 @@
 import { AUDIENCE_TIMEZONE, localCalendarDate } from "../../worker/time.js";
-import { TITLE_KEYWORDS } from "./highlight";
+import {
+  collectTrendingCandidates,
+  learningDayKey,
+  loadLearnedKeywords,
+  loadTopicDailyCounts,
+  rankTrendingWithGrowth,
+} from "../../worker/topic-learning.js";
+import { setLearnedKeywords } from "./highlight";
 import {
   resolveTldrForDisplay,
   shouldRebuildTldrForDisplay,
@@ -219,29 +226,30 @@ export async function getFeed(
   const items = (itemsRes.results ?? []).map(toFeedItem);
   await attachSources(db, items);
 
-  // Trending: top tags in the last 24h, computed in JS (tags are a JSON column)
+  // Trending: prefer versioned models / products extracted from titles
+  // (GPT-6 Astra, Fable 5.1) over generic score themes (llm, agent).
   const dayAgo = Math.floor(Date.now() / 1000) - 86400;
-  const tagCounts = new Map<string, number>();
-  for (const it of items) {
-    if (it.published_at < dayAgo) continue;
-    for (const tag of it.tags)
-      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
-    if (it.tags.length === 0) {
-      const lower = it.title.toLowerCase();
-      for (const kw of TITLE_KEYWORDS) {
-        if (lower.includes(kw.toLowerCase()))
-          tagCounts.set(kw, (tagCounts.get(kw) ?? 0) + 1);
-      }
-    }
-  }
-  // Dynamic trending size: every tag mentioned 2+ times today earns a chip
-  // (capped at 16 so the row stays scannable); single-mention tags only top
-  // the list up to a floor of 8 on quiet days.
-  const ranked = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
-  const hot = ranked.filter(([, count]) => count >= 2).slice(0, 16);
-  const trending = (
-    hot.length >= 8 ? hot : ranked.slice(0, Math.min(8, ranked.length))
-  ).map(([tag, count]) => ({ tag, count }));
+  const { counts: tagCounts, displayByKey } = collectTrendingCandidates(
+    items.map((it) => ({
+      title: it.title,
+      tags: it.tags,
+      published_at: it.published_at,
+    })),
+    dayAgo
+  );
+  const nowMs = Date.now();
+  const yesterday = learningDayKey(nowMs - 24 * 60 * 60 * 1000);
+  const [yesterdayCounts, learnedKeywords] = await Promise.all([
+    loadTopicDailyCounts(db, yesterday),
+    loadLearnedKeywords(db),
+  ]);
+  setLearnedKeywords(learnedKeywords);
+  const trending = rankTrendingWithGrowth(tagCounts, yesterdayCounts).map(
+    ({ tag, count }) => ({
+      tag: displayByKey.get(tag) ?? tag,
+      count,
+    })
+  );
 
   let tldr: FeedResponse["tldr"] = null;
   const tldrRow = tldrRes.results?.[0];
@@ -289,6 +297,7 @@ export async function getFeed(
     days: groupByDay(items),
     categories: catsRes.results ?? [],
     trending,
+    learnedKeywords,
     totalStories: items.length,
     updatedAt: Date.now(),
     lastFetchedAt: fetchedRes.results?.[0]?.last ?? null,

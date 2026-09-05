@@ -1,4 +1,5 @@
 import type { FeedResponse } from "./types";
+import { setLearnedKeywords } from "./highlight";
 
 /**
  * Module-level cache of the unfiltered /api/feed response, shared by the
@@ -18,6 +19,7 @@ export function getCachedFeed(): FeedResponse | null {
  * so the typeahead doesn't need a second network round-trip there. */
 export function setCachedFeed(feed: FeedResponse): void {
   cache = feed;
+  if (feed.learnedKeywords?.length) setLearnedKeywords(feed.learnedKeywords);
 }
 
 /** Fetches once and caches; concurrent callers share the same in-flight

@@ -57,31 +57,29 @@ function ChangelogPage(): ReactElement {
   const lang = useLang();
 
   return (
-    <div className="py-6">
-      <h1 className="text-xl font-bold">
-        {lang === "vi" ? "Nhật ký thay đổi" : "Changelog"}
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+    <div className="typeset typeset-page py-6">
+      <h1>{lang === "vi" ? "Nhật ký thay đổi" : "Changelog"}</h1>
+      <p className="text-muted-foreground">
         {lang === "vi"
           ? "Những thay đổi đáng chú ý của AI News. Danh sách này được viết tay và không đầy đủ."
           : "Notable changes to AI News. This list is hand-written and not exhaustive."}
       </p>
 
-      <ol className="mt-6 space-y-6 border-l border-border pl-5">
+      <ol className="not-typeset mt-6 space-y-6 border-l border-border pl-5">
         {ENTRIES.map((entry) => (
           <li key={entry.en} className="relative">
             <span className="absolute -left-[23px] top-1.5 h-2 w-2 rounded-full bg-accent" />
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {entry.date}
             </div>
-            <p className="mt-1 leading-relaxed">
+            <p className="mt-1 text-base leading-relaxed">
               {lang === "vi" ? entry.vi : entry.en}
             </p>
           </li>
         ))}
       </ol>
 
-      <p className="mt-8 text-sm text-muted-foreground">
+      <p className="text-muted-foreground">
         {lang === "vi"
           ? "Xem toàn bộ lịch sử commit trên "
           : "See the full commit history on "}
@@ -89,7 +87,6 @@ function ChangelogPage(): ReactElement {
           href="https://github.com/duyet/monorepo/commits/master/apps/news"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline underline-offset-2 hover:text-accent"
         >
           GitHub
         </a>
