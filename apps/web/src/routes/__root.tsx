@@ -74,6 +74,12 @@ function ClerkRootProvider({ children }: { children: ReactNode }) {
       <ClerkModuleContext.Provider value={clerkState}>
         <clerkState.mod.ClerkProvider
           publishableKey={clerkState.publishableKey}
+          appearance={{
+            variables: {
+              colorPrimary: "oklch(0.555 0.163 48.998)",
+              borderRadius: "0.625rem",
+            },
+          }}
         >
           {children}
         </clerkState.mod.ClerkProvider>

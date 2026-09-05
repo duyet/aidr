@@ -1,7 +1,14 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ComponentType,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Icons from "../Icons";
+import { Button } from "../ui/button";
 
 /** Minimal redirect config — avoids a @duyet/urls dependency. */
 export type UrlsConfig = {
@@ -14,30 +21,31 @@ export type UrlsConfig = {
 let clerkProviderMounted = false;
 
 type ClerkLike = {
-  ClerkProvider?: (props: {
+  ClerkProvider?: ComponentType<{
     publishableKey: string;
     children?: ReactNode;
-  }) => ReactNode;
-  SignedOut?: (props: { children?: ReactNode }) => ReactNode;
-  SignedIn?: (props: { children?: ReactNode }) => ReactNode;
-  Show?: (props: {
+    appearance?: unknown;
+  }>;
+  SignedOut?: ComponentType<{ children?: ReactNode }>;
+  SignedIn?: ComponentType<{ children?: ReactNode }>;
+  Show?: ComponentType<{
     when: "signed-in" | "signed-out";
     children?: ReactNode;
-  }) => ReactNode;
-  SignInButton?: (props: {
+  }>;
+  SignInButton?: ComponentType<{
     mode?: "modal" | "redirect";
     forceRedirectUrl?: string;
     children?: ReactNode;
-  }) => ReactNode;
-  SignUpButton?: (props: {
+  }>;
+  SignUpButton?: ComponentType<{
     mode?: "modal" | "redirect";
     forceRedirectUrl?: string;
     children?: ReactNode;
-  }) => ReactNode;
-  UserButton?: (props: {
+  }>;
+  UserButton?: ComponentType<{
     appearance?: { elements?: { avatarBox?: string } };
     afterSignOutUrl?: string;
-  }) => ReactNode;
+  }>;
 };
 
 /**
@@ -55,12 +63,13 @@ type ClerkLike = {
 export function AuthButtons({
   urls,
   className = "",
-  signInClassName = "rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-foreground hover:border-foreground transition-colors",
-  avatarSize = "h-8 w-8",
+  signInClassName,
+  avatarSize = "size-7",
   signedInContent = null,
   signedOutContent = null,
   wrapWithProvider = true,
   clerkModule: providedModule = null,
+  stacked = false,
 }: {
   urls?: UrlsConfig;
   className?: string;
@@ -69,8 +78,9 @@ export function AuthButtons({
   signedInContent?: ReactNode | null;
   signedOutContent?: ReactNode | null;
   wrapWithProvider?: boolean;
-  /** Host Clerk module. Typed loosely so SDK provider props can drift. */
+  /** Host Clerk SDK module. Typed loosely so @clerk/* major bumps don't break the UI package. */
   clerkModule?: object | null;
+  stacked?: boolean;
 } = {}) {
   const importMetaEnv =
     typeof import.meta !== "undefined"
@@ -120,13 +130,15 @@ export function AuthButtons({
 
   if (!publishableKey) {
     return (
-      <button
+      <Button
         type="button"
-        className={`${signInClassName} ${className}`.trim()}
+        variant="outline"
+        size="sm"
+        className={className}
         aria-label="Sign in (Unavailable)"
       >
-        <Icons.UserEmpty className="h-4 w-4" />
-      </button>
+        <Icons.UserEmpty className="size-4" />
+      </Button>
     );
   }
 
@@ -159,13 +171,15 @@ export function AuthButtons({
 
   if (!ClerkProvider || !GateOut || !GateIn || !SignInButton || !UserButton) {
     return (
-      <button
+      <Button
         type="button"
-        className={`${signInClassName} ${className}`.trim()}
+        variant="outline"
+        size="sm"
+        className={className}
         aria-label="Sign in (Unavailable)"
       >
-        <Icons.UserEmpty className="h-4 w-4" />
-      </button>
+        <Icons.UserEmpty className="size-4" />
+      </Button>
     );
   }
 
@@ -176,28 +190,33 @@ export function AuthButtons({
       {signedOutContent && <GateOut>{signedOutContent}</GateOut>}
       {signedInContent && <GateIn>{signedInContent}</GateIn>}
       <GateOut>
-        <div className={`flex items-center gap-1.5 ${className}`.trim()}>
+        <div
+          className={
+            stacked
+              ? `flex w-full flex-col gap-2 ${className}`.trim()
+              : `flex items-center gap-1.5 ${className}`.trim()
+          }
+        >
           <SignInButton mode="modal" forceRedirectUrl={redirectUrl}>
-            <button
+            <Button
               type="button"
-              className={
-                signInClassName ||
-                "rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-foreground hover:border-foreground transition-colors"
-              }
+              variant="outline"
+              size={stacked ? "lg" : "sm"}
+              className={signInClassName}
               aria-label="Sign in"
             >
               Sign in
-            </button>
+            </Button>
           </SignInButton>
           {SignUpButton ? (
             <SignUpButton mode="modal" forceRedirectUrl={redirectUrl}>
-              <button
+              <Button
                 type="button"
-                className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background hover:opacity-90 transition-opacity"
+                size={stacked ? "lg" : "sm"}
                 aria-label="Sign up"
               >
                 Sign up
-              </button>
+              </Button>
             </SignUpButton>
           ) : null}
         </div>

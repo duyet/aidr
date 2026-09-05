@@ -1,4 +1,4 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import { AArrowDown, AArrowUp, Rows2, Rows4 } from "lucide-react";
@@ -252,19 +252,18 @@ export function PrefsPanel({
 
   return (
     <div ref={containerRef} className="relative">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => setOpen((v) => !v)}
         aria-label={t("Reader preferences", "Tuỳ chỉnh hiển thị")}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={
-          triggerClassName ??
-          "rounded-full px-2.5 py-1 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-        }
+        className={triggerClassName ?? "font-serif text-sm"}
       >
         Aa
-      </button>
+      </Button>
 
       {open && (
         <div
