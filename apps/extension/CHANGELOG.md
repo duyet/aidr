@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/duyet/aidr/compare/aidr-v0.1.3...aidr-v0.1.4) (2026-09-05)
+
+
+### ✨ Features
+
+* **extension:** pack a CWS zip with manifest at archive root ([ab8fc3a](https://github.com/duyet/aidr/commit/ab8fc3ab148906bcb7e1c29686d4a10b6ab510d3))
+
 ## [0.1.3](https://github.com/duyet/aidr/compare/aidr-v0.1.2...aidr-v0.1.3) (2026-09-04)
 
 
