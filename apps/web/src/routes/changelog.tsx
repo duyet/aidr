@@ -11,6 +11,11 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-09",
+    en: "The site and favicon use the full AI;DR wordmark. Chrome zip downloads always follow the latest extension release.",
+    vi: "Site và favicon dùng wordmark AI;DR đầy đủ. Tải zip Chrome luôn theo bản extension mới nhất.",
+  },
+  {
+    date: "2026-09",
     en: "Sign-in works more reliably. Suggest a translation while signed out, find Privacy and Terms in the footer, and switch light/dark mode from the Aa text panel.",
     vi: "Đăng nhập ổn định hơn. Gợi ý bản dịch khi chưa đăng nhập, tìm Privacy và Terms ở footer, và đổi sáng/tối trong bảng Aa.",
   },
@@ -47,6 +52,11 @@ const WEBSITE_ENTRIES: ChangelogEntry[] = [
 ];
 
 const EXTENSION_ENTRIES: ChangelogEntry[] = [
+  {
+    date: "2026-09",
+    en: "New AI;DR logo on the extension icon and a clearer branded new-tab header.",
+    vi: "Logo AI;DR mới trên icon tiện ích và header tab mới rõ brand hơn.",
+  },
   {
     date: "2026-09",
     en: "Ready for Chrome Web Store listing and automatic updates once published.",

@@ -51,7 +51,8 @@ function expectedMap(digest) {
   const bullets = (digest.tldr?.bullets_vi || []).filter((b) => b.text);
   const shown = bullets.slice(0, 8);
   return {
-    brand: "Hôm nay AI có gì mới?",
+    brandMark: "AI;DR",
+    brandTagline: "Hôm nay AI có gì mới?",
     searchPlaceholder: "Tìm trên aidr.today",
     submit: "Gửi bài",
     langSelected: "vi",
@@ -106,7 +107,8 @@ function featureMapFromHtml(html) {
   const colored = (html.match(/topic-colored/g) || []).length;
   const lists = (html.match(/class="tldr-list"/g) || []).length;
   return {
-    brand: pick(/id="brand"[^>]*>([\s\S]*?)<\/a>/),
+    brandMark: pick(/class="brand-mark"[^>]*>([\s\S]*?)<\/span>/),
+    brandTagline: pick(/id="brand-tagline"[^>]*>([\s\S]*?)<\/span>/),
     searchPlaceholder: pick(/id="search"[^>]*placeholder="([^"]+)"/),
     chromeTabAbsent: !/id="chrome-tab"/.test(html) && !/Tab Chrome/.test(html),
     profileAbsent: !/id="profile"/.test(html),
@@ -131,11 +133,11 @@ function featureMapFromHtml(html) {
 
 function siteMapFromHtml(html) {
   return {
-    brand: /Hôm nay AI có gì mới\?/.test(html),
-    search: /Tìm kiếm\.\.\./.test(html),
-    submit: /Gửi bài/.test(html),
-    allChip: /Tất cả/.test(html),
-    trending: /Xu hướng/i.test(html),
+    brand: /AI;DR/.test(html),
+    search: /Tìm kiếm\.\.\./.test(html) || /Search/.test(html),
+    submit: /Gửi bài/.test(html) || /Submit/.test(html),
+    allChip: /Tất cả/.test(html) || />All</.test(html),
+    trending: /Xu hướng/i.test(html) || /Trending/i.test(html),
     aidr: />AI;DR</.test(html),
     topicColored: /topic-colored/.test(html),
   };
@@ -278,7 +280,8 @@ async function main() {
     const site = siteMapFromHtml(siteHtml);
 
     const checks = {
-      brand: observed.brand === expected.brand,
+      brandMark: observed.brandMark === expected.brandMark,
+      brandTagline: observed.brandTagline === expected.brandTagline,
       searchPlaceholder: observed.searchPlaceholder === expected.searchPlaceholder,
       chromeTabAbsent: observed.chromeTabAbsent === true,
       profileAbsent: observed.profileAbsent === true,

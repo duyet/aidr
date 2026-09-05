@@ -264,9 +264,23 @@ async function main() {
     assert(body.auth_config, "Clerk environment missing auth_config");
   });
 
-  await check("GET /aidr.zip is a zip, not HTML", async () => {
+  await check("GET /aidr.zip redirects to latest release zip", async () => {
+    const res = await fetch(`${base}/aidr.zip`, { redirect: "manual" });
+    assert(
+      res.status === 302 || res.status === 301,
+      `expected redirect, got ${res.status}`
+    );
+    const loc = res.headers.get("location") ?? "";
+    assert(
+      /github\.com\/duyet\/aidr\/releases\/download\/aidr-v/.test(loc),
+      `unexpected Location: ${loc}`
+    );
+    assert(loc.endsWith("/aidr.zip"), `Location should end with /aidr.zip: ${loc}`);
+  });
+
+  await check("GET /aidr.zip follows to a real zip", async () => {
     const res = await fetch(`${base}/aidr.zip`);
-    assert(res.status === 200, `expected 200, got ${res.status}`);
+    assert(res.status === 200, `expected 200 after redirect, got ${res.status}`);
     const ctype = res.headers.get("content-type") ?? "";
     assert(!ctype.includes("text/html"), `zip served as HTML (${ctype})`);
     const bytes = new Uint8Array(await res.arrayBuffer());

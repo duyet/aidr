@@ -48,7 +48,7 @@ const COPY = {
     open: "Mở",
   },
   en: {
-    lede: "What's new in AI today?",
+    lede: "What's happening in AI today?",
     tldrMeta: "past 24 hours",
     stories: "Top stories",
     trending: "Trending",

@@ -44,12 +44,12 @@ function Brand({ lang }: { lang: Lang }) {
       className="flex min-w-0 shrink-0 items-baseline gap-2"
     >
       <span className="text-base font-semibold tracking-tight text-foreground">
-        aidr
+        AI;DR
       </span>
       <span className="hidden truncate text-sm text-muted-foreground xl:inline">
         {lang === "vi"
           ? "Hôm nay AI có gì mới?"
-          : "What is happening in AI today?"}
+          : "What's happening in AI today?"}
       </span>
     </Link>
   );
@@ -113,8 +113,8 @@ function PhoneMenu({
                 aria-label="Menu"
                 className="absolute inset-y-0 right-0 flex w-[min(20rem,85vw)] flex-col border-l border-border bg-popover text-popover-foreground shadow-xl"
               >
-                <div className="border-b border-border px-6 py-4 text-base font-medium">
-                  aidr
+                <div className="border-b border-border px-6 py-4 text-base font-semibold tracking-tight">
+                  AI;DR
                 </div>
                 <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
                   {SITE_LINKS.map((link) =>

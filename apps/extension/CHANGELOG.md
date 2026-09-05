@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/duyet/aidr/compare/aidr-v0.1.4...aidr-v0.1.5) (2026-09-05)
+
+
+### ✨ Features
+
+* **extension:** AI;DR wordmark logo and sticky branded new-tab topbar
+
+
 ## [0.1.4](https://github.com/duyet/aidr/compare/aidr-v0.1.3...aidr-v0.1.4) (2026-09-05)
 
 

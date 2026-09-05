@@ -204,7 +204,8 @@ let pushSettings = async () => {};
 
 function applyChrome(settings) {
   const lang = uiLang(settings);
-  $("brand").textContent = t(settings, "lede");
+  const tagline = $("brand-tagline");
+  if (tagline) tagline.textContent = t(settings, "lede");
   $("search").placeholder = t(settings, "search");
   $("submit-label").textContent = t(settings, "submit");
   $("stories-heading").textContent = t(settings, "stories");
