@@ -53,10 +53,10 @@ describe("isClerkAdmin", () => {
     expect(isClerkAdmin(payload, env)).toBe(true);
   });
 
-  it("is true for the shortened o.rol === 'admin' claim", () => {
+  it("is false for the shortened o.rol === 'admin' claim (org role is not site admin)", () => {
     const env = makeEnv();
     const payload = makePayload({ o: { rol: "admin" } });
-    expect(isClerkAdmin(payload, env)).toBe(true);
+    expect(isClerkAdmin(payload, env)).toBe(false);
   });
 
   it("is false when a role claim is present but not 'admin'", () => {

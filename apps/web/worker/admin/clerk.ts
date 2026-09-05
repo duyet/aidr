@@ -129,9 +129,9 @@ export async function verifyClerkToken(
 }
 
 /**
- * Extracts a role claim from any of Clerk's common session-token claim
- * shapes for public metadata: `metadata.role`, `publicMetadata.role`, or
- * the shortened `o.rol` claim used by Clerk's default session token.
+ * Extracts a role claim from Clerk session-token public-metadata shapes:
+ * `metadata.role` or `publicMetadata.role`. Org role is not application
+ * admin.
  */
 function claimRole(payload: ClerkPayload): unknown {
   const metadata = payload.metadata as { role?: unknown } | undefined;
@@ -141,9 +141,6 @@ function claimRole(payload: ClerkPayload): unknown {
     | { role?: unknown }
     | undefined;
   if (publicMetadata?.role !== undefined) return publicMetadata.role;
-
-  const org = payload.o as { rol?: unknown } | undefined;
-  if (org?.rol !== undefined) return org.rol;
 
   return undefined;
 }
