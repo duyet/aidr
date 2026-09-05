@@ -8,7 +8,7 @@ import { SITE_URL } from "./site";
  * Chrome Web Store auto-updates once listed. Unpacked zip installs never
  * auto-update; the new-tab page compares this to the installed manifest.
  */
-export const EXTENSION_VERSION = "0.1.5";
+export const EXTENSION_VERSION = "0.1.6";
 
 /** Empty until a CWS listing exists. Do not invent a store URL. */
 export const EXTENSION_STORE_URL = "";
