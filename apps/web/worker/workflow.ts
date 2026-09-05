@@ -743,8 +743,17 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 published_at = excluded.published_at,
                 points = excluded.points,
                 comments = excluded.comments,
+                summary = excluded.summary,
+                llm_relevance = excluded.llm_relevance,
+                llm_importance = excluded.llm_importance,
+                llm_quality = excluded.llm_quality,
+                category = excluded.category,
+                tags = excluded.tags,
                 rank_score = excluded.rank_score,
-                status = excluded.status`
+                status = excluded.status,
+                llm_tokens = excluded.llm_tokens,
+                duplicate_of = excluded.duplicate_of,
+                image_url = excluded.image_url`
             ).bind(
               ...buildItemBindArgs({
                 id,
