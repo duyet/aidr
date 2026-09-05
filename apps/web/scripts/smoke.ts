@@ -63,6 +63,8 @@ async function main() {
     const marker = "Hôm nay AI có gì mới?";
     assert(body.includes(marker), `body missing shell marker "${marker}"`);
     assert(body.includes("og:title"), "homepage missing og:title");
+    assert(body.includes("og:image"), "homepage missing og:image");
+    assert(body.includes("/og.jpg"), "homepage og:image should be /og.jpg");
     assert(body.includes("twitter:card"), "homepage missing twitter:card");
     assert(body.includes('rel="canonical"'), "homepage missing canonical");
     assert(

@@ -1,4 +1,12 @@
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "./site";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_OG_IMAGE_HEIGHT,
+  SITE_OG_IMAGE_URL,
+  SITE_OG_IMAGE_WIDTH,
+  SITE_TITLE,
+  SITE_URL,
+} from "./site";
 import { storyPath } from "./slug";
 
 export type HeadMeta =
@@ -29,6 +37,8 @@ function shareTags(opts: {
   url: string;
   type: "website" | "article";
   imageUrl?: string | null;
+  /** When true, emit width/height for the site default OG asset. */
+  siteOgDimensions?: boolean;
 }): HeadMeta[] {
   const twitterCard = opts.imageUrl ? "summary_large_image" : "summary";
   const meta: HeadMeta[] = [
@@ -46,6 +56,16 @@ function shareTags(opts: {
   if (opts.imageUrl) {
     meta.push({ property: "og:image", content: opts.imageUrl });
     meta.push({ name: "twitter:image", content: opts.imageUrl });
+    if (opts.siteOgDimensions) {
+      meta.push({
+        property: "og:image:width",
+        content: String(SITE_OG_IMAGE_WIDTH),
+      });
+      meta.push({
+        property: "og:image:height",
+        content: String(SITE_OG_IMAGE_HEIGHT),
+      });
+    }
   }
   return meta;
 }
@@ -59,6 +79,8 @@ export function homepageHead(): HeadTags {
       description: SITE_DESCRIPTION,
       url,
       type: "website",
+      imageUrl: SITE_OG_IMAGE_URL,
+      siteOgDimensions: true,
     }),
     links: [{ rel: "canonical", href: url }, SITEMAP_LINK],
   };

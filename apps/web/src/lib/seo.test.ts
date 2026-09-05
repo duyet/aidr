@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { articleHead, homepageHead, notFoundHead } from "./seo";
-import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "./site";
+import {
+  SITE_DESCRIPTION,
+  SITE_OG_IMAGE_URL,
+  SITE_TITLE,
+  SITE_URL,
+} from "./site";
 
 function metaContent(
   tags: {
@@ -26,7 +31,11 @@ describe("homepageHead", () => {
     expect(metaContent(head.meta, "og:description")).toBe(SITE_DESCRIPTION);
     expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/`);
     expect(metaContent(head.meta, "og:type")).toBe("website");
-    expect(metaContent(head.meta, "twitter:card")).toBe("summary");
+    expect(metaContent(head.meta, "og:image")).toBe(SITE_OG_IMAGE_URL);
+    expect(metaContent(head.meta, "og:image:width")).toBe("1200");
+    expect(metaContent(head.meta, "og:image:height")).toBe("630");
+    expect(metaContent(head.meta, "twitter:card")).toBe("summary_large_image");
+    expect(metaContent(head.meta, "twitter:image")).toBe(SITE_OG_IMAGE_URL);
     expect(metaContent(head.meta, "twitter:title")).toBe(SITE_TITLE);
     expect(metaContent(head.meta, "twitter:description")).toBe(
       SITE_DESCRIPTION
