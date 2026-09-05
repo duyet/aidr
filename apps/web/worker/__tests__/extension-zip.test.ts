@@ -102,5 +102,56 @@ describe("fetchLatestAidrRelease + handleAidrZipRequest", () => {
     );
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toContain("aidr-v0.1.4/aidr.zip");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("serves ASSETS when GitHub has no aidr.zip", async () => {
+    clearLatestAidrReleaseCache();
+    const fetchImpl: typeof fetch = async () =>
+      new Response(JSON.stringify([]), { status: 200 });
+    const assets = {
+      fetch: async () =>
+        new Response(new Uint8Array([0x50, 0x4b]), {
+          status: 200,
+          headers: { "Content-Type": "application/zip" },
+        }),
+    };
+    const res = await handleAidrZipRequest(
+      new Request("https://aidr.today/aidr.zip"),
+      fetchImpl,
+      assets
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Disposition")).toContain("aidr.zip");
+  });
+
+  it("does not cache a failed GitHub fetch", async () => {
+    clearLatestAidrReleaseCache();
+    let calls = 0;
+    const fetchImpl: typeof fetch = async () => {
+      calls += 1;
+      if (calls === 1) return new Response("nope", { status: 403 });
+      return new Response(
+        JSON.stringify([
+          {
+            tag_name: "aidr-v0.1.7",
+            assets: [
+              {
+                name: "aidr.zip",
+                browser_download_url: "https://example.com/0.1.7",
+              },
+            ],
+          },
+        ]),
+        { status: 200 }
+      );
+    };
+    expect(await fetchLatestAidrRelease(fetchImpl)).toBeNull();
+    expect(await fetchLatestAidrRelease(fetchImpl)).toEqual({
+      version: "0.1.7",
+      tag: "aidr-v0.1.7",
+      zipUrl: "https://example.com/0.1.7",
+    });
+    expect(calls).toBe(2);
   });
 });

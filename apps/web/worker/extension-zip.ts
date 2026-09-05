@@ -81,12 +81,15 @@ export async function fetchLatestAidrRelease(
     },
   });
   if (!res.ok) {
-    memoryCache = { at: now, value: null };
+    // Do not cache failures — a brief GitHub blip or empty-asset release
+    // must not 502 /aidr.zip for the full TTL.
     return null;
   }
   const body = (await res.json()) as GhRelease[];
   const latest = Array.isArray(body) ? pickLatestAidrRelease(body) : null;
-  memoryCache = { at: now, value: latest };
+  if (latest) {
+    memoryCache = { at: now, value: latest };
+  }
   return latest;
 }
 
@@ -95,16 +98,48 @@ export function clearLatestAidrReleaseCache(): void {
   memoryCache = null;
 }
 
+function zipRedirect(url: string): Response {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: url,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 export async function handleAidrZipRequest(
   request: Request,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  /** Optional Workers static assets binding — serves packed public/aidr.zip. */
+  assets?: { fetch: (input: Request) => Promise<Response> }
 ): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("Method Not Allowed", { status: 405 });
   }
   const latest = await fetchLatestAidrRelease(fetchImpl);
-  if (!latest) {
-    return new Response("Extension zip release not found", { status: 502 });
+  if (latest) {
+    return zipRedirect(latest.zipUrl);
   }
-  return Response.redirect(latest.zipUrl, 302);
+  // Fallback: serve the zip bundled into the Worker deploy so a GitHub
+  // API miss never breaks https://aidr.today/aidr.zip.
+  if (assets) {
+    const assetRes = await assets.fetch(request);
+    if (assetRes.ok || assetRes.status === 304) {
+      const headers = new Headers(assetRes.headers);
+      headers.set("Cache-Control", "no-store");
+      headers.set(
+        "Content-Disposition",
+        `attachment; filename="${AIDR_ZIP_ASSET_NAME}"`
+      );
+      return new Response(assetRes.body, {
+        status: assetRes.status,
+        headers,
+      });
+    }
+  }
+  return new Response("Extension zip release not found", {
+    status: 502,
+    headers: { "Cache-Control": "no-store" },
+  });
 }
