@@ -10,7 +10,7 @@ Execute in order unless dependencies say otherwise.
 | 001  | Green CI by excluding dither-kit from Biome format | P1 | S | — | DONE |
 | 002  | Grant Clerk admin only via allowlist / publicMetadata | P1 | S | — | DONE |
 | 003  | Persist LLM fields on items UPSERT conflict | P1 | S | — | DONE |
-| 004  | CWS root-manifest zip + listing assets | P2 | M | — | TODO |
+| 004  | CWS root-manifest zip + listing assets | P2 | M | — | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED | REJECTED
 

@@ -94,6 +94,18 @@ export function normalizeSettings(raw) {
   };
 }
 
+/** Unpacked/dev keeps the API base field; CWS store flavor hides it. */
+export function allowCustomApiBase(manifest) {
+  if (manifest == null) return true;
+  const optional = manifest.optional_host_permissions;
+  if (!Array.isArray(optional)) return false;
+  return optional.some(
+    (origin) =>
+      typeof origin === "string" &&
+      (origin.includes("localhost") || origin.includes("127.0.0.1"))
+  );
+}
+
 export function normalizeApiBase(value) {
   const fallback = DEFAULT_API_BASE;
   if (typeof value !== "string" || !value.trim()) return fallback;

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "pack-extension": "tsx scripts/pack-extension.ts",
+    "pack-cws": "tsx scripts/pack-cws.ts",
     "dev": "pnpm run pack-extension && vite dev --port 3014",
     "build": "pnpm run pack-extension && vite build",
     "test": "vitest run",

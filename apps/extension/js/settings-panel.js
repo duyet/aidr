@@ -1,5 +1,9 @@
 import { t } from "./i18n.js";
-import { ensureHostPermission, saveSettings } from "./settings.js";
+import {
+  allowCustomApiBase,
+  ensureHostPermission,
+  saveSettings,
+} from "./settings.js";
 
 function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
@@ -214,21 +218,27 @@ export function mountSettingsPanel(root, settings, onSaved) {
     el("fieldset", {}, [el("legend", {}, [t(state, "sections")]), checks])
   );
 
-  const apiInput = el("input", {
-    type: "url",
-    value: state.apiBase,
-    spellcheck: "false",
-  });
-  apiInput.addEventListener("change", async () => {
-    state.apiBase = apiInput.value;
-    await persist();
-  });
-  form.append(
-    el("label", {}, [
-      el("span", { className: "lbl" }, [t(state, "apiBase")]),
-      apiInput,
-    ])
-  );
+  const manifest =
+    typeof globalThis.chrome?.runtime?.getManifest === "function"
+      ? globalThis.chrome.runtime.getManifest()
+      : null;
+  if (allowCustomApiBase(manifest)) {
+    const apiInput = el("input", {
+      type: "url",
+      value: state.apiBase,
+      spellcheck: "false",
+    });
+    apiInput.addEventListener("change", async () => {
+      state.apiBase = apiInput.value;
+      await persist();
+    });
+    form.append(
+      el("label", {}, [
+        el("span", { className: "lbl" }, [t(state, "apiBase")]),
+        apiInput,
+      ])
+    );
+  }
 
   root.append(form);
 }

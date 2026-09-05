@@ -10,14 +10,20 @@ import { dirname, join, relative, sep } from "node:path";
 import { deflateRawSync } from "node:zlib";
 import { AIDR_UNPACKED_DIR, AIDR_ZIP_FILENAME } from "./aidr-public";
 
+/** Operator upload for Chrome Web Store. Not served at /aidr.zip. */
+export const AIDR_CWS_ZIP_FILENAME = "aidr-cws.zip";
+
 const SKIP_DIRS = new Set([
   "node_modules",
   "dist",
   "scripts",
+  "store",
   ".git",
   ".turbo",
   ".wrangler",
 ]);
+
+const LOOPBACK_CSP = /\s+http:\/\/(?:127\.0\.0\.1|localhost):\*/g;
 
 const CRC_TABLE = new Uint32Array(256);
 for (let i = 0; i < 256; i++) {
@@ -108,15 +114,43 @@ interface ZipEntry {
   date: number;
 }
 
-function zipEntry(relPosix: string, abs: string): ZipEntry {
+/** CWS package: no optional loopback hosts, connect-src aidr.today only. */
+export function storeFlavorManifest(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const next: Record<string, unknown> = { ...raw };
+  delete next.optional_host_permissions;
+  const csp = next.content_security_policy;
+  if (csp && typeof csp === "object" && !Array.isArray(csp)) {
+    const pages = (csp as { extension_pages?: unknown }).extension_pages;
+    if (typeof pages === "string") {
+      next.content_security_policy = {
+        ...(csp as Record<string, unknown>),
+        extension_pages: pages.replace(LOOPBACK_CSP, "").trim(),
+      };
+    }
+  }
+  return next;
+}
+
+function entryData(
+  relPosix: string,
+  abs: string,
+  storeFlavor: boolean
+): Buffer {
   const data = readFileSync(abs);
+  if (!storeFlavor || relPosix !== "manifest.json") return data;
+  const manifest = storeFlavorManifest(JSON.parse(data.toString("utf8")));
+  return Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+function zipEntry(name: string, abs: string, data: Buffer): ZipEntry {
   const crc = crc32(data);
   const deflated = deflateRawSync(data);
   const store = deflated.length >= data.length;
   const mtime = statSync(abs).mtime;
   const { time, date } = dosDateTime(mtime);
   return {
-    name: `${AIDR_UNPACKED_DIR}/${relPosix}`,
+    name,
     data,
     crc,
     compressed: store ? data : deflated,
@@ -138,12 +172,7 @@ function u32(n: number): Buffer {
   return buf;
 }
 
-/** PKZIP of the unpacked MV3 tree (manifest.json at `aidr/manifest.json`).
- * Chrome Load unpacked cannot open the zip file; unzip and pick that folder. */
-export function buildAidrZip(root: string): Buffer {
-  const rels = listUnpackedRelPaths(root);
-  const entries = rels.map((rel) => zipEntry(rel, join(root, rel)));
-
+function assembleZip(entries: ZipEntry[]): Buffer {
   const locals: Buffer[] = [];
   const centrals: Buffer[] = [];
   let offset = 0;
@@ -205,16 +234,56 @@ export function buildAidrZip(root: string): Buffer {
   return Buffer.concat([...locals, centralDir, eocd]);
 }
 
+function buildZip(
+  root: string,
+  shape: { nested: boolean; storeFlavor: boolean }
+): Buffer {
+  const rels = listUnpackedRelPaths(root);
+  const entries = rels.map((rel) => {
+    const abs = join(root, rel);
+    const name = shape.nested ? `${AIDR_UNPACKED_DIR}/${rel}` : rel;
+    return zipEntry(name, abs, entryData(rel, abs, shape.storeFlavor));
+  });
+  return assembleZip(entries);
+}
+
+function writeZipBuffer(
+  dest: string,
+  zip: Buffer,
+  files: number
+): { bytes: number; files: number; dest: string } {
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, zip);
+  return { bytes: zip.length, files, dest };
+}
+
+/** PKZIP of the unpacked MV3 tree (manifest.json at `aidr/manifest.json`).
+ * Chrome Load unpacked cannot open the zip file; unzip and pick that folder. */
+export function buildAidrZip(root: string): Buffer {
+  return buildZip(root, { nested: true, storeFlavor: false });
+}
+
+/** PKZIP with `manifest.json` at archive root for Chrome Web Store upload. */
+export function buildCwsZip(root: string): Buffer {
+  return buildZip(root, { nested: false, storeFlavor: true });
+}
+
 export function writeAidrZip(opts: { root: string; dest: string }): {
   bytes: number;
   files: number;
   dest: string;
 } {
   const files = listUnpackedRelPaths(opts.root).length;
-  const zip = buildAidrZip(opts.root);
-  mkdirSync(dirname(opts.dest), { recursive: true });
-  writeFileSync(opts.dest, zip);
-  return { bytes: zip.length, files, dest: opts.dest };
+  return writeZipBuffer(opts.dest, buildAidrZip(opts.root), files);
+}
+
+export function writeCwsZip(opts: { root: string; dest: string }): {
+  bytes: number;
+  files: number;
+  dest: string;
+} {
+  const files = listUnpackedRelPaths(opts.root).length;
+  return writeZipBuffer(opts.dest, buildCwsZip(opts.root), files);
 }
 
 export function defaultExtensionRoot(fromWebAppDir: string): string {
@@ -223,4 +292,8 @@ export function defaultExtensionRoot(fromWebAppDir: string): string {
 
 export function defaultAidrZipDest(fromWebAppDir: string): string {
   return join(fromWebAppDir, "public", AIDR_ZIP_FILENAME);
+}
+
+export function defaultCwsZipDest(fromWebAppDir: string): string {
+  return join(fromWebAppDir, "..", "extension", "dist", AIDR_CWS_ZIP_FILENAME);
 }

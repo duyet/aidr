@@ -30,7 +30,19 @@ if (manifest.optional_host_permissions?.includes("https://*/*")) {
 }
 const csp = manifest.content_security_policy?.extension_pages || "";
 if (!csp.includes("object-src 'self'")) fail("CSP must set object-src 'self'");
-if (!csp.includes("http://localhost:*")) {
+const storeFlavor = process.env.AIDR_EXT_STORE === "1";
+const optionalHosts = manifest.optional_host_permissions || [];
+const localhostIn = (value) =>
+  typeof value === "string" &&
+  (value.includes("localhost") || value.includes("127.0.0.1"));
+if (storeFlavor) {
+  if (optionalHosts.length > 0) {
+    fail("store flavor must omit optional_host_permissions");
+  }
+  if (localhostIn(csp)) {
+    fail("store flavor CSP must not allow localhost");
+  }
+} else if (!csp.includes("http://localhost:*")) {
   fail("CSP connect-src must allow http://localhost:*");
 }
 if (csp.includes("fonts.googleapis.com") || csp.includes("fonts.gstatic.com")) {

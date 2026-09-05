@@ -52,7 +52,7 @@ function expectedMap(digest) {
   const shown = bullets.slice(0, 8);
   return {
     brand: "Hôm nay AI có gì mới?",
-    searchPlaceholder: "Tìm kiếm...",
+    searchPlaceholder: "Tìm trên aidr.today",
     submit: "Gửi bài",
     langSelected: "vi",
     allChip: "Tất cả",

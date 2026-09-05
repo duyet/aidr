@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  allowCustomApiBase,
   DEFAULT_API_BASE,
   DEFAULT_SETTINGS,
   normalizeApiBase,
@@ -45,6 +46,18 @@ test("normalizeApiBase keeps host and rejects junk", () => {
     "http://localhost:3014"
   );
   assert.equal(normalizeApiBase("http://example.com"), DEFAULT_API_BASE);
+});
+
+test("allowCustomApiBase follows optional localhost hosts", () => {
+  assert.equal(allowCustomApiBase(null), true);
+  assert.equal(
+    allowCustomApiBase({
+      optional_host_permissions: ["http://localhost/*", "http://127.0.0.1/*"],
+    }),
+    true
+  );
+  assert.equal(allowCustomApiBase({}), false);
+  assert.equal(allowCustomApiBase({ optional_host_permissions: [] }), false);
 });
 
 test("safeHttpUrl allows https and loopback http only", () => {
