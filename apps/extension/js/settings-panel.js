@@ -3,12 +3,20 @@ import { withExtRef } from "./ref.js";
 import {
   allowCustomApiBase,
   ensureHostPermission,
+  isDarkAppearance,
   saveSettings,
 } from "./settings.js";
 
 const DENSITIES = ["compact", "comfortable", "spacious"];
 const TLDR_COUNTS = [8, 12, 16];
-const FONTS = ["system", "editorial", "humanist", "serif", "mono"];
+const FONTS = ["sans", "serif"];
+const BG_SWATCHES = [
+  { key: "default", color: "var(--background)" },
+  { key: "cream", color: "#faf6ec" },
+  { key: "gray", color: "#d9d9d6" },
+  { key: "dark", color: "#2a2a28" },
+  { key: "black", color: "#000000" },
+];
 
 function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
@@ -62,58 +70,69 @@ export function mountSettingsPanel(root, settings, onSaved) {
     root.replaceChildren(buildShell());
   };
 
+  const setDarkMode = async (dark) => {
+    if (dark) {
+      state.theme = "dark";
+      state.bg = state.bg === "black" ? "black" : "dark";
+    } else {
+      state.theme = "light";
+      state.bg =
+        state.bg === "cream" || state.bg === "gray" ? state.bg : "default";
+    }
+    await persist();
+  };
+
   const buildThemeTab = () => {
-    const themeRow = el("div", { className: "prefs-grid-3" }, [
-      choiceButton(t(state, "light"), state.theme === "light", async () => {
-        state.theme = "light";
-        await persist();
+    const dark = isDarkAppearance(state);
+
+    const appearanceRow = el("div", { className: "prefs-grid-2" }, [
+      choiceButton(t(state, "light"), !dark, async () => {
+        await setDarkMode(false);
       }),
-      choiceButton(t(state, "dark"), state.theme === "dark", async () => {
-        state.theme = "dark";
-        await persist();
-      }),
-      choiceButton(t(state, "system"), state.theme === "system", async () => {
-        state.theme = "system";
-        await persist();
+      choiceButton(t(state, "dark"), dark, async () => {
+        await setDarkMode(true);
       }),
     ]);
 
     const fontRow = el("div", { className: "prefs-font-grid" });
     for (const font of FONTS) {
-      const label =
-        font === "system"
-          ? "System"
-          : font === "serif"
-            ? t(state, "serif")
-            : font === "mono"
-              ? t(state, "mono")
-              : font === "editorial"
-                ? t(state, "editorial")
-                : t(state, "humanist");
-      const btn = choiceButton(
-        label,
-        state.font === font,
-        async () => {
-          state.font = font;
-          await persist();
+      const btn = el(
+        "button",
+        {
+          type: "button",
+          className: `prefs-font-card${state.font === font ? " is-active" : ""}`,
+          "aria-pressed": state.font === font ? "true" : "false",
+          onClick: async () => {
+            state.font = font;
+            await persist();
+          },
         },
-        font === "serif" ? "prefs-font-serif" : ""
+        [
+          el("span", {
+            className:
+              font === "serif" ? "prefs-font-sample prefs-font-serif" : "prefs-font-sample",
+          }, ["Aa"]),
+          el("span", { className: "prefs-font-name" }, [
+            font === "sans" ? t(state, "sans") : t(state, "serif"),
+          ]),
+        ]
       );
       fontRow.append(btn);
     }
 
-    const sizeValue = el("span", {}, [`${state.fontSize}px`]);
+    const sizePct = Math.round(state.fontSize * 100);
+    const sizeValue = el("span", {}, [`${sizePct}%`]);
     const sizeSlider = el("input", {
       type: "range",
       className: "prefs-slider",
-      min: "13",
-      max: "20",
-      step: "1",
+      min: "0.85",
+      max: "1.25",
+      step: "0.05",
       value: String(state.fontSize),
       "aria-label": t(state, "size"),
       onInput: async (event) => {
         state.fontSize = Number(event.target.value);
-        sizeValue.textContent = `${state.fontSize}px`;
+        sizeValue.textContent = `${Math.round(state.fontSize * 100)}%`;
         await persist({ repaint: false });
       },
     });
@@ -133,45 +152,34 @@ export function mountSettingsPanel(root, settings, onSaved) {
       },
     });
 
-    const accent = el("input", {
-      type: "color",
-      className: "prefs-accent",
-      value: state.accent,
-      "aria-label": t(state, "accent"),
-      onInput: async (event) => {
-        state.accent = event.target.value;
-        await persist({ repaint: false });
-      },
-    });
-
-    const langRow = el("div", { className: "prefs-grid-3" }, [
-      choiceButton(t(state, "vi"), state.language === "vi", async () => {
-        state.language = "vi";
-        await persist();
-      }),
-      choiceButton(t(state, "en"), state.language === "en", async () => {
-        state.language = "en";
-        await persist();
-      }),
-      choiceButton(t(state, "both"), state.language === "both", async () => {
-        state.language = "both";
-        await persist();
-      }),
-    ]);
+    const swatches = el("div", { className: "prefs-swatches" });
+    for (const swatch of BG_SWATCHES) {
+      swatches.append(
+        el("button", {
+          type: "button",
+          className: `prefs-swatch${state.bg === swatch.key ? " is-active" : ""}`,
+          style: `background:${swatch.color}`,
+          "aria-label": swatch.key,
+          "aria-pressed": state.bg === swatch.key ? "true" : "false",
+          onClick: async () => {
+            state.bg = swatch.key;
+            if (swatch.key === "dark" || swatch.key === "black") {
+              state.theme = "dark";
+            } else if (state.theme === "dark") {
+              state.theme = "light";
+            }
+            await persist();
+          },
+        })
+      );
+    }
 
     return el("div", { className: "prefs-tab-body" }, [
       el("div", { className: "prefs-field" }, [
-        el("span", { className: "prefs-label" }, [t(state, "theme")]),
-        themeRow,
+        el("span", { className: "prefs-label" }, [t(state, "appearance")]),
+        appearanceRow,
       ]),
-      el("div", { className: "prefs-field" }, [
-        el("span", { className: "prefs-label" }, [t(state, "accent")]),
-        accent,
-      ]),
-      el("div", { className: "prefs-field" }, [
-        el("span", { className: "prefs-label" }, [t(state, "font")]),
-        fontRow,
-      ]),
+      el("div", { className: "prefs-field" }, [fontRow]),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label prefs-label-row" }, [
           el("span", {}, [t(state, "size")]),
@@ -184,8 +192,8 @@ export function mountSettingsPanel(root, settings, onSaved) {
         densitySlider,
       ]),
       el("div", { className: "prefs-field" }, [
-        el("span", { className: "prefs-label" }, [t(state, "language")]),
-        langRow,
+        el("span", { className: "prefs-label" }, [t(state, "background")]),
+        swatches,
       ]),
     ]);
   };
@@ -217,9 +225,29 @@ export function mountSettingsPanel(root, settings, onSaved) {
       );
     }
 
-    const sectionKeys = ["tldr", "stories", "categories", "trending"];
+    const langRow = el("div", { className: "prefs-grid-3" }, [
+      choiceButton(t(state, "vi"), state.language === "vi", async () => {
+        state.language = "vi";
+        await persist();
+      }),
+      choiceButton(t(state, "en"), state.language === "en", async () => {
+        state.language = "en";
+        await persist();
+      }),
+      choiceButton(t(state, "both"), state.language === "both", async () => {
+        state.language = "both";
+        await persist();
+      }),
+    ]);
+
+    const sectionKeys = [
+      ["trending", "trending"],
+      ["tldr", "tldr"],
+      ["stories", "dailyFeed"],
+      ["categories", "categories"],
+    ];
     const checks = el("div", { className: "prefs-checks" });
-    for (const key of sectionKeys) {
+    for (const [key, labelKey] of sectionKeys) {
       const box = el("input", {
         type: "checkbox",
         checked: state.sections[key] !== false,
@@ -231,7 +259,7 @@ export function mountSettingsPanel(root, settings, onSaved) {
       });
       checks.append(
         el("label", { className: "prefs-check" }, [
-          el("span", {}, [t(state, key === "tldr" ? "tldr" : key)]),
+          el("span", {}, [t(state, labelKey)]),
           box,
         ])
       );
@@ -241,6 +269,10 @@ export function mountSettingsPanel(root, settings, onSaved) {
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "tldrCount")]),
         tldrRow,
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "language")]),
+        langRow,
       ]),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label prefs-label-row" }, [
@@ -287,11 +319,11 @@ export function mountSettingsPanel(root, settings, onSaved) {
       el(
         "a",
         {
-          href: withExtRef("https://aidr.today/privacy", "prefs_privacy"),
+          href: withExtRef("https://aidr.today/about", "prefs_about"),
           rel: "noreferrer",
           target: "_blank",
         },
-        [t(state, "privacyLink")]
+        [t(state, "aboutLink")]
       ),
     ]);
 
@@ -440,6 +472,4 @@ export function bindPrefsPopover({ getSettings, onChange, triggers }) {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && dialog) close();
   });
-
-  return { close, isOpen: () => Boolean(dialog) };
 }

@@ -20,10 +20,10 @@ export function safeHttpUrl(value, fallback = "") {
 
 export const DEFAULT_SETTINGS = {
   theme: "system",
-  accent: "#b45309",
-  font: "system",
-  fontSize: 16,
+  font: "sans",
+  fontSize: 1,
   language: "vi",
+  bg: "default",
   sections: {
     tldr: true,
     stories: true,
@@ -37,20 +37,27 @@ export const DEFAULT_SETTINGS = {
 };
 
 const SYNC_KEY = "newsTabSettings";
-const FONTS = ["system", "editorial", "humanist", "serif", "mono"];
+const FONTS = ["sans", "serif"];
+const LEGACY_FONTS = ["system", "editorial", "humanist", "mono"];
 const THEMES = ["light", "dark", "system"];
+const BGS = ["default", "cream", "gray", "dark", "black"];
 const DENSITIES = ["compact", "comfortable", "spacious"];
 const LANGUAGES = ["vi", "en", "both"];
 const TLDR_COUNTS = [8, 12, 16];
+const FONT_SIZE_MIN = 0.85;
+const FONT_SIZE_MAX = 1.25;
 
 function asChrome() {
   return globalThis.chrome;
 }
 
-function clampSize(value) {
+/** Scale factor (0.85–1.25). Legacy px values (13–20) migrate via /16. */
+export function clampFontSize(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return DEFAULT_SETTINGS.fontSize;
-  return Math.min(20, Math.max(13, Math.round(n)));
+  const scale = n > 2 ? n / 16 : n;
+  const stepped = Math.round(scale * 20) / 20;
+  return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, stepped));
 }
 
 function clampCount(value) {
@@ -68,19 +75,22 @@ function pick(list, value, fallback) {
   return list.includes(value) ? value : fallback;
 }
 
+function normalizeFont(value) {
+  if (FONTS.includes(value)) return value;
+  if (LEGACY_FONTS.includes(value)) return "sans";
+  return DEFAULT_SETTINGS.font;
+}
+
 export function normalizeSettings(raw) {
   const input = raw && typeof raw === "object" ? raw : {};
   const sections =
     input.sections && typeof input.sections === "object" ? input.sections : {};
   return {
     theme: pick(THEMES, input.theme, DEFAULT_SETTINGS.theme),
-    accent:
-      typeof input.accent === "string" && /^#[0-9a-fA-F]{6}$/.test(input.accent)
-        ? input.accent
-        : DEFAULT_SETTINGS.accent,
-    font: pick(FONTS, input.font, DEFAULT_SETTINGS.font),
-    fontSize: clampSize(input.fontSize),
+    font: normalizeFont(input.font),
+    fontSize: clampFontSize(input.fontSize),
     language: pick(LANGUAGES, input.language, DEFAULT_SETTINGS.language),
+    bg: pick(BGS, input.bg, DEFAULT_SETTINGS.bg),
     sections: {
       tldr: sections.tldr !== false,
       stories: sections.stories !== false,
@@ -122,24 +132,39 @@ export function normalizeApiBase(value) {
   }
 }
 
+function prefersDark() {
+  return Boolean(globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches);
+}
+
+/** Resolved dark mode — bg swatches dark/black win over theme. */
+export function isDarkAppearance(settings) {
+  if (settings.bg === "dark" || settings.bg === "black") return true;
+  if (settings.bg === "cream" || settings.bg === "gray") return false;
+  if (settings.theme === "dark") return true;
+  if (settings.theme === "light") return false;
+  return prefersDark();
+}
+
 export function applyAppearance(settings) {
   const root = document.documentElement;
+  const dark = isDarkAppearance(settings);
   root.dataset.theme = settings.theme;
   root.dataset.font = settings.font;
   root.dataset.density = settings.density;
-  root.classList.toggle(
-    "dark",
-    settings.theme === "dark" ||
-      (settings.theme === "system" &&
-        globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches)
-  );
-  root.style.setProperty("--editorial-accent", settings.accent);
+  root.classList.toggle("dark", dark);
+  root.style.setProperty("--size", `calc(16px * ${settings.fontSize})`);
+  root.style.setProperty("--reader-font-size", String(settings.fontSize));
+  root.lang = settings.language === "en" ? "en" : "vi";
+
+  const shell = document.querySelector(".app-shell");
+  if (shell instanceof HTMLElement) {
+    shell.dataset.readerBg = settings.bg;
+  }
+
   const feed = document.querySelector(".news-content");
   if (feed instanceof HTMLElement) {
-    feed.style.setProperty("--accent", settings.accent);
+    feed.dataset.readerFont = settings.font;
   }
-  root.style.setProperty("--size", `${settings.fontSize}px`);
-  root.lang = settings.language === "en" ? "en" : "vi";
 }
 
 async function areaGet(area, key) {

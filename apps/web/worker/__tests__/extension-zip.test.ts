@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { EXTENSION_VERSION } from "../../src/lib/extension-release";
 import {
   clearLatestAidrReleaseCache,
   fetchLatestAidrRelease,
@@ -115,7 +116,7 @@ describe("fetchLatestAidrRelease + handleAidrZipRequest", () => {
     );
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toBe(
-      "https://github.com/duyet/aidr/releases/download/aidr-v0.1.7/aidr.zip"
+      `https://github.com/duyet/aidr/releases/download/aidr-v${EXTENSION_VERSION}/aidr.zip`
     );
   });
 

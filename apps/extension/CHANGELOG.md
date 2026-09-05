@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.8](https://github.com/duyet/aidr/compare/aidr-v0.1.7...aidr-v0.1.8) (2026-09-06)
+
+
+### ✨ Features
+
+* **extension:** match website PrefsPanel and Slashy reader chrome
+
+
 ## [0.1.7](https://github.com/duyet/aidr/compare/aidr-v0.1.6...aidr-v0.1.7) (2026-09-05)
 
 

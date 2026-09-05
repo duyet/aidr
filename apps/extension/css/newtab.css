@@ -132,14 +132,10 @@ html[data-theme="dark"] {
   }
 }
 
-html[data-font="editorial"] {
-  --font: var(--editorial-font-sans);
-  --content-font: var(--editorial-font-sans);
-}
-
-html[data-font="humanist"] {
-  --font: "Gill Sans", "Trebuchet MS", ui-sans-serif, sans-serif;
-  --content-font: var(--font);
+html[data-font="sans"],
+html[data-font="system"] {
+  --font: var(--content-font-sans);
+  --content-font: var(--content-font-sans);
 }
 
 html[data-font="serif"] {
@@ -147,17 +143,12 @@ html[data-font="serif"] {
   --content-font: var(--editorial-font-serif);
 }
 
-html[data-font="mono"] {
-  --font: var(--editorial-font-mono);
-  --content-font: var(--editorial-font-mono);
-}
-
 html[data-density="comfortable"] {
-  --pad: 0.55rem;
+  --pad: 0.75rem;
 }
 
 html[data-density="spacious"] {
-  --pad: 0.85rem;
+  --pad: 1.125rem;
 }
 
 * {
@@ -192,6 +183,20 @@ body {
   color: var(--foreground);
 }
 
+.app-shell[data-reader-bg="cream"] {
+  --background: #faf6ec;
+  --foreground: #2b2620;
+}
+
+.app-shell[data-reader-bg="gray"] {
+  --background: #dedede;
+  --foreground: #1c1c1a;
+}
+
+.app-shell[data-reader-bg="black"] {
+  --background: #000000;
+}
+
 .news-content {
   position: relative;
   z-index: 10;
@@ -199,9 +204,14 @@ body {
   flex-grow: 1;
   flex-direction: column;
   font-family: var(--content-font);
+  font-size: calc(16px * var(--reader-font-size, 1));
   /* Amber brand scoped here — chrome (header/footer) stays neutral. */
   --accent: var(--editorial-accent);
   --accent-foreground: #fffefb;
+}
+
+.news-content[data-reader-font="serif"] {
+  font-family: var(--editorial-font-serif);
 }
 
 html.dark .news-content,
@@ -607,9 +617,63 @@ html[data-theme="dark"] .news-content {
   font-weight: 600;
 }
 
+.prefs-font-card {
+  display: grid;
+  gap: 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+}
+
+.prefs-font-card:hover {
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+.prefs-font-card.is-active {
+  border-color: var(--editorial-accent);
+  background: var(--muted);
+}
+
+.prefs-font-sample {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
 .prefs-font-serif {
   font-family: "EB Garamond", ui-serif, Georgia, serif;
-  font-size: 1rem;
+}
+
+.prefs-font-name {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.prefs-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.prefs-swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.prefs-swatch.is-active {
+  border-color: var(--editorial-accent);
+  box-shadow:
+    0 0 0 2px var(--editorial-accent),
+    0 0 0 4px var(--background);
 }
 
 .prefs-slider {
@@ -640,16 +704,6 @@ html[data-theme="dark"] .news-content {
   border-radius: 999px;
   background: var(--editorial-accent);
   cursor: pointer;
-}
-
-.prefs-accent {
-  width: 100%;
-  height: 2rem;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--card);
-  cursor: pointer;
-  padding: 0.15rem;
 }
 
 .prefs-input {

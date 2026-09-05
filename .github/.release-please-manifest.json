@@ -1,4 +1,9 @@
 {
+<<<<<<< HEAD
   "apps/extension": "0.1.7",
   "apps/web": "0.1.2"
+=======
+  "apps/extension": "0.1.8",
+  "apps/web": "0.1.1"
+>>>>>>> d574e09 (feat(extension): match website PrefsPanel and release 0.1.8)
 }
