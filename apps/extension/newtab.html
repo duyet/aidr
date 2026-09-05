@@ -64,9 +64,11 @@
                 <span id="submit-label">Gửi bài</span>
               </a>
               <span class="actions-sep" aria-hidden="true"></span>
-              <button type="button" class="aa-btn" id="open-settings" aria-label="Tuỳ chỉnh hiển thị">
-                Aa
-              </button>
+              <div class="prefs-host">
+                <button type="button" class="aa-btn" id="open-settings" aria-label="Tuỳ chỉnh hiển thị" aria-haspopup="dialog" aria-expanded="false">
+                  Aa
+                </button>
+              </div>
               <div class="lang-toggle" id="lang-toggle">
                 <button type="button" data-lang="en" aria-pressed="false">EN</button>
                 <button type="button" data-lang="vi" aria-pressed="true">VI</button>
@@ -116,9 +118,11 @@
                 <path d="M22 2 15 22l-4-9-9-4 20-7z" />
               </svg>
             </a>
-            <button type="button" class="aa-btn icon-btn-tap" id="open-settings-compact" aria-label="Tuỳ chỉnh hiển thị">
-              Aa
-            </button>
+            <div class="prefs-host">
+              <button type="button" class="aa-btn icon-btn-tap" id="open-settings-compact" aria-label="Tuỳ chỉnh hiển thị" aria-haspopup="dialog" aria-expanded="false">
+                Aa
+              </button>
+            </div>
             <button type="button" class="menu-btn icon-btn-tap" id="open-menu" aria-label="Open menu" aria-expanded="false" aria-haspopup="dialog">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M4 6h16M4 12h16M4 18h16" />
@@ -210,17 +214,6 @@
         </div>
       </div>
     </div>
-
-    <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
-    <aside class="drawer" id="settings-drawer" hidden>
-      <div class="drawer-head">
-        <h2 id="settings-title">Cài đặt</h2>
-        <button type="button" class="gear" id="close-settings" aria-label="Đóng">
-          ×
-        </button>
-      </div>
-      <div id="settings-root"></div>
-    </aside>
 
     <script type="module" src="js/boot.js"></script>
     <script type="module" src="js/newtab.js"></script>

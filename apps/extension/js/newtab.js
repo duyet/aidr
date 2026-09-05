@@ -13,7 +13,7 @@ import {
   safeHttpUrl,
   saveSettings,
 } from "./settings.js";
-import { mountSettingsPanel } from "./settings-panel.js";
+import { bindPrefsPopover } from "./settings-panel.js";
 import { topicColor } from "./topic-color.js";
 
 const NEWS_SITE = "https://aidr.today";
@@ -219,12 +219,10 @@ function applyChrome(settings) {
   }
   $("submit-label").textContent = t(settings, "submit");
   $("trending-label").textContent = t(settings, "trending");
-  $("settings-title").textContent = t(settings, "settings");
   for (const id of ["open-settings", "open-settings-compact"]) {
     const node = $(id);
-    if (node) node.setAttribute("aria-label", t(settings, "settings"));
+    if (node) node.setAttribute("aria-label", t(settings, "prefsTitle"));
   }
-  $("close-settings").setAttribute("aria-label", t(settings, "close"));
   const phoneLang = $("phone-lang-label");
   if (phoneLang) {
     phoneLang.textContent = lang === "vi" ? "Ngôn ngữ" : "Language";
@@ -743,26 +741,15 @@ function render(settings, digest) {
   renderFooter(settings, digest);
 }
 
-function bindDrawer(getSettings, onChange) {
-  const drawer = $("settings-drawer");
-  const backdrop = $("drawer-backdrop");
-  const open = () => {
-    drawer.hidden = false;
-    backdrop.hidden = false;
-    mountSettingsPanel($("settings-root"), getSettings(), onChange);
-  };
-  const close = () => {
-    drawer.hidden = true;
-    backdrop.hidden = true;
-  };
-  for (const id of ["open-settings", "open-settings-compact"]) {
-    $(id)?.addEventListener("click", open);
-  }
-  $("close-settings").addEventListener("click", close);
-  backdrop.addEventListener("click", close);
+function bindPrefs(getSettings, onChange) {
+  const prefs = bindPrefsPopover({
+    getSettings,
+    onChange,
+    triggers: [$("open-settings"), $("open-settings-compact")],
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      close();
+      prefs.close();
       closePhoneMenu();
     }
   });
@@ -838,7 +825,7 @@ async function main() {
     }
   };
 
-  bindDrawer(() => settings, refresh);
+  bindPrefs(() => settings, refresh);
   bindPhoneMenu();
   pushSettings = async (next) => {
     settings = await saveSettings(next);

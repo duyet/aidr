@@ -20,6 +20,11 @@ const COPY = {
     footerMore: "khác",
     tldrCount: "Số mục AI;DR",
     settings: "Cài đặt",
+    prefsTitle: "Tuỳ chỉnh hiển thị",
+    about: "Giới thiệu",
+    aboutBody:
+      "AI News được tuyển chọn, xếp hạng và dịch bởi LLM, mỗi giờ.",
+    privacyLink: "Quyền riêng tư →",
     close: "Đóng",
     theme: "Giao diện",
     accent: "Màu nhấn",
@@ -69,6 +74,11 @@ const COPY = {
     footerMore: "more",
     tldrCount: "AI;DR items",
     settings: "Settings",
+    prefsTitle: "Reader preferences",
+    about: "About",
+    aboutBody:
+      "AI News is curated, ranked, and translated by LLMs, hourly.",
+    privacyLink: "Privacy →",
     close: "Close",
     theme: "Theme",
     accent: "Accent",

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.7](https://github.com/duyet/aidr/compare/aidr-v0.1.6...aidr-v0.1.7) (2026-09-05)
+
+
+### 🐛 Bug Fixes
+
+* **extension:** replace unclickable settings drawer with Aa prefs dialog
+
+
 ## [0.1.6](https://github.com/duyet/aidr/compare/aidr-v0.1.5...aidr-v0.1.6) (2026-09-05)
 
 
