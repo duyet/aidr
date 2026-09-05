@@ -54,6 +54,11 @@ const WEBSITE_ENTRIES: ChangelogEntry[] = [
 const EXTENSION_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-09",
+    en: "New tab matches the live homepage: day-grouped stories, header actions, footer, and the same reader fonts.",
+    vi: "Tab mới khớp trang chủ: tin theo ngày, nút trên header, footer, và cùng phông chữ đọc tin.",
+  },
+  {
+    date: "2026-09",
     en: "New AI;DR logo on the extension icon and a clearer branded new-tab header.",
     vi: "Logo AI;DR mới trên icon tiện ích và header tab mới rõ brand hơn.",
   },

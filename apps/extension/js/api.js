@@ -42,18 +42,92 @@ function normalizeStory(raw) {
   const title = clipText(raw.title);
   if (!url && !title) return null;
   const image = raw.image_url || raw.imageUrl || null;
+  const sources = Array.isArray(raw.sources)
+    ? raw.sources
+        .map((s) => {
+          if (!s || typeof s !== "object") return null;
+          const href = clipText(s.url);
+          const name = clipText(s.name || s.source);
+          if (!href && !name) return null;
+          return { url: href, name: name || href };
+        })
+        .filter(Boolean)
+    : [];
   return {
     id: clipText(raw.id),
     url,
     title,
     title_vi: raw.title_vi ? clipText(raw.title_vi) : null,
+    summary: raw.summary ? clipText(raw.summary) : null,
+    summary_vi: raw.summary_vi ? clipText(raw.summary_vi) : null,
     category: raw.category ? clipText(raw.category) : null,
     tags: Array.isArray(raw.tags)
       ? raw.tags.filter((tag) => typeof tag === "string" && tag)
       : [],
     image_url: typeof image === "string" ? image : null,
     published_at: Number(raw.published_at) || 0,
+    points: Number(raw.points) || 0,
+    comments: Number(raw.comments) || 0,
+    rank_score: Number(raw.rank_score) || 0,
+    sources,
   };
+}
+
+function utcDateKey(epoch) {
+  const sec = epoch > 1e12 ? Math.floor(epoch / 1000) : Math.floor(epoch);
+  if (!sec) return "";
+  return new Date(sec * 1000).toISOString().slice(0, 10);
+}
+
+function categoryCountsFor(items) {
+  const counts = {};
+  for (const item of items) {
+    if (!item.category) continue;
+    counts[item.category] = (counts[item.category] || 0) + 1;
+  }
+  return counts;
+}
+
+function normalizeDay(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const items = (Array.isArray(raw.items) ? raw.items : [])
+    .map(normalizeStory)
+    .filter(Boolean);
+  const date = clipText(raw.date) || utcDateKey(items[0]?.published_at || 0);
+  if (!date && items.length === 0) return null;
+  const fromFeed =
+    raw.categoryCounts && typeof raw.categoryCounts === "object"
+      ? Object.fromEntries(
+          Object.entries(raw.categoryCounts).map(([k, v]) => [
+            clipText(k),
+            Number(v) || 0,
+          ])
+        )
+      : null;
+  return {
+    date,
+    items,
+    categoryCounts: fromFeed && Object.keys(fromFeed).length
+      ? fromFeed
+      : categoryCountsFor(items),
+  };
+}
+
+function daysFromStories(stories) {
+  const byDate = new Map();
+  for (const story of stories) {
+    const key = utcDateKey(story.published_at) || "unknown";
+    if (!byDate.has(key)) byDate.set(key, []);
+    byDate.get(key).push(story);
+  }
+  return [...byDate.entries()]
+    .filter(([date]) => date !== "unknown")
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([date, items]) => ({
+      date,
+      items,
+      categoryCounts: categoryCountsFor(items),
+    }));
 }
 
 function categoriesFromStories(stories) {
@@ -114,10 +188,18 @@ export function enrichDigest(digest, feedRaw) {
         }))
         .filter((row) => row.tag)
     : [];
+  const feedDays = Array.isArray(feedRaw.days)
+    ? feedRaw.days.map(normalizeDay).filter(Boolean)
+    : [];
+  const stories = feedDays.length
+    ? feedDays.flatMap((day) => day.items)
+    : digest.stories;
   return {
     ...digest,
     categories: feedCats.length ? feedCats : digest.categories,
     trending: feedTrend.length ? feedTrend : digest.trending,
+    days: feedDays.length ? feedDays : digest.days,
+    stories,
     items: { ...digest.items, ...itemIndexFromFeed(feedRaw) },
     totalStories: Number(feedRaw.totalStories) || digest.totalStories,
     lastFetchedAt: Number(feedRaw.lastFetchedAt) || digest.lastFetchedAt,
@@ -134,14 +216,14 @@ export function normalizeDigest(raw) {
         }
       : null;
 
+  let days = [];
   let stories = [];
-  if (Array.isArray(raw?.stories)) {
+  if (Array.isArray(raw?.days) && raw.days.length) {
+    days = raw.days.map(normalizeDay).filter(Boolean);
+    stories = days.flatMap((day) => day.items);
+  } else if (Array.isArray(raw?.stories)) {
     stories = raw.stories.map(normalizeStory).filter(Boolean);
-  } else if (Array.isArray(raw?.days)) {
-    stories = raw.days
-      .flatMap((day) => (Array.isArray(day.items) ? day.items : []))
-      .map(normalizeStory)
-      .filter(Boolean);
+    days = daysFromStories(stories);
   }
 
   const categories = Array.isArray(raw?.categories)
@@ -165,6 +247,7 @@ export function normalizeDigest(raw) {
   const digest = {
     tldr,
     stories,
+    days,
     categories,
     trending,
     items: itemIndexFromStories(stories),

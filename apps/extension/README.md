@@ -1,10 +1,10 @@
 # @aidr/extension
 
 Chrome Manifest V3 new-tab page for [aidr.today](https://aidr.today).
-It paints today's AI;DR + top stories to match the live
+It paints today's AI;DR + day-grouped stories to match the live
 [aidr.today](https://aidr.today) homepage (layout A: numbered
 two-column digest, keyword highlights, category chips, trending pills,
-~40–48px thumbs). No account. Not a Cloudflare Worker or Pages
+story rows with points/comments, footer). No account. Not a Cloudflare Worker or Pages
 app — do not add `wrangler.toml`.
 
 Load this folder **unpacked**. `manifest.json` is the extension root.

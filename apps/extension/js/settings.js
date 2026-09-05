@@ -22,7 +22,7 @@ export const DEFAULT_SETTINGS = {
   theme: "system",
   accent: "#b45309",
   font: "system",
-  fontSize: 15,
+  fontSize: 16,
   language: "vi",
   sections: {
     tldr: true,
