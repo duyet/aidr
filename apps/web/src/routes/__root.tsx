@@ -3,8 +3,8 @@ import "../styles.css";
 
 import { ErrorBoundary } from "@aidr/ui";
 import Analytics from "@aidr/ui/Analytics";
-import { track } from "@aidr/ui/track";
 import ThemeProvider from "@aidr/ui/ThemeProvider";
+import { track } from "@aidr/ui/track";
 import {
   createRootRoute,
   HeadContent,

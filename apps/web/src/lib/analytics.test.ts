@@ -1,10 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_GA_MEASUREMENT_ID,
   resolveMeasurementId,
   sanitizeTrackParams,
   track,
 } from "@aidr/ui/track";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("resolveMeasurementId", () => {
   it("defaults to the public GA4 client id when env is empty", () => {
