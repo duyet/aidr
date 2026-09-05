@@ -1,9 +1,4 @@
 {
-<<<<<<< HEAD
-  "apps/extension": "0.1.5",
-  "apps/web": "0.1.1"
-=======
   "apps/extension": "0.1.6",
-  "apps/web": "0.1.0"
->>>>>>> 2d55071 (chore(master): release aidr 0.1.6)
+  "apps/web": "0.1.1"
 }
