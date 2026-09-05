@@ -83,6 +83,10 @@ function ClerkRootProvider({ children }: { children: ReactNode }) {
         <clerkState.mod.ClerkProvider
           publishableKey={clerkState.publishableKey}
           proxyUrl={CLERK_PROXY_PATH}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          signInFallbackRedirectUrl="/"
+          signUpFallbackRedirectUrl="/"
           appearance={{
             variables: {
               colorPrimary: "oklch(0.555 0.163 48.998)",
