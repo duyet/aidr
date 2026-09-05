@@ -175,9 +175,9 @@ describe("highlightTitle", () => {
       const tags = tagsForHighlight([]);
       expect(tags).toEqual(expect.arrayContaining(["Fable", "Windsurf"]));
       const segments = highlightTitle("Cursor and Windsurf race Fable", tags);
-      expect(
-        segments.filter((s) => s.highlighted).map((s) => s.text)
-      ).toEqual(expect.arrayContaining(["Windsurf", "Fable", "Cursor"]));
+      expect(segments.filter((s) => s.highlighted).map((s) => s.text)).toEqual(
+        expect.arrayContaining(["Windsurf", "Fable", "Cursor"])
+      );
     });
 
     it("does not attach a tag to unhighlighted segments", () => {

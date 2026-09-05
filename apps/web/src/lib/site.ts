@@ -8,3 +8,6 @@ export const SITE_DESCRIPTION =
 /** Public Telegram channel for digests / alerts. */
 export const TELEGRAM_URL = "https://t.me/aihomnay";
 export const TELEGRAM_HANDLE = "@aihomnay";
+
+/** Public GitHub repository. */
+export const GITHUB_URL = "https://github.com/duyet/aidr";

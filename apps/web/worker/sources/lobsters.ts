@@ -41,10 +41,13 @@ function storyToItem(story: LobstersStory): FetchedItem | null {
 }
 
 async function fetchTag(tag: string): Promise<LobstersStory[]> {
-  const res = await fetch(`https://lobste.rs/t/${encodeURIComponent(tag)}.json`, {
-    signal: AbortSignal.timeout(10_000),
-    headers: { Accept: "application/json" },
-  });
+  const res = await fetch(
+    `https://lobste.rs/t/${encodeURIComponent(tag)}.json`,
+    {
+      signal: AbortSignal.timeout(10_000),
+      headers: { Accept: "application/json" },
+    }
+  );
   if (!res.ok) return [];
   const data = (await res.json()) as unknown;
   return Array.isArray(data) ? (data as LobstersStory[]) : [];

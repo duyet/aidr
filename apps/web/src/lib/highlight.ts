@@ -81,11 +81,7 @@ export function getLearnedKeywords(): string[] {
 export function tagsForHighlight(itemTags: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const tag of [
-    ...itemTags,
-    ...TITLE_KEYWORDS,
-    ...learnedKeywordsCache,
-  ]) {
+  for (const tag of [...itemTags, ...TITLE_KEYWORDS, ...learnedKeywordsCache]) {
     const key = tag.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
     seen.add(key);

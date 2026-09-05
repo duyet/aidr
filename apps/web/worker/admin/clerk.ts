@@ -85,7 +85,17 @@ export async function verifyClerkToken(
   const exp = typeof payload.exp === "number" ? payload.exp : null;
   if (!iss || !sub || exp === null) return null;
 
-  if (env.CLERK_ISSUER && iss !== env.CLERK_ISSUER) return null;
+  if (env.CLERK_ISSUER) {
+    // Accept both the FAPI proxy URL and the legacy custom-domain issuer
+    // (Cloudflare Error 1014 broke clerk.aidr.today CNAMEs; sessions may
+    // still carry either iss until they refresh).
+    const allowed = new Set([
+      env.CLERK_ISSUER,
+      "https://aidr.today/__clerk",
+      "https://clerk.aidr.today",
+    ]);
+    if (!allowed.has(iss)) return null;
+  }
 
   const now = Math.floor(Date.now() / 1000);
   if (exp + CLOCK_SKEW_SECONDS < now) return null;

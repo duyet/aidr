@@ -10,13 +10,13 @@ import {
   Separator,
 } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
+import { RiChromeLine } from "@remixicon/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   CheckCircle2,
   Download,
   FolderOpen,
-  Puzzle,
   RefreshCw,
   Send,
   ShieldAlert,
@@ -108,7 +108,7 @@ function ExtensionPage() {
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="gap-1.5">
-            <Puzzle className="size-3.5" aria-hidden />
+            <RiChromeLine className="size-3.5" aria-hidden />
             Manifest V3
           </Badge>
           <Badge variant="outline">
@@ -174,7 +174,10 @@ function ExtensionPage() {
         </div>
 
         <div className="grid gap-4">
-          <StepCard step={1} title={t(GUIDE_COPY.unzipFirst.en, GUIDE_COPY.unzipFirst.vi)}>
+          <StepCard
+            step={1}
+            title={t(GUIDE_COPY.unzipFirst.en, GUIDE_COPY.unzipFirst.vi)}
+          >
             <p>{t(GUIDE_COPY.unzipDetail.en, GUIDE_COPY.unzipDetail.vi)}</p>
             <figure className="overflow-hidden rounded-lg border border-border bg-muted/30">
               <img
@@ -234,7 +237,10 @@ function ExtensionPage() {
             </p>
           </StepCard>
 
-          <StepCard step={5} title={t(GUIDE_COPY.newTab.en, GUIDE_COPY.newTab.vi)}>
+          <StepCard
+            step={5}
+            title={t(GUIDE_COPY.newTab.en, GUIDE_COPY.newTab.vi)}
+          >
             <p>
               {t(
                 "You should see today's AI;DR and stories from this site.",
@@ -279,6 +285,9 @@ function ExtensionPage() {
           </Button>
           <Button variant="ghost" asChild>
             <Link to="/privacy">{t("Privacy", "Quyền riêng tư")}</Link>
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link to="/terms">{t("Terms", "Điều khoản")}</Link>
           </Button>
         </CardFooter>
       </Card>

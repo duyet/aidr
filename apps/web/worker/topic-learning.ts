@@ -31,9 +31,7 @@ INSERT OR IGNORE INTO sources (id, name, type, config, enabled) VALUES
 
 let schemaReady = false;
 
-export async function ensureTopicLearningSchema(
-  db: D1Database
-): Promise<void> {
+export async function ensureTopicLearningSchema(db: D1Database): Promise<void> {
   if (schemaReady) return;
   const statements = TOPIC_LEARNING_SCHEMA_SQL.split(";")
     .map((s) => s.trim())
@@ -206,7 +204,11 @@ export function displayKeywordFromTopic(topic: string): string {
       .trim()
       .split(/\s+/)
       .map((part) => {
-        if (/^(gpt|llm|mcp|rag|xai|aws|api|ui|ux|ml|ai|vlm|tts|stt|ocr)$/i.test(part))
+        if (
+          /^(gpt|llm|mcp|rag|xai|aws|api|ui|ux|ml|ai|vlm|tts|stt|ocr)$/i.test(
+            part
+          )
+        )
           return part.toUpperCase();
         if (/^\d/.test(part)) return part;
         return part.charAt(0).toUpperCase() + part.slice(1);
@@ -499,7 +501,11 @@ export function rankTrendingWithGrowth(
       yesterday === 0 ? (count >= hotMin ? 1.25 : 1) : count / yesterday;
     const growthBoost = growth >= 1.5 ? 1.35 : growth >= 1.2 ? 1.15 : 1;
     const specific = isSpecificTrendingTopic(tag);
-    const versionBoost = /\d/.test(trendingKey(tag)) ? 1.55 : specific ? 1.2 : 1;
+    const versionBoost = /\d/.test(trendingKey(tag))
+      ? 1.55
+      : specific
+        ? 1.2
+        : 1;
     const themePenalty =
       entitiesOnly && LEARNING_THEME_DENYLIST.has(normalizeTopicName(tag))
         ? 0
@@ -536,7 +542,10 @@ export function rankTrendingWithGrowth(
         !picked.some((p) => p.tag === t.tag) &&
         isLearnableEntityTopic(t.tag)
     );
-    picked = [...picked, ...filler].slice(0, Math.min(Math.max(floor, picked.length), cap));
+    picked = [...picked, ...filler].slice(
+      0,
+      Math.min(Math.max(floor, picked.length), cap)
+    );
   } else if (!entitiesOnly && picked.length < floor) {
     picked = scored
       .filter((t) => t.score > 0)

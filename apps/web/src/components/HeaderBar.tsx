@@ -1,8 +1,8 @@
 import { AuthButtons, Button, ErrorBoundary, Separator } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
+import { RiChromeLine } from "@remixicon/react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Moon, Plus, Puzzle, Send, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Menu, Plus, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -52,33 +52,6 @@ function Brand({ lang }: { lang: Lang }) {
           : "What is happening in AI today?"}
       </span>
     </Link>
-  );
-}
-
-function ThemeButton({ className }: { className?: string }) {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const isDark = mounted && resolvedTheme === "dark";
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      className={className}
-      onClick={() => {
-        track("prefs_change", { pref: "theme" });
-        setTheme(isDark ? "light" : "dark");
-      }}
-      aria-label="Toggle theme"
-    >
-      {isDark ? <Sun aria-hidden /> : <Moon aria-hidden />}
-    </Button>
   );
 }
 
@@ -247,7 +220,7 @@ export function HeaderBar({
               aria-label={lang === "vi" ? "Tab mới Chrome" : "Chrome new tab"}
               title={lang === "vi" ? "Tab mới Chrome" : "Chrome new tab"}
             >
-              <Puzzle aria-hidden />
+              <RiChromeLine aria-hidden />
             </Link>
           </Button>
           <Button
@@ -283,7 +256,6 @@ export function HeaderBar({
             onChange={onLangChange}
             disabled={langToggleDisabled}
           />
-          <ThemeButton className="hidden md:inline-flex" />
           <ErrorBoundary fallback={null}>
             <AuthButtons
               wrapWithProvider={false}
@@ -312,7 +284,7 @@ export function HeaderBar({
             onClick={() => track("nav_click", { to: "/extension" })}
             aria-label={lang === "vi" ? "Tab mới Chrome" : "Chrome new tab"}
           >
-            <Puzzle aria-hidden />
+            <RiChromeLine aria-hidden />
           </Link>
         </Button>
         <Button
@@ -332,7 +304,6 @@ export function HeaderBar({
           </a>
         </Button>
         <PrefsPanel triggerClassName={PHONE_PREFS_TRIGGER_CLASS} />
-        <ThemeButton className={PHONE_TAP_TARGET_CLASS} />
         <PhoneMenu
           lang={lang}
           onLangChange={onLangChange}

@@ -1,5 +1,5 @@
-import type { FeedResponse } from "./types";
 import { setLearnedKeywords } from "./highlight";
+import type { FeedResponse } from "./types";
 
 /**
  * Module-level cache of the unfiltered /api/feed response, shared by the

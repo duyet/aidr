@@ -11,7 +11,7 @@ preview_urls = true
 directory = "dist/client"
 # `/` must hit the Worker so the homepage SSR's stories (the static
 # index.html shell has no feed). Sitemap/robots are Worker-generated.
-run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/api/*"]
+run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/api/*", "/__clerk/*"]
 not_found_handling = "single-page-application"
 
 # Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus
@@ -59,9 +59,10 @@ ANYROUTER_TRANSLATE_MODEL = "google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclus
 # Bilingual TL;DR used to fall through to a reasoning-first chain and time
 # out both attempts, leaving English bullets on the VI homepage.
 ANYROUTER_TLDR_MODEL = "anyrouter/auto,google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclusionai/ling-3.0-flash"
-# Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix:
-# pk_live_Y2xlcmsuYWlkci50b2RheSQ -> clerk.aidr.today
-CLERK_ISSUER = "https://clerk.aidr.today"
+# Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
+# overridden to the /__clerk Worker proxy (Cloudflare Error 1014 blocks
+# the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).
+CLERK_ISSUER = "https://aidr.today/__clerk"
 # @duyetbot posts top stories to this channel; TELEGRAM_BOT_TOKEN is a secret.
 TELEGRAM_CHAT_ID = "-1004420104760"
 # Cloudflare Email Sending. Onboard aidr.today (`wrangler email sending enable aidr.today`)

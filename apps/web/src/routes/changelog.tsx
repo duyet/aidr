@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 import { useLang } from "../lib/lang-context";
 
@@ -8,11 +8,11 @@ interface ChangelogEntry {
   vi: string;
 }
 
-const ENTRIES: ChangelogEntry[] = [
+const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
-    date: "2026-08",
-    en: "Chrome new-tab extension: unzip /aidr.zip, then Load unpacked the aidr folder (not the zip). Guide at /extension.",
-    vi: "Tiện ích tab mới Chrome: giải nén /aidr.zip, rồi Load unpacked thư mục aidr (không phải file zip). Hướng dẫn tại /extension.",
+    date: "2026-09",
+    en: "Clerk sign-in proxied on-site (/__clerk), suggest-as-guest CTA, footer legal links (Privacy / Terms), and dark mode moved into the Aa reader panel.",
+    vi: "Đăng nhập Clerk qua proxy trên site (/__clerk), CTA gợi ý khi chưa đăng nhập, footer pháp lý (Privacy / Terms), và chuyển dark mode vào bảng Aa.",
   },
   {
     date: "2026-08",
@@ -46,6 +46,24 @@ const ENTRIES: ChangelogEntry[] = [
   },
 ];
 
+const EXTENSION_ENTRIES: ChangelogEntry[] = [
+  {
+    date: "2026-09",
+    en: "v0.1.3 — Chrome Web Store auto-update prep and first-review checklist.",
+    vi: "v0.1.3 — Chuẩn bị auto-update Chrome Web Store và checklist review lần đầu.",
+  },
+  {
+    date: "2026-09",
+    en: "v0.1.2 — New tab matches the live homepage AI;DR layout; public /aidr.zip and load-unpacked guide at /extension.",
+    vi: "v0.1.2 — Tab mới khớp layout AI;DR trên trang chủ; công khai /aidr.zip và hướng dẫn Load unpacked tại /extension.",
+  },
+  {
+    date: "2026-08",
+    en: "v0.1.1 — First Chrome new-tab extension: unzip /aidr.zip, then Load unpacked the aidr folder (not the zip).",
+    vi: "v0.1.1 — Tiện ích tab mới Chrome đầu tiên: giải nén /aidr.zip, rồi Load unpacked thư mục aidr (không phải file zip).",
+  },
+];
+
 export const Route = createFileRoute("/changelog")({
   head: () => ({
     meta: [{ title: "Changelog | AI News" }],
@@ -53,38 +71,70 @@ export const Route = createFileRoute("/changelog")({
   component: ChangelogPage,
 });
 
+function EntryList({ entries }: { entries: ChangelogEntry[] }): ReactElement {
+  const lang = useLang();
+  return (
+    <ol className="not-typeset mt-4 space-y-6 border-l border-border pl-5">
+      {entries.map((entry) => (
+        <li key={entry.en} className="relative">
+          <span className="absolute -left-[23px] top-1.5 h-2 w-2 rounded-full bg-accent" />
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {entry.date}
+          </div>
+          <p className="mt-1 text-base leading-relaxed">
+            {lang === "vi" ? entry.vi : entry.en}
+          </p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function ChangelogPage(): ReactElement {
   const lang = useLang();
+  const vi = lang === "vi";
 
   return (
     <div className="typeset typeset-page py-6">
-      <h1>{lang === "vi" ? "Nhật ký thay đổi" : "Changelog"}</h1>
+      <h1>{vi ? "Nhật ký thay đổi" : "Changelog"}</h1>
       <p className="text-muted-foreground">
-        {lang === "vi"
-          ? "Những thay đổi đáng chú ý của AI News. Danh sách này được viết tay và không đầy đủ."
-          : "Notable changes to AI News. This list is hand-written and not exhaustive."}
+        {vi
+          ? "Những thay đổi đáng chú ý của website và tiện ích Chrome. Danh sách này được viết tay và không đầy đủ."
+          : "Notable changes to the website and Chrome extension. This list is hand-written and not exhaustive."}
       </p>
 
-      <ol className="not-typeset mt-6 space-y-6 border-l border-border pl-5">
-        {ENTRIES.map((entry) => (
-          <li key={entry.en} className="relative">
-            <span className="absolute -left-[23px] top-1.5 h-2 w-2 rounded-full bg-accent" />
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {entry.date}
-            </div>
-            <p className="mt-1 text-base leading-relaxed">
-              {lang === "vi" ? entry.vi : entry.en}
-            </p>
-          </li>
-        ))}
-      </ol>
+      <section id="website" className="mt-8 scroll-mt-20">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          Website
+        </h2>
+        <EntryList entries={WEBSITE_ENTRIES} />
+      </section>
 
-      <p className="text-muted-foreground">
-        {lang === "vi"
+      <section id="chrome-extension" className="mt-10 scroll-mt-20">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          {vi ? "Tiện ích Chrome" : "Chrome extension"}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {vi ? (
+            <>
+              Cài đặt và hướng dẫn tại <Link to="/extension">/extension</Link>.
+            </>
+          ) : (
+            <>
+              Install and setup guide at <Link to="/extension">/extension</Link>
+              .
+            </>
+          )}
+        </p>
+        <EntryList entries={EXTENSION_ENTRIES} />
+      </section>
+
+      <p className="mt-10 text-muted-foreground">
+        {vi
           ? "Xem toàn bộ lịch sử commit trên "
           : "See the full commit history on "}
         <a
-          href="https://github.com/duyet/monorepo/commits/master/apps/news"
+          href="https://github.com/duyet/aidr/commits/master"
           target="_blank"
           rel="noopener noreferrer"
         >

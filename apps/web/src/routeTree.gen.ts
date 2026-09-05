@@ -20,6 +20,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SubmitRouteImport } from './routes/submit'
 import { Route as SubscribeRouteImport } from './routes/subscribe'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as CatSlugRouteImport } from './routes/$cat.$slug'
 import { Route as ApiExtensionRouteImport } from './routes/api/extension'
 import { Route as ApiFeedRouteImport } from './routes/api/feed'
@@ -85,6 +86,11 @@ const SubmitRoute = SubmitRouteImport.update({
 const SubscribeRoute = SubscribeRouteImport.update({
   id: '/subscribe',
   path: '/subscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatSlugRoute = CatSlugRouteImport.update({
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
+  '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
+  '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
+  '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/submit'
     | '/subscribe'
+    | '/terms'
     | '/$cat/$slug'
     | '/api/extension'
     | '/api/feed'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/submit'
     | '/subscribe'
+    | '/terms'
     | '/$cat/$slug'
     | '/api/extension'
     | '/api/feed'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/submit'
     | '/subscribe'
+    | '/terms'
     | '/$cat/$slug'
     | '/api/extension'
     | '/api/feed'
@@ -303,6 +315,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   SubmitRoute: typeof SubmitRoute
   SubscribeRoute: typeof SubscribeRoute
+  TermsRoute: typeof TermsRoute
   CatSlugRoute: typeof CatSlugRoute
   ApiExtensionRoute: typeof ApiExtensionRoute
   ApiFeedRoute: typeof ApiFeedRoute
@@ -393,6 +406,13 @@ declare module '@tanstack/react-router' {
       path: '/subscribe'
       fullPath: '/subscribe'
       preLoaderRoute: typeof SubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$cat/$slug': {
@@ -487,6 +507,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   SubmitRoute: SubmitRoute,
   SubscribeRoute: SubscribeRoute,
+  TermsRoute: TermsRoute,
   CatSlugRoute: CatSlugRoute,
   ApiExtensionRoute: ApiExtensionRoute,
   ApiFeedRoute: ApiFeedRoute,

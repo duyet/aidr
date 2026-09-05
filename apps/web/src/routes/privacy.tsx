@@ -21,8 +21,8 @@ function PrivacyPage() {
       <h1>Privacy</h1>
       <p className="text-muted-foreground">
         Effective 4 September 2026. This policy covers the website{" "}
-        <a href={SITE_URL}>{SITE_URL}</a> and the aidr Chrome new-tab
-        extension. Contact: <a href="mailto:me@duyet.net">me@duyet.net</a>.
+        <a href={SITE_URL}>{SITE_URL}</a> and the aidr Chrome new-tab extension.
+        Contact: <a href="mailto:me@duyet.net">me@duyet.net</a>.
       </p>
 
       <h2>Single purpose</h2>
@@ -90,6 +90,8 @@ function PrivacyPage() {
 
       <p>
         <Link to="/extension">Chrome new tab install</Link>
+        {" · "}
+        <Link to="/terms">Terms of use</Link>
       </p>
     </article>
   );

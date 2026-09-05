@@ -219,6 +219,8 @@ async function main() {
     "/subscribe",
     "/data",
     "/extension",
+    "/privacy",
+    "/terms",
   ];
   for (const route of staticRoutes) {
     await check(`GET ${route} -> 200`, async () => {
@@ -253,6 +255,13 @@ async function main() {
       !body.includes("chrome.google.com/webstore"),
       "must not invent a Web Store listing"
     );
+  });
+
+  await check("GET /__clerk/v1/environment -> 200 JSON", async () => {
+    const res = await fetch(`${base}/__clerk/v1/environment`);
+    assert(res.status === 200, `expected 200, got ${res.status}`);
+    const body = (await res.json()) as { auth_config?: unknown };
+    assert(body.auth_config, "Clerk environment missing auth_config");
   });
 
   await check("GET /aidr.zip is a zip, not HTML", async () => {

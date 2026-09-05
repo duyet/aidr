@@ -1,4 +1,4 @@
-/** 44px minimum tap target for phone chrome (search / menu / theme / nav). */
+/** 44px minimum tap target for phone chrome (search / menu / nav). */
 export const PHONE_TAP_TARGET_CLASS =
   "inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center";
 

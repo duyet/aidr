@@ -33,9 +33,9 @@ describe("free-plan hourly ingest", () => {
     );
   });
 
-  it("keeps run_worker_first for homepage, sitemap, robots, and APIs", () => {
+  it("keeps run_worker_first for homepage, sitemap, robots, APIs, and Clerk proxy", () => {
     expect(wrangler).toContain(
-      'run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/api/*"]'
+      'run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/api/*", "/__clerk/*"]'
     );
   });
 

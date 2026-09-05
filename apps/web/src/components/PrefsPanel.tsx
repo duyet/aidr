@@ -1,7 +1,8 @@
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
-import { AArrowDown, AArrowUp, Rows2, Rows4 } from "lucide-react";
+import { AArrowDown, AArrowUp, Moon, Rows2, Rows4, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "../lib/lang-context";
 import {
@@ -26,6 +27,16 @@ const TLDR_COUNTS: TldrCount[] = [8, 12, 16];
 
 function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
   const { prefs, setPrefs } = usePrefs();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark =
+    mounted &&
+    (resolvedTheme === "dark" || prefs.bg === "dark" || prefs.bg === "black");
 
   const setBg = (bg: ReaderBg) => {
     track("prefs_change", { pref: "bg" });
@@ -33,8 +44,56 @@ function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
     applyReaderTheme(bg);
   };
 
+  const setDarkMode = (dark: boolean) => {
+    track("prefs_change", { pref: "theme" });
+    const bg: ReaderBg = dark
+      ? prefs.bg === "black"
+        ? "black"
+        : "dark"
+      : prefs.bg === "cream" || prefs.bg === "gray"
+        ? prefs.bg
+        : "default";
+    setPrefs({ bg });
+    applyReaderTheme(bg);
+    setTheme(dark ? "dark" : "light");
+  };
+
   return (
     <div className="space-y-4">
+      <div>
+        <span className="mb-1.5 block text-xs text-muted-foreground">
+          {t("Appearance", "Giao diện")}
+        </span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setDarkMode(false)}
+            aria-pressed={!isDark}
+            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+              !isDark
+                ? "border-accent bg-muted font-medium"
+                : "border-border hover:bg-muted/60"
+            }`}
+          >
+            <Sun className="size-4" aria-hidden />
+            {t("Light", "Sáng")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDarkMode(true)}
+            aria-pressed={isDark}
+            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+              isDark
+                ? "border-accent bg-muted font-medium"
+                : "border-border hover:bg-muted/60"
+            }`}
+          >
+            <Moon className="size-4" aria-hidden />
+            {t("Dark", "Tối")}
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         {(["sans", "serif"] satisfies ReaderFont[]).map((f) => (
           <button
