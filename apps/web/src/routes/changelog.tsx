@@ -11,56 +11,56 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-09",
-    en: "Clerk sign-in proxied on-site (/__clerk), suggest-as-guest CTA, footer legal links (Privacy / Terms), and dark mode moved into the Aa reader panel.",
-    vi: "Đăng nhập Clerk qua proxy trên site (/__clerk), CTA gợi ý khi chưa đăng nhập, footer pháp lý (Privacy / Terms), và chuyển dark mode vào bảng Aa.",
+    en: "Sign-in works more reliably. Suggest a translation while signed out, find Privacy and Terms in the footer, and switch light/dark mode from the Aa text panel.",
+    vi: "Đăng nhập ổn định hơn. Gợi ý bản dịch khi chưa đăng nhập, tìm Privacy và Terms ở footer, và đổi sáng/tối trong bảng Aa.",
   },
   {
     date: "2026-08",
-    en: "AI;DR bullets are a 2-line digest (truncated with an ellipsis) and highlight model and org names in the same topic colors as the feed.",
-    vi: "Mỗi gạch đầu dòng AI;DR là bản tóm tắt 2 dòng (cắt bằng dấu ba chấm khi dài hơn) và tô màu tên model/tổ chức giống bảng tin.",
+    en: "AI;DR bullets stay short (two lines) and highlight model and company names in the same colors as the feed.",
+    vi: "Mỗi gạch đầu dòng AI;DR gọn trong hai dòng và tô màu tên model/công ty giống bảng tin.",
   },
   {
     date: "2026-08",
-    en: "AI;DR bullets show a small story thumbnail on the right (or the site mark when a story has no image).",
-    vi: "Mỗi gạch đầu dòng AI;DR có ảnh thumbnail nhỏ bên phải (hoặc logo trang nếu tin chưa có ảnh).",
+    en: "Each AI;DR bullet shows a small story image on the right when one is available.",
+    vi: "Mỗi gạch đầu dòng AI;DR có ảnh nhỏ bên phải khi tin có hình.",
   },
   {
     date: "2026-08",
-    en: "Added a reader-preferences panel (font, text size, density, background, and section visibility), saved to your browser.",
-    vi: "Thêm bảng tuỳ chỉnh hiển thị (font chữ, cỡ chữ, mật độ, màu nền, ẩn/hiện từng mục), lưu trên trình duyệt của bạn.",
+    en: "Customize reading: font, size, spacing, background, and which sections you see — saved in your browser.",
+    vi: "Tuỳ chỉnh đọc tin: font, cỡ chữ, khoảng cách, nền, và các mục hiện/ẩn — lưu trên trình duyệt của bạn.",
   },
   {
     date: "2026-08",
-    en: "Story cards now show key sources and a thumbnail image when available, plus multi-paragraph summaries.",
-    vi: "Mỗi tin hiển thị nguồn chính và ảnh minh hoạ (nếu có), cùng tóm tắt nhiều đoạn.",
+    en: "Stories show key sources, a thumbnail when available, and longer multi-paragraph summaries.",
+    vi: "Mỗi tin có nguồn chính, ảnh minh hoạ (nếu có), và tóm tắt nhiều đoạn.",
   },
   {
     date: "2026-06",
-    en: "Launched an email digest and an MCP server so agents and inboxes can consume the feed directly.",
-    vi: "Ra mắt bản tin email và MCP server để agent và hộp thư có thể đọc tin trực tiếp.",
+    en: "Email digest so you can follow the feed in your inbox.",
+    vi: "Bản tin email để theo dõi tin trong hộp thư.",
   },
   {
     date: "2026-05",
-    en: "Initial launch: an hourly ingestion pipeline, a daily AI;DR summary, and English/Vietnamese translations for every story.",
-    vi: "Ra mắt lần đầu: pipeline thu thập tin theo giờ, tóm tắt AI;DR hằng ngày, và bản dịch song ngữ Anh/Việt cho từng tin.",
+    en: "Launch: fresh AI news hourly, a daily AI;DR, and English/Vietnamese for every story.",
+    vi: "Ra mắt: tin AI cập nhật theo giờ, AI;DR hằng ngày, và bản Anh/Việt cho mọi tin.",
   },
 ];
 
 const EXTENSION_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-09",
-    en: "v0.1.3 — Chrome Web Store auto-update prep and first-review checklist.",
-    vi: "v0.1.3 — Chuẩn bị auto-update Chrome Web Store và checklist review lần đầu.",
+    en: "Ready for Chrome Web Store listing and automatic updates once published.",
+    vi: "Sẵn sàng lên Chrome Web Store và tự cập nhật sau khi phát hành.",
   },
   {
     date: "2026-09",
-    en: "v0.1.2 — New tab matches the live homepage AI;DR layout; public /aidr.zip and load-unpacked guide at /extension.",
-    vi: "v0.1.2 — Tab mới khớp layout AI;DR trên trang chủ; công khai /aidr.zip và hướng dẫn Load unpacked tại /extension.",
+    en: "New tab matches the live homepage AI;DR layout, with a clearer install guide.",
+    vi: "Tab mới khớp layout AI;DR trên trang chủ, kèm hướng dẫn cài rõ hơn.",
   },
   {
     date: "2026-08",
-    en: "v0.1.1 — First Chrome new-tab extension: unzip /aidr.zip, then Load unpacked the aidr folder (not the zip).",
-    vi: "v0.1.1 — Tiện ích tab mới Chrome đầu tiên: giải nén /aidr.zip, rồi Load unpacked thư mục aidr (không phải file zip).",
+    en: "First Chrome new-tab extension: open a new tab to see today’s AI;DR and top stories.",
+    vi: "Tiện ích tab mới Chrome đầu tiên: mở tab mới để xem AI;DR và tin nổi bật trong ngày.",
   },
 ];
 
@@ -99,8 +99,8 @@ function ChangelogPage(): ReactElement {
       <h1>{vi ? "Nhật ký thay đổi" : "Changelog"}</h1>
       <p className="text-muted-foreground">
         {vi
-          ? "Những thay đổi đáng chú ý của website và tiện ích Chrome. Danh sách này được viết tay và không đầy đủ."
-          : "Notable changes to the website and Chrome extension. This list is hand-written and not exhaustive."}
+          ? "Những thay đổi đáng chú ý cho người đọc. Danh sách này không đầy đủ."
+          : "Notable changes for readers. This list is not exhaustive."}
       </p>
 
       <section id="website" className="mt-8 scroll-mt-20">
@@ -117,31 +117,16 @@ function ChangelogPage(): ReactElement {
         <p className="mt-2 text-sm text-muted-foreground">
           {vi ? (
             <>
-              Cài đặt và hướng dẫn tại <Link to="/extension">/extension</Link>.
+              Hướng dẫn cài đặt tại <Link to="/extension">/extension</Link>.
             </>
           ) : (
             <>
-              Install and setup guide at <Link to="/extension">/extension</Link>
-              .
+              Install guide at <Link to="/extension">/extension</Link>.
             </>
           )}
         </p>
         <EntryList entries={EXTENSION_ENTRIES} />
       </section>
-
-      <p className="mt-10 text-muted-foreground">
-        {vi
-          ? "Xem toàn bộ lịch sử commit trên "
-          : "See the full commit history on "}
-        <a
-          href="https://github.com/duyet/aidr/commits/master"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          GitHub
-        </a>
-        .
-      </p>
     </div>
   );
 }

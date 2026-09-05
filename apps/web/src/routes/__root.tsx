@@ -5,7 +5,6 @@ import { ErrorBoundary } from "@aidr/ui";
 import Analytics from "@aidr/ui/Analytics";
 import ThemeProvider from "@aidr/ui/ThemeProvider";
 import { track } from "@aidr/ui/track";
-import { RiChromeLine } from "@remixicon/react";
 import {
   createRootRoute,
   HeadContent,
@@ -14,20 +13,7 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
-import {
-  BarChart3,
-  ExternalLink,
-  FileText,
-  GitFork,
-  History,
-  Info,
-  Mail,
-  Plug,
-  Scale,
-  ScrollText,
-  Send,
-} from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { CLERK_PROXY_PATH } from "../../worker/clerk-proxy";
 import { HeaderBar } from "../components/HeaderBar";
@@ -53,11 +39,6 @@ import {
   TELEGRAM_URL,
 } from "../lib/site";
 import type { Lang } from "../lib/types";
-
-type FooterIcon = ComponentType<{
-  className?: string;
-  "aria-hidden"?: boolean | "true" | "false";
-}>;
 
 /**
  * Mounts the ONE app-wide <ClerkProvider> (static import for SSR — required
@@ -102,31 +83,14 @@ function ClerkRootProvider({ children }: { children: ReactNode }) {
 }
 
 // Footer is always English, regardless of site language.
-const FOOTER_SITE_LINKS: {
-  to: string;
-  label: string;
-  icon: FooterIcon;
-}[] = [
-  { to: "/about", label: "About", icon: Info },
-  { to: "/extension", label: "Chrome tab", icon: RiChromeLine },
-  { to: "/subscribe", label: "Subscribe", icon: Mail },
-  { to: "/submit", label: "Submit", icon: FileText },
-  { to: "/mcp", label: "MCP", icon: Plug },
-  { to: "/data", label: "Data", icon: BarChart3 },
-  { to: "/changelog", label: "Changelog", icon: History },
+const FOOTER_LINKS: { to: string; label: string }[] = [
+  { to: "/about", label: "About" },
+  { to: "/subscribe", label: "Subscribe" },
+  { to: "/privacy", label: "Privacy" },
+  { to: "/terms", label: "Terms" },
 ];
 
-const FOOTER_LEGAL_LINKS: {
-  to: string;
-  label: string;
-  icon: FooterIcon;
-}[] = [
-  { to: "/privacy", label: "Privacy", icon: Scale },
-  { to: "/terms", label: "Terms", icon: ScrollText },
-];
-
-const linkClass =
-  "flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2";
+const linkClass = "hover:text-accent hover:underline hover:underline-offset-2";
 
 function NewsFooter() {
   const year = new Date().getFullYear();
@@ -148,47 +112,25 @@ function NewsFooter() {
   }, []);
 
   return (
-    <footer className="border-t border-border py-6 text-xs text-muted-foreground">
-      <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-          <span>
-            {`© ${year} Duyet Le · aidr.today — AI news, rated & ranked by LLMs`}
-            {lastFetchedAt !== null && (
-              <>
-                {" · "}
-                Updated {timeAgo(lastFetchedAt, Date.now(), "en")}
-              </>
-            )}
-          </span>
-          <nav
-            aria-label="Site"
-            className="flex flex-wrap items-center gap-x-3 gap-y-1"
-          >
-            {FOOTER_SITE_LINKS.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                onClick={() => track("nav_click", { to: link.to })}
-                className={linkClass}
-              >
-                <link.icon className="h-3.5 w-3.5" aria-hidden />
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
+    <footer className="border-t border-border py-5 text-xs text-muted-foreground">
+      <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <span>
+          {`© ${year} Duyet · aidr.today`}
+          {lastFetchedAt !== null && (
+            <> · Updated {timeAgo(lastFetchedAt, Date.now(), "en")}</>
+          )}
+        </span>
         <nav
-          aria-label="Legal and social"
-          className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-3"
+          aria-label="Footer"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1"
         >
-          {FOOTER_LEGAL_LINKS.map((link) => (
+          {FOOTER_LINKS.map((link) => (
             <Link
               key={link.to}
               to={link.to}
               onClick={() => track("nav_click", { to: link.to })}
               className={linkClass}
             >
-              <link.icon className="h-3.5 w-3.5" aria-hidden />
               {link.label}
             </Link>
           ))}
@@ -199,9 +141,7 @@ function NewsFooter() {
             onClick={() => track("nav_click", { to: "telegram" })}
             className={linkClass}
           >
-            <Send className="h-3.5 w-3.5" aria-hidden />
             Telegram
-            <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
           <a
             href={GITHUB_URL}
@@ -210,19 +150,7 @@ function NewsFooter() {
             onClick={() => track("nav_click", { to: "github" })}
             className={linkClass}
           >
-            <GitFork className="h-3.5 w-3.5" aria-hidden />
             GitHub
-            <ExternalLink className="h-3 w-3" aria-hidden />
-          </a>
-          <a
-            href="https://anyrouter.dev/?ref=aidr.today"
-            target="_blank"
-            rel="noopener"
-            onClick={() => track("nav_click", { to: "anyrouter" })}
-            className={linkClass}
-          >
-            AnyRouter
-            <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
         </nav>
       </div>
