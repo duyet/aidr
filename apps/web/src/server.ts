@@ -34,7 +34,7 @@ export default {
       return handleClerkProxy(request, env);
     }
     if (path === "/aidr.zip") {
-      return handleAidrZipRequest(request, fetch, env.ASSETS);
+      return handleAidrZipRequest(request);
     }
     if (
       path === "/api/public" ||

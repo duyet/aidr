@@ -1,3 +1,5 @@
+import { EXTENSION_VERSION } from "../src/lib/extension-release";
+
 /**
  * Resolve the latest Chrome-extension GitHub release (tags `aidr-v*`) and
  * its Load-unpacked zip asset. Used so https://aidr.today/aidr.zip always
@@ -30,6 +32,10 @@ const MEMORY_TTL_MS = 5 * 60 * 1000;
 export function versionFromAidrTag(tag: string): string | null {
   const match = tag.trim().match(/^aidr-v(\d+\.\d+\.\d+)\b/);
   return match ? match[1] : null;
+}
+
+export function aidrZipDownloadUrl(version: string): string {
+  return `https://github.com/${AIDR_GITHUB_REPO}/releases/download/${AIDR_RELEASE_TAG_PREFIX}${version}/${AIDR_ZIP_ASSET_NAME}`;
 }
 
 export function pickLatestAidrRelease(
@@ -79,10 +85,11 @@ export async function fetchLatestAidrRelease(
       "User-Agent": "aidr.today-extension-zip",
       "X-GitHub-Api-Version": "2022-11-28",
     },
-  });
+    // Avoid Workers Cache retaining a rate-limited/error body.
+    cf: { cacheTtl: 0, cacheEverything: false },
+  } as RequestInit);
   if (!res.ok) {
-    // Do not cache failures — a brief GitHub blip or empty-asset release
-    // must not 502 /aidr.zip for the full TTL.
+    // Do not cache failures — a brief GitHub blip must not 502 /aidr.zip.
     return null;
   }
   const body = (await res.json()) as GhRelease[];
@@ -108,11 +115,14 @@ function zipRedirect(url: string): Response {
   });
 }
 
+/**
+ * Prefer the newest GitHub release that ships `aidr.zip`. If the API is
+ * unreachable (rate limit), fall back to the shipped EXTENSION_VERSION asset
+ * URL — never call env.ASSETS for this path (run_worker_first would loop).
+ */
 export async function handleAidrZipRequest(
   request: Request,
-  fetchImpl: typeof fetch = fetch,
-  /** Optional Workers static assets binding — serves packed public/aidr.zip. */
-  assets?: { fetch: (input: Request) => Promise<Response> }
+  fetchImpl: typeof fetch = fetch
 ): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("Method Not Allowed", { status: 405 });
@@ -121,25 +131,5 @@ export async function handleAidrZipRequest(
   if (latest) {
     return zipRedirect(latest.zipUrl);
   }
-  // Fallback: serve the zip bundled into the Worker deploy so a GitHub
-  // API miss never breaks https://aidr.today/aidr.zip.
-  if (assets) {
-    const assetRes = await assets.fetch(request);
-    if (assetRes.ok || assetRes.status === 304) {
-      const headers = new Headers(assetRes.headers);
-      headers.set("Cache-Control", "no-store");
-      headers.set(
-        "Content-Disposition",
-        `attachment; filename="${AIDR_ZIP_ASSET_NAME}"`
-      );
-      return new Response(assetRes.body, {
-        status: assetRes.status,
-        headers,
-      });
-    }
-  }
-  return new Response("Extension zip release not found", {
-    status: 502,
-    headers: { "Cache-Control": "no-store" },
-  });
+  return zipRedirect(aidrZipDownloadUrl(EXTENSION_VERSION));
 }

@@ -105,24 +105,18 @@ describe("fetchLatestAidrRelease + handleAidrZipRequest", () => {
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
-  it("serves ASSETS when GitHub has no aidr.zip", async () => {
+  it("falls back to shipped EXTENSION_VERSION when GitHub has no aidr.zip", async () => {
     clearLatestAidrReleaseCache();
     const fetchImpl: typeof fetch = async () =>
       new Response(JSON.stringify([]), { status: 200 });
-    const assets = {
-      fetch: async () =>
-        new Response(new Uint8Array([0x50, 0x4b]), {
-          status: 200,
-          headers: { "Content-Type": "application/zip" },
-        }),
-    };
     const res = await handleAidrZipRequest(
       new Request("https://aidr.today/aidr.zip"),
-      fetchImpl,
-      assets
+      fetchImpl
     );
-    expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Disposition")).toContain("aidr.zip");
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(
+      "https://github.com/duyet/aidr/releases/download/aidr-v0.1.7/aidr.zip"
+    );
   });
 
   it("does not cache a failed GitHub fetch", async () => {

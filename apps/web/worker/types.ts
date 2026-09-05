@@ -1,8 +1,6 @@
 export interface Env {
   DB: D1Database;
   NEWS_INGEST: Workflow;
-  /** Static assets binding (dist/client) — used to fall back-serve aidr.zip. */
-  ASSETS?: { fetch: (input: Request) => Promise<Response> };
   /** Singleton DO that arms an hourly alarm and coalesces ingest triggers.
    *  Optional so node tests can omit it; production wrangler always binds it. */
   NEWS_INGEST_SCHEDULER?: DurableObjectNamespace;
