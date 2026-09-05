@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { fetchLatestAidrRelease } from "../../../worker/extension-zip";
 import { extensionReleasePayload } from "../../lib/extension-release";
 import { PUBLIC_CACHE_CONTROL } from "../../lib/public-api";
-import { fetchLatestAidrRelease } from "../../../worker/extension-zip";
 
 type HandlerArgs = { request: Request; context: any };
 

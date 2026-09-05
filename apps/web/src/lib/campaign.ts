@@ -36,9 +36,7 @@ export function readCampaign(
 ): CampaignAttribution | null {
   const params =
     typeof search === "string"
-      ? new URLSearchParams(
-          search.startsWith("?") ? search.slice(1) : search
-        )
+      ? new URLSearchParams(search.startsWith("?") ? search.slice(1) : search)
       : search;
   const out: CampaignAttribution = {};
   for (const key of ALLOWED) {
