@@ -10,3 +10,6 @@ dist
 .DS_Store
 apps/web/public/aidr.zip
 apps/web/public/news-tab.zip
+.cursor/skills/verify-aidr/evidence/**
+!.cursor/skills/verify-aidr/evidence/README.md
+!.cursor/skills/verify-aidr/evidence/.gitignore
