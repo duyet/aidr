@@ -4,5 +4,41 @@
   },
   "extDescription": {
     "message": "Bản tin AI;DR từ aidr.today mỗi khi mở thẻ mới. Không cần tài khoản."
+  },
+  "hide": {
+    "message": "Ẩn"
+  },
+  "show": {
+    "message": "Hiện"
+  },
+  "moveUp": {
+    "message": "Di chuyển lên"
+  },
+  "moveDown": {
+    "message": "Di chuyển xuống"
+  },
+  "addSection": {
+    "message": "Thêm mục"
+  },
+  "showMore": {
+    "message": "Xem thêm ↓"
+  },
+  "showLess": {
+    "message": "Thu gọn ↑"
+  },
+  "dailyFeedPreview": {
+    "message": "Bảng tin theo ngày"
+  },
+  "trendingPreview": {
+    "message": "Xu hướng"
+  },
+  "tldrPreview": {
+    "message": "AI;DR"
+  },
+  "categoriesPreview": {
+    "message": "Danh mục"
+  },
+  "showFooter": {
+    "message": "Hiển thị chân trang"
   }
 }

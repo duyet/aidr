@@ -34,7 +34,8 @@ test("normalizeSettings clamps size, count, and unknown enums", () => {
   assert.equal(settings.tldrCount, 8);
   assert.equal(settings.apiBase, DEFAULT_API_BASE);
   assert.equal(settings.sections.tldr, false);
-  assert.equal(settings.sections.stories, true);
+  assert.equal(settings.sections.stories, false); // defaults off (digest-first)
+  assert.equal(settings.showFooter, false);
 });
 
 test("normalizeSettings migrates legacy fonts and px sizes", () => {
@@ -104,4 +105,20 @@ test("DEFAULT_SETTINGS matches website PrefsPanel shape", () => {
   assert.equal(DEFAULT_SETTINGS.fontSize, 1);
   assert.equal(DEFAULT_SETTINGS.bg, "default");
   assert.equal("accent" in DEFAULT_SETTINGS, false);
+});
+
+test("normalizeSettings normalizes sectionOrder", () => {
+  const settings = normalizeSettings({
+    sectionOrder: ["tldr", "stories"],
+  });
+  assert.deepEqual(
+    settings.sectionOrder,
+    ["tldr", "stories", ...DEFAULT_SETTINGS.sectionOrder.filter(
+      (k) => !["tldr", "stories"].includes(k)
+    )]
+  );
+  assert.equal(
+    normalizeSettings({ sectionOrder: "junk" }).sectionOrder[0],
+    "trending"
+  );
 });

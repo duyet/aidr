@@ -40,7 +40,7 @@
                 aria-label="Chrome new tab"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 2a8 8 0 0 1 7.75 6H12.75L9.5 4.6A7.96 7.96 0 0 1 12 4Zm-3.4 1.2 3.5 6H4.25A8 8 0 0 1 8.6 5.2ZM4.1 14h7.15l-3.5 6.05A8 8 0 0 1 4.1 14Zm5.75 6.75L13.35 14H20a8 8 0 0 1-10.15 6.75Z" />
+                  <path d="M12 2a10 10 0 1 0 10 10A10 10 0 1 0 12 2Zm0 2a8 8 0 0 1 7.75 6H12.75L9.5 4.6A7.96 7.96 0 0 1 12 4Zm-3.4 1.2 3.5 6H4.25A8 8 0 0 1 8.6 5.2ZM4.1 14h7.15l-3.5 6.05A8 8 0 0 1 4.1 14Zm5.75 6.75L13.35 14H20a8 8 0 0 1-10.15 6.75Z" />
                 </svg>
               </a>
               <a
@@ -103,7 +103,7 @@
               aria-label="Chrome new tab"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 2a8 8 0 0 1 7.75 6H12.75L9.5 4.6A7.96 7.96 0 0 1 12 4Zm-3.4 1.2 3.5 6H4.25A8 8 0 0 1 8.6 5.2ZM4.1 14h7.15l-3.5 6.05A8 8 0 0 1 4.1 14Zm5.75 6.75L13.35 14H20a8 8 0 0 1-10.15 6.75Z" />
+                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 1 0 12 2Zm0 2a8 8 0 0 1 7.75 6H12.75L9.5 4.6A7.96 7.96 0 0 1 12 4Zm-3.4 1.2 3.5 6H4.25A8 8 0 0 1 8.6 5.2ZM4.1 14h7.15l-3.5 6.05A8 8 0 0 1 4.1 14Zm5.75 6.75L13.35 14H20a8 8 0 0 1-10.15 6.75Z" />
               </svg>
             </a>
             <a
@@ -131,26 +131,32 @@
           </div>
         </header>
 
-        <main class="page">
+        <main class="page" id="page-content">
           <p class="status" id="status" hidden></p>
           <p class="update-banner" id="update-banner" hidden>
             <span id="update-text"></span>
           </p>
 
-          <nav class="cat-nav" id="section-categories" hidden></nav>
+          <div id="add-section" class="add-section-host" hidden></div>
+
+          <nav class="cat-nav" id="section-categories" hidden>
+            <div class="section-chrome-head"><span class="section-chrome-label"></span><div class="section-chrome-actions"></div></div>
+          </nav>
 
           <section class="trending" id="section-trending" hidden>
+            <div class="section-chrome-head"><span class="section-chrome-label"></span><div class="section-chrome-actions"></div></div>
             <span class="trending-label">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M3 17 9 11l4 4 8-8" />
                 <path d="M14 7h7v7" />
               </svg>
-              <span id="trending-label">Xu hướng</span>
+              <span id="trending-label">Xu hưởng</span>
             </span>
             <div class="chips" id="trending"></div>
           </section>
 
           <section class="tldr" id="section-tldr" hidden data-aidr-layout="a">
+            <div class="section-chrome-head"><span class="section-chrome-label"></span><div class="section-chrome-actions"></div></div>
             <div class="tldr-head">
               <div class="tldr-title">
                 <h2>AI;DR</h2>
@@ -166,7 +172,9 @@
             </div>
           </section>
 
-          <div id="section-stories" class="days" hidden></div>
+          <div id="section-stories" class="days" hidden>
+            <div class="section-chrome-head"><span class="section-chrome-label"></span><div class="section-chrome-actions"></div></div>
+          </div>
         </main>
       </div>
 
@@ -199,8 +207,8 @@
               <div class="footer-col">
                 <p class="footer-col-label">More</p>
                 <nav aria-label="Footer more" class="footer-nav">
-                  <a href="https://duyet.net" target="_blank" rel="noopener noreferrer">duyet.net</a>
-                  <a href="https://blog.duyet.net" target="_blank" rel="noopener noreferrer">Blog</a>
+                  <a href="https://duyet.net" target="_blank" rel="noreferrer">duyet.net</a>
+                  <a href="https://blog.duyet.net" target="_blank" rel="noreferrer">Blog</a>
                 </nav>
               </div>
             </div>
@@ -226,8 +234,8 @@
           <a href="https://t.me/aihomnay" target="_blank" rel="noopener noreferrer">Telegram</a>
           <a href="https://aidr.today/data">Data</a>
           <a href="https://aidr.today/submit">Submit</a>
-          <a href="https://duyet.net" target="_blank" rel="noopener noreferrer">duyet.net</a>
-          <a href="https://blog.duyet.net" target="_blank" rel="noopener noreferrer">Blog</a>
+          <a href="https://duyet.net" target="_blank" rel="noreferrer">duyet.net</a>
+          <a href="https://blog.duyet.net" target="_blank" rel="noreferrer">Blog</a>
         </nav>
         <div class="phone-menu-foot">
           <div class="phone-menu-lang">

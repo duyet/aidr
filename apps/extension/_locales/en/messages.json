@@ -4,5 +4,41 @@
   },
   "extDescription": {
     "message": "AI;DR digest from aidr.today on every new tab. No account."
+  },
+  "hide": {
+    "message": "Hide"
+  },
+  "show": {
+    "message": "Show"
+  },
+  "moveUp": {
+    "message": "Move up"
+  },
+  "moveDown": {
+    "message": "Move down"
+  },
+  "addSection": {
+    "message": "Add section"
+  },
+  "showMore": {
+    "message": "Show more ↓"
+  },
+  "showLess": {
+    "message": "Show less ↑"
+  },
+  "dailyFeedPreview": {
+    "message": "Daily feed"
+  },
+  "trendingPreview": {
+    "message": "Trending"
+  },
+  "tldrPreview": {
+    "message": "AI;DR"
+  },
+  "categoriesPreview": {
+    "message": "Categories"
+  },
+  "showFooter": {
+    "message": "Show footer"
   }
 }
