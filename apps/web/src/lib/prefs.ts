@@ -5,6 +5,8 @@ export type ReaderDensity = "compact" | "comfortable" | "spacious";
 export type ReaderBg = "default" | "cream" | "gray" | "dark" | "black";
 export type TldrCount = 8 | 12 | 16;
 
+export type SectionKey = "trending" | "tldr" | "days" | "categories";
+
 export interface ReaderSections {
   trending: boolean;
   tldr: boolean;
@@ -18,17 +20,27 @@ export interface Prefs {
   density: ReaderDensity;
   bg: ReaderBg;
   sections: ReaderSections;
+  /** Ordered list of section keys; drives on-page section ordering. */
+  sectionOrder: SectionKey[];
   tldrCount: TldrCount;
   /** Remembers the StoryDialog's EN|VI side-by-side toggle across stories. */
   bilingualDialog: boolean;
 }
+
+export const DEFAULT_SECTION_ORDER: SectionKey[] = [
+  "categories",
+  "trending",
+  "tldr",
+  "days",
+];
 
 export const DEFAULT_PREFS: Prefs = {
   font: "sans",
   fontSize: 1,
   density: "compact",
   bg: "default",
-  sections: { trending: true, tldr: true, days: true, categories: true },
+  sections: { trending: true, tldr: true, days: false, categories: true },
+  sectionOrder: [...DEFAULT_SECTION_ORDER],
   tldrCount: 8,
   bilingualDialog: false,
 };
@@ -58,12 +70,27 @@ export function loadPrefs(): Prefs {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_PREFS;
     const parsed = JSON.parse(raw) as Partial<Prefs>;
+    const order = Array.isArray(parsed.sectionOrder)
+      ? (parsed.sectionOrder as unknown[]).filter(
+          (k): k is SectionKey =>
+            typeof k === "string" && k in DEFAULT_PREFS.sections
+        )
+      : null;
+    // Merge persisted order with any new default keys — keep existing order,
+    // append any keys that weren't in the saved value.
+    const sectionOrder: SectionKey[] = order
+      ? [
+          ...order.filter((k) => DEFAULT_SECTION_ORDER.includes(k)),
+          ...DEFAULT_SECTION_ORDER.filter((k) => !order.includes(k)),
+        ]
+      : [...DEFAULT_SECTION_ORDER];
     return {
       ...DEFAULT_PREFS,
       ...parsed,
       fontSize: clampFontSize(parsed.fontSize),
       tldrCount: clampTldrCount(parsed.tldrCount),
       sections: { ...DEFAULT_PREFS.sections, ...parsed.sections },
+      sectionOrder,
       bilingualDialog:
         typeof parsed.bilingualDialog === "boolean"
           ? parsed.bilingualDialog

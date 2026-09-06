@@ -18,6 +18,8 @@ export function safeHttpUrl(value, fallback = "") {
   return fallback;
 }
 
+const DEFAULT_SECTION_ORDER = ["trending", "tldr", "stories", "categories"];
+
 export const DEFAULT_SETTINGS = {
   theme: "system",
   font: "sans",
@@ -26,13 +28,16 @@ export const DEFAULT_SETTINGS = {
   bg: "default",
   sections: {
     tldr: true,
-    stories: true,
+    stories: false,
     categories: true,
     trending: true,
   },
+  sectionOrder: [...DEFAULT_SECTION_ORDER],
   density: "compact",
   storyCount: 8,
   tldrCount: 8,
+  /** Footer is hidden by default on new tab for a cleaner digest-first layout. */
+  showFooter: false,
   apiBase: DEFAULT_API_BASE,
 };
 
@@ -81,6 +86,13 @@ function normalizeFont(value) {
   return DEFAULT_SETTINGS.font;
 }
 
+function normalizeSectionOrder(value) {
+  if (!Array.isArray(value)) return [...DEFAULT_SETTINGS.sectionOrder];
+  const valid = DEFAULT_SETTINGS.sectionOrder;
+  const filtered = value.filter((k) => valid.includes(k));
+  return [...filtered, ...valid.filter((k) => !filtered.includes(k))];
+}
+
 export function normalizeSettings(raw) {
   const input = raw && typeof raw === "object" ? raw : {};
   const sections =
@@ -93,13 +105,15 @@ export function normalizeSettings(raw) {
     bg: pick(BGS, input.bg, DEFAULT_SETTINGS.bg),
     sections: {
       tldr: sections.tldr !== false,
-      stories: sections.stories !== false,
+      stories: sections.stories === true,
       categories: sections.categories !== false,
       trending: sections.trending !== false,
     },
+    sectionOrder: normalizeSectionOrder(input.sectionOrder),
     density: pick(DENSITIES, input.density, DEFAULT_SETTINGS.density),
     storyCount: clampCount(input.storyCount),
     tldrCount: clampTldrCount(input.tldrCount),
+    showFooter: input.showFooter === true,
     apiBase: normalizeApiBase(input.apiBase),
   };
 }

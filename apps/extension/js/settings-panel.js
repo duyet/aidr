@@ -240,30 +240,26 @@ export function mountSettingsPanel(root, settings, onSaved) {
       }),
     ]);
 
-    const sectionKeys = [
-      ["trending", "trending"],
-      ["tldr", "tldr"],
-      ["stories", "dailyFeed"],
-      ["categories", "categories"],
+    const sectionTiles = [
+      { key: "trending", labelKey: "trendingPreview" },
+      { key: "tldr", labelKey: "tldrPreview" },
+      { key: "stories", labelKey: "dailyFeedPreview" },
+      { key: "categories", labelKey: "categoriesPreview" },
     ];
-    const checks = el("div", { className: "prefs-checks" });
-    for (const [key, labelKey] of sectionKeys) {
-      const box = el("input", {
-        type: "checkbox",
-        checked: state.sections[key] !== false,
-      });
-      box.checked = state.sections[key] !== false;
-      box.addEventListener("change", async () => {
-        state.sections[key] = box.checked;
+    const grid = el("div", { className: "prefs-tiles" });
+    for (const { key, labelKey } of sectionTiles) {
+      const on = state.sections[key] !== false;
+      const tile = choiceButton(t(state, labelKey), on, async () => {
+        state.sections[key] = !on;
         await persist({ repaint: false });
-      });
-      checks.append(
-        el("label", { className: "prefs-check" }, [
-          el("span", {}, [t(state, labelKey)]),
-          box,
-        ])
+      }, " is-full-width");
+      tile.setAttribute(
+        "aria-label",
+        on ? t(state, "hide") : t(state, labelKey)
       );
+      grid.append(tile);
     }
+    const checks = grid;
 
     const fields = [
       el("div", { className: "prefs-field" }, [
@@ -284,6 +280,23 @@ export function mountSettingsPanel(root, settings, onSaved) {
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "sections")]),
         checks,
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label prefs-label-row" }, [
+          el("span", {}, [t(state, "showFooter")]),
+          el(
+            "input",
+            {
+              type: "checkbox",
+              checked: state.showFooter,
+              onChange: async (event) => {
+                state.showFooter = event.target.checked;
+                await persist({ repaint: false });
+              },
+            },
+            []
+          ),
+        ]),
       ]),
     ];
 
