@@ -1,0 +1,832 @@
+#!/usr/bin/env node
+/**
+ * CLI lever for .cursor/skills/verify-aidr — run from the repo root.
+ * Prints one JSON object on stdout (except --help). Non-zero exit = not verified.
+ */
+import { spawn } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const SKILL_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = resolve(SKILL_DIR, "../../..");
+const EVIDENCE_ROOT = join(SKILL_DIR, "evidence");
+const STATE_FILE = join(EVIDENCE_ROOT, ".state.json");
+const DEFAULT_BASE = "https://aidr.today";
+const LOCAL_PORT = 3014;
+const FETCH_MS = 20_000;
+const CHROME_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+const EXT_ORIGIN = "chrome-extension://abcdefghijklmnopqrstuvwxyzabcdef";
+const PERMALINK_RE = /href="\/[a-z0-9-]+\/[0-9a-f]{8}"/;
+const FEATURES = ["homepage", "tldr", "about", "extension", "api-public"];
+
+const HOME_IDENTITY = [
+  "AI;DR",
+  "Hôm nay AI có gì mới?",
+  "aidr.today",
+  "AI News",
+  "AI News | aidr.today",
+];
+
+function usage() {
+  process.stdout.write(`verify-aidr — drive live aidr.today (AI news digest)
+
+Commands:
+  launch [--base URL] [--local]   Bind target (default ${DEFAULT_BASE})
+  doctor                          GET /api/public JSON 200 + homepage HTML 200 (Chrome UA)
+  drive <feature>                 homepage | tldr | about | extension | api-public | all
+  fetch [--path /]                GET a path; save body under evidence
+  screenshot [--path /] [--viewport desktop|mobile]
+  cleanup                         Stop a local PID this lever started; keep evidence
+  --help                          This text
+
+Env: VERIFY_AIDR_BASE, VERIFY_AIDR_EVIDENCE, VERIFY_AIDR_RUN_ID, CHROME_BIN
+Evidence: .cursor/skills/verify-aidr/evidence/<run-id>/
+`);
+}
+
+function die(error, extra = {}) {
+  printJson({ ok: false, error, ...extra });
+  process.exit(1);
+}
+
+function printJson(value) {
+  process.stdout.write(`${JSON.stringify(value)}\n`);
+}
+
+function parseArgs(argv) {
+  const out = {
+    cmd: argv[0] || "",
+    rest: [],
+    base: process.env.VERIFY_AIDR_BASE || "",
+    path: "/",
+    viewport: "desktop",
+    local: false,
+    out: "",
+  };
+  const args = argv.slice(1);
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (a === "--base") {
+      out.base = args[++i] || "";
+    } else if (a === "--path") {
+      out.path = args[++i] || "/";
+    } else if (a === "--viewport") {
+      out.viewport = args[++i] || "desktop";
+    } else if (a === "--out") {
+      out.out = args[++i] || "";
+    } else if (a === "--local") {
+      out.local = true;
+    } else if (a === "--help" || a === "-h") {
+      out.cmd = "help";
+    } else {
+      out.rest.push(a);
+    }
+  }
+  return out;
+}
+
+function normalizeBase(base) {
+  return (base || DEFAULT_BASE).replace(/\/+$/, "");
+}
+
+function normalizePath(p) {
+  if (!p) return "/";
+  return p.startsWith("/") ? p : `/${p}`;
+}
+
+function newRunId() {
+  return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+}
+
+function readState() {
+  if (!existsSync(STATE_FILE)) return {};
+  try {
+    return JSON.parse(readFileSync(STATE_FILE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function writeState(patch) {
+  mkdirSync(EVIDENCE_ROOT, { recursive: true });
+  const next = { ...readState(), ...patch };
+  writeFileSync(STATE_FILE, `${JSON.stringify(next, null, 2)}\n`);
+  return next;
+}
+
+function resolveRun(flags = {}) {
+  const state = readState();
+  const runId =
+    process.env.VERIFY_AIDR_RUN_ID || state.runId || flags.runId || newRunId();
+  const evidenceDir =
+    process.env.VERIFY_AIDR_EVIDENCE ||
+    state.evidenceDir ||
+    join(EVIDENCE_ROOT, runId);
+  mkdirSync(evidenceDir, { recursive: true });
+  const base = normalizeBase(flags.base || state.base || DEFAULT_BASE);
+  writeState({ runId, evidenceDir, base });
+  return { runId, evidenceDir, base, state: readState() };
+}
+
+function save(evidenceDir, name, body) {
+  const dest = join(evidenceDir, name);
+  writeFileSync(dest, body);
+  return dest;
+}
+
+function containsAll(haystack, needles) {
+  return Object.fromEntries(needles.map((n) => [n, haystack.includes(n)]));
+}
+
+function chromeBin() {
+  // Skip /usr/local/bin/google-chrome: cloud VMs wrap it with a shared
+  // --user-data-dir and --remote-debugging-port, which hangs --screenshot.
+  if (process.env.CHROME_BIN && existsSync(process.env.CHROME_BIN)) {
+    return process.env.CHROME_BIN;
+  }
+  return (
+    [
+      "/opt/google/chrome/chrome",
+      "/usr/bin/google-chrome-stable",
+      "/usr/bin/chromium-browser",
+      "/usr/bin/chromium",
+    ].find((p) => existsSync(p)) || ""
+  );
+}
+
+async function httpGet(url, { ua = "", accept = "", method = "GET", headers = {} } = {}) {
+  const h = { ...headers };
+  if (ua) h["User-Agent"] = ua;
+  if (accept) h.Accept = accept;
+  const res = await fetch(url, {
+    method,
+    headers: h,
+    redirect: "follow",
+    signal: AbortSignal.timeout(FETCH_MS),
+  });
+  const buf = Buffer.from(await res.arrayBuffer());
+  const contentType = res.headers.get("content-type") || "";
+  return {
+    url,
+    status: res.status,
+    contentType,
+    bytes: buf.length,
+    body: buf.toString("utf8"),
+    buf,
+    headers: Object.fromEntries(res.headers.entries()),
+  };
+}
+
+async function waitHttp(url, tries = 40) {
+  for (let i = 0; i < tries; i += 1) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": CHROME_UA },
+        signal: AbortSignal.timeout(2000),
+      });
+      if (res.status > 0) return true;
+    } catch {
+      /* not ready */
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return false;
+}
+
+function spawnLocal(evidenceDir) {
+  const log = join(evidenceDir, "dev.log");
+  const child = spawn("pnpm", ["--filter", "@aidr/web", "dev"], {
+    cwd: ROOT,
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const chunks = [];
+  const onData = (d) => chunks.push(d);
+  child.stdout.on("data", onData);
+  child.stderr.on("data", onData);
+  child.unref();
+  const flush = () => {
+    try {
+      writeFileSync(log, Buffer.concat(chunks));
+    } catch {
+      /* ignore */
+    }
+  };
+  child.on("exit", flush);
+  return { pid: child.pid, log, flush };
+}
+
+async function cmdLaunch(flags) {
+  const runId = newRunId();
+  process.env.VERIFY_AIDR_RUN_ID = runId;
+  let base = flags.local
+    ? `http://127.0.0.1:${LOCAL_PORT}`
+    : normalizeBase(flags.base || process.env.VERIFY_AIDR_BASE || DEFAULT_BASE);
+  const evidenceDir =
+    process.env.VERIFY_AIDR_EVIDENCE || join(EVIDENCE_ROOT, runId);
+  mkdirSync(evidenceDir, { recursive: true });
+  const out = {
+    ok: true,
+    command: "launch",
+    base,
+    runId,
+    evidenceDir,
+    local: Boolean(flags.local),
+    ready: false,
+  };
+
+  if (flags.local) {
+    const url = `${base}/`;
+    const already = await waitHttp(url, 2);
+    if (already) {
+      die("port already answering; refuse to attach to a session this run did not start", {
+        base,
+        runId,
+        evidenceDir,
+      });
+    }
+    const spawned = spawnLocal(evidenceDir);
+    writeState({
+      runId,
+      evidenceDir,
+      base,
+      localPid: spawned.pid,
+      localLog: spawned.log,
+    });
+    const ready = await waitHttp(url, 80);
+    spawned.flush();
+    if (!ready) {
+      try {
+        process.kill(spawned.pid, "SIGTERM");
+      } catch {
+        /* gone */
+      }
+      die("local vite did not become ready on 3014", {
+        pid: spawned.pid,
+        log: spawned.log,
+        runId,
+        evidenceDir,
+      });
+    }
+    out.localPid = spawned.pid;
+    out.ready = true;
+    printJson(out);
+    return;
+  }
+
+  writeState({ runId, evidenceDir, base, localPid: null });
+  try {
+    const ping = await httpGet(`${base}/api/public`, { accept: "application/json" });
+    out.ready = ping.status === 200;
+    out.pingStatus = ping.status;
+  } catch (e) {
+    die(e instanceof Error ? e.message : String(e), { base, runId, evidenceDir });
+  }
+  if (!out.ready) {
+    printJson({ ...out, ok: false, error: "launch ping /api/public was not 200" });
+    process.exit(1);
+  }
+  printJson(out);
+}
+
+function publicShape(body) {
+  let json;
+  try {
+    json = JSON.parse(body);
+  } catch {
+    return { ok: false, parseable: false };
+  }
+  const tldr = json.tldr;
+  const tldrOk =
+    tldr === null ||
+    (tldr &&
+      Array.isArray(tldr.bullets_en) &&
+      Array.isArray(tldr.bullets_vi));
+  const stories = json.stories;
+  const storiesOk = Array.isArray(stories);
+  const summaryLeak = Array.isArray(stories)
+    ? stories.some((s) => s && Object.hasOwn(s, "summary"))
+    : false;
+  const first = storiesOk && stories[0] ? stories[0] : null;
+  const firstOk =
+    !first ||
+    (typeof first.id === "string" &&
+      typeof first.url === "string" &&
+      typeof first.title === "string");
+  return {
+    ok: tldrOk && storiesOk && firstOk && !summaryLeak,
+    parseable: true,
+    tldrOk,
+    storiesOk,
+    firstOk,
+    summaryLeak,
+    storyCount: storiesOk ? stories.length : 0,
+    tldrNull: tldr === null,
+    tldrDate: tldr && typeof tldr.date === "string" ? tldr.date : null,
+    bulletEn: tldr && Array.isArray(tldr.bullets_en) ? tldr.bullets_en.length : 0,
+    bulletVi: tldr && Array.isArray(tldr.bullets_vi) ? tldr.bullets_vi.length : 0,
+  };
+}
+
+async function cmdDoctor(flags) {
+  const { runId, evidenceDir, base } = resolveRun(flags);
+  const publicUrl = `${base}/api/public`;
+  const homeUrl = `${base}/`;
+  let publicRes;
+  let homeRes;
+  try {
+    publicRes = await httpGet(publicUrl, { accept: "application/json" });
+    homeRes = await httpGet(homeUrl, {
+      ua: CHROME_UA,
+      accept: "text/html",
+    });
+  } catch (e) {
+    die(e instanceof Error ? e.message : String(e), { base, runId, evidenceDir });
+  }
+
+  save(evidenceDir, "doctor-public.json", publicRes.body);
+  save(evidenceDir, "doctor-home.html", homeRes.body);
+
+  const shape = publicShape(publicRes.body);
+  const identity = containsAll(homeRes.body, HOME_IDENTITY);
+  const publicOk =
+    publicRes.status === 200 &&
+    publicRes.contentType.includes("json") &&
+    shape.ok;
+  const homeOk =
+    homeRes.status === 200 &&
+    homeRes.contentType.includes("html") &&
+    Object.values(identity).every(Boolean);
+  const out = {
+    ok: publicOk && homeOk,
+    command: "doctor",
+    base,
+    runId,
+    evidenceDir,
+    publicApi: {
+      url: publicUrl,
+      status: publicRes.status,
+      contentType: publicRes.contentType,
+      bytes: publicRes.bytes,
+      ...shape,
+    },
+    homepage: {
+      url: homeUrl,
+      status: homeRes.status,
+      contentType: homeRes.contentType,
+      bytes: homeRes.bytes,
+      chromeUa: true,
+      identity,
+    },
+  };
+  save(evidenceDir, "doctor.json", `${JSON.stringify(out, null, 2)}\n`);
+  printJson(out);
+  if (!out.ok) process.exit(1);
+}
+
+async function cmdFetch(flags) {
+  const { runId, evidenceDir, base } = resolveRun(flags);
+  const path = normalizePath(flags.path);
+  const url = `${base}${path}`;
+  const html = !path.startsWith("/api/");
+  let res;
+  try {
+    res = await httpGet(url, {
+      ua: html ? CHROME_UA : "",
+      accept: html ? "text/html" : "application/json",
+    });
+  } catch (e) {
+    die(e instanceof Error ? e.message : String(e), { url, runId, evidenceDir });
+  }
+  const slug = path === "/" ? "root" : path.replace(/^\//, "").replaceAll("/", "-");
+  const ext =
+    res.contentType.includes("json") || path.startsWith("/api/") ? "json" : "html";
+  const dest = flags.out
+    ? resolve(flags.out)
+    : save(evidenceDir, `fetch-${slug}.${ext}`, res.body);
+  if (flags.out) writeFileSync(dest, res.body);
+  const out = {
+    ok: res.status === 200,
+    command: "fetch",
+    base,
+    path,
+    url,
+    status: res.status,
+    contentType: res.contentType,
+    bytes: res.bytes,
+    savedTo: dest,
+    runId,
+    evidenceDir,
+  };
+  printJson(out);
+  if (!out.ok) process.exit(1);
+}
+
+function viewportSize(name) {
+  if (name === "mobile") return { width: 390, height: 844, name: "mobile" };
+  return { width: 1280, height: 800, name: "desktop" };
+}
+
+function runChromeScreenshot({ url, dest, viewport }) {
+  const bin = chromeBin();
+  if (!bin) {
+    return Promise.resolve({ ok: false, skipped: true, reason: "no chrome" });
+  }
+  const size = viewportSize(viewport);
+  const profile = mkdtempSync(join(tmpdir(), "verify-aidr-chrome-"));
+  const args = [
+    "--headless=new",
+    "--no-sandbox",
+    "--disable-gpu",
+    "--disable-dev-shm-usage",
+    "--hide-scrollbars",
+    "--no-first-run",
+    "--no-default-browser-check",
+    `--user-data-dir=${profile}`,
+    "--remote-debugging-port=0",
+    `--window-size=${size.width},${size.height}`,
+    `--screenshot=${dest}`,
+    `--user-agent=${CHROME_UA}`,
+    "--virtual-time-budget=5000",
+    "--run-all-compositor-stages-before-draw",
+    url,
+  ];
+  return new Promise((resolvePromise) => {
+    const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
+    let err = "";
+    child.stderr.on("data", (d) => {
+      err += d.toString();
+    });
+    const timer = setTimeout(() => {
+      try {
+        child.kill("SIGKILL");
+      } catch {
+        /* already gone */
+      }
+    }, 15_000);
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      try {
+        rmSync(profile, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+      const exists = existsSync(dest);
+      const bytes = exists ? readFileSync(dest).length : 0;
+      resolvePromise({
+        ok: bytes > 100,
+        skipped: false,
+        chrome: bin,
+        dest,
+        viewport: size.name,
+        exitCode: code,
+        stderr: err.slice(-800),
+        bytes,
+      });
+    });
+  });
+}
+
+async function cmdScreenshot(flags) {
+  const { runId, evidenceDir, base } = resolveRun(flags);
+  const path = normalizePath(flags.path);
+  const url = `${base}${path}`;
+  const size = viewportSize(flags.viewport);
+  const slug = path === "/" ? "root" : path.replace(/^\//, "").replaceAll("/", "-");
+  const dest = flags.out
+    ? resolve(flags.out)
+    : join(evidenceDir, `screenshot-${slug}-${size.name}.png`);
+  mkdirSync(dirname(dest), { recursive: true });
+  const shot = await runChromeScreenshot({
+    url,
+    dest,
+    viewport: size.name,
+  });
+  const out = {
+    ok: shot.skipped ? true : shot.ok,
+    command: "screenshot",
+    optional: true,
+    base,
+    path,
+    url,
+    runId,
+    evidenceDir,
+    ...shot,
+  };
+  printJson(out);
+  if (out.skipped) return;
+  if (!out.ok) process.exit(1);
+}
+
+async function driveHomepage(ctx) {
+  const { base, evidenceDir } = ctx;
+  const home = await httpGet(`${base}/`, { ua: CHROME_UA, accept: "text/html" });
+  save(evidenceDir, "homepage.html", home.body);
+  const identity = containsAll(home.body, [
+    ...HOME_IDENTITY,
+    "og:title",
+    "/og.jpg",
+  ]);
+  const permalinks = PERMALINK_RE.test(home.body);
+  const feed = await httpGet(`${base}/api/feed`, { accept: "application/json" });
+  save(evidenceDir, "feed.json", feed.body);
+  let feedJson = null;
+  try {
+    feedJson = JSON.parse(feed.body);
+  } catch {
+    feedJson = null;
+  }
+  const days = Array.isArray(feedJson?.days) ? feedJson.days : [];
+  const dayWithItems = days.find((d) => Array.isArray(d.items) && d.items.length > 0);
+  const ok =
+    home.status === 200 &&
+    Object.values(identity).every(Boolean) &&
+    permalinks &&
+    feed.status === 200 &&
+    Array.isArray(feedJson?.days) &&
+    Array.isArray(feedJson?.categories) &&
+    Boolean(dayWithItems);
+  return {
+    ok,
+    feature: "homepage",
+    homepage: {
+      status: home.status,
+      bytes: home.bytes,
+      identity,
+      permalinks,
+    },
+    feed: {
+      status: feed.status,
+      days: days.length,
+      hasItems: Boolean(dayWithItems),
+      categories: Array.isArray(feedJson?.categories) ? feedJson.categories.length : 0,
+    },
+  };
+}
+
+async function driveTldr(ctx) {
+  const { base, evidenceDir } = ctx;
+  const home = await httpGet(`${base}/`, { ua: CHROME_UA, accept: "text/html" });
+  save(evidenceDir, "tldr-home.html", home.body);
+  const pub = await httpGet(`${base}/api/public`, { accept: "application/json" });
+  save(evidenceDir, "tldr-public.json", pub.body);
+  const shape = publicShape(pub.body);
+  const heading = home.body.includes("AI;DR");
+  const bulletsOk =
+    shape.parseable &&
+    !shape.tldrNull &&
+    shape.bulletEn > 0 &&
+    shape.bulletVi > 0;
+  const ok = home.status === 200 && heading && pub.status === 200 && bulletsOk;
+  return {
+    ok,
+    feature: "tldr",
+    homepage: { status: home.status, heading },
+    publicApi: { status: pub.status, ...shape },
+    tldrMissing: shape.tldrNull,
+  };
+}
+
+async function driveAbout(ctx) {
+  const { base, evidenceDir } = ctx;
+  const res = await httpGet(`${base}/about`, { ua: CHROME_UA, accept: "text/html" });
+  save(evidenceDir, "about.html", res.body);
+  const identity = containsAll(res.body, [
+    "About AI News",
+    "How it works",
+    "Sources",
+    "AI;DR + Email",
+    "Chrome new tab",
+    "Load unpacked",
+    "/extension",
+    "aidr.zip",
+  ]);
+  return {
+    ok: res.status === 200 && Object.values(identity).every(Boolean),
+    feature: "about",
+    status: res.status,
+    bytes: res.bytes,
+    identity,
+  };
+}
+
+async function driveExtension(ctx) {
+  const { base, evidenceDir } = ctx;
+  const res = await httpGet(`${base}/extension`, {
+    ua: CHROME_UA,
+    accept: "text/html",
+  });
+  save(evidenceDir, "extension.html", res.body);
+  const identity = containsAll(res.body, [
+    "Load unpacked",
+    "/aidr.zip",
+    'href="chrome://extensions"',
+    "manifest.json",
+    "/media/chrome-load-unpacked-zip-error.png",
+  ]);
+  const unzip =
+    res.body.includes("Unzip first") || res.body.includes("Giải nén trước");
+  const noStore = !res.body.includes("chrome.google.com/webstore");
+  return {
+    ok:
+      res.status === 200 &&
+      Object.values(identity).every(Boolean) &&
+      unzip &&
+      noStore,
+    feature: "extension",
+    status: res.status,
+    bytes: res.bytes,
+    identity,
+    unzipWarning: unzip,
+    noWebStoreListing: noStore,
+  };
+}
+
+async function driveApiPublic(ctx) {
+  const { base, evidenceDir } = ctx;
+  const get = await httpGet(`${base}/api/public`, { accept: "application/json" });
+  save(evidenceDir, "api-public.json", get.body);
+  const shape = publicShape(get.body);
+  const len = Number(get.headers["content-length"] || 0);
+  const sizeOk = len === 0 || len < 50_000;
+  let cors;
+  try {
+    cors = await httpGet(`${base}/api/public`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: EXT_ORIGIN,
+        "Access-Control-Request-Method": "GET",
+      },
+    });
+  } catch (e) {
+    cors = { status: 0, contentType: "", body: String(e), headers: {} };
+  }
+  save(
+    evidenceDir,
+    "api-public-cors.json",
+    `${JSON.stringify(
+      {
+        status: cors.status,
+        contentType: cors.contentType,
+        allowOrigin: cors.headers["access-control-allow-origin"] || null,
+      },
+      null,
+      2
+    )}\n`
+  );
+  const corsOk =
+    (cors.status === 204 || cors.status === 200) &&
+    !cors.contentType.includes("text/html") &&
+    cors.headers["access-control-allow-origin"] === EXT_ORIGIN;
+  const ok =
+    get.status === 200 &&
+    get.contentType.includes("json") &&
+    shape.ok &&
+    sizeOk &&
+    corsOk;
+  return {
+    ok,
+    feature: "api-public",
+    get: {
+      status: get.status,
+      contentType: get.contentType,
+      bytes: get.bytes,
+      contentLength: len,
+      sizeOk,
+      ...shape,
+    },
+    cors: {
+      status: cors.status,
+      contentType: cors.contentType,
+      allowOrigin: cors.headers["access-control-allow-origin"] || null,
+      ok: corsOk,
+    },
+  };
+}
+
+const DRIVERS = {
+  homepage: driveHomepage,
+  feed: driveHomepage,
+  "homepage-feed": driveHomepage,
+  tldr: driveTldr,
+  about: driveAbout,
+  extension: driveExtension,
+  "api-public": driveApiPublic,
+  public: driveApiPublic,
+  "api/public": driveApiPublic,
+};
+
+async function cmdDrive(flags) {
+  const feature = flags.rest[0] || "";
+  if (!feature) die("drive requires a feature id (homepage|tldr|about|extension|api-public|all)");
+  const ctx = resolveRun(flags);
+  const ids = feature === "all" ? FEATURES : [feature];
+  const results = [];
+  for (const id of ids) {
+    const driver = DRIVERS[id];
+    if (!driver) die(`unknown feature: ${id}`, { known: FEATURES });
+    try {
+      results.push(await driver(ctx));
+    } catch (e) {
+      results.push({
+        ok: false,
+        feature: id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  const ok = results.every((r) => r.ok);
+  const out = {
+    ok,
+    command: "drive",
+    feature,
+    base: ctx.base,
+    runId: ctx.runId,
+    evidenceDir: ctx.evidenceDir,
+    results,
+  };
+  save(ctx.evidenceDir, "report.json", `${JSON.stringify(out, null, 2)}\n`);
+  printJson(out);
+  if (!ok) process.exit(1);
+}
+
+function cmdCleanup() {
+  const state = readState();
+  const pid = state.localPid;
+  if (!pid) {
+    printJson({
+      ok: true,
+      command: "cleanup",
+      stopped: false,
+      reason: "no localPid",
+      evidenceDir: state.evidenceDir || null,
+    });
+    return;
+  }
+  let stopped = false;
+  let reason = "sigterm";
+  try {
+    process.kill(pid, "SIGTERM");
+    stopped = true;
+  } catch {
+    reason = "not running";
+  }
+  writeState({ localPid: null });
+  printJson({
+    ok: true,
+    command: "cleanup",
+    stopped,
+    pid,
+    reason,
+    evidenceKept: true,
+    evidenceDir: state.evidenceDir || null,
+  });
+}
+
+async function main() {
+  const flags = parseArgs(process.argv.slice(2));
+  const cmd = flags.cmd;
+  if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
+    usage();
+    return;
+  }
+  if (!existsSync(join(ROOT, "package.json"))) {
+    die(`not the aidr repo root (${ROOT})`);
+  }
+  switch (cmd) {
+    case "launch":
+      await cmdLaunch(flags);
+      break;
+    case "doctor":
+      await cmdDoctor(flags);
+      break;
+    case "drive":
+      await cmdDrive(flags);
+      break;
+    case "fetch":
+      await cmdFetch(flags);
+      break;
+    case "screenshot":
+      await cmdScreenshot(flags);
+      break;
+    case "cleanup":
+      cmdCleanup();
+      break;
+    default:
+      die(`unknown command: ${cmd}`);
+  }
+}
+
+main().catch((e) => {
+  die(e instanceof Error ? e.message : String(e));
+});
