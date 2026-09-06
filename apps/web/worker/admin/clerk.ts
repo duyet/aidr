@@ -28,7 +28,8 @@ const jwksCache = new Map<string, { keys: Jwk[]; fetchedAt: number }>();
 
 function base64UrlDecode(input: string): Uint8Array {
   const padded = input.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
+  const pad =
+    padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
   const binary = atob(padded + pad);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -84,11 +85,24 @@ export async function verifyClerkToken(
   const exp = typeof payload.exp === "number" ? payload.exp : null;
   if (!iss || !sub || exp === null) return null;
 
-  if (env.CLERK_ISSUER && iss !== env.CLERK_ISSUER) return null;
+  if (env.CLERK_ISSUER) {
+    // Accept both the FAPI proxy URL and the legacy custom-domain issuer
+    // (Cloudflare Error 1014 broke clerk.aidr.today CNAMEs; sessions may
+    // still carry either iss until they refresh).
+    const allowed = new Set([
+      env.CLERK_ISSUER,
+      "https://aidr.today/__clerk",
+      "https://clerk.aidr.today",
+    ]);
+    if (!allowed.has(iss)) return null;
+  }
 
   const now = Math.floor(Date.now() / 1000);
   if (exp + CLOCK_SKEW_SECONDS < now) return null;
-  if (typeof payload.nbf === "number" && payload.nbf - CLOCK_SKEW_SECONDS > now) {
+  if (
+    typeof payload.nbf === "number" &&
+    payload.nbf - CLOCK_SKEW_SECONDS > now
+  ) {
     return null;
   }
 
@@ -125,9 +139,9 @@ export async function verifyClerkToken(
 }
 
 /**
- * Extracts a role claim from any of Clerk's common session-token claim
- * shapes for public metadata: `metadata.role`, `publicMetadata.role`, or
- * the shortened `o.rol` claim used by Clerk's default session token.
+ * Extracts a role claim from Clerk session-token public-metadata shapes:
+ * `metadata.role` or `publicMetadata.role`. Org role is not application
+ * admin.
  */
 function claimRole(payload: ClerkPayload): unknown {
   const metadata = payload.metadata as { role?: unknown } | undefined;
@@ -137,9 +151,6 @@ function claimRole(payload: ClerkPayload): unknown {
     | { role?: unknown }
     | undefined;
   if (publicMetadata?.role !== undefined) return publicMetadata.role;
-
-  const org = payload.o as { rol?: unknown } | undefined;
-  if (org?.rol !== undefined) return org.rol;
 
   return undefined;
 }

@@ -112,7 +112,10 @@ describe("digest message", () => {
   const digest: DailyDigest = {
     date: "2026-08-17",
     bullets: [
-      { text: "OpenAI <ships> GPT-6 & more", url: "https://aidr.today/llm/abcdef12" },
+      {
+        text: "OpenAI <ships> GPT-6 & more",
+        url: "https://aidr.today/llm/abcdef12",
+      },
       { text: "No-link bullet", url: null },
     ],
   };

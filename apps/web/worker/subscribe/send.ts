@@ -1,4 +1,4 @@
-import { listUnsubscribeHeaders } from "../mail/render.js";
+import { digestFrom, sendSubscriberEmail } from "../mail/send.js";
 import type { Env } from "../types.js";
 import { DEFAULT_TIMEZONE, isValidTimezone } from "./handlers.js";
 
@@ -38,7 +38,6 @@ export interface TldrSnapshotRow {
 }
 
 const SITE_URL = "https://aidr.today";
-const FROM_ADDRESS = "news@duyet.net";
 const MAX_BULLETS = 5;
 /** Digests only go out from this local hour onward — no 3am emails. */
 export const DIGEST_LOCAL_HOUR = 7;
@@ -55,9 +54,7 @@ export function topBullets(
     return parsed.slice(0, max).map((b: Record<string, unknown>) => {
       const itemIds = Array.isArray(b.item_ids) ? (b.item_ids as string[]) : [];
       const item_id =
-        typeof b.item_id === "string" && b.item_id
-          ? b.item_id
-          : itemIds[0];
+        typeof b.item_id === "string" && b.item_id ? b.item_id : itemIds[0];
       return { text: String(b.text ?? ""), item_id };
     });
   } catch {
@@ -179,6 +176,32 @@ ${htmlItems}
  * snapshot with bullets yet — this must never break the hourly ingest
  * workflow.
  */
+export async function sendWelcomeEmail(
+  env: Env,
+  sub: { email: string; lang: string; unsubscribe_token: string }
+): Promise<boolean> {
+  const vi = sub.lang !== "en";
+  const subject = vi
+    ? "Bạn đã đăng ký AI;DR — aidr.today"
+    : "You're subscribed to AI;DR — aidr.today";
+  const unsub = `${SITE_URL}/subscribe?unsubscribe=${sub.unsubscribe_token}`;
+  const text = vi
+    ? `Cảm ơn bạn đã đăng ký. Mỗi sáng (khoảng 7h theo giờ của bạn) chúng tôi gửi tối đa 5 tin nổi bật.\n\n${SITE_URL}\n\nHủy đăng ký: ${unsub}`
+    : `Thanks for subscribing. Each morning (around 7:00 in your timezone) we send up to 5 top stories.\n\n${SITE_URL}\n\nUnsubscribe: ${unsub}`;
+  const html = `<p>${vi ? "Cảm ơn bạn đã đăng ký." : "Thanks for subscribing."}</p>
+<p>${vi ? "Mỗi sáng (khoảng 7h theo giờ của bạn) chúng tôi gửi tối đa 5 tin nổi bật." : "Each morning (around 7:00 in your timezone) we send up to 5 top stories."}</p>
+<p><a href="${SITE_URL}">${SITE_URL}</a></p>
+<p style="color:#888;font-size:12px"><a href="${unsub}">${vi ? "Hủy đăng ký" : "Unsubscribe"}</a></p>`;
+  return sendSubscriberEmail(env, {
+    to: sub.email,
+    from: digestFrom(env),
+    subject,
+    html,
+    text,
+    unsubscribeToken: sub.unsubscribe_token,
+  });
+}
+
 export async function sendDailyTldr(env: Env): Promise<number> {
   if (!env.EMAIL) {
     console.error("EMAIL binding not configured; skipping daily digest");
@@ -204,9 +227,11 @@ export async function sendDailyTldr(env: Env): Promise<number> {
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
     if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
 
-    const bullets = topBullets(
+    const preferred = topBullets(
       sub.lang === "en" ? snapshot.bullets_en : snapshot.bullets_vi
     );
+    const bullets =
+      preferred.length > 0 ? preferred : topBullets(snapshot.bullets_en);
     if (bullets.length === 0) continue;
 
     const { subject, html, text } = buildDigestEmail(
@@ -216,25 +241,22 @@ export async function sendDailyTldr(env: Env): Promise<number> {
       sub.unsubscribe_token
     );
 
-    try {
-      await env.EMAIL.send({
-        to: sub.email,
-        from: { email: FROM_ADDRESS, name: "AI News" },
-        subject,
-        html,
-        text,
-        headers: listUnsubscribeHeaders(sub.unsubscribe_token),
-      });
-      await env.DB.prepare(
-        "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
-      )
-        .bind(localDate, sub.email)
-        .run();
-      emailsSent++;
-    } catch (error) {
-      console.error(`digest send failed for ${sub.email}:`, error);
-      // Deliberately do NOT stamp last_sent_date — retried next hour.
-    }
+    const sent = await sendSubscriberEmail(env, {
+      to: sub.email,
+      from: digestFrom(env),
+      subject,
+      html,
+      text,
+      unsubscribeToken: sub.unsubscribe_token,
+    });
+    if (!sent) continue;
+
+    await env.DB.prepare(
+      "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
+    )
+      .bind(localDate, sub.email)
+      .run();
+    emailsSent++;
   }
 
   // Legacy signal only: marks that this snapshot has been processed at

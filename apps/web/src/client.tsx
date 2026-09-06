@@ -13,7 +13,7 @@ if (w.__CF_ENTRY_RAN__) {
       document,
       <StrictMode>
         <StartClient />
-      </StrictMode>,
+      </StrictMode>
     );
   });
 }

@@ -1,7 +1,9 @@
+import { track } from "@aidr/ui/track";
 import { createFileRoute } from "@tanstack/react-router";
-import { Mail } from "lucide-react";
+import { Mail, Send } from "lucide-react";
 import { useState } from "react";
 import { useLang } from "../lib/lang-context";
+import { TELEGRAM_HANDLE, TELEGRAM_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
 
 export const Route = createFileRoute("/subscribe")({
@@ -38,7 +40,7 @@ function UnsubscribeView({ token, lang }: { token: string; lang: Lang }) {
 
   return (
     <div className="mx-auto max-w-md py-16 text-center">
-      <h1 className="text-2xl font-bold tracking-tight">
+      <h1 className="font-serif text-3xl font-medium tracking-tight">
         {lang === "vi" ? "Hủy đăng ký" : "Unsubscribe"}
       </h1>
       <p className="mt-3 text-sm text-muted-foreground">
@@ -81,6 +83,7 @@ function SubscribePage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
+    track("subscribe_submit");
     try {
       const res = await fetch("/api/subscribe", {
         method: "POST",
@@ -92,15 +95,22 @@ function SubscribePage() {
           source: "news",
         }),
       });
-      setStatus(res.ok ? "done" : "error");
+      if (res.ok) {
+        track("subscribe_success");
+        setStatus("done");
+      } else {
+        track("subscribe_error");
+        setStatus("error");
+      }
     } catch {
+      track("subscribe_error");
       setStatus("error");
     }
   };
 
   return (
     <div className="mx-auto max-w-md py-12">
-      <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+      <h1 className="flex items-center gap-2 font-serif text-3xl font-medium tracking-tight">
         <Mail className="h-5 w-5 text-accent" aria-hidden />
         {lang === "vi" ? "Nhận bản tin hằng ngày" : "Daily AI News Digest"}
       </h1>
@@ -108,6 +118,19 @@ function SubscribePage() {
         {lang === "vi"
           ? "Tối đa 5 tin nổi bật nhất mỗi ngày, gửi vào khoảng 7 giờ sáng theo giờ của bạn."
           : "Top 5 stories a day, delivered around 7:00 AM your local time."}
+      </p>
+      <p className="mt-3 text-sm">
+        <a
+          href={TELEGRAM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 font-semibold text-accent hover:underline hover:underline-offset-2"
+        >
+          <Send className="h-3.5 w-3.5" aria-hidden />
+          {lang === "vi"
+            ? `Theo dõi trên Telegram (${TELEGRAM_HANDLE})`
+            : `Follow on Telegram (${TELEGRAM_HANDLE})`}
+        </a>
       </p>
 
       {status === "done" ? (

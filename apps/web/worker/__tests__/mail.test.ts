@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { previewCampaign } from "../mail/campaigns.js";
+import { parseWrapJson } from "../mail/compose.js";
+import { parseRssItems } from "../mail/content.js";
 import { markdownToEmailHtml, markdownToPlainText } from "../mail/markdown.js";
+import {
+  listUnsubscribeHeaders,
+  NEWS_FROM,
+  NOTES_FROM,
+  renderNoteEmail,
+} from "../mail/render.js";
+import { digestFrom, notesFrom } from "../mail/send.js";
 import {
   applyPlaceholders,
   applyTemplate,
   templateById,
 } from "../mail/templates.js";
-import { parseWrapJson } from "../mail/compose.js";
-import { previewCampaign } from "../mail/campaigns.js";
-import { listUnsubscribeHeaders, renderNoteEmail } from "../mail/render.js";
-import { parseRssItems } from "../mail/content.js";
 import { isAllowedOrigin } from "../subscribe/cors.js";
 
 describe("markdownToEmailHtml", () => {
@@ -109,7 +115,7 @@ describe("renderNoteEmail", () => {
       unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
     });
     expect(html).toContain("max-width:520px");
-    expect(html).toContain("Duyet");
+    expect(html).toContain("aidr");
     expect(html).toContain("Inbox preview");
     expect(html).toContain("Read");
     expect(html).toContain("Unsubscribe");
@@ -142,6 +148,21 @@ describe("previewCampaign", () => {
       cta_url: "",
     });
     expect(html).toContain("Body");
+  });
+});
+
+describe("from addresses", () => {
+  it("defaults digest and notes senders to aidr.today", () => {
+    expect(NEWS_FROM.email).toBe("digest@aidr.today");
+    expect(NOTES_FROM.email).toBe("notes@aidr.today");
+    const env = {} as import("../types.js").Env;
+    expect(digestFrom(env).email).toBe("digest@aidr.today");
+    expect(notesFrom(env).email).toBe("notes@aidr.today");
+    expect(
+      digestFrom({
+        EMAIL_FROM: "hello@aidr.today",
+      } as import("../types.js").Env).email
+    ).toBe("hello@aidr.today");
   });
 });
 

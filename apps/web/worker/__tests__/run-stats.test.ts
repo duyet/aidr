@@ -82,7 +82,9 @@ describe("recordStep", () => {
   it("omits reason when not given", () => {
     const steps: { name: string; action: string; reason?: string }[] = [];
     recordStep(steps, "fetch", "27 items from 2 sources");
-    expect(steps).toEqual([{ name: "fetch", action: "27 items from 2 sources" }]);
+    expect(steps).toEqual([
+      { name: "fetch", action: "27 items from 2 sources" },
+    ]);
   });
 
   it("never throws, even if pushing fails", () => {

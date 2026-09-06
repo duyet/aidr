@@ -1,3 +1,4 @@
+import { cn } from "@aidr/libs/utils";
 import {
   Card,
   CardContent,
@@ -5,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@aidr/ui";
-import { cn } from "@aidr/libs/utils";
 import type { ReactNode } from "react";
 
 interface ChartCardProps {

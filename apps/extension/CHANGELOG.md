@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.1.8](https://github.com/duyet/aidr/compare/aidr-v0.1.7...aidr-v0.1.8) (2026-09-06)
+
+
+### ✨ Features
+
+* **extension:** match website PrefsPanel and Slashy reader chrome
+
+
+## [0.1.7](https://github.com/duyet/aidr/compare/aidr-v0.1.6...aidr-v0.1.7) (2026-09-05)
+
+
+### 🐛 Bug Fixes
+
+* **extension:** replace unclickable settings drawer with Aa prefs dialog
+
+
+## [0.1.6](https://github.com/duyet/aidr/compare/aidr-v0.1.5...aidr-v0.1.6) (2026-09-05)
+
+
+### ✨ Features
+
+* **extension:** match live homepage header, footer, day feed, and reader fonts
+
+
+## [0.1.5](https://github.com/duyet/aidr/compare/aidr-v0.1.4...aidr-v0.1.5) (2026-09-05)
+
+
+### ✨ Features
+
+* **extension:** AI;DR wordmark logo and sticky branded new-tab topbar
+
+
+## [0.1.4](https://github.com/duyet/aidr/compare/aidr-v0.1.3...aidr-v0.1.4) (2026-09-05)
+
+
+### ✨ Features
+
+* **extension:** pack a CWS zip with manifest at archive root ([ab8fc3a](https://github.com/duyet/aidr/commit/ab8fc3ab148906bcb7e1c29686d4a10b6ab510d3))
+
+## [0.1.3](https://github.com/duyet/aidr/compare/aidr-v0.1.2...aidr-v0.1.3) (2026-09-04)
+
+
+### ✨ Features
+
+* bootstrap aidr monorepo from news + news-tab ([b1e3e54](https://github.com/duyet/aidr/commit/b1e3e54019a3668f1704da0ab796e459655acff2))
+* **extension:** prepare CWS auto-update and first-review checklist ([b4168a5](https://github.com/duyet/aidr/commit/b4168a5d0d92f8c6a5f6e82e1fee6d01a34a74ab))
+
 ## [0.1.2](https://github.com/duyet/monorepo/compare/news-tab-v0.1.1...news-tab-v0.1.2) (2026-09-03)
 
 

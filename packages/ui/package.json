@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "sideEffects": ["**/*.css"],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "type": "module",
   "main": "./index.tsx",
   "module": "./index.tsx",
@@ -11,6 +13,7 @@
   "exports": {
     ".": "./index.tsx",
     "./Analytics": "./Analytics.tsx",
+    "./track": "./track.ts",
     "./ThemeProvider": "./ThemeProvider.tsx",
     "./styles.css": "./styles.css"
   },
@@ -20,15 +23,16 @@
     "@radix-ui/react-tabs": "^1.1.1",
     "class-variance-authority": "^0.7.1",
     "lucide-react": "^1.0.0",
-    "next-themes": "^0.4.0"
+    "next-themes": "^0.4.0",
+    "radix-ui": "^1.6.7"
   },
   "peerDependencies": {
-    "@clerk/clerk-react": "^5",
+    "@clerk/tanstack-react-start": "^1",
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19"
   },
   "peerDependenciesMeta": {
-    "@clerk/clerk-react": {
+    "@clerk/tanstack-react-start": {
       "optional": true
     }
   },

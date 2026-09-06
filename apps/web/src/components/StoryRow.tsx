@@ -1,5 +1,6 @@
+import { track } from "@aidr/ui/track";
 import { ExternalLink, TrendingUp } from "lucide-react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import {
   ARTICLE_TITLE_TAG,
@@ -9,10 +10,65 @@ import {
 import { localizedTitle } from "../lib/display-title";
 import { categoryLabel, timeAgo } from "../lib/lang";
 import { storyPath } from "../lib/slug";
-import { topicColor } from "../lib/topic-color";
+import { type TopicColor, topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
 import { HighlightedText } from "./HighlightedText";
 import { StoryDetail } from "./StoryDetail";
+
+function StoryRowHeader({
+  hasDetails,
+  expanded,
+  matchColor,
+  onToggle,
+  children,
+}: {
+  hasDetails: boolean;
+  expanded: boolean;
+  matchColor: TopicColor | null;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const className = `flex items-baseline gap-3 ${
+    hasDetails ? "cursor-pointer" : ""
+  } ${expanded ? "bg-muted/60" : matchColor ? "topic-hl-row" : ""}`;
+  const style = {
+    paddingTop: "var(--reader-pad, 0.5rem)",
+    paddingBottom: "var(--reader-pad, 0.5rem)",
+    ...(matchColor && {
+      "--tc-light": matchColor.light,
+      "--tc-dark": matchColor.dark,
+    }),
+  } as CSSProperties;
+
+  if (hasDetails) {
+    return (
+      // Native <button> cannot wrap the title/source links inside the row.
+      // biome-ignore lint/a11y/useSemanticElements: nested links; div+role=button
+      <div
+        className={className}
+        style={style}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div className={className} style={style}>
+      {children}
+    </div>
+  );
+}
 
 export function StoryRow({
   item,
@@ -41,51 +97,46 @@ export function StoryRow({
     Boolean(summary) || item.tags.length > 0 || item.sources.length > 0;
   const isMatch = Boolean(
     selectedTag &&
-      item.tags.some((tag) => tag.toLowerCase() === selectedTag.toLowerCase())
+      (item.tags.some(
+        (tag) => tag.toLowerCase() === selectedTag.toLowerCase()
+      ) ||
+        item.title.toLowerCase().includes(selectedTag.toLowerCase()) ||
+        (item.title_vi?.toLowerCase().includes(selectedTag.toLowerCase()) ??
+          false))
   );
   // Selected-topic rows tint with THAT topic's own deterministic color
   // (same palette as the in-title keyword highlights) instead of a
   // generic accent, so the highlight visually matches the clicked chip.
   const matchColor = isMatch && selectedTag ? topicColor(selectedTag) : null;
 
+  const toggleExpanded = () => {
+    if (!hasDetails) return;
+    setExpanded((v) => {
+      const next = !v;
+      track(next ? "story_expand" : "story_collapse", { item_id: item.id });
+      return next;
+    });
+  };
+
   return (
-    <div id={`item-${item.id}`} className="border-b border-border">
-      <div
-        className={`flex items-baseline gap-3 ${
-          hasDetails ? "cursor-pointer" : ""
-        } ${expanded ? "bg-muted/60" : matchColor ? "topic-hl-row" : ""}`}
-        style={
-          {
-            paddingTop: "var(--reader-pad, 0.5rem)",
-            paddingBottom: "var(--reader-pad, 0.5rem)",
-            ...(matchColor && {
-              "--tc-light": matchColor.light,
-              "--tc-dark": matchColor.dark,
-            }),
-          } as CSSProperties
-        }
-        onClick={() => hasDetails && setExpanded((v) => !v)}
-        onKeyDown={(e) => {
-          if (hasDetails && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            setExpanded((v) => !v);
-          }
-        }}
-        role={hasDetails ? "button" : undefined}
-        tabIndex={hasDetails ? 0 : undefined}
-        aria-expanded={hasDetails ? expanded : undefined}
+    <div id={`item-${item.id}`}>
+      <StoryRowHeader
+        hasDetails={hasDetails}
+        expanded={expanded}
+        matchColor={matchColor}
+        onToggle={toggleExpanded}
       >
-        <span className="w-5 shrink-0 text-right text-sm text-muted-foreground">
+        <span className="w-5 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
           {index}
         </span>
         <span
-          className={`min-w-0 flex-1 font-semibold leading-snug ${
-            matchColor ? "topic-colored" : ""
+          className={`min-w-0 flex-1 leading-snug ${
+            matchColor ? "topic-colored font-medium" : "font-medium"
           }`}
         >
           {hot && (
             <TrendingUp
-              className="mr-1 inline h-4 w-4 align-[-2px] text-accent"
+              className="mr-1 inline h-4 w-4 align-[-2px] text-muted-foreground"
               aria-hidden
             />
           )}
@@ -103,7 +154,7 @@ export function StoryRow({
           </TitleTag>
           {fallbackFromEnglish && (
             <span
-              className="ml-1 align-middle text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              className="ml-1 align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
               title={
                 lang === "vi"
                   ? "Tiêu đề gốc tiếng Anh — chưa có bản dịch"
@@ -117,8 +168,11 @@ export function StoryRow({
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-muted-foreground hover:text-accent"
+            onClick={(e) => {
+              e.stopPropagation();
+              track("story_open", { item_id: item.id });
+            }}
+            className="text-muted-foreground hover:text-foreground"
             aria-label="Open story link"
           >
             <ExternalLink className="inline h-3.5 w-3.5 align-baseline" />
@@ -130,13 +184,13 @@ export function StoryRow({
         <span className="hidden w-20 shrink-0 text-right text-sm text-muted-foreground md:block">
           {timeAgo(item.published_at, Date.now(), lang)}
         </span>
-        <span className="w-14 shrink-0 text-right text-sm font-bold tabular-nums">
+        <span className="w-14 shrink-0 text-right text-sm font-medium tabular-nums text-muted-foreground">
           {item.points}/{item.comments}
         </span>
-      </div>
+      </StoryRowHeader>
 
       {expanded && hasDetails && (
-        <div className="border-l-2 border-accent/60 bg-muted/30 px-4 py-2.5 md:mx-6">
+        <div className="mb-2 rounded-xl border border-border/60 bg-muted/40 px-4 py-3 md:mx-6">
           <StoryDetail item={item} lang={lang} />
         </div>
       )}

@@ -16,7 +16,8 @@
       "!**/.wrangler",
       "!**/.output",
       "!**/routeTree.gen.ts",
-      "!**/public"
+      "!**/public",
+      "!**/src/components/dither-kit/**"
     ]
   },
   "formatter": {
@@ -61,6 +62,9 @@
     }
   },
   "css": {
+    "parser": {
+      "tailwindDirectives": true
+    },
     "linter": {
       "enabled": false
     }

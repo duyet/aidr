@@ -18,8 +18,15 @@ function formatDuration(s: number): string {
 export function RunDurationBars({ runs, emptyLabel }: RunDurationBarsProps) {
   const chrono = [...runs].reverse();
   const data = chrono
-    .map((r) => ({ id: r.id, started_at: r.started_at, seconds: durationSeconds(r) }))
-    .filter((d): d is { id: string; started_at: number | null; seconds: number } => d.seconds !== null);
+    .map((r) => ({
+      id: r.id,
+      started_at: r.started_at,
+      seconds: durationSeconds(r),
+    }))
+    .filter(
+      (d): d is { id: string; started_at: number | null; seconds: number } =>
+        d.seconds !== null
+    );
 
   if (data.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;

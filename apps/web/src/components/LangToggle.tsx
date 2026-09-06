@@ -1,3 +1,4 @@
+import { Button } from "@aidr/ui";
 import type { Lang } from "../lib/types";
 
 export function LangToggle({
@@ -13,7 +14,7 @@ export function LangToggle({
 }) {
   return (
     <div
-      className={`flex items-center rounded-full border border-border text-xs font-semibold overflow-hidden ${
+      className={`inline-flex items-center rounded-2xl border border-border p-0.5 ${
         disabled ? "cursor-not-allowed opacity-50" : ""
       }`}
       title={
@@ -25,22 +26,20 @@ export function LangToggle({
       }
     >
       {(["en", "vi"] as Lang[]).map((l) => (
-        <button
+        <Button
           key={l}
           type="button"
+          variant={lang === l ? "secondary" : "ghost"}
+          size="xs"
           disabled={disabled}
           onClick={() => onChange(l)}
-          className={`px-2.5 py-1 uppercase transition-colors ${
-            buttonClassName ?? ""
-          } ${disabled ? "cursor-not-allowed" : ""} ${
-            lang === l
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:bg-muted"
+          className={`uppercase ${buttonClassName ?? ""} ${
+            disabled ? "cursor-not-allowed" : ""
           }`}
           aria-pressed={lang === l}
         >
           {l}
-        </button>
+        </Button>
       ))}
     </div>
   );

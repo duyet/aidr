@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { useState } from "react";
 import { type AidrLayout, DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
@@ -127,10 +128,15 @@ export function TldrSection({
   const numbered = layout === "a";
 
   return (
-    <section className="border-y-2 border-brand py-4" data-aidr-layout={layout}>
-      <div className="mb-2.5 flex items-baseline justify-between gap-3">
+    <section
+      className="my-2 rounded-2xl border border-border/80 bg-card px-4 py-5 sm:px-5"
+      data-aidr-layout={layout}
+    >
+      <div className="mb-4 flex items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-lg font-bold tracking-widest">AI;DR</h2>
+          <h2 className="font-serif text-2xl font-medium tracking-tight">
+            AI;DR
+          </h2>
           <span className="text-xs text-muted-foreground">
             {snapshotDate
               ? snapshotDate
@@ -139,22 +145,25 @@ export function TldrSection({
                 : "past 24 hours"}
           </span>
           {layoutLabeled && (
-            <span className="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Layout {layout.toUpperCase()}
             </span>
           )}
         </div>
         {options.length > 0 && (
-          <div className="flex gap-1 text-xs">
+          <div className="flex gap-1 rounded-full bg-muted/80 p-0.5 text-xs">
             {options.map((o) => (
               <button
                 key={o.nominal}
                 type="button"
-                onClick={() => setPrefs({ tldrCount: o.nominal })}
+                onClick={() => {
+                  track("prefs_change", { pref: "tldrCount" });
+                  setPrefs({ tldrCount: o.nominal });
+                }}
                 aria-pressed={selectedOption === o}
-                className={`rounded-md px-1.5 py-0.5 ${
+                className={`rounded-full px-2.5 py-1 transition-[background-color,color] duration-150 ${
                   selectedOption === o
-                    ? "font-bold text-accent"
+                    ? "bg-primary font-medium text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -254,7 +263,10 @@ export function TldrSection({
       {nextOption ? (
         <button
           type="button"
-          onClick={() => setPrefs({ tldrCount: nextOption.nominal })}
+          onClick={() => {
+            track("prefs_change", { pref: "tldrCount" });
+            setPrefs({ tldrCount: nextOption.nominal });
+          }}
           className="mt-3 text-xs font-semibold text-accent hover:underline"
         >
           {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
@@ -263,7 +275,10 @@ export function TldrSection({
         canCollapse && (
           <button
             type="button"
-            onClick={() => setPrefs({ tldrCount: options[0].nominal })}
+            onClick={() => {
+              track("prefs_change", { pref: "tldrCount" });
+              setPrefs({ tldrCount: options[0].nominal });
+            }}
             className="mt-3 text-xs font-semibold text-accent hover:underline"
           >
             {lang === "vi" ? "Thu gọn" : "Show less ↑"}

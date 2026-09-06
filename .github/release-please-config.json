@@ -5,10 +5,23 @@
   "include-component-in-tag": true,
   "separate-pull-requests": true,
   "tag-separator": "-",
+  "changelog-sections": [
+    { "type": "feat", "section": "✨ Features" },
+    { "type": "fix", "section": "🐛 Bug Fixes" },
+    { "type": "perf", "section": "⚡ Performance" },
+    { "type": "refactor", "section": "♻️ Refactoring" },
+    { "type": "deps", "section": "📦 Dependencies" },
+    { "type": "docs", "section": "📚 Documentation", "hidden": true },
+    { "type": "chore", "section": "🧹 Chores", "hidden": true },
+    { "type": "test", "section": "🧪 Tests", "hidden": true },
+    { "type": "ci", "section": "👷 CI", "hidden": true },
+    { "type": "style", "section": "💅 Style", "hidden": true }
+  ],
   "packages": {
     "apps/extension": {
       "release-type": "node",
       "package-name": "aidr",
+      "component": "aidr",
       "changelog-path": "CHANGELOG.md",
       "draft": false,
       "prerelease": false,
@@ -18,20 +31,21 @@
           "type": "json",
           "path": "manifest.json",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "generic",
+          "path": "../web/src/lib/extension-release.ts"
         }
-      ],
-      "changelog-sections": [
-        { "type": "feat", "section": "✨ Features" },
-        { "type": "fix", "section": "🐛 Bug Fixes" },
-        { "type": "perf", "section": "⚡ Performance" },
-        { "type": "refactor", "section": "♻️ Refactoring" },
-        { "type": "deps", "section": "📦 Dependencies" },
-        { "type": "docs", "section": "📚 Documentation", "hidden": true },
-        { "type": "chore", "section": "🧹 Chores", "hidden": true },
-        { "type": "test", "section": "🧪 Tests", "hidden": true },
-        { "type": "ci", "section": "👷 CI", "hidden": true },
-        { "type": "style", "section": "💅 Style", "hidden": true }
       ]
+    },
+    "apps/web": {
+      "release-type": "node",
+      "package-name": "web",
+      "component": "web",
+      "changelog-path": "CHANGELOG.md",
+      "draft": false,
+      "prerelease": false,
+      "include-component-in-tag": true
     }
   }
 }

@@ -1,14 +1,21 @@
 import { fetchDigest } from "./api.js";
 import { highlightTitle, tagsForHighlight } from "./highlight.js";
 import { t, uiLang } from "./i18n.js";
+import { tagSiteLinks, withExtRef } from "./ref.js";
 import {
   applyAppearance,
   loadSettings,
   safeHttpUrl,
   saveSettings,
 } from "./settings.js";
-import { mountSettingsPanel } from "./settings-panel.js";
+import { bindPrefsPopover } from "./settings-panel.js";
 import { topicColor } from "./topic-color.js";
+import {
+  fetchExtensionMeta,
+  installedVersion,
+  isChromeWebStoreInstall,
+  isNewerVersion,
+} from "./update.js";
 
 const NEWS_SITE = "https://aidr.today";
 const THUMB_MARK = new URL("../icons/thumb-mark.svg", import.meta.url).href;
@@ -52,13 +59,6 @@ function timeAgo(epoch, lang) {
   if (diff < 3600) return `${Math.max(1, Math.floor(diff / 60))}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
-}
-
-function storyTitle(story, language) {
-  const vi = story.title_vi?.trim();
-  if (language === "en") return story.title;
-  if (vi && (language === "vi" || looksVietnamese(vi))) return vi;
-  return story.title;
 }
 
 function bulletsFor(tldr, language) {
@@ -142,8 +142,8 @@ function thumbNode(src) {
 
 function bulletHref(bullet) {
   const id = bullet.item_ids?.[0];
-  if (id) return `${NEWS_SITE}/ai/${id}`;
-  return NEWS_SITE;
+  if (id) return withExtRef(`${NEWS_SITE}/ai/${id}`, "tldr");
+  return withExtRef(NEWS_SITE, "tldr_home");
 }
 
 function renderThumbRow(digest, bullet, n) {
@@ -192,33 +192,102 @@ function splitColumns(items) {
 }
 
 let filterTag = null;
-let filterCategory = null;
+/** @type {Set<string>} */
+let filterCategories = new Set();
 let tldrExpanded = false;
 let pushSettings = async () => {};
 
+function formatDayHeading(date, lang) {
+  const d = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return date;
+  return d.toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function applyChrome(settings) {
   const lang = uiLang(settings);
-  $("brand").textContent = t(settings, "lede");
-  $("search").placeholder = t(settings, "search");
-  $("submit-label").textContent = t(settings, "submit");
-  $("stories-heading").textContent = t(settings, "stories");
-  $("trending-label").textContent = t(settings, "trending");
-  $("settings-title").textContent = t(settings, "settings");
-  $("open-settings").setAttribute("aria-label", t(settings, "settings"));
-  $("close-settings").setAttribute("aria-label", t(settings, "close"));
-  document.title = t(settings, "lede");
-  for (const btn of $("lang-toggle").querySelectorAll("button")) {
-    btn.setAttribute(
-      "aria-pressed",
-      btn.dataset.lang === lang ? "true" : "false"
-    );
+  const tagline = $("brand-tagline");
+  if (tagline) tagline.textContent = t(settings, "lede");
+  const searchPh = t(settings, "search");
+  for (const id of ["search", "search-compact"]) {
+    const node = $(id);
+    if (node) node.placeholder = searchPh;
   }
+  $("submit-label").textContent = t(settings, "submit");
+  $("trending-label").textContent = t(settings, "trending");
+  for (const id of ["open-settings", "open-settings-compact"]) {
+    const node = $(id);
+    if (node) node.setAttribute("aria-label", t(settings, "prefsTitle"));
+  }
+  const phoneLang = $("phone-lang-label");
+  if (phoneLang) {
+    phoneLang.textContent = lang === "vi" ? "Ngôn ngữ" : "Language";
+  }
+  const chromeLink = $("chrome-tab-link");
+  if (chromeLink) {
+    const label = lang === "vi" ? "Tab mới Chrome" : "Chrome new tab";
+    chromeLink.title = label;
+    chromeLink.setAttribute("aria-label", label);
+  }
+  document.title = t(settings, "lede");
+  for (const root of [$("lang-toggle"), $("lang-toggle-phone")]) {
+    if (!root) continue;
+    for (const btn of root.querySelectorAll("button")) {
+      btn.setAttribute(
+        "aria-pressed",
+        btn.dataset.lang === lang ? "true" : "false"
+      );
+    }
+  }
+}
+
+function renderFooter(_settings, digest) {
+  const node = $("footer-copy");
+  if (!node) return;
+  const year = new Date().getFullYear();
+  const stamp = digest.lastFetchedAt || digest.updatedAt;
+  const updated = stamp ? ` · Updated ${timeAgo(stamp, "en")}` : "";
+  node.textContent = `© ${year} AI;DR${updated}`;
 }
 
 function setStatus(message, show) {
   const node = $("status");
   node.hidden = !show;
   node.textContent = message || "";
+}
+
+function setUpdateBanner(settings, meta) {
+  const banner = $("update-banner");
+  const text = $("update-text");
+  if (!banner || !text) return;
+  const remote = typeof meta?.version === "string" ? meta.version : "";
+  const local = installedVersion();
+  const store = isChromeWebStoreInstall(
+    globalThis.chrome?.runtime?.getManifest?.()
+  );
+  if (store || !isNewerVersion(remote, local)) {
+    banner.hidden = true;
+    return;
+  }
+  text.textContent = t(settings, "updateAvailable");
+  banner.hidden = false;
+}
+
+async function maybeOfferUnpackedUpdate(settings) {
+  try {
+    if (isChromeWebStoreInstall(globalThis.chrome?.runtime?.getManifest?.())) {
+      return;
+    }
+    const meta = await fetchExtensionMeta(settings.apiBase);
+    setUpdateBanner(settings, meta);
+  } catch {
+    // ignore — digest still works without the version endpoint
+  }
 }
 
 function tldrShown(bullets, settings) {
@@ -285,7 +354,11 @@ function renderTldr(settings, digest) {
     list.start = ci === 0 ? 1 : columns[0].length + 1;
     col.forEach((bullet, i) => {
       list.append(
-        renderThumbRow(digest, bullet, (ci === 0 ? 1 : columns[0].length + 1) + i)
+        renderThumbRow(
+          digest,
+          bullet,
+          (ci === 0 ? 1 : columns[0].length + 1) + i
+        )
       );
     });
     cols.append(list);
@@ -328,7 +401,7 @@ function renderChips(settings, digest) {
   trendRoot.replaceChildren();
 
   const showCats = settings.sections.categories && digest.categories.length > 0;
-  if (!showCats) filterCategory = null;
+  if (!showCats) filterCategories = new Set();
   catSection.hidden = !showCats;
   if (showCats) {
     const lang = uiLang(settings);
@@ -336,9 +409,12 @@ function renderChips(settings, digest) {
     all.type = "button";
     all.className = "chip";
     all.textContent = t(settings, "all");
-    all.setAttribute("aria-pressed", filterCategory ? "false" : "true");
+    all.setAttribute(
+      "aria-pressed",
+      filterCategories.size === 0 ? "true" : "false"
+    );
     all.addEventListener("click", () => {
-      filterCategory = null;
+      filterCategories = new Set();
       render(settings, digest);
     });
     catSection.append(all);
@@ -346,10 +422,8 @@ function renderChips(settings, digest) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "chip";
-      btn.setAttribute(
-        "aria-pressed",
-        filterCategory === row.name ? "true" : "false"
-      );
+      const selected = filterCategories.has(row.name);
+      btn.setAttribute("aria-pressed", selected ? "true" : "false");
       btn.append(
         `${categoryLabel(row.name, lang)} `,
         Object.assign(document.createElement("span"), {
@@ -358,7 +432,10 @@ function renderChips(settings, digest) {
         })
       );
       btn.addEventListener("click", () => {
-        filterCategory = filterCategory === row.name ? null : row.name;
+        const next = new Set(filterCategories);
+        if (next.has(row.name)) next.delete(row.name);
+        else next.add(row.name);
+        filterCategories = next;
         render(settings, digest);
       });
       catSection.append(btn);
@@ -394,55 +471,270 @@ function renderChips(settings, digest) {
   }
 }
 
+function storyMatchesFilters(story) {
+  if (filterCategories.size > 0) {
+    if (!story.category || !filterCategories.has(story.category)) return false;
+  }
+  if (filterTag) {
+    const blob = `${story.title} ${story.title_vi || ""} ${(story.tags || []).join(" ")}`;
+    if (!blob.toLowerCase().includes(filterTag.toLowerCase())) return false;
+  }
+  return true;
+}
+
+function filteredDays(digest) {
+  const days = Array.isArray(digest.days) ? digest.days : [];
+  if (!days.length && digest.stories?.length) {
+    return [
+      {
+        date: "",
+        items: digest.stories.filter(storyMatchesFilters),
+        categoryCounts: {},
+      },
+    ].filter((d) => d.items.length);
+  }
+  return days
+    .map((day) => {
+      const items = day.items.filter(storyMatchesFilters);
+      return {
+        ...day,
+        items,
+        categoryCounts: items.reduce((acc, item) => {
+          if (!item.category) return acc;
+          acc[item.category] = (acc[item.category] || 0) + 1;
+          return acc;
+        }, {}),
+      };
+    })
+    .filter((day) => day.items.length > 0);
+}
+
+function externalLinkIcon() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("class", "ext-icon");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute(
+    "d",
+    "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"
+  );
+  svg.append(path);
+  return svg;
+}
+
+function hotIcon() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("class", "hot-icon");
+  svg.setAttribute("aria-hidden", "true");
+  const p1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p1.setAttribute("d", "M3 17 9 11l4 4 8-8");
+  const p2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p2.setAttribute("d", "M14 7h7v7");
+  svg.append(p1, p2);
+  return svg;
+}
+
+function renderStoryRow(settings, story, index, hot) {
+  const lang = uiLang(settings);
+  const { text: title, fallbackFromEnglish } = (() => {
+    const vi = story.title_vi?.trim();
+    if (settings.language === "en") {
+      return { text: story.title, fallbackFromEnglish: false };
+    }
+    if (vi && (settings.language === "vi" || looksVietnamese(vi))) {
+      return { text: vi, fallbackFromEnglish: false };
+    }
+    return {
+      text: story.title,
+      fallbackFromEnglish: settings.language !== "en" && Boolean(story.title),
+    };
+  })();
+
+  const summary =
+    lang === "vi" && story.summary_vi ? story.summary_vi : story.summary;
+  const hasDetails =
+    Boolean(summary) ||
+    (story.tags || []).length > 0 ||
+    (story.sources || []).length > 0;
+
+  const row = document.createElement("div");
+  row.className = "story-row";
+  row.id = story.id ? `item-${story.id}` : undefined;
+
+  const head = document.createElement("div");
+  head.className = `story-head${hasDetails ? " story-head-expandable" : ""}`;
+
+  const n = document.createElement("span");
+  n.className = "story-n";
+  n.textContent = String(index);
+
+  const titleWrap = document.createElement("span");
+  titleWrap.className = "story-title";
+  if (hot) titleWrap.append(hotIcon());
+
+  const article = document.createElement("a");
+  article.className = "story-article";
+  article.href =
+    safeHttpUrl(
+      withExtRef(`${NEWS_SITE}/ai/${story.id}`, "story"),
+      withExtRef(NEWS_SITE, "story")
+    ) || withExtRef(NEWS_SITE, "story");
+  article.rel = "noreferrer";
+  if (fallbackFromEnglish) article.lang = "en";
+  appendHighlighted(article, title, story.tags || []);
+  titleWrap.append(article);
+
+  if (fallbackFromEnglish) {
+    const badge = document.createElement("span");
+    badge.className = "en-badge";
+    badge.textContent = "EN";
+    badge.title =
+      lang === "vi"
+        ? "Tiêu đề gốc tiếng Anh — chưa có bản dịch"
+        : "Original English title — no Vietnamese translation yet";
+    titleWrap.append(badge);
+  }
+
+  const ext = document.createElement("a");
+  ext.className = "story-ext";
+  // External publishers: do not stamp aidr utm onto third-party hosts.
+  ext.href = safeHttpUrl(story.url, NEWS_SITE) || NEWS_SITE;
+  ext.target = "_blank";
+  ext.rel = "noopener noreferrer";
+  ext.setAttribute("aria-label", "Open story link");
+  ext.append(externalLinkIcon());
+  titleWrap.append(document.createTextNode(" "), ext);
+
+  const cat = document.createElement("span");
+  cat.className = "story-cat";
+  cat.textContent = story.category ? categoryLabel(story.category, lang) : "";
+
+  const when = document.createElement("span");
+  when.className = "story-when";
+  when.textContent = story.published_at
+    ? timeAgo(story.published_at, lang)
+    : "";
+
+  const score = document.createElement("span");
+  score.className = "story-score";
+  score.textContent = `${story.points || 0}/${story.comments || 0}`;
+
+  head.append(n, titleWrap, cat, when, score);
+
+  let detail = null;
+  if (hasDetails) {
+    detail = document.createElement("div");
+    detail.className = "story-detail";
+    detail.hidden = true;
+    if (summary) {
+      const p = document.createElement("p");
+      p.className = "story-summary";
+      p.textContent = summary;
+      detail.append(p);
+    }
+    if ((story.tags || []).length) {
+      const tags = document.createElement("div");
+      tags.className = "story-tags";
+      for (const tag of story.tags) {
+        const chip = document.createElement("span");
+        chip.className = "story-tag";
+        chip.textContent = tag;
+        paintTopic(chip, tag);
+        tags.append(chip);
+      }
+      detail.append(tags);
+    }
+    head.addEventListener("click", (event) => {
+      if (event.target.closest("a")) return;
+      detail.hidden = !detail.hidden;
+      head.classList.toggle("is-expanded", !detail.hidden);
+    });
+  }
+
+  row.append(head);
+  if (detail) row.append(detail);
+  return row;
+}
+
 function renderStories(settings, digest) {
-  const section = $("section-stories");
-  const list = $("stories");
-  list.replaceChildren();
+  const root = $("section-stories");
+  root.replaceChildren();
   if (!settings.sections.stories) {
-    section.hidden = true;
+    root.hidden = true;
     return;
   }
 
-  let stories = digest.stories.slice(0, settings.storyCount);
-  if (filterCategory) {
-    stories = stories.filter((s) => s.category === filterCategory);
-  }
-  if (filterTag) {
-    stories = stories.filter((s) => {
-      const blob = `${s.title} ${s.title_vi || ""} ${(s.tags || []).join(" ")}`;
-      return blob.toLowerCase().includes(filterTag.toLowerCase());
-    });
-  }
-  if (!stories.length) {
-    section.hidden = true;
+  const days = filteredDays(digest);
+  if (!days.length) {
+    root.hidden = true;
     return;
   }
-  section.hidden = false;
+  root.hidden = false;
   const lang = uiLang(settings);
-  stories.forEach((story, i) => {
-    const li = document.createElement("li");
-    li.className = "story";
-    const n = document.createElement("span");
-    n.className = "story-n";
-    n.textContent = String(i + 1);
-    const copy = document.createElement("span");
-    copy.className = "story-copy";
-    const a = document.createElement("a");
-    a.href =
-      safeHttpUrl(story.url) ||
-      safeHttpUrl(`${NEWS_SITE}/ai/${story.id}`, NEWS_SITE);
-    a.rel = "noreferrer";
-    appendHighlighted(a, storyTitle(story, settings.language), story.tags || []);
-    const meta = document.createElement("span");
-    meta.className = "story-meta";
-    const bits = [];
-    if (story.category) bits.push(categoryLabel(story.category, lang));
-    if (story.published_at) bits.push(timeAgo(story.published_at, lang));
-    meta.textContent = bits.join(" · ");
-    copy.append(a, meta);
-    li.append(n, copy);
-    list.append(li);
-  });
+
+  for (const day of days) {
+    const section = document.createElement("section");
+    section.className = "day-section";
+
+    const head = document.createElement("div");
+    head.className = "day-head";
+
+    const title = document.createElement("h2");
+    title.textContent = day.date
+      ? formatDayHeading(day.date, lang)
+      : t(settings, "stories");
+
+    const count = document.createElement("span");
+    count.className = "day-count";
+    const n = day.items.length;
+    count.textContent =
+      lang === "vi"
+        ? `${n} ${t(settings, "tin")}`
+        : `${n} ${n === 1 ? t(settings, "storyWordOne") : t(settings, "storyWord")}`;
+
+    const cats = document.createElement("span");
+    cats.className = "day-cats";
+    const entries = Object.entries(day.categoryCounts || {}).sort(
+      (a, b) => b[1] - a[1]
+    );
+    const shown = entries.slice(0, 7);
+    const more = entries.length - shown.length;
+    for (const [name, c] of shown) {
+      const bit = document.createElement("span");
+      bit.append(
+        document.createTextNode(`${categoryLabel(name, lang)} `),
+        Object.assign(document.createElement("strong"), {
+          textContent: String(c),
+        })
+      );
+      cats.append(bit);
+    }
+    if (more > 0) {
+      const bit = document.createElement("span");
+      bit.textContent = `+${more} ${t(settings, "footerMore")}`;
+      cats.append(bit);
+    }
+
+    head.append(title, count, cats);
+    section.append(head);
+
+    const list = document.createElement("div");
+    list.className = "day-list";
+    day.items.forEach((story, i) => {
+      const hot = i === 0 && story.rank_score > 0 && day.items.length > 1;
+      list.append(renderStoryRow(settings, story, i + 1, hot));
+    });
+    section.append(list);
+    root.append(section);
+  }
 }
 
 function render(settings, digest) {
@@ -450,52 +742,76 @@ function render(settings, digest) {
   renderChips(settings, digest);
   renderTldr(settings, digest);
   renderStories(settings, digest);
+  renderFooter(settings, digest);
 }
 
-function bindDrawer(getSettings, onChange) {
-  const drawer = $("settings-drawer");
-  const backdrop = $("drawer-backdrop");
-  const open = () => {
-    drawer.hidden = false;
-    backdrop.hidden = false;
-    mountSettingsPanel($("settings-root"), getSettings(), onChange);
-  };
-  const close = () => {
-    drawer.hidden = true;
-    backdrop.hidden = true;
-  };
-  $("open-settings").addEventListener("click", open);
-  $("close-settings").addEventListener("click", close);
-  backdrop.addEventListener("click", close);
+function bindPrefs(getSettings, onChange) {
+  const prefs = bindPrefsPopover({
+    getSettings,
+    onChange,
+    triggers: [$("open-settings"), $("open-settings-compact")],
+  });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") close();
+    if (event.key === "Escape") {
+      prefs.close();
+      closePhoneMenu();
+    }
+  });
+}
+
+function closePhoneMenu() {
+  const menu = $("phone-menu");
+  const btn = $("open-menu");
+  if (!menu) return;
+  menu.hidden = true;
+  if (btn) btn.setAttribute("aria-expanded", "false");
+  document.body.style.overflow = "";
+}
+
+function openPhoneMenu() {
+  const menu = $("phone-menu");
+  const btn = $("open-menu");
+  if (!menu) return;
+  menu.hidden = false;
+  if (btn) btn.setAttribute("aria-expanded", "true");
+  document.body.style.overflow = "hidden";
+}
+
+function bindPhoneMenu() {
+  $("open-menu")?.addEventListener("click", openPhoneMenu);
+  $("close-menu-backdrop")?.addEventListener("click", closePhoneMenu);
+  $("phone-menu-nav")?.addEventListener("click", (event) => {
+    if (event.target.closest("a")) closePhoneMenu();
   });
 }
 
 function bindLangToggle(getSettings, onChange) {
-  $("lang-toggle").addEventListener("click", (event) => {
+  const handler = (event) => {
     const btn = event.target.closest("button[data-lang]");
     if (!btn) return;
     onChange({ ...getSettings(), language: btn.dataset.lang });
-  });
+  };
+  $("lang-toggle")?.addEventListener("click", handler);
+  $("lang-toggle-phone")?.addEventListener("click", handler);
 }
 
 async function main() {
   let settings = await loadSettings();
   applyAppearance(settings);
   applyChrome(settings);
+  tagSiteLinks(document);
 
-  let digest =
-    globalThis.__NEWS_TAB_DIGEST__ || {
-      tldr: null,
-      stories: [],
-      categories: [],
-      trending: [],
-      items: {},
-      totalStories: 0,
-      lastFetchedAt: 0,
-      updatedAt: 0,
-    };
+  let digest = globalThis.__NEWS_TAB_DIGEST__ || {
+    tldr: null,
+    stories: [],
+    days: [],
+    categories: [],
+    trending: [],
+    items: {},
+    totalStories: 0,
+    lastFetchedAt: 0,
+    updatedAt: 0,
+  };
 
   const refresh = async (next) => {
     settings = next;
@@ -507,12 +823,14 @@ async function main() {
       digest = result.digest;
       setStatus(t(settings, "cached"), result.stale);
       render(settings, digest);
+      void maybeOfferUnpackedUpdate(settings);
     } catch {
       setStatus(t(settings, "error"), true);
     }
   };
 
-  bindDrawer(() => settings, refresh);
+  bindPrefs(() => settings, refresh);
+  bindPhoneMenu();
   pushSettings = async (next) => {
     settings = await saveSettings(next);
     applyAppearance(settings);
@@ -543,6 +861,7 @@ async function main() {
   } catch {
     setStatus(t(settings, "error"), true);
   }
+  void maybeOfferUnpackedUpdate(settings);
 }
 
 main();

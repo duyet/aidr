@@ -6,13 +6,13 @@ import {
 } from "./markdown.js";
 
 export const NOTES_FROM = {
-  email: "notes@duyet.net",
-  name: "Duyet",
+  email: "notes@aidr.today",
+  name: "aidr",
 } as const;
 
 export const NEWS_FROM = {
-  email: "news@duyet.net",
-  name: "AI News",
+  email: "digest@aidr.today",
+  name: "aidr",
 } as const;
 
 const FONT =
@@ -49,7 +49,7 @@ export function renderNoteEmail(input: NoteEmailInput): {
   html: string;
   text: string;
 } {
-  const wordmark = escapeHtml(input.wordmark ?? "Duyet");
+  const wordmark = escapeHtml(input.wordmark ?? "aidr");
   const preheader = escapeHtml((input.preheader ?? "").trim());
   const body = markdownToEmailHtml(input.bodyMd);
   const cta =
@@ -82,7 +82,7 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">
         </tr>
         <tr>
           <td style="padding:24px 8px 8px;border-top:1px solid #eeeeee;font-size:12px;line-height:1.5;color:#a3a3a3">
-            You are receiving this because you subscribed at duyet.net.
+            You are receiving this because you subscribed at aidr.today.
             <a href="${unsub}" style="color:#737373;text-decoration:underline">Unsubscribe</a>
           </td>
         </tr>

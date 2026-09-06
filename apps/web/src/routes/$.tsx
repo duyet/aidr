@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { NotFoundPage } from "../components/NotFoundPage";
-import { loadNotFoundLang } from "../lib/not-found-fn";
 import { notFoundCopy } from "../lib/not-found";
+import { loadNotFoundLang } from "../lib/not-found-fn";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { notFoundHead } from "../lib/seo";
 import type { Lang } from "../lib/types";

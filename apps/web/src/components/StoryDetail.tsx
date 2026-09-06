@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { Clock, Cpu, ExternalLink, Link2 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -18,9 +19,11 @@ export function fmtTime(epochSec: number, lang: Lang): string {
 function SourceRow({
   source,
   lang,
+  itemId,
 }: {
   source: FeedItem["sources"][number];
   lang: Lang;
+  itemId: string;
 }) {
   const label =
     source.kind === "discussion"
@@ -47,6 +50,7 @@ function SourceRow({
           href={source.url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => track("story_open", { item_id: itemId })}
           className="text-accent hover:underline"
           aria-label="Open source"
         >
@@ -260,7 +264,7 @@ export function StoryDetail({
                       )}
                     </h3>
                     {col.paragraphs.length > 0 && (
-                      <div className="space-y-3 leading-relaxed">
+                      <div className="typeset typeset-reader">
                         {col.paragraphs.map((p) => (
                           <p key={p}>{p}</p>
                         ))}
@@ -273,7 +277,7 @@ export function StoryDetail({
             paragraphs.length > 0 && (
               <div
                 data-suggest-field="summary"
-                className="max-w-3xl space-y-3 leading-relaxed"
+                className="typeset typeset-reader max-w-3xl"
               >
                 {paragraphs.map((p) => (
                   <p key={p}>{p}</p>
@@ -283,7 +287,7 @@ export function StoryDetail({
           )}
 
           {vietnameseVisible && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="not-typeset flex flex-wrap items-center gap-2">
               <SuggestTranslation
                 itemId={item.id}
                 field="summary"
@@ -300,7 +304,7 @@ export function StoryDetail({
           )}
 
           {item.sources.length > 0 && (
-            <div className="space-y-1.5 border-t border-border pt-3">
+            <div className="not-typeset space-y-1.5 border-t border-border pt-3">
               <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {lang === "vi" ? "Nguồn chính" : "Key sources"}
               </div>
@@ -309,13 +313,14 @@ export function StoryDetail({
                   key={`${source.kind}-${source.url ?? source.author}`}
                   source={source}
                   lang={lang}
+                  itemId={item.id}
                 />
               ))}
             </div>
           )}
         </div>
 
-        <aside className="min-w-0 space-y-4 md:border-l md:border-border md:pl-5">
+        <aside className="not-typeset min-w-0 space-y-4 md:border-l md:border-border md:pl-5">
           {item.image_url && (
             <img
               src={item.image_url}
@@ -384,7 +389,6 @@ export function StoryDetail({
               {lang === "vi" ? "Trang tin" : "Permalink"}
             </a>
           </div>
-
         </aside>
       </div>
     </div>

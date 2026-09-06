@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 48" role="img" aria-label="AI;DR">
+  <rect width="160" height="48" rx="10" fill="#f5c518"/>
+  <text
+    x="80"
+    y="32"
+    font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="26"
+    font-weight="700"
+    text-anchor="middle"
+    fill="#1c1917"
+    letter-spacing="-0.6"
+  >AI;DR</text>
+</svg>

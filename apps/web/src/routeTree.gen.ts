@@ -17,14 +17,19 @@ import { Route as DataRouteImport } from './routes/data'
 import { Route as ExtensionRouteImport } from './routes/extension'
 import { Route as MailRouteImport } from './routes/mail'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SubmitRouteImport } from './routes/submit'
 import { Route as SubscribeRouteImport } from './routes/subscribe'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as CatSlugRouteImport } from './routes/$cat.$slug'
+import { Route as ApiExtensionRouteImport } from './routes/api/extension'
 import { Route as ApiFeedRouteImport } from './routes/api/feed'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiPublicRouteImport } from './routes/api/public'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiSystemRouteImport } from './routes/api/system'
+import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
+import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
 import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
 
@@ -68,6 +73,11 @@ const McpRoute = McpRouteImport.update({
   path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SubmitRoute = SubmitRouteImport.update({
   id: '/submit',
   path: '/submit',
@@ -78,9 +88,19 @@ const SubscribeRoute = SubscribeRouteImport.update({
   path: '/subscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CatSlugRoute = CatSlugRouteImport.update({
   id: '/$cat/$slug',
   path: '/$cat/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionRoute = ApiExtensionRouteImport.update({
+  id: '/api/extension',
+  path: '/api/extension',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiFeedRoute = ApiFeedRouteImport.update({
@@ -108,6 +128,16 @@ const ApiSystemRoute = ApiSystemRouteImport.update({
   path: '/api/system',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignInSplatRoute = SignInSplatRouteImport.update({
+  id: '/sign-in/$',
+  path: '/sign-in/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignUpSplatRoute = SignUpSplatRouteImport.update({
+  id: '/sign-up/$',
+  path: '/sign-up/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminSplatRoute = ApiAdminSplatRouteImport.update({
   id: '/api/admin/$',
   path: '/api/admin/$',
@@ -128,14 +158,19 @@ export interface FileRoutesByFullPath {
   '/extension': typeof ExtensionRoute
   '/mail': typeof MailRoute
   '/mcp': typeof McpRoute
+  '/privacy': typeof PrivacyRoute
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
+  '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
+  '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/system': typeof ApiSystemRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/story/$id': typeof ApiStoryIdRoute
 }
@@ -148,14 +183,19 @@ export interface FileRoutesByTo {
   '/extension': typeof ExtensionRoute
   '/mail': typeof MailRoute
   '/mcp': typeof McpRoute
+  '/privacy': typeof PrivacyRoute
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
+  '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
+  '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/system': typeof ApiSystemRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/story/$id': typeof ApiStoryIdRoute
 }
@@ -169,14 +209,19 @@ export interface FileRoutesById {
   '/extension': typeof ExtensionRoute
   '/mail': typeof MailRoute
   '/mcp': typeof McpRoute
+  '/privacy': typeof PrivacyRoute
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
+  '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
+  '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/system': typeof ApiSystemRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/story/$id': typeof ApiStoryIdRoute
 }
@@ -191,14 +236,19 @@ export interface FileRouteTypes {
     | '/extension'
     | '/mail'
     | '/mcp'
+    | '/privacy'
     | '/submit'
     | '/subscribe'
+    | '/terms'
     | '/$cat/$slug'
+    | '/api/extension'
     | '/api/feed'
     | '/api/mcp'
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/api/admin/$'
     | '/api/story/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -211,14 +261,19 @@ export interface FileRouteTypes {
     | '/extension'
     | '/mail'
     | '/mcp'
+    | '/privacy'
     | '/submit'
     | '/subscribe'
+    | '/terms'
     | '/$cat/$slug'
+    | '/api/extension'
     | '/api/feed'
     | '/api/mcp'
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/api/admin/$'
     | '/api/story/$id'
   id:
@@ -231,14 +286,19 @@ export interface FileRouteTypes {
     | '/extension'
     | '/mail'
     | '/mcp'
+    | '/privacy'
     | '/submit'
     | '/subscribe'
+    | '/terms'
     | '/$cat/$slug'
+    | '/api/extension'
     | '/api/feed'
     | '/api/mcp'
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/api/admin/$'
     | '/api/story/$id'
   fileRoutesById: FileRoutesById
@@ -252,14 +312,19 @@ export interface RootRouteChildren {
   ExtensionRoute: typeof ExtensionRoute
   MailRoute: typeof MailRoute
   McpRoute: typeof McpRoute
+  PrivacyRoute: typeof PrivacyRoute
   SubmitRoute: typeof SubmitRoute
   SubscribeRoute: typeof SubscribeRoute
+  TermsRoute: typeof TermsRoute
   CatSlugRoute: typeof CatSlugRoute
+  ApiExtensionRoute: typeof ApiExtensionRoute
   ApiFeedRoute: typeof ApiFeedRoute
   ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicRoute: typeof ApiPublicRoute
   ApiSubscribeRoute: typeof ApiSubscribeRoute
   ApiSystemRoute: typeof ApiSystemRoute
+  SignInSplatRoute: typeof SignInSplatRoute
+  SignUpSplatRoute: typeof SignUpSplatRoute
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
 }
@@ -322,6 +387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/submit': {
       id: '/submit'
       path: '/submit'
@@ -336,11 +408,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$cat/$slug': {
       id: '/$cat/$slug'
       path: '/$cat/$slug'
       fullPath: '/$cat/$slug'
       preLoaderRoute: typeof CatSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension': {
+      id: '/api/extension'
+      path: '/api/extension'
+      fullPath: '/api/extension'
+      preLoaderRoute: typeof ApiExtensionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/feed': {
@@ -378,6 +464,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sign-in/$': {
+      id: '/sign-in/$'
+      path: '/sign-in/$'
+      fullPath: '/sign-in/$'
+      preLoaderRoute: typeof SignInSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-up/$': {
+      id: '/sign-up/$'
+      path: '/sign-up/$'
+      fullPath: '/sign-up/$'
+      preLoaderRoute: typeof SignUpSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/$': {
       id: '/api/admin/$'
       path: '/api/admin/$'
@@ -404,14 +504,19 @@ const rootRouteChildren: RootRouteChildren = {
   ExtensionRoute: ExtensionRoute,
   MailRoute: MailRoute,
   McpRoute: McpRoute,
+  PrivacyRoute: PrivacyRoute,
   SubmitRoute: SubmitRoute,
   SubscribeRoute: SubscribeRoute,
+  TermsRoute: TermsRoute,
   CatSlugRoute: CatSlugRoute,
+  ApiExtensionRoute: ApiExtensionRoute,
   ApiFeedRoute: ApiFeedRoute,
   ApiMcpRoute: ApiMcpRoute,
   ApiPublicRoute: ApiPublicRoute,
   ApiSubscribeRoute: ApiSubscribeRoute,
   ApiSystemRoute: ApiSystemRoute,
+  SignInSplatRoute: SignInSplatRoute,
+  SignUpSplatRoute: SignUpSplatRoute,
   ApiAdminSplatRoute: ApiAdminSplatRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
 }
@@ -420,10 +525,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

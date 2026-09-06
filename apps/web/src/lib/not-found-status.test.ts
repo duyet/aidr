@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  applyNotFoundHttpStatus,
-  NOT_FOUND_HEADER,
-} from "./not-found-status";
+import { applyNotFoundHttpStatus, NOT_FOUND_HEADER } from "./not-found-status";
 
 describe("applyNotFoundHttpStatus", () => {
   it("rewrites a marked 200 into HTTP 404", async () => {

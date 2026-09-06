@@ -15,12 +15,10 @@ export interface Env {
    *  ANYROUTER_MODEL when unset. */
   ANYROUTER_QA_MODEL?: string;
   ANYROUTER_API_KEY: string;
-  CLICKHOUSE_HOST?: string;
-  CLICKHOUSE_NEWS_USER?: string;
-  CLICKHOUSE_NEWS_PASSWORD?: string;
-  CLICKHOUSE_DATABASE?: string;
   NEWS_ADMIN_TOKEN: string;
-  /** Clerk instance issuer (frontend API origin), e.g. "https://clerk.duyet.net".
+  /** Clerk secret used by /__clerk Frontend API proxy (and admin JWT verify). */
+  CLERK_SECRET_KEY?: string;
+  /** Clerk instance issuer (frontend API origin), e.g. "https://clerk.aidr.today".
    *  Derived from the VITE_CLERK_PUBLISHABLE_KEY domain. When set, admin
    *  Clerk-JWT verification rejects tokens whose `iss` doesn't match. */
   CLERK_ISSUER?: string;
@@ -36,8 +34,13 @@ export interface Env {
   /** Optional JSON/Slack incoming webhook for the same AlertEvent fan-out. */
   NOTIFY_WEBHOOK_URL?: string;
   /** Cloudflare Email Sending binding. Optional: absent until Email Sending
-   *  is onboarded for the account, so all use sites must guard for it. */
+   *  is onboarded for aidr.today, so all use sites must guard for it. */
   EMAIL?: SendEmail;
+  /** Override digest From address (default digest@aidr.today). */
+  EMAIL_FROM?: string;
+  /** Override notes From address (default notes@aidr.today). */
+  EMAIL_NOTES_FROM?: string;
+  EMAIL_FROM_NAME?: string;
   /** HMAC secret for unsubscribe tokens. When unset, legacy UUID tokens are used. */
   NEWS_UNSUBSCRIBE_SECRET?: string;
 }

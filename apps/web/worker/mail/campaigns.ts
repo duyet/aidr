@@ -1,12 +1,8 @@
 import type { Env } from "../types.js";
-import { wrapWithAi, type ContentPick, type WrapResult } from "./compose.js";
-import {
-  listUnsubscribeHeaders,
-  NOTES_FROM,
-  renderNoteEmail,
-  unsubscribeUrl,
-} from "./render.js";
+import { type ContentPick, type WrapResult, wrapWithAi } from "./compose.js";
+import { renderNoteEmail, unsubscribeUrl } from "./render.js";
 import { ensureMailSchema } from "./schema.js";
+import { notesFrom, sendSubscriberEmail } from "./send.js";
 import { BUILTIN_TEMPLATES, templateById } from "./templates.js";
 
 export interface HandlerError {
@@ -296,20 +292,16 @@ export async function sendCampaign(
       .first<{ email: string; unsubscribe_token: string }>();
     const token = sub?.unsubscribe_token ?? "preview";
     const rendered = previewCampaign(campaign, token);
-    try {
-      await env.EMAIL.send({
-        to: testEmail,
-        from: NOTES_FROM,
-        subject: `[test] ${campaign.subject}`,
-        html: rendered.html,
-        text: rendered.text,
-        headers: listUnsubscribeHeaders(token),
-      });
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : String(error),
-        status: 502,
-      };
+    const sent = await sendSubscriberEmail(env, {
+      to: testEmail,
+      from: notesFrom(env),
+      subject: `[test] ${campaign.subject}`,
+      html: rendered.html,
+      text: rendered.text,
+      unsubscribeToken: token,
+    });
+    if (!sent) {
+      return { error: "email send failed", status: 502 };
     }
     return { ok: true, sent: 1, failed: 0, test: true };
   }
@@ -325,15 +317,15 @@ export async function sendCampaign(
   let failed = 0;
   for (const sub of subscribers) {
     const rendered = previewCampaign(campaign, sub.unsubscribe_token);
-    try {
-      await env.EMAIL.send({
-        to: sub.email,
-        from: NOTES_FROM,
-        subject: campaign.subject,
-        html: rendered.html,
-        text: rendered.text,
-        headers: listUnsubscribeHeaders(sub.unsubscribe_token),
-      });
+    const ok = await sendSubscriberEmail(env, {
+      to: sub.email,
+      from: notesFrom(env),
+      subject: campaign.subject,
+      html: rendered.html,
+      text: rendered.text,
+      unsubscribeToken: sub.unsubscribe_token,
+    });
+    if (ok) {
       await env.DB.prepare(
         `INSERT INTO email_sends (campaign_id, email, sent_at, error)
          VALUES (?, ?, ?, NULL)
@@ -342,19 +334,14 @@ export async function sendCampaign(
         .bind(id, sub.email, Date.now())
         .run();
       sent++;
-    } catch (error) {
+    } else {
       failed++;
       await env.DB.prepare(
         `INSERT INTO email_sends (campaign_id, email, sent_at, error)
          VALUES (?, ?, ?, ?)
          ON CONFLICT(campaign_id, email) DO UPDATE SET error = excluded.error`
       )
-        .bind(
-          id,
-          sub.email,
-          Date.now(),
-          error instanceof Error ? error.message : String(error)
-        )
+        .bind(id, sub.email, Date.now(), "email send failed")
         .run();
     }
   }

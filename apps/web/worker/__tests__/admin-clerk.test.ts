@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isClerkAdmin, type ClerkPayload } from "../admin/clerk.js";
+import { type ClerkPayload, isClerkAdmin } from "../admin/clerk.js";
 import type { Env } from "../types.js";
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
@@ -17,7 +17,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
 function makePayload(overrides: Partial<ClerkPayload> = {}): ClerkPayload {
   return {
     sub: "user_123",
-    iss: "https://clerk.duyet.net",
+    iss: "https://clerk.aidr.today",
     exp: Math.floor(Date.now() / 1000) + 3600,
     ...overrides,
   };
@@ -30,7 +30,9 @@ describe("isClerkAdmin", () => {
   });
 
   it("is true when sub is in the comma-separated NEWS_ADMIN_USER_IDS allowlist", () => {
-    const env = makeEnv({ NEWS_ADMIN_USER_IDS: "user_abc, user_123 ,user_xyz" });
+    const env = makeEnv({
+      NEWS_ADMIN_USER_IDS: "user_abc, user_123 ,user_xyz",
+    });
     expect(isClerkAdmin(makePayload({ sub: "user_123" }), env)).toBe(true);
   });
 
@@ -51,10 +53,10 @@ describe("isClerkAdmin", () => {
     expect(isClerkAdmin(payload, env)).toBe(true);
   });
 
-  it("is true for the shortened o.rol === 'admin' claim", () => {
+  it("is false for the shortened o.rol === 'admin' claim (org role is not site admin)", () => {
     const env = makeEnv();
     const payload = makePayload({ o: { rol: "admin" } });
-    expect(isClerkAdmin(payload, env)).toBe(true);
+    expect(isClerkAdmin(payload, env)).toBe(false);
   });
 
   it("is false when a role claim is present but not 'admin'", () => {
@@ -65,9 +67,10 @@ describe("isClerkAdmin", () => {
 });
 
 vi.mock("../admin/clerk.js", async () => {
-  const actual = await vi.importActual<typeof import("../admin/clerk.js")>(
-    "../admin/clerk.js"
-  );
+  const actual =
+    await vi.importActual<typeof import("../admin/clerk.js")>(
+      "../admin/clerk.js"
+    );
   return {
     ...actual,
     verifyClerkToken: vi.fn(),

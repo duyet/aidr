@@ -11,13 +11,13 @@ preview_urls = true
 directory = "dist/client"
 # `/` must hit the Worker so the homepage SSR's stories (the static
 # index.html shell has no feed). Sitemap/robots are Worker-generated.
-run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/api/*"]
+run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/api/*", "/__clerk/*", "/aidr.zip"]
 not_found_handling = "single-page-application"
 
 # Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus
 # GitHub Actions (`.github/workflows/ingest.yml`) as a watchdog.
-# account_id above is public (Account ID); Zone ID for aidr.today DNS is in
-# the repo README / .env.example (CLOUDFLARE_ZONE_ID).
+# account_id above is public (Account ID). Zone ID for aidr.today DNS is
+# documented in the repo README (not in .env.example).
 # Do not add Worker `[triggers] crons` (Free 5-cron cap breaks deploy)
 # and do not add Workflow `schedules` (paid Workers plan — wrangler
 # deploy exits 1). Manual: Actions workflow_dispatch, admin
@@ -41,8 +41,8 @@ new_sqlite_classes = ["NewsIngestScheduler"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "news"
-database_id = "8e775ccf-ec38-4e41-b011-50adbc891322"
+database_name = "aidr"
+database_id = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427"
 
 [vars]
 ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
@@ -59,14 +59,25 @@ ANYROUTER_TRANSLATE_MODEL = "google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclus
 # Bilingual TL;DR used to fall through to a reasoning-first chain and time
 # out both attempts, leaving English bullets on the VI homepage.
 ANYROUTER_TLDR_MODEL = "anyrouter/auto,google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclusionai/ling-3.0-flash"
-# Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix:
-# pk_live_Y2xlcmsuZHV5ZXQubmV0JA -> clerk.duyet.net
-CLERK_ISSUER = "https://clerk.duyet.net"
+# Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
+# overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014
+# blocks the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).
+CLERK_ISSUER = "https://aidr.today/__clerk"
+# Server-side clerkMiddleware + Vite public env. Relative path is resolved
+# against the request origin so handshakes hit /__clerk, not clerk.aidr.today.
+CLERK_PROXY_URL = "/__clerk"
+VITE_CLERK_PROXY_URL = "/__clerk"
 # @duyetbot posts top stories to this channel; TELEGRAM_BOT_TOKEN is a secret.
 TELEGRAM_CHAT_ID = "-1004420104760"
+# Cloudflare Email Sending. Onboard aidr.today (`wrangler email sending enable aidr.today`)
+# then these From addresses can deliver. Override with EMAIL_FROM / EMAIL_NOTES_FROM.
+EMAIL_FROM = "digest@aidr.today"
+EMAIL_NOTES_FROM = "notes@aidr.today"
+EMAIL_FROM_NAME = "aidr"
 
 [[send_email]]
 name = "EMAIL"
+allowed_sender_addresses = ["digest@aidr.today", "notes@aidr.today"]
 
 # Workers Cache: safe for this surface — only responses with public
 # Cache-Control headers (feed/story APIs, static shell) are cached;
@@ -83,6 +94,5 @@ enabled = true
 pattern = "aidr.today"
 custom_domain = true
 
-[[routes]]
-pattern = "news.duyet.net"
-custom_domain = true
+# news.duyet.net stays on the legacy duyet.net-account Worker until cutover.
+# Do not attach it here — aidr.today zone is on AnyRouter Inc. (account_id above).

@@ -2,8 +2,9 @@
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "description": "__MSG_extDescription__",
-  "version": "0.1.2",
+  "version": "0.1.8",
   "default_locale": "en",
+  "homepage_url": "https://aidr.today/extension",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon16.png",
@@ -29,6 +30,6 @@
     "http://127.0.0.1/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data: blob:; connect-src 'self' https://aidr.today http://127.0.0.1:* http://localhost:*"
   }
 }

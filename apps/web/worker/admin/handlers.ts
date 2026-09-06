@@ -5,6 +5,7 @@ import { forceSendDigest } from "../notify/index.js";
 import { rankScore } from "../ranking.js";
 import { adapters } from "../sources/registry.js";
 import { ensureDailyTldr, tldrSnapshotDate } from "../tldr.js";
+import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics } from "../topics.js";
 import type { Env } from "../types.js";
 
@@ -254,10 +255,7 @@ export async function deleteSource(
   return { ok: true, id };
 }
 
-export async function triggerIngest(
-  env: Env,
-  opts: { force?: boolean } = {}
-) {
+export async function triggerIngest(env: Env, opts: { force?: boolean } = {}) {
   const result = await tickIngest(env, opts);
   await writeAudit(
     env,
@@ -440,11 +438,13 @@ export async function reprocessToday(
         rawTagsByItem.set(row.id, result.tags);
         scoreByItemId.set(row.id, result);
       }
+      const nowMs = Date.now();
       const canonicalTagsByItem = await normalizeTopics(
         env,
         rawTagsByItem,
-        Date.now()
+        nowMs
       );
+      await captureAndLearnTopics(env.DB, canonicalTagsByItem, nowMs);
 
       const statements: D1PreparedStatement[] = [];
       for (const row of items) {

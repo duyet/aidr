@@ -10,9 +10,8 @@ Read [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md) before changing ingest, ra
 
 - Worker name: `aidr` (`apps/web/wrangler.toml`)
 - Deploy: `pnpm --filter @aidr/web deploy` or `pnpm run cf:deploy:prod`
-- Secrets: `apps/web/scripts/sync-secrets.ts` or `wrangler secret put`
-- Account ID (committed): `7df185a18b98382c3240fa7ac4a37075`
-- Zone ID aidr.today: `e89512b5edc14f2f790aa3eb47f60944`
+- Secrets: `pnpm sync-env` (GitHub Actions + Worker) — see `scripts/sync-env.ts`
+- Account / zone IDs: `apps/web/wrangler.toml` + Cloudflare dashboard (not in env docs)
 
 ## Local
 

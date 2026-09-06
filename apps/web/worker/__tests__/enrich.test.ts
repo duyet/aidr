@@ -244,11 +244,13 @@ describe("enrichMissingContent", () => {
   it("blocks a known aggregator branding og:image and falls back to no image when no source URL helps", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        htmlResponse(
-          `<meta property="og:image" content="https://huggingnews.com/og-image.png">`
+      vi
+        .fn()
+        .mockResolvedValue(
+          htmlResponse(
+            `<meta property="og:image" content="https://huggingnews.com/og-image.png">`
+          )
         )
-      )
     );
 
     const item = makeItem({ url: "https://huggingnews.com/ai/some-slug" });
@@ -259,7 +261,8 @@ describe("enrichMissingContent", () => {
 
   it("falls back to item.url's og:image when the source-kind URL has no usable image", async () => {
     const fetchMock = vi.fn(async (url: string) => {
-      if (url === "https://x.com/someone/status/1") return htmlResponse("<html></html>");
+      if (url === "https://x.com/someone/status/1")
+        return htmlResponse("<html></html>");
       return htmlResponse(
         `<meta property="og:image" content="https://example.com/article-thumb.jpg">`
       );

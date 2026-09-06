@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  checkAdminAuth,
-  checkAdminAuthRateLimit,
-} from "../admin/auth.js";
+import { checkAdminAuth, checkAdminAuthRateLimit } from "../admin/auth.js";
 import type { Env } from "../types.js";
 
 function makeRateLimitDb(count: number) {
@@ -12,8 +9,7 @@ function makeRateLimitDb(count: number) {
       prepare(sql: string) {
         return {
           bind: (...args: unknown[]) => ({
-            first: async () =>
-              sql.includes("COUNT(*)") ? { count } : null,
+            first: async () => (sql.includes("COUNT(*)") ? { count } : null),
             run: async () => {
               if (sql.includes("INSERT INTO subscribe_attempts")) {
                 inserts.push(args);

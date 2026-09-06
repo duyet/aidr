@@ -1,4 +1,6 @@
 import handler from "@tanstack/react-start/server-entry";
+import { handleClerkProxy, isClerkProxyPath } from "../worker/clerk-proxy";
+import { handleAidrZipRequest } from "../worker/extension-zip";
 import { ensureIngestAlarm, tickIngest } from "../worker/ingest-schedule";
 import { NewsIngestScheduler } from "../worker/ingest-scheduler";
 import { handlePublicCors } from "../worker/public-cors";
@@ -28,6 +30,12 @@ async function resolveEnv(env?: Env): Promise<Env | undefined> {
 export default {
   async fetch(request: Request, env: Env, ctx?: ExecutionContext) {
     const path = new URL(request.url).pathname;
+    if (isClerkProxyPath(path)) {
+      return handleClerkProxy(request, env);
+    }
+    if (path === "/aidr.zip") {
+      return handleAidrZipRequest(request);
+    }
     if (
       path === "/api/public" ||
       path === "/api/admin/ingest" ||

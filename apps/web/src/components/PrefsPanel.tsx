@@ -1,6 +1,8 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
+import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
-import { AArrowDown, AArrowUp, Rows2, Rows4 } from "lucide-react";
+import { AArrowDown, AArrowUp, Moon, Rows2, Rows4, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "../lib/lang-context";
 import {
@@ -25,20 +27,82 @@ const TLDR_COUNTS: TldrCount[] = [8, 12, 16];
 
 function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
   const { prefs, setPrefs } = usePrefs();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark =
+    mounted &&
+    (resolvedTheme === "dark" || prefs.bg === "dark" || prefs.bg === "black");
 
   const setBg = (bg: ReaderBg) => {
+    track("prefs_change", { pref: "bg" });
     setPrefs({ bg });
     applyReaderTheme(bg);
   };
 
+  const setDarkMode = (dark: boolean) => {
+    track("prefs_change", { pref: "theme" });
+    const bg: ReaderBg = dark
+      ? prefs.bg === "black"
+        ? "black"
+        : "dark"
+      : prefs.bg === "cream" || prefs.bg === "gray"
+        ? prefs.bg
+        : "default";
+    setPrefs({ bg });
+    applyReaderTheme(bg);
+    setTheme(dark ? "dark" : "light");
+  };
+
   return (
     <div className="space-y-4">
+      <div>
+        <span className="mb-1.5 block text-xs text-muted-foreground">
+          {t("Appearance", "Giao diện")}
+        </span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setDarkMode(false)}
+            aria-pressed={!isDark}
+            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+              !isDark
+                ? "border-accent bg-muted font-medium"
+                : "border-border hover:bg-muted/60"
+            }`}
+          >
+            <Sun className="size-4" aria-hidden />
+            {t("Light", "Sáng")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDarkMode(true)}
+            aria-pressed={isDark}
+            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+              isDark
+                ? "border-accent bg-muted font-medium"
+                : "border-border hover:bg-muted/60"
+            }`}
+          >
+            <Moon className="size-4" aria-hidden />
+            {t("Dark", "Tối")}
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         {(["sans", "serif"] satisfies ReaderFont[]).map((f) => (
           <button
             key={f}
             type="button"
-            onClick={() => setPrefs({ font: f })}
+            onClick={() => {
+              track("prefs_change", { pref: "font" });
+              setPrefs({ font: f });
+            }}
             aria-pressed={prefs.font === f}
             className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
               prefs.font === f
@@ -69,7 +133,10 @@ function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
             max={1.25}
             step={0.05}
             value={prefs.fontSize}
-            onChange={(e) => setPrefs({ fontSize: Number(e.target.value) })}
+            onChange={(e) => {
+              track("prefs_change", { pref: "fontSize" });
+              setPrefs({ fontSize: Number(e.target.value) });
+            }}
             className="reader-slider w-full"
             aria-label={t("Text size", "Cỡ chữ")}
           />
@@ -89,9 +156,10 @@ function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
             max={2}
             step={1}
             value={DENSITIES.indexOf(prefs.density)}
-            onChange={(e) =>
-              setPrefs({ density: DENSITIES[Number(e.target.value)] })
-            }
+            onChange={(e) => {
+              track("prefs_change", { pref: "density" });
+              setPrefs({ density: DENSITIES[Number(e.target.value)] });
+            }}
             className="reader-slider w-full"
             aria-label={t("Density", "Mật độ")}
           />
@@ -147,7 +215,10 @@ function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
             <button
               key={n}
               type="button"
-              onClick={() => setPrefs({ tldrCount: n })}
+              onClick={() => {
+                track("prefs_change", { pref: "tldrCount" });
+                setPrefs({ tldrCount: n });
+              }}
               aria-pressed={prefs.tldrCount === n}
               className={`flex-1 rounded-md border px-2 py-1 text-xs ${
                 prefs.tldrCount === n
@@ -175,11 +246,12 @@ function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
               <input
                 type="checkbox"
                 checked={prefs.sections[key]}
-                onChange={(e) =>
+                onChange={(e) => {
+                  track("prefs_change", { pref: `sections.${key}` });
                   setPrefs({
                     sections: { ...prefs.sections, [key]: e.target.checked },
-                  })
-                }
+                  });
+                }}
               />
             </label>
           ))}
@@ -239,25 +311,24 @@ export function PrefsPanel({
 
   return (
     <div ref={containerRef} className="relative">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => setOpen((v) => !v)}
         aria-label={t("Reader preferences", "Tuỳ chỉnh hiển thị")}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={
-          triggerClassName ??
-          "rounded-full px-2.5 py-1 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-        }
+        className={triggerClassName ?? "font-serif text-sm"}
       >
         Aa
-      </button>
+      </Button>
 
       {open && (
         <div
           role="dialog"
           aria-label={t("Reader preferences", "Tuỳ chỉnh hiển thị")}
-          className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-border bg-background p-4 text-sm shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-border bg-card p-4 text-sm shadow-lg"
         >
           <Tabs defaultValue="theme">
             <TabsList className="grid w-full grid-cols-3">

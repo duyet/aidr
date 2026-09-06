@@ -36,7 +36,7 @@ export function StoryThumb({
         }
         event.currentTarget.style.visibility = "hidden";
       }}
-      className="size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 self-stretch overflow-hidden rounded-md border border-border bg-brand-soft object-cover"
+      className="size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 self-stretch overflow-hidden rounded-xl border border-border/80 bg-muted object-cover"
     />
   );
 }

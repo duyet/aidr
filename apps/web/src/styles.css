@@ -1,4 +1,9 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+/* Owned copy of shadcn/typeset — tune fonts/size/leading/flow via presets. */
+@import "./typeset.css";
 
 /* Scan shared shadcn primitives so Card/Badge/Table utilities emit. */
 @source "../../../packages/ui";
@@ -27,92 +32,134 @@
   /* Popover tokens for dither-kit chart tooltips. */
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --font-sans: var(--editorial-font-sans);
+  --font-sans: var(--content-font-sans);
   --font-serif: var(--editorial-font-serif);
   --font-mono: var(--editorial-font-mono);
+  --font-heading: var(--editorial-font-serif);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-input: var(--input);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 :root {
-  /* Editorial monochrome tokens, matching the rest of duyet.net */
-  --editorial-bg: #ffffff;
+  /* Slashy-inspired craft: soft off-white page, elevated white cards,
+     serif display + Source Sans UI. Prefer hex+alpha over rgb()/color-mix()
+     so LightningCSS doesn't emit invalid `oklch(... none / a)`. */
+  --editorial-bg: #f7f7f5;
   --editorial-fg: #0a0a0a;
-  /* Prefer hex+alpha over rgb()/color-mix(): LightningCSS can rewrite those
-     to `oklch(... none / a)` which some browsers treat as invalid, and then
-     `border-color: var(--border)` falls through to currentColor (solid black). */
-  --editorial-muted: #0a0a0a99;
-  --editorial-faint: #0a0a0a0d;
+  --editorial-muted: #6b6b6b;
+  --editorial-faint: #0a0a0a0a;
   --editorial-hairline: #0a0a0a14;
   --editorial-accent: #b45309;
   --editorial-font-serif:
     "EB Garamond", Garamond, "Apple Garamond", ui-serif, serif;
   --editorial-font-sans:
-    "Geist", "Geist Sans", "Inter Variable", Inter, ui-sans-serif, system-ui,
-    sans-serif;
+    "Source Sans 3", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --editorial-font-mono:
     "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
 
-  /* HuggingNews-style sans, scoped to the feed content area only —
-     the duyet.net chrome (Header/Footer) keeps the editorial font above. */
   --content-font-sans:
     "Source Sans 3", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* Standard compatibility variables mapped to the editorial tokens.
-     --accent/--accent-foreground stay a NEUTRAL shadcn-style hover surface
-     here (same convention blog uses) because shared chrome components
-     (SiteHeader's nav buttons) consume these globally — our own amber
-     brand accent is scoped separately under .news-content below so it
-     never leaks into hover/active states on shared duyet.net chrome. */
-  --background: var(--editorial-bg);
-  --foreground: var(--editorial-fg);
-  --card: var(--editorial-bg);
-  --card-foreground: var(--editorial-fg);
-  --popover: var(--editorial-bg);
-  --popover-foreground: var(--editorial-fg);
-  --muted: var(--editorial-faint);
-  --muted-foreground: var(--editorial-muted);
-  --secondary: var(--editorial-faint);
-  --secondary-foreground: var(--editorial-fg);
-  --border: var(--editorial-hairline);
-  --accent: var(--editorial-faint);
-  --accent-foreground: var(--editorial-fg);
-  --primary: var(--editorial-fg);
-  --primary-foreground: var(--editorial-bg);
+  /* --accent stays a NEUTRAL hover surface at :root (shared chrome).
+     Amber brand is scoped under .news-content. Primary CTAs are
+     high-contrast near-black pills (Slashy inverted for light). */
+  --background: #f7f7f5;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --muted: #efefed;
+  --muted-foreground: #6b6b6b;
+  --secondary: #efefed;
+  --secondary-foreground: #0a0a0a;
+  --border: #0a0a0a14;
+  --accent: #efefed;
+  --accent-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #fafafa;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --ring: var(--editorial-fg);
+  --ring: #0a0a0a33;
 
-  /* News-only accent for TL;DR rules and trending chips */
   --brand: #f5c518;
   --brand-soft: #fdf6d8;
+  --input: #0a0a0a14;
+  --chart-1: #f5c518;
+  --chart-2: #d97706;
+  --chart-3: #b45309;
+  --chart-4: #92400e;
+  --chart-5: #78350f;
+  --radius: 1rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #b45309;
+  --sidebar-primary-foreground: #fffefb;
+  --sidebar-accent: #efefed;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #0a0a0a14;
+  --sidebar-ring: #0a0a0a33;
 }
 
 :root.dark,
 .dark {
-  --editorial-bg: #0a0a0a;
+  --editorial-bg: #0c0c0c;
   --editorial-fg: #fafafa;
-  --editorial-muted: #fafafa8c;
+  --editorial-muted: #8a8a8a;
   --editorial-faint: #fafafa0f;
-  --editorial-hairline: #fafafa14;
+  --editorial-hairline: #ffffff1a;
   --editorial-accent: #e8926e;
 
-  --background: var(--editorial-bg);
-  --foreground: var(--editorial-fg);
-  --card: var(--editorial-bg);
-  --card-foreground: var(--editorial-fg);
-  --popover: var(--editorial-bg);
-  --popover-foreground: var(--editorial-fg);
-  --muted: var(--editorial-faint);
-  --muted-foreground: var(--editorial-muted);
-  --secondary: var(--editorial-faint);
-  --secondary-foreground: var(--editorial-fg);
-  --border: var(--editorial-hairline);
-  --accent: var(--editorial-faint);
-  --accent-foreground: var(--editorial-fg);
-  --primary: var(--editorial-fg);
-  --primary-foreground: var(--editorial-bg);
+  --background: #0c0c0c;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1c1c1c;
+  --secondary-foreground: #fafafa;
+  --muted: #1c1c1c;
+  --muted-foreground: #8a8a8a;
+  --accent: #1c1c1c;
+  --accent-foreground: #fafafa;
   --destructive: #f87171;
-  --destructive-foreground: #1c1917;
-  --ring: var(--editorial-fg);
+  --border: #ffffff1a;
+  --input: #ffffff26;
+  --ring: #ffffff40;
+  --chart-1: #f5c518;
+  --chart-2: #fbbf24;
+  --chart-3: #e8926e;
+  --chart-4: #d97706;
+  --chart-5: #b45309;
+  --sidebar: #171717;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #e8926e;
+  --sidebar-primary-foreground: #1c1917;
+  --sidebar-accent: #1c1c1c;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #ffffff1a;
+  --sidebar-ring: #ffffff40;
 
   --brand: #f5c518;
   --brand-soft: #292209;
@@ -147,6 +194,15 @@
   time {
     font-variant-numeric: tabular-nums;
   }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
 
 /* Feed content area (sub-header + day sections, TL;DR, story rows) keeps
@@ -156,9 +212,50 @@
    so it never bleeds into the shared SiteHeader's nav hover/active pills. */
 .news-content {
   font-family: var(--content-font-sans);
-  font-size: calc(15px * var(--reader-font-size, 1));
+  /* Base matches .typeset-reader; reader slider scales both together. */
+  font-size: calc(16px * var(--reader-font-size, 1));
   --accent: var(--editorial-accent);
   --accent-foreground: #fffefb;
+}
+
+/* Reader prose (story summaries): fonts + rhythm from prefs CSS vars. */
+.typeset-reader {
+  --typeset-font-body: var(--content-font-sans);
+  --typeset-font-heading: var(--content-font-sans);
+  --typeset-font-mono: var(--font-mono);
+  --typeset-size: calc(16px * var(--reader-font-size, 1));
+  --typeset-leading: var(--reader-leading, 1.65);
+  --typeset-flow: var(--reader-flow, 1.15em);
+}
+
+.news-content[data-reader-font="serif"] .typeset-reader {
+  --typeset-font-body: var(--editorial-font-serif);
+  --typeset-font-heading: var(--editorial-font-serif);
+}
+
+.dark .typeset-reader {
+  --typeset-leading: var(--reader-leading-dark, 1.75);
+}
+
+/* Long-form pages (about, privacy, changelog, extension guide). */
+.typeset-page {
+  --typeset-font-body: var(--content-font-sans);
+  --typeset-font-heading: var(--editorial-font-serif);
+  --typeset-font-mono: var(--font-mono);
+  --typeset-size: 16px;
+  --typeset-leading: 1.75;
+  --typeset-flow: 1.5em;
+  max-width: 42rem;
+}
+
+.dark .typeset-page {
+  --typeset-leading: 1.85;
+}
+
+.typeset-page h1 {
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 /* Pipeline /data dashboard: Geist (shadcn) sans + standard type scale,

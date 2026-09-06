@@ -63,6 +63,8 @@ async function main() {
     const marker = "Hôm nay AI có gì mới?";
     assert(body.includes(marker), `body missing shell marker "${marker}"`);
     assert(body.includes("og:title"), "homepage missing og:title");
+    assert(body.includes("og:image"), "homepage missing og:image");
+    assert(body.includes("/og.jpg"), "homepage og:image should be /og.jpg");
     assert(body.includes("twitter:card"), "homepage missing twitter:card");
     assert(body.includes('rel="canonical"'), "homepage missing canonical");
     assert(
@@ -89,7 +91,7 @@ async function main() {
     assert(res.status === 200, `expected 200, got ${res.status}`);
     const body = await res.text();
     assert(
-      /Sitemap:\s*https:\/\/news\.duyet\.net\/sitemap\.xml/i.test(body),
+      /Sitemap:\s*https:\/\/aidr\.today\/sitemap\.xml/i.test(body),
       "robots.txt missing Sitemap line"
     );
   });
@@ -219,6 +221,8 @@ async function main() {
     "/subscribe",
     "/data",
     "/extension",
+    "/privacy",
+    "/terms",
   ];
   for (const route of staticRoutes) {
     await check(`GET ${route} -> 200`, async () => {
@@ -255,9 +259,36 @@ async function main() {
     );
   });
 
-  await check("GET /aidr.zip is a zip, not HTML", async () => {
-    const res = await fetch(`${base}/aidr.zip`);
+  await check("GET /__clerk/v1/environment -> 200 JSON", async () => {
+    const res = await fetch(`${base}/__clerk/v1/environment`);
     assert(res.status === 200, `expected 200, got ${res.status}`);
+    const body = (await res.json()) as { auth_config?: unknown };
+    assert(body.auth_config, "Clerk environment missing auth_config");
+  });
+
+  await check("GET /aidr.zip redirects to latest release zip", async () => {
+    const res = await fetch(`${base}/aidr.zip`, { redirect: "manual" });
+    assert(
+      res.status === 302 || res.status === 301,
+      `expected redirect, got ${res.status}`
+    );
+    const loc = res.headers.get("location") ?? "";
+    assert(
+      /github\.com\/duyet\/aidr\/releases\/download\/aidr-v/.test(loc),
+      `unexpected Location: ${loc}`
+    );
+    assert(
+      loc.endsWith("/aidr.zip"),
+      `Location should end with /aidr.zip: ${loc}`
+    );
+  });
+
+  await check("GET /aidr.zip follows to a real zip", async () => {
+    const res = await fetch(`${base}/aidr.zip`);
+    assert(
+      res.status === 200,
+      `expected 200 after redirect, got ${res.status}`
+    );
     const ctype = res.headers.get("content-type") ?? "";
     assert(!ctype.includes("text/html"), `zip served as HTML (${ctype})`);
     const bytes = new Uint8Array(await res.arrayBuffer());

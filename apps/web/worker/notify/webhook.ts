@@ -151,9 +151,5 @@ export const webhookNotifier: Notifier = {
       webhookDeliveryId("digest", digest.date)
     ),
   sendStory: (env, story) =>
-    postWebhook(
-      env,
-      storyEvent(story),
-      webhookDeliveryId("story", story.id)
-    ),
+    postWebhook(env, storyEvent(story), webhookDeliveryId("story", story.id)),
 };

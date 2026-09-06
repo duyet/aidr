@@ -435,9 +435,7 @@ describe("persistOpenedWorkflowRunVerified", () => {
         return {
           id,
           started_at: id ? this.started.get(id) : undefined,
-          results: id
-            ? [{ id, started_at: this.started.get(id) }]
-            : [],
+          results: id ? [{ id, started_at: this.started.get(id) }] : [],
         };
       }
 

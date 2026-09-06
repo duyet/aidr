@@ -90,10 +90,24 @@ const DENSITY_PAD: Record<ReaderDensity, string> = {
   spacious: "1.125rem",
 };
 
+/** Maps density → shadcn/typeset rhythm (leading + block flow). */
+const DENSITY_TYPESET: Record<
+  ReaderDensity,
+  { leading: string; leadingDark: string; flow: string }
+> = {
+  compact: { leading: "1.55", leadingDark: "1.65", flow: "0.95em" },
+  comfortable: { leading: "1.7", leadingDark: "1.8", flow: "1.25em" },
+  spacious: { leading: "1.9", leadingDark: "2", flow: "1.6em" },
+};
+
 export function readerCssVars(prefs: Prefs): Record<string, string> {
+  const rhythm = DENSITY_TYPESET[prefs.density];
   return {
     "--reader-font-size": String(clampFontSize(prefs.fontSize)),
     "--reader-pad": DENSITY_PAD[prefs.density],
+    "--reader-leading": rhythm.leading,
+    "--reader-leading-dark": rhythm.leadingDark,
+    "--reader-flow": rhythm.flow,
   };
 }
 

@@ -5,7 +5,14 @@ import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { AIDR_UNPACKED_DIR } from "./aidr-public";
-import { buildAidrZip, listUnpackedRelPaths } from "./aidr-zip";
+import {
+  AIDR_CWS_ZIP_FILENAME,
+  buildAidrZip,
+  buildCwsZip,
+  defaultAidrZipDest,
+  defaultCwsZipDest,
+  listUnpackedRelPaths,
+} from "./aidr-zip";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const realRoot = join(here, "../../../extension");
@@ -79,6 +86,8 @@ describe("listUnpackedRelPaths", () => {
       "node_modules/left-pad/index.js": "nope",
       "scripts/build.js": "nope",
       "dist/.valid": "nope",
+      "store/README.md": "listing",
+      "store/tile.png": "nope",
     });
     const rels = listUnpackedRelPaths(root);
     expect(rels).toContain("manifest.json");
@@ -89,9 +98,12 @@ describe("listUnpackedRelPaths", () => {
     expect(rels).not.toContain("js/api.test.js");
     expect(rels).not.toContain("README.md");
     expect(rels).not.toContain("package.json");
+    expect(rels).not.toContain("store/README.md");
+    expect(rels).not.toContain("store/tile.png");
     expect(rels.some((r) => r.startsWith("node_modules/"))).toBe(false);
     expect(rels.some((r) => r.startsWith("scripts/"))).toBe(false);
     expect(rels.some((r) => r.startsWith("dist/"))).toBe(false);
+    expect(rels.some((r) => r.startsWith("store/"))).toBe(false);
   });
 
   it("refuses a wrangler.toml next to the extension", () => {
@@ -121,9 +133,7 @@ describe("buildAidrZip", () => {
       true
     );
     expect(
-      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString(
-        "utf8"
-      )
+      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString("utf8")
     ).toBe('{"name":"AI News"}');
     expect(names).not.toContain("manifest.json");
   });
@@ -153,11 +163,75 @@ describe("buildAidrZip", () => {
       true
     );
     const manifest = JSON.parse(
-      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString(
-        "utf8"
-      )
+      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString("utf8")
     );
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.chrome_url_overrides.newtab).toBe("newtab.html");
+    expect(manifest.optional_host_permissions).toEqual([
+      "http://localhost/*",
+      "http://127.0.0.1/*",
+    ]);
+    expect(manifest.content_security_policy.extension_pages).toMatch(
+      /localhost/
+    );
+    expect(manifest.update_url).toBeUndefined();
+  });
+});
+
+describe("buildCwsZip", () => {
+  it("zips files at archive root, not under aidr/", () => {
+    const root = writeTree({
+      "manifest.json": '{"name":"AI News"}',
+      "newtab.html": "<title>tab</title>",
+      "js/api.js": "export const ok = 1;\n",
+    });
+    const zip = buildCwsZip(root);
+    expect(zip.subarray(0, 2).toString("ascii")).toBe("PK");
+    const names = zipNames(zip);
+    expect(names).toContain("manifest.json");
+    expect(names).toContain("newtab.html");
+    expect(names).toContain("js/api.js");
+    expect(names).not.toContain("aidr/manifest.json");
+    expect(names).not.toContain(`${AIDR_UNPACKED_DIR}/manifest.json`);
+    expect(names.some((n) => n.startsWith(`${AIDR_UNPACKED_DIR}/`))).toBe(
+      false
+    );
+    expect(
+      JSON.parse(zipFileBytes(zip, "manifest.json").toString("utf8"))
+    ).toEqual({ name: "AI News" });
+  });
+
+  it("packs the real tree with manifest at root and no localhost", () => {
+    const zip = buildCwsZip(realRoot);
+    const names = zipNames(zip);
+    expect(names).toContain("manifest.json");
+    expect(names).toContain("newtab.html");
+    expect(names).not.toContain("aidr/manifest.json");
+    expect(names).not.toContain(`${AIDR_UNPACKED_DIR}/manifest.json`);
+    expect(names.some((n) => n.startsWith(`${AIDR_UNPACKED_DIR}/`))).toBe(
+      false
+    );
+    expect(names.some((n) => n.endsWith(".test.js"))).toBe(false);
+    const manifest = JSON.parse(
+      zipFileBytes(zip, "manifest.json").toString("utf8")
+    );
+    expect(manifest.manifest_version).toBe(3);
+    expect(manifest.chrome_url_overrides.newtab).toBe("newtab.html");
+    expect(manifest.host_permissions).toEqual(["https://aidr.today/*"]);
+    expect(manifest.optional_host_permissions).toBeUndefined();
+    expect(manifest.update_url).toBeUndefined();
+    const csp = manifest.content_security_policy.extension_pages as string;
+    expect(csp).toContain("https://aidr.today");
+    expect(csp).not.toMatch(/localhost/);
+    expect(csp).not.toMatch(/127\.0\.0\.1/);
+  });
+
+  it("does not share the public nested zip destination", () => {
+    const web = "/tmp/apps/web";
+    expect(defaultAidrZipDest(web)).toBe("/tmp/apps/web/public/aidr.zip");
+    expect(defaultCwsZipDest(web)).toBe(
+      `/tmp/apps/extension/dist/${AIDR_CWS_ZIP_FILENAME}`
+    );
+    expect(defaultCwsZipDest(web)).not.toBe(defaultAidrZipDest(web));
   });
 });

@@ -47,9 +47,7 @@ describe("topBullets", () => {
 
   it("promotes item_ids[0] onto item_id for telegram permalinks", () => {
     expect(
-      topBullets(
-        JSON.stringify([{ text: "hi", item_ids: ["abc", "def"] }])
-      )
+      topBullets(JSON.stringify([{ text: "hi", item_ids: ["abc", "def"] }]))
     ).toEqual([{ text: "hi", item_id: "abc" }]);
   });
 });
@@ -204,9 +202,7 @@ describe("buildDigestEmail", () => {
 
   it("includes the unsubscribe link with the given token", () => {
     const { html } = buildDigestEmail("2026-08-16", bullets, "en", "abc123");
-    expect(html).toContain(
-      "https://aidr.today/subscribe?unsubscribe=abc123"
-    );
+    expect(html).toContain("https://aidr.today/subscribe?unsubscribe=abc123");
   });
 
   it("escapes HTML-sensitive characters in bullet text", () => {
@@ -384,6 +380,56 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     vi.setSystemTime(fixedNow);
     await sendDailyTldr(env);
     expect(sentTo).toEqual(["nextday@example.com"]);
+  });
+
+  it("falls back to English bullets when the preferred language is empty", async () => {
+    const fixedNow = Date.UTC(2026, 7, 16, 3, 0, 0);
+    const updates: { sql: string; args: unknown[] }[] = [];
+    const sent: Array<{ to: string; from: { email: string } }> = [];
+    const db = {
+      prepare(sql: string) {
+        const bound = () => ({
+          first: async () => ({
+            date: "2026-08-16",
+            bullets_en: JSON.stringify([{ text: "story" }]),
+            bullets_vi: JSON.stringify([]),
+            sent_at: null,
+          }),
+          all: async () => ({
+            results: [
+              {
+                email: "vi@example.com",
+                lang: "vi",
+                unsubscribe_token: "t1",
+                timezone: "Asia/Ho_Chi_Minh",
+                last_sent_date: null,
+              },
+            ],
+          }),
+          run: async () => ({ success: true }),
+        });
+        return {
+          ...bound(),
+          bind: (...args: unknown[]) => {
+            if (sql.startsWith("UPDATE")) updates.push({ sql, args });
+            return bound();
+          },
+        };
+      },
+    };
+    const env = {
+      DB: db,
+      EMAIL: {
+        send: async (msg: { to: string; from: { email: string } }) => {
+          sent.push(msg);
+        },
+      },
+    } as unknown as Env;
+    vi.setSystemTime(fixedNow);
+    await sendDailyTldr(env);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.to).toBe("vi@example.com");
+    expect(sent[0]?.from.email).toBe("digest@aidr.today");
   });
 });
 

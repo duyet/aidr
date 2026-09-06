@@ -51,9 +51,13 @@ function expectedMap(digest) {
   const bullets = (digest.tldr?.bullets_vi || []).filter((b) => b.text);
   const shown = bullets.slice(0, 8);
   return {
-    brand: "Hôm nay AI có gì mới?",
+    brandMark: "AI;DR",
+    brandTagline: "Hôm nay AI có gì mới?",
     searchPlaceholder: "Tìm kiếm...",
     submit: "Gửi bài",
+    chromeTabPresent: true,
+    telegramPresent: true,
+    profileAbsent: true,
     langSelected: "vi",
     allChip: "Tất cả",
     categories: digest.categories.map((c) => `${c.name}:${c.count}`),
@@ -106,10 +110,14 @@ function featureMapFromHtml(html) {
   const colored = (html.match(/topic-colored/g) || []).length;
   const lists = (html.match(/class="tldr-list"/g) || []).length;
   return {
-    brand: pick(/id="brand"[^>]*>([\s\S]*?)<\/a>/),
+    brandMark: pick(/class="brand-mark"[^>]*>([\s\S]*?)<\/span>/),
+    brandTagline: pick(/id="brand-tagline"[^>]*>([\s\S]*?)<\/span>/),
     searchPlaceholder: pick(/id="search"[^>]*placeholder="([^"]+)"/),
-    chromeTabAbsent: !/id="chrome-tab"/.test(html) && !/Tab Chrome/.test(html),
-    profileAbsent: !/id="profile"/.test(html),
+    chromeTabPresent: /id="chrome-tab-link"/.test(html),
+    telegramPresent: /id="telegram-link"/.test(html),
+    signInPresent: /id="sign-in-btn"/.test(html) || /Sign in/.test(html),
+    phoneMenuPresent: /id="phone-menu"/.test(html),
+    profileAbsent: !/id="profile"/.test(html) && !/Clerk/.test(html),
     submit: pick(/id="submit-label"[^>]*>([\s\S]*?)<\/span>/),
     langSelected: /data-lang="vi"[^>]*aria-pressed="true"/.test(html)
       ? "vi"
@@ -117,7 +125,7 @@ function featureMapFromHtml(html) {
     allChip: chips[0] || "",
     categoryCount: chips.length,
     trendingCount: trends.length,
-    aidrHeading: /<h1>\s*AI;DR\s*<\/h1>/.test(html),
+    aidrHeading: /<h2>\s*AI;DR\s*<\/h2>/.test(html),
     aidrDate: pick(/id="tldr-meta"[^>]*>([\s\S]*?)<\/span>/),
     layoutA: /data-aidr-layout="a"/.test(html),
     columns: lists,
@@ -126,16 +134,18 @@ function featureMapFromHtml(html) {
     colored,
     twoColumn: lists === 2,
     numbered: /class="tldr-list"/.test(html),
+    daySections: (html.match(/class="day-section"/g) || []).length,
+    footer: /class="site-footer"/.test(html),
   };
 }
 
 function siteMapFromHtml(html) {
   return {
-    brand: /Hôm nay AI có gì mới\?/.test(html),
-    search: /Tìm kiếm\.\.\./.test(html),
-    submit: /Gửi bài/.test(html),
-    allChip: /Tất cả/.test(html),
-    trending: /Xu hướng/i.test(html),
+    brand: /AI;DR/.test(html),
+    search: /Tìm kiếm\.\.\./.test(html) || /Search/.test(html),
+    submit: /Gửi bài/.test(html) || /Submit/.test(html),
+    allChip: /Tất cả/.test(html) || />All</.test(html),
+    trending: /Xu hướng/i.test(html) || /Trending/i.test(html),
     aidr: />AI;DR</.test(html),
     topicColored: /topic-colored/.test(html),
   };
@@ -278,9 +288,13 @@ async function main() {
     const site = siteMapFromHtml(siteHtml);
 
     const checks = {
-      brand: observed.brand === expected.brand,
+      brandMark: observed.brandMark === expected.brandMark,
+      brandTagline: observed.brandTagline === expected.brandTagline,
       searchPlaceholder: observed.searchPlaceholder === expected.searchPlaceholder,
-      chromeTabAbsent: observed.chromeTabAbsent === true,
+      chromeTabPresent: observed.chromeTabPresent === true,
+      telegramPresent: observed.telegramPresent === true,
+      signInPresent: observed.signInPresent === true,
+      phoneMenuPresent: observed.phoneMenuPresent === true,
       profileAbsent: observed.profileAbsent === true,
       submit: observed.submit === expected.submit,
       langSelected: observed.langSelected === "vi",
@@ -295,6 +309,8 @@ async function main() {
       colored: observed.colored >= 1,
       trendingPresent: observed.trendingCount === expected.trending.length,
       categoriesPresent: observed.categoryCount === expected.categories.length + 1,
+      daySections: observed.daySections >= 1,
+      footer: observed.footer === true,
       siteBrand: site.brand,
       siteSearch: site.search,
       siteAidr: site.aidr,

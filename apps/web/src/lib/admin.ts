@@ -23,6 +23,7 @@ export function useAdmin(): AdminState {
   // app tree fully remounts once Clerk finishes loading (see __root.tsx),
   // so this conditional hook call never toggles mid-mount.
   const hasClerk = Boolean(mod && publishableKey);
+  // biome-ignore lint/correctness/useHookAtTopLevel: tree remounts once Clerk loads; this never toggles mid-mount
   const auth = hasClerk ? mod!.useAuth() : null;
   const isSignedIn = auth?.isSignedIn ?? false;
   const getTokenFn = auth?.getToken ?? null;

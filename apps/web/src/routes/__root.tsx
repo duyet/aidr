@@ -4,29 +4,26 @@ import "../styles.css";
 import { ErrorBoundary } from "@aidr/ui";
 import Analytics from "@aidr/ui/Analytics";
 import ThemeProvider from "@aidr/ui/ThemeProvider";
+import { track } from "@aidr/ui/track";
 import {
   createRootRoute,
   HeadContent,
   Link,
   Outlet,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
-import {
-  BarChart3,
-  ExternalLink,
-  GitFork,
-  History,
-  Info,
-  type LucideIcon,
-  Mail,
-  Plug,
-  Puzzle,
-} from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { CLERK_PROXY_URL } from "../../worker/clerk-proxy";
 import { HeaderBar } from "../components/HeaderBar";
 import { NotFoundPage } from "../components/NotFoundPage";
-import { ClerkModuleContext, useClerkModuleLoader } from "../lib/clerk-user";
+import {
+  campaignTrackParams,
+  isExtensionCampaign,
+  resolveCampaign,
+} from "../lib/campaign";
+import { ClerkModuleContext, getClerkModuleState } from "../lib/clerk-user";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
 import { getClientLang, setClientLang, timeAgo } from "../lib/lang";
@@ -39,23 +36,25 @@ import {
   readerCssVars,
   savePrefs,
 } from "../lib/prefs";
-import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";
+import {
+  DUYET_BLOG_URL,
+  DUYET_URL,
+  GITHUB_URL,
+  SITE_DESCRIPTION,
+  SITE_TITLE,
+  SITE_URL,
+  TELEGRAM_URL,
+} from "../lib/site";
 import type { Lang } from "../lib/types";
 
 /**
- * Mounts the ONE app-wide <ClerkProvider>, dynamically imported, so every
- * consumer (AuthButtons via wrapWithProvider={false}, SuggestTranslation,
- * the submit page) shares it instead of each mounting its own — a second
- * <ClerkProvider> crashes the whole app. If Clerk itself fails to
- * initialize (bad key, network), the ErrorBoundary here degrades to
- * rendering children with no Clerk context at all rather than losing the
- * rest of the page; each individual Clerk consumer has its own boundary
- * on top of that for a fully-signed-out fallback.
+ * Mounts the ONE app-wide <ClerkProvider> (static import for SSR — required
+ * by @clerk/tanstack-react-start SignIn/SignUp). Consumers share it via
+ * ClerkModuleContext; a second <ClerkProvider> crashes the app. If Clerk
+ * fails, ErrorBoundary degrades to children with no Clerk context.
  */
 function ClerkRootProvider({ children }: { children: ReactNode }) {
-  const clerkState = useClerkModuleLoader();
-  // No provider in this subtree, so consumers must not see a module either —
-  // rendering Clerk's SignedIn/SignedOut outside a <ClerkProvider> throws.
+  const clerkState = getClerkModuleState();
   const withoutProvider = (
     <ClerkModuleContext.Provider
       value={{ mod: null, publishableKey: clerkState.publishableKey }}
@@ -71,6 +70,19 @@ function ClerkRootProvider({ children }: { children: ReactNode }) {
       <ClerkModuleContext.Provider value={clerkState}>
         <clerkState.mod.ClerkProvider
           publishableKey={clerkState.publishableKey}
+          // Absolute URL so handshake redirects never fall back to the
+          // publishable-key host (clerk.aidr.today → CF Error 1000).
+          proxyUrl={CLERK_PROXY_URL}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          signInFallbackRedirectUrl="/"
+          signUpFallbackRedirectUrl="/"
+          appearance={{
+            variables: {
+              colorPrimary: "oklch(0.555 0.163 48.998)",
+              borderRadius: "0.625rem",
+            },
+          }}
         >
           {children}
         </clerkState.mod.ClerkProvider>
@@ -80,26 +92,15 @@ function ClerkRootProvider({ children }: { children: ReactNode }) {
 }
 
 // Footer is always English, regardless of site language.
-const FOOTER_LINKS: {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-}[] = [
-  { to: "/about", label: "About", icon: Info },
-  { to: "/extension", label: "Chrome tab", icon: Puzzle },
-  { to: "/subscribe", label: "Subscribe", icon: Mail },
-  { to: "/mcp", label: "MCP", icon: Plug },
-  {
-    to: "/data",
-    label: "Data",
-    icon: BarChart3,
-  },
-  {
-    to: "/changelog",
-    label: "Changelog",
-    icon: History,
-  },
+const FOOTER_LINKS: { to: string; label: string }[] = [
+  { to: "/about", label: "About" },
+  { to: "/subscribe", label: "Subscribe" },
+  { to: "/privacy", label: "Privacy" },
+  { to: "/terms", label: "Terms" },
 ];
+
+const linkClass =
+  "text-sm text-muted-foreground transition-colors hover:text-foreground";
 
 function NewsFooter() {
   const year = new Date().getFullYear();
@@ -121,49 +122,92 @@ function NewsFooter() {
   }, []);
 
   return (
-    <footer className="border-t border-border py-6 text-xs text-muted-foreground">
-      <div className="mx-auto flex w-full max-w-[1080px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 sm:px-6 lg:px-8">
-        <span>
-          {`© ${year} Duyet Le · aidr.today — AI news, rated & ranked by LLMs`}
-          {lastFetchedAt !== null && (
-            <>
-              {" · "}
-              Updated {timeAgo(lastFetchedAt, Date.now(), "en")}
-            </>
-          )}
-        </span>
-        <nav className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {FOOTER_LINKS.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className="flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2"
-            >
-              <link.icon className="h-3.5 w-3.5" aria-hidden />
-              {link.label}
-            </Link>
-          ))}
-          <a
-            href="https://github.com/duyet/aidr"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2"
+    <footer className="mt-10 border-t border-border/80 bg-card/40 py-12 text-sm text-muted-foreground">
+      <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-8 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
+          <div className="space-y-2">
+            <p className="font-serif text-xl font-medium tracking-tight text-foreground">
+              AI;DR
+            </p>
+            <p className="max-w-xs text-sm leading-relaxed">
+              AI news ranked and translated hourly.
+            </p>
+          </div>
+          <nav
+            aria-label="Footer"
+            className="grid grid-cols-2 gap-x-10 gap-y-3 sm:grid-cols-3"
           >
-            <GitFork className="h-3.5 w-3.5" aria-hidden />
-            GitHub
-            <ExternalLink className="h-3 w-3" aria-hidden />
-          </a>
-          {" · "}
-          <a
-            href="https://anyrouter.dev/?ref=aidr.today"
-            target="_blank"
-            rel="noopener"
-            className="flex items-center gap-1 hover:text-accent hover:underline hover:underline-offset-2"
-          >
-            AnyRouter
-            <ExternalLink className="h-3 w-3" aria-hidden />
-          </a>
-        </nav>
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+                Site
+              </p>
+              {FOOTER_LINKS.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => track("nav_click", { to: link.to })}
+                  className={`block ${linkClass}`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+                Connect
+              </p>
+              <a
+                href={TELEGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "telegram" })}
+                className={`block ${linkClass}`}
+              >
+                Telegram
+              </a>
+              <a
+                href={GITHUB_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "github" })}
+                className={`block ${linkClass}`}
+              >
+                GitHub
+              </a>
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+                More
+              </p>
+              <a
+                href={DUYET_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "duyet.net" })}
+                className={`block ${linkClass}`}
+              >
+                duyet.net
+              </a>
+              <a
+                href={DUYET_BLOG_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "blog.duyet.net" })}
+                className={`block ${linkClass}`}
+              >
+                Blog
+              </a>
+            </div>
+          </nav>
+        </div>
+        <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {`© ${year} AI;DR`}
+            {lastFetchedAt !== null && (
+              <> · Updated {timeAgo(lastFetchedAt, Date.now(), "en")}</>
+            )}
+          </span>
+        </div>
       </div>
     </footer>
   );
@@ -223,12 +267,54 @@ export const Route = createRootRoute({
   component: RootComponent,
 });
 
+function PageViewTracker() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const search = useRouterState({ select: (s) => s.location.searchStr });
+  const first = useRef(true);
+  const landedExt = useRef(false);
+
+  useEffect(() => {
+    const campaign = resolveCampaign({ search, pathname });
+    const campaignParams = campaignTrackParams(campaign);
+
+    if (!landedExt.current && isExtensionCampaign(campaign)) {
+      landedExt.current = true;
+      track("extension_landing", {
+        ...campaignParams,
+        page_path: pathname,
+      });
+    }
+
+    if (first.current) {
+      // GA config already sends the initial page_view; enrich SPA navs only.
+      first.current = false;
+      // Still fire a dedicated first-touch attribution event when landing
+      // with campaign params (covers hard loads where send_page_view raced).
+      if (campaign && Object.keys(campaignParams).length > 0) {
+        track("campaign_touch", {
+          ...campaignParams,
+          page_path: pathname,
+        });
+      }
+      return;
+    }
+
+    track("page_view", {
+      page_path: pathname,
+      ...campaignParams,
+    });
+  }, [pathname, search]);
+
+  return null;
+}
+
 function RootComponent() {
   const [lang, setLang] = useState<Lang>(() => getClientLang());
 
   const handleLangChange = (next: Lang) => {
     setClientLang(next);
     setLang(next);
+    track("lang_change", { lang: next });
   };
 
   // Render defaults on the server / first client paint to avoid a hydration
@@ -253,19 +339,15 @@ function RootComponent() {
     <html lang={lang} suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/* Load fonts directly — React 19 rejects string onLoad handlers
+            (error #231) which also poisoned hydration (#418). */}
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap"
-          media="print"
-          // @ts-expect-error onLoad is valid on link elements
-          onLoad="this.media='all'"
         />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap"
-          media="print"
-          // @ts-expect-error onLoad is valid on link elements
-          onLoad="this.media='all'"
         />
       </head>
       <body>
@@ -300,6 +382,7 @@ function RootComponent() {
           </PrefsContext.Provider>
         </LangContext.Provider>
         <Analytics />
+        <PageViewTracker />
         <Scripts />
       </body>
     </html>

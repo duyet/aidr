@@ -1,4 +1,12 @@
 import { useEffect } from "react";
+import { resolveMeasurementId } from "./track";
+
+export {
+  DEFAULT_GA_MEASUREMENT_ID,
+  resolveMeasurementId,
+  track,
+} from "./track";
+export type { TrackParams, TrackParamValue } from "./track";
 
 const importMetaEnv =
   typeof import.meta !== "undefined"
@@ -7,7 +15,9 @@ const importMetaEnv =
         | undefined)
     : undefined;
 
-const GA_MEASUREMENT_ID = importMetaEnv?.VITE_MEASUREMENT_ID;
+const GA_MEASUREMENT_ID = resolveMeasurementId(
+  importMetaEnv?.VITE_MEASUREMENT_ID
+);
 
 const POSTHOG_API_KEY = importMetaEnv?.VITE_POSTHOG_KEY;
 
@@ -50,7 +60,7 @@ export default function AnalyticWrapper() {
         window.dataLayer = window.dataLayer || [];
         function gtag(){window.dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', '${GA_MEASUREMENT_ID}');
+        gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: true });
       `);
     }
 

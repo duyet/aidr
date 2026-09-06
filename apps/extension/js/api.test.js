@@ -59,14 +59,32 @@ test("normalizeDigest maps public payload and image aliases", () => {
   assert.equal(digest.updatedAt, 50);
 });
 
-test("normalizeDigest flattens /api/feed days", () => {
+test("normalizeDigest keeps /api/feed days and flattens stories", () => {
   const digest = normalizeDigest({
     tldr: null,
-    days: [{ items: [{ id: "x", url: "https://x", title: "X" }] }],
+    days: [
+      {
+        date: "2026-09-05",
+        items: [
+          {
+            id: "x",
+            url: "https://x",
+            title: "X",
+            points: 12,
+            comments: 3,
+            category: "Infra",
+          },
+        ],
+        categoryCounts: { Infra: 1 },
+      },
+    ],
     categories: [{ name: "Infra", count: 2 }],
     trending: [{ tag: "gpu", count: 3 }],
   });
   assert.equal(digest.stories[0].id, "x");
+  assert.equal(digest.stories[0].points, 12);
+  assert.equal(digest.days.length, 1);
+  assert.equal(digest.days[0].date, "2026-09-05");
   assert.equal(digest.categories[0].name, "Infra");
   assert.equal(digest.trending[0].tag, "gpu");
 });
@@ -190,5 +208,7 @@ test("enrichDigest copies categories, trending, and item tags from feed", () => 
   assert.deepEqual(next.categories, [{ name: "Industry", count: 37 }]);
   assert.deepEqual(next.trending, [{ tag: "agent", count: 15 }]);
   assert.equal(next.totalStories, 163);
+  assert.equal(next.days.length, 1);
+  assert.equal(next.days[0].items[0].id, "abc");
   assert.deepEqual(next.items.abc.tags, ["openai", "agent"]);
 });

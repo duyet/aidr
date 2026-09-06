@@ -1,3 +1,4 @@
+import type { DayCount, NamedCount } from "../../lib/system-queries";
 import { Area, Line } from "../dither-kit/area";
 import { AreaChart, LineChart } from "../dither-kit/area-chart";
 import type { ChartConfig } from "../dither-kit/chart-context";
@@ -9,7 +10,6 @@ import { PieChart } from "../dither-kit/pie-chart";
 import { Tooltip } from "../dither-kit/tooltip";
 import { XAxis } from "../dither-kit/x-axis";
 import { YAxis } from "../dither-kit/y-axis";
-import type { DayCount, NamedCount } from "../../lib/system-queries";
 
 const shortDay = (date: string) => date.slice(5); // YYYY-MM-DD -> MM-DD
 

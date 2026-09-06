@@ -69,13 +69,17 @@ describe("prefs", () => {
     expect(loadPrefs()).toEqual(DEFAULT_PREFS);
   });
 
-  it("maps density to a css padding var", () => {
-    expect(
-      readerCssVars({ ...DEFAULT_PREFS, density: "compact" })["--reader-pad"]
-    ).toBe("0.5rem");
-    expect(
-      readerCssVars({ ...DEFAULT_PREFS, density: "spacious" })["--reader-pad"]
-    ).toBe("1.125rem");
+  it("maps density to padding and typeset rhythm vars", () => {
+    const compact = readerCssVars({ ...DEFAULT_PREFS, density: "compact" });
+    expect(compact["--reader-pad"]).toBe("0.5rem");
+    expect(compact["--reader-leading"]).toBe("1.55");
+    expect(compact["--reader-flow"]).toBe("0.95em");
+
+    const spacious = readerCssVars({ ...DEFAULT_PREFS, density: "spacious" });
+    expect(spacious["--reader-pad"]).toBe("1.125rem");
+    expect(spacious["--reader-leading"]).toBe("1.9");
+    expect(spacious["--reader-flow"]).toBe("1.6em");
+    expect(spacious["--reader-font-size"]).toBe("1");
   });
 
   it("returns defaults when window is unavailable (SSR)", () => {

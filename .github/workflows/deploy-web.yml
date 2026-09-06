@@ -77,7 +77,7 @@ jobs:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
 
       - name: Deploy @aidr/web
-        run: pnpm --filter @aidr/web deploy
+        run: pnpm --filter @aidr/web run deploy
         env:
           NODE_ENV: production
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
@@ -90,7 +90,6 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Worker**: aidr" >> "$GITHUB_STEP_SUMMARY"
           echo "- **URL**: https://aidr.today" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Alias**: https://news.duyet.net" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke — /api/public
         run: |

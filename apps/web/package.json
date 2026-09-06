@@ -1,10 +1,11 @@
 {
   "name": "@aidr/web",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "scripts": {
     "pack-extension": "tsx scripts/pack-extension.ts",
+    "pack-cws": "tsx scripts/pack-cws.ts",
     "dev": "pnpm run pack-extension && vite dev --port 3014",
     "build": "pnpm run pack-extension && vite build",
     "test": "vitest run",
@@ -15,22 +16,28 @@
     "lint:fix": "biome check --write .",
     "deploy": "pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json",
     "cf:deploy:prod": "dotenv -e ../../.env.production -e ../../.env.production.local -- pnpm run deploy && pnpm run smoke",
-    "config": "tsx scripts/sync-secrets.ts",
+    "config": "tsx ../../scripts/sync-env.ts",
     "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@aidr/libs": "workspace:*",
     "@aidr/ui": "workspace:*",
-    "@clerk/clerk-react": "^5.61.2",
+    "@clerk/tanstack-react-start": "^1.5.12",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@remixicon/react": "^4.9.0",
     "@tanstack/react-router": "^1.0.0",
     "@tanstack/react-start": "^1.0.0",
+    "class-variance-authority": "^0.7.1",
     "cn": "^0.2.4",
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
     "lucide-react": "^1.16.0",
     "motion": "^13.1.0",
+    "radix-ui": "^1.6.7",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "shadcn": "^4.21.0",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
     "@aidr/tsconfig": "workspace:*",
@@ -44,6 +51,7 @@
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "tailwindcss": "^4.0.0",
+    "tsx": "^4.23.13",
     "typescript": "*",
     "vite": "^8.0.0",
     "vite-tsconfig-paths": "^6.0.0",

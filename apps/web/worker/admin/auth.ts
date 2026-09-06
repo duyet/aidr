@@ -1,12 +1,8 @@
 import {
-  checkRateLimit,
-  hashIp,
-  ONE_DAY_SEC,
-} from "../rate-limit.js";
-import {
   getBearerToken,
   timingSafeEqualStrings,
 } from "@aidr/libs/workers-auth";
+import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import type { Env } from "../types.js";
 import { isClerkAdmin, verifyClerkToken } from "./clerk.js";
 

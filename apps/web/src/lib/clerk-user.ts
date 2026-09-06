@@ -1,19 +1,43 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import * as ClerkTanStack from "@clerk/tanstack-react-start";
+import {
+  createContext,
+  createElement,
+  type ReactNode,
+  useContext,
+} from "react";
+
+type ClerkTanStackMod = typeof ClerkTanStack;
+
+/** Compat shims — newer Clerk SDKs use `<Show when="signed-in|out">`. */
+export type ClerkModule = ClerkTanStackMod & {
+  SignedIn: (props: { children?: ReactNode }) => ReactNode;
+  SignedOut: (props: { children?: ReactNode }) => ReactNode;
+};
 
 export interface ClerkModuleState {
-  mod: typeof import("@clerk/clerk-react") | null;
+  mod: ClerkModule | null;
   publishableKey: string | undefined;
 }
 
 const EMPTY_STATE: ClerkModuleState = { mod: null, publishableKey: undefined };
 
+function withSignedInOutCompat(mod: ClerkTanStackMod): ClerkModule {
+  function SignedIn({ children }: { children?: ReactNode }) {
+    return createElement(mod.Show, { when: "signed-in" }, children);
+  }
+  function SignedOut({ children }: { children?: ReactNode }) {
+    return createElement(mod.Show, { when: "signed-out" }, children);
+  }
+  return { ...mod, SignedIn, SignedOut };
+}
+
+const clerkModule = withSignedInOutCompat(ClerkTanStack);
+
 /**
  * Shared across every Clerk consumer (AuthButtons via wrapWithProvider={false},
- * SuggestTranslation, the submit page). __root.tsx owns the ONE dynamic
- * import + the ONE <ClerkProvider> and publishes it here — every consumer
- * just reads this context and renders Clerk's SignedIn/SignedOut/useUser
- * primitives directly, never mounting a second provider (a second
- * <ClerkProvider> crashes the whole app).
+ * SuggestTranslation, the submit page). __root.tsx owns the ONE
+ * <ClerkProvider> and publishes the module here — every consumer reads this
+ * context and never mounts a second provider.
  */
 export const ClerkModuleContext = createContext<ClerkModuleState>(EMPTY_STATE);
 
@@ -21,34 +45,16 @@ export function useClerkModule(): ClerkModuleState {
   return useContext(ClerkModuleContext);
 }
 
-/** Only called once, in __root.tsx, to perform the dynamic import. */
-export function useClerkModuleLoader(): ClerkModuleState {
-  const [mod, setMod] = useState<typeof import("@clerk/clerk-react") | null>(
-    null
-  );
-
+/** Sync module + key for __root (SSR-safe static import). */
+export function getClerkModuleState(): ClerkModuleState {
   const env =
     typeof import.meta !== "undefined"
       ? ((import.meta as unknown as Record<string, unknown>).env as
           | Record<string, string>
           | undefined)
       : undefined;
-  const publishableKey = env?.VITE_CLERK_PUBLISHABLE_KEY;
-
-  useEffect(() => {
-    if (!publishableKey) return;
-    let cancelled = false;
-    import("@clerk/clerk-react")
-      .then((m) => {
-        if (!cancelled) setMod(m);
-      })
-      .catch(() => {
-        // Clerk failed to load — consumers fall back to signed-out state
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [publishableKey]);
-
-  return { mod, publishableKey };
+  const publishableKey =
+    env?.VITE_CLERK_PUBLISHABLE_KEY || env?.CLERK_PUBLISHABLE_KEY;
+  if (!publishableKey) return EMPTY_STATE;
+  return { mod: clerkModule, publishableKey };
 }

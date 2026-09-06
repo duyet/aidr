@@ -8,8 +8,10 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "check-types": "pnpm --filter @aidr/web check-types",
-    "deploy": "pnpm --filter @aidr/web deploy",
-    "cf:deploy:prod": "pnpm --filter @aidr/web cf:deploy:prod"
+    "deploy": "pnpm --filter @aidr/web run deploy",
+    "cf:deploy:prod": "pnpm --filter @aidr/web cf:deploy:prod",
+    "sync-env": "pnpm --filter @aidr/web exec tsx ../../scripts/sync-env.ts",
+    "config": "pnpm sync-env"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -1,6 +1,7 @@
-import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import { ensureMailSchema } from "../mail/schema.js";
+import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import type { Env } from "../types.js";
+import { sendWelcomeEmail } from "./send.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -146,6 +147,18 @@ export async function subscribe(
   )
     .bind(email, normalizedSource, now)
     .run();
+
+  // Welcome mail is best-effort — subscribe still succeeds if EMAIL is down.
+  void sendWelcomeEmail(env, {
+    email,
+    lang: normalizedLang,
+    unsubscribe_token: token,
+  }).catch((error) => {
+    console.error(
+      "welcome email skipped:",
+      error instanceof Error ? error.message : "error"
+    );
+  });
 
   return { ok: true };
 }

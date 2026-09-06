@@ -8,8 +8,8 @@ import {
   telegramAlertAdapter,
 } from "../notify/adapters.js";
 import {
-  buildHealthSnapshot,
   type AlertEvent,
+  buildHealthSnapshot,
   formatHealthFooter,
   healthOk,
 } from "../notify/alert.js";
@@ -63,7 +63,7 @@ describe("AlertEvent adapters", () => {
       links: [
         {
           label: 'say "hi"',
-          url: 'https://aidr.today/x?q="quoted"&s=\'s\'',
+          url: "https://aidr.today/x?q=\"quoted\"&s='s'",
         },
       ],
     });
@@ -106,9 +106,7 @@ describe("health snapshot", () => {
 describe("webhookTarget", () => {
   it("stores origin only, never the secret path", () => {
     expect(
-      webhookTarget(
-        "https://hooks.slack.com/services/T00/B00/secrettoken"
-      )
+      webhookTarget("https://hooks.slack.com/services/T00/B00/secrettoken")
     ).toBe("https://hooks.slack.com");
     expect(webhookTarget("")).toBe("");
     expect(webhookTarget("not-a-url")).toBe("webhook");
@@ -124,22 +122,18 @@ describe("webhookDeliveryId", () => {
   });
 
   it("sends Idempotency-Key and skips retry after timeout", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockRejectedValueOnce(
-        Object.assign(new Error("The operation was aborted due to timeout"), {
-          name: "TimeoutError",
-        })
-      );
+    const fetchMock = vi.fn().mockRejectedValueOnce(
+      Object.assign(new Error("The operation was aborted due to timeout"), {
+        name: "TimeoutError",
+      })
+    );
     vi.stubGlobal("fetch", fetchMock);
     const result = await webhookNotifier.sendDigest(
       { NOTIFY_WEBHOOK_URL: "https://example.com/hook" } as Env,
       { date: "2026-08-19", bullets: [] }
     );
     expect(result.ok).toBe(true);
-    expect(result.messageId).toBe(
-      "news:digest:2026-08-19:ambiguous-timeout"
-    );
+    expect(result.messageId).toBe("news:digest:2026-08-19:ambiguous-timeout");
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.com/hook",
       expect.objectContaining({

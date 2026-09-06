@@ -1,3 +1,5 @@
+import { Input } from "@aidr/ui";
+import { track } from "@aidr/ui/track";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, Tag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -97,6 +99,7 @@ export function SearchBox({
 
   const selectFilter = () => {
     if (!filterMatch) return;
+    track("topic_filter", { tag: filterMatch.value });
     setOpen(false);
     setQ("");
     navigate({
@@ -115,6 +118,7 @@ export function SearchBox({
 
   const submitFullSearch = () => {
     if (q.trim()) {
+      track("search", { query_len: q.trim().length });
       setOpen(false);
       navigate({ to: "/", search: { q: q.trim() } });
     }
@@ -141,10 +145,10 @@ export function SearchBox({
         }}
       >
         <Search
-          className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
+          className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
           aria-hidden
         />
-        <input
+        <Input
           value={q}
           onChange={(e) => handleChange(e.target.value)}
           onFocus={() => {
@@ -165,7 +169,8 @@ export function SearchBox({
             }
           }}
           placeholder={placeholder}
-          className={`w-full rounded-lg border border-border bg-background pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40 ${compact ? "min-h-[44px] h-11" : "py-1"}`}
+          className={`pl-8 ${compact ? "h-11 min-h-[44px] rounded-xl" : "h-9"}`}
+          role="combobox"
           aria-label="Search"
           aria-autocomplete="list"
           aria-expanded={showDropdown}

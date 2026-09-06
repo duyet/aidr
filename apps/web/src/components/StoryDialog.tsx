@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { Columns2, ExternalLink, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { localizedTitle } from "../lib/display-title";
@@ -96,18 +97,20 @@ export function StoryDialog({
     : { text: undefined as string | undefined, fallbackFromEnglish: false };
 
   return (
-    <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/50"
+        aria-label={lang === "vi" ? "Đóng" : "Close"}
+        onClick={onClose}
+      />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={title ?? "Story"}
         tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-        className={`max-h-[85vh] w-full overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-background p-5 text-foreground shadow-xl transition-[max-width] ${
+        className={`relative max-h-[85vh] w-full overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-background p-5 text-foreground shadow-xl transition-[max-width] ${
           bilingual ? "max-w-2xl md:max-w-5xl" : "max-w-2xl"
         }`}
       >
@@ -118,6 +121,7 @@ export function StoryDialog({
               target="_blank"
               rel="noopener noreferrer"
               lang={fallbackFromEnglish ? "en" : undefined}
+              onClick={() => track("story_open", { item_id: item.id })}
               className="min-w-0 flex-1 font-semibold leading-snug hover:text-accent"
             >
               {title}
@@ -136,7 +140,10 @@ export function StoryDialog({
               <button
                 type="button"
                 aria-pressed={bilingual}
-                onClick={() => setPrefs({ bilingualDialog: !bilingual })}
+                onClick={() => {
+                  track("prefs_change", { pref: "bilingualDialog" });
+                  setPrefs({ bilingualDialog: !bilingual });
+                }}
                 title={
                   lang === "vi"
                     ? "Xem song song Anh/Việt"

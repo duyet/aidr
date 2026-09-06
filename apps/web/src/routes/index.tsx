@@ -1,3 +1,4 @@
+import { track } from "@aidr/ui/track";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CategoryNav } from "../components/CategoryNav";
@@ -382,6 +383,7 @@ function IndexPage() {
         <p className="pt-10 text-center text-xs text-muted-foreground">
           <Link
             to="/extension"
+            onClick={() => track("nav_click", { to: "/extension" })}
             className="hover:text-accent hover:underline hover:underline-offset-2"
           >
             {lang === "vi"
