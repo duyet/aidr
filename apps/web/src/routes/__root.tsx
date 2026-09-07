@@ -139,7 +139,7 @@ function NewsFooter() {
             className="grid grid-cols-2 gap-x-10 gap-y-3 sm:grid-cols-3"
           >
             <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">
                 Site
               </p>
               {FOOTER_LINKS.map((link) => (
@@ -154,7 +154,7 @@ function NewsFooter() {
               ))}
             </div>
             <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">
                 Connect
               </p>
               <a
@@ -163,6 +163,8 @@ function NewsFooter() {
                 rel="noopener noreferrer"
                 onClick={() => track("nav_click", { to: "chrome_web_store" })}
                 className={`block ${linkClass}`}
+                title="Chrome Web Store"
+                aria-label="Chrome Web Store"
               >
                 Chrome extension
               </a>
