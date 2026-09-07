@@ -1,7 +1,9 @@
+import { parseStoredBullets } from "./tldr-bullets";
 import { isThinDisplayTldr, synthesizeTldrFromItems } from "./tldr-fallback";
 import {
   collectTldrItemIds,
   imageUrlByItemId,
+  sanitizeImageUrl,
   withTldrImages,
 } from "./tldr-images";
 import type { TldrBullet } from "./types";
@@ -84,19 +86,10 @@ function capBullets(raw: TldrBullet[]): TldrBullet[] {
   }));
 }
 
-/** Older `tldr_snapshots` rows used a single `item_id` string per bullet. */
+/** Older `tldr_snapshots` rows used a single `item_id` string per bullet.
+ * Recovers ids the LLM stuffed into `[hex]` in the text before clipping. */
 export function normalizeStoredBullets(raw: unknown): TldrBullet[] {
-  if (!Array.isArray(raw)) return [];
-  return capBullets(
-    raw.map((b: Record<string, unknown>) => {
-      const itemIds = Array.isArray(b.item_ids)
-        ? (b.item_ids as string[])
-        : typeof b.item_id === "string" && b.item_id
-          ? [b.item_id as string]
-          : [];
-      return { text: (b.text as string) ?? "", item_ids: itemIds };
-    })
-  );
+  return capBullets(parseStoredBullets(raw));
 }
 
 function parseTldrRow(
@@ -125,9 +118,10 @@ function toPublicStory(row: StoryRow): PublicStory {
     title: clip(row.title, PUBLIC_STORY_TEXT_MAX),
     title_vi: row.title_vi ? clip(row.title_vi, PUBLIC_STORY_TEXT_MAX) : null,
     category: row.category ? clip(row.category, 64) : null,
-    image_url: row.image_url
-      ? clip(row.image_url, PUBLIC_STORY_TEXT_MAX)
-      : null,
+    image_url: (() => {
+      const url = sanitizeImageUrl(row.image_url);
+      return url ? clip(url, PUBLIC_STORY_TEXT_MAX) : null;
+    })(),
     published_at: row.published_at,
   };
 }

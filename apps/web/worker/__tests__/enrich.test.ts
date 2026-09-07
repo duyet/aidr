@@ -21,6 +21,12 @@ describe("decodeHtmlEntities", () => {
   it("leaves unknown named entities untouched", () => {
     expect(decodeHtmlEntities("&unknownentity;")).toBe("&unknownentity;");
   });
+
+  it("decodes double-escaped ampersands in query strings", () => {
+    expect(decodeHtmlEntities("https://x?a=1&amp;amp;b=2")).toBe(
+      "https://x?a=1&b=2"
+    );
+  });
 });
 
 describe("parseOgTags", () => {
@@ -63,6 +69,13 @@ describe("parseOgTags", () => {
     const html = `<meta property="og:description" content="Tom &amp; Jerry&#39;s &ldquo;show&rdquo;">`;
     // &#39; isn't in NAMED_ENTITIES but IS a numeric entity, decoded regardless
     expect(parseOgTags(html).description).toBe("Tom & Jerry's “show”");
+  });
+
+  it("decodes HTML entities in og:image query strings", () => {
+    const html = `<meta property="og:image" content="https://pbs.twimg.com/card_img/1/x?format=jpg&amp;name=orig">`;
+    expect(parseOgTags(html).imageUrl).toBe(
+      "https://pbs.twimg.com/card_img/1/x?format=jpg&name=orig"
+    );
   });
 
   it("rejects a relative og:image URL rather than fabricating an absolute one", () => {

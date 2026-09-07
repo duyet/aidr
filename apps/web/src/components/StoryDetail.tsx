@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { categoryLabel } from "../lib/lang";
 import { detectSuggestField, type SuggestField } from "../lib/selection-field";
 import { storyPath } from "../lib/slug";
+import { sanitizeImageUrl } from "../lib/tldr-images";
 import { topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
 import { SuggestionBadge, SuggestTranslation } from "./SuggestTranslation";
@@ -106,6 +107,7 @@ export function StoryDetail({
   const summary =
     lang === "vi" && item.summary_vi ? item.summary_vi : item.summary;
   const paragraphs = splitParagraphs(summary);
+  const imageUrl = sanitizeImageUrl(item.image_url);
   const paragraphsEn = splitParagraphs(item.summary);
   const paragraphsVi = splitParagraphs(item.summary_vi);
 
@@ -321,11 +323,12 @@ export function StoryDetail({
         </div>
 
         <aside className="not-typeset min-w-0 space-y-4 md:border-l md:border-border md:pl-5">
-          {item.image_url && (
+          {imageUrl && (
             <img
-              src={item.image_url}
+              src={imageUrl}
               alt=""
               loading="lazy"
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}

@@ -1,4 +1,5 @@
 import { type ReactElement, useState } from "react";
+import { sanitizeImageUrl } from "../lib/tldr-images";
 
 /** Branded site mark — used when a story has no og/thumbnail, or the
  * remote image fails. Same asset as the favicon so it never 404s. */
@@ -17,7 +18,8 @@ export function StoryThumb({
   alt?: string;
 }): ReactElement {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const remote = src && src !== failedSrc ? src : null;
+  const url = sanitizeImageUrl(src);
+  const remote = url && url !== failedSrc ? url : null;
   const showSrc = remote ?? STORY_THUMB_PLACEHOLDER;
 
   return (
@@ -28,6 +30,7 @@ export function StoryThumb({
       height={48}
       loading="lazy"
       decoding="async"
+      referrerPolicy="no-referrer"
       aria-hidden={alt ? undefined : true}
       onError={(event) => {
         if (remote) {

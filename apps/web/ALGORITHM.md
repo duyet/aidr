@@ -44,6 +44,9 @@ longer the previous id) and `runsToday > 0`. Do not invent a
 2. **Dedupe** — item id = `sha256(url)`; ids already in `items` are dropped.
 3. **Enrich** — missing summary/thumbnail filled from the article page
    (`og:description` / `og:image`), capped and failure-proof (`worker/enrich.ts`).
+   HTML entities in `og:image` (including double-escaped `&amp;` in query
+   strings) are decoded before the URL is stored, so thumbs are real
+   article images rather than a broken-src fallback.
 4. **Score (LLM)** — batches of 5, fixed rubric → per item:
    `relevance` 0–1, `importance` 0–10, `quality` 0–10, one `category` from a
    fixed 11-value enum, free-form `tags`.
@@ -91,9 +94,12 @@ longer the previous id) and `runsToday > 0`. Do not invent a
     older than 3 hours. Content is always the top 16 items of the
     **rolling last 24h** by rank (not ICT calendar-day-so-far) → up to 16
     EN bullets + 16 independently-restated VI bullets, each linked to its
-    `item_id`. Each bullet is a short digest (~2 sentences / 180–240
-    characters), not a headline and not a paragraph; the homepage clamps
-    overflow to 2 lines and sizes the thumbnail to that row. If the LLM returns no bullets or a thin digest (fewer than
+    `item_id`. Homepage thumbs and the story dialog need those ids; if the
+    model pastes `[hex]` into the bullet text instead of (or besides)
+    `item_ids`, parse recovers the ids and strips the citation. Each bullet
+    is a short digest (~2 sentences / 180–240 characters), not a headline
+    and not a paragraph; the homepage clamps overflow to 2 lines and sizes
+    the thumbnail to that row. If the LLM returns no bullets or a thin digest (fewer than
     min(8, item count), at least 2 when there are 2+ stories), a
     title-fallback snapshot is persisted (EN from item titles; VI from
     `title_vi` or the English title if no translation — never invented

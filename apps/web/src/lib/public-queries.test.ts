@@ -113,6 +113,16 @@ describe("normalizeStoredBullets", () => {
     expect(bullets[0]?.text).toBe(text);
     expect(bullets[0]?.text).toHaveLength(220);
   });
+
+  it("recovers item ids from a trailing [hex] citation and strips it", () => {
+    const id = "aaaaaaaa";
+    const bullets = normalizeStoredBullets([
+      { text: `Nvidia buys Hugging Face. [${id}]`, item_ids: [] },
+    ]);
+    expect(bullets).toEqual([
+      { text: "Nvidia buys Hugging Face.", item_ids: [id] },
+    ]);
+  });
 });
 
 describe("getPublicDigest", () => {
@@ -219,6 +229,49 @@ describe("getPublicDigest", () => {
       "https://img.example/b.jpg"
     );
     expect(digest.stories[0]?.id).toBe("z");
+  });
+
+  it("decodes HTML-escaped story image URLs", async () => {
+    const db = makeDb({
+      tldr: bilingualTldr,
+      stories: [
+        story("a", {
+          image_url: "https://img.example/a.jpg?format=jpg&amp;name=orig",
+        }),
+        story("b"),
+      ],
+    });
+    const digest = await getPublicDigest(db);
+    expect(digest.stories[0]?.image_url).toBe(
+      "https://img.example/a.jpg?format=jpg&name=orig"
+    );
+    expect(digest.tldr?.bullets_en[0]?.image_url).toBe(
+      "https://img.example/a.jpg?format=jpg&name=orig"
+    );
+  });
+
+  it("attaches a thumb when item_ids is empty but the text cites [hex]", async () => {
+    const id = "aaaaaaaa";
+    const db = makeDb({
+      tldr: {
+        date: "2026-08-27",
+        bullets_en: JSON.stringify([
+          { text: `Nvidia buys Hugging Face. [${id}]`, item_ids: [] },
+          { text: "GPT-6 ships", item_ids: ["b"] },
+        ]),
+        bullets_vi: JSON.stringify([
+          { text: `Nvidia mua Hugging Face. [${id}]`, item_ids: [] },
+          { text: "GPT-6 ra mắt", item_ids: ["b"] },
+        ]),
+      },
+      stories: [story(id), story("b")],
+    });
+    const digest = await getPublicDigest(db);
+    expect(digest.tldr?.bullets_en[0]).toEqual({
+      text: "Nvidia buys Hugging Face.",
+      item_ids: [id],
+      image_url: `https://img.example/${id}.jpg`,
+    });
   });
 
   it("omits image_url on a bullet when the linked story has none", async () => {

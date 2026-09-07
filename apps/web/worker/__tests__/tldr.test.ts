@@ -117,6 +117,12 @@ describe("sanitizeBulletIds", () => {
       )
     ).toEqual([{ text: "a", item_ids: ["aaaa1111bbbb", "aaaa2222cccc"] }]);
   });
+
+  it("recovers ids pasted as [hex] in the bullet text and strips them", () => {
+    expect(
+      sanitizeBulletIds([{ text: "Hello [aaaa1111bbbb]", item_ids: [] }], items)
+    ).toEqual([{ text: "Hello", item_ids: ["aaaa1111bbbb"] }]);
+  });
 });
 
 describe("tldrSnapshotDate", () => {

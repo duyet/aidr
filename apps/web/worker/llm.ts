@@ -1,3 +1,8 @@
+import {
+  collectBulletItemIds,
+  extractBracketItemIds,
+  stripBracketItemIds,
+} from "../src/lib/tldr-bullets";
 import { mapWithConcurrency } from "./concurrency.js";
 import { looksVietnamese } from "./tldr-lang.js";
 import type { Env } from "./types.js";
@@ -1020,26 +1025,21 @@ function normalizeBullets(input: unknown): TldrBullet[] {
   const out: TldrBullet[] = [];
   for (const entry of input) {
     if (typeof entry === "string" && entry.trim()) {
-      out.push({ text: entry, item_ids: [] });
+      const text = entry.trim();
+      out.push({
+        text: stripBracketItemIds(text),
+        item_ids: extractBracketItemIds(text),
+      });
       continue;
     }
     if (entry && typeof entry === "object") {
       const e = entry as Record<string, unknown>;
       const text = typeof e.text === "string" ? e.text : undefined;
       if (!text) continue;
-      let itemIds: string[];
-      if (Array.isArray(e.item_ids)) {
-        itemIds = e.item_ids.filter(
-          (id): id is string => typeof id === "string"
-        );
-      } else if (typeof e.item_id === "string" && e.item_id) {
-        itemIds = [e.item_id];
-      } else if (typeof e.id === "string" && e.id) {
-        itemIds = [e.id];
-      } else {
-        itemIds = [];
-      }
-      out.push({ text, item_ids: itemIds });
+      out.push({
+        text: stripBracketItemIds(text),
+        item_ids: collectBulletItemIds(e, text),
+      });
     }
   }
   return out;
@@ -1068,7 +1068,8 @@ function normalizeTldrResult(parsed: unknown): Omit<TldrResult, "tokens"> {
 /** The model sometimes hallucinates or truncates `item_id`s, which used to
  * make TL;DR bullets open the wrong story. Keep only ids that exactly match
  * an input item (or uniquely prefix-match one, expanded to the full id);
- * anything else is dropped from the bullet's id list. */
+ * anything else is dropped from the bullet's id list. Also recover ids the
+ * model stuffed into `[hex]` in the bullet text. */
 export function sanitizeBulletIds(
   bullets: TldrBullet[],
   items: Pick<TldrItem, "id">[]
@@ -1079,10 +1080,18 @@ export function sanitizeBulletIds(
     const matches = items.filter((i) => i.id.startsWith(id));
     return matches.length === 1 ? matches[0].id : null;
   };
-  return bullets.map((b) => ({
-    ...b,
-    item_ids: b.item_ids.map(resolve).filter((id): id is string => id !== null),
-  }));
+  return bullets.map((b) => {
+    const merged = [...(b.item_ids ?? []), ...extractBracketItemIds(b.text)];
+    const seen = new Set<string>();
+    const item_ids: string[] = [];
+    for (const raw of merged) {
+      const id = resolve(raw);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      item_ids.push(id);
+    }
+    return { ...b, text: stripBracketItemIds(b.text), item_ids };
+  });
 }
 
 function tldrPrompt(items: TldrItem[], bilingual: boolean): string {
@@ -1100,7 +1109,7 @@ The Vietnamese bullets are NOT a translation pass over the English ones — writ
     : "";
   return `Summarize the following ${items.length} AI/tech news items into at most ${n} TL;DR digest bullets (one per distinct story), ${langs}. Each bullet must reference the item_ids (an array) it was derived from: most bullets summarize a single story, so item_ids has one id; when several items report the same story or theme, write ONE synthesizing bullet citing ALL of their ids instead of separate bullets.
 
-Each bullet is a short digest, not an article: about 2 sentences or 180–240 characters (English and Vietnamese). State the what and the why (or who/impact). Keep named entities (models, labs, products) in the text. Do not pad with filler, and do not write a paragraph.
+Each bullet is a short digest, not an article: about 2 sentences or 180–240 characters (English and Vietnamese). State the what and the why (or who/impact). Keep named entities (models, labs, products) in the text. Do not pad with filler, and do not write a paragraph. Put story ids only in the item_ids array — never as [id] in the bullet text.
 ${viNote}
 Items:
 ${JSON.stringify(items)}

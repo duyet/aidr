@@ -43,9 +43,7 @@ const NAMED_ENTITIES: Record<string, string> = {
   ldquo: "“",
 };
 
-/** Decodes numeric (decimal/hex) and the common named HTML entities found
- * in meta description content. Unknown named entities are left as-is. */
-export function decodeHtmlEntities(text: string): string {
+function decodeHtmlEntitiesOnce(text: string): string {
   return text
     .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(Number(dec)))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) =>
@@ -55,6 +53,19 @@ export function decodeHtmlEntities(text: string): string {
       /&([a-zA-Z]+);/g,
       (whole, name: string) => NAMED_ENTITIES[name] ?? whole
     );
+}
+
+/** Decodes numeric (decimal/hex) and the common named HTML entities found
+ * in meta content. Repeats so double-escaped `&amp;amp;` query strings
+ * become a real `&`. Unknown named entities are left as-is. */
+export function decodeHtmlEntities(text: string): string {
+  let out = text;
+  for (let i = 0; i < 3; i++) {
+    const next = decodeHtmlEntitiesOnce(out);
+    if (next === out) break;
+    out = next;
+  }
+  return out;
 }
 
 function isAbsoluteHttpUrl(url: string): boolean {
@@ -119,12 +130,13 @@ function extractMetaContent(
  * relative or non-http(s) value is dropped rather than resolved, since we
  * don't reliably know the page's base URL) and a description from
  * og:description, falling back to <meta name="description">. HTML
- * entities in the description are decoded.
+ * entities in the description and og:image URL are decoded.
  */
 export function parseOgTags(html: string): OgData {
   const rawImage = extractMetaContent(html, "property", "og:image");
+  const decodedImage = rawImage ? decodeHtmlEntities(rawImage) : null;
   const imageUrl =
-    rawImage && isAbsoluteHttpUrl(rawImage) ? rawImage : undefined;
+    decodedImage && isAbsoluteHttpUrl(decodedImage) ? decodedImage : undefined;
 
   const rawDescription =
     extractMetaContent(html, "property", "og:description") ??
