@@ -21,3 +21,7 @@ export const GITHUB_URL = "https://github.com/duyet/aidr";
 /** Author site / blog (footer + menu backlinks). */
 export const DUYET_URL = "https://duyet.net";
 export const DUYET_BLOG_URL = "https://blog.duyet.net";
+
+/** Chrome Web Store URL for the extension. */
+export const CHROME_WEB_STORE_URL =
+  "https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg";

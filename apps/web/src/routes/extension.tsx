@@ -33,7 +33,7 @@ import {
   AIDR_ZIP_HREF,
 } from "../lib/aidr-public";
 import { useLang } from "../lib/lang-context";
-import { TELEGRAM_URL } from "../lib/site";
+import { CHROME_WEB_STORE_URL, TELEGRAM_URL } from "../lib/site";
 
 export const Route = createFileRoute("/extension")({
   head: () => ({
@@ -124,18 +124,23 @@ function ExtensionPage() {
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
             {t(
-              "Replace Chrome's new tab with today's AI;DR and top stories from aidr.today. Not on the Chrome Web Store yet — download the zip, unzip, then Load unpacked.",
-              "Thay tab mới của Chrome bằng AI;DR hôm nay và tin nổi bật từ aidr.today. Chưa có trên Chrome Web Store — tải zip, giải nén, rồi Load unpacked."
+              "Replace Chrome's new tab with today's AI;DR and top stories from aidr.today. Get it on the Chrome Web Store or download the zip to Load unpacked.",
+              "Thay tab mới của Chrome bằng AI;DR hôm nay và tin nổi bật từ aidr.today. Lấy trên Chrome Web Store hoặc tải zip để Load unpacked."
             )}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button size="lg" asChild>
-            <ZipLink>
-              <Download data-icon="inline-start" aria-hidden />
-              {t("Add to Chrome", "Thêm vào Chrome")}
-            </ZipLink>
+            <a
+              href={CHROME_WEB_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("nav_click", { to: "chrome_web_store" })}
+            >
+              <RiChromeLine className="mr-2 size-5" aria-hidden />
+              {t("Chrome Web Store", "Chrome Web Store")}
+            </a>
           </Button>
           <Button variant="outline" size="lg" asChild>
             <ZipLink>
@@ -159,8 +164,8 @@ function ExtensionPage() {
         </div>
         <p className="text-sm text-muted-foreground">
           {t(
-            "Both buttons download the same zip. Unzip it, then follow the steps below.",
-            "Cả hai nút đều tải cùng một file zip. Giải nén rồi làm các bước bên dưới."
+            "The Chrome Web Store version auto-updates. For development or local server, download and Load unpacked the zip.",
+            "Phiên bản Chrome Web Store tự cập nhật. Cho phát triển hoặc server local, tải và Load unpacked file zip."
           )}
         </p>
       </div>

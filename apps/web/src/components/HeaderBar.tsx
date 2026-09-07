@@ -11,7 +11,7 @@ import {
   WIDE_HEADER_ROW_CLASS,
 } from "../lib/chrome";
 import { useClerkModule } from "../lib/clerk-user";
-import { DUYET_BLOG_URL, DUYET_URL, TELEGRAM_URL } from "../lib/site";
+import { CHROME_WEB_STORE_URL, DUYET_BLOG_URL, DUYET_URL, TELEGRAM_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
 import { LangToggle } from "./LangToggle";
 import { PrefsPanel } from "./PrefsPanel";
@@ -27,7 +27,9 @@ const SITE_LINKS = [
   { href: "/about", label: "About", internal: true },
   { href: "/mcp", label: "MCP", internal: true },
   { href: "/subscribe", label: "Subscribe", internal: true },
+  { href: "/extension", label: "Extension", internal: true },
   { href: TELEGRAM_URL, label: "Telegram", internal: false },
+  { href: CHROME_WEB_STORE_URL, label: "Chrome extension", internal: false },
   { href: "/data", label: "Data", internal: true },
   { href: "/submit", label: "Submit", internal: true },
   { href: DUYET_URL, label: "duyet.net", internal: false },
