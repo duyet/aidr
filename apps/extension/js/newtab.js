@@ -420,7 +420,7 @@ function clearSectionContent(sectionEl) {
   const head = sectionEl.querySelector(".section-chrome-head");
   if (head) {
     const siblings = [...sectionEl.children].filter((child) => child !== head);
-    siblings.forEach((child) => child.remove());
+    for (const child of siblings) child.remove();
     head.remove();
     sectionEl.prepend(head);
   } else {
