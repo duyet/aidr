@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import {
   existsSync,
   mkdirSync,
@@ -139,7 +140,9 @@ function entryData(
 ): Buffer {
   const data = readFileSync(abs);
   if (!storeFlavor || relPosix !== "manifest.json") return data;
-  const manifest = storeFlavorManifest(JSON.parse(data.toString("utf8")));
+  const manifest = storeFlavorManifest(
+    JSON.parse(new TextDecoder().decode(data))
+  );
   return Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
 }
 

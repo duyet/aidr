@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -27,23 +28,29 @@ function writeTree(files: Record<string, string>): string {
   return root;
 }
 
+function dv(buf: Uint8Array): DataView {
+  return new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+}
+
+function decode(buf: Uint8Array): string {
+  return new TextDecoder().decode(buf);
+}
+
 function zipNames(buf: Buffer): string[] {
   const sig = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
   const eocd = buf.lastIndexOf(sig);
   if (eocd < 0) throw new Error("missing EOCD");
-  const count = buf.readUInt16LE(eocd + 8);
-  let offset = buf.readUInt32LE(eocd + 16);
+  const count = dv(buf).getUint16(eocd + 8, true);
+  let offset = dv(buf).getUint32(eocd + 16, true);
   const names: string[] = [];
   for (let i = 0; i < count; i++) {
-    if (buf.readUInt32LE(offset) !== 0x02014b50) {
+    if (dv(buf).getUint32(offset, true) !== 0x02014b50) {
       throw new Error("bad central directory");
     }
-    const nameLen = buf.readUInt16LE(offset + 28);
-    const extraLen = buf.readUInt16LE(offset + 30);
-    const commentLen = buf.readUInt16LE(offset + 32);
-    names.push(
-      buf.subarray(offset + 46, offset + 46 + nameLen).toString("utf8")
-    );
+    const nameLen = dv(buf).getUint16(offset + 28, true);
+    const extraLen = dv(buf).getUint16(offset + 30, true);
+    const commentLen = dv(buf).getUint16(offset + 32, true);
+    names.push(decode(buf.subarray(offset + 46, offset + 46 + nameLen)));
     offset += 46 + nameLen + extraLen + commentLen;
   }
   return names;
@@ -51,14 +58,15 @@ function zipNames(buf: Buffer): string[] {
 
 function zipFileBytes(buf: Buffer, name: string): Buffer {
   let offset = 0;
-  while (offset + 30 <= buf.length && buf.readUInt32LE(offset) === 0x04034b50) {
-    const method = buf.readUInt16LE(offset + 8);
-    const compSize = buf.readUInt32LE(offset + 18);
-    const nameLen = buf.readUInt16LE(offset + 26);
-    const extraLen = buf.readUInt16LE(offset + 28);
-    const entryName = buf
-      .subarray(offset + 30, offset + 30 + nameLen)
-      .toString("utf8");
+  while (
+    offset + 30 <= buf.length &&
+    dv(buf).getUint32(offset, true) === 0x04034b50
+  ) {
+    const method = dv(buf).getUint16(offset + 8, true);
+    const compSize = dv(buf).getUint32(offset + 18, true);
+    const nameLen = dv(buf).getUint16(offset + 26, true);
+    const extraLen = dv(buf).getUint16(offset + 28, true);
+    const entryName = decode(buf.subarray(offset + 30, offset + 30 + nameLen));
     const dataStart = offset + 30 + nameLen + extraLen;
     const data = buf.subarray(dataStart, dataStart + compSize);
     if (entryName === name) {
@@ -124,7 +132,7 @@ describe("buildAidrZip", () => {
       "js/api.js": "export const ok = 1;\n",
     });
     const zip = buildAidrZip(root);
-    expect(zip.subarray(0, 2).toString("ascii")).toBe("PK");
+    expect(decode(zip.subarray(0, 2))).toBe("PK");
     const names = zipNames(zip);
     expect(names).toContain(`${AIDR_UNPACKED_DIR}/manifest.json`);
     expect(names).toContain(`${AIDR_UNPACKED_DIR}/newtab.html`);
@@ -133,7 +141,7 @@ describe("buildAidrZip", () => {
       true
     );
     expect(
-      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString("utf8")
+      decode(zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`))
     ).toBe('{"name":"AI News"}');
     expect(names).not.toContain("manifest.json");
   });
@@ -163,7 +171,7 @@ describe("buildAidrZip", () => {
       true
     );
     const manifest = JSON.parse(
-      zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`).toString("utf8")
+      decode(zipFileBytes(zip, `${AIDR_UNPACKED_DIR}/manifest.json`))
     );
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.chrome_url_overrides.newtab).toBe("newtab.html");
@@ -186,7 +194,7 @@ describe("buildCwsZip", () => {
       "js/api.js": "export const ok = 1;\n",
     });
     const zip = buildCwsZip(root);
-    expect(zip.subarray(0, 2).toString("ascii")).toBe("PK");
+    expect(decode(zip.subarray(0, 2))).toBe("PK");
     const names = zipNames(zip);
     expect(names).toContain("manifest.json");
     expect(names).toContain("newtab.html");
@@ -196,9 +204,9 @@ describe("buildCwsZip", () => {
     expect(names.some((n) => n.startsWith(`${AIDR_UNPACKED_DIR}/`))).toBe(
       false
     );
-    expect(
-      JSON.parse(zipFileBytes(zip, "manifest.json").toString("utf8"))
-    ).toEqual({ name: "AI News" });
+    expect(JSON.parse(decode(zipFileBytes(zip, "manifest.json")))).toEqual({
+      name: "AI News",
+    });
   });
 
   it("packs the real tree with manifest at root and no localhost", () => {
@@ -212,9 +220,7 @@ describe("buildCwsZip", () => {
       false
     );
     expect(names.some((n) => n.endsWith(".test.js"))).toBe(false);
-    const manifest = JSON.parse(
-      zipFileBytes(zip, "manifest.json").toString("utf8")
-    );
+    const manifest = JSON.parse(decode(zipFileBytes(zip, "manifest.json")));
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.chrome_url_overrides.newtab).toBe("newtab.html");
     expect(manifest.host_permissions).toEqual(["https://aidr.today/*"]);
