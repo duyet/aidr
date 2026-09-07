@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { deflateRawSync } from "node:zlib";
+import { Buffer } from "node:buffer";
 import { AIDR_UNPACKED_DIR, AIDR_ZIP_FILENAME } from "./aidr-public";
 
 /** Operator upload for Chrome Web Store. Not served at /aidr.zip. */
@@ -139,7 +140,9 @@ function entryData(
 ): Buffer {
   const data = readFileSync(abs);
   if (!storeFlavor || relPosix !== "manifest.json") return data;
-  const manifest = storeFlavorManifest(JSON.parse(data.toString("utf8")));
+  const manifest = storeFlavorManifest(
+    JSON.parse(new TextDecoder().decode(data))
+  );
   return Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
 }
 
