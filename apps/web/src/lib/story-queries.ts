@@ -1,3 +1,4 @@
+import { sanitizeImageUrl } from "./tldr-images";
 import type { FeedItem } from "./types";
 
 let llmTokensSupported: boolean | null = null;
@@ -59,7 +60,7 @@ export async function getStory(
     tags,
     sources: [],
     llm_tokens: (row.llm_tokens as number | undefined) ?? 0,
-    image_url: (row.image_url as string | null | undefined) ?? null,
+    image_url: sanitizeImageUrl(row.image_url as string | null | undefined),
   } as unknown as FeedItem;
 
   try {

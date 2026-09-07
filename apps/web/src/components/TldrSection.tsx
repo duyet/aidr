@@ -15,16 +15,25 @@ function TldrBulletRow({
   n,
   thumbSrc,
   fullText,
+  linked,
   children,
 }: {
   layout: AidrLayout;
   n: number;
   thumbSrc: string | null;
   fullText: string;
+  linked?: boolean;
   children: ReactNode;
 }): ReactElement {
   const copy = (
-    <span className="min-w-0 flex-1 line-clamp-2 break-words" title={fullText}>
+    <span
+      className={`min-w-0 flex-1 line-clamp-2 break-words ${
+        linked
+          ? "underline decoration-border underline-offset-2 group-hover:decoration-accent"
+          : ""
+      }`}
+      title={fullText}
+    >
       {children}
     </span>
   );
@@ -200,59 +209,63 @@ export function TldrSection({
               const highlighted = (
                 <HighlightedText text={b.text} tags={itemTags} />
               );
+              const row = (
+                <TldrBulletRow
+                  layout={layout}
+                  n={n}
+                  thumbSrc={thumbSrc}
+                  fullText={b.text}
+                  linked={Boolean(primaryId)}
+                >
+                  {color && tag && (
+                    <span
+                      className="topic-colored mr-1.5 text-xs font-semibold uppercase tracking-wide"
+                      style={
+                        {
+                          "--tc-light": color.light,
+                          "--tc-dark": color.dark,
+                        } as CSSProperties
+                      }
+                    >
+                      {tag}
+                    </span>
+                  )}
+                  {highlighted}
+                  {otherIds.length > 0 && (
+                    <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
+                      +{otherIds.length}
+                    </span>
+                  )}
+                </TldrBulletRow>
+              );
               return (
                 <li key={b.text}>
-                  <TldrBulletRow
-                    layout={layout}
-                    n={n}
-                    thumbSrc={thumbSrc}
-                    fullText={b.text}
-                  >
-                    {color && tag && (
-                      <span
-                        className="topic-colored mr-1.5 text-xs font-semibold uppercase tracking-wide"
-                        style={
-                          {
-                            "--tc-light": color.light,
-                            "--tc-dark": color.dark,
-                          } as CSSProperties
+                  {primaryId ? (
+                    <a
+                      href={`/ai/${primaryId}`}
+                      onClick={(e) => {
+                        if (
+                          e.button !== 0 ||
+                          e.metaKey ||
+                          e.ctrlKey ||
+                          e.shiftKey ||
+                          e.altKey
+                        ) {
+                          return;
                         }
-                      >
-                        {tag}
-                      </span>
-                    )}
-                    {primaryId ? (
-                      <a
-                        href={`/ai/${primaryId}`}
-                        onClick={(e) => {
-                          if (
-                            e.button !== 0 ||
-                            e.metaKey ||
-                            e.ctrlKey ||
-                            e.shiftKey ||
-                            e.altKey
-                          ) {
-                            return;
-                          }
-                          e.preventDefault();
-                          setOpenBullet({
-                            itemId: primaryId,
-                            relatedIds: otherIds,
-                          });
-                        }}
-                        className="underline decoration-border underline-offset-2 hover:decoration-accent"
-                      >
-                        {highlighted}
-                      </a>
-                    ) : (
-                      highlighted
-                    )}
-                    {otherIds.length > 0 && (
-                      <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
-                        +{otherIds.length}
-                      </span>
-                    )}
-                  </TldrBulletRow>
+                        e.preventDefault();
+                        setOpenBullet({
+                          itemId: primaryId,
+                          relatedIds: otherIds,
+                        });
+                      }}
+                      className="group block text-inherit no-underline"
+                    >
+                      {row}
+                    </a>
+                  ) : (
+                    row
+                  )}
                 </li>
               );
             })}

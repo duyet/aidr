@@ -1,6 +1,7 @@
 import { track } from "@aidr/ui/track";
 import { Columns2, ExternalLink, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { localizedTitle } from "../lib/display-title";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
 import { timeAgo } from "../lib/lang";
@@ -96,7 +97,7 @@ export function StoryDialog({
     ? localizedTitle(item, lang)
     : { text: undefined as string | undefined, fallbackFromEnglish: false };
 
-  return (
+  const overlay = (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
       <button
         type="button"
@@ -217,4 +218,7 @@ export function StoryDialog({
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return overlay;
+  return createPortal(overlay, document.body);
 }

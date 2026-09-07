@@ -3,8 +3,31 @@ import {
   attachTldrBulletImages,
   collectTldrItemIds,
   imageUrlByItemId,
+  sanitizeImageUrl,
   withTldrImages,
 } from "./tldr-images";
+
+describe("sanitizeImageUrl", () => {
+  it("decodes HTML-escaped query ampersands", () => {
+    expect(
+      sanitizeImageUrl(
+        "https://pbs.twimg.com/card_img/1/x?format=jpg&amp;name=orig"
+      )
+    ).toBe("https://pbs.twimg.com/card_img/1/x?format=jpg&name=orig");
+  });
+
+  it("decodes double-escaped ampersands", () => {
+    expect(sanitizeImageUrl("https://img.example/a?w=1&amp;amp;h=2")).toBe(
+      "https://img.example/a?w=1&h=2"
+    );
+  });
+
+  it("drops non-http URLs", () => {
+    expect(sanitizeImageUrl("javascript:alert(1)")).toBeNull();
+    expect(sanitizeImageUrl("")).toBeNull();
+    expect(sanitizeImageUrl(null)).toBeNull();
+  });
+});
 
 describe("imageUrlByItemId", () => {
   it("keeps only non-empty image URLs", () => {
@@ -15,6 +38,16 @@ describe("imageUrlByItemId", () => {
       { id: "d" },
     ]);
     expect([...map.entries()]).toEqual([["a", "https://img.example/a.jpg"]]);
+  });
+
+  it("decodes HTML-escaped query ampersands before mapping", () => {
+    const map = imageUrlByItemId([
+      {
+        id: "a",
+        image_url: "https://img.example/a.jpg?format=jpg&amp;name=orig",
+      },
+    ]);
+    expect(map.get("a")).toBe("https://img.example/a.jpg?format=jpg&name=orig");
   });
 });
 

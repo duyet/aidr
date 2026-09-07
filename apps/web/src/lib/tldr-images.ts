@@ -1,12 +1,34 @@
 import type { TldrBullet } from "./types";
 
+/** og:image is often stored with HTML entities (`&amp;` in query strings).
+ * Decode until stable, then keep only absolute http(s) URLs. */
+export function sanitizeImageUrl(
+  url: string | null | undefined
+): string | null {
+  if (!url) return null;
+  let decoded = url.trim();
+  for (let i = 0; i < 3 && decoded.includes("&amp;"); i++) {
+    decoded = decoded.replaceAll("&amp;", "&");
+  }
+  try {
+    const parsed = new URL(decoded);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
 /** Build id → story image for attaching to AI;DR bullets at read time. */
 export function imageUrlByItemId(
   items: Array<{ id: string; image_url?: string | null }>
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const item of items) {
-    if (item.id && item.image_url) map.set(item.id, item.image_url);
+    const url = sanitizeImageUrl(item.image_url);
+    if (item.id && url) map.set(item.id, url);
   }
   return map;
 }
@@ -33,7 +55,8 @@ export function attachTldrBulletImages(
   imageByItemId: Map<string, string>
 ): TldrBullet[] {
   return bullets.map((bullet) => {
-    if (bullet.image_url) return bullet;
+    const existing = sanitizeImageUrl(bullet.image_url);
+    if (existing) return { ...bullet, image_url: existing };
     for (const id of bullet.item_ids ?? []) {
       const url = imageByItemId.get(id);
       if (url) return { ...bullet, image_url: url };

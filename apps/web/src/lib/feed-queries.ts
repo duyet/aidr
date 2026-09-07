@@ -7,27 +7,17 @@ import {
   rankTrendingWithGrowth,
 } from "../../worker/topic-learning.js";
 import { setLearnedKeywords } from "./highlight";
+import { parseStoredBullets } from "./tldr-bullets";
 import {
   resolveTldrForDisplay,
   shouldRebuildTldrForDisplay,
 } from "./tldr-fallback";
-import { imageUrlByItemId, withTldrImages } from "./tldr-images";
-import type { DayGroup, FeedItem, FeedResponse, TldrBullet } from "./types";
-
-/** Older `tldr_snapshots` rows were written with a single `item_id` string
- * per bullet; newer rows use `item_ids: string[]`. Normalize both to
- * `item_ids` so the frontend only ever has to handle one shape. */
-function normalizeStoredBullets(raw: unknown): TldrBullet[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((b: Record<string, unknown>) => {
-    const itemIds = Array.isArray(b.item_ids)
-      ? (b.item_ids as string[])
-      : typeof b.item_id === "string" && b.item_id
-        ? [b.item_id as string]
-        : [];
-    return { text: b.text as string, item_ids: itemIds };
-  });
-}
+import {
+  imageUrlByItemId,
+  sanitizeImageUrl,
+  withTldrImages,
+} from "./tldr-images";
+import type { DayGroup, FeedItem, FeedResponse } from "./types";
 
 interface ItemRow {
   id: string;
@@ -96,7 +86,7 @@ function toFeedItem(row: ItemRow): FeedItem {
     tags,
     sources: [],
     llm_tokens: row.llm_tokens ?? 0,
-    image_url: row.image_url ?? null,
+    image_url: sanitizeImageUrl(row.image_url),
   };
 }
 
@@ -257,8 +247,8 @@ export async function getFeed(
     try {
       tldr = {
         date: tldrRow.date,
-        bullets_en: normalizeStoredBullets(JSON.parse(tldrRow.bullets_en)),
-        bullets_vi: normalizeStoredBullets(JSON.parse(tldrRow.bullets_vi)),
+        bullets_en: parseStoredBullets(JSON.parse(tldrRow.bullets_en)),
+        bullets_vi: parseStoredBullets(JSON.parse(tldrRow.bullets_vi)),
       };
     } catch {
       // malformed snapshot — render feed without TL;DR
