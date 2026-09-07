@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { CategoryNav } from "../components/CategoryNav";
 import { DaySection } from "../components/DaySection";
-import { AddSectionButton, SectionChrome } from "../components/SectionChrome";
 import { TldrSection } from "../components/TldrSection";
 import { TrendingChips } from "../components/TrendingChips";
 import { parseAidrLayout } from "../lib/aidr-layout";
@@ -358,72 +357,57 @@ function IndexPage() {
         const visible = prefs.sections[section];
         if (!visible) return null;
         if (q && section !== "days") return null;
-        // Show section chrome (Hide/Move up/Move down toolbar) only on the
-        // main feed, not on search results.
-        const wrap = (content: ReactNode) =>
-          q ? (
-            content
-          ) : (
-            <SectionChrome section={section}>{content}</SectionChrome>
-          );
         switch (section) {
           case "categories":
             if (!browseChrome) return null;
             return (
               <div key={section}>
-                {wrap(
-                  <CategoryNav
-                    categories={feed.categories}
-                    selected={selectedCategories}
-                    onToggle={toggleCategory}
-                    lang={lang}
-                  />
-                )}
+                <CategoryNav
+                  categories={feed.categories}
+                  selected={selectedCategories}
+                  onToggle={toggleCategory}
+                  lang={lang}
+                />
               </div>
             );
           case "trending":
             if (!browseChrome) return null;
             return (
               <div key={section}>
-                {wrap(
-                  <TrendingChips
-                    trending={feed.trending}
-                    label={lang === "vi" ? "Xu hưững" : "Trending"}
-                    selectedTag={selectedTag}
-                    onSelectTag={setSelectedTag}
-                  />
-                )}
+                <TrendingChips
+                  trending={feed.trending}
+                  label={lang === "vi" ? "Xu hướng" : "Trending"}
+                  selectedTag={selectedTag}
+                  onSelectTag={setSelectedTag}
+                />
               </div>
             );
           case "tldr":
             if (q) return null;
             return (
               <div key={section}>
-                {wrap(
-                  <TldrSection
-                    bullets={bullets ?? []}
-                    defaultCount={prefs.tldrCount}
-                    lang={lang}
-                    totalStories={feed.totalStories}
-                    updatedAt={feed.updatedAt}
-                    lastFetchedAt={feed.lastFetchedAt}
-                    topicByItemId={topicByItemId}
-                    tagsByItemId={tagsByItemId}
-                    imageByItemId={imageByItemId}
-                    snapshotDate={feed.tldr?.date}
-                    layout={parseAidrLayout(aidr)}
-                    layoutLabeled={Boolean(aidr)}
-                  />
-                )}
+                <TldrSection
+                  bullets={bullets ?? []}
+                  defaultCount={prefs.tldrCount}
+                  lang={lang}
+                  totalStories={feed.totalStories}
+                  updatedAt={feed.updatedAt}
+                  lastFetchedAt={feed.lastFetchedAt}
+                  topicByItemId={topicByItemId}
+                  tagsByItemId={tagsByItemId}
+                  imageByItemId={imageByItemId}
+                  snapshotDate={feed.tldr?.date}
+                  layout={parseAidrLayout(aidr)}
+                  layoutLabeled={Boolean(aidr)}
+                />
               </div>
             );
           case "days":
-            return <div key={section}>{wrap(renderDaySections())}</div>;
+            return <div key={section}>{renderDaySections()}</div>;
           default:
             return null;
         }
       })}
-      {!q && <AddSectionButton />}
     </div>
   );
 }

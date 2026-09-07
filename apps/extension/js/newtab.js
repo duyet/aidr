@@ -414,18 +414,8 @@ function renderTldr(settings, digest) {
     : "";
 }
 
-/** Remove all children of `sectionEl` except the `.section-chrome-head` toolbar,
- * which is bound once by bindSectionChrome and must survive content refreshes. */
 function clearSectionContent(sectionEl) {
-  const head = sectionEl.querySelector(".section-chrome-head");
-  if (head) {
-    const siblings = [...sectionEl.children].filter((child) => child !== head);
-    for (const child of siblings) child.remove();
-    head.remove();
-    sectionEl.prepend(head);
-  } else {
-    sectionEl.replaceChildren();
-  }
+  sectionEl.replaceChildren();
 }
 
 function renderChips(settings, digest) {
@@ -794,76 +784,7 @@ function svgIcon(path) {
   return svg;
 }
 
-const ICON_MOVE_UP = "M12 19V5M5 12l7-7 7 7";
-const ICON_MOVE_DOWN = "M12 5v14M5 12l7 7 7-7";
-const ICON_HIDE = "M10 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM1 12s3-7 11-7 11 7 11 7-3 7-11 7-11-7-11-7z";
 const ICON_EYE = "M1 12s3-7 11-7 11 7 11 7-3 7-11 7-11-7-11-7z";
-
-/** Populate the section-chrome-head inside a section wrapper with label +
- * Hide / Move up / Move down buttons. The head element is already in the HTML. */
-function bindSectionChrome(settings, sectionKey) {
-  const sectionEl = $(`section-${sectionKey}`);
-  if (!sectionEl) return;
-  const head = sectionEl.querySelector(".section-chrome-head");
-  if (!head) return;
-  const order = settings.sectionOrder || SECTION_ORDER_KEYS;
-  const idx = order.indexOf(sectionKey);
-  const labelKey = SECTION_PREVIEW_KEYS[sectionKey];
-  const label = labelKey ? t(settings, labelKey) : "";
-
-  const labelEl = head.querySelector(".section-chrome-label");
-  if (labelEl) labelEl.textContent = label;
-
-  const actions = head.querySelector(".section-chrome-actions");
-  if (!actions) return;
-  actions.replaceChildren();
-
-  const addBtn = (iconPath, ariaLabel, title, onClick, disabled) => {
-    const btn = el("button", {
-      type: "button",
-      className: "section-chrome-btn",
-      "aria-label": ariaLabel,
-      title,
-      disabled,
-      onClick,
-    }, [svgIcon(iconPath)]);
-    actions.append(btn);
-  };
-
-  addBtn(
-    ICON_MOVE_UP,
-    t(settings, "moveUp"),
-    t(settings, "moveUp"),
-    async () => {
-      if (idx <= 0) return;
-      const next = [...order];
-      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-      await pushSettings({ ...settings, sectionOrder: next });
-    },
-    idx <= 0
-  );
-  addBtn(
-    ICON_MOVE_DOWN,
-    t(settings, "moveDown"),
-    t(settings, "moveDown"),
-    async () => {
-      if (idx === -1 || idx >= order.length - 1) return;
-      const next = [...order];
-      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-      await pushSettings({ ...settings, sectionOrder: next });
-    },
-    idx === -1 || idx >= order.length - 1
-  );
-  addBtn(
-    ICON_HIDE,
-    t(settings, "hide"),
-    t(settings, "hide"),
-    async () => {
-      const sections = { ...settings.sections, [sectionKey]: false };
-      await pushSettings({ ...settings, sections });
-    }
-  );
-}
 
 function renderAddSection(settings) {
   const root = $("add-section");
@@ -966,10 +887,6 @@ function render(settings, digest) {
   renderChips(settings, digest);
   renderTldr(settings, digest);
   renderStories(settings, digest);
-  bindSectionChrome(settings, "categories");
-  bindSectionChrome(settings, "trending");
-  bindSectionChrome(settings, "tldr");
-  bindSectionChrome(settings, "stories");
   renderAddSection(settings);
   applySectionOrder(settings);
   renderFooter(settings, digest);

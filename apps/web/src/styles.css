@@ -406,58 +406,6 @@
   }
 }
 
-/* On-page section chrome: per-section header toolbar with Hide / Move up /
-   Move down, plus the "Add section" restore button for hidden sections. */
-.section-chrome + .section-chrome {
-  margin-top: 2rem;
-}
-
-.section-chrome-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.section-chrome-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
-}
-
-.section-chrome-actions {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.section-chrome-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  padding: 0.25rem;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.section-chrome-btn:hover:not(:disabled) {
-  background: var(--muted);
-  color: var(--foreground);
-}
-
-.section-chrome-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
 .add-section {
   position: relative;
   padding-bottom: 1rem;

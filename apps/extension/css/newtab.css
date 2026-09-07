@@ -727,56 +727,6 @@ html[data-theme="dark"] .news-content {
   grid-column: 1 / -1;
 }
 
-.section-chrome-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.section-chrome-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
-}
-
-.section-chrome-actions {
-  display: flex;
-  gap: 0.15rem;
-}
-
-.section-chrome-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 0.4rem;
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  padding: 0.25rem;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.section-chrome-btn:hover:not(:disabled) {
-  background: var(--muted);
-  color: var(--foreground);
-}
-
-.section-chrome-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.sc-icon {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
 .add-section-host {
   margin-bottom: 1rem;
 }
