@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0](https://github.com/duyet/aidr/compare/aidr-v0.2.0...aidr-v0.3.0) (2026-09-07)
+
+
+### ✨ Features
+
+* **extension:** Chrome Web Store link in header next to Telegram icon
+* **extension:** Submit button now icon-only in desktop header with aria-label
+* **extension:** contrast tuning for muted/accent colors light and dark, matching website theme
+
+
 ## [0.2.0](https://github.com/duyet/aidr/compare/aidr-v0.1.8...aidr-v0.2.0) (2026-09-06)
 
 

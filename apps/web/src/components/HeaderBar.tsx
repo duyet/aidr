@@ -1,7 +1,7 @@
 import { AuthButtons, Button, ErrorBoundary, Separator } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Plus, Send } from "lucide-react";
+import { Menu, Plus, Send, Store } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -34,7 +34,7 @@ const SITE_LINKS = [
   { href: "/subscribe", label: "Subscribe", internal: true },
   { href: "/extension", label: "Extension", internal: true },
   { href: TELEGRAM_URL, label: "Telegram", internal: false },
-  { href: CHROME_WEB_STORE_URL, label: "Chrome extension", internal: false },
+  { href: CHROME_WEB_STORE_URL, label: "Chrome Web Store", internal: false },
   { href: "/data", label: "Data", internal: true },
   { href: "/submit", label: "Submit", internal: true },
   { href: DUYET_URL, label: "duyet.net", internal: false },
@@ -230,13 +230,31 @@ export function HeaderBar({
               <Send aria-hidden />
             </a>
           </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="hidden sm:inline-flex"
+            asChild
+          >
+            <a
+              href={CHROME_WEB_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("nav_click", { to: "chrome_web_store" })}
+              aria-label="Chrome Web Store"
+              title="Chrome Web Store"
+            >
+              <Store aria-hidden />
+            </a>
+          </Button>
           <Button variant="default" size="sm" asChild>
             <Link
               to="/submit"
               onClick={() => track("nav_click", { to: "/submit" })}
+              title="Submit"
+              aria-label="Submit"
             >
               <Plus aria-hidden />
-              {lang === "vi" ? "Gửi bài" : "Submit"}
             </Link>
           </Button>
           <Separator orientation="vertical" className="mx-1 h-5" />
