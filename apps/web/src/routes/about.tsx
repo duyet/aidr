@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AIDR_ZIP_HREF } from "../lib/aidr-public";
 import { fetchSourceNames } from "../lib/sources-fn";
 import type { SystemStats } from "../lib/system-queries";
 
@@ -279,29 +278,6 @@ function AboutPage() {
             'Stories are machine-curated and machine-translated — mistakes are possible. Translation suggestions are welcome from any signed-in reader (see "Suggest better translation" under a story\'s Vietnamese summary).',
             'Tin được máy tuyển chọn và dịch tự động — sai sót có thể xảy ra. Mọi độc giả đã đăng nhập đều có thể góp ý bản dịch (xem mục "Góp ý bản dịch" dưới phần tóm tắt tiếng Việt).'
           )}
-        </p>
-      </Section>
-
-      <Section title={t("Chrome new tab", "Tab mới Chrome")}>
-        <p>
-          {t(
-            "A Manifest V3 extension replaces Chrome's new tab with the AI;DR and stories from this site. Not on the Web Store; unzip then Load unpacked the aidr folder.",
-            "Tiện ích Manifest V3 thay tab mới của Chrome bằng AI;DR và tin từ site này. Chưa có trên Web Store; giải nén rồi Load unpacked thư mục aidr."
-          )}{" "}
-          <Link
-            to="/extension"
-            className="text-accent underline underline-offset-2 hover:no-underline"
-          >
-            {t("Install guide", "Hướng dẫn cài")}
-          </Link>
-          {" · "}
-          <a
-            href={AIDR_ZIP_HREF}
-            download="aidr.zip"
-            className="text-accent underline underline-offset-2 hover:no-underline"
-          >
-            aidr.zip
-          </a>
         </p>
       </Section>
     </div>
