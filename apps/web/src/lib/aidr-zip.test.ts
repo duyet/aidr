@@ -1,9 +1,9 @@
+import { Buffer } from "node:buffer";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
-import { Buffer } from "node:buffer";
 import { describe, expect, it } from "vitest";
 import { AIDR_UNPACKED_DIR } from "./aidr-public";
 import {
@@ -58,7 +58,10 @@ function zipNames(buf: Buffer): string[] {
 
 function zipFileBytes(buf: Buffer, name: string): Buffer {
   let offset = 0;
-  while (offset + 30 <= buf.length && dv(buf).getUint32(offset, true) === 0x04034b50) {
+  while (
+    offset + 30 <= buf.length &&
+    dv(buf).getUint32(offset, true) === 0x04034b50
+  ) {
     const method = dv(buf).getUint16(offset + 8, true);
     const compSize = dv(buf).getUint32(offset + 18, true);
     const nameLen = dv(buf).getUint16(offset + 26, true);
@@ -201,9 +204,9 @@ describe("buildCwsZip", () => {
     expect(names.some((n) => n.startsWith(`${AIDR_UNPACKED_DIR}/`))).toBe(
       false
     );
-    expect(
-      JSON.parse(decode(zipFileBytes(zip, "manifest.json")))
-    ).toEqual({ name: "AI News" });
+    expect(JSON.parse(decode(zipFileBytes(zip, "manifest.json")))).toEqual({
+      name: "AI News",
+    });
   });
 
   it("packs the real tree with manifest at root and no localhost", () => {
@@ -217,9 +220,7 @@ describe("buildCwsZip", () => {
       false
     );
     expect(names.some((n) => n.endsWith(".test.js"))).toBe(false);
-    const manifest = JSON.parse(
-      decode(zipFileBytes(zip, "manifest.json"))
-    );
+    const manifest = JSON.parse(decode(zipFileBytes(zip, "manifest.json")));
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.chrome_url_overrides.newtab).toBe("newtab.html");
     expect(manifest.host_permissions).toEqual(["https://aidr.today/*"]);

@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import {
   existsSync,
   mkdirSync,
@@ -8,7 +9,6 @@ import {
 } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { deflateRawSync } from "node:zlib";
-import { Buffer } from "node:buffer";
 import { AIDR_UNPACKED_DIR, AIDR_ZIP_FILENAME } from "./aidr-public";
 
 /** Operator upload for Chrome Web Store. Not served at /aidr.zip. */
