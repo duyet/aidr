@@ -1,7 +1,7 @@
 {
   "name": "aidr",
   "private": true,
-  "packageManager": "pnpm@10.34.5",
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "pnpm --filter @aidr/web dev",
     "build": "pnpm --filter @aidr/web build",
