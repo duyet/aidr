@@ -1,3 +1,20 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+allowBuilds:
+  esbuild: true
+  workerd: true
+  "@clerk/shared": true
+  sharp: true
+  bufferutil: true
+  utf-8-validate: true
+
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@tanstack/*"
+  - cn
+
+nodeLinker: hoisted
+shamefullyHoist: true
+linkWorkspacePackages: true
