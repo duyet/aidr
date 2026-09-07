@@ -7,31 +7,11 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-  Separator,
 } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Download,
-  FolderOpen,
-  RefreshCw,
-  Send,
-  ShieldAlert,
-} from "lucide-react";
-import type { ReactNode } from "react";
-import {
-  AIDR_ZIP_ERROR_IMG,
-  CHROME_EXTENSIONS_HREF,
-  GUIDE_COPY,
-} from "../lib/aidr-guide";
-import {
-  AIDR_ZIP_ERROR_IMG_HEIGHT,
-  AIDR_ZIP_ERROR_IMG_WIDTH,
-  AIDR_ZIP_HREF,
-} from "../lib/aidr-public";
+import { ArrowRight, CheckCircle2, RefreshCw, Send } from "lucide-react";
 import { useLang } from "../lib/lang-context";
 import { CHROME_WEB_STORE_URL, TELEGRAM_URL } from "../lib/site";
 
@@ -41,65 +21,6 @@ export const Route = createFileRoute("/extension")({
   }),
   component: ExtensionPage,
 });
-
-function ZipLink({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <a
-      href={AIDR_ZIP_HREF}
-      download="aidr.zip"
-      onClick={() => track("extension_download")}
-      className={className}
-    >
-      {children}
-    </a>
-  );
-}
-
-function ChromeExtensionsLink() {
-  return (
-    <a
-      href={CHROME_EXTENSIONS_HREF}
-      className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
-    >
-      chrome://extensions
-    </a>
-  );
-}
-
-function StepCard({
-  step,
-  title,
-  children,
-}: {
-  step: number;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-3">
-        <Badge
-          variant="secondary"
-          className="mt-0.5 size-7 shrink-0 justify-center rounded-full px-0 font-mono text-xs"
-        >
-          {step}
-        </Badge>
-        <CardTitle className="text-base font-medium leading-snug">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm text-muted-foreground">
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
 
 function ExtensionPage() {
   const lang = useLang();
@@ -113,9 +34,6 @@ function ExtensionPage() {
             <RiChromeLine className="size-3.5" aria-hidden />
             Manifest V3
           </Badge>
-          <Badge variant="outline" className="rounded-full">
-            {t("Unpacked install", "Cài unpacked")}
-          </Badge>
         </div>
 
         <div className="space-y-3">
@@ -124,8 +42,8 @@ function ExtensionPage() {
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
             {t(
-              "Replace Chrome's new tab with today's AI;DR and top stories from aidr.today. Get it on the Chrome Web Store or download the zip to Load unpacked.",
-              "Thay tab mới của Chrome bằng AI;DR hôm nay và tin nổi bật từ aidr.today. Lấy trên Chrome Web Store hoặc tải zip để Load unpacked."
+              "Replace Chrome's new tab with today's AI;DR and top stories from aidr.today. Install from the Chrome Web Store.",
+              "Thay tab mới của Chrome bằng AI;DR hôm nay và tin nổi bật từ aidr.today. Cài đặt từ Chrome Web Store."
             )}
           </p>
         </div>
@@ -142,12 +60,6 @@ function ExtensionPage() {
               {t("Chrome Web Store", "Chrome Web Store")}
             </a>
           </Button>
-          <Button variant="outline" size="lg" asChild>
-            <ZipLink>
-              <Download data-icon="inline-start" aria-hidden />
-              {t("Download zip", "Tải zip")}
-            </ZipLink>
-          </Button>
           <Button variant="ghost" size="icon" asChild>
             <a
               href={TELEGRAM_URL}
@@ -162,101 +74,7 @@ function ExtensionPage() {
             </a>
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {t(
-            "The Chrome Web Store version auto-updates. For development or local server, download and Load unpacked the zip.",
-            "Phiên bản Chrome Web Store tự cập nhật. Cho phát triển hoặc server local, tải và Load unpacked file zip."
-          )}
-        </p>
       </div>
-
-      <Separator />
-
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="size-4 text-muted-foreground" aria-hidden />
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("Load unpacked", "Load unpacked")}
-          </h2>
-        </div>
-
-        <div className="grid gap-4">
-          <StepCard
-            step={1}
-            title={t(GUIDE_COPY.unzipFirst.en, GUIDE_COPY.unzipFirst.vi)}
-          >
-            <p>{t(GUIDE_COPY.unzipDetail.en, GUIDE_COPY.unzipDetail.vi)}</p>
-            <figure className="overflow-hidden rounded-2xl border border-border bg-muted/30">
-              <img
-                src={AIDR_ZIP_ERROR_IMG}
-                alt={t(GUIDE_COPY.zipErrorAlt.en, GUIDE_COPY.zipErrorAlt.vi)}
-                width={AIDR_ZIP_ERROR_IMG_WIDTH}
-                height={AIDR_ZIP_ERROR_IMG_HEIGHT}
-                className="h-auto w-full"
-              />
-              <figcaption className="flex items-start gap-2 border-t border-border px-3 py-2 text-xs">
-                <ShieldAlert
-                  className="mt-0.5 size-3.5 shrink-0 text-destructive"
-                  aria-hidden
-                />
-                <span>
-                  {t(
-                    GUIDE_COPY.zipErrorCaption.en,
-                    GUIDE_COPY.zipErrorCaption.vi
-                  )}
-                </span>
-              </figcaption>
-            </figure>
-          </StepCard>
-
-          <StepCard
-            step={2}
-            title={t("Open Chrome extensions", "Mở trang tiện ích Chrome")}
-          >
-            <p>
-              {t(GUIDE_COPY.openExtensions.en, GUIDE_COPY.openExtensions.vi)}{" "}
-              <ChromeExtensionsLink />.{" "}
-              {t(GUIDE_COPY.pasteExtensions.en, GUIDE_COPY.pasteExtensions.vi)}
-            </p>
-          </StepCard>
-
-          <StepCard
-            step={3}
-            title={t(GUIDE_COPY.developerMode.en, GUIDE_COPY.developerMode.vi)}
-          >
-            <p>
-              {t(
-                "Use the toggle in the top-right corner of the extensions page.",
-                "Dùng công tắc ở góc trên bên phải trang extensions."
-              )}
-            </p>
-          </StepCard>
-
-          <StepCard
-            step={4}
-            title={t(GUIDE_COPY.loadFolder.en, GUIDE_COPY.loadFolder.vi)}
-          >
-            <p>
-              {t(
-                "Pick the unzipped aidr folder — the one that contains manifest.json.",
-                "Chọn thư mục aidr vừa giải nén — thư mục có file manifest.json."
-              )}
-            </p>
-          </StepCard>
-
-          <StepCard
-            step={5}
-            title={t(GUIDE_COPY.newTab.en, GUIDE_COPY.newTab.vi)}
-          >
-            <p>
-              {t(
-                "You should see today's AI;DR and stories from this site.",
-                "Bạn sẽ thấy AI;DR hôm nay và tin từ site này."
-              )}
-            </p>
-          </StepCard>
-        </div>
-      </section>
 
       <Card className="border-dashed">
         <CardHeader>
@@ -266,8 +84,8 @@ function ExtensionPage() {
           </CardTitle>
           <CardDescription>
             {t(
-              "Chrome never auto-updates unpacked zips. A banner appears on the new tab when a newer zip is published. Store installs would auto-update.",
-              "Chrome không tự cập nhật zip unpacked. Tab mới hiện banner khi có zip mới. Bản trên Store thì tự cập nhật."
+              "The Chrome Web Store version auto-updates automatically when new versions are published.",
+              "Phiên bản Chrome Web Store tự động cập nhật khi có phiên bản mới."
             )}
           </CardDescription>
         </CardHeader>
@@ -278,8 +96,8 @@ function ExtensionPage() {
           />
           <span>
             {t(
-              "Chrome will warn that the extension is unpacked. That is expected.",
-              "Chrome sẽ cảnh unpacked extension. Đó là bình thường."
+              "Install from the Chrome Web Store for automatic updates.",
+              "Cài đặt từ Chrome Web Store để có cập nhật tự động."
             )}
           </span>
         </CardContent>

@@ -11,7 +11,12 @@ import {
   WIDE_HEADER_ROW_CLASS,
 } from "../lib/chrome";
 import { useClerkModule } from "../lib/clerk-user";
-import { CHROME_WEB_STORE_URL, DUYET_BLOG_URL, DUYET_URL, TELEGRAM_URL } from "../lib/site";
+import {
+  CHROME_WEB_STORE_URL,
+  DUYET_BLOG_URL,
+  DUYET_URL,
+  TELEGRAM_URL,
+} from "../lib/site";
 import type { Lang } from "../lib/types";
 import { LangToggle } from "./LangToggle";
 import { PrefsPanel } from "./PrefsPanel";
