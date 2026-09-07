@@ -1,5 +1,4 @@
-import { track } from "@aidr/ui/track";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { CategoryNav } from "../components/CategoryNav";
@@ -142,10 +141,6 @@ function IndexPage() {
     () => new Set(category ? [category] : [])
   );
 
-  // Digest-first: the daily feed (Bảng tin theo ngày) starts collapsed behind
-  // a "Show daily feed" toggle. The AI;DR brief stays prominent above it.
-  const [daysExpanded, setDaysExpanded] = useState(() => Boolean(q));
-
   // Picking a "filter" suggestion from the header SearchBox navigates here
   // with ?tag=/?category= — sync it in even if this component was already
   // mounted (SPA nav doesn't remount).
@@ -274,123 +269,72 @@ function IndexPage() {
 
   function renderDaySections() {
     if (!feed) return null;
-    if (q) {
-      return days.map((day) => (
-        <DaySection
-          key={day.date}
-          day={day}
-          lang={lang}
-          selectedTag={selectedTag}
-        />
-      ));
-    }
-    if (daysExpanded) {
-      return (
-        <>
-          {days.map((day) => (
-            <DaySection
-              key={day.date}
-              day={day}
-              lang={lang}
-              selectedTag={selectedTag}
-            />
-          ))}
-          {feed.hasMore && (
-            <div className="pt-8 text-center">
-              <button
-                type="button"
-                disabled={loadingOlder}
-                onClick={async () => {
-                  const oldest = feed.days[feed.days.length - 1]?.date;
-                  if (!oldest) return;
-                  setLoadingOlder(true);
-                  try {
-                    const res = await fetch(
-                      `/api/feed?days=5&before=${encodeURIComponent(oldest)}`
-                    );
-                    if (!res.ok) return;
-                    const older = (await res.json()) as FeedResponse;
-                    setFeed((prev) => {
-                      if (!prev) return older;
-                      const seen = new Set(prev.days.map((d) => d.date));
-                      const merged = [
-                        ...prev.days,
-                        ...older.days.filter((d) => !seen.has(d.date)),
-                      ];
-                      return {
-                        ...prev,
-                        days: merged,
-                        hasMore: older.hasMore,
-                        totalStories: prev.totalStories + older.totalStories,
-                      };
-                    });
-                  } finally {
-                    setLoadingOlder(false);
-                  }
-                }}
-                className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:border-accent hover:text-accent disabled:opacity-50"
-              >
-                {loadingOlder
-                  ? lang === "vi"
-                    ? "Đang tải…"
-                    : "Loading…"
-                  : lang === "vi"
-                    ? "Ngày cũ hơn"
-                    : "Older days"}
-              </button>
-            </div>
-          )}
+    return (
+      <>
+        {days.map((day) => (
+          <DaySection
+            key={day.date}
+            day={day}
+            lang={lang}
+            selectedTag={selectedTag}
+          />
+        ))}
+        {feed.hasMore && (
           <div className="pt-8 text-center">
             <button
               type="button"
-              onClick={() => setDaysExpanded(false)}
-              className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:border-accent hover:text-accent"
+              disabled={loadingOlder}
+              onClick={async () => {
+                const oldest = feed.days[feed.days.length - 1]?.date;
+                if (!oldest) return;
+                setLoadingOlder(true);
+                try {
+                  const res = await fetch(
+                    `/api/feed?days=5&before=${encodeURIComponent(oldest)}`
+                  );
+                  if (!res.ok) return;
+                  const older = (await res.json()) as FeedResponse;
+                  setFeed((prev) => {
+                    if (!prev) return older;
+                    const seen = new Set(prev.days.map((d) => d.date));
+                    const merged = [
+                      ...prev.days,
+                      ...older.days.filter((d) => !seen.has(d.date)),
+                    ];
+                    return {
+                      ...prev,
+                      days: merged,
+                      hasMore: older.hasMore,
+                      totalStories: prev.totalStories + older.totalStories,
+                    };
+                  });
+                } finally {
+                  setLoadingOlder(false);
+                }
+              }}
+              className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:border-accent hover:text-accent disabled:opacity-50"
             >
-              {lang === "vi" ? "Thu gọn ↑" : "Show less ↑"}
+              {loadingOlder
+                ? lang === "vi"
+                  ? "Đang tải…"
+                  : "Loading…"
+                : lang === "vi"
+                  ? "Ngày cũ hơn"
+                  : "Older days"}
             </button>
           </div>
-          {days.length === 0 && (
-            <p className="py-16 text-center text-muted-foreground">
-              {emptyFeedCopy({
-                lang,
-                q,
-                selectedCategoryCount: selectedCategories.size,
-              })}
-            </p>
-          )}
-        </>
-      );
-    }
-    // Collapsed by default — show a button to reveal the daily feed.
-    if (days.length > 0) {
-      return (
-        <div className="py-8 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              track("days_expand", {});
-              setDaysExpanded(true);
-            }}
-            className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:border-accent hover:text-accent"
-          >
-            {lang === "vi" ? "Xem thêm theo ngày ↓" : "Show daily feed ↓"}
-          </button>
-        </div>
-      );
-    }
-    // No days to show.
-    if (q) {
-      return (
-        <p className="py-16 text-center text-muted-foreground">
-          {emptyFeedCopy({
-            lang,
-            q,
-            selectedCategoryCount: selectedCategories.size,
-          })}
-        </p>
-      );
-    }
-    return null;
+        )}
+        {days.length === 0 && (
+          <p className="py-16 text-center text-muted-foreground">
+            {emptyFeedCopy({
+              lang,
+              q,
+              selectedCategoryCount: selectedCategories.size,
+            })}
+          </p>
+        )}
+      </>
+    );
   }
 
   return (
@@ -480,19 +424,6 @@ function IndexPage() {
         }
       })}
       {!q && <AddSectionButton />}
-      {!q && (
-        <p className="pt-10 text-center text-xs text-muted-foreground">
-          <Link
-            to="/extension"
-            onClick={() => track("nav_click", { to: "/extension" })}
-            className="hover:text-accent hover:underline hover:underline-offset-2"
-          >
-            {lang === "vi"
-              ? "Tiện ích tab mới Chrome"
-              : "Chrome new tab extension"}
-          </Link>
-        </p>
-      )}
     </div>
   );
 }
