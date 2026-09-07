@@ -414,11 +414,25 @@ function renderTldr(settings, digest) {
     : "";
 }
 
+/** Remove all children of `sectionEl` except the `.section-chrome-head` toolbar,
+ * which is bound once by bindSectionChrome and must survive content refreshes. */
+function clearSectionContent(sectionEl) {
+  const head = sectionEl.querySelector(".section-chrome-head");
+  if (head) {
+    const siblings = [...sectionEl.children].filter((child) => child !== head);
+    for (const child of siblings) child.remove();
+    head.remove();
+    sectionEl.prepend(head);
+  } else {
+    sectionEl.replaceChildren();
+  }
+}
+
 function renderChips(settings, digest) {
   const catSection = $("section-categories");
   const trendSection = $("section-trending");
   const trendRoot = $("trending");
-  catSection.replaceChildren();
+  clearSectionContent(catSection);
   trendRoot.replaceChildren();
 
   const showCats = settings.sections.categories && digest.categories.length > 0;
@@ -687,7 +701,7 @@ function renderStoryRow(settings, story, index, hot) {
 
 function renderStories(settings, digest) {
   const root = $("section-stories");
-  root.replaceChildren();
+  clearSectionContent(root);
   if (!settings.sections.stories) {
     root.hidden = true;
     return;
@@ -1049,11 +1063,14 @@ async function main() {
   // Fast first paint: if no prerendered digest is available, try the local
   // cache immediately so the new tab shows content before the network
   // request even starts. Background refresh still runs below.
+  // Guard: a slower cache read must not clobber a fresher network render.
+  let networkRendered = false;
   const renderFromCache = async () => {
     if (digest.tldr || digest.stories.length) return;
+    if (networkRendered) return;
     try {
       const cached = await readCachedDigest(settings.apiBase);
-      if (cached) {
+      if (cached && !networkRendered) {
         digest = cached;
         setStatus(t(settings, "cached"), true);
         render(settings, digest);
@@ -1103,6 +1120,7 @@ async function main() {
   try {
     const result = await fetchDigest(settings.apiBase);
     digest = result.digest;
+    networkRendered = true;
     setStatus(t(settings, "cached"), result.stale);
     if (!digest.tldr && digest.stories.length === 0) {
       setStatus(t(settings, "empty"), true);
