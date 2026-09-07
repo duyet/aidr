@@ -1,6 +1,5 @@
 import { AuthButtons, Button, ErrorBoundary, Separator } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
-import { RiChromeLine } from "@remixicon/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, Plus, Send } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -26,7 +25,6 @@ const LANG_TOGGLE_DISABLED_PATHS = new Set(["/data", "/about", "/mail"]);
 const SITE_LINKS = [
   { href: "/", label: "News", internal: true },
   { href: "/about", label: "About", internal: true },
-  { href: "/extension", label: "Chrome tab", internal: true },
   { href: "/mcp", label: "MCP", internal: true },
   { href: "/subscribe", label: "Subscribe", internal: true },
   { href: TELEGRAM_URL, label: "Telegram", internal: false },
@@ -214,21 +212,6 @@ export function HeaderBar({
             className="hidden sm:inline-flex"
             asChild
           >
-            <Link
-              to="/extension"
-              onClick={() => track("nav_click", { to: "/extension" })}
-              aria-label={lang === "vi" ? "Tab mới Chrome" : "Chrome new tab"}
-              title={lang === "vi" ? "Tab mới Chrome" : "Chrome new tab"}
-            >
-              <RiChromeLine aria-hidden />
-            </Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="hidden sm:inline-flex"
-            asChild
-          >
             <a
               href={TELEGRAM_URL}
               target="_blank"
@@ -273,20 +256,6 @@ export function HeaderBar({
         <div className="min-w-0 flex-1">
           <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={PHONE_TAP_TARGET_CLASS}
-          asChild
-        >
-          <Link
-            to="/extension"
-            onClick={() => track("nav_click", { to: "/extension" })}
-            aria-label={lang === "vi" ? "Tab mới Chrome" : "Chrome new tab"}
-          >
-            <RiChromeLine aria-hidden />
-          </Link>
-        </Button>
         <Button
           variant="ghost"
           size="icon"

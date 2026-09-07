@@ -89,8 +89,6 @@ function PrivacyPage() {
       </p>
 
       <p>
-        <Link to="/extension">Chrome new tab install</Link>
-        {" · "}
         <Link to="/terms">Terms of use</Link>
       </p>
     </article>
