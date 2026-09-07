@@ -1,4 +1,4 @@
-import { fetchDigest } from "./api.js";
+import { fetchDigest, readCachedDigest } from "./api.js";
 import { highlightTitle, tagsForHighlight } from "./highlight.js";
 import { t, uiLang } from "./i18n.js";
 import { tagSiteLinks, withExtRef } from "./ref.js";
@@ -35,6 +35,24 @@ const CATEGORY_VI = {
 
 function $(id) {
   return document.getElementById(id);
+}
+
+/** Create an element with attributes and children. Mirrors the helper in
+ * settings-panel.js so newtab.js is self-contained (separate module scope). */
+function el(tag, attrs = {}, children = []) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key === "className") node.className = value;
+    else if (key.startsWith("on") && typeof value === "function") {
+      node.addEventListener(key.slice(2).toLowerCase(), value);
+    } else if (value === true) node.setAttribute(key, "");
+    else if (value !== false && value != null)
+      node.setAttribute(key, String(value));
+  }
+  for (const child of children) {
+    node.append(child);
+  }
+  return node;
 }
 
 function looksVietnamese(text) {
@@ -246,7 +264,10 @@ function applyChrome(settings) {
   }
 }
 
-function renderFooter(_settings, digest) {
+function renderFooter(settings, digest) {
+  const footer = document.querySelector(".site-footer");
+  if (!footer) return;
+  footer.hidden = !settings.showFooter;
   const node = $("footer-copy");
   if (!node) return;
   const year = new Date().getFullYear();
@@ -737,11 +758,206 @@ function renderStories(settings, digest) {
   }
 }
 
+const SECTION_ORDER_KEYS = ["trending", "tldr", "stories", "categories"];
+const SECTION_PREVIEW_KEYS = {
+  trending: "trendingPreview",
+  tldr: "tldrPreview",
+  stories: "dailyFeedPreview",
+  categories: "categoriesPreview",
+};
+
+function svgIcon(path) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("class", "sc-icon");
+  svg.setAttribute("aria-hidden", "true");
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("d", path);
+  svg.append(p);
+  return svg;
+}
+
+const ICON_MOVE_UP = "M12 19V5M5 12l7-7 7 7";
+const ICON_MOVE_DOWN = "M12 5v14M5 12l7 7 7-7";
+const ICON_HIDE = "M10 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM1 12s3-7 11-7 11 7 11 7-3 7-11 7-11-7-11-7z";
+const ICON_EYE = "M1 12s3-7 11-7 11 7 11 7-3 7-11 7-11-7-11-7z";
+
+/** Populate the section-chrome-head inside a section wrapper with label +
+ * Hide / Move up / Move down buttons. The head element is already in the HTML. */
+function bindSectionChrome(settings, sectionKey) {
+  const sectionEl = $(`section-${sectionKey}`);
+  if (!sectionEl) return;
+  const head = sectionEl.querySelector(".section-chrome-head");
+  if (!head) return;
+  const order = settings.sectionOrder || SECTION_ORDER_KEYS;
+  const idx = order.indexOf(sectionKey);
+  const labelKey = SECTION_PREVIEW_KEYS[sectionKey];
+  const label = labelKey ? t(settings, labelKey) : "";
+
+  const labelEl = head.querySelector(".section-chrome-label");
+  if (labelEl) labelEl.textContent = label;
+
+  const actions = head.querySelector(".section-chrome-actions");
+  if (!actions) return;
+  actions.replaceChildren();
+
+  const addBtn = (iconPath, ariaLabel, title, onClick, disabled) => {
+    const btn = el("button", {
+      type: "button",
+      className: "section-chrome-btn",
+      "aria-label": ariaLabel,
+      title,
+      disabled,
+      onClick,
+    }, [svgIcon(iconPath)]);
+    actions.append(btn);
+  };
+
+  addBtn(
+    ICON_MOVE_UP,
+    t(settings, "moveUp"),
+    t(settings, "moveUp"),
+    async () => {
+      if (idx <= 0) return;
+      const next = [...order];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      await pushSettings({ ...settings, sectionOrder: next });
+    },
+    idx <= 0
+  );
+  addBtn(
+    ICON_MOVE_DOWN,
+    t(settings, "moveDown"),
+    t(settings, "moveDown"),
+    async () => {
+      if (idx === -1 || idx >= order.length - 1) return;
+      const next = [...order];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      await pushSettings({ ...settings, sectionOrder: next });
+    },
+    idx === -1 || idx >= order.length - 1
+  );
+  addBtn(
+    ICON_HIDE,
+    t(settings, "hide"),
+    t(settings, "hide"),
+    async () => {
+      const sections = { ...settings.sections, [sectionKey]: false };
+      await pushSettings({ ...settings, sections });
+    }
+  );
+}
+
+function renderAddSection(settings) {
+  const root = $("add-section");
+  if (!root) return;
+  const hidden = (settings.sectionOrder || SECTION_ORDER_KEYS).filter(
+    (k) => settings.sections[k] === false
+  );
+  if (hidden.length === 0) {
+    root.hidden = true;
+    return;
+  }
+  root.hidden = false;
+  root.replaceChildren();
+  const label = t(settings, "addSection");
+
+  if (hidden.length === 1) {
+    root.append(
+      el(
+        "button",
+        {
+          type: "button",
+          className: "add-section-btn",
+          onClick: async () => {
+            const sections = { ...settings.sections, [hidden[0]]: true };
+            await pushSettings({ ...settings, sections });
+          },
+        },
+        [
+          svgIcon(ICON_EYE),
+          el("span", {}, [`${label}: ${t(settings, SECTION_PREVIEW_KEYS[hidden[0]])}`]),
+        ]
+      )
+    );
+  } else {
+    const btn = el(
+      "button",
+      {
+        type: "button",
+        className: "add-section-btn",
+        "aria-haspopup": "menu",
+        "aria-expanded": "false",
+      },
+      [svgIcon(ICON_EYE), el("span", {}, [label])]
+    );
+    const popover = el("div", {
+      className: "add-section-popover",
+      role: "menu",
+    });
+    for (const key of hidden) {
+      popover.append(
+        el(
+          "button",
+          {
+            type: "button",
+            role: "menuitem",
+            className: "add-section-item",
+            onClick: async () => {
+              const sections = { ...settings.sections, [key]: true };
+              await pushSettings({ ...settings, sections });
+            },
+          },
+          [t(settings, SECTION_PREVIEW_KEYS[key])]
+        )
+      );
+    }
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const expanded = btn.getAttribute("aria-expanded") === "true";
+      btn.setAttribute("aria-expanded", String(!expanded));
+      popover.hidden = expanded;
+    });
+    root.append(btn, popover);
+  }
+}
+
+/** Reorder DOM sections to match settings.sectionOrder. The extension HTML
+ * has a fixed DOM order; after content is rendered, we move wrappers so the
+ * visual order matches the user's preference. */
+function applySectionOrder(settings) {
+  const wrappers = [
+    { key: "categories", id: "section-categories" },
+    { key: "trending", id: "section-trending" },
+    { key: "tldr", id: "section-tldr" },
+    { key: "stories", id: "section-stories" },
+  ];
+  const container = $("page-content") || document.querySelector(".page");
+  if (!container) return;
+  const order = settings.sectionOrder || SECTION_ORDER_KEYS;
+  for (const key of order) {
+    const w = wrappers.find((w) => w.key === key);
+    if (w) {
+      const node = $(w.id);
+      if (node) container.append(node);
+    }
+  }
+}
+
 function render(settings, digest) {
   applyChrome(settings);
   renderChips(settings, digest);
   renderTldr(settings, digest);
   renderStories(settings, digest);
+  bindSectionChrome(settings, "categories");
+  bindSectionChrome(settings, "trending");
+  bindSectionChrome(settings, "tldr");
+  bindSectionChrome(settings, "stories");
+  renderAddSection(settings);
+  applySectionOrder(settings);
   renderFooter(settings, digest);
 }
 
@@ -825,7 +1041,25 @@ async function main() {
       render(settings, digest);
       void maybeOfferUnpackedUpdate(settings);
     } catch {
+      // Network failed and cache was already exhausted inside fetchDigest.
       setStatus(t(settings, "error"), true);
+    }
+  };
+
+  // Fast first paint: if no prerendered digest is available, try the local
+  // cache immediately so the new tab shows content before the network
+  // request even starts. Background refresh still runs below.
+  const renderFromCache = async () => {
+    if (digest.tldr || digest.stories.length) return;
+    try {
+      const cached = await readCachedDigest(settings.apiBase);
+      if (cached) {
+        digest = cached;
+        setStatus(t(settings, "cached"), true);
+        render(settings, digest);
+      }
+    } catch {
+      // cache miss — network fetch will handle it
     }
   };
 
@@ -847,9 +1081,25 @@ async function main() {
 
   if (digest.tldr || digest.stories.length) {
     render(settings, digest);
+    // Background refresh even when prerendered content is available.
+    if (!globalThis.__NEWS_TAB_DIGEST__) {
+      void (async () => {
+        try {
+          const result = await fetchDigest(settings.apiBase);
+          digest = result.digest;
+          setStatus(t(settings, "cached"), result.stale);
+          render(settings, digest);
+          void maybeOfferUnpackedUpdate(settings);
+        } catch {
+          setStatus(t(settings, "error"), true);
+        }
+      })();
+    }
     return;
   }
 
+  // No prerendered content — try cache for fast first paint, then fetch.
+  void renderFromCache();
   try {
     const result = await fetchDigest(settings.apiBase);
     digest = result.digest;

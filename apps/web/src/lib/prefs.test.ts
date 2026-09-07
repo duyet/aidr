@@ -47,6 +47,43 @@ describe("prefs", () => {
     expect(loadPrefs()).toEqual(prefs);
   });
 
+  it("defaults sectionOrder and merges persisted keys", () => {
+    expect(DEFAULT_PREFS.sectionOrder).toEqual([
+      "categories",
+      "trending",
+      "tldr",
+      "days",
+    ]);
+    // Persisting a reordered list is honored.
+    savePrefs({
+      ...DEFAULT_PREFS,
+      sectionOrder: ["tldr", "trending", "days", "categories"],
+    });
+    expect(loadPrefs().sectionOrder).toEqual([
+      "tldr",
+      "trending",
+      "days",
+      "categories",
+    ]);
+    // Saving an order missing a key appends it at the end (future-proof).
+    savePrefs({
+      ...DEFAULT_PREFS,
+      sectionOrder: ["tldr", "trending"],
+    });
+    expect(loadPrefs().sectionOrder).toEqual([
+      "tldr",
+      "trending",
+      "categories",
+      "days",
+    ]);
+    // Malformed order falls back to defaults.
+    localStorage.setItem(
+      "news_prefs",
+      JSON.stringify({ sectionOrder: "not-an-array" })
+    );
+    expect(loadPrefs().sectionOrder).toEqual(DEFAULT_PREFS.sectionOrder);
+  });
+
   it("clamps out-of-range font sizes", () => {
     localStorage.setItem("news_prefs", JSON.stringify({ fontSize: 9 }));
     expect(loadPrefs().fontSize).toBe(1.25);

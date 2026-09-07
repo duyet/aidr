@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.0](https://github.com/duyet/aidr/compare/aidr-v0.1.8...aidr-v0.2.0) (2026-09-06)
+
+
+### ✨ Features
+
+* **extension:** digest-first new tab — AI;DR brief above a collapsed daily feed with per-section Hide / Move up / Move down chrome, "Add section" restore, section ordering, show-footer toggle, and cache-first fast paint
+* **extension:** footer hidden by default for a cleaner digest-first layout (toggle in Settings)
+* **web:** digest-first homepage — daily feed starts collapsed behind "Show daily feed" toggle; AI;DR brief stays prominent; per-section chrome toolbar and "Add section" restore (parity with extension)
+* **web:** PrefsPanel sections grid with wireframes; section ordering; hidden-section restore
+* **web:** bilingual dialog preference remembered across stories
+
+
+### 🐛 Bug Fixes
+
+* **extension:** stories section now defaults to off (sections.stories === true), matching showFooter default-false normalization
+* **extension:** export el() helper so newtab.js section-chrome helpers resolve (was undefined in newtab.js module scope)
+
+
 ## [0.1.8](https://github.com/duyet/aidr/compare/aidr-v0.1.7...aidr-v0.1.8) (2026-09-06)
 
 

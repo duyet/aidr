@@ -3,6 +3,7 @@ import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import { AArrowDown, AArrowUp, Moon, Rows2, Rows4, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "../lib/lang-context";
 import {
@@ -196,13 +197,58 @@ function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
 function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
   const { prefs, setPrefs } = usePrefs();
 
-  const sectionToggles: { key: keyof typeof prefs.sections; label: string }[] =
-    [
-      { key: "trending", label: t("Trending", "Xu hướng") },
-      { key: "tldr", label: "AI;DR" },
-      { key: "days", label: t("Daily feed", "Bảng tin theo ngày") },
-      { key: "categories", label: t("Category nav", "Danh mục") },
-    ];
+  const sectionTiles: {
+    key: keyof typeof prefs.sections;
+    label: string;
+    preview: ReactElement;
+  }[] = [
+    {
+      key: "trending",
+      label: t("Trending", "Xu hướng"),
+      preview: (
+        <div className="preview-wire">
+          <div className="pw-line w-3/4" />
+          <div className="pw-chip" />
+          <div className="pw-chip" />
+        </div>
+      ),
+    },
+    {
+      key: "tldr",
+      label: "AI;DR",
+      preview: (
+        <div className="preview-wire">
+          <div className="pw-line w-5/12" />
+          <div className="pw-dot" />
+          <div className="pw-dot" />
+          <div className="pw-dot" />
+        </div>
+      ),
+    },
+    {
+      key: "days",
+      label: t("Daily feed", "Bảng tin theo ngày"),
+      preview: (
+        <div className="preview-wire">
+          <div className="pw-line w-1/2" />
+          <div className="pw-row" />
+          <div className="pw-row" />
+          <div className="pw-row" />
+        </div>
+      ),
+    },
+    {
+      key: "categories",
+      label: t("Category nav", "Danh mục"),
+      preview: (
+        <div className="preview-wire">
+          <div className="pw-chip" />
+          <div className="pw-chip" />
+          <div className="pw-chip" />
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-4">
@@ -236,25 +282,36 @@ function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
         <span className="mb-1.5 block text-xs text-muted-foreground">
           {t("Sections", "Mục hiển thị")}
         </span>
-        <div className="space-y-1">
-          {sectionToggles.map(({ key, label }) => (
-            <label
-              key={key}
-              className="flex items-center justify-between py-0.5"
-            >
-              <span>{label}</span>
-              <input
-                type="checkbox"
-                checked={prefs.sections[key]}
-                onChange={(e) => {
+        <div className="grid grid-cols-2 gap-2">
+          {sectionTiles.map(({ key, label, preview }) => {
+            const on = prefs.sections[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => {
                   track("prefs_change", { pref: `sections.${key}` });
                   setPrefs({
-                    sections: { ...prefs.sections, [key]: e.target.checked },
+                    sections: { ...prefs.sections, [key]: !on },
                   });
                 }}
-              />
-            </label>
-          ))}
+                className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-colors ${
+                  on
+                    ? "border-accent bg-muted font-semibold"
+                    : "border-border text-muted-foreground hover:bg-muted/60"
+                }`}
+              >
+                <div
+                  className="flex h-10 w-full items-end justify-center gap-0.5"
+                  aria-hidden
+                >
+                  {preview}
+                </div>
+                <span className="text-xs">{label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
