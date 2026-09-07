@@ -15,8 +15,6 @@ export const Route = createFileRoute("/api/extension")({
           ? {
               ...base,
               version: latest.version,
-              // Stable site URL — Worker redirects to the release asset.
-              zip: base.zip,
               tag: latest.tag,
             }
           : base;

@@ -25,12 +25,14 @@ describe("extensionReleasePayload", () => {
     expect(manifest.homepage_url).toBe(`${SITE_URL}/extension`);
   });
 
-  it("points privacy at the HTTPS site policy, not a chrome-extension page", () => {
+  it("points privacy at the HTTPS site policy and uses Chrome Web Store", () => {
     const body = extensionReleasePayload();
     expect(body.privacy).toBe(EXTENSION_PRIVACY_URL);
     expect(body.privacy.startsWith("https://")).toBe(true);
-    expect(body.zip).toBe(`${SITE_URL}/aidr.zip`);
-    expect(body.store).toBeNull();
-    expect(body.autoUpdate).toBe("unpacked-banner");
+    expect(body.store).toBe(
+      "https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg"
+    );
+    expect(body.store).not.toBeNull();
+    expect(body.autoUpdate).toBe("chrome-web-store");
   });
 });

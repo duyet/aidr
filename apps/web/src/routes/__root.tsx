@@ -37,6 +37,7 @@ import {
   savePrefs,
 } from "../lib/prefs";
 import {
+  CHROME_WEB_STORE_URL,
   DUYET_BLOG_URL,
   DUYET_URL,
   GITHUB_URL,
@@ -156,6 +157,15 @@ function NewsFooter() {
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
                 Connect
               </p>
+              <a
+                href={CHROME_WEB_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "chrome_web_store" })}
+                className={`block ${linkClass}`}
+              >
+                Chrome extension
+              </a>
               <a
                 href={TELEGRAM_URL}
                 target="_blank"
