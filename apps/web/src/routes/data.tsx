@@ -28,11 +28,26 @@ import { SourcesIngestTable } from "../components/system/SourcesIngestTable";
 import { StatTile } from "../components/system/StatTile";
 import { useAdmin } from "../lib/admin";
 import { anyrouterModelUrl } from "../lib/anyrouter";
+import { type DataTab, parseDataTab } from "../lib/data-tab";
 import { categoryLabel, statusLabel } from "../lib/lang";
+import { pageHead } from "../lib/seo";
 import type { SystemStats } from "../lib/system-queries";
 import type { Lang } from "../lib/types";
 
+export interface DataSearch {
+  tab?: DataTab;
+}
+
 export const Route = createFileRoute("/data")({
+  validateSearch: (search: Record<string, unknown>): DataSearch => {
+    const tab = parseDataTab(search.tab);
+    return tab ? { tab } : {};
+  },
+  head: () =>
+    pageHead({
+      path: "/data",
+      title: "Pipeline | AI News",
+    }),
   component: SystemPage,
 });
 
@@ -85,11 +100,29 @@ function ModelChip({ label, models }: { label: string; models: string[] }) {
   );
 }
 
+function llmTokensPerDay(
+  rows: SystemStats["llmCallsPerDay"]
+): { date: string; count: number }[] {
+  const byDate = new Map<string, number>();
+  for (const row of rows) {
+    byDate.set(row.date, (byDate.get(row.date) ?? 0) + row.tokens);
+  }
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ date, count }));
+}
+
 function SystemPage() {
   const lang: Lang = "en";
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [error, setError] = useState(false);
   const admin = useAdmin();
+  const tab: DataTab =
+    search.tab === "admin" && !admin.isAdmin && !admin.loading
+      ? "overview"
+      : (search.tab ?? "overview");
 
   useEffect(() => {
     let cancelled = false;
@@ -147,7 +180,18 @@ function SystemPage() {
         </div>
       </header>
 
-      <Tabs defaultValue="overview">
+      <Tabs
+        value={tab}
+        onValueChange={(next) => {
+          const parsed = parseDataTab(next);
+          if (!parsed) return;
+          if (parsed === "admin" && !admin.isAdmin) return;
+          void navigate({
+            search: parsed === "overview" ? {} : { tab: parsed },
+            replace: true,
+          });
+        }}
+      >
         <TabsList className="mb-4 h-auto min-h-9 w-full flex-wrap justify-start gap-0.5">
           <TabsTrigger value="overview" className="px-2.5 text-xs">
             Overview
@@ -367,6 +411,17 @@ function SystemPage() {
 
         <TabsContent value="llm" className="mt-0">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ChartCard
+              title="Token burn"
+              subtitle="LLM tokens per day (calls, 14 days)"
+              className="md:col-span-2"
+            >
+              <TokensLineChart
+                data={llmTokensPerDay(stats.llmCallsPerDay)}
+                emptyLabel="No token data yet."
+                formatValue={formatTokens}
+              />
+            </ChartCard>
             <ChartCard
               title="LLM calls"
               subtitle="Calls, failures, tokens (14 days)"

@@ -40,7 +40,9 @@ longer the previous id) and `runsToday > 0`. Do not invent a
 1. **Fetch** — each enabled source row (`sources` table) maps to an adapter
    (`worker/sources/registry.ts`): HN via Algolia (AI-keyword pre-filter),
    HuggingNews via its `__data.json` (+ per-story detail for body/sources),
-   Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default).
+   Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default),
+   generic RSS (`openai`, `google-ai`, `hf-blog` feeds), Anthropic Newsroom
+   HTML (`/news` listing — no official RSS).
 2. **Dedupe** — item id = `sha256(url)`; ids already in `items` are dropped.
 3. **Enrich** — missing summary/thumbnail filled from the article page
    (`og:description` / `og:image`), capped and failure-proof (`worker/enrich.ts`).
