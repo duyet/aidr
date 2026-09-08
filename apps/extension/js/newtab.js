@@ -207,6 +207,7 @@ function renderThumbRow(settings, digest, bullet, n) {
         relatedIds: (bullet.item_ids || []).slice(1),
         digest,
         permalink: link.href,
+        bilingual: settings.bilingualDialog,
       })
     );
   }
@@ -258,7 +259,12 @@ function applyChrome(settings) {
     const node = $(id);
     if (node) node.placeholder = searchPh;
   }
-  $("submit-label").textContent = t(settings, "submit");
+  const submitBtn = $("submit-btn");
+  if (submitBtn) {
+    const label = t(settings, "submit");
+    submitBtn.title = label;
+    submitBtn.setAttribute("aria-label", label);
+  }
   $("trending-label").textContent = t(settings, "trending");
   for (const id of ["open-settings", "open-settings-compact"]) {
     const node = $(id);
@@ -646,6 +652,7 @@ function renderStoryRow(settings, story, index, hot) {
         itemId: story.id,
         digest: { items: { [story.id]: story } },
         permalink: article.href,
+        bilingual: settings.bilingualDialog,
       })
     );
   }
@@ -769,9 +776,9 @@ function renderStoryRow(settings, story, index, hot) {
 }
 
 function renderStories(settings, digest) {
-  const root = $("section-stories");
+  const root = $("section-days");
   clearSectionContent(root);
-  if (!settings.sections.stories) {
+  if (!settings.sections.days) {
     root.hidden = true;
     return;
   }
@@ -841,11 +848,11 @@ function renderStories(settings, digest) {
   }
 }
 
-const SECTION_ORDER_KEYS = ["trending", "tldr", "stories", "categories"];
+const SECTION_ORDER_KEYS = ["categories", "trending", "tldr", "days"];
 const SECTION_PREVIEW_KEYS = {
   trending: "trendingPreview",
   tldr: "tldrPreview",
-  stories: "dailyFeedPreview",
+  days: "dailyFeedPreview",
   categories: "categoriesPreview",
 };
 
@@ -949,7 +956,7 @@ function applySectionOrder(settings) {
     { key: "categories", id: "section-categories" },
     { key: "trending", id: "section-trending" },
     { key: "tldr", id: "section-tldr" },
-    { key: "stories", id: "section-stories" },
+    { key: "days", id: "section-days" },
   ];
   const container = $("page-content") || document.querySelector(".page");
   if (!container) return;

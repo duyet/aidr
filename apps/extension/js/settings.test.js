@@ -34,7 +34,7 @@ test("normalizeSettings clamps size, count, and unknown enums", () => {
   assert.equal(settings.tldrCount, 8);
   assert.equal(settings.apiBase, DEFAULT_API_BASE);
   assert.equal(settings.sections.tldr, false);
-  assert.equal(settings.sections.stories, false); // defaults off (digest-first)
+  assert.equal(settings.sections.days, false); // defaults off (digest-first)
   assert.equal(settings.showFooter, false);
 });
 
@@ -109,17 +109,17 @@ test("DEFAULT_SETTINGS matches website PrefsPanel shape", () => {
 
 test("normalizeSettings normalizes sectionOrder", () => {
   const settings = normalizeSettings({
-    sectionOrder: ["tldr", "stories"],
+    sectionOrder: ["tldr", "days"],
   });
   assert.deepEqual(settings.sectionOrder, [
     "tldr",
-    "stories",
+    "days",
     ...DEFAULT_SETTINGS.sectionOrder.filter(
-      (k) => !["tldr", "stories"].includes(k)
+      (k) => !["tldr", "days"].includes(k)
     ),
   ]);
   assert.equal(
     normalizeSettings({ sectionOrder: "junk" }).sectionOrder[0],
-    "trending"
+    "categories"
   );
 });

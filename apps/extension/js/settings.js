@@ -18,7 +18,7 @@ export function safeHttpUrl(value, fallback = "") {
   return fallback;
 }
 
-const DEFAULT_SECTION_ORDER = ["trending", "tldr", "stories", "categories"];
+const DEFAULT_SECTION_ORDER = ["categories", "trending", "tldr", "days"];
 
 export const DEFAULT_SETTINGS = {
   theme: "system",
@@ -27,15 +27,17 @@ export const DEFAULT_SETTINGS = {
   language: "vi",
   bg: "default",
   sections: {
-    tldr: true,
-    stories: false,
-    categories: true,
     trending: true,
+    tldr: true,
+    days: false,
+    categories: true,
   },
   sectionOrder: [...DEFAULT_SECTION_ORDER],
   density: "compact",
   storyCount: 8,
   tldrCount: 8,
+  /** Show EN|VI side-by-side in the story dialog (matches web bilingualDialog pref). */
+  bilingualDialog: false,
   /** Footer is hidden by default on new tab for a cleaner digest-first layout. */
   showFooter: false,
   apiBase: DEFAULT_API_BASE,
@@ -105,7 +107,7 @@ export function normalizeSettings(raw) {
     bg: pick(BGS, input.bg, DEFAULT_SETTINGS.bg),
     sections: {
       tldr: sections.tldr !== false,
-      stories: sections.stories === true,
+      days: sections.days === true || sections.stories === true,
       categories: sections.categories !== false,
       trending: sections.trending !== false,
     },
@@ -114,6 +116,7 @@ export function normalizeSettings(raw) {
     storyCount: clampCount(input.storyCount),
     tldrCount: clampTldrCount(input.tldrCount),
     showFooter: input.showFooter === true,
+    bilingualDialog: input.bilingualDialog === true,
     apiBase: normalizeApiBase(input.apiBase),
   };
 }

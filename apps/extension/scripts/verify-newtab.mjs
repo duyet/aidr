@@ -118,7 +118,7 @@ function featureMapFromHtml(html) {
     signInPresent: /id="sign-in-btn"/.test(html) || /Sign in/.test(html),
     phoneMenuPresent: /id="phone-menu"/.test(html),
     profileAbsent: !/id="profile"/.test(html) && !/Clerk/.test(html),
-    submit: pick(/id="submit-label"[^>]*>([\s\S]*?)<\/span>/),
+    submit: pick(/id="submit-btn"[^>]*aria-label="([^"]+)"/),
     langSelected: /data-lang="vi"[^>]*aria-pressed="true"/.test(html)
       ? "vi"
       : "en",
