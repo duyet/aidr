@@ -1,6 +1,14 @@
 # Changelog
 
+## [0.1.9](https://github.com/duyet/aidr/compare/aidr-v0.1.8...aidr-v0.1.9) (2026-09-08)
+
+Stay on 0.1.x: feat commits must not open aidr-v0.2.x. Chrome Web Store and
+GitHub tags remain aidr-v0.1.*.
+
+
 ## [0.3.0](https://github.com/duyet/aidr/compare/aidr-v0.2.0...aidr-v0.3.0) (2026-09-07)
+
+Unpublished line (no `aidr-v0.3.0` tag). Folded into 0.1.9.
 
 
 ### ✨ Features
@@ -11,6 +19,8 @@
 
 
 ## [0.2.0](https://github.com/duyet/aidr/compare/aidr-v0.1.8...aidr-v0.2.0) (2026-09-06)
+
+Unpublished line (no `aidr-v0.2.0` tag). Folded into 0.1.9.
 
 
 ### ✨ Features
