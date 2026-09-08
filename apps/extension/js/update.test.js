@@ -16,7 +16,7 @@ test("parseVersion reads x.y.z and ignores junk suffixes", () => {
 
 test("isNewerVersion is strict and ignores equals", () => {
   assert.equal(isNewerVersion("0.1.3", "0.1.2"), true);
-  assert.equal(isNewerVersion("0.2.0", "0.1.9"), true);
+  assert.equal(isNewerVersion("0.2.0", "0.1.10"), true);
   assert.equal(isNewerVersion("1.0.0", "0.9.9"), true);
   assert.equal(isNewerVersion("0.1.2", "0.1.2"), false);
   assert.equal(isNewerVersion("0.1.2", "0.1.3"), false);

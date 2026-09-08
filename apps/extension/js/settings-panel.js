@@ -249,7 +249,7 @@ export function mountSettingsPanel(root, settings, onSaved) {
     const sectionTiles = [
       { key: "trending", labelKey: "trendingPreview" },
       { key: "tldr", labelKey: "tldrPreview" },
-      { key: "stories", labelKey: "dailyFeedPreview" },
+      { key: "days", labelKey: "dailyFeedPreview" },
       { key: "categories", labelKey: "categoriesPreview" },
     ];
     const grid = el("div", { className: "prefs-tiles" });
@@ -302,6 +302,23 @@ export function mountSettingsPanel(root, settings, onSaved) {
               checked: state.showFooter,
               onChange: async (event) => {
                 state.showFooter = event.target.checked;
+                await persist({ repaint: false });
+              },
+            },
+            []
+          ),
+        ]),
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label prefs-label-row" }, [
+          el("span", {}, [t(state, "bilingualDialog")]),
+          el(
+            "input",
+            {
+              type: "checkbox",
+              checked: state.bilingualDialog,
+              onChange: async (event) => {
+                state.bilingualDialog = event.target.checked;
                 await persist({ repaint: false });
               },
             },

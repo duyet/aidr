@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.10](https://github.com/duyet/aidr/compare/aidr-v0.1.9...aidr-v0.1.10) (2026-09-08)
+
+### ✨ Features
+
+* **extension:** icon-only Submit button in desktop header (matches web HeaderBar)
+* **extension:** story dialog now renders bilingual EN|VI columns with dual-language toggle, source kind/author/timestamp/quote rows, topic tag badges, and thumbnail image — matching web StoryDetail
+* **extension:** theme tokens aligned with web styles.css (secondary, input, popover, card-foreground, border-radius)
+* **extension:** section key renamed stories→days; default section order now [categories, trending, tldr, days] matching aidr.today PrefsPanel
+* **extension:** bilingual dialog preference toggle in Settings panel (persists across stories)
+
+
 ## [0.1.9](https://github.com/duyet/aidr/compare/aidr-v0.1.8...aidr-v0.1.9) (2026-09-08)
 
 Stay on 0.1.x: feat commits must not open aidr-v0.2.x. Chrome Web Store and
