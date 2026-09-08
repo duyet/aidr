@@ -31,7 +31,10 @@ test("isChromeWebStoreInstall only matches Google's update service", () => {
     true
   );
   assert.equal(isChromeWebStoreInstall({}), false);
-  assert.equal(isChromeWebStoreInstall({ update_url: "https://aidr.today/crx" }), false);
+  assert.equal(
+    isChromeWebStoreInstall({ update_url: "https://aidr.today/crx" }),
+    false
+  );
 });
 
 test("extensionMetaUrl uses the API base", () => {

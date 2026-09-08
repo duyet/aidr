@@ -1,4 +1,4 @@
-import { fetchDigest, readCachedDigest } from "./api.js";
+import { hydrateDigest } from "./api.js";
 import { highlightTitle, tagsForHighlight } from "./highlight.js";
 import { t, uiLang } from "./i18n.js";
 import { tagSiteLinks, withExtRef } from "./ref.js";
@@ -9,6 +9,7 @@ import {
   saveSettings,
 } from "./settings.js";
 import { bindPrefsPopover } from "./settings-panel.js";
+import { bindAidrDialogLink, openStoryDialog } from "./story-dialog.js";
 import { topicColor } from "./topic-color.js";
 import {
   fetchExtensionMeta,
@@ -172,7 +173,7 @@ function bulletHref(digest, bullet) {
   return withExtRef(storyHref(story || { id, category: "ai" }), "tldr");
 }
 
-function renderThumbRow(digest, bullet, n) {
+function renderThumbRow(settings, digest, bullet, n) {
   const row = document.createElement("li");
   const inner = document.createElement("span");
   inner.className = "bullet";
@@ -196,6 +197,19 @@ function renderThumbRow(digest, bullet, n) {
   link.href = safeHttpUrl(bulletHref(digest, bullet), NEWS_SITE);
   link.rel = "noreferrer";
   appendHighlighted(link, bullet.text, tags);
+  const primaryId = bullet.item_ids?.[0];
+  if (primaryId) {
+    bindAidrDialogLink(link, () =>
+      openStoryDialog({
+        apiBase: settings.apiBase,
+        language: uiLang(settings),
+        itemId: primaryId,
+        relatedIds: (bullet.item_ids || []).slice(1),
+        digest,
+        permalink: link.href,
+      })
+    );
+  }
   copy.append(link);
 
   const extra = (bullet.item_ids || []).length - 1;
@@ -384,6 +398,7 @@ function renderTldr(settings, digest) {
     col.forEach((bullet, i) => {
       list.append(
         renderThumbRow(
+          settings,
           digest,
           bullet,
           (ci === 0 ? 1 : columns[0].length + 1) + i
@@ -623,6 +638,17 @@ function renderStoryRow(settings, story, index, hot) {
   article.rel = "noreferrer";
   if (fallbackFromEnglish) article.lang = "en";
   appendHighlighted(article, title, story.tags || []);
+  if (story.id) {
+    bindAidrDialogLink(article, () =>
+      openStoryDialog({
+        apiBase: settings.apiBase,
+        language: lang,
+        itemId: story.id,
+        digest: { items: { [story.id]: story } },
+        permalink: article.href,
+      })
+    );
+  }
   titleWrap.append(article);
 
   if (fallbackFromEnglish) {
@@ -1015,41 +1041,38 @@ async function main() {
     updatedAt: 0,
   };
 
+  const applyLive = (result) => {
+    digest = result.digest;
+    setStatus(t(settings, "cached"), result.stale);
+    if (!digest.tldr && digest.stories.length === 0) {
+      setStatus(t(settings, "empty"), true);
+    }
+    render(settings, digest);
+  };
+
+  const refreshLive = () => {
+    if (globalThis.__NEWS_TAB_DIGEST__) return;
+    void hydrateDigest(settings.apiBase, {
+      onCache: (cached) => {
+        digest = cached;
+        setStatus("", false);
+        render(settings, digest);
+      },
+      onLive: (result) => {
+        applyLive(result);
+        void maybeOfferUnpackedUpdate(settings);
+      },
+    }).catch(() => {
+      if (!digest.tldr && digest.stories.length === 0) {
+        setStatus(t(settings, "error"), true);
+      }
+    });
+  };
+
   const refresh = async (next) => {
     settings = next;
     applyAppearance(settings);
     render(settings, digest);
-    if (globalThis.__NEWS_TAB_DIGEST__) return;
-    try {
-      const result = await fetchDigest(settings.apiBase);
-      digest = result.digest;
-      setStatus(t(settings, "cached"), result.stale);
-      render(settings, digest);
-      void maybeOfferUnpackedUpdate(settings);
-    } catch {
-      // Network failed and cache was already exhausted inside fetchDigest.
-      setStatus(t(settings, "error"), true);
-    }
-  };
-
-  // Fast first paint: if no prerendered digest is available, try the local
-  // cache immediately so the new tab shows content before the network
-  // request even starts. Background refresh still runs below.
-  // Guard: a slower cache read must not clobber a fresher network render.
-  let networkRendered = false;
-  const renderFromCache = async () => {
-    if (digest.tldr || digest.stories.length) return;
-    if (networkRendered) return;
-    try {
-      const cached = await readCachedDigest(settings.apiBase);
-      if (cached && !networkRendered) {
-        digest = cached;
-        setStatus(t(settings, "cached"), true);
-        render(settings, digest);
-      }
-    } catch {
-      // cache miss — network fetch will handle it
-    }
   };
 
   bindPrefs(() => settings, refresh);
@@ -1070,38 +1093,11 @@ async function main() {
 
   if (digest.tldr || digest.stories.length) {
     render(settings, digest);
-    // Background refresh even when prerendered content is available.
-    if (!globalThis.__NEWS_TAB_DIGEST__) {
-      void (async () => {
-        try {
-          const result = await fetchDigest(settings.apiBase);
-          digest = result.digest;
-          setStatus(t(settings, "cached"), result.stale);
-          render(settings, digest);
-          void maybeOfferUnpackedUpdate(settings);
-        } catch {
-          setStatus(t(settings, "error"), true);
-        }
-      })();
-    }
+    refreshLive();
     return;
   }
 
-  // No prerendered content — try cache for fast first paint, then fetch.
-  void renderFromCache();
-  try {
-    const result = await fetchDigest(settings.apiBase);
-    digest = result.digest;
-    networkRendered = true;
-    setStatus(t(settings, "cached"), result.stale);
-    if (!digest.tldr && digest.stories.length === 0) {
-      setStatus(t(settings, "empty"), true);
-    }
-    render(settings, digest);
-  } catch {
-    setStatus(t(settings, "error"), true);
-  }
-  void maybeOfferUnpackedUpdate(settings);
+  refreshLive();
 }
 
 main();

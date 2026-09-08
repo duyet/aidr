@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { highlightTitle, tagsForHighlight, TITLE_KEYWORDS } from "./highlight.js";
+import {
+  highlightTitle,
+  TITLE_KEYWORDS,
+  tagsForHighlight,
+} from "./highlight.js";
 
 test("returns a single unhighlighted segment when there are no tags", () => {
   assert.deepEqual(highlightTitle("Anthropic ships Claude 5", []), [

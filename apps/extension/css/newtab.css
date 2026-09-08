@@ -1762,3 +1762,137 @@ html[data-theme="dark"] .topic-colored {
   justify-content: space-between;
   gap: 0.5rem;
 }
+
+.story-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 50%);
+}
+
+.story-dialog {
+  position: relative;
+  display: flex;
+  max-height: 85vh;
+  width: min(42rem, 100%);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 20px 40px rgb(0 0 0 / 18%);
+}
+
+.story-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 0.5rem;
+}
+
+.story-dialog-title {
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  font-weight: 600;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.story-dialog-title:hover {
+  color: var(--accent);
+}
+
+.story-dialog-close {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.story-dialog-close:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.story-dialog-body {
+  overflow: auto;
+  padding: 0.5rem 1.25rem 1rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.story-dialog-summary {
+  margin: 0 0 0.75rem;
+}
+
+.story-dialog-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.story-dialog-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.story-dialog-source {
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
+.story-dialog-related {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.story-dialog-related-label {
+  margin: 0 0 0.35rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.story-dialog-related ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.story-dialog-related-btn {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.story-dialog-related-btn:hover {
+  background: var(--muted);
+}
+
+.story-dialog-foot {
+  padding: 0.65rem 1.25rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.story-dialog-foot a {
+  color: var(--muted-foreground);
+}

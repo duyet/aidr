@@ -147,7 +147,9 @@ export function normalizeApiBase(value) {
 }
 
 function prefersDark() {
-  return Boolean(globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches);
+  return Boolean(
+    globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches
+  );
 }
 
 /** Resolved dark mode — bg swatches dark/black win over theme. */

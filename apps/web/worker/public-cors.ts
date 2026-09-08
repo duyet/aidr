@@ -19,7 +19,9 @@ const PUBLIC_CORS_PATHS = new Set([PUBLIC_API_PATH, EXTENSION_API_PATH]);
 export function isPublicApiPath(request: Request): boolean {
   try {
     const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
-    return PUBLIC_CORS_PATHS.has(path);
+    if (PUBLIC_CORS_PATHS.has(path)) return true;
+    // Extension new-tab dialog fetches a single story by id / prefix.
+    return /^\/api\/story\/[^/]+$/.test(path);
   } catch {
     return false;
   }

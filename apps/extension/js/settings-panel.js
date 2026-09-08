@@ -108,10 +108,16 @@ export function mountSettingsPanel(root, settings, onSaved) {
           },
         },
         [
-          el("span", {
-            className:
-              font === "serif" ? "prefs-font-sample prefs-font-serif" : "prefs-font-sample",
-          }, ["Aa"]),
+          el(
+            "span",
+            {
+              className:
+                font === "serif"
+                  ? "prefs-font-sample prefs-font-serif"
+                  : "prefs-font-sample",
+            },
+            ["Aa"]
+          ),
           el("span", { className: "prefs-font-name" }, [
             font === "sans" ? t(state, "sans") : t(state, "serif"),
           ]),
@@ -249,10 +255,15 @@ export function mountSettingsPanel(root, settings, onSaved) {
     const grid = el("div", { className: "prefs-tiles" });
     for (const { key, labelKey } of sectionTiles) {
       const on = state.sections[key] !== false;
-      const tile = choiceButton(t(state, labelKey), on, async () => {
-        state.sections[key] = !on;
-        await persist({ repaint: false });
-      }, " is-full-width");
+      const tile = choiceButton(
+        t(state, labelKey),
+        on,
+        async () => {
+          state.sections[key] = !on;
+          await persist({ repaint: false });
+        },
+        " is-full-width"
+      );
       tile.setAttribute(
         "aria-label",
         on ? t(state, "hide") : t(state, labelKey)

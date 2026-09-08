@@ -111,12 +111,13 @@ test("normalizeSettings normalizes sectionOrder", () => {
   const settings = normalizeSettings({
     sectionOrder: ["tldr", "stories"],
   });
-  assert.deepEqual(
-    settings.sectionOrder,
-    ["tldr", "stories", ...DEFAULT_SETTINGS.sectionOrder.filter(
+  assert.deepEqual(settings.sectionOrder, [
+    "tldr",
+    "stories",
+    ...DEFAULT_SETTINGS.sectionOrder.filter(
       (k) => !["tldr", "stories"].includes(k)
-    )]
-  );
+    ),
+  ]);
   assert.equal(
     normalizeSettings({ sectionOrder: "junk" }).sectionOrder[0],
     "trending"

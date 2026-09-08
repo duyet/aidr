@@ -4,8 +4,11 @@ import {
   enrichDigest,
   feedUrl,
   fetchDigest,
+  fetchStory,
+  hydrateDigest,
   normalizeDigest,
   publicUrl,
+  storyUrl,
   writeCachedDigest,
 } from "./api.js";
 import { resetPreviewStores } from "./preview-shim.js";
@@ -22,10 +25,34 @@ test("publicUrl and feedUrl use the normalized API base", () => {
     publicUrl("https://aidr.today/"),
     "https://aidr.today/api/public"
   );
+  assert.equal(feedUrl("https://aidr.today"), "https://aidr.today/api/feed");
   assert.equal(
-    feedUrl("https://aidr.today"),
-    "https://aidr.today/api/feed"
+    storyUrl("https://aidr.today/", "abcdef12"),
+    "https://aidr.today/api/story/abcdef12"
   );
+});
+
+test("fetchStory returns a normalized story or null", async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        id: "abc",
+        url: "https://example.com/x",
+        title: "Hello",
+        summary: "Body",
+        sources: [
+          { url: "https://hn.example", author: "alice", kind: "source" },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  const story = await fetchStory("https://aidr.today", "abc");
+  assert.equal(story.id, "abc");
+  assert.equal(story.summary, "Body");
+  assert.equal(story.sources[0].author, "alice");
+
+  globalThis.fetch = async () => new Response("nope", { status: 404 });
+  assert.equal(await fetchStory("https://aidr.today", "missing"), null);
 });
 
 test("normalizeDigest maps public payload and image aliases", () => {
@@ -161,6 +188,53 @@ test("fetchDigest falls back to last-good cache", async () => {
   assert.equal(result.digest.stories[0].id, "cached");
 });
 
+test("hydrateDigest paints cache before the live fetch", async () => {
+  await writeCachedDigest(
+    {
+      tldr: null,
+      stories: [{ id: "cached", url: "https://c", title: "Cached" }],
+      categories: [],
+      trending: [],
+      updatedAt: 1,
+    },
+    "https://aidr.today"
+  );
+
+  let releaseLive;
+  const liveGate = new Promise((resolve) => {
+    releaseLive = resolve;
+  });
+  globalThis.fetch = async () => {
+    await liveGate;
+    return {
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => ({
+        tldr: null,
+        stories: [{ id: "fresh", url: "https://f", title: "Fresh" }],
+        updatedAt: 2,
+      }),
+    };
+  };
+
+  const order = [];
+  const pending = hydrateDigest("https://aidr.today", {
+    onCache: (digest) => {
+      order.push(`cache:${digest.stories[0].id}`);
+    },
+    onLive: (result) => {
+      order.push(`live:${result.digest.stories[0].id}`);
+    },
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(order, ["cache:cached"]);
+  releaseLive();
+  const live = await pending;
+  assert.equal(live.digest.stories[0].id, "fresh");
+  assert.deepEqual(order, ["cache:cached", "live:fresh"]);
+});
+
 test("fetchDigest does not reuse another API base cache", async () => {
   await writeCachedDigest(
     {
@@ -175,10 +249,7 @@ test("fetchDigest does not reuse another API base cache", async () => {
   globalThis.fetch = async () => {
     throw new Error("offline");
   };
-  await assert.rejects(
-    () => fetchDigest("https://aidr.today"),
-    /unavailable/
-  );
+  await assert.rejects(() => fetchDigest("https://aidr.today"), /unavailable/);
 });
 
 test("enrichDigest copies categories, trending, and item tags from feed", () => {

@@ -15,6 +15,25 @@ export function feedUrl(apiBase) {
   return `${normalizeApiBase(apiBase)}/api/feed`;
 }
 
+export function storyUrl(apiBase, id) {
+  const key = String(id || "").trim();
+  return `${normalizeApiBase(apiBase)}/api/story/${encodeURIComponent(key)}`;
+}
+
+/** Single published story for the in-tab dialog. Null on 404/network. */
+export async function fetchStory(apiBase, id, fetchImpl = fetch) {
+  const key = String(id || "").trim();
+  if (!key) return null;
+  try {
+    const res = await fetchImpl(storyUrl(apiBase, key));
+    if (!res.ok) return null;
+    const body = await res.json();
+    return normalizeStory(body);
+  } catch {
+    return null;
+  }
+}
+
 function clipText(value) {
   return typeof value === "string" ? value : "";
 }
@@ -47,9 +66,14 @@ function normalizeStory(raw) {
         .map((s) => {
           if (!s || typeof s !== "object") return null;
           const href = clipText(s.url);
-          const name = clipText(s.name || s.source);
+          const name = clipText(s.name || s.source || s.author);
           if (!href && !name) return null;
-          return { url: href, name: name || href };
+          return {
+            url: href,
+            name: name || href,
+            author: s.author ? clipText(s.author) : null,
+            kind: s.kind ? clipText(s.kind) : null,
+          };
         })
         .filter(Boolean)
     : [];
@@ -107,9 +131,10 @@ function normalizeDay(raw) {
   return {
     date,
     items,
-    categoryCounts: fromFeed && Object.keys(fromFeed).length
-      ? fromFeed
-      : categoryCountsFor(items),
+    categoryCounts:
+      fromFeed && Object.keys(fromFeed).length
+        ? fromFeed
+        : categoryCountsFor(items),
   };
 }
 
@@ -332,5 +357,27 @@ export async function fetchDigest(apiBase) {
       if (cached) return { digest: cached, source: "cache", stale: true };
       throw new Error("unavailable");
     }
+  }
+}
+
+/**
+ * Last saved digest first, then a live pull. `onCache` runs before any
+ * network so a new tab can paint immediately and refresh in the background.
+ */
+export async function hydrateDigest(apiBase, { onCache, onLive } = {}) {
+  const base = normalizeApiBase(apiBase);
+  const cached = await readCachedDigest(base);
+  if (cached) onCache?.(cached);
+  try {
+    const live = await fetchDigest(base);
+    onLive?.(live);
+    return live;
+  } catch (error) {
+    if (cached) {
+      const stale = { digest: cached, source: "cache", stale: true };
+      onLive?.(stale);
+      return stale;
+    }
+    throw error;
   }
 }

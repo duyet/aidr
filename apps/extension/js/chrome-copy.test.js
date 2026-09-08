@@ -1,8 +1,8 @@
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import assert from "node:assert/strict";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const html = readFileSync(join(root, "newtab.html"), "utf8");
@@ -15,10 +15,7 @@ test("new tab matches site chrome copy and typefaces", () => {
   assert.doesNotMatch(html, />Blog</);
   assert.match(html, /https:\/\/duyet\.net/);
   assert.match(html, /https:\/\/aidr\.today\/extension/);
-  assert.doesNotMatch(
-    html,
-    /chromewebstore\.google\.com\/detail\/aidr/
-  );
+  assert.doesNotMatch(html, /chromewebstore\.google\.com\/detail\/aidr/);
   assert.match(css, /Source Sans 3/);
   assert.match(css, /EB Garamond/);
   assert.match(js, /story-host/);

@@ -37,6 +37,21 @@ describe("isPublicApiPath", () => {
     ).toBe(false);
   });
 
+  it("matches /api/story/:id so the new-tab dialog can preflight", () => {
+    expect(
+      isPublicApiPath(new Request("https://aidr.today/api/story/abcdef12"))
+    ).toBe(true);
+    expect(
+      isPublicApiPath(new Request("https://aidr.today/api/story/abcdef12/"))
+    ).toBe(true);
+    expect(isPublicApiPath(new Request("https://aidr.today/api/story/"))).toBe(
+      false
+    );
+    expect(
+      isPublicApiPath(new Request("https://aidr.today/api/story/a/b"))
+    ).toBe(false);
+  });
+
   it("matches /api/extension so the unpacked updater can preflight", () => {
     expect(
       isPublicApiPath(new Request("https://aidr.today/api/extension"))

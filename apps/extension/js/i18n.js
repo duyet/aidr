@@ -22,8 +22,7 @@ const COPY = {
     settings: "Cài đặt",
     prefsTitle: "Tuỳ chỉnh hiển thị",
     about: "Giới thiệu",
-    aboutBody:
-      "AI News được tuyển chọn, xếp hạng và dịch bởi LLM, mỗi giờ.",
+    aboutBody: "AI News được tuyển chọn, xếp hạng và dịch bởi LLM, mỗi giờ.",
     close: "Đóng",
     theme: "Giao diện",
     appearance: "Giao diện",
@@ -87,8 +86,7 @@ const COPY = {
     settings: "Settings",
     prefsTitle: "Reader preferences",
     about: "About",
-    aboutBody:
-      "AI News is curated, ranked, and translated by LLMs, hourly.",
+    aboutBody: "AI News is curated, ranked, and translated by LLMs, hourly.",
     aboutLink: "Learn how it works →",
     privacyLink: "Privacy →",
     close: "Close",
@@ -117,7 +115,8 @@ const COPY = {
     cached: "Showing last saved digest — live fetch failed.",
     empty: "No digest yet.",
     error: "Could not load aidr.today.",
-    updateAvailable: "A newer aidr is available. Unpacked installs do not auto-update.",
+    updateAvailable:
+      "A newer aidr is available. Unpacked installs do not auto-update.",
     light: "Light",
     dark: "Dark",
     system: "System",
