@@ -28,6 +28,6 @@ describe("site chrome copy", () => {
     expect(header).toContain("RiChromeLine");
     expect(header).not.toContain("CHROME_WEB_STORE_URL");
     expect(header).not.toContain(CHROME_WEB_STORE_URL);
-    expect(header).not.toContain("label: \"Blog\"");
+    expect(header).not.toContain('label: "Blog"');
   });
 });

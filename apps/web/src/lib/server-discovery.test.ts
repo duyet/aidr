@@ -3,8 +3,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { llmsTxt, llmsTxtResponse } from "./llms-txt";
-import { buildSitemapXml, staticSitemapUrls } from "./sitemap";
 import { SITE_URL } from "./site";
+import { buildSitemapXml, staticSitemapUrls } from "./sitemap";
 
 const here = dirname(fileURLToPath(import.meta.url));
 

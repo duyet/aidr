@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { CategoryNav } from "../components/CategoryNav";
 import { DaySection } from "../components/DaySection";
