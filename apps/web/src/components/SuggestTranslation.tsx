@@ -81,9 +81,7 @@ function SuggestForm({
               user_id: userId,
               user_name: userName,
             },
-            ...(token
-              ? { headers: { Authorization: `Bearer ${token}` } }
-              : {}),
+            ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
           });
           setStatus("sent");
         } catch (err) {
