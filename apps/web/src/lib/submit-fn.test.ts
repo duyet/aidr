@@ -33,6 +33,10 @@ describe("validateSubmission", () => {
     expect(() => validateSubmission(input({ title: "Hi" }))).toThrow();
   });
 
+  it("allows an empty title (server derives one from the URL)", () => {
+    expect(validateSubmission(input({ title: "  " })).title).toBe("");
+  });
+
   it("rejects a title longer than 300 characters", () => {
     expect(() =>
       validateSubmission(input({ title: "a".repeat(301) }))

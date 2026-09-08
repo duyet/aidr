@@ -42,7 +42,10 @@ export function validateSubmission(input: {
   via: SubmitVia;
 } {
   const title = input.title.trim();
-  if (title.length < TITLE_MIN || title.length > TITLE_MAX) {
+  if (
+    title.length > 0 &&
+    (title.length < TITLE_MIN || title.length > TITLE_MAX)
+  ) {
     throw new Error(`Title must be ${TITLE_MIN}-${TITLE_MAX} characters`);
   }
   let url: URL;

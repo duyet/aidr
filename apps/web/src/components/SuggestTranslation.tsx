@@ -73,7 +73,6 @@ function SuggestForm({
         setError(null);
         try {
           const token = await getToken();
-          if (!token) throw new Error("Sign in required");
           await submitSuggestion({
             data: {
               item_id: itemId,
@@ -82,7 +81,9 @@ function SuggestForm({
               user_id: userId,
               user_name: userName,
             },
-            headers: { Authorization: `Bearer ${token}` },
+            ...(token
+              ? { headers: { Authorization: `Bearer ${token}` } }
+              : {}),
           });
           setStatus("sent");
         } catch (err) {

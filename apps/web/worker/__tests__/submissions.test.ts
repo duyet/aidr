@@ -8,6 +8,7 @@ import {
   parseSubmissionVerdict,
   reviewPendingSubmissions,
   submitStory,
+  resolveSubmissionTitle,
   validateSubmissionTitle,
   validateSubmissionUrl,
 } from "../submissions.js";
@@ -46,6 +47,25 @@ describe("validateSubmissionTitle", () => {
 
   it("accepts a title within bounds", () => {
     expect(validateSubmissionTitle("A perfectly fine story title")).toBeNull();
+  });
+
+  it("treats an empty title as optional", () => {
+    expect(validateSubmissionTitle("")).toBeNull();
+    expect(validateSubmissionTitle("   ")).toBeNull();
+  });
+});
+
+describe("resolveSubmissionTitle", () => {
+  it("keeps a provided title", () => {
+    expect(
+      resolveSubmissionTitle("A real headline", "https://example.com/post")
+    ).toBe("A real headline");
+  });
+
+  it("derives a title from the URL when blank", () => {
+    expect(resolveSubmissionTitle("", "https://www.example.com/ai-news")).toBe(
+      "example.com: ai news"
+    );
   });
 });
 
@@ -147,6 +167,17 @@ describe("submitStory", () => {
       title: "A fine title here",
     });
     expect(result).toEqual({ ok: false, error: "story already exists" });
+  });
+
+  it("derives a title from the URL when the submitter leaves it blank", async () => {
+    const { db, calls } = makeDb();
+    const result = await submitStory(db, {
+      url: "https://www.example.com/ai-news",
+      title: "",
+    });
+    expect(result.ok).toBe(true);
+    const insert = calls.find((c) => c.sql.includes("INSERT INTO submissions"));
+    expect(insert?.args[2]).toBe("example.com: ai news");
   });
 });
 

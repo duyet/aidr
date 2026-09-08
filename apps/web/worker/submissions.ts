@@ -38,10 +38,36 @@ export function validateSubmissionUrl(url: string): string | null {
 
 export function validateSubmissionTitle(title: string): string | null {
   const trimmed = title.trim();
+  if (trimmed.length === 0) return null;
   if (trimmed.length < MIN_TITLE_LENGTH || trimmed.length > MAX_TITLE_LENGTH) {
     return `title must be ${MIN_TITLE_LENGTH}-${MAX_TITLE_LENGTH} characters`;
   }
   return null;
+}
+
+/** When the submitter leaves title blank, derive one from the URL so D1
+ * still has a non-empty title for review + display. */
+export function resolveSubmissionTitle(title: string, url: string): string {
+  const trimmed = title.trim();
+  if (trimmed) return trimmed;
+  let host = url;
+  let pathTail = "";
+  try {
+    const parsed = new URL(url);
+    host = parsed.hostname.replace(/^www\./, "");
+    const last = parsed.pathname
+      .replace(/\/+$/, "")
+      .split("/")
+      .filter(Boolean)
+      .pop();
+    if (last) pathTail = decodeURIComponent(last).replace(/[-_]+/g, " ");
+  } catch {
+    // keep host = raw url
+  }
+  const candidate = pathTail ? `${host}: ${pathTail}` : `${host} story`;
+  const sliced = candidate.slice(0, MAX_TITLE_LENGTH);
+  if (sliced.length >= MIN_TITLE_LENGTH) return sliced;
+  return `${host} story`.slice(0, MAX_TITLE_LENGTH).padEnd(MIN_TITLE_LENGTH);
 }
 
 export interface SubmitStoryInput {
@@ -68,6 +94,7 @@ export async function submitStory(
   if (urlError) return { ok: false, error: urlError };
   const titleError = validateSubmissionTitle(input.title);
   if (titleError) return { ok: false, error: titleError };
+  const title = resolveSubmissionTitle(input.title, input.url);
 
   const existingItem = await db
     .prepare("SELECT id FROM items WHERE url = ?")
@@ -126,7 +153,7 @@ export async function submitStory(
     .bind(
       nn(id),
       nn(input.url),
-      nn(input.title.trim()),
+      nn(title),
       nn(input.note),
       nn(input.userId),
       nn(input.userName),

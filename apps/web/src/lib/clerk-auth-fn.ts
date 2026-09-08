@@ -32,12 +32,28 @@ function displayName(payload: ClerkPayload): string {
   return payload.sub;
 }
 
-/** Verifies the caller's Clerk session JWT from Authorization: Bearer.
- * Derives user_id/user_name server-side — never trust client-supplied values. */
+/** Resolves the signed-in user from the Clerk cookie session (clerkMiddleware)
+ * or, for agents, from Authorization: Bearer. Never trust client-supplied
+ * user_id / user_name. Browser server functions often omit Bearer even when
+ * the user is signed in — cookies are the source of truth there. */
 export async function requireClerkUser(): Promise<{
   userId: string;
   userName: string;
 }> {
+  try {
+    const { auth } = await import("@clerk/tanstack-react-start/server");
+    const session = await auth();
+    if (session.userId) {
+      const claims = (session.sessionClaims ?? {}) as ClerkPayload;
+      return {
+        userId: session.userId,
+        userName: displayName({ ...claims, sub: session.userId }),
+      };
+    }
+  } catch {
+    // No Clerk request context (tests, non-Start callers) — try Bearer.
+  }
+
   const token = bearerToken();
   if (!token) throw new Error("Sign in required");
 

@@ -46,13 +46,11 @@ function SubmissionsList({
     let cancelled = false;
     (async () => {
       const token = await getToken();
-      if (!token) {
-        if (!cancelled) setItems([]);
-        return;
-      }
       fetchMySubmissions({
         data: { user_id: userId },
-        headers: { Authorization: `Bearer ${token}` },
+        ...(token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {}),
       })
         .then((res) => {
           if (!cancelled) setItems(res);
@@ -154,10 +152,11 @@ function SubmitForm({
         setError(null);
         try {
           const token = await getToken();
-          if (!token) throw new Error("Sign in required");
           await submitStory({
             data: { url, title, note, user_id: userId, user_name: userName },
-            headers: { Authorization: `Bearer ${token}` },
+            ...(token
+              ? { headers: { Authorization: `Bearer ${token}` } }
+              : {}),
           });
           setStatus("sent");
         } catch (err) {
@@ -181,12 +180,10 @@ function SubmitForm({
       </label>
       <label className="block text-sm">
         <span className="mb-1 block text-xs font-semibold text-muted-foreground">
-          {lang === "vi" ? "Tiêu đề" : "Title"}
+          {lang === "vi" ? "Tiêu đề (không bắt buộc)" : "Title (optional)"}
         </span>
         <input
           type="text"
-          required
-          minLength={5}
           maxLength={300}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
