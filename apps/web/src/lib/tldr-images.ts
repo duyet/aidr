@@ -21,6 +21,66 @@ export function sanitizeImageUrl(
   }
 }
 
+export type CdnImageSize = "thumb" | "card";
+
+/**
+ * Rewrite known CDN og:image URLs down to a size that matches how we
+ * render them (48px thumbs / ~320px cards). Leaves unknown hosts alone.
+ */
+export function resizeCdnImageUrl(
+  url: string | null | undefined,
+  size: CdnImageSize = "thumb"
+): string | null {
+  const clean = sanitizeImageUrl(url);
+  if (!clean) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(clean);
+  } catch {
+    return clean;
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (host === "pbs.twimg.com" || host.endsWith(".twimg.com")) {
+    return rewriteTwimg(parsed, size);
+  }
+  // Google blog filenames like `.width-1300.png` are not independently
+  // addressable at smaller widths (403). Skip them as 48px thumbs so
+  // Lighthouse does not download ~800KB for a round badge.
+  if (size === "thumb") {
+    const widthHint = parsed.pathname.match(/\.width-(\d+)\./i);
+    if (widthHint && Number(widthHint[1]) > 400) return null;
+  }
+  if (host === "images.unsplash.com") {
+    parsed.searchParams.set("w", size === "thumb" ? "96" : "640");
+    parsed.searchParams.set("q", "60");
+    parsed.searchParams.set("fit", "crop");
+    return parsed.toString();
+  }
+  return parsed.toString();
+}
+
+function rewriteTwimg(parsed: URL, size: CdnImageSize): string {
+  const name = size === "thumb" ? "small" : "900x900";
+  const suffix = parsed.pathname.match(
+    /^(.*)\.(jpe?g|png|webp|gif):(orig|large|medium|small|thumb|360x360|240x240|900x900|4096x4096)$/i
+  );
+  if (suffix) {
+    const ext = suffix[2].toLowerCase().replace("jpeg", "jpg");
+    parsed.pathname = `${suffix[1]}.${suffix[2]}`;
+    parsed.searchParams.set("format", ext);
+    parsed.searchParams.set("name", name);
+    return parsed.toString();
+  }
+  if (parsed.searchParams.has("name")) {
+    parsed.searchParams.set("name", name);
+  }
+  parsed.pathname = parsed.pathname.replace(
+    /_(400x400|200x200)\.(jpe?g|png|webp)$/i,
+    size === "thumb" ? "_200x200.$2" : "_400x400.$2"
+  );
+  return parsed.toString();
+}
+
 /** Build id → story image for attaching to AI;DR bullets at read time. */
 export function imageUrlByItemId(
   items: Array<{ id: string; image_url?: string | null }>

@@ -1,0 +1,4 @@
+# Fingerprinted Vite output — safe to cache forever. PSI flagged the
+# Workers default `max-age=0, must-revalidate` on /assets/*.
+/assets/*
+  Cache-Control: public, max-age=31556952, immutable

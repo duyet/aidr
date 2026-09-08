@@ -130,9 +130,7 @@ function NewsFooter() {
             <p className="font-serif text-xl font-medium tracking-tight text-foreground">
               AI;DR
             </p>
-            <p className="max-w-xs text-sm leading-relaxed">
-              {SITE_SLOGAN}
-            </p>
+            <p className="max-w-xs text-sm leading-relaxed">{SITE_SLOGAN}</p>
           </div>
           <nav
             aria-label="Footer"
@@ -245,22 +243,6 @@ export const Route = createRootRoute({
           type: "application/xml",
           href: `${SITE_URL}/sitemap.xml`,
         },
-        { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        {
-          rel: "preconnect",
-          href: "https://fonts.gstatic.com",
-          crossOrigin: "anonymous",
-        },
-        {
-          rel: "preload",
-          as: "style",
-          href: "https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap",
-        },
-        {
-          rel: "preload",
-          as: "style",
-          href: "https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap",
-        },
       ],
     };
   },
@@ -340,16 +322,6 @@ function RootComponent() {
     <html lang={lang} suppressHydrationWarning>
       <head>
         <HeadContent />
-        {/* Load fonts directly — React 19 rejects string onLoad handlers
-            (error #231) which also poisoned hydration (#418). */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap"
-        />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap"
-        />
       </head>
       <body>
         <LangContext.Provider value={lang}>

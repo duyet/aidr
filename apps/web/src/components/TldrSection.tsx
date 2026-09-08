@@ -16,6 +16,7 @@ function TldrBulletRow({
   thumbSrc,
   fullText,
   linked,
+  priority,
   children,
 }: {
   layout: AidrLayout;
@@ -23,6 +24,7 @@ function TldrBulletRow({
   thumbSrc: string | null;
   fullText: string;
   linked?: boolean;
+  priority?: boolean;
   children: ReactNode;
 }): ReactElement {
   const copy = (
@@ -43,7 +45,7 @@ function TldrBulletRow({
       return (
         <span className="flex min-h-[2lh] items-stretch gap-2">
           {copy}
-          <StoryThumb src={thumbSrc} />
+          <StoryThumb src={thumbSrc} priority={priority} />
         </span>
       );
     case "c":
@@ -51,7 +53,7 @@ function TldrBulletRow({
         <span className="flex min-h-[2lh] items-stretch gap-2">
           {copy}
           <span className="relative shrink-0 self-stretch">
-            <StoryThumb src={thumbSrc} />
+            <StoryThumb src={thumbSrc} priority={priority} />
             <span className="absolute bottom-0.5 left-0.5 flex h-4 min-w-4 items-center justify-center rounded-sm bg-foreground/80 px-0.5 text-[10px] font-bold tabular-nums text-background">
               {n}
             </span>
@@ -219,6 +221,7 @@ export function TldrSection({
                   thumbSrc={thumbSrc}
                   fullText={b.text}
                   linked={Boolean(primaryId)}
+                  priority={n <= 6}
                 >
                   {color && tag && (
                     <span

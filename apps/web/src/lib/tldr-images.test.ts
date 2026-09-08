@@ -3,6 +3,7 @@ import {
   attachTldrBulletImages,
   collectTldrItemIds,
   imageUrlByItemId,
+  resizeCdnImageUrl,
   sanitizeImageUrl,
   withTldrImages,
 } from "./tldr-images";
@@ -26,6 +27,54 @@ describe("sanitizeImageUrl", () => {
     expect(sanitizeImageUrl("javascript:alert(1)")).toBeNull();
     expect(sanitizeImageUrl("")).toBeNull();
     expect(sanitizeImageUrl(null)).toBeNull();
+  });
+});
+
+describe("resizeCdnImageUrl", () => {
+  it("rewrites Twitter :large media to a small named variant", () => {
+    expect(
+      resizeCdnImageUrl(
+        "https://pbs.twimg.com/media/HRnvjcJbkAASzlf.jpg:large",
+        "thumb"
+      )
+    ).toBe(
+      "https://pbs.twimg.com/media/HRnvjcJbkAASzlf.jpg?format=jpg&name=small"
+    );
+  });
+
+  it("rewrites Twitter name=orig query to small", () => {
+    expect(
+      resizeCdnImageUrl(
+        "https://pbs.twimg.com/card_img/1/x?format=jpg&name=orig",
+        "thumb"
+      )
+    ).toBe("https://pbs.twimg.com/card_img/1/x?format=jpg&name=small");
+  });
+
+  it("skips oversized Google blog width-NNNN files as thumbs", () => {
+    expect(
+      resizeCdnImageUrl(
+        "https://storage.googleapis.com/gweb-uniblog-publish-prod/images/WeatherNext3_Title.width-1300.png",
+        "thumb"
+      )
+    ).toBeNull();
+  });
+
+  it("keeps oversized Google blog files for cards", () => {
+    expect(
+      resizeCdnImageUrl(
+        "https://storage.googleapis.com/gweb-uniblog-publish-prod/images/WeatherNext3_Title.width-1300.png",
+        "card"
+      )
+    ).toBe(
+      "https://storage.googleapis.com/gweb-uniblog-publish-prod/images/WeatherNext3_Title.width-1300.png"
+    );
+  });
+
+  it("leaves unknown hosts unchanged", () => {
+    expect(
+      resizeCdnImageUrl("https://www.bottlenecklabs.com/blog/og.jpg", "thumb")
+    ).toBe("https://www.bottlenecklabs.com/blog/og.jpg");
   });
 });
 

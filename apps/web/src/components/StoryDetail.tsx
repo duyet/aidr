@@ -6,7 +6,7 @@ import { categoryLabel } from "../lib/lang";
 import { publisherHost } from "../lib/publisher-host";
 import { detectSuggestField, type SuggestField } from "../lib/selection-field";
 import { storyPath } from "../lib/slug";
-import { sanitizeImageUrl } from "../lib/tldr-images";
+import { resizeCdnImageUrl, sanitizeImageUrl } from "../lib/tldr-images";
 import { topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
 import { SuggestionBadge, SuggestTranslation } from "./SuggestTranslation";
@@ -329,9 +329,12 @@ export function StoryDetail({
         <aside className="not-typeset min-w-0 space-y-4 md:border-l md:border-border md:pl-5">
           {imageUrl && (
             <img
-              src={imageUrl}
+              src={resizeCdnImageUrl(imageUrl, "card") ?? imageUrl}
               alt=""
+              width={640}
+              height={160}
               loading="lazy"
+              decoding="async"
               referrerPolicy="no-referrer"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
