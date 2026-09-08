@@ -7,8 +7,12 @@ import { handlePublicCors } from "../worker/public-cors";
 import { handleSubscribeCors } from "../worker/subscribe/cors";
 import type { Env } from "../worker/types";
 import { NewsIngestWorkflow } from "../worker/workflow";
-import { applyNotFoundHttpStatus } from "./lib/not-found-status";
+import {
+  handleAgentDiscovery,
+  withHomepageLinkHeaders,
+} from "./lib/agent-discovery";
 import { llmsTxtResponse } from "./lib/llms-txt";
+import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import {
   buildSitemapXml,
   loadSitemapUrls,
@@ -50,6 +54,8 @@ export default {
     if (path === "/llms.txt") {
       return llmsTxtResponse();
     }
+    const discovery = await handleAgentDiscovery(request);
+    if (discovery) return discovery;
     if (path === "/sitemap.xml") {
       try {
         return await safeSitemapResponse(async () => {
@@ -65,7 +71,10 @@ export default {
     }
     return handlePublicCors(request, () =>
       handleSubscribeCors(request, async () =>
-        applyNotFoundHttpStatus(await handler.fetch(request))
+        withHomepageLinkHeaders(
+          request,
+          applyNotFoundHttpStatus(await handler.fetch(request))
+        )
       )
     );
   },

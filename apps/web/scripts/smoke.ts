@@ -101,6 +101,28 @@ async function main() {
     assert(/LLMs-txt:\s*https:\/\/aidr\.today\/llms\.txt/i.test(body));
   });
 
+  await check("GET /.well-known/api-catalog is a linkset", async () => {
+    const res = await fetch(`${base}/.well-known/api-catalog`);
+    assert(res.status === 200, `expected 200, got ${res.status}`);
+    const ctype = res.headers.get("content-type") ?? "";
+    assert(
+      ctype.includes("application/linkset+json"),
+      `expected linkset+json, got ${ctype}`
+    );
+    const body = (await res.json()) as { linkset?: unknown };
+    assert(Array.isArray(body.linkset), "api-catalog missing linkset");
+  });
+
+  await check("GET / has Link rel=api-catalog", async () => {
+    const res = await fetch(`${base}/`);
+    assert(res.status === 200, `expected 200, got ${res.status}`);
+    const link = res.headers.get("link") ?? "";
+    assert(
+      /rel=["']?api-catalog/.test(link),
+      `homepage Link missing api-catalog: ${link}`
+    );
+  });
+
   await check("GET /llms.txt guides agents at aidr.today", async () => {
     const res = await fetch(`${base}/llms.txt`);
     assert(res.status === 200, `expected 200, got ${res.status}`);
