@@ -73,6 +73,7 @@ export function TldrSection({
   updatedAt,
   lastFetchedAt,
   topicByItemId,
+  pathByItemId,
   tagsByItemId,
   imageByItemId,
   snapshotDate,
@@ -86,6 +87,8 @@ export function TldrSection({
   updatedAt: number;
   lastFetchedAt: number | null;
   topicByItemId?: Map<string, string>;
+  /** Canonical /{category}/{8-char} hrefs so Google does not crawl /ai/{full-id}. */
+  pathByItemId?: Map<string, string>;
   /** Item tags for in-bullet entity highlight (plus TITLE_KEYWORDS). */
   tagsByItemId?: Map<string, string[]>;
   /** Fallback when a bullet has no read-time `image_url` (cached feeds). */
@@ -242,7 +245,10 @@ export function TldrSection({
                 <li key={b.text}>
                   {primaryId ? (
                     <a
-                      href={`/ai/${primaryId}`}
+                      href={
+                        pathByItemId?.get(primaryId) ??
+                        `/ai/${primaryId.slice(0, 8)}`
+                      }
                       onClick={(e) => {
                         if (
                           e.button !== 0 ||

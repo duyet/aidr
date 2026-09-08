@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { articleHead, homepageHead, notFoundHead } from "./seo";
+import { articleHead, homepageHead, notFoundHead, pageHead } from "./seo";
 import {
   SITE_DESCRIPTION,
   SITE_OG_IMAGE_URL,
@@ -45,6 +45,21 @@ describe("homepageHead", () => {
       href: `${SITE_URL}/`,
     });
     expect(head.links.some((l) => l.rel === "sitemap")).toBe(true);
+  });
+});
+
+describe("pageHead", () => {
+  it("canonicalizes marketing routes to themselves, not the homepage", () => {
+    const head = pageHead({ path: "/about", title: "About | AI News" });
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: `${SITE_URL}/about`,
+    });
+    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/about`);
+    expect(head.links).not.toContainEqual({
+      rel: "canonical",
+      href: `${SITE_URL}/`,
+    });
   });
 });
 

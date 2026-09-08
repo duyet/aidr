@@ -70,13 +70,24 @@ function shareTags(opts: {
   return meta;
 }
 
-/** Homepage Open Graph / Twitter / canonical tags. */
-export function homepageHead(): HeadTags {
-  const url = `${SITE_URL}/`;
+/** Absolute canonical URL for a site path (`/` → origin with trailing slash). */
+export function canonicalUrl(path: string): string {
+  if (path === "/" || path === "") return `${SITE_URL}/`;
+  return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/** Marketing/static page share tags. Each URL must canonical to itself. */
+export function pageHead(opts: {
+  path: string;
+  title: string;
+  description?: string;
+}): HeadTags {
+  const url = canonicalUrl(opts.path);
+  const description = opts.description ?? SITE_DESCRIPTION;
   return {
     meta: shareTags({
-      title: SITE_TITLE,
-      description: SITE_DESCRIPTION,
+      title: opts.title,
+      description,
       url,
       type: "website",
       imageUrl: SITE_OG_IMAGE_URL,
@@ -84,6 +95,11 @@ export function homepageHead(): HeadTags {
     }),
     links: [{ rel: "canonical", href: url }, SITEMAP_LINK],
   };
+}
+
+/** Homepage Open Graph / Twitter / canonical tags. */
+export function homepageHead(): HeadTags {
+  return pageHead({ path: "/", title: SITE_TITLE });
 }
 
 /**

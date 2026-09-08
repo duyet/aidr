@@ -158,10 +158,18 @@ function thumbNode(src) {
   return img;
 }
 
-function bulletHref(bullet) {
+function storyHref(story) {
+  const cat = (story?.category || "ai").toLowerCase();
+  const id = String(story?.id || "").slice(0, 8);
+  if (!id) return NEWS_SITE;
+  return `${NEWS_SITE}/${cat}/${id}`;
+}
+
+function bulletHref(digest, bullet) {
   const id = bullet.item_ids?.[0];
-  if (id) return withExtRef(`${NEWS_SITE}/ai/${id}`, "tldr");
-  return withExtRef(NEWS_SITE, "tldr_home");
+  if (!id) return withExtRef(NEWS_SITE, "tldr_home");
+  const story = digest?.items?.[id];
+  return withExtRef(storyHref(story || { id, category: "ai" }), "tldr");
 }
 
 function renderThumbRow(digest, bullet, n) {
@@ -185,7 +193,7 @@ function renderThumbRow(digest, bullet, n) {
   }
 
   const link = document.createElement("a");
-  link.href = safeHttpUrl(bulletHref(bullet), NEWS_SITE);
+  link.href = safeHttpUrl(bulletHref(digest, bullet), NEWS_SITE);
   link.rel = "noreferrer";
   appendHighlighted(link, bullet.text, tags);
   copy.append(link);
@@ -609,7 +617,7 @@ function renderStoryRow(settings, story, index, hot) {
   article.className = "story-article";
   article.href =
     safeHttpUrl(
-      withExtRef(`${NEWS_SITE}/ai/${story.id}`, "story"),
+      withExtRef(storyHref(story), "story"),
       withExtRef(NEWS_SITE, "story")
     ) || withExtRef(NEWS_SITE, "story");
   article.rel = "noreferrer";
@@ -859,7 +867,9 @@ function renderAddSection(settings) {
         },
         [
           svgIcon(ICON_EYE),
-          el("span", {}, [`${label}: ${t(settings, SECTION_PREVIEW_KEYS[hidden[0]])}`]),
+          el("span", {}, [
+            `${label}: ${t(settings, SECTION_PREVIEW_KEYS[hidden[0]])}`,
+          ]),
         ]
       )
     );

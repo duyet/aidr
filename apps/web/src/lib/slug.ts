@@ -15,3 +15,21 @@ export function idPrefixFromSlug(slug: string): string | null {
   const m = slug.match(/-([0-9a-f]{8,64})$/);
   return m ? m[1] : null;
 }
+
+/** Requested path for `/$cat/$slug`. */
+export function requestedStoryPath(cat: string, slug: string): string {
+  return `/${cat}/${slug}`;
+}
+
+/**
+ * If the crawled URL is a duplicate (full hash, /ai/ prefix, legacy slug),
+ * return the canonical `/{category}/{8-char}` path so Google indexes one URL.
+ */
+export function storyCanonicalRedirect(
+  cat: string,
+  slug: string,
+  item: Pick<FeedItem, "id" | "category">
+): string | null {
+  const canonical = storyPath(item);
+  return requestedStoryPath(cat, slug) === canonical ? null : canonical;
+}

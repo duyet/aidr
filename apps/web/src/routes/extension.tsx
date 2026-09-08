@@ -17,12 +17,19 @@ import { RiChromeLine } from "@remixicon/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, CheckCircle2, RefreshCw, Send } from "lucide-react";
 import { useLang } from "../lib/lang-context";
-import { CHROME_WEB_STORE_URL, TELEGRAM_HANDLE, TELEGRAM_URL } from "../lib/site";
+import { pageHead } from "../lib/seo";
+import {
+  CHROME_WEB_STORE_URL,
+  TELEGRAM_HANDLE,
+  TELEGRAM_URL,
+} from "../lib/site";
 
 export const Route = createFileRoute("/extension")({
-  head: () => ({
-    meta: [{ title: "Chrome new tab | AI News" }],
-  }),
+  head: () =>
+    pageHead({
+      path: "/extension",
+      title: "Chrome new tab | AI News",
+    }),
   component: ExtensionPage,
 });
 

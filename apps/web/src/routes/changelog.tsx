@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 import { useLang } from "../lib/lang-context";
+import { pageHead } from "../lib/seo";
 
 interface ChangelogEntry {
   date: string;
@@ -80,9 +81,11 @@ const EXTENSION_ENTRIES: ChangelogEntry[] = [
 ];
 
 export const Route = createFileRoute("/changelog")({
-  head: () => ({
-    meta: [{ title: "Changelog | AI News" }],
-  }),
+  head: () =>
+    pageHead({
+      path: "/changelog",
+      title: "Changelog | AI News",
+    }),
   component: ChangelogPage,
 });
 

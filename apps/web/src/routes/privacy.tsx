@@ -1,17 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { pageHead } from "../lib/seo";
 import { SITE_URL } from "../lib/site";
 
 export const Route = createFileRoute("/privacy")({
-  head: () => ({
-    meta: [
-      { title: "Privacy | aidr.today" },
-      {
-        name: "description",
-        content:
-          "Privacy policy for aidr.today and the aidr Chrome new-tab extension.",
-      },
-    ],
-  }),
+  head: () =>
+    pageHead({
+      path: "/privacy",
+      title: "Privacy | aidr.today",
+      description:
+        "Privacy policy for aidr.today and the aidr Chrome new-tab extension.",
+    }),
   component: PrivacyPage,
 });
 

@@ -69,7 +69,11 @@ async function main() {
     assert(body.includes('rel="canonical"'), "homepage missing canonical");
     assert(
       /href="\/[a-z0-9-]+\/[0-9a-f]{8}"/.test(body),
-      "homepage HTML has no story permalinks"
+      "homepage HTML has no canonical 8-char story permalinks"
+    );
+    assert(
+      !/href="\/ai\/[0-9a-f]{16,}"/.test(body),
+      "homepage must not link the full item id (duplicate URLs)"
     );
   });
 
@@ -240,6 +244,16 @@ async function main() {
       assert(res.status === 200, `expected 200, got ${res.status}`);
     });
   }
+
+  await check("GET /about declares its own canonical", async () => {
+    const res = await fetch(`${base}/about`);
+    assert(res.status === 200, `expected 200, got ${res.status}`);
+    const body = await res.text();
+    assert(
+      body.includes(`rel="canonical"`) && body.includes(`${base}/about`),
+      "about missing self canonical"
+    );
+  });
 
   await check("GET /extension has Chrome and Telegram tabs", async () => {
     const res = await fetch(`${base}/extension`);

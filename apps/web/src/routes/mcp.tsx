@@ -2,8 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BookOpen, ExternalLink, Plug, Terminal } from "lucide-react";
 import type { ReactNode } from "react";
 import { useLang } from "../lib/lang-context";
+import { pageHead } from "../lib/seo";
 
 export const Route = createFileRoute("/mcp")({
+  head: () =>
+    pageHead({
+      path: "/mcp",
+      title: "MCP | AI News",
+    }),
   component: McpPage,
 });
 

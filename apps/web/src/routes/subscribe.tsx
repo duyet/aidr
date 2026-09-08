@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Mail, Send } from "lucide-react";
 import { useState } from "react";
 import { useLang } from "../lib/lang-context";
+import { pageHead } from "../lib/seo";
 import { TELEGRAM_HANDLE, TELEGRAM_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
 
@@ -13,6 +14,11 @@ export const Route = createFileRoute("/subscribe")({
     typeof search.unsubscribe === "string"
       ? { unsubscribe: search.unsubscribe }
       : {},
+  head: () =>
+    pageHead({
+      path: "/subscribe",
+      title: "Subscribe | AI News",
+    }),
   component: SubscribePage,
 });
 

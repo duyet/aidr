@@ -1,11 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { StoryRow } from "../components/StoryRow";
 import { ARTICLE_DATE_TAG, ARTICLE_TITLE_TAG } from "../lib/article-headings";
 import { formatDayHeading } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
 import { notFoundCopy } from "../lib/not-found";
 import { articleHead, notFoundHead } from "../lib/seo";
-import { idPrefixFromSlug } from "../lib/slug";
+import { idPrefixFromSlug, storyCanonicalRedirect } from "../lib/slug";
 import { fetchStory } from "../lib/story-fn";
 import type { FeedItem, Lang } from "../lib/types";
 
@@ -13,7 +13,11 @@ export const Route = createFileRoute("/$cat/$slug")({
   loader: async ({ params }): Promise<FeedItem | null> => {
     const idPrefix = idPrefixFromSlug(params.slug);
     if (!idPrefix) return null;
-    return fetchStory({ data: { idPrefix } });
+    const item = await fetchStory({ data: { idPrefix } });
+    if (!item) return null;
+    const to = storyCanonicalRedirect(params.cat, params.slug, item);
+    if (to) throw redirect({ href: to });
+    return item;
   },
   head: ({ loaderData }) => {
     const item = loaderData as FeedItem | null | undefined;

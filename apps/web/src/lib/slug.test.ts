@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { idPrefixFromSlug, storyPath } from "./slug";
+import { idPrefixFromSlug, storyCanonicalRedirect, storyPath } from "./slug";
 
 describe("storyPath", () => {
   it("uses lowercase category and the 8-char id prefix", () => {
@@ -26,5 +26,19 @@ describe("idPrefixFromSlug", () => {
 
   it("rejects non-hex slugs", () => {
     expect(idPrefixFromSlug("not-a-story")).toBeNull();
+  });
+});
+
+describe("storyCanonicalRedirect", () => {
+  const item = { id: "abcdef12deadbeef", category: "Models" };
+
+  it("returns null when the request is already the canonical path", () => {
+    expect(storyCanonicalRedirect("models", "abcdef12", item)).toBeNull();
+  });
+
+  it("redirects a full-hash /ai/ URL to the 8-char category path", () => {
+    expect(storyCanonicalRedirect("ai", "abcdef12deadbeef", item)).toBe(
+      "/models/abcdef12"
+    );
   });
 });

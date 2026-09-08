@@ -1,16 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { pageHead } from "../lib/seo";
 import { SITE_URL } from "../lib/site";
 
 export const Route = createFileRoute("/terms")({
-  head: () => ({
-    meta: [
-      { title: "Terms | aidr.today" },
-      {
-        name: "description",
-        content: "Terms of use for aidr.today.",
-      },
-    ],
-  }),
+  head: () =>
+    pageHead({
+      path: "/terms",
+      title: "Terms | aidr.today",
+      description: "Terms of use for aidr.today.",
+    }),
   component: TermsPage,
 });
 

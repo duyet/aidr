@@ -4,6 +4,7 @@ import { Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useClerkModule } from "../lib/clerk-user";
 import { useLang } from "../lib/lang-context";
+import { pageHead } from "../lib/seo";
 import {
   fetchMySubmissions,
   type Submission,
@@ -11,9 +12,11 @@ import {
 } from "../lib/submit-fn";
 
 export const Route = createFileRoute("/submit")({
-  head: () => ({
-    meta: [{ title: "Submit a story | AI News" }],
-  }),
+  head: () =>
+    pageHead({
+      path: "/submit",
+      title: "Submit a story | AI News",
+    }),
   component: SubmitPage,
 });
 

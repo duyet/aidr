@@ -1,13 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
+import { pageHead } from "../lib/seo";
 import { fetchSourceNames } from "../lib/sources-fn";
 import type { SystemStats } from "../lib/system-queries";
 
 export const Route = createFileRoute("/about")({
-  head: () => ({
-    meta: [{ title: "About | AI News" }],
-  }),
+  head: () =>
+    pageHead({
+      path: "/about",
+      title: "About | AI News",
+    }),
   component: AboutPage,
 });
 

@@ -13,6 +13,7 @@ import { timeAgo } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
 import { usePrefs } from "../lib/prefs";
 import { homepageHead } from "../lib/seo";
+import { storyPath } from "../lib/slug";
 import { displayTldrBullets } from "../lib/tldr-fallback";
 import type { FeedResponse } from "../lib/types";
 
@@ -225,12 +226,14 @@ function IndexPage() {
   const bullets = displayTldrBullets(feed.tldr, lang);
 
   const topicByItemId = new Map<string, string>();
+  const pathByItemId = new Map<string, string>();
   const tagsByItemId = new Map<string, string[]>();
   const imageByItemId = new Map<string, string>();
   for (const day of feed.days) {
     for (const item of day.items) {
       const topic = item.tags[0] ?? item.category;
       if (topic) topicByItemId.set(item.id, topic);
+      pathByItemId.set(item.id, storyPath(item));
       if (item.tags.length > 0) tagsByItemId.set(item.id, item.tags);
       if (item.image_url) imageByItemId.set(item.id, item.image_url);
     }
@@ -394,6 +397,7 @@ function IndexPage() {
                   updatedAt={feed.updatedAt}
                   lastFetchedAt={feed.lastFetchedAt}
                   topicByItemId={topicByItemId}
+                  pathByItemId={pathByItemId}
                   tagsByItemId={tagsByItemId}
                   imageByItemId={imageByItemId}
                   snapshotDate={feed.tldr?.date}
