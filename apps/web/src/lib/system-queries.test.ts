@@ -22,6 +22,67 @@ function makeDb(stubs: Record<string, unknown>) {
   } as unknown as D1Database;
 }
 
+describe("loadSystemStats ingest sources", () => {
+  it("maps source rows, config JSON, and enabled flags", async () => {
+    const db = makeDb({
+      "LEFT JOIN items i ON i.source_id": {
+        all: async () => ({
+          results: [
+            {
+              id: "hn",
+              name: "Hacker News",
+              type: "hn",
+              config: '{"query":"AI OR LLM"}',
+              enabled: 1,
+              item_count: 12,
+            },
+            {
+              id: "lobsters",
+              name: "Lobsters",
+              type: "lobsters",
+              config: "{}",
+              enabled: 0,
+              item_count: 0,
+            },
+          ],
+        }),
+      },
+      "SELECT llm_tokens": {
+        all: async () => {
+          throw new Error("no column");
+        },
+      },
+      "FROM llm_calls": {
+        all: async () => {
+          throw new Error("no table");
+        },
+      },
+      "SELECT stats FROM workflow_runs": {
+        all: async () => ({ results: [{ stats: null }] }),
+      },
+    });
+    const stats = await loadSystemStats(db, {});
+    expect(stats.ingestSources).toEqual([
+      {
+        id: "hn",
+        name: "Hacker News",
+        type: "hn",
+        enabled: true,
+        itemCount: 12,
+        config: { query: "AI OR LLM" },
+      },
+      {
+        id: "lobsters",
+        name: "Lobsters",
+        type: "lobsters",
+        enabled: false,
+        itemCount: 0,
+        config: {},
+      },
+    ]);
+  });
+});
+
 describe("loadSystemStats run timestamp normalization", () => {
   it("normalizes legacy millisecond workflow_runs timestamps", async () => {
     const msStarted = 1_700_000_000_000;
@@ -57,6 +118,7 @@ describe("loadSystemStats run timestamp normalization", () => {
     });
 
     const stats = await loadSystemStats(db, {});
+    expect(stats.ingestSources).toEqual([]);
     expect(stats.runs[0]?.started_at).toBe(Math.floor(msStarted / 1000));
     expect(stats.runs[0]?.finished_at).toBe(
       Math.floor((msStarted + 60_000) / 1000)

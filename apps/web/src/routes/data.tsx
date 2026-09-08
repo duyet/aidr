@@ -1,4 +1,12 @@
-import { Badge, Separator, Skeleton } from "@aidr/ui";
+import {
+  Badge,
+  Separator,
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@aidr/ui";
 import { createFileRoute } from "@tanstack/react-router";
 import { Coins, Newspaper, Play, Users } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -16,6 +24,7 @@ import { RunDurationBars } from "../components/system/RunDurationBars";
 import { RunOutcomeBars } from "../components/system/RunOutcomeBars";
 import { RunStatusStrip } from "../components/system/RunStatusStrip";
 import { RunsList } from "../components/system/RunsList";
+import { SourcesIngestTable } from "../components/system/SourcesIngestTable";
 import { StatTile } from "../components/system/StatTile";
 import { useAdmin } from "../lib/admin";
 import { anyrouterModelUrl } from "../lib/anyrouter";
@@ -35,44 +44,53 @@ function formatTokens(n: number): string {
 
 function DataSkeleton() {
   return (
-    <div className="news-content news-data space-y-6 py-6">
-      <div className="space-y-2">
-        <Skeleton className="h-7 w-40" />
-        <Skeleton className="h-4 w-full max-w-md" />
-        <Skeleton className="h-5 w-72" />
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="news-content news-data space-y-4 py-4">
+      <Skeleton className="h-7 w-40" />
+      <Skeleton className="h-8 w-full max-w-lg" />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-24 rounded-lg" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {Array.from({ length: 6 }, (_, i) => (
-          <Skeleton key={i} className="h-48 rounded-lg" />
+          <Skeleton key={i} className="h-20 rounded-lg" />
         ))}
       </div>
     </div>
   );
 }
 
-function SectionLabel({ children }: { children: string }) {
+function ModelChip({ label, models }: { label: string; models: string[] }) {
+  const lead = models[0];
   return (
-    <h2 className="mb-3 font-sans text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </h2>
+    <Badge variant="secondary" className="h-6 gap-1 px-2 font-normal">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      {lead ? (
+        <a
+          href={anyrouterModelUrl(lead)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[11px] text-foreground underline-offset-2 hover:text-accent hover:underline"
+          title={`Open ${lead} on AnyRouter`}
+        >
+          {lead}
+        </a>
+      ) : (
+        <span className="font-mono text-[11px]">—</span>
+      )}
+      {models.length > 1 ? (
+        <span className="text-[10px] text-muted-foreground">
+          +{models.length - 1}
+        </span>
+      ) : null}
+    </Badge>
   );
 }
 
 function SystemPage() {
-  // English-only by design: the global lang toggle is disabled on this
-  // route (see HeaderBar/LangToggle), so this page never renders VI.
   const lang: Lang = "en";
-  const t = (en: string, _vi: string) => en;
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [error, setError] = useState(false);
   const admin = useAdmin();
 
-  // Static shell — stats are bound client-side from /api/system.
   useEffect(() => {
     let cancelled = false;
     fetch("/api/system")
@@ -93,7 +111,7 @@ function SystemPage() {
   if (error) {
     return (
       <p className="news-content news-data mx-auto max-w-3xl py-16 text-center text-sm text-muted-foreground">
-        {t("Couldn't load system stats.", "Không tải được thống kê hệ thống.")}
+        Couldn't load system stats.
       </p>
     );
   }
@@ -102,375 +120,278 @@ function SystemPage() {
     return <DataSkeleton />;
   }
 
+  const lastRunBySource = stats.lastRun?.stats?.bySource;
+
   return (
-    <div className="news-content news-data py-6">
-      <header className="mb-8 space-y-3">
+    <div className="news-content news-data py-4">
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground">
-            {t("Pipeline data", "Dữ liệu pipeline")}
+          <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground">
+            Pipeline
           </h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            {t(
-              "Ingestion pipeline, content, and token usage — live from the database.",
-              "Pipeline thu thập, nội dung và mức dùng token — trực tiếp từ cơ sở dữ liệu."
-            )}
+          <p className="text-xs text-muted-foreground">
+            Live ingest, content, and token use.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="font-normal">
-            <span className="text-muted-foreground">
-              {t("Scoring", "Chấm điểm")}
-            </span>
-            {stats.models.scoring[0] ? (
-              <a
-                href={anyrouterModelUrl(stats.models.scoring[0])}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-1.5 font-mono text-foreground underline-offset-2 hover:text-accent hover:underline"
-                title={`Open ${stats.models.scoring[0]} on AnyRouter`}
-              >
-                {stats.models.scoring[0]}
-              </a>
-            ) : (
-              <span className="ml-1.5 font-mono text-foreground">—</span>
-            )}
-            {stats.models.scoring.length > 1 ? (
-              <span className="ml-1 text-muted-foreground">
-                +{stats.models.scoring.length - 1}
-              </span>
-            ) : null}
-          </Badge>
-          <Badge variant="secondary" className="font-normal">
-            <span className="text-muted-foreground">
-              {t("Translation", "Dịch")}
-            </span>
-            {stats.models.translation[0] ? (
-              <a
-                href={anyrouterModelUrl(stats.models.translation[0])}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-1.5 font-mono text-foreground underline-offset-2 hover:text-accent hover:underline"
-                title={`Open ${stats.models.translation[0]} on AnyRouter`}
-              >
-                {stats.models.translation[0]}
-              </a>
-            ) : (
-              <span className="ml-1.5 font-mono text-foreground">—</span>
-            )}
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            {t("via", "qua")}{" "}
-            <a
-              href="https://anyrouter.dev/?ref=aidr.today"
-              target="_blank"
-              rel="noopener"
-              className="font-medium text-accent underline underline-offset-2 hover:no-underline"
-            >
-              AnyRouter
-            </a>
-          </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ModelChip label="score" models={stats.models.scoring} />
+          <ModelChip label="translate" models={stats.models.translation} />
+          <a
+            href="https://anyrouter.dev/?ref=aidr.today"
+            target="_blank"
+            rel="noopener"
+            className="text-[11px] font-medium text-accent underline underline-offset-2 hover:no-underline"
+          >
+            AnyRouter
+          </a>
         </div>
       </header>
 
-      <section className="mb-8">
-        <SectionLabel>{t("Overview", "Tổng quan")}</SectionLabel>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatTile
-            icon={Newspaper}
-            label={t("Stories", "Bài viết")}
-            value={String(stats.totals.items)}
-          />
-          <StatTile
-            icon={Coins}
-            label={t("Tokens burned", "Token đã dùng")}
-            value={formatTokens(stats.tokens.total)}
-            sublabel={t(
-              `${stats.tokens.avgPerItem} avg/item`,
-              `${stats.tokens.avgPerItem} TB/bài`
-            )}
-          />
-          <StatTile
-            icon={Play}
-            label={t("Runs today", "Lần chạy hôm nay")}
-            value={String(stats.runsToday)}
-          />
-          <StatTile
-            icon={Users}
-            label={t("Subscribers", "Người đăng ký")}
-            value={String(stats.totals.subscribers)}
-          />
-        </div>
-      </section>
+      <Tabs defaultValue="overview">
+        <TabsList className="mb-4 h-auto min-h-9 w-full flex-wrap justify-start gap-0.5">
+          <TabsTrigger value="overview" className="px-2.5 text-xs">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="content" className="px-2.5 text-xs">
+            Content
+          </TabsTrigger>
+          <TabsTrigger value="runs" className="px-2.5 text-xs">
+            Runs
+          </TabsTrigger>
+          <TabsTrigger value="sources" className="px-2.5 text-xs">
+            Sources
+          </TabsTrigger>
+          <TabsTrigger value="llm" className="px-2.5 text-xs">
+            LLM
+          </TabsTrigger>
+          {admin.isAdmin ? (
+            <TabsTrigger value="admin" className="px-2.5 text-xs">
+              Admin
+            </TabsTrigger>
+          ) : null}
+        </TabsList>
 
-      <section className="mb-8">
-        <SectionLabel>{t("Pipeline & LLM", "Pipeline & LLM")}</SectionLabel>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <ChartCard
-            title={t("Last run", "Lần chạy gần nhất")}
-            subtitle={
-              stats.lastRun?.started_at
-                ? new Date(stats.lastRun.started_at * 1000).toLocaleString(
-                    "en-US"
-                  )
-                : t("No runs recorded", "Chưa ghi nhận lần chạy nào")
-            }
-            action={
-              stats.lastRun ? (
-                <Badge
-                  variant={stats.lastRun.error ? "destructive" : "secondary"}
-                  className={
-                    stats.lastRun.error
-                      ? ""
-                      : "border-transparent bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
-                  }
-                >
-                  {stats.lastRun.error
-                    ? t("Failed", "Thất bại")
-                    : t("Healthy", "Ổn định")}
-                </Badge>
-              ) : null
-            }
-          >
-            {stats.lastRun ? (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                <span className="text-muted-foreground">
-                  {t("fetched", "lấy về")}{" "}
-                  <span className="font-mono tabular-nums text-foreground">
-                    {stats.lastRun.items_fetched ?? 0}
+        <TabsContent value="overview" className="mt-0 space-y-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatTile
+              icon={Newspaper}
+              label="Stories"
+              value={String(stats.totals.items)}
+            />
+            <StatTile
+              icon={Coins}
+              label="Tokens"
+              value={formatTokens(stats.tokens.total)}
+              sublabel={`${stats.tokens.avgPerItem} avg/item`}
+            />
+            <StatTile
+              icon={Play}
+              label="Runs today"
+              value={String(stats.runsToday)}
+            />
+            <StatTile
+              icon={Users}
+              label="Subscribers"
+              value={String(stats.totals.subscribers)}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ChartCard
+              title="Last run"
+              subtitle={
+                stats.lastRun?.started_at
+                  ? new Date(stats.lastRun.started_at * 1000).toLocaleString(
+                      "en-US"
+                    )
+                  : "No runs recorded"
+              }
+              action={
+                stats.lastRun ? (
+                  <Badge
+                    variant={stats.lastRun.error ? "destructive" : "secondary"}
+                    className={
+                      stats.lastRun.error
+                        ? ""
+                        : "border-transparent bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
+                    }
+                  >
+                    {stats.lastRun.error ? "Failed" : "Healthy"}
+                  </Badge>
+                ) : null
+              }
+            >
+              {stats.lastRun ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">
+                    fetched{" "}
+                    <span className="font-mono tabular-nums text-foreground">
+                      {stats.lastRun.items_fetched ?? 0}
+                    </span>
                   </span>
-                </span>
-                <Separator
-                  orientation="vertical"
-                  className="hidden h-4 sm:block"
-                />
-                <span className="text-muted-foreground">
-                  {t("new", "mới")}{" "}
-                  <span className="font-mono tabular-nums text-foreground">
-                    {stats.lastRun.items_new ?? 0}
+                  <Separator
+                    orientation="vertical"
+                    className="hidden h-4 sm:block"
+                  />
+                  <span className="text-muted-foreground">
+                    new{" "}
+                    <span className="font-mono tabular-nums text-foreground">
+                      {stats.lastRun.items_new ?? 0}
+                    </span>
                   </span>
-                </span>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {t("No data yet.", "Chưa có dữ liệu.")}
-              </p>
-            )}
-          </ChartCard>
-
-          <ChartCard
-            title={t("Items per day", "Bài viết theo ngày")}
-            subtitle={t(
-              "Published stories, last 14 days",
-              "Bài đã đăng, 14 ngày gần nhất"
-            )}
-          >
-            <ItemsAreaChart
-              data={stats.itemsPerDay}
-              emptyLabel={t("No data yet.", "Chưa có dữ liệu.")}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title={t("Tokens per day", "Token theo ngày")}
-            subtitle={t(
-              "LLM tokens spent, last 14 days",
-              "Token LLM đã dùng, 14 ngày gần nhất"
-            )}
-          >
-            <TokensLineChart
-              data={stats.tokens.perDay}
-              emptyLabel={t("No token data yet.", "Chưa có dữ liệu token.")}
-              formatValue={formatTokens}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title="LLM calls"
-            subtitle="Calls, failures, and token burn by task (14 days)"
-          >
-            <LlmSection
-              data={stats.llmCallsPerDay}
-              formatTokens={formatTokens}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title="Ranking"
-            subtitle="How stories are scored for the feed"
-            className="md:col-span-2"
-          >
-            <RankingExplainer models={stats.models} />
-          </ChartCard>
-        </div>
-      </section>
-
-      <section className="mb-8">
-        <SectionLabel>
-          {t("Content breakdown", "Phân tích nội dung")}
-        </SectionLabel>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <ChartCard
-            title={t("Category share", "Tỷ trọng chuyên mục")}
-            subtitle={t(
-              "Story share of the top categories",
-              "Tỷ lệ bài viết theo chuyên mục hàng đầu"
-            )}
-          >
-            <CategoryDonut
-              data={stats.itemsByCategory}
-              emptyLabel={t("No data yet.", "Chưa có dữ liệu.")}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title={t("Items by status", "Bài viết theo trạng thái")}
-            subtitle={t(
-              "Pipeline outcome per story",
-              "Kết quả xử lý theo từng bài"
-            )}
-          >
-            <BarList
-              data={stats.itemsByStatus.map((s) => ({
-                ...s,
-                name: statusLabel(s.name, lang),
-              }))}
-              emptyLabel={t("No data yet.", "Chưa có dữ liệu.")}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title={t("Items by source", "Bài viết theo nguồn")}
-            subtitle={t(
-              "Top 10 sources by story count",
-              "10 nguồn nhiều bài nhất"
-            )}
-          >
-            <BarList
-              data={stats.itemsBySource}
-              emptyLabel={t("No data yet.", "Chưa có dữ liệu.")}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title={t("Content", "Nội dung")}
-            subtitle={t(
-              "Translations, digests, sources",
-              "Bản dịch, bản tóm tắt, nguồn"
-            )}
-          >
-            <dl className="divide-y divide-border">
-              {(
-                [
-                  [t("Translations", "Bản dịch"), stats.totals.translations],
-                  [
-                    t("AI;DR digests", "Bản tóm tắt"),
-                    stats.totals.tldrSnapshots,
-                  ],
-                  [
-                    t("Latest digest date", "Ngày tóm tắt gần nhất"),
-                    stats.latestTldrDate ?? "—",
-                  ],
-                  [
-                    t("Configured sources", "Nguồn cấu hình"),
-                    stats.totals.sources,
-                  ],
-                  [
-                    t("Key-source citations", "Trích dẫn nguồn phụ"),
-                    stats.totals.itemSourcesRows,
-                  ],
-                ] as const
-              ).map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between gap-4 py-2 first:pt-0 last:pb-0"
-                >
-                  <dt className="text-sm text-muted-foreground">{label}</dt>
-                  <dd className="font-mono text-sm tabular-nums text-foreground">
-                    {value}
-                  </dd>
                 </div>
-              ))}
-            </dl>
-          </ChartCard>
+              ) : (
+                <p className="text-sm text-muted-foreground">No data yet.</p>
+              )}
+            </ChartCard>
+            <ChartCard title="Items per day" subtitle="Published, last 14 days">
+              <ItemsAreaChart
+                data={stats.itemsPerDay}
+                emptyLabel="No data yet."
+              />
+            </ChartCard>
+            <ChartCard
+              title="Tokens per day"
+              subtitle="LLM spend, last 14 days"
+              className="md:col-span-2"
+            >
+              <TokensLineChart
+                data={stats.tokens.perDay}
+                emptyLabel="No token data yet."
+                formatValue={formatTokens}
+              />
+            </ChartCard>
+          </div>
+        </TabsContent>
 
+        <TabsContent value="content" className="mt-0">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ChartCard title="Category share" subtitle="Top categories">
+              <CategoryDonut
+                data={stats.itemsByCategory}
+                emptyLabel="No data yet."
+              />
+            </ChartCard>
+            <ChartCard title="By status" subtitle="Pipeline outcome">
+              <BarList
+                data={stats.itemsByStatus.map((s) => ({
+                  ...s,
+                  name: statusLabel(s.name, lang),
+                }))}
+                emptyLabel="No data yet."
+              />
+            </ChartCard>
+            <ChartCard title="By source" subtitle="Top 10 story counts">
+              <BarList data={stats.itemsBySource} emptyLabel="No data yet." />
+            </ChartCard>
+            <ChartCard
+              title="Catalog"
+              subtitle="Translations, digests, sources"
+            >
+              <dl className="divide-y divide-border text-sm">
+                {(
+                  [
+                    ["Translations", stats.totals.translations],
+                    ["AI;DR digests", stats.totals.tldrSnapshots],
+                    ["Latest digest", stats.latestTldrDate ?? "—"],
+                    ["Configured sources", stats.totals.sources],
+                    ["Key-source citations", stats.totals.itemSourcesRows],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between gap-4 py-1.5 first:pt-0 last:pb-0"
+                  >
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="font-mono tabular-nums text-foreground">
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </ChartCard>
+            <ChartCard
+              title="By category"
+              subtitle="Top 10"
+              className="md:col-span-2"
+            >
+              <BarList
+                data={stats.itemsByCategory.map((c) => ({
+                  ...c,
+                  name: categoryLabel(c.name, lang),
+                }))}
+                emptyLabel="No data yet."
+              />
+            </ChartCard>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="runs" className="mt-0">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ChartCard title="Run status" subtitle="Oldest to newest">
+              <RunStatusStrip runs={stats.runs} emptyLabel="No runs yet." />
+            </ChartCard>
+            <ChartCard title="Duration" subtitle="Seconds per run">
+              <RunDurationBars runs={stats.runs} emptyLabel="No data yet." />
+            </ChartCard>
+            <ChartCard
+              title="Outcomes"
+              subtitle="New / merged / rejected"
+              className="md:col-span-2"
+            >
+              <RunOutcomeBars runs={stats.runs} emptyLabel="No data yet." />
+            </ChartCard>
+            <ChartCard
+              title="Recent runs"
+              subtitle="Last 30 workflow runs"
+              className="md:col-span-2"
+            >
+              <RunsList runs={stats.runs} lang={lang} />
+            </ChartCard>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sources" className="mt-0 space-y-3">
           <ChartCard
-            title={t("Items by category", "Bài viết theo chuyên mục")}
-            subtitle={t("Top 10 categories", "10 chuyên mục nhiều nhất")}
-            className="md:col-span-2"
+            title="Ingest sources"
+            subtitle="Adapters the hourly pipeline fetches. Last run is items pulled in the latest workflow stats."
           >
-            <BarList
-              data={stats.itemsByCategory.map((c) => ({
-                ...c,
-                name: categoryLabel(c.name, lang),
-              }))}
-              emptyLabel={t("No data yet.", "Chưa có dữ liệu.")}
+            <SourcesIngestTable
+              sources={stats.ingestSources ?? []}
+              lastRunBySource={lastRunBySource}
             />
           </ChartCard>
-        </div>
-      </section>
-
-      <section className="mb-8">
-        <SectionLabel>{t("Run history", "Lịch sử lần chạy")}</SectionLabel>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <ChartCard
-            title={t("Run status", "Trạng thái lần chạy")}
-            subtitle={t(
-              "Outcome per run, oldest to newest",
-              "Kết quả từng lần chạy, cũ đến mới"
-            )}
-          >
-            <RunStatusStrip
-              runs={stats.runs}
-              emptyLabel={t("No runs yet.", "Chưa có lần chạy nào.")}
-            />
+          <ChartCard title="Volume" subtitle="Stored items by source_id">
+            <BarList data={stats.itemsBySource} emptyLabel="No data yet." />
           </ChartCard>
+        </TabsContent>
 
-          <ChartCard
-            title={t("Run duration", "Thời lượng lần chạy")}
-            subtitle={t(
-              "Seconds per run, oldest to newest",
-              "Số giây mỗi lần chạy, cũ đến mới"
-            )}
-          >
-            <RunDurationBars
-              runs={stats.runs}
-              emptyLabel={t("No data yet.", "Chưa có dữ liệu.")}
-            />
-          </ChartCard>
+        <TabsContent value="llm" className="mt-0">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ChartCard
+              title="LLM calls"
+              subtitle="Calls, failures, tokens (14 days)"
+            >
+              <LlmSection
+                data={stats.llmCallsPerDay}
+                formatTokens={formatTokens}
+              />
+            </ChartCard>
+            <ChartCard
+              title="Ranking"
+              subtitle="How stories are scored"
+              className="md:col-span-2"
+            >
+              <RankingExplainer models={stats.models} />
+            </ChartCard>
+          </div>
+        </TabsContent>
 
-          <ChartCard
-            title={t("Run outcomes", "Kết quả lần chạy")}
-            subtitle={t(
-              "New / merged / rejected items per run",
-              "Bài mới / gộp / loại theo lần chạy"
-            )}
-            className="md:col-span-2"
-          >
-            <RunOutcomeBars
-              runs={stats.runs}
-              emptyLabel={t("No data yet.", "Chưa có dữ liệu.")}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title={t("Recent runs", "Các lần chạy gần đây")}
-            subtitle={t(
-              "Last 30 ingestion workflow runs",
-              "30 lần chạy pipeline gần nhất"
-            )}
-            className="md:col-span-2"
-          >
-            <RunsList runs={stats.runs} lang={lang} />
-          </ChartCard>
-        </div>
-      </section>
-
-      {admin.isAdmin ? (
-        <section>
-          <SectionLabel>Admin</SectionLabel>
-          <AdminPanel admin={admin} />
-        </section>
-      ) : null}
+        {admin.isAdmin ? (
+          <TabsContent value="admin" className="mt-0">
+            <AdminPanel admin={admin} />
+          </TabsContent>
+        ) : null}
+      </Tabs>
     </div>
   );
 }

@@ -68,6 +68,22 @@ export interface RunLlmSummary {
  * non-object value, or a missing column (pre-migration-0012 DB) all fall
  * back to null rather than throwing, so the runs table just renders the
  * plain columns for that row. */
+function parseSourceConfig(raw: unknown): Record<string, unknown> {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  if (typeof raw !== "string" || !raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
 function parseRunStats(raw: unknown): WorkflowRunStats | null {
   if (typeof raw !== "string" || !raw) return null;
   try {
@@ -99,6 +115,15 @@ export interface NamedCount {
   count: number;
 }
 
+export interface IngestSourceRow {
+  id: string;
+  name: string;
+  type: string;
+  enabled: boolean;
+  itemCount: number;
+  config: Record<string, unknown>;
+}
+
 export interface SystemStats {
   totals: {
     items: number;
@@ -123,6 +148,7 @@ export interface SystemStats {
   latestTldrDate: string | null;
   models: ModelChains;
   llmCallsPerDay: LlmDayTaskCount[];
+  ingestSources: IngestSourceRow[];
 }
 
 /** Legacy workflow_runs rows may store started_at/finished_at in ms. */
@@ -417,6 +443,7 @@ export async function loadSystemStats(
     perDay,
     runs,
     latestTldr,
+    sourceRows,
   ] = await Promise.all([
     db.prepare("SELECT COUNT(*) AS c FROM items").first<{ c: number }>(),
     db.prepare("SELECT COUNT(*) AS c FROM translations").first<{ c: number }>(),
@@ -456,6 +483,23 @@ export async function loadSystemStats(
       .prepare("SELECT date FROM tldr_snapshots ORDER BY date DESC LIMIT 1")
       .first<{
         date: string;
+      }>(),
+    db
+      .prepare(
+        `SELECT s.id, s.name, s.type, s.config, s.enabled,
+                COUNT(i.id) AS item_count
+         FROM sources s
+         LEFT JOIN items i ON i.source_id = s.id
+         GROUP BY s.id
+         ORDER BY s.enabled DESC, item_count DESC, s.name`
+      )
+      .all<{
+        id: string;
+        name: string;
+        type: string;
+        config: string | null;
+        enabled: number;
+        item_count: number;
       }>(),
   ]);
 
@@ -545,5 +589,13 @@ export async function loadSystemStats(
     latestTldrDate: latestTldr?.date ?? null,
     models: getModelChains(env),
     llmCallsPerDay,
+    ingestSources: (sourceRows.results ?? []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      type: row.type,
+      enabled: Number(row.enabled) !== 0,
+      itemCount: Number(row.item_count) || 0,
+      config: parseSourceConfig(row.config),
+    })),
   };
 }
