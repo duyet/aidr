@@ -48,9 +48,7 @@ function SubmissionsList({
       const token = await getToken();
       fetchMySubmissions({
         data: { user_id: userId },
-        ...(token
-          ? { headers: { Authorization: `Bearer ${token}` } }
-          : {}),
+        ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
       })
         .then((res) => {
           if (!cancelled) setItems(res);
@@ -154,9 +152,7 @@ function SubmitForm({
           const token = await getToken();
           await submitStory({
             data: { url, title, note, user_id: userId, user_name: userName },
-            ...(token
-              ? { headers: { Authorization: `Bearer ${token}` } }
-              : {}),
+            ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
           });
           setStatus("sent");
         } catch (err) {

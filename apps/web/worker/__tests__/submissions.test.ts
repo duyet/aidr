@@ -6,9 +6,9 @@ import {
   MAX_TITLE_LENGTH,
   MIN_TITLE_LENGTH,
   parseSubmissionVerdict,
+  resolveSubmissionTitle,
   reviewPendingSubmissions,
   submitStory,
-  resolveSubmissionTitle,
   validateSubmissionTitle,
   validateSubmissionUrl,
 } from "../submissions.js";

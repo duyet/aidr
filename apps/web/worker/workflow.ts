@@ -52,6 +52,7 @@ import {
 } from "./run-stats.js";
 import { fetchStoryDetailByUrl } from "./sources/huggingnews.js";
 import { adapters } from "./sources/registry.js";
+import { ensureVendorBlogSources } from "./sources/seed.js";
 import type { FetchedItem, FetchedItemSource } from "./sources/types.js";
 import { reviewPendingSubmissions } from "./submissions.js";
 import { sendDailyTldr } from "./subscribe/send.js";
@@ -258,6 +259,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
 
     try {
       const sources = await safeStep(step, "load-sources", [], async () => {
+        await ensureVendorBlogSources(this.env.DB);
         const { results } = await this.env.DB.prepare(
           "SELECT id, type, config, enabled FROM sources WHERE enabled = 1"
         ).all<SourceRow>();
