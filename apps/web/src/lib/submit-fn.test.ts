@@ -17,6 +17,15 @@ describe("validateSubmission", () => {
     expect(validateSubmission(input())).toEqual({
       url: "https://example.com/post",
       title: "A valid story title",
+      via: "web",
+    });
+  });
+
+  it("accepts an agent-originated payload on the same path", () => {
+    expect(validateSubmission(input({ via: "agent" }))).toEqual({
+      url: "https://example.com/post",
+      title: "A valid story title",
+      via: "agent",
     });
   });
 

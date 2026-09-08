@@ -589,6 +589,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                   comments: row.item.comments ?? 0,
                   publishedAt: row.item.publishedAt * 1000,
                   now,
+                  sourceCount: row.item.sources?.length ?? 0,
                 });
                 return {
                   i,
@@ -753,6 +754,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             // rankScore's decay formula operates in milliseconds.
             publishedAt: effectiveItem.publishedAt * 1000,
             now,
+            sourceCount: effectiveItem.sources?.length ?? 0,
           });
           const llmTokens = (score?.tokens ?? 0) + (translation?.tokens ?? 0);
 

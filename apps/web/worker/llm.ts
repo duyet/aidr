@@ -617,6 +617,34 @@ export interface ScoreInput {
   source: string;
 }
 
+/** Scoring rubric sent to the model. Quality must prefer named, source-backed writing over thin duplicates. */
+export function scoreBatchPrompt(batch: ScoreInput[]): string {
+  return `You are scoring AI/tech news items for relevance, importance, and source-backed quality.
+For each item, return relevance (0-1, is this genuinely AI/tech news), importance (0-10), quality (0-10), category (one of: ${CATEGORIES.join(", ")}), and tags — 3 to 6 topic labels per item.
+
+Quality rubric (this is what ranking multiplies — be strict):
+- 8–10: primary reporting or original research with a named publisher/host, concrete facts, not a rewrite of another headline.
+- 5–7: competent secondary coverage that still cites a real source.
+- 1–4: thin duplicate, unnamed blog, SEO recap, or press-release fluff with no independent sourcing. Prefer the source-backed item when two headlines cover the same event.
+- Penalize items whose \`source\` is a discussion aggregator with no article body; they can still be relevant but quality stays modest unless the linked piece is primary.
+
+Topic label rules (this feeds a dynamic topic taxonomy, so consistency matters):
+- lowercase-kebab-case only, e.g. "open-source", "multi-agent" — never spaces, underscores, or camelCase.
+- Mix specific entities (anthropic, openai, nvidia, qwen) with themes (multi-agent, open-source, fine-tuning, regulation).
+- Always use the same canonical spelling for the same concept: singular not plural ("llm" not "llms"), one standard hyphenation not synonyms ("open-source" not "opensource" or "oss"), no near-duplicates. If a topic could be phrased multiple ways, pick the most common/obvious industry term.
+- Prefer these canonical tags whenever they apply (reuse EXACTLY as written, don't invent variants):
+  entities: openai, anthropic, google, meta, xai, x, microsoft, amazon, nvidia, huggingface, deepseek, mistral, alibaba, apple, perplexity, together, fireworks, stability, claude, fable, opus, sonnet, haiku, gpt, gemini, grok, kimi, llama, qwen, gemma, phi, glm, olmo, codex, claude-code, cursor, composer, copilot, windsurf, openrouter, ollama, vllm, elon-musk, sam-altman
+  themes: llm, agent, multi-agent, agentic, harness, inference, open-source, fine-tuning, benchmark, reasoning, safety, regulation, funding, chips, gpu, infra, robotics, coding, rag, mcp, multimodal, diffusion, vision-language
+  benchmarks: swe-bench, swe-bench-pro, livecodebench, arc-agi, arc-agi-2, mmlu, aider-polyglot
+  Only invent a new tag when nothing above (or an equally obvious industry term) fits — new model/product names are encouraged when they recur.
+- 3-6 tags per item — enough to be genuinely browsable/filterable, not a single catch-all tag.
+
+Items:
+${JSON.stringify(batch.map(({ i, title, summary, source }) => ({ i, title, summary, source })))}
+
+Respond with strict JSON only: {"results":[{"i":0,"relevance":0.9,"importance":7,"quality":8,"category":"Models","tags":["anthropic","claude","multi-agent","open-source"]}]}`;
+}
+
 export interface ScoreResult {
   i: number;
   relevance: number;
@@ -722,24 +750,7 @@ export async function scoreItems(
     batches,
     SCORE_CONCURRENCY,
     async (batch) => {
-      const prompt = `You are scoring AI/tech news items for relevance and importance.
-For each item, return relevance (0-1, is this genuinely AI/tech news), importance (0-10), quality (0-10, writing/source quality), category (one of: ${CATEGORIES.join(", ")}), and tags — 3 to 6 topic labels per item.
-
-Topic label rules (this feeds a dynamic topic taxonomy, so consistency matters):
-- lowercase-kebab-case only, e.g. "open-source", "multi-agent" — never spaces, underscores, or camelCase.
-- Mix specific entities (anthropic, openai, nvidia, qwen) with themes (multi-agent, open-source, fine-tuning, regulation).
-- Always use the same canonical spelling for the same concept: singular not plural ("llm" not "llms"), one standard hyphenation not synonyms ("open-source" not "opensource" or "oss"), no near-duplicates. If a topic could be phrased multiple ways, pick the most common/obvious industry term.
-- Prefer these canonical tags whenever they apply (reuse EXACTLY as written, don't invent variants):
-  entities: openai, anthropic, google, meta, xai, x, microsoft, amazon, nvidia, huggingface, deepseek, mistral, alibaba, apple, perplexity, together, fireworks, stability, claude, fable, opus, sonnet, haiku, gpt, gemini, grok, kimi, llama, qwen, gemma, phi, glm, olmo, codex, claude-code, cursor, composer, copilot, windsurf, openrouter, ollama, vllm, elon-musk, sam-altman
-  themes: llm, agent, multi-agent, agentic, harness, inference, open-source, fine-tuning, benchmark, reasoning, safety, regulation, funding, chips, gpu, infra, robotics, coding, rag, mcp, multimodal, diffusion, vision-language
-  benchmarks: swe-bench, swe-bench-pro, livecodebench, arc-agi, arc-agi-2, mmlu, aider-polyglot
-  Only invent a new tag when nothing above (or an equally obvious industry term) fits — new model/product names are encouraged when they recur.
-- 3-6 tags per item — enough to be genuinely browsable/filterable, not a single catch-all tag.
-
-Items:
-${JSON.stringify(batch.map(({ i, title, summary, source }) => ({ i, title, summary, source })))}
-
-Respond with strict JSON only: {"results":[{"i":0,"relevance":0.9,"importance":7,"quality":8,"category":"Models","tags":["anthropic","claude","multi-agent","open-source"]}]}`;
+      const prompt = scoreBatchPrompt(batch);
 
       try {
         const { content: raw, tokens } = await callAnyrouter(

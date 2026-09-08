@@ -94,6 +94,16 @@ async function main() {
       /Sitemap:\s*https:\/\/aidr\.today\/sitemap\.xml/i.test(body),
       "robots.txt missing Sitemap line"
     );
+    assert(/LLMs-txt:\s*https:\/\/aidr\.today\/llms\.txt/i.test(body));
+  });
+
+  await check("GET /llms.txt guides agents at aidr.today", async () => {
+    const res = await fetch(`${base}/llms.txt`);
+    assert(res.status === 200, `expected 200, got ${res.status}`);
+    const body = await res.text();
+    assert(body.includes("aidr.today"), "llms.txt missing origin");
+    assert(body.includes("/api/public"), "llms.txt missing public digest");
+    assert(body.includes("via"), "llms.txt missing agent submit via");
   });
 
   // 2. Feed API shape + story-by-id regression checks.
@@ -231,31 +241,15 @@ async function main() {
     });
   }
 
-  await check("GET /extension mentions load unpacked", async () => {
+  await check("GET /extension has Chrome and Telegram tabs", async () => {
     const res = await fetch(`${base}/extension`);
     assert(res.status === 200, `expected 200, got ${res.status}`);
     const body = await res.text();
-    assert(body.includes("Load unpacked"), "guide missing Load unpacked");
-    assert(body.includes("/aidr.zip"), "guide missing zip href");
+    assert(body.includes("Tab mới Chrome"), "missing Chrome tab");
+    assert(body.includes("Telegram Channel"), "missing Telegram tab");
     assert(
-      body.includes('href="chrome://extensions"'),
-      "chrome://extensions must be an href"
-    );
-    assert(
-      body.includes("/media/chrome-load-unpacked-zip-error.png"),
-      "guide missing zip-load error screenshot"
-    );
-    assert(
-      body.includes("Unzip first") || body.includes("Giải nén trước"),
-      "guide missing unzip-first warning"
-    );
-    assert(
-      body.includes("manifest.json"),
-      "guide missing manifest.json folder"
-    );
-    assert(
-      !body.includes("chrome.google.com/webstore"),
-      "must not invent a Web Store listing"
+      body.includes("chromewebstore.google.com"),
+      "Chrome tab must keep Web Store install"
     );
   });
 

@@ -17,6 +17,12 @@ describe("validateSuggestion", () => {
     expect(validateSuggestion(input({ suggestion: "  hi  " }))).toBe("hi");
   });
 
+  it("accepts an agent-originated suggestion payload", () => {
+    expect(
+      validateSuggestion(input({ via: "agent", suggestion: "Clearer dek." }))
+    ).toBe("Clearer dek.");
+  });
+
   it("rejects empty/whitespace-only suggestions", () => {
     expect(() => validateSuggestion(input({ suggestion: "   " }))).toThrow();
   });

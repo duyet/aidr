@@ -8,6 +8,7 @@ import { handleSubscribeCors } from "../worker/subscribe/cors";
 import type { Env } from "../worker/types";
 import { NewsIngestWorkflow } from "../worker/workflow";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
+import { llmsTxtResponse } from "./lib/llms-txt";
 import {
   buildSitemapXml,
   loadSitemapUrls,
@@ -45,6 +46,9 @@ export default {
     }
     if (path === "/robots.txt") {
       return robotsResponse();
+    }
+    if (path === "/llms.txt") {
+      return llmsTxtResponse();
     }
     if (path === "/sitemap.xml") {
       try {

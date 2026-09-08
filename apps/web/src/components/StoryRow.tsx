@@ -9,6 +9,7 @@ import {
 } from "../lib/article-headings";
 import { localizedTitle } from "../lib/display-title";
 import { categoryLabel, timeAgo } from "../lib/lang";
+import { publisherHost } from "../lib/publisher-host";
 import { storyPath } from "../lib/slug";
 import { type TopicColor, topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
@@ -172,10 +173,15 @@ export function StoryRow({
               e.stopPropagation();
               track("story_open", { item_id: item.id });
             }}
-            className="text-muted-foreground hover:text-foreground"
+            className="ml-1 text-xs text-muted-foreground hover:text-foreground"
             aria-label="Open story link"
           >
             <ExternalLink className="inline h-3.5 w-3.5 align-baseline" />
+            {publisherHost(item.url) && (
+              <span className="ml-1 hidden sm:inline">
+                {publisherHost(item.url)}
+              </span>
+            )}
           </a>
         </span>
         <span className="hidden shrink-0 text-sm text-muted-foreground sm:block">

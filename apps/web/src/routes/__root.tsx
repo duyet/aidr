@@ -37,11 +37,11 @@ import {
   savePrefs,
 } from "../lib/prefs";
 import {
-  CHROME_WEB_STORE_URL,
-  DUYET_BLOG_URL,
   DUYET_URL,
+  EXTENSION_PATH,
   GITHUB_URL,
   SITE_DESCRIPTION,
+  SITE_SLOGAN,
   SITE_TITLE,
   SITE_URL,
   TELEGRAM_URL,
@@ -131,7 +131,7 @@ function NewsFooter() {
               AI;DR
             </p>
             <p className="max-w-xs text-sm leading-relaxed">
-              AI news ranked and translated hourly.
+              {SITE_SLOGAN}
             </p>
           </div>
           <nav
@@ -157,17 +157,15 @@ function NewsFooter() {
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">
                 Connect
               </p>
-              <a
-                href={CHROME_WEB_STORE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "chrome_web_store" })}
+              <Link
+                to={EXTENSION_PATH}
+                onClick={() => track("nav_click", { to: EXTENSION_PATH })}
                 className={`block ${linkClass}`}
-                title="Chrome Web Store"
-                aria-label="Chrome Web Store"
+                title="Chrome new tab"
+                aria-label="Chrome new tab"
               >
                 Chrome extension
-              </a>
+              </Link>
               <a
                 href={TELEGRAM_URL}
                 target="_blank"
@@ -199,15 +197,6 @@ function NewsFooter() {
                 className={`block ${linkClass}`}
               >
                 duyet.net
-              </a>
-              <a
-                href={DUYET_BLOG_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "blog.duyet.net" })}
-                className={`block ${linkClass}`}
-              >
-                Blog
               </a>
             </div>
           </nav>

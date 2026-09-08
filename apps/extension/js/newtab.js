@@ -636,6 +636,17 @@ function renderStoryRow(settings, story, index, hot) {
   ext.rel = "noopener noreferrer";
   ext.setAttribute("aria-label", "Open story link");
   ext.append(externalLinkIcon());
+  try {
+    const host = new URL(ext.href).hostname.replace(/^www\./, "");
+    if (host) {
+      const hostEl = document.createElement("span");
+      hostEl.className = "story-host";
+      hostEl.textContent = host;
+      ext.append(document.createTextNode(" "), hostEl);
+    }
+  } catch {
+    /* ignore */
+  }
   titleWrap.append(document.createTextNode(" "), ext);
 
   const cat = document.createElement("span");
@@ -676,6 +687,40 @@ function renderStoryRow(settings, story, index, hot) {
         tags.append(chip);
       }
       detail.append(tags);
+    }
+    const sources = story.sources || [];
+    if (sources.length) {
+      const list = document.createElement("div");
+      list.className = "story-sources";
+      for (const source of sources) {
+        const row = document.createElement("div");
+        row.className = "story-source";
+        const kind = document.createElement("span");
+        kind.className = "story-source-kind";
+        kind.textContent = (source.kind || "source").toUpperCase();
+        row.append(kind);
+        if (source.author) {
+          const author = document.createElement("span");
+          author.className = "story-source-author";
+          author.textContent = source.author;
+          row.append(author);
+        }
+        if (source.url) {
+          const a = document.createElement("a");
+          a.className = "story-source-host";
+          a.href = safeHttpUrl(source.url, NEWS_SITE) || NEWS_SITE;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          try {
+            a.textContent = new URL(a.href).hostname.replace(/^www\./, "");
+          } catch {
+            a.textContent = source.url;
+          }
+          row.append(a);
+        }
+        list.append(row);
+      }
+      detail.append(list);
     }
     head.addEventListener("click", (event) => {
       if (event.target.closest("a")) return;

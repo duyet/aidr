@@ -15,6 +15,7 @@ export interface SuggestionInput {
   suggestion: string;
   user_id?: string;
   user_name?: string;
+  via?: "web" | "agent";
 }
 
 const MAX_LEN = 2000;
@@ -30,6 +31,9 @@ export function validateSuggestion(input: SuggestionInput): string {
   }
   if (!input.item_id) throw new Error("Missing item_id");
   if (!input.user_id) throw new Error("Sign in required");
+  if (input.via !== undefined && input.via !== "web" && input.via !== "agent") {
+    throw new Error("Invalid via");
+  }
   return suggestion;
 }
 

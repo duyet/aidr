@@ -9,6 +9,7 @@ import {
   _parseJsonForTests as parseJson,
   sanitizeScoreResults,
   sanitizeTranslateResults,
+  scoreBatchPrompt,
   scoreItems,
   setLlmCallLogger,
   translateItems,
@@ -24,6 +25,18 @@ const env: Env = {
   ANYROUTER_API_KEY: "test-key",
   NEWS_ADMIN_TOKEN: "test-token",
 };
+
+describe("scoreBatchPrompt", () => {
+  it("tells the model to prefer source-backed quality over thin duplicates", () => {
+    const prompt = scoreBatchPrompt([
+      { i: 0, title: "Claude 4 ships", source: "theverge.com" },
+    ]);
+    expect(prompt).toContain("source-backed");
+    expect(prompt).toContain("thin duplicate");
+    expect(prompt).toContain("theverge.com");
+    expect(prompt).toContain("Quality rubric");
+  });
+});
 
 describe("parseJson", () => {
   it("parses plain JSON", () => {

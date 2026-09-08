@@ -2,12 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireClerkUser } from "./clerk-auth-fn";
 
+export type SubmitVia = "web" | "agent";
+
 export interface SubmissionInput {
   url: string;
   title: string;
   note: string;
   user_id?: string;
   user_name?: string;
+  /** Local coding agents set `agent`; humans omit or send `web`. */
+  via?: SubmitVia;
 }
 
 export interface Submission {
@@ -31,9 +35,11 @@ export function validateSubmission(input: {
   url: string;
   title: string;
   user_id?: string;
+  via?: SubmitVia;
 }): {
   url: string;
   title: string;
+  via: SubmitVia;
 } {
   const title = input.title.trim();
   if (title.length < TITLE_MIN || title.length > TITLE_MAX) {
@@ -49,7 +55,8 @@ export function validateSubmission(input: {
     throw new Error("URL must be http(s)");
   }
   if (!input.user_id) throw new Error("Sign in required");
-  return { url: url.toString(), title };
+  const via = input.via === "agent" ? "agent" : "web";
+  return { url: url.toString(), title, via };
 }
 
 export const submitStory = createServerFn({ method: "POST" })

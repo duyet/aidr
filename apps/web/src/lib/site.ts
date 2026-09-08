@@ -2,8 +2,9 @@
 export const SITE_URL = "https://aidr.today";
 export const SITE_NAME = "AI News";
 export const SITE_TITLE = "AI News | aidr.today";
+export const SITE_SLOGAN = "AI news ranked and summary";
 export const SITE_DESCRIPTION =
-  "AI news aggregated from many sources, rated and ranked by LLMs, translated to Vietnamese. Updated hourly.";
+  "AI news ranked and summary. Aggregated from many sources, rated by LLMs.";
 
 /** Homepage Open Graph / Twitter share image (1200×630, editorial brand). */
 export const SITE_OG_IMAGE_PATH = "/og.jpg";
@@ -18,10 +19,12 @@ export const TELEGRAM_HANDLE = "@aihomnay";
 /** Public GitHub repository. */
 export const GITHUB_URL = "https://github.com/duyet/aidr";
 
-/** Author site / blog (footer + menu backlinks). */
+/** Author site (footer More). */
 export const DUYET_URL = "https://duyet.net";
-export const DUYET_BLOG_URL = "https://blog.duyet.net";
 
-/** Chrome Web Store URL for the extension. */
+/** Chrome Web Store listing — install CTA on /extension only, never header chrome. */
 export const CHROME_WEB_STORE_URL =
   "https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg";
+/** In-app destination for the Chrome icon. */
+export const EXTENSION_PATH = "/extension";
+export const EXTENSION_URL = `${SITE_URL}${EXTENSION_PATH}`;

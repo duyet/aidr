@@ -48,7 +48,7 @@ export function buildSitemapXml(urls: SitemapUrl[]): string {
 }
 
 export function robotsTxt(): string {
-  return `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`;
+  return `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\nLLMs-txt: ${SITE_URL}/llms.txt\n`;
 }
 
 export function staticSitemapUrls(): SitemapUrl[] {

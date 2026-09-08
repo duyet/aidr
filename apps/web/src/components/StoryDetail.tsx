@@ -3,6 +3,7 @@ import { Clock, Cpu, ExternalLink, Link2 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { categoryLabel } from "../lib/lang";
+import { publisherHost } from "../lib/publisher-host";
 import { detectSuggestField, type SuggestField } from "../lib/selection-field";
 import { storyPath } from "../lib/slug";
 import { sanitizeImageUrl } from "../lib/tldr-images";
@@ -56,6 +57,9 @@ function SourceRow({
           aria-label="Open source"
         >
           <ExternalLink className="inline h-3.5 w-3.5" />
+          {publisherHost(source.url) && (
+            <span className="ml-1">{publisherHost(source.url)}</span>
+          )}
         </a>
       )}
     </div>

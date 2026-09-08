@@ -1,7 +1,8 @@
 import { AuthButtons, Button, ErrorBoundary, Separator } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
+import { RiChromeLine } from "@remixicon/react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Plus, Send, Store } from "lucide-react";
+import { Menu, Plus, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -11,12 +12,7 @@ import {
   WIDE_HEADER_ROW_CLASS,
 } from "../lib/chrome";
 import { useClerkModule } from "../lib/clerk-user";
-import {
-  CHROME_WEB_STORE_URL,
-  DUYET_BLOG_URL,
-  DUYET_URL,
-  TELEGRAM_URL,
-} from "../lib/site";
+import { DUYET_URL, EXTENSION_PATH, TELEGRAM_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
 import { LangToggle } from "./LangToggle";
 import { PrefsPanel } from "./PrefsPanel";
@@ -34,11 +30,9 @@ const SITE_LINKS = [
   { href: "/subscribe", label: "Subscribe", internal: true },
   { href: "/extension", label: "Extension", internal: true },
   { href: TELEGRAM_URL, label: "Telegram", internal: false },
-  { href: CHROME_WEB_STORE_URL, label: "Chrome Web Store", internal: false },
   { href: "/data", label: "Data", internal: true },
   { href: "/submit", label: "Submit", internal: true },
   { href: DUYET_URL, label: "duyet.net", internal: false },
-  { href: DUYET_BLOG_URL, label: "Blog", internal: false },
 ] as const;
 
 function Brand({ lang }: { lang: Lang }) {
@@ -236,16 +230,14 @@ export function HeaderBar({
             className="hidden sm:inline-flex"
             asChild
           >
-            <a
-              href={CHROME_WEB_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => track("nav_click", { to: "chrome_web_store" })}
-              aria-label="Chrome Web Store"
-              title="Chrome Web Store"
+            <Link
+              to={EXTENSION_PATH}
+              onClick={() => track("nav_click", { to: EXTENSION_PATH })}
+              aria-label="Chrome new tab"
+              title="Chrome new tab"
             >
-              <Store aria-hidden />
-            </a>
+              <RiChromeLine aria-hidden />
+            </Link>
           </Button>
           <Button variant="default" size="sm" asChild>
             <Link
@@ -281,6 +273,20 @@ export function HeaderBar({
         <div className="min-w-0 flex-1">
           <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={PHONE_TAP_TARGET_CLASS}
+          asChild
+        >
+          <Link
+            to={EXTENSION_PATH}
+            onClick={() => track("nav_click", { to: EXTENSION_PATH })}
+            aria-label="Chrome new tab"
+          >
+            <RiChromeLine aria-hidden />
+          </Link>
+        </Button>
         <Button
           variant="ghost"
           size="icon"

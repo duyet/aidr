@@ -76,6 +76,7 @@ longer the previous id) and `runsToday > 0`. Do not invent a
               × (0.6 + 0.4·quality/10)      # quality modulates ±40%
               × exp(−ageHours/36)           # freshness decay
               × (1 + log10(1 + points + 0.5·comments))  # engagement, log-damped
+              × (1 + 0.06·min(sourceCount, 6))          # independent sources
    ```
 
 8. **Write** — D1 upserts (`worker/d1-bind.ts` guards every bind). D1 is the

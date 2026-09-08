@@ -6,8 +6,11 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("aidr install guide copy", () => {
-  it("promotes Chrome Web Store as the only official install method", () => {
+  it("presents Chrome and Telegram as equal tabs; CWS only inside Chrome tab", () => {
     const src = readFileSync(join(here, "../routes/extension.tsx"), "utf8");
+    expect(src).toContain("Tab mới Chrome");
+    expect(src).toContain("Telegram Channel");
+    expect(src).toContain("TabsTrigger");
     expect(src).toContain("CHROME_WEB_STORE_URL");
     expect(src).toContain("Chrome Web Store");
     expect(src).not.toContain("aidr.zip");

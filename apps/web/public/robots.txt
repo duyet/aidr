@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://aidr.today/sitemap.xml
+LLMs-txt: https://aidr.today/llms.txt

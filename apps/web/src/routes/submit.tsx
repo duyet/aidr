@@ -258,7 +258,10 @@ function SubmitPage() {
         {lang === "vi" ? "Gửi bài viết" : "Submit a story"}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {lang === "vi" ? "Chia sẻ một bài viết." : "Share an AI story."}
+        {lang === "vi" ? "Chia sẻ một bài viết." : "Share an AI story."}{" "}
+        {lang === "vi"
+          ? "Local agent: xem /llms.txt — cùng form, set via=agent, cần đăng nhập."
+          : "Local agents: see /llms.txt — same form, set via=agent, sign-in required."}
       </p>
 
       <div className="mt-6 max-w-lg">

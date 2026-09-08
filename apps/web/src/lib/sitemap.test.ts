@@ -57,6 +57,8 @@ describe("staticSitemapUrls", () => {
     expect(locs).toContain(`${SITE_URL}/extension`);
     expect(locs).toContain(`${SITE_URL}/privacy`);
     expect(locs).toContain(`${SITE_URL}/terms`);
+    expect(locs).toContain(`${SITE_URL}/submit`);
+    expect(locs).toContain(`${SITE_URL}/extension`);
   });
 });
 
@@ -78,6 +80,7 @@ describe("robotsTxt", () => {
     expect(text).toMatch(/^User-agent: \*$/m);
     expect(text).toContain("Allow: /");
     expect(text).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`);
+    expect(text).toContain(`LLMs-txt: ${SITE_URL}/llms.txt`);
   });
 
   it("matches the committed public/robots.txt origin file", () => {

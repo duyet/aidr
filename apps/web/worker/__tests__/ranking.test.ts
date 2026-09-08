@@ -84,6 +84,20 @@ describe("TRENDING_MIN_RANK reachability", () => {
     expect(score).toBeGreaterThanOrEqual(25);
   });
 
+  it("prefers multi-source items over a thin single-source duplicate of equal quality", () => {
+    const base = {
+      importance: 7,
+      quality: 6,
+      points: 20,
+      comments: 4,
+      publishedAt: NOW,
+      now: NOW,
+    };
+    const thin = rankScore({ ...base, sourceCount: 1 });
+    const backed = rankScore({ ...base, sourceCount: 4 });
+    expect(backed).toBeGreaterThan(thin);
+  });
+
   it("stays below 25 for a typical live-max story (~importance 8, modest engagement)", () => {
     const score = rankScore({
       importance: 8,
