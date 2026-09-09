@@ -1,5 +1,5 @@
 /**
- * Port of apps/news/src/lib/highlight.ts — same needles, word-boundary
+ * Port of apps/web/src/lib/highlight.ts — same needles, word-boundary
  * rule, and 3-highlight cap as the news homepage AI;DR.
  */
 

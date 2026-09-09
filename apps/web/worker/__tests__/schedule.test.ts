@@ -4,11 +4,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
-const newsRoot = path.join(dirname, "../..");
-const wrangler = readFileSync(path.join(newsRoot, "wrangler.toml"), "utf-8");
-const algorithm = readFileSync(path.join(newsRoot, "ALGORITHM.md"), "utf-8");
+const webRoot = path.join(dirname, "../..");
+const wrangler = readFileSync(path.join(webRoot, "wrangler.toml"), "utf-8");
+const algorithm = readFileSync(path.join(webRoot, "ALGORITHM.md"), "utf-8");
 const ingestYml = readFileSync(
-  path.join(newsRoot, "../../.github/workflows/ingest.yml"),
+  path.join(webRoot, "../../.github/workflows/ingest.yml"),
   "utf-8"
 );
 
@@ -48,7 +48,10 @@ describe("free-plan hourly ingest", () => {
     expect(ingestYml).toContain("secrets.NEWS_ADMIN_TOKEN");
     expect(algorithm).toMatch(/GitHub Actions/);
     expect(algorithm).toMatch(/Durable Object/);
+    expect(algorithm).toMatch(/0\.12·min\(sourceCount, 8\)/);
+    expect(algorithm).toMatch(/Merge \(LLM \+ title similarity\)/);
     expect(algorithm).not.toMatch(/Hourly instances come from `schedules`/);
+    expect(algorithm).not.toContain("apps/news");
   });
 });
 
@@ -117,7 +120,7 @@ describe("live AnyRouter model chains", () => {
 
 describe("translation upsert", () => {
   const workflow = readFileSync(
-    path.join(newsRoot, "worker/workflow.ts"),
+    path.join(webRoot, "worker/workflow.ts"),
     "utf-8"
   );
 
@@ -133,7 +136,7 @@ describe("translation upsert", () => {
 });
 
 describe("translate batch size", () => {
-  const llm = readFileSync(path.join(newsRoot, "worker/llm.ts"), "utf-8");
+  const llm = readFileSync(path.join(webRoot, "worker/llm.ts"), "utf-8");
 
   it("chunks translateItems by 3 so a 15-item JSON blob cannot eat the hang-cap", () => {
     expect(llm).toMatch(/TRANSLATE_BATCH_SIZE = 3/);
@@ -153,7 +156,7 @@ describe("translate batch size", () => {
 
 describe("backfill-translate checkpoints", () => {
   const workflow = readFileSync(
-    path.join(newsRoot, "worker/workflow.ts"),
+    path.join(webRoot, "worker/workflow.ts"),
     "utf-8"
   );
 
@@ -200,7 +203,7 @@ describe("backfill-translate checkpoints", () => {
 
 describe("create-path workflow_runs persist", () => {
   const ingestSchedule = readFileSync(
-    path.join(newsRoot, "worker/ingest-schedule.ts"),
+    path.join(webRoot, "worker/ingest-schedule.ts"),
     "utf-8"
   );
 

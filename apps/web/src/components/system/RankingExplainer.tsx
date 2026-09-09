@@ -1,5 +1,6 @@
 import { Badge, Separator } from "@aidr/ui";
 import { anyrouterModelUrl } from "../../lib/anyrouter";
+import { GITHUB_ALGORITHM_PATH, GITHUB_ALGORITHM_URL } from "../../lib/site";
 import type { ModelChains } from "../../lib/system-queries";
 
 interface RankingExplainerProps {
@@ -11,7 +12,7 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
   return (
     <div className="space-y-3 text-sm">
       <p className="font-mono text-xs leading-relaxed text-foreground">
-        rankScore = importance × qualityFactor × decay × engagement
+        rankScore = importance × qualityFactor × decay × engagement × sources
       </p>
       <ul className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
         <li>
@@ -26,16 +27,21 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
           <span className="font-medium text-foreground">engagement</span> = 1 +
           log10(1 + points + 0.5 × comments)
         </li>
+        <li>
+          <span className="font-medium text-foreground">sources</span> = 1 +
+          0.12 × min(sourceCount, 8)
+        </li>
       </ul>
       <p className="text-xs text-muted-foreground">
-        Full pipeline details:{" "}
+        Same-story outlets merge first; corroboration lifts rank and trending.
+        Full pipeline:{" "}
         <a
-          href="https://github.com/duyet/monorepo/blob/master/apps/news/ALGORITHM.md"
+          href={GITHUB_ALGORITHM_URL}
           className="font-medium text-accent underline underline-offset-2 hover:no-underline"
           target="_blank"
           rel="noopener noreferrer"
         >
-          apps/news/ALGORITHM.md
+          {GITHUB_ALGORITHM_PATH}
         </a>
       </p>
 

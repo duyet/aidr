@@ -131,8 +131,8 @@ longer the previous id) and `runsToday > 0`. Do not invent a
     - *Trending*: an individual post only when the algo flags a story as
       exceptional (`rank_score ≥ 25` and `llm_importance ≥ 8`), capped at
       3/day with a 2h minimum gap, one per run. 25 is reachable for a
-      10×10, fresh, well-engaged story (the rank formula is unchanged);
-      typical live max is ~17. Digest is the intended daily Telegram post.
+      10×10, fresh, well-engaged, multi-source story; typical single-source
+      live max is lower. Digest is the intended daily Telegram post.
     Skip reasons are structured (`digest`: no_snapshot / already_sent /
     before_hour; `trending`: below_min_rank / budget_zero / none_unposted)
     and `console.info`'d plus stored on `workflow_runs.stats.notifyReason`.

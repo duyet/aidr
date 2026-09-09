@@ -2,7 +2,14 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CHROME_WEB_STORE_URL, EXTENSION_PATH, SITE_SLOGAN } from "./site";
+import {
+  CHROME_WEB_STORE_URL,
+  EXTENSION_PATH,
+  GITHUB_ALGORITHM_PATH,
+  GITHUB_ALGORITHM_URL,
+  GITHUB_URL,
+  SITE_SLOGAN,
+} from "./site";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -31,5 +38,29 @@ describe("site chrome copy", () => {
     expect(header).not.toContain("CHROME_WEB_STORE_URL");
     expect(header).not.toContain(CHROME_WEB_STORE_URL);
     expect(header).not.toContain('label: "Blog"');
+  });
+
+  it("points GitHub and ALGORITHM at duyet/aidr apps/web, not the old monorepo news app", () => {
+    expect(GITHUB_URL).toBe("https://github.com/duyet/aidr");
+    expect(GITHUB_ALGORITHM_PATH).toBe("apps/web/ALGORITHM.md");
+    expect(GITHUB_ALGORITHM_URL).toBe(
+      "https://github.com/duyet/aidr/blob/master/apps/web/ALGORITHM.md"
+    );
+    const files = [
+      join(here, "../routes/about.tsx"),
+      join(here, "../routes/mcp.tsx"),
+      join(here, "../components/system/RankingExplainer.tsx"),
+    ];
+    for (const file of files) {
+      const src = readFileSync(file, "utf8");
+      expect(src).not.toContain("github.com/duyet/monorepo");
+      expect(src).not.toContain("apps/news");
+    }
+    const explainer = readFileSync(
+      join(here, "../components/system/RankingExplainer.tsx"),
+      "utf8"
+    );
+    expect(explainer).toContain("GITHUB_ALGORITHM_URL");
+    expect(explainer).toContain("min(sourceCount, 8)");
   });
 });

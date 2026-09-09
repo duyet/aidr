@@ -3,6 +3,7 @@ import { BookOpen, ExternalLink, Plug, Terminal } from "lucide-react";
 import type { ReactNode } from "react";
 import { useLang } from "../lib/lang-context";
 import { pageHead } from "../lib/seo";
+import { GITHUB_URL } from "../lib/site";
 
 export const Route = createFileRoute("/mcp")({
   head: () =>
@@ -222,7 +223,7 @@ function McpPage() {
       <p className="mt-6 text-sm text-muted-foreground">
         {t("Full API docs on", "Tài liệu API đầy đủ tại")}{" "}
         <a
-          href="https://github.com/duyet/monorepo/tree/master/apps/news"
+          href={GITHUB_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="text-accent underline underline-offset-2 hover:no-underline"

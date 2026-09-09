@@ -18,6 +18,9 @@ export const TELEGRAM_HANDLE = "@aihomnay";
 
 /** Public GitHub repository. */
 export const GITHUB_URL = "https://github.com/duyet/aidr";
+/** Canonical ranking/ingest pipeline doc (not the old monorepo apps/news path). */
+export const GITHUB_ALGORITHM_URL = `${GITHUB_URL}/blob/master/apps/web/ALGORITHM.md`;
+export const GITHUB_ALGORITHM_PATH = "apps/web/ALGORITHM.md";
 
 /** Author site (footer More). */
 export const DUYET_URL = "https://duyet.net";
