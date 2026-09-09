@@ -21,3 +21,20 @@ test("new tab matches site chrome copy and typefaces", () => {
   assert.match(js, /story-host/);
   assert.match(js, /story-sources/);
 });
+
+test("header Chrome mark is RiChromeLine, not the pie-chart path", () => {
+  assert.match(html, /id="chrome-tab-link"/);
+  assert.match(html, /M10\.3645 19\.8327L12\.2941 16\.4905/);
+  assert.doesNotMatch(
+    html,
+    /M12 2a10 10 0 1 0 10 10A10 10 0 1 0 12 2/
+  );
+});
+
+test("new tab does not show Add section restore chip", () => {
+  assert.doesNotMatch(html, /id="add-section"/);
+  assert.doesNotMatch(html, /add-section-host/);
+  assert.doesNotMatch(js, /renderAddSection/);
+  assert.doesNotMatch(js, /add-section-btn/);
+  assert.doesNotMatch(css, /\.add-section-btn/);
+});

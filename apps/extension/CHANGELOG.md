@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.12](https://github.com/duyet/aidr/compare/aidr-v0.1.11...aidr-v0.1.12) (2026-09-09)
+
+### 🐛 Bug Fixes
+
+* **extension:** header Chrome control uses RiChromeLine (same mark as aidr.today HeaderBar)
+* **extension:** drop oversized "Add section" restore chip from new tab (restore sections in Settings)
+
+### 💄 Styles
+
+* **extension:** header Telegram / Chrome / Submit icons share 1rem size
+
+
 ## [0.1.11](https://github.com/duyet/aidr/compare/aidr-v0.1.10...aidr-v0.1.11) (2026-09-09)
 
 ### ✨ Features
