@@ -248,6 +248,7 @@ function applyChrome(settings) {
     submitBtn.title = label;
     submitBtn.setAttribute("aria-label", label);
   }
+  applySubmitVisibility();
   $("trending-label").textContent = t(settings, "trending");
   for (const id of ["open-settings", "open-settings-compact"]) {
     const node = $(id);
@@ -855,6 +856,30 @@ function applySectionOrder(settings) {
   }
 }
 
+function visibleSection(id) {
+  const node = $(id);
+  return Boolean(node && !node.hidden);
+}
+
+function applyBriefLayout() {
+  const page = $("page-content");
+  if (!page) return;
+  const tldrOnly =
+    visibleSection("section-tldr") &&
+    !visibleSection("section-categories") &&
+    !visibleSection("section-trending") &&
+    !visibleSection("section-days");
+  page.classList.toggle("is-brief", tldrOnly);
+}
+
+function applySubmitVisibility() {
+  const signedIn = document.documentElement.dataset.signedIn === "1";
+  for (const id of ["submit-btn", "phone-submit-link"]) {
+    const node = $(id);
+    if (node) node.hidden = !signedIn;
+  }
+}
+
 function render(settings, digest) {
   applyChrome(settings);
   renderChips(settings, digest);
@@ -862,6 +887,7 @@ function render(settings, digest) {
   renderStories(settings, digest);
   applySectionOrder(settings);
   renderFooter(settings, digest);
+  applyBriefLayout();
 }
 
 function bindPrefs(getSettings, onChange) {

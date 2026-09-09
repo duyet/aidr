@@ -38,3 +38,23 @@ test("new tab does not show Add section restore chip", () => {
   assert.doesNotMatch(js, /add-section-btn/);
   assert.doesNotMatch(css, /\.add-section-btn/);
 });
+
+test("header action row shares one vertical center and 1rem glyphs", () => {
+  assert.match(css, /\.actions\s*\{[^}]*align-items:\s*center/);
+  assert.match(css, /\.actions\s*\{[^}]*height:\s*2rem/);
+  assert.match(css, /\.icon-btn svg[\s\S]*width:\s*1rem/);
+  assert.match(css, /\.icon-btn svg[\s\S]*display:\s*block/);
+});
+
+test("Submit plus is hidden until signed in", () => {
+  assert.match(html, /id="submit-btn"[^>]*hidden/);
+  assert.match(js, /applySubmitVisibility/);
+  assert.match(js, /dataset\.signedIn/);
+  assert.match(css, /\.submit-btn\[hidden\]/);
+});
+
+test("brief layout centers AI;DR when it is the only section", () => {
+  assert.match(css, /\.page\.is-brief/);
+  assert.match(js, /applyBriefLayout/);
+  assert.match(js, /classList\.toggle\("is-brief"/);
+});
