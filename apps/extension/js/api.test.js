@@ -5,6 +5,7 @@ import {
   feedUrl,
   fetchDigest,
   fetchStory,
+  digestPaintKey,
   hydrateDigest,
   normalizeDigest,
   publicUrl,
@@ -135,17 +136,17 @@ test("fetchDigest prefers /api/public then caches", async () => {
   assert.equal(first.source, "public");
   assert.equal(first.stale, false);
   assert.equal(first.digest.stories[0].title, "T");
-  assert.deepEqual(calls, [
-    "https://aidr.today/api/public",
-    "https://aidr.today/api/feed?days=3",
-  ]);
+  assert.equal(new URL(calls[0]).pathname, "/api/public");
+  assert.equal(new URL(calls[0]).searchParams.get("utm_content"), "hydrate");
+  assert.equal(new URL(calls[1]).pathname, "/api/feed");
+  assert.equal(new URL(calls[1]).searchParams.get("days"), "3");
 });
 
 test("fetchDigest falls back to /api/feed", async () => {
   const calls = [];
   globalThis.fetch = async (url) => {
     calls.push(String(url));
-    if (String(url).endsWith("/api/public")) {
+    if (new URL(url).pathname.endsWith("/api/public")) {
       throw new Error("public down");
     }
     return {
@@ -161,10 +162,8 @@ test("fetchDigest falls back to /api/feed", async () => {
   const result = await fetchDigest("https://aidr.today");
   assert.equal(result.source, "feed");
   assert.equal(result.digest.stories[0].id, "f");
-  assert.deepEqual(calls, [
-    "https://aidr.today/api/public",
-    "https://aidr.today/api/feed",
-  ]);
+  assert.equal(new URL(calls[0]).pathname, "/api/public");
+  assert.equal(new URL(calls[1]).pathname, "/api/feed");
 });
 
 test("fetchDigest falls back to last-good cache", async () => {
@@ -233,6 +232,38 @@ test("hydrateDigest paints cache before the live fetch", async () => {
   const live = await pending;
   assert.equal(live.digest.stories[0].id, "fresh");
   assert.deepEqual(order, ["cache:cached", "live:fresh"]);
+});
+
+test("hydrateDigest live fetch is tagged cache-hit vs miss", async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(String(url));
+    throw new Error("offline");
+  };
+  await writeCachedDigest(
+    {
+      tldr: null,
+      stories: [{ id: "cached", url: "https://c", title: "Cached" }],
+      categories: [],
+      trending: [],
+      updatedAt: 1,
+    },
+    "https://aidr.today"
+  );
+  const result = await hydrateDigest("https://aidr.today");
+  assert.equal(result.source, "cache");
+  assert.equal(new URL(calls[0]).searchParams.get("utm_content"), "hydrate_live");
+});
+
+test("digestPaintKey is stable for the same digest", () => {
+  const a = {
+    updatedAt: 9,
+    lastFetchedAt: 8,
+    tldr: { date: "2026-09-09" },
+    stories: [{ id: "x" }, { id: "y" }],
+  };
+  assert.equal(digestPaintKey(a), digestPaintKey({ ...a, stories: [...a.stories] }));
+  assert.notEqual(digestPaintKey(a), digestPaintKey({ ...a, updatedAt: 10 }));
 });
 
 test("fetchDigest does not reuse another API base cache", async () => {

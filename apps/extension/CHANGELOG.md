@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.11](https://github.com/duyet/aidr/compare/aidr-v0.1.10...aidr-v0.1.11) (2026-09-09)
+
+### ✨ Features
+
+* **extension:** digest-first layout tighter (AI;DR padding, chips, footer hidden by default)
+* **extension:** cache-first hydrateDigest paints last digest then live-refresh; skip no-op re-paint
+* **extension:** campaign-tagged digest fetches (cache hit vs miss) plus prefs/lang track pings on existing `/api/extension`
+
+
 ## [0.1.10](https://github.com/duyet/aidr/compare/aidr-v0.1.9...aidr-v0.1.10) (2026-09-08)
 
 ### ✨ Features

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "description": "__MSG_extDescription__",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "default_locale": "en",
   "homepage_url": "https://aidr.today/extension",
   "minimum_chrome_version": "116",

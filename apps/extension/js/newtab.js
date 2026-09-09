@@ -1,7 +1,8 @@
-import { hydrateDigest } from "./api.js";
+import { digestPaintKey, hydrateDigest } from "./api.js";
 import { highlightTitle, tagsForHighlight } from "./highlight.js";
 import { t, uiLang } from "./i18n.js";
 import { tagSiteLinks, withExtRef } from "./ref.js";
+import { track } from "./track.js";
 import {
   applyAppearance,
   loadSettings,
@@ -895,6 +896,11 @@ function renderAddSection(settings) {
           className: "add-section-btn",
           onClick: async () => {
             const sections = { ...settings.sections, [hidden[0]]: true };
+            track(
+              "prefs_change",
+              { pref: hidden[0], to: "on" },
+              settings.apiBase
+            );
             await pushSettings({ ...settings, sections });
           },
         },
@@ -931,6 +937,11 @@ function renderAddSection(settings) {
             className: "add-section-item",
             onClick: async () => {
               const sections = { ...settings.sections, [key]: true };
+              track(
+                "prefs_change",
+                { pref: key, to: "on" },
+                settings.apiBase
+              );
               await pushSettings({ ...settings, sections });
             },
           },
@@ -1049,12 +1060,14 @@ async function main() {
   };
 
   const applyLive = (result) => {
+    const nextKey = digestPaintKey(result.digest);
+    const same = nextKey && nextKey === digestPaintKey(digest);
     digest = result.digest;
     setStatus(t(settings, "cached"), result.stale);
     if (!digest.tldr && digest.stories.length === 0) {
       setStatus(t(settings, "empty"), true);
     }
-    render(settings, digest);
+    if (!same) render(settings, digest);
   };
 
   const refreshLive = () => {
@@ -1092,6 +1105,7 @@ async function main() {
   bindLangToggle(
     () => settings,
     async (next) => {
+      track("lang_change", { to: next.language }, settings.apiBase);
       settings = await saveSettings(next);
       applyAppearance(settings);
       render(settings, digest);
