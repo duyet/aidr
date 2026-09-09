@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.13](https://github.com/duyet/aidr/compare/aidr-v0.1.12...aidr-v0.1.13) (2026-09-09)
+
+### 💄 Styles
+
+* **extension:** vertically center AI;DR when it is the only new-tab section, with more relaxed spacing
+* **extension:** header action row shares one vertical center (Chrome, Telegram, Submit, Aa, EN|VI, Sign in)
+
+### ✨ Features
+
+* **extension:** hide header Submit (+) unless the session is signed in
+
+
 ## [0.1.12](https://github.com/duyet/aidr/compare/aidr-v0.1.11...aidr-v0.1.12) (2026-09-09)
 
 ### 🐛 Bug Fixes
