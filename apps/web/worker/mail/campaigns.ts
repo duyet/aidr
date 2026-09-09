@@ -1,6 +1,6 @@
 import type { Env } from "../types.js";
 import { type ContentPick, type WrapResult, wrapWithAi } from "./compose.js";
-import { renderNoteEmail, unsubscribeUrl } from "./render.js";
+import { renderNoteEmail, settingsUrl, unsubscribeUrl } from "./render.js";
 import { ensureMailSchema } from "./schema.js";
 import { notesFrom, sendSubscriberEmail } from "./send.js";
 import { BUILTIN_TEMPLATES, templateById } from "./templates.js";
@@ -225,6 +225,7 @@ export function previewCampaign(
     bodyMd: campaign.body_md,
     cta,
     unsubscribeUrl: unsubscribeUrl(token),
+    settingsUrl: settingsUrl(token),
   });
 }
 

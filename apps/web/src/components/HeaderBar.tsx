@@ -28,7 +28,7 @@ const SITE_LINKS = [
   { href: "/about", label: "About", internal: true },
   { href: "/mcp", label: "MCP", internal: true },
   { href: "/subscribe", label: "Subscribe", internal: true },
-  { href: "/extension", label: "Extension", internal: true },
+  { href: "/extension", label: "Get AI;DR", internal: true },
   { href: TELEGRAM_URL, label: "Telegram", internal: false },
   { href: "/data", label: "Data", internal: true },
   { href: "/submit", label: "Submit", internal: true },
@@ -233,8 +233,8 @@ export function HeaderBar({
             <Link
               to={EXTENSION_PATH}
               onClick={() => track("nav_click", { to: EXTENSION_PATH })}
-              aria-label="Chrome new tab"
-              title="Chrome new tab"
+              aria-label="Get AI;DR"
+              title="Get AI;DR"
             >
               <RiChromeLine aria-hidden />
             </Link>
@@ -282,7 +282,7 @@ export function HeaderBar({
           <Link
             to={EXTENSION_PATH}
             onClick={() => track("nav_click", { to: EXTENSION_PATH })}
-            aria-label="Chrome new tab"
+            aria-label="Get AI;DR"
           >
             <RiChromeLine aria-hidden />
           </Link>

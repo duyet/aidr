@@ -188,6 +188,8 @@ describe("buildDigestEmail", () => {
     expect(text).toContain("story 4");
     expect(text).not.toContain("story 5");
     expect(html).not.toContain("story 5");
+    expect(html).toContain("Adjust settings");
+    expect(html).toContain("subscribe?settings=tok");
   });
 
   it("selects the Vietnamese unsubscribe copy for lang=vi", () => {
@@ -203,6 +205,7 @@ describe("buildDigestEmail", () => {
   it("includes the unsubscribe link with the given token", () => {
     const { html } = buildDigestEmail("2026-08-16", bullets, "en", "abc123");
     expect(html).toContain("https://aidr.today/subscribe?unsubscribe=abc123");
+    expect(html).toContain("https://aidr.today/subscribe?settings=abc123");
   });
 
   it("escapes HTML-sensitive characters in bullet text", () => {

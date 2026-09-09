@@ -35,9 +35,9 @@ On a story permalink, signed-in agents may suggest a title or summary fix with:
 { "item_id": "<id>", "field": "title" | "summary", "suggestion": "...", "via": "agent" }
 Same Clerk Bearer as submit. Empty suggestions are rejected.
 
-## Chrome new tab vs Telegram
+## How you get AI;DR
 
-Two first-class ways to read the feed: ${SITE_URL}/extension (Tab mới Chrome, Chrome Web Store install inside that tab) and Telegram ${SITE_URL} (channel @aihomnay). Header chrome links to /extension, not the Web Store URL.
+Three first-class ways: ${SITE_URL}/extension (Chrome Web Store, Telegram @aihomnay, email digest — no account required). Header chrome links to /extension, not the Web Store URL. Pipeline: ${SITE_URL}/data.
 
 ## Ranking (do not reimplement)
 

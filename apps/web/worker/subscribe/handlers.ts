@@ -41,9 +41,23 @@ export function isSubscribeError(value: unknown): value is SubscribeError {
   );
 }
 
-export const SUBSCRIBE_SOURCES = ["blog", "news", "home"] as const;
+export const SUBSCRIBE_SOURCES = ["blog", "news", "home", "extension"] as const;
 export type SubscribeSource = (typeof SUBSCRIBE_SOURCES)[number];
+export const DIGEST_SIZES = [3, 5, 10] as const;
+export type DigestSize = (typeof DIGEST_SIZES)[number];
 const SUBSCRIBE_IP_LIMIT = 8;
+
+export function normalizeDigestSize(value: unknown): DigestSize {
+  const n = typeof value === "string" ? Number(value) : value;
+  return DIGEST_SIZES.includes(n as DigestSize) ? (n as DigestSize) : 5;
+}
+
+export function maskEmail(email: string): string {
+  const [user, domain] = email.split("@");
+  if (!user || !domain) return "***";
+  const head = user.slice(0, 1);
+  return `${head}***@${domain}`;
+}
 
 async function hmacUnsubscribeToken(
   email: string,
@@ -93,7 +107,8 @@ export async function subscribe(
   lang: unknown,
   timezone?: unknown,
   source?: unknown,
-  ip?: string | null
+  ip?: string | null,
+  digestSize?: unknown
 ): Promise<{ ok: true } | SubscribeError> {
   if (!isValidEmail(email)) {
     return { error: "invalid email", status: 400 };
@@ -103,6 +118,7 @@ export async function subscribe(
     ? timezone
     : DEFAULT_TIMEZONE;
   const normalizedSource = normalizeSource(source);
+  const size = normalizeDigestSize(digestSize);
   const token = await deriveUnsubscribeToken(env, email);
   const now = Date.now();
 
@@ -131,12 +147,13 @@ export async function subscribe(
   }
 
   await env.DB.prepare(
-    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token)
-     VALUES (?, ?, ?, ?, 1, ?)
+    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size)
+     VALUES (?, ?, ?, ?, 1, ?, ?)
      ON CONFLICT(email) DO UPDATE SET
-       lang = excluded.lang, timezone = excluded.timezone, confirmed = 1`
+       lang = excluded.lang, timezone = excluded.timezone, confirmed = 1,
+       digest_size = excluded.digest_size`
   )
-    .bind(email, normalizedLang, normalizedTimezone, now, token)
+    .bind(email, normalizedLang, normalizedTimezone, now, token, size)
     .run();
 
   await env.DB.prepare(
@@ -173,6 +190,75 @@ export async function unsubscribe(
   }
   await env.DB.prepare("DELETE FROM subscribers WHERE unsubscribe_token = ?")
     .bind(token)
+    .run();
+  return { ok: true };
+}
+
+export interface SubscriberPrefs {
+  email_masked: string;
+  lang: "en" | "vi";
+  timezone: string;
+  digest_size: DigestSize;
+}
+
+export async function getPrefsByToken(
+  env: Env,
+  token: unknown
+): Promise<SubscriberPrefs | SubscribeError> {
+  if (typeof token !== "string" || token.length === 0) {
+    return { error: "token is required", status: 400 };
+  }
+  await ensureMailSchema(env.DB);
+  const row = await env.DB.prepare(
+    "SELECT email, lang, timezone, digest_size FROM subscribers WHERE unsubscribe_token = ?"
+  )
+    .bind(token)
+    .first<{
+      email: string;
+      lang: string;
+      timezone: string | null;
+      digest_size: number | null;
+    }>();
+  if (!row) return { error: "not found", status: 404 };
+  return {
+    email_masked: maskEmail(row.email),
+    lang: row.lang === "en" ? "en" : "vi",
+    timezone: isValidTimezone(row.timezone) ? row.timezone : DEFAULT_TIMEZONE,
+    digest_size: normalizeDigestSize(row.digest_size),
+  };
+}
+
+export async function updatePrefsByToken(
+  env: Env,
+  token: unknown,
+  prefs: { lang?: unknown; timezone?: unknown; digest_size?: unknown }
+): Promise<{ ok: true } | SubscribeError> {
+  if (typeof token !== "string" || token.length === 0) {
+    return { error: "token is required", status: 400 };
+  }
+  await ensureMailSchema(env.DB);
+  const existing = await env.DB.prepare(
+    "SELECT email FROM subscribers WHERE unsubscribe_token = ?"
+  )
+    .bind(token)
+    .first<{ email: string }>();
+  if (!existing) return { error: "not found", status: 404 };
+
+  const lang = prefs.lang === "en" ? "en" : prefs.lang === "vi" ? "vi" : null;
+  const timezone = isValidTimezone(prefs.timezone) ? prefs.timezone : null;
+  const size =
+    prefs.digest_size === undefined
+      ? null
+      : normalizeDigestSize(prefs.digest_size);
+
+  await env.DB.prepare(
+    `UPDATE subscribers SET
+       lang = COALESCE(?, lang),
+       timezone = COALESCE(?, timezone),
+       digest_size = COALESCE(?, digest_size)
+     WHERE unsubscribe_token = ?`
+  )
+    .bind(lang, timezone, size, token)
     .run();
   return { ok: true };
 }
