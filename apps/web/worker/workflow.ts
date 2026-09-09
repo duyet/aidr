@@ -563,6 +563,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               const newForCluster = newRows.map((row, i) => ({
                 i,
                 title: row.item.title,
+                url: row.item.url,
+                source: row.source.id,
               }));
               const existingForCluster = (recentForClustering ?? []).map(
                 (r) => ({

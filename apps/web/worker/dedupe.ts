@@ -69,11 +69,14 @@ async function callAnyrouterForClustering(
 export interface ClusterNewInput {
   i: number;
   title: string;
+  url?: string;
+  source?: string;
 }
 
 export interface ClusterExistingInput {
   id: string;
   title: string;
+  url?: string;
 }
 
 export interface Cluster {
@@ -81,8 +84,10 @@ export interface Cluster {
   existing: string[];
 }
 
-const TITLE_DUP_JACCARD = 0.55;
+const TITLE_DUP_JACCARD = 0.5;
 const TITLE_DUP_MIN_SHARED = 3;
+const TITLE_DUP_STRONG_OVERLAP = 0.72;
+const TITLE_DUP_STRONG_MIN_SHARED = 2;
 
 const TITLE_STOPWORDS = new Set([
   "a",
@@ -172,10 +177,18 @@ export function isTitleNearDuplicate(a: string, b: string): boolean {
   for (const t of ta) {
     if (tb.has(t)) inter++;
   }
-  if (inter < TITLE_DUP_MIN_SHARED) return false;
   const jaccard = inter / (ta.size + tb.size - inter);
   const overlap = inter / Math.min(ta.size, tb.size);
-  return jaccard >= TITLE_DUP_JACCARD || overlap >= TITLE_DUP_JACCARD;
+  if (
+    inter >= TITLE_DUP_MIN_SHARED &&
+    (jaccard >= TITLE_DUP_JACCARD || overlap >= TITLE_DUP_JACCARD)
+  ) {
+    return true;
+  }
+  // HN vs original: shorter headline is almost entirely inside the longer one.
+  return (
+    inter >= TITLE_DUP_STRONG_MIN_SHARED && overlap >= TITLE_DUP_STRONG_OVERLAP
+  );
 }
 
 type UfKey = string;
@@ -329,15 +342,17 @@ export async function clusterSimilar(
 ): Promise<Cluster[]> {
   if (newItems.length === 0) return [];
 
-  const prompt = `You are deduplicating AI/tech news items. Some of the "new" items below may report the exact same underlying story as each other, or as one of the "existing" items (already published in the last 72h). Group only items about the SAME concrete event/story (not just the same general topic).
+  const prompt = `You merge AI/tech news into one story when outlets report the SAME concrete event (same launch, deal, paper, outage, or leak) — even if headlines differ, one is an HN/Lobsters link, or one has an UPDATE: prefix. Independent URLs/sources in a cluster are folded onto one canonical item so corroboration can boost rank and trending.
 
-New items:
+Do NOT group items that only share a topic (two different model launches, two unrelated OpenAI posts).
+
+New items (i, title, url, source):
 ${JSON.stringify(newItems)}
 
-Existing items:
+Existing items last 72h (id, title, url):
 ${JSON.stringify(recentItems)}
 
-Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]} — omit "new" or "existing" if empty for a cluster, and omit clusters entirely (empty array) if nothing matches.`;
+Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]} — omit "new" or "existing" if empty for a cluster, and omit clusters entirely (empty array) if nothing matches. Prefer merging same-event clusters.`;
 
   try {
     const { content, tokens } = await callAnyrouterForClustering(env, prompt);

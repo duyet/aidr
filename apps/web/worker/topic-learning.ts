@@ -555,21 +555,29 @@ export function rankTrendingWithGrowth(
   return picked.slice(0, cap).map(({ tag, count }) => ({ tag, count }));
 }
 
-/**
- * Merge item tags + title-extracted model names into trending counts,
- * keeping the nicest display label per key.
- */
+/** How much a story contributes to a trending chip. Merged multi-source
+ * items count as corroboration, not as a single mention. */
+export function trendingSourceWeight(sourceCount?: number): number {
+  const n = sourceCount ?? 1;
+  return Math.max(1, Math.min(Math.floor(n), 8));
+}
+
 export function collectTrendingCandidates(
-  items: { title: string; tags: string[]; published_at: number }[],
+  items: {
+    title: string;
+    tags: string[];
+    published_at: number;
+    sourceCount?: number;
+  }[],
   sinceEpochSec: number
 ): { counts: Map<string, number>; displayByKey: Map<string, string> } {
   const counts = new Map<string, number>();
   const displayByKey = new Map<string, string>();
 
-  const bump = (display: string) => {
+  const bump = (display: string, weight: number) => {
     const key = trendingKey(display);
     if (!key) return;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
+    counts.set(key, (counts.get(key) ?? 0) + weight);
     const prev = displayByKey.get(key);
     if (
       !prev ||
@@ -583,11 +591,12 @@ export function collectTrendingCandidates(
 
   for (const it of items) {
     if (it.published_at < sinceEpochSec) continue;
+    const weight = trendingSourceWeight(it.sourceCount);
     for (const tag of it.tags) {
       if (LEARNING_THEME_DENYLIST.has(normalizeTopicName(tag))) continue;
-      bump(displayKeywordFromTopic(tag));
+      bump(displayKeywordFromTopic(tag), weight);
     }
-    for (const ent of extractTitleEntities(it.title)) bump(ent);
+    for (const ent of extractTitleEntities(it.title)) bump(ent, weight);
   }
 
   return { counts, displayByKey };

@@ -59,15 +59,17 @@ longer the previous id) and `runsToday > 0`. Do not invent a
    highlight and growth-boosted homepage trending chips
    (`worker/topic-learning.ts`). Homepage trending prefers versioned
    model/product names extracted from headlines (e.g. GPT-6 Astra,
-   Fable 5.1) over generic themes like `llm` / `agent`.
+   Fable 5.1) over generic themes like `llm` / `agent`. Chip weight is
+   source-count (capped at 8) so a merged multi-outlet story outranks a
+   single-source mention of the same name.
 5. **Merge (LLM + title similarity)** — one clustering call compares new
-   items with the last 72h of published titles; a deterministic
-   title-similarity pass (normalized headlines / high token overlap) runs
-   alongside so same-story URLs the model misses or fails to cluster still
-   collapse. Same-story clusters collapse to a canonical item (existing
-   item wins, else highest rank). Losers get status `merged` +
-   `duplicate_of`; their sources and max points/comments fold into the
-   canonical (`worker/dedupe.ts`).
+   items (title, url, source) with the last 72h of published titles; a
+   deterministic title-similarity pass (normalized headlines / high token
+   overlap, including short-headline-inside-long) runs alongside so
+   same-story URLs the model misses still collapse. Same-story clusters
+   collapse to a canonical item (existing item wins, else highest rank).
+   Losers get status `merged` + `duplicate_of`; their sources and max
+   points/comments fold into the canonical (`worker/dedupe.ts`).
 6. **Translate (LLM)** — EN→VI in batches, journalist style (`VI_STYLE` system
    prompt: no parenthetical glosses, no calques, keep technical jargon in
    English, few-shot anchored).
@@ -78,7 +80,7 @@ longer the previous id) and `runsToday > 0`. Do not invent a
               × (0.6 + 0.4·quality/10)      # quality modulates ±40%
               × exp(−ageHours/36)           # freshness decay
               × (1 + log10(1 + points + 0.5·comments))  # engagement, log-damped
-              × (1 + 0.06·min(sourceCount, 6))          # independent sources
+              × (1 + 0.12·min(sourceCount, 8))          # independent sources (corroboration)
    ```
 
 8. **Write** — D1 upserts (`worker/d1-bind.ts` guards every bind). D1 is the
@@ -115,7 +117,8 @@ longer the previous id) and `runsToday > 0`. Do not invent a
     English-only in VI while `title_vi` exists, and persists it so the
     frozen EN copy cannot return. UI shows 8 by default (user preference
     8/12/16).
-11. **Email digest** — top-5 TL;DR to confirmed subscribers, once per day.
+11. **Email digest** — per-subscriber language and digest size (3/5/10
+    stories, default 5) to confirmed subscribers, once per local morning.
 12. **Notify (`worker/notify/`)** — pluggable channel adapters (Telegram
     plus optional JSON/Slack webhook via `NOTIFY_WEBHOOK_URL`),
     deliberately non-spammy. A normalized `AlertEvent` (severity, source,

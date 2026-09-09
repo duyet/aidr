@@ -40,7 +40,7 @@ Do not POST unauthenticated spam.
 
 ## Ranking (do not reimplement)
 
-rank_score = importance × (0.6 + 0.4·quality/10) × exp(−ageHours/36) × (1 + log10(1 + points + 0.5·comments)) × (1 + 0.06·min(sourceCount, 6))
+rank_score = importance × (0.6 + 0.4·quality/10) × exp(−ageHours/36) × (1 + log10(1 + points + 0.5·comments)) × (1 + 0.12·min(sourceCount, 8))
 `;
 
 export const AUTH_MD = `# auth.md

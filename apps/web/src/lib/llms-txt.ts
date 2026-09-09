@@ -41,7 +41,7 @@ Three first-class ways: ${SITE_URL}/extension (Chrome Web Store, Telegram @aihom
 
 ## Ranking (do not reimplement)
 
-rank_score = importance × (0.6 + 0.4·quality/10) × exp(−ageHours/36) × (1 + log10(1 + points + 0.5·comments)) × (1 + 0.06·min(sourceCount, 6))
+rank_score = importance × (0.6 + 0.4·quality/10) × exp(−ageHours/36) × (1 + log10(1 + points + 0.5·comments)) × (1 + 0.12·min(sourceCount, 8))
 
 Quality and independent sources beat thin duplicates. Hide rule: relevance < 0.4 is never shown.
 

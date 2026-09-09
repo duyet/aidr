@@ -50,8 +50,8 @@ export const DIGEST_MAX_BULLETS = 8;
 export const NOTIFY_MAX_ATTEMPTS = 3;
 
 /** Trending bar: rank_score already folds importance × quality ×
- *  freshness × engagement, so a high absolute rank + a high LLM
- *  importance means "big story, breaking now". */
+ *  freshness × engagement × independent sources, so a high absolute rank
+ *  + a high LLM importance means "big story, corroborated, breaking now". */
 export const TRENDING_MIN_RANK = 25;
 export const TRENDING_MIN_IMPORTANCE = 8;
 /** At most this many trending posts per channel per local day. */

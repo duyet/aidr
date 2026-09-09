@@ -8,6 +8,7 @@ import {
   learningDayKey,
   rankTrendingWithGrowth,
   trendingKey,
+  trendingSourceWeight,
 } from "../topic-learning.js";
 
 describe("learningDayKey", () => {
@@ -163,5 +164,38 @@ describe("collectTrendingCandidates", () => {
     expect(counts.get(trendingKey("Fable 5.1"))).toBe(1);
     expect(counts.has("llm")).toBe(false);
     expect(isSpecificTrendingTopic("GPT-6 Astra")).toBe(true);
+  });
+
+  it("weights a merged multi-source story above a single-source mention", () => {
+    expect(trendingSourceWeight(undefined)).toBe(1);
+    expect(trendingSourceWeight(4)).toBe(4);
+    expect(trendingSourceWeight(20)).toBe(8);
+    const { counts } = collectTrendingCandidates(
+      [
+        {
+          title: "OpenAI Releases GPT-6 Astra",
+          tags: ["openai"],
+          published_at: 1_700_000_000,
+          sourceCount: 4,
+        },
+        {
+          title: "Fable 5.1 ships",
+          tags: ["anthropic"],
+          published_at: 1_700_000_100,
+          sourceCount: 1,
+        },
+      ],
+      1_699_000_000
+    );
+    expect(counts.get(trendingKey("GPT-6 Astra"))).toBe(4);
+    expect(counts.get(trendingKey("Fable 5.1"))).toBe(1);
+    const ranked = rankTrendingWithGrowth(
+      new Map([
+        ["GPT-6 Astra", 4],
+        ["Fable 5.1", 1],
+      ]),
+      new Map()
+    );
+    expect(ranked[0]?.tag).toBe("GPT-6 Astra");
   });
 });
