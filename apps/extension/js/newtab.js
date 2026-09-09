@@ -39,24 +39,6 @@ function $(id) {
   return document.getElementById(id);
 }
 
-/** Create an element with attributes and children. Mirrors the helper in
- * settings-panel.js so newtab.js is self-contained (separate module scope). */
-function el(tag, attrs = {}, children = []) {
-  const node = document.createElement(tag);
-  for (const [key, value] of Object.entries(attrs)) {
-    if (key === "className") node.className = value;
-    else if (key.startsWith("on") && typeof value === "function") {
-      node.addEventListener(key.slice(2).toLowerCase(), value);
-    } else if (value === true) node.setAttribute(key, "");
-    else if (value !== false && value != null)
-      node.setAttribute(key, String(value));
-  }
-  for (const child of children) {
-    node.append(child);
-  }
-  return node;
-}
-
 function looksVietnamese(text) {
   return /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(
     text
@@ -850,114 +832,6 @@ function renderStories(settings, digest) {
 }
 
 const SECTION_ORDER_KEYS = ["categories", "trending", "tldr", "days"];
-const SECTION_PREVIEW_KEYS = {
-  trending: "trendingPreview",
-  tldr: "tldrPreview",
-  days: "dailyFeedPreview",
-  categories: "categoriesPreview",
-};
-
-function svgIcon(path) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("class", "sc-icon");
-  svg.setAttribute("aria-hidden", "true");
-  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  p.setAttribute("d", path);
-  svg.append(p);
-  return svg;
-}
-
-const ICON_EYE = "M1 12s3-7 11-7 11 7 11 7-3 7-11 7-11-7-11-7z";
-
-function renderAddSection(settings) {
-  const root = $("add-section");
-  if (!root) return;
-  const hidden = (settings.sectionOrder || SECTION_ORDER_KEYS).filter(
-    (k) => settings.sections[k] === false
-  );
-  if (hidden.length === 0) {
-    root.hidden = true;
-    return;
-  }
-  root.hidden = false;
-  root.replaceChildren();
-  const label = t(settings, "addSection");
-
-  if (hidden.length === 1) {
-    root.append(
-      el(
-        "button",
-        {
-          type: "button",
-          className: "add-section-btn",
-          onClick: async () => {
-            const sections = { ...settings.sections, [hidden[0]]: true };
-            track(
-              "prefs_change",
-              { pref: hidden[0], to: "on" },
-              settings.apiBase
-            );
-            await pushSettings({ ...settings, sections });
-          },
-        },
-        [
-          svgIcon(ICON_EYE),
-          el("span", {}, [
-            `${label}: ${t(settings, SECTION_PREVIEW_KEYS[hidden[0]])}`,
-          ]),
-        ]
-      )
-    );
-  } else {
-    const btn = el(
-      "button",
-      {
-        type: "button",
-        className: "add-section-btn",
-        "aria-haspopup": "menu",
-        "aria-expanded": "false",
-      },
-      [svgIcon(ICON_EYE), el("span", {}, [label])]
-    );
-    const popover = el("div", {
-      className: "add-section-popover",
-      role: "menu",
-    });
-    for (const key of hidden) {
-      popover.append(
-        el(
-          "button",
-          {
-            type: "button",
-            role: "menuitem",
-            className: "add-section-item",
-            onClick: async () => {
-              const sections = { ...settings.sections, [key]: true };
-              track(
-                "prefs_change",
-                { pref: key, to: "on" },
-                settings.apiBase
-              );
-              await pushSettings({ ...settings, sections });
-            },
-          },
-          [t(settings, SECTION_PREVIEW_KEYS[key])]
-        )
-      );
-    }
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const expanded = btn.getAttribute("aria-expanded") === "true";
-      btn.setAttribute("aria-expanded", String(!expanded));
-      popover.hidden = expanded;
-    });
-    root.append(btn, popover);
-  }
-}
 
 /** Reorder DOM sections to match settings.sectionOrder. The extension HTML
  * has a fixed DOM order; after content is rendered, we move wrappers so the
@@ -986,7 +860,6 @@ function render(settings, digest) {
   renderChips(settings, digest);
   renderTldr(settings, digest);
   renderStories(settings, digest);
-  renderAddSection(settings);
   applySectionOrder(settings);
   renderFooter(settings, digest);
 }
