@@ -224,6 +224,7 @@ export async function getFeed(
       title: it.title,
       tags: it.tags,
       published_at: it.published_at,
+      sourceCount: Math.max(1, it.sources.length),
     })),
     dayAgo
   );

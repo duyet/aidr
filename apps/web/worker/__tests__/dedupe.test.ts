@@ -138,6 +138,33 @@ describe("clusterSimilar", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("asks the model to merge same-event outlets and includes url/source", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(chatResponse(JSON.stringify({ clusters: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    await clusterSimilar(
+      env,
+      [
+        {
+          i: 0,
+          title: "OpenAI ships GPT-6",
+          url: "https://news.ycombinator.com/item?id=1",
+          source: "hn",
+        },
+      ],
+      [{ id: "abc", title: "GPT-6 is here", url: "https://openai.com/gpt-6" }]
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+      messages: { content: string }[];
+    };
+    const prompt = body.messages[0].content;
+    expect(prompt).toContain("news.ycombinator.com");
+    expect(prompt).toContain('"source":"hn"');
+    expect(prompt).toContain("Prefer merging same-event clusters");
+    expect(prompt).toContain("boost rank and trending");
+  });
+
   it("sends only the first id when ANYROUTER_MODEL is a fallback chain", async () => {
     const fetchMock = vi
       .fn()
@@ -190,6 +217,15 @@ describe("title similarity dedupe", () => {
         "Sakana AI Debuts Namazu on OpenRouter Using Kimi K2.6 for Japanese Business Context"
       )
     ).toBe(false);
+  });
+
+  it("merges a short HN headline that sits inside a longer original", () => {
+    expect(
+      isTitleNearDuplicate(
+        "OpenAI releases GPT-6 Astra",
+        "OpenAI releases GPT-6 Astra with a 169 epoch coding record"
+      )
+    ).toBe(true);
   });
 
   it("matches an exact title that only differs by punctuation", () => {

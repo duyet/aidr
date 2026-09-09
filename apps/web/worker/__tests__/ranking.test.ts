@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rankScore } from "../ranking.js";
+import { rankScore, sourceBoost } from "../ranking.js";
 
 const NOW = Date.now();
 
@@ -96,6 +96,23 @@ describe("TRENDING_MIN_RANK reachability", () => {
     const thin = rankScore({ ...base, sourceCount: 1 });
     const backed = rankScore({ ...base, sourceCount: 4 });
     expect(backed).toBeGreaterThan(thin);
+    expect(backed / thin).toBeCloseTo(sourceBoost(4) / sourceBoost(1), 5);
+  });
+
+  it("caps corroboration so mirror piles cannot dominate", () => {
+    const base = {
+      importance: 7,
+      quality: 6,
+      points: 20,
+      comments: 4,
+      publishedAt: NOW,
+      now: NOW,
+    };
+    const eight = rankScore({ ...base, sourceCount: 8 });
+    const twenty = rankScore({ ...base, sourceCount: 20 });
+    expect(twenty).toBe(eight);
+    expect(sourceBoost(0)).toBe(1);
+    expect(sourceBoost(1)).toBeGreaterThan(1);
   });
 
   it("stays below 25 for a typical live-max story (~importance 8, modest engagement)", () => {
