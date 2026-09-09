@@ -11,6 +11,7 @@ export const SITEMAP_STATIC_PATHS = [
   "/mcp",
   "/submit",
   "/subscribe",
+  "/data",
 ] as const;
 
 export interface SitemapUrl {

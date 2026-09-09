@@ -113,16 +113,21 @@ describe("renderNoteEmail", () => {
       bodyMd: "Hello **friend**.",
       cta: { label: "Read", url: "https://blog.duyet.net/x" },
       unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
     });
     expect(html).toContain("max-width:520px");
-    expect(html).toContain("aidr");
+    expect(html).toContain("AI;DR");
     expect(html).toContain("Inbox preview");
     expect(html).toContain("Read");
     expect(html).toContain("Unsubscribe");
-    expect(html).toContain("Inter");
-    expect(html).toContain("#0a0a0a");
+    expect(html).toContain("Adjust settings");
+    expect(html).toContain("/data");
+    expect(html).toContain("#b45309");
+    expect(html).toContain("#f7f7f5");
+    expect(html).toContain("Georgia");
     expect(text).toContain("Hello friend.");
     expect(text).toContain("Read: https://blog.duyet.net/x");
+    expect(text).toContain("Adjust settings:");
   });
 
   it("omits non-http(s) CTA urls", () => {
@@ -131,6 +136,7 @@ describe("renderNoteEmail", () => {
       bodyMd: "Hello",
       cta: { label: "Bad", url: "javascript:alert(1)" },
       unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
     });
     expect(html).not.toContain("javascript:");
     expect(html).not.toContain(">Bad<");

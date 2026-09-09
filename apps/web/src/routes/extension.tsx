@@ -15,7 +15,8 @@ import {
 import { track } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, CheckCircle2, RefreshCw, Send } from "lucide-react";
+import { ArrowRight, CheckCircle2, Mail, RefreshCw, Send } from "lucide-react";
+import { EmailSubscribeForm } from "../components/EmailSubscribeForm";
 import { useLang } from "../lib/lang-context";
 import { pageHead } from "../lib/seo";
 import {
@@ -24,11 +25,20 @@ import {
   TELEGRAM_URL,
 } from "../lib/site";
 
+const TABS = ["chrome", "telegram", "email"] as const;
+type DeliverTab = (typeof TABS)[number];
+
+function parseTab(value: unknown): DeliverTab {
+  return TABS.includes(value as DeliverTab) ? (value as DeliverTab) : "chrome";
+}
+
 export const Route = createFileRoute("/extension")({
+  validateSearch: (search: Record<string, unknown>): { tab?: DeliverTab } =>
+    typeof search.tab === "string" ? { tab: parseTab(search.tab) } : {},
   head: () =>
     pageHead({
       path: "/extension",
-      title: "Chrome new tab | AI News",
+      title: "Get AI;DR | Chrome, Telegram, Email",
     }),
   component: ExtensionPage,
 });
@@ -36,43 +46,52 @@ export const Route = createFileRoute("/extension")({
 function ExtensionPage() {
   const lang = useLang();
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
+  const { tab } = Route.useSearch();
+  const defaultTab = parseTab(tab);
 
   return (
     <div className="mx-auto max-w-3xl space-y-10 py-12">
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="gap-1.5 rounded-full">
-            Two ways
+            {t("How you get AI;DR", "Cách nhận AI;DR")}
           </Badge>
         </div>
         <div className="space-y-3">
           <h1 className="font-serif text-4xl font-medium tracking-tight text-foreground">
-            {t("Read AI;DR two ways", "Hai cách dùng AI;DR")}
+            {t("Get AI;DR delivered", "Nhận AI;DR")}
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
             {t(
-              "Same ranked feed. Chrome new tab or the Telegram channel — pick either, or both.",
-              "Cùng bảng tin đã xếp hạng. Tab mới Chrome hoặc kênh Telegram — chọn một, hoặc cả hai."
+              "Same ranked feed. Chrome new tab, Telegram, or email digest — pick any, or all three.",
+              "Cùng bảng tin đã xếp hạng. Tab mới Chrome, Telegram, hoặc email — chọn một, hoặc cả ba."
             )}
           </p>
         </div>
       </div>
 
-      <Tabs defaultValue="chrome" className="w-full">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1">
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1">
           <TabsTrigger
             value="chrome"
             className="h-11 gap-2 text-sm sm:text-base"
           >
             <RiChromeLine className="size-4" aria-hidden />
-            Tab mới Chrome
+            Chrome
           </TabsTrigger>
           <TabsTrigger
             value="telegram"
             className="h-11 gap-2 text-sm sm:text-base"
           >
             <Send className="size-4" aria-hidden />
-            Telegram Channel
+            Telegram
+          </TabsTrigger>
+          <TabsTrigger
+            value="email"
+            className="h-11 gap-2 text-sm sm:text-base"
+          >
+            <Mail className="size-4" aria-hidden />
+            Email
           </TabsTrigger>
         </TabsList>
 
@@ -140,6 +159,16 @@ function ExtensionPage() {
               {t(`Open ${TELEGRAM_HANDLE}`, `Mở ${TELEGRAM_HANDLE}`)}
             </a>
           </Button>
+        </TabsContent>
+
+        <TabsContent value="email" className="mt-6 space-y-6">
+          <p className="text-base leading-relaxed text-muted-foreground">
+            {t(
+              "Daily digest by email. No account required — you can link one later.",
+              "Bản tin hằng ngày qua email. Không cần tài khoản — có thể liên kết sau."
+            )}
+          </p>
+          <EmailSubscribeForm lang={lang} source="extension" />
         </TabsContent>
       </Tabs>
 

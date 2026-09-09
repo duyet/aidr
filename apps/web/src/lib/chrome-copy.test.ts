@@ -15,6 +15,8 @@ describe("site chrome copy", () => {
     expect(footer).not.toContain("Blog");
     expect(footer).toContain("duyet.net");
     expect(footer).toContain("EXTENSION_PATH");
+    expect(footer).toContain("/data");
+    expect(footer).toContain("Data / Pipeline");
     expect(footer).not.toContain("CHROME_WEB_STORE_URL");
   });
 

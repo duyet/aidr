@@ -1,3 +1,9 @@
+import {
+  renderDigestEmail,
+  renderNoteEmail,
+  settingsUrl,
+  unsubscribeUrl,
+} from "../mail/render.js";
 import { digestFrom, sendSubscriberEmail } from "../mail/send.js";
 import type { Env } from "../types.js";
 import { DEFAULT_TIMEZONE, isValidTimezone } from "./handlers.js";
@@ -28,6 +34,7 @@ export interface SubscriberRow {
   unsubscribe_token: string;
   timezone: string | null;
   last_sent_date: string | null;
+  digest_size?: number | null;
 }
 
 export interface TldrSnapshotRow {
@@ -39,6 +46,11 @@ export interface TldrSnapshotRow {
 
 const SITE_URL = "https://aidr.today";
 const MAX_BULLETS = 5;
+
+export function digestSizeFor(value: unknown): 3 | 5 | 10 {
+  if (value === 3 || value === 10 || value === 5) return value;
+  return 5;
+}
 /** Digests only go out from this local hour onward — no 3am emails. */
 export const DIGEST_LOCAL_HOUR = 7;
 
@@ -116,47 +128,32 @@ export function shouldSendForSubscriber(
   return sub.last_sent_date !== localDate;
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 /** Builds the plain-text and HTML bodies for a subscriber's daily digest email. */
 export function buildDigestEmail(
   date: string,
   bullets: TldrBulletLike[],
   lang: string,
-  unsubscribeToken: string
+  unsubscribeToken: string,
+  max = MAX_BULLETS
 ): { subject: string; html: string; text: string } {
-  const unsubscribeUrl = `${SITE_URL}/subscribe?unsubscribe=${unsubscribeToken}`;
-  const title = `AI News AI;DR — ${date}`;
-  const footerText =
-    lang === "vi"
-      ? `Hủy đăng ký: ${unsubscribeUrl}`
-      : `Unsubscribe: ${unsubscribeUrl}`;
-  const footerHtml =
-    lang === "vi"
-      ? `Hủy đăng ký tại <a href="${unsubscribeUrl}">${unsubscribeUrl}</a>`
-      : `Unsubscribe at <a href="${unsubscribeUrl}">${unsubscribeUrl}</a>`;
-
-  const items = bullets.slice(0, MAX_BULLETS);
-  const textLines = items.map((b, i) => `${i + 1}. ${b.text}`);
-  const htmlItems = items
-    .map((b) => `<li>${escapeHtml(b.text)}</li>`)
-    .join("\n");
-
-  const text = `${title}\n\n${textLines.join("\n")}\n\n${SITE_URL}\n\n${footerText}`;
-  const html = `<h1>${escapeHtml(title)}</h1>
-<ol>
-${htmlItems}
-</ol>
-<p><a href="${SITE_URL}">${SITE_URL}</a></p>
-<p style="color:#888;font-size:12px">${footerHtml}</p>`;
-
-  return { subject: title, html, text };
+  const mailLang = lang === "vi" ? "vi" : "en";
+  const items = bullets.slice(0, max);
+  const subject = mailLang === "vi" ? `AI;DR — ${date}` : `AI;DR — ${date}`;
+  return {
+    subject,
+    ...renderDigestEmail({
+      subject,
+      date,
+      lang: mailLang,
+      stories: items.map((b) => ({
+        text: b.text,
+        url: b.item_id ? `${SITE_URL}/ai/${b.item_id.slice(0, 8)}` : SITE_URL,
+      })),
+      unsubscribeUrl: unsubscribeUrl(unsubscribeToken),
+      settingsUrl: settingsUrl(unsubscribeToken),
+      preheader: items[0]?.text,
+    }),
+  };
 }
 
 /**
@@ -184,14 +181,17 @@ export async function sendWelcomeEmail(
   const subject = vi
     ? "Bạn đã đăng ký AI;DR — aidr.today"
     : "You're subscribed to AI;DR — aidr.today";
-  const unsub = `${SITE_URL}/subscribe?unsubscribe=${sub.unsubscribe_token}`;
-  const text = vi
-    ? `Cảm ơn bạn đã đăng ký. Mỗi sáng (khoảng 7h theo giờ của bạn) chúng tôi gửi tối đa 5 tin nổi bật.\n\n${SITE_URL}\n\nHủy đăng ký: ${unsub}`
-    : `Thanks for subscribing. Each morning (around 7:00 in your timezone) we send up to 5 top stories.\n\n${SITE_URL}\n\nUnsubscribe: ${unsub}`;
-  const html = `<p>${vi ? "Cảm ơn bạn đã đăng ký." : "Thanks for subscribing."}</p>
-<p>${vi ? "Mỗi sáng (khoảng 7h theo giờ của bạn) chúng tôi gửi tối đa 5 tin nổi bật." : "Each morning (around 7:00 in your timezone) we send up to 5 top stories."}</p>
-<p><a href="${SITE_URL}">${SITE_URL}</a></p>
-<p style="color:#888;font-size:12px"><a href="${unsub}">${vi ? "Hủy đăng ký" : "Unsubscribe"}</a></p>`;
+  const bodyMd = vi
+    ? "Cảm ơn bạn đã đăng ký.\n\nMỗi sáng (khoảng 7h theo giờ của bạn) chúng tôi gửi bản tin AI;DR — số tin theo cài đặt của bạn.\n"
+    : "Thanks for subscribing.\n\nEach morning (around 7:00 in your timezone) we send the AI;DR digest — story count follows your settings.\n";
+  const { html, text } = renderNoteEmail({
+    subject,
+    bodyMd,
+    lang: vi ? "vi" : "en",
+    unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token),
+    settingsUrl: settingsUrl(sub.unsubscribe_token),
+    cta: { label: vi ? "Mở aidr.today" : "Open aidr.today", url: SITE_URL },
+  });
   return sendSubscriberEmail(env, {
     to: sub.email,
     from: digestFrom(env),
@@ -215,7 +215,7 @@ export async function sendDailyTldr(env: Env): Promise<number> {
   if (!snapshot || !snapshotHasBullets(snapshot)) return 0;
 
   const { results: subscribers } = await env.DB.prepare(
-    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date FROM subscribers WHERE confirmed = 1"
+    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size FROM subscribers WHERE confirmed = 1"
   ).all<SubscriberRow>();
 
   if (!subscribers || subscribers.length === 0) return 0;
@@ -227,18 +227,21 @@ export async function sendDailyTldr(env: Env): Promise<number> {
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
     if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
 
+    const size = digestSizeFor(sub.digest_size);
     const preferred = topBullets(
-      sub.lang === "en" ? snapshot.bullets_en : snapshot.bullets_vi
+      sub.lang === "en" ? snapshot.bullets_en : snapshot.bullets_vi,
+      size
     );
     const bullets =
-      preferred.length > 0 ? preferred : topBullets(snapshot.bullets_en);
+      preferred.length > 0 ? preferred : topBullets(snapshot.bullets_en, size);
     if (bullets.length === 0) continue;
 
     const { subject, html, text } = buildDigestEmail(
       snapshot.date,
       bullets,
       sub.lang,
-      sub.unsubscribe_token
+      sub.unsubscribe_token,
+      size
     );
 
     const sent = await sendSubscriberEmail(env, {

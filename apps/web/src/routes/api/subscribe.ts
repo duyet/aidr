@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { preflight, withCors } from "../../../worker/subscribe/cors.js";
 import {
+  getPrefsByToken,
   isSubscribeError,
   subscribe,
   unsubscribe,
+  updatePrefsByToken,
 } from "../../../worker/subscribe/handlers.js";
 import type { Env } from "../../../worker/types.js";
 
@@ -41,6 +43,58 @@ export const Route = createFileRoute("/api/subscribe")({
   server: {
     handlers: {
       OPTIONS: async ({ request }: HandlerArgs) => preflight(request),
+      GET: async ({ request, context }: HandlerArgs) => {
+        const env = await resolveEnv(context);
+        if (!env?.DB) {
+          return withCors(
+            request,
+            Response.json(
+              { error: "D1 binding DB not configured" },
+              { status: 500 }
+            )
+          );
+        }
+        const token = new URL(request.url).searchParams.get("token");
+        const result = await getPrefsByToken(env, token);
+        if (isSubscribeError(result)) {
+          return withCors(
+            request,
+            Response.json({ error: result.error }, { status: result.status })
+          );
+        }
+        return withCors(request, Response.json(result));
+      },
+      PATCH: async ({ request, context }: HandlerArgs) => {
+        const env = await resolveEnv(context);
+        if (!env?.DB) {
+          return withCors(
+            request,
+            Response.json(
+              { error: "D1 binding DB not configured" },
+              { status: 500 }
+            )
+          );
+        }
+        const token = new URL(request.url).searchParams.get("token");
+        let body: Record<string, unknown> = {};
+        try {
+          const raw = await request.text();
+          body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+        } catch {
+          return withCors(
+            request,
+            Response.json({ error: "invalid JSON body" }, { status: 400 })
+          );
+        }
+        const result = await updatePrefsByToken(env, token, body);
+        if (isSubscribeError(result)) {
+          return withCors(
+            request,
+            Response.json({ error: result.error }, { status: result.status })
+          );
+        }
+        return withCors(request, Response.json(result));
+      },
       POST: async ({ request, context }: HandlerArgs) => {
         const env = await resolveEnv(context);
         if (!env?.DB) {
@@ -80,7 +134,8 @@ export const Route = createFileRoute("/api/subscribe")({
           body?.lang,
           body?.timezone,
           body?.source,
-          clientIp(request)
+          clientIp(request),
+          body?.digest_size
         );
         if (isSubscribeError(result)) {
           return withCors(

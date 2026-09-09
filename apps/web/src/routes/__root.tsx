@@ -96,6 +96,7 @@ function ClerkRootProvider({ children }: { children: ReactNode }) {
 const FOOTER_LINKS: { to: string; label: string }[] = [
   { to: "/about", label: "About" },
   { to: "/subscribe", label: "Subscribe" },
+  { to: "/data", label: "Data / Pipeline" },
   { to: "/privacy", label: "Privacy" },
   { to: "/terms", label: "Terms" },
 ];
@@ -159,10 +160,10 @@ function NewsFooter() {
                 to={EXTENSION_PATH}
                 onClick={() => track("nav_click", { to: EXTENSION_PATH })}
                 className={`block ${linkClass}`}
-                title="Chrome new tab"
-                aria-label="Chrome new tab"
+                title="Get AI;DR"
+                aria-label="Get AI;DR"
               >
-                Chrome extension
+                Get AI;DR
               </Link>
               <a
                 href={TELEGRAM_URL}
