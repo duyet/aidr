@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { pageHead } from "../lib/seo";
+import { GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
 import { fetchSourceNames } from "../lib/sources-fn";
 import type { SystemStats } from "../lib/system-queries";
 
@@ -254,7 +255,7 @@ function AboutPage() {
           </Link>
           {" · "}
           <a
-            href="https://github.com/duyet/monorepo/tree/master/apps/news"
+            href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:no-underline"
@@ -264,7 +265,7 @@ function AboutPage() {
           </a>
           {" · "}
           <a
-            href="https://github.com/duyet/monorepo/blob/master/apps/news/ALGORITHM.md"
+            href={GITHUB_ALGORITHM_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:no-underline"

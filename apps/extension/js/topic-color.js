@@ -1,5 +1,5 @@
 /**
- * Port of apps/news/src/lib/topic-color.ts — keep the palette and djb2
+ * Port of apps/web/src/lib/topic-color.ts — keep the palette and djb2
  * hash identical so extension chips/highlights match aidr.today.
  */
 

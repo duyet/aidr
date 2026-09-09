@@ -3,6 +3,7 @@ const ALLOWED_ORIGINS = new Set([
   "https://duyet.net",
   "https://www.duyet.net",
   "https://aidr.today",
+  // Legacy hostname; subscribe widgets on old bookmarks still preflight here.
   "https://news.duyet.net",
   "http://localhost:3000",
   "http://localhost:3010",

@@ -194,7 +194,7 @@ set on digest and campaign mail.
 Apply the migration when deploying:
 
 ```bash
-pnpm exec wrangler d1 migrations apply news --config apps/news/wrangler.toml --remote
+pnpm exec wrangler d1 migrations apply aidr --config wrangler.toml --remote
 ```
 
 `ensureMailSchema` also creates the 0015 tables on first mail/subscribe
