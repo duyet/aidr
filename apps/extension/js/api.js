@@ -1,4 +1,5 @@
 import "./preview-shim.js";
+import { withExtRef } from "./ref.js";
 import { normalizeApiBase } from "./settings.js";
 
 const CACHE_KEY = "newsTabFeedCache";
@@ -332,13 +333,29 @@ export async function writeCachedDigest(digest, apiBase) {
   }
 }
 
-export async function fetchDigest(apiBase) {
+/** Stable key so the new tab can skip a no-op live re-paint. */
+export function digestPaintKey(digest) {
+  if (!digest || typeof digest !== "object") return "";
+  const first = digest.stories?.[0]?.id || "";
+  const n = Array.isArray(digest.stories) ? digest.stories.length : 0;
+  const date = digest.tldr?.date || "";
+  return `${Number(digest.updatedAt) || 0}|${Number(digest.lastFetchedAt) || 0}|${date}|${first}|${n}`;
+}
+
+function tagged(url, content) {
+  return withExtRef(url, content);
+}
+
+export async function fetchDigest(apiBase, { campaign } = {}) {
   const base = normalizeApiBase(apiBase);
+  const content = campaign || "hydrate";
   try {
-    const data = await readJson(publicUrl(base));
+    const data = await readJson(tagged(publicUrl(base), content));
     let digest = normalizeDigest(data);
     try {
-      const feed = await readJson(`${feedUrl(base)}?days=3`);
+      const feed = await readJson(
+        tagged(`${feedUrl(base)}?days=3`, `${content}_feed`.slice(0, 64))
+      );
       digest = enrichDigest(digest, feed);
     } catch {
       // /api/feed has no CORS for web previews; unpacked MV3 host_permissions
@@ -348,7 +365,7 @@ export async function fetchDigest(apiBase) {
     return { digest, source: "public", stale: false };
   } catch {
     try {
-      const data = await readJson(feedUrl(base));
+      const data = await readJson(tagged(feedUrl(base), `${content}_feed`));
       const digest = normalizeDigest(data);
       await writeCachedDigest(digest, base);
       return { digest, source: "feed", stale: false };
@@ -368,8 +385,9 @@ export async function hydrateDigest(apiBase, { onCache, onLive } = {}) {
   const base = normalizeApiBase(apiBase);
   const cached = await readCachedDigest(base);
   if (cached) onCache?.(cached);
+  const campaign = cached ? "hydrate_live" : "hydrate_miss";
   try {
-    const live = await fetchDigest(base);
+    const live = await fetchDigest(base, { campaign });
     onLive?.(live);
     return live;
   } catch (error) {

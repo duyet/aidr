@@ -1,5 +1,6 @@
 import { t } from "./i18n.js";
 import { withExtRef } from "./ref.js";
+import { track } from "./track.js";
 import {
   allowCustomApiBase,
   ensureHostPermission,
@@ -260,6 +261,11 @@ export function mountSettingsPanel(root, settings, onSaved) {
         on,
         async () => {
           state.sections[key] = !on;
+          track(
+            "prefs_change",
+            { pref: key, to: on ? "off" : "on" },
+            state.apiBase
+          );
           await persist({ repaint: false });
         },
         " is-full-width"

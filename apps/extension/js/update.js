@@ -1,4 +1,5 @@
 import "./preview-shim.js";
+import { withExtRef } from "./ref.js";
 import { normalizeApiBase } from "./settings.js";
 
 export function extensionMetaUrl(apiBase) {
@@ -49,10 +50,13 @@ export async function fetchExtensionMeta(apiBase) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_MS);
   try {
-    const response = await fetch(extensionMetaUrl(apiBase), {
-      credentials: "omit",
-      signal: controller.signal,
-    });
+    const response = await fetch(
+      withExtRef(extensionMetaUrl(apiBase), "update_check"),
+      {
+        credentials: "omit",
+        signal: controller.signal,
+      }
+    );
     if (!response.ok) throw new Error(`http ${response.status}`);
     const body = await response.json();
     if (!body || typeof body !== "object") throw new Error("not json");
