@@ -17,7 +17,11 @@ export const NEWS_FROM = {
 
 const SITE_URL = "https://aidr.today";
 const DATA_URL = `${SITE_URL}/data`;
-/** Hosted PNG — Gmail blocks SVG; do not use CID. */
+/**
+ * Stable public PNG (`apps/web/public/logo-sm.png`). Not a Vite-hashed
+ * `/assets/*` path — Gmail caches the URL. Do not put this path on
+ * `run_worker_first` or the Worker SPA will swallow it.
+ */
 export const MAIL_LOGO_URL = `${SITE_URL}/logo-sm.png`;
 
 /** Editorial tokens from apps/web/src/styles.css — hex so email clients stay honest. */
@@ -82,11 +86,19 @@ function brandHeader(lang: MailLang): string {
     lang === "vi" ? "Tin AI xếp hạng và tóm tắt" : "AI news ranked and summary";
   return `<tr>
       <td style="padding:28px 28px 20px;border-bottom:1px solid ${HAIRLINE}">
-        <a href="${SITE_URL}" style="text-decoration:none;color:${FG}">
-          <img src="${MAIL_LOGO_URL}" width="36" height="36" alt="AI;DR" style="display:block;width:36px;height:36px;border:0;outline:none;text-decoration:none">
-        </a>
-        <a href="${SITE_URL}" style="display:inline-block;margin-top:12px;font-family:${SERIF};font-size:26px;line-height:1.15;font-weight:500;color:${FG};text-decoration:none">AI;DR</a>
-        <div style="margin-top:6px;font-family:${SANS};font-size:13px;line-height:1.4;color:${MUTED}">${escapeHtml(tagline)}</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="vertical-align:middle;padding-right:12px">
+              <a href="${SITE_URL}" style="text-decoration:none">
+                <img src="${MAIL_LOGO_URL}" width="40" height="40" alt="AI;DR" style="display:block;width:40px;height:40px;border:0;outline:none;text-decoration:none">
+              </a>
+            </td>
+            <td style="vertical-align:middle">
+              <a href="${SITE_URL}" style="font-family:${SERIF};font-size:26px;line-height:1.15;font-weight:500;color:${FG};text-decoration:none">AI;DR</a>
+              <div style="margin-top:4px;font-family:${SANS};font-size:13px;line-height:1.35;color:${MUTED}">${escapeHtml(tagline)}</div>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>`;
 }
@@ -203,8 +215,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
   html: string;
   text: string;
 } {
-  const heading =
-    input.lang === "vi" ? `AI;DR — ${input.date}` : `AI;DR — ${input.date}`;
+  const heading = input.date;
   const readMore =
     input.lang === "vi" ? "Đọc trên aidr.today" : "Read on aidr.today";
 
@@ -214,11 +225,15 @@ export function renderDigestEmail(input: DigestEmailInput): {
       const text = escapeHtml(story.text);
       const href = story.url ? safeHref(story.url) : null;
       const link = href
-        ? `<a href="${escapeHtml(href)}" style="color:${FG};text-decoration:none">${text}</a>`
+        ? `<a href="${escapeHtml(href)}" style="color:${FG};text-decoration:none;font-weight:500">${text}</a>`
         : text;
+      const rule =
+        i < input.stories.length - 1
+          ? `border-bottom:1px solid ${HAIRLINE};`
+          : "";
       return `<tr>
-      <td style="padding:0 28px 18px;font-family:${SANS};font-size:16px;line-height:1.55;color:${FG}">
-        <span style="font-family:${SERIF};font-size:18px;color:${ACCENT};font-weight:500">${n}.</span>
+      <td style="padding:14px 28px;${rule}font-family:${SANS};font-size:16px;line-height:1.6;color:${FG}">
+        <span style="font-family:${SERIF};font-size:18px;line-height:1.4;color:${ACCENT};font-weight:500">${n}.</span>
         ${link}
       </td>
     </tr>`;
@@ -226,7 +241,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
     .join("\n");
 
   const innerRows = `<tr>
-      <td style="padding:24px 28px 20px;font-family:${SERIF};font-size:24px;line-height:1.25;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
+      <td style="padding:24px 28px 8px;font-family:${SERIF};font-size:22px;line-height:1.3;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
     </tr>
     ${htmlItems}
     <tr>

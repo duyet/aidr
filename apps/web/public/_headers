@@ -2,3 +2,12 @@
 # Workers default `max-age=0, must-revalidate` on /assets/*.
 /assets/*
   Cache-Control: public, max-age=31556952, immutable
+
+# Unhashed public logos (mail + favicon). Not Vite hashes — keep the
+# filename stable so Gmail can cache a 200 PNG.
+/logo-sm.png
+  Cache-Control: public, max-age=86400
+/logo-icon.png
+  Cache-Control: public, max-age=86400
+/logo.png
+  Cache-Control: public, max-age=86400

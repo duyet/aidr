@@ -123,6 +123,16 @@ async function main() {
     );
   });
 
+  await check("GET /logo-sm.png is a stable PNG for mail", async () => {
+    const res = await fetch(`${base}/logo-sm.png`);
+    assert(res.status === 200, `expected 200, got ${res.status}`);
+    const ctype = res.headers.get("content-type") ?? "";
+    assert(ctype.includes("image/png"), `expected image/png, got ${ctype}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    assert(buf[0] === 0x89 && buf[1] === 0x50, "logo-sm.png is not a PNG");
+    assert(buf.length > 500, `logo-sm.png too small (${buf.length})`);
+  });
+
   await check("GET /llms.txt guides agents at aidr.today", async () => {
     const res = await fetch(`${base}/llms.txt`);
     assert(res.status === 200, `expected 200, got ${res.status}`);
