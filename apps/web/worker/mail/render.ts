@@ -17,16 +17,20 @@ export const NEWS_FROM = {
 
 const SITE_URL = "https://aidr.today";
 const DATA_URL = `${SITE_URL}/data`;
+/** Hosted PNG — Gmail blocks SVG; do not use CID. */
+export const MAIL_LOGO_URL = `${SITE_URL}/logo-sm.png`;
 
 /** Editorial tokens from apps/web/src/styles.css — hex so email clients stay honest. */
 const BG = "#f7f7f5";
+const CARD = "#ffffff";
 const FG = "#0a0a0a";
-const MUTED = "#6b6b6b";
+const MUTED = "#474747";
 const ACCENT = "#b45309";
+const ACCENT_FG = "#fffefb";
 const HAIRLINE = "#0a0a0a14";
 const SERIF = 'Georgia,"Times New Roman","EB Garamond",Garamond,ui-serif,serif';
 const SANS =
-  '"Source Sans 3",Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif';
+  'Inter,"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif';
 
 export type MailLang = "en" | "vi";
 
@@ -61,20 +65,28 @@ function ctaButton(label: string, url: string): string {
   if (!safe) return "";
   const href = escapeHtml(safe);
   const text = escapeHtml(label);
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 28px">
+  // Nested span + !important so Gmail does not restyle the label as a blue link.
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 8px">
   <tr>
-    <td style="border-radius:8px;background:${ACCENT}">
-      <a href="${href}" style="display:inline-block;padding:10px 16px;font-family:${SANS};font-size:14px;line-height:1.2;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px">${text}</a>
+    <td bgcolor="${ACCENT}" style="background-color:${ACCENT};border-radius:8px;mso-padding-alt:12px 22px">
+      <a href="${href}" target="_blank" style="display:inline-block;padding:12px 22px;font-family:${SANS};font-size:15px;line-height:1.2;font-weight:600;color:${ACCENT_FG};text-decoration:none;border-radius:8px;background-color:${ACCENT};border:1px solid ${ACCENT}">
+        <span style="color:${ACCENT_FG} !important;text-decoration:none !important">${text}</span>
+      </a>
     </td>
   </tr>
 </table>`;
 }
 
-function brandHeader(): string {
+function brandHeader(lang: MailLang): string {
+  const tagline =
+    lang === "vi" ? "Tin AI xếp hạng và tóm tắt" : "AI news ranked and summary";
   return `<tr>
-      <td style="padding:8px 8px 24px">
-        <a href="${SITE_URL}" style="font-family:${SERIF};font-size:28px;line-height:1.1;font-weight:500;color:${FG};text-decoration:none">AI;DR</a>
-        <div style="margin-top:6px;font-family:${SANS};font-size:13px;color:${MUTED}">AI news ranked and summary</div>
+      <td style="padding:28px 28px 20px;border-bottom:1px solid ${HAIRLINE}">
+        <a href="${SITE_URL}" style="text-decoration:none;color:${FG}">
+          <img src="${MAIL_LOGO_URL}" width="36" height="36" alt="AI;DR" style="display:block;width:36px;height:36px;border:0;outline:none;text-decoration:none">
+        </a>
+        <a href="${SITE_URL}" style="display:inline-block;margin-top:12px;font-family:${SERIF};font-size:26px;line-height:1.15;font-weight:500;color:${FG};text-decoration:none">AI;DR</a>
+        <div style="margin-top:6px;font-family:${SANS};font-size:13px;line-height:1.4;color:${MUTED}">${escapeHtml(tagline)}</div>
       </td>
     </tr>`;
 }
@@ -93,14 +105,15 @@ function mailFooterHtml(
     lang === "vi"
       ? "Bạn nhận email này vì đã đăng ký tại aidr.today."
       : "You are receiving this because you subscribed at aidr.today.";
+  const linkStyle = `color:${ACCENT};text-decoration:none;font-weight:500`;
   return `<tr>
-      <td style="padding:24px 8px 8px;border-top:1px solid ${HAIRLINE};font-family:${SANS};font-size:12px;line-height:1.6;color:${MUTED}">
+      <td style="padding:20px 28px 28px;border-top:1px solid ${HAIRLINE};font-family:${SANS};font-size:12px;line-height:1.7;color:${MUTED}">
         ${why}<br>
-        <a href="${unsub}" style="color:${ACCENT};text-decoration:underline">${escapeHtml(unsubLabel)}</a>
-        ·
-        <a href="${settings}" style="color:${ACCENT};text-decoration:underline">${escapeHtml(settingsLabel)}</a>
-        ·
-        <a href="${DATA_URL}" style="color:${ACCENT};text-decoration:underline">${escapeHtml(dataLabel)}</a>
+        <a href="${unsub}" style="${linkStyle}">${escapeHtml(unsubLabel)}</a>
+        <span style="color:${MUTED};padding:0 8px">·</span>
+        <a href="${settings}" style="${linkStyle}">${escapeHtml(settingsLabel)}</a>
+        <span style="color:${MUTED};padding:0 8px">·</span>
+        <a href="${DATA_URL}" style="${linkStyle}">${escapeHtml(dataLabel)}</a>
       </td>
     </tr>`;
 }
@@ -135,8 +148,8 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG}">
   <tr>
     <td align="center" style="padding:32px 16px">
-      <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="width:100%;max-width:520px;color:${FG}">
-        ${brandHeader()}
+      <table role="presentation" width="540" cellpadding="0" cellspacing="0" style="width:100%;max-width:540px;background:${CARD};color:${FG};border:1px solid ${HAIRLINE};border-radius:12px">
+        ${brandHeader(opts.lang)}
         ${opts.innerRows}
       </table>
     </td>
@@ -147,8 +160,8 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">
 }
 
 /**
- * Editorial digest/note: 520px column, serif wordmark, accent CTAs,
- * table-based for Gmail/Outlook.
+ * Editorial digest/note: ~540px cream/white column, hosted logo,
+ * serif wordmark, Gmail-proof accent CTAs, table-based for Outlook.
  */
 export function renderNoteEmail(input: NoteEmailInput): {
   html: string;
@@ -161,7 +174,7 @@ export function renderNoteEmail(input: NoteEmailInput): {
       ? ctaButton(input.cta.label, input.cta.url)
       : "";
   const innerRows = `<tr>
-      <td style="padding:0 8px 8px;font-family:${SANS};font-size:16px;line-height:1.6;color:${FG}">
+      <td style="padding:24px 28px 8px;font-family:${SANS};font-size:16px;line-height:1.65;color:${FG}">
         ${body}
         ${cta}
       </td>
@@ -204,7 +217,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
         ? `<a href="${escapeHtml(href)}" style="color:${FG};text-decoration:none">${text}</a>`
         : text;
       return `<tr>
-      <td style="padding:0 8px 18px;font-family:${SANS};font-size:16px;line-height:1.55;color:${FG}">
+      <td style="padding:0 28px 18px;font-family:${SANS};font-size:16px;line-height:1.55;color:${FG}">
         <span style="font-family:${SERIF};font-size:18px;color:${ACCENT};font-weight:500">${n}.</span>
         ${link}
       </td>
@@ -213,11 +226,11 @@ export function renderDigestEmail(input: DigestEmailInput): {
     .join("\n");
 
   const innerRows = `<tr>
-      <td style="padding:0 8px 20px;font-family:${SERIF};font-size:26px;line-height:1.2;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
+      <td style="padding:24px 28px 20px;font-family:${SERIF};font-size:24px;line-height:1.25;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
     </tr>
     ${htmlItems}
     <tr>
-      <td style="padding:8px 8px 24px">${ctaButton(readMore, SITE_URL)}</td>
+      <td style="padding:8px 28px 16px">${ctaButton(readMore, SITE_URL)}</td>
     </tr>
     ${mailFooterHtml(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 
