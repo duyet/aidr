@@ -19,11 +19,12 @@ export const NEWS_FROM = {
 const SITE_URL = "https://aidr.today";
 const DATA_URL = `${SITE_URL}/data`;
 /**
- * Stable public PNG (`apps/web/public/logo-sm.png`). Not a Vite-hashed
- * `/assets/*` path — Gmail caches the URL. Do not put this path on
- * `run_worker_first` or the Worker SPA will swallow it.
+ * Square 128px PNG (`public/logo-icon.png`) shown at 40×40 (3×).
+ * `logo-sm.png` is a 320×96 wordmark — squashing it to 40px looks blurry.
  */
-export const MAIL_LOGO_URL = `${SITE_URL}/logo-sm.png`;
+export const MAIL_LOGO_URL = `${SITE_URL}/logo-icon.png`;
+const LOGO_PX = 40;
+const PAD = "32px";
 
 /** Editorial tokens from apps/web/src/styles.css — hex so email clients stay honest. */
 const BG = "#f7f7f5";
@@ -72,12 +73,14 @@ function ctaButton(label: string, url: string): string {
   if (!safe) return "";
   const href = escapeHtml(safe);
   const text = escapeHtml(label);
-  // Nested span + !important so Gmail does not restyle the label as a blue link.
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 8px">
+  // Line-height + horizontal padding (no vertical padding) so the label
+  // sits in the vertical center. Nested span + !important + border-bottom:0
+  // so Gmail does not paint a blue underline through the button text.
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 4px">
   <tr>
-    <td bgcolor="${ACCENT}" style="background-color:${ACCENT};border-radius:8px;mso-padding-alt:12px 22px">
-      <a href="${href}" target="_blank" style="display:inline-block;padding:12px 22px;font-family:${SANS};font-size:15px;line-height:1.2;font-weight:600;color:${ACCENT_FG};text-decoration:none;border-radius:8px;background-color:${ACCENT};border:1px solid ${ACCENT}">
-        <span style="color:${ACCENT_FG} !important;text-decoration:none !important">${text}</span>
+    <td align="center" bgcolor="${ACCENT}" height="44" valign="middle" style="background-color:${ACCENT};border-radius:8px;height:44px;vertical-align:middle;mso-line-height-rule:exactly">
+      <a href="${href}" target="_blank" style="display:inline-block;background-color:${ACCENT};border:1px solid ${ACCENT};border-radius:8px;color:${ACCENT_FG};font-family:${SANS};font-size:15px;font-weight:600;line-height:44px;padding:0 24px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none">
+        <span style="color:${ACCENT_FG} !important;text-decoration:none !important;border-bottom:0 !important;line-height:44px">${text}</span>
       </a>
     </td>
   </tr>
@@ -89,12 +92,12 @@ function brandHeader(lang: MailLang, kind: MailUtmKind): string {
     lang === "vi" ? "Tin AI xếp hạng và tóm tắt" : "AI news ranked and summary";
   const home = escapeHtml(withMailUtm(SITE_URL, kind));
   return `<tr>
-      <td style="padding:28px 28px 20px;border-bottom:1px solid ${HAIRLINE}">
+      <td style="padding:32px ${PAD} 24px;border-bottom:1px solid ${HAIRLINE}">
         <a href="${home}" style="text-decoration:none;color:${FG}">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0">
             <tr>
-              <td style="vertical-align:middle;padding-right:12px">
-                <img src="${MAIL_LOGO_URL}" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border:0;outline:none;text-decoration:none">
+              <td style="vertical-align:middle;padding-right:14px">
+                <img src="${MAIL_LOGO_URL}" width="${LOGO_PX}" height="${LOGO_PX}" alt="" style="display:block;width:${LOGO_PX}px;height:${LOGO_PX}px;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic">
               </td>
               <td style="vertical-align:middle">
                 <span style="font-family:${SERIF};font-size:26px;line-height:1.15;font-weight:500;color:${FG}">AI;DR</span>
@@ -123,7 +126,7 @@ function mailFooterHtml(
       : "You are receiving this because you subscribed at aidr.today.";
   const linkStyle = `color:${ACCENT};text-decoration:none;font-weight:500`;
   return `<tr>
-      <td style="padding:20px 28px 28px;border-top:1px solid ${HAIRLINE};font-family:${SANS};font-size:12px;line-height:1.7;color:${MUTED}">
+      <td style="padding:24px ${PAD} 36px;border-top:1px solid ${HAIRLINE};font-family:${SANS};font-size:12px;line-height:1.7;color:${MUTED}">
         ${why}<br>
         <a href="${unsub}" style="${linkStyle}">${escapeHtml(unsubLabel)}</a>
         <span style="color:${MUTED};padding:0 8px">·</span>
@@ -159,6 +162,9 @@ function wrapHtml(opts: {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(opts.subject)}</title>
+<style>
+  a { text-decoration: none !important; }
+</style>
 </head>
 <body style="margin:0;padding:0;background:${BG}">
 ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${preheader}</div>` : ""}
@@ -192,7 +198,7 @@ export function renderNoteEmail(input: NoteEmailInput): {
       ? ctaButton(input.cta.label, withMailUtm(input.cta.url, mailKind))
       : "";
   const innerRows = `<tr>
-      <td style="padding:24px 28px 8px;font-family:${SANS};font-size:16px;line-height:1.65;color:${FG}">
+      <td style="padding:28px ${PAD} 28px;font-family:${SANS};font-size:16px;line-height:1.65;color:${FG}">
         ${body}
         ${cta}
       </td>
@@ -243,7 +249,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
           ? `border-bottom:1px solid ${HAIRLINE};`
           : "";
       return `<tr>
-      <td style="padding:14px 28px;${rule}font-family:${SANS};font-size:16px;line-height:1.6;color:${FG}">
+      <td style="padding:16px ${PAD};${rule}font-family:${SANS};font-size:16px;line-height:1.6;color:${FG}">
         <span style="font-family:${SERIF};font-size:18px;line-height:1.4;color:${ACCENT};font-weight:500">${n}.</span>
         ${link}
       </td>
@@ -252,11 +258,11 @@ export function renderDigestEmail(input: DigestEmailInput): {
     .join("\n");
 
   const innerRows = `<tr>
-      <td style="padding:24px 28px 8px;font-family:${SERIF};font-size:22px;line-height:1.3;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
+      <td style="padding:28px ${PAD} 12px;font-family:${SERIF};font-size:22px;line-height:1.3;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
     </tr>
     ${htmlItems}
     <tr>
-      <td style="padding:8px 28px 16px">${ctaButton(readMore, withMailUtm(SITE_URL, "digest"))}</td>
+      <td style="padding:16px ${PAD} 28px">${ctaButton(readMore, withMailUtm(SITE_URL, "digest"))}</td>
     </tr>
     ${mailFooterHtml(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 

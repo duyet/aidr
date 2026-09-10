@@ -24,7 +24,7 @@ import { isAllowedOrigin } from "../subscribe/cors.js";
 
 const publicLogo = join(
   dirname(fileURLToPath(import.meta.url)),
-  "../../public/logo-sm.png"
+  "../../public/logo-icon.png"
 );
 
 describe("markdownToEmailHtml", () => {
@@ -117,7 +117,7 @@ describe("parseWrapJson", () => {
 
 describe("MAIL_LOGO_URL", () => {
   it("points at the unhashed public PNG, which exists", () => {
-    expect(MAIL_LOGO_URL).toBe("https://aidr.today/logo-sm.png");
+    expect(MAIL_LOGO_URL).toBe("https://aidr.today/logo-icon.png");
     const bytes = readFileSync(publicLogo);
     expect(bytes.subarray(0, 8)).toEqual(
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
@@ -138,10 +138,14 @@ describe("renderNoteEmail", () => {
     expect(html).toContain("max-width:540px");
     expect(html).toContain(`src="${MAIL_LOGO_URL}"`);
     expect(html).toContain('width="40"');
+    expect(html).toContain('height="40"');
     expect(html).toContain('alt=""');
-    expect(MAIL_LOGO_URL).toBe("https://aidr.today/logo-sm.png");
-    expect(html).toContain("https://aidr.today/logo-sm.png");
-    expect(html).not.toContain("/assets/logo-sm.png");
+    expect(MAIL_LOGO_URL).toBe("https://aidr.today/logo-icon.png");
+    expect(html).toContain("https://aidr.today/logo-icon.png");
+    expect(html).not.toContain("/assets/logo");
+    expect(html).toContain("padding:32px");
+    expect(html).toContain("line-height:44px");
+    expect(html).toContain("border-bottom:0 !important");
     expect(html).toContain("AI;DR");
     expect(html).toContain("AI news ranked and summary");
     expect(html).toContain("Inbox preview");
