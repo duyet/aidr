@@ -190,9 +190,6 @@ export function StoryRow({
         <span className="hidden w-20 shrink-0 text-right text-sm text-muted-foreground md:block">
           {timeAgo(item.published_at, Date.now(), lang)}
         </span>
-        <span className="w-14 shrink-0 text-right text-sm font-medium tabular-nums text-muted-foreground">
-          {item.points}/{item.comments}
-        </span>
       </StoryRowHeader>
 
       {expanded && hasDetails && (

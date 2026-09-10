@@ -23,7 +23,7 @@ pnpm --filter @aidr/web pack-cws
 | | |
 |---|---|
 | File | `apps/extension/dist/aidr-cws.zip` |
-| Version | `0.1.8` (must match `manifest.json` + `package.json`) |
+| Version | `0.1.14` (must match `manifest.json` + `package.json`) |
 | Layout | `manifest.json` at zip **root** (not under `aidr/`) |
 | Store flavor | no `optional_host_permissions`, `connect-src` = `aidr.today` only |
 | Do **not** upload | `https://aidr.today/aidr.zip` / `public/aidr.zip` (nested Load unpacked zip) |
@@ -57,7 +57,7 @@ Bản tin AI;DR từ aidr.today mỗi khi mở thẻ mới. Không cần tài kh
 ```
 aidr replaces Chrome's new tab with today's AI;DR and ranked AI stories from aidr.today.
 
-Open a new tab and see the same public digest as the website: numbered AI;DR summaries, category chips, trending topics, and story rows with points and comments. No account. No ads. No browsing-history access.
+Open a new tab and see the same public digest as the website: numbered AI;DR summaries, category chips, trending topics, and ranked story rows. No account. No ads. No browsing-history access.
 
 What you get
 • Today's AI;DR digest from aidr.today

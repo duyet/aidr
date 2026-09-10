@@ -661,17 +661,6 @@ function renderStoryRow(settings, story, index, hot) {
   ext.rel = "noopener noreferrer";
   ext.setAttribute("aria-label", "Open story link");
   ext.append(externalLinkIcon());
-  try {
-    const host = new URL(ext.href).hostname.replace(/^www\./, "");
-    if (host) {
-      const hostEl = document.createElement("span");
-      hostEl.className = "story-host";
-      hostEl.textContent = host;
-      ext.append(document.createTextNode(" "), hostEl);
-    }
-  } catch {
-    /* ignore */
-  }
   titleWrap.append(document.createTextNode(" "), ext);
 
   const cat = document.createElement("span");
@@ -684,11 +673,7 @@ function renderStoryRow(settings, story, index, hot) {
     ? timeAgo(story.published_at, lang)
     : "";
 
-  const score = document.createElement("span");
-  score.className = "story-score";
-  score.textContent = `${story.points || 0}/${story.comments || 0}`;
-
-  head.append(n, titleWrap, cat, when, score);
+  head.append(n, titleWrap, cat, when);
 
   let detail = null;
   if (hasDetails) {
