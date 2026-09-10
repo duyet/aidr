@@ -3,9 +3,7 @@ import { aliasRedirect } from "../alias-redirect.js";
 
 describe("aliasRedirect", () => {
   it("308s news.duyet.net path to aidr.today without dropping the path", () => {
-    const res = aliasRedirect(
-      new Request("https://news.duyet.net/subscribe")
-    );
+    const res = aliasRedirect(new Request("https://news.duyet.net/subscribe"));
     expect(res).not.toBeNull();
     expect(res!.status).toBe(308);
     expect(res!.headers.get("Location")).toBe("https://aidr.today/subscribe");
@@ -27,9 +25,7 @@ describe("aliasRedirect", () => {
   });
 
   it("redirects www.news.duyet.net the same way", () => {
-    const res = aliasRedirect(
-      new Request("https://www.news.duyet.net/about")
-    );
+    const res = aliasRedirect(new Request("https://www.news.duyet.net/about"));
     expect(res!.headers.get("Location")).toBe("https://aidr.today/about");
   });
 
