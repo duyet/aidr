@@ -1,5 +1,4 @@
 import handler from "@tanstack/react-start/server-entry";
-import { aliasRedirect } from "../worker/alias-redirect";
 import { handleClerkProxy, isClerkProxyPath } from "../worker/clerk-proxy";
 import { handleAidrZipRequest } from "../worker/extension-zip";
 import { ensureIngestAlarm, tickIngest } from "../worker/ingest-schedule";
@@ -35,8 +34,6 @@ async function resolveEnv(env?: Env): Promise<Env | undefined> {
 
 export default {
   async fetch(request: Request, env: Env, ctx?: ExecutionContext) {
-    const alias = aliasRedirect(request);
-    if (alias) return alias;
     const path = new URL(request.url).pathname;
     if (isClerkProxyPath(path)) {
       return handleClerkProxy(request, env);

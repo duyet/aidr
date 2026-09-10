@@ -33,15 +33,16 @@ describe("free-plan hourly ingest", () => {
     );
   });
 
-  it("runs the Worker first on every path so alias hosts can 308", () => {
-    expect(wrangler).toMatch(/run_worker_first\s*=\s*true/);
+  it("keeps run_worker_first for homepage, sitemap, robots, llms, APIs, Clerk proxy, and aidr.zip", () => {
+    expect(wrangler).toContain(
+      'run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]'
+    );
   });
 
-  it("documents news.duyet.net cutover without a bind this account cannot make", () => {
+  it("does not attach news.duyet.net as a custom domain", () => {
     expect(wrangler).toMatch(/pattern\s*=\s*"aidr\.today"/);
-    expect(wrangler).not.toMatch(/Do not attach it here/);
-    expect(wrangler).toMatch(/Could not find zone for news\.duyet\.net/);
     expect(wrangler).not.toMatch(/pattern\s*=\s*"news\.duyet\.net"/);
+    expect(wrangler).toMatch(/Do not attach news\.duyet\.net here/);
   });
 
   it("schedules ingest via a Durable Object alarm plus GitHub Actions watchdog", () => {
