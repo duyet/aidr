@@ -33,10 +33,8 @@ describe("free-plan hourly ingest", () => {
     );
   });
 
-  it("keeps run_worker_first for homepage, sitemap, robots, llms, APIs, Clerk proxy, and aidr.zip", () => {
-    expect(wrangler).toContain(
-      'run_worker_first = ["/*", "/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]'
-    );
+  it("runs the Worker first on every path so alias hosts can 308", () => {
+    expect(wrangler).toMatch(/run_worker_first\s*=\s*true/);
   });
 
   it("attaches news.duyet.net as a custom domain next to aidr.today", () => {
