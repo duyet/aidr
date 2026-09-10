@@ -33,15 +33,11 @@ describe("free-plan hourly ingest", () => {
     );
   });
 
-  it("keeps run_worker_first for homepage, sitemap, robots, llms, APIs, Clerk proxy, and aidr.zip", () => {
+  it("keeps run_worker_first for homepage, public logos, sitemap, robots, llms, APIs, Clerk proxy, and aidr.zip", () => {
     expect(wrangler).toContain(
-      'run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]'
+      'run_worker_first = ["/", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]'
     );
-  });
-
-  it("does not Worker-first the unhashed public logos mail uses", () => {
-    expect(wrangler).not.toMatch(/run_worker_first\s*=\s*true/);
-    expect(wrangler).not.toContain("/logo-sm.png");
+    expect(wrangler).toMatch(/binding\s*=\s*"ASSETS"/);
   });
 
   it("does not attach news.duyet.net as a custom domain", () => {
