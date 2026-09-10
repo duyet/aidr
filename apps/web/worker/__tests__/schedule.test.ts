@@ -37,10 +37,11 @@ describe("free-plan hourly ingest", () => {
     expect(wrangler).toMatch(/run_worker_first\s*=\s*true/);
   });
 
-  it("attaches news.duyet.net as a custom domain next to aidr.today", () => {
+  it("documents news.duyet.net cutover without a bind this account cannot make", () => {
     expect(wrangler).toMatch(/pattern\s*=\s*"aidr\.today"/);
-    expect(wrangler).toMatch(/pattern\s*=\s*"news\.duyet\.net"/);
     expect(wrangler).not.toMatch(/Do not attach it here/);
+    expect(wrangler).toMatch(/Could not find zone for news\.duyet\.net/);
+    expect(wrangler).not.toMatch(/pattern\s*=\s*"news\.duyet\.net"/);
   });
 
   it("schedules ingest via a Durable Object alarm plus GitHub Actions watchdog", () => {
