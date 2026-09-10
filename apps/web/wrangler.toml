@@ -11,9 +11,9 @@ preview_urls = true
 directory = "dist/client"
 # `/` must hit the Worker so the homepage SSR's stories (the static
 # index.html shell has no feed). Sitemap/robots are Worker-generated.
-# `/*` so news.duyet.net (and every other path) hits the Worker before
-# assets/SPA — otherwise alias 308s never run for HTML routes.
-run_worker_first = ["/*", "/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]
+# Every path hits the Worker first so news.duyet.net 308s before SPA
+# assets. Boolean true (not a `/*` plus listed paths — Vite rejects that).
+run_worker_first = true
 not_found_handling = "single-page-application"
 
 # Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus
