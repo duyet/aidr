@@ -111,7 +111,7 @@ export function StoryDialog({
         aria-modal="true"
         aria-label={title ?? "Story"}
         tabIndex={-1}
-        className={`relative max-h-[85vh] w-full overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-background p-5 text-foreground shadow-xl transition-[max-width] ${
+        className={`relative max-h-[90vh] w-full overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background p-5 text-foreground shadow-xl sm:p-6 md:p-7 transition-[max-width] ${
           bilingual ? "max-w-2xl md:max-w-5xl" : "max-w-2xl"
         }`}
       >

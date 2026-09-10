@@ -175,6 +175,7 @@ describe("renderNoteEmail", () => {
     expect(html).toContain("Hủy đăng ký");
     expect(html).toContain("Chỉnh cài đặt");
     expect(html).toContain("Mở aidr.today");
+    expect(html).toContain("utm_medium=welcome");
     expect(text).toContain("Hủy đăng ký:");
   });
 
@@ -191,6 +192,8 @@ describe("renderNoteEmail", () => {
     expect(html).toContain("max-width:540px");
     expect(html).toContain("#fffefb !important");
     expect(html).toContain("Read on aidr.today");
+    expect(html).toContain("utm_source=email");
+    expect(html).toContain("utm_medium=digest");
     expect(html).toContain("2026-09-10");
     expect(html).toContain("Story one");
     expect(html).toContain("border-bottom:1px solid");

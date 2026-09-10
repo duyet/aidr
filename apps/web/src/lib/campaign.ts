@@ -51,6 +51,11 @@ export function isExtensionCampaign(c: CampaignAttribution | null): boolean {
   return c.ref === EXT_REF || c.utm_source === EXT_UTM_SOURCE;
 }
 
+export function isEmailCampaign(c: CampaignAttribution | null): boolean {
+  if (!c) return false;
+  return c.utm_source === "email" || c.ref === "email";
+}
+
 export function campaignTrackParams(
   c: CampaignAttribution | null
 ): TrackParams {
@@ -63,6 +68,7 @@ export function campaignTrackParams(
   if (c.utm_content) out.utm_content = c.utm_content;
   if (c.landed_path) out.landed_path = c.landed_path;
   if (isExtensionCampaign(c)) out.traffic_source = "extension";
+  if (isEmailCampaign(c)) out.traffic_source = "email";
   return out;
 }
 

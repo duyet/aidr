@@ -4,6 +4,7 @@ import {
   markdownToPlainText,
   safeHref,
 } from "./markdown.js";
+import { type MailUtmKind, withMailUtm } from "./utm.js";
 
 export const NOTES_FROM = {
   email: "notes@aidr.today",
@@ -47,6 +48,8 @@ export interface NoteEmailInput {
   settingsUrl: string;
   wordmark?: string;
   lang?: MailLang;
+  /** UTM medium/campaign for aidr.today CTAs. Default welcome. */
+  mailKind?: MailUtmKind;
 }
 
 export interface DigestStory {
@@ -81,12 +84,13 @@ function ctaButton(label: string, url: string): string {
 </table>`;
 }
 
-function brandHeader(lang: MailLang): string {
+function brandHeader(lang: MailLang, kind: MailUtmKind): string {
   const tagline =
     lang === "vi" ? "Tin AI xếp hạng và tóm tắt" : "AI news ranked and summary";
+  const home = escapeHtml(withMailUtm(SITE_URL, kind));
   return `<tr>
       <td style="padding:28px 28px 20px;border-bottom:1px solid ${HAIRLINE}">
-        <a href="${SITE_URL}" style="text-decoration:none;color:${FG}">
+        <a href="${home}" style="text-decoration:none;color:${FG}">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0">
             <tr>
               <td style="vertical-align:middle;padding-right:12px">
@@ -146,6 +150,7 @@ function wrapHtml(opts: {
   subject: string;
   preheader: string;
   innerRows: string;
+  mailKind: MailUtmKind;
 }): string {
   const preheader = escapeHtml(opts.preheader.trim());
   return `<!DOCTYPE html>
@@ -161,7 +166,7 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">
   <tr>
     <td align="center" style="padding:32px 16px">
       <table role="presentation" width="540" cellpadding="0" cellspacing="0" style="width:100%;max-width:540px;background:${CARD};color:${FG};border:1px solid ${HAIRLINE};border-radius:12px">
-        ${brandHeader(opts.lang)}
+        ${brandHeader(opts.lang, opts.mailKind)}
         ${opts.innerRows}
       </table>
     </td>
@@ -180,10 +185,11 @@ export function renderNoteEmail(input: NoteEmailInput): {
   text: string;
 } {
   const lang: MailLang = input.lang === "vi" ? "vi" : "en";
+  const mailKind: MailUtmKind = input.mailKind ?? "welcome";
   const body = markdownToEmailHtml(input.bodyMd);
   const cta =
     input.cta?.label && input.cta.url
-      ? ctaButton(input.cta.label, input.cta.url)
+      ? ctaButton(input.cta.label, withMailUtm(input.cta.url, mailKind))
       : "";
   const innerRows = `<tr>
       <td style="padding:24px 28px 8px;font-family:${SANS};font-size:16px;line-height:1.65;color:${FG}">
@@ -198,10 +204,13 @@ export function renderNoteEmail(input: NoteEmailInput): {
     subject: input.subject,
     preheader: input.preheader ?? "",
     innerRows,
+    mailKind,
   });
 
   const safeCtaUrl =
-    input.cta?.label && input.cta.url ? safeHref(input.cta.url) : null;
+    input.cta?.label && input.cta.url
+      ? safeHref(withMailUtm(input.cta.url, mailKind))
+      : null;
   const textParts = [
     markdownToPlainText(input.bodyMd),
     safeCtaUrl ? `${input.cta!.label}: ${safeCtaUrl}` : "",
@@ -223,7 +232,9 @@ export function renderDigestEmail(input: DigestEmailInput): {
     .map((story, i) => {
       const n = i + 1;
       const text = escapeHtml(story.text);
-      const href = story.url ? safeHref(story.url) : null;
+      const href = story.url
+        ? safeHref(withMailUtm(story.url, "digest"))
+        : null;
       const link = href
         ? `<a href="${escapeHtml(href)}" style="color:${FG};text-decoration:none;font-weight:500">${text}</a>`
         : text;
@@ -245,7 +256,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
     </tr>
     ${htmlItems}
     <tr>
-      <td style="padding:8px 28px 16px">${ctaButton(readMore, SITE_URL)}</td>
+      <td style="padding:8px 28px 16px">${ctaButton(readMore, withMailUtm(SITE_URL, "digest"))}</td>
     </tr>
     ${mailFooterHtml(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 
@@ -254,10 +265,12 @@ export function renderDigestEmail(input: DigestEmailInput): {
     subject: input.subject,
     preheader: input.preheader ?? input.stories[0]?.text ?? "",
     innerRows,
+    mailKind: "digest",
   });
 
+  const home = withMailUtm(SITE_URL, "digest");
   const textLines = input.stories.map((s, i) => `${i + 1}. ${s.text}`);
-  const text = `${heading}\n\n${textLines.join("\n")}\n\n${SITE_URL}\n\n${mailFooterText(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
+  const text = `${heading}\n\n${textLines.join("\n")}\n\n${home}\n\n${mailFooterText(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 
   return { html, text };
 }

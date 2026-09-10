@@ -20,6 +20,7 @@ import { HeaderBar } from "../components/HeaderBar";
 import { NotFoundPage } from "../components/NotFoundPage";
 import {
   campaignTrackParams,
+  isEmailCampaign,
   isExtensionCampaign,
   resolveCampaign,
 } from "../lib/campaign";
@@ -256,6 +257,7 @@ function PageViewTracker() {
   const search = useRouterState({ select: (s) => s.location.searchStr });
   const first = useRef(true);
   const landedExt = useRef(false);
+  const landedEmail = useRef(false);
 
   useEffect(() => {
     const campaign = resolveCampaign({ search, pathname });
@@ -264,6 +266,14 @@ function PageViewTracker() {
     if (!landedExt.current && isExtensionCampaign(campaign)) {
       landedExt.current = true;
       track("extension_landing", {
+        ...campaignParams,
+        page_path: pathname,
+      });
+    }
+
+    if (!landedEmail.current && isEmailCampaign(campaign)) {
+      landedEmail.current = true;
+      track("email_click", {
         ...campaignParams,
         page_path: pathname,
       });

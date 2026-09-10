@@ -538,6 +538,35 @@ function paintThumbnail(body, story) {
   img.addEventListener("error", () => {
     if (img.src !== THUMB_MARK) img.src = THUMB_MARK;
   });
+  img.addEventListener("click", (event) => {
+    if (img.src === THUMB_MARK) return;
+    event.stopPropagation();
+    openThumbLightbox(img.src);
+  });
   wrap.append(img);
   body.append(wrap);
+}
+
+function openThumbLightbox(src) {
+  const existing = document.querySelector(".thumb-lightbox");
+  if (existing) existing.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "thumb-lightbox";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Image");
+  const big = document.createElement("img");
+  big.src = src;
+  big.alt = "";
+  overlay.append(big);
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") close();
+  };
+  overlay.addEventListener("click", close);
+  document.addEventListener("keydown", onKey);
+  document.body.append(overlay);
 }
