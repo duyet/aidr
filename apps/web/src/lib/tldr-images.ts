@@ -21,7 +21,7 @@ export function sanitizeImageUrl(
   }
 }
 
-export type CdnImageSize = "thumb" | "card";
+export type CdnImageSize = "thumb" | "card" | "full";
 
 /**
  * Rewrite known CDN og:image URLs down to a size that matches how we
@@ -51,8 +51,9 @@ export function resizeCdnImageUrl(
     if (widthHint && Number(widthHint[1]) > 400) return null;
   }
   if (host === "images.unsplash.com") {
-    parsed.searchParams.set("w", size === "thumb" ? "96" : "640");
-    parsed.searchParams.set("q", "60");
+    const w = size === "thumb" ? "96" : size === "card" ? "640" : "1600";
+    parsed.searchParams.set("w", w);
+    parsed.searchParams.set("q", size === "full" ? "80" : "60");
     parsed.searchParams.set("fit", "crop");
     return parsed.toString();
   }
@@ -60,7 +61,8 @@ export function resizeCdnImageUrl(
 }
 
 function rewriteTwimg(parsed: URL, size: CdnImageSize): string {
-  const name = size === "thumb" ? "small" : "900x900";
+  const name =
+    size === "thumb" ? "small" : size === "card" ? "900x900" : "large";
   const suffix = parsed.pathname.match(
     /^(.*)\.(jpe?g|png|webp|gif):(orig|large|medium|small|thumb|360x360|240x240|900x900|4096x4096)$/i
   );

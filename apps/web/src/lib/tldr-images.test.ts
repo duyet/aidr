@@ -76,6 +76,17 @@ describe("resizeCdnImageUrl", () => {
       resizeCdnImageUrl("https://www.bottlenecklabs.com/blog/og.jpg", "thumb")
     ).toBe("https://www.bottlenecklabs.com/blog/og.jpg");
   });
+
+  it("uses a larger Twitter name for full zoom", () => {
+    expect(
+      resizeCdnImageUrl(
+        "https://pbs.twimg.com/media/HRnvjcJbkAASzlf.jpg:large",
+        "full"
+      )
+    ).toBe(
+      "https://pbs.twimg.com/media/HRnvjcJbkAASzlf.jpg?format=jpg&name=large"
+    );
+  });
 });
 
 describe("imageUrlByItemId", () => {

@@ -2,6 +2,7 @@ import { track } from "@aidr/ui/track";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   campaignTrackParams,
+  isEmailCampaign,
   isExtensionCampaign,
   loadPersistedCampaign,
   persistCampaign,
@@ -30,6 +31,17 @@ describe("readCampaign", () => {
   });
 });
 
+describe("isEmailCampaign", () => {
+  it("matches utm_source=email", () => {
+    expect(isEmailCampaign({ utm_source: "email", utm_medium: "digest" })).toBe(
+      true
+    );
+    expect(isEmailCampaign({ ref: "email" })).toBe(true);
+    expect(isEmailCampaign({ utm_source: "extension" })).toBe(false);
+    expect(isEmailCampaign(null)).toBe(false);
+  });
+});
+
 describe("isExtensionCampaign", () => {
   it("matches ref or utm_source", () => {
     expect(isExtensionCampaign({ ref: "extension" })).toBe(true);
@@ -40,6 +52,21 @@ describe("isExtensionCampaign", () => {
 });
 
 describe("campaignTrackParams", () => {
+  it("sets traffic_source for email landings", () => {
+    expect(
+      campaignTrackParams({
+        utm_source: "email",
+        utm_medium: "digest",
+        utm_campaign: "digest",
+      })
+    ).toEqual({
+      utm_source: "email",
+      utm_medium: "digest",
+      utm_campaign: "digest",
+      traffic_source: "email",
+    });
+  });
+
   it("sets traffic_source for extension landings", () => {
     expect(
       campaignTrackParams({
@@ -103,6 +130,30 @@ describe("resolveCampaign", () => {
     });
     persistCampaign({ ref: "extension", utm_source: "extension" });
     expect(loadPersistedCampaign()?.ref).toBe("extension");
+  });
+});
+
+describe("email click telemetry shape", () => {
+  it("is a valid track event name and params", () => {
+    const gtag = vi.fn();
+    vi.stubGlobal("window", { gtag });
+    const params = campaignTrackParams({
+      utm_source: "email",
+      utm_medium: "welcome",
+      utm_campaign: "welcome",
+      landed_path: "/",
+    });
+    track("email_click", params);
+    expect(gtag).toHaveBeenCalledWith(
+      "event",
+      "email_click",
+      expect.objectContaining({
+        utm_source: "email",
+        utm_medium: "welcome",
+        traffic_source: "email",
+        surface: "web",
+      })
+    );
   });
 });
 

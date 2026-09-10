@@ -6,9 +6,10 @@ import { categoryLabel } from "../lib/lang";
 import { publisherHost } from "../lib/publisher-host";
 import { detectSuggestField, type SuggestField } from "../lib/selection-field";
 import { storyPath } from "../lib/slug";
-import { resizeCdnImageUrl, sanitizeImageUrl } from "../lib/tldr-images";
+import { sanitizeImageUrl } from "../lib/tldr-images";
 import { topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
+import { StoryThumb } from "./StoryThumb";
 import { SuggestionBadge, SuggestTranslation } from "./SuggestTranslation";
 
 export function fmtTime(epochSec: number, lang: Lang): string {
@@ -200,7 +201,7 @@ export function StoryDetail({
   }, [vietnameseVisible]);
 
   return (
-    <div ref={containerRef} className="relative space-y-2">
+    <div ref={containerRef} className="relative space-y-4">
       {selectionButton && (
         <button
           type="button"
@@ -226,8 +227,8 @@ export function StoryDetail({
       )}
       {/* Two-section layout: story content on the left, a meta sidebar
           (image, topics, details, sources) on the right. */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_220px]">
-        <div className="min-w-0 space-y-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_240px] md:gap-8">
+        <div className="min-w-0 space-y-4">
           {showBilingual ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:divide-x md:divide-border">
               {/* Current language on the left, the other on the right. The
@@ -310,7 +311,7 @@ export function StoryDetail({
           )}
 
           {item.sources.length > 0 && (
-            <div className="not-typeset space-y-1.5 border-t border-border pt-3">
+            <div className="not-typeset space-y-2 border-t border-border pt-4">
               <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {lang === "vi" ? "Nguồn chính" : "Key sources"}
               </div>
@@ -326,21 +327,9 @@ export function StoryDetail({
           )}
         </div>
 
-        <aside className="not-typeset min-w-0 space-y-4 md:border-l md:border-border md:pl-5">
+        <aside className="not-typeset min-w-0 space-y-4 md:border-l md:border-border md:pl-6">
           {imageUrl && (
-            <img
-              src={resizeCdnImageUrl(imageUrl, "card") ?? imageUrl}
-              alt=""
-              width={640}
-              height={160}
-              loading="lazy"
-              decoding="async"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-              className="max-h-40 w-full rounded-md border border-border object-cover"
-            />
+            <StoryThumb src={imageUrl} itemId={item.id} variant="card" />
           )}
 
           {(item.tags.length > 0 || item.category) && (

@@ -224,6 +224,7 @@ export function previewCampaign(
     preheader: campaign.preheader,
     bodyMd: campaign.body_md,
     cta,
+    mailKind: "notes",
     unsubscribeUrl: unsubscribeUrl(token),
     settingsUrl: settingsUrl(token),
   });
