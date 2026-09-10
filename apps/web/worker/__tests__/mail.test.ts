@@ -5,8 +5,10 @@ import { parseRssItems } from "../mail/content.js";
 import { markdownToEmailHtml, markdownToPlainText } from "../mail/markdown.js";
 import {
   listUnsubscribeHeaders,
+  MAIL_LOGO_URL,
   NEWS_FROM,
   NOTES_FROM,
+  renderDigestEmail,
   renderNoteEmail,
 } from "../mail/render.js";
 import { digestFrom, notesFrom } from "../mail/send.js";
@@ -106,7 +108,7 @@ describe("parseWrapJson", () => {
 });
 
 describe("renderNoteEmail", () => {
-  it("emits a 520px table layout with wordmark, CTA, and unsubscribe", () => {
+  it("emits a 540px table layout with logo, wordmark, CTA, and unsubscribe", () => {
     const { html, text } = renderNoteEmail({
       subject: "A note",
       preheader: "Inbox preview",
@@ -115,19 +117,59 @@ describe("renderNoteEmail", () => {
       unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
       settingsUrl: "https://aidr.today/subscribe?settings=tok",
     });
-    expect(html).toContain("max-width:520px");
+    expect(html).toContain("max-width:540px");
+    expect(html).toContain(`src="${MAIL_LOGO_URL}"`);
+    expect(html).toContain('alt="AI;DR"');
+    expect(html).toContain("https://aidr.today/logo-sm.png");
     expect(html).toContain("AI;DR");
+    expect(html).toContain("AI news ranked and summary");
     expect(html).toContain("Inbox preview");
-    expect(html).toContain("Read");
+    expect(html).toContain("#b45309");
+    expect(html).toContain("#fffefb !important");
+    expect(html).toContain("text-decoration:none !important");
+    expect(html).toContain("background-color:#b45309");
+    expect(html).toContain("#f7f7f5");
+    expect(html).toContain("#ffffff");
+    expect(html).toContain("Georgia");
+    expect(html).toContain("Inter");
     expect(html).toContain("Unsubscribe");
     expect(html).toContain("Adjust settings");
     expect(html).toContain("/data");
-    expect(html).toContain("#b45309");
-    expect(html).toContain("#f7f7f5");
-    expect(html).toContain("Georgia");
+    expect(html).toMatch(/color:#b45309;text-decoration:none/);
     expect(text).toContain("Hello friend.");
     expect(text).toContain("Read: https://blog.duyet.net/x");
     expect(text).toContain("Adjust settings:");
+  });
+
+  it("uses Vietnamese header tagline and footer labels", () => {
+    const { html, text } = renderNoteEmail({
+      subject: "Chào",
+      bodyMd: "Xin chào",
+      lang: "vi",
+      cta: { label: "Mở aidr.today", url: "https://aidr.today" },
+      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+    });
+    expect(html).toContain("Tin AI xếp hạng và tóm tắt");
+    expect(html).toContain("Hủy đăng ký");
+    expect(html).toContain("Chỉnh cài đặt");
+    expect(html).toContain("Mở aidr.today");
+    expect(text).toContain("Hủy đăng ký:");
+  });
+
+  it("shares the logo shell with digest mail", () => {
+    const { html } = renderDigestEmail({
+      subject: "Digest",
+      date: "2026-09-10",
+      stories: [{ text: "Story one", url: "https://aidr.today/" }],
+      lang: "en",
+      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+    });
+    expect(html).toContain(`src="${MAIL_LOGO_URL}"`);
+    expect(html).toContain("max-width:540px");
+    expect(html).toContain("#fffefb !important");
+    expect(html).toContain("Read on aidr.today");
   });
 
   it("omits non-http(s) CTA urls", () => {
