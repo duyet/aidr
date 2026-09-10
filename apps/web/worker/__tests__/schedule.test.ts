@@ -35,8 +35,14 @@ describe("free-plan hourly ingest", () => {
 
   it("keeps run_worker_first for homepage, sitemap, robots, llms, APIs, Clerk proxy, and aidr.zip", () => {
     expect(wrangler).toContain(
-      'run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]'
+      'run_worker_first = ["/*", "/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]'
     );
+  });
+
+  it("attaches news.duyet.net as a custom domain next to aidr.today", () => {
+    expect(wrangler).toMatch(/pattern\s*=\s*"aidr\.today"/);
+    expect(wrangler).toMatch(/pattern\s*=\s*"news\.duyet\.net"/);
+    expect(wrangler).not.toMatch(/Do not attach it here/);
   });
 
   it("schedules ingest via a Durable Object alarm plus GitHub Actions watchdog", () => {
