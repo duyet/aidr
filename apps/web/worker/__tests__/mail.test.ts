@@ -213,7 +213,9 @@ describe("renderNoteEmail", () => {
     );
     expect(html).not.toContain('font-family:Georgia,"');
     expect(html).not.toContain('"Times New Roman"');
-    expect(html).not.toContain("color:#0a0a0a;text-decoration:none;font-weight:500");
+    expect(html).not.toContain(
+      "color:#0a0a0a;text-decoration:none;font-weight:500"
+    );
     expect(html).toContain('class="mail-story"');
   });
 
@@ -221,7 +223,10 @@ describe("renderNoteEmail", () => {
     const { html } = renderDigestEmail({
       subject: "Digest",
       date: "2026-09-10",
-      stories: [{ text: "No url story" }, { text: "Has url", url: "https://example.com/x" }],
+      stories: [
+        { text: "No url story" },
+        { text: "Has url", url: "https://example.com/x" },
+      ],
       lang: "en",
       unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
       settingsUrl: "https://aidr.today/subscribe?settings=tok",
