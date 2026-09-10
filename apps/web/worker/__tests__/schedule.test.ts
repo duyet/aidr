@@ -39,6 +39,11 @@ describe("free-plan hourly ingest", () => {
     );
   });
 
+  it("does not Worker-first the unhashed public logos mail uses", () => {
+    expect(wrangler).not.toMatch(/run_worker_first\s*=\s*true/);
+    expect(wrangler).not.toContain("/logo-sm.png");
+  });
+
   it("does not attach news.duyet.net as a custom domain", () => {
     expect(wrangler).toMatch(/pattern\s*=\s*"aidr\.today"/);
     expect(wrangler).not.toMatch(/pattern\s*=\s*"news\.duyet\.net"/);

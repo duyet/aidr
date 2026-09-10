@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { previewCampaign } from "../mail/campaigns.js";
 import { parseWrapJson } from "../mail/compose.js";
@@ -18,6 +21,11 @@ import {
   templateById,
 } from "../mail/templates.js";
 import { isAllowedOrigin } from "../subscribe/cors.js";
+
+const publicLogo = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../public/logo-sm.png"
+);
 
 describe("markdownToEmailHtml", () => {
   it("escapes HTML then restores links, bold, and lists", () => {
@@ -107,6 +115,16 @@ describe("parseWrapJson", () => {
   });
 });
 
+describe("MAIL_LOGO_URL", () => {
+  it("points at the unhashed public PNG, which exists", () => {
+    expect(MAIL_LOGO_URL).toBe("https://aidr.today/logo-sm.png");
+    const bytes = readFileSync(publicLogo);
+    expect(bytes.subarray(0, 8)).toEqual(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    );
+  });
+});
+
 describe("renderNoteEmail", () => {
   it("emits a 540px table layout with logo, wordmark, CTA, and unsubscribe", () => {
     const { html, text } = renderNoteEmail({
@@ -120,7 +138,10 @@ describe("renderNoteEmail", () => {
     expect(html).toContain("max-width:540px");
     expect(html).toContain(`src="${MAIL_LOGO_URL}"`);
     expect(html).toContain('alt="AI;DR"');
+    expect(html).toContain('width="40"');
+    expect(MAIL_LOGO_URL).toBe("https://aidr.today/logo-sm.png");
     expect(html).toContain("https://aidr.today/logo-sm.png");
+    expect(html).not.toContain("/assets/logo-sm.png");
     expect(html).toContain("AI;DR");
     expect(html).toContain("AI news ranked and summary");
     expect(html).toContain("Inbox preview");
@@ -170,6 +191,9 @@ describe("renderNoteEmail", () => {
     expect(html).toContain("max-width:540px");
     expect(html).toContain("#fffefb !important");
     expect(html).toContain("Read on aidr.today");
+    expect(html).toContain("2026-09-10");
+    expect(html).toContain("Story one");
+    expect(html).toContain("border-bottom:1px solid");
   });
 
   it("omits non-http(s) CTA urls", () => {
