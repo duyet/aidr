@@ -96,9 +96,9 @@ enabled = true
 pattern = "aidr.today"
 custom_domain = true
 
-# DNS CNAME news.duyet.net → aidr.today already cut over (AnyRouter zone).
-# Attach so this Worker sees Host news.duyet.net and can 308 path+query
-# instead of Cloudflare's root-only canonical redirect.
-[[routes]]
-pattern = "news.duyet.net"
-custom_domain = true
+# DNS CNAME news.duyet.net → aidr.today already cut over (same CF anycast).
+# Do not set custom_domain=true here: this account's zones are aidr.today /
+# anyrouter.dev / …, not duyet.net. wrangler deploy fails with
+# "Could not find zone for news.duyet.net". Fetch still 308s when Host is
+# news.duyet.net (alias-redirect.ts). Bind the hostname once duyet.net is
+# on this Cloudflare account.
