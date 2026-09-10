@@ -11,7 +11,9 @@ preview_urls = true
 directory = "dist/client"
 # `/` must hit the Worker so the homepage SSR's stories (the static
 # index.html shell has no feed). Sitemap/robots are Worker-generated.
-run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]
+# `/*` so news.duyet.net (and every other path) hits the Worker before
+# assets/SPA — otherwise alias 308s never run for HTML routes.
+run_worker_first = ["/*", "/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]
 not_found_handling = "single-page-application"
 
 # Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus
@@ -94,5 +96,9 @@ enabled = true
 pattern = "aidr.today"
 custom_domain = true
 
-# news.duyet.net stays on the legacy duyet.net-account Worker until cutover.
-# Do not attach it here — aidr.today zone is on AnyRouter Inc. (account_id above).
+# DNS CNAME news.duyet.net → aidr.today already cut over (AnyRouter zone).
+# Attach so this Worker sees Host news.duyet.net and can 308 path+query
+# instead of Cloudflare's root-only canonical redirect.
+[[routes]]
+pattern = "news.duyet.net"
+custom_domain = true

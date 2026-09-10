@@ -11,6 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 describe("Worker discovery entry", () => {
   it("serves /llms.txt from the same fetch path as robots/sitemap", () => {
     const src = readFileSync(join(here, "../server.ts"), "utf8");
+    expect(src).toContain("aliasRedirect");
     expect(src).toContain('path === "/llms.txt"');
     expect(src).toContain("llmsTxtResponse");
     expect(src).toContain('path === "/sitemap.xml"');
