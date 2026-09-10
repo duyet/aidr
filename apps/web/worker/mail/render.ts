@@ -19,11 +19,14 @@ export const NEWS_FROM = {
 const SITE_URL = "https://aidr.today";
 const DATA_URL = `${SITE_URL}/data`;
 /**
- * Square 128px PNG (`public/logo-icon.png`) shown at 40×40 (3×).
- * `logo-sm.png` is a 320×96 wordmark — squashing it to 40px looks blurry.
+ * Square 128px PNG at site root (Worker ASSETS). Displayed 36px with
+ * width/height 72 so retina/Gmail proxy stay sharp. Do not wrap this
+ * <img> in the same <a> as the wordmark — Gmail collapses that to a
+ * blue text link and drops the image.
  */
 export const MAIL_LOGO_URL = `${SITE_URL}/logo-icon.png`;
-const LOGO_PX = 40;
+const LOGO_SRC_PX = 72;
+const LOGO_CSS_PX = 36;
 const PAD = "32px";
 
 /** Editorial tokens from apps/web/src/styles.css — hex so email clients stay honest. */
@@ -73,14 +76,14 @@ function ctaButton(label: string, url: string): string {
   if (!safe) return "";
   const href = escapeHtml(safe);
   const text = escapeHtml(label);
-  // Line-height + horizontal padding (no vertical padding) so the label
-  // sits in the vertical center. Nested span + !important + border-bottom:0
-  // so Gmail does not paint a blue underline through the button text.
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 4px">
+  // Padding lives on the <td>, not the <a>. Gmail otherwise shrinks the
+  // pill to the text box and paints a blue underline through the label.
+  // <font color> is the last color Gmail still honors on links.
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px">
   <tr>
-    <td align="center" bgcolor="${ACCENT}" height="44" valign="middle" style="background-color:${ACCENT};border-radius:8px;height:44px;vertical-align:middle;mso-line-height-rule:exactly">
-      <a href="${href}" target="_blank" style="display:inline-block;background-color:${ACCENT};border:1px solid ${ACCENT};border-radius:8px;color:${ACCENT_FG};font-family:${SANS};font-size:15px;font-weight:600;line-height:44px;padding:0 24px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none">
-        <span style="color:${ACCENT_FG} !important;text-decoration:none !important;border-bottom:0 !important;line-height:44px">${text}</span>
+    <td align="center" bgcolor="${ACCENT}" valign="middle" style="background-color:${ACCENT};border-radius:8px;padding:14px 28px;mso-padding-alt:14px 28px">
+      <a class="mail-cta" href="${href}" target="_blank" style="font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${ACCENT_FG};text-decoration:none;display:inline-block;-webkit-text-size-adjust:none">
+        <span style="color:${ACCENT_FG} !important;text-decoration:none !important;border-bottom:0 !important"><font color="${ACCENT_FG}">${text}</font></span>
       </a>
     </td>
   </tr>
@@ -93,19 +96,19 @@ function brandHeader(lang: MailLang, kind: MailUtmKind): string {
   const home = escapeHtml(withMailUtm(SITE_URL, kind));
   return `<tr>
       <td style="padding:32px ${PAD} 24px;border-bottom:1px solid ${HAIRLINE}">
-        <a href="${home}" style="text-decoration:none;color:${FG}">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-            <tr>
-              <td style="vertical-align:middle;padding-right:14px">
-                <img src="${MAIL_LOGO_URL}" width="${LOGO_PX}" height="${LOGO_PX}" alt="" style="display:block;width:${LOGO_PX}px;height:${LOGO_PX}px;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic">
-              </td>
-              <td style="vertical-align:middle">
-                <span style="font-family:${SERIF};font-size:26px;line-height:1.15;font-weight:500;color:${FG}">AI;DR</span>
-                <div style="margin-top:4px;font-family:${SANS};font-size:13px;line-height:1.35;color:${MUTED}">${escapeHtml(tagline)}</div>
-              </td>
-            </tr>
-          </table>
-        </a>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="vertical-align:middle;padding-right:14px">
+              <a href="${home}" style="text-decoration:none;border:0">
+                <img src="${MAIL_LOGO_URL}" width="${LOGO_SRC_PX}" height="${LOGO_SRC_PX}" alt="AI;DR" style="display:block;width:${LOGO_CSS_PX}px;height:${LOGO_CSS_PX}px;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic">
+              </a>
+            </td>
+            <td style="vertical-align:middle">
+              <div style="font-family:${SERIF};font-size:26px;line-height:1.15;font-weight:500;color:${FG}">AI;DR</div>
+              <div style="margin-top:4px;font-family:${SANS};font-size:13px;line-height:1.35;color:${MUTED}">${escapeHtml(tagline)}</div>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>`;
 }
@@ -126,7 +129,7 @@ function mailFooterHtml(
       : "You are receiving this because you subscribed at aidr.today.";
   const linkStyle = `color:${ACCENT};text-decoration:none;font-weight:500`;
   return `<tr>
-      <td style="padding:24px ${PAD} 36px;border-top:1px solid ${HAIRLINE};font-family:${SANS};font-size:12px;line-height:1.7;color:${MUTED}">
+      <td style="padding:28px ${PAD} 48px;border-top:1px solid ${HAIRLINE};font-family:${SANS};font-size:12px;line-height:1.7;color:${MUTED}">
         ${why}<br>
         <a href="${unsub}" style="${linkStyle}">${escapeHtml(unsubLabel)}</a>
         <span style="color:${MUTED};padding:0 8px">·</span>
@@ -157,16 +160,18 @@ function wrapHtml(opts: {
 }): string {
   const preheader = escapeHtml(opts.preheader.trim());
   return `<!DOCTYPE html>
-<html lang="${opts.lang}">
+<html lang="${opts.lang}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(opts.subject)}</title>
-<style>
+<style type="text/css">
   a { text-decoration: none !important; }
+  .mail-cta, .mail-cta span, .mail-cta font { color: ${ACCENT_FG} !important; text-decoration: none !important; border-bottom: 0 !important; }
+  u + #body .mail-cta { color: ${ACCENT_FG} !important; text-decoration: none !important; }
 </style>
 </head>
-<body style="margin:0;padding:0;background:${BG}">
+<body id="body" style="margin:0;padding:0;background:${BG}">
 ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${preheader}</div>` : ""}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG}">
   <tr>
