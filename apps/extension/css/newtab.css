@@ -1312,10 +1312,6 @@ html[data-theme="dark"] .topic-colored {
   color: var(--foreground);
 }
 
-.story-host {
-  margin-left: 0.15rem;
-}
-
 .story-sources {
   display: flex;
   flex-direction: column;
@@ -1360,16 +1356,6 @@ html[data-theme="dark"] .topic-colored {
 .story-when {
   width: 5rem;
   text-align: right;
-}
-
-.story-score {
-  width: 3.5rem;
-  flex-shrink: 0;
-  text-align: right;
-  color: var(--muted-foreground);
-  font-size: 0.875rem;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
 }
 
 @media (min-width: 640px) {

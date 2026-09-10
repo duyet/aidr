@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.14](https://github.com/duyet/aidr/compare/aidr-v0.1.13...aidr-v0.1.14) (2026-09-10)
+
+### 💄 Styles
+
+* **extension:** hide publisher domain next to story titles (match the web list)
+* **extension:** hide points/comments score on feed rows
+* **web:** hide points/comments score on StoryRow
+
+### 🐛 Bug Fixes
+
+* **extension:** section tiles in Settings repaint so on/off state updates immediately
+
+
 ## [0.1.13](https://github.com/duyet/aidr/compare/aidr-v0.1.12...aidr-v0.1.13) (2026-09-09)
 
 ### 💄 Styles

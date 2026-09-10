@@ -6,7 +6,7 @@ import { SITE_URL } from "./site";
  *
  * Chrome Web Store auto-updates once listed.
  */
-export const EXTENSION_VERSION = "0.1.13";
+export const EXTENSION_VERSION = "0.1.14";
 
 /** Chrome Web Store URL for the extension. */
 export const EXTENSION_STORE_URL =

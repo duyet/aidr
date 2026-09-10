@@ -18,8 +18,18 @@ test("new tab matches site chrome copy and typefaces", () => {
   assert.doesNotMatch(html, /chromewebstore\.google\.com\/detail\/aidr/);
   assert.match(css, /Source Sans 3/);
   assert.match(css, /EB Garamond/);
-  assert.match(js, /story-host/);
+  assert.doesNotMatch(js, /story-host/);
+  assert.doesNotMatch(js, /story-score/);
   assert.match(js, /story-sources/);
+});
+
+test("section tiles persist with a prefs-panel repaint so aria-pressed updates", () => {
+  const panel = readFileSync(join(root, "js/settings-panel.js"), "utf8");
+  assert.match(panel, /state\.sections\[key\] = !on;/);
+  assert.match(
+    panel,
+    /state\.sections\[key\] = !on;[\s\S]*?await persist\(\);/
+  );
 });
 
 test("header Chrome mark is RiChromeLine, not the pie-chart path", () => {

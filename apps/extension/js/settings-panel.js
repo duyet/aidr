@@ -266,7 +266,7 @@ export function mountSettingsPanel(root, settings, onSaved) {
             { pref: key, to: on ? "off" : "on" },
             state.apiBase
           );
-          await persist({ repaint: false });
+          await persist();
         },
         " is-full-width"
       );
