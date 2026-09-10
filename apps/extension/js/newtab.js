@@ -1,4 +1,4 @@
-import { digestPaintKey, hydrateDigest } from "./api.js";
+import { digestPaintKey, fetchDigest, hydrateDigest } from "./api.js";
 import { highlightTitle, tagsForHighlight } from "./highlight.js";
 import { t, uiLang } from "./i18n.js";
 import { tagSiteLinks, withExtRef } from "./ref.js";
@@ -263,6 +263,12 @@ function applyChrome(settings) {
     const label = lang === "vi" ? "Tab mới Chrome" : "Chrome new tab";
     chromeLink.title = label;
     chromeLink.setAttribute("aria-label", label);
+  }
+  const reloadBtn = $("tldr-reload");
+  if (reloadBtn) {
+    const label = t(settings, "refresh");
+    reloadBtn.title = label;
+    reloadBtn.setAttribute("aria-label", label);
   }
   document.title = t(settings, "lede");
   for (const root of [$("lang-toggle"), $("lang-toggle-phone")]) {
@@ -954,8 +960,43 @@ async function main() {
     if (!same) render(settings, digest);
   };
 
-  const refreshLive = () => {
-    if (globalThis.__NEWS_TAB_DIGEST__) return;
+  let liveBusy = false;
+
+  const setReloadBusy = (busy) => {
+    const btn = $("tldr-reload");
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.classList.toggle("is-loading", busy);
+  };
+
+  const refreshLive = ({ force = false } = {}) => {
+    if (!force && globalThis.__NEWS_TAB_DIGEST__) return;
+    if (liveBusy) return;
+    liveBusy = true;
+    setReloadBusy(true);
+
+    const finish = () => {
+      liveBusy = false;
+      setReloadBusy(false);
+    };
+
+    const onFail = () => {
+      if (!digest.tldr && digest.stories.length === 0) {
+        setStatus(t(settings, "error"), true);
+      }
+    };
+
+    if (force) {
+      void fetchDigest(settings.apiBase, { campaign: "refresh" })
+        .then((result) => {
+          applyLive(result);
+          void maybeOfferUnpackedUpdate(settings);
+        })
+        .catch(onFail)
+        .finally(finish);
+      return;
+    }
+
     void hydrateDigest(settings.apiBase, {
       onCache: (cached) => {
         digest = cached;
@@ -966,12 +1007,14 @@ async function main() {
         applyLive(result);
         void maybeOfferUnpackedUpdate(settings);
       },
-    }).catch(() => {
-      if (!digest.tldr && digest.stories.length === 0) {
-        setStatus(t(settings, "error"), true);
-      }
-    });
+    })
+      .catch(onFail)
+      .finally(finish);
   };
+
+  $("tldr-reload")?.addEventListener("click", () => {
+    refreshLive({ force: true });
+  });
 
   const refresh = async (next) => {
     settings = next;

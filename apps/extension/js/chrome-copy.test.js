@@ -41,6 +41,14 @@ test("header Chrome mark is RiChromeLine, not the pie-chart path", () => {
   );
 });
 
+test("digest footer has a muted reload control next to the updated stamp", () => {
+  assert.match(html, /id="tldr-reload"/);
+  assert.match(html, /id="tldr-updated"/);
+  assert.match(css, /\.tldr-reload/);
+  assert.match(js, /refreshLive\(\{ force: true \}\)/);
+  assert.match(js, /campaign: "refresh"/);
+});
+
 test("new tab does not show Add section restore chip", () => {
   assert.doesNotMatch(html, /id="add-section"/);
   assert.doesNotMatch(html, /add-section-host/);

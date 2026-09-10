@@ -23,7 +23,7 @@ pnpm --filter @aidr/web pack-cws
 | | |
 |---|---|
 | File | `apps/extension/dist/aidr-cws.zip` |
-| Version | `0.1.14` (must match `manifest.json` + `package.json`) |
+| Version | `0.1.15` (must match `manifest.json` + `package.json`) |
 | Layout | `manifest.json` at zip **root** (not under `aidr/`) |
 | Store flavor | no `optional_host_permissions`, `connect-src` = `aidr.today` only |
 | Do **not** upload | `https://aidr.today/aidr.zip` / `public/aidr.zip` (nested Load unpacked zip) |

@@ -1182,9 +1182,59 @@ html[data-theme="dark"] .topic-colored {
 .tldr-foot {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-top: 0.75rem;
   color: var(--muted-foreground);
   font-size: 0.75rem;
+}
+
+.tldr-updated-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.tldr-reload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  line-height: 0;
+  opacity: 0.7;
+}
+
+.tldr-reload svg {
+  display: block;
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.tldr-reload:hover:not(:disabled) {
+  background: var(--muted);
+  color: var(--foreground);
+  opacity: 1;
+}
+
+.tldr-reload:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.tldr-reload.is-loading svg {
+  animation: tldr-reload-spin 0.8s linear infinite;
+}
+
+@keyframes tldr-reload-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .days {

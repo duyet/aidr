@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.15](https://github.com/duyet/aidr/compare/aidr-v0.1.14...aidr-v0.1.15) (2026-09-10)
+
+### ✨ Features
+
+* **extension:** reload icon beside the digest updated timestamp (force network refresh)
+
+
 ## [0.1.14](https://github.com/duyet/aidr/compare/aidr-v0.1.13...aidr-v0.1.14) (2026-09-10)
 
 ### 💄 Styles
