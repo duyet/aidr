@@ -299,6 +299,7 @@ async function readJson(url) {
   try {
     const response = await fetch(url, {
       credentials: "omit",
+      cache: "no-store",
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`http ${response.status}`);
@@ -361,12 +362,14 @@ export async function fetchDigest(apiBase, { campaign } = {}) {
       // /api/feed has no CORS for web previews; unpacked MV3 host_permissions
       // still succeed. Public digest is enough for AI;DR + stories.
     }
+    digest.lastFetchedAt = Date.now();
     await writeCachedDigest(digest, base);
     return { digest, source: "public", stale: false };
   } catch {
     try {
       const data = await readJson(tagged(feedUrl(base), `${content}_feed`));
       const digest = normalizeDigest(data);
+      digest.lastFetchedAt = Date.now();
       await writeCachedDigest(digest, base);
       return { digest, source: "feed", stale: false };
     } catch {

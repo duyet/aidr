@@ -119,8 +119,10 @@ test("normalizeDigest keeps /api/feed days and flattens stories", () => {
 
 test("fetchDigest prefers /api/public then caches", async () => {
   const calls = [];
-  globalThis.fetch = async (url) => {
+  const opts = [];
+  globalThis.fetch = async (url, init) => {
     calls.push(String(url));
+    opts.push(init);
     return {
       ok: true,
       headers: { get: () => "application/json" },
@@ -132,12 +134,15 @@ test("fetchDigest prefers /api/public then caches", async () => {
     };
   };
 
-  const first = await fetchDigest("https://aidr.today");
+  const before = Date.now();
+  const first = await fetchDigest("https://aidr.today", { campaign: "refresh" });
   assert.equal(first.source, "public");
   assert.equal(first.stale, false);
   assert.equal(first.digest.stories[0].title, "T");
+  assert.ok(first.digest.lastFetchedAt >= before);
+  assert.equal(opts[0].cache, "no-store");
   assert.equal(new URL(calls[0]).pathname, "/api/public");
-  assert.equal(new URL(calls[0]).searchParams.get("utm_content"), "hydrate");
+  assert.equal(new URL(calls[0]).searchParams.get("utm_content"), "refresh");
   assert.equal(new URL(calls[1]).pathname, "/api/feed");
   assert.equal(new URL(calls[1]).searchParams.get("days"), "3");
 });
