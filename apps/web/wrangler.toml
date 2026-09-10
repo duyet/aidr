@@ -9,9 +9,12 @@ preview_urls = true
 
 [assets]
 directory = "dist/client"
+binding = "ASSETS"
 # `/` must hit the Worker so the homepage SSR's stories (the static
 # index.html shell has no feed). Sitemap/robots are Worker-generated.
-run_worker_first = ["/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]
+# Logo/og/favicon also run Worker-first so we can ASSETS.fetch them with
+# a real image/* type instead of SPA HTML (mail + Gmail need PNG 200).
+run_worker_first = ["/", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]
 not_found_handling = "single-page-application"
 
 # Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus

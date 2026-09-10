@@ -1,4 +1,6 @@
 export interface Env {
+  /** Static files from dist/client (`[assets] binding = "ASSETS"`). */
+  ASSETS?: Fetcher;
   DB: D1Database;
   NEWS_INGEST: Workflow;
   /** Singleton DO that arms an hourly alarm and coalesces ingest triggers.

@@ -3,6 +3,7 @@ import { handleClerkProxy, isClerkProxyPath } from "../worker/clerk-proxy";
 import { handleAidrZipRequest } from "../worker/extension-zip";
 import { ensureIngestAlarm, tickIngest } from "../worker/ingest-schedule";
 import { NewsIngestScheduler } from "../worker/ingest-scheduler";
+import { handlePublicAsset } from "../worker/public-assets";
 import { handlePublicCors } from "../worker/public-cors";
 import { handleSubscribeCors } from "../worker/subscribe/cors";
 import type { Env } from "../worker/types";
@@ -34,6 +35,8 @@ async function resolveEnv(env?: Env): Promise<Env | undefined> {
 
 export default {
   async fetch(request: Request, env: Env, ctx?: ExecutionContext) {
+    const publicFile = await handlePublicAsset(request, env);
+    if (publicFile) return publicFile;
     const path = new URL(request.url).pathname;
     if (isClerkProxyPath(path)) {
       return handleClerkProxy(request, env);

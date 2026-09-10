@@ -86,19 +86,19 @@ function brandHeader(lang: MailLang): string {
     lang === "vi" ? "Tin AI xếp hạng và tóm tắt" : "AI news ranked and summary";
   return `<tr>
       <td style="padding:28px 28px 20px;border-bottom:1px solid ${HAIRLINE}">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td style="vertical-align:middle;padding-right:12px">
-              <a href="${SITE_URL}" style="text-decoration:none">
-                <img src="${MAIL_LOGO_URL}" width="40" height="40" alt="AI;DR" style="display:block;width:40px;height:40px;border:0;outline:none;text-decoration:none">
-              </a>
-            </td>
-            <td style="vertical-align:middle">
-              <a href="${SITE_URL}" style="font-family:${SERIF};font-size:26px;line-height:1.15;font-weight:500;color:${FG};text-decoration:none">AI;DR</a>
-              <div style="margin-top:4px;font-family:${SANS};font-size:13px;line-height:1.35;color:${MUTED}">${escapeHtml(tagline)}</div>
-            </td>
-          </tr>
-        </table>
+        <a href="${SITE_URL}" style="text-decoration:none;color:${FG}">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="vertical-align:middle;padding-right:12px">
+                <img src="${MAIL_LOGO_URL}" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border:0;outline:none;text-decoration:none">
+              </td>
+              <td style="vertical-align:middle">
+                <span style="font-family:${SERIF};font-size:26px;line-height:1.15;font-weight:500;color:${FG}">AI;DR</span>
+                <div style="margin-top:4px;font-family:${SANS};font-size:13px;line-height:1.35;color:${MUTED}">${escapeHtml(tagline)}</div>
+              </td>
+            </tr>
+          </table>
+        </a>
       </td>
     </tr>`;
 }

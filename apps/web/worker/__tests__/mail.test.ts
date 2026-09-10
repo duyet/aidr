@@ -137,8 +137,8 @@ describe("renderNoteEmail", () => {
     });
     expect(html).toContain("max-width:540px");
     expect(html).toContain(`src="${MAIL_LOGO_URL}"`);
-    expect(html).toContain('alt="AI;DR"');
     expect(html).toContain('width="40"');
+    expect(html).toContain('alt=""');
     expect(MAIL_LOGO_URL).toBe("https://aidr.today/logo-sm.png");
     expect(html).toContain("https://aidr.today/logo-sm.png");
     expect(html).not.toContain("/assets/logo-sm.png");
