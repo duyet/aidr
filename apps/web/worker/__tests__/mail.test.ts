@@ -158,8 +158,12 @@ describe("renderNoteEmail", () => {
     expect(html).toContain("background-color:#b45309");
     expect(html).toContain("#f7f7f5");
     expect(html).toContain("#ffffff");
-    expect(html).toContain("Georgia");
-    expect(html).toContain("Inter");
+    expect(html).toContain("Georgia, Times New Roman, EB Garamond");
+    expect(html).toContain("Inter, Source Sans 3");
+    expect(html).not.toContain('font-family:Georgia,"');
+    expect(html).not.toContain('"Times New Roman"');
+    expect(html).not.toContain('"Source Sans 3"');
+    expect(html).not.toContain('"Segoe UI"');
     expect(html).toContain("Unsubscribe");
     expect(html).toContain("Adjust settings");
     expect(html).toContain("/data");
@@ -204,6 +208,31 @@ describe("renderNoteEmail", () => {
     expect(html).toContain("2026-09-10");
     expect(html).toContain("Story one");
     expect(html).toContain("border-bottom:1px solid");
+    expect(html).toContain(
+      'style="color:#b45309;text-decoration:underline;font-weight:500"'
+    );
+    expect(html).not.toContain('font-family:Georgia,"');
+    expect(html).not.toContain('"Times New Roman"');
+    expect(html).not.toContain("color:#0a0a0a;text-decoration:none;font-weight:500");
+    expect(html).toContain('class="mail-story"');
+  });
+
+  it("wraps every digest story in an accent-underlined <a>, falling back to aidr.today", () => {
+    const { html } = renderDigestEmail({
+      subject: "Digest",
+      date: "2026-09-10",
+      stories: [{ text: "No url story" }, { text: "Has url", url: "https://example.com/x" }],
+      lang: "en",
+      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+    });
+    expect(html).toContain('class="mail-story"');
+    expect(html).toContain(">No url story</a>");
+    expect(html).toContain("utm_medium=digest");
+    expect(html).toContain('href="https://example.com/x"');
+    expect(
+      (html.match(/text-decoration:underline;font-weight:500/g) ?? []).length
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("omits non-http(s) CTA urls", () => {

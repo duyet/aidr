@@ -37,9 +37,13 @@ const MUTED = "#474747";
 const ACCENT = "#b45309";
 const ACCENT_FG = "#fffefb";
 const HAIRLINE = "#0a0a0a14";
-const SERIF = 'Georgia,"Times New Roman","EB Garamond",Garamond,ui-serif,serif';
+/** Quote-free stacks — interpolated into style="font-family:…". A " inside
+ *  the value would terminate the HTML attribute (Gmail then paints blue
+ *  underlined leftovers). */
+const SERIF =
+  "Georgia, Times New Roman, EB Garamond, Garamond, ui-serif, serif";
 const SANS =
-  'Inter,"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif';
+  "Inter, Source Sans 3, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif";
 
 export type MailLang = "en" | "vi";
 
@@ -166,7 +170,8 @@ function wrapHtml(opts: {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(opts.subject)}</title>
 <style type="text/css">
-  a { text-decoration: none !important; }
+  a { text-decoration: none; }
+  a.mail-story { color: ${ACCENT} !important; text-decoration: underline !important; }
   .mail-cta, .mail-cta span, .mail-cta font { color: ${ACCENT_FG} !important; text-decoration: none !important; border-bottom: 0 !important; }
   u + #body .mail-cta { color: ${ACCENT_FG} !important; text-decoration: none !important; }
 </style>
@@ -243,12 +248,10 @@ export function renderDigestEmail(input: DigestEmailInput): {
     .map((story, i) => {
       const n = i + 1;
       const text = escapeHtml(story.text);
-      const href = story.url
-        ? safeHref(withMailUtm(story.url, "digest"))
-        : null;
-      const link = href
-        ? `<a href="${escapeHtml(href)}" style="color:${FG};text-decoration:none;font-weight:500">${text}</a>`
-        : text;
+      const href =
+        safeHref(withMailUtm(story.url ?? SITE_URL, "digest")) ??
+        withMailUtm(SITE_URL, "digest");
+      const link = `<a class="mail-story" href="${escapeHtml(href)}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${text}</a>`;
       const rule =
         i < input.stories.length - 1
           ? `border-bottom:1px solid ${HAIRLINE};`
