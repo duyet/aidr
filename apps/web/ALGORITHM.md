@@ -150,10 +150,9 @@ anyrouter's queue for long prompts), JSON mode, `max_tokens` 8192 (2048 on trans
 reasoning-model fallback (extracts JSON from `message.reasoning` when content
 is starved), comma-separated model fallback chains (`ANYROUTER_MODEL`), and
 per-task overrides (`ANYROUTER_TRANSLATE_MODEL` / `ANYROUTER_TLDR_MODEL` —
-all three are `anyrouter/auto` only (AnyRouter's health-aware router
-over top stable platform models). Hard-coded Gemma/GLM/Ling flash
-fallbacks 404/502'd and burned the first-hop budget; auto already
-failovers. BYOK-only ids such as SEA-LION and Gemini 3.6/3.7 are omitted, and
+all three are `anyrouter/auto`, then `deepseek/deepseek-v4.1-flash`,
+`poolside/laguna-s-2.1`, `minimax/m3`. Hard-coded Gemma/GLM/Ling flash
+ids 404/502'd; do not restore them. BYOK-only ids such as SEA-LION and Gemini 3.6/3.7 are omitted, and
 stealth/ox-alpha was removed after AnyRouter delisted it). Translate
 runs in batches of 3 (summaries clipped, title-only retry) and each
 backfill slice is its own Workflow step so a finished batch is written
