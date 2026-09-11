@@ -32,6 +32,16 @@ describe("public files on disk", () => {
     expect(favicon).toContain("<svg");
     expect(publicAssetContentType("/favicon.svg")).toBe("image/svg+xml");
   });
+
+  it("centers AI;DR on the yellow mark with dominant-baseline", () => {
+    const favicon = readFileSync(join(publicDir, "favicon.svg"), "utf8");
+    const wordmark = readFileSync(join(publicDir, "logo.svg"), "utf8");
+    expect(favicon).toContain('y="16"');
+    expect(favicon).toContain('dominant-baseline="central"');
+    expect(wordmark).toContain('y="24"');
+    expect(wordmark).toContain('dominant-baseline="central"');
+    expect(wordmark).toContain('x="80"');
+  });
 });
 
 describe("handlePublicAsset", () => {

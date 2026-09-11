@@ -31,6 +31,7 @@ const LANG_TOGGLE_DISABLED_PATHS = new Set([
 const SITE_LINKS = [
   { href: "/", label: "News", internal: true },
   { href: "/about", label: "About", internal: true },
+  { href: "/brand", label: "Brand", internal: true },
   { href: "/mcp", label: "MCP", internal: true },
   { href: "/subscribe", label: "Subscribe", internal: true },
   { href: "/extension", label: "Get AI;DR", internal: true },
