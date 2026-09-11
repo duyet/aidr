@@ -35,10 +35,12 @@ function SubmissionsList({
   userId,
   lang,
   getToken,
+  refreshKey,
 }: {
   userId: string;
   lang: "en" | "vi";
   getToken: () => Promise<string | null>;
+  refreshKey: number;
 }) {
   const [items, setItems] = useState<Submission[] | null>(null);
 
@@ -60,39 +62,45 @@ function SubmissionsList({
     return () => {
       cancelled = true;
     };
-  }, [userId, getToken]);
-
-  if (!items || items.length === 0) return null;
+  }, [userId, getToken, refreshKey]);
 
   return (
-    <div className="mt-8 space-y-2">
+    <div className="space-y-2">
       <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
         {lang === "vi" ? "Bài đã gửi" : "Your submissions"}
       </h2>
-      {items.map((s) => (
-        <div
-          key={s.id}
-          className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-border py-2 text-sm"
-        >
-          <span
-            className={`shrink-0 rounded-full border px-2 py-0 text-xs ${
-              s.status === "accepted"
-                ? "border-accent text-accent"
-                : s.status === "rejected"
-                  ? "border-border text-muted-foreground"
-                  : "border-border text-muted-foreground"
-            }`}
+      {items === null ? (
+        <p className="text-sm text-muted-foreground">
+          {lang === "vi" ? "Đang tải…" : "Loading…"}
+        </p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {lang === "vi" ? "Chưa có bài nào." : "No submissions yet."}
+        </p>
+      ) : (
+        items.map((s) => (
+          <div
+            key={s.id}
+            className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-border py-2 text-sm"
           >
-            {statusLabel(s.status, lang)}
-          </span>
-          <span className="min-w-0 flex-1 truncate">{s.title}</span>
-          {s.status === "rejected" && s.review_note && (
-            <span className="w-full text-xs text-muted-foreground">
-              {s.review_note}
+            <span
+              className={`shrink-0 rounded-full border px-2 py-0 text-xs ${
+                s.status === "accepted"
+                  ? "border-accent text-accent"
+                  : "border-border text-muted-foreground"
+              }`}
+            >
+              {statusLabel(s.status, lang)}
             </span>
-          )}
-        </div>
-      ))}
+            <span className="min-w-0 flex-1 truncate">{s.title}</span>
+            {s.status === "rejected" && s.review_note && (
+              <span className="w-full text-xs text-muted-foreground">
+                {s.review_note}
+              </span>
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 }
@@ -101,45 +109,26 @@ function SubmitForm({
   userId,
   userName,
   getToken,
+  onSubmitted,
 }: {
   userId: string;
   userName: string;
   getToken: () => Promise<string | null>;
+  onSubmitted: () => void;
 }) {
   const lang = useLang();
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle"
-  );
+  const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [banner, setBanner] = useState(false);
 
-  if (status === "sent") {
-    return (
-      <div className="space-y-2 rounded-md border border-border bg-muted/40 p-4 text-sm">
-        <p>
-          {lang === "vi"
-            ? "Bài của bạn sẽ được AI thẩm định trước khi lên trang."
-            : "Your story will be AI-reviewed before it appears on the site."}
-        </p>
-        <p className="text-muted-foreground">
-          {lang === "vi"
-            ? "Bài gửi sẽ được AI thẩm định và chấm điểm. Không phải bài nào cũng được đăng — chỉ những tin được đánh giá là liên quan và chất lượng mới xuất hiện trên trang."
-            : "Submissions are reviewed and rated by AI. Not all submissions will be published — only stories judged relevant and high-quality appear in the feed."}{" "}
-          <Link
-            to="/about"
-            hash="how-it-works"
-            className="text-accent underline underline-offset-2 hover:no-underline"
-          >
-            {lang === "vi"
-              ? "Tìm hiểu thêm về cách hoạt động →"
-              : "Learn how it works →"}
-          </Link>
-        </p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!banner) return;
+    const id = window.setTimeout(() => setBanner(false), 6000);
+    return () => window.clearTimeout(id);
+  }, [banner]);
 
   return (
     <form
@@ -154,13 +143,37 @@ function SubmitForm({
             data: { url, title, note, user_id: userId, user_name: userName },
             ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
           });
-          setStatus("sent");
+          setUrl("");
+          setTitle("");
+          setNote("");
+          setStatus("idle");
+          setBanner(true);
+          onSubmitted();
         } catch (err) {
           setStatus("error");
           setError(err instanceof Error ? err.message : "Failed to submit");
         }
       }}
     >
+      {banner ? (
+        <div
+          role="status"
+          className="flex items-start justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm"
+        >
+          <p>
+            {lang === "vi"
+              ? "Đã gửi. Bài sẽ được AI thẩm định trước khi lên trang."
+              : "Sent. Your story will be AI-reviewed before it appears on the site."}
+          </p>
+          <button
+            type="button"
+            className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setBanner(false)}
+          >
+            {lang === "vi" ? "Đóng" : "Dismiss"}
+          </button>
+        </div>
+      ) : null}
       <label className="block text-sm">
         <span className="mb-1 block text-xs font-semibold text-muted-foreground">
           URL
@@ -221,7 +234,6 @@ function SubmitForm({
         {lang === "vi" ? "Gửi bài" : "Submit"}
       </button>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <SubmissionsList userId={userId} lang={lang} getToken={getToken} />
     </form>
   );
 }
@@ -230,6 +242,7 @@ function SubmitGate({ useUser, useAuth }: { useUser: any; useAuth: any }) {
   const { user } = useUser();
   const { getToken } = useAuth();
   const lang = useLang();
+  const [listKey, setListKey] = useState(0);
   if (!user) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -239,7 +252,20 @@ function SubmitGate({ useUser, useAuth }: { useUser: any; useAuth: any }) {
   }
   const userName = user.fullName ?? user.username ?? "user";
   return (
-    <SubmitForm userId={user.id} userName={userName} getToken={getToken} />
+    <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2">
+      <SubmitForm
+        userId={user.id}
+        userName={userName}
+        getToken={getToken}
+        onSubmitted={() => setListKey((n) => n + 1)}
+      />
+      <SubmissionsList
+        userId={user.id}
+        lang={lang}
+        getToken={getToken}
+        refreshKey={listKey}
+      />
+    </div>
   );
 }
 
@@ -260,7 +286,7 @@ function SubmitPage() {
           : "Local agents: see /llms.txt — same form, set via=agent, sign-in required."}
       </p>
 
-      <div className="mt-6 max-w-lg">
+      <div className="mt-6">
         <ErrorBoundary
           fallback={
             <p className="text-sm text-muted-foreground">
