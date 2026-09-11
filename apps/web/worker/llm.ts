@@ -378,6 +378,9 @@ export const MODEL_SLICE_MAX_MS = 25_000;
  *  model then logs 0 tokens and the chain looks 100% dead. */
 export const SCORE_SLICE_MAX_MS = 70_000;
 export const TLDR_SLICE_MAX_MS = 90_000;
+/** Translate used the 25s leftover cap; anyrouter/auto often needs longer
+ *  to finish a 3-item JSON batch when it is the only hop. */
+export const TRANSLATE_SLICE_MAX_MS = 60_000;
 const FALLBACK_FLOOR_MS = 20_000;
 
 /**
@@ -887,6 +890,7 @@ async function translateBatch(
       modelSpec: env.ANYROUTER_TRANSLATE_MODEL,
       task: "translate",
       timeoutMs,
+      maxSliceMs: TRANSLATE_SLICE_MAX_MS,
       maxTokens: TRANSLATE_MAX_TOKENS,
       accept: (content) => {
         try {
