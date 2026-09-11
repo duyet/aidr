@@ -1,5 +1,5 @@
 import { track } from "@aidr/ui/track";
-import { X } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
 import { type ReactElement, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { resizeCdnImageUrl } from "../lib/tldr-images";
@@ -90,8 +90,8 @@ export function StoryThumb({
 
   const imgClass =
     variant === "card"
-      ? "max-h-48 w-full rounded-xl border border-border object-cover"
-      : "size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 self-stretch overflow-hidden rounded-xl border border-border/80 bg-muted object-cover";
+      ? "max-h-56 w-full rounded-3xl border border-border object-cover transition-transform duration-200 group-hover:scale-[1.04] group-focus-visible:scale-[1.04]"
+      : "size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 self-stretch overflow-hidden rounded-xl border border-border/80 bg-muted object-cover transition-transform duration-200 group-hover:scale-[1.08] group-focus-visible:scale-[1.08]";
 
   const img = (
     <img
@@ -131,11 +131,23 @@ export function StoryThumb({
         }}
         className={
           variant === "card"
-            ? "block w-full cursor-zoom-in overflow-hidden rounded-xl p-0"
-            : "shrink-0 cursor-zoom-in overflow-hidden rounded-xl p-0"
+            ? "group relative block w-full cursor-zoom-in overflow-hidden rounded-3xl p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            : "group relative shrink-0 cursor-zoom-in overflow-hidden rounded-xl p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         }
       >
         {img}
+        <span
+          className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-200 group-hover:bg-black/40 group-hover:opacity-100 group-focus-visible:bg-black/40 group-focus-visible:opacity-100"
+          aria-hidden
+        >
+          <Maximize2
+            className={
+              variant === "card"
+                ? "h-7 w-7 text-white drop-shadow"
+                : "h-3.5 w-3.5 text-white drop-shadow"
+            }
+          />
+        </span>
       </button>
       {open && (
         <ThumbLightbox
