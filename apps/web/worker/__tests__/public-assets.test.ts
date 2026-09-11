@@ -35,12 +35,14 @@ describe("public files on disk", () => {
 
   it("centers AI;DR on the yellow mark with dominant-baseline", () => {
     const favicon = readFileSync(join(publicDir, "favicon.svg"), "utf8");
-    const wordmark = readFileSync(join(publicDir, "logo.svg"), "utf8");
+    const mark = readFileSync(join(publicDir, "logo.svg"), "utf8");
     expect(favicon).toContain('y="16"');
     expect(favicon).toContain('dominant-baseline="central"');
-    expect(wordmark).toContain('y="24"');
-    expect(wordmark).toContain('dominant-baseline="central"');
-    expect(wordmark).toContain('x="80"');
+    expect(favicon).toContain('viewBox="0 0 32 32"');
+    expect(mark).toContain('viewBox="0 0 160 160"');
+    expect(mark).toContain('y="80"');
+    expect(mark).toContain('x="80"');
+    expect(mark).toContain('dominant-baseline="central"');
   });
 });
 
