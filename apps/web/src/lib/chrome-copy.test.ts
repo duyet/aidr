@@ -24,12 +24,13 @@ describe("site chrome copy", () => {
     expect(footer).toContain("EXTENSION_PATH");
     expect(footer).toContain("/data");
     expect(footer).toContain("Data / Pipeline");
-    expect(footer).toContain("/brand");
+    expect(footer).not.toContain('label: "Brand"');
+    expect(footer).not.toContain('to: "/brand"');
     expect(footer).not.toContain("CHROME_WEB_STORE_URL");
   });
 
-  it("points the header Chrome control at /extension, not the Web Store URL", () => {
-    expect(EXTENSION_PATH).toBe("/extension");
+  it("points the header Chrome control at /subscribe, not the Web Store URL", () => {
+    expect(EXTENSION_PATH).toBe("/subscribe");
     const header = readFileSync(
       join(here, "../components/HeaderBar.tsx"),
       "utf8"
@@ -39,8 +40,10 @@ describe("site chrome copy", () => {
     expect(header).not.toContain("CHROME_WEB_STORE_URL");
     expect(header).not.toContain(CHROME_WEB_STORE_URL);
     expect(header).not.toContain('label: "Blog"');
+    expect(header).not.toContain('label: "Subscribe"');
     expect(header).toContain('href: "/brand"');
     expect(header).toContain('label: "Brand"');
+    expect(header).toContain('label: "Get AI;DR"');
   });
 
   it("points GitHub and ALGORITHM at duyet/aidr apps/web, not the old monorepo news app", () => {

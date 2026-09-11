@@ -267,7 +267,6 @@ async function main() {
     "/changelog",
     "/subscribe",
     "/data",
-    "/extension",
     "/privacy",
     "/terms",
   ];
@@ -288,15 +287,28 @@ async function main() {
     );
   });
 
-  await check("GET /extension has Chrome and Telegram tabs", async () => {
-    const res = await fetch(`${base}/extension`);
+  await check("GET /subscribe has Chrome and Telegram tabs", async () => {
+    const res = await fetch(`${base}/subscribe`);
     assert(res.status === 200, `expected 200, got ${res.status}`);
     const body = await res.text();
-    assert(body.includes("Tab mới Chrome"), "missing Chrome tab");
-    assert(body.includes("Telegram Channel"), "missing Telegram tab");
+    assert(body.includes("Chrome"), "missing Chrome tab");
+    assert(body.includes("Telegram"), "missing Telegram tab");
     assert(
       body.includes("chromewebstore.google.com"),
       "Chrome tab must keep Web Store install"
+    );
+  });
+
+  await check("GET /extension redirects to /subscribe", async () => {
+    const res = await fetch(`${base}/extension`, { redirect: "manual" });
+    assert(
+      res.status === 301 || res.status === 302,
+      `expected redirect, got ${res.status}`
+    );
+    const loc = res.headers.get("location") ?? "";
+    assert(
+      new URL(loc, base).pathname === "/subscribe",
+      `expected /subscribe Location, got ${loc}`
     );
   });
 

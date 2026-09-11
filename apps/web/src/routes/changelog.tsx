@@ -135,11 +135,11 @@ function ChangelogPage(): ReactElement {
         <p className="mt-2 text-sm text-muted-foreground">
           {vi ? (
             <>
-              Hướng dẫn cài đặt tại <Link to="/extension">/extension</Link>.
+              Hướng dẫn cài đặt tại <Link to="/subscribe">/subscribe</Link>.
             </>
           ) : (
             <>
-              Install guide at <Link to="/extension">/extension</Link>.
+              Install guide at <Link to="/subscribe">/subscribe</Link>.
             </>
           )}
         </p>

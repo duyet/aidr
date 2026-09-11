@@ -37,7 +37,7 @@ Same Clerk Bearer as submit. Empty suggestions are rejected.
 
 ## How you get AI;DR
 
-Three first-class ways: ${SITE_URL}/extension (Chrome Web Store, Telegram @aihomnay, email digest — no account required). Header chrome links to /extension, not the Web Store URL. Pipeline: ${SITE_URL}/data.
+Three first-class ways: ${SITE_URL}/subscribe (Chrome Web Store, Telegram @aihomnay, email digest — no account required). Header chrome links to /subscribe, not the Web Store URL. Pipeline: ${SITE_URL}/data.
 
 ## Ranking (do not reimplement)
 

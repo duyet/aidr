@@ -69,7 +69,7 @@ How it works
 The extension fetches public JSON from https://aidr.today (GET /api/public and /api/feed) and paints it in the new tab. Settings stay in chrome.storage on your device.
 
 Privacy: https://aidr.today/privacy
-Homepage: https://aidr.today/extension
+Homepage: https://aidr.today/subscribe
 Support: https://github.com/duyet/aidr/issues
 ```
 
@@ -90,7 +90,7 @@ Cách hoạt động
 Tiện ích tải JSON công khai từ https://aidr.today (GET /api/public và /api/feed) rồi vẽ lên tab mới. Cài đặt lưu trong chrome.storage trên máy bạn.
 
 Quyền riêng tư: https://aidr.today/privacy
-Trang chủ: https://aidr.today/extension
+Trang chủ: https://aidr.today/subscribe
 Hỗ trợ: https://github.com/duyet/aidr/issues
 ```
 
@@ -106,7 +106,7 @@ Also: **Vietnamese** (`_locales/en` + `_locales/vi`)
 ### Homepage URL
 
 ```
-https://aidr.today/extension
+https://aidr.today/subscribe
 ```
 
 ### Support URL

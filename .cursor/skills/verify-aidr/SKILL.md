@@ -49,11 +49,11 @@ Do not drive an instance whose doctor reports `ok: false`. HTML without Chrome U
 
 Prefer the lever over ad-hoc curl. Recipes live in `features/`. Stable handles:
 
-- Routes: `/`, `/about`, `/extension`, `/api/public`, `/api/feed`.
+- Routes: `/`, `/about`, `/subscribe`, `/api/public`, `/api/feed`. `/extension` redirects to `/subscribe`.
 - Brand: `AI;DR` (header + digest heading).
 - SSR default lang: Vietnamese (`Hôm nay AI có gì mới?`).
 - Story permalink: `/[category]/[8-char-id]`.
-- Extension: `Load unpacked`, `/aidr.zip`, `href="chrome://extensions"`.
+- Get AI;DR: `/subscribe` tabs + Chrome Web Store; `/extension` → `/subscribe`.
 
 ```bash
 .cursor/skills/verify-aidr/bin/verify-aidr drive homepage
