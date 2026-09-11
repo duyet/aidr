@@ -49,13 +49,13 @@ database_id = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427"
 
 [vars]
 ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
-# Short auto-led chains: AnyRouter's health-aware router is the first hop.
-# Hard-coded ling-3.0-flash (404) and Gemma/GLM flash (502) fallbacks
-# burned the budget before auto could finish. auto already failovers.
-# stealth/ox-alpha was delisted — do not restore it. No BYOK-only ids.
-ANYROUTER_MODEL = "anyrouter/auto"
-ANYROUTER_TRANSLATE_MODEL = "anyrouter/auto"
-ANYROUTER_TLDR_MODEL = "anyrouter/auto"
+# Auto first, then DeepSeek V4.1 flash / Laguna S 2.1 / MiniMax M3.
+# Same chain for score, translate, and TL;DR. Avoid ling-3.0-flash (404)
+# and Gemma/GLM flash (502). stealth/ox-alpha stays delisted. No BYOK-only
+# ids (SEA-LION, gemini-3.6/3.7, qwen3.7).
+ANYROUTER_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
+ANYROUTER_TRANSLATE_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
+ANYROUTER_TLDR_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
 # Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
 # overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014
 # blocks the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).

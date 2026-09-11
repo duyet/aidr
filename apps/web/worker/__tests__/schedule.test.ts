@@ -69,13 +69,20 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
-  it("uses anyrouter/auto only on every live task (auto failovers)", () => {
+  const liveChain = [
+    "anyrouter/auto",
+    "deepseek/deepseek-v4.1-flash",
+    "poolside/laguna-s-2.1",
+    "minimax/m3",
+  ];
+
+  it("uses the same auto-led chain on score, translate, and tldr", () => {
     for (const name of [
       "ANYROUTER_MODEL",
       "ANYROUTER_TRANSLATE_MODEL",
       "ANYROUTER_TLDR_MODEL",
     ]) {
-      expect(idsOf(name), name).toEqual(["anyrouter/auto"]);
+      expect(idsOf(name), name).toEqual(liveChain);
     }
   });
 
@@ -90,13 +97,13 @@ describe("live AnyRouter model chains", () => {
       expect(ids, name).not.toContain("google/gemma-4-26b-a4b-it");
       expect(ids, name).not.toContain("z-ai/glm-4.7-flash");
       expect(ids, name).not.toContain("google/gemma-4-31b");
+      expect(ids, name).not.toContain("google/gemma-4-31b-it");
     }
   });
 
   it("omits delisted, BYOK-only, paid gemini, and rejected replacement ids", () => {
     const blocked = [
       "stealth/ox-alpha",
-      "poolside/laguna-s-2.1",
       "deepseek/DeepSeek-V4-Flash",
       "stepfun-ai/step-3.7-flash",
       "aisingapore/gemma-sea-lion-v4-27b-it",
