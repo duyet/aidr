@@ -261,6 +261,7 @@ async function main() {
   // 4. Static top-level routes all render.
   const staticRoutes = [
     "/about",
+    "/brand",
     "/submit",
     "/mcp",
     "/changelog",

@@ -254,6 +254,13 @@ function AboutPage() {
             /mcp
           </Link>
           {" · "}
+          <Link
+            to="/brand"
+            className="text-accent underline underline-offset-2 hover:no-underline"
+          >
+            /brand
+          </Link>
+          {" · "}
           <a
             href={GITHUB_URL}
             target="_blank"

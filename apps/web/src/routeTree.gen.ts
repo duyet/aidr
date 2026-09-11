@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as DataRouteImport } from './routes/data'
 import { Route as ExtensionRouteImport } from './routes/extension'
@@ -46,6 +47,11 @@ const SplatRoute = SplatRouteImport.update({
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandRoute = BrandRouteImport.update({
+  id: '/brand',
+  path: '/brand',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChangelogRoute = ChangelogRouteImport.update({
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/about': typeof AboutRoute
+  '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/about': typeof AboutRoute
+  '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/about': typeof AboutRoute
+  '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/about'
+    | '/brand'
     | '/changelog'
     | '/data'
     | '/extension'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/about'
+    | '/brand'
     | '/changelog'
     | '/data'
     | '/extension'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/about'
+    | '/brand'
     | '/changelog'
     | '/data'
     | '/extension'
@@ -307,6 +319,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
   AboutRoute: typeof AboutRoute
+  BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
   DataRoute: typeof DataRoute
   ExtensionRoute: typeof ExtensionRoute
@@ -350,6 +363,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand': {
+      id: '/brand'
+      path: '/brand'
+      fullPath: '/brand'
+      preLoaderRoute: typeof BrandRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/changelog': {
@@ -499,6 +519,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
   AboutRoute: AboutRoute,
+  BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
   DataRoute: DataRoute,
   ExtensionRoute: ExtensionRoute,

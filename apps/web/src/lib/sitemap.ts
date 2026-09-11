@@ -4,6 +4,7 @@ import { storyPath } from "./slug";
 export const SITEMAP_STATIC_PATHS = [
   "/",
   "/about",
+  "/brand",
   "/changelog",
   "/extension",
   "/privacy",
