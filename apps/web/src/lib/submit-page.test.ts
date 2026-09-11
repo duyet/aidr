@@ -23,7 +23,9 @@ describe("submit page keeps the form after success", () => {
     expect(src).toContain("refreshKey");
     expect(src).toContain("onSubmitted");
     expect(src).toMatch(/<SubmissionsList[\s\S]*refreshKey=\{listKey\}/);
-    expect(src.indexOf("</form>")).toBeLessThan(src.indexOf("<SubmissionsList"));
+    expect(src.indexOf("</form>")).toBeLessThan(
+      src.indexOf("<SubmissionsList")
+    );
   });
 
   it("keeps the signed-out gate", () => {
