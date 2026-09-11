@@ -193,7 +193,7 @@ export function StoryRow({
       </StoryRowHeader>
 
       {expanded && hasDetails && (
-        <div className="mb-3 overflow-hidden rounded-2xl border border-border/70 bg-card px-5 py-5 shadow-sm md:mx-4 md:px-6 md:py-6">
+        <div className="overflow-hidden rounded-b-2xl border border-border/70 bg-card px-5 py-5 md:px-6 md:py-6">
           <StoryDetail item={item} lang={lang} />
         </div>
       )}

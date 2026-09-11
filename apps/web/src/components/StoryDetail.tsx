@@ -327,13 +327,13 @@ export function StoryDetail({
           )}
         </div>
 
-        <aside className="not-typeset min-w-0 space-y-4 md:border-l md:border-border md:pl-6">
+        <aside className="not-typeset min-w-0 space-y-5 md:border-l md:border-border md:pl-6">
           {imageUrl && (
             <StoryThumb src={imageUrl} itemId={item.id} variant="card" />
           )}
 
           {(item.tags.length > 0 || item.category) && (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {lang === "vi" ? "Chủ đề" : "Topics"}
               </div>
