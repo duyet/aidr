@@ -150,16 +150,16 @@ anyrouter's queue for long prompts), JSON mode, `max_tokens` 8192 (2048 on trans
 reasoning-model fallback (extracts JSON from `message.reasoning` when content
 is starved), comma-separated model fallback chains (`ANYROUTER_MODEL`), and
 per-task overrides (`ANYROUTER_TRANSLATE_MODEL` / `ANYROUTER_TLDR_MODEL` —
-`anyrouter/auto` first for score/TL;DR (AnyRouter's health-aware router
-over top stable platform models), then Gemma 4 / GLM-4.7 / Ling-3.0;
-translate leads with Gemma 4 / GLM-4.7 / Ling-3.0 / `anyrouter/auto`
-(native ids that finish a 3-item batch), then Gemma 4 31B;
-BYOK-only ids such as SEA-LION and Gemini 3.6/3.7 are omitted, and
+all three are `anyrouter/auto` only (AnyRouter's health-aware router
+over top stable platform models). Hard-coded Gemma/GLM/Ling flash
+fallbacks 404/502'd and burned the first-hop budget; auto already
+failovers. BYOK-only ids such as SEA-LION and Gemini 3.6/3.7 are omitted, and
 stealth/ox-alpha was removed after AnyRouter delisted it). Translate
 runs in batches of 3 (summaries clipped, title-only retry) and each
 backfill slice is its own Workflow step so a finished batch is written
 even if a later slice times out. Score batches of 5 with a 70s hang-cap;
-TL;DR uses a 90s hang-cap so bilingual JSON can finish (a 25s cap made
+TL;DR uses a 90s hang-cap; translate attempts use a 60s hang-cap so
+`anyrouter/auto` is not killed mid-route (a 25s cap made
 every score/TL;DR model log 0 tokens). A hang, empty sanitize, timeout, or 402 advances the chain
 (`raceTimeout` aborts the fetch; leftover reserves a 20s floor for two
 fallbacks and hang-caps at 25s so leftover actually reaches them; 402

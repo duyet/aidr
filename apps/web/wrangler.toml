@@ -49,19 +49,13 @@ database_id = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427"
 
 [vars]
 ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
-# Live model chains: score/TL;DR lead with anyrouter/auto (AnyRouter's
-# health-aware router over top stable platform models) and fall back to
-# cheap native ids (non-BYOK). Translate still leads with Gemma 4
-# (completes a 3-item JSON batch fast) and keeps anyrouter/auto mid-chain.
-# stealth/ox-alpha was delisted (404s) — do not restore it. No BYOK-only
-# ids (SEA-LION, gemini-3.6/3.7, qwen3.7) — a hang/401 on the first id
-# used to eat the whole budget before reaching a model that can write
-# title_vi.
-ANYROUTER_MODEL = "anyrouter/auto,google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclusionai/ling-3.0-flash"
-ANYROUTER_TRANSLATE_MODEL = "google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclusionai/ling-3.0-flash,anyrouter/auto,google/gemma-4-31b"
-# Bilingual TL;DR used to fall through to a reasoning-first chain and time
-# out both attempts, leaving English bullets on the VI homepage.
-ANYROUTER_TLDR_MODEL = "anyrouter/auto,google/gemma-4-26b-a4b-it,z-ai/glm-4.7-flash,inclusionai/ling-3.0-flash"
+# Short auto-led chains: AnyRouter's health-aware router is the first hop.
+# Hard-coded ling-3.0-flash (404) and Gemma/GLM flash (502) fallbacks
+# burned the budget before auto could finish. auto already failovers.
+# stealth/ox-alpha was delisted — do not restore it. No BYOK-only ids.
+ANYROUTER_MODEL = "anyrouter/auto"
+ANYROUTER_TRANSLATE_MODEL = "anyrouter/auto"
+ANYROUTER_TLDR_MODEL = "anyrouter/auto"
 # Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
 # overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014
 # blocks the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).

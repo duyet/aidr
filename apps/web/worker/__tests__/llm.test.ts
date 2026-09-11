@@ -1576,6 +1576,10 @@ describe("modelAttemptTimeoutMs", () => {
     expect(modelAttemptTimeoutMs(240_000, 4, 90_000)).toBe(90_000);
     expect(modelAttemptTimeoutMs(70_000, 3, 70_000)).toBe(30_000);
   });
+
+  it("gives a lone remaining auto hop the full translate slice", () => {
+    expect(modelAttemptTimeoutMs(70_000, 1, 60_000)).toBe(60_000);
+  });
 });
 
 describe("normalizeTag", () => {

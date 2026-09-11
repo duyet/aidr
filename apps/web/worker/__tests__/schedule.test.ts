@@ -69,33 +69,28 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
-  it("keeps a real fallback chain on every live task (no single-model setup)", () => {
+  it("uses anyrouter/auto only on every live task (auto failovers)", () => {
     for (const name of [
       "ANYROUTER_MODEL",
       "ANYROUTER_TRANSLATE_MODEL",
       "ANYROUTER_TLDR_MODEL",
     ]) {
-      expect(idsOf(name).length, name).toBeGreaterThanOrEqual(2);
+      expect(idsOf(name), name).toEqual(["anyrouter/auto"]);
     }
   });
 
-  it("leads score/tldr with anyrouter/auto and translate with Gemma 4", () => {
-    expect(idsOf("ANYROUTER_MODEL")[0]).toBe("anyrouter/auto");
-    expect(idsOf("ANYROUTER_TLDR_MODEL")[0]).toBe("anyrouter/auto");
-    expect(idsOf("ANYROUTER_TRANSLATE_MODEL")[0]).toBe(
-      "google/gemma-4-26b-a4b-it"
-    );
-    expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toContain("anyrouter/auto");
-  });
-
-  it("reports three scoring fallbacks so /data can show (+3 fallback)", () => {
-    expect(idsOf("ANYROUTER_MODEL")).toEqual([
-      "anyrouter/auto",
-      "google/gemma-4-26b-a4b-it",
-      "z-ai/glm-4.7-flash",
-      "inclusionai/ling-3.0-flash",
-    ]);
-    expect(idsOf("ANYROUTER_TLDR_MODEL")).toEqual(idsOf("ANYROUTER_MODEL"));
+  it("does not hard-code 404/502 flash fallbacks", () => {
+    for (const name of [
+      "ANYROUTER_MODEL",
+      "ANYROUTER_TRANSLATE_MODEL",
+      "ANYROUTER_TLDR_MODEL",
+    ]) {
+      const ids = idsOf(name);
+      expect(ids, name).not.toContain("inclusionai/ling-3.0-flash");
+      expect(ids, name).not.toContain("google/gemma-4-26b-a4b-it");
+      expect(ids, name).not.toContain("z-ai/glm-4.7-flash");
+      expect(ids, name).not.toContain("google/gemma-4-31b");
+    }
   });
 
   it("omits delisted, BYOK-only, paid gemini, and rejected replacement ids", () => {
@@ -151,10 +146,11 @@ describe("translate batch size", () => {
     expect(algorithm).toMatch(/batches of 3/);
   });
 
-  it("caps translate attempts at 25s so leftover reaches fallbacks", () => {
+  it("caps score/tldr/translate attempts so auto is not killed mid-route", () => {
     expect(llm).toMatch(/MODEL_SLICE_MAX_MS = 25_000/);
     expect(llm).toMatch(/SCORE_SLICE_MAX_MS = 70_000/);
     expect(llm).toMatch(/TLDR_SLICE_MAX_MS = 90_000/);
+    expect(llm).toMatch(/TRANSLATE_SLICE_MAX_MS = 60_000/);
     expect(llm).toMatch(/FALLBACK_FLOOR_MS = 20_000/);
     expect(llm).toMatch(/SCORE_BATCH_SIZE = 5/);
     expect(algorithm).toMatch(/batches of 5/);
