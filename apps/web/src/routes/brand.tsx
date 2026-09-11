@@ -23,26 +23,26 @@ const ASSETS = [
   },
   {
     path: "/logo.svg",
-    name: "Wordmark SVG",
-    note: "Primary wordmark",
+    name: "Logo SVG",
+    note: "Square yellow mark (vector)",
     checker: true,
   },
   {
     path: "/logo.png",
-    name: "Wordmark PNG",
-    note: "Raster wordmark",
+    name: "Large logo",
+    note: "Square mark 640×640",
     checker: true,
   },
   {
     path: "/logo-sm.png",
     name: "Small logo",
-    note: "Compact wordmark (mail / header)",
+    note: "Square mark 320×320",
     checker: true,
   },
   {
     path: "/logo-icon.png",
     name: "Icon PNG",
-    note: "Square mark",
+    note: "Square mark 128×128",
     checker: true,
   },
   {
