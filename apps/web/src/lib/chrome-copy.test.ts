@@ -39,6 +39,8 @@ describe("site chrome copy", () => {
     expect(header).not.toContain("CHROME_WEB_STORE_URL");
     expect(header).not.toContain(CHROME_WEB_STORE_URL);
     expect(header).not.toContain('label: "Blog"');
+    expect(header).toContain('href: "/brand"');
+    expect(header).toContain('label: "Brand"');
   });
 
   it("points GitHub and ALGORITHM at duyet/aidr apps/web, not the old monorepo news app", () => {

@@ -92,13 +92,15 @@ function Preview({
         dark ? "bg-stone-900" : "bg-stone-50"
       } ${wide ? "col-span-2" : ""}`}
     >
-      <img
-        src={src}
-        alt=""
-        className={
-          wide ? "max-h-20 w-auto max-w-full" : "h-12 w-auto max-w-full"
-        }
-      />
+      <a href={src} target="_blank" rel="noopener noreferrer">
+        <img
+          src={src}
+          alt=""
+          className={
+            wide ? "max-h-20 w-auto max-w-full" : "h-12 w-auto max-w-full"
+          }
+        />
+      </a>
     </div>
   );
 }
