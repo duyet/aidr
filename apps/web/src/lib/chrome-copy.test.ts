@@ -24,6 +24,7 @@ describe("site chrome copy", () => {
     expect(footer).toContain("EXTENSION_PATH");
     expect(footer).toContain("/data");
     expect(footer).toContain("Data / Pipeline");
+    expect(footer).toContain("/brand");
     expect(footer).not.toContain("CHROME_WEB_STORE_URL");
   });
 

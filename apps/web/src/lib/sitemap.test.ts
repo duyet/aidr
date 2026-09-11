@@ -53,6 +53,7 @@ describe("staticSitemapUrls", () => {
     const locs = staticSitemapUrls().map((u) => u.loc);
     expect(locs).toContain(`${SITE_URL}/`);
     expect(locs).toContain(`${SITE_URL}/about`);
+    expect(locs).toContain(`${SITE_URL}/brand`);
     expect(locs).toContain(`${SITE_URL}/mcp`);
     expect(locs).toContain(`${SITE_URL}/extension`);
     expect(locs).toContain(`${SITE_URL}/privacy`);

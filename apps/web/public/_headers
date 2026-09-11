@@ -11,3 +11,9 @@
   Cache-Control: public, max-age=86400
 /logo.png
   Cache-Control: public, max-age=86400
+/logo.svg
+  Cache-Control: public, max-age=86400
+/favicon.svg
+  Cache-Control: public, max-age=86400
+/og.jpg
+  Cache-Control: public, max-age=86400
