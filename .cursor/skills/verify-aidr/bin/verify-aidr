@@ -164,14 +164,14 @@ function chromeBin() {
   );
 }
 
-async function httpGet(url, { ua = "", accept = "", method = "GET", headers = {} } = {}) {
+async function httpGet(url, { ua = "", accept = "", method = "GET", headers = {}, redirect = "follow" } = {}) {
   const h = { ...headers };
   if (ua) h["User-Agent"] = ua;
   if (accept) h.Accept = accept;
   const res = await fetch(url, {
     method,
     headers: h,
-    redirect: "follow",
+    redirect,
     signal: AbortSignal.timeout(FETCH_MS),
   });
   const buf = Buffer.from(await res.arrayBuffer());
@@ -606,10 +606,6 @@ async function driveAbout(ctx) {
     "How it works",
     "Sources",
     "AI;DR + Email",
-    "Chrome new tab",
-    "Load unpacked",
-    "/extension",
-    "aidr.zip",
   ]);
   return {
     ok: res.status === 200 && Object.values(identity).every(Boolean),
@@ -622,33 +618,35 @@ async function driveAbout(ctx) {
 
 async function driveExtension(ctx) {
   const { base, evidenceDir } = ctx;
-  const res = await httpGet(`${base}/extension`, {
+  const res = await httpGet(`${base}/subscribe`, {
     ua: CHROME_UA,
     accept: "text/html",
   });
-  save(evidenceDir, "extension.html", res.body);
+  save(evidenceDir, "subscribe.html", res.body);
   const identity = containsAll(res.body, [
-    "Load unpacked",
-    "/aidr.zip",
-    'href="chrome://extensions"',
-    "manifest.json",
-    "/media/chrome-load-unpacked-zip-error.png",
+    "Chrome",
+    "Telegram",
+    "chromewebstore.google.com",
   ]);
-  const unzip =
-    res.body.includes("Unzip first") || res.body.includes("Giải nén trước");
-  const noStore = !res.body.includes("chrome.google.com/webstore");
+  const bounced = await httpGet(`${base}/extension`, {
+    ua: CHROME_UA,
+    accept: "text/html",
+    redirect: "manual",
+  });
+  const loc = bounced.headers.location || bounced.headers.Location || "";
+  const redirected =
+    (bounced.status === 301 || bounced.status === 302) &&
+    loc.includes("/subscribe");
   return {
     ok:
       res.status === 200 &&
       Object.values(identity).every(Boolean) &&
-      unzip &&
-      noStore,
+      redirected,
     feature: "extension",
     status: res.status,
     bytes: res.bytes,
     identity,
-    unzipWarning: unzip,
-    noWebStoreListing: noStore,
+    extensionRedirect: { status: bounced.status, location: loc },
   };
 }
 

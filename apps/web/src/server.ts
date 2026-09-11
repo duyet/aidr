@@ -38,6 +38,11 @@ export default {
     const publicFile = await handlePublicAsset(request, env);
     if (publicFile) return publicFile;
     const path = new URL(request.url).pathname;
+    if (path === "/extension") {
+      const dest = new URL(request.url);
+      dest.pathname = "/subscribe";
+      return Response.redirect(dest.toString(), 301);
+    }
     if (isClerkProxyPath(path)) {
       return handleClerkProxy(request, env);
     }

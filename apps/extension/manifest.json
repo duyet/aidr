@@ -4,7 +4,7 @@
   "description": "__MSG_extDescription__",
   "version": "0.1.15",
   "default_locale": "en",
-  "homepage_url": "https://aidr.today/extension",
+  "homepage_url": "https://aidr.today/subscribe",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon16.png",

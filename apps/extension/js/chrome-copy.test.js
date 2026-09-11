@@ -14,7 +14,7 @@ test("new tab matches site chrome copy and typefaces", () => {
   assert.doesNotMatch(html, /translated hourly/);
   assert.doesNotMatch(html, />Blog</);
   assert.match(html, /https:\/\/duyet\.net/);
-  assert.match(html, /https:\/\/aidr\.today\/extension/);
+  assert.match(html, /https:\/\/aidr\.today\/subscribe/);
   assert.doesNotMatch(html, /chromewebstore\.google\.com\/detail\/aidr/);
   assert.match(css, /Source Sans 3/);
   assert.match(css, /EB Garamond/);

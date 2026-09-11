@@ -6,7 +6,7 @@
 
 - `about-hero` renders the About heading and product sentence.
 - `about-pipeline` shows the How it works steps (Sources through AI;DR + Email).
-- `about-extension` points at `/extension` and `aidr.zip`.
+- `about-extension` points at Chrome new tab / Get AI;DR.
 
 ## How to get to it (user POV)
 
@@ -20,7 +20,7 @@ Preconditions:
 - `verify-aidr doctor` reports `ok: true`.
 
 - **Open about.** Run `.cursor/skills/verify-aidr/bin/verify-aidr drive about`. HTTP 200 HTML includes `About AI News`, `How it works`, `Sources`, `AI;DR + Email`, and `Chrome new tab`.
-- **Install pointer.** The same body includes `Load unpacked`, `/extension`, and `aidr.zip`.
+- **Pipeline copy.** The same body includes `Sources` and `AI;DR + Email`.
 - **Proof.** Evidence file `about.html` contains those strings. Optional: `verify-aidr screenshot --path /about`.
 
 ## Gotchas

@@ -7,7 +7,7 @@ Feed pipeline and ranking design: see [ALGORITHM.md](./ALGORITHM.md).
 Unauthenticated digest for third-party clients (Chrome extension first).
 The in-repo unpacked extension lives at [`apps/extension`](../extension).
 Visitors download it from [`https://aidr.today/aidr.zip`](https://aidr.today/aidr.zip)
-and follow the load-unpacked steps on [`/extension`](https://aidr.today/extension).
+and follow the load-unpacked steps on [`/subscribe`](https://aidr.today/subscribe).
 That URL always 302s to the latest GitHub release asset on an `aidr-v*` tag
 (Load-unpacked zip with `aidr/manifest.json`). Release Please + the
 `Extension release assets` workflow attach `aidr.zip` (and the CWS zip) when

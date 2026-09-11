@@ -17,6 +17,8 @@ describe("Worker discovery entry", () => {
     expect(src).toContain("llmsTxtResponse");
     expect(src).toContain('path === "/sitemap.xml"');
     expect(src).toContain('path === "/robots.txt"');
+    expect(src).toContain('path === "/extension"');
+    expect(src).toContain('dest.pathname = "/subscribe"');
   });
 
   it("llms.txt response is non-empty aidr guidance", async () => {
@@ -28,10 +30,10 @@ describe("Worker discovery entry", () => {
     expect(body.trim().length).toBeGreaterThan(0);
   });
 
-  it("sitemap builder still emits urlset including /extension and /submit", () => {
+  it("sitemap builder still emits urlset including /subscribe and /submit", () => {
     const xml = buildSitemapXml(staticSitemapUrls());
     expect(xml).toContain("<urlset");
-    expect(xml).toContain(`${SITE_URL}/extension`);
+    expect(xml).toContain(`${SITE_URL}/subscribe`);
     expect(xml).toContain(`${SITE_URL}/submit`);
   });
 });

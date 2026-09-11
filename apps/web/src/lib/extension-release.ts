@@ -14,7 +14,7 @@ export const EXTENSION_STORE_URL =
 
 export const EXTENSION_PRIVACY_PATH = "/privacy";
 export const EXTENSION_PRIVACY_URL = `${SITE_URL}${EXTENSION_PRIVACY_PATH}`;
-export const EXTENSION_HOMEPAGE_PATH = "/extension";
+export const EXTENSION_HOMEPAGE_PATH = "/subscribe";
 export const EXTENSION_HOMEPAGE_URL = `${SITE_URL}${EXTENSION_HOMEPAGE_PATH}`;
 
 export function extensionReleasePayload() {

@@ -96,8 +96,6 @@ function ClerkRootProvider({ children }: { children: ReactNode }) {
 // Footer is always English, regardless of site language.
 const FOOTER_LINKS: { to: string; label: string }[] = [
   { to: "/about", label: "About" },
-  { to: "/brand", label: "Brand" },
-  { to: "/subscribe", label: "Subscribe" },
   { to: "/data", label: "Data / Pipeline" },
   { to: "/privacy", label: "Privacy" },
   { to: "/terms", label: "Terms" },

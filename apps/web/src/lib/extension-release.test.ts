@@ -22,7 +22,7 @@ describe("extensionReleasePayload", () => {
     ) as { version: string; homepage_url?: string };
     expect(EXTENSION_VERSION).toBe(pkg.version);
     expect(EXTENSION_VERSION).toBe(manifest.version);
-    expect(manifest.homepage_url).toBe(`${SITE_URL}/extension`);
+    expect(manifest.homepage_url).toBe(`${SITE_URL}/subscribe`);
   });
 
   it("points privacy at the HTTPS site policy and uses Chrome Web Store", () => {

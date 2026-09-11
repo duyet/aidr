@@ -15,7 +15,7 @@ This directory is the maintained source for verifying the public surfaces of aid
 ## Driving conventions
 
 - Start every recipe from `doctor` unless the feature names a different precondition.
-- Treat route paths as literal (`/`, `/about`, `/extension`, `/api/public`).
+- Treat route paths as literal (`/`, `/about`, `/subscribe`, `/api/public`). `/extension` redirects to `/subscribe`.
 - Run HTTP through `verify-aidr fetch` / `verify-aidr drive <feature>`.
 - Screenshots are optional. `verify-aidr screenshot --path / --viewport mobile` when Chrome/Chromium is on `PATH`.
 - Restore nothing: these features are read-only against the public site.
@@ -46,5 +46,5 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Homepage / feed](./homepage.md) covers the ranked story list, SSR shell, and `/api/feed`.
 - [AI;DR](./tldr.md) covers the daily digest on `/` and bullets on `/api/public`.
 - [About](./about.md) covers `/about` (English-only pipeline + install pointer).
-- [Chrome extension guide](./extension.md) covers `/extension` and `aidr.zip`.
+- [Get AI;DR](./extension.md) covers `/subscribe` (and `/extension` → `/subscribe`).
 - [Public API](./api-public.md) covers unauthenticated `GET /api/public` and CORS preflight.

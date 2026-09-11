@@ -25,9 +25,9 @@ export const GITHUB_ALGORITHM_PATH = "apps/web/ALGORITHM.md";
 /** Author site (footer More). */
 export const DUYET_URL = "https://duyet.net";
 
-/** Chrome Web Store listing — install CTA on /extension only, never header chrome. */
+/** Chrome Web Store listing — install CTA on /subscribe only, never header chrome. */
 export const CHROME_WEB_STORE_URL =
   "https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg";
-/** In-app destination for the Chrome icon. */
-export const EXTENSION_PATH = "/extension";
+/** In-app destination for the Chrome icon (install guide lives at /subscribe). */
+export const EXTENSION_PATH = "/subscribe";
 export const EXTENSION_URL = `${SITE_URL}${EXTENSION_PATH}`;
