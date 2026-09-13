@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.16](https://github.com/duyet/aidr/compare/aidr-v0.1.15...aidr-v0.1.16) (2026-09-13)
+
+
+### ✨ Features
+
+* **web:** center AI;DR and reorder section tiles ([#71](https://github.com/duyet/aidr/issues/71)) ([9986796](https://github.com/duyet/aidr/commit/998679615a46f250aa4549c707122763df3163d9))
+
+
+### 🐛 Bug Fixes
+
+* **web:** keep category and trending at top of brief layout ([#73](https://github.com/duyet/aidr/issues/73)) ([8f1eb2d](https://github.com/duyet/aidr/commit/8f1eb2d6310373f90f86ff937a0bfe231306787f))
+* **web:** serve Get AI;DR at /subscribe ([#66](https://github.com/duyet/aidr/issues/66)) ([639e22d](https://github.com/duyet/aidr/commit/639e22d3cf18902fc1a4bfb9f7faef5b72566bc2))
+
 ## [0.1.15](https://github.com/duyet/aidr/compare/aidr-v0.1.14...aidr-v0.1.15) (2026-09-10)
 
 ### ✨ Features
