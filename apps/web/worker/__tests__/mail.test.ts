@@ -217,9 +217,11 @@ describe("renderNoteEmail", () => {
       "color:#0a0a0a;text-decoration:none;font-weight:500"
     );
     expect(html).toContain('class="mail-story"');
+    expect(html).toContain(">Read more</a>");
+    expect(html).not.toContain(">Story one</a>");
   });
 
-  it("wraps every digest story in an accent-underlined <a>, falling back to aidr.today", () => {
+  it("keeps digest story body as plain text with a bottom Read more link", () => {
     const { html } = renderDigestEmail({
       subject: "Digest",
       date: "2026-09-10",
@@ -232,12 +234,30 @@ describe("renderNoteEmail", () => {
       settingsUrl: "https://aidr.today/subscribe?settings=tok",
     });
     expect(html).toContain('class="mail-story"');
-    expect(html).toContain(">No url story</a>");
+    expect(html).not.toContain(">No url story</a>");
+    expect(html).not.toContain(">Has url</a>");
+    expect(html).toContain("No url story");
+    expect(html).toContain("Has url");
+    expect(html).toContain(">Read more</a>");
     expect(html).toContain("utm_medium=digest");
     expect(html).toContain('href="https://example.com/x"');
     expect(
       (html.match(/text-decoration:underline;font-weight:500/g) ?? []).length
     ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("uses Đọc thêm for Vietnamese digest story links", () => {
+    const { html } = renderDigestEmail({
+      subject: "Digest",
+      date: "2026-09-10",
+      stories: [{ text: "Tin một", url: "https://aidr.today/ai/abcd1234" }],
+      lang: "vi",
+      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+    });
+    expect(html).toContain(">Đọc thêm</a>");
+    expect(html).not.toContain(">Tin một</a>");
+    expect(html).toContain("Tin một");
   });
 
   it("omits non-http(s) CTA urls", () => {
