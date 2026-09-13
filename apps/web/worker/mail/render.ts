@@ -171,7 +171,7 @@ function wrapHtml(opts: {
 <title>${escapeHtml(opts.subject)}</title>
 <style type="text/css">
   a { text-decoration: none; }
-  a.mail-story { color: ${ACCENT} !important; text-decoration: underline !important; }
+  a.mail-story { color: ${ACCENT} !important; text-decoration: underline !important; font-weight: 500; }
   .mail-cta, .mail-cta span, .mail-cta font { color: ${ACCENT_FG} !important; text-decoration: none !important; border-bottom: 0 !important; }
   u + #body .mail-cta { color: ${ACCENT_FG} !important; text-decoration: none !important; }
 </style>
@@ -243,6 +243,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const heading = input.date;
   const readMore =
     input.lang === "vi" ? "Đọc trên aidr.today" : "Read on aidr.today";
+  const storyCta = input.lang === "vi" ? "Đọc thêm" : "Read more";
 
   const htmlItems = input.stories
     .map((story, i) => {
@@ -251,7 +252,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
       const href =
         safeHref(withMailUtm(story.url ?? SITE_URL, "digest")) ??
         withMailUtm(SITE_URL, "digest");
-      const link = `<a class="mail-story" href="${escapeHtml(href)}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${text}</a>`;
+      const more = `<a class="mail-story" href="${escapeHtml(href)}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${escapeHtml(storyCta)}</a>`;
       const rule =
         i < input.stories.length - 1
           ? `border-bottom:1px solid ${HAIRLINE};`
@@ -259,7 +260,8 @@ export function renderDigestEmail(input: DigestEmailInput): {
       return `<tr>
       <td style="padding:16px ${PAD};${rule}font-family:${SANS};font-size:16px;line-height:1.6;color:${FG}">
         <span style="font-family:${SERIF};font-size:18px;line-height:1.4;color:${ACCENT};font-weight:500">${n}.</span>
-        ${link}
+        ${text}
+        <div style="margin-top:8px;font-family:${SANS};font-size:14px;line-height:1.4">${more}</div>
       </td>
     </tr>`;
     })
