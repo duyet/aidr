@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.12](https://github.com/duyet/aidr/compare/aidr-v0.1.11...aidr-v0.1.12) (2026-09-13)
+
+
+### ✨ Features
+
+* **extension:** 0.1.13 relax AI;DR layout and align header icons ([#44](https://github.com/duyet/aidr/issues/44)) ([0e5a4f8](https://github.com/duyet/aidr/commit/0e5a4f8377c02897b566415e8cef99ea70a632a0))
+* **extension:** 0.1.14 hide host/score and fix section tiles ([#46](https://github.com/duyet/aidr/issues/46)) ([d917f6b](https://github.com/duyet/aidr/commit/d917f6bfc94af8d6b9d608fc392b8beaa19861a5))
+* **extension:** 0.1.15 reload icon beside updated timestamp ([90004f3](https://github.com/duyet/aidr/commit/90004f337ce40ea7aa7521b9d0fa84406a736ba3))
+* **web:** expand padding, thumb zoom, and email UTM ([#54](https://github.com/duyet/aidr/issues/54)) ([1baffb7](https://github.com/duyet/aidr/commit/1baffb7b576e3837e7912b9ca61b3b1172aeeade))
+
+
+### 🐛 Bug Fixes
+
+* **extension:** Chrome brand icon and drop Add section chip (0.1.12) ([#43](https://github.com/duyet/aidr/issues/43)) ([b2318b0](https://github.com/duyet/aidr/commit/b2318b095b00d6b5f9de8f56fc45ed704065087b))
+* **web:** serve Get AI;DR at /subscribe ([#66](https://github.com/duyet/aidr/issues/66)) ([639e22d](https://github.com/duyet/aidr/commit/639e22d3cf18902fc1a4bfb9f7faef5b72566bc2))
+
 ## [0.1.15](https://github.com/duyet/aidr/compare/aidr-v0.1.14...aidr-v0.1.15) (2026-09-10)
 
 ### ✨ Features
