@@ -338,8 +338,14 @@ function IndexPage() {
     );
   }
 
+  const brief = !q && prefs.sections.tldr && !prefs.sections.days;
+
   return (
-    <div>
+    <div
+      className={
+        brief ? "flex flex-1 flex-col justify-center py-6 sm:py-10" : undefined
+      }
+    >
       {q ? (
         <p className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm text-muted-foreground">
           <span>

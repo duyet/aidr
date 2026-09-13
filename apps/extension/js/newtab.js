@@ -855,12 +855,9 @@ function visibleSection(id) {
 function applyBriefLayout() {
   const page = $("page-content");
   if (!page) return;
-  const tldrOnly =
-    visibleSection("section-tldr") &&
-    !visibleSection("section-categories") &&
-    !visibleSection("section-trending") &&
-    !visibleSection("section-days");
-  page.classList.toggle("is-brief", tldrOnly);
+  const brief =
+    visibleSection("section-tldr") && !visibleSection("section-days");
+  page.classList.toggle("is-brief", brief);
 }
 
 function applySubmitVisibility() {

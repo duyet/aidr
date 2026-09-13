@@ -1,7 +1,18 @@
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
-import { AArrowDown, AArrowUp, Moon, Rows2, Rows4, Sun } from "lucide-react";
+import {
+  AArrowDown,
+  AArrowUp,
+  CalendarDays,
+  LayoutGrid,
+  Moon,
+  Rows2,
+  Rows4,
+  Sparkles,
+  Sun,
+  TrendingUp,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -200,53 +211,27 @@ function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
   const sectionTiles: {
     key: keyof typeof prefs.sections;
     label: string;
-    preview: ReactElement;
+    icon: ReactElement;
   }[] = [
+    {
+      key: "categories",
+      label: t("Category nav", "Danh mục"),
+      icon: <LayoutGrid className="size-5" aria-hidden />,
+    },
     {
       key: "trending",
       label: t("Trending", "Xu hướng"),
-      preview: (
-        <div className="preview-wire">
-          <div className="pw-line w-3/4" />
-          <div className="pw-chip" />
-          <div className="pw-chip" />
-        </div>
-      ),
+      icon: <TrendingUp className="size-5" aria-hidden />,
     },
     {
       key: "tldr",
       label: "AI;DR",
-      preview: (
-        <div className="preview-wire">
-          <div className="pw-line w-5/12" />
-          <div className="pw-dot" />
-          <div className="pw-dot" />
-          <div className="pw-dot" />
-        </div>
-      ),
+      icon: <Sparkles className="size-5" aria-hidden />,
     },
     {
       key: "days",
       label: t("Daily feed", "Bảng tin theo ngày"),
-      preview: (
-        <div className="preview-wire">
-          <div className="pw-line w-1/2" />
-          <div className="pw-row" />
-          <div className="pw-row" />
-          <div className="pw-row" />
-        </div>
-      ),
-    },
-    {
-      key: "categories",
-      label: t("Category nav", "Danh mục"),
-      preview: (
-        <div className="preview-wire">
-          <div className="pw-chip" />
-          <div className="pw-chip" />
-          <div className="pw-chip" />
-        </div>
-      ),
+      icon: <CalendarDays className="size-5" aria-hidden />,
     },
   ];
 
@@ -283,7 +268,7 @@ function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
           {t("Sections", "Mục hiển thị")}
         </span>
         <div className="grid grid-cols-2 gap-2">
-          {sectionTiles.map(({ key, label, preview }) => {
+          {sectionTiles.map(({ key, label, icon }) => {
             const on = prefs.sections[key];
             return (
               <button
@@ -296,19 +281,14 @@ function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
                     sections: { ...prefs.sections, [key]: !on },
                   });
                 }}
-                className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-colors ${
+                className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors ${
                   on
                     ? "border-accent bg-muted font-semibold"
                     : "border-border text-muted-foreground hover:bg-muted/60"
                 }`}
               >
-                <div
-                  className="flex h-10 w-full items-end justify-center gap-0.5"
-                  aria-hidden
-                >
-                  {preview}
-                </div>
-                <span className="text-xs">{label}</span>
+                {icon}
+                <span className="text-xs leading-tight">{label}</span>
               </button>
             );
           })}

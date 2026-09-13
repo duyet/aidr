@@ -35,6 +35,28 @@ function el(tag, attrs = {}, children = []) {
   return node;
 }
 
+function sectionIcon(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("prefs-section-icon");
+  const paths = {
+    grid: "M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z",
+    trending: "M3 17l6-6 4 4 8-8M14 7h7v7",
+    sparkles: "M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3zM19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z",
+    calendar:
+      "M8 2v4M16 2v4M3 10h18M5 6h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z",
+  };
+  const d = paths[name] || paths.grid;
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", d);
+  svg.append(path);
+  return svg;
+}
+
 function choiceButton(label, pressed, onClick, extraClass = "") {
   return el(
     "button",
@@ -248,16 +270,16 @@ export function mountSettingsPanel(root, settings, onSaved) {
     ]);
 
     const sectionTiles = [
-      { key: "trending", labelKey: "trendingPreview" },
-      { key: "tldr", labelKey: "tldrPreview" },
-      { key: "days", labelKey: "dailyFeedPreview" },
-      { key: "categories", labelKey: "categoriesPreview" },
+      { key: "categories", labelKey: "categoriesPreview", icon: "grid" },
+      { key: "trending", labelKey: "trendingPreview", icon: "trending" },
+      { key: "tldr", labelKey: "tldrPreview", icon: "sparkles" },
+      { key: "days", labelKey: "dailyFeedPreview", icon: "calendar" },
     ];
     const grid = el("div", { className: "prefs-tiles" });
-    for (const { key, labelKey } of sectionTiles) {
+    for (const { key, labelKey, icon } of sectionTiles) {
       const on = state.sections[key] !== false;
       const tile = choiceButton(
-        t(state, labelKey),
+        "",
         on,
         async () => {
           state.sections[key] = !on;
@@ -268,8 +290,9 @@ export function mountSettingsPanel(root, settings, onSaved) {
           );
           await persist();
         },
-        " is-full-width"
+        " prefs-section-tile"
       );
+      tile.replaceChildren(sectionIcon(icon), t(state, labelKey));
       tile.setAttribute(
         "aria-label",
         on ? t(state, "hide") : t(state, labelKey)

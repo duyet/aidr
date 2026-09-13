@@ -353,7 +353,7 @@ function RootComponent() {
                   >
                     <HeaderBar lang={lang} onLangChange={handleLangChange} />
 
-                    <main className="mx-auto w-full max-w-[1080px] flex-grow px-4 pb-16 sm:px-6 lg:px-8">
+                    <main className="mx-auto flex w-full max-w-[1080px] flex-grow flex-col px-4 pb-16 sm:px-6 lg:px-8">
                       <Outlet />
                     </main>
                   </div>

@@ -71,8 +71,19 @@ test("Submit plus is hidden until signed in", () => {
   assert.match(css, /\.submit-btn\[hidden\]/);
 });
 
-test("brief layout centers AI;DR when it is the only section", () => {
+test("brief layout centers AI;DR when the daily feed is off", () => {
   assert.match(css, /\.page\.is-brief/);
   assert.match(js, /applyBriefLayout/);
   assert.match(js, /classList\.toggle\("is-brief"/);
+  assert.match(js, /!visibleSection\("section-days"\)/);
+});
+
+test("section tiles follow Cat > Trending > AI;DR > Daily feed", () => {
+  const panel = readFileSync(join(root, "js/settings-panel.js"), "utf8");
+  const keys = [...panel.matchAll(/key: "(categories|trending|tldr|days)"/g)].map(
+    (m) => m[1]
+  );
+  assert.deepEqual(keys, ["categories", "trending", "tldr", "days"]);
+  assert.match(panel, /prefs-section-tile/);
+  assert.match(panel, /sectionIcon/);
 });

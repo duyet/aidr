@@ -272,48 +272,50 @@ export function HeaderBar({
       </div>
 
       <div
-        className={`${COMPACT_CHROME_CLASS} mx-auto max-w-[1080px] items-center gap-1.5 px-3 py-2`}
+        className={`${COMPACT_CHROME_CLASS} mx-auto max-w-[1080px] items-center gap-1 px-3 py-2`}
       >
         <Brand lang={lang} />
-        <div className="min-w-0 flex-1">
-          <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
+        <div className="flex min-w-0 flex-1 items-center gap-0">
+          <div className="min-w-0 flex-1">
+            <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={PHONE_TAP_TARGET_CLASS}
+            asChild
+          >
+            <Link
+              to={EXTENSION_PATH}
+              onClick={() => track("nav_click", { to: EXTENSION_PATH })}
+              aria-label="Get AI;DR"
+            >
+              <RiChromeLine aria-hidden />
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={PHONE_TAP_TARGET_CLASS}
+            asChild
+          >
+            <a
+              href={TELEGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("nav_click", { to: "telegram" })}
+              aria-label="Telegram"
+            >
+              <Send aria-hidden />
+            </a>
+          </Button>
+          <PrefsPanel triggerClassName={PHONE_PREFS_TRIGGER_CLASS} />
+          <PhoneMenu
+            lang={lang}
+            onLangChange={onLangChange}
+            langToggleDisabled={langToggleDisabled}
+          />
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={PHONE_TAP_TARGET_CLASS}
-          asChild
-        >
-          <Link
-            to={EXTENSION_PATH}
-            onClick={() => track("nav_click", { to: EXTENSION_PATH })}
-            aria-label="Get AI;DR"
-          >
-            <RiChromeLine aria-hidden />
-          </Link>
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={PHONE_TAP_TARGET_CLASS}
-          asChild
-        >
-          <a
-            href={TELEGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => track("nav_click", { to: "telegram" })}
-            aria-label="Telegram"
-          >
-            <Send aria-hidden />
-          </a>
-        </Button>
-        <PrefsPanel triggerClassName={PHONE_PREFS_TRIGGER_CLASS} />
-        <PhoneMenu
-          lang={lang}
-          onLangChange={onLangChange}
-          langToggleDisabled={langToggleDisabled}
-        />
       </div>
     </header>
   );

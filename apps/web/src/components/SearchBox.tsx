@@ -128,7 +128,7 @@ export function SearchBox({
     <>
       <form
         ref={containerRef}
-        className="relative w-full max-w-xl"
+        className={compact ? "relative w-full" : "relative w-full max-w-xl"}
         onSubmit={(e) => {
           e.preventDefault();
           if (activeIndex === -1 || !showDropdown) {
