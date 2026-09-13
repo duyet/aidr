@@ -73,6 +73,11 @@ test("Submit plus is hidden until signed in", () => {
 
 test("brief layout centers AI;DR when the daily feed is off", () => {
   assert.match(css, /\.page\.is-brief/);
+  assert.match(css, /\.page\.is-brief \.tldr[\s\S]*margin-top:\s*auto/);
+  assert.doesNotMatch(
+    css,
+    /\.page\.is-brief\s*\{[^}]*justify-content:\s*center/
+  );
   assert.match(js, /applyBriefLayout/);
   assert.match(js, /classList\.toggle\("is-brief"/);
   assert.match(js, /!visibleSection\("section-days"\)/);

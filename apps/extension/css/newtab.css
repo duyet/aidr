@@ -1016,13 +1016,11 @@ html[data-theme="dark"] .topic-colored {
 .page.is-brief {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding-top: 2.5rem;
-  padding-bottom: 3rem;
 }
 
 .page.is-brief .tldr {
-  margin: 0;
+  margin-top: auto;
+  margin-bottom: auto;
   padding: 1.75rem 1.5rem 2rem;
 }
 
