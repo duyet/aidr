@@ -270,8 +270,11 @@ describe("buildMaxRankQuery", () => {
   });
 });
 
-describe("TRENDING_MIN_RANK", () => {
-  it("stays at 25 — exceptional bar, not a scale bug", () => {
-    expect(TRENDING_MIN_RANK).toBe(25);
+describe("trending thresholds", () => {
+  it("TRENDING_MIN_RANK is 20 — lowered to allow more viral posts", () => {
+    expect(TRENDING_MIN_RANK).toBe(20);
+  });
+  it("TRENDING_MAX_PER_DAY is 6 — allow up to 6 trending posts per day", () => {
+    expect(TRENDING_MAX_PER_DAY).toBe(6);
   });
 });

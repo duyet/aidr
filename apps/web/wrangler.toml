@@ -50,11 +50,13 @@ database_id = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427"
 [vars]
 ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # Auto first, then DeepSeek V4.1 flash / Laguna S 2.1 / MiniMax M3.
-# Same chain for score, translate, and TL;DR. Avoid ling-3.0-flash (404)
-# and Gemma/GLM flash (502). stealth/ox-alpha stays delisted. No BYOK-only
-# ids (SEA-LION, gemini-3.6/3.7, qwen3.7).
+# Score and TL;DR share that chain. Translate leads with hosted Gemini
+# 3.5 Flash (native Google route) for EN→VI quality, then the same
+# fallbacks. Avoid ling-3.0-flash (404) and Gemma/GLM flash (502 / BYOK).
+# stealth/ox-alpha stays delisted. No BYOK-only ids (SEA-LION,
+# gemini-3.6/3.7/3.8, qwen3.7, google/gemma-4-*).
 ANYROUTER_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
-ANYROUTER_TRANSLATE_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
+ANYROUTER_TRANSLATE_MODEL = "google/gemini-3.5-flash,anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
 ANYROUTER_TLDR_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
 # Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
 # overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014

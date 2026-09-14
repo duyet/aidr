@@ -52,12 +52,12 @@ export const NOTIFY_MAX_ATTEMPTS = 3;
 /** Trending bar: rank_score already folds importance × quality ×
  *  freshness × engagement × independent sources, so a high absolute rank
  *  + a high LLM importance means "big story, corroborated, breaking now". */
-export const TRENDING_MIN_RANK = 25;
-export const TRENDING_MIN_IMPORTANCE = 8;
+export const TRENDING_MIN_RANK = 20;
+export const TRENDING_MIN_IMPORTANCE = 7;
 /** At most this many trending posts per channel per local day. */
-export const TRENDING_MAX_PER_DAY = 3;
+export const TRENDING_MAX_PER_DAY = 6;
 /** Minimum spacing between any two posts on a channel. */
-export const TRENDING_MIN_GAP_SEC = 2 * 60 * 60;
+export const TRENDING_MIN_GAP_SEC = 60 * 60;
 /** Only consider stories published in the last 24h. */
 const WINDOW_SEC = 24 * 60 * 60;
 

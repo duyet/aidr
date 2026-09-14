@@ -76,14 +76,17 @@ describe("live AnyRouter model chains", () => {
     "minimax/m3",
   ];
 
-  it("uses the same auto-led chain on score, translate, and tldr", () => {
-    for (const name of [
-      "ANYROUTER_MODEL",
-      "ANYROUTER_TRANSLATE_MODEL",
-      "ANYROUTER_TLDR_MODEL",
-    ]) {
+  it("uses the auto-led chain on score and tldr", () => {
+    for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TLDR_MODEL"]) {
       expect(idsOf(name), name).toEqual(liveChain);
     }
+  });
+
+  it("leads translate with hosted Gemini 3.5 Flash, then the auto chain", () => {
+    expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual([
+      "google/gemini-3.5-flash",
+      ...liveChain,
+    ]);
   });
 
   it("does not hard-code 404/502 flash fallbacks", () => {
@@ -101,7 +104,7 @@ describe("live AnyRouter model chains", () => {
     }
   });
 
-  it("omits delisted, BYOK-only, paid gemini, and rejected replacement ids", () => {
+  it("omits delisted, BYOK-only, and rejected replacement ids", () => {
     const blocked = [
       "stealth/ox-alpha",
       "deepseek/DeepSeek-V4-Flash",
@@ -109,9 +112,9 @@ describe("live AnyRouter model chains", () => {
       "aisingapore/gemma-sea-lion-v4-27b-it",
       "google/gemini-2.5-flash-lite",
       "google/gemini-2.5-flash",
-      "google/gemini-3.5-flash",
       "google/gemini-3.7-flash",
       "google/gemini-3.6-flash",
+      "google/gemini-3.8-flash",
       "qwen/qwen3.7-flash",
     ];
     for (const name of [
@@ -124,6 +127,10 @@ describe("live AnyRouter model chains", () => {
         expect(ids, name).not.toContain(id);
       }
     }
+    expect(idsOf("ANYROUTER_MODEL")).not.toContain("google/gemini-3.5-flash");
+    expect(idsOf("ANYROUTER_TLDR_MODEL")).not.toContain(
+      "google/gemini-3.5-flash"
+    );
   });
 });
 

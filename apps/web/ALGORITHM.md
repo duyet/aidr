@@ -129,9 +129,9 @@ longer the previous id) and `runsToday > 0`. Do not invent a
       08:00) — the TL;DR snapshot's bullets (VI preferred), each linked
       to its story permalink, plus a site button.
     - *Trending*: an individual post only when the algo flags a story as
-      exceptional (`rank_score ≥ 25` and `llm_importance ≥ 8`), capped at
-      3/day with a 2h minimum gap, one per run. 25 is reachable for a
-      10×10, fresh, well-engaged, multi-source story; typical single-source
+      exceptional (`rank_score ≥ 20` and `llm_importance ≥ 7`), capped at
+      6/day with a 1h minimum gap, one per run. 20 is reachable for a
+      8×8, fresh, well-engaged, multi-source story; typical single-source
       live max is lower. Digest is the intended daily Telegram post.
     Skip reasons are structured (`digest`: no_snapshot / already_sent /
     before_hour; `trending`: below_min_rank / budget_zero / none_unposted)
@@ -149,11 +149,14 @@ All calls go through `callAnyrouter` (`worker/llm.ts`): streaming SSE (bypasses
 anyrouter's queue for long prompts), JSON mode, `max_tokens` 8192 (2048 on translate),
 reasoning-model fallback (extracts JSON from `message.reasoning` when content
 is starved), comma-separated model fallback chains (`ANYROUTER_MODEL`), and
-per-task overrides (`ANYROUTER_TRANSLATE_MODEL` / `ANYROUTER_TLDR_MODEL` —
-all three are `anyrouter/auto`, then `deepseek/deepseek-v4.1-flash`,
-`poolside/laguna-s-2.1`, `minimax/m3`. Hard-coded Gemma/GLM/Ling flash
-ids 404/502'd; do not restore them. BYOK-only ids such as SEA-LION and Gemini 3.6/3.7 are omitted, and
-stealth/ox-alpha was removed after AnyRouter delisted it). Translate
+per-task overrides (`ANYROUTER_TRANSLATE_MODEL` / `ANYROUTER_TLDR_MODEL`).
+Score and TL;DR are `anyrouter/auto`, then `deepseek/deepseek-v4.1-flash`,
+`poolside/laguna-s-2.1`, `minimax/m3`. Translate leads with hosted
+`google/gemini-3.5-flash` (native Google route on AnyRouter), then the
+same fallbacks. Hard-coded Gemma/GLM/Ling flash ids 404/502'd or are
+BYOK-only; do not restore them. BYOK-only ids such as SEA-LION and Gemini
+3.6/3.7/3.8 are omitted, and stealth/ox-alpha was removed after AnyRouter
+delisted it. Translate
 runs in batches of 3 (summaries clipped, title-only retry) and each
 backfill slice is its own Workflow step so a finished batch is written
 even if a later slice times out. Score batches of 5 with a 70s hang-cap;
