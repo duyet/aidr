@@ -11,6 +11,7 @@ describe("ensureVendorBlogSources", () => {
     expect(VENDOR_BLOG_SEED_SQL).toContain("'anthropic'");
     expect(VENDOR_BLOG_SEED_SQL).toContain("'google-ai'");
     expect(VENDOR_BLOG_SEED_SQL).toContain("'hf-blog'");
+    expect(VENDOR_BLOG_SEED_SQL).toContain("'marketbrief'");
   });
 
   it("runs the seed SQL once", async () => {

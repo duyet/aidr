@@ -19,3 +19,15 @@ describe("migration 0018_vendor_blogs", () => {
     expect(sql).toContain("huggingface.co/blog/feed.xml");
   });
 });
+
+describe("migration 0020_marketbrief", () => {
+  it("seeds the MarketBrief AI hub source", () => {
+    const sql0020 = readFileSync(
+      path.join(dirname, "../../migrations/0020_marketbrief.sql"),
+      "utf-8"
+    );
+    expect(sql0020).toContain("'marketbrief'");
+    expect(sql0020).toContain("https://marketbrief.now");
+    expect(sql0020).toContain('"topics":["ai"]');
+  });
+});

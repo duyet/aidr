@@ -42,7 +42,8 @@ longer the previous id) and `runsToday > 0`. Do not invent a
    HuggingNews via its `__data.json` (+ per-story detail for body/sources),
    Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default),
    generic RSS (`openai`, `google-ai`, `hf-blog` feeds), Anthropic Newsroom
-   HTML (`/news` listing — no official RSS).
+   HTML (`/news` listing — no official RSS), MarketBrief AI hub via
+   `/{topic}/__data.json` (default topic `ai`; war/politics stay out).
 2. **Dedupe** — item id = `sha256(url)`; ids already in `items` are dropped.
 3. **Enrich** — missing summary/thumbnail filled from the article page
    (`og:description` / `og:image`), capped and failure-proof (`worker/enrich.ts`).

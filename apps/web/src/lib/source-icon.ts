@@ -5,6 +5,7 @@ const TYPE_HOST: Record<string, string> = {
   huggingnews: "huggingnews.com",
   lobsters: "lobste.rs",
   anthropic: "anthropic.com",
+  marketbrief: "marketbrief.now",
 };
 
 function hostFromUrl(value: unknown): string | null {

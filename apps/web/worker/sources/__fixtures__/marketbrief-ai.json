@@ -1,0 +1,49 @@
+{
+  "type": "data",
+  "nodes": [
+    null,
+    null,
+    {
+      "type": "data",
+      "data": [
+        { "hub": 1, "stories": 2 },
+        { "key": "ai", "kind": "topic", "name": "AI" },
+        [3, 4],
+        {
+          "title": 5,
+          "slug": 6,
+          "publishedAt": 7,
+          "routingTopicKeys": 8,
+          "tweetCount": 9,
+          "authorCount": 10,
+          "isSuperseded": 11,
+          "storyId": 12
+        },
+        {
+          "title": 13,
+          "slug": 14,
+          "publishedAt": 15,
+          "routingTopicKeys": 16,
+          "isSuperseded": 17,
+          "tweetCount": 18,
+          "storyId": 19
+        },
+        "Nous Portal Adds ChatGPT-Image-2.5",
+        "nous-portal-adds-chatgpt-image-25-abc",
+        1700000000000,
+        ["ai", "tech"],
+        12,
+        3,
+        false,
+        "story-live",
+        "Superseded AI headline",
+        "old-superseded-slug",
+        1690000000000,
+        ["ai"],
+        true,
+        1,
+        "story-old"
+      ]
+    }
+  ]
+}
