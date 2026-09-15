@@ -41,7 +41,7 @@ Pass requires:
 
 - `GET /api/public` → JSON 200 with parseable `{ tldr, stories }` (`tldr` null or `{ bullets_en, bullets_vi }`; stories are an array).
 - `GET /` with Chrome UA → HTML 200.
-- Homepage identity strings: `AI;DR`, `Hôm nay AI có gì mới?`, `AI News`, `aidr.today`, `AI News | aidr.today`.
+- Homepage identity strings: `AI;DR`, `Hôm nay AI có gì mới?`, `AI News`, `aidr.today`, `AI News | ranked AI digest | aidr.today`.
 
 Do not drive an instance whose doctor reports `ok: false`. HTML without Chrome UA may be challenged; the lever always sends one.
 

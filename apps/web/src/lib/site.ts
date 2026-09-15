@@ -1,10 +1,10 @@
 /** Canonical public origin. Share tags, sitemap, and robots all use this. */
 export const SITE_URL = "https://aidr.today";
 export const SITE_NAME = "AI News";
-export const SITE_TITLE = "AI News | aidr.today";
+export const SITE_TITLE = "AI News | ranked AI digest | aidr.today";
 export const SITE_SLOGAN = "AI news ranked and summary";
 export const SITE_DESCRIPTION =
-  "AI news ranked and summary. Aggregated from many sources, rated by LLMs.";
+  "AI News (aidr.today) ranks AI stories hourly from HN, HuggingNews, and more. LLM-scored AI;DR digest in English and Vietnamese — every item links to the source.";
 
 /** Homepage Open Graph / Twitter share image (1200×630, editorial brand). */
 export const SITE_OG_IMAGE_PATH = "/og.jpg";
