@@ -342,18 +342,6 @@ function IndexPage() {
 
   return (
     <div className={brief ? "flex flex-1 flex-col" : undefined}>
-      {!q ? (
-        <header className="border-b border-border py-3">
-          <h1 className="font-serif text-xl font-medium tracking-tight text-foreground">
-            AI News
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm leading-snug text-muted-foreground">
-            {lang === "vi"
-              ? "Tin AI xếp hạng mỗi giờ và bản tin AI;DR hằng ngày. LLM chấm điểm; mỗi mục dẫn về nguồn gốc."
-              : "Hourly ranked AI stories and a daily AI;DR digest. Scored by LLMs; every item links to the source."}
-          </p>
-        </header>
-      ) : null}
       {q ? (
         <p className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm text-muted-foreground">
           <span>
