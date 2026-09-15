@@ -272,7 +272,7 @@ export function HeaderBar({
       </div>
 
       <div
-        className={`${COMPACT_CHROME_CLASS} mx-auto max-w-[1080px] items-center gap-1 px-3 py-2`}
+        className={`${COMPACT_CHROME_CLASS} mx-auto max-w-[1080px] items-center gap-2 px-3 py-1.5`}
       >
         <Brand lang={lang} />
         <div className="flex min-w-0 flex-1 items-center gap-0">

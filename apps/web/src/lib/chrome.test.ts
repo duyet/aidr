@@ -13,7 +13,10 @@ describe("phone chrome", () => {
     expect(PHONE_TAP_TARGET_CLASS).toContain("min-w-[44px]");
     expect(PHONE_TAP_TARGET_CLASS).toContain("h-11");
     expect(PHONE_TAP_TARGET_CLASS).toContain("w-11");
+    expect(PHONE_TAP_TARGET_CLASS).toContain("p-0");
+    expect(PHONE_TAP_TARGET_CLASS).toContain("[&_svg]:size-5");
     expect(PHONE_PREFS_TRIGGER_CLASS).toContain("min-h-[44px]");
+    expect(PHONE_PREFS_TRIGGER_CLASS).toContain("p-0");
   });
 
   it("keeps wide and compact chrome on separate class hooks", () => {

@@ -145,7 +145,11 @@ export function SearchBox({
         }}
       >
         <Search
-          className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          className={
+            compact
+              ? "pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              : "pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          }
           aria-hidden
         />
         <Input
@@ -169,7 +173,9 @@ export function SearchBox({
             }
           }}
           placeholder={placeholder}
-          className={`pl-8 ${compact ? "h-11 min-h-[44px] rounded-xl" : "h-9"}`}
+          className={
+            compact ? "h-11 min-h-[44px] rounded-xl pl-10" : "h-9 pl-8"
+          }
           role="combobox"
           aria-label="Search"
           aria-autocomplete="list"
