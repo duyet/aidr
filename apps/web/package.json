@@ -14,7 +14,8 @@
     "format": "biome format .",
     "format:fix": "biome format --write .",
     "lint:fix": "biome check --write .",
-    "deploy": "pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json",
+    "d1:migrate": "pnpm exec wrangler d1 migrations apply aidr --config wrangler.toml --remote",
+    "deploy": "pnpm run build && pnpm run d1:migrate && pnpm exec wrangler deploy --config dist/server/wrangler.json",
     "cf:deploy:prod": "dotenv -e ../../.env.production -e ../../.env.production.local -- pnpm run deploy && pnpm run smoke",
     "config": "tsx ../../scripts/sync-env.ts",
     "smoke": "tsx scripts/smoke.ts"
