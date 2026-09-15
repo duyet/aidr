@@ -8,15 +8,11 @@ import {
 
 describe("storyPath", () => {
   it("uses the 8-char id prefix with no category", () => {
-    expect(storyPath({ id: "abcdef12deadbeef", category: "Industry" })).toBe(
-      "/abcdef12"
-    );
+    expect(storyPath({ id: "abcdef12deadbeef" })).toBe("/abcdef12");
   });
 
   it("does not fall back to /ai when category is missing", () => {
-    expect(storyPath({ id: "abcdef12deadbeef", category: null })).toBe(
-      "/abcdef12"
-    );
+    expect(storyPath({ id: "abcdef12deadbeef" })).toBe("/abcdef12");
   });
 });
 

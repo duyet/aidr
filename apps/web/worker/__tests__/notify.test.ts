@@ -167,7 +167,7 @@ describe("trending story message", () => {
   });
 
   it("uses the 8-char id permalink without a category segment", () => {
-    expect(storyUrl({ id: "abcdef1234567890", category: null })).toBe(
+    expect(storyUrl({ id: "abcdef1234567890" })).toBe(
       "https://aidr.today/abcdef12"
     );
   });
