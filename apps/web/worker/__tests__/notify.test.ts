@@ -114,7 +114,7 @@ describe("digest message", () => {
     bullets: [
       {
         text: "OpenAI <ships> GPT-6 & more",
-        url: "https://aidr.today/llm/abcdef12",
+        url: "https://aidr.today/abcdef12",
       },
       { text: "No-link bullet", url: null },
     ],
@@ -163,14 +163,12 @@ describe("trending story message", () => {
     const [row] = markup.inline_keyboard;
     expect(row[0].url).toContain("https://example.com/story");
     expect(row[0].url).toContain("utm_source=telegram");
-    expect(row[1].url).toBe(
-      "https://aidr.today/llm/abcdef12?utm_source=telegram"
-    );
+    expect(row[1].url).toBe("https://aidr.today/abcdef12?utm_source=telegram");
   });
 
-  it("falls back to the ai category in the permalink", () => {
+  it("uses the 8-char id permalink without a category segment", () => {
     expect(storyUrl({ id: "abcdef1234567890", category: null })).toBe(
-      "https://aidr.today/ai/abcdef12"
+      "https://aidr.today/abcdef12"
     );
   });
 });

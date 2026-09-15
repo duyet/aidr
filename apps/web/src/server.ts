@@ -22,6 +22,7 @@ import {
   sitemapResponse,
   staticSitemapUrls,
 } from "./lib/sitemap";
+import { legacyStoryRedirectPath } from "./lib/slug";
 
 async function resolveEnv(env?: Env): Promise<Env | undefined> {
   if (env?.DB) return env;
@@ -41,6 +42,12 @@ export default {
     if (path === "/extension") {
       const dest = new URL(request.url);
       dest.pathname = "/subscribe";
+      return Response.redirect(dest.toString(), 301);
+    }
+    const storyDest = legacyStoryRedirectPath(path);
+    if (storyDest) {
+      const dest = new URL(request.url);
+      dest.pathname = storyDest;
       return Response.redirect(dest.toString(), 301);
     }
     if (isClerkProxyPath(path)) {

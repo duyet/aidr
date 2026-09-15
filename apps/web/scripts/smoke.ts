@@ -68,8 +68,12 @@ async function main() {
     assert(body.includes("twitter:card"), "homepage missing twitter:card");
     assert(body.includes('rel="canonical"'), "homepage missing canonical");
     assert(
-      /href="\/[a-z0-9-]+\/[0-9a-f]{8}"/.test(body),
+      /href="\/[0-9a-f]{8}"/.test(body),
       "homepage HTML has no canonical 8-char story permalinks"
+    );
+    assert(
+      !/href="\/[a-z0-9-]+\/[0-9a-f]{8}"/.test(body),
+      "homepage must not link category/id story paths"
     );
     assert(
       !/href="\/ai\/[0-9a-f]{16,}"/.test(body),

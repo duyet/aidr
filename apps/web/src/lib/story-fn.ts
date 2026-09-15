@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getStory } from "./story-queries";
 import type { FeedItem } from "./types";
 
-/** Server fn wrapping getStory for the $cat/$slug permalink loader. */
+/** Server fn wrapping getStory for the $slug permalink loader. */
 export const fetchStory = createServerFn({ method: "GET" })
   .inputValidator((input: { idPrefix: string }) => input)
   .handler(async ({ data }): Promise<FeedItem | null> => {

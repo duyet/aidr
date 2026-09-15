@@ -82,15 +82,13 @@ describe("articleHead", () => {
     expect(metaContent(head.meta, "og:title")).toBe(item.title);
     expect(metaContent(head.meta, "twitter:title")).toBe(item.title);
     expect(metaContent(head.meta, "og:type")).toBe("article");
-    expect(metaContent(head.meta, "og:url")).toBe(
-      `${SITE_URL}/industry/abcdef12`
-    );
+    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/abcdef12`);
     expect(metaContent(head.meta, "og:image")).toBe(item.image_url);
     expect(metaContent(head.meta, "twitter:image")).toBe(item.image_url);
     expect(metaContent(head.meta, "twitter:card")).toBe("summary_large_image");
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: `${SITE_URL}/industry/abcdef12`,
+      href: `${SITE_URL}/abcdef12`,
     });
   });
 
