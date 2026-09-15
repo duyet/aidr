@@ -191,7 +191,7 @@ admin). Pick a template, optionally wrap with AI, then send to the
 confirmed list from `notes@aidr.today`. One-click `List-Unsubscribe` is
 set on digest and campaign mail.
 
-Apply the migration when deploying:
+Prod D1 is migrated on every **Deploy Web Worker** GitHub Action: `pnpm --filter @aidr/web run deploy` runs `d1:migrate` (remote `wrangler d1 migrations apply aidr`) with the same `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` as the Worker publish, then `wrangler deploy`. `ensureVendorBlogSources` still upserts vendor RSS rows at ingest as a safety net. Local / ad-hoc:
 
 ```bash
 pnpm exec wrangler d1 migrations apply aidr --config wrangler.toml --remote
