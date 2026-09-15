@@ -351,7 +351,7 @@ export function PrefsPanel({
       <Button
         type="button"
         variant="ghost"
-        size={triggerClassName ? "icon" : "sm"}
+        size={triggerClassName ? "icon-lg" : "sm"}
         onClick={() => setOpen((v) => !v)}
         aria-label={t("Reader preferences", "Tuỳ chỉnh hiển thị")}
         aria-haspopup="dialog"

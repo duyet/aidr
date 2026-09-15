@@ -93,7 +93,7 @@ function PhoneMenu({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="icon-lg"
         className={PHONE_TAP_TARGET_CLASS}
         aria-label="Open menu"
         aria-expanded={open}
@@ -275,13 +275,13 @@ export function HeaderBar({
         className={`${COMPACT_CHROME_CLASS} mx-auto max-w-[1080px] items-center gap-2 px-3 py-1.5`}
       >
         <Brand lang={lang} />
-        <div className="flex min-w-0 flex-1 items-center gap-0">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
           <div className="min-w-0 flex-1">
             <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
           </div>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-lg"
             className={PHONE_TAP_TARGET_CLASS}
             asChild
           >
@@ -295,7 +295,7 @@ export function HeaderBar({
           </Button>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-lg"
             className={PHONE_TAP_TARGET_CLASS}
             asChild
           >
