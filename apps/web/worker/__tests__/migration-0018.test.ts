@@ -31,3 +31,19 @@ describe("migration 0020_marketbrief", () => {
     expect(sql0020).toContain('"topics":["ai"]');
   });
 });
+
+describe("migration 0021_xai_deepmind_aws", () => {
+  it("seeds xAI sitemap plus DeepMind, AWS ML, and Google Developers RSS", () => {
+    const sql0021 = readFileSync(
+      path.join(dirname, "../../migrations/0021_xai_deepmind_aws.sql"),
+      "utf-8"
+    );
+    expect(sql0021).toContain("'xai'");
+    expect(sql0021).toContain("https://x.ai/sitemap.xml");
+    expect(sql0021).toContain("'deepmind'");
+    expect(sql0021).toContain("deepmind.google/blog/rss.xml");
+    expect(sql0021).toContain("'aws-ml'");
+    expect(sql0021).toContain("aws.amazon.com/blogs/machine-learning/feed/");
+    expect(sql0021).toContain("'google-dev'");
+  });
+});
