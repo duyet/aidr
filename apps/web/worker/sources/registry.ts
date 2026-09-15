@@ -4,8 +4,8 @@ import { huggingNewsAdapter } from "./huggingnews.js";
 import { lobstersAdapter } from "./lobsters.js";
 import { marketBriefAdapter } from "./marketbrief.js";
 import { rssAdapter } from "./rss.js";
-import { xaiAdapter } from "./xai.js";
 import type { SourceAdapter } from "./types.js";
+import { xaiAdapter } from "./xai.js";
 
 export const adapters: Record<string, SourceAdapter> = {
   hn: hnAdapter,
