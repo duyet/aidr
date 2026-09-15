@@ -340,7 +340,7 @@ function paintStory(story, ctx) {
           itemId: rel.id,
           relatedIds,
           digest,
-          permalink: `${NEWS_SITE}/ai/${String(rel.id).slice(0, 8)}`,
+          permalink: `${NEWS_SITE}/${String(rel.id).slice(0, 8)}`,
         });
       });
       li.append(btn);

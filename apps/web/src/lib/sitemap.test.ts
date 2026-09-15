@@ -25,7 +25,7 @@ describe("buildSitemapXml", () => {
     const xml = buildSitemapXml([
       { loc: `${SITE_URL}/`, changefreq: "hourly", priority: "1.0" },
       {
-        loc: `${SITE_URL}/industry/abcdef12`,
+        loc: `${SITE_URL}/abcdef12`,
         lastmod: "2026-08-16",
         changefreq: "daily",
         priority: "0.7",
@@ -36,7 +36,7 @@ describe("buildSitemapXml", () => {
       'xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
     );
     expect(xml).toContain(`<loc>${SITE_URL}/</loc>`);
-    expect(xml).toContain(`<loc>${SITE_URL}/industry/abcdef12</loc>`);
+    expect(xml).toContain(`<loc>${SITE_URL}/abcdef12</loc>`);
     expect(xml).toContain("<lastmod>2026-08-16</lastmod>");
     expect(xml).toContain("</urlset>");
   });
@@ -64,14 +64,14 @@ describe("staticSitemapUrls", () => {
 });
 
 describe("storySitemapUrl", () => {
-  it("uses the category + 8-char id permalink", () => {
+  it("uses the 8-char id permalink without category", () => {
     expect(
       storySitemapUrl({
         id: "abcdef12deadbeef",
         category: "Research",
         published_at: 1_787_000_000,
       }).loc
-    ).toBe(`${SITE_URL}/research/abcdef12`);
+    ).toBe(`${SITE_URL}/abcdef12`);
   });
 });
 

@@ -91,7 +91,7 @@ export function TldrSection({
   updatedAt: number;
   lastFetchedAt: number | null;
   topicByItemId?: Map<string, string>;
-  /** Canonical /{category}/{8-char} hrefs so Google does not crawl /ai/{full-id}. */
+  /** Canonical /{8-char} hrefs so Google does not crawl /{full-id}. */
   pathByItemId?: Map<string, string>;
   /** Item tags for in-bullet entity highlight (plus TITLE_KEYWORDS). */
   tagsByItemId?: Map<string, string[]>;
@@ -253,7 +253,7 @@ export function TldrSection({
                     <a
                       href={
                         pathByItemId?.get(primaryId) ??
-                        `/ai/${primaryId.slice(0, 8)}`
+                        `/${primaryId.slice(0, 8)}`
                       }
                       onClick={(e) => {
                         if (

@@ -1,9 +1,8 @@
 import type { FeedItem } from "./types";
 
-/** /ai/abc12345 style path for a story — category + 8-char id prefix. */
-export function storyPath(item: Pick<FeedItem, "id" | "category">): string {
-  const cat = (item.category ?? "ai").toLowerCase();
-  return `/${cat}/${item.id.slice(0, 8)}`;
+/** Canonical story permalink: /{8-char id prefix}. Category is UI-only. */
+export function storyPath(item: Pick<FeedItem, "id">): string {
+  return `/${item.id.slice(0, 8)}`;
 }
 
 /**
@@ -16,20 +15,49 @@ export function idPrefixFromSlug(slug: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Requested path for `/$cat/$slug`. */
-export function requestedStoryPath(cat: string, slug: string): string {
-  return `/${cat}/${slug}`;
+/** Requested path for `/$slug`. */
+export function requestedStoryPath(slug: string): string {
+  return `/${slug}`;
 }
 
 /**
- * If the crawled URL is a duplicate (full hash, /ai/ prefix, legacy slug),
- * return the canonical `/{category}/{8-char}` path so Google indexes one URL.
+ * If the crawled URL is a duplicate (full hash, legacy title slug),
+ * return the canonical `/{8-char}` path so Google indexes one URL.
  */
 export function storyCanonicalRedirect(
-  cat: string,
   slug: string,
-  item: Pick<FeedItem, "id" | "category">
+  item: Pick<FeedItem, "id">
 ): string | null {
   const canonical = storyPath(item);
-  return requestedStoryPath(cat, slug) === canonical ? null : canonical;
+  return requestedStoryPath(slug) === canonical ? null : canonical;
+}
+
+const RESERVED_TOP = new Set([
+  "api",
+  "sign-in",
+  "sign-up",
+  "assets",
+  "cdn-cgi",
+]);
+
+/**
+ * Permanent redirect target for old `/{category}/{slug}` (and over-long
+ * single-segment hashes) → `/{8-char}`. Null if this path is not a story URL.
+ */
+export function legacyStoryRedirectPath(pathname: string): string | null {
+  const parts = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+  if (parts.length === 2) {
+    const [cat, slug] = parts;
+    if (RESERVED_TOP.has(cat)) return null;
+    const prefix = idPrefixFromSlug(slug);
+    if (!prefix) return null;
+    return `/${prefix.slice(0, 8)}`;
+  }
+  if (parts.length === 1) {
+    const prefix = idPrefixFromSlug(parts[0]);
+    if (!prefix) return null;
+    const canonical = `/${prefix.slice(0, 8)}`;
+    return `/${parts[0]}` === canonical ? null : canonical;
+  }
+  return null;
 }

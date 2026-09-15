@@ -20,7 +20,7 @@ async function probeColumn(
 }
 
 /** Look up a single published story by id (or id prefix). Shared by the
- * /api/story/$id route and the $cat/$slug permalink page loader. */
+ * /api/story/$id route and the $slug permalink page loader. */
 export async function getStory(
   db: D1Database,
   idPrefix: string
