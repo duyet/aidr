@@ -5,6 +5,7 @@ import { lobstersAdapter } from "./lobsters.js";
 import { marketBriefAdapter } from "./marketbrief.js";
 import { rssAdapter } from "./rss.js";
 import type { SourceAdapter } from "./types.js";
+import { xaiAdapter } from "./xai.js";
 
 export const adapters: Record<string, SourceAdapter> = {
   hn: hnAdapter,
@@ -13,4 +14,5 @@ export const adapters: Record<string, SourceAdapter> = {
   rss: rssAdapter,
   anthropic: anthropicAdapter,
   marketbrief: marketBriefAdapter,
+  xai: xaiAdapter,
 };
