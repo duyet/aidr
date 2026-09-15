@@ -99,7 +99,11 @@ export function pageHead(opts: {
 
 /** Homepage Open Graph / Twitter / canonical tags. */
 export function homepageHead(): HeadTags {
-  return pageHead({ path: "/", title: SITE_TITLE });
+  return pageHead({
+    path: "/",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  });
 }
 
 /**

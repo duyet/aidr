@@ -26,7 +26,9 @@ describe("homepageHead", () => {
   it("emits og, twitter, and canonical tags for the site", () => {
     const head = homepageHead();
     expect(metaContent(head.meta, "title")).toBe(SITE_TITLE);
+    expect(SITE_TITLE).toMatch(/ranked AI digest/);
     expect(metaContent(head.meta, "description")).toBe(SITE_DESCRIPTION);
+    expect(SITE_DESCRIPTION.length).toBeGreaterThan(80);
     expect(metaContent(head.meta, "og:title")).toBe(SITE_TITLE);
     expect(metaContent(head.meta, "og:description")).toBe(SITE_DESCRIPTION);
     expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/`);
