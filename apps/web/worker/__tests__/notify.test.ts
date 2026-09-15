@@ -169,7 +169,7 @@ describe("trending story message", () => {
   });
 
   it("falls back to the ai category in the permalink", () => {
-    expect(storyUrl({ id: "abcdef1234567890", category: null })).toBe(
+    expect(storyUrl({ id: "abcdef1234567890" })).toBe(
       "https://aidr.today/ai/abcdef12"
     );
   });
