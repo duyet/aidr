@@ -47,7 +47,9 @@ function imageUrl(value: unknown): string | undefined {
   return undefined;
 }
 
-export function storyToItem(story: Record<string, unknown>): FetchedItem | null {
+export function storyToItem(
+  story: Record<string, unknown>
+): FetchedItem | null {
   if (story.isSuperseded === true) return null;
   const title = pick(story, ["title", "headline"]);
   const slug = pick(story, ["slug"]);
