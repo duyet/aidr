@@ -147,7 +147,7 @@ export function buildDigestEmail(
       lang: mailLang,
       stories: items.map((b) => ({
         text: b.text,
-        url: b.item_id ? `${SITE_URL}/ai/${b.item_id.slice(0, 8)}` : SITE_URL,
+        url: b.item_id ? `${SITE_URL}/${b.item_id.slice(0, 8)}` : SITE_URL,
       })),
       unsubscribeUrl: unsubscribeUrl(unsubscribeToken),
       settingsUrl: settingsUrl(unsubscribeToken),

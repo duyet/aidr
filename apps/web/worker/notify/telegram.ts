@@ -37,10 +37,9 @@ export function withUtm(url: string): string {
   }
 }
 
-/** /ai/abc12345 permalink — mirrors src/lib/slug.ts storyPath. */
-export function storyUrl(story: Pick<StoryPayload, "id" | "category">): string {
-  const cat = (story.category ?? "ai").toLowerCase();
-  return `${SITE_URL}/${cat}/${story.id.slice(0, 8)}`;
+/** /abc12345 permalink — mirrors src/lib/slug.ts storyPath. */
+export function storyUrl(story: Pick<StoryPayload, "id">): string {
+  return `${SITE_URL}/${story.id.slice(0, 8)}`;
 }
 
 /** TL;DR digest: header + linked bullet list, capped under the message

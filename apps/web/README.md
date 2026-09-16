@@ -191,7 +191,14 @@ admin). Pick a template, optionally wrap with AI, then send to the
 confirmed list from `notes@aidr.today`. One-click `List-Unsubscribe` is
 set on digest and campaign mail.
 
-Apply the migration when deploying:
+`wrangler deploy` does not apply D1 SQL migrations. `pnpm run d1:migrate`
+(`wrangler d1 migrations apply aidr --config wrangler.toml --remote`) is
+**not** chained into `deploy` — the current `CLOUDFLARE_API_TOKEN` can
+publish the Worker but Cloudflare API 7403s on D1 `migrations.apply`.
+Migrate-on-deploy needs a token with **Account D1 Edit**. Until that is
+fixed, run migrate separately (do not swallow migrate failures inside
+`deploy`). `ensureVendorBlogSources` still upserts vendor RSS rows at
+ingest as a safety net.
 
 ```bash
 pnpm exec wrangler d1 migrations apply aidr --config wrangler.toml --remote

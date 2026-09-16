@@ -3,12 +3,12 @@ import { withMailUtm } from "../mail/utm.js";
 
 describe("withMailUtm", () => {
   it("tags aidr.today digest links", () => {
-    const out = withMailUtm("https://aidr.today/ai/deadbeef", "digest");
+    const out = withMailUtm("https://aidr.today/deadbeef", "digest");
     const u = new URL(out);
     expect(u.searchParams.get("utm_source")).toBe("email");
     expect(u.searchParams.get("utm_medium")).toBe("digest");
     expect(u.searchParams.get("utm_campaign")).toBe("digest");
-    expect(u.pathname).toBe("/ai/deadbeef");
+    expect(u.pathname).toBe("/deadbeef");
   });
 
   it("tags welcome CTAs", () => {

@@ -19,6 +19,7 @@ describe("Worker discovery entry", () => {
     expect(src).toContain('path === "/robots.txt"');
     expect(src).toContain('path === "/extension"');
     expect(src).toContain('dest.pathname = "/subscribe"');
+    expect(src).toContain("legacyStoryRedirectPath");
   });
 
   it("llms.txt response is non-empty aidr guidance", async () => {

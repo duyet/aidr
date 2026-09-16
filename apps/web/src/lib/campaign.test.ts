@@ -167,7 +167,7 @@ describe("extension landing telemetry shape", () => {
       utm_medium: "newtab",
       utm_campaign: "aidr_ext",
       utm_content: "story",
-      landed_path: "/ai/deadbeef",
+      landed_path: "/deadbeef",
     });
     track("extension_landing", params);
     expect(gtag).toHaveBeenCalledWith(

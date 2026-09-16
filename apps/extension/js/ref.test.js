@@ -9,14 +9,14 @@ import {
 } from "./ref.js";
 
 test("withExtRef tags aidr.today permalinks", () => {
-  const out = withExtRef("https://aidr.today/ai/deadbeef", "story");
+  const out = withExtRef("https://aidr.today/deadbeef", "story");
   const u = new URL(out);
   assert.equal(u.searchParams.get("ref"), EXT_REF);
   assert.equal(u.searchParams.get("utm_source"), EXT_UTM_SOURCE);
   assert.equal(u.searchParams.get("utm_medium"), EXT_UTM_MEDIUM);
   assert.equal(u.searchParams.get("utm_campaign"), EXT_UTM_CAMPAIGN);
   assert.equal(u.searchParams.get("utm_content"), "story");
-  assert.equal(u.pathname, "/ai/deadbeef");
+  assert.equal(u.pathname, "/deadbeef");
 });
 
 test("withExtRef leaves third-party URLs alone", () => {
