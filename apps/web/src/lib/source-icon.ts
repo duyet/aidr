@@ -7,6 +7,10 @@ const TYPE_HOST: Record<string, string> = {
   anthropic: "anthropic.com",
   marketbrief: "marketbrief.now",
   xai: "x.ai",
+  // Community submissions live on aidr.today itself (/submit) and carry an
+  // empty config, so fall back to the site favicon instead of no logo.
+  user: "aidr.today",
+  push: "aidr.today",
 };
 
 function hostFromUrl(value: unknown): string | null {

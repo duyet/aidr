@@ -58,6 +58,10 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 ANYROUTER_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
 ANYROUTER_TRANSLATE_MODEL = "google/gemini-3.5-flash,anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
 ANYROUTER_TLDR_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
+# Jev SystemOne decision model for review/intent gates (POST /api/v1/systemone).
+# BYOK-only: save a TypeSafe key under Dashboard → BYOK → TypeSafe. Never add
+# this id to a /chat/completions chain — Jev is rejected there.
+ANYROUTER_JEV_MODEL = "typesafe/jev-latest"
 # Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
 # overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014
 # blocks the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).

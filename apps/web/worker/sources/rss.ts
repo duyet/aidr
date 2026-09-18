@@ -27,14 +27,28 @@ function stripHtml(value: string): string {
     .trim();
 }
 
+function linkHref(block: string): string | null {
+  const match = block.match(/<link[^>]*href="([^"]+)"/i);
+  const href = match?.[1]?.trim();
+  return href || null;
+}
+
 export function parseRssItems(xml: string): FetchedItem[] {
-  const chunks = xml.match(/<item\b[\s\S]*?<\/item>/gi) ?? [];
+  const chunks =
+    xml.match(/<(?:item|entry)\b[\s\S]*?<\/(?:item|entry)>/gi) ?? [];
   const items: FetchedItem[] = [];
   for (const chunk of chunks) {
     const title = tagText(chunk, "title");
-    const url = tagText(chunk, "link") ?? tagText(chunk, "guid");
+    const url =
+      tagText(chunk, "link") ??
+      linkHref(chunk) ??
+      tagText(chunk, "guid") ??
+      tagText(chunk, "id");
     if (!title || !url || !/^https?:\/\//i.test(url)) continue;
-    const pub = tagText(chunk, "pubDate") ?? tagText(chunk, "published");
+    const pub =
+      tagText(chunk, "pubDate") ??
+      tagText(chunk, "published") ??
+      tagText(chunk, "updated");
     const publishedMs = pub ? Date.parse(pub) : Number.NaN;
     const publishedAt = Number.isFinite(publishedMs) ? publishedMs : Date.now();
     const rawSummary =
@@ -56,7 +70,8 @@ export function parseRssItems(xml: string): FetchedItem[] {
 }
 
 /**
- * Generic RSS/Atom-ish `<item>` feed. Config: `{ "feed": "https://…/rss.xml" }`.
+ * Generic RSS (`<item>`) and Atom (`<entry>`, `<link href>`) feeds.
+ * Config: `{ "feed": "https://…/rss.xml" }`.
  */
 export const rssAdapter: SourceAdapter = {
   type: "rss",

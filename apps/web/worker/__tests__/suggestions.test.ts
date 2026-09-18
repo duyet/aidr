@@ -351,6 +351,10 @@ describe("reviewPendingSuggestions — accepted -> retranslate flow", () => {
       vi.fn().mockImplementation(async () => {
         call++;
         if (call === 1) {
+          // the Jev SystemOne attempt — unavailable here, fall back to chat
+          return new Response("typesafe key missing", { status: 422 });
+        }
+        if (call === 2) {
           // the review call
           return chatResponse(
             JSON.stringify({
@@ -414,18 +418,25 @@ describe("reviewPendingSuggestions — accepted -> retranslate flow", () => {
       },
     } as unknown as D1Database;
 
-    const fetchMock = vi.fn().mockResolvedValue(
-      chatResponse(
+    let fetchCalls = 0;
+    const fetchMock = vi.fn().mockImplementation(async () => {
+      fetchCalls++;
+      if (fetchCalls === 1) {
+        // the Jev SystemOne attempt — unavailable here, fall back to chat
+        return new Response("typesafe key missing", { status: 422 });
+      }
+      return chatResponse(
         JSON.stringify({
           results: [{ id: "s1", valid: false, rating: 0.1, note: "spam" }],
         })
-      )
-    );
+      );
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     await reviewPendingSuggestions({ ...env, DB: db });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1); // only the review call, no re-translate
+    // Jev attempt + chat fallback review, no re-translate
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     const updateRejected = dbCalls.find(
       (c) =>
         c.sql.includes("UPDATE translation_suggestions") &&

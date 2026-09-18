@@ -36,4 +36,10 @@ describe("sourceIconUrl", () => {
       "https://www.google.com/s2/favicons?domain=lobste.rs&sz=32"
     );
   });
+
+  it("falls back to the site favicon for user submissions", () => {
+    expect(sourceIconUrl(row({ id: "user", type: "push" }))).toBe(
+      "https://www.google.com/s2/favicons?domain=aidr.today&sz=32"
+    );
+  });
 });

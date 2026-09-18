@@ -1,6 +1,5 @@
 import {
   Badge,
-  Separator,
   Skeleton,
   Tabs,
   TabsContent,
@@ -8,7 +7,7 @@ import {
   TabsTrigger,
 } from "@aidr/ui";
 import { createFileRoute } from "@tanstack/react-router";
-import { Coins, Newspaper, Play, Users } from "lucide-react";
+import { Coins, Newspaper, Play, Users, Activity } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AdminPanel } from "../components/system/AdminPanel";
 import { BarList } from "../components/system/BarList";
@@ -16,9 +15,9 @@ import { ChartCard } from "../components/system/ChartCard";
 import {
   CategoryDonut,
   ItemsAreaChart,
+  TokenBurnSection,
   TokensLineChart,
 } from "../components/system/DitherCharts";
-import { LlmSection } from "../components/system/LlmSection";
 import { RankingExplainer } from "../components/system/RankingExplainer";
 import { RunDurationBars } from "../components/system/RunDurationBars";
 import { RunOutcomeBars } from "../components/system/RunOutcomeBars";
@@ -98,18 +97,6 @@ function ModelChip({ label, models }: { label: string; models: string[] }) {
       ) : null}
     </Badge>
   );
-}
-
-function llmTokensPerDay(
-  rows: SystemStats["llmCallsPerDay"]
-): { date: string; count: number }[] {
-  const byDate = new Map<string, number>();
-  for (const row of rows) {
-    byDate.set(row.date, (byDate.get(row.date) ?? 0) + row.tokens);
-  }
-  return [...byDate.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, count]) => ({ date, count }));
 }
 
 function SystemPage() {
@@ -216,7 +203,7 @@ function SystemPage() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-0 space-y-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             <StatTile
               icon={Newspaper}
               label="Stories"
@@ -238,55 +225,24 @@ function SystemPage() {
               label="Subscribers"
               value={String(stats.totals.subscribers)}
             />
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ChartCard
-              title="Last run"
-              subtitle={
-                stats.lastRun?.started_at
-                  ? new Date(stats.lastRun.started_at * 1000).toLocaleString(
-                      "en-US"
-                    )
+            <StatTile
+              icon={Activity}
+              label="Last run"
+              value={
+                stats.lastRun
+                  ? stats.lastRun.error
+                    ? "Failed"
+                    : "Healthy"
+                  : "—"
+              }
+              sublabel={
+                stats.lastRun
+                  ? `${stats.lastRun.items_fetched ?? 0} fetched · ${stats.lastRun.items_new ?? 0} new`
                   : "No runs recorded"
               }
-              action={
-                stats.lastRun ? (
-                  <Badge
-                    variant={stats.lastRun.error ? "destructive" : "secondary"}
-                    className={
-                      stats.lastRun.error
-                        ? ""
-                        : "border-transparent bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
-                    }
-                  >
-                    {stats.lastRun.error ? "Failed" : "Healthy"}
-                  </Badge>
-                ) : null
-              }
-            >
-              {stats.lastRun ? (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                  <span className="text-muted-foreground">
-                    fetched{" "}
-                    <span className="font-mono tabular-nums text-foreground">
-                      {stats.lastRun.items_fetched ?? 0}
-                    </span>
-                  </span>
-                  <Separator
-                    orientation="vertical"
-                    className="hidden h-4 sm:block"
-                  />
-                  <span className="text-muted-foreground">
-                    new{" "}
-                    <span className="font-mono tabular-nums text-foreground">
-                      {stats.lastRun.items_new ?? 0}
-                    </span>
-                  </span>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No data yet.</p>
-              )}
-            </ChartCard>
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <ChartCard title="Items per day" subtitle="Published, last 14 days">
               <ItemsAreaChart
                 data={stats.itemsPerDay}
@@ -413,22 +369,13 @@ function SystemPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <ChartCard
               title="Token burn"
-              subtitle="LLM tokens per day (calls, 14 days)"
+              subtitle="Tokens per day by task, stacked (14 days)"
               className="md:col-span-2"
             >
-              <TokensLineChart
-                data={llmTokensPerDay(stats.llmCallsPerDay)}
+              <TokenBurnSection
+                data={stats.llmCallsPerDay}
                 emptyLabel="No token data yet."
                 formatValue={formatTokens}
-              />
-            </ChartCard>
-            <ChartCard
-              title="LLM calls"
-              subtitle="Calls, failures, tokens (14 days)"
-            >
-              <LlmSection
-                data={stats.llmCallsPerDay}
-                formatTokens={formatTokens}
               />
             </ChartCard>
             <ChartCard

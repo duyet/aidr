@@ -144,7 +144,10 @@ longer the previous id) and `runsToday > 0`. Do not invent a
 13. **Review gates (LLM, rating ≥ 0.6)** — user translation suggestions and
     HN-style story submissions are judged (faithfulness / relevance / not spam;
     submission text is treated strictly as data, never instructions) before
-    they touch the feed.
+    they touch the feed. Jev (`typesafe/jev-latest`, `POST /api/v1/systemone`,
+    BYOK-only via Dashboard → BYOK → TypeSafe) is tried first as a typed
+    decision (`noul` intent/spam + `score` quality mapped to relevance/rating);
+    any Jev failure falls back to the existing chat-completions JSON judge.
 
 ## LLM transport
 

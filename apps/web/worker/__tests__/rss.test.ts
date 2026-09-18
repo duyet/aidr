@@ -26,6 +26,31 @@ describe("parseRssItems", () => {
       summary: "A model.",
     });
   });
+
+  it("reads Atom entries with link href and updated dates", () => {
+    const atom = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<entry>
+  <title>LLM prompting tips</title>
+  <link href="https://simonwillison.net/2026/Sep/18/tips/"/>
+  <id>https://simonwillison.net/2026/Sep/18/tips/</id>
+  <updated>2026-09-18T14:36:41+00:00</updated>
+  <summary>Notes on prompting.</summary>
+</entry>
+<entry>
+  <title>Skip me</title>
+  <link href="/relative/path"/>
+  <updated>2026-09-18T14:00:00+00:00</updated>
+</entry>
+</feed>`;
+    const items = parseRssItems(atom);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      url: "https://simonwillison.net/2026/Sep/18/tips/",
+      title: "LLM prompting tips",
+      summary: "Notes on prompting.",
+    });
+  });
 });
 
 describe("rssAdapter", () => {

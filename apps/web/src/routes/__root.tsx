@@ -204,7 +204,17 @@ function NewsFooter() {
           <span>
             {`© ${year} AI;DR`}
             {lastFetchedAt !== null && (
-              <> · Updated {timeAgo(lastFetchedAt, Date.now(), "en")}</>
+              <>
+                {" · "}
+                <Link
+                  to="/data"
+                  onClick={() => track("nav_click", { to: "/data" })}
+                  className="underline-offset-2 hover:text-foreground hover:underline"
+                  title="Pipeline stats"
+                >
+                  Updated {timeAgo(lastFetchedAt, Date.now(), "en")}
+                </Link>
+              </>
             )}
           </span>
         </div>
