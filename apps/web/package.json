@@ -16,7 +16,7 @@
     "lint:fix": "biome check --write .",
     "d1:migrate": "pnpm exec wrangler d1 migrations apply aidr --config wrangler.toml --remote",
     "deploy": "pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json",
-    "cf:deploy:prod": "dotenv -e ../../.env.production -e ../../.env.production.local -- pnpm run deploy && pnpm run smoke",
+    "cf:deploy:prod": "dotenvx run -f ../../.env.production -f ../../.env.production.local --ignore=MISSING_ENV_FILE -- pnpm run deploy && pnpm run smoke",
     "config": "tsx ../../scripts/sync-env.ts",
     "smoke": "tsx scripts/smoke.ts"
   },
@@ -46,6 +46,7 @@
     "@biomejs/biome": "^2.4.14",
     "@cloudflare/vite-plugin": "^1.0.0",
     "@cloudflare/workers-types": "5.20260916.1",
+    "@dotenvx/dotenvx": "^2.28.0",
     "@tailwindcss/vite": "^4.0.0",
     "@types/d3-scale": "^4.0.9",
     "@types/d3-shape": "^3.1.8",
