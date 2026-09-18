@@ -7,7 +7,7 @@ import {
   TabsTrigger,
 } from "@aidr/ui";
 import { createFileRoute } from "@tanstack/react-router";
-import { Coins, Newspaper, Play, Users, Activity } from "lucide-react";
+import { Activity, Coins, Newspaper, Play, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AdminPanel } from "../components/system/AdminPanel";
 import { BarList } from "../components/system/BarList";

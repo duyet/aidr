@@ -91,7 +91,9 @@ export async function callSystemOne(
     return null;
   }
   if (!res.ok) {
-    console.error(`jev systemone request failed: ${res.status} ${await res.text()}`);
+    console.error(
+      `jev systemone request failed: ${res.status} ${await res.text()}`
+    );
     return null;
   }
   let data: SystemOneResponse;
@@ -196,7 +198,8 @@ export function suggestionVerdictFromJev(
   const improvement = noulProb(answers, "is_improvement");
   if (improvement === null) return null;
   const quality =
-    scoreNorm(answers, "quality", [...SUGGESTION_QUALITY_LEVELS]) ?? improvement;
+    scoreNorm(answers, "quality", [...SUGGESTION_QUALITY_LEVELS]) ??
+    improvement;
   const rating = clamp01((improvement + quality) / 2);
   return {
     valid: improvement >= 0.6,

@@ -32,7 +32,9 @@ describe("jevModelId", () => {
   it("takes the first id of a chain", () => {
     expect(
       jevModelId(
-        envWith({ ANYROUTER_JEV_MODEL: "typesafe/jev-preview,typesafe/jev-latest" })
+        envWith({
+          ANYROUTER_JEV_MODEL: "typesafe/jev-preview,typesafe/jev-latest",
+        })
       )
     ).toBe("typesafe/jev-preview");
   });
@@ -86,11 +88,9 @@ describe("callSystemOne", () => {
       "fetch",
       vi.fn(async () => new Response("upstream fail", { status: 422 }))
     );
-    const result = await callSystemOne(
-      envWith(),
-      "state",
-      { q: { type: "noul", instructions: "x" } }
-    );
+    const result = await callSystemOne(envWith(), "state", {
+      q: { type: "noul", instructions: "x" },
+    });
     expect(result).toBeNull();
   });
 
@@ -127,18 +127,20 @@ describe("answer mapping", () => {
 
   it("normalizes score answers by criteria index", () => {
     expect(
-      scoreNorm(
-        { quality: { type: "score", score: "excellent" } },
-        "quality",
-        ["reject", "weak", "good", "excellent"]
-      )
+      scoreNorm({ quality: { type: "score", score: "excellent" } }, "quality", [
+        "reject",
+        "weak",
+        "good",
+        "excellent",
+      ])
     ).toBe(1);
     expect(
-      scoreNorm(
-        { quality: { type: "score", score: "reject" } },
-        "quality",
-        ["reject", "weak", "good", "excellent"]
-      )
+      scoreNorm({ quality: { type: "score", score: "reject" } }, "quality", [
+        "reject",
+        "weak",
+        "good",
+        "excellent",
+      ])
     ).toBe(0);
   });
 

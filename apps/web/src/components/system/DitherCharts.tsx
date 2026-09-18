@@ -1,5 +1,9 @@
 import { Badge } from "@aidr/ui";
-import type { DayCount, LlmDayTaskCount, NamedCount } from "../../lib/system-queries";
+import type {
+  DayCount,
+  LlmDayTaskCount,
+  NamedCount,
+} from "../../lib/system-queries";
 import { Area, Line } from "../dither-kit/area";
 import { AreaChart, LineChart } from "../dither-kit/area-chart";
 import { Bar } from "../dither-kit/bar";

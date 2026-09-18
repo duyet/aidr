@@ -3,15 +3,12 @@ import { fetchOgData } from "./enrich.js";
 import { sha256Hex } from "./hash.js";
 import { callAnyrouter, parseJson } from "./llm.js";
 import {
-  callSystemOne,
-  submissionRelevanceFromJev,
-} from "./systemone.js";
-import {
   checkRateLimit,
   hashIp,
   ONE_DAY_SEC,
   RATE_LIMIT_MESSAGES,
 } from "./rate-limit.js";
+import { callSystemOne, submissionRelevanceFromJev } from "./systemone.js";
 import { toEpochSeconds } from "./time.js";
 import type { Env } from "./types.js";
 
