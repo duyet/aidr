@@ -1,0 +1,74 @@
+name: Migrate D1
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "apps/web/migrations/**"
+      - ".github/workflows/migrate-d1.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: migrate-d1-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Apply D1 migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://aidr.today
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v6
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set"
+            exit 1
+          fi
+          echo "Required secrets present"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Apply D1 migrations (aidr, remote)
+        run: pnpm --filter @aidr/web d1:migrate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: "7df185a18b98382c3240fa7ac4a37075"
+
+      - name: Verify live sources total
+        run: |
+          count=$(curl -s --max-time 30 'https://aidr.today/api/system' -H 'Cache-Control: no-store' | python3 -c "import json,sys; print(json.load(sys.stdin)['totals']['sources'])")
+          echo "Live sources total: $count"
