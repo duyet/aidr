@@ -201,7 +201,9 @@ function NewsFooter() {
           </nav>
         </div>
         <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
-          <span>
+          {/* Relative "Updated …" uses Date.now() at render, so SSR text can
+              differ from hydration text — suppress the mismatch warning. */}
+          <span suppressHydrationWarning>
             {`© ${year} AI;DR`}
             {lastFetchedAt !== null && (
               <>
