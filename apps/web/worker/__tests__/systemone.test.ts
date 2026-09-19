@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { LlmCallLogEntry } from "../llm.js";
+import { setLlmCallLogger } from "../llm.js";
 import {
   callSystemOne,
   isSystemOneConfigured,
@@ -162,5 +164,79 @@ describe("answer mapping", () => {
   it("noulProb clamps and rejects garbage", () => {
     expect(noulProb({ q: { type: "noul", noul: 2 } }, "q")).toBe(1);
     expect(noulProb({}, "q")).toBeNull();
+  });
+});
+
+describe("callSystemOne observability", () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    setLlmCallLogger(null);
+  });
+
+  it("logs a review entry on success", async () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          model: "jev-1.13.0",
+          answers: { is_ai_tech: { type: "noul", noul: 0.9 } },
+          usage: { input_tokens: 100, output_tokens: 0, cost: 0 },
+        })
+      )
+    );
+    const result = await callSystemOne(envWith(), "state", {
+      is_ai_tech: { type: "noul", instructions: "AI news?" },
+    });
+    expect(result?.inputTokens).toBe(100);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      task: "review",
+      model: "typesafe/jev-latest",
+      ok: true,
+      tokens: 100,
+      error: null,
+    });
+    setLlmCallLogger(null);
+  });
+
+  it("logs a failed review entry on non-2xx", async () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("upstream fail", { status: 422 }))
+    );
+    const result = await callSystemOne(envWith(), "state", {
+      q: { type: "noul", instructions: "x" },
+    });
+    expect(result).toBeNull();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ task: "review", ok: false });
+    expect(entries[0]?.error).toMatch(/422/);
+    setLlmCallLogger(null);
+  });
+
+  it("logs nothing when unconfigured", async () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await callSystemOne(
+      envWith({ ANYROUTER_API_KEY: "" }),
+      "state",
+      { q: { type: "noul", instructions: "x" } }
+    );
+    expect(result).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(entries).toHaveLength(0);
+    setLlmCallLogger(null);
   });
 });

@@ -308,7 +308,7 @@ export async function reviewPendingSubmissions(
         const { content, tokens: reviewTokens } = await callAnyrouter(
           env,
           [{ role: "user", content: prompt }],
-          { json: true, modelSpec: env.ANYROUTER_MODEL }
+          { json: true, modelSpec: env.ANYROUTER_MODEL, task: "review" }
         );
         tokens += reviewTokens;
         verdict = parseSubmissionVerdict(content);

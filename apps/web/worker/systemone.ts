@@ -1,3 +1,4 @@
+import { logLlmCall } from "./llm.js";
 import type { Env } from "./types.js";
 
 /** Default Jev model id. Aliases: typesafe/jev-preview, typesafe/jev-1.13.0. */
@@ -66,6 +67,31 @@ export async function callSystemOne(
   if (!isSystemOneConfigured(env)) return null;
   if (!questions || Object.keys(questions).length === 0) return null;
   const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
+  const model = jevModelId(env);
+  const attemptStartedAt = Date.now();
+  let promptChars = 0;
+  try {
+    promptChars = JSON.stringify(state)?.length ?? 0;
+  } catch {
+    promptChars = 0;
+  }
+  const fail = (error: string): null => {
+    logLlmCall({
+      ts: attemptStartedAt,
+      task: "review",
+      model,
+      ok: false,
+      tokens: 0,
+      promptTokens: null,
+      completionTokens: null,
+      cachedTokens: null,
+      durationMs: Date.now() - attemptStartedAt,
+      error,
+      promptChars,
+      responseSnippet: null,
+    });
+    return null;
+  };
   let res: Response;
   try {
     res = await fetch(`${baseUrl}/systemone`, {
@@ -78,41 +104,51 @@ export async function callSystemOne(
       },
       body: JSON.stringify({
         state,
-        model: jevModelId(env),
+        model,
         questions,
       }),
       signal: AbortSignal.timeout(30_000),
     });
   } catch (error) {
-    console.error(
-      "jev systemone request failed:",
-      error instanceof Error ? error.message : String(error)
-    );
-    return null;
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("jev systemone request failed:", message);
+    return fail(message);
   }
   if (!res.ok) {
-    console.error(
-      `jev systemone request failed: ${res.status} ${await res.text()}`
-    );
-    return null;
+    const message = `jev systemone request failed: ${res.status} ${await res.text()}`;
+    console.error(message);
+    return fail(message);
   }
   let data: SystemOneResponse;
   try {
     data = (await res.json()) as SystemOneResponse;
   } catch (error) {
-    console.error(
-      "jev systemone bad JSON:",
-      error instanceof Error ? error.message : String(error)
-    );
-    return null;
+    const message = `jev systemone bad JSON: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(message);
+    return fail(message);
   }
   if (!data || typeof data !== "object" || !data.answers) {
     console.error("jev systemone response missing answers");
-    return null;
+    return fail("jev systemone response missing answers");
   }
+  const inputTokens = data.usage?.input_tokens ?? 0;
+  logLlmCall({
+    ts: attemptStartedAt,
+    task: "review",
+    model,
+    ok: true,
+    tokens: inputTokens,
+    promptTokens: inputTokens,
+    completionTokens: null,
+    cachedTokens: null,
+    durationMs: Date.now() - attemptStartedAt,
+    error: null,
+    promptChars,
+    responseSnippet: null,
+  });
   return {
     answers: data.answers,
-    inputTokens: data.usage?.input_tokens ?? 0,
+    inputTokens,
   };
 }
 

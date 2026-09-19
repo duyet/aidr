@@ -395,7 +395,11 @@ export async function reviewPendingSuggestions(
         const { content, tokens: reviewTokens } = await callAnyrouter(
           env,
           [{ role: "user", content: prompt }],
-          { json: true, modelSpec: env.ANYROUTER_TRANSLATE_MODEL }
+          {
+            json: true,
+            modelSpec: env.ANYROUTER_TRANSLATE_MODEL,
+            task: "review",
+          }
         );
         tokens += reviewTokens;
         const verdicts = parseReviewResponse(content);
