@@ -4,6 +4,7 @@ import {
   settingsUrl,
   unsubscribeUrl,
 } from "../mail/render.js";
+import { ensureMailSchema } from "../mail/schema.js";
 import { digestFrom, sendSubscriberEmail } from "../mail/send.js";
 import type { Env } from "../types.js";
 import { DEFAULT_TIMEZONE, isValidTimezone } from "./handlers.js";
@@ -207,6 +208,7 @@ export async function sendDailyTldr(env: Env): Promise<number> {
     console.error("EMAIL binding not configured; skipping daily digest");
     return 0;
   }
+  await ensureMailSchema(env.DB);
 
   const snapshot = await env.DB.prepare(
     "SELECT date, bullets_en, bullets_vi, sent_at FROM tldr_snapshots ORDER BY date DESC LIMIT 1"

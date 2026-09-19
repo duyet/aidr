@@ -243,6 +243,10 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     const updates: { sql: string; args: unknown[] }[] = [];
     const sentTo: string[] = [];
     const db = {
+      batch: async (statements: { run: () => Promise<unknown> }[]) => {
+        for (const stmt of statements) await stmt.run();
+        return [];
+      },
       prepare(sql: string) {
         const bound = () => ({
           first: async () => ({
