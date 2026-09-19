@@ -1,5 +1,5 @@
-import { escapeHtml } from "../notify/alert.js";
 import { notesFrom } from "../mail/send.js";
+import { escapeHtml } from "../notify/alert.js";
 import type { Env } from "../types.js";
 
 export interface NewSubscriberInfo {
@@ -30,10 +30,7 @@ export function ownerEmailAddress(env: Env): string {
   return env.OWNER_NOTIFY_EMAIL?.trim() ?? "";
 }
 
-async function sendOwnerTelegram(
-  env: Env,
-  text: string
-): Promise<boolean> {
+async function sendOwnerTelegram(env: Env, text: string): Promise<boolean> {
   const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
   const chatId = env.TELEGRAM_CHAT_ID?.trim() ?? "";
   if (!token || !chatId) return false;
