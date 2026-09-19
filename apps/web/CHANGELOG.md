@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.5](https://github.com/duyet/aidr/compare/web-v0.1.4...web-v0.1.5) (2026-09-19)
+
+
+### ✨ Features
+
+* **web:** bar charts on data overview, owner ping on new subscribers ([90b59cc](https://github.com/duyet/aidr/commit/90b59cc4cfdc012b6280d59d974aac54a657e864))
+
+
+### 🐛 Bug Fixes
+
+* **web:** biome import order, sync extension version to 0.1.17 ([d370dff](https://github.com/duyet/aidr/commit/d370dff7088a1d078a37506dade99da9fdb90ad8))
+* **web:** redirect favicon.ico to favicon.svg ([0654a33](https://github.com/duyet/aidr/commit/0654a33b61d3145b872d7ade1141e5d83779a073))
+* **web:** suppress hydration warnings on relative-time spans ([55919ad](https://github.com/duyet/aidr/commit/55919ad6f26007689ba75d2360ad5f6c5d3ae4c4))
+
 ## [0.1.4](https://github.com/duyet/aidr/compare/web-v0.1.3...web-v0.1.4) (2026-09-19)
 
 
