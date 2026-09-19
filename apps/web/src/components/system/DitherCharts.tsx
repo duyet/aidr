@@ -4,8 +4,6 @@ import type {
   LlmDayTaskCount,
   NamedCount,
 } from "../../lib/system-queries";
-import { Area, Line } from "../dither-kit/area";
-import { AreaChart, LineChart } from "../dither-kit/area-chart";
 import { Bar } from "../dither-kit/bar";
 import { BarChart } from "../dither-kit/bar-chart";
 import type { ChartConfig } from "../dither-kit/chart-context";
@@ -24,7 +22,7 @@ function EmptyNote({ label }: { label: string }) {
   return <p className="text-sm text-muted-foreground">{label}</p>;
 }
 
-/** Dithered area chart of stories published per day. */
+/** Dithered bar chart of stories published per day. */
 export function ItemsAreaChart({
   data,
   emptyLabel,
@@ -38,17 +36,20 @@ export function ItemsAreaChart({
     items: { label: "Items", color: "green" },
   };
   return (
-    <AreaChart data={rows} config={config} className="h-44 w-full">
+    <BarChart data={rows} config={config} className="h-44 w-full">
       <Grid />
       <XAxis dataKey="day" />
       <YAxis />
-      <Area dataKey="items" />
+      <Bar dataKey="items" />
       <Tooltip />
-    </AreaChart>
+    </BarChart>
   );
 }
 
-/** Dithered line chart of LLM tokens spent per day. */
+/** Back-compat alias: Items per day is now a bar chart. */
+export const ItemsBarChart = ItemsAreaChart;
+
+/** Dithered bar chart of LLM tokens spent per day. */
 export function TokensLineChart({
   data,
   emptyLabel,
@@ -64,15 +65,17 @@ export function TokensLineChart({
     tokens: { label: "Tokens", color: "purple" },
   };
   return (
-    <LineChart data={rows} config={config} className="h-44 w-full">
+    <BarChart data={rows} config={config} className="h-44 w-full">
       <Grid />
       <XAxis dataKey="day" />
       <YAxis tickFormatter={formatValue} />
-      <Line dataKey="tokens" />
+      <Bar dataKey="tokens" />
       <Tooltip />
-    </LineChart>
+    </BarChart>
   );
 }
+
+export const TokensBarChart = TokensLineChart;
 
 const TASK_BURN_COLORS: Record<string, DitherColor> = {
   score: "purple",

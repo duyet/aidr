@@ -50,4 +50,6 @@ export interface Env {
   EMAIL_FROM_NAME?: string;
   /** HMAC secret for unsubscribe tokens. When unset, legacy UUID tokens are used. */
   NEWS_UNSUBSCRIBE_SECRET?: string;
+  /** Owner address for new-subscriber pings. When unset, email ping is skipped. */
+  OWNER_NOTIFY_EMAIL?: string;
 }
