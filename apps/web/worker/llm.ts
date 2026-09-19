@@ -100,8 +100,7 @@ interface AnyrouterCallResult extends LlmUsageBreakdown {
 
 /** Labels a call by which pipeline stage issued it, for the `llm_calls`
  * observability log. "other" covers callers outside this file (dedupe's
- * clustering, submissions/suggestions review, translation QA) that don't
- * pass an explicit label. */
+ * clustering, translation QA) that don't pass an explicit label. */
 export type LlmTask =
   | "score"
   | "translate"
@@ -143,8 +142,10 @@ export function setLlmCallLogger(fn: LlmCallLogger | null): void {
 }
 
 /** Fire-and-forget: a throwing or rejecting logger must never fail or
- * change the outcome of callAnyrouter/scoreItems/translateItems/generateTldr. */
-function logLlmCall(entry: LlmCallLogEntry): void {
+ * change the outcome of callAnyrouter/scoreItems/translateItems/generateTldr.
+ * Exported so non-chat callers (e.g. the SystemOne decision client) can log
+ * to the same `llm_calls` observability table. */
+export function logLlmCall(entry: LlmCallLogEntry): void {
   if (!llmCallLogger) return;
   try {
     const result = llmCallLogger(entry);

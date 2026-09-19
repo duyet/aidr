@@ -1,3 +1,4 @@
+import { JEV_DEFAULT_MODEL } from "../../worker/systemone.js";
 import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "../../worker/workflow-run.js";
 
 export interface WorkflowRunStats {
@@ -247,15 +248,17 @@ export interface ModelChains {
   scoring: string[];
   translation: string[];
   tldr: string[];
+  decisions: string[];
 }
 
 /** Splits the comma-separated ANYROUTER_* model fallback chains into
- * arrays. Public config (which models power scoring/translate/TL;DR), not
+ * arrays. Public config (which models power scoring/translate/TL;DR/decisions), not
  * a secret — safe to surface on /about and /system. */
 export function getModelChains(env: {
   ANYROUTER_MODEL?: string;
   ANYROUTER_TRANSLATE_MODEL?: string;
   ANYROUTER_TLDR_MODEL?: string;
+  ANYROUTER_JEV_MODEL?: string;
 }): ModelChains {
   const split = (chain: string | undefined): string[] =>
     (chain ?? "")
@@ -266,10 +269,12 @@ export function getModelChains(env: {
   const scoring = split(env.ANYROUTER_MODEL);
   const translation = split(env.ANYROUTER_TRANSLATE_MODEL);
   const tldr = split(env.ANYROUTER_TLDR_MODEL);
+  const decisions = split(env.ANYROUTER_JEV_MODEL);
   return {
     scoring,
     translation: translation.length ? translation : scoring,
     tldr: tldr.length ? tldr : scoring,
+    decisions: decisions.length ? decisions : [JEV_DEFAULT_MODEL],
   };
 }
 

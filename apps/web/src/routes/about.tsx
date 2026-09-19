@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
+import { anyrouterModelUrl } from "../lib/anyrouter";
 import { pageHead } from "../lib/seo";
 import { GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
 import { fetchSourceNames } from "../lib/sources-fn";
@@ -28,6 +29,12 @@ const STEPS: Step[] = [
     vi: "Nguồn",
     subEn: "HN, HuggingNews, submissions",
     subVi: "HN, HuggingNews, bài gửi từ người dùng",
+  },
+  {
+    en: "Review",
+    vi: "Kiểm duyệt",
+    subEn: "Jev intent gates",
+    subVi: "Jev kiểm duyệt",
   },
   {
     en: "Fetch",
@@ -176,6 +183,8 @@ function ModelsLine() {
 
   if (!stats || stats.models.scoring.length === 0) return null;
   const extra = stats.models.scoring.length - 1;
+  const decisions = stats.models.decisions;
+  const decisionsExtra = decisions.length - 1;
 
   return (
     <>
@@ -190,6 +199,19 @@ function ModelsLine() {
         <span className="font-mono text-foreground">
           {stats.models.translation[0]}
         </span>
+      </p>
+      <p>
+        Decisions:{" "}
+        <a
+          href={anyrouterModelUrl(decisions[0] ?? "typesafe/jev-latest")}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-accent underline underline-offset-2 hover:no-underline"
+          title={`Open ${decisions[0] ?? "typesafe/jev-latest"} on AnyRouter`}
+        >
+          {decisions[0] ?? "typesafe/jev-latest"}
+        </a>
+        {decisionsExtra > 0 && ` (+${decisionsExtra} fallback)`}
       </p>
       <p className="text-muted-foreground">
         {"LLM routing via "}

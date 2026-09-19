@@ -5,6 +5,7 @@ const TASK_COLORS: Record<string, string> = {
   score: "bg-accent",
   translate: "bg-muted-foreground/50",
   tldr: "bg-emerald-500/70",
+  review: "bg-pink-500/70",
 };
 
 interface LlmSectionProps {

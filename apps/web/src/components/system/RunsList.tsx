@@ -384,6 +384,7 @@ export function RunsList({ runs, lang }: RunsListProps) {
                         ? new Date(r.started_at * 1000).toLocaleString()
                         : undefined
                     }
+                    suppressHydrationWarning
                   >
                     {r.started_at
                       ? timeAgo(r.started_at, Date.now(), lang)

@@ -243,7 +243,11 @@ function SystemPage() {
             />
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ChartCard title="Items per day" subtitle="Published, last 14 days">
+            <ChartCard
+              title="Items per day"
+              subtitle="Published, last 14 days"
+              className="md:col-span-2"
+            >
               <ItemsAreaChart
                 data={stats.itemsPerDay}
                 emptyLabel="No data yet."

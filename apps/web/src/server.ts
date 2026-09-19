@@ -39,6 +39,13 @@ export default {
     const publicFile = await handlePublicAsset(request, env);
     if (publicFile) return publicFile;
     const path = new URL(request.url).pathname;
+    if (path === "/favicon.ico") {
+      // Browsers auto-request /favicon.ico; we only ship /favicon.svg.
+      // Redirect instead of 404ing through the SPA shell (console noise).
+      const dest = new URL(request.url);
+      dest.pathname = "/favicon.svg";
+      return Response.redirect(dest.toString(), 301);
+    }
     if (path === "/extension") {
       const dest = new URL(request.url);
       dest.pathname = "/subscribe";

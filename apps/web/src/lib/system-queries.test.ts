@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "../../worker/workflow-run.js";
-import { attachLlmCallsToRuns, loadSystemStats } from "./system-queries";
+import {
+  attachLlmCallsToRuns,
+  getModelChains,
+  loadSystemStats,
+} from "./system-queries";
 
 function makeDb(stubs: Record<string, unknown>) {
   return {
@@ -312,5 +316,19 @@ describe("attachLlmCallsToRuns", () => {
     ]);
     expect(attached[0]?.llm?.failures).toBe(2);
     expect(attached[0]?.llm?.calls).toBe(4);
+  });
+});
+
+describe("getModelChains decisions", () => {
+  it("defaults to typesafe/jev-latest", () => {
+    expect(getModelChains({}).decisions).toEqual(["typesafe/jev-latest"]);
+  });
+
+  it("splits the configured Jev chain", () => {
+    expect(
+      getModelChains({
+        ANYROUTER_JEV_MODEL: "typesafe/jev-preview,typesafe/jev-latest",
+      }).decisions
+    ).toEqual(["typesafe/jev-preview", "typesafe/jev-latest"]);
   });
 });

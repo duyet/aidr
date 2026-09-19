@@ -187,7 +187,10 @@ export function StoryRow({
         <span className="hidden shrink-0 text-sm text-muted-foreground sm:block">
           {item.category && categoryLabel(item.category, lang)}
         </span>
-        <span className="hidden w-20 shrink-0 text-right text-sm text-muted-foreground md:block">
+        <span
+          className="hidden w-20 shrink-0 text-right text-sm text-muted-foreground md:block"
+          suppressHydrationWarning
+        >
           {timeAgo(item.published_at, Date.now(), lang)}
         </span>
       </StoryRowHeader>
