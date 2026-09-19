@@ -1,6 +1,7 @@
 import { ensureMailSchema } from "../mail/schema.js";
 import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import type { Env } from "../types.js";
+import { notifyOwnerOfNewSubscriber } from "./owner-notify.js";
 import { sendWelcomeEmail } from "./send.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -176,6 +177,25 @@ export async function subscribe(
       error instanceof Error ? error.message : "error"
     );
   });
+
+  void (async () => {
+    try {
+      const totalRow = await env.DB.prepare(
+        "SELECT COUNT(*) AS c FROM subscribers"
+      ).first<{ c: number }>();
+      await notifyOwnerOfNewSubscriber(env, {
+        email,
+        lang: normalizedLang,
+        source: normalizedSource,
+        total: totalRow?.c ?? null,
+      });
+    } catch (error) {
+      console.error(
+        "owner notify skipped:",
+        error instanceof Error ? error.message : "error"
+      );
+    }
+  })();
 
   return { ok: true };
 }
