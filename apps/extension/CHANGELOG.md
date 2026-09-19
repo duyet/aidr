@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.17](https://github.com/duyet/aidr/compare/aidr-v0.1.16...aidr-v0.1.17) (2026-09-19)
+
+
+### ✨ Features
+
+* **web:** flatten story permalinks to /:slug ([#83](https://github.com/duyet/aidr/issues/83)) ([f5d525d](https://github.com/duyet/aidr/commit/f5d525d05be6d44c69896f9cb36b8d05328638ad))
+
+
+### 🐛 Bug Fixes
+
+* **web:** sync EXTENSION_VERSION to 0.1.16 ([#74](https://github.com/duyet/aidr/issues/74)) ([5d71dbd](https://github.com/duyet/aidr/commit/5d71dbd4a5168d11bb87ce29d8f1a1971fcfc9a4))
+
 ## [0.1.16](https://github.com/duyet/aidr/compare/aidr-v0.1.15...aidr-v0.1.16) (2026-09-13)
 
 
