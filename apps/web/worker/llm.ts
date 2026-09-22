@@ -266,6 +266,9 @@ async function streamCompletion(
       // Anyrouter reads both for dashboard app attribution.
       "HTTP-Referer": "https://aidr.today",
       "X-Title": "AI;DR",
+      "X-AnyRouter-Title": "AI;DR",
+      "X-AnyRouter-Source": "web-app",
+      "X-AnyRouter-Categories": "writing-assistant",
     },
     body: JSON.stringify({
       model,

@@ -38,6 +38,12 @@ async function callAnyrouterForClustering(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${env.ANYROUTER_API_KEY}`,
+      // App attribution so clustering traffic counts toward AI;DR rankings.
+      "HTTP-Referer": "https://aidr.today",
+      "X-Title": "AI;DR",
+      "X-AnyRouter-Title": "AI;DR",
+      "X-AnyRouter-Source": "web-app",
+      "X-AnyRouter-Categories": "writing-assistant",
     },
     body: JSON.stringify({
       model:

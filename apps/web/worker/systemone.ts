@@ -101,6 +101,9 @@ export async function callSystemOne(
         Authorization: `Bearer ${env.ANYROUTER_API_KEY}`,
         "HTTP-Referer": "https://aidr.today",
         "X-Title": "AI;DR",
+        "X-AnyRouter-Title": "AI;DR",
+        "X-AnyRouter-Source": "web-app",
+        "X-AnyRouter-Categories": "writing-assistant",
       },
       body: JSON.stringify({
         state,
