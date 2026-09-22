@@ -18,6 +18,7 @@ minimumReleaseAgeExclude:
   - workerd
   - miniflare
   - "@cloudflare/workerd-*"
+  - "@cloudflare/workers-types"
 
 nodeLinker: hoisted
 shamefullyHoist: true
