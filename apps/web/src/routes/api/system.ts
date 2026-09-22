@@ -32,9 +32,13 @@ export const Route = createFileRoute("/api/system")({
           const stats = await loadSystemStats(session as D1Database, env);
           return Response.json(stats, {
             headers: {
-              // Operational: lastRun/runsToday must not sit behind the 5-minute
-              // edge cache that hid ingest completion from /api/system recert.
-              "Cache-Control": "no-store",
+              // Short edge cache: /api/system fans out to ~15 D1 queries per
+              // hit and the /data shell fetches it on every visit, but
+              // lastRun/runsToday recert must still observe a finished ingest
+              // within ~30s (a 5-minute cache once hid completion). Ingest
+              // runs hourly, so this staleness is invisible in practice.
+              "Cache-Control":
+                "public, max-age=15, s-maxage=30, stale-while-revalidate=120",
             },
           });
         } catch (e) {
