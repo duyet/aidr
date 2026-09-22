@@ -4,7 +4,7 @@ import { AdminPanel } from "../components/system/AdminPanel";
 import { AlgoTab } from "../components/system/AlgoTab";
 import { ContentTab } from "../components/system/ContentTab";
 import { LlmTab } from "../components/system/LlmTab";
-import { ModelChips } from "../components/system/ModelChips";
+import { ModelAttribution } from "../components/system/ModelAttribution";
 import { OverviewTab } from "../components/system/OverviewTab";
 import { RunsTab } from "../components/system/RunsTab";
 import { SourcesTab } from "../components/system/SourcesTab";
@@ -51,7 +51,7 @@ function SystemPage() {
             Live ingest, content, and token use.
           </p>
         </div>
-        <ModelChips />
+        <ModelAttribution />
       </header>
 
       <Tabs
