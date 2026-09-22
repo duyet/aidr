@@ -51,6 +51,7 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
         <ModelChain label="scoring" chain={models.scoring} />
         <ModelChain label="translation" chain={models.translation} />
         <ModelChain label="tldr" chain={models.tldr} />
+        <ModelChain label="decisions" chain={models.decisions} />
       </div>
     </div>
   );

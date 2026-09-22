@@ -528,7 +528,11 @@ describe("streaming anyrouter responses", () => {
 
     await scoreItems(env, scoreInput);
 
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body).stream).toBe(true);
+    const chatCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).includes("/chat/completions")
+    );
+    expect(chatCall).toBeTruthy();
+    expect(JSON.parse(chatCall?.[1].body).stream).toBe(true);
   });
 
   it("joins content deltas split across chunk boundaries", async () => {
@@ -664,8 +668,12 @@ describe("streaming anyrouter responses", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     expect(await scoreItems(env, scoreInput)).toEqual([]);
-    // No re-post: the queue has no retrieval endpoint, so retrying is pointless.
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // No re-post: the queue has no retrieval endpoint, so the chat hop
+    // is not retried. Jev is a separate /systemone attempt before that.
+    const chatCalls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes("/chat/completions")
+    );
+    expect(chatCalls).toHaveLength(1);
   });
 });
 
@@ -707,6 +715,27 @@ describe("model fallback chain", () => {
     );
   }
 
+  function chatModelsOf(fetchMock: ReturnType<typeof vi.fn>): string[] {
+    return fetchMock.mock.calls
+      .filter((call) => String(call[0]).includes("/chat/completions"))
+      .map((call) => JSON.parse(call[1].body).model as string);
+  }
+
+  /** Jev runs before the chat chain. Keep a scripted chat sequence from
+   * being consumed by the /systemone attempt. */
+  function withJevDown(
+    chat: (url: string, init?: RequestInit) => Promise<Response> | Response
+  ) {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/systemone")) {
+        return new Response("jev down", { status: 422 });
+      }
+      return chat(url, init);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
   const chain = {
     ...env,
     ANYROUTER_MODEL: "first/model,second/model,third/model",
@@ -717,7 +746,7 @@ describe("model fallback chain", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await scoreItems(env, scoreInput);
-    expect(modelsOf(fetchMock)).toEqual(["test-model"]);
+    expect(chatModelsOf(fetchMock)).toEqual(["test-model"]);
   });
 
   it("stops at the first model that succeeds", async () => {
@@ -725,20 +754,20 @@ describe("model fallback chain", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const results = await scoreItems(chain, scoreInput);
-    expect(modelsOf(fetchMock)).toEqual(["first/model"]);
+    expect(chatModelsOf(fetchMock)).toEqual(["first/model"]);
     expect(results).toHaveLength(1);
   });
 
   it("advances past a transport error and a non-200", async () => {
-    const fetchMock = vi
+    const chat = vi
       .fn()
       .mockRejectedValueOnce(new Error("connection reset"))
       .mockResolvedValueOnce(new Response("upstream down", { status: 502 }))
       .mockResolvedValueOnce(completion(scorePayload));
-    vi.stubGlobal("fetch", fetchMock);
+    withJevDown(chat);
 
     const results = await scoreItems(chain, scoreInput);
-    expect(modelsOf(fetchMock)).toEqual([
+    expect(modelsOf(chat)).toEqual([
       "first/model",
       "second/model",
       "third/model",
@@ -747,7 +776,7 @@ describe("model fallback chain", () => {
   });
 
   it("advances past 404, 429, and 402 so a delisted primary cannot stall the chain", async () => {
-    const fetchMock = vi
+    const chat = vi
       .fn()
       .mockResolvedValueOnce(new Response("model not found", { status: 404 }))
       .mockResolvedValueOnce(new Response("rate limited", { status: 429 }))
@@ -755,7 +784,7 @@ describe("model fallback chain", () => {
         new Response("insufficient credits", { status: 402 })
       )
       .mockResolvedValueOnce(completion(scorePayload));
-    vi.stubGlobal("fetch", fetchMock);
+    withJevDown(chat);
 
     const results = await scoreItems(
       {
@@ -764,7 +793,7 @@ describe("model fallback chain", () => {
       },
       scoreInput
     );
-    expect(modelsOf(fetchMock)).toEqual([
+    expect(modelsOf(chat)).toEqual([
       "gone/model",
       "busy/model",
       "broke/model",
@@ -774,14 +803,14 @@ describe("model fallback chain", () => {
   });
 
   it("advances when a model streams an empty completion", async () => {
-    const fetchMock = vi
+    const chat = vi
       .fn()
       .mockResolvedValueOnce(sseResponse([{ choices: [{ delta: {} }] }]))
       .mockResolvedValueOnce(completion(scorePayload));
-    vi.stubGlobal("fetch", fetchMock);
+    withJevDown(chat);
 
     const results = await scoreItems(chain, scoreInput);
-    expect(modelsOf(fetchMock)).toEqual(["first/model", "second/model"]);
+    expect(modelsOf(chat)).toEqual(["first/model", "second/model"]);
     expect(results).toHaveLength(1);
   });
 
@@ -792,7 +821,11 @@ describe("model fallback chain", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     expect(await scoreItems(chain, scoreInput)).toEqual([]);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(chatModelsOf(fetchMock)).toEqual([
+      "first/model",
+      "second/model",
+      "third/model",
+    ]);
   });
 
   it("tolerates blank entries and whitespace in the chain", async () => {
@@ -803,7 +836,157 @@ describe("model fallback chain", () => {
       { ...env, ANYROUTER_MODEL: " , solo/model , " },
       scoreInput
     );
-    expect(modelsOf(fetchMock)).toEqual(["solo/model"]);
+    expect(chatModelsOf(fetchMock)).toEqual(["solo/model"]);
+  });
+
+  it("keeps Jev scores and skips chat when systemone succeeds", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (!String(url).includes("/systemone")) {
+        return new Response("chat should not run", { status: 500 });
+      }
+      const body = JSON.parse((init?.body as string) ?? "{}") as {
+        model?: string;
+        questions?: Record<string, { type?: string }>;
+      };
+      expect(body.model).toBe("typesafe/jev");
+      expect(body.questions?.is_ai_tech?.type).toBe("noul");
+      expect(body.questions?.importance?.type).toBe("score");
+      expect(body.questions?.category?.type).toBe("choice");
+      return Response.json({
+        model: "typesafe/jev",
+        answers: {
+          is_ai_tech: { type: "noul", noul: 0.91 },
+          importance: { type: "score", score: "7" },
+          quality: { type: "score", score: "8" },
+          category: { type: "choice", choice: "Models" },
+          entity: { type: "choice", choice: "openai" },
+          theme: { type: "choice", choice: "llm" },
+        },
+        usage: { input_tokens: 40, output_tokens: 0, cost: 0 },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await scoreItems(env, scoreInput);
+    expect(chatModelsOf(fetchMock)).toEqual([]);
+    expect(results).toEqual([
+      {
+        i: 0,
+        relevance: 0.91,
+        importance: 7,
+        quality: 8,
+        category: "Models",
+        tags: ["openai", "llm"],
+        tokens: 40,
+      },
+    ]);
+  });
+
+  it("scores with the chat chain when Jev fails", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/systemone")) {
+        return new Response("jev down", { status: 422 });
+      }
+      return completion(scorePayload);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await scoreItems(env, scoreInput);
+    expect(chatModelsOf(fetchMock)).toEqual(["test-model"]);
+    expect(results).toHaveLength(1);
+    expect(results[0]?.category).toBe("Models");
+    expect(results[0]?.tags).toEqual(["ai"]);
+  });
+
+  it("asks chat only for items Jev missed", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/systemone")) {
+        const body = JSON.parse((init?.body as string) ?? "{}") as {
+          state?: { i?: number };
+        };
+        if (body.state?.i === 0) {
+          return Response.json({
+            model: "typesafe/jev",
+            answers: {
+              is_ai_tech: { type: "noul", noul: 0.8 },
+              importance: { type: "score", score: "6" },
+              quality: { type: "score", score: "9" },
+              category: { type: "choice", choice: "Research" },
+              entity: { type: "choice", choice: "none" },
+              theme: { type: "choice", choice: "agent" },
+            },
+            usage: { input_tokens: 12, output_tokens: 0, cost: 0 },
+          });
+        }
+        return new Response("jev down", { status: 422 });
+      }
+      return completion(
+        JSON.stringify({
+          results: [
+            {
+              i: 1,
+              relevance: 0.4,
+              importance: 3,
+              quality: 4,
+              category: "Products",
+              tags: ["chip"],
+            },
+          ],
+        })
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await scoreItems(env, [
+      { i: 0, title: "Paper", source: "hf" },
+      { i: 1, title: "Gadget", source: "hn" },
+    ]);
+    expect(chatModelsOf(fetchMock)).toEqual(["test-model"]);
+    const chatCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).includes("/chat/completions")
+    );
+    const chatInit = chatCall?.[1] as { body?: string } | undefined;
+    if (!chatInit?.body) throw new Error("expected a chat fallback call");
+    const chatBody = JSON.parse(chatInit.body) as {
+      messages: { content: string }[];
+    };
+    expect(chatBody.messages[0]?.content).toContain("Gadget");
+    expect(chatBody.messages[0]?.content).not.toContain("Paper");
+    expect(results).toEqual([
+      {
+        i: 0,
+        relevance: 0.8,
+        importance: 6,
+        quality: 9,
+        category: "Research",
+        tags: ["agent"],
+        tokens: 12,
+      },
+      {
+        i: 1,
+        relevance: 0.4,
+        importance: 3,
+        quality: 4,
+        category: "Products",
+        tags: ["chip"],
+        tokens: 0,
+      },
+    ]);
+  });
+
+  it("skips Jev when no AnyRouter key is configured", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      expect(String(url)).toContain("/chat/completions");
+      return completion(scorePayload);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await scoreItems(
+      { ...env, ANYROUTER_API_KEY: "" },
+      scoreInput
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(results).toHaveLength(1);
   });
 
   it("prefers the per-task translate model over ANYROUTER_MODEL", async () => {
@@ -1169,7 +1352,10 @@ describe("scoreItems / translateItems batch failure handling", () => {
 
     await scoreItems(env, [{ i: 0, title: "Story", source: "hn" }]);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const chatCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).includes("/chat/completions")
+    );
+    const body = JSON.parse(chatCall?.[1].body);
     expect(body.max_tokens).toBeGreaterThanOrEqual(4096);
   });
 

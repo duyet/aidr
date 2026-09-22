@@ -203,13 +203,13 @@ function ModelsLine() {
       <p>
         Decisions:{" "}
         <a
-          href={anyrouterModelUrl(decisions[0] ?? "typesafe/jev-latest")}
+          href={anyrouterModelUrl(decisions[0] ?? "typesafe/jev")}
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono text-accent underline underline-offset-2 hover:no-underline"
-          title={`Open ${decisions[0] ?? "typesafe/jev-latest"} on AnyRouter`}
+          title={`Open ${decisions[0] ?? "typesafe/jev"} on AnyRouter`}
         >
-          {decisions[0] ?? "typesafe/jev-latest"}
+          {decisions[0] ?? "typesafe/jev"}
         </a>
         {decisionsExtra > 0 && ` (+${decisionsExtra} fallback)`}
       </p>

@@ -16,10 +16,10 @@ export interface Env {
   /** Cheaper chain for judging translation quality. Falls back to
    *  ANYROUTER_MODEL when unset. */
   ANYROUTER_QA_MODEL?: string;
-  /** Jev SystemOne decision model id for review/intent gates
-   *  (POST /api/v1/systemone — never a /chat/completions chain member).
-   *  Defaults to typesafe/jev-latest. The TypeSafe BYOK key lives in the
-   *  AnyRouter dashboard, not in env. */
+  /** Jev System One model id (POST /api/v1/systemone — never a
+   *  /chat/completions chain member). Score and review gates try it first;
+   *  the chat chain is the backup. Defaults to typesafe/jev. The TypeSafe
+   *  BYOK key lives in the AnyRouter dashboard, not in env. */
   ANYROUTER_JEV_MODEL?: string;
   ANYROUTER_API_KEY: string;
   NEWS_ADMIN_TOKEN: string;

@@ -4,6 +4,12 @@ import {
   stripBracketItemIds,
 } from "../src/lib/tldr-bullets";
 import { mapWithConcurrency } from "./concurrency.js";
+import {
+  callSystemOne,
+  isSystemOneConfigured,
+  jevScoreQuestions,
+  scoreJudgmentFromJev,
+} from "./systemone.js";
 import { looksVietnamese } from "./tldr-lang.js";
 import type { Env } from "./types.js";
 
@@ -743,40 +749,92 @@ export function sanitizeScoreResults(
   return out;
 }
 
+/** Chat-completions rubric. Backup for items Jev did not judge. */
+async function scoreBatchWithChat(
+  env: Env,
+  batch: ScoreInput[]
+): Promise<ScoreResult[]> {
+  const prompt = scoreBatchPrompt(batch);
+  try {
+    const { content: raw, tokens } = await callAnyrouter(
+      env,
+      [{ role: "user", content: prompt }],
+      {
+        json: true,
+        task: "score",
+        maxSliceMs: SCORE_SLICE_MAX_MS,
+      }
+    );
+    const parsed = parseJson<{ results?: unknown } | unknown[]>(raw);
+    const rows = Array.isArray(parsed) ? parsed : parsed.results;
+    return sanitizeScoreResults(rows, batch, Math.ceil(tokens / batch.length));
+  } catch (error) {
+    console.error("scoreItems batch failed:", error);
+    return [];
+  }
+}
+
+/** One System One call per item. A miss (transport, bad answers) returns
+ * null so that item stays on the chat backup. Tokens are that call's input
+ * tokens — Jev output is free and uncounted. */
+async function scoreOneWithJev(
+  env: Env,
+  item: ScoreInput,
+  questions: ReturnType<typeof jevScoreQuestions>
+): Promise<ScoreResult | null> {
+  try {
+    const jev = await callSystemOne(
+      env,
+      {
+        i: item.i,
+        title: item.title,
+        summary: item.summary ?? "",
+        source: item.source,
+      },
+      questions,
+      "score"
+    );
+    if (!jev) return null;
+    const judgment = scoreJudgmentFromJev(jev.answers, CATEGORIES);
+    if (!judgment) return null;
+    const [row] = sanitizeScoreResults(
+      [{ i: item.i, ...judgment }],
+      [item],
+      jev.inputTokens
+    );
+    return row ?? null;
+  } catch (error) {
+    console.error("scoreItems jev item failed:", error);
+    return null;
+  }
+}
+
 export async function scoreItems(
   env: Env,
   items: ScoreInput[]
 ): Promise<ScoreResult[]> {
   const batches = chunk(items, SCORE_BATCH_SIZE);
-  // Token spend unchanged; wall-clock divided (~3× at SCORE_CONCURRENCY).
+  // Token spend unchanged on the chat path; wall-clock divided (~3×).
   const SCORE_CONCURRENCY = 3;
+  const questions = isSystemOneConfigured(env)
+    ? jevScoreQuestions(CATEGORIES)
+    : null;
   const batchResults = await mapWithConcurrency(
     batches,
     SCORE_CONCURRENCY,
     async (batch) => {
-      const prompt = scoreBatchPrompt(batch);
-
-      try {
-        const { content: raw, tokens } = await callAnyrouter(
-          env,
-          [{ role: "user", content: prompt }],
-          {
-            json: true,
-            task: "score",
-            maxSliceMs: SCORE_SLICE_MAX_MS,
-          }
-        );
-        const parsed = parseJson<{ results?: unknown } | unknown[]>(raw);
-        const rows = Array.isArray(parsed) ? parsed : parsed.results;
-        return sanitizeScoreResults(
-          rows,
-          batch,
-          Math.ceil(tokens / batch.length)
-        );
-      } catch (error) {
-        console.error("scoreItems batch failed:", error);
-        return [];
-      }
+      const jevRows = questions
+        ? (
+            await Promise.all(
+              batch.map((item) => scoreOneWithJev(env, item, questions))
+            )
+          ).filter((row): row is ScoreResult => row !== null)
+        : [];
+      const covered = new Set(jevRows.map((row) => row.i));
+      const missing = batch.filter((item) => !covered.has(item.i));
+      if (missing.length === 0) return jevRows;
+      const chatRows = await scoreBatchWithChat(env, missing);
+      return [...jevRows, ...chatRows];
     }
   );
   return batchResults.flat();
