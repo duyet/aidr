@@ -45,6 +45,7 @@ export function SourcesIngestTable({
 
   const volumeById = new Map((volume ?? []).map((v) => [v.name, v.count]));
   const volumeMax = Math.max(1, ...volumeById.values());
+  const itemsMax = Math.max(1, ...sources.map((s) => s.itemCount));
 
   return (
     <Table>
@@ -53,7 +54,7 @@ export function SourcesIngestTable({
           <TableHead className="h-8">Source</TableHead>
           <TableHead className="h-8">Adapter</TableHead>
           <TableHead className="h-8">Status</TableHead>
-          <TableHead className="h-8 text-right">Items</TableHead>
+          <TableHead className="h-8">Items</TableHead>
           <TableHead className="h-8">Volume</TableHead>
           <TableHead className="h-8 text-right">Last run</TableHead>
           <TableHead className="h-8">Fetch config</TableHead>
@@ -102,8 +103,20 @@ export function SourcesIngestTable({
                   {source.enabled ? "on" : "off"}
                 </Badge>
               </TableCell>
-              <TableCell className="py-2 text-right font-mono tabular-nums">
-                {source.itemCount}
+              <TableCell className="py-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{
+                        width: `${Math.max((source.itemCount / itemsMax) * 100, source.itemCount > 0 ? 4 : 0)}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="font-mono text-xs tabular-nums">
+                    {source.itemCount}
+                  </span>
+                </div>
               </TableCell>
               <TableCell className="py-2">
                 <div className="flex items-center gap-2">

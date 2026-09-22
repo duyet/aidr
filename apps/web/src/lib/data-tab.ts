@@ -4,6 +4,7 @@ export const DATA_TABS = [
   "runs",
   "sources",
   "llm",
+  "algo",
   "admin",
 ] as const;
 

@@ -1183,7 +1183,7 @@ describe("scoreItems / translateItems batch failure handling", () => {
 
     const { headers } = fetchMock.mock.calls[0][1];
     expect(headers["HTTP-Referer"]).toBe("https://aidr.today");
-    expect(headers["X-Title"]).toBe("AI News (aidr.today)");
+    expect(headers["X-Title"]).toBe("AI;DR");
   });
 
   it("falls back to extracting JSON from message.reasoning when content is empty (reasoning-model quirk)", async () => {

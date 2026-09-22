@@ -265,7 +265,7 @@ async function streamCompletion(
       Authorization: `Bearer ${env.ANYROUTER_API_KEY}`,
       // Anyrouter reads both for dashboard app attribution.
       "HTTP-Referer": "https://aidr.today",
-      "X-Title": "AI News (aidr.today)",
+      "X-Title": "AI;DR",
     },
     body: JSON.stringify({
       model,

@@ -15,7 +15,6 @@ import {
   CategoryDonut,
   ItemsAreaChart,
   TokenBurnSection,
-  TokensLineChart,
 } from "../components/system/DitherCharts";
 import { RankingExplainer } from "../components/system/RankingExplainer";
 import { RunDurationBars } from "../components/system/RunDurationBars";
@@ -178,6 +177,9 @@ function SystemPage() {
           <TabsTrigger value="llm" className="px-2.5 text-xs">
             LLM
           </TabsTrigger>
+          <TabsTrigger value="algo" className="px-2.5 text-xs">
+            Algo
+          </TabsTrigger>
           {admin.isAdmin ? (
             <TabsTrigger value="admin" className="px-2.5 text-xs">
               Admin
@@ -245,18 +247,134 @@ function SystemPage() {
               )}
             </ChartCard>
             <ChartCard
-              title="Tokens per day"
-              subtitle="LLM spend, last 14 days"
+              title="Token burn"
+              subtitle="Tokens per day by task, stacked (14 days)"
               className="md:col-span-2"
             >
               {stats ? (
-                <TokensLineChart
-                  data={stats.tokens.perDay}
+                <TokenBurnSection
+                  data={stats.llmCallsPerDay}
                   emptyLabel="No token data yet."
                   formatValue={formatTokens}
                 />
               ) : (
-                <CardSkeleton />
+                <CardSkeleton tall />
+              )}
+            </ChartCard>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="algo" className="mt-0">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ChartCard
+              title="Ranking"
+              subtitle="How stories are scored"
+              className="md:col-span-2"
+            >
+              {stats ? (
+                <RankingExplainer models={stats.models} />
+              ) : (
+                <Skeleton className="h-28 w-full" />
+              )}
+            </ChartCard>
+            <ChartCard title="Pipeline" subtitle="Hourly ingest, end to end">
+              <ol className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+                {[
+                  ["Fetch", "HN, HuggingNews, Lobsters, RSS, newsrooms"],
+                  ["Score", "LLM rubric: relevance, importance, quality"],
+                  ["Merge", "same story collapses to one canonical item"],
+                  ["Translate", "EN → VI, journalist style"],
+                  ["Rank", "importance × quality × freshness × engagement"],
+                  ["Digest", "TL;DR snapshot + per-subscriber email"],
+                  ["Notify", "Telegram digest + exceptional trending posts"],
+                ].map(([step, detail]) => (
+                  <li key={step} className="flex gap-2">
+                    <span className="font-medium text-foreground">{step}</span>
+                    <span>{detail}</span>
+                  </li>
+                ))}
+              </ol>
+            </ChartCard>
+            <ChartCard title="Schedule & ratings" subtitle="Cron, gates, bars">
+              <ul className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+                <li>
+                  <span className="font-medium text-foreground">Hourly</span> —
+                  Durable Object alarm drives each run (no Worker cron)
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Watchdog</span>{" "}
+                  — GitHub Actions at :05 / :20 / :35 / :50, 45-min coalesce
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Hide</span> —
+                  relevance &lt; 0.4 never reaches the feed
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Trending</span>{" "}
+                  — rank ≥ 20 and importance ≥ 7, max 6/day
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Review</span> —
+                  suggestions & submissions judged at rating ≥ 0.6
+                </li>
+              </ul>
+            </ChartCard>
+            <ChartCard
+              title="Powered by AnyRouter"
+              subtitle="Every LLM call in the pipeline above"
+              className="md:col-span-2"
+            >
+              {stats ? (
+                <div className="space-y-2 text-xs leading-relaxed">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(
+                      [
+                        ["score", stats.models.scoring],
+                        ["translate", stats.models.translation],
+                        ["tldr", stats.models.tldr],
+                        ["decisions", stats.models.decisions],
+                      ] as const
+                    ).map(([label, chain]) => (
+                      <span
+                        key={label}
+                        className="inline-flex items-center gap-1.5"
+                      >
+                        <span className="text-muted-foreground">{label}</span>
+                        {chain.length === 0 ? (
+                          <span className="font-mono">—</span>
+                        ) : (
+                          chain.map((model) => (
+                            <a
+                              key={`${label}-${model}`}
+                              href={anyrouterModelUrl(model)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-full font-mono text-[11px] text-accent underline underline-offset-2 hover:no-underline"
+                              title={`Open ${model} on AnyRouter`}
+                            >
+                              {model}
+                            </a>
+                          ))
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-muted-foreground">
+                    Model fallback chains with per-task overrides, JSON mode,
+                    and BYOK-only judges — explore them on{" "}
+                    <a
+                      href="https://anyrouter.dev/?ref=aidr.today"
+                      target="_blank"
+                      rel="noopener"
+                      className="font-medium text-accent underline underline-offset-2 hover:no-underline"
+                    >
+                      AnyRouter
+                    </a>
+                    .
+                  </p>
+                </div>
+              ) : (
+                <Skeleton className="h-28 w-full" />
               )}
             </ChartCard>
           </div>

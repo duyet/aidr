@@ -100,7 +100,7 @@ export async function callSystemOne(
         "Content-Type": "application/json",
         Authorization: `Bearer ${env.ANYROUTER_API_KEY}`,
         "HTTP-Referer": "https://aidr.today",
-        "X-Title": "AI News (aidr.today)",
+        "X-Title": "AI;DR",
       },
       body: JSON.stringify({
         state,
