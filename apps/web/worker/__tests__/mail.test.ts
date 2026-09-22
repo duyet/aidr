@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { topicColor } from "../../src/lib/topic-color.js";
 import { previewCampaign } from "../mail/campaigns.js";
 import { parseWrapJson } from "../mail/compose.js";
 import { parseRssItems } from "../mail/content.js";
@@ -271,6 +272,77 @@ describe("renderNoteEmail", () => {
     expect(html).not.toContain("javascript:");
     expect(html).not.toContain(">Bad<");
     expect(text).not.toContain("Bad:");
+  });
+
+  it("renders a thumbnail when the story has an imageUrl", () => {
+    const { html } = renderDigestEmail({
+      subject: "Digest",
+      date: "2026-09-10",
+      stories: [
+        {
+          text: "Story with thumb",
+          url: "https://aidr.today/ai/abcd1234",
+          imageUrl: "https://aidr.today/og/abc.png",
+        },
+        { text: "Story without thumb", url: "https://aidr.today/" },
+      ],
+      lang: "en",
+      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+    });
+    expect(html).toContain('src="https://aidr.today/og/abc.png"');
+    expect(html).toContain('width="64"');
+    expect(html.match(/<img /g)?.length).toBe(2);
+  });
+
+  it("drops non-http(s) story imageUrls", () => {
+    const { html } = renderDigestEmail({
+      subject: "Digest",
+      date: "2026-09-10",
+      stories: [{ text: "Bad thumb", imageUrl: "javascript:alert(1)" }],
+      lang: "en",
+      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+    });
+    expect(html).not.toContain("javascript:");
+    expect(html.match(/<img /g)?.length).toBe(1);
+  });
+
+  it("colors keywords with the website topic palette", () => {
+    const { html } = renderDigestEmail({
+      subject: "Digest",
+      date: "2026-09-10",
+      stories: [
+        { text: "OpenAI releases a new model", url: "https://aidr.today/" },
+      ],
+      lang: "en",
+      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+    });
+    expect(html).toContain(
+      `<span style="color:${topicColor("OpenAI").light};font-weight:600">OpenAI</span>`
+    );
+  });
+
+  it("escapes markup before highlighting keywords", () => {
+    const { html } = renderDigestEmail({
+      subject: "Digest",
+      date: "2026-09-10",
+      stories: [
+        {
+          text: "OpenAI <script>alert(1)</script>",
+          url: "https://aidr.today/",
+        },
+      ],
+      lang: "en",
+      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+    expect(html).toContain(
+      `<span style="color:${topicColor("OpenAI").light};font-weight:600">OpenAI</span>`
+    );
   });
 });
 

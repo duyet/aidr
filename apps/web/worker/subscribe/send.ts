@@ -13,6 +13,7 @@ export interface TldrBulletLike {
   text: string;
   item_id?: string;
   item_ids?: string[];
+  image_url?: string;
 }
 
 /** Newer snapshots store `item_ids: string[]`; older rows used `item_id`. */
@@ -68,7 +69,11 @@ export function topBullets(
       const itemIds = Array.isArray(b.item_ids) ? (b.item_ids as string[]) : [];
       const item_id =
         typeof b.item_id === "string" && b.item_id ? b.item_id : itemIds[0];
-      return { text: String(b.text ?? ""), item_id };
+      const image_url =
+        typeof b.image_url === "string" && b.image_url
+          ? b.image_url
+          : undefined;
+      return { text: String(b.text ?? ""), item_id, image_url };
     });
   } catch {
     return [];
@@ -149,6 +154,7 @@ export function buildDigestEmail(
       stories: items.map((b) => ({
         text: b.text,
         url: b.item_id ? `${SITE_URL}/${b.item_id.slice(0, 8)}` : SITE_URL,
+        imageUrl: b.image_url,
       })),
       unsubscribeUrl: unsubscribeUrl(unsubscribeToken),
       settingsUrl: settingsUrl(unsubscribeToken),
