@@ -394,14 +394,8 @@ function SystemPage() {
               <SourcesIngestTable
                 sources={stats.ingestSources ?? []}
                 lastRunBySource={lastRunBySource}
+                volume={stats.itemsBySource}
               />
-            ) : (
-              <Skeleton className="h-28 w-full" />
-            )}
-          </ChartCard>
-          <ChartCard title="Volume" subtitle="Stored items by source_id">
-            {stats ? (
-              <BarList data={stats.itemsBySource} emptyLabel="No data yet." />
             ) : (
               <Skeleton className="h-28 w-full" />
             )}
@@ -432,6 +426,58 @@ function SystemPage() {
             >
               {stats ? (
                 <RankingExplainer models={stats.models} />
+              ) : (
+                <Skeleton className="h-28 w-full" />
+              )}
+            </ChartCard>
+            <ChartCard
+              title="Jev decisions"
+              subtitle="TypeSafe intent & quality gates, via AnyRouter"
+              className="md:col-span-2"
+            >
+              {stats ? (
+                <div className="space-y-2.5 text-xs leading-relaxed">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-muted-foreground">model</span>
+                    {stats.models.decisions.length === 0 ? (
+                      <span className="font-mono">—</span>
+                    ) : (
+                      stats.models.decisions.map((model) => (
+                        <a
+                          key={model}
+                          href={anyrouterModelUrl(model)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full font-mono text-[11px] text-accent underline underline-offset-2 hover:no-underline"
+                          title={`Open ${model} on AnyRouter`}
+                        >
+                          {model}
+                        </a>
+                      ))
+                    )}
+                    <span className="text-muted-foreground">
+                      BYOK-only · 0 AnyRouter credits
+                    </span>
+                  </div>
+                  <ul className="space-y-1.5 text-muted-foreground">
+                    <li>
+                      <span className="font-medium text-foreground">
+                        Story submissions
+                      </span>{" "}
+                      — ai_tech × (1 − spam) relevance gate
+                    </li>
+                    <li>
+                      <span className="font-medium text-foreground">
+                        Translation suggestions
+                      </span>{" "}
+                      — improvement + quality gate (≥ 0.6)
+                    </li>
+                    <li>
+                      Chat-completions judges stay as automatic fallback, so a
+                      Jev outage never blocks ingest.
+                    </li>
+                  </ul>
+                </div>
               ) : (
                 <Skeleton className="h-28 w-full" />
               )}
