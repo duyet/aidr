@@ -52,9 +52,14 @@ longer the previous id) and `runsToday > 0`. Do not invent a
    HTML entities in `og:image` (including double-escaped `&amp;` in query
    strings) are decoded before the URL is stored, so thumbs are real
    article images rather than a broken-src fallback.
-4. **Score (LLM)** — batches of 5, fixed rubric → per item:
-   `relevance` 0–1, `importance` 0–10, `quality` 0–10, one `category` from a
-   fixed 11-value enum, free-form `tags`.
+4. **Score (Jev, then LLM)** — batches of 5. TypeSafe Jev (`typesafe/jev`,
+   `POST /api/v1/systemone`) judges each item first: relevance is P(AI/tech),
+   importance and quality are 0–10 score levels, category is one choice from
+   the fixed 11-value enum, plus one entity tag and one theme tag (`none`
+   is dropped). Jev does not emit a free-form tag list. Any item it misses
+   (no key, non-2xx, or incomplete answers) falls through to the chat rubric
+   on the same fields, which still writes 3–6 free-form `tags`. Do not put
+   `typesafe/jev` on `ANYROUTER_MODEL` — chat completions reject it.
    **Hide rule:** `relevance < 0.4` → status `rejected` (never shown).
    Tags are then canonicalized (`normalizeTopics`) and captured into
    `topic_daily` each ingest (~15 min). Emerging entity/model names that
@@ -144,10 +149,11 @@ longer the previous id) and `runsToday > 0`. Do not invent a
 13. **Review gates (LLM, rating ≥ 0.6)** — user translation suggestions and
     HN-style story submissions are judged (faithfulness / relevance / not spam;
     submission text is treated strictly as data, never instructions) before
-    they touch the feed. Jev (`typesafe/jev-latest`, `POST /api/v1/systemone`,
+    they touch the feed. Jev (`typesafe/jev`, `POST /api/v1/systemone`,
     BYOK-only via Dashboard → BYOK → TypeSafe) is tried first as a typed
     decision (`noul` intent/spam + `score` quality mapped to relevance/rating);
     any Jev failure falls back to the existing chat-completions JSON judge.
+    `/api/system` lists that chat chain after Jev on `models.decisions`.
 
 ## LLM transport
 
@@ -156,8 +162,10 @@ anyrouter's queue for long prompts), JSON mode, `max_tokens` 8192 (2048 on trans
 reasoning-model fallback (extracts JSON from `message.reasoning` when content
 is starved), comma-separated model fallback chains (`ANYROUTER_MODEL`), and
 per-task overrides (`ANYROUTER_TRANSLATE_MODEL` / `ANYROUTER_TLDR_MODEL`).
-Score and TL;DR are `anyrouter/auto`, then `deepseek/deepseek-v4.1-flash`,
-`poolside/laguna-s-2.1`, `minimax/m3`. Translate leads with hosted
+Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
+then the chat chain `anyrouter/auto`, `deepseek/deepseek-v4.1-flash`,
+`poolside/laguna-s-2.1`, `minimax/m3`. TL;DR is that chat chain without Jev.
+Translate leads with hosted
 `google/gemini-3.5-flash` (native Google route on AnyRouter), then the
 same fallbacks. Hard-coded Gemma/GLM/Ling flash ids 404/502'd or are
 BYOK-only; do not restore them. BYOK-only ids such as SEA-LION and Gemini

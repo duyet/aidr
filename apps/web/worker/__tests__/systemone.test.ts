@@ -6,6 +6,7 @@ import {
   isSystemOneConfigured,
   jevModelId,
   noulProb,
+  scoreJudgmentFromJev,
   scoreNorm,
   submissionRelevanceFromJev,
   suggestionVerdictFromJev,
@@ -25,9 +26,9 @@ function envWith(overrides: Partial<Env> = {}): Env {
 }
 
 describe("jevModelId", () => {
-  it("defaults to typesafe/jev-latest", () => {
+  it("defaults to typesafe/jev", () => {
     expect(jevModelId(envWith({ ANYROUTER_JEV_MODEL: undefined }))).toBe(
-      "typesafe/jev-latest"
+      "typesafe/jev"
     );
   });
 
@@ -81,7 +82,7 @@ describe("callSystemOne", () => {
     ];
     expect(url).toBe("https://anyrouter.dev/api/v1/systemone");
     const body = JSON.parse(init.body as string) as Record<string, unknown>;
-    expect(body.model).toBe("typesafe/jev-latest");
+    expect(body.model).toBe("typesafe/jev");
     expect(body.state).toEqual({ title: "New model released" });
   });
 
@@ -165,6 +166,39 @@ describe("answer mapping", () => {
     expect(noulProb({ q: { type: "noul", noul: 2 } }, "q")).toBe(1);
     expect(noulProb({}, "q")).toBeNull();
   });
+
+  it("maps a score judgment onto relevance, 0–10 levels, category, and tags", () => {
+    const judgment = scoreJudgmentFromJev(
+      {
+        is_ai_tech: { type: "noul", noul: 0.82 },
+        importance: { type: "score", score: "7" },
+        quality: { type: "score", score: "8" },
+        category: { type: "choice", choice: "Models" },
+        entity: { type: "choice", choice: "openai" },
+        theme: { type: "choice", choice: "none" },
+      },
+      ["Models", "Research"]
+    );
+    expect(judgment).toEqual({
+      relevance: 0.82,
+      importance: 7,
+      quality: 8,
+      category: "Models",
+      tags: ["openai"],
+    });
+  });
+
+  it("returns null when a ranking input is missing so chat can score the item", () => {
+    expect(
+      scoreJudgmentFromJev(
+        {
+          is_ai_tech: { type: "noul", noul: 0.9 },
+          importance: { type: "score", score: "7" },
+        },
+        ["Models"]
+      )
+    ).toBeNull();
+  });
 });
 
 describe("callSystemOne observability", () => {
@@ -195,7 +229,7 @@ describe("callSystemOne observability", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       task: "review",
-      model: "typesafe/jev-latest",
+      model: "typesafe/jev",
       ok: true,
       tokens: 100,
       error: null,

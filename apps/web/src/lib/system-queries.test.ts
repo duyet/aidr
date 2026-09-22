@@ -319,16 +319,58 @@ describe("attachLlmCallsToRuns", () => {
   });
 });
 
-describe("getModelChains decisions", () => {
-  it("defaults to typesafe/jev-latest", () => {
-    expect(getModelChains({}).decisions).toEqual(["typesafe/jev-latest"]);
+describe("getModelChains", () => {
+  const chat = [
+    "anyrouter/auto",
+    "deepseek/deepseek-v4.1-flash",
+    "poolside/laguna-s-2.1",
+    "minimax/m3",
+  ];
+
+  it("defaults scoring and decisions to typesafe/jev", () => {
+    expect(getModelChains({}).scoring).toEqual(["typesafe/jev"]);
+    expect(getModelChains({}).decisions).toEqual(["typesafe/jev"]);
+    expect(getModelChains({}).translation).toEqual([]);
+    expect(getModelChains({}).tldr).toEqual([]);
   });
 
-  it("splits the configured Jev chain", () => {
+  it("puts Jev first on scoring and keeps the chat chain as backup", () => {
+    const chains = getModelChains({
+      ANYROUTER_MODEL: chat.join(","),
+      ANYROUTER_JEV_MODEL: "typesafe/jev",
+    });
+    expect(chains.scoring).toEqual(["typesafe/jev", ...chat]);
+    expect(chains.decisions).toEqual(["typesafe/jev", ...chat]);
+  });
+
+  it("does not put Jev on translation or tldr", () => {
+    const chains = getModelChains({
+      ANYROUTER_MODEL: chat.join(","),
+      ANYROUTER_TRANSLATE_MODEL: ["google/gemini-3.5-flash", ...chat].join(","),
+      ANYROUTER_TLDR_MODEL: chat.join(","),
+      ANYROUTER_JEV_MODEL: "typesafe/jev",
+    });
+    expect(chains.translation[0]).toBe("google/gemini-3.5-flash");
+    expect(chains.translation).not.toContain("typesafe/jev");
+    expect(chains.tldr).toEqual(chat);
+    expect(chains.scoring[0]).toBe("typesafe/jev");
+  });
+
+  it("splits a configured Jev chain and still appends the chat backup", () => {
     expect(
       getModelChains({
-        ANYROUTER_JEV_MODEL: "typesafe/jev-preview,typesafe/jev-latest",
+        ANYROUTER_JEV_MODEL: "typesafe/jev-preview,typesafe/jev",
+        ANYROUTER_MODEL: "anyrouter/auto",
       }).decisions
-    ).toEqual(["typesafe/jev-preview", "typesafe/jev-latest"]);
+    ).toEqual(["typesafe/jev-preview", "typesafe/jev", "anyrouter/auto"]);
+  });
+
+  it("does not list the same id twice when Jev is also on the chat chain", () => {
+    expect(
+      getModelChains({
+        ANYROUTER_JEV_MODEL: "typesafe/jev",
+        ANYROUTER_MODEL: "typesafe/jev,anyrouter/auto",
+      }).scoring
+    ).toEqual(["typesafe/jev", "anyrouter/auto"]);
   });
 });

@@ -132,6 +132,19 @@ describe("live AnyRouter model chains", () => {
       "google/gemini-3.5-flash"
     );
   });
+
+  it("scores and decides with canonical Jev, not on the chat chain", () => {
+    expect(idsOf("ANYROUTER_JEV_MODEL")).toEqual(["typesafe/jev"]);
+    for (const name of [
+      "ANYROUTER_MODEL",
+      "ANYROUTER_TRANSLATE_MODEL",
+      "ANYROUTER_TLDR_MODEL",
+    ]) {
+      const ids = idsOf(name);
+      expect(ids, name).not.toContain("typesafe/jev");
+      expect(ids, name).not.toContain("typesafe/jev-latest");
+    }
+  });
 });
 
 describe("translation upsert", () => {

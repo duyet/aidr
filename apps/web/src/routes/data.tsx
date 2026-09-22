@@ -281,7 +281,7 @@ function SystemPage() {
               <ol className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
                 {[
                   ["Fetch", "HN, HuggingNews, Lobsters, RSS, newsrooms"],
-                  ["Score", "LLM rubric: relevance, importance, quality"],
+                  ["Score", "Jev judgments, then the LLM rubric"],
                   ["Merge", "same story collapses to one canonical item"],
                   ["Translate", "EN → VI, journalist style"],
                   ["Rank", "importance × quality × freshness × engagement"],
@@ -574,7 +574,7 @@ function SystemPage() {
                       ))
                     )}
                     <span className="text-muted-foreground">
-                      BYOK-only · 0 AnyRouter credits
+                      Jev is BYOK-only · chat models back it up
                     </span>
                   </div>
                   <ul className="space-y-1.5 text-muted-foreground">

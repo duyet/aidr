@@ -251,30 +251,48 @@ export interface ModelChains {
   decisions: string[];
 }
 
+function splitModelChain(chain: string | undefined): string[] {
+  return (chain ?? "")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+}
+
+/** Jev first, then chat models, without duplicating an id that appears in both. */
+function jevThenChat(jev: string[], chat: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of [...jev, ...chat]) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
 /** Splits the comma-separated ANYROUTER_* model fallback chains into
  * arrays. Public config (which models power scoring/translate/TL;DR/decisions), not
- * a secret — safe to surface on /about and /system. */
+ * a secret — safe to surface on /about and /system.
+ *
+ * Scoring and decisions try Jev (System One) first. The chat chain stays
+ * the backup and is listed after Jev. Translation and TL;DR stay chat-only:
+ * Jev does not write prose, and it is rejected on /chat/completions. */
 export function getModelChains(env: {
   ANYROUTER_MODEL?: string;
   ANYROUTER_TRANSLATE_MODEL?: string;
   ANYROUTER_TLDR_MODEL?: string;
   ANYROUTER_JEV_MODEL?: string;
 }): ModelChains {
-  const split = (chain: string | undefined): string[] =>
-    (chain ?? "")
-      .split(",")
-      .map((m) => m.trim())
-      .filter(Boolean);
-
-  const scoring = split(env.ANYROUTER_MODEL);
-  const translation = split(env.ANYROUTER_TRANSLATE_MODEL);
-  const tldr = split(env.ANYROUTER_TLDR_MODEL);
-  const decisions = split(env.ANYROUTER_JEV_MODEL);
+  const chat = splitModelChain(env.ANYROUTER_MODEL);
+  const translation = splitModelChain(env.ANYROUTER_TRANSLATE_MODEL);
+  const tldr = splitModelChain(env.ANYROUTER_TLDR_MODEL);
+  const configuredJev = splitModelChain(env.ANYROUTER_JEV_MODEL);
+  const jev = configuredJev.length ? configuredJev : [JEV_DEFAULT_MODEL];
   return {
-    scoring,
-    translation: translation.length ? translation : scoring,
-    tldr: tldr.length ? tldr : scoring,
-    decisions: decisions.length ? decisions : [JEV_DEFAULT_MODEL],
+    scoring: jevThenChat(jev, chat),
+    translation: translation.length ? translation : chat,
+    tldr: tldr.length ? tldr : chat,
+    decisions: jevThenChat(jev, chat),
   };
 }
 
@@ -422,6 +440,7 @@ export async function loadSystemStats(
     ANYROUTER_MODEL?: string;
     ANYROUTER_TRANSLATE_MODEL?: string;
     ANYROUTER_TLDR_MODEL?: string;
+    ANYROUTER_JEV_MODEL?: string;
   } = {}
 ): Promise<SystemStats> {
   const [hasTokens, hasRunStats, hasLlmCalls] = await Promise.all([
