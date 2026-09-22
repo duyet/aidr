@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.6](https://github.com/duyet/aidr/compare/web-v0.1.5...web-v0.1.6) (2026-09-22)
+
+
+### ✨ Features
+
+* **web:** digest email thumbnails, compact rows, keyword highlights ([93e5e8d](https://github.com/duyet/aidr/commit/93e5e8d6fd1e06ec69303a4f1c86ec7e4b3d7e90))
+* **web:** fold volume into sources table, add Jev decisions card ([17226a7](https://github.com/duyet/aidr/commit/17226a7c5daeb6fcb0e8816dec134c5ed8be6e66))
+* **web:** instant data shell with per-card progressive loading ([a3130cd](https://github.com/duyet/aidr/commit/a3130cddb64490fa08652979feac62859a4a0e51))
+
+
+### 🐛 Bug Fixes
+
+* **web:** bump wrangler to ^4.135.0 for vite-plugin peer ([19060db](https://github.com/duyet/aidr/commit/19060db47cfdff57ffc62ba54e3bbcd9648a4093))
+
 ## [0.1.5](https://github.com/duyet/aidr/compare/web-v0.1.4...web-v0.1.5) (2026-09-19)
 
 

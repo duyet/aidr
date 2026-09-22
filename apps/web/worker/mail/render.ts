@@ -1,3 +1,5 @@
+import { highlightTitle, TITLE_KEYWORDS } from "../../src/lib/highlight.js";
+import { topicColor } from "../../src/lib/topic-color.js";
 import {
   escapeHtml,
   markdownToEmailHtml,
@@ -63,6 +65,7 @@ export interface NoteEmailInput {
 export interface DigestStory {
   text: string;
   url?: string;
+  imageUrl?: string;
 }
 
 export interface DigestEmailInput {
@@ -236,6 +239,37 @@ export function renderNoteEmail(input: NoteEmailInput): {
   return { html, text: textParts.join("\n\n") };
 }
 
+/** Keyword highlights mirroring the website (HighlightedText): tag-hash
+ *  palette, light-mode shades (mail body is always light), escaped first
+ *  so markup can never break out of a segment. */
+export function highlightStoryHtml(text: string): string {
+  const segments = highlightTitle(text, TITLE_KEYWORDS);
+  return segments
+    .map((s) => {
+      const safe = escapeHtml(s.text);
+      if (s.highlighted && s.tag) {
+        const color = topicColor(s.tag).light;
+        return `<span style="color:${color};font-weight:600">${safe}</span>`;
+      }
+      if (s.highlighted) {
+        return `<span style="color:${ACCENT};font-weight:600">${safe}</span>`;
+      }
+      return safe;
+    })
+    .join("");
+}
+
+const THUMB_PX = 64;
+
+function thumbCell(imageUrl: string | undefined): string {
+  const safe = imageUrl ? safeHref(imageUrl) : null;
+  if (!safe) return "";
+  const src = escapeHtml(safe);
+  return `<td width="${THUMB_PX}" style="width:${THUMB_PX}px;vertical-align:top;padding-right:12px">
+        <img src="${src}" width="${THUMB_PX}" alt="" style="display:block;width:${THUMB_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic">
+      </td>`;
+}
+
 export function renderDigestEmail(input: DigestEmailInput): {
   html: string;
   text: string;
@@ -248,7 +282,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const htmlItems = input.stories
     .map((story, i) => {
       const n = i + 1;
-      const text = escapeHtml(story.text);
+      const text = highlightStoryHtml(story.text);
       const href =
         safeHref(withMailUtm(story.url ?? SITE_URL, "digest")) ??
         withMailUtm(SITE_URL, "digest");
@@ -257,12 +291,17 @@ export function renderDigestEmail(input: DigestEmailInput): {
         i < input.stories.length - 1
           ? `border-bottom:1px solid ${HAIRLINE};`
           : "";
+      const body = `<div style="font-family:${SANS};font-size:14px;line-height:1.55;color:${FG}">
+          <span style="font-family:${SERIF};font-size:15px;line-height:1.4;color:${ACCENT};font-weight:500">${n}.</span>
+          ${text}
+          <div style="margin-top:6px;font-family:${SANS};font-size:13px;line-height:1.4">${more}</div>
+        </div>`;
+      const thumb = thumbCell(story.imageUrl);
+      const inner = thumb
+        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>${thumb}<td style="vertical-align:top">${body}</td></tr></table>`
+        : body;
       return `<tr>
-      <td style="padding:16px ${PAD};${rule}font-family:${SANS};font-size:16px;line-height:1.6;color:${FG}">
-        <span style="font-family:${SERIF};font-size:18px;line-height:1.4;color:${ACCENT};font-weight:500">${n}.</span>
-        ${text}
-        <div style="margin-top:8px;font-family:${SANS};font-size:14px;line-height:1.4">${more}</div>
-      </td>
+      <td style="padding:12px ${PAD};${rule}">${inner}</td>
     </tr>`;
     })
     .join("\n");

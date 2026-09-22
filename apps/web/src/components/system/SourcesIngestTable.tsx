@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@aidr/ui";
 import { sourceIconUrl } from "../../lib/source-icon";
-import type { IngestSourceRow } from "../../lib/system-queries";
+import type { IngestSourceRow, NamedCount } from "../../lib/system-queries";
 
 function configHint(config: Record<string, unknown>): string {
   const query = config.query;
@@ -28,9 +28,12 @@ function configHint(config: Record<string, unknown>): string {
 export function SourcesIngestTable({
   sources,
   lastRunBySource,
+  volume,
 }: {
   sources: IngestSourceRow[];
   lastRunBySource?: Record<string, number>;
+  /** Stored items by source_id (top 10) — the old Volume card, folded in. */
+  volume?: NamedCount[];
 }) {
   if (sources.length === 0) {
     return (
@@ -40,6 +43,9 @@ export function SourcesIngestTable({
     );
   }
 
+  const volumeById = new Map((volume ?? []).map((v) => [v.name, v.count]));
+  const volumeMax = Math.max(1, ...volumeById.values());
+
   return (
     <Table>
       <TableHeader>
@@ -48,6 +54,7 @@ export function SourcesIngestTable({
           <TableHead className="h-8">Adapter</TableHead>
           <TableHead className="h-8">Status</TableHead>
           <TableHead className="h-8 text-right">Items</TableHead>
+          <TableHead className="h-8">Volume</TableHead>
           <TableHead className="h-8 text-right">Last run</TableHead>
           <TableHead className="h-8">Fetch config</TableHead>
         </TableRow>
@@ -55,6 +62,11 @@ export function SourcesIngestTable({
       <TableBody>
         {sources.map((source) => {
           const icon = sourceIconUrl(source);
+          const stored = volumeById.get(source.id) ?? source.itemCount;
+          const share = Math.max(
+            (stored / volumeMax) * 100,
+            stored > 0 ? 4 : 0
+          );
           return (
             <TableRow key={source.id}>
               <TableCell className="py-2">
@@ -92,6 +104,19 @@ export function SourcesIngestTable({
               </TableCell>
               <TableCell className="py-2 text-right font-mono tabular-nums">
                 {source.itemCount}
+              </TableCell>
+              <TableCell className="py-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{ width: `${share}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {stored}
+                  </span>
+                </div>
               </TableCell>
               <TableCell className="py-2 text-right font-mono tabular-nums">
                 {lastRunBySource?.[source.id] ??
