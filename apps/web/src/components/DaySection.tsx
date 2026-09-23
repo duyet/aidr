@@ -16,7 +16,11 @@ export function DaySection({
   const more = counts.length - shown.length;
 
   return (
-    <section className="pt-8">
+    // content-visibility lets the browser skip layout/paint for day
+    // sections below the fold; SSR markup stays intact for SEO and
+    // find-in-page. contain-intrinsic-size keeps the scrollbar estimate
+    // sane until a section first renders (~a day of stories ≈ 1600px).
+    <section className="pt-8 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-border pb-3">
         <h2 className="font-serif text-2xl font-medium tracking-tight">
           {formatDayHeading(day.date, lang)}
