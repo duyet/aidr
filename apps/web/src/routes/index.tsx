@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CategoryNav } from "../components/CategoryNav";
-import { DaySection } from "../components/DaySection";
+import { FeedDays } from "../components/FeedDays";
+import { FeedSkeleton } from "../components/FeedSkeleton";
 import { TldrSection } from "../components/TldrSection";
 import { TrendingChips } from "../components/TrendingChips";
 import { parseAidrLayout } from "../lib/aidr-layout";
-import { emptyFeedCopy, showFeedBrowseChrome } from "../lib/empty-feed";
+import { showFeedBrowseChrome } from "../lib/empty-feed";
 import { setCachedFeed } from "../lib/feed-cache";
 import { fetchFeed } from "../lib/feed-fn";
 import { timeAgo } from "../lib/lang";
@@ -46,85 +47,6 @@ export const Route = createFileRoute("/")({
   component: IndexPage,
 });
 
-function SkeletonRow({ i }: { i: number }) {
-  const widths = [
-    "w-3/4",
-    "w-2/3",
-    "w-3/4",
-    "w-1/2",
-    "w-2/3",
-    "w-3/4",
-    "w-1/2",
-    "w-2/3",
-  ];
-  return (
-    <div className="flex items-baseline gap-3 border-b border-border py-2">
-      <span className="h-4 w-5 shrink-0 rounded bg-muted" />
-      <span className="min-w-0 flex-1 space-y-1.5">
-        <span
-          className={`block h-4 ${widths[i % widths.length]} rounded bg-muted`}
-        />
-        <span className="block h-3 w-1/4 rounded bg-muted" />
-      </span>
-      <span className="hidden h-4 w-14 shrink-0 rounded bg-muted sm:block" />
-      <span className="h-4 w-10 shrink-0 rounded bg-muted" />
-    </div>
-  );
-}
-
-function FeedSkeleton() {
-  return (
-    <div className="animate-pulse">
-      {/* Category nav */}
-      <div className="flex items-center gap-1.5 border-b border-border py-2.5">
-        {Array.from({ length: 6 }, (_, i) => (
-          <span key={i} className="h-7 w-16 shrink-0 rounded-full bg-muted" />
-        ))}
-      </div>
-
-      {/* Trending chips */}
-      <div className="flex items-center gap-2 py-3">
-        {Array.from({ length: 5 }, (_, i) => (
-          <span key={i} className="h-7 w-20 shrink-0 rounded-full bg-muted" />
-        ))}
-      </div>
-
-      {/* TL;DR */}
-      <div className="space-y-2 border-y-2 border-border py-4">
-        <div className="mb-2.5 h-5 w-24 rounded bg-muted" />
-        <div className="grid gap-x-10 md:grid-cols-2">
-          {[0, 1].map((col) => (
-            <div key={col} className="space-y-2">
-              {Array.from({ length: 4 }, (_, i) => (
-                <div key={i} className="flex min-h-[2lh] items-stretch gap-2">
-                  <span className="min-w-0 flex-1 space-y-1.5">
-                    <span className="block h-3.5 w-full rounded bg-muted" />
-                    <span className="block h-3.5 w-4/5 rounded bg-muted" />
-                  </span>
-                  <span className="size-[2lh] shrink-0 rounded-md bg-muted" />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Day section */}
-      <div className="pt-6">
-        <div className="flex items-baseline gap-x-4 border-b-2 border-border pb-2">
-          <span className="h-6 w-40 rounded bg-muted" />
-          <span className="h-3.5 w-16 rounded bg-muted" />
-        </div>
-        <div>
-          {Array.from({ length: 8 }, (_, i) => (
-            <SkeletonRow key={i} i={i} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function IndexPage() {
   const { q, tag, category, aidr } = Route.useSearch();
   const lang = useLang();
@@ -134,7 +56,6 @@ function IndexPage() {
     () => loaderFeed ?? null
   );
   const [error, setError] = useState(false);
-  const [loadingOlder, setLoadingOlder] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string | null>(tag ?? null);
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
     () => new Set(category ? [category] : [])
@@ -268,74 +189,21 @@ function IndexPage() {
 
   const browseChrome = showFeedBrowseChrome(q);
 
-  function renderDaySections() {
-    if (!feed) return null;
-    return (
-      <>
-        {days.map((day) => (
-          <DaySection
-            key={day.date}
-            day={day}
-            lang={lang}
-            selectedTag={selectedTag}
-          />
-        ))}
-        {feed.hasMore && (
-          <div className="pt-8 text-center">
-            <button
-              type="button"
-              disabled={loadingOlder}
-              onClick={async () => {
-                const oldest = feed.days[feed.days.length - 1]?.date;
-                if (!oldest) return;
-                setLoadingOlder(true);
-                try {
-                  const res = await fetch(
-                    `/api/feed?days=5&before=${encodeURIComponent(oldest)}`
-                  );
-                  if (!res.ok) return;
-                  const older = (await res.json()) as FeedResponse;
-                  setFeed((prev) => {
-                    if (!prev) return older;
-                    const seen = new Set(prev.days.map((d) => d.date));
-                    const merged = [
-                      ...prev.days,
-                      ...older.days.filter((d) => !seen.has(d.date)),
-                    ];
-                    return {
-                      ...prev,
-                      days: merged,
-                      hasMore: older.hasMore,
-                      totalStories: prev.totalStories + older.totalStories,
-                    };
-                  });
-                } finally {
-                  setLoadingOlder(false);
-                }
-              }}
-              className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:border-accent hover:text-accent disabled:opacity-50"
-            >
-              {loadingOlder
-                ? lang === "vi"
-                  ? "Đang tải…"
-                  : "Loading…"
-                : lang === "vi"
-                  ? "Ngày cũ hơn"
-                  : "Older days"}
-            </button>
-          </div>
-        )}
-        {days.length === 0 && (
-          <p className="py-16 text-center text-muted-foreground">
-            {emptyFeedCopy({
-              lang,
-              q,
-              selectedCategoryCount: selectedCategories.size,
-            })}
-          </p>
-        )}
-      </>
-    );
+  function mergeOlderDays(older: FeedResponse) {
+    setFeed((prev) => {
+      if (!prev) return older;
+      const seen = new Set(prev.days.map((d) => d.date));
+      const merged = [
+        ...prev.days,
+        ...older.days.filter((d) => !seen.has(d.date)),
+      ];
+      return {
+        ...prev,
+        days: merged,
+        hasMore: older.hasMore,
+        totalStories: prev.totalStories + older.totalStories,
+      };
+    });
   }
 
   const brief = !q && prefs.sections.tldr && !prefs.sections.days;
@@ -415,7 +283,19 @@ function IndexPage() {
               </div>
             );
           case "days":
-            return <div key={section}>{renderDaySections()}</div>;
+            return (
+              <div key={section}>
+                <FeedDays
+                  feed={feed}
+                  days={days}
+                  lang={lang}
+                  selectedTag={selectedTag}
+                  q={q}
+                  selectedCategoryCount={selectedCategories.size}
+                  onMergeOlder={mergeOlderDays}
+                />
+              </div>
+            );
           default:
             return null;
         }

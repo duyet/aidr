@@ -7,7 +7,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 describe("aidr install guide copy", () => {
   it("presents Chrome and Telegram as equal tabs; CWS only inside Chrome tab", () => {
-    const src = readFileSync(join(here, "../routes/subscribe.tsx"), "utf8");
+    const src = readFileSync(
+      join(here, "../components/subscribe/DeliverPage.tsx"),
+      "utf8"
+    );
     expect(src).toContain("Chrome");
     expect(src).toContain("Telegram");
     expect(src).toContain("Email");

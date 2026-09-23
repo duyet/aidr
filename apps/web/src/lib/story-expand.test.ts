@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const row = readFileSync(join(here, "../components/StoryRow.tsx"), "utf8");
-const detail = readFileSync(
-  join(here, "../components/StoryDetail.tsx"),
+const aside = readFileSync(
+  join(here, "../components/story/StoryMetaAside.tsx"),
   "utf8"
 );
 const thumb = readFileSync(join(here, "../components/StoryThumb.tsx"), "utf8");
@@ -24,12 +24,12 @@ describe("expanded story panel chrome", () => {
 
 describe("topics column", () => {
   it("uses a large rounded card thumb above an uppercase Topics heading", () => {
-    expect(detail).toContain('variant="card"');
-    expect(detail).toContain("space-y-5");
-    expect(detail).toContain("Chủ đề");
-    expect(detail).toContain("Topics");
-    expect(detail).toContain("uppercase tracking-wider");
-    expect(detail).toContain("rounded-full border border-border");
+    expect(aside).toContain('variant="card"');
+    expect(aside).toContain("space-y-5");
+    expect(aside).toContain("Chủ đề");
+    expect(aside).toContain("Topics");
+    expect(aside).toContain("uppercase tracking-wider");
+    expect(aside).toContain("rounded-full border border-border");
     expect(thumb).toContain("rounded-3xl");
   });
 });
