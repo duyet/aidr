@@ -1,7 +1,7 @@
 import { AuthButtons, Button, ErrorBoundary } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
-import { Menu } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PHONE_TAP_TARGET_CLASS } from "../../lib/chrome";
@@ -37,7 +37,7 @@ export function PhoneMenu({
   }, [open]);
 
   const linkClass =
-    "flex h-11 w-full items-center rounded-xl px-3 text-sm hover:bg-muted";
+    "flex h-12 w-full items-center gap-3 rounded-xl px-3 text-[0.9375rem] hover:bg-muted [&_svg]:size-[18px] [&_svg]:shrink-0 [&_svg]:text-muted-foreground";
 
   return (
     <>
@@ -66,10 +66,22 @@ export function PhoneMenu({
                 role="dialog"
                 aria-modal="true"
                 aria-label="Menu"
-                className="absolute inset-y-0 right-0 flex w-[min(20rem,85vw)] flex-col border-l border-border bg-card text-card-foreground shadow-2xl"
+                className="absolute inset-3 flex flex-col rounded-3xl border border-border bg-card text-card-foreground shadow-2xl"
               >
-                <div className="border-b border-border px-6 py-5 font-serif text-lg font-medium tracking-tight">
-                  AI;DR
+                <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                  <span className="font-serif text-lg font-medium tracking-tight">
+                    AI;DR
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-lg"
+                    className={PHONE_TAP_TARGET_CLASS}
+                    aria-label="Close menu"
+                    onClick={() => setOpen(false)}
+                  >
+                    <X aria-hidden />
+                  </Button>
                 </div>
                 <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
                   {SITE_LINKS.map((link) =>
@@ -83,6 +95,7 @@ export function PhoneMenu({
                         }}
                         className={linkClass}
                       >
+                        <link.icon aria-hidden />
                         {link.label}
                       </Link>
                     ) : (
@@ -103,6 +116,7 @@ export function PhoneMenu({
                           link.href.startsWith("http") ? "_blank" : undefined
                         }
                       >
+                        <link.icon aria-hidden />
                         {link.label}
                       </a>
                     )
