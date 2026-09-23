@@ -16,7 +16,7 @@ import { track } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, CheckCircle2, Mail, RefreshCw, Send } from "lucide-react";
-import type { DeliverTab } from "../../lib/deliver-tab";
+import { type DeliverTab, parseDeliverTab } from "../../lib/deliver-tab";
 import { useLang } from "../../lib/lang-context";
 import {
   CHROME_WEB_STORE_URL,
@@ -25,12 +25,18 @@ import {
 } from "../../lib/site";
 import { EmailSubscribeForm } from "../EmailSubscribeForm";
 
-export function DeliverPage({ defaultTab }: { defaultTab: DeliverTab }) {
+export function DeliverPage({
+  tab,
+  onTabChange,
+}: {
+  tab: DeliverTab;
+  onTabChange: (tab: DeliverTab) => void;
+}) {
   const lang = useLang();
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10 py-12">
+    <div className="mx-auto w-full max-w-3xl space-y-10 py-12">
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="gap-1.5 rounded-full">
@@ -50,7 +56,11 @@ export function DeliverPage({ defaultTab }: { defaultTab: DeliverTab }) {
         </div>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="w-full">
+      <Tabs
+        value={tab}
+        onValueChange={(next) => onTabChange(parseDeliverTab(next))}
+        className="w-full"
+      >
         <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1">
           <TabsTrigger
             value="chrome"

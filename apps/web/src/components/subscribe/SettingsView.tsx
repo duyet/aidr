@@ -65,14 +65,14 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
 
   if (load === "loading") {
     return (
-      <div className="mx-auto max-w-md py-16 text-sm text-muted-foreground">
+      <div className="mx-auto w-full max-w-md py-16 text-sm text-muted-foreground">
         {t("Loading settings…", "Đang tải cài đặt…")}
       </div>
     );
   }
   if (load === "error") {
     return (
-      <div className="mx-auto max-w-md py-16 text-sm text-destructive">
+      <div className="mx-auto w-full max-w-md py-16 text-sm text-destructive">
         {t("This settings link is invalid.", "Liên kết cài đặt không hợp lệ.")}
       </div>
     );
@@ -82,7 +82,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
     "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
 
   return (
-    <div className="mx-auto max-w-md py-12">
+    <div className="mx-auto w-full max-w-md py-12">
       <h1 className="font-serif text-3xl font-medium tracking-tight">
         {t("Digest settings", "Cài đặt bản tin")}
       </h1>

@@ -30,7 +30,7 @@ export function UnsubscribeView({
   }
 
   return (
-    <div className="mx-auto max-w-md py-16 text-center">
+    <div className="mx-auto w-full max-w-md py-16 text-center">
       <h1 className="font-serif text-3xl font-medium tracking-tight">
         {lang === "vi" ? "Hủy đăng ký" : "Unsubscribe"}
       </h1>

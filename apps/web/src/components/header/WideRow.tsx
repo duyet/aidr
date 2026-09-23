@@ -12,7 +12,14 @@ import {
 import { track } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, Database, Plus, Send, Workflow } from "lucide-react";
+import {
+  ChevronDown,
+  Database,
+  Mail,
+  Plus,
+  Send,
+  Workflow,
+} from "lucide-react";
 import { WIDE_HEADER_ROW_CLASS } from "../../lib/chrome";
 import { useClerkModule } from "../../lib/clerk-user";
 import { EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
@@ -88,6 +95,18 @@ export function WideHeaderRow({
                 <Send aria-hidden />
                 Telegram Channel (Vietnamese)
               </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                to="/subscribe"
+                search={{ tab: "email" }}
+                onClick={() =>
+                  track("nav_click", { to: "/subscribe?tab=email" })
+                }
+              >
+                <Mail aria-hidden />
+                Email Subscription
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

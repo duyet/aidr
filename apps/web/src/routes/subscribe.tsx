@@ -28,6 +28,7 @@ export const Route = createFileRoute("/subscribe")({
 
 function SubscribePage() {
   const lang = useLang();
+  const navigate = Route.useNavigate();
   const { tab, unsubscribe, settings } = Route.useSearch();
 
   if (unsubscribe) {
@@ -37,5 +38,15 @@ function SubscribePage() {
     return <SettingsView token={settings} lang={lang} />;
   }
 
-  return <DeliverPage defaultTab={parseDeliverTab(tab)} />;
+  return (
+    <DeliverPage
+      tab={parseDeliverTab(tab)}
+      onTabChange={(next) =>
+        void navigate({
+          search: next === "chrome" ? {} : { tab: next },
+          replace: true,
+        })
+      }
+    />
+  );
 }
