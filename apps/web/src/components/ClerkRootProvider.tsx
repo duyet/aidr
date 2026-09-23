@@ -1,31 +1,55 @@
 import { ErrorBoundary } from "@aidr/ui";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { CLERK_PROXY_URL } from "../../worker/clerk-proxy";
-import { ClerkModuleContext, getClerkModuleState } from "../lib/clerk-user";
+import {
+  type ClerkModule,
+  ClerkModuleContext,
+  getClerkPublishableKey,
+  loadClerkModule,
+} from "../lib/clerk-user";
 
 /**
- * Mounts the ONE app-wide <ClerkProvider> (static import for SSR — required
- * by @clerk/tanstack-react-start SignIn/SignUp). Consumers share it via
- * ClerkModuleContext; a second <ClerkProvider> crashes the app. If Clerk
- * fails, ErrorBoundary degrades to children with no Clerk context.
+ * Mounts the ONE app-wide <ClerkProvider> (deferred — the Clerk SDK is
+ * dynamically imported after first paint so its ~160KB chunk stays off the
+ * critical path and out of SSR). Children render immediately with
+ * `mod: null`; every consumer handles that fallback. When the import
+ * resolves the provider is inserted above children, which remounts the
+ * subtree — consumers then see the shared module via ClerkModuleContext.
+ * A second <ClerkProvider> crashes the app; if Clerk fails, ErrorBoundary
+ * degrades to children with no Clerk context.
  */
 export function ClerkRootProvider({ children }: { children: ReactNode }) {
-  const clerkState = getClerkModuleState();
+  const publishableKey = getClerkPublishableKey();
+  const [mod, setMod] = useState<ClerkModule | null>(null);
+
+  useEffect(() => {
+    if (!publishableKey) return;
+    let cancelled = false;
+    loadClerkModule()
+      .then((m) => {
+        if (!cancelled) setMod(m);
+      })
+      .catch(() => {
+        // Import failed — keep rendering the no-Clerk fallback.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [publishableKey]);
+
   const withoutProvider = (
-    <ClerkModuleContext.Provider
-      value={{ mod: null, publishableKey: clerkState.publishableKey }}
-    >
+    <ClerkModuleContext.Provider value={{ mod: null, publishableKey }}>
       {children}
     </ClerkModuleContext.Provider>
   );
 
-  if (!clerkState.mod || !clerkState.publishableKey) return withoutProvider;
+  if (!mod || !publishableKey) return withoutProvider;
 
   return (
     <ErrorBoundary fallback={withoutProvider}>
-      <ClerkModuleContext.Provider value={clerkState}>
-        <clerkState.mod.ClerkProvider
-          publishableKey={clerkState.publishableKey}
+      <ClerkModuleContext.Provider value={{ mod, publishableKey }}>
+        <mod.ClerkProvider
+          publishableKey={publishableKey}
           // Absolute URL so handshake redirects never fall back to the
           // publishable-key host (clerk.aidr.today → CF Error 1000).
           proxyUrl={CLERK_PROXY_URL}
@@ -41,7 +65,7 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
           }}
         >
           {children}
-        </clerkState.mod.ClerkProvider>
+        </mod.ClerkProvider>
       </ClerkModuleContext.Provider>
     </ErrorBoundary>
   );

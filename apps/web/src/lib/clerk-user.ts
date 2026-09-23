@@ -1,4 +1,4 @@
-import * as ClerkTanStack from "@clerk/tanstack-react-start";
+import type * as ClerkTanStack from "@clerk/tanstack-react-start";
 import {
   createContext,
   createElement,
@@ -31,13 +31,30 @@ function withSignedInOutCompat(mod: ClerkTanStackMod): ClerkModule {
   return { ...mod, SignedIn, SignedOut };
 }
 
-const clerkModule = withSignedInOutCompat(ClerkTanStack);
+let clerkModulePromise: Promise<ClerkModule> | null = null;
+
+/**
+ * Dynamic import keeps the ~160KB Clerk SDK off the critical path: it loads
+ * after first paint, then ClerkRootProvider inserts the one app-wide
+ * <ClerkProvider> and remounts the subtree. Every consumer reads the module
+ * via ClerkModuleContext and must tolerate `mod: null` until then — nobody
+ * mounts a second provider.
+ */
+export function loadClerkModule(): Promise<ClerkModule> {
+  clerkModulePromise ??= import("@clerk/tanstack-react-start")
+    .then(withSignedInOutCompat)
+    .catch((err: unknown) => {
+      // Clear so a later mount can retry instead of caching the rejection.
+      clerkModulePromise = null;
+      throw err;
+    });
+  return clerkModulePromise;
+}
 
 /**
  * Shared across every Clerk consumer (AuthButtons via wrapWithProvider={false},
- * SuggestTranslation, the submit page). __root.tsx owns the ONE
- * <ClerkProvider> and publishes the module here — every consumer reads this
- * context and never mounts a second provider.
+ * SuggestTranslation, the submit/sign-in pages). ClerkRootProvider owns the
+ * ONE <ClerkProvider> and publishes the module here once loaded.
  */
 export const ClerkModuleContext = createContext<ClerkModuleState>(EMPTY_STATE);
 
@@ -45,18 +62,15 @@ export function useClerkModule(): ClerkModuleState {
   return useContext(ClerkModuleContext);
 }
 
-/** Sync module + key for __root (SSR-safe static import). */
-export function getClerkModuleState(): ClerkModuleState {
+/** Sync env read — lets the root render before the Clerk chunk arrives. */
+export function getClerkPublishableKey(): string | undefined {
   const env =
     typeof import.meta !== "undefined"
       ? ((import.meta as unknown as Record<string, unknown>).env as
           | Record<string, string>
           | undefined)
       : undefined;
-  const publishableKey =
-    env?.VITE_CLERK_PUBLISHABLE_KEY || env?.CLERK_PUBLISHABLE_KEY;
-  if (!publishableKey) return EMPTY_STATE;
-  return { mod: clerkModule, publishableKey };
+  return env?.VITE_CLERK_PUBLISHABLE_KEY || env?.CLERK_PUBLISHABLE_KEY;
 }
 
 /** RequestInit fragment for authed server-fn calls — empty when there's no
