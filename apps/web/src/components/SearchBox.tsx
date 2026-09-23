@@ -1,10 +1,9 @@
 import { Input } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, Tag } from "lucide-react";
+import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
-import { categoryLabel, timeAgo } from "../lib/lang";
 import {
   type FilterSuggestion,
   matchFilterTarget,
@@ -13,29 +12,11 @@ import {
 } from "../lib/search-match";
 import type { FeedResponse, Lang } from "../lib/types";
 import { StoryDialog } from "./StoryDialog";
+import { SearchResults } from "./search/SearchResults";
+import { useSearchKeyNav } from "./search/use-search-keynav";
 
 const DEBOUNCE_MS = 200;
 const MIN_QUERY_LEN = 2;
-
-function HighlightedMatch({
-  text,
-  start,
-  end,
-}: {
-  text: string;
-  start: number;
-  end: number;
-}) {
-  return (
-    <>
-      {text.slice(0, start)}
-      <span className="font-semibold text-accent">
-        {text.slice(start, end)}
-      </span>
-      {text.slice(end)}
-    </>
-  );
-}
 
 export function SearchBox({
   placeholder,
@@ -124,6 +105,13 @@ export function SearchBox({
     }
   };
 
+  const onKeyDown = useSearchKeyNav({
+    showDropdown,
+    rowCount,
+    setOpen,
+    setActiveIndex,
+  });
+
   return (
     <>
       <form
@@ -158,20 +146,7 @@ export function SearchBox({
           onFocus={() => {
             if (q.trim().length >= MIN_QUERY_LEN) setOpen(true);
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setOpen(false);
-              return;
-            }
-            if (!showDropdown || rowCount === 0) return;
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              setActiveIndex((i) => (i + 1 >= rowCount ? 0 : i + 1));
-            } else if (e.key === "ArrowUp") {
-              e.preventDefault();
-              setActiveIndex((i) => (i - 1 < 0 ? rowCount - 1 : i - 1));
-            }
-          }}
+          onKeyDown={onKeyDown}
           placeholder={placeholder}
           className={
             compact ? "h-11 min-h-[44px] rounded-xl pl-10" : "h-9 pl-8"
@@ -185,60 +160,14 @@ export function SearchBox({
         />
 
         {showDropdown && rowCount > 0 && (
-          <div
-            role="listbox"
-            className="scrollbar-hide absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border border-border bg-background text-left shadow-lg"
-          >
-            {filterMatch && (
-              <button
-                type="button"
-                role="option"
-                aria-selected={activeIndex === 0}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={selectFilter}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs ${
-                  activeIndex === 0 ? "bg-muted" : "hover:bg-muted"
-                }`}
-              >
-                <Tag className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
-                <span className="min-w-0 flex-1 truncate">
-                  {filterMatch.value}
-                </span>
-                <span className="shrink-0 text-muted-foreground">
-                  {lang === "vi" ? "Lọc theo chủ đề" : "Filter by topic"}
-                </span>
-              </button>
-            )}
-            {storyMatches.map((m, i) => {
-              const rowIndex = filterMatch ? i + 1 : i;
-              return (
-                <button
-                  key={m.item.id}
-                  type="button"
-                  role="option"
-                  aria-selected={activeIndex === rowIndex}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => selectStory(m.item)}
-                  className={`flex w-full flex-col gap-0.5 border-t border-border px-3 py-2 text-left text-xs ${
-                    activeIndex === rowIndex ? "bg-muted" : "hover:bg-muted"
-                  }`}
-                >
-                  <span className="truncate text-foreground">
-                    <HighlightedMatch
-                      text={m.title}
-                      start={m.matchStart}
-                      end={m.matchEnd}
-                    />
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {m.item.category && categoryLabel(m.item.category, lang)}
-                    {m.item.category && " · "}
-                    {timeAgo(m.item.published_at, Date.now(), lang)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <SearchResults
+            filterMatch={filterMatch}
+            storyMatches={storyMatches}
+            activeIndex={activeIndex}
+            lang={lang}
+            onSelectFilter={selectFilter}
+            onSelectStory={selectStory}
+          />
         )}
       </form>
 

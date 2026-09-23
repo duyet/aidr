@@ -1,6 +1,15 @@
 "use client"
 
 import { useEffect, useMemo, useRef } from "react"
+import {
+  CanvasPair,
+  cartesianPaintSig,
+  copyBloomFrame,
+  easeToward,
+  setupCanvasLayers,
+  UNSET,
+  useLiveRef,
+} from "./canvas"
 import { useChart } from "./chart-context"
 import {
   backingSize,
@@ -52,29 +61,16 @@ export function BarCanvas() {
     return out
   }, [ready, configKeys, bands, y, height, rows])
 
-  // The RAF loop reads these through refs so it always sees the latest values;
-  // refs are written in an effect (never during render) — mutating a ref
-  // mid-render tears under Strict Mode / concurrent rendering.
-  const state = useRef(ctx)
-  const targetsRef = useRef(targets)
-  useEffect(() => {
-    state.current = ctx
-    targetsRef.current = targets
-  })
+  // The RAF loop reads these through refs so it always sees the latest values.
+  const state = useLiveRef(ctx)
+  const targetsRef = useLiveRef(targets)
 
   useEffect(() => {
     const canvas = canvasRef.current
-    const c = canvas?.getContext("2d")
-    if (!(canvas && c) || cols <= 0 || rows <= 0) return
-    canvas.width = cols
-    canvas.height = rows
-
-    const bloomCanvas = bloomRef.current
-    const bloomCtx = bloomCanvas?.getContext("2d") ?? null
-    if (bloomCanvas) {
-      bloomCanvas.width = cols
-      bloomCanvas.height = rows
-    }
+    if (!canvas) return
+    const layers = setupCanvasLayers(canvas, bloomRef.current, cols, rows)
+    if (!layers) return
+    const { c, bloomCtx } = layers
 
     const reduce = prefersReducedMotion()
     const animate = state.current.animate && !reduce
@@ -134,8 +130,8 @@ export function BarCanvas() {
     let intensity = 0
     let needsFill = true
     let lastPaintSig = ""
-    let lastSelected: string | null | undefined = Symbol() as never
-    let lastHover: number | null | undefined = Symbol() as never
+    let lastSelected: string | null | undefined = UNSET
+    let lastHover: number | null | undefined = UNSET
 
     const draw = (now: number) => {
       raf = requestAnimationFrame(draw)
@@ -145,10 +141,7 @@ export function BarCanvas() {
         const on =
           s.bloom !== "off" &&
           (!s.bloomOnHover || s.isMouseInChart || s.hovered)
-        if (on) {
-          bloomCtx.clearRect(0, 0, cols, rows)
-          bloomCtx.drawImage(canvas, 0, 0)
-        }
+        if (on) copyBloomFrame(bloomCtx, canvas, cols, rows)
       }
       if (s.revision !== lastRevision) {
         lastRevision = s.revision
@@ -172,15 +165,12 @@ export function BarCanvas() {
         needsFill = true
       }
       const itTarget = s.isMouseInChart || s.hovered ? 1 : 0
-      if (Math.abs(intensity - itTarget) > 0.001) {
-        intensity += (itTarget - intensity) * (reduce ? 1 : 0.16)
-        needsFill = true
-      } else intensity = itTarget
+      const eased = easeToward(intensity, itTarget, reduce ? 1 : 0.16)
+      intensity = eased.value
+      if (eased.moving) needsFill = true
 
       // Live tweak repaint (variant, stacking) without replaying the wave.
-      const paintSig = `${s.stackType}|${s.configKeys
-        .map((k) => s.seriesSpecs[k]?.variant ?? "")
-        .join(",")}`
+      const paintSig = cartesianPaintSig(s)
       if (paintSig !== lastPaintSig) {
         lastPaintSig = paintSig
         needsFill = true
@@ -207,21 +197,11 @@ export function BarCanvas() {
   } as const
 
   return (
-    <>
-      <canvas
-        ref={canvasRef}
-        className="pointer-events-none absolute"
-        style={{ ...pos, imageRendering: "pixelated" }}
-      />
-      <canvas
-        ref={bloomRef}
-        className="pointer-events-none absolute"
-        style={{
-          ...pos,
-          transition: "opacity 220ms ease",
-          ...(bloom ?? { opacity: 0 }),
-        }}
-      />
-    </>
+    <CanvasPair
+      canvasRef={canvasRef}
+      bloomRef={bloomRef}
+      pos={pos}
+      bloom={bloom}
+    />
   )
 }

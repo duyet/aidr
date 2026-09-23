@@ -58,3 +58,9 @@ export function getClerkModuleState(): ClerkModuleState {
   if (!publishableKey) return EMPTY_STATE;
   return { mod: clerkModule, publishableKey };
 }
+
+/** RequestInit fragment for authed server-fn calls — empty when there's no
+ * token, so callers can spread it unconditionally: `...bearerHeaders(token)`. */
+export function bearerHeaders(token: string | null) {
+  return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+}

@@ -1,0 +1,146 @@
+import { BookOpen, Plug, Terminal } from "lucide-react";
+import { useLang } from "../../lib/lang-context";
+import { CodeBlock } from "./CodeBlock";
+import { ExtLink } from "./ExtLink";
+import {
+  CLAUDE_CODE_EXAMPLE,
+  CLIENT_CONFIG,
+  PUSH_ITEM_EXAMPLE,
+  TOOLS,
+} from "./lib";
+
+export function ConnectSection() {
+  const lang = useLang();
+  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
+
+  return (
+    <section className="mt-6">
+      <h2 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <Plug className="h-3.5 w-3.5" aria-hidden />
+        {t("Connect", "Kết nối")}
+      </h2>
+      <CodeBlock code={CLIENT_CONFIG} />
+      <p className="mt-2 text-xs text-muted-foreground">
+        {t(
+          "Every request needs a bearer token.",
+          "Mọi yêu cầu đều cần bearer token."
+        )}
+      </p>
+    </section>
+  );
+}
+
+export function ClientsSection() {
+  const lang = useLang();
+  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
+
+  return (
+    <section className="mt-6">
+      <h2 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <Terminal className="h-3.5 w-3.5" aria-hidden />
+        {t("Use with your app", "Dùng với ứng dụng của bạn")}
+      </h2>
+      <div className="mt-2 space-y-3 text-sm">
+        <div>
+          <p className="font-semibold text-foreground">
+            <ExtLink href="https://docs.claude.com/en/docs/claude-code/mcp">
+              Claude Code
+            </ExtLink>
+          </p>
+          <CodeBlock code={CLAUDE_CODE_EXAMPLE} />
+        </div>
+        <div>
+          <p className="font-semibold text-foreground">
+            <ExtLink href="https://modelcontextprotocol.io/quickstart/user">
+              Claude Desktop
+            </ExtLink>
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {t(
+              "Use the same connect config above.",
+              "Dùng cấu hình kết nối ở trên."
+            )}{" "}
+            {t(
+              "Paste it under Settings → Developer → Edit Config.",
+              "Dán vào Settings → Developer → Edit Config."
+            )}
+          </p>
+        </div>
+        <div>
+          <p className="font-semibold text-foreground">
+            <ExtLink href="https://platform.openai.com/docs/actions">
+              ChatGPT
+            </ExtLink>
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {t(
+              "Add it as a connector with the same URL and bearer token, or use the REST API above for custom GPT Actions.",
+              "Thêm làm connector với cùng URL và bearer token, hoặc dùng REST API ở trên cho custom GPT Actions."
+            )}
+          </p>
+        </div>
+        <div>
+          <p className="font-semibold text-foreground">
+            {t("Other MCP clients", "Client MCP khác")}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {t(
+              "Any MCP-capable client works the same way — e.g.",
+              "Bất kỳ client hỗ trợ MCP nào cũng dùng được — vd."
+            )}{" "}
+            <ExtLink href="https://cursor.com/docs/context/mcp">Cursor</ExtLink>
+            {" — "}
+            {t(
+              "the URL and Authorization header are all you need.",
+              "chỉ cần URL và header Authorization."
+            )}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function ToolsSection() {
+  const lang = useLang();
+  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
+
+  return (
+    <section className="mt-6">
+      <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {t("Tools", "Công cụ")}
+      </h2>
+      <div className="mt-2 divide-y divide-border rounded-md border border-border text-sm">
+        {TOOLS.map((tool) => (
+          <div
+            key={tool.name}
+            className="flex flex-col gap-0.5 px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3"
+          >
+            <code className="shrink-0 text-xs font-semibold sm:w-32">
+              {tool.name}
+            </code>
+            <span className="text-muted-foreground">{t(tool.en, tool.vi)}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function RestSection() {
+  const lang = useLang();
+  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
+
+  return (
+    <section className="mt-6">
+      <h2 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <BookOpen className="h-3.5 w-3.5" aria-hidden />
+        {t("REST example", "Ví dụ REST")}
+      </h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {t("Push an item via REST:", "Thêm một tin qua REST:")}
+      </p>
+      <CodeBlock code={PUSH_ITEM_EXAMPLE} />
+    </section>
+  );
+}
