@@ -1,3 +1,4 @@
+import type { DbReader } from "./db";
 import { SITE_URL } from "./site";
 import { storyPath } from "./slug";
 
@@ -78,7 +79,7 @@ export function storySitemapUrl(item: {
 
 const SITEMAP_ITEM_LIMIT = 1000;
 
-export async function loadSitemapUrls(db: D1Database): Promise<SitemapUrl[]> {
+export async function loadSitemapUrls(db: DbReader): Promise<SitemapUrl[]> {
   const urls = staticSitemapUrls();
   try {
     const { results } = await db

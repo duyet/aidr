@@ -1,3 +1,4 @@
+import type { DbReader } from "./db";
 import { parseStoredBullets } from "./tldr-bullets";
 import { isThinDisplayTldr, synthesizeTldrFromItems } from "./tldr-fallback";
 import {
@@ -126,7 +127,7 @@ function toPublicStory(row: StoryRow): PublicStory {
   };
 }
 
-async function loadTopStories(db: D1Database): Promise<PublicStory[]> {
+async function loadTopStories(db: DbReader): Promise<PublicStory[]> {
   try {
     const { results } = await db
       .prepare(STORIES_SQL)
@@ -157,7 +158,7 @@ function resolvePublicTldr(
   };
 }
 
-export async function getPublicDigest(db: D1Database): Promise<PublicDigest> {
+export async function getPublicDigest(db: DbReader): Promise<PublicDigest> {
   const [tldrRes, stories] = await Promise.all([
     db
       .prepare(TLDR_SQL)
@@ -189,7 +190,7 @@ export async function getPublicDigest(db: D1Database): Promise<PublicDigest> {
  * stories payload. Best-effort: a missing `image_url` column returns
  * an empty map so the digest still ships. */
 async function loadImagesForIds(
-  db: D1Database,
+  db: DbReader,
   ids: string[]
 ): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();

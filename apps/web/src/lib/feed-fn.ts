@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { readSession } from "./db";
 import { getFeed } from "./feed-queries";
 import type { FeedResponse } from "./types";
 
@@ -10,7 +11,7 @@ export const fetchFeed = createServerFn({ method: "GET" })
     const db = (env as { DB?: D1Database }).DB;
     if (!db) return null;
     try {
-      return await getFeed(db, {
+      return await getFeed(readSession(db), {
         q: data.q,
         days: data.days,
       });

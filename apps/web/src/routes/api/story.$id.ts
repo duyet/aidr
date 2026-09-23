@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { readSession } from "../../lib/db";
 import { getStory } from "../../lib/story-queries";
 
 export const Route = createFileRoute("/api/story/$id")({
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/api/story/$id")({
 
         try {
           const idPrefix = params.id.slice(0, 64);
-          const item = await getStory(db, idPrefix);
+          const item = await getStory(readSession(db), idPrefix);
           if (!item) {
             return Response.json({ error: "not found" }, { status: 404 });
           }

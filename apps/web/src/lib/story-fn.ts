@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { readSession } from "./db";
 import { getStory } from "./story-queries";
 import type { FeedItem } from "./types";
 
@@ -10,7 +11,7 @@ export const fetchStory = createServerFn({ method: "GET" })
     const db = (env as { DB?: D1Database }).DB;
     if (!db) return null;
     try {
-      return await getStory(db, data.idPrefix);
+      return await getStory(readSession(db), data.idPrefix);
     } catch {
       return null;
     }

@@ -1,10 +1,12 @@
+import { type DbReader, readSession } from "./db";
+
 /** Shared env/response plumbing for /api/system and the granular
  * /api/system/* endpoints. Each endpoint resolves the Worker env the same
  * way (TanStack context → cloudflare:workers fallback), runs one batched
  * section loader, and returns a short edge-cached JSON body. */
 
 export const SYSTEM_CACHE_CONTROL =
-  "public, max-age=15, s-maxage=30, stale-while-revalidate=120";
+  "public, max-age=30, s-maxage=120, stale-while-revalidate=600";
 /** Model chains only change on deploy — safe to cache longer. */
 export const MODELS_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
@@ -22,9 +24,12 @@ export async function resolveWorkerEnv(context: any): Promise<any> {
   return env;
 }
 
-export async function systemDb(context: any): Promise<D1Database | undefined> {
+/** Read session (unconstrained): granular endpoints serve the /data UI
+ * and tolerate replica-fresh reads; only the aggregate /api/system pins
+ * first-primary for the post-ingest watchdog. */
+export async function systemDb(context: any): Promise<DbReader | undefined> {
   const env = await resolveWorkerEnv(context);
-  return env?.DB;
+  return env?.DB ? readSession(env.DB) : undefined;
 }
 
 export function systemJson(
@@ -41,7 +46,7 @@ export function systemJson(
 export async function systemHandler(
   context: any,
   tag: string,
-  load: (db: D1Database) => Promise<unknown>
+  load: (db: DbReader) => Promise<unknown>
 ): Promise<Response> {
   const db = await systemDb(context);
   if (!db) {

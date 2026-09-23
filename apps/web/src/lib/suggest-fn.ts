@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireClerkUser } from "./clerk-auth-fn";
+import { readSession } from "./db";
 
 export interface SuggestionSummary {
   user_name: string;
@@ -70,7 +71,7 @@ export const fetchSuggestions = createServerFn({ method: "GET" })
     const db = (env as { DB?: D1Database }).DB;
     if (!db) return [];
     try {
-      const { results } = await db
+      const { results } = await readSession(db)
         .prepare(
           `SELECT user_name, status, created_at,
                   CASE WHEN status = 'accepted' THEN suggestion ELSE NULL END AS suggestion

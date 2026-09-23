@@ -1,3 +1,4 @@
+import type { DbReader } from "../src/lib/db";
 import { normalizeTopicName } from "./topics.js";
 
 /** Mirrors migrations/0017_topic_learning.sql so learning works before
@@ -31,7 +32,7 @@ INSERT OR IGNORE INTO sources (id, name, type, config, enabled) VALUES
 
 let schemaReady = false;
 
-export async function ensureTopicLearningSchema(db: D1Database): Promise<void> {
+export async function ensureTopicLearningSchema(db: DbReader): Promise<void> {
   if (schemaReady) return;
   const statements = TOPIC_LEARNING_SCHEMA_SQL.split(";")
     .map((s) => s.trim())
@@ -381,7 +382,7 @@ export async function promoteEmergingTopics(
 
 /** Active learned keywords for title highlight / trending fallback. */
 export async function loadLearnedKeywords(
-  db: D1Database,
+  db: DbReader,
   limit = 80
 ): Promise<string[]> {
   try {
@@ -403,7 +404,7 @@ export async function loadLearnedKeywords(
 
 /** Per-topic counts for a calendar day (Asia/Ho_Chi_Minh). */
 export async function loadTopicDailyCounts(
-  db: D1Database,
+  db: DbReader,
   day: string
 ): Promise<Map<string, number>> {
   try {

@@ -84,11 +84,13 @@ name = "EMAIL"
 allowed_sender_addresses = ["digest@aidr.today", "notes@aidr.today"]
 
 # Workers Cache: safe for this surface — only responses with public
-# Cache-Control headers (feed/story APIs, static shell) are cached;
-# /api/system and /api/system/* carry a short public TTL (30s + swr) so
-# lastRun/runsToday recert stays within ~a minute of a finished ingest;
-# admin/subscribe/suggest/submit/mcp set no-store and Authorization-bearing
-# requests auto-bypass. Public GET /api/public is Cache-Control: public.
+# Cache-Control headers (homepage, feed/story/public APIs, sitemap,
+# fingerprinted /assets/*) are cached; /api/system and /api/system/* carry
+# public TTLs (30s browser / 120s edge / 10min swr) and the aggregate
+# /api/system pins D1 first-primary so lastRun recert reads fresh primary
+# state between cache hits; admin/subscribe/suggest/submit/mcp set no-store
+# and Authorization-bearing requests auto-bypass. Public GET /api/public is
+# Cache-Control: public.
 [cache]
 enabled = true
 
