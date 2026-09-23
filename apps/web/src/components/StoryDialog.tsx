@@ -1,13 +1,14 @@
-import { track } from "@aidr/ui/track";
-import { Columns2, ExternalLink, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { localizedTitle } from "../lib/display-title";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
-import { timeAgo } from "../lib/lang";
 import { usePrefs } from "../lib/prefs";
 import type { FeedItem, Lang } from "../lib/types";
 import { StoryDetail } from "./StoryDetail";
+import { DialogHeader } from "./story-dialog/DialogHeader";
+import { RelatedList } from "./story-dialog/RelatedList";
+import { useDialogLifecycle } from "./story-dialog/use-dialog-lifecycle";
+import { useStoryItem } from "./story-dialog/use-story-item";
 
 /**
  * Modal that fetches and renders a single story by id prefix. No new deps:
@@ -29,13 +30,12 @@ export function StoryDialog({
   onClose: () => void;
 }) {
   const [activeId, setActiveId] = useState(idPrefix);
-  const [item, setItem] = useState<FeedItem | null | undefined>(undefined);
   const [feed, setFeed] = useState(() => getCachedFeed());
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<Element | null>(null);
   const { prefs, setPrefs } = usePrefs();
   const bilingual = prefs.bilingualDialog;
+  const item = useStoryItem(activeId);
   const hasVi = Boolean(item?.title_vi || item?.summary_vi);
+  const panelRef = useDialogLifecycle(onClose);
 
   useEffect(() => {
     setActiveId(idPrefix);
@@ -49,41 +49,6 @@ export function StoryDialog({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    triggerRef.current = document.activeElement;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.removeEventListener("keydown", onKeyDown);
-      if (triggerRef.current instanceof HTMLElement) triggerRef.current.focus();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setItem(undefined);
-    fetch(`/api/story/${encodeURIComponent(activeId)}`)
-      .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
-      .then((res) => {
-        if (!cancelled) setItem(res);
-      })
-      .catch(() => {
-        if (!cancelled) setItem(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeId]);
 
   const relatedItems = (relatedIds ?? [])
     .filter((id) => id !== activeId)
@@ -115,61 +80,16 @@ export function StoryDialog({
           bilingual ? "max-w-2xl md:max-w-5xl" : "max-w-2xl"
         }`}
       >
-        <div className="mb-3 flex items-start justify-between gap-3">
-          {item ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              lang={fallbackFromEnglish ? "en" : undefined}
-              onClick={() => track("story_open", { item_id: item.id })}
-              className="min-w-0 flex-1 font-semibold leading-snug hover:text-accent"
-            >
-              {title}
-              {fallbackFromEnglish && (
-                <span className="ml-1 align-middle text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  EN
-                </span>
-              )}{" "}
-              <ExternalLink className="inline h-3.5 w-3.5 align-baseline" />
-            </a>
-          ) : (
-            <span className="flex-1" />
-          )}
-          <div className="flex shrink-0 items-center gap-1">
-            {hasVi && (
-              <button
-                type="button"
-                aria-pressed={bilingual}
-                onClick={() => {
-                  track("prefs_change", { pref: "bilingualDialog" });
-                  setPrefs({ bilingualDialog: !bilingual });
-                }}
-                title={
-                  lang === "vi"
-                    ? "Xem song song Anh/Việt"
-                    : "View English/Vietnamese side by side"
-                }
-                className={`flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold transition-colors ${
-                  bilingual
-                    ? "border-accent text-accent"
-                    : "border-border text-muted-foreground hover:border-accent/60"
-                }`}
-              >
-                <Columns2 className="h-3.5 w-3.5" aria-hidden />
-                Dual language
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={lang === "vi" ? "Đóng" : "Close"}
-              className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        <DialogHeader
+          item={item}
+          title={title}
+          fallbackFromEnglish={fallbackFromEnglish}
+          hasVi={hasVi}
+          bilingual={bilingual}
+          lang={lang}
+          onToggleBilingual={() => setPrefs({ bilingualDialog: !bilingual })}
+          onClose={onClose}
+        />
 
         {item === undefined && (
           <p className="text-sm text-muted-foreground">
@@ -184,36 +104,11 @@ export function StoryDialog({
         {item && <StoryDetail item={item} lang={lang} bilingual={bilingual} />}
 
         {relatedItems.length > 0 && (
-          <div className="mt-4 border-t border-border pt-3">
-            <p className="mb-1.5 text-xs font-semibold text-muted-foreground">
-              {lang === "vi" ? "Cùng chủ đề" : "Also in this story"}
-            </p>
-            <ul className="space-y-1">
-              {relatedItems.map((rel) => (
-                <li key={rel.id}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveId(rel.id)}
-                    className="flex w-full items-baseline justify-between gap-2 rounded px-1 py-0.5 text-left text-xs hover:bg-muted"
-                  >
-                    <span
-                      className="min-w-0 flex-1 truncate"
-                      lang={
-                        localizedTitle(rel, lang).fallbackFromEnglish
-                          ? "en"
-                          : undefined
-                      }
-                    >
-                      {localizedTitle(rel, lang).text}
-                    </span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {timeAgo(rel.published_at, Date.now(), lang)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <RelatedList
+            items={relatedItems}
+            lang={lang}
+            onSelect={setActiveId}
+          />
         )}
       </div>
     </div>

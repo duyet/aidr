@@ -1,15 +1,10 @@
 "use client"
 
-import {
-  Children,
-  type ComponentType,
-  isValidElement,
-  type ReactNode,
-} from "react"
+import type { ComponentType, ReactNode } from "react"
 import type { ChartConfig, Margins } from "./chart-context"
 import { CommonChartContext } from "./common-context"
 import type { BloomInput } from "./dither-paint"
-import { cn } from "./lib"
+import { cn, partitionLayers } from "./lib"
 import { axisAtAngle, sliceAtAngle } from "./polar"
 import { PolarChartContext, usePolarController } from "./polar-context"
 import { useChartDimensions } from "./use-chart-dimensions"
@@ -24,11 +19,6 @@ const DEFAULT_POLAR_MARGINS: Margins = {
   right: 14,
   bottom: 14,
   left: 14,
-}
-
-function layerOf(node: ReactNode): "back" | "dom" | "svg" {
-  if (!isValidElement(node) || typeof node.type === "string") return "svg"
-  return (node.type as { chartLayer?: "back" | "dom" }).chartLayer ?? "svg"
 }
 
 export type PolarRootProps<TData extends Row> = {
@@ -96,15 +86,7 @@ export function PolarRoot<TData extends Row>({
     onSelectionChange,
   })
 
-  const backChildren: ReactNode[] = []
-  const svgChildren: ReactNode[] = []
-  const domChildren: ReactNode[] = []
-  Children.forEach(children, (child) => {
-    const layer = layerOf(child)
-    if (layer === "back") backChildren.push(child)
-    else if (layer === "dom") domChildren.push(child)
-    else svgChildren.push(child)
-  })
+  const { backChildren, svgChildren, domChildren } = partitionLayers(children)
 
   const onMove = (clientX: number, clientY: number) => {
     const el = ref.current

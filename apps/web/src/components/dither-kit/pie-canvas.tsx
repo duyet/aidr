@@ -2,6 +2,14 @@
 
 import { useEffect, useRef } from "react"
 import {
+  CanvasPair,
+  copyBloomFrame,
+  easeToward,
+  setupCanvasLayers,
+  UNSET,
+  useLiveRef,
+} from "./canvas"
+import {
   BAYER,
   backingSize,
   bloomLayerStyle,
@@ -32,27 +40,15 @@ export function PieCanvas() {
   const { width, height } = ctx.plot
   const { cols, rows } = backingSize(width, height)
 
-  // The RAF loop reads the latest ctx through a ref; written in an effect
-  // (never during render) — mutating a ref mid-render tears under Strict Mode /
-  // concurrent rendering.
-  const state = useRef(ctx)
-  useEffect(() => {
-    state.current = ctx
-  })
+  // The RAF loop reads the latest ctx through a ref.
+  const state = useLiveRef(ctx)
 
   useEffect(() => {
     const canvas = canvasRef.current
-    const c = canvas?.getContext("2d")
-    if (!(canvas && c) || cols <= 0 || rows <= 0) return
-    canvas.width = cols
-    canvas.height = rows
-
-    const bloomCanvas = bloomRef.current
-    const bloomCtx = bloomCanvas?.getContext("2d") ?? null
-    if (bloomCanvas) {
-      bloomCanvas.width = cols
-      bloomCanvas.height = rows
-    }
+    if (!canvas) return
+    const layers = setupCanvasLayers(canvas, bloomRef.current, cols, rows)
+    if (!layers) return
+    const { c, bloomCtx } = layers
 
     const reduce = prefersReducedMotion()
     const animate = state.current.animate && !reduce
@@ -65,8 +61,8 @@ export function PieCanvas() {
     let popEase = 0 // eases the hovered slice's outward bulge
     let needsFill = true
     let lastPaintSig = ""
-    let lastSelected: string | null | undefined = Symbol() as never
-    let lastHover: number | null | undefined = Symbol() as never
+    let lastSelected: string | null | undefined = UNSET
+    let lastHover: number | null | undefined = UNSET
 
     const paint = (prog: number) => {
       const s = state.current
@@ -134,10 +130,7 @@ export function PieCanvas() {
       if (!s.ready || !s.pie) return
       if (bloomCtx) {
         const on = s.bloom !== "off" && (!s.bloomOnHover || s.isMouseInChart)
-        if (on) {
-          bloomCtx.clearRect(0, 0, cols, rows)
-          bloomCtx.drawImage(canvas, 0, 0)
-        }
+        if (on) copyBloomFrame(bloomCtx, canvas, cols, rows)
       }
       if (s.revision !== lastRevision) {
         lastRevision = s.revision
@@ -158,16 +151,14 @@ export function PieCanvas() {
         needsFill = true
       }
       const itTarget = s.isMouseInChart ? 1 : 0
-      if (Math.abs(intensity - itTarget) > 0.001) {
-        intensity += (itTarget - intensity) * (reduce ? 1 : 0.16)
-        needsFill = true
-      } else intensity = itTarget
+      const easedIt = easeToward(intensity, itTarget, reduce ? 1 : 0.16)
+      intensity = easedIt.value
+      if (easedIt.moving) needsFill = true
       // Ease the hovered slice's bulge in (and back out when nothing's hovered).
       const popTarget = s.hoverIndex != null ? 1 : 0
-      if (Math.abs(popEase - popTarget) > 0.001) {
-        popEase += (popTarget - popEase) * (reduce ? 1 : 0.22)
-        needsFill = true
-      } else popEase = popTarget
+      const easedPop = easeToward(popEase, popTarget, reduce ? 1 : 0.22)
+      popEase = easedPop.value
+      if (easedPop.moving) needsFill = true
       if (prog !== lastProg) {
         lastProg = prog
         needsFill = true
@@ -203,21 +194,11 @@ export function PieCanvas() {
   } as const
 
   return (
-    <>
-      <canvas
-        ref={canvasRef}
-        className="pointer-events-none absolute"
-        style={{ ...pos, imageRendering: "pixelated" }}
-      />
-      <canvas
-        ref={bloomRef}
-        className="pointer-events-none absolute"
-        style={{
-          ...pos,
-          transition: "opacity 220ms ease",
-          ...(bloom ?? { opacity: 0 }),
-        }}
-      />
-    </>
+    <CanvasPair
+      canvasRef={canvasRef}
+      bloomRef={bloomRef}
+      pos={pos}
+      bloom={bloom}
+    />
   )
 }

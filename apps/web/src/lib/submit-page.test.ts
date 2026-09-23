@@ -4,7 +4,15 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(join(here, "../routes/submit.tsx"), "utf8");
+// The page is decomposed — the route file plus its components/submit/* pieces.
+const src = [
+  "../routes/submit.tsx",
+  "../components/submit/SubmitForm.tsx",
+  "../components/submit/SubmissionsList.tsx",
+  "../components/submit/SubmitGate.tsx",
+]
+  .map((p) => readFileSync(join(here, p), "utf8"))
+  .join("\n");
 
 describe("submit page keeps the form after success", () => {
   it("does not swap the form away on sent", () => {
