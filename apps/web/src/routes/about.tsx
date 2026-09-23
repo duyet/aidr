@@ -6,6 +6,7 @@ import { pageHead } from "../lib/seo";
 import { GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
 import { fetchSourceNames } from "../lib/sources-fn";
 import type { ModelChains } from "../lib/system-queries";
+import { useSystemData } from "../lib/use-system-stats";
 
 export const Route = createFileRoute("/about")({
   head: () =>
@@ -166,23 +167,10 @@ function Sources() {
 function ModelsLine() {
   // English-only by design: the global lang toggle is disabled on this
   // route (see HeaderBar/LangToggle).
-  const [models, setModels] = useState<ModelChains | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    // env-only endpoint — no DB round-trip, answers in ~ms
-    fetch("/api/system/models")
-      .then((res) =>
-        res.ok ? (res.json() as Promise<{ models: ModelChains }>) : null
-      )
-      .then((res) => {
-        if (!cancelled && res) setModels(res.models);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // env-only endpoint — no DB round-trip, answers in ~ms; session-cached
+  // via useSystemData so /data and /about share one copy.
+  const { data } = useSystemData<{ models: ModelChains }>("/api/system/models");
+  const models = data?.models ?? null;
 
   if (!models || models.scoring.length === 0) return null;
   const extra = models.scoring.length - 1;

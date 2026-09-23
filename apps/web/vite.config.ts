@@ -23,6 +23,24 @@ export default defineConfig({
       external: ["cloudflare:workers", "vinxi/http"],
     },
   },
+  environments: {
+    client: {
+      build: {
+        rollupOptions: {
+          output: {
+            // Split the React runtime out of the entry chunk: its hash
+            // stays stable across app deploys, so repeat visitors only
+            // re-download the small app chunk.
+            manualChunks(id: string) {
+              if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) {
+                return "react-vendor";
+              }
+            },
+          },
+        },
+      },
+    },
+  },
   server: {
     port: 3014,
     strictPort: true,
