@@ -1,6 +1,7 @@
 import { cache, ImageResponse } from "@cf-wasm/og/workerd";
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
+import { idPrefixFromSlug } from "../../lib/slug";
 import { getStory } from "../../lib/story-queries";
 import type { FeedItem } from "../../lib/types";
 
@@ -175,7 +176,14 @@ export const Route = createFileRoute("/api/og/$id")({
             { status: 500 }
           );
         }
-        const idPrefix = params.id.replace(/\.png$/i, "").slice(0, 64);
+        // substr-prefix match treats "" as a wildcard — require a real
+        // hex prefix like the permalink route does.
+        const idPrefix = idPrefixFromSlug(
+          params.id.replace(/\.png$/i, "").slice(0, 64)
+        );
+        if (!idPrefix) {
+          return Response.json({ error: "not found" }, { status: 404 });
+        }
         const item = await getStory(readSession(db), idPrefix);
         if (!item) {
           return Response.json({ error: "not found" }, { status: 404 });
