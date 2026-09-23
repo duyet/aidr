@@ -15,11 +15,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronDown, Database, Plus, Send, Workflow } from "lucide-react";
 import { WIDE_HEADER_ROW_CLASS } from "../../lib/chrome";
 import { useClerkModule } from "../../lib/clerk-user";
-import {
-  EXTENSION_PATH,
-  GITHUB_ALGORITHM_URL,
-  TELEGRAM_URL,
-} from "../../lib/site";
+import { EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
 import type { Lang } from "../../lib/types";
 import { LangToggle } from "../LangToggle";
 import { PrefsPanel } from "../PrefsPanel";
@@ -113,15 +109,14 @@ export function WideHeaderRow({
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <a
-                href={GITHUB_ALGORITHM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "algorithm" })}
+              <Link
+                to="/data"
+                search={{ tab: "algo" }}
+                onClick={() => track("nav_click", { to: "/data?tab=algo" })}
               >
                 <Workflow aria-hidden />
                 Algorithms
-              </a>
+              </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
