@@ -12,6 +12,26 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-09",
+    en: "Story links share a branded AI;DR card generated for each story — no more broken thumbnails when a source deletes its image. The homepage has its own masthead card.",
+    vi: "Link tin chia sẻ kèm thẻ AI;DR tạo riêng cho từng tin — không còn ảnh hỏng khi nguồn xoá ảnh. Trang chủ có thẻ masthead riêng.",
+  },
+  {
+    date: "2026-09",
+    en: "Header actions merged into one Get AI;DR menu: Chrome Extension, Telegram Channel (Vietnamese), Submit, Data Analytics, and Algorithms.",
+    vi: "Các nút trên header gộp vào menu Get AI;DR: Chrome Extension, Telegram Channel (Vietnamese), Submit, Data Analytics và Algorithms.",
+  },
+  {
+    date: "2026-09",
+    en: "On phones, the menu opens as a near-full-screen dialog with an icon for each link.",
+    vi: "Trên điện thoại, menu mở gần toàn màn hình với biểu tượng cho từng mục.",
+  },
+  {
+    date: "2026-09",
+    en: "Subscribe tabs (Chrome, Telegram, Email) keep their state in the URL, and the header menu links straight to Email Subscription.",
+    vi: "Các tab Subscribe (Chrome, Telegram, Email) lưu trạng thái trong URL, và menu header có link tới Email Subscription.",
+  },
+  {
+    date: "2026-09",
     en: "The site and favicon use the full AI;DR wordmark. Chrome zip downloads always follow the latest extension release.",
     vi: "Site và favicon dùng wordmark AI;DR đầy đủ. Tải zip Chrome luôn theo bản extension mới nhất.",
   },
