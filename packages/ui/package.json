@@ -17,6 +17,9 @@
     "./ThemeProvider": "./ThemeProvider.tsx",
     "./styles.css": "./styles.css"
   },
+  "scripts": {
+    "lint": "biome check ."
+  },
   "dependencies": {
     "@aidr/libs": "workspace:*",
     "@radix-ui/react-separator": "^1.1.1",

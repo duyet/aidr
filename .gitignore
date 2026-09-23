@@ -8,6 +8,8 @@ dist
 .env.production.local
 *.log
 .DS_Store
+.omo/
+.tmp-gsc/
 apps/web/public/aidr.zip
 apps/web/public/news-tab.zip
 .cursor/skills/verify-aidr/evidence/**

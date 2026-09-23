@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import { resolveMeasurementId } from "./track";
 
+export type { TrackParams, TrackParamValue } from "./track";
 export {
   DEFAULT_GA_MEASUREMENT_ID,
   resolveMeasurementId,
   track,
 } from "./track";
-export type { TrackParams, TrackParamValue } from "./track";
 
 const importMetaEnv =
   typeof import.meta !== "undefined"

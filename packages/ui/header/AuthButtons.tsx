@@ -146,14 +146,8 @@ export function AuthButtons({
     return null;
   }
 
-  const {
-    ClerkProvider,
-    SignedOut,
-    SignedIn,
-    Show,
-    SignInButton,
-    UserButton,
-  } = clerkModule;
+  const { ClerkProvider, SignedOut, SignedIn, Show, SignInButton, UserButton } =
+    clerkModule;
 
   const GateOut =
     Show != null

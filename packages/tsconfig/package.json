@@ -3,9 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "files": ["./"],
+  "files": [
+    "./"
+  ],
   "exports": {
     "./base.json": "./base.json",
     "./vite.json": "./vite.json"
+  },
+  "scripts": {
+    "lint": "biome check ."
   }
 }

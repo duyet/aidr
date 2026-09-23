@@ -10,6 +10,9 @@
     "./utils": "./utils.ts",
     "./workers-auth": "./workers-auth.ts"
   },
+  "scripts": {
+    "lint": "biome check ."
+  },
   "dependencies": {
     "cn": "^0.4.0"
   }
