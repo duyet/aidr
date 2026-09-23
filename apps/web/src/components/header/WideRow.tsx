@@ -12,10 +12,14 @@ import {
 import { track } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
-import { Database, Plus, Send } from "lucide-react";
+import { ChevronDown, Database, Plus, Send, Workflow } from "lucide-react";
 import { WIDE_HEADER_ROW_CLASS } from "../../lib/chrome";
 import { useClerkModule } from "../../lib/clerk-user";
-import { EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
+import {
+  EXTENSION_PATH,
+  GITHUB_ALGORITHM_URL,
+  TELEGRAM_URL,
+} from "../../lib/site";
 import type { Lang } from "../../lib/types";
 import { LangToggle } from "../LangToggle";
 import { PrefsPanel } from "../PrefsPanel";
@@ -49,11 +53,47 @@ export function WideHeaderRow({
       <div className="flex shrink-0 items-center gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="default" size="sm" title="Menu" aria-label="Menu">
-              <Plus aria-hidden />
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Get AI;DR"
+              aria-label="Get AI;DR menu"
+            >
+              <img
+                src="/logo-icon.png"
+                alt=""
+                className="size-4 rounded"
+                aria-hidden
+              />
+              Get AI;DR
+              <ChevronDown
+                aria-hidden
+                className="transition-transform group-data-[state=open]/button:rotate-180"
+              />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link
+                to={EXTENSION_PATH}
+                onClick={() => track("nav_click", { to: EXTENSION_PATH })}
+              >
+                <RiChromeLine aria-hidden />
+                Chrome Extension
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href={TELEGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "telegram" })}
+              >
+                <Send aria-hidden />
+                Telegram Channel
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link
                 to="/submit"
@@ -65,33 +105,23 @@ export function WideHeaderRow({
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link
-                to={EXTENSION_PATH}
-                onClick={() => track("nav_click", { to: EXTENSION_PATH })}
-              >
-                <RiChromeLine aria-hidden />
-                Get AI;DR
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a
-                href={TELEGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "telegram" })}
-              >
-                <Send aria-hidden />
-                Telegram
-              </a>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link
                 to="/data"
                 onClick={() => track("nav_click", { to: "/data" })}
               >
                 <Database aria-hidden />
-                Data
+                Data Analytics
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href={GITHUB_ALGORITHM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "algorithm" })}
+              >
+                <Workflow aria-hidden />
+                Algorithms
+              </a>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
