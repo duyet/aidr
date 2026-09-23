@@ -11,6 +11,7 @@ export { default as ThemeProvider } from "./ThemeProvider";
 export * from "./ui/badge";
 export * from "./ui/button";
 export * from "./ui/card";
+export * from "./ui/dropdown-menu";
 export * from "./ui/input";
 export * from "./ui/separator";
 export * from "./ui/sheet";

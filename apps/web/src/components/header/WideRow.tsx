@@ -1,8 +1,18 @@
-import { AuthButtons, Button, ErrorBoundary, Separator } from "@aidr/ui";
+import {
+  AuthButtons,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  ErrorBoundary,
+  Separator,
+} from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
-import { Plus, Send } from "lucide-react";
+import { Database, Plus, Send } from "lucide-react";
 import { WIDE_HEADER_ROW_CLASS } from "../../lib/chrome";
 import { useClerkModule } from "../../lib/clerk-user";
 import { EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
@@ -37,48 +47,59 @@ export function WideHeaderRow({
         <SearchBox placeholder={searchPlaceholder} lang={lang} />
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="hidden sm:inline-flex"
-          asChild
-        >
-          <a
-            href={TELEGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => track("nav_click", { to: "telegram" })}
-            aria-label="Telegram"
-            title="Telegram"
-          >
-            <Send aria-hidden />
-          </a>
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="hidden sm:inline-flex"
-          asChild
-        >
-          <Link
-            to={EXTENSION_PATH}
-            onClick={() => track("nav_click", { to: EXTENSION_PATH })}
-            aria-label="Get AI;DR"
-            title="Get AI;DR"
-          >
-            <RiChromeLine aria-hidden />
-          </Link>
-        </Button>
-        <Button variant="default" size="sm" asChild>
-          <Link
-            to="/submit"
-            onClick={() => track("nav_click", { to: "/submit" })}
-            title="Submit"
-            aria-label="Submit"
-          >
-            <Plus aria-hidden />
-          </Link>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="default"
+              size="sm"
+              title="Menu"
+              aria-label="Menu"
+            >
+              <Plus aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link
+                to="/submit"
+                onClick={() => track("nav_click", { to: "/submit" })}
+              >
+                <Plus aria-hidden />
+                Submit
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                to={EXTENSION_PATH}
+                onClick={() => track("nav_click", { to: EXTENSION_PATH })}
+              >
+                <RiChromeLine aria-hidden />
+                Get AI;DR
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href={TELEGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "telegram" })}
+              >
+                <Send aria-hidden />
+                Telegram
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link
+                to="/data"
+                onClick={() => track("nav_click", { to: "/data" })}
+              >
+                <Database aria-hidden />
+                Data
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Separator orientation="vertical" className="mx-1 h-5" />
         <PrefsPanel />
         <LangToggle
