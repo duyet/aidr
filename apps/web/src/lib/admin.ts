@@ -8,6 +8,18 @@ export interface AdminState {
   getToken: () => Promise<string | null>;
 }
 
+/** fetch() with the admin Bearer token attached, for /api/admin/* calls. */
+export async function authedFetch(
+  admin: AdminState,
+  url: string,
+  init?: RequestInit
+): Promise<Response> {
+  const token = await admin.getToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return fetch(url, { ...init, headers });
+}
+
 /**
  * SSR-safe admin check. Renders nothing extra when Clerk is absent or the
  * user is signed out — /api/admin/me is only called once Clerk reports a

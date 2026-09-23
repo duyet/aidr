@@ -1,106 +1,25 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import type { AdminState } from "../../lib/admin";
-
-interface RunStepInfo {
-  name: string;
-  action: string;
-  reason?: string;
-}
-
-interface WorkflowRun {
-  stats?: string | { steps?: RunStepInfo[] } | null;
-}
-
-function lastRunSteps(status: unknown): RunStepInfo[] {
-  if (!status || typeof status !== "object") return [];
-  const runs = (status as { runs?: WorkflowRun[] }).runs;
-  const stats = runs?.[0]?.stats;
-  if (!stats) return [];
-  const parsed = typeof stats === "string" ? safeParse(stats) : stats;
-  const steps = (parsed as { steps?: unknown })?.steps;
-  return Array.isArray(steps) ? (steps as RunStepInfo[]) : [];
-}
-
-function safeParse(raw: string): unknown {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-interface LlmCall {
-  ts: string;
-  task: string;
-  model: string;
-  ok: boolean;
-  tokens?: number;
-  duration_ms?: number;
-  prompt_tokens?: number | null;
-  completion_tokens?: number | null;
-  cached_tokens?: number | null;
-  error?: string | null;
-  response_snippet?: string | null;
-}
-
-interface ModerationItem {
-  id: string;
-  source_id: string;
-  title: string;
-  url: string;
-  status: string;
-  published_at: number;
-  llm_relevance: number | null;
-  llm_importance: number | null;
-  llm_quality: number | null;
-  category: string | null;
-  tags: string | null;
-  rank_score: number;
-  points: number | null;
-  comments: number | null;
-}
-
-// Mirrors worker/ranking.ts's rankScore formula — kept in sync manually for
-// this client-side "analyze" breakdown display.
-function rankBreakdown(item: ModerationItem) {
-  const now = Date.now();
-  const ageHours = Math.max(0, (now - item.published_at * 1000) / 3_600_000);
-  const importance = item.llm_importance ?? 0;
-  const quality = item.llm_quality ?? 0;
-  const qualityFactor = 0.6 + 0.4 * (quality / 10);
-  const decay = Math.exp(-ageHours / 36);
-  const engagement =
-    1 + Math.log10(1 + (item.points ?? 0) + 0.5 * (item.comments ?? 0));
-  return {
-    ageHours,
-    qualityFactor,
-    decay,
-    engagement,
-    computed: importance * qualityFactor * decay * engagement,
-  };
-}
-
-function parseTags(raw: string | null): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-async function authedFetch(
-  admin: AdminState,
-  url: string,
-  init?: RequestInit
-): Promise<Response> {
-  const token = await admin.getToken();
-  const headers = new Headers(init?.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  return fetch(url, { ...init, headers });
-}
+import { type AdminState, authedFetch } from "../../lib/admin";
+import { AdminAction } from "./admin/AdminAction";
+import { AdminAudit } from "./admin/AdminAudit";
+import { AdminItems } from "./admin/AdminItems";
+import { AdminLlmCalls } from "./admin/AdminLlmCalls";
+import { AdminQueue } from "./admin/AdminQueue";
+import {
+  AdminLastRunSteps,
+  AdminStatusJson,
+  AdminTelegramStatus,
+} from "./admin/AdminStatus";
+import {
+  type AuditRow,
+  adminBtnClass,
+  type LlmCall,
+  type ModerationItem,
+  type QueueSubmission,
+  type QueueSuggestion,
+  type RateDraft,
+} from "./admin/lib";
 
 export function AdminPanel({ admin }: { admin: AdminState }) {
   const [ingestBusy, setIngestBusy] = useState(false);
@@ -115,9 +34,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
   const [tldrResult, setTldrResult] = useState<string | null>(null);
   const [notifyBusy, setNotifyBusy] = useState(false);
   const [notifyResult, setNotifyResult] = useState<string | null>(null);
-  const [audit, setAudit] = useState<
-    { ts: number; action: string; detail?: string | null }[]
-  >([]);
+  const [audit, setAudit] = useState<AuditRow[]>([]);
   const [status, setStatus] = useState<unknown>(null);
   const [statusBusy, setStatusBusy] = useState(false);
   const [calls, setCalls] = useState<LlmCall[]>([]);
@@ -126,31 +43,13 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
   const [items, setItems] = useState<ModerationItem[]>([]);
   const [itemsBusy, setItemsBusy] = useState(false);
   const [itemActionBusyId, setItemActionBusyId] = useState<string | null>(null);
-  const [rateDrafts, setRateDrafts] = useState<
-    Record<string, { importance: string; quality: string }>
-  >({});
-  const [queueSuggestions, setQueueSuggestions] = useState<
-    {
-      id: string;
-      item_id: string;
-      field: string;
-      suggestion: string;
-      user_name: string | null;
-      rating: number | null;
-      created_at: number;
-    }[]
-  >([]);
-  const [queueSubmissions, setQueueSubmissions] = useState<
-    {
-      id: string;
-      url: string;
-      title: string;
-      note: string | null;
-      user_name: string | null;
-      rating: number | null;
-      created_at: number;
-    }[]
-  >([]);
+  const [rateDrafts, setRateDrafts] = useState<Record<string, RateDraft>>({});
+  const [queueSuggestions, setQueueSuggestions] = useState<QueueSuggestion[]>(
+    []
+  );
+  const [queueSubmissions, setQueueSubmissions] = useState<QueueSubmission[]>(
+    []
+  );
   const [queueBusy, setQueueBusy] = useState(false);
   const [queueActionBusyId, setQueueActionBusyId] = useState<string | null>(
     null
@@ -187,9 +86,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
     try {
       const res = await authedFetch(admin, "/api/admin/audit");
       if (res.ok) {
-        const data = (await res.json()) as {
-          audit?: { ts: number; action: string; detail?: string | null }[];
-        };
+        const data = (await res.json()) as { audit?: AuditRow[] };
         setAudit(Array.isArray(data.audit) ? data.audit : []);
       }
     } catch {
@@ -206,7 +103,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
       ]);
       if (sRes.ok) {
         const data = (await sRes.json()) as {
-          suggestions?: typeof queueSuggestions;
+          suggestions?: QueueSuggestion[];
         };
         setQueueSuggestions(
           Array.isArray(data.suggestions) ? data.suggestions : []
@@ -214,7 +111,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
       }
       if (subRes.ok) {
         const data = (await subRes.json()) as {
-          submissions?: typeof queueSubmissions;
+          submissions?: QueueSubmission[];
         };
         setQueueSubmissions(
           Array.isArray(data.submissions) ? data.submissions : []
@@ -404,6 +301,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
           ? `ok — ${JSON.stringify(data)}`
           : `error (${res.status}) — ${JSON.stringify(data)}`
       );
+      await loadStatus();
     } catch {
       setTldrResult("error — request failed");
     } finally {
@@ -416,597 +314,86 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Admin</h3>
         <div className="flex items-center gap-2">
-          <Link
-            to="/mail"
-            className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-          >
+          <Link to="/mail" className={adminBtnClass}>
             Mail
           </Link>
           <button
             type="button"
             onClick={refreshAll}
             disabled={statusBusy || callsBusy || itemsBusy}
-            className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+            className={adminBtnClass}
           >
             {statusBusy || callsBusy || itemsBusy ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={triggerIngest}
-          disabled={ingestBusy}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-muted disabled:opacity-50"
-        >
-          {ingestBusy ? "Triggering…" : "Trigger ingest"}
-        </button>
-        {ingestResult && (
-          <span className="text-xs text-muted-foreground">{ingestResult}</span>
-        )}
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => reprocess(["score"], setRescoreBusy, setRescoreResult)}
-          disabled={rescoreBusy}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-muted disabled:opacity-50"
-        >
-          {rescoreBusy ? "Re-scoring…" : "Re-score today"}
-        </button>
-        {rescoreResult && (
-          <span className="text-xs text-muted-foreground">{rescoreResult}</span>
-        )}
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() =>
-            reprocess(["translate"], setRetranslateBusy, setRetranslateResult)
-          }
-          disabled={retranslateBusy}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-muted disabled:opacity-50"
-        >
-          {retranslateBusy ? "Re-translating…" : "Re-translate today"}
-        </button>
-        {retranslateResult && (
-          <span className="text-xs text-muted-foreground">
-            {retranslateResult}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={regenerateTldr}
-          disabled={tldrBusy}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-muted disabled:opacity-50"
-        >
-          {tldrBusy ? "Regenerating…" : "Regenerate AI;DR"}
-        </button>
-        {tldrResult && (
-          <span className="text-xs text-muted-foreground">{tldrResult}</span>
-        )}
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={sendTelegramDigest}
-          disabled={notifyBusy}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-muted disabled:opacity-50"
-        >
-          {notifyBusy ? "Sending…" : "Send Telegram digest"}
-        </button>
-        {notifyResult && (
-          <span className="text-xs text-muted-foreground">{notifyResult}</span>
-        )}
-      </div>
+      <AdminAction
+        busy={ingestBusy}
+        busyLabel="Triggering…"
+        label="Trigger ingest"
+        onClick={triggerIngest}
+        result={ingestResult}
+        className="mt-3 flex items-center gap-2"
+      />
+      <AdminAction
+        busy={rescoreBusy}
+        busyLabel="Re-scoring…"
+        label="Re-score today"
+        onClick={() => reprocess(["score"], setRescoreBusy, setRescoreResult)}
+        result={rescoreResult}
+      />
+      <AdminAction
+        busy={retranslateBusy}
+        busyLabel="Re-translating…"
+        label="Re-translate today"
+        onClick={() =>
+          reprocess(["translate"], setRetranslateBusy, setRetranslateResult)
+        }
+        result={retranslateResult}
+      />
+      <AdminAction
+        busy={tldrBusy}
+        busyLabel="Regenerating…"
+        label="Regenerate AI;DR"
+        onClick={regenerateTldr}
+        result={tldrResult}
+      />
+      <AdminAction
+        busy={notifyBusy}
+        busyLabel="Sending…"
+        label="Send Telegram digest"
+        onClick={sendTelegramDigest}
+        result={notifyResult}
+      />
 
       {refreshError && (
         <p className="mt-2 text-xs text-muted-foreground">Refresh failed.</p>
       )}
 
-      <div className="mt-4">
-        <p className="text-xs font-medium text-muted-foreground">
-          Telegram / AI;DR
-        </p>
-        <pre className="mt-1 max-h-32 overflow-auto rounded border border-border p-2 text-xs text-muted-foreground">
-          {status
-            ? JSON.stringify(
-                {
-                  telegram: (status as { telegram?: unknown }).telegram,
-                  latestTldr: (status as { latestTldr?: unknown }).latestTldr,
-                  notifications: (status as { notifications?: unknown })
-                    .notifications,
-                },
-                null,
-                2
-              )
-            : "No status loaded."}
-        </pre>
-      </div>
-
-      <div className="mt-4">
-        <p className="text-xs font-medium text-muted-foreground">Audit log</p>
-        {audit.length === 0 ? (
-          <p className="mt-1 text-xs text-muted-foreground">No audit rows.</p>
-        ) : (
-          <ul className="mt-1 space-y-0.5 text-xs">
-            {audit.map((row) => (
-              <li key={`${row.ts}-${row.action}`}>
-                <span className="tabular-nums text-muted-foreground">
-                  {new Date(row.ts).toISOString()}
-                </span>{" "}
-                <span className="font-medium">{row.action}</span>
-                {row.detail ? (
-                  <span className="text-muted-foreground"> — {row.detail}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="mt-4">
-        <p className="text-xs font-medium text-muted-foreground">
-          Last run steps
-        </p>
-        {lastRunSteps(status).length === 0 ? (
-          <p className="mt-1 text-xs text-muted-foreground">
-            No step detail loaded.
-          </p>
-        ) : (
-          <ul className="mt-1 space-y-0.5 text-xs">
-            {lastRunSteps(status).map((step, i) => (
-              <li key={`${step.name}-${i}`} className="text-foreground">
-                <span className="font-medium">{step.name}</span>
-                {": "}
-                <span>{step.action}</span>
-                {step.reason && (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    — {step.reason}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="mt-4">
-        <p className="text-xs font-medium text-muted-foreground">Status</p>
-        <pre className="mt-1 max-h-64 overflow-auto rounded border border-border p-2 text-xs text-muted-foreground">
-          {status ? JSON.stringify(status, null, 2) : "No status loaded."}
-        </pre>
-      </div>
-
-      <div className="mt-4">
-        <p className="text-xs font-medium text-muted-foreground">LLM calls</p>
-        {calls.length === 0 ? (
-          <p className="mt-1 text-xs text-muted-foreground">No calls loaded.</p>
-        ) : (
-          <div className="mt-1 overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border text-left text-muted-foreground">
-                  <th className="py-1 pr-2 font-normal">ts</th>
-                  <th className="py-1 pr-2 font-normal">task</th>
-                  <th className="py-1 pr-2 font-normal">model</th>
-                  <th className="py-1 pr-2 font-normal">ok</th>
-                  <th className="py-1 pr-2 font-normal text-right tabular-nums">
-                    tokens
-                  </th>
-                  <th className="py-1 pr-2 font-normal text-right tabular-nums">
-                    cached
-                  </th>
-                  <th className="py-1 pr-2 font-normal text-right tabular-nums">
-                    duration
-                  </th>
-                  <th className="py-1 pr-2 font-normal">error/snippet</th>
-                </tr>
-              </thead>
-              <tbody>
-                {calls.map((call, i) => (
-                  <tr
-                    key={`${call.ts}-${i}`}
-                    className="border-b border-border/50 align-top"
-                  >
-                    <td className="py-1 pr-2 whitespace-nowrap tabular-nums text-muted-foreground">
-                      {call.ts}
-                    </td>
-                    <td className="py-1 pr-2">{call.task}</td>
-                    <td className="py-1 pr-2 font-mono">{call.model}</td>
-                    <td className="py-1 pr-2">
-                      <span
-                        className={
-                          call.ok
-                            ? "rounded bg-green-500/15 px-1.5 py-0.5 text-green-600 dark:text-green-400"
-                            : "rounded bg-red-500/15 px-1.5 py-0.5 text-red-600 dark:text-red-400"
-                        }
-                      >
-                        {call.ok ? "ok" : "fail"}
-                      </span>
-                    </td>
-                    <td className="py-1 pr-2 text-right tabular-nums">
-                      {call.tokens ?? "—"}
-                    </td>
-                    <td className="py-1 pr-2 text-right tabular-nums">
-                      {call.cached_tokens != null ? call.cached_tokens : "—"}
-                    </td>
-                    <td className="py-1 pr-2 text-right tabular-nums">
-                      {call.duration_ms != null ? `${call.duration_ms}ms` : "—"}
-                    </td>
-                    <td className="py-1 pr-2">
-                      {call.error || call.response_snippet ? (
-                        <details>
-                          <summary className="cursor-pointer text-muted-foreground">
-                            {call.error ? "error" : "snippet"}
-                          </summary>
-                          <pre className="mt-1 max-w-xs overflow-auto whitespace-pre-wrap text-muted-foreground">
-                            {call.error ?? call.response_snippet}
-                          </pre>
-                        </details>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-muted-foreground">Queue</p>
-          <button
-            type="button"
-            onClick={loadQueue}
-            disabled={queueBusy}
-            className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-          >
-            {queueBusy ? "Refreshing…" : "Refresh"}
-          </button>
-        </div>
-        {queueSuggestions.length === 0 && queueSubmissions.length === 0 ? (
-          <p className="mt-1 text-xs text-muted-foreground">
-            No pending suggestions or submissions.
-          </p>
-        ) : (
-          <div className="mt-2 space-y-4">
-            {queueSuggestions.length > 0 && (
-              <div className="overflow-x-auto">
-                <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Suggestions
-                </p>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border text-left text-muted-foreground">
-                      <th className="py-1 pr-2 font-normal">field</th>
-                      <th className="py-1 pr-2 font-normal">suggestion</th>
-                      <th className="py-1 pr-2 font-normal">user</th>
-                      <th className="py-1 pr-2 font-normal text-right">
-                        rating
-                      </th>
-                      <th className="py-1 pr-2 font-normal">actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {queueSuggestions.map((row) => {
-                      const busy = queueActionBusyId === row.id;
-                      return (
-                        <tr key={row.id} className="border-b border-border/50">
-                          <td className="py-1 pr-2">{row.field}</td>
-                          <td className="py-1 pr-2 max-w-xs truncate">
-                            {row.suggestion}
-                          </td>
-                          <td className="py-1 pr-2">{row.user_name ?? "—"}</td>
-                          <td className="py-1 pr-2 text-right tabular-nums">
-                            {row.rating ?? "—"}
-                          </td>
-                          <td className="py-1 pr-2">
-                            <div className="flex gap-1">
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() =>
-                                  decideQueue("suggestions", row.id, "approve")
-                                }
-                                className="rounded border border-border px-1.5 py-0.5 hover:bg-muted disabled:opacity-50"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() =>
-                                  decideQueue("suggestions", row.id, "reject")
-                                }
-                                className="rounded border border-border px-1.5 py-0.5 hover:bg-muted disabled:opacity-50"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {queueSubmissions.length > 0 && (
-              <div className="overflow-x-auto">
-                <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Submissions
-                </p>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border text-left text-muted-foreground">
-                      <th className="py-1 pr-2 font-normal">title</th>
-                      <th className="py-1 pr-2 font-normal">url</th>
-                      <th className="py-1 pr-2 font-normal">user</th>
-                      <th className="py-1 pr-2 font-normal text-right">
-                        rating
-                      </th>
-                      <th className="py-1 pr-2 font-normal">actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {queueSubmissions.map((row) => {
-                      const busy = queueActionBusyId === row.id;
-                      return (
-                        <tr key={row.id} className="border-b border-border/50">
-                          <td className="py-1 pr-2 max-w-xs truncate">
-                            {row.title}
-                          </td>
-                          <td className="py-1 pr-2 max-w-xs truncate">
-                            <a
-                              href={row.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="hover:underline"
-                            >
-                              {row.url}
-                            </a>
-                          </td>
-                          <td className="py-1 pr-2">{row.user_name ?? "—"}</td>
-                          <td className="py-1 pr-2 text-right tabular-nums">
-                            {row.rating ?? "—"}
-                          </td>
-                          <td className="py-1 pr-2">
-                            <div className="flex gap-1">
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() =>
-                                  decideQueue("submissions", row.id, "approve")
-                                }
-                                className="rounded border border-border px-1.5 py-0.5 hover:bg-muted disabled:opacity-50"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() =>
-                                  decideQueue("submissions", row.id, "reject")
-                                }
-                                className="rounded border border-border px-1.5 py-0.5 hover:bg-muted disabled:opacity-50"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-muted-foreground">Items</p>
-          <button
-            type="button"
-            onClick={loadItems}
-            disabled={itemsBusy}
-            className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-          >
-            {itemsBusy ? "Refreshing…" : "Refresh"}
-          </button>
-        </div>
-        {items.length === 0 ? (
-          <p className="mt-1 text-xs text-muted-foreground">No items loaded.</p>
-        ) : (
-          <div className="mt-1 overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border text-left text-muted-foreground">
-                  <th className="py-1 pr-2 font-normal">time</th>
-                  <th className="py-1 pr-2 font-normal">source</th>
-                  <th className="py-1 pr-2 font-normal">title</th>
-                  <th className="py-1 pr-2 font-normal">status</th>
-                  <th className="py-1 pr-2 font-normal text-right tabular-nums">
-                    rel
-                  </th>
-                  <th className="py-1 pr-2 font-normal text-right tabular-nums">
-                    imp
-                  </th>
-                  <th className="py-1 pr-2 font-normal text-right tabular-nums">
-                    qual
-                  </th>
-                  <th className="py-1 pr-2 font-normal text-right tabular-nums">
-                    rank
-                  </th>
-                  <th className="py-1 pr-2 font-normal">actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
-                  const draft = rateDraft(item.id);
-                  const busy = itemActionBusyId === item.id;
-                  const breakdown = rankBreakdown(item);
-                  return (
-                    <tr
-                      key={item.id}
-                      className="border-b border-border/50 align-top"
-                    >
-                      <td className="py-1 pr-2 whitespace-nowrap tabular-nums text-muted-foreground">
-                        {item.published_at
-                          ? new Date(item.published_at * 1000).toISOString()
-                          : "—"}
-                      </td>
-                      <td className="py-1 pr-2">{item.source_id ?? "—"}</td>
-                      <td className="py-1 pr-2 max-w-xs">
-                        {item.url ? (
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-foreground hover:underline"
-                          >
-                            {item.title ?? item.url}
-                          </a>
-                        ) : (
-                          (item.title ?? "—")
-                        )}
-                        <details className="mt-1">
-                          <summary className="cursor-pointer text-muted-foreground">
-                            analyze
-                          </summary>
-                          <div className="mt-1 space-y-0.5 text-muted-foreground">
-                            <div>category: {item.category ?? "—"}</div>
-                            <div>
-                              tags: {parseTags(item.tags).join(", ") || "—"}
-                            </div>
-                            <div>
-                              points: {item.points ?? 0}, comments:{" "}
-                              {item.comments ?? 0}
-                            </div>
-                            <div>ageHours: {breakdown.ageHours.toFixed(2)}</div>
-                            <div>
-                              qualityFactor:{" "}
-                              {breakdown.qualityFactor.toFixed(3)}
-                            </div>
-                            <div>decay: {breakdown.decay.toFixed(3)}</div>
-                            <div>
-                              engagement: {breakdown.engagement.toFixed(3)}
-                            </div>
-                            <div>
-                              computed rank: {breakdown.computed.toFixed(3)}{" "}
-                              (stored: {item.rank_score?.toFixed?.(3) ?? "—"})
-                            </div>
-                          </div>
-                        </details>
-                      </td>
-                      <td className="py-1 pr-2">
-                        <span
-                          className={
-                            item.status === "published"
-                              ? "rounded bg-green-500/15 px-1.5 py-0.5 text-green-600 dark:text-green-400"
-                              : item.status === "rejected"
-                                ? "rounded bg-red-500/15 px-1.5 py-0.5 text-red-600 dark:text-red-400"
-                                : "rounded bg-muted px-1.5 py-0.5 text-muted-foreground"
-                          }
-                        >
-                          {item.status ?? "—"}
-                        </span>
-                      </td>
-                      <td className="py-1 pr-2 text-right tabular-nums">
-                        {item.llm_relevance ?? "—"}
-                      </td>
-                      <td className="py-1 pr-2 text-right tabular-nums">
-                        {item.llm_importance ?? "—"}
-                      </td>
-                      <td className="py-1 pr-2 text-right tabular-nums">
-                        {item.llm_quality ?? "—"}
-                      </td>
-                      <td className="py-1 pr-2 text-right tabular-nums">
-                        {item.rank_score?.toFixed?.(2) ?? "—"}
-                      </td>
-                      <td className="py-1 pr-2">
-                        <div className="flex flex-wrap items-center gap-1">
-                          {item.status === "rejected" ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                moderateItem(item.id, { action: "restore" })
-                              }
-                              disabled={busy}
-                              className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground hover:bg-muted disabled:opacity-50"
-                            >
-                              Restore
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                moderateItem(item.id, { action: "reject" })
-                              }
-                              disabled={busy}
-                              className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground hover:bg-muted disabled:opacity-50"
-                            >
-                              Reject
-                            </button>
-                          )}
-                          <input
-                            type="number"
-                            min={0}
-                            max={10}
-                            placeholder="imp"
-                            value={draft.importance}
-                            onChange={(e) =>
-                              setRateDraft(
-                                item.id,
-                                "importance",
-                                e.target.value
-                              )
-                            }
-                            className="w-12 rounded border border-border bg-transparent px-1 py-0.5 text-xs tabular-nums"
-                          />
-                          <input
-                            type="number"
-                            min={0}
-                            max={10}
-                            placeholder="qual"
-                            value={draft.quality}
-                            onChange={(e) =>
-                              setRateDraft(item.id, "quality", e.target.value)
-                            }
-                            className="w-12 rounded border border-border bg-transparent px-1 py-0.5 text-xs tabular-nums"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => applyRate(item.id)}
-                            disabled={busy}
-                            className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground hover:bg-muted disabled:opacity-50"
-                          >
-                            Rate
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <AdminTelegramStatus status={status} />
+      <AdminAudit audit={audit} />
+      <AdminLastRunSteps status={status} />
+      <AdminStatusJson status={status} />
+      <AdminLlmCalls calls={calls} />
+      <AdminQueue
+        suggestions={queueSuggestions}
+        submissions={queueSubmissions}
+        busy={queueBusy}
+        actionBusyId={queueActionBusyId}
+        onRefresh={loadQueue}
+        onDecide={decideQueue}
+      />
+      <AdminItems
+        items={items}
+        busy={itemsBusy}
+        actionBusyId={itemActionBusyId}
+        rateDraft={rateDraft}
+        onRateDraft={setRateDraft}
+        onApplyRate={applyRate}
+        onModerate={moderateItem}
+        onRefresh={loadItems}
+      />
     </div>
   );
 }

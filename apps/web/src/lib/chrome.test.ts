@@ -35,7 +35,7 @@ describe("compact header icon buttons", () => {
     const header = readFileSync(
       join(
         dirname(fileURLToPath(import.meta.url)),
-        "../components/HeaderBar.tsx"
+        "../components/header/CompactRow.tsx"
       ),
       "utf8"
     );
