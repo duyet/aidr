@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.1.7](https://github.com/duyet/aidr/compare/web-v0.1.6...web-v0.1.7) (2026-09-23)
+
+
+### ✨ Features
+
+* **web:** Algo tab, items volume bars, AI;DR request attribution ([e1b83b3](https://github.com/duyet/aidr/commit/e1b83b394b5f792076c48642cc14044a7455f139))
+* **web:** full AnyRouter app attribution for rankings ([c6332b6](https://github.com/duyet/aidr/commit/c6332b600254a29312ba6517e916f32101825e43))
+* **web:** regroup pipeline model attribution ([#120](https://github.com/duyet/aidr/issues/120)) ([2171dfa](https://github.com/duyet/aidr/commit/2171dfaf9debb3ea8dd051aa19bfd6f082bbbbf7)), closes [#114](https://github.com/duyet/aidr/issues/114)
+* **web:** score stories with typesafe/jev before chat ([#117](https://github.com/duyet/aidr/issues/117)) ([cff9c60](https://github.com/duyet/aidr/commit/cff9c60d2965b93af7f45fb1aff72788d408e6a7)), closes [#113](https://github.com/duyet/aidr/issues/113)
+* **web:** score stories with typesafe/jev before chat ([#118](https://github.com/duyet/aidr/issues/118)) ([a809ef0](https://github.com/duyet/aidr/commit/a809ef0a31a29b3bb916afe5b6c640810c0eeead)), closes [#113](https://github.com/duyet/aidr/issues/113)
+
+
+### 🐛 Bug Fixes
+
+* **deps:** update dependency cn to ^0.4.0 ([#116](https://github.com/duyet/aidr/issues/116)) ([720b962](https://github.com/duyet/aidr/commit/720b9621689455d1f0fee4576782f36ec6555fbe))
+
+
+### ⚡ Performance
+
+* **web:** client-side SWR cache and deferred loading ([#126](https://github.com/duyet/aidr/issues/126)) ([f060469](https://github.com/duyet/aidr/commit/f06046967634086a83f85109fecd10c084f21340))
+* **web:** collapse feed SSR to ~3 D1 round-trips ([#130](https://github.com/duyet/aidr/issues/130)) ([41ed437](https://github.com/duyet/aidr/commit/41ed43760690c0590118f982df47e506b1c1dba2))
+* **web:** defer Clerk off the critical path, split vendor chunks ([#132](https://github.com/duyet/aidr/issues/132)) ([4c189f1](https://github.com/duyet/aidr/commit/4c189f1e4e93e4ac936721e830b4b050f8f67ea5))
+* **web:** route D1 reads through sessions, strengthen cache headers ([#127](https://github.com/duyet/aidr/issues/127)) ([e3d8f71](https://github.com/duyet/aidr/commit/e3d8f71790405d0ed1ec0d16b570bbbcec128e88))
+* **web:** short edge cache on /api/system ([4564fda](https://github.com/duyet/aidr/commit/4564fdaf4a3b7aeae7eda7a01407b7d5c5686248))
+* **web:** split /api/system into per-section endpoints, batch D1 reads ([#122](https://github.com/duyet/aidr/issues/122)) ([5a08809](https://github.com/duyet/aidr/commit/5a08809c7097943e1a4b93349d4325a834ca3cac))
+
+
+### ♻️ Refactoring
+
+* **web:** break down oversized components, extract shared primitives ([#128](https://github.com/duyet/aidr/issues/128)) ([41d4dc4](https://github.com/duyet/aidr/commit/41d4dc4f13c8dc5322f4fa0c509eabb055e5d0ef))
+* **web:** decompose remaining oversized components ([#131](https://github.com/duyet/aidr/issues/131)) ([dcb0bb7](https://github.com/duyet/aidr/commit/dcb0bb753c70eb1aa81282e85b49184f43d9a44c))
+
 ## [0.1.6](https://github.com/duyet/aidr/compare/web-v0.1.5...web-v0.1.6) (2026-09-22)
 
 
