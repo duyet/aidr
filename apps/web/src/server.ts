@@ -10,8 +10,9 @@ import type { Env } from "../worker/types";
 import { NewsIngestWorkflow } from "../worker/workflow";
 import {
   handleAgentDiscovery,
-  withHomepageLinkHeaders,
+  withHomepageHeaders,
 } from "./lib/agent-discovery";
+import { readSession } from "./lib/db";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import {
@@ -84,7 +85,7 @@ export default {
         return await safeSitemapResponse(async () => {
           const resolved = await resolveEnv(env);
           return resolved?.DB
-            ? loadSitemapUrls(resolved.DB)
+            ? loadSitemapUrls(readSession(resolved.DB))
             : staticSitemapUrls();
         });
       } catch (error) {
@@ -94,7 +95,7 @@ export default {
     }
     return handlePublicCors(request, () =>
       handleSubscribeCors(request, async () =>
-        withHomepageLinkHeaders(
+        withHomepageHeaders(
           request,
           applyNotFoundHttpStatus(await handler.fetch(request))
         )

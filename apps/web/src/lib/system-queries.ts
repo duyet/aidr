@@ -1,5 +1,6 @@
 import { JEV_DEFAULT_MODEL } from "../../worker/systemone.js";
 import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "../../worker/workflow-run.js";
+import type { DbReader } from "./db";
 
 export interface WorkflowRunStats {
   bySource?: Record<string, number>;
@@ -402,7 +403,7 @@ let runStatsSupported: boolean | null = null;
  * in module scope so repeat hits skip the round-trip. Probes stay
  * individual queries (not batch) because failures are the signal — a D1
  * batch aborts wholesale on one failing statement. */
-async function probeSystemTables(db: D1Database): Promise<{
+async function probeSystemTables(db: DbReader): Promise<{
   hasTokens: boolean;
   hasRunStats: boolean;
   hasLlmCalls: boolean;
@@ -426,7 +427,7 @@ async function probeSystemTables(db: D1Database): Promise<{
   return { hasTokens, hasRunStats, hasLlmCalls };
 }
 
-async function loadLlmCallsPerDay(db: D1Database): Promise<LlmDayTaskCount[]> {
+async function loadLlmCallsPerDay(db: DbReader): Promise<LlmDayTaskCount[]> {
   const { results } = await db.prepare(SQL.llmCallsPerDay).all<{
     date: string;
     task: string;
@@ -477,7 +478,7 @@ function mapLlmCallRow(r: LlmCallDbRow): LlmCallRow {
  * runs' span). Newest-first limit so Recent runs keep their detail under
  * high volume. `untilMs` bounds the range for single-run lookups. */
 async function loadRecentLlmCalls(
-  db: D1Database,
+  db: DbReader,
   sinceMs: number,
   untilMs?: number
 ): Promise<LlmCallRow[]> {
@@ -526,7 +527,7 @@ export interface SystemOverview {
 }
 
 export async function loadSystemOverview(
-  db: D1Database
+  db: DbReader
 ): Promise<SystemOverview> {
   const { hasTokens, hasRunStats } = await probeSystemTables(db);
   const stmts = [
@@ -586,7 +587,7 @@ export interface SystemActivity {
 }
 
 export async function loadSystemActivity(
-  db: D1Database
+  db: DbReader
 ): Promise<SystemActivity> {
   const [byStatus, bySource, byCategory, perDay] = await db.batch([
     db.prepare(SQL.byStatus),
@@ -606,7 +607,7 @@ export async function loadSystemActivity(
  * window. `includeAttempts: false` strips the per-call rows (the bulk of
  * the old 1.2MB payload); /api/system/run-attempts serves them lazily. */
 export async function loadSystemRuns(
-  db: D1Database,
+  db: DbReader,
   opts: { includeAttempts?: boolean } = {}
 ): Promise<WorkflowRunRow[]> {
   const { hasRunStats, hasLlmCalls } = await probeSystemTables(db);
@@ -632,7 +633,7 @@ export async function loadSystemRuns(
 
 /** Per-run LLM call detail for the expandable RunsList row. */
 export async function loadRunAttempts(
-  db: D1Database,
+  db: DbReader,
   sinceMs: number,
   untilMs: number
 ): Promise<LlmCallRow[]> {
@@ -647,7 +648,7 @@ export interface SystemLlm {
   tokens: { total: number; avgPerItem: number; perDay: DayCount[] };
 }
 
-export async function loadSystemLlm(db: D1Database): Promise<SystemLlm> {
+export async function loadSystemLlm(db: DbReader): Promise<SystemLlm> {
   const { hasTokens, hasLlmCalls } = await probeSystemTables(db);
   const stmts = [];
   if (hasLlmCalls) stmts.push(db.prepare(SQL.llmCallsPerDay));
@@ -690,9 +691,7 @@ export interface SystemSources {
   volume: NamedCount[];
 }
 
-export async function loadSystemSources(
-  db: D1Database
-): Promise<SystemSources> {
+export async function loadSystemSources(db: DbReader): Promise<SystemSources> {
   const { hasRunStats } = await probeSystemTables(db);
   const [sourceRows, bySource, lastRunRes] = await db.batch([
     db.prepare(SQL.ingestSources),
@@ -716,7 +715,7 @@ export async function loadSystemSources(
  * statements as the granular endpoints — ~4 round-trips instead of one
  * per query. */
 export async function loadSystemStats(
-  db: D1Database,
+  db: DbReader,
   env: {
     ANYROUTER_MODEL?: string;
     ANYROUTER_TRANSLATE_MODEL?: string;

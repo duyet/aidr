@@ -13,7 +13,7 @@ import {
   SKILL_NAME,
   SKILL_PATH,
   sha256Digest,
-  withHomepageLinkHeaders,
+  withHomepageHeaders,
 } from "./agent-discovery";
 import { SITE_URL } from "./site";
 
@@ -138,11 +138,22 @@ describe("homepage Link header", () => {
     expect(h).toContain('rel="describedby"');
   });
 
-  it("appends Link on /", () => {
-    const res = withHomepageLinkHeaders(
+  it("appends Link and Cache-Control on /", () => {
+    const res = withHomepageHeaders(
       new Request(`${SITE_URL}/`),
       new Response("ok")
     );
     expect(res.headers.get("Link")).toContain("api-catalog");
+    expect(res.headers.get("Cache-Control")).toContain("s-maxage=300");
+  });
+
+  it("leaves an upstream Cache-Control alone", () => {
+    const res = withHomepageHeaders(
+      new Request(`${SITE_URL}/`),
+      new Response("ok", {
+        headers: { "Cache-Control": "private, no-store" },
+      })
+    );
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
   });
 });

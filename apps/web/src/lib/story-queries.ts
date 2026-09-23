@@ -1,3 +1,4 @@
+import type { DbReader } from "./db";
 import { sanitizeImageUrl } from "./tldr-images";
 import type { FeedItem } from "./types";
 
@@ -5,7 +6,7 @@ let llmTokensSupported: boolean | null = null;
 let imageUrlSupported: boolean | null = null;
 
 async function probeColumn(
-  db: D1Database,
+  db: DbReader,
   column: string,
   cache: boolean | null
 ): Promise<boolean> {
@@ -22,7 +23,7 @@ async function probeColumn(
 /** Look up a single published story by id (or id prefix). Shared by the
  * /api/story/$id route and the $slug permalink page loader. */
 export async function getStory(
-  db: D1Database,
+  db: DbReader,
   idPrefix: string
 ): Promise<FeedItem | null> {
   const [hasLlmTokens, hasImageUrl] = await Promise.all([
