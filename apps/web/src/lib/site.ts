@@ -6,9 +6,12 @@ export const SITE_SLOGAN = "AI news ranked and summary";
 export const SITE_DESCRIPTION =
   "AI News (aidr.today) ranks AI stories hourly from HN, HuggingNews, and more. LLM-scored AI;DR digest in English and Vietnamese — every item links to the source.";
 
-/** Homepage Open Graph / Twitter share image (1200×630, editorial brand). */
+/** Default Open Graph / Twitter share image (1200×630, editorial brand). */
 export const SITE_OG_IMAGE_PATH = "/og.jpg";
 export const SITE_OG_IMAGE_URL = `${SITE_URL}${SITE_OG_IMAGE_PATH}`;
+/** Homepage-only OG variant (masthead design). */
+export const SITE_OG_HOME_IMAGE_PATH = "/og-home.jpg";
+export const SITE_OG_HOME_IMAGE_URL = `${SITE_URL}${SITE_OG_HOME_IMAGE_PATH}`;
 export const SITE_OG_IMAGE_WIDTH = 1200;
 export const SITE_OG_IMAGE_HEIGHT = 630;
 

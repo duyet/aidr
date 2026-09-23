@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { articleHead, homepageHead, notFoundHead, pageHead } from "./seo";
 import {
   SITE_DESCRIPTION,
+  SITE_OG_HOME_IMAGE_URL,
   SITE_OG_IMAGE_URL,
   SITE_TITLE,
   SITE_URL,
@@ -33,11 +34,13 @@ describe("homepageHead", () => {
     expect(metaContent(head.meta, "og:description")).toBe(SITE_DESCRIPTION);
     expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/`);
     expect(metaContent(head.meta, "og:type")).toBe("website");
-    expect(metaContent(head.meta, "og:image")).toBe(SITE_OG_IMAGE_URL);
+    expect(metaContent(head.meta, "og:image")).toBe(SITE_OG_HOME_IMAGE_URL);
     expect(metaContent(head.meta, "og:image:width")).toBe("1200");
     expect(metaContent(head.meta, "og:image:height")).toBe("630");
     expect(metaContent(head.meta, "twitter:card")).toBe("summary_large_image");
-    expect(metaContent(head.meta, "twitter:image")).toBe(SITE_OG_IMAGE_URL);
+    expect(metaContent(head.meta, "twitter:image")).toBe(
+      SITE_OG_HOME_IMAGE_URL
+    );
     expect(metaContent(head.meta, "twitter:title")).toBe(SITE_TITLE);
     expect(metaContent(head.meta, "twitter:description")).toBe(
       SITE_DESCRIPTION
@@ -58,6 +61,9 @@ describe("pageHead", () => {
       href: `${SITE_URL}/about`,
     });
     expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/about`);
+    // Non-homepage pages share the default OG card; the masthead variant
+    // is homepage-only.
+    expect(metaContent(head.meta, "og:image")).toBe(SITE_OG_IMAGE_URL);
     expect(head.links).not.toContainEqual({
       rel: "canonical",
       href: `${SITE_URL}/`,

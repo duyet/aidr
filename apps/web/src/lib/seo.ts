@@ -1,6 +1,7 @@
 import {
   SITE_DESCRIPTION,
   SITE_NAME,
+  SITE_OG_HOME_IMAGE_URL,
   SITE_OG_IMAGE_HEIGHT,
   SITE_OG_IMAGE_URL,
   SITE_OG_IMAGE_WIDTH,
@@ -81,6 +82,7 @@ export function pageHead(opts: {
   path: string;
   title: string;
   description?: string;
+  imageUrl?: string;
 }): HeadTags {
   const url = canonicalUrl(opts.path);
   const description = opts.description ?? SITE_DESCRIPTION;
@@ -90,7 +92,7 @@ export function pageHead(opts: {
       description,
       url,
       type: "website",
-      imageUrl: SITE_OG_IMAGE_URL,
+      imageUrl: opts.imageUrl ?? SITE_OG_IMAGE_URL,
       siteOgDimensions: true,
     }),
     links: [{ rel: "canonical", href: url }, SITEMAP_LINK],
@@ -103,6 +105,7 @@ export function homepageHead(): HeadTags {
     path: "/",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
+    imageUrl: SITE_OG_HOME_IMAGE_URL,
   });
 }
 
