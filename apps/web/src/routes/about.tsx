@@ -5,7 +5,7 @@ import { anyrouterModelUrl } from "../lib/anyrouter";
 import { pageHead } from "../lib/seo";
 import { GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
 import { fetchSourceNames } from "../lib/sources-fn";
-import type { SystemStats } from "../lib/system-queries";
+import type { ModelChains } from "../lib/system-queries";
 
 export const Route = createFileRoute("/about")({
   head: () =>
@@ -166,14 +166,17 @@ function Sources() {
 function ModelsLine() {
   // English-only by design: the global lang toggle is disabled on this
   // route (see HeaderBar/LangToggle).
-  const [stats, setStats] = useState<SystemStats | null>(null);
+  const [models, setModels] = useState<ModelChains | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/system")
-      .then((res) => (res.ok ? (res.json() as Promise<SystemStats>) : null))
+    // env-only endpoint — no DB round-trip, answers in ~ms
+    fetch("/api/system/models")
+      .then((res) =>
+        res.ok ? (res.json() as Promise<{ models: ModelChains }>) : null
+      )
       .then((res) => {
-        if (!cancelled && res) setStats(res);
+        if (!cancelled && res) setModels(res.models);
       })
       .catch(() => {});
     return () => {
@@ -181,23 +184,21 @@ function ModelsLine() {
     };
   }, []);
 
-  if (!stats || stats.models.scoring.length === 0) return null;
-  const extra = stats.models.scoring.length - 1;
-  const decisions = stats.models.decisions;
+  if (!models || models.scoring.length === 0) return null;
+  const extra = models.scoring.length - 1;
+  const decisions = models.decisions;
   const decisionsExtra = decisions.length - 1;
 
   return (
     <>
       <p>
         Scoring:{" "}
-        <span className="font-mono text-foreground">
-          {stats.models.scoring[0]}
-        </span>
+        <span className="font-mono text-foreground">{models.scoring[0]}</span>
         {extra > 0 && ` (+${extra} fallback)`}
         {" · "}
         Translation:{" "}
         <span className="font-mono text-foreground">
-          {stats.models.translation[0]}
+          {models.translation[0]}
         </span>
       </p>
       <p>

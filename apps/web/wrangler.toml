@@ -85,7 +85,8 @@ allowed_sender_addresses = ["digest@aidr.today", "notes@aidr.today"]
 
 # Workers Cache: safe for this surface — only responses with public
 # Cache-Control headers (feed/story APIs, static shell) are cached;
-# /api/system is no-store so lastRun/runsToday recert is not edge-stale;
+# /api/system and /api/system/* carry a short public TTL (30s + swr) so
+# lastRun/runsToday recert stays within ~a minute of a finished ingest;
 # admin/subscribe/suggest/submit/mcp set no-store and Authorization-bearing
 # requests auto-bypass. Public GET /api/public is Cache-Control: public.
 [cache]

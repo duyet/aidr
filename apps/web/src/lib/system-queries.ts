@@ -189,7 +189,10 @@ function emptyLlmSummary(): RunLlmSummary {
   };
 }
 
-function summarizeAttempts(attempts: LlmCallRow[]): RunLlmSummary {
+function summarizeAttempts(
+  attempts: LlmCallRow[],
+  includeAttempts = true
+): RunLlmSummary {
   const summary = emptyLlmSummary();
   const seenModels = new Set<string>();
   for (const call of attempts) {
@@ -203,14 +206,15 @@ function summarizeAttempts(attempts: LlmCallRow[]): RunLlmSummary {
       summary.models.push(call.model);
     }
   }
-  summary.attempts = attempts;
+  summary.attempts = includeAttempts ? attempts : [];
   return summary;
 }
 
 /** Attribute llm_calls rows to runs by timestamp window. Exported for tests. */
 export function attachLlmCallsToRuns(
   runs: WorkflowRunRow[],
-  calls: LlmCallRow[]
+  calls: LlmCallRow[],
+  opts: { includeAttempts?: boolean } = {}
 ): WorkflowRunRow[] {
   if (runs.length === 0) return runs;
   const buckets = new Map<string, LlmCallRow[]>();
@@ -239,7 +243,9 @@ export function attachLlmCallsToRuns(
     const attempts = (buckets.get(run.id) ?? []).sort((a, b) => a.ts - b.ts);
     return {
       ...run,
-      llm: attempts.length ? summarizeAttempts(attempts) : undefined,
+      llm: attempts.length
+        ? summarizeAttempts(attempts, opts.includeAttempts ?? true)
+        : undefined,
     };
   });
 }
@@ -296,53 +302,138 @@ export function getModelChains(env: {
   };
 }
 
-let llmTokensSupported: boolean | null = null;
+/** Read SQL shared by the aggregate /api/system and the granular
+ * /api/system/* endpoints. Keep every statement unconditionally safe for
+ * db.batch() — a batch aborts entirely if one statement fails, so
+ * migration-gated queries stay out unless their probe passed. */
+const SQL = {
+  itemsCount: "SELECT COUNT(*) AS c FROM items",
+  translationsCount: "SELECT COUNT(*) AS c FROM translations",
+  tldrCount: "SELECT COUNT(*) AS c FROM tldr_snapshots",
+  subscribersCount: "SELECT COUNT(*) AS c FROM subscribers",
+  sourcesCount: "SELECT COUNT(*) AS c FROM sources",
+  itemSourcesCount: "SELECT COUNT(*) AS c FROM item_sources",
+  byStatus:
+    "SELECT status AS name, COUNT(*) AS count FROM items GROUP BY status ORDER BY count DESC",
+  bySource:
+    "SELECT source_id AS name, COUNT(*) AS count FROM items GROUP BY source_id ORDER BY count DESC LIMIT 10",
+  byCategory:
+    "SELECT COALESCE(category, 'uncategorized') AS name, COUNT(*) AS count FROM items GROUP BY name ORDER BY count DESC LIMIT 10",
+  itemsPerDay: `SELECT date(published_at, 'unixepoch') AS date, COUNT(*) AS count
+    FROM items
+    WHERE status = 'published' AND published_at >= unixepoch('now', '-14 days')
+    GROUP BY date ORDER BY date ASC`,
+  latestTldr: "SELECT date FROM tldr_snapshots ORDER BY date DESC LIMIT 1",
+  tokenTotal: "SELECT SUM(llm_tokens) AS s FROM items",
+  tokenAvg:
+    "SELECT AVG(llm_tokens) AS a FROM items WHERE llm_tokens IS NOT NULL AND llm_tokens > 0",
+  tokenPerDay: `SELECT date(fetched_at, 'unixepoch') AS date, SUM(llm_tokens) AS count
+    FROM items
+    WHERE fetched_at >= unixepoch('now', '-14 days')
+    GROUP BY date ORDER BY date ASC`,
+  ingestSources: `SELECT s.id, s.name, s.type, s.config, s.enabled,
+           COUNT(i.id) AS item_count
+    FROM sources s
+    LEFT JOIN items i ON i.source_id = s.id
+    GROUP BY s.id
+    ORDER BY s.enabled DESC, item_count DESC, s.name`,
+  llmCallsPerDay: `SELECT date(ts / 1000, 'unixepoch') AS date,
+           task,
+           COUNT(*) AS calls,
+           SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS failures,
+           SUM(COALESCE(tokens, 0)) AS tokens
+    FROM llm_calls
+    WHERE ts >= (unixepoch('now') - 14 * 86400) * 1000
+    GROUP BY date, task
+    ORDER BY date ASC, task ASC`,
+} as const;
 
-async function supportsLlmTokens(db: D1Database): Promise<boolean> {
-  if (llmTokensSupported !== null) return llmTokensSupported;
-  try {
-    await db.prepare("SELECT llm_tokens FROM items LIMIT 1").all();
-    llmTokensSupported = true;
-  } catch {
-    // column not migrated in yet
-    llmTokensSupported = false;
-  }
-  return llmTokensSupported;
+function runsSelectSql(hasRunStats: boolean, limit: number): string {
+  const runColumns = hasRunStats
+    ? "id, started_at, finished_at, items_fetched, items_new, error, stats"
+    : "id, started_at, finished_at, items_fetched, items_new, error";
+  return `SELECT ${runColumns} FROM workflow_runs ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT ${limit}`;
 }
 
-let llmCallsSupported: boolean | null = null;
+function firstRow<T>(res: { results?: unknown[] } | undefined): T | null {
+  return ((res?.results ?? [])[0] as T) ?? null;
+}
 
-async function supportsLlmCalls(db: D1Database): Promise<boolean> {
-  if (llmCallsSupported !== null) return llmCallsSupported;
-  try {
-    await db.prepare("SELECT ts FROM llm_calls LIMIT 1").all();
-    llmCallsSupported = true;
-  } catch {
-    llmCallsSupported = false;
-  }
-  return llmCallsSupported;
+function resultRows<T>(res: { results?: unknown[] } | undefined): T[] {
+  return (res?.results ?? []) as T[];
+}
+
+function mapSourceRow(row: {
+  id: string;
+  name: string;
+  type: string;
+  config: string | null;
+  enabled: number;
+  item_count: number;
+}): IngestSourceRow {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    enabled: Number(row.enabled) !== 0,
+    itemCount: Number(row.item_count) || 0,
+    config: parseSourceConfig(row.config),
+  };
+}
+
+type RunDbRow = Omit<WorkflowRunRow, "stats" | "llm"> & {
+  stats?: string | null;
+};
+
+function countRunsToday(runs: WorkflowRunRow[]): number {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return runs.filter(
+    (r) =>
+      r.started_at &&
+      new Date(r.started_at * 1000).toISOString().slice(0, 10) === todayStr
+  ).length;
+}
+
+let llmTokensSupported: boolean | null = null;
+let llmCallsSupported: boolean | null = null;
+let runStatsSupported: boolean | null = null;
+
+/** Column/table probes run in parallel once per isolate; each flag caches
+ * in module scope so repeat hits skip the round-trip. Probes stay
+ * individual queries (not batch) because failures are the signal — a D1
+ * batch aborts wholesale on one failing statement. */
+async function probeSystemTables(db: D1Database): Promise<{
+  hasTokens: boolean;
+  hasRunStats: boolean;
+  hasLlmCalls: boolean;
+}> {
+  const probe = async (sql: string): Promise<boolean> => {
+    try {
+      await db.prepare(sql).all();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const [hasTokens, hasRunStats, hasLlmCalls] = await Promise.all([
+    llmTokensSupported ?? probe("SELECT llm_tokens FROM items LIMIT 1"),
+    runStatsSupported ?? probe("SELECT stats FROM workflow_runs LIMIT 1"),
+    llmCallsSupported ?? probe("SELECT ts FROM llm_calls LIMIT 1"),
+  ]);
+  llmTokensSupported = hasTokens;
+  runStatsSupported = hasRunStats;
+  llmCallsSupported = hasLlmCalls;
+  return { hasTokens, hasRunStats, hasLlmCalls };
 }
 
 async function loadLlmCallsPerDay(db: D1Database): Promise<LlmDayTaskCount[]> {
-  const { results } = await db
-    .prepare(
-      `SELECT date(ts / 1000, 'unixepoch') AS date,
-              task,
-              COUNT(*) AS calls,
-              SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS failures,
-              SUM(COALESCE(tokens, 0)) AS tokens
-       FROM llm_calls
-       WHERE ts >= (unixepoch('now') - 14 * 86400) * 1000
-       GROUP BY date, task
-       ORDER BY date ASC, task ASC`
-    )
-    .all<{
-      date: string;
-      task: string;
-      calls: number;
-      failures: number;
-      tokens: number | null;
-    }>();
+  const { results } = await db.prepare(SQL.llmCallsPerDay).all<{
+    date: string;
+    task: string;
+    calls: number;
+    failures: number;
+    tokens: number | null;
+  }>();
   return (results ?? []).map((r) => ({
     date: r.date,
     task: r.task,
@@ -382,14 +473,18 @@ function mapLlmCallRow(r: LlmCallDbRow): LlmCallRow {
   };
 }
 
-/** Recent llm_calls covering the last N workflow runs' time window.
- * Newest-first limit so Recent runs keep their detail under high volume. */
+/** Recent llm_calls covering a time window (usually the last N workflow
+ * runs' span). Newest-first limit so Recent runs keep their detail under
+ * high volume. `untilMs` bounds the range for single-run lookups. */
 async function loadRecentLlmCalls(
   db: D1Database,
-  sinceMs: number
+  sinceMs: number,
+  untilMs?: number
 ): Promise<LlmCallRow[]> {
   const mapNewestFirst = (results: LlmCallDbRow[] | null | undefined) =>
     (results ?? []).map(mapLlmCallRow).reverse();
+  const untilClause = untilMs != null ? " AND ts <= ?" : "";
+  const binds: number[] = untilMs != null ? [sinceMs, untilMs] : [sinceMs];
 
   try {
     const { results } = await db
@@ -397,11 +492,11 @@ async function loadRecentLlmCalls(
         `SELECT ts, task, model, ok, tokens, duration_ms, prompt_chars, error,
                 prompt_tokens, completion_tokens, cached_tokens
          FROM llm_calls
-         WHERE ts >= ?
+         WHERE ts >= ?${untilClause}
          ORDER BY ts DESC
          LIMIT 2000`
       )
-      .bind(sinceMs)
+      .bind(...binds)
       .all<LlmCallDbRow>();
     return mapNewestFirst(results);
   } catch {
@@ -410,30 +505,216 @@ async function loadRecentLlmCalls(
       .prepare(
         `SELECT ts, task, model, ok, tokens, duration_ms, prompt_chars, error
          FROM llm_calls
-         WHERE ts >= ?
+         WHERE ts >= ?${untilClause}
          ORDER BY ts DESC
          LIMIT 2000`
       )
-      .bind(sinceMs)
+      .bind(...binds)
       .all<LlmCallDbRow>();
     return mapNewestFirst(results);
   }
 }
 
-let runStatsSupported: boolean | null = null;
-
-async function supportsRunStats(db: D1Database): Promise<boolean> {
-  if (runStatsSupported !== null) return runStatsSupported;
-  try {
-    await db.prepare("SELECT stats FROM workflow_runs LIMIT 1").all();
-    runStatsSupported = true;
-  } catch {
-    // column not migrated in yet (pre-0012 DB)
-    runStatsSupported = false;
-  }
-  return runStatsSupported;
+/** Overview tiles + catalog: counts, token headline, run recert, digest
+ * date — one batch, one round-trip. */
+export interface SystemOverview {
+  totals: SystemStats["totals"];
+  tokens: { total: number; avgPerItem: number };
+  runsToday: number;
+  lastRun: WorkflowRunRow | null;
+  latestTldrDate: string | null;
 }
 
+export async function loadSystemOverview(
+  db: D1Database
+): Promise<SystemOverview> {
+  const { hasTokens, hasRunStats } = await probeSystemTables(db);
+  const stmts = [
+    db.prepare(SQL.itemsCount),
+    db.prepare(SQL.translationsCount),
+    db.prepare(SQL.tldrCount),
+    db.prepare(SQL.subscribersCount),
+    db.prepare(SQL.sourcesCount),
+    db.prepare(SQL.itemSourcesCount),
+    db.prepare(runsSelectSql(hasRunStats, 30)),
+    db.prepare(SQL.latestTldr),
+  ];
+  if (hasTokens) {
+    stmts.push(db.prepare(SQL.tokenTotal), db.prepare(SQL.tokenAvg));
+  }
+  const [
+    itemsTotal,
+    translationsTotal,
+    tldrTotal,
+    subscribersTotal,
+    sourcesTotal,
+    itemSourcesTotal,
+    runs,
+    latestTldr,
+    tokenTotalRes,
+    tokenAvgRes,
+  ] = await db.batch(stmts);
+
+  const runRows = resultRows<RunDbRow>(runs).map(normalizeRunRow);
+  const tokenTotal = firstRow<{ s: number | null }>(tokenTotalRes)?.s ?? 0;
+  const tokenAvg = Math.round(
+    firstRow<{ a: number | null }>(tokenAvgRes)?.a ?? 0
+  );
+
+  return {
+    totals: {
+      items: firstRow<{ c: number }>(itemsTotal)?.c ?? 0,
+      translations: firstRow<{ c: number }>(translationsTotal)?.c ?? 0,
+      tldrSnapshots: firstRow<{ c: number }>(tldrTotal)?.c ?? 0,
+      subscribers: firstRow<{ c: number }>(subscribersTotal)?.c ?? 0,
+      sources: firstRow<{ c: number }>(sourcesTotal)?.c ?? 0,
+      itemSourcesRows: firstRow<{ c: number }>(itemSourcesTotal)?.c ?? 0,
+    },
+    tokens: { total: tokenTotal, avgPerItem: tokenAvg },
+    runsToday: countRunsToday(runRows),
+    lastRun: runRows[0] ?? null,
+    latestTldrDate: firstRow<{ date: string }>(latestTldr)?.date ?? null,
+  };
+}
+
+/** Distributions feeding the items chart and the content tab — one batch. */
+export interface SystemActivity {
+  itemsPerDay: DayCount[];
+  itemsByStatus: NamedCount[];
+  itemsBySource: NamedCount[];
+  itemsByCategory: NamedCount[];
+}
+
+export async function loadSystemActivity(
+  db: D1Database
+): Promise<SystemActivity> {
+  const [byStatus, bySource, byCategory, perDay] = await db.batch([
+    db.prepare(SQL.byStatus),
+    db.prepare(SQL.bySource),
+    db.prepare(SQL.byCategory),
+    db.prepare(SQL.itemsPerDay),
+  ]);
+  return {
+    itemsByStatus: resultRows<NamedCount>(byStatus),
+    itemsBySource: resultRows<NamedCount>(bySource),
+    itemsByCategory: resultRows<NamedCount>(byCategory),
+    itemsPerDay: resultRows<DayCount>(perDay),
+  };
+}
+
+/** Last 30 workflow runs with per-run LLM usage attributed by timestamp
+ * window. `includeAttempts: false` strips the per-call rows (the bulk of
+ * the old 1.2MB payload); /api/system/run-attempts serves them lazily. */
+export async function loadSystemRuns(
+  db: D1Database,
+  opts: { includeAttempts?: boolean } = {}
+): Promise<WorkflowRunRow[]> {
+  const { hasRunStats, hasLlmCalls } = await probeSystemTables(db);
+  const { results } = await db
+    .prepare(runsSelectSql(hasRunStats, 30))
+    .all<RunDbRow>();
+  const runRows = (results ?? []).map(normalizeRunRow);
+  if (!hasLlmCalls || runRows.length === 0) return runRows;
+  try {
+    const oldestStart = runRows.reduce<number | null>((min, r) => {
+      if (r.started_at == null) return min;
+      return min == null ? r.started_at : Math.min(min, r.started_at);
+    }, null);
+    const sinceMs =
+      oldestStart != null ? oldestStart * 1000 : Date.now() - 7 * 86400_000;
+    const recentCalls = await loadRecentLlmCalls(db, sinceMs);
+    return attachLlmCallsToRuns(runRows, recentCalls, opts);
+  } catch {
+    // leave runs without llm detail
+    return runRows;
+  }
+}
+
+/** Per-run LLM call detail for the expandable RunsList row. */
+export async function loadRunAttempts(
+  db: D1Database,
+  sinceMs: number,
+  untilMs: number
+): Promise<LlmCallRow[]> {
+  const { hasLlmCalls } = await probeSystemTables(db);
+  if (!hasLlmCalls) return [];
+  return loadRecentLlmCalls(db, sinceMs, untilMs);
+}
+
+/** Token burn + per-day usage feeding the overview/LLM tabs — one batch. */
+export interface SystemLlm {
+  llmCallsPerDay: LlmDayTaskCount[];
+  tokens: { total: number; avgPerItem: number; perDay: DayCount[] };
+}
+
+export async function loadSystemLlm(db: D1Database): Promise<SystemLlm> {
+  const { hasTokens, hasLlmCalls } = await probeSystemTables(db);
+  const stmts = [];
+  if (hasLlmCalls) stmts.push(db.prepare(SQL.llmCallsPerDay));
+  if (hasTokens) {
+    stmts.push(
+      db.prepare(SQL.tokenTotal),
+      db.prepare(SQL.tokenAvg),
+      db.prepare(SQL.tokenPerDay)
+    );
+  }
+  const [llmPerDay, tokenTotalRes, tokenAvgRes, tokenPerDayRes] = stmts.length
+    ? await db.batch(stmts)
+    : [];
+
+  return {
+    llmCallsPerDay: resultRows<{
+      date: string;
+      task: string;
+      calls: number;
+      failures: number;
+      tokens: number | null;
+    }>(llmPerDay).map((r) => ({ ...r, tokens: r.tokens ?? 0 })),
+    tokens: {
+      total: firstRow<{ s: number | null }>(tokenTotalRes)?.s ?? 0,
+      avgPerItem: Math.round(
+        firstRow<{ a: number | null }>(tokenAvgRes)?.a ?? 0
+      ),
+      perDay: resultRows<{ date: string; count: number | null }>(
+        tokenPerDayRes
+      ).map((r) => ({ date: r.date, count: r.count ?? 0 })),
+    },
+  };
+}
+
+/** Ingest source table plus the latest run's per-source pull and lifetime
+ * volume — one batch. */
+export interface SystemSources {
+  ingestSources: IngestSourceRow[];
+  lastRunBySource: Record<string, number> | undefined;
+  volume: NamedCount[];
+}
+
+export async function loadSystemSources(
+  db: D1Database
+): Promise<SystemSources> {
+  const { hasRunStats } = await probeSystemTables(db);
+  const [sourceRows, bySource, lastRunRes] = await db.batch([
+    db.prepare(SQL.ingestSources),
+    db.prepare(SQL.bySource),
+    db.prepare(runsSelectSql(hasRunStats, 1)),
+  ]);
+  const lastRun =
+    resultRows<RunDbRow>(lastRunRes).map(normalizeRunRow)[0] ?? null;
+  return {
+    ingestSources:
+      resultRows<Parameters<typeof mapSourceRow>[0]>(sourceRows).map(
+        mapSourceRow
+      ),
+    volume: resultRows<NamedCount>(bySource),
+    lastRunBySource: lastRun?.stats?.bySource,
+  };
+}
+
+/** Aggregate for the public GET /api/system contract (GitHub Actions
+ * watchdog, smoke checks, agent discovery). Shares the same batched
+ * statements as the granular endpoints — ~4 round-trips instead of one
+ * per query. */
 export async function loadSystemStats(
   db: D1Database,
   env: {
@@ -443,17 +724,30 @@ export async function loadSystemStats(
     ANYROUTER_JEV_MODEL?: string;
   } = {}
 ): Promise<SystemStats> {
-  const [hasTokens, hasRunStats, hasLlmCalls] = await Promise.all([
-    supportsLlmTokens(db),
-    supportsRunStats(db),
-    supportsLlmCalls(db),
-  ]);
+  const { hasTokens, hasRunStats, hasLlmCalls } = await probeSystemTables(db);
 
-  const runColumns = hasRunStats
-    ? "id, started_at, finished_at, items_fetched, items_new, error, stats"
-    : "id, started_at, finished_at, items_fetched, items_new, error";
-  const runsQuery = `SELECT ${runColumns} FROM workflow_runs ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT 30`;
-
+  const stmts = [
+    db.prepare(SQL.itemsCount),
+    db.prepare(SQL.translationsCount),
+    db.prepare(SQL.tldrCount),
+    db.prepare(SQL.subscribersCount),
+    db.prepare(SQL.sourcesCount),
+    db.prepare(SQL.itemSourcesCount),
+    db.prepare(SQL.byStatus),
+    db.prepare(SQL.bySource),
+    db.prepare(SQL.byCategory),
+    db.prepare(SQL.itemsPerDay),
+    db.prepare(runsSelectSql(hasRunStats, 30)),
+    db.prepare(SQL.latestTldr),
+    db.prepare(SQL.ingestSources),
+  ];
+  if (hasTokens) {
+    stmts.push(
+      db.prepare(SQL.tokenTotal),
+      db.prepare(SQL.tokenAvg),
+      db.prepare(SQL.tokenPerDay)
+    );
+  }
   const [
     itemsTotal,
     translationsTotal,
@@ -468,104 +762,21 @@ export async function loadSystemStats(
     runs,
     latestTldr,
     sourceRows,
-  ] = await Promise.all([
-    db.prepare("SELECT COUNT(*) AS c FROM items").first<{ c: number }>(),
-    db.prepare("SELECT COUNT(*) AS c FROM translations").first<{ c: number }>(),
-    db
-      .prepare("SELECT COUNT(*) AS c FROM tldr_snapshots")
-      .first<{ c: number }>(),
-    db.prepare("SELECT COUNT(*) AS c FROM subscribers").first<{ c: number }>(),
-    db.prepare("SELECT COUNT(*) AS c FROM sources").first<{ c: number }>(),
-    db.prepare("SELECT COUNT(*) AS c FROM item_sources").first<{ c: number }>(),
-    db
-      .prepare(
-        "SELECT status AS name, COUNT(*) AS count FROM items GROUP BY status ORDER BY count DESC"
-      )
-      .all<{ name: string; count: number }>(),
-    db
-      .prepare(
-        "SELECT source_id AS name, COUNT(*) AS count FROM items GROUP BY source_id ORDER BY count DESC LIMIT 10"
-      )
-      .all<{ name: string; count: number }>(),
-    db
-      .prepare(
-        "SELECT COALESCE(category, 'uncategorized') AS name, COUNT(*) AS count FROM items GROUP BY name ORDER BY count DESC LIMIT 10"
-      )
-      .all<{ name: string; count: number }>(),
-    db
-      .prepare(
-        `SELECT date(published_at, 'unixepoch') AS date, COUNT(*) AS count
-         FROM items
-         WHERE status = 'published' AND published_at >= unixepoch('now', '-14 days')
-         GROUP BY date ORDER BY date ASC`
-      )
-      .all<{ date: string; count: number }>(),
-    db
-      .prepare(runsQuery)
-      .all<Omit<WorkflowRunRow, "stats" | "llm"> & { stats?: string | null }>(),
-    db
-      .prepare("SELECT date FROM tldr_snapshots ORDER BY date DESC LIMIT 1")
-      .first<{
-        date: string;
-      }>(),
-    db
-      .prepare(
-        `SELECT s.id, s.name, s.type, s.config, s.enabled,
-                COUNT(i.id) AS item_count
-         FROM sources s
-         LEFT JOIN items i ON i.source_id = s.id
-         GROUP BY s.id
-         ORDER BY s.enabled DESC, item_count DESC, s.name`
-      )
-      .all<{
-        id: string;
-        name: string;
-        type: string;
-        config: string | null;
-        enabled: number;
-        item_count: number;
-      }>(),
-  ]);
+    tokenTotalRes,
+    tokenAvgRes,
+    tokenPerDayRes,
+  ] = await db.batch(stmts);
 
-  let tokenTotal = 0;
-  let tokenAvg = 0;
-  let tokenPerDay: DayCount[] = [];
-  if (hasTokens) {
-    const [totalRow, avgRow, perDayRows] = await Promise.all([
-      db
-        .prepare("SELECT SUM(llm_tokens) AS s FROM items")
-        .first<{ s: number | null }>(),
-      db
-        .prepare(
-          "SELECT AVG(llm_tokens) AS a FROM items WHERE llm_tokens IS NOT NULL AND llm_tokens > 0"
-        )
-        .first<{ a: number | null }>(),
-      db
-        .prepare(
-          `SELECT date(fetched_at, 'unixepoch') AS date, SUM(llm_tokens) AS count
-           FROM items
-           WHERE fetched_at >= unixepoch('now', '-14 days')
-           GROUP BY date ORDER BY date ASC`
-        )
-        .all<{ date: string; count: number | null }>(),
-    ]);
-    tokenTotal = totalRow?.s ?? 0;
-    tokenAvg = Math.round(avgRow?.a ?? 0);
-    tokenPerDay = (perDayRows.results ?? []).map((r) => ({
-      date: r.date,
-      count: r.count ?? 0,
-    }));
-  }
-
-  const runRowsRaw: WorkflowRunRow[] = (runs.results ?? []).map(
-    normalizeRunRow
+  const tokenTotal = firstRow<{ s: number | null }>(tokenTotalRes)?.s ?? 0;
+  const tokenAvg = Math.round(
+    firstRow<{ a: number | null }>(tokenAvgRes)?.a ?? 0
   );
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const runsToday = runRowsRaw.filter(
-    (r) =>
-      r.started_at &&
-      new Date(r.started_at * 1000).toISOString().slice(0, 10) === todayStr
-  ).length;
+  const tokenPerDay = resultRows<{ date: string; count: number | null }>(
+    tokenPerDayRes
+  ).map((r) => ({ date: r.date, count: r.count ?? 0 }));
+
+  const runRowsRaw = resultRows<RunDbRow>(runs).map(normalizeRunRow);
+  const runsToday = countRunsToday(runRowsRaw);
 
   let llmCallsPerDay: LlmDayTaskCount[] = [];
   let runRows = runRowsRaw;
@@ -591,17 +802,17 @@ export async function loadSystemStats(
 
   return {
     totals: {
-      items: itemsTotal?.c ?? 0,
-      translations: translationsTotal?.c ?? 0,
-      tldrSnapshots: tldrTotal?.c ?? 0,
-      subscribers: subscribersTotal?.c ?? 0,
-      sources: sourcesTotal?.c ?? 0,
-      itemSourcesRows: itemSourcesTotal?.c ?? 0,
+      items: firstRow<{ c: number }>(itemsTotal)?.c ?? 0,
+      translations: firstRow<{ c: number }>(translationsTotal)?.c ?? 0,
+      tldrSnapshots: firstRow<{ c: number }>(tldrTotal)?.c ?? 0,
+      subscribers: firstRow<{ c: number }>(subscribersTotal)?.c ?? 0,
+      sources: firstRow<{ c: number }>(sourcesTotal)?.c ?? 0,
+      itemSourcesRows: firstRow<{ c: number }>(itemSourcesTotal)?.c ?? 0,
     },
-    itemsByStatus: byStatus.results ?? [],
-    itemsBySource: bySource.results ?? [],
-    itemsByCategory: byCategory.results ?? [],
-    itemsPerDay: perDay.results ?? [],
+    itemsByStatus: resultRows<NamedCount>(byStatus),
+    itemsBySource: resultRows<NamedCount>(bySource),
+    itemsByCategory: resultRows<NamedCount>(byCategory),
+    itemsPerDay: resultRows<DayCount>(perDay),
     tokens: {
       total: tokenTotal,
       avgPerItem: tokenAvg,
@@ -610,16 +821,12 @@ export async function loadSystemStats(
     runs: runRows,
     runsToday,
     lastRun: runRows[0] ?? null,
-    latestTldrDate: latestTldr?.date ?? null,
+    latestTldrDate: firstRow<{ date: string }>(latestTldr)?.date ?? null,
     models: getModelChains(env),
     llmCallsPerDay,
-    ingestSources: (sourceRows.results ?? []).map((row) => ({
-      id: row.id,
-      name: row.name,
-      type: row.type,
-      enabled: Number(row.enabled) !== 0,
-      itemCount: Number(row.item_count) || 0,
-      config: parseSourceConfig(row.config),
-    })),
+    ingestSources:
+      resultRows<Parameters<typeof mapSourceRow>[0]>(sourceRows).map(
+        mapSourceRow
+      ),
   };
 }

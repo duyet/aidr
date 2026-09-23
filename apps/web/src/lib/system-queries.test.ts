@@ -7,22 +7,25 @@ import {
 } from "./system-queries";
 
 function makeDb(stubs: Record<string, unknown>) {
+  const prepare = (sql: string) => {
+    const key = Object.keys(stubs).find((k) => sql.includes(k));
+    const stub = key
+      ? (stubs[key] as {
+          first?: () => Promise<unknown>;
+          all?: () => Promise<{ results: unknown[] }>;
+        })
+      : {};
+    const stmt = {
+      bind: (..._args: unknown[]) => stmt,
+      first: async () => stub.first?.() ?? null,
+      all: async () => stub.all?.() ?? { results: [] },
+    };
+    return stmt;
+  };
   return {
-    prepare(sql: string) {
-      const key = Object.keys(stubs).find((k) => sql.includes(k));
-      const stub = key
-        ? stubs[key]
-        : { first: async () => null, all: async () => ({ results: [] }) };
-      return {
-        bind: (..._args: unknown[]) => stub,
-        first: async () =>
-          (stub as { first?: () => Promise<unknown> }).first?.(),
-        all: async () =>
-          (stub as { all?: () => Promise<{ results: unknown[] }> }).all?.() ?? {
-            results: [],
-          },
-      };
-    },
+    prepare,
+    batch: async (stmts: { all: () => Promise<unknown> }[]) =>
+      Promise.all(stmts.map((s) => s.all())),
   } as unknown as D1Database;
 }
 
@@ -154,6 +157,10 @@ describe("loadSystemStats run timestamp normalization", () => {
         seen.push(sql);
         return inner.prepare(sql);
       },
+      batch: (stmts: unknown[]) =>
+        (
+          inner as unknown as { batch: (s: unknown[]) => Promise<unknown> }
+        ).batch(stmts),
     } as unknown as D1Database;
 
     await loadSystemStats(db, {});
