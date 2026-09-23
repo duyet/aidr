@@ -6,6 +6,7 @@ import {
   loadTopicDailyCounts,
   rankTrendingWithGrowth,
 } from "../../worker/topic-learning.js";
+import type { DbReader } from "./db";
 import { setLearnedKeywords } from "./highlight";
 import { parseStoredBullets } from "./tldr-bullets";
 import {
@@ -50,7 +51,7 @@ let llmTokensSupported: boolean | null = null;
 let imageUrlSupported: boolean | null = null;
 
 async function probeColumn(
-  db: D1Database,
+  db: DbReader,
   column: string,
   cache: boolean | null
 ): Promise<boolean> {
@@ -64,12 +65,12 @@ async function probeColumn(
   }
 }
 
-async function supportsLlmTokens(db: D1Database): Promise<boolean> {
+async function supportsLlmTokens(db: DbReader): Promise<boolean> {
   llmTokensSupported = await probeColumn(db, "llm_tokens", llmTokensSupported);
   return llmTokensSupported;
 }
 
-async function supportsImageUrl(db: D1Database): Promise<boolean> {
+async function supportsImageUrl(db: DbReader): Promise<boolean> {
   imageUrlSupported = await probeColumn(db, "image_url", imageUrlSupported);
   return imageUrlSupported;
 }
@@ -90,7 +91,7 @@ function toFeedItem(row: ItemRow): FeedItem {
   };
 }
 
-async function attachSources(db: D1Database, items: FeedItem[]): Promise<void> {
+async function attachSources(db: DbReader, items: FeedItem[]): Promise<void> {
   if (items.length === 0) return;
   const byId = new Map(items.map((i) => [i.id, i]));
   const ids = [...byId.keys()];
@@ -156,7 +157,7 @@ function groupByDay(items: FeedItem[]): DayGroup[] {
 }
 
 export async function getFeed(
-  db: D1Database,
+  db: DbReader,
   opts: { category?: string; q?: string; days?: number; before?: string } = {}
 ): Promise<FeedResponse> {
   const days = opts.days ?? (opts.q ? 30 : 3);

@@ -1,3 +1,4 @@
+import { readSession } from "./db";
 import { getPublicDigest } from "./public-queries";
 
 export const PUBLIC_CACHE_CONTROL =
@@ -21,7 +22,7 @@ export async function servePublicApi(
 ): Promise<Response> {
   if (!db) return unavailable(503);
   try {
-    const body = await getPublicDigest(db);
+    const body = await getPublicDigest(readSession(db));
     return Response.json(body, {
       headers: { "Cache-Control": PUBLIC_CACHE_CONTROL },
     });

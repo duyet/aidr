@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/system")({
             typeof db.withSession === "function"
               ? db.withSession("first-primary")
               : db;
-          const stats = await loadSystemStats(session as D1Database, env);
+          const stats = await loadSystemStats(session, env);
           return systemJson(stats);
         } catch (e) {
           console.error("system:", e);

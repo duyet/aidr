@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { readSession } from "../../lib/db";
 import { getFeed } from "../../lib/feed-queries";
 
 export const Route = createFileRoute("/api/feed")({
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/api/feed")({
         const days = daysRaw ? Number.parseInt(daysRaw, 10) : undefined;
         const before = url.searchParams.get("before") ?? undefined;
         try {
-          const feed = await getFeed(db, {
+          const feed = await getFeed(readSession(db), {
             category: url.searchParams.get("category") ?? undefined,
             q: url.searchParams.get("q") ?? undefined,
             days:

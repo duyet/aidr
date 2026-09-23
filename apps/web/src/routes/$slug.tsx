@@ -16,6 +16,12 @@ type LoaderResult =
   | { kind: "story"; item: FeedItem }
   | { kind: "missing"; lang: Lang };
 
+/** Matches /api/story/$id — published stories are public and change
+ * rarely, so the permalink HTML is edge-cacheable. Missing slugs stay
+ * no-store below. */
+const STORY_PAGE_CACHE_CONTROL =
+  "public, max-age=300, s-maxage=600, stale-while-revalidate=3600";
+
 export const Route = createFileRoute("/$slug")({
   loader: async ({ params }): Promise<LoaderResult> => {
     const idPrefix = idPrefixFromSlug(params.slug);
@@ -36,7 +42,7 @@ export const Route = createFileRoute("/$slug")({
           [NOT_FOUND_HEADER]: "1",
           "Cache-Control": "private, no-store",
         }
-      : {},
+      : { "Cache-Control": STORY_PAGE_CACHE_CONTROL },
   head: ({ loaderData }) => {
     if (!loaderData || loaderData.kind === "missing") {
       const lang = loaderData?.kind === "missing" ? loaderData.lang : "vi";

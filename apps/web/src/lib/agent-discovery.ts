@@ -369,7 +369,13 @@ export async function handleAgentDiscovery(
   return null;
 }
 
-export function withHomepageLinkHeaders(
+/** Explicit TTL for the SSR homepage: the feed is public data refreshed
+ * ~hourly by ingest. Setting it in code keeps edge caching deterministic
+ * instead of depending on a dashboard cache rule. */
+export const HOMEPAGE_CACHE_CONTROL =
+  "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
+
+export function withHomepageHeaders(
   request: Request,
   response: Response
 ): Response {
@@ -379,6 +385,9 @@ export function withHomepageLinkHeaders(
   const extra = homepageLinkHeader();
   const existing = headers.get("Link");
   headers.set("Link", existing ? `${existing}, ${extra}` : extra);
+  if (response.status === 200 && !headers.has("Cache-Control")) {
+    headers.set("Cache-Control", HOMEPAGE_CACHE_CONTROL);
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

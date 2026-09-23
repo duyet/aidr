@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireClerkUser } from "./clerk-auth-fn";
+import { readSession } from "./db";
 
 export type SubmitVia = "web" | "agent";
 
@@ -99,7 +100,7 @@ export const fetchMySubmissions = createServerFn({ method: "GET" })
     const db = (env as { DB?: D1Database }).DB;
     if (!db) return [];
     try {
-      const { results } = await db
+      const { results } = await readSession(db)
         .prepare(
           `SELECT id, url, title, status, created_at, review_note
            FROM submissions
