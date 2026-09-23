@@ -25,6 +25,11 @@ export interface FeedItem {
   sources: ItemSource[];
   llm_tokens: number;
   image_url: string | null;
+  /** Set only on SSR feed items, which ship without summary/sources to
+   * keep the dehydrated payload small. When true the row lazily refetches
+   * the full story from /api/story on first expand. Never set by
+   * /api/feed or /api/story — their items are always complete. */
+  lazyDetail?: boolean;
 }
 
 export interface TldrBullet {
