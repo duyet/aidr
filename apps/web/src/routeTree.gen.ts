@@ -33,6 +33,7 @@ import { Route as ApiSystemRouteImport } from './routes/api/system'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
+import { Route as ApiOgIdRouteImport } from './routes/api/og.$id'
 import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
 import { Route as ApiSystemActivityRouteImport } from './routes/api/system.activity'
 import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
@@ -162,6 +163,11 @@ const ApiAdminSplatRoute = ApiAdminSplatRouteImport.update({
   path: '/api/admin/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOgIdRoute = ApiOgIdRouteImport.update({
+  id: '/api/og/$id',
+  path: '/api/og/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStoryIdRoute = ApiStoryIdRouteImport.update({
   id: '/api/story/$id',
   path: '/api/story/$id',
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
+  '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
+  '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
+  '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
@@ -333,6 +342,7 @@ export interface FileRouteTypes {
     | '/sign-in/$'
     | '/sign-up/$'
     | '/api/admin/$'
+    | '/api/og/$id'
     | '/api/story/$id'
     | '/api/system/activity'
     | '/api/system/llm'
@@ -367,6 +377,7 @@ export interface FileRouteTypes {
     | '/sign-in/$'
     | '/sign-up/$'
     | '/api/admin/$'
+    | '/api/og/$id'
     | '/api/story/$id'
     | '/api/system/activity'
     | '/api/system/llm'
@@ -401,6 +412,7 @@ export interface FileRouteTypes {
     | '/sign-in/$'
     | '/sign-up/$'
     | '/api/admin/$'
+    | '/api/og/$id'
     | '/api/story/$id'
     | '/api/system/activity'
     | '/api/system/llm'
@@ -436,6 +448,7 @@ export interface RootRouteChildren {
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
+  ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
 }
 
@@ -609,6 +622,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/og/$id': {
+      id: '/api/og/$id'
+      path: '/api/og/$id'
+      fullPath: '/api/og/$id'
+      preLoaderRoute: typeof ApiOgIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/story/$id': {
       id: '/api/story/$id'
       path: '/api/story/$id'
@@ -717,6 +737,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
   ApiAdminSplatRoute: ApiAdminSplatRoute,
+  ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
 }
 export const routeTree = rootRouteImport

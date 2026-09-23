@@ -38,7 +38,7 @@ function shareTags(opts: {
   url: string;
   type: "website" | "article";
   imageUrl?: string | null;
-  /** When true, emit width/height for the site default OG asset. */
+  /** When true, emit og:image width/height (1200×630 cards). */
   siteOgDimensions?: boolean;
 }): HeadMeta[] {
   const twitterCard = opts.imageUrl ? "summary_large_image" : "summary";
@@ -132,7 +132,9 @@ export function articleHead(item: {
       description,
       url,
       type: "article",
-      imageUrl: item.image_url,
+      // Always the generated branded card — upstream image_urls can 404.
+      imageUrl: `${SITE_URL}/api/og/${item.id}.png`,
+      siteOgDimensions: true,
     }).map((tag) =>
       "property" in tag && tag.property === "og:title"
         ? { property: "og:title", content: item.title }

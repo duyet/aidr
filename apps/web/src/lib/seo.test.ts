@@ -89,8 +89,13 @@ describe("articleHead", () => {
     expect(metaContent(head.meta, "twitter:title")).toBe(item.title);
     expect(metaContent(head.meta, "og:type")).toBe("article");
     expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/abcdef12`);
-    expect(metaContent(head.meta, "og:image")).toBe(item.image_url);
-    expect(metaContent(head.meta, "twitter:image")).toBe(item.image_url);
+    // Branded card rendered by /api/og/$id — never the upstream image_url,
+    // which can 404 after ingest.
+    const ogImage = `${SITE_URL}/api/og/${item.id}.png`;
+    expect(metaContent(head.meta, "og:image")).toBe(ogImage);
+    expect(metaContent(head.meta, "twitter:image")).toBe(ogImage);
+    expect(metaContent(head.meta, "og:image:width")).toBe("1200");
+    expect(metaContent(head.meta, "og:image:height")).toBe("630");
     expect(metaContent(head.meta, "twitter:card")).toBe("summary_large_image");
     expect(head.links).toContainEqual({
       rel: "canonical",
@@ -102,8 +107,10 @@ describe("articleHead", () => {
     const head = articleHead({ ...item, summary: null, image_url: null });
     expect(metaContent(head.meta, "description")).toBe(SITE_DESCRIPTION);
     expect(metaContent(head.meta, "og:description")).toBe(SITE_DESCRIPTION);
-    expect(metaContent(head.meta, "twitter:card")).toBe("summary");
-    expect(metaContent(head.meta, "og:image")).toBeUndefined();
+    expect(metaContent(head.meta, "twitter:card")).toBe("summary_large_image");
+    expect(metaContent(head.meta, "og:image")).toBe(
+      `${SITE_URL}/api/og/${item.id}.png`
+    );
   });
 
   it("does not invent a Vietnamese description", () => {
