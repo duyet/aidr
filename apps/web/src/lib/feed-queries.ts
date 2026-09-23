@@ -95,25 +95,31 @@ async function attachSources(db: D1Database, items: FeedItem[]): Promise<void> {
   const byId = new Map(items.map((i) => [i.id, i]));
   const ids = [...byId.keys()];
   try {
-    // Chunk to stay under D1's bound-parameter limit
+    // Chunk to stay under D1's bound-parameter limit, but send all chunks
+    // in one batch — a round-trip per chunk otherwise.
+    const stmts = [];
     for (let i = 0; i < ids.length; i += 90) {
       const chunk = ids.slice(i, i + 90);
       const placeholders = chunk.map(() => "?").join(",");
-      const { results } = await db
-        .prepare(
-          `SELECT item_id, kind, author, posted_at, quote, url FROM item_sources
-           WHERE item_id IN (${placeholders}) ORDER BY item_id, position`
-        )
-        .bind(...chunk)
-        .all<{
-          item_id: string;
-          kind: string;
-          author: string | null;
-          posted_at: number | null;
-          quote: string | null;
-          url: string | null;
-        }>();
-      for (const row of results ?? []) {
+      stmts.push(
+        db
+          .prepare(
+            `SELECT item_id, kind, author, posted_at, quote, url FROM item_sources
+             WHERE item_id IN (${placeholders}) ORDER BY item_id, position`
+          )
+          .bind(...chunk)
+      );
+    }
+    const batched = await db.batch(stmts);
+    for (const res of batched) {
+      for (const row of (res.results ?? []) as {
+        item_id: string;
+        kind: string;
+        author: string | null;
+        posted_at: number | null;
+        quote: string | null;
+        url: string | null;
+      }[]) {
         byId.get(row.item_id)?.sources.push({
           kind: row.kind,
           author: row.author,
@@ -180,40 +186,32 @@ export async function getFeed(
   }
   sql += " ORDER BY i.published_at DESC LIMIT 500";
 
-  const [itemsRes, catsRes, tldrRes, fetchedRes, olderRes] = await Promise.all([
-    db
-      .prepare(sql)
-      .bind(...binds)
-      .all<ItemRow>(),
+  // One batch, one D1 round-trip — each ~1.5s of latency otherwise.
+  const [itemsRes, catsRes, tldrRes, fetchedRes, olderRes] = await db.batch([
+    db.prepare(sql).bind(...binds),
     db
       .prepare(
         `SELECT category AS name, COUNT(*) AS count FROM items
          WHERE status = 'published' AND category IS NOT NULL AND published_at >= ? AND published_at < ?
          GROUP BY category ORDER BY count DESC`
       )
-      .bind(since, until)
-      .all<{ name: string; count: number }>(),
-    db
-      .prepare(
-        "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots ORDER BY date DESC LIMIT 1"
-      )
-      .all<{ date: string; bullets_en: string; bullets_vi: string }>(),
-    db
-      .prepare(
-        "SELECT MAX(fetched_at) AS last FROM items WHERE status = 'published'"
-      )
-      .all<{ last: number | null }>(),
+      .bind(since, until),
+    db.prepare(
+      "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots ORDER BY date DESC LIMIT 1"
+    ),
+    db.prepare(
+      "SELECT MAX(fetched_at) AS last FROM items WHERE status = 'published'"
+    ),
     db
       .prepare(
         `SELECT 1 AS yes FROM items
          WHERE status = 'published' AND published_at < ?
          LIMIT 1`
       )
-      .bind(since)
-      .all<{ yes: number }>(),
+      .bind(since),
   ]);
 
-  const items = (itemsRes.results ?? []).map(toFeedItem);
+  const items = ((itemsRes.results ?? []) as ItemRow[]).map(toFeedItem);
   await attachSources(db, items);
 
   // Trending: prefer versioned models / products extracted from titles
@@ -243,7 +241,9 @@ export async function getFeed(
   );
 
   let tldr: FeedResponse["tldr"] = null;
-  const tldrRow = tldrRes.results?.[0];
+  const tldrRow = tldrRes.results?.[0] as
+    | { date: string; bullets_en: string; bullets_vi: string }
+    | undefined;
   if (tldrRow) {
     try {
       tldr = {
@@ -286,12 +286,14 @@ export async function getFeed(
   return {
     tldr: withTldrImages(resolved, imageUrlByItemId(items)),
     days: groupByDay(items),
-    categories: catsRes.results ?? [],
+    categories: (catsRes.results ?? []) as { name: string; count: number }[],
     trending,
     learnedKeywords,
     totalStories: items.length,
     updatedAt: Date.now(),
-    lastFetchedAt: fetchedRes.results?.[0]?.last ?? null,
+    lastFetchedAt:
+      (fetchedRes.results?.[0] as { last: number | null } | undefined)?.last ??
+      null,
     hasMore: (olderRes.results ?? []).length > 0,
   };
 }

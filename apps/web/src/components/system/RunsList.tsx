@@ -1,5 +1,6 @@
 import {
   Badge,
+  Skeleton,
   TableBody,
   TableCell,
   TableHead,
@@ -251,6 +252,36 @@ function AttemptRows({ attempts }: { attempts: LlmCallRow[] }) {
 export function RunsList({ runs, lang }: RunsListProps) {
   const scrollRef = useHorizontalScroll<HTMLDivElement>();
   const [openId, setOpenId] = useState<string | null>(null);
+  // Attempt rows are no longer inlined in the runs payload — each
+  // expanded row fetches /api/system/run-attempts once, then caches.
+  const [attemptsByRun, setAttemptsByRun] = useState<
+    Record<string, LlmCallRow[]>
+  >({});
+  const [loadingRunId, setLoadingRunId] = useState<string | null>(null);
+
+  const toggleRun = (r: WorkflowRunRow, expanded: boolean) => {
+    if (!(r.llm && r.llm.calls > 0)) return;
+    setOpenId(expanded ? null : r.id);
+    if (expanded) return;
+    if (r.id in attemptsByRun || (r.llm.attempts?.length ?? 0) > 0) return;
+    if (r.started_at == null) return;
+    setLoadingRunId(r.id);
+    const since = r.started_at * 1000;
+    const until =
+      (r.finished_at ?? Math.floor(Date.now() / 1000)) * 1000 + 15_000;
+    fetch(`/api/system/run-attempts?since=${since}&until=${until}`)
+      .then((res) =>
+        res.ok ? (res.json() as Promise<{ attempts?: LlmCallRow[] }>) : null
+      )
+      .then((res) => {
+        const attempts = res?.attempts;
+        if (Array.isArray(attempts)) {
+          setAttemptsByRun((m) => ({ ...m, [r.id]: attempts }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingRunId(null));
+  };
 
   if (runs.length === 0) {
     return (
@@ -320,14 +351,15 @@ export function RunsList({ runs, lang }: RunsListProps) {
             const pct = sec ? Math.max((sec / maxDuration) * 100, 4) : 0;
             const tokens = llmTokens(stats, llm);
             const expanded = openId === r.id;
-            const canExpand = Boolean(llm?.attempts.length);
+            const canExpand = Boolean(llm && llm.calls > 0);
+            const attempts = attemptsByRun[r.id] ?? llm?.attempts ?? [];
             return (
               <Fragment key={r.id}>
                 <TableRow
                   className={canExpand ? "cursor-pointer" : undefined}
                   onClick={() => {
                     if (!canExpand) return;
-                    setOpenId(expanded ? null : r.id);
+                    toggleRun(r, expanded);
                   }}
                 >
                   <TableCell className="px-2 py-2 text-muted-foreground">
@@ -343,7 +375,7 @@ export function RunsList({ runs, lang }: RunsListProps) {
                         className="inline-flex h-6 w-6 items-center justify-center rounded-sm hover:bg-muted"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setOpenId(expanded ? null : r.id);
+                          toggleRun(r, expanded);
                         }}
                       >
                         {expanded ? (
@@ -471,7 +503,11 @@ export function RunsList({ runs, lang }: RunsListProps) {
                 {expanded && llm ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={11} className="bg-muted/20 px-3 py-3">
-                      <AttemptRows attempts={llm.attempts} />
+                      {loadingRunId === r.id ? (
+                        <Skeleton className="h-24 w-full" />
+                      ) : (
+                        <AttemptRows attempts={attempts} />
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : null}

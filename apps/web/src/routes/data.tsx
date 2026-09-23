@@ -8,6 +8,7 @@ import {
 } from "@aidr/ui";
 import { createFileRoute } from "@tanstack/react-router";
 import { Activity, Coins, Newspaper, Play, Users } from "lucide-react";
+import type { ReactNode } from "react";
 import { AdminPanel } from "../components/system/AdminPanel";
 import { BarList } from "../components/system/BarList";
 import { ChartCard } from "../components/system/ChartCard";
@@ -28,8 +29,16 @@ import { anyrouterModelUrl } from "../lib/anyrouter";
 import { type DataTab, parseDataTab } from "../lib/data-tab";
 import { categoryLabel, statusLabel } from "../lib/lang";
 import { pageHead } from "../lib/seo";
+import type {
+  ModelChains,
+  SystemActivity,
+  SystemLlm,
+  SystemOverview,
+  SystemSources,
+  WorkflowRunRow,
+} from "../lib/system-queries";
 import type { Lang } from "../lib/types";
-import { useSystemStats } from "../lib/use-system-stats";
+import { type SystemDataState, useSystemData } from "../lib/use-system-stats";
 
 export interface DataSearch {
   tab?: DataTab;
@@ -47,6 +56,18 @@ export const Route = createFileRoute("/data")({
     }),
   component: SystemPage,
 });
+
+/** One small endpoint per section; each is a single batched D1 round-trip.
+ * Cards call them directly — concurrent calls share one request via
+ * useSystemData's inflight cache. */
+const API = {
+  models: "/api/system/models",
+  overview: "/api/system/overview",
+  activity: "/api/system/activity",
+  runs: "/api/system/runs",
+  llm: "/api/system/llm",
+  sources: "/api/system/sources",
+} as const;
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -68,6 +89,25 @@ function DataSkeleton() {
  *  content popping in never shifts layout. */
 function CardSkeleton({ tall }: { tall?: boolean }) {
   return <Skeleton className={`w-full ${tall ? "h-52" : "h-44"}`} />;
+}
+
+/** Per-card data state: the card's own skeleton while its endpoint is in
+ * flight, a quiet inline note on failure — one slow query never blanks
+ * the whole page anymore. */
+function CardData<T>({
+  state,
+  skeleton,
+  children,
+}: {
+  state: SystemDataState<T>;
+  skeleton: ReactNode;
+  children: (data: T) => ReactNode;
+}) {
+  if (state.data) return <>{children(state.data)}</>;
+  if (state.error) {
+    return <p className="text-sm text-muted-foreground">Couldn't load.</p>;
+  }
+  return <>{skeleton}</>;
 }
 
 function ModelChip({ label, models }: { label: string; models: string[] }) {
@@ -99,18 +139,421 @@ function ModelChip({ label, models }: { label: string; models: string[] }) {
   );
 }
 
+function ModelChips() {
+  const state = useSystemData<{ models: ModelChains }>(API.models);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <CardData state={state} skeleton={<Skeleton className="h-6 w-48" />}>
+        {(d) => (
+          <>
+            <ModelChip label="score" models={d.models.scoring} />
+            <ModelChip label="translate" models={d.models.translation} />
+          </>
+        )}
+      </CardData>
+      <a
+        href="https://anyrouter.dev/?ref=aidr.today"
+        target="_blank"
+        rel="noopener"
+        className="text-[11px] font-medium text-accent underline underline-offset-2 hover:no-underline"
+      >
+        AnyRouter
+      </a>
+    </div>
+  );
+}
+
+function StatTiles() {
+  const state = useSystemData<SystemOverview>(API.overview);
+  return (
+    <CardData state={state} skeleton={<DataSkeleton />}>
+      {(o) => (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <StatTile
+            icon={Newspaper}
+            label="Stories"
+            value={String(o.totals.items)}
+          />
+          <StatTile
+            icon={Coins}
+            label="Tokens"
+            value={formatTokens(o.tokens.total)}
+            sublabel={`${o.tokens.avgPerItem} avg/item`}
+          />
+          <StatTile
+            icon={Play}
+            label="Runs today"
+            value={String(o.runsToday)}
+          />
+          <StatTile
+            icon={Users}
+            label="Subscribers"
+            value={String(o.totals.subscribers)}
+          />
+          <StatTile
+            icon={Activity}
+            label="Last run"
+            value={o.lastRun ? (o.lastRun.error ? "Failed" : "Healthy") : "—"}
+            sublabel={
+              o.lastRun
+                ? `${o.lastRun.items_fetched ?? 0} fetched · ${o.lastRun.items_new ?? 0} new`
+                : "No runs recorded"
+            }
+          />
+        </div>
+      )}
+    </CardData>
+  );
+}
+
+function ItemsPerDayCard() {
+  const state = useSystemData<SystemActivity>(API.activity);
+  return (
+    <ChartCard
+      title="Items per day"
+      subtitle="Published, last 14 days"
+      className="md:col-span-2"
+    >
+      <CardData state={state} skeleton={<CardSkeleton />}>
+        {(a) => (
+          <ItemsAreaChart data={a.itemsPerDay} emptyLabel="No data yet." />
+        )}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function TokenBurnCard() {
+  const state = useSystemData<SystemLlm>(API.llm);
+  return (
+    <ChartCard
+      title="Token burn"
+      subtitle="Tokens per day by task, stacked (14 days)"
+      className="md:col-span-2"
+    >
+      <CardData state={state} skeleton={<CardSkeleton tall />}>
+        {(l) => (
+          <TokenBurnSection
+            data={l.llmCallsPerDay}
+            emptyLabel="No token data yet."
+            formatValue={formatTokens}
+          />
+        )}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function RankingCard() {
+  const state = useSystemData<{ models: ModelChains }>(API.models);
+  return (
+    <ChartCard
+      title="Ranking"
+      subtitle="How stories are scored"
+      className="md:col-span-2"
+    >
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(d) => <RankingExplainer models={d.models} />}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function AnyRouterCard() {
+  const state = useSystemData<{ models: ModelChains }>(API.models);
+  return (
+    <ChartCard
+      title="Powered by AnyRouter"
+      subtitle="Every LLM call in the pipeline above"
+      className="md:col-span-2"
+    >
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(d) => (
+          <div className="space-y-2 text-xs leading-relaxed">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(
+                [
+                  ["score", d.models.scoring],
+                  ["translate", d.models.translation],
+                  ["tldr", d.models.tldr],
+                  ["decisions", d.models.decisions],
+                ] as const
+              ).map(([label, chain]) => (
+                <span key={label} className="inline-flex items-center gap-1.5">
+                  <span className="text-muted-foreground">{label}</span>
+                  {chain.length === 0 ? (
+                    <span className="font-mono">—</span>
+                  ) : (
+                    chain.map((model) => (
+                      <a
+                        key={`${label}-${model}`}
+                        href={anyrouterModelUrl(model)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full font-mono text-[11px] text-accent underline underline-offset-2 hover:no-underline"
+                        title={`Open ${model} on AnyRouter`}
+                      >
+                        {model}
+                      </a>
+                    ))
+                  )}
+                </span>
+              ))}
+            </div>
+            <p className="text-muted-foreground">
+              Model fallback chains with per-task overrides, JSON mode, and
+              BYOK-only judges — explore them on{" "}
+              <a
+                href="https://anyrouter.dev/?ref=aidr.today"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-accent underline underline-offset-2 hover:no-underline"
+              >
+                AnyRouter
+              </a>
+              .
+            </p>
+          </div>
+        )}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function JevDecisionsCard() {
+  const state = useSystemData<{ models: ModelChains }>(API.models);
+  return (
+    <ChartCard
+      title="Jev decisions"
+      subtitle="TypeSafe intent & quality gates, via AnyRouter"
+      className="md:col-span-2"
+    >
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(d) => (
+          <div className="space-y-2.5 text-xs leading-relaxed">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground">model</span>
+              {d.models.decisions.length === 0 ? (
+                <span className="font-mono">—</span>
+              ) : (
+                d.models.decisions.map((model) => (
+                  <a
+                    key={model}
+                    href={anyrouterModelUrl(model)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full font-mono text-[11px] text-accent underline underline-offset-2 hover:no-underline"
+                    title={`Open ${model} on AnyRouter`}
+                  >
+                    {model}
+                  </a>
+                ))
+              )}
+              <span className="text-muted-foreground">
+                Jev is BYOK-only · chat models back it up
+              </span>
+            </div>
+            <ul className="space-y-1.5 text-muted-foreground">
+              <li>
+                <span className="font-medium text-foreground">
+                  Story submissions
+                </span>{" "}
+                — ai_tech × (1 − spam) relevance gate
+              </li>
+              <li>
+                <span className="font-medium text-foreground">
+                  Translation suggestions
+                </span>{" "}
+                — improvement + quality gate (≥ 0.6)
+              </li>
+              <li>
+                Chat-completions judges stay as automatic fallback, so a Jev
+                outage never blocks ingest.
+              </li>
+            </ul>
+          </div>
+        )}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function CategoryShareCard() {
+  const state = useSystemData<SystemActivity>(API.activity);
+  return (
+    <ChartCard title="Category share" subtitle="Top categories">
+      <CardData state={state} skeleton={<CardSkeleton tall />}>
+        {(a) => (
+          <CategoryDonut data={a.itemsByCategory} emptyLabel="No data yet." />
+        )}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function StatusCard({ lang }: { lang: Lang }) {
+  const state = useSystemData<SystemActivity>(API.activity);
+  return (
+    <ChartCard title="By status" subtitle="Pipeline outcome">
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(a) => (
+          <BarList
+            data={a.itemsByStatus.map((s) => ({
+              ...s,
+              name: statusLabel(s.name, lang),
+            }))}
+            emptyLabel="No data yet."
+          />
+        )}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function SourceVolumeCard() {
+  const state = useSystemData<SystemActivity>(API.activity);
+  return (
+    <ChartCard title="By source" subtitle="Top 10 story counts">
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(a) => <BarList data={a.itemsBySource} emptyLabel="No data yet." />}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function CatalogCard() {
+  const state = useSystemData<SystemOverview>(API.overview);
+  return (
+    <ChartCard title="Catalog" subtitle="Translations, digests, sources">
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(o) => (
+          <dl className="divide-y divide-border text-sm">
+            {(
+              [
+                ["Translations", o.totals.translations],
+                ["AI;DR digests", o.totals.tldrSnapshots],
+                ["Latest digest", o.latestTldrDate ?? "—"],
+                ["Configured sources", o.totals.sources],
+                ["Key-source citations", o.totals.itemSourcesRows],
+              ] as const
+            ).map(([label, value]) => (
+              <div
+                key={label}
+                className="flex items-center justify-between gap-4 py-1.5 first:pt-0 last:pb-0"
+              >
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="font-mono tabular-nums text-foreground">
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function ByCategoryCard({ lang }: { lang: Lang }) {
+  const state = useSystemData<SystemActivity>(API.activity);
+  return (
+    <ChartCard title="By category" subtitle="Top 10" className="md:col-span-2">
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(a) => (
+          <BarList
+            data={a.itemsByCategory.map((c) => ({
+              ...c,
+              name: categoryLabel(c.name, lang),
+            }))}
+            emptyLabel="No data yet."
+          />
+        )}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function RunStatusCard() {
+  const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
+  return (
+    <ChartCard title="Run status" subtitle="Oldest to newest">
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(d) => <RunStatusStrip runs={d.runs} emptyLabel="No runs yet." />}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function RunDurationCard() {
+  const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
+  return (
+    <ChartCard title="Duration" subtitle="Seconds per run">
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(d) => <RunDurationBars runs={d.runs} emptyLabel="No data yet." />}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function RunOutcomeCard() {
+  const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
+  return (
+    <ChartCard
+      title="Outcomes"
+      subtitle="New / merged / rejected"
+      className="md:col-span-2"
+    >
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(d) => <RunOutcomeBars runs={d.runs} emptyLabel="No data yet." />}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function RecentRunsCard({ lang }: { lang: Lang }) {
+  const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
+  return (
+    <ChartCard
+      title="Recent runs"
+      subtitle="Last 30 workflow runs"
+      className="md:col-span-2"
+    >
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(d) => <RunsList runs={d.runs} lang={lang} />}
+      </CardData>
+    </ChartCard>
+  );
+}
+
+function SourcesCard() {
+  const state = useSystemData<SystemSources>(API.sources);
+  return (
+    <ChartCard
+      title="Ingest sources"
+      subtitle="Adapters the hourly pipeline fetches. Last run is items pulled in the latest workflow stats."
+    >
+      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
+        {(s) => (
+          <SourcesIngestTable
+            sources={s.ingestSources ?? []}
+            lastRunBySource={s.lastRunBySource}
+            volume={s.volume}
+          />
+        )}
+      </CardData>
+    </ChartCard>
+  );
+}
+
 function SystemPage() {
   const lang: Lang = "en";
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const { stats, error } = useSystemStats();
   const admin = useAdmin();
   const tab: DataTab =
     search.tab === "admin" && !admin.isAdmin && !admin.loading
       ? "overview"
       : (search.tab ?? "overview");
-
-  const lastRunBySource = stats?.lastRun?.stats?.bySource;
 
   return (
     <div className="news-content news-data py-4">
@@ -123,31 +566,8 @@ function SystemPage() {
             Live ingest, content, and token use.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {stats ? (
-            <>
-              <ModelChip label="score" models={stats.models.scoring} />
-              <ModelChip label="translate" models={stats.models.translation} />
-              <a
-                href="https://anyrouter.dev/?ref=aidr.today"
-                target="_blank"
-                rel="noopener"
-                className="text-[11px] font-medium text-accent underline underline-offset-2 hover:no-underline"
-              >
-                AnyRouter
-              </a>
-            </>
-          ) : (
-            <Skeleton className="h-6 w-48" />
-          )}
-        </div>
+        <ModelChips />
       </header>
-
-      {error && !stats ? (
-        <p className="mb-4 rounded-lg border border-border px-4 py-3 text-center text-sm text-muted-foreground">
-          Couldn't load system stats.
-        </p>
-      ) : null}
 
       <Tabs
         value={tab}
@@ -188,95 +608,16 @@ function SystemPage() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-0 space-y-4">
-          {stats ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-              <StatTile
-                icon={Newspaper}
-                label="Stories"
-                value={String(stats.totals.items)}
-              />
-              <StatTile
-                icon={Coins}
-                label="Tokens"
-                value={formatTokens(stats.tokens.total)}
-                sublabel={`${stats.tokens.avgPerItem} avg/item`}
-              />
-              <StatTile
-                icon={Play}
-                label="Runs today"
-                value={String(stats.runsToday)}
-              />
-              <StatTile
-                icon={Users}
-                label="Subscribers"
-                value={String(stats.totals.subscribers)}
-              />
-              <StatTile
-                icon={Activity}
-                label="Last run"
-                value={
-                  stats.lastRun
-                    ? stats.lastRun.error
-                      ? "Failed"
-                      : "Healthy"
-                    : "—"
-                }
-                sublabel={
-                  stats.lastRun
-                    ? `${stats.lastRun.items_fetched ?? 0} fetched · ${stats.lastRun.items_new ?? 0} new`
-                    : "No runs recorded"
-                }
-              />
-            </div>
-          ) : (
-            <DataSkeleton />
-          )}
+          <StatTiles />
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ChartCard
-              title="Items per day"
-              subtitle="Published, last 14 days"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <ItemsAreaChart
-                  data={stats.itemsPerDay}
-                  emptyLabel="No data yet."
-                />
-              ) : (
-                <CardSkeleton />
-              )}
-            </ChartCard>
-            <ChartCard
-              title="Token burn"
-              subtitle="Tokens per day by task, stacked (14 days)"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <TokenBurnSection
-                  data={stats.llmCallsPerDay}
-                  emptyLabel="No token data yet."
-                  formatValue={formatTokens}
-                />
-              ) : (
-                <CardSkeleton tall />
-              )}
-            </ChartCard>
+            <ItemsPerDayCard />
+            <TokenBurnCard />
           </div>
         </TabsContent>
 
         <TabsContent value="algo" className="mt-0">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ChartCard
-              title="Ranking"
-              subtitle="How stories are scored"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <RankingExplainer models={stats.models} />
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
+            <RankingCard />
             <ChartCard title="Pipeline" subtitle="Hourly ingest, end to end">
               <ol className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
                 {[
@@ -319,287 +660,38 @@ function SystemPage() {
                 </li>
               </ul>
             </ChartCard>
-            <ChartCard
-              title="Powered by AnyRouter"
-              subtitle="Every LLM call in the pipeline above"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <div className="space-y-2 text-xs leading-relaxed">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {(
-                      [
-                        ["score", stats.models.scoring],
-                        ["translate", stats.models.translation],
-                        ["tldr", stats.models.tldr],
-                        ["decisions", stats.models.decisions],
-                      ] as const
-                    ).map(([label, chain]) => (
-                      <span
-                        key={label}
-                        className="inline-flex items-center gap-1.5"
-                      >
-                        <span className="text-muted-foreground">{label}</span>
-                        {chain.length === 0 ? (
-                          <span className="font-mono">—</span>
-                        ) : (
-                          chain.map((model) => (
-                            <a
-                              key={`${label}-${model}`}
-                              href={anyrouterModelUrl(model)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-full font-mono text-[11px] text-accent underline underline-offset-2 hover:no-underline"
-                              title={`Open ${model} on AnyRouter`}
-                            >
-                              {model}
-                            </a>
-                          ))
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground">
-                    Model fallback chains with per-task overrides, JSON mode,
-                    and BYOK-only judges — explore them on{" "}
-                    <a
-                      href="https://anyrouter.dev/?ref=aidr.today"
-                      target="_blank"
-                      rel="noopener"
-                      className="font-medium text-accent underline underline-offset-2 hover:no-underline"
-                    >
-                      AnyRouter
-                    </a>
-                    .
-                  </p>
-                </div>
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
+            <AnyRouterCard />
           </div>
         </TabsContent>
 
         <TabsContent value="content" className="mt-0">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ChartCard title="Category share" subtitle="Top categories">
-              {stats ? (
-                <CategoryDonut
-                  data={stats.itemsByCategory}
-                  emptyLabel="No data yet."
-                />
-              ) : (
-                <CardSkeleton tall />
-              )}
-            </ChartCard>
-            <ChartCard title="By status" subtitle="Pipeline outcome">
-              {stats ? (
-                <BarList
-                  data={stats.itemsByStatus.map((s) => ({
-                    ...s,
-                    name: statusLabel(s.name, lang),
-                  }))}
-                  emptyLabel="No data yet."
-                />
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
-            <ChartCard title="By source" subtitle="Top 10 story counts">
-              {stats ? (
-                <BarList data={stats.itemsBySource} emptyLabel="No data yet." />
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
-            <ChartCard
-              title="Catalog"
-              subtitle="Translations, digests, sources"
-            >
-              {stats ? (
-                <dl className="divide-y divide-border text-sm">
-                  {(
-                    [
-                      ["Translations", stats.totals.translations],
-                      ["AI;DR digests", stats.totals.tldrSnapshots],
-                      ["Latest digest", stats.latestTldrDate ?? "—"],
-                      ["Configured sources", stats.totals.sources],
-                      ["Key-source citations", stats.totals.itemSourcesRows],
-                    ] as const
-                  ).map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between gap-4 py-1.5 first:pt-0 last:pb-0"
-                    >
-                      <dt className="text-muted-foreground">{label}</dt>
-                      <dd className="font-mono tabular-nums text-foreground">
-                        {value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
-            <ChartCard
-              title="By category"
-              subtitle="Top 10"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <BarList
-                  data={stats.itemsByCategory.map((c) => ({
-                    ...c,
-                    name: categoryLabel(c.name, lang),
-                  }))}
-                  emptyLabel="No data yet."
-                />
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
+            <CategoryShareCard />
+            <StatusCard lang={lang} />
+            <SourceVolumeCard />
+            <CatalogCard />
+            <ByCategoryCard lang={lang} />
           </div>
         </TabsContent>
 
         <TabsContent value="runs" className="mt-0">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ChartCard title="Run status" subtitle="Oldest to newest">
-              {stats ? (
-                <RunStatusStrip runs={stats.runs} emptyLabel="No runs yet." />
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
-            <ChartCard title="Duration" subtitle="Seconds per run">
-              {stats ? (
-                <RunDurationBars runs={stats.runs} emptyLabel="No data yet." />
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
-            <ChartCard
-              title="Outcomes"
-              subtitle="New / merged / rejected"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <RunOutcomeBars runs={stats.runs} emptyLabel="No data yet." />
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
-            <ChartCard
-              title="Recent runs"
-              subtitle="Last 30 workflow runs"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <RunsList runs={stats.runs} lang={lang} />
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
+            <RunStatusCard />
+            <RunDurationCard />
+            <RunOutcomeCard />
+            <RecentRunsCard lang={lang} />
           </div>
         </TabsContent>
 
         <TabsContent value="sources" className="mt-0 space-y-3">
-          <ChartCard
-            title="Ingest sources"
-            subtitle="Adapters the hourly pipeline fetches. Last run is items pulled in the latest workflow stats."
-          >
-            {stats ? (
-              <SourcesIngestTable
-                sources={stats.ingestSources ?? []}
-                lastRunBySource={lastRunBySource}
-                volume={stats.itemsBySource}
-              />
-            ) : (
-              <Skeleton className="h-28 w-full" />
-            )}
-          </ChartCard>
+          <SourcesCard />
         </TabsContent>
 
         <TabsContent value="llm" className="mt-0">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ChartCard
-              title="Token burn"
-              subtitle="Tokens per day by task, stacked (14 days)"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <TokenBurnSection
-                  data={stats.llmCallsPerDay}
-                  emptyLabel="No token data yet."
-                  formatValue={formatTokens}
-                />
-              ) : (
-                <CardSkeleton tall />
-              )}
-            </ChartCard>
-            <ChartCard
-              title="Ranking"
-              subtitle="How stories are scored"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <RankingExplainer models={stats.models} />
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
-            <ChartCard
-              title="Jev decisions"
-              subtitle="TypeSafe intent & quality gates, via AnyRouter"
-              className="md:col-span-2"
-            >
-              {stats ? (
-                <div className="space-y-2.5 text-xs leading-relaxed">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-muted-foreground">model</span>
-                    {stats.models.decisions.length === 0 ? (
-                      <span className="font-mono">—</span>
-                    ) : (
-                      stats.models.decisions.map((model) => (
-                        <a
-                          key={model}
-                          href={anyrouterModelUrl(model)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-full font-mono text-[11px] text-accent underline underline-offset-2 hover:no-underline"
-                          title={`Open ${model} on AnyRouter`}
-                        >
-                          {model}
-                        </a>
-                      ))
-                    )}
-                    <span className="text-muted-foreground">
-                      Jev is BYOK-only · chat models back it up
-                    </span>
-                  </div>
-                  <ul className="space-y-1.5 text-muted-foreground">
-                    <li>
-                      <span className="font-medium text-foreground">
-                        Story submissions
-                      </span>{" "}
-                      — ai_tech × (1 − spam) relevance gate
-                    </li>
-                    <li>
-                      <span className="font-medium text-foreground">
-                        Translation suggestions
-                      </span>{" "}
-                      — improvement + quality gate (≥ 0.6)
-                    </li>
-                    <li>
-                      Chat-completions judges stay as automatic fallback, so a
-                      Jev outage never blocks ingest.
-                    </li>
-                  </ul>
-                </div>
-              ) : (
-                <Skeleton className="h-28 w-full" />
-              )}
-            </ChartCard>
+            <TokenBurnCard />
+            <RankingCard />
+            <JevDecisionsCard />
           </div>
         </TabsContent>
 

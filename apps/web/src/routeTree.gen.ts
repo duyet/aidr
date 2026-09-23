@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
@@ -23,7 +24,6 @@ import { Route as SubmitRouteImport } from './routes/submit'
 import { Route as SubscribeRouteImport } from './routes/subscribe'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as CatSlugRouteImport } from './routes/$cat.$slug'
-import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as ApiExtensionRouteImport } from './routes/api/extension'
 import { Route as ApiFeedRouteImport } from './routes/api/feed'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
@@ -34,6 +34,13 @@ import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
 import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
+import { Route as ApiSystemActivityRouteImport } from './routes/api/system.activity'
+import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
+import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
+import { Route as ApiSystemOverviewRouteImport } from './routes/api/system.overview'
+import { Route as ApiSystemRunAttemptsRouteImport } from './routes/api/system.run-attempts'
+import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
+import { Route as ApiSystemSourcesRouteImport } from './routes/api/system.sources'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -43,6 +50,11 @@ const IndexRoute = IndexRouteImport.update({
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SlugRoute = SlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -105,11 +117,6 @@ const CatSlugRoute = CatSlugRouteImport.update({
   path: '/$cat/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SlugRoute = SlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiExtensionRoute = ApiExtensionRouteImport.update({
   id: '/api/extension',
   path: '/api/extension',
@@ -160,10 +167,46 @@ const ApiStoryIdRoute = ApiStoryIdRouteImport.update({
   path: '/api/story/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSystemActivityRoute = ApiSystemActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
+const ApiSystemLlmRoute = ApiSystemLlmRouteImport.update({
+  id: '/llm',
+  path: '/llm',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
+const ApiSystemModelsRoute = ApiSystemModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
+const ApiSystemOverviewRoute = ApiSystemOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
+const ApiSystemRunAttemptsRoute = ApiSystemRunAttemptsRouteImport.update({
+  id: '/run-attempts',
+  path: '/run-attempts',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
+const ApiSystemRunsRoute = ApiSystemRunsRouteImport.update({
+  id: '/runs',
+  path: '/runs',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
+const ApiSystemSourcesRoute = ApiSystemSourcesRouteImport.update({
+  id: '/sources',
+  path: '/sources',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
@@ -176,21 +219,28 @@ export interface FileRoutesByFullPath {
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
-  '/$slug': typeof SlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRoute
-  '/api/system': typeof ApiSystemRoute
+  '/api/system': typeof ApiSystemRouteWithChildren
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/story/$id': typeof ApiStoryIdRoute
+  '/api/system/activity': typeof ApiSystemActivityRoute
+  '/api/system/llm': typeof ApiSystemLlmRoute
+  '/api/system/models': typeof ApiSystemModelsRoute
+  '/api/system/overview': typeof ApiSystemOverviewRoute
+  '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
+  '/api/system/runs': typeof ApiSystemRunsRoute
+  '/api/system/sources': typeof ApiSystemSourcesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
@@ -203,22 +253,29 @@ export interface FileRoutesByTo {
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
-  '/$slug': typeof SlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRoute
-  '/api/system': typeof ApiSystemRoute
+  '/api/system': typeof ApiSystemRouteWithChildren
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/story/$id': typeof ApiStoryIdRoute
+  '/api/system/activity': typeof ApiSystemActivityRoute
+  '/api/system/llm': typeof ApiSystemLlmRoute
+  '/api/system/models': typeof ApiSystemModelsRoute
+  '/api/system/overview': typeof ApiSystemOverviewRoute
+  '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
+  '/api/system/runs': typeof ApiSystemRunsRoute
+  '/api/system/sources': typeof ApiSystemSourcesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
@@ -231,23 +288,30 @@ export interface FileRoutesById {
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
-  '/$slug': typeof SlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRoute
-  '/api/system': typeof ApiSystemRoute
+  '/api/system': typeof ApiSystemRouteWithChildren
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/story/$id': typeof ApiStoryIdRoute
+  '/api/system/activity': typeof ApiSystemActivityRoute
+  '/api/system/llm': typeof ApiSystemLlmRoute
+  '/api/system/models': typeof ApiSystemModelsRoute
+  '/api/system/overview': typeof ApiSystemOverviewRoute
+  '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
+  '/api/system/runs': typeof ApiSystemRunsRoute
+  '/api/system/sources': typeof ApiSystemSourcesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/$'
+    | '/$slug'
     | '/about'
     | '/brand'
     | '/changelog'
@@ -260,7 +324,6 @@ export interface FileRouteTypes {
     | '/subscribe'
     | '/terms'
     | '/$cat/$slug'
-    | '/$slug'
     | '/api/extension'
     | '/api/feed'
     | '/api/mcp'
@@ -271,10 +334,18 @@ export interface FileRouteTypes {
     | '/sign-up/$'
     | '/api/admin/$'
     | '/api/story/$id'
+    | '/api/system/activity'
+    | '/api/system/llm'
+    | '/api/system/models'
+    | '/api/system/overview'
+    | '/api/system/run-attempts'
+    | '/api/system/runs'
+    | '/api/system/sources'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$'
+    | '/$slug'
     | '/about'
     | '/brand'
     | '/changelog'
@@ -287,7 +358,6 @@ export interface FileRouteTypes {
     | '/subscribe'
     | '/terms'
     | '/$cat/$slug'
-    | '/$slug'
     | '/api/extension'
     | '/api/feed'
     | '/api/mcp'
@@ -298,10 +368,18 @@ export interface FileRouteTypes {
     | '/sign-up/$'
     | '/api/admin/$'
     | '/api/story/$id'
+    | '/api/system/activity'
+    | '/api/system/llm'
+    | '/api/system/models'
+    | '/api/system/overview'
+    | '/api/system/run-attempts'
+    | '/api/system/runs'
+    | '/api/system/sources'
   id:
     | '__root__'
     | '/'
     | '/$'
+    | '/$slug'
     | '/about'
     | '/brand'
     | '/changelog'
@@ -314,7 +392,6 @@ export interface FileRouteTypes {
     | '/subscribe'
     | '/terms'
     | '/$cat/$slug'
-    | '/$slug'
     | '/api/extension'
     | '/api/feed'
     | '/api/mcp'
@@ -325,11 +402,19 @@ export interface FileRouteTypes {
     | '/sign-up/$'
     | '/api/admin/$'
     | '/api/story/$id'
+    | '/api/system/activity'
+    | '/api/system/llm'
+    | '/api/system/models'
+    | '/api/system/overview'
+    | '/api/system/run-attempts'
+    | '/api/system/runs'
+    | '/api/system/sources'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  SlugRoute: typeof SlugRoute
   AboutRoute: typeof AboutRoute
   BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
@@ -342,13 +427,12 @@ export interface RootRouteChildren {
   SubscribeRoute: typeof SubscribeRoute
   TermsRoute: typeof TermsRoute
   CatSlugRoute: typeof CatSlugRoute
-  SlugRoute: typeof SlugRoute
   ApiExtensionRoute: typeof ApiExtensionRoute
   ApiFeedRoute: typeof ApiFeedRoute
   ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicRoute: typeof ApiPublicRoute
   ApiSubscribeRoute: typeof ApiSubscribeRoute
-  ApiSystemRoute: typeof ApiSystemRoute
+  ApiSystemRoute: typeof ApiSystemRouteWithChildren
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
@@ -369,6 +453,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/$'
       preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$slug': {
+      id: '/$slug'
+      path: '/$slug'
+      fullPath: '/$slug'
+      preLoaderRoute: typeof SlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -455,13 +546,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$slug': {
-      id: '/$slug'
-      path: '/$slug'
-      fullPath: '/$slug'
-      preLoaderRoute: typeof SlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/extension': {
       id: '/api/extension'
       path: '/api/extension'
@@ -532,12 +616,86 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStoryIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/system/activity': {
+      id: '/api/system/activity'
+      path: '/activity'
+      fullPath: '/api/system/activity'
+      preLoaderRoute: typeof ApiSystemActivityRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
+    '/api/system/llm': {
+      id: '/api/system/llm'
+      path: '/llm'
+      fullPath: '/api/system/llm'
+      preLoaderRoute: typeof ApiSystemLlmRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
+    '/api/system/models': {
+      id: '/api/system/models'
+      path: '/models'
+      fullPath: '/api/system/models'
+      preLoaderRoute: typeof ApiSystemModelsRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
+    '/api/system/overview': {
+      id: '/api/system/overview'
+      path: '/overview'
+      fullPath: '/api/system/overview'
+      preLoaderRoute: typeof ApiSystemOverviewRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
+    '/api/system/run-attempts': {
+      id: '/api/system/run-attempts'
+      path: '/run-attempts'
+      fullPath: '/api/system/run-attempts'
+      preLoaderRoute: typeof ApiSystemRunAttemptsRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
+    '/api/system/runs': {
+      id: '/api/system/runs'
+      path: '/runs'
+      fullPath: '/api/system/runs'
+      preLoaderRoute: typeof ApiSystemRunsRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
+    '/api/system/sources': {
+      id: '/api/system/sources'
+      path: '/sources'
+      fullPath: '/api/system/sources'
+      preLoaderRoute: typeof ApiSystemSourcesRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
   }
 }
+
+interface ApiSystemRouteChildren {
+  ApiSystemActivityRoute: typeof ApiSystemActivityRoute
+  ApiSystemLlmRoute: typeof ApiSystemLlmRoute
+  ApiSystemModelsRoute: typeof ApiSystemModelsRoute
+  ApiSystemOverviewRoute: typeof ApiSystemOverviewRoute
+  ApiSystemRunAttemptsRoute: typeof ApiSystemRunAttemptsRoute
+  ApiSystemRunsRoute: typeof ApiSystemRunsRoute
+  ApiSystemSourcesRoute: typeof ApiSystemSourcesRoute
+}
+
+const ApiSystemRouteChildren: ApiSystemRouteChildren = {
+  ApiSystemActivityRoute: ApiSystemActivityRoute,
+  ApiSystemLlmRoute: ApiSystemLlmRoute,
+  ApiSystemModelsRoute: ApiSystemModelsRoute,
+  ApiSystemOverviewRoute: ApiSystemOverviewRoute,
+  ApiSystemRunAttemptsRoute: ApiSystemRunAttemptsRoute,
+  ApiSystemRunsRoute: ApiSystemRunsRoute,
+  ApiSystemSourcesRoute: ApiSystemSourcesRoute,
+}
+
+const ApiSystemRouteWithChildren = ApiSystemRoute._addFileChildren(
+  ApiSystemRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  SlugRoute: SlugRoute,
   AboutRoute: AboutRoute,
   BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
@@ -550,13 +708,12 @@ const rootRouteChildren: RootRouteChildren = {
   SubscribeRoute: SubscribeRoute,
   TermsRoute: TermsRoute,
   CatSlugRoute: CatSlugRoute,
-  SlugRoute: SlugRoute,
   ApiExtensionRoute: ApiExtensionRoute,
   ApiFeedRoute: ApiFeedRoute,
   ApiMcpRoute: ApiMcpRoute,
   ApiPublicRoute: ApiPublicRoute,
   ApiSubscribeRoute: ApiSubscribeRoute,
-  ApiSystemRoute: ApiSystemRoute,
+  ApiSystemRoute: ApiSystemRouteWithChildren,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
   ApiAdminSplatRoute: ApiAdminSplatRoute,

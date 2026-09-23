@@ -66,7 +66,8 @@ export default {
     if (
       path === "/api/public" ||
       path === "/api/admin/ingest" ||
-      path === "/api/system"
+      path === "/api/system" ||
+      path.startsWith("/api/system/")
     ) {
       ctx?.waitUntil?.(ensureIngestAlarm(env));
     }
