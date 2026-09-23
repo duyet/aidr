@@ -380,6 +380,35 @@ export async function promoteEmergingTopics(
   return promoted;
 }
 
+/** Prepared SELECT for active learned keywords. Exported at statement
+ * level so read paths (the feed) can ride it in the same `db.batch` as
+ * other queries — one D1 round-trip instead of one per SELECT. Callers
+ * must run `ensureTopicLearningSchema` first (module-cached). */
+export function learnedKeywordsStmt(
+  db: DbReader,
+  limit = 80
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `SELECT keyword FROM learned_keywords
+       WHERE status = 'active'
+       ORDER BY hit_count DESC, last_seen DESC
+       LIMIT ?`
+    )
+    .bind(limit);
+}
+
+/** Prepared SELECT for one day's per-topic counts — same batching note
+ * as `learnedKeywordsStmt`. */
+export function topicDailyCountsStmt(
+  db: DbReader,
+  day: string
+): D1PreparedStatement {
+  return db
+    .prepare("SELECT topic, count FROM topic_daily WHERE day = ?")
+    .bind(day);
+}
+
 /** Active learned keywords for title highlight / trending fallback. */
 export async function loadLearnedKeywords(
   db: DbReader,
@@ -387,15 +416,9 @@ export async function loadLearnedKeywords(
 ): Promise<string[]> {
   try {
     await ensureTopicLearningSchema(db);
-    const { results } = await db
-      .prepare(
-        `SELECT keyword FROM learned_keywords
-         WHERE status = 'active'
-         ORDER BY hit_count DESC, last_seen DESC
-         LIMIT ?`
-      )
-      .bind(limit)
-      .all<{ keyword: string }>();
+    const { results } = await learnedKeywordsStmt(db, limit).all<{
+      keyword: string;
+    }>();
     return (results ?? []).map((r) => r.keyword);
   } catch {
     return [];
@@ -409,10 +432,10 @@ export async function loadTopicDailyCounts(
 ): Promise<Map<string, number>> {
   try {
     await ensureTopicLearningSchema(db);
-    const { results } = await db
-      .prepare("SELECT topic, count FROM topic_daily WHERE day = ?")
-      .bind(day)
-      .all<{ topic: string; count: number }>();
+    const { results } = await topicDailyCountsStmt(db, day).all<{
+      topic: string;
+      count: number;
+    }>();
     return new Map((results ?? []).map((r) => [r.topic, r.count]));
   } catch {
     return new Map();

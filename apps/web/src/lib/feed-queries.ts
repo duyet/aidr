@@ -1,10 +1,11 @@
 import { AUDIENCE_TIMEZONE, localCalendarDate } from "../../worker/time.js";
 import {
   collectTrendingCandidates,
+  ensureTopicLearningSchema,
+  learnedKeywordsStmt,
   learningDayKey,
-  loadLearnedKeywords,
-  loadTopicDailyCounts,
   rankTrendingWithGrowth,
+  topicDailyCountsStmt,
 } from "../../worker/topic-learning.js";
 import type { DbReader } from "./db";
 import { setLearnedKeywords } from "./highlight";
@@ -91,36 +92,53 @@ function toFeedItem(row: ItemRow): FeedItem {
   };
 }
 
-async function attachSources(db: DbReader, items: FeedItem[]): Promise<void> {
-  if (items.length === 0) return;
+interface SourceRow {
+  item_id: string;
+  kind: string;
+  author: string | null;
+  posted_at: number | null;
+  quote: string | null;
+  url: string | null;
+}
+
+/**
+ * One batch for every read that follows the main query: the item_sources
+ * chunks (chunked to stay under D1's bound-parameter limit) plus the two
+ * topic-learning SELECTs. A single D1 round-trip for all of them. Any
+ * statement failing (e.g. item_sources missing pre-migration) fails the
+ * batch — the same empty fallbacks the individual callers had apply.
+ */
+async function attachSourcesAndTopics(
+  db: DbReader,
+  items: FeedItem[],
+  yesterday: string
+): Promise<{
+  yesterdayCounts: Map<string, number>;
+  learnedKeywords: string[];
+}> {
+  let learnedKeywords: string[] = [];
+  let yesterdayCounts = new Map<string, number>();
   const byId = new Map(items.map((i) => [i.id, i]));
   const ids = [...byId.keys()];
+  const stmts: D1PreparedStatement[] = [];
+  for (let i = 0; i < ids.length; i += 90) {
+    const chunk = ids.slice(i, i + 90);
+    const placeholders = chunk.map(() => "?").join(",");
+    stmts.push(
+      db
+        .prepare(
+          `SELECT item_id, kind, author, posted_at, quote, url FROM item_sources
+           WHERE item_id IN (${placeholders}) ORDER BY item_id, position`
+        )
+        .bind(...chunk)
+    );
+  }
+  const sourceStmtCount = stmts.length;
+  stmts.push(learnedKeywordsStmt(db), topicDailyCountsStmt(db, yesterday));
   try {
-    // Chunk to stay under D1's bound-parameter limit, but send all chunks
-    // in one batch — a round-trip per chunk otherwise.
-    const stmts = [];
-    for (let i = 0; i < ids.length; i += 90) {
-      const chunk = ids.slice(i, i + 90);
-      const placeholders = chunk.map(() => "?").join(",");
-      stmts.push(
-        db
-          .prepare(
-            `SELECT item_id, kind, author, posted_at, quote, url FROM item_sources
-             WHERE item_id IN (${placeholders}) ORDER BY item_id, position`
-          )
-          .bind(...chunk)
-      );
-    }
     const batched = await db.batch(stmts);
-    for (const res of batched) {
-      for (const row of (res.results ?? []) as {
-        item_id: string;
-        kind: string;
-        author: string | null;
-        posted_at: number | null;
-        quote: string | null;
-        url: string | null;
-      }[]) {
+    for (const res of batched.slice(0, sourceStmtCount)) {
+      for (const row of (res.results ?? []) as SourceRow[]) {
         byId.get(row.item_id)?.sources.push({
           kind: row.kind,
           author: row.author,
@@ -130,9 +148,21 @@ async function attachSources(db: DbReader, items: FeedItem[]): Promise<void> {
         });
       }
     }
+    learnedKeywords = (
+      (batched[sourceStmtCount]?.results ?? []) as { keyword: string }[]
+    ).map((r) => r.keyword);
+    yesterdayCounts = new Map(
+      (
+        (batched[sourceStmtCount + 1]?.results ?? []) as {
+          topic: string;
+          count: number;
+        }[]
+      ).map((r) => [r.topic, r.count])
+    );
   } catch {
     // item_sources table may not exist yet (pre-migration) — feed still works
   }
+  return { yesterdayCounts, learnedKeywords };
 }
 
 function groupByDay(items: FeedItem[]): DayGroup[] {
@@ -187,33 +217,50 @@ export async function getFeed(
   }
   sql += " ORDER BY i.published_at DESC LIMIT 500";
 
-  // One batch, one D1 round-trip — each ~1.5s of latency otherwise.
-  const [itemsRes, catsRes, tldrRes, fetchedRes, olderRes] = await db.batch([
-    db.prepare(sql).bind(...binds),
-    db
-      .prepare(
-        `SELECT category AS name, COUNT(*) AS count FROM items
+  const nowMs = Date.now();
+  const yesterday = learningDayKey(nowMs - 24 * 60 * 60 * 1000);
+
+  // One batch, one D1 round-trip — each ~1.5s of latency otherwise. The
+  // topic-learning DDL is module-cached and touches disjoint tables, so a
+  // cold isolate runs it alongside this batch instead of serially.
+  const [mainResults] = await Promise.all([
+    db.batch([
+      db.prepare(sql).bind(...binds),
+      db
+        .prepare(
+          `SELECT category AS name, COUNT(*) AS count FROM items
          WHERE status = 'published' AND category IS NOT NULL AND published_at >= ? AND published_at < ?
          GROUP BY category ORDER BY count DESC`
-      )
-      .bind(since, until),
-    db.prepare(
-      "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots ORDER BY date DESC LIMIT 1"
-    ),
-    db.prepare(
-      "SELECT MAX(fetched_at) AS last FROM items WHERE status = 'published'"
-    ),
-    db
-      .prepare(
-        `SELECT 1 AS yes FROM items
+        )
+        .bind(since, until),
+      db.prepare(
+        "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots ORDER BY date DESC LIMIT 1"
+      ),
+      db.prepare(
+        "SELECT MAX(fetched_at) AS last FROM items WHERE status = 'published'"
+      ),
+      db
+        .prepare(
+          `SELECT 1 AS yes FROM items
          WHERE status = 'published' AND published_at < ?
          LIMIT 1`
-      )
-      .bind(since),
+        )
+        .bind(since),
+    ]),
+    ensureTopicLearningSchema(db).catch(() => {
+      // DDL is best-effort; the topic reads below fall back to empty.
+    }),
   ]);
+  const [itemsRes, catsRes, tldrRes, fetchedRes, olderRes] = mainResults;
 
   const items = ((itemsRes.results ?? []) as ItemRow[]).map(toFeedItem);
-  await attachSources(db, items);
+  // Sources chunks + learned keywords + yesterday's counts: one round-trip.
+  const { yesterdayCounts, learnedKeywords } = await attachSourcesAndTopics(
+    db,
+    items,
+    yesterday
+  );
+  setLearnedKeywords(learnedKeywords);
 
   // Trending: prefer versioned models / products extracted from titles
   // (GPT-6 Astra, Fable 5.1) over generic score themes (llm, agent).
@@ -227,13 +274,6 @@ export async function getFeed(
     })),
     dayAgo
   );
-  const nowMs = Date.now();
-  const yesterday = learningDayKey(nowMs - 24 * 60 * 60 * 1000);
-  const [yesterdayCounts, learnedKeywords] = await Promise.all([
-    loadTopicDailyCounts(db, yesterday),
-    loadLearnedKeywords(db),
-  ]);
-  setLearnedKeywords(learnedKeywords);
   const trending = rankTrendingWithGrowth(tagCounts, yesterdayCounts).map(
     ({ tag, count }) => ({
       tag: displayByKey.get(tag) ?? tag,

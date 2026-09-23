@@ -1,7 +1,7 @@
 import { track } from "@aidr/ui/track";
 import { ExternalLink, TrendingUp } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ARTICLE_TITLE_TAG,
   FEED_TITLE_TAG,
@@ -91,11 +91,18 @@ export function StoryRow({
 }) {
   const TitleTag = titleAs;
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
+  // SSR feed items ship without summary/sources (`lazyDetail`) — the full
+  // story is refetched from /api/story on first expand.
+  const [detail, setDetail] = useState<FeedItem | null>(null);
+  const detailRequested = useRef(false);
   const { text: title, fallbackFromEnglish } = localizedTitle(item, lang);
   const summary =
     lang === "vi" && item.summary_vi ? item.summary_vi : item.summary;
   const hasDetails =
-    Boolean(summary) || item.tags.length > 0 || item.sources.length > 0;
+    Boolean(item.lazyDetail) ||
+    Boolean(summary) ||
+    item.tags.length > 0 ||
+    item.sources.length > 0;
   const isMatch = Boolean(
     selectedTag &&
       (item.tags.some(
@@ -112,6 +119,22 @@ export function StoryRow({
 
   const toggleExpanded = () => {
     if (!hasDetails) return;
+    if (!expanded && item.lazyDetail && !detailRequested.current) {
+      detailRequested.current = true;
+      fetch(`/api/story${storyPath(item)}`)
+        .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
+        .then((full) => {
+          // Fall back to the lean row so the loading line clears even
+          // when the story lookup misses.
+          setDetail(full ?? item);
+        })
+        .catch(() => {
+          // Show the lean row (meta/topics) and allow a retry on the
+          // next expand.
+          detailRequested.current = false;
+          setDetail(item);
+        });
+    }
     setExpanded((v) => {
       const next = !v;
       track(next ? "story_expand" : "story_collapse", { item_id: item.id });
@@ -197,7 +220,12 @@ export function StoryRow({
 
       {expanded && hasDetails && (
         <div className="overflow-hidden rounded-b-2xl border border-border/70 bg-card px-5 py-5 md:px-6 md:py-6">
-          <StoryDetail item={item} lang={lang} />
+          <StoryDetail item={detail ?? item} lang={lang} />
+          {item.lazyDetail && !detail && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {lang === "vi" ? "Đang tải…" : "Loading…"}
+            </p>
+          )}
         </div>
       )}
     </div>
