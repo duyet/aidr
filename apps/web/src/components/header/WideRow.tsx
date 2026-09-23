@@ -86,7 +86,7 @@ export function WideHeaderRow({
                 onClick={() => track("nav_click", { to: "telegram" })}
               >
                 <Send aria-hidden />
-                Telegram Channel
+                Telegram Channel (Vietnamese)
               </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
