@@ -76,5 +76,6 @@ export default defineConfig({
   server: {
     port: 3014,
     strictPort: true,
+    allowedHosts: ["duet-ubuntu", ".ts.net", ".local"],
   },
 });
