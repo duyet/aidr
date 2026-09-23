@@ -49,12 +49,7 @@ export function WideHeaderRow({
       <div className="flex shrink-0 items-center gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="default"
-              size="sm"
-              title="Menu"
-              aria-label="Menu"
-            >
+            <Button variant="default" size="sm" title="Menu" aria-label="Menu">
               <Plus aria-hidden />
             </Button>
           </DropdownMenuTrigger>
