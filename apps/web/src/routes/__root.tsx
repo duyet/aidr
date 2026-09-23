@@ -1,33 +1,23 @@
 import "@aidr/ui/styles.css";
 import "../styles.css";
 
-import { ErrorBoundary } from "@aidr/ui";
 import Analytics from "@aidr/ui/Analytics";
 import ThemeProvider from "@aidr/ui/ThemeProvider";
 import { track } from "@aidr/ui/track";
 import {
   createRootRoute,
   HeadContent,
-  Link,
   Outlet,
   Scripts,
-  useRouterState,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { CLERK_PROXY_URL } from "../../worker/clerk-proxy";
+import { ClerkRootProvider } from "../components/ClerkRootProvider";
 import { HeaderBar } from "../components/HeaderBar";
+import { NewsFooter } from "../components/NewsFooter";
 import { NotFoundPage } from "../components/NotFoundPage";
-import {
-  campaignTrackParams,
-  isEmailCampaign,
-  isExtensionCampaign,
-  resolveCampaign,
-} from "../lib/campaign";
-import { ClerkModuleContext, getClerkModuleState } from "../lib/clerk-user";
-import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
+import { PageViewTracker } from "../components/PageViewTracker";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
-import { getClientLang, setClientLang, timeAgo } from "../lib/lang";
+import { getClientLang, setClientLang } from "../lib/lang";
 import { LangContext } from "../lib/lang-context";
 import {
   DEFAULT_PREFS,
@@ -37,193 +27,8 @@ import {
   readerCssVars,
   savePrefs,
 } from "../lib/prefs";
-import {
-  DUYET_URL,
-  EXTENSION_PATH,
-  GITHUB_URL,
-  SITE_DESCRIPTION,
-  SITE_SLOGAN,
-  SITE_TITLE,
-  SITE_URL,
-  TELEGRAM_URL,
-} from "../lib/site";
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
-
-/**
- * Mounts the ONE app-wide <ClerkProvider> (static import for SSR — required
- * by @clerk/tanstack-react-start SignIn/SignUp). Consumers share it via
- * ClerkModuleContext; a second <ClerkProvider> crashes the app. If Clerk
- * fails, ErrorBoundary degrades to children with no Clerk context.
- */
-function ClerkRootProvider({ children }: { children: ReactNode }) {
-  const clerkState = getClerkModuleState();
-  const withoutProvider = (
-    <ClerkModuleContext.Provider
-      value={{ mod: null, publishableKey: clerkState.publishableKey }}
-    >
-      {children}
-    </ClerkModuleContext.Provider>
-  );
-
-  if (!clerkState.mod || !clerkState.publishableKey) return withoutProvider;
-
-  return (
-    <ErrorBoundary fallback={withoutProvider}>
-      <ClerkModuleContext.Provider value={clerkState}>
-        <clerkState.mod.ClerkProvider
-          publishableKey={clerkState.publishableKey}
-          // Absolute URL so handshake redirects never fall back to the
-          // publishable-key host (clerk.aidr.today → CF Error 1000).
-          proxyUrl={CLERK_PROXY_URL}
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/"
-          signUpFallbackRedirectUrl="/"
-          appearance={{
-            variables: {
-              colorPrimary: "oklch(0.555 0.163 48.998)",
-              borderRadius: "0.625rem",
-            },
-          }}
-        >
-          {children}
-        </clerkState.mod.ClerkProvider>
-      </ClerkModuleContext.Provider>
-    </ErrorBoundary>
-  );
-}
-
-// Footer is always English, regardless of site language.
-const FOOTER_LINKS: { to: string; label: string }[] = [
-  { to: "/about", label: "About" },
-  { to: "/data", label: "Data / Pipeline" },
-  { to: "/privacy", label: "Privacy" },
-  { to: "/terms", label: "Terms" },
-];
-
-const linkClass =
-  "text-sm text-muted-foreground transition-colors hover:text-foreground";
-
-function NewsFooter() {
-  const year = new Date().getFullYear();
-  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(
-    () => getCachedFeed()?.lastFetchedAt ?? null
-  );
-
-  useEffect(() => {
-    if (lastFetchedAt !== null) return;
-    let cancelled = false;
-    fetchFeedOnce().then((feed) => {
-      if (!cancelled && feed?.lastFetchedAt)
-        setLastFetchedAt(feed.lastFetchedAt);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <footer className="mt-10 border-t border-border/80 bg-card/40 py-12 text-sm text-muted-foreground">
-      <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-8 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
-          <div className="space-y-2">
-            <p className="font-serif text-xl font-medium tracking-tight text-foreground">
-              AI;DR
-            </p>
-            <p className="max-w-xs text-sm leading-relaxed">{SITE_SLOGAN}</p>
-          </div>
-          <nav
-            aria-label="Footer"
-            className="grid grid-cols-2 gap-x-10 gap-y-3 sm:grid-cols-3"
-          >
-            <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">
-                Site
-              </p>
-              {FOOTER_LINKS.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => track("nav_click", { to: link.to })}
-                  className={`block ${linkClass}`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-            <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">
-                Connect
-              </p>
-              <Link
-                to={EXTENSION_PATH}
-                onClick={() => track("nav_click", { to: EXTENSION_PATH })}
-                className={`block ${linkClass}`}
-                title="Get AI;DR"
-                aria-label="Get AI;DR"
-              >
-                Get AI;DR
-              </Link>
-              <a
-                href={TELEGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "telegram" })}
-                className={`block ${linkClass}`}
-              >
-                Telegram
-              </a>
-              <a
-                href={GITHUB_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "github" })}
-                className={`block ${linkClass}`}
-              >
-                GitHub
-              </a>
-            </div>
-            <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
-                More
-              </p>
-              <a
-                href={DUYET_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "duyet.net" })}
-                className={`block ${linkClass}`}
-              >
-                duyet.net
-              </a>
-            </div>
-          </nav>
-        </div>
-        <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
-          {/* Relative "Updated …" uses Date.now() at render, so SSR text can
-              differ from hydration text — suppress the mismatch warning. */}
-          <span suppressHydrationWarning>
-            {`© ${year} AI;DR`}
-            {lastFetchedAt !== null && (
-              <>
-                {" · "}
-                <Link
-                  to="/data"
-                  onClick={() => track("nav_click", { to: "/data" })}
-                  className="underline-offset-2 hover:text-foreground hover:underline"
-                  title="Pipeline stats"
-                >
-                  Updated {timeAgo(lastFetchedAt, Date.now(), "en")}
-                </Link>
-              </>
-            )}
-          </span>
-        </div>
-      </div>
-    </footer>
-  );
-}
 
 export const Route = createRootRoute({
   head: ({ matches }) => {
@@ -262,56 +67,6 @@ export const Route = createRootRoute({
   notFoundComponent: NotFoundPage,
   component: RootComponent,
 });
-
-function PageViewTracker() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const search = useRouterState({ select: (s) => s.location.searchStr });
-  const first = useRef(true);
-  const landedExt = useRef(false);
-  const landedEmail = useRef(false);
-
-  useEffect(() => {
-    const campaign = resolveCampaign({ search, pathname });
-    const campaignParams = campaignTrackParams(campaign);
-
-    if (!landedExt.current && isExtensionCampaign(campaign)) {
-      landedExt.current = true;
-      track("extension_landing", {
-        ...campaignParams,
-        page_path: pathname,
-      });
-    }
-
-    if (!landedEmail.current && isEmailCampaign(campaign)) {
-      landedEmail.current = true;
-      track("email_click", {
-        ...campaignParams,
-        page_path: pathname,
-      });
-    }
-
-    if (first.current) {
-      // GA config already sends the initial page_view; enrich SPA navs only.
-      first.current = false;
-      // Still fire a dedicated first-touch attribution event when landing
-      // with campaign params (covers hard loads where send_page_view raced).
-      if (campaign && Object.keys(campaignParams).length > 0) {
-        track("campaign_touch", {
-          ...campaignParams,
-          page_path: pathname,
-        });
-      }
-      return;
-    }
-
-    track("page_view", {
-      page_path: pathname,
-      ...campaignParams,
-    });
-  }, [pathname, search]);
-
-  return null;
-}
 
 function RootComponent() {
   const [lang, setLang] = useState<Lang>(() => getClientLang());

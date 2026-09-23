@@ -1,58 +1,19 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import type { AdminState } from "../../lib/admin";
-
-interface Template {
-  id: string;
-  name: string;
-  description: string;
-  subject: string;
-  preheader: string;
-  body_md: string;
-  cta_label: string;
-  cta_url: string;
-}
-
-interface ContentItem {
-  kind: "news" | "blog";
-  title: string;
-  url: string;
-  excerpt: string;
-}
-
-interface SubscriberRow {
-  email: string;
-  lang: string;
-  timezone: string | null;
-  created_at: number | null;
-  source: string | null;
-}
-
-interface CampaignRow {
-  id: string;
-  subject: string;
-  status: string;
-  sent_count: number;
-  created_at: number;
-}
-
-async function authedFetch(
-  admin: AdminState,
-  url: string,
-  init?: RequestInit
-): Promise<Response> {
-  const token = await admin.getToken();
-  const headers = new Headers(init?.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  return fetch(url, { ...init, headers });
-}
-
-const fieldClass =
-  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground";
-const btnClass =
-  "rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-50";
-const primaryBtnClass =
-  "rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-50";
+import { type AdminState, authedFetch } from "../../lib/admin";
+import { MailActionBar } from "./ActionBar";
+import { CampaignList } from "./CampaignList";
+import { ContentPicker } from "./ContentPicker";
+import {
+  type CampaignRow,
+  type ContentItem,
+  fieldClass,
+  type SubscriberRow,
+  type Template,
+} from "./lib";
+import { PreviewFrame } from "./PreviewFrame";
+import { SubscriberTable } from "./SubscriberTable";
+import { TemplatePicker } from "./TemplatePicker";
 
 export function MailPanel({ admin }: { admin: AdminState }) {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -282,54 +243,15 @@ export function MailPanel({ admin }: { admin: AdminState }) {
         </Link>
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        {templates.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => applyTemplate(item)}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
-              item.id === templateId
-                ? "border-foreground bg-foreground text-background"
-                : "border-border text-foreground hover:bg-muted"
-            }`}
-          >
-            {item.name}
-          </button>
-        ))}
-      </div>
-      {template && (
-        <p className="text-sm text-muted-foreground">{template.description}</p>
-      )}
+      <TemplatePicker
+        templates={templates}
+        templateId={templateId}
+        template={template}
+        onApply={applyTemplate}
+      />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
-        <section>
-          <h2 className="mb-2 text-sm font-medium">Pick content</h2>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Blog posts and today&apos;s news. Click to add, then AI wrap.
-          </p>
-          <ul className="max-h-[420px] space-y-1 overflow-auto border-t border-border">
-            {content.map((item) => {
-              const selected = picks.some((p) => p.url === item.url);
-              return (
-                <li key={`${item.kind}-${item.url}`}>
-                  <button
-                    type="button"
-                    onClick={() => togglePick(item)}
-                    className={`w-full border-b border-border px-1 py-2 text-left text-sm ${
-                      selected ? "bg-muted" : "hover:bg-muted/50"
-                    }`}
-                  >
-                    <span className="mr-2 font-mono text-[10px] uppercase text-muted-foreground">
-                      {item.kind}
-                    </span>
-                    <span className="font-medium">{item.title}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+        <ContentPicker content={content} picks={picks} onToggle={togglePick} />
 
         <section className="space-y-3">
           <label className="block text-sm">
@@ -385,133 +307,23 @@ export function MailPanel({ admin }: { admin: AdminState }) {
           </div>
         </section>
 
-        <section>
-          <h2 className="mb-2 text-sm font-medium">Preview</h2>
-          <iframe
-            title="Email preview"
-            className="h-[520px] w-full rounded-md border border-border bg-white"
-            sandbox=""
-            srcDoc={
-              previewHtml ||
-              "<p style='font-family:sans-serif;color:#737373;padding:24px'>Preview to see the Cursor-clean layout.</p>"
-            }
-          />
-        </section>
+        <PreviewFrame previewHtml={previewHtml} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className={btnClass}
-          disabled={busy !== null}
-          onClick={() => void wrap()}
-        >
-          {busy === "wrap" ? "Wrapping…" : "AI wrap"}
-        </button>
-        <button
-          type="button"
-          className={btnClass}
-          disabled={busy !== null}
-          onClick={() => void preview()}
-        >
-          {busy === "preview" ? "Previewing…" : "Preview"}
-        </button>
-        <button
-          type="button"
-          className={btnClass}
-          disabled={busy !== null}
-          onClick={() => void save()}
-        >
-          {busy === "save" ? "Saving…" : "Save draft"}
-        </button>
-        <input
-          className={`${fieldClass} max-w-56`}
-          value={testEmail}
-          onChange={(e) => setTestEmail(e.target.value)}
-          aria-label="Test recipient"
-        />
-        <button
-          type="button"
-          className={btnClass}
-          disabled={busy !== null}
-          onClick={() => void send(true)}
-        >
-          {busy === "test" ? "Sending…" : "Send test"}
-        </button>
-        <button
-          type="button"
-          className={primaryBtnClass}
-          disabled={busy !== null || subscribers.length === 0}
-          onClick={() => {
-            if (
-              window.confirm(
-                `Send to ${subscribers.length} subscriber${subscribers.length === 1 ? "" : "s"}?`
-              )
-            ) {
-              void send(false);
-            }
-          }}
-        >
-          {busy === "send" ? "Sending…" : `Send to ${subscribers.length}`}
-        </button>
-        {message && (
-          <span className="text-sm text-muted-foreground">{message}</span>
-        )}
-      </div>
+      <MailActionBar
+        busy={busy}
+        subscriberCount={subscribers.length}
+        testEmail={testEmail}
+        onTestEmailChange={setTestEmail}
+        message={message}
+        onWrap={() => void wrap()}
+        onPreview={() => void preview()}
+        onSave={() => void save()}
+        onSend={(test) => void send(test)}
+      />
 
-      <section>
-        <h2 className="mb-2 text-sm font-medium">List</h2>
-        {subscribers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No subscribers yet.</p>
-        ) : (
-          <div className="overflow-x-auto border-t border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-muted-foreground">
-                  <th className="py-2 pr-3 font-normal">Email</th>
-                  <th className="py-2 pr-3 font-normal">Lang</th>
-                  <th className="py-2 pr-3 font-normal">Source</th>
-                  <th className="py-2 font-normal">Joined</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subscribers.map((row) => (
-                  <tr key={row.email} className="border-b border-border/60">
-                    <td className="py-2 pr-3">{row.email}</td>
-                    <td className="py-2 pr-3">{row.lang}</td>
-                    <td className="py-2 pr-3">{row.source ?? "news"}</td>
-                    <td className="py-2 tabular-nums text-muted-foreground">
-                      {row.created_at
-                        ? new Date(row.created_at).toISOString().slice(0, 10)
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {campaigns.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-medium">Campaigns</h2>
-          <ul className="border-t border-border text-sm">
-            {campaigns.map((row) => (
-              <li
-                key={row.id}
-                className="flex justify-between border-b border-border/60 py-2"
-              >
-                <span>{row.subject}</span>
-                <span className="text-muted-foreground">
-                  {row.status}
-                  {row.status === "sent" ? ` · ${row.sent_count}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <SubscriberTable subscribers={subscribers} />
+      <CampaignList campaigns={campaigns} />
     </div>
   );
 }

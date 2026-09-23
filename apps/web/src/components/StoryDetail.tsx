@@ -1,92 +1,20 @@
-import { track } from "@aidr/ui/track";
-import { Clock, Cpu, ExternalLink, Link2 } from "lucide-react";
-import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
-import { categoryLabel } from "../lib/lang";
-import { publisherHost } from "../lib/publisher-host";
-import { detectSuggestField, type SuggestField } from "../lib/selection-field";
-import { storyPath } from "../lib/slug";
+import { useRef } from "react";
 import { sanitizeImageUrl } from "../lib/tldr-images";
-import { topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
-import { StoryThumb } from "./StoryThumb";
+import { useSuggestSelection } from "../lib/use-suggest-selection";
 import { SuggestionBadge, SuggestTranslation } from "./SuggestTranslation";
+import { BilingualSummary } from "./story/BilingualSummary";
+import { splitParagraphs } from "./story/lib";
+import { StoryMetaAside } from "./story/StoryMetaAside";
+import { StorySources } from "./story/StorySources";
 
-export function fmtTime(epochSec: number, lang: Lang): string {
-  return new Date(epochSec * 1000).toLocaleString(
-    lang === "vi" ? "vi-VN" : "en-US",
-    { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
-  );
-}
-
-function SourceRow({
-  source,
-  lang,
-  itemId,
-}: {
-  source: FeedItem["sources"][number];
-  lang: Lang;
-  itemId: string;
-}) {
-  const label =
-    source.kind === "discussion"
-      ? lang === "vi"
-        ? "THẢO LUẬN"
-        : "DISCUSSION"
-      : source.kind.toUpperCase();
-  return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
-      <span className="w-20 shrink-0 text-xs font-bold uppercase tracking-wide text-accent">
-        {label}
-      </span>
-      {source.author && <span className="font-semibold">{source.author}</span>}
-      {source.posted_at && (
-        <span className="text-xs text-muted-foreground">
-          {fmtTime(source.posted_at, lang)}
-        </span>
-      )}
-      {source.quote && (
-        <span className="text-muted-foreground">— {source.quote}</span>
-      )}
-      {source.url && (
-        <a
-          href={source.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => track("story_open", { item_id: itemId })}
-          className="text-accent hover:underline"
-          aria-label="Open source"
-        >
-          <ExternalLink className="inline h-3.5 w-3.5" />
-          {publisherHost(source.url) && (
-            <span className="ml-1">{publisherHost(source.url)}</span>
-          )}
-        </a>
-      )}
-    </div>
-  );
-}
+export { fmtTime } from "./story/lib";
 
 /**
  * The expanded-story body — topics, meta line, summary paragraphs,
  * thumbnail, translation-suggestion action, and key sources. Shared by
  * StoryRow's inline expansion and StoryDialog's modal so both stay in sync.
  */
-interface SelectionButtonState {
-  field: SuggestField;
-  text: string;
-  top: number;
-  left: number;
-}
-
-function splitParagraphs(text: string | null): string[] {
-  return text
-    ? text
-        .split(/\n\n+/)
-        .map((p) => p.trim())
-        .filter(Boolean)
-    : [];
-}
 
 /**
  * @param bilingual When true (and the item has a Vietnamese translation),
@@ -117,88 +45,8 @@ export function StoryDetail({
   const paragraphsVi = splitParagraphs(item.summary_vi);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [selectionButton, setSelectionButton] =
-    useState<SelectionButtonState | null>(null);
-  const [pendingSuggestion, setPendingSuggestion] = useState<{
-    field: SuggestField;
-    text: string;
-  } | null>(null);
-
-  // Medium-style "select text → suggest a correction" for the Vietnamese
-  // translation. Scoped to this story's content only, listeners attached
-  // client-side only (SSR-safe).
-  useEffect(() => {
-    if (!vietnameseVisible) return;
-    const container = containerRef.current;
-    if (!container) return;
-
-    const BUTTON_HEIGHT = 32;
-    const GAP = 6;
-
-    const onMouseUp = (e: MouseEvent) => {
-      // The floating "suggest" button lives inside `container`, so a
-      // mouseup on it bubbles here too — and since this listener is a
-      // native addEventListener on `container`, it fires *before* React's
-      // root-delegated click handler ever runs. Recomputing/clearing
-      // selectionButton here would re-render (and can unmount) the button
-      // before the click event reaches it, silently swallowing the click.
-      if (
-        e.target instanceof Node &&
-        (e.target as HTMLElement).closest?.("[data-selection-button]")
-      ) {
-        return;
-      }
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-        setSelectionButton(null);
-        return;
-      }
-      const text = sel.toString().trim();
-      if (!text) {
-        setSelectionButton(null);
-        return;
-      }
-      const range = sel.getRangeAt(0);
-      if (!container.contains(range.commonAncestorContainer)) {
-        setSelectionButton(null);
-        return;
-      }
-      const field = detectSuggestField(range.commonAncestorContainer);
-      if (!field) {
-        setSelectionButton(null);
-        return;
-      }
-      const rect = range.getBoundingClientRect();
-      const aboveTop = rect.top - BUTTON_HEIGHT - GAP;
-      const flip = aboveTop < 0;
-      setSelectionButton({
-        field,
-        text,
-        top: flip ? rect.bottom + GAP : aboveTop,
-        left: rect.left,
-      });
-    };
-
-    const hide = () => setSelectionButton(null);
-    const onSelectionChange = () => {
-      if (window.getSelection()?.isCollapsed) hide();
-    };
-    const onDocMouseDown = (e: MouseEvent) => {
-      if (!container.contains(e.target as Node)) hide();
-    };
-
-    container.addEventListener("mouseup", onMouseUp);
-    window.addEventListener("scroll", hide, true);
-    document.addEventListener("selectionchange", onSelectionChange);
-    document.addEventListener("mousedown", onDocMouseDown);
-
-    return () => {
-      container.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("scroll", hide, true);
-      document.removeEventListener("selectionchange", onSelectionChange);
-      document.removeEventListener("mousedown", onDocMouseDown);
-    };
-  }, [vietnameseVisible]);
+  const { selectionButton, pendingSuggestion, acceptSelection, clearPending } =
+    useSuggestSelection(containerRef, vietnameseVisible);
 
   return (
     <div ref={containerRef} className="relative space-y-4">
@@ -213,13 +61,7 @@ export function StoryDetail({
             zIndex: 1100,
           }}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            setPendingSuggestion({
-              field: selectionButton.field,
-              text: selectionButton.text,
-            });
-            setSelectionButton(null);
-          }}
+          onClick={acceptSelection}
           className="rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background shadow-lg"
         >
           ✎ {lang === "vi" ? "Góp ý" : "Suggest"}
@@ -230,56 +72,12 @@ export function StoryDetail({
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_240px] md:gap-8">
         <div className="min-w-0 space-y-4">
           {showBilingual ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:divide-x md:divide-border">
-              {/* Current language on the left, the other on the right. The
-                  suggest-a-correction target stays on the VI column either
-                  way. */}
-              {[
-                {
-                  key: "en",
-                  title: item.title,
-                  titleFallback: false,
-                  paragraphs: paragraphsEn,
-                  isVi: false,
-                },
-                {
-                  key: "vi",
-                  title: item.title_vi?.trim() || item.title,
-                  titleFallback: !item.title_vi?.trim(),
-                  paragraphs: paragraphsVi,
-                  isVi: true,
-                },
-              ]
-                .sort((a) => (a.key === lang ? -1 : 1))
-                .map((col, i) => (
-                  <div
-                    key={col.key}
-                    data-suggest-field={col.isVi ? "summary" : undefined}
-                    className={
-                      i === 0 ? "space-y-2" : "space-y-2 pt-4 md:pt-0 md:pl-6"
-                    }
-                  >
-                    <h3
-                      className="text-sm font-bold leading-snug text-foreground"
-                      lang={col.titleFallback ? "en" : undefined}
-                    >
-                      {col.title}
-                      {col.titleFallback && (
-                        <span className="ml-1 align-middle text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          EN
-                        </span>
-                      )}
-                    </h3>
-                    {col.paragraphs.length > 0 && (
-                      <div className="typeset typeset-reader">
-                        {col.paragraphs.map((p) => (
-                          <p key={p}>{p}</p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-            </div>
+            <BilingualSummary
+              item={item}
+              lang={lang}
+              paragraphsEn={paragraphsEn}
+              paragraphsVi={paragraphsVi}
+            />
           ) : (
             paragraphs.length > 0 && (
               <div
@@ -304,91 +102,16 @@ export function StoryDetail({
                     ? pendingSuggestion.text
                     : undefined
                 }
-                onInitialTextConsumed={() => setPendingSuggestion(null)}
+                onInitialTextConsumed={clearPending}
               />
               <SuggestionBadge itemId={item.id} expanded lang={lang} />
             </div>
           )}
 
-          {item.sources.length > 0 && (
-            <div className="not-typeset space-y-2 border-t border-border pt-4">
-              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {lang === "vi" ? "Nguồn chính" : "Key sources"}
-              </div>
-              {item.sources.map((source) => (
-                <SourceRow
-                  key={`${source.kind}-${source.url ?? source.author}`}
-                  source={source}
-                  lang={lang}
-                  itemId={item.id}
-                />
-              ))}
-            </div>
-          )}
+          <StorySources sources={item.sources} lang={lang} itemId={item.id} />
         </div>
 
-        <aside className="not-typeset min-w-0 space-y-5 md:border-l md:border-border md:pl-6">
-          {imageUrl && (
-            <StoryThumb src={imageUrl} itemId={item.id} variant="card" />
-          )}
-
-          {(item.tags.length > 0 || item.category) && (
-            <div className="space-y-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {lang === "vi" ? "Chủ đề" : "Topics"}
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {item.category && (
-                  <span className="rounded-full border border-border bg-background px-2 py-0 text-xs">
-                    {categoryLabel(item.category, lang)}
-                  </span>
-                )}
-                {item.tags.map((tag) => {
-                  const color = topicColor(tag);
-                  return (
-                    <span
-                      key={tag}
-                      className="rounded-full border border-border bg-background px-2 py-0 text-xs"
-                    >
-                      <span
-                        className="topic-colored"
-                        style={
-                          {
-                            "--tc-light": color.light,
-                            "--tc-dark": color.dark,
-                          } as CSSProperties
-                        }
-                      >
-                        {tag}
-                      </span>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="text-xs leading-relaxed text-muted-foreground">
-            <Clock className="inline h-3 w-3 align-[-1px]" aria-hidden />{" "}
-            {fmtTime(item.published_at, lang)} · {item.source_id} · score{" "}
-            {item.rank_score.toFixed(1)}
-            {item.llm_tokens > 0 && (
-              <>
-                {" · "}
-                <Cpu className="inline h-3 w-3 align-[-1px]" aria-hidden />{" "}
-                {item.llm_tokens} tokens
-              </>
-            )}
-            {" · "}
-            <a
-              href={storyPath(item)}
-              className="underline underline-offset-2 hover:text-accent"
-            >
-              <Link2 className="inline h-3 w-3 align-[-1px]" aria-hidden />{" "}
-              {lang === "vi" ? "Trang tin" : "Permalink"}
-            </a>
-          </div>
-        </aside>
+        <StoryMetaAside item={item} lang={lang} imageUrl={imageUrl} />
       </div>
     </div>
   );

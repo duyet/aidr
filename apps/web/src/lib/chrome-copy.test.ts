@@ -16,7 +16,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 describe("site chrome copy", () => {
   it("uses the ranked-and-summary slogan, not translated hourly", () => {
     expect(SITE_SLOGAN).toBe("AI news ranked and summary");
-    const footer = readFileSync(join(here, "../routes/__root.tsx"), "utf8");
+    const footer = readFileSync(
+      join(here, "../components/NewsFooter.tsx"),
+      "utf8"
+    );
     expect(footer).toContain("SITE_SLOGAN");
     expect(footer).not.toContain("translated hourly");
     expect(footer).not.toContain("Blog");
@@ -31,10 +34,14 @@ describe("site chrome copy", () => {
 
   it("points the header Chrome control at /subscribe, not the Web Store URL", () => {
     expect(EXTENSION_PATH).toBe("/subscribe");
-    const header = readFileSync(
-      join(here, "../components/HeaderBar.tsx"),
-      "utf8"
-    );
+    const header = [
+      "../components/HeaderBar.tsx",
+      "../components/header/WideRow.tsx",
+      "../components/header/CompactRow.tsx",
+      "../components/header/lib.ts",
+    ]
+      .map((f) => readFileSync(join(here, f), "utf8"))
+      .join("\n");
     expect(header).toContain("EXTENSION_PATH");
     expect(header).toContain("RiChromeLine");
     expect(header).not.toContain("CHROME_WEB_STORE_URL");

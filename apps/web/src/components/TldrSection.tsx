@@ -1,73 +1,10 @@
 import { track } from "@aidr/ui/track";
-import type { CSSProperties, ReactElement, ReactNode } from "react";
-import { useState } from "react";
+import type { ReactElement } from "react";
 import { type AidrLayout, DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
 import { timeAgo } from "../lib/lang";
 import { type TldrCount, usePrefs } from "../lib/prefs";
-import { topicColor } from "../lib/topic-color";
 import type { Lang, TldrBullet } from "../lib/types";
-import { HighlightedText } from "./HighlightedText";
-import { StoryDialog } from "./StoryDialog";
-import { StoryThumb } from "./StoryThumb";
-
-function TldrBulletRow({
-  layout,
-  n,
-  thumbSrc,
-  itemId,
-  fullText,
-  linked,
-  priority,
-  children,
-}: {
-  layout: AidrLayout;
-  n: number;
-  thumbSrc: string | null;
-  itemId?: string;
-  fullText: string;
-  linked?: boolean;
-  priority?: boolean;
-  children: ReactNode;
-}): ReactElement {
-  const copy = (
-    <span
-      className={`min-w-0 flex-1 line-clamp-2 break-words ${
-        linked
-          ? "underline decoration-border underline-offset-2 group-hover:decoration-accent"
-          : ""
-      }`}
-      title={fullText}
-    >
-      {children}
-    </span>
-  );
-  switch (layout) {
-    case "a":
-    case "b":
-      return (
-        <span className="flex min-h-[2lh] items-stretch gap-2">
-          {copy}
-          <StoryThumb src={thumbSrc} itemId={itemId} priority={priority} />
-        </span>
-      );
-    case "c":
-      return (
-        <span className="flex min-h-[2lh] items-stretch gap-2">
-          {copy}
-          <span className="relative shrink-0 self-stretch">
-            <StoryThumb src={thumbSrc} itemId={itemId} priority={priority} />
-            <span className="absolute bottom-0.5 left-0.5 flex h-4 min-w-4 items-center justify-center rounded-sm bg-foreground/80 px-0.5 text-[10px] font-bold tabular-nums text-background">
-              {n}
-            </span>
-          </span>
-        </span>
-      );
-    default: {
-      const _exhaustive: never = layout;
-      throw new Error(`unhandled AI;DR layout: ${_exhaustive}`);
-    }
-  }
-}
+import { TldrBulletList } from "./TldrBulletList";
 
 export function TldrSection({
   bullets,
@@ -102,10 +39,6 @@ export function TldrSection({
   /** Show a tiny "Layout A/B/C" chip when `?aidr=` is set for QA. */
   layoutLabeled?: boolean;
 }): ReactElement | null {
-  const [openBullet, setOpenBullet] = useState<{
-    itemId: string;
-    relatedIds: string[];
-  } | null>(null);
   const { setPrefs } = usePrefs();
 
   if (bullets.length === 0) return null;
@@ -135,7 +68,6 @@ export function TldrSection({
 
   const shown = bullets.slice(0, effectiveDefault);
   const mid = Math.ceil(shown.length / 2);
-  const cols = [shown.slice(0, mid), shown.slice(mid)];
 
   const selectedIndex = selectedOption ? options.indexOf(selectedOption) : -1;
   const nextOption =
@@ -189,101 +121,18 @@ export function TldrSection({
           </div>
         )}
       </div>
-      <div className="grid gap-x-10 md:grid-cols-2">
-        {cols.map((col, ci) => (
-          <ol
-            key={col[0]?.text ?? ci}
-            start={ci * mid + 1}
-            className={
-              numbered
-                ? "list-decimal space-y-2 pl-6 leading-snug marker:text-muted-foreground"
-                : "list-none space-y-2 pl-0 leading-snug"
-            }
-          >
-            {col.map((b, i) => {
-              const n = ci * mid + i + 1;
-              const primaryId = b.item_ids?.[0];
-              const otherIds = (b.item_ids ?? []).slice(1);
-              const tag = primaryId ? topicByItemId?.get(primaryId) : undefined;
-              const color = tag ? topicColor(tag) : null;
-              const itemTags = (b.item_ids ?? []).flatMap(
-                (id) => tagsByItemId?.get(id) ?? []
-              );
-              const thumbSrc =
-                b.image_url ??
-                (primaryId ? imageByItemId?.get(primaryId) : undefined) ??
-                null;
-              const highlighted = (
-                <HighlightedText text={b.text} tags={itemTags} />
-              );
-              const row = (
-                <TldrBulletRow
-                  layout={layout}
-                  n={n}
-                  thumbSrc={thumbSrc}
-                  itemId={primaryId}
-                  fullText={b.text}
-                  linked={Boolean(primaryId)}
-                  priority={n <= 6}
-                >
-                  {color && tag && (
-                    <span
-                      className="topic-colored mr-1.5 text-xs font-semibold uppercase tracking-wide"
-                      style={
-                        {
-                          "--tc-light": color.light,
-                          "--tc-dark": color.dark,
-                        } as CSSProperties
-                      }
-                    >
-                      {tag}
-                    </span>
-                  )}
-                  {highlighted}
-                  {otherIds.length > 0 && (
-                    <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
-                      +{otherIds.length}
-                    </span>
-                  )}
-                </TldrBulletRow>
-              );
-              return (
-                <li key={b.text}>
-                  {primaryId ? (
-                    <a
-                      href={
-                        pathByItemId?.get(primaryId) ??
-                        `/${primaryId.slice(0, 8)}`
-                      }
-                      onClick={(e) => {
-                        if (
-                          e.button !== 0 ||
-                          e.metaKey ||
-                          e.ctrlKey ||
-                          e.shiftKey ||
-                          e.altKey
-                        ) {
-                          return;
-                        }
-                        e.preventDefault();
-                        setOpenBullet({
-                          itemId: primaryId,
-                          relatedIds: otherIds,
-                        });
-                      }}
-                      className="group block text-inherit no-underline"
-                    >
-                      {row}
-                    </a>
-                  ) : (
-                    row
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        ))}
-      </div>
+
+      <TldrBulletList
+        shown={shown}
+        mid={mid}
+        layout={layout}
+        numbered={numbered}
+        lang={lang}
+        topicByItemId={topicByItemId}
+        pathByItemId={pathByItemId}
+        tagsByItemId={tagsByItemId}
+        imageByItemId={imageByItemId}
+      />
 
       {nextOption ? (
         <button
@@ -327,15 +176,6 @@ export function TldrSection({
               : "News as of"}
         </span>
       </div>
-
-      {openBullet && (
-        <StoryDialog
-          idPrefix={openBullet.itemId}
-          relatedIds={openBullet.relatedIds}
-          lang={lang}
-          onClose={() => setOpenBullet(null)}
-        />
-      )}
     </section>
   );
 }
