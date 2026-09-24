@@ -33,6 +33,7 @@ import { Route as ApiSystemRouteImport } from './routes/api/system'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
+import { Route as ApiFeedFreshnessRouteImport } from './routes/api/feed.freshness'
 import { Route as ApiOgIdRouteImport } from './routes/api/og.$id'
 import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
 import { Route as ApiSubscribePreviewRouteImport } from './routes/api/subscribe.preview'
@@ -164,6 +165,11 @@ const ApiAdminSplatRoute = ApiAdminSplatRouteImport.update({
   path: '/api/admin/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFeedFreshnessRoute = ApiFeedFreshnessRouteImport.update({
+  id: '/freshness',
+  path: '/freshness',
+  getParentRoute: () => ApiFeedRoute,
+} as any)
 const ApiOgIdRoute = ApiOgIdRouteImport.update({
   id: '/api/og/$id',
   path: '/api/og/$id',
@@ -232,7 +238,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
-  '/api/feed': typeof ApiFeedRoute
+  '/api/feed': typeof ApiFeedRouteWithChildren
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
+  '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
@@ -268,7 +275,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
-  '/api/feed': typeof ApiFeedRoute
+  '/api/feed': typeof ApiFeedRouteWithChildren
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
+  '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
@@ -305,7 +313,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
-  '/api/feed': typeof ApiFeedRoute
+  '/api/feed': typeof ApiFeedRouteWithChildren
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
@@ -313,6 +321,7 @@ export interface FileRoutesById {
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
+  '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
@@ -351,6 +360,7 @@ export interface FileRouteTypes {
     | '/sign-in/$'
     | '/sign-up/$'
     | '/api/admin/$'
+    | '/api/feed/freshness'
     | '/api/og/$id'
     | '/api/story/$id'
     | '/api/subscribe/preview'
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/sign-in/$'
     | '/sign-up/$'
     | '/api/admin/$'
+    | '/api/feed/freshness'
     | '/api/og/$id'
     | '/api/story/$id'
     | '/api/subscribe/preview'
@@ -423,6 +434,7 @@ export interface FileRouteTypes {
     | '/sign-in/$'
     | '/sign-up/$'
     | '/api/admin/$'
+    | '/api/feed/freshness'
     | '/api/og/$id'
     | '/api/story/$id'
     | '/api/subscribe/preview'
@@ -452,7 +464,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   CatSlugRoute: typeof CatSlugRoute
   ApiExtensionRoute: typeof ApiExtensionRoute
-  ApiFeedRoute: typeof ApiFeedRoute
+  ApiFeedRoute: typeof ApiFeedRouteWithChildren
   ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicRoute: typeof ApiPublicRoute
   ApiSubscribeRoute: typeof ApiSubscribeRouteWithChildren
@@ -634,6 +646,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/feed/freshness': {
+      id: '/api/feed/freshness'
+      path: '/freshness'
+      fullPath: '/api/feed/freshness'
+      preLoaderRoute: typeof ApiFeedFreshnessRouteImport
+      parentRoute: typeof ApiFeedRoute
+    }
     '/api/og/$id': {
       id: '/api/og/$id'
       path: '/api/og/$id'
@@ -707,6 +726,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ApiFeedRouteChildren {
+  ApiFeedFreshnessRoute: typeof ApiFeedFreshnessRoute
+}
+
+const ApiFeedRouteChildren: ApiFeedRouteChildren = {
+  ApiFeedFreshnessRoute: ApiFeedFreshnessRoute,
+}
+
+const ApiFeedRouteWithChildren =
+  ApiFeedRoute._addFileChildren(ApiFeedRouteChildren)
+
 interface ApiSubscribeRouteChildren {
   ApiSubscribePreviewRoute: typeof ApiSubscribePreviewRoute
 }
@@ -760,7 +790,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   CatSlugRoute: CatSlugRoute,
   ApiExtensionRoute: ApiExtensionRoute,
-  ApiFeedRoute: ApiFeedRoute,
+  ApiFeedRoute: ApiFeedRouteWithChildren,
   ApiMcpRoute: ApiMcpRoute,
   ApiPublicRoute: ApiPublicRoute,
   ApiSubscribeRoute: ApiSubscribeRouteWithChildren,
