@@ -55,6 +55,7 @@ describe("routeIndexability", () => {
     for (const pathname of [
       "/api/public",
       "/api/feed",
+      "/api/feed/freshness",
       "/api/extension",
       "/api/system",
       "/api/system/overview",
@@ -72,6 +73,7 @@ describe("routeIndexability", () => {
   it("defaults unknown API routes to private and uncached", () => {
     for (const pathname of [
       "/api/not-allowlisted",
+      "/api/feed/freshness/child",
       "/api/subscribe",
       "/__clerk/v1/client",
     ]) {
@@ -352,6 +354,29 @@ describe("withRouteIndexabilityHeaders", () => {
       expect(response.headers.get("Cache-Control")).toBe(PRIVATE_CACHE_CONTROL);
       expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
     }
+  });
+
+  it("allowlists feed freshness as a cacheable noindex API", async () => {
+    const response = await withRouteIndexabilityHeaders(
+      new Request(`${SITE_URL}/api/feed/freshness`),
+      new Response('{"freshness":"ok"}', {
+        headers: { "Cache-Control": "public, max-age=60, s-maxage=120" },
+      })
+    );
+
+    expect(
+      routeIndexability({ pathname: "/api/feed/freshness" })
+    ).toMatchObject({
+      kind: "api",
+      robots: NOINDEX_FOLLOW_ROBOTS,
+    });
+    expect(response.headers.get("X-Robots-Tag")).toBe(NOINDEX_FOLLOW_ROBOTS);
+    expect(response.headers.get("Referrer-Policy")).toBe(
+      "strict-origin-when-cross-origin"
+    );
+    expect(response.headers.get("Cache-Control")).toBe(
+      "public, max-age=60, s-maxage=120"
+    );
   });
 
   it("keeps an encoded whitespace admin data tab private in meta and headers", async () => {

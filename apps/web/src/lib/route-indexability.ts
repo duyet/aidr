@@ -242,6 +242,7 @@ function isExplicitPublicApiPath(pathname: string): boolean {
   return (
     lower === "/api/extension" ||
     lower === "/api/feed" ||
+    lower === "/api/feed/freshness" ||
     lower === "/api/public" ||
     lower === "/api/system" ||
     lower.startsWith("/api/system/") ||
