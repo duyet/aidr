@@ -462,6 +462,8 @@ describe("withRouteIndexabilityHeaders", () => {
 });
 
 describe("Clerk proxy indexability", () => {
+  const CLERK_PROXY_URL = `${SITE_URL}/__clerk`;
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -473,7 +475,10 @@ describe("Clerk proxy indexability", () => {
   async function wrapProxyResponse(
     response: Response,
     request = proxyRequest(),
-    env = { CLERK_SECRET_KEY: "server-secret" }
+    env = {
+      CLERK_SECRET_KEY: "server-secret",
+      CLERK_PROXY_URL: CLERK_PROXY_URL,
+    }
   ) {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
     return withRouteIndexabilityHeaders(
@@ -502,9 +507,7 @@ describe("Clerk proxy indexability", () => {
     );
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe(
-      "https://frontend-api.clerk.dev/v1/next"
-    );
+    expect(response.headers.get("Location")).toBe(`${CLERK_PROXY_URL}/v1/next`);
     expect(response.headers.get("X-Robots-Tag")).toBe(NOINDEX_NOFOLLOW_ROBOTS);
   });
 
