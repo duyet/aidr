@@ -197,10 +197,8 @@ export const telegramNotifier: Notifier = {
     const chatId = env.TELEGRAM_CHAT_ID as string;
     const caption = buildStoryCaption(story);
     const replyMarkup = buildStoryReplyMarkup(story);
-    const thumbnailUrl = primaryThumbnailUrl(
-      story.media_manifest,
-      story.image_url,
-      story.url
+    const thumbnailUrl = canonicalizeMediaImageUrl(
+      primaryThumbnailUrl(story.media_manifest, story.image_url, story.url)
     );
 
     if (thumbnailUrl) {

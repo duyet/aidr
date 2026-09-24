@@ -1,6 +1,8 @@
 export const MEDIA_MANIFEST_COLUMN = "media_manifest";
 export const MEDIA_MANIFEST_MIGRATION = "0024_item_media_manifest.sql";
 export const TRANSLATION_REVIEW_MIGRATION = "0023_translation_reviews.sql";
+export const TRANSLATION_REVIEW_HARDENING_MIGRATION =
+  "0025_translation_review_hardening.sql";
 
 export class MediaManifestSchemaError extends Error {
   readonly code = "MEDIA_MANIFEST_SCHEMA_MISSING" as const;

@@ -7,6 +7,7 @@ import {
   BACKFILL_BATCH_SIZE,
   BACKFILL_CONTENT_CAP,
   BACKFILL_SCORE_CAP,
+  buildMissingMediaQuery,
   buildMissingSummaryQuery,
   buildMissingTranslationQuery,
   buildUnscoredItemsQuery,
@@ -1125,8 +1126,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       );
 
       // Backfills existing (pre-enrichment) published items still missing a
-      // summary — the `enrich` step above only ever touches this run's NEW
-      // items. Drains the backlog a few items per hourly run rather than
+      // summary. Drains the backlog a few items per hourly run rather than
       // trying to catch up all at once.
       backfilledSummaries = await safeStep(
         step,
@@ -1141,13 +1141,29 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               id: string;
               url: string;
               source_id: string;
+              summary: string | null;
               image_url: string | null;
               media_manifest: string | null;
             }>();
             const rows = results ?? [];
+            const mediaOnlyRows = await this.env.DB.prepare(
+              buildMissingMediaQuery(BACKFILL_CONTENT_CAP)
+            ).all<{
+              id: string;
+              url: string;
+              source_id: string;
+              summary: string;
+              image_url: string | null;
+              media_manifest: string | null;
+            }>();
+            const mediaRows = mediaOnlyRows.results ?? [];
+            const allRows = [...rows, ...mediaRows].filter(
+              (row, index, list) =>
+                list.findIndex((candidate) => candidate.id === row.id) === index
+            );
 
-            for (let i = 0; i < rows.length; i += BACKFILL_BATCH_SIZE) {
-              const batch = rows.slice(i, i + BACKFILL_BATCH_SIZE);
+            for (let i = 0; i < allRows.length; i += BACKFILL_BATCH_SIZE) {
+              const batch = allRows.slice(i, i + BACKFILL_BATCH_SIZE);
               await Promise.all(
                 batch.map(async (row) => {
                   let fetched: {
@@ -1174,6 +1190,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
 
                   const plan = planBackfillUpdate(
                     {
+                      summary: row.summary,
                       imageUrl: row.image_url,
                       mediaManifest: row.media_manifest,
                       articleUrl: row.url,
@@ -1185,7 +1202,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
 
                   await this.env.DB.prepare(
                     `UPDATE items SET
-                       summary = ?,
+                       summary = COALESCE(?, summary),
                        image_url = ?,
                        media_manifest = ?
                      WHERE id = ?`

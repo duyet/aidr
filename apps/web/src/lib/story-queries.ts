@@ -1,5 +1,6 @@
 import {
   boundedPublicManifest,
+  canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
   MAX_PUBLIC_MEDIA_URL_LENGTH,
   manifestWithoutArticleUrl,
@@ -81,10 +82,8 @@ function mapStoryRow(
   );
   const exposedManifest = boundedPublicManifest(manifest);
   const articleUrl = canonicalizeMediaUrl(rawArticleUrl);
-  const imageUrl = primaryThumbnailUrl(
-    manifest,
-    legacyImageUrl,
-    rawArticleUrl
+  const imageUrl = canonicalizeMediaImageUrl(
+    primaryThumbnailUrl(manifest, legacyImageUrl, rawArticleUrl)
   );
   const item: FeedItem = {
     id,

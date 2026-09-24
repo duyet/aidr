@@ -2,6 +2,7 @@ import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import { nn } from "../d1-bind.js";
 import {
+  canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
   manifestWithoutArticleUrl,
   parseMediaManifest,
@@ -123,7 +124,9 @@ export function hydrateStory(row: StoryRow): StoryPayload {
   return {
     ...story,
     url: canonicalizeMediaUrl(story.url) ?? "",
-    image_url: primaryThumbnailUrl(manifest, story.image_url, story.url),
+    image_url: canonicalizeMediaImageUrl(
+      primaryThumbnailUrl(manifest, story.image_url, story.url)
+    ),
     media_manifest: manifest.assets.length > 0 ? manifest : null,
   };
 }

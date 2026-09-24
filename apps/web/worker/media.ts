@@ -158,7 +158,121 @@ function decodeUrlEntities(value: string): string {
   return output;
 }
 
-function isPrivateHostname(rawHostname: string): boolean {
+function parseIpv4(hostname: string): number[] | null {
+  const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) return null;
+  const octets = match.slice(1).map((part) => Number(part));
+  return octets.every(
+    (part) => Number.isInteger(part) && part >= 0 && part <= 255
+  )
+    ? octets
+    : null;
+}
+
+function parseIpv6(hostname: string): number[] | null {
+  let value = hostname.toLowerCase();
+  if (value.includes("%")) return null;
+
+  // URL normally expands dotted-quad IPv6 tails, but accepting the textual
+  // form here keeps the policy correct in non-browser runtimes and tests.
+  if (value.includes(".")) {
+    const lastColon = value.lastIndexOf(":");
+    if (lastColon < 0) return null;
+    const ipv4 = parseIpv4(value.slice(lastColon + 1));
+    if (!ipv4) return null;
+    const high = ((ipv4[0] << 8) | ipv4[1]).toString(16);
+    const low = ((ipv4[2] << 8) | ipv4[3]).toString(16);
+    value = `${value.slice(0, lastColon + 1)}${high}:${low}`;
+  }
+
+  const halves = value.split("::");
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(":") : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const missing = 8 - left.length - right.length;
+  if (
+    (halves.length === 1 && missing !== 0) ||
+    (halves.length === 2 && missing < 1) ||
+    [...left, ...right].some((part) => !/^[0-9a-f]{1,4}$/i.test(part))
+  ) {
+    return null;
+  }
+  const groups = [
+    ...left,
+    ...Array.from({ length: halves.length === 2 ? missing : 0 }, () => "0"),
+    ...right,
+  ].map((part) => Number.parseInt(part, 16));
+  return groups.length === 8 && groups.every(Number.isInteger) ? groups : null;
+}
+
+function isPrivateIpv4(hostname: string): boolean {
+  const octets = parseIpv4(hostname);
+  if (!octets) return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname);
+  const [a, b, c] = octets;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 0 && (c === 0 || c === 2)) ||
+    (a === 192 && b === 88 && c === 99) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
+    a >= 224
+  );
+}
+
+function isPrivateIpv6(hostname: string): boolean {
+  const groups = parseIpv6(hostname);
+  if (!groups) return false;
+  const [first, second] = groups;
+  const isUnspecified = groups.every((group) => group === 0);
+  const isLoopback =
+    groups.slice(0, 7).every((group) => group === 0) && groups[7] === 1;
+  const isIpv4Compatible = groups.slice(0, 6).every((group) => group === 0);
+  const isIpv4Mapped =
+    groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff;
+  const isIpv4Translated =
+    groups.slice(0, 4).every((group) => group === 0) &&
+    groups[4] === 0xffff &&
+    groups[5] === 0;
+  const isNat64 = first === 0x64 && second === 0xff9b;
+  const isUla = (first & 0xfe00) === 0xfc00;
+  const isLinkLocal = (first & 0xffc0) === 0xfe80;
+  const isMulticast = (first & 0xff00) === 0xff00;
+  const isDocumentation = first === 0x2001 && second === 0x0db8;
+  const isBenchmarking = first === 0x2001 && second === 0x0002;
+  const isDiscard =
+    first === 0x0100 && groups.slice(1, 4).every((group) => group === 0);
+  const isOrchid = first === 0x2001 && second >= 0x0010 && second <= 0x002f;
+  const isSixToFour = first === 0x2002;
+  const isTeredo = first === 0x2001 && second === 0x0000;
+
+  return (
+    isUnspecified ||
+    isLoopback ||
+    isIpv4Compatible ||
+    isIpv4Mapped ||
+    isIpv4Translated ||
+    isNat64 ||
+    isUla ||
+    isLinkLocal ||
+    isMulticast ||
+    isDocumentation ||
+    isBenchmarking ||
+    isDiscard ||
+    isOrchid ||
+    isSixToFour ||
+    isTeredo
+  );
+}
+
+/** Syntactic host policy shared by media storage and outbound fetches. */
+export function isPrivateHostname(rawHostname: string): boolean {
   const hostname = rawHostname
     .toLowerCase()
     .replace(/^\[|\]$/g, "")
@@ -173,44 +287,10 @@ function isPrivateHostname(rawHostname: string): boolean {
   ) {
     return true;
   }
-
-  const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (ipv4) {
-    const octets = ipv4.slice(1).map((part) => Number(part));
-    if (octets.some((part) => part > 255)) return true;
-    const [a, b, c] = octets;
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 0 && (c === 0 || c === 2)) ||
-      (a === 192 && b === 88 && c === 99) ||
-      (a === 192 && b === 168) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      (a === 198 && b === 51 && c === 100) ||
-      (a === 203 && b === 0 && c === 113) ||
-      a >= 224
-    );
+  if (hostname.includes(":")) {
+    return !parseIpv6(hostname) || isPrivateIpv6(hostname);
   }
-
-  // IPv4-mapped/compatible IPv6 is rejected as a whole because the embedded
-  // address may be represented in several equivalent encodings.
-  if (/^::(?:ffff:)?/i.test(hostname)) return true;
-  return (
-    hostname === "::" ||
-    hostname === "::1" ||
-    (hostname.includes(":") &&
-      (/^f[cd][0-9a-f]{2}:/i.test(hostname) ||
-        /^fe[89ab][0-9a-f]:/i.test(hostname) ||
-        /^ff[0-9a-f]{2}:/i.test(hostname) ||
-        /^2001:2:/i.test(hostname) ||
-        /^2001:10:/i.test(hostname) ||
-        /^2001:20:/i.test(hostname) ||
-        /^2001:db8:/i.test(hostname)))
-  );
+  return isPrivateIpv4(hostname);
 }
 
 function removeQueryKeys(url: URL, keys: Set<string>): void {
@@ -252,6 +332,11 @@ export function canonicalizeMediaUrl(raw: unknown): string | null {
   return normalized.length <= MAX_MEDIA_URL_LENGTH ? normalized : null;
 }
 
+export function canonicalizeMediaImageUrl(raw: unknown): string | null {
+  const url = canonicalizeMediaUrl(raw);
+  return url && !isGenericImageUrl(url) ? url : null;
+}
+
 /** A key that ignores common resize variants while retaining content path. */
 export function mediaIdentityKey(
   type: MediaType,
@@ -276,7 +361,7 @@ export function mediaIdentityKey(
   return `${parsed.hostname.toLowerCase()}${port}${pathname}${parsed.search}`;
 }
 
-function isGenericImageUrl(url: string): boolean {
+export function isGenericImageUrl(url: string): boolean {
   if (BLOCKED_IMAGE_URLS.has(url)) return true;
   let pathname: string;
   try {
@@ -423,7 +508,7 @@ function emptyManifest(): MediaManifest {
 }
 
 function legacyImageManifest(raw: unknown): MediaManifest {
-  const url = canonicalizeMediaUrl(raw);
+  const url = canonicalizeMediaImageUrl(raw);
   return url
     ? { version: MEDIA_MANIFEST_VERSION, assets: [{ type: "image", url }] }
     : emptyManifest();
@@ -562,18 +647,21 @@ export function primaryThumbnailUrl(
   legacyImageUrl?: unknown,
   articleUrl?: unknown
 ): string | null {
+  const normalized = buildMediaManifest(manifest?.assets ?? []);
   const usable =
     articleUrl === undefined
-      ? manifest
-      : manifestWithoutArticleUrl(manifest, articleUrl);
+      ? normalized
+      : manifestWithoutArticleUrl(normalized, articleUrl);
   const primary = usable?.assets[0];
-  if (primary?.type === "image") return primary.url;
+  if (primary?.type === "image") return canonicalizeMediaImageUrl(primary.url);
   if (primary?.type === "video" && primary.poster_url) {
-    return primary.poster_url;
+    return canonicalizeMediaImageUrl(primary.poster_url);
   }
   // A manifest with a video but no poster may still have an image alternate.
-  const legacy = canonicalizeMediaUrl(legacyImageUrl);
-  if (legacy && canonicalizeMediaUrl(articleUrl) === legacy) return null;
+  const legacy = canonicalizeMediaImageUrl(legacyImageUrl);
+  if (!legacy || canonicalizeMediaUrl(articleUrl) === legacy) {
+    return firstImageUrl(usable);
+  }
   return firstImageUrl(usable) ?? legacy;
 }
 
@@ -652,11 +740,16 @@ function firstUrl(value: unknown, depth = 0): string | undefined {
 
 function typeNames(value: Record<string, unknown>): string[] {
   const raw = value["@type"] ?? value.type;
-  if (typeof raw === "string") return [raw.toLowerCase()];
+  const normalize = (entry: string): string => {
+    const trimmed = entry.trim().toLowerCase();
+    const qualified = trimmed.match(/(?:^|[/#:])([a-z0-9]+)$/);
+    return qualified?.[1] ?? trimmed;
+  };
+  if (typeof raw === "string") return [normalize(raw)];
   if (Array.isArray(raw)) {
     return raw
       .filter((entry): entry is string => typeof entry === "string")
-      .map((entry) => entry.toLowerCase());
+      .map(normalize);
   }
   return [];
 }
@@ -713,7 +806,13 @@ function collectJsonLdMedia(
           record.contentUrl ?? record.url ?? record.image ?? record.thumbnailUrl
         )
       : firstUrl(record.image ?? record.thumbnailUrl);
-    if (imageUrl) {
+    const articleUrl = isArticle
+      ? firstUrl(record.url ?? record["@id"])
+      : undefined;
+    if (
+      imageUrl &&
+      canonicalizeMediaUrl(imageUrl) !== canonicalizeMediaUrl(articleUrl)
+    ) {
       candidates.push({ type: "image", url: imageUrl, priority: 30 });
     }
   }

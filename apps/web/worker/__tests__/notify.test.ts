@@ -360,6 +360,26 @@ describe("helpers", () => {
     });
   });
 
+  it("drops generic legacy logos before Telegram delivery", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, result: { message_id: 8 } }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await telegramNotifier.sendStory(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+      } as Env,
+      story({ image_url: "https://img.example/favicon.png" })
+    );
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMessage");
+  });
+
   it("drops private/tracking legacy image URLs when no manifest is usable", () => {
     const base = story({
       url: "https://example.com/story",

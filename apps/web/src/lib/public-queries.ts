@@ -1,5 +1,6 @@
 import {
   boundedPublicManifest,
+  canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
   MAX_PUBLIC_MEDIA_URL_LENGTH,
   type MediaManifest,
@@ -37,6 +38,11 @@ function clip(value: unknown, max: number): string {
 /** Never turn an overlong URL into a broken, truncated link. */
 function boundedPublicUrl(value: unknown, max: number): string | null {
   const canonical = canonicalizeMediaUrl(value);
+  return canonical && canonical.length <= max ? canonical : null;
+}
+
+function boundedPublicImageUrl(value: unknown, max: number): string | null {
+  const canonical = canonicalizeMediaImageUrl(value);
   return canonical && canonical.length <= max ? canonical : null;
 }
 
@@ -173,7 +179,7 @@ function toPublicStory(row: StoryRow): PublicStory {
     title: clip(row.title, PUBLIC_STORY_TEXT_MAX),
     title_vi: row.title_vi ? clip(row.title_vi, PUBLIC_STORY_TEXT_MAX) : null,
     category: row.category ? clip(row.category, 64) : null,
-    image_url: boundedPublicUrl(
+    image_url: boundedPublicImageUrl(
       primaryThumbnailUrl(manifest, row.image_url, row.url),
       MAX_PUBLIC_MEDIA_URL_LENGTH
     ),
@@ -253,7 +259,7 @@ export function boundPublicDigest(digest: PublicDigest): PublicDigest {
   const bounded = clonePublicDigest(digest);
   for (const story of bounded.stories) {
     story.url = boundedPublicUrl(story.url, PUBLIC_STORY_URL_MAX_LENGTH) ?? "";
-    story.image_url = boundedPublicUrl(
+    story.image_url = boundedPublicImageUrl(
       story.image_url,
       MAX_PUBLIC_MEDIA_URL_LENGTH
     );
@@ -267,7 +273,7 @@ export function boundPublicDigest(digest: PublicDigest): PublicDigest {
   }
   for (const language of ["bullets_en", "bullets_vi"] as const) {
     for (const bullet of bounded.tldr?.[language] ?? []) {
-      const imageUrl = boundedPublicUrl(
+      const imageUrl = boundedPublicImageUrl(
         bullet.image_url,
         MAX_PUBLIC_MEDIA_URL_LENGTH
       );
@@ -372,7 +378,7 @@ async function loadImagesForIds(
         .all<{ id: string; url?: string | null; image_url: string }>();
       return imageUrlByItemId(
         (results ?? []).map((row) => {
-          const imageUrl = canonicalizeMediaUrl(row.image_url);
+          const imageUrl = canonicalizeMediaImageUrl(row.image_url);
           const articleUrl = canonicalizeMediaUrl(row.url);
           return {
             id: row.id,

@@ -1,5 +1,6 @@
 import {
   buildMediaManifest,
+  isPrivateHostname,
   type MediaCandidate,
   type MediaManifest,
   manifestWithoutArticleUrl,
@@ -65,49 +66,6 @@ export function decodeHtmlEntities(text: string): string {
 
 export const MAX_ENRICH_REDIRECTS = 3;
 
-function reservedIpv4(hostname: string): boolean {
-  const parts = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (!parts) return false;
-  const octets = parts.slice(1).map(Number);
-  if (octets.some((part) => part > 255)) return true;
-  const [a, b, c] = octets;
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 0 && c === 0) ||
-    (a === 192 && b === 0 && c === 2) ||
-    (a === 192 && b === 88 && c === 99) ||
-    (a === 192 && b === 168) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    (a === 198 && b === 51 && c === 100) ||
-    (a === 203 && b === 0 && c === 113) ||
-    a >= 224
-  );
-}
-
-function reservedIpv6(hostname: string): boolean {
-  if (
-    hostname === "::" ||
-    hostname === "::1" ||
-    /^f[cd][0-9a-f]{2}:/i.test(hostname) ||
-    /^fe[89ab][0-9a-f]:/i.test(hostname) ||
-    /^ff[0-9a-f]{2}:/i.test(hostname) ||
-    /^2001:2:/i.test(hostname) ||
-    /^2001:10:/i.test(hostname) ||
-    /^2001:20:/i.test(hostname) ||
-    /^2001:db8:/i.test(hostname)
-  ) {
-    return true;
-  }
-  // Workers exposes no DNS/IP lookup API. Reject IPv4-mapped IPv6 rather
-  // than guessing whether the embedded address is public.
-  return /^::ffff:/i.test(hostname);
-}
-
 /**
  * Fetch-boundary URL policy. This rejects obvious reserved/private literals,
  * credentials, and non-default ports. Workers cannot resolve a hostname to
@@ -124,6 +82,20 @@ export function isFetchableUrl(raw: string): boolean {
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") return false;
   if (u.username || u.password) return false;
+  if (u.protocol === "http:") {
+    // Plain HTTP is retained only for explicitly public, well-known source
+    // hosts. Arbitrary clear-text article URLs are not fetched.
+    const hostname = u.hostname.toLowerCase().replace(/\.$/, "");
+    const publicHosts = new Set([
+      "news.ycombinator.com",
+      "www.anthropic.com",
+      "huggingnews.com",
+      "x.ai",
+      "www.x.ai",
+      "marketbrief.now",
+    ]);
+    if (!publicHosts.has(hostname)) return false;
+  }
   const defaultPort = u.protocol === "https:" ? "443" : "80";
   if (u.port && u.port !== defaultPort) return false;
 
@@ -138,21 +110,28 @@ export function isFetchableUrl(raw: string): boolean {
     hostname.endsWith(".local") ||
     hostname.endsWith(".home") ||
     hostname.endsWith(".lan") ||
-    reservedIpv4(hostname) ||
-    reservedIpv6(hostname)
+    isPrivateHostname(hostname)
   ) {
     return false;
   }
   return true;
 }
 
-function logSafeUrl(raw: string): string {
+export function redactUrlForLog(raw: string): string {
   try {
     const url = new URL(raw);
-    return `${url.origin}${url.pathname}`;
+    // Never log query strings or path segments: signed CDNs can put bearer
+    // credentials in either location. Keep only the origin for diagnostics.
+    return url.pathname && url.pathname !== "/"
+      ? `${url.origin}/[path-redacted]`
+      : url.origin;
   } catch {
     return "[invalid-url]";
   }
+}
+
+function logSafeUrl(raw: string): string {
+  return redactUrlForLog(raw);
 }
 
 function logSafeError(error: unknown): string {

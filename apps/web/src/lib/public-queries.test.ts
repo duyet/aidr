@@ -274,6 +274,15 @@ describe("getPublicDigest", () => {
     ).toBeLessThanOrEqual(PUBLIC_RESPONSE_MAX_BYTES);
   });
 
+  it("filters a generic legacy logo from public output", async () => {
+    const db = makeDb({
+      stories: [story("logo", { image_url: "https://img.example/logo.png" })],
+    });
+    const digest = await getPublicDigest(db);
+    expect(digest.stories[0]?.image_url).toBeNull();
+    expect(digest.tldr?.bullets_en[0]?.image_url).toBeUndefined();
+  });
+
   it("does not expose an article JSON-LD URL as a story image", async () => {
     const db = makeDb({
       stories: [

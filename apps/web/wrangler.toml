@@ -2,7 +2,7 @@ name = "aidr"
 account_id = "7df185a18b98382c3240fa7ac4a37075"
 main = "src/server.ts"
 compatibility_date = "2026-05-14"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 # Enable versioned preview URLs (<version>-aidr.<subdomain>.workers.dev)
 # so `wrangler versions upload` yields a shareable preview before prod deploy.
 preview_urls = true

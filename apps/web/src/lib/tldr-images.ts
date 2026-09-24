@@ -1,4 +1,7 @@
-import { canonicalizeMediaUrl } from "../../worker/media.js";
+import {
+  canonicalizeMediaImageUrl,
+  canonicalizeMediaUrl,
+} from "../../worker/media.js";
 import type { TldrBullet } from "./types";
 
 /** Normalize every read-time image through the same URL policy as persistence.
@@ -6,7 +9,7 @@ import type { TldrBullet } from "./types";
 export function sanitizeImageUrl(
   url: string | null | undefined
 ): string | null {
-  return canonicalizeMediaUrl(url);
+  return canonicalizeMediaImageUrl(url);
 }
 
 export type CdnImageSize = "thumb" | "card" | "full";

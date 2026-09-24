@@ -9,7 +9,7 @@ import {
 } from "../mail/render.js";
 import { ensureMailSchema } from "../mail/schema.js";
 import { digestFrom, sendSubscriberEmail } from "../mail/send.js";
-import { canonicalizeMediaUrl } from "../media.js";
+import { canonicalizeMediaImageUrl } from "../media.js";
 import type { Env } from "../types.js";
 import { DEFAULT_TIMEZONE, isValidTimezone } from "./handlers.js";
 
@@ -165,7 +165,7 @@ export function buildDigestEmail(
           ? absoluteSiteUrl(storyPath({ id: b.item_id }), mailLang)
           : absoluteSiteUrl("/", mailLang),
         imageUrl: b.image_url
-          ? (canonicalizeMediaUrl(b.image_url) ?? undefined)
+          ? (canonicalizeMediaImageUrl(b.image_url) ?? undefined)
           : undefined,
       })),
       unsubscribeUrl: unsubscribeUrl(unsubscribeToken, mailLang),

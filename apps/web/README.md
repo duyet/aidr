@@ -9,7 +9,8 @@ The media manifest migration is intentionally ordered after #158's
 `0023_translation_reviews.sql`. Before deploying the Worker:
 
 1. Merge/apply `0023_translation_reviews.sql` first.
-2. Apply `0024_item_media_manifest.sql` with the normal D1 migration command.
+2. Run `pnpm --filter @aidr/web d1:migrate`. This checks the local migration
+   order and the read-only remote ledger before applying pending migrations.
 3. Run `pnpm --filter @aidr/web check:migrations`. This is a read-only remote
    probe; it does not apply migrations.
 4. Use `pnpm --filter @aidr/web deploy` (or `cf:deploy:prod`), which runs the
@@ -352,25 +353,27 @@ confirmed list from `notes@aidr.today`. One-click `List-Unsubscribe` is
 set on digest and campaign mail.
 
 `wrangler deploy` does not apply D1 SQL migrations. The deploy script runs
-`pnpm run check:migrations` (local filename order) and
-`pnpm run verify:translation-schema` first and fails closed if the required
-translation-review migrations are pending; it never applies them. Run
-`pnpm run d1:migrate` (`wrangler d1 migrations apply aidr --config
-wrangler.toml --remote`) separately in numeric order: 0023 translation QA,
-0024 media when #160 is integrated, then 0025 run identity when #161 is
-integrated. Translation QA is complete in 0023; do not add a competing 0025
-translation migration. Legacy `translations.lang` values are reconciled as
-`lang=vi` → EN→VI and `lang=en` → VI→EN before the queue is queried. Review
-claims use a five-minute renewable lease and a source-revision CAS; successful
-repairs retain the final re-review attempt as current provenance. Rerun the
-read-only verifier after each apply. The current `CLOUDFLARE_API_TOKEN` can
-publish the Worker but Cloudflare API 7403s on D1 `migrations.apply`;
-migrate-on-deploy needs a token with **Account D1 Edit**.
-Do not swallow migrate failures inside `deploy`. `ensureVendorBlogSources` still
-upserts vendor RSS rows at ingest as a safety net.
+`pnpm run check:migrations` (local filename order, the remote migration
+ledger, and the media-manifest schema) plus `pnpm run
+verify:translation-schema` first and fails closed if any required
+translation-review or media migration is pending; it never applies them. Run
+`pnpm run d1:migrate` separately: it performs the read-only local-order and
+remote-ledger checks before `wrangler d1 migrations apply aidr --config
+wrangler.toml --remote`. Apply migrations in numeric order: 0023 translation
+QA, 0024 media, then 0025 run identity when #161 is integrated. Translation
+QA is complete in 0023; do not add a competing 0025 translation migration.
+Legacy `translations.lang` values are reconciled as `lang=vi` → EN→VI and
+`lang=en` → VI→EN before the queue is queried. Review claims use a five-minute
+renewable lease and a source-revision CAS; successful repairs retain the final
+re-review attempt as current provenance. Rerun the read-only verifier after
+each apply. The current `CLOUDFLARE_API_TOKEN` can publish the Worker but
+Cloudflare API 7403s on D1 `migrations.apply`; migrate-on-deploy needs a token
+with **Account D1 Edit**. Do not swallow migrate failures inside `deploy`.
+`ensureVendorBlogSources` still upserts vendor RSS rows at ingest as a safety
+net.
 
 ```bash
-pnpm exec wrangler d1 migrations apply aidr --config wrangler.toml --remote
+pnpm --filter @aidr/web d1:migrate
 ```
 
 `ensureMailSchema` also creates the 0015 tables on first mail/subscribe

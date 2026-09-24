@@ -1,8 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchWithSafeRedirects, isFetchableUrl } from "../enrich.js";
+import {
+  fetchWithSafeRedirects,
+  isFetchableUrl,
+  redactUrlForLog,
+} from "../enrich.js";
 
 describe("enrichment fetch boundary", () => {
   afterEach(() => vi.unstubAllGlobals());
+  it("redacts signed URL paths and query strings from diagnostics", () => {
+    expect(
+      redactUrlForLog(
+        "https://cdn.example/private/hero.jpg?X-Amz-Signature=secret"
+      )
+    ).toBe("https://cdn.example/[path-redacted]");
+  });
+
   it("rejects credentials, non-default ports, and reserved address forms", () => {
     for (const url of [
       "https://user:pass@example.com/article",
@@ -13,12 +25,16 @@ describe("enrichment fetch boundary", () => {
       "http://[::1]/article",
       "http://[fc00::1]/article",
       "http://[::ffff:127.0.0.1]/article",
+      "http://[::127.0.0.1]/article",
+      "http://[::ffff:0:127.0.0.1]/article",
+      "http://[64:ff9b::127.0.0.1]/article",
       "http://[2001:db8::1]/article",
     ]) {
       expect(isFetchableUrl(url), url).toBe(false);
     }
     expect(isFetchableUrl("https://example.com/article")).toBe(true);
-    expect(isFetchableUrl("http://example.com:80/article")).toBe(true);
+    expect(isFetchableUrl("http://example.com:80/article")).toBe(false);
+    expect(isFetchableUrl("https://example.com/article")).toBe(true);
   });
 
   it("validates every redirect hop before making the next request", async () => {

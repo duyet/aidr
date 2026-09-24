@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   assertAppliedMigrations,
   assertMigrationFileOrder,
+  assertMigrationLedgerOrder,
   parseWranglerMigrationOutput,
 } from "../worker/migration-gate.js";
 
@@ -19,13 +20,8 @@ function wrangler(args: string[]): string {
   });
 }
 
-export function main(): void {
-  const migrations = readdirSync(path.join(webRoot, "migrations")).filter(
-    (name) => name.endsWith(".sql")
-  );
-  assertMigrationFileOrder(migrations);
-
-  const migrationOutput = wrangler([
+function migrationRows(): unknown {
+  const output = wrangler([
     "d1",
     "execute",
     "aidr",
@@ -33,16 +29,39 @@ export function main(): void {
     "wrangler.toml",
     "--remote",
     "--command",
-    "SELECT name FROM d1_migrations ORDER BY id",
+    "SELECT id, name FROM d1_migrations ORDER BY id",
     "--json",
   ]);
-  const migrationRows = parseWranglerMigrationOutput(migrationOutput);
-  const firstResult = Array.isArray(migrationRows) ? migrationRows[0] : null;
-  assertAppliedMigrations(
-    firstResult && typeof firstResult === "object"
-      ? (firstResult as { results?: unknown }).results
-      : null
-  );
+  const parsed = parseWranglerMigrationOutput(output);
+  const firstResult = Array.isArray(parsed) ? parsed[0] : null;
+  return firstResult && typeof firstResult === "object"
+    ? (firstResult as { results?: unknown }).results
+    : null;
+}
+
+export function main(args: readonly string[] = process.argv.slice(2)): void {
+  const localOrderOnly = args.includes("--local-order");
+  const ledgerOrderOnly = args.includes("--ledger-order");
+  if (localOrderOnly && ledgerOrderOnly) {
+    throw new Error("choose only one migration check mode");
+  }
+  const migrations = readdirSync(path.join(webRoot, "migrations"))
+    .filter((name) => name.endsWith(".sql"))
+    .sort((a, b) => a.localeCompare(b));
+  assertMigrationFileOrder(migrations);
+
+  if (localOrderOnly) {
+    console.log("media manifest migration file order check passed");
+    return;
+  }
+
+  const rows = migrationRows();
+  assertMigrationLedgerOrder(rows, migrations);
+  if (ledgerOrderOnly) {
+    console.log("media manifest migration ledger order check passed");
+    return;
+  }
+  assertAppliedMigrations(rows, migrations);
 
   const schemaOutput = wrangler([
     "d1",
@@ -71,7 +90,11 @@ export function main(): void {
     );
   }
 
-  console.log("media manifest migration gate passed (0023 -> 0024)");
+  console.log(
+    migrations.includes("0025_translation_review_hardening.sql")
+      ? "media manifest migration gate passed (0023 -> 0024 -> 0025)"
+      : "media manifest migration gate passed (0023 -> 0024)"
+  );
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

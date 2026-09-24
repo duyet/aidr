@@ -1,5 +1,6 @@
 import {
   boundedPublicManifest,
+  canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
   MAX_PUBLIC_MEDIA_URL_LENGTH,
   manifestWithoutArticleUrl,
@@ -124,7 +125,9 @@ function toFeedItem(row: ItemRow): FeedItem {
     sources: [],
     llm_tokens: row.llm_tokens ?? 0,
     image_url: (() => {
-      const imageUrl = primaryThumbnailUrl(manifest, row.image_url, row.url);
+      const imageUrl = canonicalizeMediaImageUrl(
+        primaryThumbnailUrl(manifest, row.image_url, row.url)
+      );
       return imageUrl && imageUrl.length <= MAX_PUBLIC_MEDIA_URL_LENGTH
         ? imageUrl
         : null;

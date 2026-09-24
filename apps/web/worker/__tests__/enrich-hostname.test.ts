@@ -5,6 +5,7 @@ describe("isFetchableUrl", () => {
   it.each([
     ["https://example.com/article", true],
     ["http://news.ycombinator.com/item", true],
+    ["http://example.com/article", false],
     ["http://localhost/admin", false],
     ["http://127.0.0.1/", false],
     ["http://10.0.0.1/", false],

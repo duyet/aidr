@@ -25,8 +25,17 @@ export const BACKFILL_BATCH_SIZE = 4;
  * point — most-recently-published first, so the backlog drains starting
  * from what readers are most likely to open. */
 export function buildMissingSummaryQuery(limit = BACKFILL_CONTENT_CAP): string {
-  return `SELECT id, url, source_id, image_url, media_manifest FROM items
+  return `SELECT id, url, source_id, summary, image_url, media_manifest FROM items
           WHERE status = 'published' AND (summary IS NULL OR summary = '')
+          ORDER BY published_at DESC
+          LIMIT ${limit}`;
+}
+
+export function buildMissingMediaQuery(limit = BACKFILL_CONTENT_CAP): string {
+  return `SELECT id, url, source_id, summary, image_url, media_manifest FROM items
+          WHERE status = 'published' AND summary IS NOT NULL AND summary != ''
+            AND (image_url IS NULL OR image_url = '')
+            AND (media_manifest IS NULL OR media_manifest = '' OR media_manifest = '[]')
           ORDER BY published_at DESC
           LIMIT ${limit}`;
 }
@@ -78,7 +87,7 @@ export interface BackfillFetchResult {
 }
 
 export interface BackfillPlan {
-  summary: string;
+  summary: string | null;
   imageUrl: string | null;
   mediaManifest: MediaManifest;
 }
@@ -92,13 +101,17 @@ export interface BackfillPlan {
  */
 export function planBackfillUpdate(
   existing: {
+    summary?: string | null;
     imageUrl: string | null;
     mediaManifest?: string | null;
     articleUrl?: string | null;
   },
   fetched: BackfillFetchResult
 ): BackfillPlan | null {
-  if (!fetched.summary) return null;
+  const fetchedSummary =
+    typeof fetched.summary === "string" ? fetched.summary.trim() : "";
+  const existingSummary =
+    typeof existing.summary === "string" ? existing.summary.trim() : "";
   const existingManifest = parseMediaManifest(
     existing.mediaManifest,
     existing.imageUrl
@@ -107,12 +120,14 @@ export function planBackfillUpdate(
     fetched.mediaManifest,
     fetched.imageUrl
   );
+  const hasFetchedMedia = fetchedManifest.assets.length > 0;
+  if (!fetchedSummary && !hasFetchedMedia) return null;
   const manifest = manifestWithoutArticleUrl(
     mergeMediaManifests(existingManifest, fetchedManifest),
     existing.articleUrl
   );
   return {
-    summary: fetched.summary,
+    summary: fetchedSummary || existingSummary || null,
     imageUrl:
       primaryThumbnailUrl(
         existingManifest,

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertAppliedMigrations,
   assertMigrationFileOrder,
+  assertMigrationLedgerOrder,
 } from "../migration-gate.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,21 +59,67 @@ describe("migration 0024_item_media_manifest", () => {
   });
 
   it("fails the migration gate until 0023 is ordered before 0024", () => {
-    expect(() =>
-      assertMigrationFileOrder([
-        "0023_translation_reviews.sql",
-        "0024_item_media_manifest.sql",
-      ])
-    ).not.toThrow();
+    const files = [
+      "0023_translation_reviews.sql",
+      "0024_item_media_manifest.sql",
+    ];
+    expect(() => assertMigrationFileOrder(files)).not.toThrow();
     expect(() =>
       assertMigrationFileOrder(["0024_item_media_manifest.sql"])
     ).toThrow(/0023/);
     expect(() =>
-      assertAppliedMigrations([
-        { name: "0023_translation_reviews.sql" },
-        { name: "0024_item_media_manifest.sql" },
-      ])
+      assertAppliedMigrations(
+        [
+          { id: 1, name: "0023_translation_reviews.sql" },
+          { id: 2, name: "0024_item_media_manifest.sql" },
+        ],
+        files
+      )
     ).not.toThrow();
     expect(() => assertAppliedMigrations([])).toThrow(/0023/);
+  });
+
+  it("rejects an out-of-order migration ledger", () => {
+    const files = [
+      "0023_translation_reviews.sql",
+      "0024_item_media_manifest.sql",
+    ];
+    const rows = [
+      { id: 2, name: "0024_item_media_manifest.sql" },
+      { id: 1, name: "0023_translation_reviews.sql" },
+    ];
+    expect(() => assertAppliedMigrations(rows, files)).toThrow(/order/);
+    expect(() => assertMigrationLedgerOrder(rows, files)).toThrow(/order/);
+    expect(() =>
+      assertMigrationLedgerOrder(
+        [{ id: 1, name: "0024_item_media_manifest.sql" }],
+        files
+      )
+    ).toThrow(/order/);
+  });
+
+  it("rejects duplicate or malformed ledger ids", () => {
+    const files = [
+      "0023_translation_reviews.sql",
+      "0024_item_media_manifest.sql",
+    ];
+    expect(() =>
+      assertAppliedMigrations(
+        [
+          { id: 1, name: "0023_translation_reviews.sql" },
+          { id: 1, name: "0024_item_media_manifest.sql" },
+        ],
+        files
+      )
+    ).toThrow(/ids/);
+    expect(() =>
+      assertAppliedMigrations(
+        [
+          { id: 1, name: "0023_translation_reviews.sql" },
+          { id: Number.NaN, name: "0024_item_media_manifest.sql" },
+        ],
+        files
+      )
+    ).toThrow(/invalid ledger/);
   });
 });

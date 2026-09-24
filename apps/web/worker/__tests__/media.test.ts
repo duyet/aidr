@@ -38,6 +38,19 @@ describe("canonicalizeMediaUrl", () => {
     ).toBeNull();
   });
 
+  it("rejects IPv4-compatible, mapped, translated, NAT64, and special IPv6 literals", () => {
+    for (const url of [
+      "https://[::127.0.0.1]/image.jpg",
+      "https://[::ffff:127.0.0.1]/image.jpg",
+      "https://[::ffff:0:127.0.0.1]/image.jpg",
+      "https://[64:ff9b::127.0.0.1]/image.jpg",
+      "https://[2002:7f00:1::]/image.jpg",
+      "https://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/image.jpg",
+    ]) {
+      expect(canonicalizeMediaUrl(url), url).toBeNull();
+    }
+  });
+
   it("preserves CDN signature parameters while removing tracking parameters", () => {
     expect(
       canonicalizeMediaUrl(
@@ -227,6 +240,24 @@ describe("parseMediaMetadata", () => {
     );
   });
 
+  it("normalizes qualified JSON-LD @types and rejects article URLs", () => {
+    const manifest = buildMediaManifest(
+      parseMediaMetadata(`
+        <script type="application/ld+json">
+          {"@context":"https://schema.org","@type":"https://schema.org/NewsArticle",
+           "url":"https://example.com/article","image":["https://example.com/article"]}
+        </script>
+        <script type="application/ld+json">
+          {"@context":"https://schema.org","@type":"https://schema.org/ImageObject",
+           "contentUrl":"https://img.example/qualified.jpg"}
+        </script>
+      `)
+    );
+    expect(manifest.assets).toEqual([
+      { type: "image", url: "https://img.example/qualified.jpg" },
+    ]);
+  });
+
   it("does not treat a NewsArticle/Article page URL as an image", () => {
     const manifest = buildMediaManifest(
       parseMediaMetadata(`
@@ -249,6 +280,14 @@ describe("stored media manifests", () => {
     expect(manifest.assets).toEqual([
       { type: "image", url: "https://img.example/legacy.jpg?a=1&b=2" },
     ]);
+  });
+
+  it("does not use a generic logo as the legacy image fallback", () => {
+    const manifest = parseMediaManifest("[]", "https://img.example/logo.png");
+    expect(manifest.assets).toEqual([]);
+    expect(
+      primaryThumbnailUrl(manifest, "https://img.example/logo.png")
+    ).toBeNull();
   });
 
   it("uses a legacy image when a valid manifest contains only video", () => {
