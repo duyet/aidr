@@ -56,6 +56,8 @@ describe("mobile header action contracts", () => {
 
   it("keeps the phone dialog one-column by default and two-column at 600px", () => {
     expect(PHONE_MENU_DIALOG_CLASS).toContain("fixed");
+    expect(PHONE_MENU_DIALOG_CLASS).toContain("inset-3");
+    expect(PHONE_MENU_DIALOG_CLASS).toContain("min-[600px]:inset-4");
     expect(PHONE_MENU_DIALOG_CLASS).not.toContain("news-mobile-menu-dialog");
     expect(PHONE_MENU_GRID_CLASS).toContain("grid-cols-1");
     expect(PHONE_MENU_GRID_CLASS).toContain("min-[600px]:grid-cols-2");

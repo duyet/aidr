@@ -12,7 +12,7 @@ export const PHONE_LANG_TOGGLE_BUTTON_CLASS = "min-h-[44px] min-w-[44px] px-3";
 
 /** Full-screen phone navigation uses the browser's default safe viewport. */
 export const PHONE_MENU_DIALOG_CLASS =
-  "fixed z-50 mx-auto flex max-w-3xl flex-col rounded-3xl border border-border bg-card text-card-foreground shadow-2xl";
+  "fixed inset-3 z-50 mx-auto flex max-w-3xl flex-col rounded-3xl border border-border bg-card text-card-foreground shadow-2xl min-[600px]:inset-4";
 
 /** One column on narrow phones; two balanced columns from the landscape breakpoint. */
 export const PHONE_MENU_GRID_CLASS =

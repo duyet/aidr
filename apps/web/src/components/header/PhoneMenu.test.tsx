@@ -115,6 +115,8 @@ describe("PhoneMenu modal behavior", () => {
     expect(outside.closest('[aria-hidden="true"]')).not.toBeNull();
     expect(dialog.getAttribute("aria-modal")).toBe("true");
     expect(dialog.getAttribute("aria-describedby")).toBeNull();
+    expect(dialog.className).toContain("inset-3");
+    expect(dialog.className).toContain("min-[600px]:inset-4");
     const navigation = within(dialog).getByRole("navigation", {
       name: "Mobile navigation",
     });
