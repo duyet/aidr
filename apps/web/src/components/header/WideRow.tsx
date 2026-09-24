@@ -1,5 +1,4 @@
 import {
-  AuthButtons,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -21,13 +20,13 @@ import {
   Workflow,
 } from "lucide-react";
 import { WIDE_HEADER_ROW_CLASS } from "../../lib/chrome";
-import { useClerkModule } from "../../lib/clerk-user";
 import { EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
 import type { Lang } from "../../lib/types";
 import { LangToggle } from "../LangToggle";
 import { PrefsPanel } from "../PrefsPanel";
 import { SearchBox } from "../SearchBox";
 import { Brand } from "./Brand";
+import { HeaderAuth } from "./HeaderAuth";
 
 export function WideHeaderRow({
   lang,
@@ -40,11 +39,6 @@ export function WideHeaderRow({
   langToggleDisabled: boolean;
   searchPlaceholder: string;
 }) {
-  // The single app-wide <ClerkProvider> lives in __root.tsx; hand AuthButtons
-  // that exact module so it never renders Clerk primitives before the
-  // provider is mounted.
-  const { mod: clerkModule } = useClerkModule();
-
   return (
     <div
       className={`${WIDE_HEADER_ROW_CLASS} mx-auto max-w-[1080px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8`}
@@ -147,11 +141,7 @@ export function WideHeaderRow({
           disabled={langToggleDisabled}
         />
         <ErrorBoundary fallback={null}>
-          <AuthButtons
-            wrapWithProvider={false}
-            clerkModule={clerkModule}
-            avatarSize="size-7"
-          />
+          <HeaderAuth />
         </ErrorBoundary>
       </div>
     </div>

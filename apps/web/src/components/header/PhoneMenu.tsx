@@ -1,13 +1,13 @@
-import { AuthButtons, Button, ErrorBoundary } from "@aidr/ui";
+import { Button, ErrorBoundary } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PHONE_TAP_TARGET_CLASS } from "../../lib/chrome";
-import { useClerkModule } from "../../lib/clerk-user";
 import type { Lang } from "../../lib/types";
 import { LangToggle } from "../LangToggle";
+import { HeaderAuth } from "./HeaderAuth";
 import { SITE_LINKS } from "./lib";
 
 export function PhoneMenu({
@@ -20,7 +20,6 @@ export function PhoneMenu({
   langToggleDisabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const { mod: clerkModule } = useClerkModule();
 
   useEffect(() => {
     if (!open) return;
@@ -135,12 +134,7 @@ export function PhoneMenu({
                     />
                   </div>
                   <ErrorBoundary fallback={null}>
-                    <AuthButtons
-                      wrapWithProvider={false}
-                      clerkModule={clerkModule}
-                      avatarSize="size-9"
-                      stacked
-                    />
+                    <HeaderAuth avatarSize="size-9" stacked />
                   </ErrorBoundary>
                 </div>
               </div>
