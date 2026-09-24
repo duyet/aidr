@@ -29,8 +29,8 @@ submission workflows and is not a safe fit for this streaming proxy. Before a
 production or preview rollout, configure a Cloudflare WAF Rate Limiting rule
 for the public `/__clerk/*` path (for example, 120 requests per 60 seconds per
 source IP with a short burst allowance; tune to observed traffic). Keep the
-control at the edge so abusive
-requests are rejected before they consume Worker subrequest capacity. This
+control at the edge so abusive requests are rejected before they consume Worker
+subrequest capacity. This
 repository documents the control but does not invent a Worker namespace/binding
 or change deployment settings. `CLERK_PROXY_URL` in `wrangler.toml` is the
 canonical deploy value; non-development builds reject an env override that
