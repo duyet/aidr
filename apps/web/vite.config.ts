@@ -1,11 +1,25 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-export default defineConfig({
+function configuredPublicProxyUrl(mode: string): string | undefined {
+  const envDir = fileURLToPath(new URL(".", import.meta.url));
+  const fromEnv = loadEnv(mode, envDir, "VITE_").VITE_CLERK_PROXY_URL;
+  if (fromEnv) return fromEnv;
+
+  // Wrangler vars are runtime bindings, not automatically Vite client envs.
+  const wrangler = readFileSync(
+    new URL("./wrangler.toml", import.meta.url),
+    "utf8"
+  );
+  return wrangler.match(/^\s*VITE_CLERK_PROXY_URL\s*=\s*"([^"]+)"\s*$/m)?.[1];
+}
+
+const baseConfig: UserConfig = {
   plugins: [
     // src/start.ts statically imports clerkMiddleware from a server-only
     // module; TanStack Start also bundles start.ts into the client graph
@@ -78,4 +92,13 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: ["duet-ubuntu", ".ts.net", ".local"],
   },
-});
+};
+
+export default defineConfig(({ mode }) => ({
+  ...baseConfig,
+  define: {
+    "import.meta.env.VITE_CLERK_PROXY_URL": JSON.stringify(
+      configuredPublicProxyUrl(mode) ?? ""
+    ),
+  },
+}));

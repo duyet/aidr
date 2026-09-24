@@ -1,6 +1,6 @@
 import { ErrorBoundary } from "@aidr/ui";
 import { type ReactNode, useEffect, useState } from "react";
-import { CLERK_PROXY_URL } from "../../worker/clerk-proxy";
+import { resolveClerkProxyUrl } from "../lib/clerk-proxy-config";
 import {
   type ClerkModule,
   ClerkModuleContext,
@@ -45,6 +45,7 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
   const publishableKey = getClerkPublishableKey();
   const navigationLang = useLang();
   const localeOptions = clerkProviderLocaleOptions(navigationLang);
+  const proxyUrl = resolveClerkProxyUrl(import.meta.env.VITE_CLERK_PROXY_URL);
   const [mod, setMod] = useState<ClerkModule | null>(null);
 
   useEffect(() => {
@@ -68,16 +69,15 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
     </ClerkModuleContext.Provider>
   );
 
-  if (!mod || !publishableKey) return withoutProvider;
+  if (!mod || !publishableKey || !proxyUrl) return withoutProvider;
 
   return (
     <ErrorBoundary fallback={withoutProvider}>
       <ClerkModuleContext.Provider value={{ mod, publishableKey }}>
         <mod.ClerkProvider
           publishableKey={publishableKey}
-          // Absolute URL so handshake redirects never fall back to the
-          // publishable-key host (clerk.aidr.today → CF Error 1000).
-          proxyUrl={CLERK_PROXY_URL}
+          // Environment-specific absolute URL; never derive this from Host.
+          proxyUrl={proxyUrl}
           {...localeOptions}
           appearance={{
             variables: {

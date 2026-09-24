@@ -1,12 +1,22 @@
 import { clerkMiddleware } from "@clerk/tanstack-react-start/server";
 import { createStart } from "@tanstack/react-start";
-import { CLERK_PROXY_PATH } from "../worker/clerk-proxy";
+import { resolveClerkProxyUrl } from "./lib/clerk-proxy-config";
+
+const configuredProxyUrl = resolveClerkProxyUrl(
+  import.meta.env.VITE_CLERK_PROXY_URL
+);
 
 export const startInstance = createStart(() => {
   return {
-    // Without proxyUrl, expired-session handshakes redirect to
-    // clerk.aidr.today (PK domain). That CNAME is CF→CF and returns
-    // Error 1000/1014. Force handshake through /__clerk instead.
-    requestMiddleware: [clerkMiddleware({ proxyUrl: CLERK_PROXY_PATH })],
+    // Use one environment-specific absolute URL for browser and server auth.
+    // Never derive this from an arbitrary request Host/forwarded-host value.
+    requestMiddleware: [
+      clerkMiddleware(() => {
+        if (!configuredProxyUrl) {
+          throw new Error("VITE_CLERK_PROXY_URL must be an absolute URL");
+        }
+        return { proxyUrl: configuredProxyUrl };
+      }),
+    ],
   };
 });
