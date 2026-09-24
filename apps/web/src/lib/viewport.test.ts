@@ -20,6 +20,10 @@ describe("viewport metadata", () => {
   it("does not add cover-mode insets that would bypass existing fixed portals", () => {
     const styles = readFileSync(join(here, "../styles.css"), "utf8");
     expect(styles).not.toContain("viewport-fit=cover");
-    expect(styles).not.toContain("safe-area-inset");
+    expect(styles).toContain("story-dialog-overlay");
+    expect(styles).not.toContain(
+      ".app-shell {\n  padding-left: env(safe-area-inset-left"
+    );
+    expect(styles).not.toContain(".news-mobile-menu-dialog");
   });
 });

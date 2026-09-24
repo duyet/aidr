@@ -1,4 +1,4 @@
-/** @vitest-environment jsdom */
+/** @vitest-environment happy-dom */
 
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -207,7 +207,12 @@ describe("modal lifecycle", () => {
     expect(trigger.getAttribute("aria-hidden")).toBe("true");
     expect(document.body.style.overflow).toBe("hidden");
 
-    trigger.focus();
+    await act(async () => {
+      trigger.focus();
+      document.dispatchEvent(
+        new FocusEvent("focusin", { bubbles: true, cancelable: true })
+      );
+    });
     expect(document.activeElement).toBe(first);
 
     document.dispatchEvent(

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { VIEWPORT_META_CONTENT } from "../../lib/viewport";
 import {
   isBilingualDialog,
   STORY_DIALOG_BODY_CLASS,
@@ -52,7 +53,8 @@ describe("story dialog responsive layout", () => {
     const root = readFileSync(join(here, "../../routes/__root.tsx"), "utf8");
 
     expect(root).not.toContain("viewport-fit=cover");
-    expect(root).toContain("width=device-width, initial-scale=1.0");
+    expect(root).toContain("content: VIEWPORT_META_CONTENT");
+    expect(VIEWPORT_META_CONTENT).toBe("width=device-width, initial-scale=1.0");
     expect(styles).toContain("--story-dialog-inset-top");
     expect(styles).toContain("env(safe-area-inset-top, 0px)");
     expect(styles).toContain("env(safe-area-inset-bottom, 0px)");
@@ -123,7 +125,9 @@ describe("story dialog responsive layout", () => {
     expect(thumb).not.toContain('", "replaceAll":false');
     expect(thumb).toContain('<X className="h-4 w-4" aria-hidden />');
     expect(header).toContain('<X className="h-4 w-4" aria-hidden />');
-    expect(phoneMenu).toContain("useDialogLifecycle(onClose, overlayRef)");
+    expect(phoneMenu).toContain("DialogPrimitive.Root");
+    expect(phoneMenu).toContain("DialogPrimitive.Content");
+    expect(phoneMenu).toContain("modal");
     expect(phoneMenu).not.toContain("document.body.style.overflow");
     expect(lifecycle).toContain("modalStack");
     expect(lifecycle).toContain("inertBackground");
