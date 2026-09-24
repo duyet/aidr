@@ -17,7 +17,7 @@ export const FEED_FRESHNESS_ERROR_CACHE_CONTROL = "no-store";
 export const FEED_FRESHNESS_CLIENT_TTL_MS = 60_000;
 
 export interface FeedFreshness {
-  /** Epoch seconds of the newest published item's initial fetch timestamp. */
+  /** Epoch seconds of the newest published item's item-ingest timestamp. */
   lastFetchedAt: number | null;
 }
 
@@ -41,7 +41,10 @@ export async function getFeedFreshness(db: DbReader): Promise<FeedFreshness> {
   const row = await db
     .prepare(NEWEST_PUBLISHED_FETCHED_AT_SQL)
     .first<{ last: number | null }>();
-  return { lastFetchedAt: row?.last ?? null };
+  const lastFetchedAt = row?.last ?? null;
+  return isFeedFreshness({ lastFetchedAt })
+    ? { lastFetchedAt }
+    : { lastFetchedAt: null };
 }
 
 export function feedFreshnessResponse(freshness: FeedFreshness): Response {

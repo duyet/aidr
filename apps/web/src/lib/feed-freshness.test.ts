@@ -37,6 +37,13 @@ describe("getFeedFreshness", () => {
       lastFetchedAt: null,
     });
   });
+
+  it("normalizes an invalid database value instead of emitting a bad shape", async () => {
+    const { db } = fakeDb({ last: "bad" } as unknown as { last: number });
+    await expect(getFeedFreshness(db)).resolves.toEqual({
+      lastFetchedAt: null,
+    });
+  });
 });
 
 describe("isFeedFreshness", () => {
