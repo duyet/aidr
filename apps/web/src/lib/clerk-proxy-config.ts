@@ -1,14 +1,30 @@
 export const CLERK_PROXY_PATH = "/__clerk";
 
 export interface ClerkProxyUrlOptions {
-  /** Relative paths are useful to browser SDKs but are not trusted server config. */
+  /** Relative paths are useful to explicitly configured browser SDKs only. */
   allowRelative?: boolean;
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  if (hostname === "localhost" || hostname === "[::1]" || hostname === "::1") {
+    return true;
+  }
+
+  const parts = hostname.split(".");
+  return (
+    parts.length === 4 &&
+    parts[0] === "127" &&
+    parts.every((part) => {
+      if (!/^\d{1,3}$/.test(part)) return false;
+      return Number(part) <= 255;
+    })
+  );
 }
 
 /**
  * Normalize the public URL used by browser and server Clerk configuration.
- * The server always supplies an absolute URL; the browser may use the
- * relative route when explicitly configured by its build environment.
+ * Server callers require an absolute HTTPS URL; explicit loopback HTTP is
+ * allowed for local development only.
  */
 export function resolveClerkProxyUrl(
   value: string | undefined,
@@ -60,7 +76,8 @@ export function resolveClerkProxyUrl(
   if (
     (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
     parsed.username ||
-    parsed.password
+    parsed.password ||
+    (parsed.protocol === "http:" && !isLoopbackHostname(parsed.hostname))
   ) {
     return undefined;
   }
@@ -77,4 +94,19 @@ export function resolveClerkProxyUrl(
   parsed.search = "";
   parsed.hash = "";
   return parsed.toString();
+}
+
+/** Require the runtime and browser values to be explicit, trusted, and equal. */
+export function requireMatchingClerkProxyUrls(
+  runtimeValue: string | undefined,
+  browserValue: string | undefined
+): string {
+  const runtimeUrl = resolveClerkProxyUrl(runtimeValue);
+  const browserUrl = resolveClerkProxyUrl(browserValue);
+  if (!runtimeUrl || !browserUrl || runtimeUrl !== browserUrl) {
+    throw new Error(
+      "CLERK_PROXY_URL and VITE_CLERK_PROXY_URL must be explicit, trusted, and match"
+    );
+  }
+  return runtimeUrl;
 }

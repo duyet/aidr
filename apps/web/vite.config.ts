@@ -5,18 +5,37 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig, loadEnv, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { requireMatchingClerkProxyUrls } from "./src/lib/clerk-proxy-config.js";
 
-function configuredPublicProxyUrl(mode: string): string | undefined {
-  const envDir = fileURLToPath(new URL(".", import.meta.url));
-  const fromEnv = loadEnv(mode, envDir, "VITE_").VITE_CLERK_PROXY_URL;
-  if (fromEnv) return fromEnv;
+function readWranglerVar(wrangler: string, name: string): string | undefined {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^\\s*${escapedName}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(
+    wrangler
+  )?.[1];
+}
+
+function configuredPublicProxyUrl(mode: string): string {
+  const appEnvDir = fileURLToPath(new URL(".", import.meta.url));
+  const repoEnvDir = fileURLToPath(new URL("../../", import.meta.url));
+  // .env.example is documented at the repository root. App-local env files
+  // remain supported and intentionally override the root values.
+  const env = {
+    ...loadEnv(mode, repoEnvDir, ""),
+    ...loadEnv(mode, appEnvDir, ""),
+  };
 
   // Wrangler vars are runtime bindings, not automatically Vite client envs.
   const wrangler = readFileSync(
     new URL("./wrangler.toml", import.meta.url),
     "utf8"
   );
-  return wrangler.match(/^\s*VITE_CLERK_PROXY_URL\s*=\s*"([^"]+)"\s*$/m)?.[1];
+  const runtimeUrl =
+    env.CLERK_PROXY_URL ?? readWranglerVar(wrangler, "CLERK_PROXY_URL");
+  const browserUrl =
+    env.VITE_CLERK_PROXY_URL ??
+    readWranglerVar(wrangler, "VITE_CLERK_PROXY_URL");
+
+  return requireMatchingClerkProxyUrls(runtimeUrl, browserUrl);
 }
 
 const baseConfig: UserConfig = {
@@ -98,7 +117,7 @@ export default defineConfig(({ mode }) => ({
   ...baseConfig,
   define: {
     "import.meta.env.VITE_CLERK_PROXY_URL": JSON.stringify(
-      configuredPublicProxyUrl(mode) ?? ""
+      configuredPublicProxyUrl(mode)
     ),
   },
 }));

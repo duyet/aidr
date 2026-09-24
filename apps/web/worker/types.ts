@@ -30,9 +30,10 @@ export interface Env {
   NEWS_ADMIN_TOKEN: string;
   /** Clerk secret used by /__clerk Frontend API proxy (and admin JWT verify). */
   CLERK_SECRET_KEY?: string;
-  /** Absolute public URL serving the Clerk proxy; set per environment. */
+  /** Absolute HTTPS public URL serving the Clerk proxy; set per environment.
+   *  HTTP is allowed only for explicit loopback development. */
   CLERK_PROXY_URL?: string;
-  /** Upstream proxy timeout in milliseconds (bounded by the handler). */
+  /** Upstream fetch/body timeout in milliseconds (bounded by the handler). */
   CLERK_PROXY_TIMEOUT_MS?: string;
   /** Clerk instance issuer (frontend API origin), e.g. "https://clerk.aidr.today".
    *  Derived from the VITE_CLERK_PUBLISHABLE_KEY domain. When set, admin

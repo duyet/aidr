@@ -74,8 +74,10 @@ ANYROUTER_JEV_MODEL = "typesafe/jev"
 # blocks the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).
 CLERK_ISSUER = "https://aidr.today/__clerk"
 # Absolute public proxy URL shared by the Worker and browser middleware.
-# Override both values together for preview/local (for example,
-# http://localhost:3014/__clerk); never derive this from request Host.
+# HTTPS is required; HTTP is allowed only for explicit loopback development.
+# Override both values together for preview/local; never derive this from Host.
+# Before rollout, configure the edge WAF rate-limit rule documented in
+# worker/README.md for /__clerk/*; no per-isolate limiter is used here.
 CLERK_PROXY_URL = "https://aidr.today/__clerk"
 VITE_CLERK_PROXY_URL = "https://aidr.today/__clerk"
 CLERK_PROXY_TIMEOUT_MS = "10000"

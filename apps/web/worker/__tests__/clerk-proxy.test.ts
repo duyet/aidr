@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolveClerkProxyUrl } from "../../src/lib/clerk-proxy-config.js";
+import {
+  requireMatchingClerkProxyUrls,
+  resolveClerkProxyUrl,
+} from "../../src/lib/clerk-proxy-config.js";
 import {
   buildClerkProxyTarget,
   CLERK_FAPI_ORIGIN,
+  CLERK_PROXY_MAX_REQUEST_BODY_BYTES,
   CLERK_PROXY_PATH,
   type ClerkProxyEnv,
   handleClerkProxy,
@@ -87,6 +91,40 @@ describe("resolveClerkProxyUrl", () => {
     expect(resolveClerkProxyUrl("/__clerk", { allowRelative: true })).toBe(
       CLERK_PROXY_PATH
     );
+  });
+
+  it("requires matching trusted absolute values", () => {
+    expect(
+      requireMatchingClerkProxyUrls(
+        "https://preview.example/__clerk",
+        "https://preview.example"
+      )
+    ).toBe("https://preview.example/__clerk");
+    expect(() =>
+      requireMatchingClerkProxyUrls(
+        "https://preview.example/__clerk",
+        "https://other.example/__clerk"
+      )
+    ).toThrow("must be explicit, trusted, and match");
+    expect(() =>
+      requireMatchingClerkProxyUrls(
+        "http://preview.example/__clerk",
+        "http://preview.example/__clerk"
+      )
+    ).toThrow("must be explicit, trusted, and match");
+    expect(() => requireMatchingClerkProxyUrls(undefined, undefined)).toThrow(
+      "must be explicit, trusted, and match"
+    );
+  });
+
+  it("allows HTTP only for explicit loopback development", () => {
+    expect(resolveClerkProxyUrl("http://127.0.0.2:3014")).toBe(
+      "http://127.0.0.2:3014/__clerk"
+    );
+    expect(resolveClerkProxyUrl("http://[::1]:3014")).toBe(
+      "http://[::1]:3014/__clerk"
+    );
+    expect(resolveClerkProxyUrl("http://preview.example")).toBeUndefined();
   });
 
   it("rejects untrusted or ambiguous public URL configuration", () => {
@@ -246,7 +284,9 @@ describe("handleClerkProxy header confinement", () => {
   it("uses configured preview/local metadata instead of request Host", async () => {
     const fetchMock = mockFetch();
     await handleClerkProxy(
-      new Request("https://attacker.example/__clerk/v1/client"),
+      new Request("http://localhost:3014/__clerk/v1/client", {
+        headers: { Host: "attacker.example" },
+      }),
       makeEnv({ CLERK_PROXY_URL: "http://localhost:3014" })
     );
 
@@ -257,6 +297,17 @@ describe("handleClerkProxy header confinement", () => {
     expect(forwarded.headers.get("X-Forwarded-Host")).toBe("localhost:3014");
     expect(forwarded.headers.get("X-Forwarded-Proto")).toBe("http");
     expect(forwarded.headers.get("Host")).toBeNull();
+  });
+
+  it("fails closed when the request origin differs from trusted config", async () => {
+    const fetchMock = mockFetch();
+    const response = await handleClerkProxy(
+      new Request("https://attacker.example/__clerk/v1/client"),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(503);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -281,6 +332,67 @@ describe("handleClerkProxy redirects and responses", () => {
     expect(response.headers.get("Location")).toBe(expected);
     expect(await response.text()).toBe("upstream redirect");
     expect(forwarded.redirect).toBe("manual");
+  });
+
+  it.each([200, 201, 202, 401, 500, 503, 204, 304])(
+    "rewrites an approved Location on status %i",
+    async (status) => {
+      const upstream = new Response(
+        status === 204 || status === 304 ? null : "body",
+        {
+          status,
+          headers: { Location: "/v1/next?from=status" },
+        }
+      );
+      mockFetch(upstream);
+
+      const response = await handleClerkProxy(
+        proxyRequest("/__clerk/v1/client"),
+        makeEnv()
+      );
+
+      expect(response.status).toBe(status);
+      expect(response.headers.get("Location")).toBe(
+        "https://aidr.today/__clerk/v1/next?from=status"
+      );
+    }
+  );
+
+  it.each([200, 201, 202, 401, 500, 503])(
+    "rejects an external Location on status %i",
+    async (status) => {
+      const upstream = new Response("body", {
+        status,
+        headers: { Location: "https://evil.example/steal" },
+      });
+      const fetchMock = mockFetch(upstream);
+
+      const response = await handleClerkProxy(
+        proxyRequest("/__clerk/v1/client"),
+        makeEnv()
+      );
+
+      expect(response.status).toBe(502);
+      expect(response.headers.get("Location")).toBeNull();
+      expect(fetchMock).toHaveBeenCalledOnce();
+    }
+  );
+
+  it("rejects a malformed Location on a non-redirect response", async () => {
+    mockFetch(
+      new Response("body", {
+        status: 200,
+        headers: { Location: "http://[malformed" },
+      })
+    );
+
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client"),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get("Location")).toBeNull();
   });
 
   it.each([
@@ -376,7 +488,116 @@ describe("handleClerkProxy redirects and responses", () => {
   });
 });
 
+describe("handleClerkProxy encoding and body limits", () => {
+  it("forces identity encoding and rejects encoded request bodies", async () => {
+    const fetchMock = mockFetch();
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client", {
+        method: "POST",
+        body: "payload",
+        headers: {
+          "Accept-Encoding": "gzip, br",
+          "Content-Encoding": "gzip",
+        },
+      }),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(415);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("forces identity encoding and strips decoded response encoding", async () => {
+    const fetchMock = mockFetch(
+      new Response("decoded body", {
+        headers: {
+          "Accept-Encoding": "gzip",
+          "Content-Encoding": "gzip",
+        },
+      })
+    );
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client", {
+        headers: { "Accept-Encoding": "gzip" },
+      }),
+      makeEnv()
+    );
+    const forwarded = fetchMock.mock.calls[0]?.[0] as Request;
+
+    expect(forwarded.headers.get("Accept-Encoding")).toBe("identity");
+    expect(response.headers.get("Content-Encoding")).toBeNull();
+    expect(await response.text()).toBe("decoded body");
+  });
+
+  it("rejects a declared request body over the explicit limit with 413", async () => {
+    const fetchMock = mockFetch();
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client", {
+        method: "POST",
+        body: "small",
+        headers: {
+          "Content-Length": String(CLERK_PROXY_MAX_REQUEST_BODY_BYTES + 1),
+        },
+      }),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a streamed request body over the limit with 413", async () => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new Uint8Array(CLERK_PROXY_MAX_REQUEST_BODY_BYTES + 1)
+        );
+        controller.close();
+      },
+    });
+    const request = new Request("https://aidr.today/__clerk/v1/client", {
+      method: "POST",
+      body,
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      await (input as Request).arrayBuffer();
+      return new Response("unexpected");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleClerkProxy(request, makeEnv());
+
+    expect(response.status).toBe(413);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+});
+
 describe("handleClerkProxy upstream failures", () => {
+  it("maps a stalled response body to 504", async () => {
+    vi.useFakeTimers();
+    const stalledBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("partial"));
+      },
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(stalledBody, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = handleClerkProxy(
+      proxyRequest("/__clerk/v1/client"),
+      makeEnv({ CLERK_PROXY_TIMEOUT_MS: "10" })
+    );
+    await vi.advanceTimersByTimeAsync(10);
+    const response = await pending;
+
+    expect(response.status).toBe(504);
+    expect(await response.text()).toBe("Clerk upstream timed out");
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("maps network errors to a generic 502 without logging or retrying POST", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const error = vi.spyOn(console, "error").mockImplementation(() => {});

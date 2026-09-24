@@ -19,7 +19,11 @@ const APPROVED_CLERK_FAPI_ORIGIN = new URL(CLERK_FAPI_ORIGIN).origin;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_TIMEOUT_MS = 30_000;
 const MAX_CANONICALIZATION_LAYERS = 8;
-const REDIRECT_STATUSES = new Set([300, 301, 302, 303, 305, 307, 308]);
+export const CLERK_PROXY_MAX_REQUEST_BODY_BYTES = 1_048_576;
+// Bound response buffering so a stalled body can become a controlled 504
+// before headers are returned; never buffer an unbounded upstream stream.
+const MAX_RESPONSE_BODY_BYTES = 16 * 1024 * 1024;
+const TIMEOUT = Symbol("clerk proxy timeout");
 const ABSOLUTE_URL_PATH = /^\/[a-z][a-z\d+.-]*:\/\//i;
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -67,6 +71,18 @@ export interface ClerkProxyEnv {
   CLERK_SECRET_KEY?: string;
   CLERK_PROXY_URL?: string;
   CLERK_PROXY_TIMEOUT_MS?: string | number;
+}
+
+class ResponseBodyTooLargeError extends Error {}
+
+type ProxyRequestInit = RequestInit & { duplex?: "half" };
+type Deadline = Promise<typeof TIMEOUT>;
+
+function proxyError(body: string, status: number): Response {
+  return new Response(body, {
+    status,
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 function invalidClerkProxyPath(): never {
@@ -156,6 +172,16 @@ function publicProxyUrl(env: ClerkProxyEnv): URL {
   return new URL(configured);
 }
 
+function requestUsesPublicOrigin(request: Request, publicProxy: URL): boolean {
+  try {
+    // The request URL is only a consistency check; all outbound origin and
+    // metadata values still come from validated configuration.
+    return new URL(request.url).origin === publicProxy.origin;
+  } catch {
+    return false;
+  }
+}
+
 function timeoutMs(env: ClerkProxyEnv): number {
   const raw = env.CLERK_PROXY_TIMEOUT_MS;
   const parsed = typeof raw === "number" ? raw : Number(raw);
@@ -234,6 +260,8 @@ function buildClerkProxyHeaders(
     }
   }
 
+  // Prevent transparent compression from changing the body/header contract.
+  headers.set("Accept-Encoding", "identity");
   headers.set("Clerk-Proxy-Url", publicProxy.toString());
   headers.set("Clerk-Secret-Key", env.CLERK_SECRET_KEY ?? "");
   headers.set("X-Forwarded-Host", publicProxy.host);
@@ -248,17 +276,96 @@ function buildClerkProxyHeaders(
   return headers;
 }
 
+function unsupportedRequestEncoding(request: Request): boolean {
+  const raw = request.headers.get("Content-Encoding");
+  if (raw === null) return false;
+  const encodings = raw.split(",").map((value) => value.trim().toLowerCase());
+  return (
+    encodings.length === 0 || encodings.some((value) => value !== "identity")
+  );
+}
+
+function declaredBodySize(
+  request: Request
+): "invalid" | "too-large" | undefined {
+  const raw = request.headers.get("Content-Length");
+  if (raw === null) return undefined;
+  const value = raw.trim();
+  if (!/^\d+$/.test(value)) return "invalid";
+  return Number(value) > CLERK_PROXY_MAX_REQUEST_BODY_BYTES
+    ? "too-large"
+    : undefined;
+}
+
+function boundedRequestBody(
+  body: ReadableStream<Uint8Array>,
+  onTooLarge: () => void
+): ReadableStream<Uint8Array> {
+  const reader = body.getReader();
+  let total = 0;
+
+  return new ReadableStream<Uint8Array>({
+    async pull(streamController) {
+      try {
+        const result = await reader.read();
+        if (result.done) {
+          streamController.close();
+          return;
+        }
+
+        total += result.value.byteLength;
+        if (total > CLERK_PROXY_MAX_REQUEST_BODY_BYTES) {
+          onTooLarge();
+          try {
+            await reader.cancel();
+          } catch {
+            // The abort/error path below remains authoritative.
+          }
+          streamController.error(new Error("Clerk request body too large"));
+          return;
+        }
+
+        streamController.enqueue(result.value);
+      } catch (error) {
+        streamController.error(error);
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
+}
+
 function buildProxyRequest(
   request: Request,
   target: URL,
   headers: Headers,
-  signal: AbortSignal
+  signal: AbortSignal,
+  body: ReadableStream<Uint8Array> | null
 ): Request {
-  // Constructing from the incoming Request first preserves streaming bodies
-  // in both workerd and Node (where a stream body also needs duplex handling).
-  // Vitest covers the Web Fetch surface; a deployed workerd smoke test is still
-  // needed for runtime-specific subrequest streaming and abort behavior.
-  const routed = new Request(target.toString(), request);
+  if (!body) {
+    // Constructing from the incoming Request preserves non-body metadata.
+    const routed = new Request(target.toString(), request);
+    return new Request(routed, {
+      headers,
+      redirect: "manual",
+      signal,
+    });
+  }
+
+  // Node's undici requires duplex for a streaming body; workerd ignores the
+  // non-standard hint while retaining the same Fetch body semantics. Keep the
+  // two-step construction so the body is transferred once, as in the original
+  // streaming proxy path.
+  const init: ProxyRequestInit = {
+    method: request.method,
+    headers,
+    body,
+    redirect: "manual",
+    signal,
+    duplex: "half",
+  };
+  const routed = new Request(target.toString(), init);
   return new Request(routed, {
     headers,
     redirect: "manual",
@@ -275,6 +382,9 @@ function sanitizeResponseHeaders(source: Headers): Headers {
     if (
       HOP_BY_HOP_HEADERS.has(name) ||
       connectionNames.has(name) ||
+      // Workers may transparently decompress an upstream response. Because
+      // outbound Accept-Encoding is identity, never pass a stale encoding.
+      name === "content-encoding" ||
       RESPONSE_SENSITIVE_HEADERS.has(name) ||
       name.includes("secret")
     ) {
@@ -322,34 +432,86 @@ function rewriteSameOriginRedirect(
   return rewritten.toString();
 }
 
-function cloneUpstreamResponse(response: Response, publicProxy: URL): Response {
+function safeUpstreamResponseHeaders(
+  response: Response,
+  publicProxy: URL
+): Headers | undefined {
+  const hasLocation = response.headers.has("Location");
   const location = response.headers.get("Location");
   const connectionNames = connectionHeaderNames(response.headers);
   const headers = sanitizeResponseHeaders(response.headers);
 
-  if (REDIRECT_STATUSES.has(response.status) && location) {
-    if (connectionNames.has("location")) {
-      return new Response("Clerk upstream redirect rejected", {
-        status: 502,
-        headers: { "Cache-Control": "no-store" },
-      });
-    }
+  if (!hasLocation) return headers;
+  if (!location?.trim() || connectionNames.has("location")) return undefined;
 
-    const rewritten = rewriteSameOriginRedirect(location, publicProxy);
-    if (!rewritten) {
-      return new Response("Clerk upstream redirect rejected", {
-        status: 502,
-        headers: { "Cache-Control": "no-store" },
-      });
-    }
-    headers.set("Location", rewritten);
+  const rewritten = rewriteSameOriginRedirect(location, publicProxy);
+  if (!rewritten) return undefined;
+  headers.set("Location", rewritten);
+  return headers;
+}
+
+async function cancelResponseBody(
+  response: Response,
+  deadline: Deadline
+): Promise<void> {
+  if (!response.body) return;
+  try {
+    await Promise.race([response.body.cancel(), deadline]);
+  } catch {
+    // The upstream is being discarded; no error detail is exposed.
   }
+}
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+function concatChunks(chunks: Uint8Array[], total: number): ArrayBuffer {
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result.buffer;
+}
+
+async function readBoundedResponseBody(
+  response: Response,
+  deadline: Deadline
+): Promise<ArrayBuffer | null> {
+  if (!response.body) return null;
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  let completed = false;
+
+  try {
+    while (true) {
+      const result = await Promise.race([reader.read(), deadline]);
+      if (result === TIMEOUT) throw new Error("Clerk upstream timeout");
+      if (result.done) break;
+
+      total += result.value.byteLength;
+      if (total > MAX_RESPONSE_BODY_BYTES) {
+        throw new ResponseBodyTooLargeError();
+      }
+      chunks.push(result.value);
+    }
+
+    completed = true;
+    return concatChunks(chunks, total);
+  } finally {
+    if (!completed) {
+      try {
+        await Promise.race([reader.cancel(), deadline]);
+      } catch {
+        // The response is being discarded or the deadline already won.
+      }
+    }
+    try {
+      reader.releaseLock();
+    } catch {
+      // The response is being discarded or the deadline already won.
+    }
+  }
 }
 
 export async function handleClerkProxy(
@@ -357,50 +519,96 @@ export async function handleClerkProxy(
   env: ClerkProxyEnv
 ): Promise<Response> {
   if (!env.CLERK_SECRET_KEY) {
-    return new Response("Clerk proxy misconfigured: missing CLERK_SECRET_KEY", {
-      status: 503,
-    });
+    return proxyError(
+      "Clerk proxy misconfigured: missing CLERK_SECRET_KEY",
+      503
+    );
   }
 
   let publicProxy: URL;
   try {
     publicProxy = publicProxyUrl(env);
   } catch {
-    return new Response("Clerk proxy misconfigured: missing CLERK_PROXY_URL", {
-      status: 503,
-    });
+    return proxyError(
+      "Clerk proxy misconfigured: missing CLERK_PROXY_URL",
+      503
+    );
+  }
+
+  if (!requestUsesPublicOrigin(request, publicProxy)) {
+    return proxyError("Clerk proxy public origin mismatch", 503);
+  }
+
+  if (unsupportedRequestEncoding(request)) {
+    return proxyError("Clerk proxy request encoding unsupported", 415);
+  }
+
+  const declaredSize = declaredBodySize(request);
+  if (declaredSize === "invalid") {
+    return proxyError("Invalid Clerk proxy request length", 400);
+  }
+  if (declaredSize === "too-large") {
+    return proxyError("Clerk proxy request body too large", 413);
   }
 
   let target: URL;
   try {
     target = buildClerkProxyTarget(request);
   } catch {
-    return new Response("Invalid Clerk proxy path", { status: 400 });
+    return proxyError("Invalid Clerk proxy path", 400);
   }
 
   const controller = new AbortController();
   let timedOut = false;
+  let requestBodyTooLarge = false;
+  let resolveDeadline!: (value: typeof TIMEOUT) => void;
+  const deadline = new Promise<typeof TIMEOUT>((resolve) => {
+    resolveDeadline = resolve;
+  });
   const timeout = setTimeout(() => {
     timedOut = true;
     controller.abort();
+    resolveDeadline(TIMEOUT);
   }, timeoutMs(env));
 
   try {
+    const requestBody =
+      request.body && request.method !== "GET" && request.method !== "HEAD"
+        ? boundedRequestBody(request.body, () => {
+            requestBodyTooLarge = true;
+            controller.abort();
+          })
+        : null;
     const proxyRequest = buildProxyRequest(
       request,
       target,
       buildClerkProxyHeaders(request, env, publicProxy),
-      controller.signal
+      controller.signal,
+      requestBody
     );
-    const response = await fetch(proxyRequest);
-    return cloneUpstreamResponse(response, publicProxy);
+
+    const fetched = await Promise.race([fetch(proxyRequest), deadline]);
+    if (fetched === TIMEOUT) throw new Error("Clerk upstream timeout");
+    const response = fetched;
+    const headers = safeUpstreamResponseHeaders(response, publicProxy);
+    if (!headers) {
+      await cancelResponseBody(response, deadline);
+      return proxyError("Clerk upstream redirect rejected", 502);
+    }
+
+    const responseBody = await readBoundedResponseBody(response, deadline);
+    return new Response(responseBody, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
   } catch {
-    return new Response(
+    if (requestBodyTooLarge) {
+      return proxyError("Clerk proxy request body too large", 413);
+    }
+    return proxyError(
       timedOut ? "Clerk upstream timed out" : "Clerk upstream unavailable",
-      {
-        status: timedOut ? 504 : 502,
-        headers: { "Cache-Control": "no-store" },
-      }
+      timedOut ? 504 : 502
     );
   } finally {
     clearTimeout(timeout);
