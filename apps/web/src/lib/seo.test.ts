@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { articleHead, homepageHead, notFoundHead, pageHead } from "./seo";
+import {
+  articleHead,
+  homepageHead,
+  notFoundHead,
+  pageHead,
+  routeRobotsMeta,
+} from "./seo";
 import {
   SITE_DESCRIPTION,
   SITE_OG_HOME_IMAGE_URL,
@@ -124,6 +130,48 @@ describe("articleHead", () => {
       )
       .map((t) => ("content" in t ? t.content : ""));
     expect(descriptions.every((d) => d === item.summary)).toBe(true);
+  });
+});
+
+describe("routeRobotsMeta", () => {
+  it("keeps homepage, story, about, and base subscribe indexable", () => {
+    for (const pathname of ["/", "/abcdef12", "/about", "/subscribe"]) {
+      expect(routeRobotsMeta({ pathname })).toEqual({
+        name: "robots",
+        content: "index, follow",
+      });
+    }
+  });
+
+  it("emits noindex, follow for search, locale, and faceted HTML", () => {
+    for (const search of [
+      { q: "open models" },
+      { lang: "vi" },
+      { utm_source: "newsletter" },
+    ]) {
+      expect(routeRobotsMeta({ pathname: "/", search })).toEqual({
+        name: "robots",
+        content: "noindex, follow",
+      });
+    }
+    expect(
+      routeRobotsMeta({ pathname: "/subscribe", search: { tab: "email" } })
+    ).toEqual({ name: "robots", content: "noindex, follow" });
+  });
+
+  it("emits noindex, nofollow for tokenized and admin HTML", () => {
+    expect(
+      routeRobotsMeta({
+        pathname: "/subscribe",
+        search: { settings: "subscriber-token" },
+      })
+    ).toEqual({ name: "robots", content: "noindex, nofollow" });
+    expect(
+      routeRobotsMeta({ pathname: "/data", search: { tab: "admin" } })
+    ).toEqual({ name: "robots", content: "noindex, nofollow" });
+    expect(
+      routeRobotsMeta({ pathname: "/", search: { token: "   " } })
+    ).toEqual({ name: "robots", content: "noindex, nofollow" });
   });
 });
 

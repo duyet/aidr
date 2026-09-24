@@ -80,6 +80,7 @@ describe("robotsTxt", () => {
     const text = robotsTxt();
     expect(text).toMatch(/^User-agent: \*$/m);
     expect(text).toContain("Allow: /");
+    expect(text).not.toMatch(/^Disallow:/m);
     expect(text).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`);
     expect(text).toContain(`LLMs-txt: ${SITE_URL}/llms.txt`);
   });

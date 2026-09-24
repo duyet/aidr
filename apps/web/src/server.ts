@@ -15,6 +15,7 @@ import {
 import { readSession } from "./lib/db";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
+import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
 import {
   buildSitemapXml,
   loadSitemapUrls,
@@ -59,7 +60,10 @@ export default {
       return Response.redirect(dest.toString(), 301);
     }
     if (isClerkProxyPath(path)) {
-      return handleClerkProxy(request, env);
+      return withRouteIndexabilityHeaders(
+        request,
+        handleClerkProxy(request, env)
+      );
     }
     if (path === "/aidr.zip") {
       return handleAidrZipRequest(request);
@@ -93,11 +97,14 @@ export default {
         return sitemapResponse(buildSitemapXml(staticSitemapUrls()));
       }
     }
-    return handlePublicCors(request, () =>
-      handleSubscribeCors(request, async () =>
-        withHomepageHeaders(
-          request,
-          applyNotFoundHttpStatus(await handler.fetch(request))
+    return withRouteIndexabilityHeaders(
+      request,
+      handlePublicCors(request, () =>
+        handleSubscribeCors(request, async () =>
+          withHomepageHeaders(
+            request,
+            applyNotFoundHttpStatus(await handler.fetch(request))
+          )
         )
       )
     );
