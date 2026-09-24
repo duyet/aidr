@@ -320,6 +320,55 @@ describe("story Markdown rendering", () => {
             author: null,
             posted_at: null,
             quote: null,
+            url: "https://example.com/markdown?q=%5Bstory%5D%28https%3A%2F%2F127.0.0.1%2Fadmin%29",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/html?q=%3Ca%20href%3D%22javascript%3Aalert%281%29%22%3E",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/bracket?q=%5B%5B%2F%2Fmetadata.google.internal%2Fsecret%5D%5D",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/data?q=%5Bdata%3Atext%2Fhtml%2Csecret%5D",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/vbscript?q=vbscript%253Amsgbox%25281%2529",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/file?q=%5Bfile%3A%2F%2F%2Fetc%2Fpasswd%5D",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/encoded?q=%5Bjavascript%253Aalert%25281%2529%5D",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
             url: "https://example.com/?q=foo%253DBasic%2520dXNlcjpwYXNz",
           },
           {
@@ -395,6 +444,10 @@ describe("story Markdown rendering", () => {
     expect(body).not.toContain("https://example.com/nested?");
     expect(body).not.toContain("<script>");
     expect(body).not.toContain("javascript:");
+    expect(body).not.toContain("data:text/html");
+    expect(body).not.toContain("vbscript:");
+    expect(body).not.toContain("file:///");
+    expect(body).not.toContain("msgbox(");
     expect(body).not.toContain("127.0.0.1");
     expect(body).not.toContain("169.254.169.254");
     expect(body).not.toContain("::1");
@@ -756,7 +809,7 @@ describe("story Markdown route", () => {
 
     const secretRedirect = await handleStoryMarkdownRequest(
       new Request(
-        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&%2561ccess_token=double-redirect-secret&utm_source=agent&utm_medium=email&utm_token=redirect-utm-token&utm_client_secret=redirect-client-secret&utm_signature=redirect-signature-secret&utm%5Ftoken=encoded-redirect-utm-token&utm%25255Fsignature=double-encoded-redirect-signature&note=%2523access_token%3Dfragment-redirect-secret&q=foo%253Daccess_token%253Dcompound-redirect-secret&q=Basic%2520dXNlcjpwYXNz&q=foo%253DeyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqd3Qtc2VjcmV0In0.signature&q=https%3A%2F%2F169.254.169.254%2Flatest&q=redirect%3Dhttps%3A%2F%2F127.0.0.1%2Fadmin&q=next%3Dhttps%3A%2F%2Fmetadata.google.internal%2FcomputeMetadata&q=%20https%3A%2F%2F127.0.0.1%2Fadmin&q=https%3A%2F%2Fexample.com%2Fredirect%3Fnext%3Dhttps%253A%252F%252F127.0.0.1%252Fadmin&q=%20agents%20`
+        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&%2561ccess_token=double-redirect-secret&utm_source=agent&utm_medium=email&utm_token=redirect-utm-token&utm_client_secret=redirect-client-secret&utm_signature=redirect-signature-secret&utm%5Ftoken=encoded-redirect-utm-token&utm%25255Fsignature=double-encoded-redirect-signature&note=%2523access_token%3Dfragment-redirect-secret&q=foo%253Daccess_token%253Dcompound-redirect-secret&q=Basic%2520dXNlcjpwYXNz&q=foo%253DeyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqd3Qtc2VjcmV0In0.signature&q=https%3A%2F%2F169.254.169.254%2Flatest&q=redirect%3Dhttps%3A%2F%2F127.0.0.1%2Fadmin&q=next%3Dhttps%3A%2F%2Fmetadata.google.internal%2FcomputeMetadata&q=%20https%3A%2F%2F127.0.0.1%2Fadmin&q=https%3A%2F%2Fexample.com%2Fredirect%3Fnext%3Dhttps%253A%252F%252F127.0.0.1%252Fadmin&q=%5Bstory%5D%28https%3A%2F%2F127.0.0.1%2Fadmin%29&q=%3Ca%20href%3D%22javascript%3Aalert%281%29%22%3E&q=%5B%5B%2F%2Fmetadata.google.internal%2Fsecret%5D%5D&q=%5Bdata%3Atext%2Fhtml%2Csecret%5D&q=vbscript%253Amsgbox%25281%2529&q=%5Bfile%3A%2F%2F%2Fetc%2Fpasswd%5D&q=%5Bjavascript%253Aalert%25281%2529%5D&q=%20agents%20`
       ),
       fakeDb(story())
     );
@@ -778,6 +831,11 @@ describe("story Markdown route", () => {
     expect(secretLocation).not.toContain("127.0.0.1");
     expect(secretLocation).not.toContain("metadata.google.internal");
     expect(secretLocation).not.toContain("example.com/redirect");
+    expect(secretLocation).not.toContain("javascript:");
+    expect(secretLocation).not.toContain("data:text/html");
+    expect(secretLocation).not.toContain("vbscript:");
+    expect(secretLocation).not.toContain("file:///");
+    expect(secretLocation).not.toContain("msgbox(");
     expect(secretLocation).not.toContain("dXNlcjpwYXNz");
     expect(secretLocation).not.toContain("eyJhbGciOiJIUzI1NiJ9");
     expect(secretBody).not.toContain("do-not-redirect");
@@ -793,6 +851,11 @@ describe("story Markdown route", () => {
     expect(secretBody).not.toContain("127.0.0.1");
     expect(secretBody).not.toContain("metadata.google.internal");
     expect(secretBody).not.toContain("example.com/redirect");
+    expect(secretBody).not.toContain("javascript:");
+    expect(secretBody).not.toContain("data:text/html");
+    expect(secretBody).not.toContain("vbscript:");
+    expect(secretBody).not.toContain("file:///");
+    expect(secretBody).not.toContain("msgbox(");
     expect(secretBody).not.toContain("dXNlcjpwYXNz");
     expect(secretBody).not.toContain("eyJhbGciOiJIUzI1NiJ9");
 

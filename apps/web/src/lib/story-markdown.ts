@@ -82,6 +82,13 @@ const CREDENTIAL_KEY_TOKENS = new Set([
   "signature",
   "token",
 ]);
+const DANGEROUS_QUERY_SCHEMES = [
+  "blob:",
+  "javascript:",
+  "data:",
+  "vbscript:",
+  "file:",
+] as const;
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
   "metadata",
@@ -319,12 +326,13 @@ function compoundValueHasCredential(value: string, depth = 0): boolean {
 /** Reject nested URL syntax at any decoded assignment/query depth. */
 function sanitizeQueryValue(value: string): string | null {
   const normalized = value.trim();
+  const compact = normalized.replace(/\s+/gu, "").toLowerCase();
   if (
     normalized.includes("#") ||
+    normalized.includes("//") ||
     compoundValueHasCredential(normalized) ||
     /https?\s*:/i.test(normalized) ||
-    normalized.includes("://") ||
-    /(?:^|[=?&;\s])\/\//u.test(normalized)
+    DANGEROUS_QUERY_SCHEMES.some((scheme) => compact.includes(scheme))
   ) {
     return null;
   }
