@@ -100,8 +100,13 @@ export interface LlmUsageBreakdown {
   cachedTokens: number | null;
 }
 
-interface AnyrouterCallResult extends LlmUsageBreakdown {
+interface AnyrouterCompletion extends LlmUsageBreakdown {
   content: string;
+}
+
+interface AnyrouterCallResult extends AnyrouterCompletion {
+  /** Actual model that served the completion (after fallback selection). */
+  model: string;
 }
 
 /** Labels a call by which pipeline stage issued it, for the `llm_calls`
@@ -262,7 +267,7 @@ async function streamCompletion(
     signal?: AbortSignal;
     maxTokens?: number;
   }
-): Promise<AnyrouterCallResult> {
+): Promise<AnyrouterCompletion> {
   const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -527,7 +532,7 @@ async function callAnyrouter(
         promptChars,
         responseSnippet: result.content.slice(0, 2000),
       });
-      return result;
+      return { ...result, model };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       failures.push(`${model}: ${msg}`);

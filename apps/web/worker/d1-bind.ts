@@ -67,10 +67,54 @@ export function buildItemBindArgs(args: {
 /** Pure builder for the `translations` upsert bind args. */
 export function buildTranslationBindArgs(args: {
   id: string;
-  title: string;
-  summary: string;
+  title: string | null;
+  summary: string | null;
 }): unknown[] {
   return [nn(args.id), nn(args.title), nn(args.summary)];
+}
+
+/** Every candidate write invalidates the previous semantic-review state. The
+ *  durable `translation_reviews` history remains, but the current-candidate
+ *  marker is cleared so the item becomes eligible for review again. */
+export const TRANSLATION_UPSERT_SQL = `INSERT INTO translations (item_id, lang, title, summary)
+  VALUES (?, 'vi', ?, ?)
+  ON CONFLICT(item_id, lang) DO UPDATE SET
+    title = excluded.title,
+    summary = excluded.summary,
+    qa_rating = NULL,
+    qa_at = NULL,
+    qa_source_hash = NULL,
+    qa_candidate_hash = NULL,
+    qa_direction = NULL,
+    qa_reviewer_model = NULL,
+    qa_criteria_version = NULL`;
+
+/** Source edits invalidate the candidate's review even when the candidate text
+ *  itself is not rewritten. */
+export const TRANSLATION_QA_INVALIDATION_SQL = `UPDATE translations SET
+  qa_rating = NULL,
+  qa_at = NULL,
+  qa_source_hash = NULL,
+  qa_candidate_hash = NULL,
+  qa_direction = NULL,
+  qa_reviewer_model = NULL,
+  qa_criteria_version = NULL
+WHERE item_id = ? AND lang = 'vi'`;
+
+export function prepareTranslationUpsert(
+  db: D1Database,
+  args: { id: string; title: string | null; summary: string | null }
+): D1PreparedStatement {
+  return db
+    .prepare(TRANSLATION_UPSERT_SQL)
+    .bind(...buildTranslationBindArgs(args));
+}
+
+export function prepareTranslationQaInvalidation(
+  db: D1Database,
+  itemId: string
+): D1PreparedStatement {
+  return db.prepare(TRANSLATION_QA_INVALIDATION_SQL).bind(nn(itemId));
 }
 
 /**

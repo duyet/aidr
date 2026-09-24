@@ -58,6 +58,9 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 ANYROUTER_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
 ANYROUTER_TRANSLATE_MODEL = "google/gemini-3.5-flash,anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
 ANYROUTER_TLDR_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
+# Translation semantic review uses only this explicit concrete chain. Keep it
+# disjoint from every generator id; missing/overlapping config fails closed.
+ANYROUTER_REVIEW_MODEL = "x-ai/grok-4.7,z-ai/glm-5.3-flash"
 # Canonical catalog id typesafe/jev (upstream alias jev-latest). System One
 # only: score judgments and review gates try it first; the chat chain above
 # is the backup. BYOK-only — Dashboard → BYOK → TypeSafe. Never add this id

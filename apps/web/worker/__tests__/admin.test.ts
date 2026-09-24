@@ -155,6 +155,23 @@ class FakeD1 {
       return { success: true };
     }
 
+    if (sql.startsWith("UPDATE translations SET qa_rating = NULL")) {
+      const [itemId] = args as [string];
+      const row = this.translations.get(`${itemId}:vi`);
+      if (row) {
+        Object.assign(row, {
+          qa_rating: null,
+          qa_at: null,
+          qa_source_hash: null,
+          qa_candidate_hash: null,
+          qa_direction: null,
+          qa_reviewer_model: null,
+          qa_criteria_version: null,
+        });
+      }
+      return { success: true };
+    }
+
     if (sql.startsWith("SELECT * FROM sources")) {
       return { results: Array.from(this.sources.values()) };
     }

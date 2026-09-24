@@ -5,6 +5,8 @@ import {
   buildTranslationBindArgs,
   MAX_SOURCES_PER_ITEM,
   nn,
+  TRANSLATION_QA_INVALIDATION_SQL,
+  TRANSLATION_UPSERT_SQL,
 } from "../d1-bind.js";
 import type { FetchedItemSource } from "../sources/types.js";
 
@@ -244,5 +246,23 @@ describe("buildTranslationBindArgs", () => {
     });
     expect(args).not.toContain(undefined);
     expect(args).toEqual(["abc123", "Tiêu đề", "Tóm tắt"]);
+  });
+});
+
+describe("translation QA invalidation SQL", () => {
+  it("clears every current-review marker when a candidate is rewritten", () => {
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_rating = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_source_hash = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_candidate_hash = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_direction = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_reviewer_model = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_criteria_version = NULL");
+  });
+
+  it("invalidates the candidate marker when only its source changes", () => {
+    expect(TRANSLATION_QA_INVALIDATION_SQL).toContain(
+      "qa_candidate_hash = NULL"
+    );
+    expect(TRANSLATION_QA_INVALIDATION_SQL).toContain("WHERE item_id = ?");
   });
 });

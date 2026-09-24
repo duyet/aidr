@@ -16,9 +16,10 @@ import {
 import {
   buildItemBindArgs,
   buildItemSourceBindArgs,
-  buildTranslationBindArgs,
   MAX_SOURCES_PER_ITEM,
   nn,
+  prepareTranslationQaInvalidation,
+  prepareTranslationUpsert,
 } from "./d1-bind.js";
 import {
   buildMergePlan,
@@ -824,18 +825,11 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               : null;
           if (persisted) {
             statements.push(
-              this.env.DB.prepare(
-                `INSERT INTO translations (item_id, lang, title, summary)
-                 VALUES (?, 'vi', ?, ?)
-                 ON CONFLICT(item_id, lang) DO UPDATE SET
-                   title = excluded.title, summary = excluded.summary`
-              ).bind(
-                ...buildTranslationBindArgs({
-                  id,
-                  title: persisted.title,
-                  summary: persisted.summary,
-                })
-              )
+              prepareTranslationUpsert(this.env.DB, {
+                id,
+                title: persisted.title,
+                summary: persisted.summary,
+              })
             );
           }
 
@@ -1040,6 +1034,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                   )
                     .bind(nn(plan.summary), nn(plan.imageUrl), nn(row.id))
                     .run();
+                  await prepareTranslationQaInvalidation(
+                    this.env.DB,
+                    row.id
+                  ).run();
 
                   if (sources.length === 0) return;
                   const { results: existingSources } =
@@ -1128,20 +1126,11 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                     partTokens += result.tokens;
                     const row = rows[result.i];
                     if (!row || !result.title) continue;
-                    await this.env.DB.prepare(
-                      `INSERT INTO translations (item_id, lang, title, summary)
-               VALUES (?, 'vi', ?, ?)
-               ON CONFLICT(item_id, lang) DO UPDATE SET
-                 title = excluded.title, summary = excluded.summary`
-                    )
-                      .bind(
-                        ...buildTranslationBindArgs({
-                          id: row.id,
-                          title: result.title,
-                          summary: result.summary ?? "",
-                        })
-                      )
-                      .run();
+                    await prepareTranslationUpsert(this.env.DB, {
+                      id: row.id,
+                      title: result.title,
+                      summary: result.summary ?? "",
+                    }).run();
                     count++;
                   }
                 } catch (error) {

@@ -1,3 +1,7 @@
+import {
+  prepareTranslationQaInvalidation,
+  prepareTranslationUpsert,
+} from "../d1-bind.js";
 import { tickIngest } from "../ingest-schedule.js";
 import { scoreItems, setLlmCallLogger, translateItems } from "../llm.js";
 import { createD1LlmCallLogger } from "../llm-call-log.js";
@@ -174,14 +178,13 @@ export async function pushItems(
       .run();
 
     if (item.title_vi) {
-      await env.DB.prepare(
-        `INSERT INTO translations (item_id, lang, title, summary)
-         VALUES (?, 'vi', ?, ?)
-         ON CONFLICT(item_id, lang) DO UPDATE SET
-           title = excluded.title, summary = excluded.summary`
-      )
-        .bind(id, item.title_vi, item.summary_vi ?? null)
-        .run();
+      await prepareTranslationUpsert(env.DB, {
+        id,
+        title: item.title_vi,
+        summary: item.summary_vi ?? null,
+      }).run();
+    } else if (existing) {
+      await prepareTranslationQaInvalidation(env.DB, id).run();
     }
   }
 
@@ -498,12 +501,11 @@ export async function reprocessToday(
         tokens += result.tokens;
         translatedCount++;
         statements.push(
-          env.DB.prepare(
-            `INSERT INTO translations (item_id, lang, title, summary)
-             VALUES (?, 'vi', ?, ?)
-             ON CONFLICT(item_id, lang) DO UPDATE SET
-               title = excluded.title, summary = excluded.summary`
-          ).bind(row.id, result.title, result.summary)
+          prepareTranslationUpsert(env.DB, {
+            id: row.id,
+            title: result.title,
+            summary: result.summary,
+          })
         );
       }
       if (statements.length > 0) await env.DB.batch(statements);

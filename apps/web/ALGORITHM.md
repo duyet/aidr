@@ -129,7 +129,27 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 
 6. **Translate (LLM)** — EN→VI in batches, journalist style (`VI_STYLE`
    system prompt: no parenthetical glosses, no calques, keep technical
-   jargon in English, few-shot anchored).
+   jargon in English, few-shot anchored). Stored translations then enter a
+   bounded independent semantic-review path in `worker/translation-qa.ts`:
+
+   - `ANYROUTER_REVIEW_MODEL` (legacy: explicit `ANYROUTER_QA_MODEL`) is
+     required. The reviewer chain must be concrete and disjoint from every
+     `ANYROUTER_TRANSLATE_MODEL` id; missing/overlapping config fails closed
+     rather than self-reviewing with the generator.
+   - The strict `translation-semantic-v1` JSON verdict scores fidelity,
+     naturalness, and confidence separately. Deterministic number/entity/negation
+     guards can override an optimistic reviewer, while the reviewer also checks
+     omissions, additions, terminology, uncertainty, dates, and units.
+   - Accept requires no hard failure, fidelity/naturalness ≥ 0.7, and
+     confidence ≥ 0.6. An EN→VI failure gets at most one generator repair and
+     one independent re-review. VI→EN is cross-check-only; disagreement,
+     abstention, low confidence, malformed output, or exhausted budget goes to
+     `translation_reviews.decision = 'human_review'` and preserves the original.
+   - One run makes at most 6 logical reviewer/generator calls and two model
+     attempts per call. Workflow retries remain zero. D1 records source/candidate
+     SHA-256 hashes, direction, actual models, criteria version, reason, and
+     attempt count; current-candidate marker columns are cleared by translation
+     and known source writers so changed text is reviewed again.
 
 7. **Rank (pure code, `worker/ranking.ts`)** — recomputed for items < 72h:
 

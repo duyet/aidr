@@ -1,4 +1,4 @@
-import { nn } from "./d1-bind.js";
+import { nn, prepareTranslationUpsert } from "./d1-bind.js";
 import { callAnyrouter, parseJson, VI_STYLE } from "./llm.js";
 import {
   checkRateLimit,
@@ -443,14 +443,11 @@ export async function reviewPendingSuggestions(
           if (row.field === "title") currentTitle = retranslated;
           else currentSummary = retranslated;
 
-          await env.DB.prepare(
-            `INSERT INTO translations (item_id, lang, title, summary)
-             VALUES (?, 'vi', ?, ?)
-             ON CONFLICT(item_id, lang) DO UPDATE SET
-               title = excluded.title, summary = excluded.summary`
-          )
-            .bind(nn(itemId), nn(currentTitle), nn(currentSummary))
-            .run();
+          await prepareTranslationUpsert(env.DB, {
+            id: itemId,
+            title: currentTitle,
+            summary: currentSummary,
+          }).run();
 
           await env.DB.prepare(
             "UPDATE translation_suggestions SET status = 'accepted', rating = ?, review_note = ? WHERE id = ?"
@@ -531,14 +528,11 @@ export async function approveSuggestionById(
   if (row.field === "title") currentTitle = retranslated;
   else currentSummary = retranslated;
 
-  await env.DB.prepare(
-    `INSERT INTO translations (item_id, lang, title, summary)
-     VALUES (?, 'vi', ?, ?)
-     ON CONFLICT(item_id, lang) DO UPDATE SET
-       title = excluded.title, summary = excluded.summary`
-  )
-    .bind(nn(row.item_id), nn(currentTitle), nn(currentSummary))
-    .run();
+  await prepareTranslationUpsert(env.DB, {
+    id: row.item_id,
+    title: currentTitle,
+    summary: currentSummary,
+  }).run();
 
   await env.DB.prepare(
     "UPDATE translation_suggestions SET status = 'accepted', rating = ?, review_note = ? WHERE id = ?"
