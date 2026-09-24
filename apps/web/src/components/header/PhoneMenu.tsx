@@ -2,9 +2,10 @@ import { Button, ErrorBoundary } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { Dialog as DialogPrimitive } from "radix-ui";
+import { useRef, useState } from "react";
 import {
+  PHONE_LANG_TOGGLE_BUTTON_CLASS,
   PHONE_MENU_DIALOG_CLASS,
   PHONE_MENU_GRID_CLASS,
   PHONE_MENU_LINK_CLASS,
@@ -14,6 +15,38 @@ import type { Lang } from "../../lib/types";
 import { LangToggle } from "../LangToggle";
 import { HeaderAuth } from "./HeaderAuth";
 import { SITE_LINKS } from "./lib";
+
+const HEADER_MENU_TRIGGER_SELECTOR = "[data-header-menu-trigger]";
+
+function isVisible(element: HTMLElement): boolean {
+  if (!element.isConnected) return false;
+
+  let current: HTMLElement | null = element;
+  while (current) {
+    if (current.hidden) return false;
+    const style = window.getComputedStyle(current);
+    if (style.display === "none" || style.visibility === "hidden") {
+      return false;
+    }
+    current = current.parentElement;
+  }
+  return true;
+}
+
+function focusVisibleHeaderTrigger(preferred?: HTMLElement | null) {
+  if (typeof document === "undefined") return;
+
+  const candidates = [
+    preferred,
+    ...Array.from(
+      document.querySelectorAll<HTMLElement>(HEADER_MENU_TRIGGER_SELECTOR)
+    ),
+  ];
+  const target = candidates.find((candidate): candidate is HTMLElement =>
+    Boolean(candidate && isVisible(candidate))
+  );
+  target?.focus();
+}
 
 export function PhoneMenu({
   lang,
@@ -26,30 +59,8 @@ export function PhoneMenu({
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const wasOpen = useRef(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  useEffect(() => {
-    if (!open) {
-      if (wasOpen.current) {
-        wasOpen.current = false;
-        triggerRef.current?.focus();
-      }
-      return;
-    }
-
-    wasOpen.current = true;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
 
   const getLinkClass = (active: boolean) =>
     `${PHONE_MENU_LINK_CLASS} ${
@@ -59,123 +70,124 @@ export function PhoneMenu({
     }`;
 
   return (
-    <>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant="ghost"
-        size="icon-lg"
-        className={PHONE_TAP_TARGET_CLASS}
-        aria-label="Open menu"
-        aria-controls="mobile-menu-dialog"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        onClick={() => setOpen(true)}
-      >
-        <Menu aria-hidden />
-      </Button>
-      {open && typeof document !== "undefined"
-        ? createPortal(
-            <div className="fixed inset-0 z-50">
-              <button
-                type="button"
-                tabIndex={-1}
-                className="absolute inset-0 bg-black/30"
-                aria-label="Close menu"
-                onClick={() => setOpen(false)}
-              />
-              <div
-                id="mobile-menu-dialog"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="mobile-menu-title"
-                className={PHONE_MENU_DIALOG_CLASS}
+    <DialogPrimitive.Root open={open} onOpenChange={setOpen} modal>
+      <DialogPrimitive.Trigger asChild>
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="ghost"
+          size="icon-lg"
+          className={PHONE_TAP_TARGET_CLASS}
+          data-header-menu-trigger="phone"
+          aria-label="Open menu"
+          aria-controls="mobile-menu-dialog"
+          aria-expanded={open}
+          aria-haspopup="dialog"
+        >
+          <Menu aria-hidden />
+        </Button>
+      </DialogPrimitive.Trigger>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          data-testid="mobile-menu-backdrop"
+          className="fixed inset-0 z-50 bg-black/30"
+          onPointerDown={() => setOpen(false)}
+        />
+        <DialogPrimitive.Content
+          id="mobile-menu-dialog"
+          className={PHONE_MENU_DIALOG_CLASS}
+          aria-modal="true"
+          aria-labelledby="mobile-menu-title"
+          aria-describedby={undefined}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            closeRef.current?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            focusVisibleHeaderTrigger(triggerRef.current);
+          }}
+        >
+          <div className="flex items-center justify-between border-b border-border px-5 py-4 min-[600px]:px-6">
+            <DialogPrimitive.Title asChild>
+              <h2
+                id="mobile-menu-title"
+                className="font-serif text-lg font-medium tracking-tight"
               >
-                <div className="flex items-center justify-between border-b border-border px-5 py-4 min-[600px]:px-6">
-                  <h2
-                    id="mobile-menu-title"
-                    className="font-serif text-lg font-medium tracking-tight"
-                  >
-                    AI;DR
-                  </h2>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-lg"
-                    className={PHONE_TAP_TARGET_CLASS}
-                    aria-label="Close menu"
-                    autoFocus
-                    onClick={() => setOpen(false)}
-                  >
-                    <X aria-hidden />
-                  </Button>
-                </div>
-                <nav
-                  aria-label="Mobile navigation"
-                  className={PHONE_MENU_GRID_CLASS}
+                AI;DR
+              </h2>
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Close asChild>
+              <Button
+                ref={closeRef}
+                type="button"
+                variant="ghost"
+                size="icon-lg"
+                className={PHONE_TAP_TARGET_CLASS}
+                aria-label="Close menu"
+              >
+                <X aria-hidden />
+              </Button>
+            </DialogPrimitive.Close>
+          </div>
+          <nav aria-label="Mobile navigation" className={PHONE_MENU_GRID_CLASS}>
+            {SITE_LINKS.map((link) => {
+              const active = link.internal && pathname === link.href;
+              const linkClass = getLinkClass(active);
+              return link.internal ? (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => {
+                    track("nav_click", { to: link.href });
+                    setOpen(false);
+                  }}
+                  className={linkClass}
                 >
-                  {SITE_LINKS.map((link) => {
-                    const active = link.internal && pathname === link.href;
-                    const linkClass = getLinkClass(active);
-                    return link.internal ? (
-                      <Link
-                        key={link.href}
-                        to={link.href}
-                        aria-current={active ? "page" : undefined}
-                        onClick={() => {
-                          track("nav_click", { to: link.href });
-                          setOpen(false);
-                        }}
-                        className={linkClass}
-                      >
-                        <link.icon aria-hidden />
-                        {link.label}
-                      </Link>
-                    ) : (
-                      <a
-                        key={link.href}
-                        href={link.href}
-                        onClick={() => {
-                          track("nav_click", { to: link.href });
-                          setOpen(false);
-                        }}
-                        className={linkClass}
-                        rel={
-                          link.href.startsWith("http")
-                            ? "noopener noreferrer"
-                            : undefined
-                        }
-                        target={
-                          link.href.startsWith("http") ? "_blank" : undefined
-                        }
-                      >
-                        <link.icon aria-hidden />
-                        {link.label}
-                      </a>
-                    );
-                  })}
-                </nav>
-                <div className="news-mobile-menu-footer mt-auto space-y-3 border-t border-border p-4">
-                  <div className="flex h-11 items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      {lang === "vi" ? "Ngôn ngữ" : "Language"}
-                    </span>
-                    <LangToggle
-                      lang={lang}
-                      onChange={onLangChange}
-                      disabled={langToggleDisabled}
-                      buttonClassName="min-h-[36px] min-w-[44px] px-3"
-                    />
-                  </div>
-                  <ErrorBoundary fallback={null}>
-                    <HeaderAuth avatarSize="size-9" stacked />
-                  </ErrorBoundary>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
-    </>
+                  <link.icon aria-hidden />
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => {
+                    track("nav_click", { to: link.href });
+                    setOpen(false);
+                  }}
+                  className={linkClass}
+                  rel={
+                    link.href.startsWith("http")
+                      ? "noopener noreferrer"
+                      : undefined
+                  }
+                  target={link.href.startsWith("http") ? "_blank" : undefined}
+                >
+                  <link.icon aria-hidden />
+                  {link.label}
+                </a>
+              );
+            })}
+          </nav>
+          <div className="mt-auto space-y-3 border-t border-border p-4">
+            <div className="flex min-h-[52px] items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {lang === "vi" ? "Ngôn ngữ" : "Language"}
+              </span>
+              <LangToggle
+                lang={lang}
+                onChange={onLangChange}
+                disabled={langToggleDisabled}
+                buttonClassName={PHONE_LANG_TOGGLE_BUTTON_CLASS}
+              />
+            </div>
+            <ErrorBoundary fallback={null}>
+              <HeaderAuth avatarSize="size-9" stacked />
+            </ErrorBoundary>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

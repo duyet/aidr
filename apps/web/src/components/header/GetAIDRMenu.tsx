@@ -17,17 +17,24 @@ import {
   Send,
   Workflow,
 } from "lucide-react";
-import { PHONE_GET_AIDR_TRIGGER_CLASS } from "../../lib/chrome";
+import {
+  PHONE_DROPDOWN_ITEM_CLASS,
+  PHONE_GET_AIDR_TRIGGER_CLASS,
+} from "../../lib/chrome";
 import { EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
 
 export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
+  const itemClassName = compact ? PHONE_DROPDOWN_ITEM_CLASS : undefined;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          type="button"
           variant="ghost"
           size={compact ? "icon-lg" : "sm"}
           className={compact ? PHONE_GET_AIDR_TRIGGER_CLASS : undefined}
+          data-header-menu-trigger="get-ai-dr"
           title="Get AI;DR"
           aria-label="Get AI;DR menu"
         >
@@ -45,7 +52,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to={EXTENSION_PATH}
             onClick={() => track("nav_click", { to: EXTENSION_PATH })}
@@ -54,7 +61,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             Chrome Extension
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className={itemClassName}>
           <a
             href={TELEGRAM_URL}
             target="_blank"
@@ -65,7 +72,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             Telegram Channel (Vietnamese)
           </a>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to="/subscribe"
             search={{ tab: "email" }}
@@ -76,7 +83,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to="/submit"
             onClick={() => track("nav_click", { to: "/submit" })}
@@ -85,13 +92,13 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             Submit
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className={itemClassName}>
           <Link to="/data" onClick={() => track("nav_click", { to: "/data" })}>
             <Database aria-hidden />
             Data Analytics
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to="/data"
             search={{ tab: "algo" }}

@@ -31,6 +31,7 @@ import { getRouteSearch, unavailableRouteSearch } from "../lib/route-search";
 import { routeRobotsMeta } from "../lib/seo";
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
+import { VIEWPORT_META_CONTENT } from "../lib/viewport";
 
 export const Route = createRootRoute({
   head: ({ matches }) => {
@@ -57,7 +58,7 @@ export const Route = createRootRoute({
     return {
       meta: [
         { charSet: "utf-8" },
-        { name: "viewport", content: "width=device-width, initial-scale=1.0" },
+        { name: "viewport", content: VIEWPORT_META_CONTENT },
         routeRobotsMeta({
           pathname: activeMatch?.pathname ?? "/",
           search,

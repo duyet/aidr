@@ -6,9 +6,13 @@ export const PHONE_PREFS_TRIGGER_CLASS = `${PHONE_TAP_TARGET_CLASS} rounded-full
 
 export const PHONE_GET_AIDR_TRIGGER_CLASS = `${PHONE_TAP_TARGET_CLASS} gap-0.5 border border-border/80 bg-muted/60 p-1.5 text-foreground shadow-sm hover:bg-muted data-[state=open]:bg-muted`;
 
+export const PHONE_DROPDOWN_ITEM_CLASS = "h-11 min-h-11 min-w-[44px]";
+
+export const PHONE_LANG_TOGGLE_BUTTON_CLASS = "min-h-[44px] min-w-[44px] px-3";
+
 /** Full-screen phone navigation keeps its own safe-area-aware inset. */
 export const PHONE_MENU_DIALOG_CLASS =
-  "news-mobile-menu-dialog absolute mx-auto flex max-w-3xl flex-col rounded-3xl border border-border bg-card text-card-foreground shadow-2xl";
+  "news-mobile-menu-dialog fixed z-50 mx-auto flex max-w-3xl flex-col rounded-3xl border border-border bg-card text-card-foreground shadow-2xl";
 
 /** One column on narrow phones; two balanced columns from the landscape breakpoint. */
 export const PHONE_MENU_GRID_CLASS =
