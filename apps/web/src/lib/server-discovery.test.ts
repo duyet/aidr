@@ -32,11 +32,15 @@ describe("Worker discovery entry", () => {
     );
   });
 
-  it("claims double-encoded and malformed Markdown paths in the Worker", () => {
+  it("claims over-encoded and malformed Markdown paths in the Worker", () => {
     expect(isStoryMarkdownPath("/api/story/abcdef12%252emd")).toBe(true);
     expect(isStoryMarkdownPath("/api%252Fstory/abcdef12%252emd")).toBe(true);
     expect(isStoryMarkdownPath("/api/story/%252emd")).toBe(true);
     expect(isStoryMarkdownPath("/api/story/%ZZ.md")).toBe(true);
+    for (const layers of [4, 6, 9]) {
+      const extension = `${"%25".repeat(layers - 1)}2emd`;
+      expect(isStoryMarkdownPath(`/api/story/abcdef12${extension}`)).toBe(true);
+    }
   });
 
   it("llms.txt response is non-empty aidr guidance", async () => {

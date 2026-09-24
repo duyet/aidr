@@ -50,6 +50,10 @@ function sourceRows(
   }));
 }
 
+function encodedMarkdownExtension(layers: number): string {
+  return `${"%25".repeat(layers - 1)}2emd`;
+}
+
 function storyRow(item: FeedItem): Record<string, unknown> {
   return {
     id: item.id,
@@ -91,9 +95,9 @@ function fakeDb(item: FeedItem | FeedItem[] | null): D1Database {
     batch: vi.fn(
       async (statements: Array<{ bindings: Array<string | number> }>) => {
         const bindings = statements[0]?.bindings ?? [];
-        const id = String(bindings.at(-1) ?? "");
+        const idPrefix = String(bindings.at(-1) ?? "");
         const matches = (candidate: string): boolean =>
-          bindings.length === 1 ? candidate === id : candidate.startsWith(id);
+          candidate.startsWith(idPrefix);
         return [
           { results: rows.filter((row) => matches(String(row.id))) },
           {
@@ -179,6 +183,13 @@ describe("story Markdown rendering", () => {
             url: "https://safe.example/source",
           },
           {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/keep?utm_source=agent&id=story-42&q=agents",
+          },
+          {
             kind: "discussion",
             author: null,
             posted_at: null,
@@ -219,6 +230,41 @@ describe("story Markdown rendering", () => {
             posted_at: null,
             quote: null,
             url: "https://example.com/?%2561ccess_token=double-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?q=access_token%253Dcompound-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?q=foo%253DBasic%2520dXNlcjpwYXNz",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?q=foo%253DBearer%2520encoded-bearer-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?q=foo%253DeyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqd3Qtc2VjcmV0In0.signature",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/access_token/path-secret",
           },
           {
             kind: "source",
@@ -266,6 +312,9 @@ describe("story Markdown rendering", () => {
     expect(body).toContain('published_at: "2026-02-25T06:13:20.000Z"');
     expect(body).toContain("## Summary");
     expect(body).toContain("https://safe.example/source");
+    expect(body).toContain(
+      "https://example.com/keep?utm_source=agent&id=story-42&q=agents"
+    );
     expect(body).not.toContain("<script>");
     expect(body).not.toContain("javascript:");
     expect(body).not.toContain("127.0.0.1");
@@ -276,6 +325,11 @@ describe("story Markdown rendering", () => {
     expect(body).not.toContain("access_token");
     expect(body).not.toContain("secret");
     expect(body).not.toContain("double-secret");
+    expect(body).not.toContain("compound-secret");
+    expect(body).not.toContain("dXNlcjpwYXNz");
+    expect(body).not.toContain("encoded-bearer-secret");
+    expect(body).not.toContain("eyJhbGciOiJIUzI1NiJ9");
+    expect(body).not.toContain("path-secret");
     expect(body).not.toContain("fragment-secret");
     expect(body).not.toContain("encoded-fragment-secret");
     expect(body).not.toContain("nested-secret");
@@ -459,6 +513,29 @@ describe("story Markdown route", () => {
       "text/plain; charset=utf-8"
     );
 
+    const malformedSuffix = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api/story/%ZZ.md`),
+      fakeDb(story())
+    );
+    expect(malformedSuffix.status).toBe(404);
+    expect(malformedSuffix.headers.get("content-type")).toBe(
+      "text/plain; charset=utf-8"
+    );
+
+    for (const layers of [4, 5, 6, 9]) {
+      const overEncoded = await handleStoryMarkdownRequest(
+        new Request(
+          `${SITE_URL}/api/story/abcdef12${encodedMarkdownExtension(layers)}`
+        ),
+        fakeDb(story())
+      );
+      expect(overEncoded.status).toBe(404);
+      expect(overEncoded.headers.get("content-type")).toBe(
+        "text/plain; charset=utf-8"
+      );
+      expect(await overEncoded.text()).toBe("Story Markdown not found.\n");
+    }
+
     const encodedInvalid = await handleStoryMarkdownRequest(
       new Request(`${SITE_URL}/api/story/%6Eot-an-id.md`),
       fakeDb(story())
@@ -466,6 +543,15 @@ describe("story Markdown route", () => {
     expect(encodedInvalid.status).toBe(404);
     expect(encodedInvalid.headers.get("content-type")).toBe(
       "text/plain; charset=utf-8"
+    );
+
+    const nineCharacterPrefix = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api/story/abcdef123.md`),
+      fakeDb(story())
+    );
+    expect(nineCharacterPrefix.status).toBe(308);
+    expect(nineCharacterPrefix.headers.get("location")).toBe(
+      `${SITE_URL}/api/story/abcdef12.md?lang=vi`
     );
 
     const fullId = await handleStoryMarkdownRequest(
@@ -485,11 +571,21 @@ describe("story Markdown route", () => {
     expect(unavailableFullId.headers.get("location")).toBeNull();
 
     const nonmatchingFullId = await handleStoryMarkdownRequest(
-      new Request(`${SITE_URL}/api/story/abcdef123456789.md`),
+      new Request(`${SITE_URL}/api/story/${"f".repeat(64)}.md`),
       fakeDb(story())
     );
     expect(nonmatchingFullId.status).toBe(404);
     expect(nonmatchingFullId.headers.get("location")).toBeNull();
+
+    const nineCharacterCollision = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api/story/abcdef123.md`),
+      fakeDb([
+        story({ id: "abcdef1234567890" }),
+        story({ id: "abcdef1239999999" }),
+      ])
+    );
+    expect(nineCharacterCollision.status).toBe(409);
+    expect(nineCharacterCollision.headers.get("location")).toBeNull();
 
     const fullIdCollision = await handleStoryMarkdownRequest(
       new Request(`${SITE_URL}/api/story/abcdef1234567890.md`),
@@ -575,21 +671,27 @@ describe("story Markdown route", () => {
 
     const secretRedirect = await handleStoryMarkdownRequest(
       new Request(
-        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&%2561ccess_token=double-redirect-secret&utm_source=agent&note=%2523access_token%3Dfragment-redirect-secret`
+        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&%2561ccess_token=double-redirect-secret&utm_source=agent&note=%2523access_token%3Dfragment-redirect-secret&q=foo%253Daccess_token%253Dcompound-redirect-secret&q=Basic%2520dXNlcjpwYXNz&q=foo%253DeyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqd3Qtc2VjcmV0In0.signature&q=agents`
       ),
       fakeDb(story())
     );
     const secretLocation = secretRedirect.headers.get("location");
     const secretBody = await secretRedirect.text();
     expect(secretLocation).toBe(
-      `${SITE_URL}/api/story/abcdef12.md?utm_source=agent&lang=en`
+      `${SITE_URL}/api/story/abcdef12.md?utm_source=agent&q=agents&lang=en`
     );
     expect(secretLocation).not.toContain("do-not-redirect");
     expect(secretLocation).not.toContain("double-redirect-secret");
     expect(secretLocation).not.toContain("fragment-redirect-secret");
+    expect(secretLocation).not.toContain("compound-redirect-secret");
+    expect(secretLocation).not.toContain("dXNlcjpwYXNz");
+    expect(secretLocation).not.toContain("eyJhbGciOiJIUzI1NiJ9");
     expect(secretBody).not.toContain("do-not-redirect");
     expect(secretBody).not.toContain("double-redirect-secret");
     expect(secretBody).not.toContain("fragment-redirect-secret");
+    expect(secretBody).not.toContain("compound-redirect-secret");
+    expect(secretBody).not.toContain("dXNlcjpwYXNz");
+    expect(secretBody).not.toContain("eyJhbGciOiJIUzI1NiJ9");
 
     const cookieWins = await handleStoryMarkdownRequest(
       new Request(`${SITE_URL}/api/story/abcdef12.md`, {
@@ -659,6 +761,14 @@ describe("story Markdown route", () => {
     expect(isStoryMarkdownPath("/api/story/abcdef12%252emd")).toBe(true);
     expect(isStoryMarkdownPath("/api%252Fstory/abcdef12%252emd")).toBe(true);
     expect(isStoryMarkdownPath("/api/story/abcdef12%25252emd")).toBe(true);
+    for (const layers of [4, 5, 6, 9]) {
+      expect(
+        isStoryMarkdownPath(
+          `/api/story/abcdef12${encodedMarkdownExtension(layers)}`
+        )
+      ).toBe(true);
+    }
+    expect(isStoryMarkdownPath("/api/story/%ZZ.md")).toBe(true);
     expect(isStoryMarkdownPath("/api/story/%ZZ%2emd")).toBe(true);
     expect(isStoryMarkdownPath("/api%2Fstory/%ZZ%2emd")).toBe(true);
     expect(isStoryMarkdownPath("/api/story/not-an-id.md")).toBe(true);

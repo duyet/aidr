@@ -1,7 +1,6 @@
 import { readSession } from "./db";
 import {
   DEFAULT_LANG,
-  LEGACY_LOCALE_QUERY_PARAM,
   LOCALE_QUERY_PARAM,
   type LocaleResolution,
   resolveLocale,
@@ -12,7 +11,7 @@ import {
   localeCacheControl,
 } from "./locale-url";
 import { storyPath } from "./slug";
-import { getStoryByExactId, getStoryCandidates } from "./story-queries";
+import { getStoryCandidates } from "./story-queries";
 import type { FeedItem, Lang } from "./types";
 
 /** Public, versioned Markdown representation of a published story. */
@@ -26,18 +25,63 @@ export const STORY_MARKDOWN_MAX_URL_LENGTH = 1024;
 export const STORY_MARKDOWN_MAX_RESPONSE_BYTES = 32_768;
 export const STORY_MARKDOWN_MAX_SOURCES = 8;
 export const STORY_MARKDOWN_MAX_SOURCE_ROWS_SCANNED = 16;
+const MAX_SOURCE_QUERY_PARAMS = 16;
 const MAX_REDIRECT_QUERY_PARAMS = 16;
 const MAX_REDIRECT_QUERY_LENGTH = 1_024;
+const MAX_QUERY_KEY_LENGTH = 64;
+const MAX_QUERY_VALUE_LENGTH = 256;
+const MAX_PATH_SEGMENT_LENGTH = 512;
 const MAX_REDIRECT_PARAM_LENGTH = 256;
 const MAX_CREDENTIAL_DECODE_ROUNDS = 3;
 const MAX_PATH_DECODE_ROUNDS = 3;
+const MAX_PATH_ROUTE_MATCH_ROUNDS = 8;
 
 const STORY_ID_RE = /^[0-9a-f]{8,64}$/;
 const STORY_MARKDOWN_PATH_RE = /^\/api\/story\/.*\.md(?:\/|$)/i;
-const CREDENTIAL_NAME_PATTERN =
-  /(^|[-_/?.&#;\s=])(access[-_]?token|token|secret|password|passwd|api[-_]?key|apikey|auth(?:orization)?|bearer|jwt|session(?:[-_]?id)?|signature|sig|credential|client[-_]?secret|code)(?=$|[-_/?.&#;\s=])/i;
-const CREDENTIAL_SECRET_PATTERN =
-  /(?:^|[\s?&#])(?:bearer|basic)\s+[a-z0-9._~+/=-]{8,}|(?:^|[?&#])eyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+/i;
+const SAFE_QUERY_KEYS = new Set([
+  "dclid",
+  "fbclid",
+  "gclid",
+  "id",
+  "limit",
+  "mc_cid",
+  "mc_eid",
+  "msclkid",
+  "offset",
+  "order",
+  "p",
+  "page",
+  "q",
+  "query",
+  "ref",
+  "search",
+  "sort",
+  "source",
+  "start",
+]);
+const CREDENTIAL_KEY_TOKENS = new Set([
+  "access",
+  "apikey",
+  "auth",
+  "authentication",
+  "authorization",
+  "bearer",
+  "client",
+  "code",
+  "credential",
+  "idtoken",
+  "jwt",
+  "key",
+  "passwd",
+  "password",
+  "pwd",
+  "refreshtoken",
+  "secret",
+  "session",
+  "sig",
+  "signature",
+  "token",
+]);
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
   "metadata",
@@ -69,6 +113,8 @@ interface SourceLink {
   kind: "source" | "support" | "discussion";
   url: string;
 }
+
+type QueryEntry = [key: string, value: string];
 
 function isControlCharacter(code: number): boolean {
   return (
@@ -190,59 +236,161 @@ function isBlockedHost(hostname: string): boolean {
   return false;
 }
 
-/**
- * Inspect every bounded decoding layer before reusing untrusted URL/query text.
- * Invalid encodings, fragments, credential names/values, controls, or inputs
- * that need more than the fixed decode budget fail closed.
- */
-function sanitizeCredentialFreeText(
+function decodeBoundedComponent(
   value: unknown,
   maxLength: number
 ): string | null {
-  if (typeof value !== "string" || !value || value.length > maxLength) {
-    return null;
-  }
+  if (typeof value !== "string" || value.length > maxLength) return null;
 
   let current = value;
   for (let round = 0; round <= MAX_CREDENTIAL_DECODE_ROUNDS; round += 1) {
-    if (
-      current.length > maxLength ||
-      hasControlCharacters(current) ||
-      current.includes("#") ||
-      CREDENTIAL_NAME_PATTERN.test(current) ||
-      CREDENTIAL_SECRET_PATTERN.test(current)
-    ) {
+    if (current.length > maxLength || hasControlCharacters(current))
       return null;
-    }
-
     let decoded: string;
     try {
       decoded = decodeURIComponent(current);
     } catch {
       return null;
     }
-    if (decoded === current) return value;
+    if (decoded === current) return current;
     current = decoded;
   }
   return null;
 }
 
+function normalizedCredentialKey(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function isCredentialKey(key: string): boolean {
+  const normalized = normalizedCredentialKey(key);
+  return (
+    CREDENTIAL_KEY_TOKENS.has(normalized) ||
+    normalized.split("_").some((part) => CREDENTIAL_KEY_TOKENS.has(part))
+  );
+}
+
+function isSafeQueryKey(key: string): boolean {
+  const normalized = key.trim().toLowerCase();
+  return (
+    /^[a-z][a-z0-9_]{0,63}$/.test(normalized) &&
+    (SAFE_QUERY_KEYS.has(normalized) ||
+      /^utm_[a-z0-9_]{1,48}$/.test(normalized))
+  );
+}
+
+function hasCredentialScheme(value: string): boolean {
+  return value
+    .replace(/\+/g, " ")
+    .split(/[\s,;:=]+/u)
+    .some(
+      (part) =>
+        part.toLowerCase() === "basic" || part.toLowerCase() === "bearer"
+    );
+}
+
+function isJwt(value: string): boolean {
+  const parts = value.split(".");
+  return (
+    parts.length === 3 && parts.every((part) => /^[A-Za-z0-9_-]+$/.test(part))
+  );
+}
+
+function compoundValueHasCredential(value: string, depth = 0): boolean {
+  if (hasCredentialScheme(value) || isJwt(value)) return true;
+  if (depth >= 3) return value.includes("=");
+
+  for (const assignment of value.split(/[?&;]+/u)) {
+    const separator = assignment.indexOf("=");
+    if (separator > 0) {
+      const key = assignment.slice(0, separator);
+      const nestedValue = assignment.slice(separator + 1);
+      if (isCredentialKey(key)) return true;
+      if (compoundValueHasCredential(nestedValue, depth + 1)) return true;
+    }
+  }
+  return false;
+}
+
+function isSafeQueryValue(value: string): boolean {
+  if (value.includes("#") || compoundValueHasCredential(value)) return false;
+  try {
+    if (/^https?:\/\//i.test(value)) {
+      const nestedUrl = new URL(value);
+      if (nestedUrl.username || nestedUrl.password || nestedUrl.hash) {
+        return false;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+/** Keep only allowlisted query keys after recursively decoding each component. */
+function sanitizeSearchParams(
+  params: URLSearchParams,
+  maxEntries: number,
+  maxValueLength = MAX_QUERY_VALUE_LENGTH
+): QueryEntry[] {
+  const safe: QueryEntry[] = [];
+  const maxInspected = maxEntries * 4;
+  let inspected = 0;
+  for (const [rawKey, rawValue] of params) {
+    if (safe.length >= maxEntries || inspected >= maxInspected) break;
+    inspected += 1;
+    const decodedKey = decodeBoundedComponent(rawKey, MAX_QUERY_KEY_LENGTH);
+    if (decodedKey === null) continue;
+    const key = decodedKey.trim().toLowerCase();
+    if (!isSafeQueryKey(key)) continue;
+    const value = decodeBoundedComponent(rawValue, maxValueLength);
+    if (value === null || !isSafeQueryValue(value)) continue;
+    safe.push([key, value]);
+  }
+  return safe;
+}
+
+function safePathname(pathname: string): boolean {
+  for (const segment of pathname.split("/")) {
+    const decoded = decodeBoundedComponent(segment, MAX_PATH_SEGMENT_LENGTH);
+    if (
+      decoded === null ||
+      decoded.includes("#") ||
+      isCredentialKey(decoded) ||
+      hasCredentialScheme(decoded) ||
+      isJwt(decoded)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function safeHttpUrl(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const raw = value.trim();
-  if (!sanitizeCredentialFreeText(raw, STORY_MARKDOWN_MAX_URL_LENGTH)) {
+  if (raw.length > STORY_MARKDOWN_MAX_URL_LENGTH || hasControlCharacters(raw)) {
     return null;
   }
+
   try {
     const url = new URL(raw);
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    if (url.username || url.password || !url.hostname) return null;
-    if (isBlockedHost(url.hostname)) return null;
+    if (url.username || url.password || !url.hostname || url.hash) return null;
+    if (isBlockedHost(url.hostname) || !safePathname(url.pathname)) return null;
+    const safeQuery = new URLSearchParams(
+      sanitizeSearchParams(url.searchParams, MAX_SOURCE_QUERY_PARAMS)
+    ).toString();
+    url.search = safeQuery;
+    url.hash = "";
     const normalized = url.toString();
-    return sanitizeCredentialFreeText(
-      normalized,
-      STORY_MARKDOWN_MAX_URL_LENGTH
-    );
+    return normalized.length <= STORY_MARKDOWN_MAX_URL_LENGTH
+      ? normalized
+      : null;
   } catch {
     return null;
   }
@@ -470,6 +618,10 @@ interface DecodedPathname {
   reject: boolean;
 }
 
+function containsMalformedPercentEncoding(value: string): boolean {
+  return value.replace(/%[0-9a-f]{2}/gi, "").includes("%");
+}
+
 function decodePathname(pathname: string): DecodedPathname {
   let current = pathname;
   let rounds = 0;
@@ -489,6 +641,7 @@ function decodePathname(pathname: string): DecodedPathname {
   const reject =
     rounds > 1 ||
     /%[0-9a-f]{2}/i.test(current) ||
+    containsMalformedPercentEncoding(current) ||
     current.includes("\0") ||
     current.includes("\\");
   return {
@@ -498,28 +651,27 @@ function decodePathname(pathname: string): DecodedPathname {
   };
 }
 
-function rawPathLooksLikeMarkdown(pathname: string): boolean {
-  const lower = pathname.toLowerCase();
-  return (
-    /^\/api(?:\/|%2f)story\//i.test(lower) &&
-    /(?:\.|%2e)(?:m|%6d)(?:d|%64)(?:\/|$)/i.test(lower)
-  );
-}
-
-function partiallyDecodedPathLooksLikeMarkdown(pathname: string): boolean {
-  return (
-    /^\/api\/story\//i.test(pathname) &&
-    /(?:\.|%2e)(?:m|%6d)(?:d|%64)(?:\/|$)/i.test(pathname)
-  );
+function looksLikeStoryPathPrefix(value: string): boolean {
+  return /^\/api(?:\/|%2f|%25)[^?#]*story/i.test(value);
 }
 
 export function isStoryMarkdownPath(pathname: string): boolean {
-  const decoded = decodePathname(pathname);
-  if (decoded.value === null) return rawPathLooksLikeMarkdown(pathname);
-  return (
-    STORY_MARKDOWN_PATH_RE.test(decoded.value) ||
-    (decoded.reject && partiallyDecodedPathLooksLikeMarkdown(decoded.value))
-  );
+  let current = pathname;
+  for (let round = 0; round <= MAX_PATH_ROUTE_MATCH_ROUNDS; round += 1) {
+    if (STORY_MARKDOWN_PATH_RE.test(current)) return true;
+    if (!/%[0-9a-f]{2}/i.test(current)) {
+      return (
+        containsMalformedPercentEncoding(current) &&
+        looksLikeStoryPathPrefix(current)
+      );
+    }
+    try {
+      current = decodeURIComponent(current);
+    } catch {
+      return looksLikeStoryPathPrefix(pathname);
+    }
+  }
+  return looksLikeStoryPathPrefix(current);
 }
 
 function storyIdFromPath(pathname: string): string | null {
@@ -528,10 +680,9 @@ function storyIdFromPath(pathname: string): string | null {
 }
 
 type ResolvedLocale = Extract<LocaleResolution, { ok: true }>;
-type RedirectEntry = [key: string, value: string];
 
 function serializeRedirectEntries(
-  entries: RedirectEntry[],
+  entries: QueryEntry[],
   lang: StoryMarkdownLocale
 ): string {
   const params = new URLSearchParams(entries);
@@ -540,23 +691,11 @@ function serializeRedirectEntries(
 }
 
 function boundedRedirectSearch(url: URL, lang: StoryMarkdownLocale): string {
-  let entries: RedirectEntry[] = [];
-  for (const [rawKey, rawValue] of url.searchParams) {
-    if (
-      entries.length >= MAX_REDIRECT_QUERY_PARAMS - 1 ||
-      rawKey === LOCALE_QUERY_PARAM ||
-      rawKey === LEGACY_LOCALE_QUERY_PARAM
-    ) {
-      continue;
-    }
-    const key = sanitizeCredentialFreeText(rawKey, MAX_REDIRECT_PARAM_LENGTH);
-    const value = sanitizeCredentialFreeText(
-      rawValue,
-      MAX_REDIRECT_PARAM_LENGTH
-    );
-    if (key && value) entries.push([key, value]);
-  }
-
+  let entries = sanitizeSearchParams(
+    url.searchParams,
+    MAX_REDIRECT_QUERY_PARAMS - 1,
+    MAX_REDIRECT_PARAM_LENGTH
+  );
   while (
     entries.length > 0 &&
     serializeRedirectEntries(entries, lang).length > MAX_REDIRECT_QUERY_LENGTH
@@ -672,20 +811,22 @@ async function lookupStoryForMarkdown(
   id: string
 ): Promise<StoryLookup> {
   const reader = readSession(db);
-  if (id.length === 8) {
-    const candidates = await getStoryCandidates(reader, id, 2);
-    if (candidates.length > 1) return { status: "ambiguous_prefix" };
-    return candidates[0]
-      ? { status: "found", item: candidates[0] }
-      : { status: "not_found" };
-  }
+  const candidates = await getStoryCandidates(reader, id, 2);
+  if (candidates.length > 1) return { status: "ambiguous_prefix" };
+  const candidate = candidates[0];
+  if (!candidate) return { status: "not_found" };
+  if (id.length === 8) return { status: "found", item: candidate };
 
-  const exact = await getStoryByExactId(reader, id);
-  if (!exact) return { status: "not_found" };
-  const prefixCandidates = await getStoryCandidates(reader, id.slice(0, 8), 2);
-  if (prefixCandidates.length > 1) return { status: "ambiguous_prefix" };
-  if (prefixCandidates[0]?.id !== exact.id) return { status: "ambiguous_full" };
-  return { status: "found", item: exact };
+  const canonicalCandidates = await getStoryCandidates(
+    reader,
+    id.slice(0, 8),
+    2
+  );
+  if (canonicalCandidates.length > 1) return { status: "ambiguous_prefix" };
+  if (canonicalCandidates[0]?.id !== candidate.id) {
+    return { status: "ambiguous_full" };
+  }
+  return { status: "found", item: candidate };
 }
 
 function redirectResponse(
@@ -816,7 +957,7 @@ export async function handleStoryMarkdownRequest(
     return errorResponse(
       409,
       "Unsafe story id canonicalization",
-      "The full story id could not be mapped to one unique canonical prefix.",
+      "The requested id prefix could not be mapped to one unique 8-character canonical prefix.",
       method,
       locale.lang
     );

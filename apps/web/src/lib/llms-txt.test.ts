@@ -13,6 +13,8 @@ describe("llmsTxt", () => {
     expect(body).toContain(`${SITE_URL}/api/story/{id}.md?lang=en`);
     expect(body).toContain(`${SITE_URL}/api/story/{id}.md?lang=vi`);
     expect(body).toContain("aidr-story-markdown/v1");
+    expect(body).toContain("9–64 character prefix");
+    expect(body).toContain("both resolve uniquely");
     expect(body).toContain("does not fetch arbitrary external `.md` files");
     expect(body).toContain("news_lang");
     expect(body).toContain("default Vietnamese");

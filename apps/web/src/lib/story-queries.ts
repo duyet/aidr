@@ -91,8 +91,7 @@ function mapStoryRow(
 async function queryStories(
   db: DbReader,
   idPrefix: string,
-  requestedLimit: number,
-  exactId = false
+  requestedLimit: number
 ): Promise<FeedItem[]> {
   const [hasLlmTokens, hasImageUrl] = await Promise.all([
     probeColumn(db, "llm_tokens", llmTokensSupported),
@@ -104,8 +103,6 @@ async function queryStories(
   // The Markdown contract needs at most two rows to detect a prefix
   // collision. The number is clamped before interpolation, never user input.
   const limit = Math.min(Math.max(Math.trunc(requestedLimit), 1), 2);
-  const itemMatch = exactId ? "i.id = ?" : "substr(i.id, 1, ?) = ?";
-  const sourceMatch = exactId ? "item_id = ?" : "substr(item_id, 1, ?) = ?";
   const itemSql = `SELECT i.id, i.url, i.title, t.title AS title_vi, i.summary,
               t.summary AS summary_vi, i.category, i.published_at,
               i.points, i.comments, i.rank_score, i.source_id, i.tags
@@ -113,7 +110,7 @@ async function queryStories(
               ${hasImageUrl ? ", i.image_url" : ""}
        FROM items i
        LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
-       WHERE ${itemMatch} AND i.status = 'published' LIMIT ${limit}`;
+       WHERE substr(i.id, 1, ?) = ? AND i.status = 'published' LIMIT ${limit}`;
 
   // item_sources is keyed by the full id, so the same predicate lets both
   // reads ride one db.batch — one D1 round-trip. Prefix matching uses substr
@@ -121,20 +118,14 @@ async function queryStories(
   // pattern-complexity limit (D1_ERROR).
   const sourcesSql = `SELECT item_id, kind, author, posted_at, quote, url
        FROM item_sources
-       WHERE ${sourceMatch} ORDER BY item_id, position`;
+       WHERE substr(item_id, 1, ?) = ? ORDER BY item_id, position`;
 
   let rows: unknown[] = [];
   let sourceRows: Record<string, unknown>[] = [];
   try {
-    const itemStatement = exactId
-      ? db.prepare(itemSql).bind(idPrefix)
-      : db.prepare(itemSql).bind(idPrefix.length, idPrefix);
-    const sourcesStatement = exactId
-      ? db.prepare(sourcesSql).bind(idPrefix)
-      : db.prepare(sourcesSql).bind(idPrefix.length, idPrefix);
     const [itemRes, sourcesRes] = await db.batch([
-      itemStatement,
-      sourcesStatement,
+      db.prepare(itemSql).bind(idPrefix.length, idPrefix),
+      db.prepare(sourcesSql).bind(idPrefix.length, idPrefix),
     ]);
     rows = Array.isArray(itemRes.results) ? itemRes.results : [];
     sourceRows = Array.isArray(sourcesRes.results)
@@ -143,17 +134,16 @@ async function queryStories(
   } catch {
     // item_sources may not exist yet (pre-migration) — the item still
     // resolves without sources via a fallback read.
-    const itemStatement = exactId
-      ? db.prepare(itemSql).bind(idPrefix)
-      : db.prepare(itemSql).bind(idPrefix.length, idPrefix);
-    const itemResult = await itemStatement.all<Record<string, unknown>>();
+    const itemResult = await db
+      .prepare(itemSql)
+      .bind(idPrefix.length, idPrefix)
+      .all<Record<string, unknown>>();
     rows = Array.isArray(itemResult.results) ? itemResult.results : [];
     try {
-      const sourcesStatement = exactId
-        ? db.prepare(sourcesSql).bind(idPrefix)
-        : db.prepare(sourcesSql).bind(idPrefix.length, idPrefix);
-      const sourceResult =
-        await sourcesStatement.all<Record<string, unknown>>();
+      const sourceResult = await db
+        .prepare(sourcesSql)
+        .bind(idPrefix.length, idPrefix)
+        .all<Record<string, unknown>>();
       sourceRows = Array.isArray(sourceResult.results)
         ? sourceResult.results
         : [];
@@ -181,15 +171,7 @@ export async function getStory(
   return (await queryStories(db, idPrefix, 1))[0] ?? null;
 }
 
-/** Exact published-id lookup used before canonicalizing a longer Markdown id. */
-export async function getStoryByExactId(
-  db: DbReader,
-  id: string
-): Promise<FeedItem | null> {
-  return (await queryStories(db, id, 1, true))[0] ?? null;
-}
-
-/** Lookup used by the Markdown route to reject ambiguous short prefixes. */
+/** Lookup used by the Markdown route to reject ambiguous id prefixes. */
 export async function getStoryCandidates(
   db: DbReader,
   idPrefix: string,

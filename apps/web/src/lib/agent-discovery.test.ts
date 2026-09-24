@@ -74,6 +74,12 @@ describe("story Markdown discovery", () => {
     expect(path?.get?.responses).toHaveProperty("500");
     expect(path?.get?.responses).toHaveProperty("503");
     expect(path?.get?.description).toContain("untrusted publisher content");
+    expect(path?.get?.description).toContain(
+      "8–64 character lowercase hex prefix"
+    );
+    expect(JSON.stringify(path)).toContain(
+      "unique 9–64 character more-specific prefix"
+    );
     expect(CONSUME_SKILL_MD).toContain("/api/story/{id}.md?lang=vi");
     expect(CONSUME_SKILL_MD).toContain("never fetches an external `.md` file");
     expect(CONSUME_SKILL_MD).toContain("default Vietnamese");
