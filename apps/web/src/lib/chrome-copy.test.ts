@@ -36,6 +36,7 @@ describe("site chrome copy", () => {
     expect(EXTENSION_PATH).toBe("/subscribe");
     const header = [
       "../components/HeaderBar.tsx",
+      "../components/header/GetAIDRMenu.tsx",
       "../components/header/WideRow.tsx",
       "../components/header/CompactRow.tsx",
       "../components/header/lib.ts",
