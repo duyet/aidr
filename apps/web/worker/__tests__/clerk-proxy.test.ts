@@ -207,6 +207,7 @@ describe("handleClerkProxy header confinement", () => {
 
     for (const header of [
       "Connection",
+      "Content-Length",
       "Keep-Alive",
       "Proxy-Authorization",
       "Upgrade",
