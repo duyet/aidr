@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
 import { idPrefixFromSlug } from "../../lib/slug";
 import { getStory } from "../../lib/story-queries";
+import { categoryColor } from "../../lib/topic-color";
 import type { FeedItem } from "../../lib/types";
 
 /** Story OG cards are deterministic per item id; rendered PNGs are
@@ -131,7 +132,9 @@ function ogCard(item: FeedItem) {
           {item.category ? (
             <>
               <span>·</span>
-              <span>{item.category}</span>
+              <span style={{ color: categoryColor(item.category).light }}>
+                {item.category}
+              </span>
             </>
           ) : null}
         </div>

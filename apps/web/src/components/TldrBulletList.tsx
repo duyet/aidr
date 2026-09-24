@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import type { AidrLayout } from "../lib/aidr-layout";
-import { topicColor } from "../lib/topic-color";
+import { categoryColor, isKnownCategory, topicColor } from "../lib/topic-color";
 import type { Lang, TldrBullet } from "../lib/types";
 import { HighlightedText } from "./HighlightedText";
 import { StoryDialog } from "./StoryDialog";
@@ -15,6 +15,7 @@ export function TldrBulletList({
   numbered,
   lang,
   topicByItemId,
+  categoryByItemId,
   pathByItemId,
   tagsByItemId,
   imageByItemId,
@@ -25,6 +26,8 @@ export function TldrBulletList({
   numbered: boolean;
   lang: Lang;
   topicByItemId?: Map<string, string>;
+  /** Raw category per story, used when a bullet has no topic tag. */
+  categoryByItemId?: Map<string, string>;
   pathByItemId?: Map<string, string>;
   tagsByItemId?: Map<string, string[]>;
   imageByItemId?: Map<string, string>;
@@ -54,7 +57,21 @@ export function TldrBulletList({
               const primaryId = b.item_ids?.[0];
               const otherIds = (b.item_ids ?? []).slice(1);
               const tag = primaryId ? topicByItemId?.get(primaryId) : undefined;
-              const color = tag ? topicColor(tag) : null;
+              const category = primaryId
+                ? categoryByItemId?.get(primaryId)
+                : undefined;
+              const primaryTags = primaryId
+                ? (tagsByItemId?.get(primaryId) ?? [])
+                : [];
+              const categoryTopic =
+                primaryTags.length === 0
+                  ? (category ?? (isKnownCategory(tag) ? tag : null))
+                  : null;
+              const color = tag
+                ? categoryTopic
+                  ? categoryColor(categoryTopic)
+                  : topicColor(tag)
+                : null;
               const itemTags = (b.item_ids ?? []).flatMap(
                 (id) => tagsByItemId?.get(id) ?? []
               );
@@ -77,7 +94,9 @@ export function TldrBulletList({
                 >
                   {color && tag && (
                     <span
-                      className="topic-colored mr-1.5 text-xs font-semibold uppercase tracking-wide"
+                      className={`${
+                        categoryTopic ? "category-colored" : "topic-colored"
+                      } mr-1.5 text-xs font-semibold uppercase tracking-wide`}
                       style={
                         {
                           "--tc-light": color.light,

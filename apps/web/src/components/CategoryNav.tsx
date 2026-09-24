@@ -1,7 +1,7 @@
 import { track } from "@aidr/ui/track";
-import { categoryLabel } from "../lib/lang";
 import type { Lang } from "../lib/types";
 import { useHorizontalScroll } from "../lib/use-horizontal-scroll";
+import { CategoryLabel } from "./CategoryLabel";
 
 export function CategoryNav({
   categories,
@@ -55,7 +55,12 @@ export function CategoryNav({
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
-            {categoryLabel(c.name, lang)}{" "}
+            <CategoryLabel
+              name={c.name}
+              lang={lang}
+              colored={!isSelected}
+              dot={isSelected}
+            />{" "}
             <span className={isSelected ? "opacity-80" : "text-xs opacity-70"}>
               {c.count}
             </span>

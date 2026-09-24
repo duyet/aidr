@@ -1,6 +1,7 @@
 import { Skeleton, TabsContent } from "@aidr/ui";
 import { categoryLabel, statusLabel } from "../../lib/lang";
 import type { SystemActivity, SystemOverview } from "../../lib/system-queries";
+import { categoryColor } from "../../lib/topic-color";
 import type { Lang } from "../../lib/types";
 import { useSystemData } from "../../lib/use-system-stats";
 import { BarList } from "./BarList";
@@ -95,6 +96,7 @@ function ByCategoryCard({ lang }: { lang: Lang }) {
             data={a.itemsByCategory.map((c) => ({
               ...c,
               name: categoryLabel(c.name, lang),
+              color: categoryColor(c.name),
             }))}
             emptyLabel="No data yet."
           />

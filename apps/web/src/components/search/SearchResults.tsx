@@ -1,7 +1,8 @@
 import { Tag } from "lucide-react";
-import { categoryLabel, timeAgo } from "../../lib/lang";
+import { timeAgo } from "../../lib/lang";
 import type { FilterSuggestion, StorySuggestion } from "../../lib/search-match";
 import type { Lang } from "../../lib/types";
+import { CategoryLabel } from "../CategoryLabel";
 
 function HighlightedMatch({
   text,
@@ -85,7 +86,9 @@ export function SearchResults({
               />
             </span>
             <span className="text-[11px] text-muted-foreground">
-              {m.item.category && categoryLabel(m.item.category, lang)}
+              {m.item.category ? (
+                <CategoryLabel name={m.item.category} lang={lang} />
+              ) : null}
               {m.item.category && " · "}
               {timeAgo(m.item.published_at, Date.now(), lang)}
             </span>

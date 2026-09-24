@@ -1,5 +1,8 @@
+import type { CSSProperties } from "react";
+import type { TopicColor } from "../../lib/topic-color";
+
 interface BarListProps {
-  data: { name: string; count: number }[];
+  data: { name: string; count: number; color?: TopicColor }[];
   emptyLabel: string;
 }
 
@@ -14,7 +17,17 @@ export function BarList({ data, emptyLabel }: BarListProps) {
       {data.map((d) => (
         <li key={d.name} className="flex items-center gap-2.5">
           <span
-            className="w-28 shrink-0 truncate text-xs font-medium text-muted-foreground"
+            className={`w-28 shrink-0 truncate text-xs font-medium ${
+              d.color ? "category-colored" : "text-muted-foreground"
+            }`}
+            style={
+              d.color
+                ? ({
+                    "--tc-light": d.color.light,
+                    "--tc-dark": d.color.dark,
+                  } as CSSProperties)
+                : undefined
+            }
             title={d.name}
           >
             {d.name}

@@ -8,11 +8,12 @@ import {
   type StoryTitleTag,
 } from "../lib/article-headings";
 import { localizedTitle } from "../lib/display-title";
-import { categoryLabel, timeAgo } from "../lib/lang";
+import { timeAgo } from "../lib/lang";
 import { publisherHost } from "../lib/publisher-host";
 import { storyPath } from "../lib/slug";
 import { type TopicColor, topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
+import { CategoryLabel } from "./CategoryLabel";
 import { HighlightedText } from "./HighlightedText";
 import { StoryDetail } from "./StoryDetail";
 
@@ -208,7 +209,9 @@ export function StoryRow({
           </a>
         </span>
         <span className="hidden shrink-0 text-sm text-muted-foreground sm:block">
-          {item.category && categoryLabel(item.category, lang)}
+          {item.category ? (
+            <CategoryLabel name={item.category} lang={lang} />
+          ) : null}
         </span>
         <span
           className="hidden w-20 shrink-0 text-right text-sm text-muted-foreground md:block"

@@ -1,9 +1,9 @@
 import { Clock, Cpu, Link2 } from "lucide-react";
 import type { CSSProperties } from "react";
-import { categoryLabel } from "../../lib/lang";
 import { storyPath } from "../../lib/slug";
 import { topicColor } from "../../lib/topic-color";
 import type { FeedItem, Lang } from "../../lib/types";
+import { CategoryLabel } from "../CategoryLabel";
 import { StoryThumb } from "../StoryThumb";
 import { fmtTime } from "./lib";
 
@@ -31,7 +31,7 @@ export function StoryMetaAside({
           <div className="flex flex-wrap items-center gap-1.5">
             {item.category && (
               <span className="rounded-full border border-border bg-background px-2 py-0 text-xs">
-                {categoryLabel(item.category, lang)}
+                <CategoryLabel name={item.category} lang={lang} />
               </span>
             )}
             {item.tags.map((tag) => {
