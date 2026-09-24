@@ -106,10 +106,16 @@ most eight output links (and a bounded input scan). Source URLs are parsed as
 URLs rather than scanned as serialized strings. The Worker rejects fragments,
 credential-like path segments, and malformed/over-encoded URL components, then
 recursively decodes each `URLSearchParams` key and value within a fixed budget.
-Only allowlisted navigation and attribution keys are retained. Basic/Bearer
-schemes, JWT-shaped values, encoded fragments, and compound/nested credential
+Every decoded key is checked for credential meaning before the safe-key or
+`utm_*` allowlist is applied, so names such as `utm_token`,
+`utm_client_secret`, and encoded variants are rejected. Only allowlisted
+navigation and attribution keys are retained. Basic/Bearer schemes,
+JWT-shaped values, encoded fragments, and compound/nested credential
 assignments are rejected even when hidden inside an otherwise allowlisted
-value. The same structured query sanitizer is used for redirect queries.
+value. Absolute URLs nested inside safe values are parsed but never fetched:
+userinfo, fragments, sensitive path components, and loopback/private/link-local/
+metadata destinations are rejected, while public URLs remain inert text. The
+same structured query sanitizer is used for redirect queries.
 Loopback, private, link-local, metadata, and credential-bearing destinations are
 omitted. Redirect `Location` values and bodies never preserve rejected fields.
 Summaries are capped at 1,200 characters and the complete response is capped at

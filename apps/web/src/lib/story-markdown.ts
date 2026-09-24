@@ -321,7 +321,14 @@ function isSafeQueryValue(value: string): boolean {
   try {
     if (/^https?:\/\//i.test(value)) {
       const nestedUrl = new URL(value);
-      if (nestedUrl.username || nestedUrl.password || nestedUrl.hash) {
+      if (
+        nestedUrl.username ||
+        nestedUrl.password ||
+        !nestedUrl.hostname ||
+        nestedUrl.hash ||
+        isBlockedHost(nestedUrl.hostname) ||
+        !safePathname(nestedUrl.pathname)
+      ) {
         return false;
       }
     }
@@ -344,7 +351,7 @@ function sanitizeSearchParams(
     if (safe.length >= maxEntries || inspected >= maxInspected) break;
     inspected += 1;
     const decodedKey = decodeBoundedComponent(rawKey, MAX_QUERY_KEY_LENGTH);
-    if (decodedKey === null) continue;
+    if (decodedKey === null || isCredentialKey(decodedKey)) continue;
     const key = decodedKey.trim().toLowerCase();
     if (!isSafeQueryKey(key)) continue;
     const value = decodeBoundedComponent(rawValue, maxValueLength);

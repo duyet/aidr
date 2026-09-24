@@ -190,6 +190,13 @@ describe("story Markdown rendering", () => {
             url: "https://example.com/keep?utm_source=agent&id=story-42&q=agents",
           },
           {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/nested?q=https%3A%2F%2Fexample.com%2Farticle%3Fid%3D7",
+          },
+          {
             kind: "discussion",
             author: null,
             posted_at: null,
@@ -237,6 +244,55 @@ describe("story Markdown rendering", () => {
             posted_at: null,
             quote: null,
             url: "https://example.com/?q=access_token%253Dcompound-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?utm_token=utm-token-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?utm_client_secret=utm-client-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?utm_signature=utm-signature-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?utm%5Ftoken=encoded-utm-token-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?utm%25255Fclient%25255Fsecret=double-encoded-utm-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?q=https%3A%2F%2F127.0.0.1%2Fadmin%3Fsecret%3Dnested-private",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?q=https%3A%2F%2Flocalhost%2Fmetadata",
           },
           {
             kind: "source",
@@ -315,6 +371,9 @@ describe("story Markdown rendering", () => {
     expect(body).toContain(
       "https://example.com/keep?utm_source=agent&id=story-42&q=agents"
     );
+    expect(body).toContain(
+      "https://example.com/nested?q=https%3A%2F%2Fexample.com%2Farticle%3Fid%3D7"
+    );
     expect(body).not.toContain("<script>");
     expect(body).not.toContain("javascript:");
     expect(body).not.toContain("127.0.0.1");
@@ -326,6 +385,13 @@ describe("story Markdown rendering", () => {
     expect(body).not.toContain("secret");
     expect(body).not.toContain("double-secret");
     expect(body).not.toContain("compound-secret");
+    expect(body).not.toContain("utm-token-secret");
+    expect(body).not.toContain("utm-client-secret");
+    expect(body).not.toContain("utm-signature-secret");
+    expect(body).not.toContain("encoded-utm-token-secret");
+    expect(body).not.toContain("double-encoded-utm-secret");
+    expect(body).not.toContain("nested-private");
+    expect(body).not.toContain("localhost");
     expect(body).not.toContain("dXNlcjpwYXNz");
     expect(body).not.toContain("encoded-bearer-secret");
     expect(body).not.toContain("eyJhbGciOiJIUzI1NiJ9");
@@ -671,25 +737,37 @@ describe("story Markdown route", () => {
 
     const secretRedirect = await handleStoryMarkdownRequest(
       new Request(
-        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&%2561ccess_token=double-redirect-secret&utm_source=agent&note=%2523access_token%3Dfragment-redirect-secret&q=foo%253Daccess_token%253Dcompound-redirect-secret&q=Basic%2520dXNlcjpwYXNz&q=foo%253DeyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqd3Qtc2VjcmV0In0.signature&q=agents`
+        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&%2561ccess_token=double-redirect-secret&utm_source=agent&utm_medium=email&utm_token=redirect-utm-token&utm_client_secret=redirect-client-secret&utm_signature=redirect-signature-secret&utm%5Ftoken=encoded-redirect-utm-token&utm%25255Fsignature=double-encoded-redirect-signature&note=%2523access_token%3Dfragment-redirect-secret&q=foo%253Daccess_token%253Dcompound-redirect-secret&q=Basic%2520dXNlcjpwYXNz&q=foo%253DeyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqd3Qtc2VjcmV0In0.signature&q=https%3A%2F%2F169.254.169.254%2Flatest&q=agents`
       ),
       fakeDb(story())
     );
     const secretLocation = secretRedirect.headers.get("location");
     const secretBody = await secretRedirect.text();
     expect(secretLocation).toBe(
-      `${SITE_URL}/api/story/abcdef12.md?utm_source=agent&q=agents&lang=en`
+      `${SITE_URL}/api/story/abcdef12.md?utm_source=agent&utm_medium=email&q=agents&lang=en`
     );
     expect(secretLocation).not.toContain("do-not-redirect");
     expect(secretLocation).not.toContain("double-redirect-secret");
     expect(secretLocation).not.toContain("fragment-redirect-secret");
     expect(secretLocation).not.toContain("compound-redirect-secret");
+    expect(secretLocation).not.toContain("redirect-utm-token");
+    expect(secretLocation).not.toContain("redirect-client-secret");
+    expect(secretLocation).not.toContain("redirect-signature-secret");
+    expect(secretLocation).not.toContain("encoded-redirect-utm-token");
+    expect(secretLocation).not.toContain("double-encoded-redirect-signature");
+    expect(secretLocation).not.toContain("169.254.169.254");
     expect(secretLocation).not.toContain("dXNlcjpwYXNz");
     expect(secretLocation).not.toContain("eyJhbGciOiJIUzI1NiJ9");
     expect(secretBody).not.toContain("do-not-redirect");
     expect(secretBody).not.toContain("double-redirect-secret");
     expect(secretBody).not.toContain("fragment-redirect-secret");
     expect(secretBody).not.toContain("compound-redirect-secret");
+    expect(secretBody).not.toContain("redirect-utm-token");
+    expect(secretBody).not.toContain("redirect-client-secret");
+    expect(secretBody).not.toContain("redirect-signature-secret");
+    expect(secretBody).not.toContain("encoded-redirect-utm-token");
+    expect(secretBody).not.toContain("double-encoded-redirect-signature");
+    expect(secretBody).not.toContain("169.254.169.254");
     expect(secretBody).not.toContain("dXNlcjpwYXNz");
     expect(secretBody).not.toContain("eyJhbGciOiJIUzI1NiJ9");
 
