@@ -60,7 +60,10 @@ export default {
       return Response.redirect(dest.toString(), 301);
     }
     if (isClerkProxyPath(path)) {
-      return handleClerkProxy(request, env);
+      return withRouteIndexabilityHeaders(
+        request,
+        handleClerkProxy(request, env)
+      );
     }
     if (path === "/aidr.zip") {
       return handleAidrZipRequest(request);

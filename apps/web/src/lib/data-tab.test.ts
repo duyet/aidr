@@ -6,7 +6,9 @@ describe("parseDataTab", () => {
     expect(parseDataTab("llm")).toBe("llm");
     expect(parseDataTab("source")).toBe("sources");
     expect(parseDataTab("Sources")).toBe("sources");
+    expect(parseDataTab("  admin  ")).toBe("admin");
     expect(parseDataTab("nope")).toBeUndefined();
+    expect(parseDataTab(["admin", "overview"])).toBeUndefined();
     expect(parseDataTab(undefined)).toBeUndefined();
   });
 });

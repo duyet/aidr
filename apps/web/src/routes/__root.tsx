@@ -27,6 +27,7 @@ import {
   readerCssVars,
   savePrefs,
 } from "../lib/prefs";
+import { getRouteSearch } from "../lib/route-search";
 import { routeRobotsMeta } from "../lib/seo";
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
@@ -40,13 +41,27 @@ export const Route = createRootRoute({
       }))
     );
     const activeMatch = matches[matches.length - 1];
+    const search = (() => {
+      try {
+        return getRouteSearch();
+      } catch {
+        return activeMatch?._strictSearch;
+      }
+    })();
+    const routeStatus =
+      activeMatch?.status === "notFound"
+        ? 404
+        : activeMatch?.status === "error"
+          ? 500
+          : undefined;
     return {
       meta: [
         { charSet: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1.0" },
         routeRobotsMeta({
           pathname: activeMatch?.pathname ?? "/",
-          search: activeMatch?._strictSearch,
+          search,
+          status: routeStatus,
         }),
         // Catch-all owns head() + Worker 404 rewrite. Emitting SITE_TITLE
         // here would win over the splat's localized title.

@@ -143,10 +143,17 @@ describe("routeRobotsMeta", () => {
     }
   });
 
-  it("emits noindex, follow for search and faceted HTML", () => {
-    expect(
-      routeRobotsMeta({ pathname: "/", search: { q: "open models" } })
-    ).toEqual({ name: "robots", content: "noindex, follow" });
+  it("emits noindex, follow for search, locale, and faceted HTML", () => {
+    for (const search of [
+      { q: "open models" },
+      { lang: "vi" },
+      { utm_source: "newsletter" },
+    ]) {
+      expect(routeRobotsMeta({ pathname: "/", search })).toEqual({
+        name: "robots",
+        content: "noindex, follow",
+      });
+    }
     expect(
       routeRobotsMeta({ pathname: "/subscribe", search: { tab: "email" } })
     ).toEqual({ name: "robots", content: "noindex, follow" });
@@ -161,6 +168,9 @@ describe("routeRobotsMeta", () => {
     ).toEqual({ name: "robots", content: "noindex, nofollow" });
     expect(
       routeRobotsMeta({ pathname: "/data", search: { tab: "admin" } })
+    ).toEqual({ name: "robots", content: "noindex, nofollow" });
+    expect(
+      routeRobotsMeta({ pathname: "/", search: { token: "   " } })
     ).toEqual({ name: "robots", content: "noindex, nofollow" });
   });
 });
