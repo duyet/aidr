@@ -1,3 +1,4 @@
+import { CategoryLabel } from "../../CategoryLabel";
 import { AdminSection } from "./AdminSection";
 import {
   adminBtnClass,
@@ -53,7 +54,14 @@ function ItemRow({
             analyze
           </summary>
           <div className="mt-1 space-y-0.5 text-muted-foreground">
-            <div>category: {item.category ?? "—"}</div>
+            <div>
+              category:{" "}
+              {item.category ? (
+                <CategoryLabel name={item.category} lang="en" />
+              ) : (
+                "—"
+              )}
+            </div>
             <div>tags: {parseTags(item.tags).join(", ") || "—"}</div>
             <div>
               points: {item.points ?? 0}, comments: {item.comments ?? 0}

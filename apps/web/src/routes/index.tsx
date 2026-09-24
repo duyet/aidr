@@ -146,6 +146,7 @@ function IndexPage() {
   const bullets = displayTldrBullets(feed.tldr, lang);
 
   const topicByItemId = new Map<string, string>();
+  const categoryByItemId = new Map<string, string>();
   const pathByItemId = new Map<string, string>();
   const tagsByItemId = new Map<string, string[]>();
   const imageByItemId = new Map<string, string>();
@@ -153,6 +154,7 @@ function IndexPage() {
     for (const item of day.items) {
       const topic = item.tags[0] ?? item.category;
       if (topic) topicByItemId.set(item.id, topic);
+      if (item.category) categoryByItemId.set(item.id, item.category);
       pathByItemId.set(item.id, storyPath(item));
       if (item.tags.length > 0) tagsByItemId.set(item.id, item.tags);
       if (item.image_url) imageByItemId.set(item.id, item.image_url);
@@ -273,6 +275,7 @@ function IndexPage() {
                   updatedAt={feed.updatedAt}
                   lastFetchedAt={feed.lastFetchedAt}
                   topicByItemId={topicByItemId}
+                  categoryByItemId={categoryByItemId}
                   pathByItemId={pathByItemId}
                   tagsByItemId={tagsByItemId}
                   imageByItemId={imageByItemId}

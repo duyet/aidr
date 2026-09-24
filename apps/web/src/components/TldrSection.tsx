@@ -14,6 +14,7 @@ export function TldrSection({
   updatedAt,
   lastFetchedAt,
   topicByItemId,
+  categoryByItemId,
   pathByItemId,
   tagsByItemId,
   imageByItemId,
@@ -28,6 +29,8 @@ export function TldrSection({
   updatedAt: number;
   lastFetchedAt: number | null;
   topicByItemId?: Map<string, string>;
+  /** Raw category per story, used when a bullet has no topic tag. */
+  categoryByItemId?: Map<string, string>;
   /** Canonical /{8-char} hrefs so Google does not crawl /{full-id}. */
   pathByItemId?: Map<string, string>;
   /** Item tags for in-bullet entity highlight (plus TITLE_KEYWORDS). */
@@ -129,6 +132,7 @@ export function TldrSection({
         numbered={numbered}
         lang={lang}
         topicByItemId={topicByItemId}
+        categoryByItemId={categoryByItemId}
         pathByItemId={pathByItemId}
         tagsByItemId={tagsByItemId}
         imageByItemId={imageByItemId}
