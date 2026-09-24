@@ -1,13 +1,25 @@
 import { describe, expect, it } from "vitest";
+import type { WorkflowRunStats } from "../../lib/system-queries";
 import {
   bySourceSubline,
   extraBadges,
   formatDuration,
   formatDurationSec,
   formatMs,
+  formatSafeDetail,
+  formatSafeError,
+  formatScore,
+  formatTimestamp,
+  formatTokenValue,
+  hasRunDetails,
   llmTokens,
+  nextOpenId,
+  runDetailsId,
+  runDisclosureLabel,
+  safeRunSteps,
   shortModel,
   statusVariant,
+  tokenBreakdown,
 } from "./run-format";
 
 /**
@@ -146,5 +158,131 @@ describe("llmTokens", () => {
       )
     ).toBe(120);
     expect(llmTokens(null)).toBe(0);
+  });
+});
+
+describe("run disclosure helpers", () => {
+  it("toggles one run at a time and creates safe panel ids", () => {
+    expect(nextOpenId(null, "run-1")).toBe("run-1");
+    expect(nextOpenId("run-1", "run-1")).toBeNull();
+    expect(nextOpenId("run-1", "run-2")).toBe("run-2");
+    expect(runDetailsId("wf/a b")).toBe("run-details-wf-a-b");
+  });
+
+  it("localizes the accessible disclosure label", () => {
+    expect(runDisclosureLabel("en", false)).toBe("Show run details");
+    expect(runDisclosureLabel("en", true)).toBe("Hide run details");
+    expect(runDisclosureLabel("vi", false)).toBe("Xem chi tiết lần chạy");
+    expect(runDisclosureLabel("vi", true)).toBe("Ẩn chi tiết lần chạy");
+  });
+
+  it("only considers real run fields expandable", () => {
+    expect(
+      hasRunDetails({
+        started_at: null,
+        finished_at: null,
+        error: null,
+        stats: null,
+        llm: undefined,
+      })
+    ).toBe(false);
+    expect(
+      hasRunDetails({
+        started_at: 100,
+        finished_at: null,
+        error: null,
+        stats: null,
+        llm: undefined,
+      })
+    ).toBe(true);
+    expect(
+      hasRunDetails({
+        started_at: null,
+        finished_at: null,
+        error: "timeout",
+        stats: null,
+        llm: undefined,
+      })
+    ).toBe(true);
+  });
+});
+
+describe("safe run detail formatting", () => {
+  it("keeps missing and malformed values visibly unknown", () => {
+    expect(formatTimestamp(null, "en")).toBe("—");
+    expect(formatTimestamp(Number.NaN, "en")).toBe("—");
+    expect(formatScore(Number.NaN)).toBe("—");
+    expect(formatTokenValue(null)).toBe("—");
+    expect(
+      safeRunSteps({ steps: "not-an-array" } as unknown as WorkflowRunStats)
+    ).toEqual([]);
+    expect(
+      safeRunSteps({
+        steps: [
+          { name: "score", action: "scored 2" },
+          { name: 42, action: "bad" },
+        ],
+      } as unknown as WorkflowRunStats)
+    ).toEqual([{ name: "score", action: "scored 2" }]);
+  });
+
+  it("removes control characters and bounds operational error text", () => {
+    expect(formatSafeDetail("  timeout\u0000\n  ")).toBe("timeout");
+    expect(formatSafeDetail("x".repeat(20), 8)).toBe("xxxxxxx…");
+    expect(formatSafeDetail(null)).toBe("—");
+    expect(formatSafeError("anyrouter request failed: 401 secret body")).toBe(
+      "anyrouter request failed: 401"
+    );
+    expect(formatSafeError("prompt: do not expose this")).toBe(
+      "prompt: [redacted]"
+    );
+  });
+
+  it("formats UTC timestamps without guessing a local timezone", () => {
+    const formatted = formatTimestamp(1_700_000_000, "en");
+    expect(formatted).toContain("2023");
+    expect(formatted).toContain("UTC");
+  });
+});
+
+describe("tokenBreakdown", () => {
+  const attempt = {
+    ts: 1_700_000_000_000,
+    task: "score",
+    model: "anyrouter/auto",
+    ok: true,
+    tokens: 100,
+    durationMs: 40,
+    promptChars: null,
+    promptTokens: 60,
+    completionTokens: 40,
+    cachedTokens: 10,
+    error: null,
+  };
+
+  it("sums only the selected run's attributed usage", () => {
+    expect(tokenBreakdown([attempt], { tokens: 999 }, undefined)).toEqual({
+      total: 999,
+      input: 60,
+      output: 40,
+      cached: 10,
+    });
+  });
+
+  it("leaves optional usage unknown instead of turning it into zero", () => {
+    expect(
+      tokenBreakdown(
+        [
+          {
+            ...attempt,
+            promptTokens: null,
+            completionTokens: null,
+            cachedTokens: null,
+          },
+        ],
+        null,
+        undefined
+      )
+    ).toEqual({ total: null, input: null, output: null, cached: null });
   });
 });

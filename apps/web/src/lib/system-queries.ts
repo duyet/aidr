@@ -2,8 +2,16 @@ import { JEV_DEFAULT_MODEL } from "../../worker/systemone.js";
 import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "../../worker/workflow-run.js";
 import type { DbReader } from "./db";
 
+export interface RunStepInfo {
+  name: string;
+  action: string;
+  reason?: string;
+}
+
 export interface WorkflowRunStats {
   bySource?: Record<string, number>;
+  /** Ordered, self-reported workflow steps captured by migration 0012. */
+  steps?: RunStepInfo[];
   new?: number;
   merged?: number;
   rejected?: number;

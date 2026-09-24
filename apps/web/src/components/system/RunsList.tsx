@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
 import { useHorizontalScroll } from "../../lib/use-horizontal-scroll";
 import { RunRow } from "./RunRow";
-import { formatDurationSec } from "./run-format";
+import { formatDurationSec, hasRunDetails, nextOpenId } from "./run-format";
 
 interface RunsListProps {
   runs: WorkflowRunRow[];
@@ -21,9 +21,10 @@ export function RunsList({ runs, lang }: RunsListProps) {
   const [loadingRunId, setLoadingRunId] = useState<string | null>(null);
 
   const toggleRun = (r: WorkflowRunRow, expanded: boolean) => {
-    if (!(r.llm && r.llm.calls > 0)) return;
-    setOpenId(expanded ? null : r.id);
+    if (!hasRunDetails(r)) return;
+    setOpenId(nextOpenId(openId, r.id));
     if (expanded) return;
+    if (!(r.llm && r.llm.calls > 0)) return;
     if (r.id in attemptsByRun || (r.llm.attempts?.length ?? 0) > 0) return;
     if (r.started_at == null) return;
     setLoadingRunId(r.id);
@@ -41,7 +42,9 @@ export function RunsList({ runs, lang }: RunsListProps) {
         }
       })
       .catch(() => {})
-      .finally(() => setLoadingRunId(null));
+      .finally(() =>
+        setLoadingRunId((current) => (current === r.id ? null : current))
+      );
   };
 
   if (runs.length === 0) {
