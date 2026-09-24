@@ -209,35 +209,93 @@
   }
 }
 
-/* Story reader sizing: keep a conservative fallback for browsers without
-   dynamic viewport units, then use the space left by the overlay's safe
-   padding. The content area below the header owns the scroll, so the panel
-   never grows past the viewport or chains scrolling to the page. */
-.story-dialog-panel {
+/* Full-screen modal sizing. The document opts into viewport-fit=cover;
+   env() adds device safe-area insets, while dvh remains the documented
+   default for browser chrome/keyboard changes when visualViewport is absent.
+   All modal shells and panels inherit the same inset variables. */
+.story-dialog-overlay {
+  --story-dialog-inset-top: 1rem;
+  --story-dialog-inset-right: 1rem;
+  --story-dialog-inset-bottom: 1rem;
+  --story-dialog-inset-left: 1rem;
+  --story-dialog-inset-top: max(1rem, env(safe-area-inset-top, 0px));
+  --story-dialog-inset-right: max(1rem, env(safe-area-inset-right, 0px));
+  --story-dialog-inset-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  --story-dialog-inset-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding: 1rem;
+  padding: var(--story-dialog-inset-top) var(--story-dialog-inset-right)
+    var(--story-dialog-inset-bottom) var(--story-dialog-inset-left);
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 640px) {
+  .story-dialog-overlay {
+    --story-dialog-inset-top: 1.5rem;
+    --story-dialog-inset-right: 1.5rem;
+    --story-dialog-inset-bottom: 1.5rem;
+    --story-dialog-inset-left: 1.5rem;
+    --story-dialog-inset-top: max(1.5rem, env(safe-area-inset-top, 0px));
+    --story-dialog-inset-right: max(1.5rem, env(safe-area-inset-right, 0px));
+    --story-dialog-inset-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+    --story-dialog-inset-left: max(1.5rem, env(safe-area-inset-left, 0px));
+    padding: 1.5rem;
+    padding: var(--story-dialog-inset-top) var(--story-dialog-inset-right)
+      var(--story-dialog-inset-bottom) var(--story-dialog-inset-left);
+  }
+}
+
+@media (min-width: 1024px) {
+  .story-dialog-overlay {
+    --story-dialog-inset-top: 2rem;
+    --story-dialog-inset-right: 2rem;
+    --story-dialog-inset-bottom: 2rem;
+    --story-dialog-inset-left: 2rem;
+    --story-dialog-inset-top: max(2rem, env(safe-area-inset-top, 0px));
+    --story-dialog-inset-right: max(2rem, env(safe-area-inset-right, 0px));
+    --story-dialog-inset-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+    --story-dialog-inset-left: max(2rem, env(safe-area-inset-left, 0px));
+    padding: 2rem;
+    padding: var(--story-dialog-inset-top) var(--story-dialog-inset-right)
+      var(--story-dialog-inset-bottom) var(--story-dialog-inset-left);
+  }
+}
+
+@media (min-width: 1536px) {
+  .story-dialog-overlay {
+    --story-dialog-inset-top: 2.5rem;
+    --story-dialog-inset-right: 2.5rem;
+    --story-dialog-inset-bottom: 2.5rem;
+    --story-dialog-inset-left: 2.5rem;
+    --story-dialog-inset-top: max(2.5rem, env(safe-area-inset-top, 0px));
+    --story-dialog-inset-right: max(2.5rem, env(safe-area-inset-right, 0px));
+    --story-dialog-inset-bottom: max(2.5rem, env(safe-area-inset-bottom, 0px));
+    --story-dialog-inset-left: max(2.5rem, env(safe-area-inset-left, 0px));
+    padding: 2.5rem;
+    padding: var(--story-dialog-inset-top) var(--story-dialog-inset-right)
+      var(--story-dialog-inset-bottom) var(--story-dialog-inset-left);
+  }
+}
+
+.story-dialog-panel,
+.story-dialog-lightbox-panel,
+.story-dialog-lightbox-image {
   max-height: 90vh;
+  max-height: calc(
+    100vh -
+    var(--story-dialog-inset-top) -
+    var(--story-dialog-inset-bottom)
+  );
 }
 
 @supports (height: 1dvh) {
-  .story-dialog-panel {
-    max-height: calc(100dvh - 2rem);
-  }
-
-  @media (min-width: 640px) {
-    .story-dialog-panel {
-      max-height: calc(100dvh - 3rem);
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .story-dialog-panel {
-      max-height: calc(100dvh - 4rem);
-    }
-  }
-
-  @media (min-width: 1536px) {
-    .story-dialog-panel {
-      max-height: calc(100dvh - 5rem);
-    }
+  .story-dialog-panel,
+  .story-dialog-lightbox-panel,
+  .story-dialog-lightbox-image {
+    max-height: calc(
+      100dvh -
+      var(--story-dialog-inset-top) -
+      var(--story-dialog-inset-bottom)
+    );
   }
 }
 

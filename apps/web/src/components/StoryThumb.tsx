@@ -1,60 +1,57 @@
 import { track } from "@aidr/ui/track";
 import { Maximize2, X } from "lucide-react";
-import { type ReactElement, useEffect, useId, useState } from "react";
+import { type ReactElement, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { resizeCdnImageUrl } from "../lib/tldr-images";
+import {
+  STORY_DIALOG_CLOSE_BUTTON_CLASS,
+  STORY_DIALOG_LIGHTBOX_IMAGE_CLASS,
+  STORY_DIALOG_LIGHTBOX_OVERLAY_CLASS,
+  STORY_DIALOG_LIGHTBOX_PANEL_CLASS,
+} from "./story-dialog/layout";
+import { useDialogLifecycle } from "./story-dialog/use-dialog-lifecycle";
 
 /** Branded site mark — used when a story has no og/thumbnail, or the
  * remote image fails. Same asset as the favicon so it never 404s. */
 export const STORY_THUMB_PLACEHOLDER = "/favicon.svg";
 
-function ThumbLightbox({
+export function ThumbLightbox({
   src,
   onClose,
 }: {
   src: string;
   onClose: () => void;
 }): ReactElement {
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useDialogLifecycle(onClose, overlayRef);
 
   const overlay = (
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
+    <div ref={overlayRef} className={STORY_DIALOG_LIGHTBOX_OVERLAY_CLASS}>
+      ","replaceAll":false
       <button
         type="button"
         className="absolute inset-0 bg-black/70"
+        tabIndex={-1}
         aria-label="Close"
         onClick={onClose}
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Image"
-        className="relative max-h-[90vh] max-w-[min(960px,100%)]"
+        tabIndex={-1}
+        className={STORY_DIALOG_LIGHTBOX_PANEL_CLASS}
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute -top-3 -right-3 z-[1] rounded-full border border-border bg-background p-1.5 text-foreground shadow"
+          className={`${STORY_DIALOG_CLOSE_BUTTON_CLASS} absolute -top-3 -right-3 z-[1] border border-border bg-background text-foreground shadow`}
         >
           <X className="h-4 w-4" />
         </button>
-        <img
-          src={src}
-          alt=""
-          className="max-h-[90vh] w-auto max-w-full rounded-xl object-contain"
-        />
+        <img src={src} alt="" className={STORY_DIALOG_LIGHTBOX_IMAGE_CLASS} />
       </div>
     </div>
   );
@@ -90,8 +87,8 @@ export function StoryThumb({
 
   const imgClass =
     variant === "card"
-      ? "max-h-56 w-full rounded-3xl border border-border object-cover transition-transform duration-200 group-hover:scale-[1.04] group-focus-visible:scale-[1.04]"
-      : "size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 self-stretch overflow-hidden rounded-xl border border-border/80 bg-muted object-cover transition-transform duration-200 group-hover:scale-[1.08] group-focus-visible:scale-[1.08]";
+      ? "max-h-56 w-full rounded-3xl border border-border object-cover transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none group-hover:scale-[1.04] group-focus-visible:scale-[1.04]"
+      : "size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 self-stretch overflow-hidden rounded-xl border border-border/80 bg-muted object-cover transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none group-hover:scale-[1.08] group-focus-visible:scale-[1.08]";
 
   const img = (
     <img
@@ -137,7 +134,7 @@ export function StoryThumb({
       >
         {img}
         <span
-          className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-200 group-hover:bg-black/40 group-hover:opacity-100 group-focus-visible:bg-black/40 group-focus-visible:opacity-100"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-200 motion-reduce:transition-none group-hover:bg-black/40 group-hover:opacity-100 group-focus-visible:bg-black/40 group-focus-visible:opacity-100"
           aria-hidden
         >
           <Maximize2
