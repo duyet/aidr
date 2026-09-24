@@ -1,7 +1,10 @@
 import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
+import {
+  fetchFeedFreshnessOnce,
+  getCachedFeedFreshness,
+} from "../lib/feed-cache";
 import { timeAgo } from "../lib/lang";
 import {
   DUYET_URL,
@@ -24,16 +27,15 @@ const linkClass =
 
 export function NewsFooter() {
   const year = new Date().getFullYear();
-  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(
-    () => getCachedFeed()?.lastFetchedAt ?? null
+  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(() =>
+    getCachedFeedFreshness()
   );
 
   useEffect(() => {
     if (lastFetchedAt !== null) return;
     let cancelled = false;
-    fetchFeedOnce().then((feed) => {
-      if (!cancelled && feed?.lastFetchedAt)
-        setLastFetchedAt(feed.lastFetchedAt);
+    fetchFeedFreshnessOnce().then((freshness) => {
+      if (!cancelled && freshness !== null) setLastFetchedAt(freshness);
     });
     return () => {
       cancelled = true;

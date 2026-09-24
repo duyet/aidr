@@ -1,3 +1,4 @@
+import type { FeedFreshness } from "./feed-freshness";
 import { setLearnedKeywords } from "./highlight";
 import type { FeedResponse } from "./types";
 
@@ -10,15 +11,48 @@ import type { FeedResponse } from "./types";
  */
 let cache: FeedResponse | null = null;
 let inflight: Promise<FeedResponse | null> | null = null;
+let freshnessCache: FeedFreshness | null = null;
+let freshnessInflight: Promise<number | null> | null = null;
 
 export function getCachedFeed(): FeedResponse | null {
   return cache;
+}
+
+/** The footer only needs the newest ingest timestamp, not the feed body. */
+export function getCachedFeedFreshness(): number | null {
+  if (cache) return cache.lastFetchedAt;
+  return freshnessCache?.lastFetchedAt ?? null;
+}
+
+/** Fetches the slim freshness endpoint once, sharing an in-flight request. */
+export function fetchFeedFreshnessOnce(): Promise<number | null> {
+  if (cache) {
+    freshnessCache = { lastFetchedAt: cache.lastFetchedAt };
+    return Promise.resolve(cache.lastFetchedAt);
+  }
+  if (freshnessCache) return Promise.resolve(freshnessCache.lastFetchedAt);
+  if (freshnessInflight) return freshnessInflight;
+
+  freshnessInflight = fetch("/api/feed/freshness")
+    .then((res) => (res.ok ? (res.json() as Promise<FeedFreshness>) : null))
+    .then((res) => {
+      freshnessInflight = null;
+      if (!res) return null;
+      freshnessCache = res;
+      return res.lastFetchedAt;
+    })
+    .catch(() => {
+      freshnessInflight = null;
+      return null;
+    });
+  return freshnessInflight;
 }
 
 /** Called by the homepage once it has its own unfiltered (no `q`) fetch,
  * so the typeahead doesn't need a second network round-trip there. */
 export function setCachedFeed(feed: FeedResponse): void {
   cache = feed;
+  freshnessCache = { lastFetchedAt: feed.lastFetchedAt };
   if (feed.learnedKeywords?.length) setLearnedKeywords(feed.learnedKeywords);
 }
 
@@ -31,7 +65,10 @@ export function fetchFeedOnce(): Promise<FeedResponse | null> {
     .then((res) => (res.ok ? (res.json() as Promise<FeedResponse>) : null))
     .then((res) => {
       inflight = null;
-      if (res) cache = res;
+      if (res) {
+        cache = res;
+        freshnessCache = { lastFetchedAt: res.lastFetchedAt };
+      }
       return res;
     })
     .catch(() => {
