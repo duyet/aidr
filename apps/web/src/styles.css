@@ -209,6 +209,38 @@
   }
 }
 
+/* Story reader sizing: keep a conservative fallback for browsers without
+   dynamic viewport units, then use the space left by the overlay's safe
+   padding. The content area below the header owns the scroll, so the panel
+   never grows past the viewport or chains scrolling to the page. */
+.story-dialog-panel {
+  max-height: 90vh;
+}
+
+@supports (height: 1dvh) {
+  .story-dialog-panel {
+    max-height: calc(100dvh - 2rem);
+  }
+
+  @media (min-width: 640px) {
+    .story-dialog-panel {
+      max-height: calc(100dvh - 3rem);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .story-dialog-panel {
+      max-height: calc(100dvh - 4rem);
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .story-dialog-panel {
+      max-height: calc(100dvh - 5rem);
+    }
+  }
+}
+
 /* Feed content area (sub-header + day sections, TL;DR, story rows) keeps
    the compact HuggingNews look — sans body font, distinct from the
    duyet.net chrome. Reader-preferences panel (PrefsPanel) drives the

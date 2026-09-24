@@ -6,6 +6,12 @@ import { usePrefs } from "../lib/prefs";
 import type { FeedItem, Lang } from "../lib/types";
 import { StoryDetail } from "./StoryDetail";
 import { DialogHeader } from "./story-dialog/DialogHeader";
+import {
+  STORY_DIALOG_BODY_CLASS,
+  STORY_DIALOG_HEADER_CLASS,
+  STORY_DIALOG_OVERLAY_CLASS,
+  storyDialogPanelClass,
+} from "./story-dialog/layout";
 import { RelatedList } from "./story-dialog/RelatedList";
 import { useDialogLifecycle } from "./story-dialog/use-dialog-lifecycle";
 import { useStoryItem } from "./story-dialog/use-story-item";
@@ -63,7 +69,7 @@ export function StoryDialog({
     : { text: undefined as string | undefined, fallbackFromEnglish: false };
 
   const overlay = (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+    <div className={STORY_DIALOG_OVERLAY_CLASS}>
       <button
         type="button"
         className="absolute inset-0 bg-black/50"
@@ -76,40 +82,44 @@ export function StoryDialog({
         aria-modal="true"
         aria-label={title ?? "Story"}
         tabIndex={-1}
-        className={`relative max-h-[90vh] w-full overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background p-5 text-foreground shadow-xl sm:p-6 md:p-7 transition-[max-width] ${
-          bilingual ? "max-w-2xl md:max-w-5xl" : "max-w-2xl"
-        }`}
+        className={storyDialogPanelClass(bilingual)}
       >
-        <DialogHeader
-          item={item}
-          title={title}
-          fallbackFromEnglish={fallbackFromEnglish}
-          hasVi={hasVi}
-          bilingual={bilingual}
-          lang={lang}
-          onToggleBilingual={() => setPrefs({ bilingualDialog: !bilingual })}
-          onClose={onClose}
-        />
-
-        {item === undefined && (
-          <p className="text-sm text-muted-foreground">
-            {lang === "vi" ? "Đang tải..." : "Loading..."}
-          </p>
-        )}
-        {item === null && (
-          <p className="text-sm text-muted-foreground">
-            {lang === "vi" ? "Không tìm thấy tin." : "Story not found."}
-          </p>
-        )}
-        {item && <StoryDetail item={item} lang={lang} bilingual={bilingual} />}
-
-        {relatedItems.length > 0 && (
-          <RelatedList
-            items={relatedItems}
+        <div className={STORY_DIALOG_HEADER_CLASS}>
+          <DialogHeader
+            item={item}
+            title={title}
+            fallbackFromEnglish={fallbackFromEnglish}
+            hasVi={hasVi}
+            bilingual={bilingual}
             lang={lang}
-            onSelect={setActiveId}
+            onToggleBilingual={() => setPrefs({ bilingualDialog: !bilingual })}
+            onClose={onClose}
           />
-        )}
+        </div>
+
+        <div className={STORY_DIALOG_BODY_CLASS}>
+          {item === undefined && (
+            <p className="text-sm text-muted-foreground">
+              {lang === "vi" ? "Đang tải..." : "Loading..."}
+            </p>
+          )}
+          {item === null && (
+            <p className="text-sm text-muted-foreground">
+              {lang === "vi" ? "Không tìm thấy tin." : "Story not found."}
+            </p>
+          )}
+          {item && (
+            <StoryDetail item={item} lang={lang} bilingual={bilingual} />
+          )}
+
+          {relatedItems.length > 0 && (
+            <RelatedList
+              items={relatedItems}
+              lang={lang}
+              onSelect={setActiveId}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

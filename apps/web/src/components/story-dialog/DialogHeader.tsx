@@ -24,7 +24,7 @@ export function DialogHeader({
   onClose: () => void;
 }) {
   return (
-    <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="flex items-start justify-between gap-3">
       {item ? (
         <a
           href={item.url}
