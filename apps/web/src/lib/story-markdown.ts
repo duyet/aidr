@@ -29,7 +29,7 @@ const LOCALE_VALUES = new Set<Lang>(["en", "vi"]);
 const CREDENTIAL_KEY_PATTERN =
   /(^|[-_])(access[-_]?token|token|secret|password|passwd|api[-_]?key|apikey|auth(?:orization)?|bearer|jwt|session(?:[-_]?id)?|signature|sig|credential|client[-_]?secret|code)(?=$|[-_])/i;
 const CREDENTIAL_VALUE_PATTERN =
-  /(?:^|\s)(?:bearer|basic)\s+[a-z0-9._~+/=-]{8,}|eyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+/i;
+  /(?:^|\s)(?:bearer|basic)\s+[a-z0-9._~+/=-]{8,}|eyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+|(?:^|[?&#])(?:access[-_]?token|token|secret|password|api[-_]?key|auth|bearer|jwt|signature|sig|credential|code)=/i;
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
   "metadata",
@@ -82,6 +82,7 @@ function isControlCharacter(code: number): boolean {
     code === 11 ||
     code === 12 ||
     (code >= 14 && code <= 31) ||
+    (code >= 0x80 && code <= 0x9f) ||
     code === 127
   );
 }
@@ -102,6 +103,11 @@ function hasControlCharacters(value: string): boolean {
 
 function textWithoutMarkup(value: string): string {
   return removeControlCharacters(value)
+    .replace(
+      /<(script|style|template|noscript)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,
+      " "
+    )
+    .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim();

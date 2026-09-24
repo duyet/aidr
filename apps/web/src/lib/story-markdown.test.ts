@@ -147,7 +147,7 @@ describe("story Markdown rendering", () => {
     const body = renderWithoutFetch(
       story({
         title: "- <script>alert(1)</script> *Title* ~~~",
-        summary: "- list item\n~~~\n\u0000",
+        summary: "- list item\n~~~\n\u0000\u0085",
         url: "https://example.com/story?access_token=secret",
         tags: ["AI", "ai", "<b>agents</b>", "-topic", "~tag"],
         sources: [
@@ -191,6 +191,13 @@ describe("story Markdown rendering", () => {
             author: null,
             posted_at: null,
             quote: null,
+            url: "https://example.com/redirect?to=https%3A%2F%2Fother.example%3Ftoken%3Dnested-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
             url: "https://example.com/story#access_token=fragment-secret",
           },
           {
@@ -225,6 +232,7 @@ describe("story Markdown rendering", () => {
     expect(body).not.toContain("metadata.google.internal");
     expect(body).not.toContain("access_token");
     expect(body).not.toContain("secret");
+    expect(body).not.toContain("nested-secret");
     expect(body).toContain("\\-");
     expect(body).toContain("\\~");
     expect(body).toContain("agents");
@@ -277,6 +285,17 @@ describe("story Markdown rendering", () => {
     expect(partial).toContain('fallback_fields: ["summary"]');
     expect(partial).toContain("Tiêu đề");
     expect(partial).toContain("A short summary.");
+
+    const htmlOnly = renderStoryMarkdown(
+      story({
+        title_vi: "<script>do-not-render</script>",
+        summary_vi: "<style>bad</style>",
+      }),
+      "vi"
+    );
+    expect(htmlOnly).toContain('lang: "en"');
+    expect(htmlOnly).toContain('fallback_fields: ["title","summary"]');
+    expect(htmlOnly).not.toContain("do-not-render");
   });
 });
 
