@@ -16,17 +16,23 @@ import { track } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
 import {
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Languages,
+  Lock,
   Mail,
   Newspaper,
+  Plus,
   RefreshCw,
+  RotateCw,
+  Search,
   Send,
   ShieldCheck,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { type DeliverTab, parseDeliverTab } from "../../lib/deliver-tab";
 import { EXTENSION_VERSION } from "../../lib/extension-release";
 import { useLang } from "../../lib/lang-context";
@@ -37,6 +43,7 @@ import {
 } from "../../lib/site";
 import type { Lang } from "../../lib/types";
 import { EmailSubscribeForm } from "../EmailSubscribeForm";
+import { HighlightedText } from "../HighlightedText";
 
 export function DeliverPage({
   tab,
@@ -134,6 +141,15 @@ export function DeliverPage({
               {t("Chrome Web Store", "Chrome Web Store")}
             </a>
           </Button>
+          <BrowserFrame tab="New Tab" address="chrome://newtab">
+            <NewTabMock lang={lang} />
+          </BrowserFrame>
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "Illustrative layout — the new tab shows the live aidr.today feed.",
+              "Bố cục minh họa — tab mới hiển thị bảng tin aidr.today trực tiếp."
+            )}
+          </p>
           <ul className="grid gap-3 sm:grid-cols-2">
             {[
               {
@@ -156,10 +172,14 @@ export function DeliverPage({
                 en: "No account. Only the storage permission; connects to aidr.today only.",
                 vi: "Không cần tài khoản. Chỉ cần quyền storage; chỉ kết nối tới aidr.today.",
               },
-            ].map((f) => (
+            ].map((f, i) => (
               <li
                 key={f.en}
-                className="flex items-start gap-2.5 text-sm text-muted-foreground"
+                className="animate-in fade-in-0 slide-in-from-bottom-1 flex items-start gap-2.5 text-sm text-muted-foreground duration-500"
+                style={{
+                  animationDelay: `${i * 70}ms`,
+                  animationFillMode: "backwards",
+                }}
               >
                 <f.icon
                   className="mt-0.5 size-4 shrink-0 text-primary"
@@ -247,9 +267,132 @@ export function DeliverPage({
   );
 }
 
+function BrowserFrame({
+  tab,
+  address,
+  children,
+}: {
+  tab: string;
+  address: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="animate-in fade-in-0 slide-in-from-bottom-4 zoom-in-[0.98] overflow-hidden rounded-xl border border-border bg-card shadow-md shadow-foreground/5 duration-500"
+      style={{ animationFillMode: "backwards" }}
+    >
+      <div className="flex items-end gap-1.5 bg-muted/60 px-2.5 pt-1.5">
+        <div className="flex h-7 max-w-44 items-center gap-1.5 rounded-t-lg border border-b-0 border-border bg-card px-3 text-[11px]">
+          <img src="/favicon.svg" alt="" className="size-3.5" />
+          <span className="truncate">{tab}</span>
+          <X className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+        </div>
+        <Plus className="mb-2 size-3.5 text-muted-foreground" aria-hidden />
+      </div>
+      <div className="flex items-center gap-2.5 border-b border-border bg-card px-3 py-2">
+        <div
+          className="flex items-center gap-2.5 text-muted-foreground"
+          aria-hidden
+        >
+          <ArrowLeft className="size-3.5" />
+          <ArrowRight className="size-3.5" />
+          <RotateCw className="size-3.5" />
+        </div>
+        <div className="flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-full bg-muted/60 px-3 text-[11px] text-muted-foreground">
+          <Lock className="size-3 shrink-0" aria-hidden />
+          <span className="truncate">{address}</span>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const NEW_TAB_STORIES = [
+  {
+    en: "OpenAI ships a faster reasoning model for agents",
+    vi: "OpenAI ra mắt mô hình suy luận nhanh hơn cho agent",
+    src: "news.ycombinator.com",
+  },
+  {
+    en: "Anthropic open-sources Claude interpretability tools",
+    vi: "Anthropic mở mã nguồn bộ công cụ diễn giải Claude",
+    src: "anthropic.com",
+  },
+  {
+    en: "Google DeepMind brings Gemini on-device to Chrome",
+    vi: "Google DeepMind đưa Gemini chạy on-device lên Chrome",
+    src: "deepmind.google",
+  },
+  {
+    en: "NVIDIA releases an open inference stack for Blackwell",
+    vi: "NVIDIA phát hành stack inference mở cho Blackwell",
+    src: "developer.nvidia.com",
+  },
+  {
+    en: "Meta licenses Llama weights for commercial fine-tuning",
+    vi: "Meta cấp phép trọng số Llama cho fine-tuning thương mại",
+    src: "ai.meta.com",
+  },
+];
+
+function NewTabMock({ lang }: { lang: Lang }) {
+  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
+  return (
+    <div className="px-4 py-3.5 sm:px-5">
+      <div className="flex items-center justify-between gap-3 border-b border-border pb-2.5">
+        <div className="flex items-baseline gap-2">
+          <span className="font-serif text-lg font-medium leading-none">
+            AI;DR
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {t("What's new in AI today?", "Hôm nay AI có gì mới?")}
+          </span>
+        </div>
+        <div
+          className="hidden h-6 w-32 items-center gap-1.5 rounded-full border border-border px-2.5 text-[10px] text-muted-foreground sm:flex"
+          aria-hidden
+        >
+          <Search className="size-3" />
+          {t("Search…", "Tìm kiếm…")}
+        </div>
+      </div>
+      <p className="pt-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {t("Today", "Hôm nay")}
+      </p>
+      <ol>
+        {NEW_TAB_STORIES.map((s, i) => (
+          <li
+            key={s.en}
+            className="animate-in fade-in-0 slide-in-from-bottom-1 flex items-baseline gap-2.5 border-b border-border/60 py-2 duration-500 last:border-0"
+            style={{
+              animationDelay: `${250 + i * 100}ms`,
+              animationFillMode: "backwards",
+            }}
+          >
+            <span
+              className="w-4 shrink-0 font-serif text-xs text-accent"
+              aria-hidden
+            >
+              {i + 1}.
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-medium">
+                <HighlightedText text={t(s.en, s.vi)} tags={[]} />
+              </p>
+              <p className="text-[11px] text-muted-foreground">{s.src}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function DigestPreview({ lang }: { lang: Lang }) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
   const [subject, setSubject] = useState("");
+  const [loaded, setLoaded] = useState(false);
 
   return (
     <div className="space-y-3 pt-4">
@@ -264,8 +407,11 @@ function DigestPreview({ lang }: { lang: Lang }) {
           )}
         </span>
       </div>
-      <div className="overflow-hidden rounded-lg border border-border">
-        <div className="space-y-1 border-b border-border bg-muted/40 px-4 py-2.5 text-sm">
+      <BrowserFrame
+        tab={t("Inbox — AI;DR", "Hộp thư — AI;DR")}
+        address="aidr.today/api/subscribe/preview"
+      >
+        <div className="space-y-1 border-b border-border px-4 py-2.5 text-sm">
           <div className="flex gap-3">
             <span className="w-16 shrink-0 text-muted-foreground">
               {t("From", "Từ")}
@@ -282,13 +428,16 @@ function DigestPreview({ lang }: { lang: Lang }) {
         <iframe
           src={`/api/subscribe/preview?lang=${lang}`}
           title={t("Digest email preview", "Xem trước email bản tin")}
-          className="h-[560px] w-full bg-[#f7f7f5]"
+          className={`h-[560px] w-full bg-[#f7f7f5] transition-opacity duration-500 ${
+            loaded ? "opacity-100" : "opacity-0"
+          }`}
           onLoad={(e) => {
+            setLoaded(true);
             const title = e.currentTarget.contentDocument?.title;
             if (title) setSubject(title);
           }}
         />
-      </div>
+      </BrowserFrame>
       <p className="text-xs text-muted-foreground">
         {t(
           "The actual latest digest — same layout arrives each morning around 7:00 your time.",
