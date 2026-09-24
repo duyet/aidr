@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { llmsTxt, llmsTxtResponse } from "./llms-txt";
 import { SITE_URL } from "./site";
 import { buildSitemapXml, staticSitemapUrls } from "./sitemap";
+import { isStoryMarkdownPath } from "./story-markdown";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +30,13 @@ describe("Worker discovery entry", () => {
     expect(src.indexOf("isStoryMarkdownPath(path)")).toBeLessThan(
       src.indexOf("return handlePublicCors")
     );
+  });
+
+  it("claims double-encoded and malformed Markdown paths in the Worker", () => {
+    expect(isStoryMarkdownPath("/api/story/abcdef12%252emd")).toBe(true);
+    expect(isStoryMarkdownPath("/api%252Fstory/abcdef12%252emd")).toBe(true);
+    expect(isStoryMarkdownPath("/api/story/%252emd")).toBe(true);
+    expect(isStoryMarkdownPath("/api/story/%ZZ.md")).toBe(true);
   });
 
   it("llms.txt response is non-empty aidr guidance", async () => {

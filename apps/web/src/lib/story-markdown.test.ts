@@ -75,13 +75,33 @@ function fakeDb(item: FeedItem | FeedItem[] | null): D1Database {
   const rows = items.map(storyRow);
   const sources = items.flatMap((entry) => sourceRows(entry.id, entry.sources));
   const reader = {
-    prepare: vi.fn((sql: string) => ({
-      sql,
-      bind: vi.fn(() => ({})),
-      all: vi.fn(async () => ({ results: [] })),
-      first: vi.fn(async () => null),
-    })),
-    batch: vi.fn(async () => [{ results: rows }, { results: sources }]),
+    prepare: vi.fn((sql: string) => {
+      const statement = {
+        sql,
+        bindings: [] as Array<string | number>,
+        bind: vi.fn((...bindings: Array<string | number>) => {
+          statement.bindings = bindings;
+          return statement;
+        }),
+        all: vi.fn(async () => ({ results: [] })),
+        first: vi.fn(async () => null),
+      };
+      return statement;
+    }),
+    batch: vi.fn(
+      async (statements: Array<{ bindings: Array<string | number> }>) => {
+        const bindings = statements[0]?.bindings ?? [];
+        const id = String(bindings.at(-1) ?? "");
+        const matches = (candidate: string): boolean =>
+          bindings.length === 1 ? candidate === id : candidate.startsWith(id);
+        return [
+          { results: rows.filter((row) => matches(String(row.id))) },
+          {
+            results: sources.filter((row) => matches(String(row.item_id))),
+          },
+        ];
+      }
+    ),
   };
   return {
     ...reader,
@@ -198,6 +218,27 @@ describe("story Markdown rendering", () => {
             author: null,
             posted_at: null,
             quote: null,
+            url: "https://example.com/?%2561ccess_token=double-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/path#%2523access_token%3Dfragment-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/path/%2523access_token%3Dencoded-fragment-secret",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
             url: "https://example.com/story#access_token=fragment-secret",
           },
           {
@@ -219,7 +260,9 @@ describe("story Markdown rendering", () => {
     );
 
     expect(body).toContain('format: "aidr-story-markdown/v1"');
-    expect(body).toContain('canonical_url: "https://aidr.today/abcdef12"');
+    expect(body).toContain(
+      'canonical_url: "https://aidr.today/abcdef12?lang=vi"'
+    );
     expect(body).toContain('published_at: "2026-02-25T06:13:20.000Z"');
     expect(body).toContain("## Summary");
     expect(body).toContain("https://safe.example/source");
@@ -232,6 +275,9 @@ describe("story Markdown rendering", () => {
     expect(body).not.toContain("metadata.google.internal");
     expect(body).not.toContain("access_token");
     expect(body).not.toContain("secret");
+    expect(body).not.toContain("double-secret");
+    expect(body).not.toContain("fragment-secret");
+    expect(body).not.toContain("encoded-fragment-secret");
     expect(body).not.toContain("nested-secret");
     expect(body).toContain("\\-");
     expect(body).toContain("\\~");
@@ -320,7 +366,7 @@ describe("story Markdown route", () => {
     expect(res.headers.get("x-robots-tag")).toBe("noindex, follow");
     expect(res.headers.get("content-language")).toBe("vi");
     expect(res.headers.get("link")).toContain(
-      '<https://aidr.today/abcdef12>; rel="canonical"'
+      '<https://aidr.today/abcdef12?lang=vi>; rel="canonical"'
     );
     expect(await res.text()).toContain("Tiêu đề");
   });
@@ -386,6 +432,33 @@ describe("story Markdown route", () => {
       "text/plain; charset=utf-8"
     );
 
+    const doubleEncoded = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api/story/abcdef12%252emd`),
+      fakeDb(story())
+    );
+    expect(doubleEncoded.status).toBe(404);
+    expect(doubleEncoded.headers.get("content-type")).toBe(
+      "text/plain; charset=utf-8"
+    );
+
+    const doubleEncodedPrefix = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api%252Fstory/abcdef12%252emd`),
+      fakeDb(story())
+    );
+    expect(doubleEncodedPrefix.status).toBe(404);
+    expect(doubleEncodedPrefix.headers.get("content-type")).toBe(
+      "text/plain; charset=utf-8"
+    );
+
+    const tripleEncoded = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api/story/abcdef12%25252emd`),
+      fakeDb(story())
+    );
+    expect(tripleEncoded.status).toBe(404);
+    expect(tripleEncoded.headers.get("content-type")).toBe(
+      "text/plain; charset=utf-8"
+    );
+
     const encodedInvalid = await handleStoryMarkdownRequest(
       new Request(`${SITE_URL}/api/story/%6Eot-an-id.md`),
       fakeDb(story())
@@ -401,8 +474,33 @@ describe("story Markdown route", () => {
     );
     expect(fullId.status).toBe(308);
     expect(fullId.headers.get("location")).toBe(
-      `${SITE_URL}/api/story/abcdef12.md`
+      `${SITE_URL}/api/story/abcdef12.md?lang=vi`
     );
+
+    const unavailableFullId = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api/story/abcdef1234567890.md`),
+      undefined
+    );
+    expect(unavailableFullId.status).toBe(503);
+    expect(unavailableFullId.headers.get("location")).toBeNull();
+
+    const nonmatchingFullId = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api/story/abcdef123456789.md`),
+      fakeDb(story())
+    );
+    expect(nonmatchingFullId.status).toBe(404);
+    expect(nonmatchingFullId.headers.get("location")).toBeNull();
+
+    const fullIdCollision = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api/story/abcdef1234567890.md`),
+      fakeDb([
+        story({ id: "abcdef1234567890" }),
+        story({ id: "abcdef1299999999" }),
+      ])
+    );
+    expect(fullIdCollision.status).toBe(409);
+    expect(fullIdCollision.headers.get("location")).toBeNull();
+    expect(await fullIdCollision.text()).toContain("# Ambiguous story id");
 
     const collision = await handleStoryMarkdownRequest(
       new Request(`${SITE_URL}/api/story/abcdef12.md`),
@@ -470,20 +568,28 @@ describe("story Markdown route", () => {
       ),
       fakeDb(story())
     );
-    expect(legacy.status).toBe(308);
+    expect(legacy.status).toBe(307);
     expect(legacy.headers.get("location")).toBe(
       `${SITE_URL}/api/story/abcdef12.md?utm_source=agent&lang=en`
     );
 
     const secretRedirect = await handleStoryMarkdownRequest(
       new Request(
-        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&utm_source=agent`
+        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&%2561ccess_token=double-redirect-secret&utm_source=agent&note=%2523access_token%3Dfragment-redirect-secret`
       ),
       fakeDb(story())
     );
-    expect(secretRedirect.headers.get("location")).toBe(
+    const secretLocation = secretRedirect.headers.get("location");
+    const secretBody = await secretRedirect.text();
+    expect(secretLocation).toBe(
       `${SITE_URL}/api/story/abcdef12.md?utm_source=agent&lang=en`
     );
+    expect(secretLocation).not.toContain("do-not-redirect");
+    expect(secretLocation).not.toContain("double-redirect-secret");
+    expect(secretLocation).not.toContain("fragment-redirect-secret");
+    expect(secretBody).not.toContain("do-not-redirect");
+    expect(secretBody).not.toContain("double-redirect-secret");
+    expect(secretBody).not.toContain("fragment-redirect-secret");
 
     const cookieWins = await handleStoryMarkdownRequest(
       new Request(`${SITE_URL}/api/story/abcdef12.md`, {
@@ -550,6 +656,9 @@ describe("story Markdown route", () => {
   it("recognizes only the worker-owned .md story surface", () => {
     expect(isStoryMarkdownPath("/api/story/abcdef12.md")).toBe(true);
     expect(isStoryMarkdownPath("/api/story/%61bcdef12%2emd")).toBe(true);
+    expect(isStoryMarkdownPath("/api/story/abcdef12%252emd")).toBe(true);
+    expect(isStoryMarkdownPath("/api%252Fstory/abcdef12%252emd")).toBe(true);
+    expect(isStoryMarkdownPath("/api/story/abcdef12%25252emd")).toBe(true);
     expect(isStoryMarkdownPath("/api/story/%ZZ%2emd")).toBe(true);
     expect(isStoryMarkdownPath("/api%2Fstory/%ZZ%2emd")).toBe(true);
     expect(isStoryMarkdownPath("/api/story/not-an-id.md")).toBe(true);

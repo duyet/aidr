@@ -1,7 +1,18 @@
 import { readSession } from "./db";
-import { SITE_URL } from "./site";
+import {
+  DEFAULT_LANG,
+  LEGACY_LOCALE_QUERY_PARAM,
+  LOCALE_QUERY_PARAM,
+  type LocaleResolution,
+  resolveLocale,
+} from "./lang";
+import {
+  absoluteSiteUrl,
+  canonicalLocaleRedirect,
+  localeCacheControl,
+} from "./locale-url";
 import { storyPath } from "./slug";
-import { getStoryCandidates } from "./story-queries";
+import { getStoryByExactId, getStoryCandidates } from "./story-queries";
 import type { FeedItem, Lang } from "./types";
 
 /** Public, versioned Markdown representation of a published story. */
@@ -18,18 +29,15 @@ export const STORY_MARKDOWN_MAX_SOURCE_ROWS_SCANNED = 16;
 const MAX_REDIRECT_QUERY_PARAMS = 16;
 const MAX_REDIRECT_QUERY_LENGTH = 1_024;
 const MAX_REDIRECT_PARAM_LENGTH = 256;
+const MAX_CREDENTIAL_DECODE_ROUNDS = 3;
+const MAX_PATH_DECODE_ROUNDS = 3;
 
 const STORY_ID_RE = /^[0-9a-f]{8,64}$/;
 const STORY_MARKDOWN_PATH_RE = /^\/api\/story\/.*\.md(?:\/|$)/i;
-const NO_STORE = STORY_MARKDOWN_PRIVATE_CACHE_CONTROL;
-const DEFAULT_LANG: Lang = "vi";
-const LOCALE_QUERY_PARAM = "lang";
-const LEGACY_LOCALE_QUERY_PARAM = "locale";
-const LOCALE_VALUES = new Set<Lang>(["en", "vi"]);
-const CREDENTIAL_KEY_PATTERN =
-  /(^|[-_])(access[-_]?token|token|secret|password|passwd|api[-_]?key|apikey|auth(?:orization)?|bearer|jwt|session(?:[-_]?id)?|signature|sig|credential|client[-_]?secret|code)(?=$|[-_])/i;
-const CREDENTIAL_VALUE_PATTERN =
-  /(?:^|\s)(?:bearer|basic)\s+[a-z0-9._~+/=-]{8,}|eyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+|(?:^|[?&#])(?:access[-_]?token|token|secret|password|api[-_]?key|auth|bearer|jwt|signature|sig|credential|code)=/i;
+const CREDENTIAL_NAME_PATTERN =
+  /(^|[-_/?.&#;\s=])(access[-_]?token|token|secret|password|passwd|api[-_]?key|apikey|auth(?:orization)?|bearer|jwt|session(?:[-_]?id)?|signature|sig|credential|client[-_]?secret|code)(?=$|[-_/?.&#;\s=])/i;
+const CREDENTIAL_SECRET_PATTERN =
+  /(?:^|[\s?&#])(?:bearer|basic)\s+[a-z0-9._~+/=-]{8,}|(?:^|[?&#])eyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+/i;
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
   "metadata",
@@ -60,20 +68,6 @@ interface StoryMarkdownHeadersOptions {
 interface SourceLink {
   kind: "source" | "support" | "discussion";
   url: string;
-}
-
-interface LocaleResolution {
-  lang: StoryMarkdownLocale;
-  explicit: boolean;
-  legacy: boolean;
-}
-
-interface LocaleError {
-  error: string;
-}
-
-function isLang(value: unknown): value is Lang {
-  return typeof value === "string" && LOCALE_VALUES.has(value as Lang);
 }
 
 function isControlCharacter(code: number): boolean {
@@ -196,46 +190,59 @@ function isBlockedHost(hostname: string): boolean {
   return false;
 }
 
-function isCredentialKey(key: string): boolean {
-  return CREDENTIAL_KEY_PATTERN.test(key);
-}
-
-function isCredentialValue(value: string): boolean {
-  return CREDENTIAL_VALUE_PATTERN.test(value);
-}
-
-function hasCredentialData(url: URL): boolean {
-  for (const [key, value] of url.searchParams) {
-    if (isCredentialKey(key) || isCredentialValue(value)) {
-      return true;
-    }
+/**
+ * Inspect every bounded decoding layer before reusing untrusted URL/query text.
+ * Invalid encodings, fragments, credential names/values, controls, or inputs
+ * that need more than the fixed decode budget fail closed.
+ */
+function sanitizeCredentialFreeText(
+  value: unknown,
+  maxLength: number
+): string | null {
+  if (typeof value !== "string" || !value || value.length > maxLength) {
+    return null;
   }
-  const fragment = url.hash.replace(/^#/, "");
-  if (!fragment) return false;
-  const fragmentParams = new URLSearchParams(fragment);
-  for (const [key, value] of fragmentParams) {
-    if (isCredentialKey(key) || isCredentialValue(value)) {
-      return true;
+
+  let current = value;
+  for (let round = 0; round <= MAX_CREDENTIAL_DECODE_ROUNDS; round += 1) {
+    if (
+      current.length > maxLength ||
+      hasControlCharacters(current) ||
+      current.includes("#") ||
+      CREDENTIAL_NAME_PATTERN.test(current) ||
+      CREDENTIAL_SECRET_PATTERN.test(current)
+    ) {
+      return null;
     }
+
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(current);
+    } catch {
+      return null;
+    }
+    if (decoded === current) return value;
+    current = decoded;
   }
-  return isCredentialValue(fragment);
+  return null;
 }
 
 function safeHttpUrl(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const raw = value.trim();
-  if (raw.length > STORY_MARKDOWN_MAX_URL_LENGTH || hasControlCharacters(raw)) {
+  if (!sanitizeCredentialFreeText(raw, STORY_MARKDOWN_MAX_URL_LENGTH)) {
     return null;
   }
   try {
     const url = new URL(raw);
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
     if (url.username || url.password || !url.hostname) return null;
-    if (isBlockedHost(url.hostname) || hasCredentialData(url)) return null;
+    if (isBlockedHost(url.hostname)) return null;
     const normalized = url.toString();
-    return normalized.length <= STORY_MARKDOWN_MAX_URL_LENGTH
-      ? normalized
-      : null;
+    return sanitizeCredentialFreeText(
+      normalized,
+      STORY_MARKDOWN_MAX_URL_LENGTH
+    );
   } catch {
     return null;
   }
@@ -258,11 +265,15 @@ function publishedDate(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function canonicalStoryUrl(item: Pick<FeedItem, "id">): string {
+function canonicalStoryUrl(
+  item: Pick<FeedItem, "id">,
+  requestedLang: StoryMarkdownLocale
+): string {
   const id = typeof item.id === "string" ? item.id.toLowerCase() : "";
-  return STORY_ID_RE.test(id)
-    ? `${SITE_URL}${storyPath({ id })}`
-    : `${SITE_URL}/`;
+  return absoluteSiteUrl(
+    STORY_ID_RE.test(id) ? storyPath({ id }) : "/",
+    requestedLang
+  );
 }
 
 function sourceKind(value: unknown): SourceLink["kind"] {
@@ -395,7 +406,7 @@ export function renderStoryMarkdown(
   requestedLang: StoryMarkdownLocale = DEFAULT_LANG
 ): string {
   const selected = selectedStoryText(item, requestedLang);
-  const canonicalUrl = canonicalStoryUrl(item);
+  const canonicalUrl = canonicalStoryUrl(item, requestedLang);
   const published = publishedDate(item.published_at);
   const links = sourceLinks(item);
   const topics = topicList(item.tags);
@@ -453,14 +464,38 @@ export function renderStoryMarkdown(
   return `${body}\n`;
 }
 
-function decodePathname(pathname: string): string | null {
-  try {
-    const decoded = decodeURIComponent(pathname);
-    if (decoded.includes("\0") || decoded.includes("\\")) return null;
-    return decoded;
-  } catch {
-    return null;
+interface DecodedPathname {
+  value: string | null;
+  encoded: boolean;
+  reject: boolean;
+}
+
+function decodePathname(pathname: string): DecodedPathname {
+  let current = pathname;
+  let rounds = 0;
+
+  while (rounds < MAX_PATH_DECODE_ROUNDS && /%[0-9a-f]{2}/i.test(current)) {
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(current);
+    } catch {
+      return { value: null, encoded: true, reject: true };
+    }
+    if (decoded === current) break;
+    current = decoded;
+    rounds += 1;
   }
+
+  const reject =
+    rounds > 1 ||
+    /%[0-9a-f]{2}/i.test(current) ||
+    current.includes("\0") ||
+    current.includes("\\");
+  return {
+    value: current,
+    encoded: pathname !== current,
+    reject,
+  };
 }
 
 function rawPathLooksLikeMarkdown(pathname: string): boolean {
@@ -471,10 +506,20 @@ function rawPathLooksLikeMarkdown(pathname: string): boolean {
   );
 }
 
+function partiallyDecodedPathLooksLikeMarkdown(pathname: string): boolean {
+  return (
+    /^\/api\/story\//i.test(pathname) &&
+    /(?:\.|%2e)(?:m|%6d)(?:d|%64)(?:\/|$)/i.test(pathname)
+  );
+}
+
 export function isStoryMarkdownPath(pathname: string): boolean {
   const decoded = decodePathname(pathname);
-  if (decoded !== null) return STORY_MARKDOWN_PATH_RE.test(decoded);
-  return rawPathLooksLikeMarkdown(pathname);
+  if (decoded.value === null) return rawPathLooksLikeMarkdown(pathname);
+  return (
+    STORY_MARKDOWN_PATH_RE.test(decoded.value) ||
+    (decoded.reject && partiallyDecodedPathLooksLikeMarkdown(decoded.value))
+  );
 }
 
 function storyIdFromPath(pathname: string): string | null {
@@ -482,117 +527,61 @@ function storyIdFromPath(pathname: string): string | null {
   return match && STORY_ID_RE.test(match[1]) ? match[1] : null;
 }
 
-function readCookieLang(cookieHeader: string | null): Lang | null {
-  const values: string[] = [];
-  for (const part of cookieHeader?.split(";") ?? []) {
-    const [rawName, ...rawValue] = part.trim().split("=");
-    if (rawName !== "news_lang") continue;
-    let value = rawValue.join("=").trim();
-    try {
-      value = decodeURIComponent(value);
-    } catch {
-      // Keep the raw value; it will simply fail the exact locale check.
-    }
-    values.push(value);
-  }
-  const valid = [...new Set(values.filter(isLang))];
-  return valid.length === 1 ? valid[0] : null;
+type ResolvedLocale = Extract<LocaleResolution, { ok: true }>;
+type RedirectEntry = [key: string, value: string];
+
+function serializeRedirectEntries(
+  entries: RedirectEntry[],
+  lang: StoryMarkdownLocale
+): string {
+  const params = new URLSearchParams(entries);
+  params.set(LOCALE_QUERY_PARAM, lang);
+  return params.toString();
 }
 
-function readAcceptLanguage(header: string | null): Lang | null {
-  const candidates: Array<{ lang: Lang; q: number; index: number }> = [];
-  for (const [index, part] of (header ?? "").split(",").entries()) {
-    const [rawTag, ...parameters] = part.trim().split(";");
-    const tag = rawTag.trim().toLowerCase().split("-")[0];
-    if (!isLang(tag)) continue;
-    const qParameter = parameters.find((parameter) =>
-      parameter.trim().toLowerCase().startsWith("q=")
-    );
-    const parsedQ = qParameter
-      ? Number.parseFloat(qParameter.trim().slice(2))
-      : 1;
-    const q = Number.isFinite(parsedQ) ? Math.min(1, Math.max(0, parsedQ)) : 0;
-    if (q > 0) candidates.push({ lang: tag, q, index });
-  }
-  candidates.sort((a, b) => b.q - a.q || a.index - b.index);
-  return candidates[0]?.lang ?? null;
-}
-
-/**
- * Endpoint-local locale parsing for the pilot. The shared HTML canonical and
- * hreflang rules remain owned by #140; this handler only normalizes its own
- * representation and does not redirect HTML story URLs.
- */
-function resolveLocale(request: Request): LocaleResolution | LocaleError {
-  const params = new URL(request.url).searchParams;
-  const langValues = params.getAll(LOCALE_QUERY_PARAM);
-  const localeValues = params.getAll(LEGACY_LOCALE_QUERY_PARAM);
-
-  if (
-    langValues.length > 1 ||
-    localeValues.length > 1 ||
-    (langValues.length > 0 && localeValues.length > 0)
-  ) {
-    return {
-      error: "Repeated or conflicting locale parameters are not allowed.",
-    };
-  }
-
-  const explicit = langValues[0] ?? localeValues[0];
-  if (explicit !== undefined) {
-    if (!isLang(explicit)) {
-      return { error: "The locale parameter must be exactly en or vi." };
-    }
-    return {
-      lang: explicit,
-      explicit: true,
-      legacy: localeValues.length === 1,
-    };
-  }
-
-  return {
-    lang:
-      readCookieLang(request.headers.get("cookie")) ??
-      readAcceptLanguage(request.headers.get("accept-language")) ??
-      DEFAULT_LANG,
-    explicit: false,
-    legacy: false,
-  };
-}
-
-function boundedRedirectSearch(url: URL): string {
-  const bounded = new URLSearchParams();
-  let count = 0;
-  for (const [key, value] of url.searchParams) {
+function boundedRedirectSearch(url: URL, lang: StoryMarkdownLocale): string {
+  let entries: RedirectEntry[] = [];
+  for (const [rawKey, rawValue] of url.searchParams) {
     if (
-      count >= MAX_REDIRECT_QUERY_PARAMS ||
-      key.length > MAX_REDIRECT_PARAM_LENGTH ||
-      value.length > MAX_REDIRECT_PARAM_LENGTH ||
-      isCredentialKey(key) ||
-      isCredentialValue(value)
+      entries.length >= MAX_REDIRECT_QUERY_PARAMS - 1 ||
+      rawKey === LOCALE_QUERY_PARAM ||
+      rawKey === LEGACY_LOCALE_QUERY_PARAM
     ) {
       continue;
     }
-    bounded.append(key, value);
-    count += 1;
+    const key = sanitizeCredentialFreeText(rawKey, MAX_REDIRECT_PARAM_LENGTH);
+    const value = sanitizeCredentialFreeText(
+      rawValue,
+      MAX_REDIRECT_PARAM_LENGTH
+    );
+    if (key && value) entries.push([key, value]);
   }
-  let serialized = bounded.toString();
-  const keys = [...bounded.keys()];
-  while (serialized.length > MAX_REDIRECT_QUERY_LENGTH && keys.length > 0) {
-    const last = keys.pop();
-    if (!last) break;
-    bounded.delete(last);
-    serialized = bounded.toString();
+
+  while (
+    entries.length > 0 &&
+    serializeRedirectEntries(entries, lang).length > MAX_REDIRECT_QUERY_LENGTH
+  ) {
+    entries = entries.slice(0, -1);
   }
+  const serialized = serializeRedirectEntries(entries, lang);
   return serialized ? `?${serialized}` : "";
 }
 
-function canonicalRequestUrl(request: Request, lang: Lang): URL {
-  const target = new URL(request.url);
-  target.search = boundedRedirectSearch(target);
-  target.searchParams.delete(LEGACY_LOCALE_QUERY_PARAM);
-  target.searchParams.delete(LOCALE_QUERY_PARAM);
-  target.searchParams.set(LOCALE_QUERY_PARAM, lang);
+function canonicalRedirectTarget(
+  requestUrl: URL,
+  id: string,
+  locale: ResolvedLocale
+): URL {
+  const pathname = `/api/story/${id.slice(0, 8)}.md`;
+  const normalized = locale.legacy
+    ? canonicalLocaleRedirect(pathname, requestUrl.search, "", locale.lang)
+    : null;
+  const target = new URL(
+    normalized ?? `${pathname}${requestUrl.search}`,
+    requestUrl
+  );
+  target.hash = "";
+  target.search = boundedRedirectSearch(target, locale.lang);
   return target;
 }
 
@@ -654,7 +643,7 @@ function errorResponse(
   return bodyResponse(
     errorBody(status, title, message),
     status,
-    { cacheControl: NO_STORE, contentLanguage },
+    { cacheControl: STORY_MARKDOWN_PRIVATE_CACHE_CONTROL, contentLanguage },
     method
   );
 }
@@ -664,7 +653,7 @@ function plainTextNotFound(method: string): Response {
     "Story Markdown not found.\n",
     404,
     {
-      cacheControl: NO_STORE,
+      cacheControl: STORY_MARKDOWN_PRIVATE_CACHE_CONTROL,
       contentLanguage: "en",
       contentType: "text/plain; charset=utf-8",
     },
@@ -672,12 +661,45 @@ function plainTextNotFound(method: string): Response {
   );
 }
 
-function redirectResponse(target: URL, lang: Lang, method: string): Response {
+type StoryLookup =
+  | { status: "found"; item: FeedItem }
+  | { status: "not_found" }
+  | { status: "ambiguous_prefix" }
+  | { status: "ambiguous_full" };
+
+async function lookupStoryForMarkdown(
+  db: D1Database,
+  id: string
+): Promise<StoryLookup> {
+  const reader = readSession(db);
+  if (id.length === 8) {
+    const candidates = await getStoryCandidates(reader, id, 2);
+    if (candidates.length > 1) return { status: "ambiguous_prefix" };
+    return candidates[0]
+      ? { status: "found", item: candidates[0] }
+      : { status: "not_found" };
+  }
+
+  const exact = await getStoryByExactId(reader, id);
+  if (!exact) return { status: "not_found" };
+  const prefixCandidates = await getStoryCandidates(reader, id.slice(0, 8), 2);
+  if (prefixCandidates.length > 1) return { status: "ambiguous_prefix" };
+  if (prefixCandidates[0]?.id !== exact.id) return { status: "ambiguous_full" };
+  return { status: "found", item: exact };
+}
+
+function redirectResponse(
+  target: URL,
+  lang: Lang,
+  method: string,
+  status: 307 | 308
+): Response {
   const body = `Use ${target.pathname}${target.search} for the canonical locale.`;
   const headers = responseHeaders({
-    cacheControl: NO_STORE,
+    cacheControl: STORY_MARKDOWN_PRIVATE_CACHE_CONTROL,
     contentLanguage: lang,
     contentType: "text/plain; charset=utf-8",
+    vary: "Cookie, Accept-Language",
   });
   headers.set("Location", target.toString());
   headers.set(
@@ -685,7 +707,7 @@ function redirectResponse(target: URL, lang: Lang, method: string): Response {
     String(new TextEncoder().encode(body).byteLength)
   );
   return new Response(method === "HEAD" ? null : body, {
-    status: 308,
+    status,
     headers,
   });
 }
@@ -724,11 +746,12 @@ export async function handleStoryMarkdownRequest(
 
   const requestUrl = new URL(request.url);
   const decodedPath = decodePathname(requestUrl.pathname);
-  if (decodedPath === null) return plainTextNotFound(method);
-  const encodedPath = requestUrl.pathname !== decodedPath;
-  const id = storyIdFromPath(decodedPath);
+  if (decodedPath.value === null || decodedPath.reject) {
+    return plainTextNotFound(method);
+  }
+  const id = storyIdFromPath(decodedPath.value);
   if (!id) {
-    return encodedPath
+    return decodedPath.encoded
       ? plainTextNotFound(method)
       : errorResponse(
           404,
@@ -738,23 +761,13 @@ export async function handleStoryMarkdownRequest(
         );
   }
 
-  const locale = resolveLocale(request);
-  if ("error" in locale) {
-    return errorResponse(400, "Invalid language", locale.error, method);
-  }
-
-  const shouldNormalizeLocale = locale.legacy;
-  const shouldNormalizeId = id.length > 8;
-  if (shouldNormalizeLocale || shouldNormalizeId) {
-    const target = new URL(request.url);
-    target.pathname = `/api/story/${id.slice(0, 8)}.md`;
-    if (shouldNormalizeLocale) {
-      const canonical = canonicalRequestUrl(request, locale.lang);
-      target.search = canonical.search;
-    } else {
-      target.search = boundedRedirectSearch(target);
-    }
-    return redirectResponse(target, locale.lang, method);
+  const locale = resolveLocale({
+    search: requestUrl.search,
+    cookie: request.headers.get("cookie"),
+    acceptLanguage: request.headers.get("accept-language"),
+  });
+  if (!locale.ok) {
+    return errorResponse(400, "Invalid language", locale.message, method);
   }
 
   if (!db) {
@@ -762,33 +775,26 @@ export async function handleStoryMarkdownRequest(
       503,
       "Story unavailable",
       "The story service is temporarily unavailable.",
-      method
+      method,
+      locale.lang
     );
   }
 
-  let items: FeedItem[];
+  let lookup: StoryLookup;
   try {
-    items = await getStoryCandidates(readSession(db), id, 2);
+    lookup = await lookupStoryForMarkdown(db, id);
   } catch (error) {
     structuredLookupError(error);
     return errorResponse(
       500,
       "Story unavailable",
       "The story could not be loaded right now.",
-      method
-    );
-  }
-  if (items.length > 1) {
-    return errorResponse(
-      409,
-      "Ambiguous story id",
-      "The requested id prefix matches more than one published story; use the full id.",
       method,
       locale.lang
     );
   }
-  const item = items[0];
-  if (!item) {
+
+  if (lookup.status === "not_found") {
     return errorResponse(
       404,
       "Story not found",
@@ -797,6 +803,36 @@ export async function handleStoryMarkdownRequest(
       locale.lang
     );
   }
+  if (lookup.status === "ambiguous_prefix") {
+    return errorResponse(
+      409,
+      "Ambiguous story id",
+      "The requested id prefix matches more than one published story; no canonical redirect was attempted.",
+      method,
+      locale.lang
+    );
+  }
+  if (lookup.status === "ambiguous_full") {
+    return errorResponse(
+      409,
+      "Unsafe story id canonicalization",
+      "The full story id could not be mapped to one unique canonical prefix.",
+      method,
+      locale.lang
+    );
+  }
+
+  if (id.length > 8 || locale.legacy) {
+    const target = canonicalRedirectTarget(requestUrl, id, locale);
+    return redirectResponse(
+      target,
+      locale.lang,
+      method,
+      locale.legacy ? 307 : 308
+    );
+  }
+
+  const item = lookup.item;
 
   const body = renderStoryMarkdown(item, locale.lang);
   if (
@@ -816,12 +852,9 @@ export async function handleStoryMarkdownRequest(
     body,
     200,
     {
-      cacheControl: locale.explicit
-        ? STORY_MARKDOWN_CACHE_CONTROL
-        : STORY_MARKDOWN_PRIVATE_CACHE_CONTROL,
       contentLanguage: storyMarkdownLanguage(item, locale.lang),
-      canonicalUrl: canonicalStoryUrl(item),
-      ...(locale.explicit ? {} : { vary: "Cookie, Accept-Language" }),
+      canonicalUrl: canonicalStoryUrl(item, locale.lang),
+      ...localeCacheControl(requestUrl.search, STORY_MARKDOWN_CACHE_CONTROL),
     },
     method
   );
