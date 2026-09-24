@@ -27,6 +27,13 @@ and [#140](https://github.com/duyet/aidr/issues/140), and media validation is
 tracked by [#145](https://github.com/duyet/aidr/issues/145). Do not call the
 `?lang=` URLs below live until those changes are merged and verified.
 
+**Why no live support in this slice:** the base has no verified `?lang=` route,
+no approved template or editor-generated `rhash`, and no Bot API IV lifecycle
+method; the story page is a summary surface rather than a guaranteed full
+article. Telegram's cache can also serve stale content. This record therefore
+chooses a manual-only path and the normal message/photo fallback, rather than
+claiming a completed EN/VI IV render.
+
 ## URL contract
 
 The current web permalink is a flat `/{8-character-id}` path; category paths,
