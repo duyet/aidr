@@ -27,6 +27,7 @@ import {
   readerCssVars,
   savePrefs,
 } from "../lib/prefs";
+import { routeRobotsMeta } from "../lib/seo";
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
 
@@ -38,14 +39,15 @@ export const Route = createRootRoute({
         routeId: (m as { routeId?: string }).routeId,
       }))
     );
+    const activeMatch = matches[matches.length - 1];
     return {
       meta: [
         { charSet: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1.0" },
-        {
-          name: "robots",
-          content: notFoundOwnsTitle ? "noindex, follow" : "follow, index",
-        },
+        routeRobotsMeta({
+          pathname: activeMatch?.pathname ?? "/",
+          search: activeMatch?._strictSearch,
+        }),
         // Catch-all owns head() + Worker 404 rewrite. Emitting SITE_TITLE
         // here would win over the splat's localized title.
         ...(notFoundOwnsTitle ? [] : [{ title: SITE_TITLE }]),

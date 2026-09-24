@@ -1,4 +1,8 @@
 import {
+  type RouteIndexabilityInput,
+  routeIndexability,
+} from "./route-indexability";
+import {
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_OG_HOME_IMAGE_URL,
@@ -24,6 +28,14 @@ export interface HeadLink {
 export interface HeadTags {
   meta: HeadMeta[];
   links: HeadLink[];
+}
+
+/** Robots meta for the active route and its search/facet state. */
+export function routeRobotsMeta(target: RouteIndexabilityInput): HeadMeta {
+  return {
+    name: "robots",
+    content: routeIndexability(target).robots,
+  };
 }
 
 const SITEMAP_LINK: HeadLink = {

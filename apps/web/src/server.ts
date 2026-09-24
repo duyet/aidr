@@ -15,6 +15,7 @@ import {
 import { readSession } from "./lib/db";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
+import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
 import {
   buildSitemapXml,
   loadSitemapUrls,
@@ -93,11 +94,14 @@ export default {
         return sitemapResponse(buildSitemapXml(staticSitemapUrls()));
       }
     }
-    return handlePublicCors(request, () =>
-      handleSubscribeCors(request, async () =>
-        withHomepageHeaders(
-          request,
-          applyNotFoundHttpStatus(await handler.fetch(request))
+    return withRouteIndexabilityHeaders(
+      request,
+      handlePublicCors(request, () =>
+        handleSubscribeCors(request, async () =>
+          withHomepageHeaders(
+            request,
+            applyNotFoundHttpStatus(await handler.fetch(request))
+          )
         )
       )
     );
