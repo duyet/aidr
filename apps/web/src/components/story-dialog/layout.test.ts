@@ -51,15 +51,19 @@ describe("story dialog responsive layout", () => {
     const styles = readFileSync(join(here, "../../styles.css"), "utf8");
     const root = readFileSync(join(here, "../../routes/__root.tsx"), "utf8");
 
-    expect(root).toContain("viewport-fit=cover");
+    expect(root).not.toContain("viewport-fit=cover");
+    expect(root).toContain("width=device-width, initial-scale=1.0");
     expect(styles).toContain("--story-dialog-inset-top");
     expect(styles).toContain("env(safe-area-inset-top, 0px)");
     expect(styles).toContain("env(safe-area-inset-bottom, 0px)");
-    expect(styles).toContain("max-height: 90vh");
-    expect(styles).toContain("100vh -");
-    expect(styles).toContain("var(--story-dialog-inset-top)");
-    expect(styles).toContain("@supports (height: 1dvh)");
-    expect(styles).toContain("100dvh -");
+
+    const supportsIndex = styles.indexOf("@supports (height: 1dvh)");
+    const fallback = styles.slice(0, supportsIndex);
+    const dynamicViewport = styles.slice(supportsIndex);
+    expect(supportsIndex).toBeGreaterThan(-1);
+    expect(fallback).toContain("90vh -");
+    expect(fallback).not.toContain("100dvh");
+    expect(dynamicViewport).toContain("100dvh -");
     expect(styles).toContain("var(--story-dialog-inset-top)");
     expect(styles).toContain("var(--story-dialog-inset-bottom)");
     expect(styles).toContain("story-dialog-lightbox-panel");
@@ -81,7 +85,7 @@ describe("story dialog responsive layout", () => {
       expect(classes).toContain(activeWidthClass(width));
     }
     expect(styles).toContain("100dvh -");
-    expect(styles).toContain("100vh -");
+    expect(styles).toContain("90vh -");
     expect(styles).toContain("overscroll-behavior: contain");
   });
 
@@ -102,6 +106,8 @@ describe("story dialog responsive layout", () => {
     const detail = readComponent("../StoryDetail.tsx");
     const summary = readComponent("../story/BilingualSummary.tsx");
     const thumb = readComponent("../StoryThumb.tsx");
+    const header = readComponent("DialogHeader.tsx");
+    const phoneMenu = readComponent("../header/PhoneMenu.tsx");
     const lifecycle = readComponent("use-dialog-lifecycle.ts");
 
     expect(dialog).toContain("className={STORY_DIALOG_HEADER_CLASS}");
@@ -114,6 +120,11 @@ describe("story dialog responsive layout", () => {
     expect(thumb).toContain("useDialogLifecycle(onClose, overlayRef)");
     expect(thumb).toContain("tabIndex={-1}");
     expect(thumb).toContain("motion-reduce:transition-none");
+    expect(thumb).not.toContain('","replaceAll":false');
+    expect(thumb).toContain('<X className="h-4 w-4" aria-hidden />');
+    expect(header).toContain('<X className="h-4 w-4" aria-hidden />');
+    expect(phoneMenu).toContain("useDialogLifecycle(onClose, overlayRef)");
+    expect(phoneMenu).not.toContain("document.body.style.overflow");
     expect(lifecycle).toContain("modalStack");
     expect(lifecycle).toContain("inertBackground");
     expect(lifecycle).toContain("focusWithinTopModal");

@@ -209,10 +209,12 @@
   }
 }
 
-/* Full-screen modal sizing. The document opts into viewport-fit=cover;
-   env() adds device safe-area insets, while dvh remains the documented
-   default for browser chrome/keyboard changes when visualViewport is absent.
-   All modal shells and panels inherit the same inset variables. */
+/* Full-screen modal sizing. The app intentionally keeps the browser's
+   default viewport behavior so normal chrome/header/footer surfaces stay
+   protected. env() remains a safe extension point for a future cover-mode
+   opt-in, while dvh tracks browser chrome/keyboard changes when
+   visualViewport is absent. All modal shells and panels inherit the same
+   inset variables. */
 .story-dialog-overlay {
   --story-dialog-inset-top: 1rem;
   --story-dialog-inset-right: 1rem;
@@ -279,9 +281,9 @@
 .story-dialog-panel,
 .story-dialog-lightbox-panel,
 .story-dialog-lightbox-image {
-  max-height: 90vh;
+  /* Reserve 10% for uncertain legacy browser chrome before dynamic dvh. */
   max-height: calc(
-    100vh -
+    90vh -
     var(--story-dialog-inset-top) -
     var(--story-dialog-inset-bottom)
   );

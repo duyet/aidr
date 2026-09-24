@@ -314,6 +314,13 @@ describe("modal lifecycle", () => {
     const lightbox = required<HTMLElement>(
       '[role="dialog"][aria-label="Image"]'
     );
+    const overlay = lightbox.parentElement;
+    if (!overlay) throw new Error("Missing lightbox overlay");
+    const unexpectedTextNodes = Array.from(overlay.childNodes)
+      .filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => node.textContent?.trim())
+      .filter((text): text is string => Boolean(text));
+    expect(unexpectedTextNodes).toEqual([]);
     expect(document.activeElement).toBe(lightbox);
     expect(document.body.style.overflow).toBe("hidden");
 

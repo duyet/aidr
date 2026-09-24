@@ -27,7 +27,6 @@ export function ThumbLightbox({
 
   const overlay = (
     <div ref={overlayRef} className={STORY_DIALOG_LIGHTBOX_OVERLAY_CLASS}>
-      ","replaceAll":false
       <button
         type="button"
         className="absolute inset-0 bg-black/70"
@@ -49,7 +48,7 @@ export function ThumbLightbox({
           aria-label="Close"
           className={`${STORY_DIALOG_CLOSE_BUTTON_CLASS} absolute -top-3 -right-3 z-[1] border border-border bg-background text-foreground shadow`}
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4" aria-hidden />
         </button>
         <img src={src} alt="" className={STORY_DIALOG_LIGHTBOX_IMAGE_CLASS} />
       </div>

@@ -76,7 +76,7 @@ export function DialogHeader({
           aria-label={lang === "vi" ? "Đóng" : "Close"}
           className={`${STORY_DIALOG_CLOSE_BUTTON_CLASS} text-muted-foreground hover:bg-muted hover:text-foreground`}
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4" aria-hidden />
         </button>
       </div>
     </div>

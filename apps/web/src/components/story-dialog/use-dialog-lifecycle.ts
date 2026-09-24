@@ -201,9 +201,10 @@ function registerModal(
   };
 }
 
-/** Modal lifecycle: reference-counts the body lock, contains focus, and lets
- * only the topmost modal handle Escape. The panel is focused on open and the
- * previously active element is restored on close. */
+/** Shared modal lifecycle for PhoneMenu, story dialogs, and lightboxes:
+ * reference-counts the body lock, contains focus, and lets only the topmost
+ * modal handle Escape. The panel is focused on open and the previously active
+ * element is restored on close. */
 export function useDialogLifecycle(
   onClose: () => void,
   containerRef?: RefObject<HTMLElement | null>
