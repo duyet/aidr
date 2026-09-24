@@ -112,10 +112,12 @@ Every decoded key is checked for credential meaning before the safe-key or
 navigation and attribution keys are retained. Basic/Bearer schemes,
 JWT-shaped values, encoded fragments, and compound/nested credential
 assignments are rejected even when hidden inside an otherwise allowlisted
-value. Absolute URLs nested inside safe values are parsed but never fetched:
-userinfo, fragments, sensitive path components, and loopback/private/link-local/
-metadata destinations are rejected, while public URLs remain inert text. The
-same structured query sanitizer is used for redirect queries.
+value. Safe values are trimmed and normalized. Any nested absolute or
+scheme-relative URL syntax is rejected outright after recursive decoding,
+regardless of assignment/query depth or whether its host is public. This
+avoids an unbounded nested-URL graph and preserves no-fetch semantics; only the
+outer source URL itself is parsed and emitted. The same structured query
+sanitizer is used for redirect queries.
 Loopback, private, link-local, metadata, and credential-bearing destinations are
 omitted. Redirect `Location` values and bodies never preserve rejected fields.
 Summaries are capped at 1,200 characters and the complete response is capped at

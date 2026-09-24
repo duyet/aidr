@@ -316,26 +316,19 @@ function compoundValueHasCredential(value: string, depth = 0): boolean {
   return false;
 }
 
-function isSafeQueryValue(value: string): boolean {
-  if (value.includes("#") || compoundValueHasCredential(value)) return false;
-  try {
-    if (/^https?:\/\//i.test(value)) {
-      const nestedUrl = new URL(value);
-      if (
-        nestedUrl.username ||
-        nestedUrl.password ||
-        !nestedUrl.hostname ||
-        nestedUrl.hash ||
-        isBlockedHost(nestedUrl.hostname) ||
-        !safePathname(nestedUrl.pathname)
-      ) {
-        return false;
-      }
-    }
-  } catch {
-    return false;
+/** Reject nested URL syntax at any decoded assignment/query depth. */
+function sanitizeQueryValue(value: string): string | null {
+  const normalized = value.trim();
+  if (
+    normalized.includes("#") ||
+    compoundValueHasCredential(normalized) ||
+    /https?\s*:/i.test(normalized) ||
+    normalized.includes("://") ||
+    /(?:^|[=?&;\s])\/\//u.test(normalized)
+  ) {
+    return null;
   }
-  return true;
+  return normalized;
 }
 
 /** Keep only allowlisted query keys after recursively decoding each component. */
@@ -354,8 +347,10 @@ function sanitizeSearchParams(
     if (decodedKey === null || isCredentialKey(decodedKey)) continue;
     const key = decodedKey.trim().toLowerCase();
     if (!isSafeQueryKey(key)) continue;
-    const value = decodeBoundedComponent(rawValue, maxValueLength);
-    if (value === null || !isSafeQueryValue(value)) continue;
+    const decodedValue = decodeBoundedComponent(rawValue, maxValueLength);
+    if (decodedValue === null) continue;
+    const value = sanitizeQueryValue(decodedValue);
+    if (value === null) continue;
     safe.push([key, value]);
   }
   return safe;

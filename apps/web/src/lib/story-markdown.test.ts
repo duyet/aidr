@@ -194,7 +194,7 @@ describe("story Markdown rendering", () => {
             author: null,
             posted_at: null,
             quote: null,
-            url: "https://example.com/nested?q=https%3A%2F%2Fexample.com%2Farticle%3Fid%3D7",
+            url: "https://example.com/nested?q=https%3A%2F%2Fexample.com%2Fredirect%3Fnext%3Dhttps%253A%252F%252F127.0.0.1%252Fadmin",
           },
           {
             kind: "discussion",
@@ -299,6 +299,27 @@ describe("story Markdown rendering", () => {
             author: null,
             posted_at: null,
             quote: null,
+            url: "https://example.com/?q=redirect%3Dhttps%3A%2F%2F127.0.0.1%2Fadmin",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?q=next%3Dhttps%3A%2F%2Fmetadata.google.internal%2FcomputeMetadata",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
+            url: "https://example.com/?q=%20https%3A%2F%2F127.0.0.1%2Fadmin",
+          },
+          {
+            kind: "source",
+            author: null,
+            posted_at: null,
+            quote: null,
             url: "https://example.com/?q=foo%253DBasic%2520dXNlcjpwYXNz",
           },
           {
@@ -371,9 +392,7 @@ describe("story Markdown rendering", () => {
     expect(body).toContain(
       "https://example.com/keep?utm_source=agent&id=story-42&q=agents"
     );
-    expect(body).toContain(
-      "https://example.com/nested?q=https%3A%2F%2Fexample.com%2Farticle%3Fid%3D7"
-    );
+    expect(body).not.toContain("https://example.com/nested?");
     expect(body).not.toContain("<script>");
     expect(body).not.toContain("javascript:");
     expect(body).not.toContain("127.0.0.1");
@@ -737,7 +756,7 @@ describe("story Markdown route", () => {
 
     const secretRedirect = await handleStoryMarkdownRequest(
       new Request(
-        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&%2561ccess_token=double-redirect-secret&utm_source=agent&utm_medium=email&utm_token=redirect-utm-token&utm_client_secret=redirect-client-secret&utm_signature=redirect-signature-secret&utm%5Ftoken=encoded-redirect-utm-token&utm%25255Fsignature=double-encoded-redirect-signature&note=%2523access_token%3Dfragment-redirect-secret&q=foo%253Daccess_token%253Dcompound-redirect-secret&q=Basic%2520dXNlcjpwYXNz&q=foo%253DeyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqd3Qtc2VjcmV0In0.signature&q=https%3A%2F%2F169.254.169.254%2Flatest&q=agents`
+        `${SITE_URL}/api/story/abcdef12.md?locale=en&access_token=do-not-redirect&%2561ccess_token=double-redirect-secret&utm_source=agent&utm_medium=email&utm_token=redirect-utm-token&utm_client_secret=redirect-client-secret&utm_signature=redirect-signature-secret&utm%5Ftoken=encoded-redirect-utm-token&utm%25255Fsignature=double-encoded-redirect-signature&note=%2523access_token%3Dfragment-redirect-secret&q=foo%253Daccess_token%253Dcompound-redirect-secret&q=Basic%2520dXNlcjpwYXNz&q=foo%253DeyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqd3Qtc2VjcmV0In0.signature&q=https%3A%2F%2F169.254.169.254%2Flatest&q=redirect%3Dhttps%3A%2F%2F127.0.0.1%2Fadmin&q=next%3Dhttps%3A%2F%2Fmetadata.google.internal%2FcomputeMetadata&q=%20https%3A%2F%2F127.0.0.1%2Fadmin&q=https%3A%2F%2Fexample.com%2Fredirect%3Fnext%3Dhttps%253A%252F%252F127.0.0.1%252Fadmin&q=%20agents%20`
       ),
       fakeDb(story())
     );
@@ -756,6 +775,9 @@ describe("story Markdown route", () => {
     expect(secretLocation).not.toContain("encoded-redirect-utm-token");
     expect(secretLocation).not.toContain("double-encoded-redirect-signature");
     expect(secretLocation).not.toContain("169.254.169.254");
+    expect(secretLocation).not.toContain("127.0.0.1");
+    expect(secretLocation).not.toContain("metadata.google.internal");
+    expect(secretLocation).not.toContain("example.com/redirect");
     expect(secretLocation).not.toContain("dXNlcjpwYXNz");
     expect(secretLocation).not.toContain("eyJhbGciOiJIUzI1NiJ9");
     expect(secretBody).not.toContain("do-not-redirect");
@@ -768,6 +790,9 @@ describe("story Markdown route", () => {
     expect(secretBody).not.toContain("encoded-redirect-utm-token");
     expect(secretBody).not.toContain("double-encoded-redirect-signature");
     expect(secretBody).not.toContain("169.254.169.254");
+    expect(secretBody).not.toContain("127.0.0.1");
+    expect(secretBody).not.toContain("metadata.google.internal");
+    expect(secretBody).not.toContain("example.com/redirect");
     expect(secretBody).not.toContain("dXNlcjpwYXNz");
     expect(secretBody).not.toContain("eyJhbGciOiJIUzI1NiJ9");
 
