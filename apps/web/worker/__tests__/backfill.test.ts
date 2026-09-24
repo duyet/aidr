@@ -37,6 +37,7 @@ describe("buildMissingTranslationQuery", () => {
   it("gates on published items missing a non-empty vi title", () => {
     const sql = buildMissingTranslationQuery(15);
     expect(sql).toContain("status = 'published'");
+    expect(sql).toContain("i.source_lang = 'en'");
     expect(sql).not.toMatch(/i\.summary IS NOT NULL AND i\.summary != ''/);
     expect(sql).toContain("NOT EXISTS");
     expect(sql).toContain("lang = 'vi'");

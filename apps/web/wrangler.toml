@@ -58,6 +58,9 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 ANYROUTER_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
 ANYROUTER_TRANSLATE_MODEL = "google/gemini-3.5-flash,anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
 ANYROUTER_TLDR_MODEL = "anyrouter/auto,deepseek/deepseek-v4.1-flash,poolside/laguna-s-2.1,minimax/m3"
+# Explicit generator for the real VI→EN candidate path; source language is
+# persisted as metadata and never inferred by the reviewer.
+ANYROUTER_ENGLISH_TRANSLATE_MODEL = "google/gemini-3.5-flash"
 # Translation semantic review uses only this explicit concrete chain. Keep it
 # disjoint from every generator id; missing/overlapping config fails closed.
 ANYROUTER_REVIEW_MODEL = "x-ai/grok-4.7,z-ai/glm-5.3-flash"

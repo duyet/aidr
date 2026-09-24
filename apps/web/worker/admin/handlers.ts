@@ -8,6 +8,7 @@ import { createD1LlmCallLogger } from "../llm-call-log.js";
 import { forceSendDigest } from "../notify/index.js";
 import { rankScore } from "../ranking.js";
 import { adapters } from "../sources/registry.js";
+import type { SourceLanguage } from "../sources/types.js";
 import { ensureDailyTldr, tldrSnapshotDate } from "../tldr.js";
 import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics } from "../topics.js";
@@ -73,6 +74,7 @@ export interface PushItemInput {
   relevance?: number;
   importance?: number;
   quality?: number;
+  source_lang?: SourceLanguage;
 }
 
 export interface PushItemsResult {
@@ -108,10 +110,14 @@ export async function pushItems(
       typeof item.url !== "string" ||
       item.url.length === 0 ||
       typeof item.title !== "string" ||
-      item.title.length === 0
+      item.title.length === 0 ||
+      (item.source_lang !== undefined &&
+        item.source_lang !== "en" &&
+        item.source_lang !== "vi")
     ) {
       return {
-        error: "each item requires a non-empty url and title",
+        error:
+          "each item requires a non-empty url/title and source_lang must be en or vi",
         status: 400,
       };
     }
@@ -145,8 +151,8 @@ export async function pushItems(
         id, source_id, external_id, url, title, summary,
         published_at, fetched_at, points, comments,
         llm_relevance, llm_importance, llm_quality, category, tags,
-        rank_score, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        rank_score, status, source_lang
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         summary = excluded.summary,
@@ -154,7 +160,8 @@ export async function pushItems(
         comments = excluded.comments,
         category = excluded.category,
         tags = excluded.tags,
-        status = excluded.status`
+        status = excluded.status,
+        source_lang = excluded.source_lang`
     )
       .bind(
         id,
@@ -173,13 +180,17 @@ export async function pushItems(
         item.category ?? null,
         JSON.stringify(item.tags ?? []),
         0,
-        status
+        status,
+        item.source_lang ?? "en"
       )
       .run();
 
     if (item.title_vi) {
       await prepareTranslationUpsert(env.DB, {
         id,
+        lang: "vi",
+        sourceLang: item.source_lang ?? "en",
+        targetLang: "vi",
         title: item.title_vi,
         summary: item.summary_vi ?? null,
       }).run();
@@ -373,6 +384,7 @@ interface ReprocessItemRow {
   points: number | null;
   comments: number | null;
   published_at: number;
+  source_lang: "en" | "vi";
 }
 
 /** Epoch seconds for the start of the current UTC day — matches
@@ -411,7 +423,7 @@ export async function reprocessToday(
 
     const since = startOfTodayUtcSec();
     const { results } = await env.DB.prepare(
-      `SELECT id, title, summary, source_id, points, comments, published_at
+      `SELECT id, title, summary, source_id, points, comments, published_at, source_lang
        FROM items WHERE status = 'published' AND published_at >= ?`
     )
       .bind(since)
@@ -491,6 +503,7 @@ export async function reprocessToday(
           i,
           title: row.title,
           summary: row.summary ?? undefined,
+          sourceLang: row.source_lang === "vi" ? "vi" : "en",
         }))
       );
 
@@ -503,6 +516,9 @@ export async function reprocessToday(
         statements.push(
           prepareTranslationUpsert(env.DB, {
             id: row.id,
+            lang: "vi",
+            sourceLang: row.source_lang === "vi" ? "vi" : "en",
+            targetLang: "vi",
             title: result.title,
             summary: result.summary,
           })

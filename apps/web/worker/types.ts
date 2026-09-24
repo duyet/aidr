@@ -13,6 +13,8 @@ export interface Env {
    *  Fall back to ANYROUTER_MODEL when unset. */
   ANYROUTER_TRANSLATE_MODEL?: string;
   ANYROUTER_TLDR_MODEL?: string;
+  /** Explicit generator chain for creating a real VI→EN candidate. */
+  ANYROUTER_ENGLISH_TRANSLATE_MODEL?: string;
   /** Explicit independent reviewer chain for translation semantic QA. Missing
    *  or overlapping generator ids fail closed; never fall back to the generator. */
   ANYROUTER_REVIEW_MODEL?: string;

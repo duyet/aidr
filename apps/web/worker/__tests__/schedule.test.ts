@@ -94,11 +94,18 @@ describe("live AnyRouter model chains", () => {
     const generators = new Set([
       ...idsOf("ANYROUTER_MODEL"),
       ...idsOf("ANYROUTER_TRANSLATE_MODEL"),
+      ...idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL"),
     ]);
     expect(reviewer.length).toBeGreaterThan(0);
     expect(reviewer).not.toContain("anyrouter/auto");
     for (const model of reviewer)
       expect(generators.has(model), model).toBe(false);
+  });
+
+  it("configures a separate explicit VI→EN generator", () => {
+    expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
+      "google/gemini-3.5-flash",
+    ]);
   });
 
   it("does not hard-code 404/502 flash fallbacks", () => {
@@ -207,6 +214,9 @@ describe("backfill-translate checkpoints", () => {
     expect(workflow).toContain("LLM_STEP");
     expect(workflow).toMatch(/retries:\s*\{\s*limit:\s*0/);
     expect(workflow).toContain("safeStep(");
+    expect(workflow).toContain(
+      "schema missing; apply migrations 0023 and 0025"
+    );
     expect(workflow).toContain('"score"');
     expect(workflow).toContain('"translate"');
     expect(workflow).toContain('"tldr"');

@@ -225,6 +225,7 @@ interface PendingSuggestionRow {
 interface ItemSourceRow {
   title: string;
   summary: string | null;
+  source_lang: "en" | "vi";
 }
 
 interface TranslationRow {
@@ -312,12 +313,17 @@ export async function reviewPendingSuggestions(
   for (const [itemId, suggestions] of byItem) {
     try {
       const item = await env.DB.prepare(
-        "SELECT title, summary FROM items WHERE id = ?"
+        "SELECT title, summary, source_lang FROM items WHERE id = ?"
       )
         .bind(itemId)
         .first<ItemSourceRow>();
       if (!item) {
         // Item vanished (shouldn't happen); leave suggestions pending.
+        continue;
+      }
+      if (item.source_lang === "vi") {
+        // The suggestion rewriter is intentionally EN→VI only. VI-source
+        // candidates are handled by the explicit VI→EN QA pair path.
         continue;
       }
 
@@ -445,6 +451,9 @@ export async function reviewPendingSuggestions(
 
           await prepareTranslationUpsert(env.DB, {
             id: itemId,
+            lang: "vi",
+            sourceLang: "en",
+            targetLang: "vi",
             title: currentTitle,
             summary: currentSummary,
           }).run();
@@ -487,11 +496,14 @@ export async function approveSuggestionById(
   if (!row) return { ok: false, error: "not found or not pending" };
 
   const item = await env.DB.prepare(
-    "SELECT title, summary FROM items WHERE id = ?"
+    "SELECT title, summary, source_lang FROM items WHERE id = ?"
   )
     .bind(row.item_id)
     .first<ItemSourceRow>();
   if (!item) return { ok: false, error: "item not found" };
+  if (item.source_lang === "vi") {
+    return { ok: false, error: "suggestion approval supports EN→VI only" };
+  }
 
   const translation = await env.DB.prepare(
     "SELECT title, summary FROM translations WHERE item_id = ? AND lang = 'vi'"
@@ -530,6 +542,9 @@ export async function approveSuggestionById(
 
   await prepareTranslationUpsert(env.DB, {
     id: row.item_id,
+    lang: "vi",
+    sourceLang: "en",
+    targetLang: "vi",
     title: currentTitle,
     summary: currentSummary,
   }).run();

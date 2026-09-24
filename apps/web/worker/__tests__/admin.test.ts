@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkAuth } from "../admin/auth.js";
+import { adminActor, checkAuth } from "../admin/auth.js";
 import {
   getLlmCalls,
   isHandlerError,
@@ -82,6 +82,20 @@ class FakeD1 {
       return rows[0] ? { id: rows[0].id } : null;
     }
 
+    if (
+      sql.startsWith(
+        "SELECT id, title, summary, source_id, points, comments, published_at, source_lang FROM items"
+      )
+    ) {
+      const [since] = args as [number];
+      return {
+        results: [...this.items.values()].filter(
+          (row) =>
+            row.status === "published" && Number(row.published_at ?? 0) >= since
+        ),
+      };
+    }
+
     if (sql.startsWith("SELECT id FROM items WHERE id = ?")) {
       const [id] = args as [string];
       const row = this.items.get(id);
@@ -107,6 +121,7 @@ class FakeD1 {
         tags,
         rank_score,
         status,
+        source_lang = "en",
       ] = args;
       const existing = this.items.get(id as string);
       const row = {
@@ -127,6 +142,7 @@ class FakeD1 {
         tags,
         rank_score,
         status,
+        source_lang,
       };
       if (existing) {
         Object.assign(existing, {
@@ -137,6 +153,7 @@ class FakeD1 {
           category,
           tags,
           status,
+          source_lang,
         });
       } else {
         this.items.set(id as string, row);
@@ -145,10 +162,12 @@ class FakeD1 {
     }
 
     if (sql.startsWith("INSERT INTO translations")) {
-      const [item_id, title, summary] = args;
-      this.translations.set(`${item_id}:vi`, {
+      const [item_id, lang, source_lang, target_lang, title, summary] = args;
+      this.translations.set(`${item_id}:${lang}`, {
         item_id,
-        lang: "vi",
+        lang,
+        source_lang,
+        target_lang,
         title,
         summary,
       });
@@ -488,6 +507,15 @@ describe("checkAuth", () => {
     });
     expect(checkAuth(req, env)).toBeNull();
   });
+
+  it("returns a stable actor label for queue audit records", async () => {
+    const env = makeEnv();
+    const req = new Request("https://x/", {
+      headers: { Authorization: "Bearer secret-token" },
+    });
+    expect(await adminActor(req, env)).toBe("admin-token");
+    expect(await adminActor(new Request("https://x/"), env)).toBeNull();
+  });
 });
 
 describe("sha256Hex", () => {
@@ -548,10 +576,31 @@ describe("pushItems", () => {
     expect(second.updated).toBe(1);
   });
 
+  it("persists explicit VI source metadata for the reverse review path", async () => {
+    const env = makeEnv();
+    const result = await pushItems(env, {
+      url: "https://example.com/vi-source",
+      title: "Một nguồn tiếng Việt",
+      source_lang: "vi",
+      title_vi: "Một nguồn tiếng Việt",
+    });
+    expect(isHandlerError(result)).toBe(false);
+    const id = await sha256Hex("https://example.com/vi-source");
+    const db = env.DB as unknown as FakeD1;
+    expect(db.items.get(id)?.source_lang).toBe("vi");
+    expect(db.translations.get(`${id}:vi`)?.source_lang).toBe("vi");
+  });
+
   it("rejects items missing url or title", async () => {
     const env = makeEnv();
     const result = await pushItems(env, { url: "", title: "no url" });
     expect(isHandlerError(result)).toBe(true);
+    const invalidLanguage = await pushItems(env, {
+      url: "https://example.com/invalid-language",
+      title: "Invalid language",
+      source_lang: "fr" as "en",
+    });
+    expect(isHandlerError(invalidLanguage)).toBe(true);
   });
 });
 

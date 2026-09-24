@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  adminActor,
   checkAdminAuth,
   checkAdminAuthRateLimit,
   isRequestAdmin,
@@ -38,6 +39,11 @@ import {
   wrapCampaign,
 } from "../../../worker/mail/campaigns.js";
 import { listMailContent } from "../../../worker/mail/content.js";
+import {
+  listTranslationReviewQueue,
+  resolveTranslationReview,
+  type TranslationReviewResolutionAction,
+} from "../../../worker/translation-review-queue.js";
 import type { Env } from "../../../worker/types.js";
 
 async function resolveEnv(context: any): Promise<Env | undefined> {
@@ -94,6 +100,66 @@ async function handle(
 
   const authResponse = await checkAdminAuth(request, env);
   if (authResponse) return authResponse;
+
+  if (
+    method === "GET" &&
+    segments.length === 1 &&
+    segments[0] === "translation-reviews"
+  ) {
+    const url = new URL(request.url);
+    return Response.json(
+      await listTranslationReviewQueue(
+        env,
+        Number(url.searchParams.get("limit") ?? 50)
+      )
+    );
+  }
+
+  if (
+    method === "POST" &&
+    segments.length === 3 &&
+    segments[0] === "translation-reviews" &&
+    segments[2] === "resolve"
+  ) {
+    const actor = await adminActor(request, env);
+    if (!actor)
+      return Response.json({ error: "unauthorized" }, { status: 401 });
+    const { body, error } = await parseJsonBody(request);
+    if (error || !body || typeof body !== "object" || Array.isArray(body)) {
+      return Response.json(
+        { error: error ?? "invalid JSON body" },
+        { status: 400 }
+      );
+    }
+    const input = body as {
+      attemptId?: unknown;
+      action?: unknown;
+      note?: unknown;
+    };
+    let pathAttemptId = "";
+    try {
+      pathAttemptId = decodeURIComponent(segments[1] ?? "");
+    } catch {
+      return Response.json({ error: "invalid attempt id" }, { status: 400 });
+    }
+    if (
+      !pathAttemptId ||
+      (input.action !== "accept_original" && input.action !== "retry") ||
+      typeof input.note !== "string"
+    ) {
+      return Response.json(
+        { error: "attempt id, action, and note are required" },
+        { status: 400 }
+      );
+    }
+    const result = await resolveTranslationReview(env, {
+      attemptId: pathAttemptId,
+      action: input.action as TranslationReviewResolutionAction,
+      actor,
+      note: input.note,
+    });
+    return Response.json(result, { status: result.ok ? 200 : result.status });
+  }
 
   if (method === "POST" && segments.length === 1 && segments[0] === "items") {
     const { body, error } = await parseJsonBody(request);

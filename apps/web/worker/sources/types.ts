@@ -1,3 +1,5 @@
+export type SourceLanguage = "en" | "vi";
+
 export interface FetchedItemSource {
   kind: "source" | "support" | "discussion";
   author?: string;
@@ -16,6 +18,8 @@ export interface FetchedItem {
   comments?: number;
   sources?: FetchedItemSource[];
   imageUrl?: string;
+  /** Explicit source language metadata; never inferred by the QA path. */
+  sourceLang?: SourceLanguage;
 }
 
 export interface SourceAdapter {

@@ -24,17 +24,18 @@ export function buildMissingSummaryQuery(limit = BACKFILL_CONTENT_CAP): string {
 }
 
 /**
- * Published items with no usable Vietnamese title yet. Title-only rows
- * (no English summary) still get a title translation — the UI must not
+ * Published English-source items with no usable Vietnamese title yet. Title-only
+ * rows (no English summary) still get a title translation — the UI must not
  * invent one. Evaluated fresh each run so the same-run content-backfill
  * is picked up without unioning result sets in application code.
  */
 export function buildMissingTranslationQuery(
   limit = BACKFILL_TRANSLATE_CAP
 ): string {
-  return `SELECT i.id, i.title, i.summary FROM items i
+  return `SELECT i.id, i.title, i.summary, i.source_lang FROM items i
           WHERE i.status = 'published'
-          AND NOT EXISTS (
+            AND i.source_lang = 'en'
+            AND NOT EXISTS (
             SELECT 1 FROM translations t
             WHERE t.item_id = i.id AND t.lang = 'vi'
               AND t.title IS NOT NULL AND t.title != ''

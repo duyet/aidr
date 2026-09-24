@@ -129,27 +129,55 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 
 6. **Translate (LLM)** — EN→VI in batches, journalist style (`VI_STYLE`
    system prompt: no parenthetical glosses, no calques, keep technical
-   jargon in English, few-shot anchored). Stored translations then enter a
-   bounded independent semantic-review path in `worker/translation-qa.ts`:
+   jargon in English, few-shot anchored). Every item and translation row
+   carries explicit `source_lang`/`target_lang` metadata; the reviewer never
+   infers direction from Vietnamese diacritics. A Vietnamese source with an
+   explicit `source_lang='vi'` is a real VI→EN pair: the bounded QA runtime can
+   create a missing English candidate with `ANYROUTER_ENGLISH_TRANSLATE_MODEL`,
+   then independently reviews that candidate. The review path lives in
+   `worker/translation-qa.ts`:
 
    - `ANYROUTER_REVIEW_MODEL` (legacy: explicit `ANYROUTER_QA_MODEL`) is
      required. The reviewer chain must be concrete and disjoint from every
      `ANYROUTER_TRANSLATE_MODEL` id; missing/overlapping config fails closed
-     rather than self-reviewing with the generator.
-   - The strict `translation-semantic-v1` JSON verdict scores fidelity,
-     naturalness, and confidence separately. Deterministic number/entity/negation
-     guards can override an optimistic reviewer, while the reviewer also checks
-     omissions, additions, terminology, uncertainty, dates, and units.
+     rather than self-reviewing with the generator. English generation is also
+     explicit and never silently falls back.
+   - The strict `translation-semantic-v2` JSON verdict scores fidelity,
+     naturalness, and confidence separately. Deterministic entity, number,
+     date, unit, polarity, and uncertainty guards can override an optimistic
+     reviewer, alongside omission, addition, and terminology checks. Prompt
+     data is delimiter-escaped and output must be one exact bounded JSON object;
+     prose, fences, duplicate keys, and oversized responses are rejected.
    - Accept requires no hard failure, fidelity/naturalness ≥ 0.7, and
      confidence ≥ 0.6. An EN→VI failure gets at most one generator repair and
-     one independent re-review. VI→EN is cross-check-only; disagreement,
-     abstention, low confidence, malformed output, or exhausted budget goes to
-     `translation_reviews.decision = 'human_review'` and preserves the original.
-   - One run makes at most 6 logical reviewer/generator calls and two model
-     attempts per call. Workflow retries remain zero. D1 records source/candidate
-     SHA-256 hashes, direction, actual models, criteria version, reason, and
-     attempt count; current-candidate marker columns are cleared by translation
-     and known source writers so changed text is reviewed again.
+     one independent re-review. VI→EN failures are not silently substituted;
+     disagreement, abstention, low confidence, malformed output, or exhausted
+     budget becomes an actionable terminal `human_review` state and preserves
+     the original candidate.
+   - `items.source_revision` plus source title/summary content CAS guards every
+     attempt, review marker, and repair write. A source-language/title/summary
+     write increments the revision and invalidates every candidate, including
+     writers that emit no translation. Immutable `translation_review_attempts`
+     rows are separate from leased `translation_review_state`; criteria, prompt,
+     policy, and model fingerprints are part of idempotency. Cross-run failures
+     use exponential backoff and become terminal `human_review` after three
+     attempts.
+   - One run makes at most 6 logical reviewer/generator calls, has a 210-second
+     wall budget, and allows two model attempts per logical call. Workflow
+     retries remain zero. Authenticated operators resolve the queue through
+     `GET /api/admin/translation-reviews` and
+     `POST /api/admin/translation-reviews/:attemptId/resolve`; actor, action,
+     time, and note are persisted.
+   - `pnpm run verify:translation-schema` is a read-only migration gate run by
+     `pnpm run deploy`. A pre-0023/0025 database fails before pending-row
+     queries; it is never reported as zero pending. Apply migrations in order
+     and verify the remote schema before deployment; do not apply them from the
+     QA worker.
+
+   Quality limits: deterministic checks and an independent model review are
+   risk controls, not a human-labeled quality score. There is no claim about
+   translation accuracy, recall, or production quality until an operator-approved
+   EN↔VI evaluation set and metrics are run.
 
 7. **Rank (pure code, `worker/ranking.ts`)** — recomputed for items < 72h:
 
@@ -167,9 +195,10 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 9. **Backfill** — up to 15 older published items missing summary or
    score/tags, and up to 45 missing Vietnamese titles, get
    re-fetched/scored/translated per run until the backlog drains.
-   Translate already skips LLM when the source title is Vietnamese, retries
-   leftover items one-at-a-time after a batch fail, and the VI UI hides
-   the EN badge when the painted title is Vietnamese or `title_vi` exists.
+   Translate skips LLM only when explicit `source_lang='vi'` metadata marks a
+   native source, retries leftover items one-at-a-time after a batch fail, and
+   the VI UI hides the EN badge when the painted title is Vietnamese or
+   `title_vi` exists.
 
 10. **TL;DR (LLM)** — hourly.
 

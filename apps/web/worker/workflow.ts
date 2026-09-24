@@ -60,10 +60,12 @@ import { sendDailyTldr } from "./subscribe/send.js";
 import { reviewPendingSuggestions } from "./suggestions.js";
 import { toEpochSeconds } from "./time.js";
 import { ensureDailyTldr } from "./tldr.js";
-import { looksVietnamese } from "./tldr-lang.js";
 import { captureAndLearnTopics } from "./topic-learning.js";
 import { MAX_MERGED_TOPICS, normalizeTopics, unionTopics } from "./topics.js";
-import { ratePendingTranslations } from "./translation-qa.js";
+import {
+  ratePendingTranslations,
+  TranslationReviewSchemaError,
+} from "./translation-qa.js";
 import type { Env } from "./types.js";
 import {
   ingestRunId,
@@ -360,7 +362,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           // pipeline as anything freshly fetched.
           const { results: pendingNew } = await this.env.DB.prepare(
             `SELECT id, source_id, external_id, url, title, summary,
-                  published_at, points, comments, image_url
+                  published_at, points, comments, image_url, source_lang
            FROM items WHERE status = 'new'`
           ).all<{
             id: string;
@@ -373,6 +375,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             points: number;
             comments: number;
             image_url: string | null;
+            source_lang: "en" | "vi";
           }>();
           for (const row of pendingNew ?? []) {
             const source = sources.find((s) => s.id === row.source_id) ?? {
@@ -393,6 +396,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 points: row.points,
                 comments: row.comments,
                 imageUrl: row.image_url ?? undefined,
+                sourceLang: row.source_lang,
               },
             });
           }
@@ -656,6 +660,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                   i,
                   title: row.item.title,
                   summary: row.item.summary,
+                  sourceLang: row.item.sourceLang ?? "en",
                 }))
               );
               const map = new Map<string, (typeof results)[number]>();
@@ -769,8 +774,9 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 id, source_id, external_id, url, title, summary,
                 published_at, fetched_at, points, comments,
                 llm_relevance, llm_importance, llm_quality, category, tags,
-                rank_score, status, llm_tokens, duplicate_of, image_url
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                rank_score, status, llm_tokens, duplicate_of, image_url,
+                source_lang
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT(id) DO UPDATE SET
                 published_at = excluded.published_at,
                 points = excluded.points,
@@ -785,7 +791,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 status = excluded.status,
                 llm_tokens = excluded.llm_tokens,
                 duplicate_of = excluded.duplicate_of,
-                image_url = excluded.image_url`
+                image_url = excluded.image_url,
+                source_lang = excluded.source_lang`
             ).bind(
               ...buildItemBindArgs({
                 id,
@@ -803,12 +810,12 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
 
           // The translate step can be skipped (empty batch result) or the
           // LLM can omit a field entirely; only insert when both are usable.
-          // Source titles that are already Vietnamese are stored as title_vi
-          // so the homepage does not paint an EN badge on Vietnamese text.
+          // Explicit VI source items are stored as title_vi so the homepage
+          // does not paint an EN badge; no text heuristic chooses direction.
           // Persist VI titles only for published items — rejected/merged
           // rows must not create translations entries (native or LLM).
           const nativeViTitle =
-            !translation?.title && looksVietnamese(item.title)
+            item.sourceLang === "vi" && !translation?.title
               ? {
                   title: item.title.trim(),
                   summary: item.summary?.trim() ?? "",
@@ -827,6 +834,9 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             statements.push(
               prepareTranslationUpsert(this.env.DB, {
                 id,
+                lang: "vi",
+                sourceLang: item.sourceLang ?? "en",
+                targetLang: "vi",
                 title: persisted.title,
                 summary: persisted.summary,
               })
@@ -1083,11 +1093,21 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       const missingTranslations = await safeStep(
         step,
         "backfill-translate-load",
-        [] as { id: string; title: string; summary: string }[],
+        [] as {
+          id: string;
+          title: string;
+          summary: string;
+          source_lang: string;
+        }[],
         async () => {
           const { results } = await this.env.DB.prepare(
             buildMissingTranslationQuery()
-          ).all<{ id: string; title: string; summary: string }>();
+          ).all<{
+            id: string;
+            title: string;
+            summary: string;
+            source_lang: string;
+          }>();
           return results ?? [];
         }
       );
@@ -1120,6 +1140,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                       i,
                       title: row.title,
                       summary: row.summary,
+                      sourceLang: row.source_lang === "vi" ? "vi" : "en",
                     }))
                   );
                   for (const result of translated) {
@@ -1128,6 +1149,9 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                     if (!row || !result.title) continue;
                     await prepareTranslationUpsert(this.env.DB, {
                       id: row.id,
+                      lang: "vi",
+                      sourceLang: row.source_lang === "vi" ? "vi" : "en",
+                      targetLang: "vi",
                       title: result.title,
                       summary: result.summary ?? "",
                     }).run();
@@ -1254,13 +1278,21 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       const qaStats = await safeStep(
         step,
         "qa-translations",
-        { rated: 0, adjusted: 0, tokens: 0 },
+        { rated: 0, adjusted: 0, tokens: 0, error: "" },
         async () => {
           try {
             return await ratePendingTranslations(this.env);
           } catch (error) {
-            console.error("qa-translations step failed:", error);
-            return { rated: 0, adjusted: 0, tokens: 0 };
+            if (error instanceof TranslationReviewSchemaError) {
+              return {
+                rated: 0,
+                adjusted: 0,
+                tokens: 0,
+                error: "schema missing; apply migrations 0023 and 0025",
+              };
+            }
+            console.error("qa-translations step failed");
+            return { rated: 0, adjusted: 0, tokens: 0, error: "review failed" };
           }
         },
         LLM_STEP
@@ -1271,9 +1303,11 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       recordStep(
         steps,
         "qa-translations",
-        qaRated === 0
-          ? "0 pending translations"
-          : `rated ${qaRated} translations, adjusted ${qaAdjusted}`
+        "error" in qaStats && qaStats.error
+          ? qaStats.error
+          : qaRated === 0
+            ? "0 pending translations"
+            : `rated ${qaRated} translations, adjusted ${qaAdjusted}`
       );
 
       const suggestionsStats = await safeStep(

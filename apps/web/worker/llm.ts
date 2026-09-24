@@ -10,7 +10,6 @@ import {
   jevScoreQuestions,
   scoreJudgmentFromJev,
 } from "./systemone.js";
-import { looksVietnamese } from "./tldr-lang.js";
 import type { Env } from "./types.js";
 
 /** 15-item score JSON routinely misses a 25s hang-cap (0 tokens, 100%
@@ -24,6 +23,7 @@ export const TRANSLATE_BATCH_SIZE = 3;
 // on hidden `message.reasoning` before ever emitting `message.content`. A
 // low max_tokens starves the actual answer entirely.
 const MAX_TOKENS = 8192;
+const MAX_STREAM_CONTENT_CHARS = 100_000;
 const CATEGORIES = [
   "Models",
   "Regulation",
@@ -136,9 +136,11 @@ export interface LlmCallLogEntry {
   durationMs: number;
   error: string | null;
   promptChars: number;
-  /** First 2000 chars of the raw response content. Only set on success —
-   * a failed attempt has no usable content to snippet. */
+  /** First 2000 chars of the response for ordinary pipeline tasks. Reviewer
+   * and repair calls mark the entry sensitive and this is suppressed before
+   * any logger receives it. */
   responseSnippet: string | null;
+  sensitive?: boolean;
 }
 
 export type LlmCallLogger = (entry: LlmCallLogEntry) => void | Promise<void>;
@@ -152,6 +154,34 @@ export function setLlmCallLogger(fn: LlmCallLogger | null): void {
   llmCallLogger = fn;
 }
 
+function sanitizeProviderError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const anyrouterStatus = message.match(
+    /anyrouter request failed:\s*(\d{3})/i
+  )?.[1];
+  if (anyrouterStatus) return `anyrouter request failed: ${anyrouterStatus}`;
+  const jevStatus = message.match(
+    /jev(?: systemone)? request failed:\s*(\d{3})/i
+  )?.[1];
+  if (jevStatus) return `jev request failed: ${jevStatus}`;
+  if (/timed out after \d+ms/i.test(message))
+    return "anyrouter request timed out";
+  if (/leftover budget too small/i.test(message))
+    return "anyrouter budget exhausted";
+  if (/chain exhausted/i.test(message)) return "anyrouter chain exhausted";
+  return "anyrouter provider error";
+}
+
+function redactLlmCallEntry(entry: LlmCallLogEntry): LlmCallLogEntry {
+  const sensitive = entry.sensitive === true || entry.task === "review";
+  return {
+    ...entry,
+    error: entry.error ? sanitizeProviderError(entry.error) : null,
+    responseSnippet: sensitive ? null : entry.responseSnippet,
+    sensitive: undefined,
+  };
+}
+
 /** Fire-and-forget: a throwing or rejecting logger must never fail or
  * change the outcome of callAnyrouter/scoreItems/translateItems/generateTldr.
  * Exported so non-chat callers (e.g. the SystemOne decision client) can log
@@ -159,7 +189,7 @@ export function setLlmCallLogger(fn: LlmCallLogger | null): void {
 export function logLlmCall(entry: LlmCallLogEntry): void {
   if (!llmCallLogger) return;
   try {
-    const result = llmCallLogger(entry);
+    const result = llmCallLogger(redactLlmCallEntry(entry));
     if (result && typeof (result as Promise<void>).then === "function") {
       (result as Promise<void>).catch((error) => {
         console.error("llm call logger rejected:", error);
@@ -266,6 +296,8 @@ async function streamCompletion(
     timeoutMs: number;
     signal?: AbortSignal;
     maxTokens?: number;
+    strictOutput?: boolean;
+    maxOutputChars?: number;
   }
 ): Promise<AnyrouterCompletion> {
   const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
@@ -335,8 +367,19 @@ async function streamCompletion(
     sawEvent = true;
     if (isQueued(event)) queued = true;
     const delta = event.choices?.[0]?.delta;
-    if (delta?.content) content += delta.content;
-    if (delta?.reasoning) reasoning += delta.reasoning;
+    const outputLimit = opts.maxOutputChars ?? MAX_STREAM_CONTENT_CHARS;
+    if (delta?.content) {
+      if (content.length + delta.content.length > outputLimit) {
+        throw new Error("anyrouter response exceeded output bound");
+      }
+      content += delta.content;
+    }
+    if (delta?.reasoning) {
+      if (reasoning.length + delta.reasoning.length > outputLimit) {
+        throw new Error("anyrouter response exceeded output bound");
+      }
+      reasoning += delta.reasoning;
+    }
     const usage =
       event.usage ?? event.anyrouter_metadata?.usage ?? event.metadata?.usage;
     if (usage) usageBreakdown = parseUsage(usage);
@@ -349,6 +392,10 @@ async function streamCompletion(
       const { value, done: finished } = await reader.read();
       if (finished) break;
       const text = decoder.decode(value, { stream: true });
+      const outputLimit = opts.maxOutputChars ?? MAX_STREAM_CONTENT_CHARS;
+      if (rawBody.length + text.length > outputLimit) {
+        throw new Error("anyrouter response exceeded output bound");
+      }
       rawBody += text;
       buffer += text;
       let newline = buffer.indexOf("\n");
@@ -368,7 +415,7 @@ async function streamCompletion(
   // Reasoning-model fallback: content came back empty, but the model may
   // have produced the JSON answer inside its `reasoning` field (e.g. right
   // before running out of budget, or because it never separated the two).
-  if (reasoning) {
+  if (reasoning && !opts.strictOutput) {
     const extracted = extractLastJsonObject(reasoning);
     if (extracted) return { content: extracted, ...usageBreakdown };
   }
@@ -457,6 +504,10 @@ async function callAnyrouter(
     /** A 200 with content that fails this check is a model failure so
      *  the next id in the chain can run (e.g. empty sanitize). */
     accept?: (content: string) => boolean;
+    /** Suppress response snippets for prompts that can contain article data. */
+    sensitive?: boolean;
+    strictOutput?: boolean;
+    maxOutputChars?: number;
   } = {}
 ): Promise<AnyrouterCallResult> {
   const task = opts.task ?? "other";
@@ -494,6 +545,8 @@ async function callAnyrouter(
           timeoutMs,
           signal: abort.signal,
           maxTokens: opts.maxTokens,
+          strictOutput: opts.strictOutput,
+          maxOutputChars: opts.maxOutputChars,
         }),
         timeoutMs,
         `anyrouter model ${model}`,
@@ -512,7 +565,10 @@ async function callAnyrouter(
           durationMs: Date.now() - attemptStartedAt,
           error: "anyrouter response failed accept check",
           promptChars,
-          responseSnippet: result.content.slice(0, 2000),
+          responseSnippet: opts.sensitive
+            ? null
+            : result.content.slice(0, 2000),
+          sensitive: opts.sensitive,
         });
         failures.push(`${model}: anyrouter response failed accept check`);
         continue;
@@ -530,13 +586,14 @@ async function callAnyrouter(
         durationMs: Date.now() - attemptStartedAt,
         error: null,
         promptChars,
-        responseSnippet: result.content.slice(0, 2000),
+        responseSnippet: opts.sensitive ? null : result.content.slice(0, 2000),
+        sensitive: opts.sensitive,
       });
       return { ...result, model };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
+      const msg = sanitizeProviderError(error);
       failures.push(`${model}: ${msg}`);
-      console.error(`anyrouter model ${model} failed:`, error);
+      console.error(`anyrouter model ${model} failed: ${msg}`);
       logLlmCall({
         ts: attemptStartedAt,
         task,
@@ -547,9 +604,10 @@ async function callAnyrouter(
         completionTokens: null,
         cachedTokens: null,
         durationMs: Date.now() - attemptStartedAt,
-        error: error instanceof Error ? error.message : String(error),
+        error: msg,
         promptChars,
         responseSnippet: null,
+        sensitive: opts.sensitive,
       });
     }
   }
@@ -852,6 +910,8 @@ export interface TranslateInput {
   i: number;
   title: string;
   summary?: string;
+  /** Explicit source metadata; absent means English for legacy callers. */
+  sourceLang?: "en" | "vi";
 }
 
 export interface TranslateResult {
@@ -987,7 +1047,7 @@ export async function translateItems(
   const needLlm: TranslateInput[] = [];
 
   for (const item of items) {
-    if (looksVietnamese(item.title)) {
+    if (item.sourceLang === "vi") {
       results.push({
         i: item.i,
         title: item.title.trim(),

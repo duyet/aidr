@@ -1,7 +1,13 @@
-import type { FetchedItem, FetchedItemSource } from "./sources/types.js";
+import type {
+  FetchedItem,
+  FetchedItemSource,
+  SourceLanguage,
+} from "./sources/types.js";
 import { toEpochSeconds } from "./time.js";
 
 export const MAX_SOURCES_PER_ITEM = 8;
+/** Keep this explicit when PR #160 appends media_manifest to the same builder. */
+export const ITEM_BIND_ARITY = 21;
 
 /** D1's .bind() rejects `undefined`; coerce any optional/missing value to `null`. */
 export function nn<T>(value: T | null | undefined): T | null {
@@ -61,49 +67,75 @@ export function buildItemBindArgs(args: {
     nn(llmTokens ?? 0),
     nn(duplicateOf),
     nn(item.imageUrl),
+    nn(item.sourceLang ?? "en"),
   ];
 }
 
-/** Pure builder for the `translations` upsert bind args. */
+export const TRANSLATION_BIND_ARITY = 6;
+
+/** Pure builder for the explicit source/target translation upsert args. */
 export function buildTranslationBindArgs(args: {
   id: string;
+  lang?: SourceLanguage;
+  sourceLang?: SourceLanguage;
+  targetLang?: SourceLanguage;
   title: string | null;
   summary: string | null;
 }): unknown[] {
-  return [nn(args.id), nn(args.title), nn(args.summary)];
+  return [
+    nn(args.id),
+    nn(args.lang ?? "vi"),
+    nn(args.sourceLang ?? "en"),
+    nn(args.targetLang ?? "vi"),
+    nn(args.title),
+    nn(args.summary),
+  ];
 }
 
 /** Every candidate write invalidates the previous semantic-review state. The
- *  durable `translation_reviews` history remains, but the current-candidate
- *  marker is cleared so the item becomes eligible for review again. */
-export const TRANSLATION_UPSERT_SQL = `INSERT INTO translations (item_id, lang, title, summary)
-  VALUES (?, 'vi', ?, ?)
+ *  durable attempt history remains, but the current-candidate marker is
+ *  cleared so the item becomes eligible for review again. */
+export const TRANSLATION_UPSERT_SQL = `INSERT INTO translations (
+  item_id, lang, source_lang, target_lang, title, summary
+)
+  VALUES (?, ?, ?, ?, ?, ?)
   ON CONFLICT(item_id, lang) DO UPDATE SET
+    source_lang = excluded.source_lang,
+    target_lang = excluded.target_lang,
     title = excluded.title,
     summary = excluded.summary,
     qa_rating = NULL,
     qa_at = NULL,
     qa_source_hash = NULL,
     qa_candidate_hash = NULL,
+    qa_source_revision = NULL,
     qa_direction = NULL,
     qa_reviewer_model = NULL,
     qa_criteria_version = NULL`;
 
-/** Source edits invalidate the candidate's review even when the candidate text
- *  itself is not rewritten. */
+/** Source edits invalidate every candidate direction, including paths that do
+ *  not emit a translation row. */
 export const TRANSLATION_QA_INVALIDATION_SQL = `UPDATE translations SET
   qa_rating = NULL,
   qa_at = NULL,
   qa_source_hash = NULL,
   qa_candidate_hash = NULL,
+  qa_source_revision = NULL,
   qa_direction = NULL,
   qa_reviewer_model = NULL,
   qa_criteria_version = NULL
-WHERE item_id = ? AND lang = 'vi'`;
+WHERE item_id = ?`;
 
 export function prepareTranslationUpsert(
   db: D1Database,
-  args: { id: string; title: string | null; summary: string | null }
+  args: {
+    id: string;
+    lang?: SourceLanguage;
+    sourceLang?: SourceLanguage;
+    targetLang?: SourceLanguage;
+    title: string | null;
+    summary: string | null;
+  }
 ): D1PreparedStatement {
   return db
     .prepare(TRANSLATION_UPSERT_SQL)
