@@ -6,6 +6,8 @@ aidr / AI;DR monorepo — Cloudflare **Workers** (not Pages) at https://aidr.tod
 
 Read [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md) before changing ingest, ranking, prompts, admin/MCP, or notify surfaces.
 
+Telegram Instant View contract and manual checklist: [`docs/decisions/telegram-instant-view.md`](docs/decisions/telegram-instant-view.md).
+
 ## Deploy
 
 - Worker name: `aidr` (`apps/web/wrangler.toml`)

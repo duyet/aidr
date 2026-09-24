@@ -209,6 +209,11 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       `workflow_runs.stats.notifyReason`.
     - Delivery state (status/attempts/last_error, bounded retries) lives in
       the `notifications` table; links carry `utm_source=telegram`.
+    - The bounded Telegram Instant View decision, locale URLs, field/media
+      gates, and fallback checklist are in
+      [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).
+      IV is not enabled by this document; keep the normal message/photo path
+      until product and operations approve a manual POC.
 
 13. **Review gates (LLM, rating ≥ 0.6)** — user translation suggestions and
     HN-style story submissions are judged (faithfulness / relevance / not
