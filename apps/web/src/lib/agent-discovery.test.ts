@@ -54,6 +54,29 @@ describe("OpenAPI locale contract", () => {
   });
 });
 
+describe("story Markdown discovery", () => {
+  it("documents the versioned endpoint and locale contract", () => {
+    const openapi = openApiDocument() as {
+      paths: Record<
+        string,
+        { get?: { description?: string; responses?: unknown } }
+      >;
+    };
+    const path = openapi.paths["/api/story/{id}.md"];
+    expect(path?.get?.description).toContain("sanitized");
+    expect(path?.get?.responses).toHaveProperty("404");
+    expect(CONSUME_SKILL_MD).toContain("/api/story/{id}.md?lang=vi");
+    expect(CONSUME_SKILL_MD).toContain("never fetches an external `.md` file");
+
+    const card = a2aAgentCard() as {
+      defaultOutputModes: string[];
+      skills: Array<{ id: string }>;
+    };
+    expect(card.defaultOutputModes).toContain("text/markdown");
+    expect(card.skills.map((skill) => skill.id)).toContain("story-markdown");
+  });
+});
+
 describe("a2a + mcp cards", () => {
   it("includes name, version, description, interfaces, skills", () => {
     const card = a2aAgentCard() as Record<string, unknown>;

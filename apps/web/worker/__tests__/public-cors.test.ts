@@ -50,6 +50,9 @@ describe("isPublicApiPath", () => {
     expect(
       isPublicApiPath(new Request("https://aidr.today/api/story/a/b"))
     ).toBe(false);
+    expect(
+      isPublicApiPath(new Request("https://aidr.today/api/story/abcdef12.md"))
+    ).toBe(true);
   });
 
   it("matches /api/extension so the unpacked updater can preflight", () => {

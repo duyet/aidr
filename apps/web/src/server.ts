@@ -40,6 +40,10 @@ import {
   staticSitemapUrls,
 } from "./lib/sitemap";
 import { legacyStoryRedirectPath } from "./lib/slug";
+import {
+  handleStoryMarkdownRequest,
+  isStoryMarkdownPath,
+} from "./lib/story-markdown";
 
 async function resolveEnv(env?: Env): Promise<Env | undefined> {
   if (env?.DB) return env;
@@ -56,6 +60,12 @@ export default {
     const publicFile = await handlePublicAsset(request, env);
     if (publicFile) return publicFile;
     const path = new URL(request.url).pathname;
+    // Keep the bounded, generated story representation ahead of the SPA
+    // catch-all. It never fetches external Markdown; it renders sanitized D1
+    // story data only.
+    if (isStoryMarkdownPath(path)) {
+      return handleStoryMarkdownRequest(request, env?.DB);
+    }
     if (path === "/favicon.ico") {
       // Browsers auto-request /favicon.ico; we only ship /favicon.svg.
       // Redirect instead of 404ing through the SPA shell (console noise).

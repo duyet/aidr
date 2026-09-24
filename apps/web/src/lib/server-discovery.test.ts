@@ -22,6 +22,15 @@ describe("Worker discovery entry", () => {
     expect(src).toContain("legacyStoryRedirectPath");
   });
 
+  it("routes the bounded story Markdown surface before the SPA fallback", () => {
+    const src = readFileSync(join(here, "../server.ts"), "utf8");
+    expect(src).toContain("isStoryMarkdownPath(path)");
+    expect(src).toContain("handleStoryMarkdownRequest(request, env?.DB)");
+    expect(src.indexOf("isStoryMarkdownPath(path)")).toBeLessThan(
+      src.indexOf("return handlePublicCors")
+    );
+  });
+
   it("llms.txt response is non-empty aidr guidance", async () => {
     const res = llmsTxtResponse();
     expect(res.status).toBe(200);

@@ -13,7 +13,7 @@ const CORS = { "access-control-allow-origin": "*" } as const;
 
 export const CONSUME_SKILL_MD = `---
 name: ${SKILL_NAME}
-description: Consume aidr.today as the ranked AI news digest. Use GET /api/public?lang=en or lang=vi for stories and TL;DR; do not scrape HN in parallel.
+description: Consume aidr.today as the ranked AI news digest. Use GET /api/public?lang=en or lang=vi for stories and TL;DR, or GET /api/story/{id}.md?lang=en or lang=vi for a bounded story representation; do not scrape HN in parallel.
 ---
 
 # Consume aidr.today
@@ -28,12 +28,14 @@ Use this skill when an agent needs today's ranked AI news, a bilingual TL;DR, or
 
 - JSON digest (no auth): GET ${SITE_URL}/api/public?lang=en (or \`lang=vi\`)
 - Feed JSON: GET ${SITE_URL}/api/feed?lang=en (or \`lang=vi\`)
+- Story Markdown (bounded, generated from sanitized story data): GET ${SITE_URL}/api/story/{id}.md?lang=en
+- Story Markdown in Vietnamese (English fallback is explicit when translation is missing): GET ${SITE_URL}/api/story/{id}.md?lang=vi
 - HTML feed: ${SITE_URL}/?lang=en (or \`lang=vi\`)
 - MCP (read + admin): POST ${SITE_URL}/api/mcp
 - Docs: ${SITE_URL}/mcp?lang=en
 - OpenAPI: ${SITE_URL}/openapi.json
 
-Prefer GET /api/public?lang=en or \`?lang=vi\` for ids, titles, sources, rank, and TL;DR bullets. The JSON remains bilingual and reports \`available_langs: ["en", "vi"]\`; \`lang\` selects the canonical permalink language.
+Prefer GET /api/public?lang=en or \`?lang=vi\` for ids, titles, sources, rank, and TL;DR bullets. The JSON remains bilingual and reports \`available_langs: ["en", "vi"]\`; \`lang\` selects the canonical permalink language. For one published story, use the versioned Markdown contract at \`/api/story/{id}.md?lang=en\` or \`?lang=vi\`; it includes the canonical story URL, source links, and a bounded summary, and never fetches an external \`.md\` file.
 
 ## Submit
 
@@ -229,6 +231,36 @@ export function openApiDocument(): unknown {
           },
         },
       },
+      "/api/story/{id}.md": {
+        get: {
+          summary: "Bounded agent-readable Markdown for one published story",
+          description:
+            "Generated from sanitized aidr story data; lang is en (default) or vi, with explicit English fallback for missing Vietnamese fields.",
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "string", pattern: "^[0-9a-f]{8,64}$" },
+            },
+            {
+              name: "lang",
+              in: "query",
+              required: false,
+              schema: { type: "string", enum: ["en", "vi"], default: "en" },
+            },
+          ],
+          responses: {
+            "200": {
+              description:
+                "Markdown with versioned frontmatter and source links",
+              content: { "text/markdown": { schema: { type: "string" } } },
+            },
+            "400": { description: "Invalid locale" },
+            "404": { description: "No published story matched the id" },
+          },
+        },
+      },
       "/api/feed": {
         get: {
           summary: "HTML-oriented bilingual feed JSON",
@@ -312,9 +344,15 @@ export function a2aAgentCard(): unknown {
         description:
           "Read the digest and (with admin auth) run ingest over POST /api/mcp.",
       },
+      {
+        id: "story-markdown",
+        name: "Story Markdown",
+        description:
+          "Read one published story as bounded Markdown with canonical and source links at GET /api/story/{id}.md.",
+      },
     ],
     defaultInputModes: ["text/plain", "application/json"],
-    defaultOutputModes: ["application/json"],
+    defaultOutputModes: ["application/json", "text/markdown"],
   };
 }
 
@@ -381,7 +419,7 @@ export async function agentSkillsIndex(): Promise<unknown> {
         name: SKILL_NAME,
         type: "skill-md",
         description:
-          "Consume aidr.today as the ranked AI news digest. Use GET /api/public?lang=en or lang=vi; do not scrape HN in parallel.",
+          "Consume aidr.today as the ranked AI news digest. Use GET /api/public?lang=en or lang=vi, or bounded GET /api/story/{id}.md?lang=en or lang=vi; do not scrape HN in parallel.",
         url: SKILL_PATH,
         digest: await sha256Digest(CONSUME_SKILL_MD),
       },
