@@ -27,7 +27,7 @@ import {
   readerCssVars,
   savePrefs,
 } from "../lib/prefs";
-import { getRouteSearch } from "../lib/route-search";
+import { getRouteSearch, unavailableRouteSearch } from "../lib/route-search";
 import { routeRobotsMeta } from "../lib/seo";
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
@@ -45,7 +45,7 @@ export const Route = createRootRoute({
       try {
         return getRouteSearch();
       } catch {
-        return activeMatch?._strictSearch;
+        return unavailableRouteSearch();
       }
     })();
     const routeStatus =
