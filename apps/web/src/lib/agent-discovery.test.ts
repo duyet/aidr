@@ -64,9 +64,14 @@ describe("story Markdown discovery", () => {
     };
     const path = openapi.paths["/api/story/{id}.md"];
     expect(path?.get?.description).toContain("sanitized");
+    expect(JSON.stringify(openapi.paths["/api/story/{id}.md"])).toContain(
+      '"default":"vi"'
+    );
     expect(path?.get?.responses).toHaveProperty("404");
+    expect(path?.get?.responses).toHaveProperty("409");
     expect(CONSUME_SKILL_MD).toContain("/api/story/{id}.md?lang=vi");
     expect(CONSUME_SKILL_MD).toContain("never fetches an external `.md` file");
+    expect(CONSUME_SKILL_MD).toContain("default Vietnamese");
 
     const card = a2aAgentCard() as {
       defaultOutputModes: string[];

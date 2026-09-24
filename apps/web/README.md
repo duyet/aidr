@@ -71,28 +71,44 @@ GET https://aidr.today/api/story/{id}.md?lang=en
 GET https://aidr.today/api/story/{id}.md?lang=vi
 ```
 
-`{id}` is the 8–64 character lowercase hex id or id prefix used by the JSON
-story route. This is a Worker-owned path served before the SPA catch-all; it is
-not an arbitrary external `.md` fetcher. The response is generated only from the
-published story row already stored in D1.
+`{id}` is an 8–64 character lowercase hex id or id prefix used by the JSON
+story route. The canonical Markdown form is the 8-character prefix: a longer
+id receives a `308` redirect to that prefix, while an ambiguous 8-character
+prefix returns `409`. This is a Worker-owned path served before the SPA
+catch-all; it is not an arbitrary external `.md` fetcher. The response is
+generated only from the published story row already stored in D1.
 
 The `aidr-story-markdown/v1` frontmatter contains `id`, `canonical_url`,
 `title`, `lang`, `requested_lang`, `available_langs`, `translation_fallback`,
-`published_at`, `category`, `topics`, `source_urls`, and a bounded `summary`.
-The body repeats the title and summary and links to the canonical HTML story
-plus safe absolute HTTP(S) source URLs. `lang` defaults to `en`; `lang=vi`
-uses Vietnamese fields when present and records English fallback explicitly
-when a translation is missing. Only `en` and `vi` are accepted; another
-locale returns a Markdown `400`. Summaries are capped at 1,200 characters and
-source links are capped at eight.
+`fallback_fields`, `published_at`, `category`, `topics`, `source_urls`, and a
+bounded `summary`. Vietnamese fields are normalized before availability is
+decided; HTML-only, control-only, whitespace-only, or malformed translations
+fall back per field to English and are named in `fallback_fields`.
+
+Locale selection uses exactly one `lang=en|vi` parameter. A single legacy
+`locale=en|vi` is accepted as a compatibility alias and receives a `308` to
+`lang`; repeated values, both keys together, and unsupported values return a
+Markdown `400`. With no query parameter, precedence is `news_lang` cookie,
+`Accept-Language`, then the product default Vietnamese. Bare/header-selected
+responses are private and `Vary: Cookie, Accept-Language`; an explicit
+canonical `lang` is publicly cacheable. The HTML canonical/hreflang policy is
+owned by the shared locale work in #140; this draft does not introduce a second
+HTML canonical scheme.
+
+Source URLs are limited to absolute HTTP(S), at most 1,024 characters, with
+at most eight output links (and a bounded input scan). Loopback, private,
+link-local, metadata, and credential-bearing hosts/parameters are omitted.
+Summaries are capped at 1,200 characters and the complete response is capped
+at 32 KiB (`413` if a row still exceeds the limit). No source URL is fetched.
 
 Successful `GET`/`HEAD` responses use `text/markdown; charset=utf-8`, public
 cache headers, `X-Content-Type-Options: nosniff`, wildcard CORS, a canonical
 `Link` header, and `X-Robots-Tag: noindex, follow` so the HTML story remains the
-indexable page. Missing or malformed ids return a Markdown `404` with
-`Cache-Control: private, no-store`; `OPTIONS` is a `204` preflight. The current
-`/api/story/{id}` JSON route and `/` permalink remain unchanged, and no root
-`.md` alias is added.
+indexable page. Missing ids and nested invalid paths return a Markdown `404`
+with `Cache-Control: private, no-store`; malformed percent-encoded `.md` paths
+return a plain-text `404` instead of falling through to the SPA. `OPTIONS` is
+a `204` preflight. The current `/api/story/{id}` JSON route and `/` permalink
+remain unchanged, and no root `.md` alias is added.
 
 Hourly ingest is triggered by the `NewsIngestScheduler` Durable Object
 alarm (not a Worker cron) plus GitHub Actions

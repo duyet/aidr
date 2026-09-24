@@ -14,6 +14,9 @@ describe("llmsTxt", () => {
     expect(body).toContain(`${SITE_URL}/api/story/{id}.md?lang=vi`);
     expect(body).toContain("aidr-story-markdown/v1");
     expect(body).toContain("does not fetch arbitrary external `.md` files");
+    expect(body).toContain("news_lang");
+    expect(body).toContain("default Vietnamese");
+    expect(body).toContain("legacy `locale=en|vi` redirects");
     expect(body).toContain(`${SITE_URL}/submit`);
     expect(body).toContain('"via": "agent"');
     expect(body).toContain("item_id");

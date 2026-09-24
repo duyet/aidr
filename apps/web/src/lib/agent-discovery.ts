@@ -30,6 +30,7 @@ Use this skill when an agent needs today's ranked AI news, a bilingual TL;DR, or
 - Feed JSON: GET ${SITE_URL}/api/feed?lang=en (or \`lang=vi\`)
 - Story Markdown (bounded, generated from sanitized story data): GET ${SITE_URL}/api/story/{id}.md?lang=en
 - Story Markdown in Vietnamese (English fallback is explicit when translation is missing): GET ${SITE_URL}/api/story/{id}.md?lang=vi
+- Locale compatibility: one legacy \`locale=en|vi\` redirects to \`lang\`; duplicate/conflicting locale values are rejected. Without a query, cookie/Accept-Language/default Vietnamese selection is private and not edge-cached.
 - HTML feed: ${SITE_URL}/?lang=en (or \`lang=vi\`)
 - MCP (read + admin): POST ${SITE_URL}/api/mcp
 - Docs: ${SITE_URL}/mcp?lang=en
@@ -235,7 +236,7 @@ export function openApiDocument(): unknown {
         get: {
           summary: "Bounded agent-readable Markdown for one published story",
           description:
-            "Generated from sanitized aidr story data; lang is en (default) or vi, with explicit English fallback for missing Vietnamese fields.",
+            "Generated from sanitized aidr story data. Use one exact lang=en|vi query value; the default without a query follows cookie, Accept-Language, then Vietnamese. A single legacy locale value redirects to lang, missing Vietnamese fields fall back explicitly, and source URLs/response size are bounded without fetching them.",
           parameters: [
             {
               name: "id",
@@ -247,7 +248,15 @@ export function openApiDocument(): unknown {
               name: "lang",
               in: "query",
               required: false,
-              schema: { type: "string", enum: ["en", "vi"], default: "en" },
+              schema: { type: "string", enum: ["en", "vi"], default: "vi" },
+            },
+            {
+              name: "locale",
+              in: "query",
+              required: false,
+              deprecated: true,
+              description: "Compatibility alias; one value redirects to lang.",
+              schema: { type: "string", enum: ["en", "vi"] },
             },
           ],
           responses: {
@@ -256,8 +265,15 @@ export function openApiDocument(): unknown {
                 "Markdown with versioned frontmatter and source links",
               content: { "text/markdown": { schema: { type: "string" } } },
             },
-            "400": { description: "Invalid locale" },
+            "308": {
+              description: "Legacy locale or non-canonical id redirect",
+            },
+            "400": { description: "Invalid or conflicting locale" },
             "404": { description: "No published story matched the id" },
+            "409": { description: "Short id prefix is ambiguous" },
+            "413": {
+              description: "Bounded Markdown response exceeded its limit",
+            },
           },
         },
       },
@@ -348,7 +364,7 @@ export function a2aAgentCard(): unknown {
         id: "story-markdown",
         name: "Story Markdown",
         description:
-          "Read one published story as bounded Markdown with canonical and source links at GET /api/story/{id}.md.",
+          "Read one published story as bounded Markdown with canonical and safe source links at GET /api/story/{id}.md; use the 8-character canonical prefix.",
       },
     ],
     defaultInputModes: ["text/plain", "application/json"],
