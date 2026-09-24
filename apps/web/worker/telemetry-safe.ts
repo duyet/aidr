@@ -1,10 +1,23 @@
 /**
- * Redaction helpers for diagnostics that cross the LLM, D1, or admin API
- * boundary.  Article text, prompts, provider response bodies, credentials, and
- * URLs are not telemetry; only bounded classifications belong here.
+ * Sanitisation shared by telemetry writes and public read models.
+ *
+ * LLM/workflow diagnostics are useful when they are structured and short.
+ * They must never become a transport for prompts, provider response bodies,
+ * credentials, or arbitrary URLs, so all error-bearing values are reduced to
+ * a safe code/message before they cross a D1 or API boundary.
  */
 
 const MAX_TEXT_LENGTH = 240;
+const SAFE_ERROR_CODES = new Set([
+  "timeout",
+  "rate_limited",
+  "auth_error",
+  "invalid_response",
+  "not_configured",
+  "provider_error",
+  "unknown_error",
+]);
+
 const SENSITIVE_KEYS = new Set([
   "authorization",
   "apikey",
@@ -12,7 +25,9 @@ const SENSITIVE_KEYS = new Set([
   "body",
   "content",
   "credential",
+  "clientsecret",
   "headers",
+  "href",
   "input",
   "messages",
   "password",
@@ -24,22 +39,20 @@ const SENSITIVE_KEYS = new Set([
   "secret",
   "token",
   "url",
-  "href",
 ]);
 
 function boundedText(value: string, maxLength: number): string {
   const limit = Number.isFinite(maxLength)
     ? Math.max(1, Math.floor(maxLength))
     : MAX_TEXT_LENGTH;
-  const input = value.length > limit * 4 ? value.slice(0, limit * 4) : value;
-  return [...input]
+  const bounded = value.length > limit * 4 ? value.slice(0, limit * 4) : value;
+  const withoutControls = [...bounded]
     .map((char) => {
       const code = char.charCodeAt(0);
       return code < 32 || code === 127 ? " " : char;
     })
-    .join("")
-    .replace(/\s+/g, " ")
-    .trim();
+    .join("");
+  return withoutControls.replace(/\s+/g, " ").trim();
 }
 
 function redactText(value: string): string {
@@ -86,6 +99,7 @@ function redactValue(value: unknown, key = ""): unknown {
   return value;
 }
 
+/** Safe, bounded text for step reasons, notification metadata, and labels. */
 export function sanitizeText(
   value: unknown,
   maxLength = MAX_TEXT_LENGTH
@@ -95,7 +109,8 @@ export function sanitizeText(
   if (!normalized) return null;
   if (/^[{[]/.test(normalized)) {
     try {
-      const redactedJson = JSON.stringify(redactValue(JSON.parse(normalized)));
+      const parsed = JSON.parse(normalized) as unknown;
+      const redactedJson = JSON.stringify(redactValue(parsed));
       if (redactedJson.length <= maxLength) return redactedJson;
       return `${redactedJson.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
     } catch {
@@ -123,62 +138,76 @@ function statusFromError(value: string): number | null {
   return status >= 100 && status <= 599 ? status : null;
 }
 
+/** Classify provider failures without returning the provider's raw message. */
 export function sanitizeError(value: unknown): SafeError | null {
   if (value == null) return null;
   const raw = typeof value === "string" ? value : String(value);
   if (!raw.trim()) return null;
   const lower = raw.toLowerCase();
   const status = statusFromError(raw);
+  let code: string;
+  let message: string;
   if (/\b(?:timeout|timed out|deadline)\b/.test(lower)) {
-    return { message: "Provider request timed out", code: "timeout", status };
-  }
-  if (status === 429 || /\b(?:rate.?limit|too many requests)\b/.test(lower)) {
-    return {
-      message: "Provider rate limit reached",
-      code: "rate_limited",
-      status,
-    };
-  }
-  if (
+    code = "timeout";
+    message = "Provider request timed out";
+  } else if (
+    status === 429 ||
+    /\b(?:rate.?limit|too many requests)\b/.test(lower)
+  ) {
+    code = "rate_limited";
+    message = "Provider rate limit reached";
+  } else if (
     status === 401 ||
     status === 403 ||
     /\b(?:unauthori[sz]ed|forbidden|invalid api key|authentication)\b/.test(
       lower
     )
   ) {
-    return {
-      message: "Provider authentication failed",
-      code: "auth_error",
-      status,
-    };
-  }
-  if (
+    code = "auth_error";
+    message = "Provider authentication failed";
+  } else if (
     /\b(?:response missing|failed accept|invalid response|bad json|unusable)\b/.test(
       lower
     )
   ) {
-    return {
-      message: "Provider returned an invalid response",
-      code: "invalid_response",
-      status,
-    };
-  }
-  if (/\b(?:not configured|no models|model .* not configured)\b/.test(lower)) {
-    return {
-      message: "Provider is not configured",
-      code: "not_configured",
-      status,
-    };
-  }
-  return {
-    message: status
+    code = "invalid_response";
+    message = "Provider returned an invalid response";
+  } else if (
+    /\b(?:not configured|no models|model .* not configured)\b/.test(lower)
+  ) {
+    code = "not_configured";
+    message = "Provider is not configured";
+  } else {
+    code = "provider_error";
+    message = status
       ? `Provider request failed (${status})`
-      : "Provider request failed",
-    code: "provider_error",
-    status,
-  };
+      : "Provider request failed";
+  }
+  return { message, code, status };
 }
 
+export function safeErrorCode(
+  value: unknown,
+  fallback = "unknown_error"
+): string {
+  if (typeof value !== "string") return fallback;
+  const code = value.toLowerCase();
+  return SAFE_ERROR_CODES.has(code) ? code : fallback;
+}
+
+export function safeErrorStatus(value: unknown): number | null {
+  let status: number;
+  try {
+    status = typeof value === "number" ? value : Number(value);
+  } catch {
+    return null;
+  }
+  return Number.isInteger(status) && status >= 100 && status <= 599
+    ? status
+    : null;
+}
+
+/** Convert an arbitrary stats object into a JSON-safe, redacted value. */
 export function sanitizeRunStats(value: unknown): unknown {
   return redactValue(value);
 }
@@ -189,4 +218,8 @@ export function sanitizeRunStatsJson(raw: string): string {
   } catch {
     return "{}";
   }
+}
+
+export function sanitizeRunError(value: unknown): string | null {
+  return sanitizeError(value)?.message ?? null;
 }

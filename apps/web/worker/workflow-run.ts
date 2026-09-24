@@ -1,5 +1,6 @@
 import { nn } from "./d1-bind.js";
 import { buildRunStats, serializeRunStats } from "./run-stats.js";
+import { sanitizeRunError, sanitizeRunStatsJson } from "./telemetry-safe.js";
 
 /** Upsert used by ingest open-run / close-run. ON CONFLICT so a Workflow
  * replay, a JS `finally`, and the durable `close-run` step can all write
@@ -190,8 +191,8 @@ function boundUpsert(db: D1Runner, row: WorkflowRunRecord): D1BoundStatement {
       nn(row.finishedAt),
       nn(row.itemsFetched),
       nn(row.itemsNew),
-      nn(row.error),
-      nn(row.statsJson)
+      nn(sanitizeRunError(row.error)),
+      nn(sanitizeRunStatsJson(row.statsJson))
     );
 }
 

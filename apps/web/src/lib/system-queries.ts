@@ -1,6 +1,14 @@
-import { JEV_DEFAULT_MODEL } from "../../worker/systemone.js";
+import {
+  safeErrorCode,
+  safeErrorStatus,
+  sanitizeError,
+  sanitizeRunStats,
+  sanitizeText,
+} from "../../worker/telemetry-safe.js";
 import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "../../worker/workflow-run.js";
 import type { DbReader } from "./db";
+
+const JEV_DEFAULT_MODEL = "typesafe/jev";
 
 export interface RunStepInfo {
   name: string;
@@ -40,15 +48,17 @@ export interface WorkflowRunRow {
    * rows (or rows on a DB not yet migrated) have no stats — always null
    * in that case, never a partial/guessed object. */
   stats: WorkflowRunStats | null;
-  /** LLM attempts attributed to this run by timestamp window (from
-   * `llm_calls`). Empty when the table is missing or no calls overlap. */
+  /** LLM attempts explicitly tagged with this run id. Empty when identity
+   * is unavailable or no calls are recorded. */
   llm?: RunLlmSummary;
 }
 
 /** One anyrouter attempt from `llm_calls`, including optional usage split
- * from migration 0016. */
+ * from migration 0016 and explicit identity fields from migration 0025. */
 export interface LlmCallRow {
   ts: number;
+  /** Authoritative identity from llm_calls.run_id; never inferred by time. */
+  runId: string | null;
   task: string;
   model: string;
   ok: boolean;
@@ -59,16 +69,18 @@ export interface LlmCallRow {
   completionTokens: number | null;
   cachedTokens: number | null;
   error: string | null;
+  errorCode: string | null;
+  errorStatus: number | null;
 }
 
 export interface RunLlmSummary {
   calls: number;
   failures: number;
   tokens: number;
-  cachedTokens: number;
+  cachedTokens: number | null;
   durationMs: number;
-  /** Distinct models attempted (ok or fail), first-seen order — shows
-   * fallback chains as e.g. anyrouter/auto → google/gemma-4-…. */
+  /** Distinct models attempted (ok or fail), first-seen order. This is a
+   * model inventory, not proof of a fallback transition. */
   models: string[];
   /** Per-attempt rows for the expandable Recent runs detail. */
   attempts: LlmCallRow[];
@@ -99,7 +111,7 @@ function parseRunStats(raw: unknown): WorkflowRunStats | null {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as WorkflowRunStats;
+      return sanitizeRunStats(parsed) as WorkflowRunStats;
     }
     return null;
   } catch {
@@ -178,20 +190,17 @@ function normalizeRunRow(
     finished_at: normalizeTs(row.finished_at),
     items_fetched: row.items_fetched,
     items_new: row.items_new,
-    error: row.error,
+    error: sanitizeError(row.error)?.message ?? null,
     stats: parseRunStats(row.stats),
   };
 }
-
-/** Grace ms after finished_at so trailing log inserts still match. */
-const LLM_RUN_GRACE_MS = 15_000;
 
 function emptyLlmSummary(): RunLlmSummary {
   return {
     calls: 0,
     failures: 0,
     tokens: 0,
-    cachedTokens: 0,
+    cachedTokens: null,
     durationMs: 0,
     models: [],
     attempts: [],
@@ -204,22 +213,28 @@ function summarizeAttempts(
 ): RunLlmSummary {
   const summary = emptyLlmSummary();
   const seenModels = new Set<string>();
+  let cachedKnown = false;
   for (const call of attempts) {
     summary.calls += 1;
     if (!call.ok) summary.failures += 1;
     summary.tokens += call.tokens;
-    summary.cachedTokens += call.cachedTokens ?? 0;
+    if (call.cachedTokens != null) {
+      cachedKnown = true;
+      summary.cachedTokens = (summary.cachedTokens ?? 0) + call.cachedTokens;
+    }
     summary.durationMs += call.durationMs;
     if (!seenModels.has(call.model)) {
       seenModels.add(call.model);
       summary.models.push(call.model);
     }
   }
+  if (!cachedKnown) summary.cachedTokens = null;
   summary.attempts = includeAttempts ? attempts : [];
   return summary;
 }
 
-/** Attribute llm_calls rows to runs by timestamp window. Exported for tests. */
+/** Attribute only calls carrying an explicit matching run id. Timestamps are
+ * used solely to order attempts within that authoritative bucket. */
 export function attachLlmCallsToRuns(
   runs: WorkflowRunRow[],
   calls: LlmCallRow[],
@@ -230,22 +245,8 @@ export function attachLlmCallsToRuns(
   for (const run of runs) buckets.set(run.id, []);
 
   for (const call of calls) {
-    let best: WorkflowRunRow | null = null;
-    let bestSpan = Number.POSITIVE_INFINITY;
-    for (const run of runs) {
-      if (run.started_at == null) continue;
-      const startMs = run.started_at * 1000;
-      const endMs =
-        (run.finished_at ?? Math.floor(Date.now() / 1000)) * 1000 +
-        LLM_RUN_GRACE_MS;
-      if (call.ts < startMs || call.ts > endMs) continue;
-      const span = endMs - startMs;
-      if (span < bestSpan) {
-        bestSpan = span;
-        best = run;
-      }
-    }
-    if (best) buckets.get(best.id)?.push(call);
+    if (!call.runId) continue;
+    buckets.get(call.runId)?.push(call);
   }
 
   return runs.map((run) => {
@@ -346,6 +347,8 @@ const SQL = {
     LEFT JOIN items i ON i.source_id = s.id
     GROUP BY s.id
     ORDER BY s.enabled DESC, item_count DESC, s.name`,
+  // Aggregate time series only; this window is never used to attribute a
+  // call to a workflow run.
   llmCallsPerDay: `SELECT date(ts / 1000, 'unixepoch') AS date,
            task,
            COUNT(*) AS calls,
@@ -405,6 +408,7 @@ function countRunsToday(runs: WorkflowRunRow[]): number {
 
 let llmTokensSupported: boolean | null = null;
 let llmCallsSupported: boolean | null = null;
+let llmRunIdentitySupported: boolean | null = null;
 let runStatsSupported: boolean | null = null;
 
 /** Column/table probes run in parallel once per isolate; each flag caches
@@ -435,6 +439,17 @@ async function probeSystemTables(db: DbReader): Promise<{
   return { hasTokens, hasRunStats, hasLlmCalls };
 }
 
+async function probeLlmRunIdentity(db: DbReader): Promise<boolean> {
+  if (llmRunIdentitySupported != null) return llmRunIdentitySupported;
+  try {
+    await db.prepare("SELECT run_id FROM llm_calls LIMIT 1").all();
+    llmRunIdentitySupported = true;
+  } catch {
+    llmRunIdentitySupported = false;
+  }
+  return llmRunIdentitySupported;
+}
+
 async function loadLlmCallsPerDay(db: DbReader): Promise<LlmDayTaskCount[]> {
   const { results } = await db.prepare(SQL.llmCallsPerDay).all<{
     date: string;
@@ -454,6 +469,7 @@ async function loadLlmCallsPerDay(db: DbReader): Promise<LlmDayTaskCount[]> {
 
 interface LlmCallDbRow {
   ts: number;
+  run_id?: string | null;
   task: string;
   model: string;
   ok: number;
@@ -464,13 +480,22 @@ interface LlmCallDbRow {
   prompt_tokens?: number | null;
   completion_tokens?: number | null;
   cached_tokens?: number | null;
+  error_code?: string | null;
+  error_status?: number | null;
+}
+
+function safeRunId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  return /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value) ? value : null;
 }
 
 function mapLlmCallRow(r: LlmCallDbRow): LlmCallRow {
+  const safeError = sanitizeError(r.error);
   return {
     ts: r.ts,
-    task: r.task,
-    model: r.model,
+    runId: safeRunId(r.run_id),
+    task: sanitizeText(r.task, 80) ?? "other",
+    model: sanitizeText(r.model, 160) ?? "unknown",
     ok: r.ok === 1,
     tokens: r.tokens ?? 0,
     durationMs: r.duration_ms ?? 0,
@@ -478,50 +503,74 @@ function mapLlmCallRow(r: LlmCallDbRow): LlmCallRow {
     promptTokens: r.prompt_tokens ?? null,
     completionTokens: r.completion_tokens ?? null,
     cachedTokens: r.cached_tokens ?? null,
-    error: r.error ?? null,
+    error: safeError?.message ?? null,
+    errorCode:
+      r.error_code != null || safeError
+        ? safeErrorCode(r.error_code, safeError?.code ?? "unknown_error")
+        : null,
+    errorStatus: safeErrorStatus(r.error_status ?? safeError?.status),
   };
 }
 
-/** Recent llm_calls covering a time window (usually the last N workflow
- * runs' span). Newest-first limit so Recent runs keep their detail under
- * high volume. `untilMs` bounds the range for single-run lookups. */
-async function loadRecentLlmCalls(
-  db: DbReader,
-  sinceMs: number,
-  untilMs?: number
-): Promise<LlmCallRow[]> {
-  const mapNewestFirst = (results: LlmCallDbRow[] | null | undefined) =>
-    (results ?? []).map(mapLlmCallRow).reverse();
-  const untilClause = untilMs != null ? " AND ts <= ?" : "";
-  const binds: number[] = untilMs != null ? [sinceMs, untilMs] : [sinceMs];
+const LLM_SELECT_COLUMNS = `ts, run_id, task, model, ok, tokens, duration_ms,
+  prompt_chars, error, prompt_tokens, completion_tokens, cached_tokens,
+  error_code, error_status`;
 
+async function queryLlmCallsByRunId(
+  db: DbReader,
+  where: string,
+  binds: string[]
+): Promise<LlmCallRow[]> {
   try {
     const { results } = await db
       .prepare(
-        `SELECT ts, task, model, ok, tokens, duration_ms, prompt_chars, error,
-                prompt_tokens, completion_tokens, cached_tokens
+        `SELECT ${LLM_SELECT_COLUMNS}
          FROM llm_calls
-         WHERE ts >= ?${untilClause}
-         ORDER BY ts DESC
+         WHERE ${where}
+         ORDER BY ts ASC
          LIMIT 2000`
       )
       .bind(...binds)
       .all<LlmCallDbRow>();
-    return mapNewestFirst(results);
+    return (results ?? []).map(mapLlmCallRow).sort((a, b) => a.ts - b.ts);
   } catch {
-    // Pre-0016 DB without usage columns.
+    // Optional usage/error columns may not exist yet; run_id is required
+    // for attribution and remains in this safe fallback query.
     const { results } = await db
       .prepare(
-        `SELECT ts, task, model, ok, tokens, duration_ms, prompt_chars, error
+        `SELECT ts, run_id, task, model, ok, tokens, duration_ms,
+                prompt_chars, error
          FROM llm_calls
-         WHERE ts >= ?${untilClause}
-         ORDER BY ts DESC
+         WHERE ${where}
+         ORDER BY ts ASC
          LIMIT 2000`
       )
       .bind(...binds)
       .all<LlmCallDbRow>();
-    return mapNewestFirst(results);
+    return (results ?? []).map(mapLlmCallRow).sort((a, b) => a.ts - b.ts);
   }
+}
+
+async function loadLlmCallsForRuns(
+  db: DbReader,
+  runIds: string[]
+): Promise<LlmCallRow[]> {
+  if (runIds.length === 0) return [];
+  const placeholders = runIds.map(() => "?").join(",");
+  return queryLlmCallsByRunId(db, `run_id IN (${placeholders})`, runIds);
+}
+
+async function loadLlmCallsForRun(
+  db: DbReader,
+  runId: string
+): Promise<LlmCallRow[]> {
+  return queryLlmCallsByRunId(db, "run_id = ?", [runId]);
+}
+
+export type RunAttemptsStatus = "ready" | "unavailable";
+export interface RunAttemptsResult {
+  attempts: LlmCallRow[];
+  status: RunAttemptsStatus;
 }
 
 /** Overview tiles + catalog: counts, token headline, run recert, digest
@@ -611,43 +660,48 @@ export async function loadSystemActivity(
   };
 }
 
-/** Last 30 workflow runs with per-run LLM usage attributed by timestamp
- * window. `includeAttempts: false` strips the per-call rows (the bulk of
- * the old 1.2MB payload); /api/system/run-attempts serves them lazily. */
+/** Last 30 workflow runs with only explicitly run-id-attributed LLM usage.
+ * `includeAttempts: false` strips per-call rows; the selected-run endpoint
+ * serves them lazily by id. */
 export async function loadSystemRuns(
   db: DbReader,
   opts: { includeAttempts?: boolean } = {}
 ): Promise<WorkflowRunRow[]> {
-  const { hasRunStats, hasLlmCalls } = await probeSystemTables(db);
+  const [{ hasRunStats, hasLlmCalls }, hasLlmRunIdentity] = await Promise.all([
+    probeSystemTables(db),
+    probeLlmRunIdentity(db),
+  ]);
   const { results } = await db
     .prepare(runsSelectSql(hasRunStats, 30))
     .all<RunDbRow>();
   const runRows = (results ?? []).map(normalizeRunRow);
-  if (!hasLlmCalls || runRows.length === 0) return runRows;
+  if (!hasLlmCalls || !hasLlmRunIdentity || runRows.length === 0)
+    return runRows;
   try {
-    const oldestStart = runRows.reduce<number | null>((min, r) => {
-      if (r.started_at == null) return min;
-      return min == null ? r.started_at : Math.min(min, r.started_at);
-    }, null);
-    const sinceMs =
-      oldestStart != null ? oldestStart * 1000 : Date.now() - 7 * 86400_000;
-    const recentCalls = await loadRecentLlmCalls(db, sinceMs);
-    return attachLlmCallsToRuns(runRows, recentCalls, opts);
+    const calls = await loadLlmCallsForRuns(
+      db,
+      runRows.map((run) => run.id)
+    );
+    return attachLlmCallsToRuns(runRows, calls, opts);
   } catch {
-    // leave runs without llm detail
+    // Leave runs without LLM detail rather than falling back to timestamps.
     return runRows;
   }
 }
 
-/** Per-run LLM call detail for the expandable RunsList row. */
+/** Per-run LLM call detail, keyed only by the authoritative run id. */
 export async function loadRunAttempts(
   db: DbReader,
-  sinceMs: number,
-  untilMs: number
-): Promise<LlmCallRow[]> {
-  const { hasLlmCalls } = await probeSystemTables(db);
-  if (!hasLlmCalls) return [];
-  return loadRecentLlmCalls(db, sinceMs, untilMs);
+  runId: string
+): Promise<RunAttemptsResult> {
+  const [{ hasLlmCalls }, hasLlmRunIdentity] = await Promise.all([
+    probeSystemTables(db),
+    probeLlmRunIdentity(db),
+  ]);
+  if (!hasLlmCalls || !hasLlmRunIdentity) {
+    return { attempts: [], status: "unavailable" };
+  }
+  return { attempts: await loadLlmCallsForRun(db, runId), status: "ready" };
 }
 
 /** Token burn + per-day usage feeding the overview/LLM tabs — one batch. */
@@ -731,7 +785,8 @@ export async function loadSystemStats(
     ANYROUTER_JEV_MODEL?: string;
   } = {}
 ): Promise<SystemStats> {
-  const { hasTokens, hasRunStats, hasLlmCalls } = await probeSystemTables(db);
+  const [{ hasTokens, hasRunStats, hasLlmCalls }, hasLlmRunIdentity] =
+    await Promise.all([probeSystemTables(db), probeLlmRunIdentity(db)]);
 
   const stmts = [
     db.prepare(SQL.itemsCount),
@@ -793,17 +848,16 @@ export async function loadSystemStats(
     } catch {
       llmCallsPerDay = [];
     }
-    try {
-      const oldestStart = runRowsRaw.reduce<number | null>((min, r) => {
-        if (r.started_at == null) return min;
-        return min == null ? r.started_at : Math.min(min, r.started_at);
-      }, null);
-      const sinceMs =
-        oldestStart != null ? oldestStart * 1000 : Date.now() - 7 * 86400_000;
-      const recentCalls = await loadRecentLlmCalls(db, sinceMs);
-      runRows = attachLlmCallsToRuns(runRowsRaw, recentCalls);
-    } catch {
-      // leave runs without llm detail
+    if (hasLlmRunIdentity) {
+      try {
+        const calls = await loadLlmCallsForRuns(
+          db,
+          runRowsRaw.map((run) => run.id)
+        );
+        runRows = attachLlmCallsToRuns(runRowsRaw, calls);
+      } catch {
+        // Leave runs without LLM detail rather than falling back to timestamps.
+      }
     }
   }
 

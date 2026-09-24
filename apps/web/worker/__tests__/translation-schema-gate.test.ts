@@ -99,7 +99,7 @@ describe("translation migration deploy gate", () => {
     ).toThrow("incomplete");
     expect(() =>
       assertRemoteSchemaOutput(
-        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation trg_translations_marker_invalidation media_manifest"
+        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation trg_translations_marker_invalidation media_manifest run_id error_code error_status idx_llm_calls_run_id_ts"
       )
     ).not.toThrow();
   });

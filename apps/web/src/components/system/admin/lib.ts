@@ -37,7 +37,9 @@ export interface LlmCall {
   completion_tokens?: number | null;
   cached_tokens?: number | null;
   error?: string | null;
-  response_snippet?: string | null;
+  error_code?: string | null;
+  error_status?: number | null;
+  run_id?: string | null;
 }
 
 export interface ModerationItem {

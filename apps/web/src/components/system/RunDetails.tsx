@@ -1,16 +1,19 @@
 import { Badge, Skeleton } from "@aidr/ui";
-import { AlertTriangle, ArrowRight, Check, Circle } from "lucide-react";
-import type { ReactNode } from "react";
-import { anyrouterModelUrl } from "../../lib/anyrouter";
+import { AlertTriangle, Check, Circle } from "lucide-react";
+import type { ReactNode, RefObject } from "react";
+import { anyrouterModelUrl, isValidAnyrouterModel } from "../../lib/anyrouter";
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
 import { RunAttemptRows } from "./RunAttemptRows";
 import {
   bySourceSubline,
+  fallbackTransitions,
   formatDuration,
   formatSafeDetail,
   formatSafeError,
   formatTimestamp,
   formatTokenValue,
+  type RunAttemptsState,
+  runStatus,
   safeRunSteps,
   shortModel,
   statusVariant,
@@ -20,8 +23,10 @@ import {
 interface RunDetailsProps {
   run: WorkflowRunRow;
   lang: "en" | "vi";
-  loadingAttempts: boolean;
+  attemptsState: RunAttemptsState;
   attempts: LlmCallRow[];
+  onClose: () => void;
+  triggerRef: RefObject<HTMLButtonElement | null>;
 }
 
 const COPY = {
@@ -37,7 +42,7 @@ const COPY = {
     input: "Input",
     output: "Output",
     cached: "Cached",
-    models: "Models",
+    models: "Models used",
     workflow: "Workflow steps",
     attempts: "LLM attempts",
     noAttempts: "No per-attempt data available.",
@@ -50,6 +55,11 @@ const COPY = {
     error: "Error",
     empty: "Empty",
     unknown: "Unknown",
+    inProgress: "In progress",
+    attemptsLoading: "Loading attempt details…",
+    attemptsUnavailable: "Attempt details are unavailable.",
+    attemptsError: "Could not load attempt details.",
+    attemptsEmpty: "No LLM calls recorded for this run.",
   },
   vi: {
     summary: "Tóm tắt lần chạy",
@@ -76,26 +86,23 @@ const COPY = {
     error: "Lỗi",
     empty: "Trống",
     unknown: "Không rõ",
+    inProgress: "Đang chạy",
+    attemptsLoading: "Đang tải chi tiết lần gọi…",
+    attemptsUnavailable: "Không có chi tiết lần gọi.",
+    attemptsError: "Không thể tải chi tiết lần gọi.",
+    attemptsEmpty: "Không ghi nhận lần gọi LLM cho lần chạy này.",
   },
 } as const;
 
-function statusForRun(
-  run: WorkflowRunRow
-): "ok" | "error" | "empty" | "unknown" {
-  if (run.error) return "error";
-  if (run.items_fetched === 0) return "empty";
-  if (run.items_fetched == null) return "unknown";
-  return "ok";
-}
-
 function statusLabel(
-  status: ReturnType<typeof statusForRun>,
+  status: ReturnType<typeof runStatus>,
   lang: "en" | "vi"
 ): string {
   const copy = COPY[lang];
   if (status === "ok") return copy.ok;
   if (status === "error") return copy.error;
   if (status === "empty") return copy.empty;
+  if (status === "in_progress") return copy.inProgress;
   return copy.unknown;
 }
 
@@ -119,17 +126,25 @@ function ModelLinks({ models }: { models: string[] }) {
           className="inline-flex items-center gap-1"
         >
           {index > 0 ? (
-            <ArrowRight className="h-3 w-3 text-muted-foreground" aria-hidden />
+            <span className="text-muted-foreground" aria-hidden>
+              ·
+            </span>
           ) : null}
-          <a
-            href={anyrouterModelUrl(model)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-accent"
-            title={model}
-          >
-            {shortModel(model)}
-          </a>
+          {isValidAnyrouterModel(model) ? (
+            <a
+              href={anyrouterModelUrl(model)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-accent"
+              title={formatSafeDetail(model, 160)}
+            >
+              {shortModel(formatSafeDetail(model, 160))}
+            </a>
+          ) : (
+            <span title={formatSafeDetail(model, 160)}>
+              {shortModel(formatSafeDetail(model, 160))}
+            </span>
+          )}
         </span>
       ))}
     </div>
@@ -185,26 +200,37 @@ function StepList({ steps }: { steps: ReturnType<typeof safeRunSteps> }) {
 export function RunDetails({
   run,
   lang,
-  loadingAttempts,
+  attemptsState,
   attempts,
+  onClose,
+  triggerRef,
 }: RunDetailsProps) {
   const copy = COPY[lang];
   const llm = run.llm;
   const stats = run.stats;
   const steps = safeRunSteps(stats);
-  const status = statusForRun(run);
+  const status = runStatus(run);
   const source = stats ? bySourceSubline(stats) : null;
   const breakdown = tokenBreakdown(attempts, stats, llm);
-  const failedAttempts = attempts.filter(
-    (attempt) => !attempt.ok && attempt.error
-  );
-  const hasFallback = Boolean(
-    llm && (llm.failures > 0 || llm.models.length > 1)
-  );
+  const failedAttempts = attempts.filter((attempt) => !attempt.ok);
+  const fallback = fallbackTransitions(attempts);
+  const hasFallback = fallback.length > 0;
   const regionLabel = copy.summary;
 
   return (
-    <section className="space-y-3 text-left" aria-label={regionLabel}>
+    <fieldset
+      className="min-w-0 space-y-3 border-0 p-0 text-left"
+      tabIndex={-1}
+      aria-label={regionLabel}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          onClose();
+          triggerRef.current?.focus();
+        }
+      }}
+    >
       <div>
         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {copy.summary}
@@ -221,8 +247,12 @@ export function RunDetails({
           </Detail>
           <Detail label={copy.status}>
             <Badge
-              variant={statusVariant(status === "ok", status === "empty")}
-              className="mt-0.5 px-1.5 py-0 text-[10px] font-normal"
+              variant={statusVariant(status !== "error", status === "empty")}
+              className={`mt-0.5 px-1.5 py-0 text-[10px] font-normal ${
+                status === "in_progress"
+                  ? "border-border bg-muted text-muted-foreground"
+                  : ""
+              }`}
             >
               {statusLabel(status, lang)}
             </Badge>
@@ -274,10 +304,19 @@ export function RunDetails({
                 </p>
               ) : null}
               {hasFallback ? (
-                <p className="break-words">
-                  {copy.fallback}:{" "}
-                  {llm?.models.map(shortModel).join(" → ") ?? "—"}
-                </p>
+                <div className="break-words">
+                  <p>{copy.fallback}:</p>
+                  <ul className="ml-3 list-disc">
+                    {fallback.map((transition) => (
+                      <li
+                        key={`${transition.task}-${transition.from}-${transition.to}`}
+                      >
+                        {transition.task}: {shortModel(transition.from)} →{" "}
+                        {shortModel(transition.to)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ) : null}
               {failedAttempts.length > 0 ? (
                 <ul className="space-y-0.5">
@@ -316,12 +355,27 @@ export function RunDetails({
         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {copy.attempts}
         </p>
-        {loadingAttempts ? (
-          <Skeleton className="h-16 w-full" />
-        ) : (
+        {attemptsState === "loading" ? (
+          <>
+            <Skeleton className="h-16 w-full" />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {copy.attemptsLoading}
+            </p>
+          </>
+        ) : attemptsState === "ready" ? (
           <RunAttemptRows attempts={attempts} lang={lang} />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {attemptsState === "empty"
+              ? copy.attemptsEmpty
+              : attemptsState === "error"
+                ? copy.attemptsError
+                : attemptsState === "unavailable"
+                  ? copy.attemptsUnavailable
+                  : copy.noAttempts}
+          </p>
         )}
       </div>
-    </section>
+    </fieldset>
   );
 }

@@ -24,7 +24,7 @@ export function AdminLlmCalls({ calls }: { calls: LlmCall[] }) {
                 <th className="py-1 pr-2 font-normal text-right tabular-nums">
                   duration
                 </th>
-                <th className="py-1 pr-2 font-normal">error/snippet</th>
+                <th className="py-1 pr-2 font-normal">error / code / status</th>
               </tr>
             </thead>
             <tbody>
@@ -59,15 +59,14 @@ export function AdminLlmCalls({ calls }: { calls: LlmCall[] }) {
                     {call.duration_ms != null ? `${call.duration_ms}ms` : "—"}
                   </td>
                   <td className="py-1 pr-2">
-                    {call.error || call.response_snippet ? (
-                      <details>
-                        <summary className="cursor-pointer text-muted-foreground">
-                          {call.error ? "error" : "snippet"}
-                        </summary>
-                        <pre className="mt-1 max-w-xs overflow-auto whitespace-pre-wrap text-muted-foreground">
-                          {call.error ?? call.response_snippet}
-                        </pre>
-                      </details>
+                    {call.error || call.error_code || call.error_status ? (
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {call.error ?? "—"}
+                        {call.error_code ? ` · ${call.error_code}` : ""}
+                        {call.error_status
+                          ? ` · HTTP ${call.error_status}`
+                          : ""}
+                      </span>
                     ) : (
                       "—"
                     )}

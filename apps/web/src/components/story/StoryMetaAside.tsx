@@ -65,11 +65,12 @@ function StoryTokenTrigger({
       aria-controls={panelId}
       aria-label={storyTokenAriaLabel(lang, expanded, count)}
       title={`${formatStoryTokens(count)} ${unit}`}
-      className="inline-flex items-center gap-1 rounded-sm underline decoration-dotted underline-offset-2 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="inline-flex min-h-8 touch-manipulation items-center gap-1 rounded-sm px-1 underline decoration-dotted underline-offset-2 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       onClick={onToggle}
       onKeyDown={(event) => {
         if (event.key === "Escape" && expanded) {
           event.preventDefault();
+          event.stopPropagation();
           onToggle();
           buttonRef.current?.focus();
         }
@@ -90,19 +91,32 @@ function StoryTokenPanel({
   item,
   lang,
   panelId,
+  buttonRef,
+  onClose,
 }: {
   item: FeedItem;
   lang: Lang;
   panelId: string;
+  buttonRef: RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
 }) {
   const count = storyTokenCount(item.llm_tokens);
   if (count == null || count <= 0) return null;
   const copy = STORY_DETAILS_COPY[lang];
   return (
-    <section
+    <fieldset
       id={panelId}
+      tabIndex={-1}
       aria-label={copy.story}
-      className="mt-2 border-l border-border pl-2 text-[11px] leading-relaxed"
+      className="mt-2 min-w-0 border-0 border-l border-border p-0 pl-2 text-[11px] leading-relaxed"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          onClose();
+          buttonRef.current?.focus();
+        }
+      }}
     >
       <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         {copy.story}
@@ -145,7 +159,7 @@ function StoryTokenPanel({
           {copy.runs}
         </a>
       </p>
-    </section>
+    </fieldset>
   );
 }
 
@@ -241,7 +255,13 @@ export function StoryMetaAside({
           </a>
         </div>
         {showTokenDetails && detailsOpen ? (
-          <StoryTokenPanel item={item} lang={lang} panelId={panelId} />
+          <StoryTokenPanel
+            item={item}
+            lang={lang}
+            panelId={panelId}
+            buttonRef={buttonRef}
+            onClose={() => setOpenDetails(null)}
+          />
         ) : null}
       </div>
     </aside>

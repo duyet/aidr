@@ -1,5 +1,5 @@
 import { Badge } from "@aidr/ui";
-import { anyrouterModelUrl } from "../../lib/anyrouter";
+import { anyrouterModelUrl, isValidAnyrouterModel } from "../../lib/anyrouter";
 import { formatTokens } from "../../lib/format";
 import type { LlmCallRow } from "../../lib/system-queries";
 import { formatMs, formatSafeDetail, formatSafeError } from "./run-format";
@@ -76,15 +76,21 @@ export function RunAttemptRows({
                 </Badge>
               </td>
               <td className="max-w-[12rem] truncate px-2 py-1.5 font-mono text-[11px]">
-                <a
-                  href={anyrouterModelUrl(call.model)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-foreground underline-offset-2 hover:text-accent hover:underline"
-                  title={formatSafeDetail(call.model, 160)}
-                >
-                  {formatSafeDetail(call.model, 160)}
-                </a>
+                {isValidAnyrouterModel(call.model) ? (
+                  <a
+                    href={anyrouterModelUrl(call.model)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-foreground underline-offset-2 hover:text-accent hover:underline"
+                    title={formatSafeDetail(call.model, 160)}
+                  >
+                    {formatSafeDetail(call.model, 160)}
+                  </a>
+                ) : (
+                  <span title={formatSafeDetail(call.model, 160)}>
+                    {formatSafeDetail(call.model, 160)}
+                  </span>
+                )}
               </td>
               <td className="px-2 py-1.5">
                 <Badge
@@ -131,7 +137,17 @@ export function RunAttemptRows({
                 className="max-w-[10rem] truncate px-2 py-1.5 text-muted-foreground"
                 title={formatSafeError(call.error)}
               >
-                {formatSafeError(call.error)}
+                <span>{formatSafeError(call.error)}</span>
+                {call.errorCode ? (
+                  <span className="ml-1 font-mono text-[10px]">
+                    {call.errorCode}
+                  </span>
+                ) : null}
+                {call.errorStatus ? (
+                  <span className="ml-1 font-mono text-[10px]">
+                    HTTP {call.errorStatus}
+                  </span>
+                ) : null}
               </td>
             </tr>
           ))}

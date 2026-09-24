@@ -1,11 +1,11 @@
+import { sanitizeRunStats } from "./telemetry-safe.js";
+
 /**
  * Per-run telemetry persisted as a single JSON column on `workflow_runs`
  * (see migrations/0012_run_stats.sql), so the admin /system dashboard can
  * show a richer breakdown than the existing items_fetched/items_new/error
  * columns without another ALTER TABLE every time a new metric is wanted.
  */
-
-import { sanitizeRunStats } from "./telemetry-safe.js";
 
 /** One step's self-reported explanation of what it did (or didn't do) and
  * why, e.g. `{ name: "dedupe", action: "0 new", reason: "27 already in db" }`.

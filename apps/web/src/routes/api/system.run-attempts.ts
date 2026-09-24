@@ -2,22 +2,28 @@ import { createFileRoute } from "@tanstack/react-router";
 import { systemDb, systemJson } from "../../lib/system-api";
 import { loadRunAttempts } from "../../lib/system-queries";
 
-const MAX_WINDOW_MS = 6 * 3600_000;
+const UUID_RUN_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PREFIXED_RUN_ID_RE = /^[A-Za-z][A-Za-z0-9_-]{0,127}$/;
+
+export function parseRunIdParam(value: string | null): string | null {
+  if (
+    !value ||
+    (!UUID_RUN_ID_RE.test(value) && !PREFIXED_RUN_ID_RE.test(value))
+  ) {
+    return null;
+  }
+  return value;
+}
 
 export const Route = createFileRoute("/api/system/run-attempts")({
   server: {
     handlers: {
       GET: async ({ request, context }: { request: Request; context: any }) => {
         const url = new URL(request.url);
-        const since = Number(url.searchParams.get("since"));
-        const until = Number(url.searchParams.get("until"));
-        if (
-          !Number.isFinite(since) ||
-          !Number.isFinite(until) ||
-          until <= since ||
-          until - since > MAX_WINDOW_MS
-        ) {
-          return Response.json({ error: "bad window" }, { status: 400 });
+        const runId = parseRunIdParam(url.searchParams.get("run_id"));
+        if (!runId) {
+          return Response.json({ error: "run_id required" }, { status: 400 });
         }
         const db = await systemDb(context);
         if (!db) {
@@ -27,12 +33,7 @@ export const Route = createFileRoute("/api/system/run-attempts")({
           );
         }
         try {
-          const attempts = await loadRunAttempts(
-            db,
-            since,
-            Math.min(until, Date.now() + 60_000)
-          );
-          return systemJson({ attempts });
+          return systemJson(await loadRunAttempts(db, runId));
         } catch (e) {
           console.error("system/run-attempts:", e);
           return Response.json({ error: "query failed" }, { status: 500 });

@@ -218,7 +218,11 @@ class FakeD1 {
       };
     }
 
-    if (sql.startsWith("SELECT * FROM llm_calls ORDER BY ts DESC LIMIT ?")) {
+    if (
+      sql.startsWith("SELECT * FROM llm_calls ORDER BY ts DESC LIMIT ?") ||
+      (sql.includes("FROM llm_calls") &&
+        sql.includes("ORDER BY ts DESC LIMIT ?"))
+    ) {
       const [limit] = args as [number];
       return {
         results: [...this.llmCalls]
@@ -734,6 +738,30 @@ describe("getLlmCalls", () => {
 
     const result = await getLlmCalls(env, "10000");
     expect(result.calls).toHaveLength(500);
+  });
+
+  it("redacts diagnostics and omits response snippets", async () => {
+    const env = makeEnv();
+    (env.DB as unknown as FakeD1).llmCalls.push({
+      ts: 1,
+      task: "score",
+      model: "test-model",
+      ok: 0,
+      tokens: 0,
+      duration_ms: 5,
+      error: "Bearer sk-live-secret https://provider.test/raw",
+      prompt_chars: 100,
+      response_snippet: "raw provider response",
+    });
+
+    const result = await getLlmCalls(env);
+    expect(result.calls[0]).toMatchObject({
+      error: "Provider request failed",
+      error_code: "provider_error",
+    });
+    expect(result.calls[0]).not.toHaveProperty("response_snippet");
+    expect(JSON.stringify(result)).not.toContain("sk-live-secret");
+    expect(JSON.stringify(result)).not.toContain("raw provider response");
   });
 
   it("falls back to the default for a non-numeric limit", async () => {

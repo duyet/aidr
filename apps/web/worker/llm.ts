@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import {
   collectBulletItemIds,
   extractBracketItemIds,
@@ -126,6 +127,8 @@ export type LlmTask =
  * attempts before a fallback succeeded. */
 export interface LlmCallLogEntry {
   ts: number;
+  /** Authoritative workflow/operation identity; never inferred by readers. */
+  runId?: string | null;
   task: LlmTask;
   model: string;
   ok: boolean;
@@ -145,6 +148,12 @@ export interface LlmCallLogEntry {
 export type LlmCallLogger = (entry: LlmCallLogEntry) => void | Promise<void>;
 
 let llmCallLogger: LlmCallLogger | null = null;
+const llmCallContext = new AsyncLocalStorage<string | null>();
+
+/** Keeps concurrent workflow/admin operations attached to their own run id. */
+export function withLlmCallContext<T>(runId: string, callback: () => T): T {
+  return llmCallContext.run(runId, callback);
+}
 
 /** Installs (or clears, via `null`) the sink for `llm_calls` log entries.
  * Call sites never await this logger and never let it affect behavior —
@@ -192,8 +201,11 @@ export function redactLlmCallEntry(entry: LlmCallLogEntry): LlmCallLogEntry {
  * to the same `llm_calls` observability table. */
 export function logLlmCall(entry: LlmCallLogEntry): void {
   if (!llmCallLogger) return;
+  const contextualEntry = llmCallContext.getStore()
+    ? { ...entry, runId: llmCallContext.getStore() ?? entry.runId }
+    : entry;
   try {
-    const result = llmCallLogger(redactLlmCallEntry(entry));
+    const result = llmCallLogger(redactLlmCallEntry(contextualEntry));
     if (result && typeof (result as Promise<void>).then === "function") {
       (result as Promise<void>).catch((error) => {
         console.error(

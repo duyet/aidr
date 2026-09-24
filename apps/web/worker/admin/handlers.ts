@@ -3,13 +3,23 @@ import {
   prepareTranslationUpsert,
 } from "../d1-bind.js";
 import { tickIngest } from "../ingest-schedule.js";
-import { scoreItems, setLlmCallLogger, translateItems } from "../llm.js";
+import {
+  scoreItems,
+  setLlmCallLogger,
+  translateItems,
+  withLlmCallContext,
+} from "../llm.js";
 import { createD1LlmCallLogger } from "../llm-call-log.js";
 import { forceSendDigest } from "../notify/index.js";
 import { rankScore } from "../ranking.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
-import { sanitizeError } from "../telemetry-safe.js";
+import {
+  safeErrorCode,
+  safeErrorStatus,
+  sanitizeError,
+  sanitizeRunStats,
+} from "../telemetry-safe.js";
 import { ensureDailyTldr, tldrSnapshotDate } from "../tldr.js";
 import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics } from "../topics.js";
@@ -286,6 +296,26 @@ export async function triggerIngest(env: Env, opts: { force?: boolean } = {}) {
   return result;
 }
 
+function sanitizeAdminRunRow(
+  row: Record<string, unknown>
+): Record<string, unknown> {
+  let stats = row.stats;
+  try {
+    const parsed = typeof stats === "string" ? JSON.parse(stats) : stats;
+    stats =
+      typeof parsed === "string"
+        ? parsed
+        : JSON.stringify(sanitizeRunStats(parsed));
+  } catch {
+    stats = "{}";
+  }
+  return {
+    ...row,
+    error: sanitizeError(row.error)?.message ?? null,
+    stats,
+  };
+}
+
 export async function getStatus(env: Env) {
   const { results: runs } = await env.DB.prepare(
     "SELECT * FROM workflow_runs ORDER BY started_at DESC LIMIT 10"
@@ -302,12 +332,20 @@ export async function getStatus(env: Env) {
       `SELECT channel, item_id, status, attempts, last_error, posted_at
        FROM notifications ORDER BY posted_at DESC LIMIT 20`
     ).all();
-    notifications = results ?? [];
+    notifications = (results ?? []).map((row) => {
+      const record = row as Record<string, unknown>;
+      return {
+        ...record,
+        last_error: sanitizeError(record.last_error)?.message ?? null,
+      };
+    });
   } catch {
     notifications = [];
   }
   return {
-    runs: runs ?? [],
+    runs: (runs ?? []).map((row) =>
+      sanitizeAdminRunRow(row as Record<string, unknown>)
+    ),
     itemsByStatus: itemsByStatus ?? [],
     telegram: {
       configured: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
@@ -323,7 +361,15 @@ export async function listNotifications(env: Env) {
       `SELECT channel, item_id, target, status, attempts, message_id, last_error, posted_at
        FROM notifications ORDER BY posted_at DESC LIMIT 50`
     ).all();
-    return { notifications: results ?? [] };
+    return {
+      notifications: (results ?? []).map((row) => {
+        const record = row as Record<string, unknown>;
+        return {
+          ...record,
+          last_error: sanitizeError(record.last_error)?.message ?? null,
+        };
+      }),
+    };
   } catch {
     return { notifications: [] };
   }
@@ -355,30 +401,53 @@ const MAX_LLM_CALLS_LIMIT = 500;
  * query string, so it's parsed defensively: anything non-numeric or <= 0
  * falls back to the default, and the result is always capped.
  */
+function sanitizeAdminLlmCall(
+  row: Record<string, unknown>
+): Record<string, unknown> {
+  const safe = sanitizeError(row.error);
+  const { response_snippet: _responseSnippet, ...rest } = row;
+  const sanitized: Record<string, unknown> = {
+    ...rest,
+    error: safe?.message ?? null,
+    error_code:
+      row.error_code != null || safe
+        ? safeErrorCode(row.error_code, safe?.code ?? "unknown_error")
+        : null,
+    error_status: safeErrorStatus(row.error_status ?? safe?.status),
+  };
+  if ("id" in row && "response_snippet" in row) {
+    sanitized.response_snippet = null;
+  }
+  return sanitized;
+}
+
 export async function getLlmCalls(env: Env, limitParam?: string | null) {
   const parsed = limitParam ? Number(limitParam) : Number.NaN;
   const limit =
     Number.isFinite(parsed) && parsed > 0
       ? Math.min(Math.floor(parsed), MAX_LLM_CALLS_LIMIT)
       : DEFAULT_LLM_CALLS_LIMIT;
-  const { results } = await env.DB.prepare(
-    "SELECT * FROM llm_calls ORDER BY ts DESC LIMIT ?"
-  )
-    .bind(limit)
-    .all();
-  return {
-    calls: (results ?? []).map((row) => {
-      const record = row as Record<string, unknown>;
-      const safeError = sanitizeError(record.error);
-      return {
-        ...record,
-        error: safeError?.message ?? null,
-        // Never expose stored provider output, even for legacy rows written
-        // before translation/review calls were marked sensitive.
-        response_snippet: null,
-      };
-    }),
-  };
+  let results: Record<string, unknown>[];
+  try {
+    const response = await env.DB.prepare(
+      `SELECT ts, run_id, task, model, ok, tokens, duration_ms, prompt_chars,
+              error, error_code, error_status, prompt_tokens,
+              completion_tokens, cached_tokens
+       FROM llm_calls ORDER BY ts DESC LIMIT ?`
+    )
+      .bind(limit)
+      .all<Record<string, unknown>>();
+    results = response.results ?? [];
+  } catch {
+    const response = await env.DB.prepare(
+      `SELECT ts, task, model, ok, tokens, duration_ms, prompt_chars, error
+       FROM llm_calls ORDER BY ts DESC LIMIT ?`
+    )
+      .bind(limit)
+      .all<Record<string, unknown>>();
+    results = response.results ?? [];
+  }
+  return { calls: results.map(sanitizeAdminLlmCall) };
 }
 
 export interface ReprocessInput {
@@ -410,6 +479,12 @@ function startOfTodayUtcSec(): number {
   return Math.floor(Date.UTC(...splitUtcDate(new Date())) / 1000);
 }
 
+/** Admin operations get an explicit telemetry id but never masquerade as an
+ * ingest `workflow_runs.id`; run-history queries therefore cannot mix them in. */
+function operationRunId(prefix: string): string {
+  return `${prefix}-${crypto.randomUUID()}`;
+}
+
 function splitUtcDate(d: Date): [number, number, number] {
   return [d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()];
 }
@@ -435,7 +510,10 @@ export async function reprocessToday(
     const steps = input.steps ?? ["score", "translate"];
     const doScore = steps.includes("score");
     const doTranslate = steps.includes("translate");
+    const operationId = operationRunId("reprocess");
 
+    // The operation id is supplied by the explicit async context below, not
+    // as a global fallback that could tag an unrelated concurrent call.
     setLlmCallLogger(createD1LlmCallLogger(env));
 
     const since = startOfTodayUtcSec();
@@ -452,14 +530,16 @@ export async function reprocessToday(
     let tokens = 0;
 
     if (doScore && items.length > 0) {
-      const scoreResults = await scoreItems(
-        env,
-        items.map((row, i) => ({
-          i,
-          title: row.title,
-          summary: row.summary ?? undefined,
-          source: row.source_id,
-        }))
+      const scoreResults = await withLlmCallContext(operationId, () =>
+        scoreItems(
+          env,
+          items.map((row, i) => ({
+            i,
+            title: row.title,
+            summary: row.summary ?? undefined,
+            source: row.source_id,
+          }))
+        )
       );
 
       const rawTagsByItem = new Map<string, string[]>();
@@ -471,10 +551,8 @@ export async function reprocessToday(
         scoreByItemId.set(row.id, result);
       }
       const nowMs = Date.now();
-      const canonicalTagsByItem = await normalizeTopics(
-        env,
-        rawTagsByItem,
-        nowMs
+      const canonicalTagsByItem = await withLlmCallContext(operationId, () =>
+        normalizeTopics(env, rawTagsByItem, nowMs)
       );
       await captureAndLearnTopics(env.DB, canonicalTagsByItem, nowMs);
 
@@ -514,14 +592,16 @@ export async function reprocessToday(
     }
 
     if (doTranslate && items.length > 0) {
-      const translateResults = await translateItems(
-        env,
-        items.map((row, i) => ({
-          i,
-          title: row.title,
-          summary: row.summary ?? undefined,
-          sourceLang: row.source_lang === "vi" ? "vi" : "en",
-        }))
+      const translateResults = await withLlmCallContext(operationId, () =>
+        translateItems(
+          env,
+          items.map((row, i) => ({
+            i,
+            title: row.title,
+            summary: row.summary ?? undefined,
+            sourceLang: row.source_lang === "vi" ? "vi" : "en",
+          }))
+        )
       );
 
       const statements: D1PreparedStatement[] = [];
@@ -685,12 +765,16 @@ export interface TldrRegenerateResult {
  * adds a duplicate.
  */
 export async function regenerateTldr(env: Env): Promise<TldrRegenerateResult> {
+  const operationId = operationRunId("tldr");
+  // Keep the sink unscoped; the explicit context below carries this id.
   setLlmCallLogger(createD1LlmCallLogger(env));
   const date = tldrSnapshotDate();
   await env.DB.prepare("DELETE FROM tldr_snapshots WHERE date = ?")
     .bind(date)
     .run();
-  const result = await ensureDailyTldr(env);
+  const result = await withLlmCallContext(operationId, () =>
+    ensureDailyTldr(env)
+  );
   await writeAudit(
     env,
     "tldr.regenerate",

@@ -1,3 +1,4 @@
+import { sanitizeText } from "../../../worker/telemetry-safe.js";
 import { formatTokens } from "../../lib/format";
 import type {
   LlmCallRow,
@@ -73,22 +74,7 @@ export function formatTokenValue(value: number | null | undefined): string {
  * control characters turn the disclosure into an unsafe/sensitive payload dump.
  */
 export function formatSafeDetail(value: unknown, maxLength = 240): string {
-  if (typeof value !== "string" || !value.trim()) return "—";
-  const limit = Number.isFinite(maxLength)
-    ? Math.max(1, Math.floor(maxLength))
-    : 240;
-  // Bound the input before normalization so a provider body cannot turn a
-  // small disclosure into an unbounded client-side string operation.
-  const bounded = value.length > limit * 4 ? value.slice(0, limit * 4) : value;
-  const withoutControls = [...bounded]
-    .map((char) => {
-      const code = char.charCodeAt(0);
-      return code < 32 || code === 127 ? " " : char;
-    })
-    .join("");
-  const normalized = withoutControls.replace(/\s+/g, " ").trim();
-  if (normalized.length <= limit) return normalized;
-  return `${normalized.slice(0, limit - 1).trimEnd()}…`;
+  return sanitizeText(value, maxLength) ?? "—";
 }
 
 export function formatSafeError(value: unknown): string {
@@ -155,6 +141,53 @@ export function hasRunDetails(
   );
 }
 
+export type RunStatus = "ok" | "error" | "empty" | "in_progress" | "unknown";
+
+export function runStatus(run: WorkflowRunRow): RunStatus {
+  if (run.error) return "error";
+  if (run.started_at != null && run.finished_at == null) return "in_progress";
+  if (run.items_fetched === 0) return "empty";
+  if (run.items_fetched == null) return "unknown";
+  return "ok";
+}
+
+export interface FallbackTransition {
+  task: string;
+  from: string;
+  to: string;
+}
+
+/** Derive fallback only from a real failed→successful transition in one task. */
+export function fallbackTransitions(
+  attempts: LlmCallRow[]
+): FallbackTransition[] {
+  const byTask = new Map<string, LlmCallRow[]>();
+  for (const attempt of attempts) {
+    const list = byTask.get(attempt.task) ?? [];
+    list.push(attempt);
+    byTask.set(attempt.task, list);
+  }
+  const transitions: FallbackTransition[] = [];
+  for (const [task, taskAttempts] of byTask) {
+    const failedModels: string[] = [];
+    for (const attempt of [...taskAttempts].sort((a, b) => a.ts - b.ts)) {
+      if (!attempt.ok) {
+        if (attempt.model && !failedModels.includes(attempt.model)) {
+          failedModels.push(attempt.model);
+        }
+        continue;
+      }
+      for (const from of failedModels) {
+        if (from !== attempt.model) {
+          transitions.push({ task, from, to: attempt.model });
+        }
+      }
+      failedModels.length = 0;
+    }
+  }
+  return transitions;
+}
+
 export function nextOpenId(
   currentId: string | null,
   id: string
@@ -176,6 +209,68 @@ export function runDisclosureLabel(
   return expanded ? "Hide run details" : "Show run details";
 }
 
+export type RunAttemptsState =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "empty"
+  | "unavailable"
+  | "error";
+
+export interface NormalizedRunTokens {
+  total: number | null;
+  cached: number | null;
+  source: "llm" | "attempts" | "stats" | "unknown";
+}
+
+function sumTokenValues(
+  attempts: LlmCallRow[],
+  field: "tokens" | "cachedTokens"
+): number | null {
+  let total: number | null = null;
+  for (const attempt of attempts) {
+    const value = attempt[field];
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      total = (total ?? 0) + value;
+    }
+  }
+  return total;
+}
+
+/** One normalization path for compact and expanded token totals. */
+export function normalizeRunTokens(
+  stats: WorkflowRunStats | null | undefined,
+  llm?: RunLlmSummary,
+  attempts: LlmCallRow[] = []
+): NormalizedRunTokens {
+  if (llm && llm.calls > 0) {
+    return {
+      total: Number.isFinite(llm.tokens) && llm.tokens >= 0 ? llm.tokens : null,
+      cached:
+        typeof llm.cachedTokens === "number" && llm.cachedTokens >= 0
+          ? llm.cachedTokens
+          : sumTokenValues(attempts, "cachedTokens"),
+      source: "llm",
+    };
+  }
+  const attemptTotal = sumTokenValues(attempts, "tokens");
+  if (attemptTotal != null) {
+    return {
+      total: attemptTotal,
+      cached: sumTokenValues(attempts, "cachedTokens"),
+      source: "attempts",
+    };
+  }
+  if (
+    typeof stats?.tokens === "number" &&
+    Number.isFinite(stats.tokens) &&
+    stats.tokens >= 0
+  ) {
+    return { total: stats.tokens, cached: null, source: "stats" };
+  }
+  return { total: null, cached: null, source: "unknown" };
+}
+
 export interface TokenBreakdown {
   total: number | null;
   input: number | null;
@@ -189,27 +284,26 @@ export function tokenBreakdown(
   stats: WorkflowRunStats | null | undefined,
   llm?: RunLlmSummary
 ): TokenBreakdown {
-  const total =
-    llm && llm.calls > 0
-      ? llm.tokens
-      : typeof stats?.tokens === "number"
-        ? stats.tokens
-        : null;
+  const normalized = normalizeRunTokens(stats, llm, attempts);
   let input: number | null = null;
   let output: number | null = null;
-  let cached: number | null = null;
   for (const attempt of attempts) {
-    if (attempt.promptTokens != null) {
+    if (typeof attempt.promptTokens === "number" && attempt.promptTokens >= 0) {
       input = (input ?? 0) + attempt.promptTokens;
     }
-    if (attempt.completionTokens != null) {
+    if (
+      typeof attempt.completionTokens === "number" &&
+      attempt.completionTokens >= 0
+    ) {
       output = (output ?? 0) + attempt.completionTokens;
     }
-    if (attempt.cachedTokens != null) {
-      cached = (cached ?? 0) + attempt.cachedTokens;
-    }
   }
-  return { total, input, output, cached };
+  return {
+    total: normalized.total,
+    input,
+    output,
+    cached: normalized.cached,
+  };
 }
 
 export interface ExtraBadge {
@@ -256,6 +350,5 @@ export function llmTokens(
   stats: WorkflowRunStats | null,
   llm?: RunLlmSummary
 ): number {
-  if (llm && llm.tokens > 0) return llm.tokens;
-  return stats?.tokens ?? 0;
+  return normalizeRunTokens(stats, llm).total ?? 0;
 }

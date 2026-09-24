@@ -31,7 +31,7 @@ describe("RunRow disclosure affordance", () => {
         lang: "en",
         maxDuration: 60,
         expanded: false,
-        loadingAttempts: false,
+        attemptsState: "ready",
         attempts: [],
         onToggle: () => undefined,
       })
@@ -42,6 +42,58 @@ describe("RunRow disclosure affordance", () => {
     expect(html).toContain('aria-controls="run-details-run-1"');
     expect(html).toContain('aria-label="Show run details · 500 tokens"');
     expect(html).not.toContain("Workflow steps");
+  });
+
+  it("renders an open run with a neutral in-progress status", () => {
+    const html = renderToStaticMarkup(
+      createElement(RunRow, {
+        run: {
+          ...run,
+          started_at: 1_700_000_000,
+          finished_at: null,
+          items_fetched: 0,
+        },
+        lang: "en",
+        maxDuration: 60,
+        expanded: false,
+        attemptsState: "idle",
+        attempts: [],
+        onToggle: () => undefined,
+      })
+    );
+
+    expect(html).toContain("running");
+    expect(html).toContain("bg-muted text-muted-foreground");
+    expect(html).not.toContain("bg-amber-500/10");
+    expect(html).not.toContain("bg-destructive");
+  });
+
+  it("distinguishes an unavailable lookup from an empty attempt set", () => {
+    const errorHtml = renderToStaticMarkup(
+      createElement(RunRow, {
+        run,
+        lang: "en",
+        maxDuration: 60,
+        expanded: true,
+        attemptsState: "error",
+        attempts: [],
+        onToggle: () => undefined,
+      })
+    );
+    const emptyHtml = renderToStaticMarkup(
+      createElement(RunRow, {
+        run,
+        lang: "en",
+        maxDuration: 60,
+        expanded: true,
+        attemptsState: "empty",
+        attempts: [],
+        onToggle: () => undefined,
+      })
+    );
+
+    expect(errorHtml).toContain("Could not load attempt details.");
+    expect(emptyHtml).toContain("No LLM calls recorded for this run.");
   });
 
   it("shows real run details without leaking provider payloads", () => {
@@ -71,10 +123,11 @@ describe("RunRow disclosure affordance", () => {
         lang: "en",
         maxDuration: 60,
         expanded: true,
-        loadingAttempts: false,
+        attemptsState: "ready",
         attempts: [
           {
             ts: 1_700_000_010_000,
+            runId: "run/1",
             task: "score",
             model: "anyrouter/auto",
             ok: false,
@@ -85,6 +138,8 @@ describe("RunRow disclosure affordance", () => {
             completionTokens: 0,
             cachedTokens: 0,
             error: "prompt: secret prompt text",
+            errorCode: "provider_error",
+            errorStatus: null,
           },
         ],
         onToggle: () => undefined,
@@ -99,7 +154,7 @@ describe("RunRow disclosure affordance", () => {
     expect(html).toContain("Input");
     expect(html).toContain("Output");
     expect(html).toContain("Cached");
-    expect(html).toContain("Fallback chain");
+    expect(html).toContain("Models used");
     expect(html).toContain("anyrouter request failed: 502");
     expect(html).toContain("prompt: [redacted]");
     expect(html).not.toContain("secret prompt text");

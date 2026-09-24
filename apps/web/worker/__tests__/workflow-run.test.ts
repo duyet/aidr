@@ -57,6 +57,39 @@ describe("persistWorkflowRun", () => {
     expect(bind).toHaveBeenCalledWith("wf-1", 100, 200, 3, 1, null, "{}");
     expect(run).toHaveBeenCalledOnce();
   });
+
+  it("sanitizes run errors and nested stats before binding to D1", async () => {
+    const run = vi.fn().mockResolvedValue({ success: true });
+    const bind = vi.fn().mockReturnValue({ run, first: vi.fn() });
+    const prepare = vi.fn().mockReturnValue({ bind });
+
+    await persistWorkflowRun(
+      { prepare },
+      {
+        id: "wf-sensitive",
+        startedAt: 100,
+        finishedAt: 200,
+        itemsFetched: 1,
+        itemsNew: 1,
+        error: "Bearer sk-live-secret https://provider.test/raw timed out",
+        statsJson: JSON.stringify({
+          steps: [{ name: "notify", action: "skip", reason: "token=secret" }],
+          notifyReason: { email: { response: "raw", maxRank: 3 } },
+        }),
+      }
+    );
+
+    const args = bind.mock.calls[0] as unknown[];
+    expect(args[5]).toBe("Provider request timed out");
+    const stats = JSON.parse(args[6] as string);
+    expect(stats.steps[0].reason).toBe("token: [redacted]");
+    expect(stats.notifyReason.email).toEqual({
+      response: "[redacted]",
+      maxRank: 3,
+    });
+    expect(JSON.stringify(args)).not.toContain("sk-live-secret");
+    expect(JSON.stringify(args)).not.toContain("provider.test");
+  });
 });
 
 describe("jsonMap", () => {

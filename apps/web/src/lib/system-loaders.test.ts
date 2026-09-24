@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
  *
  * - every section's reads go through a single db.batch() (statements
  *   awaited outside batch are sequential round-trips — only probes and
- *   the parameterized llm_calls window query are allowed there), and
+ *   explicit run-id LLM lookups are allowed there), and
  * - optional columns/tables behind later migrations (items.llm_tokens,
  *   workflow_runs.stats, llm_calls) degrade to empty sections instead of
  *   aborting the whole batch — a D1 batch fails wholesale on one bad
@@ -80,11 +80,12 @@ const RUN_ROW = {
   stats: '{"bySource":{"hn":3},"tokens":120}',
 };
 
-/** llm_calls stores newest-first (ORDER BY ts DESC); the loader reverses
- * to chronological. */
+/** llm_calls stores newest-first; the explicit run-id query orders it
+ * chronologically for the selected run. */
 const LLM_CALL_ROWS_NEWEST_FIRST = [
   {
     ts: 1_700_000_030_000,
+    run_id: "run-1",
     task: "score",
     model: "anyrouter/auto",
     ok: 0,
@@ -92,12 +93,15 @@ const LLM_CALL_ROWS_NEWEST_FIRST = [
     duration_ms: 4000,
     prompt_chars: 100,
     error: "timeout",
+    error_code: "timeout",
+    error_status: null,
     prompt_tokens: null,
     completion_tokens: null,
     cached_tokens: null,
   },
   {
     ts: 1_700_000_010_000,
+    run_id: "run-1",
     task: "score",
     model: "anyrouter/auto",
     ok: 1,
@@ -237,7 +241,7 @@ describe("loadSystemRuns", () => {
       "FROM workflow_runs ORDER BY": {
         all: () => ({ results: [RUN_ROW] }),
       },
-      "ORDER BY ts DESC": {
+      "run_id IN": {
         all: () => ({ results: LLM_CALL_ROWS_NEWEST_FIRST }),
       },
     });
@@ -260,9 +264,9 @@ describe("loadSystemRuns", () => {
     // default payload (run-attempts serves it lazily on expand).
     expect(llm?.attempts).toEqual([]);
 
-    // The calls window is bounded by the oldest run's start.
-    const windowBind = binds.find((b) => b.sql.includes("ORDER BY ts DESC"));
-    expect(windowBind?.args).toEqual([RUN_ROW.started_at * 1000]);
+    // Attribution is by explicit run id, never by a timestamp window.
+    const runBind = binds.find((b) => b.sql.includes("run_id IN"));
+    expect(runBind?.args).toEqual(["run-1"]);
   });
 
   it("attaches chronological attempt rows when includeAttempts is true", async () => {
@@ -278,7 +282,8 @@ describe("loadSystemRuns", () => {
     expect(attempts?.[0]?.promptTokens).toBe(80);
     expect(attempts?.[0]?.cachedTokens).toBe(10);
     expect(attempts?.[1]?.ok).toBe(false);
-    expect(attempts?.[1]?.error).toBe("timeout");
+    expect(attempts?.[1]?.error).toBe("Provider request timed out");
+    expect(attempts?.[1]?.errorCode).toBe("timeout");
   });
 
   it("returns plain runs when llm_calls does not exist yet", async () => {
@@ -298,8 +303,8 @@ describe("loadSystemRuns", () => {
 
     expect(runs[0]?.id).toBe("run-1");
     expect(runs[0]?.llm).toBeUndefined();
-    // The failed probe also skips the window query entirely.
-    expect(directAlls.some((s) => s.includes("ORDER BY ts DESC"))).toBe(false);
+    // The failed probe also skips the identity query entirely.
+    expect(directAlls.some((s) => s.includes("run_id IN"))).toBe(false);
   });
 
   it("degrades to plain runs when the llm window query fails", async () => {
@@ -307,7 +312,7 @@ describe("loadSystemRuns", () => {
     // Probe succeeds (table exists) but both window SELECTs fail —
     // llm detail is best-effort and must not 500 the runs endpoint.
     const { db } = makeDb({
-      "ORDER BY ts DESC": {
+      "run_id IN": {
         all: () => {
           throw new Error("deadline exceeded");
         },
@@ -324,41 +329,49 @@ describe("loadSystemRuns", () => {
 });
 
 describe("loadRunAttempts", () => {
-  const SINCE = 1_700_000_000_000;
-  const UNTIL = 1_700_000_100_000;
+  const RUN_ID = "run-1";
 
-  it("returns chronological attempts bound to the requested window", async () => {
+  it("returns chronological attempts bound only to the requested run id", async () => {
     const q = await freshQueries();
     const { db, binds } = makeDb({
-      "ORDER BY ts DESC": {
+      "run_id = ?": {
         all: () => ({ results: LLM_CALL_ROWS_NEWEST_FIRST }),
       },
     });
 
-    const attempts = await q.loadRunAttempts(db, SINCE, UNTIL);
+    const result = await q.loadRunAttempts(db, RUN_ID);
 
-    expect(attempts.map((a) => a.ts)).toEqual([
+    expect(result.status).toBe("ready");
+    expect(result.attempts.map((a) => a.ts)).toEqual([
       1_700_000_010_000, 1_700_000_030_000,
     ]);
-    const windowBind = binds.find((b) => b.sql.includes("AND ts <= ?"));
-    expect(windowBind?.args).toEqual([SINCE, UNTIL]);
+    const runBind = binds.find((b) => b.sql.includes("run_id = ?"));
+    expect(runBind?.args).toEqual([RUN_ID]);
+    expect(runBind?.sql).not.toContain("ts >=");
+    expect(runBind?.sql).not.toContain("ts <=");
   });
 
-  it("answers [] without querying when llm_calls is not migrated", async () => {
+  it("reports unavailable without querying when identity is not migrated", async () => {
     const q = await freshQueries();
     const { db, directAlls } = makeDb({
       "ts FROM llm_calls LIMIT 1": {
+        all: () => ({ results: [] }),
+      },
+      "run_id FROM llm_calls LIMIT 1": {
         all: () => {
-          throw new Error("no such table: llm_calls");
+          throw new Error("no such column: run_id");
         },
       },
     });
 
-    expect(await q.loadRunAttempts(db, SINCE, UNTIL)).toEqual([]);
-    expect(directAlls.some((s) => s.includes("ORDER BY ts DESC"))).toBe(false);
+    expect(await q.loadRunAttempts(db, RUN_ID)).toEqual({
+      attempts: [],
+      status: "unavailable",
+    });
+    expect(directAlls.some((s) => s.includes("run_id = ?"))).toBe(false);
   });
 
-  it("falls back to the pre-0016 column set when usage columns are missing", async () => {
+  it("falls back to the pre-0016 usage column set when usage columns are missing", async () => {
     const q = await freshQueries();
     const { db } = makeDb({
       // First SELECT (with prompt_tokens etc.) fails on a pre-0016 DB;
@@ -368,11 +381,12 @@ describe("loadRunAttempts", () => {
           throw new Error("no such column: prompt_tokens");
         },
       },
-      "ORDER BY ts DESC": {
+      "run_id = ?": {
         all: () => ({
           results: [
             {
               ts: 1_700_000_010_000,
+              run_id: RUN_ID,
               task: "score",
               model: "anyrouter/auto",
               ok: 1,
@@ -386,10 +400,10 @@ describe("loadRunAttempts", () => {
       },
     });
 
-    const attempts = await q.loadRunAttempts(db, SINCE, UNTIL);
-    expect(attempts).toHaveLength(1);
-    expect(attempts[0]?.tokens).toBe(5);
-    expect(attempts[0]?.promptTokens).toBeNull();
+    const result = await q.loadRunAttempts(db, RUN_ID);
+    expect(result.attempts).toHaveLength(1);
+    expect(result.attempts[0]?.tokens).toBe(5);
+    expect(result.attempts[0]?.promptTokens).toBeNull();
   });
 });
 

@@ -3,6 +3,7 @@ import type { WorkflowRunStats } from "../../lib/system-queries";
 import {
   bySourceSubline,
   extraBadges,
+  fallbackTransitions,
   formatDuration,
   formatDurationSec,
   formatMs,
@@ -14,8 +15,10 @@ import {
   hasRunDetails,
   llmTokens,
   nextOpenId,
+  normalizeRunTokens,
   runDetailsId,
   runDisclosureLabel,
+  runStatus,
   safeRunSteps,
   shortModel,
   statusVariant,
@@ -248,6 +251,7 @@ describe("safe run detail formatting", () => {
 describe("tokenBreakdown", () => {
   const attempt = {
     ts: 1_700_000_000_000,
+    runId: "run-1",
     task: "score",
     model: "anyrouter/auto",
     ok: true,
@@ -258,15 +262,72 @@ describe("tokenBreakdown", () => {
     completionTokens: 40,
     cachedTokens: 10,
     error: null,
+    errorCode: null,
+    errorStatus: null,
   };
 
   it("sums only the selected run's attributed usage", () => {
     expect(tokenBreakdown([attempt], { tokens: 999 }, undefined)).toEqual({
-      total: 999,
+      total: 100,
       input: 60,
       output: 40,
       cached: 10,
     });
+  });
+
+  it("uses the same normalized total for compact and expanded views", () => {
+    expect(normalizeRunTokens({ tokens: 120 }, undefined, [attempt])).toEqual({
+      total: 100,
+      cached: 10,
+      source: "attempts",
+    });
+    expect(normalizeRunTokens({ tokens: 120 }, undefined)).toEqual({
+      total: 120,
+      cached: null,
+      source: "stats",
+    });
+  });
+
+  it("derives fallback only from failed→successful attempts in the same task", () => {
+    const failed = {
+      ...attempt,
+      ok: false,
+      tokens: 0,
+      model: "anyrouter/auto",
+      error: "timeout",
+      errorCode: "timeout",
+    };
+    const successful = {
+      ...attempt,
+      model: "google/gemini",
+      tokens: 20,
+      promptTokens: 10,
+      completionTokens: 10,
+      cachedTokens: 0,
+    };
+    expect(fallbackTransitions([failed, successful])).toEqual([
+      { task: "score", from: "anyrouter/auto", to: "google/gemini" },
+    ]);
+    expect(
+      fallbackTransitions([
+        { ...attempt, task: "score", model: "score/model" },
+        { ...attempt, task: "translate", model: "translate/model" },
+      ])
+    ).toEqual([]);
+  });
+
+  it("marks an open run as in progress rather than empty", () => {
+    expect(
+      runStatus({
+        started_at: 100,
+        finished_at: null,
+        items_fetched: 0,
+        items_new: 0,
+        error: null,
+        id: "open",
+        stats: null,
+      })
+    ).toBe("in_progress");
   });
 
   it("leaves optional usage unknown instead of turning it into zero", () => {
@@ -283,6 +344,6 @@ describe("tokenBreakdown", () => {
         null,
         undefined
       )
-    ).toEqual({ total: null, input: null, output: null, cached: null });
+    ).toEqual({ total: 100, input: null, output: null, cached: null });
   });
 });

@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
 import { useHorizontalScroll } from "../../lib/use-horizontal-scroll";
 import { RunRow } from "./RunRow";
+import type { RunAttemptsState } from "./run-format";
 import { formatDurationSec, hasRunDetails, nextOpenId } from "./run-format";
 
 interface RunsListProps {
@@ -18,33 +19,49 @@ export function RunsList({ runs, lang }: RunsListProps) {
   const [attemptsByRun, setAttemptsByRun] = useState<
     Record<string, LlmCallRow[]>
   >({});
-  const [loadingRunId, setLoadingRunId] = useState<string | null>(null);
+  const [attemptsStateByRun, setAttemptsStateByRun] = useState<
+    Record<string, RunAttemptsState>
+  >({});
 
   const toggleRun = (r: WorkflowRunRow, expanded: boolean) => {
     if (!hasRunDetails(r)) return;
     setOpenId(nextOpenId(openId, r.id));
+    // Also fetch when the list summary is unavailable: the endpoint can
+    // distinguish an empty run from a database/identity lookup failure.
     if (expanded) return;
-    if (!(r.llm && r.llm.calls > 0)) return;
-    if (r.id in attemptsByRun || (r.llm.attempts?.length ?? 0) > 0) return;
-    if (r.started_at == null) return;
-    setLoadingRunId(r.id);
-    const since = r.started_at * 1000;
-    const until =
-      (r.finished_at ?? Math.floor(Date.now() / 1000)) * 1000 + 15_000;
-    fetch(`/api/system/run-attempts?since=${since}&until=${until}`)
-      .then((res) =>
-        res.ok ? (res.json() as Promise<{ attempts?: LlmCallRow[] }>) : null
-      )
-      .then((res) => {
-        const attempts = res?.attempts;
-        if (Array.isArray(attempts)) {
-          setAttemptsByRun((m) => ({ ...m, [r.id]: attempts }));
-        }
+    if (r.id in attemptsByRun || (r.llm?.attempts?.length ?? 0) > 0) return;
+    setAttemptsStateByRun((current) => ({ ...current, [r.id]: "loading" }));
+    fetch(`/api/system/run-attempts?run_id=${encodeURIComponent(r.id)}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("attempt lookup failed");
+        return (await res.json()) as {
+          attempts?: LlmCallRow[];
+          status?: "ready" | "unavailable";
+        };
       })
-      .catch(() => {})
-      .finally(() =>
-        setLoadingRunId((current) => (current === r.id ? null : current))
-      );
+      .then((res) => {
+        if (res.status === "unavailable") {
+          setAttemptsStateByRun((current) => ({
+            ...current,
+            [r.id]: "unavailable",
+          }));
+          return;
+        }
+        const attempts = res.attempts;
+        if (!Array.isArray(attempts))
+          throw new Error("invalid attempt response");
+        setAttemptsByRun((current) => ({ ...current, [r.id]: attempts }));
+        setAttemptsStateByRun((current) => ({
+          ...current,
+          [r.id]: attempts.length > 0 ? "ready" : "empty",
+        }));
+      })
+      .catch(() => {
+        setAttemptsStateByRun((current) => ({
+          ...current,
+          [r.id]: "error",
+        }));
+      });
   };
 
   if (runs.length === 0) {
@@ -113,7 +130,10 @@ export function RunsList({ runs, lang }: RunsListProps) {
                 lang={lang}
                 maxDuration={maxDuration}
                 expanded={expanded}
-                loadingAttempts={loadingRunId === r.id}
+                attemptsState={
+                  attemptsStateByRun[r.id] ??
+                  ((r.llm?.attempts?.length ?? 0) > 0 ? "ready" : "idle")
+                }
                 attempts={attemptsByRun[r.id] ?? r.llm?.attempts ?? []}
                 onToggle={() => toggleRun(r, expanded)}
               />
