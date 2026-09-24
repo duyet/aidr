@@ -7,10 +7,9 @@ import { VIEWPORT_META_CONTENT } from "./viewport";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("viewport metadata", () => {
-  it("opts into the safe-area viewport used by the app shell", () => {
-    expect(VIEWPORT_META_CONTENT).toBe(
-      "width=device-width, initial-scale=1, viewport-fit=cover"
-    );
+  it("keeps the document in the browser's default safe viewport", () => {
+    expect(VIEWPORT_META_CONTENT).toBe("width=device-width, initial-scale=1.0");
+    expect(VIEWPORT_META_CONTENT).not.toContain("viewport-fit=cover");
   });
 
   it("wires the root document head to the shared viewport value", () => {
@@ -18,16 +17,9 @@ describe("viewport metadata", () => {
     expect(root).toContain("content: VIEWPORT_META_CONTENT");
   });
 
-  it("applies shell/header insets once and leaves the portal dialog as the only bottom inset", () => {
+  it("does not add cover-mode insets that would bypass existing fixed portals", () => {
     const styles = readFileSync(join(here, "../styles.css"), "utf8");
-    expect(styles).toContain(".app-shell {");
-    expect(styles).toContain("padding-left: env(safe-area-inset-left, 0px)");
-    expect(styles).toContain("padding-right: env(safe-area-inset-right, 0px)");
-    expect(styles).toContain(
-      "padding-bottom: env(safe-area-inset-bottom, 0px)"
-    );
-    expect(styles).toContain(".news-content > header {");
-    expect(styles).toContain("padding-top: env(safe-area-inset-top, 0px)");
-    expect(styles).not.toContain(".news-mobile-menu-footer");
+    expect(styles).not.toContain("viewport-fit=cover");
+    expect(styles).not.toContain("safe-area-inset");
   });
 });

@@ -368,18 +368,6 @@
   --accent-foreground: #1c1917;
 }
 
-/* `viewport-fit=cover` is enabled in the document head. Keep the normal app
-   shell clear of notches/home indicators; the portal-based mobile dialog owns
-   its own viewport insets below. */
-.app-shell {
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-.news-content > header {
-  padding-top: env(safe-area-inset-top, 0px);
-}
-
 .news-content[data-reader-font="serif"] {
   font-family: var(--editorial-font-serif);
 }
@@ -552,21 +540,6 @@
   border-radius: 999px;
   background: var(--accent);
   cursor: pointer;
-}
-
-/* The portal-based mobile dialog is outside .app-shell, so it owns the
-   viewport safe-area inset once; normal page chrome is handled above. */
-.news-mobile-menu-dialog {
-  --news-mobile-menu-inset: 0.75rem;
-  top: max(var(--news-mobile-menu-inset), env(safe-area-inset-top, 0px));
-  right: max(var(--news-mobile-menu-inset), env(safe-area-inset-right, 0px));
-  bottom: max(var(--news-mobile-menu-inset), env(safe-area-inset-bottom, 0px));
-  left: max(var(--news-mobile-menu-inset), env(safe-area-inset-left, 0px));
-}
-@media (min-width: 600px) {
-  .news-mobile-menu-dialog {
-    --news-mobile-menu-inset: 1rem;
-  }
 }
 
 /* Phone chrome: hide stacked SiteHeader + desktop HeaderBar on narrow

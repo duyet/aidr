@@ -10,9 +10,9 @@ export const PHONE_DROPDOWN_ITEM_CLASS = "h-11 min-h-11 min-w-[44px]";
 
 export const PHONE_LANG_TOGGLE_BUTTON_CLASS = "min-h-[44px] min-w-[44px] px-3";
 
-/** Full-screen phone navigation keeps its own safe-area-aware inset. */
+/** Full-screen phone navigation uses the browser's default safe viewport. */
 export const PHONE_MENU_DIALOG_CLASS =
-  "news-mobile-menu-dialog fixed z-50 mx-auto flex max-w-3xl flex-col rounded-3xl border border-border bg-card text-card-foreground shadow-2xl";
+  "fixed z-50 mx-auto flex max-w-3xl flex-col rounded-3xl border border-border bg-card text-card-foreground shadow-2xl";
 
 /** One column on narrow phones; two balanced columns from the landscape breakpoint. */
 export const PHONE_MENU_GRID_CLASS =

@@ -183,7 +183,11 @@ export function PhoneMenu({
               />
             </div>
             <ErrorBoundary fallback={null}>
-              <HeaderAuth avatarSize="size-9" stacked />
+              <HeaderAuth
+                avatarSize="size-9"
+                stacked
+                onSignIn={() => setOpen(false)}
+              />
             </ErrorBoundary>
           </div>
         </DialogPrimitive.Content>

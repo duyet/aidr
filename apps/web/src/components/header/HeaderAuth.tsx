@@ -13,9 +13,11 @@ import { type ClerkModule, useClerkModule } from "../../lib/clerk-user";
 export function HeaderAuth({
   avatarSize = "size-7",
   stacked = false,
+  onSignIn,
 }: {
   avatarSize?: string;
   stacked?: boolean;
+  onSignIn?: () => void;
 }) {
   const { mod } = useClerkModule();
   const signIn = (
@@ -27,7 +29,10 @@ export function HeaderAuth({
     >
       <Link
         to="/sign-in/$"
-        onClick={() => track("nav_click", { to: "/sign-in" })}
+        onClick={() => {
+          track("nav_click", { to: "/sign-in" });
+          onSignIn?.();
+        }}
       >
         Sign in
       </Link>

@@ -1,9 +1,11 @@
 /**
- * Radix lifecycle coverage runs in jsdom. jsdom does not evaluate Tailwind
- * media queries or layout, so real 600px/pixel assertions remain a browser
- * check when a Chrome/Playwright runtime is available.
+ * Radix lifecycle coverage runs in a DOM test environment. It does not
+ * evaluate Tailwind media queries or layout, so real 600px/pixel assertions
+ * remain a browser check when a Chrome/Playwright runtime is available.
+ * happy-dom is dev-only; it avoids the jsdom/data-urls test dependency chain.
+ * No static HTML snapshot is treated as computed-layout evidence.
  *
- * @vitest-environment jsdom
+ * @vitest-environment happy-dom
  */
 import {
   cleanup,
@@ -151,6 +153,18 @@ describe("PhoneMenu modal behavior", () => {
     fireEvent.click(trigger);
     await screen.findByRole("dialog");
     fireEvent.click(screen.getByRole("button", { name: "Close menu" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("closes when footer sign-in navigation is activated", async () => {
+    renderPhoneMenu();
+    const trigger = screen.getByRole("button", { name: "Open menu" });
+    fireEvent.click(trigger);
+    await screen.findByRole("dialog");
+
+    fireEvent.click(screen.getByRole("link", { name: "Sign in" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.activeElement).toBe(trigger);
