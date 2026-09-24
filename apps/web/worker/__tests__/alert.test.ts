@@ -130,7 +130,7 @@ describe("webhookDeliveryId", () => {
     vi.stubGlobal("fetch", fetchMock);
     const result = await webhookNotifier.sendDigest(
       { NOTIFY_WEBHOOK_URL: "https://example.com/hook" } as Env,
-      { date: "2026-08-19", bullets: [] }
+      { lang: "vi", date: "2026-08-19", bullets: [] }
     );
     expect(result.ok).toBe(true);
     expect(result.messageId).toBe("news:digest:2026-08-19:ambiguous-timeout");
@@ -152,13 +152,13 @@ describe("webhookDeliveryId", () => {
       {
         NOTIFY_WEBHOOK_URL: "https://hooks.slack.com/services/T00/B00/x",
       } as Env,
-      { date: "2026-08-19", bullets: [] }
+      { lang: "vi", date: "2026-08-19", bullets: [] }
     );
     await webhookNotifier.sendDigest(
       {
         NOTIFY_WEBHOOK_URL: "https://slack-alerts.example.com/hook",
       } as Env,
-      { date: "2026-08-19", bullets: [] }
+      { lang: "vi", date: "2026-08-19", bullets: [] }
     );
     const slackBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     const jsonBody = JSON.parse(fetchMock.mock.calls[1][1].body as string);

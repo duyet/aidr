@@ -31,6 +31,14 @@ describe("withHomepageHeaders cache safety", () => {
     expect(res.headers.get("Cache-Control")).toBe("private, no-store");
   });
 
+  it("downgrades an unsafe public policy on a bare homepage", () => {
+    const res = withHomepageHeaders(
+      new Request(`${SITE_URL}/`),
+      new Response("ok", { headers: { "Cache-Control": "public, max-age=60" } })
+    );
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+
   it("leaves non-homepage responses completely untouched", () => {
     const upstream = new Response("feed", {
       headers: { "Cache-Control": "no-store" },
@@ -43,11 +51,30 @@ describe("withHomepageHeaders cache safety", () => {
     expect(res).toBe(upstream);
   });
 
-  it("stamps the deterministic TTL on a bare 200 homepage", () => {
+  it("keeps a cookie/Accept-Language-selected bare homepage private", () => {
     const res = withHomepageHeaders(
       new Request(`${SITE_URL}/`),
       new Response("ok")
     );
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(res.headers.get("Vary")).toBe("Cookie, Accept-Language");
+  });
+
+  it("stamps the deterministic TTL on an explicit locale homepage", () => {
+    const res = withHomepageHeaders(
+      new Request(`${SITE_URL}/?lang=en`),
+      new Response("ok")
+    );
     expect(res.headers.get("Cache-Control")).toBe(HOMEPAGE_CACHE_CONTROL);
+    expect(res.headers.get("Content-Language")).toBe("en");
+    expect(res.headers.get("Vary")).toBeNull();
+  });
+
+  it("does not publicly cache an unsupported locale value", () => {
+    const res = withHomepageHeaders(
+      new Request(`${SITE_URL}/?lang=fr`),
+      new Response("ok")
+    );
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
   });
 });

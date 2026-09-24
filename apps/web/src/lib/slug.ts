@@ -1,8 +1,10 @@
-import type { FeedItem } from "./types";
+import { withLang } from "./locale-url";
+import type { FeedItem, Lang } from "./types";
 
 /** Canonical story permalink: /{8-char id prefix}. Category is UI-only. */
-export function storyPath(item: Pick<FeedItem, "id">): string {
-  return `/${item.id.slice(0, 8)}`;
+export function storyPath(item: Pick<FeedItem, "id">, lang?: Lang): string {
+  const path = `/${item.id.slice(0, 8)}`;
+  return lang ? withLang(path, lang) : path;
 }
 
 /**
@@ -26,10 +28,14 @@ export function requestedStoryPath(slug: string): string {
  */
 export function storyCanonicalRedirect(
   slug: string,
-  item: Pick<FeedItem, "id">
+  item: Pick<FeedItem, "id">,
+  lang: Lang = "vi",
+  search = "",
+  hash = ""
 ): string | null {
   const canonical = storyPath(item);
-  return requestedStoryPath(slug) === canonical ? null : canonical;
+  if (requestedStoryPath(slug) === canonical) return null;
+  return withLang(`${canonical}${search}${hash}`, lang);
 }
 
 const RESERVED_TOP = new Set([

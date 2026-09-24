@@ -1,3 +1,5 @@
+import { resolveLang } from "./lang";
+import { localeCacheControl } from "./locale-url";
 import { SITE_DESCRIPTION, SITE_URL } from "./site";
 
 export const AGENT_DISCOVERY_VERSION = "0.1.3";
@@ -379,14 +381,35 @@ export function withHomepageHeaders(
   request: Request,
   response: Response
 ): Response {
-  const path = new URL(request.url).pathname;
+  const url = new URL(request.url);
+  const path = url.pathname;
   if (path !== "/" && path !== "") return response;
   const headers = new Headers(response.headers);
   const extra = homepageLinkHeader();
   const existing = headers.get("Link");
   headers.set("Link", existing ? `${existing}, ${extra}` : extra);
-  if (response.status === 200 && !headers.has("Cache-Control")) {
-    headers.set("Cache-Control", HOMEPAGE_CACHE_CONTROL);
+  if (response.status === 200) {
+    const lang = resolveLang({
+      search: url.search,
+      cookie: request.headers.get("cookie"),
+      acceptLanguage: request.headers.get("accept-language"),
+    });
+    headers.set("Content-Language", lang);
+    const policy = localeCacheControl(url.search, HOMEPAGE_CACHE_CONTROL);
+    const existingPolicy = headers.get("Cache-Control")?.toLowerCase() ?? "";
+    if (
+      !existingPolicy.includes("private") &&
+      !existingPolicy.includes("no-store")
+    ) {
+      headers.set("Cache-Control", policy.cacheControl);
+    }
+    if (policy.vary) {
+      const existingVary = headers.get("Vary");
+      headers.set(
+        "Vary",
+        existingVary ? `${existingVary}, ${policy.vary}` : policy.vary
+      );
+    }
   }
   return new Response(response.body, {
     status: response.status,

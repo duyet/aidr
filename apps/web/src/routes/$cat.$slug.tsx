@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { NotFoundPage } from "../components/NotFoundPage";
+import { withLang } from "../lib/locale-url";
 import { notFoundCopy } from "../lib/not-found";
-import { loadNotFoundLang } from "../lib/not-found-fn";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { notFoundHead } from "../lib/seo";
 import { legacyStoryRedirectPath } from "../lib/slug";
@@ -9,13 +9,19 @@ import type { Lang } from "../lib/types";
 
 /** Old /:cat/:slug permalinks permanently redirect to /:slug. */
 export const Route = createFileRoute("/$cat/$slug")({
-  beforeLoad: ({ params }) => {
+  beforeLoad: ({ params, context, location }) => {
     const to = legacyStoryRedirectPath(`/${params.cat}/${params.slug}`);
-    if (to) throw redirect({ href: to });
+    if (to) {
+      throw redirect({
+        href: withLang(
+          `${to}${location.searchStr}${location.hash}`,
+          context.lang
+        ),
+        statusCode: 301,
+      });
+    }
   },
-  loader: async (): Promise<{ lang: Lang }> => ({
-    lang: await loadNotFoundLang(),
-  }),
+  loader: ({ context }): { lang: Lang } => ({ lang: context.lang }),
   headers: (): Record<string, string> => ({
     [NOT_FOUND_HEADER]: "1",
     "Cache-Control": "private, no-store",

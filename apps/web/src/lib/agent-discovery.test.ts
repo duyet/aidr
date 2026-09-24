@@ -138,9 +138,9 @@ describe("homepage Link header", () => {
     expect(h).toContain('rel="describedby"');
   });
 
-  it("appends Link and Cache-Control on /", () => {
+  it("appends Link and Cache-Control on an explicit-locale /", () => {
     const res = withHomepageHeaders(
-      new Request(`${SITE_URL}/`),
+      new Request(`${SITE_URL}/?lang=vi`),
       new Response("ok")
     );
     expect(res.headers.get("Link")).toContain("api-catalog");
@@ -149,7 +149,7 @@ describe("homepage Link header", () => {
 
   it("leaves an upstream Cache-Control alone", () => {
     const res = withHomepageHeaders(
-      new Request(`${SITE_URL}/`),
+      new Request(`${SITE_URL}/?lang=vi`),
       new Response("ok", {
         headers: { "Cache-Control": "private, no-store" },
       })

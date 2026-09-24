@@ -8,7 +8,9 @@ import {
   createRootRoute,
   HeadContent,
   Outlet,
+  redirect,
   Scripts,
+  useNavigate,
 } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ClerkRootProvider } from "../components/ClerkRootProvider";
@@ -17,8 +19,11 @@ import { NewsFooter } from "../components/NewsFooter";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { PageViewTracker } from "../components/PageViewTracker";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
-import { getClientLang, setClientLang } from "../lib/lang";
+import { setClientLang } from "../lib/lang";
 import { LangContext } from "../lib/lang-context";
+import { preserveRootLang, validateRootSearch } from "../lib/locale-routing";
+import { canonicalLocaleRedirect, withLang } from "../lib/locale-url";
+import { loadNotFoundLang } from "../lib/not-found-fn";
 import {
   DEFAULT_PREFS,
   loadPrefs,
@@ -34,6 +39,21 @@ import type { Lang } from "../lib/types";
 import { VIEWPORT_META_CONTENT } from "../lib/viewport";
 
 export const Route = createRootRoute({
+  validateSearch: validateRootSearch,
+  search: {
+    middlewares: [({ search, next }) => preserveRootLang(search, next(search))],
+  },
+  beforeLoad: async ({ location }) => {
+    const lang = await loadNotFoundLang(location.searchStr);
+    const href = canonicalLocaleRedirect(
+      location.pathname,
+      location.searchStr,
+      location.hash,
+      lang
+    );
+    if (href) throw redirect({ href, statusCode: 307 });
+    return { lang };
+  },
   head: ({ matches }) => {
     const notFoundOwnsTitle = splatOwnsDocumentTitle(
       matches.map((m) => ({
@@ -87,12 +107,26 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
-  const [lang, setLang] = useState<Lang>(() => getClientLang());
+  const routeContext = Route.useRouteContext();
+  const [lang, setLang] = useState<Lang>(routeContext.lang);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setLang(routeContext.lang);
+  }, [routeContext.lang]);
 
   const handleLangChange = (next: Lang) => {
     setClientLang(next);
     setLang(next);
     track("lang_change", { lang: next });
+    if (typeof window !== "undefined") {
+      const current = new URL(window.location.href);
+      const href = withLang(
+        `${current.pathname}${current.search}${current.hash}`,
+        next
+      );
+      void navigate({ href, replace: true });
+    }
   };
 
   // Render defaults on the server / first client paint to avoid a hydration

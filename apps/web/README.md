@@ -1,6 +1,7 @@
 # @aidr/web
 
 Feed pipeline and ranking design: see [ALGORITHM.md](./ALGORITHM.md).
+Locale selection, canonical URLs, and caching: see [LOCALE_URLS.md](./LOCALE_URLS.md).
 
 ## Public read API
 
@@ -18,16 +19,18 @@ Do not use GitHub `releases/latest` — that may be a website (`web-v*`) release
 homepage payload (~360KB) and does not send CORS for `chrome-extension://`
 origins. Use this instead:
 
-- **URL:** `https://aidr.today/api/public`
+- **URL:** `https://aidr.today/api/public?lang=vi` (or `?lang=en`)
 - **Auth:** none. Failures return `{ "error": "unavailable" }` (no D1/admin detail).
 - **CORS:** Worker fetch intercepts OPTIONS/GET before TanStack Start (SPA
   fallback would otherwise serve HTML). Allows `chrome-extension://…`,
   `http://localhost` / `http://127.0.0.1`, and `https://*.duyet.net`.
-- **Cache:** `public, max-age=120, s-maxage=300, stale-while-revalidate=600`.
-  Not rate-limited (same as `GET /api/feed`).
+- **Cache:** explicit `?lang=vi|en` uses
+  `public, max-age=120, s-maxage=300, stale-while-revalidate=600`; bare or
+  unsupported locale requests use `private, no-store`. Not rate-limited.
 
 ```json
 {
+  "lang": "vi",
   "tldr": {
     "date": "2026-08-27",
     "bullets_en": [{ "text": "...", "item_ids": ["..."], "image_url": "https://..." }],
@@ -37,6 +40,7 @@ origins. Use this instead:
     {
       "id": "...",
       "url": "https://...",
+      "permalink": "https://aidr.today/abcdef12?lang=vi",
       "title": "...",
       "title_vi": "...",
       "category": "Industry",

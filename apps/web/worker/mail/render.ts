@@ -1,4 +1,5 @@
 import { highlightTitle, TITLE_KEYWORDS } from "../../src/lib/highlight.js";
+import { SITE_URL } from "../../src/lib/site.js";
 import { topicColor } from "../../src/lib/topic-color.js";
 import {
   escapeHtml,
@@ -18,7 +19,6 @@ export const NEWS_FROM = {
   name: "aidr",
 } as const;
 
-const SITE_URL = "https://aidr.today";
 const DATA_URL = `${SITE_URL}/data`;
 /**
  * Square 128px PNG at site root (Worker ASSETS). Displayed 36px with
@@ -100,7 +100,7 @@ function ctaButton(label: string, url: string): string {
 function brandHeader(lang: MailLang, kind: MailUtmKind): string {
   const tagline =
     lang === "vi" ? "Tin AI xếp hạng và tóm tắt" : "AI news ranked and summary";
-  const home = escapeHtml(withMailUtm(SITE_URL, kind));
+  const home = escapeHtml(withMailUtm(SITE_URL, kind, lang));
   return `<tr>
       <td style="padding:32px ${PAD} 24px;border-bottom:1px solid ${HAIRLINE}">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0">
@@ -208,7 +208,7 @@ export function renderNoteEmail(input: NoteEmailInput): {
   const body = markdownToEmailHtml(input.bodyMd);
   const cta =
     input.cta?.label && input.cta.url
-      ? ctaButton(input.cta.label, withMailUtm(input.cta.url, mailKind))
+      ? ctaButton(input.cta.label, withMailUtm(input.cta.url, mailKind, lang))
       : "";
   const innerRows = `<tr>
       <td style="padding:28px ${PAD} 28px;font-family:${SANS};font-size:16px;line-height:1.65;color:${FG}">
@@ -228,7 +228,7 @@ export function renderNoteEmail(input: NoteEmailInput): {
 
   const safeCtaUrl =
     input.cta?.label && input.cta.url
-      ? safeHref(withMailUtm(input.cta.url, mailKind))
+      ? safeHref(withMailUtm(input.cta.url, mailKind, lang))
       : null;
   const textParts = [
     markdownToPlainText(input.bodyMd),
@@ -284,8 +284,8 @@ export function renderDigestEmail(input: DigestEmailInput): {
       const n = i + 1;
       const text = highlightStoryHtml(story.text);
       const href =
-        safeHref(withMailUtm(story.url ?? SITE_URL, "digest")) ??
-        withMailUtm(SITE_URL, "digest");
+        safeHref(withMailUtm(story.url ?? SITE_URL, "digest", input.lang)) ??
+        withMailUtm(SITE_URL, "digest", input.lang);
       const more = `<a class="mail-story" href="${escapeHtml(href)}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${escapeHtml(storyCta)}</a>`;
       const rule =
         i < input.stories.length - 1
@@ -311,7 +311,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
     </tr>
     ${htmlItems}
     <tr>
-      <td style="padding:16px ${PAD} 28px">${ctaButton(readMore, withMailUtm(SITE_URL, "digest"))}</td>
+      <td style="padding:16px ${PAD} 28px">${ctaButton(readMore, withMailUtm(SITE_URL, "digest", input.lang))}</td>
     </tr>
     ${mailFooterHtml(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 
@@ -323,7 +323,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
     mailKind: "digest",
   });
 
-  const home = withMailUtm(SITE_URL, "digest");
+  const home = withMailUtm(SITE_URL, "digest", input.lang);
   const textLines = input.stories.map((s, i) => `${i + 1}. ${s.text}`);
   const text = `${heading}\n\n${textLines.join("\n")}\n\n${home}\n\n${mailFooterText(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 

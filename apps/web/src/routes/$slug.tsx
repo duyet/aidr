@@ -5,7 +5,6 @@ import { ARTICLE_DATE_TAG, ARTICLE_TITLE_TAG } from "../lib/article-headings";
 import { formatDayHeading } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
 import { notFoundCopy } from "../lib/not-found";
-import { loadNotFoundLang } from "../lib/not-found-fn";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { articleHead, notFoundHead } from "../lib/seo";
 import { idPrefixFromSlug, storyCanonicalRedirect } from "../lib/slug";
@@ -23,32 +22,46 @@ const STORY_PAGE_CACHE_CONTROL =
   "public, max-age=300, s-maxage=600, stale-while-revalidate=3600";
 
 export const Route = createFileRoute("/$slug")({
-  loader: async ({ params }): Promise<LoaderResult> => {
+  loader: async ({ params, context, location }): Promise<LoaderResult> => {
     const idPrefix = idPrefixFromSlug(params.slug);
-    if (!idPrefix) {
-      return { kind: "missing", lang: await loadNotFoundLang() };
-    }
+    if (!idPrefix) return { kind: "missing", lang: context.lang };
     const item = await fetchStory({ data: { idPrefix } });
-    if (!item) {
-      return { kind: "missing", lang: await loadNotFoundLang() };
-    }
-    const to = storyCanonicalRedirect(params.slug, item);
-    if (to) throw redirect({ href: to });
+    if (!item) return { kind: "missing", lang: context.lang };
+    const to = storyCanonicalRedirect(
+      params.slug,
+      item,
+      context.lang,
+      location.searchStr,
+      location.hash
+    );
+    if (to) throw redirect({ href: to, statusCode: 301 });
     return { kind: "story", item };
   },
-  headers: ({ loaderData }): Record<string, string> =>
-    loaderData?.kind === "missing"
-      ? {
-          [NOT_FOUND_HEADER]: "1",
-          "Cache-Control": "private, no-store",
-        }
-      : { "Cache-Control": STORY_PAGE_CACHE_CONTROL },
-  head: ({ loaderData }) => {
+  headers: ({ loaderData, match }): Record<string, string> => {
+    if (loaderData?.kind === "missing") {
+      return {
+        [NOT_FOUND_HEADER]: "1",
+        "Cache-Control": "private, no-store",
+        "Content-Language": match.context.lang,
+        Vary: "Cookie, Accept-Language",
+      };
+    }
+    const explicitLocale =
+      match.search.lang !== undefined && match.search.locale === undefined;
+    return {
+      "Cache-Control": explicitLocale
+        ? STORY_PAGE_CACHE_CONTROL
+        : "private, no-store",
+      "Content-Language": match.context.lang,
+      ...(explicitLocale ? {} : { Vary: "Cookie, Accept-Language" }),
+    };
+  },
+  head: ({ loaderData, match }) => {
     if (!loaderData || loaderData.kind === "missing") {
       const lang = loaderData?.kind === "missing" ? loaderData.lang : "vi";
       return notFoundHead(notFoundCopy(lang).documentTitle);
     }
-    return articleHead(loaderData.item);
+    return articleHead(loaderData.item, match.context.lang);
   },
   component: StoryPage,
 });

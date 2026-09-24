@@ -1,3 +1,4 @@
+import { withLang } from "./locale-url";
 import {
   type RouteIndexabilityInput,
   routeIndexability,
@@ -13,6 +14,7 @@ import {
   SITE_URL,
 } from "./site";
 import { storyPath } from "./slug";
+import type { Lang } from "./types";
 
 export type HeadMeta =
   | { title: string }
@@ -23,6 +25,7 @@ export interface HeadLink {
   rel: string;
   href: string;
   type?: string;
+  hrefLang?: string;
 }
 
 export interface HeadTags {
@@ -50,6 +53,7 @@ function shareTags(opts: {
   url: string;
   type: "website" | "article";
   imageUrl?: string | null;
+  lang?: Lang;
   /** When true, emit og:image width/height (1200×630 cards). */
   siteOgDimensions?: boolean;
 }): HeadMeta[] {
@@ -66,6 +70,18 @@ function shareTags(opts: {
     { name: "twitter:title", content: opts.title },
     { name: "twitter:description", content: opts.description },
   ];
+  if (opts.lang) {
+    meta.push(
+      {
+        property: "og:locale",
+        content: opts.lang === "vi" ? "vi_VN" : "en_US",
+      },
+      {
+        property: "og:locale:alternate",
+        content: opts.lang === "vi" ? "en_US" : "vi_VN",
+      }
+    );
+  }
   if (opts.imageUrl) {
     meta.push({ property: "og:image", content: opts.imageUrl });
     meta.push({ name: "twitter:image", content: opts.imageUrl });
@@ -89,12 +105,34 @@ export function canonicalUrl(path: string): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+function localizedHeadLinks(path: string, lang: Lang): HeadLink[] {
+  return [
+    { rel: "canonical", href: canonicalUrl(withLang(path, lang)) },
+    {
+      rel: "alternate",
+      hrefLang: "vi",
+      href: canonicalUrl(withLang(path, "vi")),
+    },
+    {
+      rel: "alternate",
+      hrefLang: "en",
+      href: canonicalUrl(withLang(path, "en")),
+    },
+    {
+      rel: "alternate",
+      hrefLang: "x-default",
+      href: canonicalUrl(withLang(path, "vi")),
+    },
+  ];
+}
+
 /** Marketing/static page share tags. Each URL must canonical to itself. */
 export function pageHead(opts: {
   path: string;
   title: string;
   description?: string;
   imageUrl?: string;
+  lang?: Lang;
 }): HeadTags {
   const url = canonicalUrl(opts.path);
   const description = opts.description ?? SITE_DESCRIPTION;
@@ -105,20 +143,26 @@ export function pageHead(opts: {
       url,
       type: "website",
       imageUrl: opts.imageUrl ?? SITE_OG_IMAGE_URL,
+      lang: opts.lang,
       siteOgDimensions: true,
     }),
     links: [{ rel: "canonical", href: url }, SITEMAP_LINK],
   };
 }
 
-/** Homepage Open Graph / Twitter / canonical tags. */
-export function homepageHead(): HeadTags {
-  return pageHead({
-    path: "/",
+/** Homepage Open Graph / Twitter / canonical + hreflang tags. */
+export function homepageHead(lang: Lang = "vi"): HeadTags {
+  const head = pageHead({
+    path: withLang("/", lang),
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     imageUrl: SITE_OG_HOME_IMAGE_URL,
+    lang,
   });
+  return {
+    ...head,
+    links: [...localizedHeadLinks("/", lang), SITEMAP_LINK],
+  };
 }
 
 /**
@@ -126,14 +170,17 @@ export function homepageHead(): HeadTags {
  * the item's own English summary/dek when present; otherwise the
  * site-wide blurb. Never invents a Vietnamese description.
  */
-export function articleHead(item: {
-  id: string;
-  title: string;
-  summary: string | null;
-  image_url: string | null;
-  category: string | null;
-}): HeadTags {
-  const path = storyPath(item);
+export function articleHead(
+  item: {
+    id: string;
+    title: string;
+    summary: string | null;
+    image_url: string | null;
+    category: string | null;
+  },
+  lang: Lang = "vi"
+): HeadTags {
+  const path = storyPath(item, lang);
   const url = `${SITE_URL}${path}`;
   const title = `${item.title} | ${SITE_NAME}`;
   const summary = item.summary?.trim() ?? "";
@@ -146,6 +193,7 @@ export function articleHead(item: {
       type: "article",
       // Always the generated branded card — upstream image_urls can 404.
       imageUrl: `${SITE_URL}/api/og/${item.id}.png`,
+      lang,
       siteOgDimensions: true,
     }).map((tag) =>
       "property" in tag && tag.property === "og:title"
@@ -154,7 +202,7 @@ export function articleHead(item: {
           ? { name: "twitter:title", content: item.title }
           : tag
     ),
-    links: [{ rel: "canonical", href: url }, SITEMAP_LINK],
+    links: [...localizedHeadLinks(storyPath(item), lang), SITEMAP_LINK],
   };
 }
 

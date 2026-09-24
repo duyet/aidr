@@ -13,7 +13,9 @@ import {
   withHomepageHeaders,
 } from "./lib/agent-discovery";
 import { readSession } from "./lib/db";
+import { resolveLang } from "./lib/lang";
 import { llmsTxtResponse } from "./lib/llms-txt";
+import { withLang } from "./lib/locale-url";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
 import {
@@ -57,7 +59,12 @@ export default {
     if (storyDest) {
       const dest = new URL(request.url);
       dest.pathname = storyDest;
-      return Response.redirect(dest.toString(), 301);
+      const lang = resolveLang({
+        search: dest.search,
+        cookie: request.headers.get("cookie"),
+        acceptLanguage: request.headers.get("accept-language"),
+      });
+      return Response.redirect(withLang(dest.toString(), lang), 301);
     }
     if (isClerkProxyPath(path)) {
       return withRouteIndexabilityHeaders(

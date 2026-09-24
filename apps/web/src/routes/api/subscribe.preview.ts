@@ -7,6 +7,8 @@ import {
   topBullets,
 } from "../../../worker/subscribe/send.js";
 import type { Env } from "../../../worker/types.js";
+import { resolveLang } from "../../lib/lang";
+import { localeCacheControl } from "../../lib/locale-url";
 import { resolveWorkerEnv } from "../../lib/system-api";
 
 // type alias (not interface): TanStack routeTree.gen must re-export handler
@@ -30,7 +32,11 @@ export const Route = createFileRoute("/api/subscribe/preview")({
     handlers: {
       GET: async ({ request, context }: HandlerArgs) => {
         const url = new URL(request.url);
-        const lang = url.searchParams.get("lang") === "vi" ? "vi" : "en";
+        const lang = resolveLang({
+          search: url.search,
+          cookie: request.headers.get("cookie"),
+          acceptLanguage: request.headers.get("accept-language"),
+        });
         const size = digestSizeFor(Number(url.searchParams.get("n")));
 
         const env = (await resolveWorkerEnv(context)) as Env | undefined;
@@ -64,11 +70,16 @@ export const Route = createFileRoute("/api/subscribe/preview")({
           }
         }
 
+        const policy = localeCacheControl(
+          url.search,
+          "public, max-age=300, s-maxage=600, stale-while-revalidate=3600"
+        );
         return new Response(html, {
           headers: {
             "Content-Type": "text/html; charset=utf-8",
-            "Cache-Control":
-              "public, max-age=300, s-maxage=600, stale-while-revalidate=3600",
+            "Cache-Control": policy.cacheControl,
+            "Content-Language": lang,
+            ...(policy.vary ? { Vary: policy.vary } : {}),
           },
         });
       },

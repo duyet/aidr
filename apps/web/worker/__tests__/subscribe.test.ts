@@ -192,9 +192,33 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("subscribe?settings=tok");
   });
 
+  it("builds exact English story links", () => {
+    const { html } = buildDigestEmail(
+      "2026-08-16",
+      [{ text: "Story", item_id: "abcdef123456" }],
+      "en",
+      "tok"
+    );
+    expect(html).toContain(
+      "https://aidr.today/abcdef12?lang=en&amp;utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest"
+    );
+  });
+
   it("selects the Vietnamese unsubscribe copy for lang=vi", () => {
     const { text } = buildDigestEmail("2026-08-16", bullets, "vi", "tok");
     expect(text).toContain("Hủy đăng ký");
+  });
+
+  it("builds exact Vietnamese story links", () => {
+    const { html } = buildDigestEmail(
+      "2026-08-16",
+      [{ text: "Tin", item_id: "abcdef123456" }],
+      "vi",
+      "tok"
+    );
+    expect(html).toContain(
+      "https://aidr.today/abcdef12?lang=vi&amp;utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest"
+    );
   });
 
   it("selects the English unsubscribe copy for lang=en", () => {

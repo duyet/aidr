@@ -1,3 +1,6 @@
+import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
+import { SITE_URL } from "../../src/lib/site.js";
+import { storyPath } from "../../src/lib/slug.js";
 import {
   renderDigestEmail,
   renderNoteEmail,
@@ -46,7 +49,6 @@ export interface TldrSnapshotRow {
   sent_at: number | null;
 }
 
-const SITE_URL = "https://aidr.today";
 const MAX_BULLETS = 5;
 
 export function digestSizeFor(value: unknown): 3 | 5 | 10 {
@@ -153,7 +155,9 @@ export function buildDigestEmail(
       lang: mailLang,
       stories: items.map((b) => ({
         text: b.text,
-        url: b.item_id ? `${SITE_URL}/${b.item_id.slice(0, 8)}` : SITE_URL,
+        url: b.item_id
+          ? absoluteSiteUrl(storyPath({ id: b.item_id }), mailLang)
+          : absoluteSiteUrl("/", mailLang),
         imageUrl: b.image_url,
       })),
       unsubscribeUrl: unsubscribeUrl(unsubscribeToken),

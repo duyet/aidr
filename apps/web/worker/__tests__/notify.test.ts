@@ -26,6 +26,7 @@ import {
   withUtm,
 } from "../notify/telegram.js";
 import type { DailyDigest, StoryPayload } from "../notify/types.js";
+import { digestEvent, storyEvent } from "../notify/webhook.js";
 import type { Env } from "../types.js";
 
 const story = (over: Partial<StoryPayload> = {}): StoryPayload => ({
@@ -40,6 +41,7 @@ const story = (over: Partial<StoryPayload> = {}): StoryPayload => ({
   rank_score: 30,
   llm_importance: 9,
   ...over,
+  lang: over.lang ?? "vi",
 });
 
 describe("digest gating", () => {
@@ -110,6 +112,7 @@ describe("localDayStartMs", () => {
 
 describe("digest message", () => {
   const digest: DailyDigest = {
+    lang: "vi",
     date: "2026-08-17",
     bullets: [
       {
@@ -124,12 +127,13 @@ describe("digest message", () => {
     const msg = buildDigestMessage(digest);
     expect(msg).toContain("AI hôm nay có gì — 2026-08-17");
     expect(msg).toContain("OpenAI &lt;ships&gt; GPT-6 &amp; more");
-    expect(msg).toContain("utm_source=telegram");
+    expect(msg).toContain("lang=vi&amp;utm_source=telegram");
     expect(msg).toContain("•  No-link bullet");
   });
 
   it("drops overflow bullets to stay under the message cap", () => {
     const big: DailyDigest = {
+      lang: "vi",
       date: "2026-08-17",
       bullets: Array.from({ length: 100 }, (_, i) => ({
         text: `bullet ${i} ${"x".repeat(200)}`,
@@ -163,13 +167,52 @@ describe("trending story message", () => {
     const [row] = markup.inline_keyboard;
     expect(row[0].url).toContain("https://example.com/story");
     expect(row[0].url).toContain("utm_source=telegram");
-    expect(row[1].url).toBe("https://aidr.today/abcdef12?utm_source=telegram");
+    expect(row[1].url).toBe(
+      "https://aidr.today/abcdef12?lang=vi&utm_source=telegram"
+    );
   });
 
-  it("uses the 8-char id permalink without a category segment", () => {
+  it("uses the 8-char permalink with an explicit stable locale", () => {
     expect(storyUrl({ id: "abcdef1234567890" })).toBe(
-      "https://aidr.today/abcdef12"
+      "https://aidr.today/abcdef12?lang=vi"
     );
+    expect(storyUrl({ id: "abcdef1234567890" }, "en")).toBe(
+      "https://aidr.today/abcdef12?lang=en"
+    );
+  });
+});
+
+describe("webhook locale links", () => {
+  it("uses the canonical Vietnamese permalink without a category segment", () => {
+    const event = storyEvent(story());
+    expect(event.links?.at(-1)?.url).toBe(
+      "https://aidr.today/abcdef12?lang=vi"
+    );
+  });
+
+  it("supports an explicitly English webhook payload", () => {
+    const event = storyEvent(story({ lang: "en" }));
+    expect(event.links?.at(-1)?.url).toBe(
+      "https://aidr.today/abcdef12?lang=en"
+    );
+  });
+
+  it("normalizes digest links to the digest language", () => {
+    const event = digestEvent({
+      lang: "vi",
+      date: "2026-08-17",
+      bullets: [{ text: "Tin", url: "https://aidr.today/abcdef12" }],
+    });
+    expect(event.links?.[0].url).toBe("https://aidr.today/?lang=vi");
+    expect(event.links?.[1].url).toBe("https://aidr.today/abcdef12?lang=vi");
+
+    const english = digestEvent({
+      lang: "en",
+      date: "2026-08-17",
+      bullets: [{ text: "Story", url: "https://aidr.today/abcdef12" }],
+    });
+    expect(english.title).toBe("AI news digest — 2026-08-17");
+    expect(english.links?.[1].url).toBe("https://aidr.today/abcdef12?lang=en");
   });
 });
 

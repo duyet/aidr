@@ -1,11 +1,112 @@
 import type { Lang } from "./types";
 
+export const DEFAULT_LANG: Lang = "vi";
+export const LOCALE_QUERY_PARAM = "lang";
+export const LEGACY_LOCALE_QUERY_PARAM = "locale";
+
 const COOKIE = "news_lang";
 
+export function isLang(value: unknown): value is Lang {
+  return value === "vi" || value === "en";
+}
+
+/** Exact cookie parsing: `news_lang=enigma` must not select English. */
+export function langFromCookie(cookieHeader: string | null): Lang | null {
+  for (const part of cookieHeader?.split(";") ?? []) {
+    const [rawName, ...rawValue] = part.trim().split("=");
+    if (rawName !== COOKIE) continue;
+    const value = rawValue.join("=").trim();
+    return isLang(value) ? value : null;
+  }
+  return null;
+}
+
 export function readLangFromCookie(cookieHeader: string | null): Lang {
-  const m = cookieHeader?.match(/(?:^|;\s*)news_lang=(vi|en)/);
-  // Default to Vietnamese when no explicit choice was made
-  return m?.[1] === "en" ? "en" : "vi";
+  // Default to Vietnamese when no explicit choice was made.
+  return langFromCookie(cookieHeader) ?? DEFAULT_LANG;
+}
+
+function queryParams(search: string | URLSearchParams): URLSearchParams {
+  if (search instanceof URLSearchParams) return search;
+  return new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+}
+
+function firstParam(params: URLSearchParams, name: string): string | undefined {
+  return params.getAll(name)[0];
+}
+
+/**
+ * Read the first canonical `lang` value. Repeated/conflicting parameters are
+ * deterministic: the first value wins and is never replaced by a later one.
+ */
+export function langFromQuery(search: string | URLSearchParams): Lang | null {
+  const params = queryParams(search);
+  const lang = firstParam(params, LOCALE_QUERY_PARAM);
+  if (lang !== undefined) return isLang(lang) ? lang : null;
+  const locale = firstParam(params, LEGACY_LOCALE_QUERY_PARAM);
+  return isLang(locale) ? locale : null;
+}
+
+/** Highest-quality supported Accept-Language range, or null. */
+export function langFromAcceptLanguage(header: string | null): Lang | null {
+  const candidates = (header ?? "")
+    .split(",")
+    .map((part, index) => {
+      const [rawTag, ...params] = part.trim().split(";");
+      const qParam = params.find((param) => param.trim().startsWith("q="));
+      const parsedQ = qParam ? Number.parseFloat(qParam.trim().slice(2)) : 1;
+      const q = Number.isFinite(parsedQ)
+        ? Math.min(1, Math.max(0, parsedQ))
+        : 0;
+      const tag = rawTag.trim().toLowerCase().split("-")[0];
+      return { lang: isLang(tag) ? tag : null, q, index };
+    })
+    .filter((candidate) => candidate.lang !== null && candidate.q > 0)
+    .sort((a, b) => b.q - a.q || a.index - b.index);
+  return (candidates[0]?.lang as Lang | undefined) ?? null;
+}
+
+export interface LocaleSources {
+  search?: string | URLSearchParams;
+  cookie?: string | null;
+  acceptLanguage?: string | null;
+}
+
+/**
+ * Request locale contract: canonical `lang`, legacy `locale`, persisted
+ * `news_lang`, Accept-Language, then Vietnamese. Unsupported explicit values
+ * are ignored and fall through to the same safe defaults.
+ */
+export function resolveLang({
+  search = "",
+  cookie = null,
+  acceptLanguage = null,
+}: LocaleSources): Lang {
+  const params = queryParams(search);
+  const canonical = firstParam(params, LOCALE_QUERY_PARAM);
+  if (canonical !== undefined) {
+    return isLang(canonical)
+      ? canonical
+      : resolveLangWithoutQuery(cookie, acceptLanguage);
+  }
+  const legacy = firstParam(params, LEGACY_LOCALE_QUERY_PARAM);
+  if (legacy !== undefined) {
+    return isLang(legacy)
+      ? legacy
+      : resolveLangWithoutQuery(cookie, acceptLanguage);
+  }
+  return resolveLangWithoutQuery(cookie, acceptLanguage);
+}
+
+function resolveLangWithoutQuery(
+  cookie: string | null,
+  acceptLanguage: string | null
+): Lang {
+  return (
+    langFromCookie(cookie) ??
+    langFromAcceptLanguage(acceptLanguage) ??
+    DEFAULT_LANG
+  );
 }
 
 export function getClientLang(): Lang {

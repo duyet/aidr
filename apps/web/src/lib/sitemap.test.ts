@@ -10,6 +10,7 @@ import {
   safeSitemapResponse,
   staticSitemapUrls,
   storySitemapUrl,
+  storySitemapUrls,
 } from "./sitemap";
 
 describe("escapeXml", () => {
@@ -51,7 +52,9 @@ describe("buildSitemapXml", () => {
 describe("staticSitemapUrls", () => {
   it("includes the homepage and top-level marketing routes", () => {
     const locs = staticSitemapUrls().map((u) => u.loc);
-    expect(locs).toContain(`${SITE_URL}/`);
+    expect(locs).toContain(`${SITE_URL}/?lang=vi`);
+    expect(locs).toContain(`${SITE_URL}/?lang=en`);
+    expect(locs).not.toContain(`${SITE_URL}/`);
     expect(locs).toContain(`${SITE_URL}/about`);
     expect(locs).toContain(`${SITE_URL}/brand`);
     expect(locs).toContain(`${SITE_URL}/mcp`);
@@ -64,14 +67,18 @@ describe("staticSitemapUrls", () => {
 });
 
 describe("storySitemapUrl", () => {
-  it("uses the 8-char id permalink without category", () => {
-    expect(
-      storySitemapUrl({
-        id: "abcdef12deadbeef",
-        category: "Research",
-        published_at: 1_787_000_000,
-      }).loc
-    ).toBe(`${SITE_URL}/abcdef12`);
+  const item = {
+    id: "abcdef12deadbeef",
+    category: "Research",
+    published_at: 1_787_000_000,
+  };
+
+  it("emits exactly one explicit URL per story locale", () => {
+    expect(storySitemapUrls(item).map((url) => url.loc)).toEqual([
+      `${SITE_URL}/abcdef12?lang=vi`,
+      `${SITE_URL}/abcdef12?lang=en`,
+    ]);
+    expect(storySitemapUrl(item).loc).toBe(`${SITE_URL}/abcdef12?lang=vi`);
   });
 });
 
@@ -109,7 +116,7 @@ describe("safeSitemapResponse", () => {
     expect(res.headers.get("content-type")).toMatch(/application\/xml/);
     const xml = await res.text();
     expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
-    expect(xml).toContain(`<loc>${SITE_URL}/</loc>`);
+    expect(xml).toContain(`<loc>${SITE_URL}/?lang=vi</loc>`);
     expect(xml).toContain("</urlset>");
     expect(console.error).toHaveBeenCalled();
   });
@@ -131,7 +138,7 @@ describe("safeSitemapResponse", () => {
     expect(xml).toContain(
       'xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
     );
-    expect(xml).toContain(`<loc>${SITE_URL}/</loc>`);
+    expect(xml).toContain(`<loc>${SITE_URL}/?lang=vi</loc>`);
   });
 
   it("returns loaded urls when the loader succeeds", async () => {

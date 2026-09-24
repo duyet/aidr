@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import {
+  digestPaintKey,
   enrichDigest,
   feedUrl,
   fetchDigest,
   fetchStory,
-  digestPaintKey,
   hydrateDigest,
   normalizeDigest,
   publicUrl,
+  readCachedDigest,
   storyUrl,
   writeCachedDigest,
 } from "./api.js";
@@ -21,15 +22,18 @@ afterEach(() => {
 
 const originalFetch = globalThis.fetch;
 
-test("publicUrl and feedUrl use the normalized API base", () => {
+test("publicUrl and feedUrl use normalized base plus explicit locale", () => {
   assert.equal(
     publicUrl("https://aidr.today/"),
-    "https://aidr.today/api/public"
+    "https://aidr.today/api/public?lang=vi"
   );
-  assert.equal(feedUrl("https://aidr.today"), "https://aidr.today/api/feed");
   assert.equal(
-    storyUrl("https://aidr.today/", "abcdef12"),
-    "https://aidr.today/api/story/abcdef12"
+    feedUrl("https://aidr.today", "en"),
+    "https://aidr.today/api/feed?lang=en"
+  );
+  assert.equal(
+    storyUrl("https://aidr.today/", "abcdef12", "en"),
+    "https://aidr.today/api/story/abcdef12?lang=en"
   );
 });
 
@@ -135,16 +139,53 @@ test("fetchDigest prefers /api/public then caches", async () => {
   };
 
   const before = Date.now();
-  const first = await fetchDigest("https://aidr.today", { campaign: "refresh" });
+  const first = await fetchDigest("https://aidr.today", {
+    campaign: "refresh",
+  });
   assert.equal(first.source, "public");
   assert.equal(first.stale, false);
   assert.equal(first.digest.stories[0].title, "T");
   assert.ok(first.digest.lastFetchedAt >= before);
   assert.equal(opts[0].cache, "no-store");
   assert.equal(new URL(calls[0]).pathname, "/api/public");
+  assert.equal(new URL(calls[0]).searchParams.get("lang"), "vi");
   assert.equal(new URL(calls[0]).searchParams.get("utm_content"), "refresh");
   assert.equal(new URL(calls[1]).pathname, "/api/feed");
   assert.equal(new URL(calls[1]).searchParams.get("days"), "3");
+});
+
+test("fetchDigest sends and caches English separately", async () => {
+  await writeCachedDigest(
+    { tldr: null, stories: [{ id: "vi", url: "https://vi" }] },
+    "https://aidr.today",
+    "vi"
+  );
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(String(url));
+    return {
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => ({
+        tldr: null,
+        stories: [{ id: "en", url: "https://en" }],
+      }),
+    };
+  };
+  const result = await fetchDigest("https://aidr.today", {
+    campaign: "refresh",
+    lang: "en",
+  });
+  assert.equal(result.digest.stories[0].id, "en");
+  assert.equal(new URL(calls[0]).searchParams.get("lang"), "en");
+  assert.equal(
+    (await readCachedDigest("https://aidr.today", "en")).stories[0].id,
+    "en"
+  );
+  assert.equal(
+    (await readCachedDigest("https://aidr.today", "vi")).stories[0].id,
+    "vi"
+  );
 });
 
 test("fetchDigest falls back to /api/feed", async () => {
@@ -257,7 +298,10 @@ test("hydrateDigest live fetch is tagged cache-hit vs miss", async () => {
   );
   const result = await hydrateDigest("https://aidr.today");
   assert.equal(result.source, "cache");
-  assert.equal(new URL(calls[0]).searchParams.get("utm_content"), "hydrate_live");
+  assert.equal(
+    new URL(calls[0]).searchParams.get("utm_content"),
+    "hydrate_live"
+  );
 });
 
 test("digestPaintKey is stable for the same digest", () => {
@@ -267,7 +311,10 @@ test("digestPaintKey is stable for the same digest", () => {
     tldr: { date: "2026-09-09" },
     stories: [{ id: "x" }, { id: "y" }],
   };
-  assert.equal(digestPaintKey(a), digestPaintKey({ ...a, stories: [...a.stories] }));
+  assert.equal(
+    digestPaintKey(a),
+    digestPaintKey({ ...a, stories: [...a.stories] })
+  );
   assert.notEqual(digestPaintKey(a), digestPaintKey({ ...a, updatedAt: 10 }));
 });
 

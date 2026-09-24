@@ -40,6 +40,6 @@ test("isChromeWebStoreInstall only matches Google's update service", () => {
 test("extensionMetaUrl uses the API base", () => {
   assert.equal(
     extensionMetaUrl("https://aidr.today/"),
-    "https://aidr.today/api/extension"
+    "https://aidr.today/api/extension?lang=vi"
   );
 });

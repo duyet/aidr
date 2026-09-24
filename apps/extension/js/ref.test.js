@@ -10,13 +10,24 @@ import {
 
 test("withExtRef tags aidr.today permalinks", () => {
   const out = withExtRef("https://aidr.today/deadbeef", "story");
+  assert.equal(
+    out,
+    "https://aidr.today/deadbeef?lang=vi&ref=extension&utm_source=extension&utm_medium=newtab&utm_campaign=aidr_ext&utm_content=story"
+  );
   const u = new URL(out);
+  assert.equal(u.searchParams.get("lang"), "vi");
   assert.equal(u.searchParams.get("ref"), EXT_REF);
   assert.equal(u.searchParams.get("utm_source"), EXT_UTM_SOURCE);
   assert.equal(u.searchParams.get("utm_medium"), EXT_UTM_MEDIUM);
   assert.equal(u.searchParams.get("utm_campaign"), EXT_UTM_CAMPAIGN);
   assert.equal(u.searchParams.get("utm_content"), "story");
   assert.equal(u.pathname, "/deadbeef");
+});
+
+test("withExtRef emits exact English links", () => {
+  const out = withExtRef("https://aidr.today/deadbeef", "story", "en");
+  assert.equal(new URL(out).searchParams.get("lang"), "en");
+  assert.equal(new URL(out).pathname, "/deadbeef");
 });
 
 test("withExtRef leaves third-party URLs alone", () => {

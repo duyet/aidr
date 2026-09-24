@@ -2,7 +2,6 @@ import { digestPaintKey, fetchDigest, hydrateDigest } from "./api.js";
 import { highlightTitle, tagsForHighlight } from "./highlight.js";
 import { t, uiLang } from "./i18n.js";
 import { tagSiteLinks, withExtRef } from "./ref.js";
-import { track } from "./track.js";
 import {
   applyAppearance,
   loadSettings,
@@ -10,8 +9,10 @@ import {
   saveSettings,
 } from "./settings.js";
 import { bindPrefsPopover } from "./settings-panel.js";
+import { NEWS_SITE, storyPermalink } from "./site-url.js";
 import { bindAidrDialogLink, openStoryDialog } from "./story-dialog.js";
 import { topicColor } from "./topic-color.js";
+import { track } from "./track.js";
 import {
   fetchExtensionMeta,
   installedVersion,
@@ -19,7 +20,6 @@ import {
   isNewerVersion,
 } from "./update.js";
 
-const NEWS_SITE = "https://aidr.today";
 const THUMB_MARK = new URL("../icons/thumb-mark.svg", import.meta.url).href;
 
 const CATEGORY_VI = {
@@ -142,18 +142,22 @@ function thumbNode(src) {
   return img;
 }
 
-function storyHref(story) {
-  const cat = (story?.category || "ai").toLowerCase();
-  const id = String(story?.id || "").slice(0, 8);
-  if (!id) return NEWS_SITE;
-  return `${NEWS_SITE}/${cat}/${id}`;
+function storyHref(story, lang) {
+  return (
+    story?.permalink ||
+    storyPermalink(String(story?.id || "").slice(0, 8), lang)
+  );
 }
 
-function bulletHref(digest, bullet) {
+function bulletHref(digest, bullet, lang) {
   const id = bullet.item_ids?.[0];
-  if (!id) return withExtRef(NEWS_SITE, "tldr_home");
+  if (!id) return withExtRef(NEWS_SITE, "tldr_home", lang);
   const story = digest?.items?.[id];
-  return withExtRef(storyHref(story || { id, category: "ai" }), "tldr");
+  return withExtRef(
+    storyHref(story || { id, permalink: "" }, lang),
+    "tldr",
+    lang
+  );
 }
 
 function renderThumbRow(settings, digest, bullet, n) {
@@ -177,7 +181,10 @@ function renderThumbRow(settings, digest, bullet, n) {
   }
 
   const link = document.createElement("a");
-  link.href = safeHttpUrl(bulletHref(digest, bullet), NEWS_SITE);
+  link.href = safeHttpUrl(
+    bulletHref(digest, bullet, uiLang(settings)),
+    storyPermalink("", uiLang(settings))
+  );
   link.rel = "noreferrer";
   appendHighlighted(link, bullet.text, tags);
   const primaryId = bullet.item_ids?.[0];
@@ -322,7 +329,7 @@ async function maybeOfferUnpackedUpdate(settings) {
     if (isChromeWebStoreInstall(globalThis.chrome?.runtime?.getManifest?.())) {
       return;
     }
-    const meta = await fetchExtensionMeta(settings.apiBase);
+    const meta = await fetchExtensionMeta(settings.apiBase, uiLang(settings));
     setUpdateBanner(settings, meta);
   } catch {
     // ignore — digest still works without the version endpoint
@@ -628,9 +635,9 @@ function renderStoryRow(settings, story, index, hot) {
   article.className = "story-article";
   article.href =
     safeHttpUrl(
-      withExtRef(storyHref(story), "story"),
-      withExtRef(NEWS_SITE, "story")
-    ) || withExtRef(NEWS_SITE, "story");
+      withExtRef(storyHref(story, lang), "story", lang),
+      withExtRef(NEWS_SITE, "story", lang)
+    ) || withExtRef(NEWS_SITE, "story", lang);
   article.rel = "noreferrer";
   if (fallbackFromEnglish) article.lang = "en";
   appendHighlighted(article, title, story.tags || []);
@@ -870,6 +877,7 @@ function applySubmitVisibility() {
 
 function render(settings, digest) {
   applyChrome(settings);
+  tagSiteLinks(document, {}, uiLang(settings));
   renderChips(settings, digest);
   renderTldr(settings, digest);
   renderStories(settings, digest);
@@ -932,7 +940,7 @@ async function main() {
   let settings = await loadSettings();
   applyAppearance(settings);
   applyChrome(settings);
-  tagSiteLinks(document);
+  tagSiteLinks(document, {}, uiLang(settings));
 
   let digest = globalThis.__NEWS_TAB_DIGEST__ || {
     tldr: null,
@@ -984,7 +992,10 @@ async function main() {
     };
 
     if (force) {
-      void fetchDigest(settings.apiBase, { campaign: "refresh" })
+      void fetchDigest(settings.apiBase, {
+        campaign: "refresh",
+        lang: uiLang(settings),
+      })
         .then((result) => {
           applyLive(result);
           void maybeOfferUnpackedUpdate(settings);
@@ -995,6 +1006,7 @@ async function main() {
     }
 
     void hydrateDigest(settings.apiBase, {
+      lang: uiLang(settings),
       onCache: (cached) => {
         digest = cached;
         setStatus("", false);

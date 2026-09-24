@@ -122,7 +122,7 @@ export function StoryRow({
     if (!hasDetails) return;
     if (!expanded && item.lazyDetail && !detailRequested.current) {
       detailRequested.current = true;
-      fetch(`/api/story${storyPath(item)}`)
+      fetch(`/api/story${storyPath(item, lang)}`)
         .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
         .then((full) => {
           // Fall back to the lean row so the loading line clears even
@@ -169,7 +169,7 @@ export function StoryRow({
             className={titleAs === ARTICLE_TITLE_TAG ? "inline" : undefined}
           >
             <a
-              href={storyPath(item)}
+              href={storyPath(item, lang)}
               lang={fallbackFromEnglish ? "en" : undefined}
               onClick={(e) => e.stopPropagation()}
               className="hover:underline hover:underline-offset-2"

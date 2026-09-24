@@ -38,7 +38,7 @@ describe("homepageHead", () => {
     expect(SITE_DESCRIPTION.length).toBeGreaterThan(80);
     expect(metaContent(head.meta, "og:title")).toBe(SITE_TITLE);
     expect(metaContent(head.meta, "og:description")).toBe(SITE_DESCRIPTION);
-    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/`);
+    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/?lang=vi`);
     expect(metaContent(head.meta, "og:type")).toBe("website");
     expect(metaContent(head.meta, "og:image")).toBe(SITE_OG_HOME_IMAGE_URL);
     expect(metaContent(head.meta, "og:image:width")).toBe("1200");
@@ -53,9 +53,29 @@ describe("homepageHead", () => {
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: `${SITE_URL}/`,
+      href: `${SITE_URL}/?lang=vi`,
     });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "en",
+      href: `${SITE_URL}/?lang=en`,
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "x-default",
+      href: `${SITE_URL}/?lang=vi`,
+    });
+    expect(metaContent(head.meta, "og:locale")).toBe("vi_VN");
     expect(head.links.some((l) => l.rel === "sitemap")).toBe(true);
+  });
+
+  it("uses the requested English locale for canonical and hreflang", () => {
+    const head = homepageHead("en");
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: `${SITE_URL}/?lang=en`,
+    });
+    expect(metaContent(head.meta, "og:locale")).toBe("en_US");
   });
 });
 
@@ -94,7 +114,9 @@ describe("articleHead", () => {
     expect(metaContent(head.meta, "og:title")).toBe(item.title);
     expect(metaContent(head.meta, "twitter:title")).toBe(item.title);
     expect(metaContent(head.meta, "og:type")).toBe("article");
-    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/abcdef12`);
+    expect(metaContent(head.meta, "og:url")).toBe(
+      `${SITE_URL}/abcdef12?lang=vi`
+    );
     // Branded card rendered by /api/og/$id — never the upstream image_url,
     // which can 404 after ingest.
     const ogImage = `${SITE_URL}/api/og/${item.id}.png`;
@@ -105,7 +127,23 @@ describe("articleHead", () => {
     expect(metaContent(head.meta, "twitter:card")).toBe("summary_large_image");
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: `${SITE_URL}/abcdef12`,
+      href: `${SITE_URL}/abcdef12?lang=vi`,
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "en",
+      href: `${SITE_URL}/abcdef12?lang=en`,
+    });
+  });
+
+  it("builds the English article URL explicitly", () => {
+    const head = articleHead(item, "en");
+    expect(metaContent(head.meta, "og:url")).toBe(
+      `${SITE_URL}/abcdef12?lang=en`
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: `${SITE_URL}/abcdef12?lang=en`,
     });
   });
 

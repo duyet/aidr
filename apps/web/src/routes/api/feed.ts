@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
 import { getFeed } from "../../lib/feed-queries";
+import { resolveLang } from "../../lib/lang";
+import { localeCacheControl } from "../../lib/locale-url";
+
+const FEED_CACHE_CONTROL =
+  "public, max-age=60, s-maxage=120, stale-while-revalidate=300";
 
 export const Route = createFileRoute("/api/feed")({
   server: {
@@ -26,6 +31,11 @@ export const Route = createFileRoute("/api/feed")({
         }
 
         const url = new URL(request.url);
+        const lang = resolveLang({
+          search: url.search,
+          cookie: request.headers.get("cookie"),
+          acceptLanguage: request.headers.get("accept-language"),
+        });
         const daysRaw = url.searchParams.get("days");
         const days = daysRaw ? Number.parseInt(daysRaw, 10) : undefined;
         const before = url.searchParams.get("before") ?? undefined;
@@ -40,12 +50,17 @@ export const Route = createFileRoute("/api/feed")({
             before:
               before && /^\d{4}-\d{2}-\d{2}$/.test(before) ? before : undefined,
           });
-          return Response.json(feed, {
-            headers: {
-              "Cache-Control":
-                "public, max-age=60, s-maxage=120, stale-while-revalidate=300",
-            },
-          });
+          const policy = localeCacheControl(url.search, FEED_CACHE_CONTROL);
+          return Response.json(
+            { ...feed, lang },
+            {
+              headers: {
+                "Cache-Control": policy.cacheControl,
+                "Content-Language": lang,
+                ...(policy.vary ? { Vary: policy.vary } : {}),
+              },
+            }
+          );
         } catch (e) {
           console.error("feed:", e);
           return Response.json({ error: "query failed" }, { status: 500 });

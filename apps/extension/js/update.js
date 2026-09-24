@@ -1,9 +1,10 @@
 import "./preview-shim.js";
 import { withExtRef } from "./ref.js";
 import { normalizeApiBase } from "./settings.js";
+import { apiUrl } from "./site-url.js";
 
-export function extensionMetaUrl(apiBase) {
-  return `${normalizeApiBase(apiBase)}/api/extension`;
+export function extensionMetaUrl(apiBase, lang = "vi") {
+  return apiUrl(normalizeApiBase(apiBase), "/api/extension", lang);
 }
 
 /** Compare x.y.z only. Returns true when remote is strictly newer. */
@@ -46,12 +47,12 @@ export function installedVersion() {
 
 const FETCH_MS = 8000;
 
-export async function fetchExtensionMeta(apiBase) {
+export async function fetchExtensionMeta(apiBase, lang = "vi") {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_MS);
   try {
     const response = await fetch(
-      withExtRef(extensionMetaUrl(apiBase), "update_check"),
+      withExtRef(extensionMetaUrl(apiBase, lang), "update_check", lang),
       {
         credentials: "omit",
         signal: controller.signal,

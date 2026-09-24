@@ -1,14 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
+import { resolveLang } from "../../lib/lang";
+import { absoluteSiteUrl, localeCacheControl } from "../../lib/locale-url";
+import { storyPath } from "../../lib/slug";
 import { getStory } from "../../lib/story-queries";
+
+const STORY_CACHE_CONTROL =
+  "public, max-age=300, s-maxage=600, stale-while-revalidate=3600";
 
 export const Route = createFileRoute("/api/story/$id")({
   server: {
     handlers: {
       GET: async ({
+        request,
         params,
         context,
       }: {
+        request: Request;
         params: { id: string };
         context: any;
       }) => {
@@ -32,17 +40,32 @@ export const Route = createFileRoute("/api/story/$id")({
         }
 
         try {
+          const url = new URL(request.url);
+          const lang = resolveLang({
+            search: url.search,
+            cookie: request.headers.get("cookie"),
+            acceptLanguage: request.headers.get("accept-language"),
+          });
           const idPrefix = params.id.slice(0, 64);
           const item = await getStory(readSession(db), idPrefix);
           if (!item) {
             return Response.json({ error: "not found" }, { status: 404 });
           }
-          return Response.json(item, {
-            headers: {
-              "Cache-Control":
-                "public, max-age=300, s-maxage=600, stale-while-revalidate=3600",
+          const policy = localeCacheControl(url.search, STORY_CACHE_CONTROL);
+          return Response.json(
+            {
+              ...item,
+              lang,
+              permalink: absoluteSiteUrl(storyPath(item), lang),
             },
-          });
+            {
+              headers: {
+                "Cache-Control": policy.cacheControl,
+                "Content-Language": lang,
+                ...(policy.vary ? { Vary: policy.vary } : {}),
+              },
+            }
+          );
         } catch (e) {
           console.error("story.$id:", e);
           return Response.json({ error: "query failed" }, { status: 500 });
