@@ -120,7 +120,7 @@ describe("story dialog responsive layout", () => {
     expect(thumb).toContain("useDialogLifecycle(onClose, overlayRef)");
     expect(thumb).toContain("tabIndex={-1}");
     expect(thumb).toContain("motion-reduce:transition-none");
-    expect(thumb).not.toContain('","replaceAll":false');
+    expect(thumb).not.toContain('", "replaceAll":false');
     expect(thumb).toContain('<X className="h-4 w-4" aria-hidden />');
     expect(header).toContain('<X className="h-4 w-4" aria-hidden />');
     expect(phoneMenu).toContain("useDialogLifecycle(onClose, overlayRef)");
