@@ -12,6 +12,11 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-09",
+    en: "The Email tab on Get AI;DR shows a live preview of the latest digest — exactly what lands in your inbox. The Chrome tab now spells out what the extension does.",
+    vi: "Tab Email trong Get AI;DR hiển thị bản tin mới nhất đúng như email bạn sẽ nhận. Tab Chrome giải thích rõ tiện ích làm gì.",
+  },
+  {
+    date: "2026-09",
     en: "Story links share a branded AI;DR card generated for each story — no more broken thumbnails when a source deletes its image. The homepage has its own masthead card.",
     vi: "Link tin chia sẻ kèm thẻ AI;DR tạo riêng cho từng tin — không còn ảnh hỏng khi nguồn xoá ảnh. Trang chủ có thẻ masthead riêng.",
   },

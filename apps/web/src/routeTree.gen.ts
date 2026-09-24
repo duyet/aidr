@@ -35,6 +35,7 @@ import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
 import { Route as ApiOgIdRouteImport } from './routes/api/og.$id'
 import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
+import { Route as ApiSubscribePreviewRouteImport } from './routes/api/subscribe.preview'
 import { Route as ApiSystemActivityRouteImport } from './routes/api/system.activity'
 import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
 import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
@@ -173,6 +174,11 @@ const ApiStoryIdRoute = ApiStoryIdRouteImport.update({
   path: '/api/story/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSubscribePreviewRoute = ApiSubscribePreviewRouteImport.update({
+  id: '/preview',
+  path: '/preview',
+  getParentRoute: () => ApiSubscribeRoute,
+} as any)
 const ApiSystemActivityRoute = ApiSystemActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
@@ -229,13 +235,14 @@ export interface FileRoutesByFullPath {
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
-  '/api/subscribe': typeof ApiSubscribeRoute
+  '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
+  '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
@@ -264,13 +271,14 @@ export interface FileRoutesByTo {
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
-  '/api/subscribe': typeof ApiSubscribeRoute
+  '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
+  '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
@@ -300,13 +308,14 @@ export interface FileRoutesById {
   '/api/feed': typeof ApiFeedRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
-  '/api/subscribe': typeof ApiSubscribeRoute
+  '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
+  '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
@@ -344,6 +353,7 @@ export interface FileRouteTypes {
     | '/api/admin/$'
     | '/api/og/$id'
     | '/api/story/$id'
+    | '/api/subscribe/preview'
     | '/api/system/activity'
     | '/api/system/llm'
     | '/api/system/models'
@@ -379,6 +389,7 @@ export interface FileRouteTypes {
     | '/api/admin/$'
     | '/api/og/$id'
     | '/api/story/$id'
+    | '/api/subscribe/preview'
     | '/api/system/activity'
     | '/api/system/llm'
     | '/api/system/models'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/api/admin/$'
     | '/api/og/$id'
     | '/api/story/$id'
+    | '/api/subscribe/preview'
     | '/api/system/activity'
     | '/api/system/llm'
     | '/api/system/models'
@@ -443,7 +455,7 @@ export interface RootRouteChildren {
   ApiFeedRoute: typeof ApiFeedRoute
   ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicRoute: typeof ApiPublicRoute
-  ApiSubscribeRoute: typeof ApiSubscribeRoute
+  ApiSubscribeRoute: typeof ApiSubscribeRouteWithChildren
   ApiSystemRoute: typeof ApiSystemRouteWithChildren
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
@@ -636,6 +648,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStoryIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/subscribe/preview': {
+      id: '/api/subscribe/preview'
+      path: '/preview'
+      fullPath: '/api/subscribe/preview'
+      preLoaderRoute: typeof ApiSubscribePreviewRouteImport
+      parentRoute: typeof ApiSubscribeRoute
+    }
     '/api/system/activity': {
       id: '/api/system/activity'
       path: '/activity'
@@ -688,6 +707,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ApiSubscribeRouteChildren {
+  ApiSubscribePreviewRoute: typeof ApiSubscribePreviewRoute
+}
+
+const ApiSubscribeRouteChildren: ApiSubscribeRouteChildren = {
+  ApiSubscribePreviewRoute: ApiSubscribePreviewRoute,
+}
+
+const ApiSubscribeRouteWithChildren = ApiSubscribeRoute._addFileChildren(
+  ApiSubscribeRouteChildren,
+)
+
 interface ApiSystemRouteChildren {
   ApiSystemActivityRoute: typeof ApiSystemActivityRoute
   ApiSystemLlmRoute: typeof ApiSystemLlmRoute
@@ -732,7 +763,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFeedRoute: ApiFeedRoute,
   ApiMcpRoute: ApiMcpRoute,
   ApiPublicRoute: ApiPublicRoute,
-  ApiSubscribeRoute: ApiSubscribeRoute,
+  ApiSubscribeRoute: ApiSubscribeRouteWithChildren,
   ApiSystemRoute: ApiSystemRouteWithChildren,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
