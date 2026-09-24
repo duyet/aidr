@@ -5,7 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig, loadEnv, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { requireMatchingClerkProxyUrls } from "./src/lib/clerk-proxy-config.js";
+import { requireClerkProxyUrl } from "./src/lib/clerk-proxy-config.js";
 
 function readWranglerVar(wrangler: string, name: string): string | undefined {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -24,19 +24,29 @@ function configuredPublicProxyUrl(mode: string): string {
     ...loadEnv(mode, appEnvDir, ""),
   };
 
-  // Wrangler vars are the committed CI/default source, not a hidden
-  // hardcoded production fallback; documented env files override them.
+  if (env.VITE_CLERK_PROXY_URL !== undefined) {
+    throw new Error(
+      "VITE_CLERK_PROXY_URL is derived; configure only CLERK_PROXY_URL"
+    );
+  }
+
+  // wrangler.toml is the canonical deploy source. Development may use an
+  // explicit loopback override, but production builds must match it exactly.
   const wrangler = readFileSync(
     new URL("./wrangler.toml", import.meta.url),
     "utf8"
   );
-  const runtimeUrl =
-    env.CLERK_PROXY_URL ?? readWranglerVar(wrangler, "CLERK_PROXY_URL");
-  const browserUrl =
-    env.VITE_CLERK_PROXY_URL ??
-    readWranglerVar(wrangler, "VITE_CLERK_PROXY_URL");
+  const canonicalUrl = requireClerkProxyUrl(
+    readWranglerVar(wrangler, "CLERK_PROXY_URL")
+  );
+  const environmentUrl = env.CLERK_PROXY_URL;
+  if (environmentUrl === undefined) return canonicalUrl;
 
-  return requireMatchingClerkProxyUrls(runtimeUrl, browserUrl);
+  const normalizedEnvironmentUrl = requireClerkProxyUrl(environmentUrl);
+  if (mode !== "development" && normalizedEnvironmentUrl !== canonicalUrl) {
+    throw new Error("CLERK_PROXY_URL must match wrangler.toml for this build");
+  }
+  return normalizedEnvironmentUrl;
 }
 
 const baseConfig: UserConfig = {
@@ -117,7 +127,7 @@ const baseConfig: UserConfig = {
 export default defineConfig(({ mode }) => ({
   ...baseConfig,
   define: {
-    "import.meta.env.VITE_CLERK_PROXY_URL": JSON.stringify(
+    "import.meta.env.CLERK_PROXY_URL": JSON.stringify(
       configuredPublicProxyUrl(mode)
     ),
   },

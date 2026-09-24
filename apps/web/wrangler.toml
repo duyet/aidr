@@ -73,13 +73,14 @@ ANYROUTER_JEV_MODEL = "typesafe/jev"
 # overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014
 # blocks the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).
 CLERK_ISSUER = "https://aidr.today/__clerk"
-# Absolute public proxy URL shared by the Worker and browser middleware.
+# Single canonical public proxy URL shared by the Worker and browser build.
 # HTTPS is required; HTTP is allowed only for explicit loopback development.
-# Override both values together for preview/local; never derive this from Host.
+# Vite derives its browser value from this variable; never configure a
+# separate VITE_CLERK_PROXY_URL or derive this from request Host.
 # Before rollout, configure the edge WAF rate-limit rule documented in
 # worker/README.md for /__clerk/*; no per-isolate limiter is used here.
+# The handler's documented request/response body limit is 1 MiB.
 CLERK_PROXY_URL = "https://aidr.today/__clerk"
-VITE_CLERK_PROXY_URL = "https://aidr.today/__clerk"
 CLERK_PROXY_TIMEOUT_MS = "10000"
 # @duyetbot posts top stories to this channel; TELEGRAM_BOT_TOKEN is a secret.
 TELEGRAM_CHAT_ID = "-1004420104760"

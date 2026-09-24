@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  requireMatchingClerkProxyUrls,
+  requireClerkProxyUrl,
   resolveClerkProxyUrl,
 } from "../../src/lib/clerk-proxy-config.js";
 import {
   buildClerkProxyTarget,
   CLERK_FAPI_ORIGIN,
+  CLERK_PROXY_MAX_BODY_BYTES,
   CLERK_PROXY_MAX_REQUEST_BODY_BYTES,
+  CLERK_PROXY_MAX_RESPONSE_BODY_BYTES,
   CLERK_PROXY_PATH,
   type ClerkProxyEnv,
   handleClerkProxy,
@@ -81,39 +83,28 @@ describe("isClerkProxyPath", () => {
 });
 
 describe("resolveClerkProxyUrl", () => {
-  it("normalizes environment-specific absolute and browser-relative URLs", () => {
+  it("normalizes explicit absolute URLs and rejects relative values", () => {
     expect(resolveClerkProxyUrl("https://preview.example")).toBe(
       "https://preview.example/__clerk"
     );
     expect(resolveClerkProxyUrl("http://localhost:3014/__clerk/")).toBe(
       "http://localhost:3014/__clerk"
     );
-    expect(resolveClerkProxyUrl("/__clerk", { allowRelative: true })).toBe(
-      CLERK_PROXY_PATH
-    );
+    expect(resolveClerkProxyUrl("/__clerk")).toBeUndefined();
   });
 
-  it("requires matching trusted absolute values", () => {
-    expect(
-      requireMatchingClerkProxyUrls(
-        "https://preview.example/__clerk",
-        "https://preview.example"
-      )
-    ).toBe("https://preview.example/__clerk");
+  it("requires one explicit trusted absolute value", () => {
+    expect(requireClerkProxyUrl("https://preview.example/__clerk")).toBe(
+      "https://preview.example/__clerk"
+    );
     expect(() =>
-      requireMatchingClerkProxyUrls(
-        "https://preview.example/__clerk",
-        "https://other.example/__clerk"
-      )
-    ).toThrow("must be explicit, trusted, and match");
+      requireClerkProxyUrl("https://other.example/__clerk")
+    ).not.toThrow();
     expect(() =>
-      requireMatchingClerkProxyUrls(
-        "http://preview.example/__clerk",
-        "http://preview.example/__clerk"
-      )
-    ).toThrow("must be explicit, trusted, and match");
-    expect(() => requireMatchingClerkProxyUrls(undefined, undefined)).toThrow(
-      "must be explicit, trusted, and match"
+      requireClerkProxyUrl("http://preview.example/__clerk")
+    ).toThrow("explicit trusted absolute URL");
+    expect(() => requireClerkProxyUrl(undefined)).toThrow(
+      "explicit trusted absolute URL"
     );
   });
 
@@ -546,12 +537,46 @@ describe("handleClerkProxy encoding and body limits", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects a streamed request body over the limit with 413", async () => {
+  it("accepts a request body exactly at the 1 MiB limit", async () => {
+    const payload = new Uint8Array(CLERK_PROXY_MAX_BODY_BYTES);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const forwarded = input as Request;
+      expect((await forwarded.arrayBuffer()).byteLength).toBe(
+        CLERK_PROXY_MAX_BODY_BYTES
+      );
+      return new Response("ok");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new Request("https://aidr.today/__clerk/v1/client", {
+      method: "POST",
+      body: payload,
+    });
+
+    const response = await handleClerkProxy(request, makeEnv());
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("pre-reads a POST body even when upstream returns without consuming it", async () => {
+    const fetchMock = mockFetch(new Response("early upstream response"));
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client", {
+        method: "POST",
+        body: "payload",
+      }),
+      makeEnv()
+    );
+    const forwarded = fetchMock.mock.calls[0]?.[0] as Request;
+
+    expect(response.status).toBe(200);
+    expect(await forwarded.text()).toBe("payload");
+  });
+
+  it("rejects a streamed request body before an early upstream response", async () => {
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
-        controller.enqueue(
-          new Uint8Array(CLERK_PROXY_MAX_REQUEST_BODY_BYTES + 1)
-        );
+        controller.enqueue(new Uint8Array(CLERK_PROXY_MAX_BODY_BYTES + 1));
         controller.close();
       },
     });
@@ -560,16 +585,87 @@ describe("handleClerkProxy encoding and body limits", () => {
       body,
       duplex: "half",
     } as RequestInit & { duplex: "half" });
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      await (input as Request).arrayBuffer();
-      return new Response("unexpected");
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = mockFetch(new Response("early upstream response"));
 
     const response = await handleClerkProxy(request, makeEnv());
 
     expect(response.status).toBe(413);
-    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("streams a response exactly at the 1 MiB limit", async () => {
+    const payload = new Uint8Array(CLERK_PROXY_MAX_RESPONSE_BODY_BYTES);
+    const upstreamBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(payload);
+        controller.close();
+      },
+    });
+    mockFetch(new Response(upstreamBody));
+
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client"),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(200);
+    expect((await response.arrayBuffer()).byteLength).toBe(
+      CLERK_PROXY_MAX_RESPONSE_BODY_BYTES
+    );
+  });
+
+  it("rejects a declared response over the 1 MiB limit", async () => {
+    const cancel = vi.fn();
+    const upstreamBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("small"));
+      },
+      cancel,
+    });
+    mockFetch(
+      new Response(upstreamBody, {
+        headers: {
+          "Content-Length": String(CLERK_PROXY_MAX_RESPONSE_BODY_BYTES + 1),
+        },
+      })
+    );
+
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client"),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(502);
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  it("cancels an undeclared response stream after the 1 MiB limit", async () => {
+    const cancel = vi.fn();
+    let pullCount = 0;
+    const upstreamBody = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (pullCount === 0) {
+          pullCount += 1;
+          controller.enqueue(
+            new Uint8Array(CLERK_PROXY_MAX_RESPONSE_BODY_BYTES)
+          );
+        } else if (pullCount === 1) {
+          pullCount += 1;
+          controller.enqueue(new Uint8Array(1));
+        }
+      },
+      cancel,
+    });
+    mockFetch(new Response(upstreamBody));
+
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client"),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.arrayBuffer()).rejects.toThrow();
+    expect(cancel).toHaveBeenCalled();
   });
 });
 
@@ -577,8 +673,8 @@ describe("handleClerkProxy upstream failures", () => {
   it("maps a stalled response body to 504", async () => {
     vi.useFakeTimers();
     const stalledBody = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode("partial"));
+      start() {
+        // No first byte: the handler can still return a controlled 504.
       },
     });
     const fetchMock = vi
@@ -596,6 +692,62 @@ describe("handleClerkProxy upstream failures", () => {
     expect(response.status).toBe(504);
     expect(await response.text()).toBe("Clerk upstream timed out");
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a response stream when its deadline expires after headers", async () => {
+    vi.useFakeTimers();
+    const cancel = vi.fn();
+    const stalledBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("partial"));
+      },
+      cancel,
+    });
+    mockFetch(new Response(stalledBody, { status: 200 }));
+
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client"),
+      makeEnv({ CLERK_PROXY_TIMEOUT_MS: "10" })
+    );
+    expect(response.status).toBe(200);
+
+    const body = response.arrayBuffer();
+    const bodyAssertion = expect(body).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(10);
+    await bodyAssertion;
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  it("propagates the incoming request signal to the upstream request", async () => {
+    const requestController = new AbortController();
+    let resolveStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      resolveStarted = resolve;
+    });
+    let forwarded: Request | undefined;
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      forwarded = input as Request;
+      resolveStarted();
+      return new Promise<Response>((_, reject) => {
+        forwarded?.signal.addEventListener(
+          "abort",
+          () => reject(new DOMException("aborted", "AbortError")),
+          { once: true }
+        );
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new Request("https://aidr.today/__clerk/v1/client", {
+      signal: requestController.signal,
+    });
+
+    const pending = handleClerkProxy(request, makeEnv());
+    await started;
+    requestController.abort();
+    const response = await pending;
+
+    expect(response.status).toBe(499);
+    expect(forwarded?.signal.aborted).toBe(true);
   });
 
   it("maps network errors to a generic 502 without logging or retrying POST", async () => {

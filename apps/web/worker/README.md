@@ -32,10 +32,17 @@ source IP with a short burst allowance; tune to observed traffic). Keep the
 control at the edge so abusive
 requests are rejected before they consume Worker subrequest capacity. This
 repository documents the control but does not invent a Worker namespace/binding
-or change deployment settings.
+or change deployment settings. `CLERK_PROXY_URL` in `wrangler.toml` is the
+canonical deploy value; non-development builds reject an env override that
+would make the browser and generated Worker config diverge.
 
 The focused proxy tests run under Node/Vitest and cannot fully model workerd's
-subrequest body streaming and abort behavior. A deployed workerd smoke test is
-still required before rollout for streaming POSTs, response-body deadlines, and
-manual redirects. The handler caps request bodies at 1 MiB and buffers at most
-16 MiB of an upstream response so a stalled body can become a controlled 504.
+subrequest body streaming and abort behavior. The local workerd harness is
+available with `pnpm --filter @aidr/web test:workerd:clerk-proxy`; a deployed
+workerd smoke test is still required before rollout for production streaming
+POSTs, response-body deadlines, and manual redirects. The handler caps request
+and response bodies at 1 MiB. Request bodies are bounded and pre-read before
+subrequest dispatch, so an early upstream response cannot bypass the limit. It
+reads one response chunk to provide a controlled 504 when the upstream stalls
+before sending data, then streams counted chunks and cancels/errors the stream
+when the limit or deadline is reached.

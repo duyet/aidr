@@ -19,11 +19,13 @@ const APPROVED_CLERK_FAPI_ORIGIN = new URL(CLERK_FAPI_ORIGIN).origin;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_TIMEOUT_MS = 30_000;
 const MAX_CANONICALIZATION_LAYERS = 8;
-export const CLERK_PROXY_MAX_REQUEST_BODY_BYTES = 1_048_576;
-// Bound response buffering so a stalled body can become a controlled 504
-// before headers are returned; never buffer an unbounded upstream stream.
-const MAX_RESPONSE_BODY_BYTES = 16 * 1024 * 1024;
+/** The documented request/response cap shared by tests, config, and docs. */
+export const CLERK_PROXY_MAX_BODY_BYTES = 1_048_576;
+export const CLERK_PROXY_MAX_REQUEST_BODY_BYTES = CLERK_PROXY_MAX_BODY_BYTES;
+export const CLERK_PROXY_MAX_RESPONSE_BODY_BYTES = CLERK_PROXY_MAX_BODY_BYTES;
 const TIMEOUT = Symbol("clerk proxy timeout");
+const REQUEST_ABORTED = Symbol("clerk proxy request aborted");
+const COMPLETED = Symbol("clerk proxy operation completed");
 const ABSOLUTE_URL_PATH = /^\/[a-z][a-z\d+.-]*:\/\//i;
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -73,10 +75,87 @@ export interface ClerkProxyEnv {
   CLERK_PROXY_TIMEOUT_MS?: string | number;
 }
 
+class RequestBodyTooLargeError extends Error {}
 class ResponseBodyTooLargeError extends Error {}
+class ProxyOperationError extends Error {
+  constructor(readonly reason: typeof TIMEOUT | typeof REQUEST_ABORTED) {
+    super("Clerk proxy operation stopped");
+  }
+}
 
-type ProxyRequestInit = RequestInit & { duplex?: "half" };
-type Deadline = Promise<typeof TIMEOUT>;
+type StopReason = typeof TIMEOUT | typeof REQUEST_ABORTED | typeof COMPLETED;
+type StopPromise = Promise<StopReason>;
+
+interface ProxyOperation {
+  controller: AbortController;
+  stop: StopPromise;
+  timedOut: boolean;
+  requestAborted: boolean;
+  complete(): void;
+}
+
+function isStopReason(value: unknown): value is StopReason {
+  return value === TIMEOUT || value === REQUEST_ABORTED || value === COMPLETED;
+}
+
+function createProxyOperation(
+  request: Request,
+  env: ClerkProxyEnv
+): ProxyOperation {
+  const controller = new AbortController();
+  let timedOut = false;
+  let requestAborted = false;
+  let completed = false;
+  let resolveStop!: (reason: StopReason) => void;
+  const stop = new Promise<StopReason>((resolve) => {
+    resolveStop = resolve;
+  });
+
+  const onRequestAbort = () => {
+    if (completed) return;
+    requestAborted = true;
+    controller.abort(request.signal.reason);
+    resolveStop(REQUEST_ABORTED);
+  };
+
+  if (request.signal.aborted) {
+    onRequestAbort();
+  } else {
+    request.signal.addEventListener("abort", onRequestAbort, { once: true });
+  }
+
+  const timeout = setTimeout(() => {
+    if (completed) return;
+    timedOut = true;
+    controller.abort();
+    resolveStop(TIMEOUT);
+  }, timeoutMs(env));
+
+  return {
+    controller,
+    stop,
+    get timedOut() {
+      return timedOut;
+    },
+    get requestAborted() {
+      return requestAborted;
+    },
+    complete() {
+      if (completed) return;
+      completed = true;
+      clearTimeout(timeout);
+      request.signal.removeEventListener("abort", onRequestAbort);
+      resolveStop(COMPLETED);
+    },
+  };
+}
+
+function throwForStop(reason: StopReason): never {
+  if (reason === TIMEOUT || reason === REQUEST_ABORTED) {
+    throw new ProxyOperationError(reason);
+  }
+  throw new Error("Clerk proxy operation completed unexpectedly");
+}
 
 function proxyError(body: string, status: number): Response {
   return new Response(body, {
@@ -292,48 +371,74 @@ function declaredBodySize(
   if (raw === null) return undefined;
   const value = raw.trim();
   if (!/^\d+$/.test(value)) return "invalid";
-  return Number(value) > CLERK_PROXY_MAX_REQUEST_BODY_BYTES
-    ? "too-large"
-    : undefined;
+  return Number(value) > CLERK_PROXY_MAX_BODY_BYTES ? "too-large" : undefined;
 }
 
-function boundedRequestBody(
-  body: ReadableStream<Uint8Array>,
-  onTooLarge: () => void
-): ReadableStream<Uint8Array> {
-  const reader = body.getReader();
+async function cancelReader(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  reason: unknown,
+  stop?: StopPromise
+): Promise<void> {
+  try {
+    const cancellation = reader.cancel(reason);
+    if (stop) {
+      await Promise.race([cancellation, stop]);
+    } else {
+      await cancellation;
+    }
+  } catch {
+    // The request is being rejected or aborted; cancellation is best effort.
+  }
+}
+
+async function cancelRequestBody(request: Request): Promise<void> {
+  if (!request.body) return;
+  try {
+    await request.body.cancel();
+  } catch {
+    // The request body may already be locked or closed by the runtime.
+  }
+}
+
+async function readBoundedRequestBody(
+  request: Request,
+  operation: ProxyOperation
+): Promise<ArrayBuffer | null> {
+  if (!request.body) return null;
+
+  const reader = request.body.getReader();
+  const output = new Uint8Array(CLERK_PROXY_MAX_BODY_BYTES);
   let total = 0;
 
-  return new ReadableStream<Uint8Array>({
-    async pull(streamController) {
-      try {
-        const result = await reader.read();
-        if (result.done) {
-          streamController.close();
-          return;
-        }
-
-        total += result.value.byteLength;
-        if (total > CLERK_PROXY_MAX_REQUEST_BODY_BYTES) {
-          onTooLarge();
-          try {
-            await reader.cancel();
-          } catch {
-            // The abort/error path below remains authoritative.
-          }
-          streamController.error(new Error("Clerk request body too large"));
-          return;
-        }
-
-        streamController.enqueue(result.value);
-      } catch (error) {
-        streamController.error(error);
+  try {
+    while (true) {
+      const result = await Promise.race([reader.read(), operation.stop]);
+      if (isStopReason(result)) {
+        await cancelReader(reader, result, operation.stop);
+        throwForStop(result);
       }
-    },
-    cancel(reason) {
-      return reader.cancel(reason);
-    },
-  });
+      if (result.done) break;
+
+      const chunk = result.value;
+      if (chunk.byteLength > CLERK_PROXY_MAX_BODY_BYTES - total) {
+        throw new RequestBodyTooLargeError();
+      }
+
+      output.set(chunk, total);
+      total += chunk.byteLength;
+    }
+
+    return output.slice(0, total).buffer;
+  } catch (error) {
+    await cancelReader(reader, error, operation.stop);
+    throw error;
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      // The body is already closed or the operation was aborted.
+    }
+  }
 }
 
 function buildProxyRequest(
@@ -341,7 +446,7 @@ function buildProxyRequest(
   target: URL,
   headers: Headers,
   signal: AbortSignal,
-  body: ReadableStream<Uint8Array> | null
+  body: ArrayBuffer | null
 ): Request {
   if (!body) {
     // Constructing from the incoming Request preserves non-body metadata.
@@ -353,19 +458,13 @@ function buildProxyRequest(
     });
   }
 
-  // Node's undici requires duplex for a streaming body; workerd ignores the
-  // non-standard hint while retaining the same Fetch body semantics. Keep the
-  // two-step construction so the body is transferred once, as in the original
-  // streaming proxy path.
-  const init: ProxyRequestInit = {
+  const routed = new Request(target.toString(), {
     method: request.method,
     headers,
     body,
     redirect: "manual",
     signal,
-    duplex: "half",
-  };
-  const routed = new Request(target.toString(), init);
+  });
   return new Request(routed, {
     headers,
     redirect: "manual",
@@ -452,66 +551,158 @@ function safeUpstreamResponseHeaders(
 
 async function cancelResponseBody(
   response: Response,
-  deadline: Deadline
+  operation: ProxyOperation
 ): Promise<void> {
   if (!response.body) return;
   try {
-    await Promise.race([response.body.cancel(), deadline]);
+    await Promise.race([response.body.cancel(), operation.stop]);
   } catch {
     // The upstream is being discarded; no error detail is exposed.
   }
 }
 
-function concatChunks(chunks: Uint8Array[], total: number): ArrayBuffer {
-  const result = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return result.buffer;
+function declaredResponseSize(
+  response: Response
+): "invalid" | "too-large" | undefined {
+  const raw = response.headers.get("Content-Length");
+  if (raw === null) return undefined;
+  const value = raw.trim();
+  if (!/^\d+$/.test(value)) return "invalid";
+  return Number(value) > CLERK_PROXY_MAX_RESPONSE_BODY_BYTES
+    ? "too-large"
+    : undefined;
 }
 
-async function readBoundedResponseBody(
-  response: Response,
-  deadline: Deadline
-): Promise<ArrayBuffer | null> {
-  if (!response.body) return null;
-
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  let completed = false;
-
+function releaseReader(reader: ReadableStreamDefaultReader<Uint8Array>): void {
   try {
-    while (true) {
-      const result = await Promise.race([reader.read(), deadline]);
-      if (result === TIMEOUT) throw new Error("Clerk upstream timeout");
-      if (result.done) break;
-
-      total += result.value.byteLength;
-      if (total > MAX_RESPONSE_BODY_BYTES) {
-        throw new ResponseBodyTooLargeError();
-      }
-      chunks.push(result.value);
-    }
-
-    completed = true;
-    return concatChunks(chunks, total);
-  } finally {
-    if (!completed) {
-      try {
-        await Promise.race([reader.cancel(), deadline]);
-      } catch {
-        // The response is being discarded or the deadline already won.
-      }
-    }
-    try {
-      reader.releaseLock();
-    } catch {
-      // The response is being discarded or the deadline already won.
-    }
+    reader.releaseLock();
+  } catch {
+    // The response is being discarded or the operation was aborted.
   }
+}
+
+function responseStreamError(reason: StopReason): Error {
+  if (reason === TIMEOUT) return new Error("Clerk upstream timed out");
+  if (reason === REQUEST_ABORTED) {
+    return new DOMException("Clerk request aborted", "AbortError");
+  }
+  return new Error("Clerk upstream response failed");
+}
+
+async function readResponseChunk(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  operation: ProxyOperation
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  const result = await Promise.race([reader.read(), operation.stop]);
+  if (isStopReason(result)) {
+    await cancelReader(reader, result, operation.stop);
+    throwForStop(result);
+  }
+  return result;
+}
+
+function createCountedResponseBody(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  firstChunk: Uint8Array | null,
+  initiallyDone: boolean,
+  operation: ProxyOperation
+): ReadableStream<Uint8Array> {
+  let total = 0;
+  let pending = firstChunk;
+  let upstreamDone = initiallyDone;
+  let finished = false;
+  let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    releaseReader(reader);
+    operation.complete();
+  };
+
+  const fail = async (error: Error) => {
+    if (finished) return;
+    finished = true;
+    await cancelReader(reader, error, operation.stop);
+    releaseReader(reader);
+    try {
+      streamController?.error(error);
+    } catch {
+      // The downstream consumer may already have cancelled the stream.
+    }
+    operation.complete();
+  };
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      streamController = controller;
+      if (firstChunk) total = firstChunk.byteLength;
+      operation.stop
+        .then((reason) => {
+          if (finished || reason === COMPLETED) return;
+          return fail(responseStreamError(reason));
+        })
+        .catch(() => {
+          // fail() owns the generic stream error; this only consumes a
+          // rejected stop promise defensively.
+        });
+    },
+    async pull(controller) {
+      if (finished) return;
+      try {
+        if (pending) {
+          const chunk = pending;
+          pending = null;
+          controller.enqueue(chunk);
+          return;
+        }
+        if (upstreamDone) {
+          controller.close();
+          finish();
+          return;
+        }
+
+        const result = await readResponseChunk(reader, operation);
+        if (result.done) {
+          upstreamDone = true;
+          controller.close();
+          finish();
+          return;
+        }
+
+        total += result.value.byteLength;
+        if (total > CLERK_PROXY_MAX_RESPONSE_BODY_BYTES) {
+          await fail(new ResponseBodyTooLargeError());
+          return;
+        }
+        controller.enqueue(result.value);
+      } catch (error) {
+        if (finished) return;
+        finished = true;
+        try {
+          controller.error(
+            error instanceof Error
+              ? error
+              : new Error("Clerk upstream response failed")
+          );
+        } catch {
+          // The downstream consumer may already have cancelled the stream.
+        }
+        await cancelReader(reader, error, operation.stop);
+        releaseReader(reader);
+        operation.complete();
+      }
+    },
+    async cancel(reason) {
+      if (finished) return;
+      finished = true;
+      await cancelReader(reader, reason, operation.stop);
+      releaseReader(reader);
+      operation.complete();
+    },
+  });
+
+  return stream;
 }
 
 export async function handleClerkProxy(
@@ -519,6 +710,7 @@ export async function handleClerkProxy(
   env: ClerkProxyEnv
 ): Promise<Response> {
   if (!env.CLERK_SECRET_KEY) {
+    await cancelRequestBody(request);
     return proxyError(
       "Clerk proxy misconfigured: missing CLERK_SECRET_KEY",
       503
@@ -529,6 +721,7 @@ export async function handleClerkProxy(
   try {
     publicProxy = publicProxyUrl(env);
   } catch {
+    await cancelRequestBody(request);
     return proxyError(
       "Clerk proxy misconfigured: missing CLERK_PROXY_URL",
       503
@@ -536,18 +729,22 @@ export async function handleClerkProxy(
   }
 
   if (!requestUsesPublicOrigin(request, publicProxy)) {
+    await cancelRequestBody(request);
     return proxyError("Clerk proxy public origin mismatch", 503);
   }
 
   if (unsupportedRequestEncoding(request)) {
+    await cancelRequestBody(request);
     return proxyError("Clerk proxy request encoding unsupported", 415);
   }
 
   const declaredSize = declaredBodySize(request);
   if (declaredSize === "invalid") {
+    await cancelRequestBody(request);
     return proxyError("Invalid Clerk proxy request length", 400);
   }
   if (declaredSize === "too-large") {
+    await cancelRequestBody(request);
     return proxyError("Clerk proxy request body too large", 413);
   }
 
@@ -555,62 +752,118 @@ export async function handleClerkProxy(
   try {
     target = buildClerkProxyTarget(request);
   } catch {
+    await cancelRequestBody(request);
     return proxyError("Invalid Clerk proxy path", 400);
   }
 
-  const controller = new AbortController();
-  let timedOut = false;
-  let requestBodyTooLarge = false;
-  let resolveDeadline!: (value: typeof TIMEOUT) => void;
-  const deadline = new Promise<typeof TIMEOUT>((resolve) => {
-    resolveDeadline = resolve;
-  });
-  const timeout = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-    resolveDeadline(TIMEOUT);
-  }, timeoutMs(env));
+  const operation = createProxyOperation(request, env);
+  let responseReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  let responseStreamOwnsOperation = false;
 
   try {
-    const requestBody =
-      request.body && request.method !== "GET" && request.method !== "HEAD"
-        ? boundedRequestBody(request.body, () => {
-            requestBodyTooLarge = true;
-            controller.abort();
-          })
-        : null;
+    if (operation.requestAborted) throwForStop(REQUEST_ABORTED);
+
+    // Read and bound the body before dispatch. This makes the 1 MiB limit
+    // independent of whether the upstream consumes the request or answers
+    // early, while the linked signal still propagates client cancellation.
+    const requestBody = await readBoundedRequestBody(request, operation);
+    if (operation.requestAborted) throwForStop(REQUEST_ABORTED);
+    if (operation.timedOut) throwForStop(TIMEOUT);
     const proxyRequest = buildProxyRequest(
       request,
       target,
       buildClerkProxyHeaders(request, env, publicProxy),
-      controller.signal,
+      operation.controller.signal,
       requestBody
     );
 
-    const fetched = await Promise.race([fetch(proxyRequest), deadline]);
-    if (fetched === TIMEOUT) throw new Error("Clerk upstream timeout");
+    const observedUpstream = fetch(proxyRequest);
+    const fetched = await Promise.race([observedUpstream, operation.stop]);
+    if (isStopReason(fetched)) {
+      void observedUpstream
+        .then((lateResponse) => cancelResponseBody(lateResponse, operation))
+        .catch(() => {
+          // The timeout/abort won; a late upstream rejection is irrelevant.
+        });
+      throwForStop(fetched);
+    }
     const response = fetched;
     const headers = safeUpstreamResponseHeaders(response, publicProxy);
     if (!headers) {
-      await cancelResponseBody(response, deadline);
+      await cancelResponseBody(response, operation);
       return proxyError("Clerk upstream redirect rejected", 502);
     }
 
-    const responseBody = await readBoundedResponseBody(response, deadline);
-    return new Response(responseBody, {
+    const responseSize = declaredResponseSize(response);
+    if (responseSize) {
+      await cancelResponseBody(response, operation);
+      throw new ResponseBodyTooLargeError();
+    }
+
+    let responseBody: ReadableStream<Uint8Array> | null = null;
+    let firstChunk: Uint8Array | null = null;
+    let initiallyDone = false;
+    const bodyForbidden =
+      response.status === 204 ||
+      response.status === 205 ||
+      response.status === 304;
+
+    if (response.body && !bodyForbidden) {
+      responseReader = response.body.getReader();
+      const first = await readResponseChunk(responseReader, operation);
+      if (first.done) {
+        initiallyDone = true;
+        releaseReader(responseReader);
+        responseReader = null;
+      } else {
+        if (first.value.byteLength > CLERK_PROXY_MAX_RESPONSE_BODY_BYTES) {
+          throw new ResponseBodyTooLargeError();
+        }
+        firstChunk = first.value;
+      }
+    } else if (response.body) {
+      await cancelResponseBody(response, operation);
+    }
+
+    if (responseReader) {
+      responseBody = createCountedResponseBody(
+        responseReader,
+        firstChunk,
+        initiallyDone,
+        operation
+      );
+      const result = new Response(responseBody, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+      responseStreamOwnsOperation = true;
+      return result;
+    }
+
+    operation.complete();
+    return new Response(null, {
       status: response.status,
       statusText: response.statusText,
       headers,
     });
-  } catch {
-    if (requestBodyTooLarge) {
+  } catch (error) {
+    if (responseReader) {
+      await cancelReader(responseReader, error, operation.stop);
+      releaseReader(responseReader);
+      responseReader = null;
+    }
+    if (error instanceof RequestBodyTooLargeError) {
       return proxyError("Clerk proxy request body too large", 413);
     }
-    return proxyError(
-      timedOut ? "Clerk upstream timed out" : "Clerk upstream unavailable",
-      timedOut ? 504 : 502
-    );
+    if (operation.requestAborted) {
+      return proxyError("Clerk proxy request aborted", 499);
+    }
+    if (operation.timedOut) {
+      return proxyError("Clerk upstream timed out", 504);
+    }
+    return proxyError("Clerk upstream unavailable", 502);
   } finally {
-    clearTimeout(timeout);
+    if (!responseStreamOwnsOperation) operation.complete();
   }
 }

@@ -1,10 +1,5 @@
 export const CLERK_PROXY_PATH = "/__clerk";
 
-export interface ClerkProxyUrlOptions {
-  /** Relative paths are useful to explicitly configured browser SDKs only. */
-  allowRelative?: boolean;
-}
-
 function isLoopbackHostname(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "[::1]" || hostname === "::1") {
     return true;
@@ -27,8 +22,7 @@ function isLoopbackHostname(hostname: string): boolean {
  * allowed for local development only.
  */
 export function resolveClerkProxyUrl(
-  value: string | undefined,
-  { allowRelative = false }: ClerkProxyUrlOptions = {}
+  value: string | undefined
 ): string | undefined {
   if (typeof value !== "string") return undefined;
 
@@ -49,22 +43,7 @@ export function resolveClerkProxyUrl(
     return undefined;
   }
 
-  if (raw.startsWith("/")) {
-    if (!allowRelative || raw.startsWith("//")) return undefined;
-    try {
-      const parsed = new URL(raw, "https://clerk-proxy.invalid");
-      if (
-        parsed.pathname !== CLERK_PROXY_PATH ||
-        parsed.search ||
-        parsed.hash
-      ) {
-        return undefined;
-      }
-      return CLERK_PROXY_PATH;
-    } catch {
-      return undefined;
-    }
-  }
+  if (raw.startsWith("/")) return undefined;
 
   let parsed: URL;
   try {
@@ -96,17 +75,10 @@ export function resolveClerkProxyUrl(
   return parsed.toString();
 }
 
-/** Require the runtime and browser values to be explicit, trusted, and equal. */
-export function requireMatchingClerkProxyUrls(
-  runtimeValue: string | undefined,
-  browserValue: string | undefined
-): string {
-  const runtimeUrl = resolveClerkProxyUrl(runtimeValue);
-  const browserUrl = resolveClerkProxyUrl(browserValue);
-  if (!runtimeUrl || !browserUrl || runtimeUrl !== browserUrl) {
-    throw new Error(
-      "CLERK_PROXY_URL and VITE_CLERK_PROXY_URL must be explicit, trusted, and match"
-    );
+export function requireClerkProxyUrl(value: string | undefined): string {
+  const url = resolveClerkProxyUrl(value);
+  if (!url) {
+    throw new Error("CLERK_PROXY_URL must be an explicit trusted absolute URL");
   }
-  return runtimeUrl;
+  return url;
 }

@@ -3,7 +3,7 @@ import { createStart } from "@tanstack/react-start";
 import { resolveClerkProxyUrl } from "./lib/clerk-proxy-config";
 
 const configuredProxyUrl = resolveClerkProxyUrl(
-  import.meta.env.VITE_CLERK_PROXY_URL
+  import.meta.env.CLERK_PROXY_URL
 );
 
 export const startInstance = createStart(() => {
@@ -13,7 +13,7 @@ export const startInstance = createStart(() => {
     requestMiddleware: [
       clerkMiddleware(() => {
         if (!configuredProxyUrl) {
-          throw new Error("VITE_CLERK_PROXY_URL must be an absolute URL");
+          throw new Error("CLERK_PROXY_URL must be an absolute URL");
         }
         return { proxyUrl: configuredProxyUrl };
       }),

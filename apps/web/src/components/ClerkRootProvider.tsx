@@ -45,7 +45,7 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
   const publishableKey = getClerkPublishableKey();
   const navigationLang = useLang();
   const localeOptions = clerkProviderLocaleOptions(navigationLang);
-  const proxyUrl = resolveClerkProxyUrl(import.meta.env.VITE_CLERK_PROXY_URL);
+  const proxyUrl = resolveClerkProxyUrl(import.meta.env.CLERK_PROXY_URL);
   const [mod, setMod] = useState<ClerkModule | null>(null);
 
   useEffect(() => {
