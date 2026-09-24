@@ -245,7 +245,7 @@ importers:
         version: 5.20260923.1
       '@dotenvx/dotenvx':
         specifier: ^2.28.0
-        version: 2.28.0
+        version: 2.30.0
       '@tailwindcss/vite':
         specifier: ^4.0.0
         version: 4.3.3(vite@8.3.0(@types/node@25.9.8)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
@@ -627,15 +627,15 @@ packages:
     resolution: {integrity: sha512-/BITOC9dmS/edY2zQwZNicQ059O6RKabtQfyEafV0nGtfYRNHYy1DIPiYVcov40+tob9hfmBnbR963dS+EQ1DQ==}
     hasBin: true
 
-  '@dotenvx/dotenvx@2.28.0':
-    resolution: {integrity: sha512-NBG5qBkNp5ZYlPsTzB5Zjk5y7dstE94MrlrWpJex22YtGOgcFb41WQ8PzLtjiEBlf98TOO4nr1n/PsEXAFYo9g==}
+  '@dotenvx/dotenvx@2.30.0':
+    resolution: {integrity: sha512-+Rk8UhaD3WIREKJBPmH9HHUvKO+ggb4tJhzAoXiZNBjQv6nAiJmI953MQ6sC7msHjAvhRIFlyZT7Oe6bQPslAA==}
     hasBin: true
 
   '@dotenvx/primitives@0.8.0':
     resolution: {integrity: sha512-VYJy0uhFm9zTJ1TxBaW/pA8bjbOM/OttaNMwZ1RHG4JKyRG7DhSdiqD1ipQoAyoD22olUtxbP78W9xY3Wd11bg==}
 
-  '@dotenvx/primitives@3.0.2':
-    resolution: {integrity: sha512-qhddO125donMnxDZRK7Wvw1Oyd5744wJD5j7a8U5254IKwpnAxcpFcjwiUHhmIfGYnAuGBoCRIK5Rlm3bd6y7Q==}
+  '@dotenvx/primitives@3.0.3':
+    resolution: {integrity: sha512-KodBtwW8IgXhDiic04+cMvMKGjGLLew3jJq2JUGmh7c0M7u+twSylCkygkixzDvIvXrugKcCUQLkvDhgK7RN2g==}
 
   '@dotenvx/tooling@1.0.3':
     resolution: {integrity: sha512-Gd6qQol/ICb4MPRWpiIH56y+pR9AVB7kPBkbhrLSGLtAiF4Qgy+k651/f2pze0Xbm3H5XewbPfIm4y9K+ic30Q==}
@@ -4937,9 +4937,9 @@ snapshots:
       which: 4.0.0
       yocto-spinner: 1.2.2
 
-  '@dotenvx/dotenvx@2.28.0':
+  '@dotenvx/dotenvx@2.30.0':
     dependencies:
-      '@dotenvx/primitives': 3.0.2
+      '@dotenvx/primitives': 3.0.3
       '@dotenvx/tooling': 1.0.3
       global-agent: 3.0.0
       node-forge: 1.4.0
@@ -4948,7 +4948,7 @@ snapshots:
 
   '@dotenvx/primitives@0.8.0': {}
 
-  '@dotenvx/primitives@3.0.2': {}
+  '@dotenvx/primitives@3.0.3': {}
 
   '@dotenvx/tooling@1.0.3': {}
 
