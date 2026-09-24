@@ -27,6 +27,25 @@ describe("parseRssItems", () => {
     });
   });
 
+  it("collects bounded RSS media candidates and a video poster", () => {
+    const xml = `<item>
+      <title>Video story</title>
+      <link>https://example.com/video</link>
+      <pubDate>Mon, 07 Sep 2026 00:00:00 GMT</pubDate>
+      <media:thumbnail url="https://example.com/poster.jpg" />
+      <media:content url="https://example.com/story.mp4" type="video/mp4" />
+    </item>`;
+    const [item] = parseRssItems(xml);
+    expect(item.media).toEqual([
+      { type: "image", url: "https://example.com/poster.jpg" },
+      {
+        type: "video",
+        url: "https://example.com/story.mp4",
+        poster_url: "https://example.com/poster.jpg",
+      },
+    ]);
+  });
+
   it("reads Atom entries with link href and updated dates", () => {
     const atom = `<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">

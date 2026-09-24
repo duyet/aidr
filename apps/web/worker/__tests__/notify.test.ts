@@ -92,6 +92,7 @@ describe("buildTrendingQuery", () => {
     expect(sql).toContain("n.item_id IS NULL");
     expect(sql).toContain("tr.lang = 'vi'");
     expect(sql).toContain("THEN 'vi' ELSE 'en' END AS lang");
+    expect(sql).toContain("i.media_manifest");
     expect(binds).toEqual([
       "telegram",
       1_700_000_000 - 24 * 3600,

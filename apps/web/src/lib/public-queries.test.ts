@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { MAX_PUBLIC_MEDIA_ASSETS } from "../../worker/media.js";
 import { servePublicApi } from "./public-api";
 import {
   getPublicDigest,
@@ -19,6 +20,7 @@ interface StoryRow {
   title_vi: string | null;
   category: string | null;
   image_url?: string | null;
+  media_manifest?: string | null;
   published_at: number;
 }
 
@@ -40,6 +42,7 @@ function makeDb(opts: {
   stories?: StoryRow[];
   extraImages?: Array<{ id: string; image_url: string | null }>;
   failImageColumn?: boolean;
+  failMediaColumn?: boolean;
   throwOnItems?: boolean;
 }): D1Database {
   return {
@@ -56,6 +59,9 @@ function makeDb(opts: {
             }
             if (opts.failImageColumn && sql.includes("image_url")) {
               throw new Error("no such column: image_url");
+            }
+            if (opts.failMediaColumn && sql.includes("media_manifest")) {
+              throw new Error("no such column: media_manifest");
             }
             if (sql.includes("id IN")) {
               return { results: opts.extraImages ?? [] };
@@ -171,6 +177,31 @@ describe("getPublicDigest", () => {
     expect(bytes).toBeLessThan(50_000);
   });
 
+  it("exposes only a bounded manifest and keeps legacy image_url", async () => {
+    const assets = Array.from({ length: 10 }, (_, i) => ({
+      type: "image" as const,
+      url: `https://img.example/${i}.jpg`,
+    }));
+    const db = makeDb({
+      tldr: bilingualTldr,
+      stories: [
+        story("a", {
+          media_manifest: JSON.stringify({ version: 1, assets }),
+        }),
+        story("b"),
+      ],
+    });
+    const digest = await getPublicDigest(db);
+    expect(digest.stories[0]?.image_url).toBe("https://img.example/a.jpg");
+    expect(
+      digest.stories[0]?.media_manifest?.assets.length
+    ).toBeLessThanOrEqual(MAX_PUBLIC_MEDIA_ASSETS);
+    expect(digest.stories[0]?.media_manifest?.assets[0]).toEqual({
+      type: "image",
+      url: "https://img.example/a.jpg",
+    });
+  });
+
   it("caps stories at PUBLIC_STORY_LIMIT", async () => {
     const stories = Array.from({ length: PUBLIC_STORY_LIMIT }, (_, i) =>
       story(`id${i}`)
@@ -210,6 +241,16 @@ describe("getPublicDigest", () => {
     expect(digest.stories[0]?.image_url).toBeNull();
     expect(digest.stories[0]?.id).toBe("a");
     expect(digest.tldr?.bullets_en[0]).not.toHaveProperty("image_url");
+  });
+
+  it("keeps image_url when only the new media column is missing", async () => {
+    const db = makeDb({
+      tldr: bilingualTldr,
+      stories: [story("a")],
+      failMediaColumn: true,
+    });
+    const digest = await getPublicDigest(db);
+    expect(digest.stories[0]?.image_url).toBe("https://img.example/a.jpg");
   });
 
   it("looks up a bullet image even when the story is outside the top 8", async () => {

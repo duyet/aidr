@@ -1,3 +1,9 @@
+import {
+  boundedPublicManifest,
+  canonicalizeMediaUrl,
+  firstImageUrl,
+  parseMediaManifest,
+} from "../../worker/media.js";
 import { AUDIENCE_TIMEZONE, localCalendarDate } from "../../worker/time.js";
 import {
   collectTrendingCandidates,
@@ -15,11 +21,7 @@ import {
   resolveTldrForDisplay,
   shouldRebuildTldrForDisplay,
 } from "./tldr-fallback";
-import {
-  imageUrlByItemId,
-  sanitizeImageUrl,
-  withTldrImages,
-} from "./tldr-images";
+import { imageUrlByItemId, withTldrImages } from "./tldr-images";
 import type { DayGroup, FeedItem, FeedResponse } from "./types";
 
 interface ItemRow {
@@ -38,12 +40,13 @@ interface ItemRow {
   tags: string;
   llm_tokens?: number;
   image_url?: string | null;
+  media_manifest?: string | null;
 }
 
 const ITEM_SELECT_BASE = `
   SELECT i.id, i.url, i.title, t.title AS title_vi, i.summary,
          t.summary AS summary_vi, i.category,
-         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}
+         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}
   FROM items i
   LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
   WHERE i.status = 'published'
@@ -51,6 +54,7 @@ const ITEM_SELECT_BASE = `
 
 let llmTokensSupported: boolean | null = null;
 let imageUrlSupported: boolean | null = null;
+let mediaManifestSupported: boolean | null = null;
 
 async function probeColumn(
   db: DbReader,
@@ -77,6 +81,15 @@ async function supportsImageUrl(db: DbReader): Promise<boolean> {
   return imageUrlSupported;
 }
 
+async function supportsMediaManifest(db: DbReader): Promise<boolean> {
+  mediaManifestSupported = await probeColumn(
+    db,
+    "media_manifest",
+    mediaManifestSupported
+  );
+  return mediaManifestSupported;
+}
+
 function toFeedItem(row: ItemRow): FeedItem {
   let tags: string[] = [];
   try {
@@ -84,12 +97,16 @@ function toFeedItem(row: ItemRow): FeedItem {
   } catch {
     // malformed tags JSON from an old pipeline run — treat as untagged
   }
+  const { media_manifest: rawManifest, ...item } = row;
+  const manifest = parseMediaManifest(rawManifest, row.image_url);
+  const exposedManifest = boundedPublicManifest(manifest);
   return {
-    ...row,
+    ...item,
     tags,
     sources: [],
     llm_tokens: row.llm_tokens ?? 0,
-    image_url: sanitizeImageUrl(row.image_url),
+    image_url: firstImageUrl(manifest) ?? canonicalizeMediaUrl(row.image_url),
+    ...(exposedManifest ? { media_manifest: exposedManifest } : {}),
   };
 }
 
@@ -197,14 +214,17 @@ export async function getFeed(
     : Math.floor(Date.now() / 1000);
   const since = until - days * 86400;
 
-  const [hasLlmTokens, hasImageUrl] = await Promise.all([
+  const [hasLlmTokens, hasImageUrl, hasMediaManifest] = await Promise.all([
     supportsLlmTokens(db),
     supportsImageUrl(db),
+    supportsMediaManifest(db),
   ]);
   const itemSelect = ITEM_SELECT_BASE.replace(
     "{tokens}",
     hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""
-  ).replace("{image}", hasImageUrl ? ", i.image_url" : "");
+  )
+    .replace("{image}", hasImageUrl ? ", i.image_url" : "")
+    .replace("{media}", hasMediaManifest ? ", i.media_manifest" : "");
 
   let sql = `${itemSelect} AND i.published_at >= ? AND i.published_at < ?`;
   const binds: unknown[] = [since, until];

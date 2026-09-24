@@ -1,3 +1,4 @@
+import type { MediaCandidate } from "../media.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 
 function decodeXml(value: string): string {
@@ -33,6 +34,46 @@ function linkHref(block: string): string | null {
   return href || null;
 }
 
+function attributes(tag: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const pattern = /([\w:-]+)\s*=\s*["']([^"']*)["']/g;
+  let match: RegExpExecArray | null = pattern.exec(tag);
+  while (match !== null) {
+    result[match[1].toLowerCase()] = decodeXml(match[2]);
+    match = pattern.exec(tag);
+  }
+  return result;
+}
+
+function mediaCandidatesFromBlock(block: string): MediaCandidate[] {
+  const candidates: MediaCandidate[] = [];
+  const poster = block.match(
+    /<(?:media:thumbnail|thumbnail)\b[^>]*(?:url|href)\s*=\s*["']([^"']+)["']/i
+  )?.[1];
+  const tags =
+    block.match(/<(?:media:content|media:thumbnail|enclosure)\b[^>]*>/gi) ?? [];
+  for (const tag of tags) {
+    const attrs = attributes(tag);
+    const url = attrs.url ?? attrs.href ?? attrs.src;
+    if (!url) continue;
+    const typeHint = `${attrs.type ?? ""} ${attrs.medium ?? ""}`.toLowerCase();
+    const isVideo =
+      typeHint.includes("video") ||
+      /\.(?:mp4|m4v|mov|webm)(?:$|[?#])/i.test(url);
+    const isImage =
+      /^<(?:media:thumbnail|thumbnail)\b/i.test(tag) ||
+      typeHint.includes("image") ||
+      /\.(?:jpe?g|png|webp|gif|avif|svg)(?:$|[?#])/i.test(url);
+    if (!isVideo && !isImage) continue;
+    candidates.push({
+      type: isVideo ? "video" : "image",
+      url,
+      ...(isVideo && poster ? { poster_url: poster } : {}),
+    });
+  }
+  return candidates;
+}
+
 export function parseRssItems(xml: string): FetchedItem[] {
   const chunks =
     xml.match(/<(?:item|entry)\b[\s\S]*?<\/(?:item|entry)>/gi) ?? [];
@@ -56,11 +97,13 @@ export function parseRssItems(xml: string): FetchedItem[] {
     const summary = rawSummary
       ? stripHtml(rawSummary).slice(0, 1200)
       : undefined;
+    const media = mediaCandidatesFromBlock(chunk);
     items.push({
       url,
       title,
       summary: summary || undefined,
       publishedAt,
+      ...(media.length > 0 ? { media } : {}),
       sources: [
         { kind: "source", url, postedAt: Math.floor(publishedAt / 1000) },
       ],

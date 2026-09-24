@@ -1,10 +1,16 @@
+import {
+  boundedPublicManifest,
+  canonicalizeMediaUrl,
+  firstImageUrl,
+  type MediaManifest,
+  parseMediaManifest,
+} from "../../worker/media.js";
 import type { DbReader } from "./db";
 import { parseStoredBullets } from "./tldr-bullets";
 import { isThinDisplayTldr, synthesizeTldrFromItems } from "./tldr-fallback";
 import {
   collectTldrItemIds,
   imageUrlByItemId,
-  sanitizeImageUrl,
   withTldrImages,
 } from "./tldr-images";
 import type { TldrBullet } from "./types";
@@ -29,6 +35,8 @@ export interface PublicStory {
   title_vi: string | null;
   category: string | null;
   image_url: string | null;
+  /** Bounded additive field; legacy image_url remains the primary contract. */
+  media_manifest?: MediaManifest;
   published_at: number;
 }
 
@@ -49,10 +57,19 @@ interface StoryRow {
   title_vi: string | null;
   category: string | null;
   image_url?: string | null;
+  media_manifest?: string | null;
   published_at: number;
 }
 
 const STORIES_SQL = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i.category,
+       i.image_url, i.media_manifest, i.published_at
+FROM items i
+LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
+WHERE i.status = 'published'
+ORDER BY i.rank_score DESC
+LIMIT ?`;
+
+const STORIES_SQL_NO_MEDIA = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i.category,
        i.image_url, i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
@@ -60,7 +77,7 @@ WHERE i.status = 'published'
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
-const STORIES_SQL_NO_IMAGE = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i.category,
+const STORIES_SQL_LEGACY = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i.category,
        i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
@@ -113,6 +130,8 @@ function parseTldrRow(
 }
 
 function toPublicStory(row: StoryRow): PublicStory {
+  const manifest = parseMediaManifest(row.media_manifest, row.image_url);
+  const exposedManifest = boundedPublicManifest(manifest);
   return {
     id: clip(row.id, 128),
     url: clip(row.url, PUBLIC_STORY_TEXT_MAX),
@@ -120,9 +139,11 @@ function toPublicStory(row: StoryRow): PublicStory {
     title_vi: row.title_vi ? clip(row.title_vi, PUBLIC_STORY_TEXT_MAX) : null,
     category: row.category ? clip(row.category, 64) : null,
     image_url: (() => {
-      const url = sanitizeImageUrl(row.image_url);
+      const url =
+        firstImageUrl(manifest) ?? canonicalizeMediaUrl(row.image_url);
       return url ? clip(url, PUBLIC_STORY_TEXT_MAX) : null;
     })(),
+    ...(exposedManifest ? { media_manifest: exposedManifest } : {}),
     published_at: row.published_at,
   };
 }
@@ -135,11 +156,19 @@ async function loadTopStories(db: DbReader): Promise<PublicStory[]> {
       .all<StoryRow>();
     return (results ?? []).map(toPublicStory);
   } catch {
-    const { results } = await db
-      .prepare(STORIES_SQL_NO_IMAGE)
-      .bind(PUBLIC_STORY_LIMIT)
-      .all<StoryRow>();
-    return (results ?? []).map(toPublicStory);
+    try {
+      const { results } = await db
+        .prepare(STORIES_SQL_NO_MEDIA)
+        .bind(PUBLIC_STORY_LIMIT)
+        .all<StoryRow>();
+      return (results ?? []).map(toPublicStory);
+    } catch {
+      const { results } = await db
+        .prepare(STORIES_SQL_LEGACY)
+        .bind(PUBLIC_STORY_LIMIT)
+        .all<StoryRow>();
+      return (results ?? []).map(toPublicStory);
+    }
   }
 }
 

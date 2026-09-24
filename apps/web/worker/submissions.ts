@@ -2,6 +2,7 @@ import { nn } from "./d1-bind.js";
 import { fetchOgData } from "./enrich.js";
 import { sha256Hex } from "./hash.js";
 import { callAnyrouter, parseJson } from "./llm.js";
+import { serializeMediaManifest } from "./media.js";
 import {
   checkRateLimit,
   hashIp,
@@ -332,15 +333,15 @@ export async function reviewPendingSubmissions(
       const itemId = await sha256Hex(submission.url);
       const now = Date.now();
       // Deliberately not using d1-bind.ts's buildItemBindArgs — that's
-      // shaped for the ingest workflow's full 21-column upsert (llm
+      // shaped for the ingest workflow's full 22-column upsert (llm
       // scores, tags, rank, etc.), all of which are irrelevant here: this
       // row only needs to exist with status='new' so the next ingest run's
       // dedupe step picks it up and runs it through that same pipeline.
       // Every column left out (points, comments, tags, rank_score, status)
       // has a matching NOT NULL DEFAULT in the schema.
       await env.DB.prepare(
-        `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang, media_manifest)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO NOTHING`
       )
         .bind(
@@ -353,7 +354,8 @@ export async function reviewPendingSubmissions(
           nn(toEpochSeconds(now)),
           nn(toEpochSeconds(now)),
           nn(og.imageUrl),
-          "en"
+          "en",
+          serializeMediaManifest(og.mediaManifest)
         )
         .run();
 
@@ -394,8 +396,8 @@ export async function acceptSubmissionById(
   const itemId = await sha256Hex(submission.url);
   const now = Date.now();
   await env.DB.prepare(
-    `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang, media_manifest)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO NOTHING`
   )
     .bind(
@@ -408,7 +410,8 @@ export async function acceptSubmissionById(
       nn(toEpochSeconds(now)),
       nn(toEpochSeconds(now)),
       nn(og.imageUrl),
-      "en"
+      "en",
+      serializeMediaManifest(og.mediaManifest)
     )
     .run();
 

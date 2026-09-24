@@ -40,6 +40,7 @@ import {
   translateItems,
 } from "./llm.js";
 import { createD1LlmCallLogger, pruneLlmCalls } from "./llm-call-log.js";
+import { parseMediaManifest, serializeMediaManifest } from "./media.js";
 import {
   dispatchStoryNotifications,
   type NotifyChannelReason,
@@ -208,6 +209,7 @@ interface ItemRow {
   tags: string;
   rank_score: number;
   status: string;
+  media_manifest?: string | null;
 }
 
 export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
@@ -367,7 +369,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           // pipeline as anything freshly fetched.
           const { results: pendingNew } = await this.env.DB.prepare(
             `SELECT id, source_id, external_id, url, title, summary,
-                  published_at, points, comments, image_url, source_lang
+                  published_at, points, comments, image_url, source_lang, media_manifest
            FROM items WHERE status = 'new'`
           ).all<{
             id: string;
@@ -381,6 +383,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             comments: number;
             image_url: string | null;
             source_lang: "en" | "vi";
+            media_manifest: string | null;
           }>();
           for (const row of pendingNew ?? []) {
             const source = sources.find((s) => s.id === row.source_id) ?? {
@@ -402,6 +405,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 comments: row.comments,
                 imageUrl: row.image_url ?? undefined,
                 sourceLang: row.source_lang,
+                mediaManifest: parseMediaManifest(
+                  row.media_manifest,
+                  row.image_url
+                ),
               },
             });
           }
@@ -417,7 +424,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         `${Math.max(itemsFetched - itemsNew, 0)} already in db`
       );
 
-      // Fill in summary/image_url for items lacking either, from the
+      // Fill in summary/media for items lacking either, from the
       // article's own og/description meta tags, BEFORE scoring so the
       // scorer/translator get to see the enriched description. Runs against
       // scratch clones (not `newRows` directly) and returns only the plain
@@ -428,7 +435,12 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       const enrichment = await safeStep(
         step,
         "enrich",
-        [] as { id: string; summary?: string; imageUrl?: string }[],
+        [] as {
+          id: string;
+          summary?: string;
+          imageUrl?: string;
+          mediaManifest?: FetchedItem["mediaManifest"];
+        }[],
         async () => {
           if (newRows.length === 0) return [];
           const drafts = newRows.map((row) => ({ ...row.item }));
@@ -437,6 +449,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             id: row.id,
             summary: drafts[i].summary,
             imageUrl: drafts[i].imageUrl,
+            mediaManifest: drafts[i].mediaManifest,
           }));
         }
       );
@@ -450,6 +463,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             ...row.item,
             summary: e.summary ?? row.item.summary,
             imageUrl: e.imageUrl ?? row.item.imageUrl,
+            mediaManifest: e.mediaManifest ?? row.item.mediaManifest,
           },
         };
       });
@@ -780,9 +794,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 published_at, fetched_at, points, comments,
                 llm_relevance, llm_importance, llm_quality, category, tags,
                 rank_score, status, llm_tokens, duplicate_of, image_url,
-                -- 0024 integration appends media_manifest after this slot.
-                source_lang
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                source_lang, media_manifest
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT(id) DO UPDATE SET
                 published_at = excluded.published_at,
                 points = excluded.points,
@@ -802,7 +815,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                    WHEN items.source_lang = 'vi' AND excluded.source_lang = 'en'
                    THEN items.source_lang
                    ELSE excluded.source_lang
-                 END`
+                 END,
+                media_manifest = excluded.media_manifest`
             ).bind(
               ...buildItemBindArgs({
                 id,
@@ -1018,6 +1032,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               url: string;
               source_id: string;
               image_url: string | null;
+              media_manifest: string | null;
             }>();
             const rows = results ?? [];
 
@@ -1025,7 +1040,11 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               const batch = rows.slice(i, i + BACKFILL_BATCH_SIZE);
               await Promise.all(
                 batch.map(async (row) => {
-                  let fetched: { summary?: string; imageUrl?: string };
+                  let fetched: {
+                    summary?: string;
+                    imageUrl?: string;
+                    mediaManifest?: FetchedItem["mediaManifest"];
+                  };
                   let sources: FetchedItemSource[] = [];
 
                   if (row.source_id === "huggingnews") {
@@ -1039,20 +1058,39 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                     fetched = {
                       summary: og.description,
                       imageUrl: og.imageUrl,
+                      mediaManifest: og.mediaManifest,
                     };
                   }
 
                   const plan = planBackfillUpdate(
-                    { imageUrl: row.image_url },
+                    {
+                      imageUrl: row.image_url,
+                      mediaManifest: row.media_manifest,
+                    },
                     fetched
                   );
                   if (!plan) return;
                   backfilled++;
 
                   await this.env.DB.prepare(
-                    "UPDATE items SET summary = ?, image_url = COALESCE(image_url, ?) WHERE id = ?"
+                    `UPDATE items SET
+                       summary = ?,
+                       image_url = COALESCE(image_url, ?),
+                       media_manifest = CASE
+                         WHEN media_manifest IS NULL OR media_manifest = '' OR media_manifest = '[]'
+                           THEN COALESCE(?, media_manifest)
+                         ELSE media_manifest
+                       END
+                     WHERE id = ?`
                   )
-                    .bind(nn(plan.summary), nn(plan.imageUrl), nn(row.id))
+                    .bind(
+                      nn(plan.summary),
+                      nn(plan.imageUrl),
+                      plan.mediaManifest
+                        ? serializeMediaManifest(plan.mediaManifest)
+                        : null,
+                      nn(row.id)
+                    )
                     .run();
                   await prepareTranslationQaInvalidation(
                     this.env.DB,

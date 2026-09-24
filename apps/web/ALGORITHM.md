@@ -84,11 +84,13 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 2. **Dedupe** — item id = `sha256(url)`; ids already in `items` are dropped.
 
 3. **Enrich** — missing summary/thumbnail filled from the article page
-   (`og:description` / `og:image`), capped and failure-proof
-   (`worker/enrich.ts`). HTML entities in `og:image` (including
-   double-escaped `&amp;` in query strings) are decoded before the URL is
-   stored, so thumbs are real article images rather than a broken-src
-   fallback.
+   (`og:description` / `og:image` / Twitter / JSON-LD / supported video
+   poster fields), capped and failure-proof (`worker/enrich.ts`). The ordered,
+   bounded `media_manifest` is stored alongside the legacy `image_url`; video
+   posters stay nested on the video asset and are never emitted as extra image
+   candidates. HTML entities in media URLs (including double-escaped `&amp;`
+   in query strings) are decoded before storage, so thumbs are real article
+   images rather than a broken-src fallback.
 
 4. **Score (Jev, then LLM)** — batches of 5.
 
@@ -200,7 +202,8 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
    ```
 
 8. **Write** — D1 upserts (`worker/d1-bind.ts` guards every bind). D1 is
-   the sole primary store.
+   the sole primary store. Migration `0024_item_media_manifest.sql` adds the
+   bounded JSON manifest; `image_url` remains the compatibility field.
 
 9. **Backfill** — up to 15 older published items missing summary or
    score/tags, and up to 45 missing Vietnamese titles, get
@@ -276,6 +279,9 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).
       IV is not enabled by this document; keep the normal message/photo path
       until product and operations approve a manual POC.
+    - The current media slice still uses `sendPhoto`/text fallback only. Telegram
+      `sendVideo`/`sendMediaGroup` and durable multi-message delivery remain a
+      follow-up slice; this change only preserves the typed manifest.
 
 13. **Review gates (LLM, rating ≥ 0.6)** — user translation suggestions and
     HN-style story submissions are judged (faithfulness / relevance / not

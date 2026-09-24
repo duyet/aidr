@@ -1,3 +1,5 @@
+import type { MediaManifest } from "../../worker/media.js";
+
 export type Lang = "en" | "vi";
 
 export interface ItemSource {
@@ -25,6 +27,8 @@ export interface FeedItem {
   sources: ItemSource[];
   llm_tokens: number;
   image_url: string | null;
+  /** Bounded additive media manifest; omitted for a single legacy image. */
+  media_manifest?: MediaManifest;
   /** Set only on SSR feed items, which ship without summary/sources to
    * keep the dehydrated payload small. When true the row lazily refetches
    * the full story from /api/story on first expand. Never set by

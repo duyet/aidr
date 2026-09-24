@@ -1,6 +1,7 @@
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import { nn } from "../d1-bind.js";
+import { parseMediaManifest } from "../media.js";
 import {
   getLocalHourAndDate,
   primaryItemId,
@@ -102,6 +103,20 @@ interface NotificationRow {
   attempts: number;
 }
 
+type StoryRow = Omit<StoryPayload, "media_manifest"> & {
+  media_manifest?: string | null;
+};
+
+function hydrateStory(row: StoryRow): StoryPayload {
+  const manifest = parseMediaManifest(row.media_manifest, row.image_url);
+  const story = { ...row };
+  delete story.media_manifest;
+  return {
+    ...story,
+    media_manifest: manifest.assets.length > 0 ? manifest : null,
+  };
+}
+
 /** Why today's digest will not go out, or null if it should send. */
 export function classifyDigestSkip(
   existing: NotificationRow | null,
@@ -154,7 +169,7 @@ export function buildTrendingQuery(
     sql: `SELECT i.id, i.url,
                  COALESCE(NULLIF(TRIM(tr.title), ''), i.title) AS title,
                  COALESCE(NULLIF(TRIM(tr.summary), ''), i.summary) AS summary,
-                 i.image_url, i.category,
+                 i.image_url, i.media_manifest, i.category,
                  i.points, i.comments, i.rank_score, i.llm_importance,
                  CASE WHEN NULLIF(TRIM(tr.title), '') IS NOT NULL
                    THEN 'vi' ELSE 'en' END AS lang
@@ -412,8 +427,8 @@ export async function dispatchStoryNotifications(
       const { sql, binds } = buildTrendingQuery(notifier.id, now);
       const { results } = await env.DB.prepare(sql)
         .bind(...binds)
-        .all<StoryPayload>();
-      const candidates = results ?? [];
+        .all<StoryRow>();
+      const candidates = (results ?? []).map(hydrateStory);
       const afterQuery = classifyTrendingSkip(
         maxRank,
         budget,

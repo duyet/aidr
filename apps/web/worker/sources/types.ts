@@ -1,3 +1,5 @@
+import type { MediaCandidate, MediaManifest } from "../media.js";
+
 export type SourceLanguage = "en" | "vi";
 
 export interface FetchedItemSource {
@@ -17,9 +19,14 @@ export interface FetchedItem {
   points?: number;
   comments?: number;
   sources?: FetchedItemSource[];
+  /** Legacy single-image field retained for existing adapters and rows. */
   imageUrl?: string;
   /** Explicit source language metadata; never inferred by the QA path. */
   sourceLang?: SourceLanguage;
+  /** Untrusted candidates emitted by source metadata, before normalization. */
+  media?: MediaCandidate[];
+  /** Normalized, bounded manifest used by the ingest write path. */
+  mediaManifest?: MediaManifest;
 }
 
 export interface SourceAdapter {

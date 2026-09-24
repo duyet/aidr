@@ -13,6 +13,7 @@ describe("buildMissingSummaryQuery", () => {
     const sql = buildMissingSummaryQuery(15);
     expect(sql).toContain("status = 'published'");
     expect(sql).toMatch(/summary IS NULL OR summary = ''/);
+    expect(sql).toContain("media_manifest");
   });
 
   it("orders most-recent-first and respects the given limit", () => {
@@ -92,6 +93,23 @@ describe("planBackfillUpdate", () => {
       summary: "A fetched summary",
       imageUrl: "https://x.com/i.png",
     });
+  });
+
+  it("preserves a fetched bounded media manifest", () => {
+    const plan = planBackfillUpdate(
+      { imageUrl: null },
+      {
+        summary: "A fetched summary",
+        mediaManifest: {
+          version: 1,
+          assets: [
+            { type: "image", url: "https://x.com/hero.jpg" },
+            { type: "video", url: "https://x.com/story.mp4" },
+          ],
+        },
+      }
+    );
+    expect(plan?.mediaManifest?.assets).toHaveLength(2);
   });
 
   it("never overwrites a non-empty existing image_url with a freshly-fetched one", () => {

@@ -1,19 +1,12 @@
+import {
+  buildMediaManifest,
+  canonicalizeMediaUrl,
+  firstImageUrl,
+  type MediaCandidate,
+  type MediaManifest,
+  parseMediaMetadata,
+} from "./media.js";
 import type { FetchedItem } from "./sources/types.js";
-
-/**
- * og:image URLs known to be an aggregator's own static branding asset
- * rather than a story-specific thumbnail (e.g. HuggingNews serves this
- * same image as og:image on every page, since story pages are
- * client-rendered and have no per-story meta tags). Fetched images that
- * match are treated as "no image", same as if og:image were absent.
- */
-const BLOCKED_IMAGE_URLS = new Set<string>([
-  "https://huggingnews.com/og-image.png",
-]);
-
-function isBlockedImage(url: string): boolean {
-  return BLOCKED_IMAGE_URLS.has(url);
-}
 
 const MAX_ENRICH_FETCHES = 20;
 const ENRICH_BATCH_SIZE = 4;
@@ -25,6 +18,8 @@ const MAX_HTML_BYTES = 100_000;
 export interface OgData {
   imageUrl?: string;
   description?: string;
+  /** Present when the page exposes more than one image or any video. */
+  mediaManifest?: MediaManifest;
 }
 
 const NAMED_ENTITIES: Record<string, string> = {
@@ -66,15 +61,6 @@ export function decodeHtmlEntities(text: string): string {
     out = next;
   }
   return out;
-}
-
-function isAbsoluteHttpUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 /** Hostname-only SSRF guard before server-side fetches. No DNS resolution
@@ -133,10 +119,8 @@ function extractMetaContent(
  * entities in the description and og:image URL are decoded.
  */
 export function parseOgTags(html: string): OgData {
-  const rawImage = extractMetaContent(html, "property", "og:image");
-  const decodedImage = rawImage ? decodeHtmlEntities(rawImage) : null;
-  const imageUrl =
-    decodedImage && isAbsoluteHttpUrl(decodedImage) ? decodedImage : undefined;
+  const manifest = buildMediaManifest(parseMediaMetadata(html));
+  const imageUrl = firstImageUrl(manifest) ?? undefined;
 
   const rawDescription =
     extractMetaContent(html, "property", "og:description") ??
@@ -145,7 +129,14 @@ export function parseOgTags(html: string): OgData {
     ? decodeHtmlEntities(rawDescription).trim() || undefined
     : undefined;
 
-  return { imageUrl, description };
+  const hasUsefulManifest =
+    manifest.assets.some((asset) => asset.type === "video") ||
+    manifest.assets.filter((asset) => asset.type === "image").length > 1;
+  return {
+    imageUrl,
+    description,
+    ...(hasUsefulManifest ? { mediaManifest: manifest } : {}),
+  };
 }
 
 async function readCappedText(
@@ -212,52 +203,87 @@ export async function fetchOgData(url: string): Promise<OgData> {
   }
 }
 
+function mediaCandidatesFromOg(
+  data: OgData,
+  priority: number
+): MediaCandidate[] {
+  if (data.mediaManifest) {
+    return data.mediaManifest.assets.map((asset, index) => ({
+      ...asset,
+      priority: priority + index / 1000,
+    }));
+  }
+  return data.imageUrl ? [{ type: "image", url: data.imageUrl, priority }] : [];
+}
+
+function normalizeExistingMedia(item: FetchedItem): void {
+  const existing = buildMediaManifest([
+    ...(item.media ?? []),
+    ...(item.mediaManifest?.assets ?? []),
+    ...(item.imageUrl
+      ? [{ type: "image" as const, url: item.imageUrl, priority: 0 }]
+      : []),
+  ]);
+  const legacyImageUrl = item.imageUrl;
+  if (existing.assets.length > 0) item.mediaManifest = existing;
+  item.imageUrl =
+    firstImageUrl(existing) ??
+    (legacyImageUrl
+      ? (canonicalizeMediaUrl(legacyImageUrl) ?? undefined)
+      : undefined);
+}
+
+function hasMedia(item: FetchedItem): boolean {
+  return (
+    Boolean(item.imageUrl) ||
+    (item.media?.length ?? 0) > 0 ||
+    (item.mediaManifest?.assets.length ?? 0) > 0
+  );
+}
+
 /**
- * Mutates `items` in place, filling in `summary`/`imageUrl` for whichever
- * of those fields are still missing, by fetching the article URL itself
- * and reading og/description meta tags. Only the first
- * MAX_ENRICH_FETCHES items lacking either field are fetched (in batches of
- * ENRICH_BATCH_SIZE), so a large new-item batch doesn't blow the run's
- * subrequest budget. Never fetches an item that already has both fields
- * (e.g. HuggingNews items whose summary came from the detail-page body).
- *
- * For `imageUrl`, an item's `sources` entry of kind "source" (the
- * original post the aggregator is reporting on, e.g. a tweet) is tried
- * before `item.url` itself: for aggregator adapters like HuggingNews,
- * `item.url` is often the aggregator's own page rather than the original
- * article, whose og:image is just site branding (see BLOCKED_IMAGE_URLS)
- * rather than a story-specific thumbnail.
+ * Mutates `items` in place, filling in summary/media fields from the article
+ * and its original source page. Legacy `imageUrl` is retained as the primary
+ * image URL while `mediaManifest` stores the bounded, ordered candidates.
+ * Only the first MAX_ENRICH_FETCHES items needing content are fetched, in
+ * batches of ENRICH_BATCH_SIZE.
  */
 export async function enrichMissingContent(
   items: FetchedItem[]
 ): Promise<void> {
-  const candidates = items.filter((item) => !item.summary || !item.imageUrl);
+  for (const item of items) normalizeExistingMedia(item);
+  const candidates = items.filter((item) => !item.summary || !hasMedia(item));
   const toEnrich = candidates.slice(0, MAX_ENRICH_FETCHES);
 
   for (let i = 0; i < toEnrich.length; i += ENRICH_BATCH_SIZE) {
     const batch = toEnrich.slice(i, i + ENRICH_BATCH_SIZE);
     await Promise.all(
       batch.map(async (item) => {
-        let sourceImageUrl: string | undefined;
+        const fetched: MediaCandidate[] = [];
         const originalUrl = item.sources?.find(
-          (s) => s.kind === "source" && s.url
+          (source) => source.kind === "source" && source.url
         )?.url;
-        if (!item.imageUrl && originalUrl && originalUrl !== item.url) {
+        if (originalUrl && originalUrl !== item.url) {
           const sourceOg = await fetchOgData(originalUrl);
-          if (sourceOg.imageUrl && !isBlockedImage(sourceOg.imageUrl)) {
-            sourceImageUrl = sourceOg.imageUrl;
-          }
+          fetched.push(...mediaCandidatesFromOg(sourceOg, 10));
         }
 
         const og = await fetchOgData(item.url);
-        if (!item.imageUrl) {
-          item.imageUrl =
-            sourceImageUrl ??
-            (og.imageUrl && !isBlockedImage(og.imageUrl)
-              ? og.imageUrl
-              : undefined);
-        }
+        fetched.push(...mediaCandidatesFromOg(og, 20));
         if (!item.summary && og.description) item.summary = og.description;
+
+        const manifest = buildMediaManifest([
+          ...(item.media ?? []),
+          ...(item.mediaManifest?.assets ?? []),
+          ...(item.imageUrl
+            ? [{ type: "image" as const, url: item.imageUrl, priority: 0 }]
+            : []),
+          ...fetched,
+        ]);
+        if (manifest.assets.length > 0) {
+          item.mediaManifest = manifest;
+          item.imageUrl = firstImageUrl(manifest) ?? item.imageUrl;
+        }
       })
     );
   }

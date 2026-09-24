@@ -1,6 +1,12 @@
+import {
+  buildMediaManifest,
+  type MediaManifest,
+  parseMediaManifest,
+} from "./media.js";
+
 /**
  * Pure helpers for the "backfill" workflow steps that fill in
- * summary/image_url for items that predate the enrichment pipeline (or
+ * summary/media for items that predate the enrichment pipeline (or
  * were enriched from a source that had nothing usable at the time), and
  * then translate whatever summaries exist but lack a Vietnamese one.
  */
@@ -17,7 +23,7 @@ export const BACKFILL_BATCH_SIZE = 4;
  * point — most-recently-published first, so the backlog drains starting
  * from what readers are most likely to open. */
 export function buildMissingSummaryQuery(limit = BACKFILL_CONTENT_CAP): string {
-  return `SELECT id, url, source_id, image_url FROM items
+  return `SELECT id, url, source_id, image_url, media_manifest FROM items
           WHERE status = 'published' AND (summary IS NULL OR summary = '')
           ORDER BY published_at DESC
           LIMIT ${limit}`;
@@ -66,28 +72,38 @@ export function huggingNewsDetailUrl(itemUrl: string): string {
 export interface BackfillFetchResult {
   summary?: string;
   imageUrl?: string;
+  mediaManifest?: MediaManifest;
 }
 
 export interface BackfillPlan {
   summary: string;
   imageUrl: string | null;
+  mediaManifest?: MediaManifest;
 }
 
 /**
  * Decides what to persist for a backfill candidate. Returns null when
  * nothing usable was fetched (leave the item as-is; it stays in the
- * backlog for a future run). `existing.imageUrl` always wins over a
- * freshly-fetched one — this is the "never overwrite a non-empty existing
- * value" rule, expressed the same way the caller's `COALESCE(image_url, ?)`
- * update expresses it in SQL, but tested here without a database.
+ * backlog for a future run). Existing non-empty image/media values win over
+ * freshly-fetched ones; this is the "never overwrite an existing value" rule,
+ * expressed here without a database.
  */
 export function planBackfillUpdate(
-  existing: { imageUrl: string | null },
+  existing: { imageUrl: string | null; mediaManifest?: string | null },
   fetched: BackfillFetchResult
 ): BackfillPlan | null {
   if (!fetched.summary) return null;
+  const existingManifest = parseMediaManifest(
+    existing.mediaManifest,
+    existing.imageUrl
+  );
+  const manifest = buildMediaManifest([
+    ...existingManifest.assets,
+    ...(fetched.mediaManifest?.assets ?? []),
+  ]);
   return {
     summary: fetched.summary,
     imageUrl: existing.imageUrl || fetched.imageUrl || null,
+    ...(manifest.assets.length > 0 ? { mediaManifest: manifest } : {}),
   };
 }

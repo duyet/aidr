@@ -49,6 +49,13 @@ origins. Use this instead:
       "title_vi": "...",
       "category": "Industry",
       "image_url": "https://...",
+      "media_manifest": {
+        "version": 1,
+        "assets": [
+          { "type": "image", "url": "https://..." },
+          { "type": "image", "url": "https://.../alternate.jpg" }
+        ]
+      },
       "published_at": 1787793175
     }
   ],
@@ -59,8 +66,12 @@ origins. Use this instead:
 The response is bilingual by design: `lang` selects the explicit permalink
 language and `available_langs` is `["en", "vi"]`. Up to 16 bullets per language
 and 8 top stories by `rank_score`. Typical payload is well under 50KB. `image_url` on a bullet is additive and only
-present when the linked story has an og/thumbnail. `published_at` is epoch
-**seconds**; `updatedAt` is epoch milliseconds.
+present when the linked story has an og/thumbnail. Stories may also expose a
+bounded `media_manifest`: `assets[0]` is the primary candidate and the rest
+are alternates; video entries keep one `poster_url`. A single legacy image
+continues to use `image_url` alone. Public manifests are capped at three
+assets and 512-character URLs. `published_at` is epoch **seconds**;
+`updatedAt` is epoch milliseconds.
 
 ### Story Markdown (agent-readable pilot)
 

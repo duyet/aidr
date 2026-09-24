@@ -272,6 +272,35 @@ describe("enrichMissingContent", () => {
     expect(item.imageUrl).toBeUndefined();
   });
 
+  it("collects a bounded manifest and keeps a video poster nested", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        htmlResponse(`
+          <meta property="og:image" content="https://example.com/poster.jpg">
+          <meta name="twitter:image" content="https://example.com/alternate.jpg">
+          <script type="application/ld+json">
+            {"@type":"VideoObject","contentUrl":"https://example.com/story.mp4",
+             "thumbnailUrl":"https://example.com/poster.jpg"}
+          </script>
+        `)
+      )
+    );
+
+    const item = makeItem();
+    await enrichMissingContent([item]);
+
+    expect(item.mediaManifest?.assets).toEqual([
+      { type: "image", url: "https://example.com/alternate.jpg" },
+      {
+        type: "video",
+        url: "https://example.com/story.mp4",
+        poster_url: "https://example.com/poster.jpg",
+      },
+    ]);
+    expect(item.imageUrl).toBe("https://example.com/alternate.jpg");
+  });
+
   it("falls back to item.url's og:image when the source-kind URL has no usable image", async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url === "https://x.com/someone/status/1")

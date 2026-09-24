@@ -1,9 +1,15 @@
+import {
+  boundedPublicManifest,
+  canonicalizeMediaUrl,
+  firstImageUrl,
+  parseMediaManifest,
+} from "../../worker/media.js";
 import type { DbReader } from "./db";
-import { sanitizeImageUrl } from "./tldr-images";
 import type { FeedItem, ItemSource } from "./types";
 
 let llmTokensSupported: boolean | null = null;
 let imageUrlSupported: boolean | null = null;
+let mediaManifestSupported: boolean | null = null;
 
 async function probeColumn(
   db: DbReader,
@@ -18,6 +24,15 @@ async function probeColumn(
     // column not migrated in yet
     return false;
   }
+}
+
+async function supportsMediaManifest(db: DbReader): Promise<boolean> {
+  mediaManifestSupported = await probeColumn(
+    db,
+    "media_manifest",
+    mediaManifestSupported
+  );
+  return mediaManifestSupported;
 }
 
 function parseTags(value: unknown): string[] {
@@ -51,6 +66,12 @@ function mapStoryRow(
 ): FeedItem | null {
   const id = asString(row.id);
   if (!id) return null;
+  const legacyImageUrl = asNullableString(row.image_url);
+  const manifest = parseMediaManifest(
+    asNullableString(row.media_manifest),
+    legacyImageUrl
+  );
+  const exposedManifest = boundedPublicManifest(manifest);
   const item: FeedItem = {
     id,
     url: asString(row.url),
@@ -67,7 +88,8 @@ function mapStoryRow(
     tags: parseTags(row.tags),
     sources: [],
     llm_tokens: asNumber(row.llm_tokens),
-    image_url: sanitizeImageUrl(asNullableString(row.image_url)),
+    image_url: firstImageUrl(manifest) ?? canonicalizeMediaUrl(legacyImageUrl),
+    ...(exposedManifest ? { media_manifest: exposedManifest } : {}),
   };
 
   item.sources = sourceRows
@@ -93,9 +115,10 @@ async function queryStories(
   idPrefix: string,
   requestedLimit: number
 ): Promise<FeedItem[]> {
-  const [hasLlmTokens, hasImageUrl] = await Promise.all([
+  const [hasLlmTokens, hasImageUrl, hasMediaManifest] = await Promise.all([
     probeColumn(db, "llm_tokens", llmTokensSupported),
     probeColumn(db, "image_url", imageUrlSupported),
+    supportsMediaManifest(db),
   ]);
   llmTokensSupported = hasLlmTokens;
   imageUrlSupported = hasImageUrl;
@@ -108,6 +131,7 @@ async function queryStories(
               i.points, i.comments, i.rank_score, i.source_id, i.tags
               ${hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""}
               ${hasImageUrl ? ", i.image_url" : ""}
+              ${hasMediaManifest ? ", i.media_manifest" : ""}
        FROM items i
        LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
        WHERE substr(i.id, 1, ?) = ? AND i.status = 'published' LIMIT ${limit}`;

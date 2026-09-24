@@ -1,4 +1,5 @@
 import type { Lang } from "../../src/lib/types.js";
+import type { MediaManifest } from "../media.js";
 import type { Env } from "../types.js";
 
 /** A trending story posted individually. Title/summary are already
@@ -9,6 +10,8 @@ export interface StoryPayload {
   title: string;
   summary: string | null;
   image_url: string | null;
+  /** Preserved for the follow-up media-delivery slice; transport ignores it. */
+  media_manifest?: MediaManifest | null;
   category: string | null;
   points: number;
   comments: number;
