@@ -8,7 +8,7 @@ import {
   topicDailyCountsStmt,
 } from "../../worker/topic-learning.js";
 import type { DbReader } from "./db";
-import { LAST_FETCHED_AT_SQL } from "./feed-freshness";
+import { NEWEST_PUBLISHED_FETCHED_AT_SQL } from "./feed-freshness";
 import { setLearnedKeywords } from "./highlight";
 import { parseStoredBullets } from "./tldr-bullets";
 import {
@@ -237,7 +237,7 @@ export async function getFeed(
       db.prepare(
         "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots ORDER BY date DESC LIMIT 1"
       ),
-      db.prepare(LAST_FETCHED_AT_SQL),
+      db.prepare(NEWEST_PUBLISHED_FETCHED_AT_SQL),
       db
         .prepare(
           `SELECT 1 AS yes FROM items

@@ -11,3 +11,10 @@ export type DbReader = Pick<D1Database, "prepare" | "batch">;
 export function readSession(db: D1Database): DbReader {
   return typeof db.withSession === "function" ? db.withSession() : db;
 }
+
+/** Read freshness from the primary so the footer does not show replica lag. */
+export function readPrimarySession(db: D1Database): DbReader {
+  return typeof db.withSession === "function"
+    ? db.withSession("first-primary")
+    : db;
+}

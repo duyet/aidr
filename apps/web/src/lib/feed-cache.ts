@@ -1,4 +1,8 @@
-import type { FeedFreshness } from "./feed-freshness";
+import {
+  FEED_FRESHNESS_CLIENT_TTL_MS,
+  type FeedFreshness,
+  isFeedFreshness,
+} from "./feed-freshness";
 import { setLearnedKeywords } from "./highlight";
 import type { FeedResponse } from "./types";
 
@@ -11,35 +15,59 @@ import type { FeedResponse } from "./types";
  */
 let cache: FeedResponse | null = null;
 let inflight: Promise<FeedResponse | null> | null = null;
-let freshnessCache: FeedFreshness | null = null;
+
+interface FreshnessCacheEntry {
+  value: FeedFreshness;
+  expiresAt: number;
+}
+
+/** `null` means unloaded; an entry with a null value is a valid empty result. */
+let freshnessCache: FreshnessCacheEntry | null = null;
 let freshnessInflight: Promise<number | null> | null = null;
+
+function setFreshnessEntry(value: FeedFreshness): void {
+  if (!isFeedFreshness(value)) return;
+  freshnessCache = {
+    value,
+    expiresAt: Date.now() + FEED_FRESHNESS_CLIENT_TTL_MS,
+  };
+}
+
+function validFreshnessEntry(now = Date.now()): FreshnessCacheEntry | null {
+  if (!freshnessCache) return null;
+  if (freshnessCache.expiresAt <= now) {
+    freshnessCache = null;
+    return null;
+  }
+  return freshnessCache;
+}
 
 export function getCachedFeed(): FeedResponse | null {
   return cache;
 }
 
-/** The footer only needs the newest ingest timestamp, not the feed body. */
+/** The footer only needs the newest published-item timestamp, not feed data. */
 export function getCachedFeedFreshness(): number | null {
-  if (cache) return cache.lastFetchedAt;
-  return freshnessCache?.lastFetchedAt ?? null;
+  return validFreshnessEntry()?.value.lastFetchedAt ?? null;
 }
 
-/** Fetches the slim freshness endpoint once, sharing an in-flight request. */
+/**
+ * Fetch the slim endpoint once, sharing an in-flight request. Successful
+ * values (including null) live for the client TTL; failures and malformed
+ * responses are not cached, so the next call retries.
+ */
 export function fetchFeedFreshnessOnce(): Promise<number | null> {
-  if (cache) {
-    freshnessCache = { lastFetchedAt: cache.lastFetchedAt };
-    return Promise.resolve(cache.lastFetchedAt);
-  }
-  if (freshnessCache) return Promise.resolve(freshnessCache.lastFetchedAt);
+  const cached = validFreshnessEntry();
+  if (cached) return Promise.resolve(cached.value.lastFetchedAt);
   if (freshnessInflight) return freshnessInflight;
 
   freshnessInflight = fetch("/api/feed/freshness")
-    .then((res) => (res.ok ? (res.json() as Promise<FeedFreshness>) : null))
-    .then((res) => {
+    .then((res) => (res.ok ? res.json().catch(() => null) : null))
+    .then((body) => {
       freshnessInflight = null;
-      if (!res) return null;
-      freshnessCache = res;
-      return res.lastFetchedAt;
+      if (!isFeedFreshness(body)) return null;
+      setFreshnessEntry(body);
+      return body.lastFetchedAt;
     })
     .catch(() => {
       freshnessInflight = null;
@@ -52,7 +80,7 @@ export function fetchFeedFreshnessOnce(): Promise<number | null> {
  * so the typeahead doesn't need a second network round-trip there. */
 export function setCachedFeed(feed: FeedResponse): void {
   cache = feed;
-  freshnessCache = { lastFetchedAt: feed.lastFetchedAt };
+  setFreshnessEntry({ lastFetchedAt: feed.lastFetchedAt });
   if (feed.learnedKeywords?.length) setLearnedKeywords(feed.learnedKeywords);
 }
 
@@ -67,7 +95,7 @@ export function fetchFeedOnce(): Promise<FeedResponse | null> {
       inflight = null;
       if (res) {
         cache = res;
-        freshnessCache = { lastFetchedAt: res.lastFetchedAt };
+        setFreshnessEntry({ lastFetchedAt: res.lastFetchedAt });
       }
       return res;
     })

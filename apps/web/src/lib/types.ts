@@ -59,7 +59,10 @@ export interface FeedResponse {
   learnedKeywords?: string[];
   totalStories: number;
   updatedAt: number;
-  /** Epoch seconds of the newest fetched item (last successful ingest). */
+  /**
+   * Epoch seconds from the newest published item's initial `fetched_at`
+   * value. This is an item-level timestamp, not workflow completion.
+   */
   lastFetchedAt: number | null;
   /** True when older published days exist beyond this page. */
   hasMore: boolean;
