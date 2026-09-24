@@ -18,7 +18,7 @@ export function BarList({ data, emptyLabel }: BarListProps) {
         <li key={d.name} className="flex items-center gap-2.5">
           <span
             className={`w-28 shrink-0 truncate text-xs font-medium ${
-              d.color ? "topic-colored" : "text-muted-foreground"
+              d.color ? "category-colored" : "text-muted-foreground"
             }`}
             style={
               d.color

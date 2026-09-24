@@ -7,8 +7,9 @@
  * identity on a chart surface), these are TEXT colors: dark/muted shades for
  * light mode, light/bright shades for dark mode, each chosen to clear WCAG AA
  * text contrast (>= 4.5:1) against this app's current editorial backgrounds
- * (#f7f7f5 light / #0c0c0c dark). Pure and dependency-free — the same input
- * always maps to the same pair.
+ * (#f7f7f5 light / #0c0c0c dark). Category labels further mix the accent
+ * with the active semantic foreground in CSS for reader/muted surfaces. Pure
+ * and dependency-free — the same input always maps to the same pair.
  */
 export interface TopicColor {
   light: string;

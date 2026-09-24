@@ -311,17 +311,79 @@
   color: var(--tc-dark);
 }
 
+/* Category text uses the palette hue as an accent, but mixes it with the
+   current semantic foreground so it stays AA on muted, reader-tinted, and
+   gray reader surfaces. The base rule is a high-contrast fallback for
+   engines without color-mix. */
+.category-colored {
+  color: var(--foreground);
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+  .category-colored {
+    color: color-mix(in srgb, var(--tc-light) 70%, var(--foreground));
+  }
+
+  .dark .category-colored {
+    color: color-mix(in srgb, var(--tc-dark) 70%, var(--foreground));
+  }
+}
+
+/* Selected category pills use a high-contrast outline plus a palette-tinted
+   fill. Mixing with primary-foreground keeps the dot at >=3:1 against the
+   selected primary surface in either theme. */
+.category-filter-dot {
+  background-color: var(--primary-foreground);
+  outline: 1px solid var(--primary-foreground);
+  outline-offset: 1px;
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+  .category-filter-dot {
+    background-color: color-mix(
+      in srgb,
+      var(--tc-light) 60%,
+      var(--primary-foreground)
+    );
+  }
+
+  .dark .category-filter-dot {
+    background-color: color-mix(
+      in srgb,
+      var(--tc-dark) 60%,
+      var(--primary-foreground)
+    );
+  }
+}
+
+@media (forced-colors: active) {
+  .category-colored {
+    color: CanvasText;
+  }
+
+  .category-filter-dot {
+    background-color: CanvasText;
+    outline: 1px solid Canvas;
+  }
+}
+
 /* Subtle per-topic row tint for the selected trending-tag highlight —
    same --tc-light/--tc-dark vars as .topic-colored, low alpha so it reads
    as a wash over whatever page background is active (reader-bg swatches
    included), not a solid fill. srgb color-mix (not oklch) so `transparent`
    mixes predictably across browsers. */
 .topic-hl-row {
-  background-color: color-mix(in srgb, var(--tc-light) 8%, transparent);
+  background-color: transparent;
 }
 
-.dark .topic-hl-row {
-  background-color: color-mix(in srgb, var(--tc-dark) 14%, transparent);
+@supports (color: color-mix(in srgb, red, blue)) {
+  .topic-hl-row {
+    background-color: color-mix(in srgb, var(--tc-light) 8%, transparent);
+  }
+
+  .dark .topic-hl-row {
+    background-color: color-mix(in srgb, var(--tc-dark) 14%, transparent);
+  }
 }
 
 /* Horizontal-scroll rows (topics chips, trending chips) that shouldn't show

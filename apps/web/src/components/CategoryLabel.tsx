@@ -5,9 +5,11 @@ import type { Lang } from "../lib/types";
 
 /**
  * A compact, readable category label with a deterministic theme-aware accent.
- * The text remains the source of truth; color is only a secondary cue. When a
- * selected surface needs high-contrast button text, `colored={false}` keeps
- * the label readable while `dot` retains the category accent.
+ * The text remains the source of truth; color is only a secondary cue. The
+ * category-colored class mixes the palette with the active foreground so it
+ * stays readable on reader and muted surfaces. When a selected surface needs
+ * high-contrast button text, `colored={false}` keeps the label readable while
+ * `dot` retains the category accent.
  */
 export function CategoryLabel({
   name,
@@ -40,10 +42,10 @@ export function CategoryLabel({
       {dot ? (
         <span
           aria-hidden="true"
-          className="topic-colored size-1.5 shrink-0 rounded-full bg-current"
+          className="category-filter-dot size-1.5 shrink-0 rounded-full"
         />
       ) : null}
-      <span className={colored ? "topic-colored" : undefined}>
+      <span className={colored ? "category-colored" : undefined}>
         {categoryLabel(name, lang)}
       </span>
     </span>

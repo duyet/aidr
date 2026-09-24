@@ -94,7 +94,9 @@ export function TldrBulletList({
                 >
                   {color && tag && (
                     <span
-                      className="topic-colored mr-1.5 text-xs font-semibold uppercase tracking-wide"
+                      className={`${
+                        categoryTopic ? "category-colored" : "topic-colored"
+                      } mr-1.5 text-xs font-semibold uppercase tracking-wide`}
                       style={
                         {
                           "--tc-light": color.light,
