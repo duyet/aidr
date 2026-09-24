@@ -24,7 +24,8 @@ function configuredPublicProxyUrl(mode: string): string {
     ...loadEnv(mode, appEnvDir, ""),
   };
 
-  // Wrangler vars are runtime bindings, not automatically Vite client envs.
+  // Wrangler vars are the committed CI/default source, not a hidden
+  // hardcoded production fallback; documented env files override them.
   const wrangler = readFileSync(
     new URL("./wrangler.toml", import.meta.url),
     "utf8"
