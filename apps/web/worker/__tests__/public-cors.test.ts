@@ -156,6 +156,16 @@ describe("handlePublicCors", () => {
 });
 
 describe("withPublicCors", () => {
+  it("merges Origin with locale Vary without erasing either dimension", () => {
+    const inner = new Response("ok", {
+      headers: { Vary: "Cookie, Accept-Language" },
+    });
+    const res = withPublicCors(publicRequest("GET", EXT_ORIGIN), inner);
+    expect(res.headers.get("Vary")).toContain("Origin");
+    expect(res.headers.get("Vary")).toContain("Cookie");
+    expect(res.headers.get("Vary")).toContain("Accept-Language");
+  });
+
   it("does not require Authorization", () => {
     const inner = Response.json({ ok: true });
     const res = withPublicCors(publicRequest("GET", EXT_ORIGIN), inner);

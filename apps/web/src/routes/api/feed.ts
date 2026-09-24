@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
 import { getFeed } from "../../lib/feed-queries";
-import { resolveLang } from "../../lib/lang";
+import {
+  API_CONTENT_LANGUAGE,
+  apiErrorResponse,
+  resolveApiRequestLocale,
+} from "../../lib/locale-response";
 import { localeCacheControl } from "../../lib/locale-url";
 
 const FEED_CACHE_CONTROL =
@@ -11,6 +15,10 @@ export const Route = createFileRoute("/api/feed")({
   server: {
     handlers: {
       GET: async ({ request, context }: { request: Request; context: any }) => {
+        const locale = resolveApiRequestLocale(request);
+        if (!locale.ok) return locale.response;
+        const lang = locale.locale.lang;
+
         let env =
           context?.cloudflare?.env ||
           context?.env ||
@@ -24,18 +32,14 @@ export const Route = createFileRoute("/api/feed")({
         }
         const db: D1Database | undefined = env?.DB;
         if (!db) {
-          return Response.json(
-            { error: "D1 binding DB not configured" },
-            { status: 500 }
-          );
+          return apiErrorResponse(500, {
+            error: "database_unavailable",
+            message: "The feed database is unavailable.",
+            message_vi: "Cơ sở dữ liệu bản tin không khả dụng.",
+          });
         }
 
         const url = new URL(request.url);
-        const lang = resolveLang({
-          search: url.search,
-          cookie: request.headers.get("cookie"),
-          acceptLanguage: request.headers.get("accept-language"),
-        });
         const daysRaw = url.searchParams.get("days");
         const days = daysRaw ? Number.parseInt(daysRaw, 10) : undefined;
         const before = url.searchParams.get("before") ?? undefined;
@@ -52,18 +56,22 @@ export const Route = createFileRoute("/api/feed")({
           });
           const policy = localeCacheControl(url.search, FEED_CACHE_CONTROL);
           return Response.json(
-            { ...feed, lang },
+            { ...feed, lang, available_langs: ["en", "vi"] },
             {
               headers: {
                 "Cache-Control": policy.cacheControl,
-                "Content-Language": lang,
+                "Content-Language": API_CONTENT_LANGUAGE,
                 ...(policy.vary ? { Vary: policy.vary } : {}),
               },
             }
           );
         } catch (e) {
           console.error("feed:", e);
-          return Response.json({ error: "query failed" }, { status: 500 });
+          return apiErrorResponse(500, {
+            error: "query_failed",
+            message: "The feed query failed.",
+            message_vi: "Không thể truy vấn bản tin.",
+          });
         }
       },
     },

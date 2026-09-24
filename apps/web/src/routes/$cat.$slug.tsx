@@ -7,7 +7,7 @@ import { notFoundHead } from "../lib/seo";
 import { legacyStoryRedirectPath } from "../lib/slug";
 import type { Lang } from "../lib/types";
 
-/** Old /:cat/:slug permalinks permanently redirect to /:slug. */
+/** Old /:cat/:slug permalinks use a temporary locale-safe redirect. */
 export const Route = createFileRoute("/$cat/$slug")({
   beforeLoad: ({ params, context, location }) => {
     const to = legacyStoryRedirectPath(`/${params.cat}/${params.slug}`);
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/$cat/$slug")({
           `${to}${location.searchStr}${location.hash}`,
           context.lang
         ),
-        statusCode: 301,
+        statusCode: 307,
       });
     }
   },

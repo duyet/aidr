@@ -32,15 +32,16 @@ export function NewsFooter() {
   );
 
   useEffect(() => {
-    if (lastFetchedAt !== null) return;
+    const cached = getCachedFeedFreshness();
+    setLastFetchedAt(cached);
+    if (cached !== null) return;
     let cancelled = false;
-    fetchFeedFreshnessOnce().then((freshness) => {
+    void fetchFeedFreshnessOnce().then((freshness) => {
       if (!cancelled && freshness !== null) setLastFetchedAt(freshness);
     });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

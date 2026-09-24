@@ -309,7 +309,11 @@ describe("servePublicApi", () => {
     const missing = await servePublicApi(undefined);
     expect(missing.status).toBe(503);
     const missingBody = await missing.json();
-    expect(missingBody).toEqual({ error: "unavailable" });
+    expect(missingBody).toMatchObject({
+      error: "unavailable",
+      message: expect.any(String),
+      message_vi: expect.any(String),
+    });
     expect(JSON.stringify(missingBody).toLowerCase()).not.toMatch(
       /d1|sqlite|binding|admin/
     );
@@ -320,7 +324,11 @@ describe("servePublicApi", () => {
     spy.mockRestore();
     expect(failed.status).toBe(500);
     const payload = await failed.json();
-    expect(payload).toEqual({ error: "unavailable" });
+    expect(payload).toMatchObject({
+      error: "unavailable",
+      message: expect.any(String),
+      message_vi: expect.any(String),
+    });
     expect(JSON.stringify(payload).toLowerCase()).not.toMatch(
       /d1|sqlite|table|admin/
     );

@@ -1,4 +1,5 @@
 import { highlightTitle, TITLE_KEYWORDS } from "../../src/lib/highlight.js";
+import { withSiteLang } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { topicColor } from "../../src/lib/topic-color.js";
 import {
@@ -48,6 +49,10 @@ const SANS =
   "Inter, Source Sans 3, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif";
 
 export type MailLang = "en" | "vi";
+
+export function normalizeMailLang(value: unknown): MailLang {
+  return value === "en" ? "en" : "vi";
+}
 
 export interface NoteEmailInput {
   subject: string;
@@ -125,8 +130,8 @@ function mailFooterHtml(
   unsubscribeUrl: string,
   settingsUrl: string
 ): string {
-  const unsub = escapeHtml(unsubscribeUrl);
-  const settings = escapeHtml(settingsUrl);
+  const unsub = escapeHtml(withSiteLang(unsubscribeUrl, lang));
+  const settings = escapeHtml(withSiteLang(settingsUrl, lang));
   const unsubLabel = lang === "vi" ? "Hủy đăng ký" : "Unsubscribe";
   const settingsLabel = lang === "vi" ? "Chỉnh cài đặt" : "Adjust settings";
   const dataLabel = lang === "vi" ? "Dữ liệu / pipeline" : "Data / Pipeline";
@@ -152,10 +157,12 @@ function mailFooterText(
   unsubscribeUrl: string,
   settingsUrl: string
 ): string {
+  const unsub = withSiteLang(unsubscribeUrl, lang);
+  const settings = withSiteLang(settingsUrl, lang);
   if (lang === "vi") {
-    return `Hủy đăng ký: ${unsubscribeUrl}\nChỉnh cài đặt: ${settingsUrl}\nDữ liệu / pipeline: ${DATA_URL}`;
+    return `Hủy đăng ký: ${unsub}\nChỉnh cài đặt: ${settings}\nDữ liệu / pipeline: ${DATA_URL}`;
   }
-  return `Unsubscribe: ${unsubscribeUrl}\nAdjust settings: ${settingsUrl}\nData / Pipeline: ${DATA_URL}`;
+  return `Unsubscribe: ${unsub}\nAdjust settings: ${settings}\nData / Pipeline: ${DATA_URL}`;
 }
 
 function wrapHtml(opts: {
@@ -203,7 +210,7 @@ export function renderNoteEmail(input: NoteEmailInput): {
   html: string;
   text: string;
 } {
-  const lang: MailLang = input.lang === "vi" ? "vi" : "en";
+  const lang: MailLang = normalizeMailLang(input.lang);
   const mailKind: MailUtmKind = input.mailKind ?? "welcome";
   const body = markdownToEmailHtml(input.bodyMd);
   const cta =
@@ -330,21 +337,30 @@ export function renderDigestEmail(input: DigestEmailInput): {
   return { html, text };
 }
 
-export function unsubscribeUrl(token: string): string {
-  return `${SITE_URL}/subscribe?unsubscribe=${encodeURIComponent(token)}`;
+export function unsubscribeUrl(token: string, lang: MailLang = "vi"): string {
+  return withSiteLang(
+    `${SITE_URL}/subscribe?unsubscribe=${encodeURIComponent(token)}`,
+    lang
+  );
 }
 
-export function settingsUrl(token: string): string {
-  return `${SITE_URL}/subscribe?settings=${encodeURIComponent(token)}`;
+export function settingsUrl(token: string, lang: MailLang = "vi"): string {
+  return withSiteLang(
+    `${SITE_URL}/subscribe?settings=${encodeURIComponent(token)}`,
+    lang
+  );
 }
 
 export function oneClickUnsubscribeUrl(token: string): string {
   return `${SITE_URL}/api/subscribe?token=${encodeURIComponent(token)}`;
 }
 
-export function listUnsubscribeHeaders(token: string): Record<string, string> {
+export function listUnsubscribeHeaders(
+  token: string,
+  lang: MailLang = "vi"
+): Record<string, string> {
   const click = oneClickUnsubscribeUrl(token);
-  const page = unsubscribeUrl(token);
+  const page = unsubscribeUrl(token, lang);
   return {
     "List-Unsubscribe": `<${click}>, <${page}>`,
     "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",

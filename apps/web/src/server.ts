@@ -13,8 +13,18 @@ import {
   withHomepageHeaders,
 } from "./lib/agent-discovery";
 import { readSession } from "./lib/db";
-import { resolveLang } from "./lib/lang";
 import { llmsTxtResponse } from "./lib/llms-txt";
+import {
+  localeErrorResponse,
+  normalizeLocaleRequest,
+  resolveRequestLocale,
+  temporaryLocaleRedirect,
+  withSsrLocaleResponse,
+} from "./lib/locale-response";
+import {
+  isLanguageNeutralSsrPath,
+  isLocaleAwareApiPath,
+} from "./lib/locale-routing";
 import { withLang } from "./lib/locale-url";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
@@ -55,17 +65,6 @@ export default {
       dest.pathname = "/subscribe";
       return Response.redirect(dest.toString(), 301);
     }
-    const storyDest = legacyStoryRedirectPath(path);
-    if (storyDest) {
-      const dest = new URL(request.url);
-      dest.pathname = storyDest;
-      const lang = resolveLang({
-        search: dest.search,
-        cookie: request.headers.get("cookie"),
-        acceptLanguage: request.headers.get("accept-language"),
-      });
-      return Response.redirect(withLang(dest.toString(), lang), 301);
-    }
     if (isClerkProxyPath(path)) {
       return withRouteIndexabilityHeaders(
         request,
@@ -104,13 +103,50 @@ export default {
         return sitemapResponse(buildSitemapXml(staticSitemapUrls()));
       }
     }
-    return withRouteIndexabilityHeaders(
+
+    // Locale aliases and malformed values are rejected before the SPA (or
+    // route middleware) can turn them into a cacheable response. Public API
+    // surfaces get the same gate at the Worker boundary; their handlers repeat
+    // it for direct calls/tests. CORS preflight remains a language-neutral
+    // transport exchange and is answered before locale selection.
+    const isApi = path === "/api" || path.startsWith("/api/");
+    const shouldNormalize =
+      !isApi || (isLocaleAwareApiPath(path) && request.method !== "OPTIONS");
+    if (shouldNormalize) {
+      const normalized = normalizeLocaleRequest(request, {
+        format: isApi && path !== "/api/subscribe/preview" ? "json" : "html",
+        neutralPath: isLanguageNeutralSsrPath(path),
+      });
+      if (normalized) {
+        return isApi ? handlePublicCors(request, () => normalized) : normalized;
+      }
+    }
+
+    const storyDest = legacyStoryRedirectPath(path);
+    if (storyDest) {
+      const dest = new URL(request.url);
+      dest.pathname = storyDest;
+      const resolution = resolveRequestLocale(request);
+      if (!resolution.ok) {
+        return localeErrorResponse(request, resolution, "html");
+      }
+      return temporaryLocaleRedirect(
+        request,
+        withLang(dest.toString(), resolution.lang),
+        resolution.lang
+      );
+    }
+
+    return withSsrLocaleResponse(
       request,
-      handlePublicCors(request, () =>
-        handleSubscribeCors(request, async () =>
-          withHomepageHeaders(
-            request,
-            applyNotFoundHttpStatus(await handler.fetch(request))
+      await withRouteIndexabilityHeaders(
+        request,
+        handlePublicCors(request, () =>
+          handleSubscribeCors(request, async () =>
+            withHomepageHeaders(
+              request,
+              applyNotFoundHttpStatus(await handler.fetch(request))
+            )
           )
         )
       )

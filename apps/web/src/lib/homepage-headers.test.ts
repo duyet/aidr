@@ -9,14 +9,14 @@ import { SITE_URL } from "./site";
  * response that already declared its own policy.
  */
 describe("withHomepageHeaders cache safety", () => {
-  it("never stamps Cache-Control on a non-200 homepage", () => {
+  it("marks homepage errors private and no-store", () => {
     const res = withHomepageHeaders(
       new Request(`${SITE_URL}/`),
       new Response("boom", { status: 500 })
     );
     expect(res.status).toBe(500);
-    // A cached 500 would outlive the incident it reported.
-    expect(res.headers.get("Cache-Control")).toBeNull();
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(res.headers.get("Vary")).toBe("Cookie, Accept-Language");
     // Discovery links are still safe to advertise on an error page.
     expect(res.headers.get("Link")).toContain("api-catalog");
   });

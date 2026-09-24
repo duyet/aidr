@@ -4,6 +4,7 @@ import {
   canonicalLocaleRedirect,
   hasCanonicalLocaleQuery,
   localeCacheControl,
+  neutralLocaleRedirect,
   withLang,
   withSiteLang,
 } from "./locale-url";
@@ -35,7 +36,7 @@ describe("canonical locale query policy", () => {
     expect(hasCanonicalLocaleQuery("?lang=fr")).toBe(false);
   });
 
-  it("normalizes aliases, invalid values, and conflicts without dropping UTM", () => {
+  it("normalizes one valid alias without dropping UTM", () => {
     expect(
       canonicalLocaleRedirect(
         "/abcdef12",
@@ -44,15 +45,24 @@ describe("canonical locale query policy", () => {
         "en"
       )
     ).toBe("/abcdef12?utm_source=telegram&lang=en#sources");
+  });
+
+  it("does not redirect invalid, repeated, or conflicting values", () => {
     expect(
-      canonicalLocaleRedirect("/abcdef12", "?lang=vi&locale=en", "", "vi")
-    ).toBe("/abcdef12?lang=vi");
-    expect(canonicalLocaleRedirect("/abcdef12", "?lang=fr", "", "en")).toBe(
-      "/abcdef12?lang=en"
-    );
+      canonicalLocaleRedirect("/abcdef12", "?lang=fr", "", "en")
+    ).toBeNull();
     expect(
       canonicalLocaleRedirect("/abcdef12", "?lang=en&lang=vi", "", "en")
-    ).toBe("/abcdef12?lang=en");
+    ).toBeNull();
+    expect(
+      canonicalLocaleRedirect("/abcdef12", "?lang=vi&locale=en", "", "vi")
+    ).toBeNull();
+  });
+
+  it("removes locale parameters from language-neutral canonical URLs", () => {
+    expect(neutralLocaleRedirect("/about", "?lang=vi&tab=about", "#top")).toBe(
+      "/about?tab=about#top"
+    );
   });
 
   it("leaves bare routes and already-canonical routes alone", () => {

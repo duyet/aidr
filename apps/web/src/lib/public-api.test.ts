@@ -27,5 +27,9 @@ describe("public API locale links", () => {
       "https://aidr.today/abcdef12?lang=en"
     );
     expect(localizePublicDigest(digest, "en").lang).toBe("en");
+    expect(localizePublicDigest(digest, "en").available_langs).toEqual([
+      "en",
+      "vi",
+    ]);
   });
 });

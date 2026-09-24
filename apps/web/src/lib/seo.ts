@@ -150,6 +150,19 @@ export function pageHead(opts: {
   };
 }
 
+export function localizedPageHead(
+  opts: Parameters<typeof pageHead>[0] & { lang: Lang }
+): HeadTags {
+  const head = pageHead({
+    ...opts,
+    path: withLang(opts.path, opts.lang),
+  });
+  return {
+    ...head,
+    links: [...localizedHeadLinks(opts.path, opts.lang), SITEMAP_LINK],
+  };
+}
+
 /** Homepage Open Graph / Twitter / canonical + hreflang tags. */
 export function homepageHead(lang: Lang = "vi"): HeadTags {
   const head = pageHead({

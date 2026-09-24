@@ -47,6 +47,10 @@ export interface DayGroup {
 }
 
 export interface FeedResponse {
+  /** Selected locale/permalink language on public API responses. */
+  lang?: Lang;
+  /** Public feed/story payloads intentionally retain both translations. */
+  available_langs?: readonly ["en", "vi"];
   tldr: {
     date: string;
     bullets_en: TldrBullet[];

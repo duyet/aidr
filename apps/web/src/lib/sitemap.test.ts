@@ -57,11 +57,14 @@ describe("staticSitemapUrls", () => {
     expect(locs).not.toContain(`${SITE_URL}/`);
     expect(locs).toContain(`${SITE_URL}/about`);
     expect(locs).toContain(`${SITE_URL}/brand`);
-    expect(locs).toContain(`${SITE_URL}/mcp`);
-    expect(locs).toContain(`${SITE_URL}/subscribe`);
+    expect(locs).toContain(`${SITE_URL}/mcp?lang=vi`);
+    expect(locs).toContain(`${SITE_URL}/mcp?lang=en`);
+    expect(locs).toContain(`${SITE_URL}/subscribe?lang=vi`);
+    expect(locs).toContain(`${SITE_URL}/changelog?lang=en`);
     expect(locs).toContain(`${SITE_URL}/privacy`);
     expect(locs).toContain(`${SITE_URL}/terms`);
-    expect(locs).toContain(`${SITE_URL}/submit`);
+    expect(locs).toContain(`${SITE_URL}/submit?lang=en`);
+    expect(locs).not.toContain(`${SITE_URL}/mcp`);
     expect(locs).not.toContain(`${SITE_URL}/extension`);
   });
 });

@@ -18,6 +18,7 @@ import {
 } from "../notify/index.js";
 import {
   buildDigestMessage,
+  buildDigestReplyMarkup,
   buildStoryCaption,
   buildStoryReplyMarkup,
   escapeHtml,
@@ -90,6 +91,7 @@ describe("buildTrendingQuery", () => {
     expect(sql).toContain("status = 'published'");
     expect(sql).toContain("n.item_id IS NULL");
     expect(sql).toContain("tr.lang = 'vi'");
+    expect(sql).toContain("THEN 'vi' ELSE 'en' END AS lang");
     expect(binds).toEqual([
       "telegram",
       1_700_000_000 - 24 * 3600,
@@ -131,6 +133,21 @@ describe("digest message", () => {
     expect(msg).toContain("•  No-link bullet");
   });
 
+  it("uses English header and button copy when the digest falls back to EN", () => {
+    const english: DailyDigest = {
+      lang: "en",
+      date: "2026-08-17",
+      bullets: [{ text: "English bullet", url: "https://aidr.today/abcdef12" }],
+    };
+    expect(buildDigestMessage(english)).toContain("AI news today");
+    expect(buildDigestMessage(english)).toContain("lang=en");
+    const markup = buildDigestReplyMarkup("en") as {
+      inline_keyboard: { text: string; url: string }[][];
+    };
+    expect(markup.inline_keyboard[0][0].text).toContain("full digest");
+    expect(markup.inline_keyboard[0][0].url).toContain("lang=en");
+  });
+
   it("drops overflow bullets to stay under the message cap", () => {
     const big: DailyDigest = {
       lang: "vi",
@@ -170,6 +187,14 @@ describe("trending story message", () => {
     expect(row[1].url).toBe(
       "https://aidr.today/abcdef12?lang=vi&utm_source=telegram"
     );
+  });
+
+  it("uses English story controls and links when translation is absent", () => {
+    const markup = buildStoryReplyMarkup(story({ lang: "en" })) as {
+      inline_keyboard: { text: string; url: string }[][];
+    };
+    expect(markup.inline_keyboard[0][0].text).toBe("Read →");
+    expect(markup.inline_keyboard[0][1].url).toContain("lang=en");
   });
 
   it("uses the 8-char permalink with an explicit stable locale", () => {

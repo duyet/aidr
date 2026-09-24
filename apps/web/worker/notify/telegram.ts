@@ -41,7 +41,7 @@ export function withUtm(url: string, lang: Lang = DEFAULT_LANG): string {
   }
 }
 
-/** Canonical, explicitly Vietnamese story permalink for the Telegram channel. */
+/** Canonical story permalink with the Telegram channel's selected locale. */
 export function storyUrl(
   story: Pick<StoryPayload, "id">,
   lang: Lang = DEFAULT_LANG
@@ -52,7 +52,10 @@ export function storyUrl(
 /** TL;DR digest: header + linked bullet list, capped under the message
  *  limit — bullets that would overflow are dropped from the tail. */
 export function buildDigestMessage(digest: DailyDigest): string {
-  const header = `<b>🗞 AI hôm nay có gì — ${digest.date}</b>`;
+  const header =
+    digest.lang === "en"
+      ? `<b>🗞 AI news today — ${digest.date}</b>`
+      : `<b>🗞 AI hôm nay có gì — ${digest.date}</b>`;
   const lines: string[] = [header];
   let length = header.length;
   for (const bullet of digest.bullets) {
@@ -70,7 +73,15 @@ export function buildDigestMessage(digest: DailyDigest): string {
 export function buildDigestReplyMarkup(lang: Lang = DEFAULT_LANG): object {
   return {
     inline_keyboard: [
-      [{ text: "Xem đầy đủ trên aidr.today →", url: withUtm(SITE_URL, lang) }],
+      [
+        {
+          text:
+            lang === "en"
+              ? "Read the full digest on aidr.today →"
+              : "Xem đầy đủ trên aidr.today →",
+          url: withUtm(SITE_URL, lang),
+        },
+      ],
     ],
   };
 }
@@ -98,7 +109,10 @@ export function buildStoryReplyMarkup(story: StoryPayload): object {
   return {
     inline_keyboard: [
       [
-        { text: "Đọc bài →", url: withUtm(story.url, story.lang) },
+        {
+          text: story.lang === "en" ? "Read →" : "Đọc bài →",
+          url: withUtm(story.url, story.lang),
+        },
         {
           text: "AI;DR",
           url: withUtm(storyUrl(story, story.lang), story.lang),

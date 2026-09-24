@@ -152,11 +152,12 @@ export function buildTrendingQuery(
 ): { sql: string; binds: [string, number, number, number] } {
   return {
     sql: `SELECT i.id, i.url,
-                 COALESCE(tr.title, i.title) AS title,
-                 COALESCE(tr.summary, i.summary) AS summary,
+                 COALESCE(NULLIF(TRIM(tr.title), ''), i.title) AS title,
+                 COALESCE(NULLIF(TRIM(tr.summary), ''), i.summary) AS summary,
                  i.image_url, i.category,
                  i.points, i.comments, i.rank_score, i.llm_importance,
-                 'vi' AS lang
+                 CASE WHEN NULLIF(TRIM(tr.title), '') IS NOT NULL
+                   THEN 'vi' ELSE 'en' END AS lang
           FROM items i
           LEFT JOIN notifications n ON n.item_id = i.id AND n.channel = ?
             AND (n.status = 'sent' OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})

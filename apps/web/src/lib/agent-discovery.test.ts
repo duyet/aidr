@@ -10,6 +10,7 @@ import {
   mcpServerCard,
   oauthAuthorizationServer,
   oauthProtectedResource,
+  openApiDocument,
   SKILL_NAME,
   SKILL_PATH,
   sha256Digest,
@@ -24,11 +25,32 @@ describe("api catalog", () => {
     };
     expect(doc.linkset.length).toBeGreaterThanOrEqual(2);
     const publicApi = doc.linkset.find(
-      (e) => e.anchor === `${SITE_URL}/api/public`
+      (e) => e.anchor === `${SITE_URL}/api/public?lang=en`
     );
     expect(publicApi?.["service-desc"]).toBeTruthy();
     expect(publicApi?.["service-doc"]).toBeTruthy();
     expect(publicApi?.status).toBeTruthy();
+  });
+});
+
+describe("OpenAPI locale contract", () => {
+  it("documents explicit lang and strict cache/error behavior", () => {
+    const document = openApiDocument() as {
+      paths: Record<
+        string,
+        { get?: { parameters?: Array<{ name?: string }> } }
+      >;
+      "x-locale-contract": { values: string[]; invalidOrRepeated: string };
+    };
+    expect(document["x-locale-contract"].values).toEqual(["en", "vi"]);
+    expect(document["x-locale-contract"].invalidOrRepeated).toContain("400");
+    expect(document.paths["/api/public"].get?.parameters).toHaveLength(2);
+    expect(document.paths["/api/story/{id}"].get?.parameters).toHaveLength(3);
+    expect(
+      document.paths["/api/public"].get?.parameters?.some(
+        (parameter) => parameter.name === "locale"
+      )
+    ).toBe(true);
   });
 });
 

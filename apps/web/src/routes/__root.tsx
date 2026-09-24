@@ -21,9 +21,19 @@ import { PageViewTracker } from "../components/PageViewTracker";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
 import { setClientLang } from "../lib/lang";
 import { LangContext } from "../lib/lang-context";
-import { preserveRootLang, validateRootSearch } from "../lib/locale-routing";
-import { canonicalLocaleRedirect, withLang } from "../lib/locale-url";
-import { loadNotFoundLang } from "../lib/not-found-fn";
+import {
+  InvalidLocaleRequestError,
+  isLanguageNeutralSsrPath,
+  preserveRootLang,
+  validateRootSearch,
+} from "../lib/locale-routing";
+import {
+  canonicalLocaleRedirect,
+  hasLocaleQuery,
+  neutralLocaleRedirect,
+  withLang,
+} from "../lib/locale-url";
+import { loadRequestLocale } from "../lib/not-found-fn";
 import {
   DEFAULT_PREFS,
   loadPrefs,
@@ -44,15 +54,31 @@ export const Route = createRootRoute({
     middlewares: [({ search, next }) => preserveRootLang(search, next(search))],
   },
   beforeLoad: async ({ location }) => {
-    const lang = await loadNotFoundLang(location.searchStr);
-    const href = canonicalLocaleRedirect(
-      location.pathname,
-      location.searchStr,
-      location.hash,
-      lang
-    );
-    if (href) throw redirect({ href, statusCode: 307 });
-    return { lang };
+    const resolution = await loadRequestLocale(location.searchStr);
+    if (!resolution.ok) throw new InvalidLocaleRequestError(resolution);
+
+    if (isLanguageNeutralSsrPath(location.pathname)) {
+      if (hasLocaleQuery(location.searchStr)) {
+        const href = neutralLocaleRedirect(
+          location.pathname,
+          location.searchStr,
+          location.hash
+        );
+        if (href) throw redirect({ href, statusCode: 307 });
+      }
+      return { lang: "en" as const };
+    }
+
+    if (resolution.legacy) {
+      const href = canonicalLocaleRedirect(
+        location.pathname,
+        location.searchStr,
+        location.hash,
+        resolution.lang
+      );
+      if (href) throw redirect({ href, statusCode: 307 });
+    }
+    return { lang: resolution.lang };
   },
   head: ({ matches }) => {
     const notFoundOwnsTitle = splatOwnsDocumentTitle(

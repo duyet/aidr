@@ -20,17 +20,21 @@ homepage payload (~360KB) and does not send CORS for `chrome-extension://`
 origins. Use this instead:
 
 - **URL:** `https://aidr.today/api/public?lang=vi` (or `?lang=en`)
-- **Auth:** none. Failures return `{ "error": "unavailable" }` (no D1/admin detail).
+- **Auth:** none. Failures return a bilingual `{ "error": "unavailable", ... }`
+  object with no D1/admin detail.
 - **CORS:** Worker fetch intercepts OPTIONS/GET before TanStack Start (SPA
   fallback would otherwise serve HTML). Allows `chrome-extension://…`,
   `http://localhost` / `http://127.0.0.1`, and `https://*.duyet.net`.
-- **Cache:** explicit `?lang=vi|en` uses
-  `public, max-age=120, s-maxage=300, stale-while-revalidate=600`; bare or
-  unsupported locale requests use `private, no-store`. Not rate-limited.
+- **Cache:** exactly one explicit `?lang=vi|en` uses
+  `public, max-age=120, s-maxage=300, stale-while-revalidate=600`. Bare,
+  legacy-alias, invalid, repeated, and conflicting locale requests are not
+  served as a public variant: bare/header-selected responses use
+  `private, no-store`; malformed values return `400`. Not rate-limited.
 
 ```json
 {
   "lang": "vi",
+  "available_langs": ["en", "vi"],
   "tldr": {
     "date": "2026-08-27",
     "bullets_en": [{ "text": "...", "item_ids": ["..."], "image_url": "https://..." }],
@@ -52,8 +56,9 @@ origins. Use this instead:
 }
 ```
 
-Up to 16 bullets per language and 8 top stories by `rank_score`. Typical
-payload is well under 50KB. `image_url` on a bullet is additive and only
+The response is bilingual by design: `lang` selects the explicit permalink
+language and `available_langs` is `["en", "vi"]`. Up to 16 bullets per language
+and 8 top stories by `rank_score`. Typical payload is well under 50KB. `image_url` on a bullet is additive and only
 present when the linked story has an og/thumbnail. `published_at` is epoch
 **seconds**; `updatedAt` is epoch milliseconds.
 

@@ -14,7 +14,7 @@ export interface StoryPayload {
   comments: number;
   rank_score: number;
   llm_importance: number | null;
-  /** Content language resolved by the notifier query (currently VI). */
+  /** Content language resolved by the notifier query (VI, with EN fallback). */
   lang: Lang;
 }
 

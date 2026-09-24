@@ -1,4 +1,5 @@
 import { parseDataTab } from "./data-tab";
+import { isLang } from "./lang";
 import { SITEMAP_STATIC_PATHS } from "./sitemap";
 
 export const INDEXABLE_ROBOTS = "index, follow";
@@ -229,6 +230,17 @@ function hasAnyQuery(search: SearchInput | undefined): boolean {
   return searchKeys(search).length > 0;
 }
 
+function hasCanonicalLocaleOnly(search: SearchInput | undefined): boolean {
+  const keys = searchKeys(search);
+  if (keys.length !== 1 || keys[0] !== "lang") return false;
+  const value = searchValue(search, "lang");
+  return typeof value === "string" && isLang(value);
+}
+
+function hasLocaleQuery(search: SearchInput | undefined): boolean {
+  return searchKeys(search).some((key) => key === "lang" || key === "locale");
+}
+
 function isPathOrChild(pathname: string, root: string): boolean {
   return pathname === root || pathname.startsWith(`${root}/`);
 }
@@ -274,6 +286,21 @@ function applyQueryPolicy(
   search: SearchInput | undefined
 ): RouteIndexabilityPolicy {
   if (hasSensitiveQuery(search)) return PRIVATE_POLICY;
+  if (hasCanonicalLocaleOnly(search)) return policy;
+  if (hasLocaleQuery(search)) {
+    const keys = searchKeys(search);
+    const localeKeys = keys.filter((key) => key === "lang" || key === "locale");
+    const localeValue = searchValue(search, "lang");
+    if (
+      localeKeys.length === 1 &&
+      keys.includes("lang") &&
+      typeof localeValue === "string" &&
+      isLang(localeValue)
+    ) {
+      return FACETED_POLICY;
+    }
+    return PRIVATE_POLICY;
+  }
   return hasAnyQuery(search) ? FACETED_POLICY : policy;
 }
 
@@ -293,12 +320,17 @@ function classifyRoute({
     isPathOrChild(pathname, "/__clerk") ||
     isPathOrChild(pathname, "/api/admin") ||
     pathname === "/api/mcp" ||
-    pathname === "/api/subscribe/preview" ||
     (pathname === "/subscribe" && hasSensitiveQuery(search)) ||
     (pathname === "/api/subscribe" &&
       (hasKey(search, "token") || isUnsafeMethod(method)))
   ) {
     return PRIVATE_POLICY;
+  }
+
+  if (pathname === "/api/subscribe/preview") {
+    return hasAnyQuery(search)
+      ? applyQueryPolicy(API_POLICY, search)
+      : PRIVATE_POLICY;
   }
 
   if (pathname === "/data") {
@@ -350,8 +382,12 @@ export async function withRouteIndexabilityHeaders(
     status,
   });
   const headers = new Headers(resolvedResponse.headers);
-  headers.set("X-Robots-Tag", policy.robots);
-  headers.set("Referrer-Policy", policy.referrerPolicy);
+  if (headers.get("X-Robots-Tag") !== "noindex, nofollow") {
+    headers.set("X-Robots-Tag", policy.robots);
+  }
+  if (headers.get("Referrer-Policy") !== "no-referrer") {
+    headers.set("Referrer-Policy", policy.referrerPolicy);
+  }
   if (policy.cacheControl) {
     headers.set("Cache-Control", policy.cacheControl);
   }

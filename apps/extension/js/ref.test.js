@@ -5,6 +5,7 @@ import {
   EXT_UTM_CAMPAIGN,
   EXT_UTM_MEDIUM,
   EXT_UTM_SOURCE,
+  formActionWithExtRef,
   withExtRef,
 } from "./ref.js";
 
@@ -45,4 +46,29 @@ test("withExtRef preserves existing query and path", () => {
 test("withExtRef returns blank/invalid input unchanged", () => {
   assert.equal(withExtRef(""), "");
   assert.equal(withExtRef("not a url"), "not a url");
+});
+
+test("form actions leave locale serialization to one hidden field", () => {
+  const action = formActionWithExtRef(
+    "https://aidr.today/search?lang=en&keep=1",
+    "search",
+    "en"
+  );
+  const actionUrl = new URL(action);
+  assert.equal(actionUrl.searchParams.get("keep"), "1");
+  assert.equal(actionUrl.searchParams.has("lang"), false);
+  assert.equal(actionUrl.searchParams.get("utm_source"), EXT_UTM_SOURCE);
+
+  const formData = new URLSearchParams({
+    q: "agents",
+    lang: "en",
+    ref: EXT_REF,
+    utm_source: EXT_UTM_SOURCE,
+    utm_medium: EXT_UTM_MEDIUM,
+    utm_campaign: EXT_UTM_CAMPAIGN,
+    utm_content: "search",
+  });
+  const submitted = new URL(action);
+  submitted.search = formData.toString();
+  assert.deepEqual(submitted.searchParams.getAll("lang"), ["en"]);
 });

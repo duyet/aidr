@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 import { useLang } from "../lib/lang-context";
-import { pageHead } from "../lib/seo";
+import { localizedPageHead } from "../lib/seo";
 
 interface ChangelogEntry {
   date: string;
@@ -106,10 +106,11 @@ const EXTENSION_ENTRIES: ChangelogEntry[] = [
 ];
 
 export const Route = createFileRoute("/changelog")({
-  head: () =>
-    pageHead({
+  head: ({ match }) =>
+    localizedPageHead({
       path: "/changelog",
       title: "Changelog | AI News",
+      lang: match.context.lang,
     }),
   component: ChangelogPage,
 });

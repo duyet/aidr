@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   articleHead,
   homepageHead,
+  localizedPageHead,
   notFoundHead,
   pageHead,
   routeRobotsMeta,
@@ -97,6 +98,32 @@ describe("pageHead", () => {
   });
 });
 
+describe("localizedPageHead", () => {
+  it("emits explicit canonical and hreflang URLs for a localized static route", () => {
+    const head = localizedPageHead({
+      path: "/mcp",
+      title: "MCP | AI News",
+      lang: "en",
+    });
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: `${SITE_URL}/mcp?lang=en`,
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "vi",
+      href: `${SITE_URL}/mcp?lang=vi`,
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "x-default",
+      href: `${SITE_URL}/mcp?lang=vi`,
+    });
+    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/mcp?lang=en`);
+    expect(head.links.some((link) => link.rel === "sitemap")).toBe(true);
+  });
+});
+
 describe("articleHead", () => {
   const item = {
     id: "abcdef12deadbeef",
@@ -181,12 +208,12 @@ describe("routeRobotsMeta", () => {
     }
   });
 
-  it("emits noindex, follow for search, locale, and faceted HTML", () => {
-    for (const search of [
-      { q: "open models" },
-      { lang: "vi" },
-      { utm_source: "newsletter" },
-    ]) {
+  it("keeps explicit locale pages indexable while faceting other queries", () => {
+    expect(routeRobotsMeta({ pathname: "/", search: { lang: "vi" } })).toEqual({
+      name: "robots",
+      content: "index, follow",
+    });
+    for (const search of [{ q: "open models" }, { utm_source: "newsletter" }]) {
       expect(routeRobotsMeta({ pathname: "/", search })).toEqual({
         name: "robots",
         content: "noindex, follow",

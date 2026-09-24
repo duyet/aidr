@@ -34,7 +34,7 @@ export const Route = createFileRoute("/$slug")({
       location.searchStr,
       location.hash
     );
-    if (to) throw redirect({ href: to, statusCode: 301 });
+    if (to) throw redirect({ href: to, statusCode: 307 });
     return { kind: "story", item };
   },
   headers: ({ loaderData, match }): Record<string, string> => {

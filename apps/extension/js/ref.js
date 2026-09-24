@@ -33,6 +33,23 @@ export function withExtRef(url, content = "link", lang = "vi") {
   }
 }
 
+/**
+ * Form actions must not carry `lang`: GET form submission serializes the
+ * hidden lang field alongside the action, which would otherwise create two
+ * locale parameters. The hidden field remains the single source of truth.
+ */
+export function formActionWithExtRef(url, content = "link", lang = "vi") {
+  const tagged = withExtRef(url, content, lang);
+  if (!isSiteUrl(tagged)) return tagged;
+  try {
+    const u = new URL(tagged);
+    u.searchParams.delete("lang");
+    return u.toString();
+  } catch {
+    return tagged;
+  }
+}
+
 /** Rewrite aidr.today href/action on a root element (static chrome). */
 export function tagSiteLinks(root, contentBySelector = {}, lang = "vi") {
   if (!root?.querySelectorAll) return;
@@ -54,7 +71,7 @@ export function tagSiteLinks(root, contentBySelector = {}, lang = "vi") {
       if (node instanceof HTMLAnchorElement && node.href) {
         node.href = withExtRef(node.href, content, lang);
       } else if (node instanceof HTMLFormElement && node.action) {
-        node.action = withExtRef(node.action, content, lang);
+        node.action = formActionWithExtRef(node.action, content, lang);
         ensureHidden(node, "lang", normalizeLang(lang));
         ensureHidden(node, "ref", EXT_REF);
         ensureHidden(node, "utm_source", EXT_UTM_SOURCE);

@@ -73,18 +73,38 @@ function normalizedLocaleSearch(
   return `?${params.toString()}`;
 }
 
-/**
- * Redirect only URLs carrying a locale parameter. Bare legacy URLs keep
- * working (and cookie/Accept-Language selection) but are not edge-cacheable.
- */
+/** One valid legacy `locale` redirects; invalid/repeated values are rejected. */
 export function canonicalLocaleRedirect(
   pathname: string,
   search: string,
   hash: string,
   lang: Lang
 ): string | null {
-  if (!hasLocaleQuery(search) || hasCanonicalLocaleQuery(search)) return null;
+  const params = asParams(search);
+  const langValues = params.getAll(LOCALE_QUERY_PARAM);
+  const localeValues = params.getAll(LEGACY_LOCALE_QUERY_PARAM);
+  if (
+    langValues.length !== 0 ||
+    localeValues.length !== 1 ||
+    localeValues[0] !== lang
+  ) {
+    return null;
+  }
   return `${pathname}${normalizedLocaleSearch(search, lang)}${hash}`;
+}
+
+/** Language-neutral pages canonicalize to their bare path, preserving filters. */
+export function neutralLocaleRedirect(
+  pathname: string,
+  search: string,
+  hash: string
+): string | null {
+  if (!hasLocaleQuery(search)) return null;
+  const params = asParams(search);
+  params.delete(LEGACY_LOCALE_QUERY_PARAM);
+  params.delete(LOCALE_QUERY_PARAM);
+  const query = params.toString();
+  return `${pathname}${query ? `?${query}` : ""}${hash}`;
 }
 
 /** Public response caching is safe only with one explicit canonical locale. */

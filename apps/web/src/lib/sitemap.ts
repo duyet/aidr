@@ -1,4 +1,5 @@
 import type { DbReader } from "./db";
+import { isLocalizedSsrPath } from "./locale-routing";
 import { absoluteSiteUrl } from "./locale-url";
 import { SITE_URL } from "./site";
 import { storyPath } from "./slug";
@@ -57,11 +58,11 @@ export function robotsTxt(): string {
 
 export function staticSitemapUrls(): SitemapUrl[] {
   return SITEMAP_STATIC_PATHS.flatMap((path) => {
-    if (path === "/") {
+    if (isLocalizedSsrPath(path)) {
       return (["vi", "en"] as const).map((lang) => ({
         loc: absoluteSiteUrl(path, lang),
-        changefreq: "hourly",
-        priority: "1.0",
+        changefreq: path === "/" ? "hourly" : "weekly",
+        priority: path === "/" ? "1.0" : "0.4",
       }));
     }
     return [

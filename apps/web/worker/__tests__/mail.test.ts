@@ -14,6 +14,8 @@ import {
   NOTES_FROM,
   renderDigestEmail,
   renderNoteEmail,
+  settingsUrl,
+  unsubscribeUrl,
 } from "../mail/render.js";
 import { digestFrom, notesFrom } from "../mail/send.js";
 import {
@@ -132,6 +134,7 @@ describe("renderNoteEmail", () => {
       subject: "A note",
       preheader: "Inbox preview",
       bodyMd: "Hello **friend**.",
+      lang: "en",
       cta: { label: "Read", url: "https://blog.duyet.net/x" },
       unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
       settingsUrl: "https://aidr.today/subscribe?settings=tok",
@@ -189,6 +192,26 @@ describe("renderNoteEmail", () => {
     expect(html).toContain("Mở aidr.today");
     expect(html).toContain("utm_medium=welcome");
     expect(text).toContain("Hủy đăng ký:");
+  });
+
+  it("keeps tokenized footer links in the selected language", () => {
+    expect(unsubscribeUrl("tok-en", "en")).toBe(
+      "https://aidr.today/subscribe?unsubscribe=tok-en&lang=en"
+    );
+    expect(settingsUrl("tok-en", "en")).toBe(
+      "https://aidr.today/subscribe?settings=tok-en&lang=en"
+    );
+    const { html, text } = renderDigestEmail({
+      subject: "Digest",
+      date: "2026-09-10",
+      stories: [{ text: "English story" }],
+      lang: "en",
+      unsubscribeUrl: unsubscribeUrl("secret-token", "en"),
+      settingsUrl: settingsUrl("secret-token", "en"),
+    });
+    expect(html).toContain("unsubscribe=secret-token&amp;lang=en");
+    expect(html).toContain("settings=secret-token&amp;lang=en");
+    expect(text).toContain("unsubscribe=secret-token&lang=en");
   });
 
   it("shares the logo shell with digest mail", () => {
@@ -375,11 +398,13 @@ describe("from addresses", () => {
 });
 
 describe("listUnsubscribeHeaders", () => {
-  it("includes one-click POST and the page URL", () => {
-    const headers = listUnsubscribeHeaders("abc");
+  it("includes one-click POST and the selected-language page URL", () => {
+    const headers = listUnsubscribeHeaders("abc", "en");
     expect(headers["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(headers["List-Unsubscribe"]).toContain("/api/subscribe?token=abc");
-    expect(headers["List-Unsubscribe"]).toContain("/subscribe?unsubscribe=abc");
+    expect(headers["List-Unsubscribe"]).toContain(
+      "/subscribe?unsubscribe=abc&lang=en"
+    );
   });
 });
 

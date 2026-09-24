@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { resolveLang } from "../../lib/lang";
+import {
+  API_CONTENT_LANGUAGE,
+  resolveApiRequestLocale,
+} from "../../lib/locale-response";
 import { localeCacheControl } from "../../lib/locale-url";
 import { PUBLIC_CACHE_CONTROL, servePublicApi } from "../../lib/public-api";
 
@@ -11,6 +14,10 @@ export const Route = createFileRoute("/api/public")({
   server: {
     handlers: {
       GET: async ({ request, context }: HandlerArgs) => {
+        const locale = resolveApiRequestLocale(request);
+        if (!locale.ok) return locale.response;
+        const lang = locale.locale.lang;
+
         let env =
           context?.cloudflare?.env ||
           context?.env ||
@@ -23,11 +30,6 @@ export const Route = createFileRoute("/api/public")({
           }
         }
         const url = new URL(request.url);
-        const lang = resolveLang({
-          search: url.search,
-          cookie: request.headers.get("cookie"),
-          acceptLanguage: request.headers.get("accept-language"),
-        });
         const response = await servePublicApi(env?.DB, lang);
         const policy = localeCacheControl(url.search, PUBLIC_CACHE_CONTROL);
         const headers = new Headers(response.headers);
@@ -35,7 +37,7 @@ export const Route = createFileRoute("/api/public")({
           headers.set("Cache-Control", policy.cacheControl);
           if (policy.vary) headers.set("Vary", policy.vary);
         }
-        headers.set("Content-Language", lang);
+        headers.set("Content-Language", API_CONTENT_LANGUAGE);
         return new Response(response.body, {
           status: response.status,
           statusText: response.statusText,

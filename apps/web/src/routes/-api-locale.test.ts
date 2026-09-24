@@ -34,11 +34,13 @@ describe("subscribe preview locale route", () => {
     expect(await vi.text()).toContain("Bản tin đầu tiên đang được chuẩn bị");
   });
 
-  it("uses the first repeated value and cookie fallback", async () => {
+  it("rejects repeated values and keeps cookie-selected previews private", async () => {
     const repeated = await renderPreview(
       "/api/subscribe/preview?lang=en&lang=vi"
     );
-    expect(repeated.headers.get("Content-Language")).toBe("en");
+    expect(repeated.status).toBe(400);
+    expect(repeated.headers.get("Content-Language")).toBe("en, vi");
+    expect(repeated.headers.get("Cache-Control")).toBe("private, no-store");
 
     const cookie = await renderPreview("/api/subscribe/preview", {
       cookie: "news_lang=en",
@@ -47,13 +49,18 @@ describe("subscribe preview locale route", () => {
     expect(cookie.headers.get("Cache-Control")).toBe("private, no-store");
   });
 
-  it("falls back to Vietnamese for unsupported and legacy values", async () => {
+  it("rejects invalid values and redirects one legacy alias", async () => {
     const invalid = await renderPreview("/api/subscribe/preview?lang=fr");
-    expect(invalid.headers.get("Content-Language")).toBe("vi");
+    expect(invalid.status).toBe(400);
+    expect(invalid.headers.get("Content-Language")).toBe("en, vi");
     expect(invalid.headers.get("Cache-Control")).toBe("private, no-store");
 
     const legacy = await renderPreview("/api/subscribe/preview?locale=en");
-    expect(legacy.headers.get("Content-Language")).toBe("en");
+    expect(legacy.status).toBe(307);
+    expect(legacy.headers.get("Location")).toBe(
+      "https://aidr.today/api/subscribe/preview?lang=en"
+    );
     expect(legacy.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(legacy.headers.get("Vary")).toContain("Cookie");
   });
 });

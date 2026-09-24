@@ -4,23 +4,22 @@ import {
   langFromCookie,
   langFromQuery,
   readLangFromCookie,
-  resolveLang,
+  resolveLocale,
   timeAgo,
 } from "./lang";
 
 describe("locale parsing", () => {
-  it("accepts only exact vi/en query values and uses the first repeated value", () => {
+  it("accepts only exact vi/en query values", () => {
     expect(langFromQuery("?lang=vi")).toBe("vi");
     expect(langFromQuery("?lang=en")).toBe("en");
-    expect(langFromQuery("?lang=en&lang=vi")).toBe("en");
+    expect(langFromQuery("?lang=en&lang=vi")).toBeNull();
     expect(langFromQuery("?lang=en-US")).toBeNull();
   });
 
-  it("supports locale only as a compatibility alias", () => {
+  it("supports locale only as a single compatibility alias", () => {
     expect(langFromQuery("?locale=vi")).toBe("vi");
-    expect(langFromQuery("?lang=en&locale=vi")).toBe("en");
-    // An explicit canonical key owns precedence even when unsupported.
-    expect(langFromQuery("?lang=fr&locale=en")).toBeNull();
+    expect(langFromQuery("?lang=en&locale=vi")).toBeNull();
+    expect(langFromQuery("?locale=en&locale=vi")).toBeNull();
   });
 
   it("parses exact news_lang cookies and defaults safely", () => {
@@ -36,29 +35,49 @@ describe("locale parsing", () => {
     expect(langFromAcceptLanguage("fr-FR, de;q=0.8")).toBeNull();
   });
 
-  it("resolves query, cookie, Accept-Language, then Vietnamese in order", () => {
+  it("rejects repeated, conflicting, and invalid explicit values", () => {
+    expect(resolveLocale({ search: "?lang=en&lang=vi" })).toMatchObject({
+      ok: false,
+      code: "repeated_locale",
+    });
+    expect(resolveLocale({ search: "?locale=vi&locale=vi" })).toMatchObject({
+      ok: false,
+      code: "repeated_locale",
+    });
+    expect(resolveLocale({ search: "?lang=en&locale=vi" })).toMatchObject({
+      ok: false,
+      code: "conflicting_locale",
+    });
+    expect(resolveLocale({ search: "?lang=fr" })).toMatchObject({
+      ok: false,
+      code: "invalid_locale",
+    });
+  });
+
+  it("resolves query, legacy, cookie, Accept-Language, then Vietnamese", () => {
     expect(
-      resolveLang({
-        search: "?lang=en&locale=vi",
+      resolveLocale({
+        search: "?lang=en",
         cookie: "news_lang=vi",
         acceptLanguage: "vi",
       })
-    ).toBe("en");
+    ).toMatchObject({ ok: true, lang: "en", source: "lang" });
     expect(
-      resolveLang({
-        search: "?locale=en",
-        cookie: "news_lang=vi",
-      })
-    ).toBe("en");
+      resolveLocale({ search: "?locale=en", cookie: "news_lang=vi" })
+    ).toMatchObject({ ok: true, lang: "en", legacy: true, source: "locale" });
     expect(
-      resolveLang({
-        search: "?lang=fr",
-        cookie: "news_lang=en",
-        acceptLanguage: "vi",
-      })
-    ).toBe("en");
-    expect(resolveLang({ acceptLanguage: "en-US,vi;q=0.8" })).toBe("en");
-    expect(resolveLang({})).toBe("vi");
+      resolveLocale({ cookie: "news_lang=en", acceptLanguage: "vi" })
+    ).toMatchObject({ ok: true, lang: "en", source: "cookie" });
+    expect(resolveLocale({ acceptLanguage: "en-US,vi;q=0.8" })).toMatchObject({
+      ok: true,
+      lang: "en",
+      source: "accept-language",
+    });
+    expect(resolveLocale({})).toMatchObject({
+      ok: true,
+      lang: "vi",
+      source: "default",
+    });
   });
 });
 

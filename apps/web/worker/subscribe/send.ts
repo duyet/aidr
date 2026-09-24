@@ -67,16 +67,21 @@ export function topBullets(
   try {
     const parsed = JSON.parse(bulletsJson);
     if (!Array.isArray(parsed)) return [];
-    return parsed.slice(0, max).map((b: Record<string, unknown>) => {
-      const itemIds = Array.isArray(b.item_ids) ? (b.item_ids as string[]) : [];
-      const item_id =
-        typeof b.item_id === "string" && b.item_id ? b.item_id : itemIds[0];
-      const image_url =
-        typeof b.image_url === "string" && b.image_url
-          ? b.image_url
-          : undefined;
-      return { text: String(b.text ?? ""), item_id, image_url };
-    });
+    return parsed
+      .slice(0, max)
+      .map((b: Record<string, unknown>) => {
+        const itemIds = Array.isArray(b.item_ids)
+          ? (b.item_ids as string[])
+          : [];
+        const item_id =
+          typeof b.item_id === "string" && b.item_id ? b.item_id : itemIds[0];
+        const image_url =
+          typeof b.image_url === "string" && b.image_url
+            ? b.image_url
+            : undefined;
+        return { text: String(b.text ?? "").trim(), item_id, image_url };
+      })
+      .filter((bullet) => bullet.text.length > 0);
   } catch {
     return [];
   }
@@ -144,7 +149,7 @@ export function buildDigestEmail(
   unsubscribeToken: string,
   max = MAX_BULLETS
 ): { subject: string; html: string; text: string } {
-  const mailLang = lang === "vi" ? "vi" : "en";
+  const mailLang = lang === "en" ? "en" : "vi";
   const items = bullets.slice(0, max);
   const subject = mailLang === "vi" ? `AI;DR — ${date}` : `AI;DR — ${date}`;
   return {
@@ -160,8 +165,8 @@ export function buildDigestEmail(
           : absoluteSiteUrl("/", mailLang),
         imageUrl: b.image_url,
       })),
-      unsubscribeUrl: unsubscribeUrl(unsubscribeToken),
-      settingsUrl: settingsUrl(unsubscribeToken),
+      unsubscribeUrl: unsubscribeUrl(unsubscribeToken, mailLang),
+      settingsUrl: settingsUrl(unsubscribeToken, mailLang),
       preheader: items[0]?.text,
     }),
   };
@@ -199,8 +204,8 @@ export async function sendWelcomeEmail(
     subject,
     bodyMd,
     lang: vi ? "vi" : "en",
-    unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token),
-    settingsUrl: settingsUrl(sub.unsubscribe_token),
+    unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    settingsUrl: settingsUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
     cta: { label: vi ? "Mở aidr.today" : "Open aidr.today", url: SITE_URL },
   });
   return sendSubscriberEmail(env, {
@@ -210,6 +215,7 @@ export async function sendWelcomeEmail(
     html,
     text,
     unsubscribeToken: sub.unsubscribe_token,
+    lang: vi ? "vi" : "en",
   });
 }
 
@@ -240,18 +246,20 @@ export async function sendDailyTldr(env: Env): Promise<number> {
     if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
 
     const size = digestSizeFor(sub.digest_size);
+    const requestedLang = sub.lang === "en" ? "en" : "vi";
     const preferred = topBullets(
-      sub.lang === "en" ? snapshot.bullets_en : snapshot.bullets_vi,
+      requestedLang === "en" ? snapshot.bullets_en : snapshot.bullets_vi,
       size
     );
     const bullets =
       preferred.length > 0 ? preferred : topBullets(snapshot.bullets_en, size);
     if (bullets.length === 0) continue;
+    const contentLang = preferred.length > 0 ? requestedLang : "en";
 
     const { subject, html, text } = buildDigestEmail(
       snapshot.date,
       bullets,
-      sub.lang,
+      contentLang,
       sub.unsubscribe_token,
       size
     );
@@ -263,6 +271,7 @@ export async function sendDailyTldr(env: Env): Promise<number> {
       html,
       text,
       unsubscribeToken: sub.unsubscribe_token,
+      lang: contentLang,
     });
     if (!sent) continue;
 

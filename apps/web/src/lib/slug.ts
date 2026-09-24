@@ -47,7 +47,7 @@ const RESERVED_TOP = new Set([
 ]);
 
 /**
- * Permanent redirect target for old `/{category}/{slug}` (and over-long
+ * Temporary redirect target for old `/{category}/{slug}` (and over-long
  * single-segment hashes) → `/{8-char}`. Null if this path is not a story URL.
  */
 export function legacyStoryRedirectPath(pathname: string): string | null {

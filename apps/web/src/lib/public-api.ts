@@ -7,12 +7,17 @@ import type { Lang } from "./types";
 export const PUBLIC_CACHE_CONTROL =
   "public, max-age=120, s-maxage=300, stale-while-revalidate=600";
 
-const UNAVAILABLE = { error: "unavailable" } as const;
+const UNAVAILABLE = {
+  error: "unavailable",
+  message: "The digest is temporarily unavailable.",
+  message_vi: "Bản tin tạm thời không khả dụng.",
+} as const;
 
 export function localizePublicDigest(body: PublicDigest, lang: Lang) {
   return {
     ...body,
     lang,
+    available_langs: ["en", "vi"] as const,
     stories: body.stories.map((story) => ({
       ...story,
       permalink: absoluteSiteUrl(storyPath(story), lang),
@@ -23,7 +28,12 @@ export function localizePublicDigest(body: PublicDigest, lang: Lang) {
 function unavailable(status: number): Response {
   return Response.json(UNAVAILABLE, {
     status,
-    headers: { "Cache-Control": "no-store" },
+    headers: {
+      "Cache-Control": "private, no-store",
+      "Content-Language": "en, vi",
+      Vary: "Cookie, Accept-Language",
+      "X-Robots-Tag": "noindex, nofollow",
+    },
   });
 }
 
@@ -39,7 +49,10 @@ export async function servePublicApi(
   try {
     const body = await getPublicDigest(readSession(db));
     return Response.json(localizePublicDigest(body, lang), {
-      headers: { "Cache-Control": PUBLIC_CACHE_CONTROL },
+      headers: {
+        "Cache-Control": PUBLIC_CACHE_CONTROL,
+        "Content-Language": "en, vi",
+      },
     });
   } catch (error) {
     console.error("public api:", error);

@@ -1,7 +1,7 @@
 import { track } from "@aidr/ui/track";
 import { ExternalLink, TrendingUp } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ARTICLE_TITLE_TAG,
   FEED_TITLE_TAG,
@@ -96,6 +96,10 @@ export function StoryRow({
   // story is refetched from /api/story on first expand.
   const [detail, setDetail] = useState<FeedItem | null>(null);
   const detailRequested = useRef(false);
+  useEffect(() => {
+    detailRequested.current = false;
+    setDetail(null);
+  }, [lang]);
   const { text: title, fallbackFromEnglish } = localizedTitle(item, lang);
   const summary =
     lang === "vi" && item.summary_vi ? item.summary_vi : item.summary;

@@ -40,9 +40,12 @@ export const Route = createFileRoute("/")({
     return out;
   },
   loaderDeps: ({ search }) => ({ q: search.q }),
-  loader: ({ deps }) =>
+  loader: ({ deps, context }) =>
     fetchFeed({
-      data: deps.q ? { q: deps.q } : { days: 3 },
+      data: {
+        ...(deps.q ? { q: deps.q } : { days: 3 }),
+        lang: context.lang,
+      },
     }),
   head: ({ match }) => homepageHead(match.context.lang),
   component: IndexPage,
@@ -76,9 +79,9 @@ function IndexPage() {
     if (loaderFeed) {
       setFeed(loaderFeed);
       setError(false);
-      if (!q) setCachedFeed(loaderFeed);
+      if (!q) setCachedFeed(loaderFeed, lang);
     }
-  }, [loaderFeed, q]);
+  }, [loaderFeed, lang, q]);
 
   // Client refresh (and first paint when the loader had no D1, e.g. prerender).
   useEffect(() => {
@@ -93,7 +96,7 @@ function IndexPage() {
           if (cancelled) return;
           if (res) {
             setFeed(res);
-            if (!q) setCachedFeed(res);
+            if (!q) setCachedFeed(res, lang);
           } else {
             setError(true);
           }
@@ -119,7 +122,7 @@ function IndexPage() {
                 hasMore: prev.hasMore || res.hasMore,
               };
             });
-            setCachedFeed(res);
+            setCachedFeed(res, lang);
           }
         })
         .catch(() => {
