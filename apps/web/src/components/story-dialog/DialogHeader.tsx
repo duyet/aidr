@@ -1,6 +1,7 @@
 import { track } from "@aidr/ui/track";
 import { Columns2, ExternalLink, X } from "lucide-react";
 import type { FeedItem, Lang } from "../../lib/types";
+import { STORY_DIALOG_CLOSE_BUTTON_CLASS } from "./layout";
 
 /** The dialog's header row: the story title (external link), the
  * EN|VI side-by-side toggle when a translation exists, and the close button. */
@@ -24,7 +25,7 @@ export function DialogHeader({
   onClose: () => void;
 }) {
   return (
-    <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="flex items-start justify-between gap-3">
       {item ? (
         <a
           href={item.url}
@@ -59,7 +60,7 @@ export function DialogHeader({
                 ? "Xem song song Anh/Việt"
                 : "View English/Vietnamese side by side"
             }
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold transition-colors ${
+            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold transition-colors motion-reduce:transition-none ${
               bilingual
                 ? "border-accent text-accent"
                 : "border-border text-muted-foreground hover:border-accent/60"
@@ -73,9 +74,9 @@ export function DialogHeader({
           type="button"
           onClick={onClose}
           aria-label={lang === "vi" ? "Đóng" : "Close"}
-          className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className={`${STORY_DIALOG_CLOSE_BUTTON_CLASS} text-muted-foreground hover:bg-muted hover:text-foreground`}
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4" aria-hidden />
         </button>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { localizedTitle } from "../lib/display-title";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
@@ -6,14 +6,21 @@ import { usePrefs } from "../lib/prefs";
 import type { FeedItem, Lang } from "../lib/types";
 import { StoryDetail } from "./StoryDetail";
 import { DialogHeader } from "./story-dialog/DialogHeader";
+import {
+  isBilingualDialog,
+  STORY_DIALOG_BODY_CLASS,
+  STORY_DIALOG_HEADER_CLASS,
+  STORY_DIALOG_OVERLAY_CLASS,
+  storyDialogPanelClass,
+} from "./story-dialog/layout";
 import { RelatedList } from "./story-dialog/RelatedList";
 import { useDialogLifecycle } from "./story-dialog/use-dialog-lifecycle";
 import { useStoryItem } from "./story-dialog/use-story-item";
 
 /**
- * Modal that fetches and renders a single story by id prefix. No new deps:
+ * Modal that fetches and renders a single story by id prefix. No runtime deps:
  * a fixed overlay + centered panel, Escape/backdrop/× to close, a body
- * scroll lock while open, and a light focus trap (focuses the panel on
+ * scroll lock while open, and focus containment (focuses the panel on
  * open, restores focus to the trigger on close).
  */
 export function StoryDialog({
@@ -32,10 +39,11 @@ export function StoryDialog({
   const [activeId, setActiveId] = useState(idPrefix);
   const [feed, setFeed] = useState(() => getCachedFeed());
   const { prefs, setPrefs } = usePrefs();
-  const bilingual = prefs.bilingualDialog;
   const item = useStoryItem(activeId);
   const hasVi = Boolean(item?.title_vi || item?.summary_vi);
-  const panelRef = useDialogLifecycle(onClose);
+  const bilingual = isBilingualDialog(prefs.bilingualDialog, hasVi);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useDialogLifecycle(onClose, overlayRef);
 
   useEffect(() => {
     setActiveId(idPrefix);
@@ -63,10 +71,11 @@ export function StoryDialog({
     : { text: undefined as string | undefined, fallbackFromEnglish: false };
 
   const overlay = (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+    <div ref={overlayRef} className={STORY_DIALOG_OVERLAY_CLASS}>
       <button
         type="button"
         className="absolute inset-0 bg-black/50"
+        tabIndex={-1}
         aria-label={lang === "vi" ? "Đóng" : "Close"}
         onClick={onClose}
       />
@@ -76,40 +85,44 @@ export function StoryDialog({
         aria-modal="true"
         aria-label={title ?? "Story"}
         tabIndex={-1}
-        className={`relative max-h-[90vh] w-full overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background p-5 text-foreground shadow-xl sm:p-6 md:p-7 transition-[max-width] ${
-          bilingual ? "max-w-2xl md:max-w-5xl" : "max-w-2xl"
-        }`}
+        className={storyDialogPanelClass(bilingual)}
       >
-        <DialogHeader
-          item={item}
-          title={title}
-          fallbackFromEnglish={fallbackFromEnglish}
-          hasVi={hasVi}
-          bilingual={bilingual}
-          lang={lang}
-          onToggleBilingual={() => setPrefs({ bilingualDialog: !bilingual })}
-          onClose={onClose}
-        />
-
-        {item === undefined && (
-          <p className="text-sm text-muted-foreground">
-            {lang === "vi" ? "Đang tải..." : "Loading..."}
-          </p>
-        )}
-        {item === null && (
-          <p className="text-sm text-muted-foreground">
-            {lang === "vi" ? "Không tìm thấy tin." : "Story not found."}
-          </p>
-        )}
-        {item && <StoryDetail item={item} lang={lang} bilingual={bilingual} />}
-
-        {relatedItems.length > 0 && (
-          <RelatedList
-            items={relatedItems}
+        <div className={STORY_DIALOG_HEADER_CLASS}>
+          <DialogHeader
+            item={item}
+            title={title}
+            fallbackFromEnglish={fallbackFromEnglish}
+            hasVi={hasVi}
+            bilingual={bilingual}
             lang={lang}
-            onSelect={setActiveId}
+            onToggleBilingual={() => setPrefs({ bilingualDialog: !bilingual })}
+            onClose={onClose}
           />
-        )}
+        </div>
+
+        <div className={STORY_DIALOG_BODY_CLASS}>
+          {item === undefined && (
+            <p className="text-sm text-muted-foreground">
+              {lang === "vi" ? "Đang tải..." : "Loading..."}
+            </p>
+          )}
+          {item === null && (
+            <p className="text-sm text-muted-foreground">
+              {lang === "vi" ? "Không tìm thấy tin." : "Story not found."}
+            </p>
+          )}
+          {item && (
+            <StoryDetail item={item} lang={lang} bilingual={bilingual} />
+          )}
+
+          {relatedItems.length > 0 && (
+            <RelatedList
+              items={relatedItems}
+              lang={lang}
+              onSelect={setActiveId}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

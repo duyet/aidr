@@ -14,7 +14,7 @@ export function BilingualSummary({
   paragraphsVi: string[];
 }) {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:divide-x md:divide-border">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:divide-x lg:divide-border">
       {[
         {
           key: "en",
@@ -36,7 +36,7 @@ export function BilingualSummary({
           <div
             key={col.key}
             data-suggest-field={col.isVi ? "summary" : undefined}
-            className={i === 0 ? "space-y-2" : "space-y-2 pt-4 md:pt-0 md:pl-6"}
+            className={i === 0 ? "space-y-2" : "space-y-2 pt-4 lg:pt-0 lg:pl-6"}
           >
             <h3
               className="text-sm font-bold leading-snug text-foreground"
