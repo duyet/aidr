@@ -44,6 +44,32 @@ describe("parseRssItems", () => {
         poster_url: "https://example.com/poster.jpg",
       },
     ]);
+    expect(item.imageUrl).toBe("https://example.com/poster.jpg");
+    expect(item.mediaManifest?.assets).toEqual([
+      {
+        type: "video",
+        url: "https://example.com/story.mp4",
+        poster_url: "https://example.com/poster.jpg",
+      },
+    ]);
+  });
+
+  it("keeps a video-only RSS item typed and derives its poster fallback", () => {
+    const [item] = parseRssItems(`<item>
+      <title>Video only</title>
+      <link>https://example.com/video-only</link>
+      <pubDate>Mon, 07 Sep 2026 00:00:00 GMT</pubDate>
+      <media:content url="https://example.com/only.mp4" type="video/mp4" />
+      <media:thumbnail url="https://example.com/only-poster.jpg" />
+    </item>`);
+    expect(item.mediaManifest?.assets).toEqual([
+      {
+        type: "video",
+        url: "https://example.com/only.mp4",
+        poster_url: "https://example.com/only-poster.jpg",
+      },
+    ]);
+    expect(item.imageUrl).toBe("https://example.com/only-poster.jpg");
   });
 
   it("reads Atom entries with link href and updated dates", () => {

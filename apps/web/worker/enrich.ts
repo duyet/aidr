@@ -1,10 +1,10 @@
 import {
   buildMediaManifest,
-  canonicalizeMediaUrl,
-  firstImageUrl,
   type MediaCandidate,
   type MediaManifest,
+  manifestWithoutArticleUrl,
   parseMediaMetadata,
+  primaryThumbnailUrl,
 } from "./media.js";
 import type { FetchedItem } from "./sources/types.js";
 
@@ -63,8 +63,58 @@ export function decodeHtmlEntities(text: string): string {
   return out;
 }
 
-/** Hostname-only SSRF guard before server-side fetches. No DNS resolution
- * in Workers — blocks obvious private/link-local targets by name. */
+export const MAX_ENRICH_REDIRECTS = 3;
+
+function reservedIpv4(hostname: string): boolean {
+  const parts = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!parts) return false;
+  const octets = parts.slice(1).map(Number);
+  if (octets.some((part) => part > 255)) return true;
+  const [a, b, c] = octets;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 0 && c === 2) ||
+    (a === 192 && b === 88 && c === 99) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
+    a >= 224
+  );
+}
+
+function reservedIpv6(hostname: string): boolean {
+  if (
+    hostname === "::" ||
+    hostname === "::1" ||
+    /^f[cd][0-9a-f]{2}:/i.test(hostname) ||
+    /^fe[89ab][0-9a-f]:/i.test(hostname) ||
+    /^ff[0-9a-f]{2}:/i.test(hostname) ||
+    /^2001:2:/i.test(hostname) ||
+    /^2001:10:/i.test(hostname) ||
+    /^2001:20:/i.test(hostname) ||
+    /^2001:db8:/i.test(hostname)
+  ) {
+    return true;
+  }
+  // Workers exposes no DNS/IP lookup API. Reject IPv4-mapped IPv6 rather
+  // than guessing whether the embedded address is public.
+  return /^::ffff:/i.test(hostname);
+}
+
+/**
+ * Fetch-boundary URL policy. This rejects obvious reserved/private literals,
+ * credentials, and non-default ports. Workers cannot resolve a hostname to
+ * an IP, so this is deliberately documented as a syntactic SSRF guard—not a
+ * complete defense against DNS rebinding. Callers must keep the URL set
+ * constrained to trusted source/article inputs.
+ */
 export function isFetchableUrl(raw: string): boolean {
   let u: URL;
   try {
@@ -73,21 +123,72 @@ export function isFetchableUrl(raw: string): boolean {
     return false;
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") return false;
-  const h = u.hostname.toLowerCase();
+  if (u.username || u.password) return false;
+  const defaultPort = u.protocol === "https:" ? "443" : "80";
+  if (u.port && u.port !== defaultPort) return false;
+
+  const hostname = u.hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
   if (
-    h === "localhost" ||
-    h.endsWith(".localhost") ||
-    h.endsWith(".internal") ||
-    h.endsWith(".local")
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".internal") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".home") ||
+    hostname.endsWith(".lan") ||
+    reservedIpv4(hostname) ||
+    reservedIpv6(hostname)
   ) {
     return false;
   }
-  if (/^(10|127)\./.test(h)) return false;
-  if (/^192\.168\./.test(h)) return false;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return false;
-  if (/^169\.254\./.test(h)) return false;
-  if (/^(::1|fc00:|fd[0-9a-f]{2}:|fe80:)/i.test(h)) return false;
   return true;
+}
+
+function logSafeUrl(raw: string): string {
+  try {
+    const url = new URL(raw);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return "[invalid-url]";
+  }
+}
+
+function logSafeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/https?:\/\/[^\s"'<>]+/gi, (url) => logSafeUrl(url));
+}
+
+/** Follow redirects manually so every hop and the final URL cross the policy. */
+export async function fetchWithSafeRedirects(
+  raw: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  let current = raw;
+  for (let redirect = 0; redirect <= MAX_ENRICH_REDIRECTS; redirect++) {
+    if (!isFetchableUrl(current)) {
+      throw new Error(`blocked fetch URL: ${logSafeUrl(current)}`);
+    }
+    const response = await fetch(current, {
+      ...init,
+      redirect: "manual",
+    });
+    const status = response.status;
+    if (response.url && !isFetchableUrl(response.url)) {
+      throw new Error(`blocked final fetch URL: ${logSafeUrl(response.url)}`);
+    }
+    if (![301, 302, 303, 307, 308].includes(status)) {
+      return response;
+    }
+    const location = response.headers.get("location");
+    if (!location) throw new Error("redirect response has no location");
+    if (redirect === MAX_ENRICH_REDIRECTS) {
+      throw new Error("too many fetch redirects");
+    }
+    current = new URL(location, current).toString();
+  }
+  throw new Error("too many fetch redirects");
 }
 
 /** Matches a <meta> tag's `content` regardless of whether `content` comes
@@ -120,7 +221,7 @@ function extractMetaContent(
  */
 export function parseOgTags(html: string): OgData {
   const manifest = buildMediaManifest(parseMediaMetadata(html));
-  const imageUrl = firstImageUrl(manifest) ?? undefined;
+  const imageUrl = primaryThumbnailUrl(manifest) ?? undefined;
 
   const rawDescription =
     extractMetaContent(html, "property", "og:description") ??
@@ -178,15 +279,11 @@ async function readCappedText(
  * resolves to `{}`, never throws. */
 export async function fetchOgData(url: string): Promise<OgData> {
   if (!isFetchableUrl(url)) {
-    try {
-      console.warn("enrich: blocked url", new URL(url).hostname);
-    } catch {
-      console.warn("enrich: blocked url", url);
-    }
+    console.warn("enrich: blocked url", logSafeUrl(url));
     return {};
   }
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithSafeRedirects(url, {
       signal: AbortSignal.timeout(ENRICH_FETCH_TIMEOUT_MS),
       headers: { "User-Agent": "Mozilla/5.0 (compatible; duyet-news-bot/1.0)" },
     });
@@ -198,7 +295,10 @@ export async function fetchOgData(url: string): Promise<OgData> {
     const html = await readCappedText(res, MAX_HTML_BYTES);
     return parseOgTags(html);
   } catch (error) {
-    console.error(`enrich: og fetch failed for ${url}:`, error);
+    console.error(
+      `enrich: og fetch failed for ${logSafeUrl(url)}:`,
+      logSafeError(error)
+    );
     return {};
   }
 }
@@ -217,28 +317,37 @@ function mediaCandidatesFromOg(
 }
 
 function normalizeExistingMedia(item: FetchedItem): void {
-  const existing = buildMediaManifest([
-    ...(item.media ?? []),
-    ...(item.mediaManifest?.assets ?? []),
-    ...(item.imageUrl
-      ? [{ type: "image" as const, url: item.imageUrl, priority: 0 }]
-      : []),
-  ]);
+  const supplied = manifestWithoutArticleUrl(
+    buildMediaManifest([
+      ...(item.media ?? []),
+      ...(item.mediaManifest?.assets ?? []),
+    ]),
+    item.url
+  );
+  const hasUsableThumbnail = supplied.assets.some(
+    (asset) =>
+      asset.type === "image" ||
+      (asset.type === "video" && Boolean(asset.poster_url))
+  );
+  const existing = manifestWithoutArticleUrl(
+    hasUsableThumbnail
+      ? supplied
+      : buildMediaManifest([
+          ...supplied.assets,
+          ...(item.imageUrl
+            ? [{ type: "image" as const, url: item.imageUrl, priority: -1 }]
+            : []),
+        ]),
+    item.url
+  );
   const legacyImageUrl = item.imageUrl;
-  if (existing.assets.length > 0) item.mediaManifest = existing;
+  item.mediaManifest = existing;
   item.imageUrl =
-    firstImageUrl(existing) ??
-    (legacyImageUrl
-      ? (canonicalizeMediaUrl(legacyImageUrl) ?? undefined)
-      : undefined);
+    primaryThumbnailUrl(existing, legacyImageUrl, item.url) ?? undefined;
 }
 
 function hasMedia(item: FetchedItem): boolean {
-  return (
-    Boolean(item.imageUrl) ||
-    (item.media?.length ?? 0) > 0 ||
-    (item.mediaManifest?.assets.length ?? 0) > 0
-  );
+  return Boolean(item.imageUrl) || (item.mediaManifest?.assets.length ?? 0) > 0;
 }
 
 /**
@@ -272,17 +381,24 @@ export async function enrichMissingContent(
         fetched.push(...mediaCandidatesFromOg(og, 20));
         if (!item.summary && og.description) item.summary = og.description;
 
-        const manifest = buildMediaManifest([
-          ...(item.media ?? []),
-          ...(item.mediaManifest?.assets ?? []),
-          ...(item.imageUrl
-            ? [{ type: "image" as const, url: item.imageUrl, priority: 0 }]
-            : []),
-          ...fetched,
-        ]);
+        let manifest = manifestWithoutArticleUrl(
+          buildMediaManifest([
+            ...(item.media ?? []),
+            ...(item.mediaManifest?.assets ?? []),
+            ...(item.imageUrl
+              ? [{ type: "image" as const, url: item.imageUrl, priority: 0 }]
+              : []),
+            ...fetched,
+          ]),
+          item.url
+        );
+        if (originalUrl) {
+          manifest = manifestWithoutArticleUrl(manifest, originalUrl);
+        }
         if (manifest.assets.length > 0) {
           item.mediaManifest = manifest;
-          item.imageUrl = firstImageUrl(manifest) ?? item.imageUrl;
+          item.imageUrl =
+            primaryThumbnailUrl(manifest, item.imageUrl, item.url) ?? undefined;
         }
       })
     );

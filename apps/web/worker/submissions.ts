@@ -2,7 +2,16 @@ import { nn } from "./d1-bind.js";
 import { fetchOgData } from "./enrich.js";
 import { sha256Hex } from "./hash.js";
 import { callAnyrouter, parseJson } from "./llm.js";
-import { serializeMediaManifest } from "./media.js";
+import {
+  manifestWithoutArticleUrl,
+  parseMediaManifest,
+  primaryThumbnailUrl,
+  serializeMediaManifest,
+} from "./media.js";
+import {
+  assertMediaManifestSchema,
+  isMediaManifestSchemaError,
+} from "./media-schema.js";
 import {
   checkRateLimit,
   hashIp,
@@ -250,10 +259,27 @@ export interface SubmissionsReviewStats {
   tokens: number;
 }
 
+function normalizedOgImage(
+  mediaManifest: unknown,
+  imageUrl: unknown,
+  articleUrl?: unknown
+): {
+  imageUrl: string | null;
+  mediaManifest: ReturnType<typeof parseMediaManifest>;
+} {
+  const parsed = parseMediaManifest(mediaManifest, imageUrl);
+  const manifest = manifestWithoutArticleUrl(parsed, articleUrl);
+  return {
+    imageUrl: primaryThumbnailUrl(manifest, imageUrl, articleUrl),
+    mediaManifest: manifest,
+  };
+}
+
 export async function reviewPendingSubmissions(
   env: Env,
   cap = REVIEW_CAP_DEFAULT
 ): Promise<SubmissionsReviewStats> {
+  await assertMediaManifestSchema(env.DB);
   const { results } = await env.DB.prepare(
     `SELECT id, url, title, note FROM submissions
      WHERE status = 'pending'
@@ -268,6 +294,11 @@ export async function reviewPendingSubmissions(
   for (const submission of pending) {
     try {
       const og = await fetchOgData(submission.url);
+      const normalizedMedia = normalizedOgImage(
+        og.mediaManifest,
+        og.imageUrl,
+        submission.url
+      );
 
       const jev = await callSystemOne(
         env,
@@ -353,9 +384,9 @@ export async function reviewPendingSubmissions(
           nn(og.description),
           nn(toEpochSeconds(now)),
           nn(toEpochSeconds(now)),
-          nn(og.imageUrl),
+          nn(normalizedMedia.imageUrl),
           "en",
-          serializeMediaManifest(og.mediaManifest)
+          serializeMediaManifest(normalizedMedia.mediaManifest)
         )
         .run();
 
@@ -371,6 +402,7 @@ export async function reviewPendingSubmissions(
         .run();
       reviewed++;
     } catch (error) {
+      if (isMediaManifestSchemaError(error)) throw error;
       console.error(
         `reviewPendingSubmissions failed for ${submission.id}:`,
         error
@@ -385,6 +417,7 @@ export async function acceptSubmissionById(
   env: Env,
   id: string
 ): Promise<{ ok: true; itemId: string } | { ok: false; error: string }> {
+  await assertMediaManifestSchema(env.DB);
   const submission = await env.DB.prepare(
     "SELECT id, url, title, note FROM submissions WHERE id = ? AND status = 'pending'"
   )
@@ -393,6 +426,11 @@ export async function acceptSubmissionById(
   if (!submission) return { ok: false, error: "not found or not pending" };
 
   const og = await fetchOgData(submission.url);
+  const normalizedMedia = normalizedOgImage(
+    og.mediaManifest,
+    og.imageUrl,
+    submission.url
+  );
   const itemId = await sha256Hex(submission.url);
   const now = Date.now();
   await env.DB.prepare(
@@ -409,9 +447,9 @@ export async function acceptSubmissionById(
       nn(og.description),
       nn(toEpochSeconds(now)),
       nn(toEpochSeconds(now)),
-      nn(og.imageUrl),
+      nn(normalizedMedia.imageUrl),
       "en",
-      serializeMediaManifest(og.mediaManifest)
+      serializeMediaManifest(normalizedMedia.mediaManifest)
     )
     .run();
 

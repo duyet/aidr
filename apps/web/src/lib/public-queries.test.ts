@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { MAX_PUBLIC_MEDIA_ASSETS } from "../../worker/media.js";
 import { servePublicApi } from "./public-api";
 import {
+  boundPublicDigest,
   getPublicDigest,
   normalizeStoredBullets,
+  PUBLIC_RESPONSE_MAX_BYTES,
   PUBLIC_STORY_LIMIT,
 } from "./public-queries";
 
@@ -192,14 +194,101 @@ describe("getPublicDigest", () => {
       ],
     });
     const digest = await getPublicDigest(db);
-    expect(digest.stories[0]?.image_url).toBe("https://img.example/a.jpg");
+    expect(digest.stories[0]?.image_url).toBe("https://img.example/0.jpg");
     expect(
       digest.stories[0]?.media_manifest?.assets.length
     ).toBeLessThanOrEqual(MAX_PUBLIC_MEDIA_ASSETS);
     expect(digest.stories[0]?.media_manifest?.assets[0]).toEqual({
       type: "image",
-      url: "https://img.example/a.jpg",
+      url: "https://img.example/0.jpg",
     });
+  });
+
+  it("normalizes video posters and never truncates a public media URL", async () => {
+    const longLegacy = `https://img.example/${"x".repeat(600)}.jpg`;
+    const db = makeDb({
+      tldr: bilingualTldr,
+      stories: [
+        story("video", {
+          image_url: longLegacy,
+          media_manifest: JSON.stringify({
+            version: 1,
+            assets: [
+              {
+                type: "video",
+                url: "https://example.com/story.mp4",
+                poster_url: "https://img.example/poster.jpg",
+              },
+            ],
+          }),
+        }),
+      ],
+    });
+    const digest = await getPublicDigest(db);
+    expect(digest.stories[0]?.image_url).toBe("https://img.example/poster.jpg");
+    expect(digest.stories[0]?.media_manifest?.assets[0]).toMatchObject({
+      type: "video",
+      poster_url: "https://img.example/poster.jpg",
+    });
+
+    const legacyOnly = await getPublicDigest(
+      makeDb({ stories: [story("legacy", { image_url: longLegacy })] })
+    );
+    expect(legacyOnly.stories[0]?.image_url).toBeNull();
+  });
+
+  it("enforces the hard serialized public response budget", () => {
+    const digest = {
+      tldr: {
+        date: "2026-08-27",
+        bullets_en: Array.from({ length: 16 }, (_, i) => ({
+          text: "x".repeat(2_000),
+          item_ids: Array.from({ length: 8 }, (_, j) => `id-${i}-${j}`),
+          image_url: `https://img.example/${i}.jpg`,
+        })),
+        bullets_vi: Array.from({ length: 16 }, (_, i) => ({
+          text: "y".repeat(2_000),
+          item_ids: Array.from({ length: 8 }, (_, j) => `vi-${i}-${j}`),
+        })),
+      },
+      stories: Array.from({ length: PUBLIC_STORY_LIMIT }, (_, i) => ({
+        id: `id-${i}`,
+        url: `https://example.com/${i}`,
+        title: "t".repeat(2_000),
+        title_vi: "v".repeat(2_000),
+        category: "category",
+        image_url: `https://img.example/${i}.jpg`,
+        media_manifest: {
+          version: 1 as const,
+          assets: [
+            { type: "image" as const, url: `https://img.example/${i}.jpg` },
+          ],
+        },
+        published_at: 1,
+      })),
+      updatedAt: 1,
+    };
+    const bounded = boundPublicDigest(digest);
+    expect(
+      new TextEncoder().encode(JSON.stringify(bounded)).length
+    ).toBeLessThanOrEqual(PUBLIC_RESPONSE_MAX_BYTES);
+  });
+
+  it("does not expose an article JSON-LD URL as a story image", async () => {
+    const db = makeDb({
+      stories: [
+        story("article", {
+          image_url: "https://example.com/article",
+          media_manifest: JSON.stringify({
+            version: 1,
+            assets: [{ type: "image", url: "https://example.com/article" }],
+          }),
+        }),
+      ],
+    });
+    const digest = await getPublicDigest(db);
+    expect(digest.stories[0]?.image_url).toBeNull();
+    expect(digest.stories[0]).not.toHaveProperty("media_manifest");
   });
 
   it("caps stories at PUBLIC_STORY_LIMIT", async () => {

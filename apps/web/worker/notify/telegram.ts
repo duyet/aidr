@@ -3,6 +3,11 @@ import { withSiteLang } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
+import {
+  canonicalizeMediaImageUrl,
+  canonicalizeMediaUrl,
+  primaryThumbnailUrl,
+} from "../media.js";
 import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
 import type {
@@ -60,8 +65,9 @@ export function buildDigestMessage(digest: DailyDigest): string {
   let length = header.length;
   for (const bullet of digest.bullets) {
     const text = escapeHtml(bullet.text);
-    const line = bullet.url
-      ? `•  ${text} <a href="${escapeHtml(withUtm(bullet.url, digest.lang))}">→</a>`
+    const safeUrl = bullet.url ? canonicalizeMediaUrl(bullet.url) : null;
+    const line = safeUrl
+      ? `•  ${text} <a href="${escapeHtml(withUtm(safeUrl, digest.lang))}">→</a>`
       : `•  ${text}`;
     if (length + line.length + 2 > MESSAGE_CAP) break;
     lines.push(line);
@@ -106,12 +112,16 @@ export function buildStoryCaption(story: StoryPayload): string {
 }
 
 export function buildStoryReplyMarkup(story: StoryPayload): object {
+  // Publisher links keep their own URL and receive only the Telegram
+  // attribution parameter; the canonical aidr.today fallback is localed.
+  const publisherLink =
+    canonicalizeMediaUrl(story.url) ?? storyUrl(story, story.lang);
   return {
     inline_keyboard: [
       [
         {
           text: story.lang === "en" ? "Read →" : "Đọc bài →",
-          url: withUtm(story.url, story.lang),
+          url: withUtm(publisherLink, story.lang),
         },
         {
           text: "AI;DR",
@@ -187,11 +197,16 @@ export const telegramNotifier: Notifier = {
     const chatId = env.TELEGRAM_CHAT_ID as string;
     const caption = buildStoryCaption(story);
     const replyMarkup = buildStoryReplyMarkup(story);
+    const thumbnailUrl = primaryThumbnailUrl(
+      story.media_manifest,
+      story.image_url,
+      story.url
+    );
 
-    if (story.image_url) {
+    if (thumbnailUrl) {
       const photo = await callTelegram(token, "sendPhoto", {
         chat_id: chatId,
-        photo: story.image_url,
+        photo: thumbnailUrl,
         caption,
         parse_mode: "HTML",
         reply_markup: replyMarkup,

@@ -92,6 +92,10 @@ describe("planBackfillUpdate", () => {
     expect(plan).toEqual({
       summary: "A fetched summary",
       imageUrl: "https://x.com/i.png",
+      mediaManifest: {
+        version: 1,
+        assets: [{ type: "image", url: "https://x.com/i.png" }],
+      },
     });
   });
 
@@ -110,6 +114,40 @@ describe("planBackfillUpdate", () => {
       }
     );
     expect(plan?.mediaManifest?.assets).toHaveLength(2);
+  });
+
+  it("preserves and merges a richer existing manifest on backfill", () => {
+    const plan = planBackfillUpdate(
+      {
+        imageUrl: "https://existing.com/original.png",
+        mediaManifest: JSON.stringify({
+          version: 1,
+          assets: [
+            {
+              type: "video",
+              url: "https://existing.com/story.mp4",
+              poster_url: "https://existing.com/poster.png",
+            },
+          ],
+        }),
+      },
+      {
+        summary: "Fetched",
+        mediaManifest: {
+          version: 1,
+          assets: [{ type: "image", url: "https://new.com/alternate.png" }],
+        },
+      }
+    );
+    expect(plan?.imageUrl).toBe("https://existing.com/poster.png");
+    expect(plan?.mediaManifest?.assets).toEqual([
+      {
+        type: "video",
+        url: "https://existing.com/story.mp4",
+        poster_url: "https://existing.com/poster.png",
+      },
+      { type: "image", url: "https://new.com/alternate.png" },
+    ]);
   });
 
   it("never overwrites a non-empty existing image_url with a freshly-fetched one", () => {

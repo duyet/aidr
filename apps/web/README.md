@@ -3,6 +3,27 @@
 Feed pipeline and ranking design: see [ALGORITHM.md](./ALGORITHM.md).
 Locale selection, canonical URLs, and caching: see [LOCALE_URLS.md](./LOCALE_URLS.md).
 
+## Migration gate
+
+The media manifest migration is intentionally ordered after #158's
+`0023_translation_reviews.sql`. Before deploying the Worker:
+
+1. Merge/apply `0023_translation_reviews.sql` first.
+2. Apply `0024_item_media_manifest.sql` with the normal D1 migration command.
+3. Run `pnpm --filter @aidr/web check:migrations`. This is a read-only remote
+   probe; it does not apply migrations.
+4. Use `pnpm --filter @aidr/web deploy` (or `cf:deploy:prod`), which runs the
+   same hard gate before building/deploying. Do not bypass it with a direct
+   `wrangler deploy` command.
+
+The gate fails closed if either migration is absent from the target D1
+migration ledger or if `items.media_manifest` is missing. The ingest write,
+backfill, and notification paths also probe the column and record a failed
+workflow instead of treating a missing schema as a successful no-op. The
+schema change is additive; rollback means redeploying the previous Worker while
+leaving the column in place, not dropping it. This PR does not apply remote
+migrations or deploy.
+
 ## Public read API
 
 Unauthenticated digest for third-party clients (Chrome extension first).
@@ -68,10 +89,19 @@ language and `available_langs` is `["en", "vi"]`. Up to 16 bullets per language
 and 8 top stories by `rank_score`. Typical payload is well under 50KB. `image_url` on a bullet is additive and only
 present when the linked story has an og/thumbnail. Stories may also expose a
 bounded `media_manifest`: `assets[0]` is the primary candidate and the rest
-are alternates; video entries keep one `poster_url`. A single legacy image
-continues to use `image_url` alone. Public manifests are capped at three
+are alternates; video entries keep one `poster_url`. `image_url` is derived
+from the first image or video poster, with the canonical legacy value as a
+fallback. A single legacy image continues to use `image_url` alone. Public manifests are capped at three
 assets and 512-character URLs. `published_at` is epoch **seconds**;
-`updatedAt` is epoch milliseconds.
+`updatedAt` is epoch milliseconds. The serialized `/api/public` body is hard-capped at 50,000 bytes; optional media and tail data are removed deterministically if a legacy row exceeds it. `/api/feed` has a 1,000,000-byte cap and preserves its external shape while bounding hostile text and optional media.
+
+### Media URL and fetch policy
+
+Media URLs are canonicalized at every persistence/read boundary: absolute HTTP(S) only, no credentials, no non-default ports, no private/reserved IPv4/IPv6 literals, no fragments, sorted query parameters, and removal of common tracking parameters. CDN signature parameters (`X-Amz-*`, `X-Goog-*`, `sig`, `token`, `expires`, and related keys) are deliberately preserved because stripping them breaks signed URLs; do not log full signed URLs. Generic logo/favicon/placeholder assets are ignored, article/JSON-LD URLs are rejected when they are not actual media, and a poster remains nested under its video rather than becoming a standalone image.
+
+Article enrichment and configurable RSS fetches manually validate every redirect hop and the final response URL. Cloudflare Workers does not expose DNS resolution, so this is a syntactic SSRF boundary, not a claim of complete DNS-rebinding safety; deployments must continue to constrain source URLs to trusted inputs. See #147 for the cross-cutting threat model and evidence requirements.
+
+Telegram transport remains on the existing `sendPhoto`/text fallback path. `sendVideo`, `sendMediaGroup`, and durable multi-message delivery are explicitly deferred. The #146 Telegram Instant View decision record and its conflict/no-go notes remain authoritative; this slice does not add Instant View pages.
 
 ### Story Markdown (agent-readable pilot)
 

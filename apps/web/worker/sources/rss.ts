@@ -1,4 +1,9 @@
-import type { MediaCandidate } from "../media.js";
+import { fetchWithSafeRedirects } from "../enrich.js";
+import {
+  buildMediaManifest,
+  type MediaCandidate,
+  primaryThumbnailUrl,
+} from "../media.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 
 function decodeXml(value: string): string {
@@ -98,12 +103,16 @@ export function parseRssItems(xml: string): FetchedItem[] {
       ? stripHtml(rawSummary).slice(0, 1200)
       : undefined;
     const media = mediaCandidatesFromBlock(chunk);
+    const mediaManifest = buildMediaManifest(media);
+    const imageUrl = primaryThumbnailUrl(mediaManifest);
     items.push({
       url,
       title,
       summary: summary || undefined,
       publishedAt,
       ...(media.length > 0 ? { media } : {}),
+      ...(imageUrl ? { imageUrl } : {}),
+      ...(mediaManifest.assets.length > 0 ? { mediaManifest } : {}),
       sources: [
         { kind: "source", url, postedAt: Math.floor(publishedAt / 1000) },
       ],
@@ -122,7 +131,7 @@ export const rssAdapter: SourceAdapter = {
   async fetchItems(config, sinceEpochSec) {
     const feed = typeof config.feed === "string" ? config.feed.trim() : "";
     if (!feed) return [];
-    const res = await fetch(feed, {
+    const res = await fetchWithSafeRedirects(feed, {
       signal: AbortSignal.timeout(12_000),
       headers: { Accept: "application/rss+xml, application/xml, text/xml" },
     });

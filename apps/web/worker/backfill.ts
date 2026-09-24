@@ -1,7 +1,9 @@
 import {
-  buildMediaManifest,
   type MediaManifest,
+  manifestWithoutArticleUrl,
+  mergeMediaManifests,
   parseMediaManifest,
+  primaryThumbnailUrl,
 } from "./media.js";
 
 /**
@@ -78,7 +80,7 @@ export interface BackfillFetchResult {
 export interface BackfillPlan {
   summary: string;
   imageUrl: string | null;
-  mediaManifest?: MediaManifest;
+  mediaManifest: MediaManifest;
 }
 
 /**
@@ -89,7 +91,11 @@ export interface BackfillPlan {
  * expressed here without a database.
  */
 export function planBackfillUpdate(
-  existing: { imageUrl: string | null; mediaManifest?: string | null },
+  existing: {
+    imageUrl: string | null;
+    mediaManifest?: string | null;
+    articleUrl?: string | null;
+  },
   fetched: BackfillFetchResult
 ): BackfillPlan | null {
   if (!fetched.summary) return null;
@@ -97,13 +103,27 @@ export function planBackfillUpdate(
     existing.mediaManifest,
     existing.imageUrl
   );
-  const manifest = buildMediaManifest([
-    ...existingManifest.assets,
-    ...(fetched.mediaManifest?.assets ?? []),
-  ]);
+  const fetchedManifest = parseMediaManifest(
+    fetched.mediaManifest,
+    fetched.imageUrl
+  );
+  const manifest = manifestWithoutArticleUrl(
+    mergeMediaManifests(existingManifest, fetchedManifest),
+    existing.articleUrl
+  );
   return {
     summary: fetched.summary,
-    imageUrl: existing.imageUrl || fetched.imageUrl || null,
-    ...(manifest.assets.length > 0 ? { mediaManifest: manifest } : {}),
+    imageUrl:
+      primaryThumbnailUrl(
+        existingManifest,
+        existing.imageUrl,
+        existing.articleUrl
+      ) ??
+      primaryThumbnailUrl(
+        fetchedManifest,
+        fetched.imageUrl,
+        existing.articleUrl
+      ),
+    mediaManifest: manifest,
   };
 }

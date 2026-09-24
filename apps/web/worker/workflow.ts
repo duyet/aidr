@@ -40,7 +40,18 @@ import {
   translateItems,
 } from "./llm.js";
 import { createD1LlmCallLogger, pruneLlmCalls } from "./llm-call-log.js";
-import { parseMediaManifest, serializeMediaManifest } from "./media.js";
+import {
+  buildMediaManifest,
+  manifestWithoutArticleUrl,
+  mergeMediaManifests,
+  parseMediaManifest,
+  primaryThumbnailUrl,
+  serializeMediaManifest,
+} from "./media.js";
+import {
+  assertMediaManifestSchema,
+  isMediaManifestSchemaError,
+} from "./media-schema.js";
 import {
   dispatchStoryNotifications,
   type NotifyChannelReason,
@@ -162,7 +173,8 @@ async function safeStep<T>(
   name: string,
   fallback: T,
   closure: () => Promise<T>,
-  config?: StepRetryConfig
+  config?: StepRetryConfig,
+  rethrowErrors = false
 ): Promise<T> {
   try {
     const result = config
@@ -179,6 +191,7 @@ async function safeStep<T>(
         );
     return result;
   } catch (error) {
+    if (rethrowErrors || isMediaManifestSchemaError(error)) throw error;
     console.error(`${name} step failed:`, safeErrorMessage(error));
     return fallback;
   }
@@ -268,6 +281,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     await pruneLlmCalls(this.env);
 
     try {
+      await assertMediaManifestSchema(this.env.DB);
       const sources = await safeStep(step, "load-sources", [], async () => {
         await ensureVendorBlogSources(this.env.DB);
         const { results } = await this.env.DB.prepare(
@@ -571,7 +585,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             try {
               const { results: recentForClustering } =
                 await this.env.DB.prepare(
-                  `SELECT id, title, points, comments FROM items
+                  `SELECT id, title, points, comments, image_url, media_manifest FROM items
            WHERE status = 'published' AND published_at >= ?
            ORDER BY published_at DESC
            LIMIT ${MERGE_CANDIDATE_LIMIT}`
@@ -582,6 +596,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                     title: string;
                     points: number;
                     comments: number;
+                    image_url: string | null;
+                    media_manifest: string | null;
                   }>();
 
               const newForCluster = newRows.map((row, i) => ({
@@ -629,13 +645,23 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                   points: row.item.points ?? 0,
                   comments: row.item.comments ?? 0,
                   rank,
+                  imageUrl: row.item.imageUrl,
+                  mediaManifest: row.item.mediaManifest,
                 };
               });
 
               const existingById = new Map<string, ExistingCandidate>(
                 (recentForClustering ?? []).map((r) => [
                   r.id,
-                  { points: r.points, comments: r.comments },
+                  {
+                    points: r.points,
+                    comments: r.comments,
+                    imageUrl: r.image_url,
+                    mediaManifest: parseMediaManifest(
+                      r.media_manifest,
+                      r.image_url
+                    ),
+                  },
                 ])
               );
 
@@ -649,6 +675,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 )
               );
             } catch (error) {
+              if (isMediaManifestSchemaError(error)) throw error;
               console.error("merge-similar step failed:", error);
               return serializeMergePlan(EMPTY_MERGE_PLAN);
             }
@@ -724,72 +751,106 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       for (const translation of translated.values())
         scoreAndTranslateTokens += translation.tokens;
 
-      await safeStep(step, "write-d1", undefined, async () => {
-        const statements: D1PreparedStatement[] = [];
+      await safeStep(
+        step,
+        "write-d1",
+        undefined,
+        async () => {
+          const statements: D1PreparedStatement[] = [];
 
-        for (const { id, source, item } of newRows) {
-          const score = scored.get(id);
-          const translation = translated.get(id);
-          const mergeEntry = mergePlan.merged.get(id);
-          const canonicalUpdate = mergePlan.canonicalUpdates.get(id);
+          for (const { id, source, item } of newRows) {
+            const score = scored.get(id);
+            const translation = translated.get(id);
+            const mergeEntry = mergePlan.merged.get(id);
+            const canonicalUpdate = mergePlan.canonicalUpdates.get(id);
 
-          // A canonical new item absorbs the rest of its cluster's
-          // points/comments (max) and sources (union, capped) before
-          // its own row is written.
-          const effectiveItem =
-            canonicalUpdate && !canonicalUpdate.isExisting
-              ? {
-                  ...item,
-                  points: canonicalUpdate.maxPoints,
-                  comments: canonicalUpdate.maxComments,
-                  sources: unionSources(
-                    item.sources ?? [],
-                    canonicalUpdate.extraSources,
-                    MAX_SOURCES_PER_ITEM
-                  ),
-                }
-              : item;
+            // A canonical new item absorbs the rest of its cluster's
+            // points/comments (max) and sources (union, capped) before
+            // its own row is written.
+            const currentThumbnail = primaryThumbnailUrl(
+              item.mediaManifest,
+              item.imageUrl,
+              item.url
+            );
+            const extraMedia =
+              canonicalUpdate && !canonicalUpdate.isExisting
+                ? (canonicalUpdate.extraMedia ?? [])
+                : [];
+            const extraLegacyImages =
+              canonicalUpdate &&
+              !canonicalUpdate.isExisting &&
+              !currentThumbnail
+                ? (canonicalUpdate.extraImageUrls ?? []).map((url) => ({
+                    type: "image" as const,
+                    url,
+                  }))
+                : [];
+            const combinedMedia = manifestWithoutArticleUrl(
+              mergeMediaManifests(item.mediaManifest, {
+                version: 1,
+                assets: [...extraMedia, ...extraLegacyImages],
+              }),
+              item.url
+            );
+            const effectiveItem = {
+              ...item,
+              mediaManifest: combinedMedia,
+              imageUrl:
+                primaryThumbnailUrl(combinedMedia, item.imageUrl, item.url) ??
+                undefined,
+              ...(canonicalUpdate && !canonicalUpdate.isExisting
+                ? {
+                    points: canonicalUpdate.maxPoints,
+                    comments: canonicalUpdate.maxComments,
+                    sources: unionSources(
+                      item.sources ?? [],
+                      canonicalUpdate.extraSources,
+                      MAX_SOURCES_PER_ITEM
+                    ),
+                  }
+                : {}),
+            };
 
-          // Canonical topics (rules-normalized + LLM-mapped by
-          // normalize-topics), unioned with the rest of the cluster's
-          // topics for a new-item canonical so counts don't fragment
-          // across near-duplicate stories.
-          const canonicalTopics =
-            canonicalUpdate && !canonicalUpdate.isExisting
-              ? unionTopics(
-                  canonicalTagsByItem.get(id) ?? [],
-                  canonicalUpdate.extraTopics,
-                  MAX_MERGED_TOPICS
-                )
-              : (canonicalTagsByItem.get(id) ?? []);
-          const effectiveScore = score
-            ? { ...score, tags: canonicalTopics }
-            : undefined;
+            // Canonical topics (rules-normalized + LLM-mapped by
+            // normalize-topics), unioned with the rest of the cluster's
+            // topics for a new-item canonical so counts don't fragment
+            // across near-duplicate stories.
+            const canonicalTopics =
+              canonicalUpdate && !canonicalUpdate.isExisting
+                ? unionTopics(
+                    canonicalTagsByItem.get(id) ?? [],
+                    canonicalUpdate.extraTopics,
+                    MAX_MERGED_TOPICS
+                  )
+                : (canonicalTagsByItem.get(id) ?? []);
+            const effectiveScore = score
+              ? { ...score, tags: canonicalTopics }
+              : undefined;
 
-          const relevance = score?.relevance ?? 0.5;
-          const importance = score?.importance ?? 5;
-          const quality = score?.quality ?? 5;
-          const status = mergeEntry
-            ? "merged"
-            : relevance < RELEVANCE_THRESHOLD
-              ? "rejected"
-              : "published";
-          const rank = rankScore({
-            importance,
-            quality,
-            points: effectiveItem.points ?? 0,
-            comments: effectiveItem.comments ?? 0,
-            // item.publishedAt is epoch seconds (normalized at dedupe time);
-            // rankScore's decay formula operates in milliseconds.
-            publishedAt: effectiveItem.publishedAt * 1000,
-            now,
-            sourceCount: effectiveItem.sources?.length ?? 0,
-          });
-          const llmTokens = (score?.tokens ?? 0) + (translation?.tokens ?? 0);
+            const relevance = score?.relevance ?? 0.5;
+            const importance = score?.importance ?? 5;
+            const quality = score?.quality ?? 5;
+            const status = mergeEntry
+              ? "merged"
+              : relevance < RELEVANCE_THRESHOLD
+                ? "rejected"
+                : "published";
+            const rank = rankScore({
+              importance,
+              quality,
+              points: effectiveItem.points ?? 0,
+              comments: effectiveItem.comments ?? 0,
+              // item.publishedAt is epoch seconds (normalized at dedupe time);
+              // rankScore's decay formula operates in milliseconds.
+              publishedAt: effectiveItem.publishedAt * 1000,
+              now,
+              sourceCount: effectiveItem.sources?.length ?? 0,
+            });
+            const llmTokens = (score?.tokens ?? 0) + (translation?.tokens ?? 0);
 
-          statements.push(
-            this.env.DB.prepare(
-              `INSERT INTO items (
+            statements.push(
+              this.env.DB.prepare(
+                `INSERT INTO items (
                 id, source_id, external_id, url, title, summary,
                 published_at, fetched_at, points, comments,
                 llm_relevance, llm_importance, llm_quality, category, tags,
@@ -817,202 +878,251 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                    ELSE excluded.source_lang
                  END,
                 media_manifest = excluded.media_manifest`
-            ).bind(
-              ...buildItemBindArgs({
-                id,
-                sourceId: source.id,
-                item: effectiveItem,
-                score: effectiveScore,
-                rank,
-                status,
-                now,
-                llmTokens,
-                duplicateOf: mergeEntry?.duplicateOf,
-              })
-            )
-          );
-
-          // The translate step can be skipped (empty batch result) or the
-          // LLM can omit a field entirely; only insert when both are usable.
-          // Explicit VI source items are stored as title_vi so the homepage
-          // does not paint an EN badge; no text heuristic chooses direction.
-          // Persist VI titles only for published items — rejected/merged
-          // rows must not create translations entries (native or LLM).
-          const nativeViTitle =
-            item.sourceLang === "vi" && !translation?.title
-              ? {
-                  title: item.title.trim(),
-                  summary: item.summary?.trim() ?? "",
-                }
-              : null;
-          const persisted =
-            status === "published"
-              ? translation?.title
-                ? {
-                    title: translation.title,
-                    summary: translation.summary ?? "",
-                  }
-                : nativeViTitle
-              : null;
-          if (persisted) {
-            statements.push(
-              prepareTranslationUpsert(this.env.DB, {
-                id,
-                lang: "vi",
-                sourceLang: item.sourceLang ?? "en",
-                targetLang: "vi",
-                title: persisted.title,
-                summary: persisted.summary,
-              })
+              ).bind(
+                ...buildItemBindArgs({
+                  id,
+                  sourceId: source.id,
+                  item: effectiveItem,
+                  score: effectiveScore,
+                  rank,
+                  status,
+                  now,
+                  llmTokens,
+                  duplicateOf: mergeEntry?.duplicateOf,
+                })
+              )
             );
+
+            // The translate step can be skipped (empty batch result) or the
+            // LLM can omit a field entirely; only insert when both are usable.
+            // Explicit VI source items are stored as title_vi so the homepage
+            // does not paint an EN badge; no text heuristic chooses direction.
+            // Persist VI titles only for published items — rejected/merged
+            // rows must not create translations entries (native or LLM).
+            const nativeViTitle =
+              item.sourceLang === "vi" && !translation?.title
+                ? {
+                    title: item.title.trim(),
+                    summary: item.summary?.trim() ?? "",
+                  }
+                : null;
+            const persisted =
+              status === "published"
+                ? translation?.title
+                  ? {
+                      title: translation.title,
+                      summary: translation.summary ?? "",
+                    }
+                  : nativeViTitle
+                : null;
+            if (persisted) {
+              statements.push(
+                prepareTranslationUpsert(this.env.DB, {
+                  id,
+                  lang: "vi",
+                  sourceLang: item.sourceLang ?? "en",
+                  targetLang: "vi",
+                  title: persisted.title,
+                  summary: persisted.summary,
+                })
+              );
+            }
+
+            // Merged items' sources have already been absorbed into their
+            // canonical's item_sources rows; don't also write their own.
+            if (
+              !mergeEntry &&
+              effectiveItem.sources &&
+              effectiveItem.sources.length > 0
+            ) {
+              statements.push(
+                this.env.DB.prepare(
+                  "DELETE FROM item_sources WHERE item_id = ?"
+                ).bind(nn(id))
+              );
+              for (const row of buildItemSourceBindArgs(
+                id,
+                effectiveItem.sources
+              )) {
+                statements.push(
+                  this.env.DB.prepare(
+                    `INSERT INTO item_sources (item_id, position, kind, author, posted_at, quote, url)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)`
+                  ).bind(...row)
+                );
+              }
+            }
           }
 
-          // Merged items' sources have already been absorbed into their
-          // canonical's item_sources rows; don't also write their own.
-          if (
-            !mergeEntry &&
-            effectiveItem.sources &&
-            effectiveItem.sources.length > 0
-          ) {
+          // Canonicals that are pre-existing (already-published) items absorb
+          // the merged new items' points/comments/sources too, but need their
+          // own read-update-write since they're not part of `newRows`.
+          for (const [canonicalId, update] of mergePlan.canonicalUpdates) {
+            if (!update.isExisting || newRowById.has(canonicalId)) continue;
+
+            const existingTagsRow = await this.env.DB.prepare(
+              "SELECT tags, url, image_url, media_manifest FROM items WHERE id = ?"
+            )
+              .bind(canonicalId)
+              .first<{
+                tags: string | null;
+                url: string;
+                image_url: string | null;
+                media_manifest: string | null;
+              }>();
+            let existingTopics: string[] = [];
+            try {
+              const parsed = JSON.parse(existingTagsRow?.tags ?? "[]");
+              if (Array.isArray(parsed)) existingTopics = parsed;
+            } catch {
+              // malformed existing tags JSON — treat as empty, union still works
+            }
+            const mergedTopics = unionTopics(
+              existingTopics,
+              update.extraTopics,
+              MAX_MERGED_TOPICS
+            );
+
+            const existingManifest = manifestWithoutArticleUrl(
+              parseMediaManifest(
+                existingTagsRow?.media_manifest,
+                existingTagsRow?.image_url
+              ),
+              existingTagsRow?.url
+            );
+            const incomingMedia = buildMediaManifest(update.extraMedia ?? []);
+            const hasIncomingThumbnail = Boolean(
+              primaryThumbnailUrl(incomingMedia)
+            );
+            const existingThumbnail = primaryThumbnailUrl(
+              existingManifest,
+              existingTagsRow?.image_url,
+              existingTagsRow?.url
+            );
+            const extraLegacyImages =
+              !existingThumbnail && !hasIncomingThumbnail
+                ? (update.extraImageUrls ?? []).map((url) => ({
+                    type: "image" as const,
+                    url,
+                  }))
+                : [];
+            const mergedManifest = manifestWithoutArticleUrl(
+              mergeMediaManifests(existingManifest, {
+                version: 1,
+                assets: [...(incomingMedia.assets ?? []), ...extraLegacyImages],
+              }),
+              existingTagsRow?.url
+            );
+            const mergedImageUrl = primaryThumbnailUrl(
+              mergedManifest,
+              existingTagsRow?.image_url,
+              existingTagsRow?.url
+            );
+
+            statements.push(
+              this.env.DB.prepare(
+                `UPDATE items SET
+                 points = ?, comments = ?, tags = ?, image_url = ?,
+                 media_manifest = ?
+               WHERE id = ?`
+              ).bind(
+                nn(update.maxPoints),
+                nn(update.maxComments),
+                nn(JSON.stringify(mergedTopics)),
+                nn(mergedImageUrl),
+                serializeMediaManifest(mergedManifest),
+                nn(canonicalId)
+              )
+            );
+
+            const { results: existingSourceRows } = await this.env.DB.prepare(
+              "SELECT kind, author, posted_at, quote, url FROM item_sources WHERE item_id = ? ORDER BY position"
+            )
+              .bind(canonicalId)
+              .all<{
+                kind: "source" | "support" | "discussion";
+                author: string | null;
+                posted_at: number | null;
+                quote: string | null;
+                url: string | null;
+              }>();
+
+            const mergedSources = unionSources(
+              (existingSourceRows ?? []).map((r) => ({
+                kind: r.kind,
+                author: r.author ?? undefined,
+                postedAt: r.posted_at ?? undefined,
+                quote: r.quote ?? undefined,
+                url: r.url ?? undefined,
+              })),
+              update.extraSources,
+              MAX_SOURCES_PER_ITEM
+            );
+
             statements.push(
               this.env.DB.prepare(
                 "DELETE FROM item_sources WHERE item_id = ?"
-              ).bind(nn(id))
+              ).bind(nn(canonicalId))
             );
             for (const row of buildItemSourceBindArgs(
-              id,
-              effectiveItem.sources
+              canonicalId,
+              mergedSources
             )) {
               statements.push(
                 this.env.DB.prepare(
                   `INSERT INTO item_sources (item_id, position, kind, author, posted_at, quote, url)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)`
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`
                 ).bind(...row)
               );
             }
           }
-        }
 
-        // Canonicals that are pre-existing (already-published) items absorb
-        // the merged new items' points/comments/sources too, but need their
-        // own read-update-write since they're not part of `newRows`.
-        for (const [canonicalId, update] of mergePlan.canonicalUpdates) {
-          if (!update.isExisting || newRowById.has(canonicalId)) continue;
-
-          const existingTagsRow = await this.env.DB.prepare(
-            "SELECT tags FROM items WHERE id = ?"
+          // Only the current UTC day is re-ranked: the feed groups and sorts
+          // stories per day, so recomputing freshness decay on older items
+          // reshuffles history the reader already saw. Once a day rolls over,
+          // its order is frozen; past days only ever gain merged-away dupes.
+          const startOfUtcDaySec =
+            Math.floor(toEpochSeconds(now) / 86400) * 86400;
+          const { results: recentItems } = await this.env.DB.prepare(
+            "SELECT id, published_at, points, comments, llm_importance, llm_quality FROM items WHERE published_at >= ? AND status = 'published'"
           )
-            .bind(canonicalId)
-            .first<{ tags: string | null }>();
-          let existingTopics: string[] = [];
-          try {
-            const parsed = JSON.parse(existingTagsRow?.tags ?? "[]");
-            if (Array.isArray(parsed)) existingTopics = parsed;
-          } catch {
-            // malformed existing tags JSON — treat as empty, union still works
-          }
-          const mergedTopics = unionTopics(
-            existingTopics,
-            update.extraTopics,
-            MAX_MERGED_TOPICS
-          );
+            .bind(startOfUtcDaySec)
+            .all<
+              Pick<
+                ItemRow,
+                | "id"
+                | "published_at"
+                | "points"
+                | "comments"
+                | "llm_importance"
+                | "llm_quality"
+              >
+            >();
 
-          statements.push(
-            this.env.DB.prepare(
-              "UPDATE items SET points = ?, comments = ?, tags = ? WHERE id = ?"
-            ).bind(
-              nn(update.maxPoints),
-              nn(update.maxComments),
-              nn(JSON.stringify(mergedTopics)),
-              nn(canonicalId)
-            )
-          );
-
-          const { results: existingSourceRows } = await this.env.DB.prepare(
-            "SELECT kind, author, posted_at, quote, url FROM item_sources WHERE item_id = ? ORDER BY position"
-          )
-            .bind(canonicalId)
-            .all<{
-              kind: "source" | "support" | "discussion";
-              author: string | null;
-              posted_at: number | null;
-              quote: string | null;
-              url: string | null;
-            }>();
-
-          const mergedSources = unionSources(
-            (existingSourceRows ?? []).map((r) => ({
-              kind: r.kind,
-              author: r.author ?? undefined,
-              postedAt: r.posted_at ?? undefined,
-              quote: r.quote ?? undefined,
-              url: r.url ?? undefined,
-            })),
-            update.extraSources,
-            MAX_SOURCES_PER_ITEM
-          );
-
-          statements.push(
-            this.env.DB.prepare(
-              "DELETE FROM item_sources WHERE item_id = ?"
-            ).bind(nn(canonicalId))
-          );
-          for (const row of buildItemSourceBindArgs(
-            canonicalId,
-            mergedSources
-          )) {
+          for (const row of recentItems ?? []) {
+            const rank = rankScore({
+              importance: row.llm_importance ?? 5,
+              quality: row.llm_quality ?? 5,
+              points: row.points,
+              comments: row.comments,
+              // row.published_at is stored as epoch seconds; rankScore expects ms.
+              publishedAt: row.published_at * 1000,
+              now,
+            });
             statements.push(
               this.env.DB.prepare(
-                `INSERT INTO item_sources (item_id, position, kind, author, posted_at, quote, url)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`
-              ).bind(...row)
+                "UPDATE items SET rank_score = ? WHERE id = ?"
+              ).bind(nn(rank), nn(row.id))
             );
           }
-        }
 
-        // Only the current UTC day is re-ranked: the feed groups and sorts
-        // stories per day, so recomputing freshness decay on older items
-        // reshuffles history the reader already saw. Once a day rolls over,
-        // its order is frozen; past days only ever gain merged-away dupes.
-        const startOfUtcDaySec =
-          Math.floor(toEpochSeconds(now) / 86400) * 86400;
-        const { results: recentItems } = await this.env.DB.prepare(
-          "SELECT id, published_at, points, comments, llm_importance, llm_quality FROM items WHERE published_at >= ? AND status = 'published'"
-        )
-          .bind(startOfUtcDaySec)
-          .all<
-            Pick<
-              ItemRow,
-              | "id"
-              | "published_at"
-              | "points"
-              | "comments"
-              | "llm_importance"
-              | "llm_quality"
-            >
-          >();
-
-        for (const row of recentItems ?? []) {
-          const rank = rankScore({
-            importance: row.llm_importance ?? 5,
-            quality: row.llm_quality ?? 5,
-            points: row.points,
-            comments: row.comments,
-            // row.published_at is stored as epoch seconds; rankScore expects ms.
-            publishedAt: row.published_at * 1000,
-            now,
-          });
-          statements.push(
-            this.env.DB.prepare(
-              "UPDATE items SET rank_score = ? WHERE id = ?"
-            ).bind(nn(rank), nn(row.id))
-          );
-        }
-
-        if (statements.length > 0) {
-          await this.env.DB.batch(statements);
-        }
-      });
+          if (statements.length > 0) {
+            await this.env.DB.batch(statements);
+          }
+        },
+        undefined,
+        true
+      );
 
       // Backfills existing (pre-enrichment) published items still missing a
       // summary — the `enrich` step above only ever touches this run's NEW
@@ -1066,6 +1176,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                     {
                       imageUrl: row.image_url,
                       mediaManifest: row.media_manifest,
+                      articleUrl: row.url,
                     },
                     fetched
                   );
@@ -1075,20 +1186,14 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                   await this.env.DB.prepare(
                     `UPDATE items SET
                        summary = ?,
-                       image_url = COALESCE(image_url, ?),
-                       media_manifest = CASE
-                         WHEN media_manifest IS NULL OR media_manifest = '' OR media_manifest = '[]'
-                           THEN COALESCE(?, media_manifest)
-                         ELSE media_manifest
-                       END
+                       image_url = ?,
+                       media_manifest = ?
                      WHERE id = ?`
                   )
                     .bind(
                       nn(plan.summary),
                       nn(plan.imageUrl),
-                      plan.mediaManifest
-                        ? serializeMediaManifest(plan.mediaManifest)
-                        : null,
+                      serializeMediaManifest(plan.mediaManifest),
                       nn(row.id)
                     )
                     .run();
@@ -1121,10 +1226,13 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               );
             }
           } catch (error) {
+            if (isMediaManifestSchemaError(error)) throw error;
             console.error("backfill-content step failed:", error);
           }
           return backfilled;
-        }
+        },
+        undefined,
+        true
       );
       recordStep(
         steps,
@@ -1389,6 +1497,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           try {
             return await reviewPendingSubmissions(this.env);
           } catch (error) {
+            if (isMediaManifestSchemaError(error)) throw error;
             console.error("review-submissions step failed:", error);
             return { reviewed: 0, tokens: 0 };
           }
@@ -1458,17 +1567,9 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           sent: {} as Record<string, number>,
           reasons: {} as Record<string, NotifyChannelReason>,
         },
-        async () => {
-          try {
-            return await dispatchStoryNotifications(this.env);
-          } catch (error) {
-            console.error("notify step failed:", error);
-            return {
-              sent: {} as Record<string, number>,
-              reasons: {} as Record<string, NotifyChannelReason>,
-            };
-          }
-        }
+        async () => dispatchStoryNotifications(this.env),
+        undefined,
+        true
       );
       notified = notifyResult.sent;
       notifyReason = notifyResult.reasons;

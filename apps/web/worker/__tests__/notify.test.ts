@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertNotifyConfig,
   buildMaxRankQuery,
@@ -7,6 +7,7 @@ import {
   classifyTrendingSkip,
   DIGEST_LOCAL_HOUR,
   digestKey,
+  hydrateStory,
   localDayStartMs,
   NOTIFY_MAX_ATTEMPTS,
   shouldSendDigest,
@@ -29,6 +30,8 @@ import {
 import type { DailyDigest, StoryPayload } from "../notify/types.js";
 import { digestEvent, storyEvent } from "../notify/webhook.js";
 import type { Env } from "../types.js";
+
+afterEach(() => vi.unstubAllGlobals());
 
 const story = (over: Partial<StoryPayload> = {}): StoryPayload => ({
   id: "abcdef1234567890",
@@ -256,6 +259,51 @@ describe("telegramNotifier gating", () => {
     ).toBe(true);
   });
 
+  it("falls back to text when a video poster is unavailable", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: false, description: "bad photo" }), {
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 7 } }), {
+          status: 200,
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await telegramNotifier.sendStory(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+      } as Env,
+      story({
+        image_url: null,
+        media_manifest: {
+          version: 1,
+          assets: [
+            {
+              type: "video",
+              url: "https://example.com/story.mp4",
+              poster_url: "https://img.example/poster.jpg",
+            },
+          ],
+        },
+      })
+    );
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendPhoto");
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
+    expect(
+      JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)
+    ).toMatchObject({
+      photo: "https://img.example/poster.jpg",
+    });
+  });
+
   it("throws when chat id is set but the bot token is missing", () => {
     expect(() =>
       telegramNotifier.enabled({ TELEGRAM_CHAT_ID: "-100" } as Env)
@@ -288,6 +336,42 @@ describe("assertNotifyConfig", () => {
 });
 
 describe("helpers", () => {
+  it("hydrates notifications from a normalized manifest, not stale image_url", () => {
+    const base = story({
+      image_url: "https://img.example/stale.jpg?utm_source=old",
+    });
+    const hydrated = hydrateStory({
+      ...base,
+      media_manifest: JSON.stringify({
+        version: 1,
+        assets: [
+          {
+            type: "video",
+            url: "https://example.com/story.mp4",
+            poster_url: "https://img.example/poster.jpg",
+          },
+        ],
+      }),
+    } as Parameters<typeof hydrateStory>[0]);
+    expect(hydrated.image_url).toBe("https://img.example/poster.jpg");
+    expect(hydrated.media_manifest?.assets[0]).toMatchObject({
+      type: "video",
+      poster_url: "https://img.example/poster.jpg",
+    });
+  });
+
+  it("drops private/tracking legacy image URLs when no manifest is usable", () => {
+    const base = story({
+      url: "https://example.com/story",
+      image_url: "http://127.0.0.1/private.jpg",
+    });
+    const hydrated = hydrateStory({
+      ...base,
+      media_manifest: "[]",
+    } as Parameters<typeof hydrateStory>[0]);
+    expect(hydrated.image_url).toBeNull();
+  });
+
   it("escapes ampersands first", () => {
     expect(escapeHtml("&lt;")).toBe("&amp;lt;");
   });

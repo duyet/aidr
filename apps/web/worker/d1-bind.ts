@@ -1,4 +1,8 @@
-import { firstImageUrl, serializeMediaManifest } from "./media.js";
+import {
+  manifestWithoutArticleUrl,
+  primaryThumbnailUrl,
+  serializeMediaManifest,
+} from "./media.js";
 import type {
   FetchedItem,
   FetchedItemSource,
@@ -46,6 +50,10 @@ export function buildItemBindArgs(args: {
     llmTokens,
     duplicateOf,
   } = args;
+  const normalizedManifest = manifestWithoutArticleUrl(
+    item.mediaManifest,
+    item.url
+  );
   return [
     nn(id),
     nn(sourceId),
@@ -69,9 +77,9 @@ export function buildItemBindArgs(args: {
     nn(status),
     nn(llmTokens ?? 0),
     nn(duplicateOf),
-    nn(item.imageUrl ?? firstImageUrl(item.mediaManifest)),
+    nn(primaryThumbnailUrl(normalizedManifest, item.imageUrl, item.url)),
     nn(item.sourceLang ?? "en"),
-    serializeMediaManifest(item.mediaManifest),
+    serializeMediaManifest(normalizedManifest),
   ];
 }
 

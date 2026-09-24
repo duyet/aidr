@@ -10,7 +10,8 @@ export interface StoryPayload {
   title: string;
   summary: string | null;
   image_url: string | null;
-  /** Preserved for the follow-up media-delivery slice; transport ignores it. */
+  /** Typed candidates; current transport uses only the normalized thumbnail
+   * through sendPhoto. Video/album delivery remains deferred. */
   media_manifest?: MediaManifest | null;
   category: string | null;
   points: number;

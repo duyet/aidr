@@ -1,7 +1,13 @@
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import { nn } from "../d1-bind.js";
-import { parseMediaManifest } from "../media.js";
+import {
+  canonicalizeMediaUrl,
+  manifestWithoutArticleUrl,
+  parseMediaManifest,
+  primaryThumbnailUrl,
+} from "../media.js";
+import { assertMediaManifestSchema } from "../media-schema.js";
 import {
   getLocalHourAndDate,
   primaryItemId,
@@ -103,16 +109,21 @@ interface NotificationRow {
   attempts: number;
 }
 
-type StoryRow = Omit<StoryPayload, "media_manifest"> & {
+export type StoryRow = Omit<StoryPayload, "media_manifest"> & {
   media_manifest?: string | null;
 };
 
-function hydrateStory(row: StoryRow): StoryPayload {
-  const manifest = parseMediaManifest(row.media_manifest, row.image_url);
+export function hydrateStory(row: StoryRow): StoryPayload {
+  const manifest = manifestWithoutArticleUrl(
+    parseMediaManifest(row.media_manifest, row.image_url),
+    row.url
+  );
   const story = { ...row };
   delete story.media_manifest;
   return {
     ...story,
+    url: canonicalizeMediaUrl(story.url) ?? "",
+    image_url: primaryThumbnailUrl(manifest, story.image_url, story.url),
     media_manifest: manifest.assets.length > 0 ? manifest : null,
   };
 }
@@ -336,6 +347,7 @@ async function recordDelivery(
 export async function dispatchStoryNotifications(
   env: Env
 ): Promise<NotifyRunResult> {
+  await assertMediaManifestSchema(env.DB);
   assertNotifyConfig(env);
 
   const sent: Record<string, number> = {};

@@ -206,6 +206,67 @@ describe("buildItemBindArgs", () => {
     });
   });
 
+  it("derives legacy image_url from a video poster without duplicating it", () => {
+    const args = buildItemBindArgs({
+      id: "abc123",
+      sourceId: "hn",
+      item: {
+        url: "https://example.com/story",
+        title: "Title",
+        publishedAt: 1700000000,
+        mediaManifest: {
+          version: 1,
+          assets: [
+            {
+              type: "video",
+              url: "https://example.com/story.mp4",
+              poster_url: "https://example.com/poster.jpg",
+            },
+          ],
+        },
+      },
+      rank: 1,
+      status: "published",
+      now: 1700000100000,
+    });
+
+    expect(args[args.length - 2]).toBe("https://example.com/poster.jpg");
+    expect(JSON.parse(args[args.length - 1] as string)).toEqual({
+      version: 1,
+      assets: [
+        {
+          type: "video",
+          url: "https://example.com/story.mp4",
+          poster_url: "https://example.com/poster.jpg",
+        },
+      ],
+    });
+  });
+
+  it("does not persist an article URL accidentally classified as media", () => {
+    const args = buildItemBindArgs({
+      id: "abc123",
+      sourceId: "hn",
+      item: {
+        url: "https://example.com/article",
+        title: "Title",
+        publishedAt: 1700000000,
+        mediaManifest: {
+          version: 1,
+          assets: [{ type: "image", url: "https://example.com/article" }],
+        },
+      },
+      rank: 1,
+      status: "published",
+      now: 1700000100000,
+    });
+    expect(args[args.length - 2]).toBeNull();
+    expect(JSON.parse(args[args.length - 1] as string)).toEqual({
+      version: 1,
+      assets: [],
+    });
+  });
+
   it("includes image_url with no undefined when the item has one", () => {
     const args = buildItemBindArgs({
       id: "abc123",

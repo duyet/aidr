@@ -78,6 +78,21 @@ describe("parseOgTags", () => {
     );
   });
 
+  it("uses a video poster for a video-only OG page", () => {
+    const result = parseOgTags(`
+      <meta property="og:video" content="https://example.com/story.mp4">
+      <meta property="og:video:poster" content="https://example.com/poster.jpg">
+    `);
+    expect(result.imageUrl).toBe("https://example.com/poster.jpg");
+    expect(result.mediaManifest?.assets).toEqual([
+      {
+        type: "video",
+        url: "https://example.com/story.mp4",
+        poster_url: "https://example.com/poster.jpg",
+      },
+    ]);
+  });
+
   it("rejects a relative og:image URL rather than fabricating an absolute one", () => {
     const html = `<meta property="og:image" content="/images/hero.png">`;
     expect(parseOgTags(html).imageUrl).toBeUndefined();
@@ -165,6 +180,27 @@ describe("enrichMissingContent", () => {
     await enrichMissingContent([item]);
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not treat invalid raw media as hasMedia and retries enrichment", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      htmlResponse(
+        `<meta property="og:description" content="Recovered description">
+         <meta property="og:image" content="https://example.com/recovered.png">`
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const item = makeItem({
+      media: [{ type: "image", url: "http://127.0.0.1/private.png" }],
+    });
+    await enrichMissingContent([item]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(item.imageUrl).toBe("https://example.com/recovered.png");
+    expect(item.mediaManifest?.assets).toEqual([
+      { type: "image", url: "https://example.com/recovered.png" },
+    ]);
   });
 
   it("only reads text/html responses, ignoring e.g. a PDF or JSON URL", async () => {

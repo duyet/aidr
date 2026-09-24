@@ -44,6 +44,50 @@ export interface MediaManifest {
   assets: MediaAsset[];
 }
 
+/**
+ * These parameters are deliberately preserved: removing them can invalidate
+ * a CDN signature and turn a valid image/video into a broken URL. They are
+ * still bounded by the URL length and the public response budget.
+ */
+export const SIGNED_MEDIA_QUERY_KEYS = new Set([
+  "AWSAccessKeyId",
+  "Policy",
+  "X-Amz-Algorithm",
+  "X-Amz-Credential",
+  "X-Amz-Date",
+  "X-Amz-Expires",
+  "X-Amz-Security-Token",
+  "X-Amz-Signature",
+  "X-Goog-Algorithm",
+  "X-Goog-Credential",
+  "X-Goog-Date",
+  "X-Goog-Expires",
+  "X-Goog-Signature",
+  "auth",
+  "expires",
+  "key",
+  "kid",
+  "policy",
+  "se",
+  "sig",
+  "signature",
+  "sp",
+  "st",
+  "sv",
+  "token",
+]);
+
+export function isSignedMediaQueryKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return (
+    SIGNED_MEDIA_QUERY_KEYS.has(key) ||
+    SIGNED_MEDIA_QUERY_KEYS.has(normalized) ||
+    [...SIGNED_MEDIA_QUERY_KEYS].some(
+      (signed) => signed.toLowerCase() === normalized
+    )
+  );
+}
+
 const TRACKING_QUERY_KEYS = new Set([
   "fbclid",
   "gclid",
@@ -52,8 +96,10 @@ const TRACKING_QUERY_KEYS = new Set([
   "mc_cid",
   "mc_eid",
   "igshid",
+  "ref",
   "ref_src",
   "ref_url",
+  "si",
   "source",
   "spm",
 ]);
@@ -121,7 +167,9 @@ function isPrivateHostname(rawHostname: string): boolean {
     hostname === "localhost" ||
     hostname.endsWith(".localhost") ||
     hostname.endsWith(".internal") ||
-    hostname.endsWith(".local")
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".home") ||
+    hostname.endsWith(".lan")
   ) {
     return true;
   }
@@ -130,7 +178,7 @@ function isPrivateHostname(rawHostname: string): boolean {
   if (ipv4) {
     const octets = ipv4.slice(1).map((part) => Number(part));
     if (octets.some((part) => part > 255)) return true;
-    const [a, b] = octets;
+    const [a, b, c] = octets;
     return (
       a === 0 ||
       a === 10 ||
@@ -138,28 +186,40 @@ function isPrivateHostname(rawHostname: string): boolean {
       (a === 100 && b >= 64 && b <= 127) ||
       (a === 169 && b === 254) ||
       (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 0 && (c === 0 || c === 2)) ||
+      (a === 192 && b === 88 && c === 99) ||
       (a === 192 && b === 168) ||
       (a === 198 && (b === 18 || b === 19)) ||
+      (a === 198 && b === 51 && c === 100) ||
+      (a === 203 && b === 0 && c === 113) ||
       a >= 224
     );
   }
 
-  const mappedIpv4 = hostname.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  if (mappedIpv4 && isPrivateHostname(mappedIpv4[1])) return true;
-  if (
+  // IPv4-mapped/compatible IPv6 is rejected as a whole because the embedded
+  // address may be represented in several equivalent encodings.
+  if (/^::(?:ffff:)?/i.test(hostname)) return true;
+  return (
+    hostname === "::" ||
     hostname === "::1" ||
     (hostname.includes(":") &&
-      (/^f[cd][0-9a-f]{2}:/i.test(hostname) || /^fe80:/i.test(hostname)))
-  ) {
-    return true;
-  }
-  return false;
+      (/^f[cd][0-9a-f]{2}:/i.test(hostname) ||
+        /^fe[89ab][0-9a-f]:/i.test(hostname) ||
+        /^ff[0-9a-f]{2}:/i.test(hostname) ||
+        /^2001:2:/i.test(hostname) ||
+        /^2001:10:/i.test(hostname) ||
+        /^2001:20:/i.test(hostname) ||
+        /^2001:db8:/i.test(hostname)))
+  );
 }
 
 function removeQueryKeys(url: URL, keys: Set<string>): void {
   for (const key of [...url.searchParams.keys()]) {
     const normalized = key.toLowerCase();
-    if (keys.has(normalized) || normalized.startsWith("utm_")) {
+    if (
+      (keys.has(normalized) || normalized.startsWith("utm_")) &&
+      !isSignedMediaQueryKey(normalized)
+    ) {
       url.searchParams.delete(key);
     }
   }
@@ -182,6 +242,8 @@ export function canonicalizeMediaUrl(raw: unknown): string | null {
     return null;
   }
   if (parsed.username || parsed.password || !parsed.hostname) return null;
+  const defaultPort = parsed.protocol === "https:" ? "443" : "80";
+  if (parsed.port && parsed.port !== defaultPort) return null;
   if (isPrivateHostname(parsed.hostname)) return null;
 
   parsed.hash = "";
@@ -229,7 +291,7 @@ function isGenericImageUrl(url: string): boolean {
     return true;
   }
   filename = filename.replace(/\.[a-z0-9]+$/, "").replace(/[._-]+/g, "-");
-  return /(^|-)(logo|favicon|icon|avatar|placeholder|default|brandmark|wordmark)(-|$)/.test(
+  return /(^|-)(logo|favicon|site-icon|icon|avatar|placeholder|default|default-image|og-image|brand|brandmark|wordmark|spacer|pixel|blank)(-|$)/.test(
     filename
   );
 }
@@ -373,6 +435,17 @@ function mergeLegacyImage(
 ): MediaManifest {
   const legacy = legacyImageManifest(legacyImageUrl);
   if (legacy.assets.length === 0) return manifest;
+  // A stored manifest is authoritative once it has a usable thumbnail. Do
+  // not let a stale/raw image_url win over a current image or video poster.
+  if (
+    manifest.assets.some(
+      (asset) =>
+        asset.type === "image" ||
+        (asset.type === "video" && Boolean(asset.poster_url))
+    )
+  ) {
+    return manifest;
+  }
   return buildMediaManifest([
     ...manifest.assets,
     {
@@ -462,6 +535,55 @@ export function firstImageUrl(
       (asset): asset is Extract<MediaAsset, { type: "image" }> =>
         asset.type === "image"
     )?.url ?? null
+  );
+}
+
+/** Shared image/video thumbnail contract: image asset, video poster, then
+ * the normalized legacy image_url fallback. */
+export function manifestWithoutArticleUrl(
+  manifest: MediaManifest | null | undefined,
+  articleUrl: unknown
+): MediaManifest {
+  const article = canonicalizeMediaUrl(articleUrl);
+  if (!article || !manifest) return manifest ?? emptyManifest();
+  return buildMediaManifest(
+    manifest.assets.flatMap((asset) => {
+      if (asset.url === article) return [];
+      if (asset.type === "video" && asset.poster_url === article) {
+        return [{ type: "video" as const, url: asset.url }];
+      }
+      return [asset];
+    })
+  );
+}
+
+export function primaryThumbnailUrl(
+  manifest: MediaManifest | null | undefined,
+  legacyImageUrl?: unknown,
+  articleUrl?: unknown
+): string | null {
+  const usable =
+    articleUrl === undefined
+      ? manifest
+      : manifestWithoutArticleUrl(manifest, articleUrl);
+  const primary = usable?.assets[0];
+  if (primary?.type === "image") return primary.url;
+  if (primary?.type === "video" && primary.poster_url) {
+    return primary.poster_url;
+  }
+  // A manifest with a video but no poster may still have an image alternate.
+  const legacy = canonicalizeMediaUrl(legacyImageUrl);
+  if (legacy && canonicalizeMediaUrl(articleUrl) === legacy) return null;
+  return firstImageUrl(usable) ?? legacy;
+}
+
+export function mergeMediaManifests(
+  ...manifests: Array<MediaManifest | null | undefined>
+): MediaManifest {
+  return buildMediaManifest(
+    manifests.flatMap((manifest) =>
+      Array.isArray(manifest?.assets) ? manifest.assets : []
+    )
   );
 }
 
@@ -560,9 +682,13 @@ function collectJsonLdMedia(
   const isVideo = names.some((name) =>
     ["videoobject", "video", "newsmediaobject", "mediaobject"].includes(name)
   );
-  const isImage = names.some((name) =>
-    ["imageobject", "image", "newsarticle", "article"].includes(name)
+  const isImageObject = names.some((name) =>
+    ["imageobject", "image"].includes(name)
   );
+  const isArticle = names.some((name) =>
+    ["newsarticle", "article"].includes(name)
+  );
+  const isImage = isImageObject || isArticle;
 
   if (isVideo) {
     const videoUrl = firstUrl(
@@ -582,9 +708,11 @@ function collectJsonLdMedia(
       });
     }
   } else if (isImage) {
-    const imageUrl = firstUrl(
-      record.contentUrl ?? record.url ?? record.image ?? record.thumbnailUrl
-    );
+    const imageUrl = isImageObject
+      ? firstUrl(
+          record.contentUrl ?? record.url ?? record.image ?? record.thumbnailUrl
+        )
+      : firstUrl(record.image ?? record.thumbnailUrl);
     if (imageUrl) {
       candidates.push({ type: "image", url: imageUrl, priority: 30 });
     }
@@ -631,6 +759,7 @@ export function parseMediaMetadata(html: string): MediaCandidate[] {
   const metaTags = html.match(/<meta\b[^>]*>/gi) ?? [];
   let imageOrder = 0;
   let videoOrder = 0;
+  let videoPoster: string | undefined;
 
   for (const tag of metaTags) {
     const attrs = parseAttributes(tag);
@@ -642,6 +771,10 @@ export function parseMediaMetadata(html: string): MediaCandidate[] {
     ).toLowerCase();
     const content = attrs.content;
     if (!key || !content) continue;
+    if (["og:video:poster", "twitter:player:poster"].includes(key)) {
+      videoPoster = content;
+      continue;
+    }
     if (
       [
         "og:image",
@@ -669,6 +802,7 @@ export function parseMediaMetadata(html: string): MediaCandidate[] {
       candidates.push({
         type: "video",
         url: content,
+        ...(videoPoster ? { poster_url: videoPoster } : {}),
         priority: 40 + videoOrder++ / 1000,
       });
     }
@@ -694,12 +828,17 @@ export function parseMediaMetadata(html: string): MediaCandidate[] {
     .filter((candidate) => candidate.type === "image")
     .map((candidate) => buildMediaManifest([candidate]).assets[0]?.url)
     .find((url): url is string => Boolean(url));
-  if (firstImage) {
-    for (const candidate of candidates) {
-      if (candidate.type === "video" && !candidate.poster_url) {
-        candidate.poster_url = firstImage;
-      }
+  const explicitPoster = videoPoster
+    ? buildMediaManifest([{ type: "image", url: videoPoster, priority: 0 }])
+        .assets[0]?.url
+    : undefined;
+  for (const candidate of candidates) {
+    if (candidate.type === "video" && !candidate.poster_url) {
+      candidate.poster_url = explicitPoster ?? firstImage;
     }
   }
-  return candidates;
+  return candidates.filter(
+    (candidate) =>
+      candidate.type !== "image" || candidate.url !== explicitPoster
+  );
 }

@@ -1,11 +1,15 @@
 import {
   boundedPublicManifest,
   canonicalizeMediaUrl,
-  firstImageUrl,
+  MAX_PUBLIC_MEDIA_URL_LENGTH,
+  manifestWithoutArticleUrl,
   parseMediaManifest,
+  primaryThumbnailUrl,
 } from "../../worker/media.js";
 import type { DbReader } from "./db";
 import type { FeedItem, ItemSource } from "./types";
+
+const STORY_URL_MAX_LENGTH = 1024;
 
 let llmTokensSupported: boolean | null = null;
 let imageUrlSupported: boolean | null = null;
@@ -66,15 +70,26 @@ function mapStoryRow(
 ): FeedItem | null {
   const id = asString(row.id);
   if (!id) return null;
+  const rawArticleUrl = asString(row.url);
   const legacyImageUrl = asNullableString(row.image_url);
-  const manifest = parseMediaManifest(
-    asNullableString(row.media_manifest),
-    legacyImageUrl
+  const manifest = manifestWithoutArticleUrl(
+    parseMediaManifest(
+      asNullableString(row.media_manifest),
+      legacyImageUrl
+    ),
+    rawArticleUrl
   );
   const exposedManifest = boundedPublicManifest(manifest);
+  const articleUrl = canonicalizeMediaUrl(rawArticleUrl);
+  const imageUrl = primaryThumbnailUrl(
+    manifest,
+    legacyImageUrl,
+    rawArticleUrl
+  );
   const item: FeedItem = {
     id,
-    url: asString(row.url),
+    url:
+      articleUrl && articleUrl.length <= STORY_URL_MAX_LENGTH ? articleUrl : "",
     title: asString(row.title, "Untitled story"),
     title_vi: asNullableString(row.title_vi),
     summary: asNullableString(row.summary),
@@ -88,14 +103,18 @@ function mapStoryRow(
     tags: parseTags(row.tags),
     sources: [],
     llm_tokens: asNumber(row.llm_tokens),
-    image_url: firstImageUrl(manifest) ?? canonicalizeMediaUrl(legacyImageUrl),
+    image_url:
+      imageUrl && imageUrl.length <= MAX_PUBLIC_MEDIA_URL_LENGTH
+        ? imageUrl
+        : null,
     ...(exposedManifest ? { media_manifest: exposedManifest } : {}),
   };
 
   item.sources = sourceRows
     .filter((source) => source.item_id === id)
-    .map(
-      (source): ItemSource => ({
+    .map((source): ItemSource => {
+      const sourceUrl = canonicalizeMediaUrl(source.url);
+      return {
         kind: asString(source.kind, "source"),
         author: asNullableString(source.author),
         posted_at:
@@ -104,9 +123,12 @@ function mapStoryRow(
             ? source.posted_at
             : null,
         quote: asNullableString(source.quote),
-        url: asNullableString(source.url),
-      })
-    );
+        url:
+          sourceUrl && sourceUrl.length <= STORY_URL_MAX_LENGTH
+            ? sourceUrl
+            : null,
+      };
+    });
   return item;
 }
 

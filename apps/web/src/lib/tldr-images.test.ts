@@ -17,14 +17,16 @@ describe("sanitizeImageUrl", () => {
     ).toBe("https://pbs.twimg.com/card_img/1/x?format=jpg&name=orig");
   });
 
-  it("decodes double-escaped ampersands", () => {
+  it("decodes double-escaped ampersands and canonicalizes query order", () => {
     expect(sanitizeImageUrl("https://img.example/a?w=1&amp;amp;h=2")).toBe(
-      "https://img.example/a?w=1&h=2"
+      "https://img.example/a?h=2&w=1"
     );
   });
 
-  it("drops non-http URLs", () => {
+  it("drops non-http URLs and private hosts", () => {
     expect(sanitizeImageUrl("javascript:alert(1)")).toBeNull();
+    expect(sanitizeImageUrl("http://127.0.0.1/private.jpg")).toBeNull();
+    expect(sanitizeImageUrl("https://example.com:8443/private.jpg")).toBeNull();
     expect(sanitizeImageUrl("")).toBeNull();
     expect(sanitizeImageUrl(null)).toBeNull();
   });
@@ -109,6 +111,17 @@ describe("imageUrlByItemId", () => {
     ]);
     expect(map.get("a")).toBe("https://img.example/a.jpg?format=jpg&name=orig");
   });
+
+  it("does not map an article URL stored as image_url", () => {
+    const map = imageUrlByItemId([
+      {
+        id: "a",
+        url: "https://example.com/article",
+        image_url: "https://example.com/article",
+      },
+    ]);
+    expect(map.has("a")).toBe(false);
+  });
 });
 
 describe("collectTldrItemIds", () => {
@@ -134,6 +147,15 @@ describe("attachTldrBulletImages", () => {
     ["a", "https://img.example/a.jpg"],
     ["c", "https://img.example/c.jpg"],
   ]);
+
+  it("drops a private image from an unlinked stale bullet", () => {
+    expect(
+      attachTldrBulletImages(
+        [{ text: "Stale", image_url: "http://127.0.0.1/private.jpg" }],
+        new Map()
+      )
+    ).toEqual([{ text: "Stale" }]);
+  });
 
   it("copies the first linked story image and leaves others unchanged", () => {
     expect(
@@ -166,7 +188,7 @@ describe("attachTldrBulletImages", () => {
       {
         text: "Already set",
         item_ids: ["a"],
-        image_url: "https://keep.me/x.png",
+        image_url: "https://img.example/a.jpg",
       },
       { text: "No ids" },
     ]);
