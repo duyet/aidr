@@ -1,9 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { useState } from "react";
+import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import { SITE_URL } from "../lib/site";
 
 export const Route = createFileRoute("/brand")({
+  search: {
+    middlewares: [stripSearchParams<RootSearch>(["lang", "locale"])],
+  },
   head: () =>
     pageHead({
       path: "/brand",

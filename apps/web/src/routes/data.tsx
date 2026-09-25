@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { AccountCountCard } from "../components/system/AccountCountCard";
 import { AdminPanel } from "../components/system/AdminPanel";
 import { AlgoTab } from "../components/system/AlgoTab";
@@ -11,6 +11,7 @@ import { RunsTab } from "../components/system/RunsTab";
 import { SourcesTab } from "../components/system/SourcesTab";
 import { useAdmin } from "../lib/admin";
 import { type DataTab, parseDataTab } from "../lib/data-tab";
+import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
 
@@ -22,6 +23,11 @@ export const Route = createFileRoute("/data")({
   validateSearch: (search: Record<string, unknown>): DataSearch => {
     const tab = parseDataTab(search.tab);
     return tab ? { tab } : {};
+  },
+  search: {
+    middlewares: [
+      stripSearchParams<DataSearch & RootSearch>(["lang", "locale"]),
+    ],
   },
   head: () =>
     pageHead({

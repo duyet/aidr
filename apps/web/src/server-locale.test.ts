@@ -100,6 +100,75 @@ describe("Worker locale redirects", () => {
     expect(response.headers.get("Set-Cookie")).toContain("news_lang=vi;");
   });
 
+  it("settles /data locale normalization in one server hop", async () => {
+    vi.mocked(handler.fetch).mockImplementation(
+      async () =>
+        new Response("<html></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        })
+    );
+
+    for (const testCase of [
+      {
+        search: "?lang=vi",
+        cookie: "news_lang=en",
+        acceptLanguage: "en-US,en;q=0.9",
+        expectedLang: "vi",
+        expectedPath: "/data",
+      },
+      {
+        search: "?lang=en",
+        cookie: "news_lang=vi",
+        acceptLanguage: "vi-VN,vi;q=0.9",
+        expectedLang: "en",
+        expectedPath: "/data",
+      },
+      {
+        search: "?tab=algo&lang=vi",
+        cookie: "news_lang=en",
+        acceptLanguage: "en-US,en;q=0.9",
+        expectedLang: "vi",
+        expectedPath: "/data?tab=algo",
+      },
+      {
+        search: "?locale=en",
+        cookie: "news_lang=vi",
+        acceptLanguage: "vi-VN,vi;q=0.9",
+        expectedLang: "en",
+        expectedPath: "/data",
+      },
+    ]) {
+      const first = await fetchLocale(
+        new Request(`https://aidr.today/data${testCase.search}`, {
+          headers: {
+            cookie: testCase.cookie,
+            "accept-language": testCase.acceptLanguage,
+          },
+        })
+      );
+      expect(first.status).toBe(307);
+      expect(first.headers.get("Location")).toBe(
+        `https://aidr.today${testCase.expectedPath}`
+      );
+      expect(first.headers.get("Set-Cookie")).toContain(
+        `news_lang=${testCase.expectedLang};`
+      );
+      expect(first.headers.get("Cache-Control")).toBe("private, no-store");
+      expect(first.headers.get("Vary")).toContain("Accept-Language");
+
+      const second = await fetchLocale(
+        new Request(first.headers.get("Location") ?? "", {
+          headers: { cookie: `news_lang=${testCase.expectedLang}` },
+        })
+      );
+      expect(second.status).toBe(200);
+      expect(second.headers.get("Location")).toBeNull();
+      expect(second.headers.get("Cache-Control")).toContain("s-maxage=600");
+      expect(second.headers.get("Vary")).toBe("Cookie, Accept-Language");
+    }
+  });
+
   it("normalizes locale-bearing extension requests before the compatibility redirect", async () => {
     const explicit = await fetchLocale(
       new Request("https://aidr.today/extension?lang=en&utm_source=chrome")
@@ -139,6 +208,61 @@ describe("Worker locale redirects", () => {
     expect(bare.headers.get("Location")).toBe("https://aidr.today/subscribe");
     expect(bare.headers.get("Cache-Control")).toBe("private, no-store");
     expect(bare.headers.get("Vary")).toBe("Cookie, Accept-Language");
+  });
+
+  it("keeps bare /data stable for cookie and Accept-Language selection", async () => {
+    vi.mocked(handler.fetch).mockImplementation(
+      async () =>
+        new Response("<html></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        })
+    );
+
+    const headerCases: Array<Record<string, string>> = [
+      { cookie: "news_lang=en", "accept-language": "vi-VN,vi;q=0.9" },
+      { cookie: "news_lang=vi", "accept-language": "en-US,en;q=0.9" },
+      { "accept-language": "en-US,en;q=0.9" },
+    ];
+    for (const headers of headerCases) {
+      const response = await fetchLocale(
+        new Request("https://aidr.today/data?tab=overview", { headers })
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Location")).toBeNull();
+      expect(response.headers.get("Content-Language")).toBe("en");
+      expect(response.headers.get("Vary")).toBe("Cookie, Accept-Language");
+      expect(response.headers.get("Cache-Control")).toContain("s-maxage=600");
+    }
+  });
+
+  it("keeps the private admin data tab private after locale normalization", async () => {
+    vi.mocked(handler.fetch).mockImplementation(
+      async () =>
+        new Response("<html></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        })
+    );
+
+    const first = await fetchLocale(
+      new Request("https://aidr.today/data?lang=vi&tab=admin")
+    );
+    expect(first.status).toBe(307);
+    expect(first.headers.get("Location")).toBe(
+      "https://aidr.today/data?tab=admin"
+    );
+    expect(first.headers.get("Set-Cookie")).toContain("news_lang=vi;");
+
+    const second = await fetchLocale(
+      new Request("https://aidr.today/data?tab=admin", {
+        headers: { cookie: "news_lang=vi" },
+      })
+    );
+    expect(second.status).toBe(200);
+    expect(second.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(second.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+    expect(second.headers.get("Vary")).toContain("Cookie");
   });
 
   it("applies the API locale gate before route middleware", async () => {
