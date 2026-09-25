@@ -145,8 +145,9 @@ describe("articleHead", () => {
       `${SITE_URL}/abcdef12?lang=vi`
     );
     // Branded card rendered by /api/og/$id — never the upstream image_url,
-    // which can 404 after ingest.
-    const ogImage = `${SITE_URL}/api/og/${item.id}.png`;
+    // which can 404 after ingest. The explicit locale keeps card copy aligned
+    // with the story page.
+    const ogImage = `${SITE_URL}/api/og/${item.id}.png?lang=vi`;
     expect(metaContent(head.meta, "og:image")).toBe(ogImage);
     expect(metaContent(head.meta, "twitter:image")).toBe(ogImage);
     expect(metaContent(head.meta, "og:image:width")).toBe("1200");
@@ -168,6 +169,9 @@ describe("articleHead", () => {
     expect(metaContent(head.meta, "og:url")).toBe(
       `${SITE_URL}/abcdef12?lang=en`
     );
+    expect(metaContent(head.meta, "og:image")).toBe(
+      `${SITE_URL}/api/og/${item.id}.png?lang=en`
+    );
     expect(head.links).toContainEqual({
       rel: "canonical",
       href: `${SITE_URL}/abcdef12?lang=en`,
@@ -180,7 +184,7 @@ describe("articleHead", () => {
     expect(metaContent(head.meta, "og:description")).toBe(SITE_DESCRIPTION);
     expect(metaContent(head.meta, "twitter:card")).toBe("summary_large_image");
     expect(metaContent(head.meta, "og:image")).toBe(
-      `${SITE_URL}/api/og/${item.id}.png`
+      `${SITE_URL}/api/og/${item.id}.png?lang=vi`
     );
   });
 

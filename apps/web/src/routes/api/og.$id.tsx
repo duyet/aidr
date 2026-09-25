@@ -2,19 +2,19 @@ import { cache, ImageResponse } from "@cf-wasm/og/workerd";
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
 import { idPrefixFromSlug } from "../../lib/slug";
+import {
+  fetchStoryOgImage,
+  STORY_OG_HEIGHT,
+  STORY_OG_WIDTH,
+  storyOgCard,
+  storyOgLanguage,
+} from "../../lib/story-og";
 import { getStory } from "../../lib/story-queries";
-import { categoryColor } from "../../lib/topic-color";
-import type { FeedItem } from "../../lib/types";
 
 /** Story OG cards are deterministic per item id; rendered PNGs are
  * edge-cacheable for a week. */
 const OG_CACHE_CONTROL =
   "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400";
-
-const PAPER = "#f7f7f5";
-const INK = "#0a0a0a";
-const MUTED = "#6b6b6b";
-const YELLOW = "#f5c518";
 
 type AssetEnv = { ASSETS?: { fetch: (r: Request) => Promise<Response> } };
 
@@ -40,122 +40,15 @@ async function loadFont(
   }
 }
 
-function storyDomain(item: FeedItem): string {
-  try {
-    return new URL(item.url).hostname.replace(/^www\./, "");
-  } catch {
-    return "aidr.today";
-  }
-}
-
-function storyDate(item: FeedItem): string {
-  return new Date(item.published_at * 1000).toISOString().slice(0, 10);
-}
-
-function ogCard(item: FeedItem) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "1200px",
-        height: "630px",
-        backgroundColor: PAPER,
-        color: INK,
-        padding: "48px 56px 0",
-        fontFamily: "EB Garamond",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingBottom: "22px",
-          borderBottom: `3px solid ${INK}`,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "52px",
-              height: "52px",
-              backgroundColor: YELLOW,
-              color: INK,
-              fontSize: "30px",
-              fontWeight: 700,
-            }}
-          >
-            ;
-          </div>
-          <div style={{ fontSize: "40px", fontWeight: 700 }}>AI;DR</div>
-        </div>
-        <div style={{ fontSize: "24px", color: MUTED }}>aidr.today</div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          alignItems: "center",
-          padding: "24px 0",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "56px",
-            fontWeight: 500,
-            lineHeight: 1.2,
-            display: "-webkit-box",
-            overflow: "hidden",
-          }}
-        >
-          {item.title}
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "20px 0 28px",
-          fontSize: "24px",
-          color: MUTED,
-        }}
-      >
-        <div style={{ display: "flex", gap: "20px" }}>
-          <span>{storyDomain(item)}</span>
-          <span>·</span>
-          <span>{storyDate(item)}</span>
-          {item.category ? (
-            <>
-              <span>·</span>
-              <span style={{ color: categoryColor(item.category).light }}>
-                {item.category}
-              </span>
-            </>
-          ) : null}
-        </div>
-        <div style={{ display: "flex", gap: "20px" }}>
-          <span>{item.points} points</span>
-          <span>·</span>
-          <span>{item.comments} comments</span>
-        </div>
-      </div>
-      <div style={{ height: "10px", backgroundColor: YELLOW }} />
-    </div>
-  );
-}
-
 export const Route = createFileRoute("/api/og/$id")({
   server: {
     handlers: {
       GET: async ({
+        request,
         params,
         context,
       }: {
+        request: Request;
         params: { id: string };
         context: any;
       }) => {
@@ -191,9 +84,14 @@ export const Route = createFileRoute("/api/og/$id")({
         if (!item) {
           return Response.json({ error: "not found" }, { status: 404 });
         }
-        const [medium, bold] = await Promise.all([
+
+        const lang = storyOgLanguage(
+          new URL(request.url).searchParams.get("lang")
+        );
+        const [medium, bold, image] = await Promise.all([
           loadFont(env, "/fonts/eb-garamond-500.ttf"),
           loadFont(env, "/fonts/eb-garamond-700.ttf"),
+          fetchStoryOgImage(item.image_url),
         ]);
         const fonts = [
           medium && {
@@ -209,11 +107,14 @@ export const Route = createFileRoute("/api/og/$id")({
             style: "normal" as const,
           },
         ].filter((f): f is NonNullable<typeof f> => Boolean(f));
-        return await ImageResponse.async(ogCard(item), {
-          width: 1200,
-          height: 630,
+        return await ImageResponse.async(storyOgCard(item, image, lang), {
+          width: STORY_OG_WIDTH,
+          height: STORY_OG_HEIGHT,
           ...(fonts.length ? { fonts } : {}),
-          headers: { "Cache-Control": OG_CACHE_CONTROL },
+          headers: {
+            "Cache-Control": OG_CACHE_CONTROL,
+            "Content-Language": lang,
+          },
         });
       },
     },
