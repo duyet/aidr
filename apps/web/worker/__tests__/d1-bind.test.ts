@@ -230,8 +230,9 @@ describe("buildItemBindArgs", () => {
       now: 1700000100000,
     });
 
-    expect(args[args.length - 2]).toBe("https://example.com/poster.jpg");
-    expect(JSON.parse(args[args.length - 1] as string)).toEqual({
+    expect(args[19]).toBe("https://example.com/poster.jpg");
+    expect(args[ITEM_SOURCE_LANG_BIND_INDEX]).toBe("en");
+    expect(JSON.parse(args[ITEM_MEDIA_MANIFEST_BIND_INDEX] as string)).toEqual({
       version: 1,
       assets: [
         {
@@ -260,8 +261,9 @@ describe("buildItemBindArgs", () => {
       status: "published",
       now: 1700000100000,
     });
-    expect(args[args.length - 2]).toBeNull();
-    expect(JSON.parse(args[args.length - 1] as string)).toEqual({
+    expect(args[19]).toBeNull();
+    expect(args[ITEM_SOURCE_LANG_BIND_INDEX]).toBe("en");
+    expect(JSON.parse(args[ITEM_MEDIA_MANIFEST_BIND_INDEX] as string)).toEqual({
       version: 1,
       assets: [],
     });

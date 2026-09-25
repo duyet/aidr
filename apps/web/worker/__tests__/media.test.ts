@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMediaManifest,
   canonicalizeMediaUrl,
+  decodeUrlEntities,
   firstImageUrl,
   MAX_MEDIA_ASSETS,
   MAX_MEDIA_URL_LENGTH,
@@ -12,6 +13,17 @@ import {
   primaryThumbnailUrl,
   serializeMediaManifest,
 } from "../media.js";
+
+describe("decodeUrlEntities", () => {
+  it("decodes valid decimal and hex numeric entities", () => {
+    expect(decodeUrlEntities("&#65;&#x42;&#x1F600;")).toBe("AB\u{1f600}");
+  });
+
+  it("leaves invalid and out-of-range numeric entities literal", () => {
+    const invalid = "&#1114112; &#x110000; &#55296; &#xD800; &#x; &#; &#-1;";
+    expect(decodeUrlEntities(invalid)).toBe(invalid);
+  });
+});
 
 describe("canonicalizeMediaUrl", () => {
   it("normalizes host casing, fragments, tracking parameters, and query order", () => {

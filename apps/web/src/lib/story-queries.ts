@@ -74,10 +74,7 @@ function mapStoryRow(
   const rawArticleUrl = asString(row.url);
   const legacyImageUrl = asNullableString(row.image_url);
   const manifest = manifestWithoutArticleUrl(
-    parseMediaManifest(
-      asNullableString(row.media_manifest),
-      legacyImageUrl
-    ),
+    parseMediaManifest(asNullableString(row.media_manifest), legacyImageUrl),
     rawArticleUrl
   );
   const exposedManifest = boundedPublicManifest(manifest);

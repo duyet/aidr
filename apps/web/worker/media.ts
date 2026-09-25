@@ -16,6 +16,9 @@ export const MAX_MEDIA_MANIFEST_JSON_LENGTH = 64_000;
 const MAX_ENTITY_PASSES = 3;
 const MAX_JSON_LD_DEPTH = 8;
 const MAX_JSON_LD_NODES = 100;
+const MAX_UNICODE_CODE_POINT = 0x10ffff;
+const FIRST_SURROGATE = 0xd800;
+const LAST_SURROGATE = 0xdfff;
 
 export type MediaType = "image" | "video";
 
@@ -133,22 +136,47 @@ const ENTITY_NAMES: Record<string, string> = {
   quot: '"',
 };
 
-function decodeUrlEntities(value: string): string {
+function isUnicodeScalarValue(codePoint: number): boolean {
+  return (
+    Number.isSafeInteger(codePoint) &&
+    codePoint >= 0 &&
+    codePoint <= MAX_UNICODE_CODE_POINT &&
+    (codePoint < FIRST_SURROGATE || codePoint > LAST_SURROGATE)
+  );
+}
+
+/**
+ * Decode one numeric character reference without allowing malformed or
+ * out-of-range input to reach String.fromCodePoint. Invalid references remain
+ * literal so a later URL policy can reject or preserve them explicitly.
+ */
+function decodeNumericEntity(
+  whole: string,
+  digits: string,
+  radix: 10 | 16
+): string {
+  const codePoint = Number.parseInt(digits, radix);
+  if (!isUnicodeScalarValue(codePoint)) return whole;
+  try {
+    return String.fromCodePoint(codePoint);
+  } catch {
+    // Keep this boundary total even if the runtime's conversion contract
+    // changes independently of the validation above.
+    return whole;
+  }
+}
+
+/** Decode the small set of URL-safe HTML entities used by article metadata. */
+export function decodeUrlEntities(value: string): string {
   let output = value.trim();
   for (let pass = 0; pass < MAX_ENTITY_PASSES; pass++) {
     const next = output
-      .replace(/&#(\d+);/g, (_, decimal: string) => {
-        const code = Number.parseInt(decimal, 10);
-        return Number.isFinite(code) && code <= 0x10ffff
-          ? String.fromCodePoint(code)
-          : _;
-      })
-      .replace(/&#x([0-9a-f]+);/gi, (_, hexadecimal: string) => {
-        const code = Number.parseInt(hexadecimal, 16);
-        return Number.isFinite(code) && code <= 0x10ffff
-          ? String.fromCodePoint(code)
-          : _;
-      })
+      .replace(/&#(\d+);/g, (whole, decimal: string) =>
+        decodeNumericEntity(whole, decimal, 10)
+      )
+      .replace(/&#x([0-9a-f]+);/gi, (whole, hexadecimal: string) =>
+        decodeNumericEntity(whole, hexadecimal, 16)
+      )
       .replace(/&([a-z]+);/gi, (whole, name: string) => {
         return ENTITY_NAMES[name.toLowerCase()] ?? whole;
       });
