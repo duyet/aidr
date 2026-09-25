@@ -10,6 +10,10 @@ const aside = readFileSync(
   "utf8"
 );
 const thumb = readFileSync(join(here, "../components/StoryThumb.tsx"), "utf8");
+const gallery = readFileSync(
+  join(here, "../components/story/MediaGallery.tsx"),
+  "utf8"
+);
 
 describe("expanded story panel chrome", () => {
   it("sits flush under the row: flat top, no extra margin or shadow", () => {
@@ -24,12 +28,17 @@ describe("expanded story panel chrome", () => {
 
 describe("topics column", () => {
   it("uses a large rounded card thumb above an uppercase Topics heading", () => {
-    expect(aside).toContain('variant="card"');
+    // The card thumb is rendered by MediaGallery (#204), which the aside
+    // mounts in the same slot above Topics. Assert the guarantee at its
+    // current home: the aside owns the mount point, the gallery owns the
+    // card-variant thumb.
+    expect(aside).toContain("<MediaGallery");
     expect(aside).toContain("space-y-5");
     expect(aside).toContain("Chủ đề");
     expect(aside).toContain("Topics");
     expect(aside).toContain("uppercase tracking-wider");
     expect(aside).toContain("rounded-full border border-border");
+    expect(gallery).toContain('variant="card"');
     expect(thumb).toContain("rounded-3xl");
   });
 });

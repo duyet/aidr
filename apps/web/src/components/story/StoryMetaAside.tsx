@@ -5,8 +5,8 @@ import { storyPath } from "../../lib/slug";
 import { topicColor } from "../../lib/topic-color";
 import type { FeedItem, Lang } from "../../lib/types";
 import { CategoryLabel } from "../CategoryLabel";
-import { StoryThumb } from "../StoryThumb";
 import { fmtTime } from "./lib";
+import { MediaGallery } from "./MediaGallery";
 import {
   formatStoryScore,
   formatStoryTimestamp,
@@ -183,9 +183,16 @@ export function StoryMetaAside({
 
   return (
     <aside className="not-typeset min-w-0 space-y-5 md:border-l md:border-border md:pl-6">
-      {imageUrl && (
-        <StoryThumb src={imageUrl} itemId={item.id} variant="card" />
-      )}
+      {/* The bounded media manifest (#160) is the source of truth for ordered
+          image/video assets; `imageUrl` stays the single legacy thumbnail used
+          when the manifest has nothing renderable. */}
+      <MediaGallery
+        manifest={item.media_manifest}
+        fallbackImageUrl={imageUrl}
+        articleUrl={item.url}
+        lang={lang}
+        itemId={item.id}
+      />
 
       {(item.tags.length > 0 || item.category) && (
         <div className="space-y-2">
