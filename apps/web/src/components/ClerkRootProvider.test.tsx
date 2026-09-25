@@ -1,100 +1,117 @@
 /** @vitest-environment happy-dom */
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { BrowserClerkConstructor } from "@clerk/react";
+import { ClerkProvider as RealClerkProvider } from "@clerk/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveLocale } from "../lib/lang";
 import { LangContext } from "../lib/lang-context";
-import { ClerkRootProvider } from "./ClerkRootProvider";
+import type { Lang } from "../lib/types";
+import { clerkProviderLocaleOptions } from "./ClerkRootProvider";
+import { SubmitForm } from "./submit/SubmitForm";
 
-vi.mock("../lib/clerk-user", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../lib/clerk-user")>();
-  const { useState } = await import("react");
-  let nextMountId = 0;
+vi.mock("@tanstack/react-router", async () => {
+  const React = await import("react");
   return {
-    ...actual,
-    getClerkPublishableKey: () => "pk_test_locale_navigation",
-    loadClerkModule: async () => ({
-      ClerkProvider: ({
-        children,
-        signInFallbackRedirectUrl,
-        signInUrl,
-        signUpFallbackRedirectUrl,
-        signUpUrl,
-      }: {
-        children: ReactNode;
-        signInFallbackRedirectUrl: string;
-        signInUrl: string;
-        signUpFallbackRedirectUrl: string;
-        signUpUrl: string;
-      }) => {
-        // Model Clerk's mount-time redirect configuration: prop-only updates
-        // deliberately keep the old URLs until this provider is remounted.
-        const [mounted] = useState(() => ({
-          mountId: ++nextMountId,
-          signInFallbackRedirectUrl,
-          signInUrl,
-          signUpFallbackRedirectUrl,
-          signUpUrl,
-        }));
-        return (
-          <div data-mount-id={mounted.mountId} data-testid="clerk-provider">
-            <a data-testid="sign-in-url" href={mounted.signInUrl}>
-              sign in
-            </a>
-            <a data-testid="sign-up-url" href={mounted.signUpUrl}>
-              sign up
-            </a>
-            <a
-              data-testid="sign-in-fallback-url"
-              href={mounted.signInFallbackRedirectUrl}
-            >
-              sign in fallback
-            </a>
-            <a
-              data-testid="sign-up-fallback-url"
-              href={mounted.signUpFallbackRedirectUrl}
-            >
-              sign up fallback
-            </a>
-            {children}
-          </div>
-        );
-      },
-    }),
+    Link: ({
+      children,
+      hash,
+      to,
+    }: {
+      children?: ReactNode;
+      hash?: string;
+      to: string;
+    }) =>
+      React.createElement(
+        "a",
+        { href: `${to}${hash ? `#${hash}` : ""}` },
+        children
+      ),
   };
 });
 
-function appWithNavigationLang(lang: "en" | "vi") {
-  return (
-    <LangContext.Provider value={lang}>
-      <ClerkRootProvider>
-        <span>app content</span>
-      </ClerkRootProvider>
-    </LangContext.Provider>
-  );
+vi.mock("../lib/submit-fn", () => ({
+  submitStory: vi.fn(),
+}));
+
+interface UpdateProps {
+  options?: Record<string, unknown>;
 }
 
-function expectAuthUrls(lang: "en" | "vi") {
-  expect(screen.getByTestId("sign-in-url").getAttribute("href")).toBe(
-    `/sign-in?lang=${lang}`
-  );
-  expect(screen.getByTestId("sign-up-url").getAttribute("href")).toBe(
-    `/sign-up?lang=${lang}`
-  );
-  expect(screen.getByTestId("sign-in-fallback-url").getAttribute("href")).toBe(
-    `/?lang=${lang}`
-  );
-  expect(screen.getByTestId("sign-up-fallback-url").getAttribute("href")).toBe(
-    `/?lang=${lang}`
+class SingletonClerkHarness {
+  static instances: SingletonClerkHarness[] = [];
+
+  loaded = false;
+  status = "ready";
+  options: Record<string, unknown> = {};
+  updateCount = 0;
+
+  constructor(
+    _publishableKey: string,
+    _constructorOptions?: Record<string, unknown>
+  ) {
+    SingletonClerkHarness.instances.push(this);
+  }
+
+  async load(options: Record<string, unknown>) {
+    this.options = { ...options };
+    this.loaded = true;
+    return this;
+  }
+
+  async __internal_updateProps(update: UpdateProps) {
+    this.options = { ...this.options, ...update.options };
+    this.updateCount += 1;
+  }
+}
+
+const LifecycleProvider = RealClerkProvider as unknown as (
+  props: ComponentProps<typeof RealClerkProvider> & {
+    Clerk: BrowserClerkConstructor;
+    experimental: { runtimeEnvironment: "headless" };
+  }
+) => ReactNode;
+
+function expectClerkUrls(clerk: SingletonClerkHarness, lang: Lang) {
+  expect(clerk.options.signInUrl).toBe(`/sign-in?lang=${lang}`);
+  expect(clerk.options.signUpUrl).toBe(`/sign-up?lang=${lang}`);
+  expect(clerk.options.signInFallbackRedirectUrl).toBe(`/?lang=${lang}`);
+  expect(clerk.options.signUpFallbackRedirectUrl).toBe(`/?lang=${lang}`);
+}
+
+function appWithClerkLifecycle(lang: Lang) {
+  return (
+    <LangContext.Provider value={lang}>
+      <LifecycleProvider
+        Clerk={SingletonClerkHarness as unknown as BrowserClerkConstructor}
+        experimental={{ runtimeEnvironment: "headless" }}
+        publishableKey="pk_test_locale_lifecycle"
+        {...clerkProviderLocaleOptions(lang)}
+      >
+        <SubmitForm
+          getToken={async () => "test-token"}
+          onSubmitted={vi.fn()}
+          userId="user_test"
+          userName="Test User"
+        />
+      </LifecycleProvider>
+    </LangContext.Provider>
   );
 }
 
 afterEach(() => {
   cleanup();
+  SingletonClerkHarness.instances.length = 0;
 });
 
-describe("ClerkRootProvider locale navigation", () => {
+describe("Clerk locale options", () => {
   it.each([
     {
       source: "explicit lang query",
@@ -106,30 +123,53 @@ describe("ClerkRootProvider locale navigation", () => {
       resolution: resolveLocale({ cookie: "news_lang=vi" }),
       expected: "vi" as const,
     },
-  ])("preserves the $source locale in every auth URL", async (testCase) => {
+  ])("maps $source to every auth URL", (testCase) => {
     if (!testCase.resolution.ok) throw new Error("Expected a valid locale");
-    render(appWithNavigationLang(testCase.resolution.lang));
-
-    await screen.findByTestId("clerk-provider");
-    expectAuthUrls(testCase.expected);
-    expect(screen.getByText("app content")).not.toBeNull();
+    const options = clerkProviderLocaleOptions(testCase.resolution.lang);
+    expect(options.signInUrl).toBe(`/sign-in?lang=${testCase.expected}`);
+    expect(options.signUpUrl).toBe(`/sign-up?lang=${testCase.expected}`);
+    expect(options.signInFallbackRedirectUrl).toBe(
+      `/?lang=${testCase.expected}`
+    );
+    expect(options.signUpFallbackRedirectUrl).toBe(
+      `/?lang=${testCase.expected}`
+    );
   });
 
-  it("remounts and updates every auth URL after locale changes", async () => {
-    const { rerender } = render(appWithNavigationLang("en"));
-    const initial = await screen.findByTestId("clerk-provider");
-    const initialMountId = Number(initial.getAttribute("data-mount-id"));
-    expectAuthUrls("en");
-
-    rerender(appWithNavigationLang("vi"));
-
+  it("updates the real provider singleton without remounting a filled submit form", async () => {
+    const { rerender } = render(appWithClerkLifecycle("en"));
     await waitFor(() => {
-      const remounted = screen.getByTestId("clerk-provider");
-      expect(Number(remounted.getAttribute("data-mount-id"))).toBe(
-        initialMountId + 1
-      );
+      expect(SingletonClerkHarness.instances).toHaveLength(1);
+      expect(SingletonClerkHarness.instances[0].loaded).toBe(true);
     });
-    expectAuthUrls("vi");
-    expect(screen.getByText("app content")).not.toBeNull();
+    const clerk = SingletonClerkHarness.instances[0];
+    expectClerkUrls(clerk, "en");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "URL" }), {
+      target: { value: "https://example.com/story" },
+    });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Title (optional)" }),
+      {
+        target: { value: "A preserved story title" },
+      }
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Note (optional)" }), {
+      target: { value: "A preserved submission note" },
+    });
+
+    rerender(appWithClerkLifecycle("vi"));
+
+    await waitFor(() => expectClerkUrls(clerk, "vi"));
+    expect(SingletonClerkHarness.instances).toHaveLength(1);
+    expect(clerk.updateCount).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByDisplayValue("https://example.com/story")
+    ).not.toBeNull();
+    expect(screen.getByDisplayValue("A preserved story title")).not.toBeNull();
+    expect(
+      screen.getByDisplayValue("A preserved submission note")
+    ).not.toBeNull();
+    expect(screen.getByText("Tiêu đề (không bắt buộc)")).not.toBeNull();
   });
 });
