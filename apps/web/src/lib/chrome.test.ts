@@ -39,11 +39,19 @@ describe("mobile header action contracts", () => {
     expect(PHONE_GET_AIDR_TRIGGER_CLASS).toContain("w-11");
     expect(PHONE_GET_AIDR_TRIGGER_CLASS).toContain("min-h-[44px]");
     expect(PHONE_GET_AIDR_TRIGGER_CLASS).toContain("min-w-[44px]");
-    expect(PHONE_GET_AIDR_TRIGGER_CLASS).toContain("bg-muted/60");
     expect(PHONE_GET_AIDR_TRIGGER_CLASS).toContain("hover:bg-muted");
     expect(PHONE_GET_AIDR_TRIGGER_CLASS).toContain(
       "data-[state=open]:bg-muted"
     );
+  });
+
+  it("keeps the mobile Get AI;DR logo idle, with no circle fill, border, or shadow", () => {
+    // Idle must match the prefs trigger and hamburger: no gray circle behind logo+chevron.
+    expect(PHONE_GET_AIDR_TRIGGER_CLASS).not.toContain("bg-muted/60");
+    expect(PHONE_GET_AIDR_TRIGGER_CLASS).not.toContain("border-border");
+    expect(PHONE_GET_AIDR_TRIGGER_CLASS).not.toContain("shadow-sm");
+    expect(PHONE_GET_AIDR_TRIGGER_CLASS).not.toMatch(/(^|\s)bg-/);
+    expect(PHONE_GET_AIDR_TRIGGER_CLASS).not.toMatch(/(^|\s)shadow-/);
   });
 
   it("raises compact dropdown and language controls to 44px", () => {
