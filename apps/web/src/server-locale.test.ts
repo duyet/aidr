@@ -97,6 +97,46 @@ describe("Worker locale redirects", () => {
     );
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("Content-Language")).toBe("en");
+    expect(response.headers.get("Set-Cookie")).toContain("news_lang=vi;");
+  });
+
+  it("normalizes locale-bearing extension requests before the compatibility redirect", async () => {
+    const explicit = await fetchLocale(
+      new Request("https://aidr.today/extension?lang=en&utm_source=chrome")
+    );
+    expect(explicit.status).toBe(307);
+    expect(explicit.headers.get("Location")).toBe(
+      "https://aidr.today/subscribe?utm_source=chrome&lang=en"
+    );
+    expect(explicit.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(explicit.headers.get("Vary")).toContain("Cookie");
+    expect(explicit.headers.get("Content-Language")).toBe("en");
+
+    const legacy = await fetchLocale(
+      new Request("https://aidr.today/extension?locale=vi")
+    );
+    expect(legacy.status).toBe(307);
+    expect(legacy.headers.get("Location")).toBe(
+      "https://aidr.today/subscribe?lang=vi"
+    );
+    expect(legacy.headers.get("Cache-Control")).toBe("private, no-store");
+
+    for (const search of [
+      "?lang=en&lang=vi",
+      "?lang=en&locale=vi",
+      "?lang=fr",
+    ]) {
+      const invalid = await fetchLocale(
+        new Request(`https://aidr.today/extension${search}`)
+      );
+      expect(invalid.status).toBe(400);
+      expect(invalid.headers.get("Cache-Control")).toBe("private, no-store");
+      expect(invalid.headers.get("Vary")).toContain("Accept-Language");
+    }
+
+    const bare = await fetchLocale(new Request("https://aidr.today/extension"));
+    expect(bare.status).toBe(301);
+    expect(bare.headers.get("Location")).toBe("https://aidr.today/subscribe");
   });
 
   it("applies the API locale gate before route middleware", async () => {
@@ -115,6 +155,29 @@ describe("Worker locale redirects", () => {
     expect(invalid.status).toBe(400);
     expect(invalid.headers.get("Content-Language")).toBe("en, vi");
     expect(invalid.headers.get("Vary")).toContain("Cookie");
+  });
+
+  it("keeps sign-in and sign-up child routes private and language-neutral", async () => {
+    vi.mocked(handler.fetch).mockImplementation(
+      async () =>
+        new Response("<html></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        })
+    );
+
+    for (const path of ["/sign-in/account", "/sign-up/verify"]) {
+      const response = await fetchLocale(
+        new Request(`https://aidr.today${path}?lang=vi`, {
+          headers: { "accept-language": "en" },
+        })
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Language")).toBe("en");
+      expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+      expect(response.headers.get("Vary")).toContain("Cookie");
+      expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+    }
   });
 
   it("applies the final SSR locale policy to rendered route responses", async () => {

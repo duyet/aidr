@@ -6,6 +6,7 @@ import {
   getCachedFeedFreshness,
 } from "../lib/feed-cache";
 import { timeAgo } from "../lib/lang";
+import { useLang } from "../lib/lang-context";
 import {
   DUYET_URL,
   EXTENSION_PATH,
@@ -26,6 +27,7 @@ const linkClass =
   "text-sm text-muted-foreground transition-colors hover:text-foreground";
 
 export function NewsFooter() {
+  const navigationLang = useLang();
   const year = new Date().getFullYear();
   const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(() =>
     getCachedFeedFreshness()
@@ -79,6 +81,7 @@ export function NewsFooter() {
               </p>
               <Link
                 to={EXTENSION_PATH}
+                search={{ lang: navigationLang }}
                 onClick={() => track("nav_click", { to: EXTENSION_PATH })}
                 className={`block ${linkClass}`}
                 title="Get AI;DR"

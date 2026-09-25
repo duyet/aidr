@@ -13,6 +13,7 @@ export function NotFoundPage() {
         <p className="mt-3 text-sm text-muted-foreground">{copy.body}</p>
         <Link
           to="/"
+          search={{ lang }}
           className="mt-6 inline-block text-sm underline underline-offset-4 decoration-accent hover:decoration-2"
         >
           {copy.home}

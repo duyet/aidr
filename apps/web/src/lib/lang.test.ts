@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  langCookieHeader,
   langFromAcceptLanguage,
   langFromCookie,
   langFromQuery,
@@ -20,6 +21,13 @@ describe("locale parsing", () => {
     expect(langFromQuery("?locale=vi")).toBe("vi");
     expect(langFromQuery("?lang=en&locale=vi")).toBeNull();
     expect(langFromQuery("?locale=en&locale=vi")).toBeNull();
+  });
+
+  it("serializes a validated language cookie for redirects and clients", () => {
+    expect(langCookieHeader("en")).toBe(
+      "news_lang=en; Path=/; Max-Age=31536000; SameSite=Lax"
+    );
+    expect(langCookieHeader("vi")).toContain("news_lang=vi;");
   });
 
   it("parses exact news_lang cookies and defaults safely", () => {

@@ -22,7 +22,18 @@ export const LANG_TOGGLE_DISABLED_PATHS = new Set([
   "/mail",
   "/privacy",
   "/terms",
+  "/sign-in",
+  "/sign-up",
 ]);
+
+export function isLangToggleDisabledPath(pathname: string): boolean {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  return (
+    LANG_TOGGLE_DISABLED_PATHS.has(path) ||
+    path.startsWith("/sign-in/") ||
+    path.startsWith("/sign-up/")
+  );
+}
 
 type LinkIcon = ComponentType<{
   className?: string;

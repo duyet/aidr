@@ -1,5 +1,6 @@
 import { Button } from "@aidr/ui";
 import { useEffect, useState } from "react";
+import { withLang } from "../../lib/locale-url";
 import type { Lang } from "../../lib/types";
 
 const DIGEST_SIZES = [3, 5, 10] as const;
@@ -148,7 +149,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
       <p className="mt-8 text-sm text-muted-foreground">
         {t("Optional: add an account later.", "Tuỳ chọn: thêm tài khoản sau.")}{" "}
         <a
-          href="/sign-up"
+          href={withLang("/sign-up", lang)}
           className="text-accent underline-offset-2 hover:underline"
         >
           {t("Create account", "Tạo tài khoản")}
@@ -156,7 +157,10 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
       </p>
       <p className="mt-4 text-xs">
         <a
-          href={`/subscribe?unsubscribe=${encodeURIComponent(token)}`}
+          href={withLang(
+            `/subscribe?unsubscribe=${encodeURIComponent(token)}`,
+            lang
+          )}
           className="text-muted-foreground underline-offset-2 hover:underline"
         >
           {t("Unsubscribe", "Hủy đăng ký")}

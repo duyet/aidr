@@ -161,11 +161,19 @@ function ChangelogPage(): ReactElement {
         <p className="mt-2 text-sm text-muted-foreground">
           {vi ? (
             <>
-              Hướng dẫn cài đặt tại <Link to="/subscribe">/subscribe</Link>.
+              Hướng dẫn cài đặt tại{" "}
+              <Link to="/subscribe" search={{ lang }}>
+                /subscribe
+              </Link>
+              .
             </>
           ) : (
             <>
-              Install guide at <Link to="/subscribe">/subscribe</Link>.
+              Install guide at{" "}
+              <Link to="/subscribe" search={{ lang }}>
+                /subscribe
+              </Link>
+              .
             </>
           )}
         </p>
