@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { localizedTitle } from "./display-title";
 import { publisherHost } from "./publisher-host";
+import { readRasterContainer, type StoryOgMime } from "./story-og-image";
 import { sanitizeImageUrl } from "./tldr-images";
 import { categoryColor } from "./topic-color";
 import type { FeedItem, Lang } from "./types";
@@ -10,12 +11,52 @@ export const STORY_OG_HEIGHT = 630;
 
 /** Keep a single remote thumbnail small enough for a social-card request. */
 export const MAX_STORY_OG_IMAGE_BYTES = 1_000_000;
+export {
+  MAX_STORY_OG_IMAGE_PIXELS,
+  MAX_STORY_OG_IMAGE_SIDE,
+  type RasterContainer,
+  readRasterContainer,
+} from "./story-og-image";
+
 const MAX_STORY_IMAGE_URL_LENGTH = 2048;
 const DEFAULT_STORY_IMAGE_TIMEOUT_MS = 2500;
 const MAX_STORY_IMAGE_TIMEOUT_MS = 5000;
+export const MIN_STORY_IMAGE_TIMEOUT_MS = 50;
 const MAX_TITLE_LENGTH = 280;
 const MAX_HOST_LENGTH = 90;
 const MAX_CATEGORY_LENGTH = 48;
+
+/** Hard cap on rendered title lines. Satori only honours the clamp below when
+ * `textOverflow: "ellipsis"` is present alongside it, so the two must stay
+ * together — see `src/text/processor.ts` in satori. */
+const TITLE_LINE_CLAMP = 4;
+const TITLE_FONT_SIZE = 52;
+const TITLE_LINE_HEIGHT = 1.12;
+
+/** Card chrome, in pixels, so the title band can be proved collision-free. */
+const CARD_PADDING_TOP = 44;
+const CARD_PADDING_X = 56;
+const HEADER_BLOCK = 52 + 20 + 3; // mark + padding-bottom + rule
+const FOOTER_MIN_HEIGHT = 76;
+const FOOTER_PADDING_BOTTOM = 22;
+const FOOTER_BLOCK = FOOTER_MIN_HEIGHT + FOOTER_PADDING_BOTTOM;
+const CARD_RULE = 10;
+const TITLE_COLUMN_WIDTH = 650;
+const TITLE_COLUMN_GAP = 38;
+const IMAGE_PANEL = 360;
+
+/** Vertical space between the header rule and the footer row. */
+export const STORY_OG_TITLE_BAND_TOP = CARD_PADDING_TOP + HEADER_BLOCK;
+export const STORY_OG_TITLE_BAND_HEIGHT =
+  STORY_OG_HEIGHT - CARD_PADDING_TOP - HEADER_BLOCK - FOOTER_BLOCK - CARD_RULE;
+/** Maximum height the clamped headline may occupy. */
+export const STORY_OG_TITLE_MAX_HEIGHT = Math.ceil(
+  TITLE_LINE_CLAMP * TITLE_FONT_SIZE * TITLE_LINE_HEIGHT
+);
+/** Left/right inset the card reserves for its chrome. */
+export const STORY_OG_CONTENT_INSET_X = CARD_PADDING_X;
+/** The headline column ends before the image panel starts. */
+export const STORY_OG_TITLE_COLUMN_RIGHT = CARD_PADDING_X + TITLE_COLUMN_WIDTH;
 
 const PAPER = "#f7f7f5";
 const INK = "#0a0a0a";
@@ -38,11 +79,7 @@ const STORY_OG_CATEGORY_LABELS_VI: Record<string, string> = {
   research: "Nghiên cứu",
 };
 
-export type StoryOgMime =
-  | "image/png"
-  | "image/jpeg"
-  | "image/gif"
-  | "image/webp";
+export type { StoryOgMime };
 
 export interface StoryOgImage {
   /** A data URI, never the publisher URL or its query string. */
@@ -98,6 +135,17 @@ function isPrivateIpv4(host: string): boolean {
 }
 
 /**
+ * Canonicalize a hostname for blocklist matching. A fully-qualified name may
+ * carry a root label — `localhost.`, `metadata.google.internal.`, `foo..` — and
+ * `URL` preserves that trailing dot verbatim. Comparing the raw hostname
+ * against `localhost` / `.internal` style rules would miss every one of them,
+ * so strip all trailing dots before any suffix test.
+ */
+function normalizeHostname(rawHostname: string): string {
+  return rawHostname.toLowerCase().replace(/\.+$/, "");
+}
+
+/**
  * Validate the URL before handing it to a Worker fetch. This is a first
  * boundary check (not DNS resolution): obvious loopback, link-local,
  * private, credential-bearing, and non-HTTP URLs are rejected before any
@@ -121,7 +169,7 @@ export function isSafeStoryImageUrl(
   if (parsed.port && parsed.port !== "80" && parsed.port !== "443")
     return false;
 
-  const host = parsed.hostname.toLowerCase();
+  const host = normalizeHostname(parsed.hostname);
   if (
     host === "localhost" ||
     host.endsWith(".localhost") ||
@@ -138,53 +186,6 @@ export function isSafeStoryImageUrl(
   return host.length > 0 && host.length <= 253;
 }
 
-function imageMime(bytes: Uint8Array): StoryOgMime | null {
-  if (
-    bytes.length >= 8 &&
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47 &&
-    bytes[4] === 0x0d &&
-    bytes[5] === 0x0a &&
-    bytes[6] === 0x1a &&
-    bytes[7] === 0x0a
-  ) {
-    return "image/png";
-  }
-  if (
-    bytes.length >= 3 &&
-    bytes[0] === 0xff &&
-    bytes[1] === 0xd8 &&
-    bytes[2] === 0xff
-  ) {
-    return "image/jpeg";
-  }
-  if (
-    bytes.length >= 6 &&
-    bytes[0] === 0x47 &&
-    bytes[1] === 0x49 &&
-    bytes[2] === 0x46 &&
-    bytes[3] === 0x38
-  ) {
-    return "image/gif";
-  }
-  if (
-    bytes.length >= 12 &&
-    bytes[0] === 0x52 &&
-    bytes[1] === 0x49 &&
-    bytes[2] === 0x46 &&
-    bytes[3] === 0x46 &&
-    bytes[8] === 0x57 &&
-    bytes[9] === 0x45 &&
-    bytes[10] === 0x42 &&
-    bytes[11] === 0x50
-  ) {
-    return "image/webp";
-  }
-  return null;
-}
-
 function encodeBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunkSize = 0x8000;
@@ -196,12 +197,19 @@ function encodeBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+/**
+ * Accept a payload only when its container is a supported raster, is
+ * structurally complete (not truncated or garbage-tailed), and declares
+ * dimensions inside the bounded pixel ceiling. The byte ceiling is unchanged:
+ * a small file that claims huge dimensions is rejected, not tolerated.
+ */
 export function storyOgImageFromBytes(bytes: Uint8Array): StoryOgImage | null {
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_STORY_OG_IMAGE_BYTES) {
     return null;
   }
-  const mimeType = imageMime(bytes);
-  if (!mimeType) return null;
+  const container = readRasterContainer(bytes);
+  if (!container) return null;
+  const mimeType = container.mimeType;
   return {
     dataUri: `data:${mimeType};base64,${encodeBase64(bytes)}`,
     mimeType,
@@ -352,8 +360,8 @@ function imagePanel(image: StoryOgImage | null, lang: Lang): ReactElement {
   const panelStyle = {
     display: "flex" as const,
     position: "relative" as const,
-    width: "360px",
-    height: "360px",
+    width: `${IMAGE_PANEL}px`,
+    height: `${IMAGE_PANEL}px`,
     overflow: "hidden",
     borderRadius: "28px",
     border: `1px solid ${HAIRLINE}`,
@@ -521,7 +529,7 @@ export function storyOgCard(
         height: `${STORY_OG_HEIGHT}px`,
         backgroundColor: PAPER,
         color: INK,
-        padding: "44px 56px 0",
+        padding: `${CARD_PADDING_TOP}px ${CARD_PADDING_X}px 0`,
         fontFamily: "EB Garamond",
       }}
     >
@@ -560,20 +568,27 @@ export function storyOgCard(
           display: "flex",
           flex: 1,
           alignItems: "center",
-          gap: "38px",
+          gap: `${TITLE_COLUMN_GAP}px`,
           padding: "22px 0 20px",
         }}
       >
         <div
           style={{
-            width: "650px",
-            fontSize: "52px",
+            width: `${TITLE_COLUMN_WIDTH}px`,
+            fontSize: `${TITLE_FONT_SIZE}px`,
             fontWeight: 500,
-            lineHeight: 1.12,
+            lineHeight: TITLE_LINE_HEIGHT,
             wordBreak: "break-word",
             display: "-webkit-box",
             WebkitBoxOrient: "vertical",
-            WebkitLineClamp: 4,
+            WebkitLineClamp: TITLE_LINE_CLAMP,
+            // Satori only applies the line clamp when `textOverflow` is
+            // explicitly "ellipsis"; without it the box grows to Infinity and
+            // the headline paints over the wordmark and the footer.
+            textOverflow: "ellipsis",
+            // Structural backstop so the headline can never outgrow the band
+            // even if the clamp above is ever dropped.
+            maxHeight: `${STORY_OG_TITLE_MAX_HEIGHT}px`,
             overflow: "hidden",
           }}
         >
@@ -587,8 +602,8 @@ export function storyOgCard(
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          minHeight: "76px",
-          padding: "0 0 22px",
+          minHeight: `${FOOTER_MIN_HEIGHT}px`,
+          padding: `0 0 ${FOOTER_PADDING_BOTTOM}px`,
           fontSize: "23px",
           color: MUTED,
         }}
@@ -598,9 +613,12 @@ export function storyOgCard(
             display: "flex",
             alignItems: "center",
             gap: "16px",
-            maxWidth: "650px",
+            maxWidth: `${TITLE_COLUMN_WIDTH}px`,
             overflow: "hidden",
             whiteSpace: "nowrap",
+            // A 90-char host must degrade to an ellipsis instead of being
+            // hard-clipped under the engagement counters.
+            textOverflow: "ellipsis",
           }}
         >
           <span>{copy.host}</span>
@@ -627,7 +645,7 @@ export function storyOgCard(
           </span>
         </div>
       </div>
-      <div style={{ height: "10px", backgroundColor: YELLOW }} />
+      <div style={{ height: `${CARD_RULE}px`, backgroundColor: YELLOW }} />
     </div>
   );
 }

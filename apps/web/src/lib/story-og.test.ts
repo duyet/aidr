@@ -1,9 +1,24 @@
+import { readFile } from "node:fs/promises";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import {
+  gifBytes,
+  jpegBytes,
+  PNG_SIGNATURE,
+  pngBytes,
+  pngHeaderOnly,
+  webpBytes,
+} from "./__fixtures__/raster";
 import {
   fetchStoryOgImage,
   isSafeStoryImageUrl,
   MAX_STORY_OG_IMAGE_BYTES,
+  MAX_STORY_OG_IMAGE_PIXELS,
+  MAX_STORY_OG_IMAGE_SIDE,
+  MIN_STORY_IMAGE_TIMEOUT_MS,
+  STORY_OG_TITLE_BAND_HEIGHT,
+  STORY_OG_TITLE_BAND_TOP,
+  STORY_OG_TITLE_MAX_HEIGHT,
   storyOgCard,
   storyOgCopy,
   storyOgImageFromBytes,
@@ -11,9 +26,8 @@ import {
 } from "./story-og";
 import type { FeedItem } from "./types";
 
-const PNG_BYTES = new Uint8Array([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00,
-]);
+/** A real, structurally complete 8x8 PNG. */
+const PNG_BYTES = pngBytes(8, 8);
 
 function item(overrides: Partial<FeedItem> = {}): FeedItem {
   return {
@@ -65,10 +79,115 @@ describe("story OG image URL boundary", () => {
     }
   });
 
+  it("normalizes a trailing root label before the blocklist runs", () => {
+    // `URL` keeps the trailing dot, so every one of these resolves to
+    // `localhost.` / `metadata.google.internal.` / `cdn.internal.` and would
+    // slip past a naive `host === "localhost"` comparison.
+    for (const url of [
+      "https://localhost./photo.png",
+      "https://LOCALHOST./photo.png",
+      "https://metadata.google.internal./latest/meta-data",
+      "https://cdn.internal./photo.png",
+      "https://metadata.google.internal../photo.png",
+      "https://foo.local./photo.png",
+      "https://db.localhost./photo.png",
+      "https://printer.local./photo.png",
+    ]) {
+      expect(isSafeStoryImageUrl(url), url).toBe(false);
+    }
+  });
+
+  it("still accepts public hosts after trailing-dot normalization", () => {
+    // A root label on an otherwise public host stays allowed.
+    expect(isSafeStoryImageUrl("https://cdn.example.com./photo.png")).toBe(
+      true
+    );
+    expect(
+      isSafeStoryImageUrl("https://notlocalhost.example.com/photo.png")
+    ).toBe(true);
+    // `localhost` as a label, not as the whole name.
+    expect(isSafeStoryImageUrl("https://localhost.example.com/a.png")).toBe(
+      true
+    );
+  });
+
   it("bounds URL length before fetching", () => {
     expect(
       isSafeStoryImageUrl(`https://cdn.example.com/${"a".repeat(2100)}.png`)
     ).toBe(false);
+  });
+});
+
+describe("story OG image payload boundary", () => {
+  it("accepts every supported raster container", () => {
+    for (const [bytes, mime] of [
+      [pngBytes(64, 48), "image/png"],
+      [jpegBytes(320, 200), "image/jpeg"],
+      [gifBytes(32, 32), "image/gif"],
+      [webpBytes(300, 200), "image/webp"],
+    ] as const) {
+      const image = storyOgImageFromBytes(bytes);
+      expect(image?.mimeType, mime).toBe(mime);
+      expect(image?.dataUri).toMatch(
+        new RegExp(`^data:${mime.replace("/", "\\/")};base64,`)
+      );
+    }
+  });
+
+  it("rejects a small file that declares an excessive canvas", () => {
+    // 33 bytes, 30000x30000: inside the byte ceiling, catastrophic for the
+    // renderer. The ceiling has to come from the container header.
+    const bomb = pngHeaderOnly(30_000, 30_000);
+    expect(bomb.byteLength).toBeLessThan(MAX_STORY_OG_IMAGE_BYTES);
+    expect(storyOgImageFromBytes(bomb)).toBeNull();
+  });
+
+  it("rejects canvases over the side and total pixel ceilings", () => {
+    expect(
+      storyOgImageFromBytes(pngHeaderOnly(MAX_STORY_OG_IMAGE_SIDE + 1, 4))
+    ).toBeNull();
+    expect(
+      storyOgImageFromBytes(pngHeaderOnly(4, MAX_STORY_OG_IMAGE_SIDE + 1))
+    ).toBeNull();
+    const side = Math.floor(Math.sqrt(MAX_STORY_OG_IMAGE_PIXELS)) + 1;
+    expect(side).toBeLessThan(MAX_STORY_OG_IMAGE_SIDE);
+    expect(storyOgImageFromBytes(pngHeaderOnly(side, side))).toBeNull();
+  });
+
+  it("rejects truncated and garbage-tailed payloads so the fallback is used", () => {
+    // Header-valid, garbage tail: this used to render as an empty gray panel.
+    expect(storyOgImageFromBytes(Uint8Array.from(PNG_SIGNATURE))).toBeNull();
+    const truncated = PNG_BYTES.subarray(0, PNG_BYTES.byteLength - 20);
+    expect(storyOgImageFromBytes(truncated)).toBeNull();
+    const padded = new Uint8Array(PNG_BYTES.byteLength + 32);
+    padded.set(PNG_BYTES, 0);
+    expect(storyOgImageFromBytes(padded)).toBeNull();
+    const gif = gifBytes(16, 16);
+    expect(
+      storyOgImageFromBytes(gif.subarray(0, gif.byteLength - 1))
+    ).toBeNull();
+  });
+
+  it("rejects a real repository image that is truncated mid-stream", async () => {
+    const png = new Uint8Array(await readFile("public/logo.png"));
+    expect(storyOgImageFromBytes(png)).not.toBeNull();
+    for (const keep of [0.25, 0.5, 0.75]) {
+      const cut = png.subarray(0, Math.floor(png.byteLength * keep));
+      expect(storyOgImageFromBytes(cut), `keep=${keep}`).toBeNull();
+    }
+  });
+
+  it("keeps the byte ceiling unchanged", () => {
+    expect(MAX_STORY_OG_IMAGE_BYTES).toBe(1_000_000);
+    expect(
+      storyOgImageFromBytes(new Uint8Array(MAX_STORY_OG_IMAGE_BYTES + 1))
+    ).toBeNull();
+  });
+
+  it("never leaks the source URL or query into the inlined data", () => {
+    const image = storyOgImageFromBytes(PNG_BYTES);
+    expect(image?.dataUri).not.toContain("cdn.example.com");
+    expect(image?.dataUri).not.toContain("secret");
   });
 });
 
@@ -143,6 +262,79 @@ describe("fetchStoryOgImage", () => {
       })
     ).resolves.toBeNull();
   });
+
+  it("rejects a header-valid but truncated body over the wire", async () => {
+    await expect(
+      fetchStoryOgImage("https://cdn.example.com/photo.png", {
+        fetcher: async () =>
+          new Response(PNG_BYTES.subarray(0, 30), {
+            headers: { "content-type": "image/png" },
+          }),
+      })
+    ).resolves.toBeNull();
+  });
+
+  it("rejects a small body that declares an excessive canvas", async () => {
+    await expect(
+      fetchStoryOgImage("https://cdn.example.com/photo.png", {
+        fetcher: async () =>
+          new Response(pngHeaderOnly(30_000, 30_000), {
+            headers: { "content-type": "image/png" },
+          }),
+      })
+    ).resolves.toBeNull();
+  });
+
+  it("clamps the abort timeout into the supported window", async () => {
+    vi.useFakeTimers();
+    try {
+      // A fetcher that only ever settles via its abort signal.
+      const hanging = async (_input: unknown, init?: RequestInit) => {
+        const signal = init?.signal;
+        if (!signal) throw new Error("expected an abort signal");
+        return new Promise<Response>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("aborted")));
+        });
+      };
+
+      const low = fetchStoryOgImage("https://cdn.example.com/photo.png", {
+        fetcher: hanging as unknown as typeof fetch,
+        timeoutMs: 1,
+      });
+      // 1ms is below the floor, so the abort must not fire before the floor.
+      await vi.advanceTimersByTimeAsync(MIN_STORY_IMAGE_TIMEOUT_MS - 1);
+      expect(await Promise.race([low, Promise.resolve("pending")])).toBe(
+        "pending"
+      );
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(low).resolves.toBeNull();
+
+      // 60s is above the ceiling, so the abort must fire at the ceiling.
+      const high = fetchStoryOgImage("https://cdn.example.com/photo.png", {
+        fetcher: hanging as unknown as typeof fetch,
+        timeoutMs: 60_000,
+      });
+      await vi.advanceTimersByTimeAsync(4_999);
+      expect(await Promise.race([high, Promise.resolve("pending")])).toBe(
+        "pending"
+      );
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(high).resolves.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never issues a request for an unsafe URL", async () => {
+    let called = false;
+    await fetchStoryOgImage("https://localhost./photo.png", {
+      fetcher: async () => {
+        called = true;
+        return new Response(PNG_BYTES);
+      },
+    });
+    expect(called).toBe(false);
+  });
 });
 
 describe("story OG copy and renderer", () => {
@@ -181,6 +373,16 @@ describe("story OG copy and renderer", () => {
     expect(first).not.toContain("secret");
   });
 
+  it("uses the branded fallback when a payload would have rendered blank", () => {
+    // A truncated body is a miss, so the card must fall back rather than ship
+    // an empty gray photo panel.
+    const truncated = PNG_BYTES.subarray(0, PNG_BYTES.byteLength - 20);
+    expect(storyOgImageFromBytes(truncated)).toBeNull();
+    const html = renderToStaticMarkup(storyOgCard(item(), null, "en"));
+    expect(html).not.toContain("<img");
+    expect(html).toContain("AI NEWS");
+  });
+
   it("only treats an exact vi query as Vietnamese and bounds invalid metrics", () => {
     expect(storyOgLanguage("vi")).toBe("vi");
     expect(storyOgLanguage("en")).toBe("en");
@@ -192,5 +394,22 @@ describe("story OG copy and renderer", () => {
     expect(copy.title.length).toBeLessThanOrEqual(280);
     expect(copy.points).toBe("0");
     expect(copy.comments).toBe("0");
+  });
+
+  it("carries the ellipsis clamp that bounds the headline", () => {
+    const html = renderToStaticMarkup(storyOgCard(item(), null, "en"));
+    expect(html).toContain("text-overflow:ellipsis");
+    // The clamp and the ellipsis must stay together: without the ellipsis
+    // satori ignores the line clamp entirely.
+    expect(html).toContain("-webkit-line-clamp:4");
+    expect(html).toContain("-webkit-box-orient:vertical");
+    expect(html).toContain(`max-height:${STORY_OG_TITLE_MAX_HEIGHT}px`);
+  });
+
+  it("reserves a title band larger than the clamped headline", () => {
+    expect(STORY_OG_TITLE_MAX_HEIGHT).toBeLessThanOrEqual(
+      STORY_OG_TITLE_BAND_HEIGHT
+    );
+    expect(STORY_OG_TITLE_BAND_TOP).toBeGreaterThan(0);
   });
 });

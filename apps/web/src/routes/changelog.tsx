@@ -17,8 +17,8 @@ const WEBSITE_ENTRIES: ChangelogEntry[] = [
   },
   {
     date: "2026-09",
-    en: "Story links share a branded AI;DR card with a story photo when available — and a clean fallback when a source image is missing. The homepage has its own masthead card.",
-    vi: "Link tin chia sẻ kèm thẻ AI;DR có ảnh minh hoạ khi có — và bố cục dự phòng gọn khi ảnh nguồn không tồn tại. Trang chủ có thẻ masthead riêng.",
+    en: "Story links share a branded AI;DR card with a story photo when available — and a clean fallback when a source image is missing, broken, or too large. Long headlines stay inside the card instead of running over the logo. The homepage has its own masthead card.",
+    vi: "Link tin chia sẻ kèm thẻ AI;DR có ảnh minh hoạ khi có — và bố cục dự phòng gọn khi ảnh nguồn không tồn tại, hỏng, hoặc quá lớn. Tiêu đề dài vẫn nằm gọn trong thẻ thay vì đè lên logo. Trang chủ có thẻ masthead riêng.",
   },
   {
     date: "2026-09",
