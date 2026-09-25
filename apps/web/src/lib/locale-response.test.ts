@@ -30,6 +30,32 @@ describe("normalizeLocaleRequest", () => {
     expect(response?.headers.get("Vary")).toContain("Accept-Language");
   });
 
+  it("persists an explicit locale when canonicalizing a neutral URL", () => {
+    const response = normalizeLocaleRequest(
+      new Request("https://aidr.today/about?lang=en"),
+      { format: "html", neutralPath: true }
+    );
+    expect(response?.status).toBe(307);
+    expect(response?.headers.get("Set-Cookie")).toContain("news_lang=en;");
+    expect(response?.headers.get("Cache-Control")).toBe(
+      LOCALE_PRIVATE_CACHE_CONTROL
+    );
+  });
+
+  it("can canonicalize a legacy alias while changing compatibility paths", () => {
+    const response = normalizeLocaleRequest(
+      new Request("https://aidr.today/extension?locale=en&utm_source=chrome"),
+      { format: "html", redirectPath: "/subscribe" }
+    );
+    expect(response?.status).toBe(307);
+    expect(response?.headers.get("Location")).toBe(
+      "https://aidr.today/subscribe?utm_source=chrome&lang=en"
+    );
+    expect(response?.headers.get("Cache-Control")).toBe(
+      LOCALE_PRIVATE_CACHE_CONTROL
+    );
+  });
+
   it("rejects repeated, conflicting, and invalid values", () => {
     for (const search of [
       "?lang=en&lang=vi",
@@ -82,6 +108,24 @@ describe("withSsrLocaleResponse", () => {
     expect(response.headers.get("Vary")).toBe("Cookie, Accept-Language");
   });
 
+  it("keeps authenticated child routes private, English, and varied", () => {
+    for (const path of [
+      "/sign-in/account?lang=vi",
+      "/sign-up/verify?lang=vi",
+    ]) {
+      const response = withSsrLocaleResponse(
+        new Request(`https://aidr.today${path}`),
+        html()
+      );
+      expect(response.headers.get("Content-Language")).toBe("en");
+      expect(response.headers.get("Cache-Control")).toBe(
+        LOCALE_PRIVATE_CACHE_CONTROL
+      );
+      expect(response.headers.get("Vary")).toBe("Cookie, Accept-Language");
+      expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+    }
+  });
+
   it("keeps tokenized subscribe and mail surfaces private", () => {
     for (const path of [
       "/subscribe?lang=en&unsubscribe=secret-token",
@@ -109,6 +153,17 @@ describe("withSsrLocaleResponse", () => {
       SSR_NEUTRAL_CACHE_CONTROL
     );
     expect(response.headers.get("Vary")).toBeNull();
+
+    const selected = withSsrLocaleResponse(
+      new Request("https://aidr.today/about", {
+        headers: { cookie: "news_lang=en" },
+      }),
+      html()
+    );
+    expect(selected.headers.get("Cache-Control")).toBe(
+      SSR_NEUTRAL_CACHE_CONTROL
+    );
+    expect(selected.headers.get("Vary")).toBe("Cookie, Accept-Language");
   });
 
   it.each(["/", "/changelog", "/mcp", "/submit", "/subscribe", "/abcdef12"])(

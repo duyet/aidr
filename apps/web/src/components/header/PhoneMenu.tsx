@@ -11,6 +11,7 @@ import {
   PHONE_MENU_LINK_CLASS,
   PHONE_TAP_TARGET_CLASS,
 } from "../../lib/chrome";
+import { useLang } from "../../lib/lang-context";
 import type { Lang } from "../../lib/types";
 import { LangToggle } from "../LangToggle";
 import { HeaderAuth } from "./HeaderAuth";
@@ -58,6 +59,7 @@ export function PhoneMenu({
   langToggleDisabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const navigationLang = useLang();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -138,6 +140,7 @@ export function PhoneMenu({
                 <Link
                   key={link.href}
                   to={link.href}
+                  search={{ lang: navigationLang }}
                   aria-current={active ? "page" : undefined}
                   onClick={() => {
                     track("nav_click", { to: link.href });

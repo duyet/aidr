@@ -3,6 +3,8 @@ import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { type ClerkModule, useClerkModule } from "../../lib/clerk-user";
+import { useLang } from "../../lib/lang-context";
+import { withLang } from "../../lib/locale-url";
 
 /**
  * Always-visible "Sign in": a plain /sign-in link that renders immediately —
@@ -19,6 +21,7 @@ export function HeaderAuth({
   stacked?: boolean;
   onSignIn?: () => void;
 }) {
+  const navigationLang = useLang();
   const { mod } = useClerkModule();
   const signIn = (
     <Button
@@ -29,6 +32,8 @@ export function HeaderAuth({
     >
       <Link
         to="/sign-in/$"
+        params={{ _splat: "" }}
+        search={{ lang: navigationLang }}
         onClick={() => {
           track("nav_click", { to: "/sign-in" });
           onSignIn?.();
@@ -53,12 +58,13 @@ function SignedInAvatar({
   avatarSize: string;
   fallback: ReactNode;
 }) {
+  const navigationLang = useLang();
   const { isLoaded, isSignedIn } = mod.useAuth();
   if (!isLoaded || !isSignedIn) return fallback;
   return (
     <mod.UserButton
       appearance={{ elements: { avatarBox: avatarSize } }}
-      signInUrl="/sign-in"
+      signInUrl={withLang("/sign-in", navigationLang)}
     />
   );
 }

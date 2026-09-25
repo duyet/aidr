@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { anyrouterModelUrl } from "../lib/anyrouter";
+import { useLang } from "../lib/lang-context";
 import { pageHead } from "../lib/seo";
 import { GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
 import { fetchSourceNames } from "../lib/sources-fn";
@@ -221,6 +222,7 @@ function ModelsLine() {
 function AboutPage() {
   // English-only by design: the global lang toggle is disabled on this
   // route (see HeaderBar/LangToggle).
+  const navigationLang = useLang();
   const t = (en: string, _vi: string) => en;
 
   return (
@@ -260,6 +262,7 @@ function AboutPage() {
           {t("API at", "API tại")}{" "}
           <Link
             to="/mcp"
+            search={{ lang: navigationLang }}
             className="text-accent underline underline-offset-2 hover:no-underline"
           >
             /mcp

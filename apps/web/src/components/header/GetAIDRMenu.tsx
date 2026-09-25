@@ -21,9 +21,11 @@ import {
   PHONE_DROPDOWN_ITEM_CLASS,
   PHONE_GET_AIDR_TRIGGER_CLASS,
 } from "../../lib/chrome";
+import { useLang } from "../../lib/lang-context";
 import { EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
 
 export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
+  const navigationLang = useLang();
   const itemClassName = compact ? PHONE_DROPDOWN_ITEM_CLASS : undefined;
 
   return (
@@ -55,6 +57,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
         <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to={EXTENSION_PATH}
+            search={{ lang: navigationLang }}
             onClick={() => track("nav_click", { to: EXTENSION_PATH })}
           >
             <RiChromeLine aria-hidden />
@@ -75,7 +78,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
         <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to="/subscribe"
-            search={{ tab: "email" }}
+            search={{ tab: "email", lang: navigationLang }}
             onClick={() => track("nav_click", { to: "/subscribe?tab=email" })}
           >
             <Mail aria-hidden />
@@ -86,6 +89,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
         <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to="/submit"
+            search={{ lang: navigationLang }}
             onClick={() => track("nav_click", { to: "/submit" })}
           >
             <Plus aria-hidden />

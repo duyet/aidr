@@ -25,14 +25,28 @@ vi.mock("@tanstack/react-router", async () => {
     Link: ({
       children,
       to,
-      search: _search,
+      search,
+      params: _params,
       ...props
     }: {
       children?: React.ReactNode;
       to?: string;
-      search?: unknown;
+      search?: Record<string, string>;
       [key: string]: unknown;
-    }) => React.createElement("a", { ...props, href: to ?? "#" }, children),
+    }) => {
+      const url = new URL((to ?? "#").replace(/\/\$$/, ""), "http://localhost");
+      for (const [key, value] of Object.entries(search ?? {})) {
+        url.searchParams.set(key, value);
+      }
+      return React.createElement(
+        "a",
+        {
+          ...props,
+          href: `${url.pathname}${url.search}${url.hash}`,
+        },
+        children
+      );
+    },
     useRouterState: ({
       select,
     }: {
@@ -122,11 +136,12 @@ describe("PhoneMenu modal behavior", () => {
     });
     expect(navigation.className).toContain("grid-cols-1");
     expect(navigation.className).toContain("min-[600px]:grid-cols-2");
+    const newsLink = within(navigation).getByRole("link", { name: "News" });
+    expect(newsLink.getAttribute("aria-current")).toBe("page");
+    expect(newsLink.getAttribute("href")).toBe("/?lang=en");
     expect(
-      within(navigation)
-        .getByRole("link", { name: "News" })
-        .getAttribute("aria-current")
-    ).toBe("page");
+      within(dialog).getByRole("link", { name: "Sign in" }).getAttribute("href")
+    ).toBe("/sign-in?lang=en");
   });
 
   it("wraps Tab and Shift+Tab inside the dialog", async () => {

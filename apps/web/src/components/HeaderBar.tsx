@@ -1,7 +1,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import type { Lang } from "../lib/types";
 import { CompactHeaderRow } from "./header/CompactRow";
-import { LANG_TOGGLE_DISABLED_PATHS } from "./header/lib";
+import { isLangToggleDisabledPath } from "./header/lib";
 import { WideHeaderRow } from "./header/WideRow";
 
 export function HeaderBar({
@@ -12,7 +12,7 @@ export function HeaderBar({
   onLangChange: (lang: Lang) => void;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const langToggleDisabled = LANG_TOGGLE_DISABLED_PATHS.has(pathname);
+  const langToggleDisabled = isLangToggleDisabledPath(pathname);
   const searchPlaceholder = lang === "vi" ? "Tìm kiếm..." : "Search AI news...";
 
   return (

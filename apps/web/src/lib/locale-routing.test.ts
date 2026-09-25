@@ -34,12 +34,17 @@ describe("root locale search", () => {
 
   it("classifies neutral and tokenized private SSR paths", () => {
     expect(isLanguageNeutralSsrPath("/about/")).toBe(true);
+    expect(isLanguageNeutralSsrPath("/sign-in")).toBe(true);
+    expect(isLanguageNeutralSsrPath("/sign-in/account")).toBe(true);
+    expect(isLanguageNeutralSsrPath("/sign-up/verify")).toBe(true);
     expect(isLanguageNeutralSsrPath("/mcp")).toBe(false);
     expect(isPrivateSsrPath("/subscribe", "?lang=en&settings=secret")).toBe(
       true
     );
     expect(isPrivateSsrPath("/subscribe", "?lang=en")).toBe(false);
     expect(isPrivateSsrPath("/mail")).toBe(true);
+    expect(isPrivateSsrPath("/sign-in/account")).toBe(true);
+    expect(isPrivateSsrPath("/sign-up/verify")).toBe(true);
   });
 
   it("preserves an explicit locale when child navigation replaces search", () => {
@@ -47,6 +52,7 @@ describe("root locale search", () => {
       locale: "en",
       lang: "en",
     });
+    expect(preserveRootLang({ lang: "en" }, {})).toEqual({ lang: "en" });
     expect(preserveRootLang({ lang: "en" }, { lang: "vi" })).toEqual({
       lang: "vi",
     });

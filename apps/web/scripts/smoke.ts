@@ -350,6 +350,29 @@ async function main() {
     );
   });
 
+  await check(
+    "GET /extension?lang=en uses a private temporary locale redirect",
+    async () => {
+      const res = await fetch(`${base}/extension?lang=en`, {
+        redirect: "manual",
+      });
+      assert(
+        res.status === 307,
+        `expected 307 locale redirect, got ${res.status}`
+      );
+      assert(
+        res.headers.get("cache-control") === "private, no-store",
+        "locale redirect must not be publicly cacheable"
+      );
+      assert(
+        new URL(res.headers.get("location") ?? "", base).searchParams.get(
+          "lang"
+        ) === "en",
+        "locale redirect must preserve lang"
+      );
+    }
+  );
+
   await check("GET /__clerk/v1/environment -> 200 JSON", async () => {
     const res = await fetch(`${base}/__clerk/v1/environment`);
     assert(res.status === 200, `expected 200, got ${res.status}`);

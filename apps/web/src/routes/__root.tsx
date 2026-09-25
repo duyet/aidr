@@ -24,6 +24,7 @@ import { LangContext } from "../lib/lang-context";
 import {
   InvalidLocaleRequestError,
   isLanguageNeutralSsrPath,
+  isPrivateSsrPath,
   preserveRootLang,
   validateRootSearch,
 } from "../lib/locale-routing";
@@ -57,16 +58,24 @@ export const Route = createRootRoute({
     const resolution = await loadRequestLocale(location.searchStr);
     if (!resolution.ok) throw new InvalidLocaleRequestError(resolution);
 
-    if (isLanguageNeutralSsrPath(location.pathname)) {
+    const neutral = isLanguageNeutralSsrPath(location.pathname);
+    const privateRoute = isPrivateSsrPath(
+      location.pathname,
+      location.searchStr
+    );
+    if (neutral && !privateRoute) {
       if (hasLocaleQuery(location.searchStr)) {
         const href = neutralLocaleRedirect(
           location.pathname,
           location.searchStr,
           location.hash
         );
-        if (href) throw redirect({ href, statusCode: 307 });
+        if (href) {
+          if (resolution.explicit) setClientLang(resolution.lang);
+          throw redirect({ href, statusCode: 307 });
+        }
       }
-      return { lang: "en" as const };
+      return { lang: "en" as const, navigationLang: resolution.lang };
     }
 
     if (resolution.legacy) {
@@ -78,7 +87,10 @@ export const Route = createRootRoute({
       );
       if (href) throw redirect({ href, statusCode: 307 });
     }
-    return { lang: resolution.lang };
+    return {
+      lang: neutral ? ("en" as const) : resolution.lang,
+      navigationLang: resolution.lang,
+    };
   },
   head: ({ matches }) => {
     const notFoundOwnsTitle = splatOwnsDocumentTitle(
@@ -135,6 +147,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   const routeContext = Route.useRouteContext();
   const [lang, setLang] = useState<Lang>(routeContext.lang);
+  const navigationLang = routeContext.navigationLang ?? routeContext.lang;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -179,7 +192,7 @@ function RootComponent() {
         <HeadContent />
       </head>
       <body>
-        <LangContext.Provider value={lang}>
+        <LangContext.Provider value={navigationLang}>
           <PrefsContext.Provider value={{ prefs, setPrefs }}>
             <ThemeProvider>
               <ClerkRootProvider>

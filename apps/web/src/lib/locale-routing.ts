@@ -50,9 +50,9 @@ const NEUTRAL_SSR_PATHS = new Set([
   "/mail",
   "/privacy",
   "/terms",
-  "/sign-in",
-  "/sign-up",
 ]);
+
+const PRIVATE_NEUTRAL_SSR_PREFIXES = ["/sign-in", "/sign-up"];
 
 const LOCALIZED_SSR_PATHS = new Set([
   "/",
@@ -67,14 +67,27 @@ function normalizedPath(pathname: string): string {
   return pathname.replace(/\/+$/, "") || "/";
 }
 
+function isPathOrChild(pathname: string, root: string): boolean {
+  return pathname === root || pathname.startsWith(`${root}/`);
+}
+
 export function isLanguageNeutralSsrPath(pathname: string): boolean {
-  return NEUTRAL_SSR_PATHS.has(normalizedPath(pathname));
+  const path = normalizedPath(pathname);
+  return (
+    NEUTRAL_SSR_PATHS.has(path) ||
+    PRIVATE_NEUTRAL_SSR_PREFIXES.some((root) => isPathOrChild(path, root))
+  );
 }
 
 /** User-specific/authenticated surfaces must never become edge-cacheable. */
 export function isPrivateSsrPath(pathname: string, search = ""): boolean {
   const path = normalizedPath(pathname);
-  if (path === "/mail") return true;
+  if (
+    path === "/mail" ||
+    PRIVATE_NEUTRAL_SSR_PREFIXES.some((root) => isPathOrChild(path, root))
+  ) {
+    return true;
+  }
   if (path === "/subscribe") {
     const params = new URLSearchParams(
       search.startsWith("?") ? search.slice(1) : search
