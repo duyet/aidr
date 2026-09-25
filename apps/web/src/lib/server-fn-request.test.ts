@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasServerFnId,
   hasServerFnMarker,
   isServerFnPath,
   isServerFnRequest,
@@ -23,6 +24,22 @@ describe("isServerFnPath", () => {
     // A prefix that is not a path boundary is not the transport path.
     expect(isServerFnPath("/_serverFnx/submitStory")).toBe(false);
     expect(isServerFnPath("/api/public")).toBe(false);
+  });
+});
+
+describe("hasServerFnId", () => {
+  it("accepts one non-empty function id segment", () => {
+    expect(hasServerFnId("/_serverFn/98a5ddcb12725b5c")).toBe(true);
+    expect(hasServerFnId("/_serverFn/src_lib_submit-fn_ts--submitStory")).toBe(
+      true
+    );
+  });
+
+  it("rejects the bare base and nested or empty ids", () => {
+    expect(hasServerFnId("/_serverFn/")).toBe(false);
+    expect(hasServerFnId("/_serverFn//")).toBe(false);
+    expect(hasServerFnId("/_serverFn/abc/extra")).toBe(false);
+    expect(hasServerFnId("/_serverFnx/abc")).toBe(false);
   });
 });
 

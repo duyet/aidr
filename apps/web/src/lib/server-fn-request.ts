@@ -27,9 +27,9 @@ function serverFnBase(): string {
 }
 
 /**
- * True for any function id under the server-function base. Matches Start's own
- * `pathname.startsWith(SERVER_FN_BASE)` test, so the bare base (which Start
- * serves as an ordinary unknown route) keeps its document treatment here.
+ * True for the server-function transport prefix. Keep this broad so malformed
+ * calls stay on the RPC path long enough for the Worker to answer them with a
+ * bounded JSON error instead of letting a document route claim them.
  */
 export function isServerFnPath(pathname: string): boolean {
   return pathname.startsWith(serverFnBase());
@@ -37,6 +37,14 @@ export function isServerFnPath(pathname: string): boolean {
 
 export function isServerFnRequest(request: Request): boolean {
   return isServerFnPath(new URL(request.url).pathname);
+}
+
+/** A transport path must contain exactly one non-empty function id segment. */
+export function hasServerFnId(pathname: string): boolean {
+  const base = serverFnBase();
+  if (!pathname.startsWith(base)) return false;
+  const id = pathname.slice(base.length);
+  return id.length > 0 && !id.includes("/");
 }
 
 /**

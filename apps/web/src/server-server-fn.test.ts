@@ -79,6 +79,30 @@ describe("server-function transport path", () => {
     expect(handler.fetch).toHaveBeenCalledTimes(3);
   });
 
+  it("rejects malformed server-function paths as JSON 404", async () => {
+    for (const path of [
+      "https://aidr.today/_serverFn/",
+      "https://aidr.today/_serverFn//",
+      "https://aidr.today/_serverFn/abc/extra",
+    ]) {
+      const response = await call(
+        new Request(path, {
+          method: "POST",
+          headers: TSS_HEADERS,
+          body: "{}",
+        })
+      );
+      expect(response.status).toBe(404);
+      expect(response.headers.get("content-type")).toContain(
+        "application/json"
+      );
+      expect(await response.json()).toMatchObject({
+        error: "server_function_not_found",
+      });
+    }
+    expect(handler.fetch).not.toHaveBeenCalled();
+  });
+
   it("does not answer a server-function call with a redirect", async () => {
     vi.mocked(handler.fetch).mockImplementation(async () =>
       serialized('{"t":10,"i":0,"p":{}}')
@@ -191,6 +215,58 @@ describe("server-function transport path", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Location")).toBeNull();
     expect(handler.fetch).toHaveBeenCalledOnce();
+  });
+
+  it("leaves non-HTML legacy story and extension requests to Start's guard", async () => {
+    vi.mocked(handler.fetch).mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({ error: "Only HTML requests are supported here" }),
+          { status: 406, headers: { "content-type": "application/json" } }
+        )
+    );
+
+    for (const path of [
+      "/ai/abcdef1234567890?lang=vi",
+      "/ai/abcdef1234567890?locale=vi",
+      "/extension?lang=vi",
+      "/extension?locale=vi",
+    ]) {
+      const response = await call(
+        new Request(`https://aidr.today${path}`, {
+          headers: { accept: TSS_HEADERS.accept, "x-tsr-serverFn": "true" },
+        })
+      );
+      expect(response.status).toBe(406);
+      expect(response.headers.get("location")).toBeNull();
+      expect(response.headers.get("content-type")).toContain(
+        "application/json"
+      );
+    }
+    expect(handler.fetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("returns JSON for invalid locales on non-HTML document requests", async () => {
+    for (const path of [
+      "/submit?lang=fr",
+      "/ai/abcdef1234567890?lang=vi&lang=en",
+      "/extension?lang=fr",
+    ]) {
+      const response = await call(
+        new Request(`https://aidr.today${path}`, {
+          headers: { accept: TSS_HEADERS.accept, "x-tsr-serverFn": "true" },
+        })
+      );
+      expect(response.status).toBe(400);
+      expect(response.headers.get("content-type")).toContain(
+        "application/json"
+      );
+      expect(response.headers.get("location")).toBeNull();
+      expect(((await response.json()) as { error?: string }).error).toMatch(
+        /locale/i
+      );
+    }
+    expect(handler.fetch).not.toHaveBeenCalled();
   });
 
   it("leaves a non-HTML request to a page route to Start's own guard", async () => {

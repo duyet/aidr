@@ -56,6 +56,22 @@ describe("normalizeLocaleRequest", () => {
     );
   });
 
+  it("validates without redirecting when redirects are disabled", () => {
+    expect(
+      normalizeLocaleRequest(
+        new Request("https://aidr.today/submit?locale=vi"),
+        { format: "json", allowRedirect: false }
+      )
+    ).toBeNull();
+
+    const invalid = normalizeLocaleRequest(
+      new Request("https://aidr.today/submit?lang=fr"),
+      { format: "json", allowRedirect: false }
+    );
+    expect(invalid?.status).toBe(400);
+    expect(invalid?.headers.get("content-type")).toContain("application/json");
+  });
+
   it("rejects repeated, conflicting, and invalid values", () => {
     for (const search of [
       "?lang=en&lang=vi",

@@ -33,9 +33,9 @@ describe("free-plan hourly ingest", () => {
     );
   });
 
-  it("keeps run_worker_first for homepage, public logos, sitemap, robots, llms, APIs, Clerk proxy, and aidr.zip", () => {
+  it("keeps run_worker_first for homepage, public logos, sitemap, robots, llms, APIs, Clerk proxy, server functions, and aidr.zip", () => {
     expect(wrangler).toContain(
-      'run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]'
+      'run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn/*", "/aidr.zip"]'
     );
     expect(wrangler).toMatch(/binding\s*=\s*"ASSETS"/);
   });
