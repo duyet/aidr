@@ -73,13 +73,13 @@ describe("translation migration deploy gate", () => {
     ];
     expect(() =>
       assertRemoteSchemaOutput(
-        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation media_manifest",
+        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation trg_translations_marker_invalidation media_manifest",
         files
       )
     ).toThrow(/run_id|error_code|error_status|idx_llm_calls_run_id_ts/);
     expect(() =>
       assertRemoteSchemaOutput(
-        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation media_manifest run_id error_code error_status idx_llm_calls_run_id_ts",
+        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation trg_translations_marker_invalidation media_manifest run_id error_code error_status idx_llm_calls_run_id_ts",
         files
       )
     ).not.toThrow();
@@ -93,7 +93,7 @@ describe("translation migration deploy gate", () => {
     ).toThrow("incomplete");
     expect(() =>
       assertRemoteSchemaOutput(
-        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation"
+        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation trg_translations_marker_invalidation"
       )
     ).not.toThrow();
   });

@@ -220,9 +220,13 @@ translation-review migrations are pending; it never applies them. Run
 wrangler.toml --remote`) separately in numeric order: 0023 translation QA,
 0024 media when #160 is integrated, then 0025 run identity when #161 is
 integrated. Translation QA is complete in 0023; do not add a competing 0025
-translation migration. Rerun the read-only verifier after each apply. The
-current `CLOUDFLARE_API_TOKEN` can publish the Worker but Cloudflare API 7403s on D1
-`migrations.apply`; migrate-on-deploy needs a token with **Account D1 Edit**.
+translation migration. Legacy `translations.lang` values are reconciled as
+`lang=vi` → EN→VI and `lang=en` → VI→EN before the queue is queried. Review
+claims use a five-minute renewable lease and a source-revision CAS; successful
+repairs retain the final re-review attempt as current provenance. Rerun the
+read-only verifier after each apply. The current `CLOUDFLARE_API_TOKEN` can
+publish the Worker but Cloudflare API 7403s on D1 `migrations.apply`;
+migrate-on-deploy needs a token with **Account D1 Edit**.
 Do not swallow migrate failures inside `deploy`. `ensureVendorBlogSources` still
 upserts vendor RSS rows at ingest as a safety net.
 

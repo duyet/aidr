@@ -19,7 +19,10 @@ export const QA_WALL_BUDGET_MS = 210_000;
 export const QA_MAX_REPAIR_ATTEMPTS = 1;
 export const QA_MAX_RETRY_ATTEMPTS = 3;
 export const QA_MAX_MANUAL_RETRIES = 1;
-export const QA_LEASE_SECONDS = 90;
+/** Keep a claim alive beyond the maximum review/repair/re-review path. */
+export const QA_LEASE_SECONDS = 300;
+/** Renewal cadence for long provider calls; the lease is still CAS-guarded. */
+export const QA_LEASE_RENEWAL_SECONDS = 60;
 export const QA_MAX_TEXT_CHARS = 5_000;
 export const QA_MAX_JSON_CHARS = 20_000;
 export const QA_MAX_JSON_DEPTH = 32;

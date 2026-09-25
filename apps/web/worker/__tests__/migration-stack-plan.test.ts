@@ -2,7 +2,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ITEM_BIND_ARITY, TRANSLATION_BIND_ARITY } from "../d1-bind.js";
+import {
+  ITEM_BIND_ARITY,
+  ITEM_MEDIA_MANIFEST_BIND_INDEX,
+  ITEM_SOURCE_LANG_BIND_INDEX,
+  TRANSLATION_BIND_ARITY,
+} from "../d1-bind.js";
 
 const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -35,6 +40,8 @@ describe("controlled migration/bind integration plan", () => {
     expect(plan).toContain("0025_llm_call_run_identity.sql");
     expect(plan).not.toContain("0025_translation_review_hardening.sql");
     expect(ITEM_BIND_ARITY).toBe(21);
+    expect(ITEM_SOURCE_LANG_BIND_INDEX).toBe(20);
+    expect(ITEM_MEDIA_MANIFEST_BIND_INDEX).toBe(21);
     expect(TRANSLATION_BIND_ARITY).toBe(6);
   });
 });

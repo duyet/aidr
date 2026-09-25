@@ -142,7 +142,7 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
      `ANYROUTER_TRANSLATE_MODEL` id; missing/overlapping config fails closed
      rather than self-reviewing with the generator. English generation is also
      explicit and never silently falls back.
-   - The strict `translation-semantic-v2` JSON verdict scores fidelity,
+   - The strict `translation-semantic-v3` JSON verdict scores fidelity,
      naturalness, and confidence separately. Deterministic entity, number,
      date, unit, polarity, and uncertainty guards can override an optimistic
      reviewer, alongside omission, addition, and terminology checks. Prompt
@@ -159,10 +159,15 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
      write increments the revision and invalidates every candidate, including
      writers that emit no translation. Immutable `translation_review_attempts`
      rows are separate from leased `translation_review_state`; criteria, prompt,
-     policy, and model fingerprints are part of idempotency. Cross-run failures
-     use exponential backoff and become terminal `human_review` after three
-     automatic attempts; one explicit human retry is separately bounded and
-     recorded.
+     policy, and model fingerprints are part of idempotency. Source revision is
+     part of every review uniqueness key, and a successful repair stores the
+     final re-review `attempt_id` rather than the initial attempt. Claims use a
+     five-minute lease (longer than the 210-second wall budget) and renew it
+     with a lease-token/source CAS after each provider phase. Marker and state
+     writes are committed as one guarded batch; a zero-row CAS is never
+     reported as an accepted translation. Cross-run failures use exponential
+     backoff and become terminal `human_review` after three automatic attempts;
+     one explicit human retry is separately bounded and recorded.
    - One run makes at most 6 logical reviewer/generator calls, has a 210-second
      wall budget, and allows two model attempts per logical call. Workflow
      retries remain zero. Translation and review response snippets are

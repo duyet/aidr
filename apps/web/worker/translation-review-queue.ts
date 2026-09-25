@@ -129,8 +129,11 @@ export async function listTranslationReviewQueue(
   }));
 }
 
-function resolutionAttemptSql(isRetry: boolean): string {
-  const retryGuard = isRetry ? "AND s.manual_retry_count = 0" : "";
+function resolutionAttemptSql(
+  nextDecision: "human_accepted" | "retry_requested"
+): string {
+  const retryGuard =
+    nextDecision === "retry_requested" ? "AND s.manual_retry_count = 1" : "";
   return `INSERT OR IGNORE INTO translation_review_attempts (
      attempt_id, state_id, item_id, lang, source_lang, target_lang, direction,
      source_hash, candidate_hash, source_revision, attempt_number, round, phase,
@@ -144,8 +147,8 @@ function resolutionAttemptSql(isRetry: boolean): string {
           1, 'resolution', ?, ?, ?, ?,
           ?, NULL, NULL, NULL, '[]', ?, 'human', ?, NULL, ?
      FROM translation_review_state s
-    WHERE s.state_id = ? AND ${openStateSql()}
-      ${retryGuard}
+    WHERE s.state_id = ? AND s.attempt_id = ? AND s.decision = ?
+      AND s.terminal = ? ${retryGuard}
       AND EXISTS (
         SELECT 1 FROM items i
          WHERE i.id = s.item_id AND i.source_revision = s.source_revision
@@ -258,6 +261,13 @@ export async function resolveTranslationReview(
              SELECT 1 FROM items i
               WHERE i.id = ? AND i.source_revision = ?
                  AND i.source_lang = ?
+           )
+           AND EXISTS (
+             SELECT 1 FROM translation_review_state s
+              WHERE s.state_id = ? AND s.attempt_id = ? AND s.decision = ?
+                AND s.terminal = ? AND s.source_revision = ?
+                AND s.source_hash = ? AND s.candidate_hash = ?
+                AND s.lease_token IS NULL
            )`
         ).bind(
           now,
@@ -275,7 +285,14 @@ export async function resolveTranslationReview(
           state.candidate_summary,
           state.item_id,
           state.source_revision,
-          state.source_lang
+          state.source_lang,
+          state.state_id,
+          attemptResolutionId,
+          nextDecision,
+          nextDecision === "human_accepted" ? 1 : 0,
+          state.source_revision,
+          state.source_hash,
+          state.candidate_hash
         )
       : env.DB.prepare(
           `UPDATE translations SET
@@ -289,6 +306,13 @@ export async function resolveTranslationReview(
              SELECT 1 FROM items i
               WHERE i.id = ? AND i.source_revision = ?
                  AND i.source_lang = ?
+           )
+           AND EXISTS (
+             SELECT 1 FROM translation_review_state s
+              WHERE s.state_id = ? AND s.attempt_id = ? AND s.decision = ?
+                AND s.terminal = ? AND s.source_revision = ?
+                AND s.source_hash = ? AND s.candidate_hash = ?
+                AND s.lease_token IS NULL
            )`
         ).bind(
           state.item_id,
@@ -299,19 +323,27 @@ export async function resolveTranslationReview(
           state.candidate_summary,
           state.item_id,
           state.source_revision,
-          state.source_lang
+          state.source_lang,
+          state.state_id,
+          attemptResolutionId,
+          nextDecision,
+          nextDecision === "human_accepted" ? 1 : 0,
+          state.source_revision,
+          state.source_hash,
+          state.candidate_hash
         );
 
   const resolutionInsert = env.DB.prepare(
-    `INSERT INTO translation_review_resolutions (
-       resolution_id, attempt_id, state_id, item_id, source_hash, candidate_hash,
-       action, actor, note, created_at
+    `INSERT OR IGNORE INTO translation_review_resolutions (
+       resolution_id, attempt_id, state_id, item_id, source_revision,
+       source_hash, candidate_hash, action, actor, note, created_at
      )
-     SELECT ?, ?, s.state_id, s.item_id, s.source_hash, s.candidate_hash,
-            ?, ?, ?, ?
+     SELECT ?, ?, s.state_id, s.item_id, s.source_revision,
+            s.source_hash, s.candidate_hash, ?, ?, ?, ?
        FROM translation_review_state s
-      WHERE s.state_id = ? AND ${openStateSql()}
-        ${input.action === "retry" ? "AND s.manual_retry_count = 0" : ""}
+      WHERE s.state_id = ? AND s.attempt_id = ? AND s.decision = ?
+        AND s.terminal = ?
+        ${input.action === "retry" ? "AND s.manual_retry_count = 1" : ""}
         AND EXISTS (
           SELECT 1 FROM items i
            WHERE i.id = s.item_id AND i.source_revision = s.source_revision
@@ -331,12 +363,13 @@ export async function resolveTranslationReview(
     note,
     now,
     state.state_id,
-    attemptId,
-    attemptId
+    attemptResolutionId,
+    nextDecision,
+    input.action === "accept_original" ? 1 : 0
   );
 
   const resolutionAttempt = env.DB.prepare(
-    resolutionAttemptSql(input.action === "retry")
+    resolutionAttemptSql(nextDecision)
   ).bind(
     attemptResolutionId,
     REVIEW_CRITERIA_VERSION,
@@ -348,8 +381,9 @@ export async function resolveTranslationReview(
     reviewerModel,
     now,
     state.state_id,
-    attemptId,
-    attemptId
+    attemptResolutionId,
+    nextDecision,
+    input.action === "accept_original" ? 1 : 0
   );
 
   const stateUpdate = env.DB.prepare(
@@ -389,11 +423,14 @@ export async function resolveTranslationReview(
     state.candidate_summary
   );
 
+  // The state CAS is the commit gate. Marker and audit rows require the
+  // committed decision/attempt, so a concurrent queue change cannot leave a
+  // marker or resolution behind without the corresponding state transition.
   const results = await env.DB.batch([
+    stateUpdate,
+    marker,
     resolutionInsert,
     resolutionAttempt,
-    marker,
-    stateUpdate,
   ]);
   const changes = results.map((result) => result.meta?.changes ?? 0);
   if (changes.some((change) => change !== 1)) {

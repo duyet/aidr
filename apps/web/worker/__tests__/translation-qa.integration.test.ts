@@ -186,4 +186,102 @@ describe("translation QA cross-run retry state", () => {
       close();
     }
   });
+
+  it("stores the final re-review attempt as current repaired provenance", async () => {
+    const { db, close } = makeDatabase();
+    try {
+      const env = makeEnv(db);
+      db.prepare(
+        "UPDATE items SET title = 'A catalog entry for Model X', summary = 'Release date 2024-05-01.' WHERE id = 'item-1'"
+      ).run();
+      db.prepare(
+        "UPDATE translations SET title = 'A catalog entry for Model Y', summary = 'Release date 2024-05-01.' WHERE item_id = 'item-1' AND lang = 'vi'"
+      ).run();
+      const review = (verdict: "repair" | "accept") =>
+        JSON.stringify({
+          schema_version: 2,
+          direction: "en-vi",
+          verdict,
+          fidelity: 0.95,
+          naturalness: 0.9,
+          confidence: 0.9,
+          checks: {
+            entities: "pass",
+            numbers: "pass",
+            dates: "pass",
+            units: "pass",
+            polarity: "pass",
+            uncertainty: "pass",
+            omission: "pass",
+            addition: "pass",
+            terminology: "pass",
+          },
+          reason:
+            verdict === "repair" ? "needs repair" : "faithful and natural",
+        });
+      let call = 0;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          call++;
+          const content =
+            call === 1
+              ? review("repair")
+              : call === 2
+                ? JSON.stringify({
+                    title: "A catalog entry for Model X",
+                    summary: "Release date 2024-05-01.",
+                  })
+                : review("accept");
+          return new Response(
+            `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\ndata: [DONE]\n\n`
+          );
+        })
+      );
+
+      const stats = await ratePendingTranslations(env);
+      expect(stats.adjusted).toBe(1);
+      expect(stats.accepted).toBe(1);
+      expect(call).toBe(3);
+
+      const state = (await db
+        .prepare(
+          `SELECT attempt_id, candidate_hash, candidate_title
+             FROM translation_review_state WHERE item_id = 'item-1'`
+        )
+        .first()) as {
+        attempt_id: string;
+        candidate_hash: string;
+        candidate_title: string;
+      };
+      const finalAttempt = (await db
+        .prepare(
+          `SELECT attempt_id, phase, decision, candidate_hash
+             FROM translation_review_attempts
+            WHERE attempt_id = ?`
+        )
+        .bind(state.attempt_id)
+        .first()) as {
+        attempt_id: string;
+        phase: string;
+        decision: string;
+        candidate_hash: string;
+      };
+      expect(finalAttempt).toMatchObject({
+        phase: "re_review",
+        decision: "accepted",
+        candidate_hash: state.candidate_hash,
+      });
+      expect(state.candidate_title).toBe("A catalog entry for Model X");
+      expect(
+        await db
+          .prepare(
+            "SELECT qa_candidate_hash FROM translations WHERE item_id = 'item-1' AND lang = 'vi'"
+          )
+          .first()
+      ).toEqual({ qa_candidate_hash: state.candidate_hash });
+    } finally {
+      close();
+    }
+  });
 });

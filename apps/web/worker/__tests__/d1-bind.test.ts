@@ -4,6 +4,8 @@ import {
   buildItemSourceBindArgs,
   buildTranslationBindArgs,
   ITEM_BIND_ARITY,
+  ITEM_MEDIA_MANIFEST_BIND_INDEX,
+  ITEM_SOURCE_LANG_BIND_INDEX,
   MAX_SOURCES_PER_ITEM,
   nn,
   TRANSLATION_BIND_ARITY,
@@ -65,6 +67,8 @@ describe("buildItemBindArgs", () => {
       "en", // explicit source language
     ]);
     expect(args).toHaveLength(ITEM_BIND_ARITY);
+    expect(args[ITEM_SOURCE_LANG_BIND_INDEX]).toBe("en");
+    expect(ITEM_MEDIA_MANIFEST_BIND_INDEX).toBe(ITEM_BIND_ARITY);
   });
 
   it("passes through llm scores when present, including a zero relevance", () => {

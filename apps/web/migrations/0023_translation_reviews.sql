@@ -5,10 +5,16 @@
 -- 0024 media migration and #161 can own 0025 for LLM run identity.  Runtime
 -- code must verify this schema before it queries pending translations; it
 -- must never infer that a missing table means an empty queue.
+--
+-- D1 records this filename and applies the file transactionally.  If a
+-- statement fails, the transaction is rolled back and the same file can be
+-- retried safely; do not invoke the raw file a second time against a database
+-- where the 0023 ledger entry is already present.
 
--- Source language is explicit metadata.  Legacy rows are conservatively
--- treated as English; operators must set Vietnamese explicitly rather than
--- relying on diacritics or a text heuristic.
+-- Source language is explicit metadata.  The legacy translations.lang column
+-- is the target language: lang=vi is the historical EN→VI row, while
+-- lang=en represents the inverse VI→EN row.  Do not leave either row with
+-- source_lang=target_lang; that would manufacture an identity pair.
 ALTER TABLE items ADD COLUMN source_lang TEXT NOT NULL DEFAULT 'en'
   CHECK (source_lang IN ('en', 'vi'));
 ALTER TABLE items ADD COLUMN source_revision INTEGER NOT NULL DEFAULT 0;
@@ -26,9 +32,17 @@ ALTER TABLE translations ADD COLUMN source_lang TEXT NOT NULL DEFAULT 'en'
 ALTER TABLE translations ADD COLUMN target_lang TEXT NOT NULL DEFAULT 'vi'
   CHECK (target_lang IN ('en', 'vi'));
 
--- The old translation table only had a language key.  Preserve its meaning
--- while making the target explicit for all existing en/vi rows.
-UPDATE translations SET target_lang = lang WHERE lang IN ('en', 'vi');
+-- Reconcile only invalid/legacy pairs.  This is intentionally idempotent:
+-- after the first application a valid explicit pair is left untouched, so a
+-- later forward application cannot reset an operator's metadata.
+UPDATE translations
+   SET source_lang = CASE WHEN lang = 'en' THEN 'vi' ELSE 'en' END,
+       target_lang = CASE WHEN lang IN ('en', 'vi') THEN lang ELSE 'vi' END
+ WHERE lang IN ('en', 'vi')
+   AND NOT (
+     (lang = 'vi' AND source_lang = 'en' AND target_lang = 'vi')
+     OR (lang = 'en' AND source_lang = 'vi' AND target_lang = 'en')
+   );
 
 -- Initial audit table retained for compatibility with the first QA slice.  New
 -- runtime writes use the richer immutable attempt table below; this table is
@@ -60,7 +74,9 @@ CREATE TABLE IF NOT EXISTS translation_reviews (
   attempt_count INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  PRIMARY KEY (item_id, lang, direction, source_hash, candidate_hash)
+  PRIMARY KEY (
+    item_id, lang, direction, source_revision, source_hash, candidate_hash
+  )
 );
 
 CREATE INDEX IF NOT EXISTS idx_translation_reviews_item_updated
@@ -116,7 +132,7 @@ CREATE TABLE IF NOT EXISTS translation_review_attempts (
   created_at INTEGER NOT NULL,
   UNIQUE (
     item_id, lang, source_lang, target_lang, direction,
-    source_hash, candidate_hash, attempt_number, round, phase,
+    source_hash, candidate_hash, source_revision, attempt_number, round, phase,
     criteria_fingerprint, prompt_fingerprint, policy_fingerprint, model_fingerprint
   )
 );
@@ -174,7 +190,7 @@ CREATE TABLE IF NOT EXISTS translation_review_state (
   updated_at INTEGER NOT NULL,
   UNIQUE (
     item_id, lang, source_lang, target_lang, direction,
-    source_hash, candidate_hash,
+    source_hash, candidate_hash, source_revision,
     criteria_fingerprint, prompt_fingerprint, policy_fingerprint
   )
 );
@@ -192,6 +208,7 @@ CREATE TABLE IF NOT EXISTS translation_review_resolutions (
   attempt_id TEXT NOT NULL,
   state_id TEXT NOT NULL,
   item_id TEXT NOT NULL,
+  source_revision INTEGER NOT NULL,
   source_hash TEXT NOT NULL,
   candidate_hash TEXT NOT NULL,
   action TEXT NOT NULL CHECK (action IN ('accept_original', 'retry')),
@@ -258,6 +275,43 @@ WHEN (OLD.title IS NOT NEW.title OR OLD.summary IS NOT NEW.summary OR OLD.source
      AND (
        NEW.qa_candidate_hash IS NULL
        OR NEW.qa_candidate_hash = OLD.qa_candidate_hash
+     )
+BEGIN
+  -- Clear every current-candidate marker, not just the hash used to find the
+  -- row.  Leaving qa_rating/qa_at or reviewer metadata behind makes a direct
+  -- writer look reviewed even though the candidate is no longer current.
+  UPDATE translations
+     SET qa_rating = NULL,
+         qa_at = NULL,
+         qa_source_hash = NULL,
+         qa_candidate_hash = NULL,
+         qa_source_revision = NULL,
+         qa_direction = NULL,
+         qa_reviewer_model = NULL,
+         qa_criteria_version = NULL
+   WHERE rowid = NEW.rowid;
+
+  UPDATE translation_review_state
+     SET decision = 'pending',
+         terminal = 0,
+         next_retry_at = NULL,
+         lease_token = NULL,
+         lease_until = NULL,
+         updated_at = CAST(strftime('%s', 'now') AS INTEGER)
+   WHERE item_id = NEW.item_id AND lang = NEW.lang;
+END;
+
+-- A writer may invalidate a candidate by clearing markers without changing
+-- its text (for example, an admin push that removes an old translation).  Do
+-- not let that path leave a terminal state that claimState can never reopen.
+CREATE TRIGGER IF NOT EXISTS trg_translations_marker_invalidation
+AFTER UPDATE OF qa_candidate_hash ON translations
+WHEN OLD.qa_candidate_hash IS NOT NULL
+     AND NEW.qa_candidate_hash IS NULL
+     AND EXISTS (
+       SELECT 1 FROM translation_review_state s
+        WHERE s.item_id = NEW.item_id AND s.lang = NEW.lang
+          AND s.decision != 'retry_requested'
      )
 BEGIN
   UPDATE translation_review_state

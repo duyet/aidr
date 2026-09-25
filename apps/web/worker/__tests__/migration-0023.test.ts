@@ -50,8 +50,21 @@ describe("migration 0023_translation_reviews", () => {
 
   it("makes each source/candidate/direction review idempotent and queryable", () => {
     expect(sql).toContain(
-      "PRIMARY KEY (item_id, lang, direction, source_hash, candidate_hash)"
+      "PRIMARY KEY (\n    item_id, lang, direction, source_revision, source_hash, candidate_hash\n  )"
     );
     expect(sql).toContain("idx_translation_reviews_item_updated");
+    expect(sql).toContain(
+      "source_hash, candidate_hash, source_revision, attempt_number, round, phase"
+    );
+    expect(sql).toContain(
+      "source_hash, candidate_hash, source_revision,\n    criteria_fingerprint"
+    );
+  });
+
+  it("clears every current marker from the direct candidate invalidation trigger", () => {
+    expect(sql).toContain("trg_translations_candidate_invalidation");
+    expect(sql).toContain("trg_translations_marker_invalidation");
+    expect(sql).toContain("qa_reviewer_model = NULL");
+    expect(sql).toContain("qa_criteria_version = NULL");
   });
 });

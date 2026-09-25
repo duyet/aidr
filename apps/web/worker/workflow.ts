@@ -780,6 +780,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 published_at, fetched_at, points, comments,
                 llm_relevance, llm_importance, llm_quality, category, tags,
                 rank_score, status, llm_tokens, duplicate_of, image_url,
+                -- 0024 integration appends media_manifest after this slot.
                 source_lang
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT(id) DO UPDATE SET

@@ -148,10 +148,10 @@ describe("translation review queue SQLite CAS", () => {
       expect(
         await db
           .prepare(
-            "SELECT COUNT(*) AS count FROM translation_review_resolutions"
+            "SELECT source_revision, COUNT(*) AS count FROM translation_review_resolutions"
           )
           .first()
-      ).toEqual({ count: 1 });
+      ).toEqual({ source_revision: 0, count: 1 });
     } finally {
       close();
     }
@@ -160,6 +160,14 @@ describe("translation review queue SQLite CAS", () => {
   it("requeues exactly one human retry and records it append-only", async () => {
     const { db, close } = makeDatabase();
     try {
+      db.prepare(
+        `UPDATE translations SET
+           qa_rating = 0.8, qa_at = 10, qa_source_hash = 'source-hash',
+           qa_candidate_hash = 'candidate-hash', qa_source_revision = 0,
+           qa_direction = 'en-vi', qa_reviewer_model = 'old-reviewer',
+           qa_criteria_version = 'old-criteria'
+         WHERE item_id = 'item-1' AND lang = 'vi'`
+      ).run();
       const result = await resolveTranslationReview(env(db), {
         attemptId: "attempt-1",
         action: "retry",
@@ -181,6 +189,25 @@ describe("translation review queue SQLite CAS", () => {
         decision: "retry_requested",
         terminal: 0,
         manual_retry_count: 1,
+      });
+      expect(
+        await db
+          .prepare(
+            `SELECT qa_rating, qa_at, qa_source_hash, qa_candidate_hash,
+                    qa_source_revision, qa_direction, qa_reviewer_model,
+                    qa_criteria_version
+               FROM translations WHERE item_id = 'item-1' AND lang = 'vi'`
+          )
+          .first()
+      ).toEqual({
+        qa_rating: null,
+        qa_at: null,
+        qa_source_hash: null,
+        qa_candidate_hash: null,
+        qa_source_revision: null,
+        qa_direction: null,
+        qa_reviewer_model: null,
+        qa_criteria_version: null,
       });
       expect(
         await db

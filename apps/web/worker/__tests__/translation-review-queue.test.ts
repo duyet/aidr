@@ -126,7 +126,7 @@ describe("translation review human queue", () => {
       action: "accept_original",
     });
     const insert = writes.find((write) =>
-      write.sql.includes("INSERT INTO translation_review_resolutions")
+      write.sql.includes("translation_review_resolutions")
     );
     expect(insert?.args).toContain("attempt-1");
     expect(insert?.args).toContain("admin-token");

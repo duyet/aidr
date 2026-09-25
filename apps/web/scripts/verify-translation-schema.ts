@@ -158,6 +158,7 @@ export function assertRemoteSchemaOutput(
     "manual_retry_count",
     "trg_items_source_revision",
     "trg_translations_candidate_invalidation",
+    "trg_translations_marker_invalidation",
   ];
   if (files.includes(MEDIA_MANIFEST_MIGRATION)) {
     required.push("media_manifest");
@@ -218,7 +219,8 @@ function main(): void {
      UNION ALL SELECT 'translation_review_state' FROM sqlite_master WHERE name = 'translation_review_state'
      UNION ALL SELECT 'translation_review_resolutions' FROM sqlite_master WHERE name = 'translation_review_resolutions'`,
     `SELECT 'trg_items_source_revision' AS schema_token FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_items_source_revision'
-     UNION ALL SELECT 'trg_translations_candidate_invalidation' FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_translations_candidate_invalidation'`,
+     UNION ALL SELECT 'trg_translations_candidate_invalidation' FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_translations_candidate_invalidation'
+     UNION ALL SELECT 'trg_translations_marker_invalidation' FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_translations_marker_invalidation'`,
     `SELECT 'source_lang' AS schema_token FROM pragma_table_info('items') WHERE name = 'source_lang'
      UNION ALL SELECT 'source_revision' FROM pragma_table_info('items') WHERE name = 'source_revision'`,
     `SELECT 'qa_source_hash' AS schema_token FROM pragma_table_info('translations') WHERE name = 'qa_source_hash'

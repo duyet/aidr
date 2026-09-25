@@ -13,9 +13,11 @@ import {
   parseRepairCandidate,
   parseTranslationReview,
   QA_CRITERIA_VERSION,
+  QA_LEASE_SECONDS,
   QA_MAX_MANUAL_RETRIES,
   QA_MAX_REVIEW_CALLS,
   QA_RATING_THRESHOLD,
+  QA_WALL_BUDGET_MS,
   ratePendingTranslations,
   resolveIndependentReviewerChain,
   type TranslationPair,
@@ -70,6 +72,7 @@ interface FakeOptions {
   schemaError?: boolean;
   batchChanges?: number[];
   claimChanges?: number;
+  leaseChanges?: number;
 }
 
 function makeDb(options: FakeOptions = {}) {
@@ -115,7 +118,9 @@ function makeDb(options: FakeOptions = {}) {
             meta: {
               changes: sql.includes("INSERT INTO translation_review_state")
                 ? (options.claimChanges ?? 1)
-                : 1,
+                : sql.includes("SET lease_until = ?")
+                  ? (options.leaseChanges ?? 1)
+                  : 1,
             },
           };
         },
@@ -375,6 +380,7 @@ describe("translation review contracts", () => {
     expect(QA_RATING_THRESHOLD).toBe(0.7);
     expect(QA_MAX_REVIEW_CALLS).toBe(6);
     expect(QA_MAX_MANUAL_RETRIES).toBe(1);
+    expect(QA_LEASE_SECONDS).toBeGreaterThan(QA_WALL_BUDGET_MS / 1000);
     expect(QA_CRITERIA_VERSION).toBe("translation-semantic-v3");
   });
 
@@ -465,9 +471,18 @@ describe("translation QA runtime", () => {
     expect(marker?.sql).toContain("qa_source_hash");
     expect(marker?.sql).toContain("qa_candidate_hash");
     expect(marker?.sql).toContain("i.id = ?");
+    expect(marker?.sql).toContain("translation_review_state");
     const stateWrite = writes.find((write) =>
       write.sql.includes("UPDATE translation_review_state SET")
     );
+    const stateIndex = writes.findIndex((write) =>
+      write.sql.includes("UPDATE translation_review_state SET")
+    );
+    const markerIndex = writes.findIndex((write) =>
+      write.sql.includes("UPDATE translations SET")
+    );
+    expect(stateIndex).toBeGreaterThanOrEqual(0);
+    expect(markerIndex).toBeGreaterThan(stateIndex);
     expect(stateWrite?.sql).toContain("source_hash = ?");
     expect(stateWrite?.sql).toContain("candidate_hash = ?");
     expect(stateWrite?.sql).toContain("i.source_lang = ?");
@@ -707,8 +722,37 @@ describe("translation QA runtime", () => {
     ).toBe(false);
   });
 
+  it("stops before persistence when lease renewal loses its CAS", async () => {
+    const { db, writes } = makeDb({ rows: [row()], leaseChanges: 0 });
+    const fetchMock = vi.fn(async () =>
+      response(JSON.stringify(review("en-vi")))
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const stats = await ratePendingTranslations({ ...env, DB: db });
+    expect(stats.accepted).toBe(0);
+    expect(stats.stale).toBe(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(
+      writes.some((write) => write.sql.includes("UPDATE translations SET"))
+    ).toBe(false);
+    expect(
+      writes.some((write) => write.sql.includes("SET lease_until = ?"))
+    ).toBe(true);
+  });
+
+  it("does not mark a candidate accepted when the marker CAS loses an interleaving", async () => {
+    const { db } = makeDb({ rows: [row()], batchChanges: [1, 0, 1] });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => response(JSON.stringify(review("en-vi"))))
+    );
+    const stats = await ratePendingTranslations({ ...env, DB: db });
+    expect(stats.accepted).toBe(0);
+    expect(stats.stale).toBe(1);
+  });
+
   it("does not mark a candidate accepted when the lease/source CAS loses an interleaving", async () => {
-    const { db } = makeDb({ rows: [row()], batchChanges: [1, 1, 0] });
+    const { db } = makeDb({ rows: [row()], batchChanges: [0, 1, 1] });
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => response(JSON.stringify(review("en-vi"))))

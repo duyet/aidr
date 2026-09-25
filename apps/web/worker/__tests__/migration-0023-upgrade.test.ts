@@ -32,6 +32,10 @@ function createPre0023Database(): DatabaseSync {
     VALUES ('item-1', 'OpenAI ships Model X', 'Launch is 2024-05-01.');
     INSERT INTO translations (item_id, lang, title, summary)
     VALUES ('item-1', 'en', 'OpenAI ships Model X', 'Launch is 2024-05-01.');
+    INSERT INTO items (id, title, summary)
+    VALUES ('item-2', 'Một bài viết', 'Bài viết ngày 2024-05-01.');
+    INSERT INTO translations (item_id, lang, title, summary)
+    VALUES ('item-2', 'vi', 'Một bài viết', 'Bài viết ngày 2024-05-01.');
   `);
   return db;
 }
@@ -61,10 +65,17 @@ describe("migration 0023 translation QA upgrade", () => {
       };
       expect(item).toEqual({ source_lang: "en", source_revision: 0 });
       expect(translation).toEqual({
-        source_lang: "en",
+        source_lang: "vi",
         target_lang: "en",
         qa_candidate_hash: null,
       });
+      expect(
+        db
+          .prepare(
+            "SELECT source_lang, target_lang FROM translations WHERE item_id = 'item-2' AND lang = 'vi'"
+          )
+          .get()
+      ).toEqual({ source_lang: "en", target_lang: "vi" });
       expect(
         db
           .prepare(
@@ -97,7 +108,15 @@ describe("migration 0023 translation QA upgrade", () => {
       ).run();
 
       db.prepare(
-        "UPDATE translations SET title = 'OpenAI did not ship Model X', summary = 'Launch is 2024-05-01.', qa_candidate_hash = NULL, qa_source_hash = NULL, qa_source_revision = NULL, qa_direction = NULL, qa_reviewer_model = NULL, qa_criteria_version = NULL WHERE item_id = 'item-1' AND lang = 'en'"
+        `UPDATE translations SET
+           qa_rating = 0.9, qa_at = 10,
+           qa_source_hash = 'old-source', qa_candidate_hash = 'old-candidate',
+           qa_source_revision = 0, qa_direction = 'vi-en',
+           qa_reviewer_model = 'old-reviewer', qa_criteria_version = 'old-policy'
+         WHERE item_id = 'item-1' AND lang = 'en'`
+      ).run();
+      db.prepare(
+        "UPDATE translations SET title = 'OpenAI did not ship Model X', summary = 'Launch is 2024-05-01.' WHERE item_id = 'item-1' AND lang = 'en'"
       ).run();
       expect(
         db
@@ -106,6 +125,25 @@ describe("migration 0023 translation QA upgrade", () => {
           )
           .get()
       ).toEqual({ decision: "pending", terminal: 0 });
+      expect(
+        db
+          .prepare(
+            `SELECT qa_rating, qa_at, qa_source_hash, qa_candidate_hash,
+                    qa_source_revision, qa_direction, qa_reviewer_model,
+                    qa_criteria_version
+               FROM translations WHERE item_id = 'item-1' AND lang = 'en'`
+          )
+          .get()
+      ).toEqual({
+        qa_rating: null,
+        qa_at: null,
+        qa_source_hash: null,
+        qa_candidate_hash: null,
+        qa_source_revision: null,
+        qa_direction: null,
+        qa_reviewer_model: null,
+        qa_criteria_version: null,
+      });
 
       db.prepare(
         `INSERT INTO translation_review_state (
@@ -184,9 +222,9 @@ describe("migration 0023 translation QA upgrade", () => {
 
       db.prepare(
         `INSERT INTO translation_review_resolutions (
-          resolution_id, attempt_id, state_id, item_id, source_hash, candidate_hash,
-          action, actor, note, created_at
-        ) VALUES ('resolution-1', 'attempt-1', 'state-1', 'item-1',
+          resolution_id, attempt_id, state_id, item_id, source_revision,
+          source_hash, candidate_hash, action, actor, note, created_at
+        ) VALUES ('resolution-1', 'attempt-1', 'state-1', 'item-1', 0,
           'source-hash', 'candidate-hash', 'retry', 'admin-token', 'check source', 1)`
       ).run();
       expect(() =>
@@ -196,6 +234,90 @@ describe("migration 0023 translation QA upgrade", () => {
           )
           .run()
       ).toThrow(/immutable/);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("can retry the migration after a failed transactional apply", () => {
+    const db = createPre0023Database();
+    try {
+      db.exec("BEGIN");
+      db.exec(
+        "ALTER TABLE items ADD COLUMN source_lang TEXT NOT NULL DEFAULT 'en'"
+      );
+      expect(() => db.exec("SELECT missing_function_for_test()")).toThrow();
+      db.exec("ROLLBACK");
+      expect(() =>
+        db.prepare("SELECT source_lang FROM items LIMIT 1").get()
+      ).toThrow();
+
+      db.exec(sql);
+      expect(
+        db.prepare("SELECT source_lang FROM items WHERE id = 'item-1'").get()
+      ).toEqual({ source_lang: "en" });
+    } finally {
+      db.close();
+    }
+  });
+
+  it("keeps source revisions distinct in every review uniqueness key", () => {
+    const db = createPre0023Database();
+    try {
+      db.exec(sql);
+      const insertReview = db.prepare(
+        `INSERT INTO translation_reviews (
+           item_id, lang, direction, source_lang, target_lang, source_revision,
+           source_hash, candidate_hash, decision, reason, reviewer_chain,
+           criteria_version, created_at, updated_at
+         ) VALUES ('item-1', 'en', 'vi-en', 'vi', 'en', ?,
+           'source-hash', 'candidate-hash', 'accepted', 'ok', 'reviewer/model',
+           'criteria', 1, 1)`
+      );
+      insertReview.run(0);
+      insertReview.run(1);
+
+      const insertAttempt = db.prepare(
+        `INSERT INTO translation_review_attempts (
+           attempt_id, state_id, item_id, lang, source_lang, target_lang, direction,
+           source_hash, candidate_hash, source_revision, attempt_number, round, phase,
+           criteria_fingerprint, prompt_fingerprint, policy_fingerprint, model_fingerprint,
+           decision, reason, reviewer_chain, created_at
+         ) VALUES (?, 'state-revision', 'item-1', 'en', 'vi', 'en', 'vi-en',
+           'source-hash', 'candidate-hash', ?, 1, 1, 'initial',
+           'criteria', 'prompt', 'policy', 'model', 'accepted', 'ok',
+           'reviewer/model', 1)`
+      );
+      insertAttempt.run("attempt-revision-0", 0);
+      insertAttempt.run("attempt-revision-1", 1);
+
+      const insertState = db.prepare(
+        `INSERT INTO translation_review_state (
+           state_id, item_id, lang, source_lang, target_lang, direction,
+           source_hash, candidate_hash, source_revision, candidate_title,
+           candidate_summary, criteria_fingerprint, prompt_fingerprint,
+           policy_fingerprint, decision, attempt_count, manual_retry_count,
+           terminal, created_at, updated_at
+         ) VALUES (?, 'item-1', 'en', 'vi', 'en', 'vi-en',
+           'source-hash', 'candidate-hash', ?, 'candidate', 'summary',
+           'criteria', 'prompt', 'policy', 'pending', 0, 0, 0, 1, 1)`
+      );
+      insertState.run("state-revision-0", 0);
+      insertState.run("state-revision-1", 1);
+
+      expect(
+        db.prepare("SELECT COUNT(*) AS count FROM translation_reviews").get()
+      ).toEqual({ count: 2 });
+      expect(
+        db
+          .prepare("SELECT COUNT(*) AS count FROM translation_review_attempts")
+          .get()
+      ).toEqual({ count: 2 });
+      expect(
+        db
+          .prepare("SELECT COUNT(*) AS count FROM translation_review_state")
+          .get()
+      ).toEqual({ count: 2 });
     } finally {
       db.close();
     }

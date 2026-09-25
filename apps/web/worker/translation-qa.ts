@@ -68,6 +68,7 @@ export {
   parseTranslationReview,
   QA_CAP,
   QA_CONFIDENCE_THRESHOLD,
+  QA_LEASE_RENEWAL_SECONDS,
   QA_LEASE_SECONDS,
   QA_MAX_CALLS,
   QA_MAX_JSON_CHARS,
@@ -77,6 +78,7 @@ export {
   QA_MAX_REVIEW_CALLS,
   QA_RATING_THRESHOLD,
   QA_SCAN_CAP,
+  QA_WALL_BUDGET_MS,
   REVIEW_CRITERIA_VERSION,
   REVIEW_POLICY_FINGERPRINT,
   REVIEW_PROMPT_FINGERPRINT,
@@ -432,6 +434,62 @@ async function claimState(
   };
 }
 
+/** Renew a live claim without extending a stolen or superseded lease. */
+export async function renewTranslationReviewLease(
+  db: D1Database,
+  candidate: Pick<
+    PreparedCandidate,
+    "row" | "stateId" | "sourceHash" | "candidateHash"
+  >,
+  leaseToken: string,
+  now: number
+): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `UPDATE translation_review_state
+          SET lease_until = ?, updated_at = ?
+        WHERE state_id = ? AND lease_token = ? AND terminal = 0
+          AND (lease_until IS NULL OR lease_until >= ?)
+          AND source_revision = ? AND source_hash = ? AND candidate_hash = ?
+          AND candidate_title = ? AND candidate_summary = ?
+          AND EXISTS (
+            SELECT 1 FROM items i
+             WHERE i.id = ? AND i.title IS ? AND i.summary IS ?
+               AND i.source_revision = ? AND i.source_lang = ?
+          )
+          AND EXISTS (
+            SELECT 1 FROM translations t
+             WHERE t.item_id = ? AND t.lang = ? AND t.source_lang = ? AND t.target_lang = ?
+               AND t.title = ? AND t.summary = ?
+          )`
+    )
+    .bind(
+      now + QA_LEASE_SECONDS,
+      now,
+      candidate.stateId,
+      leaseToken,
+      now,
+      candidate.row.source_revision,
+      candidate.sourceHash,
+      candidate.candidateHash,
+      candidate.row.candidate_title,
+      candidate.row.candidate_summary,
+      candidate.row.id,
+      candidate.row.source_title,
+      dbSummary(candidate.row.source_summary),
+      candidate.row.source_revision,
+      candidate.row.source_lang,
+      candidate.row.id,
+      candidate.row.lang,
+      candidate.row.source_lang,
+      candidate.row.target_lang,
+      candidate.row.candidate_title,
+      candidate.row.candidate_summary
+    )
+    .run();
+  return (result.meta?.changes ?? 0) === 1;
+}
+
 interface AttemptInput {
   candidate: PreparedCandidate;
   stateId: string;
@@ -528,17 +586,10 @@ function prepareStateUpdate(
        WHERE state_id = ? AND lease_token = ?
          AND source_revision = ? AND source_hash = ? AND candidate_hash = ?
          AND candidate_title = ? AND candidate_summary = ?
-         AND (
-           EXISTS (
-             SELECT 1 FROM translations t
-              WHERE t.item_id = ? AND t.lang = ? AND t.source_lang = ? AND t.target_lang = ?
-                AND t.title = ? AND t.summary = ?
-           )
-           OR EXISTS (
-             SELECT 1 FROM translations t
-              WHERE t.item_id = ? AND t.lang = ? AND t.source_lang = ? AND t.target_lang = ?
-                AND t.title = ? AND t.summary = ?
-           )
+         AND EXISTS (
+           SELECT 1 FROM translations t
+            WHERE t.item_id = ? AND t.lang = ? AND t.source_lang = ? AND t.target_lang = ?
+              AND t.title = ? AND t.summary = ?
          )
          AND ${sourceExistsSql()}`
     )
@@ -566,12 +617,6 @@ function prepareStateUpdate(
       input.candidate.row.candidate_title,
       input.candidate.row.candidate_summary,
       input.candidate.row.id,
-      input.candidate.row.lang,
-      input.candidate.row.source_lang,
-      input.candidate.row.target_lang,
-      input.replacementText?.title ?? input.candidate.row.candidate_title,
-      input.replacementText?.summary ?? input.candidate.row.candidate_summary,
-      input.candidate.row.id,
       input.candidate.row.source_title,
       dbSummary(input.candidate.row.source_summary),
       input.candidate.row.source_revision,
@@ -590,6 +635,9 @@ function prepareMarkerUpdate(
     reviewerModel: string | null;
     now: number;
     replacement?: boolean;
+    stateAttemptId: string;
+    stateDecision: string;
+    stateTerminal: boolean;
   }
 ): D1PreparedStatement {
   const prefix = input.replacement ? "title = ?, summary = ?, " : "";
@@ -604,7 +652,13 @@ function prepareMarkerUpdate(
          qa_direction = ?, qa_reviewer_model = ?, qa_criteria_version = ?
        WHERE item_id = ? AND lang = ? AND source_lang = ? AND target_lang = ?
          AND title = ? AND summary = ?
-         AND ${sourceExistsSql()}`
+         AND ${sourceExistsSql()}
+         AND EXISTS (
+           SELECT 1 FROM translation_review_state s
+            WHERE s.state_id = ? AND s.attempt_id = ? AND s.decision = ?
+              AND s.terminal = ? AND s.source_hash = ? AND s.candidate_hash = ?
+              AND s.lease_token IS NULL
+         )`
     )
     .bind(
       ...values,
@@ -626,7 +680,13 @@ function prepareMarkerUpdate(
       input.candidate.row.source_title,
       dbSummary(input.candidate.row.source_summary),
       input.candidate.row.source_revision,
-      input.candidate.row.source_lang
+      input.candidate.row.source_lang,
+      input.candidate.stateId,
+      input.stateAttemptId,
+      input.stateDecision,
+      input.stateTerminal ? 1 : 0,
+      input.sourceHash,
+      input.candidateHash
     );
 }
 
@@ -679,10 +739,24 @@ async function finishWithMarker(
     candidateHash: string;
     naturalness: number;
     reviewerModel: string | null;
+    stateAttemptId?: string;
     replacement?: boolean;
     additionalAttempts?: AttemptInput[];
   }
 ): Promise<boolean> {
+  const stateAttemptId = input.stateAttemptId ?? input.attempt.attemptId;
+  const state = prepareStateUpdate(db, {
+    candidate: input.candidate,
+    leaseToken: input.leaseToken,
+    attemptId: stateAttemptId,
+    decision: input.decision,
+    terminal: input.terminal,
+    nextRetryAt: input.nextRetryAt,
+    sourceHash: input.sourceHash,
+    candidateHash: input.candidateHash,
+    now: input.attempt.now,
+    replacementText: input.replacement ? input.candidateText : undefined,
+  });
   const marker = prepareMarkerUpdate(db, {
     candidate: input.candidate,
     candidateText: input.candidateText,
@@ -692,30 +766,25 @@ async function finishWithMarker(
     reviewerModel: input.reviewerModel,
     now: input.attempt.now,
     replacement: input.replacement,
+    stateAttemptId,
+    stateDecision: input.decision,
+    stateTerminal: input.terminal,
   });
-  const state = prepareStateUpdate(db, {
-    candidate: input.candidate,
-    leaseToken: input.leaseToken,
-    attemptId: input.attempt.attemptId,
-    decision: input.decision,
-    terminal: input.terminal,
-    nextRetryAt: input.nextRetryAt,
-    sourceHash: input.sourceHash,
-    candidateHash: input.candidateHash,
-    now: input.attempt.now,
-    replacementText: input.replacement ? input.candidateText : undefined,
-  });
+  // Commit the lease-guarded state first.  The marker update then requires
+  // that exact committed state, so a lost CAS cannot leave a new marker
+  // attached to the old state (or vice versa). D1 batches are transactional;
+  // these shared predicates make zero-row results fail closed as well.
   const results = await db.batch([
-    prepareAttemptInsert(db, input.attempt),
-    marker,
     state,
+    marker,
+    prepareAttemptInsert(db, input.attempt),
     ...(input.additionalAttempts ?? []).map((attempt) =>
       prepareAttemptInsert(db, attempt)
     ),
   ]);
   return (
-    (results[1]?.meta?.changes ?? 0) === 1 &&
-    (results[2]?.meta?.changes ?? 0) === 1
+    (results[0]?.meta?.changes ?? 0) === 1 &&
+    (results[1]?.meta?.changes ?? 0) === 1
   );
 }
 
@@ -747,13 +816,13 @@ async function finishFailure(
     now,
   });
   const results = await db.batch([
-    prepareAttemptInsert(db, input.attempt),
     state,
+    prepareAttemptInsert(db, input.attempt),
     ...(input.additionalAttempts ?? []).map((attempt) =>
       prepareAttemptInsert(db, attempt)
     ),
   ]);
-  return (results[1]?.meta?.changes ?? 0) === 1;
+  return (results[0]?.meta?.changes ?? 0) === 1;
 }
 
 async function requestReview(
@@ -1081,6 +1150,17 @@ export async function ratePendingTranslations(
       stats.calls++;
       stats.rated++;
       stats.tokens += initial.tokens;
+      if (
+        !(await renewTranslationReviewLease(
+          env.DB,
+          candidate,
+          leaseToken,
+          Math.floor(Date.now() / 1000)
+        ))
+      ) {
+        stats.stale++;
+        continue;
+      }
     } catch (error) {
       stats.calls++;
       stats.failed++;
@@ -1244,6 +1324,17 @@ export async function ratePendingTranslations(
       );
       stats.calls++;
       stats.tokens += repaired.tokens;
+      if (
+        !(await renewTranslationReviewLease(
+          env.DB,
+          candidate,
+          leaseToken,
+          Math.floor(Date.now() / 1000)
+        ))
+      ) {
+        stats.stale++;
+        continue;
+      }
     } catch (error) {
       stats.calls++;
       const fingerprint = await modelFingerprint(
@@ -1300,6 +1391,17 @@ export async function ratePendingTranslations(
       stats.calls++;
       stats.rated++;
       stats.tokens += recheck.tokens;
+      if (
+        !(await renewTranslationReviewLease(
+          env.DB,
+          candidate,
+          leaseToken,
+          Math.floor(Date.now() / 1000)
+        ))
+      ) {
+        stats.stale++;
+        continue;
+      }
     } catch (error) {
       stats.calls++;
       stats.failed++;
@@ -1510,6 +1612,7 @@ export async function ratePendingTranslations(
       candidateHash: replacementHashes.candidateHash,
       naturalness: recheck.review.naturalness,
       reviewerModel: recheck.model,
+      stateAttemptId: replacementAttemptId,
       replacement: true,
       additionalAttempts: [
         {

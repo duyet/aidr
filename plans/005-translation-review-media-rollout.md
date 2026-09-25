@@ -7,8 +7,12 @@ Status: **IN PROGRESS** for #158/#143. #160 and #161 remain separate drafts.
 1. `0023_translation_reviews.sql` is the complete translation-QA migration. It
    contains the current-candidate markers, explicit source/target language
    metadata, source revision/CAS state, append-only attempts, and human
-   resolution tables. Do not recreate the old competing 0025 translation
-   migration.
+   resolution tables. All review uniqueness keys include `source_revision`, and
+   the current state points at the final re-review attempt after a successful
+   repair. The migration's reconciliation and table/trigger creation are
+   forward-safe; D1's migration ledger/transaction prevents a second partial
+   application from re-running the additive column statements. Do not recreate
+   the old competing 0025 translation migration.
 2. #160 owns `0024_item_media_manifest.sql`. When that migration is integrated,
    apply it after 0023. Preserve the centralized translation upsert/invalidation
    helpers in `worker/d1-bind.ts`; do not copy its direct translation upsert
@@ -17,13 +21,18 @@ Status: **IN PROGRESS** for #158/#143. #160 and #161 remain separate drafts.
    the media migration is present. The translation gate is compatible with
    either standalone #158 or the ordered 0023 → 0024 → 0025 integration and
    fails if a migration filename is out of order.
-4. Keep the item bind order explicit: the QA branch appends `source_lang` after
-   `image_url`; a later media integration must append `media_manifest` after
-   that field. Update `ITEM_BIND_ARITY` and its tests together rather than
-   changing call-site arity ad hoc.
-5. Existing rows conservatively backfill to `source_lang='en'`. Operators must
-   set `source_lang='vi'` explicitly for Vietnamese-source items; the runtime
-   never infers direction from diacritics.
+4. Keep the item bind order explicit: the QA branch appends `source_lang` at
+   index 20 after `image_url`; the combined 0023 → 0024 tree must append
+   `media_manifest` at index 21 and raise `ITEM_BIND_ARITY` to 22. Update the
+   builder, item INSERT column list, and tests together rather than changing
+   call-site arity ad hoc. A merge that drops `source_lang` or substitutes
+   `media_manifest` into its slot is invalid.
+5. Legacy `translations.lang` is reconciled as a target-language key:
+   `lang='vi'` becomes `source_lang='en', target_lang='vi'`, and `lang='en'`
+   becomes `source_lang='vi', target_lang='en'`. Valid explicit pairs are
+   preserved on a later application. Operators must still set item-level
+   `source_lang='vi'` explicitly for Vietnamese-source items; the runtime never
+   infers direction from diacritics.
 
 ## Read-only migration gate
 
