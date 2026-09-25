@@ -89,6 +89,7 @@ import {
   persistOpenedWorkflowRun,
   persistWorkflowRun,
 } from "./workflow-run.js";
+import { llmStep, safeStep } from "./workflow-step.js";
 
 const RELEVANCE_THRESHOLD = 0.4;
 const RANK_RECOMPUTE_WINDOW_SEC = 72 * 60 * 60;
@@ -149,54 +150,6 @@ function restoreMergePlan(
     merged: jsonMap(serialized?.merged),
     canonicalUpdates: jsonMap(serialized?.canonicalUpdates),
   };
-}
-
-type StepRetryConfig =
-  | typeof LLM_STEP
-  | typeof BACKFILL_TRANSLATE_STEP
-  | {
-      retries: {
-        limit: number;
-        delay: number;
-        backoff?: "linear" | "exponential" | "constant";
-      };
-      timeout?: string;
-    };
-
-/** Catch Workflow engine failures (timeout / retries exhausted). Inner
- * try/catch around the callback does not run when `step.do` itself throws,
- * and a failed step with retries:0 can skip later steps including close-run. */
-function safeErrorMessage(error: unknown): string {
-  return sanitizeError(error)?.message ?? "unknown error";
-}
-
-async function safeStep<T>(
-  step: WorkflowStep,
-  name: string,
-  fallback: T,
-  closure: () => Promise<T>,
-  config?: StepRetryConfig,
-  rethrowErrors = false
-): Promise<T> {
-  try {
-    const result = config
-      ? await (
-          step.do as (
-            name: string,
-            config: StepRetryConfig,
-            fn: () => Promise<T>
-          ) => Promise<T>
-        )(name, config, closure)
-      : await (step.do as (name: string, fn: () => Promise<T>) => Promise<T>)(
-          name,
-          closure
-        );
-    return result;
-  } catch (error) {
-    if (rethrowErrors || isMediaManifestSchemaError(error)) throw error;
-    console.error(`${name} step failed:`, safeErrorMessage(error));
-    return fallback;
-  }
 }
 
 interface SourceRow {
@@ -281,6 +234,15 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     // not step.do: re-running it on workflow replay is harmless (it just
     // reinstalls the same closure and re-runs an idempotent DELETE), and
     // it must never affect run-error tracking below.
+    //
+    // This is only a default for LLM work that happens outside a step
+    // callback: the Workflow engine can run a `step.do` callback in a
+    // context where this module-level sink (and the run-id context above) is
+    // gone, which silently no-ops `logLlmCall` and leaves the run with
+    // tokens but zero attributable attempts. Every LLM-calling step below
+    // therefore goes through `llmStep`, which re-installs the sink *inside*
+    // the callback and drains the fire-and-forget inserts before the step
+    // resolves. See workflow-step.ts.
     setLlmCallLogger(createD1LlmCallLogger(this.env, runId));
 
     // Durable duplicate of the open-run upsert. Do not wrap in safeStep:
@@ -495,8 +457,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       });
 
       const scored = jsonMap(
-        await safeStep(
+        await llmStep(
           step,
+          this.env,
+          runId,
           "score",
           [] as [string, Awaited<ReturnType<typeof scoreItems>>[number]][],
           async () => {
@@ -540,8 +504,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       // so a cluster's topic union already has canonical values to
       // dedupe against.
       const canonicalTagsByItem = jsonMap(
-        await safeStep(
+        await llmStep(
           step,
+          this.env,
+          runId,
           "normalize-topics",
           [] as [string, string[]][],
           async () => {
@@ -587,8 +553,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       });
 
       const mergePlan = restoreMergePlan(
-        await safeStep(
+        await llmStep(
           step,
+          this.env,
+          runId,
           "merge-similar",
           serializeMergePlan(EMPTY_MERGE_PLAN),
           async () => {
@@ -705,8 +673,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       });
 
       const translated = jsonMap(
-        await safeStep(
+        await llmStep(
           step,
+          this.env,
+          runId,
           "translate",
           [] as [string, Awaited<ReturnType<typeof translateItems>>[number]][],
           async () => {
@@ -1306,8 +1276,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         ) {
           let part = { count: 0, tokens: 0 };
           try {
-            part = await safeStep(
+            part = await llmStep(
               step,
+              this.env,
+              runId,
               `backfill-translate-${offset}`,
               { count: 0, tokens: 0 },
               async () => {
@@ -1370,8 +1342,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           : undefined
       );
 
-      const backfillScoreResult = await safeStep(
+      const backfillScoreResult = await llmStep(
         step,
+        this.env,
+        runId,
         "backfill-score",
         { scoredCount: 0, tokens: 0 },
         async () => {
@@ -1459,8 +1433,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           : `scored ${backfillScoreResult.scoredCount} items`
       );
 
-      const qaStats = await safeStep(
+      const qaStats = await llmStep(
         step,
+        this.env,
+        runId,
         "qa-translations",
         { rated: 0, adjusted: 0, tokens: 0, error: "" },
         async () => {
@@ -1494,8 +1470,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             : `rated ${qaRated} translations, adjusted ${qaAdjusted}`
       );
 
-      const suggestionsStats = await safeStep(
+      const suggestionsStats = await llmStep(
         step,
+        this.env,
+        runId,
         "review-suggestions",
         { reviewed: 0, tokens: 0 },
         async () => {
@@ -1517,8 +1495,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           : `reviewed ${suggestionsReviewed} suggestions`
       );
 
-      const submissionsStats = await safeStep(
+      const submissionsStats = await llmStep(
         step,
+        this.env,
+        runId,
         "review-submissions",
         { reviewed: 0, tokens: 0 },
         async () => {
@@ -1541,8 +1521,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           : `reviewed ${submissionsReviewed} submissions`
       );
 
-      const tldrStats = await safeStep(
+      const tldrStats = await llmStep(
         step,
+        this.env,
+        runId,
         "tldr",
         {
           generated: false,
