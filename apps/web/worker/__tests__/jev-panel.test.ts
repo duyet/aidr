@@ -183,6 +183,31 @@ describe("JEV panel configuration", () => {
       ])
     );
   });
+
+  it("fails closed at run time before invoking a malformed policy", async () => {
+    const execute = vi.fn<JevJudgeExecutor>();
+    const result = await runJevPanel({
+      panel: panel({
+        categoryOptions: [""],
+        debate: {
+          maxRounds: 2 as 0 | 1,
+          disagreementThreshold: Number.NaN,
+        },
+      }),
+      subject,
+      execute,
+    });
+
+    expect(result.status).toBe("human_review");
+    expect(result.humanReview?.reasonCodes).toContain("configuration_invalid");
+    expect(result.audit.configurationIssues.map((entry) => entry.code)).toEqual(
+      expect.arrayContaining([
+        "invalid_category_options",
+        "invalid_debate_policy",
+      ])
+    );
+    expect(execute).not.toHaveBeenCalled();
+  });
 });
 
 describe("JEV panel aggregation", () => {

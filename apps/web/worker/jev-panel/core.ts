@@ -1485,7 +1485,7 @@ export async function runJevPanel(
       ? {}
       : { version: input.subject.version }),
   };
-  const validation = validateJevPanel(panel);
+  const validation = validateJevPanel(input.panel);
   const idempotencyKey = await createJevPanelIdempotencyKey(panel, subject);
   const noDebate = notTriggeredDebate();
 
