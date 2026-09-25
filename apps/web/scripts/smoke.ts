@@ -325,6 +325,20 @@ async function main() {
     );
   });
 
+  await check(
+    "GET /about without locale headers always varies neutral SSR HTML",
+    async () => {
+      const res = await fetch(`${base}/about`, {
+        headers: { "cache-control": "no-cache" },
+      });
+      assert(res.status === 200, `expected 200, got ${res.status}`);
+      assert(
+        res.headers.get("vary") === "Cookie, Accept-Language",
+        `expected locale Vary, got ${res.headers.get("vary")}`
+      );
+    }
+  );
+
   await check("GET /subscribe has Chrome and Telegram tabs", async () => {
     const res = await fetch(`${base}/subscribe`);
     assert(res.status === 200, `expected 200, got ${res.status}`);
@@ -337,16 +351,24 @@ async function main() {
     );
   });
 
-  await check("GET /extension redirects to /subscribe", async () => {
+  await check("GET /extension redirects privately to /subscribe", async () => {
     const res = await fetch(`${base}/extension`, { redirect: "manual" });
     assert(
-      res.status === 301 || res.status === 302,
-      `expected redirect, got ${res.status}`
+      res.status === 301,
+      `expected permanent redirect, got ${res.status}`
     );
     const loc = res.headers.get("location") ?? "";
     assert(
       new URL(loc, base).pathname === "/subscribe",
       `expected /subscribe Location, got ${loc}`
+    );
+    assert(
+      res.headers.get("cache-control") === "private, no-store",
+      `expected private permanent redirect, got ${res.headers.get("cache-control")}`
+    );
+    assert(
+      res.headers.get("vary") === "Cookie, Accept-Language",
+      `expected locale Vary, got ${res.headers.get("vary")}`
     );
   });
 

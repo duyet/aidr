@@ -7,6 +7,29 @@ import {
   getClerkPublishableKey,
   loadClerkModule,
 } from "../lib/clerk-user";
+import { useLang } from "../lib/lang-context";
+import { withLang } from "../lib/locale-url";
+import type { Lang } from "../lib/types";
+
+const CLERK_LOCALIZATION: Record<Lang, { locale: Lang }> = {
+  en: { locale: "en" },
+  vi: { locale: "vi" },
+};
+
+/**
+ * The installed Clerk provider updates its existing singleton options when
+ * the localization object identity changes. Keep one object per locale so a
+ * locale change refreshes every redirect option without remounting the app.
+ */
+export function clerkProviderLocaleOptions(lang: Lang) {
+  return {
+    localization: CLERK_LOCALIZATION[lang],
+    signInUrl: withLang("/sign-in", lang),
+    signUpUrl: withLang("/sign-up", lang),
+    signInFallbackRedirectUrl: withLang("/", lang),
+    signUpFallbackRedirectUrl: withLang("/", lang),
+  };
+}
 
 /**
  * Mounts the ONE app-wide <ClerkProvider> (deferred — the Clerk SDK is
@@ -20,6 +43,8 @@ import {
  */
 export function ClerkRootProvider({ children }: { children: ReactNode }) {
   const publishableKey = getClerkPublishableKey();
+  const navigationLang = useLang();
+  const localeOptions = clerkProviderLocaleOptions(navigationLang);
   const [mod, setMod] = useState<ClerkModule | null>(null);
 
   useEffect(() => {
@@ -53,10 +78,7 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
           // Absolute URL so handshake redirects never fall back to the
           // publishable-key host (clerk.aidr.today → CF Error 1000).
           proxyUrl={CLERK_PROXY_URL}
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/"
-          signUpFallbackRedirectUrl="/"
+          {...localeOptions}
           appearance={{
             variables: {
               colorPrimary: "oklch(0.555 0.163 48.998)",

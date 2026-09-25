@@ -143,7 +143,7 @@ describe("withSsrLocaleResponse", () => {
     }
   });
 
-  it("keeps language-neutral pages English and publicly cacheable", () => {
+  it("keeps language-neutral pages English, public, and always varied", () => {
     const response = withSsrLocaleResponse(
       new Request("https://aidr.today/about"),
       html()
@@ -152,7 +152,7 @@ describe("withSsrLocaleResponse", () => {
     expect(response.headers.get("Cache-Control")).toBe(
       SSR_NEUTRAL_CACHE_CONTROL
     );
-    expect(response.headers.get("Vary")).toBeNull();
+    expect(response.headers.get("Vary")).toBe("Cookie, Accept-Language");
 
     const selected = withSsrLocaleResponse(
       new Request("https://aidr.today/about", {
@@ -192,7 +192,7 @@ describe("withSsrLocaleResponse", () => {
       expect(response.headers.get("Cache-Control")).toBe(
         SSR_NEUTRAL_CACHE_CONTROL
       );
-      expect(response.headers.get("Vary")).toBeNull();
+      expect(response.headers.get("Vary")).toBe("Cookie, Accept-Language");
     }
   );
 

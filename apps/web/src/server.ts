@@ -15,6 +15,8 @@ import {
 import { readSession } from "./lib/db";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import {
+  LOCALE_PRIVATE_CACHE_CONTROL,
+  LOCALE_VARY,
   localeErrorResponse,
   normalizeLocaleRequest,
   resolveRequestLocale,
@@ -135,7 +137,14 @@ export default {
           resolution.lang
         );
       }
-      return Response.redirect(dest.toString(), 301);
+      return new Response(null, {
+        status: 301,
+        headers: {
+          "Cache-Control": LOCALE_PRIVATE_CACHE_CONTROL,
+          Location: dest.toString(),
+          Vary: LOCALE_VARY,
+        },
+      });
     }
 
     const storyDest = legacyStoryRedirectPath(path);

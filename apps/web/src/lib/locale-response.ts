@@ -229,12 +229,11 @@ export function withSsrLocaleResponse(
   } else if (neutral) {
     headers.set("Content-Language", "en");
     setSafePublicPolicy(headers, SSR_NEUTRAL_CACHE_CONTROL);
-    if (
-      request.headers.has("cookie") ||
-      request.headers.has("accept-language")
-    ) {
-      appendVary(headers, LOCALE_VARY);
-    }
+    // The rendered navigation links can use the request-resolved locale even
+    // when this particular request has no Cookie or Accept-Language header.
+    // Vary the first key as well as header-selected responses so a shared
+    // cache cannot reuse default-language links for another user's locale.
+    appendVary(headers, LOCALE_VARY);
   } else if (localized) {
     headers.set("Content-Language", lang);
     if (hasCanonicalLocaleQuery(url.search)) {
