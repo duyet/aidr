@@ -93,7 +93,7 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 4. **Score (Jev, then LLM)** — batches of 5.
 
    - TypeSafe Jev (`typesafe/jev`, `POST /api/v1/systemone`) judges each
-     item first: relevance is P(AI/tech), importance and quality are 0–10
+     item first: relevance is P(AI/tech), importance and quality are 0–9
      score levels, category is one choice from the fixed 11-value enum,
      plus one entity tag and one theme tag (`none` is dropped).
    - Jev does not emit a free-form tag list.
