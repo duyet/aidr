@@ -104,6 +104,8 @@ describe("loadSystemStats run timestamp normalization", () => {
               items_fetched: 1,
               items_new: 1,
               error: null,
+              errorCode: null,
+              errorStatus: null,
               stats: null,
             },
           ],
@@ -173,7 +175,7 @@ describe("loadSystemStats run timestamp normalization", () => {
 });
 
 describe("attachLlmCallsToRuns", () => {
-  it("attributes calls by timestamp window and sums usage", () => {
+  it("attributes calls only by explicit run id and sums usage", () => {
     const runs = [
       {
         id: "run-a",
@@ -182,6 +184,8 @@ describe("attachLlmCallsToRuns", () => {
         items_fetched: 3,
         items_new: 1,
         error: null,
+        errorCode: null,
+        errorStatus: null,
         stats: { tokens: 10 },
       },
       {
@@ -191,12 +195,15 @@ describe("attachLlmCallsToRuns", () => {
         items_fetched: 0,
         items_new: 0,
         error: null,
+        errorCode: null,
+        errorStatus: null,
         stats: null,
       },
     ];
     const calls = [
       {
         ts: 1_700_000_010_000,
+        runId: "run-a",
         task: "score",
         model: "anyrouter/gpt-test",
         ok: true,
@@ -207,9 +214,12 @@ describe("attachLlmCallsToRuns", () => {
         completionTokens: 20,
         cachedTokens: 50,
         error: null,
+        errorCode: null,
+        errorStatus: null,
       },
       {
         ts: 1_700_000_050_000,
+        runId: "run-a",
         task: "translate",
         model: "anyrouter/gpt-test",
         ok: true,
@@ -220,9 +230,12 @@ describe("attachLlmCallsToRuns", () => {
         completionTokens: 10,
         cachedTokens: 0,
         error: null,
+        errorCode: null,
+        errorStatus: null,
       },
       {
         ts: 1_700_000_250_000,
+        runId: "run-b",
         task: "tldr",
         model: "anyrouter/other",
         ok: false,
@@ -233,6 +246,8 @@ describe("attachLlmCallsToRuns", () => {
         completionTokens: null,
         cachedTokens: null,
         error: "timeout",
+        errorCode: "timeout",
+        errorStatus: null,
       },
     ];
 
@@ -249,6 +264,86 @@ describe("attachLlmCallsToRuns", () => {
     expect(attached[1]?.llm?.models).toEqual(["anyrouter/other"]);
   });
 
+  it("does not guess attribution for overlapping windows or unscoped calls", () => {
+    const runs = [
+      {
+        id: "run-left",
+        started_at: 1_700_000_000,
+        finished_at: 1_700_000_100,
+        items_fetched: 1,
+        items_new: 1,
+        error: null,
+        stats: null,
+      },
+      {
+        id: "run-right",
+        started_at: 1_700_000_020,
+        finished_at: 1_700_000_120,
+        items_fetched: 1,
+        items_new: 1,
+        error: null,
+        stats: null,
+      },
+    ];
+    const calls = [
+      {
+        ts: 1_700_000_050_000,
+        runId: "run-left",
+        task: "score",
+        model: "left/model",
+        ok: true,
+        tokens: 11,
+        durationMs: 1,
+        promptChars: null,
+        promptTokens: null,
+        completionTokens: null,
+        cachedTokens: null,
+        error: null,
+        errorCode: null,
+        errorStatus: null,
+      },
+      {
+        ts: 1_700_000_050_000,
+        runId: "run-right",
+        task: "score",
+        model: "right/model",
+        ok: true,
+        tokens: 22,
+        durationMs: 1,
+        promptChars: null,
+        promptTokens: null,
+        completionTokens: null,
+        cachedTokens: null,
+        error: null,
+        errorCode: null,
+        errorStatus: null,
+      },
+      {
+        ts: 1_700_000_050_000,
+        runId: "reprocess-operation",
+        task: "score",
+        model: "reprocess/model",
+        ok: true,
+        tokens: 99,
+        durationMs: 1,
+        promptChars: null,
+        promptTokens: null,
+        completionTokens: null,
+        cachedTokens: null,
+        error: null,
+        errorCode: null,
+        errorStatus: null,
+      },
+    ];
+
+    const attached = attachLlmCallsToRuns(runs, calls);
+    expect(attached[0]?.llm?.tokens).toBe(11);
+    expect(attached[1]?.llm?.tokens).toBe(22);
+    expect(attached.flatMap((run) => run.llm?.models ?? [])).not.toContain(
+      "reprocess/model"
+    );
+  });
+
   it("keeps failed→ok models in first-seen order for fallback display", () => {
     const runs = [
       {
@@ -258,12 +353,15 @@ describe("attachLlmCallsToRuns", () => {
         items_fetched: 1,
         items_new: 1,
         error: null,
+        errorCode: null,
+        errorStatus: null,
         stats: null,
       },
     ];
     const calls = [
       {
         ts: 1_700_000_010_000,
+        runId: "run-fb",
         task: "score",
         model: "anyrouter/auto",
         ok: false,
@@ -274,9 +372,12 @@ describe("attachLlmCallsToRuns", () => {
         completionTokens: null,
         cachedTokens: null,
         error: "anyrouter response missing content",
+        errorCode: "invalid_response",
+        errorStatus: null,
       },
       {
         ts: 1_700_000_022_000,
+        runId: "run-fb",
         task: "score",
         model: "google/gemma-4-26b-a4b-it",
         ok: true,
@@ -287,9 +388,12 @@ describe("attachLlmCallsToRuns", () => {
         completionTokens: 124,
         cachedTokens: 0,
         error: null,
+        errorCode: null,
+        errorStatus: null,
       },
       {
         ts: 1_700_000_030_000,
+        runId: "run-fb",
         task: "score",
         model: "anyrouter/auto",
         ok: false,
@@ -300,9 +404,12 @@ describe("attachLlmCallsToRuns", () => {
         completionTokens: null,
         cachedTokens: null,
         error: "anyrouter response missing content",
+        errorCode: "invalid_response",
+        errorStatus: null,
       },
       {
         ts: 1_700_000_034_000,
+        runId: "run-fb",
         task: "score",
         model: "google/gemma-4-26b-a4b-it",
         ok: true,
@@ -313,6 +420,8 @@ describe("attachLlmCallsToRuns", () => {
         completionTokens: 163,
         cachedTokens: 0,
         error: null,
+        errorCode: null,
+        errorStatus: null,
       },
     ];
 

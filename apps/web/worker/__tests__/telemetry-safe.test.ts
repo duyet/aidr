@@ -5,8 +5,8 @@ import {
   sanitizeText,
 } from "../telemetry-safe.js";
 
-describe("telemetry redaction", () => {
-  it("classifies provider failures without returning raw diagnostics", () => {
+describe("telemetry-safe", () => {
+  it("returns structured safe provider errors without response bodies", () => {
     expect(
       sanitizeError(
         'anyrouter request failed: 502 {"error":{"prompt":"secret"}}'
@@ -21,6 +21,16 @@ describe("telemetry redaction", () => {
       code: "timeout",
       status: null,
     });
+    expect(sanitizeError("anyrouter response missing content")).toEqual({
+      message: "Provider returned an invalid response",
+      code: "invalid_response",
+      status: null,
+    });
+    expect(sanitizeError("Provider request failed (502)")).toEqual({
+      message: "Provider request failed (502)",
+      code: "provider_error",
+      status: 502,
+    });
   });
 
   it("redacts URLs, bearer tokens, and sensitive key/value payloads", () => {
@@ -31,7 +41,7 @@ describe("telemetry redaction", () => {
     ).toBe("prompt: [redacted]");
   });
 
-  it("sanitizes nested workflow and notification diagnostics", () => {
+  it("sanitizes nested step and notification reasons", () => {
     const result = JSON.parse(
       sanitizeRunStatsJson(
         JSON.stringify({
@@ -46,8 +56,20 @@ describe("telemetry redaction", () => {
         })
       )
     );
-    expect(JSON.stringify(result)).not.toContain("secret");
-    expect(JSON.stringify(result)).not.toContain("https://x.test/a");
-    expect(JSON.stringify(result)).not.toContain("raw");
+    expect(result.steps[0].reason).toBe("url=[url redacted] token: [redacted]");
+    expect(result.notifyReason.telegram).toEqual({
+      response: "[redacted]",
+      maxRank: 20,
+    });
+  });
+
+  it("redacts JSON payloads embedded in text", () => {
+    expect(
+      sanitizeText('{"prompt":"secret","url":"https://x.test","ok":true}')
+    ).toBe('{"prompt":"[redacted]","url":"[url redacted]","ok":true}');
+  });
+
+  it("drops malformed stats rather than returning raw JSON", () => {
+    expect(sanitizeRunStatsJson('{"prompt":"secret"')).toBe("{}");
   });
 });

@@ -1,10 +1,10 @@
-import { Badge, Skeleton, TableCell, TableRow } from "@aidr/ui";
+import { Badge, TableCell, TableRow } from "@aidr/ui";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, useRef } from "react";
 import { formatTokens } from "../../lib/format";
 import { timeAgo } from "../../lib/lang";
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
-import { RunAttemptRows } from "./RunAttemptRows";
+import { RunDetails } from "./RunDetails";
 import { RunModelsCell } from "./RunModelsCell";
 import {
   bySourceSubline,
@@ -12,7 +12,13 @@ import {
   formatDuration,
   formatDurationSec,
   formatMs,
-  llmTokens,
+  formatSafeError,
+  hasRunDetails,
+  normalizeRunTokens,
+  type RunAttemptsState,
+  runDetailsId,
+  runDisclosureLabel,
+  runStatus,
   statusVariant,
 } from "./run-format";
 
@@ -21,7 +27,7 @@ export function RunRow({
   lang,
   maxDuration,
   expanded,
-  loadingAttempts,
+  attemptsState,
   attempts,
   onToggle,
 }: {
@@ -29,20 +35,33 @@ export function RunRow({
   lang: "en" | "vi";
   maxDuration: number;
   expanded: boolean;
-  loadingAttempts: boolean;
+  attemptsState: RunAttemptsState;
   attempts: LlmCallRow[];
   onToggle: () => void;
 }) {
-  const ok = !r.error;
-  const partial = ok && (r.items_fetched ?? 0) === 0;
+  const status = runStatus(r);
+  const successful = status === "ok";
+  const nonError = status !== "error";
+  const partial = status === "empty";
+  const neutral = status === "in_progress" || status === "unknown";
   const stats = r.stats;
   const llm = r.llm;
   const sourceLine = stats ? bySourceSubline(stats) : null;
   const badges = stats ? extraBadges(stats, lang) : [];
   const sec = formatDurationSec(r.started_at, r.finished_at);
   const pct = sec ? Math.max((sec / maxDuration) * 100, 4) : 0;
-  const tokens = llmTokens(stats, llm);
-  const canExpand = Boolean(llm && llm.calls > 0);
+  const tokenSummary = normalizeRunTokens(stats, llm, attempts);
+  const tokens = tokenSummary.total;
+  const canExpand = hasRunDetails(r);
+  const detailsId = runDetailsId(r.id);
+  const disclosureLabel = runDisclosureLabel(lang, expanded);
+  const chevronRef = useRef<HTMLButtonElement>(null);
+  const tokenRef = useRef<HTMLButtonElement>(null);
+  const activeTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const openFrom = (target: HTMLButtonElement | null) => {
+    activeTriggerRef.current = target;
+    onToggle();
+  };
 
   return (
     <Fragment>
@@ -50,23 +69,29 @@ export function RunRow({
         className={canExpand ? "cursor-pointer" : undefined}
         onClick={() => {
           if (!canExpand) return;
-          onToggle();
+          openFrom(chevronRef.current);
         }}
       >
         <TableCell className="px-2 py-2 text-muted-foreground">
           {canExpand ? (
             <button
+              ref={chevronRef}
               type="button"
               aria-expanded={expanded}
-              aria-label={
-                lang === "vi"
-                  ? "Chi tiết lần gọi LLM"
-                  : "Toggle LLM call details"
-              }
-              className="inline-flex h-6 w-6 items-center justify-center rounded-sm hover:bg-muted"
+              aria-controls={detailsId}
+              aria-label={disclosureLabel}
+              className="inline-flex h-8 w-8 min-h-8 min-w-8 touch-manipulation items-center justify-center rounded-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               onClick={(e) => {
                 e.stopPropagation();
-                onToggle();
+                openFrom(e.currentTarget);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && expanded) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openFrom(e.currentTarget);
+                  e.currentTarget.focus();
+                }
               }}
             >
               {expanded ? (
@@ -79,25 +104,35 @@ export function RunRow({
         </TableCell>
         <TableCell className="px-3 py-2">
           <Badge
-            variant={statusVariant(ok, partial)}
+            variant={statusVariant(nonError, partial)}
             className={`whitespace-nowrap text-[10px] font-medium ${
-              ok && !partial
+              successful
                 ? "border-transparent bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
                 : partial
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                  : ""
+                  : neutral
+                    ? "border-border bg-muted text-muted-foreground"
+                    : ""
             }`}
-            title={!ok ? (r.error ?? undefined) : undefined}
+            title={status === "error" ? formatSafeError(r.error) : undefined}
           >
-            {!ok
+            {status === "error"
               ? lang === "vi"
                 ? "lỗi"
                 : "error"
-              : partial
+              : status === "in_progress"
                 ? lang === "vi"
-                  ? "trống"
-                  : "empty"
-                : "OK"}
+                  ? "đang chạy"
+                  : "running"
+                : status === "empty"
+                  ? lang === "vi"
+                    ? "trống"
+                    : "empty"
+                  : status === "unknown"
+                    ? lang === "vi"
+                      ? "không rõ"
+                      : "unknown"
+                    : "OK"}
           </Badge>
         </TableCell>
         <TableCell
@@ -127,15 +162,48 @@ export function RunRow({
           <RunModelsCell llm={llm} />
         </TableCell>
         <TableCell className="px-3 py-2 text-right font-mono text-xs tabular-nums text-foreground">
-          {tokens ? formatTokens(tokens) : "—"}
+          {canExpand && tokens !== null ? (
+            <button
+              ref={tokenRef}
+              type="button"
+              aria-expanded={expanded}
+              aria-controls={detailsId}
+              aria-label={`${disclosureLabel} · ${formatTokens(tokens)} ${
+                lang === "vi" ? "token" : "tokens"
+              }`}
+              className="min-h-8 touch-manipulation rounded-sm px-1 underline decoration-dotted underline-offset-2 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              onClick={(e) => {
+                e.stopPropagation();
+                openFrom(e.currentTarget);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && expanded) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openFrom(e.currentTarget);
+                  e.currentTarget.focus();
+                }
+              }}
+            >
+              {formatTokens(tokens)}
+            </button>
+          ) : tokens !== null ? (
+            formatTokens(tokens)
+          ) : (
+            "—"
+          )}
         </TableCell>
         <TableCell className="px-3 py-2 text-right font-mono text-xs tabular-nums">
-          {llm && llm.cachedTokens > 0 ? (
-            <span className="text-emerald-700 dark:text-emerald-400">
-              {formatTokens(llm.cachedTokens)}
+          {tokenSummary.cached !== null ? (
+            <span
+              className={
+                tokenSummary.cached > 0
+                  ? "text-emerald-700 dark:text-emerald-400"
+                  : "text-muted-foreground"
+              }
+            >
+              {formatTokens(tokenSummary.cached)}
             </span>
-          ) : llm ? (
-            <span className="text-muted-foreground">0</span>
           ) : (
             <span className="text-muted-foreground">—</span>
           )}
@@ -187,14 +255,21 @@ export function RunRow({
           ) : null}
         </TableCell>
       </TableRow>
-      {expanded && llm ? (
+      {expanded && canExpand ? (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={11} className="bg-muted/20 px-3 py-3">
-            {loadingAttempts ? (
-              <Skeleton className="h-24 w-full" />
-            ) : (
-              <RunAttemptRows attempts={attempts} />
-            )}
+          <TableCell
+            id={detailsId}
+            colSpan={11}
+            className="min-w-0 max-w-full bg-muted/20 px-3 py-3"
+          >
+            <RunDetails
+              run={r}
+              lang={lang}
+              attemptsState={attemptsState}
+              attempts={attempts}
+              onClose={onToggle}
+              triggerRef={activeTriggerRef}
+            />
           </TableCell>
         </TableRow>
       ) : null}

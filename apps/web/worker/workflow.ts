@@ -39,6 +39,7 @@ import {
   setLlmCallLogger,
   TRANSLATE_BATCH_SIZE,
   translateItems,
+  withLlmCallContext,
 } from "./llm.js";
 import { createD1LlmCallLogger, pruneLlmCalls } from "./llm-call-log.js";
 import {
@@ -228,6 +229,17 @@ interface ItemRow {
 
 export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
   async run(event: WorkflowEvent<unknown>, step: WorkflowStep) {
+    const runId = ingestRunId(event);
+    return withLlmCallContext(runId, () =>
+      this.runInternal(event, step, runId)
+    );
+  }
+
+  private async runInternal(
+    event: WorkflowEvent<unknown>,
+    step: WorkflowStep,
+    runId: string
+  ) {
     let itemsFetched = 0;
     let itemsNew = 0;
     let runError: string | null = null;
@@ -258,7 +270,6 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     // return while run() is still queued, pruneLlmCalls can run for minutes
     // on a large llm_calls table, and wrapping the first step.do in
     // safeStep can return a fallback without executing the upsert.
-    const runId = ingestRunId(event);
     const startedAt = toEpochSeconds(
       event.timestamp instanceof Date ? event.timestamp.getTime() : Date.now()
     );
@@ -270,7 +281,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     // not step.do: re-running it on workflow replay is harmless (it just
     // reinstalls the same closure and re-runs an idempotent DELETE), and
     // it must never affect run-error tracking below.
-    setLlmCallLogger(createD1LlmCallLogger(this.env));
+    setLlmCallLogger(createD1LlmCallLogger(this.env, runId));
 
     // Durable duplicate of the open-run upsert. Do not wrap in safeStep:
     // a caught engine yield would skip the callback and look like success.

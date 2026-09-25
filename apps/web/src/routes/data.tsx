@@ -11,6 +11,7 @@ import { RunsTab } from "../components/system/RunsTab";
 import { SourcesTab } from "../components/system/SourcesTab";
 import { useAdmin } from "../lib/admin";
 import { type DataTab, parseDataTab } from "../lib/data-tab";
+import { useLang } from "../lib/lang-context";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
@@ -37,8 +38,8 @@ export const Route = createFileRoute("/data")({
   component: SystemPage,
 });
 
-function SystemPage() {
-  const lang: Lang = "en";
+export function SystemPage() {
+  const lang: Lang = useLang();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const admin = useAdmin();

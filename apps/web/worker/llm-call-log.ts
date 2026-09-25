@@ -1,34 +1,38 @@
 import { type LlmCallLogEntry, redactLlmCallEntry } from "./llm.js";
+import { sanitizeError } from "./telemetry-safe.js";
 import type { Env } from "./types.js";
 
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Additive usage columns from migration 0016. Applied at runtime so local
- * / preview DBs keep logging before `wrangler d1 migrations apply`. */
-const USAGE_COLUMNS_SQL = [
+/** Additive usage/identity columns from migrations 0016 and 0025. Applied at
+ * runtime so local/preview DBs keep logging before migrations are applied. */
+const TELEMETRY_COLUMNS_SQL = [
   "ALTER TABLE llm_calls ADD COLUMN prompt_tokens INTEGER",
   "ALTER TABLE llm_calls ADD COLUMN completion_tokens INTEGER",
   "ALTER TABLE llm_calls ADD COLUMN cached_tokens INTEGER",
+  "ALTER TABLE llm_calls ADD COLUMN run_id TEXT",
+  "ALTER TABLE llm_calls ADD COLUMN error_code TEXT",
+  "ALTER TABLE llm_calls ADD COLUMN error_status INTEGER",
 ];
 
-let usageColumnsReady = false;
+let telemetryColumnsReady = false;
 
-async function ensureUsageColumns(db: D1Database): Promise<void> {
-  if (usageColumnsReady) return;
-  for (const sql of USAGE_COLUMNS_SQL) {
+async function ensureTelemetryColumns(db: D1Database): Promise<void> {
+  if (telemetryColumnsReady) return;
+  for (const sql of TELEMETRY_COLUMNS_SQL) {
     try {
       await db.prepare(sql).run();
     } catch {
       // Column already exists, or table not migrated yet — insert path
-      // still falls back to the lean 0013 INSERT below.
+      // still falls back to progressively smaller safe INSERTs below.
     }
   }
-  usageColumnsReady = true;
+  telemetryColumnsReady = true;
 }
 
 /** Test helper — Worker isolate is long-lived; tests share the module. */
 export function resetLlmCallLogSchemaCache(): void {
-  usageColumnsReady = false;
+  telemetryColumnsReady = false;
 }
 
 /**
@@ -38,18 +42,53 @@ export function resetLlmCallLogSchemaCache(): void {
  * must never fail or slow down because observability logging broke.
  */
 export function createD1LlmCallLogger(
-  env: Env
+  env: Env,
+  fallbackRunId?: string | null
 ): (entry: LlmCallLogEntry) => Promise<void> {
   return async (entry) => {
     const safeEntry = redactLlmCallEntry(entry);
+    const safeError = sanitizeError(safeEntry.error);
+    const runId = entry.runId ?? fallbackRunId ?? null;
     try {
-      await ensureUsageColumns(env.DB);
+      await ensureTelemetryColumns(env.DB);
       try {
         await env.DB.prepare(
           `INSERT INTO llm_calls (
              ts, task, model, ok, tokens, duration_ms, error,
              prompt_chars, response_snippet,
-             prompt_tokens, completion_tokens, cached_tokens
+             prompt_tokens, completion_tokens, cached_tokens,
+             run_id, error_code, error_status
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+          .bind(
+            safeEntry.ts,
+            safeEntry.task,
+            safeEntry.model,
+            safeEntry.ok ? 1 : 0,
+            safeEntry.tokens,
+            safeEntry.durationMs,
+            safeError?.message ?? null,
+            safeEntry.promptChars,
+            null,
+            safeEntry.promptTokens,
+            safeEntry.completionTokens,
+            safeEntry.cachedTokens,
+            runId,
+            safeError?.code ?? null,
+            safeError?.status ?? null
+          )
+          .run();
+        return;
+      } catch {
+        // A pre-0016/0025 DB may not have every optional column. The next
+        // insert keeps identity if the identity migration exists, then the
+        // legacy insert keeps logging safe aggregate fields only.
+      }
+      try {
+        await env.DB.prepare(
+          `INSERT INTO llm_calls (
+             ts, task, model, ok, tokens, duration_ms, error,
+             prompt_chars, response_snippet, run_id, error_code, error_status
            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
           .bind(
@@ -59,17 +98,17 @@ export function createD1LlmCallLogger(
             safeEntry.ok ? 1 : 0,
             safeEntry.tokens,
             safeEntry.durationMs,
-            safeEntry.error,
+            safeError?.message ?? null,
             safeEntry.promptChars,
-            safeEntry.responseSnippet,
-            safeEntry.promptTokens,
-            safeEntry.completionTokens,
-            safeEntry.cachedTokens
+            null,
+            runId,
+            safeError?.code ?? null,
+            safeError?.status ?? null
           )
           .run();
         return;
       } catch {
-        // Pre-0016 DB or ensureUsageColumns failed: fall back to lean insert.
+        // Fall through to the pre-identity schema.
       }
       await env.DB.prepare(
         `INSERT INTO llm_calls (ts, task, model, ok, tokens, duration_ms, error, prompt_chars, response_snippet)
@@ -82,9 +121,9 @@ export function createD1LlmCallLogger(
           safeEntry.ok ? 1 : 0,
           safeEntry.tokens,
           safeEntry.durationMs,
-          safeEntry.error,
+          safeError?.message ?? null,
           safeEntry.promptChars,
-          safeEntry.responseSnippet
+          null
         )
         .run();
     } catch (error) {
