@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunStats } from "../../lib/system-queries";
+import type { LlmCallRow, WorkflowRunStats } from "../../lib/system-queries";
 import {
   bySourceSubline,
   extraBadges,
@@ -13,15 +13,18 @@ import {
   formatTimestamp,
   formatTokenValue,
   hasRunDetails,
+  isPreIdentityRun,
   llmTokens,
   nextOpenId,
   normalizeRunTokens,
   runDetailsId,
   runDisclosureLabel,
+  runFallbackKindLabel,
   runStatus,
   safeRunSteps,
   shortModel,
   statusVariant,
+  stepFallbackNotes,
   tokenBreakdown,
 } from "./run-format";
 
@@ -345,5 +348,113 @@ describe("tokenBreakdown", () => {
         undefined
       )
     ).toEqual({ total: 100, input: null, output: null, cached: null });
+  });
+});
+
+describe("stepFallbackNotes (#189)", () => {
+  it("mirrors an anyrouter fallback chain embedded in a step reason", () => {
+    const notes = stepFallbackNotes([
+      { name: "tldr", action: "skipped" },
+      {
+        name: "tldr",
+        action: "skipped",
+        reason:
+          "anyrouter chain exhausted: openai/gpt-4o: anyrouter request failed: 502 | google/gemini: anyrouter provider error",
+      },
+    ]);
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0]?.step).toBe("tldr");
+    expect(notes[0]?.kind).toBe("chain_exhausted");
+    expect(runFallbackKindLabel(notes[0]!.kind, "en")).toBe(
+      "Fallback chain exhausted"
+    );
+    expect(notes[0]?.detail).toContain("anyrouter chain exhausted");
+  });
+
+  it("classifies a provider status inside a step reason", () => {
+    const [note] = stepFallbackNotes([
+      {
+        name: "qa-translations",
+        action: "review failed",
+        reason: "anyrouter request failed: 429",
+      },
+    ]);
+    expect(note?.kind).toBe("rate_limited");
+    expect(runFallbackKindLabel(note!.kind, "vi")).toBe(
+      "Bị giới hạn tần suất từ nhà cung cấp"
+    );
+  });
+
+  it("keeps healthy and non-provider step explanations out of the error section", () => {
+    expect(
+      stepFallbackNotes([
+        { name: "fetch", action: "48 items from 9 sources" },
+        { name: "dedupe", action: "12 new", reason: "36 already in db" },
+        { name: "translate", action: "translated 12/12 items" },
+        { name: "email", action: "skipped", reason: "no eligible subscribers" },
+        { name: "backfill-score", action: "0 candidates" },
+      ])
+    ).toEqual([]);
+  });
+
+  it("redacts anything that must not ride along in a step reason", () => {
+    const [note] = stepFallbackNotes([
+      {
+        name: "tldr",
+        action: "skipped",
+        reason:
+          "anyrouter chain exhausted: https://provider.test/raw?key=abcd1234efgh5678 authorization=Bearer sk-secret-value-1234",
+      },
+    ]);
+    expect(note?.detail).not.toContain("provider.test");
+    expect(note?.detail).not.toContain("sk-secret-value-1234");
+  });
+});
+
+describe("isPreIdentityRun (#189)", () => {
+  const preIdentityStats: WorkflowRunStats = { tokens: 13_700 };
+  const attempt: LlmCallRow = {
+    ts: 1_700_000_010_000,
+    runId: "run-1",
+    task: "score",
+    model: "anyrouter/auto",
+    ok: true,
+    tokens: 100,
+    durationMs: 20,
+    promptChars: 10,
+    promptTokens: 80,
+    completionTokens: 20,
+    cachedTokens: 0,
+    error: null,
+    errorCode: null,
+    errorStatus: null,
+  };
+
+  it("labels a run with tokens but no attributable attempts", () => {
+    expect(isPreIdentityRun(preIdentityStats, undefined, [])).toBe(true);
+  });
+
+  it("does not label a run that has attempt rows or no tokens", () => {
+    expect(isPreIdentityRun(preIdentityStats, undefined, [attempt])).toBe(
+      false
+    );
+    expect(
+      isPreIdentityRun(
+        preIdentityStats,
+        {
+          calls: 1,
+          failures: 0,
+          tokens: 100,
+          cachedTokens: 0,
+          durationMs: 20,
+          models: ["anyrouter/auto"],
+          attempts: [],
+        },
+        []
+      )
+    ).toBe(false);
+    expect(isPreIdentityRun({ tokens: 0 }, undefined, [])).toBe(false);
+    expect(isPreIdentityRun(null, undefined, [])).toBe(false);
   });
 });

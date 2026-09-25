@@ -12,11 +12,14 @@ import {
   formatSafeError,
   formatTimestamp,
   formatTokenValue,
+  isPreIdentityRun,
   type RunAttemptsState,
+  runFallbackKindLabel,
   runStatus,
   safeRunSteps,
   shortModel,
   statusVariant,
+  stepFallbackNotes,
   tokenBreakdown,
 } from "./run-format";
 
@@ -47,9 +50,12 @@ const COPY = {
     attempts: "LLM attempts",
     noAttempts: "No per-attempt data available.",
     noModels: "No model data available.",
+    preIdentityModels:
+      "No per-run model data. Runs logged before per-attempt run identity only report token totals.",
     noWorkflow: "No workflow step detail available.",
     errors: "Errors / fallback",
     fallback: "Fallback chain",
+    fromSteps: "Reported by workflow steps",
     noErrors: "No error recorded.",
     ok: "OK",
     error: "Error",
@@ -60,6 +66,8 @@ const COPY = {
     attemptsUnavailable: "Attempt details are unavailable.",
     attemptsError: "Could not load attempt details.",
     attemptsEmpty: "No LLM calls recorded for this run.",
+    attemptsPreIdentity:
+      "This run reports token totals but no per-attempt rows. Runs logged before per-attempt run identity shipped have no attempt data.",
   },
   vi: {
     summary: "Tóm tắt lần chạy",
@@ -78,9 +86,12 @@ const COPY = {
     attempts: "Các lần gọi LLM",
     noAttempts: "Chưa có dữ liệu từng lần gọi.",
     noModels: "Chưa có dữ liệu mô hình.",
+    preIdentityModels:
+      "Chưa có dữ liệu mô hình theo lần chạy. Các lần chạy ghi nhận trước khi có định danh lần gọi chỉ báo tổng token.",
     noWorkflow: "Chưa có dữ liệu bước xử lý.",
     errors: "Lỗi / fallback",
     fallback: "Chuỗi fallback",
+    fromSteps: "Được báo bởi các bước xử lý",
     noErrors: "Không ghi nhận lỗi.",
     ok: "OK",
     error: "Lỗi",
@@ -91,6 +102,8 @@ const COPY = {
     attemptsUnavailable: "Không có chi tiết lần gọi.",
     attemptsError: "Không thể tải chi tiết lần gọi.",
     attemptsEmpty: "Không ghi nhận lần gọi LLM cho lần chạy này.",
+    attemptsPreIdentity:
+      "Lần chạy này có tổng token nhưng không có dữ liệu từng lần gọi. Các lần chạy ghi nhận trước khi có định danh lần gọi không lưu chi tiết.",
   },
 } as const;
 
@@ -215,6 +228,11 @@ export function RunDetails({
   const failedAttempts = attempts.filter((attempt) => !attempt.ok);
   const fallback = fallbackTransitions(attempts);
   const hasFallback = fallback.length > 0;
+  // #189: a run with no attributable attempts still explains provider
+  // failures in its own step reasons — mirror those (scrubbed) instead of
+  // reporting "No error recorded." next to a chain-exhausted tldr step.
+  const stepNotes = stepFallbackNotes(steps);
+  const preIdentity = isPreIdentityRun(stats, llm, attempts);
   const regionLabel = copy.summary;
 
   return (
@@ -289,14 +307,19 @@ export function RunDetails({
           {llm && llm.models.length > 0 ? (
             <ModelLinks models={llm.models} />
           ) : (
-            <p className="text-xs text-muted-foreground">{copy.noModels}</p>
+            <p className="text-xs text-muted-foreground">
+              {preIdentity ? copy.preIdentityModels : copy.noModels}
+            </p>
           )}
         </div>
         <div>
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {copy.errors}
           </p>
-          {run.error || failedAttempts.length > 0 || hasFallback ? (
+          {run.error ||
+          failedAttempts.length > 0 ||
+          hasFallback ||
+          stepNotes.length > 0 ? (
             <div className="space-y-1 text-xs text-muted-foreground">
               {run.error ? (
                 <p className="break-words text-destructive">
@@ -313,6 +336,21 @@ export function RunDetails({
                       >
                         {transition.task}: {shortModel(transition.from)} →{" "}
                         {shortModel(transition.to)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {stepNotes.length > 0 ? (
+                <div className="break-words">
+                  <p>{copy.fromSteps}:</p>
+                  <ul className="ml-3 list-disc">
+                    {stepNotes.map((note, index) => (
+                      <li key={`${note.step}-${note.kind}-${index}`}>
+                        <span className="font-medium text-foreground">
+                          {note.step}: {runFallbackKindLabel(note.kind, lang)}
+                        </span>{" "}
+                        — {note.detail}
                       </li>
                     ))}
                   </ul>
@@ -367,7 +405,9 @@ export function RunDetails({
         ) : (
           <p className="text-xs text-muted-foreground">
             {attemptsState === "empty"
-              ? copy.attemptsEmpty
+              ? preIdentity
+                ? copy.attemptsPreIdentity
+                : copy.attemptsEmpty
               : attemptsState === "error"
                 ? copy.attemptsError
                 : attemptsState === "unavailable"
