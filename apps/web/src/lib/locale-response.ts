@@ -1,4 +1,9 @@
-import { fallbackLang, type LocaleResolution, resolveLocale } from "./lang";
+import {
+  fallbackLang,
+  type LocaleResolution,
+  langCookieHeader,
+  resolveLocale,
+} from "./lang";
 import {
   isLanguageNeutralSsrPath,
   isLocalizedSsrPath,
@@ -140,7 +145,11 @@ export function resolveApiRequestLocale(request: Request): ApiLocaleResolution {
  */
 export function normalizeLocaleRequest(
   request: Request,
-  options: { format: "html" | "json"; neutralPath?: boolean } = {
+  options: {
+    format: "html" | "json";
+    neutralPath?: boolean;
+    redirectPath?: string;
+  } = {
     format: "json",
   }
 ): Response | null {
@@ -152,11 +161,20 @@ export function normalizeLocaleRequest(
   const url = new URL(request.url);
   if (options.neutralPath && hasLocaleQuery(url.search)) {
     const href = neutralLocaleRedirect(url.pathname, url.search, url.hash);
-    if (href) return temporaryLocaleRedirect(request, href, "en");
+    if (href) {
+      const response = temporaryLocaleRedirect(request, href, "en");
+      if (resolution.explicit) {
+        response.headers.append(
+          "Set-Cookie",
+          langCookieHeader(resolution.lang)
+        );
+      }
+      return response;
+    }
   }
   if (resolution.legacy) {
     const href = canonicalLocaleRedirect(
-      url.pathname,
+      options.redirectPath ?? url.pathname,
       url.search,
       url.hash,
       resolution.lang
@@ -187,29 +205,36 @@ export function withSsrLocaleResponse(
   const privateRoute = isPrivateSsrPath(url.pathname, url.search);
   const neutral = isLanguageNeutralSsrPath(url.pathname);
   const localized = isLocalizedSsrPath(url.pathname);
+  const contentLanguage = neutral ? "en" : lang;
   const headers = new Headers(response.headers);
 
   if (response.status >= 300) {
     headers.set("Cache-Control", LOCALE_PRIVATE_CACHE_CONTROL);
-    headers.set("Content-Language", lang);
+    headers.set("Content-Language", contentLanguage);
     headers.set("Referrer-Policy", "no-referrer");
     headers.set("X-Robots-Tag", "noindex, nofollow");
     appendVary(headers, LOCALE_VARY);
   } else if (response.status >= 400) {
     headers.set("Cache-Control", LOCALE_PRIVATE_CACHE_CONTROL);
-    headers.set("Content-Language", lang);
+    headers.set("Content-Language", contentLanguage);
     headers.set("Referrer-Policy", "no-referrer");
     headers.set("X-Robots-Tag", "noindex, nofollow");
     appendVary(headers, LOCALE_VARY);
   } else if (privateRoute) {
     headers.set("Cache-Control", LOCALE_PRIVATE_CACHE_CONTROL);
-    headers.set("Content-Language", lang);
+    headers.set("Content-Language", contentLanguage);
     headers.set("Referrer-Policy", "no-referrer");
     headers.set("X-Robots-Tag", "noindex, nofollow");
     appendVary(headers, LOCALE_VARY);
   } else if (neutral) {
     headers.set("Content-Language", "en");
     setSafePublicPolicy(headers, SSR_NEUTRAL_CACHE_CONTROL);
+    if (
+      request.headers.has("cookie") ||
+      request.headers.has("accept-language")
+    ) {
+      appendVary(headers, LOCALE_VARY);
+    }
   } else if (localized) {
     headers.set("Content-Language", lang);
     if (hasCanonicalLocaleQuery(url.search)) {

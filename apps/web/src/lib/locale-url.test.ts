@@ -21,6 +21,15 @@ describe("locale URL construction", () => {
     );
   });
 
+  it("keeps explicit locale on internal navigation destinations", () => {
+    expect(withLang("/sign-up", "en")).toBe("/sign-up?lang=en");
+    expect(withLang("/subscribe?unsubscribe=secret-token", "vi")).toBe(
+      "/subscribe?unsubscribe=secret-token&lang=vi"
+    );
+    expect(withLang("/mcp", "en")).toBe("/mcp?lang=en");
+    expect(withLang("/about", "vi")).toBe("/about?lang=vi");
+  });
+
   it("never adds a site locale to publisher URLs", () => {
     const source = "https://example.com/story?a=1";
     expect(withSiteLang(source, "en")).toBe(source);

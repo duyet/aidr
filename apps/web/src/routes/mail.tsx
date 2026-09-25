@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MailPanel } from "../components/mail/MailPanel";
 import { useAdmin } from "../lib/admin";
+import { useLang } from "../lib/lang-context";
 
 export const Route = createFileRoute("/mail")({
   component: MailPage,
@@ -8,6 +9,7 @@ export const Route = createFileRoute("/mail")({
 
 function MailPage() {
   const admin = useAdmin();
+  const lang = useLang();
 
   if (admin.loading) {
     return (
@@ -25,7 +27,11 @@ function MailPage() {
           Sign in with an admin account to manage the list and send notes.
         </p>
         <p className="mt-4 text-sm">
-          <Link to="/subscribe" className="underline underline-offset-2">
+          <Link
+            to="/subscribe"
+            search={{ lang }}
+            className="underline underline-offset-2"
+          >
             Public subscribe page
           </Link>
         </p>

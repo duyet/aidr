@@ -24,6 +24,7 @@ import {
 import {
   isLanguageNeutralSsrPath,
   isLocaleAwareApiPath,
+  isPrivateSsrPath,
 } from "./lib/locale-routing";
 import { withLang } from "./lib/locale-url";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
@@ -58,11 +59,6 @@ export default {
       // Redirect instead of 404ing through the SPA shell (console noise).
       const dest = new URL(request.url);
       dest.pathname = "/favicon.svg";
-      return Response.redirect(dest.toString(), 301);
-    }
-    if (path === "/extension") {
-      const dest = new URL(request.url);
-      dest.pathname = "/subscribe";
       return Response.redirect(dest.toString(), 301);
     }
     if (isClerkProxyPath(path)) {
@@ -113,13 +109,33 @@ export default {
     const shouldNormalize =
       !isApi || (isLocaleAwareApiPath(path) && request.method !== "OPTIONS");
     if (shouldNormalize) {
+      const url = new URL(request.url);
       const normalized = normalizeLocaleRequest(request, {
         format: isApi && path !== "/api/subscribe/preview" ? "json" : "html",
-        neutralPath: isLanguageNeutralSsrPath(path),
+        neutralPath:
+          isLanguageNeutralSsrPath(path) && !isPrivateSsrPath(path, url.search),
+        redirectPath: path === "/extension" ? "/subscribe" : undefined,
       });
       if (normalized) {
         return isApi ? handlePublicCors(request, () => normalized) : normalized;
       }
+    }
+
+    if (path === "/extension") {
+      const dest = new URL(request.url);
+      dest.pathname = "/subscribe";
+      const resolution = resolveRequestLocale(request);
+      if (!resolution.ok) {
+        return localeErrorResponse(request, resolution, "html");
+      }
+      if (resolution.explicit || resolution.source !== "default") {
+        return temporaryLocaleRedirect(
+          request,
+          withLang(dest.toString(), resolution.lang),
+          resolution.lang
+        );
+      }
+      return Response.redirect(dest.toString(), 301);
     }
 
     const storyDest = legacyStoryRedirectPath(path);

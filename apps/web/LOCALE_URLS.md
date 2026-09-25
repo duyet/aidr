@@ -24,9 +24,11 @@ Locale-dependent normalization and legacy story-path redirects use `307`, never
 `301`, and emit `Cache-Control: private, no-store`,
 `Vary: Cookie, Accept-Language`, and the selected `Content-Language`. UTM
 parameters, unrelated filters, and fragments are preserved. Error responses use
-the same no-store policy. The path-only `/favicon.ico` and `/extension`
-compatibility redirects remain permanent 301s because they do not select or
-depend on locale; all locale/story canonicalization redirects use 307.
+the same no-store policy. Bare `/extension` remains a permanent path-only 301,
+but a locale-bearing or header/cookie-selected `/extension` request is validated
+first and redirects temporarily to `/subscribe?lang=...`; malformed locale
+parameters fail with `400`. The path-only `/favicon.ico` compatibility redirect
+remains a permanent 301.
 
 ## SSR routes, navigation, and caching
 
@@ -40,13 +42,19 @@ The Worker applies the locale response policy to every TanStack SSR response:
   `/submit`) have explicit `vi`/`en` canonicals, hreflang links, and sitemap
   entries. Only one valid `lang` is publicly cacheable; bare and header-selected
   variants are private.
-- Language-neutral pages (`/about`, `/brand`, `/data`, `/privacy`, and `/terms`)
-  render in English, canonicalize to a bare path, and use a neutral public
-  policy. `/mail` uses the same English chrome but is always private. A locale
-  query on a neutral page is redirected to its bare canonical URL.
-- User-specific surfaces, including `/mail` and tokenized
-  `/subscribe?unsubscribe=...` or `/subscribe?settings=...`, are always
-  `private, no-store`.
+- Language-neutral public pages (`/about`, `/brand`, `/data`, `/privacy`, and
+  `/terms`) render in English, canonicalize to a bare path, and use a neutral
+  public policy. A locale query on those public pages is redirected to its bare
+  canonical URL; an explicit valid locale is also persisted to the
+  `news_lang` cookie so a following full-page request keeps the selection. When
+  a cookie or `Accept-Language` selects the navigation locale used by internal
+  links, the neutral response also varies by those headers. `/mail`,
+  `/sign-in/*`, and `/sign-up/*` are also English and private, but retain a
+  valid explicit locale so authenticated navigation does not lose the selected
+  language.
+- User-specific surfaces, including `/mail`, `/sign-in/*`, `/sign-up/*`, and
+  tokenized `/subscribe?unsubscribe=...` or `/subscribe?settings=...`, are always
+  `private, no-store` and vary by `Cookie, Accept-Language`.
 - All SSR redirects and 4xx/5xx responses are private, no-store, and varied by
   cookie and `Accept-Language`. Successful explicit-locale HTML is indexable;
   bare localized variants are `noindex, follow` and remain private. Public assets,
@@ -84,9 +92,13 @@ documented exception: they do not select or return content language.
 
 Web links, story permalinks, client feed/story helpers and caches, email,
 Telegram digest/trending messages, webhooks, and the Chrome extension use the
-shared URL rules. Client feed caches are keyed by locale; extension caches are
-keyed by normalized API base and locale. Form actions carry attribution in the
-action while the single serialized locale comes from the hidden `lang` field.
+shared URL rules. Internal links to localized or private surfaces (including
+account creation, subscription settings/unsubscribe, feed, MCP, and navigation
+chrome) carry the resolved navigation locale; public neutral destinations stay
+at their bare canonical paths. Client feed caches are keyed by locale;
+extension caches are keyed by normalized API base and locale. Form actions carry
+attribution in the action while the single serialized locale comes from the
+hidden `lang` field.
 
 Telegram remains Vietnamese-first: VI content uses explicit `lang=vi`; when a
 story or digest has no Vietnamese translation, its actual fallback language is

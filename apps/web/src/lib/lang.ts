@@ -4,7 +4,12 @@ export const DEFAULT_LANG: Lang = "vi";
 export const LOCALE_QUERY_PARAM = "lang";
 export const LEGACY_LOCALE_QUERY_PARAM = "locale";
 
-const COOKIE = "news_lang";
+export const LANG_COOKIE = "news_lang";
+
+/** Server/client-safe serialization for a validated language preference. */
+export function langCookieHeader(lang: Lang): string {
+  return `${LANG_COOKIE}=${lang}; Path=/; Max-Age=31536000; SameSite=Lax`;
+}
 
 export function isLang(value: unknown): value is Lang {
   return value === "vi" || value === "en";
@@ -14,7 +19,7 @@ export function isLang(value: unknown): value is Lang {
 export function langFromCookie(cookieHeader: string | null): Lang | null {
   for (const part of cookieHeader?.split(";") ?? []) {
     const [rawName, ...rawValue] = part.trim().split("=");
-    if (rawName !== COOKIE) continue;
+    if (rawName !== LANG_COOKIE) continue;
     const value = rawValue.join("=").trim();
     return isLang(value) ? value : null;
   }
@@ -177,9 +182,9 @@ export function setClientLang(lang: Lang) {
   if (typeof document === "undefined") return;
   // Cookie Store API is not available on all browsers we still support.
   // biome-ignore lint/suspicious/noDocumentCookie: lang preference cookie
-  document.cookie = `${COOKIE}=${lang}; path=/; max-age=31536000; samesite=lax`;
+  document.cookie = `${LANG_COOKIE}=${lang}; path=/; max-age=31536000; samesite=lax`;
   try {
-    localStorage.setItem(COOKIE, lang);
+    localStorage.setItem(LANG_COOKIE, lang);
   } catch {
     // localStorage unavailable (private mode) — cookie is enough
   }

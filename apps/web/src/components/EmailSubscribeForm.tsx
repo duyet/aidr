@@ -1,6 +1,7 @@
 import { Button } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { useState } from "react";
+import { withLang } from "../lib/locale-url";
 import type { Lang } from "../lib/types";
 
 const DIGEST_SIZES = [3, 5, 10] as const;
@@ -72,7 +73,7 @@ export function EmailSubscribeForm({
             "Tuỳ chọn: thêm tài khoản sau để gửi tin và gợi ý sửa."
           )}{" "}
           <a
-            href="/sign-up"
+            href={withLang("/sign-up", lang)}
             className="text-accent underline-offset-2 hover:underline"
           >
             {t("Create account", "Tạo tài khoản")}

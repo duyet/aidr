@@ -251,7 +251,7 @@ export function DeliverPage({
 
       <CardFooter className="gap-2 px-0">
         <Button variant="outline" asChild>
-          <Link to="/">
+          <Link to="/" search={{ lang }}>
             {t("Back to the feed", "Về bảng tin")}
             <ArrowRight data-icon="inline-end" aria-hidden />
           </Link>

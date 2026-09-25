@@ -1,11 +1,14 @@
 import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
+import { useLang } from "../../lib/lang-context";
 import type { Lang } from "../../lib/types";
 
 export function Brand({ lang }: { lang: Lang }) {
+  const navigationLang = useLang();
   return (
     <Link
       to="/"
+      search={{ lang: navigationLang }}
       onClick={() => track("nav_click", { to: "/" })}
       className="flex min-w-0 shrink-0 items-baseline gap-2"
     >

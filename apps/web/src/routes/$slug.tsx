@@ -74,6 +74,7 @@ function NotFoundStory({ lang }: { lang: Lang }) {
       </p>
       <Link
         to="/"
+        search={{ lang }}
         className="mt-3 inline-block text-sm text-accent underline underline-offset-2"
       >
         {lang === "vi" ? "Về trang chính" : "Back to live feed"}
@@ -88,7 +89,11 @@ function StoryContent({ item, lang }: { item: FeedItem; lang: Lang }) {
   return (
     <div>
       <div className="flex items-center justify-between py-4 text-sm">
-        <Link to="/" className="text-muted-foreground hover:text-accent">
+        <Link
+          to="/"
+          search={{ lang }}
+          className="text-muted-foreground hover:text-accent"
+        >
           ← {lang === "vi" ? "Về trang chính" : "Back to live feed"}
         </Link>
         <span className="text-muted-foreground">
