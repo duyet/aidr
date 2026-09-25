@@ -17,8 +17,8 @@ const WEBSITE_ENTRIES: ChangelogEntry[] = [
   },
   {
     date: "2026-09",
-    en: "Story links share a branded AI;DR card generated for each story — no more broken thumbnails when a source deletes its image. The homepage has its own masthead card.",
-    vi: "Link tin chia sẻ kèm thẻ AI;DR tạo riêng cho từng tin — không còn ảnh hỏng khi nguồn xoá ảnh. Trang chủ có thẻ masthead riêng.",
+    en: "Story links share a branded AI;DR card with a story photo when available — and a clean fallback when a source image is missing. The homepage has its own masthead card.",
+    vi: "Link tin chia sẻ kèm thẻ AI;DR có ảnh minh hoạ khi có — và bố cục dự phòng gọn khi ảnh nguồn không tồn tại. Trang chủ có thẻ masthead riêng.",
   },
   {
     date: "2026-09",

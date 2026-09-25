@@ -205,7 +205,9 @@ export function articleHead(
       url,
       type: "article",
       // Always the generated branded card — upstream image_urls can 404.
-      imageUrl: `${SITE_URL}/api/og/${item.id}.png`,
+      // Keep the locale in the image URL so the card title/labels match the
+      // story page that the crawler is sharing.
+      imageUrl: `${SITE_URL}${withLang(`/api/og/${item.id}.png`, lang)}`,
       lang,
       siteOgDimensions: true,
     }).map((tag) =>
