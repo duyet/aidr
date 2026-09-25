@@ -32,9 +32,11 @@ const MAX_QUERY_KEY_LENGTH = 64;
 const MAX_QUERY_VALUE_LENGTH = 256;
 const MAX_PATH_SEGMENT_LENGTH = 512;
 const MAX_REDIRECT_PARAM_LENGTH = 256;
-const MAX_CREDENTIAL_DECODE_ROUNDS = 3;
+const MAX_URI_DECODE_ROUNDS = 3;
 const MAX_PATH_DECODE_ROUNDS = 3;
 const MAX_PATH_ROUTE_MATCH_ROUNDS = 8;
+const MAX_STRUCTURED_DEPTH = 4;
+const MAX_STRUCTURED_NODES = 64;
 
 const STORY_ID_RE = /^[0-9a-f]{8,64}$/;
 const STORY_MARKDOWN_PATH_RE = /^\/api\/story\/.*\.md(?:\/|$)/i;
@@ -89,6 +91,7 @@ const DANGEROUS_QUERY_SCHEMES = [
   "vbscript:",
   "file:",
 ] as const;
+const NESTED_URL_SCHEMES = ["http:", "https:", "ftp:", "ws:", "wss:"] as const;
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
   "metadata",
@@ -124,7 +127,9 @@ interface SourceLink {
 type QueryEntry = [key: string, value: string];
 
 const CREDENTIAL_ASSIGNMENT_RE =
-  /(?:^|[?&;,{[(=:|])\s*\\?["']?([a-z0-9_. -]{1,64})\\?["']?\s*(?=[:=])/giu;
+  /(?:^|[^a-z0-9])([a-z][a-z0-9_./ -]{0,63})\s*["']?\s*[:=]/giu;
+const JWT_RE =
+  /(?:^|[^a-z0-9_-])([a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+)(?=$|[^a-z0-9_-])/giu;
 
 function isControlCharacter(code: number): boolean {
   return (
@@ -246,26 +251,141 @@ function isBlockedHost(hostname: string): boolean {
   return false;
 }
 
-function decodeBoundedComponent(
-  value: unknown,
-  maxLength: number
-): string | null {
-  if (typeof value !== "string" || value.length > maxLength) return null;
+function isHexDigit(value: string | undefined): boolean {
+  return value !== undefined && /^[0-9a-f]$/i.test(value);
+}
 
+function hasMalformedPercentEncoding(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] !== "%") continue;
+    if (!isHexDigit(value[index + 1]) || !isHexDigit(value[index + 2])) {
+      return true;
+    }
+    index += 2;
+  }
+  try {
+    decodeURIComponent(value);
+  } catch {
+    return true;
+  }
+  return false;
+}
+
+function decodeUriLayers(value: unknown, maxLength: number): string[] | null {
+  if (typeof value !== "string" || value.length > maxLength) return null;
+  if (hasControlCharacters(value) || hasMalformedPercentEncoding(value)) {
+    return null;
+  }
+
+  const layers = [value];
   let current = value;
-  for (let round = 0; round <= MAX_CREDENTIAL_DECODE_ROUNDS; round += 1) {
-    if (current.length > maxLength || hasControlCharacters(current))
-      return null;
+  for (let round = 0; round < MAX_URI_DECODE_ROUNDS; round += 1) {
+    if (!/%[0-9a-f]{2}/i.test(current)) return layers;
     let decoded: string;
     try {
       decoded = decodeURIComponent(current);
     } catch {
       return null;
     }
-    if (decoded === current) return current;
+    if (
+      decoded.length > maxLength ||
+      hasControlCharacters(decoded) ||
+      hasMalformedPercentEncoding(decoded)
+    ) {
+      return null;
+    }
+    if (decoded === current) break;
+    layers.push(decoded);
     current = decoded;
   }
-  return null;
+
+  if (/%[0-9a-f]{2}/i.test(current) || hasMalformedPercentEncoding(current)) {
+    return null;
+  }
+  return layers;
+}
+
+function decodeJsonEscapes(value: string, maxLength: number): string | null {
+  if (!value.includes("\\")) return value;
+
+  let decoded = "";
+  let index = 0;
+  while (index < value.length) {
+    const character = value[index];
+    if (character !== "\\") {
+      decoded += character;
+      index += 1;
+      if (decoded.length > maxLength) return null;
+      continue;
+    }
+
+    const escaped = value[index + 1];
+    if (escaped === undefined) return null;
+    switch (escaped) {
+      case '"':
+      case "\\":
+      case "/":
+        decoded += escaped;
+        index += 2;
+        break;
+      case "b":
+        decoded += "\b";
+        index += 2;
+        break;
+      case "f":
+        decoded += "\f";
+        index += 2;
+        break;
+      case "n":
+        decoded += "\n";
+        index += 2;
+        break;
+      case "r":
+        decoded += "\r";
+        index += 2;
+        break;
+      case "t":
+        decoded += "\t";
+        index += 2;
+        break;
+      case "u": {
+        const hex = value.slice(index + 2, index + 6);
+        if (!/^[0-9a-f]{4}$/i.test(hex)) return null;
+        const codePoint = Number.parseInt(hex, 16);
+        if (codePoint >= 0xd800 && codePoint <= 0xdbff) {
+          const lowHex = value.slice(index + 8, index + 12);
+          if (
+            value.slice(index + 6, index + 8) !== "\\u" ||
+            !/^[0-9a-f]{4}$/i.test(lowHex)
+          ) {
+            return null;
+          }
+          const low = Number.parseInt(lowHex, 16);
+          if (low < 0xdc00 || low > 0xdfff) return null;
+          decoded += String.fromCodePoint(
+            0x10000 + (codePoint - 0xd800) * 0x400 + (low - 0xdc00)
+          );
+          index += 12;
+        } else {
+          if (codePoint >= 0xdc00 && codePoint <= 0xdfff) return null;
+          decoded += String.fromCodePoint(codePoint);
+          index += 6;
+        }
+        break;
+      }
+      default:
+        return null;
+    }
+    if (decoded.length > maxLength || hasControlCharacters(decoded)) {
+      return null;
+    }
+  }
+
+  // A second escape layer or a newly-created percent layer is ambiguous. The
+  // component is inspected and emitted in one canonical pass, never decoded
+  // again by this sanitizer.
+  if (decoded.includes("\\") || decoded.includes("%")) return null;
+  return decoded;
 }
 
 function normalizedCredentialKey(key: string): string {
@@ -317,92 +437,164 @@ function hasCredentialAssignment(value: string): boolean {
   return false;
 }
 
-function jsonValueHasCredential(value: unknown, depth: number): boolean {
-  if (typeof value === "string") {
-    return compoundValueHasCredential(value, depth + 1);
+function hasJwt(value: string): boolean {
+  for (const match of value.matchAll(JWT_RE)) {
+    if (isJwt(match[1])) return true;
   }
+  return false;
+}
+
+function containsSchemeAtBoundary(
+  value: string,
+  schemes: readonly string[]
+): boolean {
+  for (const scheme of schemes) {
+    let offset = 0;
+    while (offset < value.length) {
+      const index = value.indexOf(scheme, offset);
+      if (index < 0) break;
+      if (index === 0 || !/[a-z0-9]/i.test(value[index - 1])) return true;
+      offset = index + 1;
+    }
+  }
+  return false;
+}
+
+function hasNestedUrlOrScheme(value: string): boolean {
+  const compact = value.replace(/\s+/gu, "").toLowerCase();
+  return (
+    compact.includes("//") ||
+    containsSchemeAtBoundary(compact, NESTED_URL_SCHEMES) ||
+    containsSchemeAtBoundary(compact, DANGEROUS_QUERY_SCHEMES)
+  );
+}
+
+function hasStandaloneCredentialKey(value: string): boolean {
+  const normalized = normalizedCredentialKey(value.trim());
+  return normalized.includes("_") && isCredentialKey(normalized);
+}
+
+function inspectLexicalText(value: string): boolean {
+  if (
+    hasControlCharacters(value) ||
+    hasMalformedPercentEncoding(value) ||
+    value.includes("#") ||
+    value.includes("\\") ||
+    hasNestedUrlOrScheme(value) ||
+    hasCredentialScheme(value) ||
+    hasJwt(value) ||
+    hasCredentialAssignment(value) ||
+    hasStandaloneCredentialKey(value)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+interface StructuredInspectionState {
+  nodes: number;
+}
+
+function jsonValueHasUnsafeValue(
+  value: unknown,
+  depth: number,
+  state: StructuredInspectionState
+): boolean {
+  state.nodes += 1;
+  if (state.nodes > MAX_STRUCTURED_NODES || depth > MAX_STRUCTURED_DEPTH) {
+    return true;
+  }
+  if (typeof value === "string") return inspectLexicalText(value);
   if (Array.isArray(value)) {
-    return value.some((entry) => jsonValueHasCredential(entry, depth + 1));
+    return value.some((entry) =>
+      jsonValueHasUnsafeValue(entry, depth + 1, state)
+    );
   }
   if (value && typeof value === "object") {
     return Object.entries(value).some(
       ([key, entry]) =>
-        isCredentialKey(key) || jsonValueHasCredential(entry, depth + 1)
+        isCredentialKey(key) || jsonValueHasUnsafeValue(entry, depth + 1, state)
     );
   }
   return false;
 }
 
-function compoundValueHasCredential(value: string, depth = 0): boolean {
-  if (hasCredentialScheme(value) || isJwt(value)) return true;
-  if (hasCredentialAssignment(value)) return true;
-  if (depth >= 3) return value.includes("=");
-
-  for (const assignment of value.split(/[?&;]+/u)) {
-    for (const separator of ["=", ":"] as const) {
-      const separatorIndex = assignment.indexOf(separator);
-      if (separatorIndex <= 0) continue;
-      const key = assignment.slice(0, separatorIndex);
-      if (isCredentialKey(key)) return true;
-      if (
-        compoundValueHasCredential(
-          assignment.slice(separatorIndex + 1),
-          depth + 1
-        )
-      ) {
-        return true;
-      }
-    }
-  }
-
+function inspectStructuredText(value: string): boolean {
   const trimmed = value.trim();
-  if (
+  const looksLikeObject =
     (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-    (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
-    (trimmed.startsWith('"') && trimmed.endsWith('"'))
-  ) {
-    try {
-      if (jsonValueHasCredential(JSON.parse(trimmed), depth)) return true;
-    } catch {
-      // The lexical assignment scan above still covers quoted non-JSON text.
-    }
+    (trimmed.startsWith("[") && trimmed.endsWith("]"));
+  if (!looksLikeObject) return false;
+  try {
+    return jsonValueHasUnsafeValue(JSON.parse(trimmed), 0, { nodes: 0 });
+  } catch {
+    // Prefix/suffix fragments are covered by the bounded lexical scan.
+    return false;
   }
-  return false;
 }
 
-/** Reject nested URLs and structured credentials at decoded assignment/query depth. */
+function inspectUnsafeText(value: string): boolean {
+  if (inspectLexicalText(value) || inspectStructuredText(value)) return true;
+  const unwrapped = value.replace(/<[^>]*>|[()[\]{}]/gu, " ");
+  return (
+    unwrapped !== value &&
+    (inspectLexicalText(unwrapped) || inspectStructuredText(unwrapped))
+  );
+}
+
+function sanitizeDecodedComponent(
+  value: unknown,
+  maxLength: number,
+  rejectStandaloneCredentialKey = false,
+  rejectBackslashLayers = false
+): string | null {
+  const layers = decodeUriLayers(value, maxLength);
+  if (layers === null) return null;
+
+  let canonical = "";
+  for (const layer of layers) {
+    if (rejectBackslashLayers && layer.includes("\\")) return null;
+    const decoded = decodeJsonEscapes(layer, maxLength);
+    if (decoded === null) return null;
+    if (
+      inspectUnsafeText(decoded) ||
+      (rejectStandaloneCredentialKey && isCredentialKey(decoded.trim()))
+    ) {
+      return null;
+    }
+    canonical = decoded;
+  }
+  return canonical;
+}
+
+/** Reject nested URLs and structured credentials in one bounded component. */
 function sanitizeQueryValue(value: string): string | null {
   const normalized = value.trim();
-  const compact = normalized.replace(/\s+/gu, "").toLowerCase();
-  if (
-    normalized.includes("#") ||
-    normalized.includes("//") ||
-    compoundValueHasCredential(normalized) ||
-    /https?\s*:/i.test(normalized) ||
-    DANGEROUS_QUERY_SCHEMES.some((scheme) => compact.includes(scheme))
-  ) {
-    return null;
-  }
-  return normalized;
+  return inspectUnsafeText(normalized) ? null : normalized;
 }
 
-/** Keep only allowlisted query keys after recursively decoding each component. */
+/** Keep only allowlisted query keys after one bounded decode/inspect pipeline. */
 function sanitizeSearchParams(
   params: URLSearchParams,
   maxEntries: number,
-  maxValueLength = MAX_QUERY_VALUE_LENGTH
+  maxValueLength = MAX_QUERY_VALUE_LENGTH,
+  rawSearch?: string
 ): QueryEntry[] {
+  if (rawSearch !== undefined && hasMalformedPercentEncoding(rawSearch)) {
+    return [];
+  }
+
   const safe: QueryEntry[] = [];
   const maxInspected = maxEntries * 4;
   let inspected = 0;
   for (const [rawKey, rawValue] of params) {
     if (safe.length >= maxEntries || inspected >= maxInspected) break;
     inspected += 1;
-    const decodedKey = decodeBoundedComponent(rawKey, MAX_QUERY_KEY_LENGTH);
+    const decodedKey = sanitizeDecodedComponent(rawKey, MAX_QUERY_KEY_LENGTH);
     if (decodedKey === null || isCredentialKey(decodedKey)) continue;
     const key = decodedKey.trim().toLowerCase();
     if (!isSafeQueryKey(key)) continue;
-    const decodedValue = decodeBoundedComponent(rawValue, maxValueLength);
+    const decodedValue = sanitizeDecodedComponent(rawValue, maxValueLength);
     if (decodedValue === null) continue;
     const value = sanitizeQueryValue(decodedValue);
     if (value === null) continue;
@@ -413,13 +605,9 @@ function sanitizeSearchParams(
 
 function safePathname(pathname: string): boolean {
   for (const segment of pathname.split("/")) {
-    const decoded = decodeBoundedComponent(segment, MAX_PATH_SEGMENT_LENGTH);
     if (
-      decoded === null ||
-      decoded.includes("#") ||
-      isCredentialKey(decoded) ||
-      hasCredentialScheme(decoded) ||
-      isJwt(decoded)
+      sanitizeDecodedComponent(segment, MAX_PATH_SEGMENT_LENGTH, true, true) ===
+      null
     ) {
       return false;
     }
@@ -433,15 +621,27 @@ function safeHttpUrl(value: unknown): string | null {
   if (raw.length > STORY_MARKDOWN_MAX_URL_LENGTH || hasControlCharacters(raw)) {
     return null;
   }
+  // WHATWG URL parsing normalizes backslashes in special-scheme paths before
+  // pathname inspection (for example, a raw JSON escape can become `/`).
+  // Reject that ambiguous raw path/userinfo form before parsing it.
+  const rawPath = raw.split(/[?#]/, 1)[0];
+  if (rawPath.includes("\\")) return null;
 
   try {
     const url = new URL(raw);
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
     if (url.username || url.password || !url.hostname || url.hash) return null;
     if (isBlockedHost(url.hostname) || !safePathname(url.pathname)) return null;
-    const safeQuery = new URLSearchParams(
-      sanitizeSearchParams(url.searchParams, MAX_SOURCE_QUERY_PARAMS)
-    ).toString();
+    const safeQuery = hasMalformedPercentEncoding(url.search)
+      ? ""
+      : new URLSearchParams(
+          sanitizeSearchParams(
+            url.searchParams,
+            MAX_SOURCE_QUERY_PARAMS,
+            MAX_QUERY_VALUE_LENGTH,
+            url.search
+          )
+        ).toString();
     url.search = safeQuery;
     url.hash = "";
     const normalized = url.toString();
@@ -676,7 +876,7 @@ interface DecodedPathname {
 }
 
 function containsMalformedPercentEncoding(value: string): boolean {
-  return value.replace(/%[0-9a-f]{2}/gi, "").includes("%");
+  return hasMalformedPercentEncoding(value);
 }
 
 function decodePathname(pathname: string): DecodedPathname {
@@ -751,7 +951,8 @@ function boundedRedirectSearch(url: URL, lang: StoryMarkdownLocale): string {
   let entries = sanitizeSearchParams(
     url.searchParams,
     MAX_REDIRECT_QUERY_PARAMS - 1,
-    MAX_REDIRECT_PARAM_LENGTH
+    MAX_REDIRECT_PARAM_LENGTH,
+    url.search
   );
   while (
     entries.length > 0 &&
