@@ -36,6 +36,26 @@ or change deployment settings. `CLERK_PROXY_URL` in `wrangler.toml` is the
 canonical deploy value; non-development builds reject an env override that
 would make the browser and generated Worker config diverge.
 
+## Clerk proxy requires `CLERK_SECRET_KEY` in the Worker env
+
+`handleClerkProxy` returns `503 Clerk proxy misconfigured: missing
+CLERK_SECRET_KEY` when the binding is absent. Clerk `>=1.6` removed keyless
+mode, so nothing provisions a key for a deployed Worker — the key must already
+be a Worker secret. Worker secrets are pushed out of band by
+`pnpm sync-env --workers` (`wrangler secret bulk`), never by the deploy
+workflow, so a missing key is otherwise invisible until sign-in breaks.
+
+Both deploy paths assert the proxy is live, so a missing key fails the deploy
+instead of shipping:
+
+- `pnpm run smoke` (the local `cf:deploy:prod` path) checks
+  `GET /__clerk/v1/environment` returns `200` with `auth_config`.
+- `.github/workflows/deploy-web.yml` runs an equivalent post-deploy
+  `Smoke — /__clerk/v1/environment` step. A `503` there means
+  `CLERK_SECRET_KEY` is not in the Worker env; re-push it with
+  `pnpm sync-env --workers`. Both checks assert the HTTP status only and never
+  echo the key or the response body.
+
 The focused proxy tests run under Node/Vitest and cannot fully model workerd's
 subrequest body streaming and abort behavior. The local workerd harness is
 available with `pnpm --filter @aidr/web test:workerd:clerk-proxy`; a deployed

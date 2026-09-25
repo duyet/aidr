@@ -110,3 +110,31 @@ jobs:
           done
           echo "Smoke failed after $max_attempts attempts" >&2
           exit 1
+
+      # Fail-closed check for CLERK_SECRET_KEY in the Worker environment.
+      # Worker secrets are pushed by `pnpm sync-env` (wrangler secret bulk),
+      # not by this workflow, so their absence is invisible until a request
+      # hits the proxy: handleClerkProxy answers 503 "missing CLERK_SECRET_KEY"
+      # and every sign-in breaks. Clerk >=1.6 removed keyless mode, so there is
+      # no fallback that used to mask a missing secret. Assert the status only
+      # and never echo the body or the key. `pnpm run smoke` (local
+      # cf:deploy:prod path) asserts the same endpoint plus auth_config.
+      - name: Smoke — /__clerk/v1/environment
+        run: |
+          max_attempts=5
+          attempt=1
+          while [ "$attempt" -le "$max_attempts" ]; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              "https://aidr.today/__clerk/v1/environment")
+            if [ "$code" -eq 200 ]; then
+              echo "OK HTTP $code (Clerk proxy reachable with CLERK_SECRET_KEY)"
+              exit 0
+            fi
+            echo "Attempt $attempt/$max_attempts failed (HTTP $code), waiting 5s..."
+            sleep 5
+            attempt=$((attempt + 1))
+          done
+          echo "Clerk proxy smoke failed after $max_attempts attempts" >&2
+          echo "If this is 503, CLERK_SECRET_KEY is missing from the Worker env." >&2
+          echo "Re-push it with: pnpm sync-env --workers" >&2
+          exit 1
