@@ -16,6 +16,8 @@
  * Exits non-zero if any check fails.
  */
 
+import { SITE_OG_HOME_IMAGE_URL } from "../src/lib/site";
+
 const DEFAULT_BASE = "https://aidr.today";
 
 function parseBase(argv: string[]): string {
@@ -52,6 +54,23 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+/**
+ * Content of one `<meta>` tag, matched by attribute order-independent lookup
+ * so a renderer change cannot silently turn an assertion into a no-op.
+ */
+function metaContent(
+  body: string,
+  attr: "property" | "name",
+  key: string
+): string | undefined {
+  for (const tag of body.matchAll(/<meta\b[^>]*>/g)) {
+    const attrs = tag[0];
+    if (new RegExp(`${attr}="${key}"`).test(attrs) === false) continue;
+    return /content="([^"]*)"/.exec(attrs)?.[1];
+  }
+  return undefined;
+}
+
 async function main() {
   console.log(`Smoke testing ${base}\n`);
 
@@ -72,7 +91,18 @@ async function main() {
     assert(body.includes(marker), `body missing shell marker "${marker}"`);
     assert(body.includes("og:title"), "homepage missing og:title");
     assert(body.includes("og:image"), "homepage missing og:image");
-    assert(body.includes("/og.jpg"), "homepage og:image should be /og.jpg");
+    // The homepage card is the masthead variant (/og-home.jpg), not the
+    // yellow default (/og.jpg) used by every other page. Compare the full
+    // absolute URL against the source constant so the two cannot drift.
+    const ogImage = metaContent(body, "property", "og:image");
+    assert(
+      ogImage === SITE_OG_HOME_IMAGE_URL,
+      `homepage og:image should be ${SITE_OG_HOME_IMAGE_URL}, got ${ogImage}`
+    );
+    assert(
+      metaContent(body, "name", "twitter:image") === SITE_OG_HOME_IMAGE_URL,
+      `homepage twitter:image should be ${SITE_OG_HOME_IMAGE_URL}`
+    );
     assert(body.includes("twitter:card"), "homepage missing twitter:card");
     assert(body.includes('rel="canonical"'), "homepage missing canonical");
     assert(
@@ -86,6 +116,29 @@ async function main() {
     assert(
       !/href="\/ai\/[0-9a-f]{16,}"/.test(body),
       "homepage must not link the full item id (duplicate URLs)"
+    );
+  });
+
+  // Fetch the image the deployed homepage actually advertises. A stale or
+  // renamed asset only shows up as a blank share card in a crawler, so pull
+  // the URL out of the live HTML instead of assuming a path.
+  await check("GET homepage og:image -> 200 JPEG", async () => {
+    const res = await fetch(`${base}/`);
+    assert(res.status === 200, `expected 200, got ${res.status}`);
+    const url = metaContent(await res.text(), "property", "og:image");
+    assert(url, "homepage has no og:image content");
+    const img = await fetch(url);
+    assert(img.status === 200, `${url} returned ${img.status}`);
+    const ctype = (img.headers.get("content-type") ?? "").toLowerCase();
+    assert(
+      ctype.startsWith("image/"),
+      `${url} served as ${ctype || "no type"}`
+    );
+    const buf = Buffer.from(await img.arrayBuffer());
+    assert(buf.length > 5_000, `${url} too small (${buf.length} bytes)`);
+    assert(
+      buf[0] === 0xff && buf[1] === 0xd8,
+      `${url} is not a JPEG (missing FFD8)`
     );
   });
 
