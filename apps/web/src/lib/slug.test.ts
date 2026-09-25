@@ -73,13 +73,11 @@ describe("legacyStoryRedirectPath", () => {
   });
 
   it("does not steal the server-function transport", () => {
-    // Production server-fn ids are sha256 hex, so this path is shaped exactly
-    // like a legacy /{cat}/{hash} story URL. Redirecting it would send every
-    // server-function call to a story page instead of its handler.
+    // A server-fn id is 64-char hex, so this synthetic id makes the path
+    // shaped exactly like a legacy /{cat}/{hash} story URL. Redirecting it
+    // would send every server-function call to a story page, not its handler.
     expect(
-      legacyStoryRedirectPath(
-        "/_serverFn/98a5ddcb12725b5c0739aebd924019083173dc2f4470302106d85a18c164aba3"
-      )
+      legacyStoryRedirectPath(`/_serverFn/${"deadbeef".repeat(8)}`)
     ).toBeNull();
   });
 

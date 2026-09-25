@@ -21,9 +21,12 @@ const { default: server } = await import("./server");
 const FN_ID = "src_lib_submit-fn_ts--submitStory";
 const FN_PATH = `/_serverFn/${FN_ID}`;
 
-/** A production server-fn id: sha256 hex, shaped like a legacy story slug. */
-const HEX_FN_ID =
-  "98a5ddcb12725b5c0739aebd924019083173dc2f4470302106d85a18c164aba3";
+/**
+ * Synthetic 64-char hex shaped like a server-fn id: the same length and
+ * alphabet the transport uses, invented here so no live identifier is
+ * committed to the test suite.
+ */
+const HEX_FN_ID = "deadbeef".repeat(8);
 
 /** Headers the Start client sends for a server-function POST. */
 const TSS_HEADERS = {
@@ -175,7 +178,7 @@ describe("server-function transport path", () => {
 
     // The regression: the legacy /{cat}/{hash} story compat rule matched
     // /_serverFn/<sha256-id> and answered the submit call with a 307 to
-    // /98a5ddcb?lang=vi. The client then followed it to a page route, where
+    // /deadbeef?lang=vi. The client then followed it to a page route, where
     // Start's HTML-only guard returned 406 and the form reported
     // "Failed to submit".
     const response = await call(
@@ -203,7 +206,7 @@ describe("server-function transport path", () => {
     );
 
     const response = await call(
-      new Request("https://aidr.today/98a5ddcb?lang=vi", {
+      new Request("https://aidr.today/deadbeef?lang=vi", {
         headers: { accept: TSS_HEADERS.accept, "x-tsr-serverFn": "true" },
       })
     );

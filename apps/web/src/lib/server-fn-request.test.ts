@@ -17,7 +17,7 @@ describe("isServerFnPath", () => {
   it("does not match page routes that resemble the base", () => {
     // A story permalink is the path a reader lands on, and the one a manual
     // curl against a submit attempt hits by mistake.
-    expect(isServerFnPath("/98a5ddcb")).toBe(false);
+    expect(isServerFnPath("/deadbeef")).toBe(false);
     expect(isServerFnPath("/submit")).toBe(false);
     expect(isServerFnPath("/_serverFn")).toBe(false);
     // A prefix that is not a path boundary is not the transport path.
