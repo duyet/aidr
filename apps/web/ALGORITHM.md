@@ -94,8 +94,9 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 
    - TypeSafe Jev (`typesafe/jev`, `POST /api/v1/systemone`) judges each
      item first: relevance is P(AI/tech), importance and quality are 0–9
-     score levels, category is one choice from the fixed 11-value enum,
-     plus one entity tag and one theme tag (`none` is dropped).
+     score levels, category is one choice from the fixed 10-value enum (legal
+     stories use Regulation), plus one entity tag and one theme tag from fixed
+     10-value enums (`none` is dropped).
    - Jev does not emit a free-form tag list.
    - Any item it misses (no key, non-2xx, or incomplete answers) falls
      through to the chat rubric on the same fields, which still writes

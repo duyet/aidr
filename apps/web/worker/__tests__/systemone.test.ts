@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LlmCallLogEntry } from "../llm.js";
-import { setLlmCallLogger } from "../llm.js";
+import { CATEGORIES, setLlmCallLogger } from "../llm.js";
 import {
   callSystemOne,
   isSystemOneConfigured,
@@ -182,13 +182,25 @@ describe("answer mapping", () => {
       "8",
       "9",
     ]);
-    const questions = jevScoreQuestions(["Models"]);
+    const questions = jevScoreQuestions(CATEGORIES);
     expect(questions.importance.criteria).toEqual([...JEV_SCORE_LEVELS]);
     expect(questions.quality.criteria).toEqual([...JEV_SCORE_LEVELS]);
     expect(questions.importance.instructions).toContain(
       "9 is a major industry event"
     );
     expect(questions.quality.instructions).toContain("8-9 is primary");
+  });
+
+  it("keeps every Jev criteria array within TypeSafe's ten-item limit", () => {
+    const questions = jevScoreQuestions(CATEGORIES);
+    expect(CATEGORIES).toHaveLength(10);
+    expect(JEV_SCORE_LEVELS).toHaveLength(10);
+
+    for (const question of Object.values(questions)) {
+      if (question.criteria) {
+        expect(question.criteria.length).toBeLessThanOrEqual(10);
+      }
+    }
   });
 
   it("maps a score judgment onto relevance, 0–9 levels, category, and tags", () => {

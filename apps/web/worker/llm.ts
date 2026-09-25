@@ -25,14 +25,13 @@ export const TRANSLATE_BATCH_SIZE = 3;
 // low max_tokens starves the actual answer entirely.
 const MAX_TOKENS = 8192;
 const MAX_STREAM_CONTENT_CHARS = 100_000;
-const CATEGORIES = [
+export const CATEGORIES = [
   "Models",
   "Regulation",
   "Products",
   "Agents",
   "Research",
   "Industry",
-  "Legal",
   "Infra",
   "Releases",
   "Chips",
