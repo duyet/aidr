@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import type { AidrLayout } from "../lib/aidr-layout";
+import { storyPath } from "../lib/slug";
 import { categoryColor, isKnownCategory, topicColor } from "../lib/topic-color";
 import type { Lang, TldrBullet } from "../lib/types";
 import { HighlightedText } from "./HighlightedText";
@@ -121,7 +122,7 @@ export function TldrBulletList({
                     <a
                       href={
                         pathByItemId?.get(primaryId) ??
-                        `/${primaryId.slice(0, 8)}`
+                        storyPath({ id: primaryId }, lang)
                       }
                       onClick={(e) => {
                         if (

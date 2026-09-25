@@ -11,6 +11,7 @@ import { setCachedFeed } from "../lib/feed-cache";
 import { fetchFeed } from "../lib/feed-fn";
 import { timeAgo } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
+import { withLang } from "../lib/locale-url";
 import { usePrefs } from "../lib/prefs";
 import { homepageHead } from "../lib/seo";
 import { storyPath } from "../lib/slug";
@@ -39,11 +40,14 @@ export const Route = createFileRoute("/")({
     return out;
   },
   loaderDeps: ({ search }) => ({ q: search.q }),
-  loader: ({ deps }) =>
+  loader: ({ deps, context }) =>
     fetchFeed({
-      data: deps.q ? { q: deps.q } : { days: 3 },
+      data: {
+        ...(deps.q ? { q: deps.q } : { days: 3 }),
+        lang: context.lang,
+      },
     }),
-  head: () => homepageHead(),
+  head: ({ match }) => homepageHead(match.context.lang),
   component: IndexPage,
 });
 
@@ -75,9 +79,9 @@ function IndexPage() {
     if (loaderFeed) {
       setFeed(loaderFeed);
       setError(false);
-      if (!q) setCachedFeed(loaderFeed);
+      if (!q) setCachedFeed(loaderFeed, lang);
     }
-  }, [loaderFeed, q]);
+  }, [loaderFeed, lang, q]);
 
   // Client refresh (and first paint when the loader had no D1, e.g. prerender).
   useEffect(() => {
@@ -86,13 +90,13 @@ function IndexPage() {
       setFeed(null);
       setError(false);
       const params = q ? `?q=${encodeURIComponent(q)}` : "?days=3";
-      fetch(`/api/feed${params}`)
+      fetch(withLang(`/api/feed${params}`, lang))
         .then((res) => (res.ok ? (res.json() as Promise<FeedResponse>) : null))
         .then((res) => {
           if (cancelled) return;
           if (res) {
             setFeed(res);
-            if (!q) setCachedFeed(res);
+            if (!q) setCachedFeed(res, lang);
           } else {
             setError(true);
           }
@@ -103,7 +107,7 @@ function IndexPage() {
     }
     const refresh = window.setInterval(() => {
       if (q) return;
-      fetch("/api/feed?days=3")
+      fetch(withLang("/api/feed?days=3", lang))
         .then((res) => (res.ok ? (res.json() as Promise<FeedResponse>) : null))
         .then((res) => {
           if (!cancelled && res) {
@@ -118,7 +122,7 @@ function IndexPage() {
                 hasMore: prev.hasMore || res.hasMore,
               };
             });
-            setCachedFeed(res);
+            setCachedFeed(res, lang);
           }
         })
         .catch(() => {
@@ -129,7 +133,7 @@ function IndexPage() {
       cancelled = true;
       window.clearInterval(refresh);
     };
-  }, [q, loaderFeed]);
+  }, [q, loaderFeed, lang]);
 
   if (error) {
     return (
@@ -155,7 +159,7 @@ function IndexPage() {
       const topic = item.tags[0] ?? item.category;
       if (topic) topicByItemId.set(item.id, topic);
       if (item.category) categoryByItemId.set(item.id, item.category);
-      pathByItemId.set(item.id, storyPath(item));
+      pathByItemId.set(item.id, storyPath(item, lang));
       if (item.tags.length > 0) tagsByItemId.set(item.id, item.tags);
       if (item.image_url) imageByItemId.set(item.id, item.image_url);
     }

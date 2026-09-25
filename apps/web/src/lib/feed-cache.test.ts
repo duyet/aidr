@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { feedApiUrl } from "./feed-cache";
 import { FEED_FRESHNESS_CLIENT_TTL_MS } from "./feed-freshness";
 import type { FeedResponse } from "./types";
 
@@ -129,18 +130,42 @@ describe("feed freshness cache", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("leaves the full feed consumer on /api/feed", async () => {
+  it("leaves the full feed consumer on an explicit locale URL", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      expect(String(input)).toBe("/api/feed");
+      expect(String(input)).toBe("/api/feed?lang=vi");
       return jsonResponse(feed);
     });
     vi.stubGlobal("fetch", fetchMock);
     const cache = await freshFeedCache();
 
-    await expect(cache.fetchFeedOnce()).resolves.toEqual(feed);
-    await expect(cache.fetchFeedOnce()).resolves.toEqual(feed);
+    await expect(cache.fetchFeedOnce("vi")).resolves.toEqual(feed);
+    await expect(cache.fetchFeedOnce("vi")).resolves.toEqual(feed);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(cache.getCachedFeed()).toEqual(feed);
+    expect(cache.getCachedFeed("vi")).toEqual(feed);
     expect(cache.getCachedFeedFreshness()).toBe(feed.lastFetchedAt);
+  });
+
+  it("keeps English and Vietnamese feed bodies in separate cache slots", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const lang = new URL(
+        String(input),
+        "https://aidr.today"
+      ).searchParams.get("lang");
+      return jsonResponse({ ...feed, lang });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const cache = await freshFeedCache();
+
+    await expect(cache.fetchFeedOnce("en")).resolves.toMatchObject({
+      lang: "en",
+    });
+    await expect(cache.fetchFeedOnce("vi")).resolves.toMatchObject({
+      lang: "vi",
+    });
+    expect(cache.getCachedFeed("en")?.lang).toBe("en");
+    expect(cache.getCachedFeed("vi")?.lang).toBe("vi");
+    expect(feedApiUrl("en")).toBe("/api/feed?lang=en");
+    expect(feedApiUrl("vi")).toBe("/api/feed?lang=vi");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

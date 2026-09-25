@@ -20,6 +20,8 @@ export const LANG_TOGGLE_DISABLED_PATHS = new Set([
   "/about",
   "/brand",
   "/mail",
+  "/privacy",
+  "/terms",
 ]);
 
 type LinkIcon = ComponentType<{

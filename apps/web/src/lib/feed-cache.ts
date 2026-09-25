@@ -4,17 +4,16 @@ import {
   isFeedFreshness,
 } from "./feed-freshness";
 import { setLearnedKeywords } from "./highlight";
-import type { FeedResponse } from "./types";
+import { withLang } from "./locale-url";
+import type { FeedResponse, Lang } from "./types";
 
 /**
- * Module-level cache of the unfiltered /api/feed response, shared by the
- * homepage (which fetches it anyway) and the header SearchBox typeahead
- * (which needs it on pages that never fetch the feed, e.g. /about). The
- * response is edge-cached, so a second fetch here is cheap and never
- * stale for longer than the CDN's TTL.
+ * Module-level caches of the unfiltered /api/feed response, shared by the
+ * homepage and header typeahead. Locale is part of the key because the API
+ * returns a selected `lang` and locale-specific story permalinks.
  */
-let cache: FeedResponse | null = null;
-let inflight: Promise<FeedResponse | null> | null = null;
+const caches = new Map<Lang, FeedResponse>();
+const inflight = new Map<Lang, Promise<FeedResponse | null>>();
 
 interface FreshnessCacheEntry {
   value: FeedFreshness;
@@ -42,8 +41,12 @@ function validFreshnessEntry(now = Date.now()): FreshnessCacheEntry | null {
   return freshnessCache;
 }
 
-export function getCachedFeed(): FeedResponse | null {
-  return cache;
+export function feedApiUrl(lang: Lang): string {
+  return withLang("/api/feed", lang);
+}
+
+export function getCachedFeed(lang: Lang): FeedResponse | null {
+  return caches.get(lang) ?? null;
 }
 
 /** The footer only needs the newest published-item timestamp, not feed data. */
@@ -76,32 +79,33 @@ export function fetchFeedFreshnessOnce(): Promise<number | null> {
   return freshnessInflight;
 }
 
-/** Called by the homepage once it has its own unfiltered (no `q`) fetch,
- * so the typeahead doesn't need a second network round-trip there. */
-export function setCachedFeed(feed: FeedResponse): void {
-  cache = feed;
+/** Called by the homepage once it has its own unfiltered (no `q`) fetch. */
+export function setCachedFeed(feed: FeedResponse, lang: Lang): void {
+  caches.set(lang, feed);
   setFreshnessEntry({ lastFetchedAt: feed.lastFetchedAt });
   if (feed.learnedKeywords?.length) setLearnedKeywords(feed.learnedKeywords);
 }
 
-/** Fetches once and caches; concurrent callers share the same in-flight
- * request. Returns null on any fetch/parse failure. */
-export function fetchFeedOnce(): Promise<FeedResponse | null> {
-  if (cache) return Promise.resolve(cache);
-  if (inflight) return inflight;
-  inflight = fetch("/api/feed")
+/** Fetches once per locale; concurrent callers share the same request. */
+export function fetchFeedOnce(lang: Lang): Promise<FeedResponse | null> {
+  const cached = caches.get(lang);
+  if (cached) return Promise.resolve(cached);
+  const pending = inflight.get(lang);
+  if (pending) return pending;
+
+  const request = fetch(feedApiUrl(lang))
     .then((res) => (res.ok ? (res.json() as Promise<FeedResponse>) : null))
     .then((res) => {
-      inflight = null;
       if (res) {
-        cache = res;
+        caches.set(lang, res);
         setFreshnessEntry({ lastFetchedAt: res.lastFetchedAt });
       }
       return res;
     })
-    .catch(() => {
-      inflight = null;
-      return null;
+    .catch(() => null)
+    .finally(() => {
+      inflight.delete(lang);
     });
-  return inflight;
+  inflight.set(lang, request);
+  return request;
 }

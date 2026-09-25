@@ -4,13 +4,14 @@ import { Send } from "lucide-react";
 import { SubmitGate } from "../components/submit/SubmitGate";
 import { useClerkModule } from "../lib/clerk-user";
 import { useLang } from "../lib/lang-context";
-import { pageHead } from "../lib/seo";
+import { localizedPageHead } from "../lib/seo";
 
 export const Route = createFileRoute("/submit")({
-  head: () =>
-    pageHead({
+  head: ({ match }) =>
+    localizedPageHead({
       path: "/submit",
       title: "Submit a story | AI News",
+      lang: match.context.lang,
     }),
   component: SubmitPage,
 });

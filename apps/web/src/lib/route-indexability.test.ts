@@ -85,7 +85,7 @@ describe("routeIndexability", () => {
     }
   });
 
-  it.each(["q", "search", "filter", "utm_source", "lang", "locale"])(
+  it.each(["q", "search", "filter", "utm_source"])(
     "makes unknown query-bearing public HTML noindex, follow: ?%s",
     (param) => {
       expect(
@@ -123,6 +123,49 @@ describe("routeIndexability", () => {
       });
     }
   );
+
+  it("keeps one explicit locale query indexable and rejects locale variants", () => {
+    expect(
+      routeIndexability({
+        pathname: "/mcp",
+        search: new URLSearchParams([["lang", "vi"]]),
+      })
+    ).toMatchObject({ kind: "public", robots: INDEXABLE_ROBOTS });
+    expect(
+      routeIndexability({
+        pathname: "/mcp",
+        search: new URLSearchParams([
+          ["lang", "vi"],
+          ["q", "agents"],
+        ]),
+      })
+    ).toMatchObject({ kind: "faceted", robots: NOINDEX_FOLLOW_ROBOTS });
+    for (const search of [
+      new URLSearchParams([["locale", "en"]]),
+      new URLSearchParams([["lang", "fr"]]),
+      new URLSearchParams([
+        ["lang", "en"],
+        ["lang", "vi"],
+      ]),
+    ]) {
+      expect(routeIndexability({ pathname: "/mcp", search })).toMatchObject({
+        kind: "private",
+        cacheControl: PRIVATE_CACHE_CONTROL,
+      });
+    }
+  });
+
+  it("allows an explicitly localized subscribe preview to use its API policy", () => {
+    expect(
+      routeIndexability({
+        pathname: "/api/subscribe/preview",
+        search: new URLSearchParams([["lang", "en"]]),
+      })
+    ).toMatchObject({ kind: "api", robots: NOINDEX_FOLLOW_ROBOTS });
+    expect(
+      routeIndexability({ pathname: "/api/subscribe/preview" })
+    ).toMatchObject({ kind: "private" });
+  });
 
   it("makes non-sensitive blank queries noindex without treating them as tokens", () => {
     expect(
@@ -210,7 +253,7 @@ describe("story response indexability", () => {
     image_url: null,
     category: "Research",
   };
-  const canonical = `${SITE_URL}/abcdef12`;
+  const canonical = `${SITE_URL}/abcdef12?lang=vi`;
 
   async function responseForStory(
     path: string,

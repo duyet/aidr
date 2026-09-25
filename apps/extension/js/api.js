@@ -1,6 +1,7 @@
 import "./preview-shim.js";
 import { withExtRef } from "./ref.js";
 import { normalizeApiBase } from "./settings.js";
+import { apiUrl, normalizeLang } from "./site-url.js";
 
 const CACHE_KEY = "newsTabFeedCache";
 
@@ -8,25 +9,29 @@ function asChrome() {
   return globalThis.chrome;
 }
 
-export function publicUrl(apiBase) {
-  return `${normalizeApiBase(apiBase)}/api/public`;
+export function publicUrl(apiBase, lang = "vi") {
+  return apiUrl(normalizeApiBase(apiBase), "/api/public", lang);
 }
 
-export function feedUrl(apiBase) {
-  return `${normalizeApiBase(apiBase)}/api/feed`;
+export function feedUrl(apiBase, lang = "vi") {
+  return apiUrl(normalizeApiBase(apiBase), "/api/feed", lang);
 }
 
-export function storyUrl(apiBase, id) {
+export function storyUrl(apiBase, id, lang = "vi") {
   const key = String(id || "").trim();
-  return `${normalizeApiBase(apiBase)}/api/story/${encodeURIComponent(key)}`;
+  return apiUrl(
+    normalizeApiBase(apiBase),
+    `/api/story/${encodeURIComponent(key)}`,
+    lang
+  );
 }
 
 /** Single published story for the in-tab dialog. Null on 404/network. */
-export async function fetchStory(apiBase, id, fetchImpl = fetch) {
+export async function fetchStory(apiBase, id, lang = "vi", fetchImpl = fetch) {
   const key = String(id || "").trim();
   if (!key) return null;
   try {
-    const res = await fetchImpl(storyUrl(apiBase, key));
+    const res = await fetchImpl(storyUrl(apiBase, key, lang));
     if (!res.ok) return null;
     const body = await res.json();
     return normalizeStory(body);
@@ -81,6 +86,7 @@ function normalizeStory(raw) {
   return {
     id: clipText(raw.id),
     url,
+    permalink: clipText(raw.permalink),
     title,
     title_vi: raw.title_vi ? clipText(raw.title_vi) : null,
     summary: raw.summary ? clipText(raw.summary) : null,
@@ -289,8 +295,8 @@ export function normalizeDigest(raw) {
 
 const FETCH_MS = 8000;
 
-function cacheSlot(apiBase) {
-  return `${CACHE_KEY}:${normalizeApiBase(apiBase)}`;
+function cacheSlot(apiBase, lang = "vi") {
+  return `${CACHE_KEY}:${normalizeApiBase(apiBase)}:${normalizeLang(lang)}`;
 }
 
 async function readJson(url) {
@@ -311,9 +317,9 @@ async function readJson(url) {
   }
 }
 
-export async function readCachedDigest(apiBase) {
+export async function readCachedDigest(apiBase, lang = "vi") {
   try {
-    const key = cacheSlot(apiBase);
+    const key = cacheSlot(apiBase, lang);
     const bag = await asChrome().storage.local.get(key);
     const cached = bag?.[key];
     if (cached?.digest) return normalizeDigest(cached.digest);
@@ -323,11 +329,16 @@ export async function readCachedDigest(apiBase) {
   return null;
 }
 
-export async function writeCachedDigest(digest, apiBase) {
+export async function writeCachedDigest(digest, apiBase, lang = "vi") {
   try {
     const base = normalizeApiBase(apiBase);
     await asChrome().storage.local.set({
-      [cacheSlot(base)]: { digest, apiBase: base, savedAt: Date.now() },
+      [cacheSlot(base, lang)]: {
+        digest,
+        apiBase: base,
+        lang: normalizeLang(lang),
+        savedAt: Date.now(),
+      },
     });
   } catch {
     // ignore quota
@@ -343,19 +354,26 @@ export function digestPaintKey(digest) {
   return `${Number(digest.updatedAt) || 0}|${Number(digest.lastFetchedAt) || 0}|${date}|${first}|${n}`;
 }
 
-function tagged(url, content) {
-  return withExtRef(url, content);
+function tagged(url, content, lang = "vi") {
+  return withExtRef(url, content, lang);
 }
 
-export async function fetchDigest(apiBase, { campaign } = {}) {
+export async function fetchDigest(apiBase, { campaign, lang = "vi" } = {}) {
   const base = normalizeApiBase(apiBase);
   const content = campaign || "hydrate";
+  const locale = normalizeLang(lang);
   try {
-    const data = await readJson(tagged(publicUrl(base), content));
+    const data = await readJson(
+      tagged(publicUrl(base, locale), content, locale)
+    );
     let digest = normalizeDigest(data);
     try {
       const feed = await readJson(
-        tagged(`${feedUrl(base)}?days=3`, `${content}_feed`.slice(0, 64))
+        tagged(
+          apiUrl(base, "/api/feed?days=3", locale),
+          `${content}_feed`.slice(0, 64),
+          locale
+        )
       );
       digest = enrichDigest(digest, feed);
     } catch {
@@ -363,17 +381,19 @@ export async function fetchDigest(apiBase, { campaign } = {}) {
       // still succeed. Public digest is enough for AI;DR + stories.
     }
     digest.lastFetchedAt = Date.now();
-    await writeCachedDigest(digest, base);
+    await writeCachedDigest(digest, base, locale);
     return { digest, source: "public", stale: false };
   } catch {
     try {
-      const data = await readJson(tagged(feedUrl(base), `${content}_feed`));
+      const data = await readJson(
+        tagged(feedUrl(base, locale), `${content}_feed`, locale)
+      );
       const digest = normalizeDigest(data);
       digest.lastFetchedAt = Date.now();
-      await writeCachedDigest(digest, base);
+      await writeCachedDigest(digest, base, locale);
       return { digest, source: "feed", stale: false };
     } catch {
-      const cached = await readCachedDigest(base);
+      const cached = await readCachedDigest(base, locale);
       if (cached) return { digest: cached, source: "cache", stale: true };
       throw new Error("unavailable");
     }
@@ -384,13 +404,17 @@ export async function fetchDigest(apiBase, { campaign } = {}) {
  * Last saved digest first, then a live pull. `onCache` runs before any
  * network so a new tab can paint immediately and refresh in the background.
  */
-export async function hydrateDigest(apiBase, { onCache, onLive } = {}) {
+export async function hydrateDigest(
+  apiBase,
+  { onCache, onLive, lang = "vi" } = {}
+) {
   const base = normalizeApiBase(apiBase);
-  const cached = await readCachedDigest(base);
+  const locale = normalizeLang(lang);
+  const cached = await readCachedDigest(base, locale);
   if (cached) onCache?.(cached);
   const campaign = cached ? "hydrate_live" : "hydrate_miss";
   try {
-    const live = await fetchDigest(base, { campaign });
+    const live = await fetchDigest(base, { campaign, lang: locale });
     onLive?.(live);
     return live;
   } catch (error) {

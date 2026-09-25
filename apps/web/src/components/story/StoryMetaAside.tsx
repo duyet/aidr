@@ -72,7 +72,7 @@ export function StoryMetaAside({
         )}
         {" · "}
         <a
-          href={storyPath(item)}
+          href={storyPath(item, lang)}
           className="underline underline-offset-2 hover:text-accent"
         >
           <Link2 className="inline h-3 w-3 align-[-1px]" aria-hidden />{" "}

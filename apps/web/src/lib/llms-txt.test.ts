@@ -6,7 +6,9 @@ describe("llmsTxt", () => {
   it("names aidr.today and how agents consume, submit, and suggest", () => {
     const body = llmsTxt();
     expect(body).toContain("aidr.today");
-    expect(body).toContain(`${SITE_URL}/api/public`);
+    expect(body).toContain(`${SITE_URL}/api/public?lang=en`);
+    expect(body).toContain(`${SITE_URL}/api/feed?lang=vi`);
+    expect(body).toContain("Vary: Cookie, Accept-Language");
     expect(body).toContain(`${SITE_URL}/api/mcp`);
     expect(body).toContain(`${SITE_URL}/submit`);
     expect(body).toContain('"via": "agent"');

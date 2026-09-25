@@ -4,7 +4,7 @@ import { SettingsView } from "../components/subscribe/SettingsView";
 import { UnsubscribeView } from "../components/subscribe/UnsubscribeView";
 import { type DeliverTab, parseDeliverTab } from "../lib/deliver-tab";
 import { useLang } from "../lib/lang-context";
-import { pageHead } from "../lib/seo";
+import { localizedPageHead } from "../lib/seo";
 
 export const Route = createFileRoute("/subscribe")({
   validateSearch: (
@@ -18,10 +18,11 @@ export const Route = createFileRoute("/subscribe")({
     if (typeof search.settings === "string") out.settings = search.settings;
     return out;
   },
-  head: () =>
-    pageHead({
+  head: ({ match }) =>
+    localizedPageHead({
       path: "/subscribe",
       title: "Get AI;DR | Chrome, Telegram, Email",
+      lang: match.context.lang,
     }),
   component: SubscribePage,
 });

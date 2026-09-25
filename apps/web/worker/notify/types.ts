@@ -1,3 +1,4 @@
+import type { Lang } from "../../src/lib/types.js";
 import type { Env } from "../types.js";
 
 /** A trending story posted individually. Title/summary are already
@@ -13,6 +14,8 @@ export interface StoryPayload {
   comments: number;
   rank_score: number;
   llm_importance: number | null;
+  /** Content language resolved by the notifier query (VI, with EN fallback). */
+  lang: Lang;
 }
 
 /** One TL;DR bullet in the daily digest; `url` is the story permalink on
@@ -23,6 +26,8 @@ export interface DigestBullet {
 }
 
 export interface DailyDigest {
+  /** Language of the rendered bullets and every aidr.today link. */
+  lang: Lang;
   /** Local calendar date (YYYY-MM-DD) the digest covers. */
   date: string;
   bullets: DigestBullet[];

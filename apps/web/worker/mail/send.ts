@@ -1,6 +1,11 @@
 import { sha256Hex } from "../hash.js";
 import type { Env } from "../types.js";
-import { listUnsubscribeHeaders, NEWS_FROM, NOTES_FROM } from "./render.js";
+import {
+  listUnsubscribeHeaders,
+  type MailLang,
+  NEWS_FROM,
+  NOTES_FROM,
+} from "./render.js";
 
 export type MailFrom = { email: string; name: string };
 
@@ -35,6 +40,8 @@ export interface SubscriberMail {
   html: string;
   text: string;
   unsubscribeToken: string;
+  /** Language for the human-facing List-Unsubscribe page. */
+  lang?: MailLang;
 }
 
 /** Sends one subscriber email. Returns false when EMAIL is unbound or send throws. */
@@ -53,7 +60,7 @@ export async function sendSubscriberEmail(
       subject: mail.subject,
       html: mail.html,
       text: mail.text,
-      headers: listUnsubscribeHeaders(mail.unsubscribeToken),
+      headers: listUnsubscribeHeaders(mail.unsubscribeToken, mail.lang),
     });
     return true;
   } catch (error) {

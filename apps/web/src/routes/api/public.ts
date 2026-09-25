@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { servePublicApi } from "../../lib/public-api";
+import {
+  API_CONTENT_LANGUAGE,
+  resolveApiRequestLocale,
+} from "../../lib/locale-response";
+import { localeCacheControl } from "../../lib/locale-url";
+import { PUBLIC_CACHE_CONTROL, servePublicApi } from "../../lib/public-api";
 
 // type alias (not interface): TanStack routeTree.gen must re-export handler
 // shapes; a non-exported interface triggers TS4023 on ApiPublicRoute.
@@ -8,7 +13,11 @@ type HandlerArgs = { request: Request; context: any };
 export const Route = createFileRoute("/api/public")({
   server: {
     handlers: {
-      GET: async ({ context }: HandlerArgs) => {
+      GET: async ({ request, context }: HandlerArgs) => {
+        const locale = resolveApiRequestLocale(request);
+        if (!locale.ok) return locale.response;
+        const lang = locale.locale.lang;
+
         let env =
           context?.cloudflare?.env ||
           context?.env ||
@@ -20,7 +29,20 @@ export const Route = createFileRoute("/api/public")({
             // not running in a workers runtime
           }
         }
-        return servePublicApi(env?.DB);
+        const url = new URL(request.url);
+        const response = await servePublicApi(env?.DB, lang);
+        const policy = localeCacheControl(url.search, PUBLIC_CACHE_CONTROL);
+        const headers = new Headers(response.headers);
+        if (response.status === 200) {
+          headers.set("Cache-Control", policy.cacheControl);
+          if (policy.vary) headers.set("Vary", policy.vary);
+        }
+        headers.set("Content-Language", API_CONTENT_LANGUAGE);
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        });
       },
     },
   },

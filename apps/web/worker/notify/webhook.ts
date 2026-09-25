@@ -1,3 +1,5 @@
+import { absoluteSiteUrl, withSiteLang } from "../../src/lib/locale-url.js";
+import { storyPath } from "../../src/lib/slug.js";
 import type { Env } from "../types.js";
 import { jsonAlertAdapter, slackAlertAdapter } from "./adapters.js";
 import type { AlertEvent } from "./alert.js";
@@ -32,27 +34,33 @@ export function webhookDeliveryId(
   return `news:${kind}:${key}`;
 }
 
-function digestEvent(digest: DailyDigest): AlertEvent {
+export function digestEvent(digest: DailyDigest): AlertEvent {
   return {
     severity: "info",
     source: "aidr.today",
-    title: `AI hôm nay có gì — ${digest.date}`,
+    title:
+      digest.lang === "vi"
+        ? `AI hôm nay có gì — ${digest.date}`
+        : `AI news digest — ${digest.date}`,
     summary: digest.bullets.map((bullet) => bullet.text).join("\n"),
     links: [
-      { label: "aidr.today", url: "https://aidr.today" },
+      {
+        label: "aidr.today",
+        url: absoluteSiteUrl("/", digest.lang),
+      },
       ...digest.bullets
         .filter((bullet) => bullet.url)
         .slice(0, 3)
         .map((bullet) => ({
           label: bullet.text.slice(0, 40),
-          url: bullet.url as string,
+          url: withSiteLang(bullet.url as string, digest.lang),
         })),
     ],
     timestamp: Date.now(),
   };
 }
 
-function storyEvent(story: StoryPayload): AlertEvent {
+export function storyEvent(story: StoryPayload): AlertEvent {
   return {
     severity: story.rank_score >= 30 ? "warning" : "info",
     source: "aidr.today",
@@ -67,7 +75,7 @@ function storyEvent(story: StoryPayload): AlertEvent {
       { label: "source", url: story.url },
       {
         label: "permalink",
-        url: `https://aidr.today/${(story.category ?? "ai").toLowerCase()}/${story.id.slice(0, 8)}`,
+        url: absoluteSiteUrl(storyPath(story), story.lang),
       },
     ],
     timestamp: Date.now(),

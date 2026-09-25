@@ -192,9 +192,33 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("subscribe?settings=tok");
   });
 
+  it("builds exact English story links", () => {
+    const { html } = buildDigestEmail(
+      "2026-08-16",
+      [{ text: "Story", item_id: "abcdef123456" }],
+      "en",
+      "tok"
+    );
+    expect(html).toContain(
+      "https://aidr.today/abcdef12?lang=en&amp;utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest"
+    );
+  });
+
   it("selects the Vietnamese unsubscribe copy for lang=vi", () => {
     const { text } = buildDigestEmail("2026-08-16", bullets, "vi", "tok");
     expect(text).toContain("Hủy đăng ký");
+  });
+
+  it("builds exact Vietnamese story links", () => {
+    const { html } = buildDigestEmail(
+      "2026-08-16",
+      [{ text: "Tin", item_id: "abcdef123456" }],
+      "vi",
+      "tok"
+    );
+    expect(html).toContain(
+      "https://aidr.today/abcdef12?lang=vi&amp;utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest"
+    );
   });
 
   it("selects the English unsubscribe copy for lang=en", () => {
@@ -392,7 +416,12 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
   it("falls back to English bullets when the preferred language is empty", async () => {
     const fixedNow = Date.UTC(2026, 7, 16, 3, 0, 0);
     const updates: { sql: string; args: unknown[] }[] = [];
-    const sent: Array<{ to: string; from: { email: string } }> = [];
+    const sent: Array<{
+      to: string;
+      from: { email: string };
+      html: string;
+      headers?: Record<string, string>;
+    }> = [];
     const db = {
       prepare(sql: string) {
         const bound = () => ({
@@ -427,7 +456,12 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     const env = {
       DB: db,
       EMAIL: {
-        send: async (msg: { to: string; from: { email: string } }) => {
+        send: async (msg: {
+          to: string;
+          from: { email: string };
+          html: string;
+          headers?: Record<string, string>;
+        }) => {
           sent.push(msg);
         },
       },
@@ -437,6 +471,8 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]?.to).toBe("vi@example.com");
     expect(sent[0]?.from.email).toBe("digest@aidr.today");
+    expect(sent[0]?.html).toContain("lang=en");
+    expect(sent[0]?.headers?.["List-Unsubscribe"]).toContain("lang=en");
   });
 });
 

@@ -8,14 +8,15 @@ import {
   ToolsSection,
 } from "../components/mcp/McpSections";
 import { useLang } from "../lib/lang-context";
-import { pageHead } from "../lib/seo";
+import { localizedPageHead } from "../lib/seo";
 import { GITHUB_URL } from "../lib/site";
 
 export const Route = createFileRoute("/mcp")({
-  head: () =>
-    pageHead({
+  head: ({ match }) =>
+    localizedPageHead({
       path: "/mcp",
       title: "MCP | AI News",
+      lang: match.context.lang,
     }),
   component: McpPage,
 });

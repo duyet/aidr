@@ -1,11 +1,171 @@
 import type { Lang } from "./types";
 
+export const DEFAULT_LANG: Lang = "vi";
+export const LOCALE_QUERY_PARAM = "lang";
+export const LEGACY_LOCALE_QUERY_PARAM = "locale";
+
 const COOKIE = "news_lang";
 
+export function isLang(value: unknown): value is Lang {
+  return value === "vi" || value === "en";
+}
+
+/** Exact cookie parsing: `news_lang=enigma` must not select English. */
+export function langFromCookie(cookieHeader: string | null): Lang | null {
+  for (const part of cookieHeader?.split(";") ?? []) {
+    const [rawName, ...rawValue] = part.trim().split("=");
+    if (rawName !== COOKIE) continue;
+    const value = rawValue.join("=").trim();
+    return isLang(value) ? value : null;
+  }
+  return null;
+}
+
 export function readLangFromCookie(cookieHeader: string | null): Lang {
-  const m = cookieHeader?.match(/(?:^|;\s*)news_lang=(vi|en)/);
-  // Default to Vietnamese when no explicit choice was made
-  return m?.[1] === "en" ? "en" : "vi";
+  // Default to Vietnamese when no explicit choice was made.
+  return langFromCookie(cookieHeader) ?? DEFAULT_LANG;
+}
+
+function queryParams(search: string | URLSearchParams): URLSearchParams {
+  if (search instanceof URLSearchParams) return search;
+  return new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+}
+
+/** Unambiguous valid locale value, or null. Use resolveLocale for request policy. */
+export function langFromQuery(search: string | URLSearchParams): Lang | null {
+  const resolution = resolveLocale({ search });
+  return resolution.ok && resolution.explicit ? resolution.lang : null;
+}
+
+/** Highest-quality supported Accept-Language range, or null. */
+export function langFromAcceptLanguage(header: string | null): Lang | null {
+  const candidates = (header ?? "")
+    .split(",")
+    .map((part, index) => {
+      const [rawTag, ...params] = part.trim().split(";");
+      const qParam = params.find((param) =>
+        param.trim().toLowerCase().startsWith("q=")
+      );
+      const parsedQ = qParam ? Number.parseFloat(qParam.trim().slice(2)) : 1;
+      const q = Number.isFinite(parsedQ)
+        ? Math.min(1, Math.max(0, parsedQ))
+        : 0;
+      const tag = rawTag.trim().toLowerCase().split("-")[0];
+      return { lang: isLang(tag) ? tag : null, q, index };
+    })
+    .filter((candidate) => candidate.lang !== null && candidate.q > 0)
+    .sort((a, b) => b.q - a.q || a.index - b.index);
+  return (candidates[0]?.lang as Lang | undefined) ?? null;
+}
+
+export interface LocaleSources {
+  search?: string | URLSearchParams;
+  cookie?: string | null;
+  acceptLanguage?: string | null;
+}
+
+export type LocaleErrorCode =
+  | "invalid_locale"
+  | "repeated_locale"
+  | "conflicting_locale";
+
+export type LocaleResolution =
+  | {
+      ok: true;
+      lang: Lang;
+      explicit: boolean;
+      legacy: boolean;
+      source: "lang" | "locale" | "cookie" | "accept-language" | "default";
+    }
+  | { ok: false; code: LocaleErrorCode; message: string };
+
+/** Locale selected when there is no valid explicit locale parameter. */
+export function fallbackLang({
+  cookie = null,
+  acceptLanguage = null,
+}: Omit<LocaleSources, "search"> = {}): Lang {
+  return (
+    langFromCookie(cookie) ??
+    langFromAcceptLanguage(acceptLanguage) ??
+    DEFAULT_LANG
+  );
+}
+
+/**
+ * Shared request policy. One exact `lang` is canonical; one exact legacy
+ * `locale` is redirectable. Invalid, repeated, and conflicting values are
+ * rejected instead of selecting a locale based on order or headers.
+ */
+export function resolveLocale({
+  search = "",
+  cookie = null,
+  acceptLanguage = null,
+}: LocaleSources = {}): LocaleResolution {
+  const params = queryParams(search);
+  const langValues = params.getAll(LOCALE_QUERY_PARAM);
+  const localeValues = params.getAll(LEGACY_LOCALE_QUERY_PARAM);
+
+  if (langValues.length > 1 || localeValues.length > 1) {
+    return {
+      ok: false,
+      code: "repeated_locale",
+      message: "Repeated locale parameters are not allowed.",
+    };
+  }
+  if (langValues.length > 0 && localeValues.length > 0) {
+    return {
+      ok: false,
+      code: "conflicting_locale",
+      message: "Do not combine lang and locale parameters.",
+    };
+  }
+
+  const explicit = langValues[0] ?? localeValues[0];
+  if (explicit !== undefined) {
+    if (!isLang(explicit)) {
+      return {
+        ok: false,
+        code: "invalid_locale",
+        message: "Locale must be exactly vi or en.",
+      };
+    }
+    const legacy = localeValues.length === 1;
+    return {
+      ok: true,
+      lang: explicit,
+      explicit: true,
+      legacy,
+      source: legacy ? "locale" : "lang",
+    };
+  }
+
+  const cookieLang = langFromCookie(cookie);
+  if (cookieLang) {
+    return {
+      ok: true,
+      lang: cookieLang,
+      explicit: false,
+      legacy: false,
+      source: "cookie",
+    };
+  }
+  const acceptedLang = langFromAcceptLanguage(acceptLanguage);
+  if (acceptedLang) {
+    return {
+      ok: true,
+      lang: acceptedLang,
+      explicit: false,
+      legacy: false,
+      source: "accept-language",
+    };
+  }
+  return {
+    ok: true,
+    lang: DEFAULT_LANG,
+    explicit: false,
+    legacy: false,
+    source: "default",
+  };
 }
 
 export function getClientLang(): Lang {

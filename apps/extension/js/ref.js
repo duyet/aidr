@@ -1,3 +1,5 @@
+import { isSiteUrl, normalizeLang, withSiteLang } from "./site-url.js";
+
 /**
  * Tag aidr.today links so website GA can attribute new-tab clicks.
  * No analytics SDK here — privacy policy forbids one; params only.
@@ -8,18 +10,17 @@ export const EXT_UTM_SOURCE = "extension";
 export const EXT_UTM_MEDIUM = "newtab";
 export const EXT_UTM_CAMPAIGN = "aidr_ext";
 
-const SITE_HOSTS = new Set(["aidr.today", "www.aidr.today"]);
-
 /**
  * @param {string} url
  * @param {string} [content] utm_content — e.g. tldr, story, brand, submit
  * @returns {string}
  */
-export function withExtRef(url, content = "link") {
+export function withExtRef(url, content = "link", lang = "vi") {
   if (typeof url !== "string" || !url.trim()) return url;
   try {
-    const u = new URL(url.trim());
-    if (!SITE_HOSTS.has(u.hostname)) return url;
+    const localized = withSiteLang(url.trim(), normalizeLang(lang));
+    if (!isSiteUrl(localized)) return url;
+    const u = new URL(localized);
     u.searchParams.set("ref", EXT_REF);
     u.searchParams.set("utm_source", EXT_UTM_SOURCE);
     u.searchParams.set("utm_medium", EXT_UTM_MEDIUM);
@@ -32,8 +33,25 @@ export function withExtRef(url, content = "link") {
   }
 }
 
+/**
+ * Form actions must not carry `lang`: GET form submission serializes the
+ * hidden lang field alongside the action, which would otherwise create two
+ * locale parameters. The hidden field remains the single source of truth.
+ */
+export function formActionWithExtRef(url, content = "link", lang = "vi") {
+  const tagged = withExtRef(url, content, lang);
+  if (!isSiteUrl(tagged)) return tagged;
+  try {
+    const u = new URL(tagged);
+    u.searchParams.delete("lang");
+    return u.toString();
+  } catch {
+    return tagged;
+  }
+}
+
 /** Rewrite aidr.today href/action on a root element (static chrome). */
-export function tagSiteLinks(root, contentBySelector = {}) {
+export function tagSiteLinks(root, contentBySelector = {}, lang = "vi") {
   if (!root?.querySelectorAll) return;
   const defaults = {
     "a.brand": "brand",
@@ -51,9 +69,10 @@ export function tagSiteLinks(root, contentBySelector = {}) {
   for (const [selector, content] of Object.entries(map)) {
     for (const node of root.querySelectorAll(selector)) {
       if (node instanceof HTMLAnchorElement && node.href) {
-        node.href = withExtRef(node.href, content);
+        node.href = withExtRef(node.href, content, lang);
       } else if (node instanceof HTMLFormElement && node.action) {
-        node.action = withExtRef(node.action, content);
+        node.action = formActionWithExtRef(node.action, content, lang);
+        ensureHidden(node, "lang", normalizeLang(lang));
         ensureHidden(node, "ref", EXT_REF);
         ensureHidden(node, "utm_source", EXT_UTM_SOURCE);
         ensureHidden(node, "utm_medium", EXT_UTM_MEDIUM);
@@ -67,14 +86,12 @@ export function tagSiteLinks(root, contentBySelector = {}) {
   for (const a of root.querySelectorAll("a[href]")) {
     if (!(a instanceof HTMLAnchorElement)) continue;
     try {
-      const u = new URL(a.href);
-      if (!SITE_HOSTS.has(u.hostname)) continue;
-      if (u.searchParams.get("ref") === EXT_REF) continue;
+      if (!isSiteUrl(a.href)) continue;
       const content =
         a.closest(".footer-nav") || a.closest(".phone-menu-nav")
           ? "nav"
           : "link";
-      a.href = withExtRef(a.href, content);
+      a.href = withExtRef(a.href, content, lang);
     } catch {
       // ignore
     }

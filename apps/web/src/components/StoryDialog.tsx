@@ -37,9 +37,9 @@ export function StoryDialog({
   onClose: () => void;
 }) {
   const [activeId, setActiveId] = useState(idPrefix);
-  const [feed, setFeed] = useState(() => getCachedFeed());
+  const [feed, setFeed] = useState(() => getCachedFeed(lang));
   const { prefs, setPrefs } = usePrefs();
-  const item = useStoryItem(activeId);
+  const item = useStoryItem(activeId, lang);
   const hasVi = Boolean(item?.title_vi || item?.summary_vi);
   const bilingual = isBilingualDialog(prefs.bilingualDialog, hasVi);
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -50,13 +50,14 @@ export function StoryDialog({
   }, [idPrefix]);
 
   useEffect(() => {
-    if (relatedIds?.length && !feed) {
-      fetchFeedOnce().then((res) => {
+    const cached = getCachedFeed(lang);
+    setFeed(cached);
+    if (relatedIds?.length && !cached) {
+      void fetchFeedOnce(lang).then((res) => {
         if (res) setFeed(res);
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [lang, relatedIds]);
 
   const relatedItems = (relatedIds ?? [])
     .filter((id) => id !== activeId)

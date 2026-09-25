@@ -7,6 +7,8 @@ import {
   topBullets,
 } from "../../../worker/subscribe/send.js";
 import type { Env } from "../../../worker/types.js";
+import { resolveApiRequestLocale } from "../../lib/locale-response";
+import { localeCacheControl } from "../../lib/locale-url";
 import { resolveWorkerEnv } from "../../lib/system-api";
 
 // type alias (not interface): TanStack routeTree.gen must re-export handler
@@ -22,18 +24,40 @@ function pendingHtml(lang: "en" | "vi"): string {
     lang === "vi"
       ? "Bản tin đầu tiên đang được chuẩn bị — quay lại sau."
       : "The first digest is still being prepared — check back soon.";
-  return `<!DOCTYPE html><html><body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f7f7f5;font-family:ui-sans-serif,system-ui,sans-serif;color:#474747;font-size:14px">${msg}</body></html>`;
+  return `<!DOCTYPE html><html lang="${lang}"><body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f7f7f5;font-family:ui-sans-serif,system-ui,sans-serif;color:#474747;font-size:14px">${msg}</body></html>`;
+}
+
+function previewError(lang: "en" | "vi"): Response {
+  return new Response(pendingHtml(lang), {
+    status: 500,
+    headers: {
+      "Cache-Control": "private, no-store",
+      "Content-Language": lang,
+      "Content-Type": "text/html; charset=utf-8",
+      Vary: "Cookie, Accept-Language",
+      "X-Robots-Tag": "noindex, nofollow",
+    },
+  });
 }
 
 export const Route = createFileRoute("/api/subscribe/preview")({
   server: {
     handlers: {
       GET: async ({ request, context }: HandlerArgs) => {
+        const locale = resolveApiRequestLocale(request);
+        if (!locale.ok) return locale.response;
+        const lang = locale.locale.lang;
         const url = new URL(request.url);
-        const lang = url.searchParams.get("lang") === "vi" ? "vi" : "en";
         const size = digestSizeFor(Number(url.searchParams.get("n")));
 
-        const env = (await resolveWorkerEnv(context)) as Env | undefined;
+        let env: Env | undefined;
+        try {
+          env = (await resolveWorkerEnv(context)) as Env | undefined;
+        } catch (error) {
+          console.error("subscribe preview env:", error);
+          return previewError(lang);
+        }
+        let contentLang = lang;
         let html = pendingHtml(lang);
         if (env?.DB) {
           try {
@@ -49,10 +73,11 @@ export const Route = createFileRoute("/api/subscribe/preview")({
                 preferred.length > 0
                   ? preferred
                   : topBullets(snapshot.bullets_en, size);
+              contentLang = preferred.length > 0 ? lang : "en";
               html = buildDigestEmail(
                 snapshot.date,
                 bullets,
-                lang,
+                contentLang,
                 PREVIEW_TOKEN,
                 size
               ).html;
@@ -64,11 +89,16 @@ export const Route = createFileRoute("/api/subscribe/preview")({
           }
         }
 
+        const policy = localeCacheControl(
+          url.search,
+          "public, max-age=300, s-maxage=600, stale-while-revalidate=3600"
+        );
         return new Response(html, {
           headers: {
             "Content-Type": "text/html; charset=utf-8",
-            "Cache-Control":
-              "public, max-age=300, s-maxage=600, stale-while-revalidate=3600",
+            "Cache-Control": policy.cacheControl,
+            "Content-Language": contentLang,
+            ...(policy.vary ? { Vary: policy.vary } : {}),
           },
         });
       },

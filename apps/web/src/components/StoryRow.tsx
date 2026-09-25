@@ -1,7 +1,7 @@
 import { track } from "@aidr/ui/track";
 import { ExternalLink, TrendingUp } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ARTICLE_TITLE_TAG,
   FEED_TITLE_TAG,
@@ -96,6 +96,10 @@ export function StoryRow({
   // story is refetched from /api/story on first expand.
   const [detail, setDetail] = useState<FeedItem | null>(null);
   const detailRequested = useRef(false);
+  useEffect(() => {
+    detailRequested.current = false;
+    setDetail(null);
+  }, [lang]);
   const { text: title, fallbackFromEnglish } = localizedTitle(item, lang);
   const summary =
     lang === "vi" && item.summary_vi ? item.summary_vi : item.summary;
@@ -122,7 +126,7 @@ export function StoryRow({
     if (!hasDetails) return;
     if (!expanded && item.lazyDetail && !detailRequested.current) {
       detailRequested.current = true;
-      fetch(`/api/story${storyPath(item)}`)
+      fetch(`/api/story${storyPath(item, lang)}`)
         .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
         .then((full) => {
           // Fall back to the lean row so the loading line clears even
@@ -169,7 +173,7 @@ export function StoryRow({
             className={titleAs === ARTICLE_TITLE_TAG ? "inline" : undefined}
           >
             <a
-              href={storyPath(item)}
+              href={storyPath(item, lang)}
               lang={fallbackFromEnglish ? "en" : undefined}
               onClick={(e) => e.stopPropagation()}
               className="hover:underline hover:underline-offset-2"

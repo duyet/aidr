@@ -11,8 +11,13 @@ describe("storyPath", () => {
     expect(storyPath({ id: "abcdef12deadbeef" })).toBe("/abcdef12");
   });
 
-  it("does not fall back to /ai when category is missing", () => {
-    expect(storyPath({ id: "abcdef12deadbeef" })).toBe("/abcdef12");
+  it("adds explicit Vietnamese and English locale parameters", () => {
+    expect(storyPath({ id: "abcdef12deadbeef" }, "vi")).toBe(
+      "/abcdef12?lang=vi"
+    );
+    expect(storyPath({ id: "abcdef12deadbeef" }, "en")).toBe(
+      "/abcdef12?lang=en"
+    );
   });
 });
 
@@ -37,8 +42,19 @@ describe("storyCanonicalRedirect", () => {
     expect(storyCanonicalRedirect("abcdef12", item)).toBeNull();
   });
 
-  it("redirects a full-hash URL to the 8-char path", () => {
-    expect(storyCanonicalRedirect("abcdef12deadbeef", item)).toBe("/abcdef12");
+  it("redirects a full-hash URL to one explicit canonical locale", () => {
+    expect(storyCanonicalRedirect("abcdef12deadbeef", item)).toBe(
+      "/abcdef12?lang=vi"
+    );
+    expect(
+      storyCanonicalRedirect(
+        "abcdef12deadbeef",
+        item,
+        "en",
+        "?utm_source=telegram&locale=vi",
+        "#sources"
+      )
+    ).toBe("/abcdef12?utm_source=telegram&lang=en#sources");
   });
 });
 

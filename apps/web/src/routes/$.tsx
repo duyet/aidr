@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { notFoundCopy } from "../lib/not-found";
-import { loadNotFoundLang } from "../lib/not-found-fn";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { notFoundHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
@@ -11,9 +10,7 @@ import type { Lang } from "../lib/types";
 // Start's HTML stream is 200 unless notFound() is thrown; the Worker
 // rewrites status when this header is present.
 export const Route = createFileRoute("/$")({
-  loader: async (): Promise<{ lang: Lang }> => ({
-    lang: await loadNotFoundLang(),
-  }),
+  loader: ({ context }): { lang: Lang } => ({ lang: context.lang }),
   headers: (): Record<string, string> => ({
     [NOT_FOUND_HEADER]: "1",
     "Cache-Control": "private, no-store",

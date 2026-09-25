@@ -1,6 +1,9 @@
 import type { DbReader } from "./db";
+import { isLocalizedSsrPath } from "./locale-routing";
+import { absoluteSiteUrl } from "./locale-url";
 import { SITE_URL } from "./site";
 import { storyPath } from "./slug";
+import type { Lang } from "./types";
 
 export const SITEMAP_STATIC_PATHS = [
   "/",
@@ -54,27 +57,49 @@ export function robotsTxt(): string {
 }
 
 export function staticSitemapUrls(): SitemapUrl[] {
-  return SITEMAP_STATIC_PATHS.map((path) => ({
-    loc: path === "/" ? `${SITE_URL}/` : `${SITE_URL}${path}`,
-    changefreq: path === "/" ? "hourly" : "weekly",
-    priority: path === "/" ? "1.0" : "0.4",
-  }));
+  return SITEMAP_STATIC_PATHS.flatMap((path) => {
+    if (isLocalizedSsrPath(path)) {
+      return (["vi", "en"] as const).map((lang) => ({
+        loc: absoluteSiteUrl(path, lang),
+        changefreq: path === "/" ? "hourly" : "weekly",
+        priority: path === "/" ? "1.0" : "0.4",
+      }));
+    }
+    return [
+      {
+        loc: `${SITE_URL}${path}`,
+        changefreq: "weekly",
+        priority: "0.4",
+      },
+    ];
+  });
 }
 
-export function storySitemapUrl(item: {
-  id: string;
-  category: string | null;
-  published_at: number;
-}): SitemapUrl {
+export function storySitemapUrl(
+  item: {
+    id: string;
+    category: string | null;
+    published_at: number;
+  },
+  lang: Lang = "vi"
+): SitemapUrl {
   const lastmod = Number.isFinite(item.published_at)
     ? new Date(item.published_at * 1000).toISOString().slice(0, 10)
     : undefined;
   return {
-    loc: `${SITE_URL}${storyPath(item)}`,
+    loc: absoluteSiteUrl(storyPath(item), lang),
     lastmod,
     changefreq: "daily",
     priority: "0.7",
   };
+}
+
+export function storySitemapUrls(item: {
+  id: string;
+  category: string | null;
+  published_at: number;
+}): SitemapUrl[] {
+  return [storySitemapUrl(item, "vi"), storySitemapUrl(item, "en")];
 }
 
 const SITEMAP_ITEM_LIMIT = 1000;
@@ -91,7 +116,7 @@ export async function loadSitemapUrls(db: DbReader): Promise<SitemapUrl[]> {
       )
       .all<{ id: string; category: string | null; published_at: number }>();
     for (const row of results ?? []) {
-      urls.push(storySitemapUrl(row));
+      urls.push(...storySitemapUrls(row));
     }
   } catch {
     // D1 unavailable — still emit the static pages so the route is valid XML.

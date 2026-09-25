@@ -1,8 +1,8 @@
 import { fetchStory } from "./api.js";
-import { topicColor } from "./topic-color.js";
 import { safeHttpUrl } from "./settings.js";
+import { NEWS_SITE, siteUrl, storyPermalink } from "./site-url.js";
+import { topicColor } from "./topic-color.js";
 
-const NEWS_SITE = "https://aidr.today";
 const THUMB_MARK = new URL("../icons/thumb-mark.svg", import.meta.url).href;
 
 /** Create an element with attributes and children. Matches the helper in
@@ -157,12 +157,13 @@ export function openStoryDialog({
   itemId,
   relatedIds = [],
   digest = null,
-  permalink = NEWS_SITE,
+  permalink = "",
   bilingual = false,
 }) {
   closeStoryDialog();
   const lang = language === "en" ? "en" : "vi";
   const copy = copyFor(lang);
+  const canonicalPermalink = permalink || siteUrl("/", lang);
   const hasVi = (story) =>
     Boolean(story?.title_vi || story?.summary_vi);
   let showBilingual = bilingual;
@@ -214,7 +215,7 @@ export function openStoryDialog({
   const foot = document.createElement("div");
   foot.className = "story-dialog-foot";
   const siteLink = document.createElement("a");
-  siteLink.href = permalink || NEWS_SITE;
+  siteLink.href = canonicalPermalink;
   siteLink.target = "_blank";
   siteLink.rel = "noopener noreferrer";
   siteLink.textContent = copy.site;
@@ -266,7 +267,7 @@ export function openStoryDialog({
     paintStory(cached, ctx);
   }
 
-  fetchStory(apiBase, itemId).then((story) => {
+  fetchStory(apiBase, itemId, lang).then((story) => {
     if (openRoot !== overlay) return;
     const next = story || cached;
     if (!next) {
@@ -340,7 +341,7 @@ function paintStory(story, ctx) {
           itemId: rel.id,
           relatedIds,
           digest,
-          permalink: `${NEWS_SITE}/${String(rel.id).slice(0, 8)}`,
+          permalink: storyPermalink(rel.id, lang),
         });
       });
       li.append(btn);

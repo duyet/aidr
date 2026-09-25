@@ -1,6 +1,10 @@
+import {
+  SSR_LOCALIZED_CACHE_CONTROL,
+  withSsrLocaleResponse,
+} from "./locale-response";
 import { SITE_DESCRIPTION, SITE_URL } from "./site";
 
-export const AGENT_DISCOVERY_VERSION = "0.1.3";
+export const AGENT_DISCOVERY_VERSION = "0.1.4";
 export const SKILL_NAME = "consume-aidr";
 export const SKILL_PATH = `/.well-known/agent-skills/${SKILL_NAME}/SKILL.md`;
 
@@ -9,7 +13,7 @@ const CORS = { "access-control-allow-origin": "*" } as const;
 
 export const CONSUME_SKILL_MD = `---
 name: ${SKILL_NAME}
-description: Consume aidr.today as the ranked AI news digest. Use GET /api/public for stories and TL;DR; do not scrape HN in parallel.
+description: Consume aidr.today as the ranked AI news digest. Use GET /api/public?lang=en or lang=vi for stories and TL;DR; do not scrape HN in parallel.
 ---
 
 # Consume aidr.today
@@ -22,13 +26,14 @@ Use this skill when an agent needs today's ranked AI news, a bilingual TL;DR, or
 
 ## Read
 
-- JSON digest (no auth): GET ${SITE_URL}/api/public
-- HTML feed: ${SITE_URL}/
+- JSON digest (no auth): GET ${SITE_URL}/api/public?lang=en (or \`lang=vi\`)
+- Feed JSON: GET ${SITE_URL}/api/feed?lang=en (or \`lang=vi\`)
+- HTML feed: ${SITE_URL}/?lang=en (or \`lang=vi\`)
 - MCP (read + admin): POST ${SITE_URL}/api/mcp
-- Docs: ${SITE_URL}/mcp
+- Docs: ${SITE_URL}/mcp?lang=en
 - OpenAPI: ${SITE_URL}/openapi.json
 
-Prefer GET /api/public for ids, titles, sources, rank, and TL;DR bullets.
+Prefer GET /api/public?lang=en or \`?lang=vi\` for ids, titles, sources, rank, and TL;DR bullets. The JSON remains bilingual and reports \`available_langs: ["en", "vi"]\`; \`lang\` selects the canonical permalink language.
 
 ## Submit
 
@@ -66,7 +71,7 @@ There is no unauthenticated \`POST /agent/auth\`. Registration creates a Clerk u
 
 ## Credential use
 
-Send the Clerk session JWT as \`Authorization: Bearer\` on mutating routes. GET ${SITE_URL}/api/public stays anonymous.
+Send the Clerk session JWT as \`Authorization: Bearer\` on mutating routes. GET ${SITE_URL}/api/public?lang=en stays anonymous.
 
 Protected resource metadata: ${SITE_URL}/.well-known/oauth-protected-resource
 Authorization server metadata: ${SITE_URL}/.well-known/oauth-authorization-server
@@ -87,7 +92,7 @@ export function homepageLinkHeader(): string {
   return [
     `<${SITE_URL}/.well-known/api-catalog>; rel="api-catalog"`,
     `<${SITE_URL}/openapi.json>; rel="service-desc"; type="application/openapi+json"`,
-    `<${SITE_URL}/mcp>; rel="service-doc"; type="text/html"`,
+    `<${SITE_URL}/mcp?lang=en>; rel="service-doc"; type="text/html"`,
     `<${SITE_URL}/llms.txt>; rel="describedby"; type="text/plain"`,
   ].join(", ");
 }
@@ -96,7 +101,7 @@ export function apiCatalogDocument(): unknown {
   return {
     linkset: [
       {
-        anchor: `${SITE_URL}/api/public`,
+        anchor: `${SITE_URL}/api/public?lang=en`,
         "service-desc": [
           {
             href: `${SITE_URL}/openapi.json`,
@@ -104,7 +109,7 @@ export function apiCatalogDocument(): unknown {
           },
         ],
         "service-doc": [
-          { href: `${SITE_URL}/mcp`, type: "text/html" },
+          { href: `${SITE_URL}/mcp?lang=en`, type: "text/html" },
           { href: `${SITE_URL}/llms.txt`, type: "text/plain" },
         ],
         status: [{ href: `${SITE_URL}/api/system`, type: "application/json" }],
@@ -117,11 +122,11 @@ export function apiCatalogDocument(): unknown {
             type: "application/json",
           },
         ],
-        "service-doc": [{ href: `${SITE_URL}/mcp`, type: "text/html" }],
+        "service-doc": [{ href: `${SITE_URL}/mcp?lang=en`, type: "text/html" }],
         status: [{ href: `${SITE_URL}/api/system`, type: "application/json" }],
       },
       {
-        anchor: `${SITE_URL}/api/feed`,
+        anchor: `${SITE_URL}/api/feed?lang=en`,
         "service-desc": [
           {
             href: `${SITE_URL}/openapi.json`,
@@ -134,6 +139,51 @@ export function apiCatalogDocument(): unknown {
   };
 }
 
+const LOCALE_QUERY_PARAMETER = {
+  name: "lang",
+  in: "query",
+  required: false,
+  description:
+    "Explicit content/permalink locale. Use exactly en or vi. Bare requests use cookie/Accept-Language and are private; repeated or invalid values return 400.",
+  schema: { type: "string", enum: ["en", "vi"] },
+} as const;
+
+const LOCALE_ALIAS_PARAMETER = {
+  name: "locale",
+  in: "query",
+  required: false,
+  deprecated: true,
+  description:
+    "Legacy alias. Exactly one valid value redirects temporarily (307) to lang; combining it with lang or repeating either key returns 400.",
+  schema: { type: "string", enum: ["en", "vi"] },
+} as const;
+
+const LOCALE_PARAMETERS = [
+  LOCALE_QUERY_PARAMETER,
+  LOCALE_ALIAS_PARAMETER,
+] as const;
+
+const LOCALE_ERROR_RESPONSES = {
+  "307": {
+    description:
+      "Temporary redirect from one valid legacy locale to an explicit lang URL",
+    headers: {
+      Location: { description: "Canonical explicit-locale URL" },
+      "Cache-Control": { example: "private, no-store" },
+      Vary: { example: "Cookie, Accept-Language" },
+    },
+  },
+  "400": {
+    description:
+      "Locale is invalid, repeated, or conflicts with the legacy locale key",
+    headers: {
+      "Cache-Control": { example: "private, no-store" },
+      "Content-Language": { example: "en, vi" },
+      Vary: { example: "Cookie, Accept-Language" },
+    },
+  },
+} as const;
+
 export function openApiDocument(): unknown {
   return {
     openapi: "3.1.0",
@@ -143,19 +193,73 @@ export function openApiDocument(): unknown {
       description: SITE_DESCRIPTION,
     },
     servers: [{ url: SITE_URL }],
+    "x-locale-contract": {
+      parameter: "lang",
+      values: ["en", "vi"],
+      alias: "locale (one valid value redirects with 307)",
+      precedence: [
+        "lang",
+        "locale",
+        "news_lang cookie",
+        "Accept-Language",
+        "vi",
+      ],
+      invalidOrRepeated:
+        "400; private, no-store; Vary: Cookie, Accept-Language",
+      canonical:
+        "Explicit lang is required for public cacheable HTML and API variants",
+      cache:
+        "Explicit lang: public; bare/header-selected: private, no-store; errors: private, no-store",
+      bilingualJson:
+        "lang selects permalinks; English and Vietnamese fields remain available",
+    },
     paths: {
       "/api/public": {
         get: {
-          summary: "Unauthenticated digest",
+          summary: "Unauthenticated bilingual digest",
+          parameters: LOCALE_PARAMETERS,
           responses: {
-            "200": { description: "TL;DR bullets and ranked stories" },
+            "200": {
+              description:
+                "TL;DR bullets and ranked stories; lang selects permalinks",
+            },
+            ...LOCALE_ERROR_RESPONSES,
+            "500": { description: "Digest query failed; details are redacted" },
+            "503": { description: "Digest database binding is unavailable" },
           },
         },
       },
       "/api/feed": {
         get: {
-          summary: "HTML-oriented feed JSON",
-          responses: { "200": { description: "Feed days and items" } },
+          summary: "HTML-oriented bilingual feed JSON",
+          parameters: LOCALE_PARAMETERS,
+          responses: {
+            "200": {
+              description: "Feed days and items; lang selects permalinks",
+            },
+            ...LOCALE_ERROR_RESPONSES,
+            "500": { description: "Feed query failed; details are redacted" },
+          },
+        },
+      },
+      "/api/story/{id}": {
+        get: {
+          summary: "Bilingual story JSON",
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "string", minLength: 8, maxLength: 64 },
+            },
+            ...LOCALE_PARAMETERS,
+          ],
+          responses: {
+            "200": { description: "Story fields and selected-lang permalink" },
+            ...LOCALE_ERROR_RESPONSES,
+            "404": { description: "Story not found" },
+            "500": { description: "Story query failed; details are redacted" },
+          },
         },
       },
       "/api/system": {
@@ -200,7 +304,7 @@ export function a2aAgentCard(): unknown {
         id: "public-digest",
         name: "Public digest",
         description:
-          "Return ranked AI stories and bilingual TL;DR via GET /api/public.",
+          "Return ranked AI stories and bilingual TL;DR via GET /api/public?lang=en or lang=vi.",
       },
       {
         id: "mcp-tools",
@@ -221,7 +325,7 @@ export function mcpServerCard(): unknown {
       version: AGENT_DISCOVERY_VERSION,
     },
     description: SITE_DESCRIPTION,
-    documentationUrl: `${SITE_URL}/mcp`,
+    documentationUrl: `${SITE_URL}/mcp?lang=en`,
     transport: {
       type: "streamable-http",
       endpoint: `${SITE_URL}/api/mcp`,
@@ -277,7 +381,7 @@ export async function agentSkillsIndex(): Promise<unknown> {
         name: SKILL_NAME,
         type: "skill-md",
         description:
-          "Consume aidr.today as the ranked AI news digest. Use GET /api/public; do not scrape HN in parallel.",
+          "Consume aidr.today as the ranked AI news digest. Use GET /api/public?lang=en or lang=vi; do not scrape HN in parallel.",
         url: SKILL_PATH,
         digest: await sha256Digest(CONSUME_SKILL_MD),
       },
@@ -369,11 +473,7 @@ export async function handleAgentDiscovery(
   return null;
 }
 
-/** Explicit TTL for the SSR homepage: the feed is public data refreshed
- * ~hourly by ingest. Setting it in code keeps edge caching deterministic
- * instead of depending on a dashboard cache rule. */
-export const HOMEPAGE_CACHE_CONTROL =
-  "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
+export const HOMEPAGE_CACHE_CONTROL = SSR_LOCALIZED_CACHE_CONTROL;
 
 export function withHomepageHeaders(
   request: Request,
@@ -385,12 +485,12 @@ export function withHomepageHeaders(
   const extra = homepageLinkHeader();
   const existing = headers.get("Link");
   headers.set("Link", existing ? `${existing}, ${extra}` : extra);
-  if (response.status === 200 && !headers.has("Cache-Control")) {
-    headers.set("Cache-Control", HOMEPAGE_CACHE_CONTROL);
-  }
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+  return withSsrLocaleResponse(
+    request,
+    new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    })
+  );
 }

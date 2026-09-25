@@ -65,6 +65,7 @@ const required = [
   "js/highlight.js",
   "js/topic-color.js",
   "js/ref.js",
+  "js/site-url.js",
   "js/update.js",
   "icons/icon16.png",
   "icons/icon32.png",

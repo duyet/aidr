@@ -29,7 +29,9 @@ export function SearchBox({
 }) {
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [feed, setFeed] = useState<FeedResponse | null>(() => getCachedFeed());
+  const [feed, setFeed] = useState<FeedResponse | null>(() =>
+    getCachedFeed(lang)
+  );
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [dialogIdPrefix, setDialogIdPrefix] = useState<string | null>(null);
@@ -40,6 +42,20 @@ export function SearchBox({
     const timer = setTimeout(() => setDebouncedQ(q), DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [q]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const cached = getCachedFeed(lang);
+    setFeed(cached);
+    if (!cached && q.trim().length >= MIN_QUERY_LEN) {
+      void fetchFeedOnce(lang).then((res) => {
+        if (!cancelled && res) setFeed(res);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [lang, q]);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -58,11 +74,6 @@ export function SearchBox({
     setQ(value);
     setOpen(value.trim().length >= MIN_QUERY_LEN);
     setActiveIndex(-1);
-    if (!feed && value.trim().length >= MIN_QUERY_LEN) {
-      fetchFeedOnce().then((res) => {
-        if (res) setFeed(res);
-      });
-    }
   };
 
   const allItems = feed?.days.flatMap((d) => d.items) ?? [];

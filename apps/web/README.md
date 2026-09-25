@@ -1,6 +1,7 @@
 # @aidr/web
 
 Feed pipeline and ranking design: see [ALGORITHM.md](./ALGORITHM.md).
+Locale selection, canonical URLs, and caching: see [LOCALE_URLS.md](./LOCALE_URLS.md).
 
 ## Public read API
 
@@ -18,16 +19,22 @@ Do not use GitHub `releases/latest` — that may be a website (`web-v*`) release
 homepage payload (~360KB) and does not send CORS for `chrome-extension://`
 origins. Use this instead:
 
-- **URL:** `https://aidr.today/api/public`
-- **Auth:** none. Failures return `{ "error": "unavailable" }` (no D1/admin detail).
+- **URL:** `https://aidr.today/api/public?lang=vi` (or `?lang=en`)
+- **Auth:** none. Failures return a bilingual `{ "error": "unavailable", ... }`
+  object with no D1/admin detail.
 - **CORS:** Worker fetch intercepts OPTIONS/GET before TanStack Start (SPA
   fallback would otherwise serve HTML). Allows `chrome-extension://…`,
   `http://localhost` / `http://127.0.0.1`, and `https://*.duyet.net`.
-- **Cache:** `public, max-age=120, s-maxage=300, stale-while-revalidate=600`.
-  Not rate-limited (same as `GET /api/feed`).
+- **Cache:** exactly one explicit `?lang=vi|en` uses
+  `public, max-age=120, s-maxage=300, stale-while-revalidate=600`. Bare,
+  legacy-alias, invalid, repeated, and conflicting locale requests are not
+  served as a public variant: bare/header-selected responses use
+  `private, no-store`; malformed values return `400`. Not rate-limited.
 
 ```json
 {
+  "lang": "vi",
+  "available_langs": ["en", "vi"],
   "tldr": {
     "date": "2026-08-27",
     "bullets_en": [{ "text": "...", "item_ids": ["..."], "image_url": "https://..." }],
@@ -37,6 +44,7 @@ origins. Use this instead:
     {
       "id": "...",
       "url": "https://...",
+      "permalink": "https://aidr.today/abcdef12?lang=vi",
       "title": "...",
       "title_vi": "...",
       "category": "Industry",
@@ -48,8 +56,9 @@ origins. Use this instead:
 }
 ```
 
-Up to 16 bullets per language and 8 top stories by `rank_score`. Typical
-payload is well under 50KB. `image_url` on a bullet is additive and only
+The response is bilingual by design: `lang` selects the explicit permalink
+language and `available_langs` is `["en", "vi"]`. Up to 16 bullets per language
+and 8 top stories by `rank_score`. Typical payload is well under 50KB. `image_url` on a bullet is additive and only
 present when the linked story has an og/thumbnail. `published_at` is epoch
 **seconds**; `updatedAt` is epoch milliseconds.
 

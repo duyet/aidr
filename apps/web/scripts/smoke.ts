@@ -59,6 +59,14 @@ async function main() {
   await check("GET / -> 200 with SSR shell marker", async () => {
     const res = await fetch(`${base}/`);
     assert(res.status === 200, `expected 200, got ${res.status}`);
+    assert(
+      res.headers.get("content-language") === "vi",
+      "bare homepage should render Vietnamese by default"
+    );
+    assert(
+      res.headers.get("cache-control") === "private, no-store",
+      "cookie/Accept-Language-selected homepage must not be edge-cached"
+    );
     const body = await res.text();
     const marker = "Hôm nay AI có gì mới?";
     assert(body.includes(marker), `body missing shell marker "${marker}"`);
@@ -68,7 +76,7 @@ async function main() {
     assert(body.includes("twitter:card"), "homepage missing twitter:card");
     assert(body.includes('rel="canonical"'), "homepage missing canonical");
     assert(
-      /href="\/[0-9a-f]{8}"/.test(body),
+      /href="\/[0-9a-f]{8}\?lang=(vi|en)"/.test(body),
       "homepage HTML has no canonical 8-char story permalinks"
     );
     assert(
@@ -81,6 +89,25 @@ async function main() {
     );
   });
 
+  await check("GET /?lang=en -> explicit English homepage", async () => {
+    const res = await fetch(`${base}/?lang=en`);
+    assert(res.status === 200, `expected 200, got ${res.status}`);
+    assert(
+      res.headers.get("content-language") === "en",
+      "explicit English homepage did not set Content-Language"
+    );
+    assert(
+      res.headers.get("cache-control")?.includes("s-maxage=300") === true,
+      "explicit English homepage should be edge-cacheable"
+    );
+    const body = await res.text();
+    assert(body.includes('<html lang="en"'), "English SSR html lang missing");
+    assert(
+      body.includes('rel="canonical" href="https://aidr.today/?lang=en"'),
+      "English homepage canonical missing"
+    );
+  });
+
   await check(
     "GET /sitemap.xml -> 200 application/xml with urlset",
     async () => {
@@ -90,7 +117,14 @@ async function main() {
       assert(ctype.includes("xml"), `expected xml content-type, got ${ctype}`);
       const body = await res.text();
       assert(body.includes("<urlset"), "sitemap missing <urlset>");
-      assert(body.includes(`${base}/`), "sitemap missing homepage loc");
+      assert(
+        body.includes(`${base}/?lang=vi`),
+        "sitemap missing Vietnamese homepage loc"
+      );
+      assert(
+        body.includes(`${base}/?lang=en`),
+        "sitemap missing English homepage loc"
+      );
     }
   );
 

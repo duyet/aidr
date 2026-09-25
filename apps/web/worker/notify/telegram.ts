@@ -1,3 +1,8 @@
+import { DEFAULT_LANG } from "../../src/lib/lang.js";
+import { withSiteLang } from "../../src/lib/locale-url.js";
+import { SITE_URL } from "../../src/lib/site.js";
+import { storyPath } from "../../src/lib/slug.js";
+import type { Lang } from "../../src/lib/types.js";
 import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
 import type {
@@ -21,15 +26,14 @@ export { escapeHtml };
  * analytics (Telegram's Bot API exposes no read receipts).
  */
 
-const SITE_URL = "https://aidr.today";
 /** Telegram message hard limit is 4096 chars; keep headroom. */
 const MESSAGE_CAP = 4000;
 /** Telegram caption hard limit is 1024 chars; keep headroom for title. */
 const CAPTION_SUMMARY_CAP = 500;
 
-export function withUtm(url: string): string {
+export function withUtm(url: string, lang: Lang = DEFAULT_LANG): string {
   try {
-    const u = new URL(url);
+    const u = new URL(withSiteLang(url, lang));
     u.searchParams.set("utm_source", "telegram");
     return u.toString();
   } catch {
@@ -37,21 +41,27 @@ export function withUtm(url: string): string {
   }
 }
 
-/** /abc12345 permalink — mirrors src/lib/slug.ts storyPath. */
-export function storyUrl(story: Pick<StoryPayload, "id">): string {
-  return `${SITE_URL}/${story.id.slice(0, 8)}`;
+/** Canonical story permalink with the Telegram channel's selected locale. */
+export function storyUrl(
+  story: Pick<StoryPayload, "id">,
+  lang: Lang = DEFAULT_LANG
+): string {
+  return new URL(storyPath(story, lang), SITE_URL).toString();
 }
 
 /** TL;DR digest: header + linked bullet list, capped under the message
  *  limit — bullets that would overflow are dropped from the tail. */
 export function buildDigestMessage(digest: DailyDigest): string {
-  const header = `<b>🗞 AI hôm nay có gì — ${digest.date}</b>`;
+  const header =
+    digest.lang === "en"
+      ? `<b>🗞 AI news today — ${digest.date}</b>`
+      : `<b>🗞 AI hôm nay có gì — ${digest.date}</b>`;
   const lines: string[] = [header];
   let length = header.length;
   for (const bullet of digest.bullets) {
     const text = escapeHtml(bullet.text);
     const line = bullet.url
-      ? `•  ${text} <a href="${escapeHtml(withUtm(bullet.url))}">→</a>`
+      ? `•  ${text} <a href="${escapeHtml(withUtm(bullet.url, digest.lang))}">→</a>`
       : `•  ${text}`;
     if (length + line.length + 2 > MESSAGE_CAP) break;
     lines.push(line);
@@ -60,10 +70,18 @@ export function buildDigestMessage(digest: DailyDigest): string {
   return lines.join("\n\n");
 }
 
-export function buildDigestReplyMarkup(): object {
+export function buildDigestReplyMarkup(lang: Lang = DEFAULT_LANG): object {
   return {
     inline_keyboard: [
-      [{ text: "Xem đầy đủ trên aidr.today →", url: withUtm(SITE_URL) }],
+      [
+        {
+          text:
+            lang === "en"
+              ? "Read the full digest on aidr.today →"
+              : "Xem đầy đủ trên aidr.today →",
+          url: withUtm(SITE_URL, lang),
+        },
+      ],
     ],
   };
 }
@@ -91,8 +109,14 @@ export function buildStoryReplyMarkup(story: StoryPayload): object {
   return {
     inline_keyboard: [
       [
-        { text: "Đọc bài →", url: withUtm(story.url) },
-        { text: "AI;DR", url: withUtm(storyUrl(story)) },
+        {
+          text: story.lang === "en" ? "Read →" : "Đọc bài →",
+          url: withUtm(story.url, story.lang),
+        },
+        {
+          text: "AI;DR",
+          url: withUtm(storyUrl(story, story.lang), story.lang),
+        },
       ],
     ],
   };
@@ -151,7 +175,7 @@ export const telegramNotifier: Notifier = {
       chat_id: chatId,
       text: buildDigestMessage(digest),
       parse_mode: "HTML",
-      reply_markup: buildDigestReplyMarkup(),
+      reply_markup: buildDigestReplyMarkup(digest.lang),
       link_preview_options: { is_disabled: true },
     });
     if (!msg.ok) return { ok: false, error: msg.description ?? "unknown" };

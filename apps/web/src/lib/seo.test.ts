@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   articleHead,
   homepageHead,
+  localizedPageHead,
   notFoundHead,
   pageHead,
   routeRobotsMeta,
@@ -38,7 +39,7 @@ describe("homepageHead", () => {
     expect(SITE_DESCRIPTION.length).toBeGreaterThan(80);
     expect(metaContent(head.meta, "og:title")).toBe(SITE_TITLE);
     expect(metaContent(head.meta, "og:description")).toBe(SITE_DESCRIPTION);
-    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/`);
+    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/?lang=vi`);
     expect(metaContent(head.meta, "og:type")).toBe("website");
     expect(metaContent(head.meta, "og:image")).toBe(SITE_OG_HOME_IMAGE_URL);
     expect(metaContent(head.meta, "og:image:width")).toBe("1200");
@@ -53,9 +54,29 @@ describe("homepageHead", () => {
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: `${SITE_URL}/`,
+      href: `${SITE_URL}/?lang=vi`,
     });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "en",
+      href: `${SITE_URL}/?lang=en`,
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "x-default",
+      href: `${SITE_URL}/?lang=vi`,
+    });
+    expect(metaContent(head.meta, "og:locale")).toBe("vi_VN");
     expect(head.links.some((l) => l.rel === "sitemap")).toBe(true);
+  });
+
+  it("uses the requested English locale for canonical and hreflang", () => {
+    const head = homepageHead("en");
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: `${SITE_URL}/?lang=en`,
+    });
+    expect(metaContent(head.meta, "og:locale")).toBe("en_US");
   });
 });
 
@@ -77,6 +98,32 @@ describe("pageHead", () => {
   });
 });
 
+describe("localizedPageHead", () => {
+  it("emits explicit canonical and hreflang URLs for a localized static route", () => {
+    const head = localizedPageHead({
+      path: "/mcp",
+      title: "MCP | AI News",
+      lang: "en",
+    });
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: `${SITE_URL}/mcp?lang=en`,
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "vi",
+      href: `${SITE_URL}/mcp?lang=vi`,
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "x-default",
+      href: `${SITE_URL}/mcp?lang=vi`,
+    });
+    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/mcp?lang=en`);
+    expect(head.links.some((link) => link.rel === "sitemap")).toBe(true);
+  });
+});
+
 describe("articleHead", () => {
   const item = {
     id: "abcdef12deadbeef",
@@ -94,7 +141,9 @@ describe("articleHead", () => {
     expect(metaContent(head.meta, "og:title")).toBe(item.title);
     expect(metaContent(head.meta, "twitter:title")).toBe(item.title);
     expect(metaContent(head.meta, "og:type")).toBe("article");
-    expect(metaContent(head.meta, "og:url")).toBe(`${SITE_URL}/abcdef12`);
+    expect(metaContent(head.meta, "og:url")).toBe(
+      `${SITE_URL}/abcdef12?lang=vi`
+    );
     // Branded card rendered by /api/og/$id — never the upstream image_url,
     // which can 404 after ingest.
     const ogImage = `${SITE_URL}/api/og/${item.id}.png`;
@@ -105,7 +154,23 @@ describe("articleHead", () => {
     expect(metaContent(head.meta, "twitter:card")).toBe("summary_large_image");
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: `${SITE_URL}/abcdef12`,
+      href: `${SITE_URL}/abcdef12?lang=vi`,
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      hrefLang: "en",
+      href: `${SITE_URL}/abcdef12?lang=en`,
+    });
+  });
+
+  it("builds the English article URL explicitly", () => {
+    const head = articleHead(item, "en");
+    expect(metaContent(head.meta, "og:url")).toBe(
+      `${SITE_URL}/abcdef12?lang=en`
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: `${SITE_URL}/abcdef12?lang=en`,
     });
   });
 
@@ -143,12 +208,12 @@ describe("routeRobotsMeta", () => {
     }
   });
 
-  it("emits noindex, follow for search, locale, and faceted HTML", () => {
-    for (const search of [
-      { q: "open models" },
-      { lang: "vi" },
-      { utm_source: "newsletter" },
-    ]) {
+  it("keeps explicit locale pages indexable while faceting other queries", () => {
+    expect(routeRobotsMeta({ pathname: "/", search: { lang: "vi" } })).toEqual({
+      name: "robots",
+      content: "index, follow",
+    });
+    for (const search of [{ q: "open models" }, { utm_source: "newsletter" }]) {
       expect(routeRobotsMeta({ pathname: "/", search })).toEqual({
         name: "robots",
         content: "noindex, follow",

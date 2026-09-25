@@ -5,6 +5,7 @@
  */
 import { withExtRef } from "./ref.js";
 import { normalizeApiBase } from "./settings.js";
+import { normalizeLang } from "./site-url.js";
 
 const EVENT_NAME_RE = /^[a-z][a-z0-9_]{0,39}$/;
 
@@ -27,7 +28,11 @@ export function trackContent(name, params = {}) {
 
 export function trackUrl(apiBase, name, params = {}) {
   const base = normalizeApiBase(apiBase);
-  return withExtRef(`${base}/api/extension`, trackContent(name, params));
+  return withExtRef(
+    `${base}/api/extension`,
+    trackContent(name, params),
+    normalizeLang(params.lang)
+  );
 }
 
 /**

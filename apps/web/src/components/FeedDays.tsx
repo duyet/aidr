@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { emptyFeedCopy } from "../lib/empty-feed";
+import { withLang } from "../lib/locale-url";
 import type { DayGroup, FeedResponse, Lang } from "../lib/types";
 import { DaySection } from "./DaySection";
 
@@ -45,7 +46,10 @@ export function FeedDays({
               setLoadingOlder(true);
               try {
                 const res = await fetch(
-                  `/api/feed?days=5&before=${encodeURIComponent(oldest)}`
+                  withLang(
+                    `/api/feed?days=5&before=${encodeURIComponent(oldest)}`,
+                    lang
+                  )
                 );
                 if (!res.ok) return;
                 const older = (await res.json()) as FeedResponse;

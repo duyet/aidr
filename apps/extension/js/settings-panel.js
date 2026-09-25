@@ -1,12 +1,12 @@
 import { t } from "./i18n.js";
 import { withExtRef } from "./ref.js";
-import { track } from "./track.js";
 import {
   allowCustomApiBase,
   ensureHostPermission,
   isDarkAppearance,
   saveSettings,
 } from "./settings.js";
+import { track } from "./track.js";
 
 const DENSITIES = ["compact", "comfortable", "spacious"];
 const TLDR_COUNTS = [8, 12, 16];
@@ -389,7 +389,11 @@ export function mountSettingsPanel(root, settings, onSaved) {
       el(
         "a",
         {
-          href: withExtRef("https://aidr.today/about", "prefs_about"),
+          href: withExtRef(
+            "https://aidr.today/about",
+            "prefs_about",
+            state.language === "en" ? "en" : "vi"
+          ),
           rel: "noreferrer",
           target: "_blank",
         },

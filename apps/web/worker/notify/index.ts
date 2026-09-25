@@ -1,3 +1,5 @@
+import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
+import { storyPath } from "../../src/lib/slug.js";
 import { nn } from "../d1-bind.js";
 import {
   getLocalHourAndDate,
@@ -150,10 +152,12 @@ export function buildTrendingQuery(
 ): { sql: string; binds: [string, number, number, number] } {
   return {
     sql: `SELECT i.id, i.url,
-                 COALESCE(tr.title, i.title) AS title,
-                 COALESCE(tr.summary, i.summary) AS summary,
+                 COALESCE(NULLIF(TRIM(tr.title), ''), i.title) AS title,
+                 COALESCE(NULLIF(TRIM(tr.summary), ''), i.summary) AS summary,
                  i.image_url, i.category,
-                 i.points, i.comments, i.rank_score, i.llm_importance
+                 i.points, i.comments, i.rank_score, i.llm_importance,
+                 CASE WHEN NULLIF(TRIM(tr.title), '') IS NOT NULL
+                   THEN 'vi' ELSE 'en' END AS lang
           FROM items i
           LEFT JOIN notifications n ON n.item_id = i.id AND n.channel = ?
             AND (n.status = 'sent' OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
@@ -259,9 +263,10 @@ async function loadDigest(env: Env, date: string): Promise<DailyDigest | null> {
   }
   if (!snapshot) return null;
 
-  const raw = topBullets(snapshot.bullets_vi, DIGEST_MAX_BULLETS);
+  const vi = topBullets(snapshot.bullets_vi, DIGEST_MAX_BULLETS);
+  const lang = vi.length > 0 ? "vi" : "en";
   const bullets =
-    raw.length > 0 ? raw : topBullets(snapshot.bullets_en, DIGEST_MAX_BULLETS);
+    vi.length > 0 ? vi : topBullets(snapshot.bullets_en, DIGEST_MAX_BULLETS);
   if (bullets.length === 0) return null;
 
   const resolved: DigestBullet[] = [];
@@ -275,13 +280,12 @@ async function loadDigest(env: Env, date: string): Promise<DailyDigest | null> {
         .bind(itemId)
         .first<{ id: string; category: string | null }>();
       if (item) {
-        const cat = (item.category ?? "ai").toLowerCase();
-        url = `https://aidr.today/${cat}/${item.id.slice(0, 8)}`;
+        url = absoluteSiteUrl(storyPath(item), lang);
       }
     }
     resolved.push({ text: bullet.text, url });
   }
-  return { date, bullets: resolved };
+  return { lang, date, bullets: resolved };
 }
 
 async function recordDelivery(
