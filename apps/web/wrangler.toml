@@ -14,7 +14,13 @@ binding = "ASSETS"
 # index.html shell has no feed). Sitemap/robots are Worker-generated.
 # Logo/og/favicon also run Worker-first so we can ASSETS.fetch them with
 # a real image/* type instead of SPA HTML (mail + Gmail need PNG 200).
-run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]
+# `/_serverFn` is pinned Worker-first for the same reason: it is the RPC
+# transport, so the Worker must be the one that decides whether a path names a
+# real server function. This is explicitness, not the fix — a non-navigation
+# request to a non-asset path already reaches the Worker, and the array form
+# above already disables `assets_navigation_prefers_asset_serving`. The bounded
+# JSON 404 lives in `server.ts` (`classifyServerFnPath`), not here.
+run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]
 not_found_handling = "single-page-application"
 
 # Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus

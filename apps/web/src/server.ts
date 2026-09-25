@@ -15,6 +15,7 @@ import {
 import { readSession } from "./lib/db";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import {
+  apiErrorResponse,
   LOCALE_PRIVATE_CACHE_CONTROL,
   LOCALE_VARY,
   localeErrorResponse,
@@ -32,7 +33,8 @@ import {
 import { withLang } from "./lib/locale-url";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
-import { isServerFnPath } from "./lib/server-fn-request";
+import { classifyServerFnPath } from "./lib/server-fn-registry";
+import { isServerFnBasePath, isServerFnPath } from "./lib/server-fn-request";
 import {
   buildSitemapXml,
   loadSitemapUrls,
@@ -55,6 +57,12 @@ async function resolveEnv(env?: Env): Promise<Env | undefined> {
   } catch {
     return env;
   }
+}
+
+function isHtmlRequest(request: Request): boolean {
+  return /(^|,)\s*(\*\/\*|text\/html)/.test(
+    request.headers.get("Accept") || "*/*"
+  );
 }
 
 export default {
@@ -120,10 +128,21 @@ export default {
     // it for direct calls/tests. CORS preflight remains a language-neutral
     // transport exchange and is answered before locale selection.
     const isApi = path === "/api" || path.startsWith("/api/");
+    const htmlRequest = isHtmlRequest(request);
     // Server functions are RPC. A submit call must reach its handler on any
     // request, so this path only gets a JSON locale rejection — never the
-    // document gate's 307 or HTML error page.
-    if (isServerFnPath(path)) {
+    // document gate's 307 or HTML error page. A path that names no real
+    // function is answered here too: Start would throw an unhandled error
+    // whose message echoes the requested id.
+    if (isServerFnPath(path) || isServerFnBasePath(path)) {
+      const verdict = await classifyServerFnPath(path);
+      if (verdict === "malformed" || verdict === "unknown") {
+        return apiErrorResponse(404, {
+          error: "server_function_not_found",
+          message: "Unknown server function.",
+          message_vi: "Không tìm thấy hàm máy chủ.",
+        });
+      }
       const invalid = resolveServerFnLocaleRequest(request);
       if (invalid) return invalid;
     } else if (
@@ -132,17 +151,21 @@ export default {
     ) {
       const url = new URL(request.url);
       const normalized = normalizeLocaleRequest(request, {
-        format: isApi && path !== "/api/subscribe/preview" ? "json" : "html",
+        format:
+          (isApi && path !== "/api/subscribe/preview") || !htmlRequest
+            ? "json"
+            : "html",
         neutralPath:
           isLanguageNeutralSsrPath(path) && !isPrivateSsrPath(path, url.search),
         redirectPath: path === "/extension" ? "/subscribe" : undefined,
+        allowRedirect: isApi || htmlRequest,
       });
       if (normalized) {
         return isApi ? handlePublicCors(request, () => normalized) : normalized;
       }
     }
 
-    if (path === "/extension") {
+    if (path === "/extension" && htmlRequest) {
       const dest = new URL(request.url);
       dest.pathname = "/subscribe";
       const resolution = resolveRequestLocale(request);
@@ -167,7 +190,7 @@ export default {
     }
 
     const storyDest = legacyStoryRedirectPath(path);
-    if (storyDest) {
+    if (storyDest && htmlRequest) {
       const dest = new URL(request.url);
       dest.pathname = storyDest;
       const resolution = resolveRequestLocale(request);

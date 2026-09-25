@@ -150,6 +150,8 @@ export function normalizeLocaleRequest(
     format: "html" | "json";
     neutralPath?: boolean;
     redirectPath?: string;
+    /** Set false for non-document requests that must reach the route handler. */
+    allowRedirect?: boolean;
   } = {
     format: "json",
   }
@@ -158,6 +160,7 @@ export function normalizeLocaleRequest(
   if (!resolution.ok) {
     return localeErrorResponse(request, resolution, options.format);
   }
+  if (options.allowRedirect === false) return null;
 
   const url = new URL(request.url);
   if (options.neutralPath && hasLocaleQuery(url.search)) {
