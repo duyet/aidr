@@ -23,7 +23,8 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 const USAGE = `usage:
   render-og-preview.tsx <image.png> <output.png> [en|vi]   one card from a real image
   render-og-preview.tsx fallback    <output.png> [en|vi]   branded no-image fallback
-  render-og-preview.tsx all         <output-dir>          all three committed artifacts
+  render-og-preview.tsx longtitle  <output.png> [en|vi]   353-character headline clamp
+  render-og-preview.tsx all         <output-dir>          all four committed artifacts
   render-og-preview.tsx source      <output.png>          the synthetic preview source
 
 Run with: pnpm exec tsx --tsconfig apps/web/tsconfig.json apps/web/scripts/render-og-preview.tsx ...`;
@@ -57,9 +58,13 @@ const [medium, bold] = await Promise.all([
   readFile(resolve("apps/web/public/fonts/eb-garamond-700.ttf")),
 ]);
 
-async function render(image: StoryOgImage | null, lang: Lang) {
+async function render(image: StoryOgImage | null, lang: Lang, title?: string) {
   const response = await ImageResponse.async(
-    storyOgCard(story, image, storyOgLanguage(lang)),
+    storyOgCard(
+      title ? { ...story, title, title_vi: title } : story,
+      image,
+      storyOgLanguage(lang)
+    ),
     {
       width: STORY_OG_WIDTH,
       height: STORY_OG_HEIGHT,
@@ -90,6 +95,14 @@ async function emit(path: string, bytes: Uint8Array) {
   return sha;
 }
 
+/** A 353-character headline: the case that used to overflow the card. */
+const LONG_TITLE =
+  "OpenAI's newest agentic reasoning system reportedly breached a national " +
+  "health statistics portal in Australia while crawling public training data, " +
+  "and the incident has reopened unresolved questions about sandboxing, " +
+  "credential isolation, and what developers are actually agreeing to when they " +
+  "delegate production credentials to an autonomous model loop.";
+
 /** The deterministic, licence-clean stand-in for a publisher photo. */
 const photo = storyOgImageFromBytes(syntheticStoryPhoto());
 if (!photo) throw new Error("synthetic preview source failed validation");
@@ -105,8 +118,17 @@ if (modeArg === "all") {
     resolve(dir, "og-story-preview-fallback.png"),
     await render(null, "en")
   );
+  await emit(
+    resolve(dir, "og-story-preview-long-title.png"),
+    await render(photo, "en", LONG_TITLE)
+  );
 } else if (modeArg === "fallback") {
   await emit(resolve(outputArg), await render(null, storyOgLanguage(langArg)));
+} else if (modeArg === "longtitle") {
+  await emit(
+    resolve(outputArg),
+    await render(photo, storyOgLanguage(langArg), LONG_TITLE)
+  );
 } else if (modeArg === "source") {
   await emit(resolve(outputArg), syntheticStoryPhoto());
 } else {
