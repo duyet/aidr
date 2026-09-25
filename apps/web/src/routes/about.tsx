@@ -1,8 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  stripSearchParams,
+} from "@tanstack/react-router";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { anyrouterModelUrl } from "../lib/anyrouter";
 import { useLang } from "../lib/lang-context";
+import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import { GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
 import { fetchSourceNames } from "../lib/sources-fn";
@@ -10,6 +15,9 @@ import type { ModelChains } from "../lib/system-queries";
 import { useSystemData } from "../lib/use-system-stats";
 
 export const Route = createFileRoute("/about")({
+  search: {
+    middlewares: [stripSearchParams<RootSearch>(["lang", "locale"])],
+  },
   head: () =>
     pageHead({
       path: "/about",

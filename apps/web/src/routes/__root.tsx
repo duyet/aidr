@@ -25,7 +25,7 @@ import {
   InvalidLocaleRequestError,
   isLanguageNeutralSsrPath,
   isPrivateSsrPath,
-  preserveRootLang,
+  preserveRootLangFromMiddleware,
   validateRootSearch,
 } from "../lib/locale-routing";
 import {
@@ -52,7 +52,11 @@ import { VIEWPORT_META_CONTENT } from "../lib/viewport";
 export const Route = createRootRoute({
   validateSearch: validateRootSearch,
   search: {
-    middlewares: [({ search, next }) => preserveRootLang(search, next(search))],
+    // Neutral child routes expose removal metadata so the root rule does not
+    // re-add a locale that the child already normalized away.
+    middlewares: [
+      ({ search, next }) => preserveRootLangFromMiddleware(search, next),
+    ],
   },
   beforeLoad: async ({ location }) => {
     const resolution = await loadRequestLocale(location.searchStr);

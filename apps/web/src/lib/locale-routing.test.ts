@@ -57,4 +57,21 @@ describe("root locale search", () => {
       lang: "vi",
     });
   });
+
+  it("does not restore a locale removed by a neutral child route", () => {
+    expect(
+      preserveRootLang(
+        { lang: "en" },
+        { tab: "algo" },
+        { removedAny: new Set(["lang", "locale"]) }
+      )
+    ).toEqual({ tab: "algo" });
+    expect(
+      preserveRootLang(
+        { locale: "vi" },
+        {},
+        { removedAny: new Set(["locale"]) }
+      )
+    ).toEqual({});
+  });
 });
