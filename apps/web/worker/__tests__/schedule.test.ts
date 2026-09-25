@@ -214,9 +214,7 @@ describe("backfill-translate checkpoints", () => {
     expect(workflow).toContain("LLM_STEP");
     expect(workflow).toMatch(/retries:\s*\{\s*limit:\s*0/);
     expect(workflow).toContain("safeStep(");
-    expect(workflow).toContain(
-      "schema missing; apply migrations 0023 and 0025"
-    );
+    expect(workflow).toContain("schema missing; apply migration 0023");
     expect(workflow).toContain('"score"');
     expect(workflow).toContain('"translate"');
     expect(workflow).toContain('"tldr"');

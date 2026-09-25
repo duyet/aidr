@@ -9,6 +9,7 @@ import { forceSendDigest } from "../notify/index.js";
 import { rankScore } from "../ranking.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
+import { sanitizeError } from "../telemetry-safe.js";
 import { ensureDailyTldr, tldrSnapshotDate } from "../tldr.js";
 import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics } from "../topics.js";
@@ -140,9 +141,13 @@ export async function pushItems(
     const status = hasScore ? "published" : "new";
     const publishedAt = item.published_at ?? now;
 
-    const existing = await env.DB.prepare("SELECT id FROM items WHERE id = ?")
+    const existing = await env.DB.prepare(
+      "SELECT id, source_lang FROM items WHERE id = ?"
+    )
       .bind(id)
-      .first();
+      .first<{ id: string; source_lang?: SourceLanguage }>();
+    const sourceLang =
+      item.source_lang ?? (existing?.source_lang === "vi" ? "vi" : "en");
     if (existing) updated++;
     else inserted++;
 
@@ -181,7 +186,7 @@ export async function pushItems(
         JSON.stringify(item.tags ?? []),
         0,
         status,
-        item.source_lang ?? "en"
+        sourceLang
       )
       .run();
 
@@ -189,7 +194,7 @@ export async function pushItems(
       await prepareTranslationUpsert(env.DB, {
         id,
         lang: "vi",
-        sourceLang: item.source_lang ?? "en",
+        sourceLang,
         targetLang: "vi",
         title: item.title_vi,
         summary: item.summary_vi ?? null,
@@ -361,7 +366,19 @@ export async function getLlmCalls(env: Env, limitParam?: string | null) {
   )
     .bind(limit)
     .all();
-  return { calls: results ?? [] };
+  return {
+    calls: (results ?? []).map((row) => {
+      const record = row as Record<string, unknown>;
+      const safeError = sanitizeError(record.error);
+      return {
+        ...record,
+        error: safeError?.message ?? null,
+        // Never expose stored provider output, even for legacy rows written
+        // before translation/review calls were marked sensitive.
+        response_snippet: null,
+      };
+    }),
+  };
 }
 
 export interface ReprocessInput {

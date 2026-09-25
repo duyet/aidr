@@ -33,6 +33,11 @@ function makeDb(
                   target_lang: "vi",
                   direction: "en-vi",
                   source_revision: 2,
+                  source_hash: "source-hash",
+                  candidate_hash: "candidate-hash",
+                  attempt_count: 1,
+                  manual_retry_count: 0,
+                  next_retry_at: null,
                   source_title: "Source",
                   source_summary: "Summary",
                   candidate_title: "Candidate",
@@ -49,7 +54,23 @@ function makeDb(
         async first<T>() {
           return (
             options.state === undefined
-              ? { state_id: "state-1", attempt_id: "attempt-1", terminal: 1 }
+              ? {
+                  state_id: "state-1",
+                  attempt_id: "attempt-1",
+                  terminal: 1,
+                  item_id: "item-1",
+                  lang: "vi",
+                  source_lang: "en",
+                  target_lang: "vi",
+                  direction: "en-vi",
+                  source_hash: "source-hash",
+                  candidate_hash: "candidate-hash",
+                  source_revision: 2,
+                  candidate_title: "Candidate",
+                  candidate_summary: "Summary",
+                  attempt_count: 1,
+                  manual_retry_count: 0,
+                }
               : options.state
           ) as T | null;
         },
@@ -87,6 +108,7 @@ describe("translation review human queue", () => {
     const { db } = makeDb();
     const rows = await listTranslationReviewQueue(env(db));
     expect(rows[0]?.attempt_id).toBe("attempt-1");
+    expect(rows[0]?.can_retry).toBe(true);
     expect(rows[0]?.reason).toBe("needs review");
   });
 
@@ -106,6 +128,7 @@ describe("translation review human queue", () => {
     const insert = writes.find((write) =>
       write.sql.includes("INSERT INTO translation_review_resolutions")
     );
+    expect(insert?.args).toContain("attempt-1");
     expect(insert?.args).toContain("admin-token");
     expect(insert?.args).toContain("Verified against the source article.");
     expect(
@@ -113,6 +136,18 @@ describe("translation review human queue", () => {
         (write) =>
           write.sql.includes("WHERE state_id = ?") &&
           write.sql.includes("attempt_id = ?")
+      )
+    ).toBe(true);
+    expect(
+      writes.some((write) =>
+        write.sql.includes("manual_retry_count = manual_retry_count + ?")
+      )
+    ).toBe(true);
+    expect(
+      writes.some(
+        (write) =>
+          write.sql.includes("qa_candidate_hash = ?") &&
+          write.sql.includes("qa_reviewer_model = ?")
       )
     ).toBe(true);
   });

@@ -111,7 +111,8 @@ async function handle(
       await listTranslationReviewQueue(
         env,
         Number(url.searchParams.get("limit") ?? 50)
-      )
+      ),
+      { headers: { "Cache-Control": "no-store" } }
     );
   }
 
@@ -158,7 +159,10 @@ async function handle(
       actor,
       note: input.note,
     });
-    return Response.json(result, { status: result.ok ? 200 : result.status });
+    return Response.json(result, {
+      status: result.ok ? 200 : result.status,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
   if (method === "POST" && segments.length === 1 && segments[0] === "items") {

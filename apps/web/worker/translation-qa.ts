@@ -14,6 +14,7 @@ import {
   buildTranslationReviewPrompt,
   detectHardSemanticFailures,
   directionFor,
+  ENGLISH_TRANSLATION_SYSTEM_PROMPT,
   hashTranslationPair,
   parseRepairCandidate,
   parseTranslationReview,
@@ -53,11 +54,13 @@ export type {
   TranslationText,
 } from "./translation-review.js";
 export {
+  buildEnglishCandidatePrompt,
   buildTranslationRepairPrompt,
   buildTranslationReviewPrompt,
   canonicalTranslationText,
   detectHardSemanticFailures,
   directionFor,
+  ENGLISH_TRANSLATION_SYSTEM_PROMPT,
   hashTranslationPair,
   normalizeTranslationText,
   parseExactJson,
@@ -68,6 +71,7 @@ export {
   QA_LEASE_SECONDS,
   QA_MAX_CALLS,
   QA_MAX_JSON_CHARS,
+  QA_MAX_MANUAL_RETRIES,
   QA_MAX_REPAIR_ATTEMPTS,
   QA_MAX_RETRY_ATTEMPTS,
   QA_MAX_REVIEW_CALLS,
@@ -85,8 +89,9 @@ const REVIEW_SCHEMA_QUERIES = [
   "SELECT qa_candidate_hash, qa_source_revision, source_lang, target_lang FROM translations LIMIT 0",
   "SELECT source_lang, source_revision FROM items LIMIT 0",
   "SELECT attempt_id FROM translation_review_attempts LIMIT 0",
-  "SELECT state_id FROM translation_review_state LIMIT 0",
+  "SELECT state_id, candidate_title, candidate_summary, criteria_fingerprint, prompt_fingerprint, policy_fingerprint, manual_retry_count FROM translation_review_state LIMIT 0",
   "SELECT resolution_id FROM translation_review_resolutions LIMIT 0",
+  "SELECT source_hash, candidate_hash FROM translation_reviews LIMIT 0",
 ];
 
 export const QA_CRITERIA_VERSION = REVIEW_CRITERIA_VERSION;
@@ -116,14 +121,14 @@ export class TranslationReviewSchemaError extends Error {
 
   constructor(cause?: unknown) {
     super(
-      "translation review schema is unavailable; apply migrations 0023 and 0025 before running QA",
+      "translation review schema is unavailable; apply migration 0023 (and 0024 when present) before running QA",
       { cause }
     );
     this.name = "TranslationReviewSchemaError";
   }
 }
 
-/** A missing 0023/0025 schema must fail before any pending-row query. This
+/** A missing 0023 schema must fail before any pending-row query. This
  *  prevents a pre-migration database from looking like an empty QA queue. */
 export async function assertTranslationReviewSchema(
   db: D1Database
@@ -161,11 +166,20 @@ export function buildPendingQaQuery(limit = QA_CAP): string {
                   t.title AS candidate_title, t.summary AS candidate_summary
            FROM translations t
            JOIN items i ON i.id = t.item_id
-           WHERE t.qa_candidate_hash IS NULL
+           WHERE (
+                   t.qa_candidate_hash IS NULL
+                   OR t.qa_source_hash IS NULL
+                   OR t.qa_source_revision IS NULL
+                   OR t.qa_source_revision != i.source_revision
+                   OR t.qa_criteria_version IS NULL
+                   OR t.qa_criteria_version != '${REVIEW_CRITERIA_VERSION}'
+                 )
              AND t.title IS NOT NULL AND t.title != ''
              AND t.summary IS NOT NULL AND t.summary != ''
              AND t.source_lang IN ('en', 'vi')
              AND t.target_lang IN ('en', 'vi')
+             AND t.lang = t.target_lang
+             AND t.source_lang != t.target_lang
              AND i.source_lang = t.source_lang
            ORDER BY i.published_at DESC
            LIMIT ${safeLimit}`;
@@ -177,6 +191,8 @@ export function buildEnglishCandidateQuery(limit = QA_CAP): string {
                   i.source_lang AS source_lang, i.source_revision AS source_revision
            FROM items i
            WHERE i.status = 'published' AND i.source_lang = 'vi'
+             AND i.title IS NOT NULL AND i.title != ''
+             AND i.summary IS NOT NULL AND i.summary != ''
              AND NOT EXISTS (
                SELECT 1 FROM translations t
                WHERE t.item_id = i.id AND t.lang = 'en'
@@ -193,6 +209,10 @@ function parseModelChain(spec: string | undefined): string[] {
     .split(",")
     .map((model) => model.trim())
     .filter(Boolean);
+}
+
+function isConcreteModelId(model: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(model);
 }
 
 export interface ReviewerChainResolution {
@@ -215,12 +235,15 @@ export function resolveIndependentReviewerChain(
   const configured = env.ANYROUTER_REVIEW_MODEL?.trim()
     ? env.ANYROUTER_REVIEW_MODEL
     : env.ANYROUTER_QA_MODEL;
-  const requested = [...new Set(parseModelChain(configured))];
+  const requested = [
+    ...new Set(parseModelChain(configured).filter(isConcreteModelId)),
+  ];
   if (requested.length === 0) {
     return {
       chain: [],
       spec: null,
-      reason: "ANYROUTER_REVIEW_MODEL is not configured",
+      reason:
+        "ANYROUTER_REVIEW_MODEL is not configured with concrete model ids",
     };
   }
   const generator = new Set([
@@ -246,7 +269,9 @@ export function resolveEnglishGeneratorChain(
   const chain = [
     ...new Set(
       parseModelChain(env.ANYROUTER_ENGLISH_TRANSLATE_MODEL)
-        .filter((model) => model !== "anyrouter/auto")
+        .filter(
+          (model) => model !== "anyrouter/auto" && isConcreteModelId(model)
+        )
         .slice(0, QA_MAX_MODEL_ATTEMPTS)
     ),
   ];
@@ -284,6 +309,10 @@ async function stateIdFor(candidate: {
       direction: candidate.direction,
       sourceHash: candidate.sourceHash,
       candidateHash: candidate.candidateHash,
+      sourceRevision: candidate.row.source_revision,
+      criteria: REVIEW_CRITERIA_VERSION,
+      prompt: REVIEW_PROMPT_FINGERPRINT,
+      policy: REVIEW_POLICY_FINGERPRINT,
     })
   );
 }
@@ -295,23 +324,36 @@ function sourceExistsSql(itemAlias = "i"): string {
        AND ${itemAlias}.title IS ?
        AND ${itemAlias}.summary IS ?
        AND ${itemAlias}.source_revision = ?
+       AND ${itemAlias}.source_lang = ?
   )`;
 }
 
 const STATE_CLAIM_SQL = `INSERT INTO translation_review_state (
   state_id, item_id, lang, source_lang, target_lang, direction,
-  source_hash, candidate_hash, source_revision, decision, attempt_id,
-  attempt_count, terminal, next_retry_at, lease_token, lease_until,
-  created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, 1, 0, ?, ?, ?, ?, ?)
+  source_hash, candidate_hash, source_revision, candidate_title,
+  candidate_summary, criteria_fingerprint, prompt_fingerprint, policy_fingerprint,
+  decision, attempt_id, attempt_count, terminal, next_retry_at, lease_token,
+  lease_until, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, 1, 0, ?, ?, ?, ?, ?)
 ON CONFLICT(state_id) DO UPDATE SET
   attempt_count = translation_review_state.attempt_count + 1,
+  decision = 'pending',
   lease_token = excluded.lease_token,
   lease_until = excluded.lease_until,
   next_retry_at = NULL,
   updated_at = excluded.updated_at
 WHERE translation_review_state.terminal = 0
-  AND translation_review_state.attempt_count < ?
+  AND (
+    (
+      translation_review_state.decision = 'retry_requested'
+      AND translation_review_state.manual_retry_count = 1
+    )
+    OR (
+      translation_review_state.decision != 'retry_requested'
+      AND translation_review_state.manual_retry_count = 0
+      AND translation_review_state.attempt_count < ?
+    )
+  )
   AND (translation_review_state.lease_until IS NULL OR translation_review_state.lease_until < ?)
   AND (translation_review_state.next_retry_at IS NULL OR translation_review_state.next_retry_at <= ?)`;
 
@@ -320,17 +362,30 @@ async function claimState(
   candidate: PreparedCandidate,
   leaseToken: string,
   now: number
-): Promise<{ claimed: boolean; attemptCount: number }> {
+): Promise<{
+  claimed: boolean;
+  attemptCount: number;
+  terminalOnFailure: boolean;
+}> {
   const leaseUntil = now + QA_LEASE_SECONDS;
   // A crashed final attempt must not leave a permanently unclaimable row.
+  // An explicit human retry is a single bounded claim: once it has been
+  // consumed, an expired lease goes straight to the human queue instead of
+  // silently granting more automatic attempts.
   await db
     .prepare(
       `UPDATE translation_review_state
           SET decision = 'human_review', terminal = 1, next_retry_at = NULL,
               lease_token = NULL, lease_until = NULL, updated_at = ?
-        WHERE state_id = ? AND terminal = 0 AND attempt_count >= ?`
+        WHERE state_id = ? AND terminal = 0
+          AND decision != 'retry_requested'
+          AND (lease_until IS NULL OR lease_until < ?)
+          AND (
+            manual_retry_count > 0
+            OR (manual_retry_count = 0 AND attempt_count >= ?)
+          )`
     )
-    .bind(now, candidate.stateId, QA_MAX_RETRY_ATTEMPTS)
+    .bind(now, candidate.stateId, now, QA_MAX_RETRY_ATTEMPTS)
     .run();
   const result = await db
     .prepare(STATE_CLAIM_SQL)
@@ -344,6 +399,11 @@ async function claimState(
       candidate.sourceHash,
       candidate.candidateHash,
       candidate.row.source_revision,
+      candidate.row.candidate_title,
+      candidate.row.candidate_summary,
+      REVIEW_CRITERIA_VERSION,
+      REVIEW_PROMPT_FINGERPRINT,
+      REVIEW_POLICY_FINGERPRINT,
       now,
       leaseToken,
       leaseUntil,
@@ -355,14 +415,21 @@ async function claimState(
     )
     .run();
   if ((result.meta?.changes ?? 0) === 0)
-    return { claimed: false, attemptCount: 0 };
+    return { claimed: false, attemptCount: 0, terminalOnFailure: true };
   const state = await db
     .prepare(
-      "SELECT attempt_count FROM translation_review_state WHERE state_id = ? AND lease_token = ?"
+      "SELECT attempt_count, manual_retry_count FROM translation_review_state WHERE state_id = ? AND lease_token = ?"
     )
     .bind(candidate.stateId, leaseToken)
-    .first<{ attempt_count: number }>();
-  return { claimed: true, attemptCount: state?.attempt_count ?? 1 };
+    .first<{ attempt_count: number; manual_retry_count: number }>();
+  const attemptCount = state?.attempt_count ?? 1;
+  const manualRetryCount = state?.manual_retry_count ?? 0;
+  return {
+    claimed: true,
+    attemptCount,
+    terminalOnFailure:
+      manualRetryCount > 0 || attemptCount >= QA_MAX_RETRY_ATTEMPTS,
+  };
 }
 
 interface AttemptInput {
@@ -431,7 +498,8 @@ function prepareAttemptInsert(
       input.candidate.row.id,
       input.candidate.row.source_title,
       dbSummary(input.candidate.row.source_summary),
-      input.candidate.row.source_revision
+      input.candidate.row.source_revision,
+      input.candidate.row.source_lang
     );
 }
 
@@ -444,6 +512,8 @@ function prepareStateUpdate(
     decision: string;
     terminal: boolean;
     nextRetryAt: number | null;
+    sourceHash: string;
+    candidateHash: string;
     now: number;
     replacementText?: TranslationText;
   }
@@ -451,10 +521,13 @@ function prepareStateUpdate(
   return db
     .prepare(
       `UPDATE translation_review_state SET
+         source_hash = ?, candidate_hash = ?,
+         candidate_title = ?, candidate_summary = ?,
          decision = ?, attempt_id = ?, terminal = ?, next_retry_at = ?,
          lease_token = NULL, lease_until = NULL, updated_at = ?
        WHERE state_id = ? AND lease_token = ?
          AND source_revision = ? AND source_hash = ? AND candidate_hash = ?
+         AND candidate_title = ? AND candidate_summary = ?
          AND (
            EXISTS (
              SELECT 1 FROM translations t
@@ -470,6 +543,10 @@ function prepareStateUpdate(
          AND ${sourceExistsSql()}`
     )
     .bind(
+      input.sourceHash,
+      input.candidateHash,
+      input.replacementText?.title ?? input.candidate.row.candidate_title,
+      input.replacementText?.summary ?? input.candidate.row.candidate_summary,
       input.decision,
       input.attemptId,
       input.terminal ? 1 : 0,
@@ -480,6 +557,8 @@ function prepareStateUpdate(
       input.candidate.row.source_revision,
       input.candidate.sourceHash,
       input.candidate.candidateHash,
+      input.candidate.row.candidate_title,
+      input.candidate.row.candidate_summary,
       input.candidate.row.id,
       input.candidate.row.lang,
       input.candidate.row.source_lang,
@@ -495,7 +574,8 @@ function prepareStateUpdate(
       input.candidate.row.id,
       input.candidate.row.source_title,
       dbSummary(input.candidate.row.source_summary),
-      input.candidate.row.source_revision
+      input.candidate.row.source_revision,
+      input.candidate.row.source_lang
     );
 }
 
@@ -545,7 +625,8 @@ function prepareMarkerUpdate(
       input.candidate.row.id,
       input.candidate.row.source_title,
       dbSummary(input.candidate.row.source_summary),
-      input.candidate.row.source_revision
+      input.candidate.row.source_revision,
+      input.candidate.row.source_lang
     );
 }
 
@@ -619,6 +700,8 @@ async function finishWithMarker(
     decision: input.decision,
     terminal: input.terminal,
     nextRetryAt: input.nextRetryAt,
+    sourceHash: input.sourceHash,
+    candidateHash: input.candidateHash,
     now: input.attempt.now,
     replacementText: input.replacement ? input.candidateText : undefined,
   });
@@ -645,6 +728,7 @@ async function finishFailure(
     attemptCount: number;
     reason: string;
     terminal: boolean;
+    additionalAttempts?: AttemptInput[];
   }
 ): Promise<boolean> {
   const now = input.attempt.now;
@@ -658,11 +742,16 @@ async function finishFailure(
     decision: input.terminal ? "human_review" : "review_failed",
     terminal: input.terminal,
     nextRetryAt,
+    sourceHash: input.candidate.sourceHash,
+    candidateHash: input.candidate.candidateHash,
     now,
   });
   const results = await db.batch([
     prepareAttemptInsert(db, input.attempt),
     state,
+    ...(input.additionalAttempts ?? []).map((attempt) =>
+      prepareAttemptInsert(db, attempt)
+    ),
   ]);
   return (results[1]?.meta?.changes ?? 0) === 1;
 }
@@ -692,7 +781,7 @@ async function requestReview(
     }
   );
   const review = parseTranslationReview(result.content, pair.direction);
-  if (!review) throw new Error("review output failed strict v2 validation");
+  if (!review) throw new Error("review output failed strict v3 validation");
   return { review, model: result.model, tokens: result.tokens };
 }
 
@@ -747,7 +836,9 @@ ON CONFLICT(item_id, lang) DO UPDATE SET
   qa_source_revision = NULL,
   qa_direction = NULL,
   qa_reviewer_model = NULL,
-  qa_criteria_version = NULL`;
+  qa_criteria_version = NULL
+WHERE translations.source_lang = 'vi' AND translations.target_lang = 'en'
+  AND translations.qa_candidate_hash IS NULL`;
 
 interface EnglishSourceRow {
   id: string;
@@ -771,7 +862,8 @@ async function createEnglishCandidate(
       row.id,
       row.source_title,
       dbSummary(row.source_summary),
-      row.source_revision
+      row.source_revision,
+      row.source_lang
     )
     .run();
   return (result.meta?.changes ?? 0) === 1;
@@ -780,18 +872,9 @@ async function createEnglishCandidate(
 async function ensureEnglishCandidates(
   env: Env,
   generatorSpec: string | null,
-  budget: { calls: number; tokens: number },
+  budget: TranslationQaStats,
   deadline: number
 ): Promise<number> {
-  if (!generatorSpec) {
-    console.error(
-      JSON.stringify({
-        event: "translation_review.blocked",
-        reason: "ANYROUTER_ENGLISH_TRANSLATE_MODEL is not configured",
-      })
-    );
-    return 0;
-  }
   const { results } = await env.DB.prepare(buildEnglishCandidateQuery()).all<{
     id: string;
     source_title: string;
@@ -799,6 +882,19 @@ async function ensureEnglishCandidates(
     source_lang: TranslationLanguage;
     source_revision: number;
   }>();
+  if (!generatorSpec) {
+    if ((results?.length ?? 0) > 0) {
+      budget.error = "ANYROUTER_ENGLISH_TRANSLATE_MODEL is not configured";
+      console.error(
+        JSON.stringify({
+          event: "translation_review.blocked",
+          reason: "ANYROUTER_ENGLISH_TRANSLATE_MODEL is not configured",
+          candidates: results?.length ?? 0,
+        })
+      );
+    }
+    return 0;
+  }
   let created = 0;
   for (const row of results ?? []) {
     if (budget.calls >= QA_MAX_CALLS || Date.now() >= deadline) break;
@@ -813,7 +909,7 @@ async function ensureEnglishCandidates(
       const result = await callAnyrouter(
         env,
         [
-          { role: "system", content: REVIEW_SYSTEM_PROMPT },
+          { role: "system", content: ENGLISH_TRANSLATION_SYSTEM_PROMPT },
           { role: "user", content: buildEnglishCandidatePrompt(pair) },
         ],
         {
@@ -840,6 +936,7 @@ async function ensureEnglishCandidates(
       }
     } catch (error) {
       budget.calls++;
+      budget.failed++;
       console.error(
         "translation_review.english_candidate_failed:",
         safeError(error)
@@ -930,7 +1027,7 @@ export async function ratePendingTranslations(
         reason: reviewer.reason,
       })
     );
-    return NO_QA_WORK;
+    return { ...NO_QA_WORK, error: reviewer.reason };
   }
   const englishGenerator = resolveEnglishGeneratorChain(env);
   const safeCap = boundedLimit(cap, QA_CAP, QA_CAP);
@@ -1020,7 +1117,7 @@ export async function ratePendingTranslations(
         },
         attemptCount: claim.attemptCount,
         reason: safeError(error),
-        terminal: claim.attemptCount >= QA_MAX_RETRY_ATTEMPTS,
+        terminal: claim.terminalOnFailure,
       });
       continue;
     }
@@ -1182,7 +1279,7 @@ export async function ratePendingTranslations(
         },
         attemptCount: claim.attemptCount,
         reason: `repair failed: ${safeError(error)}`,
-        terminal: claim.attemptCount >= QA_MAX_RETRY_ATTEMPTS,
+        terminal: claim.terminalOnFailure,
       });
       continue;
     }
@@ -1220,6 +1317,14 @@ export async function ratePendingTranslations(
         phase: "re_review",
         fingerprint,
       });
+      const initialAttemptId = await attemptIdFor({
+        candidate,
+        attemptCount: claim.attemptCount,
+        round: 1,
+        phase: "initial",
+        fingerprint: initialFingerprint,
+      });
+      const failureReason = `re-review failed: ${safeError(error)}`;
       await finishFailure(env.DB, {
         candidate,
         leaseToken,
@@ -1236,7 +1341,7 @@ export async function ratePendingTranslations(
           decision: "review_failed",
           review: null,
           hardFailures: [],
-          reason: `re-review failed: ${safeError(error)}`,
+          reason: failureReason,
           reviewerChain: reviewer.chain.join(","),
           reviewerModel: null,
           repairModel: repaired.model,
@@ -1244,8 +1349,27 @@ export async function ratePendingTranslations(
           now,
         },
         attemptCount: claim.attemptCount,
-        reason: `re-review failed: ${safeError(error)}`,
-        terminal: claim.attemptCount >= QA_MAX_RETRY_ATTEMPTS,
+        reason: failureReason,
+        terminal: claim.terminalOnFailure,
+        additionalAttempts: [
+          {
+            candidate,
+            stateId: candidate.stateId,
+            attemptId: initialAttemptId,
+            attemptCount: claim.attemptCount,
+            round: 1,
+            phase: "initial",
+            decision: "human_review",
+            review: initial.review,
+            hardFailures,
+            reason: `repair re-review failed; original preserved: ${safeError(error)}`,
+            reviewerChain: reviewer.chain.join(","),
+            reviewerModel: initial.model,
+            repairModel: repaired.model,
+            modelFingerprint: initialFingerprint,
+            now,
+          },
+        ],
       });
       continue;
     }
@@ -1268,6 +1392,13 @@ export async function ratePendingTranslations(
         round: 2,
         phase: "re_review",
         fingerprint,
+      });
+      const initialAttemptId = await attemptIdFor({
+        candidate,
+        attemptCount: claim.attemptCount,
+        round: 1,
+        phase: "initial",
+        fingerprint: initialFingerprint,
       });
       const ok = await finishWithMarker(env.DB, {
         candidate,
@@ -1300,6 +1431,25 @@ export async function ratePendingTranslations(
         candidateHash: candidate.candidateHash,
         naturalness: initial.review.naturalness,
         reviewerModel: initial.model,
+        additionalAttempts: [
+          {
+            candidate,
+            stateId: candidate.stateId,
+            attemptId: initialAttemptId,
+            attemptCount: claim.attemptCount,
+            round: 1,
+            phase: "initial",
+            decision: "human_review",
+            review: initial.review,
+            hardFailures,
+            reason: `repair failed re-review; original preserved: ${recheck.review.reason}`,
+            reviewerChain: reviewer.chain.join(","),
+            reviewerModel: initial.model,
+            repairModel: repaired.model,
+            modelFingerprint: initialFingerprint,
+            now,
+          },
+        ],
       });
       if (ok) stats.humanReview++;
       else stats.stale++;

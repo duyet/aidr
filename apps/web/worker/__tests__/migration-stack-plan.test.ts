@@ -14,11 +14,11 @@ const plan = readFileSync(
 );
 
 describe("controlled migration/bind integration plan", () => {
-  it("keeps 0023, PR160's 0024, and 0025 in numeric order", () => {
+  it("reserves 0023 for translation QA, 0024 for media, and 0025 for run identity", () => {
     const order = [
       "0023_translation_reviews.sql",
       "0024_item_media_manifest.sql",
-      "0025_translation_review_hardening.sql",
+      "0025_llm_call_run_identity.sql",
     ];
     let cursor = -1;
     for (const migration of order) {
@@ -32,6 +32,8 @@ describe("controlled migration/bind integration plan", () => {
     expect(plan).toContain("centralized translation upsert/invalidation");
     expect(plan).toContain("source_lang");
     expect(plan).toContain("media_manifest");
+    expect(plan).toContain("0025_llm_call_run_identity.sql");
+    expect(plan).not.toContain("0025_translation_review_hardening.sql");
     expect(ITEM_BIND_ARITY).toBe(21);
     expect(TRANSLATION_BIND_ARITY).toBe(6);
   });

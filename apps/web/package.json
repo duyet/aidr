@@ -16,7 +16,8 @@
     "lint:fix": "biome check --write .",
     "d1:migrate": "pnpm exec wrangler d1 migrations apply aidr --config wrangler.toml --remote",
     "verify:translation-schema": "tsx scripts/verify-translation-schema.ts",
-    "deploy": "pnpm run verify:translation-schema && pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json",
+    "check:migrations": "tsx scripts/check-migration-order.ts",
+    "deploy": "pnpm run check:migrations && pnpm run verify:translation-schema && pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json",
     "cf:deploy:prod": "dotenvx run -f ../../.env.production -f ../../.env.production.local --ignore=MISSING_ENV_FILE -- pnpm run deploy && pnpm run smoke",
     "config": "tsx ../../scripts/sync-env.ts",
     "smoke": "tsx scripts/smoke.ts"

@@ -33,6 +33,21 @@ describe("migration 0023_translation_reviews", () => {
     );
   });
 
+  it("contains the complete state, CAS, and human-resolution contract", () => {
+    expect(sql).toContain("ALTER TABLE items ADD COLUMN source_lang");
+    expect(sql).toContain("ALTER TABLE items ADD COLUMN source_revision");
+    expect(sql).toContain("candidate_title TEXT NOT NULL");
+    expect(sql).toContain("criteria_fingerprint TEXT NOT NULL");
+    expect(sql).toContain("manual_retry_count INTEGER NOT NULL");
+    expect(sql).toContain("trg_translations_candidate_invalidation");
+    expect(sql).toContain("trg_translation_reviews_immutable_update");
+    expect(sql).toContain("trg_translation_reviews_immutable_delete");
+    expect(sql).toContain("translation_review_resolutions");
+    expect(sql).toContain(
+      "trg_translation_review_resolutions_immutable_update"
+    );
+  });
+
   it("makes each source/candidate/direction review idempotent and queryable", () => {
     expect(sql).toContain(
       "PRIMARY KEY (item_id, lang, direction, source_hash, candidate_hash)"

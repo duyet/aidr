@@ -62,6 +62,22 @@ describe("buildRunStats", () => {
 });
 
 describe("serializeRunStats", () => {
+  it("redacts provider-shaped diagnostics before persistence", () => {
+    const serialized = serializeRunStats(
+      buildRunStats({
+        steps: [
+          {
+            name: "qa-translations",
+            action: "failed",
+            reason: "prompt: private article https://provider.test/debug",
+          },
+        ],
+      })
+    );
+    expect(serialized).not.toContain("private article");
+    expect(serialized).not.toContain("provider.test");
+  });
+
   it("round-trips through JSON with no undefined values", () => {
     const stats = buildRunStats({ new: 3, tokens: 500, tldrGenerated: true });
     const parsed = JSON.parse(serializeRunStats(stats));

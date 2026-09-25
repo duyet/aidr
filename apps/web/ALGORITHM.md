@@ -161,18 +161,22 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
      rows are separate from leased `translation_review_state`; criteria, prompt,
      policy, and model fingerprints are part of idempotency. Cross-run failures
      use exponential backoff and become terminal `human_review` after three
-     attempts.
+     automatic attempts; one explicit human retry is separately bounded and
+     recorded.
    - One run makes at most 6 logical reviewer/generator calls, has a 210-second
      wall budget, and allows two model attempts per logical call. Workflow
-     retries remain zero. Authenticated operators resolve the queue through
+     retries remain zero. Translation and review response snippets are
+     suppressed and provider errors are redacted before LLM telemetry or the
+     admin API. Authenticated operators resolve the queue through
      `GET /api/admin/translation-reviews` and
      `POST /api/admin/translation-reviews/:attemptId/resolve`; actor, action,
      time, and note are persisted.
    - `pnpm run verify:translation-schema` is a read-only migration gate run by
-     `pnpm run deploy`. A pre-0023/0025 database fails before pending-row
-     queries; it is never reported as zero pending. Apply migrations in order
-     and verify the remote schema before deployment; do not apply them from the
-     QA worker.
+     `pnpm run deploy`. A pre-0023 database fails before pending-row queries;
+     it is never reported as zero pending. Translation QA is wholly owned by
+     0023; #160's media migration is 0024 and #161's run-identity migration is
+     0025. Apply/verify migrations in order and never apply them from the QA
+     worker.
 
    Quality limits: deterministic checks and an independent model review are
    risk controls, not a human-labeled quality score. There is no claim about

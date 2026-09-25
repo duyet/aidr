@@ -121,10 +121,13 @@ curl -X POST https://aidr.today/api/admin/translation-reviews/<attempt-id>/resol
   -d '{"action":"accept_original","note":"Checked against the source article."}'
 ```
 
-Use `action: "retry"` to requeue a stale human decision. Both actions record
-the authenticated actor, timestamp, and bounded note. Before deployment, run
-`pnpm run verify:translation-schema`; it is a read-only check and is also a
-hard prerequisite of `pnpm run deploy`.
+Use `action: "retry"` to requeue a stale human decision. It is a single
+operator-triggered allowance (`can_retry` is returned by the queue); after that
+run fails, the item returns to `human_review` and cannot bypass the automatic
+three-attempt cap. Both actions record the authenticated actor, timestamp, and
+bounded note. Before deployment, run `pnpm run check:migrations` and
+`pnpm run verify:translation-schema`; both are read-only checks and are hard
+prerequisites of `pnpm run deploy`.
 
 Item fields: `url`, `title` (required), `summary`, `source_id` (defaults to
 `push`), `source_lang` (`en` or `vi`, defaults to `en`),
@@ -210,12 +213,15 @@ confirmed list from `notes@aidr.today`. One-click `List-Unsubscribe` is
 set on digest and campaign mail.
 
 `wrangler deploy` does not apply D1 SQL migrations. The deploy script runs
+`pnpm run check:migrations` (local filename order) and
 `pnpm run verify:translation-schema` first and fails closed if the required
 translation-review migrations are pending; it never applies them. Run
 `pnpm run d1:migrate` (`wrangler d1 migrations apply aidr --config
-wrangler.toml --remote`) separately in numeric order (0023 → 0024 when #160 is
-integrated → 0025), then rerun the read-only verifier. The current
-`CLOUDFLARE_API_TOKEN` can publish the Worker but Cloudflare API 7403s on D1
+wrangler.toml --remote`) separately in numeric order: 0023 translation QA,
+0024 media when #160 is integrated, then 0025 run identity when #161 is
+integrated. Translation QA is complete in 0023; do not add a competing 0025
+translation migration. Rerun the read-only verifier after each apply. The
+current `CLOUDFLARE_API_TOKEN` can publish the Worker but Cloudflare API 7403s on D1
 `migrations.apply`; migrate-on-deploy needs a token with **Account D1 Edit**.
 Do not swallow migrate failures inside `deploy`. `ensureVendorBlogSources` still
 upserts vendor RSS rows at ingest as a safety net.

@@ -53,6 +53,52 @@ describe("LLM observability redaction", () => {
     expect(entries[0]?.responseSnippet).toBeNull();
     expect(entries[0]?.error).toBe("anyrouter request failed: 500");
   });
+
+  it("suppresses response bodies for every task", () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    logLlmCall({
+      ts: 3,
+      task: "other",
+      model: "cluster/model",
+      ok: true,
+      tokens: 1,
+      promptTokens: 1,
+      completionTokens: 0,
+      cachedTokens: 0,
+      durationMs: 1,
+      error: null,
+      promptChars: 10,
+      responseSnippet: "private provider output",
+    });
+    setLlmCallLogger(null);
+    expect(entries[0]?.responseSnippet).toBeNull();
+  });
+
+  it("suppresses translation response bodies as well", () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    logLlmCall({
+      ts: 2,
+      task: "translate",
+      model: "generator/model",
+      ok: true,
+      tokens: 2,
+      promptTokens: 1,
+      completionTokens: 1,
+      cachedTokens: 0,
+      durationMs: 1,
+      error: null,
+      promptChars: 20,
+      responseSnippet: "private translated article text",
+    });
+    setLlmCallLogger(null);
+    expect(entries[0]?.responseSnippet).toBeNull();
+  });
 });
 
 describe("scoreBatchPrompt", () => {

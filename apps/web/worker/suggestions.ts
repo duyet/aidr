@@ -405,6 +405,7 @@ export async function reviewPendingSuggestions(
             json: true,
             modelSpec: env.ANYROUTER_TRANSLATE_MODEL,
             task: "review",
+            sensitive: true,
           }
         );
         tokens += reviewTokens;

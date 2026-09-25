@@ -96,10 +96,13 @@ class FakeD1 {
       };
     }
 
-    if (sql.startsWith("SELECT id FROM items WHERE id = ?")) {
+    if (
+      sql.startsWith("SELECT id") &&
+      sql.includes("FROM items WHERE id = ?")
+    ) {
       const [id] = args as [string];
       const row = this.items.get(id);
-      return row ? { id: row.id } : null;
+      return row ? { id: row.id, source_lang: row.source_lang } : null;
     }
 
     if (sql.startsWith("INSERT INTO items")) {
@@ -591,6 +594,28 @@ describe("pushItems", () => {
     expect(db.translations.get(`${id}:vi`)?.source_lang).toBe("vi");
   });
 
+  it("preserves an existing VI source when an admin update omits metadata", async () => {
+    const env = makeEnv();
+    const first = await pushItems(env, {
+      url: "https://example.com/vi-preserve",
+      title: "Nguồn tiếng Việt",
+      source_lang: "vi",
+      title_vi: "Nguồn tiếng Việt",
+    });
+    expect(isHandlerError(first)).toBe(false);
+    const second = await pushItems(env, {
+      url: "https://example.com/vi-preserve",
+      title: "Nguồn tiếng Việt cập nhật",
+      title_vi: "Nguồn tiếng Việt cập nhật",
+    });
+    expect(isHandlerError(second)).toBe(false);
+    const id = await sha256Hex("https://example.com/vi-preserve");
+    expect((env.DB as unknown as FakeD1).items.get(id)?.source_lang).toBe("vi");
+    expect(
+      (env.DB as unknown as FakeD1).translations.get(`${id}:vi`)?.source_lang
+    ).toBe("vi");
+  });
+
   it("rejects items missing url or title", async () => {
     const env = makeEnv();
     const result = await pushItems(env, { url: "", title: "no url" });
@@ -659,6 +684,32 @@ describe("getLlmCalls", () => {
 
     const result = await getLlmCalls(env);
     expect(result.calls.map((c: any) => c.ts)).toEqual([2, 1, 0]);
+  });
+
+  it("redacts legacy provider diagnostics and omits response snippets", async () => {
+    const env = makeEnv();
+    (env.DB as unknown as FakeD1).llmCalls.push({
+      id: 1,
+      ts: 1,
+      task: "translate",
+      model: "test-model",
+      ok: 0,
+      tokens: 0,
+      duration_ms: 5,
+      error: "Bearer sk-live-secret https://provider.test/raw",
+      prompt_chars: 100,
+      response_snippet: "raw provider response",
+    });
+
+    const result = await getLlmCalls(env);
+    expect(result.calls[0]).toMatchObject({
+      error: "Provider request failed",
+    });
+    expect(
+      (result.calls[0] as { response_snippet?: unknown }).response_snippet
+    ).toBeNull();
+    expect(JSON.stringify(result)).not.toContain("sk-live-secret");
+    expect(JSON.stringify(result)).not.toContain("raw provider response");
   });
 
   it("defaults to a limit of 100", async () => {

@@ -10,6 +10,7 @@ import {
   jevScoreQuestions,
   scoreJudgmentFromJev,
 } from "./systemone.js";
+import { sanitizeError } from "./telemetry-safe.js";
 import type { Env } from "./types.js";
 
 /** 15-item score JSON routinely misses a 25s hang-cap (0 tokens, 100%
@@ -136,9 +137,8 @@ export interface LlmCallLogEntry {
   durationMs: number;
   error: string | null;
   promptChars: number;
-  /** First 2000 chars of the response for ordinary pipeline tasks. Reviewer
-   * and repair calls mark the entry sensitive and this is suppressed before
-   * any logger receives it. */
+  /** Legacy response-body field. Runtime redaction suppresses it for every
+   * task before any logger receives the entry. */
   responseSnippet: string | null;
   sensitive?: boolean;
 }
@@ -169,15 +169,20 @@ function sanitizeProviderError(error: unknown): string {
   if (/leftover budget too small/i.test(message))
     return "anyrouter budget exhausted";
   if (/chain exhausted/i.test(message)) return "anyrouter chain exhausted";
+  const safe = sanitizeError(message);
+  if (safe?.code === "invalid_response") return "anyrouter invalid response";
+  if (safe?.code === "not_configured") return "anyrouter model not configured";
   return "anyrouter provider error";
 }
 
-function redactLlmCallEntry(entry: LlmCallLogEntry): LlmCallLogEntry {
-  const sensitive = entry.sensitive === true || entry.task === "review";
+export function redactLlmCallEntry(entry: LlmCallLogEntry): LlmCallLogEntry {
+  // LLM output is untrusted content for every pipeline task, not only the
+  // translation reviewer. Keep only bounded classifications/counters in
+  // telemetry; the database column remains for schema compatibility.
   return {
     ...entry,
     error: entry.error ? sanitizeProviderError(entry.error) : null,
-    responseSnippet: sensitive ? null : entry.responseSnippet,
+    responseSnippet: null,
     sensitive: undefined,
   };
 }
@@ -192,11 +197,14 @@ export function logLlmCall(entry: LlmCallLogEntry): void {
     const result = llmCallLogger(redactLlmCallEntry(entry));
     if (result && typeof (result as Promise<void>).then === "function") {
       (result as Promise<void>).catch((error) => {
-        console.error("llm call logger rejected:", error);
+        console.error(
+          "llm call logger rejected:",
+          sanitizeProviderError(error)
+        );
       });
     }
   } catch (error) {
-    console.error("llm call logger threw:", error);
+    console.error("llm call logger threw:", sanitizeProviderError(error));
   }
 }
 
@@ -273,6 +281,28 @@ function isQueued(data: { object?: string }): boolean {
   return typeof data.object === "string" && data.object.endsWith(".queued");
 }
 
+async function readBoundedErrorBody(response: Response): Promise<string> {
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let body = "";
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      body += decoder.decode(value, { stream: true });
+      if (body.length > 4_096) {
+        await reader.cancel().catch(() => {});
+        return body.slice(0, 4_096);
+      }
+    }
+    body += decoder.decode();
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+  return body;
+}
+
 /** `ANYROUTER_MODEL` and its per-task overrides hold either one model id or a
  * comma-separated fallback chain. */
 function parseModels(spec: string | undefined): string[] {
@@ -325,7 +355,7 @@ async function streamCompletion(
   });
 
   if (!res.ok) {
-    const body = await res.text();
+    const body = await readBoundedErrorBody(res);
     const requested = opts.maxTokens ?? MAX_TOKENS;
     const afford = /can only afford (\d+)/i.exec(body);
     const affordable = afford ? Number(afford[1]) : 0;
@@ -1016,6 +1046,7 @@ async function translateBatch(
       json: true,
       modelSpec: env.ANYROUTER_TRANSLATE_MODEL,
       task: "translate",
+      sensitive: true,
       timeoutMs,
       maxSliceMs: TRANSLATE_SLICE_MAX_MS,
       maxTokens: TRANSLATE_MAX_TOKENS,

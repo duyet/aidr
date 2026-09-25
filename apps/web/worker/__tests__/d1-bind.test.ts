@@ -258,6 +258,7 @@ describe("translation QA invalidation SQL", () => {
   it("clears every current-review marker when a candidate is rewritten", () => {
     expect(TRANSLATION_UPSERT_SQL).toContain("qa_rating = NULL");
     expect(TRANSLATION_UPSERT_SQL).toContain("qa_source_hash = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_source_revision = NULL");
     expect(TRANSLATION_UPSERT_SQL).toContain("qa_candidate_hash = NULL");
     expect(TRANSLATION_UPSERT_SQL).toContain("qa_direction = NULL");
     expect(TRANSLATION_UPSERT_SQL).toContain("qa_reviewer_model = NULL");

@@ -58,6 +58,7 @@ import type { FetchedItem, FetchedItemSource } from "./sources/types.js";
 import { reviewPendingSubmissions } from "./submissions.js";
 import { sendDailyTldr } from "./subscribe/send.js";
 import { reviewPendingSuggestions } from "./suggestions.js";
+import { sanitizeError } from "./telemetry-safe.js";
 import { toEpochSeconds } from "./time.js";
 import { ensureDailyTldr } from "./tldr.js";
 import { captureAndLearnTopics } from "./topic-learning.js";
@@ -151,6 +152,10 @@ type StepRetryConfig =
 /** Catch Workflow engine failures (timeout / retries exhausted). Inner
  * try/catch around the callback does not run when `step.do` itself throws,
  * and a failed step with retries:0 can skip later steps including close-run. */
+function safeErrorMessage(error: unknown): string {
+  return sanitizeError(error)?.message ?? "unknown error";
+}
+
 async function safeStep<T>(
   step: WorkflowStep,
   name: string,
@@ -173,7 +178,7 @@ async function safeStep<T>(
         );
     return result;
   } catch (error) {
-    console.error(`${name} step failed:`, error);
+    console.error(`${name} step failed:`, safeErrorMessage(error));
     return fallback;
   }
 }
@@ -792,7 +797,11 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 llm_tokens = excluded.llm_tokens,
                 duplicate_of = excluded.duplicate_of,
                 image_url = excluded.image_url,
-                source_lang = excluded.source_lang`
+                source_lang = CASE
+                   WHEN items.source_lang = 'vi' AND excluded.source_lang = 'en'
+                   THEN items.source_lang
+                   ELSE excluded.source_lang
+                 END`
             ).bind(
               ...buildItemBindArgs({
                 id,
@@ -1288,7 +1297,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 rated: 0,
                 adjusted: 0,
                 tokens: 0,
-                error: "schema missing; apply migrations 0023 and 0025",
+                error: "schema missing; apply migration 0023",
               };
             }
             console.error("qa-translations step failed");
@@ -1372,7 +1381,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             return {
               generated: false,
               tokens: 0,
-              reason: error instanceof Error ? error.message : String(error),
+              reason: sanitizeError(error)?.message ?? "tldr failed",
             };
           }
         },
@@ -1440,7 +1449,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       // skip later steps, including `record-run` in this finally). A
       // finished ingest must always insert a workflow_runs row so
       // /api/system lastRun/runsToday move.
-      runError = error instanceof Error ? error.message : String(error);
+      runError = sanitizeError(error)?.message ?? "ingest run failed";
       console.error("ingest run failed:", error);
     } finally {
       recordStep(steps, "close-run", "recording");

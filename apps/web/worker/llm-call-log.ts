@@ -1,4 +1,4 @@
-import type { LlmCallLogEntry } from "./llm.js";
+import { type LlmCallLogEntry, redactLlmCallEntry } from "./llm.js";
 import type { Env } from "./types.js";
 
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -41,6 +41,7 @@ export function createD1LlmCallLogger(
   env: Env
 ): (entry: LlmCallLogEntry) => Promise<void> {
   return async (entry) => {
+    const safeEntry = redactLlmCallEntry(entry);
     try {
       await ensureUsageColumns(env.DB);
       try {
@@ -52,18 +53,18 @@ export function createD1LlmCallLogger(
            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
           .bind(
-            entry.ts,
-            entry.task,
-            entry.model,
-            entry.ok ? 1 : 0,
-            entry.tokens,
-            entry.durationMs,
-            entry.error,
-            entry.promptChars,
-            entry.responseSnippet,
-            entry.promptTokens,
-            entry.completionTokens,
-            entry.cachedTokens
+            safeEntry.ts,
+            safeEntry.task,
+            safeEntry.model,
+            safeEntry.ok ? 1 : 0,
+            safeEntry.tokens,
+            safeEntry.durationMs,
+            safeEntry.error,
+            safeEntry.promptChars,
+            safeEntry.responseSnippet,
+            safeEntry.promptTokens,
+            safeEntry.completionTokens,
+            safeEntry.cachedTokens
           )
           .run();
         return;
@@ -75,15 +76,15 @@ export function createD1LlmCallLogger(
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
         .bind(
-          entry.ts,
-          entry.task,
-          entry.model,
-          entry.ok ? 1 : 0,
-          entry.tokens,
-          entry.durationMs,
-          entry.error,
-          entry.promptChars,
-          entry.responseSnippet
+          safeEntry.ts,
+          safeEntry.task,
+          safeEntry.model,
+          safeEntry.ok ? 1 : 0,
+          safeEntry.tokens,
+          safeEntry.durationMs,
+          safeEntry.error,
+          safeEntry.promptChars,
+          safeEntry.responseSnippet
         )
         .run();
     } catch (error) {

@@ -5,6 +5,8 @@
  * columns without another ALTER TABLE every time a new metric is wanted.
  */
 
+import { sanitizeRunStats } from "./telemetry-safe.js";
+
 /** One step's self-reported explanation of what it did (or didn't do) and
  * why, e.g. `{ name: "dedupe", action: "0 new", reason: "27 already in db" }`.
  * Recorded best-effort by the workflow — see `recordStep` below. */
@@ -65,7 +67,7 @@ export function buildRunStats(partial: Partial<RunStats> = {}): RunStats {
 }
 
 export function serializeRunStats(stats: RunStats): string {
-  return JSON.stringify(stats);
+  return JSON.stringify(sanitizeRunStats(stats));
 }
 
 /** Appends a step explanation to `steps`, swallowing any error so a bug in
