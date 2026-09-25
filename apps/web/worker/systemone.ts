@@ -33,10 +33,7 @@ export const JEV_ENTITY_TAGS = [
   "microsoft",
   "amazon",
   "nvidia",
-  "huggingface",
   "deepseek",
-  "mistral",
-  "apple",
 ] as const;
 
 /** One theme tag from a score judgment. `none` means no theme fits. */
@@ -49,10 +46,8 @@ export const JEV_THEME_TAGS = [
   "reasoning",
   "safety",
   "regulation",
-  "chips",
   "funding",
   "coding",
-  "robotics",
 ] as const;
 
 /** Jev is BYOK-only: the TypeSafe key lives in AnyRouter Dashboard → BYOK,
