@@ -26,6 +26,33 @@ export interface Env {
    *  the chat chain is the backup. Defaults to typesafe/jev. The TypeSafe
    *  BYOK key lives in the AnyRouter dashboard, not in env. */
   ANYROUTER_JEV_MODEL?: string;
+  /** Master switch for the JEV review panel on the scoring path (#203). Unset
+   *  or falsy keeps the pre-existing single-score behavior byte for byte. */
+  JEV_PANEL_ENABLED?: string;
+  /** Comma-separated model chain for the panel's `relevance` judge. Only the
+   *  first id can produce a counted vote: a fallback to another model is an
+   *  identity mismatch by design, never a second copy of the same opinion. */
+  JEV_PANEL_RELEVANCE_MODEL?: string;
+  /** Same, for the panel's `source_quality` judge. The two chains must name
+   *  different models from different vendor families, or the panel is refused
+   *  before any judge runs. */
+  JEV_PANEL_SOURCE_QUALITY_MODEL?: string;
+  /** Non-abstain valid votes required for a panel recommendation. Clamped to
+   *  the judge's count. */
+  JEV_PANEL_QUORUM?: string;
+  /** "1" enables the single bounded cross-examination round. "0"/unset is
+   *  the initial round only. The core caps debate at one replacement round. */
+  JEV_PANEL_DEBATE?: string;
+  /** What happens to an item the panel could not decide. "open" (default)
+   *  keeps the primary score; "closed" forces relevance to 0. An unusable
+   *  config always degrades open so a typo cannot reject a run. */
+  JEV_PANEL_FAIL_MODE?: string;
+  /** Wall-clock budget for one item's whole panel, all rounds included. */
+  JEV_PANEL_BUDGET_MS?: string;
+  /** "1" lets an unambiguous panel category replace the primary category.
+   *  Off by default: unlike the relevance ceiling, a category is not
+   *  monotonic, so a replay can churn it. */
+  JEV_PANEL_APPLY_CATEGORY?: string;
   ANYROUTER_API_KEY: string;
   NEWS_ADMIN_TOKEN: string;
   /** Clerk secret used by /__clerk Frontend API proxy (and admin JWT verify). */

@@ -470,6 +470,9 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 this.env,
                 newRows.map((row, i) => ({
                   i,
+                  // Decision identity: lets the optional JEV panel key its
+                  // idempotency to this item inside this run.
+                  id: row.id,
                   title: row.item.title,
                   summary: row.item.summary,
                   source: row.source.id,
@@ -1370,6 +1373,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               this.env,
               rows.map((row, i) => ({
                 i,
+                id: row.id,
                 title: row.title,
                 summary: row.summary ?? undefined,
                 source: row.source_id,
