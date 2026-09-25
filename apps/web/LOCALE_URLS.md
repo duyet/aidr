@@ -24,11 +24,12 @@ Locale-dependent normalization and legacy story-path redirects use `307`, never
 `301`, and emit `Cache-Control: private, no-store`,
 `Vary: Cookie, Accept-Language`, and the selected `Content-Language`. UTM
 parameters, unrelated filters, and fragments are preserved. Error responses use
-the same no-store policy. Bare `/extension` remains a permanent path-only 301,
-but a locale-bearing or header/cookie-selected `/extension` request is validated
-first and redirects temporarily to `/subscribe?lang=...`; malformed locale
-parameters fail with `400`. The path-only `/favicon.ico` compatibility redirect
-remains a permanent 301.
+the same no-store policy. A locale-bearing or header/cookie-selected
+`/extension` request is validated first and redirects temporarily to
+`/subscribe?lang=...`; malformed locale parameters fail with `400`. Bare
+`/extension` remains a permanent path-only 301 but is explicitly
+`private, no-store` and varied so no shared cache can retain it. The path-only
+`/favicon.ico` compatibility redirect remains a permanent 301.
 
 ## SSR routes, navigation, and caching
 
@@ -46,9 +47,10 @@ The Worker applies the locale response policy to every TanStack SSR response:
   `/terms`) render in English, canonicalize to a bare path, and use a neutral
   public policy. A locale query on those public pages is redirected to its bare
   canonical URL; an explicit valid locale is also persisted to the
-  `news_lang` cookie so a following full-page request keeps the selection. When
-  a cookie or `Accept-Language` selects the navigation locale used by internal
-  links, the neutral response also varies by those headers. `/mail`,
+  `news_lang` cookie so a following full-page request keeps the selection. Every
+  neutral response always declares `Vary: Cookie, Accept-Language`, including
+  the first key generated without either request header, because its internal
+  links can use a cookie/header-selected navigation locale. `/mail`,
   `/sign-in/*`, and `/sign-up/*` are also English and private, but retain a
   valid explicit locale so authenticated navigation does not lose the selected
   language.

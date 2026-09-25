@@ -137,6 +137,8 @@ describe("Worker locale redirects", () => {
     const bare = await fetchLocale(new Request("https://aidr.today/extension"));
     expect(bare.status).toBe(301);
     expect(bare.headers.get("Location")).toBe("https://aidr.today/subscribe");
+    expect(bare.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(bare.headers.get("Vary")).toBe("Cookie, Accept-Language");
   });
 
   it("applies the API locale gate before route middleware", async () => {
@@ -203,5 +205,15 @@ describe("Worker locale redirects", () => {
     expect(privateRoute.headers.get("Cache-Control")).toBe("private, no-store");
     expect(privateRoute.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
     expect(privateRoute.headers.get("Vary")).toContain("Cookie");
+
+    const neutralWithoutSelectionHeaders = await fetchLocale(
+      new Request("https://aidr.today/about")
+    );
+    expect(neutralWithoutSelectionHeaders.headers.get("Cache-Control")).toBe(
+      "public, max-age=300, s-maxage=600, stale-while-revalidate=3600"
+    );
+    expect(neutralWithoutSelectionHeaders.headers.get("Vary")).toBe(
+      "Cookie, Accept-Language"
+    );
   });
 });

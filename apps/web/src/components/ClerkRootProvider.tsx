@@ -7,6 +7,8 @@ import {
   getClerkPublishableKey,
   loadClerkModule,
 } from "../lib/clerk-user";
+import { useLang } from "../lib/lang-context";
+import { withLang } from "../lib/locale-url";
 
 /**
  * Mounts the ONE app-wide <ClerkProvider> (deferred — the Clerk SDK is
@@ -20,6 +22,7 @@ import {
  */
 export function ClerkRootProvider({ children }: { children: ReactNode }) {
   const publishableKey = getClerkPublishableKey();
+  const navigationLang = useLang();
   const [mod, setMod] = useState<ClerkModule | null>(null);
 
   useEffect(() => {
@@ -53,10 +56,10 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
           // Absolute URL so handshake redirects never fall back to the
           // publishable-key host (clerk.aidr.today → CF Error 1000).
           proxyUrl={CLERK_PROXY_URL}
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/"
-          signUpFallbackRedirectUrl="/"
+          signInUrl={withLang("/sign-in", navigationLang)}
+          signUpUrl={withLang("/sign-up", navigationLang)}
+          signInFallbackRedirectUrl={withLang("/", navigationLang)}
+          signUpFallbackRedirectUrl={withLang("/", navigationLang)}
           appearance={{
             variables: {
               colorPrimary: "oklch(0.555 0.163 48.998)",
