@@ -489,6 +489,63 @@ describe("story Markdown rendering", () => {
     );
   });
 
+  it("drops colon-delimited and quoted credential assignments from source links", () => {
+    const sourceLink = (url: string): ItemSource => ({
+      kind: "source",
+      author: null,
+      posted_at: null,
+      quote: null,
+      url,
+    });
+    const body = renderWithoutFetch(
+      story({
+        url: "https://example.com/safe-json?q=%7B%22topic%22%3A%22AI%22%7D&utm_medium=email",
+        sources: [
+          sourceLink(
+            "https://example.com/safe?q=topic:agents&utm_source=agent"
+          ),
+          sourceLink("https://example.com/colon?q=access_token:colon-secret"),
+          sourceLink(
+            "https://example.com/encoded?q=access_token%3Aencoded-secret"
+          ),
+          sourceLink(
+            "https://example.com/double?q=access_token%253Adouble-secret"
+          ),
+          sourceLink(
+            "https://example.com/triple?q=access_token%25253Atriple-secret"
+          ),
+          sourceLink(
+            "https://example.com/json?q=%7B%22access_token%22%3A%22json-secret%22%7D"
+          ),
+          sourceLink(
+            "https://example.com/quoted?q=%22access_token%3A%22quoted-secret%22"
+          ),
+        ],
+      })
+    );
+    const sourceUrls = JSON.parse(
+      body.match(/^source_urls: (.+)$/m)?.[1] ?? "null"
+    ) as string[];
+
+    expect(sourceUrls).toEqual(
+      expect.arrayContaining([
+        "https://example.com/safe?q=topic%3Aagents&utm_source=agent",
+        "https://example.com/safe-json?q=%7B%22topic%22%3A%22AI%22%7D&utm_medium=email",
+      ])
+    );
+    for (const secret of [
+      "access_token",
+      "colon-secret",
+      "encoded-secret",
+      "double-secret",
+      "triple-secret",
+      "json-secret",
+      "quoted-secret",
+    ]) {
+      expect(body).not.toContain(secret);
+    }
+  });
+
   it("selects Vietnamese and records an explicit English fallback", () => {
     const translated = renderStoryMarkdown(
       story({
@@ -884,6 +941,41 @@ describe("story Markdown route", () => {
       )
     );
     expect(headerWins.headers.get("content-language")).toBe("vi");
+  });
+
+  it("filters colon-delimited and quoted credentials from redirect Locations", async () => {
+    const response = await handleStoryMarkdownRequest(
+      new Request(
+        `${SITE_URL}/api/story/abcdef12.md?locale=en` +
+          "&q=access_token:redirect-colon-secret" +
+          "&q=access_token%3Aredirect-encoded-secret" +
+          "&q=access_token%253Aredirect-double-secret" +
+          "&q=access_token%25253Aredirect-triple-secret" +
+          "&q=%7B%22access_token%22%3A%22redirect-json-secret%22%7D" +
+          "&q=%22access_token%3A%22redirect-quoted-secret%22" +
+          "&q=topic%3Aagents&utm_source=agent&utm_campaign=summer%3Asale"
+      ),
+      fakeDb(story())
+    );
+    const location = response.headers.get("location");
+    const body = await response.text();
+
+    expect(response.status).toBe(307);
+    expect(location).toBe(
+      `${SITE_URL}/api/story/abcdef12.md?q=topic%3Aagents&utm_source=agent&utm_campaign=summer%3Asale&lang=en`
+    );
+    for (const secret of [
+      "access_token",
+      "redirect-colon-secret",
+      "redirect-encoded-secret",
+      "redirect-double-secret",
+      "redirect-triple-secret",
+      "redirect-json-secret",
+      "redirect-quoted-secret",
+    ]) {
+      expect(location).not.toContain(secret);
+      expect(body).not.toContain(secret);
+    }
   });
 
   it("redacts lookup failures and safely renders malformed D1 rows", async () => {

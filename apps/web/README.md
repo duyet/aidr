@@ -111,8 +111,9 @@ Every decoded key is checked for credential meaning before the safe-key or
 `utm_client_secret`, and encoded variants are rejected. Only allowlisted
 navigation and attribution keys are retained. Basic/Bearer schemes,
 JWT-shaped values, encoded fragments, and compound/nested credential
-assignments are rejected even when hidden inside an otherwise allowlisted
-value. Safe values are trimmed and normalized. `//` is rejected anywhere in
+assignments (including `=`/`:`-delimited keys in quoted or JSON-like values)
+are rejected even when hidden inside an otherwise allowlisted value. Safe
+values are trimmed and normalized. `//` is rejected anywhere in
 the normalized value, including after Markdown, HTML, or bracket punctuation.
 Nested absolute/scheme-relative URL syntax and whitespace-normalized dangerous
 schemes such as `javascript:`, `data:`, `vbscript:`, `file:`, and `blob:` are

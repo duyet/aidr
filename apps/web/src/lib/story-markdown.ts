@@ -123,6 +123,9 @@ interface SourceLink {
 
 type QueryEntry = [key: string, value: string];
 
+const CREDENTIAL_ASSIGNMENT_RE =
+  /(?:^|[?&;,{[(=:|])\s*\\?["']?([a-z0-9_. -]{1,64})\\?["']?\s*(?=[:=])/giu;
+
 function isControlCharacter(code: number): boolean {
   return (
     code <= 8 ||
@@ -307,23 +310,67 @@ function isJwt(value: string): boolean {
   );
 }
 
+function hasCredentialAssignment(value: string): boolean {
+  for (const match of value.matchAll(CREDENTIAL_ASSIGNMENT_RE)) {
+    if (isCredentialKey(match[1])) return true;
+  }
+  return false;
+}
+
+function jsonValueHasCredential(value: unknown, depth: number): boolean {
+  if (typeof value === "string") {
+    return compoundValueHasCredential(value, depth + 1);
+  }
+  if (Array.isArray(value)) {
+    return value.some((entry) => jsonValueHasCredential(entry, depth + 1));
+  }
+  if (value && typeof value === "object") {
+    return Object.entries(value).some(
+      ([key, entry]) =>
+        isCredentialKey(key) || jsonValueHasCredential(entry, depth + 1)
+    );
+  }
+  return false;
+}
+
 function compoundValueHasCredential(value: string, depth = 0): boolean {
   if (hasCredentialScheme(value) || isJwt(value)) return true;
+  if (hasCredentialAssignment(value)) return true;
   if (depth >= 3) return value.includes("=");
 
   for (const assignment of value.split(/[?&;]+/u)) {
-    const separator = assignment.indexOf("=");
-    if (separator > 0) {
-      const key = assignment.slice(0, separator);
-      const nestedValue = assignment.slice(separator + 1);
+    for (const separator of ["=", ":"] as const) {
+      const separatorIndex = assignment.indexOf(separator);
+      if (separatorIndex <= 0) continue;
+      const key = assignment.slice(0, separatorIndex);
       if (isCredentialKey(key)) return true;
-      if (compoundValueHasCredential(nestedValue, depth + 1)) return true;
+      if (
+        compoundValueHasCredential(
+          assignment.slice(separatorIndex + 1),
+          depth + 1
+        )
+      ) {
+        return true;
+      }
+    }
+  }
+
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"'))
+  ) {
+    try {
+      if (jsonValueHasCredential(JSON.parse(trimmed), depth)) return true;
+    } catch {
+      // The lexical assignment scan above still covers quoted non-JSON text.
     }
   }
   return false;
 }
 
-/** Reject nested URL syntax at any decoded assignment/query depth. */
+/** Reject nested URLs and structured credentials at decoded assignment/query depth. */
 function sanitizeQueryValue(value: string): string | null {
   const normalized = value.trim();
   const compact = normalized.replace(/\s+/gu, "").toLowerCase();
