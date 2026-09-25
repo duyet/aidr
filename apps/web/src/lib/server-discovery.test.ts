@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { llmsTxt, llmsTxtResponse } from "./llms-txt";
 import { SITE_URL } from "./site";
 import { buildSitemapXml, staticSitemapUrls } from "./sitemap";
+import { isStoryMarkdownPath } from "./story-markdown";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -20,6 +21,26 @@ describe("Worker discovery entry", () => {
     expect(src).toContain('path === "/extension"');
     expect(src).toContain('dest.pathname = "/subscribe"');
     expect(src).toContain("legacyStoryRedirectPath");
+  });
+
+  it("routes the bounded story Markdown surface before the SPA fallback", () => {
+    const src = readFileSync(join(here, "../server.ts"), "utf8");
+    expect(src).toContain("isStoryMarkdownPath(path)");
+    expect(src).toContain("handleStoryMarkdownRequest(request, env?.DB)");
+    expect(src.indexOf("isStoryMarkdownPath(path)")).toBeLessThan(
+      src.indexOf("handler.fetch(request)")
+    );
+  });
+
+  it("claims over-encoded and malformed Markdown paths in the Worker", () => {
+    expect(isStoryMarkdownPath("/api/story/abcdef12%252emd")).toBe(true);
+    expect(isStoryMarkdownPath("/api%252Fstory/abcdef12%252emd")).toBe(true);
+    expect(isStoryMarkdownPath("/api/story/%252emd")).toBe(true);
+    expect(isStoryMarkdownPath("/api/story/%ZZ.md")).toBe(true);
+    for (const layers of [4, 6, 9]) {
+      const extension = `${"%25".repeat(layers - 1)}2emd`;
+      expect(isStoryMarkdownPath(`/api/story/abcdef12${extension}`)).toBe(true);
+    }
   });
 
   it("llms.txt response is non-empty aidr guidance", async () => {
