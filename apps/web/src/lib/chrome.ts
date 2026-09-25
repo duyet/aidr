@@ -4,7 +4,8 @@ export const PHONE_TAP_TARGET_CLASS =
 
 export const PHONE_PREFS_TRIGGER_CLASS = `${PHONE_TAP_TARGET_CLASS} rounded-full text-sm font-semibold leading-none text-muted-foreground hover:bg-muted hover:text-foreground`;
 
-export const PHONE_GET_AIDR_TRIGGER_CLASS = `${PHONE_TAP_TARGET_CLASS} gap-0.5 border border-border/80 bg-muted/60 p-1.5 text-foreground shadow-sm hover:bg-muted data-[state=open]:bg-muted`;
+/** Idle matches the prefs/language chrome: no fill, border, or shadow — only on hover/open. */
+export const PHONE_GET_AIDR_TRIGGER_CLASS = `${PHONE_TAP_TARGET_CLASS} gap-0.5 p-1.5 text-foreground hover:bg-muted data-[state=open]:bg-muted`;
 
 export const PHONE_DROPDOWN_ITEM_CLASS = "h-11 min-h-11 min-w-[44px]";
 
