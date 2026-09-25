@@ -31,7 +31,7 @@ channel separately before describing its output as current.
 | Flow | Decision | Reason |
 | --- | --- | --- |
 | Ranked story | Manual IV POC for each eligible language URL being evaluated; do not create a second normal delivery | A story permalink is relatively static, but the current page is a summary surface rather than a guaranteed full article. |
-| Bilingual daily digest | No IV wrapper | It is a changing list, not an article. Keep the source adapter's HTML digest message and direct story links. |
+| Bilingual daily digest | No IV wrapper | It is a changing list, not an article. Keep the source adapter's HTML digest message and its story links. |
 | Telegram channel | Adapter contract: normal message/photo with explicit `lang` on aidr links | The channel is an audience and delivery target, not an IV source page or a second language identity. Actual public-channel output requires a live audit. |
 
 `lang` identifies the content and canonical source URL. It is not a delivery
