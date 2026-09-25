@@ -1,6 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
 import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
-import { AccountCountCard } from "../components/system/AccountCountCard";
 import { AdminPanel } from "../components/system/AdminPanel";
 import { AlgoTab } from "../components/system/AlgoTab";
 import { ContentTab } from "../components/system/ContentTab";
@@ -38,6 +37,15 @@ export const Route = createFileRoute("/data")({
   component: SystemPage,
 });
 
+const TABS: { value: DataTab; label: string }[] = [
+  { value: "overview", label: "Overview" },
+  { value: "content", label: "Content" },
+  { value: "runs", label: "Runs" },
+  { value: "sources", label: "Sources" },
+  { value: "llm", label: "LLM" },
+  { value: "algo", label: "Algo" },
+];
+
 export function SystemPage() {
   const lang: Lang = useLang();
   const search = Route.useSearch();
@@ -49,73 +57,67 @@ export function SystemPage() {
       : (search.tab ?? "overview");
 
   return (
-    <div className="news-content news-data py-4">
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground">
+    <div className="news-content news-data py-6">
+      <div className="space-y-5">
+        <header>
+          <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground">
             Pipeline
           </h1>
-          <p className="text-xs text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             Live ingest, content, and token use.
           </p>
-        </div>
-        <div className="grid w-full min-w-0 gap-3 sm:w-auto sm:grid-cols-[minmax(0,1fr)_10rem] lg:w-[48rem]">
-          <ModelAttribution />
-          <AccountCountCard />
-        </div>
-      </header>
+        </header>
 
-      <Tabs
-        value={tab}
-        onValueChange={(next) => {
-          const parsed = parseDataTab(next);
-          if (!parsed) return;
-          if (parsed === "admin" && !admin.isAdmin) return;
-          void navigate({
-            search: parsed === "overview" ? {} : { tab: parsed },
-            replace: true,
-          });
-        }}
-      >
-        <TabsList className="mb-4 h-auto min-h-9 w-full flex-wrap justify-start gap-0.5">
-          <TabsTrigger value="overview" className="px-2.5 text-xs">
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="content" className="px-2.5 text-xs">
-            Content
-          </TabsTrigger>
-          <TabsTrigger value="runs" className="px-2.5 text-xs">
-            Runs
-          </TabsTrigger>
-          <TabsTrigger value="sources" className="px-2.5 text-xs">
-            Sources
-          </TabsTrigger>
-          <TabsTrigger value="llm" className="px-2.5 text-xs">
-            LLM
-          </TabsTrigger>
-          <TabsTrigger value="algo" className="px-2.5 text-xs">
-            Algo
-          </TabsTrigger>
+        {/* One quiet full-width strip instead of a loud header card: the
+            model chain is context for the metrics below, not a headline. */}
+        <ModelAttribution />
+
+        <Tabs
+          value={tab}
+          onValueChange={(next) => {
+            const parsed = parseDataTab(next);
+            if (!parsed) return;
+            if (parsed === "admin" && !admin.isAdmin) return;
+            void navigate({
+              search: parsed === "overview" ? {} : { tab: parsed },
+              replace: true,
+            });
+          }}
+        >
+          <TabsList className="h-auto min-h-9 w-full flex-wrap justify-start gap-1 rounded-xl bg-muted/40 p-1">
+            {TABS.map(({ value, label }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="rounded-lg px-3 text-[13px]"
+              >
+                {label}
+              </TabsTrigger>
+            ))}
+            {admin.isAdmin ? (
+              <TabsTrigger
+                value="admin"
+                className="rounded-lg px-3 text-[13px]"
+              >
+                Admin
+              </TabsTrigger>
+            ) : null}
+          </TabsList>
+
+          <OverviewTab />
+          <AlgoTab />
+          <ContentTab lang={lang} />
+          <RunsTab lang={lang} />
+          <SourcesTab />
+          <LlmTab />
+
           {admin.isAdmin ? (
-            <TabsTrigger value="admin" className="px-2.5 text-xs">
-              Admin
-            </TabsTrigger>
+            <TabsContent value="admin" className="mt-4">
+              <AdminPanel admin={admin} />
+            </TabsContent>
           ) : null}
-        </TabsList>
-
-        <OverviewTab />
-        <AlgoTab />
-        <ContentTab lang={lang} />
-        <RunsTab lang={lang} />
-        <SourcesTab />
-        <LlmTab />
-
-        {admin.isAdmin ? (
-          <TabsContent value="admin" className="mt-0">
-            <AdminPanel admin={admin} />
-          </TabsContent>
-        ) : null}
-      </Tabs>
+        </Tabs>
+      </div>
     </div>
   );
 }

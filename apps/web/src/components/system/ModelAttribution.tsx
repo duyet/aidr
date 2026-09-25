@@ -60,7 +60,7 @@ export function ModelAttribution() {
   }
   if (state.error) {
     return (
-      <Card className="min-w-0 border-border shadow-none">
+      <Card className="min-w-0 border-border/60 bg-muted/20 shadow-none">
         <CardContent className="p-4">
           <div role="status" aria-live="polite" className="space-y-1">
             <p className="text-sm font-medium text-foreground">
@@ -80,7 +80,7 @@ export function ModelAttribution() {
       aria-label="Loading model attribution"
       className="min-w-0"
     >
-      <Skeleton className="h-[10.5rem] w-full" />
+      <Skeleton className="h-28 w-full rounded-2xl" />
     </section>
   );
 }
@@ -91,18 +91,18 @@ export function AttributionView({ models }: { models: ModelChains }) {
   const titleId = useId();
 
   return (
-    <Card className="min-w-0 overflow-hidden border-border shadow-none">
-      <CardContent className="p-3 sm:p-4">
+    <Card className="min-w-0 border-border/60 bg-muted/20 shadow-none">
+      <CardContent className="p-4">
         <section aria-labelledby={titleId}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
               <CardTitle
                 id={titleId}
-                className="font-sans text-sm font-semibold tracking-tight text-foreground"
+                className="font-sans text-[13px] font-semibold tracking-tight text-foreground"
               >
                 Powered by AnyRouter
               </CardTitle>
-              <p className="mt-1 text-[10px] leading-tight text-muted-foreground">
+              <p className="text-[11px] leading-tight text-muted-foreground">
                 Lead model + fallback depth · public config only
               </p>
             </div>
@@ -120,7 +120,7 @@ export function AttributionView({ models }: { models: ModelChains }) {
 
           <dl
             aria-label="Pipeline model attribution"
-            className="mt-3 grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4"
+            className="mt-3 grid min-w-0 grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4"
           >
             {MODEL_TASKS.map(({ key, label, Icon }) => {
               const chain = models[key] ?? [];
@@ -132,7 +132,7 @@ export function AttributionView({ models }: { models: ModelChains }) {
               return (
                 <div
                   key={key}
-                  className="min-w-0 rounded-lg border border-border/80 bg-muted/30 p-2.5"
+                  className="min-w-0 border-t border-border/60 pt-2.5 sm:border-t-0 sm:pt-0 sm:first:border-t-0 lg:border-l lg:border-t-0 lg:pl-4 lg:first:border-l-0 lg:first:pl-0"
                 >
                   <div className="flex min-w-0 items-center justify-between gap-1.5">
                     <dt className="flex min-w-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -144,12 +144,12 @@ export function AttributionView({ models }: { models: ModelChains }) {
                     </dt>
                     <dd
                       title={chain.length ? hops.title : undefined}
-                      className="shrink-0 rounded-full border border-border/80 px-1.5 py-0.5 text-[9px] leading-none tabular-nums text-muted-foreground"
+                      className="shrink-0 rounded-full border border-border/70 px-1.5 py-0.5 text-[9px] leading-none tabular-nums text-muted-foreground"
                     >
                       {chain.length ? hops.text : "unavailable"}
                     </dd>
                   </div>
-                  <dd className="mt-2 min-w-0 font-mono text-xs font-medium leading-snug text-foreground [overflow-wrap:anywhere]">
+                  <dd className="mt-1.5 min-w-0 font-mono text-xs font-medium leading-snug text-foreground [overflow-wrap:anywhere]">
                     {lead ? (
                       <a
                         href={anyrouterModelUrl(lead)}
@@ -167,7 +167,7 @@ export function AttributionView({ models }: { models: ModelChains }) {
                       </span>
                     )}
                   </dd>
-                  <dd className="mt-1 min-w-0 text-[10px] leading-tight text-muted-foreground">
+                  <dd className="mt-0.5 min-w-0 text-[10px] leading-tight text-muted-foreground">
                     {fallbacks.length
                       ? `${counted(
                           fallbacks.length,

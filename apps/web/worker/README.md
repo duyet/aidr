@@ -66,3 +66,43 @@ subrequest dispatch, so an early upstream response cannot bypass the limit. It
 reads one response chunk to provide a controlled 504 when the upstream stalls
 before sending data, then streams counted chunks and cancels/errors the stream
 when the limit or deadline is reached.
+
+## Clerk → D1 signup mirror
+
+`/data` reports AIDR signups as a first-class Overview metric. The number is a
+`COUNT` over `clerk_users` in D1 (migration `0026_clerk_users.sql`), not a live
+call to Clerk on every page view — a public dashboard endpoint must not fail
+because a third-party API is slow or rate-limited.
+
+Two writers keep that table current:
+
+- `POST /api/webhooks/clerk` (`src/routes/api/webhooks.clerk.ts`) handles
+  `user.created`, `user.updated`, and `user.deleted`. Every request must carry
+  Clerk's Svix headers (`svix-id`, `svix-timestamp`, `svix-signature`) and is
+  verified with HMAC-SHA256 over `{svix-id}.{svix-timestamp}.{body}` against
+  `CLERK_WEBHOOK_SECRET` (WebCrypto, constant-time compare). A bad or missing
+  signature is `401`; an oversized body is `413`; a missing secret or D1 binding
+  is `503`. Any other event type is acknowledged and ignored so Clerk does not
+  retry an event we deliberately do not store. Deletions are soft
+  (`deleted_at`), so the live count stays correct without losing the audit row.
+- `POST /api/admin/clerk-sync` is the admin-gated one-shot backfill that pages
+  through the Clerk user list with `CLERK_SECRET_KEY` (100 per page, capped at
+  20 pages). It exists so the metric is real before the first webhook lands;
+  afterwards the webhook keeps it current.
+
+`GET /api/system/accounts` reads the count with a five-minute cache and reports
+`{ total, source: "d1", status }`, where `status` is `available`, `unconfigured`
+(table missing / no rows yet), or `error`. `total` is `null` for the last two —
+the UI says "Unavailable" instead of rendering a fabricated `0`.
+
+Apply the migration before deploying the code that reads it — the same command
+`apps/web/README.md` documents, and the same one CI runs on `master` via
+`.github/workflows/migrate-d1.yml`:
+
+```sh
+pnpm --filter @aidr/web d1:migrate
+```
+
+`worker/migration-gate.ts` treats `0026` as a required migration once its file
+is present, so a deploy against an unmigrated database fails loudly instead of
+serving a permanently "Unavailable" signups tile.

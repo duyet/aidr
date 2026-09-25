@@ -26,6 +26,7 @@ import {
   updateItem,
   upsertSource,
 } from "../../../worker/admin/handlers.js";
+import { backfillClerkUsers } from "../../../worker/clerk-users.js";
 import {
   getCampaign,
   isMailError,
@@ -259,6 +260,19 @@ async function handle(
   if (method === "GET" && segments.length === 1 && segments[0] === "status") {
     const result = await getStatus(env);
     return Response.json(result);
+  }
+
+  // One-shot Clerk account backfill into D1 so the /data signup total is real
+  // before the first webhook lands. Webhooks keep it current afterwards.
+  if (
+    method === "POST" &&
+    segments.length === 1 &&
+    segments[0] === "clerk-sync"
+  ) {
+    const result = await backfillClerkUsers(env);
+    return Response.json(result, {
+      status: result.status === "ok" ? 200 : 400,
+    });
   }
 
   if (

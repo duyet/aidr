@@ -1,69 +1,128 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  type AccountCountFetch,
+  type AccountCountDb,
   loadClerkAccountCount,
-  parseClerkUserTotal,
 } from "../account-count.js";
+import {
+  CLERK_USERS_COUNT_SQL,
+  CLERK_USERS_PROBE_SQL,
+  resetClerkUsersTableProbe,
+} from "../clerk-users.js";
 
-describe("parseClerkUserTotal", () => {
-  it("accepts Clerk's aggregate total but never infers from the page length", () => {
-    expect(
-      parseClerkUserTotal({ data: [{ id: "user_1" }], total_count: 37 })
-    ).toBe(37);
-    expect(parseClerkUserTotal({ data: [{ id: "user_1" }] })).toBeNull();
-    expect(
-      parseClerkUserTotal({ data: [{ id: "user_1" }], total_count: -1 })
-    ).toBeNull();
-  });
+/** Minimal D1 stand-in: one COUNT statement, explicit row or failure. */
+function fakeDb(options: {
+  rows?: { c: number }[];
+  failOn?: Error;
+  failCountWith?: Error;
+}): AccountCountDb & { queries: string[] } {
+  const queries: string[] = [];
+  return {
+    queries,
+    prepare(sql: string) {
+      queries.push(sql);
+      const isCount = sql === CLERK_USERS_COUNT_SQL;
+      const statement = {
+        bind: () => statement,
+        first: async () => {
+          if (options.failOn) throw options.failOn;
+          if (isCount && options.failCountWith) throw options.failCountWith;
+          return options.rows?.[0] ?? null;
+        },
+        all: async () => {
+          if (options.failOn) throw options.failOn;
+          return { results: [] };
+        },
+        run: async () => ({ success: true }),
+      };
+      return statement as unknown as ReturnType<AccountCountDb["prepare"]>;
+    },
+  };
+}
 
-  it("rejects non-integer and malformed values", () => {
-    expect(parseClerkUserTotal({ total_count: 1.5 })).toBeNull();
-    expect(parseClerkUserTotal({ total_count: "not-a-count" })).toBeNull();
-    expect(parseClerkUserTotal(null)).toBeNull();
-  });
+beforeEach(() => {
+  resetClerkUsersTableProbe();
+  vi.restoreAllMocks();
 });
 
 describe("loadClerkAccountCount", () => {
-  it("does not call the upstream when the account source is not configured", async () => {
-    const fetcher = vi.fn<AccountCountFetch>();
+  it("counts mirrored Clerk rows with a single COUNT, never a live call", async () => {
+    const db = fakeDb({ rows: [{ c: 37 }] });
+    vi.spyOn(globalThis, "fetch");
 
-    await expect(loadClerkAccountCount({}, fetcher)).resolves.toEqual({
+    await expect(loadClerkAccountCount(db)).resolves.toEqual({
+      total: 37,
+      source: "d1",
+      status: "available",
+    });
+    expect(db.queries).toEqual([CLERK_USERS_PROBE_SQL, CLERK_USERS_COUNT_SQL]);
+    expect(CLERK_USERS_COUNT_SQL).toContain("deleted_at IS NULL");
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("reports an empty mirror as a real zero, not as unavailable", async () => {
+    await expect(
+      loadClerkAccountCount(fakeDb({ rows: [{ c: 0 }] }))
+    ).resolves.toEqual({ total: 0, source: "d1", status: "available" });
+  });
+
+  it("never turns an unmigrated database into a zero total", async () => {
+    const missingTable = new Error(
+      "D1_ERROR: no such table: clerk_users: SQLITE_ERROR"
+    );
+    await expect(
+      loadClerkAccountCount(fakeDb({ failOn: missingTable }))
+    ).resolves.toEqual({ total: null, source: "d1", status: "unconfigured" });
+  });
+
+  it("reports a missing D1 binding as unconfigured instead of failing", async () => {
+    await expect(loadClerkAccountCount(undefined)).resolves.toEqual({
       total: null,
-      source: "clerk",
+      source: "d1",
       status: "unconfigured",
     });
-    expect(fetcher).not.toHaveBeenCalled();
+    await expect(loadClerkAccountCount(null)).resolves.toEqual({
+      total: null,
+      source: "d1",
+      status: "unconfigured",
+    });
   });
 
-  it("returns the aggregate total without exposing the response body", async () => {
-    const fetcher = vi.fn<AccountCountFetch>(async (_input, init) => {
-      expect(init?.headers).toMatchObject({
-        Accept: "application/json",
-        Authorization: "Bearer server-only-secret",
-      });
-      return new Response(
-        JSON.stringify({ data: [{ id: "user_1" }], total_count: 37 })
-      );
-    });
-
+  it("surfaces a real read failure as an error state", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     await expect(
-      loadClerkAccountCount({ CLERK_SECRET_KEY: "server-only-secret" }, fetcher)
-    ).resolves.toEqual({ total: 37, source: "clerk", status: "available" });
+      loadClerkAccountCount(fakeDb({ failOn: new Error("D1 busy") }))
+    ).resolves.toEqual({ total: null, source: "d1", status: "error" });
   });
 
-  it("reports upstream errors instead of turning them into zero users", async () => {
-    const failed = vi.fn<AccountCountFetch>(async () => {
-      throw new Error("upstream unavailable");
+  it("reports an error when only the COUNT fails on a migrated database", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const db = fakeDb({
+      rows: [{ c: 0 }],
+      failCountWith: new Error("D1 busy"),
     });
-    const badResponse = vi.fn<AccountCountFetch>(
-      async () => new Response("not json", { status: 200 })
-    );
 
-    await expect(
-      loadClerkAccountCount({ CLERK_SECRET_KEY: "secret" }, failed)
-    ).resolves.toEqual({ total: null, source: "clerk", status: "error" });
-    await expect(
-      loadClerkAccountCount({ CLERK_SECRET_KEY: "secret" }, badResponse)
-    ).resolves.toEqual({ total: null, source: "clerk", status: "error" });
+    // The schema probe succeeded, so a failing COUNT is a read error, not an
+    // unconfigured database and never a zero.
+    await expect(loadClerkAccountCount(db)).resolves.toEqual({
+      total: null,
+      source: "d1",
+      status: "error",
+    });
+  });
+
+  it("does not cache a transient failure as a missing schema", async () => {
+    const first = fakeDb({ failOn: new Error("D1 busy") });
+    const second = fakeDb({ rows: [{ c: 4 }] });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(loadClerkAccountCount(first)).resolves.toMatchObject({
+      status: "error",
+    });
+    // The schema probe must retry instead of pinning "unsupported" forever.
+    await expect(loadClerkAccountCount(second)).resolves.toEqual({
+      total: 4,
+      source: "d1",
+      status: "available",
+    });
   });
 });

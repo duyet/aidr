@@ -360,8 +360,10 @@ translation-review or media migration is pending; it never applies them. Run
 `pnpm run d1:migrate` separately: it performs the read-only local-order and
 remote-ledger checks before `wrangler d1 migrations apply aidr --config
 wrangler.toml --remote`. Apply migrations in numeric order: 0023 translation
-QA, 0024 media, then 0025 run identity when #161 is integrated. Translation
-QA is complete in 0023; do not add a competing 0025 translation migration.
+QA, 0024 media, then 0025 run identity when #161 is integrated, then 0026
+`clerk_users` (#198, the D1 mirror behind the `/data` signups metric).
+Translation QA is complete in 0023; do not add a competing 0025 translation
+migration.
 Legacy `translations.lang` values are reconciled as `lang=vi` → EN→VI and
 `lang=en` → VI→EN before the queue is queried. Review claims use a five-minute
 renewable lease and a source-revision CAS; successful repairs retain the final

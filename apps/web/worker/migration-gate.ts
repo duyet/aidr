@@ -1,11 +1,13 @@
+import { CLERK_USERS_MIGRATION } from "./clerk-users.js";
 import {
   MEDIA_MANIFEST_MIGRATION,
   TRANSLATION_REVIEW_HARDENING_MIGRATION,
   TRANSLATION_REVIEW_MIGRATION,
 } from "./media-schema.js";
 
-/** Ordered migrations required by this branch. 0025 is owned by #158 and is
- * included only when its file is present in the combined checkout. */
+/** Ordered migrations required by this branch. 0025 and 0026 are owned by
+ * other branches and are included only when their file is present in the
+ * combined checkout. */
 export const REQUIRED_MIGRATIONS = [
   TRANSLATION_REVIEW_MIGRATION,
   MEDIA_MANIFEST_MIGRATION,
@@ -29,6 +31,7 @@ export function requiredMigrationsForFiles(
     ...(available.has(TRANSLATION_REVIEW_HARDENING_MIGRATION)
       ? [TRANSLATION_REVIEW_HARDENING_MIGRATION]
       : []),
+    ...(available.has(CLERK_USERS_MIGRATION) ? [CLERK_USERS_MIGRATION] : []),
   ];
 }
 
@@ -79,7 +82,11 @@ export function assertMigrationFileOrder(files: readonly string[]): void {
   for (const migration of required) {
     const position = positions.get(migration);
     if (position === undefined || position <= previous) {
-      throw new Error("required migration order must be 0023, 0024, then 0025");
+      throw new Error(
+        `required migration order must be ${required
+          .map((migration) => migration.slice(0, 4))
+          .join(", then ")}`
+      );
     }
     previous = position;
   }

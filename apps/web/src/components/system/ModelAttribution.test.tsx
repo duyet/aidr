@@ -3,7 +3,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ModelChains } from "../../lib/system-queries";
-import { AccountCountView } from "./AccountCountCard";
 import { AttributionView } from "./ModelAttribution";
 
 afterEach(cleanup);
@@ -269,34 +268,5 @@ describe("AttributionView copy contract", () => {
     expect(
       screen.getByRole("link", { name: "Open AnyRouter in a new tab" })
     ).toBeTruthy();
-  });
-});
-
-describe("AccountCountView", () => {
-  it("labels the aggregate separately from subscribers", () => {
-    render(
-      <AccountCountView
-        data={{ total: 37, source: "clerk", status: "available" }}
-      />
-    );
-
-    expect(screen.getByText("AIDR user signups")).toBeTruthy();
-    expect(screen.getByText("37")).toBeTruthy();
-    expect(screen.getByText("Clerk accounts · aggregate total")).toBeTruthy();
-    expect(screen.queryByText("Subscribers")).toBeNull();
-  });
-
-  it.each([
-    ["unconfigured", "Account source is not configured."],
-    ["error", "Account source could not be read."],
-  ] as const)("renders the honest %s state", (status, detail) => {
-    render(
-      <AccountCountView data={{ total: null, source: "clerk", status }} />
-    );
-
-    expect(screen.getByRole("status")).toBeTruthy();
-    expect(screen.getByText("Unavailable")).toBeTruthy();
-    expect(screen.getByText(detail)).toBeTruthy();
-    expect(screen.queryByText("0")).toBeNull();
   });
 });
