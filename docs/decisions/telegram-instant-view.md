@@ -38,7 +38,8 @@ posts for the same story or create a second `lang`-keyed delivery row. The
 Vietnamese channel remains Vietnamese-first, but a story without a Vietnamese
 translation is delivered with its actual English fallback and `lang=en` links.
 
-This is intentionally conservative even though the locale URLs are live now.
+This is intentionally conservative even though the locale URL contract is
+implemented now.
 There is no approved template or editor-generated `rhash`, no Bot API IV
 lifecycle method, and no guarantee that a summary page satisfies Telegram's
 essential-content checklist. Telegram's cache can also serve stale content, so
