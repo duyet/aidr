@@ -13,7 +13,17 @@ allowBuilds:
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@tanstack/*"
-  - "@clerk/*"
+  # Enumerate the @clerk/* packages that pnpm-lock.yaml actually resolves
+  # instead of a blanket scope, so every other package (including any future
+  # @clerk/* release) stays behind `minimumReleaseAge`. All four are published
+  # from the single clerk/javascript monorepo and only ship together, so
+  # excluding them individually still lets Renovate's `--no-save` artifact
+  # step advance the whole set. Keep in sync with
+  # `grep -oE "@clerk/[a-z-]+@[0-9.]+" pnpm-lock.yaml | sort -u`.
+  - "@clerk/tanstack-react-start"
+  - "@clerk/backend"
+  - "@clerk/react"
+  - "@clerk/shared"
   - cn
   - wrangler
   - workerd
