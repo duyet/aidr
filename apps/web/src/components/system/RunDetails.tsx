@@ -6,6 +6,7 @@ import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
 import { RunAttemptRows } from "./RunAttemptRows";
 import {
   bySourceSubline,
+  distinctModels,
   fallbackTransitions,
   formatDuration,
   formatSafeDetail,
@@ -15,6 +16,7 @@ import {
   isPreIdentityRun,
   type RunAttemptsState,
   runFallbackKindLabel,
+  runModelsDisclosure,
   runStatus,
   safeRunSteps,
   shortModel,
@@ -28,6 +30,8 @@ interface RunDetailsProps {
   lang: "en" | "vi";
   attemptsState: RunAttemptsState;
   attempts: LlmCallRow[];
+  /** The per-run read hit its cap; more calls exist than are shown. */
+  attemptsTruncated?: boolean;
   onClose: () => void;
   triggerRef: RefObject<HTMLButtonElement | null>;
 }
@@ -52,6 +56,9 @@ const COPY = {
     noModels: "No model data available.",
     preIdentityModels:
       "No per-run model data. Runs logged before per-attempt run identity only report token totals.",
+    modelsUnavailable:
+      "Model attribution unavailable — per-call model data could not be read for this run.",
+    modelsLoading: "Loading models used…",
     noWorkflow: "No workflow step detail available.",
     errors: "Errors / fallback",
     fallback: "Fallback chain",
@@ -68,6 +75,7 @@ const COPY = {
     attemptsEmpty: "No LLM calls recorded for this run.",
     attemptsPreIdentity:
       "This run reports token totals but no per-attempt rows. Runs logged before per-attempt run identity shipped have no attempt data.",
+    attemptsTruncated: "Showing the first 2,000 calls for this run.",
   },
   vi: {
     summary: "Tóm tắt lần chạy",
@@ -88,6 +96,9 @@ const COPY = {
     noModels: "Chưa có dữ liệu mô hình.",
     preIdentityModels:
       "Chưa có dữ liệu mô hình theo lần chạy. Các lần chạy ghi nhận trước khi có định danh lần gọi chỉ báo tổng token.",
+    modelsUnavailable:
+      "Không xác định được mô hình — không đọc được dữ liệu mô hình theo từng lần gọi của lần chạy này.",
+    modelsLoading: "Đang tải mô hình đã dùng…",
     noWorkflow: "Chưa có dữ liệu bước xử lý.",
     errors: "Lỗi / fallback",
     fallback: "Chuỗi fallback",
@@ -104,6 +115,7 @@ const COPY = {
     attemptsEmpty: "Không ghi nhận lần gọi LLM cho lần chạy này.",
     attemptsPreIdentity:
       "Lần chạy này có tổng token nhưng không có dữ liệu từng lần gọi. Các lần chạy ghi nhận trước khi có định danh lần gọi không lưu chi tiết.",
+    attemptsTruncated: "Chỉ hiển thị 2.000 lần gọi đầu tiên của lần chạy này.",
   },
 } as const;
 
@@ -215,6 +227,7 @@ export function RunDetails({
   lang,
   attemptsState,
   attempts,
+  attemptsTruncated = false,
   onClose,
   triggerRef,
 }: RunDetailsProps) {
@@ -233,6 +246,22 @@ export function RunDetails({
   // reporting "No error recorded." next to a chain-exhausted tldr step.
   const stepNotes = stepFallbackNotes(steps);
   const preIdentity = isPreIdentityRun(stats, llm, attempts);
+  // The list payload carries the model inventory, but a run whose list row
+  // had none can still have models in the attempts fetched on expand. Prefer
+  // the summary (it is complete) and fall back to the fetched rows.
+  const models =
+    llm && llm.models.length > 0 ? llm.models : distinctModels(attempts);
+  // #189 review: the Models panel may only blame run-id tracking once a
+  // lookup has completed and returned zero rows. A failed/unsupported/
+  // in-flight lookup gets its own state so the panel never contradicts the
+  // Attempts panel directly below it.
+  const modelsState = runModelsDisclosure(
+    attemptsState,
+    models,
+    stats,
+    llm,
+    attempts
+  );
   const regionLabel = copy.summary;
 
   return (
@@ -304,11 +333,17 @@ export function RunDetails({
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {copy.models}
           </p>
-          {llm && llm.models.length > 0 ? (
-            <ModelLinks models={llm.models} />
+          {models.length > 0 ? (
+            <ModelLinks models={models} />
           ) : (
             <p className="text-xs text-muted-foreground">
-              {preIdentity ? copy.preIdentityModels : copy.noModels}
+              {modelsState === "pre_identity"
+                ? copy.preIdentityModels
+                : modelsState === "unavailable"
+                  ? copy.modelsUnavailable
+                  : modelsState === "pending"
+                    ? copy.modelsLoading
+                    : copy.noModels}
             </p>
           )}
         </div>
@@ -401,7 +436,14 @@ export function RunDetails({
             </p>
           </>
         ) : attemptsState === "ready" ? (
-          <RunAttemptRows attempts={attempts} lang={lang} />
+          <>
+            <RunAttemptRows attempts={attempts} lang={lang} />
+            {attemptsTruncated ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {copy.attemptsTruncated}
+              </p>
+            ) : null}
+          </>
         ) : (
           <p className="text-xs text-muted-foreground">
             {attemptsState === "empty"

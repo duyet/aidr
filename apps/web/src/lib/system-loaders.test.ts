@@ -236,22 +236,34 @@ describe("loadSystemActivity", () => {
 });
 
 describe("loadSystemRuns", () => {
-  function runsDb() {
+  /** The two GROUP BY queries the aggregated list path issues for run-1. */
+  const RUN_1_AGGREGATE = {
+    run_id: "run-1",
+    calls: 2,
+    failures: 1,
+    tokens: 100,
+    duration_ms: 5200,
+    cached_sum: 10,
+    cached_known: 1,
+  };
+  const RUN_1_MODEL = { run_id: "run-1", model: "anyrouter/auto" };
+
+  function runsDb(stubs: Record<string, Stub> = {}) {
     return makeDb({
       "FROM workflow_runs ORDER BY": {
         all: () => ({ results: [RUN_ROW] }),
       },
-      "run_id IN": {
-        all: () => ({ results: LLM_CALL_ROWS_NEWEST_FIRST }),
-      },
+      "MIN(ts) AS first_ts": { all: () => ({ results: [RUN_1_MODEL] }) },
+      "COUNT(*) AS calls": { all: () => ({ results: [RUN_1_AGGREGATE] }) },
+      ...stubs,
     });
   }
 
-  it("keeps llm totals but strips per-call rows when includeAttempts is false", async () => {
+  it("aggregates per-run usage in SQL and never inlines per-call rows", async () => {
     const q = await freshQueries();
     const { db, binds } = runsDb();
 
-    const runs = await q.loadSystemRuns(db, { includeAttempts: false });
+    const runs = await q.loadSystemRuns(db);
     const llm = runs[0]?.llm;
 
     // Aggregates survive — the run row still shows burn/failures.
@@ -259,31 +271,89 @@ describe("loadSystemRuns", () => {
     expect(llm?.failures).toBe(1);
     expect(llm?.tokens).toBe(100);
     expect(llm?.cachedTokens).toBe(10);
+    expect(llm?.durationMs).toBe(5200);
     expect(llm?.models).toEqual(["anyrouter/auto"]);
-    // The flag exists to keep the heavy per-attempt detail out of the
-    // default payload (run-attempts serves it lazily on expand).
+    // The list payload never carries per-attempt rows (run-attempts serves
+    // them lazily on expand), and an aggregated summary is never truncated.
     expect(llm?.attempts).toEqual([]);
+    expect(llm?.truncated).toBeUndefined();
 
     // Attribution is by explicit run id, never by a timestamp window.
     const runBind = binds.find((b) => b.sql.includes("run_id IN"));
     expect(runBind?.args).toEqual(["run-1"]);
   });
 
-  it("attaches chronological attempt rows when includeAttempts is true", async () => {
+  it("never issues a row-level SELECT over llm_calls", async () => {
     const q = await freshQueries();
-    const { db } = runsDb();
+    const { db, directAlls } = runsDb();
 
-    const runs = await q.loadSystemRuns(db, { includeAttempts: true });
-    const attempts = runs[0]?.llm?.attempts;
+    await q.loadSystemRuns(db);
 
-    expect(attempts?.map((a) => a.ts)).toEqual([
-      1_700_000_010_000, 1_700_000_030_000,
+    // A shared row cap is what starved the newest runs before; the list path
+    // must not read rows at all.
+    const rowReads = directAlls.filter(
+      (s) => s.includes("FROM llm_calls") && s.includes("SELECT ts, run_id")
+    );
+    expect(rowReads).toHaveLength(0);
+  });
+
+  it("issues no row cap on the llm_calls aggregate queries", async () => {
+    const q = await freshQueries();
+    const { db, directAlls } = runsDb();
+
+    await q.loadSystemRuns(db);
+
+    // Scope to the two GROUP BY queries: the `SELECT … FROM llm_calls LIMIT 1`
+    // capability probes are one-row schema checks, and the 30-row cap on
+    // `workflow_runs` is the intended list size, not a truncation.
+    const aggregates = directAlls.filter(
+      (s) => s.includes("FROM llm_calls") && s.includes("GROUP BY run_id")
+    );
+    expect(aggregates).toHaveLength(2);
+    expect(aggregates.filter((s) => /LIMIT\s+\d/i.test(s))).toEqual([]);
+  });
+
+  it("reports unknown cached usage as null rather than zero", async () => {
+    const q = await freshQueries();
+    const { db } = runsDb({
+      "COUNT(*) AS calls": {
+        all: () => ({
+          results: [{ ...RUN_1_AGGREGATE, cached_known: 0, cached_sum: null }],
+        }),
+      },
+    });
+
+    expect((await q.loadSystemRuns(db))[0]?.llm?.cachedTokens).toBeNull();
+  });
+
+  it("omits the summary entirely for a run with no attributed calls", async () => {
+    const q = await freshQueries();
+    const { db } = runsDb({
+      "COUNT(*) AS calls": { all: () => ({ results: [] }) },
+      "MIN(ts) AS first_ts": { all: () => ({ results: [] }) },
+    });
+
+    // No `llm` key at all, so the UI can still say "unattributed" rather
+    // than claiming a run that made zero calls.
+    expect((await q.loadSystemRuns(db))[0]?.llm).toBeUndefined();
+  });
+
+  it("ignores a model row whose run id is not safely echoable", async () => {
+    const q = await freshQueries();
+    const { db } = runsDb({
+      "MIN(ts) AS first_ts": {
+        all: () => ({
+          results: [
+            { run_id: "run-1", model: "anyrouter/auto" },
+            { run_id: "bad id/../x", model: "evil/model" },
+          ],
+        }),
+      },
+    });
+
+    expect((await q.loadSystemRuns(db))[0]?.llm?.models).toEqual([
+      "anyrouter/auto",
     ]);
-    expect(attempts?.[0]?.promptTokens).toBe(80);
-    expect(attempts?.[0]?.cachedTokens).toBe(10);
-    expect(attempts?.[1]?.ok).toBe(false);
-    expect(attempts?.[1]?.error).toBe("Provider request timed out");
-    expect(attempts?.[1]?.errorCode).toBe("timeout");
   });
 
   it("returns plain runs when llm_calls does not exist yet", async () => {
@@ -367,6 +437,7 @@ describe("loadRunAttempts", () => {
     expect(await q.loadRunAttempts(db, RUN_ID)).toEqual({
       attempts: [],
       status: "unavailable",
+      truncated: false,
     });
     expect(directAlls.some((s) => s.includes("run_id = ?"))).toBe(false);
   });
