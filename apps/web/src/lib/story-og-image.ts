@@ -184,14 +184,29 @@ function readGif(bytes: Uint8Array): { width: number; height: number } | null {
 }
 
 /**
+ * Byte length of the first RIFF sub-chunk's payload, or null when the
+ * declared size runs past the end of the buffer. Chunk sizes are 4-byte
+ * little-endian and payloads pad to an even length.
+ */
+function firstChunkPayloadLength(bytes: Uint8Array): number | null {
+  const size = le32(bytes, 16);
+  const padded = size + (size & 1);
+  if (12 + 8 + padded > bytes.length) return null;
+  return size;
+}
+
+/**
  * WebP: the RIFF size must account for the whole buffer (a truncation check),
  * then read canvas/frame dimensions from the VP8, VP8L, or VP8X chunk.
  */
 function readWebp(bytes: Uint8Array): { width: number; height: number } | null {
   if (bytes.length < 30) return null;
   if (le32(bytes, 4) + 8 !== bytes.length) return null;
+  const payload = firstChunkPayloadLength(bytes);
+  if (payload === null) return null;
   const chunk = asciiAt(bytes, 12, 4);
   if (chunk === "VP8 ") {
+    if (payload < 10) return null;
     if (!matchesAt(bytes, 23, [0x9d, 0x01, 0x2a])) return null;
     return {
       width: le16(bytes, 26) & 0x3fff,
@@ -199,15 +214,22 @@ function readWebp(bytes: Uint8Array): { width: number; height: number } | null {
     };
   }
   if (chunk === "VP8L") {
+    // Lossless bitstream. The header is one 0x2f signature byte followed by
+    // a 28-bit little-endian run: 14 bits of width-1, then 14 bits of
+    // height-1, then 1 bit of alpha_is_used and a 3-bit version. Bits are
+    // packed LSB-first, so the 28 bits span bytes 21..24 and the two 14-bit
+    // fields straddle the byte 22/23 boundary. Reading width as a plain
+    // 24-bit value instead folds the top of height into it and rejects
+    // every real lossless file.
+    if (payload < 5) return null;
     if (bytes[20] !== 0x2f) return null;
-    // VP8L packs 14-bit little-endian values: width-1 at bit 0, height-1 at
-    // bit 14, both spread across the next four bytes.
-    const width = (le16(bytes, 21) | ((bytes[23] & 0x3f) << 16)) + 1;
+    const width = (le16(bytes, 21) & 0x3fff) + 1;
     const height =
-      ((bytes[23] >> 6) | (bytes[24] << 2)) + 1 + ((bytes[25] & 0x0f) << 10);
+      ((bytes[22] >> 6) | (bytes[23] << 2) | ((bytes[24] & 0x0f) << 10)) + 1;
     return { width, height };
   }
   if (chunk === "VP8X") {
+    if (payload < 10) return null;
     return { width: le24(bytes, 24) + 1, height: le24(bytes, 27) + 1 };
   }
   return null;

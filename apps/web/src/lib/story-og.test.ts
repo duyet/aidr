@@ -1,4 +1,6 @@
 import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -25,6 +27,11 @@ import {
   storyOgLanguage,
 } from "./story-og";
 import type { FeedItem } from "./types";
+
+const FIXTURE_DIR = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "__fixtures__"
+);
 
 /** A real, structurally complete 8x8 PNG. */
 const PNG_BYTES = pngBytes(8, 8);
@@ -132,6 +139,33 @@ describe("story OG image payload boundary", () => {
         new RegExp(`^data:${mime.replace("/", "\\/")};base64,`)
       );
     }
+  });
+
+  it("inlines a real libwebp lossless WebP instead of falling back", async () => {
+    // A VP8L (lossless) chunk is the variant whose size lives in the 28-bit
+    // little-endian header run; a mis-decode here silently rejected every
+    // lossless thumbnail.
+    const bytes = new Uint8Array(
+      await readFile(resolve(FIXTURE_DIR, "webp-lossless-1200x630.webp"))
+    );
+    const image = storyOgImageFromBytes(bytes);
+    expect(image?.mimeType).toBe("image/webp");
+    expect(image?.byteLength).toBe(bytes.byteLength);
+    expect(image?.dataUri).toMatch(/^data:image\/webp;base64,/);
+
+    // The same payload must survive the whole bounded fetch boundary.
+    const fetched = await fetchStoryOgImage("https://cdn.example.com/p.webp", {
+      fetcher: async () =>
+        new Response(bytes, { headers: { "content-type": "image/webp" } }),
+    });
+    expect(fetched?.mimeType).toBe("image/webp");
+  });
+
+  it("falls back for a real lossless WebP past the pixel ceiling", async () => {
+    const bytes = new Uint8Array(
+      await readFile(resolve(FIXTURE_DIR, "webp-lossless-4097x1.webp"))
+    );
+    expect(storyOgImageFromBytes(bytes)).toBeNull();
   });
 
   it("rejects a small file that declares an excessive canvas", () => {

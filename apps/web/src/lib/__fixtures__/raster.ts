@@ -260,6 +260,81 @@ export function webpBytes(
   );
 }
 
+/**
+ * Encodes the VP8L header exactly as the WebP lossless spec defines it.
+ *
+ * The chunk payload starts with a 0x2f signature byte followed by a 28-bit
+ * little-endian run: 14 bits of `width - 1`, then 14 bits of `height - 1`,
+ * then 1 bit of `alpha_is_used` and a 3-bit version. Bits are packed
+ * LSB-first across the next four bytes, so the two 14-bit fields straddle the
+ * second/third byte boundary.
+ *
+ * @returns the four header bytes, or null when a dimension cannot be encoded
+ *   (VP8L stores each side as a 14-bit `dimension - 1`, so 1..16384).
+ */
+export function vp8lHeaderBytes(
+  width: number,
+  height: number,
+  alpha = false
+): number[] | null {
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width < 1 ||
+    height < 1 ||
+    width > 0x4000 ||
+    height > 0x4000
+  ) {
+    return null;
+  }
+  const w = width - 1;
+  const h = height - 1;
+  return [
+    w & 0xff, // bits 0-7
+    ((w >>> 8) & 0x3f) | ((h & 0x03) << 6), // bits 8-15
+    (h >>> 2) & 0xff, // bits 16-23
+    ((h >>> 10) & 0x0f) | (alpha ? 0x10 : 0x00), // bits 24-31
+  ];
+}
+
+/**
+ * A lossless WebP (simple VP8L chunk) for a solid-colour image.
+ *
+ * Byte-identical to what libwebp emits for the same solid colour, which the
+ * test suite asserts against the committed `webp-lossless-*.webp` fixtures so
+ * the encoder cannot drift from the real thing. The entropy payload is
+ * libwebp's solid-colour template, so the result decodes for any dimensions.
+ */
+export function webpLosslessBytes(
+  width: number,
+  height: number,
+  alpha = false
+): Uint8Array<ArrayBuffer> {
+  const header = vp8lHeaderBytes(width, height, alpha);
+  if (!header) {
+    throw new Error(
+      `VP8L cannot encode ${width}x${height}: each side must be 1..16384`
+    );
+  }
+  return riff(
+    riffChunk("VP8L", [
+      0x2f, // lossless bitstream signature
+      ...header,
+      // Entropy-coded solid colour: transform bits, colour cache and the
+      // Huffman-coded green/red/blue runs. Identical for every size.
+      ...(alpha
+        ? [
+            0x07, 0x50, 0x85, 0x22, 0x57, 0xa1, 0x80, 0x81, 0x88, 0xe8, 0x7f,
+            0x00,
+          ]
+        : [
+            0x07, 0x50, 0x91, 0x32, 0x14, 0xa7, 0xff, 0x81, 0x88, 0xe8, 0x7f,
+            0x00,
+          ]),
+    ])
+  );
+}
+
 /** Lossy WebP whose frame size comes from the VP8 bitstream header. */
 export function webpLossyBytes(
   width: number,
