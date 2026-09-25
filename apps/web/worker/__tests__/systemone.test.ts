@@ -4,7 +4,9 @@ import { setLlmCallLogger } from "../llm.js";
 import {
   callSystemOne,
   isSystemOneConfigured,
+  JEV_SCORE_LEVELS,
   jevModelId,
+  jevScoreQuestions,
   noulProb,
   scoreJudgmentFromJev,
   scoreNorm,
@@ -167,12 +169,34 @@ describe("answer mapping", () => {
     expect(noulProb({}, "q")).toBeNull();
   });
 
-  it("maps a score judgment onto relevance, 0–10 levels, category, and tags", () => {
+  it("uses exactly ten Jev score levels capped at 9", () => {
+    expect(JEV_SCORE_LEVELS).toEqual([
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+    ]);
+    const questions = jevScoreQuestions(["Models"]);
+    expect(questions.importance.criteria).toEqual([...JEV_SCORE_LEVELS]);
+    expect(questions.quality.criteria).toEqual([...JEV_SCORE_LEVELS]);
+    expect(questions.importance.instructions).toContain(
+      "9 is a major industry event"
+    );
+    expect(questions.quality.instructions).toContain("8-9 is primary");
+  });
+
+  it("maps a score judgment onto relevance, 0–9 levels, category, and tags", () => {
     const judgment = scoreJudgmentFromJev(
       {
         is_ai_tech: { type: "noul", noul: 0.82 },
-        importance: { type: "score", score: "7" },
-        quality: { type: "score", score: "8" },
+        importance: { type: "score", score: "9" },
+        quality: { type: "score", score: "9" },
         category: { type: "choice", choice: "Models" },
         entity: { type: "choice", choice: "openai" },
         theme: { type: "choice", choice: "none" },
@@ -181,11 +205,25 @@ describe("answer mapping", () => {
     );
     expect(judgment).toEqual({
       relevance: 0.82,
-      importance: 7,
-      quality: 8,
+      importance: 9,
+      quality: 9,
       category: "Models",
       tags: ["openai"],
     });
+  });
+
+  it("rejects a Jev score above the supported maximum", () => {
+    expect(
+      scoreJudgmentFromJev(
+        {
+          is_ai_tech: { type: "noul", noul: 0.9 },
+          importance: { type: "score", score: "10" },
+          quality: { type: "score", score: "9" },
+          category: { type: "choice", choice: "Models" },
+        },
+        ["Models"]
+      )
+    ).toBeNull();
   });
 
   it("returns null when a ranking input is missing so chat can score the item", () => {

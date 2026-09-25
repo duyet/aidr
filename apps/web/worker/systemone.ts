@@ -6,8 +6,8 @@ import type { Env } from "./types.js";
  * jev-1.13.0, jev-preview) are wire aliases, not the listing id. */
 export const JEV_DEFAULT_MODEL = "typesafe/jev";
 
-/** Ordered 0–10 levels for importance and quality score questions.
- * Index is the numeric score (0 noise / thin, 10 major / primary). */
+/** Ordered 0–9 levels for importance and quality score questions.
+ * Index is the numeric score (0 noise / thin, 9 major / primary). */
 export const JEV_SCORE_LEVELS = [
   "0",
   "1",
@@ -19,7 +19,6 @@ export const JEV_SCORE_LEVELS = [
   "7",
   "8",
   "9",
-  "10",
 ] as const;
 
 /** One entity tag from a score judgment. `none` means the story has no
@@ -331,13 +330,13 @@ export function jevScoreQuestions(
     importance: {
       type: "score",
       instructions:
-        "How important is this to someone who follows AI news? 0 is noise, 10 is a major industry event.",
+        "How important is this to someone who follows AI news? 0 is noise, 9 is a major industry event.",
       criteria: [...JEV_SCORE_LEVELS],
     },
     quality: {
       type: "score",
       instructions:
-        "How source-backed is the writing? 0-4 is a thin duplicate, unnamed blog, or press-release fluff. 5-7 is competent secondary coverage. 8-10 is primary reporting or original research with a named publisher.",
+        "How source-backed is the writing? 0-4 is a thin duplicate, unnamed blog, or press-release fluff. 5-7 is competent secondary coverage. 8-9 is primary reporting or original research with a named publisher.",
       criteria: [...JEV_SCORE_LEVELS],
     },
     category: {
@@ -411,7 +410,7 @@ function choiceOf(
 }
 
 /** Index on an ordered score scale, or null when the answer is unusable.
- * Prefer the level string so 0–10 stays an integer (scoreNorm is a 0–1 ratio). */
+ * Prefer the level string so 0–9 stays an integer (scoreNorm is a 0–1 ratio). */
 function scoreLevelIndex(
   answers: Record<string, SystemOneAnswer>,
   id: string,
