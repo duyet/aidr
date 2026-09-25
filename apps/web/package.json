@@ -13,6 +13,7 @@
     "check:migration-ledger": "tsx scripts/check-migrations.ts --ledger-order",
     "test": "vitest run",
     "test:workerd:clerk-proxy": "tsx scripts/clerk-proxy-workerd-smoke.ts",
+    "test:workerd:story-og": "tsx scripts/story-og-workerd-smoke.ts",
     "check-types": "tsc --noEmit",
     "lint": "biome check .",
     "format": "biome format .",

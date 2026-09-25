@@ -247,7 +247,9 @@ describe("fetchStoryOgImage", () => {
     expect(image?.dataUri).not.toContain("secret");
     expect(received).toMatchObject({
       method: "GET",
-      redirect: "error",
+      // "manual", not "error": workerd throws a TypeError for "error" before
+      // any request is made, so "error" meant every deployed fetch missed.
+      redirect: "manual",
       credentials: "omit",
       referrerPolicy: "no-referrer",
     });
@@ -284,6 +286,95 @@ describe("fetchStoryOgImage", () => {
         fetchStoryOgImage("https://cdn.example.com/photo.png", { fetcher })
       ).resolves.toBeNull();
     }
+  });
+
+  /**
+   * Regression: workerd rejects `redirect: "error"`, so the boundary uses
+   * "manual" and refuses the 3xx itself. This is the Node-only test; the
+   * workerd half lives in scripts/story-og-workerd-smoke.ts.
+   */
+  it("treats every 3xx as a clean miss without following it", async () => {
+    const requested: string[] = [];
+    for (const status of [301, 302, 303, 307, 308]) {
+      let init: RequestInit | undefined;
+      const result = await fetchStoryOgImage(
+        "https://cdn.example.com/photo.png?signature=secret",
+        {
+          fetcher: async (input, received) => {
+            init = received;
+            requested.push(String(input));
+            return new Response(PNG_BYTES, {
+              status,
+              headers: {
+                location: "https://evil.example.net/track.png?leak=1",
+                "content-type": "image/png",
+              },
+            });
+          },
+        }
+      );
+
+      // Branded fallback, not the redirect target's body.
+      expect(result, `status ${status}`).toBeNull();
+      // Never followed: exactly one request per case, to the original URL.
+      expect(init?.redirect, `status ${status}`).toBe("manual");
+      expect(requested, `status ${status}`).toEqual([
+        "https://cdn.example.com/photo.png?signature=secret",
+      ]);
+      requested.length = 0;
+    }
+  });
+
+  it("never leaks a redirect target, Location header, or source URL", async () => {
+    let seen: string | null = null;
+    const result = await fetchStoryOgImage(
+      "https://cdn.example.com/photo.png?signature=secret",
+      {
+        fetcher: async () => {
+          const response = new Response(null, {
+            status: 302,
+            headers: {
+              location: "https://evil.example.net/track.png?leak=1",
+            },
+          });
+          // The boundary must not read Location at all.
+          Object.defineProperty(response, "headers", {
+            get() {
+              seen = "read";
+              return new Headers();
+            },
+          });
+          return response;
+        },
+      }
+    );
+
+    expect(result).toBeNull();
+    expect(seen).toBeNull();
+
+    // And the rendered fallback carries none of it.
+    const html = renderToStaticMarkup(storyOgCard(item(), result, "en"));
+    expect(html).not.toContain("evil.example.net");
+    expect(html).not.toContain("leak=1");
+    expect(html).not.toContain("cdn.example.com");
+    expect(html).not.toContain("signature");
+    expect(html).not.toContain("<img");
+  });
+
+  it("uses a redirect mode workerd actually accepts", async () => {
+    // Guards the production blocker directly: "error" is a TypeError at the
+    // edge, so the boundary must never send it.
+    let received: RequestInit | undefined;
+    await fetchStoryOgImage("https://cdn.example.com/photo.png", {
+      fetcher: async (_input, init) => {
+        received = init;
+        return new Response(PNG_BYTES, {
+          headers: { "content-type": "image/png" },
+        });
+      },
+    });
+    expect(["manual", "follow"]).toContain(received?.redirect);
+    expect(received?.redirect).not.toBe("error");
   });
 
   it("rejects malformed image bytes even when the server labels them as an image", async () => {

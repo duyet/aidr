@@ -277,7 +277,12 @@ export async function fetchStoryOgImage(
   try {
     const response = await fetcher(clean, {
       method: "GET",
-      redirect: "error",
+      // workerd only accepts "follow" and "manual": it throws a TypeError for
+      // "error" before any request is made ("won't be implemented since it
+      // does not make sense at the edge; use 'manual' and check the response
+      // status code"). "manual" hands the 3xx back unfollowed, and the non-OK
+      // check below turns it into a clean miss.
+      redirect: "manual",
       credentials: "omit",
       referrerPolicy: "no-referrer",
       headers: {
@@ -285,6 +290,8 @@ export async function fetchStoryOgImage(
       },
       signal: controller.signal,
     });
+    // Covers every 3xx: `redirect: "manual"` never follows, and a redirect
+    // response is never `ok`, so no Location is ever read or forwarded.
     if (!response.ok) return null;
     const contentType = response.headers
       .get("content-type")
