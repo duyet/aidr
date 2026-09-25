@@ -1,4 +1,9 @@
-import { type LlmCallLogEntry, redactLlmCallEntry } from "./llm.js";
+import {
+  type LlmCallLogEntry,
+  redactLlmCallEntry,
+  setLlmCallLogger,
+  withLlmCallContext,
+} from "./llm.js";
 import { sanitizeError } from "./telemetry-safe.js";
 import type { Env } from "./types.js";
 
@@ -30,9 +35,58 @@ async function ensureTelemetryColumns(db: D1Database): Promise<void> {
   telemetryColumnsReady = true;
 }
 
+/** Every D1 insert started by a logger, so a step can await them before its
+ * callback returns. `logLlmCall` is fire-and-forget: without an explicit
+ * drain, a Workflow step can resolve (and its isolate be reused/discarded)
+ * while the insert is still in flight, and the row never lands. */
+const pendingLlmCallWrites = new Set<Promise<void>>();
+
+function trackLlmCallWrite(write: Promise<void>): void {
+  pendingLlmCallWrites.add(write);
+  const settle = () => pendingLlmCallWrites.delete(write);
+  write.then(settle, settle);
+}
+
+/** Awaits in-flight `llm_calls` inserts (including ones started while
+ * draining) so a step's telemetry is durable before the step returns.
+ * Best-effort: inserts already swallow their own failures, and this never
+ * throws, so a logger problem can never fail a pipeline step. */
+export async function flushLlmCallWrites(): Promise<void> {
+  // Bounded: a pass can only start writes from code that is still running,
+  // and the loop stops as soon as a pass finds nothing in flight.
+  for (let pass = 0; pass < 5 && pendingLlmCallWrites.size > 0; pass++) {
+    await Promise.allSettled([...pendingLlmCallWrites]);
+  }
+}
+
 /** Test helper — Worker isolate is long-lived; tests share the module. */
 export function resetLlmCallLogSchemaCache(): void {
   telemetryColumnsReady = false;
+  pendingLlmCallWrites.clear();
+}
+
+/**
+ * Re-installs the D1-backed `llm_calls` sink *and* the run-id context for one
+ * unit of LLM work, then returns whatever the callback produced.
+ *
+ * The ingest Workflow runs each `step.do` callback in an engine-managed
+ * context: a step can be replayed in an isolate where the sink installed at
+ * the top of `run()` is gone and where the async-local run id no longer
+ * applies. Installing inside the callback (and not only around the outer
+ * `run()`) is what keeps `logLlmCall` from silently no-opping, which is what
+ * left `/data?tab=runs` with empty Models used and no attempt rows.
+ *
+ * Fire-and-forget is preserved: the callback is never made to await logging
+ * per call, and `flushLlmCallWrites` (run by the step wrapper afterwards)
+ * swallows failures.
+ */
+export function withRunLlmCallLogger<T>(
+  env: Env,
+  runId: string,
+  callback: () => T
+): T {
+  setLlmCallLogger(createD1LlmCallLogger(env, runId));
+  return withLlmCallContext(runId, callback);
 }
 
 /**
@@ -45,20 +99,75 @@ export function createD1LlmCallLogger(
   env: Env,
   fallbackRunId?: string | null
 ): (entry: LlmCallLogEntry) => Promise<void> {
-  return async (entry) => {
-    const safeEntry = redactLlmCallEntry(entry);
-    const safeError = sanitizeError(safeEntry.error);
-    const runId = entry.runId ?? fallbackRunId ?? null;
-    try {
-      await ensureTelemetryColumns(env.DB);
+  return (entry) => {
+    const write = (async () => {
+      const safeEntry = redactLlmCallEntry(entry);
+      const safeError = sanitizeError(safeEntry.error);
+      const runId = entry.runId ?? fallbackRunId ?? null;
       try {
+        await ensureTelemetryColumns(env.DB);
+        try {
+          await env.DB.prepare(
+            `INSERT INTO llm_calls (
+               ts, task, model, ok, tokens, duration_ms, error,
+               prompt_chars, response_snippet,
+               prompt_tokens, completion_tokens, cached_tokens,
+               run_id, error_code, error_status
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+            .bind(
+              safeEntry.ts,
+              safeEntry.task,
+              safeEntry.model,
+              safeEntry.ok ? 1 : 0,
+              safeEntry.tokens,
+              safeEntry.durationMs,
+              safeError?.message ?? null,
+              safeEntry.promptChars,
+              null,
+              safeEntry.promptTokens,
+              safeEntry.completionTokens,
+              safeEntry.cachedTokens,
+              runId,
+              safeError?.code ?? null,
+              safeError?.status ?? null
+            )
+            .run();
+          return;
+        } catch {
+          // A pre-0016/0025 DB may not have every optional column. The next
+          // insert keeps identity if the identity migration exists, then the
+          // legacy insert keeps logging safe aggregate fields only.
+        }
+        try {
+          await env.DB.prepare(
+            `INSERT INTO llm_calls (
+               ts, task, model, ok, tokens, duration_ms, error,
+               prompt_chars, response_snippet, run_id, error_code, error_status
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+            .bind(
+              safeEntry.ts,
+              safeEntry.task,
+              safeEntry.model,
+              safeEntry.ok ? 1 : 0,
+              safeEntry.tokens,
+              safeEntry.durationMs,
+              safeError?.message ?? null,
+              safeEntry.promptChars,
+              null,
+              runId,
+              safeError?.code ?? null,
+              safeError?.status ?? null
+            )
+            .run();
+          return;
+        } catch {
+          // Fall through to the pre-identity schema.
+        }
         await env.DB.prepare(
-          `INSERT INTO llm_calls (
-             ts, task, model, ok, tokens, duration_ms, error,
-             prompt_chars, response_snippet,
-             prompt_tokens, completion_tokens, cached_tokens,
-             run_id, error_code, error_status
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO llm_calls (ts, task, model, ok, tokens, duration_ms, error, prompt_chars, response_snippet)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
           .bind(
             safeEntry.ts,
@@ -69,66 +178,15 @@ export function createD1LlmCallLogger(
             safeEntry.durationMs,
             safeError?.message ?? null,
             safeEntry.promptChars,
-            null,
-            safeEntry.promptTokens,
-            safeEntry.completionTokens,
-            safeEntry.cachedTokens,
-            runId,
-            safeError?.code ?? null,
-            safeError?.status ?? null
+            null
           )
           .run();
-        return;
-      } catch {
-        // A pre-0016/0025 DB may not have every optional column. The next
-        // insert keeps identity if the identity migration exists, then the
-        // legacy insert keeps logging safe aggregate fields only.
+      } catch (error) {
+        console.error("llm_calls insert failed:", error);
       }
-      try {
-        await env.DB.prepare(
-          `INSERT INTO llm_calls (
-             ts, task, model, ok, tokens, duration_ms, error,
-             prompt_chars, response_snippet, run_id, error_code, error_status
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        )
-          .bind(
-            safeEntry.ts,
-            safeEntry.task,
-            safeEntry.model,
-            safeEntry.ok ? 1 : 0,
-            safeEntry.tokens,
-            safeEntry.durationMs,
-            safeError?.message ?? null,
-            safeEntry.promptChars,
-            null,
-            runId,
-            safeError?.code ?? null,
-            safeError?.status ?? null
-          )
-          .run();
-        return;
-      } catch {
-        // Fall through to the pre-identity schema.
-      }
-      await env.DB.prepare(
-        `INSERT INTO llm_calls (ts, task, model, ok, tokens, duration_ms, error, prompt_chars, response_snippet)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-        .bind(
-          safeEntry.ts,
-          safeEntry.task,
-          safeEntry.model,
-          safeEntry.ok ? 1 : 0,
-          safeEntry.tokens,
-          safeEntry.durationMs,
-          safeError?.message ?? null,
-          safeEntry.promptChars,
-          null
-        )
-        .run();
-    } catch (error) {
-      console.error("llm_calls insert failed:", error);
-    }
+    })();
+    trackLlmCallWrite(write);
+    return write;
   };
 }
 

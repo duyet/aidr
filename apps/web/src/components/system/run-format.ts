@@ -1,4 +1,4 @@
-import { sanitizeText } from "../../../worker/telemetry-safe.js";
+import { sanitizeError, sanitizeText } from "../../../worker/telemetry-safe.js";
 import { formatTokens } from "../../lib/format";
 import type {
   LlmCallRow,
@@ -186,6 +186,114 @@ export function fallbackTransitions(
     }
   }
   return transitions;
+}
+
+/** Provider/fallback failures the workflow only reports inside a step's
+ * self-reported `reason`/`action` (e.g. a tldr step that ends with
+ * "anyrouter chain exhausted: …"). A run whose `llm_calls` rows are missing
+ * therefore still has a real error story to show. */
+const PROVIDER_HINT =
+  /\banyrouter\b|\bjev\b|provider|fallback|chain|upstream|endpoint|\bmodel\b|\brequest\b|\bapi\b/i;
+const FAILURE_HINT =
+  /fail|exhaust|timeout|timed out|error|missing|unavailable|denied|refus|\b[45]\d{2}\b/i;
+
+export type RunFallbackKind =
+  | "chain_exhausted"
+  | "http_error"
+  | "timeout"
+  | "rate_limited"
+  | "auth_error"
+  | "not_configured"
+  | "provider_error";
+
+export interface RunFallbackNote {
+  step: string;
+  kind: RunFallbackKind;
+  /** Scrubbed, bounded classification — never the provider's raw message. */
+  detail: string;
+}
+
+/** Reuse the telemetry classifier so the disclosure shows the same safe
+ * summary the worker would have stored, with the fallback chain kept distinct
+ * from a single failed request. */
+function classifyFallback(text: string): RunFallbackKind {
+  if (/chain exhausted/i.test(text)) return "chain_exhausted";
+  const safe = sanitizeError(text);
+  switch (safe?.code) {
+    case "timeout":
+      return "timeout";
+    case "rate_limited":
+      return "rate_limited";
+    case "auth_error":
+      return "auth_error";
+    case "not_configured":
+      return "not_configured";
+    default:
+      return safe?.status ? "http_error" : "provider_error";
+  }
+}
+
+/** One note per step that reported a provider/fallback failure in its own
+ * explanation. Both fields are bounded + redacted, so an embedded chain
+ * cannot smuggle prompts, URLs or credentials into the disclosure. */
+export function stepFallbackNotes(steps: RunStepInfo[]): RunFallbackNote[] {
+  const notes: RunFallbackNote[] = [];
+  for (const step of steps) {
+    for (const text of [step.reason, step.action]) {
+      if (!text) continue;
+      if (!PROVIDER_HINT.test(text) || !FAILURE_HINT.test(text)) continue;
+      notes.push({
+        step: formatSafeDetail(step.name, 80),
+        kind: classifyFallback(text),
+        detail: formatSafeDetail(text, 200),
+      });
+      break;
+    }
+  }
+  return notes;
+}
+
+const FALLBACK_KIND_LABEL = {
+  en: {
+    chain_exhausted: "Fallback chain exhausted",
+    http_error: "Provider request failed",
+    timeout: "Provider request timed out",
+    rate_limited: "Provider rate limit reached",
+    auth_error: "Provider authentication failed",
+    not_configured: "Provider is not configured",
+    provider_error: "Provider error",
+  },
+  vi: {
+    chain_exhausted: "Chuỗi fallback đã cạn",
+    http_error: "Yêu cầu tới nhà cung cấp thất bại",
+    timeout: "Yêu cầu tới nhà cung cấp bị hết thời gian",
+    rate_limited: "Bị giới hạn tần suất từ nhà cung cấp",
+    auth_error: "Xác thực nhà cung cấp thất bại",
+    not_configured: "Chưa cấu hình nhà cung cấp",
+    provider_error: "Lỗi nhà cung cấp",
+  },
+} as const;
+
+export function runFallbackKindLabel(
+  kind: RunFallbackKind,
+  lang: "en" | "vi"
+): string {
+  return FALLBACK_KIND_LABEL[lang][kind];
+}
+
+/** Tokens were recorded for this run but no `llm_calls` row carries its
+ * run_id: a pre-identity run (logged before run_id stamping) or a run whose
+ * attempt telemetry never persisted. Surfaced as an explicit label — never
+ * back-filled from a timestamp window. */
+export function isPreIdentityRun(
+  stats: WorkflowRunStats | null | undefined,
+  llm: RunLlmSummary | undefined,
+  attempts: LlmCallRow[] = []
+): boolean {
+  if (attempts.length > 0) return false;
+  if (llm && llm.calls > 0) return false;
+  const tokens = stats?.tokens;
+  return typeof tokens === "number" && Number.isFinite(tokens) && tokens > 0;
 }
 
 export function nextOpenId(

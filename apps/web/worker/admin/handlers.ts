@@ -9,7 +9,7 @@ import {
   translateItems,
   withLlmCallContext,
 } from "../llm.js";
-import { createD1LlmCallLogger } from "../llm-call-log.js";
+import { createD1LlmCallLogger, flushLlmCallWrites } from "../llm-call-log.js";
 import { forceSendDigest } from "../notify/index.js";
 import { rankScore } from "../ranking.js";
 import { adapters } from "../sources/registry.js";
@@ -631,6 +631,9 @@ export async function reprocessToday(
       tokens,
     };
   } finally {
+    // Fire-and-forget `llm_calls` inserts must land before the request
+    // context ends, otherwise the reprocess telemetry is lost.
+    await flushLlmCallWrites();
     reprocessInFlight = false;
   }
 }

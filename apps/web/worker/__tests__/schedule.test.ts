@@ -248,6 +248,48 @@ describe("backfill-translate checkpoints", () => {
   });
 });
 
+describe("LLM step telemetry identity (#189)", () => {
+  const workflow = readFileSync(
+    path.join(webRoot, "worker/workflow.ts"),
+    "utf-8"
+  );
+
+  it("routes every LLM-calling step through llmStep with this run's env + id", () => {
+    for (const name of [
+      "score",
+      "normalize-topics",
+      "merge-similar",
+      "translate",
+      "backfill-score",
+      "qa-translations",
+      "review-suggestions",
+      "review-submissions",
+      "tldr",
+    ]) {
+      expect(workflow).toMatch(
+        new RegExp(
+          `llmStep\\(\\s*step,\\s*this\\.env,\\s*runId,\\s*["'\`]${name}["'\`]`
+        )
+      );
+    }
+    expect(workflow).toMatch(
+      /llmStep\(\s*step,\s*this\.env,\s*runId,\s*`backfill-translate-\$\{offset\}`/
+    );
+  });
+
+  it("keeps the top-of-run install as a default, not the only one", () => {
+    expect(workflow).toContain(
+      "setLlmCallLogger(createD1LlmCallLogger(this.env, runId))"
+    );
+    const stepModule = readFileSync(
+      path.join(webRoot, "worker/workflow-step.ts"),
+      "utf-8"
+    );
+    expect(stepModule).toContain("withRunLlmCallLogger");
+    expect(stepModule).toContain("flushLlmCallWrites");
+  });
+});
+
 describe("create-path workflow_runs persist", () => {
   const ingestSchedule = readFileSync(
     path.join(webRoot, "worker/ingest-schedule.ts"),
