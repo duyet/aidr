@@ -52,6 +52,10 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
     <ErrorBoundary fallback={withoutProvider}>
       <ClerkModuleContext.Provider value={{ mod, publishableKey }}>
         <mod.ClerkProvider
+          // Clerk snapshots redirect options when the provider mounts. Remount
+          // only when navigation locale changes so authenticated callbacks
+          // cannot retain stale URLs; Clerk rehydrates its persisted session.
+          key={navigationLang}
           publishableKey={publishableKey}
           // Absolute URL so handshake redirects never fall back to the
           // publishable-key host (clerk.aidr.today → CF Error 1000).
