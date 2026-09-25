@@ -54,11 +54,17 @@ export const JEV_THEME_TAGS = [
  *  not in env. This hop never spends AnyRouter credits (0/0). */
 export type SystemOneQuestionType = "noul" | "choice" | "score";
 
+/** Choice criteria are an object map on the wire, not an array: AnyRouter's
+ * validate-body rejects `string[]` choice criteria with `invalid_questions`
+ * ("choice criteria must be a non-empty object map"). Score questions keep
+ * the ordered `string[]` levels form. */
+export type SystemOneCriteria = string[] | Record<string, string | null>;
+
 export interface SystemOneQuestion {
   type: SystemOneQuestionType;
   instructions: string;
   /** Required for choice (options) and score (ordered levels). */
-  criteria?: string[];
+  criteria?: SystemOneCriteria;
 }
 
 export type SystemOneQuestions = Record<string, SystemOneQuestion>;
@@ -310,6 +316,15 @@ export function suggestionVerdictFromJev(
   };
 }
 
+/** Choice questions must send criteria as a non-empty object map
+ * (option -> description|null), never as an array. Descriptions are the
+ * question text plus option context; `null` means "no extra description". */
+function choiceCriteriaMap(
+  options: readonly string[]
+): Record<string, string | null> {
+  return Object.fromEntries(options.map((option) => [option, null]));
+}
+
 /** Questions for one story's ranking inputs. Jev returns typed answers,
  * not the free-form tag list the chat rubric writes — one entity and one
  * theme, each allowed to be `none`. */
@@ -337,18 +352,18 @@ export function jevScoreQuestions(
     category: {
       type: "choice",
       instructions: "Which single category fits this story?",
-      criteria: [...categories],
+      criteria: choiceCriteriaMap(categories),
     },
     entity: {
       type: "choice",
       instructions:
         "Which company or model family is this mainly about? Choose none if no specific one stands out.",
-      criteria: [...JEV_ENTITY_TAGS],
+      criteria: choiceCriteriaMap(JEV_ENTITY_TAGS),
     },
     theme: {
       type: "choice",
       instructions: "Which theme fits best? Choose none if nothing fits.",
-      criteria: [...JEV_THEME_TAGS],
+      criteria: choiceCriteriaMap(JEV_THEME_TAGS),
     },
   };
 }

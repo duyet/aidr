@@ -183,23 +183,74 @@ describe("answer mapping", () => {
       "9",
     ]);
     const questions = jevScoreQuestions(CATEGORIES);
+    expect(Array.isArray(questions.importance.criteria)).toBe(true);
     expect(questions.importance.criteria).toEqual([...JEV_SCORE_LEVELS]);
+    expect(questions.importance.criteria).toHaveLength(10);
+    expect(Array.isArray(questions.quality.criteria)).toBe(true);
     expect(questions.quality.criteria).toEqual([...JEV_SCORE_LEVELS]);
+    expect(questions.quality.criteria).toHaveLength(10);
     expect(questions.importance.instructions).toContain(
       "9 is a major industry event"
     );
     expect(questions.quality.instructions).toContain("8-9 is primary");
   });
 
-  it("keeps every Jev criteria array within TypeSafe's ten-item limit", () => {
+  it("sends choice criteria as object maps, not arrays", () => {
+    const questions = jevScoreQuestions(CATEGORIES);
+    for (const id of ["category", "entity", "theme"] as const) {
+      const question = questions[id];
+      expect(question.type).toBe("choice");
+      const criteria = question.criteria;
+      expect(Array.isArray(criteria)).toBe(false);
+      expect(criteria).toBeTypeOf("object");
+      const entries = Object.entries(criteria as Record<string, unknown>);
+      expect(entries.length).toBeGreaterThan(0);
+      for (const [, value] of entries) {
+        expect(value === null || typeof value === "string").toBe(true);
+      }
+    }
+    expect(Object.keys(questions.category.criteria as object)).toEqual([
+      ...CATEGORIES,
+    ]);
+    expect(Object.keys(questions.entity.criteria as object)).toEqual([
+      "none",
+      "openai",
+      "anthropic",
+      "google",
+      "meta",
+      "xai",
+      "microsoft",
+      "amazon",
+      "nvidia",
+      "deepseek",
+    ]);
+    expect(Object.keys(questions.theme.criteria as object)).toEqual([
+      "none",
+      "llm",
+      "agent",
+      "open-source",
+      "inference",
+      "reasoning",
+      "safety",
+      "regulation",
+      "funding",
+      "coding",
+    ]);
+  });
+
+  it("keeps every Jev criteria entry within TypeSafe's ten-item limit", () => {
     const questions = jevScoreQuestions(CATEGORIES);
     expect(CATEGORIES).toHaveLength(10);
     expect(JEV_SCORE_LEVELS).toHaveLength(10);
 
     for (const question of Object.values(questions)) {
-      if (question.criteria) {
-        expect(question.criteria.length).toBeLessThanOrEqual(10);
-      }
+      const criteria = question.criteria;
+      if (!criteria) continue;
+      const size = Array.isArray(criteria)
+        ? criteria.length
+        : Object.keys(criteria).length;
+      expect(size).toBeGreaterThan(0);
+      expect(size).toBeLessThanOrEqual(10);
     }
   });
 
