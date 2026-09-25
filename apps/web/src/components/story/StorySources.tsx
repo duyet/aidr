@@ -2,7 +2,7 @@ import { track } from "@aidr/ui/track";
 import { ExternalLink } from "lucide-react";
 import { useId } from "react";
 import { publisherHost } from "../../lib/publisher-host";
-import type { FeedItem, Lang } from "../../lib/types";
+import type { FeedItem, ItemSource, Lang } from "../../lib/types";
 import { fmtTime } from "./lib";
 
 function safeSourceUrl(value: string | null): string | null {
@@ -41,6 +41,27 @@ function InlineDivider() {
   );
 }
 
+/** Whether a row carries a renderable timestamp. The renderer skips falsy
+ * `posted_at` values, so the filter has to agree: `0` is not a date we can
+ * format, and admitting it would render a lone role label with no content.
+ * Declared as a type guard so callers also get the non-null narrowing. */
+function hasTimestamp(
+  source: ItemSource
+): source is ItemSource & { posted_at: number } {
+  return Boolean(source.posted_at);
+}
+
+/** A source row is only worth rendering when it carries at least one piece of
+ * metadata. The API contract allows metadata-empty rows (e.g. `{ kind:
+ * "source" }`); rendering those would leave a lone, meaningless `SOURCE`
+ * label with no content beside it. */
+function hasRowContent(source: ItemSource): boolean {
+  if (source.author) return true;
+  if (hasTimestamp(source)) return true;
+  if (source.quote) return true;
+  return safeSourceUrl(source.url) != null;
+}
+
 function SourceRow({
   source,
   lang,
@@ -72,7 +93,7 @@ function SourceRow({
         {source.author && (
           <span className="font-semibold">{source.author}</span>
         )}
-        {source.posted_at && (
+        {hasTimestamp(source) && (
           <>
             {source.author && <InlineDivider />}
             <time
@@ -85,12 +106,20 @@ function SourceRow({
         )}
         {source.quote && (
           <>
-            {(source.author || source.posted_at) && <InlineDivider />}
+            {(source.author || hasTimestamp(source)) && <InlineDivider />}
             <span className="text-muted-foreground">“{source.quote}”</span>
           </>
         )}
         {href && (
-          <>
+          /* The divider and the external-link icon stay glued to the atomic
+           * link unit, so neither can be stranded alone at a line end. The unit
+           * is an `inline-block` capped at the row width, so a pathologically
+           * long host may still wrap *within* the unit — it degrades to a
+           * multi-line unit rather than orphaning a piece or overflowing. */
+          <span
+            data-source-meta-unit
+            className="inline-block max-w-full whitespace-nowrap align-baseline"
+          >
             {(source.author || source.posted_at || source.quote) && (
               <InlineDivider />
             )}
@@ -99,7 +128,7 @@ function SourceRow({
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => track("story_open", { item_id: itemId })}
-              className="font-medium text-accent underline decoration-border underline-offset-2 hover:decoration-accent focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="whitespace-normal [overflow-wrap:anywhere] font-medium text-accent underline decoration-border underline-offset-2 hover:decoration-accent focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               aria-label={`${linkLabel}: ${host ?? href}`}
             >
               <ExternalLink
@@ -108,7 +137,7 @@ function SourceRow({
               />
               {host ?? linkLabel}
             </a>
-          </>
+          </span>
         )}
       </span>
     </li>
@@ -127,6 +156,11 @@ export function StorySources({
   const headingId = useId();
   if (sources.length === 0) return null;
 
+  // Contract-valid rows may arrive with no metadata at all. Skipping them keeps
+  // every rendered <li> meaningful; when nothing renderable is left we show an
+  // intentional, localized empty state instead of an empty list.
+  const renderable = sources.filter(hasRowContent);
+
   return (
     <section
       aria-labelledby={headingId}
@@ -138,16 +172,24 @@ export function StorySources({
       >
         {lang === "vi" ? "Nguồn chính" : "Key sources"}
       </h2>
-      <ol className="mt-2 list-none space-y-1">
-        {sources.map((source, index) => (
-          <SourceRow
-            key={`${source.kind}-${source.url ?? source.author ?? "source"}-${index}`}
-            source={source}
-            lang={lang}
-            itemId={itemId}
-          />
-        ))}
-      </ol>
+      {renderable.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {lang === "vi"
+            ? "Chưa có thông tin chi tiết về nguồn."
+            : "No source details are available yet."}
+        </p>
+      ) : (
+        <ol className="mt-2 list-none space-y-1">
+          {renderable.map((source, index) => (
+            <SourceRow
+              key={`${source.kind}-${source.url ?? source.author ?? "source"}-${index}`}
+              source={source}
+              lang={lang}
+              itemId={itemId}
+            />
+          ))}
+        </ol>
+      )}
     </section>
   );
 }

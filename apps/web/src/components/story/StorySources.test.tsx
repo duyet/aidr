@@ -34,6 +34,19 @@ function renderSources(sources: ItemSource[], lang: "en" | "vi" = "vi") {
   );
 }
 
+/** The wire format permits metadata-empty rows (e.g. `{ kind: "source" }`),
+ * which the TypeScript type does not model, so build them explicitly. */
+const emptyRow = (kind = "source") => ({ kind }) as unknown as ItemSource;
+
+/** The divider is the `·` separator. The external-link icon is also
+ * aria-hidden, so match on the separator character rather than the attribute. */
+function dividerIn(root: HTMLElement | null): HTMLElement | null {
+  const candidates = Array.from(
+    root?.querySelectorAll<HTMLElement>("[aria-hidden='true']") ?? []
+  );
+  return candidates.find((el) => (el.textContent ?? "").includes("·")) ?? null;
+}
+
 describe("StorySources", () => {
   it("renders a semantic compact list with connected inline metadata", () => {
     renderSources([
@@ -126,5 +139,163 @@ describe("StorySources", () => {
   it("does not render an empty section", () => {
     const { container } = renderSources([]);
     expect(container.firstChild).toBeNull();
+  });
+
+  it("keeps the divider, external-link icon, and host in one non-breaking unit", () => {
+    const { container } = renderSources([source], "en");
+
+    // happy-dom performs no layout, so wrapping cannot be observed directly.
+    // Assert the DOM contract that produces it: the separator and the link
+    // share a single nowrap unit instead of being independent siblings.
+    const unit = container.querySelector<HTMLElement>(
+      "[data-source-meta-unit]"
+    );
+    expect(unit).toBeTruthy();
+    expect(unit?.className).toContain("whitespace-nowrap");
+    // Atomic unit capped at the row width, so a long host wraps inside the
+    // unit rather than overflowing the row.
+    expect(unit?.className).toContain("inline-block");
+    expect(unit?.className).toContain("max-w-full");
+
+    const link = screen.getByRole("link", {
+      name: "Open source: anthropic.com",
+    });
+    expect(unit?.contains(link)).toBe(true);
+    expect(unit?.querySelector("svg")).toBe(link.querySelector("svg"));
+    expect(dividerIn(unit)).toBeTruthy();
+    expect(unit?.textContent).toContain("·");
+    expect(unit?.textContent).toContain("anthropic.com");
+  });
+
+  it("keeps the unit bound to the row for an over-long publisher host", () => {
+    const host = `${"very-long-subdomain.".repeat(8)}example.com`;
+    const { container } = renderSources(
+      [{ ...source, url: `https://${host}/a-very-long-path-segment` }],
+      "en"
+    );
+
+    const unit = container.querySelector<HTMLElement>(
+      "[data-source-meta-unit]"
+    );
+    expect(unit?.className).toContain("max-w-full");
+    expect(unit?.textContent).toContain(host);
+    // The host is allowed to break internally, so no horizontal overflow.
+    expect(unit?.querySelector("a")?.className).toContain(
+      "overflow-wrap:anywhere"
+    );
+  });
+
+  it("renders a localized empty state instead of a lone role label", () => {
+    const { container } = renderSources([emptyRow("source")], "vi");
+    const section = screen.getByRole("region", { name: "Nguồn chính" });
+
+    expect(section.tagName).toBe("SECTION");
+    expect(container.textContent).toContain(
+      "Chưa có thông tin chi tiết về nguồn."
+    );
+    expect(screen.queryByText("SOURCE")).toBeNull();
+    // No empty list is announced.
+    expect(within(section).queryByRole("list")).toBeNull();
+    expect(container.querySelector("[data-source-meta-unit]")).toBeNull();
+  });
+
+  it("renders the English empty state for metadata-empty rows", () => {
+    renderSources([emptyRow("source")], "en");
+    const section = screen.getByRole("region", { name: "Key sources" });
+    expect(section.textContent).toContain(
+      "No source details are available yet."
+    );
+    expect(within(section).queryByRole("list")).toBeNull();
+  });
+
+  it("skips metadata-empty rows while keeping the list accessible", () => {
+    renderSources(
+      [emptyRow("discussion"), source, emptyRow("source"), emptyRow("support")],
+      "en"
+    );
+
+    const section = screen.getByRole("region", { name: "Key sources" });
+    const list = within(section).getByRole("list");
+    const rows = within(list).getAllByRole("listitem");
+
+    expect(list.tagName).toBe("OL");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain("Anthropic");
+    expect(screen.queryByText("DISCUSSION")).toBeNull();
+    expect(screen.queryByText("SUPPORT")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Open source: anthropic.com" })
+    ).toBeTruthy();
+  });
+
+  it("treats an unsafe-URL-only row as metadata-empty", () => {
+    const { container } = renderSources(
+      [
+        {
+          kind: "support",
+          author: null,
+          posted_at: null,
+          quote: null,
+          url: "javascript:alert('nope')",
+        },
+      ],
+      "en"
+    );
+
+    expect(container.textContent).toContain(
+      "No source details are available yet."
+    );
+    expect(screen.queryByText("SUPPORT")).toBeNull();
+    expect(container.querySelector("a")).toBeNull();
+  });
+
+  it("treats a zero timestamp as absent rather than content", () => {
+    // `posted_at: 0` is falsy, so the renderer prints no <time> for it. The
+    // filter must agree, or the row survives as a lone role label.
+    const { container } = renderSources(
+      [{ kind: "source", author: null, posted_at: 0, quote: null, url: null }],
+      "en"
+    );
+
+    expect(container.querySelector("time")).toBeNull();
+    expect(screen.queryByText("SOURCE")).toBeNull();
+    expect(container.textContent).toContain(
+      "No source details are available yet."
+    );
+  });
+
+  it("never renders a lone role label for a zero-timestamp row in a list", () => {
+    renderSources(
+      [
+        { kind: "source", author: null, posted_at: 0, quote: null, url: null },
+        { kind: "support", author: null, posted_at: 0, quote: null, url: null },
+        source,
+      ],
+      "en"
+    );
+
+    const section = screen.getByRole("region", { name: "Key sources" });
+    const rows = within(section).getAllByRole("listitem");
+
+    // Only the genuinely populated row survives; the two zero-timestamp rows
+    // are gone, so no label is left stranded without content.
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain("Anthropic");
+    // The lone-label tell: a label whose row has no other content.
+    const labels = within(section)
+      .getAllByText(/^(SOURCE|SUPPORT|THẢO LUẬN|DISCUSSION)$/)
+      .filter((el) => (el.parentElement?.textContent ?? "") === el.textContent);
+    expect(labels).toHaveLength(0);
+  });
+
+  it("keeps a real timestamp rendered next to its author", () => {
+    // Guards the other direction: the shared predicate must not start
+    // swallowing genuine timestamps.
+    renderSources([{ ...source, posted_at: 1 }], "en");
+
+    const time = document.querySelector("time");
+    expect(time).toBeTruthy();
+    expect(time?.getAttribute("datetime")).toBe(new Date(1000).toISOString());
+    expect(screen.getByText("Anthropic")).toBeTruthy();
   });
 });
