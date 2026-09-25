@@ -105,22 +105,29 @@ Source URLs are limited to absolute HTTP(S), at most 1,024 characters, with at
 most eight output links (and a bounded input scan). Source URLs are parsed as
 URLs rather than scanned as serialized strings. The Worker rejects fragments,
 credential-like path segments, and malformed/over-encoded URL components, then
-recursively decodes each `URLSearchParams` key and value within a fixed budget.
+runs one fixed, bounded decode/inspect pipeline for every URL component: URI
+decoding is limited to three post-`URLSearchParams` rounds, followed by one
+JSON-escape pass per decoded layer. Malformed JSON escapes, nested escape
+layers, and newly-created percent layers fail closed; structured JSON
+inspection is bounded to four levels and 64 nodes. The canonical value is
+emitted after that single pipeline and is never recursively decoded again.
 Every decoded key is checked for credential meaning before the safe-key or
 `utm_*` allowlist is applied, so names such as `utm_token`,
-`utm_client_secret`, and encoded variants are rejected. Only allowlisted
-navigation and attribution keys are retained. Basic/Bearer schemes,
-JWT-shaped values, encoded fragments, and compound/nested credential
-assignments (including `=`/`:`-delimited keys in quoted or JSON-like values)
-are rejected even when hidden inside an otherwise allowlisted value. Safe
-values are trimmed and normalized. `//` is rejected anywhere in
-the normalized value, including after Markdown, HTML, or bracket punctuation.
-Nested absolute/scheme-relative URL syntax and whitespace-normalized dangerous
-schemes such as `javascript:`, `data:`, `vbscript:`, `file:`, and `blob:` are
-rejected outright after recursive decoding, regardless of assignment/query
-depth. This avoids an unbounded nested-URL graph and preserves no-fetch
-semantics; only the outer source URL itself is parsed and emitted. The same
-structured query sanitizer is used for redirect queries.
+`utm_client_secret`, and JSON/URI-escaped variants are rejected. Only
+allowlisted navigation and attribution keys are retained. Basic/Bearer
+schemes, JWT-shaped values, encoded fragments, and compound/nested credential
+assignments (including `=`/`:`-delimited keys in quoted, JSON-like, Markdown,
+or HTML-wrapped values) are rejected even when hidden inside an otherwise
+allowlisted value. Safe ordinary values and safe `utm_*` attribution values are
+trimmed and normalized. `//` is rejected anywhere in the normalized value,
+including after Markdown, HTML, or bracket punctuation. Nested
+absolute/scheme-relative URL syntax and whitespace-normalized dangerous schemes
+such as `javascript:`, `data:`, `vbscript:`, `file:`, and `blob:` are rejected
+outright after the fixed decode pipeline, regardless of assignment/query depth.
+The same structured query sanitizer is used for redirect queries and the same
+component inspector is applied to path segments, where backslash/JSON-escape
+layers fail closed; this avoids an unbounded nested-URL graph and preserves
+no-fetch semantics. Only the outer source URL itself is parsed and emitted.
 Loopback, private, link-local, metadata, and credential-bearing destinations are
 omitted. Redirect `Location` values and bodies never preserve rejected fields.
 Summaries are capped at 1,200 characters and the complete response is capped at

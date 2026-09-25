@@ -143,6 +143,22 @@ function renderWithoutFetch(
   }
 }
 
+function renderedSourceUrls(body: string): string[] {
+  return JSON.parse(
+    body.match(/^source_urls: (.+)$/m)?.[1] ?? "null"
+  ) as string[];
+}
+
+function sourceLink(url: string): ItemSource {
+  return {
+    kind: "source",
+    author: null,
+    posted_at: null,
+    quote: null,
+    url,
+  };
+}
+
 function failingDb(): D1Database {
   const failure = new Error("D1 secret=do-not-log");
   const reader = {
@@ -546,6 +562,203 @@ describe("story Markdown rendering", () => {
     }
   });
 
+  it("rejects JSON-escaped credentials and nested URL fragments in rendered sources", () => {
+    const body = renderWithoutFetch(
+      story({
+        url: "https://example.com/safe",
+        sources: [
+          sourceLink(
+            "https://example.com/keep?q=topic%3Aagents&utm_source=agent&utm_campaign=summer%3Asale"
+          ),
+          sourceLink("https://example.com/json?q=%7B%22topic%22%3A%22AI%22%7D"),
+          sourceLink(
+            `https://example.com/raw?q=${String.raw`api\u005fkey=raw-json-secret`}`
+          ),
+          sourceLink(
+            "https://example.com/encoded?q=api%5Cu005fkey%3Dencoded-json-secret"
+          ),
+          sourceLink(
+            "https://example.com/double?q=api%255Cu005fkey%253Ddouble-json-secret"
+          ),
+          sourceLink(
+            `https://example.com/id?q=${String.raw`id\u005ftoken\u003a id-json-secret`}`
+          ),
+          sourceLink(
+            `https://example.com/fragment?q=${String.raw`prefix{"api\u005fkey":"fragment-secret"}suffix`}`
+          ),
+          sourceLink(
+            `https://example.com/markdown?q=${String.raw`[story](https\u003a\u002f\u002f127.0.0.1/admin)`}`
+          ),
+          sourceLink(
+            `https://example.com/html?q=${String.raw`<a href="java\u0073cript:html-secret">x</a>`}`
+          ),
+          sourceLink(
+            `https://example.com/key?${encodeURIComponent(String.raw`api\u005fkey`)}=key-secret`
+          ),
+          sourceLink(
+            `https://example.com/key?${encodeURIComponent(String.raw`id\u005ftoken`)}=id-key-secret`
+          ),
+        ],
+      })
+    );
+    const sourceUrls = renderedSourceUrls(body);
+
+    expect(sourceUrls).toEqual(
+      expect.arrayContaining([
+        "https://example.com/keep?q=topic%3Aagents&utm_source=agent&utm_campaign=summer%3Asale",
+        "https://example.com/json?q=%7B%22topic%22%3A%22AI%22%7D",
+      ])
+    );
+    for (const secret of [
+      "api\\u005fkey",
+      "id\\u005ftoken",
+      "raw-json-secret",
+      "encoded-json-secret",
+      "double-json-secret",
+      "id-json-secret",
+      "fragment-secret",
+      "html-secret",
+      "key-secret",
+      "id-key-secret",
+      "127.0.0.1",
+      "https\\u003a",
+    ]) {
+      expect(body).not.toContain(secret);
+    }
+  });
+
+  it("applies escaped-component filtering to path segments and redirect Locations", async () => {
+    const pathBody = renderWithoutFetch(
+      story({
+        url: "https://example.com/safe",
+        sources: [
+          sourceLink(
+            `https://example.com/${encodeURIComponent(String.raw`api\u005fkey`)}/path-secret`
+          ),
+          sourceLink(
+            `https://example.com/${encodeURIComponent(String.raw`id\u005ftoken`)}/double-path-secret`
+          ),
+          sourceLink(
+            `https://example.com/${encodeURIComponent(String.raw`java\u0073cript:alert(1)`)}`
+          ),
+          sourceLink(
+            `https://example.com/${encodeURIComponent(String.raw`https\u003a\u002f\u002f127.0.0.1`)}`
+          ),
+          sourceLink(
+            `https://example.com/${String.raw`java\u0073cript:raw-path-secret`}`
+          ),
+          sourceLink("https://example.com/path%20segment"),
+        ],
+      })
+    );
+    expect(renderedSourceUrls(pathBody)).toEqual([
+      "https://example.com/safe",
+      "https://example.com/path%20segment",
+    ]);
+    expect(pathBody).not.toContain("path-secret");
+    expect(pathBody).not.toContain("raw-path-secret");
+    expect(pathBody).not.toContain("java");
+    expect(pathBody).not.toContain("127.0.0.1");
+
+    const entries: Array<[string, string]> = [
+      ["q", String.raw`api\u005fkey=redirect-secret`],
+      ["q", String.raw`id\u005ftoken\u003a redirect-id-secret`],
+      ["q", String.raw`prefix{"api\u005fkey":"redirect-json-secret"}suffix`],
+      ["q", String.raw`java\u0073cript:redirect-js-secret`],
+      ["q", String.raw`https\u003a\u002f\u002f169.254.169.254/latest`],
+      ["q", "api%5Cu005fkey%3Dencoded-redirect-secret"],
+      ["q", "api%255Cu005fkey%253Ddouble-redirect-secret"],
+      [String.raw`api\u005fkey`, "redirect-key-secret"],
+      [String.raw`id\u005ftoken`, "redirect-id-key-secret"],
+      ["q", "topic:agents"],
+      ["utm_source", "agent"],
+      ["utm_campaign", "summer:sale"],
+    ];
+    const search = [
+      "locale=en",
+      ...entries.map(([key, value]) => `${key}=${encodeURIComponent(value)}`),
+    ].join("&");
+    const response = await handleStoryMarkdownRequest(
+      new Request(`${SITE_URL}/api/story/abcdef1234567890.md?${search}`),
+      fakeDb(story())
+    );
+    const location = response.headers.get("location");
+    const responseBody = await response.text();
+
+    expect(response.status).toBe(307);
+    expect(location).toBe(
+      `${SITE_URL}/api/story/abcdef12.md?q=topic%3Aagents&utm_source=agent&utm_campaign=summer%3Asale&lang=en`
+    );
+    for (const secret of [
+      "api\\u005fkey",
+      "id\\u005ftoken",
+      "redirect-secret",
+      "redirect-id-secret",
+      "redirect-json-secret",
+      "redirect-js-secret",
+      "169.254.169.254",
+      "encoded-redirect-secret",
+      "double-redirect-secret",
+      "redirect-key-secret",
+      "redirect-id-key-secret",
+    ]) {
+      expect(location).not.toContain(secret);
+      expect(responseBody).not.toContain(secret);
+    }
+  });
+
+  it("drops malformed and overlong escaped components while retaining safe UTM", () => {
+    const body = renderWithoutFetch(
+      story({
+        url: "https://example.com/safe",
+        sources: [
+          sourceLink(
+            `https://example.com/safe-query?q=${String.raw`topic\u003aagents`}&utm%5Cu005fsource=agent&utm_campaign=summer%3Asale`
+          ),
+          sourceLink("https://example.com/malformed?q=%ZZ"),
+          sourceLink("https://example.com/utf8?q=%E0%A4%A"),
+          sourceLink("https://example.com/utf8-invalid?q=%E0%A4"),
+          sourceLink(
+            `https://example.com/bad-json?q=${String.raw`topic\uZZZZ=bad-secret`}`
+          ),
+          sourceLink(`https://example.com/long?q=${"a".repeat(300)}`),
+          sourceLink(
+            "https://example.com/overencoded?q=%2525255Cu005fkey%253Dover-secret"
+          ),
+          sourceLink(
+            `https://example.com/deep?q=${encodeURIComponent(
+              `${"[".repeat(5)}"bounded"${"]".repeat(5)}`
+            )}`
+          ),
+        ],
+      })
+    );
+    const sourceUrls = renderedSourceUrls(body);
+
+    expect(sourceUrls).toContain(
+      "https://example.com/safe-query?q=topic%3Aagents&utm_source=agent&utm_campaign=summer%3Asale"
+    );
+    expect(body).not.toContain("bad-secret");
+    expect(body).not.toContain("over-secret");
+    expect(body).not.toContain("deep");
+  });
+
+  it("does not make network calls while filtering escaped source URLs", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+      throw new Error("unexpected fetch");
+    });
+    try {
+      const body = renderStoryMarkdown(
+        story({
+          url: `https://example.com/?q=${String.raw`api\u005fkey=must-not-fetch`}`,
+        })
+      );
+      expect(body).not.toContain("must-not-fetch");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
   it("selects Vietnamese and records an explicit English fallback", () => {
     const translated = renderStoryMarkdown(
       story({
