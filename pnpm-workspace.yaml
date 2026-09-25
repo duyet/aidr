@@ -13,6 +13,7 @@ allowBuilds:
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@tanstack/*"
+  - "@clerk/*"
   - cn
   - wrangler
   - workerd
