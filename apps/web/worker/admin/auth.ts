@@ -76,6 +76,27 @@ export function checkAuth(request: Request, env: Env): Response | null {
   return null;
 }
 
+/** Stable, non-secret actor label for audit records. Clerk subjects are
+ *  included only after the same admin authorization check used by the route. */
+export async function adminActor(
+  request: Request,
+  env: Env
+): Promise<string | null> {
+  const token = getBearerToken(request);
+  if (!token) return null;
+  if (
+    env.NEWS_ADMIN_TOKEN &&
+    timingSafeEqualStrings(token, env.NEWS_ADMIN_TOKEN)
+  ) {
+    return "admin-token";
+  }
+  const payload = await verifyClerkToken(token, env);
+  if (payload && isClerkAdmin(payload, env) && payload.sub) {
+    return `clerk:${payload.sub}`.slice(0, 128);
+  }
+  return null;
+}
+
 /**
  * True when the request's bearer token resolves to an admin via either
  * mechanism: the static `NEWS_ADMIN_TOKEN`, or a valid Clerk session JWT

@@ -1,4 +1,5 @@
 import { logLlmCall } from "./llm.js";
+import { sanitizeError } from "./telemetry-safe.js";
 import type { Env } from "./types.js";
 
 /** Canonical AnyRouter catalog id. Upstream TypeSafe names (jev-latest,
@@ -165,9 +166,10 @@ export async function callSystemOne(
       signal: AbortSignal.timeout(30_000),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const safe = sanitizeError(error);
+    const message = safe?.message ?? "Provider request failed";
     console.error("jev systemone request failed:", message);
-    return fail(message);
+    return fail(`jev systemone request failed: ${message}`);
   }
   // Clone before reading so the original body stays readable if the same
   // Response object is observed again (chat fallback after this hop).
@@ -175,28 +177,27 @@ export async function callSystemOne(
   try {
     bodyRes = res.clone();
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const safe = sanitizeError(error);
+    const message = safe?.message ?? "Provider response invalid";
     console.error("jev systemone response unreadable:", message);
-    return fail(message);
+    return fail(`jev systemone response unreadable: ${message}`);
   }
   if (!res.ok) {
-    let detail = "";
-    try {
-      detail = await bodyRes.text();
-    } catch {
-      detail = "";
-    }
-    const message = `jev systemone request failed: ${res.status} ${detail}`;
-    console.error(message);
-    return fail(message);
+    // Do not await cancellation: some runtimes keep a cloned body pending
+    // until the original response is consumed.  The status is sufficient
+    // telemetry, and the provider body is deliberately never read or logged.
+    void bodyRes.body?.cancel().catch(() => {});
+    console.error("jev systemone request failed:", res.status);
+    return fail(`jev systemone request failed: ${res.status}`);
   }
   let data: SystemOneResponse;
   try {
     data = (await bodyRes.json()) as SystemOneResponse;
   } catch (error) {
-    const message = `jev systemone bad JSON: ${error instanceof Error ? error.message : String(error)}`;
-    console.error(message);
-    return fail(message);
+    const safe = sanitizeError(error);
+    const message = safe?.message ?? "Provider returned an invalid response";
+    console.error("jev systemone bad JSON:", message);
+    return fail(`jev systemone bad JSON: ${message}`);
   }
   if (!data || typeof data !== "object" || !data.answers) {
     console.error("jev systemone response missing answers");

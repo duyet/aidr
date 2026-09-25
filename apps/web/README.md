@@ -200,9 +200,30 @@ curl -X POST https://aidr.today/api/admin/ingest \
 Other routes: `GET /api/admin/sources`, `PUT /api/admin/sources/:id`,
 `DELETE /api/admin/sources/:id`, `GET /api/admin/status`.
 
+Translation review operators can inspect the durable human queue and resolve
+an item without exposing provider responses:
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  'https://aidr.today/api/admin/translation-reviews?limit=50'
+curl -X POST https://aidr.today/api/admin/translation-reviews/<attempt-id>/resolve \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"accept_original","note":"Checked against the source article."}'
+```
+
+Use `action: "retry"` to requeue a stale human decision. It is a single
+operator-triggered allowance (`can_retry` is returned by the queue); after that
+run fails, the item returns to `human_review` and cannot bypass the automatic
+three-attempt cap. Both actions record the authenticated actor, timestamp, and
+bounded note. Before deployment, run `pnpm run check:migrations` and
+`pnpm run verify:translation-schema`; both are read-only checks and are hard
+prerequisites of `pnpm run deploy`.
+
 Item fields: `url`, `title` (required), `summary`, `source_id` (defaults to
-`push`), `published_at` (**epoch milliseconds**, defaults to now),
-`points`, `comments`, `category`, `tags`, `title_vi`, `summary_vi`,
+`push`), `source_lang` (`en` or `vi`, defaults to `en`),
+`published_at` (**epoch milliseconds**, defaults to now), `points`, `comments`,
+`category`, `tags`, `title_vi`, `summary_vi`,
 `relevance`/`importance`/`quality` (supplying any of these marks the item
 `published` immediately instead of `new`).
 
@@ -282,14 +303,23 @@ admin). Pick a template, optionally wrap with AI, then send to the
 confirmed list from `notes@aidr.today`. One-click `List-Unsubscribe` is
 set on digest and campaign mail.
 
-`wrangler deploy` does not apply D1 SQL migrations. `pnpm run d1:migrate`
-(`wrangler d1 migrations apply aidr --config wrangler.toml --remote`) is
-**not** chained into `deploy` — the current `CLOUDFLARE_API_TOKEN` can
-publish the Worker but Cloudflare API 7403s on D1 `migrations.apply`.
-Migrate-on-deploy needs a token with **Account D1 Edit**. Until that is
-fixed, run migrate separately (do not swallow migrate failures inside
-`deploy`). `ensureVendorBlogSources` still upserts vendor RSS rows at
-ingest as a safety net.
+`wrangler deploy` does not apply D1 SQL migrations. The deploy script runs
+`pnpm run check:migrations` (local filename order) and
+`pnpm run verify:translation-schema` first and fails closed if the required
+translation-review migrations are pending; it never applies them. Run
+`pnpm run d1:migrate` (`wrangler d1 migrations apply aidr --config
+wrangler.toml --remote`) separately in numeric order: 0023 translation QA,
+0024 media when #160 is integrated, then 0025 run identity when #161 is
+integrated. Translation QA is complete in 0023; do not add a competing 0025
+translation migration. Legacy `translations.lang` values are reconciled as
+`lang=vi` → EN→VI and `lang=en` → VI→EN before the queue is queried. Review
+claims use a five-minute renewable lease and a source-revision CAS; successful
+repairs retain the final re-review attempt as current provenance. Rerun the
+read-only verifier after each apply. The current `CLOUDFLARE_API_TOKEN` can
+publish the Worker but Cloudflare API 7403s on D1 `migrations.apply`;
+migrate-on-deploy needs a token with **Account D1 Edit**.
+Do not swallow migrate failures inside `deploy`. `ensureVendorBlogSources` still
+upserts vendor RSS rows at ingest as a safety net.
 
 ```bash
 pnpm exec wrangler d1 migrations apply aidr --config wrangler.toml --remote

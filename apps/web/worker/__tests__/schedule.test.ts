@@ -89,6 +89,25 @@ describe("live AnyRouter model chains", () => {
     ]);
   });
 
+  it("keeps the translation reviewer explicit and disjoint from generators", () => {
+    const reviewer = idsOf("ANYROUTER_REVIEW_MODEL");
+    const generators = new Set([
+      ...idsOf("ANYROUTER_MODEL"),
+      ...idsOf("ANYROUTER_TRANSLATE_MODEL"),
+      ...idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL"),
+    ]);
+    expect(reviewer.length).toBeGreaterThan(0);
+    expect(reviewer).not.toContain("anyrouter/auto");
+    for (const model of reviewer)
+      expect(generators.has(model), model).toBe(false);
+  });
+
+  it("configures a separate explicit VI→EN generator", () => {
+    expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
+      "google/gemini-3.5-flash",
+    ]);
+  });
+
   it("does not hard-code 404/502 flash fallbacks", () => {
     for (const name of [
       "ANYROUTER_MODEL",
@@ -148,19 +167,16 @@ describe("live AnyRouter model chains", () => {
 });
 
 describe("translation upsert", () => {
-  const workflow = readFileSync(
-    path.join(webRoot, "worker/workflow.ts"),
-    "utf-8"
-  );
+  const d1Bind = readFileSync(path.join(webRoot, "worker/d1-bind.ts"), "utf-8");
 
   it("writes title on conflict so backfill can replace an empty title_vi", () => {
-    const upserts = workflow.match(
-      /ON CONFLICT\(item_id, lang\) DO UPDATE SET[\s\S]{0,80}/g
-    );
-    expect(upserts?.length).toBeGreaterThanOrEqual(2);
-    for (const sql of upserts ?? []) {
-      expect(sql).toContain("title = excluded.title");
-    }
+    const upsert = d1Bind.match(
+      /export const TRANSLATION_UPSERT_SQL = `([\s\S]*?)`;/
+    )?.[1];
+    expect(upsert).toBeDefined();
+    expect(upsert).toContain("ON CONFLICT(item_id, lang) DO UPDATE SET");
+    expect(upsert).toContain("title = excluded.title");
+    expect(upsert).toContain("summary = excluded.summary");
   });
 });
 
@@ -198,6 +214,7 @@ describe("backfill-translate checkpoints", () => {
     expect(workflow).toContain("LLM_STEP");
     expect(workflow).toMatch(/retries:\s*\{\s*limit:\s*0/);
     expect(workflow).toContain("safeStep(");
+    expect(workflow).toContain("schema missing; apply migration 0023");
     expect(workflow).toContain('"score"');
     expect(workflow).toContain('"translate"');
     expect(workflow).toContain('"tldr"');

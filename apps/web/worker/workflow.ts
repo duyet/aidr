@@ -16,9 +16,10 @@ import {
 import {
   buildItemBindArgs,
   buildItemSourceBindArgs,
-  buildTranslationBindArgs,
   MAX_SOURCES_PER_ITEM,
   nn,
+  prepareTranslationQaInvalidation,
+  prepareTranslationUpsert,
 } from "./d1-bind.js";
 import {
   buildMergePlan,
@@ -57,12 +58,15 @@ import type { FetchedItem, FetchedItemSource } from "./sources/types.js";
 import { reviewPendingSubmissions } from "./submissions.js";
 import { sendDailyTldr } from "./subscribe/send.js";
 import { reviewPendingSuggestions } from "./suggestions.js";
+import { sanitizeError } from "./telemetry-safe.js";
 import { toEpochSeconds } from "./time.js";
 import { ensureDailyTldr } from "./tldr.js";
-import { looksVietnamese } from "./tldr-lang.js";
 import { captureAndLearnTopics } from "./topic-learning.js";
 import { MAX_MERGED_TOPICS, normalizeTopics, unionTopics } from "./topics.js";
-import { ratePendingTranslations } from "./translation-qa.js";
+import {
+  ratePendingTranslations,
+  TranslationReviewSchemaError,
+} from "./translation-qa.js";
 import type { Env } from "./types.js";
 import {
   ingestRunId,
@@ -148,6 +152,10 @@ type StepRetryConfig =
 /** Catch Workflow engine failures (timeout / retries exhausted). Inner
  * try/catch around the callback does not run when `step.do` itself throws,
  * and a failed step with retries:0 can skip later steps including close-run. */
+function safeErrorMessage(error: unknown): string {
+  return sanitizeError(error)?.message ?? "unknown error";
+}
+
 async function safeStep<T>(
   step: WorkflowStep,
   name: string,
@@ -170,7 +178,7 @@ async function safeStep<T>(
         );
     return result;
   } catch (error) {
-    console.error(`${name} step failed:`, error);
+    console.error(`${name} step failed:`, safeErrorMessage(error));
     return fallback;
   }
 }
@@ -359,7 +367,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           // pipeline as anything freshly fetched.
           const { results: pendingNew } = await this.env.DB.prepare(
             `SELECT id, source_id, external_id, url, title, summary,
-                  published_at, points, comments, image_url
+                  published_at, points, comments, image_url, source_lang
            FROM items WHERE status = 'new'`
           ).all<{
             id: string;
@@ -372,6 +380,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             points: number;
             comments: number;
             image_url: string | null;
+            source_lang: "en" | "vi";
           }>();
           for (const row of pendingNew ?? []) {
             const source = sources.find((s) => s.id === row.source_id) ?? {
@@ -392,6 +401,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 points: row.points,
                 comments: row.comments,
                 imageUrl: row.image_url ?? undefined,
+                sourceLang: row.source_lang,
               },
             });
           }
@@ -655,6 +665,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                   i,
                   title: row.item.title,
                   summary: row.item.summary,
+                  sourceLang: row.item.sourceLang ?? "en",
                 }))
               );
               const map = new Map<string, (typeof results)[number]>();
@@ -768,8 +779,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 id, source_id, external_id, url, title, summary,
                 published_at, fetched_at, points, comments,
                 llm_relevance, llm_importance, llm_quality, category, tags,
-                rank_score, status, llm_tokens, duplicate_of, image_url
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                rank_score, status, llm_tokens, duplicate_of, image_url,
+                -- 0024 integration appends media_manifest after this slot.
+                source_lang
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT(id) DO UPDATE SET
                 published_at = excluded.published_at,
                 points = excluded.points,
@@ -784,7 +797,12 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 status = excluded.status,
                 llm_tokens = excluded.llm_tokens,
                 duplicate_of = excluded.duplicate_of,
-                image_url = excluded.image_url`
+                image_url = excluded.image_url,
+                source_lang = CASE
+                   WHEN items.source_lang = 'vi' AND excluded.source_lang = 'en'
+                   THEN items.source_lang
+                   ELSE excluded.source_lang
+                 END`
             ).bind(
               ...buildItemBindArgs({
                 id,
@@ -802,12 +820,12 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
 
           // The translate step can be skipped (empty batch result) or the
           // LLM can omit a field entirely; only insert when both are usable.
-          // Source titles that are already Vietnamese are stored as title_vi
-          // so the homepage does not paint an EN badge on Vietnamese text.
+          // Explicit VI source items are stored as title_vi so the homepage
+          // does not paint an EN badge; no text heuristic chooses direction.
           // Persist VI titles only for published items — rejected/merged
           // rows must not create translations entries (native or LLM).
           const nativeViTitle =
-            !translation?.title && looksVietnamese(item.title)
+            item.sourceLang === "vi" && !translation?.title
               ? {
                   title: item.title.trim(),
                   summary: item.summary?.trim() ?? "",
@@ -824,18 +842,14 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               : null;
           if (persisted) {
             statements.push(
-              this.env.DB.prepare(
-                `INSERT INTO translations (item_id, lang, title, summary)
-                 VALUES (?, 'vi', ?, ?)
-                 ON CONFLICT(item_id, lang) DO UPDATE SET
-                   title = excluded.title, summary = excluded.summary`
-              ).bind(
-                ...buildTranslationBindArgs({
-                  id,
-                  title: persisted.title,
-                  summary: persisted.summary,
-                })
-              )
+              prepareTranslationUpsert(this.env.DB, {
+                id,
+                lang: "vi",
+                sourceLang: item.sourceLang ?? "en",
+                targetLang: "vi",
+                title: persisted.title,
+                summary: persisted.summary,
+              })
             );
           }
 
@@ -1040,6 +1054,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                   )
                     .bind(nn(plan.summary), nn(plan.imageUrl), nn(row.id))
                     .run();
+                  await prepareTranslationQaInvalidation(
+                    this.env.DB,
+                    row.id
+                  ).run();
 
                   if (sources.length === 0) return;
                   const { results: existingSources } =
@@ -1085,11 +1103,21 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       const missingTranslations = await safeStep(
         step,
         "backfill-translate-load",
-        [] as { id: string; title: string; summary: string }[],
+        [] as {
+          id: string;
+          title: string;
+          summary: string;
+          source_lang: string;
+        }[],
         async () => {
           const { results } = await this.env.DB.prepare(
             buildMissingTranslationQuery()
-          ).all<{ id: string; title: string; summary: string }>();
+          ).all<{
+            id: string;
+            title: string;
+            summary: string;
+            source_lang: string;
+          }>();
           return results ?? [];
         }
       );
@@ -1122,26 +1150,21 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                       i,
                       title: row.title,
                       summary: row.summary,
+                      sourceLang: row.source_lang === "vi" ? "vi" : "en",
                     }))
                   );
                   for (const result of translated) {
                     partTokens += result.tokens;
                     const row = rows[result.i];
                     if (!row || !result.title) continue;
-                    await this.env.DB.prepare(
-                      `INSERT INTO translations (item_id, lang, title, summary)
-               VALUES (?, 'vi', ?, ?)
-               ON CONFLICT(item_id, lang) DO UPDATE SET
-                 title = excluded.title, summary = excluded.summary`
-                    )
-                      .bind(
-                        ...buildTranslationBindArgs({
-                          id: row.id,
-                          title: result.title,
-                          summary: result.summary ?? "",
-                        })
-                      )
-                      .run();
+                    await prepareTranslationUpsert(this.env.DB, {
+                      id: row.id,
+                      lang: "vi",
+                      sourceLang: row.source_lang === "vi" ? "vi" : "en",
+                      targetLang: "vi",
+                      title: result.title,
+                      summary: result.summary ?? "",
+                    }).run();
                     count++;
                   }
                 } catch (error) {
@@ -1265,13 +1288,21 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       const qaStats = await safeStep(
         step,
         "qa-translations",
-        { rated: 0, adjusted: 0, tokens: 0 },
+        { rated: 0, adjusted: 0, tokens: 0, error: "" },
         async () => {
           try {
             return await ratePendingTranslations(this.env);
           } catch (error) {
-            console.error("qa-translations step failed:", error);
-            return { rated: 0, adjusted: 0, tokens: 0 };
+            if (error instanceof TranslationReviewSchemaError) {
+              return {
+                rated: 0,
+                adjusted: 0,
+                tokens: 0,
+                error: "schema missing; apply migration 0023",
+              };
+            }
+            console.error("qa-translations step failed");
+            return { rated: 0, adjusted: 0, tokens: 0, error: "review failed" };
           }
         },
         LLM_STEP
@@ -1282,9 +1313,11 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       recordStep(
         steps,
         "qa-translations",
-        qaRated === 0
-          ? "0 pending translations"
-          : `rated ${qaRated} translations, adjusted ${qaAdjusted}`
+        "error" in qaStats && qaStats.error
+          ? qaStats.error
+          : qaRated === 0
+            ? "0 pending translations"
+            : `rated ${qaRated} translations, adjusted ${qaAdjusted}`
       );
 
       const suggestionsStats = await safeStep(
@@ -1349,7 +1382,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             return {
               generated: false,
               tokens: 0,
-              reason: error instanceof Error ? error.message : String(error),
+              reason: sanitizeError(error)?.message ?? "tldr failed",
             };
           }
         },
@@ -1417,7 +1450,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       // skip later steps, including `record-run` in this finally). A
       // finished ingest must always insert a workflow_runs row so
       // /api/system lastRun/runsToday move.
-      runError = error instanceof Error ? error.message : String(error);
+      runError = sanitizeError(error)?.message ?? "ingest run failed";
       console.error("ingest run failed:", error);
     } finally {
       recordStep(steps, "close-run", "recording");

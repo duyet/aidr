@@ -1,4 +1,4 @@
-import { nn } from "./d1-bind.js";
+import { nn, prepareTranslationUpsert } from "./d1-bind.js";
 import { callAnyrouter, parseJson, VI_STYLE } from "./llm.js";
 import {
   checkRateLimit,
@@ -225,6 +225,7 @@ interface PendingSuggestionRow {
 interface ItemSourceRow {
   title: string;
   summary: string | null;
+  source_lang: "en" | "vi";
 }
 
 interface TranslationRow {
@@ -312,12 +313,17 @@ export async function reviewPendingSuggestions(
   for (const [itemId, suggestions] of byItem) {
     try {
       const item = await env.DB.prepare(
-        "SELECT title, summary FROM items WHERE id = ?"
+        "SELECT title, summary, source_lang FROM items WHERE id = ?"
       )
         .bind(itemId)
         .first<ItemSourceRow>();
       if (!item) {
         // Item vanished (shouldn't happen); leave suggestions pending.
+        continue;
+      }
+      if (item.source_lang === "vi") {
+        // The suggestion rewriter is intentionally EN→VI only. VI-source
+        // candidates are handled by the explicit VI→EN QA pair path.
         continue;
       }
 
@@ -399,6 +405,7 @@ export async function reviewPendingSuggestions(
             json: true,
             modelSpec: env.ANYROUTER_TRANSLATE_MODEL,
             task: "review",
+            sensitive: true,
           }
         );
         tokens += reviewTokens;
@@ -443,14 +450,14 @@ export async function reviewPendingSuggestions(
           if (row.field === "title") currentTitle = retranslated;
           else currentSummary = retranslated;
 
-          await env.DB.prepare(
-            `INSERT INTO translations (item_id, lang, title, summary)
-             VALUES (?, 'vi', ?, ?)
-             ON CONFLICT(item_id, lang) DO UPDATE SET
-               title = excluded.title, summary = excluded.summary`
-          )
-            .bind(nn(itemId), nn(currentTitle), nn(currentSummary))
-            .run();
+          await prepareTranslationUpsert(env.DB, {
+            id: itemId,
+            lang: "vi",
+            sourceLang: "en",
+            targetLang: "vi",
+            title: currentTitle,
+            summary: currentSummary,
+          }).run();
 
           await env.DB.prepare(
             "UPDATE translation_suggestions SET status = 'accepted', rating = ?, review_note = ? WHERE id = ?"
@@ -490,11 +497,14 @@ export async function approveSuggestionById(
   if (!row) return { ok: false, error: "not found or not pending" };
 
   const item = await env.DB.prepare(
-    "SELECT title, summary FROM items WHERE id = ?"
+    "SELECT title, summary, source_lang FROM items WHERE id = ?"
   )
     .bind(row.item_id)
     .first<ItemSourceRow>();
   if (!item) return { ok: false, error: "item not found" };
+  if (item.source_lang === "vi") {
+    return { ok: false, error: "suggestion approval supports EN→VI only" };
+  }
 
   const translation = await env.DB.prepare(
     "SELECT title, summary FROM translations WHERE item_id = ? AND lang = 'vi'"
@@ -531,14 +541,14 @@ export async function approveSuggestionById(
   if (row.field === "title") currentTitle = retranslated;
   else currentSummary = retranslated;
 
-  await env.DB.prepare(
-    `INSERT INTO translations (item_id, lang, title, summary)
-     VALUES (?, 'vi', ?, ?)
-     ON CONFLICT(item_id, lang) DO UPDATE SET
-       title = excluded.title, summary = excluded.summary`
-  )
-    .bind(nn(row.item_id), nn(currentTitle), nn(currentSummary))
-    .run();
+  await prepareTranslationUpsert(env.DB, {
+    id: row.item_id,
+    lang: "vi",
+    sourceLang: "en",
+    targetLang: "vi",
+    title: currentTitle,
+    summary: currentSummary,
+  }).run();
 
   await env.DB.prepare(
     "UPDATE translation_suggestions SET status = 'accepted', rating = ?, review_note = ? WHERE id = ?"

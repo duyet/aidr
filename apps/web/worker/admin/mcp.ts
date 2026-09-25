@@ -37,6 +37,7 @@ const ITEM_SCHEMA = {
     relevance: { type: "number" },
     importance: { type: "number" },
     quality: { type: "number" },
+    source_lang: { type: "string", enum: ["en", "vi"] },
   },
   required: ["url", "title"],
 };

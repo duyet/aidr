@@ -11,6 +11,7 @@ Execute in order unless dependencies say otherwise.
 | 002  | Grant Clerk admin only via allowlist / publicMetadata | P1 | S | — | DONE |
 | 003  | Persist LLM fields on items UPSERT conflict | P1 | S | — | DONE |
 | 004  | CWS root-manifest zip + listing assets | P2 | M | — | DONE |
+| 005  | Independent EN↔VI translation QA + coordinated migrations | P1 | L | 0023 → 0024 → 0025 | IN PROGRESS |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED | REJECTED
 
@@ -19,6 +20,7 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED | REJECTED
 - 001 unblocks seeing test/type CI on master (lint currently fails first).
 - 002 and 003 are independent of 001.
 - 004 is the remaining Chrome Web Store first-submit work after `b4168a5` (privacy URL, version API, unpacked banner already shipped).
+- 005 keeps #160/#161 separate but requires a controlled 0023 → 0024 → 0025 migration order, with 0023 owning translation QA and 0025 reserved for run identity.
 
 ## Findings considered and rejected
 

@@ -3,8 +3,14 @@ import {
   buildItemBindArgs,
   buildItemSourceBindArgs,
   buildTranslationBindArgs,
+  ITEM_BIND_ARITY,
+  ITEM_MEDIA_MANIFEST_BIND_INDEX,
+  ITEM_SOURCE_LANG_BIND_INDEX,
   MAX_SOURCES_PER_ITEM,
   nn,
+  TRANSLATION_BIND_ARITY,
+  TRANSLATION_QA_INVALIDATION_SQL,
+  TRANSLATION_UPSERT_SQL,
 } from "../d1-bind.js";
 import type { FetchedItemSource } from "../sources/types.js";
 
@@ -58,7 +64,11 @@ describe("buildItemBindArgs", () => {
       0, // llm_tokens, defaulted since llmTokens was omitted
       null, // duplicate_of, defaulted since duplicateOf was omitted
       null, // image_url, item.imageUrl was omitted
+      "en", // explicit source language
     ]);
+    expect(args).toHaveLength(ITEM_BIND_ARITY);
+    expect(args[ITEM_SOURCE_LANG_BIND_INDEX]).toBe("en");
+    expect(ITEM_MEDIA_MANIFEST_BIND_INDEX).toBe(ITEM_BIND_ARITY);
   });
 
   it("passes through llm scores when present, including a zero relevance", () => {
@@ -124,8 +134,7 @@ describe("buildItemBindArgs", () => {
     });
 
     expect(args).not.toContain(undefined);
-    // llm_tokens, duplicate_of, image_url is last
-    expect(args[args.length - 3]).toBe(342);
+    expect(args[17]).toBe(342);
   });
 
   it("defaults llm_tokens to 0, never undefined, when omitted", () => {
@@ -144,9 +153,10 @@ describe("buildItemBindArgs", () => {
     });
 
     expect(args).not.toContain(undefined);
-    expect(args[args.length - 3]).toBe(0); // llm_tokens
-    expect(args[args.length - 2]).toBeNull(); // duplicate_of
-    expect(args[args.length - 1]).toBeNull(); // image_url
+    expect(args[17]).toBe(0); // llm_tokens
+    expect(args[18]).toBeNull(); // duplicate_of
+    expect(args[19]).toBeNull(); // image_url
+    expect(args[20]).toBe("en"); // source_lang
   });
 
   it("includes duplicate_of with no undefined when the item is merged", () => {
@@ -165,7 +175,7 @@ describe("buildItemBindArgs", () => {
     });
 
     expect(args).not.toContain(undefined);
-    expect(args[args.length - 2]).toBe("canonical-id-456");
+    expect(args[18]).toBe("canonical-id-456");
   });
 
   it("includes image_url with no undefined when the item has one", () => {
@@ -184,7 +194,7 @@ describe("buildItemBindArgs", () => {
     });
 
     expect(args).not.toContain(undefined);
-    expect(args[args.length - 1]).toBe("https://example.com/og.png");
+    expect(args[19]).toBe("https://example.com/og.png");
   });
 });
 
@@ -243,6 +253,26 @@ describe("buildTranslationBindArgs", () => {
       summary: "Tóm tắt",
     });
     expect(args).not.toContain(undefined);
-    expect(args).toEqual(["abc123", "Tiêu đề", "Tóm tắt"]);
+    expect(args).toEqual(["abc123", "vi", "en", "vi", "Tiêu đề", "Tóm tắt"]);
+    expect(args).toHaveLength(TRANSLATION_BIND_ARITY);
+  });
+});
+
+describe("translation QA invalidation SQL", () => {
+  it("clears every current-review marker when a candidate is rewritten", () => {
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_rating = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_source_hash = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_source_revision = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_candidate_hash = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_direction = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_reviewer_model = NULL");
+    expect(TRANSLATION_UPSERT_SQL).toContain("qa_criteria_version = NULL");
+  });
+
+  it("invalidates the candidate marker when only its source changes", () => {
+    expect(TRANSLATION_QA_INVALIDATION_SQL).toContain(
+      "qa_candidate_hash = NULL"
+    );
+    expect(TRANSLATION_QA_INVALIDATION_SQL).toContain("WHERE item_id = ?");
   });
 });

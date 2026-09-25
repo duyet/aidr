@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { LlmCallLogEntry } from "../llm.js";
 import {
   callAnyrouter,
   _extractLastJsonObjectForTests as extractLastJsonObject,
   generateTldr,
+  logLlmCall,
   modelAttemptTimeoutMs,
   normalizeTag,
   _normalizeTldrForTests as normalizeTldr,
@@ -25,6 +27,79 @@ const env: Env = {
   ANYROUTER_API_KEY: "test-key",
   NEWS_ADMIN_TOKEN: "test-token",
 };
+
+describe("LLM observability redaction", () => {
+  it("suppresses sensitive reviewer snippets and provider response bodies", () => {
+    const entries: LlmCallLogEntry[] = [];
+    const logger = (entry: LlmCallLogEntry) => {
+      entries.push(entry);
+    };
+    setLlmCallLogger(logger);
+    logLlmCall({
+      ts: 1,
+      task: "review",
+      model: "reviewer/model",
+      ok: false,
+      tokens: 0,
+      promptTokens: null,
+      completionTokens: null,
+      cachedTokens: null,
+      durationMs: 1,
+      error: "anyrouter request failed: 500 SECRET_RESPONSE_BODY",
+      promptChars: 10,
+      responseSnippet: "SECRET_RESPONSE_BODY",
+    });
+    setLlmCallLogger(null);
+    expect(entries[0]?.responseSnippet).toBeNull();
+    expect(entries[0]?.error).toBe("anyrouter request failed: 500");
+  });
+
+  it("suppresses response bodies for every task", () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    logLlmCall({
+      ts: 3,
+      task: "other",
+      model: "cluster/model",
+      ok: true,
+      tokens: 1,
+      promptTokens: 1,
+      completionTokens: 0,
+      cachedTokens: 0,
+      durationMs: 1,
+      error: null,
+      promptChars: 10,
+      responseSnippet: "private provider output",
+    });
+    setLlmCallLogger(null);
+    expect(entries[0]?.responseSnippet).toBeNull();
+  });
+
+  it("suppresses translation response bodies as well", () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    logLlmCall({
+      ts: 2,
+      task: "translate",
+      model: "generator/model",
+      ok: true,
+      tokens: 2,
+      promptTokens: 1,
+      completionTokens: 1,
+      cachedTokens: 0,
+      durationMs: 1,
+      error: null,
+      promptChars: 20,
+      responseSnippet: "private translated article text",
+    });
+    setLlmCallLogger(null);
+    expect(entries[0]?.responseSnippet).toBeNull();
+  });
+});
 
 describe("scoreBatchPrompt", () => {
   it("tells the model to prefer source-backed quality over thin duplicates", () => {
@@ -1117,6 +1192,7 @@ describe("model fallback chain", () => {
         i: 0,
         title: "GLM-5.3 hòa Kimi K3 mô hình nguồn mở thông minh nhất",
         summary: "Tóm tắt sẵn có.",
+        sourceLang: "vi",
       },
     ]);
     expect(fetchMock).not.toHaveBeenCalled();

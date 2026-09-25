@@ -13,8 +13,13 @@ export interface Env {
    *  Fall back to ANYROUTER_MODEL when unset. */
   ANYROUTER_TRANSLATE_MODEL?: string;
   ANYROUTER_TLDR_MODEL?: string;
-  /** Cheaper chain for judging translation quality. Falls back to
-   *  ANYROUTER_MODEL when unset. */
+  /** Explicit generator chain for creating a real VI→EN candidate. */
+  ANYROUTER_ENGLISH_TRANSLATE_MODEL?: string;
+  /** Explicit independent reviewer chain for translation semantic QA. Missing
+   *  or overlapping generator ids fail closed; never fall back to the generator. */
+  ANYROUTER_REVIEW_MODEL?: string;
+  /** Legacy translation-QA chain. Still honored when no review chain is set,
+   *  but it never falls back to ANYROUTER_MODEL and must be model-independent. */
   ANYROUTER_QA_MODEL?: string;
   /** Jev System One model id (POST /api/v1/systemone — never a
    *  /chat/completions chain member). Score and review gates try it first;

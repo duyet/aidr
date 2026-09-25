@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkAuth } from "../admin/auth.js";
+import { adminActor, checkAuth } from "../admin/auth.js";
 import {
   getLlmCalls,
   isHandlerError,
@@ -82,10 +82,27 @@ class FakeD1 {
       return rows[0] ? { id: rows[0].id } : null;
     }
 
-    if (sql.startsWith("SELECT id FROM items WHERE id = ?")) {
+    if (
+      sql.startsWith(
+        "SELECT id, title, summary, source_id, points, comments, published_at, source_lang FROM items"
+      )
+    ) {
+      const [since] = args as [number];
+      return {
+        results: [...this.items.values()].filter(
+          (row) =>
+            row.status === "published" && Number(row.published_at ?? 0) >= since
+        ),
+      };
+    }
+
+    if (
+      sql.startsWith("SELECT id") &&
+      sql.includes("FROM items WHERE id = ?")
+    ) {
       const [id] = args as [string];
       const row = this.items.get(id);
-      return row ? { id: row.id } : null;
+      return row ? { id: row.id, source_lang: row.source_lang } : null;
     }
 
     if (sql.startsWith("INSERT INTO items")) {
@@ -107,6 +124,7 @@ class FakeD1 {
         tags,
         rank_score,
         status,
+        source_lang = "en",
       ] = args;
       const existing = this.items.get(id as string);
       const row = {
@@ -127,6 +145,7 @@ class FakeD1 {
         tags,
         rank_score,
         status,
+        source_lang,
       };
       if (existing) {
         Object.assign(existing, {
@@ -137,6 +156,7 @@ class FakeD1 {
           category,
           tags,
           status,
+          source_lang,
         });
       } else {
         this.items.set(id as string, row);
@@ -145,13 +165,32 @@ class FakeD1 {
     }
 
     if (sql.startsWith("INSERT INTO translations")) {
-      const [item_id, title, summary] = args;
-      this.translations.set(`${item_id}:vi`, {
+      const [item_id, lang, source_lang, target_lang, title, summary] = args;
+      this.translations.set(`${item_id}:${lang}`, {
         item_id,
-        lang: "vi",
+        lang,
+        source_lang,
+        target_lang,
         title,
         summary,
       });
+      return { success: true };
+    }
+
+    if (sql.startsWith("UPDATE translations SET qa_rating = NULL")) {
+      const [itemId] = args as [string];
+      const row = this.translations.get(`${itemId}:vi`);
+      if (row) {
+        Object.assign(row, {
+          qa_rating: null,
+          qa_at: null,
+          qa_source_hash: null,
+          qa_candidate_hash: null,
+          qa_direction: null,
+          qa_reviewer_model: null,
+          qa_criteria_version: null,
+        });
+      }
       return { success: true };
     }
 
@@ -471,6 +510,15 @@ describe("checkAuth", () => {
     });
     expect(checkAuth(req, env)).toBeNull();
   });
+
+  it("returns a stable actor label for queue audit records", async () => {
+    const env = makeEnv();
+    const req = new Request("https://x/", {
+      headers: { Authorization: "Bearer secret-token" },
+    });
+    expect(await adminActor(req, env)).toBe("admin-token");
+    expect(await adminActor(new Request("https://x/"), env)).toBeNull();
+  });
 });
 
 describe("sha256Hex", () => {
@@ -531,10 +579,53 @@ describe("pushItems", () => {
     expect(second.updated).toBe(1);
   });
 
+  it("persists explicit VI source metadata for the reverse review path", async () => {
+    const env = makeEnv();
+    const result = await pushItems(env, {
+      url: "https://example.com/vi-source",
+      title: "Một nguồn tiếng Việt",
+      source_lang: "vi",
+      title_vi: "Một nguồn tiếng Việt",
+    });
+    expect(isHandlerError(result)).toBe(false);
+    const id = await sha256Hex("https://example.com/vi-source");
+    const db = env.DB as unknown as FakeD1;
+    expect(db.items.get(id)?.source_lang).toBe("vi");
+    expect(db.translations.get(`${id}:vi`)?.source_lang).toBe("vi");
+  });
+
+  it("preserves an existing VI source when an admin update omits metadata", async () => {
+    const env = makeEnv();
+    const first = await pushItems(env, {
+      url: "https://example.com/vi-preserve",
+      title: "Nguồn tiếng Việt",
+      source_lang: "vi",
+      title_vi: "Nguồn tiếng Việt",
+    });
+    expect(isHandlerError(first)).toBe(false);
+    const second = await pushItems(env, {
+      url: "https://example.com/vi-preserve",
+      title: "Nguồn tiếng Việt cập nhật",
+      title_vi: "Nguồn tiếng Việt cập nhật",
+    });
+    expect(isHandlerError(second)).toBe(false);
+    const id = await sha256Hex("https://example.com/vi-preserve");
+    expect((env.DB as unknown as FakeD1).items.get(id)?.source_lang).toBe("vi");
+    expect(
+      (env.DB as unknown as FakeD1).translations.get(`${id}:vi`)?.source_lang
+    ).toBe("vi");
+  });
+
   it("rejects items missing url or title", async () => {
     const env = makeEnv();
     const result = await pushItems(env, { url: "", title: "no url" });
     expect(isHandlerError(result)).toBe(true);
+    const invalidLanguage = await pushItems(env, {
+      url: "https://example.com/invalid-language",
+      title: "Invalid language",
+      source_lang: "fr" as "en",
+    });
+    expect(isHandlerError(invalidLanguage)).toBe(true);
   });
 });
 
@@ -593,6 +684,32 @@ describe("getLlmCalls", () => {
 
     const result = await getLlmCalls(env);
     expect(result.calls.map((c: any) => c.ts)).toEqual([2, 1, 0]);
+  });
+
+  it("redacts legacy provider diagnostics and omits response snippets", async () => {
+    const env = makeEnv();
+    (env.DB as unknown as FakeD1).llmCalls.push({
+      id: 1,
+      ts: 1,
+      task: "translate",
+      model: "test-model",
+      ok: 0,
+      tokens: 0,
+      duration_ms: 5,
+      error: "Bearer sk-live-secret https://provider.test/raw",
+      prompt_chars: 100,
+      response_snippet: "raw provider response",
+    });
+
+    const result = await getLlmCalls(env);
+    expect(result.calls[0]).toMatchObject({
+      error: "Provider request failed",
+    });
+    expect(
+      (result.calls[0] as { response_snippet?: unknown }).response_snippet
+    ).toBeNull();
+    expect(JSON.stringify(result)).not.toContain("sk-live-secret");
+    expect(JSON.stringify(result)).not.toContain("raw provider response");
   });
 
   it("defaults to a limit of 100", async () => {
