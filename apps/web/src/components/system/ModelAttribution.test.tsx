@@ -2,9 +2,7 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { LangContext } from "../../lib/lang-context";
 import type { ModelChains } from "../../lib/system-queries";
-import type { Lang } from "../../lib/types";
 import { AccountCountView } from "./AccountCountCard";
 import { AttributionView } from "./ModelAttribution";
 
@@ -16,14 +14,6 @@ const models = {
   tldr: ["anyrouter/auto"],
   decisions: [],
 };
-
-function renderWithLang(lang: Lang, modelChains: ModelChains): void {
-  render(
-    <LangContext.Provider value={lang}>
-      <AttributionView models={modelChains} />
-    </LangContext.Provider>
-  );
-}
 
 /** `ModelChains` requires all four tasks; the grid always renders all four. */
 function chains(overrides: Partial<ModelChains> = {}): ModelChains {
@@ -223,16 +213,20 @@ describe("AttributionView model and unavailable states", () => {
   });
 });
 
-describe("AttributionView locale contract", () => {
-  // /data is an English-only dashboard (`const lang: Lang = "en"` in
-  // routes/data.tsx), so the card must render identical accessible names
-  // under both locales instead of leaking or translating hop wording.
-  it.each(["en", "vi"] as const)(
-    "renders the same English labels for the %s locale",
-    (lang) => {
-      renderWithLang(
-        lang,
-        chains({
+describe("AttributionView copy contract", () => {
+  // `/data` is localized overall: routes/data.tsx reads `useLang()` and
+  // threads the locale into ContentTab and RunsTab. This card is
+  // deliberately not wired into that yet — `AttributionView` takes only
+  // `models`, so its copy is intentionally English and locale-neutral.
+  //
+  // These assertions pin the current copy. If the card is ever localized,
+  // re-scope them per locale, and keep the visible hop pill and the spoken
+  // accessible name in the same change — the spoken/visible pairing is the
+  // invariant that matters, and it is already covered per count above.
+  it("renders locale-neutral English copy for every hop state", () => {
+    render(
+      <AttributionView
+        models={chains({
           scoring: [
             "typesafe/jev",
             "anyrouter/auto",
@@ -240,32 +234,42 @@ describe("AttributionView locale contract", () => {
           ],
           translation: ["google/gemini-3.5-flash", "anyrouter/auto"],
           tldr: ["anyrouter/auto"],
-        })
-      );
+        })}
+      />
+    );
 
-      expect(screen.getByText("Powered by AnyRouter")).toBeTruthy();
-      expect(
-        screen.getByText("Lead model + fallback depth · public config only")
-      ).toBeTruthy();
-      expect(screen.getByText("direct")).toBeTruthy();
-      expect(screen.getByText("1 hop")).toBeTruthy();
-      expect(screen.getByText("2 hops")).toBeTruthy();
-      expect(screen.getByText("unavailable")).toBeTruthy();
-      expect(
-        screen.getByRole("link", {
-          name: "Translate lead model google/gemini-3.5-flash, 1 fallback hop",
-        })
-      ).toBeTruthy();
-      expect(
-        screen.getByRole("link", {
-          name: "TL;DR lead model anyrouter/auto, direct, no fallback models",
-        })
-      ).toBeTruthy();
-      expect(
-        screen.getByRole("link", { name: "Open AnyRouter in a new tab" })
-      ).toBeTruthy();
-    }
-  );
+    expect(
+      screen.getByRole("region", { name: "Powered by AnyRouter" })
+    ).toBeTruthy();
+    expect(
+      screen.getByText("Lead model + fallback depth · public config only")
+    ).toBeTruthy();
+    expect(screen.getByText("direct")).toBeTruthy();
+    expect(screen.getByText("1 hop")).toBeTruthy();
+    expect(screen.getByText("2 hops")).toBeTruthy();
+    expect(screen.getByText("unavailable")).toBeTruthy();
+    expect(screen.getByText("2 fallbacks after lead")).toBeTruthy();
+    expect(screen.getByText("1 fallback after lead")).toBeTruthy();
+    expect(screen.getByText("No fallback configured")).toBeTruthy();
+    expect(
+      screen.getByRole("link", {
+        name: "Score lead model typesafe/jev, 2 fallback hops",
+      })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", {
+        name: "Translate lead model google/gemini-3.5-flash, 1 fallback hop",
+      })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", {
+        name: "TL;DR lead model anyrouter/auto, direct, no fallback models",
+      })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open AnyRouter in a new tab" })
+    ).toBeTruthy();
+  });
 });
 
 describe("AccountCountView", () => {
