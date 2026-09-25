@@ -1,5 +1,6 @@
 import { parseDataTab } from "./data-tab";
 import { isLang } from "./lang";
+import { isServerFnRequest } from "./server-fn-request";
 import { SITEMAP_STATIC_PATHS } from "./sitemap";
 
 export const INDEXABLE_ROBOTS = "index, follow";
@@ -373,6 +374,12 @@ export async function withRouteIndexabilityHeaders(
   response: Response | Promise<Response>
 ): Promise<Response> {
   const resolvedResponse = await response;
+  // Server-function results are RPC, not crawlable documents. Leave Start's
+  // serialized body and headers alone: its status is the client contract and
+  // its body may be a framed stream.
+  if (isServerFnRequest(request)) {
+    return resolvedResponse;
+  }
   const status = safeResponseStatus(resolvedResponse.status);
   const url = new URL(request.url);
   const policy = routeIndexability({

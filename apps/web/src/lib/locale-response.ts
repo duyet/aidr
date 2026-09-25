@@ -15,6 +15,7 @@ import {
   hasLocaleQuery,
   neutralLocaleRedirect,
 } from "./locale-url";
+import { isServerFnRequest } from "./server-fn-request";
 import type { Lang } from "./types";
 
 export const SSR_LOCALIZED_CACHE_CONTROL =
@@ -184,6 +185,28 @@ export function normalizeLocaleRequest(
   return null;
 }
 
+/**
+ * Server functions are same-origin RPC, not documents. The locale is still
+ * validated, but a bad value must be reported in a shape the Start client can
+ * deserialize: an HTML error page or a 307 makes the client rethrow the raw
+ * `error` string (or a plain object), which the submit form cannot explain.
+ * A legacy `locale` alias is simply ignored here instead of redirecting — the
+ * result of a submit call does not depend on the query value.
+ */
+export function resolveServerFnLocaleRequest(
+  request: Request
+): Response | null {
+  const resolution = resolveRequestLocale(request);
+  if (!resolution.ok) {
+    return apiErrorResponse(400, {
+      error: resolution.code,
+      message: resolution.message,
+      message_vi: "Tham số locale không hợp lệ hoặc bị lặp/xung đột.",
+    });
+  }
+  return null;
+}
+
 function setSafePublicPolicy(headers: Headers, publicControl: string): void {
   const existing = headers.get("Cache-Control")?.toLowerCase() ?? "";
   if (!existing.includes("private") && !existing.includes("no-store")) {
@@ -198,6 +221,12 @@ export function withSsrLocaleResponse(
 ): Response {
   const url = new URL(request.url);
   if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
+    return response;
+  }
+  // Start owns the server-function response: its body may be a framed
+  // stream, and its serialized-error status is the client contract. Do not
+  // re-wrap it or stamp document cache/locale policy onto it.
+  if (isServerFnRequest(request)) {
     return response;
   }
   const resolution = resolveRequestLocale(request);

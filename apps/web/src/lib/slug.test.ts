@@ -72,6 +72,17 @@ describe("legacyStoryRedirectPath", () => {
     expect(legacyStoryRedirectPath("/sign-in/sso")).toBeNull();
   });
 
+  it("does not steal the server-function transport", () => {
+    // Production server-fn ids are sha256 hex, so this path is shaped exactly
+    // like a legacy /{cat}/{hash} story URL. Redirecting it would send every
+    // server-function call to a story page instead of its handler.
+    expect(
+      legacyStoryRedirectPath(
+        "/_serverFn/98a5ddcb12725b5c0739aebd924019083173dc2f4470302106d85a18c164aba3"
+      )
+    ).toBeNull();
+  });
+
   it("shortens a single-segment full hash", () => {
     expect(legacyStoryRedirectPath("/abcdef12deadbeef")).toBe("/abcdef12");
     expect(legacyStoryRedirectPath("/abcdef12")).toBeNull();
