@@ -208,7 +208,10 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       none_unposted) and `console.info`'d plus stored on
       `workflow_runs.stats.notifyReason`.
     - Delivery state (status/attempts/last_error, bounded retries) lives in
-      the `notifications` table; links carry `utm_source=telegram`.
+      the `notifications` table, keyed by channel and item/date rather than
+      locale. Telegram site links use flat `/{8-char}` permalinks with explicit
+      `lang=vi|en` plus `utm_source=telegram`; publisher links keep their own
+      URL and receive only the Telegram attribution parameter.
     - The bounded Telegram Instant View decision, locale URLs, field/media
       gates, and fallback checklist are in
       [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).

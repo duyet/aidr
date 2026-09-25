@@ -1,48 +1,60 @@
 # Telegram Instant View decision record
 
 - **Issue:** [#146](https://github.com/duyet/aidr/issues/146)
-- **Status:** **Limited support: manual proof of concept only; production no-go for now**
-- **Checked:** 2026-09-24 against `origin/master` (`d205f31`)
+- **Status:** **No live IV; manual proof of concept only; production no-go for now**
+- **Checked:** 2026-09-25 against `origin/master` (`94bd26ce667f7de0bfbe2fa9ce234e64e18f5c19`)
 - **Scope:** one public, stable **story** page per language, not the homepage or digest list
+- **Current state:** locale/canonical URLs and locale-aware Telegram links are implemented; Instant View is not live
 
-This is a contract and operator checklist, not a claim that Instant View (IV) is
-enabled. This change adds no Telegram sending code, credentials, channel target,
-template, or `rhash`.
+This is a decision record and operator checklist, not a claim that Instant View
+(IV) is enabled. The current master has a shared `lang=vi|lang=en` URL contract,
+explicit story canonicals, and flat locale-aware Telegram links, but it still has
+no IV template, editor-generated `rhash`, or code path that creates or sends an
+IV link. This change adds no Telegram sending code, credentials, channel target,
+template, `rhash`, WAF rule, or deployment/configuration change.
 
 ## Decision
 
-Support a bounded, manually approved IV proof of concept for a public story URL
-after the locale and media contracts land. Keep the existing normal Telegram
+Keep a bounded, manually approved IV proof of concept for eligible public story
+URLs. The locale/canonical contract is already implemented in current master
+(see [`LOCALE_URLS.md`](../../apps/web/LOCALE_URLS.md) and merged PRs
+[#163](https://github.com/duyet/aidr/pull/163) / [#170](https://github.com/duyet/aidr/pull/170)).
+Media normalization is still tracked separately by [#145](https://github.com/duyet/aidr/issues/145)
+and [#160](https://github.com/duyet/aidr/pull/160), so every candidate still
+needs a manual media/content check. Keep the existing normal Telegram
 message/photo path as the source of truth and fallback.
 
 | Flow | Decision | Reason |
 | --- | --- | --- |
-| Ranked story | Manual IV POC, one story per language | A story permalink is relatively static and has a defined title, body, date, image, and source links. |
-| Bilingual daily digest | No IV wrapper | It is a changing list, not an article. Use the current HTML digest message and direct story links. |
-| Vietnamese channel | Normal message/photo; link to a `lang=vi` story when available | The channel is an audience, not an IV source page. Do not turn the channel or digest into a generated page. |
+| Ranked story | Manual IV POC for each eligible language URL being evaluated; do not create a second normal delivery | A story permalink is relatively static, but the current page is a summary surface rather than a guaranteed full article. |
+| Bilingual daily digest | No IV wrapper | It is a changing list, not an article. Keep the current HTML digest message and direct story links. |
+| Telegram channel | Normal message/photo with explicit `lang` on aidr links | The channel is an audience and delivery target, not an IV source page or a second language identity. |
 
-This is intentionally conservative. On this base, locale is still cookie-based
-(`news_lang`), the canonical locale/SEO contract is tracked by [#139](https://github.com/duyet/aidr/issues/139)
-and [#140](https://github.com/duyet/aidr/issues/140), and media validation is
-tracked by [#145](https://github.com/duyet/aidr/issues/145). Do not call the
-`?lang=` URLs below live until those changes are merged and verified.
+`lang` identifies the content and canonical source URL. It is not a delivery
+identity: the existing notification key remains `digest:<local-date>` for a
+digest and the story id for a trending post, and the database primary key is
+`(channel, item_id)`. A manual EN/VI comparison must not send two production
+posts for the same story or create a second `lang`-keyed delivery row. The
+Vietnamese channel remains Vietnamese-first, but a story without a Vietnamese
+translation is delivered with its actual English fallback and `lang=en` links.
 
-**Why no live support in this slice:** the base has no verified `?lang=` route,
-no approved template or editor-generated `rhash`, and no Bot API IV lifecycle
-method; the story page is a summary surface rather than a guaranteed full
-article. Telegram's cache can also serve stale content. This record therefore
-chooses a manual-only path and the normal message/photo fallback, rather than
-claiming a completed EN/VI IV render.
+This is intentionally conservative even though the locale URLs are live now.
+There is no approved template or editor-generated `rhash`, no Bot API IV
+lifecycle method, and no guarantee that a summary page satisfies Telegram's
+essential-content checklist. Telegram's cache can also serve stale content, so
+this record chooses a manual-only path and the normal message/photo fallback
+rather than claiming a completed EN/VI IV render.
 
 ## URL contract
 
-The current web permalink is a flat `/{8-character-id}` path; category paths,
-full hashes, and title slugs are not the preferred source URL. See
-[`src/lib/slug.ts`](../../apps/web/src/lib/slug.ts) and the existing SEO
-metadata in [`src/lib/seo.ts`](../../apps/web/src/lib/seo.ts).
+The current web permalink is a flat `/{8-character-id}` path. Category paths,
+full hashes, and title slugs are legacy or compatibility shapes, not the
+preferred source URL. Locale-aware canonicals, hreflang, redirects, and cache
+isolation are documented in [`LOCALE_URLS.md`](../../apps/web/LOCALE_URLS.md)
+and implemented by [`slug.ts`](../../apps/web/src/lib/slug.ts),
+[`seo.ts`](../../apps/web/src/lib/seo.ts), and the shared locale helpers.
 
-For the pending locale contract, the IV source URL **must explicitly select one
-of the two product languages**:
+For a manual IV source URL, explicitly select one of the two product languages:
 
 ```text
 https://aidr.today/{story_id8}?lang=en
@@ -50,29 +62,47 @@ https://aidr.today/{story_id8}?lang=vi
 ```
 
 `{story_id8}` means the first eight lowercase hexadecimal characters of the
-stable story id. The IV source URL must be HTTPS, on `aidr.today`, have no
+stable story id. The source URL must be HTTPS, on `aidr.today`, have no
 fragment, and contain exactly one `lang` value: `en` or `vi`. Do not use
 `locale`, a language-neutral URL, a category URL, a login URL, or an external
-article URL as the IV source.
+article URL as the IV source. A `lang=vi` URL is eligible for a Vietnamese IV
+only when its rendered content is actually Vietnamese; if the page falls back
+to English, record the fallback and do not label it as a Vietnamese render.
 
 The IV fetch should use the locale URL **without UTM parameters** so tracking
 does not create a second cache identity. Keep attribution on the normal web
 button/fallback link. The current notifier adds UTM attribution with
 [`withUtm`](../../apps/web/worker/notify/telegram.ts).
 
-**Known current-state mismatch:** the digest loader in
-[`worker/notify/index.ts`](../../apps/web/worker/notify/index.ts) still builds
-a category path, while the story button in
-[`telegram.ts`](../../apps/web/worker/notify/telegram.ts) uses the flat path.
-This record does not change either adapter; reconcile the mismatch with the
-locale/canonical work before generating IV links.
+### Current message links
+
+The current adapters already use the flat locale-aware URL: the digest loader
+resolves [`storyPath`](../../apps/web/worker/notify/index.ts), and the Telegram
+adapter's [`storyUrl`](../../apps/web/worker/notify/telegram.ts) uses the same
+shape. There is no pending category-path mismatch. The observable behavior is:
+
+- A digest bullet points to `https://aidr.today/{story_id8}?lang=vi|en&utm_source=telegram`.
+- The digest's site button points to `https://aidr.today/?lang=vi|en&utm_source=telegram`.
+- A trending story's **Read** button points to the story's publisher/source URL
+  with `utm_source=telegram`; the **AI;DR** button points to
+  `https://aidr.today/{story_id8}?lang=vi|en&utm_source=telegram`.
+- Publisher/source URLs are not rewritten to add an aidr `lang` parameter. The
+  resolved content language is carried by aidr's canonical links and message
+  copy.
+
+These are direct links today. This record does not turn the **Read**, **AI;DR**,
+or digest links into `t.me/iv` links, and it does not change their fallback or
+delivery identity.
 
 ### URL wrapper shapes
 
-These are shapes only; `{rhash-from-editor}` is a placeholder, not a value to
-invent or commit.
+These are illustrative shapes only. `{rhash-from-editor}` is a placeholder, not
+a value to invent or commit. The editor owns the exact query encoding, template
+scope, and `View in Telegram` link; this record does not claim that one query
+template or `rhash` is valid for both language variants until the editor has
+been tested with both explicit URLs.
 
-**Approved public template (direct source URL):**
+**Future approved public template (direct source URL):**
 
 ```text
 https://aidr.today/{story_id8}?lang=en
@@ -83,16 +113,18 @@ Telegram's [Instant View introduction](https://instantview.telegram.org/) says
 that an approved template makes the IV option available to all Telegram users
 who receive the source link.
 
-**Editor-generated template for a controlled/test audience:**
+**Editor-generated link for a controlled/test audience (shape only):**
 
 ```text
-https://t.me/iv?url=https%3A%2F%2Faidr.today%2F{story_id8}%3Flang%3Dvi&rhash={rhash-from-editor}
+https://t.me/iv?url={url-encoded-source-url}&rhash={rhash-from-editor}
 ```
 
-Telegram documents that the `rhash` selects the editor template and that the
-resulting `t.me/iv?url=...&rhash=...` link works for the template owner's
-audience. Copy the exact value produced by the IV Editor's **View in Telegram**
-flow. Never fabricate, guess, or reuse an `rhash` from another template.
+For example, the source URL may be
+`https://aidr.today/{story_id8}?lang=vi`, but the exact wrapper must be copied
+from the IV Editor's **View in Telegram** flow. Telegram documents that the
+`rhash` selects the editor template and that the resulting
+`t.me/iv?url=...&rhash=...` link works for the template owner's audience. Never
+fabricate, guess, or reuse an `rhash` from another template.
 
 A direct source link remains the safe fallback when no template is available,
 when a template is not approved, or when an IV wrapper does not render.
@@ -105,35 +137,52 @@ following stricter product gate applies to **each** language:
 
 | IV property | aidr contract | Gate |
 | --- | --- | --- |
-| `title` | Localized story title (`title` for EN, `title_vi` for VI when present) | Required. Escape/render as content, never as instructions. |
-| `body` | Localized public story summary/body and its source links, as rendered on the story page | Required. Do not claim this is the full original article when the page only has a summary. No interactive widgets or untrusted instructions. |
+| `title` | The title actually rendered for the requested language (`title` for EN, `title_vi` for VI when present) | Required. If VI falls back to English, record that fact; escape/render as content, never as instructions. |
+| `body` | The localized public story summary/body and its source links, as rendered on the story page | Required. Do not claim this is the full original article when the page only has a summary. No interactive widgets or untrusted instructions. |
 | `published_date` | `published_at` as Unix **seconds** | Required for news stories by the aidr gate; do not send milliseconds. |
-| `image_url` | Absolute HTTPS primary image selected by the media contract | Required for this POC. If it is missing, unsafe, too large, or unsupported, do not force an IV. |
-| `site_name` | `AI News`, matching the site's current `SITE_NAME`/`og:site_name` | Required for the aidr link-preview contract; do not append the Telegram handle or other text. |
-| `description` | A short localized description, normally the first summary paragraph | Required for a useful Telegram link preview; never invent copy. |
+| `image_url` | A safe absolute HTTPS primary image selected by the current media checks | Required for this POC. If it is missing, unsafe, too large, or unsupported, exclude the story rather than force an IV. |
+| `site_name` | **Unresolved here:** current metadata emits `AI News`, while the visible header brand is `AI;DR`; verify the name shown on the homepage in the IV Editor | Telegram's format property is optional, but its link-preview checklist requires a matching visible site name. Do not append the Telegram handle or silently freeze either brand value. |
+| `description` | The short description actually available for the rendered language, normally the first summary paragraph | Required for a useful Telegram link preview; never invent a translation or copy. |
 
 The official [template checklist](https://instantview.telegram.org/checklist)
-also requires the publication date for news, a suitable link-preview photo,
-and a `site_name` matching the name shown on the website. A `cover` may be
-added when it is a real, non-duplicated cover; it is not a substitute for the
-required image gate.
+also requires the publication date for news, a suitable link-preview photo, and
+a `site_name` matching the name shown on the website. The current code emits
+`AI News` in [`SITE_NAME`/`og:site_name`](../../apps/web/src/lib/site.ts), but
+that is not enough to settle the product decision because the visible header
+brand is `AI;DR`. Record the editor-approved value and the visible page used to
+justify it; do not treat the current metadata constant as final IV truth. A
+`cover` may be added when it is a real, non-duplicated cover; it is not a
+substitute for the required image gate.
 
 ### Data-only URL contract
 
-This is a review fixture, not executable locale code and not a test of the
-pending implementation:
+This is a review fixture, not executable locale code, an IV template, or a
+claim that the query shape is accepted by the editor:
 
 ```json
 {
   "source_url_template": "https://aidr.today/{story_id8}?lang={lang}",
+  "iv_link_shape": "https://t.me/iv?url={url-encoded-source-url}&rhash={rhash-from-editor}",
+  "editor_query_template": null,
+  "editor_query_template_status": "unresolved-verify-both-lang-variants",
   "allowed_lang": ["en", "vi"],
   "story_id_pattern": "^[0-9a-f]{8}$",
   "utm_in_iv_source": false,
+  "site_name": null,
+  "site_name_status": "unresolved-verify-visible-brand-in-editor",
   "rhash": "editor-generated-only"
 }
 ```
 
-No locale implementation or Telegram adapter is changed by this record.
+`source_url_template` describes the aidr source URL only. `iv_link_shape` is a
+shape for the editor-produced wrapper, not a query template to commit or a
+promise that the editor will match both language variants.
+`editor_query_template: null` records that uncertainty explicitly; the editor
+review must establish the query scope and exact `View in Telegram` output.
+`site_name: null` means the decision is deliberately unresolved: current
+metadata says `AI News`, the visible header says `AI;DR`, and the
+editor/reviewer must record the final link-preview value. No locale
+implementation, Telegram adapter, or live IV surface is changed by this record.
 
 ## Platform constraints and cache
 
@@ -147,6 +196,11 @@ No locale implementation or Telegram adapter is changed by this record.
   says its bot fetches a source URL with MIME type `text/html`. The story page
   must be publicly reachable without a session, contain no secrets, and not
   depend on a form, login, paywall, or interactive widget to be understood.
+- **WAF-independent prerequisite:** verify that prerequisite from an ordinary
+  independent browser/network path, without changing WAF rules, allowlists, or
+  deployment settings. A challenge, login, or non-HTML response is a recorded
+  blocker for the manual POC; do not work around it in this documentation-only
+  slice or claim that the source is IV-ready.
 - **Cache/staleness:** Telegram says IV pages are cached on its servers; the
   [checklist](https://instantview.telegram.org/checklist#2-1-pages-with-dynamic-content)
   warns that older pages update less frequently. There is no documented
@@ -166,27 +220,32 @@ No locale implementation or Telegram adapter is changed by this record.
 
 ## Safe fallback and delivery state
 
-For every failed or unapproved IV path, use exactly one existing normal path:
+For every failed or unapproved IV path, keep the existing normal path. A future
+implementation must produce exactly one result for the existing delivery key;
+it must not send an IV post and a fallback post beside one another.
 
-1. send the current HTML message with the direct story link; or
+The current normal path is:
+
+1. send the HTML digest message with its direct story links; or
 2. send the current photo message, falling back to that text message if the
    photo call fails.
 
-The locale-aware tracked fallback shape is (the current adapter still needs
-the locale work in [#140](https://github.com/duyet/aidr/issues/140)):
+The current flat, locale-aware fallback shapes are:
 
 ```text
 https://aidr.today/{story_id8}?lang=vi&utm_source=telegram
 https://aidr.today/{story_id8}?lang=en&utm_source=telegram
 ```
 
-Keep the original source link separate when it has passed the normal media/link
-validation. If the IV wrapper fails, do not send a second fallback post beside
-it. The existing [`notifications`](../../apps/web/worker/notify/index.ts)
-state records status, attempts, and the Telegram message id; a successful
-message is the point at which a delivery is considered sent. A timeout can be
-ambiguous, so inspect the test channel and reconcile the message id before a
-manual retry rather than blindly posting twice.
+For a trending post, the current **Read** button still points to the external
+publisher source, while **AI;DR** points to the flat canonical story URL. A
+manual IV test may compare both language source URLs, but it must retain this
+one-message/one-delivery-key behavior. The existing
+[`notifications`](../../apps/web/worker/notify/index.ts) state records status,
+attempts, and the Telegram message id; a successful message is the point at
+which a delivery is considered sent. A timeout can be ambiguous, so inspect the
+test channel and reconcile the message id before a manual retry rather than
+blindly posting twice.
 
 ## Manual approval and verification checklist
 
@@ -194,23 +253,39 @@ manual retry rather than blindly posting twice.
 
 - [ ] Product and operations owners approve **limited support** (or change this
       record to no-go) for one public story-per-language POC.
-- [ ] [#139](https://github.com/duyet/aidr/issues/139) and [#140](https://github.com/duyet/aidr/issues/140)
-      are merged and verified: both `?lang=en` and `?lang=vi` render the
-      requested language, canonical/hreflang rules agree, and cache keys do not
-      cross languages.
-- [ ] [#145](https://github.com/duyet/aidr/issues/145) supplies a safe primary
-      image or the story is excluded from the POC.
+- [ ] Verify the current-master locale contract instead of waiting for [#139](https://github.com/duyet/aidr/issues/139)
+      or [#140](https://github.com/duyet/aidr/issues/140) to close: both
+      `?lang=en` and `?lang=vi` story URLs return the requested rendered
+      language, canonical/hreflang rules agree, and cache keys do not cross
+      languages. See [`LOCALE_URLS.md`](../../apps/web/LOCALE_URLS.md).
+- [ ] For each candidate, verify the current primary image is public HTTPS and
+      usable for the link preview; [#145](https://github.com/duyet/aidr/issues/145)
+      / [#160](https://github.com/duyet/aidr/pull/160) remain separate media
+      work. Exclude the story when the image is missing, unsafe, too large, or
+      unsupported.
 - [ ] In the [IV Editor](https://instantview.telegram.org/), create/test a
       template only for `aidr.today/{8-hex-id}?lang=en|vi`; do not target the
       homepage, digest, legacy category paths, or arbitrary external URLs.
+- [ ] Test both explicit language source URLs in the Editor. Confirm that the
+      query variant reaches the intended template and that the rendered content
+      matches the requested language; do not assume one query template or
+      `rhash` covers both variants.
+- [ ] Resolve and record `site_name`. Current metadata emits `AI News`, while
+      the visible header brand is `AI;DR`; compare the homepage and editor
+      preview, then record the exact accepted value rather than appending a
+      Telegram handle or other metadata.
 - [ ] With sanitized fixtures, verify one representative EN story and one VI
-      story in the Editor: title, body, publication date, image, `AI News`
-      site name, description, and source links.
-- [ ] Confirm the source is public `text/html`, contains no secrets or
-      untrusted instructions, and has no essential interactive content.
-- [ ] Use **View in Telegram** to obtain the exact editor link. Keep any
-      generated `rhash` in approved operator/runtime configuration; do not put a
-      made-up value, a bot token, or a production channel target in this repo.
+      story in the Editor: title, body, publication date, image, site name,
+      description, and source links. If VI content falls back to English, record
+      the fallback and use the actual language in the evidence.
+- [ ] Confirm the source is public `text/html` from an independent ordinary
+      browser/network path, contains no secrets or untrusted instructions, and
+      has no essential interactive content. Do not change WAF, allowlists, or
+      settings to make this check pass; a challenge is a recorded blocker.
+- [ ] Use **View in Telegram** to obtain the exact editor link for each tested
+      source URL. Keep any generated `rhash` in approved operator/runtime
+      configuration; do not put a made-up value, a bot token, or a production
+      channel target in this repo.
 - [ ] Before any implementation, mocked Bot API tests cover success, malformed
       responses, timeouts, unsupported media, bounded retry, and idempotent
       delivery state. This documentation-only slice adds no such behavior.
@@ -228,6 +303,9 @@ manual retry rather than blindly posting twice.
 - [ ] Exercise missing image, 404/source failure, timeout, unsupported media,
       and no-template cases. Confirm the normal message/photo path produces
       one usable post and no duplicate.
+- [ ] Confirm the delivery key remains `digest:<local-date>` for a digest or
+      the story id for a trending post; do not send a second EN/VI post or
+      create a `lang`-keyed notification row during the comparison.
 - [ ] Check `notifications` status/attempts/message id and the channel history
       after every attempt, including an ambiguous timeout.
 - [ ] Re-check the official links above at implementation time and attach the
@@ -241,4 +319,4 @@ manual retry rather than blindly posting twice.
 - [Telegram Instant View template checklist](https://instantview.telegram.org/checklist) — news date, link-preview metadata, image limits, unsupported content, and cache warnings.
 - [Telegram Bot API](https://core.telegram.org/bots/api) — available methods, `sendMessage`, and `sendPhoto`; no IV lifecycle method.
 - [Telegram Instant View announcement](https://telegram.org/blog/instant-view) — product background.
-- Internal contracts: [#139](https://github.com/duyet/aidr/issues/139), [#140](https://github.com/duyet/aidr/issues/140), [#145](https://github.com/duyet/aidr/issues/145), [`ALGORITHM.md`](../../apps/web/ALGORITHM.md), and [`telegram.ts`](../../apps/web/worker/notify/telegram.ts).
+- Internal contracts: [#139](https://github.com/duyet/aidr/issues/139), [#140](https://github.com/duyet/aidr/issues/140), [#145](https://github.com/duyet/aidr/issues/145), [`LOCALE_URLS.md`](../../apps/web/LOCALE_URLS.md), [`ALGORITHM.md`](../../apps/web/ALGORITHM.md), [`site.ts`](../../apps/web/src/lib/site.ts), [`telegram.ts`](../../apps/web/worker/notify/telegram.ts), and [`notifications` migration](../../apps/web/migrations/0014_notifications.sql).
