@@ -248,4 +248,54 @@ describe("StorySources", () => {
     expect(screen.queryByText("SUPPORT")).toBeNull();
     expect(container.querySelector("a")).toBeNull();
   });
+
+  it("treats a zero timestamp as absent rather than content", () => {
+    // `posted_at: 0` is falsy, so the renderer prints no <time> for it. The
+    // filter must agree, or the row survives as a lone role label.
+    const { container } = renderSources(
+      [{ kind: "source", author: null, posted_at: 0, quote: null, url: null }],
+      "en"
+    );
+
+    expect(container.querySelector("time")).toBeNull();
+    expect(screen.queryByText("SOURCE")).toBeNull();
+    expect(container.textContent).toContain(
+      "No source details are available yet."
+    );
+  });
+
+  it("never renders a lone role label for a zero-timestamp row in a list", () => {
+    renderSources(
+      [
+        { kind: "source", author: null, posted_at: 0, quote: null, url: null },
+        { kind: "support", author: null, posted_at: 0, quote: null, url: null },
+        source,
+      ],
+      "en"
+    );
+
+    const section = screen.getByRole("region", { name: "Key sources" });
+    const rows = within(section).getAllByRole("listitem");
+
+    // Only the genuinely populated row survives; the two zero-timestamp rows
+    // are gone, so no label is left stranded without content.
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain("Anthropic");
+    // The lone-label tell: a label whose row has no other content.
+    const labels = within(section)
+      .getAllByText(/^(SOURCE|SUPPORT|THẢO LUẬN|DISCUSSION)$/)
+      .filter((el) => (el.parentElement?.textContent ?? "") === el.textContent);
+    expect(labels).toHaveLength(0);
+  });
+
+  it("keeps a real timestamp rendered next to its author", () => {
+    // Guards the other direction: the shared predicate must not start
+    // swallowing genuine timestamps.
+    renderSources([{ ...source, posted_at: 1 }], "en");
+
+    const time = document.querySelector("time");
+    expect(time).toBeTruthy();
+    expect(time?.getAttribute("datetime")).toBe(new Date(1000).toISOString());
+    expect(screen.getByText("Anthropic")).toBeTruthy();
+  });
 });

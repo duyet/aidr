@@ -41,13 +41,23 @@ function InlineDivider() {
   );
 }
 
+/** Whether a row carries a renderable timestamp. The renderer skips falsy
+ * `posted_at` values, so the filter has to agree: `0` is not a date we can
+ * format, and admitting it would render a lone role label with no content.
+ * Declared as a type guard so callers also get the non-null narrowing. */
+function hasTimestamp(
+  source: ItemSource
+): source is ItemSource & { posted_at: number } {
+  return Boolean(source.posted_at);
+}
+
 /** A source row is only worth rendering when it carries at least one piece of
  * metadata. The API contract allows metadata-empty rows (e.g. `{ kind:
  * "source" }`); rendering those would leave a lone, meaningless `SOURCE`
  * label with no content beside it. */
 function hasRowContent(source: ItemSource): boolean {
   if (source.author) return true;
-  if (source.posted_at != null) return true;
+  if (hasTimestamp(source)) return true;
   if (source.quote) return true;
   return safeSourceUrl(source.url) != null;
 }
@@ -83,7 +93,7 @@ function SourceRow({
         {source.author && (
           <span className="font-semibold">{source.author}</span>
         )}
-        {source.posted_at && (
+        {hasTimestamp(source) && (
           <>
             {source.author && <InlineDivider />}
             <time
@@ -96,15 +106,16 @@ function SourceRow({
         )}
         {source.quote && (
           <>
-            {(source.author || source.posted_at) && <InlineDivider />}
+            {(source.author || hasTimestamp(source)) && <InlineDivider />}
             <span className="text-muted-foreground">“{source.quote}”</span>
           </>
         )}
         {href && (
-          /* One non-breaking unit: the divider, the external-link icon, and
-           * the publisher host can never orphan onto separate lines. The unit
-           * is an atomic inline-block capped at the row width, so an
-           * over-long host wraps *inside* the unit instead of overflowing. */
+          /* The divider and the external-link icon stay glued to the atomic
+           * link unit, so neither can be stranded alone at a line end. The unit
+           * is an `inline-block` capped at the row width, so a pathologically
+           * long host may still wrap *within* the unit — it degrades to a
+           * multi-line unit rather than orphaning a piece or overflowing. */
           <span
             data-source-meta-unit
             className="inline-block max-w-full whitespace-nowrap align-baseline"
