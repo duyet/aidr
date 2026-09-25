@@ -1,3 +1,8 @@
+import {
+  manifestWithoutArticleUrl,
+  primaryThumbnailUrl,
+  serializeMediaManifest,
+} from "./media.js";
 import type {
   FetchedItem,
   FetchedItemSource,
@@ -6,11 +11,9 @@ import type {
 import { toEpochSeconds } from "./time.js";
 
 export const MAX_SOURCES_PER_ITEM = 8;
-/** Keep this explicit when PR #160 appends media_manifest to the same builder. */
-export const ITEM_BIND_ARITY = 21;
-/** The combined 0023 → 0024 builder must not replace this slot. */
+/** The combined 0023 translation and 0024 media item upsert arity. */
+export const ITEM_BIND_ARITY = 22;
 export const ITEM_SOURCE_LANG_BIND_INDEX = 20;
-/** Index 21 in the combined 0023 → 0024 builder; standalone ends at 20. */
 export const ITEM_MEDIA_MANIFEST_BIND_INDEX = 21;
 
 /** D1's .bind() rejects `undefined`; coerce any optional/missing value to `null`. */
@@ -47,6 +50,10 @@ export function buildItemBindArgs(args: {
     llmTokens,
     duplicateOf,
   } = args;
+  const normalizedManifest = manifestWithoutArticleUrl(
+    item.mediaManifest,
+    item.url
+  );
   return [
     nn(id),
     nn(sourceId),
@@ -70,8 +77,9 @@ export function buildItemBindArgs(args: {
     nn(status),
     nn(llmTokens ?? 0),
     nn(duplicateOf),
-    nn(item.imageUrl),
+    nn(primaryThumbnailUrl(normalizedManifest, item.imageUrl, item.url)),
     nn(item.sourceLang ?? "en"),
+    serializeMediaManifest(normalizedManifest),
   ];
 }
 

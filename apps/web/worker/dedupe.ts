@@ -1,3 +1,8 @@
+import {
+  buildMediaManifest,
+  type MediaAsset,
+  type MediaManifest,
+} from "./media.js";
 import type { FetchedItemSource } from "./sources/types.js";
 import { unionTopics } from "./topics.js";
 import type { Env } from "./types.js";
@@ -436,11 +441,16 @@ export interface MergeCandidate {
   points: number;
   comments: number;
   rank: number;
+  /** Normalized media already collected for this candidate, if any. */
+  imageUrl?: string | null;
+  mediaManifest?: MediaManifest | null;
 }
 
 export interface ExistingCandidate {
   points: number;
   comments: number;
+  imageUrl?: string | null;
+  mediaManifest?: MediaManifest | null;
 }
 
 export interface MergePlanEntry {
@@ -454,6 +464,10 @@ export interface CanonicalUpdate {
   extraTopics: string[];
   maxPoints: number;
   maxComments: number;
+  /** Validated media candidates to merge into the canonical item. */
+  extraMedia?: MediaAsset[];
+  /** Legacy image fallbacks from non-canonical candidates. */
+  extraImageUrls?: string[];
 }
 
 export interface MergePlan {
@@ -505,6 +519,17 @@ export function buildMergePlan(
         : 0;
     const extraSources: FetchedItemSource[] = [];
     const extraTopics: string[] = [];
+    const extraMedia: MediaAsset[] = [];
+    const extraImageUrls: string[] = [];
+    if (canonical.type === "existing") {
+      const existing = existingById.get(canonical.id);
+      if (existing?.mediaManifest?.assets.length) {
+        extraMedia.push(...existing.mediaManifest.assets);
+      }
+      if (existing?.imageUrl && !existing.mediaManifest?.assets.length) {
+        extraImageUrls.push(existing.imageUrl);
+      }
+    }
 
     for (const i of cluster.new) {
       const candidate = byIndex.get(i);
@@ -529,9 +554,18 @@ export function buildMergePlan(
         author: candidate.sourceId,
       });
       extraTopics.push(...(candidate.topics ?? []));
+      if (candidate.mediaManifest?.assets.length) {
+        extraMedia.push(...candidate.mediaManifest.assets);
+      }
+      if (candidate.imageUrl) extraImageUrls.push(candidate.imageUrl);
     }
 
-    if (extraSources.length === 0 && canonical.type === "existing") {
+    if (
+      extraSources.length === 0 &&
+      extraMedia.length === 0 &&
+      extraImageUrls.length === 0 &&
+      canonical.type === "existing"
+    ) {
       // Cluster only referenced an existing item plus... nothing merged
       // into it (shouldn't happen given normalizeClusters' size>=2 guard,
       // but stay defensive).
@@ -551,8 +585,26 @@ export function buildMergePlan(
         extraTopics,
         topicCap
       ),
-      maxPoints,
-      maxComments,
+      maxPoints: Math.max(existingUpdate?.maxPoints ?? 0, maxPoints),
+      maxComments: Math.max(existingUpdate?.maxComments ?? 0, maxComments),
+      ...(extraMedia.length || existingUpdate?.extraMedia?.length
+        ? {
+            extraMedia: buildMediaManifest([
+              ...(existingUpdate?.extraMedia ?? []),
+              ...extraMedia,
+            ]).assets,
+          }
+        : {}),
+      ...(extraImageUrls.length || existingUpdate?.extraImageUrls?.length
+        ? {
+            extraImageUrls: [
+              ...new Set([
+                ...(existingUpdate?.extraImageUrls ?? []),
+                ...extraImageUrls,
+              ]),
+            ],
+          }
+        : {}),
     });
   }
 

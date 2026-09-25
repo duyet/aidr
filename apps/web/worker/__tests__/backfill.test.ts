@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BACKFILL_TRANSLATE_CAP,
+  buildMissingMediaQuery,
   buildMissingSummaryQuery,
   buildMissingTranslationQuery,
   buildUnscoredItemsQuery,
@@ -13,6 +14,7 @@ describe("buildMissingSummaryQuery", () => {
     const sql = buildMissingSummaryQuery(15);
     expect(sql).toContain("status = 'published'");
     expect(sql).toMatch(/summary IS NULL OR summary = ''/);
+    expect(sql).toContain("media_manifest");
   });
 
   it("orders most-recent-first and respects the given limit", () => {
@@ -23,6 +25,20 @@ describe("buildMissingSummaryQuery", () => {
 
   it("defaults to the standard cap when no limit is given", () => {
     expect(buildMissingSummaryQuery()).toContain("LIMIT 15");
+  });
+});
+
+describe("buildMissingMediaQuery", () => {
+  it("targets published rows with a summary but no usable legacy media", () => {
+    const sql = buildMissingMediaQuery(9);
+    expect(sql).toContain("status = 'published'");
+    expect(sql).toMatch(/summary IS NOT NULL AND summary != ''/);
+    expect(sql).toMatch(/image_url IS NULL OR image_url = ''/);
+    expect(sql).toMatch(
+      /media_manifest IS NULL OR media_manifest = '' OR media_manifest = '\[\]'/
+    );
+    expect(sql).toContain("ORDER BY published_at DESC");
+    expect(sql).toContain("LIMIT 9");
   });
 });
 
@@ -78,9 +94,24 @@ describe("planBackfillUpdate", () => {
     expect(
       planBackfillUpdate(
         { imageUrl: null },
-        { imageUrl: "https://x.com/i.png" }
+        { imageUrl: "http://127.0.0.1/private.png" }
       )
-    ).toBeNull(); // an image alone, with no summary, isn't enough to write
+    ).toBeNull();
+  });
+
+  it("accepts a media-only backfill and keeps the existing summary", () => {
+    const plan = planBackfillUpdate(
+      { summary: "Existing summary", imageUrl: null },
+      { imageUrl: "https://x.com/i.png" }
+    );
+    expect(plan).toEqual({
+      summary: "Existing summary",
+      imageUrl: "https://x.com/i.png",
+      mediaManifest: {
+        version: 1,
+        assets: [{ type: "image", url: "https://x.com/i.png" }],
+      },
+    });
   });
 
   it("writes the fetched summary when there's no existing image", () => {
@@ -91,7 +122,62 @@ describe("planBackfillUpdate", () => {
     expect(plan).toEqual({
       summary: "A fetched summary",
       imageUrl: "https://x.com/i.png",
+      mediaManifest: {
+        version: 1,
+        assets: [{ type: "image", url: "https://x.com/i.png" }],
+      },
     });
+  });
+
+  it("preserves a fetched bounded media manifest", () => {
+    const plan = planBackfillUpdate(
+      { imageUrl: null },
+      {
+        summary: "A fetched summary",
+        mediaManifest: {
+          version: 1,
+          assets: [
+            { type: "image", url: "https://x.com/hero.jpg" },
+            { type: "video", url: "https://x.com/story.mp4" },
+          ],
+        },
+      }
+    );
+    expect(plan?.mediaManifest?.assets).toHaveLength(2);
+  });
+
+  it("preserves and merges a richer existing manifest on backfill", () => {
+    const plan = planBackfillUpdate(
+      {
+        imageUrl: "https://existing.com/original.png",
+        mediaManifest: JSON.stringify({
+          version: 1,
+          assets: [
+            {
+              type: "video",
+              url: "https://existing.com/story.mp4",
+              poster_url: "https://existing.com/poster.png",
+            },
+          ],
+        }),
+      },
+      {
+        summary: "Fetched",
+        mediaManifest: {
+          version: 1,
+          assets: [{ type: "image", url: "https://new.com/alternate.png" }],
+        },
+      }
+    );
+    expect(plan?.imageUrl).toBe("https://existing.com/poster.png");
+    expect(plan?.mediaManifest?.assets).toEqual([
+      {
+        type: "video",
+        url: "https://existing.com/story.mp4",
+        poster_url: "https://existing.com/poster.png",
+      },
+      { type: "image", url: "https://new.com/alternate.png" },
+    ]);
   });
 
   it("never overwrites a non-empty existing image_url with a freshly-fetched one", () => {

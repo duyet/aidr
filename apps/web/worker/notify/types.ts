@@ -1,4 +1,5 @@
 import type { Lang } from "../../src/lib/types.js";
+import type { MediaManifest } from "../media.js";
 import type { Env } from "../types.js";
 
 /** A trending story posted individually. Title/summary are already
@@ -9,6 +10,9 @@ export interface StoryPayload {
   title: string;
   summary: string | null;
   image_url: string | null;
+  /** Typed candidates; current transport uses only the normalized thumbnail
+   * through sendPhoto. Video/album delivery remains deferred. */
+  media_manifest?: MediaManifest | null;
   category: string | null;
   points: number;
   comments: number;

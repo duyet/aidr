@@ -3,6 +3,16 @@ import { fetchOgData } from "./enrich.js";
 import { sha256Hex } from "./hash.js";
 import { callAnyrouter, parseJson } from "./llm.js";
 import {
+  manifestWithoutArticleUrl,
+  parseMediaManifest,
+  primaryThumbnailUrl,
+  serializeMediaManifest,
+} from "./media.js";
+import {
+  assertMediaManifestSchema,
+  isMediaManifestSchemaError,
+} from "./media-schema.js";
+import {
   checkRateLimit,
   hashIp,
   ONE_DAY_SEC,
@@ -249,10 +259,27 @@ export interface SubmissionsReviewStats {
   tokens: number;
 }
 
+function normalizedOgImage(
+  mediaManifest: unknown,
+  imageUrl: unknown,
+  articleUrl?: unknown
+): {
+  imageUrl: string | null;
+  mediaManifest: ReturnType<typeof parseMediaManifest>;
+} {
+  const parsed = parseMediaManifest(mediaManifest, imageUrl);
+  const manifest = manifestWithoutArticleUrl(parsed, articleUrl);
+  return {
+    imageUrl: primaryThumbnailUrl(manifest, imageUrl, articleUrl),
+    mediaManifest: manifest,
+  };
+}
+
 export async function reviewPendingSubmissions(
   env: Env,
   cap = REVIEW_CAP_DEFAULT
 ): Promise<SubmissionsReviewStats> {
+  await assertMediaManifestSchema(env.DB);
   const { results } = await env.DB.prepare(
     `SELECT id, url, title, note FROM submissions
      WHERE status = 'pending'
@@ -267,6 +294,11 @@ export async function reviewPendingSubmissions(
   for (const submission of pending) {
     try {
       const og = await fetchOgData(submission.url);
+      const normalizedMedia = normalizedOgImage(
+        og.mediaManifest,
+        og.imageUrl,
+        submission.url
+      );
 
       const jev = await callSystemOne(
         env,
@@ -332,15 +364,15 @@ export async function reviewPendingSubmissions(
       const itemId = await sha256Hex(submission.url);
       const now = Date.now();
       // Deliberately not using d1-bind.ts's buildItemBindArgs — that's
-      // shaped for the ingest workflow's full 21-column upsert (llm
+      // shaped for the ingest workflow's full 22-column upsert (llm
       // scores, tags, rank, etc.), all of which are irrelevant here: this
       // row only needs to exist with status='new' so the next ingest run's
       // dedupe step picks it up and runs it through that same pipeline.
       // Every column left out (points, comments, tags, rank_score, status)
       // has a matching NOT NULL DEFAULT in the schema.
       await env.DB.prepare(
-        `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang, media_manifest)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO NOTHING`
       )
         .bind(
@@ -352,8 +384,9 @@ export async function reviewPendingSubmissions(
           nn(og.description),
           nn(toEpochSeconds(now)),
           nn(toEpochSeconds(now)),
-          nn(og.imageUrl),
-          "en"
+          nn(normalizedMedia.imageUrl),
+          "en",
+          serializeMediaManifest(normalizedMedia.mediaManifest)
         )
         .run();
 
@@ -369,6 +402,7 @@ export async function reviewPendingSubmissions(
         .run();
       reviewed++;
     } catch (error) {
+      if (isMediaManifestSchemaError(error)) throw error;
       console.error(
         `reviewPendingSubmissions failed for ${submission.id}:`,
         error
@@ -383,6 +417,7 @@ export async function acceptSubmissionById(
   env: Env,
   id: string
 ): Promise<{ ok: true; itemId: string } | { ok: false; error: string }> {
+  await assertMediaManifestSchema(env.DB);
   const submission = await env.DB.prepare(
     "SELECT id, url, title, note FROM submissions WHERE id = ? AND status = 'pending'"
   )
@@ -391,11 +426,16 @@ export async function acceptSubmissionById(
   if (!submission) return { ok: false, error: "not found or not pending" };
 
   const og = await fetchOgData(submission.url);
+  const normalizedMedia = normalizedOgImage(
+    og.mediaManifest,
+    og.imageUrl,
+    submission.url
+  );
   const itemId = await sha256Hex(submission.url);
   const now = Date.now();
   await env.DB.prepare(
-    `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang, media_manifest)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO NOTHING`
   )
     .bind(
@@ -407,8 +447,9 @@ export async function acceptSubmissionById(
       nn(og.description),
       nn(toEpochSeconds(now)),
       nn(toEpochSeconds(now)),
-      nn(og.imageUrl),
-      "en"
+      nn(normalizedMedia.imageUrl),
+      "en",
+      serializeMediaManifest(normalizedMedia.mediaManifest)
     )
     .run();
 

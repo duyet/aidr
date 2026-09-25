@@ -432,6 +432,48 @@ describe("buildMergePlan", () => {
     expect(update?.extraTopics).toEqual(["anthropic", "claude", "open-source"]);
   });
 
+  it("carries media candidates into an existing canonical update", () => {
+    const mediaCandidates: MergeCandidate[] = [
+      {
+        ...candidates[0],
+        mediaManifest: {
+          version: 1,
+          assets: [{ type: "image", url: "https://img.example/a.jpg" }],
+        },
+      },
+      {
+        ...candidates[1],
+        imageUrl: "https://img.example/b.jpg",
+        mediaManifest: {
+          version: 1,
+          assets: [
+            {
+              type: "video",
+              url: "https://example.com/b.mp4",
+              poster_url: "https://img.example/b-poster.jpg",
+            },
+          ],
+        },
+      },
+    ];
+    const plan = buildMergePlan(
+      [{ new: [0, 1], existing: ["existing-1"] }],
+      mediaCandidates,
+      new Map([["existing-1", { points: 1, comments: 1 }]]),
+      8
+    );
+    const update = plan.canonicalUpdates.get("existing-1");
+    expect(update?.extraMedia).toEqual([
+      { type: "image", url: "https://img.example/a.jpg" },
+      {
+        type: "video",
+        url: "https://example.com/b.mp4",
+        poster_url: "https://img.example/b-poster.jpg",
+      },
+    ]);
+    expect(update?.extraImageUrls).toContain("https://img.example/b.jpg");
+  });
+
   it("no existing item: canonical is the highest-rank new item, others merge into it", () => {
     const clusters: Cluster[] = [{ new: [0, 1, 2], existing: [] }];
     const plan = buildMergePlan(clusters, candidates, new Map(), 8);

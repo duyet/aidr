@@ -1,19 +1,13 @@
+import {
+  buildMediaManifest,
+  isPrivateHostname,
+  type MediaCandidate,
+  type MediaManifest,
+  manifestWithoutArticleUrl,
+  parseMediaMetadata,
+  primaryThumbnailUrl,
+} from "./media.js";
 import type { FetchedItem } from "./sources/types.js";
-
-/**
- * og:image URLs known to be an aggregator's own static branding asset
- * rather than a story-specific thumbnail (e.g. HuggingNews serves this
- * same image as og:image on every page, since story pages are
- * client-rendered and have no per-story meta tags). Fetched images that
- * match are treated as "no image", same as if og:image were absent.
- */
-const BLOCKED_IMAGE_URLS = new Set<string>([
-  "https://huggingnews.com/og-image.png",
-]);
-
-function isBlockedImage(url: string): boolean {
-  return BLOCKED_IMAGE_URLS.has(url);
-}
 
 const MAX_ENRICH_FETCHES = 20;
 const ENRICH_BATCH_SIZE = 4;
@@ -25,6 +19,8 @@ const MAX_HTML_BYTES = 100_000;
 export interface OgData {
   imageUrl?: string;
   description?: string;
+  /** Present when the page exposes more than one image or any video. */
+  mediaManifest?: MediaManifest;
 }
 
 const NAMED_ENTITIES: Record<string, string> = {
@@ -68,17 +64,15 @@ export function decodeHtmlEntities(text: string): string {
   return out;
 }
 
-function isAbsoluteHttpUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
+export const MAX_ENRICH_REDIRECTS = 3;
 
-/** Hostname-only SSRF guard before server-side fetches. No DNS resolution
- * in Workers — blocks obvious private/link-local targets by name. */
+/**
+ * Fetch-boundary URL policy. This rejects obvious reserved/private literals,
+ * credentials, and non-default ports. Workers cannot resolve a hostname to
+ * an IP, so this is deliberately documented as a syntactic SSRF guard—not a
+ * complete defense against DNS rebinding. Callers must keep the URL set
+ * constrained to trusted source/article inputs.
+ */
 export function isFetchableUrl(raw: string): boolean {
   let u: URL;
   try {
@@ -87,21 +81,93 @@ export function isFetchableUrl(raw: string): boolean {
     return false;
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") return false;
-  const h = u.hostname.toLowerCase();
+  if (u.username || u.password) return false;
+  if (u.protocol === "http:") {
+    // Plain HTTP is retained only for explicitly public, well-known source
+    // hosts. Arbitrary clear-text article URLs are not fetched.
+    const hostname = u.hostname.toLowerCase().replace(/\.$/, "");
+    const publicHosts = new Set([
+      "news.ycombinator.com",
+      "www.anthropic.com",
+      "huggingnews.com",
+      "x.ai",
+      "www.x.ai",
+      "marketbrief.now",
+    ]);
+    if (!publicHosts.has(hostname)) return false;
+  }
+  const defaultPort = u.protocol === "https:" ? "443" : "80";
+  if (u.port && u.port !== defaultPort) return false;
+
+  const hostname = u.hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
   if (
-    h === "localhost" ||
-    h.endsWith(".localhost") ||
-    h.endsWith(".internal") ||
-    h.endsWith(".local")
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".internal") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".home") ||
+    hostname.endsWith(".lan") ||
+    isPrivateHostname(hostname)
   ) {
     return false;
   }
-  if (/^(10|127)\./.test(h)) return false;
-  if (/^192\.168\./.test(h)) return false;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return false;
-  if (/^169\.254\./.test(h)) return false;
-  if (/^(::1|fc00:|fd[0-9a-f]{2}:|fe80:)/i.test(h)) return false;
   return true;
+}
+
+export function redactUrlForLog(raw: string): string {
+  try {
+    const url = new URL(raw);
+    // Never log query strings or path segments: signed CDNs can put bearer
+    // credentials in either location. Keep only the origin for diagnostics.
+    return url.pathname && url.pathname !== "/"
+      ? `${url.origin}/[path-redacted]`
+      : url.origin;
+  } catch {
+    return "[invalid-url]";
+  }
+}
+
+function logSafeUrl(raw: string): string {
+  return redactUrlForLog(raw);
+}
+
+function logSafeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/https?:\/\/[^\s"'<>]+/gi, (url) => logSafeUrl(url));
+}
+
+/** Follow redirects manually so every hop and the final URL cross the policy. */
+export async function fetchWithSafeRedirects(
+  raw: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  let current = raw;
+  for (let redirect = 0; redirect <= MAX_ENRICH_REDIRECTS; redirect++) {
+    if (!isFetchableUrl(current)) {
+      throw new Error(`blocked fetch URL: ${logSafeUrl(current)}`);
+    }
+    const response = await fetch(current, {
+      ...init,
+      redirect: "manual",
+    });
+    const status = response.status;
+    if (response.url && !isFetchableUrl(response.url)) {
+      throw new Error(`blocked final fetch URL: ${logSafeUrl(response.url)}`);
+    }
+    if (![301, 302, 303, 307, 308].includes(status)) {
+      return response;
+    }
+    const location = response.headers.get("location");
+    if (!location) throw new Error("redirect response has no location");
+    if (redirect === MAX_ENRICH_REDIRECTS) {
+      throw new Error("too many fetch redirects");
+    }
+    current = new URL(location, current).toString();
+  }
+  throw new Error("too many fetch redirects");
 }
 
 /** Matches a <meta> tag's `content` regardless of whether `content` comes
@@ -133,10 +199,8 @@ function extractMetaContent(
  * entities in the description and og:image URL are decoded.
  */
 export function parseOgTags(html: string): OgData {
-  const rawImage = extractMetaContent(html, "property", "og:image");
-  const decodedImage = rawImage ? decodeHtmlEntities(rawImage) : null;
-  const imageUrl =
-    decodedImage && isAbsoluteHttpUrl(decodedImage) ? decodedImage : undefined;
+  const manifest = buildMediaManifest(parseMediaMetadata(html));
+  const imageUrl = primaryThumbnailUrl(manifest) ?? undefined;
 
   const rawDescription =
     extractMetaContent(html, "property", "og:description") ??
@@ -145,7 +209,14 @@ export function parseOgTags(html: string): OgData {
     ? decodeHtmlEntities(rawDescription).trim() || undefined
     : undefined;
 
-  return { imageUrl, description };
+  const hasUsefulManifest =
+    manifest.assets.some((asset) => asset.type === "video") ||
+    manifest.assets.filter((asset) => asset.type === "image").length > 1;
+  return {
+    imageUrl,
+    description,
+    ...(hasUsefulManifest ? { mediaManifest: manifest } : {}),
+  };
 }
 
 async function readCappedText(
@@ -187,15 +258,11 @@ async function readCappedText(
  * resolves to `{}`, never throws. */
 export async function fetchOgData(url: string): Promise<OgData> {
   if (!isFetchableUrl(url)) {
-    try {
-      console.warn("enrich: blocked url", new URL(url).hostname);
-    } catch {
-      console.warn("enrich: blocked url", url);
-    }
+    console.warn("enrich: blocked url", logSafeUrl(url));
     return {};
   }
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithSafeRedirects(url, {
       signal: AbortSignal.timeout(ENRICH_FETCH_TIMEOUT_MS),
       headers: { "User-Agent": "Mozilla/5.0 (compatible; duyet-news-bot/1.0)" },
     });
@@ -207,57 +274,111 @@ export async function fetchOgData(url: string): Promise<OgData> {
     const html = await readCappedText(res, MAX_HTML_BYTES);
     return parseOgTags(html);
   } catch (error) {
-    console.error(`enrich: og fetch failed for ${url}:`, error);
+    console.error(
+      `enrich: og fetch failed for ${logSafeUrl(url)}:`,
+      logSafeError(error)
+    );
     return {};
   }
 }
 
+function mediaCandidatesFromOg(
+  data: OgData,
+  priority: number
+): MediaCandidate[] {
+  if (data.mediaManifest) {
+    return data.mediaManifest.assets.map((asset, index) => ({
+      ...asset,
+      priority: priority + index / 1000,
+    }));
+  }
+  return data.imageUrl ? [{ type: "image", url: data.imageUrl, priority }] : [];
+}
+
+function normalizeExistingMedia(item: FetchedItem): void {
+  const supplied = manifestWithoutArticleUrl(
+    buildMediaManifest([
+      ...(item.media ?? []),
+      ...(item.mediaManifest?.assets ?? []),
+    ]),
+    item.url
+  );
+  const hasUsableThumbnail = supplied.assets.some(
+    (asset) =>
+      asset.type === "image" ||
+      (asset.type === "video" && Boolean(asset.poster_url))
+  );
+  const existing = manifestWithoutArticleUrl(
+    hasUsableThumbnail
+      ? supplied
+      : buildMediaManifest([
+          ...supplied.assets,
+          ...(item.imageUrl
+            ? [{ type: "image" as const, url: item.imageUrl, priority: -1 }]
+            : []),
+        ]),
+    item.url
+  );
+  const legacyImageUrl = item.imageUrl;
+  item.mediaManifest = existing;
+  item.imageUrl =
+    primaryThumbnailUrl(existing, legacyImageUrl, item.url) ?? undefined;
+}
+
+function hasMedia(item: FetchedItem): boolean {
+  return Boolean(item.imageUrl) || (item.mediaManifest?.assets.length ?? 0) > 0;
+}
+
 /**
- * Mutates `items` in place, filling in `summary`/`imageUrl` for whichever
- * of those fields are still missing, by fetching the article URL itself
- * and reading og/description meta tags. Only the first
- * MAX_ENRICH_FETCHES items lacking either field are fetched (in batches of
- * ENRICH_BATCH_SIZE), so a large new-item batch doesn't blow the run's
- * subrequest budget. Never fetches an item that already has both fields
- * (e.g. HuggingNews items whose summary came from the detail-page body).
- *
- * For `imageUrl`, an item's `sources` entry of kind "source" (the
- * original post the aggregator is reporting on, e.g. a tweet) is tried
- * before `item.url` itself: for aggregator adapters like HuggingNews,
- * `item.url` is often the aggregator's own page rather than the original
- * article, whose og:image is just site branding (see BLOCKED_IMAGE_URLS)
- * rather than a story-specific thumbnail.
+ * Mutates `items` in place, filling in summary/media fields from the article
+ * and its original source page. Legacy `imageUrl` is retained as the primary
+ * image URL while `mediaManifest` stores the bounded, ordered candidates.
+ * Only the first MAX_ENRICH_FETCHES items needing content are fetched, in
+ * batches of ENRICH_BATCH_SIZE.
  */
 export async function enrichMissingContent(
   items: FetchedItem[]
 ): Promise<void> {
-  const candidates = items.filter((item) => !item.summary || !item.imageUrl);
+  for (const item of items) normalizeExistingMedia(item);
+  const candidates = items.filter((item) => !item.summary || !hasMedia(item));
   const toEnrich = candidates.slice(0, MAX_ENRICH_FETCHES);
 
   for (let i = 0; i < toEnrich.length; i += ENRICH_BATCH_SIZE) {
     const batch = toEnrich.slice(i, i + ENRICH_BATCH_SIZE);
     await Promise.all(
       batch.map(async (item) => {
-        let sourceImageUrl: string | undefined;
+        const fetched: MediaCandidate[] = [];
         const originalUrl = item.sources?.find(
-          (s) => s.kind === "source" && s.url
+          (source) => source.kind === "source" && source.url
         )?.url;
-        if (!item.imageUrl && originalUrl && originalUrl !== item.url) {
+        if (originalUrl && originalUrl !== item.url) {
           const sourceOg = await fetchOgData(originalUrl);
-          if (sourceOg.imageUrl && !isBlockedImage(sourceOg.imageUrl)) {
-            sourceImageUrl = sourceOg.imageUrl;
-          }
+          fetched.push(...mediaCandidatesFromOg(sourceOg, 10));
         }
 
         const og = await fetchOgData(item.url);
-        if (!item.imageUrl) {
-          item.imageUrl =
-            sourceImageUrl ??
-            (og.imageUrl && !isBlockedImage(og.imageUrl)
-              ? og.imageUrl
-              : undefined);
-        }
+        fetched.push(...mediaCandidatesFromOg(og, 20));
         if (!item.summary && og.description) item.summary = og.description;
+
+        let manifest = manifestWithoutArticleUrl(
+          buildMediaManifest([
+            ...(item.media ?? []),
+            ...(item.mediaManifest?.assets ?? []),
+            ...(item.imageUrl
+              ? [{ type: "image" as const, url: item.imageUrl, priority: 0 }]
+              : []),
+            ...fetched,
+          ]),
+          item.url
+        );
+        if (originalUrl) {
+          manifest = manifestWithoutArticleUrl(manifest, originalUrl);
+        }
+        if (manifest.assets.length > 0) {
+          item.mediaManifest = manifest;
+          item.imageUrl =
+            primaryThumbnailUrl(manifest, item.imageUrl, item.url) ?? undefined;
+        }
       })
     );
   }

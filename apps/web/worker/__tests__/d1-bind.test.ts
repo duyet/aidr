@@ -65,10 +65,11 @@ describe("buildItemBindArgs", () => {
       null, // duplicate_of, defaulted since duplicateOf was omitted
       null, // image_url, item.imageUrl was omitted
       "en", // explicit source language
+      '{"version":1,"assets":[]}', // media_manifest
     ]);
     expect(args).toHaveLength(ITEM_BIND_ARITY);
     expect(args[ITEM_SOURCE_LANG_BIND_INDEX]).toBe("en");
-    expect(ITEM_MEDIA_MANIFEST_BIND_INDEX).toBe(ITEM_BIND_ARITY);
+    expect(ITEM_MEDIA_MANIFEST_BIND_INDEX).toBe(ITEM_BIND_ARITY - 1);
   });
 
   it("passes through llm scores when present, including a zero relevance", () => {
@@ -157,6 +158,7 @@ describe("buildItemBindArgs", () => {
     expect(args[18]).toBeNull(); // duplicate_of
     expect(args[19]).toBeNull(); // image_url
     expect(args[20]).toBe("en"); // source_lang
+    expect(args[21]).toBe('{"version":1,"assets":[]}');
   });
 
   it("includes duplicate_of with no undefined when the item is merged", () => {
@@ -178,6 +180,95 @@ describe("buildItemBindArgs", () => {
     expect(args[18]).toBe("canonical-id-456");
   });
 
+  it("derives legacy image_url from the first manifest image", () => {
+    const args = buildItemBindArgs({
+      id: "abc123",
+      sourceId: "hn",
+      item: {
+        url: "https://example.com/story",
+        title: "Title",
+        publishedAt: 1700000000,
+        mediaManifest: {
+          version: 1,
+          assets: [{ type: "image", url: "https://example.com/manifest.png" }],
+        },
+      },
+      rank: 1,
+      status: "published",
+      now: 1700000100000,
+    });
+
+    expect(args[19]).toBe("https://example.com/manifest.png");
+    expect(args[ITEM_SOURCE_LANG_BIND_INDEX]).toBe("en");
+    expect(JSON.parse(args[ITEM_MEDIA_MANIFEST_BIND_INDEX] as string)).toEqual({
+      version: 1,
+      assets: [{ type: "image", url: "https://example.com/manifest.png" }],
+    });
+  });
+
+  it("derives legacy image_url from a video poster without duplicating it", () => {
+    const args = buildItemBindArgs({
+      id: "abc123",
+      sourceId: "hn",
+      item: {
+        url: "https://example.com/story",
+        title: "Title",
+        publishedAt: 1700000000,
+        mediaManifest: {
+          version: 1,
+          assets: [
+            {
+              type: "video",
+              url: "https://example.com/story.mp4",
+              poster_url: "https://example.com/poster.jpg",
+            },
+          ],
+        },
+      },
+      rank: 1,
+      status: "published",
+      now: 1700000100000,
+    });
+
+    expect(args[19]).toBe("https://example.com/poster.jpg");
+    expect(args[ITEM_SOURCE_LANG_BIND_INDEX]).toBe("en");
+    expect(JSON.parse(args[ITEM_MEDIA_MANIFEST_BIND_INDEX] as string)).toEqual({
+      version: 1,
+      assets: [
+        {
+          type: "video",
+          url: "https://example.com/story.mp4",
+          poster_url: "https://example.com/poster.jpg",
+        },
+      ],
+    });
+  });
+
+  it("does not persist an article URL accidentally classified as media", () => {
+    const args = buildItemBindArgs({
+      id: "abc123",
+      sourceId: "hn",
+      item: {
+        url: "https://example.com/article",
+        title: "Title",
+        publishedAt: 1700000000,
+        mediaManifest: {
+          version: 1,
+          assets: [{ type: "image", url: "https://example.com/article" }],
+        },
+      },
+      rank: 1,
+      status: "published",
+      now: 1700000100000,
+    });
+    expect(args[19]).toBeNull();
+    expect(args[ITEM_SOURCE_LANG_BIND_INDEX]).toBe("en");
+    expect(JSON.parse(args[ITEM_MEDIA_MANIFEST_BIND_INDEX] as string)).toEqual({
+      version: 1,
+      assets: [],
+    });
+  });
+
   it("includes image_url with no undefined when the item has one", () => {
     const args = buildItemBindArgs({
       id: "abc123",
@@ -195,6 +286,10 @@ describe("buildItemBindArgs", () => {
 
     expect(args).not.toContain(undefined);
     expect(args[19]).toBe("https://example.com/og.png");
+    expect(args[ITEM_SOURCE_LANG_BIND_INDEX]).toBe("en");
+    expect(args[ITEM_MEDIA_MANIFEST_BIND_INDEX]).toBe(
+      '{"version":1,"assets":[]}'
+    );
   });
 });
 

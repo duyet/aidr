@@ -2,6 +2,14 @@ import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import { nn } from "../d1-bind.js";
 import {
+  canonicalizeMediaImageUrl,
+  canonicalizeMediaUrl,
+  manifestWithoutArticleUrl,
+  parseMediaManifest,
+  primaryThumbnailUrl,
+} from "../media.js";
+import { assertMediaManifestSchema } from "../media-schema.js";
+import {
   getLocalHourAndDate,
   primaryItemId,
   topBullets,
@@ -102,6 +110,27 @@ interface NotificationRow {
   attempts: number;
 }
 
+export type StoryRow = Omit<StoryPayload, "media_manifest"> & {
+  media_manifest?: string | null;
+};
+
+export function hydrateStory(row: StoryRow): StoryPayload {
+  const manifest = manifestWithoutArticleUrl(
+    parseMediaManifest(row.media_manifest, row.image_url),
+    row.url
+  );
+  const story = { ...row };
+  delete story.media_manifest;
+  return {
+    ...story,
+    url: canonicalizeMediaUrl(story.url) ?? "",
+    image_url: canonicalizeMediaImageUrl(
+      primaryThumbnailUrl(manifest, story.image_url, story.url)
+    ),
+    media_manifest: manifest.assets.length > 0 ? manifest : null,
+  };
+}
+
 /** Why today's digest will not go out, or null if it should send. */
 export function classifyDigestSkip(
   existing: NotificationRow | null,
@@ -154,7 +183,7 @@ export function buildTrendingQuery(
     sql: `SELECT i.id, i.url,
                  COALESCE(NULLIF(TRIM(tr.title), ''), i.title) AS title,
                  COALESCE(NULLIF(TRIM(tr.summary), ''), i.summary) AS summary,
-                 i.image_url, i.category,
+                 i.image_url, i.media_manifest, i.category,
                  i.points, i.comments, i.rank_score, i.llm_importance,
                  CASE WHEN NULLIF(TRIM(tr.title), '') IS NOT NULL
                    THEN 'vi' ELSE 'en' END AS lang
@@ -321,6 +350,7 @@ async function recordDelivery(
 export async function dispatchStoryNotifications(
   env: Env
 ): Promise<NotifyRunResult> {
+  await assertMediaManifestSchema(env.DB);
   assertNotifyConfig(env);
 
   const sent: Record<string, number> = {};
@@ -412,8 +442,8 @@ export async function dispatchStoryNotifications(
       const { sql, binds } = buildTrendingQuery(notifier.id, now);
       const { results } = await env.DB.prepare(sql)
         .bind(...binds)
-        .all<StoryPayload>();
-      const candidates = results ?? [];
+        .all<StoryRow>();
+      const candidates = (results ?? []).map(hydrateStory);
       const afterQuery = classifyTrendingSkip(
         maxRank,
         budget,

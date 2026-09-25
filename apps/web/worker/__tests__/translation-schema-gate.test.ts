@@ -57,8 +57,14 @@ describe("translation migration deploy gate", () => {
   });
 
   it("runs both local order and remote schema gates before build and deploy", () => {
+    expect(packageJson.scripts["check:migration-order"]).toContain(
+      "--local-order"
+    );
+    expect(packageJson.scripts["check:migration-ledger"]).toContain(
+      "--ledger-order"
+    );
     expect(packageJson.scripts["check:migrations"]).toContain(
-      "check-migration-order"
+      "check:migration-order"
     );
     expect(packageJson.scripts.deploy).toMatch(
       /check:migrations.*verify:translation-schema.*build.*wrangler deploy/
@@ -93,7 +99,7 @@ describe("translation migration deploy gate", () => {
     ).toThrow("incomplete");
     expect(() =>
       assertRemoteSchemaOutput(
-        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation trg_translations_marker_invalidation"
+        "translation_reviews translation_review_attempts translation_review_state translation_review_resolutions qa_source_hash qa_candidate_hash qa_source_revision source_lang target_lang source_revision attempt_number criteria_fingerprint prompt_fingerprint policy_fingerprint model_fingerprint candidate_title candidate_summary manual_retry_count trg_items_source_revision trg_translations_candidate_invalidation trg_translations_marker_invalidation media_manifest"
       )
     ).not.toThrow();
   });

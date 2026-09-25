@@ -70,6 +70,7 @@ export function storyToItem(
   const authors = pick(story, ["authorCount", "points"]);
   const summaryRaw = pick(story, ["summary", "dek", "lede"]);
   const externalId = pick(story, ["storyId", "id"]);
+  const image = imageUrl(pick(story, ["image", "imageUrl", "thumbnail"]));
   return {
     externalId: typeof externalId === "string" ? externalId : undefined,
     url,
@@ -81,7 +82,8 @@ export function storyToItem(
     publishedAt: toEpochSeconds(publishedMs),
     points: typeof authors === "number" ? Math.round(authors) : 0,
     comments: typeof comments === "number" ? comments : 0,
-    imageUrl: imageUrl(pick(story, ["image", "imageUrl", "thumbnail"])),
+    imageUrl: image,
+    ...(image ? { media: [{ type: "image" as const, url: image }] } : {}),
     sources: [
       {
         kind: "source",

@@ -39,7 +39,7 @@ describe("controlled migration/bind integration plan", () => {
     expect(plan).toContain("media_manifest");
     expect(plan).toContain("0025_llm_call_run_identity.sql");
     expect(plan).not.toContain("0025_translation_review_hardening.sql");
-    expect(ITEM_BIND_ARITY).toBe(21);
+    expect(ITEM_BIND_ARITY).toBe(22);
     expect(ITEM_SOURCE_LANG_BIND_INDEX).toBe(20);
     expect(ITEM_MEDIA_MANIFEST_BIND_INDEX).toBe(21);
     expect(TRANSLATION_BIND_ARITY).toBe(6);

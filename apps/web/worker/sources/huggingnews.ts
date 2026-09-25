@@ -1,3 +1,4 @@
+import { fetchWithSafeRedirects } from "../enrich.js";
 import { toEpochSeconds } from "../time.js";
 import type { FetchedItem, FetchedItemSource, SourceAdapter } from "./types.js";
 
@@ -291,14 +292,14 @@ export async function fetchStoryDetailByUrl(
   detailUrl: string
 ): Promise<StoryDetail> {
   try {
-    const res = await fetch(detailUrl, {
+    const res = await fetchWithSafeRedirects(detailUrl, {
       signal: AbortSignal.timeout(DETAIL_FETCH_TIMEOUT_MS),
     });
     if (!res.ok) return EMPTY_STORY_DETAIL;
     const payload = (await res.json()) as { nodes?: unknown[] };
     return parseStoryDetailPayload(payload);
   } catch (error) {
-    console.error(`huggingnews detail fetch failed for ${detailUrl}:`, error);
+    console.error("huggingnews detail fetch failed:", error);
     return EMPTY_STORY_DETAIL;
   }
 }
