@@ -33,7 +33,8 @@ import {
 import { withLang } from "./lib/locale-url";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
-import { hasServerFnId, isServerFnPath } from "./lib/server-fn-request";
+import { classifyServerFnPath } from "./lib/server-fn-registry";
+import { isServerFnBasePath, isServerFnPath } from "./lib/server-fn-request";
 import {
   buildSitemapXml,
   loadSitemapUrls,
@@ -130,12 +131,16 @@ export default {
     const htmlRequest = isHtmlRequest(request);
     // Server functions are RPC. A submit call must reach its handler on any
     // request, so this path only gets a JSON locale rejection — never the
-    // document gate's 307 or HTML error page.
-    if (isServerFnPath(path)) {
-      if (!hasServerFnId(path)) {
+    // document gate's 307 or HTML error page. A path that names no real
+    // function is answered here too: Start would throw an unhandled error
+    // whose message echoes the requested id.
+    if (isServerFnPath(path) || isServerFnBasePath(path)) {
+      const verdict = await classifyServerFnPath(path);
+      if (verdict === "malformed" || verdict === "unknown") {
         return apiErrorResponse(404, {
           error: "server_function_not_found",
           message: "Unknown server function.",
+          message_vi: "Không tìm thấy hàm máy chủ.",
         });
       }
       const invalid = resolveServerFnLocaleRequest(request);

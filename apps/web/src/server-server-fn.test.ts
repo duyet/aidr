@@ -1,5 +1,5 @@
 import handler from "@tanstack/react-start/server-entry";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../worker/types";
 
 vi.mock("@tanstack/react-start/server-entry", () => ({
@@ -17,6 +17,9 @@ vi.mock("../worker/workflow", () => ({
 }));
 
 const { default: server } = await import("./server");
+const { _setServerFnResolverForTests } = await import(
+  "./lib/server-fn-registry"
+);
 
 const FN_ID = "src_lib_submit-fn_ts--submitStory";
 const FN_PATH = `/_serverFn/${FN_ID}`;
@@ -27,6 +30,19 @@ const FN_PATH = `/_serverFn/${FN_ID}`;
  * committed to the test suite.
  */
 const HEX_FN_ID = "deadbeef".repeat(8);
+
+/** The only id shape this app's unit tests can resolve is none: no Start
+ * build is running, so the registry must decline and defer to Start. */
+type Resolver = (id: string, access: { origin: "client" }) => Promise<unknown>;
+
+/** Stand in for Start's generated manifest lookup. */
+function resolverOver(ids: Iterable<string>): Resolver {
+  const set = new Set(ids);
+  return (id) =>
+    set.has(id)
+      ? Promise.resolve({ handler: () => undefined })
+      : Promise.reject(new Error(`Server function info not found for ${id}`));
+}
 
 /** Headers the Start client sends for a server-function POST. */
 const TSS_HEADERS = {
@@ -60,6 +76,14 @@ function serialized(body: string, status = 200): Response {
 
 beforeEach(() => {
   vi.mocked(handler.fetch).mockReset();
+  // No Start build here, so the resolver declines by default and every
+  // transport request reaches the handler. Tests that assert the bounded 404
+  // pin a manifest explicitly.
+  _setServerFnResolverForTests(null);
+});
+
+afterEach(() => {
+  _setServerFnResolverForTests(undefined);
 });
 
 describe("server-function transport path", () => {
@@ -80,10 +104,14 @@ describe("server-function transport path", () => {
   });
 
   it("rejects malformed server-function paths as JSON 404", async () => {
+    _setServerFnResolverForTests(resolverOver([HEX_FN_ID, FN_ID]));
+
     for (const path of [
       "https://aidr.today/_serverFn/",
       "https://aidr.today/_serverFn//",
       "https://aidr.today/_serverFn/abc/extra",
+      "https://aidr.today/_serverFn/..%2f..%2fadmin",
+      "https://aidr.today/_serverFn/%2e%2e%2f%2e%2e%2fadmin",
     ]) {
       const response = await call(
         new Request(path, {
@@ -101,6 +129,181 @@ describe("server-function transport path", () => {
       });
     }
     expect(handler.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a well-formed but unregistered function id as JSON 404", async () => {
+    // The manifest no longer has this id, e.g. a renamed function still
+    // referenced by an already-served client bundle. Start's own lookup throws
+    // an unhandled error that embeds the id, so the Worker bounds it first.
+    _setServerFnResolverForTests(resolverOver([HEX_FN_ID, FN_ID]));
+
+    const staleId = "b".repeat(64);
+    const response = await call(
+      new Request(`https://aidr.today/_serverFn/${staleId}`, {
+        method: "POST",
+        headers: TSS_HEADERS,
+        body: "{}",
+      })
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("content-type")).toContain("application/json");
+    const body = await response.text();
+    expect(JSON.parse(body)).toEqual({
+      error: "server_function_not_found",
+      message: "Unknown server function.",
+      message_vi: "Không tìm thấy hàm máy chủ.",
+    });
+    // The response must not confirm, echo, or describe what was asked for.
+    expect(body).not.toContain(staleId);
+    expect(body).not.toMatch(/server function info not found/i);
+    expect(body).not.toMatch(/<html/i);
+    expect(handler.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects an Object.prototype key as a bounded 404, never a resolver throw", async () => {
+    // `constructor` and friends pass the id charset and pass the generated
+    // resolver's own "not found" guard, because it reads `manifest[id]`. They
+    // must still leave as a bounded, id-free 404.
+    _setServerFnResolverForTests(resolverOver([HEX_FN_ID, FN_ID]));
+
+    for (const id of ["constructor", "toString", "__proto__", "valueOf"]) {
+      const response = await call(
+        new Request(`https://aidr.today/_serverFn/${id}`, {
+          method: "POST",
+          headers: TSS_HEADERS,
+          body: "{}",
+        })
+      );
+      expect(response.status).toBe(404);
+      expect(response.headers.get("content-type")).toContain(
+        "application/json"
+      );
+      const body = await response.text();
+      expect(JSON.parse(body).error).toBe("server_function_not_found");
+      expect(body).not.toContain(id);
+      expect(body).not.toMatch(/importer|at Object|TypeError/i);
+    }
+    expect(handler.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects the bare transport base with and without its slash", async () => {
+    // Neither carries a function id. `/_serverFn` is the one Start would
+    // otherwise answer as an ordinary unknown route, handing a document back
+    // to a request that claimed to be RPC.
+    _setServerFnResolverForTests(resolverOver([HEX_FN_ID, FN_ID]));
+
+    for (const path of [
+      "https://aidr.today/_serverFn",
+      "https://aidr.today/_serverFn/",
+    ]) {
+      for (const accept of [
+        TSS_HEADERS.accept,
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      ]) {
+        const response = await call(
+          new Request(path, {
+            method: "POST",
+            headers: { ...TSS_HEADERS, accept },
+          })
+        );
+        expect(response.status).toBe(404);
+        expect(response.headers.get("content-type")).toContain(
+          "application/json"
+        );
+        expect(response.headers.get("location")).toBeNull();
+        expect(await response.json()).toMatchObject({
+          error: "server_function_not_found",
+        });
+      }
+    }
+    expect(handler.fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not overmatch a path that merely starts with the base", async () => {
+    // `/_serverFnx` is a page path, not the transport. The reserved prefixes
+    // must not swallow it.
+    _setServerFnResolverForTests(resolverOver([HEX_FN_ID]));
+    vi.mocked(handler.fetch).mockImplementation(
+      async () =>
+        new Response("<html></html>", {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        })
+    );
+
+    for (const path of ["/_serverFnx", "/_serverFnx/abc"]) {
+      const response = await call(
+        new Request(`https://aidr.today${path}`, {
+          headers: { accept: TSS_HEADERS.accept },
+        })
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/html");
+    }
+    expect(handler.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves a registered id on the RPC path untouched", async () => {
+    // The resolver resolves the real production id to its module, exactly as
+    // the generated manifest does. The request must still reach the handler
+    // with Start's own serialized response.
+    _setServerFnResolverForTests(resolverOver([HEX_FN_ID, FN_ID]));
+    vi.mocked(handler.fetch).mockImplementation(async () =>
+      serialized('{"t":10,"i":0,"p":{}}')
+    );
+
+    const response = await call(
+      new Request(`https://aidr.today/_serverFn/${HEX_FN_ID}?lang=vi`, {
+        method: "POST",
+        headers: TSS_HEADERS,
+        body: "{}",
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-tss-serialized")).toBe("true");
+    expect(response.headers.get("Content-Language")).toBeNull();
+    expect(handler.fetch).toHaveBeenCalledOnce();
+  });
+
+  it("never turns a working RPC call into a 404 when the registry is down", async () => {
+    // A resolver that cannot answer must defer, so an infrastructure failure
+    // cannot retire every real function.
+    _setServerFnResolverForTests(null);
+    vi.mocked(handler.fetch).mockImplementation(async () =>
+      serialized('{"t":10,"i":0,"p":{}}')
+    );
+
+    for (const id of [HEX_FN_ID, FN_ID, "b".repeat(64)]) {
+      const response = await call(
+        new Request(`https://aidr.today/_serverFn/${id}`, {
+          method: "POST",
+          headers: TSS_HEADERS,
+          body: "{}",
+        })
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("x-tss-serialized")).toBe("true");
+    }
+    expect(handler.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps the locale gate ahead of the registry for a bad locale", async () => {
+    // A malformed path with a bad locale still answers the bounded 404, and a
+    // registered path with a bad locale still answers the JSON locale error.
+    _setServerFnResolverForTests(resolverOver([HEX_FN_ID]));
+
+    const bad = await call(
+      new Request(`https://aidr.today/_serverFn/${HEX_FN_ID}?lang=fr`, {
+        method: "POST",
+        headers: TSS_HEADERS,
+        body: "{}",
+      })
+    );
+    expect(bad.status).toBe(400);
+    const payload = (await bad.json()) as { error?: string };
+    expect(payload.error).toMatch(/locale/i);
   });
 
   it("does not answer a server-function call with a redirect", async () => {
