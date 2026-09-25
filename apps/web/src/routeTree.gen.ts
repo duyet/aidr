@@ -45,6 +45,7 @@ import { Route as ApiSystemOverviewRouteImport } from './routes/api/system.overv
 import { Route as ApiSystemRunAttemptsRouteImport } from './routes/api/system.run-attempts'
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
 import { Route as ApiSystemSourcesRouteImport } from './routes/api/system.sources'
+import { Route as ApiWebhooksClerkRouteImport } from './routes/api/webhooks.clerk'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -226,6 +227,11 @@ const ApiSystemSourcesRoute = ApiSystemSourcesRouteImport.update({
   path: '/sources',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiWebhooksClerkRoute = ApiWebhooksClerkRouteImport.update({
+  id: '/api/webhooks/clerk',
+  path: '/api/webhooks/clerk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
+  '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
+  '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -341,6 +349,7 @@ export interface FileRoutesById {
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
+  '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -381,6 +390,7 @@ export interface FileRouteTypes {
     | '/api/system/run-attempts'
     | '/api/system/runs'
     | '/api/system/sources'
+    | '/api/webhooks/clerk'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -419,6 +429,7 @@ export interface FileRouteTypes {
     | '/api/system/run-attempts'
     | '/api/system/runs'
     | '/api/system/sources'
+    | '/api/webhooks/clerk'
   id:
     | '__root__'
     | '/'
@@ -457,6 +468,7 @@ export interface FileRouteTypes {
     | '/api/system/run-attempts'
     | '/api/system/runs'
     | '/api/system/sources'
+    | '/api/webhooks/clerk'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -486,6 +498,7 @@ export interface RootRouteChildren {
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
+  ApiWebhooksClerkRoute: typeof ApiWebhooksClerkRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -742,6 +755,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemSourcesRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/webhooks/clerk': {
+      id: '/api/webhooks/clerk'
+      path: '/api/webhooks/clerk'
+      fullPath: '/api/webhooks/clerk'
+      preLoaderRoute: typeof ApiWebhooksClerkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -821,6 +841,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSplatRoute: ApiAdminSplatRoute,
   ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
+  ApiWebhooksClerkRoute: ApiWebhooksClerkRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

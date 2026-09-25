@@ -348,11 +348,11 @@ export function openApiDocument(): unknown {
       },
       "/api/system/accounts": {
         get: {
-          summary: "Aggregate AIDR account total",
+          summary: "AIDR signups (Clerk accounts mirrored in D1)",
           responses: {
             "200": {
               description:
-                "Clerk aggregate user total; unavailable states return null rather than zero",
+                "D1-backed Clerk account total with source/status; unavailable states return null rather than zero",
             },
           },
         },

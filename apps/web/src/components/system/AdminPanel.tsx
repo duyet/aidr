@@ -32,6 +32,8 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
   );
   const [tldrBusy, setTldrBusy] = useState(false);
   const [tldrResult, setTldrResult] = useState<string | null>(null);
+  const [clerkBusy, setClerkBusy] = useState(false);
+  const [clerkResult, setClerkResult] = useState<string | null>(null);
   const [notifyBusy, setNotifyBusy] = useState(false);
   const [notifyResult, setNotifyResult] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditRow[]>([]);
@@ -309,6 +311,33 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
     }
   }
 
+  /** One-shot backfill of the D1 Clerk mirror. Webhooks keep it current after
+   *  this; it only exists so the signups metric is real from day one. */
+  async function syncClerkUsers() {
+    setClerkBusy(true);
+    setClerkResult(null);
+    try {
+      const res = await authedFetch(admin, "/api/admin/clerk-sync", {
+        method: "POST",
+      });
+      const data = (await res.json().catch(() => null)) as {
+        synced?: number;
+        pages?: number;
+        error?: string;
+      } | null;
+      setClerkResult(
+        res.ok
+          ? `ok — ${data?.synced ?? 0} accounts over ${data?.pages ?? 0} pages`
+          : `error (${res.status}) — ${data?.error ?? "request failed"}`
+      );
+      await loadStatus();
+    } catch {
+      setClerkResult("error — request failed");
+    } finally {
+      setClerkBusy(false);
+    }
+  }
+
   return (
     <div className="rounded-lg border border-border p-4">
       <div className="flex items-center justify-between">
@@ -365,6 +394,13 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
         label="Send Telegram digest"
         onClick={sendTelegramDigest}
         result={notifyResult}
+      />
+      <AdminAction
+        busy={clerkBusy}
+        busyLabel="Syncing…"
+        label="Sync Clerk users"
+        onClick={syncClerkUsers}
+        result={clerkResult}
       />
 
       {refreshError && (

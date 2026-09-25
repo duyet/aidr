@@ -35,6 +35,10 @@ export interface Env {
   CLERK_PROXY_URL?: string;
   /** Upstream fetch/body timeout in milliseconds (bounded by the handler). */
   CLERK_PROXY_TIMEOUT_MS?: string;
+  /** Svix signing secret for POST /api/webhooks/clerk (Clerk Dashboard →
+   *  Webhooks → Signing Secret, "whsec_…"). Without it the route fails
+   *  closed with 503 rather than accepting unsigned user events. */
+  CLERK_WEBHOOK_SECRET?: string;
   /** Clerk instance issuer (frontend API origin), e.g. "https://clerk.aidr.today".
    *  Derived from the VITE_CLERK_PUBLISHABLE_KEY domain. When set, admin
    *  Clerk-JWT verification rejects tokens whose `iss` doesn't match. */
