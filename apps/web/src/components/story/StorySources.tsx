@@ -2,7 +2,7 @@ import { track } from "@aidr/ui/track";
 import { ExternalLink } from "lucide-react";
 import { useId } from "react";
 import { publisherHost } from "../../lib/publisher-host";
-import type { FeedItem, Lang } from "../../lib/types";
+import type { FeedItem, ItemSource, Lang } from "../../lib/types";
 import { fmtTime } from "./lib";
 
 function safeSourceUrl(value: string | null): string | null {
@@ -39,6 +39,17 @@ function InlineDivider() {
       {" · "}
     </span>
   );
+}
+
+/** A source row is only worth rendering when it carries at least one piece of
+ * metadata. The API contract allows metadata-empty rows (e.g. `{ kind:
+ * "source" }`); rendering those would leave a lone, meaningless `SOURCE`
+ * label with no content beside it. */
+function hasRowContent(source: ItemSource): boolean {
+  if (source.author) return true;
+  if (source.posted_at != null) return true;
+  if (source.quote) return true;
+  return safeSourceUrl(source.url) != null;
 }
 
 function SourceRow({
@@ -90,7 +101,14 @@ function SourceRow({
           </>
         )}
         {href && (
-          <>
+          /* One non-breaking unit: the divider, the external-link icon, and
+           * the publisher host can never orphan onto separate lines. The unit
+           * is an atomic inline-block capped at the row width, so an
+           * over-long host wraps *inside* the unit instead of overflowing. */
+          <span
+            data-source-meta-unit
+            className="inline-block max-w-full whitespace-nowrap align-baseline"
+          >
             {(source.author || source.posted_at || source.quote) && (
               <InlineDivider />
             )}
@@ -99,7 +117,7 @@ function SourceRow({
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => track("story_open", { item_id: itemId })}
-              className="font-medium text-accent underline decoration-border underline-offset-2 hover:decoration-accent focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="whitespace-normal [overflow-wrap:anywhere] font-medium text-accent underline decoration-border underline-offset-2 hover:decoration-accent focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               aria-label={`${linkLabel}: ${host ?? href}`}
             >
               <ExternalLink
@@ -108,7 +126,7 @@ function SourceRow({
               />
               {host ?? linkLabel}
             </a>
-          </>
+          </span>
         )}
       </span>
     </li>
@@ -127,6 +145,11 @@ export function StorySources({
   const headingId = useId();
   if (sources.length === 0) return null;
 
+  // Contract-valid rows may arrive with no metadata at all. Skipping them keeps
+  // every rendered <li> meaningful; when nothing renderable is left we show an
+  // intentional, localized empty state instead of an empty list.
+  const renderable = sources.filter(hasRowContent);
+
   return (
     <section
       aria-labelledby={headingId}
@@ -138,16 +161,24 @@ export function StorySources({
       >
         {lang === "vi" ? "Nguồn chính" : "Key sources"}
       </h2>
-      <ol className="mt-2 list-none space-y-1">
-        {sources.map((source, index) => (
-          <SourceRow
-            key={`${source.kind}-${source.url ?? source.author ?? "source"}-${index}`}
-            source={source}
-            lang={lang}
-            itemId={itemId}
-          />
-        ))}
-      </ol>
+      {renderable.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {lang === "vi"
+            ? "Chưa có thông tin chi tiết về nguồn."
+            : "No source details are available yet."}
+        </p>
+      ) : (
+        <ol className="mt-2 list-none space-y-1">
+          {renderable.map((source, index) => (
+            <SourceRow
+              key={`${source.kind}-${source.url ?? source.author ?? "source"}-${index}`}
+              source={source}
+              lang={lang}
+              itemId={itemId}
+            />
+          ))}
+        </ol>
+      )}
     </section>
   );
 }
