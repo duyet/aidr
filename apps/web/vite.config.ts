@@ -1,11 +1,55 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { requireClerkProxyUrl } from "./src/lib/clerk-proxy-config.js";
 
-export default defineConfig({
+function readWranglerVar(wrangler: string, name: string): string | undefined {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^\\s*${escapedName}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(
+    wrangler
+  )?.[1];
+}
+
+function configuredPublicProxyUrl(mode: string): string {
+  const appEnvDir = fileURLToPath(new URL(".", import.meta.url));
+  const repoEnvDir = fileURLToPath(new URL("../../", import.meta.url));
+  // .env.example is documented at the repository root. App-local env files
+  // remain supported and intentionally override the root values.
+  const env = {
+    ...loadEnv(mode, repoEnvDir, ""),
+    ...loadEnv(mode, appEnvDir, ""),
+  };
+
+  if (env.VITE_CLERK_PROXY_URL !== undefined) {
+    throw new Error(
+      "VITE_CLERK_PROXY_URL is derived; configure only CLERK_PROXY_URL"
+    );
+  }
+
+  // wrangler.toml is the canonical deploy source. Development may use an
+  // explicit loopback override, but production builds must match it exactly.
+  const wrangler = readFileSync(
+    new URL("./wrangler.toml", import.meta.url),
+    "utf8"
+  );
+  const canonicalUrl = requireClerkProxyUrl(
+    readWranglerVar(wrangler, "CLERK_PROXY_URL")
+  );
+  const environmentUrl = env.CLERK_PROXY_URL;
+  if (environmentUrl === undefined) return canonicalUrl;
+
+  const normalizedEnvironmentUrl = requireClerkProxyUrl(environmentUrl);
+  if (mode !== "development" && normalizedEnvironmentUrl !== canonicalUrl) {
+    throw new Error("CLERK_PROXY_URL must match wrangler.toml for this build");
+  }
+  return normalizedEnvironmentUrl;
+}
+
+const baseConfig: UserConfig = {
   plugins: [
     // src/start.ts statically imports clerkMiddleware from a server-only
     // module; TanStack Start also bundles start.ts into the client graph
@@ -78,4 +122,13 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: ["duet-ubuntu", ".ts.net", ".local"],
   },
-});
+};
+
+export default defineConfig(({ mode }) => ({
+  ...baseConfig,
+  define: {
+    "import.meta.env.CLERK_PROXY_URL": JSON.stringify(
+      configuredPublicProxyUrl(mode)
+    ),
+  },
+}));
