@@ -3,6 +3,7 @@
  * useSystemData's inflight cache. */
 export const API = {
   models: "/api/system/models",
+  accounts: "/api/system/accounts",
   overview: "/api/system/overview",
   activity: "/api/system/activity",
   runs: "/api/system/runs",

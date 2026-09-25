@@ -46,6 +46,7 @@ describe("OpenAPI locale contract", () => {
     expect(document["x-locale-contract"].invalidOrRepeated).toContain("400");
     expect(document.paths["/api/public"].get?.parameters).toHaveLength(2);
     expect(document.paths["/api/story/{id}"].get?.parameters).toHaveLength(3);
+    expect(document.paths["/api/system/accounts"].get).toBeTruthy();
     expect(
       document.paths["/api/public"].get?.parameters?.some(
         (parameter) => parameter.name === "locale"

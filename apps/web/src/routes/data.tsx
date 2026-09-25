@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
 import { createFileRoute } from "@tanstack/react-router";
+import { AccountCountCard } from "../components/system/AccountCountCard";
 import { AdminPanel } from "../components/system/AdminPanel";
 import { AlgoTab } from "../components/system/AlgoTab";
 import { ContentTab } from "../components/system/ContentTab";
@@ -42,7 +43,7 @@ function SystemPage() {
 
   return (
     <div className="news-content news-data py-4">
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground">
             Pipeline
@@ -51,7 +52,10 @@ function SystemPage() {
             Live ingest, content, and token use.
           </p>
         </div>
-        <ModelAttribution />
+        <div className="grid w-full min-w-0 gap-3 sm:w-auto sm:grid-cols-[minmax(0,1fr)_10rem] lg:w-[48rem]">
+          <ModelAttribution />
+          <AccountCountCard />
+        </div>
       </header>
 
       <Tabs

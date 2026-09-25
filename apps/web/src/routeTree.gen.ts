@@ -37,6 +37,7 @@ import { Route as ApiFeedFreshnessRouteImport } from './routes/api/feed.freshnes
 import { Route as ApiOgIdRouteImport } from './routes/api/og.$id'
 import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
 import { Route as ApiSubscribePreviewRouteImport } from './routes/api/subscribe.preview'
+import { Route as ApiSystemAccountsRouteImport } from './routes/api/system.accounts'
 import { Route as ApiSystemActivityRouteImport } from './routes/api/system.activity'
 import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
 import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
@@ -185,6 +186,11 @@ const ApiSubscribePreviewRoute = ApiSubscribePreviewRouteImport.update({
   path: '/preview',
   getParentRoute: () => ApiSubscribeRoute,
 } as any)
+const ApiSystemAccountsRoute = ApiSystemAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 const ApiSystemActivityRoute = ApiSystemActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
+  '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
@@ -287,6 +294,7 @@ export interface FileRoutesByTo {
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
+  '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
@@ -325,6 +333,7 @@ export interface FileRoutesById {
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
+  '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
@@ -364,6 +373,7 @@ export interface FileRouteTypes {
     | '/api/og/$id'
     | '/api/story/$id'
     | '/api/subscribe/preview'
+    | '/api/system/accounts'
     | '/api/system/activity'
     | '/api/system/llm'
     | '/api/system/models'
@@ -401,6 +411,7 @@ export interface FileRouteTypes {
     | '/api/og/$id'
     | '/api/story/$id'
     | '/api/subscribe/preview'
+    | '/api/system/accounts'
     | '/api/system/activity'
     | '/api/system/llm'
     | '/api/system/models'
@@ -438,6 +449,7 @@ export interface FileRouteTypes {
     | '/api/og/$id'
     | '/api/story/$id'
     | '/api/subscribe/preview'
+    | '/api/system/accounts'
     | '/api/system/activity'
     | '/api/system/llm'
     | '/api/system/models'
@@ -674,6 +686,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSubscribePreviewRouteImport
       parentRoute: typeof ApiSubscribeRoute
     }
+    '/api/system/accounts': {
+      id: '/api/system/accounts'
+      path: '/accounts'
+      fullPath: '/api/system/accounts'
+      preLoaderRoute: typeof ApiSystemAccountsRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
     '/api/system/activity': {
       id: '/api/system/activity'
       path: '/activity'
@@ -750,6 +769,7 @@ const ApiSubscribeRouteWithChildren = ApiSubscribeRoute._addFileChildren(
 )
 
 interface ApiSystemRouteChildren {
+  ApiSystemAccountsRoute: typeof ApiSystemAccountsRoute
   ApiSystemActivityRoute: typeof ApiSystemActivityRoute
   ApiSystemLlmRoute: typeof ApiSystemLlmRoute
   ApiSystemModelsRoute: typeof ApiSystemModelsRoute
@@ -760,6 +780,7 @@ interface ApiSystemRouteChildren {
 }
 
 const ApiSystemRouteChildren: ApiSystemRouteChildren = {
+  ApiSystemAccountsRoute: ApiSystemAccountsRoute,
   ApiSystemActivityRoute: ApiSystemActivityRoute,
   ApiSystemLlmRoute: ApiSystemLlmRoute,
   ApiSystemModelsRoute: ApiSystemModelsRoute,
