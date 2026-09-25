@@ -32,10 +32,12 @@ function StatTiles() {
             label="Runs today"
             value={String(o.runsToday)}
           />
+          {/* D1 subscribers are email subscriptions, not Clerk accounts. */}
           <StatTile
             icon={Users}
             label="Subscribers"
             value={String(o.totals.subscribers)}
+            sublabel="Email subscriptions"
           />
           <StatTile
             icon={Activity}

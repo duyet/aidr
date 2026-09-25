@@ -10,6 +10,9 @@ export const SYSTEM_CACHE_CONTROL =
 /** Model chains only change on deploy — safe to cache longer. */
 export const MODELS_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
+/** Aggregate account totals change less often than feed stats. */
+export const ACCOUNTS_CACHE_CONTROL =
+  "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 
 export async function resolveWorkerEnv(context: any): Promise<any> {
   let env =

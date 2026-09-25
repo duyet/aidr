@@ -1,97 +1,162 @@
-import { Skeleton } from "@aidr/ui";
-import { ExternalLink } from "lucide-react";
+import { Card, CardContent, CardTitle, Skeleton } from "@aidr/ui";
+import { ExternalLink, FileText, Gauge, Languages, Scale } from "lucide-react";
 import { anyrouterModelUrl } from "../../lib/anyrouter";
 import type { ModelChains } from "../../lib/system-queries";
 import { useSystemData } from "../../lib/use-system-stats";
-import { CardData } from "./CardData";
 import { API } from "./endpoints";
 
 const MODEL_TASKS = [
-  { key: "scoring", label: "score" },
-  { key: "translation", label: "translate" },
-  { key: "tldr", label: "tldr" },
-  { key: "decisions", label: "decisions" },
+  { key: "scoring", label: "Score", Icon: Gauge },
+  { key: "translation", label: "Translate", Icon: Languages },
+  { key: "tldr", label: "TL;DR", Icon: FileText },
+  { key: "decisions", label: "Decisions", Icon: Scale },
 ] as const;
 
-function hopSummary(rest: string[]): { text: string; title: string } {
-  if (rest.length === 0) {
-    return { text: "—", title: "No fallback models" };
+function hopSummary(chain: string[]): {
+  text: string;
+  title: string;
+  fallbackCount: number;
+} {
+  const fallbackCount = Math.max(0, chain.length - 1);
+  if (fallbackCount === 0) {
+    return {
+      text: "direct",
+      title: chain.length ? "No fallback models" : "No model configured",
+      fallbackCount,
+    };
   }
-  const hops = rest.length === 1 ? "1 hop" : `${rest.length} hops`;
-  const fallbacks =
-    rest.length === 1 ? "1 fallback" : `${rest.length} fallbacks`;
   return {
-    text: hops,
-    title: `${fallbacks}: ${rest.join(" → ")}`,
+    text: `${fallbackCount} hop${fallbackCount === 1 ? "" : "s"}`,
+    title: `${fallbackCount} fallback${fallbackCount === 1 ? "" : "s"}: ${chain
+      .slice(1)
+      .join(" → ")}`,
+    fallbackCount,
   };
 }
 
-/** Pipeline header: one AnyRouter group. Each task stacks label, lead
- * model, and hop depth instead of a pill row. */
+/** Public model routing summary; only configured model ids are surfaced. */
 export function ModelAttribution() {
   const state = useSystemData<{ models: ModelChains }>(API.models);
+
+  if (state.data) {
+    return <AttributionView models={state.data.models} />;
+  }
+  if (state.error) {
+    return (
+      <Card className="min-w-0 border-border shadow-none">
+        <CardContent className="p-4">
+          <div role="status" aria-live="polite" className="space-y-1">
+            <p className="text-sm font-medium text-foreground">
+              Model routes unavailable
+            </p>
+            <p className="text-xs text-muted-foreground">
+              The public AnyRouter configuration could not be loaded.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   return (
-    <CardData
-      state={state}
-      skeleton={<Skeleton className="h-[4.5rem] w-full max-w-xl" />}
+    <section
+      aria-busy="true"
+      aria-label="Loading model attribution"
+      className="min-w-0"
     >
-      {(d) => <AttributionView models={d.models} />}
-    </CardData>
+      <Skeleton className="h-[10.5rem] w-full" />
+    </section>
   );
 }
 
-function AttributionView({ models }: { models: ModelChains }) {
+export function AttributionView({ models }: { models: ModelChains }) {
   return (
-    <section
-      aria-label="Pipeline models"
-      className="flex max-w-full flex-col gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:gap-4"
-    >
-      <a
-        href="https://anyrouter.dev/?ref=aidr.today"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex w-fit shrink-0 items-center gap-1 text-[11px] font-medium text-accent underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        Powered by AnyRouter
-        <ExternalLink className="h-3 w-3" aria-hidden />
-      </a>
-      <dl className="flex min-w-0 flex-1 flex-wrap gap-x-4 gap-y-2 sm:border-l sm:border-border sm:pl-4">
-        {MODEL_TASKS.map(({ key, label }) => {
-          const [lead, ...rest] = models[key];
-          const hops = hopSummary(rest);
-          const chain = lead
-            ? [lead, ...rest].join(" → ")
-            : "No model configured";
-          return (
-            <div key={key} className="min-w-0 max-w-full">
-              <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                {label}
-              </dt>
-              <dd className="font-mono text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
-                {lead ? (
-                  <a
-                    href={anyrouterModelUrl(lead)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline-offset-2 hover:text-accent hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    title={chain}
-                  >
-                    {lead}
-                  </a>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </dd>
-              <dd
-                className="text-[10px] leading-tight tabular-nums text-muted-foreground"
-                title={hops.title}
+    <Card className="min-w-0 overflow-hidden border-border shadow-none">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle
+              id="model-attribution-title"
+              className="font-sans text-sm font-semibold tracking-tight text-foreground"
+            >
+              Powered by AnyRouter
+            </CardTitle>
+            <p className="mt-1 text-[10px] leading-tight text-muted-foreground">
+              Lead model + fallback depth · public config only
+            </p>
+          </div>
+          <a
+            href="https://anyrouter.dev/?ref=aidr.today"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open AnyRouter in a new tab"
+            className="inline-flex shrink-0 items-center gap-1 rounded-sm text-[11px] font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Explore AnyRouter
+            <ExternalLink className="h-3 w-3" aria-hidden />
+          </a>
+        </div>
+
+        <dl
+          aria-label="Pipeline model attribution"
+          className="mt-3 grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4"
+        >
+          {MODEL_TASKS.map(({ key, label, Icon }) => {
+            const chain = models[key] ?? [];
+            const [lead, ...fallbacks] = chain;
+            const hops = hopSummary(chain);
+            const fullChain = chain.length
+              ? chain.join(" → ")
+              : "No model configured";
+            return (
+              <div
+                key={key}
+                className="min-w-0 rounded-lg border border-border/80 bg-muted/30 p-2.5"
               >
-                {hops.text}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
-    </section>
+                <div className="flex min-w-0 items-center justify-between gap-1.5">
+                  <dt className="flex min-w-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Icon
+                      className="h-3 w-3 shrink-0 text-accent"
+                      aria-hidden
+                    />
+                    <span className="truncate">{label}</span>
+                  </dt>
+                  <dd
+                    title={chain.length ? hops.title : undefined}
+                    className="shrink-0 rounded-full border border-border/80 px-1.5 py-0.5 text-[9px] leading-none tabular-nums text-muted-foreground"
+                  >
+                    {chain.length ? hops.text : "unavailable"}
+                  </dd>
+                </div>
+                <dd className="mt-2 min-w-0 font-mono text-xs font-medium leading-snug text-foreground [overflow-wrap:anywhere]">
+                  {lead ? (
+                    <a
+                      href={anyrouterModelUrl(lead)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={fullChain}
+                      aria-label={`${label} lead model ${lead}, ${hops.fallbackCount} fallback hops`}
+                      className="rounded-sm underline-offset-2 hover:text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {lead}
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Not configured
+                    </span>
+                  )}
+                </dd>
+                <dd className="mt-1 min-w-0 text-[10px] leading-tight text-muted-foreground">
+                  {fallbacks.length
+                    ? `${fallbacks.length} fallback${fallbacks.length === 1 ? "" : "s"} after lead`
+                    : lead
+                      ? "No fallback configured"
+                      : "No model source available"}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      </CardContent>
+    </Card>
   );
 }

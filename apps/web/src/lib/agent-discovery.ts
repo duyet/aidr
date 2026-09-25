@@ -268,6 +268,17 @@ export function openApiDocument(): unknown {
           responses: { "200": { description: "Totals, last run, models" } },
         },
       },
+      "/api/system/accounts": {
+        get: {
+          summary: "Aggregate AIDR account total",
+          responses: {
+            "200": {
+              description:
+                "Clerk aggregate user total; unavailable states return null rather than zero",
+            },
+          },
+        },
+      },
       "/api/mcp": {
         post: {
           summary: "MCP Streamable HTTP",
