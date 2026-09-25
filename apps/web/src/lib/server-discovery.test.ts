@@ -28,7 +28,7 @@ describe("Worker discovery entry", () => {
     expect(src).toContain("isStoryMarkdownPath(path)");
     expect(src).toContain("handleStoryMarkdownRequest(request, env?.DB)");
     expect(src.indexOf("isStoryMarkdownPath(path)")).toBeLessThan(
-      src.indexOf("return handlePublicCors")
+      src.indexOf("handler.fetch(request)")
     );
   });
 
