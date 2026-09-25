@@ -20,6 +20,7 @@ import {
   localeErrorResponse,
   normalizeLocaleRequest,
   resolveRequestLocale,
+  resolveServerFnLocaleRequest,
   temporaryLocaleRedirect,
   withSsrLocaleResponse,
 } from "./lib/locale-response";
@@ -31,6 +32,7 @@ import {
 import { withLang } from "./lib/locale-url";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
+import { isServerFnPath } from "./lib/server-fn-request";
 import {
   buildSitemapXml,
   loadSitemapUrls,
@@ -108,9 +110,16 @@ export default {
     // it for direct calls/tests. CORS preflight remains a language-neutral
     // transport exchange and is answered before locale selection.
     const isApi = path === "/api" || path.startsWith("/api/");
-    const shouldNormalize =
-      !isApi || (isLocaleAwareApiPath(path) && request.method !== "OPTIONS");
-    if (shouldNormalize) {
+    // Server functions are RPC. A submit call must reach its handler on any
+    // request, so this path only gets a JSON locale rejection — never the
+    // document gate's 307 or HTML error page.
+    if (isServerFnPath(path)) {
+      const invalid = resolveServerFnLocaleRequest(request);
+      if (invalid) return invalid;
+    } else if (
+      !isApi ||
+      (isLocaleAwareApiPath(path) && request.method !== "OPTIONS")
+    ) {
       const url = new URL(request.url);
       const normalized = normalizeLocaleRequest(request, {
         format: isApi && path !== "/api/subscribe/preview" ? "json" : "html",

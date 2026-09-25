@@ -44,6 +44,11 @@ const RESERVED_TOP = new Set([
   "sign-up",
   "assets",
   "cdn-cgi",
+  // TanStack Start's server-function transport. Production function ids are
+  // sha256 hex, so this path is shaped exactly like a legacy `/{cat}/{hash}`
+  // story URL. Without this entry every server function (submit included) is
+  // 307'd to a story page and never reaches its handler.
+  "_serverFn",
 ]);
 
 /**

@@ -3,6 +3,7 @@ import { Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { bearerHeaders } from "../../lib/clerk-user";
 import { useLang } from "../../lib/lang-context";
+import { isSubmittedId, submitErrorMessage } from "../../lib/submit-feedback";
 import { submitStory } from "../../lib/submit-fn";
 
 export function SubmitForm({
@@ -39,10 +40,18 @@ export function SubmitForm({
         setError(null);
         try {
           const token = await getToken();
-          await submitStory({
+          const result = await submitStory({
             data: { url, title, note, user_id: userId, user_name: userName },
             ...bearerHeaders(token),
           });
+          // Start hands back an unrecognized body as-is, so a response that is
+          // not a submission id (e.g. `{error}`) must not be reported to the
+          // reader as a successful submit.
+          if (!isSubmittedId(result)) {
+            setStatus("error");
+            setError(submitErrorMessage(result, lang));
+            return;
+          }
           setUrl("");
           setTitle("");
           setNote("");
@@ -51,7 +60,7 @@ export function SubmitForm({
           onSubmitted();
         } catch (err) {
           setStatus("error");
-          setError(err instanceof Error ? err.message : "Failed to submit");
+          setError(submitErrorMessage(err, lang));
         }
       }}
     >
