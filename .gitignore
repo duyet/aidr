@@ -16,3 +16,4 @@ apps/web/public/news-tab.zip
 !.cursor/skills/verify-aidr/evidence/README.md
 !.cursor/skills/verify-aidr/evidence/.gitignore
 .playwright-mcp/
+.herdr-desk/runs/*/
