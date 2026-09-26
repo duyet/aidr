@@ -8,6 +8,7 @@ import { ModelAttribution } from "../components/system/ModelAttribution";
 import { OverviewTab } from "../components/system/OverviewTab";
 import { RunsTab } from "../components/system/RunsTab";
 import { SourcesTab } from "../components/system/SourcesTab";
+import { TAB_PANEL } from "../components/system/tab-spacing";
 import { useAdmin } from "../lib/admin";
 import { type DataTab, parseDataTab } from "../lib/data-tab";
 import { useLang } from "../lib/lang-context";
@@ -57,8 +58,8 @@ export function SystemPage() {
       : (search.tab ?? "overview");
 
   return (
-    <div className="news-content news-data py-6">
-      <div className="space-y-5">
+    <div className="news-content news-data py-8 sm:py-10">
+      <div className="space-y-6">
         <header>
           <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground">
             Pipeline
@@ -84,12 +85,15 @@ export function SystemPage() {
             });
           }}
         >
-          <TabsList className="h-auto min-h-9 w-full flex-wrap justify-start gap-1 rounded-xl bg-muted/40 p-1">
+          {/* Comfortable pill: p-1.5/gap-1.5 so triggers never touch the
+              strip edge, and a matching TAB_PANEL gap below so no card is
+              glued to the tabs. */}
+          <TabsList className="h-auto min-h-11 w-full flex-wrap justify-start gap-1.5 rounded-xl bg-muted/40 p-1.5">
             {TABS.map(({ value, label }) => (
               <TabsTrigger
                 key={value}
                 value={value}
-                className="rounded-lg px-3 text-[13px]"
+                className="rounded-lg px-4 py-2 text-sm"
               >
                 {label}
               </TabsTrigger>
@@ -97,7 +101,7 @@ export function SystemPage() {
             {admin.isAdmin ? (
               <TabsTrigger
                 value="admin"
-                className="rounded-lg px-3 text-[13px]"
+                className="rounded-lg px-4 py-2 text-sm"
               >
                 Admin
               </TabsTrigger>
@@ -112,7 +116,7 @@ export function SystemPage() {
           <LlmTab />
 
           {admin.isAdmin ? (
-            <TabsContent value="admin" className="mt-4">
+            <TabsContent value="admin" className={TAB_PANEL}>
               <AdminPanel admin={admin} />
             </TabsContent>
           ) : null}

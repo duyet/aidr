@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  Flame,
   Languages,
   Lock,
   Mail,
@@ -237,6 +238,21 @@ export function DeliverPage({
               {t(`Open ${TELEGRAM_HANDLE}`, `Mở ${TELEGRAM_HANDLE}`)}
             </a>
           </Button>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {TELEGRAM_FEATURES.map((f) => (
+              <li
+                key={f.en}
+                className="flex items-start gap-2.5 text-sm text-muted-foreground"
+              >
+                <f.icon
+                  className="mt-0.5 size-4 shrink-0 text-primary"
+                  aria-hidden
+                />
+                <span>{t(f.en, f.vi)}</span>
+              </li>
+            ))}
+          </ul>
+          <TelegramPreview lang={lang} />
         </TabsContent>
 
         <TabsContent value="email" className="mt-6 space-y-6">
@@ -387,6 +403,167 @@ function NewTabMock({ lang }: { lang: Lang }) {
           </li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+const TELEGRAM_FEATURES = [
+  {
+    icon: Newspaper,
+    en: "One digest a day: today's AI news, ranked and summarised.",
+    vi: "Một bản tin mỗi ngày: tin AI hôm nay, đã xếp hạng và tóm tắt.",
+  },
+  {
+    icon: Flame,
+    en: "Trending alerts when a story breaks out — max 6 a day.",
+    vi: "Cảnh báo khi tin nổi bật — tối đa 6 tin mỗi ngày.",
+  },
+  {
+    icon: Languages,
+    en: "English and Vietnamese, matching the site.",
+    vi: "Tiếng Anh và tiếng Việt, giống trên web.",
+  },
+  {
+    icon: ShieldCheck,
+    en: "Public channel, no account. Open it in any Telegram app.",
+    vi: "Kênh công khai, không cần tài khoản. Mở bằng mọi ứng dụng Telegram.",
+  },
+] as const;
+
+/** Sample digest copy. Shape mirrors `buildDigestMessage` /
+ *  `buildStoryCaption` in worker/notify/telegram.ts so the preview stays
+ *  honest about what actually lands in the channel: `date` is the digest's
+ *  YYYY-MM-DD stamp, and `meta`'s hashtag is the sanitized category slug the
+ *  bot emits (`category.replace(/[^a-z0-9_]/gi, "_")` — which is why it stays
+ *  ASCII in both locales). */
+const TELEGRAM_DIGEST = {
+  en: {
+    date: "2026-09-27",
+    bullets: [
+      "OpenAI ships a faster reasoning model for agents",
+      "Anthropic open-sources Claude interpretability tools",
+      "Google DeepMind brings Gemini on-device to Chrome",
+    ],
+    story: {
+      title: "NVIDIA releases an open inference stack for Blackwell",
+      summary:
+        "A vendor-neutral serving layer targets Blackwell without locking callers into one runtime.",
+      meta: "#Infra  ·  ▲ 412  ·  💬 96",
+      buttons: ["Read →", "AI;DR"],
+    },
+    cta: "Read the full digest on aidr.today →",
+  },
+  vi: {
+    date: "2026-09-27",
+    bullets: [
+      "OpenAI ra mắt mô hình suy luận nhanh hơn cho agent",
+      "Anthropic mở mã nguồn bộ công cụ diễn giải Claude",
+      "Google DeepMind đưa Gemini chạy on-device lên Chrome",
+    ],
+    story: {
+      title: "NVIDIA phát hành stack inference mở cho Blackwell",
+      summary:
+        "Một lớp phục vụ trung lập hãng nhắm Blackwell mà không ràng buộc runtime.",
+      meta: "#Infra  ·  ▲ 412  ·  💬 96",
+      buttons: ["Đọc bài →", "AI;DR"],
+    },
+    cta: "Xem đầy đủ trên aidr.today →",
+  },
+} as const;
+
+/** Telegram channel mock: the once-a-day digest plus a trending post, in the
+ *  two message shapes the bot actually sends. */
+function TelegramPreview({ lang }: { lang: Lang }) {
+  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
+  const copy = TELEGRAM_DIGEST[lang === "vi" ? "vi" : "en"];
+
+  return (
+    <div className="space-y-3 pt-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary" className="rounded-full">
+          {t("What lands in the channel", "Bạn sẽ nhận gì trong kênh")}
+        </Badge>
+        <span className="text-xs text-muted-foreground">
+          {t(
+            "Illustrative layout — the real digest is in the channel",
+            "Bố cục minh họa — bản tin thật nằm trong kênh"
+          )}
+        </span>
+      </div>
+
+      <BrowserFrame
+        tab="Telegram"
+        address={TELEGRAM_URL.replace(/^https?:\/\//, "")}
+      >
+        <div className="space-y-3 bg-[#f4f4f5] px-3 py-4 dark:bg-muted/30">
+          <div className="flex items-center gap-2.5 border-b border-border/70 pb-2.5">
+            <span
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#2AABEE] text-white"
+              aria-hidden
+            >
+              <Send className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-semibold leading-tight">
+                {TELEGRAM_HANDLE}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {t("AI news, ranked daily", "Tin AI, xếp hạng hằng ngày")}
+              </p>
+            </div>
+          </div>
+
+          {/* Digest message: bold header + linked bullets + one CTA button.
+              A div, not an <article>: these are decorative mock bubbles, and
+              an unnamed `article` would add noise to the landmark list. */}
+          <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5 shadow-sm">
+            <p className="text-[13px] font-semibold leading-snug text-foreground">
+              <span aria-hidden>🗞</span>{" "}
+              {t("AI news today", "AI hôm nay có gì")} — {copy.date}
+            </p>
+            <ul className="mt-1.5 space-y-1.5">
+              {copy.bullets.map((b) => (
+                <li
+                  key={b}
+                  className="text-[12.5px] leading-relaxed text-foreground/90"
+                >
+                  <span className="text-muted-foreground" aria-hidden>
+                    •
+                  </span>{" "}
+                  {b}{" "}
+                  <span className="text-accent" aria-hidden>
+                    →
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <span className="mt-2.5 inline-flex rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
+              {copy.cta}
+            </span>
+          </div>
+
+          {/* Trending post: bold title, summary, meta line, two buttons. */}
+          <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5 shadow-sm">
+            <p className="text-[13px] font-semibold leading-snug text-foreground">
+              <span aria-hidden>🔥</span> {copy.story.title}
+            </p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/90">
+              {copy.story.summary}
+            </p>
+            <p className="mt-1.5 text-[11px] text-accent">{copy.story.meta}</p>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {copy.story.buttons.map((b) => (
+                <span
+                  key={b}
+                  className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground"
+                >
+                  {b}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </BrowserFrame>
     </div>
   );
 }

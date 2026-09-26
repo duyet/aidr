@@ -10,6 +10,7 @@ import { API } from "./endpoints";
 import { SignupsTile } from "./SignupsTile";
 import { StatTile, StatTileSkeleton } from "./StatTile";
 import { TokenBurnCard } from "./TokenBurnCard";
+import { TAB_PANEL } from "./tab-spacing";
 
 /** One row of metrics. Signups owns its own endpoint, so it is rendered
  *  outside the overview batch: a failing overview query must not take the
@@ -111,7 +112,7 @@ function ItemsPerDayCard() {
 
 export function OverviewTab() {
   return (
-    <TabsContent value="overview" className="mt-0 space-y-4">
+    <TabsContent value="overview" className={`${TAB_PANEL} space-y-4`}>
       <StatTiles />
       <div className="space-y-3">
         <ItemsPerDayCard />

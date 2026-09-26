@@ -9,6 +9,7 @@ import { CardData, CardSkeleton } from "./CardData";
 import { ChartCard } from "./ChartCard";
 import { CategoryDonut } from "./DitherCharts";
 import { API } from "./endpoints";
+import { TAB_PANEL } from "./tab-spacing";
 
 function CategoryShareCard() {
   const state = useSystemData<SystemActivity>(API.activity);
@@ -108,7 +109,7 @@ function ByCategoryCard({ lang }: { lang: Lang }) {
 
 export function ContentTab({ lang }: { lang: Lang }) {
   return (
-    <TabsContent value="content" className="mt-0">
+    <TabsContent value="content" className={TAB_PANEL}>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <CategoryShareCard />
         <StatusCard lang={lang} />
