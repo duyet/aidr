@@ -20,6 +20,7 @@ import {
   runDetailsId,
   runDisclosureLabel,
   runFallbackKindLabel,
+  runModelsDisclosure,
   runStatus,
   safeRunSteps,
   shortModel,
@@ -456,5 +457,93 @@ describe("isPreIdentityRun (#189)", () => {
     ).toBe(false);
     expect(isPreIdentityRun({ tokens: 0 }, undefined, [])).toBe(false);
     expect(isPreIdentityRun(null, undefined, [])).toBe(false);
+  });
+});
+
+describe("runModelsDisclosure (#189 review)", () => {
+  /** A run that reported tokens but has no run-id-attributed calls. */
+  const preIdentityStats: WorkflowRunStats = { tokens: 13_733 };
+  const llm = {
+    calls: 3,
+    failures: 0,
+    tokens: 500,
+    cachedTokens: null,
+    durationMs: 10,
+    models: ["anyrouter/auto"],
+    attempts: [],
+  };
+
+  it("is attributed whenever real models are known", () => {
+    for (const state of [
+      "idle",
+      "loading",
+      "ready",
+      "empty",
+      "unavailable",
+      "error",
+    ] as const) {
+      expect(
+        runModelsDisclosure(state, ["anyrouter/auto"], preIdentityStats, llm)
+      ).toBe("attributed");
+      expect(runModelsDisclosure(state, [], preIdentityStats, llm, [])).toBe(
+        "attributed"
+      );
+    }
+  });
+
+  it("claims pre-identity only after a completed lookup returns zero rows", () => {
+    // The only state where an empty attempt list is evidence about identity.
+    expect(
+      runModelsDisclosure("empty", [], preIdentityStats, undefined, [])
+    ).toBe("pre_identity");
+  });
+
+  it("claims nothing when the lookup failed or is unsupported", () => {
+    // A failed read is not evidence about identity, so no cause is stated.
+    expect(
+      runModelsDisclosure("unavailable", [], preIdentityStats, undefined, [])
+    ).toBe("unavailable");
+    expect(
+      runModelsDisclosure("error", [], preIdentityStats, undefined, [])
+    ).toBe("unavailable");
+  });
+
+  it("stays pending before a lookup has resolved", () => {
+    // `stats.tokens` alone must not turn a pending lookup into a verdict.
+    expect(
+      runModelsDisclosure("loading", [], preIdentityStats, undefined, [])
+    ).toBe("pending");
+    expect(
+      runModelsDisclosure("idle", [], preIdentityStats, undefined, [])
+    ).toBe("pending");
+  });
+
+  it("is none when the run reports no tokens at all", () => {
+    expect(runModelsDisclosure("empty", [], { tokens: 0 }, undefined, [])).toBe(
+      "none"
+    );
+    expect(runModelsDisclosure("empty", [], null, undefined, [])).toBe("none");
+  });
+
+  it("treats fetched attempt rows as attributed even mid-lookup", () => {
+    const attempt: LlmCallRow = {
+      ts: 1,
+      runId: "r",
+      task: "score",
+      model: "m",
+      ok: true,
+      tokens: 1,
+      durationMs: 1,
+      promptChars: null,
+      promptTokens: null,
+      completionTokens: null,
+      cachedTokens: null,
+      error: null,
+      errorCode: null,
+      errorStatus: null,
+    };
+    expect(
+      runModelsDisclosure("loading", [], preIdentityStats, undefined, [attempt])
+    ).toBe("attributed");
   });
 });

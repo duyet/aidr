@@ -22,6 +22,11 @@ export function RunsList({ runs, lang }: RunsListProps) {
   const [attemptsStateByRun, setAttemptsStateByRun] = useState<
     Record<string, RunAttemptsState>
   >({});
+  // A run with more calls than the endpoint's per-run cap still renders, but
+  // says so rather than implying the table below is complete.
+  const [truncatedByRun, setTruncatedByRun] = useState<Record<string, boolean>>(
+    {}
+  );
 
   const toggleRun = (r: WorkflowRunRow, expanded: boolean) => {
     if (!hasRunDetails(r)) return;
@@ -37,6 +42,7 @@ export function RunsList({ runs, lang }: RunsListProps) {
         return (await res.json()) as {
           attempts?: LlmCallRow[];
           status?: "ready" | "unavailable";
+          truncated?: boolean;
         };
       })
       .then((res) => {
@@ -51,6 +57,10 @@ export function RunsList({ runs, lang }: RunsListProps) {
         if (!Array.isArray(attempts))
           throw new Error("invalid attempt response");
         setAttemptsByRun((current) => ({ ...current, [r.id]: attempts }));
+        setTruncatedByRun((current) => ({
+          ...current,
+          [r.id]: res.truncated === true,
+        }));
         setAttemptsStateByRun((current) => ({
           ...current,
           [r.id]: attempts.length > 0 ? "ready" : "empty",
@@ -135,6 +145,7 @@ export function RunsList({ runs, lang }: RunsListProps) {
                   ((r.llm?.attempts?.length ?? 0) > 0 ? "ready" : "idle")
                 }
                 attempts={attemptsByRun[r.id] ?? r.llm?.attempts ?? []}
+                attemptsTruncated={truncatedByRun[r.id] === true}
                 onToggle={() => toggleRun(r, expanded)}
               />
             );

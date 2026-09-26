@@ -143,6 +143,15 @@ export function hasRunDetails(
 
 export type RunStatus = "ok" | "error" | "empty" | "in_progress" | "unknown";
 
+/** Lifecycle of the lazily fetched per-run attempt rows. */
+export type RunAttemptsState =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "empty"
+  | "unavailable"
+  | "error";
+
 export function runStatus(run: WorkflowRunRow): RunStatus {
   if (run.error) return "error";
   if (run.started_at != null && run.finished_at == null) return "in_progress";
@@ -296,6 +305,62 @@ export function isPreIdentityRun(
   return typeof tokens === "number" && Number.isFinite(tokens) && tokens > 0;
 }
 
+/** Distinct model ids in first-seen order. A model inventory only — never
+ * proof that a fallback actually happened. */
+export function distinctModels(attempts: LlmCallRow[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const attempt of attempts) {
+    const model = attempt.model;
+    if (!model || seen.has(model)) continue;
+    seen.add(model);
+    out.push(model);
+  }
+  return out;
+}
+
+/**
+ * What the Models used panel may claim, given both the data we hold and the
+ * state of the per-run attempts lookup.
+ *
+ * The pre-identity explanation is only sound once a lookup has actually
+ * completed and returned zero rows for this run id. If the lookup failed
+ * (`error`), is unsupported (`unavailable`), or has not resolved yet
+ * (`loading` / `idle`), an empty attempt list says nothing about identity —
+ * asserting "logged before run identity shipped" there would invent a cause
+ * and contradict the Attempts panel directly below, which is reporting the
+ * real lookup state.
+ */
+export type RunModelsDisclosure =
+  | "attributed"
+  | "pre_identity"
+  | "unavailable"
+  | "pending"
+  | "none";
+
+export function runModelsDisclosure(
+  state: RunAttemptsState,
+  models: string[],
+  stats: WorkflowRunStats | null | undefined,
+  llm: RunLlmSummary | undefined,
+  attempts: LlmCallRow[] = []
+): RunModelsDisclosure {
+  // Models we already hold (run summary, or a completed lookup) win outright,
+  // whatever the lookup is doing.
+  if (models.length > 0) return "attributed";
+  if (attempts.length > 0 || (llm && llm.calls > 0)) return "attributed";
+  // A failed or unsupported read is not evidence about identity.
+  if (state === "unavailable" || state === "error") return "unavailable";
+  // Not resolved yet: claim nothing rather than guess.
+  if (state === "loading" || state === "idle") return "pending";
+  // `ready` with rows is already "attributed" above, so this is a completed
+  // lookup that genuinely returned zero rows for this run id.
+  if (state === "empty") {
+    return isPreIdentityRun(stats, llm, attempts) ? "pre_identity" : "none";
+  }
+  return "none";
+}
+
 export function nextOpenId(
   currentId: string | null,
   id: string
@@ -316,14 +381,6 @@ export function runDisclosureLabel(
   }
   return expanded ? "Hide run details" : "Show run details";
 }
-
-export type RunAttemptsState =
-  | "idle"
-  | "loading"
-  | "ready"
-  | "empty"
-  | "unavailable"
-  | "error";
 
 export interface NormalizedRunTokens {
   total: number | null;

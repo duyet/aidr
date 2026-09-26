@@ -84,6 +84,10 @@ export interface RunLlmSummary {
   models: string[];
   /** Per-attempt rows for the expandable Recent runs detail. */
   attempts: LlmCallRow[];
+  /** True when this summary was built from a bounded row read that dropped
+   * rows, so the counts above cover only what was read. Never set on the
+   * aggregated list path, which counts in SQL and is not row-bounded. */
+  truncated?: boolean;
 }
 
 /** Best-effort parse of the `stats` JSON column: malformed JSON, a
@@ -234,11 +238,16 @@ function summarizeAttempts(
 }
 
 /** Attribute only calls carrying an explicit matching run id. Timestamps are
- * used solely to order attempts within that authoritative bucket. */
+ * used solely to order attempts within that authoritative bucket.
+ *
+ * Row-level helper: callers must bound `calls` themselves (the runs list
+ * avoids this shape entirely by aggregating in SQL). `opts.truncated` marks a
+ * bounded read whose counts cover only the rows supplied, so a partial total
+ * can never be presented as the run's real usage. */
 export function attachLlmCallsToRuns(
   runs: WorkflowRunRow[],
   calls: LlmCallRow[],
-  opts: { includeAttempts?: boolean } = {}
+  opts: { includeAttempts?: boolean; truncated?: boolean } = {}
 ): WorkflowRunRow[] {
   if (runs.length === 0) return runs;
   const buckets = new Map<string, LlmCallRow[]>();
@@ -251,12 +260,10 @@ export function attachLlmCallsToRuns(
 
   return runs.map((run) => {
     const attempts = (buckets.get(run.id) ?? []).sort((a, b) => a.ts - b.ts);
-    return {
-      ...run,
-      llm: attempts.length
-        ? summarizeAttempts(attempts, opts.includeAttempts ?? true)
-        : undefined,
-    };
+    if (attempts.length === 0) return run;
+    const summary = summarizeAttempts(attempts, opts.includeAttempts ?? true);
+    if (opts.truncated) summary.truncated = true;
+    return { ...run, llm: summary };
   });
 }
 
@@ -516,11 +523,27 @@ const LLM_SELECT_COLUMNS = `ts, run_id, task, model, ok, tokens, duration_ms,
   prompt_chars, error, prompt_tokens, completion_tokens, cached_tokens,
   error_code, error_status`;
 
+/** Hard cap on per-call rows read for a *single* expanded run. The runs list
+ * never reads rows (it aggregates in SQL), so this cannot starve another run
+ * — and hitting it is reported via `truncated`, never silently hidden. */
+const LLM_ATTEMPTS_LIMIT = 2000;
+
+interface LlmCallQueryResult {
+  attempts: LlmCallRow[];
+  truncated: boolean;
+}
+
+function finishLlmQuery(results: unknown): LlmCallQueryResult {
+  const rows = (results ?? []) as LlmCallDbRow[];
+  const attempts = rows.map(mapLlmCallRow).sort((a, b) => a.ts - b.ts);
+  return { attempts, truncated: rows.length >= LLM_ATTEMPTS_LIMIT };
+}
+
 async function queryLlmCallsByRunId(
   db: DbReader,
   where: string,
   binds: string[]
-): Promise<LlmCallRow[]> {
+): Promise<LlmCallQueryResult> {
   try {
     const { results } = await db
       .prepare(
@@ -528,11 +551,11 @@ async function queryLlmCallsByRunId(
          FROM llm_calls
          WHERE ${where}
          ORDER BY ts ASC
-         LIMIT 2000`
+         LIMIT ${LLM_ATTEMPTS_LIMIT}`
       )
       .bind(...binds)
       .all<LlmCallDbRow>();
-    return (results ?? []).map(mapLlmCallRow).sort((a, b) => a.ts - b.ts);
+    return finishLlmQuery(results);
   } catch {
     // Optional usage/error columns may not exist yet; run_id is required
     // for attribution and remains in this safe fallback query.
@@ -543,27 +566,122 @@ async function queryLlmCallsByRunId(
          FROM llm_calls
          WHERE ${where}
          ORDER BY ts ASC
-         LIMIT 2000`
+         LIMIT ${LLM_ATTEMPTS_LIMIT}`
       )
       .bind(...binds)
       .all<LlmCallDbRow>();
-    return (results ?? []).map(mapLlmCallRow).sort((a, b) => a.ts - b.ts);
+    return finishLlmQuery(results);
   }
 }
 
-async function loadLlmCallsForRuns(
+/**
+ * Per-run LLM aggregates computed in SQL, for the runs list.
+ *
+ * The list payload needs counts, tokens, duration, cached usage and a model
+ * inventory — never the per-call rows. Computing them with `GROUP BY run_id`
+ * makes the result size a function of the *number of runs* (bounded by the
+ * 30-row runs query) rather than the *number of calls*, so a single
+ * high-volume run can no longer starve the others and no row cap is needed
+ * at all. That matters because the previous shape issued one
+ * `ORDER BY ts ASC LIMIT 2000` across every listed run: the cap was global
+ * and oldest-first, so a busy run consumed the whole budget and the newest
+ * runs came back empty — surfaced to the user as "No model data available."
+ * for exactly the run they were trying to inspect.
+ *
+ * `GROUP_CONCAT(DISTINCT model)` cannot be ordered in SQLite, so the model
+ * inventory comes from a second query that aggregates per (run, model) and
+ * orders by first-seen `ts`. That result is bounded by runs x distinct
+ * models, which is small by construction.
+ *
+ * A run with no attributed calls is simply absent from the result, so
+ * callers keep the existing "no llm key at all" contract and the UI can
+ * still tell "unattributed" from "zero calls".
+ */
+async function loadLlmSummariesForRuns(
   db: DbReader,
   runIds: string[]
-): Promise<LlmCallRow[]> {
-  if (runIds.length === 0) return [];
+): Promise<Map<string, RunLlmSummary>> {
+  const out = new Map<string, RunLlmSummary>();
+  if (runIds.length === 0) return out;
   const placeholders = runIds.map(() => "?").join(",");
-  return queryLlmCallsByRunId(db, `run_id IN (${placeholders})`, runIds);
+
+  const agg = await db
+    .prepare(
+      `SELECT run_id,
+              COUNT(*) AS calls,
+              SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS failures,
+              SUM(COALESCE(tokens, 0)) AS tokens,
+              SUM(COALESCE(duration_ms, 0)) AS duration_ms,
+              SUM(COALESCE(cached_tokens, 0)) AS cached_sum,
+              COUNT(cached_tokens) AS cached_known
+       FROM llm_calls
+       WHERE run_id IN (${placeholders})
+       GROUP BY run_id`
+    )
+    .bind(...runIds)
+    .all<{
+      run_id: string | null;
+      calls: number;
+      failures: number | null;
+      tokens: number | null;
+      duration_ms: number | null;
+      cached_sum: number | null;
+      cached_known: number | null;
+    }>();
+
+  for (const row of agg.results ?? []) {
+    const runId = safeRunId(row.run_id);
+    // A run id we cannot safely echo back is not attributable.
+    if (!runId) continue;
+    const cachedKnown = Number(row.cached_known ?? 0) > 0;
+    out.set(runId, {
+      calls: Number(row.calls ?? 0),
+      failures: Number(row.failures ?? 0),
+      tokens: Number(row.tokens ?? 0),
+      // Absent cached-token usage stays null ("unknown"), never 0.
+      cachedTokens: cachedKnown ? Number(row.cached_sum ?? 0) : null,
+      durationMs: Number(row.duration_ms ?? 0),
+      models: [],
+      attempts: [],
+    });
+  }
+
+  const models = await db
+    .prepare(
+      `SELECT run_id, model, MIN(ts) AS first_ts
+       FROM llm_calls
+       WHERE run_id IN (${placeholders})
+       GROUP BY run_id, model
+       ORDER BY run_id ASC, first_ts ASC`
+    )
+    .bind(...runIds)
+    .all<{ run_id: string | null; model: string }>();
+
+  for (const row of models.results ?? []) {
+    const runId = safeRunId(row.run_id);
+    if (!runId) continue;
+    out.get(runId)?.models.push(sanitizeText(row.model, 160) ?? "unknown");
+  }
+
+  return out;
+}
+
+/** Merge aggregated summaries onto the run rows they belong to. */
+function attachLlmSummariesToRuns(
+  runs: WorkflowRunRow[],
+  summaries: Map<string, RunLlmSummary>
+): WorkflowRunRow[] {
+  if (runs.length === 0) return runs;
+  return runs.map((run) => {
+    const summary = summaries.get(run.id);
+    return summary ? { ...run, llm: summary } : run;
+  });
 }
 
 async function loadLlmCallsForRun(
   db: DbReader,
   runId: string
-): Promise<LlmCallRow[]> {
+): Promise<LlmCallQueryResult> {
   return queryLlmCallsByRunId(db, "run_id = ?", [runId]);
 }
 
@@ -571,6 +689,9 @@ export type RunAttemptsStatus = "ready" | "unavailable";
 export interface RunAttemptsResult {
   attempts: LlmCallRow[];
   status: RunAttemptsStatus;
+  /** True when this run had more attempts than the per-run read cap, so the
+   * rows below are the first N rather than all of them. */
+  truncated: boolean;
 }
 
 /** Overview tiles + catalog: counts, token headline, run recert, digest
@@ -661,12 +782,13 @@ export async function loadSystemActivity(
 }
 
 /** Last 30 workflow runs with only explicitly run-id-attributed LLM usage.
- * `includeAttempts: false` strips per-call rows; the selected-run endpoint
- * serves them lazily by id. */
-export async function loadSystemRuns(
-  db: DbReader,
-  opts: { includeAttempts?: boolean } = {}
-): Promise<WorkflowRunRow[]> {
+ *
+ * Per-run usage is aggregated in SQL (see `loadLlmSummariesForRuns`), so
+ * this path is bounded by run count, never truncates, and cannot let one
+ * high-volume run hide another's data. Per-call rows are served lazily by
+ * `/api/system/run-attempts` for the one expanded run — that is where the
+ * row cap and its `truncated` flag apply. */
+export async function loadSystemRuns(db: DbReader): Promise<WorkflowRunRow[]> {
   const [{ hasRunStats, hasLlmCalls }, hasLlmRunIdentity] = await Promise.all([
     probeSystemTables(db),
     probeLlmRunIdentity(db),
@@ -678,11 +800,13 @@ export async function loadSystemRuns(
   if (!hasLlmCalls || !hasLlmRunIdentity || runRows.length === 0)
     return runRows;
   try {
-    const calls = await loadLlmCallsForRuns(
+    // Aggregated in SQL: bounded by run count, so every listed run keeps its
+    // true call count and model inventory no matter how many calls it made.
+    const summaries = await loadLlmSummariesForRuns(
       db,
       runRows.map((run) => run.id)
     );
-    return attachLlmCallsToRuns(runRows, calls, opts);
+    return attachLlmSummariesToRuns(runRows, summaries);
   } catch {
     // Leave runs without LLM detail rather than falling back to timestamps.
     return runRows;
@@ -699,9 +823,10 @@ export async function loadRunAttempts(
     probeLlmRunIdentity(db),
   ]);
   if (!hasLlmCalls || !hasLlmRunIdentity) {
-    return { attempts: [], status: "unavailable" };
+    return { attempts: [], status: "unavailable", truncated: false };
   }
-  return { attempts: await loadLlmCallsForRun(db, runId), status: "ready" };
+  const { attempts, truncated } = await loadLlmCallsForRun(db, runId);
+  return { attempts, status: "ready", truncated };
 }
 
 /** Token burn + per-day usage feeding the overview/LLM tabs — one batch. */
@@ -850,11 +975,14 @@ export async function loadSystemStats(
     }
     if (hasLlmRunIdentity) {
       try {
-        const calls = await loadLlmCallsForRuns(
+        // Same SQL aggregation as the runs list: bounded by run count, so no
+        // run is starved by a busier neighbour and this aggregate endpoint
+        // cannot inflate into a multi-megabyte body.
+        const summaries = await loadLlmSummariesForRuns(
           db,
           runRowsRaw.map((run) => run.id)
         );
-        runRows = attachLlmCallsToRuns(runRowsRaw, calls);
+        runRows = attachLlmSummariesToRuns(runRowsRaw, summaries);
       } catch {
         // Leave runs without LLM detail rather than falling back to timestamps.
       }
