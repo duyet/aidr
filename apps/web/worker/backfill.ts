@@ -32,9 +32,14 @@ export function buildMissingSummaryQuery(limit = BACKFILL_CONTENT_CAP): string {
 }
 
 export function buildMissingMediaQuery(limit = BACKFILL_CONTENT_CAP): string {
+  // A row is a candidate when it has no media_manifest yet. The legacy
+  // `image_url` column must NOT gate this query: requiring it to be empty
+  // excluded every row that already carried a legacy og:image, so exactly the
+  // rows that most need a manifest (existing image, no manifest) could never be
+  // enriched. `image_url` is still selected so the manifest can be built from
+  // it. See issue #207.
   return `SELECT id, url, source_id, summary, image_url, media_manifest FROM items
           WHERE status = 'published' AND summary IS NOT NULL AND summary != ''
-            AND (image_url IS NULL OR image_url = '')
             AND (media_manifest IS NULL OR media_manifest = '' OR media_manifest = '[]')
           ORDER BY published_at DESC
           LIMIT ${limit}`;
