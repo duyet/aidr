@@ -369,6 +369,45 @@ describe("handleClerkProxy redirects and responses", () => {
     }
   );
 
+  it("allows a handshake redirect back to the application origin", async () => {
+    // Clerk's /v1/client/handshake answers with a 3xx whose Location is the
+    // `redirect_url`, i.e. the app origin. Rejecting it broke every session
+    // refresh with a 502. The app origin is first-party and already where the
+    // browser is, so it passes through unchanged.
+    const fetchMock = mockFetch(
+      redirectResponse("https://aidr.today/", 307)
+    );
+
+    const response = await handleClerkProxy(
+      proxyRequest("/__clerk/v1/client/handshake"),
+      makeEnv()
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("Location")).toBe("https://aidr.today/");
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the app-origin allowance from becoming an open redirect", async () => {
+    // Same host, different scheme/port/credentials, or an attacker suffix must
+    // all still be rejected: only the exact publicProxy.origin passes.
+    for (const location of [
+      "http://aidr.today/", // scheme downgrade
+      "https://aidr.today:8443/", // port swap
+      "https://user:password@aidr.today/", // credentialed
+      "https://aidr.today.evil.example/", // suffix attack
+      "https://evil.example/", // unrelated origin
+    ]) {
+      mockFetch(redirectResponse(location));
+      const response = await handleClerkProxy(
+        proxyRequest("/__clerk/v1/client/handshake"),
+        makeEnv()
+      );
+      expect(response.status, location).toBe(502);
+      expect(response.headers.get("Location"), location).toBeNull();
+    }
+  });
+
   it("rejects a malformed Location on a non-redirect response", async () => {
     mockFetch(
       new Response("body", {
