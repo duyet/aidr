@@ -1,5 +1,68 @@
 # Changelog
 
+## [0.1.8](https://github.com/duyet/aidr/compare/web-v0.1.7...web-v0.1.8) (2026-09-26)
+
+
+### ✨ Features
+
+* **jev:** add deterministic review panel core ([77693f2](https://github.com/duyet/aidr/commit/77693f25aed6a27e66b13c949324f2a2a3c62d79))
+* **media:** add bounded story media manifest ([#160](https://github.com/duyet/aidr/issues/160)) ([cc460b3](https://github.com/duyet/aidr/commit/cc460b347a368392842bee282013a72332c31867))
+* **seo:** centralize route indexability policy ([#151](https://github.com/duyet/aidr/issues/151)) ([d42e03e](https://github.com/duyet/aidr/commit/d42e03e6773883228072edf02421fdd10dd3c079))
+* **translation:** add independent semantic QA review ([#158](https://github.com/duyet/aidr/issues/158)) ([0dbf371](https://github.com/duyet/aidr/commit/0dbf3719bf0979d58dabcab6599dbfc31b9e2428))
+* **web:** add accessible category accents ([#159](https://github.com/duyet/aidr/issues/159)) ([340ed62](https://github.com/duyet/aidr/commit/340ed629c2423f2eac6e16a70c4cb204d2393bf7))
+* **web:** add agent-readable story Markdown ([#149](https://github.com/duyet/aidr/issues/149)) ([117af6e](https://github.com/duyet/aidr/commit/117af6e8c5463dd89af02bd08ae6281e9f8607e8))
+* **web:** add locale-aware canonical links ([7869b5a](https://github.com/duyet/aidr/commit/7869b5ae402478ad7b6cc788994c47cfb6d47794))
+* **web:** add story photos to OG cards ([#175](https://github.com/duyet/aidr/issues/175)) ([a9d6701](https://github.com/duyet/aidr/commit/a9d67016112f5ec150bb5739b90864fe7f9547e9))
+* **web:** always-on Sign in in header, no Clerk wait ([a91143d](https://github.com/duyet/aidr/commit/a91143d65eab766b108bae66bfffbac58afce6f5))
+* **web:** backfill /changelog, add agent skill for future entries ([542b676](https://github.com/duyet/aidr/commit/542b67696ffb60fabd0779b650726b740db15f00))
+* **web:** brand header dropdown trigger, expand menu items ([14f0d7c](https://github.com/duyet/aidr/commit/14f0d7c60a97b2583044abc47219c84ba03c97e3))
+* **web:** browser-chrome mockup frames on /subscribe ([9313a8e](https://github.com/duyet/aidr/commit/9313a8e3270c65d57aabad732938bd3d2a0e88e7))
+* **web:** clarify pipeline models and account totals ([#179](https://github.com/duyet/aidr/issues/179)) ([912935b](https://github.com/duyet/aidr/commit/912935b4764710ed2d4a5517c5dd1dd1d0e4b7c9))
+* **web:** dynamic OG cards for story permalinks ([3873acc](https://github.com/duyet/aidr/commit/3873acc96df7417668e553f71884b754107b3c7e))
+* **web:** expand ingest run details ([#161](https://github.com/duyet/aidr/issues/161)) ([1ce436b](https://github.com/duyet/aidr/commit/1ce436b362db180f470f90864ec1f0e130b23481))
+* **web:** full-screen mobile menu with icon links ([d4112a7](https://github.com/duyet/aidr/commit/d4112a79548c5448111446695787a8e1c07dc8c7))
+* **web:** label Telegram menu item as Vietnamese channel ([512fc4a](https://github.com/duyet/aidr/commit/512fc4a9e7baf4383a6c98f7d778d36fca54d7a4))
+* **web:** live digest preview on subscribe email tab, richer chrome tab ([9558832](https://github.com/duyet/aidr/commit/955883209d4e0d7d155ad0bafb6d45677beb2644))
+* **web:** make story sources compact and inline ([#176](https://github.com/duyet/aidr/issues/176)) ([db0b838](https://github.com/duyet/aidr/commit/db0b838608b9ac8713204274c61ce966740336e8))
+* **web:** merge header actions into dropdown menu ([#133](https://github.com/duyet/aidr/issues/133)) ([710de64](https://github.com/duyet/aidr/commit/710de64c2ba8120f304a4f2741962e6d9a5d23b5))
+* **web:** point Algorithms menu item at /data algo tab ([d5ea4bf](https://github.com/duyet/aidr/commit/d5ea4bf0c8989cf9c9ef92e6a44af99f2a9c130a))
+* **web:** redesign /data and sync Clerk signups from a verified webhook ([#205](https://github.com/duyet/aidr/issues/205)) ([2b63ced](https://github.com/duyet/aidr/commit/2b63cedaf9a13c20652bedf1dbc2fdfeef4df772))
+* **web:** refresh OG images with homepage masthead variant ([177a633](https://github.com/duyet/aidr/commit/177a6335d035c659c978bd9ffe45d9c22aaf8e12))
+* **web:** url-state subscribe tabs, email link in header menu ([6b858e4](https://github.com/duyet/aidr/commit/6b858e4d680fa9cbb7704f0e327f49fd7b1b822a))
+
+
+### 🐛 Bug Fixes
+
+* **deps:** narrow the [@clerk](https://github.com/clerk) release-age exclude and gate CLERK_SECRET_KEY ([#190](https://github.com/duyet/aidr/issues/190)) ([8554148](https://github.com/duyet/aidr/commit/855414857f7905368f099cb73fab82652b80d742))
+* **web:** 404 OG card requests without a valid story id prefix ([b487a65](https://github.com/duyet/aidr/commit/b487a656c0e940a1eb1b10c362b9c6f95466cbc8))
+* **web:** align model attribution accessible names with visible hops ([#196](https://github.com/duyet/aidr/issues/196)) ([9ba2498](https://github.com/duyet/aidr/commit/9ba2498c4e7c1cfbcc59df90f53ed195fe8ef3ab))
+* **web:** assert the deployed homepage og-home card in smoke ([#199](https://github.com/duyet/aidr/issues/199)) ([bb5c0cb](https://github.com/duyet/aidr/commit/bb5c0cbb3ca108b53eb5080a55ce3beb6ac92d7e))
+* **web:** cap all Jev criteria at 10 ([#185](https://github.com/duyet/aidr/issues/185)) ([946f697](https://github.com/duyet/aidr/commit/946f697e65cf324007d29b8cd53e93beee37924c))
+* **web:** cap Jev score levels at 10 for TypeSafe ([#183](https://github.com/duyet/aidr/issues/183)) ([e3add3b](https://github.com/duyet/aidr/commit/e3add3b518315b2e0a5ec5c8131a2793d2475891))
+* **web:** close escaped Markdown URL sanitizer bypasses ([#184](https://github.com/duyet/aidr/issues/184)) ([715e28a](https://github.com/duyet/aidr/commit/715e28a50e538df4d371d9ca2870d4bde1413c95))
+* **web:** close locale cache and auth follow-up gaps ([b8c3c8f](https://github.com/duyet/aidr/commit/b8c3c8f7adc39852aafdf9063856c56d4d2c956c))
+* **web:** close story OG card layout and image boundary gaps ([#192](https://github.com/duyet/aidr/issues/192)) ([7a71163](https://github.com/duyet/aidr/commit/7a71163472a4cceef64653c0d17d4bf09d025f0c))
+* **web:** gate CLERK_WEBHOOK_SECRET and stop /data inventing a signup 0 ([68dce00](https://github.com/duyet/aidr/commit/68dce00d10fde1909c3a4752f0572d72cdcf507d))
+* **web:** gate CLERK_WEBHOOK_SECRET, honest signup count, media backfill reach ([60ce9ec](https://github.com/duyet/aidr/commit/60ce9ec54df51078d87d1edd18e7fbaa3c7a7a97))
+* **web:** harden clerk proxy transport boundaries ([#150](https://github.com/duyet/aidr/issues/150)) ([488a9c0](https://github.com/duyet/aidr/commit/488a9c0159064dff919358e9ad8f7d44fdf2b8d0))
+* **web:** improve mobile header actions and menu ([080c9bb](https://github.com/duyet/aidr/commit/080c9bbb08e166f7afaa02c33327b02874c3ec92)), closes [#157](https://github.com/duyet/aidr/issues/157)
+* **web:** keep story source metadata unit intact and skip empty rows ([#191](https://github.com/duyet/aidr/issues/191)) ([caa4407](https://github.com/duyet/aidr/commit/caa44078b563501d297cf23104f3597e916bdbf6))
+* **web:** populate run Models/attempts and surface step fallbacks ([#197](https://github.com/duyet/aidr/issues/197)) ([146a0a0](https://github.com/duyet/aidr/commit/146a0a02bbb0defb4feace148d5ff8b5add679fe)), closes [#189](https://github.com/duyet/aidr/issues/189)
+* **web:** preserve locale across neutral navigation ([94bd26c](https://github.com/duyet/aidr/commit/94bd26ce667f7de0bfbe2fa9ce234e64e18f5c19))
+* **web:** remove mobile Get AI;DR trigger circle background ([#206](https://github.com/duyet/aidr/issues/206)) ([aa12d43](https://github.com/duyet/aidr/commit/aa12d43bf7355f7b038fb943ee7bb7b193631da3))
+* **web:** send Jev choice criteria as object maps ([#188](https://github.com/duyet/aidr/issues/188)) ([f786f29](https://github.com/duyet/aidr/commit/f786f295996eac7a9e73a5360043dd4265344907)), closes [#187](https://github.com/duyet/aidr/issues/187)
+* **web:** stop legacy story redirects from hijacking server functions ([#181](https://github.com/duyet/aidr/issues/181)) ([9d864bf](https://github.com/duyet/aidr/commit/9d864bf77b7fb9a5344e4922e6183f3983701fa7)), closes [#178](https://github.com/duyet/aidr/issues/178)
+* **web:** stop neutral locale redirect loops ([#182](https://github.com/duyet/aidr/issues/182)) ([4d18a7c](https://github.com/duyet/aidr/commit/4d18a7c57c94d816877dcf83203fd7245bdc4703))
+* **web:** unbreak the /data runs charts, dedupe algo tab, pad tabs ([#219](https://github.com/duyet/aidr/issues/219)) ([7fb5791](https://github.com/duyet/aidr/commit/7fb579130132b0c7c59f74206beaacceff4659a0))
+* **web:** widen story dialog on large screens ([#162](https://github.com/duyet/aidr/issues/162)) ([b32c49a](https://github.com/duyet/aidr/commit/b32c49a075769ac966f29df96d64dd35edc0bab0))
+* **worker:** let media backfill reach rows that already have a legacy image_url ([7089a94](https://github.com/duyet/aidr/commit/7089a941c1b99b4c4d74ff2d04c71f8e0dca92f6))
+* **worker:** let the Clerk handshake redirect back to the app origin (login 502) ([#212](https://github.com/duyet/aidr/issues/212)) ([58d1445](https://github.com/duyet/aidr/commit/58d1445e0676555e79ae9414f08f5c8f6cce512e))
+
+
+### ⚡ Performance
+
+* **web:** use slim feed freshness request ([#148](https://github.com/duyet/aidr/issues/148)) ([54395f7](https://github.com/duyet/aidr/commit/54395f78f23f777a0804f772a9898fcbe0833da3))
+
 ## [0.1.7](https://github.com/duyet/aidr/compare/web-v0.1.6...web-v0.1.7) (2026-09-23)
 
 
