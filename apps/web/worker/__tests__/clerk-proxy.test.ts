@@ -374,9 +374,7 @@ describe("handleClerkProxy redirects and responses", () => {
     // `redirect_url`, i.e. the app origin. Rejecting it broke every session
     // refresh with a 502. The app origin is first-party and already where the
     // browser is, so it passes through unchanged.
-    const fetchMock = mockFetch(
-      redirectResponse("https://aidr.today/", 307)
-    );
+    const fetchMock = mockFetch(redirectResponse("https://aidr.today/", 307));
 
     const response = await handleClerkProxy(
       proxyRequest("/__clerk/v1/client/handshake"),
