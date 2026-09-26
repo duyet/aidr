@@ -7,6 +7,7 @@ import { ChartCard } from "./ChartCard";
 import { API } from "./endpoints";
 import { RankingCard } from "./RankingCard";
 import { TokenBurnCard } from "./TokenBurnCard";
+import { TAB_PANEL } from "./tab-spacing";
 
 function JevDecisionsCard() {
   const state = useSystemData<{ models: ModelChains }>(API.models);
@@ -68,7 +69,7 @@ function JevDecisionsCard() {
 
 export function LlmTab() {
   return (
-    <TabsContent value="llm" className="mt-0">
+    <TabsContent value="llm" className={TAB_PANEL}>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <TokenBurnCard />
         <RankingCard />

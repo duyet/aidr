@@ -1,76 +1,45 @@
-import { Skeleton, TabsContent } from "@aidr/ui";
-import { anyrouterModelUrl } from "../../lib/anyrouter";
-import type { ModelChains } from "../../lib/system-queries";
-import { useSystemData } from "../../lib/use-system-stats";
-import { CardData } from "./CardData";
+import { TabsContent } from "@aidr/ui";
+import { ExternalLink } from "lucide-react";
 import { ChartCard } from "./ChartCard";
-import { API } from "./endpoints";
 import { RankingCard } from "./RankingCard";
+import { TAB_PANEL } from "./tab-spacing";
+
+const ANYROUTER_URL = "https://anyrouter.dev/?ref=aidr.today";
 
 function AnyRouterCard() {
-  const state = useSystemData<{ models: ModelChains }>(API.models);
   return (
     <ChartCard
-      title="Powered by AnyRouter"
-      subtitle="Every LLM call in the pipeline above"
+      title="AnyRouter"
+      subtitle="One gateway behind every model in this pipeline"
       className="md:col-span-2"
     >
-      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
-        {(d) => (
-          <div className="space-y-2 text-xs leading-relaxed">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {(
-                [
-                  ["score", d.models.scoring],
-                  ["translate", d.models.translation],
-                  ["tldr", d.models.tldr],
-                  ["decisions", d.models.decisions],
-                ] as const
-              ).map(([label, chain]) => (
-                <span key={label} className="inline-flex items-center gap-1.5">
-                  <span className="text-muted-foreground">{label}</span>
-                  {chain.length === 0 ? (
-                    <span className="font-mono">—</span>
-                  ) : (
-                    chain.map((model) => (
-                      <a
-                        key={`${label}-${model}`}
-                        href={anyrouterModelUrl(model)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-full font-mono text-[11px] text-accent underline underline-offset-2 hover:no-underline"
-                        title={`Open ${model} on AnyRouter`}
-                      >
-                        {model}
-                      </a>
-                    ))
-                  )}
-                </span>
-              ))}
-            </div>
-            <p className="text-muted-foreground">
-              Model fallback chains with per-task overrides, JSON mode, and
-              BYOK-only judges — explore them on{" "}
-              <a
-                href="https://anyrouter.dev/?ref=aidr.today"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-accent underline underline-offset-2 hover:no-underline"
-              >
-                AnyRouter
-              </a>
-              .
-            </p>
-          </div>
-        )}
-      </CardData>
+      {/* Deliberately no model list here: the same four chains already render
+          in the Ranking card on this tab, and again in the attribution strip
+          above the tabs. This card is the gateway pitch, not a third copy. */}
+      <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+        <p>
+          Every LLM call in the pipeline — scoring, translation, TL;DR, and the
+          decision judges — goes through one AnyRouter key. Per-task model
+          overrides, automatic fallback chains, and JSON mode are configured in
+          one place instead of four.
+        </p>
+        <a
+          href={ANYROUTER_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-medium text-accent underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Explore AnyRouter
+          <ExternalLink className="size-3" aria-hidden />
+        </a>
+      </div>
     </ChartCard>
   );
 }
 
 export function AlgoTab() {
   return (
-    <TabsContent value="algo" className="mt-0">
+    <TabsContent value="algo" className={TAB_PANEL}>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <RankingCard />
         <ChartCard title="Pipeline" subtitle="Hourly ingest, end to end">

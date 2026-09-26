@@ -5,10 +5,11 @@ import { useSystemData } from "../../lib/use-system-stats";
 import { CardData } from "./CardData";
 import { ChartCard } from "./ChartCard";
 import { API } from "./endpoints";
-import { RunDurationBars } from "./RunDurationBars";
-import { RunOutcomeBars } from "./RunOutcomeBars";
+import { RunDurationChart } from "./RunDurationChart";
+import { RunOutcomeChart } from "./RunOutcomeChart";
 import { RunStatusStrip } from "./RunStatusStrip";
 import { RunsList } from "./RunsList";
+import { TAB_PANEL } from "./tab-spacing";
 
 function RunStatusCard() {
   const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
@@ -24,9 +25,9 @@ function RunStatusCard() {
 function RunDurationCard() {
   const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
   return (
-    <ChartCard title="Duration" subtitle="Seconds per run">
-      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
-        {(d) => <RunDurationBars runs={d.runs} emptyLabel="No data yet." />}
+    <ChartCard title="Duration" subtitle="Seconds per run, oldest to newest">
+      <CardData state={state} skeleton={<Skeleton className="h-40 w-full" />}>
+        {(d) => <RunDurationChart runs={d.runs} emptyLabel="No data yet." />}
       </CardData>
     </ChartCard>
   );
@@ -37,11 +38,10 @@ function RunOutcomeCard() {
   return (
     <ChartCard
       title="Outcomes"
-      subtitle="New / merged / rejected"
-      className="md:col-span-2"
+      subtitle="New / merged / rejected items per run"
     >
-      <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
-        {(d) => <RunOutcomeBars runs={d.runs} emptyLabel="No data yet." />}
+      <CardData state={state} skeleton={<Skeleton className="h-40 w-full" />}>
+        {(d) => <RunOutcomeChart runs={d.runs} emptyLabel="No data yet." />}
       </CardData>
     </ChartCard>
   );
@@ -50,11 +50,7 @@ function RunOutcomeCard() {
 function RecentRunsCard({ lang }: { lang: Lang }) {
   const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
   return (
-    <ChartCard
-      title="Recent runs"
-      subtitle="Last 30 workflow runs"
-      className="md:col-span-2"
-    >
+    <ChartCard title="Recent runs" subtitle="Last 30 workflow runs">
       <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
         {(d) => <RunsList runs={d.runs} lang={lang} />}
       </CardData>
@@ -64,8 +60,10 @@ function RecentRunsCard({ lang }: { lang: Lang }) {
 
 export function RunsTab({ lang }: { lang: Lang }) {
   return (
-    <TabsContent value="runs" className="mt-0">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <TabsContent value="runs" className={TAB_PANEL}>
+      {/* One column, deliberately: every card here carries its own x-axis, so
+          a 2-up grid squeezed 30 run labels into ~300px. */}
+      <div className="grid grid-cols-1 gap-3">
         <RunStatusCard />
         <RunDurationCard />
         <RunOutcomeCard />

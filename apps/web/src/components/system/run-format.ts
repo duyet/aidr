@@ -33,6 +33,33 @@ export function formatMs(ms: number): string {
   return `${Math.round(s / 60)}m`;
 }
 
+/** Compact x-axis tick for a run series: `2:05 PM`. Runs pre-migration-0012
+ *  (and any row with no timestamp) fall back to an em dash rather than
+ *  "Invalid Date", so the axis never prints garbage. */
+export function runAxisTime(epochSeconds: number | null): string {
+  if (!epochSeconds) return "—";
+  const date = new Date(epochSeconds * 1000);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** Tooltip heading for a run: `Sep 27, 2:05 PM` — the full stamp, since the
+ *  axis only carries the time and a run series can span two days. */
+export function runAxisHeading(epochSeconds: number | null): string {
+  if (!epochSeconds) return "unknown start";
+  const date = new Date(epochSeconds * 1000);
+  if (Number.isNaN(date.getTime())) return "unknown start";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function formatTimestamp(
   epochSeconds: number | null | undefined,
   lang: "en" | "vi"

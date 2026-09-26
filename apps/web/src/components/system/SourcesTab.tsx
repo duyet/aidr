@@ -5,6 +5,7 @@ import { CardData } from "./CardData";
 import { ChartCard } from "./ChartCard";
 import { API } from "./endpoints";
 import { SourcesIngestTable } from "./SourcesIngestTable";
+import { TAB_PANEL } from "./tab-spacing";
 
 function SourcesCard() {
   const state = useSystemData<SystemSources>(API.sources);
@@ -28,7 +29,7 @@ function SourcesCard() {
 
 export function SourcesTab() {
   return (
-    <TabsContent value="sources" className="mt-0 space-y-3">
+    <TabsContent value="sources" className={`${TAB_PANEL} space-y-3`}>
       <SourcesCard />
     </TabsContent>
   );
