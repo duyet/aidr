@@ -9,8 +9,8 @@
  * "Unavailable" because an upstream request timed out.
  *
  * States stay explicit: an unmirrored database is `unconfigured`, an empty
- * table is a real `0`, and a read failure is `error`. None of them invent a
- * number.
+ * mirror is `unconfigured` too (an empty table cannot prove that Clerk has no
+ * accounts), and a read failure is `error`. None of them invent a number.
  */
 
 import {
@@ -42,6 +42,14 @@ export interface AccountCountDb {
 /**
  * Count live mirrored Clerk accounts. A missing D1 binding or a database that
  * has not applied the 0026 migration is `unconfigured` — never zero.
+ *
+ * An empty mirror is also `unconfigured`, not a real `0`. An empty table cannot
+ * distinguish "Clerk has no accounts" from "the webhook has not delivered
+ * yet", and /data is public: a confident `0` is indistinguishable from a true
+ * count and silently wrong the moment a signup exists. Reporting
+ * `unconfigured` until the first row lands is the honest failure — the
+ * dashboard shows "Unavailable" instead of inventing a number. Once one
+ * account syncs the count becomes available and stays available.
  */
 export async function loadClerkAccountCount(
   db: AccountCountDb | undefined | null
@@ -52,7 +60,10 @@ export async function loadClerkAccountCount(
     if (!(await hasClerkUsersTable(db))) {
       return accountCount(null, "unconfigured");
     }
-    return accountCount(await countClerkUsers(db), "available");
+    const total = await countClerkUsers(db);
+    return total > 0
+      ? accountCount(total, "available")
+      : accountCount(null, "unconfigured");
   } catch (error) {
     if (isMissingClerkUsersTable(error)) {
       return accountCount(null, "unconfigured");

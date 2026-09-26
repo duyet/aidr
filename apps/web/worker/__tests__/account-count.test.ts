@@ -59,10 +59,13 @@ describe("loadClerkAccountCount", () => {
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
-  it("reports an empty mirror as a real zero, not as unavailable", async () => {
+  it("reports an empty mirror as unconfigured, never a zero", async () => {
+    // An empty table cannot tell "Clerk has no accounts" from "the webhook
+    // never delivered". /data is public, so a confident 0 would be
+    // indistinguishable from a true count — report unknown instead.
     await expect(
       loadClerkAccountCount(fakeDb({ rows: [{ c: 0 }] }))
-    ).resolves.toEqual({ total: 0, source: "d1", status: "available" });
+    ).resolves.toEqual({ total: null, source: "d1", status: "unconfigured" });
   });
 
   it("never turns an unmigrated database into a zero total", async () => {

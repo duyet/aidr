@@ -36,11 +36,16 @@ const WORKER_REQUIRED = [
   "TELEGRAM_BOT_TOKEN",
   "NEWS_ADMIN_TOKEN",
   "CLERK_SECRET_KEY",
+  // 2b63ced shipped this as OPTIONAL, so `pnpm sync-env` silently skipped it
+  // and every Clerk delivery 503'd in production while sign-in kept working.
+  // handleClerkWebhook fails closed before reading the body, so a missing
+  // value is a dead signup sync with no other symptom. deploy-web.yml now
+  // asserts the endpoint is not 503, mirroring the CLERK_SECRET_KEY gate.
+  "CLERK_WEBHOOK_SECRET",
 ] as const;
 
 const WORKER_OPTIONAL = [
   "CLERK_PUBLISHABLE_KEY",
-  "CLERK_WEBHOOK_SECRET",
   "NEWS_UNSUBSCRIBE_SECRET",
   "NOTIFY_WEBHOOK_URL",
   "NEWS_ADMIN_USER_IDS",
