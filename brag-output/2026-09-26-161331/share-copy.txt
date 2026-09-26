@@ -1,0 +1,7 @@
+AI;DR reads the AI news so you don't have to. Every hour it polls 20 sources —
+Hacker News, HuggingNews, Anthropic, xAI, Simon Willison — throws out what's
+irrelevant, scores what's left, and ranks it. 2,035 duplicate posts merged away,
+2,398 stories published. It lands in Telegram, in a Chrome new tab, and in your
+inbox.
+
+aidr.today

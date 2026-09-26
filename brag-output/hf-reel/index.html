@@ -1,0 +1,527 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"lang","type":"enum","label":"Language","options":[{"value":"en","label":"English"},{"value":"vi","label":"Tieng Viet"}],"default":"en"},
+    {"id":"photo","type":"string","label":"Story image","default":"assets/stories/s002.png"},
+    {"id":"photoBoxW","type":"number","label":"Image box width","default":900},
+    {"id":"photoBoxH","type":"number","label":"Image box height","default":474},
+    {"id":"favicon","type":"string","label":"Source favicon","default":"assets/stories/s002-fav.png"},
+    {"id":"sourceName","type":"string","label":"Source name","default":"MarketBrief"},
+    {"id":"digestDate","type":"string","label":"Digest date","default":"2026-09-26"},
+    {"id":"kicker","type":"string","label":"Kicker","default":"AI;DR · ranked"},
+    {"id":"score","type":"string","label":"Rank score","default":"13.7"},
+    {"id":"category","type":"string","label":"Category","default":"Industry"},
+    {"id":"points","type":"string","label":"Points","default":"11"},
+    {"id":"comments","type":"string","label":"Comments","default":"12"},
+    {"id":"quotes","type":"string","label":"Quotes","default":"8"},
+    {"id":"headlineEn","type":"string","label":"Headline EN","default":"Goldman Forecasts $1.2T AI Spend for US Hyperscalers to Beat Consensus"},
+    {"id":"headlineVi","type":"string","label":"Headline VI","default":"Goldman du bao chi tieu AI 1,2 nghi ty USD cho hyperscalers My vuot muc tieu"},
+    {"id":"quote","type":"string","label":"Pull-quote","default":""},
+    {"id":"quoteAuthor","type":"string","label":"Quote author","default":""},
+    {"id":"summaryEn","type":"string","label":"Summary EN","default":""},
+    {"id":"summaryVi","type":"string","label":"Summary VI","default":""},
+    {"id":"tagsText","type":"string","label":"Tags line","default":""},
+    {"id":"host","type":"string","label":"Publisher host","default":"marketbrief.now"},
+    {"id":"url","type":"string","label":"Site","default":"aidr.today"},
+    {"id":"tagline","type":"string","label":"Tagline","default":"AI news, ranked hourly."},
+    {"id":"outName","type":"string","label":"Output name for --batch","default":"story"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>AI;DR — story reel</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /* Real brand fonts, from apps/extension/fonts */
+      @font-face{font-family:'EB Garamond';src:url('assets/fonts/eb-garamond-latin-400.woff2') format('woff2');font-weight:400;font-display:block}
+      @font-face{font-family:'EB Garamond';src:url('assets/fonts/eb-garamond-latin-700.woff2') format('woff2');font-weight:700;font-display:block}
+      @font-face{font-family:'Source Sans 3';src:url('assets/fonts/source-sans-3-latin-400.woff2') format('woff2');font-weight:400;font-display:block}
+      @font-face{font-family:'Source Sans 3';src:url('assets/fonts/source-sans-3-latin-600.woff2') format('woff2');font-weight:600;font-display:block}
+      @font-face{font-family:'Source Sans 3';src:url('assets/fonts/source-sans-3-latin-700.woff2') format('woff2');font-weight:700;font-display:block}
+
+      /* Real design tokens, from apps/web/src/styles.css (dark) */
+      :root{
+        --card:#171717; --fg:#fafafa; --muted:#cccccc; --line:rgba(255,255,255,.16);
+        --yellow:#f5c518;
+        --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+        --serif:'EB Garamond',Georgia,serif;
+        --sans:'Source Sans 3',-apple-system,system-ui,sans-serif;
+      }
+
+      *{margin:0;padding:0;box-sizing:border-box}
+      html,body{background:#000;overflow:hidden}
+      body{width:1080px;height:1920px}
+
+      /* The stage is a flex column, so a 324px banner and an 800px square both
+         fill the frame: the image takes its own real height and the type zone
+         below absorbs whatever is left. Nothing is letterboxed, nothing crops. */
+      #root{
+        position:relative;width:100%;height:100%;overflow:hidden;
+        background:#0a0a0a;color:var(--fg);font-family:var(--sans);
+        -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;
+        display:flex;flex-direction:column;align-items:center;padding:0 90px;
+      }
+      .clip{position:absolute;inset:0}
+
+      /* ---- the monochrome dithered field: background only, never content -- */
+      #field{position:absolute;left:-3%;top:-3%;width:106%;height:106%;image-rendering:pixelated;z-index:0}
+      #grid{position:absolute;inset:0;z-index:1;pointer-events:none;
+        background-image:
+          linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),
+          linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);
+        background-size:80px 80px;
+        -webkit-mask-image:radial-gradient(74% 50% at 50% 44%,#000 14%,transparent 78%);
+        mask-image:radial-gradient(74% 50% at 50% 44%,#000 14%,transparent 78%)}
+      #vig{position:absolute;inset:0;z-index:1;pointer-events:none;
+        background:radial-gradient(88% 60% at 50% 42%,transparent 28%,rgba(0,0,0,.74) 100%)}
+
+      /* ---- the flow column ------------------------------------------------ */
+      #flow{position:relative;z-index:5;display:flex;flex-direction:column;align-items:center;
+        width:100%;height:100%;padding:0 0 40px;justify-content:center;pointer-events:none}
+
+      /* top bar: the wordmark and the digest date */
+      #topbar{width:100%;flex:0 0 auto;height:186px;display:flex;align-items:center;justify-content:space-between}
+      #topmark{display:flex;align-items:center;gap:14px}
+      #topmark img{width:52px;height:52px;border-radius:13px;display:block}
+      #topurl{font:600 30px/1 var(--sans);color:var(--fg);letter-spacing:-.005em}
+      #datechip{height:60px;display:flex;align-items:center;padding:0 26px;
+        background:rgba(14,14,14,.95);border:1px solid var(--line);border-radius:30px;
+        font:500 25px/1 var(--mono);color:#e2e2e2}
+
+      /* the real story image, box fitted to its own aspect */
+      #photo-slot{position:relative;flex:1 1 auto;min-height:300px;width:900px;overflow:hidden;
+        border-radius:30px;background:#0d0d0d;border:1px solid var(--line);
+        box-shadow:0 60px 130px -40px rgba(0,0,0,.98)}
+      #photo-frame{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+      #photo{position:static;max-width:100%;max-height:100%;width:auto;height:auto;
+        object-fit:contain;display:block}
+      #photo-dim{position:absolute;inset:0;background:rgba(8,8,8,.16);pointer-events:none}
+      #photo-cap{position:absolute;left:0;right:0;bottom:0;height:108px;display:flex;align-items:center;gap:14px;
+        padding:0 30px;background:linear-gradient(180deg,rgba(8,8,8,0),rgba(8,8,8,.94) 56%);
+        font:600 28px/1 var(--sans);color:var(--fg)}
+      #photo-cap i{width:32px;height:32px;border-radius:16px;display:block;flex:0 0 auto;background:#fff center/cover}
+
+      /* ---- the headline is the hero, and it is first -------------------- */
+      #headline-block{flex:0 0 auto;width:100%;opacity:0}
+      #headline-top{display:flex;align-items:center;gap:16px;margin-bottom:22px}
+      #langtag{display:inline-block;height:40px;line-height:40px;padding:0 20px;border-radius:20px;
+        background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.42);
+        font:600 21px/40px var(--sans);letter-spacing:.18em;color:var(--yellow)}
+      #headline-rule{width:56px;height:5px;background:var(--yellow);flex:0 0 auto;border-radius:3px}
+      #headline-kicker{font:600 22px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#cccccc}
+      #headline{font:400 96px/1.1 var(--serif);color:var(--fg);letter-spacing:-.016em;
+        display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+
+      /* ---- the source row: real favicon, name, category, host ---------- */
+      #source-row{flex:0 0 auto;width:100%;display:flex;align-items:center;gap:14px;margin-top:30px;opacity:0}
+      #source-row img{width:58px;height:58px;border-radius:14px;display:block;background:#fff;flex:0 0 auto}
+      #source-name{font:600 31px/1 var(--sans);color:var(--fg);white-space:nowrap}
+      .chip{display:inline-flex;align-items:center;gap:10px;height:58px;padding:0 24px;border-radius:29px;
+        background:rgba(26,26,26,.92);border:1px solid var(--line);white-space:nowrap}
+      .chip svg{width:23px;height:23px;flex:0 0 auto;display:block}
+      .chip b{font:600 25px/1 var(--sans);color:var(--fg);font-weight:600}
+      .chip span{font:400 24px/1 var(--sans);color:#cccccc}
+      .chip.hot{border-color:rgba(245,197,24,.40);background:rgba(245,197,24,.10)}
+      .chip.hot b{color:var(--yellow)}
+      .chip.ghost{background:transparent}
+
+      /* ---- the stats: small, icon-led, supporting not hero -------------- */
+      #stats{flex:0 0 auto;width:100%;display:flex;gap:12px;margin-top:26px;opacity:0}
+      .stat{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:13px;height:94px;padding:0 20px;
+        border-radius:22px;background:rgba(20,20,20,.9);border:1px solid var(--line)}
+      .stat svg{width:30px;height:30px;flex:0 0 auto;display:block;color:var(--yellow)}
+      .stat-v{font-family:var(--mono);font-size:35px;line-height:1;color:var(--fg);white-space:nowrap}
+      .stat-k{font:400 16px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:#cccccc;margin-top:8px;white-space:nowrap}
+
+      /* the type zone: whatever height is left, one beat at a time */
+      #type-zone{flex:0 0 auto;width:100%;position:relative;margin-top:46px;height:468px}
+      /* every beat rests invisible; its tween brings it in. Without this the
+   immediateRender:false tweens leave all of them stacked on the frame. */
+  .beat{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:column;
+    justify-content:center;opacity:0}
+  #quote-z{flex-direction:row}
+
+      #quote-z{width:100%;display:flex;gap:26px}
+      #quote-bar{width:7px;height:262px;align-self:center;flex:0 0 auto;border-radius:3px;
+        background:linear-gradient(180deg,var(--yellow),rgba(245,197,24,.18))}
+      #quote-col{flex:1;min-width:0}
+      #quote-kicker{font:600 23px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#cccccc;margin-bottom:24px}
+      #quote-text{font:italic 400 60px/1.3 var(--serif);color:var(--fg);
+        display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+      #quote-author{font:600 30px/1 var(--sans);color:var(--yellow);margin-top:28px}
+
+      #summary-z{width:100%}
+      #summary-kicker{font:600 23px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#cccccc;margin-bottom:24px}
+      #summary-text{font:400 46px/1.38 var(--sans);color:var(--fg);letter-spacing:-.004em;
+        display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+      #summary-text.long{font-size:39px;line-height:1.36}
+      #summary-text.xlong{font-size:33px;line-height:1.34}
+      #tags{margin-top:34px;display:flex;flex-wrap:wrap;gap:12px}
+      .tag{height:52px;padding:0 24px;border-radius:26px;display:flex;align-items:center;
+        background:rgba(28,28,28,.92);border:1px solid var(--line);
+        font:500 24px/1 var(--mono);color:#e2e2e2}
+
+
+      /* ---- the end card, over everything --------------------------------- */
+      #end-clip{z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        background:radial-gradient(70% 46% at 50% 46%,rgba(10,10,10,.86),rgba(10,10,10,.97))}
+      #end-mark{width:236px;height:236px}
+      #end-mark img{width:100%;height:100%;display:block}
+      #end-url{font:600 92px/1 var(--sans);color:var(--fg);margin-top:44px;letter-spacing:-.018em}
+      #end-rule{height:6px;width:360px;background:var(--yellow);margin:36px auto 0;border-radius:3px;transform-origin:center}
+      #end-tag{font:400 52px/1.3 var(--serif);color:#d6d6d6;margin-top:34px;text-align:center;max-width:880px}
+      #end-subs{display:flex;gap:18px;margin-top:44px}
+      .sub{height:66px;padding:0 32px;border-radius:33px;display:flex;align-items:center;gap:12px;
+        background:rgba(23,23,23,.96);border:1px solid var(--line)}
+      .sub i{width:9px;height:9px;border-radius:50%;background:var(--yellow);display:block;flex:0 0 auto}
+      .sub span{font:400 26px/1 var(--sans);color:var(--fg)}
+
+      /* ---- flash + fade ------------------------------------------------- */
+      #flash{position:absolute;inset:0;z-index:9;background:#fff;opacity:0;pointer-events:none;mix-blend-mode:screen}
+      #fade{position:absolute;inset:0;z-index:10;background:#000;opacity:0;pointer-events:none}
+    </style>
+  </head>
+  <body>
+    <svg id="sprite" aria-hidden="true" focusable="false" width="0" height="0"
+         style="position:absolute;overflow:hidden;pointer-events:none">
+      <svg id="ico-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17a9 9 0 0 1 18 0"/><path d="M12 17l4.5-5"/><circle cx="12" cy="17" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <svg id="ico-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg>
+      <svg id="ico-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"/></svg>
+      <svg id="ico-quote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h2v1a2 2 0 0 1-2 2"/><path d="M20 7h-4a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h2v1a2 2 0 0 1-2 2"/></svg>
+      <svg id="ico-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4L12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/></svg>
+      <svg id="ico-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></svg>
+    </svg>
+    <div
+      id="root"
+      data-composition-id="reel"
+      data-start="0"
+      data-width="1080"
+      data-height="1920"
+      data-duration="18"
+    >
+      <canvas id="field" class="clip" data-start="0" data-duration="18" data-track-index="0"></canvas>
+      <div id="grid" class="clip" data-start="0" data-duration="18" data-track-index="0"></div>
+      <div id="vig" class="clip" data-start="0" data-duration="18" data-track-index="0"></div>
+
+      <div id="flow" class="clip" data-start="0" data-duration="18" data-track-index="1">
+        <div id="topbar">
+          <div id="topmark">
+            <img src="assets/brand/logo.svg" alt="" />
+            <span id="topurl" data-var-text="url" data-layout-allow-occlusion>aidr.today</span>
+          </div>
+          <div id="datechip" data-layout-allow-occlusion data-var-text="digestDate">2026-09-26</div>
+        </div>
+
+        <div id="headline-block">
+          <div id="headline-top">
+            <span id="langtag">EN</span>
+            <div id="headline-rule"></div>
+            <span id="headline-kicker" data-var-text="kicker">AI;DR · ranked</span>
+          </div>
+          <div id="headline">Goldman Forecasts $1.2T AI Spend for US Hyperscalers to Beat Consensus</div>
+        </div>
+
+        <div id="photo-slot" data-layout-allow-overflow>
+          <div id="photo-frame" data-layout-allow-overflow>
+            <div id="photo-dim"></div>
+            <img id="photo" data-var-src="photo" src="assets/stories/s002.png" alt="" />
+          </div>
+          <div id="photo-cap" data-layout-allow-occlusion>
+            <i id="photo-cap-fav"></i>
+            <span data-layout-allow-occlusion data-var-text="sourceName">MarketBrief</span>
+          </div>
+        </div>
+
+        <div id="source-row" data-layout-allow-occlusion>
+          <img id="source-fav" data-var-src="favicon" src="assets/stories/s002-fav.png" alt="" />
+          <span id="source-name" data-layout-allow-occlusion data-var-text="sourceName">MarketBrief</span>
+          <div class="chip hot"><svg><use href="#ico-tag"/></svg><b data-layout-allow-occlusion data-var-text="category">Industry</b></div>
+          <div class="chip ghost"><svg><use href="#ico-globe"/></svg><span data-layout-allow-occlusion data-var-text="host">marketbrief.now</span></div>
+        </div>
+
+        <div id="stats" data-layout-allow-occlusion>
+          <div class="stat"><svg><use href="#ico-gauge"/></svg><div><div class="stat-v" data-layout-allow-occlusion data-var-text="score">13.7</div><div class="stat-k" data-layout-allow-occlusion>rank score</div></div></div>
+          <div class="stat"><svg><use href="#ico-up"/></svg><div><div class="stat-v" data-layout-allow-occlusion data-var-text="points">11</div><div class="stat-k" data-layout-allow-occlusion>points</div></div></div>
+          <div class="stat"><svg><use href="#ico-chat"/></svg><div><div class="stat-v" data-layout-allow-occlusion data-var-text="comments">12</div><div class="stat-k" data-layout-allow-occlusion>comments</div></div></div>
+          <div class="stat"><svg><use href="#ico-quote"/></svg><div><div class="stat-v" data-layout-allow-occlusion data-var-text="quotes">8</div><div class="stat-k" data-layout-allow-occlusion>quotes</div></div></div>
+        </div>
+
+        <div id="type-zone">
+          <div id="quote-z" class="beat">
+            <div id="quote-bar"></div>
+            <div id="quote-col">
+              <div id="quote-kicker">pulled from the thread</div>
+              <div id="quote-text"></div>
+              <div id="quote-author"></div>
+            </div>
+          </div>
+
+          <div id="summary-z" class="beat">
+            <div id="summary-kicker">from the source</div>
+            <div id="summary-text"></div>
+            <div id="tags"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div id="end-clip" class="clip" data-start="16.60" data-duration="1.40" data-track-index="8">
+        <div id="end-mark"><img src="assets/brand/logo-end.svg" alt="" /></div>
+        <div id="end-url" data-var-text="url">aidr.today</div>
+        <div id="end-rule"></div>
+        <div id="end-tag" data-var-text="tagline">AI news, ranked hourly.</div>
+        <div id="end-subs">
+          <div class="sub"><i></i><span>Telegram</span></div>
+          <div class="sub"><i></i><span>Chrome new tab</span></div>
+          <div class="sub"><i></i><span>Email</span></div>
+        </div>
+      </div>
+
+      <div id="flash" class="clip" data-start="0" data-duration="18" data-track-index="9"></div>
+      <div id="fade" class="clip" data-start="17.58" data-duration="0.42" data-track-index="9"></div>
+    </div>
+
+    <script>
+      /* ===================================================== dithered field ==
+         The product's own 4x4 Bayer matrix at CELL=2, greyscale, painted ONCE at
+         init onto a half-res buffer and blitted up with image-rendering:pixelated.
+         Deterministic: no clock, no randomness, no per-frame repaint. */
+      (function paintField() {
+        const BGW = 540, BGH = 960;
+        const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]
+          .map(r => r.map(v => (v + 0.5) / 16));
+        const SPAN = 11;
+        const cv = document.getElementById("field");
+        cv.width = BGW; cv.height = BGH;
+        const ctx = cv.getContext("2d", { alpha: false });
+        const lo = document.createElement("canvas");
+        lo.width = BGW; lo.height = BGH;
+        const lctx = lo.getContext("2d", { alpha: false });
+        const img = lctx.createImageData(BGW, BGH);
+        const px = img.data;
+        // Tuned against WCAG, not by eye: the brightest texel over the content
+        // column quantises to exactly one Bayer level (luminance 0.0909), which
+        // is the brightest the field can be while #cccccc still clears 4.5:1.
+        const BLOOM = [
+          [.30, .24, .54, .30, 214, .16],
+          [.74, .56, .46, .27, 172, .12],
+          [.50, .44, .82, .54,  34, .42],
+        ];
+        const CUT = 0.5184;
+        let o = 0;
+        for (let y = 0; y < BGH; y++) {
+          for (let x = 0; x < BGW; x++, o += 4) {
+            let v = 9;
+            for (let k = 0; k < 3; k++) {
+              const B = BLOOM[k];
+              const u = (x / BGW - B[0]) / B[2], w = (y / BGH - B[1]) / B[3];
+              const d2 = u * u + w * w;
+              if (d2 >= CUT) continue;
+              v += (B[4] - v) * (1 - d2 / CUT) * B[5];
+            }
+            let lum = (v / 255 - 0.5) * 1.24 + 0.5;
+            const s = lum * SPAN;
+            const base = Math.floor(s);
+            const q = ((s - base > BAYER[y & 3][x & 3]) ? base + 1 : base) / SPAN;
+            const g = q * 255;
+            px[o] = g; px[o+1] = g; px[o+2] = g; px[o+3] = 255;
+          }
+        }
+        lctx.putImageData(img, 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(lo, 0, 0, cv.width, cv.height);
+      })();
+
+      /* ================================================ per-story decisions ==
+         Read the variables ONCE. Declarative data-var-* bindings are applied by
+         the runtime and are not guaranteed to have landed before this script
+         runs, so anything the timeline needs comes from here.
+
+         Each story ships as TWO videos — one English, one Vietnamese — chosen by
+         the `lang` variable. Same timeline, same layout, different text. */
+      const V = (function readVars() {
+        try { return window.__hyperframes.getVariables() || {}; } catch (e) { return {}; }
+      })();
+      const VI = String(V.lang || "en").toLowerCase() === "vi";
+      const txt = (v) => String(v === null || v === undefined ? "" : v).trim();
+
+      (function applyStory() {
+        // the card takes the width the thumbnail's own aspect implies, and the
+        // column gives it whatever height is left over, so the frame is always
+        // full and the image is never cropped or blown up to get there
+        const slot = document.getElementById("photo-slot");
+        const w = Math.max(240, Math.min(900, Number(V.photoBoxW) || 900));
+        slot.style.width = w + "px";
+        if (!V.photo) slot.style.display = "none";
+
+        // language
+        document.getElementById("langtag").textContent = VI ? "VI" : "EN";
+        const head = document.getElementById("headline");
+        const hEn = txt(V.headlineEn), hVi = txt(V.headlineVi);
+        const chosen = VI ? (hVi || hEn) : hEn;
+        head.textContent = chosen;
+        // the hero steps down for a long or Vietnamese headline so it never clips
+        head.style.fontSize = chosen.length > 130 ? "58px" : chosen.length > 104 ? "64px" : chosen.length > 76 ? "74px" : chosen.length > 50 ? "84px" : "96px";
+
+        // the real pull-quote, when this story has one
+        const q = txt(V.quote);
+        if (!q) { kill("#quote-z"); document.getElementById("quote-text").textContent = ""; }
+        else document.getElementById("quote-text").textContent = "“" + q.replace(/^["“”]|["“”]$/g, "") + "”";
+        if (!txt(V.quoteAuthor)) document.getElementById("quote-author").style.display = "none";
+        else document.getElementById("quote-author").textContent = V.quoteAuthor;
+
+        // the publisher's own words, in the right language
+        const sEn = txt(V.summaryEn), sVi = txt(V.summaryVi);
+        const sum = VI ? (sVi || sEn) : (sEn || sVi);
+        const sumEl = document.getElementById("summary-text");
+        sumEl.textContent = sum;
+        // Vietnamese packs more meaning per character than English; step the
+        // size down rather than clip a sentence in half
+        sumEl.className = sum.length > 330 ? "xlong" : sum.length > 215 ? "long" : "";
+        document.getElementById("summary-kicker").textContent = sum ? "from the source" : "";
+        const tags = txt(V.tagsText).split(",").map((x) => x.trim()).filter(Boolean);
+        const tagBox = document.getElementById("tags");
+        tagBox.innerHTML = "";
+        tags.forEach((t) => {
+          const el = document.createElement("div");
+          el.className = "tag";
+          el.textContent = t;
+          tagBox.appendChild(el);
+        });
+        if (!sum && !tags.length) kill("#summary-z");
+
+        // the favicon rides on the image caption
+        const capFav = document.getElementById("photo-cap-fav");
+        if (V.favicon) capFav.style.backgroundImage = 'url("' + V.favicon + '")';
+        else capFav.style.display = "none";
+      })();
+
+      /** a beat with nothing to say is removed from the timeline entirely */
+      function kill(sel) {
+        const el = document.querySelector(sel);
+        if (el) { el.style.display = "none"; el.dataset.dead = "1"; }
+      }
+
+      const tl = gsap.timeline({ paused: true });
+      const live = (sel) => {
+        const el = document.querySelector(sel);
+        return !!el && el.dataset.dead !== "1";
+      };
+
+      /* stable resting states, so any pre-tween seek lands correctly */
+      tl.set("#flash", { opacity: 0 }, 0);
+      tl.set("#headline", { clipPath: "inset(0% 0 0 0)" }, 0);
+      tl.set("#quote-text", { clipPath: "inset(0 0% 0 0)" }, 0);
+
+      /* --- the field drifts once across the whole piece ------------------- */
+      tl.fromTo("#field", { scale: 1, xPercent: 0, yPercent: 0 },
+        { scale: 1.06, xPercent: 1.2, yPercent: -0.9, duration: 18, ease: "none" }, 0);
+      tl.fromTo("#grid", { xPercent: 0, yPercent: 0 },
+        { xPercent: -1.8, yPercent: -1.0, duration: 18, ease: "none" }, 0);
+
+      /* --- the image: one slow push across the whole piece ---------------- */
+      tl.fromTo("#photo-slot", { opacity: 0, yPercent: 4 },
+        { opacity: 1, yPercent: 0, duration: 0.55, ease: "power4.out", immediateRender: false }, 0.34);
+      tl.fromTo("#photo", { scale: 1.0 },
+        { scale: 1.02, duration: 0.6, ease: "power4.out", immediateRender: false }, 0);
+      tl.to("#photo", { scale: 1.04, duration: 16.8, ease: "none" }, 0.6);
+      tl.to("#photo-cap", { opacity: 0.70, duration: 0.4, ease: "power2.in" }, 1.90);
+      tl.to("#photo-cap", { opacity: 1, duration: 0.4, ease: "power2.out" }, 15.20);
+
+      /* --- the top bar --------------------------------------------------- */
+      tl.fromTo("#topbar", { opacity: 0, y: -22 },
+        { opacity: 1, y: 0, duration: 0.42, ease: "power3.out", immediateRender: false }, 0.20);
+
+      /* --- BEAT 1: the headline lands first, over a dark field -------------
+         The content is the hook. The title is the largest thing in the film
+         and it is on screen before anything else has finished arriving. */
+      tl.fromTo("#headline", { clipPath: "inset(100% 0 0 0)" },
+        { clipPath: "inset(0% 0 0 0)", duration: 0.62, ease: "power3.out", immediateRender: false }, 0.14);
+      tl.fromTo("#headline-block", { opacity: 0, y: 34 },
+        { opacity: 1, y: 0, duration: 0.38, ease: "power3.out", immediateRender: false }, 0.10);
+      tl.fromTo("#langtag", { opacity: 0, x: -20 },
+        { opacity: 1, x: 0, duration: 0.30, ease: "power3.out", immediateRender: false }, 0.18);
+      tl.fromTo("#headline-rule", { scaleX: 0 },
+        { scaleX: 1, duration: 0.44, ease: "power3.out", immediateRender: false }, 0.20);
+      tl.fromTo("#headline-kicker", { opacity: 0 },
+        { opacity: 1, duration: 0.36, ease: "none", immediateRender: false }, 0.30);
+      // the title recedes rather than vanishing: it stays as context
+      tl.to("#headline-block", { opacity: 0.26, y: -20, duration: 0.52, ease: "power2.inOut" }, 4.40);
+
+      /* --- the real source, as icon chips, with the image ----------------- */
+      tl.fromTo("#source-row", { opacity: 0, y: 26 },
+        { opacity: 1, y: 0, duration: 0.40, ease: "power3.out", immediateRender: false }, 0.58);
+      tl.fromTo("#source-fav", { scale: 0.6, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.44, ease: "back.out", immediateRender: false }, 0.58);
+      tl.fromTo("#source-row .chip", { opacity: 0, y: 14, scale: 0.92 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.34, ease: "power3.out", stagger: 0.09, immediateRender: false }, 0.72);
+
+      /* --- BEAT 2: the stats, small and icon-led --------------------------
+         The rank score is supporting evidence, not the story. It counts up
+         inside a chip instead of filling the frame. */
+      tl.fromTo("#stats", { opacity: 0, y: 26 },
+        { opacity: 1, y: 0, duration: 0.40, ease: "power3.out", immediateRender: false }, 4.40);
+      tl.fromTo("#stats .stat", { opacity: 0, y: 18, scale: 0.94 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.34, ease: "power3.out", stagger: 0.08, immediateRender: false }, 4.48);
+      const scoreEl = document.querySelector("#stats .stat-v");
+      const target = parseFloat(V.score);
+      if (!Number.isNaN(target) && scoreEl) {
+        const counter = { v: 0 };
+        tl.to(counter, {
+          v: target, duration: 0.70, ease: "power4.out",
+          onUpdate() { scoreEl.textContent = counter.v.toFixed(1); },
+          onComplete() { scoreEl.textContent = target.toFixed(1); },
+        }, 4.60);
+      }
+
+      /* --- BEAT 3: the real pull-quote ------------------------------------ */
+      if (live("#quote-z")) {
+        tl.fromTo("#quote-z", { opacity: 0, y: 40 },
+          { opacity: 1, y: 0, duration: 0.38, ease: "power3.out", immediateRender: false }, 8.30);
+        tl.fromTo("#quote-text", { clipPath: "inset(0 100% 0 0)" },
+          { clipPath: "inset(0 0% 0 0)", duration: 0.66, ease: "power3.out", immediateRender: false }, 8.36);
+        tl.fromTo("#quote-author", { opacity: 0, y: 12 },
+          { opacity: 1, y: 0, duration: 0.30, ease: "power3.out", immediateRender: false }, 8.96);
+        tl.to("#quote-z", { opacity: 0, y: -44, duration: 0.32, ease: "power2.in" }, 11.10);
+      }
+
+      /* --- BEAT 4: the publisher's own words, which get the longest hold -- */
+      if (live("#summary-z")) {
+        tl.fromTo("#summary-z", { opacity: 0, y: 40 },
+          { opacity: 1, y: 0, duration: 0.38, ease: "power3.out", immediateRender: false }, 11.40);
+        tl.fromTo("#summary-text", { clipPath: "inset(0 100% 0 0)" },
+          { clipPath: "inset(0 0% 0 0)", duration: 0.80, ease: "power3.out", immediateRender: false }, 11.46);
+        tl.fromTo("#tags .tag", { opacity: 0, y: 14 },
+          { opacity: 1, y: 0, duration: 0.30, ease: "power3.out", stagger: 0.07, immediateRender: false }, 15.00);
+        tl.to("#summary-z", { opacity: 0, y: -44, duration: 0.32, ease: "power2.in" }, 16.40);
+      }
+
+      /* --- beat 6: the end card takes a CLEAN frame ----------------------
+         The flow clears out rather than ghosting under the opaque card, so the
+         end card lands on empty space and no two text blocks ever overlap. */
+      tl.to("#flow", { opacity: 0, duration: 0.34, ease: "power2.in" }, 16.60);
+      tl.fromTo("#end-mark", { scale: 0.3, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.50, ease: "power3.out", immediateRender: false }, 16.60);
+      tl.fromTo("#end-url", { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.34, ease: "power3.out", immediateRender: false }, 16.78);
+      tl.fromTo("#end-rule", { scaleX: 0 },
+        { scaleX: 1, duration: 0.36, ease: "power3.out", immediateRender: false }, 16.90);
+      tl.fromTo("#end-tag", { opacity: 0 },
+        { opacity: 1, duration: 0.36, ease: "none", immediateRender: false }, 17.04);
+      tl.fromTo("#end-subs", { opacity: 0, y: 22 },
+        { opacity: 1, y: 0, duration: 0.34, ease: "power3.out", immediateRender: false }, 17.18);
+
+      /* --- one flash per beat boundary, then the fade to black ----------- */
+      [0.14, 0.58, 4.40, 8.30, 11.40, 16.60].forEach((t0) => {
+        tl.set("#flash", { opacity: 0.12 }, t0);
+        tl.to("#flash", { opacity: 0, duration: 0.15, ease: "power2.out" }, t0);
+      });
+      tl.fromTo("#fade", { opacity: 0 }, { opacity: 1, duration: 0.42, ease: "power2.in", immediateRender: false }, 17.58);
+
+      window.__timelines["reel"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

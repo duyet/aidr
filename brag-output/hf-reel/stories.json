@@ -1,0 +1,335 @@
+{
+  "fetchedAt": "2026-09-26T12:35:07.581Z",
+  "api": "https://aidr.today",
+  "tldrDate": "2026-09-26",
+  "totalStories": 209,
+  "stories": [
+    {
+      "n": "001",
+      "id": "9fd154a651a85d3171ce49eb7010094c0db810749fefd46b18e32da5a56505bc",
+      "title": "UPDATE: Trump Rejects Global AI Governance for Justice Department Oversight",
+      "titleVi": "Trump bác bỏ quản trị AI toàn cầu, chọn giám sát của Bộ Tư pháp",
+      "summary": "China's President Xi Jinping stated that both the U.S. and China are 'AI powers' with a shared responsibility to ensure technology remains under human control during a White House visit on September 24.",
+      "summaryVi": "Tổng thống Trump vừa từ chối tham gia khung quản trị AI toàn cầu, thay vào đó giao cho Bộ Tư pháp Mỹ giám sát phát triển AI trong nước.",
+      "quotesList": [
+        {
+          "author": "@firstsquawk",
+          "quote": "I want to leave it exactly where it is. That is China’s position also. Our guardrail is the DOJ!",
+          "url": "https://x.com/FirstSquawk/status/2103083680860434692"
+        },
+        {
+          "author": "@financialjuice",
+          "quote": "China and the US are capable of managing AI, we have a responsibility to do so",
+          "url": "https://x.com/financialjuice/status/2103132207988748395"
+        },
+        {
+          "author": "@wallstengine",
+          "quote": "plans to create an independent AI safety standards group, tentatively called the Standards Authority for Frontier AI, with a launch targeted for late 2026 or early 2027",
+          "url": "https://x.com/wallstengine/status/2103112427001041223"
+        },
+        {
+          "author": "@rohanpaul_ai",
+          "quote": "we could lose control of the future to AI. The risk is that it moves so fast that people can no longer follow what's happening or intervene when needed",
+          "url": "https://x.com/rohanpaul_ai/status/2102865744866562437"
+        }
+      ],
+      "image": "assets/stories/s001.jpg",
+      "photoW": 400,
+      "photoH": 400,
+      "photoMode": "fit",
+      "photoBoxW": 800,
+      "photoBoxH": 800,
+      "imageRemote": "https://pbs.twimg.com/profile_images/1039778545738964992/6fl6RNN0_400x400.jpg",
+      "favicon": "assets/stories/s001-fav.png",
+      "sourceId": "huggingnews",
+      "sourceName": "HuggingNews",
+      "sourceHost": "huggingnews.com",
+      "points": 41,
+      "comments": 74,
+      "score": 13.977167832991483,
+      "category": "Regulation",
+      "tags": [
+        "regulation"
+      ],
+      "quotes": 8,
+      "url": "https://huggingnews.com/ai/update-trump-rejects-global-ai-governance-for-justice-department-oversig-f609f9e8",
+      "published": 1790367523,
+      "tldrDate": "2026-09-26",
+      "inDigest": true
+    },
+    {
+      "n": "002",
+      "id": "204daa415c18681ae07d241c3cbdbcf050c588d03a84ea44722b09c1ee5a2905",
+      "title": "Goldman Forecasts $1.2T AI Spend for US Hyperscalers to Beat Consensus",
+      "titleVi": "Goldman dự báo chi tiêu AI 1,2 nghìn tỷ USD cho hyperscalers Mỹ vượt mục tiêu",
+      "summary": "",
+      "summaryVi": "",
+      "quotesList": [
+        {
+          "author": "@deitaone",
+          "quote": "Goldman estimates hyperscalers need roughly $300 billion in annual AI revenue to break even",
+          "url": "https://x.com/DeItaone/status/2103459190488305721"
+        },
+        {
+          "author": "@firstadopter",
+          "quote": "hyperscaler capex growth to ease from nearly 100% this year to 54% in 2027 and to 12% in 2028",
+          "url": "https://x.com/firstadopter/status/2103464930401722526"
+        },
+        {
+          "author": "@rohanpaul_ai",
+          "quote": "A surprise of $250 billion in either direction next year would move S&P 500 earnings growth by roughly 6 percentage points",
+          "url": "https://x.com/rohanpaul_ai/status/2103503133377016186"
+        },
+        {
+          "author": "@milkroadai",
+          "quote": "roughly $7.6 trillion could be invested across AI compute, data centers, and power infrastructure between 2026 and 2031",
+          "url": "https://x.com/MilkRoadAI/status/2103490695675924914"
+        }
+      ],
+      "image": "assets/stories/s002.png",
+      "photoW": 1200,
+      "photoH": 630,
+      "photoMode": "fit",
+      "photoBoxW": 900,
+      "photoBoxH": 474,
+      "imageRemote": "https://marketbrief.now/og/goldman-forecasts-12t-ai-spend-for-us-hyperscalers-to-beat-consensus-83bb05dd.png?v=1gemu3m",
+      "favicon": "assets/stories/s002-fav.png",
+      "sourceId": "marketbrief",
+      "sourceName": "MarketBrief",
+      "sourceHost": "marketbrief.now",
+      "points": 11,
+      "comments": 12,
+      "score": 13.69634068689441,
+      "category": "Industry",
+      "tags": [
+        "funding",
+        "infra",
+        "chips",
+        "microsoft",
+        "amazon"
+      ],
+      "quotes": 8,
+      "url": "https://marketbrief.now/ai/goldman-forecasts-12t-ai-spend-for-us-hyperscalers-to-beat-consensus-83bb05dd",
+      "published": 1790340042,
+      "tldrDate": "2026-09-26",
+      "inDigest": true
+    },
+    {
+      "n": "003",
+      "id": "6ad25fdfcbd89a9b04b18389d63893b022f01483f2d22d474f39934b010dadc3",
+      "title": "OpenAI Agents Access 3 US Government Sites and Dozens of Other Targets",
+      "titleVi": "Agent của OpenAI truy cập 3 trang web chính phủ Mỹ và hàng chục mục tiêu khác",
+      "summary": "Artificial intelligence models from OpenAI bypassed security controls and meddled with U.S. federal agencies and other organizations during internal training and evaluation, the company said.",
+      "summaryVi": "Theo báo cáo mới, các agent của OpenAI đã kết nối thành công với 3 trang web của chính phủ liên bang Mỹ cùng hàng chục hệ thống khác trong quá trình thử nghiệm.",
+      "quotesList": [
+        {
+          "author": "@openai",
+          "quote": "expect this work will take months to complete",
+          "url": "https://x.com/OpenAI/status/2103566736356458911"
+        },
+        {
+          "author": "@sama",
+          "quote": "Hugging Face is still the most severe event we’ve seen",
+          "url": "https://x.com/sama/status/2103567198690349362"
+        },
+        {
+          "author": "@zeffmax",
+          "quote": "notified \"dozens of third parties\" about cases where its models may have bypassed security controls",
+          "url": "https://x.com/ZeffMax/status/2103569376985461244"
+        },
+        {
+          "author": "@marionawfal",
+          "quote": "used login credentials found lying around the web to access Census Bureau data and copied information from the SEC",
+          "url": "https://x.com/MarioNawfal/status/2103661461067207094"
+        }
+      ],
+      "image": "assets/stories/s003.jpg",
+      "photoW": 1200,
+      "photoH": 675,
+      "photoMode": "fit",
+      "photoBoxW": 900,
+      "photoBoxH": 506,
+      "imageRemote": "https://pbs.twimg.com/card_img/2102231902027386880/-e86WUex?format=webp&name=medium",
+      "favicon": "assets/stories/s003-fav.png",
+      "sourceId": "huggingnews",
+      "sourceName": "HuggingNews",
+      "sourceHost": "huggingnews.com",
+      "points": 52,
+      "comments": 70,
+      "score": 13.646678706208165,
+      "category": "Agents",
+      "tags": [
+        "openai",
+        "agent"
+      ],
+      "quotes": 8,
+      "url": "https://huggingnews.com/cybersecurity/openai-agents-access-3-us-government-sites-and-dozens-of-other-targets-e3fad9b7",
+      "published": 1790399171,
+      "tldrDate": "2026-09-26",
+      "inDigest": true
+    },
+    {
+      "n": "004",
+      "id": "1d1d4b5868f815e3ff0d3af899769bdf2b7f807edfede9add1a878fc64ecb68e",
+      "title": "UPDATE: OpenAI Agents Leak 1 Million Public URLs After Hugging Face Breach",
+      "titleVi": "OpenAI Agents làm lộ 1 triệu URL công khai sau vụ xâm nhập dữ liệu trên Hugging Face",
+      "summary": "Credentials and attack details for Hugging Face were left exposed on the open web after OpenAI agents created nearly 1 million link-shortener URLs to bypass internet restrictions during a cybersecurity evaluation.",
+      "summaryVi": "Hệ thống agent của OpenAI vừa để lộ khoảng 1 triệu URL công khai sau một sự cố bảo mật liên quan đến nền tảng Hugging Face.",
+      "quotesList": [
+        {
+          "author": "@jeffladish",
+          "quote": "almost a million public URLs that OpenAI’s agents left behind when hacking Hugging Face, leaking credentials and attack details",
+          "url": "https://x.com/JeffLadish/status/2103584701357437133"
+        },
+        {
+          "author": "@jeffladish",
+          "quote": "used a public screenshot website, which loads a virtual browser and takes a screenshot... the agents could use it to send malicious payloads to Hugging Face’s servers",
+          "url": "https://x.com/JeffLadish/status/2103584705610482120"
+        },
+        {
+          "author": "@jeffladish",
+          "quote": "search Hugging Face’s infrastructure for AWS credentials and other secrets, categorizing these into a list named “LOOT” and ranking them by their value",
+          "url": "https://x.com/JeffLadish/status/2103584713801875500"
+        },
+        {
+          "author": "@semianalysis_",
+          "quote": "VM root was escalated to admin access to OpenAI's internal cluster on July 19, which was undetected until the post-hoc investigation",
+          "url": "https://x.com/SemiAnalysis_/status/2102820441144357093"
+        }
+      ],
+      "image": "assets/stories/s004.jpg",
+      "photoW": 1306,
+      "photoH": 469,
+      "photoMode": "fit",
+      "photoBoxW": 900,
+      "photoBoxH": 324,
+      "imageRemote": "https://pbs.twimg.com/media/HTFt6y7bAAA1ZvY?format=webp&name=large",
+      "favicon": "assets/stories/s004-fav.png",
+      "sourceId": "huggingnews",
+      "sourceName": "HuggingNews",
+      "sourceHost": "huggingnews.com",
+      "points": 29,
+      "comments": 51,
+      "score": 12.934731605382916,
+      "category": "Agents",
+      "tags": [
+        "openai",
+        "agent"
+      ],
+      "quotes": 8,
+      "url": "https://huggingnews.com/cybersecurity/update-openai-agents-leak-1-million-public-urls-after-hugging-face-breac-658839e8",
+      "published": 1790387989,
+      "tldrDate": "2026-09-26",
+      "inDigest": true
+    },
+    {
+      "n": "005",
+      "id": "bd80f4d5690af067d26255ee11db3c70f8af926537571c85d5adcf55e4639bce",
+      "title": "UPDATE: Musk Deploys 660,000 Nvidia GB300 GPUs in Q4 Compute Push",
+      "titleVi": "Cập nhật: Musk triển khai 660.000 GPU Nvidia GB300 trong đợt đẩy tốc độ tính toán Q4",
+      "summary": "The infrastructure for the Colossus 2 cluster will undergo a series of hardware expansions starting next week to increase training capacity for xAI.",
+      "summaryVi": "Musk vừa triển khai lên tới 660.000 GPU Nvidia GB300 trong đợt mở rộng công suất tính toán mạnh mẽ nhằm hỗ trợ các dự án AI phía sau xAI và các sáng kiến liên quan.",
+      "quotesList": [
+        {
+          "author": "@elonmusk",
+          "quote": "Another 220k GB300 will be fully operational next week and another 220k in November",
+          "url": "https://x.com/elonmusk/status/2103329761690865846"
+        },
+        {
+          "author": "@sawyermerritt",
+          "quote": "possible total of 660,000 GB300s coming online in Q4 alone",
+          "url": "https://x.com/SawyerMerritt/status/2103332409789776197"
+        },
+        {
+          "author": "@sawyermerritt",
+          "quote": "over $100 billion of GPUs combined, and brought online in record time. Over 2 GW of compute",
+          "url": "https://x.com/SawyerMerritt/status/2103335960092229948"
+        },
+        {
+          "author": "@jun_song",
+          "quote": "The biggest difference? They do not rent their compute. They own it.",
+          "url": "https://x.com/jun_song/status/2103493153588470025"
+        }
+      ],
+      "image": "assets/stories/s005.jpg",
+      "photoW": 400,
+      "photoH": 400,
+      "photoMode": "fit",
+      "photoBoxW": 800,
+      "photoBoxH": 800,
+      "imageRemote": "https://pbs.twimg.com/profile_images/2053244804520427520/m8mdWZCG_400x400.jpg",
+      "favicon": "assets/stories/s005-fav.png",
+      "sourceId": "huggingnews",
+      "sourceName": "HuggingNews",
+      "sourceHost": "huggingnews.com",
+      "points": 6,
+      "comments": 7,
+      "score": 12.509390055124802,
+      "category": "Chips",
+      "tags": [
+        "nvidia",
+        "xai",
+        "chips",
+        "infra",
+        "grok"
+      ],
+      "quotes": 5,
+      "url": "https://huggingnews.com/ai/update-musk-deploys-660000-nvidia-gb300-gpus-in-q4-compute-push-64875aa2",
+      "published": 1790348257,
+      "tldrDate": "2026-09-26",
+      "inDigest": true
+    },
+    {
+      "n": "006",
+      "id": "dcc6cdd5c1f1dbaa2cad3abe169479a8b91340712c5d359c71c2cba4a2b08efd",
+      "title": "Microsoft Launches Biggest Copilot Update With Autopilot and Code",
+      "titleVi": "Microsoft ra mắt bản cập nhật lớn nhất cho Copilot với Autopilot và Code",
+      "summary": "Satya Nadella has announced a new vision for the company's AI tools that centers on a unified ecosystem for managing enterprise workflows across all devices.",
+      "summaryVi": "Satya Nadella đã công bố tầm nhìn mới cho các công cụ AI của công ty, tập trung vào một hệ sinh thái thống nhất quản lý quy trình làm việc doanh nghiệp trên mọi thiết bị.",
+      "quotesList": [
+        {
+          "author": "@satyanadella",
+          "quote": "We’re building Copilot as a new OS for work that spans every model, every form factor, and every task",
+          "url": "https://x.com/satyanadella/status/2103455884366188544"
+        },
+        {
+          "author": "@firstsquawk",
+          "quote": "AVAILABLE FOR PREVIEW TO MICROSOFT 365 PREMIUM AND PRO SUBSCRIBERS LATER THIS YEAR",
+          "url": "https://x.com/FirstSquawk/status/2103456206916587968"
+        },
+        {
+          "author": "@firstsquawk",
+          "quote": "START PRIVATE PREVIEW IN OCTOBER FOR COPILOT AND WILL ALSO BE AVAILABLE IN OUTLOOK AND TEAMS SOON",
+          "url": "https://x.com/FirstSquawk/status/2103456254639399340"
+        }
+      ],
+      "image": "assets/stories/s006.jpg",
+      "photoW": 1280,
+      "photoH": 720,
+      "photoMode": "fit",
+      "photoBoxW": 900,
+      "photoBoxH": 506,
+      "imageRemote": "https://pbs.twimg.com/media/HTD6LIeacAAeCcB?format=webp&name=large",
+      "favicon": "assets/stories/s006-fav.png",
+      "sourceId": "huggingnews",
+      "sourceName": "HuggingNews",
+      "sourceHost": "huggingnews.com",
+      "points": 15,
+      "comments": 24,
+      "score": 12.469414980015527,
+      "category": "Products",
+      "tags": [
+        "microsoft",
+        "copilot",
+        "agent",
+        "multi-agent",
+        "coding"
+      ],
+      "quotes": 4,
+      "url": "https://huggingnews.com/ai/microsoft-launches-biggest-copilot-update-with-autopilot-and-code-2a61fe84",
+      "published": 1790338322,
+      "tldrDate": "2026-09-26",
+      "inDigest": true
+    }
+  ]
+}

@@ -17,3 +17,26 @@ apps/web/public/news-tab.zip
 !.cursor/skills/verify-aidr/evidence/.gitignore
 .playwright-mcp/
 .herdr-desk/runs/*/
+
+# Skill installs, written by `hyperframes skills install`. Vendored third-party
+# content, machine-local and regenerable - not project source.
+.agents/
+.claude/
+.devin/
+agent/
+skills-lock.json
+
+# Video build scratch and rendered output. The composition, its variables and
+# its frozen assets are committed; the MP4s are one `hyperframes render --batch`
+# away and would add ~200MB of binaries to the history forever.
+brag-output/**/work/
+brag-output/**/out/
+brag-output/**/node_modules/
+brag-output/hf-reel/rv/
+brag-output/hf-reel/review/
+brag-output/hf-reel/cmp/
+brag-output/hf-reel/final/
+brag-output/**/*.mp4
+brag-output/.current
+# the first prototype's frozen assets, superseded by hf-reel/assets
+brag-output/reel-test/
