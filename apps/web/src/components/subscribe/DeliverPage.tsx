@@ -432,10 +432,13 @@ const TELEGRAM_FEATURES = [
 
 /** Sample digest copy. Shape mirrors `buildDigestMessage` /
  *  `buildStoryCaption` in worker/notify/telegram.ts so the preview stays
- *  honest about what actually lands in the channel. */
+ *  honest about what actually lands in the channel: `date` is the digest's
+ *  YYYY-MM-DD stamp, and `meta`'s hashtag is the sanitized category slug the
+ *  bot emits (`category.replace(/[^a-z0-9_]/gi, "_")` — which is why it stays
+ *  ASCII in both locales). */
 const TELEGRAM_DIGEST = {
   en: {
-    date: "Sep 27",
+    date: "2026-09-27",
     bullets: [
       "OpenAI ships a faster reasoning model for agents",
       "Anthropic open-sources Claude interpretability tools",
@@ -445,13 +448,13 @@ const TELEGRAM_DIGEST = {
       title: "NVIDIA releases an open inference stack for Blackwell",
       summary:
         "A vendor-neutral serving layer targets Blackwell without locking callers into one runtime.",
-      meta: "#infrastructure  ·  ▲ 412  ·  💬 96",
+      meta: "#Infra  ·  ▲ 412  ·  💬 96",
       buttons: ["Read →", "AI;DR"],
     },
     cta: "Read the full digest on aidr.today →",
   },
   vi: {
-    date: "27 thg 9",
+    date: "2026-09-27",
     bullets: [
       "OpenAI ra mắt mô hình suy luận nhanh hơn cho agent",
       "Anthropic mở mã nguồn bộ công cụ diễn giải Claude",
@@ -461,7 +464,7 @@ const TELEGRAM_DIGEST = {
       title: "NVIDIA phát hành stack inference mở cho Blackwell",
       summary:
         "Một lớp phục vụ trung lập hãng nhắm Blackwell mà không ràng buộc runtime.",
-      meta: "#hạ_tầng  ·  ▲ 412  ·  💬 96",
+      meta: "#Infra  ·  ▲ 412  ·  💬 96",
       buttons: ["Đọc bài →", "AI;DR"],
     },
     cta: "Xem đầy đủ trên aidr.today →",
@@ -510,10 +513,13 @@ function TelegramPreview({ lang }: { lang: Lang }) {
             </div>
           </div>
 
-          {/* Digest message: bold header + linked bullets + one CTA button. */}
-          <article className="max-w-[92%] rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5 shadow-sm">
+          {/* Digest message: bold header + linked bullets + one CTA button.
+              A div, not an <article>: these are decorative mock bubbles, and
+              an unnamed `article` would add noise to the landmark list. */}
+          <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5 shadow-sm">
             <p className="text-[13px] font-semibold leading-snug text-foreground">
-              {t("🗞 AI news today", "🗞 AI hôm nay có gì")} — {copy.date}
+              <span aria-hidden>🗞</span>{" "}
+              {t("AI news today", "AI hôm nay có gì")} — {copy.date}
             </p>
             <ul className="mt-1.5 space-y-1.5">
               {copy.bullets.map((b) => (
@@ -534,12 +540,12 @@ function TelegramPreview({ lang }: { lang: Lang }) {
             <span className="mt-2.5 inline-flex rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
               {copy.cta}
             </span>
-          </article>
+          </div>
 
           {/* Trending post: bold title, summary, meta line, two buttons. */}
-          <article className="max-w-[92%] rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5 shadow-sm">
+          <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5 shadow-sm">
             <p className="text-[13px] font-semibold leading-snug text-foreground">
-              🔥 {copy.story.title}
+              <span aria-hidden>🔥</span> {copy.story.title}
             </p>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/90">
               {copy.story.summary}
@@ -555,7 +561,7 @@ function TelegramPreview({ lang }: { lang: Lang }) {
                 </span>
               ))}
             </div>
-          </article>
+          </div>
         </div>
       </BrowserFrame>
     </div>

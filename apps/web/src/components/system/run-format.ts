@@ -33,31 +33,55 @@ export function formatMs(ms: number): string {
   return `${Math.round(s / 60)}m`;
 }
 
-/** Compact x-axis tick for a run series: `2:05 PM`. Runs pre-migration-0012
- *  (and any row with no timestamp) fall back to an em dash rather than
- *  "Invalid Date", so the axis never prints garbage. */
-export function runAxisTime(epochSeconds: number | null): string {
-  if (!epochSeconds) return "—";
-  const date = new Date(epochSeconds * 1000);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleTimeString("en-US", {
+/** Compact x-axis tick for a run series: `2:05 PM`. A run with no usable
+ *  timestamp falls back to an em dash rather than "Invalid Date", so the axis
+ *  never prints garbage.
+ *
+ *  `timeZone: "UTC"` is not cosmetic: it is what {@link formatTimestamp} in
+ *  this same file does, so a run reads the same wall-clock time on the chart
+ *  axis as it does in its expanded "Recent runs" detail. Leaving it implicit
+ *  would also make the label depend on the viewer's machine timezone. */
+export function runAxisTime(
+  epochSeconds: number | null,
+  lang: "en" | "vi"
+): string {
+  const date = runDate(epochSeconds);
+  if (!date) return "—";
+  return date.toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "UTC",
   });
 }
 
-/** Tooltip heading for a run: `Sep 27, 2:05 PM` — the full stamp, since the
- *  axis only carries the time and a run series can span two days. */
-export function runAxisHeading(epochSeconds: number | null): string {
-  if (!epochSeconds) return "unknown start";
+/** Tooltip heading for a run — the full stamp, since the axis only carries the
+ *  time and a run series can span two days. Shares `formatTimestamp`'s locale
+ *  and timezone rules so the two never disagree. */
+export function runAxisHeading(
+  epochSeconds: number | null,
+  lang: "en" | "vi"
+): string {
+  return formatTimestamp(epochSeconds, lang);
+}
+
+/** Whole seconds → `45s` / `4m`, for axis ticks and summary readouts. Unlike
+ *  {@link formatDuration} this takes the value directly, so it is the right
+ *  helper for a duration that is already measured. */
+export function formatSecondsShort(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  return `${Math.round(seconds / 60)}m`;
+}
+
+/** Epoch seconds → Date, or null for a missing/unusable timestamp. */
+function runDate(epochSeconds: number | null): Date | null {
+  if (
+    epochSeconds == null ||
+    !Number.isFinite(epochSeconds) ||
+    epochSeconds <= 0
+  )
+    return null;
   const date = new Date(epochSeconds * 1000);
-  if (Number.isNaN(date.getTime())) return "unknown start";
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 export function formatTimestamp(

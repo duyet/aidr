@@ -22,18 +22,24 @@ function RunStatusCard() {
   );
 }
 
-function RunDurationCard() {
+function RunDurationCard({ lang }: { lang: Lang }) {
   const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
   return (
     <ChartCard title="Duration" subtitle="Seconds per run, oldest to newest">
       <CardData state={state} skeleton={<Skeleton className="h-40 w-full" />}>
-        {(d) => <RunDurationChart runs={d.runs} emptyLabel="No data yet." />}
+        {(d) => (
+          <RunDurationChart
+            runs={d.runs}
+            emptyLabel="No data yet."
+            lang={lang}
+          />
+        )}
       </CardData>
     </ChartCard>
   );
 }
 
-function RunOutcomeCard() {
+function RunOutcomeCard({ lang }: { lang: Lang }) {
   const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
   return (
     <ChartCard
@@ -41,7 +47,13 @@ function RunOutcomeCard() {
       subtitle="New / merged / rejected items per run"
     >
       <CardData state={state} skeleton={<Skeleton className="h-40 w-full" />}>
-        {(d) => <RunOutcomeChart runs={d.runs} emptyLabel="No data yet." />}
+        {(d) => (
+          <RunOutcomeChart
+            runs={d.runs}
+            emptyLabel="No data yet."
+            lang={lang}
+          />
+        )}
       </CardData>
     </ChartCard>
   );
@@ -65,8 +77,8 @@ export function RunsTab({ lang }: { lang: Lang }) {
           a 2-up grid squeezed 30 run labels into ~300px. */}
       <div className="grid grid-cols-1 gap-3">
         <RunStatusCard />
-        <RunDurationCard />
-        <RunOutcomeCard />
+        <RunDurationCard lang={lang} />
+        <RunOutcomeCard lang={lang} />
         <RecentRunsCard lang={lang} />
       </div>
     </TabsContent>

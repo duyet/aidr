@@ -10,6 +10,7 @@ import {
   formatSafeDetail,
   formatSafeError,
   formatScore,
+  formatSecondsShort,
   formatTimestamp,
   formatTokenValue,
   hasRunDetails,
@@ -17,6 +18,8 @@ import {
   llmTokens,
   nextOpenId,
   normalizeRunTokens,
+  runAxisHeading,
+  runAxisTime,
   runDetailsId,
   runDisclosureLabel,
   runFallbackKindLabel,
@@ -248,6 +251,50 @@ describe("safe run detail formatting", () => {
     const formatted = formatTimestamp(1_700_000_000, "en");
     expect(formatted).toContain("2023");
     expect(formatted).toContain("UTC");
+  });
+});
+
+describe("run axis labels", () => {
+  it("anchors the x-axis tick to UTC, like formatTimestamp", () => {
+    // 1700000000 is 2023-11-14T22:13:20Z. A local-time formatter would
+    // render a different wall clock for a UTC+7 viewer, so the axis and the
+    // run's own detail row would disagree on the same page.
+    expect(runAxisTime(1_700_000_000, "en")).toBe("10:13 PM");
+  });
+
+  it("is stable regardless of the viewer's timezone", () => {
+    const original = process.env.TZ;
+    try {
+      process.env.TZ = "Asia/Bangkok";
+      expect(runAxisTime(1_700_000_000, "en")).toBe("10:13 PM");
+      process.env.TZ = "America/Los_Angeles";
+      expect(runAxisTime(1_700_000_000, "en")).toBe("10:13 PM");
+    } finally {
+      if (original === undefined) delete process.env.TZ;
+      else process.env.TZ = original;
+    }
+  });
+
+  it("reuses formatTimestamp for the tooltip heading, so the two agree", () => {
+    expect(runAxisHeading(1_700_000_000, "en")).toBe(
+      formatTimestamp(1_700_000_000, "en")
+    );
+    expect(runAxisHeading(1_700_000_000, "en")).toContain("UTC");
+  });
+
+  it("degrades a missing timestamp instead of printing Invalid Date", () => {
+    for (const bad of [null, 0, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(runAxisTime(bad, "en")).toBe("—");
+      expect(runAxisHeading(bad, "en")).toBe("—");
+    }
+  });
+
+  it("keeps a sub-minute duration in seconds and never rounds it to 0m", () => {
+    expect(formatSecondsShort(0)).toBe("0s");
+    expect(formatSecondsShort(45)).toBe("45s");
+    expect(formatSecondsShort(59)).toBe("59s");
+    expect(formatSecondsShort(60)).toBe("1m");
+    expect(formatSecondsShort(157)).toBe("3m");
   });
 });
 

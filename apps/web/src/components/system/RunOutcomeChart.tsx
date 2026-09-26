@@ -1,9 +1,10 @@
 import type { WorkflowRunRow } from "../../lib/system-queries";
+import type { Lang } from "../../lib/types";
 import { Bar } from "../dither-kit/bar";
 import { BarChart } from "../dither-kit/bar-chart";
 import { BlockLegend } from "../dither-kit/block-legend";
-import type { ChartConfig } from "../dither-kit/chart-context";
 import { Grid } from "../dither-kit/grid";
+import type { DitherColor } from "../dither-kit/palette";
 import { Tooltip } from "../dither-kit/tooltip";
 import { XAxis } from "../dither-kit/x-axis";
 import { YAxis } from "../dither-kit/y-axis";
@@ -12,15 +13,23 @@ import { runAxisHeading, runAxisTime } from "./run-format";
 interface RunOutcomeChartProps {
   runs: WorkflowRunRow[];
   emptyLabel: string;
+  lang: Lang;
 }
 
-const CONFIG: ChartConfig = {
+/** The stacked outcome series. Typing CONFIG against this union is what keeps
+ *  the two in step: a series added to one and not the other is a compile
+ *  error, not a bar that silently fails to render (`Bar` returns null for a
+ *  dataKey missing from the config, and stack order follows
+ *  `Object.keys(CONFIG)`, not JSX order). */
+type SeriesKey = "new" | "merged" | "rejected";
+
+const CONFIG: Record<SeriesKey, { label: string; color: DitherColor }> = {
   new: { label: "New", color: "green" },
   merged: { label: "Merged", color: "blue" },
   rejected: { label: "Rejected", color: "red" },
 };
 
-const SERIES = ["new", "merged", "rejected"] as const;
+const SERIES = Object.keys(CONFIG) as SeriesKey[];
 
 export interface OutcomeRow {
   id: string;
@@ -38,12 +47,12 @@ export interface OutcomeRow {
  * `items_new` is the fallback for pre-migration-0012 rows that have no `stats`
  * JSON; `merged`/`rejected` have no such column and stay 0 there — an honest
  * zero rather than an invented number. */
-export function outcomeRows(runs: WorkflowRunRow[]): OutcomeRow[] {
+export function outcomeRows(runs: WorkflowRunRow[], lang: Lang): OutcomeRow[] {
   // The endpoint returns newest-first; charts read oldest → newest.
   return [...runs].reverse().map((run) => ({
     id: run.id,
-    at: runAxisHeading(run.started_at),
-    label: runAxisTime(run.started_at),
+    at: runAxisHeading(run.started_at, lang),
+    label: runAxisTime(run.started_at, lang),
     new: run.stats?.new ?? run.items_new ?? 0,
     merged: run.stats?.merged ?? 0,
     rejected: run.stats?.rejected ?? 0,
@@ -58,8 +67,12 @@ export function outcomeRows(runs: WorkflowRunRow[]): OutcomeRow[] {
  * permanently empty. `BarChart` owns the plot geometry, so the stack scales
  * correctly and the per-run split is legible.
  */
-export function RunOutcomeChart({ runs, emptyLabel }: RunOutcomeChartProps) {
-  const rows = outcomeRows(runs);
+export function RunOutcomeChart({
+  runs,
+  emptyLabel,
+  lang,
+}: RunOutcomeChartProps) {
+  const rows = outcomeRows(runs, lang);
 
   const totals = rows.reduce(
     (acc, row) => {

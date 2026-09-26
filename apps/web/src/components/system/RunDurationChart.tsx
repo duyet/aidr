@@ -1,4 +1,5 @@
 import type { WorkflowRunRow } from "../../lib/system-queries";
+import type { Lang } from "../../lib/types";
 import { Bar } from "../dither-kit/bar";
 import { BarChart } from "../dither-kit/bar-chart";
 import type { ChartConfig } from "../dither-kit/chart-context";
@@ -6,16 +7,36 @@ import { Grid } from "../dither-kit/grid";
 import { Tooltip } from "../dither-kit/tooltip";
 import { XAxis } from "../dither-kit/x-axis";
 import { YAxis } from "../dither-kit/y-axis";
-import { formatDurationSec, runAxisHeading, runAxisTime } from "./run-format";
+import {
+  formatDurationSec,
+  formatSecondsShort,
+  runAxisHeading,
+  runAxisTime,
+} from "./run-format";
 
 interface RunDurationChartProps {
   runs: WorkflowRunRow[];
   emptyLabel: string;
+  lang: Lang;
 }
 
 const CONFIG: ChartConfig = {
   seconds: { label: "Duration", color: "blue" },
 };
+
+/** Axis ticks are raw seconds, so the formatter switches unit at 60 — and
+ *  rounds the *minutes* up (`Math.round` on 100 would print `2m`). One
+ *  decimal once a minute is involved keeps `100s` reading as `1.7m`, so two
+ *  neighbouring ticks can never collapse to the same label. */
+function tickLabel(seconds: number): string {
+  return seconds < 60 ? `${seconds}s` : `${(seconds / 60).toFixed(1)}m`;
+}
+
+/** Avg and peak stay in seconds: the card is "seconds per run", and a ~3m
+ *  pipeline would otherwise report avg and peak as the same "3m". */
+function secondsLabel(seconds: number): string {
+  return `${Math.round(seconds)}s`;
+}
 
 /** Runs that never finished have no duration to plot; a run that finished in
  *  the same second it started is a real (if tiny) 0s data point, so only a
@@ -35,14 +56,17 @@ export interface DurationRow {
 }
 
 /** Per-run duration series, oldest first, dropping runs that never finished. */
-export function durationRows(runs: WorkflowRunRow[]): DurationRow[] {
+export function durationRows(
+  runs: WorkflowRunRow[],
+  lang: Lang
+): DurationRow[] {
   // The endpoint returns newest-first; charts read oldest → newest.
   return [...runs]
     .reverse()
     .map((run) => ({
       id: run.id,
-      at: runAxisHeading(run.started_at),
-      label: runAxisTime(run.started_at),
+      at: runAxisHeading(run.started_at, lang),
+      label: runAxisTime(run.started_at, lang),
       seconds: durationOf(run),
     }))
     .filter((row): row is DurationRow => row.seconds !== null);
@@ -56,8 +80,12 @@ export function durationRows(runs: WorkflowRunRow[]): DurationRow[] {
  * `BarChart` measures the plot itself, so the bars always have real geometry,
  * and the axes/tooltip make a 3-minute outlier legible at a glance.
  */
-export function RunDurationChart({ runs, emptyLabel }: RunDurationChartProps) {
-  const rows = durationRows(runs);
+export function RunDurationChart({
+  runs,
+  emptyLabel,
+  lang,
+}: RunDurationChartProps) {
+  const rows = durationRows(runs, lang);
 
   if (rows.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
@@ -69,12 +97,17 @@ export function RunDurationChart({ runs, emptyLabel }: RunDurationChartProps) {
 
   return (
     <div className="space-y-2">
-      <dl className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[11px]">
+      <dl
+        aria-label="Run duration summary"
+        className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[11px]"
+      >
         {(
           [
-            ["avg", `${Math.round(avg)}s`],
-            ["peak", `${peak.seconds}s`],
-            ["total", `${Math.round(total / 60)}m`],
+            ["avg", secondsLabel(avg)],
+            ["peak", secondsLabel(peak.seconds)],
+            // A window total is the one figure that grows past a minute, so
+            // this is where the compact form belongs.
+            ["total", formatSecondsShort(total)],
           ] as const
         ).map(([label, value]) => (
           <div key={label} className="flex items-baseline gap-1">
@@ -86,11 +119,9 @@ export function RunDurationChart({ runs, emptyLabel }: RunDurationChartProps) {
       <BarChart data={rows} config={CONFIG} className="h-36 w-full">
         <Grid />
         <XAxis dataKey="label" maxTicks={4} />
-        <YAxis
-          tickFormatter={(v) => (v >= 60 ? `${Math.round(v / 60)}m` : `${v}s`)}
-        />
+        <YAxis tickFormatter={tickLabel} />
         <Bar dataKey="seconds" />
-        <Tooltip labelKey="at" valueFormatter={(v) => `${Math.round(v)}s`} />
+        <Tooltip labelKey="at" valueFormatter={secondsLabel} />
       </BarChart>
     </div>
   );

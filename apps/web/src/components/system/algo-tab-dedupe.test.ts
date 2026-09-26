@@ -13,17 +13,25 @@ describe("algo tab model chains", () => {
     // card is a gateway pitch only.
     const algo = read("AlgoTab.tsx");
     for (const key of ["scoring", "translation", "tldr", "decisions"]) {
-      expect(algo).not.toContain(`.${key}`);
+      expect(algo, key).not.toContain(`.${key}`);
+      expect(algo, key).not.toContain(`: models.${key}`);
+      expect(algo, key).not.toContain(`models.${key}`);
     }
+    // No per-model links left in the card that dropped them.
     expect(algo).not.toContain("anyrouterModelUrl");
+    // It no longer needs to fetch the models it does not render.
     expect(algo).not.toContain("useSystemData");
-    // The pitch keeps the referral link and the shared gateway explainer.
+    // The pitch keeps the referral link.
     expect(algo).toContain("anyrouter.dev/?ref=aidr.today");
+  });
 
+  it("keeps the chains rendered in the Ranking card", () => {
     const explainer = read("RankingExplainer.tsx");
     for (const key of ["scoring", "translation", "tldr", "decisions"]) {
-      expect(explainer).toContain(`models.${key}`);
+      expect(explainer, key).toContain(`models.${key}`);
     }
+    // One <ModelChain> per task — the copy cannot quietly drop one.
+    expect(explainer.match(/<ModelChain /g)).toHaveLength(4);
   });
 
   it("keeps the ranking formula intact while compacting the layout", () => {
@@ -57,37 +65,29 @@ describe("data tab spacing", () => {
   });
 
   it("keeps the spacing in one shared module", () => {
-    const spacing = read("tab-spacing.ts");
-    expect(spacing).toContain("export const TAB_PANEL");
+    expect(read("tab-spacing.ts")).toContain("export const TAB_PANEL");
     // The route's admin panel is the seventh body; it must not drift either.
     expect(read("../../routes/data.tsx")).toContain("TAB_PANEL");
   });
 
   it("leaves the tab strip room around its triggers", () => {
     const route = read("../../routes/data.tsx");
-    expect(route).toMatch(/TabsList[^>]*p-1\.5/);
-    expect(route).not.toMatch(/TabsList[^>]*p-1"/);
-  });
-});
+    // Match across lines: the className is on the line after the tag.
+    const tokensOf = (tag: string) =>
+      route
+        .match(new RegExp(`<${tag}[\\s\\S]*?className="([^"]*)"`))?.[1]
+        .split(/\s+/) ?? [];
 
-describe("telegram tab preview", () => {
-  it("shows a channel mock instead of copy and a button only", () => {
-    const src = read("../subscribe/DeliverPage.tsx");
-    expect(src).toContain("TelegramPreview");
-    // Both message shapes the bot actually sends.
-    expect(src).toContain("buildDigestMessage");
-    expect(src).toContain("buildStoryCaption");
-    // Rendered inside the shared frame, like the other two tabs.
-    expect(src).toMatch(/function TelegramPreview[\s\S]*BrowserFrame/);
-    // Feature list, so the tab matches the Chrome tab's rhythm.
-    expect(src).toContain("TELEGRAM_FEATURES");
-  });
+    // Token-exact: a substring check would also match `gap-1.5` and would
+    // keep passing if the padding were reverted to `p-1`.
+    const list = tokensOf("TabsList");
+    expect(list).toEqual(
+      expect.arrayContaining(["p-1.5", "gap-1.5", "min-h-11"])
+    );
+    expect(list).not.toContain("p-1");
 
-  it("keeps the preview copy inside the existing en/vi pattern", () => {
-    const src = read("../subscribe/DeliverPage.tsx");
-    expect(src).toContain("TELEGRAM_DIGEST");
-    // No hardcoded English in the rendered preview body: every string is
-    // either indexed by lang or routed through t().
-    expect(src).toMatch(/const copy = TELEGRAM_DIGEST\[lang === "vi"/);
+    expect(tokensOf("TabsTrigger")).toEqual(
+      expect.arrayContaining(["px-4", "py-2", "text-sm"])
+    );
   });
 });

@@ -14,8 +14,9 @@ function AnyRouterCard() {
       className="md:col-span-2"
     >
       {/* Deliberately no model list here: the same four chains already render
-          in the Ranking card on this tab, and again in the attribution strip
-          above the tabs. This card is the gateway pitch, not a third copy. */}
+          in the Ranking card on this tab, and the attribution strip above the
+          tabs names each task's lead model. This card is the gateway pitch,
+          not another copy of the chains. */}
       <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
         <p>
           Every LLM call in the pipeline — scoring, translation, TL;DR, and the
