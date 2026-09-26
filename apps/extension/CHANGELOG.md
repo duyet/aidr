@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.18](https://github.com/duyet/aidr/compare/aidr-v0.1.17...aidr-v0.1.18) (2026-09-26)
+
+
+### ✨ Features
+
+* **web:** add locale-aware canonical links ([7869b5a](https://github.com/duyet/aidr/commit/7869b5ae402478ad7b6cc788994c47cfb6d47794))
+
+
+### 🐛 Bug Fixes
+
+* **web:** gate CLERK_WEBHOOK_SECRET, honest signup count, media backfill reach ([60ce9ec](https://github.com/duyet/aidr/commit/60ce9ec54df51078d87d1edd18e7fbaa3c7a7a97))
+
 ## [0.1.17](https://github.com/duyet/aidr/compare/aidr-v0.1.16...aidr-v0.1.17) (2026-09-19)
 
 
