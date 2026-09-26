@@ -27,7 +27,15 @@ const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const EXT_ORIGIN = "chrome-extension://abcdefghijklmnopqrstuvwxyzabcdef";
 const PERMALINK_RE = /href="\/[0-9a-f]{8}"/;
-const FEATURES = ["homepage", "tldr", "about", "extension", "api-public"];
+const FEATURES = [
+  "homepage",
+  "tldr",
+  "about",
+  "extension",
+  "api-public",
+  "analytics",
+  "telegram",
+];
 
 const HOME_IDENTITY = [
   "AI;DR",
@@ -43,9 +51,11 @@ function usage() {
 Commands:
   launch [--base URL] [--local]   Bind target (default ${DEFAULT_BASE})
   doctor                          GET /api/public JSON 200 + homepage HTML 200 (Chrome UA)
-  drive <feature>                 homepage | tldr | about | extension | api-public | all
+  drive <feature>                 homepage | tldr | about | extension | api-public | analytics | telegram | all
   fetch [--path /]                GET a path; save body under evidence
   screenshot [--path /] [--viewport desktop|mobile]
+  drive analytics               Campaign landing + channel-link HTTP proof
+  drive telegram                Public Telegram link proof; delivery is credential-gated
   cleanup                         Stop a local PID this lever started; keep evidence
   --help                          This text
 
@@ -650,6 +660,66 @@ async function driveExtension(ctx) {
   };
 }
 
+async function driveAnalytics(ctx) {
+  const { base, evidenceDir } = ctx;
+  const paths = [
+    ["home-telegram", "/?utm_source=telegram&utm_medium=channel&utm_campaign=verify"],
+    ["home-email", "/?utm_source=email&utm_medium=digest&utm_campaign=verify"],
+    ["subscribe-chrome", "/subscribe"],
+  ];
+  const responses = await Promise.all(
+    paths.map(async ([name, path]) => {
+      const res = await httpGet(`${base}${path}`, {
+        ua: CHROME_UA,
+        accept: "text/html",
+      });
+      save(evidenceDir, `analytics-${name}.html`, res.body);
+      return { name, path, res };
+    })
+  );
+  const telegram = responses.find((row) => row.name === "home-telegram");
+  const email = responses.find((row) => row.name === "home-email");
+  const chrome = responses.find((row) => row.name === "subscribe-chrome");
+  const channelLinks = {
+    telegram: Boolean(telegram?.res.body.includes("Telegram")),
+    email: Boolean(email?.res.body.includes("AI;DR")),
+    chrome: Boolean(chrome?.res.body.includes("Chrome Web Store")),
+  };
+  const ok = responses.every(
+    ({ res }) => res.status === 200 && res.contentType.includes("html")
+  ) && Object.values(channelLinks).every(Boolean);
+  return {
+    ok,
+    feature: "analytics",
+    channelLinks,
+    campaignLandingStatus: responses.map(({ name, res }) => ({
+      name,
+      status: res.status,
+      path: res.url,
+    })),
+    runtimeEvents: "browser-and-unit-test-required",
+  };
+}
+
+async function driveTelegram(ctx) {
+  const { base, evidenceDir } = ctx;
+  const res = await httpGet(`${base}/subscribe`, {
+    ua: CHROME_UA,
+    accept: "text/html",
+  });
+  save(evidenceDir, "telegram-subscribe.html", res.body);
+  const channelUrl = res.body.includes("t.me/aihomnay");
+  const hasTelegramCopy = res.body.includes("Telegram");
+  return {
+    ok: res.status === 200 && channelUrl && hasTelegramCopy,
+    feature: "telegram",
+    status: res.status,
+    channelUrl,
+    hasTelegramCopy,
+    delivery: "credential-gated-not-run",
+  };
+}
+
 async function driveApiPublic(ctx) {
   const { base, evidenceDir } = ctx;
   const get = await httpGet(`${base}/api/public`, { accept: "application/json" });
@@ -719,6 +789,8 @@ const DRIVERS = {
   tldr: driveTldr,
   about: driveAbout,
   extension: driveExtension,
+  analytics: driveAnalytics,
+  telegram: driveTelegram,
   "api-public": driveApiPublic,
   public: driveApiPublic,
   "api/public": driveApiPublic,
@@ -726,7 +798,7 @@ const DRIVERS = {
 
 async function cmdDrive(flags) {
   const feature = flags.rest[0] || "";
-  if (!feature) die("drive requires a feature id (homepage|tldr|about|extension|api-public|all)");
+  if (!feature) die("drive requires a feature id (homepage|tldr|about|extension|api-public|analytics|telegram|all)");
   const ctx = resolveRun(flags);
   const ids = feature === "all" ? FEATURES : [feature];
   const results = [];

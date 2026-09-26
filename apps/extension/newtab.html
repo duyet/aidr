@@ -16,55 +16,87 @@
               <span class="brand-mark">AI;DR</span>
               <span class="brand-tagline" id="brand-tagline">Hôm nay AI có gì mới?</span>
             </a>
-            <form class="search" id="search-form" action="https://aidr.today/" method="get">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" />
-              </svg>
-              <input
-                id="search"
-                name="q"
-                type="search"
-                autocomplete="off"
-                placeholder="Tìm kiếm..."
-                aria-label="Search AI news"
-              />
-            </form>
+            <div class="search-slot">
+              <form class="search" id="search-form" action="https://aidr.today/" method="get">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
+                <input
+                  id="search"
+                  name="q"
+                  type="search"
+                  autocomplete="off"
+                  placeholder="Tìm kiếm..."
+                  aria-label="Search AI news"
+                />
+              </form>
+            </div>
             <div class="actions">
-              <a
-                class="icon-btn"
-                id="chrome-tab-link"
-                href="https://aidr.today/subscribe"
-                rel="noreferrer"
-                title="Chrome new tab"
-                aria-label="Chrome new tab"
-              >
-                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M10.3645 19.8327L12.2941 16.4905C12.1969 16.4968 12.0988 16.5 12 16.5C10.3037 16.5 8.82656 15.5614 8.0597 14.1752L4.79459 8.51986C4.28545 9.57206 4 10.7527 4 12C4 15.8578 6.73064 19.0778 10.3645 19.8327ZM12.5897 19.9786C16.7326 19.6767 20 16.2199 20 12C20 11.1269 19.8601 10.2865 19.6016 9.5H15.7422C16.2209 10.215 16.5 11.0749 16.5 12C16.5 12.8477 16.2656 13.6406 15.8581 14.3175L12.5897 19.9786ZM14.1434 13.2875L14.1651 13.25C14.3782 12.8824 14.5 12.4554 14.5 12C14.5 10.6193 13.3807 9.5 12 9.5C10.6193 9.5 9.5 10.6193 9.5 12C9.5 12.4383 9.6128 12.8503 9.81094 13.2084L9.83494 13.25C10.2669 13.9973 11.0747 14.5 12 14.5C12.9098 14.5 13.7061 14.014 14.1434 13.2875ZM6.03522 6.66871L7.9635 10.0086C8.69821 8.52222 10.2297 7.5 12 7.5H18.6153C17.1753 5.38723 14.7497 4 12 4C9.62968 4 7.50014 5.03086 6.03522 6.66871ZM12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22Z" />
-                </svg>
-                <span class="sr-only">Chrome new tab</span>
-              </a>
-              <a
-                class="icon-btn"
-                id="telegram-link"
-                href="https://t.me/aihomnay"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Telegram"
-                aria-label="Telegram"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M22 2 11 13" />
-                  <path d="M22 2 15 22l-4-9-9-4 20-7z" />
-                </svg>
-                <span class="sr-only">Telegram</span>
-              </a>
-              <a class="submit-btn" id="submit-btn" href="https://aidr.today/submit" title="Submit" aria-label="Submit" hidden>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                <span class="sr-only">Submit</span>
-              </a>
+              <div class="header-menu" id="header-menu">
+                <button
+                  type="button"
+                  class="header-menu-trigger"
+                  id="header-menu-trigger"
+                  title="Get AI;DR"
+                  aria-label="Get AI;DR menu"
+                  aria-haspopup="menu"
+                  aria-expanded="false"
+                  aria-controls="header-menu-content"
+                >
+                  <img src="icons/icon.svg" alt="" class="header-menu-logo" aria-hidden="true" />
+                  <span>Get AI;DR</span>
+                  <svg class="header-menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                <div class="header-menu-content" id="header-menu-content" role="menu" hidden>
+                  <a class="header-menu-item" id="chrome-tab-link" data-channel="chrome" role="menuitem" href="https://aidr.today/subscribe" rel="noreferrer">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M10.3645 19.8327L12.2941 16.4905C12.1969 16.4968 12.0988 16.5 12 16.5C10.3037 16.5 8.82656 15.5614 8.0597 14.1752L4.79459 8.51986C4.28545 9.57206 4 10.7527 4 12C4 15.8578 6.73064 19.0778 10.3645 19.8327ZM12.5897 19.9786C16.7326 19.6767 20 16.2199 20 12C20 11.1269 19.8601 10.2865 19.6016 9.5H15.7422C16.2209 10.215 16.5 11.0749 16.5 12C16.5 12.8477 16.2656 13.6406 15.8581 14.3175L12.5897 19.9786ZM14.1434 13.2875L14.1651 13.25C14.3782 12.8824 14.5 12.4554 14.5 12C14.5 10.6193 13.3807 9.5 12 9.5C10.6193 9.5 9.5 10.6193 9.5 12C9.5 12.4383 9.6128 12.8503 9.81094 13.2084L9.83494 13.25C10.2669 13.9973 11.0747 14.5 12 14.5C12.9098 14.5 13.7061 14.014 14.1434 13.2875ZM6.03522 6.66871L7.9635 10.0086C8.69821 8.52222 10.2297 7.5 12 7.5H18.6153C17.1753 5.38723 14.7497 4 12 4C9.62968 4 7.50014 5.03086 6.03522 6.66871ZM12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22Z" />
+                    </svg>
+                    <span>Chrome Extension</span>
+                  </a>
+                  <a class="header-menu-item" id="telegram-link" data-channel="telegram" role="menuitem" href="https://t.me/aihomnay" target="_blank" rel="noopener noreferrer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M22 2 11 13" />
+                      <path d="M22 2 15 22l-4-9-9-4 20-7z" />
+                    </svg>
+                    <span>Telegram Channel (Vietnamese)</span>
+                  </a>
+                  <a class="header-menu-item" data-channel="email" role="menuitem" href="https://aidr.today/subscribe?tab=email">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <rect x="3" y="5" width="18" height="14" rx="2" />
+                      <path d="m3 7 9 6 9-6" />
+                    </svg>
+                    <span>Email Subscription</span>
+                  </a>
+                  <hr class="header-menu-separator" />
+                  <a class="header-menu-item" id="submit-btn" role="menuitem" href="https://aidr.today/submit" title="Submit" aria-label="Submit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    <span>Submit</span>
+                  </a>
+                  <a class="header-menu-item" role="menuitem" href="https://aidr.today/data">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <ellipse cx="12" cy="5" rx="8" ry="3" />
+                      <path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+                      <path d="M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" />
+                    </svg>
+                    <span>Data Analytics</span>
+                  </a>
+                  <a class="header-menu-item" role="menuitem" href="https://aidr.today/data?tab=algo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <rect x="3" y="3" width="6" height="6" rx="1" />
+                      <rect x="15" y="15" width="6" height="6" rx="1" />
+                      <path d="M6 9v3a3 3 0 0 0 3 3h6" />
+                      <path d="m15 12 3 3 3-3" />
+                    </svg>
+                    <span>Algorithms</span>
+                  </a>
+                </div>
+              </div>
               <span class="actions-sep" aria-hidden="true"></span>
               <div class="prefs-host">
                 <button type="button" class="aa-btn" id="open-settings" aria-label="Tuỳ chỉnh hiển thị" aria-haspopup="dialog" aria-expanded="false">
@@ -101,17 +133,19 @@
             </form>
             <a
               class="icon-btn icon-btn-tap"
+              data-channel="chrome"
               href="https://aidr.today/subscribe"
               rel="noreferrer"
-              aria-label="Chrome new tab"
+              aria-label="Get AI;DR"
             >
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M10.3645 19.8327L12.2941 16.4905C12.1969 16.4968 12.0988 16.5 12 16.5C10.3037 16.5 8.82656 15.5614 8.0597 14.1752L4.79459 8.51986C4.28545 9.57206 4 10.7527 4 12C4 15.8578 6.73064 19.0778 10.3645 19.8327ZM12.5897 19.9786C16.7326 19.6767 20 16.2199 20 12C20 11.1269 19.8601 10.2865 19.6016 9.5H15.7422C16.2209 10.215 16.5 11.0749 16.5 12C16.5 12.8477 16.2656 13.6406 15.8581 14.3175L12.5897 19.9786ZM14.1434 13.2875L14.1651 13.25C14.3782 12.8824 14.5 12.4554 14.5 12C14.5 10.6193 13.3807 9.5 12 9.5C10.6193 9.5 9.5 10.6193 9.5 12C9.5 12.4383 9.6128 12.8503 9.81094 13.2084L9.83494 13.25C10.2669 13.9973 11.0747 14.5 12 14.5C12.9098 14.5 13.7061 14.014 14.1434 13.2875ZM6.03522 6.66871L7.9635 10.0086C8.69821 8.52222 10.2297 7.5 12 7.5H18.6153C17.1753 5.38723 14.7497 4 12 4C9.62968 4 7.50014 5.03086 6.03522 6.66871ZM12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22Z" />
               </svg>
-              <span class="sr-only">Chrome new tab</span>
+              <span class="sr-only">Get AI;DR</span>
             </a>
             <a
               class="icon-btn icon-btn-tap"
+              data-channel="telegram"
               href="https://t.me/aihomnay"
               target="_blank"
               rel="noopener noreferrer"
@@ -208,8 +242,8 @@
               <div class="footer-col">
                 <p class="footer-col-label">Connect</p>
                 <nav aria-label="Footer connect" class="footer-nav">
-                  <a href="https://aidr.today/subscribe" rel="noreferrer">Chrome extension</a>
-                  <a href="https://t.me/aihomnay" target="_blank" rel="noopener noreferrer">Telegram</a>
+                  <a data-channel="chrome" href="https://aidr.today/subscribe" rel="noreferrer">Chrome extension</a>
+                  <a data-channel="telegram" href="https://t.me/aihomnay" target="_blank" rel="noopener noreferrer">Telegram</a>
                   <a href="https://github.com/duyet/aidr" target="_blank" rel="noopener noreferrer">GitHub</a>
                 </nav>
               </div>
@@ -232,17 +266,51 @@
     <div class="phone-menu" id="phone-menu" hidden>
       <button type="button" class="phone-menu-backdrop" id="close-menu-backdrop" aria-label="Close menu"></button>
       <div class="phone-menu-panel" role="dialog" aria-modal="true" aria-label="Menu">
-        <div class="phone-menu-head">AI;DR</div>
+        <div class="phone-menu-head">
+          <span>AI;DR</span>
+          <button type="button" class="icon-btn icon-btn-tap" id="close-menu" aria-label="Close menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
         <nav class="phone-menu-nav" id="phone-menu-nav">
-          <a href="https://aidr.today/">News</a>
-          <a href="https://aidr.today/about">About</a>
-          <a href="https://aidr.today/subscribe">Chrome tab</a>
-          <a href="https://aidr.today/mcp">MCP</a>
-          <a href="https://aidr.today/subscribe">Subscribe</a>
-          <a href="https://t.me/aihomnay" target="_blank" rel="noopener noreferrer">Telegram</a>
-          <a href="https://aidr.today/data">Data</a>
-          <a href="https://aidr.today/submit" id="phone-submit-link" hidden>Submit</a>
-          <a href="https://duyet.net" target="_blank" rel="noreferrer">duyet.net</a>
+          <a href="https://aidr.today/">
+            <svg class="phone-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+            <span>News</span>
+          </a>
+          <a href="https://aidr.today/about">
+            <svg class="phone-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+            <span>About</span>
+          </a>
+          <a href="https://aidr.today/brand">
+            <svg class="phone-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.5a1.5 1.5 0 0 0 0-3H12a2 2 0 0 1 0-4h5a4 4 0 0 0 4-4 9 9 0 0 0-9-7Z" /><circle cx="7.5" cy="10" r="1" fill="currentColor" /><circle cx="10" cy="6.5" r="1" fill="currentColor" /><circle cx="15" cy="7" r="1" fill="currentColor" /></svg>
+            <span>Brand</span>
+          </a>
+          <a href="https://aidr.today/mcp">
+            <svg class="phone-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 7V5a3 3 0 0 1 6 0v2M7 7h10v4a5 5 0 0 1-10 0V7ZM12 16v5M8 21h8" /></svg>
+            <span>MCP</span>
+          </a>
+          <a data-channel="chrome" href="https://aidr.today/subscribe">
+            <svg class="phone-menu-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.3645 19.8327L12.2941 16.4905C12.1969 16.4968 12.0988 16.5 12 16.5C10.3037 16.5 8.82656 15.5614 8.0597 14.1752L4.79459 8.51986C4.28545 9.57206 4 10.7527 4 12C4 15.8578 6.73064 19.0778 10.3645 19.8327ZM12.5897 19.9786C16.7326 19.6767 20 16.2199 20 12C20 11.1269 19.8601 10.2865 19.6016 9.5H15.7422C16.2209 10.215 16.5 11.0749 16.5 12C16.5 12.8477 16.2656 13.6406 15.8581 14.3175L12.5897 19.9786ZM14.1434 13.2875L14.1651 13.25C14.3782 12.8824 14.5 12.4554 14.5 12C14.5 10.6193 13.3807 9.5 12 9.5C10.6193 9.5 9.5 10.6193 9.5 12C9.5 12.4383 9.6128 12.8503 9.81094 13.2084L9.83494 13.25C10.2669 13.9973 11.0747 14.5 12 14.5C12.9098 14.5 13.7061 14.014 14.1434 13.2875ZM6.03522 6.66871L7.9635 10.0086C8.69821 8.52222 10.2297 7.5 12 7.5H18.6153C17.1753 5.38723 14.7497 4 12 4C9.62968 4 7.50014 5.03086 6.03522 6.66871ZM12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22Z" /></svg>
+            <span>Get AI;DR</span>
+          </a>
+          <a data-channel="telegram" href="https://t.me/aihomnay" target="_blank" rel="noopener noreferrer">
+            <svg class="phone-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></svg>
+            <span>Telegram</span>
+          </a>
+          <a href="https://aidr.today/data">
+            <svg class="phone-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" /></svg>
+            <span>Data</span>
+          </a>
+          <a href="https://aidr.today/submit" id="phone-submit-link">
+            <svg class="phone-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            <span>Submit</span>
+          </a>
+          <a href="https://duyet.net" target="_blank" rel="noreferrer">
+            <svg class="phone-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>
+            <span>duyet.net</span>
+          </a>
         </nav>
         <div class="phone-menu-foot">
           <div class="phone-menu-lang">

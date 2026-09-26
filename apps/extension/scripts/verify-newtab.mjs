@@ -57,6 +57,18 @@ function expectedMap(digest) {
     submit: "Gửi bài",
     chromeTabPresent: true,
     telegramPresent: true,
+    headerMenuPresent: true,
+    headerMenuItems: [
+      "Chrome Extension",
+      "Telegram Channel (Vietnamese)",
+      "Email Subscription",
+      "Submit",
+      "Data Analytics",
+      "Algorithms",
+    ],
+    phoneClosePresent: true,
+    pageViewTracked: true,
+    channelTracking: true,
     profileAbsent: true,
     langSelected: "vi",
     allChip: "Tất cả",
@@ -97,7 +109,7 @@ function expectedMap(digest) {
   };
 }
 
-function featureMapFromHtml(html) {
+function featureMapFromHtml(html, js = "") {
   const pick = (re) => html.match(re)?.[1]?.trim() || "";
   const chips = [...html.matchAll(/class="chip[\s"][^>]*>([\s\S]*?)<\/button>/g)].map(
     (m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
@@ -115,6 +127,19 @@ function featureMapFromHtml(html) {
     searchPlaceholder: pick(/id="search"[^>]*placeholder="([^"]+)"/),
     chromeTabPresent: /id="chrome-tab-link"/.test(html),
     telegramPresent: /id="telegram-link"/.test(html),
+    headerMenuPresent: /id="header-menu-trigger"/.test(html),
+    headerMenuItems: [
+      "Chrome Extension",
+      "Telegram Channel (Vietnamese)",
+      "Email Subscription",
+      "Submit",
+      "Data Analytics",
+      "Algorithms",
+    ].filter((label) => html.includes(`>${label}<`)),
+    phoneClosePresent: /id="close-menu"/.test(html),
+    pageViewTracked: /track\("page_view"/.test(js),
+    channelTracking:
+      /trackChannelClick/.test(js) && /data-channel="telegram"/.test(html),
     signInPresent: /id="sign-in-btn"/.test(html) || /Sign in/.test(html),
     phoneMenuPresent: /id="phone-menu"/.test(html),
     profileAbsent: !/id="profile"/.test(html) && !/Clerk/.test(html),
@@ -284,7 +309,8 @@ async function main() {
     writeFileSync(join(outDir, "newtab.html"), newtabHtml);
     writeFileSync(join(outDir, "site.html"), siteHtml);
 
-    const observed = featureMapFromHtml(newtabHtml);
+    const newtabSource = readFileSync(join(root, "js/newtab.js"), "utf8");
+    const observed = featureMapFromHtml(newtabHtml, newtabSource);
     const site = siteMapFromHtml(siteHtml);
 
     const checks = {
@@ -293,6 +319,12 @@ async function main() {
       searchPlaceholder: observed.searchPlaceholder === expected.searchPlaceholder,
       chromeTabPresent: observed.chromeTabPresent === true,
       telegramPresent: observed.telegramPresent === true,
+      headerMenuPresent: observed.headerMenuPresent === true,
+      headerMenuItems:
+        observed.headerMenuItems.length === expected.headerMenuItems.length,
+      phoneClosePresent: observed.phoneClosePresent === true,
+      pageViewTracked: observed.pageViewTracked === true,
+      channelTracking: observed.channelTracking === true,
       signInPresent: observed.signInPresent === true,
       phoneMenuPresent: observed.phoneMenuPresent === true,
       profileAbsent: observed.profileAbsent === true,
@@ -309,7 +341,7 @@ async function main() {
       colored: observed.colored >= 1,
       trendingPresent: observed.trendingCount === expected.trending.length,
       categoriesPresent: observed.categoryCount === expected.categories.length + 1,
-      daySections: observed.daySections >= 1,
+      dailyFeedHidden: observed.daySections === 0,
       footer: observed.footer === true,
       siteBrand: site.brand,
       siteSearch: site.search,

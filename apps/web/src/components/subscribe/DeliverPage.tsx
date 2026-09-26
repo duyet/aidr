@@ -12,7 +12,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
+import { trackChannelClick } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -135,7 +135,9 @@ export function DeliverPage({
               href={CHROME_WEB_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => track("nav_click", { to: "chrome_web_store" })}
+              onClick={() =>
+                trackChannelClick("chrome", { to: "chrome_web_store" })
+              }
             >
               <RiChromeLine className="mr-2 size-5" aria-hidden />
               {t("Chrome Web Store", "Chrome Web Store")}
@@ -229,7 +231,7 @@ export function DeliverPage({
               href={TELEGRAM_URL}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => track("nav_click", { to: "telegram" })}
+              onClick={() => trackChannelClick("telegram", { to: "telegram" })}
             >
               <Send className="mr-2 size-5" aria-hidden />
               {t(`Open ${TELEGRAM_HANDLE}`, `Mở ${TELEGRAM_HANDLE}`)}

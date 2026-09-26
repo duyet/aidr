@@ -6,7 +6,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
+import { track, trackChannelClick } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -58,7 +58,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           <Link
             to={EXTENSION_PATH}
             search={{ lang: navigationLang }}
-            onClick={() => track("nav_click", { to: EXTENSION_PATH })}
+            onClick={() => trackChannelClick("chrome", { to: EXTENSION_PATH })}
           >
             <RiChromeLine aria-hidden />
             Chrome Extension
@@ -69,7 +69,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             href={TELEGRAM_URL}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => track("nav_click", { to: "telegram" })}
+            onClick={() => trackChannelClick("telegram", { to: "telegram" })}
           >
             <Send aria-hidden />
             Telegram Channel (Vietnamese)
@@ -79,7 +79,9 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           <Link
             to="/subscribe"
             search={{ tab: "email", lang: navigationLang }}
-            onClick={() => track("nav_click", { to: "/subscribe?tab=email" })}
+            onClick={() =>
+              trackChannelClick("email", { to: "/subscribe?tab=email" })
+            }
           >
             <Mail aria-hidden />
             Email Subscription

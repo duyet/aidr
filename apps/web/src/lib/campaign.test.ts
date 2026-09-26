@@ -4,6 +4,7 @@ import {
   campaignTrackParams,
   isEmailCampaign,
   isExtensionCampaign,
+  isTelegramCampaign,
   loadPersistedCampaign,
   persistCampaign,
   readCampaign,
@@ -51,6 +52,15 @@ describe("isExtensionCampaign", () => {
   });
 });
 
+describe("isTelegramCampaign", () => {
+  it("matches Telegram source and ref", () => {
+    expect(isTelegramCampaign({ utm_source: "telegram" })).toBe(true);
+    expect(isTelegramCampaign({ ref: "telegram" })).toBe(true);
+    expect(isTelegramCampaign({ utm_source: "extension" })).toBe(false);
+    expect(isTelegramCampaign(null)).toBe(false);
+  });
+});
+
 describe("campaignTrackParams", () => {
   it("sets traffic_source for email landings", () => {
     expect(
@@ -64,6 +74,21 @@ describe("campaignTrackParams", () => {
       utm_medium: "digest",
       utm_campaign: "digest",
       traffic_source: "email",
+    });
+  });
+
+  it("sets traffic_source for Telegram landings", () => {
+    expect(
+      campaignTrackParams({
+        utm_source: "telegram",
+        utm_medium: "channel",
+        utm_campaign: "daily",
+      })
+    ).toEqual({
+      utm_source: "telegram",
+      utm_medium: "channel",
+      utm_campaign: "daily",
+      traffic_source: "telegram",
     });
   });
 
@@ -128,8 +153,13 @@ describe("resolveCampaign", () => {
       },
       clear: () => store.clear(),
     });
-    persistCampaign({ ref: "extension", utm_source: "extension" });
+    persistCampaign({
+      ref: "extension",
+      utm_source: "extension",
+      landed_path: "/",
+    });
     expect(loadPersistedCampaign()?.ref).toBe("extension");
+    expect(loadPersistedCampaign()?.landed_path).toBe("/");
   });
 });
 
@@ -151,6 +181,31 @@ describe("email click telemetry shape", () => {
         utm_source: "email",
         utm_medium: "welcome",
         traffic_source: "email",
+        surface: "web",
+      })
+    );
+  });
+});
+
+describe("telegram landing telemetry shape", () => {
+  it("is a valid track event name and params", () => {
+    const gtag = vi.fn();
+    vi.stubGlobal("window", { gtag });
+    track("telegram_landing", {
+      ...campaignTrackParams({
+        utm_source: "telegram",
+        utm_medium: "channel",
+        utm_campaign: "daily",
+        landed_path: "/",
+      }),
+      page_path: "/",
+    });
+    expect(gtag).toHaveBeenCalledWith(
+      "event",
+      "telegram_landing",
+      expect.objectContaining({
+        utm_source: "telegram",
+        traffic_source: "telegram",
         surface: "web",
       })
     );

@@ -1,4 +1,5 @@
 import { track } from "@aidr/ui/track";
+import { Link } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 import { type AidrLayout, DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
 import { timeAgo } from "../lib/lang";
@@ -168,17 +169,18 @@ export function TldrSection({
         <span>
           {totalStories} {lang === "vi" ? "tin" : "stories"}
         </span>
-        <span>
-          {lastFetchedAt
-            ? `${lang === "vi" ? "Cập nhật" : "Updated"} ${timeAgo(
-                lastFetchedAt,
-                updatedAt,
-                lang
-              )}`
-            : lang === "vi"
-              ? "Cập nhật lúc"
-              : "News as of"}
-        </span>
+        {lastFetchedAt ? (
+          <Link
+            to="/data"
+            suppressHydrationWarning
+            className="rounded-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
+            {timeAgo(lastFetchedAt, updatedAt, lang)}
+          </Link>
+        ) : (
+          <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
+        )}
       </div>
     </section>
   );

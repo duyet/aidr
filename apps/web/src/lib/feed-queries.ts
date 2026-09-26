@@ -18,7 +18,6 @@ import {
 } from "../../worker/topic-learning.js";
 import type { DbReader } from "./db";
 import { NEWEST_PUBLISHED_FETCHED_AT_SQL } from "./feed-freshness";
-import { setLearnedKeywords } from "./highlight";
 import { parseStoredBullets } from "./tldr-bullets";
 import {
   resolveTldrForDisplay,
@@ -420,8 +419,6 @@ export async function getFeed(
     items,
     yesterday
   );
-  setLearnedKeywords(learnedKeywords);
-
   // Trending: prefer versioned models / products extracted from titles
   // (GPT-6 Astra, Fable 5.1) over generic score themes (llm, agent).
   const dayAgo = Math.floor(Date.now() / 1000) - 86400;

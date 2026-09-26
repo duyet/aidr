@@ -23,6 +23,8 @@ Preconditions:
 - **Open guide.** Run `.cursor/skills/verify-aidr/bin/verify-aidr drive extension`. HTTP 200 HTML for `/subscribe` includes `Chrome`, `Telegram`, and `chromewebstore.google.com`.
 - **Redirect.** `GET /extension` with redirects off is 301/302 to `/subscribe`.
 - **Proof.** Evidence file `subscribe.html`.
+- **Unpacked package.** Run `pnpm --filter @aidr/extension lint`, `pnpm --filter @aidr/extension test`, `pnpm --filter @aidr/extension build`, and `pnpm --filter @aidr/extension verify`. The last command must report `VERIFIED` and capture the desktop/phone header states.
+- **Header states.** In the local new-tab preview, open and close the Get AI;DR menu with mouse and keyboard, then repeat the phone menu at a narrow viewport; expect all six web menu destinations and no clipped controls.
 
 ## Gotchas
 

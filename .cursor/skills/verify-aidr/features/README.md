@@ -46,5 +46,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Homepage / feed](./homepage.md) covers the ranked story list, SSR shell, and `/api/feed`.
 - [AI;DR](./tldr.md) covers the daily digest on `/` and bullets on `/api/public`.
 - [About](./about.md) covers `/about` (English-only pipeline + install pointer).
-- [Get AI;DR](./extension.md) covers `/subscribe` (and `/extension` → `/subscribe`).
+- [Get AI;DR](./extension.md) covers `/subscribe` (and `/extension` → `/subscribe`), including the local Chrome-extension verification path.
 - [Public API](./api-public.md) covers unauthenticated `GET /api/public` and CORS preflight.
+- [Analytics and attribution](./analytics.md) covers page views, campaign landings, and channel clicks.
+- [Telegram workflow](./telegram.md) covers the public channel path, generated-link attribution, and credential-gated delivery checks.
