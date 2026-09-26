@@ -1,5 +1,5 @@
 import { Button, ErrorBoundary } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
+import { track, trackChannelClick } from "@aidr/ui/track";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -70,6 +70,14 @@ export function PhoneMenu({
         ? "border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
         : "hover:bg-muted"
     }`;
+
+  const trackLinkClick = (link: (typeof SITE_LINKS)[number]) => {
+    if (link.channel) {
+      trackChannelClick(link.channel, { to: link.href });
+    } else {
+      track("nav_click", { to: link.href });
+    }
+  };
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen} modal>
@@ -143,7 +151,7 @@ export function PhoneMenu({
                   search={{ lang: navigationLang }}
                   aria-current={active ? "page" : undefined}
                   onClick={() => {
-                    track("nav_click", { to: link.href });
+                    trackLinkClick(link);
                     setOpen(false);
                   }}
                   className={linkClass}
@@ -156,7 +164,7 @@ export function PhoneMenu({
                   key={link.href}
                   href={link.href}
                   onClick={() => {
-                    track("nav_click", { to: link.href });
+                    trackLinkClick(link);
                     setOpen(false);
                   }}
                   className={linkClass}

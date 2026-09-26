@@ -1,6 +1,6 @@
 ---
 name: verify-aidr
-description: Drive and prove aidr.today (AI news digest — TL;DR + ranked stories) over live HTTP. Use mid-ship or /poteto-mode when verifying homepage/feed, AI;DR, /about, /extension, or GET /api/public before claiming a public-surface change works.
+description: Drive and prove aidr.today (AI news digest — TL;DR + ranked stories), the Chrome extension package, analytics attribution, and the public Telegram path. Use mid-ship or /poteto-mode when verifying homepage/feed, AI;DR, /about, /extension, channel workflows, or GET /api/public before claiming a public-surface change works.
 ---
 
 # Verify aidr (aidr.today)
@@ -61,6 +61,8 @@ Prefer the lever over ad-hoc curl. Recipes live in `features/`. Stable handles:
 .cursor/skills/verify-aidr/bin/verify-aidr drive about
 .cursor/skills/verify-aidr/bin/verify-aidr drive extension
 .cursor/skills/verify-aidr/bin/verify-aidr drive api-public
+.cursor/skills/verify-aidr/bin/verify-aidr drive analytics
+.cursor/skills/verify-aidr/bin/verify-aidr drive telegram
 .cursor/skills/verify-aidr/bin/verify-aidr drive all
 ```
 
@@ -72,6 +74,7 @@ Named location: `.cursor/skills/verify-aidr/evidence/<run-id>/` (printed as `evi
 
 - `doctor.json` — public JSON + homepage identity.
 - `homepage.html` / `about.html` / `extension.html` — HTML bodies.
+- `analytics-*.html` / `telegram-subscribe.html` — campaign and channel-link proof.
 - `api-public.json` / `feed.json` / `tldr-public.json` — JSON bodies.
 - `*-desktop.png` / `*-mobile.png` when Chrome can screenshot.
 - `report.json` — last drive result.
@@ -84,7 +87,12 @@ Proof standards:
 - An empty digest (`tldr: null`) is live data — report it, do not invent a UI bug.
 - Cleanup must not delete this directory.
 
-## Cleanup
+## Package and runtime checks
+
+- For the unpacked Chrome extension, run `pnpm --filter @aidr/extension lint`, `pnpm --filter @aidr/extension test`, `pnpm --filter @aidr/extension build`, and `pnpm --filter @aidr/extension verify`. The verify command is the browser-backed package proof and writes extension screenshots/feature maps outside this skill's evidence directory.
+- For website analytics, run `.cursor/skills/verify-aidr/bin/verify-aidr drive analytics` for campaign/channel HTTP proof, then inspect the browser event queue for `page_view` and `channel_click`.
+- For Telegram, run `.cursor/skills/verify-aidr/bin/verify-aidr drive telegram`. Real delivery is intentionally skipped unless credentials are explicitly configured; never print or persist them.
+
 
 ```bash
 .cursor/skills/verify-aidr/bin/verify-aidr cleanup
@@ -102,6 +110,8 @@ Stops only the local PID this lever started (recorded in `evidence/.state.json`)
 .cursor/skills/verify-aidr/bin/verify-aidr drive about
 .cursor/skills/verify-aidr/bin/verify-aidr drive extension
 .cursor/skills/verify-aidr/bin/verify-aidr drive api-public
+.cursor/skills/verify-aidr/bin/verify-aidr drive analytics
+.cursor/skills/verify-aidr/bin/verify-aidr drive telegram
 .cursor/skills/verify-aidr/bin/verify-aidr fetch --path /
 .cursor/skills/verify-aidr/bin/verify-aidr screenshot --path / --viewport mobile
 .cursor/skills/verify-aidr/bin/verify-aidr cleanup

@@ -32,7 +32,7 @@ export function EmailSubscribeForm({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
-    track("subscribe_submit");
+    track("subscribe_submit", { channel: "email", source });
     try {
       const res = await fetch("/api/subscribe", {
         method: "POST",
@@ -46,14 +46,14 @@ export function EmailSubscribeForm({
         }),
       });
       if (res.ok) {
-        track("subscribe_success");
+        track("subscribe_success", { channel: "email", source });
         setStatus("done");
       } else {
-        track("subscribe_error");
+        track("subscribe_error", { channel: "email", source });
         setStatus("error");
       }
     } catch {
-      track("subscribe_error");
+      track("subscribe_error", { channel: "email", source });
       setStatus("error");
     }
   };

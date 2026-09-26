@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { resolveMeasurementId } from "./track";
 
-export type { TrackParams, TrackParamValue } from "./track";
+export type { TrackChannel, TrackParams, TrackParamValue } from "./track";
 export {
   DEFAULT_GA_MEASUREMENT_ID,
   resolveMeasurementId,
   track,
+  trackChannelClick,
 } from "./track";
 
 const importMetaEnv =
@@ -60,7 +61,7 @@ export default function AnalyticWrapper() {
         window.dataLayer = window.dataLayer || [];
         function gtag(){window.dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: true });
+        gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
       `);
     }
 

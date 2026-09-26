@@ -1,6 +1,11 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { boundFeedResponse, FEED_RESPONSE_MAX_BYTES } from "./feed-queries";
 import type { FeedResponse } from "./types";
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 describe("boundFeedResponse", () => {
   it("enforces a total serialized budget for a hostile feed payload", () => {
@@ -56,5 +61,13 @@ describe("boundFeedResponse", () => {
       new TextEncoder().encode(JSON.stringify(bounded)).length
     ).toBeLessThanOrEqual(FEED_RESPONSE_MAX_BYTES);
     expect(bounded.totalStories).toBe(items.length);
+  });
+});
+
+describe("feed hydration state", () => {
+  it("does not mutate highlight state while producing an SSR feed", () => {
+    const source = readFileSync(join(here, "feed-queries.ts"), "utf8");
+
+    expect(source).not.toContain("setLearnedKeywords(learnedKeywords);");
   });
 });

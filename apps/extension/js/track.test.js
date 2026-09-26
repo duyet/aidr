@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { track, trackContent, trackUrl } from "./track.js";
+import { track, trackChannelClick, trackContent, trackUrl } from "./track.js";
 
 test("trackContent matches web event names with params", () => {
   assert.equal(trackContent("cache_hit", { source: "local" }), "cache_hit_local");
@@ -24,6 +24,13 @@ test("trackUrl tags /api/extension with campaign params", () => {
   assert.equal(url.searchParams.get("utm_content"), "nav_click_submit");
 });
 
+test("channel clicks keep the channel in the campaign content", () => {
+  assert.equal(
+    trackContent("channel_click", { channel: "telegram", to: "telegram" }),
+    "channel_click_telegram_telegram"
+  );
+});
+
 test("track GETs the tagged URL and never throws", async () => {
   const seen = [];
   globalThis.fetch = async (url, init) => {
@@ -31,9 +38,11 @@ test("track GETs the tagged URL and never throws", async () => {
     return { ok: true };
   };
   track("page_view", {}, "https://aidr.today");
+  trackChannelClick("telegram", { to: "telegram" }, "https://aidr.today");
   track("!!!bad", {}, "https://aidr.today");
   await Promise.resolve();
-  assert.equal(seen.length, 1);
+  assert.equal(seen.length, 2);
   assert.equal(seen[0].method, "GET");
   assert.match(seen[0].url, /utm_content=page_view/);
+  assert.match(seen[1].url, /utm_content=channel_click_telegram_telegram/);
 });

@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   COMPACT_CHROME_CLASS,
@@ -78,5 +81,49 @@ describe("mobile header action contracts", () => {
     expect(PHONE_MENU_LINK_CLASS).toContain(
       "focus-visible:ring-3 focus-visible:ring-ring/30"
     );
+  });
+});
+
+describe("compact header icon buttons", () => {
+  it("uses 44px icon-lg taps with even gaps, not 36px icon size", () => {
+    const headerDir = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../components/header"
+    );
+    const header = readFileSync(join(headerDir, "CompactRow.tsx"), "utf8");
+    const menuPath = join(headerDir, "GetAIDRMenu.tsx");
+    const menu = existsSync(menuPath) ? readFileSync(menuPath, "utf8") : "";
+    const compact = header.slice(header.lastIndexOf("COMPACT_CHROME_CLASS"));
+    const compactControls = `${compact}\n${menu}`;
+    expect(compactControls).toContain('"icon-lg"');
+    // The phone trigger now goes through PHONE_GET_AIDR_TRIGGER_CLASS, which
+    // composes the 44px tap target (see chrome.ts). Assert both the wiring and
+    // the composition, so renaming the constant cannot silently drop the size.
+    expect(compactControls).toContain("PHONE_GET_AIDR_TRIGGER_CLASS");
+    expect(PHONE_GET_AIDR_TRIGGER_CLASS).toContain(PHONE_TAP_TARGET_CLASS);
+    expect(compact).toContain("items-center gap-1");
+    expect(compactControls).not.toMatch(/size="icon"(?!-lg)/);
+  });
+
+  it("uses the shared Get AI;DR dropdown without direct channel icons", () => {
+    const headerDir = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../components/header"
+    );
+    const compact = readFileSync(join(headerDir, "CompactRow.tsx"), "utf8");
+    const wide = readFileSync(join(headerDir, "WideRow.tsx"), "utf8");
+    const menuPath = join(headerDir, "GetAIDRMenu.tsx");
+    const menu = existsSync(menuPath) ? readFileSync(menuPath, "utf8") : "";
+
+    expect(compact).toContain('from "./GetAIDRMenu"');
+    expect(compact).toContain("<GetAIDRMenu compact />");
+    expect(compact).not.toContain("<RiChromeLine");
+    expect(compact).not.toContain("<Send");
+    expect(compact).not.toContain('aria-label="Telegram"');
+    expect(wide).toContain('from "./GetAIDRMenu"');
+    expect(wide).toContain("<GetAIDRMenu />");
+    expect(menu).toContain("Chrome Extension");
+    expect(menu).toContain("Telegram Channel (Vietnamese)");
+    expect(menu).toContain("Email Subscription");
   });
 });

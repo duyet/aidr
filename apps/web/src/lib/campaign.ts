@@ -20,13 +20,18 @@ const ALLOWED = new Set([
   "utm_medium",
   "utm_campaign",
   "utm_content",
+  "landed_path",
 ]);
 
-function clean(value: string | null | undefined): string | undefined {
+function clean(
+  value: string | null | undefined,
+  allowPath = false
+): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim().slice(0, 64);
   if (!trimmed) return undefined;
-  if (!/^[a-zA-Z0-9_.:-]+$/.test(trimmed)) return undefined;
+  const pattern = allowPath ? /^\/[a-zA-Z0-9_./:-]*$/ : /^[a-zA-Z0-9_.:-]+$/;
+  if (!pattern.test(trimmed)) return undefined;
   return trimmed;
 }
 
@@ -40,7 +45,7 @@ export function readCampaign(
       : search;
   const out: CampaignAttribution = {};
   for (const key of ALLOWED) {
-    const value = clean(params.get(key));
+    const value = clean(params.get(key), key === "landed_path");
     if (value) out[key as keyof CampaignAttribution] = value;
   }
   return Object.keys(out).length > 0 ? out : null;
@@ -49,6 +54,11 @@ export function readCampaign(
 export function isExtensionCampaign(c: CampaignAttribution | null): boolean {
   if (!c) return false;
   return c.ref === EXT_REF || c.utm_source === EXT_UTM_SOURCE;
+}
+
+export function isTelegramCampaign(c: CampaignAttribution | null): boolean {
+  if (!c) return false;
+  return c.utm_source === "telegram" || c.ref === "telegram";
 }
 
 export function isEmailCampaign(c: CampaignAttribution | null): boolean {
@@ -68,6 +78,7 @@ export function campaignTrackParams(
   if (c.utm_content) out.utm_content = c.utm_content;
   if (c.landed_path) out.landed_path = c.landed_path;
   if (isExtensionCampaign(c)) out.traffic_source = "extension";
+  if (isTelegramCampaign(c)) out.traffic_source = "telegram";
   if (isEmailCampaign(c)) out.traffic_source = "email";
   return out;
 }
