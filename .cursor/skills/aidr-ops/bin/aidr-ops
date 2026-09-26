@@ -1,0 +1,405 @@
+#!/usr/bin/env node
+/**
+ * CLI lever for .cursor/skills/aidr-ops — run from the repo root.
+ *
+ *   aidr-ops preflight   read-only. Validates credentials + key consistency +
+ *                        live surface. Never writes. Non-zero = do not sync.
+ *   aidr-ops sync        preflight, then push .env.local -> Worker secrets.
+ *   aidr-ops deploy      preflight, then deploy the Worker.
+ *   aidr-ops verify      read-only live probes (post-deploy confirmation).
+ *   aidr-ops doctor      alias for preflight.
+ *
+ * Prints one JSON object on stdout (except --help). Non-zero exit = not ready.
+ * Secret values are never printed; only `abcd…wxyz` masked forms.
+ */
+import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const WORKER = "aidr";
+const LIVE = "https://aidr.today";
+
+/** Secrets the Worker runtime must have. Keep in sync with scripts/sync-env.ts. */
+const REQUIRED = [
+  "ANYROUTER_API_KEY",
+  "TELEGRAM_BOT_TOKEN",
+  "NEWS_ADMIN_TOKEN",
+  "CLERK_SECRET_KEY",
+  "CLERK_WEBHOOK_SECRET",
+];
+
+/** Custom CNAME that Cloudflare Error 1014 breaks — the proxy exists to avoid it. */
+const BROKEN_CLERK_CNAME = "clerk.aidr.today";
+
+const out = [];
+const log = (s) => out.push(s);
+
+/* ------------------------------------------------------------------ utils */
+
+function mask(value) {
+  if (!value) return "";
+  if (value.length <= 8) return "****";
+  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+}
+
+/** Minimal KEY=VALUE parser. Avoids a dotenv dependency and never logs values. */
+function loadEnvFiles() {
+  const env = {};
+  for (const rel of [".env.local", "apps/web/.dev.vars"]) {
+    const file = join(ROOT, rel);
+    if (!existsSync(file)) continue;
+    for (const raw of readFileSync(file, "utf8").split("\n")) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq < 1) continue;
+      const key = line.slice(0, eq).trim();
+      if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) continue;
+      let value = line.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      // First file wins, matching how sync-env layers .env.local over .dev.vars.
+      if (!(key in env)) env[key] = value;
+    }
+  }
+  return env;
+}
+
+function run(cmd, args, opts = {}) {
+  return new Promise((resolveRun) => {
+    const child = spawn(cmd, args, {
+      cwd: opts.cwd ?? ROOT,
+      encoding: "utf8",
+      env: opts.env ?? process.env,
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (c) => (stdout += c));
+    child.stderr.on("data", (c) => (stderr += c));
+    child.on("error", () => resolveRun({ code: 127, stdout, stderr }));
+    child.on("close", (code) => resolveRun({ code: code ?? 1, stdout, stderr }));
+  });
+}
+
+/** Clerk publishable keys are `pk_<mode>_<base64 of the FAPI domain>`. */
+function decodePublishableKey(pk) {
+  const m = /^pk_(test|live)_(.+)$/.exec(pk ?? "");
+  if (!m) return null;
+  try {
+    return { mode: m[1], domain: Buffer.from(m[2], "base64").toString("utf8") };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWithTimeout(url, init = {}, ms = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    // redirect: "manual" is essential. Node's fetch defaults to "follow", which
+    // would chase the handshake's 307 to the app and report the final 200 —
+    // hiding exactly the hop we need to inspect. Same class of bug as
+    // clerk/javascript#8186.
+    return await fetch(url, {
+      redirect: "manual",
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* --------------------------------------------------------------- checks */
+
+const checks = [];
+function record(name, status, detail, fix) {
+  checks.push({ name, status, detail, fix: fix ?? null });
+  const icon = status === "pass" ? "PASS" : status === "warn" ? "WARN" : "FAIL";
+  log(`  [${icon}] ${name} — ${detail}`);
+  if (fix && status !== "pass") log(`         fix: ${fix}`);
+  return status;
+}
+
+/** Is the Cloudflare token actually usable? Codes 1000/9109 mean no. */
+async function checkCloudflareAuth(env) {
+  const token = env.CLOUDFLARE_API_TOKEN;
+  if (!token) {
+    return record(
+      "cloudflare-auth",
+      "fail",
+      "CLOUDFLARE_API_TOKEN absent from .env.local",
+      "Create a token with Account > Workers Scripts > Edit and add it to .env.local"
+    );
+  }
+  try {
+    const res = await fetchWithTimeout(
+      "https://api.cloudflare.com/client/v4/user/tokens/verify",
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const body = await res.json().catch(() => ({}));
+    if (body?.success === true) {
+      return record("cloudflare-auth", "pass", `token valid (${mask(token)})`);
+    }
+    const code = body?.errors?.[0]?.code ?? res.status;
+    return record(
+      "cloudflare-auth",
+      "fail",
+      `token rejected (Cloudflare code ${code}) — cannot push Worker secrets or deploy locally`,
+      "Issue a fresh CLOUDFLARE_API_TOKEN; the old one is expired or revoked"
+    );
+  } catch (error) {
+    return record("cloudflare-auth", "fail", `probe failed: ${error.message}`);
+  }
+}
+
+/**
+ * The check that would have prevented this session's near-miss: a publishable
+ * key and a secret key from different Clerk instances, or a pk pointing at the
+ * CNAME the proxy exists to avoid.
+ */
+/**
+ * The check that would have prevented this session's near-miss: a publishable
+ * key and a secret key from different Clerk instances.
+ *
+ * Two things that look wrong but are NOT, in this repo:
+ *  - CLERK_PUBLISHABLE_KEY may be absent. scripts/sync-env.ts aliases it from
+ *    VITE_CLERK_PUBLISHABLE_KEY; they are the same key by design.
+ *  - A publishable key decoding to clerk.aidr.today is correct. That CNAME is
+ *    broken by Cloudflare Error 1014, which is exactly why worker/clerk-proxy.ts
+ *    proxies the Frontend API to frontend-api.clerk.dev.
+ */
+function checkClerkKeyConsistency(env) {
+  const sk = env.CLERK_SECRET_KEY;
+  const vite = env.VITE_CLERK_PUBLISHABLE_KEY;
+  const clerk = env.CLERK_PUBLISHABLE_KEY;
+  // Either name satisfies the requirement; sync-env aliases them.
+  const pk = vite || clerk;
+  const pkFrom = vite ? "VITE_CLERK_PUBLISHABLE_KEY" : "CLERK_PUBLISHABLE_KEY";
+
+  if (!pk || !sk) {
+    return record(
+      "clerk-key-pair",
+      "fail",
+      "no publishable key and/or CLERK_SECRET_KEY in .env.local",
+      "Both are required and must come from the same Clerk instance"
+    );
+  }
+
+  if (vite && clerk && vite !== clerk) {
+    const a = decodePublishableKey(vite);
+    const b = decodePublishableKey(clerk);
+    return record(
+      "clerk-key-pair",
+      "fail",
+      `VITE_ (pk_${a?.mode} @ ${a?.domain}) and CLERK_ (pk_${b?.mode} @ ${b?.domain}) publishable keys disagree`,
+      "sync-env aliases these two; keep a single value for both"
+    );
+  }
+
+  const decoded = decodePublishableKey(pk);
+  const skMode = /^sk_(test|live)_/.exec(sk)?.[1] ?? null;
+  if (!decoded || !skMode) {
+    return record("clerk-key-pair", "fail", "could not decode Clerk key formats");
+  }
+
+  if (decoded.mode !== skMode) {
+    return record(
+      "clerk-key-pair",
+      "fail",
+      `MIXED INSTANCES: ${pkFrom} is pk_${decoded.mode} but CLERK_SECRET_KEY is sk_${skMode}`,
+      "Take both keys from the same Clerk instance, or the Worker and the browser authenticate against different instances and sign-in silently fails"
+    );
+  }
+
+  const viaProxy =
+    decoded.domain === BROKEN_CLERK_CNAME
+      ? " (proxied via /__clerk, as designed)"
+      : "";
+  return record(
+    "clerk-key-pair",
+    "pass",
+    `consistent pk_${decoded.mode} / sk_${skMode} @ ${decoded.domain}${viaProxy}`
+  );
+}
+
+
+function checkRequiredSecrets(env) {
+  const missing = REQUIRED.filter((k) => !env[k]);
+  if (missing.length === 0) {
+    return record("required-secrets", "pass", `${REQUIRED.length} present`);
+  }
+  return record(
+    "required-secrets",
+    "fail",
+    `missing: ${missing.join(", ")}`,
+    "Add them to .env.local; sync-env treats these as gating"
+  );
+}
+
+/** What already works in production, so a sync does not blindly clobber it. */
+async function checkLiveSurface() {
+  try {
+    const handshake = await fetchWithTimeout(
+      `${LIVE}/__clerk/v1/client/handshake?redirect_url=${encodeURIComponent(`${LIVE}/`)}&__clerk_api_version=2026-05-12&suffixed_cookies=true&format=nonce`
+    );
+    if (handshake.status === 307 || handshake.status === 302) {
+      record("live-handshake", "pass", `${handshake.status} redirect (login OK)`);
+    } else if (handshake.status === 502) {
+      record(
+        "live-handshake",
+        "fail",
+        "502 Clerk upstream redirect rejected — session refresh is broken",
+        "The proxy must allow a handshake redirect to the app origin (PR #212)"
+      );
+    } else {
+      record("live-handshake", "warn", `unexpected ${handshake.status}`);
+    }
+  } catch (error) {
+    record("live-handshake", "fail", `probe failed: ${error.message}`);
+  }
+
+  // Unsigned probe. A configured endpoint answers 401; a missing secret 503s.
+  try {
+    const hook = await fetchWithTimeout(`${LIVE}/api/webhooks/clerk`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "clerk.webhook.smoke", data: {} }),
+    });
+    if (hook.status === 401 || hook.status === 400 || hook.status === 200) {
+      record("live-webhook", "pass", `${hook.status} (secret present, probe rejected)`);
+    } else if (hook.status === 503) {
+      record(
+        "live-webhook",
+        "fail",
+        "503 not configured — CLERK_WEBHOOK_SECRET is missing on the Worker",
+        "pnpm sync-env --workers (needs a valid CLOUDFLARE_API_TOKEN)"
+      );
+    } else {
+      record("live-webhook", "warn", `unexpected ${hook.status}`);
+    }
+  } catch (error) {
+    record("live-webhook", "fail", `probe failed: ${error.message}`);
+  }
+
+  try {
+    const accounts = await fetchWithTimeout(`${LIVE}/api/system/accounts`);
+    const body = await accounts.json().catch(() => ({}));
+    if (body?.status === "unconfigured") {
+      record(
+        "live-signups",
+        "warn",
+        "signups unconfigured — mirror empty; run the admin clerk-sync backfill",
+        "POST /api/admin/clerk-sync with NEWS_ADMIN_TOKEN"
+      );
+    } else {
+      record("live-signups", "pass", `signups total=${body?.total}`);
+    }
+  } catch (error) {
+    record("live-signups", "warn", `probe failed: ${error.message}`);
+  }
+}
+
+/* ------------------------------------------------------------- commands */
+
+async function preflight() {
+  const env = loadEnvFiles();
+  log("preflight — read-only, no writes\n");
+  log("credentials:");
+  const auth = await checkCloudflareAuth(env);
+  checkClerkKeyConsistency(env);
+  checkRequiredSecrets(env);
+  log("\nlive surface:");
+  await checkLiveSurface();
+
+  const fails = checks.filter((c) => c.status === "fail");
+  const warns = checks.filter((c) => c.status === "warn");
+  log("");
+  return {
+    ok: fails.length === 0,
+    counts: { pass: checks.length - fails.length - warns.length, warn: warns.length, fail: fails.length },
+    checks,
+    env: Object.fromEntries(
+      Object.keys(env)
+        .filter((k) => /CLERK|ADMIN|CLOUDFLARE/.test(k))
+        .map((k) => [k, mask(env[k])])
+    ),
+  };
+}
+
+async function sync() {
+  const pre = await preflight();
+  if (!pre.ok) {
+    log("\nrefusing to sync: fix the FAIL items above first.");
+    return { ...pre, synced: false };
+  }
+  const env = loadEnvFiles();
+  // scripts/sync-env.ts spawns wrangler with `env: process.env`, so a token
+  // living only in .env.local never reaches it. Export it for the child.
+  log("\nsyncing .env.local -> Worker secrets...");
+  const result = await run("pnpm", ["sync-env", "--workers"], {
+    env: { ...process.env, CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN },
+  });
+  log(result.ok ? "  [PASS] sync-env completed" : "  [FAIL] sync-env failed");
+  return { ...pre, synced: result.ok, output: result.stdout.slice(-800) };
+}
+
+async function deploy() {
+  const pre = await preflight();
+  if (!pre.ok) {
+    log("\nrefusing to deploy: fix the FAIL items above first.");
+    return { ...pre, deployed: false };
+  }
+  log("\ndeploying via wrangler...");
+  const result = await run("pnpm", ["--filter", "@aidr/web", "deploy"]);
+  log(result.ok ? "  [PASS] deploy completed" : "  [FAIL] deploy failed");
+  return { ...pre, deployed: result.ok, output: result.stdout.slice(-800) };
+}
+
+async function verify() {
+  log("live verification — read-only\n");
+  await checkLiveSurface();
+  const fails = checks.filter((c) => c.status === "fail");
+  return { ok: fails.length === 0, checks };
+}
+
+/* ------------------------------------------------------------------ main */
+
+const HELP = `aidr-ops — validate, sync, and deploy aidr.today secrets
+
+  aidr-ops preflight   validate credentials, key consistency, live surface
+  aidr-ops sync        preflight, then push .env.local -> Worker secrets
+  aidr-ops deploy      preflight, then deploy the Worker
+  aidr-ops verify      read-only live probes
+  aidr-ops doctor      alias for preflight
+
+Exit code is non-zero when a check fails. Secrets are never printed.`;
+
+const command = process.argv[2] ?? "preflight";
+let payload;
+
+if (command === "--help" || command === "-h" || command === "help") {
+  console.log(HELP);
+  process.exit(0);
+} else if (command === "preflight" || command === "doctor") {
+  payload = await preflight();
+} else if (command === "sync") {
+  payload = await sync();
+} else if (command === "deploy") {
+  payload = await deploy();
+} else if (command === "verify") {
+  payload = await verify();
+} else {
+  console.error(`unknown command: ${command}\n\n${HELP}`);
+  process.exit(2);
+}
+
+console.log(out.join("\n"));
+console.log(JSON.stringify(payload, null, 2));
+process.exit(payload.ok === false ? 1 : 0);
