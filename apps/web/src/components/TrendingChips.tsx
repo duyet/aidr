@@ -42,7 +42,7 @@ export function TrendingChips({
               onSelectTag(next);
             }}
             aria-pressed={selected}
-            className={`topic-colored flex shrink-0 items-baseline gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-[border-color,opacity] duration-150 ${
+            className={`topic-colored flex shrink-0 items-baseline gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-[border-color] duration-150 ${
               selected
                 ? "border-current bg-muted/40"
                 : "border-border/80 hover:border-current"
@@ -55,7 +55,11 @@ export function TrendingChips({
             }
           >
             {t.tag}
-            <span className="text-xs font-semibold opacity-70">{t.count}</span>
+            {/* topic-muted, not an opacity utility: element opacity blends the
+                count toward whatever background is behind the chip, so the same
+                class rendered a different (failing) ratio on every reader
+                background. The token keeps the hue and the AA floor. */}
+            <span className="topic-muted text-xs font-semibold">{t.count}</span>
           </button>
         );
       })}

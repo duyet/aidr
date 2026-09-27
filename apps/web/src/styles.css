@@ -18,6 +18,10 @@
   --color-card-foreground: var(--card-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  /* Quiet text step — see the token comment in :root. Exists so muted text can
+     stay quieter than its label without compositing toward the background. */
+  --color-quiet-foreground: var(--quiet-foreground);
+  --color-primary-foreground-quiet: var(--primary-foreground-quiet);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-border: var(--border);
@@ -94,6 +98,17 @@
   --popover-foreground: #0a0a0a;
   --muted: #e5e5e3;
   --muted-foreground: #474747;
+  /* Quietest text step that still clears WCAG AA (4.5:1) on EVERY light
+     surface the app can paint behind text: the #dedede gray reader
+     background is the worst case (4.97:1), #f7f7f5 the default page
+     (6.5:1). Replaces the opacity fade that used to sit on an already-themed
+     color, which composited toward the active background instead of
+     declaring one. Same role as --muted-foreground one step further from
+     --foreground. */
+  --quiet-foreground: #5c5c5c;
+  /* The same quiet step on the inverted --primary pill surface (selected
+     category pills), where the quiet tone has to be light, not dark. */
+  --primary-foreground-quiet: #cacaca;
   --secondary: #e5e5e3;
   --secondary-foreground: #0a0a0a;
   --border: #0a0a0a14;
@@ -145,6 +160,12 @@
   --secondary-foreground: #fafafa;
   --muted: #2a2a2a;
   --muted-foreground: #a3a3a3;
+  /* Mirror of the light --quiet-foreground: the darkest tone that still
+     clears AA on the lightest dark surface, the #2a2a2a muted chip/row
+     (5.1:1), and 4.95:1 on #0c0c0c. Dark-mode quiet therefore moves TOWARD
+     the background, exactly as it does in light mode. */
+  --quiet-foreground: #9a9a9a;
+  --primary-foreground-quiet: #3a3a3a;
   --accent: #f59e0b;
   --accent-foreground: #fffefb;
   --destructive: #f87171;
@@ -376,15 +397,23 @@
    around SiteHeader + .news-content + SiteFooter), not .news-content, so
    the chosen background paints the whole page instead of just the feed
    area. .app-shell already renders bg-background, which reads these same
-   --background/--foreground custom properties once redefined here. */
+   --background/--foreground custom properties once redefined here. The text
+   steps travel with the page color: these swatches paint a light surface, so
+   they carry the light --muted-foreground/--quiet-foreground as well —
+   otherwise the next-themes dark class would leave light-theme text sitting
+   on a light page. */
 .app-shell[data-reader-bg="cream"] {
   --background: #faf6ec;
   --foreground: #2b2620;
+  --muted-foreground: #474747;
+  --quiet-foreground: #5c5c5c;
 }
 
 .app-shell[data-reader-bg="gray"] {
   --background: #dedede;
   --foreground: #1c1c1a;
+  --muted-foreground: #474747;
+  --quiet-foreground: #5c5c5c;
 }
 
 .app-shell[data-reader-bg="black"] {
@@ -394,13 +423,43 @@
 /* Per-topic deterministic text color (see src/lib/topic-color.ts). Callers
    set --tc-light/--tc-dark inline per element; this class just picks the
    right one for the active theme, SSR-safe (no JS needed to avoid a flash
-   of wrong color). */
+   of wrong color). The palette hues are mixed with the semantic foreground
+   (same treatment as .category-colored below) so a chip label also clears AA
+   on the muted story rows and on the #dedede gray reader background, which
+   the raw palette hue did not. The base rule is a high-contrast fallback for
+   engines without color-mix. */
 .topic-colored {
-  color: var(--tc-light);
+  color: var(--foreground);
 }
 
-.dark .topic-colored {
-  color: var(--tc-dark);
+@supports (color: color-mix(in srgb, red, blue)) {
+  .topic-colored {
+    color: color-mix(in srgb, var(--tc-light) 70%, var(--foreground));
+  }
+
+  .dark .topic-colored {
+    color: color-mix(in srgb, var(--tc-dark) 70%, var(--foreground));
+  }
+}
+
+/* The quiet count inside a topic chip (TrendingChips): same hue family as the
+   label it sits next to, but mixed mostly into --quiet-foreground so it reads
+   as secondary instead of being a dimmed copy of the label. AA holds on every
+   reader background and both themes because --quiet-foreground does (see
+   :root). The base rule is a high-contrast fallback for engines without
+   color-mix. */
+.topic-muted {
+  color: var(--quiet-foreground);
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+  .topic-muted {
+    color: color-mix(in srgb, var(--tc-light) 35%, var(--quiet-foreground));
+  }
+
+  .dark .topic-muted {
+    color: color-mix(in srgb, var(--tc-dark) 35%, var(--quiet-foreground));
+  }
 }
 
 /* Category text uses the palette hue as an accent, but mixes it with the
@@ -456,6 +515,10 @@
   .category-filter-dot {
     background-color: CanvasText;
     outline: 1px solid Canvas;
+  }
+
+  .topic-muted {
+    color: GrayText;
   }
 }
 

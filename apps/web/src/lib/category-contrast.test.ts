@@ -228,6 +228,22 @@ describe("category accent surfaces", () => {
     expect(storyRowSource).toContain("topic-hl-row");
   });
 
+  it("renders the category count with a quiet token, never an opacity", () => {
+    // An opacity fade blended the count toward the surface behind the pill,
+    // so the rendered pair depended on the reader background and no token
+    // declared it. Both states are tokens now, asserted for every reader
+    // background in contrast-tokens.test.ts.
+    expect(categoryNavSource).toContain("text-quiet-foreground text-xs");
+    expect(categoryNavSource).toContain(
+      "text-primary-foreground-quiet text-xs"
+    );
+    // Comments may still name the utility they replaced; className may not.
+    const withoutComments = categoryNavSource
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    expect(withoutComments).not.toMatch(/opacity-\d+/);
+  });
+
   it("keeps selected-filter state available to assistive technology during SSR", () => {
     const html = renderToStaticMarkup(
       createElement(CategoryNav, {

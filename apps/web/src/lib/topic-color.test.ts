@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   CATEGORY_NAMES,
@@ -157,5 +160,41 @@ describe("categoryColor", () => {
     expect(
       contrastRatio(NEUTRAL_CATEGORY_COLOR.dark, "#0c0c0c")
     ).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("topic-colored surfaces", () => {
+  const css = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "../styles.css"),
+    "utf8"
+  );
+  const mixPercent = (className: string): number =>
+    Number(
+      new RegExp(
+        `\\.${className} \\{[^}]*color-mix\\(in srgb, var\\(--tc-\\w+\\) (\\d+)%`
+      ).exec(css)?.[1]
+    );
+
+  it("mixes the palette hue with the semantic foreground, not the bare hue", () => {
+    // The bare palette hue cleared AA on the page but not on the muted story
+    // rows (Lighthouse: 2 nodes on a story page) nor the #dedede gray reader
+    // background. The foreground mix is the same treatment .category-colored
+    // already had, and it keeps the hue identity.
+    expect(mixPercent("topic-colored")).toBe(70);
+    expect(css).toMatch(
+      /\.topic-colored\s*\{[^}]*color:\s*var\(--foreground\);/
+    );
+    expect(css).toContain("var(--tc-light) 70%");
+    expect(css).toContain("var(--tc-dark) 70%");
+  });
+
+  it("keeps the chip count quieter than the chip label", () => {
+    // .topic-muted spends most of the mix on --quiet-foreground, so the count
+    // keeps the tag's hue but steps toward the page. contrast-tokens.test.ts
+    // proves the AA floor for every reader background; here we only pin the
+    // relationship between the two.
+    expect(mixPercent("topic-muted")).toBeLessThan(mixPercent("topic-colored"));
+    expect(css).toContain("var(--tc-light) 35%");
+    expect(css).toContain("var(--tc-dark) 35%");
   });
 });
