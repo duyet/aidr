@@ -2,6 +2,7 @@ import { Card, CardContent, CardTitle, Skeleton } from "@aidr/ui";
 import { ExternalLink, FileText, Gauge, Languages, Scale } from "lucide-react";
 import { useId } from "react";
 import { anyrouterModelUrl } from "../../lib/anyrouter";
+import { ANYROUTER_URL } from "../../lib/site";
 import type { ModelChains } from "../../lib/system-queries";
 import { useSystemData } from "../../lib/use-system-stats";
 import { AnyRouterMark } from "./AnyRouterMark";
@@ -115,7 +116,7 @@ export function AttributionView({ models }: { models: ModelChains }) {
               </div>
             </div>
             <a
-              href="https://anyrouter.dev/?ref=aidr.today"
+              href={ANYROUTER_URL}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Open AnyRouter in a new tab"

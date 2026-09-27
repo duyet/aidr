@@ -1,11 +1,10 @@
 import { TabsContent } from "@aidr/ui";
 import { ExternalLink } from "lucide-react";
+import { ANYROUTER_URL } from "../../lib/site";
 import { AnyRouterMark } from "./AnyRouterMark";
 import { ChartCard } from "./ChartCard";
 import { RankingCard } from "./RankingCard";
 import { TAB_PANEL } from "./tab-spacing";
-
-const ANYROUTER_URL = "https://anyrouter.dev/?ref=aidr.today";
 
 function AnyRouterCard() {
   return (

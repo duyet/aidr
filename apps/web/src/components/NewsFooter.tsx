@@ -8,6 +8,7 @@ import {
 import { timeAgo } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
 import {
+  ANYROUTER_URL,
   DUYET_URL,
   EXTENSION_PATH,
   GITHUB_URL,
@@ -124,6 +125,19 @@ export function NewsFooter() {
                 className={`block ${linkClass}`}
               >
                 duyet.net
+              </a>
+              {/* The gateway behind every LLM call in the pipeline. Same
+                  credited URL as the /data strip and /about, so the referral
+                  cannot differ per surface. */}
+              <a
+                href={ANYROUTER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "anyrouter.dev" })}
+                className={`block ${linkClass}`}
+                title="LLM gateway behind AI;DR"
+              >
+                anyrouter.dev
               </a>
             </div>
           </nav>
