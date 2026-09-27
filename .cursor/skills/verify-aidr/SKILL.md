@@ -45,6 +45,33 @@ Pass requires:
 
 Do not drive an instance whose doctor reports `ok: false`. HTML without Chrome UA may be challenged; the lever always sends one.
 
+## Doctor IV (Telegram Instant View field gate)
+
+The machine-checkable field gate from `docs/decisions/telegram-instant-view.md`.
+Read-only, public, and credential-free — it needs no bot token and no channel id.
+
+```bash
+.cursor/skills/verify-aidr/bin/verify-aidr doctor iv --id <8hex> --lang vi
+.cursor/skills/verify-aidr/bin/verify-aidr doctor iv --id <8hex> --lang en
+```
+
+It prints a per-field verdict (`title` / `body` / `published_date` /
+`image_url` / `site_name` / `description`), a range-probe of the generated card
+(`/api/og/{id8}.png`, expected `200 image/png` at 1200×630), the exact source
+URL to paste into the [IV Editor](https://instantview.telegram.org/), and the
+still-unresolved items as labelled placeholders. Non-zero exit means the story
+is not IV-eligible.
+
+What it is **not**: it does not enable IV, does not build a `t.me/iv` link,
+does not create a template, and does not send anything. The `{rhash-from-editor}`
+token in its output is a literal placeholder — the only real `rhash` exists
+inside an operator's own editor session. Never paste a made-up `rhash` into
+this repo, and never point it at a production channel.
+
+`--image <https url>` additionally runs the bounded, SSRF-checked preflight over
+a candidate that is *not* the generated card, reporting `probe_bytes` and a
+fail-closed reason.
+
 ## Drive
 
 Prefer the lever over ad-hoc curl. Recipes live in `features/`. Stable handles:
@@ -78,6 +105,7 @@ Named location: `.cursor/skills/verify-aidr/evidence/<run-id>/` (printed as `evi
 - `api-public.json` / `feed.json` / `tldr-public.json` — JSON bodies.
 - `*-desktop.png` / `*-mobile.png` when Chrome can screenshot.
 - `report.json` — last drive result.
+- `doctor-iv-input.json` — the `doctor iv` run's id/lang/target. The gate's own JSON verdict is printed to stdout, so pipe it to a file when attaching it as evidence.
 
 Proof standards:
 
@@ -105,6 +133,7 @@ Stops only the local PID this lever started (recorded in `evidence/.state.json`)
 ```bash
 .cursor/skills/verify-aidr/bin/verify-aidr launch
 .cursor/skills/verify-aidr/bin/verify-aidr doctor
+.cursor/skills/verify-aidr/bin/verify-aidr doctor iv --id <8hex> --lang vi
 .cursor/skills/verify-aidr/bin/verify-aidr drive homepage
 .cursor/skills/verify-aidr/bin/verify-aidr drive tldr
 .cursor/skills/verify-aidr/bin/verify-aidr drive about

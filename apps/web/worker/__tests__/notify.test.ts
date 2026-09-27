@@ -22,13 +22,19 @@ import {
   buildDigestReplyMarkup,
   buildStoryCaption,
   buildStoryReplyMarkup,
+  DIGEST_LINK_PREVIEW,
   escapeHtml,
+  STORY_PHOTO_LINK_PREVIEW,
+  STORY_TEXT_LINK_PREVIEW,
+  storyImageCount,
+  storyPhotoUrl,
   storyUrl,
   telegramNotifier,
   withUtm,
 } from "../notify/telegram.js";
 import type { DailyDigest, StoryPayload } from "../notify/types.js";
 import { digestEvent, storyEvent } from "../notify/webhook.js";
+import { checkIvCaption, TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
 import type { Env } from "../types.js";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -181,6 +187,61 @@ describe("trending story message", () => {
     expect(caption).toContain("…");
   });
 
+  it("keeps a long title plus a long summary inside the 1024-char caption cap", () => {
+    // The title is part of the same caption, so a headline-heavy story used
+    // to be the one shape that could blow the limit.
+    const caption = buildStoryCaption(
+      story({ title: "T".repeat(5_000), summary: "s".repeat(5_000) })
+    );
+    expect(checkIvCaption(caption).ok).toBe(true);
+    expect(caption.length).toBeLessThanOrEqual(TELEGRAM_IV_LIMITS.captionChars);
+  });
+
+  it("states the extra image count instead of silently shipping one photo", () => {
+    const multi = story({
+      media_manifest: {
+        version: 1,
+        assets: [
+          { type: "image", url: "https://img.example/a.jpg" },
+          { type: "image", url: "https://img.example/b.jpg" },
+          { type: "image", url: "https://img.example/c.jpg" },
+        ],
+      },
+    });
+    expect(storyImageCount(multi)).toBe(3);
+    // The Vietnamese-first adapter copy, since the fixture resolves to `vi`.
+    expect(buildStoryCaption(multi)).toContain("+2 ảnh nữa");
+    expect(buildStoryCaption({ ...multi, lang: "en" })).toContain("+2 more");
+  });
+
+  it("says nothing about extra images for a single-image story", () => {
+    const single = story({
+      image_url: "https://img.example/only.jpg",
+      media_manifest: null,
+    });
+    expect(storyImageCount(single)).toBe(1);
+    expect(buildStoryCaption(single)).not.toContain("more");
+    const none = story({ image_url: null, media_manifest: null });
+    expect(storyImageCount(none)).toBe(0);
+    expect(buildStoryCaption(none)).not.toContain("more");
+  });
+
+  it("prefers the generated card over the manifest thumbnail", () => {
+    const withManifest = story({
+      image_url: null,
+      media_manifest: {
+        version: 1,
+        assets: [{ type: "image", url: "https://img.example/poster.jpg" }],
+      },
+    });
+    expect(storyPhotoUrl(withManifest)).toBe(
+      "https://aidr.today/api/og/abcdef12.png?lang=vi"
+    );
+    expect(storyPhotoUrl(story({ lang: "en" }))).toBe(
+      "https://aidr.today/api/og/abcdef12.png?lang=en"
+    );
+  });
+
   it("builds Read + AI;DR buttons with UTM tracking", () => {
     const markup = buildStoryReplyMarkup(story()) as {
       inline_keyboard: { text: string; url: string }[][];
@@ -259,7 +320,7 @@ describe("telegramNotifier gating", () => {
     ).toBe(true);
   });
 
-  it("falls back to text when a video poster is unavailable", async () => {
+  it("falls back to text ONCE when the photo call fails", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -279,29 +340,79 @@ describe("telegramNotifier gating", () => {
         TELEGRAM_BOT_TOKEN: "token",
         TELEGRAM_CHAT_ID: "chat",
       } as Env,
-      story({
-        image_url: null,
-        media_manifest: {
-          version: 1,
-          assets: [
-            {
-              type: "video",
-              url: "https://example.com/story.mp4",
-              poster_url: "https://img.example/poster.jpg",
-            },
-          ],
-        },
-      })
+      story()
     );
     expect(result.ok).toBe(true);
+    expect(result.messageId).toBe("7");
+    // Exactly two calls: one failed photo, one text. No second photo retry.
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendPhoto");
     expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
-    expect(
-      JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)
-    ).toMatchObject({
-      photo: "https://img.example/poster.jpg",
-    });
+  });
+
+  it("attaches the generated first-party card, never the upstream thumb", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, result: { message_id: 9 } }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await telegramNotifier.sendStory(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+      } as Env,
+      story({ image_url: "https://img.example/hotlink-hostile.png" })
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(body.photo).toBe("https://aidr.today/api/og/abcdef12.png?lang=vi");
+    expect(body.photo).not.toContain("hotlink-hostile");
+  });
+
+  it("disables the link preview on the photo path so the card is the only image", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, result: { message_id: 10 } }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await telegramNotifier.sendStory(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      story()
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(body.link_preview_options).toEqual(STORY_PHOTO_LINK_PREVIEW);
+    expect(body.link_preview_options).toEqual({ is_disabled: true });
+  });
+
+  it("sets link_preview_options explicitly on the digest and text fallback", async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 11 } }), {
+          status: 200,
+        })
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await telegramNotifier.sendDigest(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      { lang: "vi", date: "2026-08-17", bullets: [] }
+    );
+    const digestBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(digestBody.link_preview_options).toEqual(DIGEST_LINK_PREVIEW);
+    expect(digestBody.link_preview_options).toEqual({ is_disabled: true });
+
+    // Force the text path: an id with no card shape and no usable thumbnail.
+    await telegramNotifier.sendStory(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      story({ id: "NOT-HEX", image_url: "http://127.0.0.1/x.jpg" })
+    );
+    const textBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    expect(textBody.link_preview_options).toEqual(STORY_TEXT_LINK_PREVIEW);
+    expect(textBody.link_preview_options).toEqual({ is_disabled: true });
   });
 
   it("throws when chat id is set but the bot token is missing", () => {
@@ -368,16 +479,47 @@ describe("helpers", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
+    // No card shape, so the photo path has nothing usable and the adapter
+    // falls through to the single text message.
     const result = await telegramNotifier.sendStory(
       {
         TELEGRAM_BOT_TOKEN: "token",
         TELEGRAM_CHAT_ID: "chat",
       } as Env,
-      story({ image_url: "https://img.example/favicon.png" })
+      story({ id: "NOTHEX", image_url: "https://img.example/favicon.png" })
     );
     expect(result.ok).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMessage");
+  });
+
+  it("falls back to a video poster when the id cannot address a card", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, result: { message_id: 12 } }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await telegramNotifier.sendStory(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      story({
+        id: "NOTHEX",
+        image_url: null,
+        media_manifest: {
+          version: 1,
+          assets: [
+            {
+              type: "video",
+              url: "https://example.com/story.mp4",
+              poster_url: "https://img.example/poster.jpg",
+            },
+          ],
+        },
+      })
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(body.photo).toBe("https://img.example/poster.jpg");
   });
 
   it("drops private/tracking legacy image URLs when no manifest is usable", () => {

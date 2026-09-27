@@ -40,6 +40,7 @@ import {
   wrapCampaign,
 } from "../../../worker/mail/campaigns.js";
 import { listMailContent } from "../../../worker/mail/content.js";
+import { ivFieldGateForOperator } from "../../../worker/notify/iv-gate.js";
 import {
   listTranslationReviewQueue,
   resolveTranslationReview,
@@ -414,6 +415,26 @@ async function handle(
     segments[1] === "digest"
   ) {
     return Response.json(await retryTelegramDigest(env));
+  }
+
+  // Read-only Telegram Instant View field gate (#231). It answers "is this
+  // story IV-eligible?" with the same verdict the `verify-aidr doctor iv`
+  // command prints. It enables nothing: no template, no rhash, no Bot API IV
+  // lifecycle call, and no send. See docs/decisions/telegram-instant-view.md.
+  if (
+    method === "GET" &&
+    segments.length === 2 &&
+    segments[0] === "notify" &&
+    segments[1] === "iv"
+  ) {
+    const url = new URL(request.url);
+    return Response.json(
+      await ivFieldGateForOperator(env, {
+        id: url.searchParams.get("id"),
+        lang: url.searchParams.get("lang"),
+        image: url.searchParams.get("image"),
+      })
+    );
   }
 
   return notFound();

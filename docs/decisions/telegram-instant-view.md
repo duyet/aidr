@@ -3,18 +3,25 @@
 - **Issue:** [#146](https://github.com/duyet/aidr/issues/146)
 - **Status:** **No live IV; manual proof of concept only; production no-go for now**
 - **Checked:** 2026-09-25 against `origin/master` (`94bd26ce667f7de0bfbe2fa9ce234e64e18f5c19`)
+- **Updated:** 2026-09-28 by [#231](https://github.com/duyet/aidr/issues/231) —
+  the **no-go status is unchanged**. That pass made the *field* gate automatic,
+  made the link-preview format deliberate, and made the editor checklist
+  runnable. It added no template, no `rhash`, no Bot API IV lifecycle call, and
+  no production rollout.
 - **Scope:** one public, stable **story** page per language, not the homepage or digest list
 - **Current state:** locale/canonical URLs and locale-aware Telegram link generation are implemented in source/master; public-channel output is unverified/legacy; Instant View is not live
 
 This is a decision record and operator checklist, not a claim that Instant View
 (IV) is enabled. The current master source has a shared `lang=vi|lang=en` URL
-contract, explicit story canonicals, and flat locale-aware Telegram link
-builders, but it still has no IV template, editor-generated `rhash`, or code path
-that creates or sends an IV link. These are source/adapter contracts, not
-evidence of what the current public channel has emitted; the channel may still
-run a legacy deployment. No live channel audit or rollout evidence is attached
-to this PR. This change adds no Telegram sending code, credentials, channel
-target, template, `rhash`, WAF rule, or deployment/configuration change.
+contract, explicit story canonicals, flat locale-aware Telegram link builders,
+and — since [#231](https://github.com/duyet/aidr/issues/231) — an automated
+**field gate** that answers "is this story IV-eligible?" as a query. It still
+has no IV template, editor-generated `rhash`, or code path that creates or
+sends an IV link. These are source/adapter contracts, not evidence of what the
+current public channel has emitted; the channel may still run a legacy
+deployment. No live channel audit or rollout evidence is attached to this
+change. It adds no Telegram credentials, channel target, template, `rhash`, WAF
+rule, or deployment/configuration change.
 
 ## Decision
 
@@ -150,33 +157,72 @@ The [IV format manual](https://instantview.telegram.org/docs#instant-view-format
 marks `title` and `body` as the hard minimum. For an aidr news-story POC, the
 following stricter product gate applies to **each** language:
 
-| IV property | aidr contract | Gate |
-| --- | --- | --- |
-| `title` | The title actually rendered for the requested language (`title` for EN, `title_vi` for VI when present) | Required. If VI falls back to English, record that fact; escape/render as content, never as instructions. |
-| `body` | The localized public story summary/body and its source links, as rendered on the story page | Required. Do not claim this is the full original article when the page only has a summary. No interactive widgets or untrusted instructions. |
-| `published_date` | `published_at` as Unix **seconds** | Required for news stories by the aidr gate; do not send milliseconds. |
-| `image_url` | A manually selected, public HTTPS primary image | Required for this POC. The operator must verify size, format/MIME, dimensions, and reachability; current master does not provide the full media validation described here. |
-| `site_name` | **Unresolved here:** current metadata emits `AI News`, while the visible header brand is `AI;DR`; verify the name shown on the homepage in the IV Editor | Telegram's format property is optional, but its link-preview checklist requires a matching visible site name. Do not append the Telegram handle or silently freeze either brand value. |
-| `description` | The short description actually available for the rendered language, normally the first summary paragraph | Required for a useful Telegram link preview; never invent a translation or copy. |
+| IV property | aidr contract | Gate | Machine-checked by |
+| --- | --- | --- | --- |
+| `title` | The title actually rendered for the requested language (`title` for EN, `title_vi` for VI when present) | Required. If VI falls back to English, record that fact; escape/render as content, never as instructions. | [`evaluateIvFieldGate`](../../apps/web/worker/telegram-iv.ts) via [`localizedTitle`](../../apps/web/src/lib/display-title.ts) — the same function the row paints. A VI request with no `title_vi` is reported as an explicit `fallback_from_en`, never as a Vietnamese render. |
+| `body` | The localized public story summary/body and its source links, as rendered on the story page | Required. Do not claim this is the full original article when the page only has a summary. No interactive widgets or untrusted instructions. | [`renderStoryMarkdown`](../../apps/web/src/lib/story-markdown.ts); the gate requires a non-empty summary **and** at least one source URL, counted from the rendered Markdown. |
+| `published_date` | `published_at` as Unix **seconds** | Required for news stories by the aidr gate; do not send milliseconds. | `normalizePublishedAtSeconds` — normalizes the documented epoch ms/seconds bug class and rejects anything outside 2000–2100. A millisecond fixture never becomes a year-2286 date. |
+| `image_url` | The **generated first-party card** `https://aidr.today/{id8}.png?lang=vi\|en` | Required for this POC. | The card is 1200×630 `image/png` by construction, so reachability, hotlinking, MIME, and dimensions are deterministic. It is also what `articleHead` already emits as `og:image` and what the trending `sendPhoto` path now attaches. |
+| `site_name` | The single shared constant [`SITE_NAME`](../../apps/web/src/lib/site.ts) | Telegram's format property is optional, but its link-preview checklist requires a matching visible site name. Do not append the Telegram handle. | The gate imports the constant, so it cannot drift from `og:site_name`. **The value itself is still the open brand question** — see below. |
+| `description` | The first summary paragraph for the **rendered** locale | Required for a useful Telegram link preview; never invent a translation or copy. | The gate takes the first paragraph of the same localized summary the body renders. A story with no real summary fails `description_missing` rather than shipping the renderer's "No summary is available." placeholder. |
 
 The official [template checklist](https://instantview.telegram.org/checklist)
 also requires the publication date for news, a suitable link-preview photo, and
-a `site_name` matching the name shown on the website. The current code emits
-`AI News` in [`SITE_NAME`/`og:site_name`](../../apps/web/src/lib/site.ts), but
-that is not enough to settle the product decision because the visible header
-brand is `AI;DR`. Record the editor-approved value and the visible page used to
-justify it; do not treat the current metadata constant as final IV truth. A
-`cover` may be added when it is a real, non-duplicated cover; it is not a
-substitute for the required image gate.
+a `site_name` matching the name shown on the website. `site_name` is now read
+from one constant, so this record no longer carries a second literal — but
+**the constant's value is not settled by that fact.** The gate reports
+`site_name_agrees_with_visible_header: unresolved-brand-decision`: the metadata
+says `AI News` while the visible header brand is `AI;DR`, and one product
+decision ([#224](https://github.com/duyet/aidr/issues/224)) plus one editor
+confirmation must settle it. Until then, record the editor-accepted value and
+the visible page used to justify it; do not treat the current metadata constant
+as final IV truth. A `cover` may be added when it is a real, non-duplicated
+cover; it is not a substitute for the required image gate.
 
-**No automated media gate is claimed here.** While [#145](https://github.com/duyet/aidr/issues/145)
-and [#160](https://github.com/duyet/aidr/pull/160) remain open, the current
-source path only performs limited URL syntax/protocol handling and passes an
-`image_url` URL to the Telegram adapter's `sendPhoto` path
-([`telegram.ts`](../../apps/web/worker/notify/telegram.ts)). It does not prove
-byte size, MIME/format,
-dimensions, public reachability, hotlink behavior, or Telegram acceptance.
-Those are manual operator checks for this record, not runtime guarantees.
+### The field gate is now automated; the acceptance proof is not
+
+[`worker/telegram-iv.ts`](../../apps/web/worker/telegram-iv.ts) is the
+machine-checkable field gate this record previously said did not exist. It
+answers "is this `{id8}` + `lang` story IV-eligible?" as a small, structured,
+redacted verdict (`iv_eligible`, `reason`, `reasons`, `fields`, `limits`,
+`source_url`, `unresolved`), reachable two ways with **no Telegram
+credential**:
+
+- `GET /api/admin/notify/iv?id=<8hex>&lang=vi|en` — bearer-gated, operator-only.
+- `verify-aidr doctor iv --id <8hex> --lang vi|en` — local, public, read-only.
+
+What it **proves**: the six fields above, `published_date` in seconds, the
+generated card's declared MIME/dimensions/ceiling margins, and — for a
+candidate that is *not* the generated card — byte size, container, dimensions,
+and reachability through a **byte-bounded, SSRF-checked** probe
+(`isFetchableUrl` / `fetchWithSafeRedirects` with a `Range` request, a strict
+byte budget, and an explicit body cancel). The Worker never downloads or
+proxies a whole media file. It **fails closed** on a missing image, a
+private-literal / credentialed / plain-HTTP URL, an oversized file, an
+unsupported container, and an ambiguous id prefix.
+
+What it still **does not prove**, exactly as before: Telegram's rendering or
+acceptance, hotlink behaviour of third-party media, cache freshness, and
+whether one editor template covers both language variants. Those remain the
+manual checks below. The gate is a precondition for the editor work, not a
+substitute for it.
+
+### Encoded limits
+
+`TELEGRAM_IV_LIMITS` in [`worker/telegram-iv.ts`](../../apps/web/worker/telegram-iv.ts)
+holds the documented ceilings, each with its source:
+
+| Constant | Value | Source |
+| --- | --- | --- |
+| `httpUrlPhotoBytes` | 5 MB | [Bot API `sendPhoto`](https://core.telegram.org/bots/api#sendphoto) (HTTP URL) |
+| `multipartUploadPhotoBytes` | 10 MB | [Bot API `sendPhoto`](https://core.telegram.org/bots/api#sendphoto) (multipart) |
+| `dimensionSumPx` | 10,000 | [Bot API `sendPhoto`](https://core.telegram.org/bots/api#sendphoto) |
+| `aspectRatio` | 20 | [Bot API `sendPhoto`](https://core.telegram.org/bots/api#sendphoto) |
+| `captionChars` | 1,024 | [Bot API `sendPhoto`](https://core.telegram.org/bots/api#sendphoto) |
+| IV rendered image guidance | 1280–2560 px recommended, over 5 MB fails to load | [IV checklist](https://instantview.telegram.org/checklist#6-2-1-image-quality) |
+
+The 5 MB / 10 MB pair are **transport** ceilings; the IV image guidance is a
+**rendering** ceiling. Different numbers for different reasons, kept separate.
 
 ### Data-only URL contract
 
@@ -192,11 +238,14 @@ claim that the query shape is accepted by the editor:
   "allowed_lang": ["en", "vi"],
   "story_id_pattern": "^[0-9a-f]{8}$",
   "utm_in_iv_source": false,
-  "media_validation": "manual-only-until-145-and-160-merge",
+  "image_url_template": "https://aidr.today/api/og/{story_id8}.png?lang={lang}",
+  "image_url_source": "generated-first-party-card",
+  "field_gate": "worker/telegram-iv.ts#evaluateIvFieldGate",
+  "media_validation": "automated-bounded-preflight-plus-manual-editor-acceptance",
   "http_url_photo_limit": "5 MB",
   "multipart_upload_photo_limit": "10 MB",
-  "site_name": null,
-  "site_name_status": "unresolved-verify-visible-brand-in-editor",
+  "site_name": "SITE_NAME (src/lib/site.ts)",
+  "site_name_status": "single-shared-constant-value-still-unresolved-vs-visible-header",
   "rhash": "editor-generated-only"
 }
 ```
@@ -206,13 +255,16 @@ shape for the editor-produced wrapper, not a query template to commit or a
 promise that the editor will match both language variants.
 `editor_query_template: null` records that uncertainty explicitly; the editor
 review must establish the query scope and exact `View in Telegram` output.
-`site_name: null` means the decision is deliberately unresolved: current
-metadata says `AI News`, the visible header says `AI;DR`, and the
-editor/reviewer must record the final link-preview value. The media limit fields
-are operator reference values only: the current HTTP-URL photo path is bounded
-at 5 MB for this checklist, while a multipart upload path is bounded at 10 MB.
-Neither limit is an automated aidr validation, and no locale implementation,
-Telegram adapter, or live IV surface is changed by this record.
+`site_name` now names the one constant every consumer reads
+(`og:site_name` and the field gate), replacing this record's second literal.
+That removes the *drift* risk; it does not settle the *value* — the visible
+header still has to be reconciled with the constant, so
+`site_name_status` stays unresolved rather than claiming a decided brand. The
+media limit fields are now encoded in `TELEGRAM_IV_LIMITS` and enforced by the
+bounded preflight, with the 5 MB ceiling for the HTTP-URL photo path and 10 MB
+for a multipart upload. Neither limit proves Telegram acceptance, and this
+record still changes no delivery key, adds no template, and enables no live IV
+surface.
 
 ## Platform constraints and cache
 
@@ -237,18 +289,18 @@ Telegram adapter, or live IV surface is changed by this record.
   freshness SLA or guaranteed refresh in the sources linked here. Do not use
   IV for a live homepage, changing digest, or other real-time list, and keep a
   direct web link available for the freshest content.
-- **Media limits (reference only):** the [IV checklist](https://instantview.telegram.org/checklist#6-2-1-image-quality)
+- **Media limits (encoded, not proven):** the [IV checklist](https://instantview.telegram.org/checklist#6-2-1-image-quality)
   recommends images around 1280–2560px and says images over 5 MB fail to load
   in IV. That IV rendering guidance is distinct from Bot API transport limits:
   for the current HTTP-URL [`sendPhoto`](https://core.telegram.org/bots/api#sendphoto)
   path, use a **5 MB HTTP-URL photo ceiling**; a new photo uploaded through
   `multipart/form-data` is documented up to **10 MB**. Width plus height must
   be at most 10,000, aspect ratio at most 20, and captions at most 1,024
-  characters. The current adapter passes the URL and does not implement these
-  checks; while [#145](https://github.com/duyet/aidr/issues/145) and
-  [#160](https://github.com/duyet/aidr/pull/160) remain open, treat all of these
-  as manual operator reference, not automated size, format, or
-  public-reachability validation.
+  characters. These five numbers are now constants in `TELEGRAM_IV_LIMITS` and
+  the bounded preflight enforces them for a non-generated candidate, with each
+  value asserted at its exact boundary in the unit tests. They still do **not**
+  prove Telegram acceptance, and the delivery path's own image is the generated
+  1200×630 card, which is inside every ceiling by construction.
 - **Supported content:** preserve the story's essential text, headings, source
   links, and suitable media. If an essential element is unsupported, omit IV
   rather than silently dropping content.
@@ -264,6 +316,13 @@ The source/master normal path is:
 1. send the HTML digest message with its direct story links; or
 2. send the source adapter's photo message, falling back to that text message if the
    photo call fails.
+
+Both messages set `link_preview_options` explicitly rather than inheriting the
+API default — see "Link-preview format" below. The photo path attaches the
+**generated first-party card**, the same image the field gate approves, so a
+reader's link preview can never be a 404 upstream thumb. That is a format
+change only: it does not change the delivery key, add a second post, or enable
+IV.
 
 This describes adapter code, not a verified public-channel transcript. The
 live channel must be audited after the relevant rollout before this fallback is
@@ -286,7 +345,66 @@ which a delivery is considered sent. A timeout can be ambiguous, so inspect the
 test channel and reconcile the message id before a manual retry rather than
 blindly posting twice.
 
+## Link-preview format (no `rhash`, no template, no approval needed)
+
+The reader-visible "plain link preview" is what most people get today, and it
+is produced by Telegram from the page's own Open Graph tags. Making it
+predictable needs no Telegram approval. Two things were made deliberate:
+
+**1. `link_preview_options` is set explicitly on all three sends.** The adapter
+exports `DIGEST_LINK_PREVIEW`, `STORY_PHOTO_LINK_PREVIEW`, and
+`STORY_TEXT_LINK_PREVIEW`, all `{ is_disabled: true }`, with the reasoning
+recorded next to them in
+[`telegram.ts`](../../apps/web/worker/notify/telegram.ts):
+
+- `is_disabled` — **set**. Both messages build their links as HTML `<a>`
+  entities and inline buttons, which Telegram never previews, so a preview can
+  only appear if a future copy edit pastes a bare URL into a bullet. It would
+  then attach to one arbitrary bullet and misdescribe the whole message.
+- `prefer_small_media` / `prefer_large_media` — **not set**. There is no
+  affordance to prefer: the trending post already ships one large card, and a
+  preview per digest bullet would be eight images in one message.
+- `show_above_text` — **not set**. With `is_disabled` there is no preview to
+  place, and on the photo path the card *is* the message.
+
+**2. The photo path attaches the generated card.** `sendPhoto` now uses
+`https://aidr.today/{id8}.png?lang=vi|en` (1200×630, first-party, 200 by
+construction) instead of the upstream thumbnail, falling back to the normalized
+manifest thumbnail only when the id cannot address a card. This is the same
+choice `articleHead` already made for `og:image`, and it is the image the field
+gate approves, so the channel post and the link preview agree. A story with
+several manifest images now says so in the caption (`📎 +N more`) instead of
+silently shipping one photo that looks complete — the record's "omit rather
+than silently drop" rule, applied to the fallback path. Album/video delivery
+stays with [#202](https://github.com/duyet/aidr/issues/202).
+
+Neither change touches `lang` as a delivery identity: the digest key is still
+`digest:<local-date>`, a trending post is still keyed by the story id, and
+`notifications` keeps its `(channel, item_id)` primary key. Exactly one message
+per delivery key, and a failed media call still falls back to text **once**.
+
 ## Manual approval and verification checklist
+
+### Run the field gate first
+
+Every manual check below starts from a machine verdict. Run it for **both**
+language variants of the same story and keep the output as evidence:
+
+```bash
+verify-aidr doctor iv --id <8hex> --lang vi
+verify-aidr doctor iv --id <8hex> --lang en
+```
+
+The command prints the per-field verdict, probes the generated card over HTTP
+(`200 image/png`, `1200x630`), and ends with the exact source URL to paste into
+the [IV Editor](https://instantview.telegram.org/) plus the unresolved items as
+labelled placeholders. It exits non-zero when the story is not eligible.
+
+It is a **precondition**, not an approval. It does not build a `t.me/iv` link,
+does not create a template, does not send anything, and needs no bot token or
+channel id. The `{rhash-from-editor}` placeholder in its output is literal: the
+only real `rhash` exists inside your own editor session, and `verify-aidr`
+asserts in its unit tests that it can emit no other value.
 
 ### Contract and template
 
@@ -297,16 +415,15 @@ blindly posting twice.
       `?lang=en` and `?lang=vi` story URLs return the requested rendered
       language, canonical/hreflang rules agree, and cache keys do not cross
       languages. See [`LOCALE_URLS.md`](../../apps/web/LOCALE_URLS.md).
-- [ ] For each candidate, **manually** verify the current primary image is
-      public HTTPS and usable for the link preview; [#145](https://github.com/duyet/aidr/issues/145)
-      / [#160](https://github.com/duyet/aidr/pull/160) remain separate media
-      work. This is not an automated check. Exclude the story when the image is
-      missing, unsafe, too large, unsupported, or not publicly reachable.
-- [ ] Treat the 5 MB HTTP-URL photo ceiling and 10 MB multipart-upload ceiling
-      as manual transport references only; do not claim that the current
-      adapter measures bytes, checks MIME/format, or proves public reachability
-      while [#145](https://github.com/duyet/aidr/issues/145) and
-      [#160](https://github.com/duyet/aidr/pull/160) remain open.
+- [ ] Run `verify-aidr doctor iv` for both language variants and confirm it
+      agrees with the rendered page: title, `published_date`, and the generated
+      card. A `fallback_from_en` verdict is expected for a story with no
+      `title_vi`; record it, do not present it as a Vietnamese render.
+- [ ] Confirm the verdict's `image_url` is the generated first-party card
+      (`/api/og/{id8}.png`) and that it returns `200 image/png` at 1200×630. If
+      a candidate is *not* the generated card, run the bounded preflight
+      (`--image <https url>`) and record its `probe_bytes` and reason; a
+      candidate that fails any gate is excluded, not repaired.
 - [ ] In the [IV Editor](https://instantview.telegram.org/), create/test a
       template only for `aidr.today/{8-hex-id}?lang=en|vi`; do not target the
       homepage, digest, legacy category paths, or arbitrary external URLs.
@@ -332,10 +449,83 @@ blindly posting twice.
       channel target in this repo.
 - [ ] Before any implementation, mocked Bot API tests cover success, malformed
       responses, timeouts, unsupported media, bounded retry, and idempotent
-      delivery state. This documentation-only slice adds no such behavior.
+      delivery state. Those tests now exist for the parts this repository owns
+      (photo path, text fallback, `notifications` upsert), but they are **not**
+      evidence that an IV template renders; that is what the evidence template
+      below records.
 - [ ] If public availability is desired, submit the template through the IV
       approval flow and wait for approval. Until then, label the result as an
       editor/test-audience path only.
+
+### Evidence template for the manual checks
+
+The checks above are only meaningful if a rollout can point at what was
+actually observed. Copy this block per rollout, fill it in, and attach it to
+the follow-up decision. A blank field is a **blocker**, not a pass — do not
+delete a row to make the template look complete.
+
+```text
+IV POC evidence — run <ISO date> by <operator handle>
+
+Target
+  disposable channel:            <disposable channel label; NEVER a production target>
+  disposable bot:                <label; token stored outside this repo>
+  source head / Worker revision:  <git sha or wrangler version id>
+  prod channel touched?          no            <- must be "no" for a POC
+
+Machine gate (both language variants; paste the verdict summary)
+  verify-aidr doctor iv --id <id8> --lang vi   ->  ELIGIBLE / NOT ELIGIBLE (<reason>)
+  verify-aidr doctor iv --id <id8> --lang en   ->  ELIGIBLE / NOT ELIGIBLE (<reason>)
+  fallback_from_en:                             <yes/no, and which field fell back>
+  generated card:                               <status> <content-type> <WxH>  probe_bytes=<n>
+  non-generated candidate (if any):             <verdict + reason, or "n/a">
+
+Editor (per language variant)
+  editor URL used:            https://instantview.telegram.org/
+  source URL pasted:          https://aidr.today/<id8>?lang=<vi|en>
+  title rendered:             <exact string>
+  body contains summary:      <yes/no>     body contains source links: <yes/no + count>
+  published_date rendered:    <exact value; seconds, not ms>
+  image_url rendered:         <exact URL>  <WxH, MIME>
+  site_name rendered:         <exact value>  (visible header showed: <exact value>)
+  description rendered:       <exact value>
+  one query covers both langs <yes/no — if no, record two queries>
+
+t.me/iv wrapper (transcribe from View in Telegram; do not fabricate)
+  link shape observed:        https://t.me/iv?url=<...>&rhash=<...>
+  rhash stored where:          <approved operator/runtime config path>   <- not this repo
+  is this an editor/test-audience link only?   <yes — no public approval claimed>
+
+Telegram client matrix (disposable target only)
+  mobile  iOS / Android:      <app version>  VI: <ok/fail>  EN: <ok/fail>
+  desktop Telegram Desktop:   <version>      VI: <ok/fail>  EN: <ok/fail>
+  direct source URL fallback: <ok/fail>
+  link preview image:         <first-party card ok / wrong image / none>
+
+Failure matrix (each must yield ONE usable post, no duplicate)
+  missing image:              <result>
+  404 / source failure:        <result>
+  timeout:                    <result + how the message id was reconciled>
+  unsupported media:          <result>
+  no template:                <result — confirm the direct link still works>
+
+Delivery state after every attempt
+  notifications row:          channel=<...> item_id=<digest:<date> | story id> status=<sent|failed> attempts=<n> message_id=<...>
+  second lang-keyed row?      no            <- must be "no"
+  duplicate post observed?    <no — else this is a blocker>
+
+Decision
+  outcome:                     <proceed to editor POC / remain no-go / revert to no-go>
+  still unresolved:            <rhash storage, query template, site_name brand, public approval>
+```
+
+Two rules make this template usable rather than decorative:
+
+1. **No credentials, ever.** The channel and bot are described by label only.
+   A token or a channel id in this block invalidates the evidence.
+2. **`lang` is not a delivery identity.** The two language variants above share
+   one delivery key. If filling in the matrix created a second `notifications`
+   row or a second post, stop and record a blocker instead of continuing.
 
 ### Live channel audit and rollout evidence
 
@@ -380,6 +570,6 @@ record all of the following:
 - [Telegram Instant View introduction](https://instantview.telegram.org/) — templates, public approval, and `t.me/iv?url=...&rhash=...`.
 - [Telegram Instant View format/manual](https://instantview.telegram.org/docs) — required properties, `text/html`, supported media, and IV processing.
 - [Telegram Instant View template checklist](https://instantview.telegram.org/checklist) — news date, link-preview metadata, image limits, unsupported content, and cache warnings.
-- [Telegram Bot API](https://core.telegram.org/bots/api) — available methods, `sendMessage`, `sendPhoto`, URL/multipart transport limits, and no IV lifecycle method.
+- [Telegram Bot API](https://core.telegram.org/bots/api) — available methods, `sendMessage`, `sendPhoto`, `link_preview_options`, URL/multipart transport limits, and no IV lifecycle method.
 - [Telegram Instant View announcement](https://telegram.org/blog/instant-view) — product background.
-- Internal contracts: [#139](https://github.com/duyet/aidr/issues/139), [#140](https://github.com/duyet/aidr/issues/140), [#145](https://github.com/duyet/aidr/issues/145), [`LOCALE_URLS.md`](../../apps/web/LOCALE_URLS.md), [`ALGORITHM.md`](../../apps/web/ALGORITHM.md), [`site.ts`](../../apps/web/src/lib/site.ts), [`telegram.ts`](../../apps/web/worker/notify/telegram.ts), and [`notifications` migration](../../apps/web/migrations/0014_notifications.sql).
+- Internal contracts: [#139](https://github.com/duyet/aidr/issues/139), [#140](https://github.com/duyet/aidr/issues/140), [#145](https://github.com/duyet/aidr/issues/145), [#202](https://github.com/duyet/aidr/issues/202), [#224](https://github.com/duyet/aidr/issues/224), [`LOCALE_URLS.md`](../../apps/web/LOCALE_URLS.md), [`ALGORITHM.md`](../../apps/web/ALGORITHM.md), [`site.ts`](../../apps/web/src/lib/site.ts), [`telegram-iv.ts`](../../apps/web/worker/telegram-iv.ts), [`iv-gate.ts`](../../apps/web/worker/notify/iv-gate.ts), [`telegram.ts`](../../apps/web/worker/notify/telegram.ts), and [`notifications` migration](../../apps/web/migrations/0014_notifications.sql).

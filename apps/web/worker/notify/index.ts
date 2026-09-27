@@ -317,8 +317,15 @@ async function loadDigest(env: Env, date: string): Promise<DailyDigest | null> {
   return { lang, date, bullets: resolved };
 }
 
-async function recordDelivery(
-  env: Env,
+/**
+ * Delivery state is keyed by (channel, item_id) only. `lang` is NOT part of
+ * the key: an EN/VI comparison must never create a second row or a second
+ * post for the same story. The upsert bumps `attempts` rather than inserting,
+ * so a retry after an ambiguous timeout updates one row instead of posting
+ * twice.
+ */
+export async function recordDelivery(
+  env: Pick<Env, "DB">,
   channel: string,
   target: string,
   key: string,
