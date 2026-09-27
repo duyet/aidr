@@ -104,6 +104,55 @@ Article enrichment and configurable RSS fetches manually validate every redirect
 
 Telegram transport remains on the existing `sendPhoto`/text fallback path. `sendVideo`, `sendMediaGroup`, and durable multi-message delivery are explicitly deferred. The #146 Telegram Instant View decision record and its conflict/no-go notes remain authoritative; this slice does not add Instant View pages.
 
+### Syndication: RSS, news sitemap, sitemap index
+
+```text
+GET https://aidr.today/feed.xml?lang=vi      # RSS 2.0 (alias: /rss.xml)
+GET https://aidr.today/feed.json?lang=vi     # thin alias of /api/feed
+GET https://aidr.today/sitemap.xml           # <sitemapindex>
+GET https://aidr.today/sitemaps/static.xml   # static + marketing paths
+GET https://aidr.today/sitemaps/sitemap-YYYY-MM.xml
+GET https://aidr.today/news.xml              # Google News sitemap
+```
+
+`/feed.xml` is rendered by `src/lib/rss.ts` from the existing `getFeed` loader
+(no second feed query) and reuses the `/api/feed` locale contract verbatim:
+bare = cookie/Accept-Language selected, `private, no-store`,
+`Vary: Cookie, Accept-Language`; one explicit `lang` = public and cacheable;
+one legacy `locale` = a single 307 to `lang`; invalid, repeated, or conflicting
+= 400. `<link>` and `<guid isPermaLink="true">` are always the canonical
+explicit-locale story permalink (`/{8hex}?lang=vi|en`) — the indexable form —
+with no UTM or fragment, so the feed can never advertise a `noindex` URL.
+`<pubDate>` is RFC-822 from `published_at` epoch **seconds**; a millisecond row
+would render a year-2286 date, so every timestamp passes one normalizer
+(`epochSeconds`). Bounds: at most 100 items, 512-char titles, 600-char
+descriptions, 8 `<category>` elements, and a 262,144-byte document assembled
+under budget rather than trimmed afterwards. `<media:content>` is emitted only
+for a thumbnail that passed `canonicalizeMediaImageUrl` **and**
+`isFetchableUrl`; `dc:creator` is omitted rather than fabricated. `/rss.xml`
+serves the identical bytes and `atom:link rel="self"` always advertises
+`/feed.xml` so a reader cannot register two feeds. `/feed.json` rewrites to the
+existing `/api/feed` route handler — same document, same bounds, no new format.
+
+`/sitemap.xml` is a `<sitemapindex>` listing `/sitemaps/static.xml`, one child
+per UTC publication month (split at 1,000 items per part), and `/news.xml`.
+The old flat document selected the 1,000 newest published items and omitted
+every older story entirely; the index removes that self-imposed cap. Every
+child returns `200 application/xml` and **fails closed** to a valid
+static-only `urlset` on a D1 error, exactly like the previous
+`safeSitemapResponse`. Every `<loc>` carries a `lastmod` (story `lastmod` is
+the newest of `published_at`, `fetched_at`, and the latest translation review),
+and story URLs carry `<image:image>` for the generated `/api/og/{id}.png`
+(1200×630, always 200).
+
+`/news.xml` covers the newest two days (the window Google News expects),
+bounded to 1,000 `news:news` entries — one per story, at the locale actually
+rendered for it, with `news:publication > news:name` set to the aidr
+publication and `news:publication_date` in W3C `+07:00` form. Entries beyond
+the cap remain in the date-sharded children, so nothing is lost. **aidr is an
+aggregator, not an original publisher: nothing here claims Google News
+publisher status.**
+
 ### Story Markdown (agent-readable pilot)
 
 A published story also has a bounded, generated Markdown representation:

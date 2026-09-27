@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   articleHead,
+  feedDiscoveryLink,
   homepageHead,
   localizedPageHead,
   notFoundHead,
@@ -68,6 +69,26 @@ describe("homepageHead", () => {
     });
     expect(metaContent(head.meta, "og:locale")).toBe("vi_VN");
     expect(head.links.some((l) => l.rel === "sitemap")).toBe(true);
+    expect(head.links).toContainEqual(feedDiscoveryLink("vi"));
+  });
+
+  it("advertises the RSS feed with an explicit locale for autodiscovery", () => {
+    for (const lang of ["vi", "en"] as const) {
+      const link = feedDiscoveryLink(lang);
+      expect(link.rel).toBe("alternate");
+      expect(link.type).toBe("application/rss+xml");
+      expect(link.title && link.title.length > 0).toBe(true);
+      expect(link.href).toBe(`${SITE_URL}/feed.xml?lang=${lang}`);
+    }
+  });
+
+  it("keeps the feed link on /subscribe, the page that markets delivery channels", () => {
+    const head = localizedPageHead({
+      path: "/subscribe",
+      title: "Get AI;DR | Chrome, Telegram, Email",
+      lang: "en",
+    });
+    expect(head.links).toContainEqual(feedDiscoveryLink("en"));
   });
 
   it("uses the requested English locale for canonical and hreflang", () => {

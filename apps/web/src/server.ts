@@ -20,6 +20,7 @@ import {
   localeErrorResponse,
   normalizeLocaleRequest,
   permanentLocaleRedirect,
+  resolveApiRequestLocale,
   resolveRequestLocale,
   resolveServerFnLocaleRequest,
   temporaryLocaleRedirect,
@@ -31,14 +32,26 @@ import {
   isPrivateSsrPath,
 } from "./lib/locale-routing";
 import { withLang } from "./lib/locale-url";
+import {
+  loadNewsSitemapEntries,
+  safeNewsSitemapResponse,
+} from "./lib/news-sitemap";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
+import { handleFeedXmlRequest } from "./lib/rss";
 import { isServerFnPath } from "./lib/server-fn-request";
+import { NEWS_SITEMAP_PATH, RSS_ALIAS_PATH, RSS_FEED_PATH } from "./lib/site";
 import {
+  buildSitemapIndexXml,
   buildSitemapXml,
-  loadSitemapUrls,
+  loadSitemapMonthCounts,
+  loadSitemapShardUrls,
+  parseSitemapShardPath,
   robotsResponse,
+  SITEMAP_STATIC_CHILD_PATH,
+  safeSitemapIndexResponse,
   safeSitemapResponse,
+  sitemapIndexEntries,
   sitemapResponse,
   staticSitemapUrls,
 } from "./lib/sitemap";
@@ -56,6 +69,11 @@ async function resolveEnv(env?: Env): Promise<Env | undefined> {
   } catch {
     return env;
   }
+}
+
+/** The D1 binding, or undefined outside the Workers runtime (tests, scripts). */
+async function resolveDb(env?: Env): Promise<D1Database | undefined> {
+  return (await resolveEnv(env))?.DB;
 }
 
 export default {
@@ -101,18 +119,56 @@ export default {
     }
     const discovery = await handleAgentDiscovery(request);
     if (discovery) return discovery;
+
+    // Discovery surfaces are Worker-owned and run before the SPA catch-all.
+    // `/sitemap.xml` is a <sitemapindex> now: one static child, one child per
+    // UTC month of publication, and the news sitemap. Every child keeps the
+    // fail-closed contract — 200 valid XML, static-only on a D1 error.
     if (path === "/sitemap.xml") {
       try {
-        return await safeSitemapResponse(async () => {
-          const resolved = await resolveEnv(env);
-          return resolved?.DB
-            ? loadSitemapUrls(readSession(resolved.DB))
-            : staticSitemapUrls();
+        return await safeSitemapIndexResponse(async () => {
+          const db = await resolveDb(env);
+          return db ? loadSitemapMonthCounts(readSession(db)) : [];
         });
       } catch (error) {
-        console.error("sitemap.xml failed; serving static fallback", error);
-        return sitemapResponse(buildSitemapXml(staticSitemapUrls()));
+        console.error("sitemap.xml failed; serving static index", error);
+        return sitemapResponse(
+          buildSitemapIndexXml(sitemapIndexEntries([], Date.now()))
+        );
       }
+    }
+    if (path === SITEMAP_STATIC_CHILD_PATH) {
+      return sitemapResponse(buildSitemapXml(staticSitemapUrls()));
+    }
+    const shard = parseSitemapShardPath(path);
+    if (shard) {
+      return safeSitemapResponse(async () => {
+        const db = await resolveDb(env);
+        return db ? loadSitemapShardUrls(readSession(db), shard) : [];
+      });
+    }
+    if (path === NEWS_SITEMAP_PATH) {
+      return safeNewsSitemapResponse(async () => {
+        const db = await resolveDb(env);
+        return db ? loadNewsSitemapEntries(db) : [];
+      });
+    }
+    // RSS 2.0. One locale gate (identical to /api/feed), one loader, bounded.
+    // `/rss.xml` serves the identical document for readers that hardcode it;
+    // `<atom:link rel="self">` always advertises `/feed.xml` as canonical.
+    if (path === RSS_FEED_PATH || path === RSS_ALIAS_PATH) {
+      return handleFeedXmlRequest(request, await resolveDb(env));
+    }
+    // `/feed.json` is a thin alias of the existing JSON feed: same route
+    // handler, same bounds, same document. It adds no new JSON format, so it
+    // resolves here — before the document locale gate, which would answer a
+    // malformed `lang` with an HTML error page instead of the API's JSON 400.
+    if (path === "/feed.json") {
+      const aliasLocale = resolveApiRequestLocale(request);
+      if (!aliasLocale.ok) return aliasLocale.response;
+      const target = new URL(request.url);
+      target.pathname = "/api/feed";
+      return handler.fetch(new Request(target.toString(), request));
     }
 
     // Locale aliases and malformed values are rejected before the SPA (or
