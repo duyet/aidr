@@ -119,46 +119,77 @@ export function projectSearchResult(
 }
 
 /**
- * Drop the oldest tail until the payload fits, mirroring the order in which
- * `boundPublicDigest` sheds fields: least useful first, oldest first. If
- * even an empty result is over the bound the caller fails closed with
- * `result_too_large` — a truncated list that silently loses the whole
- * window is worse than an explicit error.
+ * Keep the newest items that fit, and drop the rest.
+ *
+ * Binary search over a newest-first prefix, not a pop-one-and-re-measure
+ * loop: each measurement serializes the whole payload, so a hostile
+ * 4,000-item feed would cost 4,000 serializations of a ~16 MB string — the
+ * bounding step would become the denial of service it exists to prevent.
+ * This is O(log n) measurements and lands on exactly the answer a linear
+ * scan would: the largest newest-first prefix that fits.
+ *
+ * Mirrors the order `boundPublicDigest` sheds fields: least useful first,
+ * oldest first. If even an empty window is over the bound, the caller
+ * fails closed with `result_too_large` — a result that silently lost the
+ * whole window is worse than an explicit error.
  */
 export function boundSearchResult(
   result: PublicReadSearchResult
 ): { ok: true; value: PublicReadSearchResult } | { ok: false; error: string } {
-  const clone: PublicReadSearchResult = {
-    ...result,
-    categories: [...result.categories],
-    trending: [...result.trending],
-    days: result.days.map((day) => ({ date: day.date, items: [...day.items] })),
+  // Newest first, re-grouped by date on the way out.
+  const flattened = result.days.flatMap((day) =>
+    day.items.map((item) => ({ date: day.date, item }))
+  );
+  const total = flattened.length;
+
+  const build = (
+    keep: number,
+    categories: PublicReadSearchResult["categories"],
+    trending: PublicReadSearchResult["trending"]
+  ): PublicReadSearchResult => {
+    const byDate = new Map<string, PublicReadToolItem[]>();
+    for (let index = 0; index < keep; index += 1) {
+      const entry = flattened[index]!;
+      const bucket = byDate.get(entry.date) ?? [];
+      bucket.push(entry.item);
+      byDate.set(entry.date, bucket);
+    }
+    return {
+      ...result,
+      categories,
+      trending,
+      days: [...byDate.entries()].map(([date, items]) => ({ date, items })),
+      truncated: keep < total || result.truncated,
+    };
   };
-  if (readResultBytes(clone) <= PUBLIC_READ_RESULT_MAX_BYTES) {
-    return { ok: true, value: clone };
-  }
-  clone.truncated = true;
-  for (let index = clone.days.length - 1; index >= 0; index--) {
-    const day = clone.days[index];
-    if (!day) continue;
-    while (day.items.length > 0) {
-      day.items.pop();
-      if (readResultBytes(clone) <= PUBLIC_READ_RESULT_MAX_BYTES) {
-        return { ok: true, value: clone };
-      }
+
+  const fits = (value: PublicReadSearchResult) =>
+    readResultBytes(value) <= PUBLIC_READ_RESULT_MAX_BYTES;
+
+  const full = build(total, result.categories, result.trending);
+  if (fits(full)) return { ok: true, value: full };
+
+  // Largest k in [0, total) whose payload fits. `full` does not fit, so
+  // the upper bound is exclusive.
+  let low = 0;
+  let high = total;
+  let best: PublicReadSearchResult | null = null;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    const candidate = build(mid, result.categories, result.trending);
+    if (fits(candidate)) {
+      best = candidate;
+      low = mid;
+    } else {
+      high = mid - 1;
     }
-    clone.days.pop();
   }
-  for (const trend of clone.trending) {
-    if (readResultBytes(clone) <= PUBLIC_READ_RESULT_MAX_BYTES) {
-      return { ok: true, value: clone };
-    }
-    clone.trending = clone.trending.filter((entry) => entry !== trend);
-  }
-  clone.categories = [];
-  if (readResultBytes(clone) <= PUBLIC_READ_RESULT_MAX_BYTES) {
-    return { ok: true, value: clone };
-  }
+  if (best) return { ok: true, value: best };
+
+  // Even zero items is over the bound: the metadata alone is too large.
+  const metadataOnly = build(0, [], []);
+  if (fits(metadataOnly)) return { ok: true, value: metadataOnly };
+
   return {
     ok: false,
     error:

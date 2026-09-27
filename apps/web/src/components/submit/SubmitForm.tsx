@@ -5,6 +5,7 @@ import { bearerHeaders } from "../../lib/clerk-user";
 import { useLang } from "../../lib/lang-context";
 import { isSubmittedId, submitErrorMessage } from "../../lib/submit-feedback";
 import { submitStory } from "../../lib/submit-fn";
+import { formAnnotationAttributes, webmcpForm } from "../../lib/webmcp";
 
 export function SubmitForm({
   userId,
@@ -31,8 +32,16 @@ export function SubmitForm({
     return () => window.clearTimeout(id);
   }, [banner]);
 
+  // WebMCP form annotation. The attributes are inert metadata: they tell
+  // the host model this form exists and what it means, and they are
+  // derived from the shared annotation module so ai-catalog.json and the
+  // DOM cannot disagree. Filling it still needs the signed-in Clerk
+  // session this component is rendered with.
+  const webmcp = formAnnotationAttributes(webmcpForm("submit-story"));
+
   return (
     <form
+      {...webmcp}
       className="space-y-3"
       onSubmit={async (e) => {
         e.preventDefault();

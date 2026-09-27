@@ -343,6 +343,34 @@ describe("handleAgentDiscovery", () => {
     expect(body.name).toBe("aidr");
   });
 
+  it("serves ai-catalog.json with the registered read tools (#226)", async () => {
+    const res = await handleAgentDiscovery(
+      new Request(`${SITE_URL}/.well-known/ai-catalog.json`)
+    );
+    expect(res?.status).toBe(200);
+    expect(res?.headers.get("content-type")).toMatch(/application\/json/);
+    const body = (await res?.json()) as {
+      tools: Array<{
+        name: string;
+        parameters: Record<string, unknown>;
+        annotations: { readOnlyHint: boolean; untrustedContentHint: boolean };
+      }>;
+      forms: Array<{ id: string; agentCallable: boolean }>;
+    };
+    expect(body.tools.map((tool) => tool.name)).toEqual([
+      ...PUBLIC_READ_TOOL_NAMES,
+    ]);
+    for (const tool of body.tools) {
+      expect(tool.annotations.readOnlyHint).toBe(true);
+      expect(tool.annotations.untrustedContentHint).toBe(true);
+      expect(tool.parameters.additionalProperties).toBe(false);
+    }
+    const byId = new Map(body.forms.map((form) => [form.id, form]));
+    expect(byId.get("submit-story")?.agentCallable).toBe(true);
+    expect(byId.get("subscribe-email")?.agentCallable).toBe(true);
+    expect(byId.get("sign-in")?.agentCallable).toBe(false);
+  });
+
   it("returns null for unrelated paths", async () => {
     expect(
       await handleAgentDiscovery(new Request(`${SITE_URL}/about`))
