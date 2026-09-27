@@ -142,6 +142,24 @@ export const Route = createRootRoute({
           type: "application/xml",
           href: `${SITE_URL}/sitemap.xml`,
         },
+        // NOTE: no font preload here, on purpose — see the measurement in
+        // src/fonts.css. Under `font-display: optional` the browser only uses
+        // a face that is ready inside a ~100 ms block period, and a 1.6 Mbps
+        // link cannot deliver 28 KB in 100 ms. The preload therefore can
+        // never win the race, and while it competes for the pipe it costs
+        // the render-blocking stylesheet: measured cold, preloading both
+        // body subsets moved the LCP element render delay from 1,016 ms
+        // (no preload) to 1,332 ms — a 316 ms regression in exchange for
+        // bytes that would have been discarded.
+        // Two origins, well under Lighthouse's four-origin advice: 1.6 Mbps
+        // of pipe and six sockets competing for it is the other half of the
+        // render delay.
+        {
+          rel: "preconnect",
+          href: "https://j.duyet.net",
+          crossOrigin: "anonymous",
+        },
+        { rel: "preconnect", href: "https://www.clarity.ms" },
       ],
     };
   },

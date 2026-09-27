@@ -1,8 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/eb-garamond/wght.css";
-@import "@fontsource-variable/source-sans-3/wght.css";
+/* Self-hosted @font-face (no Fontsource @import): the browser used to learn
+   about the woff2 files only after parsing the render-blocking sheet, which
+   put 143 KB of fonts at the tail of the critical path. See fonts.css. */
+@import "./fonts.css";
 /* Owned copy of shadcn/typeset — tune fonts/size/leading/flow via presets. */
 @import "./typeset.css";
 
@@ -74,18 +76,20 @@
   --editorial-faint: #0a0a0a0a;
   --editorial-hairline: #0a0a0a14;
   --editorial-accent: #b45309;
+  /* Metric-matched fallbacks sit directly after each webfont so the
+     font-display: optional fallback keeps the webfont's line box. */
   --editorial-font-serif:
-    "EB Garamond Variable", "EB Garamond", Garamond, "Apple Garamond", ui-serif,
-    serif;
+    "EB Garamond Variable", "EB Garamond", "EB Garamond Fallback", Garamond,
+    "Apple Garamond", ui-serif, serif;
   --editorial-font-sans:
-    "Source Sans 3 Variable", "Source Sans 3", ui-sans-serif, system-ui,
-    -apple-system, sans-serif;
+    "Source Sans 3 Variable", "Source Sans 3", "Source Sans 3 Fallback",
+    ui-sans-serif, system-ui, -apple-system, sans-serif;
   --editorial-font-mono:
     "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
 
   --content-font-sans:
-    "Source Sans 3 Variable", "Source Sans 3", ui-sans-serif, system-ui,
-    -apple-system, sans-serif;
+    "Source Sans 3 Variable", "Source Sans 3", "Source Sans 3 Fallback",
+    ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   /* --accent stays a NEUTRAL hover surface at :root (shared chrome).
      Amber brand is scoped under .news-content. Primary CTAs are
