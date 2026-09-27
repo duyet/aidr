@@ -17,6 +17,16 @@ const WEBSITE_ENTRIES: ChangelogEntry[] = [
   },
   {
     date: "2026-09",
+    en: "Anyone can now read aidr over MCP with no account and no API key. The endpoint publishes four read-only tools — latest AI news, search, one story as bounded Markdown, and the TL;DR digest — plus two resources, and every one of them is labelled read-only and untrusted-content so an agent treats story text as data. Operator tools (push items, manage sources, trigger an ingest run) still require an admin token, and an unauthenticated call to one is refused without revealing what else exists. Anonymous reads are rate limited per IP.",
+    vi: "Giờ bất kỳ ai cũng đọc aidr qua MCP mà không cần tài khoản hay API key. Endpoint công bố bốn công cụ chỉ-đọc — tin AI mới nhất, tìm kiếm, một tin dưới dạng Markdown có giới hạn, và bản TL;DR — cùng hai tài nguyên, và mỗi công cụ đều được đánh dấu chỉ-đọc và nội dung- không-đáng-tin để agent coi văn bản tin là dữ liệu. Công cụ vận hành (đẩy tin, quản lý nguồn, chạy ingest) vẫn cần token admin, và lời gọi ẩn danh sẽ bị từ chối mà không tiết lộ còn công cụ nào khác. Lượt đọc ẩn danh bị giới hạn theo IP.",
+  },
+  {
+    date: "2026-09",
+    en: "The machine-discovery documents now tell the truth. The MCP server card lists the real read tools, the resources, the per-IP rate limit, and which tools need authorization — and no longer advertises a prompts capability the server never implemented. The agent card, the agent skill, and openapi.json were updated to match, and the /mcp page leads with what you can read for free.",
+    vi: "Các tài liệu khám phá máy-móc giờ nói đúng sự thật. Server card MCP liệt kê các công cụ đọc thật, các tài nguyên, giới hạn theo IP, và công cụ nào cần xác thực — và không còn quảng bá năng lực prompts mà máy chủ chưa bao giờ triển khai. Agent card, agent skill và openapi.json đã được cập nhật khớp, và trang /mcp dẫn dắt bằng những gì bạn đọc được miễn phí.",
+  },
+  {
+    date: "2026-09",
     en: "The Email tab on Get AI;DR shows a live preview of the latest digest — exactly what lands in your inbox. The Chrome tab now spells out what the extension does.",
     vi: "Tab Email trong Get AI;DR hiển thị bản tin mới nhất đúng như email bạn sẽ nhận. Tab Chrome giải thích rõ tiện ích làm gì.",
   },

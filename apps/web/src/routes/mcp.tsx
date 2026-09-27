@@ -2,10 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Plug } from "lucide-react";
 import { ExtLink } from "../components/mcp/ExtLink";
 import {
+  AdminClientSection,
+  AuthSection,
   ClientsSection,
   ConnectSection,
+  ReadToolsSection,
+  ResourcesSection,
   RestSection,
-  ToolsSection,
+  TrustSection,
 } from "../components/mcp/McpSections";
 import { useLang } from "../lib/lang-context";
 import { localizedPageHead } from "../lib/seo";
@@ -21,6 +25,13 @@ export const Route = createFileRoute("/mcp")({
   component: McpPage,
 });
 
+/**
+ * This page is the public, indexed documentation for `/api/mcp`. It used
+ * to document only the six operator tools, which is why an agent that read
+ * it — or the machine-discovery card, which advertised an anonymous read
+ * surface — got a 401 on its first call. It now leads with the read tools,
+ * which need nothing, and states the credential boundary once.
+ */
 function McpPage() {
   const lang = useLang();
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
@@ -37,8 +48,8 @@ function McpPage() {
       </div>
       <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
         {t(
-          "MCP server for pushing news and managing sources. Implements the",
-          "Máy chủ MCP để đẩy tin tức và quản lý nguồn tin. Triển khai theo"
+          "Read ranked AI news over MCP with no authentication, and run the ingest pipeline as an operator. Implements the",
+          "Đọc tin AI đã xếp hạng qua MCP mà không cần xác thực, và điều khiển pipeline ingest ở vai trò vận hành. Triển khai theo"
         )}{" "}
         <ExtLink href="https://modelcontextprotocol.io">
           {t("Model Context Protocol", "chuẩn Model Context Protocol")}
@@ -48,7 +59,11 @@ function McpPage() {
 
       <ConnectSection />
       <ClientsSection />
-      <ToolsSection />
+      <ReadToolsSection />
+      <TrustSection />
+      <ResourcesSection />
+      <AuthSection />
+      <AdminClientSection />
       <RestSection />
 
       <p className="mt-6 text-sm text-muted-foreground">

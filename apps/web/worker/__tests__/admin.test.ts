@@ -1136,7 +1136,7 @@ describe("triggerIngest", () => {
 describe("MCP server", () => {
   const url = "https://news.duyet.net/api/mcp";
 
-  it("tools/list returns the 6 admin tools", async () => {
+  it("tools/list returns the read tools plus the 6 admin tools for an admin", async () => {
     const env = makeEnv();
     const req = new Request(url, {
       method: "POST",
@@ -1148,16 +1148,28 @@ describe("MCP server", () => {
     });
     const res = await handleMcpRequest(req, env);
     const json = (await res.json()) as any;
-    expect(json.result.tools.map((t: any) => t.name).sort()).toEqual(
-      [
-        "push_items",
-        "list_sources",
-        "upsert_source",
-        "delete_source",
-        "trigger_ingest",
-        "get_status",
-      ].sort()
-    );
+    const names: string[] = json.result.tools.map((t: any) => t.name);
+    // The six operator tools are unchanged since the registry split (#227).
+    for (const adminTool of [
+      "push_items",
+      "list_sources",
+      "upsert_source",
+      "delete_source",
+      "trigger_ingest",
+      "get_status",
+    ]) {
+      expect(names).toContain(adminTool);
+    }
+    // An admin additionally gets the anonymous read surface, once each.
+    for (const readTool of [
+      "latest_ai_news",
+      "search_news",
+      "get_story",
+      "get_ai_digest",
+    ]) {
+      expect(names.filter((name) => name === readTool)).toHaveLength(1);
+    }
+    expect(new Set(names).size).toBe(names.length);
   });
 
   it("tools/call push_items happy path", async () => {
