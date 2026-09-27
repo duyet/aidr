@@ -1,5 +1,6 @@
 import { TabsContent } from "@aidr/ui";
 import { ExternalLink } from "lucide-react";
+import { AnyRouterMark } from "./AnyRouterMark";
 import { ChartCard } from "./ChartCard";
 import { RankingCard } from "./RankingCard";
 import { TAB_PANEL } from "./tab-spacing";
@@ -9,7 +10,12 @@ const ANYROUTER_URL = "https://anyrouter.dev/?ref=aidr.today";
 function AnyRouterCard() {
   return (
     <ChartCard
-      title="AnyRouter"
+      title={
+        <span className="flex items-center gap-1.5">
+          <AnyRouterMark className="h-3.5 w-auto" />
+          AnyRouter
+        </span>
+      }
       subtitle="One gateway behind every model in this pipeline"
       className="md:col-span-2"
     >
