@@ -19,6 +19,7 @@ import {
   LOCALE_VARY,
   localeErrorResponse,
   normalizeLocaleRequest,
+  permanentLocaleRedirect,
   resolveRequestLocale,
   resolveServerFnLocaleRequest,
   temporaryLocaleRedirect,
@@ -174,7 +175,13 @@ export default {
       if (!resolution.ok) {
         return localeErrorResponse(request, resolution, "html");
       }
-      return temporaryLocaleRedirect(
+      // 308, not 307: the category prefix is a permanent permutation of the
+      // documented `/{8-hex}` canonical, so crawlers must consolidate onto it
+      // instead of re-checking the old address (issue #223). The target is
+      // still written in one hop, so no chain: `legacyStoryRedirectPath`
+      // returns the `/{8-hex}` form, and the locale gate above has already
+      // normalized `locale=` to `lang=`.
+      return permanentLocaleRedirect(
         request,
         withLang(dest.toString(), resolution.lang),
         resolution.lang

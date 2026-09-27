@@ -7,7 +7,12 @@ import { notFoundHead } from "../lib/seo";
 import { legacyStoryRedirectPath } from "../lib/slug";
 import type { Lang } from "../lib/types";
 
-/** Old /:cat/:slug permalinks use a temporary locale-safe redirect. */
+/** Old /:cat/:slug permalinks use a permanent locale-safe redirect.
+ *
+ * `src/server.ts` normally answers this permutation before the router runs;
+ * this `beforeLoad` is the in-app equivalent, so it uses the same permanence
+ * (`PERMANENT_LOCALE_REDIRECT_STATUS` in `lib/locale-response.ts`) — a
+ * client-side navigation must not see a weaker redirect than a crawler does. */
 export const Route = createFileRoute("/$cat/$slug")({
   beforeLoad: ({ params, context, location }) => {
     const to = legacyStoryRedirectPath(`/${params.cat}/${params.slug}`);
@@ -17,7 +22,7 @@ export const Route = createFileRoute("/$cat/$slug")({
           `${to}${location.searchStr}${location.hash}`,
           context.lang
         ),
-        statusCode: 307,
+        statusCode: 308,
       });
     }
   },

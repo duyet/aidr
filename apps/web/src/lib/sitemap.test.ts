@@ -85,6 +85,21 @@ describe("storySitemapUrl", () => {
   });
 });
 
+/**
+ * Strict readers reject the whole file on an unknown directive (Lighthouse:
+ * "robots.txt is not valid — 1 error found, Line 5, Unknown directive"), so
+ * this pins the file to the directives the standard actually defines. Commented
+ * lines are legal and ignored, which is where the llms.txt pointer lives.
+ */
+const KNOWN_ROBOTS_DIRECTIVES = new Set([
+  "user-agent",
+  "allow",
+  "disallow",
+  "crawl-delay",
+  "sitemap",
+  "host",
+]);
+
 describe("robotsTxt", () => {
   it("points crawlers at the sitemap", () => {
     const text = robotsTxt();
@@ -92,7 +107,32 @@ describe("robotsTxt", () => {
     expect(text).toContain("Allow: /");
     expect(text).not.toMatch(/^Disallow:/m);
     expect(text).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`);
-    expect(text).toContain(`LLMs-txt: ${SITE_URL}/llms.txt`);
+  });
+
+  it("keeps the llms.txt pointer as a comment, never a directive", () => {
+    const text = robotsTxt();
+    expect(text).toContain(`# LLMs-txt: ${SITE_URL}/llms.txt`);
+    expect(text).not.toMatch(/^LLMs-txt:/m);
+  });
+
+  it("emits no unknown directive and every line is well-formed", () => {
+    const lines = robotsTxt().split("\n");
+    const directives: string[] = [];
+    for (const [index, line] of lines.entries()) {
+      if (line.trim() === "" || line.trimStart().startsWith("#")) continue;
+      const [name, ...value] = line.split(":");
+      expect(
+        value.join(":").trim(),
+        `line ${index + 1} needs a value`
+      ).not.toBe("");
+      const field = name?.trim().toLowerCase() ?? "";
+      expect(
+        KNOWN_ROBOTS_DIRECTIVES.has(field),
+        `line ${index + 1}: unknown directive "${field}"`
+      ).toBe(true);
+      directives.push(field);
+    }
+    expect(directives).toContain("sitemap");
   });
 
   it("matches the committed public/robots.txt origin file", () => {

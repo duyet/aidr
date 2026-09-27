@@ -20,9 +20,12 @@ repeated (`lang=vi&lang=en` or repeated `locale`), and conflicting
 cookie or header-selected language. The resolver does not use first-value wins.
 The existing `news_lang` cookie name remains supported.
 
-Locale-dependent normalization and legacy story-path redirects use `307`, never
-`301`, and emit `Cache-Control: private, no-store`,
-`Vary: Cookie, Accept-Language`, and the selected `Content-Language`. UTM
+Locale-dependent normalization and header/cookie-selected story-path redirects
+use `307`, never `301`, and emit `Cache-Control: private, no-store`,
+`Vary: Cookie, Accept-Language`, and the selected `Content-Language`. A legacy
+`/{category}/{slug}` or over-long single-segment id is the one exception: it
+resolves to the documented permanent `/{8-hex}` canonical, so it answers `308`
+with the same private, varied, `noindex, nofollow` header set. UTM
 parameters, unrelated filters, and fragments are preserved. Error responses use
 the same no-store policy. A locale-bearing or header/cookie-selected
 `/extension` request is validated first and redirects temporarily to
@@ -58,10 +61,16 @@ The Worker applies the locale response policy to every TanStack SSR response:
   tokenized `/subscribe?unsubscribe=...` or `/subscribe?settings=...`, are always
   `private, no-store` and vary by `Cookie, Accept-Language`.
 - All SSR redirects and 4xx/5xx responses are private, no-store, and varied by
-  cookie and `Accept-Language`. Successful explicit-locale HTML is indexable;
-  bare localized variants are `noindex, follow` and remain private. Public assets,
-  discovery documents, and language-neutral APIs such as freshness/extension
-  metadata are not made locale variants by this policy.
+  cookie and `Accept-Language`. Indexability is decided once, by
+  `routeIndexability()` in `src/lib/route-indexability.ts`, which is the only
+  source for both the `X-Robots-Tag` header and the `<meta name="robots">`
+  rendered by `routeRobotsMeta` (`src/lib/seo.ts`); the locale response layer
+  only sets cache and `Vary`. Successful HTML is indexable whether the locale
+  is explicit (`?lang=vi|en`, publicly cacheable) or bare/header-selected
+  (private and varied, deduped by the canonical and hreflang links). Private
+  surfaces and 4xx/5xx stay `noindex, nofollow`. Public assets, discovery
+  documents, and language-neutral APIs such as freshness/extension metadata are
+  not made locale variants by this policy.
 
 The explicit query is part of every localized cache key, so Vietnamese and
 English responses cannot share an edge-cache entry.

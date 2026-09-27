@@ -389,7 +389,10 @@ export async function withRouteIndexabilityHeaders(
     status,
   });
   const headers = new Headers(resolvedResponse.headers);
-  if (headers.get("X-Robots-Tag") !== "noindex, nofollow") {
+  // A layer that already refused indexing (private surface, locale error, SSR
+  // error page) keeps its own directive; everything else mirrors this policy,
+  // which is the same value `<meta name="robots">` renders from.
+  if (headers.get("X-Robots-Tag") !== NOINDEX_NOFOLLOW_ROBOTS) {
     headers.set("X-Robots-Tag", policy.robots);
   }
   if (headers.get("Referrer-Policy") !== "no-referrer") {
