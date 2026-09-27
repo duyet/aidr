@@ -11,6 +11,7 @@ import {
   RestSection,
   TrustSection,
 } from "../components/mcp/McpSections";
+import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import { localizedPageHead } from "../lib/seo";
 import { GITHUB_URL } from "../lib/site";
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/mcp")({
       path: "/mcp",
       title: "MCP | AI News",
       lang: match.context.lang,
+      route: headRouteInput(match),
     }),
   component: McpPage,
 });

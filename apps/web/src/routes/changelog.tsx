@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactElement } from "react";
+import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import { localizedPageHead } from "../lib/seo";
 
@@ -136,6 +137,7 @@ export const Route = createFileRoute("/changelog")({
       path: "/changelog",
       title: "Changelog | AI News",
       lang: match.context.lang,
+      route: headRouteInput(match),
     }),
   component: ChangelogPage,
 });

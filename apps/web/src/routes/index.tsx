@@ -9,6 +9,7 @@ import { parseAidrLayout } from "../lib/aidr-layout";
 import { showFeedBrowseChrome } from "../lib/empty-feed";
 import { setCachedFeed } from "../lib/feed-cache";
 import { fetchFeed } from "../lib/feed-fn";
+import { headRouteInput } from "../lib/head-route";
 import { timeAgo } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
 import { withLang } from "../lib/locale-url";
@@ -47,7 +48,14 @@ export const Route = createFileRoute("/")({
         lang: context.lang,
       },
     }),
-  head: ({ match }) => homepageHead(match.context.lang),
+  head: ({ match, loaderData }) =>
+    homepageHead(match.context.lang, {
+      // The digest bullets are the only source of story permalinks, and they
+      // come from the same SSR payload the AI;DR section paints, so the
+      // JSON-LD ItemList can only list links that are in this response.
+      feed: loaderData,
+      route: headRouteInput(match),
+    }),
   component: IndexPage,
 });
 
