@@ -3,6 +3,7 @@ import {
   Link,
   stripSearchParams,
 } from "@tanstack/react-router";
+import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import { SITE_URL } from "../lib/site";
@@ -11,11 +12,12 @@ export const Route = createFileRoute("/terms")({
   search: {
     middlewares: [stripSearchParams<RootSearch>(["lang", "locale"])],
   },
-  head: () =>
+  head: ({ match }) =>
     pageHead({
       path: "/terms",
       title: "Terms | aidr.today",
       description: "Terms of use for aidr.today.",
+      route: headRouteInput(match),
     }),
   component: TermsPage,
 });

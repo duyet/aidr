@@ -3,6 +3,7 @@ import { DeliverPage } from "../components/subscribe/DeliverPage";
 import { SettingsView } from "../components/subscribe/SettingsView";
 import { UnsubscribeView } from "../components/subscribe/UnsubscribeView";
 import { type DeliverTab, parseDeliverTab } from "../lib/deliver-tab";
+import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import { localizedPageHead } from "../lib/seo";
 
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/subscribe")({
       path: "/subscribe",
       title: "Get AI;DR | Chrome, Telegram, Email",
       lang: match.context.lang,
+      route: headRouteInput(match),
     }),
   component: SubscribePage,
 });

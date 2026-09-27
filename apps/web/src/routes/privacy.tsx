@@ -3,6 +3,7 @@ import {
   Link,
   stripSearchParams,
 } from "@tanstack/react-router";
+import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import { SITE_URL } from "../lib/site";
@@ -11,12 +12,13 @@ export const Route = createFileRoute("/privacy")({
   search: {
     middlewares: [stripSearchParams<RootSearch>(["lang", "locale"])],
   },
-  head: () =>
+  head: ({ match }) =>
     pageHead({
       path: "/privacy",
       title: "Privacy | aidr.today",
       description:
         "Privacy policy for aidr.today and the aidr Chrome new-tab extension.",
+      route: headRouteInput(match),
     }),
   component: PrivacyPage,
 });

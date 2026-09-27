@@ -2,6 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { StoryRow } from "../components/StoryRow";
 import { ARTICLE_DATE_TAG, ARTICLE_TITLE_TAG } from "../lib/article-headings";
+import { headRouteInput } from "../lib/head-route";
 import { formatDayHeading } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
 import { notFoundCopy } from "../lib/not-found";
@@ -61,7 +62,9 @@ export const Route = createFileRoute("/$slug")({
       const lang = loaderData?.kind === "missing" ? loaderData.lang : "vi";
       return notFoundHead(notFoundCopy(lang).documentTitle);
     }
-    return articleHead(loaderData.item, match.context.lang);
+    return articleHead(loaderData.item, match.context.lang, {
+      route: headRouteInput(match),
+    });
   },
   component: StoryPage,
 });

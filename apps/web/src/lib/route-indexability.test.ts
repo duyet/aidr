@@ -9,23 +9,26 @@ import {
   routeIndexability,
   withRouteIndexabilityHeaders,
 } from "./route-indexability";
-import { articleHead, notFoundHead, routeRobotsMeta } from "./seo";
+import {
+  articleHead,
+  type HeadMeta,
+  notFoundHead,
+  routeRobotsMeta,
+} from "./seo";
 import { SITE_URL } from "./site";
 
-function metaContent(
-  tags: {
-    name?: string;
-    property?: string;
-    content?: string;
-    title?: string;
-  }[],
-  key: string
-): string | undefined {
+function metaContent(tags: HeadMeta[], key: string): string | undefined {
   const hit = tags.find(
     (tag) =>
-      tag.name === key || tag.property === key || (key === "title" && tag.title)
+      ("name" in tag && tag.name === key) ||
+      ("property" in tag && tag.property === key) ||
+      (key === "title" && "title" in tag)
   );
-  return hit?.content ?? hit?.title;
+  return hit && "content" in hit
+    ? hit.content
+    : hit && "title" in hit
+      ? hit.title
+      : undefined;
 }
 
 function policyForUrl(path: string, method = "GET") {

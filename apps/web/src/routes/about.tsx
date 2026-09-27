@@ -6,6 +6,7 @@ import {
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { anyrouterModelUrl } from "../lib/anyrouter";
+import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
@@ -18,10 +19,11 @@ export const Route = createFileRoute("/about")({
   search: {
     middlewares: [stripSearchParams<RootSearch>(["lang", "locale"])],
   },
-  head: () =>
+  head: ({ match }) =>
     pageHead({
       path: "/about",
       title: "About | AI News",
+      route: headRouteInput(match),
     }),
   component: AboutPage,
 });

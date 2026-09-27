@@ -1,5 +1,6 @@
 import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { useState } from "react";
+import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import { SITE_URL } from "../lib/site";
@@ -8,12 +9,13 @@ export const Route = createFileRoute("/brand")({
   search: {
     middlewares: [stripSearchParams<RootSearch>(["lang", "locale"])],
   },
-  head: () =>
+  head: ({ match }) =>
     pageHead({
       path: "/brand",
       title: "Brand | AI;DR",
       description:
         "Official AI;DR / aidr.today marks — download or copy URLs for reuse.",
+      route: headRouteInput(match),
     }),
   component: BrandPage,
 });

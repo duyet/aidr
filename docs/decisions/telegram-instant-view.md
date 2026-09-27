@@ -163,21 +163,20 @@ following stricter product gate applies to **each** language:
 | `body` | The localized public story summary/body and its source links, as rendered on the story page | Required. Do not claim this is the full original article when the page only has a summary. No interactive widgets or untrusted instructions. | [`renderStoryMarkdown`](../../apps/web/src/lib/story-markdown.ts); the gate requires a non-empty summary **and** at least one source URL, counted from the rendered Markdown. |
 | `published_date` | `published_at` as Unix **seconds** | Required for news stories by the aidr gate; do not send milliseconds. | `normalizePublishedAtSeconds` — normalizes the documented epoch ms/seconds bug class and rejects anything outside 2000–2100. A millisecond fixture never becomes a year-2286 date. |
 | `image_url` | The **generated first-party card** `https://aidr.today/{id8}.png?lang=vi\|en` | Required for this POC. | The card is 1200×630 `image/png` by construction, so reachability, hotlinking, MIME, and dimensions are deterministic. It is also what `articleHead` already emits as `og:image` and what the trending `sendPhoto` path now attaches. |
-| `site_name` | The single shared constant [`SITE_NAME`](../../apps/web/src/lib/site.ts) | Telegram's format property is optional, but its link-preview checklist requires a matching visible site name. Do not append the Telegram handle. | The gate imports the constant, so it cannot drift from `og:site_name`. **The value itself is still the open brand question** — see below. |
+| `site_name` | **Resolved: `AI;DR`**, the visible header wordmark, read from the single [`SITE_NAME`](../../apps/web/src/lib/site.ts) constant | Telegram's format property is optional, but its link-preview checklist requires a matching visible site name. Do not append the Telegram handle or any suffix, and do not re-derive a second brand string. | The gate imports the constant, so it cannot drift from `og:site_name` or the JSON-LD `WebSite`/`Organization` name. The value's evidence and its deliberate exclusions (`SITE_TITLE`, `SITE_DESCRIPTION`, per-route titles) are recorded next to the constant. |
 | `description` | The first summary paragraph for the **rendered** locale | Required for a useful Telegram link preview; never invent a translation or copy. | The gate takes the first paragraph of the same localized summary the body renders. A story with no real summary fails `description_missing` rather than shipping the renderer's "No summary is available." placeholder. |
 
 The official [template checklist](https://instantview.telegram.org/checklist)
 also requires the publication date for news, a suitable link-preview photo, and
-a `site_name` matching the name shown on the website. `site_name` is now read
-from one constant, so this record no longer carries a second literal — but
-**the constant's value is not settled by that fact.** The gate reports
-`site_name_agrees_with_visible_header: unresolved-brand-decision`: the metadata
-says `AI News` while the visible header brand is `AI;DR`, and one product
-decision ([#224](https://github.com/duyet/aidr/issues/224)) plus one editor
-confirmation must settle it. Until then, record the editor-accepted value and
-the visible page used to justify it; do not treat the current metadata constant
-as final IV truth. A `cover` may be added when it is a real, non-duplicated
-cover; it is not a substitute for the required image gate.
+a `site_name` matching the name shown on the website. `site_name` is no longer
+open: it is `AI;DR`, read from the one constant that also feeds `og:site_name`
+and the site's JSON-LD entity names, so the metadata surface and the visible
+brand cannot drift apart again. The check that remains is the editor-side
+comparison of that value against the rendered header — not a second decision.
+Re-verify it in the IV Editor if the header wordmark ever changes, and change
+the constant with it — never the metadata alone. A `cover` may be added when it
+is a real, non-duplicated cover; it is not a substitute for the required image
+gate.
 
 ### The field gate is now automated; the acceptance proof is not
 
@@ -244,8 +243,9 @@ claim that the query shape is accepted by the editor:
   "media_validation": "automated-bounded-preflight-plus-manual-editor-acceptance",
   "http_url_photo_limit": "5 MB",
   "multipart_upload_photo_limit": "10 MB",
-  "site_name": "SITE_NAME (src/lib/site.ts)",
-  "site_name_status": "single-shared-constant-value-still-unresolved-vs-visible-header",
+  "site_name": "AI;DR",
+  "site_name_source": "SITE_NAME in apps/web/src/lib/site.ts",
+  "site_name_status": "resolved-visible-header-brand-2026-09-27",
   "rhash": "editor-generated-only"
 }
 ```
@@ -254,17 +254,15 @@ claim that the query shape is accepted by the editor:
 shape for the editor-produced wrapper, not a query template to commit or a
 promise that the editor will match both language variants.
 `editor_query_template: null` records that uncertainty explicitly; the editor
-review must establish the query scope and exact `View in Telegram` output.
-`site_name` now names the one constant every consumer reads
-(`og:site_name` and the field gate), replacing this record's second literal.
-That removes the *drift* risk; it does not settle the *value* — the visible
-header still has to be reconciled with the constant, so
-`site_name_status` stays unresolved rather than claiming a decided brand. The
-media limit fields are now encoded in `TELEGRAM_IV_LIMITS` and enforced by the
-bounded preflight, with the 5 MB ceiling for the HTTP-URL photo path and 10 MB
-for a multipart upload. Neither limit proves Telegram acceptance, and this
-record still changes no delivery key, adds no template, and enables no live IV
-surface.
+review must still establish the query scope and exact `View in Telegram` output.
+`site_name` is no longer open: it is `AI;DR`, taken from the single `SITE_NAME`
+constant that also feeds `og:site_name` and the site's JSON-LD entity names.
+That removes the drift risk *and* settles the value; the remaining check is the
+editor-side comparison against the rendered header. The media limit fields are
+now encoded in `TELEGRAM_IV_LIMITS` and enforced by the bounded preflight, with
+the 5 MB ceiling for the HTTP-URL photo path and 10 MB for a multipart upload.
+Neither limit proves Telegram acceptance, and this record still changes no
+delivery key, adds no template, and enables no live IV surface.
 
 ## Platform constraints and cache
 
@@ -431,10 +429,11 @@ asserts in its unit tests that it can emit no other value.
       query variant reaches the intended template and that the rendered content
       matches the requested language; do not assume one query template or
       `rhash` covers both variants.
-- [ ] Resolve and record `site_name`. Current metadata emits `AI News`, while
-      the visible header brand is `AI;DR`; compare the homepage and editor
-      preview, then record the exact accepted value rather than appending a
-      Telegram handle or other metadata.
+- [ ] Verify the resolved `site_name` in the editor. The value is decided —
+      `AI;DR` from `SITE_NAME` (see [`site.ts`](../../apps/web/src/lib/site.ts))
+      — so this is a confirmation that the editor preview shows the same word
+      the header paints, not a new decision. Do not append a Telegram handle or
+      other metadata.
 - [ ] With sanitized fixtures, verify one representative EN story and one VI
       story in the Editor: title, body, publication date, image, site name,
       description, and source links. If VI content falls back to English, record

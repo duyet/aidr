@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Send } from "lucide-react";
 import { SubmitGate } from "../components/submit/SubmitGate";
 import { useClerkModule } from "../lib/clerk-user";
+import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import { localizedPageHead } from "../lib/seo";
 
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/submit")({
       path: "/submit",
       title: "Submit a story | AI News",
       lang: match.context.lang,
+      route: headRouteInput(match),
     }),
   component: SubmitPage,
 });
