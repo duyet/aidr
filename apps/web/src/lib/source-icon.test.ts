@@ -9,6 +9,7 @@ function row(partial: Partial<IngestSourceRow>): IngestSourceRow {
     type: "rss",
     enabled: true,
     itemCount: 0,
+    lastItemAt: null,
     config: {},
     ...partial,
   };

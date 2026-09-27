@@ -1,26 +1,31 @@
-/** Mirrors migrations/0018_vendor_blogs.sql, 0020_marketbrief.sql,
- *  0021_xai_deepmind_aws.sql, and 0022_editorial_rss.sql so ingest can seed
- *  before `wrangler d1 migrations apply`. */
-export const VENDOR_BLOG_SEED_SQL = `
-INSERT OR IGNORE INTO sources (id, name, type, config, enabled) VALUES
-  ('openai', 'OpenAI News', 'rss', '{"feed":"https://openai.com/news/rss.xml","homepage":"https://openai.com"}', 1),
-  ('anthropic', 'Anthropic News', 'anthropic', '{"homepage":"https://www.anthropic.com"}', 1),
-  ('google-ai', 'Google AI Blog', 'rss', '{"feed":"https://blog.google/technology/ai/rss/","homepage":"https://blog.google"}', 1),
-  ('hf-blog', 'Hugging Face Blog', 'rss', '{"feed":"https://huggingface.co/blog/feed.xml","homepage":"https://huggingface.co"}', 1),
-  ('marketbrief', 'MarketBrief', 'marketbrief', '{"homepage":"https://marketbrief.now","topics":["ai"]}', 1),
-  ('xai', 'xAI News', 'xai', '{"homepage":"https://x.ai","sitemap":"https://x.ai/sitemap.xml"}', 1),
-  ('deepmind', 'DeepMind Blog', 'rss', '{"feed":"https://deepmind.google/blog/rss.xml","homepage":"https://deepmind.google"}', 1),
-  ('aws-ml', 'AWS ML Blog', 'rss', '{"feed":"https://aws.amazon.com/blogs/machine-learning/feed/","homepage":"https://aws.amazon.com/blogs/machine-learning/"}', 1),
-  ('google-dev', 'Google Developers Blog', 'rss', '{"feed":"https://developers.googleblog.com/rss/","homepage":"https://developers.googleblog.com"}', 1),
-  ('mit-tr-ai', 'MIT Tech Review AI', 'rss', '{"feed":"https://www.technologyreview.com/topic/artificial-intelligence/feed/","homepage":"https://www.technologyreview.com/topic/artificial-intelligence/"}', 1),
-  ('marktechpost', 'MarkTechPost', 'rss', '{"feed":"https://www.marktechpost.com/feed/","homepage":"https://www.marktechpost.com/"}', 1),
-  ('google-research', 'Google Research Blog', 'rss', '{"feed":"https://research.google/blog/rss/","homepage":"https://research.google/blog/"}', 1),
-  ('simonwillison', 'Simon Willison', 'rss', '{"feed":"https://simonwillison.net/atom/everything/","homepage":"https://simonwillison.net/"}', 1),
-  ('the-decoder', 'The Decoder', 'rss', '{"feed":"https://the-decoder.com/feed/","homepage":"https://the-decoder.com/"}', 1),
-  ('mit-news-ai', 'MIT News AI', 'rss', '{"feed":"https://news.mit.edu/rss/topic/artificial-intelligence2","homepage":"https://news.mit.edu/"}', 1),
-  ('lastweekin-ai', 'Last Week in AI', 'rss', '{"feed":"https://lastweekin.ai/feed","homepage":"https://lastweekin.ai/"}', 1)
-`;
+/**
+ * Runtime seed for the `sources` table.
+ *
+ * Previously this file hand-copied every row out of migrations 0018, 0020,
+ * 0021 and 0022, and its own header said so ("Mirrors migrations/… so ingest
+ * can seed before `wrangler d1 migrations apply`"). That duplication was the
+ * drift the issue was filed about.
+ *
+ * The SQL is now *derived* from the single declarative list in
+ * `./catalog.ts` — the same list `migrations/0027_source_registry.sql` is
+ * generated from — so ingest can still seed before migrations are applied,
+ * and a source added to the registry cannot reach one and miss the other.
+ * `worker/__tests__/source-catalog.test.ts` asserts the two agree byte for
+ * byte.
+ *
+ * Upsert semantics (name/type/config authoritative, `enabled` operator-owned)
+ * are documented on `buildSourceSeedSql` in the catalog.
+ */
+import { buildSourceSeedSql } from "./catalog.js";
 
+/** Retained under its historical name: `worker/workflow.ts` and the seed
+ *  tests import it, and renaming a widely-referenced export buys nothing. */
+export const VENDOR_BLOG_SEED_SQL = `${buildSourceSeedSql().trim()}\n`;
+
+/** Idempotence guard. The Worker isolate is long-lived, so without this the
+ *  upsert would re-run on every hourly ingest; the statement is idempotent but
+ *  it is a needless write, and the module-level flag is what the test helper
+ *  below resets. */
 let seeded = false;
 
 export async function ensureVendorBlogSources(db: D1Database): Promise<void> {

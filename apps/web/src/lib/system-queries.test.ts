@@ -42,6 +42,7 @@ describe("loadSystemStats ingest sources", () => {
               config: '{"query":"AI OR LLM"}',
               enabled: 1,
               item_count: 12,
+              last_item_at: 1790500000,
             },
             {
               id: "lobsters",
@@ -50,6 +51,7 @@ describe("loadSystemStats ingest sources", () => {
               config: "{}",
               enabled: 0,
               item_count: 0,
+              last_item_at: null,
             },
           ],
         }),
@@ -76,6 +78,7 @@ describe("loadSystemStats ingest sources", () => {
         type: "hn",
         enabled: true,
         itemCount: 12,
+        lastItemAt: 1790500000,
         config: { query: "AI OR LLM" },
       },
       {
@@ -84,6 +87,7 @@ describe("loadSystemStats ingest sources", () => {
         type: "lobsters",
         enabled: false,
         itemCount: 0,
+        lastItemAt: null,
         config: {},
       },
     ]);

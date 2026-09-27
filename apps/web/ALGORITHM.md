@@ -81,6 +81,51 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
    MarketBrief AI hub via `/{topic}/__data.json` (default topic `ai`;
    war/politics stay out). Extra RSS: `deepmind`, `aws-ml`, `google-dev`.
 
+   The set of sources is **declarative**: one list in
+   `worker/sources/catalog.ts` generates the runtime seed, the migration, and
+   the `/api/system/sources` + `/data` surfaces, so a source cannot reach one
+   and miss the others. An operator can also add or enable an `rss` row at
+   runtime through `upsert_source` with no deploy — see
+   [`worker/README.md`](worker/README.md) → "Add a source without a deploy".
+
+   - **Flood gate.** A high-volume feed is cut before the scorer sees it, in
+     this order: an optional named title pre-filter (`keywordFilter: "ai"`,
+     the same regex HN uses), then a hard newest-first `maxItems` cap applied
+     after the since-window filter. The Vietnamese newsroom and the four AI
+     newsrooms are capped at 6 items per run each. Newest-first is what makes
+     the cap safe: the 26h window means the head of the feed at the next run
+     is exactly what was published since the last one, so the cap samples the
+     live edge and dedupe drops the rest.
+   - **Host pacing.** A row may set `minRequestIntervalMs` to serialise
+     same-host fetches; the first request to a host is never delayed.
+   - **Explicit source language.** A row with `sourceLang: "vi"` puts its
+     items on the VI→EN translation-QA path below. It is declared metadata,
+     never inferred from diacritics.
+   - A source that returns a non-2xx, or a 200 that is really an HTML page,
+     throws a typed `SourceFetchError` so the run records `fetch_failed` /
+     `parse_failed` rather than reporting a quiet feed.
+
+1b. **Per-source health + staleness** — every source row gets a record in
+    `workflow_runs.stats.sourceHealth`: `fetched` / `scored` / `accepted` /
+    `rejected` / `merged`, a structured skip reason (`fetch_failed`,
+    `parse_failed`, `empty`, `all_rejected_below_relevance`, `disabled` — a
+    closed enum, never free text or a URL), and a count of consecutive
+    zero-item runs. The streak is **carried forward** from the previous run's
+    stats (one single-row read) rather than recomputed from run history, so
+    surfacing staleness on the read path costs nothing. A source at or over
+    its threshold is flagged stale in `/api/system/sources` and the `/data`
+    Algo tab: **168 consecutive runs** (7 days at the hourly cadence). That
+    number is measured, not round — 14 of the 21 registry feeds returned
+    nothing inside the 26h window when they were verified live, including
+    pre-existing ones that publish weekly, so the "e.g. 48 runs" in #230 would
+    have flagged healthy sources most of the weekend. A row may override it
+    with `staleAfterRuns` when a source's real cadence demands it; arXiv is
+    the known case (no weekend submissions, ~54 silent runs) and is not in
+    the registry yet — see `ARXIV_NOT_ADDED_REASON` in
+    `worker/sources/catalog.ts`. A disabled source is reported `disabled`,
+    never `stale` — off is a decision, not a fault. This is observability
+    only: it changes no ranking, no prompt, and no LLM budget.
+
 2. **Dedupe** — item id = `sha256(url)`; ids already in `items` are dropped.
 
 3. **Enrich** — missing summary/thumbnail filled from the article page
@@ -346,6 +391,15 @@ even if a later slice times out.
 - TL;DR uses a 90s hang-cap.
 - Translate attempts use a 60s hang-cap so `anyrouter/auto` is not killed
   mid-route (a 25s cap made every score/TL;DR model log 0 tokens).
+
+None of these budgets are raised by adding sources. The flood gate above is
+what makes extra coverage fit inside them: `scoreItems` runs 3 concurrent
+batches of 5 (15 items) inside a 4-minute step, and the measured steady state
+is ~4 new items per run. Each new source row's `maxItems` is therefore capped
+at or below one score batch (5), and the whole Vietnamese + newsroom addition
+is bounded at 6 items per run per source on a 26h window that dedupe then
+collapses. If a future source set does not fit, the number to lower is the
+source row's `maxItems` — never a hang-cap, never a batch size.
 
 A hang, empty sanitize, timeout, or 402 advances the chain:
 

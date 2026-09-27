@@ -19,8 +19,17 @@ describe("algo tab model chains", () => {
     }
     // No per-model links left in the card that dropped them.
     expect(algo).not.toContain("anyrouterModelUrl");
-    // It no longer needs to fetch the models it does not render.
-    expect(algo).not.toContain("useSystemData");
+    // The Algo tab must not fetch the *model chains* — they are rendered once,
+    // in the Ranking card. (It DOES fetch per-source health, added in #230:
+    // the acceptance criterion puts fetch/accept/reject counts on this tab. So
+    // the guard is narrowed to the model data rather than to "no fetching at
+    // all", which was a proxy for the real rule.)
+    expect(algo).not.toContain("API.overview");
+    expect(algo).not.toContain("models.scoring");
+    // The one request this tab is allowed to make is the sources endpoint.
+    expect(algo).toContain("API.sources");
+    // Call sites, not the import: exactly one fetch on the whole tab.
+    expect(algo.match(/useSystemData</g)).toHaveLength(1);
     // The pitch keeps the referral link. The URL itself now lives in
     // lib/site.ts so the footer, the attribution strip, and /about cannot
     // drift onto a different (uncredited) target; assert both halves.
