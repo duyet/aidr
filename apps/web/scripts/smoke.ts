@@ -162,22 +162,152 @@ async function main() {
   });
 
   await check(
-    "GET /sitemap.xml -> 200 application/xml with urlset",
+    "GET /sitemap.xml -> 200 application/xml sitemapindex whose children are 200",
     async () => {
       const res = await fetch(`${base}/sitemap.xml`);
       assert(res.status === 200, `expected 200, got ${res.status}`);
       const ctype = res.headers.get("content-type") ?? "";
       assert(ctype.includes("xml"), `expected xml content-type, got ${ctype}`);
       const body = await res.text();
-      assert(body.includes("<urlset"), "sitemap missing <urlset>");
-      assert(
-        body.includes(`${base}/?lang=vi`),
-        "sitemap missing Vietnamese homepage loc"
+      assert(body.includes("<sitemapindex"), "sitemap missing <sitemapindex>");
+      const children = [...body.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+        (match) => match[1] ?? ""
       );
       assert(
-        body.includes(`${base}/?lang=en`),
-        "sitemap missing English homepage loc"
+        children.includes(`${base}/sitemaps/static.xml`),
+        "index missing the static child"
       );
+      assert(
+        children.includes(`${base}/news.xml`),
+        "index missing the news sitemap"
+      );
+      assert(
+        children.some((loc) =>
+          /\/sitemaps\/sitemap-\d{4}-\d{2}(-\d+)?\.xml$/.test(loc)
+        ),
+        "index missing a date-sharded story child"
+      );
+      for (const child of children) {
+        const childRes = await fetch(child);
+        assert(
+          childRes.status === 200,
+          `sitemap child ${child} returned ${childRes.status}`
+        );
+        const childBody = await childRes.text();
+        assert(
+          childBody.startsWith("<?xml"),
+          `sitemap child ${child} is not an XML document`
+        );
+        // Every <loc> must carry a <lastmod>.
+        const locs = [...childBody.matchAll(/<loc>/g)].length;
+        const lastmods = [...childBody.matchAll(/<lastmod>/g)].length;
+        assert(
+          lastmods === locs,
+          `sitemap child ${child} has ${locs} locs and ${lastmods} lastmods`
+        );
+      }
+      const staticChild = await (
+        await fetch(`${base}/sitemaps/static.xml`)
+      ).text();
+      assert(
+        staticChild.includes(`${base}/?lang=vi`),
+        "static child missing Vietnamese homepage loc"
+      );
+      assert(
+        staticChild.includes(`${base}/?lang=en`),
+        "static child missing English homepage loc"
+      );
+    }
+  );
+
+  await check(
+    "GET /news.xml -> 200 news sitemap, bounded and well-formed",
+    async () => {
+      const res = await fetch(`${base}/news.xml`);
+      assert(res.status === 200, `expected 200, got ${res.status}`);
+      const body = await res.text();
+      assert(body.startsWith("<?xml"), "news.xml is not an XML document");
+      assert(
+        body.includes(
+          'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"'
+        ),
+        "news.xml missing the news namespace"
+      );
+      const entries = [...body.matchAll(/<news:news>/g)].length;
+      assert(entries <= 1000, `news.xml emitted ${entries} entries`);
+      assert(
+        /<news:publication_date>\d{4}-\d{2}-\d{2}T[\d:+-]+<\/news:publication_date>/.test(
+          body
+        ),
+        "news.xml missing a W3C publication_date"
+      );
+    }
+  );
+
+  await check(
+    "GET /feed.xml?lang=vi -> 200 RSS with the documented locale contract",
+    async () => {
+      const explicit = await fetch(`${base}/feed.xml?lang=vi`);
+      assert(explicit.status === 200, `expected 200, got ${explicit.status}`);
+      assert(
+        (explicit.headers.get("content-type") ?? "").startsWith(
+          "application/rss+xml"
+        ),
+        `unexpected content-type ${explicit.headers.get("content-type")}`
+      );
+      assert(
+        explicit.headers.get("cache-control")?.includes("public") === true,
+        "explicit-locale feed should be publicly cacheable"
+      );
+      const body = await explicit.text();
+      assert(body.startsWith('<?xml version="1.0"'), "feed.xml is not XML");
+      assert(body.includes('<rss version="2.0"'), "feed.xml is not RSS 2.0");
+      assert(
+        body.includes(`<atom:link rel="self"`),
+        "feed.xml missing atom:link rel=self"
+      );
+      assert(
+        body.includes("/feed.xml?lang=vi"),
+        "feed.xml self link does not match the requested locale"
+      );
+      const bytes = Buffer.byteLength(body);
+      assert(bytes <= 262_144, `feed.xml is ${bytes} bytes, over the cap`);
+
+      const bare = await fetch(`${base}/feed.xml`);
+      assert(
+        bare.headers.get("cache-control") === "private, no-store",
+        `bare feed cache-control was ${bare.headers.get("cache-control")}`
+      );
+      assert(
+        (bare.headers.get("vary") ?? "").includes("Accept-Language"),
+        "bare feed must vary on Accept-Language"
+      );
+      const legacy = await fetch(`${base}/feed.xml?locale=vi`, {
+        redirect: "manual",
+      });
+      assert(legacy.status === 307, `expected 307, got ${legacy.status}`);
+      for (const bad of [
+        "/feed.xml?lang=xx",
+        "/feed.xml?lang=vi&lang=en",
+        "/feed.xml?lang=vi&locale=vi",
+      ]) {
+        const rejected = await fetch(`${base}${bad}`, { redirect: "manual" });
+        assert(rejected.status === 400, `${bad} returned ${rejected.status}`);
+      }
+
+      // Every advertised story link must be a canonical, indexable permalink.
+      for (const link of [
+        ...body.matchAll(/<item>[\s\S]*?<link>([^<]+)<\/link>/g),
+      ].map((match) => match[1] ?? "")) {
+        assert(
+          /^https:\/\/aidr\.today\/[0-9a-f]{8}\?lang=(vi|en)$/.test(link),
+          `feed advertises a non-canonical link: ${link}`
+        );
+        const story = await fetch(link, { redirect: "manual" });
+        assert(story.status === 200, `${link} returned ${story.status}`);
+        const robots = story.headers.get("x-robots-tag") ?? "";
+        assert(!robots.includes("noindex"), `${link} is served as ${robots}`);
+      }
     }
   );
 

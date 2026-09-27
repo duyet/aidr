@@ -12,6 +12,11 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-09",
+    en: "aidr.today is now subscribable: an RSS feed at aidr.today/feed.xml (also /rss.xml), in English and Vietnamese, plus a Google News sitemap and a sitemap that no longer drops older stories. The homepage and Get AI;DR link the feed so any reader can pick it up.",
+    vi: "aidr.today giờ đã đăng ký được: bản tin RSS tại aidr.today/feed.xml (cũng là /rss.xml), có tiếng Anh và tiếng Việt, kèm sitemap Google News và sitemap không còn bỏ sót tin cũ. Trang chủ và trang Nhận AI;DR đã có liên kết tới bản tin.",
+  },
+  {
+    date: "2026-09",
     en: "The Email tab on Get AI;DR shows a live preview of the latest digest — exactly what lands in your inbox. The Chrome tab now spells out what the extension does.",
     vi: "Tab Email trong Get AI;DR hiển thị bản tin mới nhất đúng như email bạn sẽ nhận. Tab Chrome giải thích rõ tiện ích làm gì.",
   },

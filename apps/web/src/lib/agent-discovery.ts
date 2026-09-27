@@ -28,6 +28,8 @@ Use this skill when an agent needs today's ranked AI news, a bilingual TL;DR, or
 
 - JSON digest (no auth): GET ${SITE_URL}/api/public?lang=en (or \`lang=vi\`)
 - Feed JSON: GET ${SITE_URL}/api/feed?lang=en (or \`lang=vi\`)
+- RSS 2.0: GET ${SITE_URL}/feed.xml?lang=en (or \`lang=vi\`); \`/rss.xml\` serves the identical document. Bounded to the newest 100 items with canonical explicit-locale permalinks.
+- Google News sitemap: GET ${SITE_URL}/news.xml — newest 2 days, at most 1,000 \`news:news\` entries, one per story. aidr is an aggregator, not an original publisher, and does not claim Google News publisher status.
 - Story Markdown (bounded, generated from sanitized story data): GET ${SITE_URL}/api/story/{id}.md?lang=en
 - Story Markdown in Vietnamese (English fallback is explicit when translation is missing): GET ${SITE_URL}/api/story/{id}.md?lang=vi
 - Story id: use the 8-character canonical prefix. A 9–64 character prefix is accepted only when it and its 8-character target both resolve uniquely; ambiguity never redirects.
@@ -317,6 +319,74 @@ export function openApiDocument(): unknown {
             },
             ...LOCALE_ERROR_RESPONSES,
             "500": { description: "Feed query failed; details are redacted" },
+          },
+        },
+      },
+      "/feed.xml": {
+        get: {
+          summary: "RSS 2.0 syndication document",
+          description:
+            "Bounded RSS 2.0 rendered from the same loader as /api/feed. At most 100 items, newest first; each description is capped and the whole document is capped at 262,144 bytes. Every item link and guid is the canonical explicit-locale story permalink (https://aidr.today/{8hex}?lang=en|vi) with no UTM or fragment, and pubDate is RFC-822 derived from published_at epoch seconds. media:content is emitted only for a thumbnail that passed the stored media-manifest policy. Uses the same locale contract as /api/feed: bare requests are cookie/Accept-Language selected and private, explicit lang is publicly cacheable, one legacy locale redirects with 307, and invalid/repeated/conflicting values return 400. /rss.xml serves the identical document.",
+          parameters: [
+            LOCALE_QUERY_PARAMETER,
+            LOCALE_ALIAS_PARAMETER,
+            {
+              name: "days",
+              in: "query",
+              required: false,
+              description: "Window in days, clamped to 1-14.",
+              schema: { type: "integer", minimum: 1, maximum: 14 },
+            },
+            {
+              name: "before",
+              in: "query",
+              required: false,
+              description:
+                "Exclusive YYYY-MM-DD upper bound; a malformed value is ignored rather than passed to the query.",
+              schema: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "RSS 2.0 document for the resolved locale",
+              content: {
+                "application/rss+xml": { schema: { type: "string" } },
+              },
+            },
+            ...LOCALE_ERROR_RESPONSES,
+            "500": { description: "Feed query failed; details are redacted" },
+            "503": { description: "The D1 database binding is unavailable" },
+          },
+        },
+      },
+      "/news.xml": {
+        get: {
+          summary: "Google News sitemap",
+          description:
+            "news:-namespaced sitemap for the newest 2 days of published stories, at most 1000 news:news entries, one per story at the locale actually rendered for it. news:publication > news:name is the aidr publication, and news:publication_date is a W3C datetime in Asia/Ho_Chi_Minh. Language-neutral: not a locale-aware surface. aidr is an aggregator and does not claim Google News publisher status. Entries beyond the cap remain in the date-sharded sitemap children.",
+          responses: {
+            "200": {
+              description:
+                "Valid news sitemap, 200 even when D1 is unavailable",
+              content: { "application/xml": { schema: { type: "string" } } },
+            },
+            "500": {
+              description:
+                "Feed query failed; an empty valid document is served",
+            },
+          },
+        },
+      },
+      "/sitemap.xml": {
+        get: {
+          summary: "Sitemap index",
+          description:
+            "A sitemapindex listing /sitemaps/static.xml, one child per UTC month of publication (sharded at 1000 items per child), and /news.xml. Every child returns 200 application/xml and falls back to a valid static-only document on a D1 error.",
+          responses: {
+            "200": {
+              description: "Sitemap index",
+              content: { "application/xml": { schema: { type: "string" } } },
+            },
           },
         },
       },

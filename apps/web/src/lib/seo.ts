@@ -1,4 +1,4 @@
-import { withLang } from "./locale-url";
+import { absoluteSiteUrl, withLang } from "./locale-url";
 import {
   type RouteIndexabilityInput,
   routeIndexability,
@@ -26,6 +26,8 @@ export interface HeadLink {
   href: string;
   type?: string;
   hrefLang?: string;
+  /** `title` on a `rel="alternate"` link is the feed name a reader shows. */
+  title?: string;
 }
 
 export interface HeadTags {
@@ -46,6 +48,20 @@ const SITEMAP_LINK: HeadLink = {
   type: "application/xml",
   href: `${SITE_URL}/sitemap.xml`,
 };
+
+/**
+ * Feed autodiscovery. `type` is what readers and browsers match on, and the
+ * href is always the canonical `/feed.xml` with an explicit locale so a
+ * subscriber never lands on the cookie-selected (private, no-store) variant.
+ */
+export function feedDiscoveryLink(lang: Lang): HeadLink {
+  return {
+    rel: "alternate",
+    type: "application/rss+xml",
+    title: lang === "vi" ? `${SITE_NAME} (aidr.today)` : SITE_TITLE,
+    href: absoluteSiteUrl("/feed.xml", lang),
+  };
+}
 
 function shareTags(opts: {
   title: string;
@@ -159,7 +175,11 @@ export function localizedPageHead(
   });
   return {
     ...head,
-    links: [...localizedHeadLinks(opts.path, opts.lang), SITEMAP_LINK],
+    links: [
+      ...localizedHeadLinks(opts.path, opts.lang),
+      feedDiscoveryLink(opts.lang),
+      SITEMAP_LINK,
+    ],
   };
 }
 
@@ -174,7 +194,11 @@ export function homepageHead(lang: Lang = "vi"): HeadTags {
   });
   return {
     ...head,
-    links: [...localizedHeadLinks("/", lang), SITEMAP_LINK],
+    links: [
+      ...localizedHeadLinks("/", lang),
+      feedDiscoveryLink(lang),
+      SITEMAP_LINK,
+    ],
   };
 }
 
@@ -217,7 +241,11 @@ export function articleHead(
           ? { name: "twitter:title", content: item.title }
           : tag
     ),
-    links: [...localizedHeadLinks(storyPath(item), lang), SITEMAP_LINK],
+    links: [
+      ...localizedHeadLinks(storyPath(item), lang),
+      feedDiscoveryLink(lang),
+      SITEMAP_LINK,
+    ],
   };
 }
 

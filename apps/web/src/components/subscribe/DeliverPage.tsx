@@ -39,6 +39,7 @@ import { EXTENSION_VERSION } from "../../lib/extension-release";
 import { useLang } from "../../lib/lang-context";
 import {
   CHROME_WEB_STORE_URL,
+  RSS_FEED_PATH,
   TELEGRAM_HANDLE,
   TELEGRAM_URL,
 } from "../../lib/site";
@@ -266,6 +267,22 @@ export function DeliverPage({
           <DigestPreview lang={lang} />
         </TabsContent>
       </Tabs>
+
+      <p className="text-sm text-muted-foreground">
+        {t("Prefer your own reader? ", "Thích dùng trình đọc riêng? ")}
+        <a
+          href={`${RSS_FEED_PATH}?lang=${lang}`}
+          rel="alternate"
+          type="application/rss+xml"
+          className="font-medium text-foreground underline underline-offset-4"
+        >
+          {t("Subscribe to the RSS feed", "Đăng ký bản tin RSS")}
+        </a>
+        {t(
+          " — the same ranked stories, in any reader.",
+          " — cùng những tin đã xếp hạng, trong mọi trình đọc."
+        )}
+      </p>
 
       <CardFooter className="gap-2 px-0">
         <Button variant="outline" asChild>

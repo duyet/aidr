@@ -40,3 +40,14 @@ export const CHROME_WEB_STORE_URL =
 /** In-app destination for the Chrome icon (install guide lives at /subscribe). */
 export const EXTENSION_PATH = "/subscribe";
 export const EXTENSION_URL = `${SITE_URL}${EXTENSION_PATH}`;
+
+/**
+ * Public syndication paths. These live here, not in the server-only builders,
+ * so client components (/subscribe) and the Worker routes cannot drift on the
+ * canonical URL. `/rss.xml` serves the identical document for readers that
+ * hardcode it; `atom:link rel="self"` always advertises `/feed.xml`.
+ */
+export const RSS_FEED_PATH = "/feed.xml";
+export const RSS_ALIAS_PATH = "/rss.xml";
+/** Google News sitemap (`news:` namespace); language-neutral by design. */
+export const NEWS_SITEMAP_PATH = "/news.xml";
