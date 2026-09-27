@@ -3,6 +3,7 @@ import {
   NEWS_SITEMAP_PATH,
   RSS_ALIAS_PATH,
   RSS_FEED_PATH,
+  SITE_NAME,
   SITE_URL,
 } from "./site";
 
@@ -23,7 +24,7 @@ import {
  * entries added alongside the RSS work are kept as links too.
  */
 export function llmsTxt(): string {
-  return `# AI News (aidr.today)
+  return `# ${SITE_NAME} (aidr.today)
 
 > AI news ranked and summary. Canonical origin: ${SITE_URL}
 
