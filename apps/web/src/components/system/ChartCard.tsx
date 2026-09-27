@@ -9,8 +9,10 @@ import {
 import type { ReactNode } from "react";
 
 interface ChartCardProps {
-  title: string;
-  subtitle?: string;
+  /** Plain string for most cards; a node when the title needs a mark or icon
+   *  beside the words. */
+  title: ReactNode;
+  subtitle?: ReactNode;
   children: ReactNode;
   className?: string;
   action?: ReactNode;

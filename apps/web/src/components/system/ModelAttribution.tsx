@@ -4,6 +4,7 @@ import { useId } from "react";
 import { anyrouterModelUrl } from "../../lib/anyrouter";
 import type { ModelChains } from "../../lib/system-queries";
 import { useSystemData } from "../../lib/use-system-stats";
+import { AnyRouterMark } from "./AnyRouterMark";
 import { API } from "./endpoints";
 
 const MODEL_TASKS = [
@@ -95,16 +96,23 @@ export function AttributionView({ models }: { models: ModelChains }) {
       <CardContent className="p-4">
         <section aria-labelledby={titleId}>
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-              <CardTitle
-                id={titleId}
-                className="font-sans text-[13px] font-semibold tracking-tight text-foreground"
-              >
-                Powered by AnyRouter
-              </CardTitle>
-              <p className="text-[11px] leading-tight text-muted-foreground">
-                Lead model + fallback depth · public config only
-              </p>
+            {/* The mark is a sibling of the baseline-aligned title/subtitle
+                pair, not a child of it: an inline box inside a flex item
+                would drag that item's baseline down to the bottom of the
+                square and break the 13px/11px text pairing. */}
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <AnyRouterMark className="h-3.5 w-auto text-foreground" />
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                <CardTitle
+                  id={titleId}
+                  className="font-sans text-[13px] font-semibold tracking-tight text-foreground"
+                >
+                  Powered by AnyRouter
+                </CardTitle>
+                <p className="text-[11px] leading-tight text-muted-foreground">
+                  Lead model + fallback depth · public config only
+                </p>
+              </div>
             </div>
             <a
               href="https://anyrouter.dev/?ref=aidr.today"
