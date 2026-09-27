@@ -21,8 +21,13 @@ describe("algo tab model chains", () => {
     expect(algo).not.toContain("anyrouterModelUrl");
     // It no longer needs to fetch the models it does not render.
     expect(algo).not.toContain("useSystemData");
-    // The pitch keeps the referral link.
-    expect(algo).toContain("anyrouter.dev/?ref=aidr.today");
+    // The pitch keeps the referral link. The URL itself now lives in
+    // lib/site.ts so the footer, the attribution strip, and /about cannot
+    // drift onto a different (uncredited) target; assert both halves.
+    expect(algo).toContain("ANYROUTER_URL");
+    expect(read("../../lib/site.ts")).toContain(
+      'ANYROUTER_URL = "https://anyrouter.dev/?ref=aidr.today"'
+    );
   });
 
   it("keeps the chains rendered in the Ranking card", () => {

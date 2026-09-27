@@ -9,7 +9,7 @@ import { anyrouterModelUrl } from "../lib/anyrouter";
 import { useLang } from "../lib/lang-context";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
-import { GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
+import { ANYROUTER_URL, GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
 import { fetchSourceNames } from "../lib/sources-fn";
 import type { ModelChains } from "../lib/system-queries";
 import { useSystemData } from "../lib/use-system-stats";
@@ -214,7 +214,7 @@ function ModelsLine() {
       <p className="text-muted-foreground">
         {"LLM routing via "}
         <a
-          href="https://anyrouter.dev/?ref=aidr.today"
+          href={ANYROUTER_URL}
           target="_blank"
           rel="noopener"
           className="text-accent underline underline-offset-2 hover:no-underline"

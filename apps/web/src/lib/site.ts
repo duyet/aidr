@@ -28,6 +28,12 @@ export const GITHUB_ALGORITHM_PATH = "apps/web/ALGORITHM.md";
 /** Author site (footer More). */
 export const DUYET_URL = "https://duyet.net";
 
+/** AnyRouter gateway. The `ref` param is the partner attribution link, so it
+ *  lives here once: the footer, the /data attribution strip, the Algo tab, and
+ *  /about all send readers to the same credited URL, and a per-surface copy
+ *  would let the referral silently drop off one of them. */
+export const ANYROUTER_URL = "https://anyrouter.dev/?ref=aidr.today";
+
 /** Chrome Web Store listing — install CTA on /subscribe only, never header chrome. */
 export const CHROME_WEB_STORE_URL =
   "https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg";
