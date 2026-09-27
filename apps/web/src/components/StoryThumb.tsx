@@ -84,6 +84,22 @@ export function StoryThumb({
   const showSrc = remote ?? STORY_THUMB_PLACEHOLDER;
   const zoomSrc = remote ? (resizeCdnImageUrl(src, "full") ?? remote) : null;
 
+  /*
+   * A `fetchPriority="high"` here becomes a `<link rel=preload as=image
+   * fetchpriority=high>` in the SSR head, and the 2026-09-27 trace showed
+   * four of them (pbs.twimg.com x4) starting at t=436 ms — the same
+   * millisecond the render-blocking stylesheet was discovered. On a 1.6 Mbps
+   * link they pushed the CSS from ~90 ms to 1,338 ms, and the LCP element (a
+   * text row, not an image) painted 1.6-2.2 s after TTFB.
+   *
+   * The LCP element is text, so no image needs the highest priority slot.
+   * First-screen thumbs stay `eager` — they are in the viewport, so the
+   * browser fetches them either way and the page looks identical — they just
+   * hand the priority back. This removes the high-priority third-party
+   * preloads from the critical path without changing a pixel.
+   */
+  const loading = priority ? "eager" : "lazy";
+
   const imgClass =
     variant === "card"
       ? "max-h-56 w-full rounded-3xl border border-border object-cover transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none group-hover:scale-[1.04] group-focus-visible:scale-[1.04]"
@@ -95,8 +111,8 @@ export function StoryThumb({
       alt={alt}
       width={variant === "card" ? 640 : 48}
       height={variant === "card" ? 192 : 48}
-      loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : "low"}
+      loading={loading}
+      fetchPriority="low"
       decoding="async"
       referrerPolicy="no-referrer"
       aria-hidden={alt || zoomSrc ? undefined : true}

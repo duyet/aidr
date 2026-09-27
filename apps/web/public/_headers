@@ -5,15 +5,43 @@
 
 # Unhashed public logos (mail + favicon). Not Vite hashes — keep the
 # filename stable so Gmail can cache a 200 PNG.
+#
+# TTL / invalidation policy (issue #229): these names are unhashed BY DESIGN
+# (see worker/public-assets.ts — Gmail and the OG scrapers re-fetch them by
+# a stable path), which is exactly why `max-age=86400` was wrong: a logo
+# change was invisible for a day and Lighthouse still reported 3 KB of
+# "improvable" cache lifetime on /logo-icon.png.
+#
+# These are now 30 days because the name is the cache key:
+#   - to change a logo, the file gets a NEW name and the old entry is
+#     deleted in the same commit (e.g. logo-icon.png -> logo-icon-2.png,
+#     and the new name is added below). A stable name is never reused for
+#     different bytes.
+#   - `immutable` is deliberately NOT set: if a name is ever reused by
+#     mistake, `immutable` makes the browser keep the stale bytes until the
+#     entry is purged by hand, while a plain max-age self-heals in 30 days.
+#   - max-age (not s-maxage) because these are Worker-routed for a real
+#     image/* content type (run_worker_first) and the Workers cache already
+#     handles the edge.
+#
+# Reviewer check for a logo change: `git log --diff-filter=A --name-only --
+# public/logo*` should show a new filename, never a modification to an
+# existing one.
 /logo-sm.png
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=2592000
 /logo-icon.png
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=2592000
 /logo.png
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=2592000
 /logo.svg
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=2592000
 /favicon.svg
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=2592000
 /og.jpg
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=2592000
+# Served straight by the assets binding (not in run_worker_first), so it had
+# no rule at all and was getting the Workers default `max-age=0,
+# must-revalidate` — the same uncacheable-first-party-asset finding as
+# /logo-icon.png, one file over. Same name-keyed invalidation policy.
+/og-home.jpg
+  Cache-Control: public, max-age=2592000
