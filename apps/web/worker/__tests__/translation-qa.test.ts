@@ -697,6 +697,126 @@ describe("translation QA runtime", () => {
     ).toBe(true);
   });
 
+  it("never silently substitutes a VI item when the reviewer chain is dead", async () => {
+    // The production shape of this failure, observed live in /api/system's
+    // llm_calls while building #230: the EN generator
+    // (ANYROUTER_ENGLISH_TRANSLATE_MODEL = google/gemini-3.5-flash) works, but
+    // BOTH configured reviewer ids (x-ai/grok-4.7, z-ai/glm-5.3-flash) answer
+    // 404 from the provider. A Vietnamese item therefore cannot be reviewed at
+    // all. ALGORITHM.md § Translate is unambiguous that this must become an
+    // actionable terminal `human_review` that preserves the original
+    // candidate — a silent EN fallback, or an unreviewed overwrite, are bugs.
+    const sourceRow = row({
+      id: "vi-item",
+      source_title:
+        "Công ty có thể phát hành Model X vào ngày 2024-05-01 với giá 10 triệu USD.",
+      source_summary: "Công ty có thể phát hành sản phẩm mới.",
+      source_lang: "vi",
+      lang: "en",
+      target_lang: "en",
+      candidate_title: "stale",
+      candidate_summary: "stale",
+    });
+    const { db, writes } = makeDb({
+      rows: [
+        row({
+          id: "vi-item",
+          source_title: sourceRow.source_title,
+          source_summary: sourceRow.source_summary,
+          source_lang: "vi",
+          lang: "en",
+          target_lang: "en",
+          candidate_title:
+            "The company may release Model X on 2024-05-01 for 10 million USD.",
+          candidate_summary: "The company may release the new product.",
+        }),
+      ],
+      englishRows: [sourceRow],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: unknown, init?: RequestInit) => {
+        const body = String(init?.body ?? "");
+        // Generator stage succeeds…
+        if (body.includes("Translate this explicitly Vietnamese source")) {
+          return response(
+            '{"title":"English title","summary":"English summary"}'
+          );
+        }
+        // …every reviewer attempt 404s, exactly as in production.
+        return new Response("model not found", { status: 404 });
+      })
+    );
+    const stats = await ratePendingTranslations({ ...env, DB: db });
+
+    // Nothing was accepted…
+    expect(stats.accepted).toBe(0);
+    // …and nothing was quietly replaced: no UPDATE of translations.title.
+    expect(
+      writes.some(
+        (write) =>
+          write.sql.includes("UPDATE translations SET") &&
+          write.sql.includes("title = ?")
+      ),
+      "a failed VI→EN review must never overwrite the candidate"
+    ).toBe(false);
+    // The failed attempt is persisted as state with a scheduled retry, not
+    // swallowed. `review_failed` (not `human_review`) is correct on attempt 1:
+    // the cross-run policy allows three automatic attempts before the item goes
+    // terminal. The 3-attempts-then-terminal-and-one-human-retry transition is
+    // proven end to end in translation-qa.integration.test.ts
+    // ("caps automatic attempts and permits exactly one authenticated retry").
+    expect(
+      writes.some((write) => write.args.includes("review_failed")),
+      "an unreviewable VI item must record a review_failed attempt"
+    ).toBe(true);
+    expect(
+      writes.some((write) => write.sql.includes("next_retry_at")),
+      "the failure must schedule a retry, not be dropped"
+    ).toBe(true);
+    expect(
+      writes.some((write) => write.args.includes("human_review")),
+      "attempt 1 must not jump straight to the terminal human state"
+    ).toBe(false);
+  });
+
+  it("leaves a VI item's Vietnamese title intact when EN generation itself fails", async () => {
+    // The earlier stage: no English candidate can be produced at all, so there
+    // is no candidate to review or preserve. Pinned here because it is the one
+    // place the VI path can end without a `human_review` row — the item keeps
+    // its own Vietnamese title (correct, and what the UI renders with no EN
+    // badge) and is NOT substituted, but it does not enter the review queue.
+    // See the PR note: this is pre-existing behaviour in the generator stage,
+    // not something #230 introduced, and it is the follow-up this test
+    // documents.
+    const sourceRow = row({
+      id: "vi-item-2",
+      source_title: "Mô hình mới của OpenAI ra mắt ngày 2024-05-01.",
+      source_summary: "Giá 10 triệu USD.",
+      source_lang: "vi",
+      lang: "en",
+      target_lang: "en",
+      candidate_title: "stale",
+      candidate_summary: "stale",
+    });
+    const { db, writes } = makeDb({
+      rows: [],
+      englishRows: [sourceRow],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("model not found", { status: 404 }))
+    );
+    const stats = await ratePendingTranslations({ ...env, DB: db });
+
+    expect(stats.accepted).toBe(0);
+    expect(stats.englishCandidates).toBe(0);
+    expect(
+      writes.some((write) => write.sql.includes("UPDATE translations SET")),
+      "a failed generation must not write any English candidate"
+    ).toBe(false);
+  });
+
   it("does not overwrite the original candidate when review output is malformed", async () => {
     const { db, writes } = makeDb({ rows: [row()] });
     vi.stubGlobal(

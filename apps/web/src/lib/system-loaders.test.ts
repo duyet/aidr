@@ -495,6 +495,7 @@ describe("loadSystemSources", () => {
               config: '{"query":"AI"}',
               enabled: 1,
               item_count: 12,
+              last_item_at: 1790500000,
             },
             {
               id: "blog",
@@ -503,6 +504,7 @@ describe("loadSystemSources", () => {
               config: "not json",
               enabled: 0,
               item_count: 0,
+              last_item_at: null,
             },
           ],
         }),
@@ -524,6 +526,9 @@ describe("loadSystemSources", () => {
         type: "hn",
         enabled: true,
         itemCount: 12,
+        // Newest stored item, so the dashboard can show how long a source has
+        // actually been quiet — the signal that was missing before #230.
+        lastItemAt: 1790500000,
         config: { query: "AI" },
       },
       // Malformed config JSON degrades to {} rather than failing the row.
@@ -533,11 +538,41 @@ describe("loadSystemSources", () => {
         type: "rss",
         enabled: false,
         itemCount: 0,
+        lastItemAt: null,
         config: {},
       },
     ]);
     expect(s.volume).toEqual([{ name: "hn", count: 30 }]);
     expect(s.lastRunBySource).toEqual({ hn: 3 });
+    // RUN_ROW's stats predate per-source health, so every source reads as
+    // "unknown", never as "fetched 0" — the distinction that keeps a run
+    // without the field from looking like a mass outage.
+    expect(s.health).toEqual({
+      hn: {
+        observed: false,
+        fetched: 0,
+        scored: 0,
+        accepted: 0,
+        rejected: 0,
+        merged: 0,
+        skipReason: "",
+        emptyRuns: 0,
+      },
+      blog: {
+        observed: true,
+        fetched: 0,
+        scored: 0,
+        accepted: 0,
+        rejected: 0,
+        merged: 0,
+        skipReason: "disabled",
+        emptyRuns: 0,
+        stale: false,
+        staleAfterRuns: 0,
+      },
+    });
+    expect(s.stale).toEqual([]);
+    expect(s.healthRunAt).toBe(RUN_ROW.started_at);
     expect(batches).toHaveLength(1);
     expect(batches[0]).toHaveLength(3);
   });

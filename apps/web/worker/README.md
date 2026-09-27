@@ -22,6 +22,133 @@ Everything else (migrations, adapters, LLM calls, ranking, the workflow
 itself) is fully implemented in this directory and does not depend on the
 frontend.
 
+## Sources
+
+### One registry, three consumers
+
+[`sources/catalog.ts`](sources/catalog.ts) is the single declarative list of
+every source. Adding, renaming, re-pointing, or disabling a source is a
+one-line change there, and that one change feeds:
+
+| consumer | what it does with the registry |
+| --- | --- |
+| `sources/seed.ts` | builds the pre-migration runtime `INSERT … ON CONFLICT` upsert, so ingest can seed before `wrangler d1 migrations apply` |
+| `migrations/0027_source_registry.sql` | generated from the same list (`pnpm run gen:source-migration`) |
+| `/api/system/sources` + the `/data` Sources tab | renders the configured rows alongside their live per-source health |
+
+`worker/__tests__/source-catalog.test.ts` asserts all three agree, so the
+drift that used to exist between `seed.ts` and migrations 0018/0020/0021/0022
+cannot be committed.
+
+**Ownership rules.** The registry owns `name`, `type`, and `config` for the
+ids it declares — a corrected feed URL actually reaches production. It does
+**not** own `enabled`: the seed's conflict clause leaves that column alone, so
+switching a noisy source off survives every subsequent run. Rows the registry
+does not declare are entirely operator-owned.
+
+### Add a source without a deploy
+
+Any `rss` feed can be added by an operator at runtime, with no migration, no
+seed change, and no deploy. Use the existing admin MCP tool (or
+`POST /api/admin/sources` with the same body):
+
+```bash
+curl -X POST https://aidr.today/api/admin/mcp \
+  -H "Authorization: Bearer $NEWS_ADMIN_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{
+    "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+    "params": { "name": "upsert_source", "arguments": {
+      "id": "my-new-feed",
+      "name": "My New Feed",
+      "type": "rss",
+      "enabled": true,
+      "config": {
+        "feed": "https://example.com/feed.xml",
+        "homepage": "https://example.com",
+        "maxItems": 6
+      }
+    }}
+  }'
+```
+
+Then force a run and watch it land:
+
+```bash
+curl -X POST "https://aidr.today/api/admin/ingest?force=1" \
+  -H "Authorization: Bearer $NEWS_ADMIN_TOKEN"   # → {"id":"<run-uuid>"}
+
+# A 2xx POST is NOT a finished run. Poll until lastRun.id matches:
+curl -s https://aidr.today/api/system -H 'cache-control: no-store'
+```
+
+Check `/api/system/sources` (or the `/data` → Sources tab) for the source's
+row: `Fetched` / `New` / `Accepted` / `Rejected` for the last run, the
+`Health` cell, and how long ago its last item was stored.
+
+To promote an operator-added source into the registry (so it is created for
+fresh databases too), add a matching row to `SOURCE_REGISTRY` and run
+`pnpm run gen:source-migration`. The config you used at runtime is the config
+the registry should carry.
+
+### Config keys the `rss` adapter understands
+
+| key | meaning |
+| --- | --- |
+| `feed` | RSS **or** Atom URL (required) — the adapter handles both |
+| `homepage` | publisher home, used for the favicon in `/data` |
+| `sourceLang` | `"vi"` for a genuinely Vietnamese-language source. Explicit metadata that puts the item on the real VI→EN translation-QA path; never inferred from diacritics. |
+| `maxItems` | flood gate: hard cap per fetch, newest-first, applied after the since-window filter |
+| `keywordFilter` | named title pre-filter, currently `"ai"` — the same regex the HN adapter uses |
+| `minRequestIntervalMs` | per-host spacing between fetches, for hosts that reject concurrent requests |
+
+**Verify a feed before you add it.** Every source in the registry was checked
+live (HTTP 200, feed-shaped content type, parseable, ≥1 usable item with a
+title, an absolute URL, and a date):
+
+```bash
+pnpm --filter @aidr/web exec tsx scripts/verify-source-feeds.ts my-new-feed
+```
+
+It runs the production `parseRssItems` plus the production flood gate, so a
+green result means the Worker can actually read the feed. A source added on
+faith is worse than no source.
+
+### Staleness
+
+`worker/source-health.ts` carries a per-source count of consecutive runs that
+returned zero items, forward from the previous run's stats (a single-row
+read — surfacing staleness costs nothing on the request path). A source at or
+over its threshold is flagged `stale` in `/api/system/sources` and the `/data`
+Algo tab.
+
+- Default: **168 consecutive runs** (7 days at the hourly cadence). Chosen
+  against measured cadence, not roundness: when the registry was verified
+  live, 14 of 21 feeds returned nothing inside the 26h window — including
+  pre-existing ones like `lastweekin-ai` (a weekly newsletter) and
+  `google-research` (a few times a week). A two-day threshold would flag
+  healthy sources most of the time, and an alarm that cries wolf is an alarm
+  nobody reads.
+- Override per row with `staleAfterRuns` in the registry when a source's real
+  cadence demands it. The known case is arXiv: it accepts no weekend
+  submissions, so its newest `submittedDate` is frozen from ~Fri 18:00 UTC to
+  ~Mon 00:00 UTC and the 26h window leaves a measured **~54** consecutive
+  silent runs, so 72 is the floor for it.
+
+### arXiv is not in the registry, and why
+
+`ARXIV_NOT_ADDED_REASON` in `worker/sources/catalog.ts` has the full note and
+the exact row to add. Short version: the sortable Atom API
+(`export.arxiv.org/api/query`) is robots-disallowed on both arXiv hosts —
+`export.arxiv.org` is `Disallow: /` for every agent and `arxiv.org` lists
+`Disallow: /api` — so this repo's "no source may circumvent a robots.txt
+disallow" rule rules it out. The one allowed surface, `rss.arxiv.org`, has no
+robots.txt and is already newest-first RSS (so the flood gate applies
+unchanged), but it declares `skipDays` for Saturday and Sunday and was
+serving an empty channel when it was checked, so it could not clear the
+"verified live with ≥1 usable item" bar. The gate, its tests, and the
+copy-pasteable row are already in the tree.
+
 ## Clerk proxy edge rate limit
 
 `/__clerk/*` has no application/isolate rate limiter; the D1 limiter is for

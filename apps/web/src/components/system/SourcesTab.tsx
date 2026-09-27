@@ -12,7 +12,7 @@ function SourcesCard() {
   return (
     <ChartCard
       title="Ingest sources"
-      subtitle="Adapters the hourly pipeline fetches. Last run is items pulled in the latest workflow stats."
+      subtitle="Adapters the hourly pipeline fetches. Fetched / New / Accepted / Rejected are the latest run's per-source numbers; a source silent for its whole threshold is flagged stale."
     >
       <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
         {(s) => (
@@ -20,6 +20,7 @@ function SourcesCard() {
             sources={s.ingestSources ?? []}
             lastRunBySource={s.lastRunBySource}
             volume={s.volume}
+            health={s.health}
           />
         )}
       </CardData>

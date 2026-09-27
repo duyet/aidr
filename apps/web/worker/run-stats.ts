@@ -1,3 +1,5 @@
+import type { SourceRunHealth } from "./source-health.js";
+import { emptySourceHealth } from "./source-health.js";
 import { sanitizeRunStats } from "./telemetry-safe.js";
 
 /**
@@ -19,6 +21,17 @@ export interface RunStepInfo {
 export interface RunStats {
   /** Items fetched this run, per source id. */
   bySource: Record<string, number>;
+  /**
+   * Full per-source outcome for this run — fetch / score / accept / reject /
+   * merge counts, a structured skip reason, and the consecutive-empty-run
+   * streak that drives the stale detector. `bySource` above is kept as the
+   * cheap "how much did each source pull" field; this is the one that answers
+   * "is this source earning its slot?". See `worker/source-health.ts`.
+   *
+   * Absent (not `{}`) on pre-#230 runs so a missing column reads as "this run
+   * predates per-source health" rather than "every source produced nothing".
+   */
+  sourceHealth?: Record<string, SourceRunHealth>;
   /** Per-step summary of what happened and why, in run order. */
   steps: RunStepInfo[];
   new: number;
@@ -47,6 +60,10 @@ export interface RunStats {
 export function buildRunStats(partial: Partial<RunStats> = {}): RunStats {
   return {
     bySource: partial.bySource ?? {},
+    // Only present when the run actually produced a per-source record (the
+    // open-run upsert passes none, so a run that has not reached its fetch
+    // step does not claim zero health for every source).
+    ...(partial.sourceHealth ? { sourceHealth: partial.sourceHealth } : {}),
     steps: partial.steps ?? [],
     new: partial.new ?? 0,
     merged: partial.merged ?? 0,
@@ -83,4 +100,19 @@ export function recordStep(
   } catch {
     // never let step-explanation bookkeeping break the run
   }
+}
+
+/** Merge one source's outcome into the run's health map, creating the entry
+ *  on first sight. Pure and total: it is called from ordinary code between
+ *  Workflow steps (which replay by returning their memoized value, not by
+ *  re-running), so it must be deterministic and must never throw. */
+export function recordSourceHealth(
+  health: Record<string, SourceRunHealth>,
+  sourceId: string,
+  patch: Partial<SourceRunHealth>
+): SourceRunHealth {
+  const current = health[sourceId] ?? emptySourceHealth();
+  const next: SourceRunHealth = { ...current, ...patch };
+  health[sourceId] = next;
+  return next;
 }
