@@ -15,6 +15,7 @@ import {
   hasLocaleQuery,
   neutralLocaleRedirect,
 } from "./locale-url";
+import { NOINDEX_NOFOLLOW_ROBOTS } from "./route-indexability";
 import { isServerFnRequest } from "./server-fn-request";
 import type { Lang } from "./types";
 
@@ -25,6 +26,15 @@ export const SSR_NEUTRAL_CACHE_CONTROL =
 export const LOCALE_PRIVATE_CACHE_CONTROL = "private, no-store";
 export const LOCALE_VARY = "Cookie, Accept-Language";
 export const LOCALE_REDIRECT_STATUS = 307;
+/**
+ * Status for a locale redirect that will never be undone. Only legacy story
+ * permutations (`/{category}/{slug}`, over-long id hashes) qualify: they resolve
+ * to the documented canonical `/{8-hex}`, which is the permanent address, so
+ * crawlers can consolidate ranking signals and crawl budget onto it. Locale
+ * alias normalization (`locale=` → `lang=`) and every header/cookie-selected hop
+ * stays temporary, because its target depends on the requester.
+ */
+export const PERMANENT_LOCALE_REDIRECT_STATUS = 308;
 
 function appendVary(headers: Headers, value: string): void {
   const current = headers.get("Vary");
@@ -57,10 +67,17 @@ export function resolveRequestLocale(request: Request): LocaleResolution {
   });
 }
 
-export function temporaryLocaleRedirect(
+/**
+ * One redirect shape for every locale hop. Only the status differs between the
+ * temporary and permanent forms, so the private/varied/noindex policy cannot
+ * drift between them: a permanent redirect whose target depends on the
+ * requester's cookie or `Accept-Language` must not become shared-cacheable.
+ */
+function localeRedirect(
   request: Request,
   target: URL | string,
-  lang: Lang
+  lang: Lang,
+  status: number
 ): Response {
   const location = new URL(target, request.url);
   const headers = new Headers({
@@ -69,9 +86,31 @@ export function temporaryLocaleRedirect(
     Location: location.toString(),
     Vary: LOCALE_VARY,
     "Referrer-Policy": "no-referrer",
-    "X-Robots-Tag": "noindex, nofollow",
+    "X-Robots-Tag": NOINDEX_NOFOLLOW_ROBOTS,
   });
-  return new Response(null, { status: LOCALE_REDIRECT_STATUS, headers });
+  return new Response(null, { status, headers });
+}
+
+export function temporaryLocaleRedirect(
+  request: Request,
+  target: URL | string,
+  lang: Lang
+): Response {
+  return localeRedirect(request, target, lang, LOCALE_REDIRECT_STATUS);
+}
+
+/** Permanent (308) locale hop; see {@link PERMANENT_LOCALE_REDIRECT_STATUS}. */
+export function permanentLocaleRedirect(
+  request: Request,
+  target: URL | string,
+  lang: Lang
+): Response {
+  return localeRedirect(
+    request,
+    target,
+    lang,
+    PERMANENT_LOCALE_REDIRECT_STATUS
+  );
 }
 
 export const API_CONTENT_LANGUAGE = "en, vi";
@@ -87,7 +126,7 @@ export function apiErrorResponse(
       "Content-Language": API_CONTENT_LANGUAGE,
       Vary: LOCALE_VARY,
       "Referrer-Policy": "no-referrer",
-      "X-Robots-Tag": "noindex, nofollow",
+      "X-Robots-Tag": NOINDEX_NOFOLLOW_ROBOTS,
     },
   });
 }
@@ -119,7 +158,7 @@ export function localeErrorResponse(
     "Content-Type": "text/html; charset=utf-8",
     Vary: LOCALE_VARY,
     "Referrer-Policy": "no-referrer",
-    "X-Robots-Tag": "noindex, nofollow",
+    "X-Robots-Tag": NOINDEX_NOFOLLOW_ROBOTS,
   });
   const body = `<!doctype html><html lang="en"><meta charset="utf-8"><title>Invalid locale</title><body><h1>Yêu cầu locale không hợp lệ / Invalid locale request</h1><p>${escapeHtml(error.message)}</p></body></html>`;
   return new Response(body, { status: 400, headers });
@@ -241,19 +280,19 @@ export function withSsrLocaleResponse(
     headers.set("Cache-Control", LOCALE_PRIVATE_CACHE_CONTROL);
     headers.set("Content-Language", contentLanguage);
     headers.set("Referrer-Policy", "no-referrer");
-    headers.set("X-Robots-Tag", "noindex, nofollow");
+    headers.set("X-Robots-Tag", NOINDEX_NOFOLLOW_ROBOTS);
     appendVary(headers, LOCALE_VARY);
   } else if (response.status >= 400) {
     headers.set("Cache-Control", LOCALE_PRIVATE_CACHE_CONTROL);
     headers.set("Content-Language", contentLanguage);
     headers.set("Referrer-Policy", "no-referrer");
-    headers.set("X-Robots-Tag", "noindex, nofollow");
+    headers.set("X-Robots-Tag", NOINDEX_NOFOLLOW_ROBOTS);
     appendVary(headers, LOCALE_VARY);
   } else if (privateRoute) {
     headers.set("Cache-Control", LOCALE_PRIVATE_CACHE_CONTROL);
     headers.set("Content-Language", contentLanguage);
     headers.set("Referrer-Policy", "no-referrer");
-    headers.set("X-Robots-Tag", "noindex, nofollow");
+    headers.set("X-Robots-Tag", NOINDEX_NOFOLLOW_ROBOTS);
     appendVary(headers, LOCALE_VARY);
   } else if (neutral) {
     headers.set("Content-Language", "en");
@@ -268,8 +307,17 @@ export function withSsrLocaleResponse(
     if (hasCanonicalLocaleQuery(url.search)) {
       setSafePublicPolicy(headers, SSR_LOCALIZED_CACHE_CONTROL);
     } else {
+      // Private + varied is a cache-isolation requirement, not a robots one.
+      // Indexability for this response is owned by `routeIndexability` alone:
+      // `withRouteIndexabilityHeaders` already stamped X-Robots-Tag on the way
+      // in, and the same function feeds `<meta name="robots">` via
+      // `routeRobotsMeta` (seo.ts), so the header and the meta cannot disagree.
+      // A bare `/{8-hex}` or `/` is therefore indexable, and dedup rides on the
+      // self-referencing `?lang=` canonical + hreflang pair that
+      // `localizedHeadLinks` already emits. A second opinion here used to force
+      // `noindex, follow` and put 1,005 discovered URLs into GSC's
+      // "Discovered - currently not indexed" bucket (issue #223).
       headers.set("Cache-Control", LOCALE_PRIVATE_CACHE_CONTROL);
-      headers.set("X-Robots-Tag", "noindex, follow");
       appendVary(headers, LOCALE_VARY);
     }
   }

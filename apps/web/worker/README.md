@@ -106,3 +106,68 @@ pnpm --filter @aidr/web d1:migrate
 `worker/migration-gate.ts` treats `0026` as a required migration once its file
 is present, so a deploy against an unmigrated database fails loudly instead of
 serving a permanently "Unavailable" signups tile.
+
+## Diagnosing a 403 in Search Console
+
+Search Console reported one `aidr.today` URL as "Blocked due to access
+forbidden (403)" while the same paths returned `200` for Googlebot, plain
+Chrome, and HeadlessChrome from the repository's own checks. This section is
+the diagnostic, not a conclusion: a 403 is served at the edge, so it is not
+visible in the Worker code, in `wrangler dev`, or in the request logs.
+
+Reproduce the exact crawler request first, because WAF and Browser Integrity
+Check rules match on user agent, header order, and IP reputation rather than
+path alone:
+
+```sh
+curl -sI -A 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' \
+  'https://aidr.today/'
+curl -sI -A 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' \
+  'https://aidr.today/abcdef12'
+```
+
+If both answer `200` from your network, read the zone settings for the URL GSC
+names. `aidr.today` is a Worker custom domain (`[[routes]] custom_domain` in
+`wrangler.toml`), so no WAF rule for these paths exists in this repository and
+the cause is in the zone:
+
+- `GET /zones/{zone_id}/security/bot_management` — bot fight mode / known bot
+  actions, which can challenge or block a verified crawler.
+- `GET /zones/{zone_id}/security/settings` — Security Level and Browser
+  Integrity Check.
+- `GET /zones/{zone_id}/firewall/rules` — custom rules matching the path, and
+  `GET /zones/{zone_id}/security/events` for the exact rule that answered.
+- The zone API token in `.env.local` is not scoped for `/zones/*/security/*` or
+  `/zones/*/firewall/*` (API codes 7003/10000), so the read fails and must be
+  done from a scoped token or the dashboard. Do not infer a cause from a failed
+  read.
+
+## Post-deploy indexing re-verification
+
+After a deploy that changes `X-Robots-Tag`, redirect statuses, or `robots.txt`,
+re-check the edge before touching Search Console — a stale cached response
+looks exactly like a failed fix:
+
+```sh
+for u in / '/?lang=vi' /abcdef12 '/abcdef12?lang=en' /robots.txt; do
+  printf '%s -> ' "$u"
+  curl -s -o /dev/null -D - "https://aidr.today$u" \
+    | grep -iE '^(HTTP|x-robots-tag|cache-control|vary)'
+done
+curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}\n' \
+  'https://aidr.today/industry/0544ce90'
+```
+
+Then, in Google Search Console:
+
+1. Re-submit `https://aidr.today/sitemap.xml`.
+2. Pick a handful of the bare `/{8-hex}` permalinks that were reported as
+   "Discovered - currently not indexed" and run **URL Inspection → Request
+   indexing** on each. Live test first; request indexing only after it passes.
+3. Re-check "Why pages aren't indexed" in 7 days: "Page with redirect" should
+   fall to 0-1 and "Discovered - currently not indexed" should start moving
+   once the recrawl passes. Crawl of 1,005 URLs is not instant — do not treat a
+   same-week snapshot as a regression.
+4. `robots.txt` changes are picked up within a day; a Lighthouse SEO run is the
+   quickest confirmation that "robots.txt is not valid" and "Page is blocked
+   from indexing" are both gone.

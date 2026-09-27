@@ -52,8 +52,15 @@ export function buildSitemapXml(urls: SitemapUrl[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</urlset>\n`;
 }
 
+/**
+ * robots.txt is parsed by strict readers: one unknown directive fails the whole
+ * file (Lighthouse: "robots.txt is not valid — 1 error found, Line 5, Unknown
+ * directive"). `LLMs-txt` is not a standard directive, so it is kept as a
+ * comment. `/llms.txt` stays discoverable through the agent-discovery headers
+ * in `lib/agent-discovery.ts`; do not add any other non-standard directive.
+ */
 export function robotsTxt(): string {
-  return `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\nLLMs-txt: ${SITE_URL}/llms.txt\n`;
+  return `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n# LLMs-txt: ${SITE_URL}/llms.txt\n`;
 }
 
 export function staticSitemapUrls(): SitemapUrl[] {
