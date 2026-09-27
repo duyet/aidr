@@ -5,6 +5,7 @@ import {
   NEWS_SITEMAP_PATH,
   RSS_ALIAS_PATH,
   RSS_FEED_PATH,
+  SITE_NAME,
   SITE_URL,
 } from "./site";
 
@@ -111,7 +112,10 @@ describe("llmsTxt is spec-conformant markdown (#226)", () => {
     const body = llmsTxt();
     const h1s = [...body.matchAll(H1_RE)].map((match) => match[1] as string);
     expect(h1s).toHaveLength(1);
-    expect(h1s[0]).toBe("AI News (aidr.today)");
+    // The H1 is the resolved brand, not a second brand literal. A header
+    // wordmark change has to move the H1, `og:site_name`, and the JSON-LD
+    // entity names together.
+    expect(h1s[0]).toBe(`${SITE_NAME} (aidr.today)`);
     // No other line may look like an H1 in a heading position.
     expect(body.split("\n").filter((line) => /^#\s/.test(line))).toHaveLength(
       1
