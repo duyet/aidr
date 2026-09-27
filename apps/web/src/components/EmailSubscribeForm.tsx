@@ -3,6 +3,7 @@ import { track } from "@aidr/ui/track";
 import { useState } from "react";
 import { withLang } from "../lib/locale-url";
 import type { Lang } from "../lib/types";
+import { formAnnotationAttributes, webmcpForm } from "../lib/webmcp";
 
 const DIGEST_SIZES = [3, 5, 10] as const;
 
@@ -87,7 +88,11 @@ export function EmailSubscribeForm({
     "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form
+      {...formAnnotationAttributes(webmcpForm("subscribe-email"))}
+      onSubmit={onSubmit}
+      className="space-y-4"
+    >
       <div>
         <label
           htmlFor="digest-email"

@@ -7,6 +7,7 @@ import {
   mcpResources,
   mcpResourceTemplates,
 } from "../../worker/mcp/resources.js";
+import { aiCatalogDocument } from "./ai-catalog";
 import {
   SSR_LOCALIZED_CACHE_CONTROL,
   withSsrLocaleResponse,
@@ -761,6 +762,11 @@ export async function handleAgentDiscovery(
   }
   if (path === "/.well-known/mcp/server-card.json") {
     return empty(jsonResponse(mcpServerCard(), "application/json"));
+  }
+  if (path === "/.well-known/ai-catalog.json") {
+    // The browser-registered tool inventory, derived from the same contract
+    // module the MCP transport serves. See `src/lib/ai-catalog.ts`.
+    return empty(jsonResponse(aiCatalogDocument(), "application/json"));
   }
   if (path === "/.well-known/agent-skills/index.json") {
     return empty(jsonResponse(await agentSkillsIndex(), "application/json"));

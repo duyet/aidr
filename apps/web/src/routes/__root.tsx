@@ -18,6 +18,7 @@ import { HeaderBar } from "../components/HeaderBar";
 import { NewsFooter } from "../components/NewsFooter";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { PageViewTracker } from "../components/PageViewTracker";
+import { WebMcpTools } from "../components/WebMcpTools";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
 import { setClientLang } from "../lib/lang";
 import { LangContext } from "../lib/lang-context";
@@ -228,6 +229,10 @@ function RootComponent() {
         </LangContext.Provider>
         <Analytics />
         <PageViewTracker />
+        {/* Client-side only: registers the read-only WebMCP tools in an
+            effect, and is a no-op without the Cloudflare bridge. Nothing
+            WebMCP-related is server-rendered. */}
+        <WebMcpTools />
         <Scripts />
       </body>
     </html>
