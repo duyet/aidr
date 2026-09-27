@@ -681,6 +681,17 @@ function canonicalStoryUrl(
   );
 }
 
+/** The canonical permalink the rendered Markdown advertises in its
+ *  frontmatter. Exported so the MCP/WebMCP read tools can report the same
+ *  `permalink` a reader of `/api/story/{id}.md` would copy, instead of
+ *  recomputing (and eventually disagreeing with) it. */
+export function storyMarkdownCanonicalUrl(
+  item: Pick<FeedItem, "id">,
+  requestedLang: StoryMarkdownLocale
+): string {
+  return canonicalStoryUrl(item, requestedLang);
+}
+
 function sourceKind(value: unknown): SourceLink["kind"] {
   return value === "support" || value === "discussion" ? value : "source";
 }

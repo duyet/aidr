@@ -9,6 +9,11 @@ import {
   primaryThumbnailUrl,
 } from "../../worker/media.js";
 import type { DbReader } from "./db";
+import {
+  PUBLIC_BULLET_CAP,
+  PUBLIC_RESPONSE_MAX_BYTES,
+  PUBLIC_STORY_LIMIT,
+} from "./public-bounds";
 import { parseStoredBullets } from "./tldr-bullets";
 import { isThinDisplayTldr, synthesizeTldrFromItems } from "./tldr-fallback";
 import {
@@ -18,12 +23,18 @@ import {
 } from "./tldr-images";
 import type { TldrBullet } from "./types";
 
-/** Top stories on the public digest — keep the payload well under 50KB. */
-export const PUBLIC_STORY_LIMIT = 8;
-/** Snapshots store at most 16; cap again so a bloated row cannot balloon. */
-export const PUBLIC_BULLET_CAP = 16;
-/** Hard serialized-body budget for the unauthenticated public digest. */
-export const PUBLIC_RESPONSE_MAX_BYTES = 50_000;
+// The bounds themselves now live in the dependency-free `./public-bounds`
+// leaf so the agent read-tool contract (MCP in the Worker, WebMCP in the
+// browser) can share the exact same numbers without importing the D1 query
+// layer. Re-exported here because every existing caller — and the public
+// byte cap is part of the documented `/api/public` contract — imports them
+// from this module.
+export {
+  PUBLIC_BULLET_CAP,
+  PUBLIC_RESPONSE_MAX_BYTES,
+  PUBLIC_STORY_LIMIT,
+} from "./public-bounds";
+
 /** Above the ~180–240 digest target so `/api/public` can return longer bullets. */
 const PUBLIC_BULLET_TEXT_MAX = 400;
 const PUBLIC_ITEM_IDS_MAX = 8;

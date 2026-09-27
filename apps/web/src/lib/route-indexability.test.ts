@@ -245,6 +245,39 @@ describe("routeIndexability", () => {
  * use the production route head builders and the final Worker response
  * wrapper, which is the behavior available without a Cloudflare local worker.
  */
+describe("/api/mcp indexability (#227)", () => {
+  // #227 turned this endpoint into a public, unauthenticated READ surface.
+  // It must still be uncrawlable: a crawler that submits JSON-RPC gets a
+  // parse error, and an indexed /api/mcp would be a public invitation to
+  // treat an operator endpoint as a website.
+  it("is noindex, nofollow, private for every method", () => {
+    for (const method of ["GET", "HEAD", "POST"]) {
+      const policy = routeIndexability({
+        pathname: "/api/mcp",
+        search: new URLSearchParams(),
+        method,
+        status: 200,
+      });
+      expect(policy.robots).toBe(NOINDEX_NOFOLLOW_ROBOTS);
+      expect(policy.cacheControl).toBe(PRIVATE_CACHE_CONTROL);
+    }
+  });
+
+  it("is noindex, nofollow even with a locale query", () => {
+    const policy = policyForUrl("/api/mcp?lang=en");
+    expect(policy.robots).toBe(NOINDEX_NOFOLLOW_ROBOTS);
+  });
+
+  it("stays noindex on the real response headers", async () => {
+    const response = await withRouteIndexabilityHeaders(
+      new Request(`${SITE_URL}/api/mcp`, { method: "POST" }),
+      Response.json({ jsonrpc: "2.0", id: 1, result: { tools: [] } })
+    );
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+    expect(response.headers.get("Cache-Control")).toBe(PRIVATE_CACHE_CONTROL);
+  });
+});
+
 describe("story response indexability", () => {
   const item = {
     id: "abcdef12deadbeef",

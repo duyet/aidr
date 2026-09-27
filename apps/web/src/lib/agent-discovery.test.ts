@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  MCP_READ_LIMIT,
+  MCP_READ_WINDOW_SEC,
+} from "../../worker/mcp/rate-limit.js";
+import {
+  AGENT_DISCOVERY_VERSION,
   AUTH_MD,
   a2aAgentCard,
   agentSkillsIndex,
@@ -16,6 +21,7 @@ import {
   sha256Digest,
   withHomepageHeaders,
 } from "./agent-discovery";
+import { PUBLIC_READ_TOOL_NAMES } from "./public-read-tools";
 import { SITE_URL } from "./site";
 
 describe("api catalog", () => {
@@ -119,6 +125,156 @@ describe("a2a + mcp cards", () => {
     expect(card.serverInfo.version).toBeTruthy();
     expect(card.endpoint).toContain("/api/mcp");
     expect(card.capabilities).toBeTruthy();
+  });
+});
+
+describe("the discovery documents describe the real MCP surface (#227)", () => {
+  it("bumped the discovery version and stamped it into every document", () => {
+    expect(AGENT_DISCOVERY_VERSION).toBe("0.1.7");
+    const openapi = openApiDocument() as { info: { version: string } };
+    expect(openapi.info.version).toBe(AGENT_DISCOVERY_VERSION);
+    expect((a2aAgentCard() as { version: string }).version).toBe(
+      AGENT_DISCOVERY_VERSION
+    );
+    expect(
+      (mcpServerCard() as { serverInfo: { version: string } }).serverInfo
+        .version
+    ).toBe(AGENT_DISCOVERY_VERSION);
+  });
+
+  it("the server card names the read tools, their schemas, and no auth", () => {
+    const card = mcpServerCard() as {
+      tools: Array<{
+        name: string;
+        inputSchema: Record<string, unknown>;
+        annotations: { readOnlyHint: boolean; untrustedContentHint: boolean };
+        authorization: string;
+        restPath: string;
+      }>;
+      operatorTools: { authorization: string; names: string[] };
+      authentication: { required: boolean; description: string };
+      capabilities: { prompts?: unknown; tools: unknown; resources: unknown };
+      resources: Array<{ uri: string }>;
+      rateLimit: { anonymousRead: { limit: number; windowSec: number } };
+      protocolVersion: string;
+    };
+    expect(card.tools.map((tool) => tool.name)).toEqual([
+      ...PUBLIC_READ_TOOL_NAMES,
+    ]);
+    for (const tool of card.tools) {
+      expect(tool.annotations.readOnlyHint).toBe(true);
+      expect(tool.annotations.untrustedContentHint).toBe(true);
+      expect(tool.inputSchema.type).toBe("object");
+      expect(tool.authorization).toBe("none");
+      expect(tool.restPath.startsWith(SITE_URL)).toBe(true);
+    }
+    expect(card.authentication.required).toBe(false);
+    expect(card.authentication.description).toContain("NEWS_ADMIN_TOKEN");
+    expect(card.operatorTools.authorization).toBe("bearer");
+    expect(card.operatorTools.names).toContain("push_items");
+    expect(card.protocolVersion).toBe("2025-06-18");
+    expect(card.rateLimit.anonymousRead).toMatchObject({
+      limit: MCP_READ_LIMIT,
+      windowSec: MCP_READ_WINDOW_SEC,
+    });
+    expect(card.resources.map((r) => r.uri)).toEqual([
+      "aidr://digest?lang=en",
+      "aidr://digest?lang=vi",
+    ]);
+  });
+
+  it("no longer claims a prompts capability the server never implemented", () => {
+    const card = mcpServerCard() as { capabilities: Record<string, unknown> };
+    // The card used to advertise capabilities.prompts with no
+    // prompts/list behind it. An unimplemented capability is a broken
+    // promise, so the claim is removed rather than left aspirational.
+    expect(card.capabilities.prompts).toBeUndefined();
+    expect(card.capabilities.resources).toBeTruthy();
+    expect(JSON.stringify(openApiDocument())).not.toContain("prompts/list");
+  });
+
+  it("openapi describes the real tool set, auth requirement, and rate limit", () => {
+    const document = openApiDocument() as {
+      paths: Record<string, { post?: Record<string, unknown> }>;
+    };
+    const mcp = document.paths["/api/mcp"].post;
+    const xMcp = mcp?.["x-mcp"] as {
+      protocolVersion: string;
+      streaming: boolean;
+      publicTools: Array<{
+        name: string;
+        annotations: { readOnlyHint: boolean; untrustedContentHint: boolean };
+      }>;
+      operatorToolsRequireAuthorization: boolean;
+      rateLimit: { limit: number; windowSec: number; onExceeded: string };
+      resources: string[];
+      resourceTemplates: string[];
+    };
+    expect(xMcp.protocolVersion).toBe("2025-06-18");
+    // Still honest that there is no streaming transport.
+    expect(xMcp.streaming).toBe(false);
+    expect(xMcp.publicTools.map((tool) => tool.name)).toEqual([
+      ...PUBLIC_READ_TOOL_NAMES,
+    ]);
+    for (const tool of xMcp.publicTools) {
+      expect(tool.annotations.readOnlyHint).toBe(true);
+      expect(tool.annotations.untrustedContentHint).toBe(true);
+    }
+    expect(xMcp.operatorToolsRequireAuthorization).toBe(true);
+    expect(xMcp.rateLimit.limit).toBe(MCP_READ_LIMIT);
+    expect(xMcp.rateLimit.windowSec).toBe(MCP_READ_WINDOW_SEC);
+    expect(xMcp.rateLimit.onExceeded).toContain("429");
+    expect(xMcp.resources).toContain("aidr://digest?lang=en");
+    expect(xMcp.resourceTemplates).toEqual(["aidr://story/{id}"]);
+    // The read tools need no credential, so `security: []` is the honest
+    // OpenAPI shape; the secured half is described under x-mcp.
+    expect(mcp?.security).toEqual([]);
+    expect(JSON.stringify(mcp)).toContain("NEWS_ADMIN_TOKEN");
+    expect(mcp?.responses).toHaveProperty("401");
+    expect(mcp?.responses).toHaveProperty("429");
+  });
+
+  it("the agent card's public-digest and story-markdown skills are now true", () => {
+    const card = a2aAgentCard() as {
+      skills: Array<{ id: string; description: string }>;
+      capabilities: { streaming: boolean; pushNotifications: boolean };
+    };
+    const byId = new Map(card.skills.map((skill) => [skill.id, skill]));
+    expect(byId.get("public-digest")?.description).toContain("latest_ai_news");
+    expect(byId.get("public-digest")?.description).toContain("get_ai_digest");
+    expect(byId.get("story-markdown")?.description).toContain("get_story");
+    expect(byId.get("mcp-tools")?.description).toContain("require an admin");
+    // Still honest about the transport the server does NOT offer.
+    expect(card.capabilities.streaming).toBe(false);
+    expect(card.capabilities.pushNotifications).toBe(false);
+  });
+
+  it("SKILL.md splits the anonymous read line from the admin write line", () => {
+    const lines = CONSUME_SKILL_MD.split("\n");
+    const readLine = lines.find((line) => line.startsWith("- MCP read tools"));
+    const adminLine = lines.find((line) =>
+      line.startsWith("- MCP operator tools")
+    );
+    expect(readLine).toBeTruthy();
+    expect(adminLine).toBeTruthy();
+    expect(readLine).toContain("NO auth");
+    expect(readLine).toContain(String(MCP_READ_LIMIT));
+    for (const name of PUBLIC_READ_TOOL_NAMES) {
+      expect(readLine).toContain(name);
+    }
+    expect(adminLine).toContain("REQUIRES admin");
+    expect(adminLine).toContain("push_items");
+    // The ambiguous line that made a client expect anonymous write
+    // access must be gone entirely.
+    expect(CONSUME_SKILL_MD).not.toContain("MCP (read + admin)");
+  });
+
+  it("the published SKILL.md digest is sha256 of the body", async () => {
+    const index = (await agentSkillsIndex()) as {
+      skills: Array<{ digest: string }>;
+    };
+    expect(index.skills[0].digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(index.skills[0].digest).toBe(await sha256Digest(CONSUME_SKILL_MD));
   });
 });
 
