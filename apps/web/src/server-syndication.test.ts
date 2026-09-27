@@ -9,6 +9,7 @@ import handler from "@tanstack/react-start/server-entry";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../worker/types";
 import { expectWellFormedXml } from "./lib/__fixtures__/xml";
+import { SITE_NAME } from "./lib/site";
 
 vi.mock("@tanstack/react-start/server-entry", () => ({
   default: { fetch: vi.fn(async () => new Response("{}", { status: 200 })) },
@@ -365,7 +366,10 @@ describe("news sitemap", () => {
     expect(xml).toContain(
       'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"'
     );
-    expect(xml).toContain("<news:name>AI News</news:name>");
+    // The publication name is the single SITE_NAME constant, never a second
+    // literal: `news:name` must match the name shown on the site, so a brand
+    // change has to move the sitemap and `og:site_name` together or not at all.
+    expect(xml).toContain(`<news:name>${SITE_NAME}</news:name>`);
     expect([...xml.matchAll(/<news:news>/g)].length).toBeLessThanOrEqual(1000);
     expect(
       /<news:publication_date>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+07:00<\/news:publication_date>/.test(

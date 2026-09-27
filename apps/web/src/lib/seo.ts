@@ -649,6 +649,15 @@ export function homepageHead(
     homepageGraph({ lang, url, feed: opts.feed })
   );
   return {
+    meta: shareTags({
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
+      url,
+      type: "website",
+      imageUrl: SITE_OG_HOME_IMAGE_URL,
+      lang,
+      siteOgDimensions: true,
+    }),
     links: [
       ...localizedHeadLinks("/", lang),
       feedDiscoveryLink(lang),
