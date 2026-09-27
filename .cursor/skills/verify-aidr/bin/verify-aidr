@@ -51,6 +51,10 @@ function usage() {
 Commands:
   launch [--base URL] [--local]   Bind target (default ${DEFAULT_BASE})
   doctor                          GET /api/public JSON 200 + homepage HTML 200 (Chrome UA)
+  doctor iv --id <8hex> --lang vi|en
+                                  Run the Telegram IV field gate (#231): field verdict,
+                                  generated-card probe, and the IV Editor checklist with
+                                  clearly-labelled rhash/query-template placeholders
   drive <feature>                 homepage | tldr | about | extension | api-public | analytics | telegram | all
   fetch [--path /]                GET a path; save body under evidence
   screenshot [--path /] [--viewport desktop|mobile]
@@ -76,12 +80,16 @@ function printJson(value) {
 function parseArgs(argv) {
   const out = {
     cmd: argv[0] || "",
+    sub: argv[1] && !argv[1].startsWith("-") ? argv[1] : "",
     rest: [],
     base: process.env.VERIFY_AIDR_BASE || "",
     path: "/",
     viewport: "desktop",
     local: false,
     out: "",
+    id: "",
+    lang: "",
+    image: "",
   };
   const args = argv.slice(1);
   for (let i = 0; i < args.length; i += 1) {
@@ -94,6 +102,12 @@ function parseArgs(argv) {
       out.viewport = args[++i] || "desktop";
     } else if (a === "--out") {
       out.out = args[++i] || "";
+    } else if (a === "--id") {
+      out.id = args[++i] || "";
+    } else if (a === "--lang") {
+      out.lang = args[++i] || "";
+    } else if (a === "--image") {
+      out.image = args[++i] || "";
     } else if (a === "--local") {
       out.local = true;
     } else if (a === "--help" || a === "-h") {
@@ -402,6 +416,63 @@ async function cmdDoctor(flags) {
   save(evidenceDir, "doctor.json", `${JSON.stringify(out, null, 2)}\n`);
   printJson(out);
   if (!out.ok) process.exit(1);
+}
+
+/**
+ * `doctor iv --id <8hex> --lang vi|en` (#231).
+ *
+ * Delegates to `apps/web/scripts/telegram-iv-gate.ts` so the CLI and the
+ * Worker's `GET /api/admin/notify/iv` verdict cannot drift: the gate itself
+ * lives in `worker/telegram-iv.ts` and needs no credential. The CLI adds the
+ * two things a local operator wants — a human-readable checklist and an
+ * evidence file — and nothing else.
+ *
+ * It never builds a `t.me/iv` link: the report prints the documented shape
+ * with a literal `{rhash-from-editor}` placeholder because the real value only
+ * exists inside the operator's own IV Editor session.
+ */
+function runIvGate(args) {
+  const script = join(ROOT, "apps/web/scripts/telegram-iv-gate.ts");
+  const base = args.base;
+  const passthrough = ["--base", base, "--id", args.id, "--lang", args.lang];
+  if (args.image) passthrough.push("--image", args.image);
+  const child = spawn("pnpm", ["--filter", "@aidr/web", "exec", "tsx", script, ...passthrough], {
+    cwd: ROOT,
+    stdio: ["ignore", "inherit", "inherit"],
+  });
+  child.on("error", (error) => {
+    die(`could not start the IV field gate: ${error.message}`);
+  });
+  child.on("close", (code) => {
+    process.exit(code === null ? 1 : code);
+  });
+}
+
+function cmdDoctorIv(flags) {
+  const id = (flags.id || "").trim().toLowerCase();
+  if (!/^[0-9a-f]{8}$/.test(id)) {
+    die("doctor iv requires --id <8 lowercase hex characters>", {
+      received_shape: /^[0-9a-f]{8,64}$/.test(id) ? "not-an-8-char-prefix" : "not-hex",
+    });
+  }
+  const lang = (flags.lang || "vi").trim();
+  if (lang !== "vi" && lang !== "en") {
+    die("doctor iv requires --lang vi or en", { received: lang });
+  }
+  const { runId, evidenceDir, base } = resolveRun(flags);
+  const out = {
+    ok: true,
+    command: "doctor iv",
+    base,
+    runId,
+    evidenceDir,
+    id,
+    lang,
+    note: "field gate only; no template, no rhash, no query template, no channel target",
+  };
+  save(evidenceDir, "doctor-iv-input.json", `${JSON.stringify(out, null, 2)}\n`);
+  printJson(out);
+  runIvGate({ ...flags, id, lang, base });
 }
 
 async function cmdFetch(flags) {
@@ -878,6 +949,10 @@ async function main() {
       await cmdLaunch(flags);
       break;
     case "doctor":
+      if (flags.sub === "iv" || flags.id || flags.lang) {
+        cmdDoctorIv(flags);
+        return;
+      }
       await cmdDoctor(flags);
       break;
     case "drive":

@@ -278,7 +278,23 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       gates, and fallback checklist are in
       [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).
       IV is not enabled by this document; keep the normal message/photo path
-      until product and operations approve a manual POC.
+      until product and operations approve a manual POC. That record is a
+      **no-go**; the only automation it gained is a *field gate*
+      ([`worker/telegram-iv.ts`](worker/telegram-iv.ts)) that checks
+      `title`/`body`/`published_date`/`image_url`/`site_name`/`description`
+      for one `{id8}` + `lang` and answers `iv_eligible` with a reason. Run it
+      with `verify-aidr doctor iv --id <8hex> --lang vi|en` or
+      `GET /api/admin/notify/iv`. It invents no `rhash` and no query template.
+    - `sendMessage`/`sendPhoto` set `link_preview_options` explicitly
+      (`is_disabled`) rather than inheriting the API default: a preview would
+      attach to one arbitrary digest bullet or double the photo. Rationale and
+      the rejected `prefer_small_media`/`prefer_large_media`/`show_above_text`
+      values are in `worker/notify/telegram.ts`.
+    - The trending photo path attaches the **generated** first-party card
+      `/api/og/{id8}.png?lang=` (1200×630) — the same `og:image` the card gate
+      approves — instead of the upstream thumb, so a link preview can never be
+      a 404 hotlink-hostile image. The normalized manifest thumbnail remains
+      the fallback when the id cannot address a card.
     - The current media slice still uses `sendPhoto`/text fallback only. Telegram
       `sendVideo`/`sendMediaGroup` and durable multi-message delivery remain a
       follow-up slice; this change only preserves the typed manifest.
