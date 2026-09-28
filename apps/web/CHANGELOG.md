@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.9](https://github.com/duyet/aidr/compare/web-v0.1.8...web-v0.1.9) (2026-09-28)
+
+
+### 🐛 Bug Fixes
+
+* **web:** gate model claims on lookup state, aggregate run usage in SQL ([#193](https://github.com/duyet/aidr/issues/193)) ([d025c51](https://github.com/duyet/aidr/commit/d025c51b4e731e0843430e33bdc8a7502d1e035c)), closes [#189](https://github.com/duyet/aidr/issues/189)
+* **web:** harden non-HTML navigation routing ([#186](https://github.com/duyet/aidr/issues/186)) ([a241070](https://github.com/duyet/aidr/commit/a2410702fdb32c0b8c27340f7c77c1e6ceb4cbb3))
+* **web:** load the full EB Garamond face on OG cards ([#245](https://github.com/duyet/aidr/issues/245)) ([fb8b107](https://github.com/duyet/aidr/commit/fb8b107dc0be9009590c8d22e7bfb2ae133ca10c))
+
 ## [0.1.8](https://github.com/duyet/aidr/compare/web-v0.1.7...web-v0.1.8) (2026-09-27)
 
 
