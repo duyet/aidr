@@ -12,6 +12,7 @@ import { inflateSync } from "node:zlib";
 import { ImageResponse } from "@cf-wasm/og/node";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
+import { loadStoryOgFonts, storyOgRenderOptions } from "./og-fonts";
 import {
   fetchStoryOgImage,
   isSafeStoryImageUrl,
@@ -184,7 +185,7 @@ function diffBounds(a: Bitmap, b: Bitmap, threshold = 12) {
   return count === 0 ? null : { minX, minY, maxX, maxY, count };
 }
 
-let fonts: Array<{ name: string; data: ArrayBuffer; weight: 500 | 700 }>;
+let fonts: Awaited<ReturnType<typeof loadStoryOgFonts>>;
 
 async function renderPng(
   story: FeedItem,
@@ -192,9 +193,7 @@ async function renderPng(
   lang: Lang
 ): Promise<Uint8Array> {
   const response = await ImageResponse.async(storyOgCard(story, image, lang), {
-    width: STORY_OG_WIDTH,
-    height: STORY_OG_HEIGHT,
-    fonts,
+    ...storyOgRenderOptions(fonts),
   });
   return new Uint8Array(await response.arrayBuffer());
 }
@@ -205,19 +204,10 @@ function blankedTitle(story: FeedItem): FeedItem {
 }
 
 beforeAll(async () => {
-  const toArrayBuffer = (bytes: Uint8Array) =>
-    bytes.buffer.slice(
-      bytes.byteOffset,
-      bytes.byteOffset + bytes.byteLength
-    ) as ArrayBuffer;
-  const [medium, bold] = await Promise.all([
-    readFile("public/fonts/eb-garamond-500.ttf"),
-    readFile("public/fonts/eb-garamond-700.ttf"),
-  ]);
-  fonts = [
-    { name: "EB Garamond", data: toArrayBuffer(medium), weight: 500 },
-    { name: "EB Garamond", data: toArrayBuffer(bold), weight: 700 },
-  ];
+  fonts = await loadStoryOgFonts(
+    async (path) => (await readFile(`public${path}`)).buffer as ArrayBuffer
+  );
+  expect(fonts).toHaveLength(2);
 });
 
 describe("story OG title layout geometry", () => {
@@ -302,6 +292,33 @@ describe("story OG card rendering", () => {
     const first = await renderPng(item(), image, "vi");
     const second = await renderPng(item(), image, "vi");
     expect(Buffer.from(first).equals(Buffer.from(second))).toBe(true);
+  }, 20_000);
+
+  it("draws Vietnamese tone marks above the letter, not on it", async () => {
+    // EB Garamond and Source Sans 3 place stacked tones (ấ, ậ) with GPOS
+    // mark-to-base. satori/resvg skips that lookup, so the mark draws on
+    // the letter. Be Vietnam Pro bakes the mark into the outline.
+    const plain = item({
+      title: "a a a a a a a a",
+      title_vi: "a a a a a a a a",
+    });
+    const marked = item({
+      title: "ấ ậ ế ố ớ ứ ẫ ễ",
+      title_vi: "ấ ậ ế ố ớ ứ ẫ ễ",
+    });
+    const [plainPng, markedPng, plainBlank, markedBlank] = await Promise.all([
+      renderPng(plain, null, "vi"),
+      renderPng(marked, null, "vi"),
+      renderPng(blankedTitle(plain), null, "vi"),
+      renderPng(blankedTitle(marked), null, "vi"),
+    ]);
+    const plainBox = diffBounds(decodePng(plainPng), decodePng(plainBlank));
+    const markedBox = diffBounds(decodePng(markedPng), decodePng(markedBlank));
+    expect(plainBox).not.toBeNull();
+    expect(markedBox).not.toBeNull();
+    const plainTop = (plainBox as NonNullable<typeof plainBox>).minY;
+    const markedTop = (markedBox as NonNullable<typeof markedBox>).minY;
+    expect(plainTop - markedTop).toBeGreaterThanOrEqual(8);
   }, 20_000);
 
   it("renders English and Vietnamese cards at the card dimensions", async () => {
