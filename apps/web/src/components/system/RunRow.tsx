@@ -29,6 +29,7 @@ export function RunRow({
   expanded,
   attemptsState,
   attempts,
+  attemptsTruncated = false,
   onToggle,
 }: {
   run: WorkflowRunRow;
@@ -37,6 +38,8 @@ export function RunRow({
   expanded: boolean;
   attemptsState: RunAttemptsState;
   attempts: LlmCallRow[];
+  /** The per-run read hit its cap; more calls exist than are shown. */
+  attemptsTruncated?: boolean;
   onToggle: () => void;
 }) {
   const status = runStatus(r);
@@ -267,6 +270,7 @@ export function RunRow({
               lang={lang}
               attemptsState={attemptsState}
               attempts={attempts}
+              attemptsTruncated={attemptsTruncated}
               onClose={onToggle}
               triggerRef={activeTriggerRef}
             />

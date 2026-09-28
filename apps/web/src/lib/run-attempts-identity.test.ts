@@ -81,11 +81,55 @@ function fakeDb(runRows: Record<string, unknown>[] = []) {
             }
             if (sql.includes("WHERE run_id IN")) {
               const ids = new Set(args.map((id) => String(id)));
-              return {
-                results: calls.filter(
-                  (row) => row.run_id && ids.has(row.run_id)
-                ),
-              };
+              const matched = calls.filter(
+                (row) => row.run_id && ids.has(row.run_id)
+              );
+              if (sql.includes("MIN(ts) AS first_ts")) {
+                // Model-inventory query: one row per (run, model), ordered by
+                // first-seen ts.
+                const firstSeen = new Map<string, LlmCallTableRow>();
+                for (const row of matched) {
+                  const key = `${row.run_id} ${row.model}`;
+                  const prev = firstSeen.get(key);
+                  if (!prev || row.ts < prev.ts) firstSeen.set(key, row);
+                }
+                return {
+                  results: [...firstSeen.values()]
+                    .sort((a, b) => a.ts - b.ts)
+                    .map((row) => ({
+                      run_id: row.run_id,
+                      model: row.model,
+                      first_ts: row.ts,
+                    })),
+                };
+              }
+              if (sql.includes("COUNT(*) AS calls")) {
+                // Aggregate query: per-run counts, sums and cached presence.
+                const byRun = new Map<string, LlmCallTableRow[]>();
+                for (const row of matched) {
+                  const key = String(row.run_id);
+                  byRun.set(key, [...(byRun.get(key) ?? []), row]);
+                }
+                return {
+                  results: [...byRun.entries()].map(([runId, rows]) => ({
+                    run_id: runId,
+                    calls: rows.length,
+                    failures: rows.filter((r) => r.ok === 0).length,
+                    tokens: rows.reduce((a, r) => a + (r.tokens ?? 0), 0),
+                    duration_ms: rows.reduce(
+                      (a, r) => a + (r.duration_ms ?? 0),
+                      0
+                    ),
+                    cached_sum: rows.reduce(
+                      (a, r) => a + (r.cached_tokens ?? 0),
+                      0
+                    ),
+                    cached_known: rows.filter((r) => r.cached_tokens != null)
+                      .length,
+                  })),
+                };
+              }
+              return { results: matched };
             }
             return { results: calls.slice(0, 1) };
           }

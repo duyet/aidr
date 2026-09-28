@@ -22,17 +22,55 @@ const TELEMETRY_COLUMNS_SQL = [
 
 let telemetryColumnsReady = false;
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** A column that already exists is the success case, not a failure: D1
+ * reports `duplicate column name` for the second attempt. */
+function isAlreadyPresent(error: unknown): boolean {
+  return /duplicate column name|already exists/i.test(errorMessage(error));
+}
+
+/**
+ * Errors that will not fix themselves. Re-issuing the ALTER list on every
+ * logged call for a schema that is never going to change would add a failed
+ * DDL round-trip per attempt for the life of the isolate. Deliberately
+ * excludes transient problems (lock contention, a busy database), which must
+ * keep retrying.
+ */
+function isSettled(error: unknown): boolean {
+  const message = errorMessage(error);
+  return (
+    /no such table/i.test(message) ||
+    /not authorized|permission denied|read-only/i.test(message) ||
+    /syntax error/i.test(message) ||
+    /\bunsupported\b|\bsorry\b/i.test(message)
+  );
+}
+
 async function ensureTelemetryColumns(db: D1Database): Promise<void> {
   if (telemetryColumnsReady) return;
+  let complete = true;
+  let settled = false;
   for (const sql of TELEMETRY_COLUMNS_SQL) {
     try {
       await db.prepare(sql).run();
-    } catch {
-      // Column already exists, or table not migrated yet — insert path
-      // still falls back to progressively smaller safe INSERTs below.
+    } catch (error) {
+      if (isAlreadyPresent(error)) continue;
+      // A transient failure must not latch the cache: if it did, `run_id`
+      // would never be added and every later call would fall through to the
+      // legacy INSERT that carries no identity. Retry instead.
+      if (isSettled(error)) {
+        settled = true;
+        continue;
+      }
+      complete = false;
     }
   }
-  telemetryColumnsReady = true;
+  // `settled` means this isolate can never add the columns, so stop
+  // re-issuing the DDL; the insert ladder still logs what the schema allows.
+  telemetryColumnsReady = complete || settled;
 }
 
 /** Every D1 insert started by a logger, so a step can await them before its
