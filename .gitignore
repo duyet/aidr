@@ -26,20 +26,6 @@ apps/web/public/news-tab.zip
 agent/
 skills-lock.json
 
-# Video build scratch and rendered output. The composition, its variables and
-# its frozen assets are committed; the MP4s are one `hyperframes render --batch`
-# away and would add ~200MB of binaries to the history forever.
-brag-output/**/work/
-brag-output/**/out/
-brag-output/**/node_modules/
-brag-output/hf-reel/rv/
-brag-output/hf-reel/review/
-brag-output/hf-reel/cmp/
-brag-output/hf-reel/final/
-brag-output/**/*.mp4
-brag-output/.current
-# the first prototype's frozen assets, superseded by hf-reel/assets
-brag-output/reel-test/
-
-# Upstream download for apps/web/scripts/gen-og-fonts.py
-apps/web/scripts/.eb-garamond-source.ttf
+# Video pipeline scratch: compositions, render output and vendored assets for
+# the "brag" reels. Not project source.
+brag-output/
