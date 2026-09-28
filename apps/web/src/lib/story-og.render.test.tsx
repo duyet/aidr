@@ -295,9 +295,9 @@ describe("story OG card rendering", () => {
   }, 20_000);
 
   it("draws Vietnamese tone marks above the letter, not on it", async () => {
-    // EB Garamond and Source Sans 3 place stacked tones (ấ, ậ) with GPOS
-    // mark-to-base. satori/resvg skips that lookup, so the mark draws on
-    // the letter. Be Vietnam Pro bakes the mark into the outline.
+    // The old OG file was a Latin-only EB Garamond cut, so these tones were
+    // missing and satori pulled a fallback face. The full face has to draw
+    // the mark above the letter.
     const plain = item({
       title: "a a a a a a a a",
       title_vi: "a a a a a a a a",

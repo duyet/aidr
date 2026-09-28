@@ -537,7 +537,7 @@ export function storyOgCard(
         backgroundColor: PAPER,
         color: INK,
         padding: `${CARD_PADDING_TOP}px ${CARD_PADDING_X}px 0`,
-        fontFamily: "Be Vietnam Pro",
+        fontFamily: "EB Garamond",
       }}
     >
       <div

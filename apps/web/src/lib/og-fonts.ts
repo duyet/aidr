@@ -1,30 +1,22 @@
 /**
  * The satori/resvg OG renderer has no system font stack: it only shapes text
  * with the `fonts` array the route passes in. When a glyph is missing there,
- * satori does not skip it — it asks `loadAdditionalAsset` to pull a fallback
- * face from Google Fonts over the network, so a Vietnamese headline silently
- * rendered half EB Garamond and half Noto Sans. EB Garamond does cover the
- * alphabet, but its Vietnamese diacritics collide, and its stacked tones
- * are positioned only by GPOS, which this renderer skips. The card uses
- * Be Vietnam Pro, a humanist sans whose Vietnamese marks are in the outlines.
- *
- * These assets have to carry the full Vietnamese alphabet as simple outlines.
- * Source Sans 3 stores stacked tones as composites whose vertical position
- * lives only in GPOS mark-to-base, which this renderer does not apply, so
- * the marks draw on the letter. Be Vietnam Pro is the humanist sans that
- * already bakes those marks into the outline. Provenance and the exact
- * recipe live in `public/fonts/README.md`.
+ * satori does not skip it — it fetches a fallback face and mixes it into the
+ * headline. EB Garamond covers Vietnamese, but the file this route used to
+ * load was a Latin-only cut, so the tone marks and horned letters were not
+ * in it. These assets are the full face, instanced at wght 500 and 700.
+ * Provenance lives in `public/fonts/README.md`.
  */
 import { STORY_OG_HEIGHT, STORY_OG_WIDTH } from "./story-og";
 
 /** Asset paths for the two card weights. Loaded per render request. */
 export const STORY_OG_FONT_SOURCES = {
-  medium: "/fonts/be-vietnam-pro-500.ttf",
-  bold: "/fonts/be-vietnam-pro-700.ttf",
+  medium: "/fonts/eb-garamond-500.ttf",
+  bold: "/fonts/eb-garamond-700.ttf",
 } as const;
 
 /** The family name the card's JSX asks for. Must match the loaded fonts. */
-export const STORY_OG_FONT_FAMILY = "Be Vietnam Pro";
+export const STORY_OG_FONT_FAMILY = "EB Garamond";
 
 /** The complete Vietnamese precomposed inventory: 65 upper + 65 lower. */
 export const VIETNAMESE_ALPHABET =
