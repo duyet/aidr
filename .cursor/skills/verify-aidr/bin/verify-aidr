@@ -3,7 +3,7 @@
  * CLI lever for .cursor/skills/verify-aidr — run from the repo root.
  * Prints one JSON object on stdout (except --help). Non-zero exit = not verified.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -50,7 +50,10 @@ function usage() {
 
 Commands:
   launch [--base URL] [--local]   Bind target (default ${DEFAULT_BASE})
-  doctor                          GET /api/public JSON 200 + homepage HTML 200 (Chrome UA)
+  doctor                          GET /api/public JSON 200 + homepage HTML 200 (Chrome UA),
+                                  plus the pipeline check when wrangler credentials work
+  pipeline                        Read-only prod D1: last run age/error, step actions, failed
+                                  tldr runs, last post per channel, failed notifications
   doctor iv --id <8hex> --lang vi|en
                                   Run the Telegram IV field gate (#231): field verdict,
                                   generated-card probe, and the IV Editor checklist with
@@ -362,6 +365,166 @@ function publicShape(body) {
   };
 }
 
+const HOUR_MS = 3_600_000;
+const PIPELINE_RUN_STALE_H = 2;
+const PIPELINE_TELEGRAM_STALE_H = 8;
+
+/** Read-only prod D1 query through wrangler. Returns one results array per statement. */
+function d1Query(sql) {
+  const wranglerToml = readFileSync(join(ROOT, "apps/web/wrangler.toml"), "utf8");
+  const db = /^database_name\s*=\s*"([^"]+)"/m.exec(wranglerToml)?.[1];
+  if (!db) throw new Error("database_name not found in apps/web/wrangler.toml");
+  if (!/^\s*(select|with)\b/i.test(sql)) throw new Error("pipeline check is read-only");
+  const res = spawnSync(
+    "npx",
+    ["wrangler", "d1", "execute", db, "--remote", "--json", "--command", sql],
+    { cwd: join(ROOT, "apps/web"), encoding: "utf8", timeout: 90_000 },
+  );
+  const out = `${res.stdout || ""}`;
+  let json;
+  try {
+    json = JSON.parse(out.slice(out.search(/[[{]/)));
+  } catch {
+    throw new Error(`wrangler d1 failed: ${(res.stderr || out).trim().slice(0, 300)}`);
+  }
+  if (!Array.isArray(json)) {
+    const err = json?.error;
+    throw new Error(
+      `wrangler d1 error: ${err?.text || "unknown"} ${err?.notes?.[0]?.text || ""}`.trim(),
+    );
+  }
+  return json.map((r) => r.results || []);
+}
+
+/** started_at is unix seconds in the brief but prod stores ms; accept both. */
+function toMs(v) {
+  if (v == null) return null;
+  return v < 1e11 ? v * 1000 : v;
+}
+
+function hoursSince(ms, now) {
+  return ms == null ? null : Math.round(((now - ms) / HOUR_MS) * 10) / 10;
+}
+
+async function runPipeline() {
+  const now = Date.now();
+  const since24 = now - 24 * HOUR_MS;
+  let sets;
+  try {
+    sets = d1Query(
+      [
+        "SELECT id, started_at, finished_at, error, stats FROM workflow_runs ORDER BY (CASE WHEN started_at < 100000000000 THEN started_at * 1000 ELSE started_at END) DESC LIMIT 1",
+        `SELECT started_at, error, stats FROM workflow_runs WHERE (CASE WHEN started_at < 100000000000 THEN started_at * 1000 ELSE started_at END) >= ${since24} ORDER BY (CASE WHEN started_at < 100000000000 THEN started_at * 1000 ELSE started_at END) DESC LIMIT 100`,
+        "SELECT channel, MAX(posted_at) AS last_posted_at, COUNT(*) AS total FROM notifications WHERE status = 'sent' GROUP BY channel",
+        `SELECT channel, item_id, attempts, last_error, posted_at FROM notifications WHERE status = 'failed' AND posted_at >= ${since24} ORDER BY posted_at DESC LIMIT 20`,
+      ].join("; "),
+    );
+  } catch (e) {
+    return { available: false, ok: null, error: e instanceof Error ? e.message : String(e) };
+  }
+  const [[last], recent, lastPosts, failed] = sets;
+  const parse = (s) => {
+    try {
+      return JSON.parse(s || "{}");
+    } catch {
+      return {};
+    }
+  };
+  const warnings = [];
+  const lastStats = parse(last?.stats);
+  const startedMs = toMs(last?.started_at);
+  const ageH = hoursSince(startedMs, now);
+  if (!last) warnings.push("no workflow_runs rows");
+  else if (ageH > PIPELINE_RUN_STALE_H) warnings.push(`last run ${ageH}h old (>${PIPELINE_RUN_STALE_H}h)`);
+  if (last?.error) warnings.push(`last run error: ${String(last.error).slice(0, 200)}`);
+
+  let failedTldrRuns = 0;
+  let chainExhaustedRuns = 0;
+  for (const r of recent) {
+    const steps = parse(r.stats).steps || [];
+    const tldr = steps.find((x) => x.name === "tldr");
+    const text = `${r.error || ""} ${JSON.stringify(steps)}`;
+    if (tldr && /fail|error/i.test(`${tldr.action} ${tldr.reason || ""}`)) failedTldrRuns += 1;
+    if (/anyrouter chain exhausted/i.test(text)) chainExhaustedRuns += 1;
+  }
+  if (failedTldrRuns || chainExhaustedRuns) {
+    warnings.push(`24h: ${failedTldrRuns} failed tldr, ${chainExhaustedRuns} anyrouter chain exhausted`);
+  }
+
+  const lastNotifications = lastPosts.map((r) => ({
+    channel: r.channel,
+    last_posted_at: r.last_posted_at ? new Date(toMs(r.last_posted_at)).toISOString() : null,
+    hours_since: hoursSince(toMs(r.last_posted_at), now),
+    total_sent: r.total,
+  }));
+  const tg = lastNotifications.find((n) => n.channel === "telegram");
+  if (!tg) warnings.push("no telegram post on record");
+  else if (tg.hours_since > PIPELINE_TELEGRAM_STALE_H) {
+    warnings.push(`no telegram post for ${tg.hours_since}h (>${PIPELINE_TELEGRAM_STALE_H}h)`);
+  }
+  if (failed.length) warnings.push(`${failed.length} failed notification(s) in last 24h`);
+
+  const reasons = {};
+  for (const r of recent) {
+    const notify = (parse(r.stats).steps || []).find((x) => x.name === "notify");
+    if (!notify) continue;
+    let detail = parse(notify.reason);
+    if (!Object.keys(detail).length) detail = { [notify.action]: notify.reason || "" };
+    for (const [ch, v] of Object.entries(detail)) {
+      if (v && typeof v === "object") {
+        for (const k of ["digest", "trending"]) {
+          if (typeof v[k] === "string") {
+            const key = `${ch}.${k}=${v[k]}`;
+            reasons[key] = (reasons[key] || 0) + 1;
+          }
+        }
+      } else {
+        const key = `${ch}=${String(v).slice(0, 80)}`;
+        reasons[key] = (reasons[key] || 0) + 1;
+      }
+    }
+  }
+
+  return {
+    available: true,
+    ok: warnings.length === 0,
+    warnings,
+    lastRun: last
+      ? {
+          id: last.id,
+          started_at: startedMs ? new Date(startedMs).toISOString() : null,
+          age_hours: ageH,
+          finished: last.finished_at != null,
+          error: last.error || null,
+        }
+      : null,
+    lastRunSteps: (lastStats.steps || []).map((s) => ({
+      name: s.name,
+      action: s.action,
+      ...(s.reason ? { reason: String(s.reason).slice(0, 200) } : {}),
+    })),
+    runs24h: { count: recent.length, failedTldr: failedTldrRuns, anyrouterChainExhausted: chainExhaustedRuns },
+    lastNotifications,
+    failedNotifications24h: failed.map((r) => ({
+      channel: r.channel,
+      item_id: r.item_id,
+      attempts: r.attempts,
+      last_error: String(r.last_error || "").slice(0, 200),
+      posted_at: new Date(toMs(r.posted_at)).toISOString(),
+    })),
+    notifyReasons24h: reasons,
+  };
+}
+
+async function cmdPipeline(flags) {
+  const { runId, evidenceDir } = resolveRun(flags);
+  const pipeline = await runPipeline();
+  const out = { ok: pipeline.available && pipeline.ok, command: "pipeline", runId, evidenceDir, ...pipeline };
+  save(evidenceDir, "pipeline.json", `${JSON.stringify(out, null, 2)}\n`);
+  printJson(out);
+  if (!out.ok) process.exit(1);
+}
+
 async function cmdDoctor(flags) {
   const { runId, evidenceDir, base } = resolveRun(flags);
   const publicUrl = `${base}/api/public`;
@@ -413,6 +576,12 @@ async function cmdDoctor(flags) {
       identity,
     },
   };
+  // Skipped (not failed) when wrangler credentials are missing; warnings do fail doctor.
+  const pipeline = await runPipeline();
+  out.pipeline = pipeline.available
+    ? pipeline
+    : { skipped: true, reason: pipeline.error };
+  if (pipeline.available && !pipeline.ok) out.ok = false;
   save(evidenceDir, "doctor.json", `${JSON.stringify(out, null, 2)}\n`);
   printJson(out);
   if (!out.ok) process.exit(1);
@@ -954,6 +1123,9 @@ async function main() {
         return;
       }
       await cmdDoctor(flags);
+      break;
+    case "pipeline":
+      await cmdPipeline(flags);
       break;
     case "drive":
       await cmdDrive(flags);
