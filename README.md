@@ -66,10 +66,12 @@ Zip: `https://aidr.today/aidr.zip` (built into the Worker).
 
 1. Unzip → load unpacked → select the `aidr/` folder inside
 
-Versioning: release-please opens **separate** release PRs:
+Versioning: release-please opens **separate** release PRs from separate
+manifests (`.github/.release-please-web.json` and
+`.github/.release-please-extension.json`). Leave those PRs for a human to merge.
 
-- Chrome extension (`apps/extension`) → tags `aidr-v*`
-- Website (`apps/web`) → tags `web-v*`
+- Website (`apps/web`) → `chore(web): release X.Y.Z`, tags `web-v*`
+- Chrome extension (`apps/extension`) → `chore(extension): release X.Y.Z`, tags `aidr-v*`
 
 Commits that touch each package path (and scopes like `feat(web):` /
 `feat(extension):`) feed that package’s changelog. Merge the PR to cut

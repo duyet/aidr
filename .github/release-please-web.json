@@ -3,9 +3,8 @@
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
   "include-component-in-tag": true,
-  "separate-pull-requests": true,
   "tag-separator": "-",
-  "pull-request-title-pattern": "chore({web,extension}): release${component} ${version}",
+  "pull-request-title-pattern": "chore(web): release ${version}",
   "changelog-sections": [
     { "type": "feat", "section": "✨ Features" },
     { "type": "fix", "section": "🐛 Bug Fixes" },
@@ -19,24 +18,6 @@
     { "type": "style", "section": "💅 Style", "hidden": true }
   ],
   "packages": {
-    "apps/extension": {
-      "release-type": "node",
-      "package-name": "aidr",
-      "component": "aidr",
-      "changelog-path": "CHANGELOG.md",
-      "draft": false,
-      "prerelease": false,
-      "include-component-in-tag": true,
-      "bump-patch-for-minor-pre-major": true,
-      "versioning": "always-bump-patch",
-      "extra-files": [
-        {
-          "type": "json",
-          "path": "manifest.json",
-          "jsonpath": "$.version"
-        }
-      ]
-    },
     "apps/web": {
       "release-type": "node",
       "package-name": "web",
