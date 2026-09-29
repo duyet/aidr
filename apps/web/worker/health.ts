@@ -202,9 +202,7 @@ async function readHistory(env: Env, runId: string): Promise<PriorRun[]> {
   return (results ?? []).map(parsePriorRun);
 }
 
-async function readTelegramLastPost(
-  env: Env
-): Promise<Record<string, number>> {
+async function readTelegramLastPost(env: Env): Promise<Record<string, number>> {
   const { results } = await env.DB.prepare(
     `SELECT channel, MAX(posted_at) AS last FROM notifications
      WHERE channel LIKE 'telegram%' AND status = 'sent' GROUP BY channel`
