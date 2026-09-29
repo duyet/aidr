@@ -1,0 +1,68 @@
+name: Digest preview binding
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    name: Send via Worker email binding
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v6
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy one-off sender, send once, delete
+        working-directory: apps/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: "7df185a18b98382c3240fa7ac4a37075"
+        run: |
+          set -euo pipefail
+          pnpm exec wrangler deploy --config wrangler.digest-preview-once.toml --outdir /tmp/preview-worker | tee /tmp/deploy.txt
+          url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' /tmp/deploy.txt | head -1 || true)"
+          echo "worker_url_set=$([ -n "$url" ] && echo yes || echo no)"
+          if [ -z "$url" ]; then
+            echo "deploy did not print a workers.dev URL"
+            exit 1
+          fi
+          set +e
+          curl -sS -D /tmp/preview.headers -o /tmp/preview.body \
+            -H "x-preview-once: send" "$url"
+          code=$?
+          set -e
+          pnpm exec wrangler delete --config wrangler.digest-preview-once.toml --force || true
+          node -e '
+            const fs = require("fs");
+            const body = fs.readFileSync("/tmp/preview.body","utf8");
+            let parsed = null;
+            try { parsed = JSON.parse(body); } catch {}
+            const log = {
+              transport: "worker-send_email-binding",
+              workerUrlHost: new URL(process.argv[1]).host,
+              curlExit: Number(process.argv[2]),
+              body: parsed ?? body.slice(0, 500),
+              success: Boolean(parsed && parsed.success === true),
+            };
+            fs.writeFileSync("preview-send.log", JSON.stringify(log, null, 2) + "\n");
+            console.log(JSON.stringify(log));
+            if (!log.success) process.exit(1);
+          ' "$url" "$code"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preview-send
+          path: apps/web/preview-send.log
+          if-no-files-found: warn
