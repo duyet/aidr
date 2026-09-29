@@ -1,6 +1,6 @@
 # @aidr/web
 
-Feed pipeline and ranking design: see [ALGORITHM.md](./ALGORITHM.md).
+Hourly pipeline (consume → rank → publish) and ranking design: see [ALGORITHM.md](./ALGORITHM.md). Publish rules for email and Telegram are also under [Publish](#publish) below.
 Locale selection, canonical URLs, and caching: see [LOCALE_URLS.md](./LOCALE_URLS.md).
 
 ## Migration gate
@@ -363,18 +363,33 @@ curl -X POST https://aidr.today/api/mcp \
 A bilingual human-readable version of this section is also published at
 `/mcp`.
 
-## Email digest
+## Publish
 
-Visitors can subscribe to a daily TL;DR email (top 5 stories, EN or VI) at
-`/subscribe`. `POST /api/subscribe` with `{"email", "lang"}` adds a
-subscriber (table `subscribers`, migration `0004_subscribers.sql`);
-`DELETE /api/subscribe?token=<unsubscribe_token>` removes one. The hourly
-`NewsIngestWorkflow` sends the digest once per UTC day, right after the
-`tldr` step, via the `email-digest` step in `worker/workflow.ts`
-(`worker/subscribe/send.ts`). Sending is gated on that day's
-`tldr_snapshots` row having bullets and not already being marked
-`last_sent_date` (per subscriber, local timezone). `sent_at` on the
-snapshot is a legacy "processed once" flag only.
+After the `tldr` step, the same hourly `NewsIngestWorkflow` publishes one
+edition per language (`worker/digest/edition.ts`). `bullets_en` and
+`bullets_vi` are never substituted for each other. The full consume → rank
+→ publish contract is [ALGORITHM.md](./ALGORITHM.md).
+
+### Email digest
+
+Visitors subscribe at `/subscribe` (`POST /api/subscribe` with
+`{"email", "lang"}`; table `subscribers`, migration `0004_subscribers.sql`).
+`DELETE /api/subscribe?token=<unsubscribe_token>` removes one. The
+`email-digest` step (`worker/subscribe/send.ts`) sends once the
+subscriber's own timezone is at or after 07:00 and `last_sent_date` is not
+already that local date. Size is 3, 5, or 10 (default 5), taken from that
+language's edition for the local date. An empty column is skipped and
+retried next hour. `sent_at` on the snapshot is a legacy "mailed at least
+once" flag; nothing reads it to decide a send.
+
+### Telegram
+
+The `notify` step posts the same edition: Vietnamese to
+`TELEGRAM_VI_CHAT_ID` (legacy `TELEGRAM_CHAT_ID`) and English to
+`TELEGRAM_EN_CHAT_ID`, from 08:00 `Asia/Ho_Chi_Minh`, one message per
+channel per local date (`notifications`, key `digest:<date>`). Trending
+posts are Telegram-only. Optional JSON/Slack webhook:
+`NOTIFY_WEBHOOK_URL`.
 
 Email delivery uses the Cloudflare Email Sending Workers binding
 (`[[send_email]] name = "EMAIL"` in `wrangler.toml`, senders

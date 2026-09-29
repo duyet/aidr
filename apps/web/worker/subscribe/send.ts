@@ -2,6 +2,12 @@ import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import {
+  type Edition,
+  loadEdition,
+  type TldrBulletLike,
+  topBullets,
+} from "../digest/edition.js";
+import {
   digestSubjectLine,
   renderDigestEmail,
   renderNoteEmail,
@@ -14,26 +20,13 @@ import { canonicalizeMediaImageUrl } from "../media.js";
 import type { Env } from "../types.js";
 import { DEFAULT_TIMEZONE, isValidTimezone } from "./handlers.js";
 
-export interface TldrBulletLike {
-  text: string;
-  item_id?: string;
-  item_ids?: string[];
-  image_url?: string;
-}
-
-/** Newer snapshots store `item_ids: string[]`; older rows used `item_id`. */
-export function primaryItemId(bullet: TldrBulletLike): string | undefined {
-  if (typeof bullet.item_id === "string" && bullet.item_id)
-    return bullet.item_id;
-  const ids = bullet.item_ids;
-  if (Array.isArray(ids)) {
-    const first = ids.find(
-      (id): id is string => typeof id === "string" && id.length > 0
-    );
-    if (first) return first;
-  }
-  return undefined;
-}
+export type { TldrBulletLike } from "../digest/edition.js";
+export {
+  editionBullets,
+  loadEdition,
+  primaryItemId,
+  topBullets,
+} from "../digest/edition.js";
 
 export interface SubscriberRow {
   email: string;
@@ -59,43 +52,6 @@ export function digestSizeFor(value: unknown): 3 | 5 | 10 {
 }
 /** Digests only go out from this local hour onward — no 3am emails. */
 export const DIGEST_LOCAL_HOUR = 7;
-
-/** Parses and caps a snapshot's bullets JSON column to the top N. */
-export function topBullets(
-  bulletsJson: string | null,
-  max = MAX_BULLETS
-): TldrBulletLike[] {
-  if (!bulletsJson) return [];
-  try {
-    const parsed = JSON.parse(bulletsJson);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .slice(0, max)
-      .map((b: Record<string, unknown>) => {
-        const itemIds = Array.isArray(b.item_ids)
-          ? (b.item_ids as string[])
-          : [];
-        const item_id =
-          typeof b.item_id === "string" && b.item_id ? b.item_id : itemIds[0];
-        const image_url =
-          typeof b.image_url === "string" && b.image_url
-            ? b.image_url
-            : undefined;
-        const ids = itemIds.filter(
-          (id): id is string => typeof id === "string" && id.length > 0
-        );
-        return {
-          text: String(b.text ?? "").trim(),
-          item_id,
-          ...(ids.length > 0 ? { item_ids: ids } : {}),
-          ...(image_url ? { image_url } : {}),
-        };
-      })
-      .filter((bullet) => bullet.text.length > 0);
-  } catch {
-    return [];
-  }
-}
 
 /** A snapshot is usable for a digest once it has bullets in at least one
  * language — no longer gated on `sent_at`, which is per-run/global and
@@ -191,9 +147,9 @@ export function buildDigestEmail(
  * hour (called once per ingest run); each subscriber's own timezone
  * decides whether *this* run is their moment to send, so the same
  * function naturally fans a single daily send out across a whole day of
- * hourly runs as different timezones cross 7am. Always uses the latest
- * snapshot (by date), even if it's "yesterday" UTC for someone west of
- * UTC — freshness within a day doesn't matter here.
+ * hourly runs as different timezones cross 7am. Each subscriber gets the
+ * edition for their local date in their language. An empty column is not
+ * filled from the other language; that subscriber is retried next hour.
  *
  * A per-subscriber failure is logged and swallowed without stamping
  * `last_sent_date`, so that subscriber is retried on the next hourly run.
@@ -283,12 +239,6 @@ export async function sendDailyTldr(env: Env): Promise<number> {
   }
   await ensureMailSchema(env.DB);
 
-  const snapshot = await env.DB.prepare(
-    "SELECT date, bullets_en, bullets_vi, sent_at FROM tldr_snapshots ORDER BY date DESC LIMIT 1"
-  ).first<TldrSnapshotRow>();
-
-  if (!snapshot || !snapshotHasBullets(snapshot)) return 0;
-
   const { results: subscribers } = await env.DB.prepare(
     "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size FROM subscribers WHERE confirmed = 1"
   ).all<SubscriberRow>();
@@ -296,7 +246,9 @@ export async function sendDailyTldr(env: Env): Promise<number> {
   if (!subscribers || subscribers.length === 0) return 0;
 
   const now = Date.now();
+  const editions = new Map<string, Edition | null>();
   let emailsSent = 0;
+  let stampedDate: string | null = null;
 
   for (const sub of subscribers) {
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
@@ -304,20 +256,19 @@ export async function sendDailyTldr(env: Env): Promise<number> {
 
     const size = digestSizeFor(sub.digest_size);
     const requestedLang = sub.lang === "en" ? "en" : "vi";
-    const preferred = topBullets(
-      requestedLang === "en" ? snapshot.bullets_en : snapshot.bullets_vi,
-      size
-    );
-    const bullets =
-      preferred.length > 0 ? preferred : topBullets(snapshot.bullets_en, size);
-    if (bullets.length === 0) continue;
-    const contentLang = preferred.length > 0 ? requestedLang : "en";
-    const withImages = await loadBulletImages(env, bullets);
+    const cacheKey = `${localDate}:${requestedLang}:${size}`;
+    let edition = editions.get(cacheKey);
+    if (edition === undefined) {
+      edition = await loadEdition(env, localDate, requestedLang, size);
+      editions.set(cacheKey, edition);
+    }
+    if (!edition) continue;
+    const withImages = await loadBulletImages(env, edition.bullets);
 
     const { subject, html, text } = buildDigestEmail(
-      snapshot.date,
+      edition.date,
       withImages,
-      contentLang,
+      requestedLang,
       sub.unsubscribe_token,
       size
     );
@@ -329,7 +280,7 @@ export async function sendDailyTldr(env: Env): Promise<number> {
       html,
       text,
       unsubscribeToken: sub.unsubscribe_token,
-      lang: contentLang,
+      lang: requestedLang,
     });
     if (!sent) continue;
 
@@ -339,17 +290,18 @@ export async function sendDailyTldr(env: Env): Promise<number> {
       .bind(localDate, sub.email)
       .run();
     emailsSent++;
+    stampedDate = edition.date;
   }
 
-  // Legacy signal only: marks that this snapshot has been processed at
-  // least once. Nothing reads this to decide whether to send anymore
-  // (that's per-subscriber via last_sent_date above); kept for any
-  // existing dashboard/tooling that still looks at it.
-  await env.DB.prepare(
-    "UPDATE tldr_snapshots SET sent_at = COALESCE(sent_at, ?) WHERE date = ?"
-  )
-    .bind(now, snapshot.date)
-    .run();
+  // Legacy signal only: marks that this snapshot has been mailed at least
+  // once. Nothing reads this to decide whether to send anymore.
+  if (stampedDate) {
+    await env.DB.prepare(
+      "UPDATE tldr_snapshots SET sent_at = COALESCE(sent_at, ?) WHERE date = ?"
+    )
+      .bind(now, stampedDate)
+      .run();
+  }
 
   return emailsSent;
 }

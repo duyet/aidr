@@ -4,7 +4,7 @@ aidr / AI;DR monorepo — Cloudflare **Workers** (not Pages) at https://aidr.tod
 
 ## Before changing the pipeline
 
-Read [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md) before changing ingest, ranking, prompts, admin/MCP, or notify surfaces.
+Read [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md) before changing ingest, ranking, prompts, admin/MCP, or notify surfaces. One hourly run consumes sources, ranks items, writes `tldr_snapshots`, then publishes that edition to email and Telegram. Language columns do not fall back to each other (`worker/digest/edition.ts`).
 
 Telegram Instant View contract and manual checklist: [`docs/decisions/telegram-instant-view.md`](docs/decisions/telegram-instant-view.md).
 

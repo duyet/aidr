@@ -13,7 +13,20 @@ bilingual feed.
 
 ## Overview
 
-Prompts live in `worker/llm.ts`; the pipeline steps in `worker/workflow.ts`.
+One hourly run does three jobs. Prompts live in `worker/llm.ts`; the steps live in `worker/workflow.ts`.
+
+| Phase | What it writes | Where |
+| --- | --- | --- |
+| Consume | Source rows become `items` (fetch, dedupe, enrich) | `worker/sources/`, `worker/dedupe.ts`, `worker/enrich.ts` |
+| Rank | Scores, translations, `rank_score`, then today's `tldr_snapshots` row (`bullets_en`, `bullets_vi`) | `worker/llm.ts`, `worker/ranking.ts`, `worker/tldr.ts` |
+| Publish | The same edition, per language, with no cross-language fill-in | `worker/digest/edition.ts` |
+
+Publish has two deliveries and they do not share a clock or a table:
+
+- **Email** (`worker/subscribe/send.ts`) — from 07:00 in each subscriber's timezone, size 3/5/10 (default 5). Idempotency is `subscribers.last_sent_date`.
+- **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories are Telegram-only.
+
+An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next hourly run retries. Email is not a `Notifier`: a notifier is one target plus a trending post.
 
 ## Scheduling & coalesce
 
@@ -325,7 +338,13 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
     - UI shows 8 by default (user preference 8/12/16).
 
 11. **Email digest** — per-subscriber language and digest size (3/5/10
-    stories, default 5) to confirmed subscribers, once per local morning.
+    stories, default 5) to confirmed subscribers, once per their local
+    morning (from 07:00 in the subscriber's timezone). Copy comes from the
+    same edition as Telegram (`worker/digest/edition.ts`): `bullets_vi` or
+    `bullets_en` for that local date, with no cross-language fallback. An
+    empty column leaves `last_sent_date` unset so the next hourly run
+    retries. Idempotency stays on `subscribers.last_sent_date`, not the
+    `notifications` table.
 
 12. **Notify (`worker/notify/`)** — pluggable channel adapters (Telegram
     plus optional JSON/Slack webhook via `NOTIFY_WEBHOOK_URL`),
@@ -398,12 +417,12 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       dead upstream URLs) — it is 200 by construction, so the post keeps its
       image instead of dropping to bare text. The card no longer occupies an
       album slot.
-    - **The channel is single-language.** `Notifier.lang` is `vi`, and the
-      dispatcher selects digest bullets and the trending translation by it with
-      no English fallback: a story without a Vietnamese translation is not a
-      candidate, and the digest reads `bullets_vi` only. Adding an English
-      channel later is a new notifier entry with `lang: "en"`, not a change to
-      the query or the dispatcher.
+    - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
+      is `en`. Digest bullets come from that language's edition
+      (`worker/digest/edition.ts`) and never from the other column. Trending
+      copy is chosen by `Notifier.lang`: English posts the source title, and
+      Vietnamese posts `translations` when the title is present, otherwise
+      the source title. A second locale is another notifier entry.
 
 13. **Review gates (LLM, rating ≥ 0.6)** — user translation suggestions and
     HN-style story submissions are judged (faithfulness / relevance / not

@@ -2,8 +2,9 @@ import type { Lang } from "../../src/lib/types.js";
 import type { MediaManifest } from "../media.js";
 import type { Env } from "../types.js";
 
-/** A trending story posted individually. Title/summary are already
- *  language-resolved by the candidate query (VI preferred, EN fallback). */
+/** A trending story posted individually. Title and summary are already
+ *  language-resolved: English uses the source fields; Vietnamese uses the
+ *  translation when the title is present, otherwise the source fields. */
 export interface StoryPayload {
   id: string;
   url: string;
@@ -18,7 +19,7 @@ export interface StoryPayload {
   comments: number;
   rank_score: number;
   llm_importance: number | null;
-  /** Content language resolved by the notifier query (VI, with EN fallback). */
+  /** Content language the notifier query resolved for this story. */
   lang: Lang;
 }
 
@@ -50,23 +51,15 @@ export interface SendResult {
 export interface Notifier {
   /** Stable id — the `notifications.channel` value. */
   id: string;
-  /** Copy language this channel posts. A second locale is a new notifier,
-   *  not a flag on an existing one. */
+  /**
+   * The only language this channel carries. A locale is its own notifier
+   * (`telegram` is `vi`, `telegram-en` is `en`), not a flag. The dispatcher
+   * never substitutes the other language: a story or digest column in this
+   * language is required, or the channel skips.
+   */
   lang: Lang;
   /** Where posts go (chat id, webhook host, ...) — stored for observability. */
   target(env: Env): string;
-  /**
-   * The content language this channel carries, and the ONLY one it carries.
-   *
-   * The dispatcher picks digest bullets and trending copy by this value and
-   * never falls back to the other language, so a channel cannot leak English
-   * into a Vietnamese feed (or the reverse). A story with no translation in
-   * this language is not eligible for this channel at all.
-   *
-   * Today every channel is `vi`. A second, English channel is a new notifier
-   * entry with `lang: "en"` — not a change to the dispatcher.
-   */
-  lang: Lang;
   /** False when the channel is fully unset (local/dev). Throws when
    *  half-configured (e.g. chat id without token) so a deploy bug
    *  cannot silently skip sends. */
