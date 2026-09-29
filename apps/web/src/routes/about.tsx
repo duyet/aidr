@@ -31,37 +31,22 @@ const STEPS: [string, string[]][] = [
   ["Distribute", ["site", "email", "Telegram"]],
 ];
 
+/** One step per line, then a short arrow. Every line stays under 80 columns
+ *  so the box fits a phone without a horizontal scrollbar. */
 function flowLines(): string[] {
-  const width =
-    Math.max(
-      ...STEPS.flatMap(([title, lines]) =>
-        [title, ...lines].map((s) => s.length)
-      )
-    ) + 4;
-  const rows = STEPS.map(([title, lines]) => {
-    const body = [title, ...lines];
-    while (body.length < 3) body.push("");
-    return body.map((line) => line.padEnd(width));
+  const lines: string[] = [];
+  STEPS.forEach(([title, detail], index) => {
+    lines.push(`${title}  ${detail.join(", ")}`);
+    if (index < STEPS.length - 1) lines.push("   |", "   v");
   });
-  const height = Math.max(...rows.map((row) => row.length));
-  return Array.from({ length: height }, (_, line) =>
-    rows
-      .map((row, index) => {
-        const cell = row[line] ?? "".padEnd(width);
-        const last = index === rows.length - 1;
-        if (line === 0 && !last) return `${cell.slice(0, width - 4)}--> `;
-        return last ? cell.trimEnd() : cell;
-      })
-      .join("")
-      .trimEnd()
-  );
+  return lines;
 }
 
 const FLOW = flowLines().join("\n");
 
 function PipelineDiagram() {
   return (
-    <pre className="not-typeset mt-4 w-full overflow-x-auto rounded-2xl border border-border bg-card px-6 py-4 text-left font-mono text-[13px] leading-relaxed text-foreground">
+    <pre className="not-typeset mt-4 w-full overflow-hidden whitespace-pre-wrap rounded-2xl border border-border bg-card px-4 py-4 text-left font-mono text-xs leading-relaxed text-foreground sm:px-6 sm:text-[13px]">
       {FLOW}
     </pre>
   );
