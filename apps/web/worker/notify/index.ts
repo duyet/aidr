@@ -2,6 +2,7 @@ import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
 import { nn } from "../d1-bind.js";
+import { loadEdition, primaryItemId } from "../digest/edition.js";
 import {
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
@@ -10,11 +11,7 @@ import {
   primaryThumbnailUrl,
 } from "../media.js";
 import { assertMediaManifestSchema } from "../media-schema.js";
-import {
-  getLocalHourAndDate,
-  primaryItemId,
-  topBullets,
-} from "../subscribe/send.js";
+import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE } from "../time.js";
 import type { Env } from "../types.js";
 import { telegramEnNotifier, telegramNotifier } from "./telegram.js";
@@ -29,8 +26,8 @@ import { webhookNotifier } from "./webhook.js";
 /**
  * Channel-agnostic dispatch, deliberately non-spammy. Two kinds of posts:
  *
- * 1. Daily TL;DR digest — ONE message per local day per channel, the
- *    day's TL;DR snapshot bullets (VI preferred) each linked to its story.
+ * 1. Daily TL;DR digest — ONE message per local day per channel, that
+ *    channel's language edition, each bullet linked to its story.
  * 2. Trending stories — individual posts only when the ranking algo
  *    flags a story as exceptional (rank + importance bar), capped per day
  *    and spaced by a minimum gap.
@@ -283,44 +280,11 @@ async function loadDigest(
   date: string,
   lang: Lang
 ): Promise<DailyDigest | null> {
-  // Bind the exact date: within the send window (08:00–24:00 local, UTC+7)
-  // the local date always equals the snapshot's UTC date, and a missing
-  // snapshot returns null so a later run retries instead of resending an
-  // older day's digest.
-  let snapshot = await env.DB.prepare(
-    "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots WHERE date = ?"
-  )
-    .bind(date)
-    .first<{
-      date: string;
-      bullets_en: string | null;
-      bullets_vi: string | null;
-    }>();
-  // TL;DR used to key on UTC date; if today's local row is missing, try UTC.
-  if (!snapshot) {
-    const utcDate = new Date().toISOString().slice(0, 10);
-    if (utcDate !== date) {
-      snapshot = await env.DB.prepare(
-        "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots WHERE date = ?"
-      )
-        .bind(utcDate)
-        .first<{
-          date: string;
-          bullets_en: string | null;
-          bullets_vi: string | null;
-        }>();
-    }
-  }
-  if (!snapshot) return null;
-
-  const bullets = topBullets(
-    lang === "en" ? snapshot.bullets_en : snapshot.bullets_vi,
-    DIGEST_MAX_BULLETS
-  );
-  if (bullets.length === 0) return null;
+  const edition = await loadEdition(env, date, lang, DIGEST_MAX_BULLETS);
+  if (!edition) return null;
 
   const resolved: DigestBullet[] = [];
-  for (const bullet of bullets) {
+  for (const bullet of edition.bullets) {
     let url: string | null = null;
     const itemId = primaryItemId(bullet);
     if (itemId) {
@@ -335,7 +299,7 @@ async function loadDigest(
     }
     resolved.push({ text: bullet.text, url });
   }
-  return { lang, date, bullets: resolved };
+  return { lang, date: edition.date, bullets: resolved };
 }
 
 /**

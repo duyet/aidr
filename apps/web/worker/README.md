@@ -1,9 +1,15 @@
 # worker/
 
-Ingestion backend for the news app: source adapters, LLM scoring/translation,
-ranking, and the `NewsIngestWorkflow` Cloudflare Workflow. Primary store is
-D1 (`aidr`). Owned by the backend agent; `apps/web/src/**` (frontend) is
-separate territory.
+Ingestion backend for the news app. One hourly `NewsIngestWorkflow` consumes
+sources, ranks items, and publishes the daily edition. Primary store is D1
+(`aidr`). The step-by-step contract is [`../ALGORITHM.md`](../ALGORITHM.md).
+`apps/web/src/**` (frontend) is separate territory.
+
+| Phase | Modules |
+| --- | --- |
+| Consume | `sources/` (registry, adapters), `dedupe.ts`, `enrich.ts` |
+| Rank | `llm.ts`, `ranking.ts`, `tldr.ts` → `tldr_snapshots` |
+| Publish | `digest/edition.ts` shared by `subscribe/send.ts` (email) and `notify/` (Telegram VI, Telegram EN, optional webhook) |
 
 ## Wiring into the build (action needed from the frontend/entry-server owner)
 

@@ -551,15 +551,26 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     expect(sentTo).toEqual(["nextday@example.com"]);
   });
 
-  it("falls back to English bullets when the preferred language is empty", async () => {
+  it("does not send Vietnamese from English bullets, and still sends the English subscriber", async () => {
     const fixedNow = Date.UTC(2026, 7, 16, 3, 0, 0);
     const updates: { sql: string; args: unknown[] }[] = [];
-    const sent: Array<{
-      to: string;
-      from: { email: string };
-      html: string;
-      headers?: Record<string, string>;
-    }> = [];
+    const sent: string[] = [];
+    const subscribers = [
+      {
+        email: "vi@example.com",
+        lang: "vi",
+        unsubscribe_token: "t1",
+        timezone: "Asia/Ho_Chi_Minh",
+        last_sent_date: null,
+      },
+      {
+        email: "en@example.com",
+        lang: "en",
+        unsubscribe_token: "t2",
+        timezone: "Asia/Ho_Chi_Minh",
+        last_sent_date: null,
+      },
+    ];
     const db = {
       prepare(sql: string) {
         const bound = () => ({
@@ -570,15 +581,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
             sent_at: null,
           }),
           all: async () => ({
-            results: [
-              {
-                email: "vi@example.com",
-                lang: "vi",
-                unsubscribe_token: "t1",
-                timezone: "Asia/Ho_Chi_Minh",
-                last_sent_date: null,
-              },
-            ],
+            results: sql.includes("FROM items") ? [] : subscribers,
           }),
           run: async () => ({ success: true }),
         });
@@ -594,23 +597,28 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     const env = {
       DB: db,
       EMAIL: {
-        send: async (msg: {
-          to: string;
-          from: { email: string };
-          html: string;
-          headers?: Record<string, string>;
-        }) => {
-          sent.push(msg);
+        send: async (msg: { to: string }) => {
+          sent.push(msg.to);
         },
       },
     } as unknown as Env;
     vi.setSystemTime(fixedNow);
     await sendDailyTldr(env);
-    expect(sent).toHaveLength(1);
-    expect(sent[0]?.to).toBe("vi@example.com");
-    expect(sent[0]?.from.email).toBe("digest@aidr.today");
-    expect(sent[0]?.html).toContain("lang=en");
-    expect(sent[0]?.headers?.["List-Unsubscribe"]).toContain("lang=en");
+    expect(sent).toEqual(["en@example.com"]);
+    expect(
+      updates.some(
+        (u) =>
+          u.sql.includes("UPDATE subscribers") &&
+          u.args.includes("vi@example.com")
+      )
+    ).toBe(false);
+    expect(
+      updates.some(
+        (u) =>
+          u.sql.includes("UPDATE subscribers") &&
+          u.args.includes("en@example.com")
+      )
+    ).toBe(true);
   });
 });
 
