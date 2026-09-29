@@ -1296,7 +1296,24 @@ const EMPTY_TLDR: TldrResult = { bullets_en: [], bullets_vi: [], tokens: 0 };
 /** Bilingual 16+16 JSON is a large generation; give the chain more than
  * the default 120s so a reasoning model that spends its first slice on
  * hidden tokens still has time to emit content (or hand off). */
-const TLDR_TIMEOUT_MS = 240_000;
+/** One deadline shared by both generateTldr attempts. The `tldr` Workflow
+ * step times out at 4 minutes (`LLM_STEP`). Two 240s attempts could run for
+ * 8, so the step threw before the retry or the title fallback ran and the
+ * run wrote no snapshot. 200s leaves room for the D1 reads and write. */
+export const TLDR_TIMEOUT_MS = 200_000;
+/** Held back from the bilingual attempt so the EN-only retry still runs. */
+export const TLDR_RETRY_RESERVE_MS = 60_000;
+
+/** Chain budget for one TL;DR attempt, given what is left of the shared
+ *  deadline. 0 means the budget is spent. */
+export function tldrAttemptTimeoutMs(
+  remainingMs: number,
+  attemptsLeft: number
+): number {
+  if (remainingMs <= 0 || attemptsLeft <= 0) return 0;
+  if (attemptsLeft === 1) return remainingMs;
+  return Math.max(1, remainingMs - TLDR_RETRY_RESERVE_MS);
+}
 
 /** Accepts the preferred `item_ids: string[]` shape as well as the legacy
  * single `item_id` (or `id`) string, normalizing everything to an array. */
@@ -1404,11 +1421,20 @@ export async function generateTldr(
   const ATTEMPTS = 2;
   let totalTokens = 0;
   let lastError: string | undefined;
+  const deadline = Date.now() + TLDR_TIMEOUT_MS;
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     // First attempt: bilingual journalist restatement. Second attempt
     // drops VI so a timeout/starved-content failure still yields EN
     // bullets the digest can send (it already falls back to EN).
     const bilingual = attempt === 1;
+    const timeoutMs = tldrAttemptTimeoutMs(
+      deadline - Date.now(),
+      ATTEMPTS - attempt + 1
+    );
+    if (timeoutMs <= 0) {
+      lastError = `attempt ${attempt}/${ATTEMPTS} skipped: tldr budget spent`;
+      break;
+    }
     try {
       const { content: raw, tokens } = await callAnyrouter(
         env,
@@ -1422,7 +1448,7 @@ export async function generateTldr(
           json: true,
           modelSpec: env.ANYROUTER_TLDR_MODEL,
           task: "tldr",
-          timeoutMs: TLDR_TIMEOUT_MS,
+          timeoutMs,
           maxSliceMs: TLDR_SLICE_MAX_MS,
           // Bilingual attempt: EN-only JSON is a miss so the next model
           // can still produce bullets_vi. EN-only is accepted on retry.

@@ -108,6 +108,20 @@ export interface NotifyRunResult {
   reasons: Record<string, NotifyChannelReason>;
 }
 
+/** One-line plain-text summary for the run's `notify` step reason. The full
+ *  structure is kept in `stats.notifyReason`. A JSON dump here goes over the
+ *  240-char step-reason cap once two channels report, and the cut JSON
+ *  becomes "[json redacted]" on the next sanitize pass. */
+export function summarizeNotifyReasons(
+  reasons: Record<string, NotifyChannelReason>
+): string {
+  const parts = Object.entries(reasons).map(([channel, r]) => {
+    const max = r.maxRank === null ? "n/a" : r.maxRank.toFixed(2);
+    return `${channel}: digest ${r.digest}, trending ${r.trending} (max ${max}, budget ${r.budget})`;
+  });
+  return parts.length > 0 ? parts.join("; ") : "no channels enabled";
+}
+
 interface NotificationRow {
   status: string;
   attempts: number;

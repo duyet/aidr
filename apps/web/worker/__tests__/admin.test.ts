@@ -84,15 +84,18 @@ class FakeD1 {
 
     if (
       sql.startsWith(
-        "SELECT id, title, summary, source_id, points, comments, published_at, source_lang FROM items"
+        "SELECT id, title, summary, source_id, points, comments, published_at, source_lang, (SELECT COUNT(*) FROM item_sources"
       )
     ) {
       const [since] = args as [number];
       return {
-        results: [...this.items.values()].filter(
-          (row) =>
-            row.status === "published" && Number(row.published_at ?? 0) >= since
-        ),
+        results: [...this.items.values()]
+          .filter(
+            (row) =>
+              row.status === "published" &&
+              Number(row.published_at ?? 0) >= since
+          )
+          .map((row) => ({ ...row, source_count: 0 })),
       };
     }
 
@@ -355,11 +358,12 @@ class FakeD1 {
 
     if (
       sql.startsWith(
-        "SELECT id, points, comments, published_at, llm_relevance, llm_importance, llm_quality FROM items WHERE id = ?"
+        "SELECT id, points, comments, published_at, llm_relevance, llm_importance, llm_quality, (SELECT COUNT(*) FROM item_sources"
       )
     ) {
       const [id] = args as [string];
-      return this.items.get(id) ?? null;
+      const row = this.items.get(id);
+      return row ? { ...row, source_count: 0 } : null;
     }
 
     if (sql.startsWith("UPDATE items SET status = ? WHERE id = ?")) {

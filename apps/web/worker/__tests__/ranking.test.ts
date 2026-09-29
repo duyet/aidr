@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { rankScore, sourceBoost } from "../ranking.js";
+import {
+  buildRerankQuery,
+  rankScore,
+  SOURCE_COUNT_COLUMN,
+  sourceBoost,
+} from "../ranking.js";
 
 const NOW = Date.now();
 
@@ -125,5 +130,32 @@ describe("TRENDING_MIN_RANK reachability", () => {
       now: NOW,
     });
     expect(score).toBeLessThan(25);
+  });
+});
+
+describe("hourly re-rank keeps the source boost", () => {
+  // Prod 2026-09-29, item 98b45e32: 8 item_sources, cleared rank 20 at
+  // insert, then the hourly re-rank rewrote it without sourceCount and it
+  // fell under the trending bar (8.66 stored at ~8h old).
+  const item = {
+    importance: 7,
+    quality: 1,
+    points: 13,
+    comments: 25,
+    publishedAt: 1_790_659_371_000,
+    now: 1_790_659_371_000 + 8.09 * 3_600_000,
+  };
+
+  it("matches the stored prod score only when the boost is dropped", () => {
+    expect(rankScore(item)).toBeCloseTo(8.66, 1);
+    expect(rankScore({ ...item, sourceCount: 8 })).toBeCloseTo(
+      rankScore(item) * sourceBoost(8),
+      6
+    );
+  });
+
+  it("selects source_count for every re-ranked row", () => {
+    expect(buildRerankQuery()).toContain(SOURCE_COUNT_COLUMN);
+    expect(SOURCE_COUNT_COLUMN).toMatch(/AS source_count$/);
   });
 });
