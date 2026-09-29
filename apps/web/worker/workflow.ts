@@ -11,6 +11,7 @@ import {
   type WorkflowStep,
 } from "cloudflare:workers";
 import { bindSentry, reportPipelineException } from "./bugsink.js";
+import { runHealthCheck } from "./health.js";
 import { backfillContent } from "./ingest/backfill.js";
 import { backfillScores } from "./ingest/backfill-score.js";
 import { backfillTranslations } from "./ingest/backfill-translate.js";
@@ -53,7 +54,6 @@ import {
 } from "./run-stats.js";
 import type { SourceRunHealth } from "./source-health.js";
 import { sanitizeError } from "./telemetry-safe.js";
-import { runHealthCheck } from "./health.js";
 import { toEpochSeconds } from "./time.js";
 import type { Env } from "./types.js";
 import {
