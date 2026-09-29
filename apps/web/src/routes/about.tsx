@@ -22,32 +22,31 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
-const FLOW = `Collect
-  hourly pull
-      |
-      v
-Process
-  read, dedupe
-      |
-      v
-Judge
-  JEV + LLM score
-      |
-      v
-Rank
-  importance x quality
-      |
-      v
-Combine
-  one edition
-      |
-      v
-Distribute
-  site · email · Telegram`;
+const STEPS: [string, string[]][] = [
+  ["Collect", ["hourly pull"]],
+  ["Process", ["read, dedupe"]],
+  ["Judge", ["JEV + LLM score"]],
+  ["Rank", ["importance x quality"]],
+  ["Combine", ["one edition"]],
+  ["Distribute", ["site", "email", "Telegram"]],
+];
+
+const COLUMN = 24;
+
+function center(line: string): string {
+  const pad = Math.max(0, COLUMN - line.length);
+  return `${" ".repeat(Math.floor(pad / 2))}${line}`;
+}
+
+const FLOW = STEPS.flatMap(([title, lines], index) => {
+  const block = [center(title), ...lines.map(center)];
+  if (index === STEPS.length - 1) return block;
+  return [...block, center("|"), center("v")];
+}).join("\n");
 
 function PipelineDiagram() {
   return (
-    <pre className="not-typeset mt-4 overflow-x-auto rounded-2xl border border-border bg-card p-4 font-mono text-[13px] leading-relaxed text-foreground">
+    <pre className="not-typeset mx-auto mt-4 w-fit max-w-full overflow-x-auto rounded-2xl border border-border bg-card px-6 py-4 font-mono text-[13px] leading-relaxed text-foreground">
       {FLOW}
     </pre>
   );
