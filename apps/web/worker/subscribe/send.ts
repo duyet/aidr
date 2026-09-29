@@ -81,7 +81,15 @@ export function topBullets(
           typeof b.image_url === "string" && b.image_url
             ? b.image_url
             : undefined;
-        return { text: String(b.text ?? "").trim(), item_id, image_url };
+        const ids = itemIds.filter(
+          (id): id is string => typeof id === "string" && id.length > 0
+        );
+        return {
+          text: String(b.text ?? "").trim(),
+          item_id,
+          ...(ids.length > 0 ? { item_ids: ids } : {}),
+          ...(image_url ? { image_url } : {}),
+        };
       })
       .filter((bullet) => bullet.text.length > 0);
   } catch {
@@ -223,6 +231,51 @@ export async function sendWelcomeEmail(
   });
 }
 
+/** Snapshot bullets store text + item ids. The story image lives on `items`. */
+export function digestBulletsWithImages(
+  bullets: TldrBulletLike[],
+  rows: Array<{ id: string; image_url?: string | null }>
+): TldrBulletLike[] {
+  const byId = new Map<string, string>();
+  for (const row of rows) {
+    const url = canonicalizeMediaImageUrl(row.image_url);
+    if (row.id && url) byId.set(row.id, url);
+  }
+  return bullets.map((bullet) => {
+    const ids = [
+      ...(bullet.item_ids ?? []),
+      ...(bullet.item_id ? [bullet.item_id] : []),
+    ];
+    for (const id of ids) {
+      const url = byId.get(id);
+      if (url) return { ...bullet, image_url: url };
+    }
+    return bullet;
+  });
+}
+
+async function loadBulletImages(
+  env: Env,
+  bullets: TldrBulletLike[]
+): Promise<TldrBulletLike[]> {
+  const ids = [
+    ...new Set(
+      bullets.flatMap((bullet) => [
+        ...(bullet.item_ids ?? []),
+        ...(bullet.item_id ? [bullet.item_id] : []),
+      ])
+    ),
+  ];
+  if (ids.length === 0) return bullets;
+  const placeholders = ids.map(() => "?").join(", ");
+  const { results } = await env.DB.prepare(
+    `SELECT id, image_url FROM items WHERE id IN (${placeholders})`
+  )
+    .bind(...ids)
+    .all<{ id: string; image_url: string | null }>();
+  return digestBulletsWithImages(bullets, results ?? []);
+}
+
 export async function sendDailyTldr(env: Env): Promise<number> {
   if (!env.EMAIL) {
     console.error("EMAIL binding not configured; skipping daily digest");
@@ -259,10 +312,11 @@ export async function sendDailyTldr(env: Env): Promise<number> {
       preferred.length > 0 ? preferred : topBullets(snapshot.bullets_en, size);
     if (bullets.length === 0) continue;
     const contentLang = preferred.length > 0 ? requestedLang : "en";
+    const withImages = await loadBulletImages(env, bullets);
 
     const { subject, html, text } = buildDigestEmail(
       snapshot.date,
-      bullets,
+      withImages,
       contentLang,
       sub.unsubscribe_token,
       size
