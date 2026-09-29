@@ -2,6 +2,15 @@ import { hasFailedStep } from "../src/lib/run-health.js";
 import { reportHealthAlert } from "./bugsink.js";
 import { flushLlmCallWrites } from "./llm-call-log.js";
 import type { AlertEvent, AlertSeverity } from "./notify/alert.js";
+import {
+  type DailySummary,
+  dailySummaryKey,
+  formatDailySummary,
+  type ModelStat,
+  notifyOwner,
+  sendOwnerDm,
+  shouldSendDailySummary,
+} from "./owner-alerts.js";
 import type { RunStepInfo } from "./run-stats.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE } from "./time.js";
@@ -228,6 +237,104 @@ async function readLlmCounts(
   return { total: row?.total ?? 0, failed: row?.failed ?? 0 };
 }
 
+async function readModelStats(
+  env: Env,
+  where: string,
+  bind: unknown
+): Promise<ModelStat[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT model, ok, error_status AS status, COUNT(*) AS n FROM llm_calls
+     WHERE ${where} GROUP BY model, ok, error_status`
+  )
+    .bind(bind)
+    .all<{ model: string; ok: number; status: number | null; n: number }>();
+  const byModel = new Map<string, ModelStat>();
+  for (const row of results ?? []) {
+    const m = byModel.get(row.model) ?? {
+      model: row.model,
+      total: 0,
+      failed: 0,
+      statuses: {},
+    };
+    m.total += row.n;
+    if (!row.ok) {
+      m.failed += row.n;
+      const status = row.status === null ? "error" : String(row.status);
+      m.statuses[status] = (m.statuses[status] ?? 0) + row.n;
+    }
+    byModel.set(row.model, m);
+  }
+  return [...byModel.values()].sort((a, b) => b.total - a.total);
+}
+
+async function readDailySummary(
+  env: Env,
+  nowMs: number,
+  date: string
+): Promise<DailySummary> {
+  const sinceMs = nowMs - 24 * 3600 * 1000;
+  const [runs, posts, models] = await Promise.all([
+    env.DB.prepare(
+      "SELECT error, items_new, stats FROM workflow_runs WHERE started_at >= ?"
+    )
+      .bind(Math.floor(sinceMs / 1000))
+      .all<{
+        error: string | null;
+        items_new: number | null;
+        stats: unknown;
+      }>(),
+    env.DB.prepare(
+      `SELECT channel, COUNT(*) AS n FROM notifications
+       WHERE channel LIKE 'telegram%' AND status = 'sent' AND posted_at >= ?
+       GROUP BY channel`
+    )
+      .bind(sinceMs)
+      .all<{ channel: string; n: number }>(),
+    readModelStats(env, "ts >= ?", sinceMs),
+  ]);
+  const summary: DailySummary = {
+    date,
+    runsOk: 0,
+    runsFailed: 0,
+    itemsNew: 0,
+    telegramPosts: {},
+    models,
+    warnings: {},
+  };
+  for (const run of runs.results ?? []) {
+    if (run.error) summary.runsFailed++;
+    else summary.runsOk++;
+    summary.itemsNew += run.items_new ?? 0;
+    for (const key of parsePriorRun(run).alerts) {
+      if (key.startsWith("daily-summary:")) continue;
+      summary.warnings[key] = (summary.warnings[key] ?? 0) + 1;
+    }
+  }
+  for (const row of posts.results ?? []) {
+    summary.telegramPosts[row.channel] = row.n;
+  }
+  return summary;
+}
+
+/** Once-per-day owner DM. Returns the key to record, or null. */
+async function maybeSendDailySummary(
+  env: Env,
+  nowMs: number,
+  history: PriorRun[]
+): Promise<string | null> {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_OWNER_CHAT_ID) return null;
+  const { hour, date } = getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE);
+  if (!shouldSendDailySummary(hour, date, history)) return null;
+  try {
+    const summary = await readDailySummary(env, nowMs, date);
+    const sent = await sendOwnerDm(env, formatDailySummary(summary));
+    return sent ? dailySummaryKey(date) : null;
+  } catch (error) {
+    console.error("daily summary failed:", error);
+    return null;
+  }
+}
+
 /**
  * Gather inputs, evaluate, report new issues, and return every issue key
  * that fired this run (to persist as `stats.alerts`). Never throws.
@@ -257,7 +364,26 @@ export async function runHealthCheck(
         reportHealthAlert(env, healthAlertEvent(issue, nowMs), issue.key)
       )
     );
-    return fresh.map((issue) => issue.key);
+    const keys = fresh.map((issue) => issue.key);
+    if (
+      fresh.length > 0 &&
+      (env.TELEGRAM_OWNER_CHAT_ID || env.GITHUB_ALERT_TOKEN)
+    ) {
+      const models = await readModelStats(env, "run_id = ?", input.runId);
+      const telegramQuietHours: Record<string, number> = {};
+      for (const [channel, last] of Object.entries(telegramLastPostMs)) {
+        telegramQuietHours[channel] = Math.floor((nowMs - last) / 3600000);
+      }
+      await notifyOwner(env, fresh, {
+        runId: input.runId,
+        nowMs,
+        models,
+        telegramQuietHours,
+      });
+    }
+    const summaryKey = await maybeSendDailySummary(env, nowMs, history);
+    if (summaryKey) keys.push(summaryKey);
+    return keys;
   } catch (error) {
     console.error("health-check failed:", error);
     return [];
