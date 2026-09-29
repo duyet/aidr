@@ -26,6 +26,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as CatSlugRouteImport } from './routes/$cat.$slug'
 import { Route as ApiExtensionRouteImport } from './routes/api/extension'
 import { Route as ApiFeedRouteImport } from './routes/api/feed'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiPublicRouteImport } from './routes/api/public'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
@@ -131,6 +132,11 @@ const ApiExtensionRoute = ApiExtensionRouteImport.update({
 const ApiFeedRoute = ApiFeedRouteImport.update({
   id: '/api/feed',
   path: '/api/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMcpRoute = ApiMcpRouteImport.update({
@@ -257,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRouteWithChildren
+  '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
@@ -297,6 +304,7 @@ export interface FileRoutesByTo {
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRouteWithChildren
+  '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
@@ -338,6 +346,7 @@ export interface FileRoutesById {
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRouteWithChildren
+  '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
@@ -380,6 +389,7 @@ export interface FileRouteTypes {
     | '/$cat/$slug'
     | '/api/extension'
     | '/api/feed'
+    | '/api/health'
     | '/api/mcp'
     | '/api/public'
     | '/api/subscribe'
@@ -420,6 +430,7 @@ export interface FileRouteTypes {
     | '/$cat/$slug'
     | '/api/extension'
     | '/api/feed'
+    | '/api/health'
     | '/api/mcp'
     | '/api/public'
     | '/api/subscribe'
@@ -460,6 +471,7 @@ export interface FileRouteTypes {
     | '/$cat/$slug'
     | '/api/extension'
     | '/api/feed'
+    | '/api/health'
     | '/api/mcp'
     | '/api/public'
     | '/api/subscribe'
@@ -501,6 +513,7 @@ export interface RootRouteChildren {
   CatSlugRoute: typeof CatSlugRoute
   ApiExtensionRoute: typeof ApiExtensionRoute
   ApiFeedRoute: typeof ApiFeedRouteWithChildren
+  ApiHealthRoute: typeof ApiHealthRoute
   ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicRoute: typeof ApiPublicRoute
   ApiSubscribeRoute: typeof ApiSubscribeRouteWithChildren
@@ -632,6 +645,13 @@ declare module '@tanstack/react-router' {
       path: '/api/feed'
       fullPath: '/api/feed'
       preLoaderRoute: typeof ApiFeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/mcp': {
@@ -853,6 +873,7 @@ const rootRouteChildren: RootRouteChildren = {
   CatSlugRoute: CatSlugRoute,
   ApiExtensionRoute: ApiExtensionRoute,
   ApiFeedRoute: ApiFeedRouteWithChildren,
+  ApiHealthRoute: ApiHealthRoute,
   ApiMcpRoute: ApiMcpRoute,
   ApiPublicRoute: ApiPublicRoute,
   ApiSubscribeRoute: ApiSubscribeRouteWithChildren,

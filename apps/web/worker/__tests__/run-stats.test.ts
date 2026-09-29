@@ -144,8 +144,11 @@ describe("notify step reason survives the stats write path", () => {
     return stored.steps[0].reason;
   }
 
-  it("loses a two-channel JSON dump (the old step reason)", () => {
-    expect(storedNotifyReason(JSON.stringify(reasons))).toBe("[json redacted]");
+  it("keeps a two-channel JSON dump as valid, shortened JSON", () => {
+    const stored = storedNotifyReason(JSON.stringify(reasons)) as string;
+    expect(stored).not.toBe("[json redacted]");
+    const parsed = JSON.parse(stored);
+    expect(parsed["telegram-en"].trending).toMatch(/^below_mi/);
   });
 
   it("keeps the plain summary readable for every channel", () => {

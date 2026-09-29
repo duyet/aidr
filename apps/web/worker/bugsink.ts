@@ -1,3 +1,4 @@
+import type { AlertEvent } from "./notify/alert.js";
 import type { Env } from "./types.js";
 
 export interface SentryReport {
@@ -5,6 +6,10 @@ export interface SentryReport {
   tags?: Record<string, string>;
   /** When set, the event is an exception issue, not only a message. */
   exception?: { type: string; value: string };
+  /** Sentry level; defaults to "error". */
+  level?: "info" | "warning" | "error" | "fatal";
+  /** Sentry logger; defaults to "aidr.delivery". */
+  logger?: string;
 }
 
 /** Sentry-compatible envelope for Bugsink. No SDK: one POST, then forget. */
@@ -29,8 +34,8 @@ export function bugsinkEnvelope(
     event_id: eventId,
     timestamp: new Date().toISOString(),
     platform: "javascript",
-    level: "error",
-    logger: "aidr.delivery",
+    level: report.level ?? "error",
+    logger: report.logger ?? "aidr.delivery",
     environment: "production",
     message: { formatted: report.message.slice(0, 500) },
     tags: report.tags ?? {},
@@ -105,6 +110,30 @@ export async function reportDeliveryFailure(
   tags: Record<string, string>
 ): Promise<void> {
   await reportToSentry(env, { message, tags });
+}
+
+const SENTRY_LEVEL = {
+  info: "info",
+  warning: "warning",
+  error: "error",
+  critical: "fatal",
+} as const satisfies Record<
+  AlertEvent["severity"],
+  NonNullable<SentryReport["level"]>
+>;
+
+/** Health-check alert (see `worker/health.ts`), grouped by the `check` tag. */
+export async function reportHealthAlert(
+  env: Pick<Env, "SENTRY_DSN">,
+  event: AlertEvent,
+  check: string
+): Promise<void> {
+  await reportToSentry(env, {
+    message: `${event.title}: ${event.summary}`,
+    level: SENTRY_LEVEL[event.severity],
+    logger: "aidr.health",
+    tags: { kind: "health", check, source: event.source },
+  });
 }
 
 /** Exception path used by the ingest workflow. Database rows stay as they are. */
