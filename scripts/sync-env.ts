@@ -60,6 +60,9 @@ const WORKER_OPTIONAL = [
   // once the property id is also committed — a required key nobody sets
   // makes `pnpm sync-env` warn on every run.
   "GA4_SERVICE_ACCOUNT_JSON",
+  // Bugsink DSN for Telegram and email delivery failures. Optional so a
+  // checkout without it still deploys; the pipeline logs either way.
+  "SENTRY_DSN",
 ] as const;
 
 /** Secrets GitHub Actions workflows read (`secrets.*`). */

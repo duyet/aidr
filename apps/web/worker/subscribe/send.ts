@@ -1,6 +1,7 @@
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
+import { reportDeliveryFailure } from "../bugsink.js";
 import {
   type Edition,
   loadEdition,
@@ -245,8 +246,9 @@ export async function sendEmailLane(
   subscribers: SubscriberRow[],
   now: number,
   editions: Map<string, Edition | null>
-): Promise<{ sent: number; stampedDate: string | null }> {
+): Promise<{ sent: number; failed: number; stampedDate: string | null }> {
   let sent = 0;
+  let failed = 0;
   let stampedDate: string | null = null;
   for (const sub of subscribers) {
     if ((sub.lang === "en" ? "en" : "vi") !== lang) continue;
@@ -285,7 +287,10 @@ export async function sendEmailLane(
       unsubscribeToken: sub.unsubscribe_token,
       lang,
     });
-    if (!ok) continue;
+    if (!ok) {
+      failed++;
+      continue;
+    }
 
     await env.DB.prepare(
       "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
@@ -295,7 +300,7 @@ export async function sendEmailLane(
     sent++;
     stampedDate = edition.date;
   }
-  return { sent, stampedDate };
+  return { sent, failed, stampedDate };
 }
 
 export async function sendDailyTldr(env: Env): Promise<number> {
@@ -316,8 +321,21 @@ export async function sendDailyTldr(env: Env): Promise<number> {
   const en = await sendEmailLane(env, "en", subscribers, now, editions);
   const vi = await sendEmailLane(env, "vi", subscribers, now, editions);
   const emailsSent = en.sent + vi.sent;
+  const failed = en.failed + vi.failed;
   const stampedDate = en.stampedDate ?? vi.stampedDate;
-  console.info("email-digest", { en: en.sent, vi: vi.sent });
+  console.info("email-digest", {
+    en: en.sent,
+    vi: vi.sent,
+    failed,
+  });
+  if (failed > 0) {
+    console.error(`email-digest failed for ${failed} subscriber(s)`);
+    await reportDeliveryFailure(
+      env,
+      `email digest failed for ${failed} subscriber(s)`,
+      { channel: "email", kind: "digest", failed: String(failed) }
+    );
+  }
 
   // Legacy signal only: marks that this snapshot has been mailed at least
   // once. Nothing reads this to decide whether to send anymore.

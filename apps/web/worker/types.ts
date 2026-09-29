@@ -104,4 +104,7 @@ export interface Env {
    *  only ever used to sign a short-lived read-only assertion — the raw JSON
    *  is never logged, echoed, or returned by an endpoint. */
   GA4_SERVICE_ACCOUNT_JSON?: string;
+  /** Sentry-compatible Bugsink DSN. Delivery failures are reported when set.
+   *  A missing value skips the alert and never fails the pipeline. */
+  SENTRY_DSN?: string;
 }

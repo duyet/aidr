@@ -1,6 +1,7 @@
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
+import { reportDeliveryFailure } from "../bugsink.js";
 import { nn } from "../d1-bind.js";
 import { loadEdition, primaryItemId } from "../digest/edition.js";
 import {
@@ -404,6 +405,11 @@ export async function dispatchStoryNotifications(
           console.error(
             `notify(${notifier.id}) digest failed: ${result.error}`
           );
+          await reportDeliveryFailure(
+            env,
+            `telegram ${notifier.id} digest failed: ${result.error ?? "unknown"}`,
+            { channel: notifier.id, kind: "digest" }
+          );
         } else {
           digestReason = "sent";
         }
@@ -466,6 +472,11 @@ export async function dispatchStoryNotifications(
             trendingReason = "send_failed";
             console.error(
               `notify(${notifier.id}) trending failed for ${story.id}: ${result.error}`
+            );
+            await reportDeliveryFailure(
+              env,
+              `telegram ${notifier.id} trending failed: ${result.error ?? "unknown"}`,
+              { channel: notifier.id, kind: "trending" }
             );
           } else {
             trendingReason = "sent";
