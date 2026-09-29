@@ -1,3 +1,4 @@
+import { type MailFormat, normalizeMailFormat } from "../mail/render.js";
 import { ensureMailSchema } from "../mail/schema.js";
 import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import type { Env } from "../types.js";
@@ -219,6 +220,7 @@ export interface SubscriberPrefs {
   lang: "en" | "vi";
   timezone: string;
   digest_size: DigestSize;
+  mail_format: MailFormat;
 }
 
 export async function getPrefsByToken(
@@ -230,7 +232,7 @@ export async function getPrefsByToken(
   }
   await ensureMailSchema(env.DB);
   const row = await env.DB.prepare(
-    "SELECT email, lang, timezone, digest_size FROM subscribers WHERE unsubscribe_token = ?"
+    "SELECT email, lang, timezone, digest_size, mail_format FROM subscribers WHERE unsubscribe_token = ?"
   )
     .bind(token)
     .first<{
@@ -238,6 +240,7 @@ export async function getPrefsByToken(
       lang: string;
       timezone: string | null;
       digest_size: number | null;
+      mail_format: string | null;
     }>();
   if (!row) return { error: "not found", status: 404 };
   return {
@@ -245,13 +248,19 @@ export async function getPrefsByToken(
     lang: row.lang === "en" ? "en" : "vi",
     timezone: isValidTimezone(row.timezone) ? row.timezone : DEFAULT_TIMEZONE,
     digest_size: normalizeDigestSize(row.digest_size),
+    mail_format: normalizeMailFormat(row.mail_format),
   };
 }
 
 export async function updatePrefsByToken(
   env: Env,
   token: unknown,
-  prefs: { lang?: unknown; timezone?: unknown; digest_size?: unknown }
+  prefs: {
+    lang?: unknown;
+    timezone?: unknown;
+    digest_size?: unknown;
+    mail_format?: unknown;
+  }
 ): Promise<{ ok: true } | SubscribeError> {
   if (typeof token !== "string" || token.length === 0) {
     return { error: "token is required", status: 400 };
@@ -270,15 +279,20 @@ export async function updatePrefsByToken(
     prefs.digest_size === undefined
       ? null
       : normalizeDigestSize(prefs.digest_size);
+  const format =
+    prefs.mail_format === undefined
+      ? null
+      : normalizeMailFormat(prefs.mail_format);
 
   await env.DB.prepare(
     `UPDATE subscribers SET
        lang = COALESCE(?, lang),
        timezone = COALESCE(?, timezone),
-       digest_size = COALESCE(?, digest_size)
+       digest_size = COALESCE(?, digest_size),
+       mail_format = COALESCE(?, mail_format)
      WHERE unsubscribe_token = ?`
   )
-    .bind(lang, timezone, size, token)
+    .bind(lang, timezone, size, format, token)
     .run();
   return { ok: true };
 }

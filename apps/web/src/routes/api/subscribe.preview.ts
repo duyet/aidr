@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { editionBullets } from "../../../worker/digest/edition.js";
+import { normalizeMailFormat } from "../../../worker/mail/render.js";
 import {
   buildDigestEmail,
   digestSizeFor,
@@ -48,6 +49,7 @@ export const Route = createFileRoute("/api/subscribe/preview")({
         const lang = locale.locale.lang;
         const url = new URL(request.url);
         const size = digestSizeFor(Number(url.searchParams.get("n")));
+        const format = normalizeMailFormat(url.searchParams.get("format"));
 
         let env: Env | undefined;
         try {
@@ -73,7 +75,8 @@ export const Route = createFileRoute("/api/subscribe/preview")({
                 bullets,
                 contentLang,
                 PREVIEW_TOKEN,
-                size
+                size,
+                format
               ).html;
               // Rendered inside an iframe — links must open a real tab.
               html = html.replace("<head>", '<head><base target="_blank">');

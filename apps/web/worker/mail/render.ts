@@ -73,6 +73,12 @@ export interface DigestStory {
   imageUrl?: string;
 }
 
+export type MailFormat = "design" | "text";
+
+export function normalizeMailFormat(value: unknown): MailFormat {
+  return value === "text" ? "text" : "design";
+}
+
 export interface DigestEmailInput {
   subject: string;
   date: string;
@@ -81,6 +87,8 @@ export interface DigestEmailInput {
   unsubscribeUrl: string;
   settingsUrl: string;
   preheader?: string;
+  /** `text` is a plain list. `design` is the editorial card with a hero. */
+  format?: MailFormat;
 }
 
 function ctaButton(label: string, url: string): string {
@@ -344,6 +352,21 @@ export function renderDigestEmail(input: DigestEmailInput): {
   text: string;
 } {
   const heading = digestSubjectLine(input.date, input.stories);
+  const home = withMailUtm(SITE_URL, "digest", input.lang);
+  const textLines = input.stories.map((s, i) => `${i + 1}. ${s.text}`);
+  const text = `${heading}\n\n${textLines.join("\n")}\n\n${home}\n\n${mailFooterText(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
+  if (normalizeMailFormat(input.format) === "text") {
+    return {
+      text,
+      html: wrapHtml({
+        lang: input.lang,
+        subject: input.subject,
+        preheader: input.preheader ?? input.stories[0]?.text ?? "",
+        innerRows: `<tr><td style="padding:28px ${PAD};font-family:${SANS};font-size:15px;line-height:1.55;color:${FG};white-space:pre-wrap">${escapeHtml(text)}</td></tr>`,
+        mailKind: "digest",
+      }),
+    };
+  }
   const hero = digestHeroSrc(input.stories);
   const readMore =
     input.lang === "vi" ? "Đọc trên aidr.today" : "Read on aidr.today";
@@ -393,10 +416,6 @@ export function renderDigestEmail(input: DigestEmailInput): {
     innerRows,
     mailKind: "digest",
   });
-
-  const home = withMailUtm(SITE_URL, "digest", input.lang);
-  const textLines = input.stories.map((s, i) => `${i + 1}. ${s.text}`);
-  const text = `${heading}\n\n${textLines.join("\n")}\n\n${home}\n\n${mailFooterText(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 
   return { html, text };
 }

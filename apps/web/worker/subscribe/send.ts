@@ -9,6 +9,8 @@ import {
 } from "../digest/edition.js";
 import {
   digestSubjectLine,
+  type MailFormat,
+  normalizeMailFormat,
   renderDigestEmail,
   renderNoteEmail,
   settingsUrl,
@@ -35,6 +37,7 @@ export interface SubscriberRow {
   timezone: string | null;
   last_sent_date: string | null;
   digest_size?: number | null;
+  mail_format?: string | null;
 }
 
 export interface TldrSnapshotRow {
@@ -113,7 +116,8 @@ export function buildDigestEmail(
   bullets: TldrBulletLike[],
   lang: string,
   unsubscribeToken: string,
-  max = MAX_BULLETS
+  max = MAX_BULLETS,
+  format: MailFormat = "design"
 ): { subject: string; html: string; text: string } {
   const mailLang = lang === "en" ? "en" : "vi";
   const items = bullets.slice(0, max);
@@ -136,6 +140,7 @@ export function buildDigestEmail(
       unsubscribeUrl: unsubscribeUrl(unsubscribeToken, mailLang),
       settingsUrl: settingsUrl(unsubscribeToken, mailLang),
       preheader: items[0]?.text,
+      format,
     }),
   };
 }
@@ -232,6 +237,67 @@ async function loadBulletImages(
   return digestBulletsWithImages(bullets, results ?? []);
 }
 
+/** One email lane. `en` and `vi` are separate: a subscriber only receives
+ *  the edition for `subscribers.lang`, in their digest size and mail format. */
+export async function sendEmailLane(
+  env: Env,
+  lang: "en" | "vi",
+  subscribers: SubscriberRow[],
+  now: number,
+  editions: Map<string, Edition | null>
+): Promise<{ sent: number; stampedDate: string | null }> {
+  let sent = 0;
+  let stampedDate: string | null = null;
+  for (const sub of subscribers) {
+    if ((sub.lang === "en" ? "en" : "vi") !== lang) continue;
+    const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
+    if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
+
+    const size = digestSizeFor(sub.digest_size);
+    const format = normalizeMailFormat(sub.mail_format);
+    const cacheKey = `${localDate}:${lang}:${size}`;
+    let edition = editions.get(cacheKey);
+    if (edition === undefined) {
+      edition = await loadEdition(env, localDate, lang, size);
+      editions.set(cacheKey, edition);
+    }
+    if (!edition) continue;
+    const bullets =
+      format === "text"
+        ? edition.bullets
+        : await loadBulletImages(env, edition.bullets);
+
+    const { subject, html, text } = buildDigestEmail(
+      edition.date,
+      bullets,
+      lang,
+      sub.unsubscribe_token,
+      size,
+      format
+    );
+
+    const ok = await sendSubscriberEmail(env, {
+      to: sub.email,
+      from: digestFrom(env),
+      subject,
+      html,
+      text,
+      unsubscribeToken: sub.unsubscribe_token,
+      lang,
+    });
+    if (!ok) continue;
+
+    await env.DB.prepare(
+      "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
+    )
+      .bind(localDate, sub.email)
+      .run();
+    sent++;
+    stampedDate = edition.date;
+  }
+  return { sent, stampedDate };
+}
+
 export async function sendDailyTldr(env: Env): Promise<number> {
   if (!env.EMAIL) {
     console.error("EMAIL binding not configured; skipping daily digest");
@@ -240,58 +306,18 @@ export async function sendDailyTldr(env: Env): Promise<number> {
   await ensureMailSchema(env.DB);
 
   const { results: subscribers } = await env.DB.prepare(
-    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size FROM subscribers WHERE confirmed = 1"
+    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size, mail_format FROM subscribers WHERE confirmed = 1"
   ).all<SubscriberRow>();
 
   if (!subscribers || subscribers.length === 0) return 0;
 
   const now = Date.now();
   const editions = new Map<string, Edition | null>();
-  let emailsSent = 0;
-  let stampedDate: string | null = null;
-
-  for (const sub of subscribers) {
-    const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
-    if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
-
-    const size = digestSizeFor(sub.digest_size);
-    const requestedLang = sub.lang === "en" ? "en" : "vi";
-    const cacheKey = `${localDate}:${requestedLang}:${size}`;
-    let edition = editions.get(cacheKey);
-    if (edition === undefined) {
-      edition = await loadEdition(env, localDate, requestedLang, size);
-      editions.set(cacheKey, edition);
-    }
-    if (!edition) continue;
-    const withImages = await loadBulletImages(env, edition.bullets);
-
-    const { subject, html, text } = buildDigestEmail(
-      edition.date,
-      withImages,
-      requestedLang,
-      sub.unsubscribe_token,
-      size
-    );
-
-    const sent = await sendSubscriberEmail(env, {
-      to: sub.email,
-      from: digestFrom(env),
-      subject,
-      html,
-      text,
-      unsubscribeToken: sub.unsubscribe_token,
-      lang: requestedLang,
-    });
-    if (!sent) continue;
-
-    await env.DB.prepare(
-      "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
-    )
-      .bind(localDate, sub.email)
-      .run();
-    emailsSent++;
-    stampedDate = edition.date;
-  }
+  const en = await sendEmailLane(env, "en", subscribers, now, editions);
+  const vi = await sendEmailLane(env, "vi", subscribers, now, editions);
+  const emailsSent = en.sent + vi.sent;
+  const stampedDate = en.stampedDate ?? vi.stampedDate;
+  console.info("email-digest", { en: en.sent, vi: vi.sent });
 
   // Legacy signal only: marks that this snapshot has been mailed at least
   // once. Nothing reads this to decide whether to send anymore.
