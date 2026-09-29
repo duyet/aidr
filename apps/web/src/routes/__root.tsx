@@ -172,15 +172,12 @@ export const Route = createRootRoute({
         // body subsets moved the LCP element render delay from 1,016 ms
         // (no preload) to 1,332 ms — a 316 ms regression in exchange for
         // bytes that would have been discarded.
-        // Two origins, well under Lighthouse's four-origin advice: 1.6 Mbps
-        // of pipe and six sockets competing for it is the other half of the
-        // render delay.
+        // One origin, under Lighthouse's four-origin advice.
         {
           rel: "preconnect",
           href: "https://j.duyet.net",
           crossOrigin: "anonymous",
         },
-        { rel: "preconnect", href: "https://www.clarity.ms" },
       ],
     };
   },

@@ -6,8 +6,8 @@
  * Issue #229 measured a 2,420 ms LCP element render delay with 1,648 ms of
  * total blocking time. The five third-party bootstraps in
  * `@aidr/ui/Analytics` were injected from a plain useEffect — React's commit
- * phase — and the trace attributed 280 ms to Clarity, 247 ms to
- * j.duyet.net/p.js and 167 ms to gtag, all competing with the paint. None of
+ * phase — and the trace attributed 247 ms to j.duyet.net/p.js and 167 ms to
+ * gtag, all competing with the paint. None of
  * them affect what the visitor is looking at.
  *
  * These tests assert the observable contract, not the implementation: nothing
@@ -107,11 +107,12 @@ describe("Analytics deferral (#229)", () => {
     drainIdle();
 
     const injected = thirdPartyScripts().join("\n");
-    // gtag + its inline config, pageview, Clarity, PostHog, and p.js.
+    // gtag + its inline config, and p.js. pageview.duyet.net and Clarity
+    // are not loaded.
     expect(injected).toContain("googletagmanager.com/gtag/js");
     expect(injected).toContain("window.dataLayer");
-    expect(injected).toContain("pageview.duyet.net/pageview.js");
-    expect(injected).toContain("clarity.ms/tag/h2lw6wemnl");
+    expect(injected).not.toContain("pageview.duyet.net");
+    expect(injected).not.toContain("clarity.ms");
     expect(injected).toContain("j.duyet.net/p.js");
   });
 
@@ -145,21 +146,18 @@ describe("Analytics deferral (#229)", () => {
     expect(afterFirst).toBeGreaterThan(0);
   });
 
-  it("does not use the Clarity vendor insertBefore bootstrap", async () => {
+  it("does not load Clarity or pageview.duyet.net", async () => {
     render(<AnalyticWrapper />);
     await vi.advanceTimersByTimeAsync(0);
     emitLcp?.();
     await vi.advanceTimersByTimeAsync(0);
     drainIdle();
 
-    // The vendor snippet did
-    // `l.getElementsByTagName("script")[0].parentNode.insertBefore(t, y)`,
-    // which throws on a document with no <script> yet.
-    expect(thirdPartyScripts().join("\n")).not.toContain("insertBefore");
-    // Clarity is still loaded, and with the same tag id, so existing
-    // sessions keep working.
-    expect(thirdPartyScripts().join("\n")).toContain(
-      "clarity.ms/tag/h2lw6wemnl"
+    const injected = thirdPartyScripts().join("\n");
+    expect(injected).not.toContain("clarity.ms");
+    expect(injected).not.toContain("pageview.duyet.net");
+    expect(typeof (window as Window & { clarity?: unknown }).clarity).toBe(
+      "undefined"
     );
   });
 });

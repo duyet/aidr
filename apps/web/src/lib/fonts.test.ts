@@ -294,8 +294,7 @@ describe("self-hosted font stack (#229)", () => {
     const preconnects = [...root.matchAll(/rel: "preconnect"/g)];
     expect(preconnects.length).toBeGreaterThan(0);
     expect(preconnects.length).toBeLessThanOrEqual(4);
-    // Both origins Lighthouse flagged: the analytics one and Clarity.
     expect(root).toContain('href: "https://j.duyet.net"');
-    expect(root).toContain('href: "https://www.clarity.ms"');
+    expect(root).not.toContain("clarity.ms");
   });
 });

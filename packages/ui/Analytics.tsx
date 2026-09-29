@@ -56,16 +56,9 @@ function loadInlineScript(code: string): HTMLScriptElement {
  * Every one of these is third-party script that contributes nothing to what
  * the visitor is looking at. Running them from a plain useEffect put them on
  * the same main-thread task as the LCP paint; the 2026-09-27 trace showed
- * Clarity at 280 ms, j.duyet.net/p.js at 247 ms and gtag at 167 ms of
- * scripting competing with it. `afterLcpPaint` moves the whole set to idle
+ * j.duyet.net/p.js at 247 ms and gtag at 167 ms of scripting competing
+ * with it. `afterLcpPaint` moves the whole set to idle
  * time after the paint.
- *
- * The Clarity vendor bootstrap also used to be injected as inline JS that
- * does `l.getElementsByTagName("script")[0].parentNode.insertBefore(t, y)`,
- * which throws on a document with no <script> yet. It is now a plain async
- * <script src> with the same tag id, which is what the snippet was building
- * anyway — so the tag id, the queue shim and the beacon URL are unchanged and
- * existing Clarity sessions keep working.
  */
 function bootstrapAnalytics(): void {
   if (GA_MEASUREMENT_ID) {
@@ -85,15 +78,6 @@ function bootstrapAnalytics(): void {
       "data-token": SELINE_TOKEN,
     });
   }
-
-  loadInlineScript(`
-    !function(e,n,t){e.onload=function(){
-    let e=n.createElement("script");
-    e.src=t,n.body.appendChild(e)}}
-    (window,document,"//pageview.duyet.net/pageview.js");
-  `);
-
-  loadScript("https://www.clarity.ms/tag/h2lw6wemnl");
 
   if (POSTHOG_API_KEY) {
     loadInlineScript(`
