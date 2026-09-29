@@ -2,6 +2,7 @@ import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import {
+  digestSubjectLine,
   renderDigestEmail,
   renderNoteEmail,
   settingsUrl,
@@ -152,7 +153,7 @@ export function buildDigestEmail(
 ): { subject: string; html: string; text: string } {
   const mailLang = lang === "en" ? "en" : "vi";
   const items = bullets.slice(0, max);
-  const subject = mailLang === "vi" ? `AI;DR — ${date}` : `AI;DR — ${date}`;
+  const subject = digestSubjectLine(date, items);
   return {
     subject,
     ...renderDigestEmail({

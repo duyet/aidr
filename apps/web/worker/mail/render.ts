@@ -267,6 +267,55 @@ export function highlightStoryHtml(text: string): string {
 }
 
 const THUMB_PX = 64;
+/** Keeps `AI;DR — YYYY-MM-DD — …` on one subject line. */
+const DIGEST_PHRASE_MAX = 52;
+
+/** First bullet, cut on a word boundary. Empty when every bullet is blank. */
+export function digestContentPhrase(stories: { text: string }[]): string {
+  const raw = stories
+    .map((story) => story.text.trim())
+    .find((text) => text.length > 0);
+  if (!raw) return "";
+  const flat = raw.replace(/\s+/g, " ");
+  if (flat.length <= DIGEST_PHRASE_MAX) return flat;
+  const window = flat.slice(0, DIGEST_PHRASE_MAX + 1);
+  const space = window.lastIndexOf(" ");
+  const cut = (
+    space >= 24 ? window.slice(0, space) : flat.slice(0, DIGEST_PHRASE_MAX)
+  )
+    .trim()
+    .replace(/[.,;:]+$/, "");
+  return `${cut}…`;
+}
+
+/** Date plus a short phrase from the bullets. Date-only when there is no phrase. */
+export function digestSubjectLine(
+  date: string,
+  stories: { text: string }[]
+): string {
+  const phrase = digestContentPhrase(stories);
+  if (!phrase) return `AI;DR — ${date}`;
+  return `AI;DR — ${date} — ${phrase}`;
+}
+
+/** Highest-ranked story image that is still an http(s) URL. */
+export function digestHeroSrc(stories: DigestStory[]): string | null {
+  for (const story of stories) {
+    if (!story.imageUrl) continue;
+    const safe = safeHref(story.imageUrl);
+    if (safe) return safe;
+  }
+  return null;
+}
+
+function heroRow(src: string): string {
+  const safe = escapeHtml(src);
+  return `<tr>
+      <td style="padding:20px ${PAD} 4px">
+        <img class="mail-hero" src="${safe}" width="476" alt="" style="display:block;width:100%;max-width:476px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic">
+      </td>
+    </tr>`;
+}
 
 function thumbCell(imageUrl: string | undefined): string {
   const safe = imageUrl ? safeHref(imageUrl) : null;
@@ -281,7 +330,8 @@ export function renderDigestEmail(input: DigestEmailInput): {
   html: string;
   text: string;
 } {
-  const heading = input.date;
+  const heading = digestSubjectLine(input.date, input.stories);
+  const hero = digestHeroSrc(input.stories);
   const readMore =
     input.lang === "vi" ? "Đọc trên aidr.today" : "Read on aidr.today";
   const storyCta = input.lang === "vi" ? "Đọc thêm" : "Read more";
@@ -316,6 +366,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const innerRows = `<tr>
       <td style="padding:28px ${PAD} 12px;font-family:${SERIF};font-size:22px;line-height:1.3;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
     </tr>
+    ${hero ? heroRow(hero) : ""}
     ${htmlItems}
     <tr>
       <td style="padding:16px ${PAD} 28px">${ctaButton(readMore, withMailUtm(SITE_URL, "digest", input.lang))}</td>
