@@ -1,7 +1,7 @@
 name: Send English digest once
 
 # One-shot: today's English TL;DR to @aidr_today. Does not post the Vietnamese channel.
-on:
+"on":
   workflow_dispatch:
 
 jobs:
