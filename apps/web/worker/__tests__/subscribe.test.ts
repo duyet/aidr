@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isValidEmail, isValidTimezone } from "../subscribe/handlers.js";
+import { canonicalizeMediaImageUrl } from "../media.js";
 import {
   buildDigestEmail,
   DIGEST_LOCAL_HOUR,
@@ -243,6 +244,51 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("&lt;script&gt;");
     expect(html).toContain("&amp;");
     expect(html).toContain("&quot;quoted&quot;");
+  });
+
+  it("puts the snapshot date and a short phrase from the bullets in the subject and heading", () => {
+    const long =
+      "OpenAI ships a coding model that rewrites entire repositories overnight and then keeps going past any reasonable subject length";
+    const { subject, html } = buildDigestEmail(
+      "2026-08-16",
+      [
+        { text: long, image_url: "javascript:alert(1)" },
+        { text: "second story", image_url: "http://127.0.0.1/private.jpg" },
+        {
+          text: "third story",
+          image_url: "https://cdn.example/hero-shot.jpg?utm_source=newsletter",
+        },
+      ],
+      "en",
+      "tok"
+    );
+    const hero = canonicalizeMediaImageUrl(
+      "https://cdn.example/hero-shot.jpg?utm_source=newsletter"
+    );
+    expect(hero).toBeTruthy();
+    expect(canonicalizeMediaImageUrl("javascript:alert(1)")).toBeNull();
+    expect(canonicalizeMediaImageUrl("http://127.0.0.1/private.jpg")).toBeNull();
+    expect(subject).toContain("2026-08-16");
+    expect(subject).toContain("OpenAI ships a coding model");
+    expect(subject).not.toBe("AI;DR — 2026-08-16");
+    expect(subject.length).toBeLessThan(long.length);
+    expect(subject).not.toContain("reasonable subject length");
+    expect(html).toContain(subject);
+    expect(html).toContain('class="mail-hero"');
+    expect(html).toContain(`src="${hero}"`);
+    expect(html.match(/class="mail-hero"/g)?.length).toBe(1);
+    expect(html).not.toContain("javascript:");
+    expect(html).not.toContain("127.0.0.1");
+  });
+
+  it("omits the hero image when no story image canonicalizes", () => {
+    const { html } = buildDigestEmail(
+      "2026-08-16",
+      [{ text: "Plain story", image_url: "not a url" }],
+      "en",
+      "tok"
+    );
+    expect(html).not.toContain('class="mail-hero"');
   });
 });
 
