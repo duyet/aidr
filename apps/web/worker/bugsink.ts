@@ -1,10 +1,16 @@
 import type { Env } from "./types.js";
 
+export interface SentryReport {
+  message: string;
+  tags?: Record<string, string>;
+  /** When set, the event is an exception issue, not only a message. */
+  exception?: { type: string; value: string };
+}
+
 /** Sentry-compatible envelope for Bugsink. No SDK: one POST, then forget. */
 export function bugsinkEnvelope(
   dsn: string,
-  message: string,
-  tags: Record<string, string>
+  report: SentryReport
 ): { url: string; key: string; body: string } | null {
   let parsed: URL;
   try {
@@ -26,8 +32,17 @@ export function bugsinkEnvelope(
     level: "error",
     logger: "aidr.delivery",
     environment: "production",
-    message: { formatted: message.slice(0, 500) },
-    tags,
+    message: { formatted: report.message.slice(0, 500) },
+    tags: report.tags ?? {},
+    ...(report.exception
+      ? {
+          exception: {
+            values: [
+              { type: report.exception.type, value: report.exception.value },
+            ],
+          },
+        }
+      : {}),
   };
   const body = [
     JSON.stringify({ event_id: eventId }),
@@ -37,15 +52,28 @@ export function bugsinkEnvelope(
   return { url: store.toString(), key, body };
 }
 
-/** Report a delivery failure. A missing DSN or a Bugsink outage never throws. */
-export async function reportDeliveryFailure(
-  env: Pick<Env, "SENTRY_DSN">,
-  message: string,
-  tags: Record<string, string>
+let bound: Pick<Env, "SENTRY_DSN"> | null = null;
+
+/** Point later pipeline errors at the Worker DSN. Does not touch D1 logs. */
+export function bindSentry(env: Pick<Env, "SENTRY_DSN">): void {
+  bound = env;
+}
+
+export function exceptionReport(error: unknown): SentryReport["exception"] {
+  if (error instanceof Error) {
+    return { type: error.name || "Error", value: error.message.slice(0, 500) };
+  }
+  return { type: "Error", value: String(error).slice(0, 500) };
+}
+
+/** Report a delivery failure or an exception. A missing DSN never throws. */
+export async function reportToSentry(
+  env: Pick<Env, "SENTRY_DSN"> | null,
+  report: SentryReport
 ): Promise<void> {
-  const dsn = env.SENTRY_DSN?.trim();
+  const dsn = env?.SENTRY_DSN?.trim();
   if (!dsn) return;
-  const envelope = bugsinkEnvelope(dsn, message, tags);
+  const envelope = bugsinkEnvelope(dsn, report);
   if (!envelope) {
     console.error("bugsink: SENTRY_DSN is not a Sentry DSN");
     return;
@@ -67,4 +95,25 @@ export async function reportDeliveryFailure(
     const detail = error instanceof Error ? error.message : String(error);
     console.error(`bugsink: ${detail}`);
   }
+}
+
+export async function reportDeliveryFailure(
+  env: Pick<Env, "SENTRY_DSN">,
+  message: string,
+  tags: Record<string, string>
+): Promise<void> {
+  await reportToSentry(env, { message, tags });
+}
+
+/** Exception path used by the ingest workflow. Database rows stay as they are. */
+export async function reportPipelineException(
+  error: unknown,
+  tags: Record<string, string>
+): Promise<void> {
+  const exception = exceptionReport(error);
+  await reportToSentry(bound, {
+    message: exception.value,
+    tags,
+    exception,
+  });
 }

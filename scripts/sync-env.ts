@@ -82,6 +82,7 @@ const GITHUB_OPTIONAL = [
   "CLOUDFLARE_ACCOUNT_ID",
   "CLOUDFLARE_ZONE_ID",
   "CLERK_PUBLISHABLE_KEY",
+  "SENTRY_DSN",
 ] as const;
 
 const args = new Set(process.argv.slice(2));

@@ -14,6 +14,7 @@ import {
   huggingNewsDetailUrl,
   planBackfillUpdate,
 } from "./backfill.js";
+import { bindSentry, reportPipelineException } from "./bugsink.js";
 import {
   buildItemBindArgs,
   buildItemSourceBindArgs,
@@ -192,6 +193,7 @@ interface ItemRow {
 
 export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
   async run(event: WorkflowEvent<unknown>, step: WorkflowStep) {
+    bindSentry(this.env);
     const runId = ingestRunId(event);
     return withLlmCallContext(runId, () =>
       this.runInternal(event, step, runId)
@@ -1729,6 +1731,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       // /api/system lastRun/runsToday move.
       runError = sanitizeError(error)?.message ?? "ingest run failed";
       console.error("ingest run failed:", error);
+      await reportPipelineException(error, {
+        step: "ingest",
+        kind: "exception",
+      });
     } finally {
       recordStep(steps, "close-run", "recording");
       const stats = buildRunStats({

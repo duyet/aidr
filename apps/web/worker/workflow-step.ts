@@ -1,4 +1,5 @@
 import type { WorkflowStep } from "cloudflare:workers";
+import { reportPipelineException } from "./bugsink.js";
 import { flushLlmCallWrites, withRunLlmCallLogger } from "./llm-call-log.js";
 import { isMediaManifestSchemaError } from "./media-schema.js";
 import { sanitizeError } from "./telemetry-safe.js";
@@ -47,6 +48,7 @@ export async function safeStep<T>(
   } catch (error) {
     if (rethrowErrors || isMediaManifestSchemaError(error)) throw error;
     console.error(`${name} step failed:`, safeErrorMessage(error));
+    await reportPipelineException(error, { step: name, kind: "exception" });
     return fallback;
   }
 }
