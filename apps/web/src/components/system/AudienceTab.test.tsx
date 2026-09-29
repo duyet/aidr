@@ -204,6 +204,22 @@ describe("AudienceTab", () => {
     expect(screen.getByText("Couldn't load audience data.")).toBeTruthy();
   });
 
+  it("renders a daily point whose date is missing", () => {
+    respondWith({
+      data: statsWith(
+        {
+          status: "available",
+          audience: AVAILABLE_AUDIENCE,
+          viewsPerDay: [{ date: null as unknown as string, count: 3 }],
+          usersPerDay: [],
+        },
+        { confirmed: 1, newPerDay: [] }
+      ),
+    });
+    render(<AudienceTab lang="en" />);
+    expect(screen.getByText("Page views per day")).toBeTruthy();
+  });
+
   it("keeps rendering daily charts when the parent renders again", () => {
     // DailyMetricChart maps each series to a new row array every render.
     // A second render must not setState-during-render forever.

@@ -16,7 +16,8 @@ import { Tooltip } from "../dither-kit/tooltip";
 import { XAxis } from "../dither-kit/x-axis";
 import { YAxis } from "../dither-kit/y-axis";
 
-const shortDay = (date: string) => date.slice(5); // YYYY-MM-DD -> MM-DD
+const shortDay = (date: string | null | undefined) =>
+  typeof date === "string" && date.length >= 5 ? date.slice(5) : "—";
 
 function EmptyNote({ label }: { label: string }) {
   return <p className="text-sm text-muted-foreground">{label}</p>;
@@ -66,10 +67,11 @@ export function DailyMetricChart({
   color?: DitherColor;
   emptyLabel: string;
 }) {
-  if (data.length === 0) return <EmptyNote label={emptyLabel} />;
-  const rows = data.map((d) => ({
-    day: shortDay(d.date),
-    [seriesKey]: d.count,
+  const points = Array.isArray(data) ? data : [];
+  if (points.length === 0) return <EmptyNote label={emptyLabel} />;
+  const rows = points.map((d) => ({
+    day: shortDay(d?.date),
+    [seriesKey]: d?.count ?? 0,
   }));
   const config: ChartConfig = {
     [seriesKey]: { label, color },

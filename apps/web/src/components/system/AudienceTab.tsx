@@ -45,13 +45,14 @@ const LANG_LABELS: Record<string, string> = {
 };
 
 /** GA4's `pagePath` is host-dependent; show the path, never the origin. */
-function pageLabel(path: string): string {
-  const withoutOrigin = path.replace(/^https?:\/\/[^/]+/i, "");
+function pageLabel(path: string | null | undefined): string {
+  const withoutOrigin = (path ?? "").replace(/^https?:\/\/[^/]+/i, "");
   const trimmed = withoutOrigin.split("?")[0] ?? "";
   return trimmed.length > 1 ? trimmed : "/";
 }
 
-function sourceLabel(name: string): string {
+function sourceLabel(name: string | null | undefined): string {
+  if (!name) return "Unknown";
   return SOURCE_LABELS[name] ?? name;
 }
 
@@ -212,7 +213,7 @@ function TrafficCards({ ga4 }: { ga4: Ga4AudienceView }) {
       >
         {ga4.audience ? (
           <DailyMetricChart
-            data={ga4.viewsPerDay}
+            data={ga4.viewsPerDay ?? []}
             seriesKey="views"
             label="Views"
             color="blue"
@@ -230,7 +231,7 @@ function TrafficCards({ ga4 }: { ga4: Ga4AudienceView }) {
       >
         {ga4.audience ? (
           <DailyMetricChart
-            data={ga4.usersPerDay}
+            data={ga4.usersPerDay ?? []}
             seriesKey="users"
             label="Active users"
             color="purple"
@@ -244,7 +245,7 @@ function TrafficCards({ ga4 }: { ga4: Ga4AudienceView }) {
       </ChartCard>
       <ChartCard title="Top pages" subtitle="Page views, last 28 days">
         <BarList
-          data={ga4.topPages.map((p) => ({
+          data={(ga4.topPages ?? []).map((p) => ({
             name: pageLabel(p.name),
             count: p.count,
           }))}
@@ -260,7 +261,10 @@ function TrafficCards({ ga4 }: { ga4: Ga4AudienceView }) {
         subtitle="GA4 session sources, last 28 days"
       >
         <BarList
-          data={ga4.sources.map((s) => ({ name: s.name, count: s.count }))}
+          data={(ga4.sources ?? []).map((s) => ({
+            name: s.name ?? "",
+            count: s.count,
+          }))}
           emptyLabel={
             ga4.audience
               ? "No sessions recorded yet."
@@ -280,7 +284,7 @@ function SubscriberCards({ subs }: { subs: SubscriberAudience }) {
         subtitle="Confirmed signups, last 90 days"
       >
         <DailyMetricChart
-          data={subs.newPerDay}
+          data={subs.newPerDay ?? []}
           seriesKey="signups"
           label="Signups"
           color="green"
@@ -292,7 +296,7 @@ function SubscriberCards({ subs }: { subs: SubscriberAudience }) {
         subtitle="Where the subscription form was used"
       >
         <BarList
-          data={subs.bySource.map((s) => ({
+          data={(subs.bySource ?? []).map((s) => ({
             name: sourceLabel(s.name),
             count: s.count,
           }))}
@@ -301,7 +305,7 @@ function SubscriberCards({ subs }: { subs: SubscriberAudience }) {
       </ChartCard>
       <ChartCard title="Subscribers by language" subtitle="Digest language">
         <BarList
-          data={subs.byLang.map((l) => ({
+          data={(subs.byLang ?? []).map((l) => ({
             name: langLabel(l.name),
             count: l.count,
           }))}
@@ -310,7 +314,7 @@ function SubscriberCards({ subs }: { subs: SubscriberAudience }) {
       </ChartCard>
       <ChartCard title="Digest size" subtitle="Stories per email">
         <BarList
-          data={subs.byDigestSize.map((d) => ({
+          data={(subs.byDigestSize ?? []).map((d) => ({
             name: digestLabel(d.size),
             count: d.count,
           }))}
