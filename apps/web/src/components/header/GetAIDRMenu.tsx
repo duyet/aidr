@@ -12,6 +12,7 @@ import { Link } from "@tanstack/react-router";
 import {
   ChevronDown,
   Database,
+  Info,
   Mail,
   Plus,
   Send,
@@ -99,6 +100,16 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className={itemClassName}>
+          <Link
+            to="/about"
+            search={{ lang: navigationLang }}
+            onClick={() => track("nav_click", { to: "/about" })}
+          >
+            <Info aria-hidden />
+            About
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to="/submit"
