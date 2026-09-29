@@ -90,8 +90,10 @@ CLERK_ISSUER = "https://aidr.today/__clerk"
 # The handler's documented request/response body limit is 1 MiB.
 CLERK_PROXY_URL = "https://aidr.today/__clerk"
 CLERK_PROXY_TIMEOUT_MS = "10000"
-# @duyetbot posts top stories to this channel; TELEGRAM_BOT_TOKEN is a secret.
-TELEGRAM_CHAT_ID = "-1004420104760"
+# @duyetbot posts each language to its own chat. TELEGRAM_BOT_TOKEN is a secret.
+# TELEGRAM_CHAT_ID is the old Vietnamese name; the Worker reads these two.
+TELEGRAM_VI_CHAT_ID = "-1004420104760"
+TELEGRAM_EN_CHAT_ID = "@aidr_today"
 # Cloudflare Email Sending. Onboard aidr.today (`wrangler email sending enable aidr.today`)
 # then these From addresses can deliver. Override with EMAIL_FROM / EMAIL_NOTES_FROM.
 EMAIL_FROM = "digest@aidr.today"

@@ -275,8 +275,30 @@ async function callTelegram(
   }
 }
 
-/** Public English broadcast. Username is the Bot API chat_id — no numeric id. */
-export const TELEGRAM_EN_CHAT_ID = "@aidr_today";
+/** Chat id for a language channel. Vietnamese still accepts the old
+ *  `TELEGRAM_CHAT_ID` until `.env.local` is migrated. */
+export function telegramChatId(
+  env: Env,
+  lang: Lang
+): { id: string; source: string } {
+  if (lang === "en") {
+    const id = env.TELEGRAM_EN_CHAT_ID?.trim() ?? "";
+    return { id, source: "TELEGRAM_EN_CHAT_ID" };
+  }
+  const next = env.TELEGRAM_VI_CHAT_ID?.trim() ?? "";
+  if (next) return { id: next, source: "TELEGRAM_VI_CHAT_ID" };
+  const legacy = env.TELEGRAM_CHAT_ID?.trim() ?? "";
+  return { id: legacy, source: "TELEGRAM_CHAT_ID" };
+}
+
+function telegramEnabled(env: Env, lang: Lang): boolean {
+  const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
+  const chat = telegramChatId(env, lang);
+  if (chat.id && !token) {
+    throw new Error(`${chat.source} is set but TELEGRAM_BOT_TOKEN is missing`);
+  }
+  return Boolean(token && chat.id);
+}
 
 function telegramChannel(options: {
   id: string;
@@ -347,24 +369,15 @@ function telegramChannel(options: {
 export const telegramNotifier: Notifier = telegramChannel({
   id: "telegram",
   lang: "vi",
-  chatId: (env) => env.TELEGRAM_CHAT_ID ?? "",
-  enabled: (env) => {
-    const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
-    const chatId = env.TELEGRAM_CHAT_ID?.trim() ?? "";
-    if (chatId && !token) {
-      throw new Error(
-        "TELEGRAM_CHAT_ID is set but TELEGRAM_BOT_TOKEN is missing"
-      );
-    }
-    return Boolean(token && chatId);
-  },
+  chatId: (env) => telegramChatId(env, "vi").id,
+  enabled: (env) => telegramEnabled(env, "vi"),
 });
 
-/** English channel. Same bot token; posts only the English digest and
- *  English story copy to @aidr_today. */
+/** English channel. Same bot token and the same send path; the chat id
+ *  comes from TELEGRAM_EN_CHAT_ID, not a hardcoded username. */
 export const telegramEnNotifier: Notifier = telegramChannel({
   id: "telegram-en",
   lang: "en",
-  chatId: () => TELEGRAM_EN_CHAT_ID,
-  enabled: (env) => Boolean(env.TELEGRAM_BOT_TOKEN?.trim()),
+  chatId: (env) => telegramChatId(env, "en").id,
+  enabled: (env) => telegramEnabled(env, "en"),
 });

@@ -1,5 +1,6 @@
 import { notesFrom } from "../mail/send.js";
 import { escapeHtml } from "../notify/alert.js";
+import { telegramChatId } from "../notify/telegram.js";
 import type { Env } from "../types.js";
 
 export interface NewSubscriberInfo {
@@ -32,7 +33,7 @@ export function ownerEmailAddress(env: Env): string {
 
 async function sendOwnerTelegram(env: Env, text: string): Promise<boolean> {
   const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
-  const chatId = env.TELEGRAM_CHAT_ID?.trim() ?? "";
+  const chatId = telegramChatId(env, "vi").id;
   if (!token || !chatId) return false;
   try {
     const res = await fetch(
