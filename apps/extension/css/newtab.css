@@ -38,114 +38,26 @@
   src: url("../fonts/eb-garamond-latin-700.woff2") format("woff2");
 }
 
+/* Colors, font stacks, radius and dark mode come from css/tokens.css
+   (copy of packages/ui/tokens.css, the web's tokens). Only extension-only
+   aliases and reader prefs live here. */
 :root {
-  --editorial-bg: #f7f7f5;
-  --editorial-fg: #0a0a0a;
-  --editorial-muted: #474747;
-  --editorial-faint: #0a0a0a0a;
-  --editorial-hairline: #0a0a0a14;
-  --editorial-accent: #b45309;
-  --editorial-font-serif:
-    "EB Garamond", ui-serif, Georgia, "Times New Roman", serif;
-  --editorial-font-sans:
-    "Source Sans 3", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    sans-serif;
-  --editorial-font-mono:
-    ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --content-font-sans:
-    "Source Sans 3", ui-sans-serif, system-ui, -apple-system, sans-serif;
-
-  --background: #f7f7f5;
-  --foreground: #0a0a0a;
-  --muted: #e5e5e3;
-  --muted-foreground: #474747;
-  --border: #0a0a0a14;
-  --accent: #b45309;
-  --accent-foreground: #fffefb;
-  --primary: #0a0a0a;
-  --primary-foreground: #fafafa;
-  --brand: #f5c518;
-  --brand-soft: #fdf6d8;
-  --ring: #0a0a0a33;
-
   --bg: var(--background);
   --fg: var(--foreground);
   --hairline: var(--border);
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --secondary: #e5e5e3;
-  --secondary-foreground: #0a0a0a;
-  --input: #0a0a0a14;
   --font: var(--content-font-sans);
   --content-font: var(--content-font-sans);
   --size: 16px;
   --pad: 0.5rem;
-  --radius: 1rem;
   color-scheme: light;
 }
 
 html[data-theme="dark"] {
-  --editorial-bg: #0c0c0c;
-  --editorial-fg: #fafafa;
-  --editorial-muted: #a3a3a3;
-  --editorial-faint: #fafafa0f;
-  --editorial-hairline: #ffffff1a;
-  --editorial-accent: #f59e0b;
-  --background: #0c0c0c;
-  --foreground: #fafafa;
-  --muted: #2a2a2a;
-  --muted-foreground: #a3a3a3;
-  --border: #ffffff1a;
-  --accent: #f59e0b;
-  --accent-foreground: #fffefb;
-  --primary: #fafafa;
-  --primary-foreground: #0a0a0a;
-  --brand-soft: #292209;
-  --ring: #ffffff40;
-  --bg: var(--background);
-  --fg: var(--foreground);
-  --hairline: var(--border);
-  --card: #171717;
-  --card-foreground: #fafafa;
-  --popover: #171717;
-  --popover-foreground: #fafafa;
-  --secondary: #2a2a2a;
-  --secondary-foreground: #fafafa;
-  --input: #ffffff26;
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
   html[data-theme="system"] {
-    --editorial-bg: #0c0c0c;
-    --editorial-fg: #fafafa;
-    --editorial-muted: #a3a3a3;
-    --editorial-faint: #fafafa0f;
-    --editorial-hairline: #ffffff1a;
-    --editorial-accent: #f59e0b;
-    --background: #0c0c0c;
-    --foreground: #fafafa;
-    --muted: #2a2a2a;
-    --muted-foreground: #a3a3a3;
-    --border: #ffffff1a;
-    --accent: #f59e0b;
-    --accent-foreground: #fffefb;
-    --primary: #fafafa;
-    --primary-foreground: #0a0a0a;
-    --brand-soft: #292209;
-    --ring: #ffffff40;
-    --bg: var(--background);
-    --fg: var(--foreground);
-    --hairline: var(--border);
-    --card: #171717;
-    --card-foreground: #fafafa;
-    --popover: #171717;
-    --popover-foreground: #fafafa;
-    --secondary: #2a2a2a;
-    --secondary-foreground: #fafafa;
-    --input: #ffffff26;
     color-scheme: dark;
   }
 }

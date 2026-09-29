@@ -53,6 +53,7 @@ const required = [
   "newtab.html",
   "options.html",
   "privacy.html",
+  "css/tokens.css",
   "css/newtab.css",
   "js/api.js",
   "js/settings.js",
