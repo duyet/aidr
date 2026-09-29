@@ -30,6 +30,19 @@ describe("decodeHtmlEntities", () => {
 });
 
 describe("parseOgTags", () => {
+  it("replaces a cut-off og:description with the article paragraphs", () => {
+    const html = `
+      <html><head>
+        <meta property="og:description" content="An IPO prospectus seen by Reu…" />
+      </head><body>
+        <p>An IPO prospectus seen by Reuters put the first-year loss at $41.97 billion.</p>
+      </body></html>
+    `;
+    expect(parseOgTags(html).description).toBe(
+      "An IPO prospectus seen by Reuters put the first-year loss at $41.97 billion."
+    );
+  });
+
   it("extracts og:image and og:description", () => {
     const html = `
       <html><head>

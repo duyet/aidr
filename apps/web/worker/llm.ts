@@ -1105,7 +1105,8 @@ function clipSummary(summary: string | undefined): string | undefined {
   const slice = trimmed.slice(0, TRANSLATE_SUMMARY_MAX_CHARS);
   const boundary = Math.max(slice.lastIndexOf(". "), slice.lastIndexOf("。"));
   if (boundary > 400) return slice.slice(0, boundary + 1).trim();
-  return `${slice.trimEnd()}…`;
+  const space = slice.lastIndexOf(" ");
+  return (space > 400 ? slice.slice(0, space) : slice).trim();
 }
 
 function translatePrompt(batch: TranslateInput[], titlesOnly: boolean): string {

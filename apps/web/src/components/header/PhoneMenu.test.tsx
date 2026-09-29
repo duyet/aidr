@@ -361,10 +361,10 @@ describe("mobile action sizing", () => {
       "Telegram Channel (Vietnamese)",
       "Telegram Channel (English)",
       "Email Subscription",
-      "About",
       "Submit",
       "Data Analytics",
       "Algorithms",
+      "About",
     ]);
     expect(items.length).toBeGreaterThan(0);
     for (const item of items) {

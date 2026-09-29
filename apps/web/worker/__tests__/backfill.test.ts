@@ -196,6 +196,27 @@ describe("planBackfillUpdate", () => {
     expect(plan?.imageUrl).toBe("https://existing.com/original.png");
   });
 
+  it("keeps a finished summary when the fetch is cut off", () => {
+    const plan = planBackfillUpdate(
+      { summary: "Revenue climbed to $4.59 billion.", imageUrl: null },
+      { summary: "An IPO prospectus seen by Reu…" }
+    );
+    expect(plan?.summary).toBe("Revenue climbed to $4.59 billion.");
+  });
+
+  it("replaces a cut-off summary with a finished fetch", () => {
+    const plan = planBackfillUpdate(
+      { summary: "An IPO prospectus seen by Reu…", imageUrl: null },
+      {
+        summary:
+          "An IPO prospectus seen by Reuters put the loss at $41.97 billion.",
+      }
+    );
+    expect(plan?.summary).toBe(
+      "An IPO prospectus seen by Reuters put the loss at $41.97 billion."
+    );
+  });
+
   it("falls back to null imageUrl when neither existing nor fetched has one", () => {
     const plan = planBackfillUpdate(
       { imageUrl: null },

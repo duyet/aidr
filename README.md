@@ -1,6 +1,25 @@
 # aidr / AI;DR
 
-[https://aidr.today](https://aidr.today) — AI news digest: TL;DR snapshots plus ranked stories.
+<a href="https://aidr.today"><img src="https://aidr.today/logo-sm.png" alt="AI;DR" height="48"></a>
+[![Website](https://img.shields.io/badge/Website-aidr.today-111111?style=for-the-badge)](https://aidr.today)
+[![Telegram VI](https://img.shields.io/badge/Telegram-@aihomnay-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/aihomnay)
+[![Telegram EN](https://img.shields.io/badge/Telegram-@aidr__today-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/aidr_today)
+[![Chrome](https://img.shields.io/badge/Chrome-extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg)
+[![RSS](https://img.shields.io/badge/RSS-feed.xml-FFA500?style=for-the-badge&logo=rss&logoColor=white)](https://aidr.today/feed.xml)
+[![GitHub](https://img.shields.io/badge/GitHub-duyet%2Faidr-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/duyet/aidr)
+[![Sponsor](https://img.shields.io/badge/Sponsor-this%20project-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/duyet)
+
+[aidr.today](https://aidr.today) — AI news digest: TL;DR snapshots plus ranked stories.
+
+| | |
+|---|---|
+| Website | [aidr.today](https://aidr.today) |
+| Telegram (Vietnamese) | [@aihomnay](https://t.me/aihomnay) |
+| Telegram (English) | [@aidr_today](https://t.me/aidr_today) |
+| Chrome extension | [Chrome Web Store](https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg) |
+| RSS | [feed.xml](https://aidr.today/feed.xml) |
+| Source | [github.com/duyet/aidr](https://github.com/duyet/aidr) |
+| Sponsor | [github.com/sponsors/duyet](https://github.com/sponsors/duyet) |
 
 Cloudflare Worker (`aidr`), TanStack Start frontend, D1 as the primary store.
 

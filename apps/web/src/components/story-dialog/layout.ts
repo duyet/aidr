@@ -23,7 +23,7 @@ export const STORY_DIALOG_PANEL_CLASS =
   "story-dialog-panel relative flex min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-border bg-background text-foreground shadow-xl transition-[max-width] motion-reduce:transition-none";
 
 export const STORY_DIALOG_HEADER_CLASS =
-  "sticky top-0 z-10 shrink-0 border-b border-border/70 bg-background px-4 py-2.5 sm:px-5 sm:py-3";
+  "sticky top-0 z-10 shrink-0 border-b border-border/70 bg-background px-5 py-3.5 sm:px-7 sm:py-4";
 
 export const STORY_DIALOG_BODY_CLASS =
   "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pt-3 pb-4 sm:px-5 sm:pt-4 sm:pb-5";

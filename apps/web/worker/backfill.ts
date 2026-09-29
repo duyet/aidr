@@ -1,3 +1,4 @@
+import { preferCompleteSummary } from "./enrich.js";
 import {
   type MediaManifest,
   manifestWithoutArticleUrl,
@@ -26,7 +27,10 @@ export const BACKFILL_BATCH_SIZE = 4;
  * from what readers are most likely to open. */
 export function buildMissingSummaryQuery(limit = BACKFILL_CONTENT_CAP): string {
   return `SELECT id, url, source_id, summary, image_url, media_manifest FROM items
-          WHERE status = 'published' AND (summary IS NULL OR summary = '')
+          WHERE status = 'published' AND (
+            summary IS NULL OR summary = ''
+            OR rtrim(summary) LIKE '%…' OR rtrim(summary) LIKE '%...'
+          )
           ORDER BY published_at DESC
           LIMIT ${limit}`;
 }
@@ -132,7 +136,7 @@ export function planBackfillUpdate(
     existing.articleUrl
   );
   return {
-    summary: fetchedSummary || existingSummary || null,
+    summary: preferCompleteSummary(existingSummary, fetchedSummary) ?? null,
     imageUrl:
       primaryThumbnailUrl(
         existingManifest,

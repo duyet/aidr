@@ -198,6 +198,57 @@ function extractMetaContent(
  * og:description, falling back to <meta name="description">. HTML
  * entities in the description and og:image URL are decoded.
  */
+/** A publisher blurb cut off with an ellipsis, not a finished sentence. */
+export function summaryLooksCutOff(text: string): boolean {
+  return /(?:\.{3}|…)\s*$/.test(text.trim());
+}
+
+/** Keep whichever summary is a finished sentence. A cut-off blurb never
+ * replaces a complete one, and a complete fetch replaces a cut-off one. */
+export function preferCompleteSummary(
+  existing: string | null | undefined,
+  fetched: string | null | undefined
+): string | undefined {
+  const current = existing?.trim() ?? "";
+  const next = fetched?.trim() ?? "";
+  if (!current) return next || undefined;
+  if (!next) return current;
+  const currentCut = summaryLooksCutOff(current);
+  const nextCut = summaryLooksCutOff(next);
+  if (currentCut !== nextCut) return currentCut ? next : current;
+  if (currentCut && nextCut) return next.length > current.length ? next : current;
+  return current;
+}
+
+function articleSummary(html: string): string | undefined {
+  const parts: string[] = [];
+  const pattern = /<p\b[^>]*>([\s\S]*?)<\/p>/gi;
+  for (let match = pattern.exec(html); match; match = pattern.exec(html)) {
+    const text = decodeHtmlEntities(match[1].replace(/<[^>]+>/g, " "))
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text.length < 40) continue;
+    parts.push(text);
+    if (parts.join(" ").length >= 1_200) break;
+  }
+  const joined = parts.join(" ").trim();
+  if (!joined) return undefined;
+  return clipAtSentence(joined, 1_600);
+}
+
+function clipAtSentence(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const slice = text.slice(0, max);
+  const boundary = Math.max(
+    slice.lastIndexOf(". "),
+    slice.lastIndexOf("! "),
+    slice.lastIndexOf("? ")
+  );
+  if (boundary > 200) return slice.slice(0, boundary + 1).trim();
+  const space = slice.lastIndexOf(" ");
+  return (space > 200 ? slice.slice(0, space) : slice).trim();
+}
+
 export function parseOgTags(html: string): OgData {
   const manifest = buildMediaManifest(parseMediaMetadata(html));
   const imageUrl = primaryThumbnailUrl(manifest) ?? undefined;
@@ -208,13 +259,15 @@ export function parseOgTags(html: string): OgData {
   const description = rawDescription
     ? decodeHtmlEntities(rawDescription).trim() || undefined
     : undefined;
+  const article = articleSummary(html);
+  const summary = preferCompleteSummary(description, article);
 
   const hasUsefulManifest =
     manifest.assets.some((asset) => asset.type === "video") ||
     manifest.assets.filter((asset) => asset.type === "image").length > 1;
   return {
     imageUrl,
-    description,
+    description: summary,
     ...(hasUsefulManifest ? { mediaManifest: manifest } : {}),
   };
 }

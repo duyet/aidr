@@ -102,16 +102,6 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className={itemClassName}>
           <Link
-            to="/about"
-            search={{ lang: navigationLang }}
-            onClick={() => track("nav_click", { to: "/about" })}
-          >
-            <Info aria-hidden />
-            About
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={itemClassName}>
-          <Link
             to="/submit"
             search={{ lang: navigationLang }}
             onClick={() => track("nav_click", { to: "/submit" })}
@@ -134,6 +124,17 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           >
             <Workflow aria-hidden />
             Algorithms
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className={itemClassName}>
+          <Link
+            to="/about"
+            search={{ lang: navigationLang }}
+            onClick={() => track("nav_click", { to: "/about" })}
+          >
+            <Info aria-hidden />
+            About
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
