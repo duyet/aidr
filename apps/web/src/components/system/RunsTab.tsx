@@ -59,18 +59,30 @@ function RunOutcomeCard({ lang }: { lang: Lang }) {
   );
 }
 
-function RecentRunsCard({ lang }: { lang: Lang }) {
+function RecentRunsCard({
+  lang,
+  focusRunId,
+}: {
+  lang: Lang;
+  focusRunId?: string;
+}) {
   const state = useSystemData<{ runs: WorkflowRunRow[] }>(API.runs);
   return (
     <ChartCard title="Recent runs" subtitle="Last 30 workflow runs">
       <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
-        {(d) => <RunsList runs={d.runs} lang={lang} />}
+        {(d) => <RunsList runs={d.runs} lang={lang} focusRunId={focusRunId} />}
       </CardData>
     </ChartCard>
   );
 }
 
-export function RunsTab({ lang }: { lang: Lang }) {
+export function RunsTab({
+  lang,
+  focusRunId,
+}: {
+  lang: Lang;
+  focusRunId?: string;
+}) {
   return (
     <TabsContent value="runs" className={TAB_PANEL}>
       {/* One column, deliberately: every card here carries its own x-axis, so
@@ -79,7 +91,7 @@ export function RunsTab({ lang }: { lang: Lang }) {
         <RunStatusCard />
         <RunDurationCard lang={lang} />
         <RunOutcomeCard lang={lang} />
-        <RecentRunsCard lang={lang} />
+        <RecentRunsCard lang={lang} focusRunId={focusRunId} />
       </div>
     </TabsContent>
   );

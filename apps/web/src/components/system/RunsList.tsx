@@ -1,17 +1,25 @@
 import { TableBody, TableHead, TableHeader, TableRow } from "@aidr/ui";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
 import { useHorizontalScroll } from "../../lib/use-horizontal-scroll";
 import { RunRow } from "./RunRow";
 import type { RunAttemptsState } from "./run-format";
-import { formatDurationSec, hasRunDetails, nextOpenId } from "./run-format";
+import {
+  formatDurationSec,
+  hasRunDetails,
+  nextOpenId,
+  runAnchorId,
+} from "./run-format";
 
 interface RunsListProps {
   runs: WorkflowRunRow[];
   lang: "en" | "vi";
+  /** Deep-linked run (`/data?tab=runs&run=<id>`): expanded, highlighted,
+   *  and scrolled into view once. */
+  focusRunId?: string;
 }
 
-export function RunsList({ runs, lang }: RunsListProps) {
+export function RunsList({ runs, lang, focusRunId }: RunsListProps) {
   const scrollRef = useHorizontalScroll<HTMLDivElement>();
   const [openId, setOpenId] = useState<string | null>(null);
   // Attempt rows are no longer inlined in the runs payload — each
@@ -73,6 +81,20 @@ export function RunsList({ runs, lang }: RunsListProps) {
         }));
       });
   };
+
+  const focusedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusRunId || focusedRef.current === focusRunId) return;
+    const run = runs.find((r) => r.id === focusRunId);
+    if (!run) return;
+    focusedRef.current = focusRunId;
+    if (openId !== run.id) toggleRun(run, false);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(runAnchorId(run.id))
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [focusRunId, runs]);
 
   if (runs.length === 0) {
     return (
@@ -140,6 +162,7 @@ export function RunsList({ runs, lang }: RunsListProps) {
                 lang={lang}
                 maxDuration={maxDuration}
                 expanded={expanded}
+                highlighted={r.id === focusRunId}
                 attemptsState={
                   attemptsStateByRun[r.id] ??
                   ((r.llm?.attempts?.length ?? 0) > 0 ? "ready" : "idle")

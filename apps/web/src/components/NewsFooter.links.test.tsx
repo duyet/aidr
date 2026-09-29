@@ -27,6 +27,7 @@ vi.mock("@tanstack/react-router", async () => {
 // fetcher would reach the network from a DOM test.
 vi.mock("../lib/feed-cache", () => ({
   getCachedFeedFreshness: () => null,
+  getCachedLatestRun: () => undefined,
   fetchFeedFreshnessOnce: () => Promise.resolve(null),
 }));
 

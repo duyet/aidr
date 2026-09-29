@@ -169,3 +169,44 @@ describe("feed freshness cache", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("latest run summary cache", () => {
+  const latestRun = {
+    id: "run-1",
+    startedAt: 1_700_000_000,
+    finishedAt: 1_700_000_060,
+    failed: false,
+    degraded: false,
+  };
+
+  it("still asks the slim endpoint when only the full feed seeded freshness", async () => {
+    // The feed carries no run summary, so the footer dot needs one slim call.
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ lastFetchedAt: 1_700_000_042, latestRun })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const cache = await freshFeedCache();
+
+    cache.setCachedFeed(feed, "en");
+    expect(cache.getCachedFeedFreshness()).toBe(1_700_000_042);
+    expect(cache.getCachedLatestRun()).toBeUndefined();
+
+    await cache.fetchFeedFreshnessOnce();
+    expect(cache.getCachedLatestRun()).toEqual(latestRun);
+    await cache.fetchFeedFreshnessOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // A later feed write keeps the known summary.
+    cache.setCachedFeed(feed, "vi");
+    expect(cache.getCachedLatestRun()).toEqual(latestRun);
+  });
+
+  it("treats an answer without a summary as no run, not unloaded", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ lastFetchedAt: 5 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const cache = await freshFeedCache();
+
+    await cache.fetchFeedFreshnessOnce();
+    expect(cache.getCachedLatestRun()).toBeNull();
+  });
+});
