@@ -4,9 +4,16 @@ import { useEffect, useState } from "react";
 import {
   fetchFeedFreshnessOnce,
   getCachedFeedFreshness,
+  getCachedLatestRun,
 } from "../lib/feed-cache";
 import { timeAgo } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
+import {
+  classifyRunHealth,
+  type LatestRunSummary,
+  RUN_HEALTH_DOT,
+  RUN_HEALTH_LABEL,
+} from "../lib/run-health";
 import {
   ANYROUTER_URL,
   DUYET_URL,
@@ -33,19 +40,28 @@ export function NewsFooter() {
   // Cached freshness is only read after mount — reading it in the initializer
   // would make the first client render differ from the SSR markup (#418).
   const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
+  const [latestRun, setLatestRun] = useState<LatestRunSummary | null>(null);
 
   useEffect(() => {
     const cached = getCachedFeedFreshness();
+    const cachedRun = getCachedLatestRun();
     setLastFetchedAt(cached);
-    if (cached !== null) return;
+    setLatestRun(cachedRun ?? null);
+    if (cached !== null && cachedRun !== undefined) return;
     let cancelled = false;
     void fetchFeedFreshnessOnce().then((freshness) => {
-      if (!cancelled && freshness !== null) setLastFetchedAt(freshness);
+      if (cancelled) return;
+      if (freshness !== null) setLastFetchedAt(freshness);
+      setLatestRun(getCachedLatestRun() ?? null);
     });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const runHealth = latestRun
+    ? classifyRunHealth(latestRun, Math.floor(Date.now() / 1000))
+    : null;
 
   return (
     <footer className="mt-10 border-t border-border/80 bg-card/40 py-12 text-sm text-muted-foreground">
@@ -150,10 +166,24 @@ export function NewsFooter() {
                 {" · "}
                 <Link
                   to="/data"
-                  onClick={() => track("nav_click", { to: "/data" })}
-                  className="underline-offset-2 hover:text-foreground hover:underline"
-                  title="Pipeline stats"
+                  search={
+                    latestRun
+                      ? { tab: "runs", run: latestRun.id }
+                      : { tab: "runs" }
+                  }
+                  onClick={() => track("nav_click", { to: "/data?tab=runs" })}
+                  className="inline-flex items-center gap-1.5 underline-offset-2 hover:text-foreground hover:underline"
+                  title={
+                    runHealth ? RUN_HEALTH_LABEL[runHealth] : "Pipeline runs"
+                  }
                 >
+                  {runHealth ? (
+                    <span
+                      role="img"
+                      aria-label={RUN_HEALTH_LABEL[runHealth]}
+                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${RUN_HEALTH_DOT[runHealth]}`}
+                    />
+                  ) : null}
                   Updated {timeAgo(lastFetchedAt, Date.now(), "en")}
                 </Link>
               </>

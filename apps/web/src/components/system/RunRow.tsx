@@ -16,6 +16,7 @@ import {
   hasRunDetails,
   normalizeRunTokens,
   type RunAttemptsState,
+  runAnchorId,
   runDetailsId,
   runDisclosureLabel,
   runStatus,
@@ -30,6 +31,7 @@ export function RunRow({
   attemptsState,
   attempts,
   attemptsTruncated = false,
+  highlighted = false,
   onToggle,
 }: {
   run: WorkflowRunRow;
@@ -40,6 +42,8 @@ export function RunRow({
   attempts: LlmCallRow[];
   /** The per-run read hit its cap; more calls exist than are shown. */
   attemptsTruncated?: boolean;
+  /** Deep-linked from the footer's "Updated" link. */
+  highlighted?: boolean;
   onToggle: () => void;
 }) {
   const status = runStatus(r);
@@ -69,7 +73,15 @@ export function RunRow({
   return (
     <Fragment>
       <TableRow
-        className={canExpand ? "cursor-pointer" : undefined}
+        id={runAnchorId(r.id)}
+        aria-current={highlighted ? "true" : undefined}
+        className={[
+          "scroll-mt-24",
+          canExpand ? "cursor-pointer" : "",
+          highlighted ? "bg-muted/60 ring-1 ring-inset ring-ring/60" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         onClick={() => {
           if (!canExpand) return;
           openFrom(chevronRef.current);

@@ -20,12 +20,18 @@ import type { Lang } from "../lib/types";
 
 export interface DataSearch {
   tab?: DataTab;
+  /** Deep link from the footer: expand and scroll to this workflow run. */
+  run?: string;
 }
 
 export const Route = createFileRoute("/data")({
   validateSearch: (search: Record<string, unknown>): DataSearch => {
     const tab = parseDataTab(search.tab);
-    return tab ? { tab } : {};
+    const run =
+      typeof search.run === "string" && search.run.trim()
+        ? search.run.trim()
+        : undefined;
+    return { ...(tab ? { tab } : {}), ...(run ? { run } : {}) };
   },
   search: {
     middlewares: [
@@ -116,7 +122,7 @@ export function SystemPage() {
           <AudienceTab lang={lang} />
           <AlgoTab />
           <ContentTab lang={lang} />
-          <RunsTab lang={lang} />
+          <RunsTab lang={lang} focusRunId={search.run} />
           <SourcesTab />
           <LlmTab />
 

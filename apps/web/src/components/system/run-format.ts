@@ -419,6 +419,11 @@ export function nextOpenId(
   return currentId === id ? null : id;
 }
 
+/** Scroll target for `/data?tab=runs&run=<id>` deep links. */
+export function runAnchorId(id: string): string {
+  return `run-${id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+}
+
 export function runDetailsId(id: string): string {
   return `run-details-${id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }

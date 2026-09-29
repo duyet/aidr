@@ -4,6 +4,7 @@ import {
   feedFreshnessResponse,
   getFeedFreshness,
   isFeedFreshness,
+  LATEST_RUN_SQL,
   NEWEST_PUBLISHED_FETCHED_AT_SQL,
 } from "./feed-freshness";
 
@@ -23,18 +24,21 @@ describe("getFeedFreshness", () => {
 
     await expect(getFeedFreshness(db)).resolves.toEqual({
       lastFetchedAt: 1_700_000_042,
+      latestRun: null,
     });
     expect(prepare).toHaveBeenCalledWith(NEWEST_PUBLISHED_FETCHED_AT_SQL);
     expect(NEWEST_PUBLISHED_FETCHED_AT_SQL).toBe(
       "SELECT MAX(fetched_at) AS last FROM items WHERE status = 'published'"
     );
-    expect(first).toHaveBeenCalledTimes(1);
+    expect(prepare).toHaveBeenCalledWith(LATEST_RUN_SQL);
+    expect(first).toHaveBeenCalledTimes(2);
   });
 
   it("keeps a valid null result when there are no published items", async () => {
     const { db } = fakeDb(null);
     await expect(getFeedFreshness(db)).resolves.toEqual({
       lastFetchedAt: null,
+      latestRun: null,
     });
   });
 
@@ -42,6 +46,7 @@ describe("getFeedFreshness", () => {
     const { db } = fakeDb({ last: "bad" } as unknown as { last: number });
     await expect(getFeedFreshness(db)).resolves.toEqual({
       lastFetchedAt: null,
+      latestRun: null,
     });
   });
 });

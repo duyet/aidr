@@ -5,6 +5,7 @@ import {
 } from "./feed-freshness";
 import { setLearnedKeywords } from "./highlight";
 import { withLang } from "./locale-url";
+import type { LatestRunSummary } from "./run-health";
 import type { FeedResponse, Lang } from "./types";
 
 /**
@@ -26,8 +27,12 @@ let freshnessInflight: Promise<number | null> | null = null;
 
 function setFreshnessEntry(value: FeedFreshness): void {
   if (!isFeedFreshness(value)) return;
+  // A feed-sourced value has no run summary; keep a still-valid one.
+  const prior = validFreshnessEntry();
+  const latestRun =
+    value.latestRun !== undefined ? value.latestRun : prior?.value.latestRun;
   freshnessCache = {
-    value,
+    value: latestRun !== undefined ? { ...value, latestRun } : value,
     expiresAt: Date.now() + FEED_FRESHNESS_CLIENT_TTL_MS,
   };
 }
@@ -54,6 +59,11 @@ export function getCachedFeedFreshness(): number | null {
   return validFreshnessEntry()?.value.lastFetchedAt ?? null;
 }
 
+/** Newest run summary; `undefined` until the slim endpoint has answered. */
+export function getCachedLatestRun(): LatestRunSummary | null | undefined {
+  return validFreshnessEntry()?.value.latestRun;
+}
+
 /**
  * Fetch the slim endpoint once, sharing an in-flight request. Successful
  * values (including null) live for the client TTL; failures and malformed
@@ -61,7 +71,9 @@ export function getCachedFeedFreshness(): number | null {
  */
 export function fetchFeedFreshnessOnce(): Promise<number | null> {
   const cached = validFreshnessEntry();
-  if (cached) return Promise.resolve(cached.value.lastFetchedAt);
+  // A feed-sourced entry lacks the run summary; the slim endpoint has it.
+  if (cached && cached.value.latestRun !== undefined)
+    return Promise.resolve(cached.value.lastFetchedAt);
   if (freshnessInflight) return freshnessInflight;
 
   freshnessInflight = fetch("/api/feed/freshness")
@@ -69,7 +81,8 @@ export function fetchFeedFreshnessOnce(): Promise<number | null> {
     .then((body) => {
       freshnessInflight = null;
       if (!isFeedFreshness(body)) return null;
-      setFreshnessEntry(body);
+      // The endpoint answered, so a missing summary means "none", not "unloaded".
+      setFreshnessEntry({ ...body, latestRun: body.latestRun ?? null });
       return body.lastFetchedAt;
     })
     .catch(() => {

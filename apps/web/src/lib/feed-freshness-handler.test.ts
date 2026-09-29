@@ -41,6 +41,7 @@ describe("feed freshness handler", () => {
     );
     await expect(response.json()).resolves.toEqual({
       lastFetchedAt: 1_700_000_042,
+      latestRun: null,
     });
   });
 
