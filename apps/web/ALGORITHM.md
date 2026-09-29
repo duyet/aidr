@@ -13,7 +13,7 @@ bilingual feed.
 
 ## Overview
 
-One hourly run does three jobs. Prompts live in `worker/llm.ts`; the steps live in `worker/workflow.ts`.
+One hourly run does three jobs. Prompts live in `worker/llm.ts`; the steps live in `worker/ingest/` (one module per step), run in order by `worker/workflow.ts`.
 
 | Phase | What it writes | Where |
 | --- | --- | --- |

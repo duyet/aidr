@@ -19,7 +19,7 @@ import { createJevJudgeExecutor } from "./executor.js";
  *    verdict cannot manufacture publication.
  * 2. It writes nothing new. The effect rides on the existing `llm_relevance`
  *    and `category` columns, and the existing relevance gate in
- *    `workflow.ts` still owns the publish/reject decision. No migration.
+ *    `ingest/write-plan.ts` still owns the publish/reject decision. No migration.
  * 3. It cannot lose a primary result. Every path — disabled, unresolvable
  *    config, transport failure, no quorum, throw — returns the primary row
  *    unchanged with a reason attached.

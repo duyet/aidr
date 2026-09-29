@@ -251,7 +251,7 @@ interface PendingSubmissionRow {
  * `items` with status='new' — sha256(url) as id, so it matches what a
  * normal fetch would have produced — for the next ingest run's dedupe
  * step to pick up and run through the ordinary score/translate/enrich
- * pipeline (see workflow.ts's "dedupe" step). Any per-submission failure
+ * pipeline (see ingest/dedupe.ts). Any per-submission failure
  * is logged and leaves that submission pending for a future run.
  */
 export interface SubmissionsReviewStats {

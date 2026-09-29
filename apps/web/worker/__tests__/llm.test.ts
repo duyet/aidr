@@ -1867,7 +1867,7 @@ describe("normalizeTag", () => {
 });
 
 describe("tldr chain budget", () => {
-  // `workflow.ts` LLM_STEP timeout, which the tldr step runs inside.
+  // `ingest/context.ts` LLM_STEP timeout, which the tldr step runs inside.
   const LLM_STEP_TIMEOUT_MS = 4 * 60_000;
 
   // Prod 2026-09-29 08:27 UTC: every anyrouter model returned 502 or hung.
