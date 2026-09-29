@@ -33,9 +33,12 @@ describe("free-plan hourly ingest", () => {
     );
   });
 
-  it("keeps run_worker_first for homepage, public logos, sitemap, robots, llms, RSS, news sitemap, APIs, Clerk proxy, the server-function transport, and aidr.zip", () => {
+  it("keeps run_worker_first for homepage, favicons, public logos, sitemap, robots, llms, RSS, news sitemap, APIs, Clerk proxy, the server-function transport, and aidr.zip", () => {
+    // Every icon surface is Worker-first too: crawlers request them directly,
+    // and any that fell through would answer with the SPA HTML shell, which
+    // reads to a search engine as a broken favicon.
     expect(wrangler).toContain(
-      'run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]'
+      'run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/favicon-120x120.png", "/apple-touch-icon.png", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]'
     );
     expect(wrangler).toMatch(/binding\s*=\s*"ASSETS"/);
   });

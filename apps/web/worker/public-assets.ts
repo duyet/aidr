@@ -7,6 +7,9 @@ export const PUBLIC_ASSET_PATHS = new Set([
   "/logo.svg",
   "/og.jpg",
   "/favicon.svg",
+  "/favicon.ico",
+  "/favicon-120x120.png",
+  "/apple-touch-icon.png",
 ]);
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -14,6 +17,7 @@ const MIME_BY_EXT: Record<string, string> = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
+  ".ico": "image/x-icon",
 };
 
 export function isPublicAssetPath(pathname: string): boolean {
@@ -38,10 +42,31 @@ function assetsGet(path: string): Request {
 }
 
 function looksLikeSvg(bytes: Uint8Array): boolean {
-  const head = new TextDecoder("utf-8", { fatal: false })
-    .decode(bytes.subarray(0, 256))
+  // Skip anything legal before the root element: a UTF-8 BOM, whitespace, the
+  // XML declaration, a DOCTYPE, and comments. The shipped marks carry an
+  // explanatory comment, so a naive `startsWith("<svg")` sniff would miss them
+  // and mislabel a real SVG as a miss.
+  let text = new TextDecoder("utf-8", { fatal: false })
+    .decode(bytes.subarray(0, 512))
+    .replace(/^\uFEFF/, "")
     .trimStart();
-  return head.startsWith("<svg") || head.startsWith("<?xml");
+  for (let i = 0; i < 8 && text.length > 0; i += 1) {
+    if (text.startsWith("<svg")) return true;
+    if (text.startsWith("<?xml") || text.startsWith("<!DOCTYPE")) {
+      const close = text.indexOf(">");
+      if (close < 0) return false;
+      text = text.slice(close + 1).trimStart();
+      continue;
+    }
+    if (text.startsWith("<!--")) {
+      const close = text.indexOf("-->");
+      if (close < 0) return false;
+      text = text.slice(close + 3).trimStart();
+      continue;
+    }
+    return false;
+  }
+  return false;
 }
 
 /**

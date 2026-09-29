@@ -22,7 +22,9 @@ binding = "ASSETS"
 # request to a non-asset path already reaches the Worker, and the array form
 # above already disables `assets_navigation_prefers_asset_serving`. The bounded
 # JSON 404 lives in `server.ts` (`classifyServerFnPath`), not here.
-run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]
+# Every icon surface is listed too: search engines each pick their own file, and
+# every one of them has to answer with an image rather than the SPA shell.
+run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/favicon-120x120.png", "/apple-touch-icon.png", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]
 not_found_handling = "single-page-application"
 
 # Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus

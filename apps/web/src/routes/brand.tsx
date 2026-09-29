@@ -24,7 +24,25 @@ const ASSETS = [
   {
     path: "/favicon.svg",
     name: "Favicon",
-    note: "Site icon (yellow AI;DR mark)",
+    note: "Site icon, vector (yellow AI;DR mark). Wordmark is outlined, not <text>, so it renders without fonts.",
+    checker: true,
+  },
+  {
+    path: "/favicon-120x120.png",
+    name: "Favicon 120×120",
+    note: "Raster site icon for search engines that skip SVG (Yandex recommends 120×120)",
+    checker: true,
+  },
+  {
+    path: "/favicon.ico",
+    name: "Favicon ICO",
+    note: "Root-convention icon, 16/32/48 packed into one file",
+    checker: true,
+  },
+  {
+    path: "/apple-touch-icon.png",
+    name: "Apple touch icon",
+    note: "Square mark 180×180",
     checker: true,
   },
   {

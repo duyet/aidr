@@ -96,8 +96,11 @@ export default {
       return handleStoryMarkdownRequest(request, env?.DB);
     }
     if (path === "/favicon.ico") {
-      // Browsers auto-request /favicon.ico; we only ship /favicon.svg.
-      // Redirect instead of 404ing through the SPA shell (console noise).
+      // public/favicon.ico is a real multi-size ICO and handlePublicAsset
+      // already served it above, so this only runs when the assets binding is
+      // unavailable. Keep the root-convention request on an image rather than
+      // 404ing into the SPA shell (console noise, and crawlers read HTML as a
+      // broken icon).
       const dest = new URL(request.url);
       dest.pathname = "/favicon.svg";
       return Response.redirect(dest.toString(), 301);

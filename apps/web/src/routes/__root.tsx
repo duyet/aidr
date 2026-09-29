@@ -136,7 +136,28 @@ export const Route = createRootRoute({
         },
       ],
       links: [
-        { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+        // Icon order matters: browsers and crawlers take the last valid
+        // `rel="icon"`, so the SVG goes last and stays the modern default
+        // while the rasters cover engines that skip SVG. Yandex Webmaster
+        // wants "SVG or 120x120" and we ship both.
+        { rel: "icon", href: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+        {
+          rel: "icon",
+          href: "/favicon-120x120.png",
+          type: "image/png",
+          sizes: "120x120",
+        },
+        {
+          rel: "icon",
+          href: "/favicon.svg",
+          type: "image/svg+xml",
+          sizes: "any",
+        },
+        {
+          rel: "apple-touch-icon",
+          href: "/apple-touch-icon.png",
+          sizes: "180x180",
+        },
         {
           rel: "sitemap",
           type: "application/xml",
