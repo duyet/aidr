@@ -1,0 +1,128 @@
+name: Validate
+
+# The gate that CI (`ci.yml`) does not run.
+#
+# `ci.yml` proves lint, test, and types. It never ran `pnpm run build`, so a
+# change that broke the bundler, the extension packaging, or the generated
+# deploy artifact landed green on the PR and only failed later in
+# `deploy-web.yml`, on master, after merge. That is the wrong place to find out.
+#
+# This workflow runs the build and the runtime smokes on every PR. It calls the
+# same `pnpm run validate:deploy-artifact` script a developer runs locally, so
+# the local and CI gate lists cannot drift apart.
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+    paths:
+      - "apps/web/**"
+      - "apps/extension/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/validate.yml"
+      - ".github/validate-peer-baseline.txt"
+  workflow_dispatch:
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-artifact:
+    name: Build and deploy gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      # Same guard as ci.yml: a checkout that silently resolved to a different
+      # commit would report a green run for code nobody reviewed.
+      - name: Verify exact pull request head checkout
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v6
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `pnpm install` reports an unsatisfied peer as a warning during
+      # resolution, but a `--frozen-lockfile` install re-resolves nothing and
+      # stays silent, so grepping the install log catches nothing. `pnpm peers
+      # check` is the command that actually reports it, and it exits 1 — so
+      # call it directly.
+      #
+      # This matters because a Renovate bump can raise a peer floor the manifest
+      # never adopted and still merge green, breaking only at deploy time.
+      # `@cloudflare/vite-plugin` 1.60.2 wants `wrangler ^4.141.0` while this
+      # repo pins `^4.135.0`; that install succeeds, and the mismatch only
+      # surfaces when the plugin generates the deploy artifact.
+      - name: Check for new unmet peer dependencies
+        shell: bash
+        run: |
+          # Exit 1 is expected when issues exist; the baseline diff decides.
+          pnpm peers check > /tmp/peers.log 2>&1 || true
+          cat /tmp/peers.log
+
+          grep -oE 'unmet peer [^ ]+' /tmp/peers.log | awk '{print $3}' \
+            | sort -u > /tmp/peers-actual.txt
+          grep -vE '^[[:space:]]*(#|$)' .github/validate-peer-baseline.txt \
+            | sort -u > /tmp/peers-baseline.txt
+
+          new=$(comm -23 /tmp/peers-actual.txt /tmp/peers-baseline.txt || true)
+          if [ -n "$new" ]; then
+            echo "::error::New unmet peer dependencies: $(echo "$new" | tr '\n' ' ')"
+            echo "Fix the manifest, or record it in .github/validate-peer-baseline.txt with the reason."
+            exit 1
+          fi
+
+          fixed=$(comm -13 /tmp/peers-actual.txt /tmp/peers-baseline.txt || true)
+          if [ -n "$fixed" ]; then
+            echo "::warning::Baselined peers no longer reported: $(echo "$fixed" | tr '\n' ' '). Drop them from the baseline file."
+          fi
+          echo "No new unmet peer dependencies."
+
+      - name: Build and deploy gates
+        run: pnpm run validate:deploy-artifact
+        env:
+          NODE_ENV: test
+          CI: true
+
+      # The build is the point of this workflow, so assert the artifact it
+      # exists to produce. `wrangler deploy` reads dist/server/wrangler.json,
+      # and the OG card route reads dist/client/fonts/*.ttf through the ASSETS
+      # binding; a run that "succeeded" without either fails on master.
+      # This is a script rather than inline shell, so the local and CI gates
+      # stay one check instead of two lists that drift apart.
+      - name: Assert the deploy artifact was produced
+        run: pnpm --filter @aidr/web exec tsx scripts/assert-deploy-artifact.ts
+        env:
+          NODE_ENV: test
+          CI: true

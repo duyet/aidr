@@ -18,6 +18,7 @@
     "test:workerd:clerk-proxy": "tsx scripts/clerk-proxy-workerd-smoke.ts",
     "test:workerd:story-og": "tsx scripts/story-og-workerd-smoke.ts",
     "check-types": "tsc --noEmit",
+    "validate:deploy-artifact": "pnpm run check:migration-order && pnpm run build && tsx scripts/assert-deploy-artifact.ts && pnpm run test:workerd:story-og && pnpm run test:workerd:clerk-proxy",
     "lint": "biome check .",
     "format": "biome format .",
     "format:fix": "biome format --write .",

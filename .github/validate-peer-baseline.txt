@@ -1,0 +1,22 @@
+# Unmet peer dependencies accepted on this branch.
+#
+# `validate.yml` runs `pnpm peers check` and fails only when an unmet peer
+# appears that is NOT listed here. That keeps the gate useful on day one
+# without needing the pre-existing debt fixed first.
+#
+# One unmet peer name per line, exactly as `pnpm peers check` prints it
+# ("✕ unmet peer <name>"). Lines starting with # are comments.
+#
+# When a gate run reports a new name, the fix belongs in the manifest, not in
+# this file. Add a line here only when the conflict is understood, unavoidable,
+# and verified not to affect the build, `check-types`, or the tests.
+#
+# When a baselined name stops being reported, delete its line in the same PR so
+# the baseline cannot quietly grow into a blanket suppression.
+
+# `apps/web` and `packages/ui` both declare "typescript": "*", which resolved
+# to 7.0.2. `tsconfck@3.1.6` (transitive, via vite/vitest config loading) peers
+# `typescript: ^5.0.0`. `check-types`, the build, and the full test suite all
+# pass on 7.0.2 today, so this is recorded rather than pinned. The real fix is
+# to bound the wildcard in those two manifests.
+typescript

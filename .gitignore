@@ -12,6 +12,12 @@ dist
 .tmp-gsc/
 apps/web/public/aidr.zip
 apps/web/public/news-tab.zip
+
+# Upstream variable font cached by `gen-og-fonts.py`. The instanced, subset
+# output in apps/web/public/fonts/ is committed; this download is not.
+apps/web/scripts/.be-vietnam-pro/
+# Local agent tooling, not project source.
+.opencode/
 .cursor/skills/verify-aidr/evidence/**
 !.cursor/skills/verify-aidr/evidence/README.md
 !.cursor/skills/verify-aidr/evidence/.gitignore
