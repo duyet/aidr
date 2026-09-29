@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildRunStats, recordStep, serializeRunStats } from "../run-stats.js";
+import { summarizeNotifyReasons } from "../notify/index.js";
+import {
+  buildRunStats,
+  type RunStepInfo,
+  recordStep,
+  serializeRunStats,
+} from "../run-stats.js";
+import { sanitizeRunStatsJson } from "../telemetry-safe.js";
 
 describe("buildRunStats", () => {
   it("defaults every field to zero/false/empty when given nothing", () => {
@@ -110,5 +117,41 @@ describe("recordStep", () => {
       reason?: string;
     }[];
     expect(() => recordStep(frozen, "x", "y")).not.toThrow();
+  });
+});
+
+describe("notify step reason survives the stats write path", () => {
+  // Prod 2026-09-29: once telegram-en reported, the notify step reason (a
+  // JSON dump) passed 240 chars, got cut, and the second sanitize pass in
+  // upsertWorkflowRun stored "[json redacted]".
+  const channel = {
+    digest: "already_sent" as const,
+    trending: "below_min_rank" as const,
+    maxRank: 17.86528137771019,
+    budget: 1,
+    localHour: 20,
+    localDate: "2026-09-29",
+  };
+  const reasons = { telegram: channel, "telegram-en": channel };
+
+  function storedNotifyReason(reason: string): unknown {
+    const steps: RunStepInfo[] = [];
+    recordStep(steps, "notify", "skipped", reason);
+    const once = serializeRunStats(
+      buildRunStats({ steps, notifyReason: reasons })
+    );
+    const stored = JSON.parse(sanitizeRunStatsJson(once));
+    return stored.steps[0].reason;
+  }
+
+  it("loses a two-channel JSON dump (the old step reason)", () => {
+    expect(storedNotifyReason(JSON.stringify(reasons))).toBe("[json redacted]");
+  });
+
+  it("keeps the plain summary readable for every channel", () => {
+    expect(storedNotifyReason(summarizeNotifyReasons(reasons))).toBe(
+      "telegram: digest already_sent, trending below_min_rank (max 17.87, budget 1); " +
+        "telegram-en: digest already_sent, trending below_min_rank (max 17.87, budget 1)"
+    );
   });
 });

@@ -58,6 +58,7 @@ import {
 import {
   dispatchStoryNotifications,
   type NotifyChannelReason,
+  summarizeNotifyReasons,
 } from "./notify/index.js";
 import { buildRerankQuery, rankScore } from "./ranking.js";
 import {
@@ -1725,7 +1726,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           : Object.entries(notified)
               .map(([channel, n]) => `${channel}: ${n}`)
               .join(", "),
-        JSON.stringify(notifyReason)
+        summarizeNotifyReasons(notifyReason)
       );
     } catch (error) {
       // Do not rethrow. Cloudflare Workflows retry a thrown `run()` (and
