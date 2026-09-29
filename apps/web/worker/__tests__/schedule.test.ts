@@ -72,13 +72,16 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
+  // Concrete models that passed a live probe go first; anyrouter/auto is the
+  // last resort so one bad auto pick cannot burn a whole step's time budget.
   const liveChain = [
-    "anyrouter/auto",
-    "deepseek/deepseek-v4.1-flash",
     "poolside/laguna-s-2.1",
+    "deepseek/deepseek-v4.1-flash",
+    "meta/llama-4-scout-17b-16e-instruct",
+    "anyrouter/auto",
   ];
 
-  it("uses the auto-led chain on score, tldr, and translate", () => {
+  it("ends score, tldr, and translate chains with anyrouter/auto", () => {
     for (const name of [
       "ANYROUTER_MODEL",
       "ANYROUTER_TLDR_MODEL",
@@ -103,8 +106,9 @@ describe("live AnyRouter model chains", () => {
 
   it("configures a separate explicit VI→EN generator", () => {
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
-      "deepseek/deepseek-v4.1-flash",
       "poolside/laguna-s-2.1",
+      "deepseek/deepseek-v4.1-flash",
+      "meta/llama-4-scout-17b-16e-instruct",
     ]);
   });
 
