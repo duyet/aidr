@@ -72,4 +72,69 @@ describe("telemetry-safe", () => {
   it("drops malformed stats rather than returning raw JSON", () => {
     expect(sanitizeRunStatsJson('{"prompt":"secret"')).toBe("{}");
   });
+
+  // Incident: a two-channel notify reason (JSON, >240 chars) was sliced
+  // mid-token, and the stats read-back parsed it again and got
+  // "[json redacted]", hiding why Telegram was silent for 8h.
+  const longReason = JSON.stringify({
+    telegram: {
+      digest: "already_sent",
+      trending: "below_min_rank",
+      maxRank: 12.34,
+      budget: 1,
+      localHour: 14,
+      localDate: "2026-09-29",
+    },
+    "telegram-en": {
+      digest: "already_sent",
+      trending: "below_min_rank",
+      maxRank: 11.02,
+      budget: 1,
+      localHour: 14,
+      localDate: "2026-09-29",
+      digestError: "x".repeat(400),
+    },
+  });
+
+  it("truncates long JSON text structurally so it stays parseable", () => {
+    const out = sanitizeText(longReason) as string;
+    expect(out.length).toBeLessThanOrEqual(240);
+    const parsed = JSON.parse(out);
+    expect(parsed.telegram.trending).toMatch(/^below_mi/);
+  });
+
+  it("keeps a long JSON step reason readable through the stats double-sanitize", () => {
+    const once = sanitizeRunStatsJson(
+      JSON.stringify({ steps: [{ name: "notify", reason: longReason }] })
+    );
+    const twice = sanitizeRunStatsJson(once);
+    const reason = JSON.parse(twice).steps[0].reason as string;
+    expect(reason).not.toBe("[json redacted]");
+    expect(JSON.parse(reason).telegram.trending).toMatch(/^below_mi/);
+  });
+
+  it("parses JSON longer than the pre-bound window instead of redacting it", () => {
+    const big = JSON.stringify({
+      ok: true,
+      items: Array.from({ length: 200 }, (_, i) => `item-${i}`),
+    });
+    expect(big.length).toBeGreaterThan(240 * 4);
+    const out = sanitizeText(big) as string;
+    expect(out.length).toBeLessThanOrEqual(240);
+    expect(JSON.parse(out).ok).toBe(true);
+  });
+
+  it("still redacts sensitive keys when shrinking JSON", () => {
+    const out = sanitizeText(
+      JSON.stringify({ prompt: "secret".repeat(100), note: "n".repeat(400) })
+    ) as string;
+    expect(out).not.toContain("secret");
+    expect(JSON.parse(out).prompt).toBe("[redacted]");
+  });
+
+  it("returns valid JSON even for a tiny limit", () => {
+    const out = sanitizeText(longReason, 12) as string;
+    expect(() => JSON.parse(out)).not.toThrow();
+    expect(out.length).toBeLessThanOrEqual(12);
+  });
 });

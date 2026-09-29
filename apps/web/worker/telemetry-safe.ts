@@ -99,24 +99,79 @@ function redactValue(value: unknown, key = ""): unknown {
   return value;
 }
 
+/** Larger JSON strings are not parsed; they are redacted outright. */
+const MAX_JSON_INPUT = 64 * 1024;
+
+const FIT_JSON_PASSES: ReadonlyArray<{ text: number; items: number }> = [
+  // Cut long strings first, keeping every key; then drop items.
+  { text: 120, items: 20 },
+  { text: 60, items: 20 },
+  { text: 24, items: 20 },
+  { text: 12, items: 20 },
+  { text: 12, items: 10 },
+  { text: 12, items: 5 },
+  { text: 8, items: 2 },
+];
+
+function shrinkJson(value: unknown, text: number, items: number): unknown {
+  if (typeof value === "string") {
+    return value.length > text ? `${value.slice(0, text)}…` : value;
+  }
+  if (Array.isArray(value)) {
+    const kept = value
+      .slice(0, items)
+      .map((item) => shrinkJson(item, text, items));
+    return value.length > items ? [...kept, "…"] : kept;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    const kept: [string, unknown][] = entries
+      .slice(0, items)
+      .map(([key, child]) => [key, shrinkJson(child, text, items)]);
+    if (entries.length > items) kept.push(["…", entries.length - items]);
+    return Object.fromEntries(kept);
+  }
+  return value;
+}
+
+/**
+ * Serialise within `maxLength` and stay valid JSON. Slicing the string
+ * mid-token left text that the next sanitize pass (a stored step reason read
+ * back through `sanitizeRunStatsJson`) could not parse, so it collapsed to
+ * "[json redacted]". Shrink strings, arrays, and keys instead.
+ */
+function fitJson(value: unknown, maxLength: number): string {
+  const full = JSON.stringify(value) ?? "null";
+  if (full.length <= maxLength) return full;
+  for (const pass of FIT_JSON_PASSES) {
+    const shrunk = JSON.stringify(shrinkJson(value, pass.text, pass.items));
+    if (shrunk.length <= maxLength) return shrunk;
+  }
+  const marker = Array.isArray(value) ? '["…"]' : '{"…":true}';
+  return marker.length <= maxLength ? marker : "null";
+}
+
 /** Safe, bounded text for step reasons, notification metadata, and labels. */
 export function sanitizeText(
   value: unknown,
   maxLength = MAX_TEXT_LENGTH
 ): string | null {
   if (typeof value !== "string") return null;
-  const normalized = boundedText(value, maxLength);
-  if (!normalized) return null;
-  if (/^[{[]/.test(normalized)) {
+  const trimmed = value.trim();
+  if (/^[{[]/.test(trimmed)) {
+    // Parse the whole value, not the pre-bounded prefix: a cut prefix is
+    // never valid JSON and would always collapse to "[json redacted]".
     try {
-      const parsed = JSON.parse(normalized) as unknown;
-      const redactedJson = JSON.stringify(redactValue(parsed));
-      if (redactedJson.length <= maxLength) return redactedJson;
-      return `${redactedJson.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
+      const parsed = JSON.parse(
+        trimmed.length > MAX_JSON_INPUT ? "" : trimmed
+      ) as unknown;
+      return fitJson(redactValue(parsed), maxLength);
     } catch {
       return "[json redacted]";
     }
   }
+  const normalized = boundedText(value, maxLength);
+  if (!normalized) return null;
   const redacted = redactText(normalized);
   if (redacted.length <= maxLength) return redacted;
   return `${redacted.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
