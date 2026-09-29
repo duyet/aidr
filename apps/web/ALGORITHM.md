@@ -303,8 +303,9 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       `worker/notify/adapters.ts` render Telegram HTML, Slack
       incoming-webhook JSON, or raw JSON.
     - *Daily digest*: ONE message per local day per channel (Asia/Ho_Chi_Minh,
-      from 08:00). The Vietnamese channel (`TELEGRAM_CHAT_ID`) posts
-      `bullets_vi` only. The English channel (`@aidr_today`, same bot token)
+      from 08:00). The Vietnamese channel (`TELEGRAM_VI_CHAT_ID`, falling
+      back to `TELEGRAM_CHAT_ID`) posts `bullets_vi` only. The English
+      channel (`TELEGRAM_EN_CHAT_ID`, same bot token)
       posts `bullets_en` only. Neither falls back to the other language.
       Each bullet links to its story permalink, plus a site button.
     - *Trending*: an individual post only when the algo flags a story as

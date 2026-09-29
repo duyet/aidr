@@ -46,11 +46,15 @@ export interface Env {
   /** Comma-separated Clerk user ids (the token's `sub`) granted admin
    *  access, independent of any role claim. */
   NEWS_ADMIN_USER_IDS?: string;
-  /** Telegram bot token for channel posting (secret). Required when
-   *  TELEGRAM_CHAT_ID is set — missing token fails loud. Both unset
-   *  disables the channel (local/dev). */
+  /** Telegram bot token for channel posting (secret). Required when a
+   *  chat id is set — missing token fails loud. All unset disables the
+   *  channels (local/dev). */
   TELEGRAM_BOT_TOKEN?: string;
-  /** Telegram channel/chat id to post stories to, e.g. "-1004420104760". */
+  /** Vietnamese broadcast chat id. Replaces TELEGRAM_CHAT_ID. */
+  TELEGRAM_VI_CHAT_ID?: string;
+  /** English broadcast chat id, e.g. "@aidr_today". */
+  TELEGRAM_EN_CHAT_ID?: string;
+  /** @deprecated Read only when TELEGRAM_VI_CHAT_ID is unset. */
   TELEGRAM_CHAT_ID?: string;
   /** Optional JSON/Slack incoming webhook for the same AlertEvent fan-out. */
   NOTIFY_WEBHOOK_URL?: string;

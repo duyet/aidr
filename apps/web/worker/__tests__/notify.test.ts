@@ -29,7 +29,7 @@ import {
   storyImageCount,
   storyPhotoUrl,
   storyUrl,
-  TELEGRAM_EN_CHAT_ID,
+  telegramChatId,
   telegramEnNotifier,
   telegramNotifier,
   withUtm,
@@ -319,17 +319,28 @@ describe("telegram channels", () => {
   it("sends English to @aidr_today and leaves the Vietnamese chat id alone", () => {
     expect(telegramEnNotifier.lang).toBe("en");
     expect(telegramEnNotifier.id).toBe("telegram-en");
-    expect(telegramEnNotifier.target({} as Env)).toBe("@aidr_today");
-    expect(telegramEnNotifier.target({} as Env)).toBe(TELEGRAM_EN_CHAT_ID);
+    const enEnv = {
+      TELEGRAM_BOT_TOKEN: "t",
+      TELEGRAM_EN_CHAT_ID: "@aidr_today",
+    } as Env;
+    expect(telegramEnNotifier.target(enEnv)).toBe("@aidr_today");
+    expect(telegramChatId(enEnv, "en").source).toBe("TELEGRAM_EN_CHAT_ID");
     expect(telegramNotifier.lang).toBe("vi");
+    expect(
+      telegramNotifier.target({ TELEGRAM_VI_CHAT_ID: "-100" } as Env)
+    ).toBe("-100");
     expect(telegramNotifier.target({ TELEGRAM_CHAT_ID: "-100" } as Env)).toBe(
       "-100"
     );
     expect(
-      telegramNotifier.target({ TELEGRAM_CHAT_ID: "-100" } as Env)
+      telegramNotifier.target({
+        TELEGRAM_VI_CHAT_ID: "-100",
+        TELEGRAM_EN_CHAT_ID: "@aidr_today",
+      } as Env)
     ).not.toBe("@aidr_today");
+    expect(telegramEnNotifier.enabled(enEnv)).toBe(true);
     expect(telegramEnNotifier.enabled({ TELEGRAM_BOT_TOKEN: "t" } as Env)).toBe(
-      true
+      false
     );
     expect(telegramEnNotifier.enabled({} as Env)).toBe(false);
   });
@@ -342,7 +353,11 @@ describe("telegram channels", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     await telegramEnNotifier.sendDigest(
-      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "-100" } as Env,
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_EN_CHAT_ID: "@aidr_today",
+        TELEGRAM_VI_CHAT_ID: "-100",
+      } as Env,
       {
         lang: "en",
         date: "2026-08-17",
