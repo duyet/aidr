@@ -55,10 +55,9 @@ export interface HealthInput {
   nowMs: number;
   /** Local audience hour (0-23). */
   localHour: number;
-  runError: string | null;
   steps: RunStepInfo[];
   /** Newest successful post per Telegram channel, epoch ms. */
-  telegramLastPostMs: Record<string, number | null>;
+  telegramLastPostMs: Record<string, number>;
   llm: { total: number; failed: number };
   /** Previous runs, newest first, excluding this one. */
   history: PriorRun[];
@@ -74,14 +73,8 @@ function tldrFailed(steps: RunStepInfo[]): boolean | null {
 export function evaluateHealth(input: HealthInput): HealthIssue[] {
   const issues: HealthIssue[] = [];
 
-  if (input.runError) {
-    issues.push({
-      key: "run-error",
-      severity: "error",
-      title: "Ingest run failed",
-      detail: input.runError,
-    });
-  }
+  // A thrown run is already reported by `reportPipelineException`; only
+  // the steps that fail quietly (the run still "succeeds") are checked here.
   const failedSteps = input.steps.filter(
     (s) => !STEP_CHECK_SKIP.has(s.name) && hasFailedStep({ steps: [s] })
   );
@@ -126,16 +119,13 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
     input.localHour >= ACTIVE_HOUR_START && input.localHour < ACTIVE_HOUR_END;
   if (active) {
     for (const [channel, last] of Object.entries(input.telegramLastPostMs)) {
-      const quietMs = last === null ? null : input.nowMs - last;
-      if (quietMs !== null && quietMs <= TELEGRAM_QUIET_MS) continue;
+      const quietMs = input.nowMs - last;
+      if (quietMs <= TELEGRAM_QUIET_MS) continue;
       issues.push({
         key: `telegram-quiet:${channel}`,
         severity: "warning",
         title: "Telegram channel quiet",
-        detail:
-          quietMs === null
-            ? `${channel}: no successful post on record`
-            : `${channel}: no post for ${Math.floor(quietMs / 3600000)}h`,
+        detail: `${channel}: no post for ${Math.floor(quietMs / 3600000)}h`,
       });
     }
   }
@@ -214,14 +204,17 @@ async function readHistory(env: Env, runId: string): Promise<PriorRun[]> {
 
 async function readTelegramLastPost(
   env: Env
-): Promise<Record<string, number | null>> {
+): Promise<Record<string, number>> {
   const { results } = await env.DB.prepare(
     `SELECT channel, MAX(posted_at) AS last FROM notifications
      WHERE channel LIKE 'telegram%' AND status = 'sent' GROUP BY channel`
   ).all<{ channel: string; last: number | null }>();
-  return Object.fromEntries(
-    (results ?? []).map((r) => [r.channel, toMs(r.last)])
-  );
+  const last: Record<string, number> = {};
+  for (const row of results ?? []) {
+    const ms = toMs(row.last);
+    if (ms !== null) last[row.channel] = ms;
+  }
+  return last;
 }
 
 async function readLlmCounts(
@@ -243,7 +236,7 @@ async function readLlmCounts(
  */
 export async function runHealthCheck(
   env: Env,
-  input: { runId: string; steps: RunStepInfo[]; runError: string | null }
+  input: { runId: string; steps: RunStepInfo[] }
 ): Promise<string[]> {
   try {
     const nowMs = Date.now();
@@ -255,7 +248,6 @@ export async function runHealthCheck(
     const issues = evaluateHealth({
       nowMs,
       localHour: getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE).hour,
-      runError: input.runError,
       steps: input.steps,
       telegramLastPostMs,
       llm,

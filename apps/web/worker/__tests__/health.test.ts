@@ -16,7 +16,6 @@ function input(patch: Partial<HealthInput> = {}): HealthInput {
   return {
     nowMs: NOW,
     localHour: 14,
-    runError: null,
     steps: [
       { name: "fetch", action: "27 fetched" },
       { name: "tldr", action: "generated" },
@@ -82,13 +81,12 @@ describe("evaluateHealth", () => {
     ).toEqual([]);
   });
 
-  it("flags a failed step and a run error", () => {
+  it("flags a step that failed while the run succeeded", () => {
     expect(
       keys({
-        runError: "Provider request failed",
         steps: [{ name: "score", action: "failed", reason: "timeout" }],
       })
-    ).toEqual(["run-error", "step-failed"]);
+    ).toEqual(["step-failed"]);
   });
 });
 
