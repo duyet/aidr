@@ -1,10 +1,38 @@
 import { toEpochSeconds } from "../time.js";
-import { resolve } from "./huggingnews.js";
+import { fetchStoryDetailByUrl, resolve } from "./huggingnews.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 
 const ORIGIN = "https://marketbrief.now";
 const DEFAULT_TOPICS = ["ai"];
 const MAX_SUMMARY_CHARS = 1200;
+/** Listing pages have no body. Detail `__data.json` does, and og:description
+ * is often cut mid-word ("tea..."). Cap the extra fetches. */
+const MAX_DETAIL_FETCHES = 12;
+const DETAIL_BATCH_SIZE = 4;
+
+function summaryLooksCut(summary: string | undefined): boolean {
+  if (!summary?.trim()) return true;
+  return /(?:\.\.\.|…)\s*$/.test(summary.trim());
+}
+
+async function fillCutSummaries(items: FetchedItem[]): Promise<void> {
+  const need = items
+    .filter((item) => summaryLooksCut(item.summary))
+    .slice(0, MAX_DETAIL_FETCHES);
+  for (let i = 0; i < need.length; i += DETAIL_BATCH_SIZE) {
+    const batch = need.slice(i, i + DETAIL_BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (item) => {
+        const detail = await fetchStoryDetailByUrl(`${item.url}/__data.json`);
+        const body = detail.summary?.trim();
+        if (!body) return;
+        if (!item.summary || body.length > item.summary.length) {
+          item.summary = body.slice(0, MAX_SUMMARY_CHARS);
+        }
+      })
+    );
+  }
+}
 
 function pick(obj: Record<string, unknown>, keys: string[]): unknown {
   for (const key of keys) {
@@ -139,6 +167,7 @@ export const marketBriefAdapter: SourceAdapter = {
         items.push(item);
       }
     }
+    await fillCutSummaries(items);
     return items;
   },
 };

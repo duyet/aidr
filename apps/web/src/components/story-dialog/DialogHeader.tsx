@@ -67,7 +67,7 @@ export function DialogHeader({
             }`}
           >
             <Columns2 className="h-3.5 w-3.5" aria-hidden />
-            Dual language
+            {lang === "vi" ? "Song ngữ" : "Dual language"}
           </button>
         )}
         <button

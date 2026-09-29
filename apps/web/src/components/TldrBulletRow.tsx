@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import type { AidrLayout } from "../lib/aidr-layout";
+import type { Lang } from "../lib/types";
 import { StoryThumb } from "./StoryThumb";
 
 export function TldrBulletRow({
@@ -7,6 +8,7 @@ export function TldrBulletRow({
   n,
   thumbSrc,
   itemId,
+  lang,
   fullText,
   linked,
   priority,
@@ -16,6 +18,7 @@ export function TldrBulletRow({
   n: number;
   thumbSrc: string | null;
   itemId?: string;
+  lang?: Lang;
   fullText: string;
   linked?: boolean;
   priority?: boolean;
@@ -39,7 +42,12 @@ export function TldrBulletRow({
       return (
         <span className="flex min-h-[2lh] items-stretch gap-2">
           {copy}
-          <StoryThumb src={thumbSrc} itemId={itemId} priority={priority} />
+          <StoryThumb
+            src={thumbSrc}
+            itemId={itemId}
+            lang={lang}
+            priority={priority}
+          />
         </span>
       );
     case "c":
@@ -47,7 +55,12 @@ export function TldrBulletRow({
         <span className="flex min-h-[2lh] items-stretch gap-2">
           {copy}
           <span className="relative shrink-0 self-stretch">
-            <StoryThumb src={thumbSrc} itemId={itemId} priority={priority} />
+            <StoryThumb
+              src={thumbSrc}
+              itemId={itemId}
+              lang={lang}
+              priority={priority}
+            />
             <span className="absolute bottom-0.5 left-0.5 flex h-4 min-w-4 items-center justify-center rounded-sm bg-foreground/80 px-0.5 text-[10px] font-bold tabular-nums text-background">
               {n}
             </span>
