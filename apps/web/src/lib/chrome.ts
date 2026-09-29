@@ -58,7 +58,7 @@ export const PHONE_MENU_FOOTER_CLASS =
 export const PHONE_MENU_LINK_CLASS =
   "flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-background/60 px-2 py-4 text-center text-sm font-medium leading-snug transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:outline-none min-[600px]:min-h-28 min-[600px]:gap-2.5 min-[600px]:px-3 min-[600px]:text-[0.9375rem] [&_svg]:size-6 [&_svg]:shrink-0 [&_svg]:text-muted-foreground min-[600px]:[&_svg]:size-7";
 
-/** SiteHeader + desktop HeaderBar — hidden on narrow or short (landscape phone) viewports. */
+/** SiteHeader + desktop HeaderBar — hidden below 640px wide, regardless of height. */
 export const WIDE_CHROME_CLASS = "news-wide-chrome";
 
 /** Combined phone chrome with a visible search field. */
