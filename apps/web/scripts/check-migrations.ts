@@ -48,13 +48,7 @@ export function main(args: readonly string[] = process.argv.slice(2)): void {
   assertAppliedMigrations(rows, migrations);
 
   const columns = d1ResultRows(
-    cf([
-      "d1",
-      "query",
-      D1_DATABASE_ID,
-      "--sql",
-      "PRAGMA table_info(items)",
-    ])
+    cf(["d1", "query", D1_DATABASE_ID, "--sql", "PRAGMA table_info(items)"])
   );
   const columnRows = Array.isArray(columns)
     ? (columns as Array<{ name?: unknown }>)

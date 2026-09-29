@@ -216,7 +216,8 @@ export function preferCompleteSummary(
   const currentCut = summaryLooksCutOff(current);
   const nextCut = summaryLooksCutOff(next);
   if (currentCut !== nextCut) return currentCut ? next : current;
-  if (currentCut && nextCut) return next.length > current.length ? next : current;
+  if (currentCut && nextCut)
+    return next.length > current.length ? next : current;
   return current;
 }
 

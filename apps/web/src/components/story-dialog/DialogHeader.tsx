@@ -34,7 +34,6 @@ export function DialogHeader({
   const [copied, setCopied] = useState(false);
   const pageUrl = item ? permalink(item, lang) : "";
 
-
   async function copyPermalink() {
     if (!pageUrl) return;
     try {
