@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isValidEmail, isValidTimezone } from "../subscribe/handlers.js";
 import { canonicalizeMediaImageUrl } from "../media.js";
+import { isValidEmail, isValidTimezone } from "../subscribe/handlers.js";
 import {
   buildDigestEmail,
   DIGEST_LOCAL_HOUR,
@@ -267,7 +267,9 @@ describe("buildDigestEmail", () => {
     );
     expect(hero).toBeTruthy();
     expect(canonicalizeMediaImageUrl("javascript:alert(1)")).toBeNull();
-    expect(canonicalizeMediaImageUrl("http://127.0.0.1/private.jpg")).toBeNull();
+    expect(
+      canonicalizeMediaImageUrl("http://127.0.0.1/private.jpg")
+    ).toBeNull();
     expect(subject).toContain("2026-08-16");
     expect(subject).toContain("OpenAI ships a coding model");
     expect(subject).not.toBe("AI;DR — 2026-08-16");

@@ -272,20 +272,27 @@ const DIGEST_PHRASE_MAX = 52;
 
 /** First bullet, cut on a word boundary. Empty when every bullet is blank. */
 export function digestContentPhrase(stories: { text: string }[]): string {
-  const raw = stories.map((story) => story.text.trim()).find((text) => text.length > 0);
+  const raw = stories
+    .map((story) => story.text.trim())
+    .find((text) => text.length > 0);
   if (!raw) return "";
   const flat = raw.replace(/\s+/g, " ");
   if (flat.length <= DIGEST_PHRASE_MAX) return flat;
   const window = flat.slice(0, DIGEST_PHRASE_MAX + 1);
   const space = window.lastIndexOf(" ");
-  const cut = (space >= 24 ? window.slice(0, space) : flat.slice(0, DIGEST_PHRASE_MAX))
+  const cut = (
+    space >= 24 ? window.slice(0, space) : flat.slice(0, DIGEST_PHRASE_MAX)
+  )
     .trim()
     .replace(/[.,;:]+$/, "");
   return `${cut}…`;
 }
 
 /** Date plus a short phrase from the bullets. Date-only when there is no phrase. */
-export function digestSubjectLine(date: string, stories: { text: string }[]): string {
+export function digestSubjectLine(
+  date: string,
+  stories: { text: string }[]
+): string {
   const phrase = digestContentPhrase(stories);
   if (!phrase) return `AI;DR — ${date}`;
   return `AI;DR — ${date} — ${phrase}`;
