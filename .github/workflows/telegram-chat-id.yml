@@ -1,0 +1,30 @@
+name: Resolve Telegram chat id
+
+on:
+  workflow_dispatch:
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: getChat @aidr_today
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          token = os.environ["TELEGRAM_BOT_TOKEN"]
+          url = f"https://api.telegram.org/bot{token}/getChat?chat_id=%40aidr_today"
+          with urllib.request.urlopen(url, timeout=20) as res:
+              data = json.load(res)
+          chat = data.get("result") or {}
+          print(json.dumps({
+              "ok": data.get("ok"),
+              "id": chat.get("id"),
+              "type": chat.get("type"),
+              "title": chat.get("title"),
+              "username": chat.get("username"),
+              "description": data.get("description"),
+          }))
+          PY
