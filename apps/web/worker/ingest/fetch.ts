@@ -1,3 +1,4 @@
+import { chunk } from "../chunk.js";
 import { recordSourceHealth, recordStep } from "../run-stats.js";
 import { emptySourceHealth, type SourceRunHealth } from "../source-health.js";
 import { adapters } from "../sources/registry.js";
@@ -53,15 +54,6 @@ export function seedSourceHealth(
 
 export function enabledSourcesOf(sources: readonly SourceRow[]): SourceRow[] {
   return sources.filter((s) => s.enabled !== 0);
-}
-
-/** Groups of at most `size`, in order. */
-export function chunk<T>(list: readonly T[], size: number): T[][] {
-  const groups: T[][] = [];
-  for (let i = 0; i < list.length; i += size) {
-    groups.push(list.slice(i, i + size));
-  }
-  return groups;
 }
 
 /**

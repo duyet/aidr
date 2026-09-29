@@ -2,6 +2,7 @@ import {
   prepareTranslationQaInvalidation,
   prepareTranslationUpsert,
 } from "../d1-bind.js";
+import { sha256Hex } from "../hash.js";
 import { tickIngest } from "../ingest-schedule.js";
 import {
   scoreItems,
@@ -39,20 +40,6 @@ export async function writeAudit(
   } catch {
     // table not migrated yet
   }
-}
-
-/**
- * Same implementation as the private helper in worker/workflow.ts
- * (id = sha256 hex of the item url). Duplicated here rather than imported
- * because workflow.ts pulls in the `cloudflare:workers` module, which is
- * unavailable outside the Workers runtime (e.g. in the vitest node env).
- */
-export async function sha256Hex(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 export interface HandlerError {

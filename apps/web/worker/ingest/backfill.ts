@@ -6,6 +6,7 @@ import {
   huggingNewsDetailUrl,
   planBackfillUpdate,
 } from "../backfill.js";
+import { chunk } from "../chunk.js";
 import {
   buildItemSourceBindArgs,
   nn,
@@ -20,7 +21,6 @@ import type { FetchedItem, FetchedItemSource } from "../sources/types.js";
 import type { Env } from "../types.js";
 import { safeStep } from "../workflow-step.js";
 import type { IngestContext } from "./context.js";
-import { chunk } from "./fetch.js";
 import { INSERT_ITEM_SOURCE_SQL } from "./write.js";
 
 /** First occurrence wins; an item missing both summary and media is
