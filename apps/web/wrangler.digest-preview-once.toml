@@ -3,7 +3,11 @@ account_id = "7df185a18b98382c3240fa7ac4a37075"
 main = "worker/digest-preview-once.ts"
 compatibility_date = "2026-05-14"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
-workers_dev = true
+workers_dev = false
+
+[[routes]]
+pattern = "digest-preview-once.aidr.today"
+custom_domain = true
 
 [vars]
 EMAIL_FROM = "digest@aidr.today"

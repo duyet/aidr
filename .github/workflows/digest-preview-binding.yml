@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm exec wrangler deploy --config wrangler.digest-preview-once.toml --outdir /tmp/preview-worker | tee /tmp/deploy.txt
-          url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' /tmp/deploy.txt | head -1 || true)"
+          url="$(grep -oE 'https://digest-preview-once\.aidr\.today' /tmp/deploy.txt | head -1 || true)"
           echo "worker_url_set=$([ -n "$url" ] && echo yes || echo no)"
           if [ -z "$url" ]; then
             echo "deploy did not print a workers.dev URL"
