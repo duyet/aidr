@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 /** Production D1 database `aidr`. `cf d1` takes this id, not the binding name. */
 export const D1_DATABASE_ID = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427";
 
-const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const webRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  ".."
+);
 
 export function cf(args: string[]): string {
   try {
@@ -19,9 +22,7 @@ export function cf(args: string[]): string {
       error && typeof error === "object" && "stderr" in error
         ? String((error as { stderr?: unknown }).stderr ?? "")
         : "";
-    throw new Error(
-      stderr.trim() || "cf command failed; deploy is blocked"
-    );
+    throw new Error(stderr.trim() || "cf command failed; deploy is blocked");
   }
 }
 
