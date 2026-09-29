@@ -6,6 +6,12 @@ import {
 } from "../src/lib/tldr-bullets";
 import { mapWithConcurrency } from "./concurrency.js";
 import {
+  type JevScoreItem,
+  type JevScoreReviewOutcome,
+  jevPanelRelevance,
+  reviewScoredItemsWithJevPanel,
+} from "./jev-panel/score-review.js";
+import {
   callSystemOne,
   isSystemOneConfigured,
   jevScoreQuestions,
@@ -153,6 +159,13 @@ const llmCallContext = new AsyncLocalStorage<string | null>();
 /** Keeps concurrent workflow/admin operations attached to their own run id. */
 export function withLlmCallContext<T>(runId: string, callback: () => T): T {
   return llmCallContext.run(runId, callback);
+}
+
+/** The run id the current async context is attached to, or null outside one.
+ *  Read by the JEV panel review so its idempotency key is bound to the run and
+ *  decision identity rather than to a fresh per-call random value. */
+export function currentLlmCallRunId(): string | null {
+  return llmCallContext.getStore() ?? null;
 }
 
 /** Installs (or clears, via `null`) the sink for `llm_calls` log entries.
@@ -732,6 +745,10 @@ export interface ScoreInput {
   title: string;
   summary?: string;
   source: string;
+  /** The persisted `items.id` this score will decide on. Callers that pass it
+   *  opt the row into the JEV panel; without it the panel has no decision
+   *  identity to key idempotency to and skips the item. */
+  id?: string;
 }
 
 /** Scoring rubric sent to the model. Quality must prefer named, source-backed writing over thin duplicates. */
@@ -772,6 +789,10 @@ export interface ScoreResult {
   /** This batch's total token usage, attributed evenly across the batch's
    * requested items (not just the ones the model actually returned). */
   tokens: number;
+  /** Present only when the JEV panel is enabled and ran. Absent on the default
+   * path, so the row shape is unchanged while the panel is off. Carries the
+   * reason for whatever the panel did or did not do. */
+  jevReview?: JevScoreReviewOutcome;
 }
 
 const CATEGORY_BY_LOWER = new Map<string, string>(
@@ -944,7 +965,78 @@ export async function scoreItems(
       return [...jevRows, ...chatRows];
     }
   );
-  return batchResults.flat();
+
+  const rows = batchResults.flat();
+  return applyJevScoreReview(env, items, rows);
+}
+
+/**
+ * Second-opinion pass over already-scored rows, off unless
+ * `JEV_PANEL_ENABLED` is set. Kept out of `scoreItems` so the primary path
+ * reads exactly as it did before the panel existed, and so the panel can never
+ * be reached by accident.
+ */
+async function applyJevScoreReview(
+  env: Env,
+  items: ScoreInput[],
+  rows: ScoreResult[]
+): Promise<ScoreResult[]> {
+  if ((env.JEV_PANEL_ENABLED ?? "").trim() === "") return rows;
+
+  const byIndex = new Map<number, ScoreInput>(
+    items.map((item) => [item.i, item])
+  );
+  const eligible = rows.filter((row) => byIndex.get(row.i)?.id !== undefined);
+  if (eligible.length === 0) return rows;
+
+  const panelItems: JevScoreItem[] = [];
+  const relevanceById = new Map<string, number>();
+  for (const row of eligible) {
+    const item = byIndex.get(row.i);
+    if (!item?.id) continue;
+    panelItems.push({
+      id: item.id,
+      title: item.title,
+      summary: item.summary,
+      source: item.source,
+    });
+    relevanceById.set(item.id, row.relevance);
+  }
+  if (panelItems.length === 0) return rows;
+
+  const { outcomes, configReason, configEnabled, failMode } =
+    await reviewScoredItemsWithJevPanel(env, {
+      items: panelItems,
+      relevanceById,
+      categoryOptions: CATEGORIES,
+    });
+  if (!configEnabled) return rows;
+
+  const demoted = [...outcomes.values()].filter(
+    (outcome) =>
+      outcome.kind === "demoted" ||
+      outcome.kind === "opposed" ||
+      outcome.kind === "degraded_closed"
+  ).length;
+  console.log(
+    `jev panel enabled (fail mode ${failMode}): ${outcomes.size} reviewed, ` +
+      `${demoted} demoted` +
+      (configReason ? `, config: ${configReason}` : "")
+  );
+
+  const appliedById = new Map(outcomes);
+  return rows.map((row) => {
+    const item = byIndex.get(row.i);
+    if (!item?.id) return row;
+    const outcome = appliedById.get(item.id);
+    if (!outcome) return row;
+    return {
+      ...row,
+      relevance: jevPanelRelevance(row.relevance, outcome),
+      category: outcome.category ?? row.category,
+      jevReview: outcome,
+    };
+  });
 }
 
 export interface TranslateInput {
