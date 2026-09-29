@@ -302,24 +302,11 @@ export function storyPhotoUrl(story: StoryPayload): string | null {
 }
 
 /**
- * `sendMediaGroup` has no `reply_markup`. The album caption carries the same
- * link the button would have. A caption that would pass 1024 chars keeps the
- * text and drops the link line.
+ * `sendMediaGroup` has no `reply_markup`, so an album is followed by a short
+ * reply that carries the native Read button.
  */
-function albumCaption(story: StoryPayload): string {
-  const base = buildStoryCaption(story);
-  const markup = buildStoryReplyMarkup(story) as {
-    inline_keyboard: { text: string; url: string }[][];
-  };
-  const links = markup.inline_keyboard[0]
-    .map(
-      (button) =>
-        `<a href="${escapeHtml(button.url)}">${escapeHtml(button.text)}</a>`
-    )
-    .join("  ·  ");
-  const next = `${base}\n\n${links}`;
-  if (next.length > TELEGRAM_IV_LIMITS.captionChars) return base;
-  return next;
+function albumButtonText(story: StoryPayload): string {
+  return story.lang === "en" ? "Read the full story:" : "Đọc toàn bài:";
 }
 
 interface TelegramResponse {
@@ -433,14 +420,32 @@ function telegramChannel(options: {
               ? {
                   type: "photo",
                   media,
-                  caption: albumCaption(story),
+                  caption,
                   parse_mode: "HTML",
                 }
               : { type: "photo", media }
           ),
         });
         if (album.ok) {
-          return { ok: true, messageId: telegramMessageId(album.result) };
+          const messageId = telegramMessageId(album.result);
+          const button = await callTelegram(token, "sendMessage", {
+            chat_id: chatId,
+            text: albumButtonText(story),
+            reply_markup: replyMarkup,
+            reply_parameters: messageId
+              ? {
+                  message_id: Number(messageId),
+                  allow_sending_without_reply: true,
+                }
+              : undefined,
+            link_preview_options: { is_disabled: true },
+          });
+          if (!button.ok) {
+            console.error(
+              `telegram album button failed for ${story.id}: ${button.description}`
+            );
+          }
+          return { ok: true, messageId };
         }
         console.error(
           `telegram sendMediaGroup failed for ${story.id}: ${album.description}; falling back to one photo`

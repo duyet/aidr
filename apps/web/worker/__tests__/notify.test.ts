@@ -475,11 +475,12 @@ describe("telegramNotifier gating", () => {
   it("sends a Telegram album when the story has more than one image", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({ ok: true, result: [{ message_id: 21 }] }),
-          { status: 200 }
-        )
+      .mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({ ok: true, result: [{ message_id: 21 }] }),
+            { status: 200 }
+          )
       );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -502,7 +503,7 @@ describe("telegramNotifier gating", () => {
       })
     );
     expect(result).toEqual({ ok: true, messageId: "21" });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(body.media.map((item: { media: string }) => item.media)).toEqual([
@@ -510,9 +511,15 @@ describe("telegramNotifier gating", () => {
       "https://img.example/b.jpg",
       "https://img.example/poster.jpg",
     ]);
-    expect(body.media[0].caption).toContain("Đọc bài");
+    // Albums cannot carry buttons: the link must not leak into the caption
+    // as text; a reply to the album carries the native button instead.
+    expect(body.media[0].caption).not.toContain("<a href");
     expect(body.media[0].parse_mode).toBe("HTML");
     expect(body.reply_markup).toBeUndefined();
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
+    const button = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    expect(button.reply_markup.inline_keyboard[0][0].text).toContain("Đọc bài");
+    expect(button.reply_parameters.message_id).toBe(21);
     expect(
       body.media.some((item: { media: string }) => item.media.endsWith(".mp4"))
     ).toBe(false);
