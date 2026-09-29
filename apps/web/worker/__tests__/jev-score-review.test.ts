@@ -508,22 +508,36 @@ describe("reviewScoredItemsWithJevPanel debate cap", () => {
   });
 
   it("stops making judge calls once the item budget is exhausted", async () => {
-    // A zero budget means the deadline has already passed, so the adapter
-    // reports a timeout instead of starting an unbounded chain.
+    // 1ms is the smallest budget the adapter accepts (0 falls back to the
+    // default). The clock jumps past that deadline before the first judge
+    // call, so the outcome does not depend on how fast the mock answers.
+    let clock = 1_700_000_000_000;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => {
+      const current = clock;
+      clock += 10;
+      return current;
+    });
     const fetchMock = judgeFetchMock(() => JSON.stringify(judgment()));
     vi.stubGlobal("fetch", fetchMock);
 
-    const summary = await reviewScoredItemsWithJevPanel(
-      panelEnv({ JEV_PANEL_BUDGET_MS: "1" }),
-      {
-        items: [item],
-        relevanceById: new Map([[item.id, 0.9]]),
-        categoryOptions: CATEGORIES,
-      }
-    );
+    try {
+      const summary = await reviewScoredItemsWithJevPanel(
+        panelEnv({ JEV_PANEL_BUDGET_MS: "1" }),
+        {
+          items: [item],
+          relevanceById: new Map([[item.id, 0.9]]),
+          categoryOptions: CATEGORIES,
+        }
+      );
 
-    expect(summary.outcomes.get(item.id)?.recommendation).toBe("human_review");
-    expect(jevPanelRelevance(0.9, summary.outcomes.get(item.id))).toBe(0.9);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(summary.outcomes.get(item.id)?.recommendation).toBe(
+        "human_review"
+      );
+      expect(jevPanelRelevance(0.9, summary.outcomes.get(item.id))).toBe(0.9);
+    } finally {
+      now.mockRestore();
+    }
   });
 });
 
