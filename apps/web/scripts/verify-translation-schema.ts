@@ -10,6 +10,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { D1_DATABASE_ID } from "./cf-d1.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const migrationsDir = path.join(root, "migrations");
@@ -95,7 +96,7 @@ export function assertMigrationFileOrder(
 }
 
 /**
- * `wrangler d1 migrations list` prints only unapplied migration filenames.
+ * `cf d1 migrations list` prints unapplied migration filenames as JSON.
  * Treat every recognized required filename in that output as pending; a
  * successful gate therefore requires an output such as "No migrations to
  * apply." This deliberately does not infer application state from a ledger
@@ -181,15 +182,15 @@ export function assertRemoteSchemaOutput(
   }
 }
 
-function wrangler(args: string[]): string {
+function cfD1(args: string[]): string {
   try {
-    return execFileSync("pnpm", ["exec", "wrangler", ...args], {
+    return execFileSync("pnpm", ["exec", "cf", ...args], {
       cwd: root,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
   } catch {
-    throw new Error("wrangler schema verification failed; deploy is blocked");
+    throw new Error("cf schema verification failed; deploy is blocked");
   }
 }
 
@@ -199,14 +200,14 @@ function main(): void {
   assertMigrationFileOrder(files);
   const required = requiredMigrationsForFiles(files);
 
-  const migrationOutput = wrangler([
+  const migrationOutput = cfD1([
     "d1",
     "migrations",
     "list",
-    "aidr",
-    "--config",
-    "wrangler.toml",
-    ...(local ? ["--local"] : ["--remote"]),
+    D1_DATABASE_ID,
+    "--dir",
+    "migrations",
+    ...(local ? ["--local"] : []),
   ]);
   assertRequiredMigrationsApplied(migrationOutput, files);
 
@@ -252,16 +253,13 @@ function main(): void {
   }
   const schemaOutput = schemaQueries
     .map((command) =>
-      wrangler([
+      cfD1([
         "d1",
-        "execute",
-        "aidr",
-        "--config",
-        "wrangler.toml",
-        ...(local ? ["--local"] : ["--remote"]),
-        "--command",
-        `${command};`,
-        "--json",
+        "query",
+        D1_DATABASE_ID,
+        ...(local ? ["--local"] : []),
+        "--sql",
+        command,
       ])
     )
     .join("\n");

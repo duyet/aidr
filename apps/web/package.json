@@ -23,7 +23,7 @@
     "format": "biome format .",
     "format:fix": "biome format --write .",
     "lint:fix": "biome check --write .",
-    "d1:migrate": "pnpm run check:migration-ledger && pnpm exec wrangler d1 migrations apply aidr --config wrangler.toml --remote",
+    "d1:migrate": "pnpm run check:migration-ledger && pnpm exec cf d1 migrations apply 0c8f3efe-0427-4268-8d9f-bb1a4bcbe427 --dir migrations",
     "verify:translation-schema": "tsx scripts/verify-translation-schema.ts",
     "check:font-budget": "tsx scripts/check-font-budget.ts",
     "deploy": "pnpm run check:migrations && pnpm run verify:translation-schema && pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json",
@@ -75,6 +75,7 @@
     "vite": "^8.0.0",
     "vite-tsconfig-paths": "^6.0.0",
     "vitest": "^5.0.0",
+    "cf": "1.0.0-beta.5",
     "wrangler": "^4.141.0"
   }
 }

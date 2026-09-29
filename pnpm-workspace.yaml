@@ -26,6 +26,8 @@ minimumReleaseAgeExclude:
   - "@clerk/shared"
   - cn
   - wrangler
+  - cf
+  - "@cloudflare/codemods"
   - workerd
   - miniflare
   - "@cloudflare/workerd-*"

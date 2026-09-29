@@ -271,7 +271,7 @@ API or a hand-rolled MCP server exposing the same operations as tools.
 Set the `NEWS_ADMIN_TOKEN` Worker secret first:
 
 ```bash
-wrangler secret put NEWS_ADMIN_TOKEN
+pnpm exec cf workers secrets update NEWS_ADMIN_TOKEN --worker aidr
 ```
 
 ### REST API
@@ -416,14 +416,13 @@ admin). Pick a template, optionally wrap with AI, then send to the
 confirmed list from `notes@aidr.today`. One-click `List-Unsubscribe` is
 set on digest and campaign mail.
 
-`wrangler deploy` does not apply D1 SQL migrations. The deploy script runs
+`wrangler deploy` does not apply D1 SQL migrations. The `cf` CLI does not either. The deploy script runs
 `pnpm run check:migrations` (local filename order, the remote migration
 ledger, and the media-manifest schema) plus `pnpm run
 verify:translation-schema` first and fails closed if any required
 translation-review or media migration is pending; it never applies them. Run
 `pnpm run d1:migrate` separately: it performs the read-only local-order and
-remote-ledger checks before `wrangler d1 migrations apply aidr --config
-wrangler.toml --remote`. Apply migrations in numeric order: 0023 translation
+remote-ledger checks before `cf d1 migrations apply 0c8f3efe-0427-4268-8d9f-bb1a4bcbe427 --dir migrations`. Apply migrations in numeric order: 0023 translation
 QA, 0024 media, then 0025 run identity when #161 is integrated, then 0026
 `clerk_users` (#198, the D1 mirror behind the `/data` signups metric).
 Translation QA is complete in 0023; do not add a competing 0025 translation

@@ -30,7 +30,7 @@ const appDir = join(rootDir, "apps/web");
 const WORKER_NAME = "aidr";
 const GH_REPO = "duyet/aidr";
 
-/** Secrets the Worker runtime needs (wrangler secret). */
+/** Secrets the Worker runtime needs (`cf workers secrets`). */
 const WORKER_REQUIRED = [
   "ANYROUTER_API_KEY",
   "TELEGRAM_BOT_TOKEN",
@@ -209,7 +209,7 @@ function syncWorker(secrets: Record<string, string>): boolean {
   for (const key of keys) console.log(`  · ${key}  ${mask(secrets[key])}`);
 
   if (dryRun) {
-    console.log("  [dry-run] skip wrangler secret bulk");
+    console.log("  [dry-run] skip cf workers secrets bulk");
     return true;
   }
   if (keys.length === 0) {
@@ -219,14 +219,35 @@ function syncWorker(secrets: Record<string, string>): boolean {
 
   const tmpFile = join(os.tmpdir(), `aidr-worker-secrets-${Date.now()}.json`);
   try {
-    writeFileSync(tmpFile, JSON.stringify(secrets, null, 2));
+    writeFileSync(
+      tmpFile,
+      JSON.stringify(
+        Object.entries(secrets).map(([name, text]) => ({
+          name,
+          text,
+          type: "secret_text",
+        })),
+        null,
+        2
+      )
+    );
     const result = run(
       "pnpm",
-      ["exec", "wrangler", "secret", "bulk", tmpFile, "--name", WORKER_NAME],
+      [
+        "exec",
+        "cf",
+        "workers",
+        "secrets",
+        "bulk",
+        "--worker",
+        WORKER_NAME,
+        "--file",
+        tmpFile,
+      ],
       { cwd: appDir }
     );
     if (!result.ok) {
-      console.error(`  [error] wrangler secret bulk failed`);
+      console.error(`  [error] cf workers secrets bulk failed`);
       if (result.stderr) console.error(result.stderr.trim());
       return false;
     }

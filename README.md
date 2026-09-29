@@ -55,13 +55,13 @@ Extension (unpacked):
 ## Deploy
 
 ```bash
-pnpm run deploy              # build + wrangler deploy
+pnpm run deploy              # build + wrangler deploy (see CLAUDE.md: cf cannot carry Workflows yet)
 pnpm run cf:deploy:prod      # production env + smoke
 ```
 
 CI: `.github/workflows/deploy-web.yml` on push to `main`/`master` when `apps/web`, `apps/extension`, `packages`, or lockfile change.
 
-GitHub secrets: `CLOUDFLARE_API_TOKEN`, `VITE_CLERK_PUBLISHABLE_KEY`. Account ID for wrangler comes from `apps/web/wrangler.toml` (and the workflow env).
+GitHub secrets: `CLOUDFLARE_API_TOKEN`, `VITE_CLERK_PUBLISHABLE_KEY`. Account ID comes from `apps/web/wrangler.toml` (and the workflow env). D1 queries and secret sync use `cf`, not Wrangler.
 
 Smoke: `curl https://aidr.today/api/public`
 

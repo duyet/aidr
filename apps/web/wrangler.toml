@@ -4,7 +4,9 @@ main = "src/server.ts"
 compatibility_date = "2026-05-14"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 # Enable versioned preview URLs (<version>-aidr.<subdomain>.workers.dev)
-# so `wrangler versions upload` yields a shareable preview before prod deploy.
+# Config stays TOML. `cf migrate` (cf 1.0.0-beta.5) drops Workflow and
+# Durable Object bindings, which the hourly ingest needs. Deploy with
+# `wrangler deploy`. Use `cf` for D1 and Worker secrets.
 preview_urls = true
 
 [assets]

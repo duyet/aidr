@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -6,37 +5,22 @@ import {
   assertAppliedMigrations,
   assertMigrationFileOrder,
   assertMigrationLedgerOrder,
-  parseWranglerMigrationOutput,
 } from "../worker/migration-gate.js";
+import { cf, D1_DATABASE_ID, d1ResultRows } from "./cf-d1.js";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const webRoot = path.resolve(path.dirname(scriptPath), "..");
 
-function wrangler(args: string[]): string {
-  return execFileSync("pnpm", ["exec", "wrangler", ...args], {
-    cwd: webRoot,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-}
-
 function migrationRows(): unknown {
-  const output = wrangler([
-    "d1",
-    "execute",
-    "aidr",
-    "--config",
-    "wrangler.toml",
-    "--remote",
-    "--command",
-    "SELECT id, name FROM d1_migrations ORDER BY id",
-    "--json",
-  ]);
-  const parsed = parseWranglerMigrationOutput(output);
-  const firstResult = Array.isArray(parsed) ? parsed[0] : null;
-  return firstResult && typeof firstResult === "object"
-    ? (firstResult as { results?: unknown }).results
-    : null;
+  return d1ResultRows(
+    cf([
+      "d1",
+      "query",
+      D1_DATABASE_ID,
+      "--sql",
+      "SELECT id, name FROM d1_migrations ORDER BY id",
+    ])
+  );
 }
 
 export function main(args: readonly string[] = process.argv.slice(2)): void {
@@ -63,28 +47,19 @@ export function main(args: readonly string[] = process.argv.slice(2)): void {
   }
   assertAppliedMigrations(rows, migrations);
 
-  const schemaOutput = wrangler([
-    "d1",
-    "execute",
-    "aidr",
-    "--config",
-    "wrangler.toml",
-    "--remote",
-    "--command",
-    "PRAGMA table_info(items)",
-    "--json",
-  ]);
-  const schemaRows = parseWranglerMigrationOutput(schemaOutput);
-  const firstSchemaResult = Array.isArray(schemaRows) ? schemaRows[0] : null;
-  const columns =
-    firstSchemaResult &&
-    typeof firstSchemaResult === "object" &&
-    Array.isArray((firstSchemaResult as { results?: unknown }).results)
-      ? ((firstSchemaResult as { results: unknown[] }).results as Array<{
-          name?: unknown;
-        }>)
-      : [];
-  if (!columns.some((column) => column.name === "media_manifest")) {
+  const columns = d1ResultRows(
+    cf([
+      "d1",
+      "query",
+      D1_DATABASE_ID,
+      "--sql",
+      "PRAGMA table_info(items)",
+    ])
+  );
+  const columnRows = Array.isArray(columns)
+    ? (columns as Array<{ name?: unknown }>)
+    : [];
+  if (!columnRows.some((column) => column.name === "media_manifest")) {
     throw new Error(
       "items.media_manifest is missing from the target D1 schema"
     );

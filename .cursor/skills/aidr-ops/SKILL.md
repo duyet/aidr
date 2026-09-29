@@ -20,7 +20,7 @@ Operational skill for the Cloudflare Worker at `apps/web` (live: `https://aidr.t
 
 | Check | Catches |
 |---|---|
-| `cloudflare-auth` | `CLOUDFLARE_API_TOKEN` expired/revoked (CF code `1000`, or `9109` from wrangler) — the silent cause of "I can't push secrets" |
+| `cloudflare-auth` | `CLOUDFLARE_API_TOKEN` expired/revoked (CF code `1000`) — the silent cause of "I can't push secrets" |
 | `clerk-key-pair` | `pk_test` + `sk_live` and similar **mixed Clerk instances**, and the two publishable keys disagreeing |
 | `required-secrets` | Any of `ANYROUTER_API_KEY`, `TELEGRAM_BOT_TOKEN`, `NEWS_ADMIN_TOKEN`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET` missing |
 | `live-handshake` | `502 Clerk upstream redirect rejected` — session refresh broken, login looks fine until a token expires |
@@ -37,7 +37,8 @@ These look like mistakes but are **correct** here. Do not "fix" them:
 
 ## Traps
 
-- **`sync-env` never passes `.env.local` to wrangler.** `scripts/sync-env.ts` spawns wrangler with `env: process.env`, so a token that lives only in `.env.local` is invisible to it. `aidr-ops sync` exports `CLOUDFLARE_API_TOKEN` for the child process to work around this. The underlying bug is still unfixed — worth a separate PR.
+- **`sync-env` never passes `.env.local` into the child environment.** `scripts/sync-env.ts` spawns `cf workers secrets bulk` with `env: process.env`, so a token that lives only in `.env.local` is invisible to it. `aidr-ops sync` exports `CLOUDFLARE_API_TOKEN` for the child process to work around this.
+- **Do not run `cf migrate` on this Worker yet.** cf 1.0.0-beta.5 drops Workflow and Durable Object bindings. Keep `wrangler.toml` and `wrangler deploy`. Use `cf` for D1 (`cf d1 query` / `cf d1 migrations`) and secrets.
 - **The deploy gate is fail-closed.** Once #211 landed, a missing `CLERK_WEBHOOK_SECRET` fails `deploy-web.yml` at "Smoke — /api/webhooks/clerk configured". That is intentional: it turns a silently dead signup sync into a loud failure. Push the secret *before* merging anything that relies on it.
 - **Merging to `master` deploys to production.** `deploy-web.yml` triggers on `apps/web/**`, `apps/extension/**`, `packages/**`, `pnpm-lock.yaml`, `package.json`, `pnpm-workspace.yaml`. Every web PR is a release.
 - **Registering the Clerk webhook endpoint does not backfill history.** The endpoint (`https://aidr.today/api/webhooks/clerk`, events `user.created`/`user.updated`/`user.deleted`) only delivers *future* signups. Existing accounts still need `POST /api/admin/clerk-sync`.
