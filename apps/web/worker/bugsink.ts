@@ -59,7 +59,9 @@ export function bindSentry(env: Pick<Env, "SENTRY_DSN">): void {
   bound = env;
 }
 
-export function exceptionReport(error: unknown): NonNullable<SentryReport["exception"]> {
+export function exceptionReport(
+  error: unknown
+): NonNullable<SentryReport["exception"]> {
   if (error instanceof Error) {
     return { type: error.name || "Error", value: error.message.slice(0, 500) };
   }
