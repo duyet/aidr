@@ -1,7 +1,7 @@
 /** @vitest-environment happy-dom */
 
 import { cleanup, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AudienceStats } from "../../lib/audience-queries";
 import { useSystemData } from "../../lib/use-system-stats";
@@ -202,5 +202,43 @@ describe("AudienceTab", () => {
     render(<AudienceTab lang="en" />);
 
     expect(screen.getByText("Couldn't load audience data.")).toBeTruthy();
+  });
+
+  it("keeps rendering daily charts when the parent renders again", () => {
+    // DailyMetricChart maps each series to a new row array every render.
+    // A second render must not setState-during-render forever.
+    respondWith({
+      data: statsWith(
+        {
+          status: "available",
+          audience: AVAILABLE_AUDIENCE,
+          viewsPerDay: [
+            { date: "2026-01-01", count: 10 },
+            { date: "2026-01-02", count: 12 },
+          ],
+          usersPerDay: [{ date: "2026-01-01", count: 4 }],
+        },
+        {
+          confirmed: 3,
+          newPerDay: [{ date: "2026-01-01", count: 1 }],
+        }
+      ),
+    });
+
+    function Rerender() {
+      const [tick, setTick] = useState(0);
+      useEffect(() => {
+        setTick(1);
+      }, []);
+      return (
+        <div data-testid="audience-rerender" data-tick={tick}>
+          <AudienceTab lang="en" />
+        </div>
+      );
+    }
+
+    render(<Rerender />);
+    expect(screen.getByTestId("audience-rerender").dataset.tick).toBe("1");
+    expect(screen.getByText("Page views per day")).toBeTruthy();
   });
 });
