@@ -10,40 +10,32 @@ import type {
   DailyDigest,
   StoryPayload,
 } from "../../../worker/notify/types.js";
+import { TELEGRAM_DIGEST } from "./TelegramPreview";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(join(here, "DeliverPage.tsx"), "utf8");
+const read = (file: string) => readFileSync(join(here, file), "utf8");
+const previewSrc = read("TelegramPreview.tsx");
+const channelSrc = read("TelegramChannel.tsx");
 
-/** Pull the `en` branch of TELEGRAM_DIGEST out of the module source. Parsed
- *  rather than imported: the file is a route component, and this test only
- *  needs the literal to compare against what the bot actually sends. */
-function sampleCopy(): { bullets: string[]; story: Record<string, unknown> } {
-  const block = src.slice(
-    src.indexOf("const TELEGRAM_DIGEST"),
-    src.indexOf("} as const;", src.indexOf("const TELEGRAM_DIGEST"))
-  );
-  const en = block.slice(block.indexOf("en: {"), block.indexOf("vi: {"));
-  const bullets = [...en.matchAll(/^\s+"([^"]+)",$/gm)].map((m) => m[1]);
-  const story: Record<string, unknown> = {};
-  for (const field of ["title", "summary", "meta"]) {
-    const m = en.match(new RegExp(`${field}:\\s*"([^"]+)"`));
-    story[field] = m?.[1];
-  }
-  return { bullets, story };
+/** The `en` sample the channel mock renders, imported straight from the
+ *  preview module so it is compared against what the bot actually sends. */
+function sampleCopy() {
+  const en = TELEGRAM_DIGEST.en;
+  return { bullets: [...en.bullets], story: en.story };
 }
 
 describe("telegram tab preview", () => {
   it("shows a channel mock instead of copy and a button only", () => {
-    expect(src).toContain("TelegramPreview");
+    expect(channelSrc).toContain("<TelegramPreview");
     // Rendered inside the shared frame, like the other two tabs.
-    expect(src).toMatch(/function TelegramPreview[\s\S]*BrowserFrame/);
+    expect(previewSrc).toMatch(/function TelegramPreview[\s\S]*BrowserFrame/);
     // Feature list, so the tab matches the Chrome tab's rhythm.
-    expect(src).toContain("TELEGRAM_FEATURES");
+    expect(channelSrc).toContain("TELEGRAM_FEATURES");
   });
 
   it("keeps the preview copy inside the existing en/vi pattern", () => {
-    expect(src).toContain("TELEGRAM_DIGEST");
-    expect(src).toMatch(/const copy = TELEGRAM_DIGEST\[lang === "vi"/);
+    expect(previewSrc).toContain("TELEGRAM_DIGEST");
+    expect(previewSrc).toMatch(/const copy = TELEGRAM_DIGEST\[lang === "vi"/);
   });
 
   // The preview claims to mirror what the bot sends. These assert that claim
@@ -72,19 +64,19 @@ describe("telegram tab preview", () => {
       // fixture has to carry one. This test only asserts the caption copy, so
       // the value itself is arbitrary — just a real-looking story id.
       id: "abcdef1234567890",
-      title: story.title as string,
-      summary: story.summary as string,
+      title: story.title,
+      summary: story.summary,
       category: "Infra",
       points: 412,
       comments: 96,
     } as unknown as StoryPayload);
 
-    expect(caption).toContain(story.title as string);
-    expect(caption).toContain(story.summary as string);
+    expect(caption).toContain(story.title);
+    expect(caption).toContain(story.summary);
     // The bot replaces every non-alphanumeric in the category, so the sample
     // must show a slug-safe ASCII hashtag — never a raw accented category.
     expect(caption).toContain("#Infra");
-    expect(story.meta as string).toContain("#Infra");
+    expect(story.meta).toContain("#Infra");
   });
 
   it("uses the digest's YYYY-MM-DD stamp, not a prettified date", () => {
@@ -95,6 +87,6 @@ describe("telegram tab preview", () => {
       bullets: bullets.map((text) => ({ text, url: null })),
     } as unknown as DailyDigest);
     expect(message).toContain("2026-09-27");
-    expect(src).toContain('date: "2026-09-27"');
+    expect(TELEGRAM_DIGEST.en.date).toBe("2026-09-27");
   });
 });
