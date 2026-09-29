@@ -194,6 +194,20 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("subscribe?settings=tok");
   });
 
+  it("renders a text-only layout without the designed hero", () => {
+    const { html } = buildDigestEmail(
+      "2026-08-16",
+      [{ text: "Story", image_url: "https://cdn.example/a.jpg" }],
+      "vi",
+      "tok",
+      5,
+      "text"
+    );
+    expect(html).not.toContain("mail-hero");
+    expect(html).toContain("Story");
+    expect(html).toContain("white-space:pre-wrap");
+  });
+
   it("builds exact English story links", () => {
     const { html } = buildDigestEmail(
       "2026-08-16",

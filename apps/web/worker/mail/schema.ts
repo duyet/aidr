@@ -58,14 +58,15 @@ export async function ensureMailSchema(db: D1Database): Promise<void> {
     .filter(Boolean)
     .map((sql) => db.prepare(sql));
   await db.batch(statements);
-  try {
-    await db
-      .prepare(
-        "ALTER TABLE subscribers ADD COLUMN digest_size INTEGER NOT NULL DEFAULT 5"
-      )
-      .run();
-  } catch {
-    // Column already present after 0019.
+  for (const sql of [
+    "ALTER TABLE subscribers ADD COLUMN digest_size INTEGER NOT NULL DEFAULT 5",
+    "ALTER TABLE subscribers ADD COLUMN mail_format TEXT NOT NULL DEFAULT 'design'",
+  ]) {
+    try {
+      await db.prepare(sql).run();
+    } catch {
+      // Column already present.
+    }
   }
   schemaReady = true;
 }
