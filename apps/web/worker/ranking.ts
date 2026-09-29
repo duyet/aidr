@@ -37,3 +37,18 @@ export function rankScore({
     importance * qualityFactor * decay * engagement * sourceBoost(sourceCount)
   );
 }
+
+/** SELECT column for `sourceCount`: the item's stored `item_sources` rows.
+ *  Every query that feeds `rankScore` must read it, or a re-rank drops the
+ *  corroboration boost (up to 1.96x) the insert applied. Use it in a query
+ *  whose `FROM` is the unaliased `items` table. */
+export const SOURCE_COUNT_COLUMN =
+  "(SELECT COUNT(*) FROM item_sources WHERE item_sources.item_id = items.id) AS source_count";
+
+/** Published items from a bound epoch-second start, with every `rankScore`
+ *  input the hourly re-rank needs. */
+export function buildRerankQuery(): string {
+  return `SELECT id, published_at, points, comments, llm_importance, llm_quality,
+                 ${SOURCE_COUNT_COLUMN}
+          FROM items WHERE published_at >= ? AND status = 'published'`;
+}

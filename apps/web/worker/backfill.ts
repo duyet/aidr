@@ -6,6 +6,7 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "./media.js";
+import { SOURCE_COUNT_COLUMN } from "./ranking.js";
 
 /**
  * Pure helpers for the "backfill" workflow steps that fill in
@@ -73,7 +74,8 @@ export function buildMissingTranslationQuery(
 /** Published items that never got a score (empty tags and no category).
  * Most-recent first so today's feed heals before the long tail. */
 export function buildUnscoredItemsQuery(limit = BACKFILL_SCORE_CAP): string {
-  return `SELECT id, title, summary, source_id, points, comments, published_at
+  return `SELECT id, title, summary, source_id, points, comments, published_at,
+                 ${SOURCE_COUNT_COLUMN}
           FROM items
           WHERE status = 'published'
             AND (category IS NULL OR category = '')

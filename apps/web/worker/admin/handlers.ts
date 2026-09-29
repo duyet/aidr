@@ -11,7 +11,7 @@ import {
 } from "../llm.js";
 import { createD1LlmCallLogger, flushLlmCallWrites } from "../llm-call-log.js";
 import { forceSendDigest } from "../notify/index.js";
-import { rankScore } from "../ranking.js";
+import { rankScore, SOURCE_COUNT_COLUMN } from "../ranking.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
 import {
@@ -477,6 +477,7 @@ interface ReprocessItemRow {
   comments: number | null;
   published_at: number;
   source_lang: "en" | "vi";
+  source_count: number;
 }
 
 /** Epoch seconds for the start of the current UTC day — matches
@@ -524,7 +525,8 @@ export async function reprocessToday(
 
     const since = startOfTodayUtcSec();
     const { results } = await env.DB.prepare(
-      `SELECT id, title, summary, source_id, points, comments, published_at, source_lang
+      `SELECT id, title, summary, source_id, points, comments, published_at, source_lang,
+              ${SOURCE_COUNT_COLUMN}
        FROM items WHERE status = 'published' AND published_at >= ?`
     )
       .bind(since)
@@ -576,6 +578,7 @@ export async function reprocessToday(
           comments: row.comments ?? 0,
           publishedAt: row.published_at * 1000,
           now: Date.now(),
+          sourceCount: row.source_count,
         });
         statements.push(
           env.DB.prepare(
@@ -685,6 +688,7 @@ interface ItemRow {
   llm_relevance: number | null;
   llm_importance: number | null;
   llm_quality: number | null;
+  source_count: number;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -708,7 +712,8 @@ export async function updateItem(
   }
   const row = await env.DB.prepare(
     `SELECT id, points, comments, published_at,
-            llm_relevance, llm_importance, llm_quality
+            llm_relevance, llm_importance, llm_quality,
+            ${SOURCE_COUNT_COLUMN}
      FROM items WHERE id = ?`
   )
     .bind(input.id)
@@ -743,6 +748,7 @@ export async function updateItem(
       comments: row.comments ?? 0,
       publishedAt: row.published_at * 1000,
       now: Date.now(),
+      sourceCount: row.source_count,
     });
 
     await env.DB.prepare(

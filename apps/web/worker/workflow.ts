@@ -59,7 +59,7 @@ import {
   dispatchStoryNotifications,
   type NotifyChannelReason,
 } from "./notify/index.js";
-import { rankScore } from "./ranking.js";
+import { buildRerankQuery, rankScore } from "./ranking.js";
 import {
   buildRunStats,
   type RunStepInfo,
@@ -1195,7 +1195,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           const startOfUtcDaySec =
             Math.floor(toEpochSeconds(now) / 86400) * 86400;
           const { results: recentItems } = await this.env.DB.prepare(
-            "SELECT id, published_at, points, comments, llm_importance, llm_quality FROM items WHERE published_at >= ? AND status = 'published'"
+            buildRerankQuery()
           )
             .bind(startOfUtcDaySec)
             .all<
@@ -1207,7 +1207,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 | "comments"
                 | "llm_importance"
                 | "llm_quality"
-              >
+              > & { source_count: number }
             >();
 
           for (const row of recentItems ?? []) {
@@ -1219,6 +1219,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               // row.published_at is stored as epoch seconds; rankScore expects ms.
               publishedAt: row.published_at * 1000,
               now,
+              sourceCount: row.source_count,
             });
             statements.push(
               this.env.DB.prepare(
@@ -1491,6 +1492,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               points: number;
               comments: number;
               published_at: number;
+              source_count: number;
             }>();
             const rows = results ?? [];
             if (rows.length === 0) return { scoredCount, tokens };
@@ -1528,6 +1530,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 comments: row.comments ?? 0,
                 publishedAt: row.published_at * 1000,
                 now,
+                sourceCount: row.source_count,
               });
               await this.env.DB.prepare(
                 `UPDATE items SET
