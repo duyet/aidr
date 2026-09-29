@@ -12,6 +12,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
   const [masked, setMasked] = useState("");
   const [prefLang, setPrefLang] = useState<Lang>("en");
   const [digestSize, setDigestSize] = useState<DigestSize>(5);
+  const [format, setFormat] = useState<"design" | "text">("design");
   const [save, setSave] = useState<"idle" | "saving" | "done" | "error">(
     "idle"
   );
@@ -25,6 +26,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
           email_masked: string;
           lang: Lang;
           digest_size: number;
+          mail_format?: string;
         }>;
       })
       .then((data) => {
@@ -36,6 +38,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             ? (data.digest_size as DigestSize)
             : 5
         );
+        setFormat(data.mail_format === "text" ? "text" : "design");
         setLoad("ready");
       })
       .catch(() => {
@@ -55,7 +58,11 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lang: prefLang, digest_size: digestSize }),
+          body: JSON.stringify({
+            lang: prefLang,
+            digest_size: digestSize,
+            mail_format: format,
+          }),
         }
       );
       setSave(res.ok ? "done" : "error");
@@ -132,6 +139,32 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             ))}
           </select>
         </div>
+        <fieldset className="flex gap-4 text-sm">
+          <legend className="mb-1 block font-medium">
+            {t("Layout", "Bố cục")}
+          </legend>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              checked={format === "design"}
+              onChange={() => setFormat("design")}
+            />
+            {t("Designed", "Có hình")}
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              checked={format === "text"}
+              onChange={() => setFormat("text")}
+            />
+            {t("Text only", "Chỉ chữ")}
+          </label>
+        </fieldset>
+        <iframe
+          title={t("Digest preview", "Xem trước bản tin")}
+          className="h-96 w-full rounded-md border border-border bg-background"
+          src={`/api/subscribe/preview?lang=${prefLang}&n=${digestSize}&format=${format}`}
+        />
         <Button type="submit" disabled={save === "saving"}>
           {save === "saving" ? t("Saving…", "Đang lưu…") : t("Save", "Lưu")}
         </Button>

@@ -25,7 +25,9 @@ function fetchLocale(request: Request): Promise<Response> {
 }
 
 describe("Worker locale redirects", () => {
-  it("normalizes legacy locale before a legacy story path with temporary redirects", async () => {
+  it("normalizes a legacy locale alias before the permanent story hop", async () => {
+    // The alias hop is temporary (its target depends on the requester); the
+    // story permutation it unblocks is permanent.
     const first = await fetchLocale(
       new Request(
         "https://aidr.today/ai/abcdef1234567890?locale=en&utm_source=telegram"
@@ -42,7 +44,7 @@ describe("Worker locale redirects", () => {
     const second = await fetchLocale(
       new Request(first.headers.get("Location") ?? "", { redirect: "manual" })
     );
-    expect(second.status).toBe(307);
+    expect(second.status).toBe(308);
     expect(second.headers.get("Location")).toBe(
       "https://aidr.today/abcdef12?utm_source=telegram&lang=en"
     );
@@ -73,19 +75,93 @@ describe("Worker locale redirects", () => {
     );
   });
 
-  it("uses a temporary header-selected redirect for a bare legacy story", async () => {
+  it("uses a permanent header-selected redirect for a bare legacy story", async () => {
     const response = await fetchLocale(
       new Request("https://aidr.today/ai/abcdef1234567890", {
         headers: { cookie: "news_lang=en" },
       })
     );
-    expect(response.status).toBe(307);
+    expect(response.status).toBe(308);
     expect(response.headers.get("Location")).toBe(
       "https://aidr.today/abcdef12?lang=en"
     );
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("Vary")).toContain("Cookie");
   });
+
+  /**
+   * `/{category}/{slug}` and over-long id hashes are permanent permutations of
+   * the documented `/{8-hex}` canonical, so they must consolidate instead of
+   * re-testing the old address (#223).
+   */
+  it.each([
+    "/industry/0544ce90",
+    "/research/d88dfbb9",
+    "/ai/some-title-abcdef12",
+    "/abcdef1234567890",
+  ])("redirects %s permanently to the 8-hex canonical", async (path) => {
+    const response = await fetchLocale(
+      new Request(`https://aidr.today${path}`)
+    );
+    expect(response.status).toBe(308);
+    expect(response.headers.get("Location")).toMatch(
+      /^https:\/\/aidr\.today\/[0-9a-f]{8}\?lang=(vi|en)$/
+    );
+    // Permanent for crawlers, still private for shared caches: the target
+    // depends on the requester's cookie / Accept-Language.
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(response.headers.get("Vary")).toBe("Cookie, Accept-Language");
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+    expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
+  });
+
+  it("lands a legacy story URL on its canonical in a single hop", async () => {
+    vi.mocked(handler.fetch).mockImplementation(
+      async () =>
+        new Response("<html></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        })
+    );
+
+    const first = await fetchLocale(
+      new Request("https://aidr.today/industry/0544ce90")
+    );
+    expect(first.status).toBe(308);
+
+    const second = await fetchLocale(
+      new Request(first.headers.get("Location") ?? "", { redirect: "manual" })
+    );
+    expect(second.status).toBe(200);
+    expect(second.headers.get("Location")).toBeNull();
+    expect(second.headers.get("X-Robots-Tag")).toBe("index, follow");
+  });
+
+  it.each([
+    "/_serverFn/0544ce90",
+    "/api/0544ce90",
+    "/sign-in/0544ce90",
+    "/sign-up/0544ce90",
+    "/assets/0544ce90",
+    "/cdn-cgi/0544ce90",
+  ])(
+    "does not hijack the reserved path %s into a story redirect",
+    async (path) => {
+      vi.mocked(handler.fetch).mockImplementation(
+        async () =>
+          new Response("<html></html>", {
+            status: 200,
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          })
+      );
+
+      const response = await fetchLocale(
+        new Request(`https://aidr.today${path}`)
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Location")).toBeNull();
+    }
+  );
 
   it("strips locale variants from a language-neutral page", async () => {
     const response = await fetchLocale(
@@ -322,6 +398,26 @@ describe("Worker locale redirects", () => {
     expect(explicit.headers.get("Content-Language")).toBe("en");
     expect(explicit.headers.get("Cache-Control")).toContain("s-maxage=300");
     expect(explicit.headers.get("X-Robots-Tag")).toBe("index, follow");
+
+    // The reported regression: a bare permalink is private and varied, but a
+    // private cache policy is not a robots policy. It must be indexable so the
+    // URL a human types or a Telegram link carries can rank (#223).
+    for (const path of ["/", "/0544ce90"]) {
+      const bare = await fetchLocale(
+        new Request(`https://aidr.today${path}`, {
+          headers: { "accept-language": "en-US,en;q=0.9" },
+        })
+      );
+      expect(bare.status).toBe(200);
+      expect(bare.headers.get("X-Robots-Tag")).toBe("index, follow");
+      expect(bare.headers.get("Cache-Control")).toBe("private, no-store");
+      // Field names are case-insensitive; `/` passes through the locale layer
+      // twice (withHomepageHeaders + the Worker tail), and the merge
+      // normalizes case.
+      expect(bare.headers.get("Vary")?.toLowerCase()).toBe(
+        "cookie, accept-language"
+      );
+    }
 
     const privateRoute = await fetchLocale(
       new Request("https://aidr.today/subscribe?lang=en&settings=secret")

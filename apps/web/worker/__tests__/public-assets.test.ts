@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -20,6 +21,22 @@ describe("isPublicAssetPath", () => {
     expect(isPublicAssetPath("/assets/logo-sm.png")).toBe(false);
     expect(isPublicAssetPath("/")).toBe(false);
   });
+
+  it("matches every icon surface, so no favicon request falls into the SPA shell", () => {
+    for (const path of [
+      "/favicon.ico",
+      "/favicon-120x120.png",
+      "/apple-touch-icon.png",
+    ]) {
+      expect(isPublicAssetPath(path)).toBe(true);
+    }
+  });
+
+  it("types the ICO and the PNG icon so crawlers accept the response", () => {
+    expect(publicAssetContentType("/favicon.ico")).toBe("image/x-icon");
+    expect(publicAssetContentType("/favicon-120x120.png")).toBe("image/png");
+    expect(publicAssetContentType("/apple-touch-icon.png")).toBe("image/png");
+  });
 });
 
 describe("public files on disk", () => {
@@ -31,18 +48,6 @@ describe("public files on disk", () => {
     const favicon = readFileSync(join(publicDir, "favicon.svg"), "utf8");
     expect(favicon).toContain("<svg");
     expect(publicAssetContentType("/favicon.svg")).toBe("image/svg+xml");
-  });
-
-  it("centers AI;DR on the yellow mark with dominant-baseline", () => {
-    const favicon = readFileSync(join(publicDir, "favicon.svg"), "utf8");
-    const mark = readFileSync(join(publicDir, "logo.svg"), "utf8");
-    expect(favicon).toContain('y="16"');
-    expect(favicon).toContain('dominant-baseline="central"');
-    expect(favicon).toContain('viewBox="0 0 32 32"');
-    expect(mark).toContain('viewBox="0 0 160 160"');
-    expect(mark).toContain('y="80"');
-    expect(mark).toContain('x="80"');
-    expect(mark).toContain('dominant-baseline="central"');
   });
 });
 
@@ -90,6 +95,51 @@ describe("handlePublicAsset", () => {
     expect(res!.status).toBe(200);
     expect(res!.headers.get("Content-Type")).toBe("image/svg+xml");
     expect(await res!.text()).toContain("<svg");
+  });
+
+  it("still recognises the shipped SVG behind its leading comment", async () => {
+    // favicon.svg opens with an explanatory comment, so a naive
+    // `startsWith("<svg")` sniff would 404 the real mark.
+    const onDisk = await readFile(join(publicDir, "favicon.svg"), "utf8");
+    expect(onDisk.startsWith("<!--")).toBe(true);
+    const env = {
+      ASSETS: {
+        fetch: async () =>
+          new Response(onDisk, {
+            status: 200,
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          }),
+      },
+    };
+    const res = await handlePublicAsset(
+      new Request("https://aidr.today/favicon.svg", {
+        headers: { Accept: "text/html" },
+      }),
+      env
+    );
+    expect(res!.status).toBe(200);
+    expect(res!.headers.get("Content-Type")).toBe("image/svg+xml");
+  });
+
+  it("serves the root favicon.ico as an image instead of redirecting to SVG", async () => {
+    const ico = await readFile(join(publicDir, "favicon.ico"));
+    const env = {
+      ASSETS: {
+        fetch: async (req: Request) => {
+          expect(new URL(req.url).pathname).toBe("/favicon.ico");
+          return new Response(ico, {
+            status: 200,
+            headers: { "Content-Type": "application/octet-stream" },
+          });
+        },
+      },
+    };
+    const res = await handlePublicAsset(
+      new Request("https://aidr.today/favicon.ico"),
+      env
+    );
+    expect(res!.status).toBe(200);
+    expect(res!.headers.get("Content-Type")).toBe("image/x-icon");
   });
 
   it("404s when ASSETS returns the SPA HTML shell", async () => {

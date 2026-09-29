@@ -26,6 +26,8 @@ import {
   updateItem,
   upsertSource,
 } from "../../../worker/admin/handlers.js";
+import { backfillClerkUsers } from "../../../worker/clerk-users.js";
+import { syncGa4Insights } from "../../../worker/ga4/insights.js";
 import {
   getCampaign,
   isMailError,
@@ -39,6 +41,7 @@ import {
   wrapCampaign,
 } from "../../../worker/mail/campaigns.js";
 import { listMailContent } from "../../../worker/mail/content.js";
+import { ivFieldGateForOperator } from "../../../worker/notify/iv-gate.js";
 import {
   listTranslationReviewQueue,
   resolveTranslationReview,
@@ -261,6 +264,33 @@ async function handle(
     return Response.json(result);
   }
 
+  // One-shot Clerk account backfill into D1 so the /data signup total is real
+  // before the first webhook lands. Webhooks keep it current afterwards.
+  if (
+    method === "POST" &&
+    segments.length === 1 &&
+    segments[0] === "clerk-sync"
+  ) {
+    const result = await backfillClerkUsers(env);
+    return Response.json(result, {
+      status: result.status === "ok" ? 200 : 400,
+    });
+  }
+
+  // One-shot GA4 audience snapshot. The hourly ingest alarm already syncs at
+  // most once a day; this is the operator escape hatch for "the Audience tab
+  // is stale and I want it now". Same gate, forced.
+  if (
+    method === "POST" &&
+    segments.length === 1 &&
+    segments[0] === "ga4-sync"
+  ) {
+    const result = await syncGa4Insights(env, {});
+    return Response.json(result, {
+      status: result.status === "ok" ? 200 : 400,
+    });
+  }
+
   if (
     method === "POST" &&
     segments.length === 1 &&
@@ -400,6 +430,26 @@ async function handle(
     segments[1] === "digest"
   ) {
     return Response.json(await retryTelegramDigest(env));
+  }
+
+  // Read-only Telegram Instant View field gate (#231). It answers "is this
+  // story IV-eligible?" with the same verdict the `verify-aidr doctor iv`
+  // command prints. It enables nothing: no template, no rhash, no Bot API IV
+  // lifecycle call, and no send. See docs/decisions/telegram-instant-view.md.
+  if (
+    method === "GET" &&
+    segments.length === 2 &&
+    segments[0] === "notify" &&
+    segments[1] === "iv"
+  ) {
+    const url = new URL(request.url);
+    return Response.json(
+      await ivFieldGateForOperator(env, {
+        id: url.searchParams.get("id"),
+        lang: url.searchParams.get("lang"),
+        image: url.searchParams.get("image"),
+      })
+    );
   }
 
   return notFound();

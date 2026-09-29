@@ -1,5 +1,6 @@
 export const DATA_TABS = [
   "overview",
+  "audience",
   "content",
   "runs",
   "sources",

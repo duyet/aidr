@@ -8,6 +8,8 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "check-types": "pnpm --filter @aidr/web check-types",
+    "validate": "pnpm run lint && pnpm run check-types && pnpm run test && pnpm run validate:deploy-artifact",
+    "validate:deploy-artifact": "pnpm --filter @aidr/web run validate:deploy-artifact",
     "deploy": "pnpm --filter @aidr/web run deploy",
     "cf:deploy:prod": "pnpm --filter @aidr/web cf:deploy:prod",
     "sync-env": "pnpm --filter @aidr/web exec tsx ../../scripts/sync-env.ts",

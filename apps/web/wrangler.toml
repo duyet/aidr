@@ -11,10 +11,20 @@ preview_urls = true
 directory = "dist/client"
 binding = "ASSETS"
 # `/` must hit the Worker so the homepage SSR's stories (the static
-# index.html shell has no feed). Sitemap/robots are Worker-generated.
+# index.html shell has no feed). Sitemap/robots/RSS/news are Worker-generated
+# too: /sitemap.xml is now a sitemap index whose /sitemaps/* children,
+# /news.xml, and /feed.xml must never fall through to the SPA shell.
 # Logo/og/favicon also run Worker-first so we can ASSETS.fetch them with
 # a real image/* type instead of SPA HTML (mail + Gmail need PNG 200).
-run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/sitemap.xml", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/aidr.zip"]
+# `/_serverFn` is pinned Worker-first for the same reason: it is the RPC
+# transport, so the Worker must be the one that decides whether a path names a
+# real server function. This is explicitness, not the fix — a non-navigation
+# request to a non-asset path already reaches the Worker, and the array form
+# above already disables `assets_navigation_prefers_asset_serving`. The bounded
+# JSON 404 lives in `server.ts` (`classifyServerFnPath`), not here.
+# Every icon surface is listed too: search engines each pick their own file, and
+# every one of them has to answer with an image rather than the SPA shell.
+run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/favicon-120x120.png", "/apple-touch-icon.png", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]
 not_found_handling = "single-page-application"
 
 # Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus
@@ -82,8 +92,15 @@ CLERK_ISSUER = "https://aidr.today/__clerk"
 # The handler's documented request/response body limit is 1 MiB.
 CLERK_PROXY_URL = "https://aidr.today/__clerk"
 CLERK_PROXY_TIMEOUT_MS = "10000"
-# @duyetbot posts top stories to this channel; TELEGRAM_BOT_TOKEN is a secret.
-TELEGRAM_CHAT_ID = "-1004420104760"
+# @duyetbot posts each language to its own chat. TELEGRAM_BOT_TOKEN is a secret.
+# TELEGRAM_CHAT_ID is the old Vietnamese name; the Worker reads these two.
+TELEGRAM_VI_CHAT_ID = "-1004420104760"
+TELEGRAM_EN_CHAT_ID = "@aidr_today"
+# GA4 property read by the Worker for the /data Audience tab (page views,
+# DAU, MAU). Public config, not a secret — the credential that actually
+# authorises the read is the GA4_SERVICE_ACCOUNT_JSON secret. With either one
+# missing the Audience tab reports "Unavailable" instead of a zero audience.
+GA4_PROPERTY_ID = ""
 # Cloudflare Email Sending. Onboard aidr.today (`wrangler email sending enable aidr.today`)
 # then these From addresses can deliver. Override with EMAIL_FROM / EMAIL_NOTES_FROM.
 EMAIL_FROM = "digest@aidr.today"

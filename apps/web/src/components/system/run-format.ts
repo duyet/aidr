@@ -33,6 +33,57 @@ export function formatMs(ms: number): string {
   return `${Math.round(s / 60)}m`;
 }
 
+/** Compact x-axis tick for a run series: `2:05 PM`. A run with no usable
+ *  timestamp falls back to an em dash rather than "Invalid Date", so the axis
+ *  never prints garbage.
+ *
+ *  `timeZone: "UTC"` is not cosmetic: it is what {@link formatTimestamp} in
+ *  this same file does, so a run reads the same wall-clock time on the chart
+ *  axis as it does in its expanded "Recent runs" detail. Leaving it implicit
+ *  would also make the label depend on the viewer's machine timezone. */
+export function runAxisTime(
+  epochSeconds: number | null,
+  lang: "en" | "vi"
+): string {
+  const date = runDate(epochSeconds);
+  if (!date) return "—";
+  return date.toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+}
+
+/** Tooltip heading for a run — the full stamp, since the axis only carries the
+ *  time and a run series can span two days. Shares `formatTimestamp`'s locale
+ *  and timezone rules so the two never disagree. */
+export function runAxisHeading(
+  epochSeconds: number | null,
+  lang: "en" | "vi"
+): string {
+  return formatTimestamp(epochSeconds, lang);
+}
+
+/** Whole seconds → `45s` / `4m`, for axis ticks and summary readouts. Unlike
+ *  {@link formatDuration} this takes the value directly, so it is the right
+ *  helper for a duration that is already measured. */
+export function formatSecondsShort(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  return `${Math.round(seconds / 60)}m`;
+}
+
+/** Epoch seconds → Date, or null for a missing/unusable timestamp. */
+function runDate(epochSeconds: number | null): Date | null {
+  if (
+    epochSeconds == null ||
+    !Number.isFinite(epochSeconds) ||
+    epochSeconds <= 0
+  )
+    return null;
+  const date = new Date(epochSeconds * 1000);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export function formatTimestamp(
   epochSeconds: number | null | undefined,
   lang: "en" | "vi"
@@ -142,6 +193,15 @@ export function hasRunDetails(
 }
 
 export type RunStatus = "ok" | "error" | "empty" | "in_progress" | "unknown";
+
+/** Lifecycle of the lazily fetched per-run attempt rows. */
+export type RunAttemptsState =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "empty"
+  | "unavailable"
+  | "error";
 
 export function runStatus(run: WorkflowRunRow): RunStatus {
   if (run.error) return "error";
@@ -296,6 +356,62 @@ export function isPreIdentityRun(
   return typeof tokens === "number" && Number.isFinite(tokens) && tokens > 0;
 }
 
+/** Distinct model ids in first-seen order. A model inventory only — never
+ * proof that a fallback actually happened. */
+export function distinctModels(attempts: LlmCallRow[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const attempt of attempts) {
+    const model = attempt.model;
+    if (!model || seen.has(model)) continue;
+    seen.add(model);
+    out.push(model);
+  }
+  return out;
+}
+
+/**
+ * What the Models used panel may claim, given both the data we hold and the
+ * state of the per-run attempts lookup.
+ *
+ * The pre-identity explanation is only sound once a lookup has actually
+ * completed and returned zero rows for this run id. If the lookup failed
+ * (`error`), is unsupported (`unavailable`), or has not resolved yet
+ * (`loading` / `idle`), an empty attempt list says nothing about identity —
+ * asserting "logged before run identity shipped" there would invent a cause
+ * and contradict the Attempts panel directly below, which is reporting the
+ * real lookup state.
+ */
+export type RunModelsDisclosure =
+  | "attributed"
+  | "pre_identity"
+  | "unavailable"
+  | "pending"
+  | "none";
+
+export function runModelsDisclosure(
+  state: RunAttemptsState,
+  models: string[],
+  stats: WorkflowRunStats | null | undefined,
+  llm: RunLlmSummary | undefined,
+  attempts: LlmCallRow[] = []
+): RunModelsDisclosure {
+  // Models we already hold (run summary, or a completed lookup) win outright,
+  // whatever the lookup is doing.
+  if (models.length > 0) return "attributed";
+  if (attempts.length > 0 || (llm && llm.calls > 0)) return "attributed";
+  // A failed or unsupported read is not evidence about identity.
+  if (state === "unavailable" || state === "error") return "unavailable";
+  // Not resolved yet: claim nothing rather than guess.
+  if (state === "loading" || state === "idle") return "pending";
+  // `ready` with rows is already "attributed" above, so this is a completed
+  // lookup that genuinely returned zero rows for this run id.
+  if (state === "empty") {
+    return isPreIdentityRun(stats, llm, attempts) ? "pre_identity" : "none";
+  }
+  return "none";
+}
+
 export function nextOpenId(
   currentId: string | null,
   id: string
@@ -316,14 +432,6 @@ export function runDisclosureLabel(
   }
   return expanded ? "Hide run details" : "Show run details";
 }
-
-export type RunAttemptsState =
-  | "idle"
-  | "loading"
-  | "ready"
-  | "empty"
-  | "unavailable"
-  | "error";
 
 export interface NormalizedRunTokens {
   total: number | null;

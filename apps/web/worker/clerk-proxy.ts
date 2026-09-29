@@ -506,11 +506,29 @@ function rewriteSameOriginRedirect(
     return undefined;
   }
 
-  if (
-    upstream.origin !== APPROVED_CLERK_FAPI_ORIGIN ||
-    upstream.username !== "" ||
-    upstream.password !== ""
-  ) {
+  if (upstream.username !== "" || upstream.password !== "") {
+    return undefined;
+  }
+
+  // The handshake flow legitimately finishes with a redirect back to the
+  // application's own origin: Clerk's FAPI answers /v1/client/handshake with a
+  // 3xx whose Location is the `redirect_url` (HandshakeService.resolveHandshake
+  // builds it from `authenticateContext.clerkUrl`, and the endpoint is
+  // documented as "redirect back to after the handshake"). Rejecting that as
+  // cross-origin turned every session refresh into a 502
+  // "Clerk upstream redirect rejected", which is a login outage, not a
+  // hardening win.
+  //
+  // Only the exact first-party origin is allowed, and it is passed through
+  // unchanged — the browser is already on it, so this cannot become an open
+  // redirect. The caller-supplied `redirect_url` query parameter is never
+  // consulted: comparing against `publicProxy.origin` is what keeps an
+  // attacker-chosen redirect target from widening this into a redirector.
+  if (upstream.origin === publicProxy.origin) {
+    return upstream.toString();
+  }
+
+  if (upstream.origin !== APPROVED_CLERK_FAPI_ORIGIN) {
     return undefined;
   }
 

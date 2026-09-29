@@ -5,6 +5,7 @@ import {
   campaignTrackParams,
   isEmailCampaign,
   isExtensionCampaign,
+  isTelegramCampaign,
   resolveCampaign,
 } from "../lib/campaign";
 
@@ -13,6 +14,7 @@ export function PageViewTracker() {
   const search = useRouterState({ select: (s) => s.location.searchStr });
   const first = useRef(true);
   const landedExt = useRef(false);
+  const landedTelegram = useRef(false);
   const landedEmail = useRef(false);
 
   useEffect(() => {
@@ -27,6 +29,14 @@ export function PageViewTracker() {
       });
     }
 
+    if (!landedTelegram.current && isTelegramCampaign(campaign)) {
+      landedTelegram.current = true;
+      track("telegram_landing", {
+        ...campaignParams,
+        page_path: pathname,
+      });
+    }
+
     if (!landedEmail.current && isEmailCampaign(campaign)) {
       landedEmail.current = true;
       track("email_click", {
@@ -35,18 +45,13 @@ export function PageViewTracker() {
       });
     }
 
-    if (first.current) {
-      // GA config already sends the initial page_view; enrich SPA navs only.
-      first.current = false;
-      // Still fire a dedicated first-touch attribution event when landing
-      // with campaign params (covers hard loads where send_page_view raced).
-      if (campaign && Object.keys(campaignParams).length > 0) {
-        track("campaign_touch", {
-          ...campaignParams,
-          page_path: pathname,
-        });
-      }
-      return;
+    const initialView = first.current;
+    first.current = false;
+    if (initialView && campaign && Object.keys(campaignParams).length > 0) {
+      track("campaign_touch", {
+        ...campaignParams,
+        page_path: pathname,
+      });
     }
 
     track("page_view", {

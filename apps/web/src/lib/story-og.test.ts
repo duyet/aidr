@@ -468,10 +468,45 @@ describe("story OG copy and renderer", () => {
     expect(copy.title).toBe("Một câu chuyện AI hữu ích");
     expect(copy.pointsLabel).toBe("điểm");
     expect(copy.commentsLabel).toBe("bình luận");
-    expect(copy.category).toBe("Nghiên cứu");
+    // Categories stay in the site's own taxonomy in every locale.
+    expect(copy.category).toBe("Research");
     expect(copy.host).toBe("publisher.example.com");
     expect(JSON.stringify(copy)).not.toContain("do-not-render");
     expect(JSON.stringify(copy)).not.toContain("secret");
+  });
+
+  it("never translates a category in the Vietnamese card", () => {
+    // Regression: the card used to render "Research" as "Nghiên cứu" and
+    // "Agents" as "Tác nhân", inventing a Vietnamese vocabulary that matched no
+    // upstream topic slug and pulling diacritics into the card chrome.
+    for (const category of [
+      "Agents",
+      "Chips",
+      "Funding",
+      "Infra",
+      "Industry",
+      "Legal",
+      "Models",
+      "Products",
+      "Regulation",
+      "Releases",
+      "Research",
+    ]) {
+      for (const lang of ["en", "vi"] as const) {
+        const copy = storyOgCopy(item({ category }), lang);
+        expect(copy.category, `${category}/${lang}`).toBe(category);
+      }
+    }
+
+    // The category slot stays pure ASCII, so it never depends on the renderer's
+    // font covering Vietnamese.
+    for (const lang of ["en", "vi"] as const) {
+      const copy = storyOgCopy(
+        item({ title: "Tiêu đề tiếng Việt", title_vi: "Tiêu đề tiếng Việt" }),
+        lang
+      );
+      expect(copy.category).toMatch(/^[\x20-\x7e]*$/);
+    }
   });
 
   it("renders a readable branded fallback without a broken image element", () => {

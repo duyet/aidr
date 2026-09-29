@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { maybeSyncGa4Insights } from "./ga4/insights.js";
 import {
   armAlarmAt,
   type IngestTickOpts,
@@ -23,6 +24,15 @@ const LAST_STARTED_KEY = "last_started_at";
 export class NewsIngestScheduler extends DurableObject<Env> {
   async alarm(): Promise<void> {
     await this.tick();
+    // Audience sync rides the hourly alarm behind its own 24h gate: this
+    // account cannot spend Worker cron slots, and GA4 does not resolve finer
+    // than a day anyway. Best-effort and swallowed — an audience snapshot is
+    // never a reason to fail the ingest alarm.
+    try {
+      await maybeSyncGa4Insights(this.env);
+    } catch (error) {
+      console.error("ga4 audience sync tick failed:", error);
+    }
   }
 
   async markStarted(_id: string): Promise<void> {

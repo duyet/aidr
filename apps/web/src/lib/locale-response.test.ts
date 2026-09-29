@@ -6,6 +6,13 @@ import {
   SSR_NEUTRAL_CACHE_CONTROL,
   withSsrLocaleResponse,
 } from "./locale-response";
+import {
+  INDEXABLE_ROBOTS,
+  NOINDEX_FOLLOW_ROBOTS,
+  NOINDEX_NOFOLLOW_ROBOTS,
+  withRouteIndexabilityHeaders,
+} from "./route-indexability";
+import { routeRobotsMeta } from "./seo";
 
 function html(status = 200): Response {
   return new Response("<html></html>", {
@@ -56,6 +63,22 @@ describe("normalizeLocaleRequest", () => {
     );
   });
 
+  it("validates without redirecting when redirects are disabled", () => {
+    expect(
+      normalizeLocaleRequest(
+        new Request("https://aidr.today/submit?locale=vi"),
+        { format: "json", allowRedirect: false }
+      )
+    ).toBeNull();
+
+    const invalid = normalizeLocaleRequest(
+      new Request("https://aidr.today/submit?lang=fr"),
+      { format: "json", allowRedirect: false }
+    );
+    expect(invalid?.status).toBe(400);
+    expect(invalid?.headers.get("content-type")).toContain("application/json");
+  });
+
   it("rejects repeated, conflicting, and invalid values", () => {
     for (const search of [
       "?lang=en&lang=vi",
@@ -94,7 +117,7 @@ describe("withSsrLocaleResponse", () => {
     }
   );
 
-  it("keeps bare localized pages private and varied", () => {
+  it("keeps bare localized pages private and varied without a robots verdict", () => {
     const response = withSsrLocaleResponse(
       new Request("https://aidr.today/mcp", {
         headers: { cookie: "news_lang=en" },
@@ -106,6 +129,10 @@ describe("withSsrLocaleResponse", () => {
       LOCALE_PRIVATE_CACHE_CONTROL
     );
     expect(response.headers.get("Vary")).toBe("Cookie, Accept-Language");
+    // The locale layer is cache policy only. Indexability belongs to
+    // routeIndexability (X-Robots-Tag + <meta name="robots">), so this layer
+    // must not stamp a second, possibly different, verdict (#223).
+    expect(response.headers.get("X-Robots-Tag")).toBeNull();
   });
 
   it("keeps authenticated child routes private, English, and varied", () => {
@@ -220,5 +247,123 @@ describe("withSsrLocaleResponse", () => {
     expect(redirect.headers.get("Vary")).toBe("Cookie, Accept-Language");
     expect(redirect.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
     expect(redirect.headers.get("Referrer-Policy")).toBe("no-referrer");
+  });
+});
+
+/**
+ * The two Worker response wrappers, applied in production order (src/server.ts
+ * runs withRouteIndexabilityHeaders first, withSsrLocaleResponse last). Robots
+ * policy is decided once, by routeIndexability: the header it stamps and the
+ * `<meta name="robots">` the root route renders come from the same function, so
+ * they cannot drift — and the locale layer can no longer overrule either (#223).
+ */
+describe("SSR indexability contract", () => {
+  async function documentResponse(
+    path: string,
+    init: RequestInit & { status?: number } = {}
+  ): Promise<{ request: Request; response: Response }> {
+    const { status = 200, ...requestInit } = init;
+    const request = new Request(`https://aidr.today${path}`, requestInit);
+    const response = withSsrLocaleResponse(
+      request,
+      await withRouteIndexabilityHeaders(request, html(status))
+    );
+    return { request, response };
+  }
+
+  /** The robots directive the rendered document would carry in its <head>. */
+  function metaRobots(request: Request, status = 200): string | undefined {
+    const url = new URL(request.url);
+    const meta = routeRobotsMeta({
+      pathname: url.pathname,
+      search: url.searchParams,
+      status,
+    });
+    return "content" in meta ? meta.content : undefined;
+  }
+
+  it.each<{ path: string; headers: Record<string, string> }>([
+    { path: "/", headers: {} },
+    { path: "/abcdef12", headers: {} },
+    { path: "/abcdef12", headers: { cookie: "news_lang=en" } },
+    {
+      path: "/mcp",
+      headers: { "accept-language": "en-US,en;q=0.9" },
+    },
+  ])(
+    "keeps bare $path indexable while private and varied",
+    async ({ path, headers }) => {
+      const { request, response } = await documentResponse(path, { headers });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("X-Robots-Tag")).toBe(INDEXABLE_ROBOTS);
+      expect(response.headers.get("Cache-Control")).toBe(
+        LOCALE_PRIVATE_CACHE_CONTROL
+      );
+      expect(response.headers.get("Vary")).toBe("Cookie, Accept-Language");
+      expect(metaRobots(request)).toBe(response.headers.get("X-Robots-Tag"));
+    }
+  );
+
+  it.each(["/?lang=vi", "/?lang=en", "/abcdef12?lang=en", "/mcp?lang=vi"])(
+    "keeps explicit-locale %s indexable and publicly cacheable",
+    async (path) => {
+      const { request, response } = await documentResponse(path);
+      expect(response.headers.get("X-Robots-Tag")).toBe(INDEXABLE_ROBOTS);
+      expect(response.headers.get("Cache-Control")).toBe(
+        SSR_LOCALIZED_CACHE_CONTROL
+      );
+      expect(response.headers.get("Vary")).toBeNull();
+      expect(metaRobots(request)).toBe(response.headers.get("X-Robots-Tag"));
+    }
+  );
+
+  it.each([
+    "/mail",
+    "/sign-in/account?lang=vi",
+    "/sign-up/verify?lang=vi",
+    "/subscribe?lang=en&settings=secret-token",
+    "/?token=secret",
+  ])("keeps private path %s noindex, nofollow", async (path) => {
+    const { request, response } = await documentResponse(path);
+    expect(response.headers.get("X-Robots-Tag")).toBe(NOINDEX_NOFOLLOW_ROBOTS);
+    expect(response.headers.get("Cache-Control")).toBe(
+      LOCALE_PRIVATE_CACHE_CONTROL
+    );
+    expect(metaRobots(request)).toBe(response.headers.get("X-Robots-Tag"));
+  });
+
+  it.each([
+    { path: "/abcdef12", status: 404 },
+    { path: "/", status: 500 },
+    { path: "/mcp?lang=vi", status: 503 },
+  ])(
+    "keeps $status response at $path noindex, nofollow",
+    async ({ path, status }) => {
+      const { request, response } = await documentResponse(path, { status });
+      expect(response.headers.get("X-Robots-Tag")).toBe(
+        NOINDEX_NOFOLLOW_ROBOTS
+      );
+      expect(response.headers.get("Cache-Control")).toBe(
+        LOCALE_PRIVATE_CACHE_CONTROL
+      );
+      expect(response.headers.get("Vary")).toBe("Cookie, Accept-Language");
+      // Deliberate asymmetry, unchanged here: a failed response is noindex in
+      // both surfaces, and only the header adds nofollow. Asserting both sides
+      // keeps a future edit to one of them deliberate.
+      expect(metaRobots(request, status)).toBe(NOINDEX_FOLLOW_ROBOTS);
+    }
+  );
+
+  it("still noindexes a faceted bare localized URL", async () => {
+    // The removed verdict used to apply to every bare localized response. Only
+    // the canonical shape was wrong: a query-selected variant of the same page
+    // is a facet and keeps noindex, follow from routeIndexability.
+    const { response } = await documentResponse(
+      "/abcdef12?utm_source=telegram"
+    );
+    expect(response.headers.get("X-Robots-Tag")).toBe(NOINDEX_FOLLOW_ROBOTS);
+    expect(response.headers.get("Cache-Control")).toBe(
+      LOCALE_PRIVATE_CACHE_CONTROL
+    );
   });
 });

@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { editionBullets } from "../../../worker/digest/edition.js";
+import { normalizeMailFormat } from "../../../worker/mail/render.js";
 import {
   buildDigestEmail,
   digestSizeFor,
-  snapshotHasBullets,
   type TldrSnapshotRow,
-  topBullets,
 } from "../../../worker/subscribe/send.js";
 import type { Env } from "../../../worker/types.js";
 import { resolveApiRequestLocale } from "../../lib/locale-response";
@@ -49,6 +49,7 @@ export const Route = createFileRoute("/api/subscribe/preview")({
         const lang = locale.locale.lang;
         const url = new URL(request.url);
         const size = digestSizeFor(Number(url.searchParams.get("n")));
+        const format = normalizeMailFormat(url.searchParams.get("format"));
 
         let env: Env | undefined;
         try {
@@ -64,22 +65,18 @@ export const Route = createFileRoute("/api/subscribe/preview")({
             const snapshot = await env.DB.prepare(
               "SELECT date, bullets_en, bullets_vi, sent_at FROM tldr_snapshots ORDER BY date DESC LIMIT 1"
             ).first<TldrSnapshotRow>();
-            if (snapshot && snapshotHasBullets(snapshot)) {
-              const preferred = topBullets(
-                lang === "vi" ? snapshot.bullets_vi : snapshot.bullets_en,
-                size
-              );
-              const bullets =
-                preferred.length > 0
-                  ? preferred
-                  : topBullets(snapshot.bullets_en, size);
-              contentLang = preferred.length > 0 ? lang : "en";
+            const bullets = snapshot
+              ? editionBullets(snapshot, lang, size)
+              : [];
+            if (snapshot && bullets.length > 0) {
+              contentLang = lang;
               html = buildDigestEmail(
                 snapshot.date,
                 bullets,
                 contentLang,
                 PREVIEW_TOKEN,
-                size
+                size,
+                format
               ).html;
               // Rendered inside an iframe — links must open a real tab.
               html = html.replace("<head>", '<head><base target="_blank">');

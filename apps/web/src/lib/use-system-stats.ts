@@ -5,11 +5,21 @@ import { fetchJson, getCachedJson } from "./client-cache";
  * endpoint's advertised max-age (system-api.ts): data sections sit behind
  * max-age=15/s-maxage=30, while model chains are env config that only
  * changes on deploy, so a long budget is safe — the background refetch
- * corrects either way. Account totals use the same five-minute budget as
- * their edge cache and never turn a transient failure into a cached zero. */
+ * corrects either way. Account totals and audience stats use the same
+ * five-minute budget as their edge cache and never turn a transient failure
+ * into a cached zero. */
 const SYSTEM_TTL_MS = 30_000;
 const MODELS_TTL_MS = 60 * 60 * 1000;
 const ACCOUNTS_TTL_MS = 5 * 60 * 1000;
+const AUDIENCE_TTL_MS = 5 * 60 * 1000;
+
+/** Endpoints whose data changes on a deploy/daily cycle rather than per
+ *  request, so they get the long sessionStorage budget. */
+const LONG_TTL_PATHS: Record<string, number> = {
+  "/api/system/models": MODELS_TTL_MS,
+  "/api/system/accounts": ACCOUNTS_TTL_MS,
+  "/api/system/audience": AUDIENCE_TTL_MS,
+};
 
 export interface SystemDataState<T> {
   data: T | null;
@@ -28,12 +38,7 @@ export function useSystemData<T>(path: string): SystemDataState<T> {
   useEffect(() => {
     let cancelled = false;
     setError(false);
-    const ttl =
-      path === "/api/system/models"
-        ? MODELS_TTL_MS
-        : path === "/api/system/accounts"
-          ? ACCOUNTS_TTL_MS
-          : SYSTEM_TTL_MS;
+    const ttl = LONG_TTL_PATHS[path] ?? SYSTEM_TTL_MS;
     const cached = getCachedJson<T>(path, ttl);
     if (cached !== null) setData(cached);
     fetchJson<T>(path).then((res) => {

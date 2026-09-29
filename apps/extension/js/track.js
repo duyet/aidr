@@ -20,7 +20,7 @@ function token(value) {
 
 /** utm_content slug for a track event (matches web event names). */
 export function trackContent(name, params = {}) {
-  const bits = [name, params.source, params.pref, params.to, params.stale]
+  const bits = [name, params.channel, params.source, params.pref, params.to, params.stale]
     .map(token)
     .filter(Boolean);
   return bits.join("_").slice(0, 64) || name;
@@ -47,8 +47,16 @@ export function track(name, params = {}, apiBase) {
     const url = trackUrl(apiBase, name, params);
     const fetchImpl = globalThis.fetch;
     if (typeof fetchImpl !== "function") return;
-    void fetchImpl(url, { credentials: "omit", keepalive: true, method: "GET" });
+    void fetchImpl(url, {
+      credentials: "omit",
+      keepalive: true,
+      method: "GET",
+    }).catch(() => {});
   } catch {
     // never break the new tab
   }
+}
+
+export function trackChannelClick(channel, params = {}, apiBase) {
+  track("channel_click", { ...params, channel }, apiBase);
 }

@@ -37,4 +37,6 @@ export const fieldClass =
 export const btnClass =
   "rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-50";
 export const primaryBtnClass =
-  "rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-50";
+  // hover:bg-foreground/90 fades the pill, not the label: element opacity
+  // would fade the text too, leaving a hover color no token declares.
+  "rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50";

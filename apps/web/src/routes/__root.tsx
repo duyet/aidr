@@ -18,6 +18,7 @@ import { HeaderBar } from "../components/HeaderBar";
 import { NewsFooter } from "../components/NewsFooter";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { PageViewTracker } from "../components/PageViewTracker";
+import { WebMcpTools } from "../components/WebMcpTools";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
 import { setClientLang } from "../lib/lang";
 import { LangContext } from "../lib/lang-context";
@@ -135,12 +136,51 @@ export const Route = createRootRoute({
         },
       ],
       links: [
-        { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+        // Icon order matters: browsers and crawlers take the last valid
+        // `rel="icon"`, so the SVG goes last and stays the modern default
+        // while the rasters cover engines that skip SVG. Yandex Webmaster
+        // wants "SVG or 120x120" and we ship both.
+        { rel: "icon", href: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+        {
+          rel: "icon",
+          href: "/favicon-120x120.png",
+          type: "image/png",
+          sizes: "120x120",
+        },
+        {
+          rel: "icon",
+          href: "/favicon.svg",
+          type: "image/svg+xml",
+          sizes: "any",
+        },
+        {
+          rel: "apple-touch-icon",
+          href: "/apple-touch-icon.png",
+          sizes: "180x180",
+        },
         {
           rel: "sitemap",
           type: "application/xml",
           href: `${SITE_URL}/sitemap.xml`,
         },
+        // NOTE: no font preload here, on purpose — see the measurement in
+        // src/fonts.css. Under `font-display: optional` the browser only uses
+        // a face that is ready inside a ~100 ms block period, and a 1.6 Mbps
+        // link cannot deliver 28 KB in 100 ms. The preload therefore can
+        // never win the race, and while it competes for the pipe it costs
+        // the render-blocking stylesheet: measured cold, preloading both
+        // body subsets moved the LCP element render delay from 1,016 ms
+        // (no preload) to 1,332 ms — a 316 ms regression in exchange for
+        // bytes that would have been discarded.
+        // Two origins, well under Lighthouse's four-origin advice: 1.6 Mbps
+        // of pipe and six sockets competing for it is the other half of the
+        // render delay.
+        {
+          rel: "preconnect",
+          href: "https://j.duyet.net",
+          crossOrigin: "anonymous",
+        },
+        { rel: "preconnect", href: "https://www.clarity.ms" },
       ],
     };
   },
@@ -228,6 +268,10 @@ function RootComponent() {
         </LangContext.Provider>
         <Analytics />
         <PageViewTracker />
+        {/* Client-side only: registers the read-only WebMCP tools in an
+            effect, and is a no-op without the Cloudflare bridge. Nothing
+            WebMCP-related is server-rendered. */}
+        <WebMcpTools />
         <Scripts />
       </body>
     </html>

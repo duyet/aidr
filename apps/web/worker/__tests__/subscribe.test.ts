@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { canonicalizeMediaImageUrl } from "../media.js";
 import { isValidEmail, isValidTimezone } from "../subscribe/handlers.js";
 import {
   buildDigestEmail,
   DIGEST_LOCAL_HOUR,
+  digestBulletsWithImages,
   getLocalHourAndDate,
   primaryItemId,
   sendDailyTldr,
@@ -48,7 +50,7 @@ describe("topBullets", () => {
   it("promotes item_ids[0] onto item_id for telegram permalinks", () => {
     expect(
       topBullets(JSON.stringify([{ text: "hi", item_ids: ["abc", "def"] }]))
-    ).toEqual([{ text: "hi", item_id: "abc" }]);
+    ).toEqual([{ text: "hi", item_id: "abc", item_ids: ["abc", "def"] }]);
   });
 });
 
@@ -192,6 +194,20 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("subscribe?settings=tok");
   });
 
+  it("renders a text-only layout without the designed hero", () => {
+    const { html } = buildDigestEmail(
+      "2026-08-16",
+      [{ text: "Story", image_url: "https://cdn.example/a.jpg" }],
+      "vi",
+      "tok",
+      5,
+      "text"
+    );
+    expect(html).not.toContain("mail-hero");
+    expect(html).toContain("Story");
+    expect(html).toContain("white-space:pre-wrap");
+  });
+
   it("builds exact English story links", () => {
     const { html } = buildDigestEmail(
       "2026-08-16",
@@ -244,6 +260,102 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("&amp;");
     expect(html).toContain("&quot;quoted&quot;");
   });
+
+  it("puts the snapshot date and a short phrase from the bullets in the subject and heading", () => {
+    const long =
+      "OpenAI ships a coding model that rewrites entire repositories overnight and then keeps going past any reasonable subject length";
+    const { subject, html } = buildDigestEmail(
+      "2026-08-16",
+      [
+        { text: long, image_url: "javascript:alert(1)" },
+        { text: "second story", image_url: "http://127.0.0.1/private.jpg" },
+        {
+          text: "third story",
+          image_url: "https://cdn.example/hero-shot.jpg?utm_source=newsletter",
+        },
+      ],
+      "en",
+      "tok"
+    );
+    const hero = canonicalizeMediaImageUrl(
+      "https://cdn.example/hero-shot.jpg?utm_source=newsletter"
+    );
+    expect(hero).toBeTruthy();
+    expect(canonicalizeMediaImageUrl("javascript:alert(1)")).toBeNull();
+    expect(
+      canonicalizeMediaImageUrl("http://127.0.0.1/private.jpg")
+    ).toBeNull();
+    expect(subject).toContain("2026-08-16");
+    expect(subject).toContain("OpenAI ships a coding model");
+    expect(subject).not.toBe("AI;DR — 2026-08-16");
+    expect(subject.length).toBeLessThan(long.length);
+    expect(subject).not.toContain("reasonable subject length");
+    expect(html).toContain(subject);
+    expect(html).toContain('class="mail-hero"');
+    expect(html).toContain(`src="${hero}"`);
+    expect(html.match(/class="mail-hero"/g)?.length).toBe(1);
+    expect(html).not.toContain("javascript:");
+    expect(html).not.toContain("127.0.0.1");
+  });
+
+  it("uses the first photo thumbnail and skips a generated OG card", () => {
+    const { html } = buildDigestEmail(
+      "2026-08-16",
+      [
+        {
+          text: "Card story",
+          image_url: "https://marketbrief.now/og/anthropic-card.png",
+        },
+        {
+          text: "Photo story",
+          image_url: "https://cdn.example/photos/claude-stage.jpg",
+        },
+      ],
+      "en",
+      "tok"
+    );
+    const hero = html.match(/class="mail-hero" src="([^"]+)"/);
+    expect(hero?.[1]).toBe("https://cdn.example/photos/claude-stage.jpg");
+    expect(html).not.toContain(
+      'class="mail-hero" src="https://marketbrief.now/og/'
+    );
+    expect(html).toContain(">Read on aidr.today</a>");
+    expect(html).not.toMatch(/Read on aidr\.today[\s\S]{0,80}background/);
+  });
+
+  it("omits the hero image when no story image canonicalizes", () => {
+    const { html } = buildDigestEmail(
+      "2026-08-16",
+      [{ text: "Plain story", image_url: "not a url" }],
+      "en",
+      "tok"
+    );
+    expect(html).not.toContain('class="mail-hero"');
+  });
+});
+
+describe("digestBulletsWithImages", () => {
+  it("fills image_url from the cited item when the snapshot bullet has none", () => {
+    const hydrated = digestBulletsWithImages(
+      [
+        { text: "Anthropic filing", item_ids: ["item-og"] },
+        { text: "Claude on stage", item_ids: ["item-photo"] },
+      ],
+      [
+        { id: "item-og", image_url: "https://news.example/og/card.png" },
+        { id: "item-photo", image_url: "https://cdn.example/photos/room.jpg" },
+      ]
+    );
+    expect(hydrated[0]?.image_url).toBe("https://news.example/og/card.png");
+    expect(hydrated[1]?.image_url).toBe("https://cdn.example/photos/room.jpg");
+    const { html } = buildDigestEmail("2026-09-29", hydrated, "en", "tok");
+    expect(html).not.toContain(
+      'class="mail-hero" src="https://news.example/og/'
+    );
+    expect(html).toContain(
+      'class="mail-hero" src="https://cdn.example/photos/room.jpg"'
+    );
+  });
 });
 
 describe("sendDailyTldr — per-subscriber send flow", () => {
@@ -263,9 +375,12 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
       last_sent_date: string | null;
     }>;
     emailShouldFail?: (email: string) => boolean;
+    bulletsEn?: unknown[];
+    items?: Array<{ id: string; image_url: string | null }>;
   }) {
     const updates: { sql: string; args: unknown[] }[] = [];
     const sentTo: string[] = [];
+    const sentHtml: string[] = [];
     const db = {
       batch: async (statements: { run: () => Promise<unknown> }[]) => {
         for (const stmt of statements) await stmt.run();
@@ -275,11 +390,15 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
         const bound = () => ({
           first: async () => ({
             date: "2026-08-16",
-            bullets_en: JSON.stringify([{ text: "story" }]),
+            bullets_en: JSON.stringify(opts.bulletsEn ?? [{ text: "story" }]),
             bullets_vi: JSON.stringify([{ text: "tin tức" }]),
             sent_at: null,
           }),
-          all: async () => ({ results: opts.subscribers }),
+          all: async () => ({
+            results: sql.includes("FROM items")
+              ? (opts.items ?? [])
+              : opts.subscribers,
+          }),
           run: async () => ({ success: true }),
         });
         return {
@@ -292,17 +411,19 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
       },
     };
     const email = {
-      send: async (msg: { to: string }) => {
+      send: async (msg: { to: string; html?: string }) => {
         if (opts.emailShouldFail?.(msg.to)) {
           throw new Error("send failed");
         }
         sentTo.push(msg.to);
+        if (msg.html) sentHtml.push(msg.html);
       },
     };
     return {
       env: { DB: db, EMAIL: email } as unknown as Env,
       updates,
       sentTo,
+      sentHtml,
     };
   }
 
@@ -349,6 +470,37 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
         u.args.includes("ok@example.com")
     );
     expect(stamp?.args).toContain("2026-08-16");
+  });
+
+  it("hydrates a hero from the item image when the snapshot bullet has no image_url", async () => {
+    const fixedNow = Date.UTC(2026, 7, 16, 3, 0, 0);
+    const { env, sentHtml } = makeEnv({
+      bulletsEn: [
+        { text: "Filing", item_ids: ["item-og"] },
+        { text: "On stage", item_ids: ["item-photo"] },
+      ],
+      items: [
+        { id: "item-og", image_url: "https://news.example/og/card.png" },
+        { id: "item-photo", image_url: "https://cdn.example/photos/room.jpg" },
+      ],
+      subscribers: [
+        {
+          email: "ok@example.com",
+          lang: "en",
+          unsubscribe_token: "t1",
+          timezone: "Asia/Ho_Chi_Minh",
+          last_sent_date: null,
+        },
+      ],
+    });
+    vi.setSystemTime(fixedNow);
+    await sendDailyTldr(env);
+    expect(sentHtml[0]).toContain(
+      'class="mail-hero" src="https://cdn.example/photos/room.jpg"'
+    );
+    expect(sentHtml[0]).not.toContain(
+      'class="mail-hero" src="https://news.example/og/'
+    );
   });
 
   it("does not stamp last_sent_date when the send fails, so it retries next hour", async () => {
@@ -413,15 +565,26 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     expect(sentTo).toEqual(["nextday@example.com"]);
   });
 
-  it("falls back to English bullets when the preferred language is empty", async () => {
+  it("does not send Vietnamese from English bullets, and still sends the English subscriber", async () => {
     const fixedNow = Date.UTC(2026, 7, 16, 3, 0, 0);
     const updates: { sql: string; args: unknown[] }[] = [];
-    const sent: Array<{
-      to: string;
-      from: { email: string };
-      html: string;
-      headers?: Record<string, string>;
-    }> = [];
+    const sent: string[] = [];
+    const subscribers = [
+      {
+        email: "vi@example.com",
+        lang: "vi",
+        unsubscribe_token: "t1",
+        timezone: "Asia/Ho_Chi_Minh",
+        last_sent_date: null,
+      },
+      {
+        email: "en@example.com",
+        lang: "en",
+        unsubscribe_token: "t2",
+        timezone: "Asia/Ho_Chi_Minh",
+        last_sent_date: null,
+      },
+    ];
     const db = {
       prepare(sql: string) {
         const bound = () => ({
@@ -432,15 +595,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
             sent_at: null,
           }),
           all: async () => ({
-            results: [
-              {
-                email: "vi@example.com",
-                lang: "vi",
-                unsubscribe_token: "t1",
-                timezone: "Asia/Ho_Chi_Minh",
-                last_sent_date: null,
-              },
-            ],
+            results: sql.includes("FROM items") ? [] : subscribers,
           }),
           run: async () => ({ success: true }),
         });
@@ -456,23 +611,28 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     const env = {
       DB: db,
       EMAIL: {
-        send: async (msg: {
-          to: string;
-          from: { email: string };
-          html: string;
-          headers?: Record<string, string>;
-        }) => {
-          sent.push(msg);
+        send: async (msg: { to: string }) => {
+          sent.push(msg.to);
         },
       },
     } as unknown as Env;
     vi.setSystemTime(fixedNow);
     await sendDailyTldr(env);
-    expect(sent).toHaveLength(1);
-    expect(sent[0]?.to).toBe("vi@example.com");
-    expect(sent[0]?.from.email).toBe("digest@aidr.today");
-    expect(sent[0]?.html).toContain("lang=en");
-    expect(sent[0]?.headers?.["List-Unsubscribe"]).toContain("lang=en");
+    expect(sent).toEqual(["en@example.com"]);
+    expect(
+      updates.some(
+        (u) =>
+          u.sql.includes("UPDATE subscribers") &&
+          u.args.includes("vi@example.com")
+      )
+    ).toBe(false);
+    expect(
+      updates.some(
+        (u) =>
+          u.sql.includes("UPDATE subscribers") &&
+          u.args.includes("en@example.com")
+      )
+    ).toBe(true);
   });
 });
 

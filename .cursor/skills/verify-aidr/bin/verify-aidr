@@ -27,7 +27,15 @@ const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const EXT_ORIGIN = "chrome-extension://abcdefghijklmnopqrstuvwxyzabcdef";
 const PERMALINK_RE = /href="\/[0-9a-f]{8}"/;
-const FEATURES = ["homepage", "tldr", "about", "extension", "api-public"];
+const FEATURES = [
+  "homepage",
+  "tldr",
+  "about",
+  "extension",
+  "api-public",
+  "analytics",
+  "telegram",
+];
 
 const HOME_IDENTITY = [
   "AI;DR",
@@ -43,9 +51,15 @@ function usage() {
 Commands:
   launch [--base URL] [--local]   Bind target (default ${DEFAULT_BASE})
   doctor                          GET /api/public JSON 200 + homepage HTML 200 (Chrome UA)
-  drive <feature>                 homepage | tldr | about | extension | api-public | all
+  doctor iv --id <8hex> --lang vi|en
+                                  Run the Telegram IV field gate (#231): field verdict,
+                                  generated-card probe, and the IV Editor checklist with
+                                  clearly-labelled rhash/query-template placeholders
+  drive <feature>                 homepage | tldr | about | extension | api-public | analytics | telegram | all
   fetch [--path /]                GET a path; save body under evidence
   screenshot [--path /] [--viewport desktop|mobile]
+  drive analytics               Campaign landing + channel-link HTTP proof
+  drive telegram                Public Telegram link proof; delivery is credential-gated
   cleanup                         Stop a local PID this lever started; keep evidence
   --help                          This text
 
@@ -66,12 +80,16 @@ function printJson(value) {
 function parseArgs(argv) {
   const out = {
     cmd: argv[0] || "",
+    sub: argv[1] && !argv[1].startsWith("-") ? argv[1] : "",
     rest: [],
     base: process.env.VERIFY_AIDR_BASE || "",
     path: "/",
     viewport: "desktop",
     local: false,
     out: "",
+    id: "",
+    lang: "",
+    image: "",
   };
   const args = argv.slice(1);
   for (let i = 0; i < args.length; i += 1) {
@@ -84,6 +102,12 @@ function parseArgs(argv) {
       out.viewport = args[++i] || "desktop";
     } else if (a === "--out") {
       out.out = args[++i] || "";
+    } else if (a === "--id") {
+      out.id = args[++i] || "";
+    } else if (a === "--lang") {
+      out.lang = args[++i] || "";
+    } else if (a === "--image") {
+      out.image = args[++i] || "";
     } else if (a === "--local") {
       out.local = true;
     } else if (a === "--help" || a === "-h") {
@@ -394,6 +418,63 @@ async function cmdDoctor(flags) {
   if (!out.ok) process.exit(1);
 }
 
+/**
+ * `doctor iv --id <8hex> --lang vi|en` (#231).
+ *
+ * Delegates to `apps/web/scripts/telegram-iv-gate.ts` so the CLI and the
+ * Worker's `GET /api/admin/notify/iv` verdict cannot drift: the gate itself
+ * lives in `worker/telegram-iv.ts` and needs no credential. The CLI adds the
+ * two things a local operator wants — a human-readable checklist and an
+ * evidence file — and nothing else.
+ *
+ * It never builds a `t.me/iv` link: the report prints the documented shape
+ * with a literal `{rhash-from-editor}` placeholder because the real value only
+ * exists inside the operator's own IV Editor session.
+ */
+function runIvGate(args) {
+  const script = join(ROOT, "apps/web/scripts/telegram-iv-gate.ts");
+  const base = args.base;
+  const passthrough = ["--base", base, "--id", args.id, "--lang", args.lang];
+  if (args.image) passthrough.push("--image", args.image);
+  const child = spawn("pnpm", ["--filter", "@aidr/web", "exec", "tsx", script, ...passthrough], {
+    cwd: ROOT,
+    stdio: ["ignore", "inherit", "inherit"],
+  });
+  child.on("error", (error) => {
+    die(`could not start the IV field gate: ${error.message}`);
+  });
+  child.on("close", (code) => {
+    process.exit(code === null ? 1 : code);
+  });
+}
+
+function cmdDoctorIv(flags) {
+  const id = (flags.id || "").trim().toLowerCase();
+  if (!/^[0-9a-f]{8}$/.test(id)) {
+    die("doctor iv requires --id <8 lowercase hex characters>", {
+      received_shape: /^[0-9a-f]{8,64}$/.test(id) ? "not-an-8-char-prefix" : "not-hex",
+    });
+  }
+  const lang = (flags.lang || "vi").trim();
+  if (lang !== "vi" && lang !== "en") {
+    die("doctor iv requires --lang vi or en", { received: lang });
+  }
+  const { runId, evidenceDir, base } = resolveRun(flags);
+  const out = {
+    ok: true,
+    command: "doctor iv",
+    base,
+    runId,
+    evidenceDir,
+    id,
+    lang,
+    note: "field gate only; no template, no rhash, no query template, no channel target",
+  };
+  save(evidenceDir, "doctor-iv-input.json", `${JSON.stringify(out, null, 2)}\n`);
+  printJson(out);
+  runIvGate({ ...flags, id, lang, base });
+}
+
 async function cmdFetch(flags) {
   const { runId, evidenceDir, base } = resolveRun(flags);
   const path = normalizePath(flags.path);
@@ -650,6 +731,66 @@ async function driveExtension(ctx) {
   };
 }
 
+async function driveAnalytics(ctx) {
+  const { base, evidenceDir } = ctx;
+  const paths = [
+    ["home-telegram", "/?utm_source=telegram&utm_medium=channel&utm_campaign=verify"],
+    ["home-email", "/?utm_source=email&utm_medium=digest&utm_campaign=verify"],
+    ["subscribe-chrome", "/subscribe"],
+  ];
+  const responses = await Promise.all(
+    paths.map(async ([name, path]) => {
+      const res = await httpGet(`${base}${path}`, {
+        ua: CHROME_UA,
+        accept: "text/html",
+      });
+      save(evidenceDir, `analytics-${name}.html`, res.body);
+      return { name, path, res };
+    })
+  );
+  const telegram = responses.find((row) => row.name === "home-telegram");
+  const email = responses.find((row) => row.name === "home-email");
+  const chrome = responses.find((row) => row.name === "subscribe-chrome");
+  const channelLinks = {
+    telegram: Boolean(telegram?.res.body.includes("Telegram")),
+    email: Boolean(email?.res.body.includes("AI;DR")),
+    chrome: Boolean(chrome?.res.body.includes("Chrome Web Store")),
+  };
+  const ok = responses.every(
+    ({ res }) => res.status === 200 && res.contentType.includes("html")
+  ) && Object.values(channelLinks).every(Boolean);
+  return {
+    ok,
+    feature: "analytics",
+    channelLinks,
+    campaignLandingStatus: responses.map(({ name, res }) => ({
+      name,
+      status: res.status,
+      path: res.url,
+    })),
+    runtimeEvents: "browser-and-unit-test-required",
+  };
+}
+
+async function driveTelegram(ctx) {
+  const { base, evidenceDir } = ctx;
+  const res = await httpGet(`${base}/subscribe`, {
+    ua: CHROME_UA,
+    accept: "text/html",
+  });
+  save(evidenceDir, "telegram-subscribe.html", res.body);
+  const channelUrl = res.body.includes("t.me/aihomnay");
+  const hasTelegramCopy = res.body.includes("Telegram");
+  return {
+    ok: res.status === 200 && channelUrl && hasTelegramCopy,
+    feature: "telegram",
+    status: res.status,
+    channelUrl,
+    hasTelegramCopy,
+    delivery: "credential-gated-not-run",
+  };
+}
+
 async function driveApiPublic(ctx) {
   const { base, evidenceDir } = ctx;
   const get = await httpGet(`${base}/api/public`, { accept: "application/json" });
@@ -719,6 +860,8 @@ const DRIVERS = {
   tldr: driveTldr,
   about: driveAbout,
   extension: driveExtension,
+  analytics: driveAnalytics,
+  telegram: driveTelegram,
   "api-public": driveApiPublic,
   public: driveApiPublic,
   "api/public": driveApiPublic,
@@ -726,7 +869,7 @@ const DRIVERS = {
 
 async function cmdDrive(flags) {
   const feature = flags.rest[0] || "";
-  if (!feature) die("drive requires a feature id (homepage|tldr|about|extension|api-public|all)");
+  if (!feature) die("drive requires a feature id (homepage|tldr|about|extension|api-public|analytics|telegram|all)");
   const ctx = resolveRun(flags);
   const ids = feature === "all" ? FEATURES : [feature];
   const results = [];
@@ -806,6 +949,10 @@ async function main() {
       await cmdLaunch(flags);
       break;
     case "doctor":
+      if (flags.sub === "iv" || flags.id || flags.lang) {
+        cmdDoctorIv(flags);
+        return;
+      }
       await cmdDoctor(flags);
       break;
     case "drive":

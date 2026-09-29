@@ -1,6 +1,6 @@
 # @aidr/web
 
-Feed pipeline and ranking design: see [ALGORITHM.md](./ALGORITHM.md).
+Hourly pipeline (consume → rank → publish) and ranking design: see [ALGORITHM.md](./ALGORITHM.md). Publish rules for email and Telegram are also under [Publish](#publish) below.
 Locale selection, canonical URLs, and caching: see [LOCALE_URLS.md](./LOCALE_URLS.md).
 
 ## Migration gate
@@ -102,7 +102,56 @@ Media URLs are canonicalized at every persistence/read boundary: absolute HTTP(S
 
 Article enrichment and configurable RSS fetches manually validate every redirect hop and the final response URL. Cloudflare Workers does not expose DNS resolution, so this is a syntactic SSRF boundary, not a claim of complete DNS-rebinding safety; deployments must continue to constrain source URLs to trusted inputs. See #147 for the cross-cutting threat model and evidence requirements.
 
-Telegram transport remains on the existing `sendPhoto`/text fallback path. `sendVideo`, `sendMediaGroup`, and durable multi-message delivery are explicitly deferred. The #146 Telegram Instant View decision record and its conflict/no-go notes remain authoritative; this slice does not add Instant View pages.
+Telegram attaches one photo with `sendPhoto`, or 2–10 with `sendMediaGroup` (the generated card plus story images). `sendVideo` and durable multi-message delivery stay deferred. The #146 Telegram Instant View decision record and its conflict/no-go notes remain authoritative; this slice does not add Instant View pages.
+
+### Syndication: RSS, news sitemap, sitemap index
+
+```text
+GET https://aidr.today/feed.xml?lang=vi      # RSS 2.0 (alias: /rss.xml)
+GET https://aidr.today/feed.json?lang=vi     # thin alias of /api/feed
+GET https://aidr.today/sitemap.xml           # <sitemapindex>
+GET https://aidr.today/sitemaps/static.xml   # static + marketing paths
+GET https://aidr.today/sitemaps/sitemap-YYYY-MM.xml
+GET https://aidr.today/news.xml              # Google News sitemap
+```
+
+`/feed.xml` is rendered by `src/lib/rss.ts` from the existing `getFeed` loader
+(no second feed query) and reuses the `/api/feed` locale contract verbatim:
+bare = cookie/Accept-Language selected, `private, no-store`,
+`Vary: Cookie, Accept-Language`; one explicit `lang` = public and cacheable;
+one legacy `locale` = a single 307 to `lang`; invalid, repeated, or conflicting
+= 400. `<link>` and `<guid isPermaLink="true">` are always the canonical
+explicit-locale story permalink (`/{8hex}?lang=vi|en`) — the indexable form —
+with no UTM or fragment, so the feed can never advertise a `noindex` URL.
+`<pubDate>` is RFC-822 from `published_at` epoch **seconds**; a millisecond row
+would render a year-2286 date, so every timestamp passes one normalizer
+(`epochSeconds`). Bounds: at most 100 items, 512-char titles, 600-char
+descriptions, 8 `<category>` elements, and a 262,144-byte document assembled
+under budget rather than trimmed afterwards. `<media:content>` is emitted only
+for a thumbnail that passed `canonicalizeMediaImageUrl` **and**
+`isFetchableUrl`; `dc:creator` is omitted rather than fabricated. `/rss.xml`
+serves the identical bytes and `atom:link rel="self"` always advertises
+`/feed.xml` so a reader cannot register two feeds. `/feed.json` rewrites to the
+existing `/api/feed` route handler — same document, same bounds, no new format.
+
+`/sitemap.xml` is a `<sitemapindex>` listing `/sitemaps/static.xml`, one child
+per UTC publication month (split at 1,000 items per part), and `/news.xml`.
+The old flat document selected the 1,000 newest published items and omitted
+every older story entirely; the index removes that self-imposed cap. Every
+child returns `200 application/xml` and **fails closed** to a valid
+static-only `urlset` on a D1 error, exactly like the previous
+`safeSitemapResponse`. Every `<loc>` carries a `lastmod` (story `lastmod` is
+the newest of `published_at`, `fetched_at`, and the latest translation review),
+and story URLs carry `<image:image>` for the generated `/api/og/{id}.png`
+(1200×630, always 200).
+
+`/news.xml` covers the newest two days (the window Google News expects),
+bounded to 1,000 `news:news` entries — one per story, at the locale actually
+rendered for it, with `news:publication > news:name` set to the aidr
+publication and `news:publication_date` in W3C `+07:00` form. Entries beyond
+the cap remain in the date-sharded children, so nothing is lost. **aidr is an
+aggregator, not an original publisher: nothing here claims Google News
+publisher status.**
 
 ### Story Markdown (agent-readable pilot)
 
@@ -125,7 +174,7 @@ mapping returns `409` and never redirects. This is a Worker-owned path served
 before the SPA catch-all; it is not an arbitrary external `.md` fetcher. The
 response is generated only from the published story row already stored in D1.
 
-The `aidr-story-markdown/v1` frontmatter contains `id`, `canonical_url`,
+The story page advertises this URL in `<link rel="alternate" type="text/markdown">` and as a Markdown link on the detail view, so a Telegram client can offer a quick view of the same post. The `aidr-story-markdown/v1` frontmatter contains `id`, `canonical_url`,
 `title`, `lang`, `requested_lang`, `available_langs`, `translation_fallback`,
 `fallback_fields`, `published_at`, `category`, `topics`, `source_urls`, and a
 bounded `summary`. Vietnamese fields are normalized before availability is
@@ -314,18 +363,33 @@ curl -X POST https://aidr.today/api/mcp \
 A bilingual human-readable version of this section is also published at
 `/mcp`.
 
-## Email digest
+## Publish
 
-Visitors can subscribe to a daily TL;DR email (top 5 stories, EN or VI) at
-`/subscribe`. `POST /api/subscribe` with `{"email", "lang"}` adds a
-subscriber (table `subscribers`, migration `0004_subscribers.sql`);
-`DELETE /api/subscribe?token=<unsubscribe_token>` removes one. The hourly
-`NewsIngestWorkflow` sends the digest once per UTC day, right after the
-`tldr` step, via the `email-digest` step in `worker/workflow.ts`
-(`worker/subscribe/send.ts`). Sending is gated on that day's
-`tldr_snapshots` row having bullets and not already being marked
-`last_sent_date` (per subscriber, local timezone). `sent_at` on the
-snapshot is a legacy "processed once" flag only.
+After the `tldr` step, the same hourly `NewsIngestWorkflow` publishes one
+edition per language (`worker/digest/edition.ts`). `bullets_en` and
+`bullets_vi` are never substituted for each other. The full consume → rank
+→ publish contract is [ALGORITHM.md](./ALGORITHM.md).
+
+### Email digest
+
+Visitors subscribe at `/subscribe` (`POST /api/subscribe` with
+`{"email", "lang"}`; table `subscribers`, migration `0004_subscribers.sql`).
+`DELETE /api/subscribe?token=<unsubscribe_token>` removes one. The
+`email-digest` step (`worker/subscribe/send.ts`) sends once the
+subscriber's own timezone is at or after 07:00 and `last_sent_date` is not
+already that local date. Size is 3, 5, or 10 (default 5), taken from that
+language's edition for the local date. An empty column is skipped and
+retried next hour. `sent_at` on the snapshot is a legacy "mailed at least
+once" flag; nothing reads it to decide a send.
+
+### Telegram
+
+The `notify` step posts the same edition: Vietnamese to
+`TELEGRAM_VI_CHAT_ID` (legacy `TELEGRAM_CHAT_ID`) and English to
+`TELEGRAM_EN_CHAT_ID`, from 08:00 `Asia/Ho_Chi_Minh`, one message per
+channel per local date (`notifications`, key `digest:<date>`). Trending
+posts are Telegram-only. Optional JSON/Slack webhook:
+`NOTIFY_WEBHOOK_URL`.
 
 Email delivery uses the Cloudflare Email Sending Workers binding
 (`[[send_email]] name = "EMAIL"` in `wrangler.toml`, senders
@@ -360,8 +424,10 @@ translation-review or media migration is pending; it never applies them. Run
 `pnpm run d1:migrate` separately: it performs the read-only local-order and
 remote-ledger checks before `wrangler d1 migrations apply aidr --config
 wrangler.toml --remote`. Apply migrations in numeric order: 0023 translation
-QA, 0024 media, then 0025 run identity when #161 is integrated. Translation
-QA is complete in 0023; do not add a competing 0025 translation migration.
+QA, 0024 media, then 0025 run identity when #161 is integrated, then 0026
+`clerk_users` (#198, the D1 mirror behind the `/data` signups metric).
+Translation QA is complete in 0023; do not add a competing 0025 translation
+migration.
 Legacy `translations.lang` values are reconciled as `lang=vi` → EN→VI and
 `lang=en` → VI→EN before the queue is queried. Review claims use a five-minute
 renewable lease and a source-revision CAS; successful repairs retain the final

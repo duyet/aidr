@@ -12,6 +12,26 @@ dist
 .tmp-gsc/
 apps/web/public/aidr.zip
 apps/web/public/news-tab.zip
+
+# Upstream variable font cached by `gen-og-fonts.py`. The instanced, subset
+# output in apps/web/public/fonts/ is committed; this download is not.
+apps/web/scripts/.be-vietnam-pro/
+# Local agent tooling, not project source.
+.opencode/
 .cursor/skills/verify-aidr/evidence/**
 !.cursor/skills/verify-aidr/evidence/README.md
 !.cursor/skills/verify-aidr/evidence/.gitignore
+.playwright-mcp/
+.herdr-desk/runs/*/
+
+# Skill installs, written by `hyperframes skills install`. Vendored third-party
+# content, machine-local and regenerable - not project source.
+.agents/
+.claude/
+.devin/
+agent/
+skills-lock.json
+
+# Video pipeline scratch: compositions, render output and vendored assets for
+# the "brag" reels. Not project source.
+brag-output/

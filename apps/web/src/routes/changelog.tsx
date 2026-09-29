@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactElement } from "react";
+import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import { localizedPageHead } from "../lib/seo";
 
@@ -10,6 +11,31 @@ interface ChangelogEntry {
 }
 
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
+  {
+    date: "2026-09",
+    en: "aidr.today is now subscribable: an RSS feed at aidr.today/feed.xml (also /rss.xml), in English and Vietnamese, plus a Google News sitemap and a sitemap that no longer drops older stories. The homepage and Get AI;DR link the feed so any reader can pick it up.",
+    vi: "aidr.today giờ đã đăng ký được: bản tin RSS tại aidr.today/feed.xml (cũng là /rss.xml), có tiếng Anh và tiếng Việt, kèm sitemap Google News và sitemap không còn bỏ sót tin cũ. Trang chủ và trang Nhận AI;DR đã có liên kết tới bản tin.",
+  },
+  {
+    date: "2026-09",
+    en: "If your browser supports agent tools, this page now hands them four read-only ones: the latest AI news, a search, any single story as bounded Markdown, and the TL;DR digest. They are the same tools the MCP endpoint serves and the same bytes behind them, each labelled read-only and untrusted-content so a model treats story text as data. The /submit and email-subscribe forms are labelled too, so an agent knows what it can fill. Sign-in is deliberately not exposed — a tool that takes a password is a way to steal one. Nothing is added to the page load.",
+    vi: "Nếu trình duyệt của bạn hỗ trợ công cụ cho agent, trang này giờ trao cho nó bốn công cụ chỉ-đọc: tin AI mới nhất, tìm kiếm, bất kỳ tin đơn lẻ nào ở dạng Markdown có giới hạn, và bản TL;DR. Đó là cùng bốn công cụ mà endpoint MCP phục vụ và cùng dữ liệu phía sau, mỗi cái đều được đánh dấu chỉ-đọc và nội dung- không-đáng-tin để model coi văn bản tin là dữ liệu. Form /submit và form đăng ký email cũng được dán nhãn, để agent biết mình có thể điền gì. Đăng nhập thì cố ý không mở — một công cụ nhận mật khẩu là cách đi đánh cắp mật khẩu. Không có gì được thêm vào thời gian tải trang.",
+  },
+  {
+    date: "2026-09",
+    en: "The agent instructions file now uses real links instead of bare URLs, and points at the OpenAPI document, the agent card, the MCP server card, the new AI catalog, the agent skill, and the authentication guide — so an agent can follow them rather than guess. Every endpoint answers to the same locale rules as before, and the ranking formula, the story-text trust boundary, and the submit and suggest flows are all still there.",
+    vi: "File hướng dẫn cho agent giờ dùng liên kết thật thay vì URL trần, và trỏ tới tài liệu OpenAPI, agent card, MCP server card, AI catalog mới, agent skill, cùng hướng dẫn xác thực — để agent có thể bám theo thay vì phải đoán. Mọi endpoint vẫn tuân theo đúng quy tắc locale như trước, và công thức xếp hạng, ranh giới tin cậy của văn bản tin, cùng luồng submit và suggest đều vẫn còn.",
+  },
+  {
+    date: "2026-09",
+    en: "Anyone can now read aidr over MCP with no account and no API key. The endpoint publishes four read-only tools — latest AI news, search, one story as bounded Markdown, and the TL;DR digest — plus two resources, and every one of them is labelled read-only and untrusted-content so an agent treats story text as data. Operator tools (push items, manage sources, trigger an ingest run) still require an admin token, and an unauthenticated call to one is refused without revealing what else exists. Anonymous reads are rate limited per IP.",
+    vi: "Giờ bất kỳ ai cũng đọc aidr qua MCP mà không cần tài khoản hay API key. Endpoint công bố bốn công cụ chỉ-đọc — tin AI mới nhất, tìm kiếm, một tin dưới dạng Markdown có giới hạn, và bản TL;DR — cùng hai tài nguyên, và mỗi công cụ đều được đánh dấu chỉ-đọc và nội dung- không-đáng-tin để agent coi văn bản tin là dữ liệu. Công cụ vận hành (đẩy tin, quản lý nguồn, chạy ingest) vẫn cần token admin, và lời gọi ẩn danh sẽ bị từ chối mà không tiết lộ còn công cụ nào khác. Lượt đọc ẩn danh bị giới hạn theo IP.",
+  },
+  {
+    date: "2026-09",
+    en: "The machine-discovery documents now tell the truth. The MCP server card lists the real read tools, the resources, the per-IP rate limit, and which tools need authorization — and no longer advertises a prompts capability the server never implemented. The agent card, the agent skill, and openapi.json were updated to match, and the /mcp page leads with what you can read for free.",
+    vi: "Các tài liệu khám phá máy-móc giờ nói đúng sự thật. Server card MCP liệt kê các công cụ đọc thật, các tài nguyên, giới hạn theo IP, và công cụ nào cần xác thực — và không còn quảng bá năng lực prompts mà máy chủ chưa bao giờ triển khai. Agent card, agent skill và openapi.json đã được cập nhật khớp, và trang /mcp dẫn dắt bằng những gì bạn đọc được miễn phí.",
+  },
   {
     date: "2026-09",
     en: "The Email tab on Get AI;DR shows a live preview of the latest digest — exactly what lands in your inbox. The Chrome tab now spells out what the extension does.",
@@ -111,6 +137,7 @@ export const Route = createFileRoute("/changelog")({
       path: "/changelog",
       title: "Changelog | AI News",
       lang: match.context.lang,
+      route: headRouteInput(match),
     }),
   component: ChangelogPage,
 });

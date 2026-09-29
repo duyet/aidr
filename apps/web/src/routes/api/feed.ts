@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
-import { getFeed } from "../../lib/feed-queries";
+import { feedDaysAndBefore, getFeed } from "../../lib/feed-queries";
 import {
   API_CONTENT_LANGUAGE,
   apiErrorResponse,
@@ -40,19 +40,15 @@ export const Route = createFileRoute("/api/feed")({
         }
 
         const url = new URL(request.url);
-        const daysRaw = url.searchParams.get("days");
-        const days = daysRaw ? Number.parseInt(daysRaw, 10) : undefined;
-        const before = url.searchParams.get("before") ?? undefined;
+        // Window validation lives with the query so /api/feed and the RSS
+        // document at /feed.xml cannot drift apart.
+        const { days, before } = feedDaysAndBefore(url.searchParams);
         try {
           const feed = await getFeed(readSession(db), {
             category: url.searchParams.get("category") ?? undefined,
             q: url.searchParams.get("q") ?? undefined,
-            days:
-              days !== undefined && Number.isFinite(days) && days > 0
-                ? Math.min(days, 14)
-                : undefined,
-            before:
-              before && /^\d{4}-\d{2}-\d{2}$/.test(before) ? before : undefined,
+            days,
+            before,
           });
           const policy = localeCacheControl(url.search, FEED_CACHE_CONTROL);
           return Response.json(

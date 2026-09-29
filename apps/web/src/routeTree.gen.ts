@@ -39,12 +39,14 @@ import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
 import { Route as ApiSubscribePreviewRouteImport } from './routes/api/subscribe.preview'
 import { Route as ApiSystemAccountsRouteImport } from './routes/api/system.accounts'
 import { Route as ApiSystemActivityRouteImport } from './routes/api/system.activity'
+import { Route as ApiSystemAudienceRouteImport } from './routes/api/system.audience'
 import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
 import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
 import { Route as ApiSystemOverviewRouteImport } from './routes/api/system.overview'
 import { Route as ApiSystemRunAttemptsRouteImport } from './routes/api/system.run-attempts'
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
 import { Route as ApiSystemSourcesRouteImport } from './routes/api/system.sources'
+import { Route as ApiWebhooksClerkRouteImport } from './routes/api/webhooks.clerk'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -196,6 +198,11 @@ const ApiSystemActivityRoute = ApiSystemActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiSystemAudienceRoute = ApiSystemAudienceRouteImport.update({
+  id: '/audience',
+  path: '/audience',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 const ApiSystemLlmRoute = ApiSystemLlmRouteImport.update({
   id: '/llm',
   path: '/llm',
@@ -225,6 +232,11 @@ const ApiSystemSourcesRoute = ApiSystemSourcesRouteImport.update({
   id: '/sources',
   path: '/sources',
   getParentRoute: () => ApiSystemRoute,
+} as any)
+const ApiWebhooksClerkRoute = ApiWebhooksClerkRouteImport.update({
+  id: '/api/webhooks/clerk',
+  path: '/api/webhooks/clerk',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -258,12 +270,14 @@ export interface FileRoutesByFullPath {
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
+  '/api/system/audience': typeof ApiSystemAudienceRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
+  '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -296,12 +310,14 @@ export interface FileRoutesByTo {
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
+  '/api/system/audience': typeof ApiSystemAudienceRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
+  '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -335,12 +351,14 @@ export interface FileRoutesById {
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
+  '/api/system/audience': typeof ApiSystemAudienceRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
+  '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -375,12 +393,14 @@ export interface FileRouteTypes {
     | '/api/subscribe/preview'
     | '/api/system/accounts'
     | '/api/system/activity'
+    | '/api/system/audience'
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
     | '/api/system/run-attempts'
     | '/api/system/runs'
     | '/api/system/sources'
+    | '/api/webhooks/clerk'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -413,12 +433,14 @@ export interface FileRouteTypes {
     | '/api/subscribe/preview'
     | '/api/system/accounts'
     | '/api/system/activity'
+    | '/api/system/audience'
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
     | '/api/system/run-attempts'
     | '/api/system/runs'
     | '/api/system/sources'
+    | '/api/webhooks/clerk'
   id:
     | '__root__'
     | '/'
@@ -451,12 +473,14 @@ export interface FileRouteTypes {
     | '/api/subscribe/preview'
     | '/api/system/accounts'
     | '/api/system/activity'
+    | '/api/system/audience'
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
     | '/api/system/run-attempts'
     | '/api/system/runs'
     | '/api/system/sources'
+    | '/api/webhooks/clerk'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -486,6 +510,7 @@ export interface RootRouteChildren {
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
+  ApiWebhooksClerkRoute: typeof ApiWebhooksClerkRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -700,6 +725,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemActivityRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/system/audience': {
+      id: '/api/system/audience'
+      path: '/audience'
+      fullPath: '/api/system/audience'
+      preLoaderRoute: typeof ApiSystemAudienceRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
     '/api/system/llm': {
       id: '/api/system/llm'
       path: '/llm'
@@ -742,6 +774,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemSourcesRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/webhooks/clerk': {
+      id: '/api/webhooks/clerk'
+      path: '/api/webhooks/clerk'
+      fullPath: '/api/webhooks/clerk'
+      preLoaderRoute: typeof ApiWebhooksClerkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -771,6 +810,7 @@ const ApiSubscribeRouteWithChildren = ApiSubscribeRoute._addFileChildren(
 interface ApiSystemRouteChildren {
   ApiSystemAccountsRoute: typeof ApiSystemAccountsRoute
   ApiSystemActivityRoute: typeof ApiSystemActivityRoute
+  ApiSystemAudienceRoute: typeof ApiSystemAudienceRoute
   ApiSystemLlmRoute: typeof ApiSystemLlmRoute
   ApiSystemModelsRoute: typeof ApiSystemModelsRoute
   ApiSystemOverviewRoute: typeof ApiSystemOverviewRoute
@@ -782,6 +822,7 @@ interface ApiSystemRouteChildren {
 const ApiSystemRouteChildren: ApiSystemRouteChildren = {
   ApiSystemAccountsRoute: ApiSystemAccountsRoute,
   ApiSystemActivityRoute: ApiSystemActivityRoute,
+  ApiSystemAudienceRoute: ApiSystemAudienceRoute,
   ApiSystemLlmRoute: ApiSystemLlmRoute,
   ApiSystemModelsRoute: ApiSystemModelsRoute,
   ApiSystemOverviewRoute: ApiSystemOverviewRoute,
@@ -821,6 +862,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSplatRoute: ApiAdminSplatRoute,
   ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
+  ApiWebhooksClerkRoute: ApiWebhooksClerkRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

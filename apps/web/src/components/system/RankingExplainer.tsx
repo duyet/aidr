@@ -1,4 +1,4 @@
-import { Badge, Separator } from "@aidr/ui";
+import { Badge } from "@aidr/ui";
 import { anyrouterModelUrl } from "../../lib/anyrouter";
 import { GITHUB_ALGORITHM_PATH, GITHUB_ALGORITHM_URL } from "../../lib/site";
 import type { ModelChains } from "../../lib/system-queries";
@@ -7,14 +7,16 @@ interface RankingExplainerProps {
   models: ModelChains;
 }
 
-/** Surfaces the live ranking formula and model chains for operators. */
+/** Surfaces the live ranking formula and model chains for operators. This is
+ *  the single place the chains render on this tab — the AnyRouter card beside
+ *  it deliberately repeats nothing. */
 export function RankingExplainer({ models }: RankingExplainerProps) {
   return (
-    <div className="space-y-3 text-sm">
-      <p className="font-mono text-xs leading-relaxed text-foreground">
+    <div className="space-y-2.5 text-sm">
+      <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-foreground">
         rankScore = importance × qualityFactor × decay × engagement × sources
       </p>
-      <ul className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+      <ul className="grid gap-x-4 gap-y-1 text-[11px] leading-relaxed text-muted-foreground sm:grid-cols-2">
         <li>
           <span className="font-medium text-foreground">qualityFactor</span> =
           0.6 + 0.4 × (quality / 10)
@@ -32,7 +34,7 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
           0.12 × min(sourceCount, 8)
         </li>
       </ul>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
         Same-story outlets merge first; corroboration lifts rank and trending.
         Full pipeline:{" "}
         <a
@@ -45,9 +47,7 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
         </a>
       </p>
 
-      <Separator />
-
-      <div className="space-y-2">
+      <div className="grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
         <ModelChain label="scoring" chain={models.scoring} />
         <ModelChain label="translation" chain={models.translation} />
         <ModelChain label="tldr" chain={models.tldr} />

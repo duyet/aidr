@@ -73,6 +73,12 @@ export interface DigestStory {
   imageUrl?: string;
 }
 
+export type MailFormat = "design" | "text";
+
+export function normalizeMailFormat(value: unknown): MailFormat {
+  return value === "text" ? "text" : "design";
+}
+
 export interface DigestEmailInput {
   subject: string;
   date: string;
@@ -81,6 +87,8 @@ export interface DigestEmailInput {
   unsubscribeUrl: string;
   settingsUrl: string;
   preheader?: string;
+  /** `text` is a plain list. `design` is the editorial card with a hero. */
+  format?: MailFormat;
 }
 
 function ctaButton(label: string, url: string): string {
@@ -267,6 +275,68 @@ export function highlightStoryHtml(text: string): string {
 }
 
 const THUMB_PX = 64;
+/** Keeps `AI;DR — YYYY-MM-DD — …` on one subject line. */
+const DIGEST_PHRASE_MAX = 52;
+
+/** First bullet, cut on a word boundary. Empty when every bullet is blank. */
+export function digestContentPhrase(stories: { text: string }[]): string {
+  const raw = stories
+    .map((story) => story.text.trim())
+    .find((text) => text.length > 0);
+  if (!raw) return "";
+  const flat = raw.replace(/\s+/g, " ");
+  if (flat.length <= DIGEST_PHRASE_MAX) return flat;
+  const window = flat.slice(0, DIGEST_PHRASE_MAX + 1);
+  const space = window.lastIndexOf(" ");
+  const cut = (
+    space >= 24 ? window.slice(0, space) : flat.slice(0, DIGEST_PHRASE_MAX)
+  )
+    .trim()
+    .replace(/[.,;:]+$/, "");
+  return `${cut}…`;
+}
+
+/** Date plus a short phrase from the bullets. Date-only when there is no phrase. */
+export function digestSubjectLine(
+  date: string,
+  stories: { text: string }[]
+): string {
+  const phrase = digestContentPhrase(stories);
+  if (!phrase) return `AI;DR — ${date}`;
+  return `AI;DR — ${date} — ${phrase}`;
+}
+
+/** Generated social cards (text-on-card OG images) are not story thumbnails. */
+export function isGeneratedOgCard(url: string): boolean {
+  try {
+    const parts = new URL(url).pathname.toLowerCase().split("/");
+    return (
+      parts.includes("og") ||
+      parts.some((part) => /og[-_]?(image|card)/.test(part))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** First real thumbnail: http(s), not a generated OG card. */
+export function digestHeroSrc(stories: DigestStory[]): string | null {
+  for (const story of stories) {
+    if (!story.imageUrl) continue;
+    const safe = safeHref(story.imageUrl);
+    if (safe && !isGeneratedOgCard(safe)) return safe;
+  }
+  return null;
+}
+
+function heroRow(src: string): string {
+  const safe = escapeHtml(src);
+  return `<tr>
+      <td style="padding:20px ${PAD} 4px">
+        <img class="mail-hero" src="${safe}" width="476" alt="" style="display:block;width:100%;max-width:476px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic">
+      </td>
+    </tr>`;
+}
 
 function thumbCell(imageUrl: string | undefined): string {
   const safe = imageUrl ? safeHref(imageUrl) : null;
@@ -281,7 +351,23 @@ export function renderDigestEmail(input: DigestEmailInput): {
   html: string;
   text: string;
 } {
-  const heading = input.date;
+  const heading = digestSubjectLine(input.date, input.stories);
+  const home = withMailUtm(SITE_URL, "digest", input.lang);
+  const textLines = input.stories.map((s, i) => `${i + 1}. ${s.text}`);
+  const text = `${heading}\n\n${textLines.join("\n")}\n\n${home}\n\n${mailFooterText(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
+  if (normalizeMailFormat(input.format) === "text") {
+    return {
+      text,
+      html: wrapHtml({
+        lang: input.lang,
+        subject: input.subject,
+        preheader: input.preheader ?? input.stories[0]?.text ?? "",
+        innerRows: `<tr><td style="padding:28px ${PAD};font-family:${SANS};font-size:15px;line-height:1.55;color:${FG};white-space:pre-wrap">${escapeHtml(text)}</td></tr>`,
+        mailKind: "digest",
+      }),
+    };
+  }
+  const hero = digestHeroSrc(input.stories);
   const readMore =
     input.lang === "vi" ? "Đọc trên aidr.today" : "Read on aidr.today";
   const storyCta = input.lang === "vi" ? "Đọc thêm" : "Read more";
@@ -316,9 +402,10 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const innerRows = `<tr>
       <td style="padding:28px ${PAD} 12px;font-family:${SERIF};font-size:22px;line-height:1.3;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
     </tr>
+    ${hero ? heroRow(hero) : ""}
     ${htmlItems}
     <tr>
-      <td style="padding:16px ${PAD} 28px">${ctaButton(readMore, withMailUtm(SITE_URL, "digest", input.lang))}</td>
+      <td style="padding:16px ${PAD} 28px;font-family:${SANS};font-size:14px;line-height:1.4"><a href="${escapeHtml(withMailUtm(SITE_URL, "digest", input.lang))}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${escapeHtml(readMore)}</a></td>
     </tr>
     ${mailFooterHtml(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 
@@ -329,10 +416,6 @@ export function renderDigestEmail(input: DigestEmailInput): {
     innerRows,
     mailKind: "digest",
   });
-
-  const home = withMailUtm(SITE_URL, "digest", input.lang);
-  const textLines = input.stories.map((s, i) => `${i + 1}. ${s.text}`);
-  const text = `${heading}\n\n${textLines.join("\n")}\n\n${home}\n\n${mailFooterText(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 
   return { html, text };
 }

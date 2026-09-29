@@ -5,13 +5,14 @@ import { CardData } from "./CardData";
 import { ChartCard } from "./ChartCard";
 import { API } from "./endpoints";
 import { SourcesIngestTable } from "./SourcesIngestTable";
+import { TAB_PANEL } from "./tab-spacing";
 
 function SourcesCard() {
   const state = useSystemData<SystemSources>(API.sources);
   return (
     <ChartCard
       title="Ingest sources"
-      subtitle="Adapters the hourly pipeline fetches. Last run is items pulled in the latest workflow stats."
+      subtitle="Adapters the hourly pipeline fetches. Fetched / New / Accepted / Rejected are the latest run's per-source numbers; a source silent for its whole threshold is flagged stale."
     >
       <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
         {(s) => (
@@ -19,6 +20,7 @@ function SourcesCard() {
             sources={s.ingestSources ?? []}
             lastRunBySource={s.lastRunBySource}
             volume={s.volume}
+            health={s.health}
           />
         )}
       </CardData>
@@ -28,7 +30,7 @@ function SourcesCard() {
 
 export function SourcesTab() {
   return (
-    <TabsContent value="sources" className="mt-0 space-y-3">
+    <TabsContent value="sources" className={`${TAB_PANEL} space-y-3`}>
       <SourcesCard />
     </TabsContent>
   );

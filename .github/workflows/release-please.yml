@@ -1,8 +1,9 @@
 name: Release Please
 
-# release-please watches conventional commits on main/master and opens a
-# standing release PR for apps/extension (package-name aidr → tags aidr-v*).
-# Humans merge the PR; this workflow never auto-merges.
+# Two independent release-please runs. Each has its own config and manifest
+# so a web release cannot share a tracking file or a pull request with the
+# extension. Tags stay web-v* and aidr-v*. Humans merge the release PRs;
+# this workflow never auto-merges them.
 
 on:
   push:
@@ -21,12 +22,17 @@ jobs:
   release-please:
     name: release-please
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Run release-please
-        id: release
+      - name: Release web
         uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          config-file: .github/release-please-config.json
-          manifest-file: .github/.release-please-manifest.json
+          config-file: .github/release-please-web.json
+          manifest-file: .github/.release-please-web.json
+      - name: Release extension
+        uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .github/release-please-extension.json
+          manifest-file: .github/.release-please-extension.json

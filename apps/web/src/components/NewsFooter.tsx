@@ -1,4 +1,4 @@
-import { track } from "@aidr/ui/track";
+import { track, trackChannelClick } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -8,6 +8,7 @@ import {
 import { timeAgo } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
 import {
+  ANYROUTER_URL,
   DUYET_URL,
   EXTENSION_PATH,
   GITHUB_URL,
@@ -29,9 +30,9 @@ const linkClass =
 export function NewsFooter() {
   const navigationLang = useLang();
   const year = new Date().getFullYear();
-  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(() =>
-    getCachedFeedFreshness()
-  );
+  // Cached freshness is only read after mount — reading it in the initializer
+  // would make the first client render differ from the SSR markup (#418).
+  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
 
   useEffect(() => {
     const cached = getCachedFeedFreshness();
@@ -82,7 +83,9 @@ export function NewsFooter() {
               <Link
                 to={EXTENSION_PATH}
                 search={{ lang: navigationLang }}
-                onClick={() => track("nav_click", { to: EXTENSION_PATH })}
+                onClick={() =>
+                  trackChannelClick("chrome", { to: EXTENSION_PATH })
+                }
                 className={`block ${linkClass}`}
                 title="Get AI;DR"
                 aria-label="Get AI;DR"
@@ -93,7 +96,9 @@ export function NewsFooter() {
                 href={TELEGRAM_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "telegram" })}
+                onClick={() =>
+                  trackChannelClick("telegram", { to: "telegram" })
+                }
                 className={`block ${linkClass}`}
               >
                 Telegram
@@ -121,13 +126,24 @@ export function NewsFooter() {
               >
                 duyet.net
               </a>
+              {/* The gateway behind every LLM call in the pipeline. Same
+                  credited URL as the /data strip and /about, so the referral
+                  cannot differ per surface. */}
+              <a
+                href={ANYROUTER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("nav_click", { to: "anyrouter.dev" })}
+                className={`block ${linkClass}`}
+                title="LLM gateway behind AI;DR"
+              >
+                anyrouter.dev
+              </a>
             </div>
           </nav>
         </div>
         <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
-          {/* Relative "Updated …" uses Date.now() at render, so SSR text can
-              differ from hydration text — suppress the mismatch warning. */}
-          <span suppressHydrationWarning>
+          <span>
             {`© ${year} AI;DR`}
             {lastFetchedAt !== null && (
               <>

@@ -18,7 +18,6 @@ import {
 } from "../../worker/topic-learning.js";
 import type { DbReader } from "./db";
 import { NEWEST_PUBLISHED_FETCHED_AT_SQL } from "./feed-freshness";
-import { setLearnedKeywords } from "./highlight";
 import { parseStoredBullets } from "./tldr-bullets";
 import {
   resolveTldrForDisplay,
@@ -345,6 +344,32 @@ export function boundFeedResponse(feed: FeedResponse): FeedResponse {
   };
 }
 
+/** Hard ceiling on the `days` window — the product never reads further back. */
+export const FEED_MAX_DAYS = 14;
+const BEFORE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The one place the feed window is validated, shared by `GET /api/feed` and
+ * the RSS document so the two can never drift: `days` is clamped to 1–14 and
+ * a malformed or absent `before` becomes `undefined` (i.e. "up to now")
+ * rather than being passed to `Date.parse`.
+ */
+export function feedDaysAndBefore(search: URLSearchParams): {
+  days?: number;
+  before?: string;
+} {
+  const daysRaw = search.get("days");
+  const days = daysRaw ? Number.parseInt(daysRaw, 10) : Number.NaN;
+  const before = search.get("before") ?? undefined;
+  return {
+    days:
+      Number.isFinite(days) && days > 0
+        ? Math.min(days, FEED_MAX_DAYS)
+        : undefined,
+    before: before && BEFORE_DATE_RE.test(before) ? before : undefined,
+  };
+}
+
 export async function getFeed(
   db: DbReader,
   opts: { category?: string; q?: string; days?: number; before?: string } = {}
@@ -420,8 +445,6 @@ export async function getFeed(
     items,
     yesterday
   );
-  setLearnedKeywords(learnedKeywords);
-
   // Trending: prefer versioned models / products extracted from titles
   // (GPT-6 Astra, Fable 5.1) over generic score themes (llm, agent).
   const dayAgo = Math.floor(Date.now() / 1000) - 86400;

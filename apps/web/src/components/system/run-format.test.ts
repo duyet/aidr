@@ -10,6 +10,7 @@ import {
   formatSafeDetail,
   formatSafeError,
   formatScore,
+  formatSecondsShort,
   formatTimestamp,
   formatTokenValue,
   hasRunDetails,
@@ -17,9 +18,12 @@ import {
   llmTokens,
   nextOpenId,
   normalizeRunTokens,
+  runAxisHeading,
+  runAxisTime,
   runDetailsId,
   runDisclosureLabel,
   runFallbackKindLabel,
+  runModelsDisclosure,
   runStatus,
   safeRunSteps,
   shortModel,
@@ -251,6 +255,50 @@ describe("safe run detail formatting", () => {
   });
 });
 
+describe("run axis labels", () => {
+  it("anchors the x-axis tick to UTC, like formatTimestamp", () => {
+    // 1700000000 is 2023-11-14T22:13:20Z. A local-time formatter would
+    // render a different wall clock for a UTC+7 viewer, so the axis and the
+    // run's own detail row would disagree on the same page.
+    expect(runAxisTime(1_700_000_000, "en")).toBe("10:13 PM");
+  });
+
+  it("is stable regardless of the viewer's timezone", () => {
+    const original = process.env.TZ;
+    try {
+      process.env.TZ = "Asia/Bangkok";
+      expect(runAxisTime(1_700_000_000, "en")).toBe("10:13 PM");
+      process.env.TZ = "America/Los_Angeles";
+      expect(runAxisTime(1_700_000_000, "en")).toBe("10:13 PM");
+    } finally {
+      if (original === undefined) delete process.env.TZ;
+      else process.env.TZ = original;
+    }
+  });
+
+  it("reuses formatTimestamp for the tooltip heading, so the two agree", () => {
+    expect(runAxisHeading(1_700_000_000, "en")).toBe(
+      formatTimestamp(1_700_000_000, "en")
+    );
+    expect(runAxisHeading(1_700_000_000, "en")).toContain("UTC");
+  });
+
+  it("degrades a missing timestamp instead of printing Invalid Date", () => {
+    for (const bad of [null, 0, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(runAxisTime(bad, "en")).toBe("—");
+      expect(runAxisHeading(bad, "en")).toBe("—");
+    }
+  });
+
+  it("keeps a sub-minute duration in seconds and never rounds it to 0m", () => {
+    expect(formatSecondsShort(0)).toBe("0s");
+    expect(formatSecondsShort(45)).toBe("45s");
+    expect(formatSecondsShort(59)).toBe("59s");
+    expect(formatSecondsShort(60)).toBe("1m");
+    expect(formatSecondsShort(157)).toBe("3m");
+  });
+});
+
 describe("tokenBreakdown", () => {
   const attempt = {
     ts: 1_700_000_000_000,
@@ -456,5 +504,93 @@ describe("isPreIdentityRun (#189)", () => {
     ).toBe(false);
     expect(isPreIdentityRun({ tokens: 0 }, undefined, [])).toBe(false);
     expect(isPreIdentityRun(null, undefined, [])).toBe(false);
+  });
+});
+
+describe("runModelsDisclosure (#189 review)", () => {
+  /** A run that reported tokens but has no run-id-attributed calls. */
+  const preIdentityStats: WorkflowRunStats = { tokens: 13_733 };
+  const llm = {
+    calls: 3,
+    failures: 0,
+    tokens: 500,
+    cachedTokens: null,
+    durationMs: 10,
+    models: ["anyrouter/auto"],
+    attempts: [],
+  };
+
+  it("is attributed whenever real models are known", () => {
+    for (const state of [
+      "idle",
+      "loading",
+      "ready",
+      "empty",
+      "unavailable",
+      "error",
+    ] as const) {
+      expect(
+        runModelsDisclosure(state, ["anyrouter/auto"], preIdentityStats, llm)
+      ).toBe("attributed");
+      expect(runModelsDisclosure(state, [], preIdentityStats, llm, [])).toBe(
+        "attributed"
+      );
+    }
+  });
+
+  it("claims pre-identity only after a completed lookup returns zero rows", () => {
+    // The only state where an empty attempt list is evidence about identity.
+    expect(
+      runModelsDisclosure("empty", [], preIdentityStats, undefined, [])
+    ).toBe("pre_identity");
+  });
+
+  it("claims nothing when the lookup failed or is unsupported", () => {
+    // A failed read is not evidence about identity, so no cause is stated.
+    expect(
+      runModelsDisclosure("unavailable", [], preIdentityStats, undefined, [])
+    ).toBe("unavailable");
+    expect(
+      runModelsDisclosure("error", [], preIdentityStats, undefined, [])
+    ).toBe("unavailable");
+  });
+
+  it("stays pending before a lookup has resolved", () => {
+    // `stats.tokens` alone must not turn a pending lookup into a verdict.
+    expect(
+      runModelsDisclosure("loading", [], preIdentityStats, undefined, [])
+    ).toBe("pending");
+    expect(
+      runModelsDisclosure("idle", [], preIdentityStats, undefined, [])
+    ).toBe("pending");
+  });
+
+  it("is none when the run reports no tokens at all", () => {
+    expect(runModelsDisclosure("empty", [], { tokens: 0 }, undefined, [])).toBe(
+      "none"
+    );
+    expect(runModelsDisclosure("empty", [], null, undefined, [])).toBe("none");
+  });
+
+  it("treats fetched attempt rows as attributed even mid-lookup", () => {
+    const attempt: LlmCallRow = {
+      ts: 1,
+      runId: "r",
+      task: "score",
+      model: "m",
+      ok: true,
+      tokens: 1,
+      durationMs: 1,
+      promptChars: null,
+      promptTokens: null,
+      completionTokens: null,
+      cachedTokens: null,
+      error: null,
+      errorCode: null,
+      errorStatus: null,
+    };
+    expect(
+      runModelsDisclosure("loading", [], preIdentityStats, undefined, [attempt])
+    ).toBe("attributed");
   });
 });

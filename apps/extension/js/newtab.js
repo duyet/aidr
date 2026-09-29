@@ -12,7 +12,7 @@ import { bindPrefsPopover } from "./settings-panel.js";
 import { NEWS_SITE, storyPermalink } from "./site-url.js";
 import { bindAidrDialogLink, openStoryDialog } from "./story-dialog.js";
 import { topicColor } from "./topic-color.js";
-import { track } from "./track.js";
+import { track, trackChannelClick } from "./track.js";
 import {
   fetchExtensionMeta,
   installedVersion,
@@ -255,7 +255,6 @@ function applyChrome(settings) {
     submitBtn.title = label;
     submitBtn.setAttribute("aria-label", label);
   }
-  applySubmitVisibility();
   $("trending-label").textContent = t(settings, "trending");
   for (const id of ["open-settings", "open-settings-compact"]) {
     const node = $(id);
@@ -267,9 +266,8 @@ function applyChrome(settings) {
   }
   const chromeLink = $("chrome-tab-link");
   if (chromeLink) {
-    const label = lang === "vi" ? "Tab mới Chrome" : "Chrome new tab";
-    chromeLink.title = label;
-    chromeLink.setAttribute("aria-label", label);
+    chromeLink.title = "Get AI;DR";
+    chromeLink.setAttribute("aria-label", "Get AI;DR");
   }
   const reloadBtn = $("tldr-reload");
   if (reloadBtn) {
@@ -867,14 +865,6 @@ function applyBriefLayout() {
   page.classList.toggle("is-brief", brief);
 }
 
-function applySubmitVisibility() {
-  const signedIn = document.documentElement.dataset.signedIn === "1";
-  for (const id of ["submit-btn", "phone-submit-link"]) {
-    const node = $(id);
-    if (node) node.hidden = !signedIn;
-  }
-}
-
 function render(settings, digest) {
   applyChrome(settings);
   tagSiteLinks(document, {}, uiLang(settings));
@@ -900,6 +890,74 @@ function bindPrefs(getSettings, onChange) {
   });
 }
 
+function bindChannelTracking(getSettings) {
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const link = target.closest("a[data-channel]");
+    if (!link) return;
+    const channel = link.dataset.channel;
+    if (!channel) return;
+    const href = link.getAttribute("href") || "";
+    const to = href.split("?")[0] || href;
+    trackChannelClick(channel, { to }, getSettings().apiBase);
+  });
+}
+
+function closeHeaderMenu() {
+  const menu = $("header-menu-content");
+  const trigger = $("header-menu-trigger");
+  if (!menu || !trigger) return;
+  menu.hidden = true;
+  trigger.setAttribute("aria-expanded", "false");
+}
+
+function toggleHeaderMenu() {
+  const menu = $("header-menu-content");
+  const trigger = $("header-menu-trigger");
+  if (!menu || !trigger) return;
+  if (trigger.getAttribute("aria-expanded") === "true") {
+    closeHeaderMenu();
+    return;
+  }
+  menu.hidden = false;
+  trigger.setAttribute("aria-expanded", "true");
+  menu.querySelector(".header-menu-item")?.focus();
+}
+
+function bindHeaderMenu() {
+  const menu = $("header-menu-content");
+  const trigger = $("header-menu-trigger");
+  if (!menu || !trigger) return;
+
+  trigger.addEventListener("click", toggleHeaderMenu);
+  menu.addEventListener("click", (event) => {
+    if (event.target.closest("a")) closeHeaderMenu();
+  });
+  menu.addEventListener("keydown", (event) => {
+    const items = [...menu.querySelectorAll(".header-menu-item")];
+    const current = items.indexOf(document.activeElement);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      items[(current + 1) % items.length]?.focus();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      items[(current - 1 + items.length) % items.length]?.focus();
+    }
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (menu.hidden || !(event.target instanceof Node)) return;
+    if (!menu.contains(event.target) && !trigger.contains(event.target)) {
+      closeHeaderMenu();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || menu.hidden) return;
+    closeHeaderMenu();
+    trigger.focus();
+  });
+}
+
 function closePhoneMenu() {
   const menu = $("phone-menu");
   const btn = $("open-menu");
@@ -920,6 +978,7 @@ function openPhoneMenu() {
 
 function bindPhoneMenu() {
   $("open-menu")?.addEventListener("click", openPhoneMenu);
+  $("close-menu")?.addEventListener("click", closePhoneMenu);
   $("close-menu-backdrop")?.addEventListener("click", closePhoneMenu);
   $("phone-menu-nav")?.addEventListener("click", (event) => {
     if (event.target.closest("a")) closePhoneMenu();
@@ -941,6 +1000,8 @@ async function main() {
   applyAppearance(settings);
   applyChrome(settings);
   tagSiteLinks(document, {}, uiLang(settings));
+  bindChannelTracking(() => settings);
+  track("page_view", {}, settings.apiBase);
 
   let digest = globalThis.__NEWS_TAB_DIGEST__ || {
     tldr: null,
@@ -1033,6 +1094,7 @@ async function main() {
 
   bindPrefs(() => settings, refresh);
   bindPhoneMenu();
+  bindHeaderMenu();
   pushSettings = async (next) => {
     settings = await saveSettings(next);
     applyAppearance(settings);

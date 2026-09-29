@@ -301,7 +301,12 @@ export function MediaGallery({
 
   if (assets.length === 0) {
     return fallbackImageUrl ? (
-      <StoryThumb src={fallbackImageUrl} itemId={itemId} variant="card" />
+      <StoryThumb
+        src={fallbackImageUrl}
+        itemId={itemId}
+        lang={lang}
+        variant="card"
+      />
     ) : null;
   }
 

@@ -1,7 +1,5 @@
+import { AI_KEYWORD_RE } from "./keywords.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
-
-const AI_KEYWORD_RE =
-  /\b(ai|llm|gpt|claude|gemini|openai|anthropic|deepseek|qwen|mistral|llama|grok|kimi|glm|olmo|phi|gemma|model|agent|agentic|transformer|neural|machine learning|nvidia|hugging ?face|cursor|copilot|codex|windsurf|openrouter|ollama|vllm|mcp|rag|diffusion|multimodal|vision.?language|reasoning|fine.?tun|benchmark|swe.?bench|arc.?agi)\b/i;
 
 interface AlgoliaHit {
   objectID: string;

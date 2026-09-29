@@ -26,6 +26,33 @@ export interface Env {
    *  the chat chain is the backup. Defaults to typesafe/jev. The TypeSafe
    *  BYOK key lives in the AnyRouter dashboard, not in env. */
   ANYROUTER_JEV_MODEL?: string;
+  /** Master switch for the JEV review panel on the scoring path (#203). Unset
+   *  or falsy keeps the pre-existing single-score behavior byte for byte. */
+  JEV_PANEL_ENABLED?: string;
+  /** Comma-separated model chain for the panel's `relevance` judge. Only the
+   *  first id can produce a counted vote: a fallback to another model is an
+   *  identity mismatch by design, never a second copy of the same opinion. */
+  JEV_PANEL_RELEVANCE_MODEL?: string;
+  /** Same, for the panel's `source_quality` judge. The two chains must name
+   *  different models from different vendor families, or the panel is refused
+   *  before any judge runs. */
+  JEV_PANEL_SOURCE_QUALITY_MODEL?: string;
+  /** Non-abstain valid votes required for a panel recommendation. Clamped to
+   *  the judge's count. */
+  JEV_PANEL_QUORUM?: string;
+  /** "1" enables the single bounded cross-examination round. "0"/unset is
+   *  the initial round only. The core caps debate at one replacement round. */
+  JEV_PANEL_DEBATE?: string;
+  /** What happens to an item the panel could not decide. "open" (default)
+   *  keeps the primary score; "closed" forces relevance to 0. An unusable
+   *  config always degrades open so a typo cannot reject a run. */
+  JEV_PANEL_FAIL_MODE?: string;
+  /** Wall-clock budget for one item's whole panel, all rounds included. */
+  JEV_PANEL_BUDGET_MS?: string;
+  /** "1" lets an unambiguous panel category replace the primary category.
+   *  Off by default: unlike the relevance ceiling, a category is not
+   *  monotonic, so a replay can churn it. */
+  JEV_PANEL_APPLY_CATEGORY?: string;
   ANYROUTER_API_KEY: string;
   NEWS_ADMIN_TOKEN: string;
   /** Clerk secret used by /__clerk Frontend API proxy (and admin JWT verify). */
@@ -35,6 +62,10 @@ export interface Env {
   CLERK_PROXY_URL?: string;
   /** Upstream fetch/body timeout in milliseconds (bounded by the handler). */
   CLERK_PROXY_TIMEOUT_MS?: string;
+  /** Svix signing secret for POST /api/webhooks/clerk (Clerk Dashboard →
+   *  Webhooks → Signing Secret, "whsec_…"). Without it the route fails
+   *  closed with 503 rather than accepting unsigned user events. */
+  CLERK_WEBHOOK_SECRET?: string;
   /** Clerk instance issuer (frontend API origin), e.g. "https://clerk.aidr.today".
    *  Derived from the VITE_CLERK_PUBLISHABLE_KEY domain. When set, admin
    *  Clerk-JWT verification rejects tokens whose `iss` doesn't match. */
@@ -42,11 +73,15 @@ export interface Env {
   /** Comma-separated Clerk user ids (the token's `sub`) granted admin
    *  access, independent of any role claim. */
   NEWS_ADMIN_USER_IDS?: string;
-  /** Telegram bot token for channel posting (secret). Required when
-   *  TELEGRAM_CHAT_ID is set — missing token fails loud. Both unset
-   *  disables the channel (local/dev). */
+  /** Telegram bot token for channel posting (secret). Required when a
+   *  chat id is set — missing token fails loud. All unset disables the
+   *  channels (local/dev). */
   TELEGRAM_BOT_TOKEN?: string;
-  /** Telegram channel/chat id to post stories to, e.g. "-1004420104760". */
+  /** Vietnamese broadcast chat id. Replaces TELEGRAM_CHAT_ID. */
+  TELEGRAM_VI_CHAT_ID?: string;
+  /** English broadcast chat id, e.g. "@aidr_today". */
+  TELEGRAM_EN_CHAT_ID?: string;
+  /** @deprecated Read only when TELEGRAM_VI_CHAT_ID is unset. */
   TELEGRAM_CHAT_ID?: string;
   /** Optional JSON/Slack incoming webhook for the same AlertEvent fan-out. */
   NOTIFY_WEBHOOK_URL?: string;
@@ -62,4 +97,11 @@ export interface Env {
   NEWS_UNSUBSCRIBE_SECRET?: string;
   /** Owner address for new-subscriber pings. When unset, email ping is skipped. */
   OWNER_NOTIFY_EMAIL?: string;
+  /** GA4 property id for the /data Audience tab (public config, not a secret).
+   *  Accepts `123456` or `properties/123456`. */
+  GA4_PROPERTY_ID?: string;
+  /** Whole service-account key file, JSON-encoded, as a Worker secret. It is
+   *  only ever used to sign a short-lived read-only assertion — the raw JSON
+   *  is never logged, echoed, or returned by an endpoint. */
+  GA4_SERVICE_ACCOUNT_JSON?: string;
 }

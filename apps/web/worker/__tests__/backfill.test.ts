@@ -29,16 +29,24 @@ describe("buildMissingSummaryQuery", () => {
 });
 
 describe("buildMissingMediaQuery", () => {
-  it("targets published rows with a summary but no usable legacy media", () => {
+  it("targets published rows with a summary but no media manifest", () => {
     const sql = buildMissingMediaQuery(9);
     expect(sql).toContain("status = 'published'");
     expect(sql).toMatch(/summary IS NOT NULL AND summary != ''/);
-    expect(sql).toMatch(/image_url IS NULL OR image_url = ''/);
     expect(sql).toMatch(
       /media_manifest IS NULL OR media_manifest = '' OR media_manifest = '\[\]'/
     );
     expect(sql).toContain("ORDER BY published_at DESC");
     expect(sql).toContain("LIMIT 9");
+  });
+
+  it("does not require a legacy image_url, so enriched rows stay reachable", () => {
+    // Issue #207: gating on `image_url` being empty excluded every row that
+    // already had a legacy og:image, which is exactly the set that needs a
+    // media_manifest built. The column is still selected as manifest input.
+    const sql = buildMissingMediaQuery();
+    expect(sql).not.toMatch(/image_url IS NULL OR image_url = ''/);
+    expect(sql).toContain("image_url");
   });
 });
 

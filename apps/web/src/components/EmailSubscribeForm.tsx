@@ -3,6 +3,7 @@ import { track } from "@aidr/ui/track";
 import { useState } from "react";
 import { withLang } from "../lib/locale-url";
 import type { Lang } from "../lib/types";
+import { formAnnotationAttributes, webmcpForm } from "../lib/webmcp";
 
 const DIGEST_SIZES = [3, 5, 10] as const;
 
@@ -32,7 +33,7 @@ export function EmailSubscribeForm({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
-    track("subscribe_submit");
+    track("subscribe_submit", { channel: "email", source });
     try {
       const res = await fetch("/api/subscribe", {
         method: "POST",
@@ -46,14 +47,14 @@ export function EmailSubscribeForm({
         }),
       });
       if (res.ok) {
-        track("subscribe_success");
+        track("subscribe_success", { channel: "email", source });
         setStatus("done");
       } else {
-        track("subscribe_error");
+        track("subscribe_error", { channel: "email", source });
         setStatus("error");
       }
     } catch {
-      track("subscribe_error");
+      track("subscribe_error", { channel: "email", source });
       setStatus("error");
     }
   };
@@ -87,7 +88,11 @@ export function EmailSubscribeForm({
     "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form
+      {...formAnnotationAttributes(webmcpForm("subscribe-email"))}
+      onSubmit={onSubmit}
+      className="space-y-4"
+    >
       <div>
         <label
           htmlFor="digest-email"

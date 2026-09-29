@@ -138,3 +138,37 @@ jobs:
           echo "If this is 503, CLERK_SECRET_KEY is missing from the Worker env." >&2
           echo "Re-push it with: pnpm sync-env --workers" >&2
           exit 1
+
+      # Fail-closed check for CLERK_WEBHOOK_SECRET in the Worker environment.
+      # Same reasoning as CLERK_SECRET_KEY above: wrangler secret bulk pushes it,
+      # so a missing value is invisible until Clerk delivers an event, and
+      # handleClerkWebhook then answers 503 "clerk webhook not configured" for
+      # every delivery while sign-in keeps working — a silently dead signup
+      # sync. A configured endpoint rejects this unsigned probe with a 4xx.
+      #
+      # The probe type is deliberately NOT user.created/updated/deleted: the
+      # handler ignores unknown event types, so even if signature verification
+      # ever regressed, this could not write a row into clerk_users and
+      # inflate the public signup count. Assert the status only, never the body.
+      - name: Smoke — /api/webhooks/clerk configured
+        run: |
+          max_attempts=5
+          attempt=1
+          while [ "$attempt" -le "$max_attempts" ]; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+              -H 'content-type: application/json' \
+              -d '{"type":"clerk.webhook.smoke","data":{}}' \
+              "https://aidr.today/api/webhooks/clerk")
+            if [ "$code" != "503" ] && [ "$code" != "404" ] && [ "$code" != "000" ]; then
+              echo "OK HTTP $code (webhook secret present; unsigned probe rejected)"
+              exit 0
+            fi
+            echo "Attempt $attempt/$max_attempts failed (HTTP $code), waiting 5s..."
+            sleep 5
+            attempt=$((attempt + 1))
+          done
+          echo "Clerk webhook smoke failed after $max_attempts attempts" >&2
+          echo "If this is 503, CLERK_WEBHOOK_SECRET is missing from the Worker env." >&2
+          echo "If this is 404, the webhook route is not deployed." >&2
+          echo "Re-push it with: pnpm sync-env --workers" >&2
+          exit 1

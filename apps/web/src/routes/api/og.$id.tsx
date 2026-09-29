@@ -1,11 +1,10 @@
 import { cache, ImageResponse } from "@cf-wasm/og/workerd";
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
+import { loadStoryOgFonts, storyOgRenderOptions } from "../../lib/og-fonts";
 import { idPrefixFromSlug } from "../../lib/slug";
 import {
   fetchStoryOgImage,
-  STORY_OG_HEIGHT,
-  STORY_OG_WIDTH,
   storyOgCard,
   storyOgLanguage,
 } from "../../lib/story-og";
@@ -33,6 +32,11 @@ async function loadFont(
   try {
     const res = await env?.ASSETS?.fetch(assetsGet(path));
     if (!res?.ok) return null;
+    // A miss answered with the SPA shell would be a >1000 byte HTML buffer,
+    // and satori throws on that instead of degrading. Same guard as
+    // worker/public-assets.ts, because it is the same binding.
+    const ctype = (res.headers.get("content-type") ?? "").toLowerCase();
+    if (ctype.includes("text/html")) return null;
     const buf = await res.arrayBuffer();
     return buf.byteLength > 1000 ? buf : null;
   } catch {
@@ -88,29 +92,12 @@ export const Route = createFileRoute("/api/og/$id")({
         const lang = storyOgLanguage(
           new URL(request.url).searchParams.get("lang")
         );
-        const [medium, bold, image] = await Promise.all([
-          loadFont(env, "/fonts/eb-garamond-500.ttf"),
-          loadFont(env, "/fonts/eb-garamond-700.ttf"),
+        const [fonts, image] = await Promise.all([
+          loadStoryOgFonts((path) => loadFont(env, path)),
           fetchStoryOgImage(item.image_url),
         ]);
-        const fonts = [
-          medium && {
-            name: "EB Garamond",
-            data: medium,
-            weight: 500 as const,
-            style: "normal" as const,
-          },
-          bold && {
-            name: "EB Garamond",
-            data: bold,
-            weight: 700 as const,
-            style: "normal" as const,
-          },
-        ].filter((f): f is NonNullable<typeof f> => Boolean(f));
         return await ImageResponse.async(storyOgCard(item, image, lang), {
-          width: STORY_OG_WIDTH,
-          height: STORY_OG_HEIGHT,
-          ...(fonts.length ? { fonts } : {}),
+          ...storyOgRenderOptions(fonts),
           headers: {
             "Cache-Control": OG_CACHE_CONTROL,
             "Content-Language": lang,

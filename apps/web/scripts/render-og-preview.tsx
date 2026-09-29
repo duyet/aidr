@@ -3,22 +3,14 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { ImageResponse } from "@cf-wasm/og/node";
 import { syntheticStoryPhoto } from "../src/lib/__fixtures__/raster";
+import { loadStoryOgFonts, storyOgRenderOptions } from "../src/lib/og-fonts";
 import {
-  STORY_OG_HEIGHT,
-  STORY_OG_WIDTH,
   type StoryOgImage,
   storyOgCard,
   storyOgImageFromBytes,
   storyOgLanguage,
 } from "../src/lib/story-og";
 import type { FeedItem, Lang } from "../src/lib/types";
-
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength
-  ) as ArrayBuffer;
-}
 
 const USAGE = `usage:
   render-og-preview.tsx <image.png> <output.png> [en|vi]   one card from a real image
@@ -53,10 +45,13 @@ const story: FeedItem = {
   image_url: null,
 };
 
-const [medium, bold] = await Promise.all([
-  readFile(resolve("apps/web/public/fonts/eb-garamond-500.ttf")),
-  readFile(resolve("apps/web/public/fonts/eb-garamond-700.ttf")),
-]);
+const fonts = await loadStoryOgFonts(
+  async (path) =>
+    (await readFile(resolve("apps/web", `public${path}`))).buffer as ArrayBuffer
+);
+if (fonts.length !== 2) {
+  throw new Error("both OG font weights must be present to render a preview");
+}
 
 async function render(image: StoryOgImage | null, lang: Lang, title?: string) {
   const response = await ImageResponse.async(
@@ -65,24 +60,7 @@ async function render(image: StoryOgImage | null, lang: Lang, title?: string) {
       image,
       storyOgLanguage(lang)
     ),
-    {
-      width: STORY_OG_WIDTH,
-      height: STORY_OG_HEIGHT,
-      fonts: [
-        {
-          name: "EB Garamond",
-          data: toArrayBuffer(medium),
-          weight: 500,
-          style: "normal",
-        },
-        {
-          name: "EB Garamond",
-          data: toArrayBuffer(bold),
-          weight: 700,
-          style: "normal",
-        },
-      ],
-    }
+    storyOgRenderOptions(fonts)
   );
   return new Uint8Array(await response.arrayBuffer());
 }

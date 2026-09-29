@@ -62,11 +62,20 @@ import { rankScore } from "./ranking.js";
 import {
   buildRunStats,
   type RunStepInfo,
+  recordSourceHealth,
   recordStep,
   serializeRunStats,
 } from "./run-stats.js";
+import {
+  carrySourceEmptyRuns,
+  emptySourceHealth,
+  parsePreviousEmptyRuns,
+  resolveSkipReason,
+  type SourceRunHealth,
+} from "./source-health.js";
 import { fetchStoryDetailByUrl } from "./sources/huggingnews.js";
 import { adapters } from "./sources/registry.js";
+import { SourceFetchError } from "./sources/rss.js";
 import { ensureVendorBlogSources } from "./sources/seed.js";
 import type { FetchedItem, FetchedItemSource } from "./sources/types.js";
 import { reviewPendingSubmissions } from "./submissions.js";
@@ -88,6 +97,7 @@ import {
   mapEntries,
   persistOpenedWorkflowRun,
   persistWorkflowRun,
+  WORKFLOW_RUN_STARTED_AT_ORDER_SQL,
 } from "./workflow-run.js";
 import { llmStep, safeStep } from "./workflow-step.js";
 
@@ -217,6 +227,16 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     let notified: Record<string, number> = {};
     let notifyReason: Record<string, NotifyChannelReason> = {};
     const steps: RunStepInfo[] = [];
+    /** Per-source outcome for this run. Seeded with a zeroed row for every
+     *  source (enabled or not) so the dashboard can always show a count or a
+     *  reason instead of a blank cell, and so a source that was switched off
+     *  mid-window is reported as `disabled` rather than silently vanishing. */
+    const sourceHealth: Record<string, SourceRunHealth> = {};
+    /** Why a source's fetch step threw, when it threw a typed
+     *  `SourceFetchError`. That typed error is what separates a broken feed
+     *  from a quiet one: a returned `[]` means the feed parsed and was simply
+     *  empty, a throw means the transport or the parse failed. */
+    const fetchFailures = new Map<string, "fetch_failed" | "parse_failed">();
 
     // POST /api/admin/ingest `{id}` is the Workflow instance id. Persist
     // that row before prune/fetch/LLM and before any step.do: create() can
@@ -258,18 +278,29 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       await assertMediaManifestSchema(this.env.DB);
       const sources = await safeStep(step, "load-sources", [], async () => {
         await ensureVendorBlogSources(this.env.DB);
+        // Deliberately NOT `WHERE enabled = 1`: the disabled rows are loaded
+        // too so the fetch loop can skip them while the per-source health map
+        // still records an explicit `disabled` reason for them. Same single
+        // round trip as before.
         const { results } = await this.env.DB.prepare(
-          "SELECT id, type, config, enabled FROM sources WHERE enabled = 1"
+          "SELECT id, type, config, enabled FROM sources"
         ).all<SourceRow>();
         return results ?? [];
       });
+
+      for (const source of sources) {
+        sourceHealth[source.id] = source.enabled
+          ? emptySourceHealth()
+          : { ...emptySourceHealth(), skipReason: "disabled" };
+      }
+      const enabledSources = sources.filter((s) => s.enabled !== 0);
 
       const sinceEpochSec = Math.floor(Date.now() / 1000) - SINCE_WINDOW_SEC;
       const fetchedBySource: { source: SourceRow; items: FetchedItem[] }[] = [];
 
       const SOURCE_FETCH_GROUP = 4;
-      for (let gi = 0; gi < sources.length; gi += SOURCE_FETCH_GROUP) {
-        const group = sources.slice(gi, gi + SOURCE_FETCH_GROUP);
+      for (let gi = 0; gi < enabledSources.length; gi += SOURCE_FETCH_GROUP) {
+        const group = enabledSources.slice(gi, gi + SOURCE_FETCH_GROUP);
         const groupResults = await Promise.all(
           group.map((source) =>
             step
@@ -286,7 +317,16 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 }
               )
               .catch((error: unknown) => {
+                // A typed `SourceFetchError` is the adapter telling us *why*
+                // it produced nothing (403/5xx, or a 200 that is really an
+                // HTML error page). It is recorded so the dashboard can say
+                // so; everything else is logged and treated as a plain
+                // failure. `sanitizeError` is applied at write time, so the
+                // raw error never reaches D1 or an API response.
                 console.error(`fetch-${source.id} step failed:`, error);
+                if (error instanceof SourceFetchError) {
+                  fetchFailures.set(source.id, error.reason);
+                }
                 return [] as FetchedItem[];
               })
           )
@@ -297,12 +337,18 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           fetchedBySource.push({ source, items });
           itemsFetched += items.length;
           bySource[source.id] = (bySource[source.id] ?? 0) + items.length;
+          recordSourceHealth(sourceHealth, source.id, {
+            fetched: items.length,
+          });
         }
       }
       recordStep(
         steps,
         "fetch",
-        `${itemsFetched} items from ${sources.length} sources`
+        `${itemsFetched} items from ${enabledSources.length} sources`,
+        sources.length > enabledSources.length
+          ? `${sources.length - enabledSources.length} disabled`
+          : undefined
       );
 
       let newRows = await safeStep(
@@ -470,6 +516,9 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
                 this.env,
                 newRows.map((row, i) => ({
                   i,
+                  // Decision identity: lets the optional JEV panel key its
+                  // idempotency to this item inside this run.
+                  id: row.id,
                   title: row.item.title,
                   summary: row.item.summary,
                   source: row.source.id,
@@ -495,6 +544,15 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         newRows.length === 0 ? "skipped" : `scored ${scored.size} items`,
         newRows.length === 0 ? "no new items" : undefined
       );
+
+      // Per-source `scored` counts. `newRows` is what the scorer was actually
+      // handed (post-dedupe), so this is the honest denominator for "how much
+      // of what this source delivered cost us an LLM call".
+      for (const row of newRows) {
+        if (!scored.has(row.id)) continue;
+        const health = sourceHealth[row.source.id];
+        if (health) health.scored += 1;
+      }
 
       const now = Date.now();
 
@@ -728,6 +786,75 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       merged = mergePlan.merged.size;
       published = publishedRows.length;
       rejected = newRows.length - merged - published;
+
+      // Per-source accepted / rejected / merged, using exactly the same
+      // partition the write step below applies (`publishedRows` already
+      // excludes merged rows, and `rejected` is the remainder). `rejected`
+      // here is precisely the `relevance < 0.4` hide rule firing — the rule
+      // itself is untouched; this only makes it countable per source so a
+      // source that fetches a lot and publishes nothing is visible.
+      // `publishedRowIds` is a Set because `publishedRows.includes` would make
+      // this added bookkeeping O(n²) and the run should not get slower for
+      // observability.
+      const publishedRowIds = new Set(publishedRows.map((row) => row.id));
+      for (const row of newRows) {
+        const health = sourceHealth[row.source.id];
+        if (!health) continue;
+        if (mergePlan.merged.has(row.id)) health.merged += 1;
+        else if (publishedRowIds.has(row.id)) health.accepted += 1;
+        else health.rejected += 1;
+      }
+
+      // Resolve the structured skip reason for every enabled source. A source
+      // that delivered items has no reason; one that delivered none gets the
+      // single most specific explanation the run actually has evidence for.
+      for (const [id, health] of Object.entries(sourceHealth)) {
+        if (health.skipReason === "disabled") continue;
+        health.skipReason = resolveSkipReason({
+          failure: fetchFailures.get(id),
+          fetched: health.fetched,
+          newItems: health.accepted + health.rejected + health.merged,
+          rejected: health.rejected,
+        });
+      }
+
+      // Carry the empty-run streaks forward from the previous run's stats
+      // instead of scanning run history, so surfacing "stale" on the read
+      // path stays a single-row read no matter how long a feed has been dead.
+      // Inside a step so a Workflow replay returns the memoized result rather
+      // than incrementing the same streak twice.
+      const previousEmptyRuns = await safeStep(
+        step,
+        "carry-source-streaks",
+        {} as Record<string, number>,
+        async () => {
+          const { results } = await this.env.DB.prepare(
+            `SELECT stats FROM workflow_runs
+             WHERE id != ? AND stats IS NOT NULL AND stats LIKE '%"sourceHealth"%'
+             ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC
+             LIMIT 1`
+          )
+            .bind(runId)
+            .all<{ stats: string | null }>();
+          return parsePreviousEmptyRuns(results?.[0]?.stats ?? null);
+        }
+      );
+      Object.assign(
+        sourceHealth,
+        carrySourceEmptyRuns(
+          sourceHealth,
+          // The previous run stored full per-source records; only the
+          // `emptyRuns` streak is carried forward, so rehydrate just that
+          // field rather than trusting the rest of a JSON column written by
+          // an older build.
+          Object.fromEntries(
+            Object.entries(previousEmptyRuns).map(([id, emptyRuns]) => [
+              id,
+              { ...emptySourceHealth(), emptyRuns },
+            ])
+          )
+        )
+      );
       for (const score of scored.values())
         scoreAndTranslateTokens += score.tokens;
       for (const translation of translated.values())
@@ -1370,6 +1497,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
               this.env,
               rows.map((row, i) => ({
                 i,
+                id: row.id,
                 title: row.title,
                 summary: row.summary ?? undefined,
                 source: row.source_id,
@@ -1605,6 +1733,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       recordStep(steps, "close-run", "recording");
       const stats = buildRunStats({
         bySource,
+        sourceHealth,
         steps,
         new: itemsNew,
         merged,

@@ -348,7 +348,13 @@ export async function getStatus(env: Env) {
     ),
     itemsByStatus: itemsByStatus ?? [],
     telegram: {
-      configured: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
+      configured: Boolean(
+        env.TELEGRAM_BOT_TOKEN &&
+          (env.TELEGRAM_VI_CHAT_ID || env.TELEGRAM_CHAT_ID)
+      ),
+      englishConfigured: Boolean(
+        env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_EN_CHAT_ID
+      ),
     },
     latestTldr: latestTldr ?? null,
     notifications,

@@ -13,7 +13,20 @@ bilingual feed.
 
 ## Overview
 
-Prompts live in `worker/llm.ts`; the pipeline steps in `worker/workflow.ts`.
+One hourly run does three jobs. Prompts live in `worker/llm.ts`; the steps live in `worker/workflow.ts`.
+
+| Phase | What it writes | Where |
+| --- | --- | --- |
+| Consume | Source rows become `items` (fetch, dedupe, enrich) | `worker/sources/`, `worker/dedupe.ts`, `worker/enrich.ts` |
+| Rank | Scores, translations, `rank_score`, then today's `tldr_snapshots` row (`bullets_en`, `bullets_vi`) | `worker/llm.ts`, `worker/ranking.ts`, `worker/tldr.ts` |
+| Publish | The same edition, per language, with no cross-language fill-in | `worker/digest/edition.ts` |
+
+Publish has two deliveries and they do not share a clock or a table:
+
+- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout `design` or `text` come from that subscriber. Idempotency is `subscribers.last_sent_date`. A browser preview of the same render is `GET /api/subscribe/preview?lang=&n=&format=`.
+- **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories are Telegram-only.
+
+An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next hourly run retries. Email is not a `Notifier`: a notifier is one target plus a trending post.
 
 ## Scheduling & coalesce
 
@@ -28,6 +41,39 @@ routinely delays or skips scheduled workflows.
 Both paths coalesce: a new instance is skipped if one started in the last
 45 minutes. `POST /api/admin/ingest?force=1` (workflow_dispatch) bypasses
 the window.
+
+## Audience metrics (GA4 snapshot)
+
+The `/data` **Audience** tab shows page views, DAU, MAU, and the subscriber
+breakdowns. Traffic comes from GA4; subscribers come from D1. They are never
+mixed.
+
+- **GA4 is pulled, never read live.** The browser's GA4 events are not
+  readable by the Worker, so `worker/ga4/insights.ts` signs a read-only
+  service-account assertion and runs four `properties.runReport` calls: a
+  90-day `date` series, a dimension-less 28-day totals row, top `pagePath`,
+  and top `sessionSource`. The result is stored as one row in `ga4_insights`
+  (migration 0028) and served by `GET /api/system/audience`. A page load
+  never calls Google.
+- **The sync rides the ingest alarm.** `NewsIngestScheduler.alarm()` calls
+  `maybeSyncGa4Insights` behind a 24-hour gate, because the account cannot
+  spend Worker cron slots and GA4 does not resolve finer than a day. It is
+  best-effort: a failed audience sync never fails the ingest alarm.
+  `POST /api/admin/ga4-sync` forces one.
+- **DAU is `activeUsers` on the latest day in the series; MAU is `totalUsers`
+  over the trailing 28 days.** MAU is never a sum of daily `activeUsers` —
+  a user active on three days is one monthly user, not three.
+- **Every failure mode is a status, not a number.** `unconfigured` (no
+  migration, no credential, or no sync has ever written a row), `error` (the
+  read or the payload failed), and `stale` (snapshot older than 48h, still
+  shown but dated). None of them may render as `0` — a confident zero
+  audience over an unanswered question is the one number this surface must
+  never show. A `runReport` that returns no totals row is an `error`, not a
+  zero, and it leaves the previous snapshot untouched.
+- Credentials: `GA4_PROPERTY_ID` (public, `[vars]`) and
+  `GA4_SERVICE_ACCOUNT_JSON` (secret, Viewer on the property). The token
+  endpoint is pinned to `https://oauth2.googleapis.com/token`; the
+  `token_uri` inside the key file is ignored.
 
 The Durable Object only gates the 45-minute coalesce and records
 last-started.
@@ -80,6 +126,51 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
    (`https://x.ai/sitemap.xml` `/news/<slug>` locs + `/news` listing titles),
    MarketBrief AI hub via `/{topic}/__data.json` (default topic `ai`;
    war/politics stay out). Extra RSS: `deepmind`, `aws-ml`, `google-dev`.
+
+   The set of sources is **declarative**: one list in
+   `worker/sources/catalog.ts` generates the runtime seed, the migration, and
+   the `/api/system/sources` + `/data` surfaces, so a source cannot reach one
+   and miss the others. An operator can also add or enable an `rss` row at
+   runtime through `upsert_source` with no deploy — see
+   [`worker/README.md`](worker/README.md) → "Add a source without a deploy".
+
+   - **Flood gate.** A high-volume feed is cut before the scorer sees it, in
+     this order: an optional named title pre-filter (`keywordFilter: "ai"`,
+     the same regex HN uses), then a hard newest-first `maxItems` cap applied
+     after the since-window filter. The Vietnamese newsroom and the four AI
+     newsrooms are capped at 6 items per run each. Newest-first is what makes
+     the cap safe: the 26h window means the head of the feed at the next run
+     is exactly what was published since the last one, so the cap samples the
+     live edge and dedupe drops the rest.
+   - **Host pacing.** A row may set `minRequestIntervalMs` to serialise
+     same-host fetches; the first request to a host is never delayed.
+   - **Explicit source language.** A row with `sourceLang: "vi"` puts its
+     items on the VI→EN translation-QA path below. It is declared metadata,
+     never inferred from diacritics.
+   - A source that returns a non-2xx, or a 200 that is really an HTML page,
+     throws a typed `SourceFetchError` so the run records `fetch_failed` /
+     `parse_failed` rather than reporting a quiet feed.
+
+1b. **Per-source health + staleness** — every source row gets a record in
+    `workflow_runs.stats.sourceHealth`: `fetched` / `scored` / `accepted` /
+    `rejected` / `merged`, a structured skip reason (`fetch_failed`,
+    `parse_failed`, `empty`, `all_rejected_below_relevance`, `disabled` — a
+    closed enum, never free text or a URL), and a count of consecutive
+    zero-item runs. The streak is **carried forward** from the previous run's
+    stats (one single-row read) rather than recomputed from run history, so
+    surfacing staleness on the read path costs nothing. A source at or over
+    its threshold is flagged stale in `/api/system/sources` and the `/data`
+    Algo tab: **168 consecutive runs** (7 days at the hourly cadence). That
+    number is measured, not round — 14 of the 21 registry feeds returned
+    nothing inside the 26h window when they were verified live, including
+    pre-existing ones that publish weekly, so the "e.g. 48 runs" in #230 would
+    have flagged healthy sources most of the weekend. A row may override it
+    with `staleAfterRuns` when a source's real cadence demands it; arXiv is
+    the known case (no weekend submissions, ~54 silent runs) and is not in
+    the registry yet — see `ARXIV_NOT_ADDED_REASON` in
+    `worker/sources/catalog.ts`. A disabled source is reported `disabled`,
+    never `stale` — off is a decision, not a fault. This is observability
+    only: it changes no ranking, no prompt, and no LLM budget.
 
 2. **Dedupe** — item id = `sha256(url)`; ids already in `items` are dropped.
 
@@ -247,7 +338,13 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
     - UI shows 8 by default (user preference 8/12/16).
 
 11. **Email digest** — per-subscriber language and digest size (3/5/10
-    stories, default 5) to confirmed subscribers, once per local morning.
+    stories, default 5) to confirmed subscribers, once per their local
+    morning (from 07:00 in the subscriber's timezone). Copy comes from the
+    same edition as Telegram (`worker/digest/edition.ts`): `bullets_vi` or
+    `bullets_en` for that local date, with no cross-language fallback. An
+    empty column leaves `last_sent_date` unset so the next hourly run
+    retries. Idempotency stays on `subscribers.last_sent_date`, not the
+    `notifications` table.
 
 12. **Notify (`worker/notify/`)** — pluggable channel adapters (Telegram
     plus optional JSON/Slack webhook via `NOTIFY_WEBHOOK_URL`),
@@ -257,9 +354,12 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       links, optional health snapshot) is the internal shape. Adapters in
       `worker/notify/adapters.ts` render Telegram HTML, Slack
       incoming-webhook JSON, or raw JSON.
-    - *Daily digest*: ONE message per local day (Asia/Ho_Chi_Minh, from
-      08:00) — the TL;DR snapshot's bullets (VI preferred), each linked to
-      its story permalink, plus a site button.
+    - *Daily digest*: ONE message per local day per channel (Asia/Ho_Chi_Minh,
+      from 08:00). The Vietnamese channel (`TELEGRAM_VI_CHAT_ID`, falling
+      back to `TELEGRAM_CHAT_ID`) posts `bullets_vi` only. The English
+      channel (`TELEGRAM_EN_CHAT_ID`, same bot token)
+      posts `bullets_en` only. Neither falls back to the other language.
+      Each bullet links to its story permalink, plus a site button.
     - *Trending*: an individual post only when the algo flags a story as
       exceptional (`rank_score ≥ 20` and `llm_importance ≥ 7`), capped at
       6/day with a 1h minimum gap, one per run. 20 is reachable for a
@@ -278,10 +378,51 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       gates, and fallback checklist are in
       [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).
       IV is not enabled by this document; keep the normal message/photo path
-      until product and operations approve a manual POC.
-    - The current media slice still uses `sendPhoto`/text fallback only. Telegram
-      `sendVideo`/`sendMediaGroup` and durable multi-message delivery remain a
-      follow-up slice; this change only preserves the typed manifest.
+      until product and operations approve a manual POC. That record is a
+      **no-go**; the only automation it gained is a *field gate*
+      ([`worker/telegram-iv.ts`](worker/telegram-iv.ts)) that checks
+      `title`/`body`/`published_date`/`image_url`/`site_name`/`description`
+      for one `{id8}` + `lang` and answers `iv_eligible` with a reason. Run it
+      with `verify-aidr doctor iv --id <8hex> --lang vi|en` or
+      `GET /api/admin/notify/iv`. It invents no `rhash` and no query template.
+    - `sendMessage`/`sendPhoto` set `link_preview_options` explicitly
+      (`is_disabled`) rather than inheriting the API default: a preview would
+      attach to one arbitrary digest bullet or double the photo. Rationale and
+      the rejected `prefer_small_media`/`prefer_large_media`/`show_above_text`
+      values are in `worker/notify/telegram.ts`.
+    - The trending photo path attaches the **generated** first-party card
+      `/api/og/{id8}.png?lang=` (1200×630) — the same `og:image` the card gate
+      approves — instead of the upstream thumb, so a link preview can never be
+      a 404 hotlink-hostile image. The normalized manifest thumbnail remains
+      the fallback when the id cannot address a card.
+    - The trending post carries **one** inline button, "Read →" / "Đọc bài →",
+      pointing at the aidr story permalink (`/{id8}?lang=` + UTM). It used to be
+      two — "Read →" to the publisher, "AI;DR" to the permalink — which meant the
+      image above (already the first-party card) and the link pointed at
+      different stories. One canonical locale-stable URL for both.
+    - Not a `t.me/iv` wrapper: Instant View needs an editor-approved template and
+      an editor-generated `rhash`, which exists only inside the operator's IV
+      Editor session. Telegram's plain link preview from the page's own Open
+      Graph tags is the documented fallback
+      ([`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md)).
+    - A trending story with two or more images uses `sendMediaGroup` (2–10
+      photos: the story's own manifest images and video posters). One image
+      stays `sendPhoto` so the inline button remains — an album has no
+      `reply_markup`, so that link moves into the caption. `sendVideo` and
+      durable multi-message delivery remain a follow-up.
+    - **Media order: story image first, generated card as fallback.** The post
+      leads with the story's real photo. The first-party OG card
+      `/api/og/{id8}.png?lang=` is used when the story has no usable image, and
+      as a one-shot retry when Telegram rejects the image (hotlink-hostile or
+      dead upstream URLs) — it is 200 by construction, so the post keeps its
+      image instead of dropping to bare text. The card no longer occupies an
+      album slot.
+    - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
+      is `en`. Digest bullets come from that language's edition
+      (`worker/digest/edition.ts`) and never from the other column. Trending
+      copy is chosen by `Notifier.lang`: English posts the source title, and
+      Vietnamese posts `translations` when the title is present, otherwise
+      the source title. A second locale is another notifier entry.
 
 13. **Review gates (LLM, rating ≥ 0.6)** — user translation suggestions and
     HN-style story submissions are judged (faithfulness / relevance / not
@@ -330,6 +471,15 @@ even if a later slice times out.
 - TL;DR uses a 90s hang-cap.
 - Translate attempts use a 60s hang-cap so `anyrouter/auto` is not killed
   mid-route (a 25s cap made every score/TL;DR model log 0 tokens).
+
+None of these budgets are raised by adding sources. The flood gate above is
+what makes extra coverage fit inside them: `scoreItems` runs 3 concurrent
+batches of 5 (15 items) inside a 4-minute step, and the measured steady state
+is ~4 new items per run. Each new source row's `maxItems` is therefore capped
+at or below one score batch (5), and the whole Vietnamese + newsroom addition
+is bounded at 6 items per run per source on a 26h window that dedupe then
+collapses. If a future source set does not fit, the number to lower is the
+source row's `maxItems` — never a hang-cap, never a batch size.
 
 A hang, empty sanitize, timeout, or 402 advances the chain:
 

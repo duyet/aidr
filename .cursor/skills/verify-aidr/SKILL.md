@@ -1,6 +1,6 @@
 ---
 name: verify-aidr
-description: Drive and prove aidr.today (AI news digest — TL;DR + ranked stories) over live HTTP. Use mid-ship or /poteto-mode when verifying homepage/feed, AI;DR, /about, /extension, or GET /api/public before claiming a public-surface change works.
+description: Drive and prove aidr.today (AI news digest — TL;DR + ranked stories), the Chrome extension package, analytics attribution, and the public Telegram path. Use mid-ship or /poteto-mode when verifying homepage/feed, AI;DR, /about, /extension, channel workflows, or GET /api/public before claiming a public-surface change works.
 ---
 
 # Verify aidr (aidr.today)
@@ -45,6 +45,33 @@ Pass requires:
 
 Do not drive an instance whose doctor reports `ok: false`. HTML without Chrome UA may be challenged; the lever always sends one.
 
+## Doctor IV (Telegram Instant View field gate)
+
+The machine-checkable field gate from `docs/decisions/telegram-instant-view.md`.
+Read-only, public, and credential-free — it needs no bot token and no channel id.
+
+```bash
+.cursor/skills/verify-aidr/bin/verify-aidr doctor iv --id <8hex> --lang vi
+.cursor/skills/verify-aidr/bin/verify-aidr doctor iv --id <8hex> --lang en
+```
+
+It prints a per-field verdict (`title` / `body` / `published_date` /
+`image_url` / `site_name` / `description`), a range-probe of the generated card
+(`/api/og/{id8}.png`, expected `200 image/png` at 1200×630), the exact source
+URL to paste into the [IV Editor](https://instantview.telegram.org/), and the
+still-unresolved items as labelled placeholders. Non-zero exit means the story
+is not IV-eligible.
+
+What it is **not**: it does not enable IV, does not build a `t.me/iv` link,
+does not create a template, and does not send anything. The `{rhash-from-editor}`
+token in its output is a literal placeholder — the only real `rhash` exists
+inside an operator's own editor session. Never paste a made-up `rhash` into
+this repo, and never point it at a production channel.
+
+`--image <https url>` additionally runs the bounded, SSRF-checked preflight over
+a candidate that is *not* the generated card, reporting `probe_bytes` and a
+fail-closed reason.
+
 ## Drive
 
 Prefer the lever over ad-hoc curl. Recipes live in `features/`. Stable handles:
@@ -61,6 +88,8 @@ Prefer the lever over ad-hoc curl. Recipes live in `features/`. Stable handles:
 .cursor/skills/verify-aidr/bin/verify-aidr drive about
 .cursor/skills/verify-aidr/bin/verify-aidr drive extension
 .cursor/skills/verify-aidr/bin/verify-aidr drive api-public
+.cursor/skills/verify-aidr/bin/verify-aidr drive analytics
+.cursor/skills/verify-aidr/bin/verify-aidr drive telegram
 .cursor/skills/verify-aidr/bin/verify-aidr drive all
 ```
 
@@ -72,9 +101,11 @@ Named location: `.cursor/skills/verify-aidr/evidence/<run-id>/` (printed as `evi
 
 - `doctor.json` — public JSON + homepage identity.
 - `homepage.html` / `about.html` / `extension.html` — HTML bodies.
+- `analytics-*.html` / `telegram-subscribe.html` — campaign and channel-link proof.
 - `api-public.json` / `feed.json` / `tldr-public.json` — JSON bodies.
 - `*-desktop.png` / `*-mobile.png` when Chrome can screenshot.
 - `report.json` — last drive result.
+- `doctor-iv-input.json` — the `doctor iv` run's id/lang/target. The gate's own JSON verdict is printed to stdout, so pipe it to a file when attaching it as evidence.
 
 Proof standards:
 
@@ -84,7 +115,12 @@ Proof standards:
 - An empty digest (`tldr: null`) is live data — report it, do not invent a UI bug.
 - Cleanup must not delete this directory.
 
-## Cleanup
+## Package and runtime checks
+
+- For the unpacked Chrome extension, run `pnpm --filter @aidr/extension lint`, `pnpm --filter @aidr/extension test`, `pnpm --filter @aidr/extension build`, and `pnpm --filter @aidr/extension verify`. The verify command is the browser-backed package proof and writes extension screenshots/feature maps outside this skill's evidence directory.
+- For website analytics, run `.cursor/skills/verify-aidr/bin/verify-aidr drive analytics` for campaign/channel HTTP proof, then inspect the browser event queue for `page_view` and `channel_click`.
+- For Telegram, run `.cursor/skills/verify-aidr/bin/verify-aidr drive telegram`. Real delivery is intentionally skipped unless credentials are explicitly configured; never print or persist them.
+
 
 ```bash
 .cursor/skills/verify-aidr/bin/verify-aidr cleanup
@@ -97,11 +133,14 @@ Stops only the local PID this lever started (recorded in `evidence/.state.json`)
 ```bash
 .cursor/skills/verify-aidr/bin/verify-aidr launch
 .cursor/skills/verify-aidr/bin/verify-aidr doctor
+.cursor/skills/verify-aidr/bin/verify-aidr doctor iv --id <8hex> --lang vi
 .cursor/skills/verify-aidr/bin/verify-aidr drive homepage
 .cursor/skills/verify-aidr/bin/verify-aidr drive tldr
 .cursor/skills/verify-aidr/bin/verify-aidr drive about
 .cursor/skills/verify-aidr/bin/verify-aidr drive extension
 .cursor/skills/verify-aidr/bin/verify-aidr drive api-public
+.cursor/skills/verify-aidr/bin/verify-aidr drive analytics
+.cursor/skills/verify-aidr/bin/verify-aidr drive telegram
 .cursor/skills/verify-aidr/bin/verify-aidr fetch --path /
 .cursor/skills/verify-aidr/bin/verify-aidr screenshot --path / --viewport mobile
 .cursor/skills/verify-aidr/bin/verify-aidr cleanup

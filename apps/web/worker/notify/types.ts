@@ -2,23 +2,24 @@ import type { Lang } from "../../src/lib/types.js";
 import type { MediaManifest } from "../media.js";
 import type { Env } from "../types.js";
 
-/** A trending story posted individually. Title/summary are already
- *  language-resolved by the candidate query (VI preferred, EN fallback). */
+/** A trending story posted individually. Title and summary are already
+ *  language-resolved: English uses the source fields; Vietnamese uses the
+ *  translation when the title is present, otherwise the source fields. */
 export interface StoryPayload {
   id: string;
   url: string;
   title: string;
   summary: string | null;
   image_url: string | null;
-  /** Typed candidates; current transport uses only the normalized thumbnail
-   * through sendPhoto. Video/album delivery remains deferred. */
+  /** Typed candidates. Image URLs (and video posters) ride a Telegram album
+   * when there is more than one. Video files stay deferred. */
   media_manifest?: MediaManifest | null;
   category: string | null;
   points: number;
   comments: number;
   rank_score: number;
   llm_importance: number | null;
-  /** Content language resolved by the notifier query (VI, with EN fallback). */
+  /** Content language the notifier query resolved for this story. */
   lang: Lang;
 }
 
@@ -50,6 +51,13 @@ export interface SendResult {
 export interface Notifier {
   /** Stable id — the `notifications.channel` value. */
   id: string;
+  /**
+   * The only language this channel carries. A locale is its own notifier
+   * (`telegram` is `vi`, `telegram-en` is `en`), not a flag. The dispatcher
+   * never substitutes the other language: a story or digest column in this
+   * language is required, or the channel skips.
+   */
+  lang: Lang;
   /** Where posts go (chat id, webhook host, ...) — stored for observability. */
   target(env: Env): string;
   /** False when the channel is fully unset (local/dev). Throws when

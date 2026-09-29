@@ -1,5 +1,6 @@
 import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { useState } from "react";
+import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import { SITE_URL } from "../lib/site";
@@ -8,12 +9,13 @@ export const Route = createFileRoute("/brand")({
   search: {
     middlewares: [stripSearchParams<RootSearch>(["lang", "locale"])],
   },
-  head: () =>
+  head: ({ match }) =>
     pageHead({
       path: "/brand",
       title: "Brand | AI;DR",
       description:
         "Official AI;DR / aidr.today marks — download or copy URLs for reuse.",
+      route: headRouteInput(match),
     }),
   component: BrandPage,
 });
@@ -22,7 +24,25 @@ const ASSETS = [
   {
     path: "/favicon.svg",
     name: "Favicon",
-    note: "Site icon (yellow AI;DR mark)",
+    note: "Site icon, vector (yellow AI;DR mark). Wordmark is outlined, not <text>, so it renders without fonts.",
+    checker: true,
+  },
+  {
+    path: "/favicon-120x120.png",
+    name: "Favicon 120×120",
+    note: "Raster site icon for search engines that skip SVG (Yandex recommends 120×120)",
+    checker: true,
+  },
+  {
+    path: "/favicon.ico",
+    name: "Favicon ICO",
+    note: "Root-convention icon, 16/32/48 packed into one file",
+    checker: true,
+  },
+  {
+    path: "/apple-touch-icon.png",
+    name: "Apple touch icon",
+    note: "Square mark 180×180",
     checker: true,
   },
   {

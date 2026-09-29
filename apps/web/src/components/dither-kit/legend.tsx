@@ -48,10 +48,15 @@ export function Legend({
             onFocus={() => chart.setFocusDataKey(name)}
             onBlur={() => chart.setFocusDataKey(null)}
             className={cn(
-              "flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground transition-opacity",
+              "flex items-center gap-1.5 font-mono text-[11px] transition-colors",
               isClickable &&
                 "pointer-events-auto cursor-pointer hover:text-foreground",
-              dimmed && "opacity-40"
+              // A non-emphasised series is dimmed with the quiet text token,
+              // not an opacity fade: element opacity blends the label toward
+              // the chart surface, which landed near 2.4:1 on the light card.
+              // The colour swatch next to the label carries most of the
+              // de-emphasis, so the spotlight still reads.
+              dimmed ? "text-quiet-foreground" : "text-muted-foreground"
             )}
           >
             <span

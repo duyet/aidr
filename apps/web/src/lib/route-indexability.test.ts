@@ -9,23 +9,26 @@ import {
   routeIndexability,
   withRouteIndexabilityHeaders,
 } from "./route-indexability";
-import { articleHead, notFoundHead, routeRobotsMeta } from "./seo";
+import {
+  articleHead,
+  type HeadMeta,
+  notFoundHead,
+  routeRobotsMeta,
+} from "./seo";
 import { SITE_URL } from "./site";
 
-function metaContent(
-  tags: {
-    name?: string;
-    property?: string;
-    content?: string;
-    title?: string;
-  }[],
-  key: string
-): string | undefined {
+function metaContent(tags: HeadMeta[], key: string): string | undefined {
   const hit = tags.find(
     (tag) =>
-      tag.name === key || tag.property === key || (key === "title" && tag.title)
+      ("name" in tag && tag.name === key) ||
+      ("property" in tag && tag.property === key) ||
+      (key === "title" && "title" in tag)
   );
-  return hit?.content ?? hit?.title;
+  return hit && "content" in hit
+    ? hit.content
+    : hit && "title" in hit
+      ? hit.title
+      : undefined;
 }
 
 function policyForUrl(path: string, method = "GET") {
@@ -245,6 +248,39 @@ describe("routeIndexability", () => {
  * use the production route head builders and the final Worker response
  * wrapper, which is the behavior available without a Cloudflare local worker.
  */
+describe("/api/mcp indexability (#227)", () => {
+  // #227 turned this endpoint into a public, unauthenticated READ surface.
+  // It must still be uncrawlable: a crawler that submits JSON-RPC gets a
+  // parse error, and an indexed /api/mcp would be a public invitation to
+  // treat an operator endpoint as a website.
+  it("is noindex, nofollow, private for every method", () => {
+    for (const method of ["GET", "HEAD", "POST"]) {
+      const policy = routeIndexability({
+        pathname: "/api/mcp",
+        search: new URLSearchParams(),
+        method,
+        status: 200,
+      });
+      expect(policy.robots).toBe(NOINDEX_NOFOLLOW_ROBOTS);
+      expect(policy.cacheControl).toBe(PRIVATE_CACHE_CONTROL);
+    }
+  });
+
+  it("is noindex, nofollow even with a locale query", () => {
+    const policy = policyForUrl("/api/mcp?lang=en");
+    expect(policy.robots).toBe(NOINDEX_NOFOLLOW_ROBOTS);
+  });
+
+  it("stays noindex on the real response headers", async () => {
+    const response = await withRouteIndexabilityHeaders(
+      new Request(`${SITE_URL}/api/mcp`, { method: "POST" }),
+      Response.json({ jsonrpc: "2.0", id: 1, result: { tools: [] } })
+    );
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+    expect(response.headers.get("Cache-Control")).toBe(PRIVATE_CACHE_CONTROL);
+  });
+});
+
 describe("story response indexability", () => {
   const item = {
     id: "abcdef12deadbeef",

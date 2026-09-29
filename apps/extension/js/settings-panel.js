@@ -546,4 +546,6 @@ export function bindPrefsPopover({ getSettings, onChange, triggers }) {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && dialog) close();
   });
+
+  return { close };
 }

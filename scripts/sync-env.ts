@@ -36,6 +36,12 @@ const WORKER_REQUIRED = [
   "TELEGRAM_BOT_TOKEN",
   "NEWS_ADMIN_TOKEN",
   "CLERK_SECRET_KEY",
+  // 2b63ced shipped this as OPTIONAL, so `pnpm sync-env` silently skipped it
+  // and every Clerk delivery 503'd in production while sign-in kept working.
+  // handleClerkWebhook fails closed before reading the body, so a missing
+  // value is a dead signup sync with no other symptom. deploy-web.yml now
+  // asserts the endpoint is not 503, mirroring the CLERK_SECRET_KEY gate.
+  "CLERK_WEBHOOK_SECRET",
 ] as const;
 
 const WORKER_OPTIONAL = [
@@ -43,6 +49,17 @@ const WORKER_OPTIONAL = [
   "NEWS_UNSUBSCRIBE_SECRET",
   "NOTIFY_WEBHOOK_URL",
   "NEWS_ADMIN_USER_IDS",
+  // Chat ids. wrangler.toml [vars] has production defaults; a synced secret
+  // wins at runtime. TELEGRAM_CHAT_ID is the old Vietnamese name and is not
+  // uploaded — loadEnvFiles copies it onto TELEGRAM_VI_CHAT_ID when needed.
+  "TELEGRAM_VI_CHAT_ID",
+  "TELEGRAM_EN_CHAT_ID",
+  // GA4 Data API service account for the /data Audience tab. Optional on
+  // purpose: a repo without it still deploys, and the Audience tab reports
+  // "Unavailable" rather than zero audience. Add it to WORKER_REQUIRED only
+  // once the property id is also committed — a required key nobody sets
+  // makes `pnpm sync-env` warn on every run.
+  "GA4_SERVICE_ACCOUNT_JSON",
 ] as const;
 
 /** Secrets GitHub Actions workflows read (`secrets.*`). */
@@ -55,7 +72,10 @@ const GITHUB_REQUIRED = [
 const GITHUB_OPTIONAL = [
   "ANYROUTER_API_KEY",
   "TELEGRAM_BOT_TOKEN",
+  "TELEGRAM_VI_CHAT_ID",
+  "TELEGRAM_EN_CHAT_ID",
   "CLERK_SECRET_KEY",
+  "CLERK_WEBHOOK_SECRET",
   "CLOUDFLARE_ACCOUNT_ID",
   "CLOUDFLARE_ZONE_ID",
   "CLERK_PUBLISHABLE_KEY",
@@ -98,6 +118,15 @@ function parseEnvContent(content: string): Record<string, string> {
   return result;
 }
 
+/** Old local files still say TELEGRAM_CHAT_ID. The Worker and Actions
+ *  secrets use TELEGRAM_VI_CHAT_ID; the legacy key is never uploaded. */
+function promoteLegacyTelegramChat(env: Record<string, string>): void {
+  if (!env.TELEGRAM_VI_CHAT_ID && env.TELEGRAM_CHAT_ID) {
+    env.TELEGRAM_VI_CHAT_ID = env.TELEGRAM_CHAT_ID;
+  }
+  delete env.TELEGRAM_CHAT_ID;
+}
+
 function loadEnvFiles(): { env: Record<string, string>; sources: string[] } {
   const env: Record<string, string> = {};
   const sources: string[] = [];
@@ -125,6 +154,7 @@ function loadEnvFiles(): { env: Record<string, string>; sources: string[] } {
   if (!env.VITE_CLERK_PUBLISHABLE_KEY && env.CLERK_PUBLISHABLE_KEY) {
     env.VITE_CLERK_PUBLISHABLE_KEY = env.CLERK_PUBLISHABLE_KEY;
   }
+  promoteLegacyTelegramChat(env);
   return { env, sources };
 }
 

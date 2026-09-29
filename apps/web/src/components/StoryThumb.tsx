@@ -2,7 +2,9 @@ import { track } from "@aidr/ui/track";
 import { Maximize2, X } from "lucide-react";
 import { type ReactElement, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { withLang } from "../lib/locale-url";
 import { resizeCdnImageUrl } from "../lib/tldr-images";
+import type { Lang } from "../lib/types";
 import {
   STORY_DIALOG_CLOSE_BUTTON_CLASS,
   STORY_DIALOG_LIGHTBOX_IMAGE_CLASS,
@@ -62,11 +64,22 @@ export function ThumbLightbox({
  * bordered, object-cover. Sized to two lines of the surrounding
  * `leading-snug` copy (`2lh`) so it fills an AI;DR row.
  */
+/** First-party story card. Used when the publisher thumb is missing or 404s.
+ * `lang` picks the headline language on the card. */
+export function storyOgThumbUrl(
+  itemId: string | undefined,
+  lang: Lang | undefined
+): string | null {
+  if (!itemId) return null;
+  return withLang(`/api/og/${itemId}.png`, lang === "en" ? "en" : "vi");
+}
+
 export function StoryThumb({
   src,
   alt = "",
   priority = false,
   itemId,
+  lang,
   variant = "feed",
 }: {
   src?: string | null;
@@ -74,6 +87,8 @@ export function StoryThumb({
   /** First-screen thumbs: eager so LCP is not a lazy 800KB og:image. */
   priority?: boolean;
   itemId?: string;
+  /** Card language when we fall back to `/api/og`. */
+  lang?: Lang;
   variant?: "feed" | "card";
 }): ReactElement {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -81,8 +96,26 @@ export function StoryThumb({
   const labelId = useId();
   const url = resizeCdnImageUrl(src, variant === "card" ? "card" : "thumb");
   const remote = url && url !== failedSrc ? url : null;
-  const showSrc = remote ?? STORY_THUMB_PLACEHOLDER;
-  const zoomSrc = remote ? (resizeCdnImageUrl(src, "full") ?? remote) : null;
+  const og = storyOgThumbUrl(itemId, lang);
+  const ogSrc = og && og !== failedSrc ? og : null;
+  const showSrc = remote ?? ogSrc ?? STORY_THUMB_PLACEHOLDER;
+  const zoomSrc = remote ? (resizeCdnImageUrl(src, "full") ?? remote) : ogSrc;
+
+  /*
+   * A `fetchPriority="high"` here becomes a `<link rel=preload as=image
+   * fetchpriority=high>` in the SSR head, and the 2026-09-27 trace showed
+   * four of them (pbs.twimg.com x4) starting at t=436 ms — the same
+   * millisecond the render-blocking stylesheet was discovered. On a 1.6 Mbps
+   * link they pushed the CSS from ~90 ms to 1,338 ms, and the LCP element (a
+   * text row, not an image) painted 1.6-2.2 s after TTFB.
+   *
+   * The LCP element is text, so no image needs the highest priority slot.
+   * First-screen thumbs stay `eager` — they are in the viewport, so the
+   * browser fetches them either way and the page looks identical — they just
+   * hand the priority back. This removes the high-priority third-party
+   * preloads from the critical path without changing a pixel.
+   */
+  const loading = priority ? "eager" : "lazy";
 
   const imgClass =
     variant === "card"
@@ -95,14 +128,14 @@ export function StoryThumb({
       alt={alt}
       width={variant === "card" ? 640 : 48}
       height={variant === "card" ? 192 : 48}
-      loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : "low"}
+      loading={loading}
+      fetchPriority="low"
       decoding="async"
       referrerPolicy="no-referrer"
       aria-hidden={alt || zoomSrc ? undefined : true}
       onError={(event) => {
-        if (remote) {
-          setFailedSrc(remote);
+        if (showSrc !== STORY_THUMB_PLACEHOLDER) {
+          setFailedSrc(showSrc);
           return;
         }
         event.currentTarget.style.visibility = "hidden";

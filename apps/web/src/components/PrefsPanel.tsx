@@ -1,7 +1,6 @@
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "../lib/lang-context";
-import { AboutTab } from "./prefs/AboutTab";
 import { SettingsTab } from "./prefs/SettingsTab";
 import { ThemeTab } from "./prefs/ThemeTab";
 
@@ -56,13 +55,10 @@ export function PrefsPanel({
           className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-border bg-card p-4 text-sm shadow-lg"
         >
           <Tabs defaultValue="theme">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="theme">{t("Theme", "Giao diện")}</TabsTrigger>
               <TabsTrigger value="settings">
                 {t("Settings", "Cài đặt")}
-              </TabsTrigger>
-              <TabsTrigger value="about">
-                {t("About", "Giới thiệu")}
               </TabsTrigger>
             </TabsList>
             <TabsContent value="theme">
@@ -70,9 +66,6 @@ export function PrefsPanel({
             </TabsContent>
             <TabsContent value="settings">
               <SettingsTab t={t} />
-            </TabsContent>
-            <TabsContent value="about">
-              <AboutTab t={t} />
             </TabsContent>
           </Tabs>
         </div>

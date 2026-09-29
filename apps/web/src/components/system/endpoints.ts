@@ -5,6 +5,7 @@ export const API = {
   models: "/api/system/models",
   accounts: "/api/system/accounts",
   overview: "/api/system/overview",
+  audience: "/api/system/audience",
   activity: "/api/system/activity",
   runs: "/api/system/runs",
   llm: "/api/system/llm",

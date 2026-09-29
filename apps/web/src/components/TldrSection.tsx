@@ -1,8 +1,10 @@
 import { track } from "@aidr/ui/track";
+import { Link } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 import { type AidrLayout, DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
 import { timeAgo } from "../lib/lang";
 import { type TldrCount, usePrefs } from "../lib/prefs";
+import { tldrCountOptions, tldrShownCount } from "../lib/tldr-links";
 import type { Lang, TldrBullet } from "../lib/types";
 import { TldrBulletList } from "./TldrBulletList";
 
@@ -23,7 +25,7 @@ export function TldrSection({
   layoutLabeled = false,
 }: {
   bullets: TldrBullet[];
-  defaultCount: number;
+  defaultCount: TldrCount;
   lang: Lang;
   totalStories: number;
   updatedAt: number;
@@ -46,30 +48,15 @@ export function TldrSection({
 
   if (bullets.length === 0) return null;
 
-  // Only offer count options meaningful for how many bullets exist. With
-  // x = bullets.length: x <= 8 hides the selector (show all, no picker).
-  // x > 8 shows 8 | min(x, 12), and if x > 12 also | min(x, 16) — each
-  // higher (nominal) option's effective/displayed value capped at x, with
-  // the persisted pref staying one of the nominal 8/12/16 values.
-  const options: { effective: number; nominal: TldrCount }[] = [];
-  if (bullets.length > 8) {
-    options.push({ effective: 8, nominal: 8 });
-    const cap12 = Math.min(bullets.length, 12);
-    options.push({ effective: cap12, nominal: 12 });
-    if (bullets.length > 12) {
-      const cap16 = Math.min(bullets.length, 16);
-      if (cap16 !== cap12) options.push({ effective: cap16, nominal: 16 });
-    }
-  }
-
+  // The 8 | 12 | 16 arithmetic lives in `lib/tldr-links` so the homepage
+  // JSON-LD ItemList (#224) resolves the same "how many bullets are painted"
+  // answer this component does, instead of a second copy drifting from it.
+  const options = tldrCountOptions(bullets.length);
   const selectedOption =
     options.find((o) => o.nominal === defaultCount) ??
     options[options.length - 1];
-  const effectiveDefault = selectedOption
-    ? selectedOption.effective
-    : bullets.length;
 
-  const shown = bullets.slice(0, effectiveDefault);
+  const shown = bullets.slice(0, tldrShownCount(bullets.length, defaultCount));
   const mid = Math.ceil(shown.length / 2);
 
   const selectedIndex = selectedOption ? options.indexOf(selectedOption) : -1;
@@ -168,17 +155,18 @@ export function TldrSection({
         <span>
           {totalStories} {lang === "vi" ? "tin" : "stories"}
         </span>
-        <span>
-          {lastFetchedAt
-            ? `${lang === "vi" ? "Cập nhật" : "Updated"} ${timeAgo(
-                lastFetchedAt,
-                updatedAt,
-                lang
-              )}`
-            : lang === "vi"
-              ? "Cập nhật lúc"
-              : "News as of"}
-        </span>
+        {lastFetchedAt ? (
+          <Link
+            to="/data"
+            suppressHydrationWarning
+            className="rounded-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
+            {timeAgo(lastFetchedAt, updatedAt, lang)}
+          </Link>
+        ) : (
+          <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
+        )}
       </div>
     </section>
   );

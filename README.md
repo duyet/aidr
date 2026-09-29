@@ -12,7 +12,13 @@ Cloudflare Worker (`aidr`), TanStack Start frontend, D1 as the primary store.
 | `apps/extension` | Chrome MV3 new-tab (`@aidr/extension`) |
 | `packages/*` | Shared libs / UI |
 
-Pipeline: [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md).
+## Pipeline
+
+One hourly `NewsIngestWorkflow`. The contract is [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md).
+
+1. **Consume** — enabled sources (`worker/sources/`) are fetched, deduped, and enriched into `items`.
+2. **Rank** — score, translate, then a pure `rank_score` (`worker/ranking.ts`). The top of the last 24h becomes today's TL;DR snapshot: `bullets_en` and `bullets_vi` (`worker/tldr.ts`).
+3. **Publish** — one edition per language (`worker/digest/edition.ts`). Email uses the subscriber's timezone from 07:00 and their digest size. Telegram VI and Telegram EN each post once from 08:00 `Asia/Ho_Chi_Minh`. A missing language column is skipped and retried; it is not filled from the other language. Trending posts stay on Telegram.
 
 ## Local development
 
@@ -60,10 +66,12 @@ Zip: `https://aidr.today/aidr.zip` (built into the Worker).
 
 1. Unzip → load unpacked → select the `aidr/` folder inside
 
-Versioning: release-please opens **separate** release PRs:
+Versioning: release-please opens **separate** release PRs from separate
+manifests (`.github/.release-please-web.json` and
+`.github/.release-please-extension.json`). Leave those PRs for a human to merge.
 
-- Chrome extension (`apps/extension`) → tags `aidr-v*`
-- Website (`apps/web`) → tags `web-v*`
+- Website (`apps/web`) → `chore(web): release X.Y.Z`, tags `web-v*`
+- Chrome extension (`apps/extension`) → `chore(extension): release X.Y.Z`, tags `aidr-v*`
 
 Commits that touch each package path (and scopes like `feat(web):` /
 `feat(extension):`) feed that package’s changelog. Merge the PR to cut

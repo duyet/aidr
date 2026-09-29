@@ -54,6 +54,25 @@ describe("site chrome copy", () => {
     expect(header).toContain('label: "Get AI;DR"');
   });
 
+  it("hydrates the footer timestamp after mount instead of from module cache", () => {
+    const footer = readFileSync(
+      join(here, "../components/NewsFooter.tsx"),
+      "utf8"
+    );
+
+    expect(footer).toContain("useState<number | null>(null)");
+    // The cache read must stay inside the effect (post-mount), never in the
+    // useState initializer — that render-time read is React hydration #418.
+    expect(footer).not.toContain(
+      "() => getCachedFeed()?.lastFetchedAt ?? null"
+    );
+    expect(footer).not.toContain(
+      "() => getCachedFeedFreshness()?.lastFetchedAt ?? null"
+    );
+    expect(footer).toContain("const cached = getCachedFeedFreshness()");
+    expect(footer).not.toContain("suppressHydrationWarning");
+  });
+
   it("points GitHub and ALGORITHM at duyet/aidr apps/web, not the old monorepo news app", () => {
     expect(GITHUB_URL).toBe("https://github.com/duyet/aidr");
     expect(GITHUB_ALGORITHM_PATH).toBe("apps/web/ALGORITHM.md");

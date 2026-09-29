@@ -1,12 +1,15 @@
 import { Button, ErrorBoundary } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
+import { track, trackChannelClick } from "@aidr/ui/track";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { useRef, useState } from "react";
 import {
   PHONE_LANG_TOGGLE_BUTTON_CLASS,
+  PHONE_LANG_TOGGLE_CONTAINER_CLASS,
+  PHONE_MENU_BODY_CLASS,
   PHONE_MENU_DIALOG_CLASS,
+  PHONE_MENU_FOOTER_CLASS,
   PHONE_MENU_GRID_CLASS,
   PHONE_MENU_LINK_CLASS,
   PHONE_TAP_TARGET_CLASS,
@@ -71,6 +74,14 @@ export function PhoneMenu({
         : "hover:bg-muted"
     }`;
 
+  const trackLinkClick = (link: (typeof SITE_LINKS)[number]) => {
+    if (link.channel) {
+      trackChannelClick(link.channel, { to: link.href });
+    } else {
+      track("nav_click", { to: link.href });
+    }
+  };
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen} modal>
       <DialogPrimitive.Trigger asChild>
@@ -132,66 +143,75 @@ export function PhoneMenu({
               </Button>
             </DialogPrimitive.Close>
           </div>
-          <nav aria-label="Mobile navigation" className={PHONE_MENU_GRID_CLASS}>
-            {SITE_LINKS.map((link) => {
-              const active = link.internal && pathname === link.href;
-              const linkClass = getLinkClass(active);
-              return link.internal ? (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  search={{ lang: navigationLang }}
-                  aria-current={active ? "page" : undefined}
-                  onClick={() => {
-                    track("nav_click", { to: link.href });
-                    setOpen(false);
-                  }}
-                  className={linkClass}
-                >
-                  <link.icon aria-hidden />
-                  {link.label}
-                </Link>
-              ) : (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => {
-                    track("nav_click", { to: link.href });
-                    setOpen(false);
-                  }}
-                  className={linkClass}
-                  rel={
-                    link.href.startsWith("http")
-                      ? "noopener noreferrer"
-                      : undefined
-                  }
-                  target={link.href.startsWith("http") ? "_blank" : undefined}
-                >
-                  <link.icon aria-hidden />
-                  {link.label}
-                </a>
-              );
-            })}
-          </nav>
-          <div className="mt-auto space-y-3 border-t border-border p-4">
-            <div className="flex min-h-[52px] items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {lang === "vi" ? "Ngôn ngữ" : "Language"}
-              </span>
-              <LangToggle
-                lang={lang}
-                onChange={onLangChange}
-                disabled={langToggleDisabled}
-                buttonClassName={PHONE_LANG_TOGGLE_BUTTON_CLASS}
-              />
+          <div className={PHONE_MENU_BODY_CLASS}>
+            <nav
+              aria-label="Mobile navigation"
+              className={PHONE_MENU_GRID_CLASS}
+            >
+              {SITE_LINKS.map((link) => {
+                const active = link.internal && pathname === link.href;
+                const linkClass = getLinkClass(active);
+                return link.internal ? (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    search={{ lang: navigationLang }}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => {
+                      trackLinkClick(link);
+                      setOpen(false);
+                    }}
+                    className={linkClass}
+                  >
+                    <link.icon aria-hidden />
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => {
+                      trackLinkClick(link);
+                      setOpen(false);
+                    }}
+                    className={linkClass}
+                    rel={
+                      link.href.startsWith("http")
+                        ? "noopener noreferrer"
+                        : undefined
+                    }
+                    target={link.href.startsWith("http") ? "_blank" : undefined}
+                  >
+                    <link.icon aria-hidden />
+                    {link.label}
+                  </a>
+                );
+              })}
+            </nav>
+            <div className={PHONE_MENU_FOOTER_CLASS}>
+              {/* A labelled full-width control, not a small pill in a corner:
+                  language is the one setting a reader reaches for from the
+                  drawer, so it gets the same large target as the nav tiles. */}
+              <div className="space-y-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {lang === "vi" ? "Ngôn ngữ" : "Language"}
+                </span>
+                <LangToggle
+                  lang={lang}
+                  onChange={onLangChange}
+                  disabled={langToggleDisabled}
+                  buttonClassName={PHONE_LANG_TOGGLE_BUTTON_CLASS}
+                  containerClassName={PHONE_LANG_TOGGLE_CONTAINER_CLASS}
+                />
+              </div>
+              <ErrorBoundary fallback={null}>
+                <HeaderAuth
+                  avatarSize="size-9"
+                  stacked
+                  onSignIn={() => setOpen(false)}
+                />
+              </ErrorBoundary>
             </div>
-            <ErrorBoundary fallback={null}>
-              <HeaderAuth
-                avatarSize="size-9"
-                stacked
-                onSignIn={() => setOpen(false)}
-              />
-            </ErrorBoundary>
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

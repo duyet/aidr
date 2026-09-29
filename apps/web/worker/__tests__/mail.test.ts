@@ -315,6 +315,7 @@ describe("renderNoteEmail", () => {
     });
     expect(html).toContain('src="https://aidr.today/og/abc.png"');
     expect(html).toContain('width="64"');
+    expect(html).not.toContain('class="mail-hero"');
     expect(html.match(/<img /g)?.length).toBe(2);
   });
 

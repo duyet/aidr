@@ -1,3 +1,4 @@
+import type { TrackChannel } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import {
   Database,
@@ -45,6 +46,7 @@ export const SITE_LINKS: {
   label: string;
   internal: boolean;
   icon: LinkIcon;
+  channel?: TrackChannel;
 }[] = [
   { href: "/", label: "News", internal: true, icon: Newspaper },
   { href: "/about", label: "About", internal: true, icon: Info },
@@ -55,8 +57,15 @@ export const SITE_LINKS: {
     label: "Get AI;DR",
     internal: true,
     icon: RiChromeLine,
+    channel: "chrome",
   },
-  { href: TELEGRAM_URL, label: "Telegram", internal: false, icon: Send },
+  {
+    href: TELEGRAM_URL,
+    label: "Telegram",
+    internal: false,
+    icon: Send,
+    channel: "telegram",
+  },
   { href: "/data", label: "Data", internal: true, icon: Database },
   { href: "/submit", label: "Submit", internal: true, icon: Plus },
   { href: DUYET_URL, label: "duyet.net", internal: false, icon: Globe },

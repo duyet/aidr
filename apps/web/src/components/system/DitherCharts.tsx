@@ -49,6 +49,42 @@ export function ItemsAreaChart({
 /** Back-compat alias: Items per day is now a bar chart. */
 export const ItemsBarChart = ItemsAreaChart;
 
+/** One daily series with the axis label that series actually has. The
+ *  pipeline charts above are hardcoded to their own metrics, so audience
+ *  charts (page views, active users, signups) get a generic version instead
+ *  of inheriting an "Items" legend that would be wrong. */
+export function DailyMetricChart({
+  data,
+  seriesKey,
+  label,
+  color = "blue",
+  emptyLabel,
+}: {
+  data: DayCount[];
+  seriesKey: string;
+  label: string;
+  color?: DitherColor;
+  emptyLabel: string;
+}) {
+  if (data.length === 0) return <EmptyNote label={emptyLabel} />;
+  const rows = data.map((d) => ({
+    day: shortDay(d.date),
+    [seriesKey]: d.count,
+  }));
+  const config: ChartConfig = {
+    [seriesKey]: { label, color },
+  };
+  return (
+    <BarChart data={rows} config={config} className="h-44 w-full">
+      <Grid />
+      <XAxis dataKey="day" />
+      <YAxis />
+      <Bar dataKey={seriesKey} />
+      <Tooltip />
+    </BarChart>
+  );
+}
+
 /** Dithered bar chart of LLM tokens spent per day. */
 export function TokensLineChart({
   data,

@@ -6,17 +6,22 @@ export function LangToggle({
   onChange,
   disabled,
   buttonClassName,
+  containerClassName,
 }: {
   lang: Lang;
   onChange: (lang: Lang) => void;
   disabled?: boolean;
   buttonClassName?: string;
+  /** Lets the phone menu swap the inline pill for a full-width segmented
+   *  control without changing the toggle's own behaviour. */
+  containerClassName?: string;
 }) {
   return (
     <div
-      className={`inline-flex items-center rounded-2xl border border-border p-0.5 ${
-        disabled ? "cursor-not-allowed opacity-50" : ""
-      }`}
+      className={`${
+        containerClassName ??
+        "inline-flex items-center rounded-2xl border border-border p-0.5"
+      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
       title={
         disabled
           ? lang === "vi"

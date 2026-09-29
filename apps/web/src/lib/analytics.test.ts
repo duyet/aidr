@@ -3,6 +3,7 @@ import {
   resolveMeasurementId,
   sanitizeTrackParams,
   track,
+  trackChannelClick,
 } from "@aidr/ui/track";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -71,6 +72,17 @@ describe("track", () => {
     track("search", { query_len: 3, query: "hid" });
     expect(gtag).toHaveBeenCalledWith("event", "search", {
       query_len: 3,
+      surface: "web",
+    });
+  });
+
+  it("tracks channel clicks with a normalized channel", () => {
+    const gtag = vi.fn();
+    vi.stubGlobal("window", { gtag });
+    trackChannelClick("telegram", { to: "telegram" });
+    expect(gtag).toHaveBeenCalledWith("event", "channel_click", {
+      channel: "telegram",
+      to: "telegram",
       surface: "web",
     });
   });

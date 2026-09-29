@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -136,7 +138,9 @@ describe("api/og/$id locale wiring", () => {
     expect(html).toContain("Một câu chuyện AI hữu ích");
     expect(html).toContain("82 điểm");
     expect(html).toContain("144 bình luận");
-    expect(html).toContain("Nghiên cứu");
+    // The category is taxonomy, so the Vietnamese card keeps "Research".
+    expect(html).toContain("Research");
+    expect(html).not.toContain("Nghiên cứu");
     expect(html).not.toContain("A useful AI story");
   });
 
@@ -284,5 +288,82 @@ describe("api/og/$id image boundary", () => {
     expect(response.status).toBe(200);
     expect(markup()).not.toContain("<img");
     expect(markup()).toContain("AI NEWS");
+  });
+});
+
+describe("api/og/$id font delivery", () => {
+  /** Serves the two real committed weights through the ASSETS binding. */
+  function assetsEnv() {
+    const requested: string[] = [];
+    return {
+      requested,
+      env: {
+        DB: FAKE_DB,
+        ASSETS: {
+          fetch: vi.fn(async (request: Request) => {
+            const path = new URL(request.url).pathname;
+            requested.push(path);
+            const bytes = await readFile(join(process.cwd(), "public", path));
+            return new Response(bytes, {
+              status: 200,
+              headers: { "content-type": "font/ttf" },
+            });
+          }),
+        },
+      },
+    };
+  }
+
+  it("passes both card weights to satori when the assets binding serves them", async () => {
+    // The regression this guards: with no fonts, satori silently fetches a
+    // fallback face mid-render and a Vietnamese headline comes back in two
+    // typefaces. Nothing else in this file exercises the font path, because
+    // the default env has no ASSETS binding at all.
+    const { env, requested } = assetsEnv();
+    const response = await call(
+      "/api/og/abcdef12deadbeef.png?lang=vi",
+      "abcdef12deadbeef.png",
+      context(env)
+    );
+    expect(response.status).toBe(200);
+    expect(requested).toEqual([
+      "/fonts/be-vietnam-pro-500.ttf",
+      "/fonts/be-vietnam-pro-700.ttf",
+    ]);
+
+    const fonts = captured?.options.fonts as
+      | { name: string; weight: number; data: ArrayBuffer }[]
+      | undefined;
+    expect(fonts).toHaveLength(2);
+    expect(fonts?.map((font) => font.weight)).toEqual([500, 700]);
+    for (const font of fonts ?? []) {
+      expect(font.name).toBe("Be Vietnam Pro");
+      expect(font.data.byteLength).toBeGreaterThan(1000);
+    }
+  });
+
+  it("drops a font served as the SPA shell instead of handing HTML to satori", async () => {
+    // A miss answered with index.html is >1000 bytes, so the length floor
+    // alone would pass it through and satori would throw on the whole card.
+    const response = await call(
+      "/api/og/abcdef12deadbeef.png?lang=en",
+      "abcdef12deadbeef.png",
+      context({
+        DB: FAKE_DB,
+        ASSETS: {
+          fetch: vi.fn(
+            async () =>
+              new Response("<!doctype html><html>".padEnd(4096, " "), {
+                status: 200,
+                headers: { "content-type": "text/html; charset=utf-8" },
+              })
+          ),
+        },
+      })
+    );
+    expect(response.status).toBe(200);
+    // `fonts` is omitted, not an empty array, so satori uses its own default
+    // and the card still renders.
+    expect("fonts" in (captured?.options ?? {})).toBe(false);
   });
 });

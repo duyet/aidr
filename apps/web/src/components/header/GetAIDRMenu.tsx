@@ -6,12 +6,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
+import { track, trackChannelClick } from "@aidr/ui/track";
 import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
 import {
   ChevronDown,
   Database,
+  Info,
   Mail,
   Plus,
   Send,
@@ -22,7 +23,7 @@ import {
   PHONE_GET_AIDR_TRIGGER_CLASS,
 } from "../../lib/chrome";
 import { useLang } from "../../lib/lang-context";
-import { EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
+import { EXTENSION_PATH, TELEGRAM_EN_URL, TELEGRAM_URL } from "../../lib/site";
 
 export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
   const navigationLang = useLang();
@@ -58,7 +59,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           <Link
             to={EXTENSION_PATH}
             search={{ lang: navigationLang }}
-            onClick={() => track("nav_click", { to: EXTENSION_PATH })}
+            onClick={() => trackChannelClick("chrome", { to: EXTENSION_PATH })}
           >
             <RiChromeLine aria-hidden />
             Chrome Extension
@@ -69,23 +70,46 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             href={TELEGRAM_URL}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => track("nav_click", { to: "telegram" })}
+            onClick={() => trackChannelClick("telegram", { to: "telegram" })}
           >
             <Send aria-hidden />
             Telegram Channel (Vietnamese)
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className={itemClassName}>
+          <a
+            href={TELEGRAM_EN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackChannelClick("telegram", { to: "telegram-en" })}
+          >
+            <Send aria-hidden />
+            Telegram Channel (English)
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to="/subscribe"
             search={{ tab: "email", lang: navigationLang }}
-            onClick={() => track("nav_click", { to: "/subscribe?tab=email" })}
+            onClick={() =>
+              trackChannelClick("email", { to: "/subscribe?tab=email" })
+            }
           >
             <Mail aria-hidden />
             Email Subscription
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className={itemClassName}>
+          <Link
+            to="/about"
+            search={{ lang: navigationLang }}
+            onClick={() => track("nav_click", { to: "/about" })}
+          >
+            <Info aria-hidden />
+            About
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild className={itemClassName}>
           <Link
             to="/submit"

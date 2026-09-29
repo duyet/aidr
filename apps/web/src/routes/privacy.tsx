@@ -3,6 +3,7 @@ import {
   Link,
   stripSearchParams,
 } from "@tanstack/react-router";
+import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import { SITE_URL } from "../lib/site";
@@ -11,12 +12,13 @@ export const Route = createFileRoute("/privacy")({
   search: {
     middlewares: [stripSearchParams<RootSearch>(["lang", "locale"])],
   },
-  head: () =>
+  head: ({ match }) =>
     pageHead({
       path: "/privacy",
       title: "Privacy | aidr.today",
       description:
         "Privacy policy for aidr.today and the aidr Chrome new-tab extension.",
+      route: headRouteInput(match),
     }),
   component: PrivacyPage,
 });
@@ -48,6 +50,15 @@ function PrivacyPage() {
           is not your browsing history.
         </li>
         <li>
+          <strong className="text-foreground">Aggregate site analytics.</strong>{" "}
+          The website loads Google Analytics 4 to count page views. We read
+          those numbers back on a daily schedule to show aggregate traffic on
+          the Pipeline page &mdash; page views, daily and monthly active users,
+          top pages, and traffic sources. We store only those rolled-up totals,
+          never IP addresses or individual visitor identifiers. The extension
+          loads no analytics.
+        </li>
+        <li>
           <strong className="text-foreground">Local settings and cache.</strong>{" "}
           Theme, language, and a short copy of the last digest are stored in{" "}
           <code>chrome.storage</code> on your device so a new tab still paints
@@ -55,8 +66,9 @@ function PrivacyPage() {
         </li>
       </ul>
       <p className="text-muted-foreground">
-        There is no account, no analytics SDK, no advertising, and no sale of
-        data. We do not use the data for purposes other than showing the digest.
+        There is no account, no advertising, and no sale of data. We do not use
+        the data for purposes other than showing the digest and reporting
+        aggregate traffic.
       </p>
 
       <h2>Permissions</h2>

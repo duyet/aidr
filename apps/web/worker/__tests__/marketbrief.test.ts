@@ -37,13 +37,38 @@ describe("marketBriefAdapter", () => {
 
   it("fetches the AI hub __data.json and filters by sinceEpochSec", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo) => {
-      expect(String(input)).toBe("https://marketbrief.now/ai/__data.json");
+      const url = String(input);
+      if (url.endsWith("/__data.json") && url.includes("/ai/nous-portal")) {
+        return new Response(
+          JSON.stringify({
+            nodes: [
+              {
+                data: [
+                  {
+                    focusedStoryDetail: {
+                      data: {
+                        summary:
+                          "Full Nous Portal note that keeps the sentence.",
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }
+      expect(url).toBe("https://marketbrief.now/ai/__data.json");
       return new Response(JSON.stringify(fixture), { status: 200 });
     });
     vi.stubGlobal("fetch", fetchMock);
 
     const recent = await marketBriefAdapter.fetchItems({}, 0);
     expect(recent).toHaveLength(1);
+    expect(recent[0]?.summary).toBe(
+      "Full Nous Portal note that keeps the sentence."
+    );
     const old = await marketBriefAdapter.fetchItems({}, 1_800_000_000);
     expect(old).toHaveLength(0);
   });
