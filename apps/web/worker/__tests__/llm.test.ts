@@ -14,6 +14,9 @@ import {
   scoreBatchPrompt,
   scoreItems,
   setLlmCallLogger,
+  TLDR_RETRY_RESERVE_MS,
+  TLDR_TIMEOUT_MS,
+  tldrAttemptTimeoutMs,
   translateItems,
   VI_STYLE,
 } from "../llm.js";
@@ -1860,5 +1863,37 @@ describe("normalizeTag", () => {
     expect(normalizeTag("!!!")).toBeNull();
     expect(normalizeTag(42)).toBeNull();
     expect(normalizeTag("x".repeat(41))).toBeNull();
+  });
+});
+
+describe("tldr chain budget", () => {
+  // `workflow.ts` LLM_STEP timeout, which the tldr step runs inside.
+  const LLM_STEP_TIMEOUT_MS = 4 * 60_000;
+
+  // Prod 2026-09-29 08:27 UTC: every anyrouter model returned 502 or hung.
+  // Each attempt had its own 240s chain, so the step timed out, the title
+  // fallback never ran, and the run stored "tldr step failed".
+  it("fits both attempts inside the Workflow step timeout", () => {
+    let remaining = TLDR_TIMEOUT_MS;
+    let used = 0;
+    for (let left = 2; left > 0; left--) {
+      const slice = tldrAttemptTimeoutMs(remaining, left);
+      used += slice;
+      remaining -= slice;
+    }
+    expect(used).toBeLessThanOrEqual(TLDR_TIMEOUT_MS);
+    expect(TLDR_TIMEOUT_MS).toBeLessThan(LLM_STEP_TIMEOUT_MS);
+  });
+
+  it("keeps time for the EN-only retry after a hung first attempt", () => {
+    const first = tldrAttemptTimeoutMs(TLDR_TIMEOUT_MS, 2);
+    expect(tldrAttemptTimeoutMs(TLDR_TIMEOUT_MS - first, 1)).toBe(
+      TLDR_RETRY_RESERVE_MS
+    );
+  });
+
+  it("returns 0 once the shared deadline has passed", () => {
+    expect(tldrAttemptTimeoutMs(0, 1)).toBe(0);
+    expect(tldrAttemptTimeoutMs(-5, 2)).toBe(0);
   });
 });
