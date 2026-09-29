@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { storyMarkdownUrl } from "../lib/seo";
 import { sanitizeImageUrl } from "../lib/tldr-images";
 import type { FeedItem, Lang } from "../lib/types";
 import { useSuggestSelection } from "../lib/use-suggest-selection";
@@ -109,6 +110,12 @@ export function StoryDetail({
           )}
 
           <StorySources sources={item.sources} lang={lang} itemId={item.id} />
+          <a
+            href={storyMarkdownUrl(item, lang)}
+            className="not-typeset inline-block text-xs text-muted-foreground underline underline-offset-2 hover:text-accent"
+          >
+            {lang === "vi" ? "Bản Markdown" : "Markdown"}
+          </a>
         </div>
 
         <StoryMetaAside item={item} lang={lang} imageUrl={imageUrl} />

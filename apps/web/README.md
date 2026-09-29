@@ -174,7 +174,7 @@ mapping returns `409` and never redirects. This is a Worker-owned path served
 before the SPA catch-all; it is not an arbitrary external `.md` fetcher. The
 response is generated only from the published story row already stored in D1.
 
-The `aidr-story-markdown/v1` frontmatter contains `id`, `canonical_url`,
+The story page advertises this URL in `<link rel="alternate" type="text/markdown">` and as a Markdown link on the detail view, so a Telegram client can offer a quick view of the same post. The `aidr-story-markdown/v1` frontmatter contains `id`, `canonical_url`,
 `title`, `lang`, `requested_lang`, `available_langs`, `translation_fallback`,
 `fallback_fields`, `published_at`, `category`, `topics`, `source_urls`, and a
 bounded `summary`. Vietnamese fields are normalized before availability is

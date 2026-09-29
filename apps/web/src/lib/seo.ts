@@ -194,6 +194,15 @@ export function storyCardUrl(item: { id: string }, lang: Lang): string {
   return absoluteSiteUrl(`/api/og/${item.id}.png`, lang);
 }
 
+/**
+ * Bounded story Markdown. Telegram looks for a `text/markdown` alternate (and
+ * a link to a `.md` URL) when it offers a quick view of a shared page. The
+ * 8-character prefix matches the canonical Markdown route.
+ */
+export function storyMarkdownUrl(item: { id: string }, lang: Lang): string {
+  return absoluteSiteUrl(`/api/story/${item.id.slice(0, 8)}.md`, lang);
+}
+
 /** Robots meta for the active route and its search/facet state. */
 export function routeRobotsMeta(target: RouteIndexabilityInput): HeadMeta {
   return {
@@ -751,6 +760,12 @@ export function articleHead(
     ),
     links: [
       ...localizedHeadLinks(storyPath(item), lang),
+      {
+        rel: "alternate",
+        type: "text/markdown",
+        title: "Markdown",
+        href: storyMarkdownUrl(item, lang),
+      },
       feedDiscoveryLink(lang),
       SITEMAP_LINK,
     ],

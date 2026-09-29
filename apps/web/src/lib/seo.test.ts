@@ -279,6 +279,13 @@ describe("articleHead", () => {
       hrefLang: "en",
       href: `${SITE_URL}/abcdef12?lang=en`,
     });
+    // Telegram quick view follows a text/markdown alternate to the .md story.
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      type: "text/markdown",
+      title: "Markdown",
+      href: `${SITE_URL}/api/story/abcdef12.md?lang=vi`,
+    });
   });
 
   it("builds the English article URL explicitly", () => {
@@ -292,6 +299,12 @@ describe("articleHead", () => {
     expect(head.links).toContainEqual({
       rel: "canonical",
       href: `${SITE_URL}/abcdef12?lang=en`,
+    });
+    expect(head.links).toContainEqual({
+      rel: "alternate",
+      type: "text/markdown",
+      title: "Markdown",
+      href: `${SITE_URL}/api/story/abcdef12.md?lang=en`,
     });
   });
 
