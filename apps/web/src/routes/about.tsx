@@ -31,22 +31,37 @@ const STEPS: [string, string[]][] = [
   ["Distribute", ["site", "email", "Telegram"]],
 ];
 
-const COLUMN = 24;
-
-function center(line: string): string {
-  const pad = Math.max(0, COLUMN - line.length);
-  return `${" ".repeat(Math.floor(pad / 2))}${line}`;
+function flowLines(): string[] {
+  const width =
+    Math.max(
+      ...STEPS.flatMap(([title, lines]) =>
+        [title, ...lines].map((s) => s.length)
+      )
+    ) + 4;
+  const rows = STEPS.map(([title, lines]) => {
+    const body = [title, ...lines];
+    while (body.length < 3) body.push("");
+    return body.map((line) => line.padEnd(width));
+  });
+  const height = Math.max(...rows.map((row) => row.length));
+  return Array.from({ length: height }, (_, line) =>
+    rows
+      .map((row, index) => {
+        const cell = row[line] ?? "".padEnd(width);
+        const last = index === rows.length - 1;
+        if (line === 0 && !last) return `${cell.slice(0, width - 4)}--> `;
+        return last ? cell.trimEnd() : cell;
+      })
+      .join("")
+      .trimEnd()
+  );
 }
 
-const FLOW = STEPS.flatMap(([title, lines], index) => {
-  const block = [center(title), ...lines.map(center)];
-  if (index === STEPS.length - 1) return block;
-  return [...block, center("|"), center("v")];
-}).join("\n");
+const FLOW = flowLines().join("\n");
 
 function PipelineDiagram() {
   return (
-    <pre className="not-typeset mx-auto mt-4 w-fit max-w-full overflow-x-auto rounded-2xl border border-border bg-card px-6 py-4 font-mono text-[13px] leading-relaxed text-foreground">
+    <pre className="not-typeset mt-4 w-full overflow-x-auto rounded-2xl border border-border bg-card px-6 py-4 text-left font-mono text-[13px] leading-relaxed text-foreground">
       {FLOW}
     </pre>
   );
