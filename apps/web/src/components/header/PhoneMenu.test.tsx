@@ -134,8 +134,10 @@ describe("PhoneMenu modal behavior", () => {
     const navigation = within(dialog).getByRole("navigation", {
       name: "Mobile navigation",
     });
-    expect(navigation.className).toContain("grid-cols-1");
-    expect(navigation.className).toContain("min-[600px]:grid-cols-2");
+    // Two columns of large tiles at every phone width, not one column of rows:
+    // nine full-width rows buried half the menu behind a scroll gesture.
+    expect(navigation.className).toContain("grid-cols-2");
+    expect(navigation.className).not.toContain("grid-cols-1");
     const newsLink = within(navigation).getByRole("link", { name: "News" });
     expect(newsLink.getAttribute("aria-current")).toBe("page");
     expect(newsLink.getAttribute("href")).toBe("/?lang=en");
@@ -229,6 +231,112 @@ describe("PhoneMenu modal behavior", () => {
 });
 
 describe("mobile action sizing", () => {
+  it("renders nav links as large icon-over-label tiles", async () => {
+    render(
+      <PhoneMenu
+        lang="vi"
+        onLangChange={() => undefined}
+        langToggleDisabled={false}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const dialog = await screen.findByRole("dialog");
+    const newsLink = within(dialog).getByRole("link", { name: "News" });
+
+    // A tile, not a list row: column layout with the icon above the label, and
+    // a target well past the 44px floor.
+    expect(newsLink.className).toContain("flex-col");
+    expect(newsLink.className).toContain("min-h-24");
+    expect(newsLink.className).toContain("min-[600px]:min-h-28");
+    expect(newsLink.className).toContain("items-center");
+  });
+
+  it("shows every site link as a tile, not a truncated list", async () => {
+    render(
+      <PhoneMenu
+        lang="vi"
+        onLangChange={() => undefined}
+        langToggleDisabled={false}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const dialog = await screen.findByRole("dialog");
+    const navigation = within(dialog).getByRole("navigation", {
+      name: "Mobile navigation",
+    });
+    // Mirrors SITE_LINKS: every entry still reachable, none dropped.
+    expect(
+      within(navigation)
+        .getAllByRole("link")
+        .map((link) => link.textContent)
+    ).toEqual([
+      "News",
+      "About",
+      "Brand",
+      "MCP",
+      "Get AI;DR",
+      "Telegram",
+      "Data",
+      "Submit",
+      "duyet.net",
+    ]);
+  });
+
+  it("splits nav and settings side by side in landscape", async () => {
+    // A 375px-tall phone stacked leaves the grid ~1 row tall. From the 600px
+    // breakpoint the language/auth column moves beside the nav instead.
+    render(
+      <PhoneMenu
+        lang="vi"
+        onLangChange={() => undefined}
+        langToggleDisabled={false}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const dialog = await screen.findByRole("dialog");
+    const navigation = within(dialog).getByRole("navigation", {
+      name: "Mobile navigation",
+    });
+    const body = navigation.parentElement;
+    const footer = navigation.nextElementSibling;
+
+    expect(body?.className).toContain("min-[600px]:flex-row");
+    expect(footer?.className).toContain("min-[600px]:border-l");
+    expect(footer?.className).toContain("min-[600px]:border-t-0");
+  });
+
+  it("renders the language switch as a full-width segmented control", async () => {
+    render(
+      <PhoneMenu
+        lang="vi"
+        onLangChange={() => undefined}
+        langToggleDisabled={false}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const dialog = await screen.findByRole("dialog");
+    const vi = within(dialog).getByRole("button", { name: "vi" });
+    const container = vi.parentElement;
+
+    // Labelled and edge-to-edge rather than a small pill tucked in a corner.
+    expect(container?.className).toContain("grid-cols-2");
+    expect(container?.className).toContain("w-full");
+    expect(within(dialog).getByText("Ngôn ngữ")).toBeTruthy();
+  });
+
+  it("keeps the disabled state on the segmented control, not just the buttons", () => {
+    // Regression risk from swapping the container class: a custom container
+    // must not drop the `cursor-not-allowed` / opacity the pill always had.
+    render(
+      <PhoneMenu lang="en" onLangChange={() => undefined} langToggleDisabled />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const dialog = screen.getByRole("dialog");
+    const en = within(dialog).getByRole("button", { name: "en" });
+    expect(en.parentElement?.className).toContain("cursor-not-allowed");
+    expect(en.parentElement?.className).toContain("opacity-50");
+  });
+
   it("renders compact dropdown items and language controls with 44px classes", async () => {
     render(
       <>
@@ -269,9 +377,11 @@ describe("mobile action sizing", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     await screen.findByRole("dialog");
+    // 56px halves of a full-width segmented control: a deliberately larger
+    // target than the 44px floor the dropdown items use.
     for (const language of ["en", "vi"]) {
       const button = screen.getByRole("button", { name: language });
-      expect(button.className).toContain("min-h-[44px]");
+      expect(button.className).toContain("min-h-14");
       expect(button.className).toContain("min-w-[44px]");
     }
   });
