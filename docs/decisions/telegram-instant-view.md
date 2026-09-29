@@ -370,11 +370,25 @@ recorded next to them in
 construction) instead of the upstream thumbnail, falling back to the normalized
 manifest thumbnail only when the id cannot address a card. This is the same
 choice `articleHead` already made for `og:image`, and it is the image the field
-gate approves, so the channel post and the link preview agree. A story with
-several manifest images now says so in the caption (`📎 +N more`) instead of
-silently shipping one photo that looks complete — the record's "omit rather
-than silently drop" rule, applied to the fallback path. Album/video delivery
-stays with [#202](https://github.com/duyet/aidr/issues/202).
+gate approves, so the channel post and the link preview agree.
+
+> **Superseded in part (#202).** Album delivery has since landed: a story with
+> several manifest images now goes out as one `sendMediaGroup` (2–10 items) of
+> the story's own images, and `sendPhoto` is used only for a single image so
+> the Read button survives — `sendMediaGroup` has no `reply_markup`, so an
+> album carries that link in its caption instead. The
+> `📎 +N more` line no longer means "more images exist"; it names only the
+> images that did **not** fit inside the 10-item cap. Video files are still
+> deferred; a poster is the image actually sent. See `worker/notify/telegram.ts`
+> (`TELEGRAM_ALBUM_CAP`, `resolveStoryMedia`).
+>
+> The generated card is also no longer the lead image. It is the fallback: used
+> when the story has no usable image, and as a one-shot retry when Telegram
+> rejects the story image, because the card is first-party and 200 by
+> construction where an upstream URL may be hotlink-blocked. It therefore no
+> longer occupies an album slot, and on the image path the post image is no
+> longer the gate-approved card — so the "post and link preview agree" claim
+> above now holds only when the post falls back to the card.
 
 Neither change touches `lang` as a delivery identity: the digest key is still
 `digest:<local-date>`, a trending post is still keyed by the story id, and

@@ -466,7 +466,7 @@ const TELEGRAM_DIGEST = {
       summary:
         "A vendor-neutral serving layer targets Blackwell without locking callers into one runtime.",
       meta: "#Infra  ·  ▲ 412  ·  💬 96",
-      buttons: ["Read →", "AI;DR"],
+      buttons: ["Read →"],
     },
     cta: "Read the full digest on aidr.today →",
   },
@@ -482,7 +482,7 @@ const TELEGRAM_DIGEST = {
       summary:
         "Một lớp phục vụ trung lập hãng nhắm Blackwell mà không ràng buộc runtime.",
       meta: "#Infra  ·  ▲ 412  ·  💬 96",
-      buttons: ["Đọc bài →", "AI;DR"],
+      buttons: ["Đọc bài →"],
     },
     cta: "Xem đầy đủ trên aidr.today →",
   },

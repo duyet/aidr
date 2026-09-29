@@ -24,10 +24,12 @@ import {
   buildStoryReplyMarkup,
   DIGEST_LINK_PREVIEW,
   escapeHtml,
+  resolveStoryMedia,
   STORY_PHOTO_LINK_PREVIEW,
   STORY_TEXT_LINK_PREVIEW,
   storyImageCount,
   storyPhotoUrl,
+  storyPhotoUrls,
   storyUrl,
   telegramChatId,
   telegramEnNotifier,
@@ -98,7 +100,11 @@ describe("trendingBudget", () => {
 
 describe("buildTrendingQuery", () => {
   it("requires published, high-rank, high-importance, unposted items", () => {
-    const { sql, binds } = buildTrendingQuery("telegram", 1_700_000_000_000);
+    const { sql, binds } = buildTrendingQuery(
+      "telegram",
+      1_700_000_000_000,
+      "vi"
+    );
     expect(sql).toContain("status = 'published'");
     expect(sql).toContain("n.item_id IS NULL");
     expect(sql).toContain("tr.lang = 'vi'");
@@ -206,7 +212,7 @@ describe("trending story message", () => {
     expect(caption.length).toBeLessThanOrEqual(TELEGRAM_IV_LIMITS.captionChars);
   });
 
-  it("states the extra image count instead of silently shipping one photo", () => {
+  it("names only the images that do not fit in a Telegram album", () => {
     const multi = story({
       media_manifest: {
         version: 1,
@@ -218,9 +224,26 @@ describe("trending story message", () => {
       },
     });
     expect(storyImageCount(multi)).toBe(3);
-    // The Vietnamese-first adapter copy, since the fixture resolves to `vi`.
-    expect(buildStoryCaption(multi)).toContain("+2 ảnh nữa");
-    expect(buildStoryCaption({ ...multi, lang: "en" })).toContain("+2 more");
+    // The three story images fill the album, so the caption stays quiet and
+    // the generated card is not sent alongside them.
+    expect(buildStoryCaption(multi)).not.toContain("ảnh nữa");
+    expect(storyPhotoUrls(multi)).toHaveLength(3);
+    expect(storyPhotoUrls(multi)).not.toContain(
+      "https://aidr.today/api/og/abcdef12.png?lang=vi"
+    );
+
+    const overflow = story({
+      media_manifest: {
+        version: 1,
+        assets: Array.from({ length: 12 }, (_, i) => ({
+          type: "image" as const,
+          url: `https://img.example/${i}.jpg`,
+        })),
+      },
+    });
+    // 12 story images, 10 album slots, so two are left out.
+    expect(buildStoryCaption(overflow)).toContain("+2 ảnh nữa");
+    expect(buildStoryCaption({ ...overflow, lang: "en" })).toContain("+2 more");
   });
 
   it("says nothing about extra images for a single-image story", () => {
@@ -235,7 +258,9 @@ describe("trending story message", () => {
     expect(buildStoryCaption(none)).not.toContain("more");
   });
 
-  it("prefers the generated card over the manifest thumbnail", () => {
+  it("leads with the story's own image and keeps the card as a fallback", () => {
+    // The post leads with the real photo; the generated card is the fallback
+    // for no usable image, or when Telegram rejects this one.
     const withManifest = story({
       image_url: null,
       media_manifest: {
@@ -243,24 +268,55 @@ describe("trending story message", () => {
         assets: [{ type: "image", url: "https://img.example/poster.jpg" }],
       },
     });
-    expect(storyPhotoUrl(withManifest)).toBe(
-      "https://aidr.today/api/og/abcdef12.png?lang=vi"
-    );
-    expect(storyPhotoUrl(story({ lang: "en" }))).toBe(
+    expect(storyPhotoUrl(withManifest)).toBe("https://img.example/poster.jpg");
+    expect(resolveStoryMedia(withManifest)).toEqual({
+      gallery: ["https://img.example/poster.jpg"],
+      card: "https://aidr.today/api/og/abcdef12.png?lang=vi",
+    });
+    expect(resolveStoryMedia(story({ lang: "en" })).card).toBe(
       "https://aidr.today/api/og/abcdef12.png?lang=en"
     );
   });
 
-  it("builds Read + AI;DR buttons with UTM tracking", () => {
+  it("falls back to the generated card when the story has no usable image", () => {
+    const imageless = story({ image_url: null, media_manifest: null });
+    expect(storyImageCount(imageless)).toBe(0);
+    expect(storyPhotoUrls(imageless)).toEqual([
+      "https://aidr.today/api/og/abcdef12.png?lang=vi",
+    ]);
+    // Neither an image nor an addressable card means text-only, not a crash.
+    const unaddressable = story({
+      id: "zzz-not-a-story-id",
+      image_url: null,
+      media_manifest: null,
+    });
+    expect(resolveStoryMedia(unaddressable).card).toBeNull();
+    expect(storyPhotoUrls(unaddressable)).toEqual([]);
+  });
+
+  it("builds a single Read button pointing at the aidr story page", () => {
+    // The post's image is already the first-party generated card, so the link
+    // must resolve to the same story on aidr.today rather than the publisher.
+    // Two buttons used to split those apart.
     const markup = buildStoryReplyMarkup(story()) as {
       inline_keyboard: { text: string; url: string }[][];
     };
     const [row] = markup.inline_keyboard;
-    expect(row[0].url).toContain("https://example.com/story");
-    expect(row[0].url).toContain("utm_source=telegram");
-    expect(row[1].url).toBe(
+    expect(row).toHaveLength(1);
+    expect(row[0].text).toBe("Đọc bài →");
+    expect(row[0].url).toBe(
       "https://aidr.today/abcdef12?lang=vi&utm_source=telegram"
     );
+  });
+
+  it("never sends the reader off to the publisher URL", () => {
+    const markup = buildStoryReplyMarkup(story()) as {
+      inline_keyboard: { text: string; url: string }[][];
+    };
+    for (const button of markup.inline_keyboard.flat()) {
+      expect(button.url).toContain("https://aidr.today/");
+      expect(button.url).not.toContain("example.com");
+    }
   });
 
   it("uses English story controls and links when translation is absent", () => {
@@ -268,7 +324,7 @@ describe("trending story message", () => {
       inline_keyboard: { text: string; url: string }[][];
     };
     expect(markup.inline_keyboard[0][0].text).toBe("Read →");
-    expect(markup.inline_keyboard[0][1].url).toContain("lang=en");
+    expect(markup.inline_keyboard[0][0].url).toContain("lang=en");
   });
 
   it("uses the 8-char permalink with an explicit stable locale", () => {
@@ -416,7 +472,120 @@ describe("telegramNotifier gating", () => {
     expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
   });
 
-  it("attaches the generated first-party card, never the upstream thumb", async () => {
+  it("sends a Telegram album when the story has more than one image", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ ok: true, result: [{ message_id: 21 }] }),
+          { status: 200 }
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await telegramNotifier.sendStory(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      story({
+        image_url: "https://img.example/a.jpg",
+        media_manifest: {
+          version: 1,
+          assets: [
+            { type: "image", url: "https://img.example/a.jpg" },
+            { type: "image", url: "https://img.example/b.jpg" },
+            {
+              type: "video",
+              url: "https://cdn.example/clip.mp4",
+              poster_url: "https://img.example/poster.jpg",
+            },
+          ],
+        },
+      })
+    );
+    expect(result).toEqual({ ok: true, messageId: "21" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(body.media.map((item: { media: string }) => item.media)).toEqual([
+      "https://img.example/a.jpg",
+      "https://img.example/b.jpg",
+      "https://img.example/poster.jpg",
+    ]);
+    expect(body.media[0].caption).toContain("Đọc bài");
+    expect(body.media[0].parse_mode).toBe("HTML");
+    expect(body.reply_markup).toBeUndefined();
+    expect(
+      body.media.some((item: { media: string }) => item.media.endsWith(".mp4"))
+    ).toBe(false);
+  });
+
+  it("falls back to one photo when the album is rejected", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: false, description: "bad album" }), {
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 22 } }), {
+          status: 200,
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await telegramNotifier.sendStory(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      story({
+        media_manifest: {
+          version: 1,
+          assets: [
+            { type: "image", url: "https://img.example/a.jpg" },
+            { type: "image", url: "https://img.example/b.jpg" },
+          ],
+        },
+      })
+    );
+    expect(result.messageId).toBe("22");
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendPhoto");
+    const photo = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    // The album failed, so the single-photo retry uses the lead story image.
+    expect(photo.photo).toBe("https://img.example/a.jpg");
+    expect(photo.reply_markup).toBeDefined();
+  });
+
+  it("retries with the generated card when Telegram rejects the image", async () => {
+    // Hotlink-hostile / dead upstream URLs are the common failure. The card is
+    // a first-party 200 that cannot be blocked, so the post keeps its image
+    // instead of dropping to bare text.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ok: false, description: "wrong file identifier" }),
+          { status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 31 } }), {
+          status: 200,
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await telegramNotifier.sendStory(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      story({ image_url: "https://img.example/hotlink-hostile.png" })
+    );
+    expect(result).toEqual({ ok: true, messageId: "31" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const first = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(first.photo).toBe("https://img.example/hotlink-hostile.png");
+    const retry = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    expect(retry.photo).toBe("https://aidr.today/api/og/abcdef12.png?lang=vi");
+  });
+
+  it("uses the generated card as the only media for an imageless story", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true, result: { message_id: 9 } }), {
         status: 200,
@@ -429,12 +598,11 @@ describe("telegramNotifier gating", () => {
         TELEGRAM_BOT_TOKEN: "token",
         TELEGRAM_CHAT_ID: "chat",
       } as Env,
-      story({ image_url: "https://img.example/hotlink-hostile.png" })
+      story({ image_url: null, media_manifest: null })
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(body.photo).toBe("https://aidr.today/api/og/abcdef12.png?lang=vi");
-    expect(body.photo).not.toContain("hotlink-hostile");
   });
 
   it("disables the link preview on the photo path so the card is the only image", async () => {

@@ -10,8 +10,8 @@ export interface StoryPayload {
   title: string;
   summary: string | null;
   image_url: string | null;
-  /** Typed candidates; current transport uses only the normalized thumbnail
-   * through sendPhoto. Video/album delivery remains deferred. */
+  /** Typed candidates. Image URLs (and video posters) ride a Telegram album
+   * when there is more than one. Video files stay deferred. */
   media_manifest?: MediaManifest | null;
   category: string | null;
   points: number;
@@ -55,6 +55,18 @@ export interface Notifier {
   lang: Lang;
   /** Where posts go (chat id, webhook host, ...) — stored for observability. */
   target(env: Env): string;
+  /**
+   * The content language this channel carries, and the ONLY one it carries.
+   *
+   * The dispatcher picks digest bullets and trending copy by this value and
+   * never falls back to the other language, so a channel cannot leak English
+   * into a Vietnamese feed (or the reverse). A story with no translation in
+   * this language is not eligible for this channel at all.
+   *
+   * Today every channel is `vi`. A second, English channel is a new notifier
+   * entry with `lang: "en"` — not a change to the dispatcher.
+   */
+  lang: Lang;
   /** False when the channel is fully unset (local/dev). Throws when
    *  half-configured (e.g. chat id without token) so a deploy bug
    *  cannot silently skip sends. */

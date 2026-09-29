@@ -25,9 +25,9 @@ export { escapeHtml };
  *
  * - Daily digest: one message — TL;DR bullet list, each bullet linked to
  *   its story permalink, with a button to the site.
- * - Trending story: single post with the generated branded card
- *   (sendPhoto, text fallback), bold title + summary caption, Read/Discuss
- *   inline buttons.
+ * - Trending story: the generated branded card, plus any other story images
+ *   Telegram will take in one album (`sendMediaGroup`, 2–10). One image stays
+ *   `sendPhoto` so the Read / AI;DR buttons remain. Text is the fallback.
  *
  * All links carry utm_source=telegram so clicks are measurable in
  * analytics (Telegram's Bot API exposes no read receipts).
@@ -181,40 +181,54 @@ function storyMetaLine(story: StoryPayload): string {
   return meta.join("  ·  ");
 }
 
+/** Bot API `sendMediaGroup` accepts 2–10 items. One photo uses `sendPhoto`. */
+export const TELEGRAM_ALBUM_CAP = 10;
+
 /**
- * Count the images this story actually has, so a single-photo delivery does
- * not silently look like a complete gallery. `sendMediaGroup`/album delivery
- * is a separate slice (#202); until then the copy says plainly that more
- * images exist. This is the record's "omit rather than silently drop" rule
- * applied to the plain message fallback.
+ * Count the images this story actually has. The album attaches as many as
+ * Telegram allows; the caption names only the ones that did not fit.
  */
 export function storyImageCount(story: StoryPayload): number {
-  const manifestImages =
-    story.media_manifest?.assets.filter((asset) => asset.type === "image")
-      .length ?? 0;
-  return Math.max(manifestImages, story.image_url ? 1 : 0);
+  // Uncapped: this is how many images the story has, not how many the album
+  // can carry. The caption needs the difference to say "+N more".
+  const gallery = galleryImageUrls(story, Infinity);
+  if (gallery.length > 0) return gallery.length;
+  return story.image_url ? 1 : 0;
 }
 
+/** Images the album could not fit, so the caption can say how many are left
+ *  rather than implying the story has no more. */
 function extraImageLine(story: StoryPayload): string {
-  const extra = storyImageCount(story) - 1;
+  const { gallery } = resolveStoryMedia(story);
+  const extra = Math.max(0, storyImageCount(story) - gallery.length);
   if (extra < 1) return "";
   return story.lang === "en" ? `📎 +${extra} more` : `📎 +${extra} ảnh nữa`;
 }
 
+/**
+ * One button, and it opens the aidr story page.
+ *
+ * It used to be two: "Read →" to the publisher, "AI;DR" to the aidr permalink.
+ * Splitting them sent the reader to the source for the *link*, while the *image*
+ * above it was already the first-party generated card — so the post advertised
+ * one story and the button opened another. Pointing "Read →" at the aidr
+ * permalink makes the button, the card, and the link preview all agree on one
+ * canonical, locale-stable URL, and gives the reader the ranked summary before
+ * the publisher's page.
+ *
+ * Not a `t.me/iv` wrapper. Instant View needs a template approved in the
+ * Telegram IV Editor and an editor-generated `rhash`, which only exists inside
+ * the operator's editor session. See docs/decisions/telegram-instant-view.md —
+ * an `rhash` is never fabricated or guessed here. Until a template is approved,
+ * the direct source link is the documented fallback: Telegram builds a plain
+ * link preview from the page's own Open Graph tags, which aidr serves.
+ */
 export function buildStoryReplyMarkup(story: StoryPayload): object {
-  // Publisher links keep their own URL and receive only the Telegram
-  // attribution parameter; the canonical aidr.today fallback is localed.
-  const publisherLink =
-    canonicalizeMediaUrl(story.url) ?? storyUrl(story, story.lang);
   return {
     inline_keyboard: [
       [
         {
           text: story.lang === "en" ? "Read →" : "Đọc bài →",
-          url: withUtm(publisherLink, story.lang),
-        },
-        {
-          text: "AI;DR",
           url: withUtm(storyUrl(story, story.lang), story.lang),
         },
       ],
@@ -223,32 +237,101 @@ export function buildStoryReplyMarkup(story: StoryPayload): object {
 }
 
 /**
- * Photo for the trending post: the GENERATED first-party card first.
+ * The media a trending post can send, split by how much we trust it.
  *
- * The card is the same deliberate choice `articleHead` already makes for
- * `og:image` ("Always the generated branded card — upstream image_urls can
- * 404"), and it is the same image the IV field gate points at
- * (`telegram-iv.ts`), so a reader's link preview and the channel post agree.
- * It is first-party, 200 by construction, 1200x630, under every documented
- * Telegram ceiling, and it composes the article photo itself — the record's
- * complaint was that an upstream thumb is unvalidatable (unknown dimensions,
- * hotlink behaviour, a 119 KiB huggingnews.com PNG).
+ * `gallery` is the story's own imagery — manifest images and video posters,
+ * with the normalized thumbnail as the single-image case. This is the real
+ * photo of the story, so it is what the post leads with.
  *
- * The normalized manifest thumbnail is the fallback for a story whose id
- * cannot address a card, so a story with no card shape still gets its photo.
+ * `card` is the generated first-party OG card. It is a *fallback*, not the
+ * lead: it is a text graphic, so it is only used when the story has no usable
+ * image, or when Telegram rejects the gallery image (hotlink/hostile CDN,
+ * 400 on a dead URL). That second case used to drop the post to bare text even
+ * though a working first-party image was right there.
+ *
+ * The card is 200 by construction, 1200x630, first-party, and under every
+ * documented Telegram ceiling, which is exactly why it is the safe retry.
  */
-export function storyPhotoUrl(story: StoryPayload): string | null {
+export interface StoryMedia {
+  /** Trusted story imagery, de-duplicated, at most `TELEGRAM_ALBUM_CAP`. */
+  gallery: string[];
+  /** Generated card URL, or null when the id cannot address one. */
+  card: string | null;
+}
+
+/** Video files are not attached — a poster is the image we actually have.
+ *  `cap` bounds the album; pass `Infinity` to count what the story actually
+ *  has, which is what the caption's "+N more" line needs. */
+function galleryImageUrls(story: StoryPayload, cap = TELEGRAM_ALBUM_CAP) {
+  const urls: string[] = [];
+  const push = (raw: string | null | undefined) => {
+    const url = canonicalizeMediaImageUrl(raw);
+    if (!url || urls.includes(url) || urls.length >= cap) return;
+    urls.push(url);
+  };
+  for (const asset of story.media_manifest?.assets ?? []) {
+    if (asset.type === "image") push(asset.url);
+    else push(asset.poster_url);
+  }
+  // A lone legacy `image_url` only counts when the manifest has nothing, so a
+  // story with a gallery does not repeat its own cover twice.
+  if (urls.length === 0) {
+    push(primaryThumbnailUrl(story.media_manifest, story.image_url, story.url));
+  }
+  return urls;
+}
+
+export function resolveStoryMedia(story: StoryPayload): StoryMedia {
   const id8 = story.id.slice(0, 8);
-  if (isIvStoryId(id8)) return ivCardUrl(id8, story.lang);
-  return canonicalizeMediaImageUrl(
-    primaryThumbnailUrl(story.media_manifest, story.image_url, story.url)
-  );
+  return {
+    gallery: galleryImageUrls(story),
+    card: isIvStoryId(id8) ? ivCardUrl(id8, story.lang) : null,
+  };
+}
+
+/** Every media URL for the post, gallery first. Kept for callers that only
+ *  need the primary image. */
+export function storyPhotoUrls(story: StoryPayload): string[] {
+  const { gallery, card } = resolveStoryMedia(story);
+  if (gallery.length > 0) return gallery;
+  return card ? [card] : [];
+}
+
+export function storyPhotoUrl(story: StoryPayload): string | null {
+  return storyPhotoUrls(story)[0] ?? null;
+}
+
+/**
+ * `sendMediaGroup` has no `reply_markup`. The album caption carries the same
+ * link the button would have. A caption that would pass 1024 chars keeps the
+ * text and drops the link line.
+ */
+function albumCaption(story: StoryPayload): string {
+  const base = buildStoryCaption(story);
+  const markup = buildStoryReplyMarkup(story) as {
+    inline_keyboard: { text: string; url: string }[][];
+  };
+  const links = markup.inline_keyboard[0]
+    .map(
+      (button) =>
+        `<a href="${escapeHtml(button.url)}">${escapeHtml(button.text)}</a>`
+    )
+    .join("  ·  ");
+  const next = `${base}\n\n${links}`;
+  if (next.length > TELEGRAM_IV_LIMITS.captionChars) return base;
+  return next;
 }
 
 interface TelegramResponse {
   ok: boolean;
-  result?: { message_id?: number };
+  /** `sendMessage`/`sendPhoto` return one message; `sendMediaGroup` returns an array. */
+  result?: { message_id?: number } | Array<{ message_id?: number }>;
   description?: string;
+}
+
+function telegramMessageId(result: TelegramResponse["result"]): string {
+  const message = Array.isArray(result) ? result[0] : result;
+  return String(message?.message_id ?? "");
 }
 
 async function callTelegram(
@@ -322,7 +405,7 @@ function telegramChannel(options: {
         link_preview_options: DIGEST_LINK_PREVIEW,
       });
       if (!msg.ok) return { ok: false, error: msg.description ?? "unknown" };
-      return { ok: true, messageId: String(msg.result?.message_id ?? "") };
+      return { ok: true, messageId: telegramMessageId(msg.result) };
     },
 
     async sendStory(env: Env, story: StoryPayload): Promise<SendResult> {
@@ -330,25 +413,82 @@ function telegramChannel(options: {
       const chatId = options.chatId(env);
       const caption = buildStoryCaption(story);
       const replyMarkup = buildStoryReplyMarkup(story);
-      const photoUrl = storyPhotoUrl(story);
+      const { gallery, card } = resolveStoryMedia(story);
 
-      if (photoUrl) {
-        const photo = await callTelegram(token, "sendPhoto", {
+      const sendOne = (photo: string) =>
+        callTelegram(token, "sendPhoto", {
           chat_id: chatId,
-          photo: photoUrl,
+          photo,
           caption,
           parse_mode: "HTML",
           reply_markup: replyMarkup,
           link_preview_options: STORY_PHOTO_LINK_PREVIEW,
         });
-        if (photo.ok)
-          return {
-            ok: true,
-            messageId: String(photo.result?.message_id ?? ""),
-          };
+
+      if (gallery.length >= 2) {
+        const album = await callTelegram(token, "sendMediaGroup", {
+          chat_id: chatId,
+          media: gallery.map((media, index) =>
+            index === 0
+              ? {
+                  type: "photo",
+                  media,
+                  caption: albumCaption(story),
+                  parse_mode: "HTML",
+                }
+              : { type: "photo", media }
+          ),
+        });
+        if (album.ok) {
+          return { ok: true, messageId: telegramMessageId(album.result) };
+        }
         console.error(
-          `telegram sendPhoto failed for ${story.id}: ${photo.description}; falling back to text`
+          `telegram sendMediaGroup failed for ${story.id}: ${album.description}; falling back to one photo`
         );
+        const lead = await sendOne(gallery[0]);
+        if (lead.ok) {
+          return { ok: true, messageId: telegramMessageId(lead.result) };
+        }
+        console.error(
+          `telegram sendPhoto failed for ${story.id} ${gallery[0]}: ${lead.description}`
+        );
+        if (card && card !== gallery[0]) {
+          const retry = await sendOne(card);
+          if (retry.ok) {
+            return { ok: true, messageId: telegramMessageId(retry.result) };
+          }
+          console.error(
+            `telegram sendPhoto card fallback failed for ${story.id}: ${retry.description}`
+          );
+        }
+      } else {
+        const lead = gallery[0] ?? null;
+        if (lead) {
+          const photo = await sendOne(lead);
+          if (photo.ok) {
+            return { ok: true, messageId: telegramMessageId(photo.result) };
+          }
+          console.error(
+            `telegram sendPhoto failed for ${story.id} ${lead}: ${photo.description}`
+          );
+          if (card && card !== lead) {
+            const retry = await sendOne(card);
+            if (retry.ok) {
+              return { ok: true, messageId: telegramMessageId(retry.result) };
+            }
+            console.error(
+              `telegram sendPhoto card fallback failed for ${story.id}: ${retry.description}`
+            );
+          }
+        } else if (card) {
+          const photo = await sendOne(card);
+          if (photo.ok) {
+            return { ok: true, messageId: telegramMessageId(photo.result) };
+          }
+          console.error(
+            `telegram sendPhoto failed for ${story.id} ${card}: ${photo.description}`
+          );
+        }
       }
 
       const msg = await callTelegram(token, "sendMessage", {
@@ -359,7 +499,7 @@ function telegramChannel(options: {
         link_preview_options: STORY_TEXT_LINK_PREVIEW,
       });
       if (!msg.ok) return { ok: false, error: msg.description ?? "unknown" };
-      return { ok: true, messageId: String(msg.result?.message_id ?? "") };
+      return { ok: true, messageId: telegramMessageId(msg.result) };
     },
   };
 }

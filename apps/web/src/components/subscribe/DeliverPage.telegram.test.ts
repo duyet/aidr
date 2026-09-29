@@ -67,6 +67,11 @@ describe("telegram tab preview", () => {
   it("renders a trending post the channel would actually send", () => {
     const { story } = sampleCopy();
     const caption = buildStoryCaption({
+      // `id` is required on StoryPayload and `buildStoryCaption` reads its
+      // first 8 characters to decide whether a generated card exists, so the
+      // fixture has to carry one. This test only asserts the caption copy, so
+      // the value itself is arbitrary — just a real-looking story id.
+      id: "abcdef1234567890",
       title: story.title as string,
       summary: story.summary as string,
       category: "Infra",

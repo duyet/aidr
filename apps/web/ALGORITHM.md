@@ -343,9 +343,34 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       approves — instead of the upstream thumb, so a link preview can never be
       a 404 hotlink-hostile image. The normalized manifest thumbnail remains
       the fallback when the id cannot address a card.
-    - The current media slice still uses `sendPhoto`/text fallback only. Telegram
-      `sendVideo`/`sendMediaGroup` and durable multi-message delivery remain a
-      follow-up slice; this change only preserves the typed manifest.
+    - The trending post carries **one** inline button, "Read →" / "Đọc bài →",
+      pointing at the aidr story permalink (`/{id8}?lang=` + UTM). It used to be
+      two — "Read →" to the publisher, "AI;DR" to the permalink — which meant the
+      image above (already the first-party card) and the link pointed at
+      different stories. One canonical locale-stable URL for both.
+    - Not a `t.me/iv` wrapper: Instant View needs an editor-approved template and
+      an editor-generated `rhash`, which exists only inside the operator's IV
+      Editor session. Telegram's plain link preview from the page's own Open
+      Graph tags is the documented fallback
+      ([`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md)).
+    - A trending story with two or more images uses `sendMediaGroup` (2–10
+      photos: the story's own manifest images and video posters). One image
+      stays `sendPhoto` so the inline button remains — an album has no
+      `reply_markup`, so that link moves into the caption. `sendVideo` and
+      durable multi-message delivery remain a follow-up.
+    - **Media order: story image first, generated card as fallback.** The post
+      leads with the story's real photo. The first-party OG card
+      `/api/og/{id8}.png?lang=` is used when the story has no usable image, and
+      as a one-shot retry when Telegram rejects the image (hotlink-hostile or
+      dead upstream URLs) — it is 200 by construction, so the post keeps its
+      image instead of dropping to bare text. The card no longer occupies an
+      album slot.
+    - **The channel is single-language.** `Notifier.lang` is `vi`, and the
+      dispatcher selects digest bullets and the trending translation by it with
+      no English fallback: a story without a Vietnamese translation is not a
+      candidate, and the digest reads `bullets_vi` only. Adding an English
+      channel later is a new notifier entry with `lang: "en"`, not a change to
+      the query or the dispatcher.
 
 13. **Review gates (LLM, rating ≥ 0.6)** — user translation suggestions and
     HN-style story submissions are judged (faithfulness / relevance / not
