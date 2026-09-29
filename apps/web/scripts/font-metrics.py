@@ -12,10 +12,9 @@ reintroducing the footer reflow.
       node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-vietnamese-wght-normal.woff2 \\
       node_modules/@fontsource-variable/eb-garamond/files/eb-garamond-latin-wght-normal.woff2
 
-A plain `.ttf` needs nothing but the standard library;
-`apps/web/public/fonts/eb-garamond-500.ttf` is the cross-check for the
-EB Garamond woff2 subset — both report unitsPerEm=1000, ascent=1007,
-descent=298, lineGap=0. A `.woff2` needs the `brotli` module to decompress.
+A plain `.ttf` needs nothing but the standard library, so the committed
+OG card weights (`apps/web/public/fonts/be-vietnam-pro-500.ttf`) are readable
+here too. A `.woff2` needs the `brotli` module to decompress.
 
 Only `head` and `hhea` are read. Both are tiny, untransformed tables with
 fixed signatures, so they are located by signature rather than by walking the

@@ -41,7 +41,9 @@ function item(overrides: Partial<FeedItem> = {}): FeedItem {
     id: "64bff098e4eaf80fb050055b1bf9c3ad946a2376ae19b9e5adb8cdd8c94e4125",
     url: "https://huggingnews.com/cybersecurity/openai-agent-breaches",
     title: "OpenAI Agent Breaches Australia's Medicare Statistics Portal",
-    title_vi: "Agent cua OpenAI xam nhap cong thong ke Medicare cua Uc",
+    // Diacritics, not stripped ASCII: the card has to prove it shapes the real
+    // Vietnamese alphabet, not a transliteration of it.
+    title_vi: "Agent của OpenAI xâm nhập cổng thống kê Medicare của Úc",
     summary: "",
     summary_vi: "",
     category: "Agents",
@@ -333,6 +335,102 @@ describe("story OG card rendering", () => {
       }
       expect(translucent).toBe(0);
     }
+  }, 20_000);
+
+  /**
+   * Regression: satori does not skip a glyph the loaded fonts lack, it asks
+   * `loadAdditionalAsset` to pull a fallback face from Google Fonts mid-render.
+   * A Vietnamese headline rendered its base letters in one face and its
+   * diacritics in Noto Sans — two typefaces in one headline — and the card
+   * changed shape depending on whether that fetch succeeded.
+   */
+  it("renders Vietnamese without fetching a fallback face", async () => {
+    const original = globalThis.fetch;
+    const attempts: string[] = [];
+    globalThis.fetch = ((input: unknown) => {
+      attempts.push(String(input));
+      throw new Error(
+        "the OG card must not reach the network to shape a glyph"
+      );
+    }) as unknown as typeof fetch;
+
+    try {
+      // Every Vietnamese letter that a Latin-only subset drops.
+      const story = item({
+        title: "Dữ liệu Đào tạo Ước tính và Phân tích",
+        title_vi: "Dữ liệu Đào tạo Ước tính và Phân tích",
+        category: "Agents",
+      });
+
+      const html = renderToStaticMarkup(storyOgCard(story, null, "vi"));
+      expect(html).toContain("Dữ liệu Đào tạo Ước tính và Phân tích");
+      // The category is untranslated taxonomy, so it stays ASCII.
+      expect(html).toContain("Agents");
+      expect(html).not.toContain("Tác nhân");
+
+      // A render that needed a fallback font would have tried to fetch it.
+      const bitmap = decodePng(await renderPng(story, null, "vi"));
+      expect(bitmap.width).toBe(STORY_OG_WIDTH);
+      expect(attempts).toEqual([]);
+    } finally {
+      globalThis.fetch = original;
+    }
+  }, 20_000);
+
+  it("draws Vietnamese tone marks above the letter, not on it", async () => {
+    // Source Sans 3 stores ấ as a composite whose vertical offset is only in
+    // GPOS mark-to-base. satori/resvg skips that lookup, so the tone mark
+    // used to sit on the letter. The card face has to put that ink above
+    // the base letter without a network fallback.
+    const plain = item({ title: "a a a a a a a a", title_vi: "a a a a a a a a" });
+    const marked = item({
+      title: "ấ ậ ế ố ớ ứ ẫ ễ",
+      title_vi: "ấ ậ ế ố ớ ứ ẫ ễ",
+    });
+    const [plainPng, markedPng] = await Promise.all([
+      renderPng(plain, null, "vi"),
+      renderPng(marked, null, "vi"),
+    ]);
+    const plainBox = diffBounds(
+      decodePng(plainPng),
+      decodePng(await renderPng(blankedTitle(plain), null, "vi"))
+    );
+    const markedBox = diffBounds(
+      decodePng(markedPng),
+      decodePng(await renderPng(blankedTitle(marked), null, "vi"))
+    );
+    expect(plainBox).not.toBeNull();
+    expect(markedBox).not.toBeNull();
+    const plainTop = (plainBox as NonNullable<typeof plainBox>).minY;
+    const markedTop = (markedBox as NonNullable<typeof markedBox>).minY;
+    // A tone mark that survived is a clearly taller ink box, not a few
+    // pixels of antialiasing on the same cap height.
+    expect(plainTop - markedTop).toBeGreaterThanOrEqual(8);
+  }, 20_000);
+
+  it("keeps the whole Vietnamese headline in the card typeface", async () => {
+    // A mixed-typeface headline is invisible in markup and hard to eyeball, so
+    // compare ink against a blanked title: the diacritics must land inside the
+    // same band the base letters do, not overflow above it.
+    const story = item({
+      title: "Ứng dụng Được Đào tạo Ước tính Toàn cầu",
+      title_vi: "Ứng dụng Được Đào tạo Ước tính Toàn cầu",
+    });
+
+    const [rendered, blank] = await Promise.all([
+      renderPng(story, null, "vi"),
+      renderPng(blankedTitle(story), null, "vi"),
+    ]);
+    const box = diffBounds(decodePng(rendered), decodePng(blank));
+    expect(box, "Vietnamese headline rendered no ink at all").not.toBeNull();
+    const bounds = box as NonNullable<typeof box>;
+
+    expect(bounds.minY).toBeGreaterThanOrEqual(STORY_OG_TITLE_BAND_TOP);
+    expect(bounds.maxY).toBeLessThan(
+      STORY_OG_TITLE_BAND_TOP + STORY_OG_TITLE_BAND_HEIGHT
+    );
+    expect(bounds.minX).toBeGreaterThanOrEqual(STORY_OG_CONTENT_INSET_X);
+    expect(bounds.maxX).toBeLessThanOrEqual(STORY_OG_TITLE_COLUMN_RIGHT);
   }, 20_000);
 
   it("keeps the branded fallback free of image elements", () => {

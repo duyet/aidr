@@ -32,6 +32,11 @@ async function loadFont(
   try {
     const res = await env?.ASSETS?.fetch(assetsGet(path));
     if (!res?.ok) return null;
+    // A miss answered with the SPA shell would be a >1000 byte HTML buffer,
+    // and satori throws on that instead of degrading. Same guard as
+    // worker/public-assets.ts, because it is the same binding.
+    const ctype = (res.headers.get("content-type") ?? "").toLowerCase();
+    if (ctype.includes("text/html")) return null;
     const buf = await res.arrayBuffer();
     return buf.byteLength > 1000 ? buf : null;
   } catch {
