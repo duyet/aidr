@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { chunk } from "../chunk.js";
 import type { CanonicalUpdate, MergePlan } from "../dedupe.js";
 import {
   backfillSourceLang,
@@ -10,7 +11,7 @@ import type { NewRow, SourceRow } from "../ingest/context.js";
 import { RELEVANCE_THRESHOLD } from "../ingest/context.js";
 import { pendingRowToNewRow } from "../ingest/dedupe.js";
 import { applyEnrichment } from "../ingest/enrich.js";
-import { chunk, enabledSourcesOf, seedSourceHealth } from "../ingest/fetch.js";
+import { enabledSourcesOf, seedSourceHealth } from "../ingest/fetch.js";
 import {
   buildMergeCandidates,
   EMPTY_MERGE_PLAN,

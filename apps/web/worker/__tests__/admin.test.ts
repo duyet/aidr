@@ -7,12 +7,12 @@ import {
   pushItems,
   regenerateTldr,
   reprocessToday,
-  sha256Hex,
   triggerIngest,
   updateItem,
   upsertSource,
 } from "../admin/handlers.js";
 import { handleMcpRequest } from "../admin/mcp.js";
+import { sha256Hex } from "../hash.js";
 import * as llm from "../llm.js";
 import { tldrSnapshotDate } from "../tldr.js";
 import type { Env } from "../types.js";

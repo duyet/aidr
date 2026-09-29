@@ -1,10 +1,11 @@
+import { chunk } from "../chunk.js";
 import { sha256Hex } from "../hash.js";
 import { parseMediaManifest } from "../media.js";
 import { recordStep } from "../run-stats.js";
 import { toEpochSeconds } from "../time.js";
 import { safeStep } from "../workflow-step.js";
 import type { IngestContext, NewRow, SourceRow } from "./context.js";
-import { chunk, type FetchedSource } from "./fetch.js";
+import type { FetchedSource } from "./fetch.js";
 
 /** Max ids per `SELECT ... WHERE id IN (...)` (D1 bound-parameter limit). */
 export const DEDUPE_IN_CHUNK = 50;
