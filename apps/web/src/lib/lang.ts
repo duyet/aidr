@@ -209,20 +209,18 @@ export function timeAgo(
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-const CATEGORY_LABELS_VI: Record<string, string> = {
-  Regulation: "Chính sách",
-  Research: "Nghiên cứu",
-  Releases: "Phát hành",
-  Funding: "Gọi vốn",
-  Legal: "Pháp lý",
-  Industry: "Doanh nghiệp",
-  Products: "Sản phẩm",
-  Infra: "Hạ tầng",
-};
-
-export function categoryLabel(name: string, lang: Lang): string {
-  if (lang !== "vi") return name;
-  return CATEGORY_LABELS_VI[name] ?? name;
+/**
+ * Categories are the site's own technical taxonomy — "Agent", "Infra",
+ * "Research" — and stay in English on both locales, matching the house style
+ * the Vietnamese translator is given. Translating them ("Tác nhân", "Hạ tầng")
+ * invents a second vocabulary that matches no upstream topic slug, so the
+ * Vietnamese UI, the OG card, and the RSS/MCP payloads all read "Agent" and
+ * "Infra". `lang` is kept so callers stay uniform with the other label
+ * helpers; add a translation here only for a genuinely editorial label, never
+ * for a category.
+ */
+export function categoryLabel(name: string, _lang: Lang): string {
+  return name;
 }
 
 const STATUS_LABELS_VI: Record<string, string> = {

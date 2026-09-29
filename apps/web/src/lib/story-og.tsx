@@ -65,20 +65,6 @@ const HAIRLINE = "#d9d7d0";
 const IMAGE_WASH = "#e9e7df";
 const YELLOW = "#f5c518";
 
-const STORY_OG_CATEGORY_LABELS_VI: Record<string, string> = {
-  agents: "Tác nhân",
-  chips: "Chip",
-  funding: "Gọi vốn",
-  infra: "Hạ tầng",
-  industry: "Doanh nghiệp",
-  legal: "Pháp lý",
-  models: "Mô hình",
-  products: "Sản phẩm",
-  regulation: "Chính sách",
-  releases: "Phát hành",
-  research: "Nghiên cứu",
-};
-
 export type { StoryOgMime };
 
 export interface StoryOgImage {
@@ -335,12 +321,6 @@ function storyDate(publishedAt: number): string {
   return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : "";
 }
 
-function storyOgCategory(category: string, lang: Lang): string {
-  return lang === "vi"
-    ? (STORY_OG_CATEGORY_LABELS_VI[category.toLowerCase()] ?? category)
-    : category;
-}
-
 export function storyOgCopy(item: FeedItem, lang: Lang): StoryOgCopy {
   const title = boundedText(localizedTitle(item, lang).text, MAX_TITLE_LENGTH);
   const host = boundedText(
@@ -348,8 +328,13 @@ export function storyOgCopy(item: FeedItem, lang: Lang): StoryOgCopy {
     MAX_HOST_LENGTH
   );
   const date = storyDate(item.published_at);
+  // Categories are editorial taxonomy, not prose, so the card shows the raw
+  // value in every locale. Do not re-add a translated "Tác nhân" / "Mô hình"
+  // here on the belief that the card cannot render diacritics: the loaded
+  // fonts carry the full Vietnamese alphabet (see `og-fonts.ts`), so the real
+  // reason is taxonomy consistency, not glyph coverage.
   const category = item.category
-    ? boundedText(storyOgCategory(item.category, lang), MAX_CATEGORY_LENGTH)
+    ? boundedText(item.category, MAX_CATEGORY_LENGTH)
     : "";
   return {
     title,

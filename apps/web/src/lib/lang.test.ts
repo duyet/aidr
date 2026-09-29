@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  categoryLabel,
   langCookieHeader,
   langFromAcceptLanguage,
   langFromCookie,
@@ -86,6 +87,37 @@ describe("locale parsing", () => {
       lang: "vi",
       source: "default",
     });
+  });
+});
+
+describe("categoryLabel", () => {
+  it("keeps the site's own taxonomy untranslated in both locales", () => {
+    // Regression: "Research" rendered as "Nghiên cứu" and "Infra" as "Hạ tầng"
+    // on the Vietnamese UI. Categories name upstream topic slugs, so a
+    // Vietnamese label matched nothing the reader could search for or click
+    // through to, and read as a different category than the one it was.
+    for (const name of [
+      "Agents",
+      "Chips",
+      "Funding",
+      "Industry",
+      "Infra",
+      "Legal",
+      "Models",
+      "Products",
+      "Regulation",
+      "Releases",
+      "Research",
+    ]) {
+      expect(categoryLabel(name, "en"), name).toBe(name);
+      expect(categoryLabel(name, "vi"), name).toBe(name);
+    }
+  });
+
+  it("passes through an unknown category rather than guessing a translation", () => {
+    for (const name of ["uncategorized", "Mixed Case", "brand-new-topic"]) {
+      expect(categoryLabel(name, "vi"), name).toBe(name);
+    }
   });
 });
 
