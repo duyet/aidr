@@ -99,9 +99,7 @@ export function StoryThumb({
   const og = storyOgThumbUrl(itemId, lang);
   const ogSrc = og && og !== failedSrc ? og : null;
   const showSrc = remote ?? ogSrc ?? STORY_THUMB_PLACEHOLDER;
-  const zoomSrc = remote
-    ? (resizeCdnImageUrl(src, "full") ?? remote)
-    : ogSrc;
+  const zoomSrc = remote ? (resizeCdnImageUrl(src, "full") ?? remote) : ogSrc;
 
   /*
    * A `fetchPriority="high"` here becomes a `<link rel=preload as=image
