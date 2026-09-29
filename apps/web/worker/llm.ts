@@ -1088,10 +1088,10 @@ export function sanitizeTranslateResults(
 const TRANSLATE_TIMEOUT_MS = 240_000;
 /** 25s hang-cap + two 20s floors so leftover actually reaches fallbacks. */
 const TRANSLATE_BATCH_TIMEOUT_MS = 70_000;
-const TRANSLATE_MAX_TOKENS = 2048;
-/** HuggingNews summaries are multi-paragraph; clip so a 3-item JSON
- *  answer still fits max_tokens instead of truncating mid-object. */
-const TRANSLATE_SUMMARY_MAX_CHARS = 800;
+const TRANSLATE_MAX_TOKENS = 4096;
+/** Keep a whole story body in the translate prompt. A hard 800-char cut
+ * landed mid-sentence in the Vietnamese column. */
+const TRANSLATE_SUMMARY_MAX_CHARS = 2000;
 
 function parseTranslateRows(raw: string): unknown {
   const parsed = parseJson<{ results?: unknown } | unknown[]>(raw);
@@ -1102,7 +1102,10 @@ function clipSummary(summary: string | undefined): string | undefined {
   if (!summary) return summary;
   const trimmed = summary.trim();
   if (trimmed.length <= TRANSLATE_SUMMARY_MAX_CHARS) return trimmed;
-  return `${trimmed.slice(0, TRANSLATE_SUMMARY_MAX_CHARS).trimEnd()}…`;
+  const slice = trimmed.slice(0, TRANSLATE_SUMMARY_MAX_CHARS);
+  const boundary = Math.max(slice.lastIndexOf(". "), slice.lastIndexOf("。"));
+  if (boundary > 400) return slice.slice(0, boundary + 1).trim();
+  return `${slice.trimEnd()}…`;
 }
 
 function translatePrompt(batch: TranslateInput[], titlesOnly: boolean): string {

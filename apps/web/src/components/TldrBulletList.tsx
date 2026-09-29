@@ -89,6 +89,7 @@ export function TldrBulletList({
                   n={n}
                   thumbSrc={thumbSrc}
                   itemId={primaryId}
+                  lang={lang}
                   fullText={b.text}
                   linked={Boolean(primaryId)}
                   priority={n <= 6}

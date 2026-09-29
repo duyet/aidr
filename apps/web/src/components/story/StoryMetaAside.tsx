@@ -183,9 +183,7 @@ export function StoryMetaAside({
 
   return (
     <aside className="not-typeset min-w-0 space-y-5 md:border-l md:border-border md:pl-6">
-      {imageUrl && (
-        <StoryThumb src={imageUrl} itemId={item.id} variant="card" />
-      )}
+      <StoryThumb src={imageUrl} itemId={item.id} lang={lang} variant="card" />
 
       {(item.tags.length > 0 || item.category) && (
         <div className="space-y-2">
