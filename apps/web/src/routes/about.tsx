@@ -3,17 +3,12 @@ import {
   Link,
   stripSearchParams,
 } from "@tanstack/react-router";
-import { ArrowRight, ExternalLink } from "lucide-react";
-import { useEffect, useState } from "react";
-import { anyrouterModelUrl } from "../lib/anyrouter";
+import { ExternalLink } from "lucide-react";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import { ANYROUTER_URL, GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
-import { fetchSourceNames } from "../lib/sources-fn";
-import type { ModelChains } from "../lib/system-queries";
-import { useSystemData } from "../lib/use-system-stats";
 
 export const Route = createFileRoute("/about")({
   search: {
@@ -28,273 +23,229 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
-interface Step {
+interface FlowStep {
+  n: string;
   en: string;
   vi: string;
-  subEn: string;
-  subVi: string;
+  detailEn: string;
+  detailVi: string;
 }
 
-const STEPS: Step[] = [
+/** One hourly pass: collect, process, judge, rank, then one edition out. */
+const FLOW: FlowStep[] = [
   {
-    en: "Sources",
-    vi: "Nguồn",
-    subEn: "HN, HuggingNews, submissions",
-    subVi: "HN, HuggingNews, bài gửi từ người dùng",
-  },
-  {
-    en: "Review",
-    vi: "Kiểm duyệt",
-    subEn: "Jev intent gates",
-    subVi: "Jev kiểm duyệt",
-  },
-  {
-    en: "Fetch",
+    n: "01",
+    en: "Collect",
     vi: "Thu thập",
-    subEn: "hourly poll",
-    subVi: "quét mỗi giờ",
+    detailEn: "Hourly pull of new AI stories.",
+    detailVi: "Quét tin AI mới mỗi giờ.",
   },
   {
-    en: "Score",
-    vi: "AI chấm điểm",
-    subEn: "hides irrelevant stories",
-    subVi: "ẩn tin không liên quan",
+    n: "02",
+    en: "Process",
+    vi: "Xử lý",
+    detailEn: "Read the article, drop duplicates, write Vietnamese.",
+    detailVi: "Đọc bài, bỏ tin trùng, viết tiếng Việt.",
   },
   {
-    en: "Merge",
-    vi: "Gộp tin trùng",
-    subEn: "same story, one item",
-    subVi: "cùng một tin, một mục",
+    n: "03",
+    en: "Judge",
+    vi: "Phán quyết",
+    detailEn: "JEV checks intent. An LLM scores what belongs.",
+    detailVi: "JEV xét ý đồ. LLM chấm tin có đáng lên không.",
   },
   {
-    en: "Translate",
-    vi: "Dịch tự nhiên",
-    subEn: "EN → VI, journalist style",
-    subVi: "Anh → Việt, văn phong báo chí",
-  },
-  {
+    n: "04",
     en: "Rank",
     vi: "Xếp hạng",
-    subEn: "importance × quality, fresher wins",
-    subVi: "tầm quan trọng × chất lượng, mới hơn thắng",
+    detailEn: "Importance times quality. Newer stories rise.",
+    detailVi: "Tầm quan trọng nhân chất lượng. Tin mới hơn được ưu tiên.",
   },
   {
-    en: "AI;DR + Email",
-    vi: "AI;DR + Email",
-    subEn: "daily digest",
-    subVi: "bản tin hằng ngày",
+    n: "05",
+    en: "Combine",
+    vi: "Gộp bản",
+    detailEn: "One TL;DR edition per language. No cross-fill.",
+    detailVi: "Một bản AI;DR mỗi ngôn ngữ. Không mượn bản kia.",
+  },
+  {
+    n: "06",
+    en: "Distribute",
+    vi: "Phát hành",
+    detailEn: "The site, email at 07:00 local, Telegram at 08:00.",
+    detailVi: "Trang web, email lúc 07:00 theo múi giờ, Telegram lúc 08:00.",
   },
 ];
 
-function PipelineDiagram() {
-  // English-only by design: the global lang toggle is disabled on this
-  // route (see HeaderBar/LangToggle).
+function PipelineDiagram({ lang }: { lang: "en" | "vi" }) {
   return (
-    <div className="-mx-1 flex flex-wrap items-stretch gap-1 gap-y-2 px-1 py-1">
-      {STEPS.map((step, i) => (
-        <div key={step.en} className="flex shrink-0 items-stretch">
-          <div className="flex w-28 flex-col justify-center rounded-2xl border border-border/80 bg-card px-2 py-2.5 text-center">
-            <div className="text-sm font-medium text-foreground">{step.en}</div>
-            <div className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
-              {step.subEn}
-            </div>
-          </div>
-          {i < STEPS.length - 1 && (
-            <div className="flex shrink-0 items-center px-1">
-              <ArrowRight
-                className="h-3.5 w-3.5 shrink-0 text-accent"
-                aria-hidden
+    <figure className="not-typeset mt-4">
+      <svg
+        viewBox="0 0 920 292"
+        role="img"
+        className="h-auto w-full text-foreground"
+        aria-labelledby="pipeline-diagram-title"
+      >
+        <title id="pipeline-diagram-title">
+          {lang === "vi"
+            ? "Thu thập, xử lý, phán quyết, xếp hạng, gộp bản, phát hành"
+            : "Collect, process, judge, rank, combine, distribute"}
+        </title>
+        <defs>
+          <marker
+            id="flow-arrow"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 1.2 L 8 5 L 0 8.8 Z" className="fill-accent" />
+          </marker>
+        </defs>
+        {FLOW.map((step, index) => {
+          const col = index % 3;
+          const row = Math.floor(index / 3);
+          const x = 16 + col * 304;
+          const y = 12 + row * 148;
+          const title = lang === "vi" ? step.vi : step.en;
+          const detail = lang === "vi" ? step.detailVi : step.detailEn;
+          return (
+            <g key={step.n}>
+              {col < 2 && (
+                <line
+                  x1={x + 276}
+                  y1={y + 52}
+                  x2={x + 298}
+                  y2={y + 52}
+                  className="stroke-accent"
+                  strokeWidth="1.5"
+                  markerEnd="url(#flow-arrow)"
+                />
+              )}
+              {index === 2 && (
+                <path
+                  d="M 892 116 V 168 H 28"
+                  fill="none"
+                  className="stroke-accent"
+                  strokeWidth="1.5"
+                  markerEnd="url(#flow-arrow)"
+                />
+              )}
+              <rect
+                x={x}
+                y={y}
+                width="272"
+                height="104"
+                rx="16"
+                className="fill-card stroke-border"
+                strokeWidth="1"
               />
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Section({
-  id,
-  title,
-  children,
-}: {
-  id?: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section id={id} className="mt-6 scroll-mt-20">
-      <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {title}
-      </h2>
-      <div className="typeset typeset-page mt-2 text-muted-foreground">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function Sources() {
-  // English-only by design: the global lang toggle is disabled on this
-  // route (see HeaderBar/LangToggle).
-  const [names, setNames] = useState<string[] | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchSourceNames()
-      .then((res) => {
-        if (!cancelled) setNames(res);
-      })
-      .catch(() => {
-        if (!cancelled) setNames([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return (
-    <Section title="Sources">
-      {names === null ? (
-        <p>Loading...</p>
-      ) : names.length === 0 ? (
-        <p>No sources configured yet.</p>
-      ) : (
-        <ul className="not-typeset flex flex-wrap gap-2">
-          {names.map((name) => (
-            <li
-              key={name}
-              className="rounded-full border border-border px-3 py-0.5 text-xs text-foreground"
-            >
-              {name}
-            </li>
-          ))}
-        </ul>
-      )}
-    </Section>
-  );
-}
-
-function ModelsLine() {
-  // English-only by design: the global lang toggle is disabled on this
-  // route (see HeaderBar/LangToggle).
-  // env-only endpoint — no DB round-trip, answers in ~ms; session-cached
-  // via useSystemData so /data and /about share one copy.
-  const { data } = useSystemData<{ models: ModelChains }>("/api/system/models");
-  const models = data?.models ?? null;
-
-  if (!models || models.scoring.length === 0) return null;
-  const extra = models.scoring.length - 1;
-  const decisions = models.decisions;
-  const decisionsExtra = decisions.length - 1;
-
-  return (
-    <>
-      <p>
-        Scoring:{" "}
-        <span className="font-mono text-foreground">{models.scoring[0]}</span>
-        {extra > 0 && ` (+${extra} fallback)`}
-        {" · "}
-        Translation:{" "}
-        <span className="font-mono text-foreground">
-          {models.translation[0]}
-        </span>
-      </p>
-      <p>
-        Decisions:{" "}
-        <a
-          href={anyrouterModelUrl(decisions[0] ?? "typesafe/jev")}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-mono text-accent underline underline-offset-2 hover:no-underline"
-          title={`Open ${decisions[0] ?? "typesafe/jev"} on AnyRouter`}
-        >
-          {decisions[0] ?? "typesafe/jev"}
-        </a>
-        {decisionsExtra > 0 && ` (+${decisionsExtra} fallback)`}
-      </p>
-      <p className="text-muted-foreground">
-        {"LLM routing via "}
-        <a
-          href={ANYROUTER_URL}
-          target="_blank"
-          rel="noopener"
-          className="text-accent underline underline-offset-2 hover:no-underline"
-        >
-          AnyRouter
-        </a>
-        .
-      </p>
-    </>
+              <text
+                x={x + 18}
+                y={y + 28}
+                className="fill-accent"
+                fontSize="11"
+                fontFamily="ui-monospace, monospace"
+              >
+                {step.n}
+              </text>
+              <text
+                x={x + 48}
+                y={y + 28}
+                className="fill-foreground"
+                fontSize="16"
+                fontWeight="600"
+              >
+                {title}
+              </text>
+              <foreignObject x={x + 16} y={y + 40} width="240" height="52">
+                <p className="m-0 text-[13px] leading-snug text-muted-foreground">
+                  {detail}
+                </p>
+              </foreignObject>
+            </g>
+          );
+        })}
+      </svg>
+    </figure>
   );
 }
 
 function AboutPage() {
-  // English-only by design: the global lang toggle is disabled on this
-  // route (see HeaderBar/LangToggle).
-  const navigationLang = useLang();
-  const t = (en: string, _vi: string) => en;
+  const lang = useLang();
+  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
 
   return (
     <div className="py-12">
       <div className="typeset typeset-page">
-        <h1>{t("About AI News", "Giới thiệu AI News")}</h1>
+        <h1>{t("About AI;DR", "Giới thiệu AI;DR")}</h1>
+        <p>
+          {t(
+            "AI;DR is a machine that reads the day's AI news and publishes one ranked edition, in English and in Vietnamese.",
+            "AI;DR là một máy đọc tin AI trong ngày và xuất một bản đã xếp hạng, tiếng Anh và tiếng Việt."
+          )}
+        </p>
         <p className="text-muted-foreground">
           {t(
-            "AI News is an LLM-based system: AI stories are fetched hourly, scored, merged, ranked, and translated to Vietnamese — every story links back to its original source.",
-            "AI News là hệ thống tin tức vận hành bởi LLM: tin về AI được thu thập mỗi giờ, chấm điểm, gộp, xếp hạng và dịch sang tiếng Việt — mỗi tin đều dẫn về nguồn gốc."
+            "People do not pick the order. Each hour the pipeline collects stories, processes them, and asks JEV plus an LLM what deserves a place. AnyRouter runs those model calls. The result is combined into one snapshot per language, then distributed to the site, email, and Telegram. Every story still links back to the original post.",
+            "Người không chọn thứ tự. Mỗi giờ pipeline thu thập tin, xử lý, rồi hỏi JEV và một LLM tin nào đáng lên. AnyRouter chạy các lần gọi mô hình đó. Kết quả được gộp thành một bản cho mỗi ngôn ngữ, rồi phát tới trang web, email và Telegram. Mỗi tin vẫn dẫn về bài gốc."
           )}
         </p>
       </div>
 
-      <section id="how-it-works" className="mt-8 scroll-mt-20">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {t("How it works", "Cách hoạt động")}
-        </h2>
-        <div className="mt-3">
-          <PipelineDiagram />
+      <section id="how-it-works" className="mt-10 scroll-mt-20">
+        <div className="typeset typeset-page">
+          <h2>{t("How it works", "Cách hoạt động")}</h2>
+          <p className="text-muted-foreground">
+            {t(
+              "Six steps, one hourly run. A language that is not ready is skipped and tried again next hour. It is never filled from the other language.",
+              "Sáu bước, một lần chạy mỗi giờ. Ngôn ngữ chưa sẵn sàng thì bỏ qua và thử lại giờ sau. Không lấy nội dung từ ngôn ngữ kia để lấp."
+            )}
+          </p>
         </div>
-      </section>
-
-      <Sources />
-
-      <Section title={t("Transparency", "Minh bạch")}>
-        <ModelsLine />
-        <p>
-          {t("Pipeline stats at", "Thống kê pipeline tại")}{" "}
+        <PipelineDiagram lang={lang} />
+        <p className="typeset typeset-page mt-4 text-muted-foreground">
+          {t("The source list is on the", "Danh sách nguồn nằm ở")}{" "}
           <Link
             to="/data"
+            search={{ tab: "sources" }}
             className="text-accent underline underline-offset-2 hover:no-underline"
           >
-            /data
+            {t("data sources page", "trang nguồn dữ liệu")}
           </Link>
-          {" · "}
-          {t("API at", "API tại")}{" "}
-          <Link
-            to="/mcp"
-            search={{ lang: navigationLang }}
-            className="text-accent underline underline-offset-2 hover:no-underline"
-          >
-            /mcp
-          </Link>
-          {" · "}
-          <Link
-            to="/brand"
-            className="text-accent underline underline-offset-2 hover:no-underline"
-          >
-            /brand
-          </Link>
-          {" · "}
+          .
+        </p>
+      </section>
+
+      <section className="typeset typeset-page mt-10">
+        <h2>{t("Judgment and models", "Phán quyết và mô hình")}</h2>
+        <p className="text-muted-foreground">
+          {t(
+            "JEV is the intent gate: it decides whether an item is actually about this beat before a score is trusted. The LLM then scores relevance, writes the Vietnamese in a press voice, and drafts the digest bullets. ",
+            "JEV là cổng ý đồ: nó quyết định một mục có đúng chủ đề hay không trước khi điểm số được tin. LLM sau đó chấm mức liên quan, viết tiếng Việt theo văn phong báo, và soạn các ý AI;DR. "
+          )}
           <a
-            href={GITHUB_URL}
+            href={ANYROUTER_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:no-underline"
+            className="text-accent underline underline-offset-2 hover:no-underline"
           >
-            GitHub
-            <ExternalLink className="h-3 w-3" aria-hidden />
+            AnyRouter
           </a>
-          {" · "}
+          {t(
+            " is the router in front of those models, so scoring, translation, and the digest share one path with fallbacks.",
+            " là bộ định tuyến phía trước các mô hình đó, nên chấm điểm, dịch và bản tin đi chung một đường, có phương án dự phòng."
+          )}
+        </p>
+        <p className="text-muted-foreground">
+          {t(
+            "Stories are machine-curated and machine-translated. Mistakes happen. A signed-in reader can suggest a better Vietnamese line under any story.",
+            "Tin do máy tuyển và máy dịch. Sai sót vẫn xảy ra. Độc giả đã đăng nhập có thể góp ý câu tiếng Việt ngay dưới mỗi tin."
+          )}
+        </p>
+        <p className="not-typeset mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
           <a
             href={GITHUB_ALGORITHM_URL}
             target="_blank"
@@ -304,17 +255,17 @@ function AboutPage() {
             ALGORITHM.md
             <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:no-underline"
+          >
+            GitHub
+            <ExternalLink className="h-3 w-3" aria-hidden />
+          </a>
         </p>
-      </Section>
-
-      <Section title={t("A note on accuracy", "Lưu ý về độ chính xác")}>
-        <p>
-          {t(
-            'Stories are machine-curated and machine-translated — mistakes are possible. Translation suggestions are welcome from any signed-in reader (see "Suggest better translation" under a story\'s Vietnamese summary).',
-            'Tin được máy tuyển chọn và dịch tự động — sai sót có thể xảy ra. Mọi độc giả đã đăng nhập đều có thể góp ý bản dịch (xem mục "Góp ý bản dịch" dưới phần tóm tắt tiếng Việt).'
-          )}
-        </p>
-      </Section>
+      </section>
     </div>
   );
 }
