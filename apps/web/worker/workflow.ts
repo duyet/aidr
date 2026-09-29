@@ -53,6 +53,7 @@ import {
 } from "./run-stats.js";
 import type { SourceRunHealth } from "./source-health.js";
 import { sanitizeError } from "./telemetry-safe.js";
+import { runHealthCheck } from "./health.js";
 import { toEpochSeconds } from "./time.js";
 import type { Env } from "./types.js";
 import {
@@ -257,6 +258,11 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         kind: "exception",
       });
     } finally {
+      // Before close-run so its steps are the ones evaluated; a durable step
+      // so a replay does not raise the same alerts twice.
+      const alerts = await safeStep(step, "health-check", [] as string[], () =>
+        runHealthCheck(this.env, { runId, steps })
+      );
       recordStep(steps, "close-run", "recording");
       const stats = buildRunStats({
         bySource,
@@ -283,6 +289,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         emailsSent,
         notified,
         notifyReason,
+        alerts,
       });
 
       const row = {

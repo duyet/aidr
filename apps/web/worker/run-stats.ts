@@ -53,6 +53,9 @@ export interface RunStats {
   notified: Record<string, number>;
   /** Structured digest/trending skip reasons per channel. */
   notifyReason: Record<string, unknown>;
+  /** Health-check alert keys raised this run; later runs read them back as
+   *  the alert cooldown (see `worker/health.ts`). Absent when none fired. */
+  alerts?: string[];
 }
 
 /** Every field defaults to zero/false/empty so a missing or failed step
@@ -80,6 +83,7 @@ export function buildRunStats(partial: Partial<RunStats> = {}): RunStats {
     emailsSent: partial.emailsSent ?? 0,
     notified: partial.notified ?? {},
     notifyReason: partial.notifyReason ?? {},
+    ...(partial.alerts?.length ? { alerts: partial.alerts } : {}),
   };
 }
 
