@@ -298,12 +298,25 @@ export function digestSubjectLine(
   return `AI;DR — ${date} — ${phrase}`;
 }
 
-/** Highest-ranked story image that is still an http(s) URL. */
+/** Generated social cards (text-on-card OG images) are not story thumbnails. */
+export function isGeneratedOgCard(url: string): boolean {
+  try {
+    const parts = new URL(url).pathname.toLowerCase().split("/");
+    return (
+      parts.includes("og") ||
+      parts.some((part) => /og[-_]?(image|card)/.test(part))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** First real thumbnail: http(s), not a generated OG card. */
 export function digestHeroSrc(stories: DigestStory[]): string | null {
   for (const story of stories) {
     if (!story.imageUrl) continue;
     const safe = safeHref(story.imageUrl);
-    if (safe) return safe;
+    if (safe && !isGeneratedOgCard(safe)) return safe;
   }
   return null;
 }
@@ -369,7 +382,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
     ${hero ? heroRow(hero) : ""}
     ${htmlItems}
     <tr>
-      <td style="padding:16px ${PAD} 28px">${ctaButton(readMore, withMailUtm(SITE_URL, "digest", input.lang))}</td>
+      <td style="padding:16px ${PAD} 28px;font-family:${SANS};font-size:14px;line-height:1.4"><a href="${escapeHtml(withMailUtm(SITE_URL, "digest", input.lang))}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${escapeHtml(readMore)}</a></td>
     </tr>
     ${mailFooterHtml(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 
