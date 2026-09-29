@@ -61,23 +61,23 @@ database_id = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427"
 
 [vars]
 ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
-# Chat chain: Laguna S 2.1, DeepSeek V4.1 flash, Llama 4 Scout, then
+# Chat chain: Laguna S 2.1, Llama 4 Scout, then
 # anyrouter/auto as the last fallback. Picked by a live JSON translate probe
 # (2026-09-29); gemini-*, mistral-*, qwen3.5-flash, kimi-k2.6, grok-4.7 and
-# glm-5.3-flash failed every call.
+# glm-5.3-flash failed every call. deepseek-v4.1-flash: 2% ok over 7 days.
 # TL;DR and translate use this chain. Score tries Jev first
 # (ANYROUTER_JEV_MODEL), then this chain. Avoid ling-3.0-flash (404) and
 # Gemma/GLM flash (502 / BYOK). stealth/ox-alpha stays delisted.
 # google/gemini-3.5-flash is BYOK-only on AnyRouter (keyless calls 404,
 # anyrouter#3655). minimax/m3 has no upstream key (404/502, anyrouter#3817).
 # No BYOK-only chat ids (SEA-LION, gemini-3.5/3.6/3.7/3.8, qwen3.7, google/gemma-4-*).
-ANYROUTER_MODEL = "poolside/laguna-s-2.1,deepseek/deepseek-v4.1-flash,meta/llama-4-scout-17b-16e-instruct,anyrouter/auto"
-ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,deepseek/deepseek-v4.1-flash,meta/llama-4-scout-17b-16e-instruct,anyrouter/auto"
-ANYROUTER_TLDR_MODEL = "poolside/laguna-s-2.1,deepseek/deepseek-v4.1-flash,meta/llama-4-scout-17b-16e-instruct,anyrouter/auto"
+ANYROUTER_MODEL = "poolside/laguna-s-2.1,meta/llama-4-scout-17b-16e-instruct,anyrouter/auto"
+ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,meta/llama-4-scout-17b-16e-instruct,anyrouter/auto"
+ANYROUTER_TLDR_MODEL = "poolside/laguna-s-2.1,meta/llama-4-scout-17b-16e-instruct,anyrouter/auto"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
 # (anyrouter/auto is filtered out of this chain).
-ANYROUTER_ENGLISH_TRANSLATE_MODEL = "poolside/laguna-s-2.1,deepseek/deepseek-v4.1-flash,meta/llama-4-scout-17b-16e-instruct"
+ANYROUTER_ENGLISH_TRANSLATE_MODEL = "poolside/laguna-s-2.1,meta/llama-4-scout-17b-16e-instruct"
 # Translation semantic review uses only this explicit concrete chain. Keep it
 # disjoint from every generator id; missing/overlapping config fails closed.
 # grok-4.7 and glm-5.3-flash failed 100% of calls over 7 days.

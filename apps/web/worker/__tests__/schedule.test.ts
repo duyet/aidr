@@ -91,7 +91,6 @@ describe("live AnyRouter model chains", () => {
   // last resort so one bad auto pick cannot burn a whole step's time budget.
   const liveChain = [
     "poolside/laguna-s-2.1",
-    "deepseek/deepseek-v4.1-flash",
     "meta/llama-4-scout-17b-16e-instruct",
     "anyrouter/auto",
   ];
@@ -122,7 +121,6 @@ describe("live AnyRouter model chains", () => {
   it("configures a separate explicit VI→EN generator", () => {
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
       "poolside/laguna-s-2.1",
-      "deepseek/deepseek-v4.1-flash",
       "meta/llama-4-scout-17b-16e-instruct",
     ]);
   });
