@@ -49,6 +49,12 @@ const WORKER_OPTIONAL = [
   "NEWS_UNSUBSCRIBE_SECRET",
   "NOTIFY_WEBHOOK_URL",
   "NEWS_ADMIN_USER_IDS",
+  // GA4 Data API service account for the /data Audience tab. Optional on
+  // purpose: a repo without it still deploys, and the Audience tab reports
+  // "Unavailable" rather than zero audience. Add it to WORKER_REQUIRED only
+  // once the property id is also committed — a required key nobody sets
+  // makes `pnpm sync-env` warn on every run.
+  "GA4_SERVICE_ACCOUNT_JSON",
 ] as const;
 
 /** Secrets GitHub Actions workflows read (`secrets.*`). */

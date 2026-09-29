@@ -39,6 +39,7 @@ import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
 import { Route as ApiSubscribePreviewRouteImport } from './routes/api/subscribe.preview'
 import { Route as ApiSystemAccountsRouteImport } from './routes/api/system.accounts'
 import { Route as ApiSystemActivityRouteImport } from './routes/api/system.activity'
+import { Route as ApiSystemAudienceRouteImport } from './routes/api/system.audience'
 import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
 import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
 import { Route as ApiSystemOverviewRouteImport } from './routes/api/system.overview'
@@ -197,6 +198,11 @@ const ApiSystemActivityRoute = ApiSystemActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiSystemAudienceRoute = ApiSystemAudienceRouteImport.update({
+  id: '/audience',
+  path: '/audience',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 const ApiSystemLlmRoute = ApiSystemLlmRouteImport.update({
   id: '/llm',
   path: '/llm',
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
+  '/api/system/audience': typeof ApiSystemAudienceRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
@@ -303,6 +310,7 @@ export interface FileRoutesByTo {
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
+  '/api/system/audience': typeof ApiSystemAudienceRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
@@ -343,6 +351,7 @@ export interface FileRoutesById {
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
+  '/api/system/audience': typeof ApiSystemAudienceRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
@@ -384,6 +393,7 @@ export interface FileRouteTypes {
     | '/api/subscribe/preview'
     | '/api/system/accounts'
     | '/api/system/activity'
+    | '/api/system/audience'
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/api/subscribe/preview'
     | '/api/system/accounts'
     | '/api/system/activity'
+    | '/api/system/audience'
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
@@ -462,6 +473,7 @@ export interface FileRouteTypes {
     | '/api/subscribe/preview'
     | '/api/system/accounts'
     | '/api/system/activity'
+    | '/api/system/audience'
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
@@ -713,6 +725,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemActivityRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/system/audience': {
+      id: '/api/system/audience'
+      path: '/audience'
+      fullPath: '/api/system/audience'
+      preLoaderRoute: typeof ApiSystemAudienceRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
     '/api/system/llm': {
       id: '/api/system/llm'
       path: '/llm'
@@ -791,6 +810,7 @@ const ApiSubscribeRouteWithChildren = ApiSubscribeRoute._addFileChildren(
 interface ApiSystemRouteChildren {
   ApiSystemAccountsRoute: typeof ApiSystemAccountsRoute
   ApiSystemActivityRoute: typeof ApiSystemActivityRoute
+  ApiSystemAudienceRoute: typeof ApiSystemAudienceRoute
   ApiSystemLlmRoute: typeof ApiSystemLlmRoute
   ApiSystemModelsRoute: typeof ApiSystemModelsRoute
   ApiSystemOverviewRoute: typeof ApiSystemOverviewRoute
@@ -802,6 +822,7 @@ interface ApiSystemRouteChildren {
 const ApiSystemRouteChildren: ApiSystemRouteChildren = {
   ApiSystemAccountsRoute: ApiSystemAccountsRoute,
   ApiSystemActivityRoute: ApiSystemActivityRoute,
+  ApiSystemAudienceRoute: ApiSystemAudienceRoute,
   ApiSystemLlmRoute: ApiSystemLlmRoute,
   ApiSystemModelsRoute: ApiSystemModelsRoute,
   ApiSystemOverviewRoute: ApiSystemOverviewRoute,

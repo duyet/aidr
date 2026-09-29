@@ -97,4 +97,11 @@ export interface Env {
   NEWS_UNSUBSCRIBE_SECRET?: string;
   /** Owner address for new-subscriber pings. When unset, email ping is skipped. */
   OWNER_NOTIFY_EMAIL?: string;
+  /** GA4 property id for the /data Audience tab (public config, not a secret).
+   *  Accepts `123456` or `properties/123456`. */
+  GA4_PROPERTY_ID?: string;
+  /** Whole service-account key file, JSON-encoded, as a Worker secret. It is
+   *  only ever used to sign a short-lived read-only assertion — the raw JSON
+   *  is never logged, echoed, or returned by an endpoint. */
+  GA4_SERVICE_ACCOUNT_JSON?: string;
 }

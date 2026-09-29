@@ -27,6 +27,7 @@ import {
   upsertSource,
 } from "../../../worker/admin/handlers.js";
 import { backfillClerkUsers } from "../../../worker/clerk-users.js";
+import { syncGa4Insights } from "../../../worker/ga4/insights.js";
 import {
   getCampaign,
   isMailError,
@@ -271,6 +272,16 @@ async function handle(
     segments[0] === "clerk-sync"
   ) {
     const result = await backfillClerkUsers(env);
+    return Response.json(result, {
+      status: result.status === "ok" ? 200 : 400,
+    });
+  }
+
+  // One-shot GA4 audience snapshot. The hourly ingest alarm already syncs at
+  // most once a day; this is the operator escape hatch for "the Audience tab
+  // is stale and I want it now". Same gate, forced.
+  if (method === "POST" && segments.length === 1 && segments[0] === "ga4-sync") {
+    const result = await syncGa4Insights(env, {});
     return Response.json(result, {
       status: result.status === "ok" ? 200 : 400,
     });

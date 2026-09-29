@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
 import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { AdminPanel } from "../components/system/AdminPanel";
 import { AlgoTab } from "../components/system/AlgoTab";
+import { AudienceTab } from "../components/system/AudienceTab";
 import { ContentTab } from "../components/system/ContentTab";
 import { LlmTab } from "../components/system/LlmTab";
 import { ModelAttribution } from "../components/system/ModelAttribution";
@@ -42,6 +43,7 @@ export const Route = createFileRoute("/data")({
 
 const TABS: { value: DataTab; label: string }[] = [
   { value: "overview", label: "Overview" },
+  { value: "audience", label: "Audience" },
   { value: "content", label: "Content" },
   { value: "runs", label: "Runs" },
   { value: "sources", label: "Sources" },
@@ -111,6 +113,7 @@ export function SystemPage() {
           </TabsList>
 
           <OverviewTab />
+          <AudienceTab lang={lang} />
           <AlgoTab />
           <ContentTab lang={lang} />
           <RunsTab lang={lang} />

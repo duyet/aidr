@@ -96,6 +96,11 @@ CLERK_PROXY_TIMEOUT_MS = "10000"
 # TELEGRAM_CHAT_ID is the old Vietnamese name; the Worker reads these two.
 TELEGRAM_VI_CHAT_ID = "-1004420104760"
 TELEGRAM_EN_CHAT_ID = "@aidr_today"
+# GA4 property read by the Worker for the /data Audience tab (page views,
+# DAU, MAU). Public config, not a secret — the credential that actually
+# authorises the read is the GA4_SERVICE_ACCOUNT_JSON secret. With either one
+# missing the Audience tab reports "Unavailable" instead of a zero audience.
+GA4_PROPERTY_ID = ""
 # Cloudflare Email Sending. Onboard aidr.today (`wrangler email sending enable aidr.today`)
 # then these From addresses can deliver. Override with EMAIL_FROM / EMAIL_NOTES_FROM.
 EMAIL_FROM = "digest@aidr.today"

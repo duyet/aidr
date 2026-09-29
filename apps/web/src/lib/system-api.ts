@@ -13,6 +13,11 @@ export const MODELS_CACHE_CONTROL =
 /** Aggregate account totals change less often than feed stats. */
 export const ACCOUNTS_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
+/** Audience stats: the GA4 half is a snapshot that is rewritten at most once
+ *  a day, and the subscriber half moves a handful of times a week, so this
+ *  uses the accounts budget rather than the 30s one. */
+export const AUDIENCE_CACHE_CONTROL =
+  "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 
 export async function resolveWorkerEnv(context: any): Promise<any> {
   let env =
@@ -49,7 +54,8 @@ export function systemJson(
 export async function systemHandler(
   context: any,
   tag: string,
-  load: (db: DbReader) => Promise<unknown>
+  load: (db: DbReader) => Promise<unknown>,
+  opts: { cacheControl?: string } = {}
 ): Promise<Response> {
   const db = await systemDb(context);
   if (!db) {
@@ -59,7 +65,7 @@ export async function systemHandler(
     );
   }
   try {
-    return systemJson(await load(db));
+    return systemJson(await load(db), opts.cacheControl);
   } catch (e) {
     console.error(`system/${tag}:`, e);
     return Response.json({ error: "query failed" }, { status: 500 });
