@@ -275,13 +275,82 @@ async function callTelegram(
   }
 }
 
-export const telegramNotifier: Notifier = {
+/** Public English broadcast. Username is the Bot API chat_id — no numeric id. */
+export const TELEGRAM_EN_CHAT_ID = "@aidr_today";
+
+function telegramChannel(options: {
+  id: string;
+  lang: Lang;
+  chatId: (env: Env) => string;
+  enabled: (env: Env) => boolean;
+}): Notifier {
+  return {
+    id: options.id,
+    lang: options.lang,
+    target: options.chatId,
+    enabled: options.enabled,
+
+    async sendDigest(env: Env, digest: DailyDigest): Promise<SendResult> {
+      const token = env.TELEGRAM_BOT_TOKEN as string;
+      const msg = await callTelegram(token, "sendMessage", {
+        chat_id: options.chatId(env),
+        text: buildDigestMessage(digest),
+        parse_mode: "HTML",
+        reply_markup: buildDigestReplyMarkup(digest.lang),
+        link_preview_options: DIGEST_LINK_PREVIEW,
+      });
+      if (!msg.ok) return { ok: false, error: msg.description ?? "unknown" };
+      return { ok: true, messageId: String(msg.result?.message_id ?? "") };
+    },
+
+    async sendStory(env: Env, story: StoryPayload): Promise<SendResult> {
+      const token = env.TELEGRAM_BOT_TOKEN as string;
+      const chatId = options.chatId(env);
+      const caption = buildStoryCaption(story);
+      const replyMarkup = buildStoryReplyMarkup(story);
+      const photoUrl = storyPhotoUrl(story);
+
+      if (photoUrl) {
+        const photo = await callTelegram(token, "sendPhoto", {
+          chat_id: chatId,
+          photo: photoUrl,
+          caption,
+          parse_mode: "HTML",
+          reply_markup: replyMarkup,
+          link_preview_options: STORY_PHOTO_LINK_PREVIEW,
+        });
+        if (photo.ok)
+          return {
+            ok: true,
+            messageId: String(photo.result?.message_id ?? ""),
+          };
+        console.error(
+          `telegram sendPhoto failed for ${story.id}: ${photo.description}; falling back to text`
+        );
+      }
+
+      const msg = await callTelegram(token, "sendMessage", {
+        chat_id: chatId,
+        text: caption,
+        parse_mode: "HTML",
+        reply_markup: replyMarkup,
+        link_preview_options: STORY_TEXT_LINK_PREVIEW,
+      });
+      if (!msg.ok) return { ok: false, error: msg.description ?? "unknown" };
+      return { ok: true, messageId: String(msg.result?.message_id ?? "") };
+    },
+  };
+}
+
+/** Vietnamese channel. A second English channel is a new notifier entry,
+ *  not a flag on this one. */
+export const telegramNotifier: Notifier = telegramChannel({
   id: "telegram",
-  target: (env) => env.TELEGRAM_CHAT_ID ?? "",
+  lang: "vi",
+  chatId: (env) => env.TELEGRAM_CHAT_ID ?? "",
   enabled: (env) => {
     const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
     const chatId = env.TELEGRAM_CHAT_ID?.trim() ?? "";
-    // Chat id without a token is a deploy misconfig — fail loud.
     if (chatId && !token) {
       throw new Error(
         "TELEGRAM_CHAT_ID is set but TELEGRAM_BOT_TOKEN is missing"
@@ -289,58 +358,13 @@ export const telegramNotifier: Notifier = {
     }
     return Boolean(token && chatId);
   },
+});
 
-  async sendDigest(env: Env, digest: DailyDigest): Promise<SendResult> {
-    // enabled() gates before send; non-null by contract here.
-    const token = env.TELEGRAM_BOT_TOKEN as string;
-    const chatId = env.TELEGRAM_CHAT_ID as string;
-    const msg = await callTelegram(token, "sendMessage", {
-      chat_id: chatId,
-      text: buildDigestMessage(digest),
-      parse_mode: "HTML",
-      reply_markup: buildDigestReplyMarkup(digest.lang),
-      link_preview_options: DIGEST_LINK_PREVIEW,
-    });
-    if (!msg.ok) return { ok: false, error: msg.description ?? "unknown" };
-    return { ok: true, messageId: String(msg.result?.message_id ?? "") };
-  },
-
-  async sendStory(env: Env, story: StoryPayload): Promise<SendResult> {
-    const token = env.TELEGRAM_BOT_TOKEN as string;
-    const chatId = env.TELEGRAM_CHAT_ID as string;
-    const caption = buildStoryCaption(story);
-    const replyMarkup = buildStoryReplyMarkup(story);
-    const photoUrl = storyPhotoUrl(story);
-
-    if (photoUrl) {
-      const photo = await callTelegram(token, "sendPhoto", {
-        chat_id: chatId,
-        photo: photoUrl,
-        caption,
-        parse_mode: "HTML",
-        reply_markup: replyMarkup,
-        // The generated card IS the media. A preview here would render a
-        // second image for the same message.
-        link_preview_options: STORY_PHOTO_LINK_PREVIEW,
-      });
-      if (photo.ok)
-        return { ok: true, messageId: String(photo.result?.message_id ?? "") };
-      // Bad/hotlink-blocked image URLs are common — fall through to text
-      // ONCE. The text call below is the only second attempt, and the
-      // caller's `notifications` row is the single record of the delivery.
-      console.error(
-        `telegram sendPhoto failed for ${story.id}: ${photo.description}; falling back to text`
-      );
-    }
-
-    const msg = await callTelegram(token, "sendMessage", {
-      chat_id: chatId,
-      text: caption,
-      parse_mode: "HTML",
-      reply_markup: replyMarkup,
-      link_preview_options: STORY_TEXT_LINK_PREVIEW,
-    });
-    if (!msg.ok) return { ok: false, error: msg.description ?? "unknown" };
-    return { ok: true, messageId: String(msg.result?.message_id ?? "") };
-  },
-};
+/** English channel. Same bot token; posts only the English digest and
+ *  English story copy to @aidr_today. */
+export const telegramEnNotifier: Notifier = telegramChannel({
+  id: "telegram-en",
+  lang: "en",
+  chatId: () => TELEGRAM_EN_CHAT_ID,
+  enabled: (env) => Boolean(env.TELEGRAM_BOT_TOKEN?.trim()),
+});

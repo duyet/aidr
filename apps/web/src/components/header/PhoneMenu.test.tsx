@@ -251,6 +251,7 @@ describe("mobile action sizing", () => {
     expect(items.map((item) => item.textContent)).toEqual([
       "Chrome Extension",
       "Telegram Channel (Vietnamese)",
+      "Telegram Channel (English)",
       "Email Subscription",
       "Submit",
       "Data Analytics",

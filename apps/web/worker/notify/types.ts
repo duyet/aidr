@@ -50,6 +50,9 @@ export interface SendResult {
 export interface Notifier {
   /** Stable id — the `notifications.channel` value. */
   id: string;
+  /** Copy language this channel posts. A second locale is a new notifier,
+   *  not a flag on an existing one. */
+  lang: Lang;
   /** Where posts go (chat id, webhook host, ...) — stored for observability. */
   target(env: Env): string;
   /** False when the channel is fully unset (local/dev). Throws when
