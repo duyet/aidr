@@ -29,9 +29,9 @@ import {
   storyImageCount,
   storyPhotoUrl,
   storyUrl,
+  TELEGRAM_EN_CHAT_ID,
   telegramEnNotifier,
   telegramNotifier,
-  TELEGRAM_EN_CHAT_ID,
   withUtm,
 } from "../notify/telegram.js";
 import type { DailyDigest, StoryPayload } from "../notify/types.js";
@@ -322,15 +322,15 @@ describe("telegram channels", () => {
     expect(telegramEnNotifier.target({} as Env)).toBe("@aidr_today");
     expect(telegramEnNotifier.target({} as Env)).toBe(TELEGRAM_EN_CHAT_ID);
     expect(telegramNotifier.lang).toBe("vi");
-    expect(
-      telegramNotifier.target({ TELEGRAM_CHAT_ID: "-100" } as Env)
-    ).toBe("-100");
+    expect(telegramNotifier.target({ TELEGRAM_CHAT_ID: "-100" } as Env)).toBe(
+      "-100"
+    );
     expect(
       telegramNotifier.target({ TELEGRAM_CHAT_ID: "-100" } as Env)
     ).not.toBe("@aidr_today");
-    expect(
-      telegramEnNotifier.enabled({ TELEGRAM_BOT_TOKEN: "t" } as Env)
-    ).toBe(true);
+    expect(telegramEnNotifier.enabled({ TELEGRAM_BOT_TOKEN: "t" } as Env)).toBe(
+      true
+    );
     expect(telegramEnNotifier.enabled({} as Env)).toBe(false);
   });
 
