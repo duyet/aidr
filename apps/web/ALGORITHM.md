@@ -453,11 +453,14 @@ then this chat chain:
 - `anyrouter/auto`
 - `deepseek/deepseek-v4.1-flash`
 - `poolside/laguna-s-2.1`
-- `minimax/m3`
 
-TL;DR is that chat chain without Jev. Translate leads with hosted
-`google/gemini-3.5-flash` (native Google route on AnyRouter), then the
-same fallbacks.
+TL;DR and translate use that chat chain without Jev. The VI→EN generator
+uses its concrete ids (`deepseek/deepseek-v4.1-flash`,
+`poolside/laguna-s-2.1`).
+
+`google/gemini-3.5-flash` is BYOK-only on AnyRouter and 404s for keyless
+calls (anyrouter#3655). `minimax/m3` has no upstream key and returns
+404/502 (anyrouter#3817). Both are out of every chain.
 
 Hard-coded Gemma/GLM/Ling flash ids 404/502'd or are BYOK-only; do not
 restore them. BYOK-only ids such as SEA-LION and Gemini 3.6/3.7/3.8 are

@@ -76,20 +76,16 @@ describe("live AnyRouter model chains", () => {
     "anyrouter/auto",
     "deepseek/deepseek-v4.1-flash",
     "poolside/laguna-s-2.1",
-    "minimax/m3",
   ];
 
-  it("uses the auto-led chain on score and tldr", () => {
-    for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TLDR_MODEL"]) {
+  it("uses the auto-led chain on score, tldr, and translate", () => {
+    for (const name of [
+      "ANYROUTER_MODEL",
+      "ANYROUTER_TLDR_MODEL",
+      "ANYROUTER_TRANSLATE_MODEL",
+    ]) {
       expect(idsOf(name), name).toEqual(liveChain);
     }
-  });
-
-  it("leads translate with hosted Gemini 3.5 Flash, then the auto chain", () => {
-    expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual([
-      "google/gemini-3.5-flash",
-      ...liveChain,
-    ]);
   });
 
   it("keeps the translation reviewer explicit and disjoint from generators", () => {
@@ -107,7 +103,8 @@ describe("live AnyRouter model chains", () => {
 
   it("configures a separate explicit VI→EN generator", () => {
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
-      "google/gemini-3.5-flash",
+      "deepseek/deepseek-v4.1-flash",
+      "poolside/laguna-s-2.1",
     ]);
   });
 
@@ -138,21 +135,22 @@ describe("live AnyRouter model chains", () => {
       "google/gemini-3.6-flash",
       "google/gemini-3.8-flash",
       "qwen/qwen3.7-flash",
+      // BYOK-only on AnyRouter: keyless calls 404 (anyrouter#3655).
+      "google/gemini-3.5-flash",
+      // No provisioned upstream key: 404/502 (anyrouter#3817).
+      "minimax/m3",
     ];
     for (const name of [
       "ANYROUTER_MODEL",
       "ANYROUTER_TRANSLATE_MODEL",
       "ANYROUTER_TLDR_MODEL",
+      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
     ]) {
       const ids = idsOf(name);
       for (const id of blocked) {
         expect(ids, name).not.toContain(id);
       }
     }
-    expect(idsOf("ANYROUTER_MODEL")).not.toContain("google/gemini-3.5-flash");
-    expect(idsOf("ANYROUTER_TLDR_MODEL")).not.toContain(
-      "google/gemini-3.5-flash"
-    );
   });
 
   it("scores and decides with canonical Jev, not on the chat chain", () => {
