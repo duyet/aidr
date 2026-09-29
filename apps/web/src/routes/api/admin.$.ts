@@ -280,7 +280,11 @@ async function handle(
   // One-shot GA4 audience snapshot. The hourly ingest alarm already syncs at
   // most once a day; this is the operator escape hatch for "the Audience tab
   // is stale and I want it now". Same gate, forced.
-  if (method === "POST" && segments.length === 1 && segments[0] === "ga4-sync") {
+  if (
+    method === "POST" &&
+    segments.length === 1 &&
+    segments[0] === "ga4-sync"
+  ) {
     const result = await syncGa4Insights(env, {});
     return Response.json(result, {
       status: result.status === "ok" ? 200 : 400,

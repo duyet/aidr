@@ -382,7 +382,10 @@ describe("story OG card rendering", () => {
     // GPOS mark-to-base. satori/resvg skips that lookup, so the tone mark
     // used to sit on the letter. The card face has to put that ink above
     // the base letter without a network fallback.
-    const plain = item({ title: "a a a a a a a a", title_vi: "a a a a a a a a" });
+    const plain = item({
+      title: "a a a a a a a a",
+      title_vi: "a a a a a a a a",
+    });
     const marked = item({
       title: "ấ ậ ế ố ớ ứ ẫ ễ",
       title_vi: "ấ ậ ế ố ớ ứ ẫ ễ",
