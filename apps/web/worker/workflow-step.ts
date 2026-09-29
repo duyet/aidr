@@ -6,7 +6,7 @@ import { sanitizeError } from "./telemetry-safe.js";
 import type { Env } from "./types.js";
 
 /** Retry/timeout policies a step can be scheduled with. The LLM policies
- * themselves (`LLM_STEP`, `BACKFILL_TRANSLATE_STEP`) stay in workflow.ts. */
+ * themselves (`LLM_STEP`, `BACKFILL_TRANSLATE_STEP`) live in ingest/context.ts. */
 export type StepRetryConfig = {
   retries: {
     limit: number;

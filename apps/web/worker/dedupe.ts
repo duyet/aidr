@@ -484,7 +484,7 @@ export interface MergePlan {
  * Pure planning step: given the clusters an LLM proposed and enough data
  * about each candidate item, decides who's canonical, who gets marked
  * merged, and what points/comments/sources the canonical should absorb.
- * Does no I/O — workflow.ts applies this plan against D1.
+ * Does no I/O — ingest/write.ts applies this plan against D1.
  */
 export function buildMergePlan(
   clusters: Cluster[],

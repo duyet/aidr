@@ -196,7 +196,7 @@ describe("arXiv flood gate", () => {
 
 /** `llm.ts` SCORE_SLICE_MAX_MS — the per-attempt score hang-cap. */
 const SCORE_SLICE_MAX_MS = 70_000;
-/** `workflow.ts` LLM_STEP timeout — the budget the score step runs inside. */
+/** `ingest/context.ts` LLM_STEP timeout — the budget the score step runs inside. */
 const LLM_STEP_TIMEOUT_MS = 4 * 60_000;
 
 /** Mirrors `llm.ts`: SCORE_BATCH_SIZE = 5, SCORE_CONCURRENCY = 3. */

@@ -232,7 +232,7 @@ export interface UpsertSourceInput {
 /**
  * `type` must be a key in worker/sources/registry.ts's `adapters` export,
  * or the literal 'push' pseudo-type (items arrive via the push API, no
- * adapter fetch). worker/workflow.ts's fetch step already no-ops for
+ * adapter fetch). worker/ingest/fetch.ts's fetch step already no-ops for
  * unknown adapter types (`if (!adapter) return [];`), so a 'push' source
  * is safely skipped by the hourly workflow without further changes there.
  */

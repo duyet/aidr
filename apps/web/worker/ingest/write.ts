@@ -1,0 +1,262 @@
+import {
+  buildItemBindArgs,
+  buildItemSourceBindArgs,
+  MAX_SOURCES_PER_ITEM,
+  nn,
+  prepareTranslationUpsert,
+} from "../d1-bind.js";
+import {
+  type CanonicalUpdate,
+  type MergePlan,
+  unionSources,
+} from "../dedupe.js";
+import { serializeMediaManifest } from "../media.js";
+import { buildRerankQuery, rankScore } from "../ranking.js";
+import type { FetchedItemSource } from "../sources/types.js";
+import type { Env } from "../types.js";
+import { safeStep } from "../workflow-step.js";
+import type { IngestContext, NewRow } from "./context.js";
+import type { ItemScore } from "./score.js";
+import type { ItemTranslation } from "./translate.js";
+import {
+  type ExistingCanonicalRow,
+  planExistingCanonicalMedia,
+  planNewItemWrite,
+  startOfUtcDaySec,
+} from "./write-plan.js";
+
+const UPSERT_ITEM_SQL = `INSERT INTO items (
+                id, source_id, external_id, url, title, summary,
+                published_at, fetched_at, points, comments,
+                llm_relevance, llm_importance, llm_quality, category, tags,
+                rank_score, status, llm_tokens, duplicate_of, image_url,
+                source_lang, media_manifest
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                published_at = excluded.published_at,
+                points = excluded.points,
+                comments = excluded.comments,
+                summary = excluded.summary,
+                llm_relevance = excluded.llm_relevance,
+                llm_importance = excluded.llm_importance,
+                llm_quality = excluded.llm_quality,
+                category = excluded.category,
+                tags = excluded.tags,
+                rank_score = excluded.rank_score,
+                status = excluded.status,
+                llm_tokens = excluded.llm_tokens,
+                duplicate_of = excluded.duplicate_of,
+                image_url = excluded.image_url,
+                source_lang = CASE
+                   WHEN items.source_lang = 'vi' AND excluded.source_lang = 'en'
+                   THEN items.source_lang
+                   ELSE excluded.source_lang
+                 END,
+                media_manifest = excluded.media_manifest`;
+
+export const INSERT_ITEM_SOURCE_SQL = `INSERT INTO item_sources (item_id, position, kind, author, posted_at, quote, url)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+/** Replace an item's `item_sources` rows with `sources`, in order. */
+function replaceItemSources(
+  env: Env,
+  itemId: string,
+  sources: FetchedItemSource[]
+): D1PreparedStatement[] {
+  const statements: D1PreparedStatement[] = [
+    env.DB.prepare("DELETE FROM item_sources WHERE item_id = ?").bind(
+      nn(itemId)
+    ),
+  ];
+  for (const row of buildItemSourceBindArgs(itemId, sources)) {
+    statements.push(env.DB.prepare(INSERT_ITEM_SOURCE_SQL).bind(...row));
+  }
+  return statements;
+}
+
+/** Canonicals that are pre-existing (already-published) items absorb the
+ * merged new items' points/comments/sources too, but need their own
+ * read-update-write since they're not part of `newRows`. */
+async function existingCanonicalStatements(
+  env: Env,
+  canonicalId: string,
+  update: CanonicalUpdate
+): Promise<D1PreparedStatement[]> {
+  const existingRow = await env.DB.prepare(
+    "SELECT tags, url, image_url, media_manifest FROM items WHERE id = ?"
+  )
+    .bind(canonicalId)
+    .first<ExistingCanonicalRow>();
+  const media = planExistingCanonicalMedia(existingRow, update);
+
+  const statements: D1PreparedStatement[] = [
+    env.DB.prepare(
+      `UPDATE items SET
+                 points = ?, comments = ?, tags = ?, image_url = ?,
+                 media_manifest = ?
+               WHERE id = ?`
+    ).bind(
+      nn(update.maxPoints),
+      nn(update.maxComments),
+      nn(JSON.stringify(media.topics)),
+      nn(media.imageUrl),
+      serializeMediaManifest(media.manifest),
+      nn(canonicalId)
+    ),
+  ];
+
+  const { results: existingSourceRows } = await env.DB.prepare(
+    "SELECT kind, author, posted_at, quote, url FROM item_sources WHERE item_id = ? ORDER BY position"
+  )
+    .bind(canonicalId)
+    .all<{
+      kind: "source" | "support" | "discussion";
+      author: string | null;
+      posted_at: number | null;
+      quote: string | null;
+      url: string | null;
+    }>();
+
+  const mergedSources = unionSources(
+    (existingSourceRows ?? []).map((r) => ({
+      kind: r.kind,
+      author: r.author ?? undefined,
+      postedAt: r.posted_at ?? undefined,
+      quote: r.quote ?? undefined,
+      url: r.url ?? undefined,
+    })),
+    update.extraSources,
+    MAX_SOURCES_PER_ITEM
+  );
+  statements.push(...replaceItemSources(env, canonicalId, mergedSources));
+  return statements;
+}
+
+/** Re-rank today's items so freshness decay and absorbed engagement show
+ * up. Once a day rolls over its order is frozen; past days only ever gain
+ * merged-away dupes. */
+async function rerankTodayStatements(
+  env: Env,
+  now: number
+): Promise<D1PreparedStatement[]> {
+  const { results: recentItems } = await env.DB.prepare(buildRerankQuery())
+    .bind(startOfUtcDaySec(now))
+    .all<{
+      id: string;
+      published_at: number;
+      points: number;
+      comments: number;
+      llm_importance: number | null;
+      llm_quality: number | null;
+      source_count: number;
+    }>();
+
+  return (recentItems ?? []).map((row) => {
+    const rank = rankScore({
+      importance: row.llm_importance ?? 5,
+      quality: row.llm_quality ?? 5,
+      points: row.points,
+      comments: row.comments,
+      // row.published_at is stored as epoch seconds; rankScore expects ms.
+      publishedAt: row.published_at * 1000,
+      now,
+      sourceCount: row.source_count,
+    });
+    return env.DB.prepare("UPDATE items SET rank_score = ? WHERE id = ?").bind(
+      nn(rank),
+      nn(row.id)
+    );
+  });
+}
+
+/** Writes every new row, applies merges to existing canonicals, and
+ * re-ranks today, all in one D1 batch. Rethrows so a failed write surfaces
+ * as the run's error instead of a silently empty edition. */
+export async function writeItems(
+  ctx: IngestContext,
+  input: {
+    newRows: readonly NewRow[];
+    scored: ReadonlyMap<string, ItemScore>;
+    translated: ReadonlyMap<string, ItemTranslation>;
+    mergePlan: MergePlan;
+    canonicalTagsByItem: ReadonlyMap<string, string[]>;
+    now: number;
+  }
+): Promise<void> {
+  const { step, env } = ctx;
+  const { newRows, scored, translated, mergePlan, canonicalTagsByItem, now } =
+    input;
+  const newRowIds = new Set(newRows.map((row) => row.id));
+
+  await safeStep(
+    step,
+    "write-d1",
+    undefined,
+    async () => {
+      const statements: D1PreparedStatement[] = [];
+
+      for (const { id, source, item } of newRows) {
+        const mergeEntry = mergePlan.merged.get(id);
+        const plan = planNewItemWrite({
+          item,
+          score: scored.get(id),
+          translation: translated.get(id),
+          mergeEntry,
+          canonicalUpdate: mergePlan.canonicalUpdates.get(id),
+          canonicalTags: canonicalTagsByItem.get(id),
+          now,
+        });
+
+        statements.push(
+          env.DB.prepare(UPSERT_ITEM_SQL).bind(
+            ...buildItemBindArgs({
+              id,
+              sourceId: source.id,
+              item: plan.item,
+              score: plan.score,
+              rank: plan.rank,
+              status: plan.status,
+              now,
+              llmTokens: plan.llmTokens,
+              duplicateOf: mergeEntry?.duplicateOf,
+            })
+          )
+        );
+
+        if (plan.translation) {
+          statements.push(
+            prepareTranslationUpsert(env.DB, {
+              id,
+              lang: "vi",
+              sourceLang: item.sourceLang ?? "en",
+              targetLang: "vi",
+              title: plan.translation.title,
+              summary: plan.translation.summary,
+            })
+          );
+        }
+
+        if (plan.writeSources) {
+          statements.push(
+            ...replaceItemSources(env, id, plan.item.sources ?? [])
+          );
+        }
+      }
+
+      for (const [canonicalId, update] of mergePlan.canonicalUpdates) {
+        if (!update.isExisting || newRowIds.has(canonicalId)) continue;
+        statements.push(
+          ...(await existingCanonicalStatements(env, canonicalId, update))
+        );
+      }
+
+      statements.push(...(await rerankTodayStatements(env, now)));
+
+      if (statements.length > 0) {
+        await env.DB.batch(statements);
+      }
+    },
+    undefined,
+    true
+  );
+}

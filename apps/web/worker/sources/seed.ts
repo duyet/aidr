@@ -18,7 +18,7 @@
  */
 import { buildSourceSeedSql } from "./catalog.js";
 
-/** Retained under its historical name: `worker/workflow.ts` and the seed
+/** Retained under its historical name: `worker/ingest/fetch.ts` and the seed
  *  tests import it, and renaming a widely-referenced export buys nothing. */
 export const VENDOR_BLOG_SEED_SQL = `${buildSourceSeedSql().trim()}\n`;
 

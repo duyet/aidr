@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -7,6 +7,21 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.join(dirname, "../..");
 const wrangler = readFileSync(path.join(webRoot, "wrangler.toml"), "utf-8");
 const algorithm = readFileSync(path.join(webRoot, "ALGORITHM.md"), "utf-8");
+/** The ingest Workflow is a thin orchestrator (`worker/workflow.ts`) over
+ * one module per step (`worker/ingest/*.ts`). Contract checks below read
+ * them as one source, orchestrator first, so ordering checks still see the
+ * run lifecycle before any step. */
+function ingestWorkflowSource(): string {
+  const ingestDir = path.join(webRoot, "worker/ingest");
+  const modules = readdirSync(ingestDir)
+    .filter((name) => name.endsWith(".ts"))
+    .sort()
+    .map((name) => readFileSync(path.join(ingestDir, name), "utf-8"));
+  return [
+    readFileSync(path.join(webRoot, "worker/workflow.ts"), "utf-8"),
+    ...modules,
+  ].join("\n");
+}
 const ingestYml = readFileSync(
   path.join(webRoot, "../../.github/workflows/ingest.yml"),
   "utf-8"
@@ -206,7 +221,8 @@ describe("translate batch size", () => {
 });
 
 describe("backfill-translate checkpoints", () => {
-  const workflow = readFileSync(
+  const workflow = ingestWorkflowSource();
+  const orchestrator = readFileSync(
     path.join(webRoot, "worker/workflow.ts"),
     "utf-8"
   );
@@ -236,10 +252,41 @@ describe("backfill-translate checkpoints", () => {
   });
 
   it("opens a workflow_runs row before fetch/LLM steps", () => {
-    const openIdx = workflow.indexOf('"open-run"');
-    const fetchIdx = workflow.indexOf("load-sources");
+    const openIdx = orchestrator.indexOf('"open-run"');
+    const fetchIdx = orchestrator.indexOf("loadSources(ctx)");
     expect(openIdx).toBeGreaterThan(0);
     expect(openIdx).toBeLessThan(fetchIdx);
+  });
+
+  // Workflow replay keys memoized results by step name in call order, and
+  // each step reads what earlier ones wrote (backfill-translate picks up the
+  // summaries backfill-content filled; notify sends the edition tldr wrote).
+  // The orchestrator is the one place that order lives.
+  it("runs the pipeline steps in their dependency order", () => {
+    const order = [
+      "loadSources(",
+      "fetchSources(",
+      "dedupeNewRows(",
+      "enrichNewRows(",
+      "scoreNewRows(",
+      "normalizeNewRowTopics(",
+      "learnTopics(",
+      "planMerges(",
+      "translatePublishedRows(",
+      "carrySourceStreaks(",
+      "writeItems(",
+      "backfillContent(",
+      "backfillTranslations(",
+      "backfillScores(",
+      "qaTranslations(",
+      "reviewSuggestions(",
+      "reviewSubmissions(",
+      "generateTldr(",
+      "sendEmailDigest(",
+      "notifyChannels(",
+    ].map((call) => orchestrator.indexOf(`await ${call}`));
+    expect(order.every((idx) => idx > 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
   });
 
   it("persists workflow_runs before pruneLlmCalls and without safeStep", () => {
@@ -254,10 +301,7 @@ describe("backfill-translate checkpoints", () => {
 });
 
 describe("LLM step telemetry identity (#189)", () => {
-  const workflow = readFileSync(
-    path.join(webRoot, "worker/workflow.ts"),
-    "utf-8"
-  );
+  const workflow = ingestWorkflowSource();
 
   it("routes every LLM-calling step through llmStep with this run's env + id", () => {
     for (const name of [
@@ -273,12 +317,12 @@ describe("LLM step telemetry identity (#189)", () => {
     ]) {
       expect(workflow).toMatch(
         new RegExp(
-          `llmStep\\(\\s*step,\\s*this\\.env,\\s*runId,\\s*["'\`]${name}["'\`]`
+          `llmStep\\(\\s*step,\\s*env,\\s*runId,\\s*["'\`]${name}["'\`]`
         )
       );
     }
     expect(workflow).toMatch(
-      /llmStep\(\s*step,\s*this\.env,\s*runId,\s*`backfill-translate-\$\{offset\}`/
+      /llmStep\(\s*step,\s*env,\s*runId,\s*`backfill-translate-\$\{offset\}`/
     );
   });
 

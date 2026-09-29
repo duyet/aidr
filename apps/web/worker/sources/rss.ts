@@ -122,7 +122,7 @@ function mediaCandidatesFromBlock(block: string): MediaCandidate[] {
  *    hundreds of submissions a day) is cut down to the AI-relevant slice
  *    *before* anything is counted.
  * 2. `maxItems` then takes the **newest** N of what survived. Newest-first is
- *    what makes the cap safe: `worker/workflow.ts` re-reads a 26-hour window
+ *    what makes the cap safe: `worker/ingest/fetch.ts` re-reads a 26-hour window
  *    every hour, so at the next run the head of the feed is exactly the
  *    handful of items published since the last run. The cap therefore samples
  *    the live edge and lets the dedupe pass drop the rest, instead of
