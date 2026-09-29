@@ -15,10 +15,13 @@
     "./Analytics": "./Analytics.tsx",
     "./track": "./track.ts",
     "./ThemeProvider": "./ThemeProvider.tsx",
-    "./styles.css": "./styles.css"
+    "./styles.css": "./styles.css",
+    "./tokens.css": "./tokens.css"
   },
   "scripts": {
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "test": "node --test tokens.test.mjs",
+    "sync-tokens": "node scripts/sync-tokens.mjs"
   },
   "dependencies": {
     "@aidr/libs": "workspace:*",

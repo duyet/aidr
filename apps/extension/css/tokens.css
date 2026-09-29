@@ -1,0 +1,192 @@
+/*
+ * AI;DR design tokens: the single source for the web app and the Chrome
+ * extension. Plain CSS (no Tailwind directives) so the extension can load it
+ * as-is. The extension ships a byte-identical copy at
+ * apps/extension/css/tokens.css (`pnpm --filter @aidr/ui sync-tokens`);
+ * tokens.test.mjs fails on drift.
+ *
+ * Dark mode: the web toggles `.dark` (next-themes, attribute="class"); the
+ * extension sets html[data-theme="dark"], or html[data-theme="system"] to
+ * follow the OS (the media block below mirrors the dark block exactly).
+ */
+
+:root {
+  /* Slashy-inspired craft: soft off-white page, elevated white cards,
+     serif display + Source Sans UI. Prefer hex+alpha over rgb()/color-mix()
+     so LightningCSS doesn't emit invalid `oklch(... none / a)`. */
+  --editorial-bg: #f7f7f5;
+  --editorial-fg: #0a0a0a;
+  --editorial-muted: #6b6b6b;
+  --editorial-faint: #0a0a0a0a;
+  --editorial-hairline: #0a0a0a14;
+  --editorial-accent: #b45309;
+  /* Metric-matched fallbacks sit directly after each webfont so the
+     font-display: optional fallback keeps the webfont's line box. */
+  --editorial-font-serif:
+    "EB Garamond Variable", "EB Garamond", "EB Garamond Fallback", Garamond,
+    "Apple Garamond", ui-serif, serif;
+  --editorial-font-sans:
+    "Source Sans 3 Variable", "Source Sans 3", "Source Sans 3 Fallback",
+    ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --editorial-font-mono:
+    "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+
+  --content-font-sans:
+    "Source Sans 3 Variable", "Source Sans 3", "Source Sans 3 Fallback",
+    ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* --accent stays a NEUTRAL hover surface at :root (shared chrome).
+     Amber brand is scoped under .news-content. Primary CTAs are
+     high-contrast near-black pills (Slashy inverted for light). */
+  --background: #f7f7f5;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --muted: #e5e5e3;
+  --muted-foreground: #474747;
+  /* Quietest text step that still clears WCAG AA (4.5:1) on EVERY light
+     surface the app can paint behind text: the #dedede gray reader
+     background is the worst case (4.97:1), #f7f7f5 the default page
+     (6.5:1). Replaces the opacity fade that used to sit on an already-themed
+     color, which composited toward the active background instead of
+     declaring one. Same role as --muted-foreground one step further from
+     --foreground. */
+  --quiet-foreground: #5c5c5c;
+  /* The same quiet step on the inverted --primary pill surface (selected
+     category pills), where the quiet tone has to be light, not dark. */
+  --primary-foreground-quiet: #cacaca;
+  --secondary: #e5e5e3;
+  --secondary-foreground: #0a0a0a;
+  --border: #0a0a0a14;
+  --accent: #b45309;
+  --accent-foreground: #fffefb;
+  --primary: #0a0a0a;
+  --primary-foreground: #fafafa;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --ring: #0a0a0a33;
+
+  --brand: #f5c518;
+  --brand-soft: #fdf6d8;
+  --input: #0a0a0a14;
+  --chart-1: #f5c518;
+  --chart-2: #d97706;
+  --chart-3: #b45309;
+  --chart-4: #92400e;
+  --chart-5: #78350f;
+  --radius: 1rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #b45309;
+  --sidebar-primary-foreground: #fffefb;
+  --sidebar-accent: #efefed;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #0a0a0a14;
+  --sidebar-ring: #0a0a0a33;
+}
+
+:root.dark,
+.dark,
+html[data-theme="dark"] {
+  --editorial-bg: #0c0c0c;
+  --editorial-fg: #fafafa;
+  --editorial-muted: #a3a3a3;
+  --editorial-faint: #fafafa0f;
+  --editorial-hairline: #ffffff1a;
+  --editorial-accent: #f59e0b;
+
+  --background: #0c0c0c;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #0a0a0a;
+  --secondary: #2a2a2a;
+  --secondary-foreground: #fafafa;
+  --muted: #2a2a2a;
+  --muted-foreground: #a3a3a3;
+  /* Mirror of the light --quiet-foreground: the darkest tone that still
+     clears AA on the lightest dark surface, the #2a2a2a muted chip/row
+     (5.1:1), and 4.95:1 on #0c0c0c. Dark-mode quiet therefore moves TOWARD
+     the background, exactly as it does in light mode. */
+  --quiet-foreground: #9a9a9a;
+  --primary-foreground-quiet: #3a3a3a;
+  --accent: #f59e0b;
+  --accent-foreground: #fffefb;
+  --destructive: #f87171;
+  --border: #ffffff1a;
+  --input: #ffffff26;
+  --ring: #ffffff40;
+  --chart-1: #f59e0b;
+  --chart-2: #fbbf24;
+  --chart-3: #e8926e;
+  --chart-4: #d97706;
+  --chart-5: #b45309;
+  --sidebar: #171717;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #f59e0b;
+  --sidebar-primary-foreground: #1c1917;
+  --sidebar-accent: #f59e0b;
+  --sidebar-accent-foreground: #fffefb;
+  --sidebar-border: #ffffff1a;
+  --sidebar-ring: #ffffff40;
+
+  --brand: #f5c518;
+  --brand-soft: #292209;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] {
+    --editorial-bg: #0c0c0c;
+    --editorial-fg: #fafafa;
+    --editorial-muted: #a3a3a3;
+    --editorial-faint: #fafafa0f;
+    --editorial-hairline: #ffffff1a;
+    --editorial-accent: #f59e0b;
+
+    --background: #0c0c0c;
+    --foreground: #fafafa;
+    --card: #171717;
+    --card-foreground: #fafafa;
+    --popover: #171717;
+    --popover-foreground: #fafafa;
+    --primary: #fafafa;
+    --primary-foreground: #0a0a0a;
+    --secondary: #2a2a2a;
+    --secondary-foreground: #fafafa;
+    --muted: #2a2a2a;
+    --muted-foreground: #a3a3a3;
+    /* Mirror of the light --quiet-foreground: the darkest tone that still
+       clears AA on the lightest dark surface, the #2a2a2a muted chip/row
+       (5.1:1), and 4.95:1 on #0c0c0c. Dark-mode quiet therefore moves TOWARD
+       the background, exactly as it does in light mode. */
+    --quiet-foreground: #9a9a9a;
+    --primary-foreground-quiet: #3a3a3a;
+    --accent: #f59e0b;
+    --accent-foreground: #fffefb;
+    --destructive: #f87171;
+    --border: #ffffff1a;
+    --input: #ffffff26;
+    --ring: #ffffff40;
+    --chart-1: #f59e0b;
+    --chart-2: #fbbf24;
+    --chart-3: #e8926e;
+    --chart-4: #d97706;
+    --chart-5: #b45309;
+    --sidebar: #171717;
+    --sidebar-foreground: #fafafa;
+    --sidebar-primary: #f59e0b;
+    --sidebar-primary-foreground: #1c1917;
+    --sidebar-accent: #f59e0b;
+    --sidebar-accent-foreground: #fffefb;
+    --sidebar-border: #ffffff1a;
+    --sidebar-ring: #ffffff40;
+
+    --brand: #f5c518;
+    --brand-soft: #292209;
+  }
+}
