@@ -321,7 +321,14 @@ describe("mobile action sizing", () => {
     // Labelled and edge-to-edge rather than a small pill tucked in a corner.
     expect(container?.className).toContain("grid-cols-2");
     expect(container?.className).toContain("w-full");
-    expect(within(dialog).getByText("Ngôn ngữ")).toBeTruthy();
+    const label = within(dialog).getByText("Ngôn ngữ");
+    const navigation = within(dialog).getByRole("navigation", {
+      name: "Mobile navigation",
+    });
+    expect(
+      label.compareDocumentPosition(navigation) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it("keeps the disabled state on the segmented control, not just the buttons", () => {

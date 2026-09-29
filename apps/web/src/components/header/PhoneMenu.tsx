@@ -144,6 +144,18 @@ export function PhoneMenu({
             </DialogPrimitive.Close>
           </div>
           <div className={PHONE_MENU_BODY_CLASS}>
+            <div className="space-y-2 border-b border-border px-4 py-4 min-[600px]:w-60 min-[600px]:shrink-0 min-[600px]:border-r min-[600px]:border-b-0 min-[600px]:px-5">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {lang === "vi" ? "Ngôn ngữ" : "Language"}
+              </span>
+              <LangToggle
+                lang={lang}
+                onChange={onLangChange}
+                disabled={langToggleDisabled}
+                buttonClassName={PHONE_LANG_TOGGLE_BUTTON_CLASS}
+                containerClassName={PHONE_LANG_TOGGLE_CONTAINER_CLASS}
+              />
+            </div>
             <nav
               aria-label="Mobile navigation"
               className={PHONE_MENU_GRID_CLASS}
@@ -189,21 +201,6 @@ export function PhoneMenu({
               })}
             </nav>
             <div className={PHONE_MENU_FOOTER_CLASS}>
-              {/* A labelled full-width control, not a small pill in a corner:
-                  language is the one setting a reader reaches for from the
-                  drawer, so it gets the same large target as the nav tiles. */}
-              <div className="space-y-2">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {lang === "vi" ? "Ngôn ngữ" : "Language"}
-                </span>
-                <LangToggle
-                  lang={lang}
-                  onChange={onLangChange}
-                  disabled={langToggleDisabled}
-                  buttonClassName={PHONE_LANG_TOGGLE_BUTTON_CLASS}
-                  containerClassName={PHONE_LANG_TOGGLE_CONTAINER_CLASS}
-                />
-              </div>
               <ErrorBoundary fallback={null}>
                 <HeaderAuth
                   avatarSize="size-9"
