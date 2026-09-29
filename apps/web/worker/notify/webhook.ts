@@ -150,6 +150,7 @@ export function webhookTarget(url: string | undefined): string {
 
 export const webhookNotifier: Notifier = {
   id: "webhook",
+  lang: "vi",
   target: (env) => webhookTarget(env.NOTIFY_WEBHOOK_URL),
   enabled: (env) => Boolean(env.NOTIFY_WEBHOOK_URL?.trim()),
   sendDigest: (env, digest) =>

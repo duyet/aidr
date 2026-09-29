@@ -1,5 +1,6 @@
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
+import type { Lang } from "../../src/lib/types.js";
 import { nn } from "../d1-bind.js";
 import {
   canonicalizeMediaImageUrl,
@@ -16,7 +17,7 @@ import {
 } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE } from "../time.js";
 import type { Env } from "../types.js";
-import { telegramNotifier } from "./telegram.js";
+import { telegramEnNotifier, telegramNotifier } from "./telegram.js";
 import type {
   DailyDigest,
   DigestBullet,
@@ -40,7 +41,11 @@ import { webhookNotifier } from "./webhook.js";
  */
 
 /** Registered delivery channels; add discord/... here. */
-export const notifiers: Notifier[] = [telegramNotifier, webhookNotifier];
+export const notifiers: Notifier[] = [
+  telegramNotifier,
+  telegramEnNotifier,
+  webhookNotifier,
+];
 
 /** Calls each channel's enabled() so a half-configured deploy (chat id
  *  without token) throws instead of silently skipping sends. */
@@ -174,24 +179,36 @@ export function shouldSendDigest(
 }
 
 /** Pure query builder: unposted trending candidates for a channel.
- *  VI translation's title/summary preferred, English fallback. */
+ *  Vietnamese prefers the VI translation (English source only when that
+ *  translation is empty). English posts the source title and summary and
+ *  never reads the Vietnamese translation. */
 export function buildTrendingQuery(
   channel: string,
-  nowMs: number
+  nowMs: number,
+  lang: Lang = "vi"
 ): { sql: string; binds: [string, number, number, number] } {
+  const copy =
+    lang === "en"
+      ? `i.title AS title,
+                 i.summary AS summary,
+                 'en' AS lang`
+      : `COALESCE(NULLIF(TRIM(tr.title), ''), i.title) AS title,
+                 COALESCE(NULLIF(TRIM(tr.summary), ''), i.summary) AS summary,
+                 CASE WHEN NULLIF(TRIM(tr.title), '') IS NOT NULL
+                   THEN 'vi' ELSE 'en' END AS lang`;
+  const translationJoin =
+    lang === "en"
+      ? ""
+      : "LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'\n          ";
   return {
     sql: `SELECT i.id, i.url,
-                 COALESCE(NULLIF(TRIM(tr.title), ''), i.title) AS title,
-                 COALESCE(NULLIF(TRIM(tr.summary), ''), i.summary) AS summary,
+                 ${copy},
                  i.image_url, i.media_manifest, i.category,
-                 i.points, i.comments, i.rank_score, i.llm_importance,
-                 CASE WHEN NULLIF(TRIM(tr.title), '') IS NOT NULL
-                   THEN 'vi' ELSE 'en' END AS lang
+                 i.points, i.comments, i.rank_score, i.llm_importance
           FROM items i
           LEFT JOIN notifications n ON n.item_id = i.id AND n.channel = ?
             AND (n.status = 'sent' OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
-          LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-          WHERE i.status = 'published'
+          ${translationJoin}WHERE i.status = 'published'
             AND i.published_at >= ?
             AND i.rank_score >= ?
             AND i.llm_importance >= ?
@@ -259,9 +276,13 @@ export function localDayStartMs(nowMs: number, timezone: string): number {
   return nowMs - elapsedSec * 1000 - (nowMs % 1000);
 }
 
-/** Loads the newest TL;DR snapshot and resolves each bullet's story
- *  permalink (VI bullets preferred). */
-async function loadDigest(env: Env, date: string): Promise<DailyDigest | null> {
+/** Loads one language of the TL;DR snapshot. Vietnamese uses `bullets_vi`
+ *  only; English uses `bullets_en` only. Neither falls back to the other. */
+async function loadDigest(
+  env: Env,
+  date: string,
+  lang: Lang
+): Promise<DailyDigest | null> {
   // Bind the exact date: within the send window (08:00–24:00 local, UTC+7)
   // the local date always equals the snapshot's UTC date, and a missing
   // snapshot returns null so a later run retries instead of resending an
@@ -292,10 +313,10 @@ async function loadDigest(env: Env, date: string): Promise<DailyDigest | null> {
   }
   if (!snapshot) return null;
 
-  const vi = topBullets(snapshot.bullets_vi, DIGEST_MAX_BULLETS);
-  const lang = vi.length > 0 ? "vi" : "en";
-  const bullets =
-    vi.length > 0 ? vi : topBullets(snapshot.bullets_en, DIGEST_MAX_BULLETS);
+  const bullets = topBullets(
+    lang === "en" ? snapshot.bullets_en : snapshot.bullets_vi,
+    DIGEST_MAX_BULLETS
+  );
   if (bullets.length === 0) return null;
 
   const resolved: DigestBullet[] = [];
@@ -373,7 +394,7 @@ export async function dispatchStoryNotifications(
     .first<{ max_rank: number | null }>();
   const maxRank = maxRankRow?.max_rank ?? null;
 
-  let digest: DailyDigest | null | undefined;
+  const digestByLang = new Map<Lang, DailyDigest | null>();
 
   for (const notifier of notifiers) {
     if (!notifier.enabled(env)) continue;
@@ -396,7 +417,11 @@ export async function dispatchStoryNotifications(
     if (digestSkip) {
       digestReason = digestSkip;
     } else {
-      if (digest === undefined) digest = await loadDigest(env, date);
+      let digest = digestByLang.get(notifier.lang);
+      if (digest === undefined) {
+        digest = await loadDigest(env, date, notifier.lang);
+        digestByLang.set(notifier.lang, digest);
+      }
       if (!digest) {
         digestReason = "no_snapshot";
       } else {
@@ -446,7 +471,11 @@ export async function dispatchStoryNotifications(
     if (trendingSkip === "budget_zero" || trendingSkip === "below_min_rank") {
       trendingReason = trendingSkip;
     } else {
-      const { sql, binds } = buildTrendingQuery(notifier.id, now);
+      const { sql, binds } = buildTrendingQuery(
+        notifier.id,
+        now,
+        notifier.lang
+      );
       const { results } = await env.DB.prepare(sql)
         .bind(...binds)
         .all<StoryRow>();
@@ -507,11 +536,8 @@ export async function forceSendDigest(
   const now = Date.now();
   const { date } = getLocalHourAndDate(now, DIGEST_TIMEZONE);
   const key = digestKey(date);
-  const digest = await loadDigest(env, date);
-  if (!digest) {
-    return { sent: 0, reason: `no TL;DR snapshot for ${date}` };
-  }
   let sent = 0;
+  let sawSnapshot = false;
   for (const notifier of notifiers) {
     if (!notifier.enabled(env)) {
       return {
@@ -519,6 +545,9 @@ export async function forceSendDigest(
         reason: `${notifier.id} not configured (missing bot token or chat id)`,
       };
     }
+    const digest = await loadDigest(env, date, notifier.lang);
+    if (!digest) continue;
+    sawSnapshot = true;
     const target = notifier.target(env);
     let result: { ok: boolean; messageId?: string; error?: string };
     try {
@@ -532,6 +561,9 @@ export async function forceSendDigest(
     await recordDelivery(env, notifier.id, target, key, result);
     if (result.ok) sent++;
     else return { sent, reason: result.error ?? "send failed" };
+  }
+  if (!sawSnapshot) {
+    return { sent: 0, reason: `no TL;DR snapshot for ${date}` };
   }
   return { sent, reason: sent > 0 ? `sent digest ${date}` : "no channel sent" };
 }

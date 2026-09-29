@@ -124,6 +124,8 @@ describe("compact header icon buttons", () => {
     expect(wide).toContain("<GetAIDRMenu />");
     expect(menu).toContain("Chrome Extension");
     expect(menu).toContain("Telegram Channel (Vietnamese)");
+    expect(menu).toContain("Telegram Channel (English)");
+    expect(menu).toContain("TELEGRAM_EN_URL");
     expect(menu).toContain("Email Subscription");
   });
 });

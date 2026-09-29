@@ -29,6 +29,8 @@ import {
   storyImageCount,
   storyPhotoUrl,
   storyUrl,
+  TELEGRAM_EN_CHAT_ID,
+  telegramEnNotifier,
   telegramNotifier,
   withUtm,
 } from "../notify/telegram.js";
@@ -108,6 +110,13 @@ describe("buildTrendingQuery", () => {
       TRENDING_MIN_RANK,
       TRENDING_MIN_IMPORTANCE,
     ]);
+  });
+
+  it("keeps the English channel on source copy, never the Vietnamese translation", () => {
+    const { sql } = buildTrendingQuery("telegram-en", 1_700_000_000_000, "en");
+    expect(sql).toContain("'en' AS lang");
+    expect(sql).not.toContain("tr.lang = 'vi'");
+    expect(sql).not.toContain("THEN 'vi'");
   });
 });
 
@@ -303,6 +312,48 @@ describe("webhook locale links", () => {
     });
     expect(english.title).toBe("AI news digest — 2026-08-17");
     expect(english.links?.[1].url).toBe("https://aidr.today/abcdef12?lang=en");
+  });
+});
+
+describe("telegram channels", () => {
+  it("sends English to @aidr_today and leaves the Vietnamese chat id alone", () => {
+    expect(telegramEnNotifier.lang).toBe("en");
+    expect(telegramEnNotifier.id).toBe("telegram-en");
+    expect(telegramEnNotifier.target({} as Env)).toBe("@aidr_today");
+    expect(telegramEnNotifier.target({} as Env)).toBe(TELEGRAM_EN_CHAT_ID);
+    expect(telegramNotifier.lang).toBe("vi");
+    expect(telegramNotifier.target({ TELEGRAM_CHAT_ID: "-100" } as Env)).toBe(
+      "-100"
+    );
+    expect(
+      telegramNotifier.target({ TELEGRAM_CHAT_ID: "-100" } as Env)
+    ).not.toBe("@aidr_today");
+    expect(telegramEnNotifier.enabled({ TELEGRAM_BOT_TOKEN: "t" } as Env)).toBe(
+      true
+    );
+    expect(telegramEnNotifier.enabled({} as Env)).toBe(false);
+  });
+
+  it("posts the English digest to @aidr_today", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, result: { message_id: 3 } }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await telegramEnNotifier.sendDigest(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "-100" } as Env,
+      {
+        lang: "en",
+        date: "2026-08-17",
+        bullets: [{ text: "English only", url: null }],
+      }
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(body.chat_id).toBe("@aidr_today");
+    expect(body.text).toContain("AI news today");
+    expect(body.text).not.toContain("AI hôm nay");
+    expect(body.text).not.toContain("-100");
   });
 });
 
