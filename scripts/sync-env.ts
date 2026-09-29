@@ -63,6 +63,10 @@ const WORKER_OPTIONAL = [
   // Bugsink DSN for Telegram and email delivery failures. Optional so a
   // checkout without it still deploys; the pipeline logs either way.
   "SENTRY_DSN",
+  // Health alerts to the owner: Telegram DM chat id (uses TELEGRAM_BOT_TOKEN)
+  // and a fine-grained PAT (issues:write) for aidr-alert GitHub issues.
+  "TELEGRAM_OWNER_CHAT_ID",
+  "GITHUB_ALERT_TOKEN",
 ] as const;
 
 /** Secrets GitHub Actions workflows read (`secrets.*`). */

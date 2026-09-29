@@ -107,4 +107,8 @@ export interface Env {
   /** Sentry-compatible Bugsink DSN. Delivery failures are reported when set.
    *  A missing value skips the alert and never fails the pipeline. */
   SENTRY_DSN?: string;
+  /** Owner's private chat id for health DMs (uses TELEGRAM_BOT_TOKEN). Unset: no DMs. */
+  TELEGRAM_OWNER_CHAT_ID?: string;
+  /** Fine-grained PAT (issues:write on duyet/aidr, duyet/anyrouter) for alert issues. Unset: no issues. */
+  GITHUB_ALERT_TOKEN?: string;
 }

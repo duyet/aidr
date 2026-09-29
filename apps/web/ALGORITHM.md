@@ -113,6 +113,15 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
   failed 3 runs in a row, a step failed, or the run errored. Fired keys go
   in `stats.alerts`; the same key is silent for 6h. External uptime
   monitors poll `GET /api/health` (503 when the newest run is down).
+- Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
+  `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
+  with evidence and the run link, plus one daily summary in the first run
+  between 09–12h local (`daily-summary:<date>` in `stats.alerts` makes it
+  once per day). `GITHUB_ALERT_TOKEN` (fine-grained PAT, Issues read/write)
+  files `aidr-alert` issues: LLM keys → `duyet/anyrouter`, others →
+  `duyet/aidr`. An open issue with the same fingerprint gets a comment at
+  most once per 24h instead; max 3 GitHub writes per run. Errors are logged
+  and sent to Sentry, never fail the step.
 - `run()` still upserts at start **before** `pruneLlmCalls` / fetch / LLM.
   Do not wrap `open-run` in `safeStep`.
 - Score and TL;DR hang-cap per model at 70s/90s (translate stays 25s).
