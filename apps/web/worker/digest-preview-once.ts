@@ -2,7 +2,7 @@ import { digestFrom, sendSubscriberEmail } from "./mail/send.js";
 import { buildDigestEmail } from "./subscribe/send.js";
 import type { Env } from "./types.js";
 
-const TO = "me@duyet.net";
+const TO = "duyet.cs@gmail.com";
 
 interface PublicDigest {
   tldr?: {
