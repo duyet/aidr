@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.1.10](https://github.com/duyet/aidr/compare/web-v0.1.9...web-v0.1.10) (2026-09-29)
+
+
+### ✨ Features
+
+* **jev:** wire the merged review panel into the scoring decision ([#209](https://github.com/duyet/aidr/issues/209)) ([fd5314a](https://github.com/duyet/aidr/commit/fd5314a38961d8bf733fb1fe836cc57b479ca304)), closes [#203](https://github.com/duyet/aidr/issues/203) [#144](https://github.com/duyet/aidr/issues/144)
+* **notify:** post the English digest to [@aidr](https://github.com/aidr)_today ([#251](https://github.com/duyet/aidr/issues/251)) ([619d006](https://github.com/duyet/aidr/commit/619d006982d89397773b515a0bd56b3c120a02eb))
+* **notify:** read Vietnamese and English Telegram chats from env ([#254](https://github.com/duyet/aidr/issues/254)) ([914345a](https://github.com/duyet/aidr/commit/914345a9c3b82b3f69d6daa5aefad3a346f39892))
+* **web:** a GA4 audience snapshot behind a new /data Audience tab ([c8eb48b](https://github.com/duyet/aidr/commit/c8eb48b144addb0f1788ea38cc9520b005f26370))
+* **web:** advertise the story Markdown so a client can offer a quick view ([8a9b177](https://github.com/duyet/aidr/commit/8a9b177b4824c8002e4f1ad24cadadee9c0e39bb))
+* **web:** ship raster icons and outline the wordmark in the SVG mark ([39e27f9](https://github.com/duyet/aidr/commit/39e27f9297a4ca06db11e70bb51bfddc871a963a))
+* **web:** title the digest from its bullets and add one hero ([#247](https://github.com/duyet/aidr/issues/247)) ([b04b3b6](https://github.com/duyet/aidr/commit/b04b3b689931d8ec71e3cca224498c87d0c209f8))
+* **worker:** Telegram albums, card fallback, one button, one language ([1ffa2b7](https://github.com/duyet/aidr/commit/1ffa2b7f4593f9e94b6f35baabd8e1542440cc18))
+
+
+### 🐛 Bug Fixes
+
+* **web:** draw the OG card in Be Vietnam Pro, with the tone marks in the outline ([2f1ca9c](https://github.com/duyet/aidr/commit/2f1ca9cfc1cca4c33a78dd253708d383bfe0fb59))
+* **web:** keep story categories in the site's own taxonomy in every locale ([0077a40](https://github.com/duyet/aidr/commit/0077a409117da2ea051abf5f6140584388e8992e))
+* **web:** keep story summaries whole and fall back to the OG card ([#256](https://github.com/duyet/aidr/issues/256)) ([b2fca66](https://github.com/duyet/aidr/commit/b2fca66bd0639ab36160ec70f9ff098712254ff2))
+* **web:** move About out of reader prefs into the menu ([85eca74](https://github.com/duyet/aidr/commit/85eca745a57a11e1013a69124f0b2db8a3c3082d))
+* **web:** the phone menu is a two-column grid of large tiles ([ff9d158](https://github.com/duyet/aidr/commit/ff9d1586da9aa1813ba1c05120f185a3b54943e6))
+* **web:** tighten the story dialog and show the summary ([c0d27c4](https://github.com/duyet/aidr/commit/c0d27c435550ae57786311bfffaa3374bbb8fe60))
+* **web:** use a story thumbnail as the digest hero ([#253](https://github.com/duyet/aidr/issues/253)) ([16207d9](https://github.com/duyet/aidr/commit/16207d912faaa8ebe859a548d301e6bd376fa9d2))
+
+
+### ♻️ Refactoring
+
+* **digest:** one language edition for email and Telegram ([#258](https://github.com/duyet/aidr/issues/258)) ([bf79c76](https://github.com/duyet/aidr/commit/bf79c76a0bbd439527f5c0e04ee0306f5a85ca64))
+
 ## [0.1.9](https://github.com/duyet/aidr/compare/web-v0.1.8...web-v0.1.9) (2026-09-28)
 
 
