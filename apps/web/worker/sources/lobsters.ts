@@ -1,3 +1,4 @@
+import { isAiRelatedTitle } from "./keywords.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 
 interface LobstersStory {
@@ -53,26 +54,45 @@ async function fetchTag(tag: string): Promise<LobstersStory[]> {
   return Array.isArray(data) ? (data as LobstersStory[]) : [];
 }
 
+function cleanTags(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (t): t is string => typeof t === "string" && t.trim().length > 0
+      )
+    : [];
+}
+
 /**
  * Lobsters AI-adjacent tags (`ai`, `ml`, `vibecoding` by default). Config:
- * `{ "tags": ["ai","ml"] }`. Stories without an external URL fall back to the
+ * `{ "tags": ["ai","ml"], "filteredTags": ["programming"] }`. Stories from
+ * `tags` are taken as is; stories from `filteredTags` (broad tags such as
+ * `programming`) only pass when the title matches the shared AI keyword
+ * list, so a wide tag cannot flood the scorer. A story in both lists is kept.
+ * Stories without an external URL fall back to the
  * Lobsters discussion page so we still ingest link-free posts.
  */
 export const lobstersAdapter: SourceAdapter = {
   type: "lobsters",
 
   async fetchItems(config, sinceEpochSec) {
-    const tags = Array.isArray(config.tags)
-      ? config.tags.filter(
-          (t): t is string => typeof t === "string" && t.trim().length > 0
-        )
-      : DEFAULT_TAGS;
-    const tagList = tags.length > 0 ? tags : DEFAULT_TAGS;
+    const configured = cleanTags(config.tags);
+    const tagList = configured.length > 0 ? configured : DEFAULT_TAGS;
+    const filteredTags = cleanTags(config.filteredTags).filter(
+      (tag) => !tagList.includes(tag)
+    );
 
-    const batches = await Promise.all(tagList.map((tag) => fetchTag(tag)));
+    const [batches, filteredBatches] = await Promise.all([
+      Promise.all(tagList.map((tag) => fetchTag(tag))),
+      Promise.all(filteredTags.map((tag) => fetchTag(tag))),
+    ]);
     const seen = new Map<string, LobstersStory>();
     for (const story of batches.flat()) {
       if (!story.short_id || seen.has(story.short_id)) continue;
+      seen.set(story.short_id, story);
+    }
+    for (const story of filteredBatches.flat()) {
+      if (!story.short_id || seen.has(story.short_id)) continue;
+      if (!story.title || !isAiRelatedTitle(story.title)) continue;
       seen.set(story.short_id, story);
     }
 

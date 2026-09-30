@@ -133,9 +133,11 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 ## Pipeline (per hourly run)
 
 1. **Fetch** — each enabled source row (`sources` table) maps to an adapter
-   (`worker/sources/registry.ts`): HN via Algolia (AI-keyword pre-filter),
+   (`worker/sources/registry.ts`): HN via Algolia (AI-keyword pre-filter; `popularMinPoints` adds a
+   points-range search),
    HuggingNews via its `__data.json` (+ per-story detail for body/sources),
-   Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default),
+   Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default; broad
+   `filteredTags` such as `programming` keep only AI-keyword titles),
    generic RSS (`openai`, `google-ai`, `hf-blog` feeds), Anthropic Newsroom
    HTML (`/news` listing — no official RSS), xAI News via sitemap
    (`https://x.ai/sitemap.xml` `/news/<slug>` locs + `/news` listing titles),
