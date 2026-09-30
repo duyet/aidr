@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# bugsink — read Bugsink issues, dedupe against GitHub, notify via herdr-desk.
+# Never prints the API token. Set BUGSINK_FIXTURE=<dir> to read canned JSON
+# instead of the network (evals, offline runs). Set DRY_RUN=1 to make every
+# write (GitHub issue, Bugsink comment, notify) print instead of act.
+set -euo pipefail
+
+BASE="${BUGSINK_URL:-https://duyet.bugsink.com}/api/canonical/0"
+REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+GH_REPO="${BUGSINK_GH_REPO:-duyet/aidr}"
+LABEL="bugsink"
+
+load_token() {
+  [[ -n "${BUGSINK_API_TOKEN:-}" ]] && return
+  local f="$REPO_ROOT/.env.local"
+  [[ -f "$f" ]] && BUGSINK_API_TOKEN="$(grep -E '^BUGSINK_API_TOKEN=' "$f" | head -1 | cut -d= -f2- | tr -d '"'"'")"
+  [[ -n "${BUGSINK_API_TOKEN:-}" ]] || { echo "BUGSINK_API_TOKEN missing (env or .env.local)" >&2; exit 2; }
+}
+
+api() { # api <path-with-query> ; fixture file name = path with / and ? → _
+  if [[ -n "${BUGSINK_FIXTURE:-}" ]]; then
+    local name; name="$(echo "$1" | tr '/?=&' '____' | sed 's/_*$//').json"
+    cat "$BUGSINK_FIXTURE/$name"; return
+  fi
+  load_token
+  curl -fsS -H "Authorization: Bearer $BUGSINK_API_TOKEN" "$BASE/$1"
+}
+
+project_id() { api "projects/" | jq -r --arg s "$1" '.results[]|select(.slug==$s).id'; }
+
+cmd_issues() { # open (unresolved, unmuted) issues, newest first
+  local slug="${1:-aidr}" pid; pid="$(project_id "$slug")"
+  [[ -n "$pid" ]] || { echo "unknown project: $slug" >&2; exit 2; }
+  api "issues/?project=$pid" | jq '[.results[]
+    | select(.is_resolved|not) | select(.is_muted|not)
+    | {id, friendly_id, type: .calculated_type, value: .calculated_value,
+       count: .digested_event_count, first_seen, last_seen,
+       url: "'"${BUGSINK_URL:-https://duyet.bugsink.com}"'/issues/issue/\(.id)/"}]
+    | sort_by(.last_seen) | reverse'
+}
+
+cmd_event() { # latest event for an issue: message, tags, stacktrace markdown
+  local ev; ev="$(api "events/?issue=$1" | jq -r '.results|sort_by(.digest_order)|last|.id')"
+  [[ "$ev" != null ]] || { echo "no events for $1" >&2; exit 1; }
+  api "events/$ev/" | jq '{event: .id, timestamp,
+    environment: .data.environment, level: .data.level, logger: .data.logger,
+    message: (.data.message // .data.logentry.formatted // null),
+    exception: (.data.exception.values // null | if . then map({type, value}) else null end),
+    tags: .data.tags, stacktrace: .stacktrace_md}'
+}
+
+cmd_existing() { # GitHub issue already tracking this friendly_id (any state)
+  gh issue list -R "$GH_REPO" --state all --search "\"[bugsink $1]\" in:title" \
+    --json number,state,title,url --limit 5
+}
+
+cmd_file() { # file <friendly_id> <title> <body-file>
+  local title="[bugsink $1] $2"
+  if [[ -n "${DRY_RUN:-}" ]]; then echo "DRY_RUN gh issue create: $title"; return; fi
+  gh label create "$LABEL" -R "$GH_REPO" --color B60205 --description "Filed from Bugsink" 2>/dev/null || true
+  gh issue create -R "$GH_REPO" --title "$title" --label "$LABEL" --body-file "$3"
+}
+
+cmd_comment() { # comment <bugsink-issue-uuid> <text> — link Bugsink back to GitHub
+  if [[ -n "${DRY_RUN:-}" || -n "${BUGSINK_FIXTURE:-}" ]]; then echo "DRY_RUN bugsink comment on $1: $2"; return; fi
+  load_token
+  jq -n --arg i "$1" --arg c "$2" '{issue: $i, comment: $c}' |
+    curl -fsS -X POST -H "Authorization: Bearer $BUGSINK_API_TOKEN" \
+      -H 'Content-Type: application/json' -d @- "$BASE/issue-comments/" >/dev/null
+}
+
+cmd_notify() { # notify <message> — herdr-desk Telegram notice
+  if [[ -n "${DRY_RUN:-}" ]]; then echo "DRY_RUN notify: $1"; return; fi
+  local desk; desk="$(ls -d "$HOME"/.config/herdr/plugins/github/herdr-desk-*/bin/desk 2>/dev/null | head -1)"
+  [[ -x "$desk" ]] || { echo "herdr-desk not installed; message: $1" >&2; exit 1; }
+  "$desk" notify "$1" --repo "$REPO_ROOT" --label bugsink
+}
+
+case "${1:-}" in
+  issues) shift; cmd_issues "$@" ;;
+  event) shift; cmd_event "$@" ;;
+  existing) shift; cmd_existing "$@" ;;
+  file) shift; cmd_file "$@" ;;
+  comment) shift; cmd_comment "$@" ;;
+  notify) shift; cmd_notify "$@" ;;
+  *) cat <<'EOF'
+bugsink issues [project-slug]        open issues as JSON (default: aidr)
+bugsink event <issue-uuid>           latest event: message, exception, tags, stacktrace
+bugsink existing <FRIENDLY-ID>       GitHub issues titled "[bugsink ID]" (any state)
+bugsink file <ID> <title> <body.md>  create labelled GitHub issue
+bugsink comment <issue-uuid> <text>  add a Bugsink comment (e.g. GitHub link)
+bugsink notify <message>             herdr-desk Telegram notice
+Env: BUGSINK_API_TOKEN (else .env.local), BUGSINK_FIXTURE=<dir>, DRY_RUN=1
+EOF
+     exit 1 ;;
+esac

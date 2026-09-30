@@ -1,4 +1,16 @@
 {
   "$schema": "https://raw.githubusercontent.com/duyet/herdr-desk/main/herdr-desk.schema.json",
-  "name": "aidr"
+  "name": "aidr",
+  "tasks": [
+    { "id": "desk:github-issues", "playbook": "github-issues" },
+    {
+      "id": "local:bugsink",
+      "label": "Bugsink triage",
+      "agentName": "bugsink-desk",
+      "playbook": ".cursor/skills/bugsink-triage/playbook.md",
+      "agent": { "ladder": ["claude", "codex"], "permission": "yolo" },
+      "maxChildren": 2,
+      "schedule": "20 */3 * * *"
+    }
+  ]
 }

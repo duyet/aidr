@@ -1,0 +1,34 @@
+{
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 2,
+      "team": "2adbd5f7-951e-4a85-a46f-be57895aac94",
+      "name": "aidr",
+      "slug": "aidr",
+      "digested_event_count": 2,
+      "stored_event_count": 2,
+      "alert_on_new_issue": true,
+      "alert_on_regression": true,
+      "alert_on_unmute": true,
+      "visibility": "team_members",
+      "retention_max_event_count": 1000,
+      "grouping_mechanism": "bugsink-v2"
+    },
+    {
+      "id": 1,
+      "team": "2adbd5f7-951e-4a85-a46f-be57895aac94",
+      "name": "chm",
+      "slug": "chm",
+      "digested_event_count": 0,
+      "stored_event_count": 0,
+      "alert_on_new_issue": true,
+      "alert_on_regression": true,
+      "alert_on_unmute": true,
+      "visibility": "team_members",
+      "retention_max_event_count": 1000,
+      "grouping_mechanism": "bugsink-v2"
+    }
+  ]
+}
