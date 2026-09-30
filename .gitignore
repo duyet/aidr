@@ -24,10 +24,12 @@ apps/web/scripts/.be-vietnam-pro/
 .playwright-mcp/
 .herdr-desk/runs/*/
 
+# Claude Code local state (skills under .claude/skills are tracked).
+.claude/settings.local.json
+.claude/worktrees/
+
 # Skill installs, written by `hyperframes skills install`. Vendored third-party
 # content, machine-local and regenerable - not project source.
-.agents/
-.claude/
 .devin/
 agent/
 skills-lock.json

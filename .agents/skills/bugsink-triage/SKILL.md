@@ -10,7 +10,7 @@ Turns production errors in Bugsink into tracked GitHub issues and, when the fix 
 All Bugsink and notify calls go through `scripts/bugsink` (run from the repo root). It reads `BUGSINK_API_TOKEN` from the env or `.env.local` and never prints it — don't echo or `cat` the token yourself either.
 
 ```bash
-S=.cursor/skills/bugsink-triage/scripts/bugsink
+S=.agents/skills/bugsink-triage/scripts/bugsink
 $S issues aidr                 # open issues (unresolved, unmuted) as JSON
 $S event <issue-uuid>          # latest event: message, exception, tags, stacktrace
 $S existing AIDR-7             # GitHub issues titled "[bugsink AIDR-7]", any state
@@ -63,7 +63,7 @@ $S notify "<message>"
 5. **Fix** code bugs only, and at most **2 fix PRs per run** so a flood of errors can't turn into a flood of PRs.
    - Read `apps/web/ALGORITHM.md` first if the fix touches ingest, ranking, prompts, or notify.
    - Branch `fix/bugsink-<friendly-id-lowercase>` from `master`. Make the smallest change that removes the cause, and add a test that fails without it.
-   - Validate with the `aidr-validate` skill (`.cursor/skills/aidr-validate/SKILL.md`, "change" level). If it fails, leave the issue open with your findings and don't open a PR.
+   - Validate with the `aidr-validate` skill (`.agents/skills/aidr-validate/SKILL.md`, "change" level). If it fails, leave the issue open with your findings and don't open a PR.
    - Open the PR with `Fixes #<n>`. Don't merge, deploy, or push to `master`: the owner reviews every automated fix.
    - Skip the fix when the cause is unclear or the change needs a product decision. A good issue is still a useful result.
 
