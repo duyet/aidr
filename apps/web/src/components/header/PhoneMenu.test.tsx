@@ -461,10 +461,10 @@ describe("intro video tile", () => {
     fireEvent.click(tile);
     const player = await screen.findByRole("dialog", { name: "AI;DR là gì?" });
     expect(player.querySelector("iframe")?.getAttribute("src")).toBe(
-      "https://www.youtube-nocookie.com/embed/abc123XYZ_-?autoplay=1&rel=0"
+      "https://www.youtube-nocookie.com/embed/abc123XYZ_-?autoplay=1&controls=0&rel=0"
     );
 
-    fireEvent.click(within(player).getByRole("button", { name: "Đóng" }));
+    fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(document.querySelector("iframe")).toBeNull());
     expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBe(
       navigation

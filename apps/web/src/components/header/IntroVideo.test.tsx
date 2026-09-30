@@ -15,7 +15,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { INTRO_VIDEO_COPY, introVideoEmbedUrl } from "../../lib/intro-video";
@@ -47,7 +46,7 @@ vi.mock("@aidr/ui/track", async (importOriginal) => ({
 const here = dirname(fileURLToPath(import.meta.url));
 const VIDEO_ID = "abc123XYZ_-";
 const EMBED_URL =
-  "https://www.youtube-nocookie.com/embed/abc123XYZ_-?autoplay=1&rel=0";
+  "https://www.youtube-nocookie.com/embed/abc123XYZ_-?autoplay=1&controls=0&rel=0";
 
 afterEach(() => {
   cleanup();
@@ -77,7 +76,7 @@ describe("IntroVideoButton", () => {
     expect(track).not.toHaveBeenCalled();
   });
 
-  it("mounts the nocookie player on open and removes it on close", async () => {
+  it("mounts the nocookie player on open and removes it on Escape", async () => {
     introVideo.id = VIDEO_ID;
     render(<IntroVideoButton lang="en" />);
     fireEvent.click(
@@ -102,23 +101,15 @@ describe("IntroVideoButton", () => {
       from: "header",
     });
 
+    // The dialog is the bare player: the title names it for screen readers
+    // but no header or close button is drawn over the video.
+    expect(dialog.querySelector("h2")?.className).toContain("sr-only");
+    expect(dialog.querySelector("button")).toBeNull();
+
     // Removing the iframe is what stops playback.
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.querySelector("iframe")).toBeNull();
-  });
-
-  it("also removes the player when closed with Escape", async () => {
-    introVideo.id = VIDEO_ID;
-    render(<IntroVideoButton lang="en" />);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Watch the AI;DR intro video" })
-    );
-    await screen.findByRole("dialog");
-
-    fireEvent.keyDown(document, { key: "Escape" });
-
-    await waitFor(() => expect(document.querySelector("iframe")).toBeNull());
   });
 
   it("speaks Vietnamese on the Vietnamese site", async () => {
@@ -132,8 +123,6 @@ describe("IntroVideoButton", () => {
     expect(dialog.querySelector("iframe")?.getAttribute("title")).toBe(
       "AI;DR là gì?"
     );
-    expect(within(dialog).getByRole("button", { name: "Đóng" })).toBeTruthy();
-    expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull();
   });
 });
 
@@ -143,7 +132,7 @@ describe("intro video copy and embed", () => {
     const keys = Object.keys(INTRO_VIDEO_COPY.en) as Array<
       keyof typeof INTRO_VIDEO_COPY.en
     >;
-    expect(keys.sort()).toEqual(["close", "menu", "open", "title"]);
+    expect(keys.sort()).toEqual(["menu", "open", "title"]);
     for (const lang of langs) {
       expect(Object.keys(INTRO_VIDEO_COPY[lang]).sort()).toEqual(keys);
       for (const key of keys) {
@@ -155,7 +144,7 @@ describe("intro video copy and embed", () => {
     }
   });
 
-  it("embeds from the privacy-enhanced host and autoplays", () => {
+  it("embeds from the privacy-enhanced host, autoplays, and hides the controls", () => {
     expect(introVideoEmbedUrl(VIDEO_ID)).toBe(EMBED_URL);
   });
 
