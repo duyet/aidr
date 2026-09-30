@@ -55,7 +55,6 @@ export function tagSiteLinks(root, contentBySelector = {}, lang = "vi") {
   if (!root?.querySelectorAll) return;
   const defaults = {
     "a.brand": "brand",
-    "a#chrome-tab-link": "extension_page",
     "a#submit-btn": "submit",
     "a#sign-in-btn": "sign_in",
     "a.sign-in-btn": "sign_in",

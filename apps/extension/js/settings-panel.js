@@ -1,5 +1,4 @@
 import { t } from "./i18n.js";
-import { withExtRef } from "./ref.js";
 import {
   allowCustomApiBase,
   ensureHostPermission,
@@ -383,24 +382,6 @@ export function mountSettingsPanel(root, settings, onSaved) {
     return el("div", { className: "prefs-tab-body" }, fields);
   };
 
-  const buildAboutTab = () =>
-    el("div", { className: "prefs-tab-body prefs-about" }, [
-      el("p", {}, [t(state, "aboutBody")]),
-      el(
-        "a",
-        {
-          href: withExtRef(
-            "https://aidr.today/about",
-            "prefs_about",
-            state.language === "en" ? "en" : "vi"
-          ),
-          rel: "noreferrer",
-          target: "_blank",
-        },
-        [t(state, "aboutLink")]
-      ),
-    ]);
-
   const buildShell = () => {
     const tabs = el("div", { className: "prefs-tabs", role: "tablist" }, [
       el(
@@ -431,28 +412,10 @@ export function mountSettingsPanel(root, settings, onSaved) {
         },
         [t(state, "settings")]
       ),
-      el(
-        "button",
-        {
-          type: "button",
-          role: "tab",
-          className: `prefs-tab${activeTab === "about" ? " is-active" : ""}`,
-          "aria-selected": activeTab === "about" ? "true" : "false",
-          onClick: () => {
-            activeTab = "about";
-            paint();
-          },
-        },
-        [t(state, "about")]
-      ),
     ]);
 
     const body =
-      activeTab === "settings"
-        ? buildSettingsTab()
-        : activeTab === "about"
-          ? buildAboutTab()
-          : buildThemeTab();
+      activeTab === "settings" ? buildSettingsTab() : buildThemeTab();
 
     return el("div", { className: "prefs-panel" }, [tabs, body]);
   };

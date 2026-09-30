@@ -48,7 +48,7 @@
   --font: var(--content-font-sans);
   --content-font: var(--content-font-sans);
   --size: 16px;
-  --pad: 0.5rem;
+  --pad: 0.75rem;
   color-scheme: light;
 }
 
@@ -73,8 +73,8 @@ html[data-font="serif"] {
   --content-font: var(--editorial-font-serif);
 }
 
-html[data-density="comfortable"] {
-  --pad: 0.75rem;
+html[data-density="compact"] {
+  --pad: 0.5rem;
 }
 
 html[data-density="spacious"] {
@@ -645,7 +645,7 @@ html[data-theme="dark"] .news-content {
 
 .prefs-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.25rem;
   padding: 0.2rem;
   border-radius: 0.65rem;
@@ -858,21 +858,6 @@ html[data-theme="dark"] .news-content {
 
 .prefs-choice.is-full-width {
   grid-column: 1 / -1;
-}
-
-.prefs-about {
-  color: var(--muted-foreground);
-  font-size: 0.85rem;
-  line-height: 1.45;
-}
-
-.prefs-about p {
-  margin: 0;
-}
-
-.prefs-about a {
-  color: var(--accent);
-  text-underline-offset: 2px;
 }
 
 .lang-toggle {
@@ -1092,12 +1077,12 @@ html[data-theme="dark"] .topic-colored {
 .page.is-brief .tldr {
   margin-top: auto;
   margin-bottom: auto;
-  padding: 1.75rem 1.5rem 2rem;
+  padding: calc(var(--pad) + 1rem) 1.5rem calc(var(--pad) + 1.25rem);
 }
 
 .tldr {
   margin: 0.25rem 0 0;
-  padding: 1.25rem 1.125rem;
+  padding: calc(var(--pad) + 0.5rem) 1.125rem;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 1.25rem;
   background: var(--card);
@@ -1164,7 +1149,7 @@ html[data-theme="dark"] .topic-colored {
 
 .tldr-cols {
   display: grid;
-  gap: 0.5rem 2.5rem;
+  gap: var(--pad) 2.5rem;
 }
 
 @media (min-width: 768px) {
@@ -1181,7 +1166,7 @@ html[data-theme="dark"] .topic-colored {
 }
 
 .tldr-list > li {
-  margin: 0 0 0.7rem;
+  margin: 0 0 var(--pad);
 }
 
 .tldr-list > li::marker {
@@ -1390,7 +1375,7 @@ html[data-theme="dark"] .topic-colored {
   display: flex;
   align-items: baseline;
   gap: 0.75rem;
-  padding: 0.75rem 0;
+  padding: var(--pad) 0;
 }
 
 .story-head-expandable {

@@ -264,11 +264,6 @@ function applyChrome(settings) {
   if (phoneLang) {
     phoneLang.textContent = lang === "vi" ? "Ngôn ngữ" : "Language";
   }
-  const chromeLink = $("chrome-tab-link");
-  if (chromeLink) {
-    chromeLink.title = "Get AI;DR";
-    chromeLink.setAttribute("aria-label", "Get AI;DR");
-  }
   const reloadBtn = $("tldr-reload");
   if (reloadBtn) {
     const label = t(settings, "refresh");
