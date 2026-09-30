@@ -1,7 +1,7 @@
 {
   "bgm": {
     "path": "assets/bgm/score.mp3",
-    "volume": 0.2
+    "volume": 0.24
   },
   "bgm_pending": false,
   "voices": [
@@ -171,7 +171,7 @@
     {
       "frame": 4,
       "file": "assets/sfx/pop.mp3",
-      "offset_s": 4.153,
+      "offset_s": 3.775,
       "duration_s": 0.72,
       "volume": 0.22
     },
@@ -199,30 +199,44 @@
     {
       "frame": 6,
       "file": "assets/sfx/pop.mp3",
-      "offset_s": 2.578,
+      "offset_s": 1.336,
       "duration_s": 0.72,
-      "volume": 0.22
+      "volume": 0.2
     },
     {
       "frame": 6,
       "file": "assets/sfx/pop.mp3",
-      "offset_s": 3.028,
+      "offset_s": 2.029,
       "duration_s": 0.72,
-      "volume": 0.22
+      "volume": 0.2
     },
     {
       "frame": 6,
       "file": "assets/sfx/pop.mp3",
-      "offset_s": 3.478,
+      "offset_s": 2.704,
       "duration_s": 0.72,
-      "volume": 0.22
+      "volume": 0.2
     },
     {
       "frame": 6,
       "file": "assets/sfx/pop.mp3",
-      "offset_s": 3.928,
+      "offset_s": 3.361,
       "duration_s": 0.72,
-      "volume": 0.22
+      "volume": 0.2
+    },
+    {
+      "frame": 6,
+      "file": "assets/sfx/pop.mp3",
+      "offset_s": 4.009,
+      "duration_s": 0.72,
+      "volume": 0.2
+    },
+    {
+      "frame": 6,
+      "file": "assets/sfx/pop.mp3",
+      "offset_s": 4.765,
+      "duration_s": 0.72,
+      "volume": 0.2
     },
     {
       "frame": 6,

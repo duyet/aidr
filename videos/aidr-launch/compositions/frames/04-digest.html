@@ -411,11 +411,11 @@
       seq.fromTo(".f04-digest-count", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot);
       seq.fromTo(".f04-digest-updated", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot + 3 * FRAME);
 
-      // ---- Scene 4 (4.0–6.0s): the credit. Text first, then the AnyRouter mark and name land
-      // as the voice says the name (authored 4.75s), 3 frames apart. Then hold.
-      seq.fromTo(".f04-digest-credit-text", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.0 - LEAD);
-      seq.fromTo(".f04-digest-credit-mark", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.75 - LEAD);
-      seq.fromTo(".f04-digest-credit-name", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.75 - LEAD + 3 * FRAME);
+      // ---- Scene 4 (3.6–6.0s): the credit. Text first, then the AnyRouter mark and name land
+      // as the voice says the name (authored 4.33s), 3 frames apart. Then hold.
+      seq.fromTo(".f04-digest-credit-text", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 3.6 - LEAD);
+      seq.fromTo(".f04-digest-credit-mark", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.33 - LEAD);
+      seq.fromTo(".f04-digest-credit-name", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.33 - LEAD + 3 * FRAME);
 
       window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });

@@ -54,6 +54,9 @@ Closing line: "What's happening in AI today?" above aidr.today.
 
 ## Notes
 
+- Owner: "more powerful voice and faster pace, ultra professional and super excited announcement" — voice changed to Ewan (Bright & Energetic) at speed 1.12, lines rewritten as announcements.
+- Owner: "showing number of upstream source, number of broadcast channel" — frame 2 shows "From 26 sources" (live count of enabled sources, https://aidr.today/api/system/sources, 2026-09-30); frame 6 shows "6 channels": Web, New tab, Email, Telegram, RSS, MCP.
+
 - Owner: "also mention building LLM powered by AnyRouter (showing anyrouter logo)". Frame 4 carries a credit line with the official AnyRouter mark (assets/anyrouter-logo-black.svg, from anyrouter.dev/brand) and the voice says it.
 
 - Owner asked to "speed up video a bit" after the first draft: the whole film plays 10/9 faster (133.3 BPM). Then: "the first intro longer a bit" — frame 1 runs 5.4s, total 28.8s.
