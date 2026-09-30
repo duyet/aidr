@@ -2,23 +2,34 @@ import { Button } from "@aidr/ui";
 import { track } from "@aidr/ui/track";
 import { useState } from "react";
 import { withLang } from "../lib/locale-url";
+import type { MailFormat } from "../lib/mail-format";
 import type { Lang } from "../lib/types";
 import { formAnnotationAttributes, webmcpForm } from "../lib/webmcp";
+import { MailFormatField } from "./subscribe/MailFormatField";
 
 const DIGEST_SIZES = [3, 5, 10] as const;
+
+/** Digest settings chosen in the form. The parent holds them so the
+ *  preview can render the same choices. */
+export interface DigestPrefs {
+  lang: Lang;
+  size: (typeof DIGEST_SIZES)[number];
+  format: MailFormat;
+}
 
 export function EmailSubscribeForm({
   lang,
   source,
+  prefs,
+  onPrefsChange,
 }: {
   lang: Lang;
   source: string;
+  prefs: DigestPrefs;
+  onPrefsChange: (prefs: DigestPrefs) => void;
 }) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
   const [email, setEmail] = useState("");
-  const [prefLang, setPrefLang] = useState<Lang>(lang);
-  const [digestSize, setDigestSize] =
-    useState<(typeof DIGEST_SIZES)[number]>(5);
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
     "idle"
   );
@@ -40,10 +51,11 @@ export function EmailSubscribeForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
-          lang: prefLang,
+          lang: prefs.lang,
           timezone,
           source,
-          digest_size: digestSize,
+          digest_size: prefs.size,
+          mail_format: prefs.format,
         }),
       });
       if (res.ok) {
@@ -119,8 +131,8 @@ export function EmailSubscribeForm({
           <input
             type="radio"
             name="digest-lang"
-            checked={prefLang === "vi"}
-            onChange={() => setPrefLang("vi")}
+            checked={prefs.lang === "vi"}
+            onChange={() => onPrefsChange({ ...prefs, lang: "vi" })}
           />
           Tiếng Việt
         </label>
@@ -128,8 +140,8 @@ export function EmailSubscribeForm({
           <input
             type="radio"
             name="digest-lang"
-            checked={prefLang === "en"}
-            onChange={() => setPrefLang("en")}
+            checked={prefs.lang === "en"}
+            onChange={() => onPrefsChange({ ...prefs, lang: "en" })}
           />
           English
         </label>
@@ -141,11 +153,12 @@ export function EmailSubscribeForm({
         </label>
         <select
           id="digest-size"
-          value={digestSize}
+          value={prefs.size}
           onChange={(e) =>
-            setDigestSize(
-              Number(e.target.value) as (typeof DIGEST_SIZES)[number]
-            )
+            onPrefsChange({
+              ...prefs,
+              size: Number(e.target.value) as DigestPrefs["size"],
+            })
           }
           className={field}
         >
@@ -156,6 +169,13 @@ export function EmailSubscribeForm({
           ))}
         </select>
       </div>
+
+      <MailFormatField
+        lang={lang}
+        name="digest-format"
+        value={prefs.format}
+        onChange={(format) => onPrefsChange({ ...prefs, format })}
+      />
 
       <p className="text-xs text-muted-foreground">
         {t(

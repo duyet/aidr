@@ -23,7 +23,7 @@ One hourly run does three jobs. Prompts live in `worker/llm.ts`; the steps live 
 
 Publish has two deliveries and they do not share a clock or a table:
 
-- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout `design` or `text` come from that subscriber. Idempotency is `subscribers.last_sent_date`. A browser preview of the same render is `GET /api/subscribe/preview?lang=&n=&format=`.
+- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject and heading are a fixed short title (`AI;DR — <date> · Today in AI`); the first story is the preheader. Idempotency is `subscribers.last_sent_date`. A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories are Telegram-only.
 
 An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next hourly run retries. Email is not a `Notifier`: a notifier is one target plus a trending post.

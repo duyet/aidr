@@ -10,6 +10,8 @@ import { CHROME_WEB_STORE_URL, TELEGRAM_URL } from "../../lib/site";
 import { BrowserFrame } from "./BrowserFrame";
 import { ChromeChannel } from "./ChromeChannel";
 import { DigestPreview } from "./DigestPreview";
+import { EmailChannel } from "./EmailChannel";
+import { MailFormatField } from "./MailFormatField";
 import { NewTabMock } from "./NewTabMock";
 import { SettingsPreview } from "./SettingsPreview";
 import { TELEGRAM_FEATURES, TelegramChannel } from "./TelegramChannel";
@@ -65,13 +67,57 @@ describe("TelegramPreview", () => {
 });
 
 describe("DigestPreview", () => {
-  it("loads the live preview for the chosen language", () => {
-    const html = renderToStaticMarkup(<DigestPreview lang="vi" />);
-    expect(html).toContain('src="/api/subscribe/preview?lang=vi"');
+  it("loads the given preview with the chrome in the page language", () => {
+    const html = renderToStaticMarkup(
+      <DigestPreview lang="vi" src="/api/subscribe/preview?lang=en&n=3" />
+    );
+    expect(html).toContain('src="/api/subscribe/preview?lang=en&amp;n=3"');
     expect(html).toContain("Hộp thư — AI;DR");
     // Pending state is visible and the frame respects reduced motion.
     expect(html).toContain("Đang tải bản xem trước");
     expect(html).toContain("motion-reduce:transition-none");
+    // The subject is short by design; it must never be clipped with "…".
+    expect(html).not.toContain('truncate">AI;DR<');
+  });
+});
+
+describe("EmailChannel", () => {
+  it("previews the same settings the form starts with", () => {
+    const html = renderToStaticMarkup(<EmailChannel lang="vi" />);
+    expect(html).toContain(
+      'src="/api/subscribe/preview?lang=vi&amp;n=5&amp;format=design"'
+    );
+    expect(html).toContain('name="digest-format"');
+  });
+});
+
+describe("MailFormatField", () => {
+  it("offers every layout in both languages and checks the current one", () => {
+    const render = (lang: "en" | "vi") =>
+      renderToStaticMarkup(
+        <MailFormatField
+          lang={lang}
+          name="f"
+          value="large"
+          onChange={() => {}}
+        />
+      );
+    const en = render("en");
+    for (const label of [
+      "No images",
+      "Thumbnails",
+      "Large images",
+      "Plain text",
+    ]) {
+      expect(en).toContain(label);
+    }
+    expect(en.match(/checked=""/g)?.length).toBe(1);
+    expect(en).toMatch(/checked=""\/>Large images/);
+    const vi = render("vi");
+    for (const label of ["Không hình", "Hình nhỏ", "Hình lớn", "Chỉ chữ"]) {
+      expect(vi).toContain(label);
+    }
+    expect(vi).not.toContain("Thumbnails");
   });
 });
 

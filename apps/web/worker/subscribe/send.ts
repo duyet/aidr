@@ -1,4 +1,9 @@
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
+import {
+  type MailFormat,
+  mailFormatHasImages,
+  normalizeMailFormat,
+} from "../../src/lib/mail-format.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import { reportDeliveryFailure } from "../bugsink.js";
@@ -10,8 +15,6 @@ import {
 } from "../digest/edition.js";
 import {
   digestSubjectLine,
-  type MailFormat,
-  normalizeMailFormat,
   renderDigestEmail,
   renderNoteEmail,
   settingsUrl,
@@ -122,7 +125,7 @@ export function buildDigestEmail(
 ): { subject: string; html: string; text: string } {
   const mailLang = lang === "en" ? "en" : "vi";
   const items = bullets.slice(0, max);
-  const subject = digestSubjectLine(date, items);
+  const subject = digestSubjectLine(date, mailLang);
   return {
     subject,
     ...renderDigestEmail({
@@ -217,7 +220,7 @@ export function digestBulletsWithImages(
 }
 
 async function loadBulletImages(
-  env: Env,
+  env: Pick<Env, "DB">,
   bullets: TldrBulletLike[]
 ): Promise<TldrBulletLike[]> {
   const ids = [
@@ -236,6 +239,29 @@ async function loadBulletImages(
     .bind(...ids)
     .all<{ id: string; image_url: string | null }>();
   return digestBulletsWithImages(bullets, results ?? []);
+}
+
+/** The digest mail for one edition, exactly as it is sent: loads story
+ *  images when the layout shows them, then renders. The subscribe preview
+ *  calls this too, so the preview is the mail that arrives. */
+export async function renderEditionEmail(
+  env: Pick<Env, "DB">,
+  edition: Pick<Edition, "date" | "lang" | "bullets">,
+  unsubscribeToken: string,
+  size: number,
+  format: MailFormat
+): Promise<{ subject: string; html: string; text: string }> {
+  const bullets = mailFormatHasImages(format)
+    ? await loadBulletImages(env, edition.bullets)
+    : edition.bullets;
+  return buildDigestEmail(
+    edition.date,
+    bullets,
+    edition.lang,
+    unsubscribeToken,
+    size,
+    format
+  );
 }
 
 /** One email lane. `en` and `vi` are separate: a subscriber only receives
@@ -264,15 +290,9 @@ export async function sendEmailLane(
       editions.set(cacheKey, edition);
     }
     if (!edition) continue;
-    const bullets =
-      format === "text"
-        ? edition.bullets
-        : await loadBulletImages(env, edition.bullets);
-
-    const { subject, html, text } = buildDigestEmail(
-      edition.date,
-      bullets,
-      lang,
+    const { subject, html, text } = await renderEditionEmail(
+      env,
+      edition,
       sub.unsubscribe_token,
       size,
       format

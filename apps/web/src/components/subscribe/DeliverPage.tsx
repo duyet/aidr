@@ -13,9 +13,8 @@ import { ArrowRight, Mail, Send } from "lucide-react";
 import { type DeliverTab, parseDeliverTab } from "../../lib/deliver-tab";
 import { useLang } from "../../lib/lang-context";
 import { RSS_FEED_PATH } from "../../lib/site";
-import { EmailSubscribeForm } from "../EmailSubscribeForm";
 import { ChromeChannel } from "./ChromeChannel";
-import { DigestPreview } from "./DigestPreview";
+import { EmailChannel } from "./EmailChannel";
 import { TelegramChannel } from "./TelegramChannel";
 
 export function DeliverPage({
@@ -93,8 +92,7 @@ export function DeliverPage({
               "Bản tin hằng ngày qua email. Không cần tài khoản — có thể liên kết sau."
             )}
           </p>
-          <EmailSubscribeForm lang={lang} source="extension" />
-          <DigestPreview lang={lang} />
+          <EmailChannel lang={lang} />
         </TabsContent>
       </Tabs>
 
