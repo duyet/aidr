@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import {
+  MAIL_FORMATS,
+  mailFormatHasImages,
+  normalizeMailFormat,
+} from "../../src/lib/mail-format.js";
 import { topicColor } from "../../src/lib/topic-color.js";
 import { previewCampaign } from "../mail/campaigns.js";
 import { parseWrapJson } from "../mail/compose.js";
@@ -162,8 +167,8 @@ describe("renderNoteEmail", () => {
     expect(html).toContain("background-color:#b45309");
     expect(html).toContain("#f7f7f5");
     expect(html).toContain("#ffffff");
-    expect(html).toContain("Georgia, Times New Roman, EB Garamond");
-    expect(html).toContain("Inter, Source Sans 3");
+    expect(html).toContain("'EB Garamond', Garamond, Georgia");
+    expect(html).toContain("'Source Sans 3', -apple-system");
     expect(html).not.toContain('font-family:Georgia,"');
     expect(html).not.toContain('"Times New Roman"');
     expect(html).not.toContain('"Source Sans 3"');
@@ -317,6 +322,94 @@ describe("renderNoteEmail", () => {
     expect(html).toContain('width="64"');
     expect(html).not.toContain('class="mail-hero"');
     expect(html.match(/<img /g)?.length).toBe(2);
+  });
+
+  describe("image layouts", () => {
+    const render = (format: string | undefined) =>
+      renderDigestEmail({
+        subject: "Digest",
+        date: "2026-09-10",
+        stories: [
+          { text: "Generated card", imageUrl: "https://aidr.today/og/abc.png" },
+          { text: "Real photo", imageUrl: "https://cdn.example/photo.jpg" },
+          { text: "No image" },
+        ],
+        lang: "en",
+        unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+        settingsUrl: "https://aidr.today/subscribe?settings=tok",
+        format: format as never,
+      }).html;
+    // The logo is the one <img> every layout has.
+    const images = (html: string) => html.match(/<img /g)?.length ?? 0;
+
+    it("no-images keeps the designed card but shows no story image", () => {
+      const html = render("no-images");
+      expect(images(html)).toBe(1);
+      expect(html).not.toContain("cdn.example");
+      expect(html).toContain(">Read more</a>");
+    });
+
+    it("design shows one hero and a small thumbnail per story image", () => {
+      const html = render("design");
+      expect(html.match(/class="mail-hero"/g)?.length).toBe(1);
+      expect(html.match(/<img [^>]*width="64"/g)?.length).toBe(2);
+      expect(html).not.toContain('class="mail-large"');
+      expect(images(html)).toBe(4);
+      expect(render(undefined)).toBe(html);
+    });
+
+    it("large shows one full-width image per story and no hero", () => {
+      const html = render("large");
+      // A hero would repeat the first story's image right above it.
+      expect(html).not.toContain('class="mail-hero"');
+      expect(html).not.toContain('width="64"');
+      expect(html.match(/class="mail-large"/g)?.length).toBe(1);
+      expect(html).toContain(
+        'class="mail-large" src="https://cdn.example/photo.jpg" width="476"'
+      );
+      // Generated text-on-card images are unreadable noise at full width.
+      expect(html).not.toContain("/og/abc.png");
+    });
+
+    it("text has no story image and no story markup", () => {
+      const html = render("text");
+      expect(images(html)).toBe(1);
+      expect(html).toContain("white-space:pre-wrap");
+      expect(html).not.toContain('class="mail-story"');
+    });
+  });
+
+  it("normalizes stored layouts and defaults to design", () => {
+    for (const format of MAIL_FORMATS) {
+      expect(normalizeMailFormat(format)).toBe(format);
+    }
+    // `design` is the column default, so old rows keep their thumbnails.
+    expect(normalizeMailFormat(null)).toBe("design");
+    expect(normalizeMailFormat("huge")).toBe("design");
+    expect(MAIL_FORMATS.filter(mailFormatHasImages)).toEqual([
+      "design",
+      "large",
+    ]);
+  });
+
+  it("uses the site font families with a webfont link and a valid stack", () => {
+    const { html } = renderDigestEmail({
+      subject: "Digest",
+      date: "2026-09-10",
+      stories: [{ text: "Story" }],
+      lang: "en",
+      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
+      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+    });
+    expect(html).toContain(
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&amp;family=Source+Sans+3:wght@400;500;600&amp;display=swap">'
+    );
+    expect(html).toContain("font-family:'Source Sans 3', -apple-system");
+    expect(html).toContain("font-family:'EB Garamond', Garamond");
+    // Unquoted `Source Sans 3` is invalid CSS and drops the declaration;
+    // a double quote would end the style attribute.
+    expect(html).not.toMatch(/font-family:[^;"]*[^'"]Source Sans 3/);
+    expect(html).not.toMatch(/font-family:[^;]*"[^>]*;/);
   });
 
   it("drops non-http(s) story imageUrls", () => {

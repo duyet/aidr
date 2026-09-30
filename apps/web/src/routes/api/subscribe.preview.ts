@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { editionBullets } from "../../../worker/digest/edition.js";
-import { normalizeMailFormat } from "../../../worker/mail/render.js";
 import {
-  buildDigestEmail,
   digestSizeFor,
+  renderEditionEmail,
   type TldrSnapshotRow,
 } from "../../../worker/subscribe/send.js";
 import type { Env } from "../../../worker/types.js";
 import { resolveApiRequestLocale } from "../../lib/locale-response";
 import { localeCacheControl } from "../../lib/locale-url";
+import { normalizeMailFormat } from "../../lib/mail-format";
 import { resolveWorkerEnv } from "../../lib/system-api";
 
 // type alias (not interface): TanStack routeTree.gen must re-export handler
@@ -71,13 +71,14 @@ export const Route = createFileRoute("/api/subscribe/preview")({
               : [];
             if (snapshot && bullets.length > 0) {
               contentLang = lang;
-              html = buildDigestEmail(
-                snapshot.date,
-                bullets,
-                contentLang,
-                PREVIEW_TOKEN,
-                size,
-                format
+              html = (
+                await renderEditionEmail(
+                  env,
+                  { date: snapshot.date, lang, bullets },
+                  PREVIEW_TOKEN,
+                  size,
+                  format
+                )
               ).html;
               // Rendered inside an iframe — links must open a real tab.
               html = html.replace("<head>", '<head><base target="_blank">');

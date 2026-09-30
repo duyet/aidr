@@ -1,4 +1,7 @@
-import { type MailFormat, normalizeMailFormat } from "../mail/render.js";
+import {
+  type MailFormat,
+  normalizeMailFormat,
+} from "../../src/lib/mail-format.js";
 import { ensureMailSchema } from "../mail/schema.js";
 import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import type { Env } from "../types.js";
@@ -110,7 +113,8 @@ export async function subscribe(
   timezone?: unknown,
   source?: unknown,
   ip?: string | null,
-  digestSize?: unknown
+  digestSize?: unknown,
+  mailFormat?: unknown
 ): Promise<{ ok: true } | SubscribeError> {
   if (!isValidEmail(email)) {
     return { error: "invalid email", status: 400 };
@@ -121,6 +125,7 @@ export async function subscribe(
     : DEFAULT_TIMEZONE;
   const normalizedSource = normalizeSource(source);
   const size = normalizeDigestSize(digestSize);
+  const format = normalizeMailFormat(mailFormat);
   const token = await deriveUnsubscribeToken(env, email);
   const now = Date.now();
 
@@ -149,13 +154,13 @@ export async function subscribe(
   }
 
   await env.DB.prepare(
-    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size)
-     VALUES (?, ?, ?, ?, 1, ?, ?)
+    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format)
+     VALUES (?, ?, ?, ?, 1, ?, ?, ?)
      ON CONFLICT(email) DO UPDATE SET
        lang = excluded.lang, timezone = excluded.timezone, confirmed = 1,
-       digest_size = excluded.digest_size`
+       digest_size = excluded.digest_size, mail_format = excluded.mail_format`
   )
-    .bind(email, normalizedLang, normalizedTimezone, now, token, size)
+    .bind(email, normalizedLang, normalizedTimezone, now, token, size, format)
     .run();
 
   await env.DB.prepare(

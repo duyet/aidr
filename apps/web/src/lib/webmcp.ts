@@ -29,6 +29,7 @@
  *     bundled, never awaited.
  */
 
+import { MAIL_FORMATS } from "./mail-format";
 import type { PublicDigest } from "./public-queries";
 import {
   boundSearchResult,
@@ -383,6 +384,11 @@ export const WEBMCP_FORM_ANNOTATIONS: readonly WebMcpFormAnnotation[] = [
         email: { type: "string", format: "email" },
         lang: { type: "string", enum: ["en", "vi"] },
         digest_size: { type: "integer", enum: [3, 5, 10], default: 5 },
+        mail_format: {
+          type: "string",
+          enum: [...MAIL_FORMATS],
+          default: "design",
+        },
       },
       required: ["email"],
       additionalProperties: false,

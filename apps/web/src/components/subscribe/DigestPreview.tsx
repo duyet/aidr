@@ -3,10 +3,13 @@ import { useState } from "react";
 import type { Lang } from "../../lib/types";
 import { BrowserFrame } from "./BrowserFrame";
 
-export function DigestPreview({ lang }: { lang: Lang }) {
+/** `lang` is the page language for the chrome around the frame. `src` is
+ *  the preview URL, which carries the digest language, size and layout.
+ *  The pending state and the Subject row reset whenever `src` changes. */
+export function DigestPreview({ lang, src }: { lang: Lang; src: string }) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
-  const [subject, setSubject] = useState("");
-  const [loaded, setLoaded] = useState(false);
+  const [frame, setFrame] = useState({ src: "", subject: "" });
+  const loaded = frame.src === src;
 
   return (
     <div className="space-y-3 pt-4">
@@ -36,7 +39,9 @@ export function DigestPreview({ lang }: { lang: Lang }) {
             <span className="w-16 shrink-0 text-muted-foreground">
               {t("Subject", "Tiêu đề")}
             </span>
-            <span className="truncate">{subject || "AI;DR"}</span>
+            <span className="min-w-0 break-words">
+              {(loaded && frame.subject) || "AI;DR"}
+            </span>
           </div>
         </div>
         <div className="relative">
@@ -49,16 +54,17 @@ export function DigestPreview({ lang }: { lang: Lang }) {
             </div>
           )}
           <iframe
-            src={`/api/subscribe/preview?lang=${lang}`}
+            src={src}
             title={t("Digest email preview", "Xem trước email bản tin")}
             className={`h-[560px] w-full bg-[#f7f7f5] transition-opacity duration-500 motion-reduce:transition-none ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
-            onLoad={(e) => {
-              setLoaded(true);
-              const title = e.currentTarget.contentDocument?.title;
-              if (title) setSubject(title);
-            }}
+            onLoad={(e) =>
+              setFrame({
+                src,
+                subject: e.currentTarget.contentDocument?.title ?? "",
+              })
+            }
           />
         </div>
       </BrowserFrame>

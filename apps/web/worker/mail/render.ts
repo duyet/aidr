@@ -1,5 +1,9 @@
 import { highlightTitle, TITLE_KEYWORDS } from "../../src/lib/highlight.js";
 import { withSiteLang } from "../../src/lib/locale-url.js";
+import {
+  type MailFormat,
+  normalizeMailFormat,
+} from "../../src/lib/mail-format.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { topicColor } from "../../src/lib/topic-color.js";
 import {
@@ -40,13 +44,20 @@ const MUTED = "#474747";
 const ACCENT = "#b45309";
 const ACCENT_FG = "#fffefb";
 const HAIRLINE = "#0a0a0a14";
-/** Quote-free stacks — interpolated into style="font-family:…". A " inside
- *  the value would terminate the HTML attribute (Gmail then paints blue
- *  underlined leftovers). */
-const SERIF =
-  "Georgia, Times New Roman, EB Garamond, Garamond, ui-serif, serif";
+/** Site families first (--editorial-font-serif / --content-font-sans in
+ *  apps/web/src/styles.css), then system fallbacks.
+ *  No double quotes — these are interpolated into style="font-family:…" and
+ *  a " inside the value would terminate the HTML attribute (Gmail then
+ *  paints blue underlined leftovers). Multi-word names take single quotes:
+ *  an unquoted `Source Sans 3` is invalid CSS (3 is not an identifier) and
+ *  makes the client drop the whole declaration. */
+const SERIF = "'EB Garamond', Garamond, Georgia, 'Times New Roman', serif";
 const SANS =
-  "Inter, Source Sans 3, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif";
+  "'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+/** The site self-hosts these under hashed /assets names, so mail loads the
+ *  same families from Google Fonts. Clients that ignore <link> use the stack. */
+const FONTS_HREF =
+  "https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Source+Sans+3:wght@400;500;600&display=swap";
 
 export type MailLang = "en" | "vi";
 
@@ -73,12 +84,6 @@ export interface DigestStory {
   imageUrl?: string;
 }
 
-export type MailFormat = "design" | "text";
-
-export function normalizeMailFormat(value: unknown): MailFormat {
-  return value === "text" ? "text" : "design";
-}
-
 export interface DigestEmailInput {
   subject: string;
   date: string;
@@ -87,7 +92,7 @@ export interface DigestEmailInput {
   unsubscribeUrl: string;
   settingsUrl: string;
   preheader?: string;
-  /** `text` is a plain list. `design` is the editorial card with a hero. */
+  /** See src/lib/mail-format.ts. Default `design`. */
   format?: MailFormat;
 }
 
@@ -187,6 +192,7 @@ function wrapHtml(opts: {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(opts.subject)}</title>
+<link rel="stylesheet" href="${escapeHtml(FONTS_HREF)}">
 <style type="text/css">
   a { text-decoration: none; }
   a.mail-story { color: ${ACCENT} !important; text-decoration: underline !important; font-weight: 500; }
@@ -275,35 +281,13 @@ export function highlightStoryHtml(text: string): string {
 }
 
 const THUMB_PX = 64;
-/** Keeps `AI;DR — YYYY-MM-DD — …` on one subject line. */
-const DIGEST_PHRASE_MAX = 52;
+const LARGE_PX = 476;
 
-/** First bullet, cut on a word boundary. Empty when every bullet is blank. */
-export function digestContentPhrase(stories: { text: string }[]): string {
-  const raw = stories
-    .map((story) => story.text.trim())
-    .find((text) => text.length > 0);
-  if (!raw) return "";
-  const flat = raw.replace(/\s+/g, " ");
-  if (flat.length <= DIGEST_PHRASE_MAX) return flat;
-  const window = flat.slice(0, DIGEST_PHRASE_MAX + 1);
-  const space = window.lastIndexOf(" ");
-  const cut = (
-    space >= 24 ? window.slice(0, space) : flat.slice(0, DIGEST_PHRASE_MAX)
-  )
-    .trim()
-    .replace(/[.,;:]+$/, "");
-  return `${cut}…`;
-}
-
-/** Date plus a short phrase from the bullets. Date-only when there is no phrase. */
-export function digestSubjectLine(
-  date: string,
-  stories: { text: string }[]
-): string {
-  const phrase = digestContentPhrase(stories);
-  if (!phrase) return `AI;DR — ${date}`;
-  return `AI;DR — ${date} — ${phrase}`;
+/** Short fixed title, used as the mail subject and the in-mail heading.
+ *  Story text goes in the preheader, so nothing here is ever cut. */
+export function digestSubjectLine(date: string, lang: MailLang): string {
+  const label = lang === "vi" ? "Tin AI hôm nay" : "Today in AI";
+  return `AI;DR — ${date} · ${label}`;
 }
 
 /** Generated social cards (text-on-card OG images) are not story thumbnails. */
@@ -319,21 +303,29 @@ export function isGeneratedOgCard(url: string): boolean {
   }
 }
 
+/** A real image for full-width use: http(s), not a generated OG card. */
+function largeImageSrc(imageUrl: string | undefined): string | null {
+  const safe = imageUrl ? safeHref(imageUrl) : null;
+  return safe && !isGeneratedOgCard(safe) ? safe : null;
+}
+
 /** First real thumbnail: http(s), not a generated OG card. */
 export function digestHeroSrc(stories: DigestStory[]): string | null {
   for (const story of stories) {
-    if (!story.imageUrl) continue;
-    const safe = safeHref(story.imageUrl);
-    if (safe && !isGeneratedOgCard(safe)) return safe;
+    const src = largeImageSrc(story.imageUrl);
+    if (src) return src;
   }
   return null;
 }
 
+function largeImage(src: string, className: string): string {
+  return `<img class="${className}" src="${escapeHtml(src)}" width="${LARGE_PX}" alt="" style="display:block;width:100%;max-width:${LARGE_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic">`;
+}
+
 function heroRow(src: string): string {
-  const safe = escapeHtml(src);
   return `<tr>
       <td style="padding:20px ${PAD} 4px">
-        <img class="mail-hero" src="${safe}" width="476" alt="" style="display:block;width:100%;max-width:476px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic">
+        ${largeImage(src, "mail-hero")}
       </td>
     </tr>`;
 }
@@ -351,11 +343,12 @@ export function renderDigestEmail(input: DigestEmailInput): {
   html: string;
   text: string;
 } {
-  const heading = digestSubjectLine(input.date, input.stories);
+  const heading = digestSubjectLine(input.date, input.lang);
+  const format = normalizeMailFormat(input.format);
   const home = withMailUtm(SITE_URL, "digest", input.lang);
   const textLines = input.stories.map((s, i) => `${i + 1}. ${s.text}`);
   const text = `${heading}\n\n${textLines.join("\n")}\n\n${home}\n\n${mailFooterText(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
-  if (normalizeMailFormat(input.format) === "text") {
+  if (format === "text") {
     return {
       text,
       html: wrapHtml({
@@ -367,7 +360,8 @@ export function renderDigestEmail(input: DigestEmailInput): {
       }),
     };
   }
-  const hero = digestHeroSrc(input.stories);
+  // `large` gives every story its own image, so a hero would repeat story 1.
+  const hero = format === "design" ? digestHeroSrc(input.stories) : null;
   const readMore =
     input.lang === "vi" ? "Đọc trên aidr.today" : "Read on aidr.today";
   const storyCta = input.lang === "vi" ? "Đọc thêm" : "Read more";
@@ -389,10 +383,13 @@ export function renderDigestEmail(input: DigestEmailInput): {
           ${text}
           <div style="margin-top:6px;font-family:${SANS};font-size:13px;line-height:1.4">${more}</div>
         </div>`;
-      const thumb = thumbCell(story.imageUrl);
+      const thumb = format === "design" ? thumbCell(story.imageUrl) : "";
+      const large = format === "large" ? largeImageSrc(story.imageUrl) : null;
       const inner = thumb
         ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>${thumb}<td style="vertical-align:top">${body}</td></tr></table>`
-        : body;
+        : large
+          ? `<div style="padding-bottom:12px">${largeImage(large, "mail-large")}</div>${body}`
+          : body;
       return `<tr>
       <td style="padding:12px ${PAD};${rule}">${inner}</td>
     </tr>`;

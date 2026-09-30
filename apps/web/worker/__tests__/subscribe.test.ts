@@ -261,7 +261,7 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("&quot;quoted&quot;");
   });
 
-  it("puts the snapshot date and a short phrase from the bullets in the subject and heading", () => {
+  it("keeps the subject and heading short and whole, however long the first bullet is", () => {
     const long =
       "OpenAI ships a coding model that rewrites entire repositories overnight and then keeps going past any reasonable subject length";
     const { subject, html } = buildDigestEmail(
@@ -285,12 +285,15 @@ describe("buildDigestEmail", () => {
     expect(
       canonicalizeMediaImageUrl("http://127.0.0.1/private.jpg")
     ).toBeNull();
-    expect(subject).toContain("2026-08-16");
-    expect(subject).toContain("OpenAI ships a coding model");
-    expect(subject).not.toBe("AI;DR — 2026-08-16");
-    expect(subject.length).toBeLessThan(long.length);
-    expect(subject).not.toContain("reasonable subject length");
-    expect(html).toContain(subject);
+    // A cut subject reads as broken in an inbox, so the title is fixed and
+    // the story text goes to the preheader instead.
+    expect(subject).toBe("AI;DR — 2026-08-16 · Today in AI");
+    expect(subject).not.toContain("…");
+    expect(subject).not.toContain("OpenAI");
+    expect(subject.length).toBeLessThanOrEqual(40);
+    expect(html).toContain(`<title>${subject}</title>`);
+    expect(html).toContain(`>${subject}</td>`);
+    expect(html).toContain(`opacity:0">${long}</div>`);
     expect(html).toContain('class="mail-hero"');
     expect(html).toContain(`src="${hero}"`);
     expect(html.match(/class="mail-hero"/g)?.length).toBe(1);
@@ -331,6 +334,20 @@ describe("buildDigestEmail", () => {
       "tok"
     );
     expect(html).not.toContain('class="mail-hero"');
+  });
+});
+
+describe("digest subject in Vietnamese", () => {
+  it("uses the Vietnamese label and never the English one", () => {
+    const { subject, text } = buildDigestEmail(
+      "2026-08-16",
+      [{ text: "tin ".repeat(60) }],
+      "vi",
+      "tok"
+    );
+    expect(subject).toBe("AI;DR — 2026-08-16 · Tin AI hôm nay");
+    expect(subject).not.toContain("…");
+    expect(text.startsWith(`${subject}\n`)).toBe(true);
   });
 });
 

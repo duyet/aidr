@@ -1,7 +1,9 @@
 import { Button } from "@aidr/ui";
 import { useEffect, useState } from "react";
 import { withLang } from "../../lib/locale-url";
+import { type MailFormat, normalizeMailFormat } from "../../lib/mail-format";
 import type { Lang } from "../../lib/types";
+import { MailFormatField } from "./MailFormatField";
 import { SettingsPreview } from "./SettingsPreview";
 
 const DIGEST_SIZES = [3, 5, 10] as const;
@@ -13,7 +15,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
   const [masked, setMasked] = useState("");
   const [prefLang, setPrefLang] = useState<Lang>("en");
   const [digestSize, setDigestSize] = useState<DigestSize>(5);
-  const [format, setFormat] = useState<"design" | "text">("design");
+  const [format, setFormat] = useState<MailFormat>("design");
   const [save, setSave] = useState<"idle" | "saving" | "done" | "error">(
     "idle"
   );
@@ -39,7 +41,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             ? (data.digest_size as DigestSize)
             : 5
         );
-        setFormat(data.mail_format === "text" ? "text" : "design");
+        setFormat(normalizeMailFormat(data.mail_format));
         setLoad("ready");
       })
       .catch(() => {
@@ -140,27 +142,12 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             ))}
           </select>
         </div>
-        <fieldset className="flex gap-4 text-sm">
-          <legend className="mb-1 block font-medium">
-            {t("Layout", "Bố cục")}
-          </legend>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              checked={format === "design"}
-              onChange={() => setFormat("design")}
-            />
-            {t("Designed", "Có hình")}
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              checked={format === "text"}
-              onChange={() => setFormat("text")}
-            />
-            {t("Text only", "Chỉ chữ")}
-          </label>
-        </fieldset>
+        <MailFormatField
+          lang={lang}
+          name="settings-format"
+          value={format}
+          onChange={setFormat}
+        />
         <SettingsPreview
           lang={lang}
           src={`/api/subscribe/preview?lang=${prefLang}&n=${digestSize}&format=${format}`}
