@@ -87,10 +87,9 @@ function coveredBy(face: Face, codePoint: number): boolean {
 }
 
 /**
- * The 17 base letters of the Vietnamese alphabet, each with the six tone
- * marks NFD would attach, plus the two letters that only take a dot below.
- * Built programmatically from the Unicode names so a typo cannot quietly
- * shrink the set.
+ * The letters of the Vietnamese alphabet (lower case plus Đ), with the five
+ * tone marks and the unmarked form on each of the 12 vowels: 90 characters.
+ * Built programmatically so a typo cannot quietly shrink the set.
  */
 const VI_BASE_LETTERS = [
   "a",
@@ -375,6 +374,8 @@ describe("build-time latin-ext subset (#229)", () => {
       targetFormat: "truetype",
     });
     // The wght axis (200-900) must survive, or every weight renders as one.
+    // fvar declares the axis; gvar holds the per-glyph weight deltas.
     expect(sfnt.includes(Buffer.from("fvar"))).toBe(true);
+    expect(sfnt.includes(Buffer.from("gvar"))).toBe(true);
   });
 });

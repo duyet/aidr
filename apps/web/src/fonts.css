@@ -41,7 +41,7 @@
  * Subsets: latin + vietnamese, plus latin-ext.
  *   The product is bilingual and the Vietnamese diacritics live in
  *   U+1EA0-1EF9 / U+01A0-01A1 / U+01AF-01B0 / U+20AB — none of which are in
- *   the `latin` subset. Shipping latin alone silently drops 47 of the 87
+ *   the `latin` subset. Shipping latin alone silently drops 52 of the 90
  *   characters the Vietnamese alphabet needs (src/lib/fonts.test.ts).
  *   `latin-ext` is kept because the live feed contains polynesian loanwords
  *   (U+0101 "ā", U+014D "ō") that only latin-ext covers; dropping it would

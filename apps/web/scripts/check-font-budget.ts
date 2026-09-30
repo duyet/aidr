@@ -30,7 +30,7 @@ const distAssets = join(appRoot, "dist", "client", "assets");
  * Today: Source Sans 3 latin (28,740) + vietnamese (10,324) = 39,064 B. The
  * LCP element is a story row in Source Sans 3, and the Vietnamese subset is
  * non-negotiable — the whole Latin Extended Additional block is missing from
- * `latin`, so a latin-only stack silently drops 47 of the 87 characters the
+ * `latin`, so a latin-only stack silently drops 52 of the 90 characters the
  * Vietnamese alphabet needs.
  */
 const CRITICAL_BODY_BUDGET_BYTES = 45_000;
