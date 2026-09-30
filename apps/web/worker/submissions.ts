@@ -1,6 +1,10 @@
 import { nn } from "./d1-bind.js";
 import { fetchOgData } from "./enrich.js";
 import { sha256Hex } from "./hash.js";
+import {
+  jevPanelRelevance,
+  runJevPanelGate,
+} from "./jev-panel/score-review.js";
 import { callAnyrouter, parseJson } from "./llm.js";
 import {
   manifestWithoutArticleUrl,
@@ -350,6 +354,29 @@ export async function reviewPendingSubmissions(
         );
         tokens += reviewTokens;
         verdict = parseSubmissionVerdict(content);
+      }
+
+      // Optional JEV panel second opinion; null (no change) unless enabled.
+      // It can only keep or lower the relevance, never accept a rejection.
+      const panel = await runJevPanelGate(env, {
+        purpose: "score",
+        subjectId: submission.id,
+        content: {
+          url: submission.url,
+          title: submission.title,
+          note: submission.note ?? "",
+          ogDescription: og.description ?? "",
+        },
+        primary: verdict.relevance,
+      });
+      if (panel) {
+        verdict = {
+          relevance: jevPanelRelevance(verdict.relevance, panel),
+          note:
+            panel.relevanceAfter < panel.relevanceBefore
+              ? `${verdict.note} [panel: ${panel.reason}]`.slice(0, 500)
+              : verdict.note,
+        };
       }
 
       if (verdict.relevance < ACCEPT_RATING_THRESHOLD) {

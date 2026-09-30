@@ -224,8 +224,10 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
      item id, so a replayed step does not re-vote. An optional third judge
      (`JEV_PANEL_SAFETY_MODEL`) joins when set. Each non-replayed run writes
      an audit row to `jev_panel_verdicts` (admin `GET /api/admin/jev-verdicts`,
-     human override record at `POST /api/admin/jev-verdicts/<id>/override`);
-     nothing reads it back into ranking. Details: `worker/jev-panel/README.md`.
+     human override at `POST /api/admin/jev-verdicts/<id>/override`, also in
+     the admin panel). An `overturn` restores the pre-panel `llm_relevance`
+     if the item still holds the panel's value. Judges run concurrently
+     under the item budget. Details: `worker/jev-panel/README.md`.
    - Tags are then canonicalized (`normalizeTopics`) and captured into
      `topic_daily` each ingest (~15 min).
    - Emerging entity/model names that clear a frequency/growth bar promote
@@ -471,7 +473,9 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
     tried first as a typed decision (`noul` intent/spam + `score` quality
     mapped to relevance/rating); any Jev failure falls back to the existing
     chat-completions JSON judge. `/api/system` lists that chat chain after
-    Jev on `models.decisions`.
+    Jev on `models.decisions`. With `JEV_PANEL_ENABLED`, the JEV review
+    panel then gives a second opinion that can only lower the value
+    (submissions: scoring panel; suggestions: fidelity + safety panel).
 
 ## LLM transport
 

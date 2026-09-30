@@ -1,4 +1,8 @@
 import { nn, prepareTranslationUpsert } from "./d1-bind.js";
+import {
+  jevPanelRelevance,
+  runJevPanelGate,
+} from "./jev-panel/score-review.js";
 import { callAnyrouter, parseJson, VI_STYLE } from "./llm.js";
 import {
   checkRateLimit,
@@ -431,6 +435,35 @@ export async function reviewPendingSuggestions(
       for (const row of suggestions) {
         const verdict = verdictById.get(row.id);
         if (!verdict) continue; // model dropped it; stays pending for next run
+
+        // Optional JEV translation panel (fidelity + safety); null unless
+        // enabled. Only consulted for would-be accepts, and it can only keep
+        // or lower the rating, so it can block an accept but never cause one.
+        if (verdict.valid && verdict.rating >= ACCEPT_RATING_THRESHOLD) {
+          const panel = await runJevPanelGate(env, {
+            purpose: "translation",
+            subjectId: row.id,
+            content: {
+              field: row.field,
+              sourceText:
+                row.field === "title" ? item.title : (item.summary ?? ""),
+              currentTranslation:
+                (row.field === "title" ? currentTitle : currentSummary) ?? "",
+              suggestion: row.suggestion,
+            },
+            primary: verdict.rating,
+          });
+          if (panel) {
+            const rating = jevPanelRelevance(verdict.rating, panel);
+            if (rating < verdict.rating) {
+              verdict.rating = rating;
+              verdict.note = `${verdict.note} [panel: ${panel.reason}]`.slice(
+                0,
+                500
+              );
+            }
+          }
+        }
 
         if (verdict.valid && verdict.rating >= ACCEPT_RATING_THRESHOLD) {
           const sourceText =

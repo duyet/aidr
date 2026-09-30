@@ -31,6 +31,7 @@ import {
   jevPanelRelevance,
   resetJevScoreReviewMemo,
   reviewScoredItemsWithJevPanel,
+  runJevPanelGate,
 } from "../jev-panel/score-review.js";
 import type { Env } from "../types.js";
 
@@ -526,8 +527,6 @@ describe("integration: fake judges that disagree or time out", () => {
     const fetchMock = panelFetch({
       [RELEVANCE_MODEL]: () =>
         JSON.stringify(judgment({ vote: "support", score: 0.9 })),
-      // Judges run in slot-id order (relevance, safety, source_quality), so
-      // the hung judge goes last: a hang consumes the rest of the item budget.
       [SAFETY_MODEL]: () =>
         JSON.stringify(judgment({ vote: "oppose", score: 0.1 })),
       [QUALITY_MODEL]: hangingJudge(() => lastSignal),
@@ -715,5 +714,239 @@ describe("human override", () => {
         actor: "a",
       })
     ).resolves.toMatchObject({ ok: false, status: 404 });
+  });
+});
+
+describe("parallel judges", () => {
+  // Regression for the starvation found in #292: with sequential judges a
+  // hung first judge ate the whole budget and the later judges never ran.
+  it("still counts the other judges when the first judge in slot order hangs", async () => {
+    let lastSignal: AbortSignal | undefined;
+    const fetchMock = panelFetch({
+      [RELEVANCE_MODEL]: hangingJudge(() => lastSignal),
+      [SAFETY_MODEL]: () => JSON.stringify(judgment({ score: 0.3 })),
+      [QUALITY_MODEL]: () => JSON.stringify(judgment({ score: 0.3 })),
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: unknown, init: unknown) => {
+        lastSignal = (init as { signal?: AbortSignal }).signal;
+        return fetchMock(url, init);
+      })
+    );
+    const subject: JevScoreItem = { id: "par-1", title: "t", source: "s" };
+
+    const summary = await review(
+      baseEnv({
+        JEV_PANEL_SAFETY_MODEL: SAFETY_MODEL,
+        JEV_PANEL_BUDGET_MS: "300",
+      }),
+      subject,
+      0.9
+    );
+
+    const outcome = summary.outcomes.get(subject.id);
+    expect(outcome?.quorumReached).toBe(true);
+    expect(outcome?.kind).toBe("demoted");
+    expect(jevPanelRelevance(0.9, outcome)).toBe(0.3);
+  }, 10_000);
+
+  it("starts every judge of a round before any finishes", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const slots: JevJudgeSlot[] = ["a", "b", "c"].map((id, index) => ({
+      id,
+      role: (["relevance", "source_quality", "safety"] as const)[index],
+      promptKey: `p-${id}`,
+      model: { family: `f${id}`, id: `f${id}/m`, version: "v" },
+    }));
+    await runJevPanel({
+      panel: { panelId: "p", judges: slots, quorum: 2 },
+      subject: { id: "s", untrustedContent: "x" },
+      execute: async ({ slot }) => {
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        inFlight--;
+        return {
+          status: "ok",
+          modelIdentity: slot.model,
+          judgment: judgment({ category: "x" }),
+        };
+      },
+    });
+    expect(peak).toBe(3);
+  });
+});
+
+describe("runJevPanelGate", () => {
+  const TRANSLATION_ENV = {
+    JEV_PANEL_TRANSLATION_FIDELITY_MODEL: QUALITY_MODEL,
+    JEV_PANEL_SAFETY_MODEL: SAFETY_MODEL,
+  };
+  const content = { sourceText: "Hello", suggestion: "Xin chào" };
+
+  it("is a no-op when the panel is off", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      runJevPanelGate(baseEnv({ JEV_PANEL_ENABLED: undefined }), {
+        purpose: "translation",
+        subjectId: "s1",
+        content,
+        primary: 0.9,
+      })
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("runs the fidelity and safety judges and lowers the rating", async () => {
+    const { db } = sqliteD1();
+    const seen: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      panelFetch({
+        [QUALITY_MODEL]: (prompt) => {
+          seen.push(prompt);
+          return JSON.stringify(
+            judgment({ vote: "oppose", score: 0.2, category: "translation" })
+          );
+        },
+        [SAFETY_MODEL]: (prompt) => {
+          seen.push(prompt);
+          return JSON.stringify(
+            judgment({ vote: "oppose", score: 0.4, category: "translation" })
+          );
+        },
+      })
+    );
+    const env = baseEnv({ DB: db, ...TRANSLATION_ENV });
+
+    const outcome = await runJevPanelGate(env, {
+      purpose: "translation",
+      subjectId: "s1",
+      content,
+      primary: 0.9,
+    });
+
+    expect(outcome?.kind).toBe("opposed");
+    expect(jevPanelRelevance(0.9, outcome ?? undefined)).toBe(0);
+    expect(
+      seen.some((prompt) => prompt.includes("Vietnamese translation"))
+    ).toBe(true);
+    const { verdicts } = await listJevPanelVerdicts(env);
+    expect(verdicts[0]).toMatchObject({
+      purpose: "translation",
+      subjectId: "s1",
+    });
+  });
+
+  it("reports an unusable translation config without calling a judge", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const outcome = await runJevPanelGate(
+      baseEnv({ JEV_PANEL_SAFETY_MODEL: SAFETY_MODEL }),
+      { purpose: "translation", subjectId: "s1", content, primary: 0.9 }
+    );
+    expect(outcome?.kind).toBe("misconfigured");
+    expect(jevPanelRelevance(0.9, outcome ?? undefined)).toBe(0.9);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("override restores relevance", () => {
+  async function demotedVerdict(raw: DatabaseSync, db: D1Database) {
+    raw
+      .prepare(
+        "INSERT INTO items (id, source_id, external_id, url, title, published_at, fetched_at, llm_relevance) VALUES ('item-r', 'src', 'x', 'https://e.test/r', 't', 1, 1, 0.2)"
+      )
+      .run();
+    const env = { DB: db } as Env;
+    const result = await runJevPanel({
+      panel: {
+        panelId: "p",
+        judges: [
+          {
+            id: "a",
+            role: "relevance",
+            promptKey: "pa",
+            model: { family: "fa", id: "fa/m", version: "v" },
+          },
+          {
+            id: "b",
+            role: "source_quality",
+            promptKey: "pb",
+            model: { family: "fb", id: "fb/m", version: "v" },
+          },
+        ],
+        quorum: 2,
+      },
+      subject: { id: "item-r", untrustedContent: "x" },
+      execute: async ({ slot }) => ({
+        status: "ok",
+        modelIdentity: slot.model,
+        judgment: judgment({ score: 0.2, category: "x" }),
+      }),
+    });
+    const row = buildJevVerdictRow(result, {
+      runId: "run-r",
+      purpose: "score",
+      outcomeKind: "demoted",
+      outcomeReason: "r",
+      relevanceBefore: 0.8,
+      relevanceAfter: 0.2,
+      category: null,
+    });
+    await recordJevPanelVerdict(env, row);
+    return { env, row };
+  }
+
+  const relevanceOf = (raw: DatabaseSync) =>
+    (
+      raw
+        .prepare("SELECT llm_relevance AS r FROM items WHERE id = 'item-r'")
+        .get() as { r: number }
+    ).r;
+
+  it("puts the pre-panel relevance back on overturn", async () => {
+    const { db, raw } = sqliteD1();
+    const { env, row } = await demotedVerdict(raw, db);
+    const result = await overrideJevPanelVerdict(env, {
+      id: row.id,
+      decision: "overturn",
+      note: "panel was wrong",
+      actor: "admin-token",
+    });
+    expect(result).toMatchObject({ ok: true, restored: true });
+    expect(relevanceOf(raw)).toBe(0.8);
+  });
+
+  it("leaves the item alone on uphold", async () => {
+    const { db, raw } = sqliteD1();
+    const { env, row } = await demotedVerdict(raw, db);
+    const result = await overrideJevPanelVerdict(env, {
+      id: row.id,
+      decision: "uphold",
+      note: "agree",
+      actor: "a",
+    });
+    expect(result).toMatchObject({ ok: true, restored: false });
+    expect(relevanceOf(raw)).toBe(0.2);
+  });
+
+  it("does not clobber a newer re-score", async () => {
+    const { db, raw } = sqliteD1();
+    const { env, row } = await demotedVerdict(raw, db);
+    raw
+      .prepare("UPDATE items SET llm_relevance = 0.5 WHERE id = 'item-r'")
+      .run();
+    const result = await overrideJevPanelVerdict(env, {
+      id: row.id,
+      decision: "overturn",
+      note: "n",
+      actor: "a",
+    });
+    expect(result).toMatchObject({ ok: true, restored: false });
+    expect(relevanceOf(raw)).toBe(0.5);
   });
 });

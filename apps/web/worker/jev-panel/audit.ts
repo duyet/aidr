@@ -274,12 +274,24 @@ export async function listJevPanelVerdicts(
 }
 
 export type JevOverrideResult =
-  | { readonly ok: true; readonly verdict: JevVerdictRow }
+  | {
+      readonly ok: true;
+      readonly verdict: JevVerdictRow;
+      /** True when an `overturn` put `items.llm_relevance` back to the
+       *  pre-panel value. */
+      readonly restored: boolean;
+    }
   | { readonly ok: false; readonly status: 400 | 404; readonly error: string };
 
 /**
  * Record a human decision on a verdict. Re-overriding replaces the previous
  * decision; the latest actor and note win.
+ *
+ * `overturn` on a scoring verdict that lowered relevance also restores
+ * `items.llm_relevance` to the pre-panel value, but only while the item
+ * still holds the exact value the panel wrote. A later re-score is newer
+ * evidence and is left alone. Status and rank are not touched here; the next
+ * ingest/rank pass reads the restored relevance. `uphold` changes no item.
  */
 export async function overrideJevPanelVerdict(
   env: Pick<Env, "DB">,
@@ -325,5 +337,22 @@ export async function overrideJevPanelVerdict(
     .bind(input.id)
     .first<Record<string, unknown>>();
   if (!row) return { ok: false, status: 404, error: "verdict not found" };
-  return { ok: true, verdict: rowFromDb(row) };
+  const verdict = rowFromDb(row);
+  let restored = false;
+  if (
+    input.decision === "overturn" &&
+    verdict.purpose === "score" &&
+    verdict.relevanceBefore !== null &&
+    verdict.relevanceAfter !== null &&
+    verdict.relevanceAfter < verdict.relevanceBefore
+  ) {
+    const update = await env.DB.prepare(
+      `UPDATE items SET llm_relevance = ?
+        WHERE id = ? AND ABS(llm_relevance - ?) < 1e-9`
+    )
+      .bind(verdict.relevanceBefore, verdict.subjectId, verdict.relevanceAfter)
+      .run();
+    restored = (update.meta?.changes ?? 0) > 0;
+  }
+  return { ok: true, verdict, restored };
 }
