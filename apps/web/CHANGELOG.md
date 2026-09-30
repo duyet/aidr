@@ -1,5 +1,84 @@
 # Changelog
 
+## [0.1.10](https://github.com/duyet/aidr/compare/web-v0.1.9...web-v0.1.10) (2026-09-30)
+
+
+### ✨ Features
+
+* **digest:** split email into English and Vietnamese lanes ([#261](https://github.com/duyet/aidr/issues/261)) ([00bd53e](https://github.com/duyet/aidr/commit/00bd53e13b915a19e4e4c292f9a5b3eb51bb7712))
+* **jev-panel:** gate submissions and suggestions, run judges in parallel, restore on overturn ([#295](https://github.com/duyet/aidr/issues/295)) ([1b2e0e9](https://github.com/duyet/aidr/commit/1b2e0e9d3abab715398a6867b3e82416f26b8d1b)), closes [#144](https://github.com/duyet/aidr/issues/144)
+* **jev-panel:** safety/translation seats, verdict audit, admin view and override ([#292](https://github.com/duyet/aidr/issues/292)) ([8d8fbbc](https://github.com/duyet/aidr/commit/8d8fbbc02cdebc3128fff11b9ca54b76d54113bf))
+* **jev:** wire the merged review panel into the scoring decision ([#209](https://github.com/duyet/aidr/issues/209)) ([fd5314a](https://github.com/duyet/aidr/commit/fd5314a38961d8bf733fb1fe836cc57b479ca304)), closes [#203](https://github.com/duyet/aidr/issues/203) [#144](https://github.com/duyet/aidr/issues/144)
+* **notify:** fewer trending posts, day hours only, more room on big-news days ([#315](https://github.com/duyet/aidr/issues/315)) ([f0816a1](https://github.com/duyet/aidr/commit/f0816a1435e2d6989f6e91750b8d83e063d35c10))
+* **notify:** post the English digest to [@aidr](https://github.com/aidr)_today ([#251](https://github.com/duyet/aidr/issues/251)) ([619d006](https://github.com/duyet/aidr/commit/619d006982d89397773b515a0bd56b3c120a02eb))
+* **notify:** read Vietnamese and English Telegram chats from env ([#254](https://github.com/duyet/aidr/issues/254)) ([914345a](https://github.com/duyet/aidr/commit/914345a9c3b82b3f69d6daa5aefad3a346f39892))
+* **notify:** send the album read link as a native Telegram button ([18c90f9](https://github.com/duyet/aidr/commit/18c90f918d4755de2e34bbd591c2ae582000be47))
+* **ops:** live performance budgets and release check results ([#301](https://github.com/duyet/aidr/issues/301)) ([7b2e042](https://github.com/duyet/aidr/commit/7b2e042410ef995ae0cb9971aa24062e5bd0f0d4)), closes [#147](https://github.com/duyet/aidr/issues/147)
+* **quality:** add secret scan, call caps, prompt-injection tests and docs ([#290](https://github.com/duyet/aidr/issues/290)) ([31985ad](https://github.com/duyet/aidr/commit/31985ad6ccc7eb3db3e6c777e93b79cfe255d428)), closes [#147](https://github.com/duyet/aidr/issues/147)
+* **sources:** add arXiv via rss.arxiv.org, flood-gated ([#286](https://github.com/duyet/aidr/issues/286)) ([5235a46](https://github.com/duyet/aidr/commit/5235a461f57e7365bb8f064914cc551237b98f91))
+* **sources:** Lobsters filtered tags and HN points range via the registry ([#294](https://github.com/duyet/aidr/issues/294)) ([242c932](https://github.com/duyet/aidr/commit/242c932d9caf78c539cafc9ffe798b48a319e793))
+* **telegram:** send video and mixed albums after a bounded preflight ([#287](https://github.com/duyet/aidr/issues/287)) ([53c232f](https://github.com/duyet/aidr/commit/53c232f6416d62a6557b60218abe5e0da685bfcc))
+* **web:** a GA4 audience snapshot behind a new /data Audience tab ([c8eb48b](https://github.com/duyet/aidr/commit/c8eb48b144addb0f1788ea38cc9520b005f26370))
+* **web:** add intro video dialog to header ([#309](https://github.com/duyet/aidr/issues/309)) ([f41f264](https://github.com/duyet/aidr/commit/f41f264b5c106d171dede99ccf49376ba1ff6f2b))
+* **web:** add repeatable Lighthouse median script for CWV ([#281](https://github.com/duyet/aidr/issues/281)) ([47ae087](https://github.com/duyet/aidr/commit/47ae087ca22df40b9ead39259ee8199a0bc13d07))
+* **web:** add story breadcrumb JSON-LD and SEO measurement checklist ([#285](https://github.com/duyet/aidr/issues/285)) ([6af50c9](https://github.com/duyet/aidr/commit/6af50c99044c74012b4761f13b2f2803e5342644)), closes [#139](https://github.com/duyet/aidr/issues/139)
+* **web:** advertise the story Markdown so a client can offer a quick view ([8a9b177](https://github.com/duyet/aidr/commit/8a9b177b4824c8002e4f1ad24cadadee9c0e39bb))
+* **web:** link footer freshness to the latest run with a health dot ([#265](https://github.com/duyet/aidr/issues/265)) ([cfc876e](https://github.com/duyet/aidr/commit/cfc876e2ad702946b619073e1b69c439942a5627))
+* **web:** render the story media manifest as a bounded gallery ([0c5e80c](https://github.com/duyet/aidr/commit/0c5e80cab158d2ff4f73d59616f5635c5ecdea9c))
+* **web:** ship raster icons and outline the wordmark in the SVG mark ([39e27f9](https://github.com/duyet/aidr/commit/39e27f9297a4ca06db11e70bb51bfddc871a963a))
+* **web:** show all four homepage sections to new users ([#308](https://github.com/duyet/aidr/issues/308)) ([bd22e36](https://github.com/duyet/aidr/commit/bd22e367c0badc125f2d12c1cf0cb513aaae0cd6))
+* **web:** title the digest from its bullets and add one hero ([#247](https://github.com/duyet/aidr/issues/247)) ([b04b3b6](https://github.com/duyet/aidr/commit/b04b3b689931d8ec71e3cca224498c87d0c209f8))
+* **worker:** owner Telegram DM and GitHub issues for health alerts ([#274](https://github.com/duyet/aidr/issues/274)) ([14bb328](https://github.com/duyet/aidr/commit/14bb3284c284b301c9045f93438d3e91d4b041c2))
+* **worker:** pipeline health alerts and /api/health ([#271](https://github.com/duyet/aidr/issues/271)) ([c7c0a12](https://github.com/duyet/aidr/commit/c7c0a12a98ae640efd1a69bcc9569c8ced26f191))
+* **worker:** Telegram albums, card fallback, one button, one language ([1ffa2b7](https://github.com/duyet/aidr/commit/1ffa2b7f4593f9e94b6f35baabd8e1542440cc18))
+
+
+### 🐛 Bug Fixes
+
+* **health:** do not alert on a Telegram channel that spent its daily cap ([#312](https://github.com/duyet/aidr/issues/312)) ([a184b83](https://github.com/duyet/aidr/commit/a184b83a8b1e17ec349271e0c9095ec1f4d0b647))
+* **llm:** bound streamed content, not SSE framing, and drop dead scout ([#296](https://github.com/duyet/aidr/issues/296)) ([481ce75](https://github.com/duyet/aidr/commit/481ce75349dea86f912889316050cf517ba54758))
+* **llm:** drop deepseek-v4.1-flash from AnyRouter chains ([ce03b61](https://github.com/duyet/aidr/commit/ce03b6146c61086d212b5ef23505ca4f02865b7c))
+* **llm:** use live-probed AnyRouter models with auto as last fallback ([1bbb7fd](https://github.com/duyet/aidr/commit/1bbb7fd7c1a0dca9cd5e48423672c999bba664bd))
+* **quality:** cap JEV panel items per step, bound dedupe and topic prompts, fence mail picks ([#316](https://github.com/duyet/aidr/issues/316)) ([e395da2](https://github.com/duyet/aidr/commit/e395da2cd1e150b5237e4067299043c816b78dc8)), closes [#147](https://github.com/duyet/aidr/issues/147)
+* **telegram:** do not fall back after an unknown send outcome ([#314](https://github.com/duyet/aidr/issues/314)) ([8f0e9de](https://github.com/duyet/aidr/commit/8f0e9dee5a7095b7f8ab7a16c1362eff7042828e)), closes [#145](https://github.com/duyet/aidr/issues/145)
+* **web:** cap any single source at 25% of the served feed ([#299](https://github.com/duyet/aidr/issues/299)) ([f98ffc4](https://github.com/duyet/aidr/commit/f98ffc48e7f7b29285a4bf7728f767bb1e2dd922)), closes [#230](https://github.com/duyet/aidr/issues/230)
+* **web:** derive the media migration gate from real files ([#275](https://github.com/duyet/aidr/issues/275)) ([de244c9](https://github.com/duyet/aidr/commit/de244c9acd75559dd6db2043e124285391f0ceb2))
+* **web:** draw the OG card in Be Vietnam Pro, with the tone marks in the outline ([2f1ca9c](https://github.com/duyet/aidr/commit/2f1ca9cfc1cca4c33a78dd253708d383bfe0fb59))
+* **web:** drop Clarity and pageview.duyet.net ([f472129](https://github.com/duyet/aidr/commit/f4721294772b4fbc5c922305cc9800d7070941e6))
+* **web:** hide empty source link and missing date on story pages, add fallback tests ([#289](https://github.com/duyet/aidr/issues/289)) ([6493dd5](https://github.com/duyet/aidr/commit/6493dd56d6be223abda4d91cde6fab08edae399a))
+* **web:** ignore a missing audience chart date ([82d89a0](https://github.com/duyet/aidr/commit/82d89a08f887a1f8a9deb0b18a1d15b80f4c1658))
+* **web:** keep story categories in the site's own taxonomy in every locale ([0077a40](https://github.com/duyet/aidr/commit/0077a409117da2ea051abf5f6140584388e8992e))
+* **web:** keep story summaries whole and fall back to the OG card ([#256](https://github.com/duyet/aidr/issues/256)) ([b2fca66](https://github.com/duyet/aidr/commit/b2fca66bd0639ab36160ec70f9ff098712254ff2))
+* **web:** link the story dialog to a localized permalink ([71cadb8](https://github.com/duyet/aidr/commit/71cadb8a71e1c15de69b8435c017932961ec89dc))
+* **web:** move About out of reader prefs into the menu ([85eca74](https://github.com/duyet/aidr/commit/85eca745a57a11e1013a69124f0b2db8a3c3082d))
+* **web:** put language at the top of the phone menu ([97ee748](https://github.com/duyet/aidr/commit/97ee7483e717ade92b87054b6c695654f5015201))
+* **web:** stop audience charts from looping ([5b70687](https://github.com/duyet/aidr/commit/5b7068705485d329332bcbe7a277745f1f9d40f7))
+* **web:** switch header chrome on width only ([2485368](https://github.com/duyet/aidr/commit/248536807cb7cf19faffb1a822433be2e54c724c))
+* **web:** the phone menu is a two-column grid of large tiles ([ff9d158](https://github.com/duyet/aidr/commit/ff9d1586da9aa1813ba1c05120f185a3b54943e6))
+* **web:** tighten the story dialog and show the summary ([c0d27c4](https://github.com/duyet/aidr/commit/c0d27c435550ae57786311bfffaa3374bbb8fe60))
+* **web:** use a story thumbnail as the digest hero ([#253](https://github.com/duyet/aidr/issues/253)) ([16207d9](https://github.com/duyet/aidr/commit/16207d912faaa8ebe859a548d301e6bd376fa9d2))
+* **worker:** report delivery failures to Sentry ([5519761](https://github.com/duyet/aidr/commit/55197613edc7dc2657784f1af913f645af006732))
+* **worker:** restore trending rank, notify reason, and tldr fallback ([#266](https://github.com/duyet/aidr/issues/266)) ([1277568](https://github.com/duyet/aidr/commit/12775688053478b6582b83f10db552af409501a0))
+* **worker:** send pipeline exceptions to Sentry ([cf9bd99](https://github.com/duyet/aidr/commit/cf9bd991d1475ec8944d66612dd5b216f802886d))
+
+
+### ⚡ Performance
+
+* **web:** add pending state to settings digest preview, add preview budget doc ([#288](https://github.com/duyet/aidr/issues/288)) ([433a812](https://github.com/duyet/aidr/commit/433a812e43c9ea4a70b89b98826b7480d242475d))
+* **web:** fix intermittent AI;DR shift and subset latin-ext font ([#229](https://github.com/duyet/aidr/issues/229)) ([#303](https://github.com/duyet/aidr/issues/303)) ([9b16fef](https://github.com/duyet/aidr/commit/9b16fef41b173047c172b250adf87ecc7f8bf21a))
+* **web:** harden subscribe preview cache and loading state ([#284](https://github.com/duyet/aidr/issues/284)) ([0120b46](https://github.com/duyet/aidr/commit/0120b46fd39447e5bc9b63b12500bc2c8e2fd865))
+* **web:** inline critical CSS, load full stylesheet async, fix row re-wrap ([#291](https://github.com/duyet/aidr/issues/291)) ([bea5b44](https://github.com/duyet/aidr/commit/bea5b44d6e08dd8dd01f9dac5da4bb0272007268)), closes [#229](https://github.com/duyet/aidr/issues/229)
+* **web:** inline the full built stylesheet on the homepage ([#300](https://github.com/duyet/aidr/issues/300)) ([75a9459](https://github.com/duyet/aidr/commit/75a9459778810dae8b28629434cc456e337d8f63)), closes [#229](https://github.com/duyet/aidr/issues/229)
+
+
+### ♻️ Refactoring
+
+* **digest:** one language edition for email and Telegram ([#258](https://github.com/duyet/aidr/issues/258)) ([bf79c76](https://github.com/duyet/aidr/commit/bf79c76a0bbd439527f5c0e04ee0306f5a85ca64))
+* **web:** split run details into focused panels ([#269](https://github.com/duyet/aidr/issues/269)) ([4d3a836](https://github.com/duyet/aidr/commit/4d3a8368fd94f4728fad50c999d70b75062e5d37))
+* **web:** split the deliver page into one module per channel ([#267](https://github.com/duyet/aidr/issues/267)) ([53d51af](https://github.com/duyet/aidr/commit/53d51af65d6286b75be6984255e0b524b92055e1))
+* **worker:** share sha256Hex and chunk helpers ([#273](https://github.com/duyet/aidr/issues/273)) ([c12f623](https://github.com/duyet/aidr/commit/c12f62340238772aabd46651277dd50b2abe50e9))
+* **worker:** split ingest workflow into step modules ([#272](https://github.com/duyet/aidr/issues/272)) ([361b07b](https://github.com/duyet/aidr/commit/361b07b2c6c36938df5de8c580e4de50b051fc80))
+
 ## [0.1.9](https://github.com/duyet/aidr/compare/web-v0.1.8...web-v0.1.9) (2026-09-28)
 
 
