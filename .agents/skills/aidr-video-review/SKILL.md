@@ -38,6 +38,8 @@ It reports, with frame numbers:
 `audio=NO` in the first line means the render has no sound. For a video that is meant to have music
 or effects, that alone is a reject.
 
+The audio flags only mean something on an effects-only mix. With narration or music in the render, every spoken word and every beat is an onset, so `audio_offset` / `audio_unpaired` fire constantly: render a pass with voice and music muted to check effect sync, or compare the cue times in the project's `audio/build_audio.py` against the visual hits by hand.
+
 The thresholds are constants at the top of the script. They are a first calibration, not truth: a
 flag is a place to look, and a clean report does not replace steps 2–4. A deliberate hard cut to a
 still frame is reported as a cut, not a dead stop.

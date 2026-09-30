@@ -7,3 +7,5 @@
 .DS_Store
 */.thumbnails/
 */.hyperframes/preview/
+*/audio_request.json
+*/audio_engine_meta.json
