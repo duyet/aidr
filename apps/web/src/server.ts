@@ -13,6 +13,7 @@ import {
   withHomepageHeaders,
 } from "./lib/agent-discovery";
 import { readSession } from "./lib/db";
+import { withHomepageInlineStylesheets } from "./lib/inline-stylesheet";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import {
   apiErrorResponse,
@@ -278,7 +279,11 @@ export default {
           handleSubscribeCors(request, async () =>
             withHomepageHeaders(
               request,
-              applyNotFoundHttpStatus(await handler.fetch(request))
+              withHomepageInlineStylesheets(
+                request,
+                applyNotFoundHttpStatus(await handler.fetch(request)),
+                env.ASSETS
+              )
             )
           )
         )
