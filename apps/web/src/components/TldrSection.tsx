@@ -67,7 +67,7 @@ export function TldrSection({
 
   return (
     <section
-      className="aidr-section my-2 rounded-2xl border border-border/80 bg-card px-4 py-5 sm:px-5"
+      className="my-2 rounded-2xl border border-border/80 bg-card px-4 py-5 sm:px-5"
       data-aidr-layout={layout}
     >
       <div className="mb-4 flex items-baseline justify-between gap-3">
