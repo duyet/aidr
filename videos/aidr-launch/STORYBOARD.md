@@ -1,6 +1,6 @@
 ---
 format: 1920x1080
-duration: 28.8s
+duration: 30.6s
 message: "Too much AI news; AI;DR ranks it down to the eight stories that matter, every day, in English and Vietnamese."
 arc: Future Pacing with a Demo Loop tail — Hook → Value claim → Mechanism → Result → Reach → Product → Lockup
 audience: People who follow AI closely — builders, researchers, founders; English and Vietnamese readers
@@ -10,7 +10,7 @@ music: urgent short string ostinato, 133 BPM, minimal news underscore, no brass,
 
 <!-- Narration was added after the first draft (owner: "cool warm voice over"). Lines are short so the frames keep their grid durations; durations are NOT synced to voice length. -->
 <!-- Speed: the film is authored on a 120 BPM grid (bar = 2s) and played 10/9 faster, so a bar is 1.8s (54 frames) and the tempo is 133.3 BPM. -->
-<!-- Scene times inside each frame are AUTHORED times (120 BPM). On screen every time is x0.9, except frame 1, which the owner asked to be longer: it plays at x1.35 (5.4s). Frame boundaries on screen: 5.4, 9, 12.6, 16.2, 19.8, 25.2, 28.8s. -->
+<!-- Scene times inside each frame are AUTHORED times (120 BPM). On screen every time is x0.9, except frame 1, which the owner asked to be longer: it plays at x1.35 (5.4s). Frame 4 is authored as 6s (5.4s on screen) to carry the AnyRouter credit. Frame boundaries on screen: 5.4, 9, 12.6, 18, 21.6, 27, 30.6s. -->
 <!-- Spine: one ink semicolon on yellow. It opens the film, every scene passes through or hinges on it, and it closes the film inside the logo. -->
 <!-- The digest card in frames 4 and 6 is rebuilt in HTML from data/edition-2026-09-30.txt (the captured card image is only 1200x630). -->
 <!-- Figures and headlines are from the live capture of aidr.today on 2026-09-30 (capture/extracted/visible-text.txt, tldr-live.txt): 318 stories, 8 in the digest. -->
@@ -110,8 +110,8 @@ Scene 3 (2.5–4.0s): everything unmarked fades to 12% and then out; the three m
 ## Frame 4 — The digest
 
 - scene: That headline becomes row 1 and seven more ranked rows snap in on the beat, forming the real AI;DR card with category labels and coloured names
-- voiceover: "Ranked and summarized, every hour."
-- duration: 3.6s
+- voiceover: "Ranked and summarized by AI, powered by AnyRouter."
+- duration: 5.4s
 - poster: 3.1s
 - transition_in: cut
 - status: animated
@@ -120,10 +120,10 @@ Scene 3 (2.5–4.0s): everything unmarked fades to 12% and then out; the three m
 - persuasion: Friction reduction
 - beat: relief + control
 - blueprint: grid-card-assemble
-- asset_candidates: assets/favicon.svg — the site mark as outlined vector paths (tile plus five glyph paths A, I, semicolon, D, R)
+- asset_candidates: assets/favicon.svg — the site mark as outlined vector paths (tile plus five glyph paths A, I, semicolon, D, R); assets/anyrouter-logo-black.svg — the official AnyRouter mark from anyrouter.dev/brand, shown in the credit line
 - focal: the card
 - roles: favicon = supporting (not shown large)
-- sfx: soft-tick x7 (one per arriving row, on the row's landing frame), ui-settle (2.75s)
+- sfx: soft-tick x7 (one per arriving row, on the row's landing frame), ui-settle (2.75s), pop (4.75s, on the AnyRouter mark)
 - handoff_in: headline block identical to frame 3's handoff_out — left edge x 300, first baseline y 470, display face 72px, two lines, width 1320, opacity 1, at rest; label at x 300, y 380; numeral "1." at x 228
 
 narrativeRole: Reveals the product itself as the result of the collapse: eight ranked lines, updated hourly.
@@ -132,7 +132,8 @@ keyMessage: This is AI;DR: today's AI news in eight lines.
 Adapt: keep grid-card-assemble's staggered cascade into a held array; the first cell is already on screen from the previous frame.
 Scene 1 (0.0–0.75s): paper ground. Row 1 starts exactly at the handoff position and size, then settles (parking ease, 0.6s) into its slot as the first row of a white rounded card: the card surface (1400 wide, centred, hairline border, no shadow) and its header — "AI;DR" in display face with "2026-09-30" beside it, and the 8 · 12 · 16 pill at the right with 8 selected — fade up around it. Row type is now body face, as on the site.
 Scene 2 (0.75–2.5s): rows 2–8 arrive one per eighth-note (0.75, 1.0, 1.25 … 2.25s), two columns of four like the site: each row is number, ember small-caps category label, then the real headline with its entity word in the site's colour. Each slides up 24px with vertical blur and lands on its tick.
-Scene 3 (2.5–4.0s): the footer lands at 2.75s: "318 stories" left, "Updated 43m ago" in ember right. Then hold; the card is the single focal point. Centered, card ~72% of frame width.
+Scene 3 (2.5–4.0s): the footer lands at 2.75s: "318 stories" left, "Updated 43m ago" in ember right. The card is the single focal point. Centered, card ~72% of frame width.
+Scene 4 (4.0–6.0s): a credit line arrives centred under the card, body face: "Scored and summarized by LLMs, powered by" at 4.0s, then the AnyRouter mark and the name "AnyRouter" at 4.75s, as the voice says it, 3 frames apart. Hold. (AI;DR calls its models through AnyRouter — `apps/web/worker/systemone.ts`.)
 
 ## Frame 5 — Two tongues
 

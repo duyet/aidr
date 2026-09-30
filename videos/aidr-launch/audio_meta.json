@@ -169,6 +169,13 @@
       "volume": 0.15
     },
     {
+      "frame": 4,
+      "file": "assets/sfx/pop.mp3",
+      "offset_s": 4.153,
+      "duration_s": 0.72,
+      "volume": 0.22
+    },
+    {
       "frame": 5,
       "file": "assets/sfx/whoosh-short.mp3",
       "offset_s": 0.286,

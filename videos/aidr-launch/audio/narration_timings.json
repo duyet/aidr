@@ -143,7 +143,7 @@
  {
   "frame": 4,
   "path": "assets/voice/04.wav",
-  "duration_s": 3.736,
+  "duration_s": 5.172,
   "words": [
    {
     "id": "w0",
@@ -155,25 +155,43 @@
     "id": "w1",
     "text": "and",
     "start": 0.811,
-    "end": 1.493
+    "end": 1.621
    },
    {
     "id": "w2",
-    "text": "summarized,",
-    "start": 1.579,
-    "end": 2.368
+    "text": "summarized",
+    "start": 2.005,
+    "end": 2.6027
    },
    {
     "id": "w3",
-    "text": "every",
-    "start": 2.603,
-    "end": 2.816
+    "text": "by",
+    "start": 2.773,
+    "end": 2.901
    },
    {
     "id": "w4",
-    "text": "hour.",
-    "start": 3.029,
-    "end": 3.6845351473922903
+    "text": "AI,",
+    "start": 2.987,
+    "end": 3.541
+   },
+   {
+    "id": "w5",
+    "text": "powered",
+    "start": 3.755,
+    "end": 4.096
+   },
+   {
+    "id": "w6",
+    "text": "by",
+    "start": 4.181,
+    "end": 4.309
+   },
+   {
+    "id": "w7",
+    "text": "AnyRouter.",
+    "start": 4.352,
+    "end": 5.122
    }
   ]
  },

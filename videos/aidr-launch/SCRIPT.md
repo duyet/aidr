@@ -30,10 +30,10 @@ Each line starts a little after its frame begins (the lead is in `audio/build_au
 
 ## Line 4 — Product (Frame 4)
 
-**Time:** 12.6 – 16.2s (starts 0.40s in)
+**Time:** 12.6 – 18.0s (starts 0.20s in)
 **Delivery:** Three short beats, with the rows.
 
-    Ranked and summarized, every hour.
+    Ranked and summarized by AI, powered by AnyRouter.
 
 ## Line 5 — Bilingual (Frame 5)
 

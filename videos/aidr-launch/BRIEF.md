@@ -7,7 +7,7 @@ destination: youtube
 aspect: 1920x1080
 language: en
 audience: "People who follow AI closely: builders, researchers, founders; English and Vietnamese readers"
-length: 29s
+length: 31s
 angle: "One Semicolon — the semicolon is the product: noise on one side, the digest on the other"
 narration: yes
 ---
@@ -53,6 +53,8 @@ Closing line: "What's happening in AI today?" above aidr.today.
 - Real product facts to draw on: hourly pipeline consume → rank → publish; email from 07:00 local, Telegram VI/EN from 08:00; Chrome new-tab extension; RSS; MCP.
 
 ## Notes
+
+- Owner: "also mention building LLM powered by AnyRouter (showing anyrouter logo)". Frame 4 carries a credit line with the official AnyRouter mark (assets/anyrouter-logo-black.svg, from anyrouter.dev/brand) and the voice says it.
 
 - Owner asked to "speed up video a bit" after the first draft: the whole film plays 10/9 faster (133.3 BPM). Then: "the first intro longer a bit" — frame 1 runs 5.4s, total 28.8s.
 
