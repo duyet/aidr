@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import {
   BACKFILL_TRANSLATE_CAP,
@@ -29,6 +30,175 @@ describe("buildMissingSummaryQuery", () => {
 });
 
 describe("buildMissingMediaQuery", () => {
+  // Executes the predicate. A string-shape assertion cannot catch a filter
+  // that still drops a legacy image_url row with an empty manifest.
+  function selectedIds(rows: ReadonlyArray<Record<string, unknown>>): string[] {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(`
+        CREATE TABLE items (
+          id TEXT PRIMARY KEY,
+          url TEXT,
+          source_id TEXT,
+          status TEXT,
+          summary TEXT,
+          image_url TEXT,
+          media_manifest TEXT NOT NULL DEFAULT '[]',
+          published_at INTEGER
+        );
+      `);
+      const insert = db.prepare(
+        `INSERT INTO items (id, url, source_id, status, summary, image_url, media_manifest, published_at)
+         VALUES (?, ?, 'hn', ?, ?, ?, ?, ?)`
+      );
+      for (const row of rows) {
+        // `null` and `undefined` must both land as SQL NULL; String(null)
+        // would store the literal text "null" and quietly pass a gate test.
+        const text = (value: unknown): string | null =>
+          value === null || value === undefined ? null : String(value);
+        insert.run(
+          String(row.id),
+          `https://example.com/${String(row.id)}`,
+          String(row.status),
+          text(row.summary),
+          text(row.image_url),
+          text(row.media_manifest) ?? "[]",
+          Number(row.published_at ?? 0)
+        );
+      }
+      const found = db.prepare(buildMissingMediaQuery(1000)).all() as Array<{
+        id: string;
+      }>;
+      return found.map((row) => row.id);
+    } finally {
+      db.close();
+    }
+  }
+
+  const populated = JSON.stringify({
+    version: 1,
+    assets: [{ type: "image", url: "https://cdn.example/hero.jpg" }],
+  });
+
+  it("now selects a published row with a legacy image_url and an empty manifest", () => {
+    expect(
+      selectedIds([
+        {
+          id: "legacy-image-empty-manifest",
+          status: "published",
+          summary: "A real summary",
+          image_url: "https://legacy.example/pre-0024.jpg",
+          media_manifest: "[]",
+          published_at: 10,
+        },
+      ])
+    ).toEqual(["legacy-image-empty-manifest"]);
+  });
+
+  it("still selects rows with no image_url at all", () => {
+    expect(
+      selectedIds([
+        {
+          id: "no-image",
+          status: "published",
+          summary: "A real summary",
+          image_url: null,
+          media_manifest: "[]",
+          published_at: 10,
+        },
+      ])
+    ).toEqual(["no-image"]);
+  });
+
+  it("never selects a row whose manifest is already populated", () => {
+    expect(
+      selectedIds([
+        {
+          id: "populated",
+          status: "published",
+          summary: "A real summary",
+          image_url: null,
+          media_manifest: populated,
+          published_at: 20,
+        },
+        {
+          id: "populated-with-image",
+          status: "published",
+          summary: "A real summary",
+          image_url: "https://legacy.example/pre-0024.jpg",
+          media_manifest: populated,
+          published_at: 21,
+        },
+      ])
+    ).toEqual([]);
+  });
+
+  it("still honours the published and non-empty-summary gates", () => {
+    expect(
+      selectedIds([
+        {
+          id: "draft",
+          status: "draft",
+          summary: "A real summary",
+          image_url: null,
+          media_manifest: "[]",
+          published_at: 30,
+        },
+        {
+          id: "no-summary",
+          status: "published",
+          summary: "",
+          image_url: null,
+          media_manifest: "[]",
+          published_at: 31,
+        },
+        {
+          id: "null-summary",
+          status: "published",
+          summary: null,
+          image_url: null,
+          media_manifest: "[]",
+          published_at: 32,
+        },
+      ])
+    ).toEqual([]);
+  });
+
+  it("stays bounded and drains most-recent-first", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(`
+        CREATE TABLE items (
+          id TEXT PRIMARY KEY,
+          url TEXT,
+          source_id TEXT,
+          status TEXT,
+          summary TEXT,
+          image_url TEXT,
+          media_manifest TEXT NOT NULL DEFAULT '[]',
+          published_at INTEGER
+        );
+      `);
+      const insert = db.prepare(
+        `INSERT INTO items (id, url, source_id, status, summary, image_url, media_manifest, published_at)
+         VALUES (?, ?, 'hn', 'published', 'A real summary', 'https://legacy.example/a.jpg', '[]', ?)`
+      );
+      for (let i = 0; i < 40; i++) {
+        insert.run(`row-${i}`, `https://example.com/${i}`, i);
+      }
+      const found = db.prepare(buildMissingMediaQuery(15)).all() as Array<{
+        id: string;
+      }>;
+
+      // Bounded to the requested cap, and ordered most-recent-first.
+      expect(found).toHaveLength(15);
+      expect(found[0]?.id).toBe("row-39");
+      expect(found.at(-1)?.id).toBe("row-25");
+    } finally {
+      db.close();
+    }
+  });
+
   it("targets published rows with a summary but no media manifest", () => {
     const sql = buildMissingMediaQuery(9);
     expect(sql).toContain("status = 'published'");

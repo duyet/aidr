@@ -1,17 +1,23 @@
-import { CLERK_USERS_MIGRATION } from "./clerk-users.js";
 import {
   MEDIA_MANIFEST_MIGRATION,
+  RUN_IDENTITY_MIGRATION,
   TRANSLATION_REVIEW_HARDENING_MIGRATION,
   TRANSLATION_REVIEW_MIGRATION,
 } from "./media-schema.js";
 
-/** Ordered migrations required by this branch. 0025 and 0026 are owned by
- * other branches and are included only when their file is present in the
- * combined checkout. */
-export const REQUIRED_MIGRATIONS = [
+/** Filenames that must never reappear. Treating the missing draft name as
+ * "0025 was checked" is how the gate understated its own coverage. */
+export const OBSOLETE_MIGRATIONS: readonly string[] = [
+  TRANSLATION_REVIEW_HARDENING_MIGRATION,
+];
+
+/** 0023 and 0024 stay required even on a checkout that has not listed them.
+ * Later files join only when they are actually in the directory. */
+const ALWAYS_REQUIRED: readonly string[] = [
   TRANSLATION_REVIEW_MIGRATION,
   MEDIA_MANIFEST_MIGRATION,
-] as const;
+];
+const DERIVED_MIGRATION_FLOOR = 23;
 
 function migrationNumber(name: string): number {
   const match = name.match(/^(\d+)_/);
@@ -22,17 +28,52 @@ function compareMigrationNames(a: string, b: string): number {
   return migrationNumber(a) - migrationNumber(b) || a.localeCompare(b);
 }
 
+/** Fail closed if a superseded migration filename is back in the tree. */
+export function assertNoObsoleteMigrations(
+  files: readonly string[] = []
+): void {
+  for (const obsolete of OBSOLETE_MIGRATIONS) {
+    if (files.includes(obsolete)) {
+      throw new Error(
+        `${obsolete} conflicts with ${RUN_IDENTITY_MIGRATION}; fold translation QA into ${TRANSLATION_REVIEW_MIGRATION}`
+      );
+    }
+  }
+}
+
+/**
+ * Migrations this checkout must have applied.
+ *
+ * 0023 and 0024 are unconditional. Every other migration file at or after
+ * 0023 is taken from `files` (the `apps/web/migrations/` listing the gate
+ * just read). A filename that is not in that listing is not required and is
+ * not invented. The obsolete 0025 draft name is a hard failure, never a
+ * stand-in for `0025_llm_call_run_identity.sql`.
+ */
 export function requiredMigrationsForFiles(
   files: readonly string[] = []
 ): string[] {
-  const available = new Set(files);
-  return [
-    ...REQUIRED_MIGRATIONS,
-    ...(available.has(TRANSLATION_REVIEW_HARDENING_MIGRATION)
-      ? [TRANSLATION_REVIEW_HARDENING_MIGRATION]
-      : []),
-    ...(available.has(CLERK_USERS_MIGRATION) ? [CLERK_USERS_MIGRATION] : []),
-  ];
+  assertNoObsoleteMigrations(files);
+  const derived = [...files]
+    .filter((name) => {
+      const number = migrationNumber(name);
+      return Number.isFinite(number) && number >= DERIVED_MIGRATION_FLOOR;
+    })
+    .sort(compareMigrationNames);
+  const required = [...ALWAYS_REQUIRED];
+  for (const name of derived) {
+    if (!required.includes(name)) required.push(name);
+  }
+  return required;
+}
+
+/** The same range an operator reads from a passing gate, e.g. `0023 -> 0024 ->
+ * 0025 -> 0026`. Derived from the filenames so the message cannot claim a step
+ * the gate did not check. Keeps the zero-padded prefix operators recognise. */
+export function formatMigrationRange(files: readonly string[] = []): string {
+  return requiredMigrationsForFiles(files)
+    .map((name) => /^\d+/.exec(name)?.[0] ?? name)
+    .join(" -> ");
 }
 
 function assertOrder(
@@ -83,9 +124,7 @@ export function assertMigrationFileOrder(files: readonly string[]): void {
     const position = positions.get(migration);
     if (position === undefined || position <= previous) {
       throw new Error(
-        `required migration order must be ${required
-          .map((migration) => migration.slice(0, 4))
-          .join(", then ")}`
+        `required migration order must be ${formatMigrationRange(files)}: ${migration} is out of order`
       );
     }
     previous = position;
