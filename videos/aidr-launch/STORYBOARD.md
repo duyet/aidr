@@ -1,15 +1,16 @@
 ---
 format: 1920x1080
-duration: 30s
+duration: 28.8s
 message: "Too much AI news; AI;DR ranks it down to the eight stories that matter, every day, in English and Vietnamese."
 arc: Future Pacing with a Demo Loop tail — Hook → Value claim → Mechanism → Result → Reach → Product → Lockup
 audience: People who follow AI closely — builders, researchers, founders; English and Vietnamese readers
 mode: autonomous
-music: urgent short string ostinato, 120 BPM, minimal news underscore, no brass, builds through the middle and resolves on a held final chord
+music: urgent short string ostinato, 133 BPM, minimal news underscore, no brass, builds through the middle and resolves on a held final chord
 ---
 
-<!-- No narration: there is no SCRIPT.md. Every frame's voiceover is empty on purpose. -->
-<!-- Grid: 120 BPM, one bar = 2s. Every frame boundary sits on a bar line (4, 8, 12, 16, 20, 26, 30s). -->
+<!-- Narration was added after the first draft (owner: "cool warm voice over"). Lines are short so the frames keep their grid durations; durations are NOT synced to voice length. -->
+<!-- Speed: the film is authored on a 120 BPM grid (bar = 2s) and played 10/9 faster, so a bar is 1.8s (54 frames) and the tempo is 133.3 BPM. -->
+<!-- Scene times inside each frame are AUTHORED times (120 BPM). On screen every time is x0.9, except frame 1, which the owner asked to be longer: it plays at x1.35 (5.4s). Frame boundaries on screen: 5.4, 9, 12.6, 16.2, 19.8, 25.2, 28.8s. -->
 <!-- Spine: one ink semicolon on yellow. It opens the film, every scene passes through or hinges on it, and it closes the film inside the logo. -->
 <!-- The digest card in frames 4 and 6 is rebuilt in HTML from data/edition-2026-09-30.txt (the captured card image is only 1200x630). -->
 <!-- Figures and headlines are from the live capture of aidr.today on 2026-09-30 (capture/extracted/visible-text.txt, tldr-live.txt): 318 stories, 8 in the digest. -->
@@ -29,9 +30,9 @@ music: urgent short string ostinato, 120 BPM, minimal news underscore, no brass,
 ## Frame 1 — The semicolon
 
 - scene: A single ink semicolon blinks like a cursor on full-bleed yellow while "318 AI stories today" types beside it
-- voiceover:
-- duration: 4s
-- poster: 3s
+- voiceover: "Three hundred and eighteen AI stories, today alone."
+- duration: 5.4s
+- poster: 3.8s
 - transition_in: cut
 - status: animated
 - src: compositions/frames/01-semicolon.html
@@ -56,9 +57,9 @@ Scene 3 (3.0–4.0s): the typed line and labels drop out in 4 frames; the camera
 ## Frame 2 — 318 becomes 8
 
 - scene: The camera dives through the semicolon's dot into ink; a wall of real headlines floods in, then the counter drops 318 → 8 and the wall falls away
-- voiceover:
-- duration: 4s
-- poster: 3.4s
+- voiceover: "You need eight."
+- duration: 3.6s
+- poster: 3.1s
 - transition_in: zoom-through
 - status: animated
 - src: compositions/frames/02-318-to-8.html
@@ -83,9 +84,9 @@ Scene 3 (2.5–4.0s): "8" lands on the beat at 2.5s with the impact, alone on in
 ## Frame 3 — Marker pass
 
 - scene: On paper, a yellow highlighter runs through a dense paragraph; the unmarked words fade and the marked ones pull together into today's number-one headline
-- voiceover:
-- duration: 4s
-- poster: 3.2s
+- voiceover: "We read all of it, and keep what matters."
+- duration: 3.6s
+- poster: 2.9s
 - transition_in: cut
 - status: animated
 - src: compositions/frames/03-marker-pass.html
@@ -109,9 +110,9 @@ Scene 3 (2.5–4.0s): everything unmarked fades to 12% and then out; the three m
 ## Frame 4 — The digest
 
 - scene: That headline becomes row 1 and seven more ranked rows snap in on the beat, forming the real AI;DR card with category labels and coloured names
-- voiceover:
-- duration: 4s
-- poster: 3.4s
+- voiceover: "Ranked and summarized, every hour."
+- duration: 3.6s
+- poster: 3.1s
 - transition_in: cut
 - status: animated
 - src: compositions/frames/04-digest.html
@@ -136,9 +137,9 @@ Scene 3 (2.5–4.0s): the footer lands at 2.75s: "318 stories" left, "Updated 43
 ## Frame 5 — Two tongues
 
 - scene: The frame splits at the semicolon, paper on the left and ink on the right; each headline lands twice, English and Vietnamese, in mirrored motion
-- voiceover:
-- duration: 4s
-- poster: 2.6s
+- voiceover: "In English, and in Vietnamese."
+- duration: 3.6s
+- poster: 2.3s
 - transition_in: squeeze
 - status: animated
 - src: compositions/frames/05-two-tongues.html
@@ -162,9 +163,9 @@ Scene 3 (3.0–4.0s): hold. Both headlines still.
 ## Frame 6 — New tab
 
 - scene: A browser tab opens and the day's digest is already there; the camera glides over the real interface as email 07:00, Telegram 08:00 and RSS tick in along the edge
-- voiceover:
-- duration: 6s
-- poster: 4.5s
+- voiceover: "Waiting in a new tab, your inbox, or Telegram."
+- duration: 5.4s
+- poster: 4.0s
 - transition_in: zoom-through
 - status: animated
 - src: compositions/frames/06-new-tab.html
@@ -189,9 +190,9 @@ Scene 4 (5.0–6.0s): hold.
 ## Frame 7 — Lockup
 
 - scene: Everything folds back into the semicolon; A, I, D, R slide out from behind it, the yellow tile closes around them, and the line "What's happening in AI today?" holds above aidr.today
-- voiceover:
-- duration: 4s
-- poster: 3s
+- voiceover: "A.I.D.R. What's happening in AI today?"
+- duration: 3.6s
+- poster: 2.7s
 - transition_in: zoom-through
 - status: animated
 - src: compositions/frames/07-lockup.html

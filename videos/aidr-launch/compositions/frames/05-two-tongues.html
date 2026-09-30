@@ -132,14 +132,14 @@
     }
   </style>
 
-  <div data-hf-id="hf-qck3" id="root" data-composition-id="05-two-tongues" data-width="1920" data-height="1080" data-duration="4.4">
+  <div data-hf-id="hf-qck3" id="root" data-composition-id="05-two-tongues" data-width="1920" data-height="1080" data-duration="4">
     <div data-hf-id="hf-x98g" class="f05-two-tongues-cam">
-      <div data-hf-id="hf-fksq" class="clip f05-two-tongues-layer" data-start="0" data-duration="4.4" data-track-index="0">
+      <div data-hf-id="hf-fksq" class="clip f05-two-tongues-layer" data-start="0" data-duration="4" data-track-index="0">
         <div data-hf-id="hf-wl6b" class="f05-two-tongues-ground-paper"></div>
         <div data-hf-id="hf-d1il" class="f05-two-tongues-ground-ink"></div>
       </div>
 
-      <div data-hf-id="hf-lqij" class="clip f05-two-tongues-layer" data-start="0" data-duration="4.4" data-track-index="1">
+      <div data-hf-id="hf-lqij" class="clip f05-two-tongues-layer" data-start="0" data-duration="4" data-track-index="1">
         <div data-hf-id="hf-bghe" class="f05-two-tongues-half f05-two-tongues-half-en" lang="en">
           <div data-hf-id="hf-zgv1" class="f05-two-tongues-lang f05-two-tongues-lang-en">EN</div>
           <div data-hf-id="hf-92x5" class="f05-two-tongues-measure">
@@ -219,7 +219,7 @@
         </div>
       </div>
 
-      <div data-hf-id="hf-av0w" class="clip f05-two-tongues-layer" data-start="0" data-duration="4.4" data-track-index="2">
+      <div data-hf-id="hf-av0w" class="clip f05-two-tongues-layer" data-start="0" data-duration="4" data-track-index="2">
         <div data-hf-id="hf-bmdb" class="f05-two-tongues-tile">
           <svg data-hf-id="hf-xgui" viewBox="100.6 40.5 14.3 66" aria-hidden="true">
             <path data-hf-id="hf-5h5p" fill="#1C1917" d="M114.9 54.3L100.8 54.3L100.8 40.5L114.9 40.5L114.9 54.3Z" />
@@ -243,19 +243,21 @@
       const park = (k = 0.15, fps = 30) => (dur) => (p) =>
         (1 - Math.pow(1 - k, p * dur * fps)) / (1 - Math.pow(1 - k, dur * fps));
 
-      const tl = gsap.timeline({ paused: true });
+      // The whole shot is authored at 120 BPM and played 10/9 faster (a 1.8s bar = 54 frames at 30fps).
+      // `seq` holds the authored sequence; the registered, paused `tl` plays it at that speed.
+      const seq = gsap.timeline();
 
       // The one root push: 3% over the whole frame, linear.
-      tl.fromTo(q(P + "cam"), { scale: 1 }, { scale: 1.03, duration: 4, ease: "none" }, 0);
+      seq.fromTo(q(P + "cam"), { scale: 1 }, { scale: 1.03, duration: 4, ease: "none" }, 0);
 
       // Scene 1 — toggle labels settle from the outer wings.
-      tl.fromTo(q(P + "lang-en"), { x: -28, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: park()(0.4) }, 0.1);
-      tl.fromTo(q(P + "lang-vi"), { x: 28, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: park()(0.4) }, 0.2);
+      seq.fromTo(q(P + "lang-en"), { x: -28, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: park()(0.4) }, 0.1);
+      seq.fromTo(q(P + "lang-vi"), { x: 28, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: park()(0.4) }, 0.2);
 
       // Scene 1 — first pair arrives in mirror on the beat, 3-frame stagger.
       const ARRIVE = 0.5;
-      tl.fromTo(q(P + "a-en"), { x: -180, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: park()(0.5) }, ARRIVE);
-      tl.fromTo(q(P + "a-vi"), { x: 180, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: park()(0.5) }, ARRIVE + 0.1);
+      seq.fromTo(q(P + "a-en"), { x: -180, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: park()(0.5) }, ARRIVE);
+      seq.fromTo(q(P + "a-vi"), { x: 180, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: park()(0.5) }, ARRIVE + 0.1);
 
       // Scene 2 — waterfall cut at 2.0s, mirrored: each side travels outward from the hinge.
       const CUT = 2.0;
@@ -274,8 +276,8 @@
         out.forEach((w, i) => {
           // Last word finishes fading exactly at the cut.
           const at = CUT - 0.18 - (out.length - 1 - i) * step;
-          tl.to(w, { x: dir * TRAVEL, duration: 0.34, ease: "power4.in" }, at);
-          tl.to(w, { opacity: 0, duration: 0.18, ease: "power1.in" }, at);
+          seq.to(w, { x: dir * TRAVEL, duration: 0.34, ease: "power4.in" }, at);
+          seq.to(w, { opacity: 0, duration: 0.18, ease: "power1.in" }, at);
         });
 
         const inn = words(b);
@@ -286,7 +288,7 @@
         let at = CUT;
         inn.forEach((w, i) => {
           if (i > 0) at += (gaps[i - 1] / total) * ENTRY_SPAN;
-          tl.fromTo(
+          seq.fromTo(
             w,
             { x: -dir * TRAVEL, opacity: 0.35 },
             { x: 0, opacity: 1, duration: 0.3, ease: "power4.out", immediateRender: false },
@@ -298,6 +300,8 @@
       // Scene 3 — hold. Only the push is running.
 
       window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.add(seq.timeScale(10 / 9), 0);
       window.__timelines[ID] = tl;
     })();
   </script>

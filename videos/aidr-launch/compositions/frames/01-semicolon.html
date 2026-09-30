@@ -121,10 +121,10 @@
     }
   </style>
 
-  <div data-hf-id="hf-plqg" id="root" data-composition-id="01-semicolon" data-width="1920" data-height="1080" data-duration="4.4">
-    <div data-hf-id="hf-vfu5" id="01-semicolon-ground" class="clip" data-start="0" data-duration="4.4" data-track-index="0"></div>
+  <div data-hf-id="hf-plqg" id="root" data-composition-id="01-semicolon" data-width="1920" data-height="1080" data-duration="5.8">
+    <div data-hf-id="hf-vfu5" id="01-semicolon-ground" class="clip" data-start="0" data-duration="5.8" data-track-index="0"></div>
 
-    <div data-hf-id="hf-fys6" id="01-semicolon-camera" class="clip" data-start="0" data-duration="4.4" data-track-index="1">
+    <div data-hf-id="hf-fys6" id="01-semicolon-camera" class="clip" data-start="0" data-duration="5.8" data-track-index="1">
       <div data-hf-id="hf-avv8" id="01-semicolon-zoom">
         <div data-hf-id="hf-x3ue" id="01-semicolon-pan">
           <p data-hf-id="hf-a14s" id="01-semicolon-date">2026-09-30</p>
@@ -156,11 +156,13 @@
       const DURATION = 4;
       const EPS = 1e-4;
 
-      const tl = gsap.timeline({ paused: true });
+      // The intro is authored as a 4s shot and played slower (20/27) so it fills three 1.8s bars = 5.4s.
+      // `seq` holds the authored sequence; the registered, paused `tl` plays it at that speed.
+      const seq = gsap.timeline();
 
       // The one root push: linear, whole duration, 3%.
       const PUSH = 0.03;
-      tl.fromTo(
+      seq.fromTo(
         $("camera"),
         { scale: 1 },
         { scale: 1 + PUSH, duration: DURATION, ease: "none", force3D: false },
@@ -170,10 +172,10 @@
       // Scene 1 (0.0–1.5s): the semicolon alone, there from t=0, blinking like a
       // caret on the beat. Square wave, no fade.
       const semi = $("semi");
-      tl.set(semi, { opacity: 0 }, 0.5);
-      tl.set(semi, { opacity: 1 }, 0.75);
-      tl.set(semi, { opacity: 0 }, 1.0);
-      tl.set(semi, { opacity: 1 }, 1.25);
+      seq.set(semi, { opacity: 0 }, 0.5);
+      seq.set(semi, { opacity: 1 }, 0.75);
+      seq.set(semi, { opacity: 0 }, 1.0);
+      seq.set(semi, { opacity: 1 }, 1.25);
 
       // Scene 2 (1.5–3.0s): the line types on under the semicolon
       // (discrete-text-sequence). One keystroke per frame, a two-frame breath at
@@ -209,7 +211,7 @@
       }
 
       const driver = { t: 0 };
-      tl.to(
+      seq.to(
         driver,
         {
           t: DURATION,
@@ -226,13 +228,13 @@
       const ZOOM_AT = 3.0;
       const ZOOM_DUR = 1.0;
       const DROP = 4 * FRAME;
-      tl.fromTo(
+      seq.fromTo(
         $("line"),
         { opacity: 1, y: 0 },
         { opacity: 0, y: 8, duration: DROP, ease: "power1.in", force3D: false },
         ZOOM_AT,
       );
-      tl.fromTo(
+      seq.fromTo(
         [$("date"), $("site")],
         { opacity: 1 },
         { opacity: 0, duration: DROP, ease: "power1.in" },
@@ -281,7 +283,7 @@
       const PAN_Y_END = panYAt(1);
 
       // Same position and duration on all three; each ease is the exact solved curve.
-      tl.fromTo(
+      seq.fromTo(
         $("zoom"),
         { scale: 1 },
         {
@@ -292,13 +294,13 @@
         },
         ZOOM_AT,
       );
-      tl.fromTo(
+      seq.fromTo(
         $("pan"),
         { x: 0 },
         { x: PAN_X_END, duration: ZOOM_DUR, ease: (p) => panXAt(p) / PAN_X_END, force3D: false },
         ZOOM_AT,
       );
-      tl.fromTo(
+      seq.fromTo(
         $("pan"),
         { y: 0 },
         { y: PAN_Y_END, duration: ZOOM_DUR, ease: (p) => panYAt(p) / PAN_Y_END, force3D: false },
@@ -306,6 +308,8 @@
       );
 
       window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.add(seq.timeScale(20 / 27), 0);
       window.__timelines[FRAME_ID] = tl;
     })();
   </script>

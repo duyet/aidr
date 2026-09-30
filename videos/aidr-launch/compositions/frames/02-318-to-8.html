@@ -117,9 +117,9 @@
   </style>
 
   <div data-hf-id="hf-v65r" id="root" data-composition-id="02-318-to-8" data-width="1920" data-height="1080">
-    <div data-hf-id="hf-9lwg" class="clip 02-318-to-8-ground" data-start="0" data-duration="4" data-track-index="0"></div>
+    <div data-hf-id="hf-9lwg" class="clip 02-318-to-8-ground" data-start="0" data-duration="3.6" data-track-index="0"></div>
 
-    <div data-hf-id="hf-gz5t" class="clip 02-318-to-8-camera" data-start="0" data-duration="4" data-track-index="1">
+    <div data-hf-id="hf-gz5t" class="clip 02-318-to-8-camera" data-start="0" data-duration="3.6" data-track-index="1">
       <div data-hf-id="hf-4nci" class="02-318-to-8-zoom">
         <svg data-hf-id="hf-qq7y" class="02-318-to-8-filters" aria-hidden="true">
           <defs data-hf-id="hf-mh0t">
@@ -209,14 +209,16 @@
         });
       });
 
-      const tl = gsap.timeline({ paused: true });
+      // The whole shot is authored at 120 BPM and played 10/9 faster (a 1.8s bar = 54 frames at 30fps).
+      // `seq` holds the authored sequence; the registered, paused `tl` plays it at that speed.
+      const seq = gsap.timeline();
 
       // The film's single linear push, whole duration.
-      tl.fromTo(all("camera"), { scale: 1 }, { scale: 1.03, duration: DURATION, ease: "none" }, 0);
+      seq.fromTo(all("camera"), { scale: 1 }, { scale: 1.03, duration: DURATION, ease: "none" }, 0);
 
       // Handoff in: arriving through the dot, scale settles from large to 1, no x/y drift.
       const ZOOM_DUR = 0.6;
-      tl.fromTo(all("zoom"), { scale: 1.6 }, { scale: 1, duration: ZOOM_DUR, ease: park()(ZOOM_DUR) }, 0);
+      seq.fromTo(all("zoom"), { scale: 1.6 }, { scale: 1, duration: ZOOM_DUR, ease: park()(ZOOM_DUR) }, 0);
 
       // Headline wall. Rows enter and leave outside-in, so the rows behind the numeral go last.
       const ROW_ORDER = [0, 5, 1, 4, 2, 3];
@@ -254,17 +256,17 @@
         };
 
         // Constant stream underneath, so a landed row never stops dead.
-        tl.fromTo(row, { x: -dir * drift }, { x: 0, duration: exitEnd, ease: "none" }, 0);
+        seq.fromTo(row, { x: -dir * drift }, { x: 0, duration: exitEnd, ease: "none" }, 0);
 
         // Flood in from its edge.
-        tl.fromTo(strip, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, enterAt);
-        tl.fromTo(
+        seq.fromTo(strip, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, enterAt);
+        seq.fromTo(
           strip,
           { x: -dir * ENTER_DIST },
           { x: 0, duration: ENTER_DUR, ease: park()(ENTER_DUR) },
           enterAt,
         );
-        tl.fromTo(
+        seq.fromTo(
           blur,
           { enter: ENTER_BLUR },
           { enter: 0, duration: ENTER_DUR, ease: park()(ENTER_DUR), onUpdate: applyBlur },
@@ -272,13 +274,13 @@
         );
 
         // Accelerate off its edge and be gone.
-        tl.fromTo(
+        seq.fromTo(
           strip,
           { x: 0 },
           { x: dir * EXIT_DIST, duration: EXIT_DUR, ease: "power3.in", immediateRender: false },
           exitAt,
         );
-        tl.fromTo(
+        seq.fromTo(
           blur,
           { exit: 0 },
           { exit: EXIT_BLUR, duration: EXIT_DUR, ease: "power3.in", immediateRender: false, onUpdate: applyBlur },
@@ -298,8 +300,8 @@
       const state = { value: START_VALUE };
       let lastText = String(START_VALUE);
 
-      tl.fromTo(counter, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "none" }, 0);
-      tl.fromTo(
+      seq.fromTo(counter, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "none" }, 0);
+      seq.fromTo(
         state,
         { value: START_VALUE },
         {
@@ -316,7 +318,7 @@
         },
         COUNT_AT,
       );
-      tl.fromTo(
+      seq.fromTo(
         counter,
         { scale: START_SCALE },
         { scale: 1, duration: COUNT_DUR, ease: COUNT_EASE },
@@ -334,7 +336,7 @@
         return { el, start };
       });
       WORD_TIMELINE.forEach(({ el, start }) => {
-        tl.fromTo(
+        seq.fromTo(
           el,
           { opacity: 0, y: 26 },
           { opacity: 1, y: 0, duration: WORD_DUR, ease: park()(WORD_DUR) },
@@ -343,6 +345,8 @@
       });
 
       window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.add(seq.timeScale(10 / 9), 0);
       window.__timelines[ID] = tl;
     })();
   </script>

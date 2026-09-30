@@ -184,9 +184,9 @@
   </style>
 
   <div data-hf-id="hf-1zlr" id="root" data-composition-id="03-marker-pass" data-width="1920" data-height="1080">
-    <div data-hf-id="hf-pvt6" class="clip 03-marker-pass-ground" data-start="0" data-duration="4" data-track-index="0"></div>
+    <div data-hf-id="hf-pvt6" class="clip 03-marker-pass-ground" data-start="0" data-duration="3.6" data-track-index="0"></div>
 
-    <div data-hf-id="hf-2u3f" class="clip 03-marker-pass-camera" data-start="0" data-duration="4" data-track-index="1">
+    <div data-hf-id="hf-2u3f" class="clip 03-marker-pass-camera" data-start="0" data-duration="3.6" data-track-index="1">
       <svg data-hf-id="hf-r0fg" class="03-marker-pass-filters" aria-hidden="true">
         <defs data-hf-id="hf-mh0t">
           <filter data-hf-id="hf-6gbs" id="03-marker-pass-blur-tip" x="-100%" y="-10%" width="300%" height="120%"><fegaussianblur data-hf-id="hf-u7pr" stdDeviation="9 0" /></filter>
@@ -328,14 +328,16 @@
         el.style.width = BLEED + EM.deals * HL + BLEED + "px";
       });
 
-      const tl = gsap.timeline({ paused: true });
+      // The whole shot is authored at 120 BPM and played 10/9 faster (a 1.8s bar = 54 frames at 30fps).
+      // `seq` holds the authored sequence; the registered, paused `tl` plays it at that speed.
+      const seq = gsap.timeline();
 
       // ---- The film's one linear push (3%) --------------------------------------
-      tl.fromTo(one("camera"), { scale: 1 }, { scale: 1.03, duration: DURATION, ease: "none" }, 0);
+      seq.fromTo(one("camera"), { scale: 1 }, { scale: 1.03, duration: DURATION, ease: "none" }, 0);
 
       // ---- Scene 2 (1.0–2.5s): the marker, one phrase per beat --------------------
       const sweep = (key, at, dur) => {
-        tl.fromTo(
+        seq.fromTo(
           one("bar-" + key),
           { scaleX: 0, skewX: SKEW, transformOrigin: "0% 50%" },
           { scaleX: 1, skewX: SKEW, duration: dur, ease: "power2.out" },
@@ -343,16 +345,16 @@
         );
         // The nib tracks the bar's front edge, then resolves to a clean end.
         const tip = one("tipwrap-" + key);
-        tl.fromTo(tip, { xPercent: 0 }, { xPercent: 100, duration: dur, ease: "power2.out" }, at);
-        tl.set(tip, { opacity: 1 }, at);
-        tl.fromTo(
+        seq.fromTo(tip, { xPercent: 0 }, { xPercent: 100, duration: dur, ease: "power2.out" }, at);
+        seq.set(tip, { opacity: 1 }, at);
+        seq.fromTo(
           tip,
           { opacity: 1 },
           { opacity: 0, duration: dur * 0.55, ease: "power1.in", immediateRender: false },
           at + dur * 0.45,
         );
         // Marked words come up to full ink as the marker passes.
-        tl.fromTo(
+        seq.fromTo(
           one("ink-" + key),
           { opacity: 0.8 },
           { opacity: 1, duration: dur, ease: "power2.out", immediateRender: false },
@@ -367,13 +369,13 @@
       // ---- Scene 3 (2.5–4.0s): the rest falls away, the marked words lock up ------
       const LIFT = 2.5;
       const para = one("para");
-      tl.fromTo(
+      seq.fromTo(
         para,
         { opacity: 0.8 },
         { opacity: 0.12, duration: 0.35, ease: "power2.out", immediateRender: false },
         LIFT,
       );
-      tl.fromTo(
+      seq.fromTo(
         para,
         { opacity: 0.12 },
         { opacity: 0, duration: 0.3, ease: "power2.out", immediateRender: false },
@@ -381,7 +383,7 @@
       );
       // The leftovers of the two lines the headline is lifted from clear first, so
       // nothing ghosts under the words as they grow.
-      tl.fromTo(
+      seq.fromTo(
         all("under"),
         { opacity: 1 },
         { opacity: 0, duration: 0.3, ease: "power2.out", immediateRender: false },
@@ -399,7 +401,7 @@
         { key: "b2", at: LIFT + 6 / FPS, dur: 0.45, marked: true },
       ];
       TRAVEL.forEach(({ key, at, dur, marked, blur }) => {
-        tl.fromTo(
+        seq.fromTo(
           one("chunk-" + key),
           seatState(UNITS[key]),
           { x: 0, y: 0, scale: 1, duration: dur, ease: park()(dur) },
@@ -407,7 +409,7 @@
         );
         if (marked) {
           // Marker colour drains to plain ink as the chunk lands.
-          tl.fromTo(
+          seq.fromTo(
             one("bar-" + key),
             { opacity: 1 },
             { opacity: 0, duration: dur - 0.1, ease: "power2.inOut", immediateRender: false },
@@ -418,20 +420,20 @@
           // Blur along the path: strongest on the first frames, gone before the landing.
           const ghost = one("ghost-" + key);
           const ink = one("ink-" + key);
-          tl.fromTo(ghost, { opacity: 0 }, { opacity: 0.8, duration: 2 / FPS, ease: "power1.out" }, at);
-          tl.fromTo(
+          seq.fromTo(ghost, { opacity: 0 }, { opacity: 0.8, duration: 2 / FPS, ease: "power1.out" }, at);
+          seq.fromTo(
             ghost,
             { opacity: 0.8 },
             { opacity: 0, duration: 0.3, ease: "power2.out", immediateRender: false },
             at + 2 / FPS,
           );
-          tl.fromTo(
+          seq.fromTo(
             ink,
             { opacity: 1 },
             { opacity: 0.6, duration: 2 / FPS, ease: "power1.out", immediateRender: false },
             at,
           );
-          tl.fromTo(
+          seq.fromTo(
             ink,
             { opacity: 0.6 },
             { opacity: 1, duration: 0.3, ease: "power2.out", immediateRender: false },
@@ -443,13 +445,13 @@
       // Connectives ("Locked Into", the comma) sink with the paragraph, ride along
       // unmarked, and come back to ink as the headline locks.
       const links = [one("ink-li"), one("comma")];
-      tl.fromTo(
+      seq.fromTo(
         links,
         { opacity: 0.8 },
         { opacity: 0.12, duration: 0.35, ease: "power2.out", immediateRender: false },
         LIFT,
       );
-      tl.fromTo(
+      seq.fromTo(
         links,
         { opacity: 0.12 },
         { opacity: 1, duration: 0.3, ease: park()(0.3), immediateRender: false },
@@ -457,13 +459,13 @@
       );
 
       // Label, then numeral three frames later; everything is still from 3.4s.
-      tl.fromTo(
+      seq.fromTo(
         one("label"),
         { opacity: 0, y: 10 },
         { opacity: 1, y: 0, duration: 0.3, ease: park()(0.3) },
         3.0,
       );
-      tl.fromTo(
+      seq.fromTo(
         one("numeral"),
         { opacity: 0, x: -12 },
         { opacity: 1, x: 0, duration: 0.3, ease: park()(0.3) },
@@ -471,6 +473,8 @@
       );
 
       window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.add(seq.timeScale(10 / 9), 0);
       window.__timelines[ID] = tl;
     })();
   </script>

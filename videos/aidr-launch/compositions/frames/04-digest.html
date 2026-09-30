@@ -222,10 +222,10 @@
     }
   </style>
 
-  <div data-hf-id="hf-ozri" id="root" data-composition-id="04-digest" data-width="1920" data-height="1080" data-duration="4.4">
-    <div data-hf-id="hf-2ygr" class="f04-digest-ground clip" data-start="0" data-duration="4.4" data-track-index="0"></div>
+  <div data-hf-id="hf-ozri" id="root" data-composition-id="04-digest" data-width="1920" data-height="1080" data-duration="4">
+    <div data-hf-id="hf-2ygr" class="f04-digest-ground clip" data-start="0" data-duration="4" data-track-index="0"></div>
 
-    <div data-hf-id="hf-npkz" class="f04-digest-stage clip" data-start="0" data-duration="4.4" data-track-index="1">
+    <div data-hf-id="hf-npkz" class="f04-digest-stage clip" data-start="0" data-duration="4" data-track-index="1">
       <!-- Vertical-only blur, one filter per arriving row; zero at rest. -->
       <svg data-hf-id="hf-t7xe" class="f04-digest-defs" aria-hidden="true">
         <defs data-hf-id="hf-mh0t">
@@ -319,10 +319,12 @@
         (1 - Math.pow(1 - k, p * dur * fps)) / (1 - Math.pow(1 - k, dur * fps));
 
       const FRAME = 1 / 30;
-      const tl = gsap.timeline({ paused: true });
+      // The whole shot is authored at 120 BPM and played 10/9 faster (a 1.8s bar = 54 frames at 30fps).
+      // `seq` holds the authored sequence; the registered, paused `tl` plays it at that speed.
+      const seq = gsap.timeline();
 
       // Root camera: the single linear push, t=0 to the end.
-      tl.fromTo(".f04-digest-cam", { scale: 1 }, { scale: 1.03, duration: 4, ease: "none" }, 0);
+      seq.fromTo(".f04-digest-cam", { scale: 1 }, { scale: 1.03, duration: 4, ease: "none" }, 0);
 
       // ---- Scene 1 (0.0–0.75s): row 1 travels from the handoff into its slot ----
       // Two stacked copies per face change; both follow the same path so they stay
@@ -337,24 +339,24 @@
       const numBody = q(".f04-digest-r1-num");
       const label1 = q(".f04-digest-r1-label");
 
-      tl.fromTo(headDisplay, { x: 0, y: 0, scale: 1 }, { x: 38, y: -152.15, scale: S_DOWN, duration: TRAVEL, ease: park()(TRAVEL) }, 0);
-      tl.fromTo(headBody, { x: -38, y: 149.74, scale: S_UP }, { x: 0, y: 0, scale: 1, duration: TRAVEL, ease: park()(TRAVEL) }, 0);
-      tl.fromTo(headBody, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: "power1.out" }, 0.08);
-      tl.fromTo(headDisplay, { opacity: 1 }, { opacity: 0, duration: 0.26, ease: "power1.in" }, 0.12);
+      seq.fromTo(headDisplay, { x: 0, y: 0, scale: 1 }, { x: 38, y: -152.15, scale: S_DOWN, duration: TRAVEL, ease: park()(TRAVEL) }, 0);
+      seq.fromTo(headBody, { x: -38, y: 149.74, scale: S_UP }, { x: 0, y: 0, scale: 1, duration: TRAVEL, ease: park()(TRAVEL) }, 0);
+      seq.fromTo(headBody, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: "power1.out" }, 0.08);
+      seq.fromTo(headDisplay, { opacity: 1 }, { opacity: 0, duration: 0.26, ease: "power1.in" }, 0.12);
 
       const tNum = FRAME;
-      tl.fromTo(numDisplay, { x: 0, y: 0, scale: 1 }, { x: 80, y: -152.15, scale: S_DOWN, duration: TRAVEL, ease: park()(TRAVEL) }, tNum);
-      tl.fromTo(numBody, { x: -80, y: 149.74, scale: S_UP }, { x: 0, y: 0, scale: 1, duration: TRAVEL, ease: park()(TRAVEL) }, tNum);
-      tl.fromTo(numBody, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: "power1.out" }, tNum + 0.08);
-      tl.fromTo(numDisplay, { opacity: 1 }, { opacity: 0, duration: 0.26, ease: "power1.in" }, tNum + 0.12);
+      seq.fromTo(numDisplay, { x: 0, y: 0, scale: 1 }, { x: 80, y: -152.15, scale: S_DOWN, duration: TRAVEL, ease: park()(TRAVEL) }, tNum);
+      seq.fromTo(numBody, { x: -80, y: 149.74, scale: S_UP }, { x: 0, y: 0, scale: 1, duration: TRAVEL, ease: park()(TRAVEL) }, tNum);
+      seq.fromTo(numBody, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: "power1.out" }, tNum + 0.08);
+      seq.fromTo(numDisplay, { opacity: 1 }, { opacity: 0, duration: 0.26, ease: "power1.in" }, tNum + 0.12);
 
       // Label keeps its face: 26px at the handoff (baseline y 380) down to 17px in the row.
-      tl.fromTo(label1, { x: -38, y: 129.07, scale: 26 / 17 }, { x: 0, y: 0, scale: 1, duration: TRAVEL, ease: park()(TRAVEL) }, 2 * FRAME);
+      seq.fromTo(label1, { x: -38, y: 129.07, scale: 26 / 17 }, { x: 0, y: 0, scale: 1, duration: TRAVEL, ease: park()(TRAVEL) }, 2 * FRAME);
 
       // Card surface and header fade up around the arriving row.
-      tl.fromTo(".f04-digest-surface", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55, ease: park()(0.55) }, 0.1);
-      tl.fromTo(".f04-digest-brand", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 0.2);
-      tl.fromTo(".f04-digest-pill", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 0.2 + 3 * FRAME);
+      seq.fromTo(".f04-digest-surface", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55, ease: park()(0.55) }, 0.1);
+      seq.fromTo(".f04-digest-brand", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 0.2);
+      seq.fromTo(".f04-digest-pill", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 0.2 + 3 * FRAME);
 
       // ---- Scene 2 (0.75–2.5s): rows 2–8, one per eighth-note ----
       // Each row starts 4 frames ahead so it is present and braking on its tick.
@@ -365,19 +367,21 @@
       rows.forEach((row, i) => {
         const tick = 0.75 + i * 0.25;
         const start = tick - LEAD;
-        tl.fromTo(row, { y: 24 }, { y: 0, duration: ROW_DUR, ease: park()(ROW_DUR) }, start);
-        tl.fromTo(row, { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, start);
-        tl.set(row, { filter: "url(#04-digest-vb" + (i + 2) + ")" }, start);
-        tl.fromTo(blurs[i], { attr: { stdDeviation: "0 7" } }, { attr: { stdDeviation: "0 0" }, duration: 0.26, ease: "power2.out" }, start);
-        tl.set(row, { filter: "none" }, start + 0.27);
+        seq.fromTo(row, { y: 24 }, { y: 0, duration: ROW_DUR, ease: park()(ROW_DUR) }, start);
+        seq.fromTo(row, { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, start);
+        seq.set(row, { filter: "url(#04-digest-vb" + (i + 2) + ")" }, start);
+        seq.fromTo(blurs[i], { attr: { stdDeviation: "0 7" } }, { attr: { stdDeviation: "0 0" }, duration: 0.26, ease: "power2.out" }, start);
+        seq.set(row, { filter: "none" }, start + 0.27);
       });
 
       // ---- Scene 3 (2.5–4.0s): footer lands on 2.75, then hold under the push ----
       const tFoot = 2.75 - LEAD;
-      tl.fromTo(".f04-digest-count", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot);
-      tl.fromTo(".f04-digest-updated", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot + 3 * FRAME);
+      seq.fromTo(".f04-digest-count", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot);
+      seq.fromTo(".f04-digest-updated", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot + 3 * FRAME);
 
       window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.add(seq.timeScale(10 / 9), 0);
       window.__timelines[ID] = tl;
     })();
   </script>

@@ -7,9 +7,9 @@ destination: youtube
 aspect: 1920x1080
 language: en
 audience: "People who follow AI closely: builders, researchers, founders; English and Vietnamese readers"
-length: 30s
+length: 29s
 angle: "One Semicolon — the semicolon is the product: noise on one side, the digest on the other"
-narration: no
+narration: yes
 ---
 
 ## Intent
@@ -46,13 +46,15 @@ Closing line: "What's happening in AI today?" above aidr.today.
 ## Customizations
 
 - Music: original 30s track, "Strings in a hurry" — ~120 BPM, short string ostinato, news energy, no brass. Cuts land on its beat in the fast middle.
-- No voiceover, no captions.
+- Voiceover added after the first draft (owner: "adding cool warm voice over and bg music"): one short line per frame, warm male voice. No captions.
 - Three deliverables, each laid out for its shape (not cropped): 16:9 1920x1080 (YouTube, X) is the master; then 9:16 1080x1920 (Reels, TikTok, Shorts) and 1:1 1080x1080 (X and LinkedIn feed) as follow-on versions of the approved master.
 - On-screen language English, with one Vietnamese moment (the Two Tongues beat).
 - The 336 → 8 collapse (hundreds of stories ranked down to eight) may serve as the middle beat; real figures from the live site on capture day.
 - Real product facts to draw on: hourly pipeline consume → rank → publish; email from 07:00 local, Telegram VI/EN from 08:00; Chrome new-tab extension; RSS; MCP.
 
 ## Notes
+
+- Owner asked to "speed up video a bit" after the first draft: the whole film plays 10/9 faster (133.3 BPM). Then: "the first intro longer a bit" — frame 1 runs 5.4s, total 28.8s.
 
 - Avoid the generic AI-launch look: no dark gradient glow, no particles, no purple-blue gradients.
 - The site itself is quiet editorial (paper, serif, hairlines); the film should feel like the same brand turned up, not a different one.
