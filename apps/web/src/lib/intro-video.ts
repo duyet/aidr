@@ -5,7 +5,7 @@ import type { Lang } from "./types";
  * watch URL). The owner sets it after uploading the video. While it is
  * `null` the header renders no video control at all.
  */
-export const INTRO_VIDEO_YOUTUBE_ID: string | null = null;
+export const INTRO_VIDEO_YOUTUBE_ID: string | null = "tynoWx03zDc";
 
 /** Header video control and dialog copy. Each language has its own text. */
 export const INTRO_VIDEO_COPY: Record<
