@@ -8,6 +8,7 @@ import {
   parsePriorRun,
   TELEGRAM_QUIET_MS,
 } from "../health.js";
+import { TRENDING_MAX_PER_DAY } from "../notify/index.js";
 
 const NOW = Date.UTC(2026, 8, 29, 7, 0, 0);
 const HOUR = 3600 * 1000;
@@ -21,6 +22,7 @@ function input(patch: Partial<HealthInput> = {}): HealthInput {
       { name: "tldr", action: "generated" },
     ],
     telegramLastPostMs: { telegram: NOW - HOUR },
+    telegramSentToday: {},
     llm: { total: 10, failed: 1 },
     history: [],
     ...patch,
@@ -50,6 +52,25 @@ describe("evaluateHealth", () => {
     expect(
       keys({ telegramLastPostMs: { telegram: NOW - TELEGRAM_QUIET_MS } })
     ).toEqual([]);
+  });
+
+  // 2026-09-30: both channels spent the daily cap by 08:36 local, notify
+  // skipped with `budget_zero` all day, and the alert fired for a healthy
+  // pipeline. Silence the cap explains is not a fault.
+  it("does not flag a quiet channel that spent its daily trending cap", () => {
+    const quiet = {
+      telegram: NOW - TELEGRAM_QUIET_MS - 1,
+      "telegram-en": NOW - TELEGRAM_QUIET_MS - 1,
+    };
+    expect(
+      keys({
+        telegramLastPostMs: quiet,
+        telegramSentToday: {
+          telegram: TRENDING_MAX_PER_DAY,
+          "telegram-en": TRENDING_MAX_PER_DAY - 1,
+        },
+      })
+    ).toEqual(["telegram-quiet:telegram-en"]);
   });
 
   it("does not flag a quiet channel overnight", () => {
