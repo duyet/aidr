@@ -1,0 +1,375 @@
+<template>
+  <style>
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-wght-normal-BqRLTx4X.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-vietnamese-wght-normal-C1uRvKPU.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-ext-wght-normal-C8iNium2.woff2")format("woff2-variations");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+    @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-latin-wght-normal-CRpggXlh.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+    @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-vietnamese-wght-normal-DvUmmjCN.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+
+    #root {
+      position: absolute;
+      inset: 0;
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+    }
+
+    /* Full-bleed ink ground: its own clip, never the root. */
+    [class~="02-318-to-8-ground"] {
+      position: absolute;
+      inset: 0;
+      background: #0A0A0A;
+    }
+
+    /* Outer wrapper = the film's one linear push. Inner wrapper = the zoom-through settle. */
+    [class~="02-318-to-8-camera"],
+    [class~="02-318-to-8-zoom"] {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+    }
+
+    [class~="02-318-to-8-filters"] {
+      position: absolute;
+      width: 0;
+      height: 0;
+    }
+
+    /* Headline wall: six full-width strips on two depth layers. */
+    [class~="02-318-to-8-row"] {
+      position: absolute;
+      left: 0;
+      width: 1080px;
+      font-family: "Source Sans 3 Variable";
+      font-weight: 400;
+      color: #F7F7F5;
+    }
+    [class~="02-318-to-8-front"] {
+      height: 72px;
+      font-size: 60px;
+      line-height: 72px;
+      opacity: 0.35;
+    }
+    [class~="02-318-to-8-back"] {
+      height: 56px;
+      font-size: 46px;
+      line-height: 56px;
+      opacity: 0.22;
+    }
+    [class~="02-318-to-8-strip"] {
+      position: absolute;
+      top: 0;
+      width: max-content;
+      white-space: nowrap;
+    }
+    /* A strip is anchored by its trailing edge, so the leading side always covers the frame. */
+    [class~="02-318-to-8-goes-right"] { left: -160px; }
+    [class~="02-318-to-8-goes-left"] { right: -160px; }
+    [class~="02-318-to-8-sep"] {
+      display: inline-block;
+      width: 0.2em;
+      height: 0.2em;
+      margin: 0 1.1em 0.16em;
+      background: #F7F7F5;
+      vertical-align: middle;
+    }
+
+    /* Hero numeral. The final size is static; only the transform scale is animated.
+       The line box is placed so the digit's optical centre sits at (540, 800). It is wider than
+       the canvas and centred on it, so a three-digit value stays centred instead of overflowing right. */
+    [id="02-318-to-8-counter-wrap"] {
+      position: absolute;
+      left: -420px;
+      top: 323px;
+      width: 1920px;
+      height: 900px;
+      text-align: center;
+      white-space: nowrap;
+      font-family: "EB Garamond Variable";
+      font-weight: 500;
+      font-size: 900px;
+      line-height: 1;
+      color: #F5C518;
+    }
+    [id="02-318-to-8-counter"] {
+      display: inline-block;
+      font-variant-numeric: lining-nums tabular-nums;
+      letter-spacing: -0.02em;
+      padding-right: 0.02em;
+      transform-origin: 50% 53%;
+    }
+
+    [id="02-318-to-8-label"] {
+      position: absolute;
+      left: 0;
+      top: 1160px;
+      width: 1080px;
+      text-align: center;
+      font-family: "Source Sans 3 Variable";
+      font-weight: 400;
+      font-size: 64px;
+      line-height: 1;
+      letter-spacing: 0.005em;
+      color: #F7F7F5;
+    }
+    /* Where the stories come from: a quiet line above the numeral, centred at y = 250
+       in the clear band between the first two headline rows. */
+    .f02-sources {
+      position: absolute;
+      left: 0;
+      top: 233px;
+      width: 1080px;
+      text-align: center;
+      font-family: "Source Sans 3 Variable";
+      font-weight: 600;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #F7F7F5;
+    }
+    [class~="02-318-to-8-word"] {
+      display: inline-block;
+    }
+  </style>
+
+  <div data-hf-id="hf-v65r" id="root" data-composition-id="02-318-to-8" data-width="1080" data-height="1920">
+    <div data-hf-id="hf-9lwg" class="clip 02-318-to-8-ground" data-start="0" data-duration="3.6" data-track-index="0"></div>
+
+    <div data-hf-id="hf-gz5t" class="clip 02-318-to-8-camera" data-start="0" data-duration="3.6" data-track-index="1">
+      <div data-hf-id="hf-4nci" class="02-318-to-8-zoom">
+        <svg data-hf-id="hf-qq7y" class="02-318-to-8-filters" aria-hidden="true">
+          <defs data-hf-id="hf-mh0t">
+            <filter data-hf-id="hf-cnt6" id="02-318-to-8-blur-0" x="-10%" y="0" width="120%" height="100%"><fegaussianblur data-hf-id="hf-sapa" stdDeviation="0 0" /></filter>
+            <filter data-hf-id="hf-juvv" id="02-318-to-8-blur-1" x="-10%" y="0" width="120%" height="100%"><fegaussianblur data-hf-id="hf-fm0i" stdDeviation="0 0" /></filter>
+            <filter data-hf-id="hf-il3w" id="02-318-to-8-blur-2" x="-10%" y="0" width="120%" height="100%"><fegaussianblur data-hf-id="hf-g0bj" stdDeviation="0 0" /></filter>
+            <filter data-hf-id="hf-ckol" id="02-318-to-8-blur-3" x="-10%" y="0" width="120%" height="100%"><fegaussianblur data-hf-id="hf-gemk" stdDeviation="0 0" /></filter>
+            <filter data-hf-id="hf-skxy" id="02-318-to-8-blur-4" x="-10%" y="0" width="120%" height="100%"><fegaussianblur data-hf-id="hf-gsxl" stdDeviation="0 0" /></filter>
+            <filter data-hf-id="hf-20pj" id="02-318-to-8-blur-5" x="-10%" y="0" width="120%" height="100%"><fegaussianblur data-hf-id="hf-h78m" stdDeviation="0 0" /></filter>
+          </defs>
+        </svg>
+
+        <!-- Rows top to bottom. Odd rows: front layer, travelling right. Even rows: back layer, travelling left. -->
+        <div data-hf-id="hf-p1xc" class="02-318-to-8-row 02-318-to-8-front" style="top: 70px">
+          <div data-hf-id="hf-j4az" class="02-318-to-8-strip 02-318-to-8-goes-right" style="filter: url(#02-318-to-8-blur-0)"></div>
+        </div>
+        <div data-hf-id="hf-t2lh" class="02-318-to-8-row 02-318-to-8-back" style="top: 378px">
+          <div data-hf-id="hf-mamd" class="02-318-to-8-strip 02-318-to-8-goes-left" style="filter: url(#02-318-to-8-blur-1)"></div>
+        </div>
+        <div data-hf-id="hf-dt5n" class="02-318-to-8-row 02-318-to-8-front" style="top: 670px">
+          <div data-hf-id="hf-qncd" class="02-318-to-8-strip 02-318-to-8-goes-right" style="filter: url(#02-318-to-8-blur-2)"></div>
+        </div>
+        <div data-hf-id="hf-auti" class="02-318-to-8-row 02-318-to-8-back" style="top: 978px">
+          <div data-hf-id="hf-176r" class="02-318-to-8-strip 02-318-to-8-goes-left" style="filter: url(#02-318-to-8-blur-3)"></div>
+        </div>
+        <div data-hf-id="hf-qtf7" class="02-318-to-8-row 02-318-to-8-front" style="top: 1270px">
+          <div data-hf-id="hf-9j1b" class="02-318-to-8-strip 02-318-to-8-goes-right" style="filter: url(#02-318-to-8-blur-4)"></div>
+        </div>
+        <div data-hf-id="hf-9qlb" class="02-318-to-8-row 02-318-to-8-back" style="top: 1578px">
+          <div data-hf-id="hf-3kix" class="02-318-to-8-strip 02-318-to-8-goes-left" style="filter: url(#02-318-to-8-blur-5)"></div>
+        </div>
+
+        <div data-hf-id="hf-su63" id="02-318-to-8-counter-wrap"><span data-hf-id="hf-cgpt" id="02-318-to-8-counter">318</span></div>
+
+        <div class="f02-sources">From 26+ sources</div>
+
+        <div data-hf-id="hf-ywd0" id="02-318-to-8-label">
+          <span data-hf-id="hf-yr7f" class="02-318-to-8-word">stories</span>
+          <span data-hf-id="hf-nz9j" class="02-318-to-8-word">that</span>
+          <span data-hf-id="hf-sr4n" class="02-318-to-8-word">matter</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      const ID = "02-318-to-8";
+      const FPS = 30;
+      const DURATION = 4;
+      const root = document.querySelector('[data-composition-id="' + ID + '"]');
+      const all = (name) => Array.from(root.querySelectorAll('[class~="' + ID + "-" + name + '"]'));
+
+      // Parking ease: each frame covers k of the remaining distance.
+      const park = (k = 0.15, fps = FPS) => (dur) => (p) =>
+        (1 - Math.pow(1 - k, p * dur * fps)) / (1 - Math.pow(1 - k, dur * fps));
+
+      // The eight real headlines of edition 2026-09-30, word for word.
+      const HEADLINES = [
+        "UPDATE: Anthropic Locked Into $518B of Compute Deals, 80% Non-Cancelable",
+        "UPDATE: Trump Releases AI Accord Requiring External Audits and Board Oversight",
+        "UPDATE: OpenAI Scraps Planned October Launch of GPT-6.1 Astra in Rare Safety Rollback",
+        "OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+        "UPDATE: OpenAI Launches Dots, Always-On Agents That Work Across 4,000+ Apps",
+        "Trump and Tech CEOs Align on Voluntary AI Regulation",
+        "UPDATE: US Cloud Giants Boost AI Capex Outlook 66% to $1.89 Trillion",
+        "OpenAI apologizes to Australia after its AI agents breached government sites",
+      ];
+      // Headline indices per row (top to bottom); each headline appears three times across the wall.
+      const ROW_HEADLINES = [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+        [5, 6, 7, 0],
+        [1, 2, 3, 4],
+        [3, 4, 5, 6],
+        [7, 0, 1, 2],
+      ];
+
+      const rows = all("row");
+      const strips = all("strip");
+      strips.forEach((strip, i) => {
+        ROW_HEADLINES[i].forEach((h) => {
+          const text = document.createElement("span");
+          text.textContent = HEADLINES[h];
+          const sep = document.createElement("span");
+          sep.className = ID + "-sep";
+          strip.append(text, sep);
+        });
+      });
+
+      // The whole shot is authored at 120 BPM and played 10/9 faster (a 1.8s bar = 54 frames at 30fps).
+      // `seq` holds the authored sequence; the registered, paused `tl` plays it at that speed.
+      const seq = gsap.timeline();
+
+      // The film's single linear push, whole duration.
+      seq.fromTo(all("camera"), { scale: 1 }, { scale: 1.03, duration: DURATION, ease: "none" }, 0);
+
+      // Handoff in: arriving through the dot, scale settles from large to 1, no x/y drift.
+      const ZOOM_DUR = 0.6;
+      seq.fromTo(all("zoom"), { scale: 1.6 }, { scale: 1, duration: ZOOM_DUR, ease: park()(ZOOM_DUR) }, 0);
+
+      // Headline wall. Rows enter and leave outside-in, so the rows behind the numeral go last.
+      const ROW_ORDER = [0, 5, 1, 4, 2, 3];
+      const ENTER_AT = 0.05;
+      const ENTER_STAGGER = 0.1; // 3 frames
+      const ENTER_DUR = 0.4;
+      const ENTER_DIST = 600;
+      const ENTER_BLUR = 34;
+      const EXIT_AT = 0.95; // each row is gone on a half-beat: 1.25s … 2.5s
+      const EXIT_STEP = 0.25;
+      const EXIT_DUR = 0.3;
+      const EXIT_DIST = 1560; // clears the 1080 width at the same point of the tween as in landscape
+      const EXIT_BLUR = 64;
+      const DRIFT = [120, 70]; // px/s: front layer, back layer
+
+      ROW_ORDER.forEach((rowIndex, order) => {
+        const row = rows[rowIndex];
+        const strip = strips[rowIndex];
+        const dir = rowIndex % 2 === 0 ? 1 : -1;
+        const blurNode = document.getElementById(ID + "-blur-" + rowIndex).firstElementChild;
+        const enterAt = ENTER_AT + order * ENTER_STAGGER;
+        const exitAt = EXIT_AT + order * EXIT_STEP;
+        const exitEnd = exitAt + EXIT_DUR;
+        const drift = DRIFT[rowIndex % 2] * exitEnd;
+
+        // Horizontal-only blur, summed from the entry and exit envelopes; zero at rest.
+        const blur = { enter: ENTER_BLUR, exit: 0 };
+        let lastBlur = "";
+        const applyBlur = () => {
+          const value = (blur.enter + blur.exit).toFixed(2) + " 0";
+          if (value !== lastBlur) {
+            blurNode.setAttribute("stdDeviation", value);
+            lastBlur = value;
+          }
+        };
+
+        // Constant stream underneath, so a landed row never stops dead.
+        seq.fromTo(row, { x: -dir * drift }, { x: 0, duration: exitEnd, ease: "none" }, 0);
+
+        // Flood in from its edge.
+        seq.fromTo(strip, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, enterAt);
+        seq.fromTo(
+          strip,
+          { x: -dir * ENTER_DIST },
+          { x: 0, duration: ENTER_DUR, ease: park()(ENTER_DUR) },
+          enterAt,
+        );
+        seq.fromTo(
+          blur,
+          { enter: ENTER_BLUR },
+          { enter: 0, duration: ENTER_DUR, ease: park()(ENTER_DUR), onUpdate: applyBlur },
+          enterAt,
+        );
+
+        // Accelerate off its edge and be gone.
+        seq.fromTo(
+          strip,
+          { x: 0 },
+          { x: dir * EXIT_DIST, duration: EXIT_DUR, ease: "power3.in", immediateRender: false },
+          exitAt,
+        );
+        seq.fromTo(
+          blur,
+          { exit: 0 },
+          { exit: EXIT_BLUR, duration: EXIT_DUR, ease: "power3.in", immediateRender: false, onUpdate: applyBlur },
+          exitAt,
+        );
+      });
+
+      // Hero numeral: on screen with the settle, holds at 318, then counts down while it grows.
+      const counter = document.getElementById(ID + "-counter");
+      const START_VALUE = 318;
+      const TARGET_VALUE = 8;
+      const START_SCALE = 0.4; // "318" is ~490px wide at the hold; two digits at full size stay under 900px
+      const COUNT_AT = 1.0;
+      const COUNT_DUR = 1.5;
+      // k = 0.1 keeps digits ticking until one frame before the 2.5s beat.
+      const COUNT_EASE = park(0.1)(COUNT_DUR);
+      const state = { value: START_VALUE };
+      let lastText = String(START_VALUE);
+
+      seq.fromTo(counter, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "none" }, 0);
+      seq.fromTo(
+        state,
+        { value: START_VALUE },
+        {
+          value: TARGET_VALUE,
+          duration: COUNT_DUR,
+          ease: COUNT_EASE,
+          onUpdate: () => {
+            const text = String(Math.round(state.value));
+            if (text !== lastText) {
+              counter.textContent = text;
+              lastText = text;
+            }
+          },
+        },
+        COUNT_AT,
+      );
+      seq.fromTo(
+        counter,
+        { scale: START_SCALE },
+        { scale: 1, duration: COUNT_DUR, ease: COUNT_EASE },
+        COUNT_AT,
+      );
+
+      // Label arrives per word; starts are computed once from the word list.
+      const LABEL_AT = 2.75;
+      const WORD_STEP = 0.125;
+      const WORD_DUR = 0.3;
+      let cumulative = 0;
+      const WORD_TIMELINE = all("word").map((el) => {
+        const start = LABEL_AT + cumulative;
+        cumulative += WORD_STEP;
+        return { el, start };
+      });
+      WORD_TIMELINE.forEach(({ el, start }) => {
+        seq.fromTo(
+          el,
+          { opacity: 0, y: 26 },
+          { opacity: 1, y: 0, duration: WORD_DUR, ease: park()(WORD_DUR) },
+          start,
+        );
+      });
+
+      // "From 26+ sources" arrives just after the dive and stays for the whole shot.
+      seq.fromTo(".f02-sources", { opacity: 0, y: -12 }, { opacity: 0.85, y: 0, duration: 0.45, ease: "expo.out" }, 0.35);
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.add(seq.timeScale(10 / 9), 0);
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,478 @@
+<template>
+  <style>
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-wght-normal-BqRLTx4X.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-vietnamese-wght-normal-C1uRvKPU.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-ext-wght-normal-C8iNium2.woff2")format("woff2-variations");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+    @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-latin-wght-normal-CRpggXlh.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+    @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-vietnamese-wght-normal-DvUmmjCN.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+
+    #root {
+      position: absolute;
+      inset: 0;
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+    }
+
+    /* Full-bleed paper ground: its own clip, never the root. */
+    [class~="03-marker-pass-ground"] {
+      position: absolute;
+      inset: 0;
+      background: #F7F7F5;
+    }
+
+    /* Root camera: carries the film's one linear 3% push and nothing else. */
+    [class~="03-marker-pass-camera"] {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+    }
+
+    [class~="03-marker-pass-filters"] {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+    }
+
+    /*
+      The paragraph: seventeen hand-broken lines, 56px on 73px leading, set ragged
+      right in a 920px column (x 80–1000, y 230–1471). Breaks are fixed so headline 1
+      closes line 9, fills line 10 and opens line 11, each marked phrase whole on a line.
+    */
+    [class~="03-marker-pass-para"] {
+      position: absolute;
+      left: 80px;
+      top: 230px;
+      width: 920px;
+      height: 1241px;
+      font-family: "EB Garamond Variable", serif;
+      font-weight: 500;
+      font-size: 56px;
+      line-height: 73px;
+      color: #0A0A0A;
+      opacity: 0.8;
+    }
+    [class~="03-marker-pass-line"] {
+      height: 73px;
+      white-space: nowrap;
+      text-align: left;
+    }
+    /* Holds the slot of a headline phrase whose only visible copy lives in the headline layer. */
+    [class~="03-marker-pass-slot"] {
+      display: inline-block;
+      visibility: hidden;
+    }
+
+    /*
+      Handoff stage: counter-scaled by 1/1.03 about the canvas centre, so that at the
+      last frame (root push at 1.03) everything inside sits on screen at exactly its
+      authored coordinates — the values frame 04 opens on after the hard cut.
+    */
+    [class~="03-marker-pass-stage"] {
+      position: absolute;
+      inset: 0;
+      transform-origin: 540px 960px;
+      transform: scale(0.970873786);
+    }
+
+    /*
+      The headline at its handoff rest position: left edge x 150, first baseline y 700
+      (box top 631.26, as frame 04 draws it), EB Garamond Variable 500 / 76px / 1.1,
+      three lines in natural flow. Each chunk is tweened FROM its seat in the paragraph.
+    */
+    [class~="03-marker-pass-headline"] {
+      position: absolute;
+      left: 150px;
+      top: 631.26px;
+      width: 850px;
+      font-family: "EB Garamond Variable", serif;
+      font-weight: 500;
+      font-size: 76px;
+      line-height: 1.1;
+      color: #0A0A0A;
+      white-space: nowrap;
+    }
+    [class~="03-marker-pass-chunk"] {
+      position: relative;
+      display: inline-block;
+    }
+    [class~="03-marker-pass-ink"] {
+      position: relative;
+      z-index: 2;
+      opacity: 0.8;
+    }
+    [class~="03-marker-pass-comma"] {
+      opacity: 0.8;
+    }
+    /* Smear along the path that rides with a travelling chunk; zero at rest. */
+    [class~="03-marker-pass-ghost"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 1;
+      opacity: 0;
+    }
+    [class~="03-marker-pass-ghost-far"] { filter: url(#03-marker-pass-blur-far); }
+    [class~="03-marker-pass-ghost-near"] { filter: url(#03-marker-pass-blur-near); }
+
+    /* Marker: sun, behind the ink, from above the ascenders to below the baseline. */
+    [class~="03-marker-pass-bar"],
+    [class~="03-marker-pass-tipwrap"] {
+      position: absolute;
+      top: 14px;
+      height: 72px;
+      left: -7px;
+      right: -7px;
+      z-index: 0;
+    }
+    [class~="03-marker-pass-bar"] {
+      background: #F5C518;
+      border-radius: 3px;
+    }
+    /* Soft leading edge of the sweep: a blurred nib that tracks the bar's front. */
+    [class~="03-marker-pass-tipwrap"] {
+      opacity: 0;
+    }
+    [class~="03-marker-pass-tip"] {
+      position: absolute;
+      top: 0;
+      left: -22px;
+      width: 44px;
+      height: 100%;
+      background: #F5C518;
+      transform: skewX(-6deg);
+      filter: url(#03-marker-pass-blur-tip);
+    }
+
+    [class~="03-marker-pass-label"] {
+      position: absolute;
+      left: 150px;
+      top: 583px; /* 28px box, baseline offset 23px: baseline y 606 */
+      font-family: "Source Sans 3 Variable", sans-serif;
+      font-weight: 600;
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #8B300B;
+      white-space: nowrap;
+    }
+    [class~="03-marker-pass-numeral"] {
+      position: absolute;
+      left: 80px;
+      top: 631.26px; /* same box as the headline: baseline y 700 */
+      font-family: "EB Garamond Variable", serif;
+      font-weight: 500;
+      font-size: 76px;
+      line-height: 1.1;
+      color: #474747;
+      white-space: nowrap;
+    }
+  </style>
+
+  <div data-hf-id="hf-1zlr" id="root" data-composition-id="03-marker-pass" data-width="1080" data-height="1920">
+    <div data-hf-id="hf-pvt6" class="clip 03-marker-pass-ground" data-start="0" data-duration="3.6" data-track-index="0"></div>
+
+    <div data-hf-id="hf-2u3f" class="clip 03-marker-pass-camera" data-start="0" data-duration="3.6" data-track-index="1">
+      <svg data-hf-id="hf-r0fg" class="03-marker-pass-filters" aria-hidden="true">
+        <defs data-hf-id="hf-mh0t">
+          <filter data-hf-id="hf-6gbs" id="03-marker-pass-blur-tip" x="-100%" y="-10%" width="300%" height="120%"><fegaussianblur data-hf-id="hf-u7pr" stdDeviation="9 0" /></filter>
+          <filter data-hf-id="hf-hdt8" id="03-marker-pass-blur-far" x="-100%" y="-50%" width="300%" height="200%"><fegaussianblur data-hf-id="hf-gbdl" stdDeviation="14 5" /></filter>
+          <filter data-hf-id="hf-kbez" id="03-marker-pass-blur-near" x="-100%" y="-50%" width="300%" height="200%"><fegaussianblur data-hf-id="hf-dorz" stdDeviation="7 5" /></filter>
+        </defs>
+      </svg>
+
+      <div data-hf-id="hf-zeuf" class="03-marker-pass-para">
+        <div data-hf-id="hf-jaqe" class="03-marker-pass-line">UPDATE: US Cloud Giants Boost AI</div>
+        <div data-hf-id="hf-zff3" class="03-marker-pass-line">Capex Outlook 66% to $1.89 Trillion.</div>
+        <div data-hf-id="hf-fb7e" class="03-marker-pass-line">Trump and Tech CEOs Align on</div>
+        <div data-hf-id="hf-25iz" class="03-marker-pass-line">Voluntary AI Regulation. UPDATE:</div>
+        <div data-hf-id="hf-rt5l" class="03-marker-pass-line">Trump Releases AI Accord Requiring</div>
+        <div class="03-marker-pass-line">External Audits and Board Oversight.</div>
+        <div class="03-marker-pass-line">UPDATE: OpenAI Launches Dots,</div>
+        <div class="03-marker-pass-line">Always-On Agents That Work Across</div>
+        <div data-hf-id="hf-kxj1" class="03-marker-pass-line 03-marker-pass-under">4,000+ Apps. UPDATE: <span class="03-marker-pass-slot">Anthropic</span></div>
+        <div class="03-marker-pass-line 03-marker-pass-under"><span class="03-marker-pass-slot">Locked Into</span> <span class="03-marker-pass-slot">$518B of Compute</span> <span class="03-marker-pass-slot">Deals,</span></div>
+        <div data-hf-id="hf-fkj2" class="03-marker-pass-line 03-marker-pass-under"><span data-hf-id="hf-smb0" class="03-marker-pass-slot">80% Non-Cancelable</span>. OpenAI apologizes</div>
+        <div data-hf-id="hf-197r" class="03-marker-pass-line">to Australia after its AI agents breached</div>
+        <div data-hf-id="hf-sh4o" class="03-marker-pass-line">government sites. OpenAI Seeks $30B</div>
+        <div class="03-marker-pass-line">Bridge Round at $1.4 Trillion Valuation.</div>
+        <div class="03-marker-pass-line">UPDATE: OpenAI Scraps Planned</div>
+        <div data-hf-id="hf-inip" class="03-marker-pass-line">October Launch of GPT-6.1 Astra in</div>
+        <div data-hf-id="hf-zepl" class="03-marker-pass-line">Rare Safety Rollback.</div>
+      </div>
+
+      <div data-hf-id="hf-5rq5" class="03-marker-pass-stage">
+      <div data-hf-id="hf-mcu1" class="03-marker-pass-headline">
+        <div data-hf-id="hf-yeow">
+          <span data-hf-id="hf-edwl" class="03-marker-pass-chunk 03-marker-pass-chunk-a">
+            <span data-hf-id="hf-xryp" class="03-marker-pass-bar 03-marker-pass-bar-a"></span>
+            <span data-hf-id="hf-6deh" class="03-marker-pass-tipwrap 03-marker-pass-tipwrap-a"><span data-hf-id="hf-c7i5" class="03-marker-pass-tip"></span></span>
+            <span data-hf-id="hf-h5k6" class="03-marker-pass-ghost 03-marker-pass-ghost-far 03-marker-pass-ghost-a" aria-hidden="true">Anthropic</span>
+            <span data-hf-id="hf-vd71" class="03-marker-pass-ink 03-marker-pass-ink-a">Anthropic</span>
+          </span>
+          <span data-hf-id="hf-on7t" class="03-marker-pass-chunk 03-marker-pass-chunk-li">
+            <span data-hf-id="hf-3ue5" class="03-marker-pass-ink 03-marker-pass-ink-li">Locked Into</span>
+          </span>
+        </div>
+        <div data-hf-id="hf-y7yw">
+          <span data-hf-id="hf-lnqb" class="03-marker-pass-chunk 03-marker-pass-chunk-b1">
+            <span data-hf-id="hf-9o6f" class="03-marker-pass-bar 03-marker-pass-bar-b1"></span>
+            <span data-hf-id="hf-w3kv" class="03-marker-pass-tipwrap 03-marker-pass-tipwrap-b1"><span data-hf-id="hf-08pd" class="03-marker-pass-tip"></span></span>
+            <span data-hf-id="hf-z2cp" class="03-marker-pass-ghost 03-marker-pass-ghost-near 03-marker-pass-ghost-b1" aria-hidden="true">$518B of Compute</span>
+            <span data-hf-id="hf-ufg1" class="03-marker-pass-ink 03-marker-pass-ink-b1">$518B of Compute</span>
+          </span>
+          <span data-hf-id="hf-as8o" class="03-marker-pass-chunk 03-marker-pass-chunk-b2">
+            <span data-hf-id="hf-10ak" class="03-marker-pass-bar 03-marker-pass-bar-b2"></span>
+            <span data-hf-id="hf-nfp0" class="03-marker-pass-tipwrap 03-marker-pass-tipwrap-b2"><span data-hf-id="hf-1fmg" class="03-marker-pass-tip"></span></span>
+            <span data-hf-id="hf-pz6x" class="03-marker-pass-ink 03-marker-pass-ink-b2">Deals</span><span data-hf-id="hf-jxvk" class="03-marker-pass-ink 03-marker-pass-comma">,</span>
+          </span>
+        </div>
+        <div>
+          <span data-hf-id="hf-ohqf" class="03-marker-pass-chunk 03-marker-pass-chunk-c">
+            <span data-hf-id="hf-7vsj" class="03-marker-pass-bar 03-marker-pass-bar-c"></span>
+            <span data-hf-id="hf-e9mj" class="03-marker-pass-tipwrap 03-marker-pass-tipwrap-c"><span data-hf-id="hf-11bf" class="03-marker-pass-tip"></span></span>
+            <span data-hf-id="hf-85vo" class="03-marker-pass-ink 03-marker-pass-ink-c">80% Non-Cancelable</span>
+          </span>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-ibg7" class="03-marker-pass-label">Anthropic</div>
+      <div data-hf-id="hf-ntee" class="03-marker-pass-numeral">1.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      const ID = "03-marker-pass";
+      const FPS = 30;
+      const DURATION = 4;
+      const root = document.querySelector('[data-composition-id="' + ID + '"]');
+      const one = (name) => root.querySelector('[class~="' + ID + "-" + name + '"]');
+      const all = (name) => Array.from(root.querySelectorAll('[class~="' + ID + "-" + name + '"]'));
+
+      // Parking ease: each frame covers k of the remaining distance.
+      const park = (k = 0.15, fps = FPS) => (dur) => (p) =>
+        (1 - Math.pow(1 - k, p * dur * fps)) / (1 - Math.pow(1 - k, dur * fps));
+
+      // ---- Geometry -------------------------------------------------------------
+      // Advance widths of EB Garamond Variable 500 in em (measured in Chrome from the
+      // shipped woff2), so both the paragraph seat and the headline rest position of
+      // every chunk are known without reading layout at build time.
+      const EM = {
+        // headline prefixes
+        anthropic_: 4.373984375, // "Anthropic "
+        compute_: 7.807421875, // "$518B of Compute "
+        space: 0.2130625,
+        deals: 2.16284375, // "Deals"
+        // paragraph line 9: "4,000+ Apps. UPDATE: Anthropic"
+        p9Anthropic: 9.942828125,
+        // paragraph line 10: "Locked Into $518B of Compute Deals,"
+        p10Dollar: 5.04125,
+        p10Deals: 12.848671875,
+      };
+      const HL = 76; // headline px
+      const PF = 56; // paragraph px
+      const S = PF / HL; // a chunk at paragraph size
+      const PARA_TOP = 230;
+      const LEADING = 73;
+      const PARA_BASE = 56; // baseline inside a 73px paragraph line box
+      const HL_TOP = 631.26; // headline box top, the same value frame 04 opens on
+      const HL_BASE = 68; // baseline inside a 76px/1.1 headline line box, as Chrome sets it
+      const HL_X = 150;
+      const HL_Y1 = HL_TOP + HL_BASE;
+      const HL_Y2 = HL_Y1 + HL * 1.1;
+      const HL_Y3 = HL_Y2 + HL * 1.1;
+      const COL_X = 80;
+      const CX = 540; // canvas centre
+      const CY = 960;
+      const PUSH = 1.03; // the stage is counter-scaled by 1/PUSH about the canvas centre
+
+      // The paragraph is ragged right, so every seat sits at its natural advance.
+      const yLine9 = PARA_TOP + 8 * LEADING + PARA_BASE;
+      const yLine10 = PARA_TOP + 9 * LEADING + PARA_BASE;
+      const yLine11 = PARA_TOP + 10 * LEADING + PARA_BASE;
+
+      // seat = [x in column, baseline y] in the paragraph; rest = the same in the headline.
+      const UNITS = {
+        a: { seat: [EM.p9Anthropic * PF, yLine9], rest: [0, HL_Y1] },
+        li: { seat: [0, yLine10], rest: [EM.anthropic_ * HL, HL_Y1] },
+        b1: { seat: [EM.p10Dollar * PF, yLine10], rest: [0, HL_Y2] },
+        b2: { seat: [EM.p10Deals * PF, yLine10], rest: [EM.compute_ * HL, HL_Y2] },
+        c: { seat: [0, yLine11], rest: [0, HL_Y3] },
+      };
+      // Seats are paragraph (camera) coordinates; chunks live in the counter-scaled
+      // stage, so a seat is mapped into stage space before it is compared with the rest.
+      const seatState = (u) => ({
+        x: CX + (COL_X + u.seat[0] - CX) * PUSH - (HL_X + u.rest[0]),
+        y: CY + (u.seat[1] - CY) * PUSH - u.rest[1],
+        scale: S * PUSH,
+        transformOrigin: "0px " + HL_BASE + "px",
+      });
+
+      // "Deals" shares its chunk with the comma, so its marker is sized to the word.
+      // It now follows "$518B of Compute" on the same line, so it starts where that
+      // bar ends and the two read as one stroke.
+      const BLEED = 7;
+      const SKEW = -6;
+      const JOIN = EM.space * HL - BLEED + 1;
+      [one("bar-b2"), one("tipwrap-b2")].forEach((el) => {
+        el.style.left = -JOIN + "px";
+        el.style.right = "auto";
+        el.style.width = JOIN + EM.deals * HL + BLEED + "px";
+      });
+
+      // The whole shot is authored at 120 BPM and played 10/9 faster (a 1.8s bar = 54 frames at 30fps).
+      // `seq` holds the authored sequence; the registered, paused `tl` plays it at that speed.
+      const seq = gsap.timeline();
+
+      // ---- The film's one linear push (3%) --------------------------------------
+      seq.fromTo(one("camera"), { scale: 1 }, { scale: 1.03, duration: DURATION, ease: "none" }, 0);
+
+      // ---- Scene 2 (1.0–2.5s): the marker, one phrase per beat --------------------
+      const sweep = (key, at, dur) => {
+        seq.fromTo(
+          one("bar-" + key),
+          { scaleX: 0, skewX: SKEW, transformOrigin: "0% 50%" },
+          { scaleX: 1, skewX: SKEW, duration: dur, ease: "power2.out" },
+          at,
+        );
+        // The nib tracks the bar's front edge, then resolves to a clean end.
+        const tip = one("tipwrap-" + key);
+        seq.fromTo(tip, { xPercent: 0 }, { xPercent: 100, duration: dur, ease: "power2.out" }, at);
+        seq.set(tip, { opacity: 1 }, at);
+        seq.fromTo(
+          tip,
+          { opacity: 1 },
+          { opacity: 0, duration: dur * 0.55, ease: "power1.in", immediateRender: false },
+          at + dur * 0.45,
+        );
+        // Marked words come up to full ink as the marker passes.
+        seq.fromTo(
+          one("ink-" + key),
+          { opacity: 0.8 },
+          { opacity: 1, duration: dur, ease: "power2.out", immediateRender: false },
+          at,
+        );
+      };
+      sweep("a", 1.0, 0.3); // "Anthropic"
+      sweep("b1", 1.5, 0.3); // "$518B of Compute" …
+      sweep("b2", 1.8, 0.2); // … "Deals": the same stroke, carried on along the line
+      sweep("c", 2.0, 0.38); // "80% Non-Cancelable"
+
+      // ---- Scene 3 (2.5–4.0s): the rest falls away, the marked words lock up ------
+      const LIFT = 2.5;
+      const para = one("para");
+      seq.fromTo(
+        para,
+        { opacity: 0.8 },
+        { opacity: 0.12, duration: 0.35, ease: "power2.out", immediateRender: false },
+        LIFT,
+      );
+      seq.fromTo(
+        para,
+        { opacity: 0.12 },
+        { opacity: 0, duration: 0.3, ease: "power2.out", immediateRender: false },
+        LIFT + 0.35,
+      );
+      // The leftovers of the two lines the headline is lifted from clear first, so
+      // nothing ghosts under the words as they grow.
+      seq.fromTo(
+        all("under"),
+        { opacity: 1 },
+        { opacity: 0, duration: 0.3, ease: "power2.out", immediateRender: false },
+        LIFT,
+      );
+
+      // Chunks leave two frames apart and are all parked by 3.15s. Every chunk rises
+      // out of lines 9–11 into the headline block as it grows; "Anthropic" and
+      // "$518B of Compute" also cross the column leftwards, so they carry the blur.
+      const TRAVEL = [
+        { key: "a", at: LIFT, dur: 0.6, marked: true, blur: true },
+        { key: "li", at: LIFT + 2 / FPS, dur: 0.55 },
+        { key: "b1", at: LIFT + 2 / FPS, dur: 0.55, marked: true, blur: true },
+        { key: "c", at: LIFT + 4 / FPS, dur: 0.5, marked: true },
+        { key: "b2", at: LIFT + 6 / FPS, dur: 0.45, marked: true },
+      ];
+      TRAVEL.forEach(({ key, at, dur, marked, blur }) => {
+        seq.fromTo(
+          one("chunk-" + key),
+          seatState(UNITS[key]),
+          { x: 0, y: 0, scale: 1, duration: dur, ease: park()(dur) },
+          at,
+        );
+        if (marked) {
+          // Marker colour drains to plain ink as the chunk lands.
+          seq.fromTo(
+            one("bar-" + key),
+            { opacity: 1 },
+            { opacity: 0, duration: dur - 0.1, ease: "power2.inOut", immediateRender: false },
+            at + 0.1,
+          );
+        }
+        if (blur) {
+          // Blur along the path: strongest on the first frames, gone before the landing.
+          const ghost = one("ghost-" + key);
+          const ink = one("ink-" + key);
+          seq.fromTo(ghost, { opacity: 0 }, { opacity: 0.8, duration: 2 / FPS, ease: "power1.out" }, at);
+          seq.fromTo(
+            ghost,
+            { opacity: 0.8 },
+            { opacity: 0, duration: 0.3, ease: "power2.out", immediateRender: false },
+            at + 2 / FPS,
+          );
+          seq.fromTo(
+            ink,
+            { opacity: 1 },
+            { opacity: 0.6, duration: 2 / FPS, ease: "power1.out", immediateRender: false },
+            at,
+          );
+          seq.fromTo(
+            ink,
+            { opacity: 0.6 },
+            { opacity: 1, duration: 0.3, ease: "power2.out", immediateRender: false },
+            at + 2 / FPS,
+          );
+        }
+      });
+
+      // Connectives ("Locked Into", the comma) sink with the paragraph, ride along
+      // unmarked, and come back to ink as the headline locks.
+      const links = [one("ink-li"), one("comma")];
+      seq.fromTo(
+        links,
+        { opacity: 0.8 },
+        { opacity: 0.12, duration: 0.35, ease: "power2.out", immediateRender: false },
+        LIFT,
+      );
+      seq.fromTo(
+        links,
+        { opacity: 0.12 },
+        { opacity: 1, duration: 0.3, ease: park()(0.3), immediateRender: false },
+        2.9,
+      );
+
+      // Label, then numeral three frames later; everything is still from 3.4s.
+      seq.fromTo(
+        one("label"),
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.3, ease: park()(0.3) },
+        3.0,
+      );
+      seq.fromTo(
+        one("numeral"),
+        { opacity: 0, x: -12 },
+        { opacity: 1, x: 0, duration: 0.3, ease: park()(0.3) },
+        3.0 + 3 / FPS,
+      );
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.add(seq.timeScale(10 / 9), 0);
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>

@@ -37,7 +37,8 @@ To regenerate an existing video, open its folder: `BRIEF.md` and `STORYBOARD.md`
 
 | Series | Spec | Project | Status |
 |--------|------|---------|--------|
-| Launch | [`specs/launch.md`](specs/launch.md) | `aidr-launch/` | In progress |
+| Launch | [`specs/launch.md`](specs/launch.md) | `aidr-launch/` | 16:9 master built (30.6s, voice, music, effects) |
+| Launch, 9:16 (TikTok, Reels, Shorts) | [`specs/launch.md`](specs/launch.md) | `aidr-launch-9x16/` | Built; same timings and audio as the master, re-laid out per its `film-sheet.md` |
 | Launch, Vietnamese cut | [`specs/launch-vi.md`](specs/launch-vi.md) | — | Planned |
 | Feature release | [`specs/feature-release.md`](specs/feature-release.md) | — | Planned |
 | New source | [`specs/new-source.md`](specs/new-source.md) | — | Planned |
