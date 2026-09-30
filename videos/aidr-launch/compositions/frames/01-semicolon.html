@@ -1,0 +1,312 @@
+<template>
+  <style>
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-wght-normal-BqRLTx4X.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-vietnamese-wght-normal-C1uRvKPU.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-ext-wght-normal-C8iNium2.woff2")format("woff2-variations");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
+    #root {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+    }
+
+    /* Full-bleed sun ground: its own clip layer, never the root. */
+    [id="01-semicolon-ground"] {
+      position: absolute;
+      inset: 0;
+      background: #f5c518;
+    }
+
+    /* Root camera: carries the single linear 3% push and nothing else. */
+    [id="01-semicolon-camera"] {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+    }
+
+    /*
+      Scene 3 camera (coordinate-target-zoom, nested form): the outer wrapper
+      only scales around the frame centre, the inner wrapper only translates.
+    */
+    [id="01-semicolon-zoom"] {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+    }
+    [id="01-semicolon-pan"] {
+      position: absolute;
+      inset: 0;
+    }
+
+    /*
+      The semicolon alone at 7.53px per path unit. The viewBox is its own bbox
+      (x 100.6–114.9, y 40.5–106.5), so left/top put the bbox centre on
+      (960, 470): 497px tall, the square dot 106px wide centred near (960, 274).
+    */
+    [id="01-semicolon-semi"] {
+      position: absolute;
+      left: 906.1605px;
+      top: 221.51px;
+      width: 107.679px;
+      height: 496.98px;
+      display: block;
+      overflow: visible;
+    }
+
+    [id="01-semicolon-date"],
+    [id="01-semicolon-site"] {
+      position: absolute;
+      top: 88px;
+      margin: 0;
+      font-family: "Source Sans 3 Variable", sans-serif;
+      font-weight: 600;
+      font-size: 22px;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      font-variant-numeric: tabular-nums lining-nums;
+      color: rgba(10, 10, 10, 0.68);
+      white-space: nowrap;
+    }
+    [id="01-semicolon-date"] {
+      left: 96px;
+    }
+    [id="01-semicolon-site"] {
+      right: 96px;
+      margin-right: -0.14em; /* trailing tracking must not pull the word off its edge */
+    }
+
+    /*
+      The typed line. The whole sentence is always laid out (the untyped tail
+      is hidden, not absent), so the line is centred from the first keystroke
+      and never shifts as it types.
+    */
+    [id="01-semicolon-line"] {
+      position: absolute;
+      left: 0;
+      top: 786px; /* baseline near y 813 */
+      width: 1920px;
+      margin: 0;
+      padding-left: 0.24em; /* cancels the trailing tracking so the line centres optically */
+      box-sizing: border-box;
+      text-align: center;
+      font-family: "Source Sans 3 Variable", sans-serif;
+      font-weight: 600;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: 0.24em;
+      font-variant-numeric: lining-nums;
+      color: #0a0a0a;
+      white-space: pre;
+    }
+    [id="01-semicolon-rest"] {
+      visibility: hidden;
+    }
+    /* Zero-width anchor on the baseline, so the caret never takes layout space. */
+    [id="01-semicolon-caret-anchor"] {
+      display: inline-block;
+      position: relative;
+      width: 0;
+      height: 0;
+    }
+    [id="01-semicolon-caret"] {
+      position: absolute;
+      left: -0.14em;
+      bottom: -0.14em;
+      width: 3px;
+      height: 0.96em;
+      background: #0a0a0a;
+      opacity: 0;
+    }
+  </style>
+
+  <div data-hf-id="hf-plqg" id="root" data-composition-id="01-semicolon" data-width="1920" data-height="1080" data-duration="4.4">
+    <div data-hf-id="hf-vfu5" id="01-semicolon-ground" class="clip" data-start="0" data-duration="4.4" data-track-index="0"></div>
+
+    <div data-hf-id="hf-fys6" id="01-semicolon-camera" class="clip" data-start="0" data-duration="4.4" data-track-index="1">
+      <div data-hf-id="hf-avv8" id="01-semicolon-zoom">
+        <div data-hf-id="hf-x3ue" id="01-semicolon-pan">
+          <p data-hf-id="hf-a14s" id="01-semicolon-date">2026-09-30</p>
+          <p data-hf-id="hf-s3t0" id="01-semicolon-site">aidr.today</p>
+
+          <!-- The spine: the outlined semicolon from the site mark, never a typed character. -->
+          <svg data-hf-id="hf-2h7a" id="01-semicolon-semi" viewBox="100.6 40.5 14.3 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <g data-hf-id="hf-drew" fill="#1C1917">
+              <path data-hf-id="hf-b5ta" d="M114.9 54.3L100.8 54.3L100.8 40.5L114.9 40.5L114.9 54.3Z" />
+              <path data-hf-id="hf-z7yj" d="M114.9 77.3L114.9 87.8Q114.9 93.6 113.7 98.1Q112.4 102.6 109.6 106.5L109.6 106.5L100.6 106.5Q103.8 102.5 105.5 98.5Q107.1 94.5 107.1 91L107.1 91L100.8 91L100.8 77.3L114.9 77.3Z" />
+            </g>
+          </svg>
+
+          <p data-hf-id="hf-nmec" id="01-semicolon-line"><span data-hf-id="hf-b7is" id="01-semicolon-typed"></span><span data-hf-id="hf-a0qd" id="01-semicolon-caret-anchor"><span data-hf-id="hf-5i8t" id="01-semicolon-caret"></span></span><span data-hf-id="hf-bpow" id="01-semicolon-rest">318 AI stories today</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      const FRAME_ID = "01-semicolon";
+      const root = document.querySelector('[data-composition-id="' + FRAME_ID + '"]');
+      const $ = (name) => root.querySelector('[id="' + FRAME_ID + "-" + name + '"]');
+
+      const FPS = 30;
+      const FRAME = 1 / FPS;
+      const DURATION = 4;
+      const EPS = 1e-4;
+
+      const tl = gsap.timeline({ paused: true });
+
+      // The one root push: linear, whole duration, 3%.
+      const PUSH = 0.03;
+      tl.fromTo(
+        $("camera"),
+        { scale: 1 },
+        { scale: 1 + PUSH, duration: DURATION, ease: "none", force3D: false },
+        0,
+      );
+
+      // Scene 1 (0.0–1.5s): the semicolon alone, there from t=0, blinking like a
+      // caret on the beat. Square wave, no fade.
+      const semi = $("semi");
+      tl.set(semi, { opacity: 0 }, 0.5);
+      tl.set(semi, { opacity: 1 }, 0.75);
+      tl.set(semi, { opacity: 0 }, 1.0);
+      tl.set(semi, { opacity: 1 }, 1.25);
+
+      // Scene 2 (1.5–3.0s): the line types on under the semicolon
+      // (discrete-text-sequence). One keystroke per frame, a two-frame breath at
+      // each word break; "stories" completes on the beat at 2.0s, done at 2.23s.
+      const TEXT = "318 AI stories today";
+      const KEY_FRAMES = [45, 46, 47, 49, 50, 51, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63, 64, 65, 66, 67];
+      const SEQUENCE = [{ t: 0, n: 0 }].concat(KEY_FRAMES.map((f, i) => ({ t: f * FRAME, n: i + 1 })));
+      const TYPE_AT = KEY_FRAMES[0] * FRAME;
+      const CARET_OFF = 2.5;
+      const CARET_ON = 2.75;
+
+      // Reverse-search for the latest state whose time has passed.
+      function typedAt(time) {
+        for (let i = SEQUENCE.length - 1; i >= 0; i--) {
+          if (time >= SEQUENCE[i].t - EPS) return SEQUENCE[i].n;
+        }
+        return 0;
+      }
+
+      const typedEl = $("typed");
+      const restEl = $("rest");
+      const caretEl = $("caret");
+
+      function renderLine(time) {
+        const n = typedAt(time);
+        typedEl.textContent = TEXT.slice(0, n);
+        restEl.textContent = TEXT.slice(n);
+        // The caret takes over from the semicolon at the first keystroke, then
+        // blinks once on the grid while the finished line holds.
+        const typing = time >= TYPE_AT - EPS;
+        const blinkedOff = time >= CARET_OFF - EPS && time < CARET_ON - EPS;
+        caretEl.style.opacity = typing && !blinkedOff ? "1" : "0";
+      }
+
+      const driver = { t: 0 };
+      tl.to(
+        driver,
+        {
+          t: DURATION,
+          duration: DURATION,
+          ease: "none",
+          onUpdate: () => renderLine(driver.t),
+        },
+        0,
+      );
+      renderLine(0);
+
+      // Scene 3 (3.0–4.0s): line and labels drop out in 4 frames, then the camera
+      // goes for the semicolon's upper dot.
+      const ZOOM_AT = 3.0;
+      const ZOOM_DUR = 1.0;
+      const DROP = 4 * FRAME;
+      tl.fromTo(
+        $("line"),
+        { opacity: 1, y: 0 },
+        { opacity: 0, y: 8, duration: DROP, ease: "power1.in", force3D: false },
+        ZOOM_AT,
+      );
+      tl.fromTo(
+        [$("date"), $("site")],
+        { opacity: 1 },
+        { opacity: 0, duration: DROP, ease: "power1.in" },
+        ZOOM_AT,
+      );
+
+      // coordinate-target-zoom, solved in screen space so the handoff is exact.
+      // Layout is absolute SVG geometry (no font metrics), so the offset is known.
+      //   screen = centre + R · S · (offset + T)
+      // R is the root push, S the zoom (outer), T the counter-translate (inner).
+      const K = 7.53; // px per path unit
+      const OFF_X = (107.85 - 107.75) * K; // dot centre from frame centre, x
+      const OFF_Y = (47.4 - 73.5) * K + (470 - 540); // and y
+      const DOT_W = 14.1 * K;
+
+      // Handoff at the cut: dot centre (960, 392), 900px across, scale still
+      // rising, no drift in x/y.
+      const END_X = 960;
+      const END_Y = 392;
+      const END_SIZE = 900;
+
+      const pushAt = (p) => 1 + (PUSH * (ZOOM_AT + p * ZOOM_DUR)) / DURATION;
+      const R_START = pushAt(0);
+      const R_END = pushAt(1);
+      const S_END = END_SIZE / (DOT_W * R_END);
+      const LN_S_END = Math.log(S_END);
+
+      // Exponential scale on a squared clock: leaves the hold at zero speed and
+      // is still accelerating at the cut.
+      const zoomAt = (p) => Math.exp(LN_S_END * p * p);
+
+      // The dot's screen position eases to its handoff point and is parked by
+      // 90% of the move, so the last frames are pure scale.
+      const SETTLE = 0.9;
+      const travel = (p) => {
+        const q = Math.min(1, p / SETTLE);
+        return q < 0.5 ? 2 * q * q : 1 - 2 * (1 - q) * (1 - q);
+      };
+      const START_X = 960 + R_START * OFF_X;
+      const START_Y = 540 + R_START * OFF_Y;
+      const panXAt = (p) =>
+        (START_X + (END_X - START_X) * travel(p) - 960) / (pushAt(p) * zoomAt(p)) - OFF_X;
+      const panYAt = (p) =>
+        (START_Y + (END_Y - START_Y) * travel(p) - 540) / (pushAt(p) * zoomAt(p)) - OFF_Y;
+      const PAN_X_END = panXAt(1);
+      const PAN_Y_END = panYAt(1);
+
+      // Same position and duration on all three; each ease is the exact solved curve.
+      tl.fromTo(
+        $("zoom"),
+        { scale: 1 },
+        {
+          scale: S_END,
+          duration: ZOOM_DUR,
+          ease: (p) => (zoomAt(p) - 1) / (S_END - 1),
+          force3D: false,
+        },
+        ZOOM_AT,
+      );
+      tl.fromTo(
+        $("pan"),
+        { x: 0 },
+        { x: PAN_X_END, duration: ZOOM_DUR, ease: (p) => panXAt(p) / PAN_X_END, force3D: false },
+        ZOOM_AT,
+      );
+      tl.fromTo(
+        $("pan"),
+        { y: 0 },
+        { y: PAN_Y_END, duration: ZOOM_DUR, ease: (p) => panYAt(p) / PAN_Y_END, force3D: false },
+        ZOOM_AT,
+      );
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines[FRAME_ID] = tl;
+    })();
+  </script>
+</template>

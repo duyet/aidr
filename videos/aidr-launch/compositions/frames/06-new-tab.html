@@ -1,0 +1,542 @@
+<template>
+  <div data-hf-id="hf-47ho" id="root" data-composition-id="06-new-tab" data-width="1920" data-height="1080" data-start="0" data-duration="6.4">
+    <style>
+      @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-wght-normal-BqRLTx4X.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+      @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-vietnamese-wght-normal-C1uRvKPU.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+      @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-ext-wght-normal-C8iNium2.woff2")format("woff2-variations");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+      @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-latin-wght-normal-CRpggXlh.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+      @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-vietnamese-wght-normal-DvUmmjCN.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        font-family: "Source Sans 3 Variable", sans-serif;
+        color: #0a0a0a;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: geometricPrecision;
+      }
+      .f06-ground {
+        position: absolute;
+        inset: 0;
+        background: #e5e5e3;
+      }
+      .f06-stage {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      /* outer wrapper: the one linear root push (2%) */
+      .f06-push {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+      }
+      /* inner wrapper: the virtual camera (viewport-change) */
+      .f06-world {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+      }
+
+      /* ── browser window ─────────────────────────────── */
+      .f06-win {
+        position: absolute;
+        left: 220px;
+        top: 86px;
+        width: 1480px;
+        box-sizing: border-box;
+        background: #f7f7f5;
+        border: 1px solid rgba(10, 10, 10, 0.18);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      .f06-tabbar {
+        height: 56px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: flex-end;
+        padding: 0 22px;
+        background: rgba(10, 10, 10, 0.05);
+        border-bottom: 1px solid rgba(10, 10, 10, 0.08);
+      }
+      .f06-dots {
+        display: flex;
+        gap: 9px;
+        align-self: center;
+        margin-right: 30px;
+      }
+      .f06-dots i {
+        display: block;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: rgba(10, 10, 10, 0.16);
+      }
+      .f06-tab {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        height: 43px;
+        width: 236px;
+        box-sizing: border-box;
+        padding: 0 16px 1px;
+        margin-bottom: -1px;
+        background: #f7f7f5;
+        border: 1px solid rgba(10, 10, 10, 0.08);
+        border-bottom: 0;
+        border-radius: 11px 11px 0 0;
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: 0.005em;
+      }
+      .f06-tab img {
+        display: block;
+        width: 20px;
+        height: 20px;
+      }
+      .f06-page {
+        padding: 40px 48px 48px;
+      }
+      .f06-site {
+        display: flex;
+        align-items: baseline;
+        gap: 18px;
+        margin-bottom: 28px;
+        line-height: 1;
+      }
+      .f06-site-mark {
+        font-family: "EB Garamond Variable", serif;
+        font-weight: 500;
+        font-size: 44px;
+        line-height: 1;
+        letter-spacing: -0.005em;
+      }
+      .f06-site-tag {
+        font-size: 24px;
+        font-weight: 400;
+        line-height: 1;
+        color: #474747;
+      }
+
+      /* ── digest card (film-sheet spec) ──────────────── */
+      .f06-card {
+        box-sizing: border-box;
+        width: 1384px;
+        padding: 44px 48px;
+        background: #ffffff;
+        border: 1px solid #0a0a0a14;
+        border-radius: 32px;
+      }
+      .f06-card-head {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        height: 52px;
+        margin-bottom: 30px;
+      }
+      .f06-card-mark {
+        font-family: "EB Garamond Variable", serif;
+        font-weight: 500;
+        font-size: 52px;
+        line-height: 1;
+        letter-spacing: -0.005em;
+      }
+      .f06-card-date {
+        font-size: 22px;
+        font-weight: 400;
+        line-height: 1;
+        color: #474747;
+        font-variant-numeric: tabular-nums;
+      }
+      .f06-pill {
+        margin-left: auto;
+        align-self: center;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 40px;
+        box-sizing: border-box;
+        padding: 0 4px;
+        border-radius: 20px;
+        background: #e5e5e3;
+        font-size: 17px;
+        font-weight: 600;
+        line-height: 1;
+        color: #474747;
+        font-variant-numeric: tabular-nums;
+      }
+      .f06-pill span {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+      }
+      .f06-pill .f06-pill-on {
+        background: #0a0a0a;
+        color: #f7f7f5;
+      }
+      .f06-rows {
+        display: grid;
+        grid-auto-flow: column;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: repeat(4, 100px);
+        column-gap: 64px;
+        row-gap: 22px;
+      }
+      .f06-row {
+        display: grid;
+        grid-template-columns: 40px 1fr;
+        align-content: start;
+      }
+      .f06-num {
+        padding-top: 26px;
+        font-size: 28px;
+        font-weight: 400;
+        line-height: 1.3;
+        color: #474747;
+        font-variant-numeric: tabular-nums;
+      }
+      .f06-label {
+        height: 20px;
+        margin-bottom: 6px;
+        font-size: 17px;
+        font-weight: 600;
+        line-height: 20px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .f06-hl {
+        font-size: 28px;
+        font-weight: 400;
+        line-height: 1.3;
+        color: #0a0a0a;
+      }
+      .f06-hl span {
+        text-decoration: underline;
+        text-decoration-color: #0a0a0a14;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 6px;
+      }
+      .f06-hl b {
+        font-weight: 600;
+      }
+      .f06-card-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-top: 30px;
+        font-size: 20px;
+        font-weight: 400;
+        line-height: 24px;
+        color: #474747;
+        font-variant-numeric: tabular-nums;
+      }
+      .f06-card-foot .f06-updated {
+        color: #b45309;
+      }
+
+      /* ── delivery chips (screen space, right 25%) ───── */
+      .f06-chips {
+        position: absolute;
+        left: 1500px;
+        top: 374px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+      }
+      .f06-chip {
+        display: flex;
+        align-items: center;
+        height: 68px;
+        box-sizing: border-box;
+        padding: 0 30px 2px;
+        background: #f7f7f5;
+        border: 1px solid rgba(10, 10, 10, 0.18);
+        border-radius: 34px;
+        font-size: 30px;
+        font-weight: 600;
+        line-height: 1;
+        color: #0a0a0a;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .f06-defs {
+        position: absolute;
+        width: 0;
+        height: 0;
+      }
+    </style>
+
+    <div data-hf-id="hf-xub2" class="clip f06-ground" data-start="0" data-duration="6.4" data-track-index="0"></div>
+
+    <div data-hf-id="hf-tf6y" class="clip f06-stage" data-start="0" data-duration="6.4" data-track-index="1">
+      <div data-hf-id="hf-k1mh" class="f06-push">
+        <div data-hf-id="hf-vbvy" class="f06-world" data-layout-allow-overflow="">
+          <div data-hf-id="hf-fz6t" class="f06-win">
+            <div data-hf-id="hf-ny7x" class="f06-tabbar">
+              <div data-hf-id="hf-bes9" class="f06-dots"><i data-hf-id="hf-wt6k"></i><i data-hf-id="hf-zeb8"></i><i data-hf-id="hf-y7e5"></i></div>
+              <div data-hf-id="hf-f0e2" class="f06-tab">
+                <img data-hf-id="hf-9n6s" src="assets/favicon.svg" alt="">
+                <span data-hf-id="hf-co72">New Tab</span>
+              </div>
+            </div>
+
+            <div data-hf-id="hf-dpfo" class="f06-page">
+              <div data-hf-id="hf-965g" class="f06-site">
+                <span data-hf-id="hf-7s2a" class="f06-site-mark">AI;DR</span>
+                <span data-hf-id="hf-vjah" class="f06-site-tag">What's happening in AI today?</span>
+              </div>
+
+              <div data-hf-id="hf-ndsz" class="f06-card">
+                <div data-hf-id="hf-7z8a" class="f06-card-head">
+                  <span data-hf-id="hf-p8qt" class="f06-card-mark">AI;DR</span>
+                  <span data-hf-id="hf-3uzx" class="f06-card-date">2026-09-30</span>
+                  <div data-hf-id="hf-dsk4" class="f06-pill">
+                    <span data-hf-id="hf-a2y3" class="f06-pill-on">8</span><span data-hf-id="hf-24o6">12</span><span data-hf-id="hf-0jg2">16</span>
+                  </div>
+                </div>
+
+                <div data-hf-id="hf-2an2" class="f06-rows">
+                  <div data-hf-id="hf-4qg7" class="f06-row">
+                    <span data-hf-id="hf-nrzb" class="f06-num">1.</span>
+                    <div data-hf-id="hf-yeow">
+                      <div data-hf-id="hf-2hk0" class="f06-label" style="color: #8b300b">Anthropic</div>
+                      <div data-hf-id="hf-xmhl" class="f06-hl">
+                        <span data-hf-id="hf-xktk">UPDATE: <b data-hf-id="hf-y3fl" style="color: #8b300b">Anthropic</b> Locked Into $518B of Compute Deals, 80% Non-Cancelable</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-6u13" class="f06-row">
+                    <span data-hf-id="hf-pkoo" class="f06-num">2.</span>
+                    <div data-hf-id="hf-y7yw">
+                      <div data-hf-id="hf-2q59" class="f06-label" style="color: #9f1239">Regulation</div>
+                      <div data-hf-id="hf-jwml" class="f06-hl">
+                        <span data-hf-id="hf-6jlh">UPDATE: <b data-hf-id="hf-1ki4" style="color: #4f1f9b">Trump</b> Releases AI Accord Requiring External Audits and Board Oversight</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-6fq2" class="f06-row">
+                    <span data-hf-id="hf-f7rp" class="f06-num">3.</span>
+                    <div data-hf-id="hf-x11t">
+                      <div data-hf-id="hf-2ntm" class="f06-label" style="color: #8b300b">OpenAI</div>
+                      <div data-hf-id="hf-l3jo" class="f06-hl">
+                        <span data-hf-id="hf-bzmm">UPDATE: <b data-hf-id="hf-my2l" style="color: #8b300b">OpenAI</b> Scraps Planned October Launch of GPT-6.1 <b data-hf-id="hf-tutb" style="color: #9f1239">Astra</b> in Rare <b data-hf-id="hf-1w11" style="color: #0d5468">Safety</b> Rollback</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-61f1" class="f06-row">
+                    <span data-hf-id="hf-vvom" class="f06-num">4.</span>
+                    <div data-hf-id="hf-xfcu">
+                      <div data-hf-id="hf-cxmm" class="f06-label" style="color: #8b300b">OpenAI</div>
+                      <div data-hf-id="hf-kp8n" class="f06-hl">
+                        <span data-hf-id="hf-ox2p"><b data-hf-id="hf-cj69" style="color: #8b300b">OpenAI</b> Seeks $30B Bridge Round at $1.4 Trillion <b data-hf-id="hf-32qr" style="color: #4f1f9b">Valuation</b></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-8tk8" class="f06-row">
+                    <span data-hf-id="hf-lirn" class="f06-num">5.</span>
+                    <div data-hf-id="hf-w8fr">
+                      <div data-hf-id="hf-dbxn" class="f06-label" style="color: #8b300b">OpenAI</div>
+                      <div data-hf-id="hf-lw5q" class="f06-hl">
+                        <span data-hf-id="hf-2oou">UPDATE: <b data-hf-id="hf-dq3c" style="color: #8b300b">OpenAI</b> Launches Dots, Always-On Agents That Work Across 4,000+ Apps</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-8f97" class="f06-row">
+                    <span data-hf-id="hf-6jp0" class="f06-num">6.</span>
+                    <div data-hf-id="hf-wmqs">
+                      <div data-hf-id="hf-w3xt" class="f06-label" style="color: #9f1239">Regulation</div>
+                      <div data-hf-id="hf-lhup" class="f06-hl">
+                        <span data-hf-id="hf-56wg"><b data-hf-id="hf-uwis" style="color: #4f1f9b">Trump</b> and Tech CEOs Align on Voluntary AI <b data-hf-id="hf-tmei" style="color: #9f1239">Regulation</b></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-80y6" class="f06-row">
+                    <span data-hf-id="hf-pocx" class="f06-num">7.</span>
+                    <div data-hf-id="hf-vftp">
+                      <div data-hf-id="hf-lknb" class="f06-label" style="color: #322a90">Funding</div>
+                      <div data-hf-id="hf-mors" class="f06-hl">
+                        <span data-hf-id="hf-5gjo">UPDATE: <b data-hf-id="hf-j0ku" style="color: #8b300b">US Cloud</b> Giants Boost AI Capex Outlook 66% to $1.89 Trillion</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-7mn5" class="f06-row">
+                    <span data-hf-id="hf-cuoy" class="f06-num">8.</span>
+                    <div data-hf-id="hf-vu4q">
+                      <div data-hf-id="hf-dq8o" class="f06-label" style="color: #8b300b">OpenAI</div>
+                      <div data-hf-id="hf-magr" class="f06-hl">
+                        <span data-hf-id="hf-q8cq"><b data-hf-id="hf-dbsb" style="color: #8b300b">OpenAI</b> apologizes to Australia after its AI agents breached government sites</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div data-hf-id="hf-104o" class="f06-card-foot">
+                  <span data-hf-id="hf-mubm">318 stories</span>
+                  <span data-hf-id="hf-qv7d" class="f06-updated">Updated 43m ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-8v3y" class="f06-chips">
+          <div data-hf-id="hf-sywc" class="f06-chip">New tab</div>
+          <div data-hf-id="hf-ntwt" class="f06-chip">Email · 07:00</div>
+          <div data-hf-id="hf-grov" class="f06-chip">Telegram · 08:00</div>
+          <div data-hf-id="hf-sptx" class="f06-chip">RSS</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- directional blur: vertical for the window rise, horizontal per chip; zero at rest -->
+    <svg data-hf-id="hf-rp67" class="f06-defs" aria-hidden="true">
+      <defs data-hf-id="hf-mh0t">
+        <filter data-hf-id="hf-295h" id="f06-blur-win" x="-5%" y="-20%" width="110%" height="140%">
+          <fegaussianblur data-hf-id="hf-vp8n" in="SourceGraphic" stdDeviation="0 0" />
+        </filter>
+        <filter data-hf-id="hf-g3s2" id="f06-blur-chip-0" x="-30%" y="-10%" width="160%" height="120%">
+          <fegaussianblur data-hf-id="hf-zzxj" in="SourceGraphic" stdDeviation="0 0" />
+        </filter>
+        <filter data-hf-id="hf-jm9p" id="f06-blur-chip-1" x="-30%" y="-10%" width="160%" height="120%">
+          <fegaussianblur data-hf-id="hf-zlmi" in="SourceGraphic" stdDeviation="0 0" />
+        </filter>
+        <filter data-hf-id="hf-v6f4" id="f06-blur-chip-2" x="-30%" y="-10%" width="160%" height="120%">
+          <fegaussianblur data-hf-id="hf-z7bh" in="SourceGraphic" stdDeviation="0 0" />
+        </filter>
+        <filter data-hf-id="hf-hitn" id="f06-blur-chip-3" x="-30%" y="-10%" width="160%" height="120%">
+          <fegaussianblur data-hf-id="hf-1zgo" in="SourceGraphic" stdDeviation="0 0" />
+        </filter>
+      </defs>
+    </svg>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      (function () {
+        const root = document.querySelector('[data-composition-id="06-new-tab"]');
+        const push = root.querySelector(".f06-push");
+        const world = root.querySelector(".f06-world");
+        const win = root.querySelector(".f06-win");
+        const chips = Array.from(root.querySelectorAll(".f06-chip"));
+
+        const W = 1920;
+        const H = 1080;
+        const DUR = 6;
+
+        // Parking ease (film sheet): each frame covers ~15% of the remaining distance.
+        const park = (k = 0.15, fps = 30) => (dur) => (p) =>
+          (1 - Math.pow(1 - k, p * dur * fps)) / (1 - Math.pow(1 - k, dur * fps));
+
+        // Directional blur writer: sets the filter's stdDeviation and drops the
+        // filter entirely at rest so settled text rasterises crisp.
+        const blurWriter = (el, filterId, axis) => {
+          const node = root.querySelector("#" + filterId + " feGaussianBlur");
+          return (v) => {
+            if (v < 0.05) {
+              el.style.filter = "none";
+              return;
+            }
+            node.setAttribute("stdDeviation", axis === "y" ? "0 " + v : v + " 0");
+            el.style.filter = "url(#" + filterId + ")";
+          };
+        };
+
+        // Virtual camera (viewport-change, single wrapper): the focus point
+        // (fx, fy) in world space maps to the viewport centre, T = -offset × S.
+        // fy is composed from two overlapping moves (fa: aim up at row 1,
+        // fb: glide down to row 4) so the push and the glide read as one move.
+        const cam = { s: 1, fx: W / 2, fa: 0, fb: 0 };
+        const applyCamera = () => {
+          const fy = H / 2 + cam.fa + cam.fb;
+          const x = -(cam.fx - W / 2) * cam.s;
+          const y = -(fy - H / 2) * cam.s;
+          world.style.transform = "translate(" + x + "px, " + y + "px) scale(" + cam.s + ")";
+        };
+        applyCamera();
+
+        const tl = gsap.timeline({ paused: true });
+
+        // Root push: one linear move for the whole frame, 2% total.
+        tl.fromTo(push, { scale: 1 }, { scale: 1.02, duration: DUR, ease: "none" }, 0);
+
+        // Scene 1 (0.0–1.2s): the window rises from below, vertical blur, lands by 0.8s.
+        const RISE = 0.8;
+        tl.fromTo(
+          win,
+          { y: 220, opacity: 0 },
+          { y: 0, opacity: 1, duration: RISE, ease: park()(RISE) },
+          0,
+        );
+        const winBlur = { v: 20 };
+        const writeWinBlur = blurWriter(win, "f06-blur-win", "y");
+        tl.fromTo(
+          winBlur,
+          { v: 20 },
+          { v: 0, duration: RISE, ease: park()(RISE), onUpdate: () => writeWinBlur(winBlur.v) },
+          0,
+        );
+        writeWinBlur(winBlur.v);
+
+        // Scene 2 (1.2–3.0s): push in on the card to 1.5× and glide down rows 1–4.
+        tl.to(
+          cam,
+          { s: 1.5, fx: 720, fa: -62, duration: 0.9, ease: park()(0.9), onUpdate: applyCamera },
+          1.2,
+        );
+        tl.to(cam, { fb: 182, duration: 1.6, ease: "sine.inOut", onUpdate: applyCamera }, 1.4);
+
+        // Scene 3 (3.0–5.0s): ease back to the full window, shifted left (75/25).
+        tl.to(
+          cam,
+          {
+            s: 0.9,
+            fx: 1220,
+            fa: 0,
+            fb: 0,
+            duration: 0.75,
+            ease: park()(0.75),
+            onUpdate: applyCamera,
+          },
+          3.0,
+        );
+
+        // Delivery chips tick in on the beats, 40px from the right, horizontal blur.
+        const CHIP = 0.45;
+        chips.forEach((chip, i) => {
+          const at = 3.0 + i * 0.5;
+          const blur = { v: 9 };
+          const write = blurWriter(chip, "f06-blur-chip-" + i, "x");
+          tl.fromTo(
+            chip,
+            { x: 40, opacity: 0 },
+            { x: 0, opacity: 1, duration: CHIP, ease: park()(CHIP) },
+            at,
+          );
+          tl.fromTo(
+            blur,
+            { v: 9 },
+            {
+              v: 0,
+              duration: CHIP,
+              ease: park()(CHIP),
+              immediateRender: false,
+              onUpdate: () => write(blur.v),
+            },
+            at,
+          );
+        });
+
+        // Scene 4 (5.0–6.0s): hold — only the root push keeps moving.
+
+        window.__timelines = window.__timelines || {};
+        window.__timelines["06-new-tab"] = tl;
+      })();
+    </script>
+  </div>
+</template>

@@ -1,0 +1,304 @@
+<template>
+  <style>
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-wght-normal-BqRLTx4X.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-vietnamese-wght-normal-C1uRvKPU.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-ext-wght-normal-C8iNium2.woff2")format("woff2-variations");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+    @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-latin-wght-normal-CRpggXlh.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+    @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-vietnamese-wght-normal-DvUmmjCN.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+
+    #root {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+    }
+
+    /* Camera wrapper: carries the single linear 3% push. Origin is the seam. */
+    .f05-two-tongues-cam {
+      position: absolute;
+      inset: 0;
+      transform-origin: 960px 540px;
+    }
+
+    .f05-two-tongues-layer {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* Grounds: paper left, ink right, meeting at x 960. Oversized outward so the push never shows an edge. */
+    .f05-two-tongues-ground-paper,
+    .f05-two-tongues-ground-ink {
+      position: absolute;
+      top: -40px;
+      bottom: -40px;
+    }
+    .f05-two-tongues-ground-paper { left: -40px; width: 1000px; background: #F7F7F5; }
+    .f05-two-tongues-ground-ink { left: 960px; width: 1000px; background: #0A0A0A; }
+
+    /* Each half clips at the seam, so crossing words are swallowed by the hinge. */
+    .f05-two-tongues-half {
+      position: absolute;
+      top: 0;
+      width: 960px;
+      height: 1080px;
+      overflow: hidden;
+    }
+    .f05-two-tongues-half-en { left: 0; color: #0A0A0A; }
+    .f05-two-tongues-half-vi { left: 960px; color: #F7F7F5; }
+
+    /* Language toggle micro-labels, pinned to the outer top corners. */
+    .f05-two-tongues-lang {
+      position: absolute;
+      top: 96px;
+      height: 44px;
+      padding: 0 20px 0 22px;
+      display: flex;
+      align-items: center;
+      border-radius: 22px;
+      font-family: "Source Sans 3 Variable", sans-serif;
+      font-weight: 600;
+      font-size: 20px;
+      line-height: 1;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .f05-two-tongues-lang-en { left: 102px; border: 1px solid rgba(10, 10, 10, 0.22); }
+    .f05-two-tongues-lang-vi { right: 102px; border: 1px solid rgba(247, 247, 245, 0.3); }
+
+    /* Headline measure: 690px (36% of frame), hugging the hinge, centred on y 500. */
+    .f05-two-tongues-measure {
+      position: absolute;
+      top: 0;
+      width: 690px;
+      height: 1000px;
+    }
+    .f05-two-tongues-half-en .f05-two-tongues-measure { left: 102px; }
+    .f05-two-tongues-half-vi .f05-two-tongues-measure { left: 168px; }
+
+    .f05-two-tongues-hl {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+    }
+    .f05-two-tongues-half-en .f05-two-tongues-hl { justify-content: flex-end; }
+    .f05-two-tongues-half-vi .f05-two-tongues-hl { justify-content: flex-start; }
+
+    .f05-two-tongues-hl p {
+      margin: 0;
+      width: 690px;
+      text-wrap: balance;
+    }
+    .f05-two-tongues-half-en .f05-two-tongues-hl p {
+      font-family: "EB Garamond Variable", serif;
+      font-weight: 500;
+      font-size: 74px;
+      line-height: 1.1;
+      letter-spacing: -0.008em;
+      text-align: right;
+    }
+    .f05-two-tongues-half-vi .f05-two-tongues-hl p {
+      font-family: "Source Sans 3 Variable", sans-serif;
+      font-weight: 600;
+      font-size: 54px;
+      line-height: 1.36;
+      letter-spacing: -0.004em;
+      text-align: left;
+    }
+
+    .f05-two-tongues-w {
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    /* The hinge: sun rounded square holding the ink semicolon. Sits on the seam, above both halves. */
+    .f05-two-tongues-tile {
+      position: absolute;
+      left: 876px;
+      top: 416px;
+      width: 168px;
+      height: 168px;
+      border-radius: 32px;
+      background: #F5C518;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .f05-two-tongues-tile svg {
+      display: block;
+      width: 20.8px;
+      height: 96px;
+    }
+  </style>
+
+  <div data-hf-id="hf-qck3" id="root" data-composition-id="05-two-tongues" data-width="1920" data-height="1080" data-duration="4.4">
+    <div data-hf-id="hf-x98g" class="f05-two-tongues-cam">
+      <div data-hf-id="hf-fksq" class="clip f05-two-tongues-layer" data-start="0" data-duration="4.4" data-track-index="0">
+        <div data-hf-id="hf-wl6b" class="f05-two-tongues-ground-paper"></div>
+        <div data-hf-id="hf-d1il" class="f05-two-tongues-ground-ink"></div>
+      </div>
+
+      <div data-hf-id="hf-lqij" class="clip f05-two-tongues-layer" data-start="0" data-duration="4.4" data-track-index="1">
+        <div data-hf-id="hf-bghe" class="f05-two-tongues-half f05-two-tongues-half-en" lang="en">
+          <div data-hf-id="hf-zgv1" class="f05-two-tongues-lang f05-two-tongues-lang-en">EN</div>
+          <div data-hf-id="hf-92x5" class="f05-two-tongues-measure">
+            <div data-hf-id="hf-5f4p" class="f05-two-tongues-hl f05-two-tongues-a f05-two-tongues-a-en">
+              <p data-hf-id="hf-q1an">
+                <span data-hf-id="hf-28jv" class="f05-two-tongues-w">OpenAI</span>
+                <span data-hf-id="hf-5ggu" class="f05-two-tongues-w">Seeks</span>
+                <span data-hf-id="hf-al5a" class="f05-two-tongues-w">$30B</span>
+                <span data-hf-id="hf-5260" class="f05-two-tongues-w">Bridge</span>
+                <span data-hf-id="hf-4mrn" class="f05-two-tongues-w">Round</span>
+                <span data-hf-id="hf-fy0w" class="f05-two-tongues-w">at</span>
+                <span data-hf-id="hf-pcwc" class="f05-two-tongues-w">$1.4</span>
+                <span data-hf-id="hf-17rc" class="f05-two-tongues-w">Trillion</span>
+                <span data-hf-id="hf-pr60" class="f05-two-tongues-w">Valuation</span>
+              </p>
+            </div>
+            <div data-hf-id="hf-4olh" class="f05-two-tongues-hl f05-two-tongues-b f05-two-tongues-b-en">
+              <p data-hf-id="hf-wo4v">
+                <span data-hf-id="hf-gffv" class="f05-two-tongues-w">OpenAI</span>
+                <span data-hf-id="hf-x23e" class="f05-two-tongues-w">apologizes</span>
+                <span data-hf-id="hf-plv0" class="f05-two-tongues-w">to</span>
+                <span data-hf-id="hf-xfv5" class="f05-two-tongues-w">Australia</span>
+                <span data-hf-id="hf-6hm9" class="f05-two-tongues-w">after</span>
+                <span data-hf-id="hf-lftd" class="f05-two-tongues-w">its</span>
+                <span data-hf-id="hf-fejr" class="f05-two-tongues-w">AI</span>
+                <span data-hf-id="hf-i22f" class="f05-two-tongues-w">agents</span>
+                <span data-hf-id="hf-7u69" class="f05-two-tongues-w">breached</span>
+                <span data-hf-id="hf-w72m" class="f05-two-tongues-w">government</span>
+                <span data-hf-id="hf-opz3" class="f05-two-tongues-w">sites</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-ffpe" class="f05-two-tongues-half f05-two-tongues-half-vi" lang="vi">
+          <div data-hf-id="hf-bm7d" class="f05-two-tongues-lang f05-two-tongues-lang-vi">VI</div>
+          <div data-hf-id="hf-unel" class="f05-two-tongues-measure">
+            <div data-hf-id="hf-9i7v" class="f05-two-tongues-hl f05-two-tongues-a f05-two-tongues-a-vi">
+              <p data-hf-id="hf-w9tu">
+                <span data-hf-id="hf-g14u" class="f05-two-tongues-w">OpenAI</span>
+                <span data-hf-id="hf-dc2g" class="f05-two-tongues-w">tìm</span>
+                <span data-hf-id="hf-2tlx" class="f05-two-tongues-w">kiếm</span>
+                <span data-hf-id="hf-ucj2" class="f05-two-tongues-w">30</span>
+                <span data-hf-id="hf-l3qs" class="f05-two-tongues-w">tỷ</span>
+                <span data-hf-id="hf-lbnz" class="f05-two-tongues-w">USD</span>
+                <span data-hf-id="hf-dvbv" class="f05-two-tongues-w">cho</span>
+                <span data-hf-id="hf-qady" class="f05-two-tongues-w">vòng</span>
+                <span data-hf-id="hf-z00a" class="f05-two-tongues-w">vốn</span>
+                <span data-hf-id="hf-tl3z" class="f05-two-tongues-w">bắc</span>
+                <span data-hf-id="hf-p9py" class="f05-two-tongues-w">cầu</span>
+                <span data-hf-id="hf-m65i" class="f05-two-tongues-w">ở</span>
+                <span data-hf-id="hf-9ljn" class="f05-two-tongues-w">định</span>
+                <span data-hf-id="hf-7lqk" class="f05-two-tongues-w">giá</span>
+                <span data-hf-id="hf-h2ni" class="f05-two-tongues-w">1.400</span>
+                <span data-hf-id="hf-1lqk" class="f05-two-tongues-w">tỷ</span>
+                <span data-hf-id="hf-8fov" class="f05-two-tongues-w">USD</span>
+              </p>
+            </div>
+            <div data-hf-id="hf-hc33" class="f05-two-tongues-hl f05-two-tongues-b f05-two-tongues-b-vi">
+              <p data-hf-id="hf-vvit">
+                <span data-hf-id="hf-fmtt" class="f05-two-tongues-w">OpenAI</span>
+                <span data-hf-id="hf-4jxg" class="f05-two-tongues-w">xin</span>
+                <span data-hf-id="hf-13qn" class="f05-two-tongues-w">lỗi</span>
+                <span data-hf-id="hf-uihe" class="f05-two-tongues-w">Úc</span>
+                <span data-hf-id="hf-8xik" class="f05-two-tongues-w">sau</span>
+                <span data-hf-id="hf-26fp" class="f05-two-tongues-w">khi</span>
+                <span data-hf-id="hf-xa13" class="f05-two-tongues-w">AI</span>
+                <span data-hf-id="hf-vim6" class="f05-two-tongues-w">agent</span>
+                <span data-hf-id="hf-57i6" class="f05-two-tongues-w">xâm</span>
+                <span data-hf-id="hf-6uym" class="f05-two-tongues-w">nhập</span>
+                <span data-hf-id="hf-kmjp" class="f05-two-tongues-w">trang</span>
+                <span data-hf-id="hf-sjbj" class="f05-two-tongues-w">chính</span>
+                <span data-hf-id="hf-z1q6" class="f05-two-tongues-w">phủ</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-av0w" class="clip f05-two-tongues-layer" data-start="0" data-duration="4.4" data-track-index="2">
+        <div data-hf-id="hf-bmdb" class="f05-two-tongues-tile">
+          <svg data-hf-id="hf-xgui" viewBox="100.6 40.5 14.3 66" aria-hidden="true">
+            <path data-hf-id="hf-5h5p" fill="#1C1917" d="M114.9 54.3L100.8 54.3L100.8 40.5L114.9 40.5L114.9 54.3Z" />
+            <path data-hf-id="hf-zcf6" fill="#1C1917" d="M114.9 77.3L114.9 87.8Q114.9 93.6 113.7 98.1Q112.4 102.6 109.6 106.5L109.6 106.5L100.6 106.5Q103.8 102.5 105.5 98.5Q107.1 94.5 107.1 91L107.1 91L100.8 91L100.8 77.3L114.9 77.3Z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (() => {
+      const ID = "05-two-tongues";
+      const P = ".f05-two-tongues-";
+      const root = document.querySelector('[data-composition-id="' + ID + '"]');
+      const q = (sel) => root.querySelector(sel);
+      const words = (sel) => Array.from(root.querySelectorAll(sel + " " + P + "w"));
+
+      // Parking ease: each frame covers ~15% of the remaining distance.
+      const park = (k = 0.15, fps = 30) => (dur) => (p) =>
+        (1 - Math.pow(1 - k, p * dur * fps)) / (1 - Math.pow(1 - k, dur * fps));
+
+      const tl = gsap.timeline({ paused: true });
+
+      // The one root push: 3% over the whole frame, linear.
+      tl.fromTo(q(P + "cam"), { scale: 1 }, { scale: 1.03, duration: 4, ease: "none" }, 0);
+
+      // Scene 1 — toggle labels settle from the outer wings.
+      tl.fromTo(q(P + "lang-en"), { x: -28, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: park()(0.4) }, 0.1);
+      tl.fromTo(q(P + "lang-vi"), { x: 28, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: park()(0.4) }, 0.2);
+
+      // Scene 1 — first pair arrives in mirror on the beat, 3-frame stagger.
+      const ARRIVE = 0.5;
+      tl.fromTo(q(P + "a-en"), { x: -180, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: park()(0.5) }, ARRIVE);
+      tl.fromTo(q(P + "a-vi"), { x: 180, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: park()(0.5) }, ARRIVE + 0.1);
+
+      // Scene 2 — waterfall cut at 2.0s, mirrored: each side travels outward from the hinge.
+      const CUT = 2.0;
+      const TRAVEL = 230;
+      const EXIT_SPAN = 0.2; // first word leaves this long before the last
+      const ENTRY_SPAN = 0.24; // cascade length, first ignition to last
+
+      const sides = [
+        { a: P + "a-en", b: P + "b-en", dir: -1 },
+        { a: P + "a-vi", b: P + "b-vi", dir: 1 },
+      ];
+
+      sides.forEach(({ a, b, dir }) => {
+        const out = words(a);
+        const step = EXIT_SPAN / (out.length - 1);
+        out.forEach((w, i) => {
+          // Last word finishes fading exactly at the cut.
+          const at = CUT - 0.18 - (out.length - 1 - i) * step;
+          tl.to(w, { x: dir * TRAVEL, duration: 0.34, ease: "power4.in" }, at);
+          tl.to(w, { opacity: 0, duration: 0.18, ease: "power1.in" }, at);
+        });
+
+        const inn = words(b);
+        gsap.set(inn, { x: -dir * TRAVEL, opacity: 0 });
+        // Shrinking gaps (×0.84 per word) so the cascade accelerates, normalised to one span per side.
+        const gaps = inn.slice(1).map((_, i) => Math.pow(0.84, i));
+        const total = gaps.reduce((s, g) => s + g, 0);
+        let at = CUT;
+        inn.forEach((w, i) => {
+          if (i > 0) at += (gaps[i - 1] / total) * ENTRY_SPAN;
+          tl.fromTo(
+            w,
+            { x: -dir * TRAVEL, opacity: 0.35 },
+            { x: 0, opacity: 1, duration: 0.3, ease: "power4.out", immediateRender: false },
+            at
+          );
+        });
+      });
+
+      // Scene 3 — hold. Only the push is running.
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>
