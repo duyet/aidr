@@ -7,6 +7,7 @@ import { SearchBox } from "../SearchBox";
 import { Brand } from "./Brand";
 import { GetAIDRMenu } from "./GetAIDRMenu";
 import { HeaderAuth } from "./HeaderAuth";
+import { IntroVideoButton } from "./IntroVideo";
 
 export function WideHeaderRow({
   lang,
@@ -29,6 +30,7 @@ export function WideHeaderRow({
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <GetAIDRMenu />
+        <IntroVideoButton lang={lang} />
         <Separator orientation="vertical" className="mx-1 h-5" />
         <PrefsPanel />
         <LangToggle
