@@ -2,6 +2,7 @@ import { Button } from "@aidr/ui";
 import { useEffect, useState } from "react";
 import { withLang } from "../../lib/locale-url";
 import type { Lang } from "../../lib/types";
+import { SettingsPreview } from "./SettingsPreview";
 
 const DIGEST_SIZES = [3, 5, 10] as const;
 type DigestSize = (typeof DIGEST_SIZES)[number];
@@ -160,9 +161,8 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             {t("Text only", "Chỉ chữ")}
           </label>
         </fieldset>
-        <iframe
-          title={t("Digest preview", "Xem trước bản tin")}
-          className="h-96 w-full rounded-md border border-border bg-background"
+        <SettingsPreview
+          lang={lang}
           src={`/api/subscribe/preview?lang=${prefLang}&n=${digestSize}&format=${format}`}
         />
         <Button type="submit" disabled={save === "saving"}>

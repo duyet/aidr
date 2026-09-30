@@ -11,6 +11,7 @@ import { BrowserFrame } from "./BrowserFrame";
 import { ChromeChannel } from "./ChromeChannel";
 import { DigestPreview } from "./DigestPreview";
 import { NewTabMock } from "./NewTabMock";
+import { SettingsPreview } from "./SettingsPreview";
 import { TELEGRAM_FEATURES, TelegramChannel } from "./TelegramChannel";
 import { TELEGRAM_DIGEST, TelegramPreview } from "./TelegramPreview";
 
@@ -71,5 +72,21 @@ describe("DigestPreview", () => {
     // Pending state is visible and the frame respects reduced motion.
     expect(html).toContain("Đang tải bản xem trước");
     expect(html).toContain("motion-reduce:transition-none");
+  });
+});
+
+describe("SettingsPreview", () => {
+  const src = "/api/subscribe/preview?lang=en&n=5&format=design";
+
+  it("shows a pending state and keeps the reserved frame size", () => {
+    const html = renderToStaticMarkup(<SettingsPreview lang="en" src={src} />);
+    expect(html).toContain("Loading preview");
+    expect(html).toContain("h-96");
+    expect(html).toContain("motion-reduce:transition-none");
+  });
+
+  it("uses the reader's language for the pending text", () => {
+    const html = renderToStaticMarkup(<SettingsPreview lang="vi" src={src} />);
+    expect(html).toContain("Đang tải bản xem trước");
   });
 });
