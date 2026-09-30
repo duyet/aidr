@@ -37,6 +37,12 @@ export interface Env {
    *  different models from different vendor families, or the panel is refused
    *  before any judge runs. */
   JEV_PANEL_SOURCE_QUALITY_MODEL?: string;
+  /** Optional third scoring judge; a required seat on a translation panel.
+   *  Must be a model distinct from every other seat. */
+  JEV_PANEL_SAFETY_MODEL?: string;
+  /** Model chain for the `translation_fidelity` judge. Only a translation
+   *  panel seats it; the scoring panel ignores it. */
+  JEV_PANEL_TRANSLATION_FIDELITY_MODEL?: string;
   /** Non-abstain valid votes required for a panel recommendation. Clamped to
    *  the judge's count. */
   JEV_PANEL_QUORUM?: string;

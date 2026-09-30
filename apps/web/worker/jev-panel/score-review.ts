@@ -1,6 +1,7 @@
 import { mapWithConcurrency } from "../concurrency.js";
 import { currentLlmCallRunId } from "../llm.js";
 import type { Env } from "../types.js";
+import { buildJevVerdictRow, recordJevPanelVerdict } from "./audit.js";
 import {
   type JevPanelFailMode,
   resolveJevPanelWorkflowConfig,
@@ -17,9 +18,10 @@ import { createJevJudgeExecutor } from "./executor.js";
  * 1. It can only ever *lower* relevance. There is no configuration under which
  *    the panel raises a score or promotes an item, so a wrong or adversarial
  *    verdict cannot manufacture publication.
- * 2. It writes nothing new. The effect rides on the existing `llm_relevance`
- *    and `category` columns, and the existing relevance gate in
- *    `ingest/write-plan.ts` still owns the publish/reject decision. No migration.
+ * 2. Its effect rides on the existing `llm_relevance` and `category` columns,
+ *    and the existing relevance gate in `ingest/write-plan.ts` still owns the
+ *    publish/reject decision. The only new write is the audit row in
+ *    `jev_panel_verdicts` (migration 0031), which nothing reads back.
  * 3. It cannot lose a primary result. Every path — disabled, unresolvable
  *    config, transport failure, no quorum, throw — returns the primary row
  *    unchanged with a reason attached.
@@ -405,6 +407,19 @@ export async function reviewScoredItemsWithJevPanel(
           category: applied.category,
         };
         memoize(key, entry);
+        // Best effort; a failed audit write never changes the outcome.
+        await recordJevPanelVerdict(
+          env,
+          buildJevVerdictRow(result, {
+            runId,
+            purpose: "score",
+            outcomeKind: applied.outcome.kind,
+            outcomeReason: applied.outcome.reason,
+            relevanceBefore: relevance,
+            relevanceAfter: applied.relevance,
+            category: applied.category,
+          })
+        );
         return {
           id: item.id,
           from: "panel",

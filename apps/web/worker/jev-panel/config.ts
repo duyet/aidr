@@ -6,6 +6,7 @@ import {
   type JevJudgeSlot,
   type JevModelIdentity,
   type JevPanelConfig,
+  type JevRole,
 } from "./core.js";
 
 /**
@@ -50,7 +51,45 @@ const ROUTER_ALIASES = new Set([
   "anyrouter/auto:free",
 ]);
 
+/** Roles the scoring panel always seats. */
 export const JEV_PANEL_SLOT_ROLES = ["relevance", "source_quality"] as const;
+
+/**
+ * Which call site a panel serves. `score` reviews feed scoring; `translation`
+ * reviews a translated title/summary against its source.
+ */
+export type JevPanelPurpose = "score" | "translation";
+
+type JevPanelModelEnvKey =
+  | "JEV_PANEL_RELEVANCE_MODEL"
+  | "JEV_PANEL_SOURCE_QUALITY_MODEL"
+  | "JEV_PANEL_SAFETY_MODEL"
+  | "JEV_PANEL_TRANSLATION_FIDELITY_MODEL";
+
+/** Env key for each role's model chain. */
+export const JEV_PANEL_ROLE_ENV_KEY: Record<JevRole, JevPanelModelEnvKey> = {
+  relevance: "JEV_PANEL_RELEVANCE_MODEL",
+  source_quality: "JEV_PANEL_SOURCE_QUALITY_MODEL",
+  safety: "JEV_PANEL_SAFETY_MODEL",
+  translation_fidelity: "JEV_PANEL_TRANSLATION_FIDELITY_MODEL",
+};
+
+/**
+ * Seats per purpose. Required roles must be configured or the panel is
+ * refused; an optional role joins the panel only when its model is set.
+ * `safety` is an optional third judge on scoring and a required seat on
+ * translation, where it is the second opinion next to fidelity.
+ */
+const PURPOSE_ROLES: Record<
+  JevPanelPurpose,
+  {
+    readonly required: readonly JevRole[];
+    readonly optional: readonly JevRole[];
+  }
+> = {
+  score: { required: JEV_PANEL_SLOT_ROLES, optional: ["safety"] },
+  translation: { required: ["translation_fidelity", "safety"], optional: [] },
+};
 
 export function parseJevPanelChain(spec: string | undefined): string[] {
   return (spec ?? "")
@@ -110,8 +149,7 @@ export function resolveJevPanelWorkflowConfig(
   env: Pick<
     Env,
     | "JEV_PANEL_ENABLED"
-    | "JEV_PANEL_RELEVANCE_MODEL"
-    | "JEV_PANEL_SOURCE_QUALITY_MODEL"
+    | JevPanelModelEnvKey
     | "JEV_PANEL_QUORUM"
     | "JEV_PANEL_DEBATE"
     | "JEV_PANEL_FAIL_MODE"
@@ -121,7 +159,8 @@ export function resolveJevPanelWorkflowConfig(
    * module stays free of an `llm.ts` cycle; a non-empty list makes an
    * off-enum category an invalid judgment instead of a bogus value.
    */
-  categoryOptions: readonly string[] = []
+  categoryOptions: readonly string[] = [],
+  purpose: JevPanelPurpose = "score"
 ): JevPanelWorkflowConfig {
   const flag = (env.JEV_PANEL_ENABLED ?? "").trim().toLowerCase();
   if (FALSY.has(flag)) {
@@ -136,45 +175,55 @@ export function resolveJevPanelWorkflowConfig(
       ? "closed"
       : "open";
 
-  const chains = [
-    parseJevPanelChain(env.JEV_PANEL_RELEVANCE_MODEL),
-    parseJevPanelChain(env.JEV_PANEL_SOURCE_QUALITY_MODEL),
-  ];
-  const primary = chains.map((chain) => chain[0] ?? "");
-  const unconfigured = JEV_PANEL_SLOT_ROLES.find((_, index) => !primary[index]);
+  const chainFor = (role: JevRole) =>
+    parseJevPanelChain(env[JEV_PANEL_ROLE_ENV_KEY[role]]);
+  const seats = PURPOSE_ROLES[purpose];
+  const unconfigured = seats.required.find((role) => !chainFor(role)[0]);
   if (unconfigured) {
     return unusable(
       failMode,
-      `JEV_PANEL_${unconfigured.toUpperCase()}_MODEL is not configured`
+      `${JEV_PANEL_ROLE_ENV_KEY[unconfigured]} is not configured`
     );
   }
+  const roles: JevRole[] = [
+    ...seats.required,
+    ...seats.optional.filter((role) => chainFor(role).length > 0),
+  ];
+  const chains = roles.map(chainFor);
+  const primary = chains.map((chain) => chain[0] ?? "");
   const nonConcrete = primary.findIndex(
     (model) => !isConcreteJudgeModel(model)
   );
   if (nonConcrete !== -1) {
     return unusable(
       failMode,
-      `JEV_PANEL_${JEV_PANEL_SLOT_ROLES[nonConcrete].toUpperCase()}_MODEL is not a concrete model id`
+      `${JEV_PANEL_ROLE_ENV_KEY[roles[nonConcrete]]} is not a concrete model id`
     );
   }
-  // A router alias or a duplicated model id would make the second vote a copy
+  // A router alias or a duplicated model id would make a second vote a copy
   // of the first, which is exactly the fabricated diversity this panel exists
-  // to prevent.
-  if (primary[0] === primary[1]) {
-    return unusable(failMode, "both judge roles resolve to the same model id");
+  // to prevent. Every seat must be its own model.
+  if (new Set(primary).size !== primary.length) {
+    return unusable(failMode, "two judge roles resolve to the same model id");
   }
-  if (jevPanelModelFamily(primary[0]) === jevPanelModelFamily(primary[1])) {
+  // The required seats must span distinct vendor families. An optional seat
+  // may share a vendor with one of them (it is still a distinct model), but
+  // it can never be what satisfies the family gate.
+  const families = primary.map(jevPanelModelFamily);
+  const required = seats.required.length;
+  if (new Set(families.slice(0, required)).size < required) {
     return unusable(
       failMode,
-      "both judge roles resolve to the same model family"
+      "two required judge roles resolve to the same model family"
     );
   }
 
-  const panelId = `score-${jevPanelModelFamily(primary[0])}+${jevPanelModelFamily(primary[1])}`;
-  const slots: JevJudgeSlot[] = JEV_PANEL_SLOT_ROLES.map((role, index) => ({
+  const prefix = purpose === "score" ? "score" : "translate";
+  const panelId = `${prefix}-${[...new Set(families)].join("+")}`;
+  const slots: JevJudgeSlot[] = roles.map((role, index) => ({
     id: role,
     role,
-    promptKey: `score.${role}.v1`,
+    promptKey: `${prefix}.${role}.v1`,
     model: jevPanelModelIdentity(primary[index]),
   }));
 
