@@ -1,6 +1,6 @@
 # SCRIPT — aidr-launch
 
-**Voice:** Ewan - Bright & Energetic (HeyGen, id 5f9c155f4108437f970c308c95b06e11), speed 1.12
+**Voice:** Jonah - Clear & Professional (HeyGen, id 7e48c8d406b04a8089c5eb3cd057cb2e), speed 1.12
 **Voice direction:** A launch announcement. Powerful, fast, confident and excited, fully professional. Every line lands like a headline.
 
 Line timing (how long after its frame starts each line is spoken) lives in `audio/build_audio.py`; frames keep their grid durations.
@@ -19,7 +19,7 @@ Line timing (how long after its frame starts each line is spoken) lives in `audi
 **Time:** 5.4 – 9.0s
 **Delivery:** Announce it. Punch the last word.
 
-    From twenty-six sources, you need eight!
+    More than twenty-six sources. You need eight!
 
 ## Line 3 — Mechanism (Frame 3)
 

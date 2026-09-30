@@ -18,9 +18,9 @@ SFX_LIBRARY = os.path.expanduser("~/.claude/skills/media-use/audio/assets/sfx")
 
 # On-screen frame starts (s). Frame 1 plays at x1.35, the rest at x0.9 of authored time.
 FRAME_START = {1: 0.0, 2: 5.4, 3: 9.0, 4: 12.6, 5: 18.0, 6: 21.6, 7: 27.0}
-FRAME_LENGTH = {1: 5.4, 2: 3.6, 3: 3.6, 4: 5.4, 5: 3.6, 6: 5.4, 7: 3.6}
+FRAME_LENGTH = {1: 5.4, 2: 3.6, 3: 3.6, 4: 5.4, 5: 3.6, 6: 5.4, 7: 5.4}
 SCALE = {1: 1.35, 2: 0.9, 3: 0.9, 4: 0.9, 5: 0.9, 6: 0.9, 7: 0.9}
-TOTAL = 30.6
+TOTAL = 32.4
 
 
 def at(frame, authored):
@@ -30,7 +30,7 @@ def at(frame, authored):
 
 # Narration: seconds after the frame starts at which the first word is spoken.
 # Line 2 is placed by LAND_WORD instead: its word "eight" lands with the 8.
-VOICE_LEAD = {1: 0.6, 3: 0.3, 4: 1.2, 5: 0.5, 6: 0.7, 7: 0.15}
+VOICE_LEAD = {1: 0.6, 3: 0.3, 4: 1.2, 5: 0.5, 6: 0.7, 7: 0.2}
 LAND_WORD = {2: ("eight", at(2, 2.5) - FRAME_START[2])}  # line: (word, seconds into the frame)
 
 # Music: library track "News Theme" (HeyGen id 225457110ee14caaa223b7abc295a64b), a steady
@@ -53,10 +53,10 @@ HITS = (
     + [("click-soft", at(3, 3.1), 0.2)]                                       # headline locks
     + [("click-soft", at(4, 0.75 + 0.25 * i), 0.2) for i in range(7)]         # rows 2-8 land
     + [("pop", at(4, 2.75), 0.15)]                                            # footer
-    + [("pop", at(4, 4.33), 0.22)]                                            # AnyRouter mark lands
+    + [("pop", at(4, 3.79), 0.22)]                                            # AnyRouter mark lands
     + [("whoosh-short", at(5, 0.5), 0.15), ("whoosh-short", at(5, 2.0), 0.2)]  # pair in, pair swap
     + [("whoosh-short", at(6, 0.4), 0.2)]                                     # window rises
-    + [("pop", at(6, t), 0.2) for t in (1.62, 2.39, 3.14, 3.87, 4.59, 5.43)]  # six chips, on their words
+    + [("pop", at(6, t), 0.2) for t in (1.83, 2.43, 3.11, 3.82, 4.54, 5.39)]  # six chips, on their words
     + [("whoosh", at(7, 0.0), 0.3)]                                           # into the lockup
     + [("impact-bass-1", at(7, 1.4), 0.35)]                                   # wordmark locks
     + [("click-soft", at(7, 3.0), 0.2)]                                       # aidr.today
