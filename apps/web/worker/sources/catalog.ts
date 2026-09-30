@@ -440,7 +440,7 @@ export const ARXIV_SOURCE: SourceSpec = {
 
 /**
  * Wider community coverage (#230), created in D1 by
- * `0031_community_source_ranges.sql`. These re-declare rows that 0027 already
+ * `0032_community_source_ranges.sql`. These re-declare rows that 0027 already
  * inserted, so they replace the 0027 entry with the same id (see
  * `SOURCE_REGISTRY`). 0027 itself is applied and stays byte-for-byte as is.
  *
@@ -456,7 +456,7 @@ export const ARXIV_SOURCE: SourceSpec = {
  * and duplicates of existing items are dropped by the normal dedupe, so the
  * score batch budget in ALGORITHM.md is unchanged.
  */
-export const REGISTRY_0031: readonly SourceSpec[] = [
+export const REGISTRY_0032: readonly SourceSpec[] = [
   {
     id: "hn",
     name: "Hacker News",
@@ -492,7 +492,7 @@ export function mergeRegistryRows(
 export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0027,
   [ARXIV_SOURCE],
-  REGISTRY_0031
+  REGISTRY_0032
 );
 
 export function registrySourceIds(): string[] {

@@ -153,11 +153,11 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("0027, 0030 and 0031 applied in order list exactly the registry rows", () => {
+  it("0027, 0030 and 0032 applied in order list exactly the registry rows", () => {
     const read = (name: string) =>
       readFileSync(resolve(dirname(MIGRATION_PATH), name), "utf8");
     const arxivSql = read("0030_arxiv_source.sql");
-    const rangesSql = read("0031_community_source_ranges.sql");
+    const rangesSql = read("0032_community_source_ranges.sql");
     // A later migration replaces the earlier row with the same id.
     expect(
       normalize(

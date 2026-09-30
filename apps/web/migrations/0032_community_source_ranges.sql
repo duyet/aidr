@@ -1,5 +1,5 @@
 -- Wider Lobsters tags and an HN popularity range (#230). Added after 0027
--- was applied, so it is its own migration; the rows mirror REGISTRY_0031 in
+-- was applied, so it is its own migration; the rows mirror REGISTRY_0032 in
 -- apps/web/worker/sources/catalog.ts (a test asserts they agree).
 --
 -- lobsters: adds filteredTags (programming, compsci, devops, security), each
