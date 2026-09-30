@@ -60,6 +60,7 @@ export const Route = createFileRoute("/api/subscribe/preview")({
         }
         let contentLang = lang;
         let html = pendingHtml(lang);
+        let ready = false;
         if (env?.DB) {
           try {
             const snapshot = await env.DB.prepare(
@@ -80,15 +81,21 @@ export const Route = createFileRoute("/api/subscribe/preview")({
               ).html;
               // Rendered inside an iframe — links must open a real tab.
               html = html.replace("<head>", '<head><base target="_blank">');
+              ready = true;
             }
           } catch (error) {
+            // A failed D1 read must not be cached as a good preview.
             console.error("subscribe preview:", error);
+            return previewError(lang);
           }
         }
 
+        // The "still preparing" page is short-lived so a new edition shows soon.
         const policy = localeCacheControl(
           url.search,
-          "public, max-age=300, s-maxage=600, stale-while-revalidate=3600"
+          ready
+            ? "public, max-age=300, s-maxage=600, stale-while-revalidate=3600"
+            : "public, max-age=30, s-maxage=60"
         );
         return new Response(html, {
           headers: {

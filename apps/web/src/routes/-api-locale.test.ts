@@ -22,6 +22,32 @@ async function renderPreview(
   });
 }
 
+describe("subscribe preview caching", () => {
+  const withDb = (first: () => Promise<unknown>) =>
+    preview({
+      request: new Request("https://aidr.today/api/subscribe/preview?lang=en"),
+      context: {
+        env: { DB: { prepare: () => ({ first }) } },
+      },
+    });
+
+  it("never caches a failed D1 read as a good preview", async () => {
+    const res = await withDb(async () => {
+      throw new Error("d1 down");
+    });
+    expect(res.status).toBe(500);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+
+  it("caches the pending page only briefly", async () => {
+    const res = await withDb(async () => null);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe(
+      "public, max-age=30, s-maxage=60"
+    );
+  });
+});
+
 describe("subscribe preview locale route", () => {
   it("renders explicit English and Vietnamese previews", async () => {
     const en = await renderPreview("/api/subscribe/preview?lang=en");

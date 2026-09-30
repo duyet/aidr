@@ -68,5 +68,8 @@ describe("DigestPreview", () => {
     const html = renderToStaticMarkup(<DigestPreview lang="vi" />);
     expect(html).toContain('src="/api/subscribe/preview?lang=vi"');
     expect(html).toContain("Hộp thư — AI;DR");
+    // Pending state is visible and the frame respects reduced motion.
+    expect(html).toContain("Đang tải bản xem trước");
+    expect(html).toContain("motion-reduce:transition-none");
   });
 });
