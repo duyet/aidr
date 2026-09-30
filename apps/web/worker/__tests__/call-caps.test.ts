@@ -3,12 +3,13 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clusterSimilar } from "../dedupe.js";
+import { clusterSimilar, MAX_NEW_ITEMS_IN_CLUSTER_PROMPT } from "../dedupe.js";
 import {
   JEV_PANEL_MAX_DEBATE_ROUNDS,
   JEV_PANEL_MAX_JUDGES,
 } from "../jev-panel/core.js";
 import {
+  JEV_PANEL_MAX_ITEMS_PER_STEP,
   resetJevScoreReviewMemo,
   reviewScoredItemsWithJevPanel,
 } from "../jev-panel/score-review.js";
@@ -41,6 +42,8 @@ import {
 } from "../suggestions.js";
 import {
   MAX_EXISTING_CANONICALS_IN_PROMPT,
+  MAX_TAGS_PER_ITEM,
+  MAX_UNSEEN_TOPICS_IN_PROMPT,
   normalizeTopics,
 } from "../topics.js";
 import { ratePendingTranslations } from "../translation-qa.js";
@@ -514,6 +517,72 @@ describe("JEV panel caps per run", () => {
     expect(fetchMock.mock.calls.length).toBeGreaterThan(items.length * seats);
     resetJevScoreReviewMemo();
   });
+
+  it("sends at most JEV_PANEL_MAX_ITEMS_PER_STEP items to the panel; the rest keep the primary score", async () => {
+    // Why: every panel item costs up to seats x 2 paid judge calls, and
+    // nothing upstream bounds how many new items one run scores (a source
+    // without maxItems, or a backlog of status='new' rows). The step timeout
+    // bounds time, not calls: judges that answer fast are never stopped by it.
+    resetJevScoreReviewMemo();
+    const fetchMock = vi.fn(async (_url: unknown, init: unknown) => {
+      const body = JSON.parse((init as { body: string }).body) as {
+        model: string;
+      };
+      const vote = body.model.startsWith("anthropic/") ? "oppose" : "support";
+      return chat(judge(vote, 0.1));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const items = Array.from(
+      { length: 3 * JEV_PANEL_MAX_ITEMS_PER_STEP },
+      (_, i) => ({
+        id: `item-${i}`,
+        title: `Story ${i}`,
+        summary: "s",
+        source: "vendor",
+      })
+    );
+    // A scoring panel seats at most three judges: relevance, source quality
+    // and the optional safety judge. One model per seat, so one fetch per
+    // judge call; a longer fallback chain would multiply fetches, not calls.
+    const seats = 3;
+    const { outcomes } = await reviewScoredItemsWithJevPanel(
+      {
+        ...env,
+        JEV_PANEL_ENABLED: "1",
+        JEV_PANEL_DEBATE: "1",
+        JEV_PANEL_RELEVANCE_MODEL: "openai/gpt-5.2",
+        JEV_PANEL_SOURCE_QUALITY_MODEL: "anthropic/claude-opus-4-5",
+        JEV_PANEL_SAFETY_MODEL: "google/gemini-3-pro",
+      },
+      {
+        items,
+        relevanceById: new Map(items.map((it) => [it.id, 0.9])),
+        categoryOptions: ["Models"],
+      }
+    );
+    // The first N in input order are reviewed. Items past the cap have no
+    // outcome, which scoreItems reads as "keep the primary row": they are
+    // neither dropped nor demoted.
+    expect([...outcomes.keys()]).toEqual(
+      items.slice(0, JEV_PANEL_MAX_ITEMS_PER_STEP).map((it) => it.id)
+    );
+    const worstCasePerStep =
+      JEV_PANEL_MAX_ITEMS_PER_STEP * seats * (1 + JEV_PANEL_MAX_DEBATE_ROUNDS);
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(worstCasePerStep);
+    // The bound is reached: debate ran for the capped items.
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(
+      JEV_PANEL_MAX_ITEMS_PER_STEP * seats
+    );
+    // An hourly run scores in two steps (score, backfill-score), so the
+    // scoring panel's worst case per run is 2 x 10 items x 3 seats x 2
+    // rounds = 120 calls. The submission and suggestion gates are bounded
+    // by their own review caps, tested above.
+    expect(JEV_PANEL_MAX_ITEMS_PER_STEP).toBe(10);
+    expect(2 * worstCasePerStep).toBe(120);
+    resetJevScoreReviewMemo();
+  });
 });
 
 describe("dedupe and topics caps per run", () => {
@@ -538,6 +607,58 @@ describe("dedupe and topics caps per run", () => {
       }))
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the clustering model at most MAX_NEW_ITEMS_IN_CLUSTER_PROMPT new items; the rest are not clustered", async () => {
+    // Why: nothing upstream bounds new items per run, and every one adds a
+    // title and URL to a single prompt. Past the model's context the call
+    // fails and the run loses all LLM clustering, so the prompt must stop
+    // growing. An item that was not shown must also not be merged on the
+    // model's say-so.
+    const cap = MAX_NEW_ITEMS_IN_CLUSTER_PROMPT;
+    const bodies: string[] = [];
+    const fetchMock = vi.fn(async (_url: unknown, init: unknown) => {
+      bodies.push((init as { body: string }).body);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  clusters: [
+                    { new: [cap - 2, cap - 1] }, // last two shown items
+                    { new: [cap, cap + 1] }, // both past the cap
+                    { new: [cap + 2], existing: ["e0"] }, // one past the cap
+                  ],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 }
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const clusters = await clusterSimilar(
+      env,
+      Array.from({ length: cap + 50 }, (_, i) => ({ i, title: `new ${i}` })),
+      [{ id: "e0", title: "old 0" }]
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const prompt = (
+      JSON.parse(bodies[0]) as { messages: { content: string }[] }
+    ).messages[0].content;
+    const shown = JSON.parse(
+      /New items[^\n]*\n(\[.*\])/.exec(prompt)?.[1] ?? "[]"
+    ) as { i: number }[];
+    // Input order, first N: no ordering by duplicate likelihood exists.
+    expect(shown.map((item) => item.i)).toEqual(
+      Array.from({ length: cap }, (_, i) => i)
+    );
+    // Below the cap clustering is unchanged; overflow items stay on their own.
+    expect(clusters).toEqual([{ new: [cap - 2, cap - 1], existing: [] }]);
+    expect(cap).toBe(100);
   });
 
   it("maps unseen topics with one call, and shows at most 150 existing canonicals", async () => {
@@ -571,5 +692,54 @@ describe("dedupe and topics caps per run", () => {
     expect(
       (JSON.parse(shown?.[1] ?? "[]") as string[]).length
     ).toBeLessThanOrEqual(MAX_EXISTING_CANONICALS_IN_PROMPT);
+  });
+
+  it("asks about at most MAX_UNSEEN_TOPICS_IN_PROMPT unseen tags; the rest become their own canonical", async () => {
+    // Why: unseen tags grow with items x MAX_TAGS_PER_ITEM and the answer has
+    // one mapping object per tag. An answer cut off at max_tokens does not
+    // parse, and then every tag of the run loses its mapping.
+    const cap = MAX_UNSEEN_TOPICS_IN_PROMPT;
+    // The cap still covers a full scoring step of 15 items.
+    expect(cap).toBeGreaterThanOrEqual(15 * MAX_TAGS_PER_ITEM);
+    const prompts: string[] = [];
+    const fetchMock = vi.fn(async (_url: unknown, init: unknown) => {
+      const body = JSON.parse((init as { body: string }).body) as {
+        messages: { content: string }[];
+      };
+      prompts.push(body.messages.map((m) => m.content).join("\n"));
+      return chat(
+        JSON.stringify({
+          mappings: [
+            { name: "fresh-0", canonical: "llm" }, // asked: mapping applies
+            { name: `fresh-${cap}`, canonical: "llm" }, // not asked: ignored
+          ],
+        })
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const db = {
+      prepare: () => ({
+        all: async () => ({ results: [{ name: "llm", canonical: "llm" }] }),
+        bind: () => ({}),
+      }),
+      batch: async () => [],
+    } as unknown as D1Database;
+    const tags = new Map(
+      Array.from({ length: cap + 40 }, (_, i) => [`item-${i}`, [`fresh-${i}`]])
+    );
+    const canonical = await normalizeTopics({ ...env, DB: db }, tags, 1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const asked = JSON.parse(
+      /New candidates:\n(\[.*\])/.exec(prompts[0])?.[1] ?? "[]"
+    ) as string[];
+    expect(asked).toEqual(Array.from({ length: cap }, (_, i) => `fresh-${i}`));
+    // Below the cap mapping is unchanged.
+    expect(canonical.get("item-0")).toEqual(["llm"]);
+    expect(canonical.get(`item-${cap - 1}`)).toEqual([`fresh-${cap - 1}`]);
+    // Past the cap: identity, even when the model names the tag anyway.
+    expect(canonical.get(`item-${cap}`)).toEqual([`fresh-${cap}`]);
+    expect(canonical.get(`item-${cap + 39}`)).toEqual([`fresh-${cap + 39}`]);
+    expect(cap).toBe(100);
   });
 });

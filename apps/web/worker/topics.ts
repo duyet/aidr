@@ -9,6 +9,11 @@ export const MAX_MERGED_TOPICS = 8;
 /** Bounds the mapping prompt's size — only the most-used existing
  * canonicals are worth showing the model as reuse candidates. */
 export const MAX_EXISTING_CANONICALS_IN_PROMPT = 150;
+/** Bounds the mapping prompt's new-candidate side, and with it the answer:
+ * one mapping object per candidate. A cut-off answer does not parse and
+ * loses every mapping. 100 covers 15 items x MAX_TAGS_PER_ITEM. Tags past
+ * the cap are not sent and become their own canonical. */
+export const MAX_UNSEEN_TOPICS_IN_PROMPT = 100;
 
 /**
  * Rules-based normalization, applied before any LLM call: lowercase, trim,
@@ -125,8 +130,9 @@ async function mapUnseenTopics(
   if (unseen.length === 0) return new Map();
 
   const identity = new Map(unseen.map((name) => [name, name]));
+  const asked = unseen.slice(0, MAX_UNSEEN_TOPICS_IN_PROMPT);
   const prompt = buildTopicMappingPrompt(
-    unseen,
+    asked,
     existingCanonicals.slice(0, MAX_EXISTING_CANONICALS_IN_PROMPT)
   );
 
@@ -136,7 +142,10 @@ async function mapUnseenTopics(
       [{ role: "user", content: prompt }],
       { json: true, modelSpec: env.ANYROUTER_MODEL }
     );
-    return parseTopicMappingResponse(content, unseen, existingCanonicals);
+    return new Map([
+      ...identity,
+      ...parseTopicMappingResponse(content, asked, existingCanonicals),
+    ]);
   } catch (error) {
     console.error("mapUnseenTopics failed:", error);
     return identity;

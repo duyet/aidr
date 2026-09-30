@@ -38,6 +38,14 @@ export const JEV_PANEL_MAX_JUDGE_TIMEOUT_MS = 25_000;
  *  main path, and it must not starve the primary scoring calls. */
 const JEV_PANEL_CONCURRENCY = 2;
 
+/** Items one scoring step sends to the panel. Nothing upstream bounds how many
+ *  new items a run scores, and the step timeout bounds time, not calls. Ten
+ *  items at concurrency 2 and the default 40s item budget is 200s, which
+ *  leaves room for primary scoring inside the 4-minute step. An hourly run has
+ *  two scoring steps (score, backfill-score), so at most twice this per run.
+ *  Items past the cap get no outcome and keep their primary score. */
+export const JEV_PANEL_MAX_ITEMS_PER_STEP = 10;
+
 /** Memo capacity. A long ingest run must not grow the isolate without bound. */
 const JEV_PANEL_MEMO_LIMIT = 512;
 
@@ -354,7 +362,9 @@ export async function reviewScoredItemsWithJevPanel(
 
   const budgetMs = boundedBudget(env);
   const reviewed = await mapWithConcurrency(
-    [...request.items],
+    request.items
+      .filter((item) => request.relevanceById.has(item.id))
+      .slice(0, JEV_PANEL_MAX_ITEMS_PER_STEP),
     JEV_PANEL_CONCURRENCY,
     async (item): Promise<ReviewedRow | null> => {
       const relevance = request.relevanceById.get(item.id);

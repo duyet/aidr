@@ -69,6 +69,13 @@ but never the reverse.
 Judges of one round run concurrently, each bounded by
 `min(25s, remaining item budget)`, so one slow judge cannot starve another.
 
+One scoring step sends at most `JEV_PANEL_MAX_ITEMS_PER_STEP` (10) items to
+the panel, in input order. Items past the cap keep the primary score and get
+no `jevReview`. An hourly run has two scoring steps (`score`,
+`backfill-score`), so the worst case is 2 x 10 items x 3 seats x 2 rounds =
+120 scoring judge calls per run. The submission and suggestion gates are
+bounded separately by their review caps.
+
 ## Rules the integration holds to
 
 **Model diversity is never fabricated.** A config whose two roles name the same
