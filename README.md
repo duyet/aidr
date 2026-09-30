@@ -1,25 +1,36 @@
-# aidr / AI;DR
+<div align="center">
 
-<a href="https://aidr.today"><img src="https://aidr.today/logo-sm.png" alt="AI;DR" height="48"></a>
+<a href="https://aidr.today"><img src="apps/web/public/logo.png" alt="AI;DR" width="120" height="120"></a>
+
+# AI;DR
+
+**What's new in AI today?** Ranked AI news with a short daily digest, in English and Vietnamese.
+
 [![Website](https://img.shields.io/badge/Website-aidr.today-111111?style=for-the-badge)](https://aidr.today)
+[![Chrome](https://img.shields.io/badge/Chrome-extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg)
 [![Telegram VI](https://img.shields.io/badge/Telegram-@aihomnay-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/aihomnay)
 [![Telegram EN](https://img.shields.io/badge/Telegram-@aidr__today-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/aidr_today)
-[![Chrome](https://img.shields.io/badge/Chrome-extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg)
 [![RSS](https://img.shields.io/badge/RSS-feed.xml-FFA500?style=for-the-badge&logo=rss&logoColor=white)](https://aidr.today/feed.xml)
-[![GitHub](https://img.shields.io/badge/GitHub-duyet%2Faidr-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/duyet/aidr)
 [![Sponsor](https://img.shields.io/badge/Sponsor-this%20project-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/duyet)
 
-[aidr.today](https://aidr.today) — AI news digest: TL;DR snapshots plus ranked stories.
+<a href="https://www.youtube.com/watch?v=tynoWx03zDc"><img src="https://img.youtube.com/vi/tynoWx03zDc/maxresdefault.jpg" alt="Watch the AI;DR introduction video" width="820"></a>
 
-| | |
+<sub>▶ <a href="https://www.youtube.com/watch?v=tynoWx03zDc">Watch the introduction video</a> (30 seconds)</sub>
+
+</div>
+
+## Get AI;DR
+
+| Channel | Link |
 |---|---|
 | Website | [aidr.today](https://aidr.today) |
+| Chrome new tab | [Chrome Web Store](https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg) |
 | Telegram (Vietnamese) | [@aihomnay](https://t.me/aihomnay) |
 | Telegram (English) | [@aidr_today](https://t.me/aidr_today) |
-| Chrome extension | [Chrome Web Store](https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg) |
+| Email digest | [aidr.today/subscribe](https://aidr.today/subscribe?tab=email) |
 | RSS | [feed.xml](https://aidr.today/feed.xml) |
-| Source | [github.com/duyet/aidr](https://github.com/duyet/aidr) |
-| Sponsor | [github.com/sponsors/duyet](https://github.com/sponsors/duyet) |
+
+## Stack
 
 Cloudflare Worker (`aidr`), TanStack Start frontend, D1 as the primary store.
 
@@ -30,6 +41,8 @@ Cloudflare Worker (`aidr`), TanStack Start frontend, D1 as the primary store.
 | `apps/web` | Site, API, ingest workflow (`@aidr/web`) |
 | `apps/extension` | Chrome MV3 new-tab (`@aidr/extension`) |
 | `packages/*` | Shared libs / UI |
+| `videos` | Video sources, built with HyperFrames ([`videos/README.md`](videos/README.md)) |
+| `.agents/skills` | Agent skills for this repo |
 
 ## Pipeline
 
