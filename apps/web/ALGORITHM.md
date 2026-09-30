@@ -243,9 +243,13 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
      human override at `POST /api/admin/jev-verdicts/<id>/override`, also in
      the admin panel). An `overturn` restores the pre-panel `llm_relevance`
      if the item still holds the panel's value. Judges run concurrently
-     under the item budget. Details: `worker/jev-panel/README.md`.
+     under the item budget. At most 10 items per scoring step go to the
+     panel (`JEV_PANEL_MAX_ITEMS_PER_STEP`), in input order; the rest keep
+     the primary score. Details: `worker/jev-panel/README.md`.
    - Tags are then canonicalized (`normalizeTopics`) and captured into
-     `topic_daily` each ingest (~15 min).
+     `topic_daily` each ingest (~15 min). One mapping call asks about at
+     most 100 unseen tags (`MAX_UNSEEN_TOPICS_IN_PROMPT`); tags past that
+     become their own canonical, the same as after a failed call.
    - Emerging entity/model names that clear a frequency/growth bar promote
      into `learned_keywords` for title highlight and growth-boosted
      homepage trending chips (`worker/topic-learning.ts`).
@@ -259,7 +263,9 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
    deterministic pass.
 
    - The clustering call compares new items (title, url, source) with the
-     last 72h of published titles.
+     last 72h of published titles. It sees at most 100 new items
+     (`MAX_NEW_ITEMS_IN_CLUSTER_PROMPT`, input order) and 300 published
+     ones; new items past that are left to the title pass below.
    - A deterministic title-similarity pass (normalized headlines / high
      token overlap, including short-headline-inside-long) runs alongside
      so same-story URLs the model misses still collapse.

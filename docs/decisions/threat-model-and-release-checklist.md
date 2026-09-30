@@ -23,7 +23,7 @@ bodies, and anything a model returns.
 | Area | Threat | Control | Evidence |
 |------|--------|---------|----------|
 | SSRF | Feed or submission URL points at internal hosts, metadata endpoints or redirects there | Fetch boundary with URL checks and redaction in logs | `worker/enrich.ts`, `fetch-boundary.test.ts`, `enrich-hostname.test.ts` |
-| Prompt injection | Story text or reader input steers a model (rank, verdict, translation, dedupe, topics) | Untrusted text is JSON-encoded, fenced where prompts use fences, and model output is clamped and validated: dedupe keeps only known cluster ids, topic mapping only known topics. A guard test lists every file that calls the model | `prompt-injection.test.ts` |
+| Prompt injection | Story text or reader input steers a model (rank, verdict, translation, dedupe, topics) | Untrusted text is JSON-encoded, fenced where prompts use fences, and model output is clamped and validated: dedupe keeps only known cluster ids, topic mapping only known topics. The admin mail draft sends picked stories as a fenced JSON block and is told to ignore instructions inside it. A guard test lists every file that calls the model | `prompt-injection.test.ts` |
 | Prompt injection (residual) | Score, translate and TL;DR prompts carry no "this is data" sentence, only JSON encoding | Output clamping and known-id checks limit the effect: a score cannot leave 0..1 or 0..10, bullets can only cite known item ids. Adding an explicit data-only instruction changes ranking prompts, so it needs a scoring review (see `apps/web/ALGORITHM.md`) | `llm.test.ts`, `prompt-injection.test.ts` |
 | Authz | Admin or MCP endpoints reached without credentials | Admin token and Clerk checks, admin rate limit, audit log (0015) | `admin.test.ts`, `admin-clerk.test.ts`, `admin-rate-limit.test.ts` |
 | Authz | Clerk proxy forwards the secret to a foreign origin | Target path confinement | `clerk-proxy.test.ts` (#150) |
@@ -33,7 +33,7 @@ bodies, and anything a model returns.
 | Cache | One locale or a private page served from a shared cache | Locale and cache isolation, route indexability and cache policy | #163, #151; live header check |
 | Secrets | Token committed or logged | Secret scan in CI, secret-safe telemetry, log redaction | `.github/workflows/secret-scan.yml`, `telemetry-safe.test.ts`, `llm.test.ts` |
 | Telegram abuse | Runaway posting, duplicate digests, oversized media | Daily trending cap, one post per run, min gap, attempt cap, album and video limits, video probe cap | `call-caps.test.ts`, `notify*.test.ts`, `telegram-iv.test.ts` |
-| Model spend | Fan-out per run | Batch sizes, attempt caps, slice budgets; per-run call bounds for score, translate, TL;DR, submission and suggestion review, translation QA, JEV panel, dedupe and topics | `call-caps.test.ts`, `llm.test.ts` |
+| Model spend | Fan-out per run | Batch sizes, attempt caps, slice budgets; per-run call bounds for score, translate, TL;DR, submission and suggestion review, translation QA, dedupe and topics. JEV scoring panel: at most 10 items per scoring step, 120 judge calls per run; the submission and suggestion gates are bounded by their review caps. One dedupe prompt holds at most 100 new items, one topic prompt at most 100 unseen tags | `call-caps.test.ts`, `llm.test.ts` |
 | Data loss | Bad migration | Order and ledger gates, per-migration tests, rollback notes | `migration-gate-set.test.ts`, `migration-rollback-notes.test.ts` (every migration needs an entry in `migration-rollback.md`) |
 
 ## Out of scope for now

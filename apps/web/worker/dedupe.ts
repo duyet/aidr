@@ -11,6 +11,11 @@ import type { Env } from "./types.js";
 // llm.ts is being actively reworked (streaming + prompt changes) by another
 // agent, so this file avoids touching or importing from it entirely.
 const MAX_TOKENS = 4096;
+/** Bounds the clustering prompt's new-item side (the existing side is bounded
+ * by MERGE_CANDIDATE_LIMIT). 300 existing rows are already ~15k tokens; 100
+ * new rows with URLs add ~7k, which still fits a 32k-context model. New items
+ * past the cap are not sent and stay their own stories for the LLM pass. */
+export const MAX_NEW_ITEMS_IN_CLUSTER_PROMPT = 100;
 
 /**
  * Strips ```json fences and parses. If there's no fence, falls back to
@@ -362,13 +367,15 @@ export async function clusterSimilar(
   recentItems: ClusterExistingInput[]
 ): Promise<Cluster[]> {
   if (newItems.length === 0) return [];
+  // Input order: nothing ranks items by how likely they are to be duplicates.
+  const shown = newItems.slice(0, MAX_NEW_ITEMS_IN_CLUSTER_PROMPT);
 
   const prompt = `You merge AI/tech news into one story when outlets report the SAME concrete event (same launch, deal, paper, outage, or leak) — even if headlines differ, one is an HN/Lobsters link, or one has an UPDATE: prefix. Independent URLs/sources in a cluster are folded onto one canonical item so corroboration can boost rank and trending.
 
 Do NOT group items that only share a topic (two different model launches, two unrelated OpenAI posts).
 
 New items (i, title, url, source):
-${JSON.stringify(newItems)}
+${JSON.stringify(shown)}
 
 Existing items last 72h (id, title, url):
 ${JSON.stringify(recentItems)}
@@ -380,7 +387,7 @@ Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]
     console.log(`clusterSimilar used ${tokens} tokens`);
     return normalizeClusters(
       parseJsonLoose<unknown>(content),
-      new Set(newItems.map((item) => item.i)),
+      new Set(shown.map((item) => item.i)),
       new Set(recentItems.map((item) => item.id))
     );
   } catch (error) {
