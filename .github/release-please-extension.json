@@ -33,6 +33,10 @@
           "type": "json",
           "path": "manifest.json",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "generic",
+          "path": "/apps/web/src/lib/extension-release.ts"
         }
       ]
     }
