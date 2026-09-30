@@ -5,6 +5,7 @@ import {
   assertAppliedMigrations,
   assertMigrationFileOrder,
   assertMigrationLedgerOrder,
+  assertNoObsoleteMigrations,
   formatMigrationRange,
   requiredMigrationsForFiles,
 } from "../worker/migration-gate.js";
