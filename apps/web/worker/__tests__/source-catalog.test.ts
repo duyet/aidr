@@ -152,8 +152,20 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("the migration and the runtime seed list identical rows", () => {
-    expect(normalize(parseSourceInsertRows(migrationSql))).toEqual(expected);
+  it("0027 plus 0030 list exactly the registry rows", () => {
+    const arxivSql = readFileSync(
+      resolve(dirname(MIGRATION_PATH), "0030_arxiv_source.sql"),
+      "utf8"
+    );
+    expect(
+      normalize([
+        ...parseSourceInsertRows(migrationSql),
+        ...parseSourceInsertRows(arxivSql),
+      ])
+    ).toEqual(expected);
+    // Never re-enables a source an operator switched off.
+    expect(arxivSql).toContain("ON CONFLICT(id) DO UPDATE SET");
+    expect(arxivSql).not.toContain("enabled = excluded.enabled");
   });
 
   it("the seed SQL is derived from the registry, not hand-copied", () => {

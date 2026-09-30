@@ -155,7 +155,8 @@ Sunday, so it could not be verified live. The exact row to add, and the
 measured weekend freeze its staleAfterRuns override has to account for, are
 written out in the ARXIV_NOT_ADDED_REASON notes in worker/sources/catalog.ts.`;
 
-export const SOURCE_REGISTRY: readonly SourceSpec[] = [
+/** Exactly the rows generated into the already-applied 0027 migration. */
+export const REGISTRY_0027: readonly SourceSpec[] = [
   // ---------------------------------------------------------------- community
   {
     id: "hn",
@@ -415,23 +416,31 @@ export const SOURCE_REGISTRY: readonly SourceSpec[] = [
     },
     enabled: true,
   },
-  {
-    id: "arxiv-research",
-    name: "arXiv cs.AI / cs.LG / cs.CL",
-    type: "rss",
-    config: {
-      // rss.arxiv.org has no robots.txt and accepts a combined category list,
-      // so this is one request per run. Flood-gated: AI keyword pre-filter
-      // plus a newest-first cap (see ARXIV_NOT_ADDED_REASON history above).
-      feed: "https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL",
-      homepage: "https://arxiv.org/list/cs.AI/recent",
-      keywordFilter: "ai",
-      maxItems: 6,
-    },
-    enabled: true,
-    // No weekend announcements: ~54 measured silent runs Fri-Mon.
-    staleAfterRuns: 72,
+];
+
+/** Added after 0027 shipped; created in D1 by 0030_arxiv_source.sql. Applied
+ *  migrations are immutable, so later rows live outside the 0027 list. */
+export const ARXIV_SOURCE: SourceSpec = {
+  id: "arxiv-research",
+  name: "arXiv cs.AI / cs.LG / cs.CL",
+  type: "rss",
+  config: {
+    // rss.arxiv.org has no robots.txt and accepts a combined category list,
+    // so this is one request per run. Flood-gated: AI keyword pre-filter
+    // plus a newest-first cap (see ARXIV_NOT_ADDED_REASON history above).
+    feed: "https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL",
+    homepage: "https://arxiv.org/list/cs.AI/recent",
+    keywordFilter: "ai",
+    maxItems: 6,
   },
+  enabled: true,
+  // No weekend announcements: ~54 measured silent runs Fri-Mon.
+  staleAfterRuns: 72,
+};
+
+export const SOURCE_REGISTRY: readonly SourceSpec[] = [
+  ...REGISTRY_0027,
+  ARXIV_SOURCE,
 ];
 
 export function registrySourceIds(): string[] {
@@ -462,8 +471,10 @@ function sourceValues(spec: SourceSpec): string {
   ].join("");
 }
 
-export function sourceSeedRowsSql(): string {
-  return SOURCE_REGISTRY.map(sourceValues).join(",\n  ");
+export function sourceSeedRowsSql(
+  specs: readonly SourceSpec[] = SOURCE_REGISTRY
+): string {
+  return specs.map(sourceValues).join(",\n  ");
 }
 
 /**
@@ -546,7 +557,7 @@ export function buildSourceMigrationSql(
 -- migration and the pre-migration seed can no longer disagree.
 ${comments}--
 INSERT OR IGNORE INTO sources (id, name, type, config, enabled) VALUES
-  ${sourceSeedRowsSql()};
+  ${sourceSeedRowsSql(REGISTRY_0027)};
 `;
 }
 
