@@ -26,8 +26,23 @@ export const INTRO_VIDEO_COPY: Record<
 
 /**
  * Privacy-enhanced embed that starts playing as soon as it is mounted, with
- * the player controls hidden.
+ * every piece of the player's own chrome suppressed: `controls=0` (transport
+ * bar), `modestbranding=1` + `showinfo=0` (YouTube logo and title strip),
+ * `fs=0` (fullscreen button), `iv_load_policy=3` (annotations) and
+ * `disablekb=1` (the keyboard-shortcut hint). `playsinline=1` keeps iOS from
+ * throwing the video into its own fullscreen player.
  */
 export function introVideoEmbedUrl(id: string): string {
-  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&controls=0&rel=0`;
+  const params = new URLSearchParams({
+    autoplay: "1",
+    controls: "0",
+    modestbranding: "1",
+    showinfo: "0",
+    fs: "0",
+    rel: "0",
+    iv_load_policy: "3",
+    disablekb: "1",
+    playsinline: "1",
+  });
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${params}`;
 }

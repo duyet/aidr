@@ -16,8 +16,8 @@ import type { Lang } from "../../lib/types";
  * nothing until `INTRO_VIDEO_YOUTUBE_ID` is set. The iframe lives inside the
  * dialog content, so nothing loads from YouTube before the dialog opens and
  * closing it removes the player, which stops playback. The dialog is the bare
- * player: no header and no close button, so it closes with Escape or a click
- * outside.
+ * player: no header, no close button, no card chrome, so it closes with
+ * Escape or a click outside.
  */
 export function IntroVideoButton({
   lang,
@@ -64,15 +64,20 @@ export function IntroVideoButton({
         )}
       </DialogPrimitive.Trigger>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-1.5rem)] w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-background text-foreground shadow-xl"
+          // The dialog IS the player: no card border, radius, shadow or
+          // padding, so nothing of ours is visible around the video. The width
+          // is the lesser of the viewport's width and the 16:9 box that fits
+          // its height, which keeps the whole player on screen on short and
+          // narrow viewports alike.
+          className="fixed top-1/2 left-1/2 z-50 w-[min(calc(100%-1.5rem),calc((100dvh-1.5rem)*16/9))] -translate-x-1/2 -translate-y-1/2 overflow-hidden bg-black"
         >
           <DialogPrimitive.Title className="sr-only">
             {copy.title}
           </DialogPrimitive.Title>
-          <div className="aspect-video w-full shrink-0 bg-black">
+          <div className="aspect-video w-full">
             <iframe
               src={introVideoEmbedUrl(videoId)}
               title={copy.title}

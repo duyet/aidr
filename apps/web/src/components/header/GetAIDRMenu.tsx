@@ -12,6 +12,7 @@ import { Link } from "@tanstack/react-router";
 import {
   ChevronDown,
   Database,
+  ExternalLink,
   Info,
   Mail,
   Plus,
@@ -24,6 +25,13 @@ import {
 } from "../../lib/chrome";
 import { useLang } from "../../lib/lang-context";
 import { EXTENSION_PATH, TELEGRAM_EN_URL, TELEGRAM_URL } from "../../lib/site";
+
+/** Trailing marker on the items that leave the site. It sits at the far edge
+ *  of the row so it reads as "opens elsewhere" and never competes with the
+ *  item's own leading icon for the label's attention. */
+function ExternalMarker() {
+  return <ExternalLink className="ml-auto !size-3 opacity-70" aria-hidden />;
+}
 
 export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
   const navigationLang = useLang();
@@ -74,6 +82,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           >
             <Send aria-hidden />
             Telegram Channel (Vietnamese)
+            <ExternalMarker />
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className={itemClassName}>
@@ -85,6 +94,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           >
             <Send aria-hidden />
             Telegram Channel (English)
+            <ExternalMarker />
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className={itemClassName}>

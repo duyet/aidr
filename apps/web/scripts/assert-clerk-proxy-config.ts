@@ -1,7 +1,8 @@
 #!/usr/bin/env tsx
 /**
  * Verify that the browser build and generated Worker config use the one
- * canonical Clerk proxy URL from wrangler.toml.
+ * canonical Clerk proxy URL from wrangler.toml, and that the browser bundle
+ * carries a production publishable key.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -65,6 +66,43 @@ function containsCanonicalUrl(path: string): boolean {
 
 if (!containsCanonicalUrl(join(webRoot, "dist/client"))) {
   fail("browser bundle does not contain the canonical proxy URL");
+}
+
+// A `pk_test_` key makes ClerkJS load its development bundle, which the
+// production Frontend API rejects with "This request isn't valid for this
+// instance type" — the proxy 400s and sign-in dies for every reader while the
+// build itself looks healthy. The key is inlined into the bundle, so grep the
+// shipped output rather than trusting whatever env the build ran with.
+//
+// Match a real key, not the bare literal: the Clerk SDK ships its own
+// `pk_test_`/`pk_live_` format-check strings, so a plain substring search
+// would fail every build. A publishable key is the prefix plus a long base64
+// payload. Only the offending chunk path is reported, never the key.
+const DEV_PUBLISHABLE_KEY = /pk_test_[A-Za-z0-9_-]{20,}\$?/;
+
+function findDevPublishableKey(path: string): string | null {
+  for (const entry of readdirSync(path, { withFileTypes: true })) {
+    const entryPath = join(path, entry.name);
+    if (entry.isDirectory()) {
+      const found = findDevPublishableKey(entryPath);
+      if (found) return found;
+    } else if (entry.name.endsWith(".js") || entry.name.endsWith(".mjs")) {
+      if (DEV_PUBLISHABLE_KEY.test(readFileSync(entryPath, "utf8"))) {
+        return entryPath;
+      }
+    }
+  }
+  return null;
+}
+
+const devKeyChunk = findDevPublishableKey(join(webRoot, "dist/client"));
+if (devKeyChunk) {
+  fail(
+    `browser bundle ships a Clerk development key in ${devKeyChunk.replace(
+      `${webRoot}/`,
+      ""
+    )}; production needs VITE_CLERK_PUBLISHABLE_KEY=pk_live_… (check the GitHub Actions secret of the same name)`
+  );
 }
 
 console.log(`Clerk proxy config assertion passed (${canonicalUrl})`);

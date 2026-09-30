@@ -28,8 +28,10 @@ export function DeliverPage({
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-10 py-12">
-      <div className="space-y-5">
+    <div className="mx-auto w-full max-w-6xl space-y-10 py-12">
+      {/* The heading keeps a readable measure; the channel rows below it need
+          the full width for the controls/preview pair. */}
+      <div className="max-w-3xl space-y-5">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="gap-1.5 rounded-full">
             {t("How you get AI;DR", "Cách nhận AI;DR")}
@@ -77,26 +79,20 @@ export function DeliverPage({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="chrome" className="mt-6 space-y-6">
+        <TabsContent value="chrome" className="mt-8">
           <ChromeChannel lang={lang} />
         </TabsContent>
 
-        <TabsContent value="telegram" className="mt-6 space-y-6">
+        <TabsContent value="telegram" className="mt-8">
           <TelegramChannel lang={lang} />
         </TabsContent>
 
-        <TabsContent value="email" className="mt-6 space-y-6">
-          <p className="text-base leading-relaxed text-muted-foreground">
-            {t(
-              "Daily digest by email. No account required — you can link one later.",
-              "Bản tin hằng ngày qua email. Không cần tài khoản — có thể liên kết sau."
-            )}
-          </p>
+        <TabsContent value="email" className="mt-8">
           <EmailChannel lang={lang} />
         </TabsContent>
       </Tabs>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="max-w-3xl text-sm text-muted-foreground">
         {t("Prefer your own reader? ", "Thích dùng trình đọc riêng? ")}
         <a
           href={`${RSS_FEED_PATH}?lang=${lang}`}

@@ -8,6 +8,7 @@ import {
   TELEGRAM_URL,
 } from "../../lib/site";
 import type { Lang } from "../../lib/types";
+import { ChannelSplit } from "./ChannelSplit";
 import { TelegramPreview } from "./TelegramPreview";
 
 export const TELEGRAM_FEATURES = [
@@ -50,70 +51,89 @@ const CHANNELS = [
   },
 ] as const;
 
-/** Telegram tab of the deliver page: features, then one card per channel
- *  (CTA + channel mock), the card matching the page language first. */
+/** Telegram tab of the deliver page: features and one CTA per channel on the
+ *  left, the channel mocks on the right, the mock matching the page language
+ *  first. */
 export function TelegramChannel({ lang }: { lang: Lang }) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
   const channels = [...CHANNELS].sort(
     (a, b) => Number(b.channel === lang) - Number(a.channel === lang)
   );
   return (
-    <>
-      <p className="text-base leading-relaxed text-muted-foreground">
-        {t(
-          "Get the same ranked AI news in Telegram. Open the public channel — no Chrome install required.",
-          "Nhận cùng tin AI đã xếp hạng trên Telegram. Mở kênh công khai — không cần cài Chrome."
-        )}
-      </p>
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {TELEGRAM_FEATURES.map((f) => (
-          <li
-            key={f.en}
-            className="flex items-start gap-2.5 text-sm text-muted-foreground"
-          >
-            <f.icon
-              className="mt-0.5 size-4 shrink-0 text-primary"
-              aria-hidden
-            />
-            <span>{t(f.en, f.vi)}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary" className="rounded-full">
-          {t("What lands in the channel", "Bạn sẽ nhận gì trong kênh")}
-        </Badge>
-        <span className="text-xs text-muted-foreground">
-          {t(
-            "Illustrative layout — the real digest is in the channel",
-            "Bố cục minh họa — bản tin thật nằm trong kênh"
-          )}
-        </span>
-      </div>
-      <div className="grid gap-6 sm:grid-cols-2">
-        {channels.map((c) => (
-          <div key={c.channel} className="min-w-0 space-y-3">
-            <div>
-              <p className="text-sm font-semibold">
-                {t(c.label.en, c.label.vi)}
-              </p>
-              <p className="text-xs text-muted-foreground">{c.handle}</p>
-            </div>
-            <Button size="lg" className="w-full" asChild>
-              <a
-                href={c.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackChannelClick("telegram", { to: c.track })}
+    <ChannelSplit
+      controls={
+        <>
+          <p className="text-base leading-relaxed text-muted-foreground">
+            {t(
+              "Get the same ranked AI news in Telegram. Open the public channel — no Chrome install required.",
+              "Nhận cùng tin AI đã xếp hạng trên Telegram. Mở kênh công khai — không cần cài Chrome."
+            )}
+          </p>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            {TELEGRAM_FEATURES.map((f) => (
+              <li
+                key={f.en}
+                className="flex items-start gap-2.5 text-sm text-muted-foreground"
               >
-                <Send className="mr-2 size-5" aria-hidden />
-                {t(`Open ${c.handle}`, `Mở ${c.handle}`)}
-              </a>
-            </Button>
-            <TelegramPreview lang={lang} channel={c.channel} />
+                <f.icon
+                  className="mt-0.5 size-4 shrink-0 text-primary"
+                  aria-hidden
+                />
+                <span>{t(f.en, f.vi)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="space-y-4">
+            {channels.map((c) => (
+              <div key={c.channel} className="space-y-2">
+                <div>
+                  <p className="text-sm font-semibold">
+                    {t(c.label.en, c.label.vi)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{c.handle}</p>
+                </div>
+                <Button size="lg" className="w-full" asChild>
+                  <a
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() =>
+                      trackChannelClick("telegram", { to: c.track })
+                    }
+                  >
+                    <Send className="mr-2 size-5" aria-hidden />
+                    {t(`Open ${c.handle}`, `Mở ${c.handle}`)}
+                  </a>
+                </Button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </>
+        </>
+      }
+      preview={
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="rounded-full">
+              {t("What lands in the channel", "Bạn sẽ nhận gì trong kênh")}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {t(
+                "Illustrative layout — the real digest is in the channel",
+                "Bố cục minh họa — bản tin thật nằm trong kênh"
+              )}
+            </span>
+          </div>
+          <div className="space-y-6">
+            {channels.map((c) => (
+              <TelegramPreview
+                key={c.channel}
+                lang={lang}
+                channel={c.channel}
+              />
+            ))}
+          </div>
+        </div>
+      }
+    />
   );
 }

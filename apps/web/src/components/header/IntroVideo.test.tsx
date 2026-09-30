@@ -46,7 +46,7 @@ vi.mock("@aidr/ui/track", async (importOriginal) => ({
 const here = dirname(fileURLToPath(import.meta.url));
 const VIDEO_ID = "abc123XYZ_-";
 const EMBED_URL =
-  "https://www.youtube-nocookie.com/embed/abc123XYZ_-?autoplay=1&controls=0&rel=0";
+  "https://www.youtube-nocookie.com/embed/abc123XYZ_-?autoplay=1&controls=0&modestbranding=1&showinfo=0&fs=0&rel=0&iv_load_policy=3&disablekb=1&playsinline=1";
 
 afterEach(() => {
   cleanup();
@@ -146,6 +146,51 @@ describe("intro video copy and embed", () => {
 
   it("embeds from the privacy-enhanced host, autoplays, and hides the controls", () => {
     expect(introVideoEmbedUrl(VIDEO_ID)).toBe(EMBED_URL);
+  });
+
+  // A "clean embed" is a specific list of player parts. Assert every one of
+  // them: dropping `modestbranding`/`showinfo` brings the YouTube logo and
+  // title strip back over the video, and losing `playsinline` sends iOS into
+  // its own fullscreen player.
+  it("suppresses every part of the player's own chrome", () => {
+    const query = new URL(introVideoEmbedUrl(VIDEO_ID)).searchParams;
+    expect(Object.fromEntries(query)).toEqual({
+      autoplay: "1",
+      controls: "0",
+      modestbranding: "1",
+      showinfo: "0",
+      fs: "0",
+      rel: "0",
+      iv_load_policy: "3",
+      disablekb: "1",
+      playsinline: "1",
+    });
+  });
+
+  // The dialog must not draw a card around the player: any border, radius,
+  // shadow or padding shows as a frame around the video.
+  it("draws no card chrome around the player", async () => {
+    introVideo.id = VIDEO_ID;
+    render(<IntroVideoButton lang="en" />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Watch the AI;DR intro video" })
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    for (const chrome of [
+      "rounded",
+      "border",
+      "shadow",
+      "bg-background",
+      "text-foreground",
+    ]) {
+      expect(dialog.className).not.toContain(chrome);
+    }
+    // Padding utilities only — a bare "p-" also matches "top-1/2".
+    expect(dialog.className).not.toMatch(/(^|\s)[pt][xy]?-\d/);
+    // Sized to the viewport in both axes, so a short window crops the
+    // dialog rather than pushing the player off screen.
+    expect(dialog.className).toContain("100dvh-1.5rem");
   });
 
   it("is mounted in the wide header row and the phone menu", () => {

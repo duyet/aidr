@@ -12,6 +12,21 @@ interface ChangelogEntry {
 
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
+    date: "2026-10",
+    en: "Sign-in works again. The site had been loading a test Clerk key, so every attempt to sign in or sign up failed with an error. Subscribing by email and the extension now sign in normally.",
+    vi: "Đăng nhập đã hoạt động trở lại. Trang từng dùng nhầm khoá Clerk thử nghiệm nên mọi lần đăng nhập hoặc đăng ký đều báo lỗi. Giờ đăng ký bằng email và tiện ích đều đăng nhập bình thường.",
+  },
+  {
+    date: "2026-10",
+    en: "The Get AI;DR page now puts the settings on the left and the preview on the right, so you can see the digest change as you pick a language, a story count, or a layout. The intro video opens as a plain video with no player controls, title, or logo around it.",
+    vi: "Trang Nhận AI;DR giờ đặt phần cài đặt bên trái và bản xem trước bên phải, để bạn thấy bản tin đổi theo ngay khi chọn ngôn ngữ, số tin hay bố cục. Video giới thiệu mở ra đúng là một video trơn, không có nút điều khiển, tiêu đề hay logo vương quanh.",
+  },
+  {
+    date: "2026-10",
+    en: "Links in the Get AI;DR menu that open another site now carry a small arrow, so you can tell them apart from the ones that stay here.",
+    vi: "Các mục trong menu Nhận AI;DR mở sang trang khác giờ có mũi tên nhỏ, để bạn phân biệt với những mục chỉ điều hướng trong trang này.",
+  },
+  {
     date: "2026-09",
     en: "aidr.today is now subscribable: an RSS feed at aidr.today/feed.xml (also /rss.xml), in English and Vietnamese, plus a Google News sitemap and a sitemap that no longer drops older stories. The homepage and Get AI;DR link the feed so any reader can pick it up.",
     vi: "aidr.today giờ đã đăng ký được: bản tin RSS tại aidr.today/feed.xml (cũng là /rss.xml), có tiếng Anh và tiếng Việt, kèm sitemap Google News và sitemap không còn bỏ sót tin cũ. Trang chủ và trang Nhận AI;DR đã có liên kết tới bản tin.",

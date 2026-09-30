@@ -16,6 +16,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { introVideoEmbedUrl } from "../../lib/intro-video";
 import { GetAIDRMenu } from "./GetAIDRMenu";
 import { PhoneMenu } from "./PhoneMenu";
 
@@ -418,6 +419,33 @@ describe("mobile action sizing", () => {
       expect(item.className).not.toContain("min-h-11");
     }
   });
+  // An item that opens another site should say so: without the marker the
+  // Telegram rows look identical to the internal routes, and the reader
+  // gets a new tab with no warning.
+  it("marks the items that leave the site with a trailing external icon", async () => {
+    render(<GetAIDRMenu />);
+    const trigger = screen.getByRole("button", { name: "Get AI;DR menu" });
+    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.click(trigger);
+    const menu = await screen.findByRole("menu");
+
+    const external = new Set([
+      "Telegram Channel (Vietnamese)",
+      "Telegram Channel (English)",
+    ]);
+    for (const item of within(menu).getAllByRole("menuitem")) {
+      const label = item.textContent ?? "";
+      const icons = item.querySelectorAll("svg");
+      expect(icons.length).toBe(external.has(label) ? 2 : 1);
+      if (!external.has(label)) continue;
+      // Trailing and smaller than the leading icon, and hidden from
+      // assistive tech: `target="_blank"` plus the label already say it.
+      const marker = icons[1];
+      expect(marker.getAttribute("aria-hidden")).toBe("true");
+      expect(marker.getAttribute("class")).toContain("ml-auto");
+      expect(marker.getAttribute("class")).toContain("!size-3");
+    }
+  });
 });
 
 describe("intro video tile", () => {
@@ -461,7 +489,7 @@ describe("intro video tile", () => {
     fireEvent.click(tile);
     const player = await screen.findByRole("dialog", { name: "AI;DR là gì?" });
     expect(player.querySelector("iframe")?.getAttribute("src")).toBe(
-      "https://www.youtube-nocookie.com/embed/abc123XYZ_-?autoplay=1&controls=0&rel=0"
+      introVideoEmbedUrl("abc123XYZ_-")
     );
 
     fireEvent.keyDown(document, { key: "Escape" });

@@ -14,6 +14,7 @@ import {
   TELEGRAM_URL,
 } from "../../lib/site";
 import { BrowserFrame } from "./BrowserFrame";
+import { ChannelSplit } from "./ChannelSplit";
 import { ChromeChannel } from "./ChromeChannel";
 import { DigestPreview } from "./DigestPreview";
 import { EmailChannel } from "./EmailChannel";
@@ -79,6 +80,43 @@ describe("NewTabMock", () => {
     expect(en).toMatch(/^(<link[^>]*>)?<div[^>]*aria-hidden="true"/);
     expect(en).not.toMatch(/<(a|button|input)\b/);
   });
+});
+
+describe("ChannelSplit", () => {
+  // The point of the layout is that a control and its result are read side by
+  // side. Assert the pairing structurally: two columns at `lg`, and the
+  // controls first in the DOM — which is also the reading order on a phone,
+  // where the columns stack.
+  it("puts the controls in the left column and the preview in the right", () => {
+    const html = renderToStaticMarkup(
+      <ChannelSplit controls={<p>controls</p>} preview={<p>preview</p>} />
+    );
+    expect(html).toContain("lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]");
+    expect(html).toContain("lg:sticky lg:top-20");
+    expect(html.indexOf("controls")).toBeLessThan(html.indexOf("preview"));
+  });
+
+  // Each channel's controls must render before its own preview, or the split
+  // silently degrades to the old stacked page. Markers are chosen from each
+  // channel's two halves: a control it owns, and its preview frame.
+  for (const [name, control, preview] of [
+    ["ChromeChannel", "Chrome Web Store", "chrome://newtab"],
+    ["TelegramChannel", TELEGRAM_HANDLE, "AI news today"],
+    ["EmailChannel", "digest-email", "/api/subscribe/preview"],
+  ] as const) {
+    it(`splits ${name}: controls first, then the preview`, () => {
+      const html =
+        name === "ChromeChannel"
+          ? renderToStaticMarkup(<ChromeChannel lang="en" />)
+          : name === "TelegramChannel"
+            ? renderToStaticMarkup(<TelegramChannel lang="en" />)
+            : renderToStaticMarkup(<EmailChannel lang="en" />);
+      expect(html).toContain("lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]");
+      expect(html.indexOf(control)).toBeGreaterThan(-1);
+      expect(html.indexOf(preview)).toBeGreaterThan(-1);
+      expect(html.indexOf(control)).toBeLessThan(html.indexOf(preview));
+    });
+  }
 });
 
 describe("ChromeChannel", () => {
