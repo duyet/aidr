@@ -33,9 +33,23 @@ describe("telegram tab preview", () => {
     expect(channelSrc).toContain("TELEGRAM_FEATURES");
   });
 
+  it("offers both channels, each tracked under its own name", () => {
+    expect(channelSrc).toContain("TELEGRAM_URL");
+    expect(channelSrc).toContain("TELEGRAM_EN_URL");
+    expect(channelSrc).toContain("TELEGRAM_HANDLE");
+    expect(channelSrc).toContain("TELEGRAM_EN_HANDLE");
+    expect(channelSrc).toContain('track: "telegram"');
+    expect(channelSrc).toContain('track: "telegram-en"');
+    expect(channelSrc).toContain(
+      'trackChannelClick("telegram", { to: c.track })'
+    );
+  });
+
   it("keeps the preview copy inside the existing en/vi pattern", () => {
     expect(previewSrc).toContain("TELEGRAM_DIGEST");
-    expect(previewSrc).toMatch(/const copy = TELEGRAM_DIGEST\[lang === "vi"/);
+    expect(previewSrc).toMatch(
+      /const copy = TELEGRAM_DIGEST\[channel === "vi"/
+    );
   });
 
   // The preview claims to mirror what the bot sends. These assert that claim
