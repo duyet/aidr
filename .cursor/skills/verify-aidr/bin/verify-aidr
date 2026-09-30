@@ -367,7 +367,7 @@ function publicShape(body) {
 
 const HOUR_MS = 3_600_000;
 const PIPELINE_RUN_STALE_H = 2;
-const PIPELINE_TELEGRAM_STALE_H = 8;
+const PIPELINE_TELEGRAM_STALE_H = 26;
 
 /** Read-only prod D1 query through wrangler. Returns one results array per statement. */
 function d1Query(sql) {
@@ -416,7 +416,7 @@ async function runPipeline() {
         "SELECT id, started_at, finished_at, error, stats FROM workflow_runs ORDER BY (CASE WHEN started_at < 100000000000 THEN started_at * 1000 ELSE started_at END) DESC LIMIT 1",
         `SELECT started_at, error, stats FROM workflow_runs WHERE (CASE WHEN started_at < 100000000000 THEN started_at * 1000 ELSE started_at END) >= ${since24} ORDER BY (CASE WHEN started_at < 100000000000 THEN started_at * 1000 ELSE started_at END) DESC LIMIT 100`,
         "SELECT channel, MAX(posted_at) AS last_posted_at, COUNT(*) AS total FROM notifications WHERE status = 'sent' GROUP BY channel",
-        `SELECT channel, item_id, attempts, last_error, posted_at FROM notifications WHERE status = 'failed' AND posted_at >= ${since24} ORDER BY posted_at DESC LIMIT 20`,
+        `SELECT channel, item_id, attempts, last_error, posted_at FROM notifications WHERE status IN ('failed', 'ambiguous') AND posted_at >= ${since24} ORDER BY posted_at DESC LIMIT 20`,
       ].join("; "),
     );
   } catch (e) {

@@ -193,7 +193,8 @@ export function AlgoTab() {
             </li>
             <li>
               <span className="font-medium text-foreground">Trending</span> —
-              rank ≥ 20 and importance ≥ 7, max 6/day
+              rank ≥ 30 and importance ≥ 8, max 3/day (6 when importance ≥ 9),
+              09–23h
             </li>
             <li>
               <span className="font-medium text-foreground">Review</span> —

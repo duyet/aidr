@@ -13,7 +13,7 @@ import {
 } from "../media.js";
 import { assertMediaManifestSchema } from "../media-schema.js";
 import { getLocalHourAndDate } from "../subscribe/send.js";
-import { AUDIENCE_TIMEZONE } from "../time.js";
+import { AUDIENCE_TIMEZONE, isActiveHour } from "../time.js";
 import type { Env } from "../types.js";
 import { telegramEnNotifier, telegramNotifier } from "./telegram.js";
 import type {
@@ -67,12 +67,18 @@ export const NOTIFY_MAX_ATTEMPTS = 3;
 /** Trending bar: rank_score already folds importance × quality ×
  *  freshness × engagement × independent sources, so a high absolute rank
  *  + a high LLM importance means "big story, corroborated, breaking now". */
-export const TRENDING_MIN_RANK = 20;
-export const TRENDING_MIN_IMPORTANCE = 7;
+export const TRENDING_MIN_RANK = 30;
+export const TRENDING_MIN_IMPORTANCE = 8;
 /** At most this many trending posts per channel per local day. */
-export const TRENDING_MAX_PER_DAY = 6;
+export const TRENDING_MAX_PER_DAY = 3;
 /** Minimum spacing between any two posts on a channel. */
-export const TRENDING_MIN_GAP_SEC = 60 * 60;
+export const TRENDING_MIN_GAP_SEC = 3 * 60 * 60;
+/** Big-news days (a launch event, a run of major stories): a story at this
+ *  importance may go past the normal cap and gap, up to the burst limits.
+ *  The day's own scores open the extra room, no event list is kept. */
+export const TRENDING_BURST_MIN_IMPORTANCE = 9;
+export const TRENDING_BURST_MAX_PER_DAY = 6;
+export const TRENDING_BURST_MIN_GAP_SEC = 60 * 60;
 /** Only consider stories published in the last 24h. */
 const WINDOW_SEC = 24 * 60 * 60;
 
@@ -90,6 +96,7 @@ export type DigestSkipReason =
 
 export type TrendingSkipReason =
   | "sent"
+  | "outside_hours"
   | "below_min_rank"
   | "budget_zero"
   | "none_unposted"
@@ -167,11 +174,16 @@ export function classifyDigestSkip(
 export function classifyTrendingSkip(
   maxRank: number | null,
   budget: number,
-  candidateCount: number
+  candidateCount: number,
+  localHour: number
 ): Extract<
   TrendingSkipReason,
-  "below_min_rank" | "budget_zero" | "none_unposted"
+  "outside_hours" | "below_min_rank" | "budget_zero" | "none_unposted"
 > | null {
+  // Overnight posts spent the whole daily cap before readers woke up and
+  // left the channel silent all day. A story that still ranks is posted
+  // once the window opens.
+  if (!isActiveHour(localHour)) return "outside_hours";
   if (budget === 0) return "budget_zero";
   if ((maxRank ?? 0) < TRENDING_MIN_RANK) return "below_min_rank";
   if (candidateCount === 0) return "none_unposted";
@@ -199,7 +211,8 @@ export function shouldSendDigest(
 export function buildTrendingQuery(
   channel: string,
   nowMs: number,
-  lang: Lang = "vi"
+  lang: Lang = "vi",
+  minImportance: number = TRENDING_MIN_IMPORTANCE
 ): { sql: string; binds: [string, number, number, number] } {
   const copy =
     lang === "en"
@@ -233,7 +246,7 @@ export function buildTrendingQuery(
       channel,
       Math.floor(nowMs / 1000) - WINDOW_SEC,
       TRENDING_MIN_RANK,
-      TRENDING_MIN_IMPORTANCE,
+      minImportance,
     ],
   };
 }
@@ -258,15 +271,31 @@ export function trendingBudget(
   lastPostedAtMs: number | null,
   nowMs: number
 ): number {
-  if (sentToday >= TRENDING_MAX_PER_DAY) return 0;
-  if (
-    lastPostedAtMs !== null &&
-    nowMs - lastPostedAtMs < TRENDING_MIN_GAP_SEC * 1000
-  )
-    return 0;
   // Respect the gap between our own posts within this run too: send one
   // per run at most, the next hourly run picks up the rest.
-  return 1;
+  return trendingImportanceFloor(sentToday, lastPostedAtMs, nowMs) === null
+    ? 0
+    : 1;
+}
+
+/** The importance a story needs to be this run's trending post, or null
+ *  when nothing may go out. The normal cap and gap keep a usual day quiet;
+ *  past them only a burst-level story still posts, up to the burst limits. */
+export function trendingImportanceFloor(
+  sentToday: number,
+  lastPostedAtMs: number | null,
+  nowMs: number
+): number | null {
+  const gapMs =
+    lastPostedAtMs === null ? Number.POSITIVE_INFINITY : nowMs - lastPostedAtMs;
+  if (sentToday < TRENDING_MAX_PER_DAY && gapMs >= TRENDING_MIN_GAP_SEC * 1000)
+    return TRENDING_MIN_IMPORTANCE;
+  if (
+    sentToday < TRENDING_BURST_MAX_PER_DAY &&
+    gapMs >= TRENDING_BURST_MIN_GAP_SEC * 1000
+  )
+    return TRENDING_BURST_MIN_IMPORTANCE;
+  return null;
 }
 
 /** Epoch ms of local midnight for `nowMs` in `timezone` — the boundary
@@ -459,20 +488,26 @@ export async function dispatchStoryNotifications(
     // A digest sent seconds ago shouldn't block a genuine trending post
     // forever, but the gap keeps this run from double-posting: budget is
     // computed before this run's digest is counted.
-    budget = trendingBudget(
+    const importanceFloor = trendingImportanceFloor(
       stats?.sent_today ?? 0,
       sent[notifier.id] > 0 ? null : (stats?.last_posted_at ?? null),
       now
     );
+    budget = importanceFloor === null ? 0 : 1;
 
-    const trendingSkip = classifyTrendingSkip(maxRank, budget, 1);
-    if (trendingSkip === "budget_zero" || trendingSkip === "below_min_rank") {
+    const trendingSkip = classifyTrendingSkip(maxRank, budget, 1, hour);
+    if (
+      trendingSkip === "outside_hours" ||
+      trendingSkip === "budget_zero" ||
+      trendingSkip === "below_min_rank"
+    ) {
       trendingReason = trendingSkip;
     } else {
       const { sql, binds } = buildTrendingQuery(
         notifier.id,
         now,
-        notifier.lang
+        notifier.lang,
+        importanceFloor ?? TRENDING_MIN_IMPORTANCE
       );
       const { results } = await env.DB.prepare(sql)
         .bind(...binds)
@@ -481,7 +516,8 @@ export async function dispatchStoryNotifications(
       const afterQuery = classifyTrendingSkip(
         maxRank,
         budget,
-        candidates.length
+        candidates.length,
+        hour
       );
       if (afterQuery) {
         trendingReason = afterQuery;

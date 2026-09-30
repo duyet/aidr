@@ -57,7 +57,7 @@ Read-only. `/api/public` can be 200 while the hourly ingest or Telegram posting 
 
 Reports the latest `workflow_runs` row (age, error), its per-step actions, 24h counts of failed `tldr` steps and `anyrouter chain exhausted`, the last sent `notifications` row per channel with hours since, failed notifications in 24h, and a tally of notify step reasons (for example `telegram.trending=below_min_rank`). `started_at` and `posted_at` are read as ms (prod rows mix ms and seconds, so ordering and the 24h window normalize both).
 
-Warns (`ok: false`, non-zero exit) when the last run is over 2h old, the last run has an error, no Telegram post for over 8h, any failed notification in 24h, or any failed tldr / chain-exhausted run in 24h. `doctor` includes the same block under `pipeline`.
+Warns (`ok: false`, non-zero exit) when the last run is over 2h old, the last run has an error, no Telegram post for over 26h (a missed daily digest), any failed or ambiguous notification in 24h, or any failed tldr / chain-exhausted run in 24h. `doctor` includes the same block under `pipeline`.
 
 ## Doctor IV (Telegram Instant View field gate)
 
