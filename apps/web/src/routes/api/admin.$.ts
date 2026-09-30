@@ -29,6 +29,10 @@ import {
 import { backfillClerkUsers } from "../../../worker/clerk-users.js";
 import { syncGa4Insights } from "../../../worker/ga4/insights.js";
 import {
+  listJevPanelVerdicts,
+  overrideJevPanelVerdict,
+} from "../../../worker/jev-panel/audit.js";
+import {
   getCampaign,
   isMailError,
   listCampaigns,
@@ -319,6 +323,56 @@ async function handle(
   ) {
     const result = await regenerateTldr(env);
     return Response.json(result);
+  }
+
+  if (
+    method === "GET" &&
+    segments.length === 1 &&
+    segments[0] === "jev-verdicts"
+  ) {
+    const url = new URL(request.url);
+    return Response.json(
+      await listJevPanelVerdicts(env, {
+        limit: url.searchParams.get("limit"),
+        subjectId: url.searchParams.get("item"),
+      }),
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  if (
+    method === "POST" &&
+    segments.length === 3 &&
+    segments[0] === "jev-verdicts" &&
+    segments[2] === "override"
+  ) {
+    const actor = await adminActor(request, env);
+    if (!actor)
+      return Response.json({ error: "unauthorized" }, { status: 401 });
+    const { body, error } = await parseJsonBody(request);
+    if (error || !body || typeof body !== "object" || Array.isArray(body)) {
+      return Response.json(
+        { error: error ?? "invalid JSON body" },
+        { status: 400 }
+      );
+    }
+    let verdictId = "";
+    try {
+      verdictId = decodeURIComponent(segments[1] ?? "");
+    } catch {
+      return Response.json({ error: "invalid verdict id" }, { status: 400 });
+    }
+    const input = body as { decision?: unknown; note?: unknown };
+    const result = await overrideJevPanelVerdict(env, {
+      id: verdictId,
+      decision: input.decision,
+      note: input.note,
+      actor,
+    });
+    return Response.json(result, {
+      status: result.ok ? 200 : result.status,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
   if (

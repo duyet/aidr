@@ -319,7 +319,8 @@ export interface JevPanelAudit {
   };
 }
 
-/** Queue boundary only; a future adapter owns persistence and human overrides. */
+/** Queue boundary only; persistence and the human override record live in
+ *  `audit.ts` (`jev_panel_verdicts`). */
 export interface JevHumanReview {
   readonly required: true;
   readonly idempotencyKey: string;
