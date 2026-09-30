@@ -39,21 +39,18 @@ const CRITICAL_BODY_BUDGET_BYTES = 45_000;
  * Bytes the whole font stack may declare, including the faces the first
  * paint does not need.
  *
- * Today 154,440 B: the two body subsets above, Source Sans 3 latin-ext
- * (60,088 — only for the loanword macrons ā and ō that appear in story
- * titles), EB Garamond latin (44,336 — headings are "AI;DR" and a date) and
- * EB Garamond vietnamese (10,952, newly declared: the Vietnamese headings
- * like "Bảng tin theo ngày" were previously falling back to a system serif
- * because no Vietnamese serif subset existed in the @import).
+ * The two body subsets above, Source Sans 3 latin-ext (subset at build
+ * time by scripts/subset-fonts.ts from 60,088 B to ~15 KB — it is only for
+ * the loanword macrons ā and ō and the ₹ sign that appear in story titles),
+ * EB Garamond latin (44,336 — headings are "AI;DR" and a date) and
+ * EB Garamond vietnamese (10,952: Vietnamese headings like "Bảng tin theo
+ * ngày" need it).
  *
- * The 2026-09-27 baseline transferred 143,488 B over four requests. The
- * reduction that matters is not this number but where the bytes sit: the
- * heading serif and latin-ext are not on the critical path any more, and
- * `font-display: optional` means a cold load discards them rather than
- * reflowing the page when they land. Cutting the total further needs a real
- * subsetter, which issue #229 rules out as a new dependency.
+ * The 2026-09-27 baseline transferred 143,488 B over four requests, and the
+ * pre-subset stack declared 154,440 B. The budget is set just above the
+ * subset total so the 45 KB saving cannot quietly come back.
  */
-const TOTAL_BUDGET_BYTES = 160_000;
+const TOTAL_BUDGET_BYTES = 115_000;
 
 interface Face {
   family: string;

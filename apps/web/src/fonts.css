@@ -47,11 +47,16 @@
  *   (U+0101 "ā", U+014D "ō") that only latin-ext covers; dropping it would
  *   visibly change a story title.
  *
- * The 143 KiB of woff2 is unchanged. Subsetting it further needs a real
- * subsetter (a new dependency, which #229 rules out), and the two faces the
- * first paint does not need — the 44 KiB heading serif and the 60 KiB
- * latin-ext — are no longer on the critical path now that they are not
- * preloaded and `optional` discards them on a cold load anyway.
+ * latin-ext is subset at build time (scripts/subset-fonts.ts, run by the
+ *   `subset-fonts` plugin in vite.config.ts) from 60,088 B to ~15 KB. The
+ *   Fontsource range overlapped the Vietnamese letters (ă đ ơ ư ...), so
+ *   every Vietnamese page downloaded all 60 KB; the trimmed range below no
+ *   longer overlaps the vietnamese face, so a Vietnamese page only fetches
+ *   it when a title really has an ā, ō or ₹. The file is generated from
+ *   node_modules, never committed.
+ *
+ * EB Garamond is not subset: harfbuzz only takes 3% off its latin file, and
+ * it is also the body font on story pages.
  */
 
 @font-face {
@@ -85,12 +90,12 @@
   font-style: normal;
   font-weight: 200 900;
   font-display: optional;
-  src: url("@fontsource-variable/source-sans-3/files/source-sans-3-latin-ext-wght-normal.woff2")
+  /* Build-time subset of Fontsource's latin-ext: scripts/subset-fonts.ts. */
+  src: url("./fonts/generated/source-sans-3-latin-ext-wght-normal.woff2")
     format("woff2-variations");
   unicode-range:
-    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
-    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
-    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    U+0100-0101, U+0104-010F, U+0112-0127, U+012A-0130, U+0132-0151,
+    U+0154-0167, U+016A-017F, U+2020, U+20A0-20AA, U+20AD-20C0, U+2113;
 }
 
 @font-face {

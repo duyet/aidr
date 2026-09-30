@@ -13,6 +13,10 @@ dist
 apps/web/public/aidr.zip
 apps/web/public/news-tab.zip
 
+# Subset woff2 built from node_modules by apps/web/scripts/subset-fonts.ts on
+# every dev/build start.
+apps/web/src/fonts/generated/
+
 # Upstream variable font cached by `gen-og-fonts.py`. The instanced, subset
 # output in apps/web/public/fonts/ is committed; this download is not.
 apps/web/scripts/.be-vietnam-pro/

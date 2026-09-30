@@ -15,7 +15,13 @@
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import subsetFont from "subset-font";
 import { describe, expect, it } from "vitest";
+import {
+  LATIN_EXT_SOURCE,
+  latinExtUnicodeRange,
+  subsetLatinExt,
+} from "../../scripts/subset-fonts";
 import { FONT_PRELOAD_DECISION, NON_CRITICAL_FONT_SUBSETS } from "./fonts";
 
 // The font CSS lives in src/, this test in src/lib/.
@@ -128,11 +134,30 @@ const TONE_MARKS = [
   "\u0323", // dot below
 ] as const;
 
+/** Tone marks only ever sit on vowels in Vietnamese. */
+const VI_VOWELS = new Set([
+  "a",
+  "ă",
+  "â",
+  "e",
+  "ê",
+  "i",
+  "o",
+  "ô",
+  "ơ",
+  "u",
+  "ư",
+  "y",
+]);
+
 /** Every Vietnamese letter this site can render, as a flat string. */
 function vietnameseAlphabet(): string {
   const out: string[] = [];
   for (const base of VI_BASE_LETTERS) {
-    for (const tone of TONE_MARKS) {
+    // A consonant with a tone mark (ḅ, ḍ, ṭ ...) is not Vietnamese. It was
+    // only "covered" before because Fontsource's latin-ext claimed the whole
+    // Latin Extended Additional block, which the build-time subset drops.
+    for (const tone of VI_VOWELS.has(base) ? TONE_MARKS : [""]) {
       out.push((base + tone).normalize("NFC"));
     }
   }
@@ -296,5 +321,60 @@ describe("self-hosted font stack (#229)", () => {
     expect(preconnects.length).toBeLessThanOrEqual(4);
     expect(root).toContain('href: "https://j.duyet.net"');
     expect(root).not.toContain("clarity.ms");
+  });
+});
+
+describe("build-time latin-ext subset (#229)", () => {
+  const latinExt = webfaces.find((f) => f.url.includes("latin-ext"));
+  const vietnamese = webfaces.find(
+    (f) => f.family.includes("Source Sans 3") && f.url.includes("vietnamese")
+  );
+
+  it("points the latin-ext face at the generated subset", () => {
+    expect(latinExt?.url).toBe(
+      "./fonts/generated/source-sans-3-latin-ext-wght-normal.woff2"
+    );
+  });
+
+  it("declares exactly the range the subsetter keeps", () => {
+    // A code point in the CSS range but not in the file would render as
+    // .notdef instead of falling back to the next font in the stack.
+    expect(latinExt?.unicodeRange.replace(/\s+/g, " ")).toBe(
+      latinExtUnicodeRange()
+    );
+  });
+
+  it("does not overlap the vietnamese face", () => {
+    // The old Fontsource range claimed ă đ ơ ư too, which made every
+    // Vietnamese page download the whole 60 KB latin-ext file.
+    if (!latinExt || !vietnamese) throw new Error("missing face");
+    const overlap = ranges(vietnamese).flatMap(([lo, hi]) => {
+      const hits: string[] = [];
+      for (let c = lo; c <= hi; c++) {
+        if (coveredBy(latinExt, c)) hits.push(`U+${c.toString(16)}`);
+      }
+      return hits;
+    });
+    expect(overlap).toEqual([]);
+  });
+
+  it("keeps the characters the live feed uses (ā ō ₹)", () => {
+    if (!latinExt) throw new Error("missing face");
+    for (const ch of ["ā", "ō", "Ā", "Ō", "₹"]) {
+      expect(coveredBy(latinExt, ch.codePointAt(0) ?? 0), ch).toBe(true);
+    }
+  });
+
+  it("produces a small woff2 that is still a variable font", async () => {
+    const woff2 = await subsetLatinExt();
+    // "wOF2" signature.
+    expect([...woff2.subarray(0, 4)]).toEqual([0x77, 0x4f, 0x46, 0x32]);
+    // Fontsource's file is 60,088 B; the point of this is to stay far below.
+    expect(woff2.length).toBeLessThan(20_000);
+    const sfnt = await subsetFont(readFileSync(LATIN_EXT_SOURCE), "ā", {
+      targetFormat: "truetype",
+    });
+    // The wght axis (200-900) must survive, or every weight renders as one.
+    expect(sfnt.includes(Buffer.from("fvar"))).toBe(true);
   });
 });
