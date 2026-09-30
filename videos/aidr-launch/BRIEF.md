@@ -7,7 +7,7 @@ destination: youtube
 aspect: 1920x1080
 language: en
 audience: "People who follow AI closely: builders, researchers, founders; English and Vietnamese readers"
-length: 31s
+length: 32s
 angle: "One Semicolon — the semicolon is the product: noise on one side, the digest on the other"
 narration: yes
 ---
@@ -53,6 +53,8 @@ Closing line: "What's happening in AI today?" above aidr.today.
 - Real product facts to draw on: hourly pipeline consume → rank → publish; email from 07:00 local, Telegram VI/EN from 08:00; Chrome new-tab extension; RSS; MCP.
 
 ## Notes
+
+- Owner: channel chips use logos (assets/logos: Telegram, Chrome, MCP from the media resolver; RSS from Simple Icons; mail from Lucide; Web uses the AI;DR mark). Label is "From 26+ sources". Voice trial: Jonah (Clear & Professional), speed 1.12; the Ewan version is draft 4.
 
 - Owner: "more powerful voice and faster pace, ultra professional and super excited announcement" — voice changed to Ewan (Bright & Energetic) at speed 1.12, lines rewritten as announcements.
 - Owner: "showing number of upstream source, number of broadcast channel" — frame 2 shows "From 26 sources" (live count of enabled sources, https://aidr.today/api/system/sources, 2026-09-30); frame 6 shows "6 channels": Web, New tab, Email, Telegram, RSS, MCP.
