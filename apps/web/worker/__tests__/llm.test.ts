@@ -627,6 +627,48 @@ describe("streaming anyrouter responses", () => {
     expect(results[0].category).toBe("Models");
   });
 
+  // Production 2026-09-29/30: every TL;DR call failed because the output
+  // bound counted SSE framing. A ~5K-token answer streams >1MB raw while
+  // its content is only ~20K chars, so the bound tripped mid-stream.
+  it("bounds streamed content, not SSE framing, for a long TL;DR", async () => {
+    const payload = JSON.stringify({
+      bullets_en: [{ text: "A".repeat(4000), item_ids: ["1"] }],
+      bullets_vi: [{ text: "B".repeat(4000), item_ids: ["1"] }],
+    });
+    const envelope = { provider: "x".repeat(200), finishReason: null };
+    const body = sseBody(
+      [...payload].map((char) => ({
+        choices: [{ delta: { content: char } }],
+        anyrouter_metadata: envelope,
+      }))
+    );
+    expect(body.length).toBeGreaterThan(1_000_000);
+    expect(payload.length).toBeLessThan(100_000);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(chunkedResponse(body, 4096))
+    );
+
+    const result = await generateTldr(env, [{ id: "1", title: "Story" }]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeUndefined();
+    expect(result.bullets_vi[0].text).toHaveLength(4000);
+  });
+
+  it("still rejects streamed content past the output bound", async () => {
+    const body = sseBody([
+      { choices: [{ delta: { content: "x".repeat(100_001) } }] },
+    ]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(chunkedResponse(body, 4096))
+    );
+
+    const result = await generateTldr(env, [{ id: "1", title: "Story" }]);
+    expect(result.bullets_en).toEqual([]);
+    expect(result.error).toMatch(/chain exhausted/);
+  });
+
   it("takes tokens from the camelCase usage on the final metadata event", async () => {
     vi.stubGlobal(
       "fetch",

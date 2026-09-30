@@ -9,6 +9,7 @@ import {
   buildSourceMigrationSql,
   buildSourceSeedSql,
   DEFAULT_STALE_AFTER_RUNS,
+  mergeRegistryRows,
   parseSourceInsertRows,
   registrySourceIds,
   SOURCE_REGISTRY,
@@ -152,20 +153,41 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("0027 plus 0030 list exactly the registry rows", () => {
-    const arxivSql = readFileSync(
-      resolve(dirname(MIGRATION_PATH), "0030_arxiv_source.sql"),
-      "utf8"
-    );
+  it("0027, 0030 and 0032 applied in order list exactly the registry rows", () => {
+    const read = (name: string) =>
+      readFileSync(resolve(dirname(MIGRATION_PATH), name), "utf8");
+    const arxivSql = read("0030_arxiv_source.sql");
+    const rangesSql = read("0032_community_source_ranges.sql");
+    // A later migration replaces the earlier row with the same id.
     expect(
-      normalize([
-        ...parseSourceInsertRows(migrationSql),
-        ...parseSourceInsertRows(arxivSql),
-      ])
+      normalize(
+        mergeRegistryRows(
+          parseSourceInsertRows(migrationSql),
+          parseSourceInsertRows(arxivSql),
+          parseSourceInsertRows(rangesSql)
+        )
+      )
     ).toEqual(expected);
     // Never re-enables a source an operator switched off.
-    expect(arxivSql).toContain("ON CONFLICT(id) DO UPDATE SET");
-    expect(arxivSql).not.toContain("enabled = excluded.enabled");
+    for (const sql of [arxivSql, rangesSql]) {
+      expect(sql).toContain("ON CONFLICT(id) DO UPDATE SET");
+      expect(sql).not.toContain("enabled = excluded.enabled");
+    }
+  });
+
+  it("widens Lobsters and HN through config only, on the same adapter types", () => {
+    const lobsters = SOURCE_REGISTRY.find((s) => s.id === "lobsters");
+    const hn = SOURCE_REGISTRY.find((s) => s.id === "hn");
+    expect(lobsters?.type).toBe("lobsters");
+    expect(lobsters?.config.tags).toEqual(["ai", "ml", "vibecoding"]);
+    expect(lobsters?.config.filteredTags).toEqual([
+      "programming",
+      "compsci",
+      "devops",
+      "security",
+    ]);
+    expect(hn?.type).toBe("hn");
+    expect(hn?.config.popularMinPoints).toBe(40);
   });
 
   it("the seed SQL is derived from the registry, not hand-copied", () => {

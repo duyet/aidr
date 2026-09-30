@@ -23,6 +23,8 @@ with no `jevReview` field on the result.
 | `JEV_PANEL_ENABLED` | unset (off) | Master switch. |
 | `JEV_PANEL_RELEVANCE_MODEL` | unset | Comma-separated chain for the `relevance` judge. |
 | `JEV_PANEL_SOURCE_QUALITY_MODEL` | unset | Comma-separated chain for the `source_quality` judge. |
+| `JEV_PANEL_SAFETY_MODEL` | unset | Optional third scoring judge (`safety`); a required seat on a translation panel. Must be a model no other seat uses. |
+| `JEV_PANEL_TRANSLATION_FIDELITY_MODEL` | unset | `translation_fidelity` judge. Only a translation panel (`resolveJevPanelWorkflowConfig(env, [], "translation")`) seats it. The translation-suggestion review uses that panel. |
 | `JEV_PANEL_QUORUM` | `2` | Non-abstain valid votes needed. Clamped to the judge's count. |
 | `JEV_PANEL_DEBATE` | `0` | `1` enables the single replacement cross-examination round. |
 | `JEV_PANEL_FAIL_MODE` | `open` | `closed` forces relevance to 0 when the panel cannot decide. |
@@ -36,6 +38,36 @@ JEV_PANEL_ENABLED=1
 JEV_PANEL_RELEVANCE_MODEL=openai/gpt-5.2
 JEV_PANEL_SOURCE_QUALITY_MODEL=anthropic/claude-opus-4-5
 ```
+
+## Audit trail and human override
+
+Every panel run that is not a replay writes one row to `jev_panel_verdicts`
+(migration `0031`): recommendation, outcome, quorum, relevance before/after,
+and per-judge votes, claims, served model, latency, and tokens. Raw subject
+text is not stored. The write is best effort; a failed insert never changes
+the outcome. With the panel off, the table stays empty.
+
+- `GET /api/admin/jev-verdicts?limit=50&item=<id>` lists recent verdicts.
+- `POST /api/admin/jev-verdicts/<id>/override` with
+  `{"decision":"uphold"|"overturn","note":"..."}` records an operator decision.
+  `overturn` on a scoring verdict that lowered relevance puts
+  `items.llm_relevance` back to the pre-panel value, but only while the item
+  still holds the value the panel wrote (a newer re-score wins). It does not
+  change item status or rank directly. `uphold` changes no item.
+- The admin panel lists verdicts with uphold/overturn buttons (a note is
+  required).
+
+## Submission and translation-suggestion gates
+
+`runJevPanelGate` runs one panel on one subject and returns null when the
+panel is off. Submissions use the scoring panel on the primary relevance;
+translation suggestions use the translation panel (fidelity + safety) on the
+primary rating, and only for suggestions the primary review would accept.
+Both apply `jevPanelRelevance`, so the panel can turn an accept into a reject
+but never the reverse.
+
+Judges of one round run concurrently, each bounded by
+`min(25s, remaining item budget)`, so one slow judge cannot starve another.
 
 ## Rules the integration holds to
 
@@ -80,9 +112,10 @@ config that cannot be resolved is a *misconfiguration*, not a verdict, so it
 always degrades open even under `JEV_PANEL_FAIL_MODE=closed`: a typo must never
 reject a whole ingest run.
 
-**No schema drift.** The panel writes nothing new. It rides on the existing
+**No ranking schema drift.** The panel's effect rides on the existing
 `llm_relevance` and `category` columns, and the existing relevance gate in
-`workflow.ts` still owns the publish/reject decision. No migration is added.
+`workflow.ts` still owns the publish/reject decision. The only new table is
+the `jev_panel_verdicts` audit trail, which nothing reads back into ranking.
 
 ## Mapping onto the persisted decision
 

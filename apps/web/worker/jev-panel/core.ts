@@ -319,7 +319,8 @@ export interface JevPanelAudit {
   };
 }
 
-/** Queue boundary only; a future adapter owns persistence and human overrides. */
+/** Queue boundary only; persistence and the human override record live in
+ *  `audit.ts` (`jev_panel_verdicts`). */
 export interface JevHumanReview {
   readonly required: true;
   readonly idempotencyKey: string;
@@ -1285,31 +1286,40 @@ async function executeRound(
   execute: JevJudgeExecutor,
   crossExam?: JevCrossExamPacket
 ): Promise<readonly JevRoundRecord[]> {
-  const records: JevRoundRecord[] = [];
-  for (const slot of panel.judges) {
-    const invocation: JevInvocation = {
-      phase,
-      round,
-      panelId: panel.panelId,
-      subject: {
-        id: subject.id.trim(),
-        untrustedContent: subject.untrustedContent,
-        ...(subject.version === undefined ? {} : { version: subject.version }),
-      },
-      slot,
-      ...(crossExam === undefined ? {} : { crossExam }),
-    };
+  // Judges run concurrently so a slow judge cannot consume the time budget of
+  // the ones after it. Records are sorted below, so order stays deterministic.
+  const records = await Promise.all(
+    panel.judges.map(async (slot): Promise<JevRoundRecord> => {
+      const invocation: JevInvocation = {
+        phase,
+        round,
+        panelId: panel.panelId,
+        subject: {
+          id: subject.id.trim(),
+          untrustedContent: subject.untrustedContent,
+          ...(subject.version === undefined
+            ? {}
+            : { version: subject.version }),
+        },
+        slot,
+        ...(crossExam === undefined ? {} : { crossExam }),
+      };
 
-    let raw: unknown;
-    try {
-      raw = await execute(invocation);
-    } catch {
-      raw = { status: "error" };
-    }
-    records.push(
-      normalizeExecutionResult(raw, slot, phase, round, panel.categoryOptions)
-    );
-  }
+      let raw: unknown;
+      try {
+        raw = await execute(invocation);
+      } catch {
+        raw = { status: "error" };
+      }
+      return normalizeExecutionResult(
+        raw,
+        slot,
+        phase,
+        round,
+        panel.categoryOptions
+      );
+    })
+  );
   return records.sort((left, right) => compareText(left.slotId, right.slotId));
 }
 

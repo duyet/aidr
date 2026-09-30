@@ -1,9 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import type { JevVerdictRow } from "../../../worker/jev-panel/audit.js";
 import { type AdminState, authedFetch } from "../../lib/admin";
 import { AdminAction } from "./admin/AdminAction";
 import { AdminAudit } from "./admin/AdminAudit";
 import { AdminItems } from "./admin/AdminItems";
+import {
+  AdminJevVerdicts,
+  type JevOverrideDecision,
+} from "./admin/AdminJevVerdicts";
 import { AdminLlmCalls } from "./admin/AdminLlmCalls";
 import { AdminQueue } from "./admin/AdminQueue";
 import {
@@ -53,6 +58,11 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
     []
   );
   const [queueBusy, setQueueBusy] = useState(false);
+  const [verdicts, setVerdicts] = useState<JevVerdictRow[]>([]);
+  const [verdictsBusy, setVerdictsBusy] = useState(false);
+  const [verdictActionBusyId, setVerdictActionBusyId] = useState<string | null>(
+    null
+  );
   const [queueActionBusyId, setQueueActionBusyId] = useState<string | null>(
     null
   );
@@ -144,6 +154,43 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
     }
   }
 
+  async function loadVerdicts() {
+    setVerdictsBusy(true);
+    try {
+      const res = await authedFetch(admin, "/api/admin/jev-verdicts?limit=50");
+      if (res.ok) {
+        const data = (await res.json()) as { verdicts?: JevVerdictRow[] };
+        setVerdicts(Array.isArray(data.verdicts) ? data.verdicts : []);
+      }
+    } catch {
+      // leave previous verdicts in place
+    } finally {
+      setVerdictsBusy(false);
+    }
+  }
+
+  async function overrideVerdict(
+    id: string,
+    decision: JevOverrideDecision,
+    note: string
+  ) {
+    setVerdictActionBusyId(id);
+    try {
+      const res = await authedFetch(
+        admin,
+        `/api/admin/jev-verdicts/${encodeURIComponent(id)}/override`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, note }),
+        }
+      );
+      if (res.ok) await loadVerdicts();
+    } finally {
+      setVerdictActionBusyId(null);
+    }
+  }
+
   async function loadItems() {
     setItemsBusy(true);
     try {
@@ -168,6 +215,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
         loadItems(),
         loadAudit(),
         loadQueue(),
+        loadVerdicts(),
       ]);
     } catch {
       setRefreshError(true);
@@ -419,6 +467,13 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
         actionBusyId={queueActionBusyId}
         onRefresh={loadQueue}
         onDecide={decideQueue}
+      />
+      <AdminJevVerdicts
+        verdicts={verdicts}
+        busy={verdictsBusy}
+        actionBusyId={verdictActionBusyId}
+        onRefresh={loadVerdicts}
+        onOverride={overrideVerdict}
       />
       <AdminItems
         items={items}

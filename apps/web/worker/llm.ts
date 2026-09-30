@@ -448,10 +448,19 @@ async function streamCompletion(
       if (finished) break;
       const text = decoder.decode(value, { stream: true });
       const outputLimit = opts.maxOutputChars ?? MAX_STREAM_CONTENT_CHARS;
-      if (rawBody.length + text.length > outputLimit) {
+      // The bound is on model output (content/reasoning, checked per delta),
+      // not on SSE framing: each event carries ~250 chars of JSON envelope,
+      // so a 5K-token TL;DR streams >1MB raw. rawBody is only needed to
+      // sniff a non-SSE queue receipt, so stop keeping it once events flow.
+      if (!sawEvent) {
+        if (rawBody.length + text.length > outputLimit) {
+          throw new Error("anyrouter response exceeded output bound");
+        }
+        rawBody += text;
+      }
+      if (buffer.length + text.length > outputLimit) {
         throw new Error("anyrouter response exceeded output bound");
       }
-      rawBody += text;
       buffer += text;
       let newline = buffer.indexOf("\n");
       while (newline !== -1 && !done) {

@@ -405,7 +405,7 @@ export function parseRepairCandidate(
   return { title, summary };
 }
 
-function escapePromptPayload(value: unknown): string {
+export function escapePromptPayload(value: unknown): string {
   // Encode the XML-like fence characters as JSON escapes rather than trying
   // to strip attacker text.  Stripping changes the article and can turn a
   // delimiter collision into an instruction boundary; escaping preserves the

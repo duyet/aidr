@@ -59,4 +59,30 @@ describe("hnAdapter", () => {
       },
     ]);
   });
+
+  it("adds a points-range search only when popularMinPoints is set", async () => {
+    await hnAdapter.fetchItems({ query: "AI" }, 100);
+    expect(fetch).toHaveBeenCalledTimes(2);
+
+    vi.mocked(fetch).mockClear();
+    await hnAdapter.fetchItems({ query: "AI", popularMinPoints: 40 }, 100);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    const urls = vi.mocked(fetch).mock.calls.map((c) => new URL(String(c[0])));
+    const popular = urls.find(
+      (u) =>
+        u.pathname.endsWith("/search") && u.searchParams.get("tags") === "story"
+    );
+    expect(popular?.searchParams.get("numericFilters")).toBe(
+      "created_at_i>100,points>=40"
+    );
+    expect(popular?.searchParams.get("query")).toBe("AI");
+  });
+
+  it("still applies the AI keyword filter and dedupe to the popular range", async () => {
+    const items = await hnAdapter.fetchItems({ popularMinPoints: 40 }, 0);
+    expect(items).toHaveLength(2);
+    expect(items.some((i) => i.url === "https://example.com/todo-app")).toBe(
+      false
+    );
+  });
 });

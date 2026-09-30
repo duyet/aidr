@@ -87,7 +87,11 @@ function NotFoundStory({ lang }: { lang: Lang }) {
 }
 
 function StoryContent({ item, lang }: { item: FeedItem; lang: Lang }) {
-  const date = new Date(item.published_at * 1000).toISOString().slice(0, 10);
+  // A row with no usable timestamp still renders; only the day heading is dropped.
+  const published = new Date(item.published_at * 1000);
+  const date = Number.isFinite(published.getTime())
+    ? published.toISOString().slice(0, 10)
+    : null;
 
   return (
     <div>
@@ -103,11 +107,13 @@ function StoryContent({ item, lang }: { item: FeedItem; lang: Lang }) {
           1 {lang === "vi" ? "tin" : "story"}
         </span>
       </div>
-      <div className="border-b-2 border-foreground/80 pb-2">
-        <ARTICLE_DATE_TAG className="text-xl font-bold">
-          {formatDayHeading(date, lang)}
-        </ARTICLE_DATE_TAG>
-      </div>
+      {date && (
+        <div className="border-b-2 border-foreground/80 pb-2">
+          <ARTICLE_DATE_TAG className="text-xl font-bold">
+            {formatDayHeading(date, lang)}
+          </ARTICLE_DATE_TAG>
+        </div>
+      )}
       <StoryRow
         item={item}
         index={1}

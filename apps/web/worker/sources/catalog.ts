@@ -438,10 +438,62 @@ export const ARXIV_SOURCE: SourceSpec = {
   staleAfterRuns: 72,
 };
 
-export const SOURCE_REGISTRY: readonly SourceSpec[] = [
-  ...REGISTRY_0027,
-  ARXIV_SOURCE,
+/**
+ * Wider community coverage (#230), created in D1 by
+ * `0032_community_source_ranges.sql`. These re-declare rows that 0027 already
+ * inserted, so they replace the 0027 entry with the same id (see
+ * `SOURCE_REGISTRY`). 0027 itself is applied and stays byte-for-byte as is.
+ *
+ * - `lobsters.filteredTags`: broad tags verified live on lobste.rs (each
+ *   `/t/{tag}.json` returns 25 stories). Lobsters has no other AI tag than
+ *   `ai`, `ml` and `vibecoding`, so these are only kept when the title passes
+ *   the shared AI keyword list; nothing else reaches the scorer.
+ * - `hn.popularMinPoints`: a third Algolia search for stories scoring at least
+ *   this much in the window, so a high-score AI story that is neither in the
+ *   newest 100 nor on the front page is still seen. Same AI keyword filter.
+ *
+ * Volume: both additions only add items already passing the AI keyword filter,
+ * and duplicates of existing items are dropped by the normal dedupe, so the
+ * score batch budget in ALGORITHM.md is unchanged.
+ */
+export const REGISTRY_0032: readonly SourceSpec[] = [
+  {
+    id: "hn",
+    name: "Hacker News",
+    type: "hn",
+    config: {
+      query:
+        "AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek",
+      popularMinPoints: 40,
+    },
+    enabled: true,
+  },
+  {
+    id: "lobsters",
+    name: "Lobsters",
+    type: "lobsters",
+    config: {
+      tags: ["ai", "ml", "vibecoding"],
+      filteredTags: ["programming", "compsci", "devops", "security"],
+    },
+    enabled: true,
+  },
 ];
+
+/** Later migrations replace earlier rows with the same id, in order. */
+export function mergeRegistryRows(
+  ...layers: readonly (readonly SourceSpec[])[]
+): SourceSpec[] {
+  const byId = new Map<string, SourceSpec>();
+  for (const spec of layers.flat()) byId.set(spec.id, spec);
+  return [...byId.values()];
+}
+
+export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
+  REGISTRY_0027,
+  [ARXIV_SOURCE],
+  REGISTRY_0032
+);
 
 export function registrySourceIds(): string[] {
   return SOURCE_REGISTRY.map((s) => s.id);

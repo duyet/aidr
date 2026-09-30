@@ -6,6 +6,7 @@ import { FeedSkeleton } from "../components/FeedSkeleton";
 import { TldrSection } from "../components/TldrSection";
 import { TrendingChips } from "../components/TrendingChips";
 import { parseAidrLayout } from "../lib/aidr-layout";
+import { AIDR_END_ID, AIDR_PAINT_GATE_LINK } from "../lib/aidr-paint-gate";
 import { showFeedBrowseChrome } from "../lib/empty-feed";
 import { setCachedFeed } from "../lib/feed-cache";
 import { fetchFeed } from "../lib/feed-fn";
@@ -48,14 +49,21 @@ export const Route = createFileRoute("/")({
         lang: context.lang,
       },
     }),
-  head: ({ match, loaderData }) =>
-    homepageHead(match.context.lang, {
+  head: ({ match, loaderData }) => {
+    const head = homepageHead(match.context.lang, {
       // The digest bullets are the only source of story permalinks, and they
       // come from the same SSR payload the AI;DR section paints, so the
       // JSON-LD ItemList can only list links that are in this response.
       feed: loaderData,
       route: headRouteInput(match),
-    }),
+    });
+    // Gate the first paint only when the AI;DR section is in this response.
+    // A search page has no section, and without loader data the page SSRs
+    // FeedSkeleton; either way the marker never comes and the gate would
+    // hold paint until the whole document is parsed.
+    if (match.search.q || !loaderData) return head;
+    return { ...head, links: [...(head.links ?? []), AIDR_PAINT_GATE_LINK] };
+  },
   component: IndexPage,
 });
 
@@ -295,6 +303,7 @@ function IndexPage() {
                   layout={parseAidrLayout(aidr)}
                   layoutLabeled={Boolean(aidr)}
                 />
+                <span id={AIDR_END_ID} hidden />
               </div>
             );
           case "days":

@@ -61,16 +61,18 @@ export function DialogHeader({
               </span>
             )}
           </a>
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => track("story_open", { item_id: item.id })}
-            className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="truncate">{item.url}</span>
-          </a>
+          {item.url && (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("story_open", { item_id: item.id })}
+              className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{item.url}</span>
+            </a>
+          )}
         </div>
       ) : (
         <span className="flex-1" />

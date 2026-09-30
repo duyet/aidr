@@ -91,17 +91,36 @@ describe("live AnyRouter model chains", () => {
   // last resort so one bad auto pick cannot burn a whole step's time budget.
   const liveChain = [
     "poolside/laguna-s-2.1",
-    "meta/llama-4-scout-17b-16e-instruct",
+    "nvidia/nemotron-3-super-120b-a12b",
     "anyrouter/auto",
   ];
 
   it("ends score, tldr, and translate chains with anyrouter/auto", () => {
+    for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TRANSLATE_MODEL"]) {
+      expect(idsOf(name), name).toEqual(liveChain);
+    }
+  });
+
+  // A 20-25K-char TL;DR prompt took Laguna 108s (past TLDR_SLICE_MAX_MS)
+  // but Nemotron 3 Super 25-40s, so TL;DR leads with the faster model.
+  it("leads the tldr chain with the model that fits the tldr slice", () => {
+    expect(idsOf("ANYROUTER_TLDR_MODEL")).toEqual([
+      "nvidia/nemotron-3-super-120b-a12b",
+      "poolside/laguna-s-2.1",
+      "anyrouter/auto",
+    ]);
+  });
+
+  it("drops chat ids that failed every live call", () => {
     for (const name of [
       "ANYROUTER_MODEL",
-      "ANYROUTER_TLDR_MODEL",
       "ANYROUTER_TRANSLATE_MODEL",
+      "ANYROUTER_TLDR_MODEL",
+      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
     ]) {
-      expect(idsOf(name), name).toEqual(liveChain);
+      const ids = idsOf(name);
+      expect(ids, name).not.toContain("meta/llama-4-scout-17b-16e-instruct");
+      expect(ids, name).not.toContain("deepseek/deepseek-v4.1-flash");
     }
   });
 
@@ -121,7 +140,7 @@ describe("live AnyRouter model chains", () => {
   it("configures a separate explicit VI→EN generator", () => {
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
       "poolside/laguna-s-2.1",
-      "meta/llama-4-scout-17b-16e-instruct",
+      "nvidia/nemotron-3-super-120b-a12b",
     ]);
   });
 

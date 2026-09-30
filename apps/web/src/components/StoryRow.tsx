@@ -193,24 +193,26 @@ export function StoryRow({
               EN
             </span>
           )}{" "}
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => {
-              e.stopPropagation();
-              track("story_open", { item_id: item.id });
-            }}
-            className="ml-1 text-xs text-muted-foreground hover:text-foreground"
-            aria-label="Open story link"
-          >
-            <ExternalLink className="inline h-3.5 w-3.5 align-baseline" />
-            {publisherHost(item.url) && (
-              <span className="ml-1 hidden sm:inline">
-                {publisherHost(item.url)}
-              </span>
-            )}
-          </a>
+          {item.url && (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.stopPropagation();
+                track("story_open", { item_id: item.id });
+              }}
+              className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+              aria-label="Open story link"
+            >
+              <ExternalLink className="inline h-3.5 w-3.5 align-baseline" />
+              {publisherHost(item.url) && (
+                <span className="ml-1 hidden sm:inline">
+                  {publisherHost(item.url)}
+                </span>
+              )}
+            </a>
+          )}
         </span>
         <span className="hidden shrink-0 text-sm text-muted-foreground sm:block">
           {item.category ? (
@@ -221,7 +223,9 @@ export function StoryRow({
           className="hidden w-20 shrink-0 text-right text-sm text-muted-foreground md:block"
           suppressHydrationWarning
         >
-          {timeAgo(item.published_at, Date.now(), lang)}
+          {Number.isFinite(item.published_at)
+            ? timeAgo(item.published_at, Date.now(), lang)
+            : ""}
         </span>
       </StoryRowHeader>
 

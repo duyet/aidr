@@ -133,9 +133,11 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 ## Pipeline (per hourly run)
 
 1. **Fetch** — each enabled source row (`sources` table) maps to an adapter
-   (`worker/sources/registry.ts`): HN via Algolia (AI-keyword pre-filter),
+   (`worker/sources/registry.ts`): HN via Algolia (AI-keyword pre-filter; `popularMinPoints` adds a
+   points-range search),
    HuggingNews via its `__data.json` (+ per-story detail for body/sources),
-   Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default),
+   Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default; broad
+   `filteredTags` such as `programming` keep only AI-keyword titles),
    generic RSS (`openai`, `google-ai`, `hf-blog` feeds), Anthropic Newsroom
    HTML (`/news` listing — no official RSS), xAI News via sitemap
    (`https://x.ai/sitemap.xml` `/news/<slug>` locs + `/news` listing titles),
@@ -157,6 +159,12 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
      the cap safe: the 26h window means the head of the feed at the next run
      is exactly what was published since the last one, so the cap samples the
      live edge and dedupe drops the rest.
+   - **Feed share cap.** The flood gate only bounds new rows, and a source
+     without `maxItems` (e.g. `marketbrief`) can still dominate. `getFeed`
+     (`src/lib/feed-queries.ts`, `capSourceShare`) therefore also keeps each
+     source's top-`rank_score` rows so none exceeds 25% of the served feed
+     (skipped below 4 distinct sources). It runs at read time, so historic
+     rows are covered.
    - **Host pacing.** A row may set `minRequestIntervalMs` to serialise
      same-host fetches; the first request to a host is never delayed.
    - **Explicit source language.** A row with `sourceLang: "vi"` puts its
@@ -221,8 +229,13 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
      no decision → primary (or `0` with `JEV_PANEL_FAIL_MODE=closed`). Same
      model or same family for both roles is refused before any call; a bad
      config always keeps the primary score. Results are memoized per run id +
-     item id, so a replayed step does not re-vote. No new column. Details:
-     `worker/jev-panel/README.md`.
+     item id, so a replayed step does not re-vote. An optional third judge
+     (`JEV_PANEL_SAFETY_MODEL`) joins when set. Each non-replayed run writes
+     an audit row to `jev_panel_verdicts` (admin `GET /api/admin/jev-verdicts`,
+     human override at `POST /api/admin/jev-verdicts/<id>/override`, also in
+     the admin panel). An `overturn` restores the pre-panel `llm_relevance`
+     if the item still holds the panel's value. Judges run concurrently
+     under the item budget. Details: `worker/jev-panel/README.md`.
    - Tags are then canonicalized (`normalizeTopics`) and captured into
      `topic_daily` each ingest (~15 min).
    - Emerging entity/model names that clear a frequency/growth bar promote
@@ -468,7 +481,9 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
     tried first as a typed decision (`noul` intent/spam + `score` quality
     mapped to relevance/rating); any Jev failure falls back to the existing
     chat-completions JSON judge. `/api/system` lists that chat chain after
-    Jev on `models.decisions`.
+    Jev on `models.decisions`. With `JEV_PANEL_ENABLED`, the JEV review
+    panel then gives a second opinion that can only lower the value
+    (submissions: scoring panel; suggestions: fidelity + safety panel).
 
 ## LLM transport
 
