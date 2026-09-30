@@ -97,7 +97,8 @@ def analyse(d, cuts, offset):
     for i in range(len(d) - 1):
         if i in cuts or i + 1 in cuts:
             continue
-        if d[i] >= MOVE and d[i + 1] < STILL and d[i + 1] <= 0.2 * d[i]:
+        moving = i > 0 and d[i - 1] >= MOVE * 0.5  # a one-frame pop (a blink, a toggle) is not a move
+        if moving and d[i] >= MOVE and d[i + 1] < STILL and d[i + 1] <= 0.2 * d[i]:
             issues.append({"type": "dead_stop", "frame": frame(i + 1),
                            "detail": f"change drops {d[i]:.2f} -> {d[i + 1]:.2f} in one frame; "
                                      "the move has no deceleration tail"})
