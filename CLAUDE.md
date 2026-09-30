@@ -27,4 +27,4 @@ pnpm --filter @aidr/web dev
 
 Narrowest first: `pnpm exec biome lint <path>`, then `pnpm --filter @aidr/web test` / `check-types`. Root: `pnpm run lint`, `pnpm run test`, `pnpm run check-types`.
 
-Live public surfaces: `.cursor/skills/verify-aidr/bin/verify-aidr doctor` then `drive <feature>` (skill `.cursor/skills/verify-aidr/`).
+Live public surfaces: `.agents/skills/verify-aidr/bin/verify-aidr doctor` then `drive <feature>` (skill `.agents/skills/verify-aidr/`).
