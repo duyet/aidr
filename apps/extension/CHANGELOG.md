@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.19](https://github.com/duyet/aidr/compare/aidr-v0.1.18...aidr-v0.1.19) (2026-09-30)
+
+
+### ✨ Features
+
+* **ui:** share design tokens between web and extension ([#268](https://github.com/duyet/aidr/issues/268)) ([aaf0883](https://github.com/duyet/aidr/commit/aaf0883c09e873ed7aa4a5bd57f6829a13dab345))
+
 ## [0.1.18](https://github.com/duyet/aidr/compare/aidr-v0.1.17...aidr-v0.1.18) (2026-09-28)
 
 
