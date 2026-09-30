@@ -46,6 +46,14 @@ async function search(url: string): Promise<AlgoliaHit[]> {
   return data.hits ?? [];
 }
 
+/**
+ * Config (all optional):
+ * - `query`: Algolia full-text query for the newest-first search.
+ * - `popularMinPoints`: adds a third search, most-relevant first, restricted
+ *   to stories at or above this score inside the same window. It catches
+ *   high-scoring AI stories that fell outside both the newest-100 and the
+ *   front page. Absent = the original two searches only.
+ */
 export const hnAdapter: SourceAdapter = {
   type: "hn",
 
@@ -64,13 +72,26 @@ export const hnAdapter: SourceAdapter = {
     frontPageUrl.searchParams.set("numericFilters", numericFilters);
     frontPageUrl.searchParams.set("hitsPerPage", "100");
 
-    const [byDateHits, frontPageHits] = await Promise.all([
+    const searches = [
       search(byDateUrl.toString()),
       search(frontPageUrl.toString()),
-    ]);
+    ];
+    const minPoints = config.popularMinPoints;
+    if (typeof minPoints === "number" && Number.isFinite(minPoints)) {
+      const popularUrl = new URL("https://hn.algolia.com/api/v1/search");
+      popularUrl.searchParams.set("tags", "story");
+      if (query) popularUrl.searchParams.set("query", query);
+      popularUrl.searchParams.set(
+        "numericFilters",
+        `${numericFilters},points>=${Math.max(1, Math.floor(minPoints))}`
+      );
+      popularUrl.searchParams.set("hitsPerPage", "100");
+      searches.push(search(popularUrl.toString()));
+    }
+    const results = await Promise.all(searches);
 
     const seen = new Map<string, AlgoliaHit>();
-    for (const hit of [...byDateHits, ...frontPageHits]) {
+    for (const hit of results.flat()) {
       if (!seen.has(hit.objectID)) seen.set(hit.objectID, hit);
     }
 
