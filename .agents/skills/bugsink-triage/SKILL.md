@@ -1,6 +1,6 @@
 ---
 name: bugsink-triage
-description: Check Bugsink (duyet.bugsink.com) for new aidr errors, triage them, file deduped GitHub issues, open fix PRs for code bugs, and send one herdr-desk notification per run. Use whenever the user mentions Bugsink, Sentry-style errors, production exceptions, "check bugs", "triage errors", "any new crashes", or when herdr-desk runs the `local:bugsink` job — even if they don't name Bugsink explicitly.
+description: Check Bugsink (duyet.bugsink.com) for new aidr errors, triage them, file deduped GitHub issues, fix code bugs in parallel background subagents, auto-merge + deploy + validate each fix (rollback on failure), and send one herdr-desk notification per run. Use whenever the user mentions Bugsink, Sentry-style errors, production exceptions, "check bugs", "triage errors", "any new crashes", or when herdr-desk runs the `local:bugsink` job — even if they don't name Bugsink explicitly.
 ---
 
 # Bugsink triage
@@ -60,19 +60,42 @@ $S notify "<message>"
 
    Then run `$S comment <uuid> "Tracked in <issue url>"` so Bugsink links back. Never resolve or mute issues in Bugsink: that is the owner's call.
 
-5. **Fix** code bugs only, and at most **2 fix PRs per run** so a flood of errors can't turn into a flood of PRs.
-   - Read `apps/web/ALGORITHM.md` first if the fix touches ingest, ranking, prompts, or notify.
-   - Branch `fix/bugsink-<friendly-id-lowercase>` from `master`. Make the smallest change that removes the cause, and add a test that fails without it.
-   - Validate with the `aidr-validate` skill (`.agents/skills/aidr-validate/SKILL.md`, "change" level). If it fails, leave the issue open with your findings and don't open a PR.
-   - Open the PR with `Fixes #<n>`. Don't merge, deploy, or push to `master`: the owner reviews every automated fix.
-   - Skip the fix when the cause is unclear or the change needs a product decision. A good issue is still a useful result.
+5. **Fix in parallel.** Fixes run in background subagents, one per code-bug issue, all started at once. Up to **5 per run**; any extra issues wait for the next run. Ops, health-alert, and noise issues never get a fix.
+   - **How to spawn.** In Claude Code, use the Agent tool with `run_in_background: true` and `isolation: "worktree"`, with `model: "sonnet"` unless the bug needs deep reasoning. Other agents use their own background/parallel mechanism. With none available, fix the issues one after another.
+   - **What each child does.** Give each child the issue number, the Bugsink event, and the brief below, and tell it to follow the brief exactly:
+     > Fix GitHub issue #<n> (Bugsink <ID>) in duyet/aidr.
+     > - Read `apps/web/ALGORITHM.md` first if the fix touches ingest, ranking, prompts, or notify.
+     > - Branch `fix/bugsink-<id-lowercase>` from `origin/master`.
+     > - Make the smallest change that removes the cause, and add a test that fails without it.
+     > - Run the "change" level of `.agents/skills/aidr-validate/SKILL.md`: lint, the test, check-types. Don't run `build`, because parallel builds run out of memory.
+     > - If validation passes, push and open a PR with `Fixes #<n>` and the evidence table.
+     > - If the cause is unclear, needs a product decision, or validation fails: comment your findings on #<n> and open no PR.
+     > - Never merge or deploy. Report the PR URL or "no PR" with the reason.
+   - **You handle merge and deploy yourself.** Only the orchestrator merges and deploys, never the children. You can't hand off everything, because deploys must stay serialized.
 
-6. **Notify once**, and only if something changed this run (new issue, regression, PR opened). One message:
+6. **Ship one PR at a time.** When the children are done, take each PR one by one, P1 first. Merging to `master` deploys production through `deploy-web.yml`, so each merge is a release. Doing them one at a time means a bad deploy points at exactly one PR.
+   1. Wait for CI: `gh pr checks <pr> --watch`. If a check fails, leave the PR open, comment the failure, and move to the next PR.
+   2. Rebase if needed, then `gh pr merge <pr> --squash --delete-branch`.
+   3. Wait for the deploy: `gh run list -w deploy-web.yml -b master -L 1`, then `gh run watch <id> --exit-status`.
+   4. Validate the live site with `aidr-validate` "deploy" + "smoke":
+      - `curl -s https://aidr.today/api/health` must report `status: ok`.
+      - `verify-aidr doctor` must report `ok: true`.
+      - Run `verify-aidr drive <feature>` for the surface the fix touched.
+      - If the fix touched the pipeline, check `verify-aidr pipeline` after the next hourly run, or on the next triage run if this one ends first.
+   5. **If the deploy or validation fails, roll back at once:**
+      - Revert the merge with `git revert` on a branch, open a PR, and merge it; this redeploys.
+      - Validate again.
+      - Reopen the issue with the failing evidence.
+      - Stop shipping the rest of the PRs this run. Leave them open for the owner.
+   - Never auto-merge release-please PRs (`chore(main): release …`). Only ship `fix/bugsink-*` PRs opened by this run.
+
+7. **Notify once**, and only if something changed this run (new issue, regression, PR opened, deployed, or rolled back). One message:
 
    ```
    🐞 Bugsink aidr: 2 new, 1 regression
-   • AIDR-7 P1 code-bug → #281, PR #282
+   • AIDR-7 P1 code-bug → #281, PR #282 merged + deployed ✅ validated
    • AIDR-8 P2 ops → #283
+   • AIDR-9 P2 code-bug → PR #285 rolled back ❌ (/api/health degraded)
    • AIDR-1 health-alert → already #270
    ```
 
@@ -80,4 +103,4 @@ $S notify "<message>"
 
 ## Report
 
-End with the same summary: per issue, the bucket, what you did, and links. Also list what you skipped and why. Say plainly when a step failed or was skipped; don't hide it.
+End with the same summary: per issue, the bucket, what you did, and links. Also list what you skipped and why. For each shipped PR, include the deploy run and the aidr-validate evidence table. Say plainly when a step failed or was skipped; don't hide it.

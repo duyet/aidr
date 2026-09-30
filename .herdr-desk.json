@@ -9,7 +9,7 @@
       "agentName": "bugsink-desk",
       "playbook": ".agents/skills/bugsink-triage/playbook.md",
       "agent": { "ladder": ["claude", "codex"], "permission": "yolo" },
-      "maxChildren": 2,
+      "maxChildren": 5,
       "schedule": "20 */3 * * *"
     }
   ]
