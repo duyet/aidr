@@ -1,0 +1,7 @@
+# Default gitleaks rules plus allowlists for values that are public by design.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "PostHog project keys (phc_) are public client-side ingest keys"
+regexes = ['''phc_[A-Za-z0-9]{20,}''']
