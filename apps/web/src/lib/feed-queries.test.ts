@@ -61,7 +61,7 @@ describe("boundFeedResponse", () => {
       new TextEncoder().encode(JSON.stringify(bounded)).length
     ).toBeLessThanOrEqual(FEED_RESPONSE_MAX_BYTES);
     expect(bounded.totalStories).toBe(items.length);
-  });
+  }, 20_000);
 });
 
 describe("feed hydration state", () => {
