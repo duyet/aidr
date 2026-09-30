@@ -54,6 +54,10 @@ Closing line: "What's happening in AI today?" above aidr.today.
 
 ## Notes
 
+- Owner: the final "A.I.D.R." must not be read slowly. The script writes the name as "AI DR" for the voice engine (spoken briskly as four letters, about 0.7s); "A.I.D.R." is slow and "AIDR" is read as one word. Frame 7 is back to 3.6s.
+
+- Owner: channel chips use logos (assets/logos: Telegram, Chrome, MCP from the media resolver; RSS from Simple Icons; mail from Lucide; Web uses the AI;DR mark). Label is "From 26+ sources". Voice trial: Jonah (Clear & Professional), speed 1.12; the Ewan version is draft 4.
+
 - Owner: "more powerful voice and faster pace, ultra professional and super excited announcement" — voice changed to Ewan (Bright & Energetic) at speed 1.12, lines rewritten as announcements.
 - Owner: "showing number of upstream source, number of broadcast channel" — frame 2 shows "From 26 sources" (live count of enabled sources, https://aidr.today/api/system/sources, 2026-09-30); frame 6 shows "6 channels": Web, New tab, Email, Telegram, RSS, MCP.
 

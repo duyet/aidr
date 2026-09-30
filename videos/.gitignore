@@ -9,3 +9,6 @@
 */.hyperframes/preview/
 */audio_request.json
 */audio_engine_meta.json
+# Studio preview caches and per-machine state.
+*/.waveform-cache/
+*/.hyperframes/history-id

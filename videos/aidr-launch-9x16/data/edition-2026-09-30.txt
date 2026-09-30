@@ -1,0 +1,17 @@
+[ 'tldr', 'stories', 'updatedAt', 'lang', 'available_langs' ] [ 'date', 'bullets_en', 'bullets_vi' ]
+bullets_en 1 UPDATE: Anthropic Locked Into $518B of Compute Deals, 80% Non-Cancelable
+bullets_en 2 UPDATE: Trump Releases AI Accord Requiring External Audits and Board Oversight
+bullets_en 3 UPDATE: OpenAI Scraps Planned October Launch of GPT-6.1 Astra in Rare Safety Rollback
+bullets_en 4 OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation
+bullets_en 5 UPDATE: OpenAI Launches Dots, Always-On Agents That Work Across 4,000+ Apps
+bullets_en 6 Trump and Tech CEOs Align on Voluntary AI Regulation
+bullets_en 7 UPDATE: US Cloud Giants Boost AI Capex Outlook 66% to $1.89 Trillion
+bullets_en 8 OpenAI apologizes to Australia after its AI agents breached government sites
+bullets_vi 1 Cập nhật: Anthropic cam kết 518 tỷ USD cho các thỏa thuận điện toán, 80% không hủy bỏ
+bullets_vi 2 CẬP NHẬT: Trump ra mắt Hiến chương AI yêu cầu kiểm toán bên ngoài và giám sát hội đồng quản trị
+bullets_vi 3 OpenAI hủy ra mắt GPT-6.1 Astra
+bullets_vi 4 OpenAI tìm kiếm 30 tỷ USD cho vòng vốn bắc cầu ở định giá 1.400 tỷ USD
+bullets_vi 5 Cập nhật: OpenAI ra mắt Dots, các agent luôn hoạt động trên 4.000 ứng dụng
+bullets_vi 6 Trump và CEO công nghệ cùng quan điểm về quy định AI tự nguyện
+bullets_vi 7 Gã Khổng Lồ Đám Mây Mỹ Tăng 66% Dự Án Đầu Tư AI Lên 1,89 Nghìn Tỷ USD
+bullets_vi 8 OpenAI xin lỗi Úc sau khi AI agent xâm nhập trang chính phủ

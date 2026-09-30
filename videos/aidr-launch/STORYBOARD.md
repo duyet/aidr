@@ -57,7 +57,7 @@ Scene 3 (3.0–4.0s): the typed line and labels drop out in 4 frames; the camera
 ## Frame 2 — 318 becomes 8
 
 - scene: The camera dives through the semicolon's dot into ink; a wall of real headlines floods in, then the counter drops 318 → 8 and the wall falls away
-- voiceover: "From twenty-six sources, you need eight!"
+- voiceover: "More than twenty-six sources. You need eight!"
 - duration: 3.6s
 - poster: 3.1s
 - transition_in: zoom-through
@@ -77,7 +77,7 @@ narrativeRole: Lands the value claim by the second beat: hundreds in, eight out.
 keyMessage: 318 stories. 8 that matter.
 
 Adapt: keep dataviz-countup's one hero number that the whole frame serves; it counts DOWN, and the "chart" is a wall of real headlines.
-Scene 1 (0.0–1.0s): ink ground. A small uppercase line "From 26 sources" sits at the top from 0.35s for the whole shot (26 is the live count of enabled sources on capture day). Six rows of today's real headlines (from `data/edition-2026-09-30.txt`) in paper at 35% stream across the full width, alternate rows travelling left and right with horizontal motion blur, rows staggered 3 frames. Over them, dead-centre, the numeral "318" in display face, sun, ~22% of frame height, already counting is NOT started. Full-width strips, 2 depth layers.
+Scene 1 (0.0–1.0s): ink ground. A small uppercase line "From 26+ sources" sits at the top from 0.35s for the whole shot (26 is the live count of enabled sources on capture day). Six rows of today's real headlines (from `data/edition-2026-09-30.txt`) in paper at 35% stream across the full width, alternate rows travelling left and right with horizontal motion blur, rows staggered 3 frames. Over them, dead-centre, the numeral "318" in display face, sun, ~22% of frame height, already counting is NOT started. Full-width strips, 2 depth layers.
 Scene 2 (1.0–2.5s): the counter runs 318 → 8 (`counting-dynamic-scale`, tabular numerals) and grows as it falls, reaching ~55% of frame height. On each half-beat one headline row accelerates off its edge and is gone (six rows, 1.0s to 2.25s). The riser peaks as the last row leaves.
 Scene 3 (2.5–4.0s): "8" lands on the beat at 2.5s with the impact, alone on ink. Under it, body face, paper: "stories that matter" arrives per word (`dynamic-content-sequencing`) 2.75–3.25s, then holds still. Centered, one focal point.
 
@@ -133,7 +133,7 @@ Adapt: keep grid-card-assemble's staggered cascade into a held array; the first 
 Scene 1 (0.0–0.75s): paper ground. Row 1 starts exactly at the handoff position and size, then settles (parking ease, 0.6s) into its slot as the first row of a white rounded card: the card surface (1400 wide, centred, hairline border, no shadow) and its header — "AI;DR" in display face with "2026-09-30" beside it, and the 8 · 12 · 16 pill at the right with 8 selected — fade up around it. Row type is now body face, as on the site.
 Scene 2 (0.75–2.5s): rows 2–8 arrive one per eighth-note (0.75, 1.0, 1.25 … 2.25s), two columns of four like the site: each row is number, ember small-caps category label, then the real headline with its entity word in the site's colour. Each slides up 24px with vertical blur and lands on its tick.
 Scene 3 (2.5–4.0s): the footer lands at 2.75s: "318 stories" left, "Updated 43m ago" in ember right. The card is the single focal point. Centered, card ~72% of frame width.
-Scene 4 (4.0–6.0s): a credit line arrives centred under the card, body face: "Scored and summarized by LLMs, powered by" at 3.6s, then the AnyRouter mark and the name "AnyRouter" at 4.33s, as the voice says it, 3 frames apart. Hold. (AI;DR calls its models through AnyRouter — `apps/web/worker/systemone.ts`.)
+Scene 4 (4.0–6.0s): a credit line arrives centred under the card, body face: "Scored and summarized by LLMs, powered by" at 3.2s, then the AnyRouter mark and the name "AnyRouter" at 3.79s, as the voice says it, 3 frames apart. Hold. (AI;DR calls its models through AnyRouter — `apps/web/worker/systemone.ts`.)
 
 ## Frame 5 — Two tongues
 
@@ -185,13 +185,13 @@ keyMessage: Open a tab. It is already there.
 Adapt: keep device-surface-showcase's floating window held as hero under a moving camera; cursorless, one surface, no screen cycling.
 Scene 1 (0.0–1.2s): paper-deep ground. A browser window (hairline border, 1480 wide, plain tab bar with one tab: favicon + "New Tab") rises from below with vertical blur and lands centred by 0.8s. Inside: the site's header ("AI;DR  What's happening in AI today?") and the digest card with all eight rows, already complete. Centered, window ~77% of frame width.
 Scene 2 (0.7–1.5s): no push-in (frame 4 already showed the card large). The camera settles straight to the full window shifted left, asymmetric 75/25; on the right a large "6" with the label "channels" lands at 0.7s.
-Scene 3 (1.5–5.6s): six chips arrive under the count, top to bottom, each landing as the voice names it (1.62, 2.39, 3.14, 3.87, 4.59, 5.43s): "Web", "New tab", "Email · 07:00", "Telegram · 08:00", "RSS", "MCP". Each slides in 40px from the right with horizontal blur.
+Scene 3 (1.5–5.6s): six chips arrive under the count, top to bottom, each landing as the voice names it (1.83, 2.43, 3.11, 3.82, 4.54, 5.39s), each chip a logo plus its name: "Web", "New tab", "Email · 07:00", "Telegram · 08:00", "RSS", "MCP". Each slides in 40px from the right with horizontal blur.
 Scene 4 (5.6–6.0s): hold.
 
 ## Frame 7 — Lockup
 
 - scene: Everything folds back into the semicolon; A, I, D, R slide out from behind it, the yellow tile closes around them, and the line "What's happening in AI today?" holds above aidr.today
-- voiceover: "A.I.D.R. is live! What's happening in AI today?"
+- voiceover: "AI DR is live! What's happening in AI today?"
 - duration: 3.6s
 - poster: 2.7s
 - transition_in: zoom-through
