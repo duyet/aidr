@@ -228,16 +228,14 @@ describe("stale detector", () => {
     expect(DEFAULT_STALE_AFTER_RUNS).toBeGreaterThan(ARXIV_MIN_OVERRIDE);
   });
 
-  it("gives arXiv a lower threshold when it is added, and not before", () => {
-    // arXiv is not in the registry (robots-disallowed API, unverifiable feed —
-    // see ARXIV_NOT_ADDED_REASON in worker/sources/catalog.ts), so there is no
-    // override yet and every row takes the documented default. The measurement
-    // that a future override must respect is asserted here so the follow-up
-    // cannot pick a number without it: arXiv accepts no weekend submissions,
-    // leaving a measured ~54 consecutive silent runs every weekend, so the
-    // documented 72 clears that and a 48-run default would false-positive.
+  it("gives arXiv the lower weekend-safe threshold and every other row the default", () => {
+    // arXiv accepts no weekend submissions, leaving a measured ~54
+    // consecutive silent runs every weekend, so the documented 72 clears that
+    // and the 168 default would be needlessly slow while 48 would false-positive.
     for (const spec of SOURCE_REGISTRY) {
-      expect(staleAfterRunsFor(spec.id)).toBe(DEFAULT_STALE_AFTER_RUNS);
+      expect(staleAfterRunsFor(spec.id)).toBe(
+        spec.id === "arxiv-research" ? 72 : DEFAULT_STALE_AFTER_RUNS
+      );
     }
     expect(staleAfterRunsFor("techcrunch-ai")).toBe(DEFAULT_STALE_AFTER_RUNS);
     // An operator-added source that is not in the registry still gets the

@@ -174,11 +174,11 @@ describe("arXiv flood gate", () => {
       worstCaseScoreSeconds: (rounds * SCORE_SLICE_MAX_MS) / 1000,
       stepBudgetSeconds: LLM_STEP_TIMEOUT_MS / 1000,
     }).toEqual({
-      sources: 5,
-      perRunCeiling: 30,
-      batches: 6,
-      rounds: 2,
-      worstCaseScoreSeconds: 140,
+      sources: 6,
+      perRunCeiling: 36,
+      batches: 8,
+      rounds: 3,
+      worstCaseScoreSeconds: 210,
       stepBudgetSeconds: 240,
     });
     // The real invariant: the score step's own 4-minute budget still holds

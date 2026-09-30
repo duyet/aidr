@@ -84,49 +84,34 @@ describe("declarative source registry", () => {
     }
   });
 
-  it("keeps no robots-disallowed source, and records why arXiv is absent", () => {
-    // arXiv was evaluated and rejected on two independent grounds, both
-    // recorded in the catalog. This test exists so the decision cannot be
-    // quietly reverted by a later "let's just add arXiv" commit without
-    // someone re-reading why.
-    expect(
-      SOURCE_REGISTRY.filter((s) => s.id.startsWith("arxiv-")),
-      "arXiv must not return to the registry without a fresh live verification"
-    ).toEqual([]);
-    // The sortable Atom API is the surface everyone reaches for first, and it
-    // is the one that is disallowed on both arXiv hosts.
-    expect(ARXIV_NOT_ADDED_REASON).toContain("Disallow: /api");
-    expect(ARXIV_NOT_ADDED_REASON).toContain("rss.arxiv.org");
-    // …and the allowed surface is documented as unverifiable, not as broken.
-    expect(ARXIV_NOT_ADDED_REASON).toContain("skipDays");
-    // The row to add later, with its weekend-freeze threshold, is written out
-    // in the catalog's comment block so the follow-up is a copy-paste. Assert
-    // it on the source text: the recipe is documentation, not runtime state.
-    const catalogSource = readFileSync(
-      resolve(
-        dirname(fileURLToPath(import.meta.url)),
-        "..",
-        "sources",
-        "catalog.ts"
-      ),
-      "utf8"
-    );
-    expect(catalogSource).toContain(
+  it("carries arXiv only via the robots-clean rss.arxiv.org feed, flood-gated", () => {
+    const arxiv = SOURCE_REGISTRY.filter((s) => s.id.startsWith("arxiv-"));
+    expect(arxiv.map((s) => s.id)).toEqual(["arxiv-research"]);
+    const [row] = arxiv;
+    // The sortable Atom API is disallowed on both arXiv hosts; only the
+    // rss.arxiv.org syndication feed (no robots.txt) may be used.
+    expect(row?.type).toBe("rss");
+    expect(row?.config.feed).toBe(
       "https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL"
     );
-    expect(catalogSource).toContain("staleAfterRuns: 72");
+    expect(ARXIV_NOT_ADDED_REASON).toContain("Disallow: /api");
+    // A firehose needs both gates: the AI keyword pre-filter and a hard cap.
+    expect(row?.config.keywordFilter).toBe("ai");
+    expect(row?.config.maxItems).toBe(6);
+    // No weekend announcements: ~54 silent runs must not flag it as stale.
+    expect(row?.staleAfterRuns).toBe(72);
   });
 
   it("points no registry row at a robots-disallowed host", () => {
-    // Guard the general rule, not just the arXiv case: every feed host the
-    // registry names has to be one we can fetch under its published rules.
+    // Every feed host must be fetchable under its published rules.
+    // export.arxiv.org (the API) is Disallow-all; rss.arxiv.org is allowed.
     // `vnexpress.net`'s blanket disallows are all against named AI/training
     // crawlers; its `*` group is `Allow: /`, so a feed fetch is permitted.
     for (const spec of SOURCE_REGISTRY) {
       if (spec.type !== "rss") continue;
       const host = new URL(spec.config.feed as string).host;
       expect(
-        /(^|\.)(export|rss)\.arxiv\.org$/.test(host),
+        /(^|\.)export\.arxiv\.org$/.test(host),
         `${spec.id} points at ${host}`
       ).toBe(false);
     }
@@ -167,8 +152,20 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("the migration and the runtime seed list identical rows", () => {
-    expect(normalize(parseSourceInsertRows(migrationSql))).toEqual(expected);
+  it("0027 plus 0030 list exactly the registry rows", () => {
+    const arxivSql = readFileSync(
+      resolve(dirname(MIGRATION_PATH), "0030_arxiv_source.sql"),
+      "utf8"
+    );
+    expect(
+      normalize([
+        ...parseSourceInsertRows(migrationSql),
+        ...parseSourceInsertRows(arxivSql),
+      ])
+    ).toEqual(expected);
+    // Never re-enables a source an operator switched off.
+    expect(arxivSql).toContain("ON CONFLICT(id) DO UPDATE SET");
+    expect(arxivSql).not.toContain("enabled = excluded.enabled");
   });
 
   it("the seed SQL is derived from the registry, not hand-copied", () => {
