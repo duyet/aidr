@@ -1,6 +1,6 @@
 ---
 format: 1920x1080
-duration: 32.4s
+duration: 30.6s
 message: "Too much AI news; AI;DR ranks it down to the eight stories that matter, every day, in English and Vietnamese."
 arc: Future Pacing with a Demo Loop tail — Hook → Value claim → Mechanism → Result → Reach → Product → Lockup
 audience: People who follow AI closely — builders, researchers, founders; English and Vietnamese readers
@@ -10,7 +10,7 @@ music: urgent short string ostinato, 133 BPM, minimal news underscore, no brass,
 
 <!-- Narration was added after the first draft (owner: "cool warm voice over"). Lines are short so the frames keep their grid durations; durations are NOT synced to voice length. -->
 <!-- Speed: the film is authored on a 120 BPM grid (bar = 2s) and played 10/9 faster, so a bar is 1.8s (54 frames) and the tempo is 133.3 BPM. -->
-<!-- Scene times inside each frame are AUTHORED times (120 BPM). On screen every time is x0.9, except frame 1, which the owner asked to be longer: it plays at x1.35 (5.4s). Frame 4 is authored as 6s (5.4s on screen) to carry the AnyRouter credit. Frame boundaries on screen: 5.4, 9, 12.6, 18, 21.6, 27, 32.4s (frame 7 is also authored as 6s). -->
+<!-- Scene times inside each frame are AUTHORED times (120 BPM). On screen every time is x0.9, except frame 1, which the owner asked to be longer: it plays at x1.35 (5.4s). Frame 4 is authored as 6s (5.4s on screen) to carry the AnyRouter credit. Frame boundaries on screen: 5.4, 9, 12.6, 18, 21.6, 27, 30.6s. -->
 <!-- Spine: one ink semicolon on yellow. It opens the film, every scene passes through or hinges on it, and it closes the film inside the logo. -->
 <!-- The digest card in frames 4 and 6 is rebuilt in HTML from data/edition-2026-09-30.txt (the captured card image is only 1200x630). -->
 <!-- Figures and headlines are from the live capture of aidr.today on 2026-09-30 (capture/extracted/visible-text.txt, tldr-live.txt): 318 stories, 8 in the digest. -->
@@ -191,8 +191,8 @@ Scene 4 (5.6–6.0s): hold.
 ## Frame 7 — Lockup
 
 - scene: Everything folds back into the semicolon; A, I, D, R slide out from behind it, the yellow tile closes around them, and the line "What's happening in AI today?" holds above aidr.today
-- voiceover: "A.I.D.R. is live! What's happening in AI today?"
-- duration: 5.4s
+- voiceover: "AI DR is live! What's happening in AI today?"
+- duration: 3.6s
 - poster: 2.7s
 - transition_in: zoom-through
 - status: animated
@@ -214,5 +214,5 @@ Adapt: keep logo-assemble-lockup's mark built from its own parts into a held loc
 Scene 1 (0.0–0.8s): sun ground; the semicolon alone, centred, exactly as frame 1 opened. Settles from the zoom-through and is still by 0.5s.
 Scene 2 (0.8–1.6s): A and I slide out to the left from behind the semicolon, D and R to the right (outlined paths, logo ink), 3 frames apart, horizontal blur that clears as they land; as they travel the whole wordmark scales down to lockup size (~20% of frame height) and rises to the upper-middle. Locked at 1.4s with the impact.
 Scene 3 (1.6–3.0s): under the wordmark, display face, ink: "What's happening in AI today?" arrives per word on half-beats from 1.75s (`dynamic-content-sequencing`), complete at 2.5s. Below it at 2.75s, body face with wide tracking: "aidr.today". Centered stack, three lines, clear hierarchy by size.
-Scene 4 (3.0–6.0s): hold — the ending, one bar longer so the announcer can finish and the logo can sit. Nothing moves but the root push.
+Scene 4 (3.0–4.0s): hold — the ending. Nothing moves but the root push.
 

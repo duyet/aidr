@@ -7,7 +7,7 @@ destination: youtube
 aspect: 1920x1080
 language: en
 audience: "People who follow AI closely: builders, researchers, founders; English and Vietnamese readers"
-length: 32s
+length: 31s
 angle: "One Semicolon — the semicolon is the product: noise on one side, the digest on the other"
 narration: yes
 ---
@@ -53,6 +53,8 @@ Closing line: "What's happening in AI today?" above aidr.today.
 - Real product facts to draw on: hourly pipeline consume → rank → publish; email from 07:00 local, Telegram VI/EN from 08:00; Chrome new-tab extension; RSS; MCP.
 
 ## Notes
+
+- Owner: the final "A.I.D.R." must not be read slowly. The script writes the name as "AI DR" for the voice engine (spoken briskly as four letters, about 0.7s); "A.I.D.R." is slow and "AIDR" is read as one word. Frame 7 is back to 3.6s.
 
 - Owner: channel chips use logos (assets/logos: Telegram, Chrome, MCP from the media resolver; RSS from Simple Icons; mail from Lucide; Web uses the AI;DR mark). Label is "From 26+ sources". Voice trial: Jonah (Clear & Professional), speed 1.12; the Ewan version is draft 4.
 

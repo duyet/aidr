@@ -18,9 +18,9 @@ SFX_LIBRARY = os.path.expanduser("~/.claude/skills/media-use/audio/assets/sfx")
 
 # On-screen frame starts (s). Frame 1 plays at x1.35, the rest at x0.9 of authored time.
 FRAME_START = {1: 0.0, 2: 5.4, 3: 9.0, 4: 12.6, 5: 18.0, 6: 21.6, 7: 27.0}
-FRAME_LENGTH = {1: 5.4, 2: 3.6, 3: 3.6, 4: 5.4, 5: 3.6, 6: 5.4, 7: 5.4}
+FRAME_LENGTH = {1: 5.4, 2: 3.6, 3: 3.6, 4: 5.4, 5: 3.6, 6: 5.4, 7: 3.6}
 SCALE = {1: 1.35, 2: 0.9, 3: 0.9, 4: 0.9, 5: 0.9, 6: 0.9, 7: 0.9}
-TOTAL = 32.4
+TOTAL = 30.6
 
 
 def at(frame, authored):

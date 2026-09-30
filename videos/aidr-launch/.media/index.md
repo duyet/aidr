@@ -11,4 +11,4 @@ voice_020  voice  2.9s  —      assets/voice/02.wav         More than twenty-si
 voice_021  voice  2.6s  —      assets/voice/03.wav         We read all of it, and keep what matters!
 voice_022  voice  3.4s  —      assets/voice/04.wav         Ranked and summarized by AI, powered by AnyRouter!
 voice_023  voice  2.4s  —      assets/voice/05.wav         In English, and in Vietnamese!
-voice_024  voice  4.5s  —      assets/voice/07.wav         A.I.D.R. is live! What's happening in AI today?
+voice_025  voice  3.4s  —      assets/voice/07.wav         AI DR is live! What's happening in AI today?

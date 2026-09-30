@@ -54,4 +54,4 @@ Line timing (how long after its frame starts each line is spoken) lives in `audi
 **Time:** 27.0 – 30.6s
 **Delivery:** Announce it. Punch the last word.
 
-    A.I.D.R. is live! What's happening in AI today?
+    AI DR is live! What's happening in AI today?
