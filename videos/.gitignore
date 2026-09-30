@@ -1,0 +1,7 @@
+# Regenerable or third-party: site captures (news photos), render output, snapshots.
+*/capture/
+*/renders/
+*/snapshots/
+*/node_modules/
+*/.hyperframes/frame-packets/
+.DS_Store
