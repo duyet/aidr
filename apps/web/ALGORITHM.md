@@ -159,6 +159,12 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
      the cap safe: the 26h window means the head of the feed at the next run
      is exactly what was published since the last one, so the cap samples the
      live edge and dedupe drops the rest.
+   - **Feed share cap.** The flood gate only bounds new rows, and a source
+     without `maxItems` (e.g. `marketbrief`) can still dominate. `getFeed`
+     (`src/lib/feed-queries.ts`, `capSourceShare`) therefore also keeps each
+     source's top-`rank_score` rows so none exceeds 25% of the served feed
+     (skipped below 4 distinct sources). It runs at read time, so historic
+     rows are covered.
    - **Host pacing.** A row may set `minRequestIntervalMs` to serialise
      same-host fetches; the first request to a host is never delayed.
    - **Explicit source language.** A row with `sourceLang: "vi"` puts its

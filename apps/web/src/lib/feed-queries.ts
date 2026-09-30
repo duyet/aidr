@@ -370,6 +370,46 @@ export function feedDaysAndBefore(search: URLSearchParams): {
   };
 }
 
+/** No single source may hold more than this share of the served feed. */
+export const FEED_MAX_SOURCE_SHARE = 0.25;
+/** Below this many distinct sources a 25% cap is unsatisfiable, so skip it. */
+const FEED_SHARE_CAP_MIN_SOURCES = 4;
+
+/**
+ * Enforce the per-source share cap on the selected rows. Each source keeps
+ * its highest-`rank_score` items up to the largest per-source count `c` with
+ * `c <= share * sum(min(count_s, c))`. Read-time on purpose: the ingest flood
+ * gate only bounds new rows, so historic rows from a firehose still need
+ * this. Input order is preserved.
+ */
+export function capSourceShare<
+  T extends { source_id: string; rank_score: number },
+>(items: T[], share = FEED_MAX_SOURCE_SHARE): T[] {
+  const bySource = new Map<string, T[]>();
+  for (const it of items) {
+    const list = bySource.get(it.source_id) ?? [];
+    list.push(it);
+    bySource.set(it.source_id, list);
+  }
+  if (bySource.size < FEED_SHARE_CAP_MIN_SOURCES) return items;
+  const sizes = [...bySource.values()].map((l) => l.length);
+  let cap = Math.max(...sizes);
+  while (cap > 1) {
+    const total = sizes.reduce((sum, n) => sum + Math.min(n, cap), 0);
+    if (cap <= share * total) break;
+    cap--;
+  }
+  const keep = new Set<T>();
+  for (const list of bySource.values()) {
+    for (const it of [...list]
+      .sort((a, b) => b.rank_score - a.rank_score)
+      .slice(0, cap)) {
+      keep.add(it);
+    }
+  }
+  return items.filter((it) => keep.has(it));
+}
+
 export async function getFeed(
   db: DbReader,
   opts: { category?: string; q?: string; days?: number; before?: string } = {}
@@ -438,7 +478,9 @@ export async function getFeed(
   ]);
   const [itemsRes, catsRes, tldrRes, fetchedRes, olderRes] = mainResults;
 
-  const items = ((itemsRes.results ?? []) as ItemRow[]).map(toFeedItem);
+  const items = capSourceShare(
+    ((itemsRes.results ?? []) as ItemRow[]).map(toFeedItem)
+  );
   // Sources chunks + learned keywords + yesterday's counts: one round-trip.
   const { yesterdayCounts, learnedKeywords } = await attachSourcesAndTopics(
     db,
