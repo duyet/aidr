@@ -1063,16 +1063,16 @@ export function mergeSourceHealth(
  *  for every registry row. 168 consecutive runs is seven days at the hourly
  *  cadence — see the reasoning in `worker/source-health.ts`.
  *
- *  There is no per-source override yet: every source in the registry publishes
- *  at least weekly. The one measured case that would need one is arXiv (no
- *  weekend submissions, a ~54-run silent gap). arXiv is not in the registry —
- *  robots-disallowed API and an unverifiable feed, see
- *  `ARXIV_NOT_ADDED_REASON` in `worker/sources/catalog.ts` — and the row to
- *  add there carries its own `staleAfterRuns: 72` with the same measurement. */
+ *  arXiv is the one override: it announces nothing on weekends, a measured
+ *  ~54-run silent gap, so it carries `staleAfterRuns: 72` in the registry. */
 const DEFAULT_STALE_AFTER_RUNS = 168;
 
-export function sourceStaleThreshold(_id: string): number {
-  return DEFAULT_STALE_AFTER_RUNS;
+const STALE_AFTER_RUNS_OVERRIDES: Record<string, number> = {
+  "arxiv-research": 72,
+};
+
+export function sourceStaleThreshold(id: string): number {
+  return STALE_AFTER_RUNS_OVERRIDES[id] ?? DEFAULT_STALE_AFTER_RUNS;
 }
 
 export async function loadSystemSources(db: DbReader): Promise<SystemSources> {

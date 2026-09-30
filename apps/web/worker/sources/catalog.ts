@@ -415,6 +415,23 @@ export const SOURCE_REGISTRY: readonly SourceSpec[] = [
     },
     enabled: true,
   },
+  {
+    id: "arxiv-research",
+    name: "arXiv cs.AI / cs.LG / cs.CL",
+    type: "rss",
+    config: {
+      // rss.arxiv.org has no robots.txt and accepts a combined category list,
+      // so this is one request per run. Flood-gated: AI keyword pre-filter
+      // plus a newest-first cap (see ARXIV_NOT_ADDED_REASON history above).
+      feed: "https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL",
+      homepage: "https://arxiv.org/list/cs.AI/recent",
+      keywordFilter: "ai",
+      maxItems: 6,
+    },
+    enabled: true,
+    // No weekend announcements: ~54 measured silent runs Fri-Mon.
+    staleAfterRuns: 72,
+  },
 ];
 
 export function registrySourceIds(): string[] {

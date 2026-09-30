@@ -57,4 +57,5 @@ INSERT OR IGNORE INTO sources (id, name, type, config, enabled) VALUES
   ('techcrunch-ai', 'TechCrunch AI', 'rss', '{"feed":"https://techcrunch.com/category/artificial-intelligence/feed/","homepage":"https://techcrunch.com/category/artificial-intelligence/","maxItems":6}', 1),
   ('theverge-ai', 'The Verge AI', 'rss', '{"feed":"https://www.theverge.com/rss/ai-artificial-intelligence/index.xml","homepage":"https://www.theverge.com/ai-artificial-intelligence","maxItems":6}', 1),
   ('arstechnica-ai', 'Ars Technica AI', 'rss', '{"feed":"https://arstechnica.com/ai/feed/","homepage":"https://arstechnica.com/ai/","maxItems":6}', 1),
-  ('wired-ai', 'WIRED AI', 'rss', '{"feed":"https://www.wired.com/feed/tag/ai/latest/rss","homepage":"https://www.wired.com/tag/artificial-intelligence/","maxItems":6}', 1);
+  ('wired-ai', 'WIRED AI', 'rss', '{"feed":"https://www.wired.com/feed/tag/ai/latest/rss","homepage":"https://www.wired.com/tag/artificial-intelligence/","maxItems":6}', 1),
+  ('arxiv-research', 'arXiv cs.AI / cs.LG / cs.CL', 'rss', '{"feed":"https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL","homepage":"https://arxiv.org/list/cs.AI/recent","keywordFilter":"ai","maxItems":6}', 1);
