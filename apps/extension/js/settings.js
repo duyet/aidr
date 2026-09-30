@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS = {
     categories: true,
   },
   sectionOrder: [...DEFAULT_SECTION_ORDER],
-  density: "compact",
+  density: "comfortable",
   storyCount: 8,
   tldrCount: 8,
   /** Show EN|VI side-by-side in the story dialog (matches web bilingualDialog pref). */

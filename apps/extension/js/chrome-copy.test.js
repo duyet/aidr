@@ -33,7 +33,6 @@ test("section tiles persist with a prefs-panel repaint so aria-pressed updates",
 });
 
 test("header Chrome mark is RiChromeLine, not the pie-chart path", () => {
-  assert.match(html, /id="chrome-tab-link"/);
   assert.match(html, /M10\.3645 19\.8327L12\.2941 16\.4905/);
   assert.doesNotMatch(
     html,
@@ -67,16 +66,31 @@ test("header action row shares one vertical center and 1rem glyphs", () => {
 test("wide header uses the web Get AI;DR menu", () => {
   assert.match(html, /id="header-menu-trigger"/);
   assert.match(html, /aria-label="Get AI;DR menu"/);
-  for (const label of [
-    "Chrome Extension",
-    "Telegram Channel (Vietnamese)",
-    "Email Subscription",
-    "Submit",
-    "Data Analytics",
-    "Algorithms",
-  ]) {
-    assert.ok(html.includes(`>${label}<`));
-  }
+  const menu = html.match(/id="header-menu-content"[\s\S]*?<\/div>/)[0];
+  // Same items and order as the web GetAIDRMenu, minus the Chrome item.
+  assert.deepEqual(
+    [...menu.matchAll(/<span>([^<]+)<\/span>|<(hr) /g)].map(
+      (m) => m[1] || m[2]
+    ),
+    [
+      "Telegram Channel (Vietnamese)",
+      "Telegram Channel (English)",
+      "Email Subscription",
+      "hr",
+      "Submit",
+      "Data Analytics",
+      "Algorithms",
+      "hr",
+      "About",
+    ]
+  );
+  assert.doesNotMatch(html, /chrome-tab-link/);
+  assert.doesNotMatch(js, /chrome-tab-link/);
+  assert.match(
+    menu,
+    /data-channel="telegram"[^>]*href="https:\/\/t\.me\/aidr_today" target="_blank" rel="noopener noreferrer"/
+  );
+  assert.match(menu, /href="https:\/\/aidr\.today\/about"/);
   assert.match(css, /\.header-menu-content/);
   assert.match(
     html,
@@ -137,4 +151,39 @@ test("section tiles follow Cat > Trending > AI;DR > Daily feed", () => {
   assert.deepEqual(keys, ["categories", "trending", "tldr", "days"]);
   assert.match(panel, /prefs-section-tile/);
   assert.match(panel, /sectionIcon/);
+});
+
+test("density drives AI;DR and day story row spacing", () => {
+  assert.match(css, /:root\s*\{[^}]*--pad:\s*0\.75rem/);
+  assert.match(css, /html\[data-density="compact"\]\s*\{\s*--pad:\s*0\.5rem/);
+  assert.match(
+    css,
+    /html\[data-density="spacious"\]\s*\{\s*--pad:\s*1\.125rem/
+  );
+  for (const selector of [
+    "\\.tldr",
+    "\\.tldr-cols",
+    "\\.tldr-list > li",
+    "\\.story-head",
+  ]) {
+    assert.match(css, new RegExp(`\\n${selector} \\{[^}]*var\\(--pad\\)`));
+  }
+  assert.match(css, /\.page\.is-brief \.tldr \{[^}]*var\(--pad\)/);
+});
+
+test("density slider persists through onSaved so appearance re-applies live", () => {
+  const panel = readFileSync(join(root, "js/settings-panel.js"), "utf8");
+  assert.match(
+    panel,
+    /state\.density = [^;]*;\s*await persist\(\{ repaint: false \}\);/
+  );
+  assert.match(panel, /onSaved\?\.\(saved\);\s*if \(repaint\) paint\(\);/);
+  assert.match(js, /const refresh = async[\s\S]*?applyAppearance\(settings\);/);
+});
+
+test("preferences panel has no About tab", () => {
+  const panel = readFileSync(join(root, "js/settings-panel.js"), "utf8");
+  assert.equal(panel.match(/role: "tab",/g).length, 2);
+  assert.doesNotMatch(panel, /about/i);
+  assert.doesNotMatch(css, /\.prefs-about/);
 });
