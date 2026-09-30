@@ -18,6 +18,7 @@ import { useLang } from "../../lib/lang-context";
 import type { Lang } from "../../lib/types";
 import { LangToggle } from "../LangToggle";
 import { HeaderAuth } from "./HeaderAuth";
+import { IntroVideoButton } from "./IntroVideo";
 import { SITE_LINKS } from "./lib";
 
 const HEADER_MENU_TRIGGER_SELECTOR = "[data-header-menu-trigger]";
@@ -199,6 +200,7 @@ export function PhoneMenu({
                   </a>
                 );
               })}
+              <IntroVideoButton lang={lang} tile />
             </nav>
             <div className={PHONE_MENU_FOOTER_CLASS}>
               <ErrorBoundary fallback={null}>
