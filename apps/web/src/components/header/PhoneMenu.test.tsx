@@ -19,6 +19,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GetAIDRMenu } from "./GetAIDRMenu";
 import { PhoneMenu } from "./PhoneMenu";
 
+// The real id is `null` until the owner uploads the video, so every test
+// below runs with the control hidden unless it sets an id itself.
+const introVideo = vi.hoisted(() => ({ id: null as string | null }));
+
+vi.mock("../../lib/intro-video", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/intro-video")>()),
+  get INTRO_VIDEO_YOUTUBE_ID() {
+    return introVideo.id;
+  },
+}));
+
 vi.mock("@tanstack/react-router", async () => {
   const React = await import("react");
   return {
@@ -86,6 +97,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  introVideo.id = null;
 });
 
 function renderPhoneMenu() {
@@ -405,5 +417,57 @@ describe("mobile action sizing", () => {
       expect(item.className).not.toContain("min-w-[44px]");
       expect(item.className).not.toContain("min-h-11");
     }
+  });
+});
+
+describe("intro video tile", () => {
+  // The test asserts the iframe's src; it must not fetch the embed.
+  (
+    window as unknown as {
+      happyDOM: { settings: { disableIframePageLoading: boolean } };
+    }
+  ).happyDOM.settings.disableIframePageLoading = true;
+
+  // The compact header row has no room for another 44px control, so phones
+  // reach the video from the menu, like every other secondary action.
+  async function openMenuNavigation() {
+    render(
+      <PhoneMenu
+        lang="vi"
+        onLangChange={() => undefined}
+        langToggleDisabled={false}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const dialog = await screen.findByRole("dialog");
+    return within(dialog).getByRole("navigation", {
+      name: "Mobile navigation",
+    });
+  }
+
+  it("adds no tile while the video id is unset", async () => {
+    const navigation = await openMenuNavigation();
+    expect(within(navigation).queryByRole("button")).toBeNull();
+  });
+
+  it("plays the video over the menu and keeps the menu open after closing it", async () => {
+    introVideo.id = "abc123XYZ_-";
+    const navigation = await openMenuNavigation();
+    const tile = within(navigation).getByRole("button", {
+      name: "Video giới thiệu",
+    });
+    expect(tile.className).toContain("min-h-24");
+
+    fireEvent.click(tile);
+    const player = await screen.findByRole("dialog", { name: "AI;DR là gì?" });
+    expect(player.querySelector("iframe")?.getAttribute("src")).toBe(
+      "https://www.youtube-nocookie.com/embed/abc123XYZ_-?autoplay=1&rel=0"
+    );
+
+    fireEvent.click(within(player).getByRole("button", { name: "Đóng" }));
+    await waitFor(() => expect(document.querySelector("iframe")).toBeNull());
+    expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBe(
+      navigation
+    );
   });
 });
