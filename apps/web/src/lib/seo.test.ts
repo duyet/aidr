@@ -406,6 +406,33 @@ describe("notFoundHead", () => {
 // ---------------------------------------------------------------------------
 
 describe("articleHead JSON-LD (NewsArticle)", () => {
+  it("publishes a breadcrumb that ends at the canonical story URL", () => {
+    const head = articleHead(STORY, "en", { route: STORY_ROUTE });
+    const article = node<JsonLdNode & { breadcrumb: { "@id": string } }>(
+      head,
+      "NewsArticle"
+    );
+    const crumbs = node<
+      JsonLdNode & {
+        "@id": string;
+        itemListElement: { position: number; name: string; item: string }[];
+      }
+    >(head, "BreadcrumbList");
+    const canonical = head.links.find((l) => l.rel === "canonical")?.href;
+
+    expect(article.breadcrumb["@id"]).toBe(crumbs["@id"]);
+    expect(crumbs.itemListElement.map((c) => c.position)).toEqual([1, 2]);
+    expect(crumbs.itemListElement[0]?.item).toBe(`${SITE_URL}/?lang=en`);
+    expect(crumbs.itemListElement[1]).toMatchObject({
+      name: STORY.title,
+      item: canonical,
+    });
+  });
+
+  it("emits no breadcrumb on a route that is not indexable", () => {
+    expect(articleHead(STORY, "en").jsonLd).toEqual([]);
+  });
+
   it("matches the rendered headline, canonical, og:image, and og:locale", () => {
     const head = articleHead(STORY, "en", { route: STORY_ROUTE });
     const article = node<JsonLdNode & { headline: string }>(

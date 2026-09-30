@@ -731,6 +731,7 @@ export function articleHead(
     },
     inLanguage: schemaLang(headline.fallbackFromEnglish ? "en" : lang),
     isPartOf: { "@type": "WebSite", "@id": SITE_WEBSITE_ID },
+    breadcrumb: { "@id": `${url}#breadcrumb` },
     ...(item.category ? { articleSection: item.category } : {}),
     ...(safeExternalUrl(item.url) && item.url !== url
       ? { isBasedOn: item.url }
@@ -738,7 +739,13 @@ export function articleHead(
     ...(publisher ? { publisher } : {}),
     ...storyDates(item),
   };
-  const graph = indexableGraph(opts.route, () => [article]);
+  const graph = indexableGraph(opts.route, () => [
+    article,
+    breadcrumbNode(`${url}#breadcrumb`, [
+      siteBreadcrumbItem(lang),
+      { name: headline.text, item: url },
+    ]),
+  ]);
   return {
     meta: shareTags({
       title,
