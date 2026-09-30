@@ -18,7 +18,7 @@ import { ChromeChannel } from "./ChromeChannel";
 import { DigestPreview } from "./DigestPreview";
 import { EmailChannel } from "./EmailChannel";
 import { MailFormatField } from "./MailFormatField";
-import { NewTabMock } from "./NewTabMock";
+import { NEW_TAB_SAMPLE, NewTabMock } from "./NewTabMock";
 import { SettingsPreview } from "./SettingsPreview";
 import { TELEGRAM_FEATURES, TelegramChannel } from "./TelegramChannel";
 import { TELEGRAM_DIGEST, TelegramPreview } from "./TelegramPreview";
@@ -37,13 +37,47 @@ describe("BrowserFrame", () => {
 });
 
 describe("NewTabMock", () => {
-  it("switches its sample headlines with the language", () => {
-    expect(renderToStaticMarkup(<NewTabMock lang="en" />)).toContain(
-      "What&#x27;s new in AI today?"
-    );
-    expect(renderToStaticMarkup(<NewTabMock lang="vi" />)).toContain(
-      "Hôm nay AI có gì mới?"
-    );
+  const en = renderToStaticMarkup(<NewTabMock lang="en" />);
+  const vi = renderToStaticMarkup(<NewTabMock lang="vi" />);
+
+  it("uses the extension's own copy in each language", () => {
+    expect(en).toContain("What&#x27;s happening in AI today?");
+    expect(en).toContain("Search AI news...");
+    expect(en).toContain("Show more ↓");
+    expect(vi).toContain("Hôm nay AI có gì mới?");
+    expect(vi).toContain("Tất cả");
+    expect(vi).toContain("Xu hướng");
+    expect(vi).toContain("Xem thêm ↓");
+  });
+
+  // The preview promises the same result as the real new tab, so each part
+  // of that page has to be present: losing one makes the preview misleading.
+  it("shows every part of the real new tab", () => {
+    for (const html of [en, vi]) {
+      // Header controls: the closed menu button and the preferences button.
+      expect(html).toContain("Get AI;DR");
+      expect(html).toContain(">Aa<");
+      expect(html).not.toContain("Telegram");
+      // Card title, date and the 8 / 12 / 16 count control.
+      expect(html).toContain(">AI;DR<");
+      expect(html).toContain(NEW_TAB_SAMPLE.date);
+      for (const n of NEW_TAB_SAMPLE.counts) expect(html).toContain(`>${n}<`);
+      // Every story leads with its topic label, numbered across two columns.
+      for (const s of NEW_TAB_SAMPLE.stories) {
+        expect(html).toContain(`>${s.label}</span>`);
+      }
+      expect(html).toContain('start="5"');
+    }
+    expect(en).toContain("329 stories");
+    expect(en).toContain("Updated 1m ago");
+    expect(vi).toContain("329 tin");
+    expect(vi).toContain("Cập nhật 1 phút trước");
+  });
+
+  it("stays decorative: hidden from assistive tech, nothing focusable", () => {
+    // React hoists an image preload <link> ahead of the root element.
+    expect(en).toMatch(/^(<link[^>]*>)?<div[^>]*aria-hidden="true"/);
+    expect(en).not.toMatch(/<(a|button|input)\b/);
   });
 });
 

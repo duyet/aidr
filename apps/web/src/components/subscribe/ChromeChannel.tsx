@@ -69,8 +69,8 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
       </BrowserFrame>
       <p className="text-xs text-muted-foreground">
         {t(
-          "Illustrative layout — the new tab shows the live aidr.today feed.",
-          "Bố cục minh họa — tab mới hiển thị bảng tin aidr.today trực tiếp."
+          "Sample stories — the new tab shows the live aidr.today feed.",
+          "Tin mẫu — tab mới hiển thị bảng tin aidr.today trực tiếp."
         )}
       </p>
       <ul className="grid gap-3 sm:grid-cols-2">
