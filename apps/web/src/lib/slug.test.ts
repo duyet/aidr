@@ -86,3 +86,24 @@ describe("legacyStoryRedirectPath", () => {
     expect(legacyStoryRedirectPath("/abcdef12")).toBeNull();
   });
 });
+
+describe("broken story ids", () => {
+  it("rejects segments that are not a hex id or a title-hash slug", () => {
+    for (const slug of [
+      "abcdef1", // 7 chars: too short
+      "ABCDEF12", // uppercase is not a stored id
+      "zzzzzzzz",
+      "about-us",
+      "some-title-xyz",
+      "",
+    ]) {
+      expect(idPrefixFromSlug(slug), slug).toBeNull();
+    }
+  });
+
+  it("does not redirect non-story paths", () => {
+    expect(legacyStoryRedirectPath("/about")).toBeNull();
+    expect(legacyStoryRedirectPath("/models/not-a-story")).toBeNull();
+    expect(legacyStoryRedirectPath("/api/abcdef12")).toBeNull();
+  });
+});
