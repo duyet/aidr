@@ -22,13 +22,13 @@ apps/web/src/fonts/generated/
 apps/web/scripts/.be-vietnam-pro/
 # Local agent tooling, not project source.
 .opencode/
-.cursor/skills/verify-aidr/evidence/**
-!.cursor/skills/verify-aidr/evidence/README.md
-!.cursor/skills/verify-aidr/evidence/.gitignore
+.agents/skills/verify-aidr/evidence/**
+!.agents/skills/verify-aidr/evidence/README.md
+!.agents/skills/verify-aidr/evidence/.gitignore
 .playwright-mcp/
 .herdr-desk/runs/*/
 
-# Claude Code local state (skills under .claude/skills are tracked).
+# Claude Code local state (.claude/skills is a symlink to .agents/skills).
 .claude/settings.local.json
 .claude/worktrees/
 

@@ -24,7 +24,7 @@ const REPO_ROOT = path.resolve(
 );
 
 const lever = readFileSync(
-  path.join(REPO_ROOT, ".cursor/skills/verify-aidr/bin/verify-aidr"),
+  path.join(REPO_ROOT, ".agents/skills/verify-aidr/bin/verify-aidr"),
   "utf8"
 );
 const gateScript = readFileSync(

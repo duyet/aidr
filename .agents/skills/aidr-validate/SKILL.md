@@ -7,8 +7,8 @@ description: Prove an aidr change or task actually works before calling it done 
 
 "Tests pass" is not the same as "it works". This skill chooses the right proof level for what changed, runs it, and reports evidence. It wraps the repo's existing tools instead of repeating them:
 
-- `.cursor/skills/verify-aidr/bin/verify-aidr`: live HTTP, feature drives, prod D1 pipeline check (read-only)
-- `.cursor/skills/aidr-ops/bin/aidr-ops`: secret/config preflight and deploy
+- `.agents/skills/verify-aidr/bin/verify-aidr`: live HTTP, feature drives, prod D1 pipeline check (read-only)
+- `.agents/skills/aidr-ops/bin/aidr-ops`: secret/config preflight and deploy
 - `GET https://aidr.today/api/health`: the Worker's own pipeline health
 
 ## Pick the level
