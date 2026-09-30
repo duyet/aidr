@@ -109,7 +109,8 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
   failed score/TL;DR call must not abort close-run.
 - Just before close-run, the `health-check` step (`worker/health.ts`)
   reports to Sentry/Bugsink when: a Telegram channel has no post for >8h
-  during local 09–23h, >50% of the run's LLM attempts failed (min 4), TL;DR
+  during local 09–23h (unless its daily trending cap is already spent, which
+  makes `notify` skip by design), >50% of the run's LLM attempts failed (min 4), TL;DR
   failed 3 runs in a row, a step failed, or the run errored. Fired keys go
   in `stats.alerts`; the same key is silent for 6h. External uptime
   monitors poll `GET /api/health` (503 when the newest run is down).
