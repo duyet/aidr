@@ -1,0 +1,46 @@
+name: Live budget
+
+# Measures the deployed site, so it must not run on pull requests.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      origin:
+        description: Origin to measure
+        default: https://aidr.today
+      story:
+        description: Published story id (first 8 characters) with media
+        default: "15523a41"
+
+concurrency:
+  group: live-budget
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  live-budget:
+    name: Live latency budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v6
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check live budgets
+        env:
+          ORIGIN: ${{ inputs.origin || 'https://aidr.today' }}
+          STORY: ${{ inputs.story || '15523a41' }}
+        run: >-
+          pnpm --filter @aidr/web run check:live-budget --
+          --origin "$ORIGIN" --story "$STORY"
