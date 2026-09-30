@@ -8,7 +8,6 @@ import {
   parsePriorRun,
   TELEGRAM_QUIET_MS,
 } from "../health.js";
-import { TRENDING_MAX_PER_DAY } from "../notify/index.js";
 
 const NOW = Date.UTC(2026, 8, 29, 7, 0, 0);
 const HOUR = 3600 * 1000;
@@ -22,7 +21,6 @@ function input(patch: Partial<HealthInput> = {}): HealthInput {
       { name: "tldr", action: "generated" },
     ],
     telegramLastPostMs: { telegram: NOW - HOUR },
-    telegramSentToday: {},
     llm: { total: 10, failed: 1 },
     history: [],
     ...patch,
@@ -43,8 +41,11 @@ describe("evaluateHealth", () => {
     expect(keys({})).toEqual([]);
   });
 
-  // The 8h Telegram silence went unnoticed: every run "succeeded".
-  it("flags a Telegram channel silent for more than 8h in active hours", () => {
+  // A silent channel went unnoticed: every run "succeeded". The bar is a
+  // missed daily digest, because on a usual day the digest is the only post
+  // (2026-09-30: an 8h bar fired while the pipeline was healthy).
+  it("flags a Telegram channel that missed its daily digest", () => {
+    expect(TELEGRAM_QUIET_MS).toBeGreaterThan(24 * HOUR);
     const quiet = { telegram: NOW - TELEGRAM_QUIET_MS - 1 };
     expect(keys({ telegramLastPostMs: quiet })).toEqual([
       "telegram-quiet:telegram",
@@ -54,27 +55,8 @@ describe("evaluateHealth", () => {
     ).toEqual([]);
   });
 
-  // 2026-09-30: both channels spent the daily cap by 08:36 local, notify
-  // skipped with `budget_zero` all day, and the alert fired for a healthy
-  // pipeline. Silence the cap explains is not a fault.
-  it("does not flag a quiet channel that spent its daily trending cap", () => {
-    const quiet = {
-      telegram: NOW - TELEGRAM_QUIET_MS - 1,
-      "telegram-en": NOW - TELEGRAM_QUIET_MS - 1,
-    };
-    expect(
-      keys({
-        telegramLastPostMs: quiet,
-        telegramSentToday: {
-          telegram: TRENDING_MAX_PER_DAY,
-          "telegram-en": TRENDING_MAX_PER_DAY - 1,
-        },
-      })
-    ).toEqual(["telegram-quiet:telegram-en"]);
-  });
-
   it("does not flag a quiet channel overnight", () => {
-    const quiet = { telegram: NOW - 10 * HOUR };
+    const quiet = { telegram: NOW - TELEGRAM_QUIET_MS - HOUR };
     expect(keys({ telegramLastPostMs: quiet, localHour: 3 })).toEqual([]);
   });
 

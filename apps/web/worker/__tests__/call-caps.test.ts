@@ -21,8 +21,8 @@ import {
 import {
   DIGEST_MAX_BULLETS,
   NOTIFY_MAX_ATTEMPTS,
-  TRENDING_MAX_PER_DAY,
-  TRENDING_MIN_GAP_SEC,
+  TRENDING_BURST_MAX_PER_DAY,
+  TRENDING_BURST_MIN_GAP_SEC,
   trendingBudget,
 } from "../notify/index.js";
 import { storyPhotoUrls } from "../notify/telegram.js";
@@ -185,7 +185,7 @@ describe("Telegram caps per run", () => {
   it("pins the digest and retry ceilings", () => {
     expect(DIGEST_MAX_BULLETS).toBe(8);
     expect(NOTIFY_MAX_ATTEMPTS).toBe(3);
-    expect(TRENDING_MAX_PER_DAY).toBe(6);
+    expect(TRENDING_BURST_MAX_PER_DAY).toBe(6);
     expect(TELEGRAM_ALBUM_MAX_ITEMS).toBe(10);
   });
 
@@ -196,12 +196,12 @@ describe("Telegram caps per run", () => {
 
   it("stops trending posts at the daily cap", () => {
     const now = Date.UTC(2026, 0, 1, 12);
-    expect(trendingBudget(TRENDING_MAX_PER_DAY, null, now)).toBe(0);
+    expect(trendingBudget(TRENDING_BURST_MAX_PER_DAY, null, now)).toBe(0);
   });
 
   it("respects the minimum gap between posts", () => {
     const now = Date.UTC(2026, 0, 1, 12);
-    const recent = now - (TRENDING_MIN_GAP_SEC - 1) * 1000;
+    const recent = now - (TRENDING_BURST_MIN_GAP_SEC - 1) * 1000;
     expect(trendingBudget(1, recent, now)).toBe(0);
   });
 

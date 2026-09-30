@@ -11,11 +11,15 @@ import {
   localDayStartMs,
   NOTIFY_MAX_ATTEMPTS,
   shouldSendDigest,
+  TRENDING_BURST_MAX_PER_DAY,
+  TRENDING_BURST_MIN_GAP_SEC,
+  TRENDING_BURST_MIN_IMPORTANCE,
   TRENDING_MAX_PER_DAY,
   TRENDING_MIN_GAP_SEC,
   TRENDING_MIN_IMPORTANCE,
   TRENDING_MIN_RANK,
   trendingBudget,
+  trendingImportanceFloor,
 } from "../notify/index.js";
 import {
   buildDigestMessage,
@@ -82,12 +86,12 @@ describe("digest gating", () => {
 
 describe("trendingBudget", () => {
   const now = 1_700_000_000_000;
-  it("stops at the daily cap", () => {
-    expect(trendingBudget(TRENDING_MAX_PER_DAY, null, now)).toBe(0);
+  it("stops at the hard daily cap", () => {
+    expect(trendingBudget(TRENDING_BURST_MAX_PER_DAY, null, now)).toBe(0);
   });
   it("enforces the minimum gap since the last post", () => {
     expect(
-      trendingBudget(0, now - (TRENDING_MIN_GAP_SEC - 60) * 1000, now)
+      trendingBudget(0, now - (TRENDING_BURST_MIN_GAP_SEC - 60) * 1000, now)
     ).toBe(0);
     expect(
       trendingBudget(0, now - (TRENDING_MIN_GAP_SEC + 60) * 1000, now)
@@ -958,18 +962,73 @@ describe("classifyDigestSkip", () => {
   });
 });
 
+// Trending was spam on a usual day (6 posts, some at importance 7) yet a
+// flat low cap would mute the morning after a launch event. The normal
+// tier keeps a usual day to a few spaced posts; only burst-level stories
+// may go past it.
+describe("trendingImportanceFloor", () => {
+  const now = 1_700_000_000_000;
+  const ago = (sec: number) => now - sec * 1000;
+  it("asks for the normal bar while the day is under the normal cap", () => {
+    expect(trendingImportanceFloor(0, null, now)).toBe(TRENDING_MIN_IMPORTANCE);
+    expect(
+      trendingImportanceFloor(
+        TRENDING_MAX_PER_DAY - 1,
+        ago(TRENDING_MIN_GAP_SEC),
+        now
+      )
+    ).toBe(TRENDING_MIN_IMPORTANCE);
+  });
+  it("lets only a burst-level story past the normal cap", () => {
+    expect(trendingImportanceFloor(TRENDING_MAX_PER_DAY, null, now)).toBe(
+      TRENDING_BURST_MIN_IMPORTANCE
+    );
+  });
+  it("lets only a burst-level story inside the normal gap", () => {
+    expect(
+      trendingImportanceFloor(0, ago(TRENDING_BURST_MIN_GAP_SEC), now)
+    ).toBe(TRENDING_BURST_MIN_IMPORTANCE);
+  });
+  it("posts nothing past the burst cap or inside the burst gap", () => {
+    expect(
+      trendingImportanceFloor(TRENDING_BURST_MAX_PER_DAY, null, now)
+    ).toBeNull();
+    expect(
+      trendingImportanceFloor(0, ago(TRENDING_BURST_MIN_GAP_SEC - 1), now)
+    ).toBeNull();
+  });
+  it("puts the floor into the candidate query", () => {
+    const { binds } = buildTrendingQuery(
+      "telegram",
+      now,
+      "vi",
+      TRENDING_BURST_MIN_IMPORTANCE
+    );
+    expect(binds[3]).toBe(TRENDING_BURST_MIN_IMPORTANCE);
+  });
+});
+
 describe("classifyTrendingSkip", () => {
   it("reports below_min_rank when the live max is under the bar", () => {
-    expect(classifyTrendingSkip(16.93, 1, 0)).toBe("below_min_rank");
+    expect(classifyTrendingSkip(16.93, 1, 0, 14)).toBe("below_min_rank");
   });
   it("reports budget_zero before looking at rank", () => {
-    expect(classifyTrendingSkip(30, 0, 0)).toBe("budget_zero");
+    expect(classifyTrendingSkip(30, 0, 0, 14)).toBe("budget_zero");
   });
   it("reports none_unposted when rank clears the bar but nothing is left", () => {
-    expect(classifyTrendingSkip(30, 1, 0)).toBe("none_unposted");
+    expect(classifyTrendingSkip(30, 1, 0, 14)).toBe("none_unposted");
   });
   it("returns null when a candidate may be sent", () => {
-    expect(classifyTrendingSkip(30, 1, 2)).toBeNull();
+    expect(classifyTrendingSkip(30, 1, 2, 14)).toBeNull();
+  });
+  // 2026-09-30: all 6 daily posts went out between 00:33 and 08:36 local,
+  // so both channels were silent for the whole audience day.
+  it("holds a sendable story outside the 09-23 local window", () => {
+    for (const hour of [0, 3, 8, 23]) {
+      expect(classifyTrendingSkip(30, 1, 2, hour)).toBe("outside_hours");
+    }
+    expect(classifyTrendingSkip(30, 1, 2, 9)).toBeNull();
+    expect(classifyTrendingSkip(30, 1, 2, 22)).toBeNull();
   });
 });
 
@@ -983,10 +1042,13 @@ describe("buildMaxRankQuery", () => {
 });
 
 describe("trending thresholds", () => {
-  it("TRENDING_MIN_RANK is 20 — lowered to allow more viral posts", () => {
-    expect(TRENDING_MIN_RANK).toBe(20);
+  it("TRENDING_MIN_RANK is 30: only clearly important stories post", () => {
+    expect(TRENDING_MIN_RANK).toBe(30);
+    expect(TRENDING_MIN_IMPORTANCE).toBe(8);
   });
-  it("TRENDING_MAX_PER_DAY is 6 — allow up to 6 trending posts per day", () => {
-    expect(TRENDING_MAX_PER_DAY).toBe(6);
+  it("a usual day gets at most 3 posts, a big-news day at most 6", () => {
+    expect(TRENDING_MAX_PER_DAY).toBe(3);
+    expect(TRENDING_BURST_MAX_PER_DAY).toBe(6);
+    expect(TRENDING_BURST_MIN_IMPORTANCE).toBe(9);
   });
 });

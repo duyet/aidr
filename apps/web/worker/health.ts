@@ -2,7 +2,6 @@ import { hasFailedStep } from "../src/lib/run-health.js";
 import { reportHealthAlert } from "./bugsink.js";
 import { flushLlmCallWrites } from "./llm-call-log.js";
 import type { AlertEvent, AlertSeverity } from "./notify/alert.js";
-import { localDayStartMs, TRENDING_MAX_PER_DAY } from "./notify/index.js";
 import {
   type DailySummary,
   dailySummaryKey,
@@ -14,7 +13,7 @@ import {
 } from "./owner-alerts.js";
 import type { RunStepInfo } from "./run-stats.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
-import { AUDIENCE_TIMEZONE } from "./time.js";
+import { AUDIENCE_TIMEZONE, isActiveHour } from "./time.js";
 import type { Env } from "./types.js";
 import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "./workflow-run.js";
 
@@ -28,11 +27,11 @@ import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "./workflow-run.js";
  * back as the cooldown, so no extra table or KV is needed.
  */
 
-/** No Telegram post on a channel for this long is an alert. */
-export const TELEGRAM_QUIET_MS = 8 * 3600 * 1000;
-/** Local audience hours [start, end) when a quiet channel is unexpected. */
-export const ACTIVE_HOUR_START = 9;
-export const ACTIVE_HOUR_END = 23;
+/** No Telegram post on a channel for this long is an alert. The daily
+ *  digest is the only post every day is sure to have (trending needs an
+ *  exceptional story), so a fault is "more than a day", with slack for a
+ *  late digest. A shorter window fired on normal days. */
+export const TELEGRAM_QUIET_MS = 26 * 3600 * 1000;
 /** LLM attempt failure rate in one run above which we alert. */
 export const LLM_FAILURE_RATE = 0.5;
 /** Below this many attempts the rate is noise. */
@@ -68,8 +67,6 @@ export interface HealthInput {
   steps: RunStepInfo[];
   /** Newest successful post per Telegram channel, epoch ms. */
   telegramLastPostMs: Record<string, number>;
-  /** Trending posts sent since local midnight per Telegram channel. */
-  telegramSentToday: Record<string, number>;
   llm: { total: number; failed: number };
   /** Previous runs, newest first, excluding this one. */
   history: PriorRun[];
@@ -127,16 +124,10 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
     }
   }
 
-  const active =
-    input.localHour >= ACTIVE_HOUR_START && input.localHour < ACTIVE_HOUR_END;
-  if (active) {
+  if (isActiveHour(input.localHour)) {
     for (const [channel, last] of Object.entries(input.telegramLastPostMs)) {
       const quietMs = input.nowMs - last;
       if (quietMs <= TELEGRAM_QUIET_MS) continue;
-      // The daily trending cap is spent: notify skips on purpose until
-      // local midnight, so the silence is not a fault.
-      if ((input.telegramSentToday[channel] ?? 0) >= TRENDING_MAX_PER_DAY)
-        continue;
       issues.push({
         key: `telegram-quiet:${channel}`,
         severity: "warning",
@@ -218,30 +209,17 @@ async function readHistory(env: Env, runId: string): Promise<PriorRun[]> {
   return (results ?? []).map(parsePriorRun);
 }
 
-/** Same counting rule as the trending budget in `notify/index.ts`. */
-async function readTelegramPosts(
-  env: Env,
-  nowMs: number
-): Promise<{
-  lastPostMs: Record<string, number>;
-  sentToday: Record<string, number>;
-}> {
+async function readTelegramLastPost(env: Env): Promise<Record<string, number>> {
   const { results } = await env.DB.prepare(
-    `SELECT channel, MAX(posted_at) AS last,
-       SUM(CASE WHEN item_id NOT LIKE 'digest:%' AND posted_at >= ? THEN 1 ELSE 0 END) AS sent_today
-     FROM notifications
+    `SELECT channel, MAX(posted_at) AS last FROM notifications
      WHERE channel LIKE 'telegram%' AND status = 'sent' GROUP BY channel`
-  )
-    .bind(localDayStartMs(nowMs, AUDIENCE_TIMEZONE))
-    .all<{ channel: string; last: number | null; sent_today: number | null }>();
-  const lastPostMs: Record<string, number> = {};
-  const sentToday: Record<string, number> = {};
+  ).all<{ channel: string; last: number | null }>();
+  const last: Record<string, number> = {};
   for (const row of results ?? []) {
     const ms = toMs(row.last);
-    if (ms !== null) lastPostMs[row.channel] = ms;
-    sentToday[row.channel] = row.sent_today ?? 0;
+    if (ms !== null) last[row.channel] = ms;
   }
-  return { lastPostMs, sentToday };
+  return last;
 }
 
 async function readLlmCounts(
@@ -365,18 +343,16 @@ export async function runHealthCheck(
 ): Promise<string[]> {
   try {
     const nowMs = Date.now();
-    const [history, telegram, llm] = await Promise.all([
+    const [history, telegramLastPostMs, llm] = await Promise.all([
       readHistory(env, input.runId),
-      readTelegramPosts(env, nowMs),
+      readTelegramLastPost(env),
       readLlmCounts(env, input.runId),
     ]);
-    const telegramLastPostMs = telegram.lastPostMs;
     const issues = evaluateHealth({
       nowMs,
       localHour: getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE).hour,
       steps: input.steps,
       telegramLastPostMs,
-      telegramSentToday: telegram.sentToday,
       llm,
       history,
     });

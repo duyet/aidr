@@ -15,6 +15,15 @@ export function toEpochSeconds(value: number): number {
 /** Audience timezone: the channel and homepage are Vietnamese-first. */
 export const AUDIENCE_TIMEZONE = "Asia/Ho_Chi_Minh";
 
+/** Local audience hours [start, end) when readers are awake. Trending posts
+ *  go out only in this window, and a quiet channel is only unexpected in it. */
+export const ACTIVE_HOUR_START = 9;
+export const ACTIVE_HOUR_END = 23;
+
+export function isActiveHour(localHour: number): boolean {
+  return localHour >= ACTIVE_HOUR_START && localHour < ACTIVE_HOUR_END;
+}
+
 /**
  * Local calendar date (YYYY-MM-DD) for `nowMs` in `timezone`. Shared by
  * the TL;DR snapshot key and the Telegram digest lookup so they cannot

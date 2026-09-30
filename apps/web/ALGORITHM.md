@@ -108,10 +108,9 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 - LLM-heavy Workflow steps use `retries: 0` and a 4-minute timeout. A
   failed score/TL;DR call must not abort close-run.
 - Just before close-run, the `health-check` step (`worker/health.ts`)
-  reports to Sentry/Bugsink when: a Telegram channel has no post for >8h
-  during local 09–23h (unless its daily trending cap is already spent, which
-  makes `notify` skip by design), >50% of the run's LLM attempts failed (min 4), TL;DR
-  failed 3 runs in a row, a step failed, or the run errored. Fired keys go
+  reports to Sentry/Bugsink when: a Telegram channel has no post for >26h
+  (a missed daily digest; checked during local 09–23h), >50% of the run's
+  LLM attempts failed (min 4), TL;DR failed 3 runs in a row, a step failed, or the run errored. Fired keys go
   in `stats.alerts`; the same key is silent for 6h. External uptime
   monitors poll `GET /api/health` (503 when the newest run is down).
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
@@ -409,12 +408,17 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       posts `bullets_en` only. Neither falls back to the other language.
       Each bullet links to its story permalink, plus a site button.
     - *Trending*: an individual post only when the algo flags a story as
-      exceptional (`rank_score ≥ 20` and `llm_importance ≥ 7`), capped at
-      6/day with a 1h minimum gap, one per run. 20 is reachable for a
-      8×8, fresh, well-engaged, multi-source story; typical single-source
-      live max is lower. Digest is the intended daily Telegram post.
+      exceptional (`rank_score ≥ 30` and `llm_importance ≥ 8`), capped at
+      3/day with a 3h minimum gap, one per run, and only during 09–23h
+      local: a story that qualifies overnight waits for the window and posts
+      then if it still ranks (before this the cap was often spent by
+      morning and the channel stayed silent all day). On a big-news day (a
+      launch event, a run of major stories) a story with
+      `llm_importance ≥ 9` may go past that cap and gap, up to 6/day with a
+      1h gap; the day's own scores open the extra room, no event list is
+      kept. Digest is the intended daily Telegram post.
     - Skip reasons are structured (`digest`: no_snapshot / already_sent /
-      before_hour; `trending`: below_min_rank / budget_zero /
+      before_hour; `trending`: outside_hours / below_min_rank / budget_zero /
       none_unposted) and `console.info`'d plus stored on
       `workflow_runs.stats.notifyReason`.
     - Delivery state (status/attempts/last_error, bounded retries) lives in
