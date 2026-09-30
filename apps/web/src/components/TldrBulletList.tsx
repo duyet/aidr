@@ -42,7 +42,7 @@ export function TldrBulletList({
 
   return (
     <>
-      <div className="grid gap-x-10 md:grid-cols-2">
+      <div className="aidr-cols grid gap-x-10 md:grid-cols-2">
         {cols.map((col, ci) => (
           <ol
             key={col[0]?.text ?? ci}

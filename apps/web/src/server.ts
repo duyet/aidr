@@ -12,6 +12,7 @@ import {
   handleAgentDiscovery,
   withHomepageHeaders,
 } from "./lib/agent-discovery";
+import { withHomepageCriticalCss } from "./lib/critical-css";
 import { readSession } from "./lib/db";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import {
@@ -278,7 +279,10 @@ export default {
           handleSubscribeCors(request, async () =>
             withHomepageHeaders(
               request,
-              applyNotFoundHttpStatus(await handler.fetch(request))
+              withHomepageCriticalCss(
+                request,
+                applyNotFoundHttpStatus(await handler.fetch(request))
+              )
             )
           )
         )
