@@ -423,8 +423,18 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
     - A trending story with two or more images uses `sendMediaGroup` (2–10
       photos: the story's own manifest images and video posters). One image
       stays `sendPhoto` so the inline button remains — an album has no
-      `reply_markup`, so that link moves into the caption. `sendVideo` and
-      durable multi-message delivery remain a follow-up.
+      `reply_markup`, so that link moves into the caption.
+    - **Video** (`worker/notify/video.ts`): a manifest video is preflighted with
+      bounded Range requests over `fetchWithSafeRedirects` (never a full
+      download): MP4 container, at most 20 MB, at most 300 s (`mvhd`, faststart
+      or trailing `moov`), size and duration known. Proven video-only stories use
+      `sendVideo` (with the poster as `thumbnail` only when it is a legal JPEG
+      thumbnail); video plus images uses one mixed `sendMediaGroup` (primary
+      video, its poster, then manifest order, deduped by `mediaIdentityKey`, at
+      most 10 items, at most 40 MB of video). An over-cap album is dropped whole,
+      never truncated. Any skip or Telegram error falls back to the photo path,
+      then text, so nothing double-posts. Photo bytes in an album are not probed.
+      Durable multi-message delivery remains a follow-up.
     - **Media order: story image first, generated card as fallback.** The post
       leads with the story's real photo. The first-party OG card
       `/api/og/{id8}.png?lang=` is used when the story has no usable image, and

@@ -102,7 +102,7 @@ Media URLs are canonicalized at every persistence/read boundary: absolute HTTP(S
 
 Article enrichment and configurable RSS fetches manually validate every redirect hop and the final response URL. Cloudflare Workers does not expose DNS resolution, so this is a syntactic SSRF boundary, not a claim of complete DNS-rebinding safety; deployments must continue to constrain source URLs to trusted inputs. See #147 for the cross-cutting threat model and evidence requirements.
 
-Telegram attaches one photo with `sendPhoto`, or 2–10 with `sendMediaGroup` (the generated card plus story images). `sendVideo` and durable multi-message delivery stay deferred. The #146 Telegram Instant View decision record and its conflict/no-go notes remain authoritative; this slice does not add Instant View pages.
+Telegram attaches one photo with `sendPhoto`, or 2–10 with `sendMediaGroup` (the generated card plus story images). A story video that passes a bounded MP4 preflight goes out with `sendVideo` (or in a mixed album); otherwise it falls back to the poster photo, then text. Durable multi-message delivery stays deferred. The #146 Telegram Instant View decision record and its conflict/no-go notes remain authoritative; this slice does not add Instant View pages.
 
 ### Syndication: RSS, news sitemap, sitemap index
 

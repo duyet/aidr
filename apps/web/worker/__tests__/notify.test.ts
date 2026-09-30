@@ -503,7 +503,11 @@ describe("telegramNotifier gating", () => {
       })
     );
     expect(result).toEqual({ ok: true, messageId: "21" });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Call 0 is the bounded video preflight; the mock is not a real MP4 so the
+    // video is skipped and the poster photo album is sent as before.
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://cdn.example/clip.mp4");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    fetchMock.mock.calls.shift();
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(body.media.map((item: { media: string }) => item.media)).toEqual([
@@ -735,10 +739,11 @@ describe("helpers", () => {
   });
 
   it("falls back to a video poster when the id cannot address a card", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, result: { message_id: 12 } }), {
-        status: 200,
-      })
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ ok: true, result: { message_id: 12 } }), {
+          status: 200,
+        })
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -759,7 +764,7 @@ describe("helpers", () => {
         },
       })
     );
-    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    const body = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
     expect(body.photo).toBe("https://img.example/poster.jpg");
   });
 
