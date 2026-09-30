@@ -17,6 +17,7 @@ import type {
   SendResult,
   StoryPayload,
 } from "./types.js";
+import { buildVideoAlbumMedia, planVideoDelivery } from "./video.js";
 
 export { escapeHtml };
 
@@ -259,8 +260,8 @@ export interface StoryMedia {
   card: string | null;
 }
 
-/** Video files are not attached — a poster is the image we actually have.
- *  `cap` bounds the album; pass `Infinity` to count what the story actually
+/** Photo path: a video contributes only its poster (`sendVideo` runs first
+ *  when a video passes preflight). `cap` bounds the album; pass `Infinity` to count what the story actually
  *  has, which is what the caption's "+N more" line needs. */
 function galleryImageUrls(story: StoryPayload, cap = TELEGRAM_ALBUM_CAP) {
   const urls: string[] = [];
@@ -307,6 +308,91 @@ export function storyPhotoUrl(story: StoryPayload): string | null {
  */
 function albumButtonText(story: StoryPayload): string {
   return story.lang === "en" ? "Read the full story:" : "Đọc toàn bài:";
+}
+
+/** Follow an album with the reply that carries the native Read button. */
+async function sendAlbumButton(
+  token: string,
+  chatId: string,
+  story: StoryPayload,
+  messageId: string,
+  replyMarkup: object
+): Promise<void> {
+  const button = await callTelegram(token, "sendMessage", {
+    chat_id: chatId,
+    text: albumButtonText(story),
+    reply_markup: replyMarkup,
+    reply_parameters: messageId
+      ? { message_id: Number(messageId), allow_sending_without_reply: true }
+      : undefined,
+    link_preview_options: { is_disabled: true },
+  });
+  if (!button.ok) {
+    console.error(
+      `telegram album button failed for ${story.id}: ${button.description}`
+    );
+  }
+}
+
+/**
+ * Send the story's video (or a mixed album) when the preflight proved it.
+ * Returns null on any skip or Telegram error so the caller falls back to the
+ * photo path, then text. A failed call posts nothing, so nothing double-posts.
+ */
+async function sendVideoStory(
+  token: string,
+  chatId: string,
+  story: StoryPayload,
+  caption: string,
+  replyMarkup: object
+): Promise<SendResult | null> {
+  let plan: Awaited<ReturnType<typeof planVideoDelivery>>;
+  try {
+    plan = await planVideoDelivery(story);
+  } catch (error) {
+    console.error(
+      `telegram video plan failed for ${story.id}: ${error instanceof Error ? error.message : "unknown"}`
+    );
+    return null;
+  }
+  if (!plan) return null;
+  try {
+    if (plan.method === "sendVideo") {
+      const res = await callTelegram(token, "sendVideo", {
+        chat_id: chatId,
+        video: plan.video.url,
+        duration: plan.video.durationSeconds,
+        supports_streaming: true,
+        ...(plan.thumbnail ? { thumbnail: plan.thumbnail } : {}),
+        caption,
+        parse_mode: "HTML",
+        reply_markup: replyMarkup,
+      });
+      if (res.ok) return { ok: true, messageId: telegramMessageId(res.result) };
+      console.error(
+        `telegram sendVideo failed for ${story.id}: ${res.description}; falling back`
+      );
+      return null;
+    }
+    const res = await callTelegram(token, "sendMediaGroup", {
+      chat_id: chatId,
+      media: buildVideoAlbumMedia(plan.items, caption),
+    });
+    if (!res.ok) {
+      console.error(
+        `telegram video sendMediaGroup failed for ${story.id}: ${res.description}; falling back`
+      );
+      return null;
+    }
+    const messageId = telegramMessageId(res.result);
+    await sendAlbumButton(token, chatId, story, messageId, replyMarkup);
+    return { ok: true, messageId };
+  } catch (error) {
+    console.error(
+      `telegram video send threw for ${story.id}: ${error instanceof Error ? error.message : "unknown"}`
+    );
+    return null;
+  }
 }
 
 interface TelegramResponse {
@@ -402,6 +488,15 @@ function telegramChannel(options: {
       const replyMarkup = buildStoryReplyMarkup(story);
       const { gallery, card } = resolveStoryMedia(story);
 
+      const video = await sendVideoStory(
+        token,
+        chatId,
+        story,
+        caption,
+        replyMarkup
+      );
+      if (video) return video;
+
       const sendOne = (photo: string) =>
         callTelegram(token, "sendPhoto", {
           chat_id: chatId,
@@ -428,23 +523,7 @@ function telegramChannel(options: {
         });
         if (album.ok) {
           const messageId = telegramMessageId(album.result);
-          const button = await callTelegram(token, "sendMessage", {
-            chat_id: chatId,
-            text: albumButtonText(story),
-            reply_markup: replyMarkup,
-            reply_parameters: messageId
-              ? {
-                  message_id: Number(messageId),
-                  allow_sending_without_reply: true,
-                }
-              : undefined,
-            link_preview_options: { is_disabled: true },
-          });
-          if (!button.ok) {
-            console.error(
-              `telegram album button failed for ${story.id}: ${button.description}`
-            );
-          }
+          await sendAlbumButton(token, chatId, story, messageId, replyMarkup);
           return { ok: true, messageId };
         }
         console.error(
