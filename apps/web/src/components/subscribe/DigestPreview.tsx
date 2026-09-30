@@ -39,18 +39,28 @@ export function DigestPreview({ lang }: { lang: Lang }) {
             <span className="truncate">{subject || "AI;DR"}</span>
           </div>
         </div>
-        <iframe
-          src={`/api/subscribe/preview?lang=${lang}`}
-          title={t("Digest email preview", "Xem trước email bản tin")}
-          className={`h-[560px] w-full bg-[#f7f7f5] transition-opacity duration-500 ${
-            loaded ? "opacity-100" : "opacity-0"
-          }`}
-          onLoad={(e) => {
-            setLoaded(true);
-            const title = e.currentTarget.contentDocument?.title;
-            if (title) setSubject(title);
-          }}
-        />
+        <div className="relative">
+          {!loaded && (
+            <div
+              role="status"
+              className="absolute inset-0 flex items-center justify-center bg-[#f7f7f5] text-sm text-muted-foreground"
+            >
+              {t("Loading preview…", "Đang tải bản xem trước…")}
+            </div>
+          )}
+          <iframe
+            src={`/api/subscribe/preview?lang=${lang}`}
+            title={t("Digest email preview", "Xem trước email bản tin")}
+            className={`h-[560px] w-full bg-[#f7f7f5] transition-opacity duration-500 motion-reduce:transition-none ${
+              loaded ? "opacity-100" : "opacity-0"
+            }`}
+            onLoad={(e) => {
+              setLoaded(true);
+              const title = e.currentTarget.contentDocument?.title;
+              if (title) setSubject(title);
+            }}
+          />
+        </div>
       </BrowserFrame>
       <p className="text-xs text-muted-foreground">
         {t(
