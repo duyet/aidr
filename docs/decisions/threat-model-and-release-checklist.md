@@ -64,3 +64,47 @@ Run before a deploy. Tick each line with evidence (a PR comment or run link).
    back.
 9. Rollback path known: previous Worker version, and the note for any new
    migration.
+
+## Live check results, 2026-09-30
+
+Run with `curl -D -` against https://aidr.today on the deployed master (item 8 above). Latency budgets are in [performance-budgets.md](performance-budgets.md).
+
+| Check | Result |
+|-------|--------|
+| Public locale URLs (`/?lang=en`, `/?lang=vi`, `/<id>?lang=en`, `/<id>?lang=vi`) | 200, `Content-Language` matches `lang`, `Cache-Control: public, max-age=60, s-maxage=300, stale-while-revalidate=600`, `X-Robots-Tag: index, follow`. Second request is `HIT`. |
+| Locale isolation | `?lang=en` and `?lang=vi` are separate cache entries (one `MISS` while the other was `HIT`). Bare `/` and `/<id>` (no `lang`) are `private, no-store`, `BYPASS`, `Vary: cookie, accept-language`, so no locale is shared from cache. |
+| Legacy `?locale=vi` | 307 to `/?lang=vi`, `noindex, nofollow`, `no-store`. |
+| Bad locale `/?lang=xx` | 400, `no-store`, `noindex, nofollow`. |
+| Story Markdown `/api/story/<id>.md` | 200 `text/markdown`, `Access-Control-Allow-Origin: *`, `X-Content-Type-Options: nosniff`, canonical `Link`, `noindex, follow`, `s-maxage=600`. HEAD returns 200 with `content-length`. OPTIONS returns 204 with GET/HEAD/OPTIONS only. Unknown id returns 404 `no-store`. |
+| `/api/public`, `/api/subscribe/preview`, `/llms.txt`, `/sitemap.xml` | 200, cached at the edge (`HIT`), `/api/*` `noindex, follow`. |
+| Private routes | `/subscribe` 200 `no-store`; `/admin` 404 `no-store`, `noindex, nofollow`; `/api/admin/stats` 401 `no-store`; `/api/health` 200 `no-store`, `noindex`; `/api/nope` and unknown pages 404 `no-store`, `noindex, nofollow`. All have `Referrer-Policy: no-referrer` except public pages (`strict-origin-when-cross-origin`). |
+| Redirects | `http://aidr.today/` returns 301 to `https://aidr.today/`. `www.aidr.today` does not resolve, so there is no `www` redirect to test. |
+| `/__clerk/*` | `GET /__clerk/v1/client` 200 `no-store`, `noindex, nofollow`. Authority-style paths (`/__clerk/%2F%2Fevil.example/x`, `/__clerk//evil.example/x`) return 400 (the #150 confinement holds live). |
+| `/__clerk/*` rate-limit rule | Not present (see below). Still open. |
+
+Observations, not changed here:
+
+- `/api/public` GET with a foreign `Origin` returns no `Access-Control-Allow-Origin`, and OPTIONS returns 204 with only `Vary: Origin`. `/api/story/<id>.md` sends `*`. If browser agents should read `/api/public` cross-origin, that is a gap; if not, it is as intended. Check `public-cors.test.ts` for the intended list.
+- `POST /api/subscribe/preview` returns 200 HTML instead of 405. It reads only public data, so this is low risk.
+
+## Proposed rule: Clerk proxy rate limit
+
+Not applied. The zone rule needs the owner, and the Free-plan limits below shape the numbers. Read it back after creating it (`GET /zones/<zone_id>/rulesets/phases/http_ratelimit/entrypoint`).
+
+Assumptions to confirm: the zone is on the Free plan (one rate-limit rule, 10 s counting period, 10 s block, counted per IP). Clerk's frontend API makes a small burst per page load (client, environment, session touch, tokens), so a single visitor should stay far below 40 requests per 10 s. Tune with the Security Events log after a week.
+
+```json
+{
+  "description": "Rate limit Clerk proxy (#147, #150)",
+  "expression": "(starts_with(http.request.uri.path, \"/__clerk/\"))",
+  "action": "block",
+  "ratelimit": {
+    "characteristics": ["ip.src"],
+    "period": 10,
+    "requests_per_period": 40,
+    "mitigation_timeout": 10
+  }
+}
+```
+
+If the zone is not on Free, use `"period": 60`, `"requests_per_period": 120` and `"mitigation_timeout": 60`, matching `apps/web/worker/README.md`.

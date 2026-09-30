@@ -33,6 +33,6 @@ Refs #141. The live email preview must not slow the first paint of `/subscribe`.
 
 ## Still open (needs a live run)
 
-- Record the baseline and post-change numbers in the table above.
+- Server-side latency baseline: see [performance-budgets.md](performance-budgets.md) (measured 2026-09-30). Browser metrics in the table above are still empty.
 - Confirm the default Chrome tab makes no preview request and Email makes one.
 - Record any exception to the budget with its reason.
