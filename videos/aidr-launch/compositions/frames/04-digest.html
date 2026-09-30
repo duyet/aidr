@@ -1,0 +1,426 @@
+<template>
+  <style>
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-wght-normal-BqRLTx4X.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-vietnamese-wght-normal-C1uRvKPU.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+    @font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-ext-wght-normal-C8iNium2.woff2")format("woff2-variations");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+    @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-latin-wght-normal-CRpggXlh.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+    @font-face{font-family:"EB Garamond Variable";font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-vietnamese-wght-normal-DvUmmjCN.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+
+    #root {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      font-family: "Source Sans 3 Variable", sans-serif;
+      color: #0a0a0a;
+    }
+    #root * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Full-bleed paper ground rides on a clip layer, never on #root. */
+    .f04-digest-ground {
+      position: absolute;
+      inset: 0;
+      background: #f7f7f5;
+    }
+    .f04-digest-stage {
+      position: absolute;
+      inset: 0;
+    }
+    /* Root camera: one linear 3% push for the whole frame. */
+    .f04-digest-cam {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+    }
+
+    /* Credit under the card: who does the scoring. Baseline row y 836–872, above the 900 keep-out. */
+    .f04-digest-credit {
+      position: absolute;
+      left: 0;
+      top: 834px;
+      width: 1920px;
+      height: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      font-family: "Source Sans 3 Variable", sans-serif;
+      font-size: 26px;
+      line-height: 40px;
+      color: #474747;
+    }
+    .f04-digest-credit-mark {
+      width: 34px;
+      height: 34px;
+      display: block;
+    }
+    .f04-digest-credit-name {
+      font-weight: 600;
+      color: #0a0a0a;
+      letter-spacing: 0.01em;
+    }
+
+    /* Card surface: 1400 wide, centred on x 960, y 96–804. */
+    .f04-digest-surface {
+      position: absolute;
+      left: 260px;
+      top: 96px;
+      width: 1400px;
+      height: 708px;
+      background: #ffffff;
+      border: 1px solid rgba(10, 10, 10, 0.08);
+      border-radius: 32px;
+    }
+
+    /* Header: content box x 308–1612, y 140–196. */
+    .f04-digest-header {
+      position: absolute;
+      left: 308px;
+      top: 140px;
+      width: 1304px;
+      height: 56px;
+      display: flex;
+      align-items: baseline;
+    }
+    .f04-digest-brand {
+      display: flex;
+      align-items: baseline;
+    }
+    .f04-digest-wordmark {
+      font-family: "EB Garamond Variable", serif;
+      font-weight: 500;
+      font-size: 52px;
+      line-height: 56px;
+      letter-spacing: -0.005em;
+    }
+    .f04-digest-date {
+      margin-left: 18px;
+      font-size: 22px;
+      line-height: 56px;
+      font-weight: 400;
+      color: #474747;
+    }
+    .f04-digest-pill {
+      margin-left: auto;
+      align-self: center;
+      display: flex;
+      gap: 2px;
+      padding: 4px;
+      border-radius: 22px;
+      background: #e5e5e3;
+    }
+    .f04-digest-pill span {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 600;
+      color: #474747;
+    }
+    .f04-digest-pill .f04-digest-on {
+      background: #0a0a0a;
+      color: #f7f7f5;
+    }
+
+    /* Rows: 103px tall (label 22 + 3 + two 39px headline lines), 22px row gap.
+       Left column x 308, right column x 1028; number gutter 30px. */
+    .f04-digest-row {
+      position: absolute;
+      width: 626px;
+      height: 103px;
+    }
+    .f04-digest-num {
+      position: absolute;
+      left: 0;
+      top: 25px;
+      font-size: 30px;
+      line-height: 39px;
+      font-weight: 400;
+      color: #474747;
+      white-space: nowrap;
+    }
+    .f04-digest-label {
+      position: absolute;
+      left: 30px;
+      top: 0;
+      font-size: 17px;
+      line-height: 22px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .f04-digest-head {
+      position: absolute;
+      left: 30px;
+      top: 25px;
+      font-size: 30px;
+      line-height: 39px;
+      font-weight: 400;
+      color: #0a0a0a;
+      white-space: nowrap;
+      text-decoration-line: underline;
+      text-decoration-color: rgba(10, 10, 10, 0.08);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 7px;
+      text-decoration-skip-ink: none;
+    }
+    .f04-digest-head b {
+      font-weight: 600;
+    }
+
+    /* Row 1 is built from free pieces in stage coordinates so each can travel
+       from the frame-3 handoff into its slot with transforms only. */
+    .f04-digest-r1 {
+      transform-origin: 0 0;
+    }
+    .f04-digest-r1-display {
+      position: absolute;
+      left: 300px;
+      top: 404.88px; /* first baseline lands on y 470 */
+      font-family: "EB Garamond Variable", serif;
+      font-weight: 500;
+      font-size: 72px;
+      line-height: 79.2px;
+      color: #0a0a0a;
+      white-space: nowrap;
+    }
+    .f04-digest-r1-numdisplay {
+      position: absolute;
+      left: 228px;
+      top: 404.88px;
+      font-family: "EB Garamond Variable", serif;
+      font-weight: 500;
+      font-size: 72px;
+      line-height: 79.2px;
+      color: #474747;
+      white-space: nowrap;
+    }
+    .f04-digest-r1-head {
+      left: 338px;
+      top: 251px;
+    }
+    .f04-digest-r1-num {
+      left: 308px;
+      top: 251px;
+    }
+    .f04-digest-r1-label {
+      left: 338px;
+      top: 226px;
+    }
+
+    .f04-digest-footer {
+      position: absolute;
+      left: 308px;
+      top: 734px;
+      width: 1304px;
+      height: 26px;
+      font-size: 20px;
+      line-height: 26px;
+      font-weight: 400;
+    }
+    .f04-digest-count {
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: #474747;
+      white-space: nowrap;
+    }
+    .f04-digest-updated {
+      position: absolute;
+      right: 0;
+      top: 0;
+      color: #b45309;
+      white-space: nowrap;
+    }
+    .f04-digest-defs {
+      position: absolute;
+      width: 0;
+      height: 0;
+    }
+  </style>
+
+  <div data-hf-id="hf-ozri" id="root" data-composition-id="04-digest" data-width="1920" data-height="1080" data-duration="5.8">
+    <div data-hf-id="hf-2ygr" class="f04-digest-ground clip" data-start="0" data-duration="5.8" data-track-index="0"></div>
+
+    <div data-hf-id="hf-npkz" class="f04-digest-stage clip" data-start="0" data-duration="5.8" data-track-index="1">
+      <!-- Vertical-only blur, one filter per arriving row; zero at rest. -->
+      <svg data-hf-id="hf-t7xe" class="f04-digest-defs" aria-hidden="true">
+        <defs data-hf-id="hf-mh0t">
+          <filter data-hf-id="hf-0su1" id="04-digest-vb2" x="-5%" y="-40%" width="110%" height="180%" color-interpolation-filters="sRGB"><fegaussianblur data-hf-id="hf-0yl5" stdDeviation="0 7" /></filter>
+          <filter data-hf-id="hf-96wg" id="04-digest-vb3" x="-5%" y="-40%" width="110%" height="180%" color-interpolation-filters="sRGB"><fegaussianblur data-hf-id="hf-v565" stdDeviation="0 7" /></filter>
+          <filter data-hf-id="hf-dfmv" id="04-digest-vb4" x="-5%" y="-40%" width="110%" height="180%" color-interpolation-filters="sRGB"><fegaussianblur data-hf-id="hf-wc38" stdDeviation="0 7" /></filter>
+          <filter data-hf-id="hf-ui32" id="04-digest-vb5" x="-5%" y="-40%" width="110%" height="180%" color-interpolation-filters="sRGB"><fegaussianblur data-hf-id="hf-vxs7" stdDeviation="0 7" /></filter>
+          <filter data-hf-id="hf-jx6d" id="04-digest-vb6" x="-5%" y="-40%" width="110%" height="180%" color-interpolation-filters="sRGB"><fegaussianblur data-hf-id="hf-x4pa" stdDeviation="0 7" /></filter>
+          <filter data-hf-id="hf-6uuk" id="04-digest-vb7" x="-5%" y="-40%" width="110%" height="180%" color-interpolation-filters="sRGB"><fegaussianblur data-hf-id="hf-wqe9" stdDeviation="0 7" /></filter>
+          <filter data-hf-id="hf-e7w3" id="04-digest-vb8" x="-5%" y="-40%" width="110%" height="180%" color-interpolation-filters="sRGB"><fegaussianblur data-hf-id="hf-xxbc" stdDeviation="0 7" /></filter>
+        </defs>
+      </svg>
+
+      <div data-hf-id="hf-9t6h" class="f04-digest-cam">
+        <div data-hf-id="hf-bwmt" class="f04-digest-surface"></div>
+
+        <div data-hf-id="hf-83qj" class="f04-digest-header">
+          <div data-hf-id="hf-a377" class="f04-digest-brand">
+            <span data-hf-id="hf-t5ph" class="f04-digest-wordmark">AI;DR</span>
+            <span data-hf-id="hf-rj8l" class="f04-digest-date">2026-09-30</span>
+          </div>
+          <div data-hf-id="hf-vsw5" class="f04-digest-pill">
+            <span data-hf-id="hf-fldg" class="f04-digest-on">8</span><span data-hf-id="hf-24o6">12</span><span data-hf-id="hf-0jg2">16</span>
+          </div>
+        </div>
+
+        <!-- Row 1: handoff pieces. Display copies start at identity (the frame-3 rest state). -->
+        <div data-hf-id="hf-0ji6" class="f04-digest-label f04-digest-r1 f04-digest-r1-label" style="color: #8b300b">Anthropic</div>
+        <div data-hf-id="hf-dobg" class="f04-digest-num f04-digest-r1 f04-digest-r1-num">1.</div>
+        <div data-hf-id="hf-jm54" class="f04-digest-r1 f04-digest-r1-numdisplay">1.</div>
+        <div data-hf-id="hf-bb95" class="f04-digest-head f04-digest-r1 f04-digest-r1-head"><b data-hf-id="hf-y3fl" style="color: #8b300b">Anthropic</b> Locked Into $518B of Compute<br data-hf-id="hf-x5px">Deals, 80% Non-Cancelable</div>
+        <div data-hf-id="hf-p05h" class="f04-digest-r1 f04-digest-r1-display">Anthropic Locked Into $518B of Compute<br data-hf-id="hf-rsrt">Deals, 80% Non-Cancelable</div>
+
+        <!-- Rows 2–4, left column -->
+        <div data-hf-id="hf-543w" class="f04-digest-row f04-digest-arrive" style="left: 308px; top: 351px">
+          <div data-hf-id="hf-rok4" class="f04-digest-num">2.</div>
+          <div data-hf-id="hf-q5uw" class="f04-digest-label" style="color: #9f1239">Regulation</div>
+          <div data-hf-id="hf-wp0u" class="f04-digest-head">UPDATE: <b data-hf-id="hf-1ki4" style="color: #4f1f9b">Trump</b> Releases AI Accord Requiring<br data-hf-id="hf-szow">External Audits and Board Oversight</div>
+        </div>
+        <div data-hf-id="hf-fin6" class="f04-digest-row f04-digest-arrive" style="left: 308px; top: 476px">
+          <div data-hf-id="hf-nu29" class="f04-digest-num">3.</div>
+          <div data-hf-id="hf-474j" class="f04-digest-label" style="color: #8b300b">OpenAI</div>
+          <div data-hf-id="hf-kzpt" class="f04-digest-head">UPDATE: <b data-hf-id="hf-my2l" style="color: #8b300b">OpenAI</b> Scraps Planned October Launch<br data-hf-id="hf-sldv">of GPT-6.1 <b data-hf-id="hf-tutb" style="color: #9f1239">Astra</b> in Rare <b data-hf-id="hf-1w11" style="color: #0d5468">Safety</b> Rollback</div>
+        </div>
+        <div data-hf-id="hf-n8s2" class="f04-digest-row f04-digest-arrive" style="left: 308px; top: 601px">
+          <div data-hf-id="hf-0ckq" class="f04-digest-num">4.</div>
+          <div data-hf-id="hf-dhtf" class="f04-digest-label" style="color: #8b300b">OpenAI</div>
+          <div data-hf-id="hf-qq5g" class="f04-digest-head"><b data-hf-id="hf-cj69" style="color: #8b300b">OpenAI</b> Seeks $30B Bridge Round at $1.4<br data-hf-id="hf-qluq">Trillion <b data-hf-id="hf-32qr" style="color: #4f1f9b">Valuation</b></div>
+        </div>
+
+        <!-- Rows 5–8, right column -->
+        <div data-hf-id="hf-pio5" class="f04-digest-row f04-digest-arrive" style="left: 1028px; top: 226px">
+          <div data-hf-id="hf-pznr" class="f04-digest-num">5.</div>
+          <div data-hf-id="hf-d3ie" class="f04-digest-label" style="color: #8b300b">OpenAI</div>
+          <div data-hf-id="hf-05sp" class="f04-digest-head">UPDATE: <b data-hf-id="hf-dq3c" style="color: #8b300b">OpenAI</b> Launches Dots, Always-On<br data-hf-id="hf-q7jp">Agents That Work Across 4,000+ Apps</div>
+        </div>
+        <div data-hf-id="hf-jr9i" class="f04-digest-row f04-digest-arrive" style="left: 1028px; top: 351px">
+          <div data-hf-id="hf-6nko" class="f04-digest-num">6.</div>
+          <div data-hf-id="hf-ojs0" class="f04-digest-label" style="color: #9f1239">Regulation</div>
+          <div data-hf-id="hf-c5x9" class="f04-digest-head"><b data-hf-id="hf-uwis" style="color: #4f1f9b">Trump</b> and Tech CEOs Align on Voluntary AI<br data-hf-id="hf-regs"><b data-hf-id="hf-tmei" style="color: #9f1239">Regulation</b></div>
+        </div>
+        <div data-hf-id="hf-wpjc" class="f04-digest-row f04-digest-arrive" style="left: 1028px; top: 476px">
+          <div data-hf-id="hf-wanp" class="f04-digest-num">7.</div>
+          <div data-hf-id="hf-b67w" class="f04-digest-label" style="color: #322a90">Funding</div>
+          <div data-hf-id="hf-5t51" class="f04-digest-head">UPDATE: <b data-hf-id="hf-j0ku" style="color: #8b300b">US Cloud</b> Giants Boost AI Capex<br data-hf-id="hf-r05r">Outlook 66% to $1.89 Trillion</div>
+        </div>
+        <div data-hf-id="hf-6rlo" class="f04-digest-row f04-digest-arrive" style="left: 1028px; top: 601px">
+          <div data-hf-id="hf-piym" class="f04-digest-num">8.</div>
+          <div data-hf-id="hf-cp7d" class="f04-digest-label" style="color: #8b300b">OpenAI</div>
+          <div data-hf-id="hf-kwfr" class="f04-digest-head"><b data-hf-id="hf-dbsb" style="color: #8b300b">OpenAI</b> apologizes to Australia after its AI<br data-hf-id="hf-p0mm">agents breached government sites</div>
+        </div>
+
+        <div data-hf-id="hf-jqil" class="f04-digest-footer">
+          <div data-hf-id="hf-8356" class="f04-digest-count">318 stories</div>
+          <div data-hf-id="hf-exdp" class="f04-digest-updated">Updated 43m ago</div>
+        </div>
+        <div class="f04-digest-credit">
+          <span class="f04-digest-credit-text">Scored and summarized by LLMs, powered by</span>
+          <img class="f04-digest-credit-mark" src="assets/anyrouter-logo-black.svg" alt="" />
+          <span class="f04-digest-credit-name">AnyRouter</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      const ID = "04-digest";
+      const root = document.querySelector('[data-composition-id="' + ID + '"]');
+      const q = (s) => root.querySelector(s);
+      const qa = (s) => Array.from(root.querySelectorAll(s));
+
+      // Parking ease: each frame covers ~15% of the remaining distance.
+      const park = (k = 0.15, fps = 30) => (dur) => (p) =>
+        (1 - Math.pow(1 - k, p * dur * fps)) / (1 - Math.pow(1 - k, dur * fps));
+
+      const FRAME = 1 / 30;
+      // The whole shot is authored at 120 BPM and played 10/9 faster (a 1.8s bar = 54 frames at 30fps).
+      // `seq` holds the authored sequence; the registered, paused `tl` plays it at that speed.
+      const seq = gsap.timeline();
+
+      // Root camera: the single linear push, t=0 to the end.
+      seq.fromTo(".f04-digest-cam", { scale: 1 }, { scale: 1.03, duration: 6, ease: "none" }, 0);
+
+      // ---- Scene 1 (0.0–0.75s): row 1 travels from the handoff into its slot ----
+      // Two stacked copies per face change; both follow the same path so they stay
+      // registered on one baseline (470 -> 279.86) while they crossfade.
+      const TRAVEL = 0.6;
+      const S_DOWN = 30 / 72; // display copy -> row size
+      const S_UP = 72 / 30; // body copy at handoff size
+
+      const headDisplay = q(".f04-digest-r1-display");
+      const headBody = q(".f04-digest-r1-head");
+      const numDisplay = q(".f04-digest-r1-numdisplay");
+      const numBody = q(".f04-digest-r1-num");
+      const label1 = q(".f04-digest-r1-label");
+
+      seq.fromTo(headDisplay, { x: 0, y: 0, scale: 1 }, { x: 38, y: -152.15, scale: S_DOWN, duration: TRAVEL, ease: park()(TRAVEL) }, 0);
+      seq.fromTo(headBody, { x: -38, y: 149.74, scale: S_UP }, { x: 0, y: 0, scale: 1, duration: TRAVEL, ease: park()(TRAVEL) }, 0);
+      seq.fromTo(headBody, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: "power1.out" }, 0.08);
+      seq.fromTo(headDisplay, { opacity: 1 }, { opacity: 0, duration: 0.26, ease: "power1.in" }, 0.12);
+
+      const tNum = FRAME;
+      seq.fromTo(numDisplay, { x: 0, y: 0, scale: 1 }, { x: 80, y: -152.15, scale: S_DOWN, duration: TRAVEL, ease: park()(TRAVEL) }, tNum);
+      seq.fromTo(numBody, { x: -80, y: 149.74, scale: S_UP }, { x: 0, y: 0, scale: 1, duration: TRAVEL, ease: park()(TRAVEL) }, tNum);
+      seq.fromTo(numBody, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: "power1.out" }, tNum + 0.08);
+      seq.fromTo(numDisplay, { opacity: 1 }, { opacity: 0, duration: 0.26, ease: "power1.in" }, tNum + 0.12);
+
+      // Label keeps its face: 26px at the handoff (baseline y 380) down to 17px in the row.
+      seq.fromTo(label1, { x: -38, y: 129.07, scale: 26 / 17 }, { x: 0, y: 0, scale: 1, duration: TRAVEL, ease: park()(TRAVEL) }, 2 * FRAME);
+
+      // Card surface and header fade up around the arriving row.
+      seq.fromTo(".f04-digest-surface", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55, ease: park()(0.55) }, 0.1);
+      seq.fromTo(".f04-digest-brand", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 0.2);
+      seq.fromTo(".f04-digest-pill", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 0.2 + 3 * FRAME);
+
+      // ---- Scene 2 (0.75–2.5s): rows 2–8, one per eighth-note ----
+      // Each row starts 4 frames ahead so it is present and braking on its tick.
+      const rows = qa(".f04-digest-arrive");
+      const blurs = qa("feGaussianBlur");
+      const ROW_DUR = 0.45;
+      const LEAD = 4 * FRAME;
+      rows.forEach((row, i) => {
+        const tick = 0.75 + i * 0.25;
+        const start = tick - LEAD;
+        seq.fromTo(row, { y: 24 }, { y: 0, duration: ROW_DUR, ease: park()(ROW_DUR) }, start);
+        seq.fromTo(row, { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, start);
+        seq.set(row, { filter: "url(#04-digest-vb" + (i + 2) + ")" }, start);
+        seq.fromTo(blurs[i], { attr: { stdDeviation: "0 7" } }, { attr: { stdDeviation: "0 0" }, duration: 0.26, ease: "power2.out" }, start);
+        seq.set(row, { filter: "none" }, start + 0.27);
+      });
+
+      // ---- Scene 3 (2.5–4.0s): footer lands on 2.75, then hold under the push ----
+      const tFoot = 2.75 - LEAD;
+      seq.fromTo(".f04-digest-count", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot);
+      seq.fromTo(".f04-digest-updated", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot + 3 * FRAME);
+
+      // ---- Scene 4 (3.6–6.0s): the credit. Text first, then the AnyRouter mark and name land
+      // as the voice says the name (authored 4.33s), 3 frames apart. Then hold.
+      seq.fromTo(".f04-digest-credit-text", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 3.6 - LEAD);
+      seq.fromTo(".f04-digest-credit-mark", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.33 - LEAD);
+      seq.fromTo(".f04-digest-credit-name", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.33 - LEAD + 3 * FRAME);
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.add(seq.timeScale(10 / 9), 0);
+      window.__timelines[ID] = tl;
+    })();
+  </script>
+</template>
