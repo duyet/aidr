@@ -4,6 +4,7 @@ import type { Env } from "../types.js";
 import { buildJevVerdictRow, recordJevPanelVerdict } from "./audit.js";
 import {
   type JevPanelFailMode,
+  type JevPanelPurpose,
   resolveJevPanelWorkflowConfig,
 } from "./config.js";
 import { type JevPanelResult, runJevPanel } from "./core.js";
@@ -473,4 +474,87 @@ export function jevPanelRelevance(
 ): number {
   if (!outcome) return primary;
   return Math.min(primary, Math.max(0, Math.min(1, outcome.relevanceAfter)));
+}
+
+export interface JevPanelGateRequest {
+  /** `score` for a relevance decision (submissions), `translation` for a
+   *  proposed translation (reader suggestions). */
+  readonly purpose: JevPanelPurpose;
+  /** Stable id of the decision subject (submission or suggestion id). */
+  readonly subjectId: string;
+  /** Untrusted fields the judges grade. Never instructions. */
+  readonly content: Readonly<Record<string, string>>;
+  /** The primary path's 0-1 value. The panel can only keep or lower it. */
+  readonly primary: number;
+}
+
+/**
+ * One-subject panel for the submission and translation-suggestion paths.
+ * Returns null when `JEV_PANEL_ENABLED` is off, so callers keep their
+ * pre-existing behavior exactly. Never throws, and never raises `primary`:
+ * callers apply `jevPanelRelevance(primary, outcome)`.
+ */
+export async function runJevPanelGate(
+  env: Env,
+  request: JevPanelGateRequest
+): Promise<JevScoreReviewOutcome | null> {
+  const config = resolveJevPanelWorkflowConfig(env, [], request.purpose);
+  if (!config.enabled) return null;
+  if (!config.panel) {
+    return baseOutcome(
+      "misconfigured",
+      `panel unusable: ${config.reason}`,
+      request.primary
+    );
+  }
+  const panel = config.panel;
+  const runId = currentLlmCallRunId() ?? "no-run";
+  try {
+    const result = await runJevPanel({
+      panel,
+      subject: {
+        id: request.subjectId,
+        untrustedContent: JSON.stringify(request.content),
+        version: runId,
+      },
+      execute: createJevJudgeExecutor(env, {
+        chains: new Map(
+          panel.judges.map((slot, index) => [
+            slot.id,
+            config.chains[index] ?? [],
+          ])
+        ),
+        categoryOptions: [],
+        timeoutMs: JEV_PANEL_MAX_JUDGE_TIMEOUT_MS,
+        deadlineMs: Date.now() + boundedBudget(env),
+      }),
+    });
+    const applied = applyPanel(
+      result,
+      config.failMode,
+      request.primary,
+      false,
+      []
+    );
+    await recordJevPanelVerdict(
+      env,
+      buildJevVerdictRow(result, {
+        runId,
+        purpose: request.purpose,
+        outcomeKind: applied.outcome.kind,
+        outcomeReason: applied.outcome.reason,
+        relevanceBefore: request.primary,
+        relevanceAfter: applied.relevance,
+        category: null,
+      })
+    );
+    return applied.outcome;
+  } catch (error) {
+    console.error("jev panel gate failed:", error);
+    return baseOutcome(
+      "error",
+      "panel threw; primary value kept",
+      request.primary
+    );
+  }
 }
