@@ -4,11 +4,22 @@ name: Release Please
 # so a web release cannot share a tracking file or a pull request with the
 # extension. Tags stay web-v* and aidr-v*. Humans merge the release PRs;
 # this workflow never auto-merges them.
+#
+# When the extension run cuts a release, the same job packs the extension and
+# attaches both zips to it. This cannot live in a separate `on: release`
+# workflow: the release is created with GITHUB_TOKEN, and events from that
+# token do not start other workflows. Run manually with `tag` to attach the
+# zips to a release that already exists.
 
 on:
   push:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing extension release tag to attach zips to (e.g. aidr-v0.1.19). Empty runs release-please."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -25,14 +36,69 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Release web
+        if: ${{ inputs.tag == '' }}
         uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: .github/release-please-web.json
           manifest-file: .github/.release-please-web.json
       - name: Release extension
+        id: extension
+        if: ${{ inputs.tag == '' }}
         uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: .github/release-please-extension.json
           manifest-file: .github/.release-please-extension.json
+
+      - name: Resolve extension release tag
+        id: tag
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASED_TAG: ${{ steps.extension.outputs['apps/extension--tag_name'] }}
+        run: echo "tag=${INPUT_TAG:-$RELEASED_TAG}" >> "$GITHUB_OUTPUT"
+
+      # Build from the tag, not the branch head, so the zips match the release.
+      - uses: actions/checkout@v7
+        if: ${{ steps.tag.outputs.tag != '' }}
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - uses: actions/setup-node@v7
+        if: ${{ steps.tag.outputs.tag != '' }}
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v6
+        if: ${{ steps.tag.outputs.tag != '' }}
+
+      - name: Install dependencies
+        if: ${{ steps.tag.outputs.tag != '' }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and pack extension
+        if: ${{ steps.tag.outputs.tag != '' }}
+        run: |
+          pnpm --filter @aidr/extension build
+          pnpm --filter @aidr/web pack-extension
+          pnpm --filter @aidr/web pack-cws
+
+      # aidr-<version>.zip is the Load unpacked zip (nested aidr/ folder);
+      # aidr-cws-<version>.zip has manifest.json at the root for the Chrome
+      # Web Store.
+      - name: Attach extension zips to the release
+        if: ${{ steps.tag.outputs.tag != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          version=$(jq -r .version apps/extension/manifest.json)
+          if [ "$TAG" != "aidr-v$version" ]; then
+            echo "::error::Tag $TAG does not match manifest version $version"
+            exit 1
+          fi
+          cp apps/web/public/aidr.zip "aidr-$version.zip"
+          cp apps/extension/dist/aidr-cws.zip "aidr-cws-$version.zip"
+          gh release upload "$TAG" "aidr-$version.zip" "aidr-cws-$version.zip" --clobber
