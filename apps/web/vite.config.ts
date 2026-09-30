@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig, loadEnv, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { writeSubsetFonts } from "./scripts/subset-fonts.js";
 import { requireClerkProxyUrl } from "./src/lib/clerk-proxy-config.js";
 
 function readWranglerVar(wrangler: string, name: string): string | undefined {
@@ -51,6 +52,15 @@ function configuredPublicProxyUrl(mode: string): string {
 
 const baseConfig: UserConfig = {
   plugins: [
+    // src/fonts.css points at a subset woff2 that is generated from
+    // node_modules, not committed (scripts/subset-fonts.ts). `config` runs
+    // once per dev/build start, before any CSS is transformed.
+    {
+      name: "subset-fonts",
+      async config() {
+        await writeSubsetFonts();
+      },
+    },
     // src/start.ts statically imports clerkMiddleware from a server-only
     // module; TanStack Start also bundles start.ts into the client graph
     // (startInstance.getOptions()), which would otherwise drag the whole

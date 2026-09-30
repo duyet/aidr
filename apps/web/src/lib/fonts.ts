@@ -40,7 +40,9 @@ export const FONT_PRELOAD_DECISION =
  * on demand at normal priority instead of competing with the stylesheet.
  *
  *   eb-garamond-latin     44,336 B  headings only ("AI;DR", a date)
- *   source-sans-3-latin-ext 60,088 B  only for loanword macrons (ā, ō)
+ *   source-sans-3-latin-ext ~15 KB    only for loanword macrons (ā, ō) and
+ *                                     ₹; subset at build time from 60,088 B
+ *                                     by scripts/subset-fonts.ts
  *
  * `source-sans-3-latin` (28,740 B) and `source-sans-3-vietnamese` (10,324 B)
  * are the two the first paint needs, and the Vietnamese one is
