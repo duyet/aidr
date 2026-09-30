@@ -110,7 +110,7 @@ describe("clusterSimilar", () => {
         { i: 0, title: "A" },
         { i: 1, title: "B" },
       ],
-      []
+      [{ id: "x", title: "X" }]
     );
     expect(clusters).toEqual([{ new: [0, 1], existing: ["x"] }]);
   });

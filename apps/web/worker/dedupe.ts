@@ -318,8 +318,14 @@ export function mergeClusters(groups: Cluster[][]): Cluster[] {
 }
 
 /** Defensive: keeps only well-shaped clusters with at least 2 total members
- * (a cluster of 1 item isn't a duplicate of anything). */
-function normalizeClusters(raw: unknown): Cluster[] {
+ * (a cluster of 1 item isn't a duplicate of anything). Indices and ids the
+ * model invents, or that were not in the request, are dropped: an unknown
+ * existing id would otherwise become a canonical that points at no item. */
+function normalizeClusters(
+  raw: unknown,
+  validNew: ReadonlySet<number>,
+  validExisting: ReadonlySet<string>
+): Cluster[] {
   if (!raw || typeof raw !== "object" || !("clusters" in raw)) return [];
   const clusters = (raw as { clusters?: unknown }).clusters;
   if (!Array.isArray(clusters)) return [];
@@ -329,10 +335,14 @@ function normalizeClusters(raw: unknown): Cluster[] {
     if (!entry || typeof entry !== "object") continue;
     const e = entry as { new?: unknown; existing?: unknown };
     const newIdx = Array.isArray(e.new)
-      ? e.new.filter((v): v is number => typeof v === "number")
+      ? e.new.filter(
+          (v): v is number => typeof v === "number" && validNew.has(v)
+        )
       : [];
     const existingIds = Array.isArray(e.existing)
-      ? e.existing.filter((v): v is string => typeof v === "string")
+      ? e.existing.filter(
+          (v): v is string => typeof v === "string" && validExisting.has(v)
+        )
       : [];
     if (newIdx.length + existingIds.length < 2) continue;
     out.push({ new: newIdx, existing: existingIds });
@@ -368,7 +378,11 @@ Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]
   try {
     const { content, tokens } = await callAnyrouterForClustering(env, prompt);
     console.log(`clusterSimilar used ${tokens} tokens`);
-    return normalizeClusters(parseJsonLoose<unknown>(content));
+    return normalizeClusters(
+      parseJsonLoose<unknown>(content),
+      new Set(newItems.map((item) => item.i)),
+      new Set(recentItems.map((item) => item.id))
+    );
   } catch (error) {
     console.error("clusterSimilar failed:", error);
     return [];
