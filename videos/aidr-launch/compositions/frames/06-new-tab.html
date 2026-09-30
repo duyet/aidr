@@ -244,27 +244,49 @@
       .f06-chips {
         position: absolute;
         left: 1500px;
-        top: 374px;
+        top: 176px;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        gap: 20px;
+        gap: 16px;
       }
       .f06-chip {
         display: flex;
         align-items: center;
-        height: 68px;
+        height: 60px;
         box-sizing: border-box;
-        padding: 0 30px 2px;
+        padding: 0 28px 2px;
         background: #f7f7f5;
         border: 1px solid rgba(10, 10, 10, 0.18);
-        border-radius: 34px;
-        font-size: 30px;
+        border-radius: 30px;
+        font-size: 28px;
         font-weight: 600;
         line-height: 1;
         color: #0a0a0a;
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
+      }
+      /* The count above the chips: how many places the digest is published. */
+      .f06-count {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        margin-bottom: 12px;
+        color: #0a0a0a;
+      }
+      .f06-count b {
+        font-family: "EB Garamond Variable", serif;
+        font-weight: 500;
+        font-size: 120px;
+        line-height: 0.86;
+        font-variant-numeric: lining-nums;
+      }
+      .f06-count span {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #474747;
       }
       .f06-defs {
         position: absolute;
@@ -387,10 +409,13 @@
         </div>
 
         <div data-hf-id="hf-8v3y" class="f06-chips">
-          <div data-hf-id="hf-sywc" class="f06-chip">New tab</div>
-          <div data-hf-id="hf-ntwt" class="f06-chip">Email · 07:00</div>
-          <div data-hf-id="hf-grov" class="f06-chip">Telegram · 08:00</div>
-          <div data-hf-id="hf-sptx" class="f06-chip">RSS</div>
+          <div class="f06-count"><b>6</b><span>channels</span></div>
+          <div class="f06-chip">Web</div>
+          <div class="f06-chip">New tab</div>
+          <div class="f06-chip">Email · 07:00</div>
+          <div class="f06-chip">Telegram · 08:00</div>
+          <div class="f06-chip">RSS</div>
+          <div class="f06-chip">MCP</div>
         </div>
       </div>
     </div>
@@ -412,6 +437,12 @@
         </filter>
         <filter data-hf-id="hf-hitn" id="f06-blur-chip-3" x="-30%" y="-10%" width="160%" height="120%">
           <fegaussianblur data-hf-id="hf-1zgo" in="SourceGraphic" stdDeviation="0 0" />
+        </filter>
+        <filter id="f06-blur-chip-4" x="-30%" y="-10%" width="160%" height="120%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0 0" />
+        </filter>
+        <filter id="f06-blur-chip-5" x="-30%" y="-10%" width="160%" height="120%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0 0" />
         </filter>
       </defs>
     </svg>
@@ -485,15 +516,10 @@
         );
         writeWinBlur(winBlur.v);
 
-        // Scene 2 (1.2–3.0s): push in on the card to 1.5× and glide down rows 1–4.
-        seq.to(
-          cam,
-          { s: 1.5, fx: 720, fa: -62, duration: 0.9, ease: park()(0.9), onUpdate: applyCamera },
-          1.2,
-        );
-        seq.to(cam, { fb: 182, duration: 1.6, ease: "sine.inOut", onUpdate: applyCamera }, 1.4);
+        // (No push-in on the card: frame 4 already showed it large. The shot goes straight to the
+        // wide framing so the six channels can be named one by one with the voice.)
 
-        // Scene 3 (3.0–5.0s): ease back to the full window, shifted left (75/25).
+        // Scene 2 (0.7s): settle to the full window shifted left (75/25) as soon as it has landed.
         seq.to(
           cam,
           {
@@ -505,13 +531,15 @@
             ease: park()(0.75),
             onUpdate: applyCamera,
           },
-          3.0,
+          0.7,
         );
 
-        // Delivery chips tick in on the beats, 40px from the right, horizontal blur.
+        // The channel count lands first, then the six chips tick in, 40px from the right, horizontal blur.
+        seq.fromTo(".f06-count", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: park()(0.45) }, 0.7);
         const CHIP = 0.45;
         chips.forEach((chip, i) => {
-          const at = 3.0 + i * 0.5;
+          // Each chip lands as the voice names it (authored seconds; line 6 starts 0.7s into the shot).
+          const at = [1.62, 2.39, 3.14, 3.87, 4.59, 5.43][i] - 0.15;
           const blur = { v: 9 };
           const write = blurWriter(chip, "f06-blur-chip-" + i, "x");
           seq.fromTo(
