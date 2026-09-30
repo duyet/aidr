@@ -81,14 +81,18 @@ Respond with strict JSON only: {"mappings":[{"name":"llms","canonical":"llm"}]}`
  * Defensively parses the topic-mapping model's JSON. Every `unseen` name
  * defaults to mapping to itself (i.e. becoming its own new canonical);
  * only a well-formed `{name, canonical}` pair for a name we actually
- * asked about overrides that default. A malformed/unparseable response
+ * asked about overrides that default, and only when `canonical` is one of
+ * `existingCanonicals` (or the name itself), as the prompt requires. A
+ * malformed/unparseable response
  * degrades to "every unseen name becomes its own canonical" rather than
  * failing the run.
  */
 export function parseTopicMappingResponse(
   raw: string,
-  unseen: string[]
+  unseen: string[],
+  existingCanonicals: readonly string[]
 ): Map<string, string> {
+  const allowed = new Set(existingCanonicals);
   const result = new Map<string, string>();
   for (const name of unseen) result.set(name, name);
 
@@ -104,6 +108,7 @@ export function parseTopicMappingResponse(
       const name = normalizeTopicName(e.name);
       const canonical = normalizeTopicName(e.canonical);
       if (!name || !canonical || !result.has(name)) continue;
+      if (canonical !== name && !allowed.has(canonical)) continue;
       result.set(name, canonical);
     }
   } catch {
@@ -131,7 +136,7 @@ async function mapUnseenTopics(
       [{ role: "user", content: prompt }],
       { json: true, modelSpec: env.ANYROUTER_MODEL }
     );
-    return parseTopicMappingResponse(content, unseen);
+    return parseTopicMappingResponse(content, unseen, existingCanonicals);
   } catch (error) {
     console.error("mapUnseenTopics failed:", error);
     return identity;

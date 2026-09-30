@@ -49,6 +49,24 @@ The check also fails if a response is not `200` or the body lacks a marker strin
 
 `.github/workflows/live-budget.yml` runs daily at 06:17 UTC and on manual dispatch (`workflow_dispatch`, with optional `origin` and `story` inputs). It never runs on pull requests. A failure is a signal to look at the live surface, not a merge gate.
 
+## Approved exceptions
+
+These have no latency budget yet. They are bounded by call and fetch counts
+instead, which tests enforce on every run.
+
+- **Media enrichment wall time.** No time budget. The number of fetches and
+  probes per run is capped: at most 3 video probes, photo albums limited to
+  the Telegram maximum, no posting while planning. Asserted in
+  `apps/web/worker/__tests__/call-caps.test.ts`.
+- **LLM workflow latency** (scoring, translation, TL;DR, review, translation
+  QA, JEV panel, dedupe, topics). No latency budget. Model calls per run are
+  capped by batch size, attempt limits and per-run caps (for example 6 calls
+  for translation QA, one call for dedupe and for topic mapping). Asserted in
+  `apps/web/worker/__tests__/call-caps.test.ts`; hostile input and output are
+  covered in `apps/web/worker/__tests__/prompt-injection.test.ts`.
+
+Revisit when a wall-time measurement exists for either path.
+
 ## Not covered here
 
 - Media enrichment cost inside the hourly run (fetch and probe counts are capped in `call-caps.test.ts`; wall time per run is not measured here).

@@ -70,15 +70,18 @@ describe("parseTopicMappingResponse", () => {
   it("maps a well-formed response", () => {
     const result = parseTopicMappingResponse(
       JSON.stringify({ mappings: [{ name: "llms", canonical: "llm" }] }),
-      ["llms"]
+      ["llms"],
+      ["llm", "open-source"]
     );
     expect(result.get("llms")).toBe("llm");
   });
 
   it("defaults every unseen name to itself before applying the response", () => {
-    const result = parseTopicMappingResponse(JSON.stringify({ mappings: [] }), [
-      "new-concept",
-    ]);
+    const result = parseTopicMappingResponse(
+      JSON.stringify({ mappings: [] }),
+      ["new-concept"],
+      ["llm"]
+    );
     expect(result.get("new-concept")).toBe("new-concept");
   });
 
@@ -87,7 +90,8 @@ describe("parseTopicMappingResponse", () => {
       JSON.stringify({
         mappings: [{ name: "unasked", canonical: "something" }],
       }),
-      ["llms"]
+      ["llms"],
+      ["llm", "open-source"]
     );
     expect(result.get("llms")).toBe("llms"); // still defaulted to itself
     expect(result.has("unasked")).toBe(false);
@@ -98,7 +102,8 @@ describe("parseTopicMappingResponse", () => {
       JSON.stringify({
         mappings: [{ name: "LLMs", canonical: "Open Source" }],
       }),
-      ["llms"]
+      ["llms"],
+      ["llm", "open-source"]
     );
     expect(result.get("llms")).toBe("open-source");
   });
@@ -108,19 +113,20 @@ describe("parseTopicMappingResponse", () => {
       `\`\`\`json\n${JSON.stringify({
         mappings: [{ name: "llms", canonical: "llm" }],
       })}\n\`\`\``,
-      ["llms"]
+      ["llms"],
+      ["llm", "open-source"]
     );
     expect(result.get("llms")).toBe("llm");
   });
 
   it("degrades to identity mapping on unparseable content, never throws", () => {
-    const result = parseTopicMappingResponse("not json", ["a", "b"]);
+    const result = parseTopicMappingResponse("not json", ["a", "b"], []);
     expect(result.get("a")).toBe("a");
     expect(result.get("b")).toBe("b");
   });
 
   it("degrades to identity mapping when mappings is missing/not an array", () => {
-    const result = parseTopicMappingResponse(JSON.stringify({}), ["a"]);
+    const result = parseTopicMappingResponse(JSON.stringify({}), ["a"], []);
     expect(result.get("a")).toBe("a");
   });
 
@@ -129,7 +135,8 @@ describe("parseTopicMappingResponse", () => {
       JSON.stringify({
         mappings: [{ name: "llms" }, { canonical: "llm" }, "garbage"],
       }),
-      ["llms"]
+      ["llms"],
+      ["llm", "open-source"]
     );
     expect(result.get("llms")).toBe("llms");
   });
@@ -221,7 +228,9 @@ describe("normalizeTopics", () => {
   });
 
   it("calls the LLM only for genuinely unseen normalized names", async () => {
-    const { db } = makeDb({ existingTopics: [] });
+    const { db } = makeDb({
+      existingTopics: [{ name: "open-source", canonical: "open-source" }],
+    });
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(

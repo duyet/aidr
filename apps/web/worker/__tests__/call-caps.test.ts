@@ -1,4 +1,17 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { clusterSimilar } from "../dedupe.js";
+import {
+  JEV_PANEL_MAX_DEBATE_ROUNDS,
+  JEV_PANEL_MAX_JUDGES,
+} from "../jev-panel/core.js";
+import {
+  resetJevScoreReviewMemo,
+  reviewScoredItemsWithJevPanel,
+} from "../jev-panel/score-review.js";
 import {
   generateTldr,
   scoreItems,
@@ -18,6 +31,20 @@ import {
   planVideoDelivery,
   TELEGRAM_ALBUM_MAX_ITEMS,
 } from "../notify/video.js";
+import {
+  reviewPendingSubmissions,
+  REVIEW_CAP_DEFAULT as SUBMISSION_REVIEW_CAP,
+} from "../submissions.js";
+import {
+  reviewPendingSuggestions,
+  REVIEW_CAP_DEFAULT as SUGGESTION_REVIEW_CAP,
+} from "../suggestions.js";
+import {
+  MAX_EXISTING_CANONICALS_IN_PROMPT,
+  normalizeTopics,
+} from "../topics.js";
+import { ratePendingTranslations } from "../translation-qa.js";
+import { QA_MAX_CALLS } from "../translation-review.js";
 import type { Env } from "../types.js";
 
 /**
@@ -222,5 +249,327 @@ describe("Telegram caps per run", () => {
     for (const call of fetchMock.mock.calls) {
       expect(String(call[0])).not.toContain("api.telegram.org");
     }
+  });
+});
+
+/** Fake D1 for the review loops: serves `rows` for the pending-queue query
+ *  and honors its `LIMIT n`, so an oversized queue only yields the cap. */
+function reviewQueueDb(
+  queueTable: string,
+  rows: unknown[],
+  first: (sql: string) => unknown = () => null
+): D1Database {
+  return {
+    prepare(sql: string) {
+      const limit = Number(/LIMIT (\d+)/.exec(sql)?.[1] ?? rows.length);
+      const bound = () => ({
+        all: async () => ({
+          results: sql.includes(`FROM ${queueTable}`)
+            ? rows.slice(0, limit)
+            : [],
+        }),
+        first: async () => first(sql),
+        run: async () => ({ success: true, meta: { changes: 1 } }),
+      });
+      return { ...bound(), bind: () => bound() };
+    },
+  } as unknown as D1Database;
+}
+
+describe("review LLM caps per run", () => {
+  const modelCalls = (mock: ReturnType<typeof vi.fn>) =>
+    mock.mock.calls.filter((c) => String(c[0]).includes("anyrouter.test"));
+
+  it("reviews at most REVIEW_CAP_DEFAULT submissions, at most 2 model calls each", async () => {
+    const pending = Array.from(
+      { length: 4 * SUBMISSION_REVIEW_CAP },
+      (_, i) => ({
+        id: `sub${i}`,
+        url: `https://example.com/story-${i}`,
+        title: `Story ${i} about a model`,
+        note: null,
+      })
+    );
+    const fetchMock = vi.fn(async (url: unknown) => {
+      const target = String(url);
+      if (target.includes("/systemone")) {
+        return new Response("down", { status: 500 });
+      }
+      if (target.includes("anyrouter.test")) {
+        return chat(JSON.stringify({ relevance: 0.9, note: "genuine" }));
+      }
+      return new Response("<html></html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const stats = await reviewPendingSubmissions({
+      ...env,
+      DB: reviewQueueDb("submissions", pending),
+    });
+    // The queue is 4x the cap; the run must reach the cap, not pass empty.
+    expect(stats.reviewed).toBe(SUBMISSION_REVIEW_CAP);
+    // Per submission: one System One try, then one chat call.
+    expect(modelCalls(fetchMock).length).toBeLessThanOrEqual(
+      SUBMISSION_REVIEW_CAP * 2
+    );
+  });
+
+  it("reviews at most REVIEW_CAP_DEFAULT suggestions; at most review + rewrite calls each", async () => {
+    const pending = Array.from(
+      { length: 4 * SUGGESTION_REVIEW_CAP },
+      (_, i) => ({
+        id: `s${i}`,
+        item_id: `item${i}`,
+        field: "title",
+        suggestion: `Tiêu đề ${i}`,
+      })
+    );
+    const fetchMock = vi.fn(async (url: unknown, init: unknown) => {
+      if (String(url).includes("/systemone")) {
+        return new Response("down", { status: 500 });
+      }
+      const body = JSON.parse((init as { body: string }).body) as {
+        messages: { content: string }[];
+      };
+      const prompt = body.messages.map((m) => m.content).join("\n");
+      // Review prompt: accept every suggestion, so each one is also rewritten.
+      if (prompt.includes("READER-SUBMITTED, UNTRUSTED DATA")) {
+        const ids = [...prompt.matchAll(/"id":"(s\d+)"/g)].map((m) => m[1]);
+        return chat(
+          JSON.stringify({
+            results: ids.map((id) => ({
+              id,
+              valid: true,
+              rating: 1,
+              note: "ok",
+            })),
+          })
+        );
+      }
+      return chat(JSON.stringify({ translation: "Bản dịch" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const db = reviewQueueDb("translation_suggestions", pending, (sql) =>
+      sql.includes("FROM items")
+        ? { title: "Title", summary: "Summary", source_lang: "en" }
+        : sql.includes("FROM translations")
+          ? { title: "Tiêu đề", summary: "Tóm tắt" }
+          : null
+    );
+    await reviewPendingSuggestions({ ...env, DB: db });
+    // Per suggestion: System One try, chat review, chat rewrite.
+    expect(modelCalls(fetchMock).length).toBeGreaterThan(SUGGESTION_REVIEW_CAP);
+    expect(modelCalls(fetchMock).length).toBeLessThanOrEqual(
+      SUGGESTION_REVIEW_CAP * 3
+    );
+  });
+});
+
+describe("translation QA caps per run", () => {
+  const migration = readFileSync(
+    path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../migrations/0023_translation_reviews.sql"
+    ),
+    "utf8"
+  );
+
+  /** Minimal D1 over node:sqlite; same shape as translation-qa.integration. */
+  function sqliteD1(sqlite: DatabaseSync) {
+    type Input = null | number | bigint | string | NodeJS.ArrayBufferView;
+    return {
+      prepare(sql: string) {
+        const statement = sqlite.prepare(sql);
+        let args: Input[] = [];
+        const prepared = {
+          bind: (...next: unknown[]) => {
+            args = next as Input[];
+            return prepared;
+          },
+          all: async () => ({ results: statement.all(...args) as unknown[] }),
+          first: async () => statement.get(...args) ?? null,
+          run: async () => ({
+            success: true,
+            meta: { changes: Number(statement.run(...args).changes) },
+          }),
+        };
+        return prepared;
+      },
+      async batch(statements: Array<{ run: () => Promise<unknown> }>) {
+        const out: unknown[] = [];
+        for (const statement of statements) out.push(await statement.run());
+        return out;
+      },
+    } as unknown as D1Database;
+  }
+
+  it("makes at most QA_MAX_CALLS model calls however many translations wait", async () => {
+    const sqlite = new DatabaseSync(":memory:");
+    try {
+      sqlite.exec(`
+        CREATE TABLE items (
+          id TEXT PRIMARY KEY, title TEXT NOT NULL, summary TEXT,
+          status TEXT NOT NULL DEFAULT 'published',
+          published_at INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE TABLE translations (
+          item_id TEXT NOT NULL, lang TEXT NOT NULL DEFAULT 'vi',
+          title TEXT, summary TEXT, qa_rating REAL, qa_at INTEGER,
+          PRIMARY KEY (item_id, lang)
+        );
+      `);
+      for (let i = 0; i < 4 * QA_MAX_CALLS; i++) {
+        sqlite.exec(`
+          INSERT INTO items (id, title, summary)
+          VALUES ('item-${i}', 'Model ${i} ships', 'Released 2024-05-01.');
+          INSERT INTO translations (item_id, lang, title, summary)
+          VALUES ('item-${i}', 'vi', 'Mo hinh ${i} ra mat', 'Ngay 2024-05-01.');
+        `);
+      }
+      sqlite.exec(migration);
+      const fetchMock = vi.fn(async () => chat("not-json"));
+      vi.stubGlobal("fetch", fetchMock);
+      vi.spyOn(console, "log").mockImplementation(() => {});
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const stats = await ratePendingTranslations({
+        ...env,
+        DB: sqliteD1(sqlite),
+        ANYROUTER_REVIEW_MODEL: "reviewer/model",
+      });
+      expect(stats.calls).toBe(QA_MAX_CALLS);
+      expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(QA_MAX_CALLS);
+    } finally {
+      sqlite.close();
+    }
+  });
+});
+
+describe("JEV panel caps per run", () => {
+  const judge = (vote: string, score: number) =>
+    JSON.stringify({
+      vote,
+      confidence: 0.8,
+      score,
+      category: "Models",
+      claims: [
+        {
+          id: "c1",
+          text: "A claim.",
+          evidence: [{ sourceId: "vendor", locator: "https://example.test/a" }],
+        },
+      ],
+      rationale: "r",
+    });
+
+  it("spends at most judges x (1 + debate rounds) calls per item, however many items", async () => {
+    resetJevScoreReviewMemo();
+    // Three seats, one model each, and the judges always disagree so the
+    // debate round runs for every item: the worst case for call count.
+    const fetchMock = vi.fn(async (_url: unknown, init: unknown) => {
+      const body = JSON.parse((init as { body: string }).body) as {
+        model: string;
+      };
+      const vote = body.model.startsWith("anthropic/") ? "oppose" : "support";
+      return chat(judge(vote, 0.1));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const items = Array.from({ length: 6 }, (_, i) => ({
+      id: `item-${i}`,
+      title: `Story ${i}`,
+      summary: "s",
+      source: "vendor",
+    }));
+    const seats = 3;
+    await reviewScoredItemsWithJevPanel(
+      {
+        ...env,
+        JEV_PANEL_ENABLED: "1",
+        JEV_PANEL_DEBATE: "1",
+        JEV_PANEL_RELEVANCE_MODEL: "openai/gpt-5.2",
+        JEV_PANEL_SOURCE_QUALITY_MODEL: "anthropic/claude-opus-4-5",
+        JEV_PANEL_SAFETY_MODEL: "google/gemini-3-pro",
+      },
+      {
+        items,
+        relevanceById: new Map(items.map((it) => [it.id, 0.9])),
+        categoryOptions: ["Models"],
+      }
+    );
+    expect(seats).toBeLessThanOrEqual(JEV_PANEL_MAX_JUDGES);
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(
+      items.length * seats * (1 + JEV_PANEL_MAX_DEBATE_ROUNDS)
+    );
+    // The bound is reached, not just respected: debate did run.
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(items.length * seats);
+    resetJevScoreReviewMemo();
+  });
+});
+
+describe("dedupe and topics caps per run", () => {
+  it("clusters with exactly one call, however many items are new", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"clusters":[]}' } }],
+          }),
+          { status: 200 }
+        )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    await clusterSimilar(
+      env,
+      Array.from({ length: 500 }, (_, i) => ({ i, title: `new ${i}` })),
+      Array.from({ length: 300 }, (_, i) => ({
+        id: `e${i}`,
+        title: `old ${i}`,
+      }))
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps unseen topics with one call, and shows at most 150 existing canonicals", async () => {
+    const prompts: string[] = [];
+    const fetchMock = vi.fn(async (_url: unknown, init: unknown) => {
+      const body = JSON.parse((init as { body: string }).body) as {
+        messages: { content: string }[];
+      };
+      prompts.push(body.messages.map((m) => m.content).join("\n"));
+      return chat('{"mappings":[]}');
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const existing = Array.from({ length: 400 }, (_, i) => ({
+      name: `known-${i}`,
+      canonical: `known-${i}`,
+    }));
+    const db = {
+      prepare: () => ({
+        all: async () => ({ results: existing }),
+        bind: () => ({}),
+      }),
+      batch: async () => [],
+    } as unknown as D1Database;
+    const tags = new Map(
+      Array.from({ length: 200 }, (_, i) => [`item-${i}`, [`fresh-tag-${i}a`]])
+    );
+    await normalizeTopics({ ...env, DB: db }, tags, 1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const shown = /Existing canonical topics[^\n]*\n(\[.*\])/.exec(prompts[0]);
+    expect(
+      (JSON.parse(shown?.[1] ?? "[]") as string[]).length
+    ).toBeLessThanOrEqual(MAX_EXISTING_CANONICALS_IN_PROMPT);
   });
 });
