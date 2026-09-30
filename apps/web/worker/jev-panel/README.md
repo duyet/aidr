@@ -95,9 +95,10 @@ config that cannot be resolved is a *misconfiguration*, not a verdict, so it
 always degrades open even under `JEV_PANEL_FAIL_MODE=closed`: a typo must never
 reject a whole ingest run.
 
-**No schema drift.** The panel writes nothing new. It rides on the existing
+**No ranking schema drift.** The panel's effect rides on the existing
 `llm_relevance` and `category` columns, and the existing relevance gate in
-`workflow.ts` still owns the publish/reject decision. No migration is added.
+`workflow.ts` still owns the publish/reject decision. The only new table is
+the `jev_panel_verdicts` audit trail, which nothing reads back into ranking.
 
 ## Mapping onto the persisted decision
 

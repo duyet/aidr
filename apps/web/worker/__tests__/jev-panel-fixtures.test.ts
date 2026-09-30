@@ -483,10 +483,12 @@ describe("vote-manipulation fixtures", () => {
       },
       source_quality: honest(slotB),
     });
-    // Either the extra fields invalidate the judgment, or they are ignored;
-    // in neither case does one judge outvote the other.
-    expect(result.finalAggregate.oppose).toBeLessThanOrEqual(1);
-    expect(result.recommendation).not.toBe("oppose");
+    // The extra fields are dropped: each judge is still exactly one vote, so
+    // one support and one oppose tie and go to human review.
+    expect(result.finalAggregate.validJudgments).toBe(2);
+    expect(result.finalAggregate.support).toBe(1);
+    expect(result.finalAggregate.oppose).toBe(1);
+    expect(result.recommendation).toBe("human_review");
   });
 
   it("rejects out-of-range confidence and score", async () => {
