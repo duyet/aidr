@@ -1,57 +1,57 @@
 # SCRIPT — aidr-launch
 
-**Voice:** Marcus - Warm & Friendly (HeyGen, id 0fadce1e82af494a93873aa38ea8d106)
-**Voice direction:** Cool and warm. Calm, close to the mic, unhurried, no announcer energy. Plain words, short sentences.
+**Voice:** Ewan - Bright & Energetic (HeyGen, id 5f9c155f4108437f970c308c95b06e11), speed 1.12
+**Voice direction:** A launch announcement. Powerful, fast, confident and excited, fully professional. Every line lands like a headline.
 
-Each line starts a little after its frame begins (the lead is in `audio/build_audio.py`); frames keep their grid durations.
+Line timing (how long after its frame starts each line is spoken) lives in `audio/build_audio.py`; frames keep their grid durations.
 
 ---
 
 ## Line 1 — Hook (Frame 1)
 
-**Time:** 0.0 – 5.4s (starts 1.60s in)
-**Delivery:** Quiet, a little amused at the number.
+**Time:** 0.0 – 5.4s
+**Delivery:** Announce it. Punch the last word.
 
-    Three hundred and eighteen AI stories, today alone.
+    Three hundred and eighteen AI stories. Today alone!
 
 ## Line 2 — Value (Frame 2)
 
-**Time:** 5.4 – 9.0s (starts 1.75s in)
-**Delivery:** Simple and sure. Let it land with the 8.
+**Time:** 5.4 – 9.0s
+**Delivery:** Announce it. Punch the last word.
 
-    You need eight.
+    From twenty-six sources, you need eight!
 
 ## Line 3 — Mechanism (Frame 3)
 
-**Time:** 9.0 – 12.6s (starts 0.50s in)
-**Delivery:** Easy, unhurried.
+**Time:** 9.0 – 12.6s
+**Delivery:** Announce it. Punch the last word.
 
-    We read all of it, and keep what matters.
+    We read all of it, and keep what matters!
 
 ## Line 4 — Product (Frame 4)
 
-**Time:** 12.6 – 18.0s (starts 0.20s in)
-**Delivery:** Three short beats, with the rows.
+**Time:** 12.6 – 18.0s
+**Delivery:** Announce it. Punch the last word.
 
-    Ranked and summarized by AI, powered by AnyRouter.
+    Ranked and summarized by AI, powered by AnyRouter!
 
 ## Line 5 — Bilingual (Frame 5)
 
-**Time:** 16.2 – 19.8s (starts 0.70s in)
-**Delivery:** Warm. A small smile.
+**Time:** 18.0 – 21.6s
+**Delivery:** Announce it. Punch the last word.
 
-    In English, and in Vietnamese.
+    In English, and in Vietnamese!
 
 ## Line 6 — Reach (Frame 6)
 
-**Time:** 19.8 – 25.2s (starts 0.60s in)
-**Delivery:** Relaxed, like pointing something out.
+**Time:** 21.6 – 27.0s
+**Delivery:** Announce it. Punch the last word.
 
-    Waiting in a new tab, your inbox, or Telegram.
+    Six channels: web, new tab, email, Telegram, RSS, MCP!
 
 ## Line 7 — Lockup (Frame 7)
 
-**Time:** 25.2 – 28.8s (starts 1.00s in)
-**Delivery:** Spell the name letter by letter, then ask the question plainly.
+**Time:** 27.0 – 30.6s
+**Delivery:** Announce it. Punch the last word.
 
-    A.I.D.R. What's happening in AI today?
+    A.I.D.R. is live! What's happening in AI today?

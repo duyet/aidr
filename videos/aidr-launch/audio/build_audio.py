@@ -29,14 +29,15 @@ def at(frame, authored):
 
 
 # Narration: seconds after the frame starts at which the first word is spoken.
-# Line 2 is timed so the word "eight" (0.42s into the line) lands with the 8.
-VOICE_LEAD = {1: 0.7, 2: at(2, 2.5) - FRAME_START[2] - 0.42, 3: 0.3, 4: 0.2, 5: 0.6, 6: 1.0, 7: 0.2}
+# Line 2 is placed by LAND_WORD instead: its word "eight" lands with the 8.
+VOICE_LEAD = {1: 0.6, 3: 0.3, 4: 1.2, 5: 0.5, 6: 0.7, 7: 0.15}
+LAND_WORD = {2: ("eight", at(2, 2.5) - FRAME_START[2])}  # line: (word, seconds into the frame)
 
 # Music: library track "News Theme" (HeyGen id 225457110ee14caaa223b7abc295a64b), a steady
 # 120 BPM. Played 10/9 faster it is 133.3 BPM, so a bar is 1.8s and every frame cut is a bar line.
 BGM_SOURCE = "assets/bgm/news-theme-source.mp3"
 BGM_OUT = "assets/bgm/score.mp3"
-BGM_VOLUME = 0.2
+BGM_VOLUME = 0.24
 
 # Seconds from the start of each bundled effect file to its loudest point (measured).
 PEAK = {"click-soft": 0.053, "typing": 0.45, "whoosh": 0.164, "whoosh-short": 0.164,
@@ -52,10 +53,10 @@ HITS = (
     + [("click-soft", at(3, 3.1), 0.2)]                                       # headline locks
     + [("click-soft", at(4, 0.75 + 0.25 * i), 0.2) for i in range(7)]         # rows 2-8 land
     + [("pop", at(4, 2.75), 0.15)]                                            # footer
-    + [("pop", at(4, 4.75), 0.22)]                                            # AnyRouter mark lands
+    + [("pop", at(4, 4.33), 0.22)]                                            # AnyRouter mark lands
     + [("whoosh-short", at(5, 0.5), 0.15), ("whoosh-short", at(5, 2.0), 0.2)]  # pair in, pair swap
     + [("whoosh-short", at(6, 0.4), 0.2)]                                     # window rises
-    + [("pop", at(6, t), 0.22) for t in (3.0, 3.5, 4.0, 4.5)]                 # delivery chips
+    + [("pop", at(6, t), 0.2) for t in (1.62, 2.39, 3.14, 3.87, 4.59, 5.43)]  # six chips, on their words
     + [("whoosh", at(7, 0.0), 0.3)]                                           # into the lockup
     + [("impact-bass-1", at(7, 1.4), 0.35)]                                   # wordmark locks
     + [("click-soft", at(7, 3.0), 0.2)]                                       # aidr.today
@@ -79,7 +80,12 @@ def build_voices(meta):
         frame = voice["frame"]
         raw = f"assets/voice/{frame:02d}.wav"
         first, last = voice["words"][0]["start"], voice["words"][-1]["end"]
-        lead = VOICE_LEAD[frame]
+        if frame in LAND_WORD:
+            word, moment = LAND_WORD[frame]
+            spoken_at = next(w["start"] for w in voice["words"] if w["text"].lower().startswith(word))
+            lead = max(moment - (spoken_at - first), 0.05)
+        else:
+            lead = VOICE_LEAD[frame]
         spoken = last - first
         if lead + spoken > FRAME_LENGTH[frame]:
             raise SystemExit(f"line {frame}: {spoken:.2f}s of speech after a {lead:.2f}s lead does "
