@@ -73,6 +73,7 @@ export const TELEGRAM_URL = "https://t.me/aihomnay";
 export const TELEGRAM_HANDLE = "@aihomnay";
 /** Public English Telegram channel. */
 export const TELEGRAM_EN_URL = "https://t.me/aidr_today";
+export const TELEGRAM_EN_HANDLE = "@aidr_today";
 
 /** Public GitHub repository. */
 export const GITHUB_URL = "https://github.com/duyet/aidr";

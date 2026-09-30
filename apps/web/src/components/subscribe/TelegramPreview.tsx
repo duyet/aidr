@@ -1,6 +1,10 @@
-import { Badge } from "@aidr/ui";
 import { Send } from "lucide-react";
-import { TELEGRAM_HANDLE, TELEGRAM_URL } from "../../lib/site";
+import {
+  TELEGRAM_EN_HANDLE,
+  TELEGRAM_EN_URL,
+  TELEGRAM_HANDLE,
+  TELEGRAM_URL,
+} from "../../lib/site";
 import type { Lang } from "../../lib/types";
 import { BrowserFrame } from "./BrowserFrame";
 
@@ -46,98 +50,90 @@ export const TELEGRAM_DIGEST = {
 } as const;
 
 /** Telegram channel mock: the once-a-day digest plus a trending post, in the
- *  two message shapes the bot actually sends. */
-export function TelegramPreview({ lang }: { lang: Lang }) {
+ *  two message shapes the bot actually sends. `channel` picks which channel
+ *  (and content language) is shown; `lang` is the page language for chrome. */
+export function TelegramPreview({
+  lang,
+  channel,
+}: {
+  lang: Lang;
+  channel: Lang;
+}) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
-  const copy = TELEGRAM_DIGEST[lang === "vi" ? "vi" : "en"];
+  const copy = TELEGRAM_DIGEST[channel === "vi" ? "vi" : "en"];
+  const url = channel === "vi" ? TELEGRAM_URL : TELEGRAM_EN_URL;
+  const handle = channel === "vi" ? TELEGRAM_HANDLE : TELEGRAM_EN_HANDLE;
 
   return (
-    <div className="space-y-3 pt-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary" className="rounded-full">
-          {t("What lands in the channel", "Bạn sẽ nhận gì trong kênh")}
-        </Badge>
-        <span className="text-xs text-muted-foreground">
-          {t(
-            "Illustrative layout — the real digest is in the channel",
-            "Bố cục minh họa — bản tin thật nằm trong kênh"
-          )}
-        </span>
-      </div>
-
-      <BrowserFrame
-        tab="Telegram"
-        address={TELEGRAM_URL.replace(/^https?:\/\//, "")}
-      >
-        <div className="space-y-3 bg-[#f4f4f5] px-3 py-4 dark:bg-muted/30">
-          <div className="flex items-center gap-2.5 border-b border-border/70 pb-2.5">
-            <span
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#2AABEE] text-white"
-              aria-hidden
-            >
-              <Send className="size-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold leading-tight">
-                {TELEGRAM_HANDLE}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {t("AI news, ranked daily", "Tin AI, xếp hạng hằng ngày")}
-              </p>
-            </div>
-          </div>
-
-          {/* Digest message: bold header + linked bullets + one CTA button.
-              A div, not an <article>: these are decorative mock bubbles, and
-              an unnamed `article` would add noise to the landmark list. */}
-          <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5 shadow-sm">
-            <p className="text-[13px] font-semibold leading-snug text-foreground">
-              <span aria-hidden>🗞</span>{" "}
-              {t("AI news today", "AI hôm nay có gì")} — {copy.date}
+    <BrowserFrame tab="Telegram" address={url.replace(/^https?:\/\//, "")}>
+      <div className="space-y-3 bg-[#f4f4f5] px-2.5 py-3 dark:bg-muted/30">
+        <div className="flex items-center gap-2.5 border-b border-border/70 pb-2.5">
+          <span
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#2AABEE] text-white"
+            aria-hidden
+          >
+            <Send className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-semibold leading-tight">
+              {handle}
             </p>
-            <ul className="mt-1.5 space-y-1.5">
-              {copy.bullets.map((b) => (
-                <li
-                  key={b}
-                  className="text-[12.5px] leading-relaxed text-foreground/90"
-                >
-                  <span className="text-muted-foreground" aria-hidden>
-                    •
-                  </span>{" "}
-                  {b}{" "}
-                  <span className="text-accent" aria-hidden>
-                    →
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <span className="mt-2.5 inline-flex rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
-              {copy.cta}
-            </span>
-          </div>
-
-          {/* Trending post: bold title, summary, meta line, two buttons. */}
-          <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5 shadow-sm">
-            <p className="text-[13px] font-semibold leading-snug text-foreground">
-              <span aria-hidden>🔥</span> {copy.story.title}
+            <p className="text-[11px] text-muted-foreground">
+              {t("AI news, ranked daily", "Tin AI, xếp hạng hằng ngày")}
             </p>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/90">
-              {copy.story.summary}
-            </p>
-            <p className="mt-1.5 text-[11px] text-accent">{copy.story.meta}</p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {copy.story.buttons.map((b) => (
-                <span
-                  key={b}
-                  className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground"
-                >
-                  {b}
-                </span>
-              ))}
-            </div>
           </div>
         </div>
-      </BrowserFrame>
-    </div>
+
+        {/* Digest message: bold header + linked bullets + one CTA button.
+              A div, not an <article>: these are decorative mock bubbles, and
+              an unnamed `article` would add noise to the landmark list. */}
+        <div className="max-w-full rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3 py-2.5 shadow-sm">
+          <p className="text-[13px] font-semibold leading-snug text-foreground">
+            <span aria-hidden>🗞</span> {t("AI news today", "AI hôm nay có gì")}{" "}
+            — {copy.date}
+          </p>
+          <ul className="mt-1.5 space-y-1.5">
+            {copy.bullets.map((b) => (
+              <li
+                key={b}
+                className="text-[12.5px] leading-relaxed text-foreground/90"
+              >
+                <span className="text-muted-foreground" aria-hidden>
+                  •
+                </span>{" "}
+                {b}{" "}
+                <span className="text-accent" aria-hidden>
+                  →
+                </span>
+              </li>
+            ))}
+          </ul>
+          <span className="mt-2.5 inline-flex rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
+            {copy.cta}
+          </span>
+        </div>
+
+        {/* Trending post: bold title, summary, meta line, two buttons. */}
+        <div className="max-w-full rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3 py-2.5 shadow-sm">
+          <p className="text-[13px] font-semibold leading-snug text-foreground">
+            <span aria-hidden>🔥</span> {copy.story.title}
+          </p>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/90">
+            {copy.story.summary}
+          </p>
+          <p className="mt-1.5 text-[11px] text-accent">{copy.story.meta}</p>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {copy.story.buttons.map((b) => (
+              <span
+                key={b}
+                className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground"
+              >
+                {b}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </BrowserFrame>
   );
 }

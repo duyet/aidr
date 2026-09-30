@@ -6,7 +6,13 @@
  */
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { CHROME_WEB_STORE_URL, TELEGRAM_URL } from "../../lib/site";
+import {
+  CHROME_WEB_STORE_URL,
+  TELEGRAM_EN_HANDLE,
+  TELEGRAM_EN_URL,
+  TELEGRAM_HANDLE,
+  TELEGRAM_URL,
+} from "../../lib/site";
 import { BrowserFrame } from "./BrowserFrame";
 import { ChromeChannel } from "./ChromeChannel";
 import { DigestPreview } from "./DigestPreview";
@@ -52,13 +58,26 @@ describe("TelegramChannel", () => {
   it("links to the channel and lists every feature in the chosen language", () => {
     const html = renderToStaticMarkup(<TelegramChannel lang="vi" />);
     expect(html).toContain(`href="${TELEGRAM_URL}"`);
+    expect(html).toContain(`href="${TELEGRAM_EN_URL}"`);
+    expect(html).toContain(`Mở ${TELEGRAM_HANDLE}`);
+    expect(html).toContain(`Mở ${TELEGRAM_EN_HANDLE}`);
+    for (const b of TELEGRAM_DIGEST.vi.bullets) expect(html).toContain(b);
+    for (const b of TELEGRAM_DIGEST.en.bullets) expect(html).toContain(b);
+    // Card matching the page language comes first.
+    expect(html.indexOf(TELEGRAM_URL)).toBeLessThan(
+      html.indexOf(TELEGRAM_EN_URL)
+    );
+    const en = renderToStaticMarkup(<TelegramChannel lang="en" />);
+    expect(en.indexOf(TELEGRAM_EN_URL)).toBeLessThan(en.indexOf(TELEGRAM_URL));
     for (const f of TELEGRAM_FEATURES) expect(html).toContain(f.vi);
   });
 });
 
 describe("TelegramPreview", () => {
   it("renders the digest and trending post copy for the language", () => {
-    const html = renderToStaticMarkup(<TelegramPreview lang="en" />);
+    const html = renderToStaticMarkup(
+      <TelegramPreview lang="en" channel="en" />
+    );
     for (const b of TELEGRAM_DIGEST.en.bullets) expect(html).toContain(b);
     expect(html).toContain(TELEGRAM_DIGEST.en.story.title);
   });
