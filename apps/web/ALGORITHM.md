@@ -207,6 +207,14 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
    in query strings) are decoded before storage, so thumbs are real article
    images rather than a broken-src fallback.
 
+   - **Media identity is the URL, not the content.** Duplicates are found by
+     `mediaIdentityKey` (host + path, minus resize and tracking variants). No
+     media is downloaded or hashed, so two different URLs that serve the same
+     bytes (a mirror, a renamed copy) stay as two assets.
+   - **A video poster is only URL-checked here.** At collection time the
+     poster URL passes the same URL policy as any image and nothing is
+     fetched. Its bytes are checked later, at Telegram send time (see Notify).
+
 4. **Score (Jev, then LLM)** — batches of 5.
 
    - TypeSafe Jev (`typesafe/jev`, `POST /api/v1/systemone`) judges each
@@ -457,9 +465,26 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
       thumbnail); video plus images uses one mixed `sendMediaGroup` (primary
       video, its poster, then manifest order, deduped by `mediaIdentityKey`, at
       most 10 items, at most 40 MB of video). An over-cap album is dropped whole,
-      never truncated. Any skip or Telegram error falls back to the photo path,
-      then text, so nothing double-posts. Photo bytes in an album are not probed.
-      Durable multi-message delivery remains a follow-up.
+      never truncated. A skip, or a call Telegram rejects, falls back to the
+      photo path, then text. Durable multi-message delivery remains a follow-up.
+    - **What is checked before a send.** The poster is fetched and checked
+      (JPEG, at most 200 KB, at most 320 px) only when it is about to be used as
+      a `sendVideo` thumbnail; a poster that fails is left out and the video
+      still goes. Gallery photos (`sendPhoto`, album photos) are not
+      preflighted: Telegram fetches them, and if it rejects one the post falls
+      back to the generated card, then text.
+    - **Ambiguous sends are never repeated.** Only a JSON answer from Telegram
+      is a definite outcome. `ok: false` posted nothing, so the next transport
+      may run and the row is `failed` (retried up to 3 attempts). A timeout, a
+      dropped connection, or a non-JSON body (a proxy error page) is
+      *ambiguous*: Telegram downloads media itself, so the message may already
+      be posted. An ambiguous call ends the send with no fallback, is recorded
+      as `notifications.status = 'ambiguous'`, and is reported to
+      Sentry/Bugsink. That row is final: the trending query and the digest gate
+      skip it on later runs, and it does not count as a post. The cost is a
+      story or digest that is missed when the call really did fail; the owner
+      checks the channel and can resend a digest from admin. A failed album
+      button reply never changes an album that was already posted.
     - **Media order: story image first, generated card as fallback.** The post
       leads with the story's real photo. The first-party OG card
       `/api/og/{id8}.png?lang=` is used when the story has no usable image, and

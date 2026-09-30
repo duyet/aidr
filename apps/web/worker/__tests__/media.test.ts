@@ -149,6 +149,23 @@ describe("buildMediaManifest", () => {
     ]);
   });
 
+  it("keeps two different URLs even if they could serve the same bytes", () => {
+    // Identity is the URL (host + path), never a content hash: the Worker does
+    // not download media to compare it. A mirror or a renamed copy of the same
+    // picture therefore stays as a second asset; only URL variants collapse.
+    const manifest = buildMediaManifest([
+      { type: "image", url: "https://img.example/story.jpg" },
+      { type: "image", url: "https://mirror.example/story.jpg" },
+      { type: "image", url: "https://img.example/copy-of-story.jpg" },
+      { type: "image", url: "https://img.example/story.jpg?w=300" },
+    ]);
+    expect(manifest.assets.map((asset) => asset.url)).toEqual([
+      "https://img.example/story.jpg",
+      "https://mirror.example/story.jpg",
+      "https://img.example/copy-of-story.jpg",
+    ]);
+  });
+
   it("drops generic logos and caps the ordered asset list", () => {
     const candidates = Array.from({ length: MAX_MEDIA_ASSETS + 4 }, (_, i) => ({
       type: "image" as const,

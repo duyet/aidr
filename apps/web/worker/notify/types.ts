@@ -43,6 +43,10 @@ export interface SendResult {
   /** Channel-native message id (Telegram message_id, Discord snowflake, ...). */
   messageId?: string;
   error?: string;
+  /** Set on a failure whose outcome is unknown: the channel gave no usable
+   *  answer (timeout, dropped connection, proxy error page), so the message
+   *  may already be posted. It must not be sent again, now or on a later run. */
+  ambiguous?: boolean;
 }
 
 /** One delivery channel (telegram, discord, ...). Each enabled channel

@@ -107,6 +107,8 @@ describe("buildTrendingQuery", () => {
     );
     expect(sql).toContain("status = 'published'");
     expect(sql).toContain("n.item_id IS NULL");
+    // An ambiguous send may already be posted, so it is excluded like `sent`.
+    expect(sql).toContain("n.status IN ('sent', 'ambiguous')");
     expect(sql).toContain("tr.lang = 'vi'");
     expect(sql).toContain("THEN 'vi' ELSE 'en' END AS lang");
     expect(sql).toContain("i.media_manifest");
@@ -596,6 +598,151 @@ describe("telegramNotifier gating", () => {
     expect(retry.photo).toBe("https://aidr.today/api/og/abcdef12.png?lang=vi");
   });
 
+  it("posts once with the card when the story image is over Telegram's photo cap", async () => {
+    // Gallery photos are not preflighted: Telegram fetches the URL and refuses
+    // a photo over its 5 MB URL limit. That refusal is a definite answer, so
+    // the card retry is safe, and the Worker itself never downloads the file.
+    const big = "https://img.example/huge-12mb.jpg";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error_code: 400,
+            description: "Bad Request: failed to get HTTP URL content",
+          }),
+          { status: 400 }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
+          status: 200,
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await telegramNotifier.sendStory(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      story({ image_url: big })
+    );
+    expect(result).toEqual({ ok: true, messageId: "41" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(
+      fetchMock.mock.calls.every((call) =>
+        String(call[0]).startsWith("https://api.telegram.org/")
+      )
+    ).toBe(true);
+    const retry = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    expect(retry.photo).toBe("https://aidr.today/api/og/abcdef12.png?lang=vi");
+  });
+
+  describe("unknown send outcome", () => {
+    // Telegram fetches the photo itself, so the call can time out after the
+    // post is already in the channel. Any further send, by any transport,
+    // could show the same story twice.
+    const tgEnv = {
+      TELEGRAM_BOT_TOKEN: "token",
+      TELEGRAM_CHAT_ID: "chat",
+    } as Env;
+    const timeout = () =>
+      Promise.reject(
+        new DOMException("The operation timed out.", "TimeoutError")
+      );
+    const ok = () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 7 } }), {
+          status: 200,
+        })
+      );
+    const twoImages = {
+      version: 1 as const,
+      assets: [
+        { type: "image" as const, url: "https://img.example/a.jpg" },
+        { type: "image" as const, url: "https://img.example/b.jpg" },
+      ],
+    };
+
+    it("does not fall back to the card or text when sendPhoto times out", async () => {
+      const fetchMock = vi.fn().mockImplementationOnce(timeout);
+      fetchMock.mockImplementation(ok);
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await telegramNotifier.sendStory(
+        tgEnv,
+        story({ image_url: "https://img.example/slow.jpg" })
+      );
+      expect(result).toMatchObject({ ok: false, ambiguous: true });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendPhoto");
+    });
+
+    it("does not fall back to one photo when the album times out", async () => {
+      const fetchMock = vi.fn().mockImplementationOnce(timeout);
+      fetchMock.mockImplementation(ok);
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await telegramNotifier.sendStory(
+        tgEnv,
+        story({ media_manifest: twoImages })
+      );
+      expect(result).toMatchObject({ ok: false, ambiguous: true });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
+    });
+
+    it("keeps a posted album as sent when its button reply times out", async () => {
+      // A thrown button call used to fail the whole story, and the next hourly
+      // run posted the album again.
+      const fetchMock = vi
+        .fn()
+        .mockImplementationOnce(ok)
+        .mockImplementationOnce(timeout);
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await telegramNotifier.sendStory(
+        tgEnv,
+        story({ media_manifest: twoImages })
+      );
+      expect(result).toEqual({ ok: true, messageId: "7" });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("reports a timed-out digest as ambiguous instead of throwing", async () => {
+      // A thrown error is recorded as a plain failure and retried next hour,
+      // which would post the day's digest a second time.
+      vi.stubGlobal("fetch", vi.fn().mockImplementation(timeout));
+
+      const result = await telegramNotifier.sendDigest(tgEnv, {
+        lang: "vi",
+        date: "2026-08-17",
+        bullets: [],
+      });
+      expect(result).toMatchObject({ ok: false, ambiguous: true });
+    });
+
+    it("still treats a JSON error from Telegram as a definite rejection", async () => {
+      // Telegram answered, so nothing was posted and a retry is safe.
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: false, description: "chat not found" }),
+              { status: 400 }
+            )
+          )
+      );
+      const result = await telegramNotifier.sendDigest(tgEnv, {
+        lang: "vi",
+        date: "2026-08-17",
+        bullets: [],
+      });
+      expect(result).toEqual({ ok: false, error: "chat not found" });
+    });
+  });
+
   it("uses the generated card as the only media for an imageless story", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true, result: { message_id: 9 } }), {
@@ -794,6 +941,12 @@ describe("classifyDigestSkip", () => {
   });
   it("returns already_sent for a sent row", () => {
     expect(classifyDigestSkip({ status: "sent", attempts: 1 }, 12)).toBe(
+      "already_sent"
+    );
+  });
+  it("returns already_sent for an ambiguous row, whatever its attempts", () => {
+    // The digest may be in the channel already; resending would double-post.
+    expect(classifyDigestSkip({ status: "ambiguous", attempts: 1 }, 12)).toBe(
       "already_sent"
     );
   });

@@ -46,6 +46,14 @@ function moov(seconds: number): Uint8Array {
   return box("moov", box("mvhd", mvhd));
 }
 
+/** Only the 8-byte header of a 3 MB `moov`; the body is never served. */
+function hugeMoovHeader(): Uint8Array {
+  const out = new Uint8Array(8);
+  new DataView(out.buffer).setUint32(0, 3 * 1024 * 1024);
+  out.set(new TextEncoder().encode("moov"), 4);
+  return out;
+}
+
 /** Synthetic MP4. `faststart` puts moov before a (fake) 1 MB mdat. */
 function mp4(seconds: number, faststart: boolean, brand = "isom"): Uint8Array {
   const mdat = box("mdat", new Uint8Array(1024 * 1024));
@@ -60,6 +68,8 @@ interface Origin {
   ranges?: boolean;
   /** Overrides the reported total, to model a huge file without allocating. */
   total?: number;
+  /** Non-2xx answer for every request, to model a hotlink-blocked origin. */
+  status?: number;
 }
 
 /** Fetch stub: Range-aware media origins plus a recording Telegram endpoint. */
@@ -87,6 +97,7 @@ function stubFetch(
     calls.push({ url });
     const origin = origins[url];
     if (!origin) return new Response("nope", { status: 404 });
+    if (origin.status) return new Response("denied", { status: origin.status });
     const headers: Record<string, string> = {
       "content-type": origin.type ?? "video/mp4",
     };
@@ -164,9 +175,112 @@ describe("probeVideo", () => {
     ["not_mp4", { file: mp4(5, true, "qt  ") }],
     ["too_long", { file: mp4(TELEGRAM_VIDEO_MAX_SECONDS + 1, true) }],
     ["duration_unknown", { file: mp4(5, false), ranges: false }],
+    // The header says MP4 but the bytes are a web page: the MIME type is the
+    // origin's claim, so the container is checked too.
+    ["not_mp4", { file: new TextEncoder().encode("<html>login</html>") }],
+    // A `moov` over the 2 MB read bound is not downloaded to learn the length.
+    [
+      "duration_unknown",
+      { file: concat(ftyp(), hugeMoovHeader()), total: 4 * 1024 * 1024 },
+    ],
   ] as const)("skips with reason %s", async (reason, origin) => {
     stubFetch({ [VIDEO]: origin });
     expect(await probeVideo(VIDEO)).toMatchObject({ ok: false, reason });
+  });
+
+  it.each([
+    ["loopback", "http://127.0.0.1/clip.mp4"],
+    ["cloud metadata", "http://169.254.169.254/latest/meta-data"],
+    ["private LAN", "https://10.0.0.5/clip.mp4"],
+  ])("refuses a redirect to a %s host", async (_name, location) => {
+    // A public URL that passes the URL check can still redirect the Worker
+    // into a private network (SSRF). Every hop is checked, so the probe stops
+    // at the redirect and never requests the private address.
+    const mock = vi.fn(
+      async (_input: string | URL) =>
+        new Response(null, { status: 302, headers: { location } })
+    );
+    vi.stubGlobal("fetch", mock);
+    expect(await probeVideo(VIDEO)).toMatchObject({
+      ok: false,
+      reason: "unreachable",
+    });
+    expect(mock.mock.calls.map((c) => String(c[0]))).toEqual([VIDEO]);
+  });
+
+  it.each([
+    [
+      "a 206 with no total in Content-Range",
+      () =>
+        new Response(mp4(5, true).slice(0, 1024) as unknown as BodyInit, {
+          status: 206,
+          headers: {
+            "content-type": "video/mp4",
+            "content-range": "bytes 0-1023/*",
+          },
+        }),
+    ],
+    [
+      "a 200 with no Content-Length",
+      () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(mp4(5, true).slice(0, 1024));
+              controller.close();
+            },
+          }),
+          { status: 200, headers: { "content-type": "video/mp4" } }
+        ),
+    ],
+  ])("skips with size_unknown on %s", async (_name, respond) => {
+    // Telegram refuses a URL video over 20 MB. If the origin will not say how
+    // big the file is, the cap cannot be proven, so the video is not sent.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => respond())
+    );
+    expect(await probeVideo(VIDEO)).toMatchObject({
+      ok: false,
+      reason: "size_unknown",
+    });
+  });
+
+  it("stops at the head window when the server ignores Range", async () => {
+    // A server that answers 200 to a Range request would stream the whole
+    // file. The probe must not read it: it takes the head window, refuses the
+    // second full-body answer, and reports the duration as unknown.
+    const file = mp4(5, false);
+    let served = 0;
+    const mock = vi.fn(async () => {
+      let at = 0;
+      return new Response(
+        new ReadableStream({
+          pull(controller) {
+            const chunk = file.slice(at, at + 64 * 1024);
+            at += chunk.length;
+            served += chunk.length;
+            if (chunk.length > 0) controller.enqueue(chunk);
+            else controller.close();
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "video/mp4",
+            "content-length": String(file.length),
+          },
+        }
+      );
+    });
+    vi.stubGlobal("fetch", mock);
+    expect(await probeVideo(VIDEO)).toMatchObject({
+      ok: false,
+      reason: "duration_unknown",
+    });
+    expect(mock).toHaveBeenCalledTimes(2);
+    expect(file.length).toBeGreaterThan(1024 * 1024);
+    expect(served).toBeLessThan(512 * 1024);
   });
 
   it("never fetches an unsafe URL", async () => {
@@ -348,25 +462,129 @@ describe("Telegram video delivery", () => {
     ]);
   });
 
-  it("survives a non-JSON Telegram body and lands on text", async () => {
+  it("does not fall back after a non-JSON Telegram body", async () => {
+    // The Bot API always answers in JSON, even for errors. An HTML 502/504
+    // comes from a proxy in front of it, which cannot know whether Telegram
+    // already took the request. That is an unknown outcome, not a rejection,
+    // so a fallback here could post the story twice.
     const f = stubFetch({ [VIDEO]: { file: mp4(10, true) } });
     const inner = (globalThis.fetch as unknown as typeof fetch).bind(
       globalThis
     );
+    const sendVideo = vi.fn(
+      async () => new Response("<html>bad gateway</html>", { status: 502 })
+    );
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: string | URL, init?: RequestInit) =>
-        String(input).includes("/sendVideo")
-          ? new Response("<html>bad gateway</html>", { status: 502 })
-          : inner(input, init)
+        String(input).includes("/sendVideo") ? sendVideo() : inner(input, init)
       )
     );
     const result = await telegramNotifier.sendStory(
       env,
       story([{ type: "video", url: VIDEO }])
     );
+    expect(result).toMatchObject({ ok: false, ambiguous: true });
+    expect(result.error).toContain("HTTP 502");
+    expect(sendVideo).toHaveBeenCalledTimes(1);
+    expect(f.tg()).toHaveLength(0);
+  });
+
+  // Telegram downloads the media itself, so the 15 s call can time out or the
+  // connection can drop AFTER Telegram accepted the post. Sending again, by
+  // any transport, would put the same story in the channel twice.
+  const timeout = () => {
+    throw new DOMException("The operation timed out.", "TimeoutError");
+  };
+  const methods = (f: ReturnType<typeof stubFetch>) =>
+    f.tg().map((c) => c.url.split("/").pop());
+
+  it.each([
+    ["times out", timeout],
+    [
+      "loses the connection",
+      () => {
+        throw new TypeError("fetch failed");
+      },
+    ],
+  ])("sends nothing else when sendVideo %s", async (_name, fail) => {
+    const f = stubFetch({ [VIDEO]: { file: mp4(10, true) } }, (method) =>
+      method === "sendVideo" ? fail() : { ok: true, result: { message_id: 9 } }
+    );
+    const result = await telegramNotifier.sendStory(
+      env,
+      story([{ type: "video", url: VIDEO, poster_url: poster }])
+    );
+    expect(result).toMatchObject({ ok: false, ambiguous: true });
+    expect(methods(f)).toEqual(["sendVideo"]);
+  });
+
+  it("sends nothing else when the video album times out", async () => {
+    const f = stubFetch({ [VIDEO]: { file: mp4(10, true) } }, (method) =>
+      method === "sendMediaGroup"
+        ? timeout()
+        : { ok: true, result: { message_id: 9 } }
+    );
+    const result = await telegramNotifier.sendStory(
+      env,
+      story([
+        { type: "video", url: VIDEO, poster_url: poster },
+        { type: "image", url: "https://img.example/a.jpg" },
+      ])
+    );
+    expect(result).toMatchObject({ ok: false, ambiguous: true });
+    expect(methods(f)).toEqual(["sendMediaGroup"]);
+  });
+
+  it("keeps a posted video album as sent when its button reply times out", async () => {
+    // The album is already in the channel. A failed button reply must not
+    // turn that into a photo fallback or a retry next hour.
+    const f = stubFetch({ [VIDEO]: { file: mp4(10, true) } }, (method) =>
+      method === "sendMessage"
+        ? timeout()
+        : { ok: true, result: [{ message_id: 9 }] }
+    );
+    const result = await telegramNotifier.sendStory(
+      env,
+      story([
+        { type: "video", url: VIDEO },
+        { type: "image", url: "https://img.example/a.jpg" },
+      ])
+    );
+    expect(result).toEqual({ ok: true, messageId: "9" });
+    expect(methods(f)).toEqual(["sendMediaGroup", "sendMessage"]);
+  });
+
+  it("sends the video without a thumbnail when the poster is hotlink-blocked", async () => {
+    // A poster the Worker cannot read cannot be proven to be a legal Bot API
+    // thumbnail (JPEG, 200 KB, 320 px). Passing it anyway would make Telegram
+    // reject the whole video, so it is left out and the video still goes.
+    const f = stubFetch({
+      [VIDEO]: { file: mp4(10, true) },
+      [poster]: { file: new Uint8Array(8), type: "image/jpeg", status: 403 },
+    });
+    const result = await telegramNotifier.sendStory(
+      env,
+      story([{ type: "video", url: VIDEO, poster_url: poster }])
+    );
     expect(result.ok).toBe(true);
-    expect(f.tg().map((c) => c.url.split("/").pop())).toEqual(["sendPhoto"]);
+    expect(methods(f)).toEqual(["sendVideo"]);
+    expect(f.tg()[0].body?.thumbnail).toBeUndefined();
+  });
+
+  it("posts once with the poster when the video is hotlink-blocked", async () => {
+    // A CDN that answers 403 to the Worker will answer 403 to Telegram too.
+    // The video is skipped before any send, so the fallback is the only post.
+    const f = stubFetch({
+      [VIDEO]: { file: mp4(10, true), status: 403 },
+    });
+    const result = await telegramNotifier.sendStory(
+      env,
+      story([{ type: "video", url: VIDEO, poster_url: poster }])
+    );
+    expect(result.ok).toBe(true);
+    expect(methods(f)).toEqual(["sendPhoto"]);
+    expect(f.tg()[0].body?.photo).toBe(poster);
   });
 
   it("uses locale-aware links in the album button", async () => {
