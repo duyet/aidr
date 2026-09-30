@@ -10,7 +10,11 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { digestKey, recordDelivery } from "../notify/index.js";
+import {
+  buildTrendingQuery,
+  digestKey,
+  recordDelivery,
+} from "../notify/index.js";
 import type { Env } from "../types.js";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -81,7 +85,7 @@ function store() {
       attempts: number;
       message_id: string | null;
     }>;
-  return { env, rows, close: () => sqlite.close() };
+  return { env, rows, sqlite, close: () => sqlite.close() };
 }
 
 describe("notifications delivery idempotency", () => {
@@ -160,6 +164,63 @@ describe("notifications delivery idempotency", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0]?.status).toBe("sent");
       expect(rows[0]?.attempts).toBe(2);
+    } finally {
+      s.close();
+    }
+  });
+
+  it("never picks a story again after an ambiguous send", async () => {
+    // A timeout can come after Telegram accepted the post. If the next hourly
+    // run picked the story again, the channel would show it twice. A definite
+    // failure is the control: nothing was posted, so it must stay retryable.
+    const s = store();
+    try {
+      s.sqlite.exec(`
+        CREATE TABLE items (
+          id TEXT PRIMARY KEY, url TEXT, title TEXT, summary TEXT,
+          image_url TEXT, media_manifest TEXT, category TEXT,
+          points INTEGER, comments INTEGER, rank_score REAL,
+          llm_importance INTEGER, status TEXT, published_at INTEGER
+        );
+        CREATE TABLE translations (
+          item_id TEXT, lang TEXT, title TEXT, summary TEXT
+        );
+      `);
+      const now = Date.now();
+      const insert = s.sqlite.prepare(
+        `INSERT INTO items (id, url, title, points, comments, rank_score,
+           llm_importance, status, published_at)
+         VALUES (?, ?, 't', 0, 0, 99, 9, 'published', ?)`
+      );
+      for (const id of ["ambiguous1", "rejected01"]) {
+        insert.run(id, `https://example.com/${id}`, Math.floor(now / 1000));
+      }
+      const pick = async (channel: string) => {
+        const { sql, binds } = buildTrendingQuery(channel, now);
+        const { results } = await s.env.DB.prepare(sql)
+          .bind(...binds)
+          .all<{ id: string }>();
+        return results.map((row) => row.id).sort();
+      };
+      expect(await pick("telegram")).toEqual(["ambiguous1", "rejected01"]);
+
+      await recordDelivery(s.env, "telegram", "chat", "ambiguous1", {
+        ok: false,
+        ambiguous: true,
+        error: "no answer from Telegram: The operation timed out.",
+      });
+      await recordDelivery(s.env, "telegram", "chat", "rejected01", {
+        ok: false,
+        error: "Bad Request: wrong file identifier",
+      });
+
+      expect(s.rows().map((row) => [row.item_id, row.status])).toEqual([
+        ["ambiguous1", "ambiguous"],
+        ["rejected01", "failed"],
+      ]);
+      expect(await pick("telegram")).toEqual(["rejected01"]);
+      // The other channel never tried, so it still posts the story.
+      expect(await pick("telegram-en")).toEqual(["ambiguous1", "rejected01"]);
     } finally {
       s.close();
     }

@@ -20,6 +20,7 @@ import type {
   DailyDigest,
   DigestBullet,
   Notifier,
+  SendResult,
   StoryPayload,
 } from "./types.js";
 import { webhookNotifier } from "./webhook.js";
@@ -35,7 +36,8 @@ import { webhookNotifier } from "./webhook.js";
  *
  * Delivery state lives in the `notifications` table: digest rows keyed
  * `digest:<date>`, story rows keyed by item id. Failed sends retry on
- * later hourly runs up to NOTIFY_MAX_ATTEMPTS.
+ * later hourly runs up to NOTIFY_MAX_ATTEMPTS. An `ambiguous` send (no usable
+ * answer, so the message may be posted) is never retried.
  */
 
 /** Registered delivery channels; add discord/... here. */
@@ -219,7 +221,7 @@ export function buildTrendingQuery(
                  i.points, i.comments, i.rank_score, i.llm_importance
           FROM items i
           LEFT JOIN notifications n ON n.item_id = i.id AND n.channel = ?
-            AND (n.status = 'sent' OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
+            AND (n.status IN ('sent', 'ambiguous') OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
           ${translationJoin}WHERE i.status = 'published'
             AND i.published_at >= ?
             AND i.rank_score >= ?
@@ -321,15 +323,20 @@ async function loadDigest(
  * Delivery state is keyed by (channel, item_id) only. `lang` is NOT part of
  * the key: an EN/VI comparison must never create a second row or a second
  * post for the same story. The upsert bumps `attempts` rather than inserting,
- * so a retry after an ambiguous timeout updates one row instead of posting
- * twice.
+ * so a retry updates one row.
+ *
+ * Status is `sent`, `failed` (the channel rejected it, nothing was posted,
+ * retried up to NOTIFY_MAX_ATTEMPTS) or `ambiguous` (no usable answer, the
+ * message may be posted). An `ambiguous` row is final like `sent`: the
+ * trending query and the digest gate both skip it, so an unknown outcome costs
+ * at most a missed post and never a second one. It is not counted as a post.
  */
 export async function recordDelivery(
   env: Pick<Env, "DB">,
   channel: string,
   target: string,
   key: string,
-  result: { ok: boolean; messageId?: string; error?: string }
+  result: SendResult
 ): Promise<void> {
   await env.DB.prepare(
     `INSERT INTO notifications (channel, item_id, target, status, attempts, message_id, last_error, posted_at)
@@ -345,12 +352,19 @@ export async function recordDelivery(
       nn(channel),
       nn(key),
       nn(target),
-      result.ok ? "sent" : "failed",
+      result.ok ? "sent" : result.ambiguous ? "ambiguous" : "failed",
       result.messageId ?? null,
       result.error ?? null,
       Date.now()
     )
     .run();
+}
+
+/** Owner-facing wording: an ambiguous send needs a look at the channel. */
+function failureLabel(result: SendResult): string {
+  return result.ambiguous
+    ? "outcome unknown (may be posted, will not retry)"
+    : "failed";
 }
 
 /** Best-effort dispatch; per-channel sent counts plus structured skip reasons. */
@@ -404,7 +418,7 @@ export async function dispatchStoryNotifications(
       if (!digest) {
         digestReason = "no_snapshot";
       } else {
-        let result: { ok: boolean; messageId?: string; error?: string };
+        let result: SendResult;
         try {
           result = await notifier.sendDigest(env, digest);
         } catch (error) {
@@ -421,7 +435,7 @@ export async function dispatchStoryNotifications(
           );
           await reportDeliveryFailure(
             env,
-            `telegram ${notifier.id} digest failed: ${result.error ?? "unknown"}`,
+            `telegram ${notifier.id} digest ${failureLabel(result)}: ${result.error ?? "unknown"}`,
             { channel: notifier.id, kind: "digest" }
           );
         } else {
@@ -473,7 +487,7 @@ export async function dispatchStoryNotifications(
         trendingReason = afterQuery;
       } else {
         for (const story of candidates.slice(0, budget)) {
-          let result: { ok: boolean; messageId?: string; error?: string };
+          let result: SendResult;
           try {
             result = await notifier.sendStory(env, story);
           } catch (error) {
@@ -489,7 +503,7 @@ export async function dispatchStoryNotifications(
             );
             await reportDeliveryFailure(
               env,
-              `telegram ${notifier.id} trending failed: ${result.error ?? "unknown"}`,
+              `telegram ${notifier.id} trending ${failureLabel(result)}: ${result.error ?? "unknown"}`,
               { channel: notifier.id, kind: "trending" }
             );
           } else {
@@ -538,7 +552,7 @@ export async function forceSendDigest(
     if (!digest) continue;
     sawSnapshot = true;
     const target = notifier.target(env);
-    let result: { ok: boolean; messageId?: string; error?: string };
+    let result: SendResult;
     try {
       result = await notifier.sendDigest(env, digest);
     } catch (error) {

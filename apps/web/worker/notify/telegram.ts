@@ -336,8 +336,9 @@ async function sendAlbumButton(
 
 /**
  * Send the story's video (or a mixed album) when the preflight proved it.
- * Returns null on any skip or Telegram error so the caller falls back to the
- * photo path, then text. A failed call posts nothing, so nothing double-posts.
+ * Returns null on a skip or when Telegram rejects the call, so the caller
+ * falls back to the photo path, then text: a rejected call posts nothing. An
+ * ambiguous call may have posted, so it is returned and ends the send.
  */
 async function sendVideoStory(
   token: string,
@@ -356,47 +357,44 @@ async function sendVideoStory(
     return null;
   }
   if (!plan) return null;
-  try {
-    if (plan.method === "sendVideo") {
-      const res = await callTelegram(token, "sendVideo", {
-        chat_id: chatId,
-        video: plan.video.url,
-        duration: plan.video.durationSeconds,
-        supports_streaming: true,
-        ...(plan.thumbnail ? { thumbnail: plan.thumbnail } : {}),
-        caption,
-        parse_mode: "HTML",
-        reply_markup: replyMarkup,
-      });
-      if (res.ok) return { ok: true, messageId: telegramMessageId(res.result) };
-      console.error(
-        `telegram sendVideo failed for ${story.id}: ${res.description}; falling back`
-      );
-      return null;
-    }
-    const res = await callTelegram(token, "sendMediaGroup", {
+  if (plan.method === "sendVideo") {
+    const res = await callTelegram(token, "sendVideo", {
       chat_id: chatId,
-      media: buildVideoAlbumMedia(plan.items, caption),
+      video: plan.video.url,
+      duration: plan.video.durationSeconds,
+      supports_streaming: true,
+      ...(plan.thumbnail ? { thumbnail: plan.thumbnail } : {}),
+      caption,
+      parse_mode: "HTML",
+      reply_markup: replyMarkup,
     });
-    if (!res.ok) {
-      console.error(
-        `telegram video sendMediaGroup failed for ${story.id}: ${res.description}; falling back`
-      );
-      return null;
-    }
-    const messageId = telegramMessageId(res.result);
-    await sendAlbumButton(token, chatId, story, messageId, replyMarkup);
-    return { ok: true, messageId };
-  } catch (error) {
+    if (res.ok) return { ok: true, messageId: telegramMessageId(res.result) };
+    if (res.ambiguous) return sendFailure(res);
     console.error(
-      `telegram video send threw for ${story.id}: ${error instanceof Error ? error.message : "unknown"}`
+      `telegram sendVideo failed for ${story.id}: ${res.description}; falling back`
     );
     return null;
   }
+  const res = await callTelegram(token, "sendMediaGroup", {
+    chat_id: chatId,
+    media: buildVideoAlbumMedia(plan.items, caption),
+  });
+  if (res.ambiguous) return sendFailure(res);
+  if (!res.ok) {
+    console.error(
+      `telegram video sendMediaGroup failed for ${story.id}: ${res.description}; falling back`
+    );
+    return null;
+  }
+  const messageId = telegramMessageId(res.result);
+  await sendAlbumButton(token, chatId, story, messageId, replyMarkup);
+  return { ok: true, messageId };
 }
 
 interface TelegramResponse {
   ok: boolean;
+  /** No usable answer from Telegram, so the message may or may not be posted. */
+  ambiguous?: boolean;
   /** `sendMessage`/`sendPhoto` return one message; `sendMediaGroup` returns an array. */
   result?: { message_id?: number } | Array<{ message_id?: number }>;
   description?: string;
@@ -407,28 +405,58 @@ function telegramMessageId(result: TelegramResponse["result"]): string {
   return String(message?.message_id ?? "");
 }
 
+/** A failed call as a SendResult, keeping the ambiguous mark. */
+function sendFailure(res: TelegramResponse): SendResult {
+  return {
+    ok: false,
+    error: res.description ?? "unknown",
+    ...(res.ambiguous ? { ambiguous: true } : {}),
+  };
+}
+
+/**
+ * Never throws. Only a JSON answer from Telegram is a definite outcome:
+ * `ok: true` posted, `ok: false` posted nothing. Everything else is
+ * `ambiguous`: Telegram fetches media URLs itself, so a timeout or a dropped
+ * connection can come after it accepted the message, and a non-JSON body is a
+ * proxy error page (the Bot API always answers in JSON) that says nothing
+ * about what Telegram did. Callers must not send again after an ambiguous
+ * result.
+ */
 async function callTelegram(
   token: string,
   method: string,
   body: Record<string, unknown>
 ): Promise<TelegramResponse> {
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15_000),
-  });
-  // Telegram can return non-JSON (proxy/HTML error pages); surface the
-  // HTTP status instead of letting a parse error escape.
-  const raw = await res.text();
+  let status: number;
+  let raw: string;
   try {
-    return JSON.parse(raw) as TelegramResponse;
-  } catch {
+    const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+    status = res.status;
+    raw = await res.text();
+  } catch (error) {
     return {
       ok: false,
-      description: `HTTP ${res.status}: ${raw.slice(0, 200)}`,
+      ambiguous: true,
+      description: `no answer from Telegram: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
+  try {
+    const parsed = JSON.parse(raw) as TelegramResponse | null;
+    if (typeof parsed?.ok === "boolean") return parsed;
+  } catch {
+    // Not JSON: handled below.
+  }
+  return {
+    ok: false,
+    ambiguous: true,
+    description: `HTTP ${status}: ${raw.slice(0, 200)}`,
+  };
 }
 
 /** Chat id for a language channel. Vietnamese still accepts the old
@@ -477,7 +505,7 @@ function telegramChannel(options: {
         reply_markup: buildDigestReplyMarkup(digest.lang),
         link_preview_options: DIGEST_LINK_PREVIEW,
       });
-      if (!msg.ok) return { ok: false, error: msg.description ?? "unknown" };
+      if (!msg.ok) return sendFailure(msg);
       return { ok: true, messageId: telegramMessageId(msg.result) };
     },
 
@@ -526,6 +554,9 @@ function telegramChannel(options: {
           await sendAlbumButton(token, chatId, story, messageId, replyMarkup);
           return { ok: true, messageId };
         }
+        // Each fallback below runs only after a definite rejection. An
+        // ambiguous result may already be in the channel, so it ends the send.
+        if (album.ambiguous) return sendFailure(album);
         console.error(
           `telegram sendMediaGroup failed for ${story.id}: ${album.description}; falling back to one photo`
         );
@@ -533,6 +564,7 @@ function telegramChannel(options: {
         if (lead.ok) {
           return { ok: true, messageId: telegramMessageId(lead.result) };
         }
+        if (lead.ambiguous) return sendFailure(lead);
         console.error(
           `telegram sendPhoto failed for ${story.id} ${gallery[0]}: ${lead.description}`
         );
@@ -541,6 +573,7 @@ function telegramChannel(options: {
           if (retry.ok) {
             return { ok: true, messageId: telegramMessageId(retry.result) };
           }
+          if (retry.ambiguous) return sendFailure(retry);
           console.error(
             `telegram sendPhoto card fallback failed for ${story.id}: ${retry.description}`
           );
@@ -552,6 +585,7 @@ function telegramChannel(options: {
           if (photo.ok) {
             return { ok: true, messageId: telegramMessageId(photo.result) };
           }
+          if (photo.ambiguous) return sendFailure(photo);
           console.error(
             `telegram sendPhoto failed for ${story.id} ${lead}: ${photo.description}`
           );
@@ -560,6 +594,7 @@ function telegramChannel(options: {
             if (retry.ok) {
               return { ok: true, messageId: telegramMessageId(retry.result) };
             }
+            if (retry.ambiguous) return sendFailure(retry);
             console.error(
               `telegram sendPhoto card fallback failed for ${story.id}: ${retry.description}`
             );
@@ -569,6 +604,7 @@ function telegramChannel(options: {
           if (photo.ok) {
             return { ok: true, messageId: telegramMessageId(photo.result) };
           }
+          if (photo.ambiguous) return sendFailure(photo);
           console.error(
             `telegram sendPhoto failed for ${story.id} ${card}: ${photo.description}`
           );
@@ -582,7 +618,7 @@ function telegramChannel(options: {
         reply_markup: replyMarkup,
         link_preview_options: STORY_TEXT_LINK_PREVIEW,
       });
-      if (!msg.ok) return { ok: false, error: msg.description ?? "unknown" };
+      if (!msg.ok) return sendFailure(msg);
       return { ok: true, messageId: telegramMessageId(msg.result) };
     },
   };
