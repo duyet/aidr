@@ -212,6 +212,17 @@ WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
    - Do not put `typesafe/jev` on `ANYROUTER_MODEL` — chat completions
      reject it.
    - **Hide rule:** `relevance < 0.4` → status `rejected` (never shown).
+   - **Optional JEV review panel** (`worker/jev-panel/`), off unless
+     `JEV_PANEL_ENABLED` is truthy. When on, two judges from different vendor
+     families (`JEV_PANEL_RELEVANCE_MODEL`, `JEV_PANEL_SOURCE_QUALITY_MODEL`)
+     review each scored row with an explicit quorum (`JEV_PANEL_QUORUM`,
+     default 2) and at most one debate round. The panel can only lower
+     relevance: `support` → `min(primary, panel mean)`, `oppose` → `0`,
+     no decision → primary (or `0` with `JEV_PANEL_FAIL_MODE=closed`). Same
+     model or same family for both roles is refused before any call; a bad
+     config always keeps the primary score. Results are memoized per run id +
+     item id, so a replayed step does not re-vote. No new column. Details:
+     `worker/jev-panel/README.md`.
    - Tags are then canonicalized (`normalizeTopics`) and captured into
      `topic_daily` each ingest (~15 min).
    - Emerging entity/model names that clear a frequency/growth bar promote
