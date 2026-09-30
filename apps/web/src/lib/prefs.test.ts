@@ -34,6 +34,23 @@ describe("prefs", () => {
     expect(loadPrefs()).toEqual(DEFAULT_PREFS);
   });
 
+  it("shows all four sections to a new user", () => {
+    expect(loadPrefs().sections).toEqual({
+      categories: true,
+      trending: true,
+      tldr: true,
+      days: true,
+    });
+  });
+
+  it("keeps a returning user's hidden daily feed", () => {
+    savePrefs({
+      ...DEFAULT_PREFS,
+      sections: { ...DEFAULT_PREFS.sections, days: false },
+    });
+    expect(loadPrefs().sections.days).toBe(false);
+  });
+
   it("round-trips saved prefs", () => {
     const prefs = {
       ...DEFAULT_PREFS,

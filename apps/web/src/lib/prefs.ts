@@ -39,7 +39,7 @@ export const DEFAULT_PREFS: Prefs = {
   fontSize: 1,
   density: "compact",
   bg: "default",
-  sections: { trending: true, tldr: true, days: false, categories: true },
+  sections: { trending: true, tldr: true, days: true, categories: true },
   sectionOrder: [...DEFAULT_SECTION_ORDER],
   tldrCount: 8,
   bilingualDialog: false,
