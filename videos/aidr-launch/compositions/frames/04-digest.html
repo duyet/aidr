@@ -38,6 +38,33 @@
       transform-origin: 50% 50%;
     }
 
+    /* Credit under the card: who does the scoring. Baseline row y 836–872, above the 900 keep-out. */
+    .f04-digest-credit {
+      position: absolute;
+      left: 0;
+      top: 834px;
+      width: 1920px;
+      height: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      font-family: "Source Sans 3 Variable", sans-serif;
+      font-size: 26px;
+      line-height: 40px;
+      color: #474747;
+    }
+    .f04-digest-credit-mark {
+      width: 34px;
+      height: 34px;
+      display: block;
+    }
+    .f04-digest-credit-name {
+      font-weight: 600;
+      color: #0a0a0a;
+      letter-spacing: 0.01em;
+    }
+
     /* Card surface: 1400 wide, centred on x 960, y 96–804. */
     .f04-digest-surface {
       position: absolute;
@@ -222,10 +249,10 @@
     }
   </style>
 
-  <div data-hf-id="hf-ozri" id="root" data-composition-id="04-digest" data-width="1920" data-height="1080" data-duration="4">
-    <div data-hf-id="hf-2ygr" class="f04-digest-ground clip" data-start="0" data-duration="4" data-track-index="0"></div>
+  <div data-hf-id="hf-ozri" id="root" data-composition-id="04-digest" data-width="1920" data-height="1080" data-duration="5.8">
+    <div data-hf-id="hf-2ygr" class="f04-digest-ground clip" data-start="0" data-duration="5.8" data-track-index="0"></div>
 
-    <div data-hf-id="hf-npkz" class="f04-digest-stage clip" data-start="0" data-duration="4" data-track-index="1">
+    <div data-hf-id="hf-npkz" class="f04-digest-stage clip" data-start="0" data-duration="5.8" data-track-index="1">
       <!-- Vertical-only blur, one filter per arriving row; zero at rest. -->
       <svg data-hf-id="hf-t7xe" class="f04-digest-defs" aria-hidden="true">
         <defs data-hf-id="hf-mh0t">
@@ -302,6 +329,11 @@
           <div data-hf-id="hf-8356" class="f04-digest-count">318 stories</div>
           <div data-hf-id="hf-exdp" class="f04-digest-updated">Updated 43m ago</div>
         </div>
+        <div class="f04-digest-credit">
+          <span class="f04-digest-credit-text">Scored and summarized by LLMs, powered by</span>
+          <img class="f04-digest-credit-mark" src="assets/anyrouter-logo-black.svg" alt="" />
+          <span class="f04-digest-credit-name">AnyRouter</span>
+        </div>
       </div>
     </div>
   </div>
@@ -324,7 +356,7 @@
       const seq = gsap.timeline();
 
       // Root camera: the single linear push, t=0 to the end.
-      seq.fromTo(".f04-digest-cam", { scale: 1 }, { scale: 1.03, duration: 4, ease: "none" }, 0);
+      seq.fromTo(".f04-digest-cam", { scale: 1 }, { scale: 1.03, duration: 6, ease: "none" }, 0);
 
       // ---- Scene 1 (0.0–0.75s): row 1 travels from the handoff into its slot ----
       // Two stacked copies per face change; both follow the same path so they stay
@@ -378,6 +410,12 @@
       const tFoot = 2.75 - LEAD;
       seq.fromTo(".f04-digest-count", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot);
       seq.fromTo(".f04-digest-updated", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, tFoot + 3 * FRAME);
+
+      // ---- Scene 4 (4.0–6.0s): the credit. Text first, then the AnyRouter mark and name land
+      // as the voice says the name (authored 4.75s), 3 frames apart. Then hold.
+      seq.fromTo(".f04-digest-credit-text", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.0 - LEAD);
+      seq.fromTo(".f04-digest-credit-mark", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.75 - LEAD);
+      seq.fromTo(".f04-digest-credit-name", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: park()(0.45) }, 4.75 - LEAD + 3 * FRAME);
 
       window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
