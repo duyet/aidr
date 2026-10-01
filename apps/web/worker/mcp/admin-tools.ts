@@ -95,7 +95,7 @@ export const ADMIN_MCP_TOOLS = [
       properties: {
         force: {
           type: "boolean",
-          description: "Bypass the 45-minute 'ran recently' gate.",
+          description: "Bypass the 25-minute 'ran recently' gate.",
         },
         dryRun: {
           type: "boolean",

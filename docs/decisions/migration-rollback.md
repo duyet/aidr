@@ -180,6 +180,21 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
 - Rollback: redeploy the previous Worker, then
   `DROP TABLE clerk_verified_emails;`
 
+## 0043_hn_model_scope.sql
+
+- Change: widens the Hacker News `sources.config` query so model releases,
+  new model kinds, and new AI labs are in the newest-100 search.
+- Risk: none for other rows. The next ingest seed writes the same config.
+- Rollback: redeploy the previous Worker, then restore the 0032 query:
+  `UPDATE sources SET config = '{"query":"AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek","popularMinPoints":40}' WHERE id = 'hn';`
+
+## 0042_items_fetched_at_idx.sql
+
+- Change: index `items(fetched_at)` so a run's stored-item list does not scan
+  the table.
+- Risk: none for existing rows. Apply before relying on that list under load.
+- Rollback: `DROP INDEX idx_items_fetched_at;`
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`

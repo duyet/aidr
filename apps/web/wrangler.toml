@@ -26,10 +26,10 @@ binding = "ASSETS"
 # JSON 404 lives in `server.ts` (`classifyServerFnPath`), not here.
 # Every icon surface is listed too: search engines each pick their own file, and
 # every one of them has to answer with an image rather than the SPA shell.
-run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/favicon-120x120.png", "/apple-touch-icon.png", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]
+run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/favicon-120x120.png", "/apple-touch-icon.png", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/about.md", "/subscribe.md", "/data.md", "/brand.md", "/changelog.md", "/privacy.md", "/terms.md", "/mcp.md", "/contribute.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]
 not_found_handling = "single-page-application"
 
-# Hourly ingest is a Durable Object alarm (`NewsIngestScheduler`) plus
+# Ingest every 30 minutes is a Durable Object alarm (`NewsIngestScheduler`) plus
 # GitHub Actions (`.github/workflows/ingest.yml`) as a watchdog.
 # account_id above is public (Account ID). Zone ID for aidr.today DNS is
 # documented in the repo README (not in .env.example).
@@ -43,7 +43,7 @@ name = "news-ingest"
 binding = "NEWS_INGEST"
 class_name = "NewsIngestWorkflow"
 
-# Not a cron trigger. Hourly `alarm()` starts NewsIngestWorkflow without
+# Not a cron trigger. A 30-minute `alarm()` starts NewsIngestWorkflow without
 # counting against the account's 5 Worker cron slots.
 [durable_objects]
 bindings = [

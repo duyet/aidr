@@ -48,6 +48,7 @@ import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
 import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
 import { Route as ApiSystemOverviewRouteImport } from './routes/api/system.overview'
 import { Route as ApiSystemRunAttemptsRouteImport } from './routes/api/system.run-attempts'
+import { Route as ApiSystemRunItemsRouteImport } from './routes/api/system.run-items'
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
 import { Route as ApiSystemSourcesRouteImport } from './routes/api/system.sources'
 import { Route as ApiWebhooksClerkRouteImport } from './routes/api/webhooks.clerk'
@@ -247,6 +248,11 @@ const ApiSystemRunAttemptsRoute = ApiSystemRunAttemptsRouteImport.update({
   path: '/run-attempts',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiSystemRunItemsRoute = ApiSystemRunItemsRouteImport.update({
+  id: '/run-items',
+  path: '/run-items',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 const ApiSystemRunsRoute = ApiSystemRunsRouteImport.update({
   id: '/runs',
   path: '/runs',
@@ -303,6 +309,7 @@ export interface FileRoutesByFullPath {
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
+  '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
@@ -347,6 +354,7 @@ export interface FileRoutesByTo {
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
+  '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
@@ -392,6 +400,7 @@ export interface FileRoutesById {
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
+  '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
@@ -438,6 +447,7 @@ export interface FileRouteTypes {
     | '/api/system/models'
     | '/api/system/overview'
     | '/api/system/run-attempts'
+    | '/api/system/run-items'
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
@@ -482,6 +492,7 @@ export interface FileRouteTypes {
     | '/api/system/models'
     | '/api/system/overview'
     | '/api/system/run-attempts'
+    | '/api/system/run-items'
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
@@ -526,6 +537,7 @@ export interface FileRouteTypes {
     | '/api/system/models'
     | '/api/system/overview'
     | '/api/system/run-attempts'
+    | '/api/system/run-items'
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
@@ -839,6 +851,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemRunAttemptsRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/system/run-items': {
+      id: '/api/system/run-items'
+      path: '/run-items'
+      fullPath: '/api/system/run-items'
+      preLoaderRoute: typeof ApiSystemRunItemsRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
     '/api/system/runs': {
       id: '/api/system/runs'
       path: '/runs'
@@ -896,6 +915,7 @@ interface ApiSystemRouteChildren {
   ApiSystemModelsRoute: typeof ApiSystemModelsRoute
   ApiSystemOverviewRoute: typeof ApiSystemOverviewRoute
   ApiSystemRunAttemptsRoute: typeof ApiSystemRunAttemptsRoute
+  ApiSystemRunItemsRoute: typeof ApiSystemRunItemsRoute
   ApiSystemRunsRoute: typeof ApiSystemRunsRoute
   ApiSystemSourcesRoute: typeof ApiSystemSourcesRoute
 }
@@ -908,6 +928,7 @@ const ApiSystemRouteChildren: ApiSystemRouteChildren = {
   ApiSystemModelsRoute: ApiSystemModelsRoute,
   ApiSystemOverviewRoute: ApiSystemOverviewRoute,
   ApiSystemRunAttemptsRoute: ApiSystemRunAttemptsRoute,
+  ApiSystemRunItemsRoute: ApiSystemRunItemsRoute,
   ApiSystemRunsRoute: ApiSystemRunsRoute,
   ApiSystemSourcesRoute: ApiSystemSourcesRoute,
 }
@@ -951,3 +972,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

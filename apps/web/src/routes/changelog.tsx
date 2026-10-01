@@ -151,6 +151,7 @@ export const Route = createFileRoute("/changelog")({
     localizedPageHead({
       path: "/changelog",
       title: "Changelog | AI News",
+      description: "Reader-facing changes to AI;DR on aidr.today.",
       lang: match.context.lang,
       route: headRouteInput(match),
     }),

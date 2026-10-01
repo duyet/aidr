@@ -99,8 +99,8 @@ describe("declarative source registry", () => {
     // A firehose needs both gates: the AI keyword pre-filter and a hard cap.
     expect(row?.config.keywordFilter).toBe("ai");
     expect(row?.config.maxItems).toBe(6);
-    // No weekend announcements: ~54 silent runs must not flag it as stale.
-    expect(row?.staleAfterRuns).toBe(72);
+    // No weekend announcements: ~108 silent runs must not flag it as stale.
+    expect(row?.staleAfterRuns).toBe(144);
   });
 
   it("points no registry row at a robots-disallowed host", () => {
@@ -135,7 +135,7 @@ describe("declarative source registry", () => {
   });
 
   it("documents a stale threshold for every row and defaults sensibly", () => {
-    expect(DEFAULT_STALE_AFTER_RUNS).toBe(168);
+    expect(DEFAULT_STALE_AFTER_RUNS).toBe(336);
     for (const spec of SOURCE_REGISTRY) {
       const threshold = staleAfterRunsFor(spec.id);
       expect(
@@ -159,6 +159,7 @@ describe("registry / seed SQL / migration agreement", () => {
     const arxivSql = read("0030_arxiv_source.sql");
     const rangesSql = read("0032_community_source_ranges.sql");
     const cloudflareSql = read("0036_cloudflare_blog_source.sql");
+    const hnScopeSql = read("0043_hn_model_scope.sql");
     // A later migration replaces the earlier row with the same id.
     expect(
       normalize(
@@ -166,7 +167,8 @@ describe("registry / seed SQL / migration agreement", () => {
           parseSourceInsertRows(migrationSql),
           parseSourceInsertRows(arxivSql),
           parseSourceInsertRows(rangesSql),
-          parseSourceInsertRows(cloudflareSql)
+          parseSourceInsertRows(cloudflareSql),
+          parseSourceInsertRows(hnScopeSql)
         )
       )
     ).toEqual(expected);

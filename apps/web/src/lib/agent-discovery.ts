@@ -12,6 +12,7 @@ import {
   SSR_LOCALIZED_CACHE_CONTROL,
   withSsrLocaleResponse,
 } from "./locale-response";
+import { pageMarkdownResponse } from "./page-markdown";
 import { PUBLIC_READ_TOOLS } from "./public-read-tools";
 import { SITE_DESCRIPTION, SITE_URL } from "./site";
 
@@ -779,6 +780,8 @@ export async function handleAgentDiscovery(
   if (path === "/auth.md") {
     return empty(textResponse(AUTH_MD, "text/markdown; charset=utf-8"));
   }
+  const pageMd = pageMarkdownResponse(path);
+  if (pageMd) return empty(pageMd);
   if (path === "/.well-known/oauth-protected-resource") {
     return empty(jsonResponse(oauthProtectedResource(), "application/json"));
   }

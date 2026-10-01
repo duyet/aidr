@@ -41,6 +41,8 @@ export const Route = createFileRoute("/data")({
     pageHead({
       path: "/data",
       title: "Pipeline | AI News",
+      description:
+        "How AI;DR collects sources, ranks stories, and publishes the AI news edition.",
       route: headRouteInput(match),
     }),
   component: SystemPage,
@@ -76,6 +78,12 @@ export function SystemPage() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Live ingest, content, and token use.
+            <span className="mt-1 block font-mono text-xs">
+              AI;DR {import.meta.env.VITE_AIDR_VERSION || "dev"}
+              {import.meta.env.VITE_AIDR_SHA
+                ? ` · ${import.meta.env.VITE_AIDR_SHA}`
+                : ""}
+            </span>
           </p>
         </header>
 

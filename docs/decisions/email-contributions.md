@@ -151,10 +151,9 @@ Verdicts are not mailed; they show on `/contribute` (follow-up).
 
 ### Digest Reply-To
 
-`SubscriberMail.replyTo` (new optional field, `worker/mail/send.ts`). The
-digest sets it from `EMAIL_REPLY_TO` only when configured. Owner decision:
-leave it unset, so digest replies are unchanged; acks use
-`Reply-To: submit@`.
+`SubscriberMail.replyTo` (`worker/mail/send.ts`). Subscriber mail
+(digest, confirm, welcome, campaigns) sends `Reply-To: submit@aidr.today`
+unless `EMAIL_REPLY_TO` overrides it. Acks use the same address.
 
 ## Extra addresses
 
@@ -233,8 +232,8 @@ text. Field and story selection are fixed rules, never a model.
 1. Account emails count only when Clerk marks them verified (stored as
    `clerk_users.email_verified`).
 2. SRS forwarders (envelope differs from header From) are ignored in v1.
-3. Digest replies stay unchanged (`EMAIL_REPLY_TO` unset); acks use
-   `Reply-To: submit@aidr.today`.
+3. Subscriber mail and acks use `Reply-To: submit@aidr.today`
+   (`EMAIL_REPLY_TO` overrides the digest).
 4. No admin UI for comments now. Verdicts are not mailed back; they show on
    `/contribute`.
 

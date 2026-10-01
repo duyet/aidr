@@ -28,6 +28,15 @@ const REACHABLE_AIDR_PATHS = new Set<string>([
   "/llms.txt",
   "/openapi.json",
   "/auth.md",
+  "/about.md",
+  "/subscribe.md",
+  "/data.md",
+  "/brand.md",
+  "/changelog.md",
+  "/privacy.md",
+  "/terms.md",
+  "/mcp.md",
+  "/contribute.md",
   "/robots.txt",
   "/sitemap.xml",
   // Syndication surfaces added by the RSS / News-sitemap change. This set is a
@@ -116,6 +125,13 @@ describe("llmsTxt is spec-conformant markdown (#226)", () => {
     // wordmark change has to move the H1, `og:site_name`, and the JSON-LD
     // entity names together.
     expect(h1s[0]).toBe(`${SITE_NAME} (aidr.today)`);
+    expect(body).toContain(
+      "Also called AI News, AIDR, AIDR Today, and AI;DR Today."
+    );
+    expect(body).toContain("publishes one ranked edition");
+    expect(body).toContain(`${SITE_URL}/about.md`);
+    expect(body).toContain(`${SITE_URL}/subscribe.md`);
+    expect(body).toContain(`${SITE_URL}/data.md`);
     // No other line may look like an H1 in a heading position.
     expect(body.split("\n").filter((line) => /^#\s/.test(line))).toHaveLength(
       1

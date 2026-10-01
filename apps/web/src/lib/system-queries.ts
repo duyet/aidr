@@ -8,6 +8,7 @@ import {
 } from "../../worker/telemetry-safe.js";
 import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "../../worker/workflow-run.js";
 import type { DbReader } from "./db";
+import { runItemWindow } from "./run-items";
 
 const JEV_DEFAULT_MODEL = "typesafe/jev";
 
@@ -231,6 +232,14 @@ export interface DayCount {
 export interface LlmDayTaskCount {
   date: string;
   task: string;
+  calls: number;
+  failures: number;
+  tokens: number;
+}
+
+export interface LlmDayModelCount {
+  date: string;
+  model: string;
   calls: number;
   failures: number;
   tokens: number;
@@ -470,6 +479,15 @@ const SQL = {
     WHERE ts >= (unixepoch('now') - 14 * 86400) * 1000
     GROUP BY date, task
     ORDER BY date ASC, task ASC`,
+  llmTokensByModel: `SELECT date(ts / 1000, 'unixepoch') AS date,
+           model,
+           COUNT(*) AS calls,
+           SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS failures,
+           SUM(COALESCE(tokens, 0)) AS tokens
+    FROM llm_calls
+    WHERE ts >= (unixepoch('now') - 14 * 86400) * 1000
+    GROUP BY date, model
+    ORDER BY date ASC, model ASC`,
 } as const;
 
 function runsSelectSql(hasRunStats: boolean, limit: number): string {
@@ -1031,6 +1049,47 @@ export async function loadSystemRuns(db: DbReader): Promise<WorkflowRunRow[]> {
   }
 }
 
+export interface RunCollectedItem {
+  title: string;
+  url: string;
+}
+
+const RUN_ITEMS_CAP = 200;
+
+/** Titles and URLs of items first stored during this run (`fetched_at`
+ *  falls inside the run). Already-known items are not listed: ingest does
+ *  not rewrite `fetched_at` on update. */
+export async function loadRunItems(
+  db: DbReader,
+  runId: string,
+  nowSec = Math.floor(Date.now() / 1000)
+): Promise<{ items: RunCollectedItem[]; truncated: boolean }> {
+  const run = await db
+    .prepare(
+      "SELECT started_at, finished_at FROM workflow_runs WHERE id = ? LIMIT 1"
+    )
+    .bind(runId)
+    .first<{ started_at: number | null; finished_at: number | null }>();
+  const window = run
+    ? runItemWindow(run.started_at, run.finished_at, nowSec)
+    : null;
+  if (!window) return { items: [], truncated: false };
+  const { results } = await db
+    .prepare(
+      `SELECT title, url FROM items
+       WHERE fetched_at >= ? AND fetched_at <= ?
+       ORDER BY fetched_at DESC
+       LIMIT ?`
+    )
+    .bind(window.from, window.to, RUN_ITEMS_CAP + 1)
+    .all<RunCollectedItem>();
+  const rows = results ?? [];
+  return {
+    items: rows.slice(0, RUN_ITEMS_CAP),
+    truncated: rows.length > RUN_ITEMS_CAP,
+  };
+}
+
 /** Per-run LLM call detail, keyed only by the authoritative run id. */
 export async function loadRunAttempts(
   db: DbReader,
@@ -1050,13 +1109,19 @@ export async function loadRunAttempts(
 /** Token burn + per-day usage feeding the overview/LLM tabs — one batch. */
 export interface SystemLlm {
   llmCallsPerDay: LlmDayTaskCount[];
+  llmTokensByModel: LlmDayModelCount[];
   tokens: { total: number; avgPerItem: number; perDay: DayCount[] };
 }
 
 export async function loadSystemLlm(db: DbReader): Promise<SystemLlm> {
   const { hasTokens, hasLlmCalls } = await probeSystemTables(db);
   const stmts = [];
-  if (hasLlmCalls) stmts.push(db.prepare(SQL.llmCallsPerDay));
+  if (hasLlmCalls) {
+    stmts.push(
+      db.prepare(SQL.llmCallsPerDay),
+      db.prepare(SQL.llmTokensByModel)
+    );
+  }
   if (hasTokens) {
     stmts.push(
       db.prepare(SQL.tokenTotal),
@@ -1064,9 +1129,13 @@ export async function loadSystemLlm(db: DbReader): Promise<SystemLlm> {
       db.prepare(SQL.tokenPerDay)
     );
   }
-  const [llmPerDay, tokenTotalRes, tokenAvgRes, tokenPerDayRes] = stmts.length
-    ? await db.batch(stmts)
-    : [];
+  const rows = stmts.length ? await db.batch(stmts) : [];
+  let index = 0;
+  const llmPerDay = hasLlmCalls ? rows[index++] : undefined;
+  const llmByModel = hasLlmCalls ? rows[index++] : undefined;
+  const tokenTotalRes = hasTokens ? rows[index++] : undefined;
+  const tokenAvgRes = hasTokens ? rows[index++] : undefined;
+  const tokenPerDayRes = hasTokens ? rows[index++] : undefined;
 
   return {
     llmCallsPerDay: resultRows<{
@@ -1076,6 +1145,13 @@ export async function loadSystemLlm(db: DbReader): Promise<SystemLlm> {
       failures: number;
       tokens: number | null;
     }>(llmPerDay).map((r) => ({ ...r, tokens: r.tokens ?? 0 })),
+    llmTokensByModel: resultRows<{
+      date: string;
+      model: string;
+      calls: number;
+      failures: number;
+      tokens: number | null;
+    }>(llmByModel).map((r) => ({ ...r, tokens: r.tokens ?? 0 })),
     tokens: {
       total: firstRow<{ s: number | null }>(tokenTotalRes)?.s ?? 0,
       avgPerItem: Math.round(

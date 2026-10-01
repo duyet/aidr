@@ -91,8 +91,8 @@ export interface SourceSpec {
  * Default "this feed has rotted" threshold, in consecutive runs.
  *
  * Measured against the live feed cadence rather than picked for a round
- * number: runs are hourly (ALGORITHM.md § Scheduling), so 168 runs is seven
- * days. Every source in this registry has historically published at least
+ * number: runs are every 30 minutes (ALGORITHM.md § Scheduling), so 336
+ * runs is seven days. Every source in this registry has historically published at least
  * weekly — `lastweekin-ai` is a weekly newsletter, `mit-tr-ai` /
  * `google-research` publish a few times a week — so a two-day threshold
  * (the "e.g. 48 runs" in #230) would flag healthy low-frequency sources as
@@ -101,7 +101,7 @@ export interface SourceSpec {
  * deliver is the real rot signal: a moved URL, a redesigned feed, a paywall,
  * or a dead host.
  */
-export const DEFAULT_STALE_AFTER_RUNS = 168;
+export const DEFAULT_STALE_AFTER_RUNS = 336;
 
 /**
  * arXiv was evaluated for this change and deliberately NOT added. Both halves
@@ -150,9 +150,9 @@ export const DEFAULT_STALE_AFTER_RUNS = 168;
  *   // arXiv accepts no weekend submissions, so its newest submittedDate is
  *   // frozen from ~Fri 18:00 UTC to ~Mon 00:00 UTC. The 26h since-window
  *   // keeps the last Friday paper visible until ~Sat 20:00 UTC, leaving a
- *   // measured ~54 consecutive silent runs. 72 clears that with margin while
+ *   // measured ~108 consecutive silent runs at 30 minutes. 144 clears that with margin while
  *   // still flagging a genuinely dead row inside three days, not a week.
- *   staleAfterRuns: 72,
+ *   staleAfterRuns: 144,
  * }
  * ```
  *
@@ -451,8 +451,8 @@ export const ARXIV_SOURCE: SourceSpec = {
     maxItems: 6,
   },
   enabled: true,
-  // No weekend announcements: ~54 measured silent runs Fri-Mon.
-  staleAfterRuns: 72,
+  // No weekend announcements: ~108 silent runs Fri-Mon at a 30-minute cadence.
+  staleAfterRuns: 144,
 };
 
 /**
@@ -514,8 +514,8 @@ export const CLOUDFLARE_BLOG_SOURCE: SourceSpec = {
     maxItems: 5,
   },
   enabled: true,
-  // After the AI filter it can go a week without a match.
-  staleAfterRuns: 336,
+  // After the AI filter it can go two weeks without a match.
+  staleAfterRuns: 672,
 };
 
 /** Later migrations replace earlier rows with the same id, in order. */
@@ -527,11 +527,27 @@ export function mergeRegistryRows(
   return [...byId.values()];
 }
 
+/** 0043. Same HN row as 0032, with a wider query so a new model release,
+ * a new kind of model, or a new AI lab is searchable before the title gate. */
+export const HN_SCOPE_SOURCE: SourceSpec = {
+  id: "hn",
+  name: "Hacker News",
+  type: "hn",
+  engagement: "reader",
+  config: {
+    query:
+      'AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek OR "language model" OR "foundation model" OR "open weights" OR "AI lab" OR "world model" OR "video model"',
+    popularMinPoints: 40,
+  },
+  enabled: true,
+};
+
 export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0027,
   [ARXIV_SOURCE],
   REGISTRY_0032,
-  [CLOUDFLARE_BLOG_SOURCE]
+  [CLOUDFLARE_BLOG_SOURCE],
+  [HN_SCOPE_SOURCE]
 );
 
 export function registrySourceIds(): string[] {

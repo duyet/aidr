@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   armAlarmAt,
+  blockedByOpenRun,
   ensureIngestAlarm,
   INGEST_ALARM_ARM_DELAY_MS,
   INGEST_ALARM_INTERVAL_MS,
   INGEST_MIN_INTERVAL_MS,
+  INGEST_OPEN_RUN_MAX_MS,
   INGEST_SCHEDULER_NAME,
   nextAlarmAt,
   persistCreatedIngestRun,
@@ -60,7 +62,7 @@ describe("shouldSkipIngest", () => {
     expect(shouldSkipIngest(undefined, 1_000)).toBe(false);
   });
 
-  it("skips inside the 45-minute window", () => {
+  it("skips inside the 25-minute window", () => {
     const started = 1_000_000;
     expect(
       shouldSkipIngest(started, started + INGEST_MIN_INTERVAL_MS - 1)
@@ -80,8 +82,35 @@ describe("shouldSkipIngest", () => {
   });
 });
 
+describe("blockedByOpenRun", () => {
+  it("waits while the latest run has not closed", () => {
+    const startSec = 1_700_000_000;
+    expect(blockedByOpenRun(startSec, startSec, startSec * 1000 + 60_000)).toBe(
+      true
+    );
+  });
+
+  it("allows the next start once the run has a later finish", () => {
+    const startSec = 1_700_000_000;
+    expect(
+      blockedByOpenRun(startSec, startSec + 60, startSec * 1000 + 120_000)
+    ).toBe(false);
+  });
+
+  it("stops waiting after the open-run cap so a crashed row cannot stall ingest", () => {
+    const startSec = 1_700_000_000;
+    expect(
+      blockedByOpenRun(
+        startSec,
+        startSec,
+        startSec * 1000 + INGEST_OPEN_RUN_MAX_MS
+      )
+    ).toBe(false);
+  });
+});
+
 describe("alarm timestamps", () => {
-  it("schedules the next hourly alarm from now", () => {
+  it("schedules the next 30-minute alarm from now", () => {
     expect(nextAlarmAt(0)).toBe(INGEST_ALARM_INTERVAL_MS);
   });
 

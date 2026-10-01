@@ -1,6 +1,6 @@
 # aidr.today — Feed Algorithm
 
-How the hourly `NewsIngestWorkflow` turns raw sources into the ranked,
+How each `NewsIngestWorkflow` run turns raw sources into the ranked,
 bilingual feed.
 
 - [Overview](#overview)
@@ -30,16 +30,16 @@ An empty `bullets_vi` or `bullets_en` means that language is not ready. The chan
 
 ## Scheduling & coalesce
 
-Hourly instances are started by the `NewsIngestScheduler` Durable Object
-alarm. That is not a Worker `[triggers]` cron (Free 5-cron cap) and not
-Workflow `schedules` (paid-plan).
+Instances are started every 30 minutes by the `NewsIngestScheduler`
+Durable Object alarm. That is not a Worker `[triggers]` cron (Free 5-cron
+cap) and not Workflow `schedules` (paid-plan).
 
 GitHub Actions (`.github/workflows/ingest.yml`, four independent crons at
 :05/:20/:35/:50) POSTs `/api/admin/ingest` as a watchdog because GitHub
 routinely delays or skips scheduled workflows.
 
 Both paths coalesce: a new instance is skipped if one started in the last
-45 minutes. `POST /api/admin/ingest?force=1` (workflow_dispatch) bypasses
+25 minutes. `POST /api/admin/ingest?force=1` (workflow_dispatch) bypasses
 the window.
 
 ## Audience metrics (GA4 snapshot)
@@ -75,7 +75,7 @@ mixed.
   endpoint is pinned to `https://oauth2.googleapis.com/token`; the
   `token_uri` inside the key file is ignored.
 
-The Durable Object only gates the 45-minute coalesce and records
+The Durable Object only gates the 25-minute coalesce and records
 last-started.
 
 ## Ingest HTTP / D1 contract
@@ -130,9 +130,9 @@ acknowledgements sent).
   a chain step runs only when every earlier one is selected (otherwise
   `needs …`), so a rerun never writes unscored rows. Stats carry
   `selectedSteps`. `rerun tldr` = `steps: ["tldr"]`.
-- **Scheduling** — dry and partial runs go through the 45-minute coalesce
+- **Scheduling** — dry and partial runs go through the 25-minute coalesce
   gate like any trigger (`force` bypasses it) but never call `markStarted`
-  and never push the hourly alarm back, so they do not delay the next real
+  and never push the 30-minute alarm back, so they do not delay the next real
   run. A forced dry run can still overlap a real run.
 - **History** — health-check history and the source empty-run streak carry
   skip dry-run rows (`NOT_DRY_RUN_SQL`). `sourceHealth` is only stored when
@@ -255,13 +255,13 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
     stats (one single-row read) rather than recomputed from run history, so
     surfacing staleness on the read path costs nothing. A source at or over
     its threshold is flagged stale in `/api/system/sources` and the `/data`
-    Algo tab: **168 consecutive runs** (7 days at the hourly cadence). That
+    Algo tab: **336 consecutive runs** (7 days at the 30-minute cadence). That
     number is measured, not round — 14 of the 21 registry feeds returned
     nothing inside the 26h window when they were verified live, including
     pre-existing ones that publish weekly, so the "e.g. 48 runs" in #230 would
     have flagged healthy sources most of the weekend. A row may override it
     with `staleAfterRuns` when a source's real cadence demands it; arXiv is
-    the known case (no weekend submissions, ~54 silent runs) and is not in
+    the known case (no weekend submissions, ~108 silent runs at 30 minutes) and is not in
     the registry yet — see `ARXIV_NOT_ADDED_REASON` in
     `worker/sources/catalog.ts`. A disabled source is reported `disabled`,
     never `stale` — off is a decision, not a fault. This is observability

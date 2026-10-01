@@ -1,4 +1,5 @@
 import { anyrouterModelUrl, isValidAnyrouterModel } from "../../lib/anyrouter";
+import { ModelLogo } from "./ModelLogo";
 import { formatSafeDetail, shortModel } from "./run-format";
 
 /** Models a run used, linked to AnyRouter when the id is a known model. */
@@ -15,6 +16,7 @@ export function RunModelLinks({ models }: { models: string[] }) {
               ·
             </span>
           ) : null}
+          <ModelLogo model={model} />
           {isValidAnyrouterModel(model) ? (
             <a
               href={anyrouterModelUrl(model)}

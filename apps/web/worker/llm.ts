@@ -1012,6 +1012,7 @@ export interface ScoreInput {
 export function scoreBatchPrompt(batch: ScoreInput[]): string {
   return `You are scoring AI/tech news items for relevance, importance, and source-backed quality.
 For each item, return relevance (0-1, is this genuinely AI/tech news), importance (1-10), quality (0-10), category (one of: ${CATEGORIES.join(", ")}), and tags — 3 to 6 topic labels per item.
+In scope, even when the name is new and not in the tag list: a model release, a new kind of model (language, world, video, speech, open weights, mixture-of-experts), and a new AI lab. An unfamiliar name is not a reason to lower relevance.
 
 Importance rubric (use the whole scale; most items are not 7+):
 ${IMPORTANCE_BANDS.map((band) => `- ${band.range}: ${band.meaning}.`).join("\n")}

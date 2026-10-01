@@ -2,6 +2,7 @@ import type { DbReader } from "./db";
 import { DEFAULT_LANG } from "./lang";
 import { isLocalizedSsrPath } from "./locale-routing";
 import { absoluteSiteUrl, withLang } from "./locale-url";
+import { PAGE_MARKDOWN_PATHS } from "./page-markdown";
 import { NEWS_SITEMAP_PATH, SITE_URL } from "./site";
 import { storyPath } from "./slug";
 import type { Lang } from "./types";
@@ -139,7 +140,14 @@ export function staticSitemapUrls(now: number = Date.now()): SitemapUrl[] {
         priority: "0.4",
       },
     ];
-  });
+  }).concat(
+    PAGE_MARKDOWN_PATHS.map((path) => ({
+      loc: `${SITE_URL}${path}`,
+      ...(lastmod ? { lastmod } : {}),
+      changefreq: "weekly" as const,
+      priority: "0.3",
+    }))
+  );
 }
 
 /** The generated, always-200 story card used as the sitemap image. */

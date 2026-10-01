@@ -141,6 +141,21 @@ export function formatSafeError(value: unknown): string {
     );
 }
 
+/** Chart label for a stored model id. Known families get a short name. */
+export function tokenBurnModelName(model: string): string {
+  const id = model.trim().toLowerCase();
+  if (!id) return "Unknown";
+  if (id.includes("jev")) return "Jev";
+  if (id.startsWith("anyrouter/") || id.startsWith("@preset/"))
+    return "AnyRouter";
+  if (id.includes("laguna")) return "Laguna";
+  if (id.includes("glm")) return "GLM";
+  if (id.includes("ling")) return "Ling";
+  if (id.includes("gemini")) return "Gemini";
+  const short = shortModel(model);
+  return short ? short.charAt(0).toUpperCase() + short.slice(1) : "Unknown";
+}
+
 export function shortModel(model: string): string {
   // A preset's name is the whole id: "@preset/aidr" → "aidr" reads as a model.
   if (model.startsWith("@")) return model;
