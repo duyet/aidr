@@ -20,7 +20,6 @@ import {
 } from "../media.js";
 import { rankScore } from "../ranking.js";
 import type { FetchedItem } from "../sources/types.js";
-import { toEpochSeconds } from "../time.js";
 import { MAX_MERGED_TOPICS, unionTopics } from "../topics.js";
 import { RELEVANCE_THRESHOLD } from "./context.js";
 import type { ItemScore } from "./score.js";
@@ -227,11 +226,4 @@ export function planExistingCanonicalMedia(
     existing?.url
   );
   return { topics, manifest, imageUrl };
-}
-
-/** Only the current UTC day is re-ranked: the feed groups and sorts stories
- * per day, so recomputing freshness decay on older items reshuffles history
- * the reader already saw. */
-export function startOfUtcDaySec(now: number): number {
-  return Math.floor(toEpochSeconds(now) / 86400) * 86400;
 }

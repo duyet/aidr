@@ -71,6 +71,11 @@ export interface SourceSpec {
    * Omit to take `DEFAULT_STALE_AFTER_RUNS`.
    */
   staleAfterRuns?: number;
+  /**
+   * Sources that mirror each other share a family, so the top lists can cap
+   * them together (`worker/source-diversity.ts`). Omit to use the id.
+   */
+  family?: string;
   /** Why this row exists / why these settings. Rendered into the PR evidence. */
   note?: string;
 }
@@ -174,6 +179,8 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     type: "huggingnews",
     config: {},
     enabled: true,
+    // Same stories, same slugs as marketbrief.now (D1, 2026-10-01).
+    family: "aggregator",
   },
   {
     id: "lobsters",
@@ -228,6 +235,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     type: "marketbrief",
     config: { homepage: "https://marketbrief.now", topics: ["ai"] },
     enabled: true,
+    family: "aggregator",
     note: "AI hub only — war/politics stay out by product decision.",
   },
   {

@@ -7,6 +7,7 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../../worker/media.js";
+import { sourceFamily } from "../../worker/source-diversity.js";
 import { AUDIENCE_TIMEZONE, localCalendarDate } from "../../worker/time.js";
 import {
   collectTrendingCandidates,
@@ -370,14 +371,17 @@ export function feedDaysAndBefore(search: URLSearchParams): {
   };
 }
 
-/** No single source may hold more than this share of the served feed. */
+/** No single source family may hold more than this share of the served
+ *  feed (family = catalog `family`, else the source id). */
 export const FEED_MAX_SOURCE_SHARE = 0.25;
-/** Below this many distinct sources a 25% cap is unsatisfiable, so skip it. */
+/** Below this many distinct families a 25% cap is unsatisfiable, so skip it. */
 const FEED_SHARE_CAP_MIN_SOURCES = 4;
 
 /**
- * Enforce the per-source share cap on the selected rows. Each source keeps
- * its highest-`rank_score` items up to the largest per-source count `c` with
+ * Enforce the per-family share cap on the selected rows. Mirrored sources
+ * (huggingnews + marketbrief) share one family, so the pair cannot hold
+ * twice the share. Each family keeps its highest-`rank_score` items up to
+ * the largest per-family count `c` with
  * `c <= share * sum(min(count_s, c))`. Read-time on purpose: the ingest flood
  * gate only bounds new rows, so historic rows from a firehose still need
  * this. Input order is preserved.
@@ -385,14 +389,15 @@ const FEED_SHARE_CAP_MIN_SOURCES = 4;
 export function capSourceShare<
   T extends { source_id: string; rank_score: number },
 >(items: T[], share = FEED_MAX_SOURCE_SHARE): T[] {
-  const bySource = new Map<string, T[]>();
+  const byFamily = new Map<string, T[]>();
   for (const it of items) {
-    const list = bySource.get(it.source_id) ?? [];
+    const family = sourceFamily(it.source_id);
+    const list = byFamily.get(family) ?? [];
     list.push(it);
-    bySource.set(it.source_id, list);
+    byFamily.set(family, list);
   }
-  if (bySource.size < FEED_SHARE_CAP_MIN_SOURCES) return items;
-  const sizes = [...bySource.values()].map((l) => l.length);
+  if (byFamily.size < FEED_SHARE_CAP_MIN_SOURCES) return items;
+  const sizes = [...byFamily.values()].map((l) => l.length);
   let cap = Math.max(...sizes);
   while (cap > 1) {
     const total = sizes.reduce((sum, n) => sum + Math.min(n, cap), 0);
@@ -400,7 +405,7 @@ export function capSourceShare<
     cap--;
   }
   const keep = new Set<T>();
-  for (const list of bySource.values()) {
+  for (const list of byFamily.values()) {
     for (const it of [...list]
       .sort((a, b) => b.rank_score - a.rank_score)
       .slice(0, cap)) {

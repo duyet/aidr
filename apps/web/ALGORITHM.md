@@ -217,9 +217,24 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
    - **Feed share cap.** The flood gate only bounds new rows, and a source
      without `maxItems` (e.g. `marketbrief`) can still dominate. `getFeed`
      (`src/lib/feed-queries.ts`, `capSourceShare`) therefore also keeps each
-     source's top-`rank_score` rows so none exceeds 25% of the served feed
-     (skipped below 4 distinct sources). It runs at read time, so historic
+     source family's top-`rank_score` rows so none exceeds 25% of the served
+     feed (skipped below 4 distinct families; family as in the top-list cap
+     below, so the mirrored aggregators share one 25%). It runs at read time, so historic
      rows are covered.
+   - **Top-list family cap.** The short ranked lists — homepage top stories
+     (`PUBLIC_STORY_LIMIT`), the TL;DR's 16 and the trending pick — go
+     through `pickDiverse` (`worker/source-diversity.ts`): at most
+     `ceil(0.3 × list size)` rows per source *family* (8 → 3, 16 → 5). A
+     family is `SourceSpec.family` in the catalog, else the source id;
+     `huggingnews` and `marketbrief` share `aggregator` because they publish
+     the same stories under the same slugs (they held 47 of the 24h top 50 on
+     2026-10-01). Each list reads a wider ranked pool (homepage 120 rows,
+     TL;DR the whole 24h window up to 300) so the cap has other stories to
+     take; if the pool still runs short, the best skipped rows fill the tail
+     rather than shrinking the list. Trending counts families across the
+     local day (today's sent posts seed the count, 1 per family while
+     another family qualifies); when only one family qualifies it still
+     posts.
    - **Host pacing.** A row may set `minRequestIntervalMs` to serialise
      same-host fetches; the first request to a host is never delayed.
    - **Explicit source language.** A row with `sourceLang: "vi"` puts its
@@ -390,7 +405,12 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
    translation accuracy, recall, or production quality until an operator-approved
    EN↔VI evaluation set and metrics are run.
 
-7. **Rank (pure code, `worker/ranking.ts`)** — recomputed for items < 72h:
+7. **Rank (pure code, `worker/ranking.ts`)** — recomputed every run for
+   items published in the last 72h (`RANK_RECOMPUTE_WINDOW_SEC`, rolling, not
+   the UTC day), in one `UPDATE … json_each(?)` statement. A day's archive
+   order can shift for up to 3 days, then freezes. A pre-existing canonical
+   that absorbs a merge gets its rank recomputed from the merged points and
+   source count in the same write.
 
    ```text
    rank_score = importance
@@ -421,7 +441,7 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
     - Otherwise refresh a useful bilingual snapshot when the last write is
       older than 3 hours.
     - Content is always the top 16 items of the **rolling last 24h** by
-      rank (not ICT calendar-day-so-far) → up to 16 EN bullets + 16
+      rank (not ICT calendar-day-so-far), after the top-list family cap → up to 16 EN bullets + 16
       independently-restated VI bullets, each linked to its `item_id`.
     - Homepage thumbs and the story dialog need those ids. If the model
       pastes `[hex]` into the bullet text instead of (or besides)

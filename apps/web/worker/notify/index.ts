@@ -13,6 +13,11 @@ import {
   primaryThumbnailUrl,
 } from "../media.js";
 import { assertMediaManifestSchema } from "../media-schema.js";
+import {
+  familyCapFor,
+  familyCounts,
+  pickDiverse,
+} from "../source-diversity.js";
 import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "../time.js";
 import type { Env } from "../types.js";
@@ -90,6 +95,11 @@ export const TRENDING_MIN_GAP_SEC = 3 * 60 * 60;
 export const TRENDING_BURST_MIN_IMPORTANCE = 9;
 export const TRENDING_BURST_MAX_PER_DAY = 6;
 export const TRENDING_BURST_MIN_GAP_SEC = 60 * 60;
+/** One source family may fill at most this many of a day's trending posts
+ *  while another family has a qualifying story (`pickDiverse`). */
+export const TRENDING_MAX_PER_FAMILY = familyCapFor(TRENDING_MAX_PER_DAY);
+/** Ranked qualifiers read so the family cap has other stories to pick. */
+const TRENDING_CANDIDATE_LIMIT = 3 * TRENDING_BURST_MAX_PER_DAY;
 /** Only consider stories published in the last 24h. */
 const WINDOW_SEC = 24 * 60 * 60;
 
@@ -243,7 +253,8 @@ export function buildTrendingQuery(
     sql: `SELECT i.id, i.url,
                  ${copy},
                  i.image_url, i.media_manifest, i.category,
-                 i.points, i.comments, i.rank_score, i.llm_importance
+                 i.points, i.comments, i.rank_score, i.llm_importance,
+                 i.source_id
           FROM items i
           LEFT JOIN notifications n ON n.item_id = i.id AND n.channel = ?
             AND (n.status IN ('sent', 'ambiguous') OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
@@ -253,13 +264,29 @@ export function buildTrendingQuery(
             AND i.llm_importance >= ?
             AND n.item_id IS NULL
           ORDER BY i.rank_score DESC
-          LIMIT ${TRENDING_MAX_PER_DAY}`,
+          LIMIT ${TRENDING_CANDIDATE_LIMIT}`,
     binds: [
       channel,
       Math.floor(nowMs / 1000) - WINDOW_SEC,
       TRENDING_MIN_RANK,
       minImportance,
     ],
+  };
+}
+
+/** Per-source count of the trending stories a channel already sent today,
+ *  so the family cap spans the day and not just one run's single post. */
+export function buildTrendingSourcesTodayQuery(
+  channel: string,
+  dayStartMs: number
+): { sql: string; binds: [string, number] } {
+  return {
+    sql: `SELECT i.source_id, COUNT(*) AS n
+          FROM notifications n JOIN items i ON i.id = n.item_id
+          WHERE n.channel = ? AND n.status = 'sent'
+            AND n.item_id NOT LIKE 'digest:%' AND n.posted_at >= ?
+          GROUP BY i.source_id`,
+    binds: [channel, dayStartMs],
   };
 }
 
@@ -573,8 +600,16 @@ export async function dispatchStoryNotifications(
       );
       const { results } = await env.DB.prepare(sql)
         .bind(...binds)
-        .all<StoryRow>();
-      const candidates = (results ?? []).map(hydrateStory);
+        .all<StoryRow & { source_id: string }>();
+      const today = buildTrendingSourcesTodayQuery(notifier.id, dayStartMs);
+      const { results: sentToday } = await env.DB.prepare(today.sql)
+        .bind(...today.binds)
+        .all<{ source_id: string; n: number }>();
+      const candidates = pickDiverse(results ?? [], {
+        limit: TRENDING_MAX_PER_DAY,
+        maxPerFamily: TRENDING_MAX_PER_FAMILY,
+        initialCounts: familyCounts(sentToday ?? []),
+      }).map(({ source_id: _sourceId, ...row }) => hydrateStory(row));
       const afterQuery = classifyTrendingSkip(
         maxRank,
         budget,

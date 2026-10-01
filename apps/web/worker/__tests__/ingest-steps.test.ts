@@ -40,7 +40,6 @@ import {
   persistedViTranslation,
   planExistingCanonicalMedia,
   planNewItemWrite,
-  startOfUtcDaySec,
 } from "../ingest/write-plan.js";
 import { rankScore } from "../ranking.js";
 import { emptySourceHealth, type SourceRunHealth } from "../source-health.js";
@@ -479,14 +478,6 @@ describe("existing canonical merge", () => {
       update({ extraImageUrls: ["https://cdn.example.com/fallback.png"] })
     );
     expect(out.imageUrl).toBe("https://cdn.example.com/fallback.png");
-  });
-});
-
-describe("startOfUtcDaySec", () => {
-  it("freezes re-ranking to the current UTC day for ms or s input", () => {
-    const start = Date.UTC(2026, 8, 29) / 1000;
-    expect(startOfUtcDaySec(NOW)).toBe(start);
-    expect(startOfUtcDaySec(NOW_SEC)).toBe(start);
   });
 });
 
