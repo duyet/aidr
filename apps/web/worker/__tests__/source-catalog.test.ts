@@ -153,23 +153,25 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("0027, 0030 and 0032 applied in order list exactly the registry rows", () => {
+  it("0027, 0030, 0032 and 0036 applied in order list exactly the registry rows", () => {
     const read = (name: string) =>
       readFileSync(resolve(dirname(MIGRATION_PATH), name), "utf8");
     const arxivSql = read("0030_arxiv_source.sql");
     const rangesSql = read("0032_community_source_ranges.sql");
+    const cloudflareSql = read("0036_cloudflare_blog_source.sql");
     // A later migration replaces the earlier row with the same id.
     expect(
       normalize(
         mergeRegistryRows(
           parseSourceInsertRows(migrationSql),
           parseSourceInsertRows(arxivSql),
-          parseSourceInsertRows(rangesSql)
+          parseSourceInsertRows(rangesSql),
+          parseSourceInsertRows(cloudflareSql)
         )
       )
     ).toEqual(expected);
     // Never re-enables a source an operator switched off.
-    for (const sql of [arxivSql, rangesSql]) {
+    for (const sql of [arxivSql, rangesSql, cloudflareSql]) {
       expect(sql).toContain("ON CONFLICT(id) DO UPDATE SET");
       expect(sql).not.toContain("enabled = excluded.enabled");
     }

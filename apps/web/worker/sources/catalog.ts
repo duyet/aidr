@@ -480,6 +480,25 @@ export const REGISTRY_0032: readonly SourceSpec[] = [
   },
 ];
 
+/** Added on 2026-10-01; created in D1 by 0036_cloudflare_blog_source.sql.
+ *  The blog covers far more than AI (networking, security, DNS), so the
+ *  shared AI keyword filter and a small cap keep only the AI posts (Workers
+ *  AI, AI Gateway, agents, Vectorize) and never flood the scorer. */
+export const CLOUDFLARE_BLOG_SOURCE: SourceSpec = {
+  id: "cloudflare-blog",
+  name: "Cloudflare Blog",
+  type: "rss",
+  config: {
+    feed: "https://blog.cloudflare.com/rss/",
+    homepage: "https://blog.cloudflare.com",
+    keywordFilter: "ai",
+    maxItems: 5,
+  },
+  enabled: true,
+  // After the AI filter it can go a week without a match.
+  staleAfterRuns: 336,
+};
+
 /** Later migrations replace earlier rows with the same id, in order. */
 export function mergeRegistryRows(
   ...layers: readonly (readonly SourceSpec[])[]
@@ -492,7 +511,8 @@ export function mergeRegistryRows(
 export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0027,
   [ARXIV_SOURCE],
-  REGISTRY_0032
+  REGISTRY_0032,
+  [CLOUDFLARE_BLOG_SOURCE]
 );
 
 export function registrySourceIds(): string[] {
