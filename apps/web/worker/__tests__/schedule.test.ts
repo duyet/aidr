@@ -95,9 +95,10 @@ describe("live AnyRouter model chains", () => {
     "poolside/laguna-s-2.1",
     "anyrouter/cowork",
     "anyrouter/auto",
+    "anyrouter/free",
   ];
 
-  it("ends score, tldr, and translate chains with anyrouter/auto", () => {
+  it("ends score and translate chains with the router safety nets", () => {
     for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TRANSLATE_MODEL"]) {
       expect(idsOf(name), name).toEqual(liveChain);
     }
@@ -121,7 +122,10 @@ describe("live AnyRouter model chains", () => {
     ]) {
       for (const id of hangs) expect(idsOf(name), name).not.toContain(id);
     }
-    expect(idsOf("ANYROUTER_TLDR_MODEL").at(-1)).toBe("anyrouter/auto");
+    expect(idsOf("ANYROUTER_TLDR_MODEL").slice(-2)).toEqual([
+      "anyrouter/auto",
+      "anyrouter/free",
+    ]);
   });
 
   it("drops chat ids that failed every live call", () => {

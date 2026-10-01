@@ -69,6 +69,8 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 #   anyrouter/cowork         7-26s / 14-52s
 #   anyrouter/auto          18-32s / 39-48s
 # @preset/aidr is the AnyRouter workspace preset (fails fast if missing).
+# anyrouter/free is a last-resort safety net after auto. anyrouter/latest
+# 400s on every json_object request (upstream "hue"), so it is not used.
 # Dropped: nvidia/nemotron-3-120b-a12b and nemotron-3-super-120b-a12b never
 # stream a token (60s hang, even on "hi"); nemotron-3-ultra-550b buffers the
 # whole answer (56-140s); deepseek-v4.1-flash, minimax/m3, llama-* fail.
@@ -80,9 +82,9 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # dots-3-note-preview, longcat-2.5-preview. stealth/* gets delisted; avoid.
 # Translate uses ANYROUTER_TRANSLATE_MODEL. Score tries Jev first
 # (ANYROUTER_JEV_MODEL), then ANYROUTER_MODEL.
-ANYROUTER_MODEL = "@preset/aidr,meta/muse-glimmer-30b,poolside/laguna-s-2.1,anyrouter/cowork,anyrouter/auto"
-ANYROUTER_TRANSLATE_MODEL = "@preset/aidr,meta/muse-glimmer-30b,poolside/laguna-s-2.1,anyrouter/cowork,anyrouter/auto"
-ANYROUTER_TLDR_MODEL = "@preset/aidr,meta/muse-glimmer-30b,poolside/laguna-s-2.1,anyrouter/cowork,anyrouter/auto"
+ANYROUTER_MODEL = "@preset/aidr,meta/muse-glimmer-30b,poolside/laguna-s-2.1,anyrouter/cowork,anyrouter/auto,anyrouter/free"
+ANYROUTER_TRANSLATE_MODEL = "@preset/aidr,meta/muse-glimmer-30b,poolside/laguna-s-2.1,anyrouter/cowork,anyrouter/auto,anyrouter/free"
+ANYROUTER_TLDR_MODEL = "@preset/aidr,meta/muse-glimmer-30b,poolside/laguna-s-2.1,anyrouter/cowork,anyrouter/auto,anyrouter/free"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
 # (router aliases and presets are filtered out of this chain).
