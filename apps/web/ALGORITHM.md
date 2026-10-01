@@ -287,8 +287,10 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
 4. **Score (Jev, then LLM)** — batches of 5.
 
    - TypeSafe Jev (`typesafe/jev`, `POST /api/v1/systemone`) judges each
-     item first: relevance is P(AI/tech), importance and quality are 0–9
-     score levels, category is one choice from the fixed 10-value enum (legal
+     item first: relevance is P(AI/tech), importance is the
+     probability-weighted level on a 1–10 scale anchored by the shared bands
+     in `worker/importance-rubric.ts` (the chat rubric uses the same bands),
+     quality is a 0–9 score level, category is one choice from the fixed 10-value enum (legal
      stories use Regulation), plus one entity tag and one theme tag from fixed
      10-value enums (`none` is dropped).
    - Jev does not emit a free-form tag list.

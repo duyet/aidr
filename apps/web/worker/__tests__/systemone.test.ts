@@ -4,6 +4,7 @@ import { CATEGORIES, setLlmCallLogger } from "../llm.js";
 import {
   callSystemOne,
   isSystemOneConfigured,
+  JEV_IMPORTANCE_LEVELS,
   JEV_SCORE_LEVELS,
   jevModelId,
   jevScoreQuestions,
@@ -184,14 +185,11 @@ describe("answer mapping", () => {
     ]);
     const questions = jevScoreQuestions(CATEGORIES);
     expect(Array.isArray(questions.importance.criteria)).toBe(true);
-    expect(questions.importance.criteria).toEqual([...JEV_SCORE_LEVELS]);
+    expect(questions.importance.criteria).toEqual([...JEV_IMPORTANCE_LEVELS]);
     expect(questions.importance.criteria).toHaveLength(10);
     expect(Array.isArray(questions.quality.criteria)).toBe(true);
     expect(questions.quality.criteria).toEqual([...JEV_SCORE_LEVELS]);
     expect(questions.quality.criteria).toHaveLength(10);
-    expect(questions.importance.instructions).toContain(
-      "9 is a major industry event"
-    );
     expect(questions.quality.instructions).toContain("8-9 is primary");
   });
 
@@ -254,7 +252,7 @@ describe("answer mapping", () => {
     }
   });
 
-  it("maps a score judgment onto relevance, 0–9 levels, category, and tags", () => {
+  it("maps a score judgment onto relevance, score levels, category, and tags", () => {
     const judgment = scoreJudgmentFromJev(
       {
         is_ai_tech: { type: "noul", noul: 0.82 },
@@ -280,7 +278,7 @@ describe("answer mapping", () => {
       scoreJudgmentFromJev(
         {
           is_ai_tech: { type: "noul", noul: 0.9 },
-          importance: { type: "score", score: "10" },
+          importance: { type: "score", score: "11" },
           quality: { type: "score", score: "9" },
           category: { type: "choice", choice: "Models" },
         },

@@ -1,3 +1,4 @@
+import { IMPORTANCE_RUBRIC } from "./importance-rubric.js";
 import { logLlmCall, newLlmCallId } from "./llm.js";
 import { sanitizeError } from "./telemetry-safe.js";
 import type { Env } from "./types.js";
@@ -6,8 +7,8 @@ import type { Env } from "./types.js";
  * jev-1.13.0, jev-preview) are wire aliases, not the listing id. */
 export const JEV_DEFAULT_MODEL = "typesafe/jev";
 
-/** Ordered 0–9 levels for importance and quality score questions.
- * Index is the numeric score (0 noise / thin, 9 major / primary). */
+/** Ordered 0–9 levels for the quality score question.
+ * Index is the numeric score (0 thin, 9 primary). */
 export const JEV_SCORE_LEVELS = [
   "0",
   "1",
@@ -19,6 +20,21 @@ export const JEV_SCORE_LEVELS = [
   "7",
   "8",
   "9",
+] as const;
+
+/** Ordered 1–10 levels for the importance question, matching the
+ * IMPORTANCE_BANDS scale the chat rubric uses. */
+export const JEV_IMPORTANCE_LEVELS = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
 ] as const;
 
 /** One entity tag from a score judgment. `none` means the story has no
@@ -73,7 +89,8 @@ export interface SystemOneAnswer {
   type: SystemOneQuestionType;
   noul?: number;
   choice?: string;
-  score?: string;
+  /** Level label, or (as Jev sends it) the expected level index. */
+  score?: string | number;
   legend?: string[];
   probabilities?: Record<string, number> | number[];
   confidence?: number;
@@ -342,9 +359,8 @@ export function jevScoreQuestions(
     },
     importance: {
       type: "score",
-      instructions:
-        "How important is this to someone who follows AI news? 0 is noise, 9 is a major industry event.",
-      criteria: [...JEV_SCORE_LEVELS],
+      instructions: `How important is this to someone who follows AI news? ${IMPORTANCE_RUBRIC}`,
+      criteria: [...JEV_IMPORTANCE_LEVELS],
     },
     quality: {
       type: "score",
@@ -439,6 +455,48 @@ function scoreLevelIndex(
   return Math.round(norm * (levels.length - 1));
 }
 
+/** Importance on the 1–10 scale as the probability-weighted level, not the
+ * single most likely one: argmax over bare levels piled stories onto 1–2 and
+ * 4 and almost never reached 9. Monotonic in the distribution and spans the
+ * full range (all mass on the first level → 1, on the last → 10). Jev also
+ * sends `score` as that expected index (a number), used when probabilities
+ * are absent. Probability keys are level indices, not labels. */
+export function importanceFromJev(
+  answers: Record<string, SystemOneAnswer>
+): number | null {
+  const a = answers.importance;
+  if (!a) return null;
+  const top = JEV_IMPORTANCE_LEVELS.length - 1;
+  const toScale = (index: number) =>
+    Number((1 + Math.min(top, Math.max(0, index))).toFixed(2));
+  const probs = a.probabilities;
+  const entries: [number, number][] = Array.isArray(probs)
+    ? probs.map((p, i) => [i, p])
+    : probs && typeof probs === "object"
+      ? Object.entries(probs).map(([k, p]) => [Number(k), p])
+      : [];
+  let mass = 0;
+  let weighted = 0;
+  for (const [index, p] of entries) {
+    if (!Number.isInteger(index) || index < 0 || index > top) continue;
+    if (typeof p !== "number" || !Number.isFinite(p) || p <= 0) continue;
+    mass += p;
+    weighted += index * p;
+  }
+  if (mass > 0) return toScale(weighted / mass);
+  const score = a.score;
+  if (typeof score === "number" && Number.isFinite(score)) {
+    return score >= 0 && score <= top ? toScale(score) : null;
+  }
+  if (typeof score === "string") {
+    const index = JEV_IMPORTANCE_LEVELS.indexOf(
+      score as (typeof JEV_IMPORTANCE_LEVELS)[number]
+    );
+    if (index >= 0) return toScale(index);
+  }
+  return null;
+}
+
 /** Map one System One score response onto the ranking inputs.
  * Returns null when relevance, importance, or quality is missing so the
  * caller can fall back to the chat rubric for that item. */
@@ -447,7 +505,7 @@ export function scoreJudgmentFromJev(
   categories: readonly string[]
 ): JevScoreJudgment | null {
   const relevance = noulProb(answers, "is_ai_tech");
-  const importance = scoreLevelIndex(answers, "importance", JEV_SCORE_LEVELS);
+  const importance = importanceFromJev(answers);
   const quality = scoreLevelIndex(answers, "quality", JEV_SCORE_LEVELS);
   if (relevance === null || importance === null || quality === null) {
     return null;

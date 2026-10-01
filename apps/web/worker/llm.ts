@@ -6,6 +6,7 @@ import {
 } from "../src/lib/tldr-bullets";
 import { chunk } from "./chunk.js";
 import { mapWithConcurrency } from "./concurrency.js";
+import { IMPORTANCE_BANDS } from "./importance-rubric.js";
 import {
   type JevScoreItem,
   type JevScoreReviewOutcome,
@@ -1010,7 +1011,10 @@ export interface ScoreInput {
 /** Scoring rubric sent to the model. Quality must prefer named, source-backed writing over thin duplicates. */
 export function scoreBatchPrompt(batch: ScoreInput[]): string {
   return `You are scoring AI/tech news items for relevance, importance, and source-backed quality.
-For each item, return relevance (0-1, is this genuinely AI/tech news), importance (0-10), quality (0-10), category (one of: ${CATEGORIES.join(", ")}), and tags — 3 to 6 topic labels per item.
+For each item, return relevance (0-1, is this genuinely AI/tech news), importance (1-10), quality (0-10), category (one of: ${CATEGORIES.join(", ")}), and tags — 3 to 6 topic labels per item.
+
+Importance rubric (use the whole scale; most items are not 7+):
+${IMPORTANCE_BANDS.map((band) => `- ${band.range}: ${band.meaning}.`).join("\n")}
 
 Quality rubric (this is what ranking multiplies — be strict):
 - 8–10: primary reporting or original research with a named publisher/host, concrete facts, not a rewrite of another headline.
