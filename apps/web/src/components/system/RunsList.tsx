@@ -1,8 +1,6 @@
-import { TableBody, TableHead, TableHeader, TableRow } from "@aidr/ui";
 import { useEffect, useRef, useState } from "react";
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
-import { useHorizontalScroll } from "../../lib/use-horizontal-scroll";
-import { RunRow } from "./RunRow";
+import { RUN_ROW_GRID, RunRow } from "./RunRow";
 import type { RunAttemptsState } from "./run-format";
 import {
   formatDurationSec,
@@ -20,7 +18,6 @@ interface RunsListProps {
 }
 
 export function RunsList({ runs, lang, focusRunId }: RunsListProps) {
-  const scrollRef = useHorizontalScroll<HTMLDivElement>();
   const [openId, setOpenId] = useState<string | null>(null);
   // Attempt rows are no longer inlined in the runs payload — each
   // expanded row fetches /api/system/run-attempts once, then caches.
@@ -109,72 +106,42 @@ export function RunsList({ runs, lang, focusRunId }: RunsListProps) {
     1
   );
 
+  const vi = lang === "vi";
   return (
-    <div
-      ref={scrollRef}
-      className="scrollbar-hide -mx-1 overflow-x-auto rounded-md border border-border"
-    >
-      {/* Native table: shared Table wraps overflow-auto itself, which
-          breaks useHorizontalScroll edge-fade on the outer container. */}
-      <table className="w-full min-w-[960px] caption-bottom text-left text-sm">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="h-9 w-8 px-2" />
-            <TableHead className="h-9 px-3 text-xs font-medium">
-              {lang === "vi" ? "Trạng thái" : "Status"}
-            </TableHead>
-            <TableHead className="h-9 px-3 text-xs font-medium">
-              {lang === "vi" ? "Bắt đầu" : "Started"}
-            </TableHead>
-            <TableHead className="h-9 px-3 text-right text-xs font-medium">
-              {lang === "vi" ? "Thời lượng" : "Duration"}
-            </TableHead>
-            <TableHead className="h-9 px-3 text-xs font-medium">
-              Model
-            </TableHead>
-            <TableHead className="h-9 px-3 text-right text-xs font-medium">
-              Tokens
-            </TableHead>
-            <TableHead className="h-9 px-3 text-right text-xs font-medium">
-              Cached
-            </TableHead>
-            <TableHead className="h-9 px-3 text-right text-xs font-medium">
-              LLM time
-            </TableHead>
-            <TableHead className="h-9 px-3 text-right text-xs font-medium">
-              {lang === "vi" ? "Lấy về" : "Fetched"}
-            </TableHead>
-            <TableHead className="h-9 px-3 text-right text-xs font-medium">
-              {lang === "vi" ? "Mới/Gộp/Loại" : "New/Merged/Rej"}
-            </TableHead>
-            <TableHead className="h-9 px-3 text-xs font-medium">
-              {lang === "vi" ? "Khác" : "Extras"}
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {runs.map((r) => {
-            const expanded = openId === r.id;
-            return (
-              <RunRow
-                key={r.id}
-                run={r}
-                lang={lang}
-                maxDuration={maxDuration}
-                expanded={expanded}
-                highlighted={r.id === focusRunId}
-                attemptsState={
-                  attemptsStateByRun[r.id] ??
-                  ((r.llm?.attempts?.length ?? 0) > 0 ? "ready" : "idle")
-                }
-                attempts={attemptsByRun[r.id] ?? r.llm?.attempts ?? []}
-                attemptsTruncated={truncatedByRun[r.id] === true}
-                onToggle={() => toggleRun(r, expanded)}
-              />
-            );
-          })}
-        </TableBody>
-      </table>
+    <div className="overflow-hidden rounded-md border border-border">
+      <div
+        aria-hidden
+        className={`hidden gap-x-4 border-b border-border bg-muted/30 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground md:grid ${RUN_ROW_GRID}`}
+      >
+        <span>{vi ? "Trạng thái" : "Status"}</span>
+        <span>{vi ? "Bắt đầu" : "Started"}</span>
+        <span>{vi ? "Thời lượng" : "Duration"}</span>
+        <span>{vi ? "Tin" : "Items"}</span>
+        <span>{vi ? "Mô hình" : "Models"}</span>
+        <span className="text-right">Tokens</span>
+      </div>
+      <ul className="divide-y divide-border/60">
+        {runs.map((r) => {
+          const expanded = openId === r.id;
+          return (
+            <RunRow
+              key={r.id}
+              run={r}
+              lang={lang}
+              maxDuration={maxDuration}
+              expanded={expanded}
+              highlighted={r.id === focusRunId}
+              attemptsState={
+                attemptsStateByRun[r.id] ??
+                ((r.llm?.attempts?.length ?? 0) > 0 ? "ready" : "idle")
+              }
+              attempts={attemptsByRun[r.id] ?? r.llm?.attempts ?? []}
+              attemptsTruncated={truncatedByRun[r.id] === true}
+              onToggle={() => toggleRun(r, expanded)}
+            />
+          );
+        })}
+      </ul>
     </div>
   );
 }

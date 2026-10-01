@@ -124,26 +124,24 @@ describe("nested disclosure Escape behavior", () => {
     act(() => root.unmount());
   });
 
-  it("closes the run disclosure from inside its attempt table", () => {
+  it("closes the run details dialog from inside its attempt list", () => {
     (
       globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
     ).IS_REACT_ACT_ENVIRONMENT = true;
     function Harness() {
       const [expanded, setExpanded] = useState(false);
       return (
-        <table>
-          <tbody>
-            <RunRow
-              run={run}
-              lang="en"
-              maxDuration={100}
-              expanded={expanded}
-              attemptsState={"ready"}
-              attempts={[attempt]}
-              onToggle={() => setExpanded((value) => !value)}
-            />
-          </tbody>
-        </table>
+        <ul>
+          <RunRow
+            run={run}
+            lang="en"
+            maxDuration={100}
+            expanded={expanded}
+            attemptsState={"ready"}
+            attempts={[attempt]}
+            onToggle={() => setExpanded((value) => !value)}
+          />
+        </ul>
       );
     }
 
@@ -159,6 +157,10 @@ describe("nested disclosure Escape behavior", () => {
     ) as HTMLButtonElement;
     expect(trigger).not.toBeNull();
     click(trigger);
+    // Details open in a modal dialog over the list, not inline in it.
+    expect(
+      host.querySelector("[role='dialog'][aria-modal='true']")
+    ).not.toBeNull();
     const panel = host.querySelector("fieldset[aria-label='Run summary']");
     expect(panel?.className).toContain("min-w-0");
     expect(panel?.querySelector("ul")).not.toBeNull();
