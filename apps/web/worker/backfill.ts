@@ -66,6 +66,10 @@ export function buildMissingTranslationQuery(
             SELECT 1 FROM translations t
             WHERE t.item_id = i.id AND t.lang = 'vi'
               AND t.title IS NOT NULL AND t.title != ''
+              -- A summary the source has but the VI row lacks (a batch
+              -- that kept the title and dropped the summary) also counts.
+              AND (i.summary IS NULL OR i.summary = ''
+                   OR (t.summary IS NOT NULL AND t.summary != ''))
           )
           ORDER BY i.published_at DESC
           LIMIT ${limit}`;
