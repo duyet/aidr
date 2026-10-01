@@ -166,6 +166,10 @@ export interface LlmCallRow {
   provider?: string | null;
   /** Shared by every attempt of one LLM invocation, from migration 0034. */
   callId?: string | null;
+  /** USD AnyRouter charged for the attempt, from migration 0035. */
+  costUsd?: number | null;
+  /** AnyRouter request id (`req_…`), from migration 0035. */
+  requestId?: string | null;
 }
 
 export interface RunLlmSummary {
@@ -601,6 +605,8 @@ interface LlmCallDbRow {
   route?: string | null;
   provider?: string | null;
   call_id?: string | null;
+  cost_usd?: number | null;
+  request_id?: string | null;
 }
 
 const ROUTE_HOP_RE = /^[A-Za-z0-9@][A-Za-z0-9._:/@-]{0,119}$/;
@@ -656,12 +662,28 @@ function mapLlmCallRow(r: LlmCallDbRow): LlmCallRow {
       typeof r.call_id === "string" && /^[a-z0-9-]{1,36}$/.test(r.call_id)
         ? r.call_id
         : null,
+    costUsd:
+      typeof r.cost_usd === "number" &&
+      Number.isFinite(r.cost_usd) &&
+      r.cost_usd >= 0
+        ? r.cost_usd
+        : null,
+    requestId:
+      typeof r.request_id === "string" &&
+      /^req_[A-Za-z0-9]{1,64}$/.test(r.request_id)
+        ? r.request_id
+        : null,
   };
 }
 
 const LLM_SELECT_COLUMNS = `ts, run_id, task, model, ok, tokens, duration_ms,
   prompt_chars, error, prompt_tokens, completion_tokens, cached_tokens,
-  error_code, error_status, route, provider, call_id`;
+  error_code, error_status, route, provider, call_id, cost_usd, request_id`;
+
+/** Pre-0035 schema: same columns minus cost_usd/request_id. */
+const LLM_SELECT_COLUMNS_PRE_COST = `ts, run_id, task, model, ok, tokens,
+  duration_ms, prompt_chars, error, prompt_tokens, completion_tokens,
+  cached_tokens, error_code, error_status, route, provider, call_id`;
 
 /** Pre-0034 schema: same columns minus call_id. */
 const LLM_SELECT_COLUMNS_PRE_CALL_ID = `ts, run_id, task, model, ok, tokens,
@@ -698,6 +720,21 @@ async function queryLlmCallsByRunId(
     const { results } = await db
       .prepare(
         `SELECT ${LLM_SELECT_COLUMNS}
+         FROM llm_calls
+         WHERE ${where}
+         ORDER BY ts ASC
+         LIMIT ${LLM_ATTEMPTS_LIMIT}`
+      )
+      .bind(...binds)
+      .all<LlmCallDbRow>();
+    return finishLlmQuery(results);
+  } catch {
+    // 0035 columns may not exist yet.
+  }
+  try {
+    const { results } = await db
+      .prepare(
+        `SELECT ${LLM_SELECT_COLUMNS_PRE_COST}
          FROM llm_calls
          WHERE ${where}
          ORDER BY ts ASC

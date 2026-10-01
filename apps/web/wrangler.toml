@@ -86,7 +86,10 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # Score tries Jev first (ANYROUTER_JEV_MODEL), then ANYROUTER_MODEL.
 ANYROUTER_MODEL = "@preset/aidr,poolside/laguna-s-2.1,anyrouter/auto,anyrouter/free"
 ANYROUTER_TRANSLATE_MODEL = "@preset/aidr,poolside/laguna-s-2.1,anyrouter/auto,anyrouter/free"
-ANYROUTER_TLDR_MODEL = "@preset/aidr,poolside/laguna-s-2.1,anyrouter/auto,anyrouter/free"
+# TL;DR keeps two ids: the preset already is Laguna, and every extra id
+# reserves a 20s fallback slice out of the first hop's budget (prod
+# regenerate 2026-10-01: preset got ~100s, Laguna needs 102-119s).
+ANYROUTER_TLDR_MODEL = "@preset/aidr,anyrouter/auto"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
 # (router aliases and presets are filtered out of this chain). No second

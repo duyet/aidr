@@ -138,6 +138,16 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
 - Rollback: redeploy the previous Worker; it never reads the column. Only
   drop it if needed: `ALTER TABLE llm_calls DROP COLUMN call_id;`
 
+## 0035_llm_call_cost_request.sql
+
+- Change: adds two nullable `llm_calls` columns, `cost_usd` (AnyRouter
+  `usage.cost`, USD) and `request_id` (AnyRouter `X-Request-ID`).
+- Risk: none for existing rows (they stay NULL). The logger also adds both
+  columns at runtime, and falls back to the 0034 insert when they are missing.
+- Rollback: redeploy the previous Worker; it never reads the columns. Only
+  drop them if needed:
+  `ALTER TABLE llm_calls DROP COLUMN cost_usd; ALTER TABLE llm_calls DROP COLUMN request_id;`
+
 ## 0001 to 0026
 
 Read from the SQL files. Most only create tables, indexes and columns, or

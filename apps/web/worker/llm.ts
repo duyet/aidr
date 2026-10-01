@@ -106,6 +106,8 @@ export interface LlmUsageBreakdown {
   promptTokens: number | null;
   completionTokens: number | null;
   cachedTokens: number | null;
+  /** USD AnyRouter charged (`usage.cost`); null when not reported. */
+  costUsd: number | null;
 }
 
 interface AnyrouterCompletion extends LlmUsageBreakdown {
@@ -157,6 +159,10 @@ export interface LlmCallLogEntry {
   /** Shared by every attempt of one callAnyrouter/callSystemOne
    *  invocation, so a fallback chain reads as one call. */
   callId?: string | null;
+  /** USD AnyRouter reported for the attempt; null without usage. */
+  costUsd?: number | null;
+  /** AnyRouter request id, kept for failure reports. */
+  requestId?: string | null;
 }
 
 /** Short id grouping one invocation's attempts in `llm_calls.call_id`. */
@@ -270,6 +276,7 @@ interface Usage {
   cached_tokens?: number;
   cachedTokens?: number;
   prompt_tokens_details?: { cached_tokens?: number };
+  cost?: unknown;
 }
 
 interface StreamEvent {
@@ -283,7 +290,7 @@ interface StreamEvent {
   // The trailing metadata frame has been seen nesting usage under either key.
   metadata?: { usage?: Usage };
   /** `model` is the catalog model a preset/router resolved to. */
-  anyrouter_metadata?: { usage?: Usage; model?: string };
+  anyrouter_metadata?: { usage?: Usage; model?: string; requestId?: string };
 }
 
 /** What actually served an attempt: the requested id, then each id a
@@ -293,6 +300,14 @@ export interface LlmRouteTrace {
   resolved: string | null;
   upstream: string | null;
   provider: string | null;
+  /** AnyRouter request id (`X-Request-ID`, else stream metadata). */
+  requestId?: string | null;
+}
+
+const REQUEST_ID_RE = /^req_[A-Za-z0-9]{1,64}$/;
+
+function safeRequestId(value: unknown): string | null {
+  return typeof value === "string" && REQUEST_ID_RE.test(value) ? value : null;
 }
 
 const ROUTE_HOP_RE = /^[A-Za-z0-9@][A-Za-z0-9._:/@-]{0,119}$/;
@@ -336,7 +351,13 @@ function parseUsage(usage: Usage): LlmUsageBreakdown {
   );
   const total = pickNumber(usage.total_tokens, usage.totalTokens);
   const tokens = total ?? (promptTokens ?? 0) + (completionTokens ?? 0);
-  return { tokens, promptTokens, completionTokens, cachedTokens };
+  const costUsd =
+    typeof usage.cost === "number" &&
+    Number.isFinite(usage.cost) &&
+    usage.cost >= 0
+      ? usage.cost
+      : null;
+  return { tokens, promptTokens, completionTokens, cachedTokens, costUsd };
 }
 
 function emptyUsage(): LlmUsageBreakdown {
@@ -345,6 +366,7 @@ function emptyUsage(): LlmUsageBreakdown {
     promptTokens: null,
     completionTokens: null,
     cachedTokens: null,
+    costUsd: null,
   };
 }
 
@@ -433,6 +455,10 @@ async function streamCompletion(
     signal: opts.signal ?? AbortSignal.timeout(opts.timeoutMs),
   });
 
+  // Read before the status check so a failed attempt keeps its id too.
+  if (opts.trace) {
+    opts.trace.requestId = safeRequestId(res.headers.get("x-request-id"));
+  }
   if (!res.ok) {
     const body = await readBoundedErrorBody(res);
     const requested = opts.maxTokens ?? MAX_TOKENS;
@@ -482,6 +508,9 @@ async function streamCompletion(
       if (upstream && !event.anyrouter_metadata) opts.trace.upstream = upstream;
       const provider = routeHop(event.provider);
       if (provider) opts.trace.provider = provider;
+      opts.trace.requestId ??= safeRequestId(
+        event.anyrouter_metadata?.requestId
+      );
     }
     const delta = event.choices?.[0]?.delta;
     const outputLimit = opts.maxOutputChars ?? MAX_STREAM_CONTENT_CHARS;
@@ -500,7 +529,14 @@ async function streamCompletion(
     }
     const usage =
       event.usage ?? event.anyrouter_metadata?.usage ?? event.metadata?.usage;
-    if (usage) usageBreakdown = parseUsage(usage);
+    if (usage) {
+      // A later usage event without `cost` must not erase an earlier one.
+      const parsed = parseUsage(usage);
+      usageBreakdown = {
+        ...parsed,
+        costUsd: parsed.costUsd ?? usageBreakdown.costUsd,
+      };
+    }
   };
 
   const reader = res.body.getReader();
@@ -785,6 +821,8 @@ async function callAnyrouter(
           route: buildRoute(model, trace),
           provider: trace.provider,
           callId,
+          costUsd: result.costUsd,
+          requestId: trace.requestId ?? null,
         });
         failures.push(`${model}: anyrouter response failed accept check`);
         continue;
@@ -807,6 +845,8 @@ async function callAnyrouter(
         route: buildRoute(model, trace),
         provider: trace.provider,
         callId,
+        costUsd: result.costUsd,
+        requestId: trace.requestId ?? null,
       });
       return { ...result, model };
     } catch (error) {
@@ -836,6 +876,8 @@ async function callAnyrouter(
         route: buildRoute(model, trace),
         provider: trace.provider,
         callId,
+        costUsd: null,
+        requestId: trace.requestId ?? null,
       });
     }
   }
@@ -1507,8 +1549,11 @@ const EMPTY_TLDR: TldrResult = { bullets_en: [], bullets_vi: [], tokens: 0 };
 /** One deadline shared by both generateTldr attempts. The `tldr` Workflow
  * step times out at 4 minutes (`LLM_STEP`). Two 240s attempts could run for
  * 8, so the step threw before the retry or the title fallback ran and the
- * run wrote no snapshot. 200s leaves room for the D1 reads and write. */
-export const TLDR_TIMEOUT_MS = 200_000;
+ * run wrote no snapshot; the 10s left over covers the D1 reads and write. */
+/** 230s: the first attempt (230-60 = 170s) must give the first hop of a
+ *  two-model TL;DR chain Laguna's full 102-119s, after modelAttemptTimeoutMs
+ *  reserves a slice for the fallback. Still inside the 4-minute step. */
+export const TLDR_TIMEOUT_MS = 230_000;
 /** Held back from the bilingual attempt so the EN-only retry still runs. */
 export const TLDR_RETRY_RESERVE_MS = 60_000;
 

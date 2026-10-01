@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LlmCallLogEntry } from "../llm.js";
 import {
@@ -1940,12 +1942,24 @@ describe("normalizeTag", () => {
 });
 
 describe("tldr chain budget", () => {
-  // A slow-but-working first hop must be able to use the whole first
-  // attempt, or the retry reserve is all that is left for a real digest.
-  it("lets one model fill the first TL;DR attempt", () => {
-    const firstAttempt = tldrAttemptTimeoutMs(TLDR_TIMEOUT_MS, 2);
-    expect(TLDR_SLICE_MAX_MS).toBeLessThanOrEqual(firstAttempt);
-    expect(TLDR_SLICE_MAX_MS).toBeGreaterThan(firstAttempt / 2);
+  // What the first hop really gets, not the cap: modelAttemptTimeoutMs holds
+  // back a slice per fallback, which is how a 135s cap became ~100s and
+  // timed Laguna (102-119s on the 26K VI prompt) out in production.
+  it("gives the configured TL;DR chain's first hop Laguna's worst case", () => {
+    const toml = readFileSync(
+      fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
+      "utf8"
+    );
+    const chain = /ANYROUTER_TLDR_MODEL = "([^"]+)"/
+      .exec(toml)?.[1]
+      ?.split(",");
+    expect(chain?.length).toBeGreaterThan(0);
+    const firstHop = modelAttemptTimeoutMs(
+      tldrAttemptTimeoutMs(TLDR_TIMEOUT_MS, 2),
+      chain?.length ?? 0,
+      TLDR_SLICE_MAX_MS
+    );
+    expect(firstHop).toBeGreaterThanOrEqual(125_000);
   });
 
   // `ingest/context.ts` LLM_STEP timeout, which the tldr step runs inside.
@@ -2248,5 +2262,78 @@ describe("LLM call id", () => {
     expect(ids[1]).toBe(ids[0]);
     expect(ids[3]).toBe(ids[2]);
     expect(ids[2]).not.toBe(ids[0]);
+  });
+});
+
+describe("LLM call cost and request id", () => {
+  const messages = [{ role: "user" as const, content: "hi" }];
+  let entries: LlmCallLogEntry[];
+
+  beforeEach(() => {
+    entries = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+  });
+
+  afterEach(() => {
+    setLlmCallLogger(null);
+    vi.unstubAllGlobals();
+  });
+
+  // /data shows what each attempt cost; a missing price must read as
+  // unknown, never as free.
+  it("logs AnyRouter's usage.cost, or null when it is missing", async () => {
+    const content = { choices: [{ delta: { content: '{"ok":1}' } }] };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          sseResponse([
+            content,
+            { usage: { total_tokens: 10, cost: 0.0012, is_byok: false } },
+            { anyrouter_metadata: { usage: { totalTokens: 10 } } },
+          ])
+        )
+        .mockResolvedValueOnce(sseResponse([content]))
+    );
+
+    await callAnyrouter(env, messages, { modelSpec: "a/model", json: true });
+    await callAnyrouter(env, messages, { modelSpec: "a/model", json: true });
+
+    expect(entries.map((entry) => entry.costUsd)).toEqual([0.0012, null]);
+  });
+
+  // AnyRouter needs the request id for every failure report, so a non-200
+  // attempt keeps the header id; the stream metadata id is the fallback.
+  it("keeps the request id on failed attempts and from stream metadata", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response("busy", {
+            status: 502,
+            headers: { "X-Request-ID": "req_abc123" },
+          })
+        )
+        .mockResolvedValueOnce(
+          sseResponse([
+            { choices: [{ delta: { content: '{"ok":1}' } }] },
+            { anyrouter_metadata: { requestId: "req_def456" } },
+          ])
+        )
+    );
+
+    await callAnyrouter(env, messages, {
+      modelSpec: "down/model,ok/model",
+      json: true,
+    });
+
+    expect(entries.map((entry) => entry.requestId)).toEqual([
+      "req_abc123",
+      "req_def456",
+    ]);
   });
 });
