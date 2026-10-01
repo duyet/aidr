@@ -654,6 +654,10 @@ describe("stepState / runStatus", () => {
     expect(stepState({ action: "skipped", reason: "no eligible" })).toBe(
       "skipped"
     );
+    // Real wording from run 1ca7319a: the step threw and recorded "skipped".
+    expect(stepState({ action: "skipped", reason: "tldr step failed" })).toBe(
+      "failed"
+    );
   });
 
   it("marks the run degraded when any step is, ok only when all are", () => {

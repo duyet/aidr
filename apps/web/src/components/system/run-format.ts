@@ -223,7 +223,11 @@ export function stepState(step: {
     if (done < total) return "degraded";
   }
   if (STEP_FAILURE_RE.test(action)) return "failed";
-  if (STEP_IDLE_RE.test(action)) return "skipped";
+  // "skipped" because the step itself threw ("tldr step failed") is a failure.
+  if (STEP_IDLE_RE.test(action))
+    return step.reason && STEP_FAILURE_RE.test(step.reason)
+      ? "failed"
+      : "skipped";
   if (step.reason && STEP_FALLBACK_RE.test(step.reason)) return "degraded";
   return "ok";
 }
