@@ -103,6 +103,61 @@ the POST id. Then `NEWS_INGEST.create({ id })` from that isolate.
 WHERE-id SELECT was 2xx for `5419a68e-…` while lastRun stayed
 `42d830a9-…`.
 
+## Dry runs, reruns and previews (admin / MCP)
+
+`POST /api/admin/ingest` takes an optional JSON body
+`{ force?, dryRun?, steps? }` (`?force=1` still works; no body = normal
+run). MCP `trigger_ingest` takes the same arguments. Bad input is a 400:
+an unknown step name is rejected at the trigger and dropped (never a crash)
+inside the Workflow. The mode travels as `create({ id, params })` and
+`worker/ingest/mode.ts` owns the step names:
+`fetch, dedupe, score, translate, write, backfill-content,
+backfill-translate, backfill-score, qa-translations, review-suggestions,
+review-submissions, tldr, email, notify`.
+
+- **`dryRun: true`** — `sendEmailDigest` and `notifyChannels` return before
+  calling `sendDailyTldr` / `dispatchStoryNotifications` and record
+  `skipped` / `dry run: no email or telegram`. The TL;DR step runs as
+  `tldr-preview`: same items, LLM and fallbacks as `ensureDailyTldr`, no
+  `tldr_snapshots` upsert; `stats.tldrPreview` keeps the bullet count and
+  the first 3 bullets per language. `runHealthCheck` returns before any
+  Bugsink health alert, owner Telegram DM, GitHub alert issue or daily
+  summary. Stats carry `mode: "dry-run"`.
+- **`steps: [...]`** — only those steps run; the rest record `skipped` /
+  `not selected`. `fetch → dedupe → score → translate → write` is a chain:
+  a chain step runs only when every earlier one is selected (otherwise
+  `needs …`), so a rerun never writes unscored rows. Stats carry
+  `selectedSteps`. `rerun tldr` = `steps: ["tldr"]`.
+- **Scheduling** — dry and partial runs go through the 45-minute coalesce
+  gate like any trigger (`force` bypasses it) but never call `markStarted`
+  and never push the hourly alarm back, so they do not delay the next real
+  run. A forced dry run can still overlap a real run.
+- **History** — health-check history and the source empty-run streak carry
+  skip dry-run rows (`NOT_DRY_RUN_SQL`). `sourceHealth` is only stored when
+  the chain reached translate.
+
+What a dry run **still does** (it gates distribution, not D1):
+
+- `write` inserts fetched items and re-ranks today: new items appear on the
+  site, API, MCP and feeds at once, and the next real run's notify step can
+  post them to Telegram / email (notify reads D1).
+- `review-submissions` / `review-suggestions` can approve user input;
+  `qa-translations`, backfills, topic learning and vendor-source seeding
+  write D1. Pick `steps` to avoid them.
+- LLM calls are logged to `llm_calls`; step exceptions still reach Bugsink
+  through `safeStep` (real bugs).
+- The run row becomes `/api/system` lastRun (the verified create persist
+  requires it).
+
+Read-only previews: `GET /api/admin/preview/ranking?limit=N`
+(`preview_ranking`: last-24h published items by stored `rank_score`, with
+`rankScore` inputs and the score if re-ranked now) and
+`POST /api/admin/preview/tldr` (`preview_tldr`: en/vi bullets, LLM calls
+under a `tldr-preview-…` operation id, no D1 writes besides `llm_calls`).
+
+Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>`
+(`apps/web/scripts/aidr-agent.ts`). `run` / `rerun` are dry unless `--live`.
+
 ## Ops pitfalls
 
 - LLM-heavy Workflow steps use `retries: 0` and a 4-minute timeout. A

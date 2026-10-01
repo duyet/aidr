@@ -1,3 +1,9 @@
+import {
+  type IngestMode,
+  ingestModePayload,
+  isScheduledRun,
+  LIVE_FULL_RUN,
+} from "./ingest/mode.js";
 import { toEpochSeconds } from "./time.js";
 import {
   type D1Runner,
@@ -34,6 +40,15 @@ export interface IngestTickResult {
 
 export interface IngestTickOpts {
   force?: boolean;
+  /** False for a dry or partial run: it is gated by the coalesce window
+   *  like any trigger, but never counts as the last started run and never
+   *  pushes the hourly alarm back. Defaults to true. */
+  scheduled?: boolean;
+}
+
+export interface IngestTriggerOpts {
+  force?: boolean;
+  mode?: IngestMode;
 }
 
 /** RPC surface of `NewsIngestScheduler`. Declared here so admin handlers
@@ -64,17 +79,21 @@ export async function tickIngest(
     NEWS_INGEST: Workflow;
     NEWS_INGEST_SCHEDULER?: DurableObjectNamespace;
   },
-  opts: IngestTickOpts = {}
+  opts: IngestTriggerOpts = {}
 ): Promise<IngestTickResult> {
+  const mode = opts.mode ?? LIVE_FULL_RUN;
+  const scheduled = isScheduledRun(mode);
   if (env.NEWS_INGEST_SCHEDULER) {
     const stub = schedulerStub(env.NEWS_INGEST_SCHEDULER);
     // Fail closed on gate errors — do not swallow into skipped:false
     // (that would bypass the 45-minute coalesce during a DO outage).
-    const gate = await stub.canStart(opts);
+    const gate = await stub.canStart(
+      scheduled ? { force: opts.force } : { force: opts.force, scheduled }
+    );
     if (gate.skipped) return gate;
-    return startCreatedIngest(env, stub);
+    return startCreatedIngest(env, mode, scheduled ? stub : undefined);
   }
-  return startCreatedIngest(env);
+  return startCreatedIngest(env, mode);
 }
 
 /** Choose the instance id, persist+verify `workflow_runs` as lastRun,
@@ -87,12 +106,15 @@ async function startCreatedIngest(
     DB?: D1Runner;
     NEWS_INGEST: Workflow;
   },
+  mode: IngestMode,
   stub?: Pick<IngestSchedulerRpc, "markStarted">
 ): Promise<IngestTickResult> {
   const id = crypto.randomUUID();
   const result: IngestTickResult = { id, skipped: false };
   await persistCreatedIngestRunVerified(env.DB, result);
-  await env.NEWS_INGEST.create({ id });
+  const params = ingestModePayload(mode);
+  // A normal run keeps the bare `create({ id })` shape.
+  await env.NEWS_INGEST.create(params ? { id, params } : { id });
   if (stub) {
     await markStartedOrThrow(stub, id);
   }

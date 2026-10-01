@@ -44,7 +44,13 @@ export class NewsIngestScheduler extends DurableObject<Env> {
   async canStart(opts: IngestTickOpts = {}): Promise<IngestTickResult> {
     const now = Date.now();
     const lastStartedAt = await this.ctx.storage.get<number>(LAST_STARTED_KEY);
-    await this.ctx.storage.setAlarm(nextAlarmAt(now));
+    if (opts.scheduled === false) {
+      // Dry / partial runs never move the hourly alarm; only make sure
+      // one is armed.
+      await this.ensureArmed();
+    } else {
+      await this.ctx.storage.setAlarm(nextAlarmAt(now));
+    }
 
     if (shouldSkipIngest(lastStartedAt, now, opts)) {
       return {

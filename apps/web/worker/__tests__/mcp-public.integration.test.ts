@@ -225,7 +225,9 @@ describe("#227 anonymous MCP against real SQLite", () => {
       { token: "integration-admin-token" }
     );
     const names: string[] = json.result.tools.map((t: any) => t.name);
-    expect(names).toHaveLength(PUBLIC_READ_TOOL_NAMES.length + 6);
+    expect(names).toHaveLength(
+      PUBLIC_READ_TOOL_NAMES.length + ADMIN_MCP_TOOL_NAMES.length
+    );
     for (const name of ADMIN_MCP_TOOL_NAMES) expect(names).toContain(name);
   });
 

@@ -1,5 +1,6 @@
 import { hasFailedStep } from "../src/lib/run-health.js";
 import { reportHealthAlert } from "./bugsink.js";
+import { NOT_SELECTED_REASON } from "./ingest/mode.js";
 import { flushLlmCallWrites } from "./llm-call-log.js";
 import type { AlertEvent, AlertSeverity } from "./notify/alert.js";
 import {
@@ -15,7 +16,10 @@ import type { RunStepInfo } from "./run-stats.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "./time.js";
 import type { Env } from "./types.js";
-import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "./workflow-run.js";
+import {
+  NOT_DRY_RUN_SQL,
+  WORKFLOW_RUN_STARTED_AT_ORDER_SQL,
+} from "./workflow-run.js";
 
 /**
  * In-pipeline health check, run once at close-run. Each hourly run looks at
@@ -74,7 +78,8 @@ export interface HealthInput {
 
 function tldrFailed(steps: RunStepInfo[]): boolean | null {
   const tldr = steps.find((s) => s.name === "tldr");
-  if (!tldr) return null;
+  // A partial rerun that left tldr out says nothing about the streak.
+  if (!tldr || tldr.reason === NOT_SELECTED_REASON) return null;
   return FAILURE_RE.test(tldr.action) || FAILURE_RE.test(tldr.reason ?? "");
 }
 
@@ -202,7 +207,7 @@ export function parsePriorRun(row: {
 
 async function readHistory(env: Env, runId: string): Promise<PriorRun[]> {
   const { results } = await env.DB.prepare(
-    `SELECT started_at, stats FROM workflow_runs WHERE id != ? ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT ?`
+    `SELECT started_at, stats FROM workflow_runs WHERE id != ? AND ${NOT_DRY_RUN_SQL} ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT ?`
   )
     .bind(runId, HISTORY_RUNS)
     .all<{ started_at: unknown; stats: unknown }>();
@@ -339,8 +344,11 @@ async function maybeSendDailySummary(
  */
 export async function runHealthCheck(
   env: Env,
-  input: { runId: string; steps: RunStepInfo[] }
+  input: { runId: string; steps: RunStepInfo[]; dryRun?: boolean }
 ): Promise<string[]> {
+  // A dry run skips email/notify on purpose and must never page the owner
+  // (Bugsink, Telegram DM, GitHub issue, daily summary) about it.
+  if (input.dryRun) return [];
   try {
     const nowMs = Date.now();
     const [history, telegramLastPostMs, llm] = await Promise.all([

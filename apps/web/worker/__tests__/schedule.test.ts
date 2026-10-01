@@ -330,8 +330,8 @@ describe("backfill-translate checkpoints", () => {
   });
 
   it("persists workflow_runs before pruneLlmCalls and without safeStep", () => {
-    const persistIdx = workflow.indexOf(
-      'persistOpenedWorkflowRun(this.env.DB, runId, startedAt, "open-run")'
+    const persistIdx = workflow.search(
+      /persistOpenedWorkflowRun\(\s*this\.env\.DB,\s*runId,\s*startedAt,\s*"open-run"/
     );
     const pruneIdx = workflow.indexOf("await pruneLlmCalls(this.env)");
     expect(persistIdx).toBeGreaterThan(0);
@@ -390,7 +390,7 @@ describe("create-path workflow_runs persist", () => {
       ingestSchedule.indexOf("async function startCreatedIngest")
     );
     const persistIdx = startFn.indexOf("persistCreatedIngestRunVerified");
-    const createIdx = startFn.indexOf("NEWS_INGEST.create({ id })");
+    const createIdx = startFn.indexOf("NEWS_INGEST.create(");
     expect(persistIdx).toBeGreaterThan(0);
     expect(createIdx).toBeGreaterThan(persistIdx);
   });

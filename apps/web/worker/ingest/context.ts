@@ -2,15 +2,17 @@ import type { WorkflowStep } from "cloudflare:workers";
 import type { RunStepInfo } from "../run-stats.js";
 import type { FetchedItem } from "../sources/types.js";
 import type { Env } from "../types.js";
+import type { IngestMode } from "./mode.js";
 
 /** What every ingest step needs: the Workflow step API, the Worker env, this
- * run's id (for LLM-call attribution), and the per-run step log that ends up
- * in `workflow_runs.stats`. */
+ * run's id (for LLM-call attribution), the per-run step log that ends up
+ * in `workflow_runs.stats`, and the run's mode (dry run / selected steps). */
 export interface IngestContext {
   step: WorkflowStep;
   env: Env;
   runId: string;
   steps: RunStepInfo[];
+  mode: IngestMode;
 }
 
 /** Below this LLM relevance a new item is stored as `rejected`, not shown. */

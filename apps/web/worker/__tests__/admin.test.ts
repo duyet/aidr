@@ -13,6 +13,7 @@ import {
 } from "../admin/handlers.js";
 import { handleMcpRequest } from "../admin/mcp.js";
 import { sha256Hex } from "../hash.js";
+import type { IngestTickResult } from "../ingest-schedule.js";
 import * as llm from "../llm.js";
 import { tldrSnapshotDate } from "../tldr.js";
 import type { Env } from "../types.js";
@@ -1033,7 +1034,7 @@ describe("updateItem", () => {
 describe("triggerIngest", () => {
   it("creates a workflow instance when no scheduler is bound", async () => {
     const env = makeEnv();
-    const result = await triggerIngest(env);
+    const result = (await triggerIngest(env)) as IngestTickResult;
     expect(result.skipped).toBe(false);
     expect(result.id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -1065,7 +1066,7 @@ describe("triggerIngest", () => {
         }),
       } as unknown as DurableObjectNamespace,
     });
-    const result = await triggerIngest(env);
+    const result = (await triggerIngest(env)) as IngestTickResult;
     expect(result).toEqual({
       id: null,
       skipped: true,
@@ -1099,7 +1100,9 @@ describe("triggerIngest", () => {
         }),
       } as unknown as DurableObjectNamespace,
     });
-    const result = await triggerIngest(env, { force: true });
+    const result = (await triggerIngest(env, {
+      force: true,
+    })) as IngestTickResult;
     expect(canStart).toHaveBeenCalledWith({ force: true });
     expect(result.skipped).toBe(false);
     expect(startInstance).not.toHaveBeenCalled();
@@ -1122,7 +1125,9 @@ describe("triggerIngest", () => {
       error: null,
       stats: "{}",
     });
-    const result = await triggerIngest(env, { force: true });
+    const result = (await triggerIngest(env, {
+      force: true,
+    })) as IngestTickResult;
     expect(result.skipped).toBe(false);
     expect(result.id).not.toBe(leftover);
     const runs = (env.DB as unknown as FakeD1).workflowRuns;

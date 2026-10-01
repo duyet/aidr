@@ -254,6 +254,8 @@ const ADMIN_EN: Record<string, string> = {
   delete_source: "Delete a news source by id.",
   trigger_ingest: "Trigger a new news ingestion workflow run.",
   get_status: "Get the last 10 workflow runs and item counts by status.",
+  preview_ranking: "Read-only: current top items with their rank score inputs.",
+  preview_tldr: "Preview the TL;DR from current data without publishing it.",
 };
 
 export function ResourcesSection() {

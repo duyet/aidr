@@ -117,6 +117,12 @@ export interface WorkflowRunStats {
   emailsSent?: number;
   notified?: Record<string, number>;
   notifyReason?: Record<string, unknown>;
+  /** `"dry-run"`: no email/Telegram went out, TL;DR was only previewed. */
+  mode?: "dry-run";
+  /** Steps a partial run was asked for; absent when every step ran. */
+  selectedSteps?: string[];
+  /** A dry run's would-be TL;DR (count + first bullets). */
+  tldrPreview?: { bullets: number; en: string[]; vi: string[] };
 }
 
 export interface WorkflowRunRow {

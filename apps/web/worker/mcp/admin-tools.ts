@@ -1,5 +1,6 @@
 /**
- * The operator MCP tool registry — pure data, no imports.
+ * The operator MCP tool registry — pure data; its only import is the
+ * dependency-free step-name list.
  *
  * Lives in its own leaf module because two different graphs need the
  * names: `worker/admin/mcp.ts` (which dispatches to the handlers) and
@@ -13,6 +14,7 @@
  * `src/lib/public-read-tools.ts`; the two must never be merged into one
  * list that `tools/list` filters at runtime.
  */
+import { PIPELINE_STEPS } from "../ingest/mode.js";
 
 const ITEM_SCHEMA = {
   type: "object",
@@ -86,13 +88,47 @@ export const ADMIN_MCP_TOOLS = [
   },
   {
     name: "trigger_ingest",
-    description: "Trigger a new news ingestion workflow run.",
-    inputSchema: { type: "object", properties: {} },
+    description:
+      "Trigger a new news ingestion workflow run. dryRun sends no email or Telegram and only previews the TL;DR; steps runs just those steps (a rerun).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        force: {
+          type: "boolean",
+          description: "Bypass the 45-minute 'ran recently' gate.",
+        },
+        dryRun: {
+          type: "boolean",
+          description:
+            "No email, Telegram or owner alert; TL;DR is previewed, not written. Items are still written to D1.",
+        },
+        steps: {
+          type: "array",
+          items: { type: "string", enum: PIPELINE_STEPS },
+          description: "Run only these steps; others are recorded as skipped.",
+        },
+      },
+    },
   },
   {
     name: "get_status",
     description:
       "Get the last 10 workflow runs and item counts grouped by status.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "preview_ranking",
+    description:
+      "Read-only: current top published items (last 24h) with their rank score inputs.",
+    inputSchema: {
+      type: "object",
+      properties: { limit: { type: "number", minimum: 1, maximum: 100 } },
+    },
+  },
+  {
+    name: "preview_tldr",
+    description:
+      "Generate the TL;DR from current data and return the en/vi bullets. Does not write the live edition and sends nothing; LLM calls are logged.",
     inputSchema: { type: "object", properties: {} },
   },
 ] as const;

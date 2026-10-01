@@ -3,6 +3,7 @@ import {
   prepareTranslationUpsert,
 } from "../d1-bind.js";
 import { sha256Hex } from "../hash.js";
+import { validateIngestMode } from "../ingest/mode.js";
 import { tickIngest } from "../ingest-schedule.js";
 import {
   scoreItems,
@@ -21,7 +22,13 @@ import {
   sanitizeError,
   sanitizeRunStats,
 } from "../telemetry-safe.js";
-import { ensureDailyTldr, tldrSnapshotDate } from "../tldr.js";
+import {
+  buildTopItemsQuery,
+  ensureDailyTldr,
+  previewDailyTldr,
+  type TldrPreview,
+  tldrSnapshotDate,
+} from "../tldr.js";
 import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics } from "../topics.js";
 import type { Env } from "../types.js";
@@ -271,16 +278,136 @@ export async function deleteSource(
   return { ok: true, id };
 }
 
-export async function triggerIngest(env: Env, opts: { force?: boolean } = {}) {
-  const result = await tickIngest(env, opts);
+export interface TriggerIngestInput {
+  force?: unknown;
+  dryRun?: unknown;
+  steps?: unknown;
+}
+
+/** Starts an ingest run. `dryRun` sends no email/Telegram/owner alert and
+ * only previews the TL;DR; `steps` runs just those steps (see
+ * `worker/ingest/mode.ts`). Bad input is a 400, never a silent full run. */
+export async function triggerIngest(
+  env: Env,
+  input: TriggerIngestInput = {}
+): Promise<Awaited<ReturnType<typeof tickIngest>> | HandlerError> {
+  if (input.force !== undefined && typeof input.force !== "boolean") {
+    return { error: "force must be a boolean", status: 400 };
+  }
+  const parsed = validateIngestMode(input);
+  if (!parsed.ok) return { error: parsed.error, status: 400 };
+  const { mode } = parsed;
+  const result = await tickIngest(env, { force: input.force === true, mode });
+  const tags = [
+    mode.dryRun ? "dry-run" : null,
+    mode.steps ? `steps=${mode.steps.join(",")}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const outcome = result.skipped
+    ? `skipped:${result.reason ?? "ran recently"}`
+    : (result.id ?? result.reason ?? "no-id");
   await writeAudit(
     env,
     "ingest.trigger",
-    result.skipped
-      ? `skipped:${result.reason ?? "ran recently"}`
-      : (result.id ?? result.reason ?? "no-id")
+    tags ? `${outcome} ${tags}` : outcome
   );
-  return result;
+  return {
+    ...result,
+    ...(mode.dryRun ? { dryRun: true } : {}),
+    ...(mode.steps ? { steps: mode.steps } : {}),
+  };
+}
+
+const DEFAULT_PREVIEW_RANKING_LIMIT = 20;
+const MAX_PREVIEW_RANKING_LIMIT = 100;
+
+interface RankingPreviewRow {
+  id: string;
+  title: string;
+  source_id: string;
+  published_at: number;
+  points: number | null;
+  comments: number | null;
+  llm_relevance: number | null;
+  llm_importance: number | null;
+  llm_quality: number | null;
+  rank_score: number | null;
+  source_count: number;
+}
+
+/**
+ * Read-only view of the ranking the TL;DR and homepage consume: the same
+ * last-24h published window `ensureDailyTldr` reads, ordered by stored
+ * `rank_score`, with every `rankScore` input and the score it would get if
+ * re-ranked now (the hourly write step re-ranks today only). No writes.
+ */
+export async function previewRanking(env: Env, limitParam?: unknown) {
+  const parsed = Number(limitParam);
+  const limit =
+    Number.isFinite(parsed) && parsed > 0
+      ? Math.min(Math.floor(parsed), MAX_PREVIEW_RANKING_LIMIT)
+      : DEFAULT_PREVIEW_RANKING_LIMIT;
+  const now = Date.now();
+  const { since } = buildTopItemsQuery(now);
+  const { results } = await env.DB.prepare(
+    `SELECT id, title, source_id, published_at, points, comments,
+            llm_relevance, llm_importance, llm_quality, rank_score,
+            ${SOURCE_COUNT_COLUMN}
+     FROM items WHERE status = 'published' AND published_at >= ?
+     ORDER BY rank_score DESC LIMIT ?`
+  )
+    .bind(since, limit)
+    .all<RankingPreviewRow>();
+  return {
+    since,
+    limit,
+    items: (results ?? []).map((row, index) => ({
+      rank: index + 1,
+      id: row.id,
+      title: row.title,
+      source_id: row.source_id,
+      published_at: row.published_at,
+      rank_score: row.rank_score,
+      rank_score_now: rankScore({
+        importance: row.llm_importance ?? 5,
+        quality: row.llm_quality ?? 5,
+        points: row.points ?? 0,
+        comments: row.comments ?? 0,
+        publishedAt: row.published_at * 1000,
+        now,
+        sourceCount: row.source_count,
+      }),
+      inputs: {
+        relevance: row.llm_relevance,
+        importance: row.llm_importance,
+        quality: row.llm_quality,
+        points: row.points ?? 0,
+        comments: row.comments ?? 0,
+        source_count: row.source_count,
+      },
+    })),
+  };
+}
+
+/**
+ * The TL;DR a run would publish from current data, without writing
+ * `tldr_snapshots` and without sending anything. LLM attempts are logged
+ * under a `tldr-preview-…` operation id (never an ingest run id).
+ */
+export async function previewTldr(
+  env: Env
+): Promise<TldrPreview & { operationId: string }> {
+  const operationId = operationRunId("tldr-preview");
+  setLlmCallLogger(createD1LlmCallLogger(env));
+  try {
+    const result = await withLlmCallContext(operationId, () =>
+      previewDailyTldr(env)
+    );
+    return { ...result, operationId };
+  } finally {
+    await flushLlmCallWrites();
+  }
 }
 
 function sanitizeAdminRunRow(

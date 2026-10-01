@@ -203,6 +203,56 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
       reason: "no published items in window",
     };
 
+  const composed = await composeTldr(env, results);
+  if (!composed.ok) return composed.stats;
+  const { bullets_en, bullets_vi } = composed;
+
+  await env.DB.prepare(
+    `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(date) DO UPDATE SET
+       bullets_en = excluded.bullets_en,
+       bullets_vi = excluded.bullets_vi,
+       created_at = excluded.created_at`
+  )
+    .bind(
+      date,
+      JSON.stringify(bullets_en),
+      JSON.stringify(bullets_vi),
+      Date.now()
+    )
+    .run();
+
+  return {
+    generated: true,
+    tokens: composed.tokens,
+    reason: composeReason(composed),
+  };
+}
+
+type ComposedTldr =
+  | {
+      ok: true;
+      bullets_en: TldrBullet[];
+      bullets_vi: TldrBullet[];
+      tokens: number;
+      persistReason?: string;
+    }
+  | { ok: false; stats: TldrRunStats };
+
+function composeReason(composed: Extract<ComposedTldr, { ok: true }>): string {
+  return (
+    composed.persistReason ??
+    `generated ${composed.bullets_en.length + composed.bullets_vi.length} bullets`
+  );
+}
+
+/** LLM digest plus the thin / English-only-VI fallbacks: exactly the
+ * bullets `ensureDailyTldr` would persist, without touching D1. */
+async function composeTldr(
+  env: Env,
+  results: ItemRow[]
+): Promise<ComposedTldr> {
   const tldr = await generateTldr(
     env,
     results.map((row) => ({
@@ -228,9 +278,12 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
       const detail = tldr.error ?? "returned no bullets";
       console.error(`generateTldr produced no persistable bullets: ${detail}`);
       return {
-        generated: false,
-        tokens: tldr.tokens,
-        reason: `LLM failed: ${detail}`,
+        ok: false,
+        stats: {
+          generated: false,
+          tokens: tldr.tokens,
+          reason: `LLM failed: ${detail}`,
+        },
       };
     }
     bullets_en = fallback.bullets_en;
@@ -246,27 +299,69 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
     console.error(persistReason);
   }
 
-  await env.DB.prepare(
-    `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(date) DO UPDATE SET
-       bullets_en = excluded.bullets_en,
-       bullets_vi = excluded.bullets_vi,
-       created_at = excluded.created_at`
-  )
-    .bind(
-      date,
-      JSON.stringify(bullets_en),
-      JSON.stringify(bullets_vi),
-      Date.now()
-    )
-    .run();
-
   return {
-    generated: true,
+    ok: true,
+    bullets_en,
+    bullets_vi,
     tokens: tldr.tokens,
-    reason:
-      persistReason ??
-      `generated ${bullets_en.length + bullets_vi.length} bullets`,
+    persistReason,
+  };
+}
+
+export interface TldrPreview extends TldrRunStats {
+  date: string;
+  itemCount: number;
+  bullets_en: TldrBullet[];
+  bullets_vi: TldrBullet[];
+}
+
+/** The edition a run would write right now, ignoring the refresh gate.
+ * Reads D1 and calls the LLM; never writes `tldr_snapshots`. Used by dry
+ * runs and the admin preview. */
+export async function previewDailyTldr(env: Env): Promise<TldrPreview> {
+  const nowMs = Date.now();
+  const date = tldrSnapshotDate(nowMs);
+  const { sql, since } = buildTopItemsQuery(nowMs);
+  const { results } = await env.DB.prepare(sql).bind(since).all<ItemRow>();
+  const empty = {
+    date,
+    itemCount: results?.length ?? 0,
+    bullets_en: [],
+    bullets_vi: [],
+  };
+  if (!results || results.length === 0) {
+    return {
+      ...empty,
+      generated: false,
+      tokens: 0,
+      reason: "no published items in window",
+    };
+  }
+  const composed = await composeTldr(env, results);
+  if (!composed.ok) return { ...empty, ...composed.stats };
+  return {
+    ...empty,
+    generated: true,
+    tokens: composed.tokens,
+    reason: `preview: ${composeReason(composed)}`,
+    bullets_en: composed.bullets_en,
+    bullets_vi: composed.bullets_vi,
+  };
+}
+
+const PREVIEW_BULLETS = 3;
+const PREVIEW_TEXT = 160;
+
+/** Bounded TL;DR preview for `workflow_runs.stats` (a dry run's edition). */
+export function summarizeTldrPreview(preview: {
+  bullets_en: TldrBullet[];
+  bullets_vi: TldrBullet[];
+}): { bullets: number; en: string[]; vi: string[] } {
+  const head = (bullets: TldrBullet[]) =>
+    bullets.slice(0, PREVIEW_BULLETS).map((b) => b.text.slice(0, PREVIEW_TEXT));
+  return {
+    bullets: Math.max(preview.bullets_en.length, preview.bullets_vi.length),
+    en: head(preview.bullets_en),
+    vi: head(preview.bullets_vi),
   };
 }

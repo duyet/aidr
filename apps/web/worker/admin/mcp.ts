@@ -38,6 +38,8 @@ import {
   getStatus,
   isHandlerError,
   listSources,
+  previewRanking,
+  previewTldr,
   pushItems,
   triggerIngest,
   upsertSource,
@@ -133,9 +135,17 @@ async function callAdminTool(
     case "delete_source":
       return deleteSource(env, args.id as string);
     case "trigger_ingest":
-      return triggerIngest(env);
+      return triggerIngest(env, {
+        force: args.force,
+        dryRun: args.dryRun,
+        steps: args.steps,
+      });
     case "get_status":
       return getStatus(env);
+    case "preview_ranking":
+      return previewRanking(env, args.limit);
+    case "preview_tldr":
+      return previewTldr(env);
   }
 }
 
