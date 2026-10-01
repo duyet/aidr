@@ -105,42 +105,33 @@ describe("live AnyRouter model chains", () => {
     }
   });
 
-  // Production always streams. Nemotron 3 120B / Super never stream a token
-  // and Ultra buffers 56-140s, so a non-streaming probe that rated them
-  // fastest put a 42s hang at the head of every chain (run ddb11132).
-  it("keeps models that hang when streamed out of every chain", () => {
-    const hangs = [
-      "nvidia/nemotron-3-120b-a12b",
-      "nvidia/nemotron-3-super-120b-a12b",
-      "nvidia/nemotron-3-ultra-550b-a55b",
-    ];
-    for (const name of [
-      "ANYROUTER_MODEL",
-      "ANYROUTER_TRANSLATE_MODEL",
-      "ANYROUTER_TLDR_MODEL",
-      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
-      "ANYROUTER_REVIEW_MODEL",
-    ]) {
-      for (const id of hangs) expect(idsOf(name), name).not.toContain(id);
+  const chains = [
+    "ANYROUTER_MODEL",
+    "ANYROUTER_TRANSLATE_MODEL",
+    "ANYROUTER_TLDR_MODEL",
+    "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
+    "ANYROUTER_REVIEW_MODEL",
+  ];
+
+  // Chains are picked by a streaming probe (production always streams with
+  // json_object; a non-streaming probe put 42s hangs at the head, run
+  // ddb11132). An id without a probe row in wrangler.toml was never
+  // measured, and ids listed only as removed/BYOK-only have no row.
+  it("backs every chain id with a streaming probe row", () => {
+    for (const name of chains) {
+      for (const id of idsOf(name)) {
+        const escaped = id.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+        expect(wrangler, `${name}: ${id}`).toMatch(
+          new RegExp(`^#\\s+${escaped}\\s+\\S`, "m")
+        );
+      }
     }
-    expect(idsOf("ANYROUTER_TLDR_MODEL").slice(-2)).toEqual([
-      "anyrouter/auto",
-      "anyrouter/free",
-    ]);
   });
 
-  it("drops chat ids that failed every live call", () => {
-    for (const name of [
-      "ANYROUTER_MODEL",
-      "ANYROUTER_TRANSLATE_MODEL",
-      "ANYROUTER_TLDR_MODEL",
-      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
-    ]) {
+  it("never repeats an id inside a chain", () => {
+    for (const name of chains) {
       const ids = idsOf(name);
-      expect(ids, name).not.toContain("meta/llama-4-scout-17b-16e-instruct");
-      expect(ids, name).not.toContain("deepseek/deepseek-v4.1-flash");
-      expect(ids, name).not.toContain("minimax/m3");
-      expect(ids, name).not.toContain("meta/llama-3.3-70b-instruct");
+      expect(new Set(ids).size, name).toBe(ids.length);
     }
   });
 
@@ -164,51 +155,6 @@ describe("live AnyRouter model chains", () => {
     for (const id of ids) {
       expect(id.startsWith("anyrouter/"), id).toBe(false);
       expect(id.startsWith("@"), id).toBe(false);
-    }
-  });
-
-  it("does not hard-code 404/502 flash fallbacks", () => {
-    for (const name of [
-      "ANYROUTER_MODEL",
-      "ANYROUTER_TRANSLATE_MODEL",
-      "ANYROUTER_TLDR_MODEL",
-    ]) {
-      const ids = idsOf(name);
-      expect(ids, name).not.toContain("inclusionai/ling-3.0-flash");
-      expect(ids, name).not.toContain("google/gemma-4-26b-a4b-it");
-      expect(ids, name).not.toContain("z-ai/glm-4.7-flash");
-      expect(ids, name).not.toContain("google/gemma-4-31b");
-      expect(ids, name).not.toContain("google/gemma-4-31b-it");
-    }
-  });
-
-  it("omits delisted, BYOK-only, and rejected replacement ids", () => {
-    const blocked = [
-      "stealth/ox-alpha",
-      "deepseek/DeepSeek-V4-Flash",
-      "stepfun-ai/step-3.7-flash",
-      "aisingapore/gemma-sea-lion-v4-27b-it",
-      "google/gemini-2.5-flash-lite",
-      "google/gemini-2.5-flash",
-      "google/gemini-3.7-flash",
-      "google/gemini-3.6-flash",
-      "google/gemini-3.8-flash",
-      "qwen/qwen3.7-flash",
-      // BYOK-only on AnyRouter: keyless calls 404 (anyrouter#3655).
-      "google/gemini-3.5-flash",
-      // No provisioned upstream key: 404/502 (anyrouter#3817).
-      "minimax/m3",
-    ];
-    for (const name of [
-      "ANYROUTER_MODEL",
-      "ANYROUTER_TRANSLATE_MODEL",
-      "ANYROUTER_TLDR_MODEL",
-      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
-    ]) {
-      const ids = idsOf(name);
-      for (const id of blocked) {
-        expect(ids, name).not.toContain(id);
-      }
     }
   });
 
@@ -252,7 +198,6 @@ describe("translate batch size", () => {
   it("caps score/tldr/translate attempts so auto is not killed mid-route", () => {
     expect(llm).toMatch(/MODEL_SLICE_MAX_MS = 25_000/);
     expect(llm).toMatch(/SCORE_SLICE_MAX_MS = 70_000/);
-    expect(llm).toMatch(/TLDR_SLICE_MAX_MS = 90_000/);
     expect(llm).toMatch(/TRANSLATE_SLICE_MAX_MS = 60_000/);
     expect(llm).toMatch(/FALLBACK_FLOOR_MS = 20_000/);
     expect(llm).toMatch(/SCORE_BATCH_SIZE = 5/);

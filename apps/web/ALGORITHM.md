@@ -592,16 +592,30 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
 
-- `@preset/aidr` (AnyRouter workspace preset)
-- `meta/muse-glimmer-30b`
-- `poolside/laguna-s-2.1`
-- `anyrouter/cowork`
-- `anyrouter/auto`
+- `poolside/laguna-s-2.1` (the only concrete id that streams usable JSON on
+  this key for translate and TL;DR)
+- `anyrouter/auto`, then `anyrouter/free` (router safety nets, always last)
 
 TL;DR and translate use the same chain without Jev. The VI→EN generator
-uses only the concrete ids. The translation reviewer (`z-ai/glm-4.7`,
-`z-ai/glm-4.6`) shares no id with any generator chain and gets a 45s
-budget (`QA_REVIEW_TIMEOUT_MS`), 30s max for the first hop.
+uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer
+(`inclusionai/ling-3.0-flash-sante`, then `z-ai/glm-4.6`) shares no id with
+any generator chain and gets a 45s budget (`QA_REVIEW_TIMEOUT_MS`), 30s max
+for the first hop. GLM's first token lands at 12-20s, so as head it hit the
+20s cutoff; Ling answers the review prompt in 5-10s but streams nothing on
+the long generator prompts, so it is reviewer-only.
+
+`@preset/aidr` is out of every chain: it 404'd and then 429'd
+(`billing_concurrency_limited`) on every call and never served one.
+
+An id that returns 404 (`model_not_found`, BYOK-only `model_unavailable`)
+is skipped by later calls in the same isolate for 15 minutes, and a 429
+for 2 minutes. Skipped ids take no budget slice. If every id in a chain is
+skipped, the chain is tried in full. 5xx and timeouts never skip.
+
+`parseJson` drops stray closers when a plain parse fails: Laguna often ends
+with an extra `]`, or closes the root `}` before `,"bullets_vi":[...]`.
+Without that, a translate batch is lost and a TL;DR keeps only
+`bullets_en`, so VI falls back to titles.
 
 Every attempt also has a first-token cutoff (`FIRST_TOKEN_MAX_MS`, 20s): a
 model that streams nothing by then is logged as a timeout and the chain
@@ -624,7 +638,7 @@ each backfill slice is its own Workflow step so a finished batch is written
 even if a later slice times out.
 
 - Score batches of 5 with a 70s hang-cap.
-- TL;DR uses a 90s hang-cap.
+- TL;DR uses a 120s hang-cap (Laguna needs 87-90s on the ~26K-char prompt).
 - Translate attempts use a 60s hang-cap so `anyrouter/auto` is not killed
   mid-route (a 25s cap made every score/TL;DR model log 0 tokens).
 

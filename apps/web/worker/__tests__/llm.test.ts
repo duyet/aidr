@@ -11,12 +11,14 @@ import {
   _normalizeTldrForTests as normalizeTldr,
   _parseJsonForTests as parseJson,
   raceTimeout,
+  resetUnavailableModels,
   sanitizeScoreResults,
   sanitizeTranslateResults,
   scoreBatchPrompt,
   scoreItems,
   setLlmCallLogger,
   TLDR_RETRY_RESERVE_MS,
+  TLDR_SLICE_MAX_MS,
   TLDR_TIMEOUT_MS,
   tldrAttemptTimeoutMs,
   translateItems,
@@ -33,6 +35,10 @@ const env: Env = {
   ANYROUTER_API_KEY: "test-key",
   NEWS_ADMIN_TOKEN: "test-token",
 };
+
+// The 404 circuit breaker is isolate-wide; one test's 404 must not skip
+// an id in the next.
+beforeEach(() => resetUnavailableModels());
 
 describe("LLM observability redaction", () => {
   it("suppresses sensitive reviewer snippets and provider response bodies", () => {
@@ -122,6 +128,28 @@ describe("scoreBatchPrompt", () => {
 describe("parseJson", () => {
   it("parses plain JSON", () => {
     expect(parseJson<{ a: number }>('{"a":1}')).toEqual({ a: 1 });
+  });
+
+  // Shapes Laguna S 2.1 streamed in the 2026-10-01 probe. Without repair the
+  // translate batch is dropped, and the TL;DR loses bullets_vi entirely.
+  it("drops a stray trailing closer", () => {
+    expect(parseJson('{"results":[{"i":0,"title":"x"}]}]')).toEqual({
+      results: [{ i: 0, title: "x" }],
+    });
+  });
+
+  it("keeps bullets_vi when the root is closed too early", () => {
+    const raw =
+      '{"bullets_en":[{"text":"a","item_ids":["1"]}]},"bullets_vi":[{"text":"b","item_ids":["1"]}]}';
+    expect(parseJson(raw)).toEqual({
+      bullets_en: [{ text: "a", item_ids: ["1"] }],
+      bullets_vi: [{ text: "b", item_ids: ["1"] }],
+    });
+  });
+
+  it("leaves brackets inside strings alone and still rejects truncation", () => {
+    expect(parseJson('{"t":"a]}\\"b"}]')).toEqual({ t: 'a]}"b' });
+    expect(() => parseJson('{"results":[{"i":0,"title":"cut')).toThrow();
   });
 
   it("strips markdown fences", () => {
@@ -1912,6 +1940,14 @@ describe("normalizeTag", () => {
 });
 
 describe("tldr chain budget", () => {
+  // A slow-but-working first hop must be able to use the whole first
+  // attempt, or the retry reserve is all that is left for a real digest.
+  it("lets one model fill the first TL;DR attempt", () => {
+    const firstAttempt = tldrAttemptTimeoutMs(TLDR_TIMEOUT_MS, 2);
+    expect(TLDR_SLICE_MAX_MS).toBeLessThanOrEqual(firstAttempt);
+    expect(TLDR_SLICE_MAX_MS).toBeGreaterThan(firstAttempt / 2);
+  });
+
   // `ingest/context.ts` LLM_STEP timeout, which the tldr step runs inside.
   const LLM_STEP_TIMEOUT_MS = 4 * 60_000;
 
@@ -2082,5 +2118,94 @@ describe("LLM call route", () => {
       "dots/note:free",
     ]);
     expect(entries[0]?.provider).toBe("AtlasCloud");
+  });
+});
+
+describe("404 circuit breaker", () => {
+  const messages = [{ role: "user" as const, content: "hi" }];
+  const ok = () =>
+    sseResponse([{ choices: [{ delta: { content: '{"ok":true}' } }] }]);
+  const requested = (fetchMock: ReturnType<typeof vi.fn>) =>
+    fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body).model);
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  // Translate runs several batches per step; a 404'd head (missing preset,
+  // BYOK-only id) should cost one request per run, not one per batch.
+  it("skips an id that 404'd on later calls", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) =>
+      JSON.parse(String(init.body)).model === "gone/model"
+        ? new Response('{"error":{"code":"model_not_found"}}', { status: 404 })
+        : ok()
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const spec = { modelSpec: "gone/model,ok/model", json: true };
+
+    await callAnyrouter(env, messages, spec);
+    await callAnyrouter(env, messages, spec);
+
+    expect(requested(fetchMock)).toEqual([
+      "gone/model",
+      "ok/model",
+      "ok/model",
+    ]);
+  });
+
+  // A rate-limited id also sits out the next batch instead of 429ing again.
+  it("skips an id that 429'd on later calls", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("busy", { status: 429 }))
+      .mockResolvedValueOnce(ok())
+      .mockResolvedValueOnce(ok());
+    vi.stubGlobal("fetch", fetchMock);
+    const spec = { modelSpec: "limited/model,ok/model", json: true };
+
+    await callAnyrouter(env, messages, spec);
+    await callAnyrouter(env, messages, spec);
+
+    expect(requested(fetchMock)).toEqual([
+      "limited/model",
+      "ok/model",
+      "ok/model",
+    ]);
+  });
+
+  // 5xx is transient upstream state; the id must stay in the chain.
+  it("keeps an id after a transient failure", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("busy", { status: 502 }))
+      .mockResolvedValueOnce(ok())
+      .mockResolvedValueOnce(ok());
+    vi.stubGlobal("fetch", fetchMock);
+    const spec = { modelSpec: "flaky/model,ok/model", json: true };
+
+    await callAnyrouter(env, messages, spec);
+    await callAnyrouter(env, messages, spec);
+
+    expect(requested(fetchMock)).toEqual([
+      "flaky/model",
+      "ok/model",
+      "flaky/model",
+    ]);
+  });
+
+  // A chain where every id 404'd still sends requests, so a dashboard fix
+  // takes effect without waiting out the skip window.
+  it("fails open when every id is marked unavailable", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("gone", { status: 404 }))
+      .mockResolvedValueOnce(ok());
+    vi.stubGlobal("fetch", fetchMock);
+    const spec = { modelSpec: "only/model", json: true };
+
+    await expect(callAnyrouter(env, messages, spec)).rejects.toThrow(
+      /chain exhausted/
+    );
+    await callAnyrouter(env, messages, spec);
+
+    expect(requested(fetchMock)).toEqual(["only/model", "only/model"]);
   });
 });

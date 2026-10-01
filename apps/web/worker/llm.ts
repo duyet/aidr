@@ -558,7 +558,10 @@ export const MODEL_SLICE_MAX_MS = 25_000;
 /** 15-item score / 16-bullet TL;DR JSON cannot finish in 25s; every
  *  model then logs 0 tokens and the chain looks 100% dead. */
 export const SCORE_SLICE_MAX_MS = 70_000;
-export const TLDR_SLICE_MAX_MS = 90_000;
+/** The ~26K-char bilingual TL;DR takes Laguna S 2.1 87-90s to finish
+ *  (probe 2026-10-01), so 90s killed it at the line. Still inside the
+ *  first attempt's window (TLDR_TIMEOUT_MS - TLDR_RETRY_RESERVE_MS). */
+export const TLDR_SLICE_MAX_MS = 120_000;
 /** Translate used the 25s leftover cap; anyrouter/auto often needs longer
  *  to finish a 3-item JSON batch when it is the only hop. */
 export const TRANSLATE_SLICE_MAX_MS = 60_000;
@@ -647,6 +650,30 @@ export function raceTimeout<T>(
   });
 }
 
+/** A 404 from AnyRouter (model_not_found, or model_unavailable for a
+ *  BYOK-only id) does not change within a run, so the id is skipped by
+ *  later calls in this isolate instead of each batch paying for it again.
+ *  A 429 (billing_concurrency_limited hit @preset/aidr 27x in one run)
+ *  skips it briefly. 5xx and timeouts never trip it. */
+const SKIP_MODEL_TTL_MS: Record<number, number> = {
+  404: 15 * 60_000,
+  429: 2 * 60_000,
+};
+const unavailableModels = new Map<string, number>();
+
+function isUnavailable(model: string): boolean {
+  const until = unavailableModels.get(model);
+  if (until === undefined) return false;
+  if (until > Date.now()) return true;
+  unavailableModels.delete(model);
+  return false;
+}
+
+/** Test hook: forget every skipped id. */
+export function resetUnavailableModels(): void {
+  unavailableModels.clear();
+}
+
 /**
  * Tries each model in the configured chain until one returns usable content.
  * Transport errors, non-200s, timeouts and empty/unusable completions all
@@ -674,8 +701,13 @@ async function callAnyrouter(
   } = {}
 ): Promise<AnyrouterCallResult> {
   const task = opts.task ?? "other";
-  const models = parseModels(opts.modelSpec || env.ANYROUTER_MODEL);
-  if (models.length === 0) throw new Error("anyrouter model is not configured");
+  const configured = parseModels(opts.modelSpec || env.ANYROUTER_MODEL);
+  if (configured.length === 0)
+    throw new Error("anyrouter model is not configured");
+  // Skipped ids take no budget slice. If every id is skipped, try them all
+  // again rather than fail without a request.
+  const live = configured.filter((model) => !isUnavailable(model));
+  const models = live.length > 0 ? live : configured;
 
   // One budget for the whole chain, so a long chain cannot outlive the
   // workflow step that a single call was sized to fit inside. Each attempt
@@ -767,6 +799,12 @@ async function callAnyrouter(
       });
       return { ...result, model };
     } catch (error) {
+      const status =
+        error instanceof Error
+          ? /^anyrouter request failed: (\d{3})\b/.exec(error.message)?.[1]
+          : undefined;
+      const skipMs = status ? SKIP_MODEL_TTL_MS[Number(status)] : undefined;
+      if (skipMs) unavailableModels.set(model, Date.now() + skipMs);
       const msg = sanitizeProviderError(error);
       failures.push(`${model}: ${msg}`);
       console.error(`anyrouter model ${model} failed: ${msg}`);
@@ -853,7 +891,49 @@ function parseJson<T>(raw: string): T {
       text = text.slice(start, end + 1);
     }
   }
-  return JSON.parse(text) as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    const repaired = dropStrayClosers(text);
+    if (repaired === text) throw error;
+    return JSON.parse(repaired) as T;
+  }
+}
+
+/**
+ * Laguna S 2.1 (first hop for translate and TL;DR) often emits one stray
+ * closer: a trailing `]` after the root object, or a `}` that ends the root
+ * before `,"bullets_vi":[...]` (probe 2026-10-01). A plain parse then drops
+ * the batch, or keeps only bullets_en and the VI digest falls back to
+ * titles. Only closers that cannot belong (wrong type, nothing open, or
+ * closing the root while a `,` follows) are removed; strings are skipped.
+ */
+function dropStrayClosers(text: string): string {
+  const stack: string[] = [];
+  let out = "";
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      out += ch;
+      if (ch === "\\") {
+        out += text[++i] ?? "";
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{" || ch === "[") stack.push(ch === "{" ? "}" : "]");
+    else if (ch === "}" || ch === "]") {
+      const closesRoot = stack.length === 1;
+      const next = text.slice(i + 1).trimStart()[0];
+      if (stack.at(-1) !== ch || (closesRoot && next === ",")) continue;
+      stack.pop();
+    }
+    out += ch;
+  }
+  return out;
 }
 
 export interface ScoreInput {
