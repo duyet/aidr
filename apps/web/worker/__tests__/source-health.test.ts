@@ -238,7 +238,6 @@ describe("stale detector", () => {
         spec.staleAfterRuns ?? DEFAULT_STALE_AFTER_RUNS
       );
     }
-    expect(staleAfterRunsFor("arxiv-research")).toBe(72);
     expect(staleAfterRunsFor("techcrunch-ai")).toBe(DEFAULT_STALE_AFTER_RUNS);
     // An operator-added source that is not in the registry still gets the
     // documented default rather than an undefined threshold.

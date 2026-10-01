@@ -1,3 +1,4 @@
+import { staleAfterRunsFor } from "../../worker/sources/catalog.js";
 import {
   safeErrorCode,
   safeErrorStatus,
@@ -1177,25 +1178,12 @@ export function mergeSourceHealth(
   return { health, stale };
 }
 
-/** Per-source stale threshold, mirroring `worker/source-health.ts`.
- *  Duplicated as a small literal rather than imported because
- *  `system-queries.ts` is shared with the public read path and must not grow
- *  a Worker-module dependency; `source-health.test.ts` asserts the two agree
- *  for every registry row. 168 consecutive runs is seven days at the hourly
- *  cadence — see the reasoning in `worker/source-health.ts`.
- *
- *  arXiv is the one override: it announces nothing on weekends, a measured
- *  ~54-run silent gap, so it carries `staleAfterRuns: 72` in the registry. */
-const DEFAULT_STALE_AFTER_RUNS = 168;
-
-const STALE_AFTER_RUNS_OVERRIDES: Record<string, number> = {
-  "arxiv-research": 72,
-  // AI-filtered; can go a week without a match (CLOUDFLARE_BLOG_SOURCE).
-  "cloudflare-blog": 336,
-};
-
+/** Per-source stale threshold, read from the source registry so the
+ *  dashboard and `worker/source-health.ts` can never disagree. `catalog.ts`
+ *  is import-free data, so this adds no Worker runtime dependency to the
+ *  public read path. */
 export function sourceStaleThreshold(id: string): number {
-  return STALE_AFTER_RUNS_OVERRIDES[id] ?? DEFAULT_STALE_AFTER_RUNS;
+  return staleAfterRunsFor(id);
 }
 
 export async function loadSystemSources(db: DbReader): Promise<SystemSources> {

@@ -23,7 +23,9 @@ import type { Env } from "./types.js";
 
 /** 15-item score JSON routinely misses a 25s hang-cap (0 tokens, 100%
  *  fail). 5 titles still fill a batch and finish inside SCORE_SLICE_MAX. */
-const SCORE_BATCH_SIZE = 5;
+export const SCORE_BATCH_SIZE = 5;
+/** Score batches run this many at a time. */
+export const SCORE_CONCURRENCY = 3;
 /** 15-item translate JSON + VI_STYLE routinely times out native Gemma 4
  *  at the 90s attempt cap; 3 titles still fill a homepage row and finish. */
 export const TRANSLATE_BATCH_SIZE = 3;
@@ -1193,7 +1195,6 @@ export async function scoreItems(
 ): Promise<ScoreResult[]> {
   const batches = chunk(items, SCORE_BATCH_SIZE);
   // Token spend unchanged on the chat path; wall-clock divided (~3×).
-  const SCORE_CONCURRENCY = 3;
   const questions = isSystemOneConfigured(env)
     ? jevScoreQuestions(CATEGORIES)
     : null;

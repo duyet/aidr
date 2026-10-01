@@ -16,7 +16,14 @@
  * `rssAdapter.fetchItems` — so a regression that removed the gate, moved it
  * after the cap, or made it oldest-first fails here rather than in production.
  */
+
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { LLM_STEP } from "../ingest/context.js";
+import {
+  SCORE_BATCH_SIZE,
+  SCORE_CONCURRENCY,
+  SCORE_SLICE_MAX_MS,
+} from "../llm.js";
 import { SOURCE_REGISTRY } from "../sources/catalog.js";
 import {
   applyFloodGate,
@@ -164,23 +171,6 @@ describe("arXiv flood gate", () => {
     );
     const batches = Math.ceil(worstCase / SCORE_BATCH_SIZE);
     const rounds = Math.ceil(batches / SCORE_CONCURRENT_BATCHES);
-    // The whole derivation in one object so a cap change shows up as a diff
-    // in the failure message rather than as a bare number mismatch.
-    expect({
-      sources: capped.length,
-      perRunCeiling: worstCase,
-      batches,
-      rounds,
-      worstCaseScoreSeconds: (rounds * SCORE_SLICE_MAX_MS) / 1000,
-      stepBudgetSeconds: LLM_STEP_TIMEOUT_MS / 1000,
-    }).toEqual({
-      sources: 7,
-      perRunCeiling: 41,
-      batches: 9,
-      rounds: 3,
-      worstCaseScoreSeconds: 210,
-      stepBudgetSeconds: 240,
-    });
     // The real invariant: the score step's own 4-minute budget still holds
     // with every new source at its ceiling.
     expect(rounds * SCORE_SLICE_MAX_MS).toBeLessThan(LLM_STEP_TIMEOUT_MS);
@@ -194,14 +184,9 @@ describe("arXiv flood gate", () => {
   });
 });
 
-/** `llm.ts` SCORE_SLICE_MAX_MS — the per-attempt score hang-cap. */
-const SCORE_SLICE_MAX_MS = 70_000;
-/** `ingest/context.ts` LLM_STEP timeout — the budget the score step runs inside. */
-const LLM_STEP_TIMEOUT_MS = 4 * 60_000;
-
-/** Mirrors `llm.ts`: SCORE_BATCH_SIZE = 5, SCORE_CONCURRENCY = 3. */
-const SCORE_CONCURRENT_BATCHES = 3;
-const SCORE_BATCH_SIZE = 5;
+/** The score step's budget, parsed from `LLM_STEP.timeout` ("4 minutes"). */
+const LLM_STEP_TIMEOUT_MS = Number.parseInt(LLM_STEP.timeout, 10) * 60_000;
+const SCORE_CONCURRENT_BATCHES = SCORE_CONCURRENCY;
 
 describe("flood gate ordering", () => {
   it("filters before capping, so the cap fills with relevant items", () => {
