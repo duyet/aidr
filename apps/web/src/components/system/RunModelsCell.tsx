@@ -2,6 +2,9 @@ import { anyrouterModelUrl, isValidAnyrouterModel } from "../../lib/anyrouter";
 import type { RunLlmSummary } from "../../lib/system-queries";
 import { formatSafeDetail, shortModel } from "./run-format";
 
+/** The row stays one line; the full list is in the title and the dialog. */
+const VISIBLE_MODELS = 2;
+
 export function RunModelsCell({ llm }: { llm?: RunLlmSummary }) {
   if (!llm || llm.models.length === 0) {
     return <span className="text-xs text-muted-foreground">—</span>;
@@ -12,10 +15,10 @@ export function RunModelsCell({ llm }: { llm?: RunLlmSummary }) {
   return (
     <div className="min-w-0 max-w-[16rem]">
       <div
-        className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 font-mono text-xs text-foreground"
+        className="flex min-w-0 items-center gap-x-1 overflow-hidden font-mono text-xs text-foreground"
         title={modelsTitle}
       >
-        {llm.models.map((model, i) => (
+        {llm.models.slice(0, VISIBLE_MODELS).map((model, i) => (
           <span
             key={`${model}-${i}`}
             className="inline-flex min-w-0 items-center gap-1"
@@ -42,6 +45,11 @@ export function RunModelsCell({ llm }: { llm?: RunLlmSummary }) {
             )}
           </span>
         ))}
+        {llm.models.length > VISIBLE_MODELS ? (
+          <span className="shrink-0 text-muted-foreground">
+            +{llm.models.length - VISIBLE_MODELS}
+          </span>
+        ) : null}
       </div>
       <span className="text-[10px] text-muted-foreground">
         {llm.calls} call{llm.calls === 1 ? "" : "s"}

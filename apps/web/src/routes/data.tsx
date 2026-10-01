@@ -13,7 +13,6 @@ import { TAB_PANEL } from "../components/system/tab-spacing";
 import { useAdmin } from "../lib/admin";
 import { type DataTab, parseDataTab } from "../lib/data-tab";
 import { headRouteInput } from "../lib/head-route";
-import { useLang } from "../lib/lang-context";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
@@ -58,7 +57,8 @@ const TABS: { value: DataTab; label: string }[] = [
 ];
 
 export function SystemPage() {
-  const lang: Lang = useLang();
+  // /data is an operator page: English only, whatever the site language.
+  const lang: Lang = "en";
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const admin = useAdmin();

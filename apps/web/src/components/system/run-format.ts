@@ -573,3 +573,38 @@ export function llmTokens(
 ): number {
   return normalizeRunTokens(stats, llm).total ?? 0;
 }
+
+export interface FailedAttemptGroup {
+  task: string;
+  model: string;
+  error: string;
+  errorCode: string | null;
+  count: number;
+}
+
+/** Collapses identical failures (same task, model and error) into one line
+ *  with a count, most frequent first, so 13 identical timeouts read as one
+ *  problem instead of 13 rows. */
+export function groupFailedAttempts(
+  attempts: LlmCallRow[]
+): FailedAttemptGroup[] {
+  const groups = new Map<string, FailedAttemptGroup>();
+  for (const attempt of attempts) {
+    if (attempt.ok) continue;
+    const task = formatSafeDetail(attempt.task, 80);
+    const model = formatSafeDetail(attempt.model, 160);
+    const error = formatSafeError(attempt.error);
+    const key = `${task}\u0000${model}\u0000${attempt.errorCode ?? ""}\u0000${error}`;
+    const group = groups.get(key);
+    if (group) group.count++;
+    else
+      groups.set(key, {
+        task,
+        model,
+        error,
+        errorCode: attempt.errorCode,
+        count: 1,
+      });
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count);
+}

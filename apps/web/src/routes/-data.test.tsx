@@ -45,7 +45,7 @@ function renderPage(): string {
 }
 
 describe("/data route localization", () => {
-  it("passes the reachable bilingual context to the Runs tab", () => {
+  it("stays English even when the site language is Vietnamese", () => {
     vi.spyOn(Route, "useSearch").mockReturnValue({ tab: "runs" } as never);
     vi.spyOn(Route, "useNavigate").mockReturnValue((() => undefined) as never);
 
@@ -56,7 +56,8 @@ describe("/data route localization", () => {
     );
 
     expect(html).toContain('data-testid="runs-tab-language"');
-    expect(html).toContain("vi");
+    expect(html).not.toMatch(/>vi</);
+    expect(html).toMatch(/>en</);
   });
 });
 

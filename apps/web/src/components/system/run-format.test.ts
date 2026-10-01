@@ -13,6 +13,7 @@ import {
   formatSecondsShort,
   formatTimestamp,
   formatTokenValue,
+  groupFailedAttempts,
   hasRunDetails,
   isPreIdentityRun,
   llmTokens,
@@ -592,5 +593,39 @@ describe("runModelsDisclosure (#189 review)", () => {
     expect(
       runModelsDisclosure("loading", [], preIdentityStats, undefined, [attempt])
     ).toBe("attributed");
+  });
+});
+
+describe("groupFailedAttempts", () => {
+  const fail = (model: string, error: string, errorCode = "timeout") => ({
+    ts: 1,
+    runId: "r",
+    task: "review",
+    model,
+    ok: false,
+    tokens: 0,
+    durationMs: 12_500,
+    promptChars: null,
+    promptTokens: null,
+    completionTokens: null,
+    cachedTokens: null,
+    error,
+    errorCode,
+    errorStatus: null,
+  });
+
+  // 13 identical timeouts are one problem; the panel must say so once with
+  // a count, and still keep a different error on its own line.
+  it("collapses identical failures into one counted line, most frequent first", () => {
+    const groups = groupFailedAttempts([
+      fail("z-ai/glm-4.7", "Provider request timed out"),
+      fail("x/other", "Provider request failed (502)", "provider_error"),
+      fail("z-ai/glm-4.7", "Provider request timed out"),
+      fail("z-ai/glm-4.7", "Provider request timed out"),
+    ]);
+    expect(groups.map((g) => [g.count, g.model, g.errorCode])).toEqual([
+      [3, "z-ai/glm-4.7", "timeout"],
+      [1, "x/other", "provider_error"],
+    ]);
   });
 });

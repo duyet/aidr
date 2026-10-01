@@ -87,13 +87,21 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
-  // Concrete models that passed a live probe go first; anyrouter/auto is the
-  // last resort so one bad auto pick cannot burn a whole step's time budget.
-  const liveChain = ["@preset/aidr", "anyrouter/auto", "anyrouter/free"];
-
-  it("ends score and translate chains with the router safety nets", () => {
-    for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TRANSLATE_MODEL"]) {
-      expect(idsOf(name), name).toEqual(liveChain);
+  // Router aliases are the safety net: they go last so one bad pick cannot
+  // burn a step's budget, and a chain that ends without one can strand a run.
+  it("ends score, translate and tldr chains with the router safety nets", () => {
+    for (const name of [
+      "ANYROUTER_MODEL",
+      "ANYROUTER_TRANSLATE_MODEL",
+      "ANYROUTER_TLDR_MODEL",
+    ]) {
+      const ids = idsOf(name);
+      expect(ids.at(-1), name).toMatch(/^anyrouter\//);
+      const firstAlias = ids.findIndex((id) => id.startsWith("anyrouter/"));
+      expect(
+        ids.slice(firstAlias).every((id) => id.startsWith("anyrouter/")),
+        name
+      ).toBe(true);
     }
   });
 
