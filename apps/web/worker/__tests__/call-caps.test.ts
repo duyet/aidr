@@ -372,10 +372,11 @@ describe("review LLM caps per run", () => {
             : null
     );
     await reviewPendingSuggestions({ ...env, DB: db });
-    // Per suggestion: System One try, chat review, chat rewrite.
+    // Per suggestion: System One try, chat review, chat rewrite, and one
+    // rule-extraction call after an accept.
     expect(modelCalls(fetchMock).length).toBeGreaterThan(SUGGESTION_REVIEW_CAP);
     expect(modelCalls(fetchMock).length).toBeLessThanOrEqual(
-      SUGGESTION_REVIEW_CAP * 3
+      SUGGESTION_REVIEW_CAP * 4
     );
   });
 });

@@ -10,11 +10,11 @@ const POLL_INTERVAL_MS = 2500;
  *  at their contributions page instead of a spinner that never ends. */
 const POLL_TIMEOUT_MS = 45_000;
 
-type Field = "title" | "summary";
-
+/** One free-form suggestion about a story — a fix to its title, summary or
+ *  translation, or a correction in any language. The reviewer decides which
+ *  fields it changes. */
 export function SuggestForm({
   itemId,
-  field,
   lang,
   userId,
   userName,
@@ -23,7 +23,6 @@ export function SuggestForm({
   onInitialTextConsumed,
 }: {
   itemId: string;
-  field: "title" | "summary";
   lang: Lang;
   userId: string;
   userName: string;
@@ -35,12 +34,9 @@ export function SuggestForm({
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [targetField, setTargetField] = useState<Field>(
-    lang === "en" ? "title" : field
-  );
-  // Edits target the language on screen. Selection-to-suggest only runs
-  // over Vietnamese text (including the bilingual view), so it targets vi.
-  const [targetLang, setTargetLang] = useState<Lang>(lang);
+  // A hint for the reviewer: the language the reader was looking at.
+  // Selection-to-suggest only runs over Vietnamese text, so it hints vi.
+  const [hintLang, setHintLang] = useState<Lang>(lang);
   const [status, setStatus] = useState<
     "idle" | "sending" | "reviewing" | "done" | "timeout" | "error"
   >("idle");
@@ -87,8 +83,7 @@ export function SuggestForm({
   useEffect(() => {
     if (!initialText) return;
     setOpen(true);
-    setTargetField(field);
-    setTargetLang("vi");
+    setHintLang("vi");
     setText(`"${initialText}" → `);
     onInitialTextConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,6 +119,7 @@ export function SuggestForm({
           status={verdict.status}
           suggestion={verdict.suggestion}
           appliedText={verdict.applied_text}
+          changes={verdict.applied_changes}
           rating={verdict.rating}
           note={verdict.review_note}
           lang={lang}
@@ -157,8 +153,7 @@ export function SuggestForm({
           const { id } = await submitSuggestion({
             data: {
               item_id: itemId,
-              field: targetField,
-              lang: targetLang,
+              lang: hintLang,
               suggestion: text,
               user_id: userId,
               user_name: userName,
@@ -173,34 +168,6 @@ export function SuggestForm({
         }
       }}
     >
-      <fieldset className="flex flex-wrap items-center gap-3 text-xs">
-        <legend className="sr-only">
-          {vi ? "Phần cần sửa" : "Part to edit"}
-        </legend>
-        {/* English summaries are re-fetched from the source each run, so
-            only the English title is editable. */}
-        {(targetLang === "en"
-          ? (["title"] as const)
-          : (["title", "summary"] as const)
-        ).map((f) => (
-          <label key={f} className="flex items-center gap-1">
-            <input
-              type="radio"
-              name={`suggest-field-${itemId}`}
-              value={f}
-              checked={targetField === f}
-              onChange={() => setTargetField(f)}
-            />
-            {f === "title"
-              ? vi
-                ? "Tiêu đề"
-                : "Title"
-              : vi
-                ? "Tóm tắt"
-                : "Summary"}
-          </label>
-        ))}
-      </fieldset>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -208,8 +175,8 @@ export function SuggestForm({
         maxLength={2000}
         placeholder={
           vi
-            ? "Viết lại theo cách bạn thấy đúng hơn..."
-            : "Rewrite it the way you think is right..."
+            ? "Tiêu đề, tóm tắt hay bản dịch cần sửa gì? Viết bằng ngôn ngữ nào cũng được."
+            : "What should change in the title, summary or translation? Any language is fine."
         }
         className="min-h-16 w-full max-w-full resize-y rounded-md border border-border bg-background p-2 text-sm"
       />
@@ -240,7 +207,6 @@ export function SuggestForm({
 
 export function SuggestFormGate({
   itemId,
-  field,
   lang,
   useUser,
   useAuth,
@@ -248,7 +214,6 @@ export function SuggestFormGate({
   onInitialTextConsumed,
 }: {
   itemId: string;
-  field: "title" | "summary";
   lang: Lang;
   useUser: any;
   useAuth: any;
@@ -262,7 +227,6 @@ export function SuggestFormGate({
   return (
     <SuggestForm
       itemId={itemId}
-      field={field}
       lang={lang}
       userId={user.id}
       userName={userName}

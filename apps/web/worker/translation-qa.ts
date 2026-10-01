@@ -9,6 +9,13 @@ import { nn } from "./d1-bind.js";
 import { sha256Hex } from "./hash.js";
 import { callAnyrouter, VI_STYLE } from "./llm.js";
 import {
+  buildGlossaryBlock,
+  type KnowledgeRule,
+  loadActiveRules,
+  recordRuleHits,
+  withKnowledgeFailures,
+} from "./translation-knowledge.js";
+import {
   buildEnglishCandidatePrompt,
   buildTranslationRepairPrompt,
   buildTranslationReviewPrompt,
@@ -35,6 +42,7 @@ import {
   REVIEW_PROMPT_FINGERPRINT,
   REVIEW_SYSTEM_PROMPT,
   reviewPasses,
+  SEMANTIC_CHECKS,
   type TranslationDirection,
   type TranslationLanguage,
   type TranslationPair,
@@ -862,12 +870,21 @@ async function requestRepair(
   review: TranslationReview,
   hardFailures: TranslationSemanticCheck[],
   generatorSpec: string,
-  timeoutMs: number
+  timeoutMs: number,
+  knowledge: KnowledgeRule[] = []
 ): Promise<{ candidate: TranslationText; model: string; tokens: number }> {
   const result = await callAnyrouter(
     env,
     [
-      { role: "system", content: VI_STYLE },
+      {
+        role: "system",
+        content:
+          VI_STYLE +
+          buildGlossaryBlock(
+            knowledge,
+            `${pair.source.title}\n${pair.source.summary}`
+          ),
+      },
       {
         role: "user",
         content: buildTranslationRepairPrompt(pair, review, hardFailures),
@@ -1101,6 +1118,9 @@ export async function ratePendingTranslations(
     return { ...NO_QA_WORK, error: reviewer.reason };
   }
   const englishGenerator = resolveEnglishGeneratorChain(env);
+  // Active translation-knowledge rules: a broken one is a hard terminology
+  // failure (→ repair, with the rule in the repair prompt's glossary).
+  const knowledge = await loadActiveRules(env);
   const safeCap = boundedLimit(cap, QA_CAP, QA_CAP);
   const scanCap = boundedLimit(safeCap * 4, safeCap, QA_SCAN_CAP);
   const stats: TranslationQaStats = {
@@ -1204,10 +1224,20 @@ export async function ratePendingTranslations(
       continue;
     }
 
-    const hardFailures = detectHardSemanticFailures(
+    const checked = withKnowledgeFailures(
+      detectHardSemanticFailures(candidate.pair, initial.review),
       candidate.pair,
-      initial.review
+      knowledge,
+      SEMANTIC_CHECKS,
+      "terminology"
     );
+    const hardFailures = checked.failures;
+    if (checked.violated.length > 0) {
+      await recordRuleHits(
+        env,
+        checked.violated.map((rule) => rule.id)
+      );
+    }
     const initialFingerprint = await modelFingerprint(
       reviewer.chain.join(","),
       initial.model
@@ -1322,7 +1352,8 @@ export async function ratePendingTranslations(
         initial.review,
         hardFailures,
         generator,
-        Math.min(QA_REPAIR_TIMEOUT_MS, Math.max(1, deadline - Date.now()))
+        Math.min(QA_REPAIR_TIMEOUT_MS, Math.max(1, deadline - Date.now())),
+        knowledge
       );
       stats.calls++;
       stats.tokens += repaired.tokens;
@@ -1478,10 +1509,13 @@ export async function ratePendingTranslations(
       continue;
     }
 
-    const replacementFailures = detectHardSemanticFailures(
+    const replacementFailures = withKnowledgeFailures(
+      detectHardSemanticFailures(replacementPair, recheck.review),
       replacementPair,
-      recheck.review
-    );
+      knowledge,
+      SEMANTIC_CHECKS,
+      "terminology"
+    ).failures;
     if (!reviewPasses(recheck.review, replacementFailures)) {
       const fingerprint = await modelFingerprint(
         reviewer.chain.join(","),

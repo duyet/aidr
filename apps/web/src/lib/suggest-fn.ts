@@ -18,7 +18,9 @@ export interface SuggestionSummary {
 
 export interface SuggestionInput {
   item_id: string;
-  field: "title" | "summary";
+  /** Omitted (or `auto`) for a free-form suggestion; the reviewer decides
+   *  which fields it changes. */
+  field?: "title" | "summary" | "auto";
   /** Language of the displayed text being edited; defaults to `vi`. */
   lang?: "vi" | "en";
   suggestion: string;
@@ -35,7 +37,12 @@ export function validateSuggestion(input: SuggestionInput): string {
   if (suggestion.length > MAX_LEN) {
     throw new Error(`Suggestion must be ${MAX_LEN} characters or fewer`);
   }
-  if (input.field !== "title" && input.field !== "summary") {
+  if (
+    input.field !== undefined &&
+    input.field !== "title" &&
+    input.field !== "summary" &&
+    input.field !== "auto"
+  ) {
     throw new Error("Invalid field");
   }
   if (input.lang !== undefined && input.lang !== "vi" && input.lang !== "en") {

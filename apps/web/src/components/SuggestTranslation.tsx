@@ -8,7 +8,6 @@ export { SuggestionBadge } from "./suggest/SuggestionBadge";
 
 export function SuggestTranslation(props: {
   itemId: string;
-  field: "title" | "summary";
   lang: Lang;
   initialText?: string;
   onInitialTextConsumed?: () => void;
@@ -34,13 +33,11 @@ function SignInFallback({ lang }: { lang: Lang }) {
 
 function SuggestTranslationInner({
   itemId,
-  field,
   lang,
   initialText,
   onInitialTextConsumed,
 }: {
   itemId: string;
-  field: "title" | "summary";
   lang: Lang;
   initialText?: string;
   onInitialTextConsumed?: () => void;
@@ -66,7 +63,6 @@ function SuggestTranslationInner({
       <SignedIn>
         <SuggestFormGate
           itemId={itemId}
-          field={field}
           lang={lang}
           useUser={useUser}
           useAuth={useAuth}

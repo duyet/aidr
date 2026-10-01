@@ -597,6 +597,32 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
     reads are keyed by the Clerk session user. TL;DR bullets are not
     editable: snapshots are regenerated hourly and already sent.
 
+    **Free-form suggestions** (`field = 'auto'`, the default). The reader
+    writes one suggestion in any language; one planner call (chat judge,
+    no Jev) sees the source and Vietnamese title + summary and returns a
+    rating, a reason and edits for only the fields it names, limited to
+    vi.title, vi.summary and the English title of an English-source story.
+    Every edit passes the output guard (one failure rejects all), all edits
+    land in one batch, and `applied_changes` stores `{lang, field, before,
+    after}` per field. A valid comment with no concrete edit goes to
+    `needs_review`. Fixed-field rows from before keep the old path.
+
+    **Translation knowledge** (`worker/translation-knowledge.ts`, table
+    `translation_knowledge`). After an accepted VI suggestion (instant
+    review or admin approve) one extra call asks whether it teaches a
+    reusable rule (`keep_english` / `preferred_term` / `avoid`) or is a
+    one-off. Rule fields are validated as short terms (no newlines, links,
+    or sentences). A rule goes `active` only when the review rating is
+    ≥ 0.9 (admin approve counts as 1) and the edit itself proves it (term in
+    the source, forbidden phrase removed); otherwise `pending` for an admin
+    (`GET /api/admin/knowledge`, `POST /api/admin/knowledge/decide`
+    `{id, status}`). Active rules matching the input add a "Glossary" block
+    (≤ 8 rules, ≤ 800 chars) after VI_STYLE in translate, TL;DR, suggestion
+    rewrite and QA repair prompts, and translation QA fails `terminology`
+    when the EN source has the term and the VI text has a forbidden phrase
+    → repair; each catch increments the rule's `hits`. Seeded: "agent"
+    stays English, "đại lý"/"đặc vụ" fail ("tác nhân" is allowed).
+
 ## LLM transport
 
 All calls go through `callAnyrouter` (`worker/llm.ts`):

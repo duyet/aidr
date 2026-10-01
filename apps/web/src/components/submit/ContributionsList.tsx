@@ -34,17 +34,25 @@ function fmtDate(ms: number, lang: "en" | "vi") {
   });
 }
 
+const fieldName = (field: "title" | "summary", vi: boolean) =>
+  field === "title" ? (vi ? "tiêu đề" : "title") : vi ? "tóm tắt" : "summary";
+
 function kindLabel(c: Contribution, vi: boolean): string {
   if (c.kind === "submission") return vi ? "Bài gửi" : "Submission";
-  const field =
-    c.field === "title"
-      ? vi
-        ? "tiêu đề"
-        : "title"
-      : vi
-        ? "tóm tắt"
-        : "summary";
-  return `${vi ? "Góp ý" : "Edit"} · ${field} · ${(c.lang ?? "vi").toUpperCase()}`;
+  const edit = vi ? "Góp ý" : "Edit";
+  // Unified suggestions ("auto") let the reviewer pick the fields, so the
+  // label names the fields it actually changed, if any.
+  if (c.field === "auto" || c.field === null) {
+    const fields = [
+      ...new Set(
+        (c.applied_changes ?? []).map(
+          (ch) => `${fieldName(ch.field, vi)} ${ch.lang.toUpperCase()}`
+        )
+      ),
+    ];
+    return fields.length > 0 ? `${edit} · ${fields.join(", ")}` : edit;
+  }
+  return `${edit} · ${fieldName(c.field, vi)} · ${(c.lang ?? "vi").toUpperCase()}`;
 }
 
 function statusText(c: Contribution, lang: "en" | "vi"): string {
@@ -122,6 +130,7 @@ function ContributionDetail({
             status={c.status}
             suggestion={c.text}
             appliedText={c.applied_text}
+            changes={c.applied_changes}
             rating={c.rating}
             note={c.review_note}
             lang={lang}

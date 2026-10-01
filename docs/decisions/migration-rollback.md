@@ -148,6 +148,35 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   drop them if needed:
   `ALTER TABLE llm_calls DROP COLUMN cost_usd; ALTER TABLE llm_calls DROP COLUMN request_id;`
 
+## 0039_suggestion_applied_changes.sql
+
+- Change: adds the nullable `translation_suggestions.applied_changes`
+  column (JSON list of per-field edits). New code also writes
+  `field = 'auto'` for free-form suggestions.
+- Risk: none for existing rows (they stay NULL). Apply before deploying the
+  Worker that writes it.
+- Rollback: the previous Worker reviews `field` as title/summary only, so
+  park free-form rows first, or they are reviewed as summary edits:
+  `UPDATE translation_suggestions SET status = 'needs_review' WHERE field = 'auto' AND status IN ('pending', 'reviewing');`
+  Then redeploy the previous Worker. Only drop the column if needed:
+  `ALTER TABLE translation_suggestions DROP COLUMN applied_changes;`
+
+## 0038_translation_knowledge.sql
+
+- Change: creates `translation_knowledge` (reusable EN→VI terminology rules
+  learned from accepted suggestions) with a unique `(kind, source_term)`
+  index and a status index, and seeds one active rule,
+  `seed-agent-keep-english` ("agent" stays English; "đại lý" / "đặc vụ"
+  fail QA).
+- Risk: active rules add a glossary to VI translate, TL;DR and repair
+  prompts and fail translation QA on a forbidden phrase, which sends the
+  translation to repair. A bad rule can cause extra repairs.
+- Rollback: disable rules first, which stops both effects without a deploy:
+  `UPDATE translation_knowledge SET status = 'disabled';`. The previous
+  Worker never reads the table. Only drop it if needed (export it first; it
+  holds learned rules):
+  `DROP TABLE translation_knowledge;`
+
 ## 0037_suggestion_instant_review.sql
 
 - Change: adds four nullable `translation_suggestions` columns

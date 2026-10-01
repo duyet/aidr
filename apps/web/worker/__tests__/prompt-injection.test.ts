@@ -21,9 +21,11 @@ import {
 import {
   buildRetranslatePrompt,
   buildReviewPrompt,
+  buildUnifiedReviewPrompt,
   parseReviewResponse,
 } from "../suggestions.js";
 import { normalizeTopics } from "../topics.js";
+import { buildRuleExtractionPrompt } from "../translation-knowledge.js";
 import {
   buildEnglishCandidatePrompt,
   buildTranslationRepairPrompt,
@@ -210,6 +212,31 @@ describe("prompt injection: input side", () => {
     );
     expect(prompt).toContain("READER-SUBMITTED, UNTRUSTED DATA");
     expectContained(prompt, "untrusted_suggestions");
+  });
+
+  it("translation knowledge extraction prompt fences and escapes the correction", () => {
+    const prompt = buildRuleExtractionPrompt({
+      suggestionId: "s1",
+      rating: 1,
+      sourceText: ATTACK,
+      previousVi: ATTACK,
+      appliedVi: ATTACK,
+      readerSuggestion: ATTACK,
+    });
+    expectContained(prompt, "untrusted_correction");
+  });
+
+  it("free-form suggestion prompt fences and escapes the reader text", () => {
+    const prompt = buildUnifiedReviewPrompt(
+      {
+        sourceLang: "en",
+        source: { title: ATTACK, summary: ATTACK },
+        vietnamese: { title: ATTACK, summary: ATTACK },
+        editable: [{ lang: "vi", field: "title" }],
+      },
+      ATTACK
+    );
+    expectContained(prompt, "untrusted_suggestion");
   });
 
   it("re-translation prompt fences and escapes the reader suggestion", () => {
@@ -499,9 +526,11 @@ describe("prompt injection: every LLM call site is covered", () => {
     "mail/compose.ts":
       "mail compose keeps hostile picks inside the encoded data block",
     "submissions.ts": "submission review prompt",
-    "suggestions.ts": "suggestion review prompt / re-translation prompt",
+    "suggestions.ts":
+      "suggestion review prompt / re-translation prompt / free-form suggestion prompt",
     "systemone.ts": "scoring request (chat and System One)",
     "topics.ts": "topic mapping prompt",
+    "translation-knowledge.ts": "translation knowledge extraction prompt",
     "translation-qa.ts": "translation QA prompts",
   };
   const workerDir = path.resolve(

@@ -92,18 +92,13 @@ export function StoryDetail({
             )
           )}
 
-          {/* Edits target the language on screen: Vietnamese edits the
-              translation, English edits an English-source story's text. */}
+          {/* One free-form suggestion; the reviewer decides which fields
+              and languages it changes. */}
           <div className="not-typeset flex flex-wrap items-center gap-2">
             <SuggestTranslation
               itemId={item.id}
-              field="summary"
               lang={lang}
-              initialText={
-                pendingSuggestion?.field === "summary"
-                  ? pendingSuggestion.text
-                  : undefined
-              }
+              initialText={pendingSuggestion?.text}
               onInitialTextConsumed={clearPending}
             />
             <SuggestionBadge itemId={item.id} expanded lang={lang} />

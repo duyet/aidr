@@ -969,6 +969,37 @@ export async function decideSuggestion(
   return { ok: true };
 }
 
+export async function listTranslationKnowledge(
+  env: Env,
+  status?: string | null
+) {
+  const { listKnowledge } = await import("../translation-knowledge.js");
+  return listKnowledge(env, status);
+}
+
+/** Activate, park or disable one translation-knowledge rule. */
+export async function decideTranslationKnowledge(
+  env: Env,
+  body: { id?: string; status?: string }
+): Promise<{ ok: true } | HandlerError> {
+  const { id, status } = body;
+  if (
+    !id ||
+    (status !== "active" && status !== "pending" && status !== "disabled")
+  ) {
+    return {
+      error: "id and status (active|pending|disabled) required",
+      status: 400,
+    };
+  }
+  const { setKnowledgeStatus } = await import("../translation-knowledge.js");
+  if (!(await setKnowledgeStatus(env, id, status))) {
+    return { error: "not found", status: 404 };
+  }
+  await writeAudit(env, `knowledge.${status}`, id);
+  return { ok: true };
+}
+
 export async function decideSubmission(
   env: Env,
   body: { id?: string; action?: string }

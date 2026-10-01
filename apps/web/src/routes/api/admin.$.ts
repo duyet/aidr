@@ -8,6 +8,7 @@ import {
 import {
   decideSubmission,
   decideSuggestion,
+  decideTranslationKnowledge,
   deleteSource,
   getLlmCalls,
   getStatus,
@@ -18,6 +19,7 @@ import {
   listPendingSubmissions,
   listPendingSuggestions,
   listSources,
+  listTranslationKnowledge,
   previewRanking,
   previewTldr,
   pushItems,
@@ -476,6 +478,38 @@ async function handle(
     return Response.json(
       await listPendingSuggestions(env, url.searchParams.get("limit"))
     );
+  }
+
+  if (
+    method === "GET" &&
+    segments.length === 1 &&
+    segments[0] === "knowledge"
+  ) {
+    const url = new URL(request.url);
+    return Response.json(
+      await listTranslationKnowledge(env, url.searchParams.get("status"))
+    );
+  }
+
+  if (
+    method === "POST" &&
+    segments.length === 2 &&
+    segments[0] === "knowledge" &&
+    segments[1] === "decide"
+  ) {
+    const { body, error } = await parseJsonBody(request);
+    if (error) return Response.json({ error }, { status: 400 });
+    const result = await decideTranslationKnowledge(
+      env,
+      (body ?? {}) as Parameters<typeof decideTranslationKnowledge>[1]
+    );
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result);
   }
 
   if (

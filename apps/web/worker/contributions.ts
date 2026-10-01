@@ -1,5 +1,42 @@
 import { nn } from "./d1-bind.js";
 
+/** One field the reviewer changed for a suggestion. */
+export interface AppliedChange {
+  lang: "vi" | "en";
+  field: "title" | "summary";
+  before: string | null;
+  after: string;
+}
+
+/** `applied_changes` JSON, or — for rows reviewed before free-form
+ *  suggestions — one change built from the fixed field and applied_text. */
+function parseChanges(row: {
+  applied_changes?: string | null;
+  applied_text: string | null;
+  field: string | null;
+  lang: string | null;
+}): AppliedChange[] {
+  if (row.applied_changes) {
+    try {
+      const parsed = JSON.parse(row.applied_changes);
+      if (Array.isArray(parsed)) return parsed as AppliedChange[];
+    } catch {
+      // fall through to the legacy shape
+    }
+  }
+  if (row.applied_text && (row.field === "title" || row.field === "summary")) {
+    return [
+      {
+        lang: row.lang === "en" ? "en" : "vi",
+        field: row.field,
+        before: null,
+        after: row.applied_text,
+      },
+    ];
+  }
+  return [];
+}
+
 /** One row of a reader's own contribution history: an edit suggestion or a
  *  story submission. Owner-only — every query here is keyed by `userId`
  *  taken from the verified Clerk session, never from client input. */
@@ -11,18 +48,25 @@ export interface Contribution {
   item_title: string | null;
   /** Submitted url (submissions only). */
   url: string | null;
-  field: "title" | "summary" | null;
+  /** `auto` for a free-form suggestion; null for a submission. */
+  field: "title" | "summary" | "auto" | null;
   lang: "vi" | "en" | null;
   /** What the reader wrote. */
   text: string;
-  /** What the reviewer published, when it was applied. */
+  /** First applied field's text (kept for older clients). */
   applied_text: string | null;
+  /** Every field the reviewer changed; empty unless applied. */
+  applied_changes: AppliedChange[];
   rating: number | null;
   review_note: string | null;
   status: string;
   created_at: number;
   reviewed_at: number | null;
 }
+
+type ContributionRow = Omit<Contribution, "applied_changes"> & {
+  applied_changes: string | null;
+};
 
 export interface ContributionCursor {
   created_at: number;
@@ -54,7 +98,7 @@ export async function listContributions(
       `SELECT * FROM (
          SELECT 'suggestion' AS kind, s.id, s.item_id, i.title AS item_title,
                 NULL AS url, s.field, s.lang, s.suggestion AS text,
-                s.applied_text, s.rating, s.review_note, s.status,
+                s.applied_text, s.applied_changes, s.rating, s.review_note, s.status,
                 s.created_at, s.reviewed_at
          FROM translation_suggestions s
          LEFT JOIN items i ON i.id = s.item_id
@@ -62,7 +106,7 @@ export async function listContributions(
          UNION ALL
          SELECT 'submission' AS kind, id, item_id, title AS item_title,
                 url, NULL AS field, NULL AS lang, COALESCE(note, title) AS text,
-                NULL AS applied_text, rating, review_note, status,
+                NULL AS applied_text, NULL AS applied_changes, rating, review_note, status,
                 created_at, NULL AS reviewed_at
          FROM submissions
          WHERE user_id = ?
@@ -80,8 +124,16 @@ export async function listContributions(
       nn(before?.id ?? null),
       limit + 1
     )
-    .all<Contribution>();
-  const rows = results ?? [];
+    .all<ContributionRow>();
+  const rows = (results ?? []).map(
+    ({ applied_changes, ...row }): Contribution => ({
+      ...row,
+      applied_changes:
+        row.kind === "suggestion"
+          ? parseChanges({ ...row, applied_changes })
+          : [],
+    })
+  );
   const items = rows.slice(0, limit);
   const last = items.at(-1);
   return {
@@ -96,10 +148,11 @@ export async function listContributions(
 export interface SuggestionStatusView {
   id: string;
   status: string;
-  field: "title" | "summary";
+  field: "title" | "summary" | "auto";
   lang: "vi" | "en";
   suggestion: string;
   applied_text: string | null;
+  applied_changes: AppliedChange[];
   rating: number | null;
   review_note: string | null;
   reviewed_at: number | null;
@@ -113,13 +166,19 @@ export async function getOwnSuggestion(
   userId: string,
   id: string
 ): Promise<SuggestionStatusView | null> {
-  return db
+  const row = await db
     .prepare(
       `SELECT id, status, field, COALESCE(lang, 'vi') AS lang, suggestion,
-              applied_text, rating, review_note, reviewed_at
+              applied_text, applied_changes, rating, review_note, reviewed_at
        FROM translation_suggestions
        WHERE id = ? AND user_id = ?`
     )
     .bind(nn(id), nn(userId))
-    .first<SuggestionStatusView>();
+    .first<
+      Omit<SuggestionStatusView, "applied_changes"> & {
+        applied_changes: string | null;
+      }
+    >();
+  if (!row) return null;
+  return { ...row, applied_changes: parseChanges(row) };
 }

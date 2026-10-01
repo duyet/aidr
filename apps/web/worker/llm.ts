@@ -19,6 +19,7 @@ import {
   scoreJudgmentFromJev,
 } from "./systemone.js";
 import { sanitizeError } from "./telemetry-safe.js";
+import { viSystemPrompt } from "./translation-knowledge.js";
 import type { Env } from "./types.js";
 
 /** 15-item score JSON routinely misses a 25s hang-cap (0 tokens, 100%
@@ -1394,10 +1395,15 @@ async function translateBatch(
   timeoutMs: number,
   titlesOnly: boolean
 ): Promise<TranslateResult[]> {
+  const system = await viSystemPrompt(
+    env,
+    VI_STYLE,
+    batch.map((item) => `${item.title}\n${item.summary ?? ""}`).join("\n")
+  );
   const { content: raw, tokens } = await callAnyrouter(
     env,
     [
-      { role: "system", content: VI_STYLE },
+      { role: "system", content: system },
       { role: "user", content: translatePrompt(batch, titlesOnly) },
     ],
     {
@@ -1676,6 +1682,11 @@ export async function generateTldr(
   let totalTokens = 0;
   let lastError: string | undefined;
   const deadline = Date.now() + TLDR_TIMEOUT_MS;
+  const viSystem = await viSystemPrompt(
+    env,
+    VI_STYLE,
+    items.map((item) => `${item.title}\n${item.summary ?? ""}`).join("\n")
+  );
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     // First attempt: bilingual journalist restatement. Second attempt
     // drops VI so a timeout/starved-content failure still yields EN
@@ -1694,7 +1705,7 @@ export async function generateTldr(
         env,
         bilingual
           ? [
-              { role: "system", content: VI_STYLE },
+              { role: "system", content: viSystem },
               { role: "user", content: tldrPrompt(items, true) },
             ]
           : [{ role: "user", content: tldrPrompt(items, false) }],

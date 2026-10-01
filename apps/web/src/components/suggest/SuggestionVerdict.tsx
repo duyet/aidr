@@ -1,5 +1,6 @@
+import type { AppliedChange } from "../../../worker/contributions.js";
 import type { Lang } from "../../lib/types";
-import { wordDiff } from "../../lib/word-diff";
+import { type DiffPart, wordDiff } from "../../lib/word-diff";
 
 export type VerdictStatus =
   | "pending"
@@ -49,6 +50,7 @@ export function SuggestionVerdict({
   rating,
   note,
   lang,
+  changes,
 }: {
   status: string;
   suggestion: string;
@@ -56,8 +58,12 @@ export function SuggestionVerdict({
   rating: number | null;
   note: string | null;
   lang: Lang;
+  /** Per-field edits of a free-form suggestion. When present, each field is
+   *  shown as a diff of the story text before and after. */
+  changes?: AppliedChange[];
 }) {
-  const adjusted = isAdjusted(suggestion, appliedText);
+  const perField = (changes ?? []).length > 0;
+  const adjusted = !perField && isAdjusted(suggestion, appliedText);
   const tone =
     status === "accepted"
       ? "border-accent text-accent"
@@ -75,25 +81,56 @@ export function SuggestionVerdict({
         )}
       </div>
       {note && <p className="text-muted-foreground">{note}</p>}
-      {status === "accepted" && appliedText && (
-        <p className="whitespace-pre-wrap rounded-md border border-border p-2 text-sm">
-          {adjusted
-            ? wordDiff(suggestion, appliedText).map((part, i) =>
-                part.kind === "same" ? (
-                  <span key={i}>{part.text}</span>
-                ) : part.kind === "added" ? (
-                  <ins key={i} className="bg-accent/15 no-underline">
-                    {part.text}
-                  </ins>
-                ) : (
-                  <del key={i} className="text-muted-foreground">
-                    {part.text}
-                  </del>
-                )
-              )
-            : appliedText}
-        </p>
-      )}
+      {status === "accepted" && perField
+        ? changes?.map((change) => (
+            <div key={`${change.lang}.${change.field}`} className="space-y-1">
+              <p className="font-semibold uppercase tracking-wider text-muted-foreground">
+                {fieldLabel(change, lang)}
+              </p>
+              <p className="whitespace-pre-wrap rounded-md border border-border p-2 text-sm">
+                {change.before
+                  ? renderDiff(wordDiff(change.before, change.after))
+                  : change.after}
+              </p>
+            </div>
+          ))
+        : status === "accepted" &&
+          appliedText && (
+            <p className="whitespace-pre-wrap rounded-md border border-border p-2 text-sm">
+              {adjusted
+                ? renderDiff(wordDiff(suggestion, appliedText))
+                : appliedText}
+            </p>
+          )}
     </div>
+  );
+}
+
+function fieldLabel(change: AppliedChange, lang: Lang): string {
+  const vi = lang === "vi";
+  const field =
+    change.field === "title"
+      ? vi
+        ? "Tiêu đề"
+        : "Title"
+      : vi
+        ? "Tóm tắt"
+        : "Summary";
+  return `${field} · ${change.lang.toUpperCase()}`;
+}
+
+function renderDiff(parts: DiffPart[]) {
+  return parts.map((part, i) =>
+    part.kind === "same" ? (
+      <span key={i}>{part.text}</span>
+    ) : part.kind === "added" ? (
+      <ins key={i} className="bg-accent/15 no-underline">
+        {part.text}
+      </ins>
+    ) : (
+      <del key={i} className="text-muted-foreground">
+        {part.text}
+      </del>
+    )
   );
 }
