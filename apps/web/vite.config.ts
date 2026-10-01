@@ -15,15 +15,20 @@ function readWranglerVar(wrangler: string, name: string): string | undefined {
   )?.[1];
 }
 
-function configuredPublicProxyUrl(mode: string): string {
+/** Root .env files (where .env.example is documented) then app-local ones,
+ *  which win. Vite itself only reads VITE_* from the app dir, so anything
+ *  the browser needs from the root env is passed through `define` below. */
+function buildEnv(mode: string): Record<string, string> {
   const appEnvDir = fileURLToPath(new URL(".", import.meta.url));
   const repoEnvDir = fileURLToPath(new URL("../../", import.meta.url));
-  // .env.example is documented at the repository root. App-local env files
-  // remain supported and intentionally override the root values.
-  const env = {
+  return {
     ...loadEnv(mode, repoEnvDir, ""),
     ...loadEnv(mode, appEnvDir, ""),
   };
+}
+
+function configuredPublicProxyUrl(mode: string): string {
+  const env = buildEnv(mode);
 
   if (env.VITE_CLERK_PROXY_URL !== undefined) {
     throw new Error(
@@ -139,6 +144,12 @@ export default defineConfig(({ mode }) => ({
   define: {
     "import.meta.env.CLERK_PROXY_URL": JSON.stringify(
       configuredPublicProxyUrl(mode)
+    ),
+    // A local deploy keeps the key in the repo-root .env.local, which Vite
+    // does not read for VITE_*; without this the bundle shipped no key and
+    // Clerk never mounted (2026-10-01). CI passes it as a process env var.
+    "import.meta.env.VITE_CLERK_PUBLISHABLE_KEY": JSON.stringify(
+      buildEnv(mode).VITE_CLERK_PUBLISHABLE_KEY ?? ""
     ),
   },
 }));

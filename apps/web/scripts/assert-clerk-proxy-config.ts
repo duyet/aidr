@@ -105,4 +105,32 @@ if (devKeyChunk) {
   );
 }
 
+// A bundle with no key at all builds and serves fine, but ClerkRootProvider
+// never mounts Clerk, so sign-in shows an empty card. That shipped from a
+// local deploy on 2026-10-01. PR builds have no key on purpose, so only the
+// deploy path asks for one with --require-live-key.
+const LIVE_PUBLISHABLE_KEY = /pk_live_[A-Za-z0-9_-]{20,}\$?/;
+
+function containsLiveKey(path: string): boolean {
+  for (const entry of readdirSync(path, { withFileTypes: true })) {
+    const entryPath = join(path, entry.name);
+    if (entry.isDirectory()) {
+      if (containsLiveKey(entryPath)) return true;
+    } else if (entry.name.endsWith(".js") || entry.name.endsWith(".mjs")) {
+      if (LIVE_PUBLISHABLE_KEY.test(readFileSync(entryPath, "utf8")))
+        return true;
+    }
+  }
+  return false;
+}
+
+if (
+  process.argv.includes("--require-live-key") &&
+  !containsLiveKey(join(webRoot, "dist/client"))
+) {
+  fail(
+    "browser bundle has no Clerk publishable key; set VITE_CLERK_PUBLISHABLE_KEY=pk_live_… in the repo-root .env.local or the environment before deploying"
+  );
+}
+
 console.log(`Clerk proxy config assertion passed (${canonicalUrl})`);
