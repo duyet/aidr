@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderEditionEmail } from "../../worker/subscribe/send";
 import { Route as SubscribeRoute } from "./api/subscribe";
+import { Route as ConfirmRoute } from "./api/subscribe.confirm";
 import { Route as PreviewRoute } from "./api/subscribe.preview";
 
 type Handler = (args: {
@@ -142,5 +143,19 @@ describe("GET /api/subscribe/preview", () => {
     );
     expect(html.replace('<base target="_blank">', "")).toBe(sent.html);
     expect(html).toContain(`<title>${sent.subject}</title>`);
+  });
+});
+
+describe("GET /api/subscribe/confirm", () => {
+  it("sends an unknown token back to the signup page instead of erroring", async () => {
+    const { db } = fakeDb();
+    const res = await handlers(ConfirmRoute).GET({
+      request: new Request(
+        "https://aidr.today/api/subscribe/confirm?token=nope"
+      ),
+      context: { env: { DB: db } },
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe("https://aidr.today/subscribe");
   });
 });

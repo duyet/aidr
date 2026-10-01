@@ -19,6 +19,11 @@ async function resolveEnv(context: any): Promise<Env | undefined> {
   return env as Env | undefined;
 }
 
+// Response.redirect() has immutable headers; the server wrapper adds headers.
+function redirect(location: string): Response {
+  return new Response(null, { status: 302, headers: { Location: location } });
+}
+
 type HandlerArgs = { request: Request; context: any };
 
 /** Double opt-in landing: the link in the confirmation mail. Confirms, then
@@ -37,11 +42,10 @@ export const Route = createFileRoute("/api/subscribe/confirm")({
         const token = new URL(request.url).searchParams.get("token");
         const result = await confirmSubscription(env, token);
         if (isSubscribeError(result)) {
-          return Response.redirect(`${SITE_URL}/subscribe`, 302);
+          return redirect(`${SITE_URL}/subscribe`);
         }
-        return Response.redirect(
-          `${SITE_URL}/subscribe?settings=${encodeURIComponent(result.token)}`,
-          302
+        return redirect(
+          `${SITE_URL}/subscribe?settings=${encodeURIComponent(result.token)}`
         );
       },
     },
