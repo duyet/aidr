@@ -318,9 +318,8 @@ class FakeD1 {
       return { success: true };
     }
 
-    if (
-      sql.startsWith("SELECT i.id, i.title, i.summary, tr.title AS title_vi")
-    ) {
+    // The TL;DR top-items read; match its shape, not its exact column list.
+    if (/^SELECT i\.id,.*tr\.title AS title_vi/s.test(sql)) {
       const [since] = args as [number];
       return {
         results: Array.from(this.items.values())
