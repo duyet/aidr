@@ -13,7 +13,11 @@ export const QA_RATING_THRESHOLD = 0.7;
 export const QA_CONFIDENCE_THRESHOLD = 0.6;
 export const QA_MAX_CALLS = 6;
 export const QA_MAX_REVIEW_CALLS = QA_MAX_CALLS;
-export const QA_REVIEW_TIMEOUT_MS = 25_000;
+/** GLM reviewers stream a first token in 10-20s and finish in ~26s, so the
+ *  old 25s budget split 12.5s/12.5s and timed out both hops (run ddb11132). */
+export const QA_REVIEW_TIMEOUT_MS = 45_000;
+/** First review hop gets up to this; the second keeps >= 20s. */
+export const QA_REVIEW_SLICE_MAX_MS = 30_000;
 export const QA_REPAIR_TIMEOUT_MS = 60_000;
 export const QA_WALL_BUDGET_MS = 210_000;
 export const QA_MAX_REPAIR_ATTEMPTS = 1;

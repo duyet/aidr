@@ -90,27 +90,42 @@ describe("live AnyRouter model chains", () => {
   // Concrete models that passed a live probe go first; anyrouter/auto is the
   // last resort so one bad auto pick cannot burn a whole step's time budget.
   const liveChain = [
-    "nvidia/nemotron-3-120b-a12b",
-    "nvidia/nemotron-3-ultra-550b-a55b",
+    "@preset/aidr",
+    "meta/muse-glimmer-30b",
     "poolside/laguna-s-2.1",
-    "anyrouter/hermes",
+    "anyrouter/cowork",
     "anyrouter/auto",
+    "anyrouter/free",
   ];
 
-  it("ends score, tldr, and translate chains with anyrouter/auto", () => {
+  it("ends score and translate chains with the router safety nets", () => {
     for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TRANSLATE_MODEL"]) {
       expect(idsOf(name), name).toEqual(liveChain);
     }
   });
 
-  // A 21K-char TL;DR prompt took Nemotron 3 120B 5s and Laguna 50-108s
-  // (past TLDR_SLICE_MAX_MS), so TL;DR leads with the fast model and skips
-  // Laguna entirely.
-  it("leads the tldr chain with the model that fits the tldr slice", () => {
-    const ids = idsOf("ANYROUTER_TLDR_MODEL");
-    expect(ids[0]).toBe("nvidia/nemotron-3-120b-a12b");
-    expect(ids).not.toContain("poolside/laguna-s-2.1");
-    expect(ids.at(-1)).toBe("anyrouter/auto");
+  // Production always streams. Nemotron 3 120B / Super never stream a token
+  // and Ultra buffers 56-140s, so a non-streaming probe that rated them
+  // fastest put a 42s hang at the head of every chain (run ddb11132).
+  it("keeps models that hang when streamed out of every chain", () => {
+    const hangs = [
+      "nvidia/nemotron-3-120b-a12b",
+      "nvidia/nemotron-3-super-120b-a12b",
+      "nvidia/nemotron-3-ultra-550b-a55b",
+    ];
+    for (const name of [
+      "ANYROUTER_MODEL",
+      "ANYROUTER_TRANSLATE_MODEL",
+      "ANYROUTER_TLDR_MODEL",
+      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
+      "ANYROUTER_REVIEW_MODEL",
+    ]) {
+      for (const id of hangs) expect(idsOf(name), name).not.toContain(id);
+    }
+    expect(idsOf("ANYROUTER_TLDR_MODEL").slice(-2)).toEqual([
+      "anyrouter/auto",
+      "anyrouter/free",
+    ]);
   });
 
   it("drops chat ids that failed every live call", () => {
@@ -144,8 +159,11 @@ describe("live AnyRouter model chains", () => {
   it("configures a separate explicit VI→EN generator", () => {
     const ids = idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL");
     expect(ids.length).toBeGreaterThan(0);
-    // Router aliases are filtered out of this chain, so only concrete ids.
-    for (const id of ids) expect(id.startsWith("anyrouter/"), id).toBe(false);
+    // Router aliases and presets are filtered out of this chain.
+    for (const id of ids) {
+      expect(id.startsWith("anyrouter/"), id).toBe(false);
+      expect(id.startsWith("@"), id).toBe(false);
+    }
   });
 
   it("does not hard-code 404/502 flash fallbacks", () => {
