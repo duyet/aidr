@@ -4,9 +4,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
-// The page is decomposed — the route file plus its components/submit/* pieces.
+// /contribute (history) and /contribute/new (form) share ContributeShell;
+// /submit only redirects to the form.
 const src = [
-  "../routes/submit.tsx",
+  "../components/contribute/ContributeShell.tsx",
   "../components/submit/SubmitForm.tsx",
   "../components/submit/ContributionsList.tsx",
   "../components/submit/SubmitGate.tsx",
@@ -24,16 +25,18 @@ describe("submit page keeps the form after success", () => {
     expect(src).toContain('role="status"');
   });
 
-  it("puts history beside the form on md+", () => {
-    expect(src).toContain("md:grid-cols-2");
-    expect(src).toContain("Your contributions");
-    expect(src).toContain("Đóng góp của bạn");
-    expect(src).toContain("refreshKey");
-    expect(src).toContain("onSubmitted");
-    expect(src).toMatch(/<ContributionsList[\s\S]*refreshKey=\{listKey\}/);
-    expect(src.indexOf("</form>")).toBeLessThan(
-      src.indexOf("<ContributionsList")
+  // History and the form are separate pages so a long history never
+  // pushes the form off screen, and /submit keeps old links working.
+  it("splits history (/contribute) from the form (/contribute/new)", () => {
+    const route = (p: string) => readFileSync(join(here, p), "utf8");
+    expect(route("../routes/contribute.index.tsx")).toContain('mode="list"');
+    expect(route("../routes/contribute.new.tsx")).toContain('mode="new"');
+    expect(route("../routes/submit.tsx")).toMatch(
+      /redirect\(\{\s*to: "\/contribute\/new"/
     );
+    // The list links to the form, and a sent story lands back on the list.
+    expect(src).toMatch(/<Link[\s\S]*to="\/contribute\/new"/);
+    expect(src).toMatch(/onSubmitted[\s\S]*to: "\/contribute"/);
   });
 
   it("keeps the signed-out gate", () => {

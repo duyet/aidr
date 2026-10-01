@@ -108,7 +108,8 @@ const LOCALIZED_SSR_PATHS = new Set([
   "/",
   "/changelog",
   "/mcp",
-  "/submit",
+  "/contribute",
+  "/contribute/new",
   "/subscribe",
 ]);
 

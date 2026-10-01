@@ -31,6 +31,8 @@ import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiPublicRouteImport } from './routes/api/public'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiSystemRouteImport } from './routes/api/system'
+import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
+import { Route as ContributeNewRouteImport } from './routes/contribute.new'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
@@ -160,6 +162,16 @@ const ApiSystemRoute = ApiSystemRouteImport.update({
   path: '/api/system',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContributeIndexRoute = ContributeIndexRouteImport.update({
+  id: '/contribute/',
+  path: '/contribute/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContributeNewRoute = ContributeNewRouteImport.update({
+  id: '/contribute/new',
+  path: '/contribute/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInSplatRoute = SignInSplatRouteImport.update({
   id: '/sign-in/$',
   path: '/sign-in/$',
@@ -274,8 +286,10 @@ export interface FileRoutesByFullPath {
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
+  '/contribute/new': typeof ContributeNewRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/contribute/': typeof ContributeIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -316,8 +330,10 @@ export interface FileRoutesByTo {
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
+  '/contribute/new': typeof ContributeNewRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/contribute': typeof ContributeIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -359,8 +375,10 @@ export interface FileRoutesById {
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
+  '/contribute/new': typeof ContributeNewRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/contribute/': typeof ContributeIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -403,8 +421,10 @@ export interface FileRouteTypes {
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/contribute/new'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/contribute/'
     | '/api/admin/$'
     | '/api/feed/freshness'
     | '/api/og/$id'
@@ -445,8 +465,10 @@ export interface FileRouteTypes {
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/contribute/new'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/contribute'
     | '/api/admin/$'
     | '/api/feed/freshness'
     | '/api/og/$id'
@@ -487,8 +509,10 @@ export interface FileRouteTypes {
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/contribute/new'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/contribute/'
     | '/api/admin/$'
     | '/api/feed/freshness'
     | '/api/og/$id'
@@ -530,8 +554,10 @@ export interface RootRouteChildren {
   ApiPublicRoute: typeof ApiPublicRoute
   ApiSubscribeRoute: typeof ApiSubscribeRouteWithChildren
   ApiSystemRoute: typeof ApiSystemRouteWithChildren
+  ContributeNewRoute: typeof ContributeNewRoute
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
+  ContributeIndexRoute: typeof ContributeIndexRoute
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
@@ -692,6 +718,20 @@ declare module '@tanstack/react-router' {
       path: '/api/system'
       fullPath: '/api/system'
       preLoaderRoute: typeof ApiSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contribute/': {
+      id: '/contribute/'
+      path: '/contribute'
+      fullPath: '/contribute/'
+      preLoaderRoute: typeof ContributeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contribute/new': {
+      id: '/contribute/new'
+      path: '/contribute/new'
+      fullPath: '/contribute/new'
+      preLoaderRoute: typeof ContributeNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in/$': {
@@ -899,8 +939,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoute: ApiPublicRoute,
   ApiSubscribeRoute: ApiSubscribeRouteWithChildren,
   ApiSystemRoute: ApiSystemRouteWithChildren,
+  ContributeNewRoute: ContributeNewRoute,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
+  ContributeIndexRoute: ContributeIndexRoute,
   ApiAdminSplatRoute: ApiAdminSplatRoute,
   ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
@@ -909,13 +951,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -14,7 +14,7 @@ export const SITEMAP_STATIC_PATHS = [
   "/privacy",
   "/terms",
   "/mcp",
-  "/submit",
+  "/contribute",
   "/subscribe",
   "/data",
 ] as const;
