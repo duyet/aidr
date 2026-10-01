@@ -142,6 +142,8 @@ export function formatSafeError(value: unknown): string {
 }
 
 export function shortModel(model: string): string {
+  // A preset's name is the whole id: "@preset/aidr" → "aidr" reads as a model.
+  if (model.startsWith("@")) return model;
   // anyrouter/auto → auto; provider/org/model-name → model-name
   const parts = model.split("/");
   return parts[parts.length - 1] || model;
@@ -244,8 +246,8 @@ export type RunAttemptsState =
 export function runStatus(run: WorkflowRunRow): RunStatus {
   if (run.error) return "error";
   if (run.started_at != null && run.finished_at == null) return "in_progress";
-  if (run.items_fetched === 0) return "empty";
-  if (run.items_fetched == null) return "unknown";
+  if (run.items_fetched === 0 && !runMode(run)) return "empty";
+  if (run.items_fetched == null && !runMode(run)) return "unknown";
   // A run is only ok when every step is: one failed or partial step means
   // readers may be missing translations or a full TL;DR.
   const states = safeRunSteps(run.stats).map(stepState);
@@ -289,6 +291,29 @@ export function fallbackTransitions(
     }
   }
   return transitions;
+}
+
+/** Identical transitions with a count, most frequent first, so a chain that
+ *  fell back the same way 23 times reads as one line. */
+export function groupFallbackTransitions(
+  transitions: FallbackTransition[]
+): (FallbackTransition & { count: number })[] {
+  const groups = new Map<string, FallbackTransition & { count: number }>();
+  for (const t of transitions) {
+    const key = `${t.task}\u0000${t.from}\u0000${t.to}`;
+    const group = groups.get(key);
+    if (group) group.count++;
+    else groups.set(key, { ...t, count: 1 });
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count);
+}
+
+/** A run asked to skip sending (dry run) or to run only some steps. Such
+ *  runs fetch nothing by design, so "0 fetched" must not read as empty. */
+export function runMode(run: WorkflowRunRow): "dry-run" | "partial" | null {
+  if (run.stats?.mode === "dry-run") return "dry-run";
+  if (Array.isArray(run.stats?.selectedSteps)) return "partial";
+  return null;
 }
 
 /** Provider/fallback failures the workflow only reports inside a step's

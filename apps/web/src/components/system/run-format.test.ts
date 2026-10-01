@@ -14,6 +14,7 @@ import {
   formatTimestamp,
   formatTokenValue,
   groupFailedAttempts,
+  groupFallbackTransitions,
   hasRunDetails,
   isPreIdentityRun,
   llmTokens,
@@ -24,6 +25,7 @@ import {
   runDetailsId,
   runDisclosureLabel,
   runFallbackKindLabel,
+  runMode,
   runModelsDisclosure,
   runStatus,
   safeRunSteps,
@@ -670,5 +672,38 @@ describe("stepState / runStatus", () => {
         ])
       )
     ).toBe("degraded");
+  });
+});
+
+describe("dry and partial runs", () => {
+  // A backfill-only dry run fetches nothing on purpose; calling it "empty"
+  // hides whether the steps it did run worked.
+  it("rates a dry run by its steps, not by its zero fetch count", () => {
+    const run = {
+      id: "r",
+      started_at: 1,
+      finished_at: 2,
+      items_fetched: 0,
+      items_new: 0,
+      error: null,
+      stats: {
+        mode: "dry-run" as const,
+        selectedSteps: ["backfill-translate"],
+        steps: [
+          { name: "backfill-translate", action: "translated 33 summaries" },
+        ],
+      },
+    };
+    expect(runMode(run)).toBe("dry-run");
+    expect(runStatus(run)).toBe("ok");
+  });
+
+  it("groups identical fallback transitions with a count", () => {
+    const t = { task: "translate", from: "@preset/aidr", to: "anyrouter/auto" };
+    const groups = groupFallbackTransitions([t, t, { ...t, from: "x/y" }, t]);
+    expect(groups.map((g) => [g.from, g.count])).toEqual([
+      ["@preset/aidr", 3],
+      ["x/y", 1],
+    ]);
   });
 });

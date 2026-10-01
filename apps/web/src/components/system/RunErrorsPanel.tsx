@@ -4,6 +4,7 @@ import {
   type fallbackTransitions,
   formatSafeError,
   groupFailedAttempts,
+  groupFallbackTransitions,
   runFallbackKindLabel,
   shortModel,
   type stepFallbackNotes,
@@ -42,14 +43,25 @@ export function RunErrorsPanel({
           ) : null}
           {hasFallback ? (
             <div className="break-words">
-              <p>{copy.fallback}:</p>
-              <ul className="ml-3 list-disc">
-                {fallback.map((transition) => (
+              <p className="mb-0.5">{copy.fallback}:</p>
+              <ul className="space-y-1">
+                {groupFallbackTransitions(fallback).map((t) => (
                   <li
-                    key={`${transition.task}-${transition.from}-${transition.to}`}
+                    key={`${t.task}-${t.from}-${t.to}`}
+                    className="flex items-baseline gap-2"
                   >
-                    {transition.task}: {shortModel(transition.from)} →{" "}
-                    {shortModel(transition.to)}
+                    <span className="shrink-0 rounded bg-muted px-1.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                      {t.count}×
+                    </span>
+                    <span className="min-w-0">
+                      <span className="font-medium text-foreground">
+                        {t.task}
+                      </span>
+                      {" · "}
+                      <span className="font-mono text-[11px]">
+                        {shortModel(t.from)} → {shortModel(t.to)}
+                      </span>
+                    </span>
                   </li>
                 ))}
               </ul>

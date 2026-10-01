@@ -19,6 +19,7 @@ import {
   runAnchorId,
   runDetailsId,
   runDisclosureLabel,
+  runMode,
   runStatus,
 } from "./run-format";
 
@@ -88,6 +89,7 @@ export function RunRow({
   onToggle: () => void;
 }) {
   const status = runStatus(r);
+  const mode = runMode(r);
   const style = STATUS_STYLE[status];
   const stats = r.stats;
   const llm = r.llm;
@@ -151,13 +153,30 @@ export function RunRow({
           if (canExpand) openFrom(tokenRef.current);
         }}
       >
-        {/* Status */}
-        <span
-          className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${style.pill}`}
-          title={status === "error" ? formatSafeError(r.error) : undefined}
-        >
-          <span aria-hidden className={`size-1.5 rounded-full ${style.dot}`} />
-          {STATUS_LABEL[status][lang]}
+        {/* Status, plus how the run was asked to run */}
+        <span className="flex flex-col items-start gap-0.5">
+          <span
+            className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${style.pill}`}
+            title={status === "error" ? formatSafeError(r.error) : undefined}
+          >
+            <span
+              aria-hidden
+              className={`size-1.5 rounded-full ${style.dot}`}
+            />
+            {STATUS_LABEL[status][lang]}
+          </span>
+          {mode ? (
+            <span
+              className="rounded border border-dashed border-border px-1.5 text-[10px] text-muted-foreground"
+              title={
+                mode === "dry-run"
+                  ? "No email or Telegram; TL;DR previewed only"
+                  : "Only selected steps ran"
+              }
+            >
+              {mode === "dry-run" ? "dry run" : "partial"}
+            </span>
+          ) : null}
         </span>
 
         {/* Started */}
