@@ -41,6 +41,18 @@ export const LLM_STEP = {
   timeout: "4 minutes",
 } as const;
 
+/** TL;DR step. `ensureDailyTldr` catches its own LLM/D1 errors, so the
+ * only way this step fails is the engine itself: a deploy resetting the
+ * Workflow Durable Object ("Durable Object reset because its code was
+ * updated") or an internal engine fault. With no retry the engine stores
+ * that failure and every replay returns it, so the edition is not
+ * refreshed that run (run 1ca7319a, 2026-10-01). One short retry re-runs
+ * it; the snapshot upsert is idempotent. */
+export const TLDR_STEP = {
+  retries: { limit: 1, delay: 10_000 },
+  timeout: "4 minutes",
+} as const;
+
 export interface SourceRow {
   id: string;
   type: string;

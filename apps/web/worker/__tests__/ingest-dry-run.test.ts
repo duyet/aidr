@@ -401,3 +401,46 @@ describe("dry runs and the hourly schedule", () => {
     expect(markStarted).toHaveBeenCalledWith(id);
   });
 });
+
+describe("tldr step survives an engine interruption", () => {
+  it("retries once, so a deploy mid-step does not freeze the edition for the run", async () => {
+    // Workflows stores a failed attempt for good when retries are 0, and
+    // every replay of the run then returns "tldr step failed" without
+    // calling the LLM again (production run 1ca7319a on 2026-10-01).
+    const db = new RecordingD1();
+    let attempts = 0;
+    const flakyStep = {
+      do: async (
+        _name: string,
+        config: { retries: { limit: number } },
+        fn: () => unknown
+      ) => {
+        for (let i = 0; ; i++) {
+          attempts++;
+          try {
+            if (i === 0) {
+              throw new Error(
+                "Durable Object reset because its code was updated."
+              );
+            }
+            return await fn();
+          } catch (error) {
+            if (i >= config.retries.limit) throw error;
+          }
+        }
+      },
+    } as unknown as WorkflowStep;
+    const ctx: IngestContext = {
+      step: flakyStep,
+      env: makeEnv(db),
+      runId: "run-1",
+      steps: [],
+      mode: LIVE_FULL_RUN,
+    };
+    const result = await generateTldr(ctx);
+    expect(attempts).toBe(2);
+    expect(result.generated).toBe(true);
+    expect(ctx.steps[0]?.action).toBe("generated");
+    expect(tldrWrites(db)).toHaveLength(1);
+  });
+});

@@ -12,7 +12,7 @@ import {
   summarizeTldrPreview,
 } from "../tldr.js";
 import { llmStep, safeStep } from "../workflow-step.js";
-import { type IngestContext, LLM_STEP } from "./context.js";
+import { type IngestContext, TLDR_STEP } from "./context.js";
 import { DRY_RUN_SKIP_REASON } from "./mode.js";
 
 export type TldrPreviewSummary = ReturnType<typeof summarizeTldrPreview>;
@@ -48,7 +48,7 @@ export async function generateTldr(ctx: IngestContext): Promise<{
         };
       }
     },
-    LLM_STEP
+    TLDR_STEP
   );
   recordStep(
     steps,
@@ -99,7 +99,7 @@ async function previewTldr(ctx: IngestContext): Promise<{
         };
       }
     },
-    LLM_STEP
+    TLDR_STEP
   );
   recordStep(
     steps,
