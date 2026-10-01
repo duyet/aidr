@@ -13,7 +13,13 @@ import {
 } from "../llm.js";
 import { createD1LlmCallLogger, flushLlmCallWrites } from "../llm-call-log.js";
 import { forceSendDigest } from "../notify/index.js";
-import { rankScore, SOURCE_COUNT_COLUMN } from "../ranking.js";
+import {
+  RANK_SIGNAL_COLUMNS,
+  RANK_SIGNAL_JOIN,
+  type RankSignalRow,
+  rankScore,
+  rowRankSignals,
+} from "../ranking.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
 import {
@@ -322,18 +328,14 @@ export async function triggerIngest(
 const DEFAULT_PREVIEW_RANKING_LIMIT = 20;
 const MAX_PREVIEW_RANKING_LIMIT = 100;
 
-interface RankingPreviewRow {
+interface RankingPreviewRow extends RankSignalRow {
   id: string;
   title: string;
-  source_id: string;
   published_at: number;
-  points: number | null;
-  comments: number | null;
   llm_relevance: number | null;
   llm_importance: number | null;
   llm_quality: number | null;
   rank_score: number | null;
-  source_count: number;
 }
 
 /**
@@ -351,10 +353,11 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
   const now = Date.now();
   const { since } = buildTopItemsQuery(now);
   const { results } = await env.DB.prepare(
-    `SELECT id, title, source_id, published_at, points, comments,
+    `SELECT id, title, published_at,
             llm_relevance, llm_importance, llm_quality, rank_score,
-            ${SOURCE_COUNT_COLUMN}
-     FROM items WHERE status = 'published' AND published_at >= ?
+            ${RANK_SIGNAL_COLUMNS}
+     FROM items ${RANK_SIGNAL_JOIN}
+     WHERE status = 'published' AND published_at >= ?
      ORDER BY rank_score DESC LIMIT ?`
   )
     .bind(since, limit)
@@ -362,31 +365,33 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
   return {
     since,
     limit,
-    items: (results ?? []).map((row, index) => ({
-      rank: index + 1,
-      id: row.id,
-      title: row.title,
-      source_id: row.source_id,
-      published_at: row.published_at,
-      rank_score: row.rank_score,
-      rank_score_now: rankScore({
-        importance: row.llm_importance ?? 5,
-        quality: row.llm_quality ?? 5,
-        points: row.points ?? 0,
-        comments: row.comments ?? 0,
-        publishedAt: row.published_at * 1000,
-        now,
-        sourceCount: row.source_count,
-      }),
-      inputs: {
-        relevance: row.llm_relevance,
-        importance: row.llm_importance,
-        quality: row.llm_quality,
-        points: row.points ?? 0,
-        comments: row.comments ?? 0,
-        source_count: row.source_count,
-      },
-    })),
+    items: (results ?? []).map((row, index) => {
+      // Reader engagement and source families: what the score counts.
+      const signals = rowRankSignals(row);
+      return {
+        rank: index + 1,
+        id: row.id,
+        title: row.title,
+        source_id: row.source_id,
+        published_at: row.published_at,
+        rank_score: row.rank_score,
+        rank_score_now: rankScore({
+          importance: row.llm_importance ?? 5,
+          quality: row.llm_quality ?? 5,
+          publishedAt: row.published_at * 1000,
+          now,
+          ...signals,
+        }),
+        inputs: {
+          relevance: row.llm_relevance,
+          importance: row.llm_importance,
+          quality: row.llm_quality,
+          points: signals.points,
+          comments: signals.comments,
+          source_count: signals.sourceCount,
+        },
+      };
+    }),
   };
 }
 
@@ -582,16 +587,12 @@ export interface ReprocessResult {
   tokens: number;
 }
 
-interface ReprocessItemRow {
+interface ReprocessItemRow extends RankSignalRow {
   id: string;
   title: string;
   summary: string | null;
-  source_id: string;
-  points: number | null;
-  comments: number | null;
   published_at: number;
   source_lang: "en" | "vi";
-  source_count: number;
 }
 
 /** Epoch seconds for the start of the current UTC day — matches
@@ -639,9 +640,10 @@ export async function reprocessToday(
 
     const since = startOfTodayUtcSec();
     const { results } = await env.DB.prepare(
-      `SELECT id, title, summary, source_id, points, comments, published_at, source_lang,
-              ${SOURCE_COUNT_COLUMN}
-       FROM items WHERE status = 'published' AND published_at >= ?`
+      `SELECT id, title, summary, published_at, source_lang,
+              ${RANK_SIGNAL_COLUMNS}
+       FROM items ${RANK_SIGNAL_JOIN}
+       WHERE status = 'published' AND published_at >= ?`
     )
       .bind(since)
       .all<ReprocessItemRow>();
@@ -688,11 +690,9 @@ export async function reprocessToday(
         const rank = rankScore({
           importance: score.importance,
           quality: score.quality,
-          points: row.points ?? 0,
-          comments: row.comments ?? 0,
           publishedAt: row.published_at * 1000,
           now: Date.now(),
-          sourceCount: row.source_count,
+          ...rowRankSignals(row),
         });
         statements.push(
           env.DB.prepare(
@@ -794,15 +794,12 @@ export interface UpdateItemInput {
   relevance?: number;
 }
 
-interface ItemRow {
+interface ItemRow extends RankSignalRow {
   id: string;
-  points: number | null;
-  comments: number | null;
   published_at: number;
   llm_relevance: number | null;
   llm_importance: number | null;
   llm_quality: number | null;
-  source_count: number;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -812,7 +809,7 @@ function clamp(value: number, min: number, max: number): number {
 /**
  * Moderation mutation for a single item, by id: reject/restore flip
  * `status`; rate updates the given llm_* fields (clamped to their valid
- * ranges) and recomputes rank_score from the item's stored points/comments/
+ * ranges) and recomputes rank_score from its cluster's rank signals and
  * published_at (seconds, matches items.published_at's unit — see
  * reprocessToday above) and the current time. Always UPDATE-by-id, never
  * INSERT; 404s when the id doesn't exist.
@@ -825,10 +822,11 @@ export async function updateItem(
     return { error: "id is required", status: 400 };
   }
   const row = await env.DB.prepare(
-    `SELECT id, points, comments, published_at,
+    `SELECT id, published_at,
             llm_relevance, llm_importance, llm_quality,
-            ${SOURCE_COUNT_COLUMN}
-     FROM items WHERE id = ?`
+            ${RANK_SIGNAL_COLUMNS}
+     FROM items ${RANK_SIGNAL_JOIN}
+     WHERE id = ?`
   )
     .bind(input.id)
     .first<ItemRow>();
@@ -858,11 +856,9 @@ export async function updateItem(
     const rank = rankScore({
       importance,
       quality,
-      points: row.points ?? 0,
-      comments: row.comments ?? 0,
       publishedAt: row.published_at * 1000,
       now: Date.now(),
-      sourceCount: row.source_count,
+      ...rowRankSignals(row),
     });
 
     await env.DB.prepare(

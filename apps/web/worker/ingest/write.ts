@@ -11,7 +11,13 @@ import {
   unionSources,
 } from "../dedupe.js";
 import { serializeMediaManifest } from "../media.js";
-import { buildRerankQuery, rankScore } from "../ranking.js";
+import {
+  buildRerankQuery,
+  type RankSignalRow,
+  rankScore,
+  rankSignals,
+  rowRankSignals,
+} from "../ranking.js";
 import type { FetchedItemSource } from "../sources/types.js";
 import { toEpochSeconds } from "../time.js";
 import type { Env } from "../types.js";
@@ -90,13 +96,14 @@ async function existingCanonicalStatements(
   now: number
 ): Promise<D1PreparedStatement[]> {
   const existingRow = await env.DB.prepare(
-    `SELECT tags, url, image_url, media_manifest,
+    `SELECT tags, url, image_url, media_manifest, source_id,
             published_at, llm_importance, llm_quality
      FROM items WHERE id = ?`
   )
     .bind(canonicalId)
     .first<
       ExistingCanonicalRow & {
+        source_id: string;
         published_at: number;
         llm_importance: number | null;
         llm_quality: number | null;
@@ -128,16 +135,34 @@ async function existingCanonicalStatements(
     MAX_SOURCES_PER_ITEM
   );
 
+  // Items merged into it on earlier runs; this run's are in `update.members`
+  // (their rows land in the same batch).
+  const { results: mergedRows } = await env.DB.prepare(
+    "SELECT source_id, points, comments FROM items WHERE status = 'merged' AND duplicate_of = ?"
+  )
+    .bind(canonicalId)
+    .all<{ source_id: string; points: number; comments: number }>();
+
   const rank = existingRow
     ? rankScore({
         importance: existingRow.llm_importance ?? 5,
         quality: existingRow.llm_quality ?? 5,
-        points: update.maxPoints,
-        comments: update.maxComments,
         publishedAt: existingRow.published_at * 1000,
         now,
-        // Same count as SOURCE_COUNT_COLUMN: every stored item_sources row.
-        sourceCount: mergedSources.length,
+        // Same members RANK_SIGNAL_COLUMNS reads once this batch lands.
+        ...rankSignals([
+          {
+            sourceId: existingRow.source_id,
+            points: update.maxPoints,
+            comments: update.maxComments,
+          },
+          ...(mergedRows ?? []).map((r) => ({
+            sourceId: r.source_id,
+            points: r.points,
+            comments: r.comments,
+          })),
+          ...(update.members ?? []),
+        ]),
       })
     : null;
 
@@ -180,15 +205,14 @@ async function rerankRecentStatements(
 ): Promise<D1PreparedStatement[]> {
   const { results: recentItems } = await env.DB.prepare(buildRerankQuery())
     .bind(toEpochSeconds(now) - RANK_RECOMPUTE_WINDOW_SEC)
-    .all<{
-      id: string;
-      published_at: number;
-      points: number;
-      comments: number;
-      llm_importance: number | null;
-      llm_quality: number | null;
-      source_count: number;
-    }>();
+    .all<
+      RankSignalRow & {
+        id: string;
+        published_at: number;
+        llm_importance: number | null;
+        llm_quality: number | null;
+      }
+    >();
 
   const scores = (recentItems ?? [])
     .filter((row) => !writtenIds.has(row.id))
@@ -197,12 +221,10 @@ async function rerankRecentStatements(
       r: rankScore({
         importance: row.llm_importance ?? 5,
         quality: row.llm_quality ?? 5,
-        points: row.points,
-        comments: row.comments,
         // row.published_at is stored as epoch seconds; rankScore expects ms.
         publishedAt: row.published_at * 1000,
         now,
-        sourceCount: row.source_count,
+        ...rowRankSignals(row),
       }),
     }));
   if (scores.length === 0) return [];
@@ -238,6 +260,7 @@ export async function writeItems(
       for (const { id, source, item } of newRows) {
         const mergeEntry = mergePlan.merged.get(id);
         const plan = planNewItemWrite({
+          sourceId: source.id,
           item,
           score: scored.get(id),
           translation: translated.get(id),

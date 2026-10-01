@@ -10,7 +10,7 @@ import {
 } from "../dedupe.js";
 import { parseMediaManifest } from "../media.js";
 import { isMediaManifestSchemaError } from "../media-schema.js";
-import { rankScore } from "../ranking.js";
+import { rankScore, rankSignals } from "../ranking.js";
 import { toEpochSeconds } from "../time.js";
 import { MAX_MERGED_TOPICS } from "../topics.js";
 import { jsonMap, mapEntries } from "../workflow-run.js";
@@ -86,11 +86,15 @@ export function buildMergeCandidates(
     const rank = rankScore({
       importance: score?.importance ?? 5,
       quality: score?.quality ?? 5,
-      points: row.item.points ?? 0,
-      comments: row.item.comments ?? 0,
       publishedAt: row.item.publishedAt * 1000,
       now,
-      sourceCount: row.item.sources?.length ?? 0,
+      ...rankSignals([
+        {
+          sourceId: row.source.id,
+          points: row.item.points ?? 0,
+          comments: row.item.comments ?? 0,
+        },
+      ]),
     });
     return {
       i,

@@ -77,10 +77,20 @@ export const DIGEST_MAX_BULLETS = 8;
 /** Give up on a send for a channel after this many failed attempts. */
 export const NOTIFY_MAX_ATTEMPTS = 3;
 
-/** Trending bar: rank_score already folds importance × quality ×
- *  freshness × engagement × independent sources, so a high absolute rank
- *  + a high LLM importance means "big story, corroborated, breaking now". */
-export const TRENDING_MIN_RANK = 30;
+/** Trending rank bar, relative to the window: rank_score folds importance ×
+ *  quality × freshness × reader engagement × independent outlets, and its
+ *  scale moves whenever one of those changes (2026-10-01: the importance
+ *  rubric and source-family corroboration together left a fixed 30 with no
+ *  qualifier for five days). A story must reach the TRENDING_RANK_PERCENTILE
+ *  of the last TRENDING_BAR_WINDOW_SEC of published ranks: at 0.995 that is
+ *  the top two or so of ~400 items, which gave 1–4 qualifiers a day on
+ *  2026-09-27..10-01 (0.99 gave up to 6). */
+export const TRENDING_RANK_PERCENTILE = 0.995;
+export const TRENDING_BAR_WINDOW_SEC = 72 * 60 * 60;
+/** The bar never drops below this, so a dead window cannot post its best
+ *  weak story. A fresh importance-7 story from one outlet with no reader
+ *  engagement ranks ~5.6 and stays under it. */
+export const TRENDING_RANK_FLOOR = 6;
 /** 7, not 8: Jev scores most big stories 7, so at 8 only one story a day
  *  qualified and the channels went silent after the morning digest
  *  (2026-10-01). Rank >= 30 and the daily cap/gap still keep it rare. */
@@ -127,6 +137,8 @@ export interface NotifyChannelReason {
   digest: DigestSkipReason;
   trending: TrendingSkipReason;
   maxRank: number | null;
+  /** The relative rank bar this run used (`trendingRankBar`). */
+  rankBar: number;
   budget: number;
   localHour: number;
   localDate: string;
@@ -147,7 +159,7 @@ export function summarizeNotifyReasons(
 ): string {
   const parts = Object.entries(reasons).map(([channel, r]) => {
     const max = r.maxRank === null ? "n/a" : r.maxRank.toFixed(2);
-    return `${channel}: digest ${r.digest}, trending ${r.trending} (max ${max}, budget ${r.budget})`;
+    return `${channel}: digest ${r.digest}, trending ${r.trending} (max ${max}, bar ${r.rankBar.toFixed(2)}, budget ${r.budget})`;
   });
   return parts.length > 0 ? parts.join("; ") : "no channels enabled";
 }
@@ -197,7 +209,8 @@ export function classifyTrendingSkip(
   maxRank: number | null,
   budget: number,
   candidateCount: number,
-  localHour: number
+  localHour: number,
+  rankBar: number
 ): Extract<
   TrendingSkipReason,
   "outside_hours" | "below_min_rank" | "budget_zero" | "none_unposted"
@@ -207,7 +220,7 @@ export function classifyTrendingSkip(
   // once the window opens.
   if (!isActiveHour(localHour)) return "outside_hours";
   if (budget === 0) return "budget_zero";
-  if ((maxRank ?? 0) < TRENDING_MIN_RANK) return "below_min_rank";
+  if ((maxRank ?? 0) < rankBar) return "below_min_rank";
   if (candidateCount === 0) return "none_unposted";
   return null;
 }
@@ -234,7 +247,8 @@ export function buildTrendingQuery(
   channel: string,
   nowMs: number,
   lang: Lang = "vi",
-  minImportance: number = TRENDING_MIN_IMPORTANCE
+  minImportance: number = TRENDING_MIN_IMPORTANCE,
+  minRank: number = TRENDING_RANK_FLOOR
 ): { sql: string; binds: [string, number, number, number] } {
   const copy =
     lang === "en"
@@ -268,7 +282,7 @@ export function buildTrendingQuery(
     binds: [
       channel,
       Math.floor(nowMs / 1000) - WINDOW_SEC,
-      TRENDING_MIN_RANK,
+      minRank,
       minImportance,
     ],
   };
@@ -290,16 +304,33 @@ export function buildTrendingSourcesTodayQuery(
   };
 }
 
-/** Window max rank, no threshold — so a skip can report live maxRank. */
-export function buildMaxRankQuery(nowMs: number): {
+/** Published ranks of the bar window, so one read gives both the relative
+ *  bar and the live 24h max a skip reports. ~400 rows. */
+export function buildRankWindowQuery(nowMs: number): {
   sql: string;
   binds: [number];
 } {
   return {
-    sql: `SELECT MAX(rank_score) AS max_rank FROM items
+    sql: `SELECT rank_score, published_at FROM items
           WHERE status = 'published' AND published_at >= ?`,
-    binds: [Math.floor(nowMs / 1000) - WINDOW_SEC],
+    binds: [Math.floor(nowMs / 1000) - TRENDING_BAR_WINDOW_SEC],
   };
+}
+
+/** Nearest-rank percentile (`p` in 0..1) of `values`; 0 when empty. */
+export function rankPercentile(values: readonly number[], p: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
+}
+
+/** The rank a story needs to trend: the window's TRENDING_RANK_PERCENTILE,
+ *  never below TRENDING_RANK_FLOOR. */
+export function trendingRankBar(windowRanks: readonly number[]): number {
+  return Math.max(
+    TRENDING_RANK_FLOOR,
+    rankPercentile(windowRanks, TRENDING_RANK_PERCENTILE)
+  );
 }
 
 /** Per-channel per-day budget: how many more trending posts may go out
@@ -490,11 +521,17 @@ export async function dispatchStoryNotifications(
   const key = digestKey(date);
   const dayStartMs = localDayStartMs(now, DIGEST_TIMEZONE);
 
-  const { sql: maxRankSql, binds: maxRankBinds } = buildMaxRankQuery(now);
-  const maxRankRow = await env.DB.prepare(maxRankSql)
-    .bind(...maxRankBinds)
-    .first<{ max_rank: number | null }>();
-  const maxRank = maxRankRow?.max_rank ?? null;
+  const rankWindow = buildRankWindowQuery(now);
+  const { results: windowRows } = await env.DB.prepare(rankWindow.sql)
+    .bind(...rankWindow.binds)
+    .all<{ rank_score: number | null; published_at: number }>();
+  const windowRanks = (windowRows ?? []).map((row) => row.rank_score ?? 0);
+  const rankBar = trendingRankBar(windowRanks);
+  const trendingSince = Math.floor(now / 1000) - WINDOW_SEC;
+  const recentRanks = (windowRows ?? [])
+    .filter((row) => row.published_at >= trendingSince)
+    .map((row) => row.rank_score ?? 0);
+  const maxRank = recentRanks.length > 0 ? Math.max(...recentRanks) : null;
 
   const digestByLang = new Map<Lang, DailyDigest | null>();
   // Set once a send is refused for lack of subrequests: every later send in
@@ -582,7 +619,13 @@ export async function dispatchStoryNotifications(
     );
     budget = importanceFloor === null ? 0 : 1;
 
-    const trendingSkip = classifyTrendingSkip(maxRank, budget, 1, hour);
+    const trendingSkip = classifyTrendingSkip(
+      maxRank,
+      budget,
+      1,
+      hour,
+      rankBar
+    );
     if (budgetSpent && trendingSkip === null) {
       trendingReason = "send_failed";
     } else if (
@@ -596,7 +639,8 @@ export async function dispatchStoryNotifications(
         notifier.id,
         now,
         notifier.lang,
-        importanceFloor ?? TRENDING_MIN_IMPORTANCE
+        importanceFloor ?? TRENDING_MIN_IMPORTANCE,
+        rankBar
       );
       const { results } = await env.DB.prepare(sql)
         .bind(...binds)
@@ -614,7 +658,8 @@ export async function dispatchStoryNotifications(
         maxRank,
         budget,
         candidates.length,
-        hour
+        hour,
+        rankBar
       );
       if (afterQuery) {
         trendingReason = afterQuery;
@@ -656,6 +701,7 @@ export async function dispatchStoryNotifications(
       digest: digestReason,
       trending: trendingReason,
       maxRank,
+      rankBar,
       budget,
       localHour: hour,
       localDate: date,

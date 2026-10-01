@@ -128,6 +128,7 @@ describe("notify step reason survives the stats write path", () => {
     digest: "already_sent" as const,
     trending: "below_min_rank" as const,
     maxRank: 17.86528137771019,
+    rankBar: 18.2,
     budget: 1,
     localHour: 20,
     localDate: "2026-09-29",
@@ -153,8 +154,8 @@ describe("notify step reason survives the stats write path", () => {
 
   it("keeps the plain summary readable for every channel", () => {
     expect(storedNotifyReason(summarizeNotifyReasons(reasons))).toBe(
-      "telegram: digest already_sent, trending below_min_rank (max 17.87, budget 1); " +
-        "telegram-en: digest already_sent, trending below_min_rank (max 17.87, budget 1)"
+      "telegram: digest already_sent, trending below_min_rank (max 17.87, bar 18.20, budget 1); " +
+        "telegram-en: digest already_sent, trending below_min_rank (max 17.87, bar 18.20, budget 1)"
     );
   });
 });

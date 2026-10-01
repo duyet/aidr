@@ -76,6 +76,13 @@ export interface SourceSpec {
    * them together (`worker/source-diversity.ts`). Omit to use the id.
    */
   family?: string;
+  /**
+   * `"reader"` when the adapter's points/comments are reader votes and
+   * discussion (HN, Lobsters), the only engagement `rank_score` counts.
+   * Omit (`"none"`) when they mean something else, e.g. an aggregator's
+   * author/tweet counts.
+   */
+  engagement?: "reader" | "none";
   /** Why this row exists / why these settings. Rendered into the PR evidence. */
   note?: string;
 }
@@ -167,6 +174,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     id: "hn",
     name: "Hacker News",
     type: "hn",
+    engagement: "reader",
     config: {
       query:
         "AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek",
@@ -186,6 +194,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     id: "lobsters",
     name: "Lobsters",
     type: "lobsters",
+    engagement: "reader",
     config: { tags: ["ai", "ml", "vibecoding"] },
     enabled: true,
   },
@@ -469,6 +478,7 @@ export const REGISTRY_0032: readonly SourceSpec[] = [
     id: "hn",
     name: "Hacker News",
     type: "hn",
+    engagement: "reader",
     config: {
       query:
         "AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek",
@@ -480,6 +490,7 @@ export const REGISTRY_0032: readonly SourceSpec[] = [
     id: "lobsters",
     name: "Lobsters",
     type: "lobsters",
+    engagement: "reader",
     config: {
       tags: ["ai", "ml", "vibecoding"],
       filteredTags: ["programming", "compsci", "devops", "security"],

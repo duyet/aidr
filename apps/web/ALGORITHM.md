@@ -343,10 +343,16 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
    - A deterministic title-similarity pass (normalized headlines / high
      token overlap, including short-headline-inside-long) runs alongside
      so same-story URLs the model misses still collapse.
+   - The prompt merges different outlets' first-day coverage of one
+     announcement whatever the headline angle, and keeps later developments
+     (market reaction, failed demo, wider rollout, a later benchmark)
+     separate, with real Gemini 4 examples. Feed titles are fenced as
+     untrusted data.
    - Same-story clusters collapse to a canonical item (existing item wins,
      else highest rank).
-   - Losers get status `merged` + `duplicate_of`. Their sources and max
-     points/comments fold into the canonical (`worker/dedupe.ts`).
+   - Losers get status `merged` + `duplicate_of`. Their sources fold into
+     the canonical; only reader engagement (see 7) folds into its
+     points/comments (`worker/dedupe.ts`).
 
 6. **Translate (LLM)** — EN→VI in batches, journalist style (`VI_STYLE`
    system prompt: no parenthetical glosses, no calques, keep technical
@@ -413,16 +419,30 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
    items published in the last 72h (`RANK_RECOMPUTE_WINDOW_SEC`, rolling, not
    the UTC day), in one `UPDATE … json_each(?)` statement. A day's archive
    order can shift for up to 3 days, then freezes. A pre-existing canonical
-   that absorbs a merge gets its rank recomputed from the merged points and
-   source count in the same write.
+   that absorbs a merge gets its rank recomputed from its whole cluster in
+   the same write.
 
    ```text
    rank_score = importance
               × (0.6 + 0.4·quality/10)      # quality modulates ±40%
               × exp(−ageHours/36)           # freshness decay
-              × (1 + log10(1 + points + 0.5·comments))  # engagement, log-damped
-              × (1 + 0.12·min(sourceCount, 8))          # independent sources (corroboration)
+              × (1 + log10(1 + points + 0.5·comments))  # reader engagement, log-damped
+              × (1 + 0.12·(min(sourceCount, 8) − 1))    # extra independent outlets
    ```
+
+   A story's cluster is the canonical item plus every `merged` item whose
+   `duplicate_of` points at it. `rankSignals` reads it one way everywhere
+   (insert, merge recompute, 72h re-rank, backfill, admin rate/preview;
+   SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
+
+   - `sourceCount` = distinct source **families** in the cluster
+     (`family` in `worker/sources/catalog.ts`, else the source id). One
+     outlet gets no boost; HN + TechCrunch + Verge gets 1.24. Tweets in
+     `item_sources` are display only, and the HuggingNews/MarketBrief mirror
+     pair counts once.
+   - `points`/`comments` = the highest values among cluster items whose
+     source has `engagement: "reader"` (HN, Lobsters). Aggregator
+     author/tweet counts are stored for display but never ranked.
 
 8. **Write** — D1 upserts (`worker/d1-bind.ts` guards every bind). D1 is
    the sole primary store. Migration `0024_item_media_manifest.sql` adds the
@@ -493,7 +513,8 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
       posts `bullets_en` only. Neither falls back to the other language.
       Each bullet links to its story permalink, plus a site button.
     - *Trending*: an individual post only when the algo flags a story as
-      exceptional (`rank_score ≥ 30` and `llm_importance ≥ 7`), capped at
+      exceptional (`rank_score` at or above the trending bar and
+      `llm_importance ≥ 7`), capped at
       3/day with a 3h minimum gap, one per run, and only during 09–23h
       local: a story that qualifies overnight waits for the window and posts
       then if it still ranks (before this the cap was often spent by
@@ -502,9 +523,17 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
       `llm_importance ≥ 9` may go past that cap and gap, up to 6/day with a
       1h gap; the day's own scores open the extra room, no event list is
       kept. Digest is the intended daily Telegram post.
+    - The trending bar is relative, so a rescored formula cannot silence or
+      flood the channel: `max(TRENDING_RANK_FLOOR = 6, the 0.995 percentile
+      of rank_score over published items in the last 72h)`, read once per
+      notify run. Both lanes use it. At 0.995 (about the top 2 of ~400) the
+      2026-09-27..10-01 replay gave 1–4 qualifiers a day; the floor keeps a
+      dead window's best weak story (one outlet, no reader engagement,
+      importance 7 ≈ 5.6) from posting.
     - Skip reasons are structured (`digest`: no_snapshot / already_sent /
       before_hour; `trending`: outside_hours / below_min_rank / budget_zero /
-      none_unposted) and `console.info`'d plus stored on
+      none_unposted, with the live 24h max rank and the bar) and
+      `console.info`'d plus stored on
       `workflow_runs.stats.notifyReason`.
     - Delivery state (status/attempts/last_error, bounded retries) lives in
       the `notifications` table, keyed by channel and item/date rather than
