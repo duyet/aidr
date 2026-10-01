@@ -38,11 +38,8 @@ const env: Env = {
   NEWS_ADMIN_TOKEN: "test-token",
 };
 
-function chatResponse(content: string, totalTokens = 0): Response {
-  return asStream({
-    choices: [{ message: { content } }],
-    usage: { total_tokens: totalTokens },
-  });
+function chatResponse(content: string): Response {
+  return asStream({ choices: [{ message: { content } }] });
 }
 
 describe("clusterSimilar", () => {
