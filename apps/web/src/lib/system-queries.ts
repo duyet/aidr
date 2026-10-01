@@ -153,6 +153,11 @@ export interface LlmCallRow {
   error: string | null;
   errorCode: string | null;
   errorStatus: number | null;
+  /** Requested id → resolved model(s), from migration 0033. Empty when the
+   *  row predates it; readers fall back to `[model]`. */
+  route?: string[];
+  /** Upstream provider that served the attempt, when reported. */
+  provider?: string | null;
 }
 
 export interface RunLlmSummary {
@@ -585,6 +590,27 @@ interface LlmCallDbRow {
   cached_tokens?: number | null;
   error_code?: string | null;
   error_status?: number | null;
+  route?: string | null;
+  provider?: string | null;
+}
+
+const ROUTE_HOP_RE = /^[A-Za-z0-9@][A-Za-z0-9._:/@-]{0,119}$/;
+
+/** Parses the stored JSON route, keeping only well-formed model ids. */
+export function parseLlmRoute(value: unknown): string[] {
+  if (typeof value !== "string" || value.length > 1_000) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (hop): hop is string =>
+          typeof hop === "string" && ROUTE_HOP_RE.test(hop)
+      )
+      .slice(0, 5);
+  } catch {
+    return [];
+  }
 }
 
 function safeRunId(value: unknown): string | null {
@@ -612,12 +638,22 @@ function mapLlmCallRow(r: LlmCallDbRow): LlmCallRow {
         ? safeErrorCode(r.error_code, safeError?.code ?? "unknown_error")
         : null,
     errorStatus: safeErrorStatus(r.error_status ?? safeError?.status),
+    route: parseLlmRoute(r.route),
+    provider:
+      typeof r.provider === "string" && ROUTE_HOP_RE.test(r.provider)
+        ? r.provider
+        : null,
   };
 }
 
 const LLM_SELECT_COLUMNS = `ts, run_id, task, model, ok, tokens, duration_ms,
   prompt_chars, error, prompt_tokens, completion_tokens, cached_tokens,
-  error_code, error_status`;
+  error_code, error_status, route, provider`;
+
+/** Pre-0033 schema: same columns minus route/provider. */
+const LLM_SELECT_COLUMNS_PRE_ROUTE = `ts, run_id, task, model, ok, tokens,
+  duration_ms, prompt_chars, error, prompt_tokens, completion_tokens,
+  cached_tokens, error_code, error_status`;
 
 /** Hard cap on per-call rows read for a *single* expanded run. The runs list
  * never reads rows (it aggregates in SQL), so this cannot starve another run
@@ -644,6 +680,21 @@ async function queryLlmCallsByRunId(
     const { results } = await db
       .prepare(
         `SELECT ${LLM_SELECT_COLUMNS}
+         FROM llm_calls
+         WHERE ${where}
+         ORDER BY ts ASC
+         LIMIT ${LLM_ATTEMPTS_LIMIT}`
+      )
+      .bind(...binds)
+      .all<LlmCallDbRow>();
+    return finishLlmQuery(results);
+  } catch {
+    // Route columns may not exist yet.
+  }
+  try {
+    const { results } = await db
+      .prepare(
+        `SELECT ${LLM_SELECT_COLUMNS_PRE_ROUTE}
          FROM llm_calls
          WHERE ${where}
          ORDER BY ts ASC

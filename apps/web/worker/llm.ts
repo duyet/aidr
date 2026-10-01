@@ -150,6 +150,10 @@ export interface LlmCallLogEntry {
    * task before any logger receives the entry. */
   responseSnippet: string | null;
   sensitive?: boolean;
+  /** Requested id → resolved model(s), e.g. ["@preset/aidr", "x/y"]. */
+  route?: string[] | null;
+  /** Upstream provider that served the attempt, when reported. */
+  provider?: string | null;
 }
 
 export type LlmCallLogger = (entry: LlmCallLogEntry) => void | Promise<void>;
@@ -262,11 +266,41 @@ interface Usage {
 
 interface StreamEvent {
   object?: string;
+  /** Upstream model id on content chunks (e.g. "x/y:free"). */
+  model?: string;
+  /** Upstream provider name on content chunks (e.g. "AtlasCloud"). */
+  provider?: string;
   choices?: { delta?: { content?: string; reasoning?: string } }[];
   usage?: Usage;
   // The trailing metadata frame has been seen nesting usage under either key.
   metadata?: { usage?: Usage };
-  anyrouter_metadata?: { usage?: Usage };
+  /** `model` is the catalog model a preset/router resolved to. */
+  anyrouter_metadata?: { usage?: Usage; model?: string };
+}
+
+/** What actually served an attempt: the requested id, then each id a
+ *  preset/router resolved to, plus the upstream provider. Filled while the
+ *  stream is read, so a failed attempt keeps whatever was seen. */
+export interface LlmRouteTrace {
+  resolved: string | null;
+  upstream: string | null;
+  provider: string | null;
+}
+
+const ROUTE_HOP_RE = /^[A-Za-z0-9@][A-Za-z0-9._:/@-]{0,119}$/;
+
+function routeHop(value: unknown): string | null {
+  return typeof value === "string" && ROUTE_HOP_RE.test(value) ? value : null;
+}
+
+/** Requested id first, then each distinct resolved hop. Single-hop routes
+ *  (a concrete model that served itself) stay a one-element list. */
+export function buildRoute(requested: string, trace: LlmRouteTrace): string[] {
+  const route = [requested];
+  for (const hop of [trace.resolved, trace.upstream]) {
+    if (hop && hop !== route[route.length - 1]) route.push(hop);
+  }
+  return route;
 }
 
 function pickNumber(...values: unknown[]): number | null {
@@ -363,6 +397,8 @@ async function streamCompletion(
     maxOutputChars?: number;
     /** Called on every content/reasoning delta. */
     onToken?: () => void;
+    /** Filled with the resolved route as events arrive. */
+    trace?: LlmRouteTrace;
   }
 ): Promise<AnyrouterCompletion> {
   const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
@@ -431,6 +467,14 @@ async function streamCompletion(
     }
     sawEvent = true;
     if (isQueued(event)) queued = true;
+    if (opts.trace) {
+      const resolved = routeHop(event.anyrouter_metadata?.model);
+      if (resolved) opts.trace.resolved = resolved;
+      const upstream = routeHop(event.model);
+      if (upstream && !event.anyrouter_metadata) opts.trace.upstream = upstream;
+      const provider = routeHop(event.provider);
+      if (provider) opts.trace.provider = provider;
+    }
     const delta = event.choices?.[0]?.delta;
     const outputLimit = opts.maxOutputChars ?? MAX_STREAM_CONTENT_CHARS;
     if (delta?.content || delta?.reasoning) opts.onToken?.();
@@ -657,6 +701,11 @@ async function callAnyrouter(
     }
     const attemptStartedAt = Date.now();
     const abort = new AbortController();
+    const trace: LlmRouteTrace = {
+      resolved: null,
+      upstream: null,
+      provider: null,
+    };
     try {
       const result = await raceTimeout(
         (onToken) =>
@@ -668,6 +717,7 @@ async function callAnyrouter(
             strictOutput: opts.strictOutput,
             maxOutputChars: opts.maxOutputChars,
             onToken,
+            trace,
           }),
         timeoutMs,
         `anyrouter model ${model}`,
@@ -691,6 +741,8 @@ async function callAnyrouter(
             ? null
             : result.content.slice(0, 2000),
           sensitive: opts.sensitive,
+          route: buildRoute(model, trace),
+          provider: trace.provider,
         });
         failures.push(`${model}: anyrouter response failed accept check`);
         continue;
@@ -710,6 +762,8 @@ async function callAnyrouter(
         promptChars,
         responseSnippet: opts.sensitive ? null : result.content.slice(0, 2000),
         sensitive: opts.sensitive,
+        route: buildRoute(model, trace),
+        provider: trace.provider,
       });
       return { ...result, model };
     } catch (error) {
@@ -730,6 +784,8 @@ async function callAnyrouter(
         promptChars,
         responseSnippet: null,
         sensitive: opts.sensitive,
+        route: buildRoute(model, trace),
+        provider: trace.provider,
       });
     }
   }

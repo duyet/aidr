@@ -161,7 +161,7 @@ describe("nested disclosure Escape behavior", () => {
     click(trigger);
     const panel = host.querySelector("fieldset[aria-label='Run summary']");
     expect(panel?.className).toContain("min-w-0");
-    expect(panel?.querySelector(".overflow-x-auto")).not.toBeNull();
+    expect(panel?.querySelector("ul")).not.toBeNull();
     const modelLink = panel?.querySelector("a");
     expect(modelLink).not.toBeNull();
     (modelLink as HTMLElement).focus();

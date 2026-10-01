@@ -89,11 +89,7 @@ describe("live AnyRouter model chains", () => {
 
   // Concrete models that passed a live probe go first; anyrouter/auto is the
   // last resort so one bad auto pick cannot burn a whole step's time budget.
-  const liveChain = [
-    "@preset/aidr",
-    "anyrouter/auto",
-    "anyrouter/free",
-  ];
+  const liveChain = ["@preset/aidr", "anyrouter/auto", "anyrouter/free"];
 
   it("ends score and translate chains with the router safety nets", () => {
     for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TRANSLATE_MODEL"]) {

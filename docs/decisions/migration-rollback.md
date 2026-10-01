@@ -119,6 +119,16 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   change, or the new values come back.
 - To stop the sources instead: `UPDATE sources SET enabled = 0 WHERE id IN ('hn','lobsters');`
 
+## 0033_llm_call_route.sql
+
+- Change: adds two nullable columns to `llm_calls`, `route` (JSON array:
+  requested id, then the model(s) it resolved to) and `provider`.
+- Risk: none for existing rows (they stay NULL). The logger also adds both
+  columns at runtime, so a DB without this migration still gets them.
+- Rollback: redeploy the previous Worker; it never reads the columns. Only
+  drop them if needed:
+  `ALTER TABLE llm_calls DROP COLUMN route; ALTER TABLE llm_calls DROP COLUMN provider;`
+
 ## 0001 to 0026
 
 Read from the SQL files. Most only create tables, indexes and columns, or

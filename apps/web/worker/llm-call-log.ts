@@ -18,6 +18,8 @@ const TELEMETRY_COLUMNS_SQL = [
   "ALTER TABLE llm_calls ADD COLUMN run_id TEXT",
   "ALTER TABLE llm_calls ADD COLUMN error_code TEXT",
   "ALTER TABLE llm_calls ADD COLUMN error_status INTEGER",
+  "ALTER TABLE llm_calls ADD COLUMN route TEXT",
+  "ALTER TABLE llm_calls ADD COLUMN provider TEXT",
 ];
 
 let telemetryColumnsReady = false;
@@ -144,6 +146,43 @@ export function createD1LlmCallLogger(
       const runId = entry.runId ?? fallbackRunId ?? null;
       try {
         await ensureTelemetryColumns(env.DB);
+        const route =
+          safeEntry.route && safeEntry.route.length > 0
+            ? JSON.stringify(safeEntry.route.slice(0, 5))
+            : null;
+        try {
+          await env.DB.prepare(
+            `INSERT INTO llm_calls (
+               ts, task, model, ok, tokens, duration_ms, error,
+               prompt_chars, response_snippet,
+               prompt_tokens, completion_tokens, cached_tokens,
+               run_id, error_code, error_status, route, provider
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+            .bind(
+              safeEntry.ts,
+              safeEntry.task,
+              safeEntry.model,
+              safeEntry.ok ? 1 : 0,
+              safeEntry.tokens,
+              safeEntry.durationMs,
+              safeError?.message ?? null,
+              safeEntry.promptChars,
+              null,
+              safeEntry.promptTokens,
+              safeEntry.completionTokens,
+              safeEntry.cachedTokens,
+              runId,
+              safeError?.code ?? null,
+              safeError?.status ?? null,
+              route,
+              safeEntry.provider ?? null
+            )
+            .run();
+          return;
+        } catch {
+          // Pre-0033 DB: no route/provider columns. Fall through.
+        }
         try {
           await env.DB.prepare(
             `INSERT INTO llm_calls (

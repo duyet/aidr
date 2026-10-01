@@ -50,7 +50,7 @@ let db: Awaited<ReturnType<Miniflare["getD1Database"]>>;
 const env = () => ({ DB: db }) as unknown as Env;
 
 /** Must match TELEMETRY_COLUMNS_SQL in ../llm-call-log.js. */
-const TELEMETRY_COLUMN_COUNT = 6;
+const TELEMETRY_COLUMN_COUNT = 8;
 const T0 = 1_790_349_075_000;
 
 const RUN_A = "aaaaaaaa-1111-4111-8111-aaaaaaaa1111";
@@ -260,7 +260,7 @@ describe("llm_calls run identity over a real D1 (#189)", () => {
   });
 
   it("stops retrying a settled schema error instead of looping forever", async () => {
-    // A missing table is terminal for this isolate: re-issuing six ALTERs on
+    // A missing table is terminal for this isolate: re-issuing eight ALTERs on
     // every logged call would add a failed DDL round-trip per attempt for a
     // schema that will never appear. The insert ladder still runs.
     const realPrepare = db.prepare.bind(db);

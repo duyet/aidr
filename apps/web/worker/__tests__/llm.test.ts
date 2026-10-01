@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LlmCallLogEntry } from "../llm.js";
 import {
+  buildRoute,
   callAnyrouter,
   _extractLastJsonObjectForTests as extractLastJsonObject,
   generateTldr,
@@ -2035,5 +2036,51 @@ describe("timeouts are recorded as timeouts", () => {
     for (const hop of hops.slice(2)) {
       expect(hop.durationMs, hop.model).toBeGreaterThanOrEqual(5_000);
     }
+  });
+});
+
+describe("LLM call route", () => {
+  afterEach(() => {
+    setLlmCallLogger(null);
+    vi.unstubAllGlobals();
+  });
+
+  it("drops repeated hops so a concrete model is a one-element route", () => {
+    expect(
+      buildRoute("x/y", { resolved: "x/y", upstream: null, provider: null })
+    ).toEqual(["x/y"]);
+  });
+
+  // "@preset/aidr" alone says nothing about which model ran; the logged
+  // route must name the model the preset resolved to.
+  it("logs what a preset resolved to and which provider served it", async () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    const frames = [
+      {
+        model: "dots/note:free",
+        provider: "AtlasCloud",
+        choices: [{ delta: { content: '{"ok":true}' } }],
+      },
+      { model: "dots/note", anyrouter_metadata: { model: "dots/note" } },
+    ];
+    const body = `${frames.map((f) => `data: ${JSON.stringify(f)}\n\n`).join("")}data: [DONE]\n\n`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(body, { status: 200 }))
+    );
+    await callAnyrouter(
+      { ...env, ANYROUTER_MODEL: "@preset/aidr" },
+      [{ role: "user", content: "hi" }],
+      { json: true }
+    );
+    expect(entries[0]?.route).toEqual([
+      "@preset/aidr",
+      "dots/note",
+      "dots/note:free",
+    ]);
+    expect(entries[0]?.provider).toBe("AtlasCloud");
   });
 });
