@@ -537,13 +537,17 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
 
-- `anyrouter/auto`
-- `deepseek/deepseek-v4.1-flash`
+- `nvidia/nemotron-3-120b-a12b`
+- `nvidia/nemotron-3-ultra-550b-a55b`
 - `poolside/laguna-s-2.1`
+- `anyrouter/hermes`
+- `anyrouter/auto`
 
-TL;DR and translate use that chat chain without Jev. The VI→EN generator
-uses its concrete ids (`deepseek/deepseek-v4.1-flash`,
-`poolside/laguna-s-2.1`).
+Translate uses the same chain without Jev. TL;DR drops Laguna (50-108s on
+a 20K-char prompt, past the TL;DR slice). The VI→EN generator uses only the
+concrete ids. The translation reviewer (`nvidia/nemotron-3-super-120b-a12b`,
+`z-ai/glm-4.7`) shares no id with any generator chain. `wrangler.toml` keeps
+the probe results behind each pick.
 
 `google/gemini-3.5-flash` is BYOK-only on AnyRouter and 404s for keyless
 calls (anyrouter#3655). `minimax/m3` has no upstream key and returns
