@@ -69,6 +69,14 @@ cmd_comment() { # comment <bugsink-issue-uuid> <text> — link Bugsink back to G
       -H 'Content-Type: application/json' -d @- "$BASE/issue-comments/" >/dev/null
 }
 
+cmd_resolve() { # resolve <bugsink-issue-uuid> <fix url> — only after the fix is live and validated
+  [[ -n "${2:-}" ]] || { echo "usage: bugsink resolve <issue-uuid> <merged PR or commit url>" >&2; exit 2; }
+  if [[ -n "${DRY_RUN:-}" || -n "${BUGSINK_FIXTURE:-}" ]]; then echo "DRY_RUN bugsink resolve $1 ($2)"; return; fi
+  cmd_comment "$1" "Fixed in $2 — deployed and validated; resolving."
+  load_token
+  curl -fsS -X POST -H "Authorization: Bearer $BUGSINK_API_TOKEN" "$BASE/issues/$1/resolve/" >/dev/null
+}
+
 cmd_notify() { # notify <message> — herdr-desk Telegram notice
   if [[ -n "${DRY_RUN:-}" ]]; then echo "DRY_RUN notify: $1"; return; fi
   local desk; desk="$(ls -d "$HOME"/.config/herdr/plugins/github/herdr-desk-*/bin/desk 2>/dev/null | head -1)"
@@ -82,6 +90,7 @@ case "${1:-}" in
   existing) shift; cmd_existing "$@" ;;
   file) shift; cmd_file "$@" ;;
   comment) shift; cmd_comment "$@" ;;
+  resolve) shift; cmd_resolve "$@" ;;
   notify) shift; cmd_notify "$@" ;;
   *) cat <<'EOF'
 bugsink issues [project-slug]        open issues as JSON (default: aidr)
@@ -89,6 +98,7 @@ bugsink event <issue-uuid>           latest event: message, exception, tags, sta
 bugsink existing <FRIENDLY-ID>       GitHub issues titled "[bugsink ID]" (any state)
 bugsink file <ID> <title> <body.md>  create labelled GitHub issue
 bugsink comment <issue-uuid> <text>  add a Bugsink comment (e.g. GitHub link)
+bugsink resolve <issue-uuid> <url>   comment the fix url, then mark resolved
 bugsink notify <message>             herdr-desk Telegram notice
 Env: BUGSINK_API_TOKEN (else .env.local), BUGSINK_FIXTURE=<dir>, DRY_RUN=1
 EOF

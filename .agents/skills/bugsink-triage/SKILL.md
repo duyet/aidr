@@ -16,6 +16,7 @@ $S event <issue-uuid>          # latest event: message, exception, tags, stacktr
 $S existing AIDR-7             # GitHub issues titled "[bugsink AIDR-7]", any state
 $S file AIDR-7 "<title>" body.md
 $S comment <issue-uuid> "Tracked in <gh url>"
+$S resolve <issue-uuid> <merged PR url>   # only after deploy + validation pass
 $S notify "<message>"
 ```
 
@@ -58,7 +59,7 @@ $S notify "<message>"
 
    **The repo is public.** Only put in the type, message, and in-app frames. Leave out request bodies, headers, cookies, user IDs, emails, IPs, and tokens. When unsure, leave it out.
 
-   Then run `$S comment <uuid> "Tracked in <issue url>"` so Bugsink links back. Never resolve or mute issues in Bugsink: that is the owner's call.
+   Then run `$S comment <uuid> "Tracked in <issue url>"` so Bugsink links back. Don't resolve here and never mute: an issue is resolved only in step 6, after its fix is live and validated. Muting stays the owner's call.
 
 5. **Fix in parallel.** Fixes run in background subagents, one per code-bug issue, all started at once. Up to **5 per run**; any extra issues wait for the next run. Ops, health-alert, and noise issues never get a fix.
    - **How to spawn.** In Claude Code, use the Agent tool with `run_in_background: true` and `isolation: "worktree"`, with `model: "sonnet"` unless the bug needs deep reasoning. Other agents use their own background/parallel mechanism. With none available, fix the issues one after another.
@@ -87,6 +88,7 @@ $S notify "<message>"
       - Validate again.
       - Reopen the issue with the failing evidence.
       - Stop shipping the rest of the PRs this run. Leave them open for the owner.
+   6. **Resolve once validated.** When validation passes, mark the Bugsink issue done: `$S resolve <uuid> <merged PR url>` (it comments the PR, then resolves), and close the GitHub issue if `Fixes #<n>` didn't. If the error comes back, Bugsink reopens it as a regression and the next run handles it (step 2).
    - Never auto-merge release-please PRs (`chore(main): release …`). Only ship `fix/bugsink-*` PRs opened by this run.
 
 7. **Notify once**, and only if something changed this run (new issue, regression, PR opened, deployed, or rolled back). One message:

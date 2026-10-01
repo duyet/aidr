@@ -192,7 +192,41 @@ export function hasRunDetails(
   );
 }
 
-export type RunStatus = "ok" | "error" | "empty" | "in_progress" | "unknown";
+export type RunStatus =
+  | "ok"
+  | "degraded"
+  | "error"
+  | "empty"
+  | "in_progress"
+  | "unknown";
+
+export type StepState = "ok" | "skipped" | "degraded" | "failed";
+
+const STEP_FAILURE_RE = /\b(?:fail(?:ed|ure)?|error|exhausted|timed out)\b/i;
+const STEP_FALLBACK_RE =
+  /\b(?:fail(?:ed|ure)?|error|exhausted|timed out|thin|partial)\b|batch_failed/i;
+const STEP_IDLE_RE = /^(?:skipped\b|0 (?:pending|candidates)\b|recording$)/i;
+
+/** One step's outcome from its recorded action and reason. A step that did
+ *  only part of its work ("translated 2/3") or finished on a fallback
+ *  ("generated" + "LLM thin (chain exhausted …)") is degraded, not ok. */
+export function stepState(step: {
+  action: string;
+  reason?: string;
+}): StepState {
+  const action = step.action.trim();
+  const ratio = /(\d+)\s*\/\s*(\d+)/.exec(action);
+  if (ratio) {
+    const done = Number(ratio[1]);
+    const total = Number(ratio[2]);
+    if (total > 0 && done === 0) return "failed";
+    if (done < total) return "degraded";
+  }
+  if (STEP_FAILURE_RE.test(action)) return "failed";
+  if (STEP_IDLE_RE.test(action)) return "skipped";
+  if (step.reason && STEP_FALLBACK_RE.test(step.reason)) return "degraded";
+  return "ok";
+}
 
 /** Lifecycle of the lazily fetched per-run attempt rows. */
 export type RunAttemptsState =
@@ -208,6 +242,11 @@ export function runStatus(run: WorkflowRunRow): RunStatus {
   if (run.started_at != null && run.finished_at == null) return "in_progress";
   if (run.items_fetched === 0) return "empty";
   if (run.items_fetched == null) return "unknown";
+  // A run is only ok when every step is: one failed or partial step means
+  // readers may be missing translations or a full TL;DR.
+  const states = safeRunSteps(run.stats).map(stepState);
+  if (states.some((state) => state === "failed" || state === "degraded"))
+    return "degraded";
   return "ok";
 }
 

@@ -30,6 +30,7 @@ import {
   shortModel,
   statusVariant,
   stepFallbackNotes,
+  stepState,
   tokenBreakdown,
 } from "./run-format";
 
@@ -627,5 +628,43 @@ describe("groupFailedAttempts", () => {
       [3, "z-ai/glm-4.7", "timeout"],
       [1, "x/other", "provider_error"],
     ]);
+  });
+});
+
+describe("stepState / runStatus", () => {
+  const run = (steps: { name: string; action: string; reason?: string }[]) => ({
+    id: "r",
+    started_at: 1,
+    finished_at: 2,
+    items_fetched: 10,
+    items_new: 1,
+    error: null,
+    stats: { steps },
+  });
+
+  // A run that left items untranslated or a TL;DR on a fallback is not "OK"
+  // even though nothing threw: the badge must say there were issues.
+  it("treats partial or fallback steps as degraded, zero-of-N as failed", () => {
+    expect(stepState({ action: "translated 3/3 items" })).toBe("ok");
+    expect(stepState({ action: "translated 2/3 items" })).toBe("degraded");
+    expect(stepState({ action: "translated 0/1" })).toBe("failed");
+    expect(
+      stepState({ action: "generated", reason: "LLM thin (chain exhausted)" })
+    ).toBe("degraded");
+    expect(stepState({ action: "skipped", reason: "no eligible" })).toBe(
+      "skipped"
+    );
+  });
+
+  it("marks the run degraded when any step is, ok only when all are", () => {
+    expect(runStatus(run([{ name: "fetch", action: "9 items" }]))).toBe("ok");
+    expect(
+      runStatus(
+        run([
+          { name: "fetch", action: "9 items" },
+          { name: "translate", action: "translated 1/2 items" },
+        ])
+      )
+    ).toBe("degraded");
   });
 });

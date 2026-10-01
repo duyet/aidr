@@ -26,6 +26,7 @@ type RunStatus = ReturnType<typeof runStatus>;
 
 const STATUS_LABEL: Record<RunStatus, { en: string; vi: string }> = {
   ok: { en: "OK", vi: "OK" },
+  degraded: { en: "issues", vi: "có lỗi" },
   error: { en: "error", vi: "lỗi" },
   in_progress: { en: "running", vi: "đang chạy" },
   empty: { en: "empty", vi: "trống" },
@@ -36,6 +37,10 @@ const STATUS_STYLE: Record<RunStatus, { pill: string; dot: string }> = {
   ok: {
     pill: "border-transparent bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
     dot: "bg-emerald-500",
+  },
+  degraded: {
+    pill: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400",
+    dot: "bg-orange-500",
   },
   error: {
     pill: "border-transparent bg-destructive/10 text-destructive",

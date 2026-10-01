@@ -5,6 +5,7 @@ import { RunAttemptRows } from "./RunAttemptRows";
 import { RunErrorsPanel } from "./RunErrorsPanel";
 import { RunModelLinks } from "./RunModelLinks";
 import { RunStepList } from "./RunStepList";
+import { RunWorkflowGraph } from "./RunWorkflowGraph";
 import { COPY, statusLabel } from "./run-details-copy";
 import {
   bySourceSubline,
@@ -183,7 +184,10 @@ export function RunDetails({
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {copy.workflow}
           </p>
-          <RunStepList steps={steps} />
+          <div className="space-y-3">
+            <RunWorkflowGraph steps={steps} />
+            <RunStepList steps={steps} />
+          </div>
         </div>
       ) : (
         <div className="border-t border-border/60 pt-3">
