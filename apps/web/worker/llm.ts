@@ -957,7 +957,7 @@ function parseJson<T>(raw: string): T {
 }
 
 /**
- * Laguna S 2.1 (serves translate and TL;DR, also via @preset/aidr) often emits one stray
+ * Laguna S 2.1 (serves translate and TL;DR) often emits one stray
  * closer: a trailing `]` after the root object, or a `}` that ends the root
  * before `,"bullets_vi":[...]` (probe 2026-10-01). A plain parse then drops
  * the batch, or keeps only bullets_en and the VI digest falls back to

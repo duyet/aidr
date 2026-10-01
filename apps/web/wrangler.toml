@@ -61,35 +61,40 @@ database_id = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427"
 
 [vars]
 ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
-# Chat chains, picked by a streaming probe (2026-10-01): stream:true with
-# response_format json_object on the real prompts, 3 tries. A non-streaming
-# probe misleads. Time to first token / total (resolved id = itself):
-#   @preset/aidr             resolves to poolside/laguna-s-2.1; 2-5s / 18-25s
-#                            translate, 3 of 3 (after AnyRouter fixed 404/429)
-#   poolside/laguna-s-2.1    4s / 18-31s translate, 4-10s / 102-119s TL;DR
-#                            (26K chars, 3 of 3 with a 130s cap)
-#   anyrouter/auto           resolves to poolside/laguna-s-2.1 (same timing)
-#   anyrouter/free           1 of 5 ok (dots-3-note-preview), 4x 400 from
-#                            upstream openrouter-pool (reported to AnyRouter)
+# Chat chains, picked by a streaming probe (2026-10-01 recheck): stream:true
+# with response_format json_object, our headers, real prompts (3-item
+# translate batch ~9.4K chars from prod items; review on prod pairs).
+# Time to first token / total (resolved id):
+#   poolside/laguna-s-2.1    6-8s / 55-60s big translate, 3 of 3 (one with a
+#                            stray closer, parseJson repairs it); 5s / 6-12s
+#                            small; accepts provider.require_parameters, so it
+#                            does honour response_format on this key
+#   @preset/aidr             now resolves to stealth/space-bunny-alpha: big
+#                            translate 0 of 4 (reasoning eats max_tokens,
+#                            finish_reason length, no content); prod ~4.5K
+#                            translate 8 of 8 ok, ~7K and TL;DR time out at 20s
+#   anyrouter/auto           502 upstream_exhausted or nemotron-3-ultra with a
+#                            29-66s first token; prod translate 0 of 8. Kept
+#                            last only as the router safety net; TL;DR is the
+#                            one place it paid off (resolved to Laguna, 3 prod
+#                            successes in the 24h before the recheck)
 # Laguna often emits one stray `]`/`}`; parseJson drops it (llm.ts).
-# anyrouter/latest now accepts json_object but also resolves to Laguna, so
-# it adds nothing over auto.
-# @preset/aidr was 404 then 429 billing_concurrency_limited until AnyRouter
-# fixed both on 2026-10-01. Removed: meta/muse-glimmer-30b (34s first token,
-# 60s hang, 502), anyrouter/cowork (resolves to stealth/space-bunny-alpha,
-# empty content 2 of 3). nvidia/nemotron-3-120b-a12b and -super never stream
-# a token; -ultra buffers 56-140s; deepseek-v4.1-flash, minimax/m3 fail.
+# Removed 2026-10-01: anyrouter/free (dots-3-note-preview, reasoning-only on
+# big prompts, prod translate 0 of 8), anyrouter/latest (space-bunny, same
+# as the preset). Earlier: meta/muse-glimmer-30b (34s first token, 60s hang,
+# 502), anyrouter/cowork (empty content 2 of 3). nvidia/nemotron-3-120b-a12b
+# and -super never stream a token; -ultra buffers 56-140s;
+# deepseek-v4.1-flash, minimax/m3 fail.
 # BYOK-only on this key (404 "model_unavailable"): openai/*, qwen/*,
 # google/*, meta/llama-*, meta/muse-spark-*, mistralai/*, moonshotai/*,
 # x-ai/*, minimax/m2.*, cohere/*, nex-agi/*, bytedance-seed/*, upstage/*,
 # xiaomi/*, stepfun-ai/*, tencent/*, ibm-granite/*, sakana/*, openrouter/free.
 # Score tries Jev first (ANYROUTER_JEV_MODEL), then ANYROUTER_MODEL.
-ANYROUTER_MODEL = "@preset/aidr,poolside/laguna-s-2.1,anyrouter/auto,anyrouter/free"
-ANYROUTER_TRANSLATE_MODEL = "@preset/aidr,poolside/laguna-s-2.1,anyrouter/auto,anyrouter/free"
-# TL;DR keeps two ids: the preset already is Laguna, and every extra id
-# reserves a 20s fallback slice out of the first hop's budget (prod
-# regenerate 2026-10-01: preset got ~100s, Laguna needs 102-119s).
-ANYROUTER_TLDR_MODEL = "@preset/aidr,anyrouter/auto"
+ANYROUTER_MODEL = "poolside/laguna-s-2.1,@preset/aidr,anyrouter/auto"
+ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,@preset/aidr,anyrouter/auto"
+# TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
+# the first hop's budget, and Laguna needs 102-119s on the 26K VI prompt.
+ANYROUTER_TLDR_MODEL = "poolside/laguna-s-2.1,anyrouter/auto"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
 # (router aliases and presets are filtered out of this chain). No second
@@ -97,13 +102,17 @@ ANYROUTER_TLDR_MODEL = "@preset/aidr,anyrouter/auto"
 ANYROUTER_ENGLISH_TRANSLATE_MODEL = "poolside/laguna-s-2.1"
 # Translation semantic review: explicit concrete ids, disjoint from every
 # generator id; missing/overlapping config fails closed. Max 2 ids.
-# Review prompt probe (first token / total, valid v2 JSON):
-#   inclusionai/ling-3.0-flash-sante  5-9s / 5-10s, 3 of 3 (empty on the
-#                                     long generator prompts: reviewer only)
-#   z-ai/glm-4.6                      12-20s / 14-22s, 2 of 3; upstream name
-#                                     glm-5.3-flash, catalog id unchanged
-# GLM's first token sits at the 20s cutoff, hence 7 prod timeouts as head.
-ANYROUTER_REVIEW_MODEL = "inclusionai/ling-3.0-flash-sante,z-ai/glm-4.6"
+# Review probe on 3 prod pairs with provider.require_parameters (first
+# token / total, valid v2 JSON):
+#   z-ai/glm-4.6                      9-10s / 11-12s, 3 of 3; prod route
+#                                     column records upstream glm-5.3-flash
+#   z-ai/glm-5.2                      10s / 11-12s, 3 of 3
+# Removed: inclusionai/ling-3.0-flash-sante (no response_format: 404
+# unsupported_parameters under require_parameters; prod invalid_response 5 of
+# 5 at the 1024-token cap). z-ai/glm-5.3-flash and z-ai/glm-4.5 502
+# upstream_exhausted 3 of 3; stealth/space-bunny-alpha 13s first token and
+# reasoning-only 1 of 3.
+ANYROUTER_REVIEW_MODEL = "z-ai/glm-4.6,z-ai/glm-5.2"
 # Canonical catalog id typesafe/jev (upstream alias jev-latest). System One
 # only: score judgments and review gates try it first; the chat chain above
 # is the backup. BYOK-only — Dashboard → BYOK → TypeSafe. Never add this id
