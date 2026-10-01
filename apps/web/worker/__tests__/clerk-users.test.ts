@@ -281,6 +281,39 @@ describe("parseClerkUserList", () => {
     expect(parsed?.updatedAt).toBe(4242);
   });
 
+  it("parses the bare array the live Clerk Backend API returns and flags verified emails", () => {
+    const rows = parseClerkUserList(
+      [
+        {
+          id: "user_live1",
+          primary_email_address_id: "idn_1",
+          email_addresses: [
+            {
+              id: "idn_1",
+              email_address: "a@example.com",
+              verification: { status: "verified" },
+            },
+          ],
+        },
+        {
+          id: "user_live2",
+          email_addresses: [
+            {
+              id: "idn_2",
+              email_address: "b@example.com",
+              verification: { status: "unverified" },
+            },
+          ],
+        },
+      ],
+      1_700_000_000
+    );
+    expect(rows.map((r) => [r.id, r.emailVerified])).toEqual([
+      ["user_live1", true],
+      ["user_live2", false],
+    ]);
+  });
+
   it("returns nothing for a payload without a user list", () => {
     expect(parseClerkUserList(null, 1)).toEqual([]);
     expect(parseClerkUserList({ data: "nope" }, 1)).toEqual([]);

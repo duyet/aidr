@@ -275,11 +275,14 @@ export function parseClerkUserList(
   payload: unknown,
   nowSec: number
 ): ClerkUserSyncRow[] {
-  const data =
-    payload &&
-    typeof payload === "object" &&
-    Array.isArray((payload as { data?: unknown }).data)
-      ? ((payload as { data: unknown[] }).data ?? [])
+  // GET /v1/users returns a bare array; the {data} envelope is the webhook and
+  // paginated-list shape. Accept both so a live backfill is never read as empty.
+  const data = Array.isArray(payload)
+    ? payload
+    : payload &&
+        typeof payload === "object" &&
+        Array.isArray((payload as { data?: unknown }).data)
+      ? (payload as { data: unknown[] }).data
       : [];
 
   const rows: ClerkUserSyncRow[] = [];
