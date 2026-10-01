@@ -91,9 +91,6 @@ describe("live AnyRouter model chains", () => {
   // last resort so one bad auto pick cannot burn a whole step's time budget.
   const liveChain = [
     "@preset/aidr",
-    "meta/muse-glimmer-30b",
-    "poolside/laguna-s-2.1",
-    "anyrouter/cowork",
     "anyrouter/auto",
     "anyrouter/free",
   ];
