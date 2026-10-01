@@ -1,4 +1,5 @@
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
+import { stripTitleMarker } from "../../src/lib/plain-text.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
 import { reportDeliveryFailure } from "../bugsink.js";
@@ -16,12 +17,13 @@ import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "../time.js";
 import type { Env } from "../types.js";
 import { telegramEnNotifier, telegramNotifier } from "./telegram.js";
-import type {
-  DailyDigest,
-  DigestBullet,
-  Notifier,
-  SendResult,
-  StoryPayload,
+import {
+  type DailyDigest,
+  type DigestBullet,
+  isSubrequestLimitError,
+  type Notifier,
+  type SendResult,
+  type StoryPayload,
 } from "./types.js";
 import { webhookNotifier } from "./webhook.js";
 
@@ -38,6 +40,12 @@ import { webhookNotifier } from "./webhook.js";
  * `digest:<date>`, story rows keyed by item id. Failed sends retry on
  * later hourly runs up to NOTIFY_MAX_ATTEMPTS. An `ambiguous` send (no usable
  * answer, so the message may be posted) is never retried.
+ *
+ * Notify runs last in the hourly Workflow, and the subrequest budget is per
+ * Workflow instance, so fetch, LLM and D1 work earlier in the run can leave it
+ * empty. A send the runtime refuses for that reason (`budgetExhausted`) posted
+ * nothing: it stops every later send in this dispatch, costs no attempt, and
+ * the next hourly run sends it.
  */
 
 /** Registered delivery channels; add discord/... here. */
@@ -152,6 +160,7 @@ export function hydrateStory(row: StoryRow): StoryPayload {
   delete story.media_manifest;
   return {
     ...story,
+    title: stripTitleMarker(story.title),
     url: canonicalizeMediaUrl(story.url) ?? "",
     image_url: canonicalizeMediaImageUrl(
       primaryThumbnailUrl(manifest, story.image_url, story.url)
@@ -332,22 +341,32 @@ async function loadDigest(
   const edition = await loadEdition(env, date, lang, DIGEST_MAX_BULLETS);
   if (!edition) return null;
 
-  const resolved: DigestBullet[] = [];
-  for (const bullet of edition.bullets) {
-    let url: string | null = null;
-    const itemId = primaryItemId(bullet);
-    if (itemId) {
-      const item = await env.DB.prepare(
-        "SELECT id, category FROM items WHERE id = ?"
-      )
-        .bind(itemId)
-        .first<{ id: string; category: string | null }>();
-      if (item) {
-        url = absoluteSiteUrl(storyPath(item), lang);
-      }
-    }
-    resolved.push({ text: bullet.text, url });
+  // One query for every bullet's story: each D1 call is a subrequest out of
+  // the same per-instance budget the sends need.
+  const ids = [
+    ...new Set(
+      edition.bullets
+        .map((bullet) => primaryItemId(bullet))
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const items = new Map<string, { id: string; category: string | null }>();
+  if (ids.length > 0) {
+    const { results } = await env.DB.prepare(
+      `SELECT id, category FROM items WHERE id IN (${ids.map(() => "?").join(", ")})`
+    )
+      .bind(...ids)
+      .all<{ id: string; category: string | null }>();
+    for (const row of results ?? []) items.set(row.id, row);
   }
+  const resolved: DigestBullet[] = edition.bullets.map((bullet) => {
+    const itemId = primaryItemId(bullet);
+    const item = itemId ? items.get(itemId) : undefined;
+    return {
+      text: bullet.text,
+      url: item ? absoluteSiteUrl(storyPath(item), lang) : null,
+    };
+  });
   return { lang, date: edition.date, bullets: resolved };
 }
 
@@ -370,6 +389,18 @@ export async function recordDelivery(
   key: string,
   result: SendResult
 ): Promise<void> {
+  if (result.budgetExhausted) {
+    // Nothing was sent: keep the row retryable and the attempt count as is.
+    await env.DB.prepare(
+      `INSERT INTO notifications (channel, item_id, target, status, attempts, message_id, last_error, posted_at)
+       VALUES (?, ?, ?, 'failed', 0, NULL, ?, ?)
+       ON CONFLICT(channel, item_id) DO UPDATE SET
+         last_error = excluded.last_error`
+    )
+      .bind(nn(channel), nn(key), nn(target), result.error ?? null, Date.now())
+      .run();
+    return;
+  }
   await env.DB.prepare(
     `INSERT INTO notifications (channel, item_id, target, status, attempts, message_id, last_error, posted_at)
      VALUES (?, ?, ?, ?, 1, ?, ?, ?)
@@ -391,6 +422,25 @@ export async function recordDelivery(
     )
     .run();
 }
+
+/** Runs one send; a throw becomes a failed result, never a crash. */
+async function attemptSend(
+  send: () => Promise<SendResult>
+): Promise<SendResult> {
+  try {
+    return await send();
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+      ...(isSubrequestLimitError(error) ? { budgetExhausted: true } : {}),
+    };
+  }
+}
+
+/** Reason recorded for sends skipped after the budget ran out. */
+export const BUDGET_SPENT_ERROR =
+  "skipped: subrequest budget spent earlier in this run";
 
 /** Owner-facing wording: an ambiguous send needs a look at the channel. */
 function failureLabel(result: SendResult): string {
@@ -420,6 +470,9 @@ export async function dispatchStoryNotifications(
   const maxRank = maxRankRow?.max_rank ?? null;
 
   const digestByLang = new Map<Lang, DailyDigest | null>();
+  // Set once a send is refused for lack of subrequests: every later send in
+  // this dispatch would be refused too, and each refusal is not a real try.
+  let budgetSpent = false;
 
   for (const notifier of notifiers) {
     if (!notifier.enabled(env)) continue;
@@ -449,17 +502,21 @@ export async function dispatchStoryNotifications(
       }
       if (!digest) {
         digestReason = "no_snapshot";
+      } else if (budgetSpent) {
+        digestReason = "send_failed";
+        digestError = BUDGET_SPENT_ERROR;
       } else {
-        let result: SendResult;
-        try {
-          result = await notifier.sendDigest(env, digest);
-        } catch (error) {
-          result = {
-            ok: false,
-            error: error instanceof Error ? error.message : String(error),
-          };
-        }
-        if (!result.ok) {
+        const result = await attemptSend(() =>
+          notifier.sendDigest(env, digest)
+        );
+        if (result.budgetExhausted) {
+          budgetSpent = true;
+          digestReason = "send_failed";
+          digestError = result.error;
+          console.error(
+            `notify(${notifier.id}) digest deferred: ${result.error}`
+          );
+        } else if (!result.ok) {
           digestReason = "send_failed";
           digestError = result.error;
           console.error(
@@ -499,7 +556,9 @@ export async function dispatchStoryNotifications(
     budget = importanceFloor === null ? 0 : 1;
 
     const trendingSkip = classifyTrendingSkip(maxRank, budget, 1, hour);
-    if (
+    if (budgetSpent && trendingSkip === null) {
+      trendingReason = "send_failed";
+    } else if (
       trendingSkip === "outside_hours" ||
       trendingSkip === "budget_zero" ||
       trendingSkip === "below_min_rank"
@@ -526,16 +585,20 @@ export async function dispatchStoryNotifications(
         trendingReason = afterQuery;
       } else {
         for (const story of candidates.slice(0, budget)) {
-          let result: SendResult;
-          try {
-            result = await notifier.sendStory(env, story);
-          } catch (error) {
-            result = {
-              ok: false,
-              error: error instanceof Error ? error.message : String(error),
-            };
+          if (budgetSpent) {
+            trendingReason = "send_failed";
+            break;
           }
-          if (!result.ok) {
+          const result = await attemptSend(() =>
+            notifier.sendStory(env, story)
+          );
+          if (result.budgetExhausted) {
+            budgetSpent = true;
+            trendingReason = "send_failed";
+            console.error(
+              `notify(${notifier.id}) trending deferred for ${story.id}: ${result.error}`
+            );
+          } else if (!result.ok) {
             trendingReason = "send_failed";
             console.error(
               `notify(${notifier.id}) trending failed for ${story.id}: ${result.error}`

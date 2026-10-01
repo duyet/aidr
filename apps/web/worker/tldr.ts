@@ -1,3 +1,4 @@
+import { stripTitleMarker } from "../src/lib/plain-text.js";
 import { generateTldr, type TldrBullet } from "./llm.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE, toEpochSeconds } from "./time.js";
@@ -249,10 +250,14 @@ function composeReason(composed: Extract<ComposedTldr, { ok: true }>): string {
 
 /** LLM digest plus the thin / English-only-VI fallbacks: exactly the
  * bullets `ensureDailyTldr` would persist, without touching D1. */
-async function composeTldr(
-  env: Env,
-  results: ItemRow[]
-): Promise<ComposedTldr> {
+async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
+  // Stored rows may still carry a wire "UPDATE:" marker; bullets quote titles.
+  const results = rows.map((row) => ({
+    ...row,
+    title: stripTitleMarker(row.title),
+    title_vi:
+      row.title_vi == null ? row.title_vi : stripTitleMarker(row.title_vi),
+  }));
   const tldr = await generateTldr(
     env,
     results.map((row) => ({

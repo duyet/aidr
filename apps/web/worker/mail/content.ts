@@ -1,3 +1,4 @@
+import { stripTitleMarker } from "../../src/lib/plain-text.js";
 import type { Env } from "../types.js";
 
 export interface MailContentItem {
@@ -62,7 +63,7 @@ export async function listMailContent(env: Env): Promise<{
   for (const row of results ?? []) {
     items.push({
       kind: "news",
-      title: row.title,
+      title: stripTitleMarker(row.title),
       url: row.url,
       excerpt: (row.summary ?? "").slice(0, 280),
     });

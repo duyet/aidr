@@ -344,6 +344,68 @@ describe("translation review contracts", () => {
     );
   });
 
+  // Real TL;DR/translation slips from production (2026-10-01): a wrong
+  // magnitude or an inverted ratio changes the claim, so it must reach the
+  // repair path; equivalent Vietnamese formatting must not.
+  function viPair(source: string, candidate: string): TranslationPair {
+    return {
+      source: { title: source, summary: "" },
+      candidate: { title: candidate, summary: "" },
+      sourceLang: "en",
+      targetLang: "vi",
+      direction: "en-vi",
+    };
+  }
+
+  it("flags per-million pricing translated as per-billion", () => {
+    const failures = detectHardSemanticFailures(
+      viPair(
+        "The model costs $2/M input tokens.",
+        "Mô hình này chỉ 2 USD/tỷ token đầu vào."
+      ),
+      review("en-vi")
+    );
+    expect(failures).toContain("units");
+  });
+
+  it("flags a fraction of the price turned into a multiple", () => {
+    const failures = detectHardSemanticFailures(
+      viPair(
+        "It costs one-fifth of Astra's standard prices.",
+        "Mô hình này giá rẻ gấp năm lần so với Astra."
+      ),
+      review("en-vi")
+    );
+    expect(failures).toContain("numbers");
+  });
+
+  it("flags million versus nghìn tỷ (trillion)", () => {
+    expect(
+      detectHardSemanticFailures(
+        viPair("A $5 million deal.", "Thương vụ 5 nghìn tỷ USD."),
+        review("en-vi")
+      )
+    ).toContain("units");
+  });
+
+  it.each([
+    ["Context of 1M tokens.", "Ngữ cảnh 1 triệu token."],
+    ["It costs $2.", "Giá 2 USD."],
+    ["Accuracy reached 77.9%.", "Độ chính xác đạt 77,9%."],
+    ["Revenue hit $2.5B.", "Doanh thu đạt 2,5 tỷ USD."],
+    ["A $1.2 trillion market.", "Thị trường 1,2 nghìn tỷ USD."],
+    ["Revenue hit $2.5 billion.", "Doanh thu đạt 2,5 tỉ USD."],
+    ["It costs one-fifth of the price.", "Giá chỉ bằng một phần năm."],
+    ["Llama 70B runs in 15m.", "Llama 70B chạy trong 15m."],
+  ])("accepts equivalent formatting: %s", (source, candidate) => {
+    const failures = detectHardSemanticFailures(
+      viPair(source, candidate),
+      review("en-vi")
+    );
+    expect(failures).not.toContain("units");
+    expect(failures).not.toContain("numbers");
+  });
+
   it("flags polarity loss when negation disappears", () => {
     const pair: TranslationPair = {
       source: {

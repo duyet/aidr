@@ -709,16 +709,71 @@ function dateAnchors(text: string): string[] {
   ].sort();
 }
 
+const MAGNITUDE_SUFFIX: Record<string, string> = {
+  k: "thousand",
+  m: "million",
+  mn: "million",
+  b: "billion",
+  bn: "billion",
+  t: "trillion",
+  tn: "trillion",
+};
+
+/** What may stand before a Vietnamese magnitude word for it to be a
+ *  quantity: a number ("2 tỷ"), a rate ("USD/tỷ"), or "mỗi"/"một". "hàng
+ *  triệu người" (millions of people) and "tỷ lệ" (rate) are not quantities. */
+const VI_QUANTITY_LEAD = String.raw`(?<=(?:\d|\/|(?<![\p{L}\p{N}])(?:mỗi|một))\s*)`;
+const VI_WORD_END = String.raw`(?![\p{L}\p{N}])`;
+const VI_NOT_RATE = String.raw`(?!\s+(?:lệ|số|giá|trọng)${VI_WORD_END})`;
+
+/**
+ * Spells magnitudes as words so "$2/M", "2 triệu" and "2 million" compare
+ * equal. A suffix counts only attached to a digit ("1M", "70B") or to a rate
+ * slash after one ("$2/M"), and single letters only in capitals, so "15m"
+ * (minutes, metres) stays out. "nghìn tỷ" is one magnitude (trillion), not
+ * thousand plus billion.
+ */
+function spellMagnitudes(text: string): string {
+  return text
+    .replace(
+      /(?<=\d\/?)(K|M|B|T|[bmt]n)(?![\p{L}\p{N}])|(?<=\d)\s([bmt]n)(?![\p{L}\p{N}])/giu,
+      (whole, attached: string | undefined, spaced: string | undefined) => {
+        const suffix = attached ?? spaced ?? "";
+        if (suffix.length === 1 && suffix !== suffix.toUpperCase())
+          return whole;
+        return ` ${MAGNITUDE_SUFFIX[suffix.toLowerCase()]} `;
+      }
+    )
+    .replace(
+      new RegExp(
+        `${VI_QUANTITY_LEAD}(?:nghìn|ngàn)\\s+t[ỷỉ]${VI_WORD_END}`,
+        "giu"
+      ),
+      " trillion "
+    )
+    .replace(
+      new RegExp(`${VI_QUANTITY_LEAD}t[ỷỉ]${VI_WORD_END}${VI_NOT_RATE}`, "giu"),
+      " billion "
+    )
+    .replace(
+      new RegExp(`${VI_QUANTITY_LEAD}triệu${VI_WORD_END}`, "giu"),
+      " million "
+    )
+    .replace(
+      new RegExp(`${VI_QUANTITY_LEAD}(?:nghìn|ngàn)${VI_WORD_END}`, "giu"),
+      " thousand "
+    );
+}
+
 function unitAnchors(text: string): string[] {
-  const units = text.match(
-    /(?:\b(?:usd|eur|gbp|vnd|jpy|kg|kilograms?|km|kilometers?|cm|millimeters?|mm|ms|milliseconds?|mb|megabytes?|gb|gigabytes?|tb|terabytes?|hz|khz|mhz|ghz|°c|°f|celsius|fahrenheit|million|billion|trillion|thousand|percent|percentage|triệu|tỷ|nghìn)\b|[$€£₫¥%])/giu
+  // `\b` is ASCII-only, so Vietnamese magnitude words ("tỷ" ends in a
+  // non-ASCII letter) never matched; spellMagnitudes turns them into ASCII.
+  const units = spellMagnitudes(text).match(
+    /(?:\b(?:usd|eur|gbp|vnd|jpy|kg|kilograms?|km|kilometers?|cm|millimeters?|mm|ms|milliseconds?|mb|megabytes?|gb|gigabytes?|tb|terabytes?|hz|khz|mhz|ghz|°c|°f|celsius|fahrenheit|million|billion|trillion|thousand|percent|percentage)\b|[$€£₫¥%])/giu
   );
   return (units ?? [])
     .map((unit) => {
       const lower = unit.toLowerCase();
-      if (lower === "triệu") return "million";
-      if (lower === "tỷ") return "billion";
-      if (lower === "nghìn") return "thousand";
       if (lower === "percent" || lower === "percentage") return "%";
       if (lower === "$") return "usd";
       if (lower === "€") return "eur";
@@ -749,6 +804,54 @@ function unitAnchors(text: string): string[] {
       return lower;
     })
     .sort();
+}
+
+const FRACTION_DENOMINATORS: Record<string, number> = {
+  half: 2,
+  third: 3,
+  quarter: 4,
+  fourth: 4,
+  fifth: 5,
+  sixth: 6,
+  seventh: 7,
+  eighth: 8,
+  ninth: 9,
+  tenth: 10,
+  hai: 2,
+  ba: 3,
+  tư: 4,
+  bốn: 4,
+  năm: 5,
+  sáu: 6,
+  bảy: 7,
+  tám: 8,
+  chín: 9,
+  mười: 10,
+};
+
+/** "one-fifth" / "a third" in English, "một phần năm" / "1/5" in
+ *  Vietnamese, as "1/5". Only the explicit "one-"/"a " forms count, so "the
+ *  first half of 2026" is not a fraction. */
+function fractionAnchors(text: string): string[] {
+  const out: string[] = [];
+  const lower = text.toLowerCase();
+  for (const m of lower.matchAll(
+    /\b(?:one|a)[-\s](half|third|quarter|fourth|fifth|sixth|seventh|eighth|ninth|tenth)s?\b/g
+  )) {
+    out.push(`1/${FRACTION_DENOMINATORS[m[1]]}`);
+  }
+  for (const m of lower.matchAll(
+    /một\s+phần\s+(hai|ba|tư|bốn|năm|sáu|bảy|tám|chín|mười)(?![\p{L}\p{N}])/gu
+  )) {
+    out.push(`1/${FRACTION_DENOMINATORS[m[1]]}`);
+  }
+  for (const _ of lower.matchAll(/một\s+nửa(?![\p{L}\p{N}])/gu)) {
+    out.push("1/2");
+  }
+  for (const m of lower.matchAll(/(?<![\d.,/])1\/(\d{1,2})(?![\d/])/g)) {
+    out.push(`1/${m[1]}`);
+  }
+  return out;
 }
 
 function foldEntity(value: string): string {
@@ -859,6 +962,12 @@ export function detectHardSemanticFailures(
     numberAnchors(source).join("\u0000") !==
     numberAnchors(candidate).join("\u0000")
   ) {
+    failures.add("numbers");
+  }
+  // A fraction in the source ("one-fifth of the price") must survive as a
+  // fraction: "rẻ gấp năm lần" (five times cheaper) is not the same claim.
+  const candidateFractions = new Set(fractionAnchors(candidate));
+  if (fractionAnchors(source).some((f) => !candidateFractions.has(f))) {
     failures.add("numbers");
   }
   if (
