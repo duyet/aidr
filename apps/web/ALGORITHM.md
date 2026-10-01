@@ -469,7 +469,7 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
       posts `bullets_en` only. Neither falls back to the other language.
       Each bullet links to its story permalink, plus a site button.
     - *Trending*: an individual post only when the algo flags a story as
-      exceptional (`rank_score ≥ 30` and `llm_importance ≥ 8`), capped at
+      exceptional (`rank_score ≥ 30` and `llm_importance ≥ 7`), capped at
       3/day with a 3h minimum gap, one per run, and only during 09–23h
       local: a story that qualifies overnight waits for the window and posts
       then if it still ranks (before this the cap was often spent by

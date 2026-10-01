@@ -20,6 +20,7 @@ import {
   llmTokens,
   nextOpenId,
   normalizeRunTokens,
+  RUN_STALL_SEC,
   runAxisHeading,
   runAxisTime,
   runDetailsId,
@@ -705,5 +706,24 @@ describe("dry and partial runs", () => {
       ["@preset/aidr", 3],
       ["x/y", 1],
     ]);
+  });
+});
+
+describe("open runs", () => {
+  // The open-run row is persisted with finished_at = started_at, so "done"
+  // must come from close-run, or a running pipeline reads as finished+empty.
+  const opened = (ageSec: number) => ({
+    id: "r",
+    started_at: Math.floor(Date.now() / 1000) - ageSec,
+    finished_at: Math.floor(Date.now() / 1000) - ageSec,
+    items_fetched: 0,
+    items_new: 0,
+    error: null,
+    stats: { steps: [{ name: "open-run", action: "started" }] },
+  });
+
+  it("shows a run without close-run as running, then stalled", () => {
+    expect(runStatus(opened(60))).toBe("in_progress");
+    expect(runStatus(opened(RUN_STALL_SEC + 60))).toBe("error");
   });
 });

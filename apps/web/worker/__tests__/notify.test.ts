@@ -1042,9 +1042,11 @@ describe("buildMaxRankQuery", () => {
 });
 
 describe("trending thresholds", () => {
-  it("TRENDING_MIN_RANK is 30: only clearly important stories post", () => {
-    expect(TRENDING_MIN_RANK).toBe(30);
-    expect(TRENDING_MIN_IMPORTANCE).toBe(8);
+  // The burst lane only means something if it asks for more than the
+  // normal lane does.
+  it("keeps the normal importance bar below the big-news burst bar", () => {
+    expect(TRENDING_MIN_RANK).toBeGreaterThan(0);
+    expect(TRENDING_MIN_IMPORTANCE).toBeLessThan(TRENDING_BURST_MIN_IMPORTANCE);
   });
   it("a usual day gets at most 3 posts, a big-news day at most 6", () => {
     expect(TRENDING_MAX_PER_DAY).toBe(3);

@@ -68,7 +68,10 @@ export const NOTIFY_MAX_ATTEMPTS = 3;
  *  freshness × engagement × independent sources, so a high absolute rank
  *  + a high LLM importance means "big story, corroborated, breaking now". */
 export const TRENDING_MIN_RANK = 30;
-export const TRENDING_MIN_IMPORTANCE = 8;
+/** 7, not 8: Jev scores most big stories 7, so at 8 only one story a day
+ *  qualified and the channels went silent after the morning digest
+ *  (2026-10-01). Rank >= 30 and the daily cap/gap still keep it rare. */
+export const TRENDING_MIN_IMPORTANCE = 7;
 /** At most this many trending posts per channel per local day. */
 export const TRENDING_MAX_PER_DAY = 3;
 /** Minimum spacing between any two posts on a channel. */

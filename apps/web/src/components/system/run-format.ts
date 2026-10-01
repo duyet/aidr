@@ -202,6 +202,9 @@ export type RunStatus =
   | "in_progress"
   | "unknown";
 
+/** Longest a run may stay open before it counts as stalled (runs take ~10m). */
+export const RUN_STALL_SEC = 30 * 60;
+
 export type StepState = "ok" | "skipped" | "degraded" | "failed";
 
 const STEP_FAILURE_RE = /\b(?:fail(?:ed|ure)?|error|exhausted|timed out)\b/i;
@@ -246,6 +249,18 @@ export type RunAttemptsState =
 export function runStatus(run: WorkflowRunRow): RunStatus {
   if (run.error) return "error";
   if (run.started_at != null && run.finished_at == null) return "in_progress";
+  // The open-run row is written with finished_at = started_at and only the
+  // open-run step; close-run replaces it with every step. So a row that
+  // still holds just open-run is running, or stalled past RUN_STALL_SEC.
+  const recorded = safeRunSteps(run.stats);
+  if (
+    run.started_at != null &&
+    recorded.length === 1 &&
+    recorded[0]?.name === "open-run"
+  ) {
+    const ageSec = Date.now() / 1000 - run.started_at;
+    return ageSec < RUN_STALL_SEC ? "in_progress" : "error";
+  }
   if (run.items_fetched === 0 && !runMode(run)) return "empty";
   if (run.items_fetched == null && !runMode(run)) return "unknown";
   // A run is only ok when every step is: one failed or partial step means
