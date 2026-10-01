@@ -1190,6 +1190,8 @@ const DEFAULT_STALE_AFTER_RUNS = 168;
 
 const STALE_AFTER_RUNS_OVERRIDES: Record<string, number> = {
   "arxiv-research": 72,
+  // AI-filtered; can go a week without a match (CLOUDFLARE_BLOG_SOURCE).
+  "cloudflare-blog": 336,
 };
 
 export function sourceStaleThreshold(id: string): number {

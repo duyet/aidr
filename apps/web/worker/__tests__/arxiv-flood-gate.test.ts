@@ -174,9 +174,9 @@ describe("arXiv flood gate", () => {
       worstCaseScoreSeconds: (rounds * SCORE_SLICE_MAX_MS) / 1000,
       stepBudgetSeconds: LLM_STEP_TIMEOUT_MS / 1000,
     }).toEqual({
-      sources: 6,
-      perRunCeiling: 36,
-      batches: 8,
+      sources: 7,
+      perRunCeiling: 41,
+      batches: 9,
       rounds: 3,
       worstCaseScoreSeconds: 210,
       stepBudgetSeconds: 240,

@@ -148,6 +148,36 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   drop them if needed:
   `ALTER TABLE llm_calls DROP COLUMN cost_usd; ALTER TABLE llm_calls DROP COLUMN request_id;`
 
+## 0037_suggestion_instant_review.sql
+
+- Change: adds four nullable `translation_suggestions` columns
+  (`applied_text`, `reviewed_at`, `review_started_at`, `review_run_id`) and
+  two `(user_id, created_at)` indexes, one on `translation_suggestions` and
+  one on `submissions`. New code also writes two new status values,
+  `reviewing` (claimed by a reviewer) and `needs_review` (waiting for an
+  admin).
+- Risk: none for existing rows (they stay NULL). The new Worker's reviewer
+  writes these columns, so apply the migration before deploying it.
+- Rollback: redeploy the previous Worker. It only reads `pending` rows, so
+  move the new statuses back first or they stay invisible to it:
+  `UPDATE translation_suggestions SET status = 'pending' WHERE status IN ('reviewing', 'needs_review');`
+  Only drop the schema if needed:
+  `DROP INDEX idx_suggestions_user_created; DROP INDEX idx_submissions_user_created;`
+  then `ALTER TABLE translation_suggestions DROP COLUMN applied_text;` and the
+  same for `reviewed_at`, `review_started_at`, `review_run_id`.
+
+## 0036_cloudflare_blog_source.sql
+
+- Change: upserts one `sources` row, `cloudflare-blog` (rss, AI keyword
+  filter, maxItems 5). Never touches `enabled`.
+- Risk: up to 5 more items per run reach scoring; the score budget test
+  keeps the worst case inside the 4-minute step.
+- Rollback (preferred): `UPDATE sources SET enabled = 0 WHERE id = 'cloudflare-blog';`
+  Deleting the row is also safe once its items are not needed:
+  `DELETE FROM sources WHERE id = 'cloudflare-blog';` (revert
+  `CLOUDFLARE_BLOG_SOURCE` in `worker/sources/catalog.ts` in the same change,
+  or the runtime seed re-creates it).
+
 ## 0001 to 0026
 
 Read from the SQL files. Most only create tables, indexes and columns, or

@@ -232,11 +232,13 @@ describe("stale detector", () => {
     // arXiv accepts no weekend submissions, leaving a measured ~54
     // consecutive silent runs every weekend, so the documented 72 clears that
     // and the 168 default would be needlessly slow while 48 would false-positive.
+    // Every registry row gets its own documented threshold, else the default.
     for (const spec of SOURCE_REGISTRY) {
       expect(staleAfterRunsFor(spec.id)).toBe(
-        spec.id === "arxiv-research" ? 72 : DEFAULT_STALE_AFTER_RUNS
+        spec.staleAfterRuns ?? DEFAULT_STALE_AFTER_RUNS
       );
     }
+    expect(staleAfterRunsFor("arxiv-research")).toBe(72);
     expect(staleAfterRunsFor("techcrunch-ai")).toBe(DEFAULT_STALE_AFTER_RUNS);
     // An operator-added source that is not in the registry still gets the
     // documented default rather than an undefined threshold.
