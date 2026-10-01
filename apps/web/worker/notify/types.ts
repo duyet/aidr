@@ -84,3 +84,9 @@ export interface Notifier {
   /** Sends one breaking/trending story as its own post. */
   sendStory(env: Env, story: StoryPayload): Promise<SendResult>;
 }
+
+/** Big-news days (a launch event, a run of major stories): a story at this
+ *  importance may go past the normal cap and gap, up to the burst limits.
+ *  The day's own scores open the extra room, no event list is kept. Webhooks
+ *  also mark these stories "warning". */
+export const TRENDING_BURST_MIN_IMPORTANCE = 9;

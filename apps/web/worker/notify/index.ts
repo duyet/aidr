@@ -99,10 +99,10 @@ export const TRENDING_MIN_IMPORTANCE = 7;
 export const TRENDING_MAX_PER_DAY = 3;
 /** Minimum spacing between any two posts on a channel. */
 export const TRENDING_MIN_GAP_SEC = 3 * 60 * 60;
-/** Big-news days (a launch event, a run of major stories): a story at this
- *  importance may go past the normal cap and gap, up to the burst limits.
- *  The day's own scores open the extra room, no event list is kept. */
-export const TRENDING_BURST_MIN_IMPORTANCE = 9;
+/** Defined in ./types.ts so webhook.ts can use it without an import cycle. */
+export { TRENDING_BURST_MIN_IMPORTANCE } from "./types.js";
+
+import { TRENDING_BURST_MIN_IMPORTANCE } from "./types.js";
 export const TRENDING_BURST_MAX_PER_DAY = 6;
 export const TRENDING_BURST_MIN_GAP_SEC = 60 * 60;
 /** One source family may fill at most this many of a day's trending posts

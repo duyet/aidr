@@ -345,6 +345,27 @@ describe("trending story message", () => {
   });
 });
 
+describe("webhook severity", () => {
+  // Every webhook story already cleared the relative trending bar; severity
+  // must not hang off an absolute rank that a formula change can make
+  // unreachable (a fixed rank >= 30 went dead with Phase B's rescale).
+  it("marks exceptional importance, not a high absolute rank", () => {
+    expect(
+      storyEvent(
+        story({ rank_score: 1, llm_importance: TRENDING_BURST_MIN_IMPORTANCE })
+      ).severity
+    ).toBe("warning");
+    expect(
+      storyEvent(
+        story({
+          rank_score: 1000,
+          llm_importance: TRENDING_BURST_MIN_IMPORTANCE - 1,
+        })
+      ).severity
+    ).toBe("info");
+  });
+});
+
 describe("webhook locale links", () => {
   it("uses the canonical Vietnamese permalink without a category segment", () => {
     const event = storyEvent(story());
