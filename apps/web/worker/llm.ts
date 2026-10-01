@@ -176,8 +176,16 @@ export function setLlmCallLogger(fn: LlmCallLogger | null): void {
   llmCallLogger = fn;
 }
 
+/** Labels sanitizeProviderError emits. callAnyrouter sanitizes once and
+ *  redactLlmCallEntry sanitizes again, so a label must map to itself (a
+ *  re-sanitized "anyrouter request timed out" used to become "anyrouter
+ *  provider error"). */
+const SANITIZED_LABEL =
+  /^(?:anyrouter request failed: \d{3}|jev request failed: \d{3}|anyrouter request timed out|anyrouter budget exhausted|anyrouter chain exhausted|anyrouter invalid response|anyrouter model not configured|anyrouter provider error)$/;
+
 function sanitizeProviderError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
+  if (SANITIZED_LABEL.test(message)) return message;
   const anyrouterStatus = message.match(
     /anyrouter request failed:\s*(\d{3})/i
   )?.[1];
@@ -353,6 +361,8 @@ async function streamCompletion(
     maxTokens?: number;
     strictOutput?: boolean;
     maxOutputChars?: number;
+    /** Called on every content/reasoning delta. */
+    onToken?: () => void;
   }
 ): Promise<AnyrouterCompletion> {
   const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
@@ -423,6 +433,7 @@ async function streamCompletion(
     if (isQueued(event)) queued = true;
     const delta = event.choices?.[0]?.delta;
     const outputLimit = opts.maxOutputChars ?? MAX_STREAM_CONTENT_CHARS;
+    if (delta?.content || delta?.reasoning) opts.onToken?.();
     if (delta?.content) {
       if (content.length + delta.content.length > outputLimit) {
         throw new Error("anyrouter response exceeded output bound");
@@ -526,27 +537,69 @@ export function modelAttemptTimeoutMs(
   return Math.max(1, Math.min(maxSliceMs, remainingMs - reserved));
 }
 
+/** A model that has not streamed a single token by now is treated as hung,
+ *  so the rest of the chain keeps a real slice. Streaming models that work
+ *  on AnyRouter reach a first token in 10-20s (probe 2026-10-01). */
+export const FIRST_TOKEN_MAX_MS = 20_000;
+
 /**
  * AbortSignal.timeout on fetch is not enough: a stalled SSE body read can
  * ignore the signal. Racing a timer guarantees the chain advances. Abort
  * the in-flight fetch so a hung stream does not leak subrequests into
  * the next attempt.
+ *
+ * `start` gets an `onToken` callback; when `firstTokenMs` is set and no
+ * token arrives in time, the attempt fails early with a timeout.
+ *
+ * Once a timer fires, the attempt always fails with the timeout error.
+ * abort() rejects the fetch synchronously, so without this the AbortError
+ * would win the race and be logged as a provider error (run ddb11132).
  */
-function raceTimeout<T>(
-  promise: Promise<T>,
+export function raceTimeout<T>(
+  start: (onToken: () => void) => Promise<T>,
   ms: number,
   label: string,
-  abort?: AbortController
+  abort?: AbortController,
+  firstTokenMs?: number
 ): Promise<T> {
+  let timedOut: Error | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let firstTokenTimer: ReturnType<typeof setTimeout> | undefined;
+  let rejectTimeout: (error: Error) => void = () => {};
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      abort?.abort();
-      reject(new Error(`${label} timed out after ${Math.round(ms)}ms`));
-    }, ms);
+    rejectTimeout = reject;
   });
-  return Promise.race([promise, timeout]).finally(() => {
+  const fire = (error: Error) => {
+    if (timedOut) return;
+    timedOut = error;
+    rejectTimeout(error);
+    abort?.abort();
+  };
+  timer = setTimeout(
+    () => fire(new Error(`${label} timed out after ${Math.round(ms)}ms`)),
+    ms
+  );
+  if (firstTokenMs !== undefined && firstTokenMs < ms) {
+    firstTokenTimer = setTimeout(
+      () =>
+        fire(
+          new Error(
+            `${label} timed out after ${Math.round(firstTokenMs)}ms waiting for a first token`
+          )
+        ),
+      firstTokenMs
+    );
+  }
+  const onToken = () => {
+    if (firstTokenTimer !== undefined) clearTimeout(firstTokenTimer);
+    firstTokenTimer = undefined;
+  };
+  const attempt = start(onToken).catch((error: unknown) => {
+    throw timedOut ?? error;
+  });
+  return Promise.race([attempt, timeout]).finally(() => {
     if (timer !== undefined) clearTimeout(timer);
+    if (firstTokenTimer !== undefined) clearTimeout(firstTokenTimer);
   });
 }
 
@@ -565,6 +618,8 @@ async function callAnyrouter(
     timeoutMs?: number;
     maxTokens?: number;
     maxSliceMs?: number;
+    /** Fail an attempt that streams no token by then. Default FIRST_TOKEN_MAX_MS. */
+    firstTokenMs?: number;
     /** A 200 with content that fails this check is a model failure so
      *  the next id in the chain can run (e.g. empty sanitize). */
     accept?: (content: string) => boolean;
@@ -604,17 +659,20 @@ async function callAnyrouter(
     const abort = new AbortController();
     try {
       const result = await raceTimeout(
-        streamCompletion(env, model, messages, {
-          json: opts.json,
-          timeoutMs,
-          signal: abort.signal,
-          maxTokens: opts.maxTokens,
-          strictOutput: opts.strictOutput,
-          maxOutputChars: opts.maxOutputChars,
-        }),
+        (onToken) =>
+          streamCompletion(env, model, messages, {
+            json: opts.json,
+            timeoutMs,
+            signal: abort.signal,
+            maxTokens: opts.maxTokens,
+            strictOutput: opts.strictOutput,
+            maxOutputChars: opts.maxOutputChars,
+            onToken,
+          }),
         timeoutMs,
         `anyrouter model ${model}`,
-        abort
+        abort,
+        opts.firstTokenMs ?? FIRST_TOKEN_MAX_MS
       );
       if (opts.accept && !opts.accept(result.content)) {
         logLlmCall({

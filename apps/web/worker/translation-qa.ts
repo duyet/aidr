@@ -26,6 +26,7 @@ import {
   QA_MAX_REPAIR_ATTEMPTS,
   QA_MAX_RETRY_ATTEMPTS,
   QA_REPAIR_TIMEOUT_MS,
+  QA_REVIEW_SLICE_MAX_MS,
   QA_REVIEW_TIMEOUT_MS,
   QA_SCAN_CAP,
   QA_WALL_BUDGET_MS,
@@ -842,6 +843,7 @@ async function requestReview(
       modelSpec: reviewerSpec,
       task: "review",
       timeoutMs,
+      maxSliceMs: QA_REVIEW_SLICE_MAX_MS,
       maxTokens: 1_024,
       accept: (content) =>
         parseTranslationReview(content, pair.direction) !== null,

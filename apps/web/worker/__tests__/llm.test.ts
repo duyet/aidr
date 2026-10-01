@@ -9,6 +9,7 @@ import {
   normalizeTag,
   _normalizeTldrForTests as normalizeTldr,
   _parseJsonForTests as parseJson,
+  raceTimeout,
   sanitizeScoreResults,
   sanitizeTranslateResults,
   scoreBatchPrompt,
@@ -20,6 +21,7 @@ import {
   translateItems,
   VI_STYLE,
 } from "../llm.js";
+import { sanitizeError } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
 
 const env: Env = {
@@ -1937,5 +1939,101 @@ describe("tldr chain budget", () => {
   it("returns 0 once the shared deadline has passed", () => {
     expect(tldrAttemptTimeoutMs(0, 1)).toBe(0);
     expect(tldrAttemptTimeoutMs(-5, 2)).toBe(0);
+  });
+});
+
+/** A fetch that never answers and rejects with AbortError once aborted, the
+ *  way Workers' fetch behaves when raceTimeout calls abort(). */
+function abortingHang(_url: string, init: { signal?: AbortSignal }) {
+  return new Promise<never>((_, reject) => {
+    init.signal?.addEventListener("abort", () =>
+      reject(new DOMException("The operation was aborted.", "AbortError"))
+    );
+  });
+}
+
+// Run ddb11132: every translate/review hop that hit its slice was stored as
+// "Provider request failed" / provider_error, which read as an AnyRouter
+// outage when it was our own timeout.
+describe("timeouts are recorded as timeouts", () => {
+  afterEach(() => {
+    setLlmCallLogger(null);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("raceTimeout rejects with the timeout even when abort() rejects the fetch first", async () => {
+    vi.useFakeTimers();
+    const abort = new AbortController();
+    const pending = raceTimeout(
+      () => abortingHang("", { signal: abort.signal }),
+      1_000,
+      "anyrouter model hang/model",
+      abort
+    );
+    const caught = pending.catch((error: Error) => error);
+    await vi.advanceTimersByTimeAsync(1_000);
+    const error = await caught;
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/timed out after 1000ms/);
+    expect(abort.signal.aborted).toBe(true);
+  });
+
+  it("logs an aborted hang as timeout, never provider_error", async () => {
+    vi.useFakeTimers();
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(abortingHang));
+    const pending = callAnyrouter(
+      { ...env, ANYROUTER_MODEL: "hang/model" },
+      [{ role: "user", content: "hi" }],
+      { timeoutMs: 1_000, json: true }
+    ).catch(() => null);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await pending;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.error).toBe("anyrouter request timed out");
+    // What /api/system/run-attempts shows for the stored error.
+    const safe = sanitizeError(entries[0]?.error);
+    expect(safe?.code).toBe("timeout");
+    expect(safe?.message).toBe("Provider request timed out");
+  });
+
+  it("a hanging first translate model leaves every later hop a real slice", async () => {
+    vi.useFakeTimers();
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(abortingHang));
+    const pending = translateItems(
+      {
+        ...env,
+        ANYROUTER_TRANSLATE_MODEL: "m/1,m/2,m/3,m/4,m/5",
+      },
+      [{ i: 0, title: "Story A" }]
+    );
+    // Past TRANSLATE_TIMEOUT_MS: the failed batch is retried until then.
+    await vi.advanceTimersByTimeAsync(250_000);
+    await pending;
+    const hops = entries.filter((e) => e.task === "translate").slice(0, 5);
+    expect(hops.map((e) => e.model)).toEqual([
+      "m/1",
+      "m/2",
+      "m/3",
+      "m/4",
+      "m/5",
+    ]);
+    for (const hop of hops) {
+      expect(sanitizeError(hop.error)?.code, hop.model).toBe("timeout");
+    }
+    // The no-first-token cutoff stops m/1 eating 42s of the 70s batch; the
+    // old split left the last three hops 4.7s each.
+    expect(hops[0]?.durationMs).toBeLessThanOrEqual(20_000);
+    for (const hop of hops.slice(2)) {
+      expect(hop.durationMs, hop.model).toBeGreaterThanOrEqual(5_000);
+    }
   });
 });

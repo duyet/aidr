@@ -537,17 +537,24 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
 
-- `nvidia/nemotron-3-120b-a12b`
-- `nvidia/nemotron-3-ultra-550b-a55b`
+- `@preset/aidr` (AnyRouter workspace preset)
+- `meta/muse-glimmer-30b`
 - `poolside/laguna-s-2.1`
-- `anyrouter/hermes`
+- `anyrouter/cowork`
 - `anyrouter/auto`
 
-Translate uses the same chain without Jev. TL;DR drops Laguna (50-108s on
-a 20K-char prompt, past the TL;DR slice). The VI→EN generator uses only the
-concrete ids. The translation reviewer (`nvidia/nemotron-3-super-120b-a12b`,
-`z-ai/glm-4.7`) shares no id with any generator chain. `wrangler.toml` keeps
-the probe results behind each pick.
+TL;DR and translate use the same chain without Jev. The VI→EN generator
+uses only the concrete ids. The translation reviewer (`z-ai/glm-4.7`,
+`z-ai/glm-4.6`) shares no id with any generator chain and gets a 45s
+budget (`QA_REVIEW_TIMEOUT_MS`), 30s max for the first hop.
+
+Every attempt also has a first-token cutoff (`FIRST_TOKEN_MAX_MS`, 20s): a
+model that streams nothing by then is logged as a timeout and the chain
+moves on, so one hang cannot eat most of a batch budget. Pick chain models
+with a streaming probe: production always sends `stream: true` with
+`response_format: json_object`, and some models (Nemotron 3 120B / Super)
+answer fine without streaming but never stream a token. `wrangler.toml`
+keeps the probe results behind each pick.
 
 `google/gemini-3.5-flash` is BYOK-only on AnyRouter and 404s for keyless
 calls (anyrouter#3655). `minimax/m3` has no upstream key and returns
