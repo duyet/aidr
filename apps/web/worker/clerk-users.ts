@@ -34,11 +34,12 @@ export const CLERK_USERS_COUNT_SQL = `SELECT COUNT(*) AS c
  * Clerk omits the field.
  */
 export const CLERK_USER_UPSERT_SQL = `INSERT INTO ${CLERK_USERS_TABLE} (
-  id, email, created_at, updated_at, deleted_at
+  id, email, email_verified, created_at, updated_at, deleted_at
 )
-VALUES (?, ?, ?, ?, NULL)
+VALUES (?, ?, ?, ?, ?, NULL)
 ON CONFLICT(id) DO UPDATE SET
   email = excluded.email,
+  email_verified = excluded.email_verified,
   updated_at = excluded.updated_at,
   deleted_at = NULL`;
 
@@ -51,6 +52,9 @@ export const CLERK_USER_DELETE_SQL = `UPDATE ${CLERK_USERS_TABLE}
 export interface ClerkUserSyncRow {
   id: string;
   email: string | null;
+  /** Clerk marks `email` verified (0040). Only a verified address may send
+   *  contributions to submit@aidr.today. */
+  emailVerified?: boolean;
   /** Clerk's `created_at`; the verified receipt time when Clerk omits it. */
   createdAt: number;
   /** When D1 last saw this account (webhook receipt / backfill run). */
@@ -58,7 +62,13 @@ export interface ClerkUserSyncRow {
 }
 
 function bindArgs(row: ClerkUserSyncRow): unknown[] {
-  return [row.id, row.email, row.createdAt, row.updatedAt];
+  return [
+    row.id,
+    row.email,
+    row.emailVerified ? 1 : 0,
+    row.createdAt,
+    row.updatedAt,
+  ];
 }
 
 export function prepareClerkUserUpsert(
@@ -223,6 +233,27 @@ export function clerkUserEmail(data: Record<string, unknown>): string | null {
   return null;
 }
 
+/** True when Clerk's `email_addresses` entry for `email` says verified. */
+export function clerkEmailVerified(
+  data: Record<string, unknown>,
+  email: string | null
+): boolean {
+  if (!email || !Array.isArray(data.email_addresses)) return false;
+  return data.email_addresses.some((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    const record = entry as {
+      email_address?: unknown;
+      verification?: { status?: unknown } | null;
+    };
+    return (
+      typeof record.email_address === "string" &&
+      record.email_address.trim().toLowerCase() ===
+        email.trim().toLowerCase() &&
+      record.verification?.status === "verified"
+    );
+  });
+}
+
 function epochSecondsOrNull(value: unknown): number | null {
   const numeric =
     typeof value === "number"
@@ -256,9 +287,11 @@ export function parseClerkUserList(
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
     const user = entry as Record<string, unknown>;
     if (!isClerkUserId(user.id)) continue;
+    const email = clerkUserEmail(user);
     rows.push({
       id: user.id,
-      email: clerkUserEmail(user),
+      email,
+      emailVerified: clerkEmailVerified(user, email),
       createdAt: epochSecondsOrNull(user.created_at) ?? nowSec,
       updatedAt: nowSec,
     });

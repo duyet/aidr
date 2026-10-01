@@ -7,7 +7,12 @@ import { ExternalLink } from "lucide-react";
 import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
-import { ANYROUTER_URL, GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
+import {
+  ANYROUTER_URL,
+  GITHUB_ALGORITHM_URL,
+  GITHUB_URL,
+  SUBMIT_EMAIL,
+} from "../lib/site";
 
 export const Route = createFileRoute("/about")({
   search: {
@@ -108,7 +113,10 @@ function AboutPage() {
         </p>
         <p className="text-muted-foreground">
           Stories are machine-curated. Mistakes happen. A signed-in reader can
-          suggest a better line under any story.
+          suggest a better line under any story, or email{" "}
+          <a href={`mailto:${SUBMIT_EMAIL}`}>{SUBMIT_EMAIL}</a> from their
+          verified address to forward a story or reply to any AI;DR email with a
+          fix.
         </p>
         <p className="not-typeset mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
           <a

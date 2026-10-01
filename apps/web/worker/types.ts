@@ -99,6 +99,9 @@ export interface Env {
   /** Override notes From address (default notes@aidr.today). */
   EMAIL_NOTES_FROM?: string;
   EMAIL_FROM_NAME?: string;
+  /** Reply-To for digest mail (e.g. submit@aidr.today, the email intake).
+   *  Unset: replies go to the From address. */
+  EMAIL_REPLY_TO?: string;
   /** HMAC secret for unsubscribe tokens. When unset, legacy UUID tokens are used. */
   NEWS_UNSUBSCRIBE_SECRET?: string;
   /** Owner address for new-subscriber pings. When unset, email ping is skipped. */

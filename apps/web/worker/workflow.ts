@@ -19,6 +19,7 @@ import { type IngestContext, LLM_STEP } from "./ingest/context.js";
 import { dedupeNewRows } from "./ingest/dedupe.js";
 import { enrichNewRows } from "./ingest/enrich.js";
 import { fetchSources, loadSources, seedSourceHealth } from "./ingest/fetch.js";
+import { processInboundEmail } from "./ingest/inbound-email.js";
 import { planMerges } from "./ingest/merge.js";
 import {
   ingestModeFromPayload,
@@ -303,6 +304,10 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         qaRated = qaStats.rated;
         qaAdjusted = qaStats.adjusted;
         qaTokens = qaStats.tokens;
+      }
+
+      if (!skipUnselectedStep(ctx, "inbound-email")) {
+        await processInboundEmail(ctx);
       }
 
       if (!skipUnselectedStep(ctx, "review-suggestions")) {

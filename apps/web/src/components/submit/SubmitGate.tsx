@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useLang } from "../../lib/lang-context";
+import { ContributorEmails } from "../contribute-email";
 import { ContributionsList } from "./ContributionsList";
 import { SubmitForm } from "./SubmitForm";
 
@@ -56,6 +57,9 @@ export function SubmitGate({
         </Link>
       </div>
       <ContributionsList lang={lang} getToken={getToken} refreshKey={0} />
+      <div id="contribute-email" className="scroll-mt-20 border-t pt-4">
+        <ContributorEmails lang={lang} getToken={getToken} />
+      </div>
     </div>
   );
 }

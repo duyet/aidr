@@ -148,6 +148,27 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   drop them if needed:
   `ALTER TABLE llm_calls DROP COLUMN cost_usd; ALTER TABLE llm_calls DROP COLUMN request_id;`
 
+## 0040_email_contributions.sql
+
+- Change: adds `clerk_users.email_verified` (INTEGER, default 0; written by
+  the Clerk webhook and clerk-sync) and creates `contributor_emails` (extra
+  sender addresses, pending or confirmed), `contributor_email_sends` (confirmation-mail log for the daily
+  cap) and `inbound_emails` (written by the `aidr-email` Worker, consumed by
+  the hourly `inbound-email` step), each with its indexes. Nothing existing
+  is touched.
+- Risk: none for the pipeline. Only the email Worker, the `inbound-email`
+  step and the /contribute address list use the new tables. The Clerk
+  webhook and clerk-sync upsert now write `email_verified`, so apply this
+  migration before deploying that Worker or Clerk upserts fail (Svix retries
+  them). Existing rows start unverified: run `POST /api/admin/clerk-sync`
+  after applying.
+- Rollback: delete the Email Routing rule for `submit@aidr.today` (stops
+  intake at once) and redeploy the previous `aidr` Worker. Only drop the
+  tables if needed (export first; comments hold user text):
+  `DROP TABLE inbound_emails; DROP TABLE contributor_email_sends; DROP TABLE contributor_emails;`
+  The column must stay while the new Worker runs; after rolling the Worker
+  back it can go: `ALTER TABLE clerk_users DROP COLUMN email_verified;`
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`

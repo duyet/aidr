@@ -19,13 +19,17 @@ import {
   upsertClerkUsers,
 } from "../clerk-users.js";
 
-const migration = readFileSync(
-  path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "../../migrations/0026_clerk_users.sql"
-  ),
-  "utf8"
-);
+const migrationFile = (name: string) =>
+  readFileSync(
+    path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../migrations",
+      name
+    ),
+    "utf8"
+  );
+// 0040 adds clerk_users.email_verified, which the upsert writes.
+const migration = `${migrationFile("0026_clerk_users.sql")}\n${migrationFile("0040_email_contributions.sql")}`;
 
 type SqliteInput = null | number | bigint | string | NodeJS.ArrayBufferView;
 
@@ -234,7 +238,11 @@ describe("parseClerkUserList", () => {
           user("user_a", {
             email_addresses: [
               { id: "other", email_address: "spam@example.com" },
-              { id: "primary", email_address: "duyet@example.com" },
+              {
+                id: "primary",
+                email_address: "duyet@example.com",
+                verification: { status: "verified" },
+              },
             ],
             primary_email_address_id: "primary",
           }),
@@ -250,11 +258,20 @@ describe("parseClerkUserList", () => {
       {
         id: "user_a",
         email: "duyet@example.com",
+        // Only Clerk's own verification status lets this address send
+        // contributions by email.
+        emailVerified: true,
         // Clerk timestamps are milliseconds; D1 stores epoch seconds.
         createdAt: 1_700_000_000,
         updatedAt: 500,
       },
-      { id: "user_b", email: null, createdAt: 500, updatedAt: 500 },
+      {
+        id: "user_b",
+        email: null,
+        emailVerified: false,
+        createdAt: 500,
+        updatedAt: 500,
+      },
     ]);
   });
 

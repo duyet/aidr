@@ -42,6 +42,8 @@ export interface SubscriberMail {
   unsubscribeToken: string;
   /** Language for the human-facing List-Unsubscribe page. */
   lang?: MailLang;
+  /** Where replies go (e.g. submit@aidr.today). Omitted: replies go to From. */
+  replyTo?: string;
 }
 
 /** Sends one subscriber email. Returns false when EMAIL is unbound or send throws. */
@@ -60,6 +62,7 @@ export async function sendSubscriberEmail(
       subject: mail.subject,
       html: mail.html,
       text: mail.text,
+      ...(mail.replyTo ? { replyTo: mail.replyTo } : {}),
       headers: listUnsubscribeHeaders(mail.unsubscribeToken, mail.lang),
     });
     return true;

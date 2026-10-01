@@ -166,6 +166,31 @@ importers:
 
   .: {}
 
+  apps/email:
+    dependencies:
+      postal-mime:
+        specifier: ^4.0.2
+        version: 4.0.2
+    devDependencies:
+      '@aidr/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@cloudflare/workers-types':
+        specifier: 5.20260930.2
+        version: 5.20260930.2
+      '@types/node':
+        specifier: ^25.6.0
+        version: 25.9.8
+      typescript:
+        specifier: '*'
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.2(@types/node@25.9.8)(happy-dom@20.14.5(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.3.1(@types/node@25.9.8)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
+      wrangler:
+        specifier: ^4.141.0
+        version: 4.143.0(@cloudflare/workers-types@5.20260930.2)(@types/node@25.9.8)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+
   apps/extension: {}
 
   apps/web:
@@ -4157,6 +4182,10 @@ packages:
   pkg-up@3.1.0:
     resolution: {integrity: sha512-nDywThFk1i4BQK4twPQ6TA4RT8bDY96yeuCVBWL3ePARCiEKDRSrNGbFIgUJpLp+XeIR65v8ra7WuJOFUBtkMA==}
     engines: {node: '>=8'}
+
+  postal-mime@4.0.2:
+    resolution: {integrity: sha512-b/FqJGdS+Y+leh30r2ord1gWZNPfYcTiFBR1BIPvZYvQrKJjYYqGeECh9sQ5BpkWtcjSj39ngIAiE2w6XNfMjA==}
+    engines: {node: '>=20'}
 
   postcss-selector-parser@7.1.6:
     resolution: {integrity: sha512-7qASPzhKF2l2KLboRZux8CCTRMdGiV08vWmyKzPz22qZ7ZjQBOeY7rNzNoCLSUiftJ7HUq0GERHmxw/t0dCdMw==}
@@ -8317,6 +8346,8 @@ snapshots:
   pkg-up@3.1.0:
     dependencies:
       find-up: 3.0.0
+
+  postal-mime@4.0.2: {}
 
   postcss-selector-parser@7.1.6:
     dependencies:

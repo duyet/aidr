@@ -21,6 +21,7 @@ export const PIPELINE_STEPS = [
   "backfill-translate",
   "backfill-score",
   "qa-translations",
+  "inbound-email",
   "review-suggestions",
   "review-submissions",
   "tldr",

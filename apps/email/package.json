@@ -1,0 +1,23 @@
+{
+  "name": "@aidr/email",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "check-types": "tsc --noEmit",
+    "lint": "biome check .",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "postal-mime": "^4.0.2"
+  },
+  "devDependencies": {
+    "@aidr/tsconfig": "workspace:*",
+    "@cloudflare/workers-types": "5.20260930.2",
+    "@types/node": "^25.6.0",
+    "typescript": "*",
+    "vitest": "^5.0.0",
+    "wrangler": "^4.141.0"
+  }
+}

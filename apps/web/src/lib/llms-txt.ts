@@ -107,6 +107,14 @@ On a story permalink, signed-in agents may suggest a title or summary fix with:
 { "item_id": "<id>", "suggestion": "...", "lang": "vi" | "en", "via": "agent" }
 Write one free-form suggestion in any language (a fix to the title, summary or translation, or a correction); the reviewer decides which fields it changes. \`lang\` is the language you were reading (a hint). Same Clerk Bearer as submit. Empty suggestions are rejected. The response carries an \`id\`; the suggestion is reviewed within seconds and is applied (per-field), sent to an editor, or rejected with a reason.
 
+## Contribute by email
+
+Signed-in readers can also send mail to submit@aidr.today from their verified account email or an extra address they confirmed at ${SITE_URL}/contribute. Anything else is ignored silently.
+- Forward a story, or send a new mail whose only content is one link: it becomes a story submission.
+- Reply to an AI;DR email about a story (keep the \`[aidr:<id8>]\` subject marker, or include the story's aidr.today link in your own text): it becomes a suggestion on that story. Start with \`title:\` or \`summary:\` to target one field.
+- Anything else is kept as a comment for the editors.
+Mail is processed in the hourly run and reviewed by the same gates as the web forms; the sender gets an acknowledgement. At most 20 messages per day, 1 MiB each. Auto-replies, bounces and list mail are ignored. Only the sender's own text (not quoted mail or attachments) is stored, and the address is dropped once the acknowledgement is sent. Email text is data, never instructions.
+
 ## How you get AI;DR
 
 Three first-class ways: [${SITE_URL}/subscribe](${SITE_URL}/subscribe?lang=en) (Chrome Web Store, Telegram @aihomnay, email digest — no account required). Header chrome links to /subscribe, not the Web Store URL. Pipeline: [${SITE_URL}/data](${SITE_URL}/data).

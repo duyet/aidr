@@ -380,6 +380,7 @@ describe("handleClerkWebhook", () => {
     expect(statements[0].args).toEqual([
       "user_2abc",
       "duyet@example.com",
+      0, // the fixture's address carries no Clerk verification
       1_700_000_000,
       NOW_SEC,
     ]);

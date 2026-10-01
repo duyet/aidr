@@ -112,8 +112,10 @@ an unknown step name is rejected at the trigger and dropped (never a crash)
 inside the Workflow. The mode travels as `create({ id, params })` and
 `worker/ingest/mode.ts` owns the step names:
 `fetch, dedupe, score, translate, write, backfill-content,
-backfill-translate, backfill-score, qa-translations, review-suggestions,
-review-submissions, tldr, email, notify`.
+backfill-translate, backfill-score, qa-translations, inbound-email,
+review-suggestions, review-submissions, tldr, email, notify`. In a dry run
+`inbound-email` only classifies the pending batch (no rows written, no
+acknowledgements sent).
 
 - **`dryRun: true`** — `sendEmailDigest` and `notifyChannels` return before
   calling `sendDailyTldr` / `dispatchStoryNotifications` and record
@@ -644,6 +646,25 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
     when the EN source has the term and the VI text has a forbidden phrase
     → repair; each catch increments the rule's `hits`. Seeded: "agent"
     stays English, "đại lý"/"đặc vụ" fail ("tác nhân" is allowed).
+
+    **Email contributions** (`docs/decisions/email-contributions.md`).
+    Mail to `submit@aidr.today` reaches the `aidr-email` Worker
+    (`apps/email`), which only validates and stores: sender authenticated
+    by Cloudflare (DKIM or SPF aligned with the From domain, read only above
+    the first `Received:`), From = envelope sender, address = a live Clerk
+    account email that Clerk marks verified (`clerk_users.email_verified`,
+    from the webhook / clerk-sync) or a confirmed extra address (`contributor_emails`), no
+    auto-reply/bounce/list mail, ≤ 1 MiB, ≤ 20 per user per day. It writes
+    an `inbound_emails` row: `pending` with parsed fields (the user's own
+    text, links, story reference), or `ignored` with a reason and no
+    content. No LLM runs there. The hourly `inbound-email` step (before
+    `review-suggestions`) turns pending rows into a submission (forward or
+    new mail with one link), a suggestion on the referenced story
+    (`submit+<id8>@`, `[aidr:<id8>]` subject marker, or one aidr.today story
+    link in the user's own text; `title:`/`summary:` prefix = fixed field,
+    else `auto`) or a comment, then acks from notes@ with
+    `Reply-To: submit@`. Review happens in the normal gates later in the
+    same run.
 
 ## LLM transport
 

@@ -16,6 +16,7 @@
 
 import {
   type ClerkUserSyncRow,
+  clerkEmailVerified,
   clerkUserEmail,
   softDeleteClerkUser,
   upsertClerkUser,
@@ -315,6 +316,7 @@ export function parseClerkUserEvent(
   // Fall back to the verified delivery time when Clerk omits created_at: that
   // records when D1 first saw the account, never a guessed creation date.
   const createdAt = epochSecondsOrNull(user.created_at) ?? receivedAt;
+  const email = clerkUserEmail(user);
   return {
     ok: true,
     result: {
@@ -325,7 +327,8 @@ export function parseClerkUserEvent(
         id,
         row: {
           id,
-          email: clerkUserEmail(user),
+          email,
+          emailVerified: clerkEmailVerified(user, email),
           createdAt,
           updatedAt: receivedAt,
         },

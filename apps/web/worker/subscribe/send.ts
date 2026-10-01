@@ -344,6 +344,8 @@ export async function sendEmailLane(
       text,
       unsubscribeToken: sub.unsubscribe_token,
       lang,
+      // Opt-in: replies to the digest reach the email intake.
+      replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
     });
     if (!ok) {
       failed++;
