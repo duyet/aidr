@@ -921,9 +921,9 @@ export async function listPendingSuggestions(
     100
   );
   const { results } = await env.DB.prepare(
-    `SELECT id, item_id, field, suggestion, user_name, rating, created_at, status
+    `SELECT id, item_id, lang, field, suggestion, user_name, rating, review_note, created_at, status
      FROM translation_suggestions
-     WHERE status = 'pending'
+     WHERE status IN ('pending', 'needs_review')
      ORDER BY created_at ASC
      LIMIT ${limit}`
   ).all();

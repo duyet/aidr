@@ -92,22 +92,22 @@ export function StoryDetail({
             )
           )}
 
-          {vietnameseVisible && (
-            <div className="not-typeset flex flex-wrap items-center gap-2">
-              <SuggestTranslation
-                itemId={item.id}
-                field="summary"
-                lang={lang}
-                initialText={
-                  pendingSuggestion?.field === "summary"
-                    ? pendingSuggestion.text
-                    : undefined
-                }
-                onInitialTextConsumed={clearPending}
-              />
-              <SuggestionBadge itemId={item.id} expanded lang={lang} />
-            </div>
-          )}
+          {/* Edits target the language on screen: Vietnamese edits the
+              translation, English edits an English-source story's text. */}
+          <div className="not-typeset flex flex-wrap items-center gap-2">
+            <SuggestTranslation
+              itemId={item.id}
+              field="summary"
+              lang={lang}
+              initialText={
+                pendingSuggestion?.field === "summary"
+                  ? pendingSuggestion.text
+                  : undefined
+              }
+              onInitialTextConsumed={clearPending}
+            />
+            <SuggestionBadge itemId={item.id} expanded lang={lang} />
+          </div>
 
           <StorySources sources={item.sources} lang={lang} itemId={item.id} />
           <a

@@ -8,7 +8,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const src = [
   "../routes/submit.tsx",
   "../components/submit/SubmitForm.tsx",
-  "../components/submit/SubmissionsList.tsx",
+  "../components/submit/ContributionsList.tsx",
   "../components/submit/SubmitGate.tsx",
 ]
   .map((p) => readFileSync(join(here, p), "utf8"))
@@ -26,13 +26,13 @@ describe("submit page keeps the form after success", () => {
 
   it("puts history beside the form on md+", () => {
     expect(src).toContain("md:grid-cols-2");
-    expect(src).toContain("Your submissions");
-    expect(src).toContain("Bài đã gửi");
+    expect(src).toContain("Your contributions");
+    expect(src).toContain("Đóng góp của bạn");
     expect(src).toContain("refreshKey");
     expect(src).toContain("onSubmitted");
-    expect(src).toMatch(/<SubmissionsList[\s\S]*refreshKey=\{listKey\}/);
+    expect(src).toMatch(/<ContributionsList[\s\S]*refreshKey=\{listKey\}/);
     expect(src.indexOf("</form>")).toBeLessThan(
-      src.indexOf("<SubmissionsList")
+      src.indexOf("<ContributionsList")
     );
   });
 

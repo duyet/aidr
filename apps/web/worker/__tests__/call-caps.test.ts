@@ -276,6 +276,8 @@ function reviewQueueDb(
       });
       return { ...bound(), bind: () => bound() };
     },
+    batch: async (statements: unknown[]) =>
+      statements.map(() => ({ success: true })),
   } as unknown as D1Database;
 }
 
@@ -361,11 +363,13 @@ describe("review LLM caps per run", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
     const db = reviewQueueDb("translation_suggestions", pending, (sql) =>
-      sql.includes("FROM items")
-        ? { title: "Title", summary: "Summary", source_lang: "en" }
-        : sql.includes("FROM translations")
-          ? { title: "Tiêu đề", summary: "Tóm tắt" }
-          : null
+      sql.includes("FROM translation_suggestions")
+        ? { ...pending[0], lang: "vi" }
+        : sql.includes("FROM items")
+          ? { title: "Title", summary: "Summary", source_lang: "en" }
+          : sql.includes("FROM translations")
+            ? { title: "Tiêu đề", summary: "Tóm tắt" }
+            : null
     );
     await reviewPendingSuggestions({ ...env, DB: db });
     // Per suggestion: System One try, chat review, chat rewrite.

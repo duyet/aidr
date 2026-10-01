@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLang } from "../../lib/lang-context";
-import { SubmissionsList } from "./SubmissionsList";
+import { ContributionsList } from "./ContributionsList";
 import { SubmitForm } from "./SubmitForm";
 
 export function SubmitGate({
@@ -30,12 +30,7 @@ export function SubmitGate({
         getToken={getToken}
         onSubmitted={() => setListKey((n) => n + 1)}
       />
-      <SubmissionsList
-        userId={user.id}
-        lang={lang}
-        getToken={getToken}
-        refreshKey={listKey}
-      />
+      <ContributionsList lang={lang} getToken={getToken} refreshKey={listKey} />
     </div>
   );
 }

@@ -576,6 +576,27 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
     panel then gives a second opinion that can only lower the value
     (submissions: scoring panel; suggestions: fidelity + safety panel).
 
+    **Suggestions are reviewed on submit** (`worker/suggestions.ts`). A
+    signed-in reader edits the title or summary of the language on screen:
+    `vi` rewrites the Vietnamese translation, `en` rewrites the English
+    source of an English-source story (never ids or urls). The submit
+    server fn stores the row and runs `reviewSuggestionById` in the
+    request's `waitUntil`, logging LLM calls under a
+    `suggestion-review-…` run id. Flow per suggestion: claim
+    (`pending` → `reviewing`, conditional UPDATE) → rate (Jev, else chat
+    judge) → JEV panel can only lower → if rating ≥ 0.6, rewrite keeping the
+    reader's intent → output guard (no new links or markup, no runaway
+    length; a fooled model still cannot publish a payload) → text and
+    verdict written in one batch. Outcomes: `accepted` (with
+    `applied_text`, which may differ from the reader's text), `needs_review`
+    (valid, 0.4 ≤ rating < 0.6, waits for an admin), `rejected` (with the
+    reason). The hourly `review-suggestions` step is the safety net: it
+    reviews rows still `pending` and `reviewing` claims older than 10
+    minutes, never `needs_review`. Readers poll their verdict and see full
+    history (suggestions + submissions, keyset paged) on `/submit`; both
+    reads are keyed by the Clerk session user. TL;DR bullets are not
+    editable: snapshots are regenerated hourly and already sent.
+
 ## LLM transport
 
 All calls go through `callAnyrouter` (`worker/llm.ts`):

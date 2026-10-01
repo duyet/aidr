@@ -228,7 +228,8 @@ describe("submitSuggestion — rate limiting", () => {
   it("blocks on the per-user daily cap even when under the pending cap", async () => {
     const { db } = makeRoutedDb((sql) => {
       if (sql.includes("FROM items")) return { id: "item1" };
-      if (sql.includes("status = 'pending'")) return { count: 1 }; // well under pending cap
+      if (sql.includes("status IN ('pending', 'reviewing')"))
+        return { count: 1 }; // well under pending cap
       if (sql.includes("user_id = ? AND created_at")) return { count: 10 }; // at daily cap
       return null;
     });
@@ -290,160 +291,11 @@ describe("submitSuggestion — rate limiting", () => {
   });
 });
 
-/** Anyrouter only answers large prompts inline when the request sets
- * `stream: true`, so every mocked response is an SSE body (matches
- * llm.ts's streamCompletion, which this module's calls go through). */
-function chatResponse(content: string): Response {
-  return new Response(
-    `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\ndata: [DONE]\n\n`,
-    { status: 200 }
-  );
-}
-
-describe("reviewPendingSuggestions — accepted -> retranslate flow", () => {
+// The accept / reject / adjust flow runs against real SQLite in
+// suggestion-instant-review.integration.test.ts.
+describe("reviewPendingSuggestions", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it("re-translates with the suggestion as guidance and upserts translations, marking the suggestion accepted", async () => {
-    const dbCalls: { sql: string; args: unknown[] }[] = [];
-    const pendingSuggestions = [
-      {
-        id: "s1",
-        item_id: "item1",
-        field: "title",
-        suggestion: "Better title",
-      },
-    ];
-
-    const db = {
-      prepare(sql: string) {
-        const bound = () => ({
-          first: async () => {
-            if (sql.includes("FROM items")) {
-              return { title: "Original Title", summary: "Original summary" };
-            }
-            if (sql.includes("FROM translations")) {
-              return { title: "Tiêu đề cũ", summary: "Tóm tắt cũ" };
-            }
-            return null;
-          },
-          all: async () => ({
-            results: sql.includes("translation_suggestions")
-              ? pendingSuggestions
-              : [],
-          }),
-          run: async () => ({ success: true }),
-        });
-        return {
-          ...bound(),
-          bind: (...args: unknown[]) => {
-            dbCalls.push({ sql, args });
-            return bound();
-          },
-        };
-      },
-    } as unknown as D1Database;
-
-    let call = 0;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation(async () => {
-        call++;
-        if (call === 1) {
-          // the Jev SystemOne attempt — unavailable here, fall back to chat
-          return new Response("typesafe key missing", { status: 422 });
-        }
-        if (call === 2) {
-          // the review call
-          return chatResponse(
-            JSON.stringify({
-              results: [
-                { id: "s1", valid: true, rating: 0.9, note: "improvement" },
-              ],
-            })
-          );
-        }
-        // the re-translate call
-        return chatResponse(
-          JSON.stringify({ translation: "Tiêu đề mới hay hơn" })
-        );
-      })
-    );
-
-    await reviewPendingSuggestions({ ...env, DB: db });
-
-    const updateAccepted = dbCalls.find(
-      (c) =>
-        c.sql.includes("UPDATE translation_suggestions") &&
-        c.sql.includes("status = 'accepted'")
-    );
-    expect(updateAccepted).toBeDefined();
-
-    const translationUpsert = dbCalls.find((c) =>
-      c.sql.includes("INSERT INTO translations")
-    );
-    expect(translationUpsert?.args).toContain("Tiêu đề mới hay hơn");
-  });
-
-  it("marks a rejected suggestion with the model's note, without calling the re-translate step", async () => {
-    const dbCalls: { sql: string; args: unknown[] }[] = [];
-    const pendingSuggestions = [
-      { id: "s1", item_id: "item1", field: "title", suggestion: "spammy link" },
-    ];
-
-    const db = {
-      prepare(sql: string) {
-        const bound = () => ({
-          first: async () => {
-            if (sql.includes("FROM items")) {
-              return { title: "Original Title", summary: "Original summary" };
-            }
-            return null;
-          },
-          all: async () => ({
-            results: sql.includes("translation_suggestions")
-              ? pendingSuggestions
-              : [],
-          }),
-          run: async () => ({ success: true }),
-        });
-        return {
-          ...bound(),
-          bind: (...args: unknown[]) => {
-            dbCalls.push({ sql, args });
-            return bound();
-          },
-        };
-      },
-    } as unknown as D1Database;
-
-    let fetchCalls = 0;
-    const fetchMock = vi.fn().mockImplementation(async () => {
-      fetchCalls++;
-      if (fetchCalls === 1) {
-        // the Jev SystemOne attempt — unavailable here, fall back to chat
-        return new Response("typesafe key missing", { status: 422 });
-      }
-      return chatResponse(
-        JSON.stringify({
-          results: [{ id: "s1", valid: false, rating: 0.1, note: "spam" }],
-        })
-      );
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    await reviewPendingSuggestions({ ...env, DB: db });
-
-    // Jev attempt + chat fallback review, no re-translate
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const updateRejected = dbCalls.find(
-      (c) =>
-        c.sql.includes("UPDATE translation_suggestions") &&
-        c.sql.includes("status = 'rejected'") &&
-        c.args.includes("spam")
-    );
-    expect(updateRejected).toBeDefined();
   });
 
   it("returns early without any DB writes when there are no pending suggestions", async () => {
