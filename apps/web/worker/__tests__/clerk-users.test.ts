@@ -29,7 +29,7 @@ const migrationFile = (name: string) =>
     "utf8"
   );
 // 0040 adds clerk_users.email_verified, which the upsert writes.
-const migration = `${migrationFile("0026_clerk_users.sql")}\n${migrationFile("0040_email_contributions.sql")}`;
+const migration = `${migrationFile("0026_clerk_users.sql")}\n${migrationFile("0040_email_contributions.sql")}\n${migrationFile("0041_clerk_verified_emails.sql")}`;
 
 type SqliteInput = null | number | bigint | string | NodeJS.ArrayBufferView;
 
@@ -261,6 +261,7 @@ describe("parseClerkUserList", () => {
         // Only Clerk's own verification status lets this address send
         // contributions by email.
         emailVerified: true,
+        verifiedEmails: ["duyet@example.com"],
         // Clerk timestamps are milliseconds; D1 stores epoch seconds.
         createdAt: 1_700_000_000,
         updatedAt: 500,
@@ -269,6 +270,7 @@ describe("parseClerkUserList", () => {
         id: "user_b",
         email: null,
         emailVerified: false,
+        verifiedEmails: [],
         createdAt: 500,
         updatedAt: 500,
       },

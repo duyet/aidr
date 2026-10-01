@@ -18,6 +18,7 @@ import {
   type ClerkUserSyncRow,
   clerkEmailVerified,
   clerkUserEmail,
+  clerkVerifiedEmails,
   softDeleteClerkUser,
   upsertClerkUser,
 } from "./clerk-users.js";
@@ -329,6 +330,7 @@ export function parseClerkUserEvent(
           id,
           email,
           emailVerified: clerkEmailVerified(user, email),
+          verifiedEmails: clerkVerifiedEmails(user),
           createdAt,
           updatedAt: receivedAt,
         },

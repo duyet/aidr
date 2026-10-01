@@ -682,7 +682,7 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
     by Cloudflare (DKIM or SPF aligned with the From domain, read only above
     the first `Received:`), From = envelope sender, address = a live Clerk
     account email that Clerk marks verified (`clerk_users.email_verified`,
-    from the webhook / clerk-sync) or a confirmed extra address (`contributor_emails`), no
+    from the webhook / clerk-sync) or another address Clerk has already verified (`clerk_verified_emails`), no
     auto-reply/bounce/list mail, ≤ 1 MiB, ≤ 20 per user per day. It writes
     an `inbound_emails` row: `pending` with parsed fields (the user's own
     text, links, story reference), or `ignored` with a reason and no

@@ -55,6 +55,9 @@ export interface ClerkUserSyncRow {
   /** Clerk marks `email` verified (0040). Only a verified address may send
    *  contributions to submit@aidr.today. */
   emailVerified?: boolean;
+  /** Every address Clerk marks verified, lowercased. When set, replaces
+   *  `clerk_verified_emails` for this account (0041). */
+  verifiedEmails?: readonly string[];
   /** Clerk's `created_at`; the verified receipt time when Clerk omits it. */
   createdAt: number;
   /** When D1 last saw this account (webhook receipt / backfill run). */
@@ -78,11 +81,42 @@ export function prepareClerkUserUpsert(
   return db.prepare(CLERK_USER_UPSERT_SQL).bind(...bindArgs(row));
 }
 
+export function clerkVerifiedEmailStatements(
+  db: Pick<D1Database, "prepare">,
+  userId: string,
+  emails: readonly string[]
+): D1PreparedStatement[] {
+  const unique = [
+    ...new Set(emails.map((email) => email.trim().toLowerCase())),
+  ].filter((email) => email.includes("@"));
+  return [
+    db
+      .prepare("DELETE FROM clerk_verified_emails WHERE user_id = ?")
+      .bind(userId),
+    ...unique.map((email) =>
+      db
+        .prepare(
+          "INSERT INTO clerk_verified_emails (user_id, email) VALUES (?, ?)"
+        )
+        .bind(userId, email)
+    ),
+  ];
+}
+
 export async function upsertClerkUser(
   db: Pick<D1Database, "prepare">,
   row: ClerkUserSyncRow
 ): Promise<void> {
   await prepareClerkUserUpsert(db, row).run();
+  if (row.verifiedEmails) {
+    for (const statement of clerkVerifiedEmailStatements(
+      db,
+      row.id,
+      row.verifiedEmails
+    )) {
+      await statement.run();
+    }
+  }
 }
 
 /** One page of accounts in a single D1 round-trip. */
@@ -91,7 +125,14 @@ export async function upsertClerkUsers(
   rows: readonly ClerkUserSyncRow[]
 ): Promise<void> {
   if (rows.length === 0) return;
-  await db.batch(rows.map((row) => prepareClerkUserUpsert(db, row)));
+  await db.batch(
+    rows.flatMap((row) => [
+      prepareClerkUserUpsert(db, row),
+      ...(row.verifiedEmails
+        ? clerkVerifiedEmailStatements(db, row.id, row.verifiedEmails)
+        : []),
+    ])
+  );
 }
 
 export async function softDeleteClerkUser(
@@ -143,6 +184,20 @@ export async function hasClerkUsersTable(
 }
 
 /** COUNT of live (non-deleted) mirrored accounts. Never infers from a page. */
+/** Addresses Clerk has verified for this live account, primary included. */
+export async function listVerifiedEmails(
+  db: Pick<D1Database, "prepare">,
+  userId: string
+): Promise<string[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT email FROM clerk_verified_emails WHERE user_id = ? ORDER BY email`
+    )
+    .bind(userId)
+    .all<{ email: string }>();
+  return (results ?? []).map((row) => row.email);
+}
+
 export async function countClerkUsers(
   db: Pick<D1Database, "prepare">
 ): Promise<number> {
@@ -233,6 +288,26 @@ export function clerkUserEmail(data: Record<string, unknown>): string | null {
   return null;
 }
 
+/** Lowercased addresses Clerk marks verified. Duplicates are dropped. */
+export function clerkVerifiedEmails(data: Record<string, unknown>): string[] {
+  if (!Array.isArray(data.email_addresses)) return [];
+  const emails: string[] = [];
+  for (const entry of data.email_addresses) {
+    if (!entry || typeof entry !== "object") continue;
+    const record = entry as {
+      email_address?: unknown;
+      verification?: { status?: unknown } | null;
+    };
+    if (typeof record.email_address !== "string") continue;
+    if (record.verification?.status !== "verified") continue;
+    const email = record.email_address.trim().toLowerCase();
+    if (!email || email.length > MAX_EMAIL_LENGTH) continue;
+    if (!/^[^\s@]+@[^\s@]+$/.test(email)) continue;
+    emails.push(email);
+  }
+  return [...new Set(emails)];
+}
+
 /** True when Clerk's `email_addresses` entry for `email` says verified. */
 export function clerkEmailVerified(
   data: Record<string, unknown>,
@@ -295,6 +370,7 @@ export function parseClerkUserList(
       id: user.id,
       email,
       emailVerified: clerkEmailVerified(user, email),
+      verifiedEmails: clerkVerifiedEmails(user),
       createdAt: epochSecondsOrNull(user.created_at) ?? nowSec,
       updatedAt: nowSec,
     });
