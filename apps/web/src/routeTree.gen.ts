@@ -37,6 +37,7 @@ import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
 import { Route as ApiFeedFreshnessRouteImport } from './routes/api/feed.freshness'
 import { Route as ApiOgIdRouteImport } from './routes/api/og.$id'
 import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
+import { Route as ApiSubscribeConfirmRouteImport } from './routes/api/subscribe.confirm'
 import { Route as ApiSubscribePreviewRouteImport } from './routes/api/subscribe.preview'
 import { Route as ApiSystemAccountsRouteImport } from './routes/api/system.accounts'
 import { Route as ApiSystemActivityRouteImport } from './routes/api/system.activity'
@@ -189,6 +190,11 @@ const ApiStoryIdRoute = ApiStoryIdRouteImport.update({
   path: '/api/story/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSubscribeConfirmRoute = ApiSubscribeConfirmRouteImport.update({
+  id: '/confirm',
+  path: '/confirm',
+  getParentRoute: () => ApiSubscribeRoute,
+} as any)
 const ApiSubscribePreviewRoute = ApiSubscribePreviewRouteImport.update({
   id: '/preview',
   path: '/preview',
@@ -274,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
+  '/api/subscribe/confirm': typeof ApiSubscribeConfirmRoute
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
@@ -315,6 +322,7 @@ export interface FileRoutesByTo {
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
+  '/api/subscribe/confirm': typeof ApiSubscribeConfirmRoute
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
@@ -357,6 +365,7 @@ export interface FileRoutesById {
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
+  '/api/subscribe/confirm': typeof ApiSubscribeConfirmRoute
   '/api/subscribe/preview': typeof ApiSubscribePreviewRoute
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
@@ -400,6 +409,7 @@ export interface FileRouteTypes {
     | '/api/feed/freshness'
     | '/api/og/$id'
     | '/api/story/$id'
+    | '/api/subscribe/confirm'
     | '/api/subscribe/preview'
     | '/api/system/accounts'
     | '/api/system/activity'
@@ -441,6 +451,7 @@ export interface FileRouteTypes {
     | '/api/feed/freshness'
     | '/api/og/$id'
     | '/api/story/$id'
+    | '/api/subscribe/confirm'
     | '/api/subscribe/preview'
     | '/api/system/accounts'
     | '/api/system/activity'
@@ -482,6 +493,7 @@ export interface FileRouteTypes {
     | '/api/feed/freshness'
     | '/api/og/$id'
     | '/api/story/$id'
+    | '/api/subscribe/confirm'
     | '/api/subscribe/preview'
     | '/api/system/accounts'
     | '/api/system/activity'
@@ -724,6 +736,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStoryIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/subscribe/confirm': {
+      id: '/api/subscribe/confirm'
+      path: '/confirm'
+      fullPath: '/api/subscribe/confirm'
+      preLoaderRoute: typeof ApiSubscribeConfirmRouteImport
+      parentRoute: typeof ApiSubscribeRoute
+    }
     '/api/subscribe/preview': {
       id: '/api/subscribe/preview'
       path: '/preview'
@@ -816,10 +835,12 @@ const ApiFeedRouteWithChildren =
   ApiFeedRoute._addFileChildren(ApiFeedRouteChildren)
 
 interface ApiSubscribeRouteChildren {
+  ApiSubscribeConfirmRoute: typeof ApiSubscribeConfirmRoute
   ApiSubscribePreviewRoute: typeof ApiSubscribePreviewRoute
 }
 
 const ApiSubscribeRouteChildren: ApiSubscribeRouteChildren = {
+  ApiSubscribeConfirmRoute: ApiSubscribeConfirmRoute,
   ApiSubscribePreviewRoute: ApiSubscribePreviewRoute,
 }
 

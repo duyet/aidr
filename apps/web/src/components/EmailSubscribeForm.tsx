@@ -76,8 +76,8 @@ export function EmailSubscribeForm({
       <div className="space-y-3 rounded-md border border-border bg-muted/40 p-4 text-sm">
         <p>
           {t(
-            `Subscribed. First digest around 7:00 AM (${timezone}).`,
-            `Đã đăng ký. Bản tin đầu tiên khoảng 7:00 sáng (${timezone}).`
+            `Almost done — check your inbox and click the confirmation link. Digests start around 7:00 AM (${timezone}) once confirmed.`,
+            `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin bắt đầu khoảng 7:00 sáng (${timezone}) sau khi xác nhận.`
           )}
         </p>
         <p className="text-muted-foreground">

@@ -59,12 +59,29 @@ describe("POST /api/subscribe", () => {
     const insert = writes.find((w) =>
       w.sql.includes("INSERT INTO subscribers")
     );
-    return { res, insert };
+    return { res, insert, writes };
   };
+
+  it("stores a new signup as pending until the confirmation link is clicked", async () => {
+    // Double opt-in: digests only go to confirmed rows, so a typo'd or
+    // third-party address never gets more than the one confirmation mail.
+    const { res, insert } = await post({ email: "reader@aidr.today" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, pending: true });
+    expect(insert?.sql).toContain("VALUES (?, ?, ?, ?, 0,");
+    // Re-submitting the form must never un-confirm an existing reader.
+    expect(insert?.sql).not.toMatch(/confirmed\s*=/);
+  });
+
+  it("rejects reserved domains that can only bounce", async () => {
+    const { res, insert } = await post({ email: "cors-test@example.com" });
+    expect(res.status).toBe(400);
+    expect(insert).toBeUndefined();
+  });
 
   it("stores the image layout chosen in the form", async () => {
     const { res, insert } = await post({
-      email: "reader@example.com",
+      email: "reader@aidr.today",
       lang: "en",
       digest_size: 10,
       mail_format: "large",
@@ -77,7 +94,7 @@ describe("POST /api/subscribe", () => {
 
   it("falls back to the default layout for an unknown value", async () => {
     const { insert } = await post({
-      email: "reader@example.com",
+      email: "reader@aidr.today",
       mail_format: "huge",
     });
     expect(insert?.args.at(-1)).toBe("design");

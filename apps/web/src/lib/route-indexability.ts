@@ -322,6 +322,7 @@ function classifyRoute({
     isPathOrChild(pathname, "/api/admin") ||
     pathname === "/api/mcp" ||
     (pathname === "/subscribe" && hasSensitiveQuery(search)) ||
+    pathname === "/api/subscribe/confirm" ||
     (pathname === "/api/subscribe" &&
       (hasKey(search, "token") || isUnsafeMethod(method)))
   ) {

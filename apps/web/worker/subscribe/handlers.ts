@@ -6,9 +6,19 @@ import { ensureMailSchema } from "../mail/schema.js";
 import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import type { Env } from "../types.js";
 import { notifyOwnerOfNewSubscriber } from "./owner-notify.js";
-import { sendWelcomeEmail } from "./send.js";
+import { sendConfirmEmail, sendWelcomeEmail } from "./send.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** RFC 2606 / 6761 reserved domains never receive mail; sending to them is a
+ * guaranteed bounce that hurts sender reputation. */
+const RESERVED_DOMAIN_RE =
+  /(^|\.)(example\.(com|net|org)|test|example|invalid|localhost|local)$/i;
+
+export function isDeliverableDomain(email: string): boolean {
+  const domain = email.split("@")[1] ?? "";
+  return !RESERVED_DOMAIN_RE.test(domain);
+}
 
 export const DEFAULT_TIMEZONE = "Asia/Ho_Chi_Minh";
 
@@ -103,7 +113,9 @@ export function normalizeSource(source: unknown): SubscribeSource {
     : "news";
 }
 
-/** Inserts (or re-activates) a subscriber. `lang` defaults to 'vi' unless
+/** Inserts a pending subscriber (double opt-in): the row stays
+ * `confirmed = 0` until the confirmation link is clicked, and digests only go
+ * to confirmed rows. An already-confirmed row keeps its confirmation. `lang` defaults to 'vi' unless
  * 'en' is explicitly given. `timezone` defaults to DEFAULT_TIMEZONE unless
  * a valid IANA timezone string is given. */
 export async function subscribe(
@@ -115,8 +127,8 @@ export async function subscribe(
   ip?: string | null,
   digestSize?: unknown,
   mailFormat?: unknown
-): Promise<{ ok: true } | SubscribeError> {
-  if (!isValidEmail(email)) {
+): Promise<{ ok: true; pending: boolean } | SubscribeError> {
+  if (!isValidEmail(email) || !isDeliverableDomain(email)) {
     return { error: "invalid email", status: 400 };
   }
   const normalizedLang = lang === "en" ? "en" : "vi";
@@ -155,9 +167,9 @@ export async function subscribe(
 
   await env.DB.prepare(
     `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format)
-     VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+     VALUES (?, ?, ?, ?, 0, ?, ?, ?)
      ON CONFLICT(email) DO UPDATE SET
-       lang = excluded.lang, timezone = excluded.timezone, confirmed = 1,
+       lang = excluded.lang, timezone = excluded.timezone,
        digest_size = excluded.digest_size, mail_format = excluded.mail_format`
   )
     .bind(email, normalizedLang, normalizedTimezone, now, token, size, format)
@@ -172,7 +184,64 @@ export async function subscribe(
     .bind(email, normalizedSource, now)
     .run();
 
-  // Welcome mail is best-effort — subscribe still succeeds if EMAIL is down.
+  const row = await env.DB.prepare(
+    "SELECT confirmed, unsubscribe_token FROM subscribers WHERE email = ?"
+  )
+    .bind(email)
+    .first<{ confirmed: number; unsubscribe_token: string }>();
+  if (row?.confirmed === 1) return { ok: true, pending: false };
+
+  // Confirmation mail is best-effort — the row stays pending if EMAIL is down
+  // and the subscriber can submit the form again.
+  void sendConfirmEmail(env, {
+    email,
+    lang: normalizedLang,
+    unsubscribe_token: row?.unsubscribe_token ?? token,
+  }).catch((error) => {
+    console.error(
+      "confirm email skipped:",
+      error instanceof Error ? error.message : "error"
+    );
+  });
+
+  return { ok: true, pending: true };
+}
+
+/** Confirms a pending subscriber by the token sent in the confirmation mail,
+ * then sends the welcome mail and tells the owner. Idempotent. */
+export async function confirmSubscription(
+  env: Env,
+  token: unknown
+): Promise<{ ok: true; token: string } | SubscribeError> {
+  if (typeof token !== "string" || token.length === 0) {
+    return { error: "token is required", status: 400 };
+  }
+  await ensureMailSchema(env.DB);
+  const row = await env.DB.prepare(
+    `SELECT s.email, s.lang, s.confirmed, src.source
+     FROM subscribers s LEFT JOIN subscriber_sources src ON src.email = s.email
+     WHERE s.unsubscribe_token = ?`
+  )
+    .bind(token)
+    .first<{
+      email: string;
+      lang: string;
+      confirmed: number;
+      source: string | null;
+    }>();
+  if (!row) return { error: "not found", status: 404 };
+  if (row.confirmed === 1) return { ok: true, token };
+
+  await env.DB.prepare(
+    "UPDATE subscribers SET confirmed = 1 WHERE unsubscribe_token = ?"
+  )
+    .bind(token)
+    .run();
+  const email = row.email;
+  const normalizedLang = row.lang === "en" ? "en" : "vi";
+  const normalizedSource = normalizeSource(row.source);
+
+  // Welcome mail is best-effort — confirmation still succeeds if EMAIL is down.
   void sendWelcomeEmail(env, {
     email,
     lang: normalizedLang,
@@ -187,7 +256,7 @@ export async function subscribe(
   void (async () => {
     try {
       const totalRow = await env.DB.prepare(
-        "SELECT COUNT(*) AS c FROM subscribers"
+        "SELECT COUNT(*) AS c FROM subscribers WHERE confirmed = 1"
       ).first<{ c: number }>();
       await notifyOwnerOfNewSubscriber(env, {
         email,
@@ -203,7 +272,7 @@ export async function subscribe(
     }
   })();
 
-  return { ok: true };
+  return { ok: true, token };
 }
 
 /** Removes a subscriber by their unsubscribe token. */

@@ -166,6 +166,44 @@ export function buildDigestEmail(
  * snapshot with bullets yet — this must never break the hourly ingest
  * workflow.
  */
+export function confirmUrl(token: string): string {
+  return `${SITE_URL}/api/subscribe/confirm?token=${encodeURIComponent(token)}`;
+}
+
+/** Double opt-in: nothing else is sent until this link is clicked. */
+export async function sendConfirmEmail(
+  env: Env,
+  sub: { email: string; lang: string; unsubscribe_token: string }
+): Promise<boolean> {
+  const vi = sub.lang !== "en";
+  const subject = vi
+    ? "Xác nhận đăng ký AI;DR"
+    : "Confirm your AI;DR subscription";
+  const bodyMd = vi
+    ? "Bấm nút bên dưới để xác nhận và bắt đầu nhận bản tin AI;DR.\n\nNếu bạn không đăng ký, cứ bỏ qua email này — bạn sẽ không nhận thêm gì.\n"
+    : "Click the button below to confirm and start getting the AI;DR digest.\n\nIf you didn't sign up, ignore this email — you won't hear from us again.\n";
+  const { html, text } = renderNoteEmail({
+    subject,
+    bodyMd,
+    lang: vi ? "vi" : "en",
+    unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    settingsUrl: settingsUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    cta: {
+      label: vi ? "Xác nhận đăng ký" : "Confirm subscription",
+      url: confirmUrl(sub.unsubscribe_token),
+    },
+  });
+  return sendSubscriberEmail(env, {
+    to: sub.email,
+    from: digestFrom(env),
+    subject,
+    html,
+    text,
+    unsubscribeToken: sub.unsubscribe_token,
+    lang: vi ? "vi" : "en",
+  });
+}
+
 export async function sendWelcomeEmail(
   env: Env,
   sub: { email: string; lang: string; unsubscribe_token: string }
