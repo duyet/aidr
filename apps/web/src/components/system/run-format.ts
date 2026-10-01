@@ -676,3 +676,67 @@ export function groupFailedAttempts(
   }
   return [...groups.values()].sort((a, b) => b.count - a.count);
 }
+
+/** Attempt row plus the per-invocation id and price (migration 0034). */
+export type ChainAttempt = LlmCallRow & {
+  callId?: string | null;
+  costUsd?: number | null;
+};
+
+export interface ChainCall {
+  key: string;
+  task: string;
+  hops: ChainAttempt[];
+  ok: boolean;
+  durationMs: number;
+  tokens: number;
+  /** Null when AnyRouter reported no price for any hop. */
+  costUsd: number | null;
+}
+
+/** One fallback-chain invocation per row: its attempts (hops) in order.
+ *  Rows logged with a call id group exactly; older rows are grouped per
+ *  task, closing a call at its first success. */
+export function groupChainCalls(attempts: ChainAttempt[]): ChainCall[] {
+  const sorted = [...attempts].sort((a, b) => a.ts - b.ts);
+  const calls: ChainCall[] = [];
+  const byId = new Map<string, ChainCall>();
+  const openByTask = new Map<string, ChainCall>();
+  const start = (a: ChainAttempt, key: string): ChainCall => {
+    const call: ChainCall = {
+      key,
+      task: a.task,
+      hops: [],
+      ok: false,
+      durationMs: 0,
+      tokens: 0,
+      costUsd: null,
+    };
+    calls.push(call);
+    return call;
+  };
+  sorted.forEach((a, index) => {
+    let call: ChainCall;
+    if (a.callId) {
+      call = byId.get(a.callId) ?? start(a, a.callId);
+      byId.set(a.callId, call);
+    } else {
+      const open = openByTask.get(a.task);
+      call = open && !open.ok ? open : start(a, `${a.task}-${index}`);
+      openByTask.set(a.task, call);
+    }
+    call.hops.push(a);
+    call.ok = call.ok || a.ok;
+    call.durationMs += a.durationMs;
+    call.tokens += a.tokens;
+    if (typeof a.costUsd === "number" && Number.isFinite(a.costUsd))
+      call.costUsd = (call.costUsd ?? 0) + a.costUsd;
+  });
+  return calls;
+}
+
+export function formatCostUsd(value: number): string {
+  if (value === 0) return "$0";
+  if (value < 0.0001) return "<$0.0001";
+  return `$${value < 0.01 ? value.toFixed(4) : value.toFixed(3)}`;
+}
