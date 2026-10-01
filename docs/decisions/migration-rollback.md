@@ -169,6 +169,17 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   The column must stay while the new Worker runs; after rolling the Worker
   back it can go: `ALTER TABLE clerk_users DROP COLUMN email_verified;`
 
+## 0041_clerk_verified_emails.sql
+
+- Change: creates `clerk_verified_emails` (user_id, email). Each Clerk
+  webhook and clerk-sync upsert deletes that user's rows and inserts the
+  addresses Clerk currently marks verified.
+- Risk: none for the pipeline. Apply before deploying the Worker that writes
+  the table, or those upserts fail and Svix retries them. Run
+  `POST /api/admin/clerk-sync` after applying so existing accounts are filled.
+- Rollback: redeploy the previous Worker, then
+  `DROP TABLE clerk_verified_emails;`
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`

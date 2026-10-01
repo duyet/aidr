@@ -1,6 +1,5 @@
 import handler from "@tanstack/react-start/server-entry";
 import { handleClerkProxy, isClerkProxyPath } from "../worker/clerk-proxy";
-import { handleContributorEmailConfirm } from "../worker/email-intake/confirm-http";
 import { handleAidrZipRequest } from "../worker/extension-zip";
 import { ensureIngestAlarm, tickIngest } from "../worker/ingest-schedule";
 import { NewsIngestScheduler } from "../worker/ingest-scheduler";
@@ -115,9 +114,6 @@ export default {
     }
     if (path === "/aidr.zip") {
       return handleAidrZipRequest(request);
-    }
-    if (path === "/api/contribute-email/confirm") {
-      return handleContributorEmailConfirm(request, env);
     }
     if (
       path === "/api/public" ||
