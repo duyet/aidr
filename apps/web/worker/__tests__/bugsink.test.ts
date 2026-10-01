@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { bugsinkEnvelope } from "../bugsink";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  bindSentry,
+  bugsinkEnvelope,
+  reportPipelineException,
+} from "../bugsink";
 
 describe("bugsink envelope", () => {
   it("posts a delivery failure to the project envelope endpoint", () => {
@@ -21,5 +25,34 @@ describe("bugsink envelope", () => {
 
   it("ignores a DSN that is not a URL", () => {
     expect(bugsinkEnvelope("not a dsn", { message: "x" })).toBeNull();
+  });
+});
+
+describe("reportPipelineException", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  // A deploy resets the Workflow's Durable Object mid-step and the engine
+  // replays it; reporting that opens a Bugsink issue on every release.
+  it.each([
+    "Durable Object reset because its code was updated.",
+    "Attempt failed due to internal workflows error",
+  ])("does not report engine interruption: %s", async (message) => {
+    const fetchMock = vi.fn(async () => new Response("ok"));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    bindSentry({ SENTRY_DSN: "https://key@bugs.example/1" });
+    await reportPipelineException(new Error(message), {
+      step: "close-run",
+      kind: "exception",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("still reports other exceptions", async () => {
+    const fetchMock = vi.fn(async () => new Response("ok"));
+    vi.stubGlobal("fetch", fetchMock);
+    bindSentry({ SENTRY_DSN: "https://key@bugs.example/1" });
+    await reportPipelineException(new Error("boom"), { step: "close-run" });
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });

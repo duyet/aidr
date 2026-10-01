@@ -136,11 +136,32 @@ export async function reportHealthAlert(
   });
 }
 
+/** Messages the Workflows engine raises when it interrupts a step itself: a
+ * deploy replacing the Durable Object code, or an internal engine fault. The
+ * engine retries or replays the step, so neither is an app error. */
+const ENGINE_INTERRUPTIONS = [
+  "Durable Object reset because its code was updated",
+  "Attempt failed due to internal workflows error",
+];
+
+export function isEngineInterruption(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    ENGINE_INTERRUPTIONS.some((message) => error.message.includes(message))
+  );
+}
+
 /** Exception path used by the ingest workflow. Database rows stay as they are. */
 export async function reportPipelineException(
   error: unknown,
   tags: Record<string, string>
 ): Promise<void> {
+  if (isEngineInterruption(error)) {
+    console.warn(
+      `${tags.step ?? "pipeline"}: interrupted by the workflow engine`
+    );
+    return;
+  }
   const exception = exceptionReport(error);
   await reportToSentry(bound, {
     message: exception.value,
