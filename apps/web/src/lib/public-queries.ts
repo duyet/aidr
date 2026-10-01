@@ -94,7 +94,7 @@ const STORIES_SQL = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i.catego
        i.image_url, i.media_manifest, i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published'
+WHERE i.status = 'published' AND i.published_at >= ?
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
@@ -102,7 +102,7 @@ const STORIES_SQL_NO_MEDIA = `SELECT i.id, i.url, i.title, tr.title AS title_vi,
        i.image_url, i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published'
+WHERE i.status = 'published' AND i.published_at >= ?
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
@@ -110,7 +110,7 @@ const STORIES_SQL_MEDIA_NO_IMAGE = `SELECT i.id, i.url, i.title, tr.title AS tit
        i.media_manifest, i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published'
+WHERE i.status = 'published' AND i.published_at >= ?
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
@@ -118,7 +118,7 @@ const STORIES_SQL_LEGACY = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i
        i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published'
+WHERE i.status = 'published' AND i.published_at >= ?
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
@@ -199,31 +199,40 @@ function toPublicStory(row: StoryRow): PublicStory {
   };
 }
 
-async function loadTopStories(db: DbReader): Promise<PublicStory[]> {
+/** Only today's items are re-ranked; an older item keeps the rank_score it
+ *  had when its day ended, so an all-time ORDER BY rank_score let a 3-week-old
+ *  story outrank today's news. Top stories come from this window only. */
+export const PUBLIC_STORY_WINDOW_SEC = 48 * 60 * 60;
+
+async function loadTopStories(
+  db: DbReader,
+  nowMs: number = Date.now()
+): Promise<PublicStory[]> {
+  const since = Math.floor(nowMs / 1000) - PUBLIC_STORY_WINDOW_SEC;
   try {
     const { results } = await db
       .prepare(STORIES_SQL)
-      .bind(PUBLIC_STORY_LIMIT)
+      .bind(since, PUBLIC_STORY_LIMIT)
       .all<StoryRow>();
     return (results ?? []).map(toPublicStory);
   } catch {
     try {
       const { results } = await db
         .prepare(STORIES_SQL_NO_MEDIA)
-        .bind(PUBLIC_STORY_LIMIT)
+        .bind(since, PUBLIC_STORY_LIMIT)
         .all<StoryRow>();
       return (results ?? []).map(toPublicStory);
     } catch {
       try {
         const { results } = await db
           .prepare(STORIES_SQL_MEDIA_NO_IMAGE)
-          .bind(PUBLIC_STORY_LIMIT)
+          .bind(since, PUBLIC_STORY_LIMIT)
           .all<StoryRow>();
         return (results ?? []).map(toPublicStory);
       } catch {
         const { results } = await db
           .prepare(STORIES_SQL_LEGACY)
-          .bind(PUBLIC_STORY_LIMIT)
+          .bind(since, PUBLIC_STORY_LIMIT)
           .all<StoryRow>();
         return (results ?? []).map(toPublicStory);
       }

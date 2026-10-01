@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { MAX_PUBLIC_MEDIA_ASSETS } from "../../worker/media.js";
 import { servePublicApi } from "./public-api";
@@ -477,5 +478,41 @@ describe("servePublicApi", () => {
     const db = makeDb({ tldr: bilingualTldr, stories: [story("a")] });
     const res = await servePublicApi(db);
     expect(res.status).toBe(200);
+  });
+});
+
+describe("top stories window", () => {
+  // Only today's items are re-ranked, so older items keep a frozen score.
+  // An all-time ORDER BY rank_score put a 3-week-old story in the top 8.
+  it("ranks only recent stories, however high an old item's frozen score", async () => {
+    const sqlite = new DatabaseSync(":memory:");
+    sqlite.exec(`CREATE TABLE items (id TEXT, url TEXT, title TEXT,
+        category TEXT, image_url TEXT, media_manifest TEXT,
+        published_at INTEGER, status TEXT, rank_score REAL);
+      CREATE TABLE translations (item_id TEXT, lang TEXT, title TEXT);
+      CREATE TABLE tldr_snapshots (date TEXT, bullets_en TEXT, bullets_vi TEXT);`);
+    const now = Math.floor(Date.now() / 1000);
+    const add = sqlite.prepare(
+      "INSERT INTO items VALUES (?, 'https://x.test', ?, NULL, NULL, NULL, ?, 'published', ?)"
+    );
+    add.run("old", "Three weeks old", now - 21 * 86400, 99);
+    add.run("fresh", "Today", now - 3600, 10);
+    const db = {
+      prepare(sql: string) {
+        let args: unknown[] = [];
+        const stmt = {
+          bind: (...a: unknown[]) => {
+            args = a;
+            return stmt;
+          },
+          all: async () => ({
+            results: sqlite.prepare(sql).all(...(args as never[])),
+          }),
+        };
+        return stmt;
+      },
+    } as unknown as D1Database;
+    const digest = await getPublicDigest(db);
+    expect(digest.stories.map((s) => s.id)).toEqual(["fresh"]);
   });
 });
