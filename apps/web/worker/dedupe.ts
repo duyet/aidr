@@ -1,3 +1,4 @@
+import { completeJson, parseJson } from "./llm.js";
 import {
   buildMediaManifest,
   type MediaAsset,
@@ -7,80 +8,16 @@ import type { FetchedItemSource } from "./sources/types.js";
 import { unionTopics } from "./topics.js";
 import type { Env } from "./types.js";
 
-// Self-contained anyrouter call, deliberately NOT imported from llm.ts:
-// llm.ts is being actively reworked (streaming + prompt changes) by another
-// agent, so this file avoids touching or importing from it entirely.
 const MAX_TOKENS = 4096;
+/** The clustering prompt carries up to MERGE_CANDIDATE_LIMIT titles (~15k
+ *  tokens), so one model may need well past the default 25s slice. */
+const CLUSTER_TIMEOUT_MS = 120_000;
+const CLUSTER_SLICE_MAX_MS = 90_000;
 /** Bounds the clustering prompt's new-item side (the existing side is bounded
  * by MERGE_CANDIDATE_LIMIT). 300 existing rows are already ~15k tokens; 100
  * new rows with URLs add ~7k, which still fits a 32k-context model. New items
  * past the cap are not sent and stay their own stories for the LLM pass. */
 export const MAX_NEW_ITEMS_IN_CLUSTER_PROMPT = 100;
-
-/**
- * Strips ```json fences and parses. If there's no fence, falls back to
- * extracting the outermost {...} block. Throws if nothing parseable is
- * found. (Deliberately duplicated from llm.ts's parseJson rather than
- * imported, for the same "don't touch llm.ts" reason as above.)
- */
-function parseJsonLoose<T>(raw: string): T {
-  let text = raw.trim();
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced) {
-    text = fenced[1].trim();
-  } else {
-    const start = text.search(/[[{]/);
-    const end = text.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      text = text.slice(start, end + 1);
-    }
-  }
-  return JSON.parse(text) as T;
-}
-
-async function callAnyrouterForClustering(
-  env: Env,
-  prompt: string
-): Promise<{ content: string; tokens: number }> {
-  const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${env.ANYROUTER_API_KEY}`,
-      // App attribution so clustering traffic counts toward AI;DR rankings.
-      "HTTP-Referer": "https://aidr.today",
-      "X-Title": "AI;DR",
-      "X-AnyRouter-Title": "AI;DR",
-      "X-AnyRouter-Source": "web-app",
-      "X-AnyRouter-Categories": "writing-assistant",
-    },
-    body: JSON.stringify({
-      model:
-        (env.ANYROUTER_MODEL ?? "").split(",")[0]?.trim() ||
-        env.ANYROUTER_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0,
-      max_tokens: MAX_TOKENS,
-      response_format: { type: "json_object" },
-    }),
-    signal: AbortSignal.timeout(30_000),
-  });
-
-  if (!res.ok) {
-    throw new Error(
-      `anyrouter request failed: ${res.status} ${await res.text()}`
-    );
-  }
-
-  const data = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-    usage?: { total_tokens?: number };
-  };
-  const content = data.choices?.[0]?.message?.content;
-  if (!content?.trim()) throw new Error("anyrouter response missing content");
-  return { content, tokens: data.usage?.total_tokens ?? 0 };
-}
 
 export interface ClusterNewInput {
   i: number;
@@ -383,10 +320,22 @@ ${JSON.stringify(recentItems)}
 Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]} — omit "new" or "existing" if empty for a cluster, and omit clusters entirely (empty array) if nothing matches. Prefer merging same-event clusters.`;
 
   try {
-    const { content, tokens } = await callAnyrouterForClustering(env, prompt);
-    console.log(`clusterSimilar used ${tokens} tokens`);
+    // Through the shared chain, not a single direct call: fallbacks, the
+    // first-token cutoff, the failing-model skip and llm_calls logging all
+    // apply. A direct call to the first chain id silently returned no
+    // merges whenever that id failed, publishing same-event duplicates.
+    const content = await completeJson(
+      env,
+      [{ role: "user", content: prompt }],
+      {
+        task: "cluster",
+        timeoutMs: CLUSTER_TIMEOUT_MS,
+        maxSliceMs: CLUSTER_SLICE_MAX_MS,
+        maxTokens: MAX_TOKENS,
+      }
+    );
     return normalizeClusters(
-      parseJsonLoose<unknown>(content),
+      parseJson<unknown>(content),
       new Set(shown.map((item) => item.i)),
       new Set(recentItems.map((item) => item.id))
     );

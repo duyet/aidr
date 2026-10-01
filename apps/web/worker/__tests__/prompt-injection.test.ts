@@ -35,6 +35,19 @@ import {
 } from "../translation-qa.js";
 import type { Env } from "../types.js";
 
+/** A non-streaming chat body as the SSE stream callAnyrouter reads:
+ *  each choice's `message` becomes a `delta`. */
+function asStream(body: {
+  choices?: { message?: { content?: string } }[];
+}): Response {
+  const frame = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
+  const choices = (body.choices ?? []).map((c) => ({ delta: c.message ?? {} }));
+  return new Response(`${frame({ choices })}data: [DONE]\n\n`, {
+    status: 200,
+    headers: { "content-type": "text/event-stream" },
+  });
+}
+
 /**
  * Prompt-injection cases for every LLM prompt path in the Worker (#147).
  *
@@ -416,32 +429,28 @@ describe("prompt injection: output side", () => {
     quiet();
     vi.stubGlobal(
       "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              choices: [
-                {
-                  message: {
-                    content: JSON.stringify({
-                      clusters: [
-                        // Real members plus invented ones.
-                        {
-                          new: [0, 999, -1, 1.5, "0"],
-                          existing: ["abc123", "ghost", "../../etc/passwd"],
-                        },
-                        // Only invented members: nothing left to merge.
-                        { new: [42], existing: ["ghost"] },
-                        // Fully valid.
-                        { new: [0, 1] },
-                      ],
-                    }),
-                  },
-                },
-              ],
-            }),
-            { status: 200 }
-          )
+      vi.fn(async () =>
+        asStream({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  clusters: [
+                    // Real members plus invented ones.
+                    {
+                      new: [0, 999, -1, 1.5, "0"],
+                      existing: ["abc123", "ghost", "../../etc/passwd"],
+                    },
+                    // Only invented members: nothing left to merge.
+                    { new: [42], existing: ["ghost"] },
+                    // Fully valid.
+                    { new: [0, 1] },
+                  ],
+                }),
+              },
+            },
+          ],
+        })
       )
     );
     const clusters = await clusterSimilar(
@@ -467,13 +476,7 @@ describe("prompt injection: output side", () => {
     ]) {
       vi.stubGlobal(
         "fetch",
-        vi.fn(
-          async () =>
-            new Response(
-              JSON.stringify({ choices: [{ message: { content } }] }),
-              { status: 200 }
-            )
-        )
+        vi.fn(async () => asStream({ choices: [{ message: { content } }] }))
       );
       expect(
         await clusterSimilar(

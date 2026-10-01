@@ -899,6 +899,8 @@ export async function completeJson(
     task?: LlmTask;
     timeoutMs?: number;
     maxTokens?: number;
+    /** Per-model cap for long prompts (default MODEL_SLICE_MAX_MS). */
+    maxSliceMs?: number;
   } = {}
 ): Promise<string> {
   const result = await callAnyrouter(env, messages, {
@@ -906,6 +908,7 @@ export async function completeJson(
     task: opts.task ?? "other",
     timeoutMs: opts.timeoutMs,
     maxTokens: opts.maxTokens,
+    maxSliceMs: opts.maxSliceMs,
   });
   return result.content;
 }
