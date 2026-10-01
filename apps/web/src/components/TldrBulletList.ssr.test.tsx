@@ -95,3 +95,13 @@ describe("AI;DR LCP row renders without JavaScript", () => {
     expect(en).toMatch(/<span class="min-w-0 flex-1 line-clamp-2 break-words/);
   });
 });
+
+describe("AI;DR card density", () => {
+  // The reader Density pref sets --reader-pad / --reader-leading on the page;
+  // the card must read them, or the slider changes the feed but not the card.
+  it("spaces bullets from the reader density vars, not fixed values", () => {
+    const html = renderAidr();
+    expect(html).toContain("var(--reader-pad");
+    expect(html).toContain("var(--reader-leading");
+  });
+});
