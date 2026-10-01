@@ -592,6 +592,7 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
 
+- `@preset/aidr` (workspace preset, resolves to Laguna)
 - `poolside/laguna-s-2.1` (the only concrete id that streams usable JSON on
   this key for translate and TL;DR)
 - `anyrouter/auto`, then `anyrouter/free` (router safety nets, always last)
@@ -604,8 +605,10 @@ for the first hop. GLM's first token lands at 12-20s, so as head it hit the
 20s cutoff; Ling answers the review prompt in 5-10s but streams nothing on
 the long generator prompts, so it is reviewer-only.
 
-`@preset/aidr` is out of every chain: it 404'd and then 429'd
-(`billing_concurrency_limited`) on every call and never served one.
+`@preset/aidr` heads the score, translate and TL;DR chains. It resolves to
+`poolside/laguna-s-2.1`; the ids behind it stay as a fallback in case the
+preset 404s or 429s again (both happened until AnyRouter fixed them on
+2026-10-01).
 
 An id that returns 404 (`model_not_found`, BYOK-only `model_unavailable`)
 is skipped by later calls in the same isolate for 15 minutes, and a 429
@@ -638,7 +641,7 @@ each backfill slice is its own Workflow step so a finished batch is written
 even if a later slice times out.
 
 - Score batches of 5 with a 70s hang-cap.
-- TL;DR uses a 120s hang-cap (Laguna needs 87-90s on the ~26K-char prompt).
+- TL;DR uses a 135s hang-cap (Laguna needs 102-119s on the ~26K-char prompt).
 - Translate attempts use a 60s hang-cap so `anyrouter/auto` is not killed
   mid-route (a 25s cap made every score/TL;DR model log 0 tokens).
 

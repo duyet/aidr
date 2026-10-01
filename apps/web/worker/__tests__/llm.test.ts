@@ -2209,3 +2209,44 @@ describe("404 circuit breaker", () => {
     expect(requested(fetchMock)).toEqual(["only/model", "only/model"]);
   });
 });
+
+describe("LLM call id", () => {
+  afterEach(() => {
+    setLlmCallLogger(null);
+    vi.unstubAllGlobals();
+  });
+
+  // /data groups a fallback chain by call_id; attempts from one invocation
+  // must share it, and separate invocations must never merge.
+  it("shares one id across a fallback chain and not across calls", async () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) =>
+        JSON.parse(String(init.body)).model === "down/model"
+          ? new Response("busy", { status: 502 })
+          : sseResponse([{ choices: [{ delta: { content: '{"ok":1}' } }] }])
+      )
+    );
+    const messages = [{ role: "user" as const, content: "hi" }];
+    const spec = { modelSpec: "down/model,ok/model", json: true };
+
+    await callAnyrouter(env, messages, spec);
+    await callAnyrouter(env, messages, spec);
+
+    const ids = entries.map((entry) => entry.callId);
+    expect(entries.map((entry) => entry.model)).toEqual([
+      "down/model",
+      "ok/model",
+      "down/model",
+      "ok/model",
+    ]);
+    expect(ids[0]).toMatch(/^[a-z0-9-]{1,36}$/);
+    expect(ids[1]).toBe(ids[0]);
+    expect(ids[3]).toBe(ids[2]);
+    expect(ids[2]).not.toBe(ids[0]);
+  });
+});

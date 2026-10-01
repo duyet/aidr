@@ -1,4 +1,4 @@
-import { logLlmCall } from "./llm.js";
+import { logLlmCall, newLlmCallId } from "./llm.js";
 import { sanitizeError } from "./telemetry-safe.js";
 import type { Env } from "./types.js";
 
@@ -122,6 +122,7 @@ export async function callSystemOne(
   const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
   const model = jevModelId(env);
   const attemptStartedAt = Date.now();
+  const callId = newLlmCallId();
   let promptChars = 0;
   try {
     promptChars = JSON.stringify(state)?.length ?? 0;
@@ -142,6 +143,7 @@ export async function callSystemOne(
       error,
       promptChars,
       responseSnippet: null,
+      callId,
     });
     return null;
   };
@@ -217,6 +219,7 @@ export async function callSystemOne(
     error: null,
     promptChars,
     responseSnippet: null,
+    callId,
   });
   return {
     answers: data.answers,

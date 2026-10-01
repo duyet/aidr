@@ -64,11 +64,16 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # Chat chains, picked by a streaming probe (2026-10-01): stream:true with
 # response_format json_object on the real prompts, 3 tries. A non-streaming
 # probe misleads. Time to first token / total (resolved id = itself):
-#   @preset/aidr             resolves to poolside/laguna-s-2.1; 2/2 ok, 1.6-7s TTFB (2026-10-01, after AnyRouter fixed the 404/429)
-#   poolside/laguna-s-2.1    4s / 18-22s translate, 6s / 87-90s TL;DR (26K)
+#   @preset/aidr             resolves to poolside/laguna-s-2.1; 2-5s / 18-25s
+#                            translate, 3 of 3 (after AnyRouter fixed 404/429)
+#   poolside/laguna-s-2.1    4s / 18-31s translate, 4-10s / 102-119s TL;DR
+#                            (26K chars, 3 of 3 with a 130s cap)
 #   anyrouter/auto           resolves to poolside/laguna-s-2.1 (same timing)
-#   anyrouter/free           1 of 3 ok (dots-3-note-preview), 2x 400
+#   anyrouter/free           1 of 5 ok (dots-3-note-preview), 4x 400 from
+#                            upstream openrouter-pool (reported to AnyRouter)
 # Laguna often emits one stray `]`/`}`; parseJson drops it (llm.ts).
+# anyrouter/latest now accepts json_object but also resolves to Laguna, so
+# it adds nothing over auto.
 # @preset/aidr was 404 then 429 billing_concurrency_limited until AnyRouter
 # fixed both on 2026-10-01. Removed: meta/muse-glimmer-30b (34s first token,
 # 60s hang, 502), anyrouter/cowork (resolves to stealth/space-bunny-alpha,

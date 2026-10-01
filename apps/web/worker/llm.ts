@@ -154,6 +154,14 @@ export interface LlmCallLogEntry {
   route?: string[] | null;
   /** Upstream provider that served the attempt, when reported. */
   provider?: string | null;
+  /** Shared by every attempt of one callAnyrouter/callSystemOne
+   *  invocation, so a fallback chain reads as one call. */
+  callId?: string | null;
+}
+
+/** Short id grouping one invocation's attempts in `llm_calls.call_id`. */
+export function newLlmCallId(): string {
+  return crypto.randomUUID().slice(0, 8);
 }
 
 export type LlmCallLogger = (entry: LlmCallLogEntry) => void | Promise<void>;
@@ -558,10 +566,10 @@ export const MODEL_SLICE_MAX_MS = 25_000;
 /** 15-item score / 16-bullet TL;DR JSON cannot finish in 25s; every
  *  model then logs 0 tokens and the chain looks 100% dead. */
 export const SCORE_SLICE_MAX_MS = 70_000;
-/** The ~26K-char bilingual TL;DR takes Laguna S 2.1 87-90s to finish
- *  (probe 2026-10-01), so 90s killed it at the line. Still inside the
+/** The ~26K-char bilingual TL;DR takes Laguna S 2.1 102-119s to finish
+ *  (probe 2026-10-01), so a 90s cap killed it every time. Stays inside the
  *  first attempt's window (TLDR_TIMEOUT_MS - TLDR_RETRY_RESERVE_MS). */
-export const TLDR_SLICE_MAX_MS = 120_000;
+export const TLDR_SLICE_MAX_MS = 135_000;
 /** Translate used the 25s leftover cap; anyrouter/auto often needs longer
  *  to finish a 3-item JSON batch when it is the only hop. */
 export const TRANSLATE_SLICE_MAX_MS = 60_000;
@@ -706,6 +714,7 @@ async function callAnyrouter(
     throw new Error("anyrouter model is not configured");
   // Skipped ids take no budget slice. If every id is skipped, try them all
   // again rather than fail without a request.
+  const callId = newLlmCallId();
   const live = configured.filter((model) => !isUnavailable(model));
   const models = live.length > 0 ? live : configured;
 
@@ -775,6 +784,7 @@ async function callAnyrouter(
           sensitive: opts.sensitive,
           route: buildRoute(model, trace),
           provider: trace.provider,
+          callId,
         });
         failures.push(`${model}: anyrouter response failed accept check`);
         continue;
@@ -796,6 +806,7 @@ async function callAnyrouter(
         sensitive: opts.sensitive,
         route: buildRoute(model, trace),
         provider: trace.provider,
+        callId,
       });
       return { ...result, model };
     } catch (error) {
@@ -824,6 +835,7 @@ async function callAnyrouter(
         sensitive: opts.sensitive,
         route: buildRoute(model, trace),
         provider: trace.provider,
+        callId,
       });
     }
   }
@@ -901,7 +913,7 @@ function parseJson<T>(raw: string): T {
 }
 
 /**
- * Laguna S 2.1 (first hop for translate and TL;DR) often emits one stray
+ * Laguna S 2.1 (serves translate and TL;DR, also via @preset/aidr) often emits one stray
  * closer: a trailing `]` after the root object, or a `}` that ends the root
  * before `,"bullets_vi":[...]` (probe 2026-10-01). A plain parse then drops
  * the batch, or keeps only bullets_en and the VI digest falls back to

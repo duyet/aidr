@@ -129,6 +129,15 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   drop them if needed:
   `ALTER TABLE llm_calls DROP COLUMN route; ALTER TABLE llm_calls DROP COLUMN provider;`
 
+## 0034_llm_call_id.sql
+
+- Change: adds the nullable `llm_calls.call_id` column, shared by every
+  attempt of one LLM invocation (a fallback chain logs one id).
+- Risk: none for existing rows (they stay NULL). The logger also adds the
+  column at runtime, and falls back to the 0033 insert when it is missing.
+- Rollback: redeploy the previous Worker; it never reads the column. Only
+  drop it if needed: `ALTER TABLE llm_calls DROP COLUMN call_id;`
+
 ## 0001 to 0026
 
 Read from the SQL files. Most only create tables, indexes and columns, or

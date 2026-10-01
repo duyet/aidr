@@ -164,6 +164,8 @@ export interface LlmCallRow {
   route?: string[];
   /** Upstream provider that served the attempt, when reported. */
   provider?: string | null;
+  /** Shared by every attempt of one LLM invocation, from migration 0034. */
+  callId?: string | null;
 }
 
 export interface RunLlmSummary {
@@ -598,6 +600,7 @@ interface LlmCallDbRow {
   error_status?: number | null;
   route?: string | null;
   provider?: string | null;
+  call_id?: string | null;
 }
 
 const ROUTE_HOP_RE = /^[A-Za-z0-9@][A-Za-z0-9._:/@-]{0,119}$/;
@@ -649,12 +652,21 @@ function mapLlmCallRow(r: LlmCallDbRow): LlmCallRow {
       typeof r.provider === "string" && ROUTE_HOP_RE.test(r.provider)
         ? r.provider
         : null,
+    callId:
+      typeof r.call_id === "string" && /^[a-z0-9-]{1,36}$/.test(r.call_id)
+        ? r.call_id
+        : null,
   };
 }
 
 const LLM_SELECT_COLUMNS = `ts, run_id, task, model, ok, tokens, duration_ms,
   prompt_chars, error, prompt_tokens, completion_tokens, cached_tokens,
-  error_code, error_status, route, provider`;
+  error_code, error_status, route, provider, call_id`;
+
+/** Pre-0034 schema: same columns minus call_id. */
+const LLM_SELECT_COLUMNS_PRE_CALL_ID = `ts, run_id, task, model, ok, tokens,
+  duration_ms, prompt_chars, error, prompt_tokens, completion_tokens,
+  cached_tokens, error_code, error_status, route, provider`;
 
 /** Pre-0033 schema: same columns minus route/provider. */
 const LLM_SELECT_COLUMNS_PRE_ROUTE = `ts, run_id, task, model, ok, tokens,
@@ -686,6 +698,21 @@ async function queryLlmCallsByRunId(
     const { results } = await db
       .prepare(
         `SELECT ${LLM_SELECT_COLUMNS}
+         FROM llm_calls
+         WHERE ${where}
+         ORDER BY ts ASC
+         LIMIT ${LLM_ATTEMPTS_LIMIT}`
+      )
+      .bind(...binds)
+      .all<LlmCallDbRow>();
+    return finishLlmQuery(results);
+  } catch {
+    // call_id may not exist yet.
+  }
+  try {
+    const { results } = await db
+      .prepare(
+        `SELECT ${LLM_SELECT_COLUMNS_PRE_CALL_ID}
          FROM llm_calls
          WHERE ${where}
          ORDER BY ts ASC

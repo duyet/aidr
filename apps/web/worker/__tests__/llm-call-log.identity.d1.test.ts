@@ -50,7 +50,7 @@ let db: Awaited<ReturnType<Miniflare["getD1Database"]>>;
 const env = () => ({ DB: db }) as unknown as Env;
 
 /** Must match TELEMETRY_COLUMNS_SQL in ../llm-call-log.js. */
-const TELEMETRY_COLUMN_COUNT = 8;
+const TELEMETRY_COLUMN_COUNT = 9;
 const T0 = 1_790_349_075_000;
 
 const RUN_A = "aaaaaaaa-1111-4111-8111-aaaaaaaa1111";
