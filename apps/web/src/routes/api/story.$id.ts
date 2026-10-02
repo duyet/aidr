@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { loadStoryRanking } from "../../../worker/notify/story-ranking.js";
 import { readSession } from "../../lib/db";
 import {
   API_CONTENT_LANGUAGE,
@@ -59,10 +60,16 @@ export const Route = createFileRoute("/api/story/$id")({
               message_vi: "Không tìm thấy bài viết.",
             });
           }
+          // Opt-in (`?ranking=1`): the story page's "Why this ranks" panel.
+          const ranking =
+            url.searchParams.get("ranking") === "1"
+              ? await loadStoryRanking(db, item.id)
+              : undefined;
           const policy = localeCacheControl(url.search, STORY_CACHE_CONTROL);
           return Response.json(
             {
               ...item,
+              ...(ranking ? { ranking } : {}),
               lang,
               available_langs: ["en", "vi"],
               permalink: absoluteSiteUrl(storyPath(item), lang),

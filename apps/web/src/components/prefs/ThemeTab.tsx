@@ -1,9 +1,18 @@
 import { track } from "@aidr/ui/track";
-import { AArrowDown, AArrowUp, Moon, Rows2, Rows4, Sun } from "lucide-react";
+import {
+  AArrowDown,
+  AArrowUp,
+  Moon,
+  RotateCcw,
+  Rows2,
+  Rows4,
+  Sun,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import {
   applyReaderTheme,
+  DEFAULT_PREFS,
   type ReaderBg,
   type ReaderDensity,
   type ReaderFont,
@@ -51,6 +60,26 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
     setPrefs({ bg });
     applyReaderTheme(bg);
     setTheme(dark ? "dark" : "light");
+  };
+
+  const isDefault =
+    prefs.font === DEFAULT_PREFS.font &&
+    prefs.fontSize === DEFAULT_PREFS.fontSize &&
+    prefs.density === DEFAULT_PREFS.density &&
+    prefs.bg === DEFAULT_PREFS.bg &&
+    (!mounted || resolvedTheme !== "dark");
+
+  /** Back to the default look; other settings (sections, TL;DR count) stay. */
+  const resetAppearance = () => {
+    track("prefs_change", { pref: "reset" });
+    setPrefs({
+      font: DEFAULT_PREFS.font,
+      fontSize: DEFAULT_PREFS.fontSize,
+      density: DEFAULT_PREFS.density,
+      bg: DEFAULT_PREFS.bg,
+    });
+    applyReaderTheme(DEFAULT_PREFS.bg);
+    setTheme("system");
   };
 
   return (
@@ -184,6 +213,15 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
           ))}
         </div>
       </div>
+      <button
+        type="button"
+        onClick={resetAppearance}
+        disabled={isDefault}
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+      >
+        <RotateCcw className="size-4" aria-hidden />
+        {t("Reset to default", "Khôi phục mặc định")}
+      </button>
     </div>
   );
 }

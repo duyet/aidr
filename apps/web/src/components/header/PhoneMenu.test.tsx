@@ -290,7 +290,7 @@ describe("mobile action sizing", () => {
       "Get AI;DR",
       "Telegram",
       "Data",
-      "Submit",
+      "Contribute",
       "duyet.net",
     ]);
   });
@@ -381,7 +381,7 @@ describe("mobile action sizing", () => {
       "Telegram Channel (Vietnamese)",
       "Telegram Channel (English)",
       "Email Subscription",
-      "Submit",
+      "Contribute",
       "Data Analytics",
       "Algorithms",
       "About",

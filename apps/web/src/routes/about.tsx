@@ -7,7 +7,12 @@ import { ExternalLink } from "lucide-react";
 import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
-import { ANYROUTER_URL, GITHUB_ALGORITHM_URL, GITHUB_URL } from "../lib/site";
+import {
+  ANYROUTER_URL,
+  GITHUB_ALGORITHM_URL,
+  GITHUB_URL,
+  SUBMIT_EMAIL,
+} from "../lib/site";
 
 export const Route = createFileRoute("/about")({
   search: {
@@ -17,13 +22,15 @@ export const Route = createFileRoute("/about")({
     pageHead({
       path: "/about",
       title: "About | AI News",
+      description:
+        "AI;DR reads the day's AI news and publishes one ranked edition in English and Vietnamese. Also called AI News, AIDR, and AIDR Today.",
       route: headRouteInput(match),
     }),
   component: AboutPage,
 });
 
 const STEPS: [string, string[]][] = [
-  ["Collect", ["hourly pull"]],
+  ["Collect", ["every 30 minutes"]],
   ["Process", ["read, dedupe"]],
   ["Judge", ["JEV + LLM score"]],
   ["Rank", ["importance x quality"]],
@@ -59,11 +66,13 @@ function AboutPage() {
         <h1>About AI;DR</h1>
         <p>
           AI;DR is a machine that reads the day's AI news and publishes one
-          ranked edition.
+          ranked edition. The site is also called AI News, AIDR, AIDR Today, and
+          AI;DR Today, and it lives at aidr.today.
         </p>
         <p className="text-muted-foreground">
-          People do not pick the order. Each hour the pipeline collects stories,
-          processes them, and asks JEV plus an LLM what deserves a place.
+          People do not pick the order. Every 30 minutes the pipeline collects
+          stories, including new model releases, new kinds of models, and new AI
+          labs, processes them, and asks JEV plus an LLM what deserves a place.
           AnyRouter runs those model calls. The result is combined into one
           snapshot, then distributed to the site, email, and Telegram. Every
           story still links back to the original post.
@@ -73,7 +82,9 @@ function AboutPage() {
       <section id="how-it-works" className="mt-10 scroll-mt-20">
         <div className="typeset typeset-page">
           <h2>How it works</h2>
-          <p className="text-muted-foreground">Six steps, one hourly run.</p>
+          <p className="text-muted-foreground">
+            Six steps, one run every 30 minutes.
+          </p>
         </div>
         <PipelineDiagram />
         <p className="typeset typeset-page mt-4 text-muted-foreground">
@@ -108,7 +119,10 @@ function AboutPage() {
         </p>
         <p className="text-muted-foreground">
           Stories are machine-curated. Mistakes happen. A signed-in reader can
-          suggest a better line under any story.
+          suggest a better line under any story, or email{" "}
+          <a href={`mailto:${SUBMIT_EMAIL}`}>{SUBMIT_EMAIL}</a> from their
+          verified address to forward a story or reply to any AI;DR email with a
+          fix.
         </p>
         <p className="not-typeset mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
           <a

@@ -64,6 +64,167 @@ describe("extractTitleEntities", () => {
   });
 });
 
+describe("extractTitleEntities builder frameworks", () => {
+  it("names frameworks, SDKs, and platforms that carry no version", () => {
+    expect(
+      extractTitleEntities("CrewAI raises $40M to build agent teams")
+    ).toEqual(["CrewAI"]);
+    expect(
+      extractTitleEntities("Cloudflare expands Workers AI with new models")
+    ).toEqual(["Workers AI"]);
+    expect(
+      extractTitleEntities("OpenAI Agents SDK adds sandbox execution")
+    ).toEqual(["OpenAI Agents SDK"]);
+    expect(
+      extractTitleEntities("Meta ships Llama Stack for local agents")
+    ).toEqual(["Llama Stack"]);
+    expect(extractTitleEntities("Pydantic AI adds durable execution")).toEqual([
+      "Pydantic AI",
+    ]);
+    expect(extractTitleEntities("AutoGen and DSPy compared")).toEqual(
+      expect.arrayContaining(["AutoGen", "DSPy"])
+    );
+  });
+
+  it("keeps the model name from a Workers AI model id", () => {
+    expect(
+      extractTitleEntities(
+        "Run @cf/meta/llama-4-scout-17b-16e-instruct on Workers AI"
+      )
+    ).toEqual(["Workers AI", "llama-4-scout-17b-16e-instruct"]);
+  });
+
+  it("treats one-word framework names as trending topics, not category words", () => {
+    for (const name of ["langgraph", "crewai", "mastra", "workers-ai"]) {
+      expect(isSpecificTrendingTopic(name), name).toBe(true);
+    }
+    for (const name of ["tools", "frameworks", "data", "data-engineering"]) {
+      expect(isSpecificTrendingTopic(name), name).toBe(false);
+    }
+  });
+});
+
+describe("extractTitleEntities generic rules", () => {
+  it("does not glue a following lowercase word onto a version (glm-5.3-nearly)", () => {
+    const out = extractTitleEntities(
+      "Anthropic says Zhipu's open-weight GLM-5.3 nearly matches Claude Mythos Preview"
+    );
+    expect(out).toContain("GLM-5.3");
+    expect(out.map(trendingKey)).not.toContain("glm-5.3-nearly");
+  });
+
+  it("keeps only tier words after a version in Title Case headlines", () => {
+    expect(
+      extractTitleEntities(
+        "Grok 4.7 Tops First Enterprise AI Cyber Defense Index"
+      )
+    ).toEqual(["Grok 4.7"]);
+    expect(
+      extractTitleEntities(
+        "SpaceXAI Launches Grok Imagine Video 1.5 Lite on fal"
+      )
+    ).toEqual(["Grok Imagine Video 1.5 Lite"]);
+  });
+
+  it("finds name + version for families it has never seen", () => {
+    expect(
+      extractTitleEntities("Black Forest Labs Ships FLUX 3 Image for Editing")
+    ).toEqual(["FLUX 3"]);
+    expect(
+      extractTitleEntities(
+        "Physis-Lang Lifts Cosmos 3 Past Veo 3.1 on Physics Benchmarks"
+      )
+    ).toEqual(expect.arrayContaining(["Cosmos 3", "Veo 3.1"]));
+    expect(
+      extractTitleEntities("Kling AI Launches Kling 4.0 with 30 Second Video")
+    ).toEqual(expect.arrayContaining(["Kling 4.0"]));
+  });
+
+  it("does not take headline verbs, labs or gerunds into a name", () => {
+    expect(
+      extractTitleEntities("OpenAI Cancels GPT-6 Astra 1 Day Before")
+    ).toEqual(["GPT-6 Astra"]);
+    expect(extractTitleEntities("Prompting Claude Opus 5.5")).toEqual([
+      "Claude Opus 5.5",
+    ]);
+    expect(
+      extractTitleEntities("Google Gemini 4's Coding Skills Trail")
+    ).toEqual(["Gemini 4"]);
+  });
+
+  it("treats sizes, counts, years, quarters and dates as numbers, not versions", () => {
+    for (const title of [
+      "Overmind's 9B Models Outperform Rivals",
+      "Tesla Cuts Chip RAM to 72GB",
+      "Nvidia and SoftBank Deliver Final $20B for OpenAI March Round",
+      "Barclays Targets 50% Developer Adoption by 2026",
+      "Accenture Shares Jump 20% After Q4 Margins Beat AI Fears",
+      "Microsoft and Nvidia Set Oct 7 Event",
+      "OpenAI Notifies More Than 100 Organizations",
+      "OpenAI Fires 3 Safety Researchers",
+    ]) {
+      expect(extractTitleEntities(title)).toEqual([]);
+    }
+  });
+
+  it("skips the generic version rule on Vietnamese headlines", () => {
+    expect(
+      extractTitleEntities("Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng")
+    ).toEqual([]);
+    expect(
+      extractTitleEntities("Google ra Gemini 4 Argon mạnh nhất của công ty")
+    ).toEqual(["Gemini 4 Argon"]);
+  });
+
+  it("drops a name contained in a longer one from the same title", () => {
+    expect(
+      extractTitleEntities(
+        "Adaption AI Beats GPT 5.6 and Claude Opus 5 in Data Synthesis"
+      )
+    ).toEqual(["GPT 5.6", "Claude Opus 5"]);
+  });
+
+  it("pulls coined mixed-case names but not labs, owners or organisations", () => {
+    expect(
+      extractTitleEntities(
+        "LangChain Launches LangSmith Fine-Tuning to Turn Traces"
+      )
+    ).toEqual(["LangSmith Fine-Tuning"]);
+    expect(extractTitleEntities("ChatGPT can now try on clothes")).toEqual([
+      "ChatGPT",
+    ]);
+    expect(
+      extractTitleEntities("MongoDB Stock Plummets 15% on CEO Move")
+    ).toEqual(["MongoDB"]);
+    expect(
+      extractTitleEntities("OpenID Foundation: Identity for Agentic AI")
+    ).toEqual([]);
+    expect(
+      extractTitleEntities("20 Agentic Use Cases of TypeSafe AI's Jev")
+    ).toEqual([]);
+  });
+
+  it("reads a short name before a headline colon or after a launch verb", () => {
+    expect(
+      extractTitleEntities(
+        "GPT-Synopsys: Frontier Intelligence for Chip Design"
+      )
+    ).toEqual(["GPT-Synopsys"]);
+    expect(
+      extractTitleEntities("NVIDIA Releases Kumo Tabular: Open Tabular Models")
+    ).toEqual(["Kumo Tabular"]);
+    expect(extractTitleEntities("Show HN: a tiny agent")).toEqual([]);
+    expect(
+      extractTitleEntities(
+        "Allen AI Releases Open Training Stack for MoE Models"
+      )
+    ).toEqual([]);
+    expect(
+      extractTitleEntities("FTC Launches Sweeping AI Probe of OpenAI")
+    ).toEqual([]);
+  });
+});
+
 describe("displayKeywordFromTopic", () => {
   it("title-cases kebab topics and uppercases known acronyms", () => {
     expect(displayKeywordFromTopic("claude-code")).toBe("Claude Code");
@@ -134,6 +295,74 @@ describe("rankTrendingWithGrowth", () => {
     const fableIdx = ranked.findIndex((r) => r.tag === "Fable 5.1");
     expect(fableIdx).toBeGreaterThanOrEqual(0);
     expect(fableIdx).toBeLessThan(openaiIdx === -1 ? 99 : openaiIdx);
+  });
+});
+
+describe("rankTrendingWithGrowth filler", () => {
+  it("fills with single-mention models before bare labs", () => {
+    const ranked = rankTrendingWithGrowth(
+      new Map([
+        ["gemini-4-argon", 7],
+        ["flux-3", 1],
+        ["olmo-core-3", 1],
+        ["openai", 23],
+        ["nvidia", 14],
+      ]),
+      new Map(),
+      { floor: 3 }
+    );
+    expect(ranked.map((r) => r.tag)).toEqual([
+      "gemini-4-argon",
+      "flux-3",
+      "olmo-core-3",
+    ]);
+  });
+
+  it("never lets business-theme tags become chips", () => {
+    const { counts } = collectTrendingCandidates(
+      [
+        {
+          title: "Cerebras CFO Joins COO in Stock Sales",
+          tags: [
+            "cerebras",
+            "stock-sales",
+            "executive-departures",
+            "industry-news",
+          ],
+          published_at: 1_700_000_000,
+        },
+      ],
+      1_699_000_000
+    );
+    expect([...counts.keys()]).toEqual(["cerebras"]);
+  });
+});
+
+describe("rankTrendingWithGrowth entityKeys", () => {
+  it("treats headline-extracted single words as specific, over labs and tag themes", () => {
+    const { counts, entityKeys } = collectTrendingCandidates(
+      [
+        {
+          title: "ChatGPT can now try on clothes",
+          tags: ["openai", "daily-active-users"],
+          published_at: 1_700_000_000,
+        },
+        {
+          title: "OpenAI ships a pricing page",
+          tags: ["openai", "stock-market"],
+          published_at: 1_700_000_100,
+        },
+      ],
+      1_699_000_000
+    );
+    expect(entityKeys.has("chatgpt")).toBe(true);
+    const ranked = rankTrendingWithGrowth(counts, new Map(), {
+      floor: 2,
+      entityKeys,
+    }).map((r) => r.tag);
+    expect(ranked[0]).toBe("chatgpt");
+    expect(ranked).not.toContain("daily-active-users");
+    expect(ranked).not.toContain("stock-market");
   });
 });
 

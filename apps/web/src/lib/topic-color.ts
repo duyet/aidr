@@ -47,6 +47,10 @@ export const CATEGORY_NAMES = [
   "Releases",
   "Chips",
   "Funding",
+  "Tools",
+  "Frameworks",
+  "Data",
+  "Open Source",
 ] as const;
 
 /** Stable semantic slots drawn from TOPIC_COLOR_PALETTE, not a second palette. */
@@ -62,6 +66,12 @@ const CATEGORY_COLOR_BY_NAME = new Map<string, TopicColor>([
   ["releases", TOPIC_COLOR_PALETTE[3]], // green
   ["chips", TOPIC_COLOR_PALETTE[2]], // amber
   ["funding", TOPIC_COLOR_PALETTE[9]], // purple
+  ["tools", TOPIC_COLOR_PALETTE[10]], // pink
+  // Twelve hues, fifteen categories: the rest share with a rarely
+  // adjacent neighbour.
+  ["frameworks", TOPIC_COLOR_PALETTE[2]], // amber, shared with chips
+  ["data", TOPIC_COLOR_PALETTE[5]], // cyan, shared with products
+  ["open source", TOPIC_COLOR_PALETTE[3]], // green, shared with releases
 ]);
 
 /** Unknown or missing categories stay neutral instead of inventing a hue.

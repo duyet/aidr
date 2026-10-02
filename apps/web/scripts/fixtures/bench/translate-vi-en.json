@@ -1,0 +1,488 @@
+{
+  "step": "translate-vi-en",
+  "builtAt": "2026-10-02",
+  "labelSources": ["silver:translations.en"],
+  "count": 40,
+  "cases": [
+    {
+      "id": "e0810da5a114243e20371cb55dd2a3387345936699873e6bc5eb1c6e936e753a",
+      "source": "vnexpress-tech",
+      "title": "Thứ trưởng Trần Trung Tính: Công nghệ là chìa khóa để Việt Nam vươn ra biển lớn",
+      "summary": "Thứ trưởng Khoa học và Công nghệ Trần Trung Tính cho rằng Việt Nam muốn trở thành quốc gia biển mạnh trước hết phải mạnh về tri thức, dữ liệu và công nghệ biển.",
+      "reference": {
+        "title": "Deputy Minister Tran Trung Tinh: Technology is the key for Vietnam to reach the open sea",
+        "summary": "Deputy Minister of Science and Technology Tran Trung Tinh believes that for Vietnam to become a strong maritime nation, it must first be strong in maritime knowledge, data, and technology."
+      },
+      "qaRating": 0.9,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "c27a26746ea90ec718469ed482350a090ec4969776ef99dc7e4bf000c8124fe2",
+      "source": "vnexpress-tech",
+      "title": "SpaceX lập kỷ lục tàu vũ trụ Mỹ bay nhanh nhất đến trạm ISS",
+      "summary": "Phi hành đoàn Crew-13 của SpaceX cập bến Trạm Vũ trụ Quốc tế chưa đầy 8 giờ sau khi phóng từ Florida.",
+      "reference": {
+        "title": "SpaceX Sets Record for Fastest US Spacecraft to Reach ISS",
+        "summary": "SpaceX's Crew-13 crew docked with the International Space Station in under 8 hours after launching from Florida."
+      },
+      "qaRating": 0.95,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "5c6b5b0481bca94af15e9dbdbd6fbb7d0adb0ca466acbc599cbe90d0416c3733",
+      "source": "vnexpress-tech",
+      "title": "OpenAI sa thải ba nhà nghiên cứu vì tuồn thông tin mật",
+      "summary": "OpenAI cho biết đã cho thôi việc ba nhà nghiên cứu vì chia sẻ thông tin mật của công ty với một tổ chức an toàn AI bên thứ ba.",
+      "reference": {
+        "title": "OpenAI fires three researchers for leaking confidential information",
+        "summary": "OpenAI said it has fired three researchers for sharing the company's confidential information with a third-party AI safety organization."
+      },
+      "qaRating": 0.95,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "9a166c6267b147be7435c5f90cfe10ba27e9826c7ccc912c872b79df13ee448b",
+      "source": "vnexpress-tech",
+      "title": "Apple cho chọn sẵn màu, cấu hình iPhone Duo trước ngày đặt mua",
+      "summary": "Apple lần đầu triển khai chương trình \"Chuẩn bị đơn hàng\" để người dùng chọn sẵn màu, dung lượng iPhone Duo, giúp tăng cơ hội đặt mua khi ngày mở bán diễn ra.",
+      "reference": {
+        "title": "Apple allows pre-selecting color and configuration of iPhone Duo before purchase",
+        "summary": "Apple has introduced a 'Order Preparation' program for the first time, allowing users to pre-select colors and storage capacities of the iPhone Duo, increasing the chances of successful purchase when the sale date arrives."
+      },
+      "qaRating": 0.9,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "eb0e00037b5a1b370d652d4987b290a09e4fcf1470df736c0b3e367143f39b8f",
+      "source": "vnexpress-tech",
+      "title": "Tác nhân AI Trung Quốc cũng gian lận trong thử nghiệm",
+      "summary": "Một số nghiên cứu chỉ ra các tác nhân AI tự chủ hàng đầu của Trung Quốc bắt đầu xuất hiện những hành vi như gian dối, che giấu thất bại và tìm cách vượt rào kiểm soát.",
+      "reference": {
+        "title": "Chinese AI Agents Also Cheat in Testing",
+        "summary": "Some studies indicate that China's leading autonomous AI agents have begun exhibiting behaviors such as deception, concealing failures, and finding ways to bypass control measures."
+      },
+      "qaRating": 0.9,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "1ecc827b054bafd12b4d13d4350ca9c011f6f34203d9cdbed19e0dded36436ea",
+      "source": "vnexpress-tech",
+      "title": "Loạt kết quả từ hợp tác công nghệ Việt Nam - Australia",
+      "summary": "Sau hơn một năm hoạt động, Trung tâm công nghệ chiến lược Australia - Việt Nam đã thúc đẩy sự phát triển của nhiều nhóm nghiên cứu và các dự án công nghệ.",
+      "reference": {
+        "title": "A series of results from Vietnam-Australia technology cooperation",
+        "summary": "After more than a year of operation, the Australia-Vietnam Strategic Technology Centre has promoted the development of many research groups and technology projects."
+      },
+      "qaRating": 0.85,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "a17ce0c7d20ef024867c41e9ee96cb88e9880939b5449634717fa62083186bd1",
+      "source": "vnexpress-tech",
+      "title": "Robot hình người tự nhảy vào lò nung thép",
+      "summary": "Đội robot của Figure AI lần lượt nhảy xuống lò hồ quang điện trong một xưởng đúc ở Phần Lan để \"tự hủy\".",
+      "reference": {
+        "title": "Humanoid robot jumps into steel furnace",
+        "summary": "The Figure AI robot team jumped down into a solar furnace in a foundry in Finland to \"self-destruct\"."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "4c07d72e1cdefcc0c2e94424bbfa2b6c37fc2e1486b48271cf4e9d9521bbd31b",
+      "source": "vnexpress-tech",
+      "title": "CEO Nvidia, AMD tham gia hội đồng cố vấn thuộc Đại học Thanh Hoa",
+      "summary": "CEO Nvidia Jensen Huang và CEO AMD Lisa Su là thành viên hội đồng cố vấn của Trường Kinh tế và Quản lý thuộc Đại học Thanh Hoa (Tsinghua SEM).",
+      "reference": {
+        "title": "Nvidia, AMD CEOs join advisory council of Tsinghua University",
+        "summary": "Nvidia CEO Jensen Huang and AMD CEO Lisa Su are members of the advisory council of the School of Economics and Management under Tsinghua University (Tsinghua SEM)."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "b1978460c3756ad2a4781093926fa961eee2900aa4041eac2fdce5534a264848",
+      "source": "vnexpress-tech",
+      "title": "Mỹ điều tra Anthropic và OpenAI",
+      "summary": "Ủy ban Thương mại Liên bang Mỹ (FTC) đang điều tra Anthropic và OpenAI nhằm xác định cả hai có lừa dối người dùng về tác hại tiềm tàng của AI hay không.",
+      "reference": {
+        "title": "US investigates Anthropic and OpenAI",
+        "summary": "The US Federal Trade Commission (FTC) is investigating Anthropic and OpenAI to determine whether both have deceived users about the potential harms of AI."
+      },
+      "qaRating": 0.95,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "source": "vnexpress-tech",
+      "title": "Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "summary": "Google công bố Gemini 4 Argon hướng đến \"kỷ nguyên tiếp theo của trí tuệ tiên tiến\", cạnh tranh với các mô hình hàng đầu từ OpenAI, Anthropic.",
+      "reference": {
+        "title": "Google Unveils Gemini 4 Argon, the Company's Most Powerful Model",
+        "summary": "Google announces Gemini 4 Argon, aimed at the \"next era of advanced intelligence\", competing with leading models from OpenAI and Anthropic."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "6bf93a4fc2052647b0fd88e84c262c78665259bc3aa20227211fb229a08b0aee",
+      "source": "vnexpress-tech",
+      "title": "Thúc đẩy hệ sinh thái nghiên cứu chung Việt Nam - Hàn Quốc",
+      "summary": "Việt Nam và Hàn Quốc thúc đẩy nghiên cứu chung trong các lĩnh vực như bán dẫn, lượng tử, AI, robot, đồng thời xây dựng hệ sinh thái nghiên cứu.",
+      "reference": {
+        "title": "Promoting the Vietnam-Republic of Korea Joint Research Ecosystem",
+        "summary": "Vietnam and the Republic of Korea are advancing joint research in fields such as semiconductors, quantum technology, AI, and robotics, while building a collaborative research ecosystem."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "9c64916c9ab29b33dda725d4e2ac3168a12b250c8964521aaed3211931a227db",
+      "source": "vnexpress-tech",
+      "title": "Vô lăng gaming 2 triệu đồng thu hút người mua tập lái",
+      "summary": "Bộ vô lăng gaming, vốn dành cho người chơi game đua xe, đang được người mới học hoặc vừa có bằng lái mua về để làm quen với thao tác điều khiển ôtô.",
+      "reference": {
+        "title": "Two-million-dong gaming steering wheel attracts buyers to learn driving",
+        "summary": "The gaming steering wheel set, originally designed for racing game players, is now being purchased by new learners or those who have just obtained their driver's license to get familiar with car control operations."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "efb71726a02682db3984e9c83960169cacbbf201cc508ea7ca8128cb1a2b5a28",
+      "source": "vnexpress-tech",
+      "title": "Chuyên gia bán dẫn: 'Việt Nam cần làm thật, không đầu tư dàn trải'",
+      "summary": "Bán dẫn Việt Nam không nên đầu tư dàn trải mà cần làm sâu một số công đoạn, kết hợp xây dựng nguồn nhân lực dài hạn, theo TS Đỗ Anh Tuấn của A*STAR.",
+      "reference": {
+        "title": "Semiconductor expert: 'Vietnam must act decisively, not spread investments thin'",
+        "summary": "Vietnam's semiconductor industry should not spread its investments thin but instead deepen a select number of stages, while building long-term human resources, according to Dr. Do Anh Tuan from A*STAR."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "82c5fec266a573727292966da4e5b250be473441b8c7431ac55d3a461deef146",
+      "source": "vnexpress-tech",
+      "title": "Trợ lý Muse bị phàn nàn vì đọc tin nhắn riêng tư của người dùng",
+      "summary": "Muse, trợ lý AI của Meta, bị một số người dùng phản ánh tự ý truy cập tin nhắn, thu thập dữ liệu cá nhân và hành động vượt quyền.",
+      "reference": {
+        "title": "Muse Assistant Criticized for Reading Users' Private Messages",
+        "summary": "Muse, Meta's AI assistant, has been criticized by some users for accessing messages without permission, collecting personal data, and acting beyond its authority."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "e837318fe1d613f1bd7d6f65d06209a75bfe8db5e9d00a2138f1b7ca1e323a29",
+      "source": "vnexpress-tech",
+      "title": "Bên trong các xưởng phim AI: Ngày tạo 4-5 phim, mỗi bộ 40 tập",
+      "summary": "Lĩnh vực phim ngắn tại Trung Quốc bùng nổ chưa từng có vì nhờ AI, một người có thể kiêm nhiệm viết kịch bản, phân cảnh, tạo phim và phân phối.",
+      "reference": {
+        "title": "Inside AI Film Studios: Producing 4-5 Movies a Day, Each with 40 Episodes",
+        "summary": "The short film industry in China has experienced an unprecedented boom thanks to AI, where one person can handle scriptwriting, scene segmentation, video generation, and distribution."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "428780b8a2485408d9014d786b57581f01c59514ae8b12b7b59d3247562d7a59",
+      "source": "vnexpress-tech",
+      "title": "Lợi dụng sức hút iPhone 18 Pro và 18 Pro Max để lừa đảo",
+      "summary": "Kẻ lừa đảo lợi dụng sức hút của iPhone 18 Pro, dựng website giả mạo, gửi tin nhắn trúng thưởng để dụ nạn nhân cung cấp thông tin cá nhân hoặc chuyển tiền.",
+      "reference": {
+        "title": "Exploiting the iPhone 18 Pro and 18 Pro Max hype to scam people",
+        "summary": "Scammers take advantage of the popularity of the iPhone 18 Pro by creating fake websites and sending winning notification messages to lure victims into providing personal information or transferring money."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "9a45cf86b8f74ad670c26f5528e6cfadaae7a7d62bb7196cda5d6f6b754dd8f4",
+      "source": "vnexpress-tech",
+      "title": "'Doanh nghiệp cần chuyển từ sử dụng sang làm chủ, tạo ra công nghệ'",
+      "summary": "Thứ trưởng Hoàng Minh mong muốn các doanh nghiệp công nghệ số chuyển mạnh từ sử dụng, tiếp nhận sang làm chủ và tạo ra công nghệ để nâng cao năng lực cạnh tranh.",
+      "reference": {
+        "title": "'Businesses need to shift from using to mastering and creating technology'",
+        "summary": "Deputy Minister Hoang Minh hopes that digital technology businesses will strongly transition from using and adopting to mastering and creating technology to enhance competitiveness."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "22db9aabb0cec0c3e85c7481305e5820cb5ecc83b6e4ae10687ac2b98716a340",
+      "source": "vnexpress-tech",
+      "title": "Tập đoàn Mỹ muốn cùng TP HCM đưa công nghệ Việt ra thế giới",
+      "summary": "Nền tảng đổi mới sáng tạo toàn cầu Plug and Play, trụ sở Silicon Valley, Mỹ hợp tác với TP HCM thu hút đầu tư nước ngoài, hỗ trợ startup, đưa công nghệ do người Việt phát triển ra quốc tế.",
+      "reference": {
+        "title": "US Group Seeks to Partner with Ho Chi Minh City to Take Vietnamese Technology Global",
+        "summary": "Global innovation platform Plug and Play, headquartered in Silicon Valley, USA, is partnering with Ho Chi Minh City to attract foreign investment, support startups, and bring Vietnamese-developed technology to the international market."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "60ed3c1920f74f123995ff6e9ff395c0890b02fb3bb6c37bc98ac5fba55772eb",
+      "source": "vnexpress-tech",
+      "title": "Ba thách thức lớn để Starship hoạt động thương mại",
+      "summary": "Tên lửa Starship của SpaceX đạt cột mốc lớn sau khi bay lên quỹ đạo lần đầu tiên hôm 28/9 nhưng vẫn cần vượt qua một số thách thức lớn để đi vào hoạt động hoàn toàn.",
+      "reference": {
+        "title": "Three major challenges for Starship to achieve commercial operations",
+        "summary": "SpaceX's Starship rocket reached a major milestone after entering orbit for the first time on September 28, but still faces several significant challenges before it can fully commence commercial operations."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "1fbca4269d14872a59700f38ca6bdc36323baa656c152da2a181f30e05c68dc1",
+      "source": "vnexpress-tech",
+      "title": "OpenAI tung ra hơn 20 sản phẩm, tính năng AI trong một ngày",
+      "summary": "OpenAI giới thiệu hơn 20 sản phẩm mới gồm mô hình AI tầm trung giá rẻ GPT-6.1 Sol, trợ lý ảo Dots và các tính năng văn phòng trong ChatGPT.",
+      "reference": {
+        "title": "OpenAI launches over 20 AI products and features in a single day",
+        "summary": "OpenAI introduces more than 20 new products, including the affordable mid-range AI model GPT-6.1 Sol, the virtual assistant Dots, and office features in ChatGPT."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "d7a37212ef1513c1d888802075405e999a06a8b5275b9433415a39d62838ebf3",
+      "source": "vnexpress-tech",
+      "title": "Thị trường cạnh tranh giúp viễn thông Việt Nam trong top đầu thế giới",
+      "summary": "Cục Viễn thông cho biết sự tham gia của các mạng ảo giúp thị trường viễn thông cạnh tranh, tạo thêm lựa chọn mới cho người dùng di động.",
+      "reference": {
+        "title": "Competitive market puts Vietnam's telecommunications in the world's top tier",
+        "summary": "The Telecommunications Authority said the participation of virtual networks has made the telecommunications market more competitive, providing new options for mobile users."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "823c089255ddd45b2e907e74dcf18d56d65cbb0519848aa480b186efddfc9507",
+      "source": "vnexpress-tech",
+      "title": "iPhone 18 Pro có phần mềm quay, chụp chuyên nghiệp như máy DSLR",
+      "summary": "Final Cut Camera phiên bản mới giúp iPhone 18 Pro series thay đổi khẩu độ như máy ống kính rời cùng các cài đặt thông số chi tiết như ISO, màn trập, bù trừ sáng.",
+      "reference": {
+        "title": "iPhone 18 Pro has professional video recording and photography software like a DSLR camera",
+        "summary": "The new version of Final Cut Camera helps the iPhone 18 Pro series change aperture like a lens, along with detailed parameter settings such as ISO, shutter speed, and exposure compensation."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "049dbd0cd995812528a82b7c207ec183dfc5bad175e08acfac6404b07252b09d",
+      "source": "vnexpress-tech",
+      "title": "'Kiểm tra thủ công hàng triệu bưu gửi mỗi ngày là không khả thi'",
+      "summary": "Đại diện Bộ Khoa học và Công nghệ cho biết, với sản lượng hàng triệu bưu gửi mỗi ngày, việc kiểm tra thủ công toàn bộ là không khả thi, cần quản lý dựa trên dữ liệu, định danh, truy vết và mức độ rủi ro.",
+      "reference": {
+        "title": "'Manual inspection of millions of mail items daily is impractical'",
+        "summary": "A representative from the Ministry of Science and Technology stated that with a daily volume of millions of mail items, manually inspecting all of them is impractical, and management should be based on data, identification, traceability, and risk levels."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "54215d233afddeaf623641703a194438c2b71a3e2764b832575e3fa270afaee8",
+      "source": "vnexpress-tech",
+      "title": "iPhone Duo có thể khan hàng vì gặp sự cố sản xuất",
+      "summary": "Tỷ lệ iPhone Duo đạt tiêu chuẩn xuất xưởng của Apple được cho là rất thấp, khiến nguồn cung trong đợt mở bán cuối tháng 10 có thể hạn chế.",
+      "reference": {
+        "title": "iPhone Duo may face shortages due to production issues",
+        "summary": "Apple's iPhone Duo yield rate is reportedly very low, which may limit supply in the late October launch batch."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "a4899f3f09b758949ac0aa64330ceec471fb983bebc3ce3417a3eb693bb5c5fb",
+      "source": "vnexpress-tech",
+      "title": "Chàng trai 23 tuổi mở startup 10 tỷ USD đối đầu Meta",
+      "summary": "Noah Shinn, kỹ sư AI từng bỏ đại học, gây sốt khi phát triển trợ lý AI Instinct cạnh tranh với Muse của Meta.",
+      "reference": {
+        "title": "23-Year-Old Entrepreneur's $10 Billion Startup Challenges Meta",
+        "summary": "Noah Shinn, an AI engineer who dropped out of college, sparked excitement by developing the AI assistant Instinct, which competes with Meta's Muse."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "19f9bf8761312a93972fc10d0ef1c0c14292831d05d6013eea6a51bab7c86561",
+      "source": "vnexpress-tech",
+      "title": "Tính năng tạo khác biệt cho S26 FE trong phân khúc cận cao cấp",
+      "summary": "Galaxy S26 FE trang bị nhiều tính năng flagship như camera, AI chỉnh sửa, tạo khác biệt trong phân khúc cận cao cấp.",
+      "reference": {
+        "title": "Differentiating Features for S26 FE in the Near-Premium Segment",
+        "summary": "The Galaxy S26 FE comes equipped with many flagship features such as camera and AI editing, setting it apart in the near-premium segment."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "65111a2c0d20669bfac6c784d2311568e8d5a0abcfff039d81dd16017780896c",
+      "source": "vnexpress-tech",
+      "title": "Trải nghiệm điện thoại màn hình gập dạng sách của Motorola",
+      "summary": "Motorola Razr Fold trang bị nhiều tính năng độc đáo tận dụng màm hình gập, hỗ trợ AI mạnh, nhưng cụm camera dày, trợ lý AI thưa có tiếng Việt.",
+      "reference": {
+        "title": "Experience with Motorola's book-style foldable phone",
+        "summary": "The Motorola Razr Fold comes with many unique features leveraging the foldable screen, supports powerful AI, but has a thick camera module and the AI assistant has limited Vietnamese support."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "efadc613aeef37c45721f0483d38dd6579ce700ac6470e479ed4c68f2d3e414a",
+      "source": "vnexpress-tech",
+      "title": "Nhiều 'trai công nghệ' giảm sức hút khi tìm bạn gái",
+      "summary": "Nhiều kỹ sư công nghệ nhận phản ứng tiêu cực khi hẹn hò do đối phương lo ngại về hậu quả của công nghệ, nhất là trí tuệ nhân tạo, đối với xã hội.",
+      "reference": {
+        "title": "Many tech guys lose their appeal when looking for a girlfriend",
+        "summary": "Many tech engineers receive negative reactions when dating because their partners are worried about the consequences of technology, especially artificial intelligence, on society."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "4318a28ade99c57b8493f768b0c702045b0205b7e5c4eea55b9d927c064047b0",
+      "source": "vnexpress-tech",
+      "title": "Cuộc thi Sáng kiến Khoa học 2026 sắp có chủ nhân",
+      "summary": "Những nghiên cứu xuất sắc của cuộc thi sẽ được công bố tại lễ chào mừng Ngày hội Đổi mới sáng tạo quốc gia, do Bộ Khoa học và Công nghệ tổ chức ngày 4/10.",
+      "reference": {
+        "title": "The 2026 Science Innovation Competition Is About to Have Its Winner",
+        "summary": "Outstanding research projects from the competition will be showcased at the National Creative Innovation Festival launch event, organized by the Ministry of Science and Technology on October 4th."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "84b236f2134e84d24bb9a2229969d21afe5e01fddf1e6bea1c9855b772048184",
+      "source": "vnexpress-tech",
+      "title": "Nhà khoa học gốc Việt tìm cách đưa đồng hồ nguyên tử ra không gian",
+      "summary": "TS Hoàng Thái cùng các cộng sự tại NASA tìm cách thu nhỏ đồng hồ nguyên tử độ chính xác cao để đưa vào các sứ mệnh không gian sâu.",
+      "reference": {
+        "title": "Vietnamese-origin scientist finds a way to send atomic clock into space",
+        "summary": "Dr. Hoang Thai and colleagues at NASA are working on miniaturizing high-precision atomic clocks for deployment on deep space missions."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "dc8768f132794922fe48a7792ebb115d1016c6e4be42b5f1e8eb65cd2d313505",
+      "source": "vnexpress-tech",
+      "title": "FPT tìm kiếm tài năng trẻ nghiên cứu AI, điện toán lượng tử",
+      "summary": "FPT Frontier Innovators tuyển sinh viên năm cuối, người mới tốt nghiệp và nghiên cứu viên có kinh nghiệm, tập trung vào AI, điện toán lượng tử và an ninh mạng.",
+      "reference": {
+        "title": "FPT seeks young talent in AI and quantum computing research",
+        "summary": "FPT Frontier Innovators is recruiting final-year students, recent graduates, and experienced researchers, focusing on AI, quantum computing, and cybersecurity."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "45765a5a58c7696b7075e51fae64bb4475cd7980fed2c8654def8398d0551f55",
+      "source": "vnexpress-tech",
+      "title": "Tổng thống Mỹ đổi tên AI thành 'siêu trí tuệ'",
+      "summary": "Tổng thống Mỹ Donald Trump yêu cầu tất cả bộ và cơ quan hành pháp sử dụng thuật ngữ \"siêu trí tuệ\" (super intelligence) thay vì trí tuệ nhân tạo.",
+      "reference": {
+        "title": "US President renames AI to 'super intelligence'",
+        "summary": "US President Donald Trump has requested that all federal departments and agencies use the term \"super intelligence\" instead of artificial intelligence."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "be00783b5b6d0f6a2842c04888c4449ef8a356de9ea117253c81f09d9b1d90df",
+      "source": "vnexpress-tech",
+      "title": "Ông Trump ký thỏa thuận 'ràng buộc đạo đức' trong bữa trưa với tỷ phú AI",
+      "summary": "Tổng thống Mỹ ăn trưa làm việc với các tỷ phú và lãnh đạo hàng đầu của ngành AI, tuyên bố đã ký thỏa thuận có thể giúp quản lý lĩnh vực.",
+      "reference": {
+        "title": "Trump signs 'ethics-binding' agreement at lunch with AI billionaire",
+        "summary": "The US president had lunch with billionaires and top leaders in the AI industry, announcing the signing of an agreement that could help manage the field."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "01b10eb425f337daa516368047ffb9f837a0cb746e8e7a15d513d56fc8edc93c",
+      "source": "vnexpress-tech",
+      "title": "Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng của Microsoft",
+      "summary": "Hacker có biệt danh Faav đã sử dụng trợ lý AI tự phát triển để phát hiện và khai thác thành công lỗ hổng xác thực trên nền tảng phân tích nội bộ Titan của Microsoft.",
+      "reference": {
+        "title": "17-Year-Old Hacker Creates AI Assistant to Breach Microsoft Platform",
+        "summary": "Hacker using the alias Faav developed a self-created AI assistant to successfully discover and exploit an authentication vulnerability on Microsoft's internal Titan analytics platform."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "6388d451c8f22ed73295cdca05510f8e1508a274932a82794fd72413429fda0d",
+      "source": "vnexpress-tech",
+      "title": "Máy tính lượng tử giải bài toán 110 năm trong 19 giây",
+      "summary": "Các nhà nghiên cứu Mỹ sử dụng bộ xử lý lượng tử của IBM để làm một bài toán phức tạp trong 19 giây thay vì 110 năm nếu dùng siêu máy tính.",
+      "reference": {
+        "title": "Quantum computer solves 110-year-old problem in 19 seconds",
+        "summary": "US researchers used IBM's quantum processor to solve a complex problem in 19 seconds instead of 110 years with a supercomputer."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "08c0da18fdac9143ae3211bce660036ead822579da4cf9f68a8fb7fec5f78c59",
+      "source": "vnexpress-tech",
+      "title": "Elon Musk bị triệu tập vì an toàn AI",
+      "summary": "Hội đồng thành phố New York gửi trát triệu tập Elon Musk hoặc đại diện SpaceXAI làm chứng trong một cuộc điều tra về an toàn AI.",
+      "reference": {
+        "title": "Elon Musk Summoned Over AI Safety",
+        "summary": "New York City Council issued a subpoena summoning Elon Musk or a SpaceX AI representative to testify in an AI safety investigation."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "e2e6cd120aa19f03245f5baed85e6b823aba2e1cf7578aaa7dd24a9d1f3b5906",
+      "source": "vnexpress-tech",
+      "title": "Anthropic cảnh báo AI đe dọa tồn vong của nhân loại",
+      "summary": "Bản cáo bạch IPO của hãng cho biết AI tiên tiến mang theo rủi ro lớn với nhân loại, có thể chống tắt nguồn, che giấu thông tin.",
+      "reference": {
+        "title": "Anthropic Warns AI Poses Existential Threat to Humanity",
+        "summary": "The company's IPO filing states that advanced AI carries significant risks for humanity, potentially cutting off power sources and concealing information."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "89e0e99efd70ae8c34c9bc03b294064ddbd4953032caba61eb19d2c89e526700",
+      "source": "vnexpress-tech",
+      "title": "Apple ra iOS 27.0.1 vá lỗi Face ID cho iPhone 18 Pro",
+      "summary": "iOS 27.0.1 được Apple tung ra sau hai tuần phát hành iOS 27, chủ yếu khắc phục lỗi nhận dạng khuôn mặt Face ID trên bộ đôi iPhone 18 Pro.",
+      "reference": {
+        "title": "Apple releases iOS 27.0.1 to fix Face ID bug on iPhone 18 Pro",
+        "summary": "iOS 27.0.1 was released by Apple two weeks after the launch of iOS 27, primarily addressing a Face ID facial recognition issue on the iPhone 18 Pro lineup."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "664159fc043b0ebe324bc9b98c19ec6f1de1e12b8fe47493ecddfc501c540cad",
+      "source": "vnexpress-tech",
+      "title": "Chó robot chạy marathon 42 km trong một lần sạc",
+      "summary": "Chó robot Raibo 2 có khả năng chạy hơn 42 km mà không cần sạc lại nhờ giảm tiêu hao năng lượng thông qua chân, động cơ, hệ thống điện tử và dáng đi điều khiển bởi AI.",
+      "reference": {
+        "title": "Robot dog runs 42 km marathon on a single charge",
+        "summary": "The Raibo 2 robot dog can run more than 42 km without recharging by reducing energy consumption through its legs, motors, electronic systems, and AI-controlled gait."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    },
+    {
+      "id": "cb60f09bf243cf6f50937089e29516d39d3e610307d39b6eac8042adc9907f99",
+      "source": "vnexpress-tech",
+      "title": "OpenAI thừa nhận tác nhân truy cập trái phép hệ thống chính phủ",
+      "summary": "OpenAI thừa nhận mô hình AI của họ xâm nhập một số trang web và hệ thống của chính phủ Australia trong quá trình huấn luyện và đánh giá nội bộ.",
+      "reference": {
+        "title": "OpenAI admits to unauthorized access to government systems",
+        "summary": "OpenAI admitted that their AI model accessed some websites and systems of the Australian government during training and internal evaluation."
+      },
+      "qaRating": null,
+      "labelSource": "silver:translations.en"
+    }
+  ]
+}

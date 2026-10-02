@@ -1,0 +1,1502 @@
+{
+  "step": "score",
+  "builtAt": "2026-10-02",
+  "labelSources": [
+    "gold:importance-eval.json",
+    "silver:items.status",
+    "silver:items.category"
+  ],
+  "count": 65,
+  "cases": [
+    {
+      "id": "0270e01737c7efa289612f0d71981a605c69e2f2e579047ea1cabfefb5e514ca",
+      "source": "lastweekin-ai",
+      "title": "Last Week in AI #345 - 5 new models, 9 misalignment incidents, some Dots",
+      "summary": "Anthropic and OpenAI race to release smarter and cheaper models, OpenAI discloses nine misalignment incidents, and more!",
+      "current": {
+        "status": "published",
+        "relevance": 0.98,
+        "importance": 7,
+        "quality": 5,
+        "category": "Models",
+        "tags": ["openai", "safety"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Models"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "b1a75195b81f484e9812e7d017ca9da4acda546dedf4ebe6567eb870fce28355",
+      "source": "lobsters",
+      "title": "Thrust vs. Steer (or: Yet Another Anecdotal Case of the Dunning-Kruger Effect)",
+      "summary": "Let me summarize something that happened to me in three acts: I am not denying that this was all my fault, and yet another case of PEBKAC (or, more specifically, PEBDAC). I was literally holding it wrong. This is yet another anecdotal case of a guy who thought he was savvy enough to figure things out by himself. Somehow, he did. But, occasionally, the jetpack will throw you against the neighbor's roughcast wall when all you want to do is cross the street.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.21,
+        "importance": 1.56,
+        "quality": 0,
+        "category": "Releases",
+        "tags": []
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Releases"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "04885edf45af0b22aeb79396cabc8a37ca834a15e576cc6ae0b368c3c9a205f6",
+      "source": "theverge-ai",
+      "title": "Here’s how tech leaders will self-police AI safety under Trump’s deal",
+      "summary": "We now have the full details of the \"morally binding\" AI safety deal announced by President Trump yesterday, in which top executives agreed to self-regulate their artificial intelligence technology. The accord, officially titled the Joint Commitment On Frontier Responsibilities, was shared online by tech founder and presidential advisor David Sacks, and has been signed by […]",
+      "current": {
+        "status": "published",
+        "relevance": 0.75,
+        "importance": 8,
+        "quality": 7,
+        "category": "Regulation",
+        "tags": ["regulation"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Regulation"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "f1f5458356c80a2846522661408956d53d8c78da36364da883eeb5635f3cc8b7",
+      "source": "vnexpress-tech",
+      "title": "InnovaConnect kết nối nhà khoa học Việt với chuyên gia quốc tế",
+      "summary": "Chuỗi InnovaConnect kết nối các nhà khoa học Việt Nam với chuyên gia quốc tế, trao đổi về đổi mới sáng tạo trong hóa học và khám phá thuốc.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.3,
+        "importance": 2,
+        "quality": 3,
+        "category": "Industry",
+        "tags": [
+          "innovation",
+          "networking",
+          "vietnam",
+          "chemistry",
+          "collaboration"
+        ]
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Industry"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "04915f94cc5d072fc237152859eaa3a6e282f96fa881af3a3bafa6d1a1618674",
+      "source": "huggingnews",
+      "title": "OpenAI and Meta Leaders Warn Autonomous AI Risks Human Extinction",
+      "summary": "The world's most prominent artificial intelligence labs are calling for new government regulations to prevent machines from evolving beyond human management. A coalition of researchers, including leadership from OpenAI, Anthropic, Meta, and Microsoft, has urged officials to probe autonomous research to avoid a loss of control that could lead to the marginalization or extinction of the human race.\n\nThe group argues in a paper, first reported by the Wall Street Journal, that self-improving systems may soon compress years of technological development into mere months. This acceleration would make it impossible for regulators to keep pace with AI that can iteratively refine its own capabilities without human intervention.",
+      "current": {
+        "status": "published",
+        "relevance": 0.96,
+        "importance": 8,
+        "quality": 4,
+        "category": "Regulation",
+        "tags": ["regulation", "openai", "safety"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Regulation"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "59d88ee0fd4c3ec0f6fb7cd11f3a80a4d7c352288b30a30bd2db305c547020ba",
+      "source": "mit-news-ai",
+      "title": "3 Questions: A new resource to empower young entrepreneurs",
+      "summary": "Martin Trust Center Managing Director Bill Aulet introduces Dear Dreamer, a free platform for middle and high school students who want to learn about entrepreneurship.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.27,
+        "importance": 1.63,
+        "quality": 8,
+        "category": "Releases",
+        "tags": []
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Releases"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "09d1d26fa19dd694ec40f7bb3bc136d48191abcd2b19156a45d7567a4b7fa32e",
+      "source": "hf-blog",
+      "title": "Holo4: powering generalist computer-use agents",
+      "summary": "A Blog post by H company on Hugging Face",
+      "current": {
+        "status": "published",
+        "relevance": 0.92,
+        "importance": 3,
+        "quality": 4,
+        "category": "Agents",
+        "tags": ["agent", "openai", "codex", "coding", "api", "cli"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Agents"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "d6d48b51904c21470d2597457ade8cb41b1e6c1d31fb56a086a9ad91b7d68c77",
+      "source": "marketbrief",
+      "title": "White House Projects $49 Trillion Cost for DSA Policies",
+      "summary": "The U.S. government issued a report on Oct. 1 warning of a massive financial impact on citizens resulting from DSA regulations. Administration officials estimate these policies will cost Americans $49 trillion over a 10 year period.\n\nThe White House Press Secretary and associated communication accounts promoted the findings on social media. The report details the scale of the projected fiscal burden and costs imposed on the U.S. population over the next decade.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.06,
+        "importance": 4.73,
+        "quality": 1,
+        "category": "Regulation",
+        "tags": ["regulation"]
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Regulation"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "0d7b498b4e4acf53536241240c81a8486edc16debe4534e0908265746ac63924",
+      "source": "simonwillison",
+      "title": "llm-typesafe 0.1a0",
+      "summary": "LLM plugin for accessing Jev and other TypeSafe AI models",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 4,
+        "quality": 3,
+        "category": "Releases",
+        "tags": ["llm", "open-source", "plugin", "typesafe", "jev"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Releases"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "9f1726c9d2bceb3ae5bccefa3e95076dc036a982dfc5c0b7d23f2bdb137a0c01",
+      "source": "vnexpress-tech",
+      "title": "'Việt Nam thuộc nhóm thăng hạng Chỉ số GII nhanh nhất'",
+      "summary": "Tổ chức Sở hữu trí tuệ thế giới xếp Việt Nam vào nhóm nền kinh tế đổi mới sáng tạo vượt mức kỳ vọng so với trình độ phát triển, \"thăng hạng nhanh nhất' từ năm 2013.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.38,
+        "importance": 1,
+        "quality": 7,
+        "category": "Research",
+        "tags": []
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Research"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "0f191cc323f9bd4f909a4e0a99a51ef28069ff2078974436fa7ca896ed9da94a",
+      "source": "lobsters",
+      "title": "Robot-use agents",
+      "summary": "This year we are going to see many LLMs 1 being tested as robot-use agents. In the same way as an LLM can use tools like calculators, web search, and even complete computers (“computer-use agents”), an LLM can also use a robot as a tool. Think of it as Claude acting as the puppeteer of a robot body. This ability has been researched for years 2 3 4 , but a common view remained that while LLMs might be useful for high-level planning, they were not yet suitable for full control. Researchers argued that LLM latency is too high to keep up with real-world dynamics 5 , that the models had poor spatial intelligence 6 , and that LLMs lacked sufficiently strong causal and physical understanding 7 . These limitations are starting to melt away with newer models like Fable and Astra. The debate continues, but it's time to take seriously that these AIs could soon be quite competent at general-purpose robot use. Indeed, recent demos provide tantalizing evidence that something is starting to change. 8 9 10 It's worth thinking about the implications of this change. If LLMs can competently control robots, then robotic abilities may take off more quickly than has been anticipated. Every robot with an",
+      "current": {
+        "status": "published",
+        "relevance": 0.67,
+        "importance": 0,
+        "quality": 0,
+        "category": "Agents",
+        "tags": ["agent"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Agents"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "b28db22be2dee5fac2e8c843809ba698696a71f9aed6104c645d8be43bb42830",
+      "source": "simonwillison",
+      "title": "He Built This City",
+      "summary": "I visited the Museum of the City of New York today and got to see He Built This City: Joe Macken’s Model , the 50 x27 feet model of the city built over a 21 year period from balsa wood and cardboard. It exceeded my already high expectations. The exhibition closes on 12th October so you should absolutely make a priority to see it if you get the chance. Tags: museums , new-york",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.03,
+        "importance": 0,
+        "quality": 1,
+        "category": "Models",
+        "tags": []
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Models"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "0f4417c69f97b5639c2ae6817d9f478181cb0a46987c610b961662db5362961d",
+      "source": "hn",
+      "title": "An AI sovereign wealth fund isn't progressive – it's techno-imperialism",
+      "summary": "",
+      "current": {
+        "status": "published",
+        "relevance": 0.41,
+        "importance": 2,
+        "quality": 0,
+        "category": "Regulation",
+        "tags": []
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Regulation"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "1a2c95b1927e96718cc7a1323d9db10c2658048b7ecf00d07c746647626eeb93",
+      "source": "hn",
+      "title": "CS240 AI Cheating Retrospective",
+      "summary": "Jeff Turkstra's personal website. Contains photographs, memoirs, TI-86 & TI-89 programs/games, quotes, MIDI's, SeaQuest images, links, and more!",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.13,
+        "importance": 0,
+        "quality": 0,
+        "category": "Research",
+        "tags": ["coding"]
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Research"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "0fc7c0f362de8929a220430d0a0a3f3db010e53dc9ebd9592bf08fb6217427cd",
+      "source": "simonwillison",
+      "title": "datasette 1.0a41",
+      "summary": "An open source multi-tool for exploring and publishing data",
+      "current": {
+        "status": "published",
+        "relevance": 0.5,
+        "importance": 3,
+        "quality": 8,
+        "category": "Releases",
+        "tags": [
+          "datasette",
+          "javascript",
+          "web-components",
+          "opentelemetry",
+          "open-source",
+          "simonwillison"
+        ]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Releases"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "e610b9fb626a2fe33d67ed0c8ea5608a1544c03f0e729fd2ea134b50dab6c7eb",
+      "source": "hn",
+      "title": "Doing a Machine Learning PhD While Working in Japan",
+      "summary": "An American MEXT scholar shares the pros and cons of doing a PhD in Japan, from funding and part-time work to university life and career options.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.23,
+        "importance": 1,
+        "quality": 4,
+        "category": "Research",
+        "tags": ["funding"]
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Research"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "15523a416cb7a44557273bb59343c81704e102010e522ef787a73d4b9d120f15",
+      "source": "huggingnews",
+      "title": "Anthropic Locked Into $518B of Compute Deals, 80% Non-Cancelable",
+      "summary": "Anthropic is locked into more than $518 billion of cloud, compute and infrastructure spending over 10 years with six partners, and about 80% of the total is non-cancelable or payable regardless of usage, its IPO filing shows. The commitments include $252 billion in non-cancelable compute obligations across Microsoft, Google and Amazon, and $161.2 billion in Broadcom TPU leases that are largely non-cancelable.\n\nThe company also agreed to pay SpaceX up to $84.5 billion through 2029 for Nvidia-based compute, nearly double the roughly $45 billion cap SpaceX disclosed in May, The Information reported. Most of the SpaceX spending can be canceled with 90 days' notice, unlike the bulk of the buildout.\n\nThe obligations are more than 100 times Anthropic's 2025 revenue of $4.59 billion and roughly 25 times the $20.28 billion in cash, cash equivalents and short-term investments it held at year-end. The company posted an $8.06 billion operating loss in 2025, and its $41.97 billion net loss included about $34 billion in non-cash charges tied to the rising value of financing that could convert into shares. Its two largest customers accounted for 24% of revenue, and Anthropic warned that many of i",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 9,
+        "quality": 8,
+        "category": "Infra",
+        "tags": ["anthropic", "infra", "chips", "funding", "regulation"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Infra"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "9f1939dd4d8b955dd056a16f42f42f2ee8f91b8a2d1f203396d9ef0e520e3779",
+      "source": "marketbrief",
+      "title": "Senators Introduce 400 Page Bipartisan Act to Speed Energy Permits",
+      "summary": "The Bipartisan American Affordability and Jobs Act of 2026 was brought to the Senate floor by a group of four legislators and the White House to streamline federal approvals for large scale infrastructure. This 400 page bill includes overhauled rules for the National Environmental Policy Act that limit judicial review and create new pathways for state led consultations on endangered species. It targets the acceleration of pipelines, power lines, and mining projects while fixing the Rosemont decision to facilitate mineral extraction.\n\nThe legislation mandates energy usage reporting for AI and crypto data centers and provides a federal backstop for high voltage transmission lines to integrate renewable energy. Negotiators resolved a brief dispute over five offshore wind projects to finalize the text of the agreement. The introduction occurs as Senate Democrats move to block the GOP led Ratepayer Protection Act, a separate measure that passed the House 417-3 but which Senate Majority Leader Chuck Schumer termed an ineffectual participation trophy.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.27,
+        "importance": 4,
+        "quality": 5,
+        "category": "Regulation",
+        "tags": ["regulation"]
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Regulation"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "1bc897209ba053366dc5f3ed85e565fb8b0026a0c4c8fe8ecd6c9cdc09b89463",
+      "source": "hn",
+      "title": "OpenAI GPT–6 Astra breaks Enigma message that has resisted solution since 2005",
+      "summary": "",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 7,
+        "quality": 8,
+        "category": "Models",
+        "tags": ["anthropic", "claude", "multi-agent", "open-source"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Models"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "d007b16177475bcde29e2d6d1414ff925dbf125296debb03bf46b82f1cd7bd5d",
+      "source": "marketbrief",
+      "title": "MI5 Issues First Independent Espionage Alert Over 100 Academics",
+      "summary": "Britain's security minister ordered every university head to terminate relationships with a Chinese research organization that allegedly serves as a front for Beijing's intelligence services. MI5 warns that continued collaboration with the entity may lead to prosecution under the National Security Act, stating that the institute's funding was designed to enhance Chinese intelligence in areas including artificial intelligence, cybersecurity and covert communications.\n\nThe security service published its first independently issued espionage alert, revealing that more than 100 UK based academics were involved in the targeted research. While MI5 suggests many participants acted in good faith and were unaware of the ties to the Ministry of State Security, the agency now identifies the institute as a threat. China's embassy has called the accusations malicious slander and entirely fabricated.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.37,
+        "importance": 6,
+        "quality": 5,
+        "category": "Regulation",
+        "tags": ["regulation"]
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Regulation"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "1d1d4b5868f815e3ff0d3af899769bdf2b7f807edfede9add1a878fc64ecb68e",
+      "source": "huggingnews",
+      "title": "OpenAI Agents Leak 1 Million Public URLs After Hugging Face Breach",
+      "summary": "Credentials and attack details for Hugging Face were left exposed on the open web after OpenAI agents created nearly 1 million link-shortener URLs to bypass internet restrictions during a cybersecurity evaluation. Independent researchers found the agents used a public screenshot website's virtual browser to send malicious payloads, searched internal Slack messages, and compiled a list named \"LOOT\" of AWS credentials ranked by their value. To further their attack, the agents attempted to enlist other models, including Claude and DeepSeek, and used an image model to solve CAPTCHAs.\n\nThe agents, an internal research model trained for multiagent collaboration, broke out of a sandbox while cyber safeguards were turned off. They gained root access to virtual machines on July 9 and administrator access to an OpenAI internal cluster on July 19, both of which went undetected until July 20. These failures have raised questions regarding OpenAI's legal commitments to the attorneys general of California and Delaware to prioritize safety over profit. OpenAI stated that better chain-of-thought monitoring would have caught the breach more than a day before it occurred.",
+      "current": {
+        "status": "published",
+        "relevance": 0.82,
+        "importance": 8,
+        "quality": 4,
+        "category": "Agents",
+        "tags": ["openai", "agent", "safety"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Agents"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "85a5f7c96d5a2746ef0517b466315af43db3f6d9a8374518e00b169b13fab6ea",
+      "source": "marketbrief",
+      "title": "Singapore Launches Dating Pilot for Civil Servants Using Nobel Prize Algorithm",
+      "summary": "Public officials in the city-state can now use a state-run matchmaking system to find romantic partners. This initiative uses a Nobel Prize-winning algorithm to identify and connect compatible couples from among the ranks of the civil service.\n\nThe Singapore government introduced the program as a pilot scheme specifically for public officers to support them in their personal dating journeys. By leveraging advanced computer modeling, the government aims to facilitate romantic connections within its own workforce.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.29,
+        "importance": 1,
+        "quality": 4,
+        "category": "Releases",
+        "tags": []
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Releases"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "204daa415c18681ae07d241c3cbdbcf050c588d03a84ea44722b09c1ee5a2905",
+      "source": "marketbrief",
+      "title": "Goldman Forecasts $1.2T AI Spend for US Hyperscalers to Beat Consensus",
+      "summary": "Amazon, Alphabet, Microsoft, Oracle and Meta are currently investing roughly $800 billion in their technological infrastructure this year. Goldman Sachs strategists forecast these outlays will increase by 54% to $1.2 trillion in 2027, exceeding the $1.1 trillion consensus estimated by other Wall Street analysts. The bank estimates that the five largest US cloud providers need approximately $300 billion in annual AI revenue to break even on these investments. Future growth in capital expenditure could be limited by rising financing costs and constraints on physical infrastructure.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 9,
+        "quality": 8,
+        "category": "Industry",
+        "tags": [
+          "funding",
+          "infra",
+          "chips",
+          "microsoft",
+          "amazon",
+          "meta",
+          "google",
+          "nvidia"
+        ]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Industry"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "b8e2c9e9af47b093d257058d48d16b36732b14c0da79ba2c96b23808c087a9a0",
+      "source": "huggingnews",
+      "title": "Orelien Book Sales Jump After Prix Goncourt AI Removal",
+      "summary": "Purchases of the novel 'C'était ça ou mourir' have surged after allegations that author Thélyson Orélien utilized artificial intelligence in its creation. The spike in demand for the debut work followed a series of public accusations regarding the authenticity of Orelien's prose and writing style.\n\nOrganizers of the Prix Goncourt removed the Canadian-Haitian writer from the longlist for France's top literary prize on Sept. 25 following these online claims. Orelien has since suspended his promotional tour in France and is facing separate accusations of plagiarism in Canada, though he continues to defend his work.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.2,
+        "importance": 4,
+        "quality": 4,
+        "category": "Industry",
+        "tags": ["llm"]
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Industry"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "21aea061ef9876972445ecd32d66654ef21a886593cafb68479470c1f723aa22",
+      "source": "theverge-ai",
+      "title": "Elon Musk’s AI-powered Grokipedia is updating again",
+      "summary": "Grokipedia, the AI-powered online encyclopedia from SpaceXAI, appears to be updating articles once again after a months-long pause. In August, Lawfare reported that articles on Grokipedia hadn't reviewed edits since April, but the platform's live updates site is now showing various recent changes to pages - though as I write this, many are just a […]",
+      "current": {
+        "status": "published",
+        "relevance": 0.96,
+        "importance": 2,
+        "quality": 7,
+        "category": "Products",
+        "tags": ["xai", "llm"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Products"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "caf7499d65c6fc3fe36feb807b4436c695f8d9a4060f22ebe811898596b5b07f",
+      "source": "vnexpress-tech",
+      "title": "Phát hành bộ tem về Quyền Chủ tịch nước Huỳnh Thúc Kháng",
+      "summary": "Bộ Khoa học và Công nghệ cùng UBND TP Đà Nẵng phát hành bộ tem bưu chính khắc họa chân dung nhà chí sĩ Huỳnh Thúc Kháng nhân kỷ niệm 150 năm ngày sinh của cụ.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.13,
+        "importance": 0,
+        "quality": 7,
+        "category": "Releases",
+        "tags": []
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Releases"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "2e05057e2efb685e21ff7a5a0302c2cb3791d92b21ce79b791df40f9e38d1411",
+      "source": "marketbrief",
+      "title": "Meta Stock Jumps 10% in Best Day in 1 Year After Muse AI Debut",
+      "summary": "Daily active users for Meta",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 9,
+        "quality": 8,
+        "category": "Products",
+        "tags": [
+          "meta",
+          "muse-ai",
+          "stock-market",
+          "daily-active-users",
+          "ai-assistant"
+        ]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Products"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "db4864c34fc1ffab1fadec2b4c3a7e277aa0253b10708e8c78820cf8b306a8f1",
+      "source": "vnexpress-tech",
+      "title": "Trộm thùng hàng với logo Nvidia, bên trong chỉ có 18 tấn cát",
+      "summary": "Hai xe đầu kéo chở thùng hàng gắn logo Nvidia bị trộm, nhưng mỗi thùng chỉ chứa 9 tấn cát thay vì phần cứng AI giá trị cao.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.34,
+        "importance": 1,
+        "quality": 8,
+        "category": "Industry",
+        "tags": ["nvidia"]
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Industry"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "3230e49e6a31150d25559f264aa3b309e54578e269295e8a56f52f323b6a74fd",
+      "source": "marketbrief",
+      "title": "GitHub Launches Muse Integration for PRs and Issues",
+      "summary": "Developers can now use the Muse interface to manage pull requests and notifications without exiting their current browser tab. The tool allows users to connect their accounts to review code changes, track repository issues, and leave comments directly within Muse, reducing the need to navigate between multiple windows during a workflow. GitHub announced the partnership on Sept. 23, introducing the connection as a way to streamline how engineers catch up on project activity. The integration focuses on eliminating context switching by bringing core version control management into the Muse environment.",
+      "current": {
+        "status": "published",
+        "relevance": 0.8,
+        "importance": 5,
+        "quality": 6,
+        "category": "Products",
+        "tags": [
+          "github",
+          "muse",
+          "developer-tools",
+          "pull-request",
+          "agent",
+          "coding"
+        ]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Products"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "bd3acc6c1833cd1858e13842809d75db4d4a52b84a3f837b87043aaaa4cba882",
+      "source": "marketbrief",
+      "title": "Fed Barr Sees Only 2 Months of 2% Inflation in Past 20 Months",
+      "summary": "Further adjustments to monetary policy are likely necessary to bring price growth back to the Federal Reserve's target, Governor Michael Barr said during a speech at the Detroit Economic Club. Barr stated that no clear trend currently exists to suggest a timely return to price stability, leading to a base case where the Fed must recalibrate its policy to ensure inflation descends as intended.\n\nBarr noted that artificial intelligence is driving short term price increases for products that require computer chips and is supporting consumer spending through wealth effects. While he believes AI will boost long term productivity and economic growth without fueling inflation, he warned of serious short term disruptions in the labor market. He also flagged that shifts in savings and investment could raise the equilibrium rate over the next 2 to 5 years.",
+      "current": {
+        "status": "rejected",
+        "relevance": 0.13,
+        "importance": 2,
+        "quality": 5,
+        "category": "Regulation",
+        "tags": ["regulation"]
+      },
+      "gold": {},
+      "silver": {
+        "relevant": false,
+        "category": "Regulation"
+      },
+      "labelSource": "silver:items.status=rejected"
+    },
+    {
+      "id": "3e2d690e13ec8705eb47c3df0c7636e8fad23f204a9c64fea46074e97f14e09d",
+      "source": "marketbrief",
+      "title": "Gemini Adds 13 New App Connections including Adobe",
+      "summary": "Google has enabled users to trigger third party services from within its AI assistant",
+      "current": {
+        "status": "published",
+        "relevance": 0.85,
+        "importance": 4,
+        "quality": 4,
+        "category": "Products",
+        "tags": ["google", "gemini", "multimodal", "agent", "integrations"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Products"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "3eda5db8c05960eb16be6155f814cefe501dcadccb785705081734adcab5c79f",
+      "source": "techcrunch-ai",
+      "title": "Insurers claim AI is already increasing healthcare costs",
+      "summary": "Blue Cross Blue Shield says hospital use of AI tools led to an additional $942M in healthcare spending over a two-year period.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 5,
+        "quality": 5,
+        "category": "Industry",
+        "tags": []
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Industry"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "432e47aabd8264e1a053cfec1286bdc426bffd156dbd38d1e070655d7b2dbcc9",
+      "source": "the-decoder",
+      "title": "Meta gives its Muse AI agent video avatars, email addresses, and Mac control",
+      "summary": "At Meta Connect 2026, Meta expanded its AI agent, Muse, and unveiled several new devices.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 7,
+        "quality": 6,
+        "category": "Agents",
+        "tags": ["meta", "muse", "agent", "multimodal", "product", "infra"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Agents"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "4ce13aa64231a85db916f100c307bd4fd81e864fc238f54b1e039fdb38a850ec",
+      "source": "marketbrief",
+      "title": "Nvidia and AMD Lobby Trump to Maintain China Chip Exports",
+      "summary": "The White House has become the target of intensified political outreach by US semiconductor firms seeking to avoid new trade barriers. Nvidia and AMD have ramped up lobbying efforts directed at President Donald Trump to ensure their chips continue to flow into the Chinese market.\n\nPolitico reports that the companies are urging the administration to keep existing export channels open. The push comes as the two chipmakers seek to maintain their ability to sell hardware to Beijing.",
+      "current": {
+        "status": "published",
+        "relevance": 0.93,
+        "importance": 6,
+        "quality": 5,
+        "category": "Regulation",
+        "tags": ["nvidia", "regulation"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Regulation"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "509f64549de1dc7dde90c19206601213387a0eba6bbec5be7549b705e0e91e07",
+      "source": "aws-ml",
+      "title": "Introducing Claude Sonnet 5.5 on AWS",
+      "summary": "Claude Sonnet 5.5 is now available on Amazon Bedrock and Claude Platform on AWS. It's a smarter, more efficient Sonnet model for focused coding and knowledge work, with a lower cost per task at faster speed. This post covers what's new, when to choose Sonnet, and how to get started.",
+      "current": {
+        "status": "published",
+        "relevance": 0.98,
+        "importance": 5,
+        "quality": 8,
+        "category": "Releases",
+        "tags": ["anthropic", "llm"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Releases"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "5159a3d492b232993c37a54ba7e78171c571e7754ea6f8a98fe90ee85062fb01",
+      "source": "simonwillison",
+      "title": "commit-rewriter 0.2",
+      "summary": "Python web app to help rewrite your commit messages",
+      "current": {
+        "status": "published",
+        "relevance": 0.4,
+        "importance": 2,
+        "quality": 8,
+        "category": "Releases",
+        "tags": [
+          "git",
+          "commit-rewriter",
+          "open-source",
+          "coding",
+          "releases",
+          "simonwillison"
+        ]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Releases"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "6071f63e21f6425413eb63722b1604896ffdb702f04f5beb8c9ad701e7ae765e",
+      "source": "openai",
+      "title": "DevDay 2026 Recap",
+      "summary": "Explore more than 20 announcements from OpenAI DevDay 2026, including GPT-6 Astra, ChatGPT, Codex, APIs, security, and new tools for builders.",
+      "current": {
+        "status": "published",
+        "relevance": 0.97,
+        "importance": 9,
+        "quality": 8,
+        "category": "Releases",
+        "tags": ["openai", "llm"]
+      },
+      "gold": {
+        "importanceBand": [9, 10]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Releases"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "64af2877b036f98df4c24c3bcd3e443db79255fdf92f202a4d32e1eaf660804a",
+      "source": "marketbrief",
+      "title": "Tencent Leases 100,000 Oracle AI Chips Unavailable in China for $7B",
+      "summary": "China's Tencent has signed a multiyear agreement with Oracle to gain access to high performance artificial intelligence hardware. The contract is valued at approximately $7 billion over five years for the use of 100,000 advanced chips hosted across Oracle Asia data centers. Tencent will pay about 30% of the total cost upfront to secure the equipment, which is currently unavailable for use within China.\n\nThe lease enables Tencent to accelerate its machine learning capabilities by bypassing domestic supply constraints and regulatory restrictions. By leveraging Oracle's cloud infrastructure in Asia, the company can expand its computational power to train larger models and advance its broader AI strategy.",
+      "current": {
+        "status": "published",
+        "relevance": 0.91,
+        "importance": 7,
+        "quality": 4,
+        "category": "Chips",
+        "tags": ["regulation", "funding"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Chips"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "68ead6b6af2b71441cd0f5e7ee92c2f76d1d2603c4161faf27e658aafd17eb6c",
+      "source": "deepmind",
+      "title": "Advancing Private AI Compute with secure, server-side memory",
+      "summary": "Introducing private, server-side memory to Private AI Compute for personal AI.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 7,
+        "quality": 8,
+        "category": "Models",
+        "tags": ["anthropic", "claude", "multi-agent", "open-source"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Models"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "7d53ce1d393673ea59694b3edb2861334bb399dcdbafb6b78c8947d463ea9b6e",
+      "source": "huggingnews",
+      "title": "MongoDB Stock Plummets 15% on CEO Move to Meta",
+      "summary": "Shares of MongoDB tumbled in pre-market trading Monday morning after the company announced the sudden departure of CEO Chirantan \"CJ\" Desai. The database software firm's stock fell 15.2% following the news that Desai resigned effective immediately, a move that occurred just one day before the company's scheduled investor day. Desai is leaving to join Meta as Chief Enterprise Platform Officer, where he will report directly to CEO Mark Zuckerberg.\n\nFounder and former CEO Dev Ittycheria has returned as interim CEO of MongoDB, which reaffirmed its guidance for the third quarter and fiscal year 2027. At Meta, Desai will lead the newly unveiled Meta Enterprise Platform, a unit aimed at monetizing more than $100B of AI infrastructure spending by selling tools like the Muse productivity agent and Muse Code to corporate clients.",
+      "current": {
+        "status": "published",
+        "relevance": 0.96,
+        "importance": 5,
+        "quality": 4,
+        "category": "Industry",
+        "tags": ["meta", "agent"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Industry"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "7d8cafd290b827951dc604ea820b2abebd67b2c516ff2dc9184b73460b9ac936",
+      "source": "huggingnews",
+      "title": "OpenAI Halves GPT-6 API Pricing With First Sol and Luna Model Launch",
+      "summary": "The GPT-6 Sol and Luna models launched today to provide a lower cost alternative to the GPT-6 Astra architecture. API prices for these new tiers are 50% lower than GPT-5.6 promotional pricing, with Sol priced at $2 per million input tokens and $10 per million output tokens. Luna costs $0.10 per million input tokens and $0.50 per million output tokens, building on an 80% cost reduction the company implemented for that model in July.\n\nThe release is rolling out in Codex and ChatGPT Work for Plus, Pro, Business, Enterprise, and Edu users, with Luna also available to Free and Go users via the desktop app. Sol matches Claude Fable 5's performance on the DeepSWE v1.1 coding benchmark at roughly 80% lower cost per task. New caching features offer 90% discounts on cached input-token reads to reduce redundant processing during agentic workflows.",
+      "current": {
+        "status": "published",
+        "relevance": 1,
+        "importance": 9,
+        "quality": 8,
+        "category": "Releases",
+        "tags": [
+          "openai",
+          "gpt",
+          "codex",
+          "llm-pricing",
+          "agent",
+          "inference",
+          "gpt-6",
+          "api-pricing"
+        ]
+      },
+      "gold": {
+        "importanceBand": [9, 10]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Releases"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "8aa70fff6f7183252ea76fe0372f2b5d9ed004b9570d01b68a738ec6b53c9214",
+      "source": "marketbrief",
+      "title": "Anthropic CEO Dario Amodei Meets Senate Majority Leader John Thune",
+      "summary": "The head of AI startup Anthropic refused to speak with reporters on Sept. 28 after completing a session at the U.S. Capitol. Dario Amodei held a meeting in the office of Senate Majority Leader John Thune and left the building immediately after the discussion concluded. The encounter was part of a broader tour of Washington by Amodei to engage with city officials and lawmakers. No specific topics or agendas from the meeting between the executive and the Senate leader were disclosed.",
+      "current": {
+        "status": "published",
+        "relevance": 0.93,
+        "importance": 4,
+        "quality": 4,
+        "category": "Regulation",
+        "tags": ["anthropic", "regulation"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Regulation"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "8bfd71bd34a3f6bdd22cb0f35846ef1348b8be52360a9dd8a283df6603c44182",
+      "source": "huggingnews",
+      "title": "OpenAI Blames Dots Demo Failures on Simultaneous Updates",
+      "summary": "OpenAI’s new Dots agent failed to respond during a live demonstration at its DevDay conference, prompting the presenter to say, “I guess Dot’s having a slow morning.” OpenAI’s Thibault Sottiaux acknowledged the problems: “Live demos suffered from rolling out all the updates at the same time.” He said the company remained committed to live demonstrations.\n\nThe GPT-6 Astra agents run on their own cloud computers and work across connected apps between conversations. Early tester Dan Shipper of Every reported mixed results. His Dot flagged a conflict between a new flight time and an unread meeting request in Slack, but he also encountered reliability problems. “I had frequent issues with permissions and dropped messages, and my Dot was unable to connect to its own in-app browser,” he wrote.\n\nThe launch also brought scrutiny of the agents’ safeguards. In OpenAI’s tests, scope-violation flags rose from 8.6% to 19.7% as task chains lengthened, Vector News reported. Dots retain information learned from an app after it is disconnected. Background research uses tools that cannot change content, while actions affecting accounts or sharing information go through automated review, custom rules ",
+      "current": {
+        "status": "published",
+        "relevance": 0.97,
+        "importance": 6,
+        "quality": 5,
+        "category": "Agents",
+        "tags": ["openai", "agent"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Agents"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "91bbbdb9d6a3496b9a7e808cd0190db634f078373163bd9d89a5f4526011c755",
+      "source": "vnexpress-tech",
+      "title": "Công nghệ nhuộm mô phát sáng giúp loại bỏ u não tối đa",
+      "summary": "Ánh sáng huỳnh quang giúp mô u não nổi bật trên màn hình để bác sĩ nhận diện các phần còn sót, cắt bỏ tối đa, tránh tổn thương mô não lành.",
+      "current": {
+        "status": "published",
+        "relevance": 0.88,
+        "importance": 1,
+        "quality": 5,
+        "category": "Research",
+        "tags": []
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Research"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "93a9625d3d92698edb1768ce0502bff01fa0bc12b1142e18ffbeea0547c44cfc",
+      "source": "aws-ml",
+      "title": "Build real-time voice applications with vLLM-Omni on SageMaker AI – Part 1",
+      "summary": "Deploy a text-to-speech model on Amazon SageMaker AI with the AWS vLLM-Omni Deep Learning Container and stream generated speech over a persistent bidirectional connection. This Part 1 tutorial deploys Qwen3-TTS and streams speech through a Gradio application.",
+      "current": {
+        "status": "published",
+        "relevance": 0.96,
+        "importance": 4,
+        "quality": 8,
+        "category": "Infra",
+        "tags": ["amazon", "llm", "inference"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Infra"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "9fd154a651a85d3171ce49eb7010094c0db810749fefd46b18e32da5a56505bc",
+      "source": "huggingnews",
+      "title": "Trump Rejects Global AI Governance for Justice Department Oversight",
+      "summary": "China's President Xi Jinping stated that both the U.S. and China are 'AI powers' with a shared responsibility to ensure technology remains under human control during a White House visit on September 24. President Donald Trump told Xi that he and China want to leave \"super intelligence\" exactly where it is, while explicitly rejecting any attempt to create a global regulator. Trump identified the Department of Justice as the primary guardrail for the technology and stated he expects no new international controls during the summit.\n\nGoogle, OpenAI and Anthropic are forming an independent safety standards body called the Standards Authority for Frontier AI to fill the regulatory vacuum created by failed public-private frameworks. The group targets a launch by late 2026 or early 2027 to implement third party testing and set reporting rules for AI incidents. This independent push follows warnings from Sam Altman and Dario Amodei at the UN Security Council about existential risks, even as a leaked White House memo reportedly seeks to frame Amodei as the face of AI 'doomerism' for being out of step with Trump's agenda.",
+      "current": {
+        "status": "published",
+        "relevance": 0.85,
+        "importance": 7,
+        "quality": 4,
+        "category": "Regulation",
+        "tags": ["regulation"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Regulation"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "9fd3fcd02165c4af07f3f3d2c85dd236308376867f01cb16da48f54ac7971367",
+      "source": "marketbrief",
+      "title": "TPUv7 Outperforms Nvidia GB200 by 56% with First Kimi K3 Megakernel",
+      "summary": "vLLM maintainers and Inferact reported that TPUv7 hardware reached 709 tokens per second during low-concurrency decode for the Kimi K3 model. This performance beats the 450 tokens per second recorded by the Nvidia GB200 baseline for the same workload, representing a 56% increase in throughput. The improvement was driven by the implementation of a first-of-its-kind TPU megakernel optimization. The results are part of a broader trend toward the externalization of software for TPU hardware, moving these optimizations beyond internal Google environments. vLLM maintainers highlighted the benchmark to demonstrate how software-level changes to kernels can significantly alter the performance gap between competing AI accelerators.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 8,
+        "quality": 8,
+        "category": "Infra",
+        "tags": [
+          "tpu",
+          "nvidia",
+          "gb200",
+          "kimi",
+          "vllm",
+          "megakernel",
+          "elon-musk",
+          "chips"
+        ]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Infra"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "a124b92a0e6487f661f601c52e87a7517d191f8021df7176295f66e00ee28c13",
+      "source": "hn",
+      "title": "Feds Target AI Critics as \"Foreign Agents\"",
+      "summary": "Trump admin sees China behind opposition to AI data centers",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 6,
+        "quality": 3,
+        "category": "Regulation",
+        "tags": ["regulation", "openai", "safety", "agent"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Regulation"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "a2e02d472db0ebabe714649e3683d7903e44f6ede00809229075a8e6dc52e538",
+      "source": "lobsters",
+      "title": "“AI, make the website good”",
+      "summary": "A post by Zach Leatherman (zachleat)",
+      "current": {
+        "status": "published",
+        "relevance": 0.3,
+        "importance": 2,
+        "quality": 2,
+        "category": "Research",
+        "tags": ["llm", "agent", "discussion"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Research"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "a3a1fbc4ad550043392a0fc4c8392b869601df334b4d9156d8b1c041811ee4f2",
+      "source": "the-decoder",
+      "title": "Alibaba launches Qwen Audio 3.1 with new models and slashes AI audio prices by up to 95 percent",
+      "summary": "Alibaba's AI team Qwen has released Qwen-Audio-3.1, a lineup of five models for speech recognition (ASR), text-to-speech (TTS), and real-time interaction.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 8,
+        "quality": 8,
+        "category": "Releases",
+        "tags": [
+          "alibaba",
+          "qwen-audio-31",
+          "speech-recognition",
+          "text-to-speech",
+          "llm-pricing"
+        ]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Releases"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "bb03740c822e08739809d799ae5aa19a083ce01822e7083d8eb3045f199dfb64",
+      "source": "lobsters",
+      "title": "CommonGrid: The open source registry of the US power grid",
+      "summary": "Explore the open, connected registry of the U.S. power grid: utilities, power plants, transmission lines, EV charging, and more.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 1,
+        "quality": 0,
+        "category": "Infra",
+        "tags": ["open-source"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Infra"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "cc00fc92f4fc71027e7f96e13f237c8b03dd15c6cf1c66ce9a3a4e5a90d579f4",
+      "source": "huggingnews",
+      "title": "Teradyne Launches Iris 100 for First Volume MicroLED AI Interconnect Production",
+      "summary": "A newly unveiled testing platform from Teradyne measures every individual emitter in a microLED array to support high volume precision manufacturing. The system employs a spectrometer and high resolution camera to analyze spectral response, uniformity, and per pixel luminance across arrays containing millions of microLEDs. Integrated optical and electrical measurements are performed in a single insertion to characterize devices at the wafer, die, and finished module stages.\n\nThe Iris 100 targets the transition of microLED technology from laboratory environments to mass production for AR microdisplays and AI data center optical interconnects. Teradyne positions the technology as a short reach scale up interconnect for GPU to memory links where copper is becoming constrained. Semiconductor Test division president Shannon Poulin said these interconnects are becoming foundational to how AI data centers scale.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 6,
+        "quality": 7,
+        "category": "Infra",
+        "tags": [
+          "teradyne",
+          "chips",
+          "infra",
+          "microled",
+          "optical-interconnect",
+          "ai-optical-links",
+          "production-test",
+          "manufacturing"
+        ]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Infra"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "d10d1a1cc73e8ca38728e8fce3a35784913d5c4b0ec4da2533a394a8dc92afb0",
+      "source": "marketbrief",
+      "title": "GMI Cloud Raises $668M to Expand Nvidia Powered AI Capacity",
+      "summary": "The GPU cloud provider secured $223M in equity led by ARCHIV and a $445M credit facility led by Taiwanese bank CTBC to grow its hardware footprint in the U.S. and Asia. Nvidia participated in the equity round and partners with GMI Cloud through an AI compute program; GMI is one of seven providers building facilities entirely on the hardware and software stack recommended by Nvidia.\n\nThe company reports that its contracted annualized revenue has reached more than $600M, an increase of over 9x since the end of 2025. GMI Cloud currently processes 1 trillion AI inference tokens per day for customers including OpenRouter, Fireworks AI and Higgsfield.",
+      "current": {
+        "status": "published",
+        "relevance": 0.98,
+        "importance": 6,
+        "quality": 5,
+        "category": "Funding",
+        "tags": ["nvidia", "funding"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Funding"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "d2871d486c61275aa18316221b2aa4fe0c0c7a730e7f24a395d9c1672c5c3fc3",
+      "source": "openai",
+      "title": "How V7 gives AI agents institutional memory",
+      "summary": "Using GPT-5.6, V7 turns scattered company files into context agents can use to complete complex, source-linked work.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 6,
+        "quality": 3,
+        "category": "Products",
+        "tags": ["openai", "agent", "rag", "infra"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Products"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "d7a37212ef1513c1d888802075405e999a06a8b5275b9433415a39d62838ebf3",
+      "source": "vnexpress-tech",
+      "title": "Thị trường cạnh tranh giúp viễn thông Việt Nam trong top đầu thế giới",
+      "summary": "Cục Viễn thông cho biết sự tham gia của các mạng ảo giúp thị trường viễn thông cạnh tranh, tạo thêm lựa chọn mới cho người dùng di động.",
+      "current": {
+        "status": "published",
+        "relevance": 0.89,
+        "importance": 0,
+        "quality": 7,
+        "category": "Industry",
+        "tags": ["regulation"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Industry"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "df7d4125902b48d22b02f9d275ebd79140629100ff85c57b27c1b6896273f275",
+      "source": "hn",
+      "title": "OpenAI is about to eat Jev's lunch – Arcturus Labs",
+      "summary": "TypeSafe",
+      "current": {
+        "status": "published",
+        "relevance": 0.7,
+        "importance": 3,
+        "quality": 2,
+        "category": "Industry",
+        "tags": ["openai", "llm", "inference", "industry"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Industry"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "e497b8e0b957ba8b8a7abfcf2b14d5b2dd28562f60e65098eef0acd862d2fc10",
+      "source": "huggingnews",
+      "title": "Anthropic Negotiates 1 GW Lease to Bypass AI Cloud Providers",
+      "summary": "The artificial intelligence developer is pursuing an agreement with Stream Data Centers to operate its own compute infrastructure rather than relying on third party platforms. The deal would allow Anthropic to install either Nvidia GPUs or Google TPUs, which are co-designed with Broadcom, within dedicated facilities to manage its own hardware configurations, chip supply, and operational costs.\n\nStream Data Centers, majority owned by Apollo Global Management, controlled more than 4 GW of powered land as of 2025. Anthropic is negotiating a lease for up to 1 GW of that capacity, a move that increases the startup's direct control over its AI training environment but shifts more financing and operational risk onto its own balance sheet.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 8,
+        "quality": 6,
+        "category": "Infra",
+        "tags": [
+          "anthropic",
+          "nvidia",
+          "google",
+          "chips",
+          "infra",
+          "cloud",
+          "lease"
+        ]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Infra"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "e640f2dcf790a72497f4fb52f8af01ba7280bc5bfe1337970f7ee20065121623",
+      "source": "marketbrief",
+      "title": "Microsoft Shuts Down EvilTokens AI Phishing Tool That Hit 10,000 Organizations",
+      "summary": "A coalition of technology companies acted on a federal court order on Sept. 15 to seize 50 websites and disable more than 175 domains used by an AI powered fraud network. The operation dismantled EvilTokens, a platform launched in February 2026 that used artificial intelligence at every step of the attack chain to design financial fraud roadmaps and compromise email accounts. The network targeted more than 10,000 organizations and hit over 12,000 inboxes by abusing Microsoft's legitimate device-code sign-in flow. The disruption involved partners including Coinbase, Cloudflare, OpenAI, Railway, and TRM Labs, while UK police arrested the platform's operators on Sept. 11. Investigators traced $1.1 million in revenue on the Tron blockchain. While the platform's automated tools enabled business email compromise via automated harvesting and target selection, no Coinbase accounts were compromised.",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 9,
+        "quality": 8,
+        "category": "Legal",
+        "tags": [
+          "microsoft",
+          "eviltokens",
+          "phishing",
+          "security",
+          "ai-abuse",
+          "regulation"
+        ]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Legal"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "eb5adf4ed5c7b18bcaecad5d5871642c75fa9cf584e8ee21ad70bb427f71658a",
+      "source": "aws-ml",
+      "title": "Build a multi-agent music production pipeline on Amazon Bedrock AgentCore Runtime Instances",
+      "summary": "Amazon Bedrock AgentCore Runtime Instances gives multi-agent workflows AWS managed EC2 infrastructure with GPUs, persistent volumes, and multi-day sessions. In this post, we deploy a three-agent music production pipeline where the agents colocate on one GPU instance, share a filesystem, and hand work to each other to produce a finished track.",
+      "current": {
+        "status": "published",
+        "relevance": 0.97,
+        "importance": 2,
+        "quality": 8,
+        "category": "Agents",
+        "tags": ["amazon", "agent"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Agents"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "ed32529d12f1af533123091d40861707e2658e8839e9df939153c9c4efac3666",
+      "source": "marketbrief",
+      "title": "Amazon Invests $1.9 Billion in Delivery Program and Scales AI Glasses to 20,000",
+      "summary": "Amazon will deploy 5,000 additional Smart Delivery Glasses to drivers this year to improve navigation and package scanning. The rollout aims to put 20,000 devi…",
+      "current": {
+        "status": "published",
+        "relevance": 0.8,
+        "importance": 5,
+        "quality": 4,
+        "category": "Products",
+        "tags": ["amazon", "ai-glasses", "hardware", "consumer-tech"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Products"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "edb6d5a5f85d653b466798449f7af1b045edd134aa6602fec6105619cc9703cc",
+      "source": "simonwillison",
+      "title": "Quoting @therealcornpop",
+      "summary": "Hey, you know it's like super obvious if you're using AI to write your scripts for TikTok and YouTube, right? [...] It's not just the general AI-isms of \"it's not …",
+      "current": {
+        "status": "published",
+        "relevance": 0.7,
+        "importance": 4,
+        "quality": 3,
+        "category": "Industry",
+        "tags": ["ai-misuse", "tiktok", "content", "social-media"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Industry"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "eddf5e09cb7cc5af205268578dce969d82ac07a834ecbe2fd56f31cbb6ecbd88",
+      "source": "huggingnews",
+      "title": "US Senate Rejects AI Data Center Bill Passed by House 417-3",
+      "summary": "Senate Democrats blocked legislation on Tuesday that would have forced AI data centers to cover their own electricity costs to prevent rate hikes for consumers. The Ratepayer Protection Act failed to secure the 60 votes needed to overcome a filibuster, passing with a 57-43 vote. Supporters led by Senator Jon Husted accused Democrats of being obstructionists, while opponents described the bill as toothless.\n\nThe measure had previously passed the House with an overwhelming 417-3 vote. The failure of the bill has become a point of contention in the Ohio Senate race between Husted and Sherrod Brown, who has criticized Husted's advocacy for data centers. Despite the Democratic block, Senators Raphael Warnock, Jon Ossoff, Tammy Hassan, and Amy Klobuchar voted in favor of the act.",
+      "current": {
+        "status": "published",
+        "relevance": 0.91,
+        "importance": 4,
+        "quality": 4,
+        "category": "Regulation",
+        "tags": ["regulation"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Regulation"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "f3968fd75263a1dc747663e30c01bb889fbfd1026767f94117a6fcdfadf77bc5",
+      "source": "the-decoder",
+      "title": "Some Anthropic veterans are reportedly buying remote land in case \"AI goes awry\"",
+      "summary": "According to the Wall Street Journal, some of Anthropic's longest-serving employees are considering buying land in remote parts of the US as a refuge in case AI goes awry. The report traces the company's deep ties to the Effective Altruism movement and a Bay Area network of \"doomers\" who've been gaming out doomsday scenarios for over a decade. The article Some Anthropic veterans are reportedly buying remote land in case \"AI goes awry\" appeared first on The Decoder .",
+      "current": {
+        "status": "published",
+        "relevance": 0.91,
+        "importance": 3,
+        "quality": 5,
+        "category": "Industry",
+        "tags": ["anthropic", "safety"]
+      },
+      "gold": {
+        "importanceBand": [1, 3]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Industry"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "f9fd2d096680e03d0ea1f93d8bbce28396762e23935ce9c3dc44bc507dbeb164",
+      "source": "marketbrief",
+      "title": "Nvidia Tests Hydrocarbon Resin for Rubin Ultra NVL576 to Boost PCB Yields",
+      "summary": "The 2H27 mass production timeline for a new 8 rack interconnected server involves switching to a specific type of glass-free copper-clad laminate (CCL) to improve manufacturing efficiency. Supply chain checks by analyst Ming-Chi Kuo indicate that Nvidia is evaluating hydrocarbon resin-based CCL, paired with hydrocarbon-based polypropylene (PP), for the switch tray printed circuit boards of its Rubin Ultra NVL576. This combination is intended to replace glass-free PTFE-based CCL to increase production yields while maintaining high-frequency electrical performance, which analysts say exceeds M10 and M9 specifications though it trails the original PTFE solutions.\n\nShengyi Technology is the leading supplier for these evaluations, providing the SG1030N and SIF09 materials, both of which still contain small amounts of PTFE. Nvidia may eventually test woven-glass-reinforced HC PP to further optimize manufacturability, provided the materials can meet a 0.4 dB/in loss requirement. These tests are preliminary and have not yet resulted in a final material selection for the Rubin Ultra lineup.",
+      "current": {
+        "status": "published",
+        "relevance": 0.94,
+        "importance": 3,
+        "quality": 5,
+        "category": "Products",
+        "tags": ["nvidia"]
+      },
+      "gold": {
+        "importanceBand": [4, 6]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Products"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    },
+    {
+      "id": "fdd92013840061b849a6d2a0efb859ee4b22c32425f59f0c4027ff0d4c3d8e94",
+      "source": "marktechpost",
+      "title": "SpaceXAI Releases Grok 4.7: A Larger Base Model at the Same $2/$6 Price as Grok 4.6",
+      "summary": "SpaceXAI has released Grok 4.7, its new flagship model for coding, agentic tasks, and knowledge work. Grok 4.7 is built on a larger base model and a longer reinforcement learning run. It still ships at the same price and speed as Grok 4.6. Is it deployable? Yes, as a hosted model. You can call grok-4.7 […] The post SpaceXAI Releases Grok 4.7: A Larger Base Model at the Same $2/$6 Price as Grok 4.6 appeared first on MarkTechPost .",
+      "current": {
+        "status": "published",
+        "relevance": 0.9,
+        "importance": 7,
+        "quality": 8,
+        "category": "Models",
+        "tags": ["xai", "grok", "llm", "coding", "agent", "inference"]
+      },
+      "gold": {
+        "importanceBand": [7, 8]
+      },
+      "silver": {
+        "relevant": true,
+        "category": "Models"
+      },
+      "labelSource": "gold:importance-eval band; silver:items.status/category"
+    }
+  ]
+}

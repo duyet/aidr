@@ -63,7 +63,7 @@ describe("staticSitemapUrls", () => {
     expect(locs).toContain(`${SITE_URL}/changelog?lang=en`);
     expect(locs).toContain(`${SITE_URL}/privacy`);
     expect(locs).toContain(`${SITE_URL}/terms`);
-    expect(locs).toContain(`${SITE_URL}/submit?lang=en`);
+    expect(locs).toContain(`${SITE_URL}/contribute?lang=en`);
     expect(locs).not.toContain(`${SITE_URL}/mcp`);
     expect(locs).not.toContain(`${SITE_URL}/extension`);
   });

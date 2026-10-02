@@ -1,5 +1,6 @@
 import { stripTitleMarker } from "../src/lib/plain-text.js";
 import { generateTldr, type TldrBullet } from "./llm.js";
+import { pickDiverse } from "./source-diversity.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE, toEpochSeconds } from "./time.js";
 import {
@@ -13,23 +14,32 @@ import type { Env } from "./types.js";
  * stories that land after the first successful generate of the day. */
 export const TLDR_REFRESH_MS = 3 * 60 * 60 * 1000;
 
+/** Stories per TL;DR edition. */
+export const TLDR_MAX_ITEMS = 16;
+/** The whole 24h window is the candidate pool (~120 rows on a normal day):
+ * mirrored aggregators can fill the top 50 alone, so a small over-fetch
+ * would leave the source-family cap nothing else to pick. Bounded for
+ * spike days. */
+const TLDR_CANDIDATE_LIMIT = 300;
+
 interface ItemRow {
   id: string;
+  source_id: string;
   title: string;
   summary: string | null;
   title_vi: string | null;
 }
 
-const TOP_ITEMS_SQL = `SELECT i.id, i.title, i.summary, tr.title AS title_vi
+const TOP_ITEMS_SQL = `SELECT i.id, i.source_id, i.title, i.summary, tr.title AS title_vi
      FROM items i
      LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
      WHERE i.status = 'published' AND i.published_at >= ?
      ORDER BY i.rank_score DESC
-     LIMIT 16`;
+     LIMIT ${TLDR_CANDIDATE_LIMIT}`;
 
 /**
- * Pure query builder for the top-items lookup, so the gating logic
- * (published, fresh, ranked, capped at 16) can be verified without a D1
+ * Pure query builder for the top-items candidate pool, so the gating logic
+ * (published, fresh, ranked) can be verified without a D1
  * binding. `nowMs` is epoch milliseconds; `items.published_at` is stored
  * as epoch seconds, so the bound `since` value is normalized to seconds.
  */
@@ -41,6 +51,15 @@ export function buildTopItemsQuery(nowMs: number): {
     sql: TOP_ITEMS_SQL,
     since: toEpochSeconds(nowMs) - 24 * 60 * 60,
   };
+}
+
+/** The edition's stories: the top TLDR_MAX_ITEMS of the 24h window by rank,
+ * with no source family over its share (`pickDiverse`). Shared by the
+ * hourly write and the dry-run preview so both pick the same items. */
+async function loadTopItems(env: Env, nowMs: number): Promise<ItemRow[]> {
+  const { sql, since } = buildTopItemsQuery(nowMs);
+  const { results } = await env.DB.prepare(sql).bind(since).all<ItemRow>();
+  return pickDiverse(results ?? [], { limit: TLDR_MAX_ITEMS });
 }
 
 /** Snapshot / digest calendar date: local day in Asia/Ho_Chi_Minh, not UTC. */
@@ -170,8 +189,7 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
       bullets_vi: string | null;
     }>();
 
-  const { sql, since } = buildTopItemsQuery(nowMs);
-  const { results } = await env.DB.prepare(sql).bind(since).all<ItemRow>();
+  const results = await loadTopItems(env, nowMs);
 
   const existingParsed = existing
     ? {
@@ -184,9 +202,9 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
   if (
     !shouldRefreshExistingSnapshot({
       existing: existingParsed,
-      itemCount: results?.length ?? 0,
+      itemCount: results.length,
       nowMs,
-      hasTitleVi: itemsHaveTitleVi(results ?? []),
+      hasTitleVi: itemsHaveTitleVi(results),
     })
   ) {
     const age = nowMs - (existingParsed?.created_at ?? 0);
@@ -197,7 +215,7 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
     };
   }
 
-  if (!results || results.length === 0)
+  if (results.length === 0)
     return {
       generated: false,
       tokens: 0,
@@ -326,15 +344,14 @@ export interface TldrPreview extends TldrRunStats {
 export async function previewDailyTldr(env: Env): Promise<TldrPreview> {
   const nowMs = Date.now();
   const date = tldrSnapshotDate(nowMs);
-  const { sql, since } = buildTopItemsQuery(nowMs);
-  const { results } = await env.DB.prepare(sql).bind(since).all<ItemRow>();
+  const results = await loadTopItems(env, nowMs);
   const empty = {
     date,
-    itemCount: results?.length ?? 0,
+    itemCount: results.length,
     bullets_en: [],
     bullets_vi: [],
   };
-  if (!results || results.length === 0) {
+  if (results.length === 0) {
     return {
       ...empty,
       generated: false,

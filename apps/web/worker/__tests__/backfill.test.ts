@@ -269,7 +269,11 @@ describe("buildMissingTranslationQuery", () => {
       pick([
         { id: "no-vi", summary: "s", vi: null },
         { id: "empty-title", vi: { title: "", summary: "" } },
-        { id: "dropped-summary", summary: "s", vi: { title: "T", summary: "" } },
+        {
+          id: "dropped-summary",
+          summary: "s",
+          vi: { title: "T", summary: "" },
+        },
         { id: "complete", summary: "s", vi: { title: "T", summary: "S" } },
         { id: "no-source-summary", vi: { title: "T", summary: "" } },
         { id: "vi-source", lang: "vi", vi: null },

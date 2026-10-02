@@ -1,11 +1,19 @@
 import { chunk } from "../chunk.js";
+import { isOfficialRewrite } from "../dedupe.js";
 import { sha256Hex } from "../hash.js";
 import { parseMediaManifest } from "../media.js";
 import { recordStep } from "../run-stats.js";
+import { officialSourceFor } from "../sources/catalog.js";
 import { toEpochSeconds } from "../time.js";
 import { safeStep } from "../workflow-step.js";
-import type { IngestContext, NewRow, SourceRow } from "./context.js";
+import {
+  type IngestContext,
+  type NewRow,
+  RELEVANCE_THRESHOLD,
+  type SourceRow,
+} from "./context.js";
 import type { FetchedSource } from "./fetch.js";
+import { headlineOf } from "./merge.js";
 
 /** Max ids per `SELECT ... WHERE id IN (...)` (D1 bound-parameter limit). */
 export const DEDUPE_IN_CHUNK = 50;
@@ -79,6 +87,78 @@ export async function toCandidates(
   return candidates;
 }
 
+/** A merged row plus the published canonical it was merged into. */
+export interface MergedOfficialRow extends PendingNewRow {
+  llm_relevance: number | null;
+  canonical_source_id: string;
+  canonical_url: string;
+  canonical_title: string;
+  canonical_published_at: number;
+}
+
+/**
+ * Which already-stored official posts to run through the pipeline again: a
+ * post that was merged under an aggregator rewrite (it arrived first through
+ * HN or a submission, before official sources could take a story over) and
+ * is provably the original of that rewrite (`isOfficialRewrite`). Re-run as
+ * a new row, the merge step makes it the canonical and demotes the rewrite.
+ * A post below the relevance bar stays merged, and once it is canonical it
+ * no longer matches, so this never loops.
+ */
+export function officialReadmissions(
+  rows: readonly MergedOfficialRow[]
+): MergedOfficialRow[] {
+  return rows.filter(
+    (row) =>
+      (row.llm_relevance ?? 1) >= RELEVANCE_THRESHOLD &&
+      officialSourceFor(row.canonical_source_id, row.canonical_url) ===
+        undefined &&
+      isOfficialRewrite(
+        headlineOf(row.source_id, row.url, row.title, row.published_at),
+        headlineOf(
+          row.canonical_source_id,
+          row.canonical_url,
+          row.canonical_title,
+          row.canonical_published_at
+        )
+      )
+  );
+}
+
+/** Fetched official URLs whose stored row is merged under a rewrite, as
+ * new rows (their stored copy, so the plan matches what D1 holds). */
+async function readmitOfficialRows(
+  db: D1Database,
+  known: readonly NewRow[],
+  sources: readonly SourceRow[]
+): Promise<NewRow[]> {
+  const official = known.filter((c) =>
+    officialSourceFor(c.source.id, c.item.url)
+  );
+  const out: NewRow[] = [];
+  for (const part of chunk(official, DEDUPE_IN_CHUNK)) {
+    const placeholders = part.map(() => "?").join(",");
+    const { results } = await db
+      .prepare(
+        `SELECT i.id, i.source_id, i.external_id, i.url, i.title, i.summary,
+                i.published_at, i.points, i.comments, i.image_url,
+                i.source_lang, i.media_manifest, i.llm_relevance,
+                c.source_id AS canonical_source_id, c.url AS canonical_url,
+                c.title AS canonical_title,
+                c.published_at AS canonical_published_at
+         FROM items i JOIN items c ON c.id = i.duplicate_of
+         WHERE i.id IN (${placeholders}) AND i.status = 'merged'
+           AND c.status = 'published'`
+      )
+      .bind(...part.map((c) => c.id))
+      .all<MergedOfficialRow>();
+    for (const row of officialReadmissions(results ?? [])) {
+      out.push(pendingRowToNewRow(row, sources));
+    }
+  }
+  return out;
+}
+
 export async function dedupeNewRows(
   ctx: IngestContext,
   fetchedBySource: readonly FetchedSource[],
@@ -101,6 +181,13 @@ export async function dedupeNewRows(
     }
 
     const rows = candidates.filter((c) => !existingIds.has(c.id));
+    rows.push(
+      ...(await readmitOfficialRows(
+        env.DB,
+        candidates.filter((c) => existingIds.has(c.id)),
+        sources
+      ))
+    );
 
     // Rows inserted directly with status='new' (e.g. an accepted user
     // submission, or an admin push) never came through a source's

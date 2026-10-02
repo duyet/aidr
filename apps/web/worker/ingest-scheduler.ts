@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { maybeSyncGa4Insights } from "./ga4/insights.js";
 import {
   armAlarmAt,
+  blockedByOpenRun,
   type IngestTickOpts,
   type IngestTickResult,
   nextAlarmAt,
@@ -9,11 +10,12 @@ import {
   shouldSkipIngest,
 } from "./ingest-schedule.js";
 import type { Env } from "./types.js";
+import { type D1Runner, NOT_DRY_RUN_SQL } from "./workflow-run.js";
 
 const LAST_STARTED_KEY = "last_started_at";
 
 /**
- * Singleton Durable Object that fires hourly ingest without a Worker cron
+ * Singleton Durable Object that fires ingest every 30 minutes without a Worker cron
  * trigger (Free accounts are capped at 5 crons). GitHub Actions remains a
  * watchdog; both paths call `tick()` so overlapping POSTs coalesce.
  *
@@ -24,7 +26,7 @@ const LAST_STARTED_KEY = "last_started_at";
 export class NewsIngestScheduler extends DurableObject<Env> {
   async alarm(): Promise<void> {
     await this.tick();
-    // Audience sync rides the hourly alarm behind its own 24h gate: this
+    // Audience sync rides the 30-minute alarm behind its own 24h gate: this
     // account cannot spend Worker cron slots, and GA4 does not resolve finer
     // than a day anyway. Best-effort and swallowed — an audience snapshot is
     // never a reason to fail the ingest alarm.
@@ -45,7 +47,7 @@ export class NewsIngestScheduler extends DurableObject<Env> {
     const now = Date.now();
     const lastStartedAt = await this.ctx.storage.get<number>(LAST_STARTED_KEY);
     if (opts.scheduled === false) {
-      // Dry / partial runs never move the hourly alarm; only make sure
+      // Dry / partial runs never move the 30-minute alarm; only make sure
       // one is armed.
       await this.ensureArmed();
     } else {
@@ -57,6 +59,13 @@ export class NewsIngestScheduler extends DurableObject<Env> {
         id: null,
         skipped: true,
         reason: "ran recently",
+      };
+    }
+    if (!opts.force && (await previousRunStillOpen(this.env.DB, now))) {
+      return {
+        id: null,
+        skipped: true,
+        reason: "previous run still open",
       };
     }
     return { id: null, skipped: false };
@@ -94,5 +103,30 @@ export class NewsIngestScheduler extends DurableObject<Env> {
     if (existing === null) {
       await this.ctx.storage.setAlarm(armAlarmAt(Date.now()));
     }
+  }
+}
+
+/** Latest non-dry run still has finished_at = started_at. A read failure
+ * does not block the start; the 25-minute window still applies. */
+async function previousRunStillOpen(
+  db: D1Runner | undefined,
+  nowMs: number
+): Promise<boolean> {
+  if (!db) return false;
+  try {
+    const row = await db
+      .prepare(
+        `SELECT started_at, finished_at FROM workflow_runs
+         WHERE ${NOT_DRY_RUN_SQL}
+         ORDER BY CASE WHEN started_at > 1000000000000 THEN started_at / 1000 ELSE started_at END DESC, id DESC
+         LIMIT 1`
+      )
+      .bind()
+      .first<{ started_at: number | null; finished_at: number | null }>();
+    if (!row) return false;
+    return blockedByOpenRun(row.started_at, row.finished_at, nowMs);
+  } catch (error) {
+    console.error("open-run check failed:", error);
+    return false;
   }
 }

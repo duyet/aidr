@@ -15,7 +15,7 @@ This skill is the AI;DR layer on top of HyperFrames. It says what to read, which
 4. `videos/docs/workflow.md` — step order, gates, known issues.
 5. The `hyperframes` skill — then follow it.
 
-For per-story automated clips, use the `aidr-story-clip` skill instead.
+For per-story automated clips, use the `aidr-story-clip` skill instead. For the daily top-stories news video (YouTube, TikTok, Reels, Facebook), use the `aidr-daily-news` skill.
 
 ## New video
 

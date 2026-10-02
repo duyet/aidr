@@ -72,6 +72,14 @@ describe("legacyStoryRedirectPath", () => {
     expect(legacyStoryRedirectPath("/sign-in/sso")).toBeNull();
   });
 
+  it("does not steal day archive pages", () => {
+    // `/date/<anything>` belongs to the day route. A hex-shaped second
+    // segment would otherwise be 308'd to a story by src/server.ts.
+    expect(legacyStoryRedirectPath("/date/2026-10-02")).toBeNull();
+    expect(legacyStoryRedirectPath("/date/deadbeef12")).toBeNull();
+    expect(legacyStoryRedirectPath("/date/some-title-deadbeef")).toBeNull();
+  });
+
   it("does not steal the server-function transport", () => {
     // A server-fn id is 64-char hex, so this synthetic id makes the path
     // shaped exactly like a legacy /{cat}/{hash} story URL. Redirecting it

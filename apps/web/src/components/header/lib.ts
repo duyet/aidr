@@ -67,6 +67,6 @@ export const SITE_LINKS: {
     channel: "telegram",
   },
   { href: "/data", label: "Data", internal: true, icon: Database },
-  { href: "/submit", label: "Submit", internal: true, icon: Plus },
+  { href: "/contribute", label: "Contribute", internal: true, icon: Plus },
   { href: DUYET_URL, label: "duyet.net", internal: false, icon: Globe },
 ];

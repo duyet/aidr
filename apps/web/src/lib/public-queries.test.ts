@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { MAX_PUBLIC_MEDIA_ASSETS } from "../../worker/media.js";
+import { familyCapFor, sourceFamily } from "../../worker/source-diversity.js";
 import { servePublicApi } from "./public-api";
 import {
   boundPublicDigest,
@@ -18,6 +19,7 @@ interface TldrRow {
 
 interface StoryRow {
   id: string;
+  source_id: string;
   url: string;
   title: string;
   title_vi: string | null;
@@ -30,6 +32,7 @@ interface StoryRow {
 function story(id: string, extra: Partial<StoryRow> = {}): StoryRow {
   return {
     id,
+    source_id: `src-${id}`,
     url: `https://example.com/${id}`,
     title: `Story ${id}`,
     title_vi: `Tin ${id}`,
@@ -135,6 +138,29 @@ describe("normalizeStoredBullets", () => {
 });
 
 describe("getPublicDigest", () => {
+  it("caps mirrored aggregators in the top stories and keeps the list full", async () => {
+    // Rank order: a run of mirrored aggregator rows, then independent ones.
+    const mirrored = Array.from({ length: PUBLIC_STORY_LIMIT }, (_, i) =>
+      story(`m${i}`, { source_id: i % 2 ? "huggingnews" : "marketbrief" })
+    );
+    const independent = Array.from({ length: PUBLIC_STORY_LIMIT }, (_, i) =>
+      story(`x${i}`)
+    );
+    const db = makeDb({
+      tldr: bilingualTldr,
+      stories: [...mirrored, ...independent],
+    });
+    const { stories } = await getPublicDigest(db);
+    expect(stories).toHaveLength(PUBLIC_STORY_LIMIT);
+    const aggregator = stories.filter((s) => s.id.startsWith("m"));
+    expect(aggregator.length).toBe(familyCapFor(PUBLIC_STORY_LIMIT));
+    // The best-ranked aggregator rows survive, in rank order.
+    expect(aggregator.map((s) => s.id)).toEqual(
+      mirrored.slice(0, aggregator.length).map((s) => s.id)
+    );
+    expect(sourceFamily("huggingnews")).toBe(sourceFamily("marketbrief"));
+  });
+
   it("returns slim tldr + stories without feed-sized fields", async () => {
     const db = makeDb({
       tldr: bilingualTldr,
@@ -175,6 +201,7 @@ describe("getPublicDigest", () => {
     expect(digest.stories[0]).not.toHaveProperty("rank_score");
     expect(digest.stories[0]).not.toHaveProperty("tags");
     expect(digest.stories[0]).not.toHaveProperty("sources");
+    expect(digest.stories[0]).not.toHaveProperty("source_id");
     expect(typeof digest.updatedAt).toBe("number");
     const bytes = new TextEncoder().encode(JSON.stringify(digest)).length;
     expect(bytes).toBeLessThan(50_000);
@@ -482,18 +509,18 @@ describe("servePublicApi", () => {
 });
 
 describe("top stories window", () => {
-  // Only today's items are re-ranked, so older items keep a frozen score.
+  // Only the last 72h are re-ranked, so older items keep a frozen score.
   // An all-time ORDER BY rank_score put a 3-week-old story in the top 8.
   it("ranks only recent stories, however high an old item's frozen score", async () => {
     const sqlite = new DatabaseSync(":memory:");
     sqlite.exec(`CREATE TABLE items (id TEXT, url TEXT, title TEXT,
         category TEXT, image_url TEXT, media_manifest TEXT,
-        published_at INTEGER, status TEXT, rank_score REAL);
+        published_at INTEGER, status TEXT, rank_score REAL, source_id TEXT);
       CREATE TABLE translations (item_id TEXT, lang TEXT, title TEXT);
       CREATE TABLE tldr_snapshots (date TEXT, bullets_en TEXT, bullets_vi TEXT);`);
     const now = Math.floor(Date.now() / 1000);
     const add = sqlite.prepare(
-      "INSERT INTO items VALUES (?, 'https://x.test', ?, NULL, NULL, NULL, ?, 'published', ?)"
+      "INSERT INTO items VALUES (?, 'https://x.test', ?, NULL, NULL, NULL, ?, 'published', ?, 'hn')"
     );
     add.run("old", "Three weeks old", now - 21 * 86400, 99);
     add.run("fresh", "Today", now - 3600, 10);

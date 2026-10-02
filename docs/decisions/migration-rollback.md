@@ -148,6 +148,108 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   drop them if needed:
   `ALTER TABLE llm_calls DROP COLUMN cost_usd; ALTER TABLE llm_calls DROP COLUMN request_id;`
 
+## 0040_email_contributions.sql
+
+- Change: adds `clerk_users.email_verified` (INTEGER, default 0; written by
+  the Clerk webhook and clerk-sync) and creates `contributor_emails` (extra
+  sender addresses, pending or confirmed), `contributor_email_sends` (confirmation-mail log for the daily
+  cap) and `inbound_emails` (written by the `aidr-email` Worker, consumed by
+  the hourly `inbound-email` step), each with its indexes. Nothing existing
+  is touched.
+- Risk: none for the pipeline. Only the email Worker, the `inbound-email`
+  step and the /contribute address list use the new tables. The Clerk
+  webhook and clerk-sync upsert now write `email_verified`, so apply this
+  migration before deploying that Worker or Clerk upserts fail (Svix retries
+  them). Existing rows start unverified: run `POST /api/admin/clerk-sync`
+  after applying.
+- Rollback: delete the Email Routing rule for `submit@aidr.today` (stops
+  intake at once) and redeploy the previous `aidr` Worker. Only drop the
+  tables if needed (export first; comments hold user text):
+  `DROP TABLE inbound_emails; DROP TABLE contributor_email_sends; DROP TABLE contributor_emails;`
+  The column must stay while the new Worker runs; after rolling the Worker
+  back it can go: `ALTER TABLE clerk_users DROP COLUMN email_verified;`
+
+## 0041_clerk_verified_emails.sql
+
+- Change: creates `clerk_verified_emails` (user_id, email). Each Clerk
+  webhook and clerk-sync upsert deletes that user's rows and inserts the
+  addresses Clerk currently marks verified.
+- Risk: none for the pipeline. Apply before deploying the Worker that writes
+  the table, or those upserts fail and Svix retries them. Run
+  `POST /api/admin/clerk-sync` after applying so existing accounts are filled.
+- Rollback: redeploy the previous Worker, then
+  `DROP TABLE clerk_verified_emails;`
+
+## 0046_day_videos.sql
+
+- Change: creates `day_videos` (date PK, `youtube_id`, `short_id`, title,
+  added_by, timestamps) for the optional video on `/date/YYYY-MM-DD`. No rows
+  are seeded.
+- Risk: none. The day page treats a missing table as "no video".
+- Rollback: redeploy the previous Worker, then `DROP TABLE day_videos;`
+
+## 0045_translation_knowledge_seed_terms.sql
+
+- Change: seeds nine active `translation_knowledge` rules (keep-English
+  calques and preferred institution names) with `INSERT OR IGNORE`.
+- Risk: the rules feed the VI glossary and the draft/review checks, so a bad
+  rule triggers repairs; it never blocks a translation.
+- Rollback: `DELETE FROM translation_knowledge WHERE id LIKE 'seed-%' AND id != 'seed-agent-keep-english';`
+  (or set `status = 'disabled'` on one rule from the admin knowledge view).
+
+## 0044_ai_sources_and_aggregator_caps.sql
+
+Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
+`nvidia-blog`, `nvidia-dev`, `microsoft-research`, `apple-ml`, `together-ai`,
+`github-ai`, `latent-space`, `interconnects`, `import-ai`, `bens-bites`,
+`ahead-of-ai`) or disabling them, and by restoring the `marketbrief` config to
+`{"homepage":"https://marketbrief.now","topics":["ai"]}` and `huggingnews` to
+`{}`. Items already fetched stay.
+
+## 0043_hn_model_scope.sql
+
+- Change: widens the Hacker News `sources.config` query so model releases,
+  new model kinds, and new AI labs are in the newest-100 search.
+- Risk: none for other rows. The next ingest seed writes the same config.
+- Rollback: redeploy the previous Worker, then restore the 0032 query:
+  `UPDATE sources SET config = '{"query":"AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek","popularMinPoints":40}' WHERE id = 'hn';`
+
+## 0042_items_fetched_at_idx.sql
+
+- Change: index `items(fetched_at)` so a run's stored-item list does not scan
+  the table.
+- Risk: none for existing rows. Apply before relying on that list under load.
+- Rollback: `DROP INDEX idx_items_fetched_at;`
+
+## 0039_suggestion_applied_changes.sql
+
+- Change: adds the nullable `translation_suggestions.applied_changes`
+  column (JSON list of per-field edits). New code also writes
+  `field = 'auto'` for free-form suggestions.
+- Risk: none for existing rows (they stay NULL). Apply before deploying the
+  Worker that writes it.
+- Rollback: the previous Worker reviews `field` as title/summary only, so
+  park free-form rows first, or they are reviewed as summary edits:
+  `UPDATE translation_suggestions SET status = 'needs_review' WHERE field = 'auto' AND status IN ('pending', 'reviewing');`
+  Then redeploy the previous Worker. Only drop the column if needed:
+  `ALTER TABLE translation_suggestions DROP COLUMN applied_changes;`
+
+## 0038_translation_knowledge.sql
+
+- Change: creates `translation_knowledge` (reusable EN→VI terminology rules
+  learned from accepted suggestions) with a unique `(kind, source_term)`
+  index and a status index, and seeds one active rule,
+  `seed-agent-keep-english` ("agent" stays English; "đại lý" / "đặc vụ"
+  fail QA).
+- Risk: active rules add a glossary to VI translate, TL;DR and repair
+  prompts and fail translation QA on a forbidden phrase, which sends the
+  translation to repair. A bad rule can cause extra repairs.
+- Rollback: disable rules first, which stops both effects without a deploy:
+  `UPDATE translation_knowledge SET status = 'disabled';`. The previous
+  Worker never reads the table. Only drop it if needed (export it first; it
+  holds learned rules):
+  `DROP TABLE translation_knowledge;`
+
 ## 0037_suggestion_instant_review.sql
 
 - Change: adds four nullable `translation_suggestions` columns

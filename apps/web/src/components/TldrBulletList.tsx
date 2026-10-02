@@ -38,11 +38,17 @@ export function TldrBulletList({
     relatedIds: string[];
   } | null>(null);
 
-  const cols = [shown.slice(0, mid), shown.slice(mid)];
+  const cols = [shown.slice(0, mid), shown.slice(mid)].filter(
+    (col, ci) => ci === 0 || col.length > 0
+  );
 
   return (
     <>
-      <div className="grid gap-x-10 md:grid-cols-2">
+      <div
+        className={
+          cols.length > 1 ? "grid gap-x-10 md:grid-cols-2" : "grid gap-x-10"
+        }
+      >
         {cols.map((col, ci) => (
           <ol
             key={col[0]?.text ?? ci}
