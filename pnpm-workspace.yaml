@@ -35,6 +35,14 @@ minimumReleaseAgeExclude:
   # cf 1.0.0-beta.x deps published in lockstep with cf itself.
   - "@cloudflare/config"
   - "@cloudflare/build-output-utils"
+  # motion 14.x pulls these in transitively; all four ship from the single
+  # motiondivision/motion monorepo and are released together, so enumerating
+  # them keeps every other package behind `minimumReleaseAge`. Keep in sync
+  # with `grep -oE "^  (framer-)?motion[a-z-]*@[0-9.]+" pnpm-lock.yaml`.
+  - motion
+  - framer-motion
+  - motion-dom
+  - motion-utils
 
 nodeLinker: hoisted
 shamefullyHoist: true
