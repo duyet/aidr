@@ -1,3 +1,4 @@
+import { stripTitleMarker } from "./plain-text";
 import type { Lang } from "./types";
 
 /** Vietnamese diacritics (plus đ). English titles never contain these. */
@@ -18,6 +19,14 @@ export function looksVietnamese(text: string): boolean {
  * stored `title_vi`), the EN badge stays hidden.
  */
 export function localizedTitle(
+  item: { title: string; title_vi: string | null },
+  lang: Lang
+): { text: string; fallbackFromEnglish: boolean } {
+  const picked = pickTitle(item, lang);
+  return { ...picked, text: stripTitleMarker(picked.text) };
+}
+
+function pickTitle(
   item: { title: string; title_vi: string | null },
   lang: Lang
 ): { text: string; fallbackFromEnglish: boolean } {

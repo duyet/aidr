@@ -13,7 +13,7 @@
  * score-batch budget.
  */
 export const AI_KEYWORD_RE =
-  /\b(ai|llm|gpt|claude|gemini|openai|anthropic|deepseek|qwen|mistral|llama|grok|kimi|glm|olmo|phi|gemma|model|agent|agentic|transformer|neural|machine learning|nvidia|hugging ?face|cursor|copilot|codex|windsurf|openrouter|ollama|vllm|mcp|rag|diffusion|multimodal|vision.?language|reasoning|fine.?tun|benchmark|swe.?bench|arc.?agi)\b/i;
+  /\b(ai|llms?|gpt|claude|gemini|openai|anthropic|deepseek|qwen|mistral|llama|grok|kimi|glm|olmo|phi|gemma|models?|language models?|foundation models?|open[- ]weights?|world models?|video models?|speech models?|voice models?|mixture of experts|ai labs?|research labs?|agents?|agentic|transformers?|neural|machine learning|nvidia|hugging ?face|cursor|copilot|codex|windsurf|openrouter|ollama|vllm|mcp|rag|diffusion|multimodal|vision.?language|reasoning|fine.?tun(?:e|es|ed|ing)?|benchmarks?|swe.?bench|arc.?agi|chatgpt|chatbots?|deepmind|perplexity|cohere|elevenlabs|midjourney|sora|nemotron|mimo|manus|black forest labs|meta muse|super ?intelligence|text.to.speech|dspy|langchain|langgraph|langsmith|crewai|autogen|mastra|pydantic ai|llamaindex|llama stack|semantic kernel|agents? sdk|ai sdk|workers ai|ai gateway|vector (?:databases?|db|search|stores?)|embeddings|embedding models?|mlops|llmops|lakehouse|feature stores?|pytorch|tensorflow|sglang|tensorrt|gguf)\b/i;
 
 /** Named filter profiles a source row can opt into via `config.keywordFilter`. */
 export const KEYWORD_FILTERS: Record<string, RegExp> = {

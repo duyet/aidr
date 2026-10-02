@@ -242,12 +242,12 @@ returns `503`. `OPTIONS` is a `204` preflight and other methods return `405`
 with `Allow: GET, HEAD, OPTIONS`. The current `/api/story/{id}` JSON route and
 `/` permalink remain unchanged, and no root `.md` alias is added.
 
-Hourly ingest is triggered by the `NewsIngestScheduler` Durable Object
+Ingest every 30 minutes is triggered by the `NewsIngestScheduler` Durable Object
 alarm (not a Worker cron) plus GitHub Actions
 (`.github/workflows/ingest.yml`, crons at :05/:20/:35/:50) via
 `POST /api/admin/ingest`. Do not add Worker `[triggers] crons` or
 Workflow `schedules` — both break Free-plan deploys. GitHub POSTs
-coalesce if a run started in the last 45 minutes. Manual
+coalesce if a run started in the last 25 minutes. Manual
 `workflow_dispatch` sends `?force=1` so a hung coalesce window cannot
 skip. Actions SUCCESS is only the POST; poll `GET /api/system` (no admin
 token, `Cache-Control: no-store`) until `lastRun.id` is no longer the

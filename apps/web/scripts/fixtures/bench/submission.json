@@ -1,0 +1,152 @@
+{
+  "step": "submission",
+  "builtAt": "2026-10-02",
+  "labelSources": ["silver:submissions.status"],
+  "count": 12,
+  "cases": [
+    {
+      "id": "27103d0d-501c-47be-9060-0ba8038df636",
+      "url": "https://blog.cloudflare.com/clef-decision-models/?utm_campaign=cf_blog&utm_content=20261001&utm_medium=organic_social&utm_source=twitter",
+      "title": "blog.cloudflare.com: clef decision models",
+      "note": "",
+      "ogDescription": "We are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement learning platform that allows developers to fine-tune decision models using their own data.",
+      "silver": {
+        "accepted": true,
+        "rating": 0.9
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "c5ebc933-cb98-4934-920c-6d8480f6a62e",
+      "url": "https://x.com/_duyet/status/2105586784713453934?",
+      "title": "OpenAI Agents using my LLM over DNS to bypass the sandbox",
+      "note": "",
+      "ogDescription": "Follow up OpenAI Agents using my LLM over DNS to bypass the sandbox",
+      "silver": {
+        "accepted": false,
+        "rating": 0.5022
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "dcdf4f0f-b827-442b-9f3a-5e092efe4dfc",
+      "url": "https://x.com/_duyet/status/2105586784713453934",
+      "title": "x.com: 2105586784713453934",
+      "note": "",
+      "ogDescription": "Follow up OpenAI Agents using my LLM over DNS to bypass the sandbox",
+      "silver": {
+        "accepted": false,
+        "rating": 0.19799999999999998
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "a914550e-2d35-4646-a284-f5fb7026075b",
+      "url": "https://blog.duyet.net/note/closing-the-loop-in-cf-workers/",
+      "title": "blog.duyet.net: closing the loop in cf workers",
+      "note": "",
+      "ogDescription": "Sr. Data Engineer. Rustacean at night. Technical blog on data engineering, distributed systems, and open source.",
+      "silver": {
+        "accepted": true,
+        "rating": 0.6675
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "ef9f5a59-9fba-4a1c-ade8-c881c1ade7db",
+      "url": "https://blog.duyet.net/2026/08/grok-bot/",
+      "title": "blog.duyet.net: grok bot",
+      "note": "",
+      "ogDescription": "I am on SuperGrok Heavy because of Grok Bot and I am super impressed. Wow, from me, at first. The harness is surprisingly good. The UI/UX is surprisingly good.",
+      "silver": {
+        "accepted": false,
+        "rating": 0.5772
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "36dd866d-a53d-42f0-82a4-40a94563d14e",
+      "url": "https://x.com/_duyet/status/2103477825399664691",
+      "title": "x.com: 2103477825399664691",
+      "note": "",
+      "ogDescription": "UPDATE: OpenAI Agents Tried to Breach More Websites While Researching Public Data\n\nhttps://t.co/QsA2YQAbf2",
+      "silver": {
+        "accepted": false,
+        "rating": 0.5821999999999999
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "26ce9e39-4bfa-427d-b8ed-88ecc4e04bde",
+      "url": "https://x.com/_duyet/status/2103479416429089033",
+      "title": "x.com: 2103479416429089033",
+      "note": "",
+      "ogDescription": "See what’s happening and join the conversation",
+      "silver": {
+        "accepted": false,
+        "rating": 0.4307
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "52508ee4-5b71-4996-9cf2-c587992f5659",
+      "url": "https://mmoustafa.com/blog/so-you-want-to-use-openrouter/",
+      "title": "mmoustafa.com: so you want to use openrouter",
+      "note": "",
+      "ogDescription": "Might seem simple on the face of it, but unfortunately it's pain all the way down.",
+      "silver": {
+        "accepted": true,
+        "rating": 0.9
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "242c4926-4509-400b-a603-f1ac8d42acda",
+      "url": "https://news.ycombinator.com/item?id=49525153",
+      "title": "news.ycombinator.com: item",
+      "note": "",
+      "ogDescription": "",
+      "silver": {
+        "accepted": true,
+        "rating": 0.9
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "5ff6b494-7f41-443c-98d1-888990441779",
+      "url": "https://planetscale.com/blog/introducing-neki",
+      "title": "planetscale.com: introducing neki",
+      "note": "",
+      "ogDescription": "Neki, sharded Postgres by PlanetScale, is now available in platform preview.",
+      "silver": {
+        "accepted": true,
+        "rating": 1
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "cabacde7-0bd7-4c7b-9503-3e781bdb7804",
+      "url": "https://news.ycombinator.com/item?id=49331423",
+      "title": "AI-Generated GitHub Copilot “Autofix” Allowed Compromise of Snowflake's Jira",
+      "note": "",
+      "ogDescription": "",
+      "silver": {
+        "accepted": true,
+        "rating": 0.9
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "3b2b0fd9-a368-4adf-9bb4-d49a9e8a1816",
+      "url": "https://motherduck.com/blog/obsidian-vault-duckdb-ai-agents/",
+      "title": "Your Obsidian Vault Can Now Run SQL (and Your Agent Can Read It)",
+      "note": "",
+      "ogDescription": "Run DuckDB SQL inside your Obsidian notes and freeze the results as plain markdown tables, local files or MotherDuck cloud data alike. Your vault becomes a local knowledge base your AI agent can read without ever querying the warehouse | Reading time: 6 min read",
+      "silver": {
+        "accepted": true,
+        "rating": 0.8
+      },
+      "labelSource": "silver:submissions.status"
+    }
+  ]
+}

@@ -86,7 +86,7 @@ const ITEMS = [
     llm_importance: 8,
     llm_quality: 7,
     rank_score: 12,
-    source_count: 2,
+    merged_members: '[["techcrunch-ai",0,0]]',
   },
   {
     id: "b",
@@ -101,7 +101,7 @@ const ITEMS = [
     llm_importance: 6,
     llm_quality: 6,
     rank_score: 5,
-    source_count: 1,
+    merged_members: "[]",
   },
 ];
 

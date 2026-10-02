@@ -9,6 +9,9 @@
  *   pnpm --filter @aidr/web agent tldr-preview
  *   pnpm --filter @aidr/web agent run [--steps a,b] [--force] [--wait]
  *   pnpm --filter @aidr/web agent rerun <step> [--force] [--wait]
+ *   pnpm --filter @aidr/web agent day-video <YYYY-MM-DD> [--video <url|id>]
+ *     [--short <url|id>] [--title <text>] [--clear-video] [--clear-short]
+ *     [--delete]
  *
  * `run` and `rerun` are dry runs unless `--live` is passed. A dry run sends
  * no email, Telegram or owner alert and only previews the TL;DR, but still
@@ -115,7 +118,9 @@ function parseArgs(argv: string[]): Args {
 }
 
 function takesValue(flag: string): boolean {
-  return ["run", "runs", "limit", "steps"].includes(flag);
+  return ["run", "runs", "limit", "steps", "video", "short", "title"].includes(
+    flag
+  );
 }
 
 function flagNumber(args: Args, name: string, fallback: number): number {
@@ -275,6 +280,44 @@ async function tldrPreview(): Promise<void> {
   );
 }
 
+/** Set, clear or delete the YouTube media on `/date/<date>`. */
+async function dayVideo(args: Args, date: string | undefined): Promise<void> {
+  if (!date) fail("day-video needs a YYYY-MM-DD date");
+  const pathname = `/api/admin/day-videos/${encodeURIComponent(date)}`;
+  if (args.flags.has("delete")) {
+    const result = await api<{ deleted: boolean }>(pathname, {
+      method: "DELETE",
+      admin: true,
+    });
+    print(result, `day-video ${date}: ${result.deleted ? "deleted" : "none"}`);
+    return;
+  }
+  const body: Record<string, string | null> = {};
+  const value = (name: string): string | undefined => {
+    const raw = args.flags.get(name);
+    if (raw === true) fail(`--${name} needs a value`);
+    return raw;
+  };
+  const video = value("video");
+  const short = value("short");
+  const title = value("title");
+  if (video !== undefined) body.video = video;
+  if (short !== undefined) body.short = short;
+  if (title !== undefined) body.title = title;
+  if (args.flags.has("clear-video")) body.video = null;
+  if (args.flags.has("clear-short")) body.short = null;
+  if (Object.keys(body).length === 0) {
+    fail("day-video needs --video, --short, --title, --clear-* or --delete");
+  }
+  const result = await api<{
+    video: { youtube_id: string | null; short_id: string | null };
+  }>(pathname, { method: "PUT", body, admin: true });
+  print(
+    result,
+    `day-video ${date}: video=${result.video.youtube_id ?? "-"} short=${result.video.short_id ?? "-"} → ${base}/date/${date}`
+  );
+}
+
 function parseSteps(raw: string | true | undefined): string[] | undefined {
   if (raw === undefined) return undefined;
   if (raw === true) fail("--steps needs a comma-separated list");
@@ -379,9 +422,11 @@ async function main(): Promise<void> {
     case "rerun":
       if (!stepArg) fail("rerun needs a step name");
       return trigger(args, parseSteps(stepArg));
+    case "day-video":
+      return dayVideo(args, stepArg);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--clear-video] [--clear-short] [--delete]"
       );
   }
 }

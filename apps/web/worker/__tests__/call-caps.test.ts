@@ -50,6 +50,19 @@ import { ratePendingTranslations } from "../translation-qa.js";
 import { QA_MAX_CALLS } from "../translation-review.js";
 import type { Env } from "../types.js";
 
+/** A non-streaming chat body as the SSE stream callAnyrouter reads:
+ *  each choice's `message` becomes a `delta`. */
+function asStream(body: {
+  choices?: { message?: { content?: string } }[];
+}): Response {
+  const frame = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
+  const choices = (body.choices ?? []).map((c) => ({ delta: c.message ?? {} }));
+  return new Response(`${frame({ choices })}data: [DONE]\n\n`, {
+    status: 200,
+    headers: { "content-type": "text/event-stream" },
+  });
+}
+
 /**
  * Hard caps on paid or externally visible calls per run (#147). Each test
  * fails if a change makes one run fan out further: LLM spend and Telegram
@@ -276,6 +289,8 @@ function reviewQueueDb(
       });
       return { ...bound(), bind: () => bound() };
     },
+    batch: async (statements: unknown[]) =>
+      statements.map(() => ({ success: true })),
   } as unknown as D1Database;
 }
 
@@ -361,17 +376,20 @@ describe("review LLM caps per run", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
     const db = reviewQueueDb("translation_suggestions", pending, (sql) =>
-      sql.includes("FROM items")
-        ? { title: "Title", summary: "Summary", source_lang: "en" }
-        : sql.includes("FROM translations")
-          ? { title: "Tiêu đề", summary: "Tóm tắt" }
-          : null
+      sql.includes("FROM translation_suggestions")
+        ? { ...pending[0], lang: "vi" }
+        : sql.includes("FROM items")
+          ? { title: "Title", summary: "Summary", source_lang: "en" }
+          : sql.includes("FROM translations")
+            ? { title: "Tiêu đề", summary: "Tóm tắt" }
+            : null
     );
     await reviewPendingSuggestions({ ...env, DB: db });
-    // Per suggestion: System One try, chat review, chat rewrite.
+    // Per suggestion: System One try, chat review, chat rewrite, and one
+    // rule-extraction call after an accept.
     expect(modelCalls(fetchMock).length).toBeGreaterThan(SUGGESTION_REVIEW_CAP);
     expect(modelCalls(fetchMock).length).toBeLessThanOrEqual(
-      SUGGESTION_REVIEW_CAP * 3
+      SUGGESTION_REVIEW_CAP * 4
     );
   });
 });
@@ -587,14 +605,10 @@ describe("JEV panel caps per run", () => {
 
 describe("dedupe and topics caps per run", () => {
   it("clusters with exactly one call, however many items are new", async () => {
-    const fetchMock = vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            choices: [{ message: { content: '{"clusters":[]}' } }],
-          }),
-          { status: 200 }
-        )
+    const fetchMock = vi.fn(async () =>
+      asStream({
+        choices: [{ message: { content: '{"clusters":[]}' } }],
+      })
     );
     vi.stubGlobal("fetch", fetchMock);
     vi.spyOn(console, "log").mockImplementation(() => {});
@@ -619,24 +633,21 @@ describe("dedupe and topics caps per run", () => {
     const bodies: string[] = [];
     const fetchMock = vi.fn(async (_url: unknown, init: unknown) => {
       bodies.push((init as { body: string }).body);
-      return new Response(
-        JSON.stringify({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  clusters: [
-                    { new: [cap - 2, cap - 1] }, // last two shown items
-                    { new: [cap, cap + 1] }, // both past the cap
-                    { new: [cap + 2], existing: ["e0"] }, // one past the cap
-                  ],
-                }),
-              },
+      return asStream({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                clusters: [
+                  { new: [cap - 2, cap - 1] }, // last two shown items
+                  { new: [cap, cap + 1] }, // both past the cap
+                  { new: [cap + 2], existing: ["e0"] }, // one past the cap
+                ],
+              }),
             },
-          ],
-        }),
-        { status: 200 }
-      );
+          },
+        ],
+      });
     });
     vi.stubGlobal("fetch", fetchMock);
     vi.spyOn(console, "log").mockImplementation(() => {});

@@ -19,6 +19,10 @@ const MAX_HTML_BYTES = 100_000;
 export interface OgData {
   imageUrl?: string;
   description?: string;
+  /** og:title, for a user submission whose submitter left the title blank. */
+  title?: string;
+  /** article:published_time in epoch seconds, when the page states one. */
+  publishedAt?: number;
   /** Present when the page exposes more than one image or any video. */
   mediaManifest?: MediaManifest;
 }
@@ -263,12 +267,22 @@ export function parseOgTags(html: string): OgData {
   const article = articleSummary(html);
   const summary = preferCompleteSummary(description, article);
 
+  const rawTitle = extractMetaContent(html, "property", "og:title");
+  const title = rawTitle ? decodeHtmlEntities(rawTitle).trim() : "";
+  const publishedMs = Date.parse(
+    extractMetaContent(html, "property", "article:published_time") ?? ""
+  );
+
   const hasUsefulManifest =
     manifest.assets.some((asset) => asset.type === "video") ||
     manifest.assets.filter((asset) => asset.type === "image").length > 1;
   return {
     imageUrl,
     description: summary,
+    ...(title ? { title } : {}),
+    ...(Number.isFinite(publishedMs)
+      ? { publishedAt: Math.floor(publishedMs / 1000) }
+      : {}),
     ...(hasUsefulManifest ? { mediaManifest: manifest } : {}),
   };
 }

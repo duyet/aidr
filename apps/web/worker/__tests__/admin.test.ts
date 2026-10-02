@@ -85,7 +85,7 @@ class FakeD1 {
 
     if (
       sql.startsWith(
-        "SELECT id, title, summary, source_id, points, comments, published_at, source_lang, (SELECT COUNT(*) FROM item_sources"
+        "SELECT id, title, summary, published_at, source_lang, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
       )
     ) {
       const [since] = args as [number];
@@ -96,7 +96,7 @@ class FakeD1 {
               row.status === "published" &&
               Number(row.published_at ?? 0) >= since
           )
-          .map((row) => ({ ...row, source_count: 0 })),
+          .map((row) => ({ ...row, merged_members: "[]" })),
       };
     }
 
@@ -318,9 +318,8 @@ class FakeD1 {
       return { success: true };
     }
 
-    if (
-      sql.startsWith("SELECT i.id, i.title, i.summary, tr.title AS title_vi")
-    ) {
+    // The TL;DR top-items read; match its shape, not its exact column list.
+    if (/^SELECT i\.id,.*tr\.title AS title_vi/s.test(sql)) {
       const [since] = args as [number];
       return {
         results: Array.from(this.items.values())
@@ -359,12 +358,12 @@ class FakeD1 {
 
     if (
       sql.startsWith(
-        "SELECT id, points, comments, published_at, llm_relevance, llm_importance, llm_quality, (SELECT COUNT(*) FROM item_sources"
+        "SELECT id, published_at, llm_relevance, llm_importance, llm_quality, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
       )
     ) {
       const [id] = args as [string];
       const row = this.items.get(id);
-      return row ? { ...row, source_count: 0 } : null;
+      return row ? { ...row, merged_members: "[]" } : null;
     }
 
     if (sql.startsWith("UPDATE items SET status = ? WHERE id = ?")) {

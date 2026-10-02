@@ -2,6 +2,7 @@ import { Badge, Skeleton } from "@aidr/ui";
 import type { ReactNode, RefObject } from "react";
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
 import { RunAttemptRows } from "./RunAttemptRows";
+import { RunCollectedItems } from "./RunCollectedItems";
 import { RunErrorsPanel } from "./RunErrorsPanel";
 import { RunModelLinks } from "./RunModelLinks";
 import { RunWorkflowGraph } from "./RunWorkflowGraph";
@@ -148,6 +149,10 @@ export function RunDetails({
             </span>
           </Detail>
         </dl>
+      </div>
+
+      <div className="border-t border-border/60 pt-3">
+        <RunCollectedItems runId={run.id} lang={lang} />
       </div>
 
       <div className="grid gap-3 border-t border-border/60 pt-3 md:grid-cols-2">

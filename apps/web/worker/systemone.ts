@@ -1,3 +1,4 @@
+import { IMPORTANCE_RUBRIC } from "./importance-rubric.js";
 import { logLlmCall, newLlmCallId } from "./llm.js";
 import { sanitizeError } from "./telemetry-safe.js";
 import type { Env } from "./types.js";
@@ -6,8 +7,8 @@ import type { Env } from "./types.js";
  * jev-1.13.0, jev-preview) are wire aliases, not the listing id. */
 export const JEV_DEFAULT_MODEL = "typesafe/jev";
 
-/** Ordered 0–9 levels for importance and quality score questions.
- * Index is the numeric score (0 noise / thin, 9 major / primary). */
+/** Ordered 0–9 levels for the quality score question.
+ * Index is the numeric score (0 thin, 9 primary). */
 export const JEV_SCORE_LEVELS = [
   "0",
   "1",
@@ -19,6 +20,21 @@ export const JEV_SCORE_LEVELS = [
   "7",
   "8",
   "9",
+] as const;
+
+/** Ordered 1–10 levels for the importance question, matching the
+ * IMPORTANCE_BANDS scale the chat rubric uses. */
+export const JEV_IMPORTANCE_LEVELS = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
 ] as const;
 
 /** One entity tag from a score judgment. `none` means the story has no
@@ -50,6 +66,15 @@ export const JEV_THEME_TAGS = [
   "coding",
 ] as const;
 
+/** Tag each builder category adds, so a Jev-scored story still carries the
+ * theme chip the chat rubric would give it. */
+const BUILDER_CATEGORY_TAGS: Record<string, string> = {
+  Tools: "devtools",
+  Frameworks: "framework",
+  Data: "data-engineering",
+  "Open Source": "open-source",
+};
+
 /** Jev is BYOK-only: the TypeSafe key lives in AnyRouter Dashboard → BYOK,
  *  not in env. This hop never spends AnyRouter credits (0/0). */
 export type SystemOneQuestionType = "noul" | "choice" | "score";
@@ -73,7 +98,8 @@ export interface SystemOneAnswer {
   type: SystemOneQuestionType;
   noul?: number;
   choice?: string;
-  score?: string;
+  /** Level label, or (as Jev sends it) the expected level index. */
+  score?: string | number;
   legend?: string[];
   probabilities?: Record<string, number> | number[];
   confidence?: number;
@@ -83,11 +109,30 @@ export interface SystemOneResponse {
   model: string;
   answers: Record<string, SystemOneAnswer>;
   usage: { input_tokens: number; output_tokens: number; cost: number };
+  /** `model` above is the served upstream (`jev-1.13.0`); this block names
+   * the router id that was requested and the provider (`typesafe-byok`). */
+  anyrouter_metadata?: {
+    model?: string;
+    requestId?: string;
+    upstream?: { provider?: string };
+  };
 }
 
 export interface SystemOneResult {
   answers: Record<string, SystemOneAnswer>;
   inputTokens: number;
+  /** Upstream model that answered (`jev-1.13.0`, `fastino/gliner2.5-…`);
+   * a router id such as `anyrouter/decision` resolves to one of these. */
+  upstreamModel: string;
+  /** Upstream provider (`typesafe-byok`, `fastino-byok`), "" when absent. */
+  upstreamProvider: string;
+}
+
+/** True when a System One answer was served by TypeSafe Jev — the only
+ * decider whose score levels match the importance bands. */
+export function servedByJev(result: SystemOneResult): boolean {
+  if (!/^(?:jev\b|typesafe\/jev\b)/i.test(result.upstreamModel)) return false;
+  return !result.upstreamProvider || /typesafe/i.test(result.upstreamProvider);
 }
 
 function clamp01(n: number): number {
@@ -98,6 +143,13 @@ function clamp01(n: number): number {
 export function jevModelId(env: Env): string {
   const first = (env.ANYROUTER_JEV_MODEL ?? "").split(",")[0]?.trim();
   return first || JEV_DEFAULT_MODEL;
+}
+
+/** System One router tried before Jev on score (`anyrouter/decision`), or
+ * null when unset so score goes straight to Jev. */
+export function decisionModelId(env: Env): string | null {
+  const first = (env.ANYROUTER_DECISION_MODEL ?? "").split(",")[0]?.trim();
+  return first || null;
 }
 
 /** False when no AnyRouter key is present — caller must use chat fallback. */
@@ -115,12 +167,13 @@ export async function callSystemOne(
   env: Env,
   state: string | object | unknown[],
   questions: SystemOneQuestions,
-  task: "review" | "score" = "review"
+  task: "review" | "score" = "review",
+  model: string = jevModelId(env),
+  timeoutMs = 30_000
 ): Promise<SystemOneResult | null> {
   if (!isSystemOneConfigured(env)) return null;
   if (!questions || Object.keys(questions).length === 0) return null;
   const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
-  const model = jevModelId(env);
   const attemptStartedAt = Date.now();
   const callId = newLlmCallId();
   let promptChars = 0;
@@ -165,7 +218,7 @@ export async function callSystemOne(
         model,
         questions,
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
     const safe = sanitizeError(error);
@@ -206,6 +259,8 @@ export async function callSystemOne(
     return fail("jev systemone response missing answers");
   }
   const inputTokens = data.usage?.input_tokens ?? 0;
+  const upstreamModel = typeof data.model === "string" ? data.model : "";
+  const upstreamProvider = data.anyrouter_metadata?.upstream?.provider ?? "";
   logLlmCall({
     ts: attemptStartedAt,
     task,
@@ -220,10 +275,18 @@ export async function callSystemOne(
     promptChars,
     responseSnippet: null,
     callId,
+    route:
+      upstreamModel && upstreamModel !== model
+        ? [model, upstreamModel]
+        : [model],
+    provider: upstreamProvider || null,
+    requestId: data.anyrouter_metadata?.requestId ?? null,
   });
   return {
     answers: data.answers,
     inputTokens,
+    upstreamModel,
+    upstreamProvider,
   };
 }
 
@@ -323,16 +386,22 @@ export function suggestionVerdictFromJev(
  * (option -> description|null), never as an array. Descriptions are the
  * question text plus option context; `null` means "no extra description". */
 function choiceCriteriaMap(
-  options: readonly string[]
+  options: readonly string[],
+  definitions: Readonly<Record<string, string>> = {}
 ): Record<string, string | null> {
-  return Object.fromEntries(options.map((option) => [option, null]));
+  return Object.fromEntries(
+    options.map((option) => [option, definitions[option] ?? null])
+  );
 }
 
 /** Questions for one story's ranking inputs. Jev returns typed answers,
  * not the free-form tag list the chat rubric writes — one entity and one
  * theme, each allowed to be `none`. */
 export function jevScoreQuestions(
-  categories: readonly string[]
+  categories: readonly string[],
+  builderCategories: readonly string[] = [],
+  definitions: Readonly<Record<string, string>> = {},
+  categoryRule = ""
 ): SystemOneQuestions {
   return {
     is_ai_tech: {
@@ -342,9 +411,8 @@ export function jevScoreQuestions(
     },
     importance: {
       type: "score",
-      instructions:
-        "How important is this to someone who follows AI news? 0 is noise, 9 is a major industry event.",
-      criteria: [...JEV_SCORE_LEVELS],
+      instructions: `How important is this to someone who follows AI news? ${IMPORTANCE_RUBRIC}`,
+      criteria: [...JEV_IMPORTANCE_LEVELS],
     },
     quality: {
       type: "score",
@@ -355,8 +423,19 @@ export function jevScoreQuestions(
     category: {
       type: "choice",
       instructions: "Which single category fits this story?",
-      criteria: choiceCriteriaMap(categories),
+      criteria: choiceCriteriaMap(categories, definitions),
     },
+    ...(builderCategories.length > 0 && {
+      builder: {
+        type: "choice" as const,
+        instructions:
+          `Is this story mainly for AI and data engineers who build with it? Choose none unless the story is mainly about one of these. ${categoryRule}`.trim(),
+        criteria: choiceCriteriaMap(["none", ...builderCategories], {
+          none: "general AI news, not mainly about tools, frameworks, data engineering, or an open-source code release",
+          ...definitions,
+        }),
+      },
+    }),
     entity: {
       type: "choice",
       instructions:
@@ -439,23 +518,72 @@ function scoreLevelIndex(
   return Math.round(norm * (levels.length - 1));
 }
 
+/** Importance on the 1–10 scale as the probability-weighted level, not the
+ * single most likely one: argmax over bare levels piled stories onto 1–2 and
+ * 4 and almost never reached 9. Monotonic in the distribution and spans the
+ * full range (all mass on the first level → 1, on the last → 10). Jev also
+ * sends `score` as that expected index (a number), used when probabilities
+ * are absent. Probability keys are level indices, not labels. */
+export function importanceFromJev(
+  answers: Record<string, SystemOneAnswer>
+): number | null {
+  const a = answers.importance;
+  if (!a) return null;
+  const top = JEV_IMPORTANCE_LEVELS.length - 1;
+  const toScale = (index: number) =>
+    Number((1 + Math.min(top, Math.max(0, index))).toFixed(2));
+  const probs = a.probabilities;
+  const entries: [number, number][] = Array.isArray(probs)
+    ? probs.map((p, i) => [i, p])
+    : probs && typeof probs === "object"
+      ? Object.entries(probs).map(([k, p]) => [Number(k), p])
+      : [];
+  let mass = 0;
+  let weighted = 0;
+  for (const [index, p] of entries) {
+    if (!Number.isInteger(index) || index < 0 || index > top) continue;
+    if (typeof p !== "number" || !Number.isFinite(p) || p <= 0) continue;
+    mass += p;
+    weighted += index * p;
+  }
+  if (mass > 0) return toScale(weighted / mass);
+  const score = a.score;
+  if (typeof score === "number" && Number.isFinite(score)) {
+    return score >= 0 && score <= top ? toScale(score) : null;
+  }
+  if (typeof score === "string") {
+    const index = JEV_IMPORTANCE_LEVELS.indexOf(
+      score as (typeof JEV_IMPORTANCE_LEVELS)[number]
+    );
+    if (index >= 0) return toScale(index);
+  }
+  return null;
+}
+
 /** Map one System One score response onto the ranking inputs.
  * Returns null when relevance, importance, or quality is missing so the
  * caller can fall back to the chat rubric for that item. */
 export function scoreJudgmentFromJev(
   answers: Record<string, SystemOneAnswer>,
-  categories: readonly string[]
+  categories: readonly string[],
+  builderCategories: readonly string[] = []
 ): JevScoreJudgment | null {
   const relevance = noulProb(answers, "is_ai_tech");
-  const importance = scoreLevelIndex(answers, "importance", JEV_SCORE_LEVELS);
+  const importance = importanceFromJev(answers);
   const quality = scoreLevelIndex(answers, "quality", JEV_SCORE_LEVELS);
   if (relevance === null || importance === null || quality === null) {
     return null;
   }
-  const category = choiceOf(answers, "category", categories);
+  // A builder pick is the more specific category, so it wins over the core one.
+  const builderPick = builderCategories.length
+    ? choiceOf(answers, "builder", ["none", ...builderCategories])
+    : "";
+  const builder = builderPick === "none" ? "" : builderPick;
+  const category = builder || choiceOf(answers, "category", categories);
   const tags = [
     choiceOf(answers, "entity", JEV_ENTITY_TAGS),
     choiceOf(answers, "theme", JEV_THEME_TAGS),
-  ].filter((tag) => tag && tag !== "none");
+    BUILDER_CATEGORY_TAGS[builder] ?? "",
+  ].filter((tag, i, all) => tag && tag !== "none" && all.indexOf(tag) === i);
   return { relevance, importance, quality, category, tags };
 }

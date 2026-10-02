@@ -12,7 +12,7 @@ function SourcesCard() {
   return (
     <ChartCard
       title="Ingest sources"
-      subtitle="Adapters the hourly pipeline fetches. Fetched / New / Accepted / Rejected are the latest run's per-source numbers; a source silent for its whole threshold is flagged stale."
+      subtitle="Adapters the pipeline fetches every 30 minutes. Fetched / New / Accepted / Rejected are the latest run's per-source numbers; a source silent for its whole threshold is flagged stale."
     >
       <CardData state={state} skeleton={<Skeleton className="h-28 w-full" />}>
         {(s) => (

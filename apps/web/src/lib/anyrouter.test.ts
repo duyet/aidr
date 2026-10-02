@@ -1,5 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { anyrouterModelUrl, isValidAnyrouterModel } from "./anyrouter";
+import {
+  ANYROUTER_LOGO_URL,
+  anyrouterModelUrl,
+  isValidAnyrouterModel,
+  JEV_LOGO_URL,
+  logosForModels,
+  modelLogoUrl,
+  POOLSIDE_LOGO_URL,
+} from "./anyrouter";
+
+describe("model logos", () => {
+  it("hotlinks the public AnyRouter provider marks", () => {
+    expect(modelLogoUrl("anyrouter/auto")).toBe(ANYROUTER_LOGO_URL);
+    expect(modelLogoUrl("@preset/aidr")).toBe(ANYROUTER_LOGO_URL);
+    expect(modelLogoUrl("typesafe/jev")).toBe(JEV_LOGO_URL);
+    expect(modelLogoUrl("poolside/laguna-s-2.1")).toBe(POOLSIDE_LOGO_URL);
+    expect(modelLogoUrl("google/gemini-3")).toBeNull();
+    expect(
+      logosForModels([
+        "typesafe/jev",
+        "anyrouter/auto",
+        "poolside/laguna-s-2.1",
+      ])
+    ).toEqual({
+      "typesafe/jev": JEV_LOGO_URL,
+      "anyrouter/auto": ANYROUTER_LOGO_URL,
+      "poolside/laguna-s-2.1": POOLSIDE_LOGO_URL,
+    });
+  });
+});
 
 describe("AnyRouter model links", () => {
   it("encodes model path segments while preserving provider/model paths", () => {

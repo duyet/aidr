@@ -40,4 +40,20 @@ describe("capSourceShare (#230: no source over 25% of the feed)", () => {
   it("leaves the feed alone when fewer than 4 sources make the cap unsatisfiable", () => {
     expect(capSourceShare([...mk("a", 50), ...mk("b", 5)])).toHaveLength(55);
   });
+
+  it("caps mirrored aggregators as one family, not 25% each", () => {
+    // huggingnews and marketbrief carry the same stories; two separate 25%
+    // caps would let the pair fill half the feed.
+    const items = [
+      ...mk("marketbrief", 60),
+      ...mk("huggingnews", 60),
+      ...mk("a", 30),
+      ...mk("b", 30),
+      ...mk("c", 30),
+      ...mk("d", 30),
+    ];
+    const out = capSourceShare(items);
+    const pair = share(out, "marketbrief") + share(out, "huggingnews");
+    expect(pair).toBeLessThanOrEqual(0.25);
+  });
 });

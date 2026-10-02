@@ -45,6 +45,7 @@ describe("routeIndexability", () => {
     for (const pathname of [
       "/",
       "/abcdef12",
+      "/date/2026-10-02",
       "/about",
       "/data",
       "/subscribe",

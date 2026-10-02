@@ -1,4 +1,8 @@
 import {
+  DAY_VIDEO_TITLE_MAX,
+  parseYoutubeId,
+} from "../../src/lib/day-video.js";
+import {
   prepareTranslationQaInvalidation,
   prepareTranslationUpsert,
 } from "../d1-bind.js";
@@ -13,7 +17,13 @@ import {
 } from "../llm.js";
 import { createD1LlmCallLogger, flushLlmCallWrites } from "../llm-call-log.js";
 import { forceSendDigest } from "../notify/index.js";
-import { rankScore, SOURCE_COUNT_COLUMN } from "../ranking.js";
+import {
+  RANK_SIGNAL_COLUMNS,
+  RANK_SIGNAL_JOIN,
+  type RankSignalRow,
+  rankScore,
+  rowRankSignals,
+} from "../ranking.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
 import {
@@ -322,18 +332,14 @@ export async function triggerIngest(
 const DEFAULT_PREVIEW_RANKING_LIMIT = 20;
 const MAX_PREVIEW_RANKING_LIMIT = 100;
 
-interface RankingPreviewRow {
+interface RankingPreviewRow extends RankSignalRow {
   id: string;
   title: string;
-  source_id: string;
   published_at: number;
-  points: number | null;
-  comments: number | null;
   llm_relevance: number | null;
   llm_importance: number | null;
   llm_quality: number | null;
   rank_score: number | null;
-  source_count: number;
 }
 
 /**
@@ -351,10 +357,11 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
   const now = Date.now();
   const { since } = buildTopItemsQuery(now);
   const { results } = await env.DB.prepare(
-    `SELECT id, title, source_id, published_at, points, comments,
+    `SELECT id, title, published_at,
             llm_relevance, llm_importance, llm_quality, rank_score,
-            ${SOURCE_COUNT_COLUMN}
-     FROM items WHERE status = 'published' AND published_at >= ?
+            ${RANK_SIGNAL_COLUMNS}
+     FROM items ${RANK_SIGNAL_JOIN}
+     WHERE status = 'published' AND published_at >= ?
      ORDER BY rank_score DESC LIMIT ?`
   )
     .bind(since, limit)
@@ -362,31 +369,33 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
   return {
     since,
     limit,
-    items: (results ?? []).map((row, index) => ({
-      rank: index + 1,
-      id: row.id,
-      title: row.title,
-      source_id: row.source_id,
-      published_at: row.published_at,
-      rank_score: row.rank_score,
-      rank_score_now: rankScore({
-        importance: row.llm_importance ?? 5,
-        quality: row.llm_quality ?? 5,
-        points: row.points ?? 0,
-        comments: row.comments ?? 0,
-        publishedAt: row.published_at * 1000,
-        now,
-        sourceCount: row.source_count,
-      }),
-      inputs: {
-        relevance: row.llm_relevance,
-        importance: row.llm_importance,
-        quality: row.llm_quality,
-        points: row.points ?? 0,
-        comments: row.comments ?? 0,
-        source_count: row.source_count,
-      },
-    })),
+    items: (results ?? []).map((row, index) => {
+      // Reader engagement and source families: what the score counts.
+      const signals = rowRankSignals(row);
+      return {
+        rank: index + 1,
+        id: row.id,
+        title: row.title,
+        source_id: row.source_id,
+        published_at: row.published_at,
+        rank_score: row.rank_score,
+        rank_score_now: rankScore({
+          importance: row.llm_importance ?? 5,
+          quality: row.llm_quality ?? 5,
+          publishedAt: row.published_at * 1000,
+          now,
+          ...signals,
+        }),
+        inputs: {
+          relevance: row.llm_relevance,
+          importance: row.llm_importance,
+          quality: row.llm_quality,
+          points: signals.points,
+          comments: signals.comments,
+          source_count: signals.sourceCount,
+        },
+      };
+    }),
   };
 }
 
@@ -582,16 +591,12 @@ export interface ReprocessResult {
   tokens: number;
 }
 
-interface ReprocessItemRow {
+interface ReprocessItemRow extends RankSignalRow {
   id: string;
   title: string;
   summary: string | null;
-  source_id: string;
-  points: number | null;
-  comments: number | null;
   published_at: number;
   source_lang: "en" | "vi";
-  source_count: number;
 }
 
 /** Epoch seconds for the start of the current UTC day — matches
@@ -639,9 +644,10 @@ export async function reprocessToday(
 
     const since = startOfTodayUtcSec();
     const { results } = await env.DB.prepare(
-      `SELECT id, title, summary, source_id, points, comments, published_at, source_lang,
-              ${SOURCE_COUNT_COLUMN}
-       FROM items WHERE status = 'published' AND published_at >= ?`
+      `SELECT id, title, summary, published_at, source_lang,
+              ${RANK_SIGNAL_COLUMNS}
+       FROM items ${RANK_SIGNAL_JOIN}
+       WHERE status = 'published' AND published_at >= ?`
     )
       .bind(since)
       .all<ReprocessItemRow>();
@@ -688,11 +694,9 @@ export async function reprocessToday(
         const rank = rankScore({
           importance: score.importance,
           quality: score.quality,
-          points: row.points ?? 0,
-          comments: row.comments ?? 0,
           publishedAt: row.published_at * 1000,
           now: Date.now(),
-          sourceCount: row.source_count,
+          ...rowRankSignals(row),
         });
         statements.push(
           env.DB.prepare(
@@ -794,15 +798,12 @@ export interface UpdateItemInput {
   relevance?: number;
 }
 
-interface ItemRow {
+interface ItemRow extends RankSignalRow {
   id: string;
-  points: number | null;
-  comments: number | null;
   published_at: number;
   llm_relevance: number | null;
   llm_importance: number | null;
   llm_quality: number | null;
-  source_count: number;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -812,7 +813,7 @@ function clamp(value: number, min: number, max: number): number {
 /**
  * Moderation mutation for a single item, by id: reject/restore flip
  * `status`; rate updates the given llm_* fields (clamped to their valid
- * ranges) and recomputes rank_score from the item's stored points/comments/
+ * ranges) and recomputes rank_score from its cluster's rank signals and
  * published_at (seconds, matches items.published_at's unit — see
  * reprocessToday above) and the current time. Always UPDATE-by-id, never
  * INSERT; 404s when the id doesn't exist.
@@ -825,10 +826,11 @@ export async function updateItem(
     return { error: "id is required", status: 400 };
   }
   const row = await env.DB.prepare(
-    `SELECT id, points, comments, published_at,
+    `SELECT id, published_at,
             llm_relevance, llm_importance, llm_quality,
-            ${SOURCE_COUNT_COLUMN}
-     FROM items WHERE id = ?`
+            ${RANK_SIGNAL_COLUMNS}
+     FROM items ${RANK_SIGNAL_JOIN}
+     WHERE id = ?`
   )
     .bind(input.id)
     .first<ItemRow>();
@@ -858,11 +860,9 @@ export async function updateItem(
     const rank = rankScore({
       importance,
       quality,
-      points: row.points ?? 0,
-      comments: row.comments ?? 0,
       publishedAt: row.published_at * 1000,
       now: Date.now(),
-      sourceCount: row.source_count,
+      ...rowRankSignals(row),
     });
 
     await env.DB.prepare(
@@ -921,9 +921,9 @@ export async function listPendingSuggestions(
     100
   );
   const { results } = await env.DB.prepare(
-    `SELECT id, item_id, field, suggestion, user_name, rating, created_at, status
+    `SELECT id, item_id, lang, field, suggestion, user_name, rating, review_note, created_at, status
      FROM translation_suggestions
-     WHERE status = 'pending'
+     WHERE status IN ('pending', 'needs_review')
      ORDER BY created_at ASC
      LIMIT ${limit}`
   ).all();
@@ -969,6 +969,37 @@ export async function decideSuggestion(
   return { ok: true };
 }
 
+export async function listTranslationKnowledge(
+  env: Env,
+  status?: string | null
+) {
+  const { listKnowledge } = await import("../translation-knowledge.js");
+  return listKnowledge(env, status);
+}
+
+/** Activate, park or disable one translation-knowledge rule. */
+export async function decideTranslationKnowledge(
+  env: Env,
+  body: { id?: string; status?: string }
+): Promise<{ ok: true } | HandlerError> {
+  const { id, status } = body;
+  if (
+    !id ||
+    (status !== "active" && status !== "pending" && status !== "disabled")
+  ) {
+    return {
+      error: "id and status (active|pending|disabled) required",
+      status: 400,
+    };
+  }
+  const { setKnowledgeStatus } = await import("../translation-knowledge.js");
+  if (!(await setKnowledgeStatus(env, id, status))) {
+    return { error: "not found", status: 404 };
+  }
+  await writeAudit(env, `knowledge.${status}`, id);
+  return { ok: true };
+}
+
 export async function decideSubmission(
   env: Env,
   body: { id?: string; action?: string }
@@ -988,4 +1019,154 @@ export async function decideSubmission(
   if (!result.ok) return { error: result.error, status: 404 };
   await writeAudit(env, `submissions.${action}`, id);
   return { ok: true };
+}
+
+export interface SetDayVideoInput {
+  /** 16:9 video for desktop: URL or 11-char id; null/"" clears it. */
+  video?: unknown;
+  /** 9:16 Short for mobile: URL or 11-char id; null/"" clears it. */
+  short?: unknown;
+  /** Display title; null/"" clears it. */
+  title?: unknown;
+}
+
+export interface DayVideoRecord {
+  date: string;
+  youtube_id: string | null;
+  short_id: string | null;
+  title: string | null;
+}
+
+const DAY_VIDEO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function validDayVideoDate(date: unknown): date is string {
+  if (typeof date !== "string" || !DAY_VIDEO_DATE_RE.test(date)) return false;
+  const ms = Date.parse(`${date}T00:00:00Z`);
+  return (
+    Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 10) === date
+  );
+}
+
+/** undefined = keep the stored value, null = clear, string = new id. */
+function dayVideoIdField(
+  value: unknown,
+  label: string
+): { id: string | null | undefined } | HandlerError {
+  if (value === undefined) return { id: undefined };
+  if (value === null || value === "") return { id: null };
+  const id = parseYoutubeId(value);
+  if (!id) {
+    return {
+      error: `${label} must be a YouTube URL or an 11-character video id`,
+      status: 400,
+    };
+  }
+  return { id };
+}
+
+/**
+ * Upsert the video and/or Short shown on `/date/:date`. Each field is set or
+ * cleared independently; omitted fields keep their stored value. A row must
+ * keep at least one of the two — use `deleteDayVideo` to remove it.
+ */
+export async function setDayVideo(
+  env: Env,
+  date: unknown,
+  input: SetDayVideoInput,
+  actor: string | null
+): Promise<{ ok: true; video: DayVideoRecord } | HandlerError> {
+  if (!validDayVideoDate(date)) {
+    return { error: "date must be a real YYYY-MM-DD day", status: 400 };
+  }
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return { error: "body must be an object", status: 400 };
+  }
+  const video = dayVideoIdField(input.video, "video");
+  if (isHandlerError(video)) return video;
+  const short = dayVideoIdField(input.short, "short");
+  if (isHandlerError(short)) return short;
+  if (
+    input.title !== undefined &&
+    input.title !== null &&
+    typeof input.title !== "string"
+  ) {
+    return { error: "title must be a string", status: 400 };
+  }
+  if (
+    video.id === undefined &&
+    short.id === undefined &&
+    input.title === undefined
+  ) {
+    return { error: "set at least one of video, short, title", status: 400 };
+  }
+
+  const existing = await env.DB.prepare(
+    "SELECT youtube_id, short_id, title FROM day_videos WHERE date = ?"
+  )
+    .bind(date)
+    .first<{
+      youtube_id: string | null;
+      short_id: string | null;
+      title: string | null;
+    }>();
+  const title =
+    input.title === undefined
+      ? (existing?.title ?? null)
+      : typeof input.title === "string" && input.title.trim()
+        ? input.title.trim().slice(0, DAY_VIDEO_TITLE_MAX)
+        : null;
+  const next: DayVideoRecord = {
+    date,
+    youtube_id:
+      video.id === undefined ? (existing?.youtube_id ?? null) : video.id,
+    short_id: short.id === undefined ? (existing?.short_id ?? null) : short.id,
+    title,
+  };
+  if (!next.youtube_id && !next.short_id) {
+    return {
+      error:
+        "a day video needs a video or a short; delete the row to remove both",
+      status: 400,
+    };
+  }
+
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO day_videos
+       (date, youtube_id, short_id, title, added_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(date) DO UPDATE SET
+       youtube_id = excluded.youtube_id,
+       short_id = excluded.short_id,
+       title = excluded.title,
+       added_by = excluded.added_by,
+       updated_at = excluded.updated_at`
+  )
+    .bind(date, next.youtube_id, next.short_id, next.title, actor, now, now)
+    .run();
+  await writeAudit(
+    env,
+    "day_video_set",
+    JSON.stringify({
+      date,
+      youtube_id: next.youtube_id,
+      short_id: next.short_id,
+    })
+  );
+  return { ok: true, video: next };
+}
+
+export async function deleteDayVideo(
+  env: Env,
+  date: unknown
+): Promise<{ ok: true; date: string; deleted: boolean } | HandlerError> {
+  if (!validDayVideoDate(date)) {
+    return { error: "date must be a real YYYY-MM-DD day", status: 400 };
+  }
+  const result = await env.DB.prepare("DELETE FROM day_videos WHERE date = ?")
+    .bind(date)
+    .run();
+  const deleted = (result.meta?.changes ?? 0) > 0;
+  if (deleted) await writeAudit(env, "day_video_delete", date);
+  return { ok: true, date, deleted };
 }

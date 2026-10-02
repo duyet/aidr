@@ -8,6 +8,7 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../../worker/media.js";
+import { pickDiverse } from "../../worker/source-diversity.js";
 import type { DbReader } from "./db";
 import {
   PUBLIC_BULLET_CAP,
@@ -81,6 +82,7 @@ export interface PublicDigest {
 
 interface StoryRow {
   id: string;
+  source_id: string;
   url: string;
   title: string;
   title_vi: string | null;
@@ -90,35 +92,35 @@ interface StoryRow {
   published_at: number;
 }
 
-const STORIES_SQL = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i.category,
+const STORIES_SQL = `SELECT i.id, i.source_id, i.url, i.title, tr.title AS title_vi, i.category,
        i.image_url, i.media_manifest, i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published'
+WHERE i.status = 'published' AND i.published_at >= ?
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
-const STORIES_SQL_NO_MEDIA = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i.category,
+const STORIES_SQL_NO_MEDIA = `SELECT i.id, i.source_id, i.url, i.title, tr.title AS title_vi, i.category,
        i.image_url, i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published'
+WHERE i.status = 'published' AND i.published_at >= ?
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
-const STORIES_SQL_MEDIA_NO_IMAGE = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i.category,
+const STORIES_SQL_MEDIA_NO_IMAGE = `SELECT i.id, i.source_id, i.url, i.title, tr.title AS title_vi, i.category,
        i.media_manifest, i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published'
+WHERE i.status = 'published' AND i.published_at >= ?
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
-const STORIES_SQL_LEGACY = `SELECT i.id, i.url, i.title, tr.title AS title_vi, i.category,
+const STORIES_SQL_LEGACY = `SELECT i.id, i.source_id, i.url, i.title, tr.title AS title_vi, i.category,
        i.published_at
 FROM items i
 LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published'
+WHERE i.status = 'published' AND i.published_at >= ?
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
@@ -199,33 +201,54 @@ function toPublicStory(row: StoryRow): PublicStory {
   };
 }
 
-async function loadTopStories(db: DbReader): Promise<PublicStory[]> {
+/** Only the last 72h are re-ranked; an older item keeps the rank_score it
+ *  had when it left that window, so an all-time ORDER BY rank_score let a
+ *  3-week-old story outrank today's news. Top stories come from this window
+ *  only. */
+export const PUBLIC_STORY_WINDOW_SEC = 48 * 60 * 60;
+
+/** Ranked rows read before the source-family cap picks PUBLIC_STORY_LIMIT.
+ *  Mirrored aggregators held 47 of the 48h top 50 (D1, 2026-10-01); 64 rows
+ *  was the first pool that let the cap fill all 8, so this keeps margin. */
+const PUBLIC_STORY_CANDIDATE_LIMIT = 120;
+
+function topStories(rows: StoryRow[] | undefined): PublicStory[] {
+  return pickDiverse(rows ?? [], { limit: PUBLIC_STORY_LIMIT }).map(
+    toPublicStory
+  );
+}
+
+async function loadTopStories(
+  db: DbReader,
+  nowMs: number = Date.now()
+): Promise<PublicStory[]> {
+  const since = Math.floor(nowMs / 1000) - PUBLIC_STORY_WINDOW_SEC;
   try {
     const { results } = await db
       .prepare(STORIES_SQL)
-      .bind(PUBLIC_STORY_LIMIT)
+      .bind(since, PUBLIC_STORY_CANDIDATE_LIMIT)
       .all<StoryRow>();
-    return (results ?? []).map(toPublicStory);
+    return topStories(results);
   } catch {
     try {
       const { results } = await db
         .prepare(STORIES_SQL_NO_MEDIA)
-        .bind(PUBLIC_STORY_LIMIT)
+        .bind(since, PUBLIC_STORY_CANDIDATE_LIMIT)
         .all<StoryRow>();
-      return (results ?? []).map(toPublicStory);
+      return topStories(results);
     } catch {
       try {
         const { results } = await db
           .prepare(STORIES_SQL_MEDIA_NO_IMAGE)
-          .bind(PUBLIC_STORY_LIMIT)
+          .bind(since, PUBLIC_STORY_CANDIDATE_LIMIT)
           .all<StoryRow>();
-        return (results ?? []).map(toPublicStory);
+        return topStories(results);
       } catch {
         const { results } = await db
           .prepare(STORIES_SQL_LEGACY)
-          .bind(PUBLIC_STORY_LIMIT)
+          .bind(since, PUBLIC_STORY_CANDIDATE_LIMIT)
           .all<StoryRow>();
-        return (results ?? []).map(toPublicStory);
+        return topStories(results);
       }
     }
   }

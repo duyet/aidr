@@ -482,6 +482,19 @@ describe("loadSystemLlm", () => {
   it("returns call volume and token burn from one batch", async () => {
     const q = await freshQueries();
     const { db, batches } = makeDb({
+      "GROUP BY date, model": {
+        all: () => ({
+          results: [
+            {
+              date: "2026-01-01",
+              model: "typesafe/jev",
+              calls: 3,
+              failures: 0,
+              tokens: 120,
+            },
+          ],
+        }),
+      },
       "GROUP BY date, task": {
         all: () => ({
           results: [
@@ -520,6 +533,15 @@ describe("loadSystemLlm", () => {
       { date: "2026-01-01", task: "score", calls: 4, failures: 1, tokens: 300 },
       { date: "2026-01-01", task: "tldr", calls: 1, failures: 0, tokens: 0 },
     ]);
+    expect(r.llmTokensByModel).toEqual([
+      {
+        date: "2026-01-01",
+        model: "typesafe/jev",
+        calls: 3,
+        failures: 0,
+        tokens: 120,
+      },
+    ]);
     expect(r.tokens).toEqual({
       total: 900,
       avgPerItem: 12,
@@ -529,7 +551,7 @@ describe("loadSystemLlm", () => {
       ],
     });
     expect(batches).toHaveLength(1);
-    expect(batches[0]).toHaveLength(4);
+    expect(batches[0]).toHaveLength(5);
   });
 
   it("returns empty sections without a batch on a pre-migration DB", async () => {
@@ -545,6 +567,7 @@ describe("loadSystemLlm", () => {
     const r = await q.loadSystemLlm(db);
 
     expect(r.llmCallsPerDay).toEqual([]);
+    expect(r.llmTokensByModel).toEqual([]);
     expect(r.tokens).toEqual({ total: 0, avgPerItem: 0, perDay: [] });
     // Every statement was migration-gated, so there is nothing safe to
     // send — the endpoint must not issue a doomed round-trip.

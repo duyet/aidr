@@ -344,6 +344,7 @@ export async function sendEmailLane(
       text,
       unsubscribeToken: sub.unsubscribe_token,
       lang,
+      replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
     });
     if (!ok) {
       failed++;

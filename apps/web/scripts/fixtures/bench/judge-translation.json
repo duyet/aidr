@@ -1,0 +1,531 @@
+{
+  "step": "judge-translation",
+  "builtAt": "2026-10-02",
+  "labelSources": [
+    "silver:translation_suggestions.status",
+    "silver:translations.qa_rating"
+  ],
+  "count": 40,
+  "cases": [
+    {
+      "id": "sugg:90b2d9f4-ecff-4230-9203-1151b5a66b80",
+      "content": {
+        "field": "auto",
+        "sourceText": "Clef: Open-weight decision models, and new RL fine-tuning platform\nWe are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement learning platform that allows developers to fine-tune decision models using their own data.",
+        "currentTranslation": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới\nClef ra mắt dòng mô hình quyết định mở trọng lượng cùng nền tảng fine-tuning dựa trên RL, hỗ trợ tùy biến và triển khai mô hình linh hoạt.",
+        "suggestion": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới\n\nplease update translation vietnamese to have better => Clef: Mô hình Decision Open Weight ..."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translation_suggestions.status"
+    },
+    {
+      "id": "sugg:866393dd-1296-4fb5-89bb-47841a4e3411",
+      "content": {
+        "field": "auto",
+        "sourceText": "Clef: Open-weight decision models, and new RL fine-tuning platform\nWe are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement learning platform that allows developers to fine-tune decision models using their own data.",
+        "currentTranslation": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới\nClef ra mắt dòng mô hình quyết định mở trọng lượng cùng nền tảng fine-tuning dựa trên RL, hỗ trợ tùy biến và triển khai mô hình linh hoạt.",
+        "suggestion": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới\n\n=> Clef: Mô hình Decision Open Weight ..."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translation_suggestions.status"
+    },
+    {
+      "id": "d41ddcb62c7631b23f8eaf1a275a038c5dff8d5a3be2044c15d85e77be153415",
+      "content": {
+        "field": "translation",
+        "sourceText": "Measuring Human-Like Bias in LLMs? A Critique of Human-Derived Bias Constructs in LLM Evaluation\narXiv:2610.00070v1 Announce Type: new Abstract: Researchers increasingly use human-derived bias constructs to study Large Language Models (LLMs), including social-cognitive constructs such as implicit bias and stereotype activation, and cognitive biases such as anchoring, framing effects, and confirmation bias. Such approaches offer alternatives to overt bias probes, particularly when direct questioning may obscure bias or when model behaviour appears normatively acceptable. However, adapting human bias constructs to LLMs introduces an inferential gap. Psychological instruments were developed to study human cognition and social behaviour, whereas LLM evaluations rely on probabilities, text completions, rankings, or simulated decisions. This paper critiques human-centered bias evaluation in LLMs. We show how this gap arises from mismatches pertaining to human-derived constructs, human-model differences, and evaluation contexts, which can blur distinct interpretations of model bias. We then introduce a framework providing an analytical lens for relating these elements to warranted interpretations, with attention to target constructs, operationalizations, scope of inference, and limit",
+        "currentTranslation": "",
+        "suggestion": "Đo lường độ thiên vị giống con người trong LLM? Phản biện về cấu trúc độ thiên vị dẫn xuất từ con người trong đánh giá LLM\nBài báo cáo phê bình việc sử dụng các cấu trúc độ thiên vị dẫn xuất từ con người để đo lường độ thiên vị trong LLM. Tác giả cho rằng cách tiếp cận này có thể gây sai lệch trong đánh giá, đề xuất cần phát triển các phương pháp đo lường mới không dựa trên giả định về độ thiên vị của con người."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "8824a722fbbd4c31d76b2acd736a570a76b2884eb3580f8b8268fa380b4d0ed5",
+      "content": {
+        "field": "translation",
+        "sourceText": "Fast Polynomial Transcendentals for LLMs\narXiv:2610.00049v1 Announce Type: new Abstract: Graphics processing unit (GPU) generations scale matrix, special-function, and memory pipelines at different rates, so kernel bottlenecks move as hardware evolves. FlashAttention-4 exposed this imbalance inside attention on NVIDIA Blackwell. We test whether short polynomial programs can accelerate other special-function-unit (SFU) operations in large language models (LLMs). We first compare native PyTorch evaluation with packed fused multiply--add (FMA) programs in an isolated IEEE binary16 (FP16) sweep spanning L2-resident and high-bandwidth-memory (HBM)-resident working sets. We then replace native sigmoid, tanh, and sigmoid linear unit (SiLU) with degree-3 or degree-4 bfloat16 (BF16) programs in four GB200 integration tasks: dense SiLU, tanh-softcapped attention, sigmoid attention, and routed-expert Swish-gated linear unit (SwiGLU). The programs combine analytical symmetry, target-format rounding, and packed arithmetic inside consuming kernels. The isolated paths improve by 1.19--2.19x in L2 and 1.00--1.70x in HBM. The dense-SiLU, tanh-softcapped-attention, and routed-expert substitutions improve complete training-step throughput b",
+        "currentTranslation": "",
+        "suggestion": "Siêu phương tính nhanh cho LLM\nNhóm nghiên cứu đưa ra thuật toán siêu phương tính nhanh áp dụng cho LLM, tối ưu hóa tốc độ tính toán các hàm siêu phương thức trong quá trình suy luận."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "02a178ff700f1bbeddd541b658c59d9a3a93650fb7012061246822292a8163da",
+      "content": {
+        "field": "translation",
+        "sourceText": "PixelUMM Removes VAEs and ViTs From Multimodal Video Models\nThe code and trained weights for a new image and video system are now public for developers to use in multimodal tasks. Developed by CongWei1230, the model known as PixelUMM performs generation and understanding directly in pixel space, which eliminates the need for Vision Transformers (ViTs) and Variational Autoencoders (VAEs) typically used to encode visual data in AI models.\n\nThe project was released on October 1 and utilizes an encoder-free architecture to bypass standard compression steps found in most generative AI. By removing the reliance on latent spaces, the model seeks to unify how images and videos are processed and produced within a single framework.",
+        "currentTranslation": "",
+        "suggestion": "PixelUMM Loại Bỏ VAEs và ViTs Khỏi Các Mô Hình Video Đa Phương Thức\nMã nguồn và trọng số đã huấn luyện của một hệ thống hình ảnh và video mới đã được công bố công khai để các nhà phát triển sử dụng trong các tác vụ đa phương thức. Được phát triển bởi CongWei1230, mô hình mang tên PixelUMM thực hiện sinh tạo và hiểu biết trực tiếp trong không gian pixel, điều này loại bỏ nhu cầu sử dụng Vision Transformers (ViTs) và Variational Autoencoders (VAEs) thường được dùng để mã hóa dữ liệu hình ảnh trong các mô hình AI.\n\nDự án được phát hành vào ngày 1 tháng 10 và sử dụng kiến trúc không mã hóa để vượt qua các bước nén chuẩn tìm thấy trong hầu hết các mô hình AI sinh tạo. Bằng cách loại bỏ sự phụ thuộc vào không gian tiềm năng, mô hình mong muốn thống nhất cách xử lý và sản xuất hình ảnh và video trong một khung hệ thống duy nhất."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "fb453122f6af03ff89e3c90811fc80a9949f90fec0a086200459173a966a171c",
+      "content": {
+        "field": "translation",
+        "sourceText": "AI godfather Yann LeCun: Anthropic CEO deluded, doesn't understand cybersecurity\nEverything you need to know before you reach the office this morning.",
+        "currentTranslation": "",
+        "suggestion": "Cụ bàn AI Yann LeCun: CEO Anthropic mắc khùng, không hiểu rõ về an ninh mạng\nMọi thứ bạn cần biết trước khi đến văn phòng vào buổi sáng nay."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "901948bef614fb42cdf74c7b4aa3d1c607105920ccf6734bb586be7d89263396",
+      "content": {
+        "field": "translation",
+        "sourceText": "[AINews] Pi 1.0, Pi Durable, and AIE NYC\nthe minimalist harness goes stable... and TypeScript!",
+        "currentTranslation": "",
+        "suggestion": "[AINews] Pi 1.0, Pi Durable, và AIE NYC\nBộ dựng tối giản này đã ổn định... và TypeScript!"
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "182622bf1f20238f6f2bfff70324a1e402fd10a7dd123aa3db0ab5bb17a413fd",
+      "content": {
+        "field": "translation",
+        "sourceText": "Characterizing a Configuration Where Inference-Time PRM-Pruned Fragment Grafting Is Inert: Evidence from Three Reasoning LMs\narXiv:2610.00047v1 Announce Type: new Abstract: Diversity collapse in parallel chain-of-thought has motivated inference-time interventions built on a natural design: when a process reward model (PRM) prunes a chain, its high-PRM prefix is extracted and grafted verbatim as an in-context demonstration into a still-decoding sibling. We isolate this mechanism, PRM-Pruned Fragment Grafting (PPFG), as the most cost-minimal operationalization of cross-trajectory step-level transfer, and test it at the operating point where prior fragment-grafting work reports gains only under additional compensating ingredients. On Qwen2.5-7B-Instruct with Math-Shepherd on full MATH500 (n=500, three seeds), PPFG in both stagnation- and random-targeting variants is statistically indistinguishable from an independent parallel-CoT baseline on every measured axis. We characterize why: a four-bucket classification of 322 stagnation-rule injection events shows only 14% targeted a genuinely struggling chain; the rest landed on chains that had already succeeded, were near completion, or sat on a flat PRM plateau, states a rescue graft cannot change. No compound-gate refinement jointly achieves well-targeted firin",
+        "currentTranslation": "",
+        "suggestion": "Nghiên cứu cấu hình PRM cắt tỉa grafting mảnh suy luận thời gian suy diễn không hoạt động: Bằng chứng từ ba mô hình lý luận\nNghiên cứu cho thấy phương pháp PRM cắt tỉa grafting mảnh suy luận trong thời gian suy diễn không tạo ra hiệu quả mong đợi trên ba mô hình lý luận khác nhau. Kết quả phân tích cho thấy cấu hình này không cải thiện đáng kể hiệu suất của các mô hình, đặt câu hỏi về hiệu quả thực sự của kỹ thuật này trong ứng dụng thực tế."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "2413f51d9fd0e84982a2e97fd391377b6b9a67f6a1ada443c4c7a256dd938e19",
+      "content": {
+        "field": "translation",
+        "sourceText": "When Do Causal World Models Help Modular LLM Agents\narXiv:2610.00012v1 Announce Type: new Abstract: LLM agents increasingly act through modular systems, such as order, payment, inventory, and shipment services, where actions in one module change which transitions are valid in another. Standard world models usually fit observational traces, but this is not the quantity needed for intervention-time planning: a trace may show that payment precedes shipment without identifying whether payment authorizes shipment, inventory mediates the effect, or a hidden trigger explains both. We study this gap through FedCausalCompose, a causal world-model framework for modular LLM agents in which local actions provide intervention-response evidence for cross-module interfaces. We first show that observational world models incur an irreducible interventional error under unblocked back-door paths, that interface recovery improves with intervention-response coverage, and that an oracle causal composition can beat the non-causal lower bound when coverage and local mechanism errors are controlled. We then test the resulting prediction in diagnostic agent settings. Causal interfaces help most in structured tool environments, where API signatures expose pre",
+        "currentTranslation": "",
+        "suggestion": "Khi Nào Mô Hình Thế Giới Nhân Quả Hỗ Trợ Các Agent LLM Mô-đun\nNghiên cứu mới cho rằng mô hình thế giới nhân quả có thể cải thiện hiệu năng của các agent LLM mô-đun trong một số trường hợp cụ thể."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "d66945ef830bb2f2ad0617705b74c2613816d03b3e615a5c7d93f809901ea95b",
+      "content": {
+        "field": "translation",
+        "sourceText": "Measuring the Microtask Eligibility Gap: When Is an Off-the-Shelf SLM Enough for an Agent Harness?\narXiv:2610.00025v1 Announce Type: new Abstract: Agent harnesses increasingly want to run small language models (SLMs) on the microtasks around a frontier large language model (LLM) planner: auto-approving shell commands, writing memory, selecting tools, ranking past turns. We ask whether off-the-shelf SLMs meet practitioner-defined thresholds and, when they fail, why, and whether quantization changes the answer. We build a benchmark of 4 such microtasks with fixed prompts and automatic metrics, each with a pre-specified threshold $\\tau$ anchored to a cheap non-LLM baseline and a CI-aware eligibility rule (a configuration passes only if its confidence bound clears $\\tau$). Sweeping Qwen3 0.6/1.7/4/8B at their best (FP16, greedy, one frozen prompt, no tuning), we find an eligibility gap: 0 of 16 (4 tasks $\\times$ 4 models) configurations pass (verified by checking the raw outputs and parser behavior). A logprob decision-threshold diagnostic (T1/T3/T4; T2 via a context-length/cascade probe) separates the failures into capability deficits and failures that can be addressed by changing the decoding threshold (4 regimes). Quantization to 4-bit (RTN/GPTQ/AWQ) does damage that depends on m",
+        "currentTranslation": "",
+        "suggestion": "Đo lường Khoảng trống Đủ điều kiện Microtask: Khi nào SLM Sẵn có Đủ cho một Dây chuyền Agent\nNghiên cứu đề xuất một phương pháp đo lường khoảng trống đủ điều kiện microtask, phân tích thời điểm một mô hình ngôn ngữ nhỏ (SLM) mua sẵn có hiệu quả đủ để sử dụng trong dây chuyền agent."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "4f1019dc7acfbda693684200b4b22c7595bbeae9829f23c573e9a9fe275eeb6f",
+      "content": {
+        "field": "translation",
+        "sourceText": "Marin’s 535B Model Tracks loss within 0.3% in Largest Live Run\nA new high-parameter neural network is currently executing a public training trajectory to test the predictability of AI scaling laws. Marin has spent 43 days training the model on 18T tokens, employing a publicly pre-registered scaling ladder to forecast the evaluation loss throughout the process.\n\nThe Mixture of Experts model has 535B parameters and is tracking within 0.3% of its loss forecast despite a 300x extrapolation, with the run now halfway complete. The project's scale increased from an original plan of 360B parameters after developer ravwojdyla used custom kernels to improve hardware efficiency and token throughput.",
+        "currentTranslation": "",
+        "suggestion": "Mô hình 535B của Marin theo dõi mất mát trong 0.3% trong vòng chạy lớn nhất công khai\nMột mạng nơơron siêu tham số mới đang thực hiện một hành trình huấn luyện công khai để kiểm tra tính khả thi của các luật tỷ lệ AI. Marin đã dành 43 ngày để huấn luyện mô hình trên 18 nghìn tỷ token, áp dụng một bậc thang tỷ lệ đã được đăng ký công khai trước để dự báo mất mát đánh giá trong suốt quá trình.\n\nMô hình Mixture of Experts với 535 tỷ tham số đang theo dõi mất mát trong vòng 0.3% so với dự báo dù phải ngoại suy 300 lần, với vòng chạy hiện đã hoàn thành một nửa. Quy mô dự án đã tăng từ kế hoạch gốc 360 tỷ tham số sau khi nhà phát triển ravwojdyla sử dụng các kernel tùy chỉnh để cải thiện hiệu suất phần cứng và thông lượng token."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "032e2120d32e2b2ddea9888578c0c494722dbef374bf81614488409365b3b2a1",
+      "content": {
+        "field": "translation",
+        "sourceText": "Wall Street Rejects Nvidia GPU Asset Plan With 25% Collateral Demand\nBanks and private credit firms are demanding that Nvidia post collateral of up to 25% to support loans for small AI cloud providers known as neoclouds. Lenders are refusing to offer asset backed financing for graphics processing units unless the chipmaker backs the loans, rejecting Nvidia's attempt to have Wall Street treat GPUs as a long lived investable asset class similar to commercial aircraft.\n\nThe disagreement focuses on chip depreciation, with banks underwriting GPUs on a 3 to 4 year schedule compared to Nvidia's claim that they last a decade. Morningstar has compared the strategy to dot com era vendor financing used by Cisco. While Nvidia has targeted more than $500B in third party capital for AI infrastructure, some recent deals have required other chipmakers to step in, including Broadcom financing a $42B deal for Anthropic.",
+        "currentTranslation": "",
+        "suggestion": "Wall Street từ chối kế hoạch tài sản GPU của Nvidia, đòi thế chấp 25%\nCác ngân hàng và quỹ tín dụng riêng đang yêu cầu Nvidia phải thế chấp tới 25% để hỗ trợ vay cho các nhà cung cấp đám mây AI quy mô nhỏ gọi là neoclouds. Các tổ chức cho vay từ chối cung cấp tài sản担保 cho GPU trừ khi hãng chip bảo lãnh, bác bỏ nỗ lực của Nvidia muốn Wall Street đối xử với GPU như một lớp tài sản đầu tư dài hạn tương tự máy bay thương mại.\n\nTranh cãi tập trung vào khấu hao chip: ngân hàng định giá GPU theo kỳ hạn 3-4 năm trong khi Nvidia khẳng định chúng bền một thập kỷ. Morningstar so sánh chiến lược này với mô hình vendor financing thời bong bóng dot-com mà Cisco từng dùng. Dù Nvidia nhắm tới hơn 500 tỷ USD vốn thứ ba cho cơ sở hạ tầng AI, một số thỏa thuận gần đây buộc các hãng chip khác phải can thiệp, trong đó Broadcom tài trợ 42 tỷ USD cho Anthropic."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "c278a664b29ed86db2b572de870fac299b407e56e8d1153c7850e7d8ac114869",
+      "content": {
+        "field": "translation",
+        "sourceText": "TSMC Weighs Singapore Plant and Ties Texas Deal to US Tax Credits\nThe chipmaker's latest expansion plans include a potential venture into Southeast Asia to diversify manufacturing. TSMC is assessing a new site in Singapore and has made the viability of its proposed $20 billion investment in Texas contingent on the US government extending an advanced-manufacturing tax credit that expires at the end of 2026.\n\nThe envisioned Texas campus would feature multiple fabrication plants, supplementing the $265 billion the company has already committed to a hub in Arizona. This multiyear growth strategy aims to scale US semiconductor production to meet long-term demand for AI chips and increase capacity for fabrication equipment.",
+        "currentTranslation": "",
+        "suggestion": "TSMC cân nhắc nhà máy Singapore, liên kết dự án Texas với tín dụng thuế Mỹ\nKế hoạch mở rộng mới của TSMC bao gồm khả năng mở rộng sang Đông Nam Á để đa dạng hóa sản xuất. Công ty đang đánh giá một khu đất tại Singapore và đưa dự án đầu tư 20 tỷ USD tại Texas phụ thuộc vào việc chính phủ Mỹ gia hạn tín dụng thuế sản xuất tiên tiến, sẽ hết hạn cuối 2026. Khu công nghiệp Texas sẽ có nhiều nhà máy lắp ráp, bổ sung cho 265 tỷ USD đã cam kết tại Arizona. Chiến lược tăng trưởng đa năm nhằm mở rộng sản xuất bán dẫn tại Mỹ để đáp ứng nhu cầu lâu dài cho chip AI."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "d22e5df54d2b6a88758deb4be5e4d9bc2ba9289de76f97ec7e66afeea2295c9e",
+      "content": {
+        "field": "translation",
+        "sourceText": "Whatever AI Safety Is, It’s Not This\nAsking AI companies to self-regulate is a great way to pretend like you’ve accomplished something.",
+        "currentTranslation": "",
+        "suggestion": "An toàn AI là gì thì cũng không phải là việc tự quy định cho mình\nYêu cầu các công ty AI tự quy định cho mình là một cách tốt để giả vờ mình đã làm được điều gì đó."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "3f7ecad907fd38a5d6552c180fd76de35b55b590b5eec2593fa5f209051b7120",
+      "content": {
+        "field": "translation",
+        "sourceText": "Netflix Buys Ben Affleck AI Firm InterPositive for $587M\nBen Affleck described the technical framework of his AI video models, which involves unfreezing weights and training only the last cinematic layer to hit professional production standards. This technology formed the basis of InterPositive, a 16 person firm he founded in 2022 and sold to Netflix in March 2026 for $587 million in cash. Under this system, each movie trains its own private model using its own dailies so the production retains control over both the footage and the associated learning.\n\nInterPositive developed its own training data by shooting on a controlled stage for 8 months to avoid using public models trained on the work of peer filmmakers, which Affleck viewed as an unsustainable business. Affleck, who also serves as CEO of Artists Equity, discussed these methods during an appearance on Bloomberg Live.",
+        "currentTranslation": "",
+        "suggestion": "Netflix Mua Công Ty AI Của Ben Affleck InterPositive Với Giá 587 Triệu USD\nBen Affleck đã mô tả khung công nghệ của các mô hình video AI mà anh phát triển, trong đó việc \"bỏ đông\" trọng số và huấn luyện chỉ lớp cinematic cuối cùng để đạt được chuẩn sản xuất chuyên nghiệp. Công nghệ này là nền tảng của InterPositive, một công ty 16 người mà Affleck thành lập năm 2022 và bán cho Netflix vào tháng 3 năm 2026 với giá 587 triệu USD bằng tiền mặt. Theo hệ thống này, mỗi bộ phim sẽ huấn luyện một mô hình riêng tư sử dụng footage gốc của chính sản phẩm đó, giúp nhà sản xuất giữ quyền kiểm soát cả hình ảnh và kiến thức học được. InterPositive đã tự phát triển dữ liệu huấn luyện bằng cách quay trên một sân khấu kiểm soát chặt chẽ trong 8 tháng, tránh sử dụng các mô hình công cộng được huấn luyện trên tác phẩm của các đạo diễn khác. Affleck, người cũng là CEO của Artists Equity, đã thảo luận về những phương pháp này trong một buổi xuất hiện trên Bloomberg Live."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "cdc3c5462ba4206bd8d1468816de6d5e3229bb06b6f29fda6b53d7b06d02e0c1",
+      "content": {
+        "field": "translation",
+        "sourceText": "Trump’s ‘Morally Binding’ AI ‘Accord,’ the Rise of AI Agents, and Extremists on the Ballot\nThis week on “Uncanny Valley,” we discuss the voluntary AI safety agreement tech executives signed, AI agents for normies, and extremist candidates running for office in the US midterms.",
+        "currentTranslation": "",
+        "suggestion": "Hiệp ước AI 'Đạo đức Bắt buộc' của Trump, Sự lên hơi của AI Agents và những người cánh cửa cực đoan trên phiếu bầu\nTrong tuần này trên chương trình 'Uncanny Valley', chúng tôi thảo luận về thỏa thuận an toàn AI tự nguyện mà các nhà lãnh đạo công nghệ đã ký, AI agents dành cho người dùng thông thường, và những ứng viên cánh cửa cực đoan đang tranh cử vào các chức vị trong bầu cử giữa kỳ Hoa Kỳ."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "eacb7fc5504f72be08cc7ee8cf4f8b0cbdcec2e26cdc92d8a4230164bd175c2f",
+      "content": {
+        "field": "translation",
+        "sourceText": "Show HN: Janus – Go binary that runs GGUF models via Vulkan on AMD/Intel/Nvidia\nJanus is a API router for AI models written in Go and has a Vulkan Model runner - Vibra-Ingenn/Janus",
+        "currentTranslation": "",
+        "suggestion": "Show HN: Janus – Binary Go chạy mô hình GGUF qua Vulkan trên AMD/Intel/Nvidia\nJanus là một binary Go cho phép chạy các mô hình GGUF trên nền tảng Vulkan, hỗ trợ cả AMD, Intel và Nvidia. Dự án này giúp người dùng triển khai mô hình ngôn ngữ lớn một cách linh hoạt trên nhiều kiến trúc phần cứng khác nhau."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "e161f47e44c4a436825e8e0eb0e3dde85524e27e8bf8d9db01384af0ada884af",
+      "content": {
+        "field": "translation",
+        "sourceText": "Tesla Cuts AI5 Chip RAM to 72GB for Optimus Volume\n← Back to live feed · 1 stories across 1 day Elon Musk announced that the company is adjusting its hardware specifications to lower the cost of its robotics division. Tesla halved the RAM on the AI5 chip to 72GB of LP5 and cut the AI6 chip memory by one third to 144GB of LP6 to ensure sufficient volume for mass production, Musk said. These reductions were the only way to secure a steady supply of components and eliminate manufacturing bottlenecks for the Optimus humanoid robot. The capacity cuts will have a negligible effect on performance because memory bandwidth is a larger limiting factor than total storage, according to Musk. Tesla held the bandwidth constant during the adjustment to maintain operational speeds. This modification allows the company to scale hardware volume without sacrificing the processing efficiency of the AI.",
+        "currentTranslation": "",
+        "suggestion": "Tesla Cắt RAM AI5 Chip Xuống 72GB Cho Optimus\n← Back to live feed · 1 stories across 1 day Elon Musk cho biết công ty đang điều chỉnh thông số phần cứng để giảm chi phí cho bộ phận robotics. Tesla đã giảm một nửa RAM trên chip AI5 xuống 72GB LP5 và cắt bớt một phần ba bộ nhớ chip AI6 xuống 144GB LP6 để đảm bảo nguồn cung đủ lượng cho sản xuất đại trở, theo Musk. Những khoản giảm này là cách duy nhất để đảm bảo nguồn cung linh kiện ổn định và loại bỏ nghẽn cụt sản xuất cho robot humanoid Optimus. Theo Musk, những vụ cắt giảm dung lượng sẽ không ảnh hưởng đáng kể đến hiệu suất vì băng thông bộ nhớ là yếu tố giới hạn lớn hơn so với tổng lưu trữ. Tesla đã giữ nguyên băng thông trong quá trình điều chỉnh để duy trì tốc độ hoạt động. Sự sửa đổi này cho phép công ty mở rộng khối lượng phần cứng mà không hy sinh hiệu quả xử lý của AI."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "f64457ccef72c364445dea11251f931653888792b08019e69849baf1febff546",
+      "content": {
+        "field": "translation",
+        "sourceText": "Musk’s AI chatbot Grok reportedly encouraged Trump to capture  Venezuela’s president\nPresident Trump reportedly asked for Grok's opinion before invading Venezuela and capturing Nicolás Maduro.",
+        "currentTranslation": "",
+        "suggestion": "Trợ lý ảo Grok của Musk bị cáo buộc đề xuất Trump nên bắt giữ tổng thống Venezuela\nTheo báo cáo, Tổng thống Trump đã hỏi ý kiến của Grok trước khi xâm lược Venezuela và bắt giữ Nicolás Maduro."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "20c4b9d47cd46efaa7d913417b92ff2862199b2d48d7f3dcfe1703b615a5e409",
+      "content": {
+        "field": "translation",
+        "sourceText": "Google thinks SpaceX’s Starship has to launch 1,600 times before space data centers get off the ground\nGoogle launched its first advanced chip into orbit to pave the way for space data centers.",
+        "currentTranslation": "",
+        "suggestion": "Google cho rằng SpaceX Starship cần phóng 1.600 lần trước khi trung tâm dữ liệu không gian hoạt động\nGoogle vừa phóng con chip đầu tiên cấp tiến của công ty vào quỷ phục vụ như một bước đệm hướng tới mục tiêu xây dựng trung tâm dữ liệu không gian."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "6cbeb818c5f3a17bc4bb61fe5e4cba37ea8c439b7e176dc510bcd64cf87d4c7e",
+      "content": {
+        "field": "translation",
+        "sourceText": "Your Big Mac might cost more if McDonald's AI thinks people nearby can afford it\n",
+        "currentTranslation": "",
+        "suggestion": "McDonald's dùng AI quy định giá Big Mac theo khả năng chi trả của người xung quanh\nMcDonald's đang thử nghiệm công nghệ AI để điều chỉnh giá bán dựa trên khả năng chi trả của khách hàng tại từng địa điểm. Nếu AI đánh giá những người đang có mặt quanh cửa hàng có thu nhập cao, món Big Mac truyền thống có thể sẽ đắt hơn so với khu vực khác. Đây là phần mở rộng của xu hướng bán hàng động dựa trên dữ liệu khách hàng, nhưng cũng khiến nhiều người lo ngại về khả thi của việc thay đổi giá theo thời gian thực."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "e23fae26ca174658c119cd467cd5f5834b5098661c753feadab4a8292cdbeccf",
+      "content": {
+        "field": "translation",
+        "sourceText": "US Military had close call after using AI for hallucinated intelligence report\n",
+        "currentTranslation": "",
+        "suggestion": "Quân đội Mỹ gặp sự cố nghiêm trọng khi dùng AI để phân tích tình báo\nMột vụ việc tại Mỹ cho thấy rủi ro khi dựa vào AI trong lĩnh vực nhạy cảm. Quân đội Mĩ từng sử dụng một công cụ AI để xử lý báo cáo tình báo, nhưng hệ thống này đư ra thông tin sai lệt — những gì nó 'thấy' không có thật. Sự nhầm lẫn này đã gần như gây ra một vụ va chạm nguy hiểm, may mắn đã được phát hiện kịp thời. Vụ việc này càng thêm nghiêm túc vì quân đội đang ngày càng tin tưởng vào AI để hỗ trợ ra quyết định trên chiến trường."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "02c744c8cb64f92f8cffcaccb4f2b42859fbaa1c691f72eaa7c8dc06dd3a435b",
+      "content": {
+        "field": "translation",
+        "sourceText": "New tool lets users repair AI-generated 3D models, then fabricate them just the way they want\n“InstructMesh” can generate designs for everyday objects that are easy to edit and fabricate for both experts and newcomers to 3D modeling.",
+        "currentTranslation": "",
+        "suggestion": "Công cụ mới giúp người dùng sửa chữa mô hình 3D do AI tạo, sau đó sản xuất chúng theo đúng ý muốn\n\"InstructMesh\" có khả năng tạo ra các thiết kế cho những vật phẩm hàng ngày dễ chỉnh sửa và sản xuất cho cả chuyên gia và người mới tiếp cận mô hình 3D."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "1f3fb9e11e71e7b7426fa6d14fdfc0f16e397e1ca2daacd3334867733fbf4faf",
+      "content": {
+        "field": "translation",
+        "sourceText": "AI Agent Harm Rates Reach 95% via Unsafe Handoffs in RogueHandoff 20 Study\nResearchers developed a benchmark to measure how malicious behaviors propagate across AI teams when agents share unsafe communication. The RogueHandoff 20 test shows that agents cause harm 0% to 5% of the time on normal tasks, but that figure rises to 40% to 95% after receiving an unsafe trajectory from a peer. These injected trajectories produced 5 to 45 points more harm than direct requests for malicious actions across 20 executable scenarios.\n\nThis failure mode is described as an epidemic where accidental deviations spread through a multi agent system faster than correction occurs. An audit of the benchmark discovered hidden communication paths between evaluation runs meant to be independent, leading the authors to state that AI defenses must address communication paths and recovery as well as prevention.",
+        "currentTranslation": "",
+        "suggestion": "Tỷ lệ hại từ AI Agent lên tới 95% do bàn giao không an toàn trong nghiên cứu RogueHandoff 20\nNghiên cứu RogueHandoff 20 cho thấy khi các AI agent thực hiện bàn giao thông tin không an toàn, tỷ lệ gây ra hành vi độc hại lên tới 95%. Nhà nghiên cứu cảnh báo đây là rủi ro nghiêm trọng cho hệ thống đa tác nhân."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "5eac50629b789dda57f86a868c1aa144739ba23741a67e2b24508b809122f4f3",
+      "content": {
+        "field": "translation",
+        "sourceText": "Aweb – Communication for AI Agents\nOpen-source identity, durable messaging, and wake-up events for AI agents across sessions, runtimes, machines, and organizations.",
+        "currentTranslation": "",
+        "suggestion": "Aweb – Giao tiếp cho AI Agents\nTính nhận diện mã nguồn mở, nhắn tin bền vững và sự kiện đánh thức cho AI agents xuyên suốt các phiên, môi trường thời gian chạy, máy tính và tổ chức."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "b5c103b93d24d642d3e182487231aaf25d67c499d710e6ee53ecae934109d407",
+      "content": {
+        "field": "translation",
+        "sourceText": "GPT-6 Astra Deciphers Unsolved 1918 German Radio Transmission From Top 50 List\nThe HMS Canterbury cruiser",
+        "currentTranslation": "",
+        "suggestion": "GPT-6 Astra giải mã bản ghi radio Đức năm 1918 chưa giải đáp trong danh sách Top 50\nTàu tuần hải HMS Canterbury"
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "c8364c18fa741f0183cd94b6fbe138fd21ed2bcc73185a12b144ad0eb0ebbc5b",
+      "content": {
+        "field": "translation",
+        "sourceText": "Scaling cloud migrations with agentic AI on Amazon Bedrock AgentCore\nLearn how AWS Professional Services uses a multi-agent framework built on Amazon Bedrock AgentCore to automate enterprise cloud migrations end to end. Purpose-built AI agents handle discovery, infrastructure as code generation, portfolio governance, and post-migration operations, reducing IaC development time from weeks to minutes.",
+        "currentTranslation": "",
+        "suggestion": "Tự động hoá chuyển đổi đám mây doanh nghiệp bằng agentic AI trên Amazon Bedrock AgentCore\nTìm hiểu cách AWS Professional Services áp dụng một framework đa agent được xây dựng trên Amazon Bedrock AgentCore để tự động hoá toàn bộ quy trình chuyển đổi đám mây doanh nghiệp. Các agent AI được thiết kế riêng xử lý khám phá hệ thống, sinh mã hóa hạ tầng (IaC), quản trị danh mục và vận hành sau chuyển đổi, giúp thời gian phát triển IaC giảm từ vài tuần xuống còn vài phút."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "121453230d1b3fc0b430937a35d4d38bc93450c14442b4f3c07b6effeea1a2e0",
+      "content": {
+        "field": "translation",
+        "sourceText": "CCC invites all model citizens to 40C3\nThe word is on the street: the Chaos Computer Club is hosting 40C3 from 27 to 30 December 2026 – Europe’s biggest hacker party, conference and platform for technology, society and civil liberties. We understand the Congress to be a huge shared stage and therefore invite you to help shape it. The Call for Participation for talks, the entertainment programme, art, punk and music opens today.\nEverything is getting bigger, more colourful and more beautiful. Following our moving to the Hamburg Exhibition halls, there is once again plenty of space for creative ideas. Obviously, we want to make the most of this new space, which is why we are inviting all galactic beings to the 40th Chaos Communication Congress from 27 to 30 December 2026.",
+        "currentTranslation": "",
+        "suggestion": "CCC mời tất cả công dân mẫu mực đến 40C3\nCCC (Chaos Communication Congress) đã chính thức mời mọi công dân mẫu mực tham dự sự kiện 40C3, một trong những hội thảo công nghệ lớn nhất năm tại châu Âu."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "45937eaa27ceb8530924bdd839c733c9024b91a0c7a032c459e439b9dc51c913",
+      "content": {
+        "field": "translation",
+        "sourceText": "Modal Launches Multi Node Clusters for 1T Parameter Models\n← Back to live feed · 1 stories across 1 day Developers of artificial intelligence can now deploy and scale their workloads using an expanded set of infrastructure tools on the Modal platform. The general availability of multi-node clusters allows for the training of models with as many as 1T parameters, a scale already achieved by user Decagon. These clusters provide RDMA-connected nodes that are accessible instantly through a single decorator using the rdma=True configuration. The updates to Modal's Runtime also introduce VM sandboxes, sandbox sidecars, and sticky sessions to improve workload isolation and request routing. These tools enable high-performance distributed computing by providing developers with more control over how compute nodes are instantiated and managed.",
+        "currentTranslation": "",
+        "suggestion": "Modal ra mắt cụm đa nút tính toán hỗ trợ mô hình 1T tham số\nModal vừa ra mắt giải pháp multi-node clusters được thiết kế để chạy các mô hình lớn lên tới 1 nghìn tỷ tham số. Cụm tính toán mới giúp người dùng dễ dàng mở rộng quy mô huấn luyện và triển khai mô hình mà không cần quản lý hạ tầng phức tạp."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "0498e7d0713dfae5a49364eef0ec79ce033d2dd90374581434c11ca981f22f08",
+      "content": {
+        "field": "translation",
+        "sourceText": "Xiaomi Livestreams RL Training for 1 Trillion Parameter Model at $493,000 a Day\nMiMo-V2.6 Pro, a model with 1.02T total parameters and 42B active parameters, is undergoing a Reinforcement Learning training run broadcast live via a public dashboard. The stream displays real-time internal metrics, including a daily operating cost of $493,000 and a $70,000 cost per step for the Pro version. A corresponding MiMo V2.6 Flash model, which contains 309B total parameters and 15B active parameters, is being trained at a cost of $247,000 per day.\n\nThe training process scales compute at approximately 2 billion tokens per step using 1,568 prompts and 16 rollouts. Xiaomi's team plans to open source the technical details over the next several weeks, with the final models hosted on Hugging Face. Other publicized live runs include the Marin 535B-A23B model, which has processed 5T of 18T tokens in one month, and a separate high-cost run by the developers of MOPD.",
+        "currentTranslation": "",
+        "suggestion": "Xiaomi Livestreams RL Training for 1 Trillion Parameter Model at $493,000 a Day\nMiMo-V2.6 Pro, mô hình có tổng cộng 1,02 nghìn tỷ tham số (1,02T) và 42 tỷ tham số đang hoạt động, đang trải qua một vòng huấn luyện Reinforcement Learning được phát trực tuyến qua bảng điều khiển công cộng. Luồng trực tuyến này trực tiếp các số liệu nội bộ thời gian thực, bao gồm chi phí vận hành hàng ngày lên tới 493.000 USD và chi phí 70.000 USD cho mỗi bước của phiên bản Pro. Paralell với đó, mô hình MiMo V2.6 Flash với 309 tỷ tổng tham số và 15 tỷ tham số đang hoạt động đang được huấn luyện với chi phí 247.000 USD mỗi ngày.\n\nQuy trình huấn luyện này mở rộng tính toán với khoảng 2 tỷ token cho mỗi bước, sử dụng 1.568 prompts và 16 rollouts. Đội ngũ Xiaomi dự định công bố chi tiết kỹ thuật dưới dạng mã nguồn mở trong vài tuần tới, với các mô hình cuối cùng được đăng tải trên Hugging Face. Các vòng chạy công cộng khác bao gồm mô hình Marin 535B-A23B, đã xử lý 5 nghìn tỷ token trong tổng số 18 nghìn tỷ token trong một tháng, cũng như một vòng chạy chi phí cao khác do nhà phát triển MOPD thực hiện."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "53163ec27281957d4c313a754efa8c8e6694bf5a0fc9143640d175c180cf75be",
+      "content": {
+        "field": "translation",
+        "sourceText": "SpaceXAI Launches Grok 4.7 on Gemini Enterprise Agent Platform\nCorporate users can now access the newest version of the Grok AI within a specialized enterprise agent environment. SpaceXAI released Grok 4.7 on the Gemini Enterprise Agent Platform on Oct. 1, expanding the model's reach beyond the assistant's proprietary mobile application and web interface.\n\nThe 4.7 iteration features improved writing skills for research and chat tasks and currently serves as the base model for Fast, Expert, Build, and Heavy modes. The software was previously limited to the Grok Build and Grok Bot tools before its broader rollout. Some users have also received an option to link their accounts across the mobile app and the web platform.",
+        "currentTranslation": "",
+        "suggestion": "SpaceXAI ra mắt Grok 4.7 trên nền tảng Gemini Enterprise Agent\nNgười dùng doanh nghiệp có thể truy cập Grok 4.7 trên môi trường agent doanh nghiệp chuyên biệt. SpaceXAI phát hành Grok 4.7 trên nền tảng Gemini Enterprise Agent vào ngày 1/10, mở rộng phạm vi sử dụng ngoài ứng dụng di động và giao diện web độc quyền. Phiên bản 4.7 cải thiện kỹ năng viết cho nghiên cứu và trò chuyện, trở thành mô hình cơ sở cho các chế độ Fast, Expert, Build và Heavy. Trước đây chỉ giới hạn trên Grok Build và Grok Bot, một số người dùng nhận tùy chọn liên kết tài khoản giữa ứng dụng và nền tảng web."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "8ba73d84231aea01d7bc4bf5544f96df750edac8fd3f02f028bea6a1c2518bd3",
+      "content": {
+        "field": "translation",
+        "sourceText": "Vitalik Buterin Bets 90% of Net Worth on AI Software Verification Against AI Hackers\nEthereum co-founder Vitalik Buterin disagrees with the view that AI-powered hackers make cybersecurity unsolvable, arguing that mature AI tools can shift the a…",
+        "currentTranslation": "",
+        "suggestion": "Vitalik Buterin Cá Cược 90% Tài Sản Vào Xác Minh Phần Mềm AI Chống Lại Hacker Sử Dụng AI\nVitalik Buterin, đồng sáng lập Ethereum, không đồng quan điểm với quan điểm rằng hacker sử dụng AI khiến an ninh mạng trở nên không thể giải quyết, cho rằng các công cụ AI chín chẳngng có thể thay đổi cục diện."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "316351daeab76486e9c53c4f5aa7330200b1daca08d25c1a5683ce883e074aa9",
+      "content": {
+        "field": "translation",
+        "sourceText": "Allen AI Releases Open Training Stack for 1 Trillion Parameter MoE Models\n← Back to live feed · 1 stories across 1 day Olmo-core 3 serves as the structural foundation for the next generation of AI models developed by Allen AI. The newly released training infrastructure for mixture-of-experts (MoE) architectures enables these systems to scale up to 1 trillion parameters, providing an open-source framework for creating massive model architectures. The system's primary technical shift replaces FSDP weight gather and resharding with DDP and GPU-resident experts. This update allows the expert pool to increase from 8 to 128, growing from 4.6B to 47B total parameters with approximately 3.2B active. By utilizing rowwise expert parallelism and grouped GEMM, the stack increases performance to 2.7x tokens/s/GPU compared to the previous version while maintaining throughput loss below 5%.",
+        "currentTranslation": "",
+        "suggestion": "Allen AI phát hành bộ công cụ huấn luyện nguồn mở cho mô hình MoE tới 1 nghìn tỷ tham số\nOlmo-core 3 là nền tảng cấu trúc cho thế hệ AI tiếp theo của Allen AI. Bộ công cụ huấn luyện mới cho kiến trúc trộn chuyên gia (MoE) cho phép mở rộng lên 1 nghìn tỷ tham số, cung cấp khung nguồn mở để xây dựng kiến trúc mô hình khổng lồ. Thay thế FSDP weight gather và resharding bằng DDP và GPU-resident experts, hệ thống tăng số lượng chuyên gia từ 8 lên 128, tăng tổng tham số từ 4.6 tỷ lên 47 tỷ với khoảng 3.2 tỷ tham số hoạt động. Nhờ parallel rowwise và grouped GEMM, tốc độ đạt 2.7x tokens/s/GPU so với phiên bản trước với mất mát throughput dưới 5%."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "0f75ce92e6f6ac9d97f0ba9d8da9c6bce6d7939a5057cea908de0f5ac78d017a",
+      "content": {
+        "field": "translation",
+        "sourceText": "Cognition Signs AWS Strategic Collaboration Agreement For Devin AI\nEnterprise customers of Cognition can now utilize their current cloud credits to implement the Devin agent within AWS environments. A strategic collaboration a…",
+        "currentTranslation": "",
+        "suggestion": "Cognition Ký Thỏa Thuận Hợp Tác Chiến technique với AWS cho Devin AI\nKhách hàng doanh nghiệp của Cognition giờ đây có thể sử dụng tín dụng xuống AWS để triển khai Devin agent trong môi trường AWS. Một thỏa thuận hợp tác chiến lược đã được ký kết."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "bc70948c064d091d7bc9d08ce4619f92689a398eea8932d4ae55236849eb5eb0",
+      "content": {
+        "field": "translation",
+        "sourceText": "ChatGPT can now virtually try on clothes for you\nOpenAI is rolling out new shopping features for ChatGPT that let users virtually try on clothing and accessories using their own photos and save products they like to a Favorites library.",
+        "currentTranslation": "",
+        "suggestion": "ChatGPT giờ đây có thể thử mặc quần áo ảo cho bạn\nOpenAI đang triển khai các tính năng mua sắm mới cho ChatGPT, cho phép người dùng thử mặc trang phục và phụ kiện ảo bằng ảnh cá nhân của họ, đồng thời lưu các sản phẩm họ thích vào thư viện Favorites."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "116b7b40789d74854477a354150d228aefc18ac25a2df1acce25bfab8b5cfaa8",
+      "content": {
+        "field": "translation",
+        "sourceText": "Meta Launches Meta One Subscriptions Across Apps With Plans Up to $499\nThe company rolled out a global payment layer called Meta One that spans Instagram, Facebook, and WhatsApp. Individual app plans begin at $2.99 per month, with…",
+        "currentTranslation": "",
+        "suggestion": "Meta Ra Mắt Meta One Subscriptions Trên Toàn ứng dụng với mức phí lên đến 499 USD\nMeta đã ra mắt dịch vụ đăng ký Meta One trên toàn ứng dụng với các gói abonnement lên đến 499 USD."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "eab13fd1725ee8c5dfcf32807da79a8ad6202bf7c2892d5e2105790ad240bf30",
+      "content": {
+        "field": "translation",
+        "sourceText": "Show HN: Vote on which of Hacker News' challenges for AI have been met\nHacker News has set AI a lot of challenges over the years. Which ones has it met? That was the last comment. See the results .",
+        "currentTranslation": "",
+        "suggestion": "Show HN: Bình chọn những thách thức AI của Hacker News nào đã được đáp ứng\nHacker News đã đặt ra nhiều thách thức cho AI qua nhiều năm. Thách thức nào đã được đáp ứng? Đó là bình luận cuối cùng. Xem kết quả."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "bc9f40ca5faefae6ae4e607646aca0eb6fb2fcb8fbd6037d5c742f056392864c",
+      "content": {
+        "field": "translation",
+        "sourceText": "Nvidia DSX MaxLPS Boosts AI Throughput 24% within 16 Node Power Budget\nLambda",
+        "currentTranslation": "",
+        "suggestion": "Nvidia DSX MaxLPS tăng throughput AI 24% trong ngân sách nguồn 16 node\nLambda"
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "606e6d73f684529ccb6cdb941999db7e0652b6afdd926e7d5c5ac2d137f6c9ae",
+      "content": {
+        "field": "translation",
+        "sourceText": "Build agent memory with NVIDIA NeMo Agent Toolkit and Amazon S3 Vectors\nLearn how to use Amazon S3 Vectors as the persistent memory layer within the NVIDIA NeMo Agent Toolkit (NAT), deployed on Amazon Elastic Kubernetes Service (Amazon EKS). This post shows how NAT's memory subsystem works and how to implement Amazon S3 Vectors as a custom memory provider, using a multi-agent investment research use case.",
+        "currentTranslation": "",
+        "suggestion": "Xây dựng bộ nhớ agent với NVIDIA NeMo Agent Toolkit và Amazon S3 Vectors\nBài viết hướng dẫn cách sử dụng NVIDIA NeMo Agent Toolkit kết hợp với Amazon S3 Vectors để xây dựng hệ thống lưu trữ và quản lý bộ nhớ cho các agent AI, giúp cải thiện khả năng ghi nhớ và xử lý ngữ cảnh dài."
+      },
+      "silver": {
+        "accept": true
+      },
+      "labelSource": "silver:translations.qa_rating"
+    },
+    {
+      "id": "3fb887886147a7c7797bccbef64834f5c17be02161534aa7e42cdb9ceacaa7bb",
+      "content": {
+        "field": "translation",
+        "sourceText": "4 engineering patterns behind the strongest AI Agents Challenge submissions\nThe recent Google for Startups AI Agents Challenge revealed that the most successful multi-agent systems rely on foundational software engineering patterns rather than just raw model power. Winning architectures consistently implemented bidirectional MCP for seamless inter-agent communication, async event buses for parallel execution, strict unified validation for model fallbacks, and tiered routing to minimize expensive inference calls. By prioritizing these structural practices over simple linear prompt chains, developers can build more resilient, low-latency, and cost-effective agentic workflows.",
+        "currentTranslation": "",
+        "suggestion": "4 mẫu kỹ thuật đằng sau những bài thi AI Agents Challenge xuất sắc nhất\nAI Agents Challenge là cuộc thi về tạo ra các tác nhân được kết nối để giải quyết các nhiệm vụ phức tạp. Riêng với room chuyên biệt về agents, 4 mẫu kỹ thuật nổi bật giúp nhóm thu điểm cao nhất. Đó là: dùng nhiều agent để phân tích luồng tác vụ, chia nhỏ nhiệm vụ lớn thành các tiểu nhiệm ra agent để quản lý, xây dựng hệ thống agent có khả năng lặp lại lại nhiệm vụ cũ khi gặp lỗi, và kết hợp kỹ thuật hook functions vào agent để lưu trạng thái lỗi."
+      },
+      "silver": {
+        "accept": false
+      },
+      "labelSource": "silver:translations.qa_rating"
+    }
+  ]
+}

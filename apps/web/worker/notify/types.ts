@@ -47,6 +47,17 @@ export interface SendResult {
    *  answer (timeout, dropped connection, proxy error page), so the message
    *  may already be posted. It must not be sent again, now or on a later run. */
   ambiguous?: boolean;
+  /** Set when the Worker refused to make the request at all: the Workflow
+   *  instance spent its subrequest budget earlier in the run. Nothing left
+   *  the isolate, so it is safe to send again, and it costs no attempt. */
+  budgetExhausted?: boolean;
+}
+
+/** The runtime's error when a Worker or Workflow instance is out of
+ *  subrequests. The request was never made. */
+export function isSubrequestLimitError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /too many subrequests/i.test(message);
 }
 
 /** One delivery channel (telegram, discord, ...). Each enabled channel
@@ -73,3 +84,9 @@ export interface Notifier {
   /** Sends one breaking/trending story as its own post. */
   sendStory(env: Env, story: StoryPayload): Promise<SendResult>;
 }
+
+/** Big-news days (a launch event, a run of major stories): a story at this
+ *  importance may go past the normal cap and gap, up to the burst limits.
+ *  The day's own scores open the extra room, no event list is kept. Webhooks
+ *  also mark these stories "warning". */
+export const TRENDING_BURST_MIN_IMPORTANCE = 9;
