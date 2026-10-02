@@ -61,7 +61,35 @@
       { yPercent: -4, duration: I.dur, ease: "none" },
       I.start
     );
-    if (I.variant === "date-slam") {
+    if (I.variant === "grid") {
+      // Frame 0 is the finished grid. Then each tile is underlined in turn, and the grid drifts.
+      tl.fromTo(
+        ".gfoot",
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, ease: LAND },
+        I.start + 0.5
+      );
+      tl.fromTo(
+        ".tiles",
+        { y: 0 },
+        { y: vertical ? -18 : -10, duration: I.dur, ease: "none" },
+        I.start
+      );
+      $$(".tile").forEach((tile, i) => {
+        tl.fromTo(
+          $(".tbar", tile),
+          { scaleX: 0 },
+          { scaleX: 1, duration: 0.35, ease: LAND },
+          I.start + 0.8 + i * 0.3
+        );
+        tl.fromTo(
+          $("img", tile) || $(".tpaper", tile),
+          { scale: 1.0 },
+          { scale: 1.08, duration: I.dur, ease: "none" },
+          I.start
+        );
+      });
+    } else if (I.variant === "date-slam") {
       tl.fromTo(
         ".slam .dow",
         { y: -60, opacity: 0 },

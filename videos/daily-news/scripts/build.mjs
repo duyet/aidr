@@ -30,7 +30,7 @@ const dir = join(ROOT, "editions", date);
 const edition = read(join(dir, "edition.json"));
 const script = read(join(dir, "script.json"));
 const theme = {
-  intro: ["countdown", "date-slam", "headline-stack"][dayOfYear(date) % 3],
+  intro: "grid",
   transition: "wipe",
   background: "paper",
   ...script.theme,
@@ -206,7 +206,21 @@ const marked = (h) =>
 function introHtml() {
   const v = theme.intro;
   let body;
-  if (v === "date-slam") {
+  if (v === "grid") {
+    // The summary grid: every story at once, fully drawn on frame 0 (the auto-thumbnail frame).
+    const tiles = script.stories
+      .map((s) => {
+        const img = (s.images ??
+          byRank[s.rank]?.images?.map((im) => im.local) ??
+          [])[0];
+        const face = img
+          ? `<img id="g${s.rank}-img" src="${esc(img)}" alt="" /><div class="tshade"></div>`
+          : `<div class="tpaper"><span>${esc(s.paper?.venue ?? byRank[s.rank]?.source ?? "")}</span><b>${esc(s.paper?.title ?? s.kicker)}</b></div>`;
+        return `<div class="tile${img ? "" : " noimg"}">${face}<span class="tr">${s.rank}</span><div class="tt"><div class="tk">${esc(s.kicker)}</div><div class="th">${esc(s.headline.replace(/\*/g, ""))}</div></div><span class="tbar"></span></div>`;
+      })
+      .join("");
+    body = `<div class="ghead"><div class="gdate"><span class="gday">${pad2(DAY)}</span><span class="gmon">${esc(DOW.toUpperCase())}<br/>${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</span></div><div class="gbrand">${logo("")}<span>AI;DR DAILY<br/>TOP ${script.stories.length} IN AI</span></div></div><div class="tiles">${tiles}</div><div class="gfoot">${esc(script.intro.title)}</div>`;
+  } else if (v === "date-slam") {
     body = `<div class="slam"><span class="dow">${esc(DOW.toUpperCase())}</span><span class="day">${pad2(DAY)}</span><span class="mon">${esc(MON.toUpperCase())}</span></div>
       <div class="slam-tail"><div class="title">${esc(script.intro.title)}</div><div class="with">${logo("")}<span>AI;DR DAILY BRIEF</span></div></div>`;
   } else if (v === "headline-stack") {
@@ -276,12 +290,10 @@ function outroHtml() {
     <div class="url"><span class="mk2">aidr.today</span></div><div class="follow">${esc(script.outro.follow ?? "A new brief every day. Follow for tomorrow's.")}</div></div></div></section>`;
 }
 
-const wipes = segs
-  .slice(1)
-  .map((seg) => ({
-    at: r3(seg.start),
-    label: seg.kind === "story" ? String(seg.story.rank) : ";",
-  }));
+const wipes = segs.slice(1).map((seg) => ({
+  at: r3(seg.start),
+  label: seg.kind === "story" ? String(seg.story.rank) : ";",
+}));
 function wipesHtml() {
   return wipes
     .map((w, i) => {
@@ -361,6 +373,9 @@ function buildMix(outFile) {
   if (theme.intro === "headline-stack")
     for (const [i] of script.stories.entries())
       cues.push([C.tick, 0.25 + i * 0.22 + 0.1, 0.7]);
+  if (theme.intro === "grid")
+    for (const [i] of script.stories.entries())
+      cues.push([C.tick, 0.8 + i * 0.3, 0.7]);
   if (theme.intro === "date-slam") cues.push([C.rankHit, 0.45, 0.9]);
 
   const inputs = [];
