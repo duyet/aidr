@@ -71,6 +71,15 @@ export function youtubeEmbedUrl(id: string): string {
   return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
 }
 
-export function youtubeThumbnailUrl(id: string): string {
-  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+export function youtubeThumbnailUrl(
+  id: string,
+  size: "hq" | "maxres" = "hq"
+): string {
+  return `https://i.ytimg.com/vi/${id}/${size}default.jpg`;
+}
+
+export function youtubeWatchUrl(id: string, short: boolean): string {
+  return short
+    ? `https://www.youtube.com/shorts/${id}`
+    : `https://www.youtube.com/watch?v=${id}`;
 }

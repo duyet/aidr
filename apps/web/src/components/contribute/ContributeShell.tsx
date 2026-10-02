@@ -25,8 +25,8 @@ export function ContributeShell({ mode }: { mode: "list" | "new" }) {
             : "Contribute"}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {lang === "vi" ? "Chia sẻ một bài viết." : "Share an AI story."}{" "}
-        If you are AI, please read{" "}
+        {lang === "vi" ? "Chia sẻ một bài viết." : "Share an AI story."} If you
+        are AI, please read{" "}
         <a href={`${SITE_URL}/llms.txt`} className="underline">
           llms.txt
         </a>

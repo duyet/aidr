@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { DayBriefing } from "../components/DayBriefing";
 import { DaySection } from "../components/DaySection";
 import { DayVideo } from "../components/DayVideo";
 import { NotFoundPage } from "../components/NotFoundPage";
@@ -156,15 +157,26 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
         {heading}
       </h1>
       {archive.video ? (
-        <div className="mt-4 grid gap-4 md:grid-cols-3 md:items-start">
-          <div className="md:col-span-2">
-            <DayVideo
-              video={archive.video}
-              fallbackTitle={`AI;DR — ${heading}`}
-              lang={lang}
-            />
-          </div>
-          {tldr && <div className="md:col-span-1">{tldr}</div>}
+        <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <DayVideo
+            video={archive.video}
+            fallbackTitle={`AI;DR — ${heading}`}
+            lang={lang}
+          />
+          {bullets.length > 0 && (
+            // md+: the list takes the video's height and scrolls inside.
+            <div className="relative min-h-[18rem]">
+              <div className="md:absolute md:inset-0">
+                <DayBriefing
+                  bullets={bullets}
+                  date={archive.date}
+                  lang={lang}
+                  topicByItemId={topicByItemId}
+                  pathByItemId={pathByItemId}
+                />
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         tldr
