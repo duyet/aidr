@@ -380,7 +380,7 @@ async function main() {
   if (mode === "build") {
     const steps = list(arg("--steps"));
     for (const [name, build] of Object.entries(BUILDERS))
-      if (steps.length === 0 || steps.includes(name)) build();
+      if (steps.length === 0 || steps.includes(name)) await build();
     return;
   }
   if (mode === "report") {

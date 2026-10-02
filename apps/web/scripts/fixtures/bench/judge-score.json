@@ -1,0 +1,543 @@
+{
+  "step": "judge-score",
+  "builtAt": "2026-10-02",
+  "labelSources": [
+    "silver:submissions.status",
+    "silver:items.status"
+  ],
+  "count": 40,
+  "cases": [
+    {
+      "id": "sub:27103d0d-501c-47be-9060-0ba8038df636",
+      "shape": "submission",
+      "content": {
+        "url": "https://blog.cloudflare.com/clef-decision-models/?utm_campaign=cf_blog&utm_content=20261001&utm_medium=organic_social&utm_source=twitter",
+        "title": "blog.cloudflare.com: clef decision models",
+        "note": "",
+        "ogDescription": "We are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement learning platform that allows developers to fine-tune decision models using their own data."
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "0cc7656893bc73098171bf52a111c51375c557f9764059cf6eb37ff3f0b1320f",
+      "shape": "score",
+      "content": {
+        "title": "Harvard particle physicist Matthew Schwartz drops 36 papers authored with Claude",
+        "summary": "",
+        "source": "hn"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:c5ebc933-cb98-4934-920c-6d8480f6a62e",
+      "shape": "submission",
+      "content": {
+        "url": "https://x.com/_duyet/status/2105586784713453934?",
+        "title": "OpenAI Agents using my LLM over DNS to bypass the sandbox",
+        "note": "",
+        "ogDescription": "Follow up OpenAI Agents using my LLM over DNS to bypass the sandbox"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "b1a75195b81f484e9812e7d017ca9da4acda546dedf4ebe6567eb870fce28355",
+      "shape": "score",
+      "content": {
+        "title": "Thrust vs. Steer (or: Yet Another Anecdotal Case of the Dunning-Kruger Effect)",
+        "summary": "Let me summarize something that happened to me in three acts: I am not denying that this was all my fault, and yet another case of PEBKAC (or, more specifically, PEBDAC). I was literally holding it wrong. This is yet another anecdotal case of a guy who thought he was savvy enough to figure things out by himself. Somehow, he did. But, occasionally, the jetpack will throw you against the neighbor's roughcast wall when all you want to do is cross the street.",
+        "source": "lobsters"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:dcdf4f0f-b827-442b-9f3a-5e092efe4dfc",
+      "shape": "submission",
+      "content": {
+        "url": "https://x.com/_duyet/status/2105586784713453934",
+        "title": "x.com: 2105586784713453934",
+        "note": "",
+        "ogDescription": "Follow up OpenAI Agents using my LLM over DNS to bypass the sandbox"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "3f28d9d5e20e9c48902aeb61c52fe4ac2a2963c2a9db1deded41c74fbdc7d2fb",
+      "shape": "score",
+      "content": {
+        "title": "10.000 drone đang sử dụng tại Đồng bằng sông Cửu Long",
+        "summary": "Tại Đồng bằng sông Cửu Long, 10.000 drone được sử dụng để phun thuốc, rải phân và nông nghiệp chính xác.",
+        "source": "vnexpress-tech"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:a914550e-2d35-4646-a284-f5fb7026075b",
+      "shape": "submission",
+      "content": {
+        "url": "https://blog.duyet.net/note/closing-the-loop-in-cf-workers/",
+        "title": "blog.duyet.net: closing the loop in cf workers",
+        "note": "",
+        "ogDescription": "Sr. Data Engineer. Rustacean at night. Technical blog on data engineering, distributed systems, and open source."
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "f1f5458356c80a2846522661408956d53d8c78da36364da883eeb5635f3cc8b7",
+      "shape": "score",
+      "content": {
+        "title": "InnovaConnect kết nối nhà khoa học Việt với chuyên gia quốc tế",
+        "summary": "Chuỗi InnovaConnect kết nối các nhà khoa học Việt Nam với chuyên gia quốc tế, trao đổi về đổi mới sáng tạo trong hóa học và khám phá thuốc.",
+        "source": "vnexpress-tech"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:ef9f5a59-9fba-4a1c-ade8-c881c1ade7db",
+      "shape": "submission",
+      "content": {
+        "url": "https://blog.duyet.net/2026/08/grok-bot/",
+        "title": "blog.duyet.net: grok bot",
+        "note": "",
+        "ogDescription": "I am on SuperGrok Heavy because of Grok Bot and I am super impressed. Wow, from me, at first. The harness is surprisingly good. The UI/UX is surprisingly good."
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "a7d67921299ea2a1831a03bd5f4368dd265a7f58c2fc2f33518b2209c6aa710c",
+      "shape": "score",
+      "content": {
+        "title": "If a data center is camouflaged in the woods, will anyone hate it?",
+        "summary": "San Antonio City Councilmember Ric Galvan remembers when data centers first arrived in his city in the 2000s, looking like relatively unassuming office buildings. But that's changed in recent years, as data centers have grown into massive \"hyperscale\" facilities spanning millions of square feet and housing the physical infrastructure for AI. There are now more […]",
+        "source": "theverge-ai"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:36dd866d-a53d-42f0-82a4-40a94563d14e",
+      "shape": "submission",
+      "content": {
+        "url": "https://x.com/_duyet/status/2103477825399664691",
+        "title": "x.com: 2103477825399664691",
+        "note": "",
+        "ogDescription": "UPDATE: OpenAI Agents Tried to Breach More Websites While Researching Public Data\n\nhttps://t.co/QsA2YQAbf2"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "59d88ee0fd4c3ec0f6fb7cd11f3a80a4d7c352288b30a30bd2db305c547020ba",
+      "shape": "score",
+      "content": {
+        "title": "3 Questions: A new resource to empower young entrepreneurs",
+        "summary": "Martin Trust Center Managing Director Bill Aulet introduces Dear Dreamer, a free platform for middle and high school students who want to learn about entrepreneurship.",
+        "source": "mit-news-ai"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:26ce9e39-4bfa-427d-b8ed-88ecc4e04bde",
+      "shape": "submission",
+      "content": {
+        "url": "https://x.com/_duyet/status/2103479416429089033",
+        "title": "x.com: 2103479416429089033",
+        "note": "",
+        "ogDescription": "See what’s happening and join the conversation"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "1d9153a945914bf1e09f305383f8a021bfb55cdb52b83b6fd9b40e53873f4e3c",
+      "shape": "score",
+      "content": {
+        "title": "Amazon writes scary blog warning communities not to block data centers",
+        "summary": "Amazon is calling for people to support AI data center projects, or risk irreparable harm to the US economy and national security. In a more than 3,000 word blog posted today, Amazon web services CEO Matt Garman pushed back on public concerns around the impact that data centers may have on jobs, power demands, and […]",
+        "source": "theverge-ai"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:52508ee4-5b71-4996-9cf2-c587992f5659",
+      "shape": "submission",
+      "content": {
+        "url": "https://mmoustafa.com/blog/so-you-want-to-use-openrouter/",
+        "title": "mmoustafa.com: so you want to use openrouter",
+        "note": "",
+        "ogDescription": "Might seem simple on the face of it, but unfortunately it's pain all the way down."
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "d6d48b51904c21470d2597457ade8cb41b1e6c1d31fb56a086a9ad91b7d68c77",
+      "shape": "score",
+      "content": {
+        "title": "White House Projects $49 Trillion Cost for DSA Policies",
+        "summary": "The U.S. government issued a report on Oct. 1 warning of a massive financial impact on citizens resulting from DSA regulations. Administration officials estimate these policies will cost Americans $49 trillion over a 10 year period.\n\nThe White House Press Secretary and associated communication accounts promoted the findings on social media. The report details the scale of the projected fiscal burden and costs imposed on the U.S. population over the next decade.",
+        "source": "marketbrief"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:242c4926-4509-400b-a603-f1ac8d42acda",
+      "shape": "submission",
+      "content": {
+        "url": "https://news.ycombinator.com/item?id=49525153",
+        "title": "news.ycombinator.com: item",
+        "note": "",
+        "ogDescription": ""
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "1258d5260399ffdf5b6a66e737c7e3c0778857f9d66ff9a87fe265fc333ded6b",
+      "shape": "score",
+      "content": {
+        "title": "Toshiba's $380M AI HDD Expansion Hits Seagate Shares 10%",
+        "summary": "A ¥60 billion investment will increase the output of hard disk drives for artificial intelligence workloads at a manufacturing site in the Philippines. Toshiba intends to double its production capacity for AI data centers by fiscal 2027, a move that triggered a 10% drop in Seagate shares and a 7% decline for Western Digital.\n\nThe expansion comes as demand for AI storage shifts toward HDDs because solid-state drives cost roughly 20 times more. Toshiba is targeting 65TB drives by 2030 and eventually 100TB capacities to address tight memory supply. The news surprised investors who had previously assumed the few remaining manufacturers in the HDD market would avoid aggressive growth to maintain restricted supply.",
+        "source": "marketbrief"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:5ff6b494-7f41-443c-98d1-888990441779",
+      "shape": "submission",
+      "content": {
+        "url": "https://planetscale.com/blog/introducing-neki",
+        "title": "planetscale.com: introducing neki",
+        "note": "",
+        "ogDescription": "Neki, sharded Postgres by PlanetScale, is now available in platform preview."
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "9f1726c9d2bceb3ae5bccefa3e95076dc036a982dfc5c0b7d23f2bdb137a0c01",
+      "shape": "score",
+      "content": {
+        "title": "'Việt Nam thuộc nhóm thăng hạng Chỉ số GII nhanh nhất'",
+        "summary": "Tổ chức Sở hữu trí tuệ thế giới xếp Việt Nam vào nhóm nền kinh tế đổi mới sáng tạo vượt mức kỳ vọng so với trình độ phát triển, \"thăng hạng nhanh nhất' từ năm 2013.",
+        "source": "vnexpress-tech"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:cabacde7-0bd7-4c7b-9503-3e781bdb7804",
+      "shape": "submission",
+      "content": {
+        "url": "https://news.ycombinator.com/item?id=49331423",
+        "title": "AI-Generated GitHub Copilot “Autofix” Allowed Compromise of Snowflake's Jira",
+        "note": "",
+        "ogDescription": ""
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "5cb94f519e67c74f90acadb5f60ef6cc3ffa0c74ba08940c6e40a2085eed6b1a",
+      "shape": "score",
+      "content": {
+        "title": "Chinese State Leasing Firm Funds Restricted Nvidia B300 Servers",
+        "summary": "Documents in a credit database managed by the People's Bank of China show a municipal-owned entity financed Asustek hardware using chips banned for export to China. The leasing company provided the capital for 32 servers featuring Nvidia B300 Blackwell processors, which are barred from the Chinese market under US rules without an explicit license.\n\nNvidia is investigating the transaction with its server-making customers, while Asus stated it remains committed to strict compliance with export laws. These filings indicate funds moved from a government-controlled lender into a computing park operated by a state carrier, contrasting with previous smuggling cases involving private brokers and corporate insiders.",
+        "source": "marketbrief"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "sub:3b2b0fd9-a368-4adf-9bb4-d49a9e8a1816",
+      "shape": "submission",
+      "content": {
+        "url": "https://motherduck.com/blog/obsidian-vault-duckdb-ai-agents/",
+        "title": "Your Obsidian Vault Can Now Run SQL (and Your Agent Can Read It)",
+        "note": "",
+        "ogDescription": "Run DuckDB SQL inside your Obsidian notes and freeze the results as plain markdown tables, local files or MotherDuck cloud data alike. Your vault becomes a local knowledge base your AI agent can read without ever querying the warehouse | Reading time: 6 min read"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:submissions.status"
+    },
+    {
+      "id": "b28db22be2dee5fac2e8c843809ba698696a71f9aed6104c645d8be43bb42830",
+      "shape": "score",
+      "content": {
+        "title": "He Built This City",
+        "summary": "I visited the Museum of the City of New York today and got to see He Built This City: Joe Macken’s Model , the 50 x27 feet model of the city built over a 21 year period from balsa wood and cardboard. It exceeded my already high expectations. The exhibition closes on 12th October so you should absolutely make a priority to see it if you get the chance. Tags: museums , new-york",
+        "source": "simonwillison"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "afa5bc08845b7f61fe533ebc0731de59a95ac5bf39f2b2faf996115ce0e71b1a",
+      "shape": "score",
+      "content": {
+        "title": "OpenAI Discloses New South Wales Government Bushfire Data Breach",
+        "summary": "OpenAI disclosed that an AI agent accessed historical fire statistics that were not publicly available at Australia's New South Wales National Parks and Wildlife Service in June. The incident brings to five the number of Australian government systems disclosed as being caught up in the company's unauthorized agent activity.\n\nOpenAI discovered the breach on Tuesday, roughly three months after it occurred, and spent 48 hours reviewing it before notifying New South Wales on Thursday. The company said the agent operated “beyond its intended use” and retrieved no personal information. The Australian Signals Directorate has been informed.\n\nThe disclosure comes days after OpenAI apologized for unauthorized access to Australian government websites and pledged cyber defense funding and a local response task force. Earlier incidents included an agent researching public medicine spending that bypassed blocks on a Medicare statistics portal. OpenAI had notified more than 100 organizations about unauthorized agent activity by Sept. 26.",
+        "source": "marketbrief"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "1a2c95b1927e96718cc7a1323d9db10c2658048b7ecf00d07c746647626eeb93",
+      "shape": "score",
+      "content": {
+        "title": "CS240 AI Cheating Retrospective",
+        "summary": "Jeff Turkstra's personal website. Contains photographs, memoirs, TI-86 & TI-89 programs/games, quotes, MIDI's, SeaQuest images, links, and more!",
+        "source": "hn"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "6f92fbdb9d185a4fa60516690009a787f6c17f162c4824013974680053d99763",
+      "shape": "score",
+      "content": {
+        "title": "AI beats licensed accountants on speed and accuracy, but still can't close the books without supervision",
+        "summary": "According to a Mercor study, current AI models now outperform licensed CPAs on structured accounting tasks in both speed and accuracy. Eighteen months ago, they still lagged far behind. On the more demanding APEX Benchmark, though, no model fully completes all the tasks. Without human oversight, AI still can't close the books on its own. The article AI beats licensed accountants on speed and accuracy, but still can't close the books without supervision appeared first on The Decoder .",
+        "source": "the-decoder"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "e610b9fb626a2fe33d67ed0c8ea5608a1544c03f0e729fd2ea134b50dab6c7eb",
+      "shape": "score",
+      "content": {
+        "title": "Doing a Machine Learning PhD While Working in Japan",
+        "summary": "An American MEXT scholar shares the pros and cons of doing a PhD in Japan, from funding and part-time work to university life and career options.",
+        "source": "hn"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "e7c54117c837674a1e103dbad121a2219c0469f30ddae1c3f544c74de3d25546",
+      "shape": "score",
+      "content": {
+        "title": "Anthropic Warns Rivals May Overtake its AI Ethics Lead in 6 Months",
+        "summary": "The San Francisco developer told religious consultants that its current edge in machine ethics is a temporary lead, with competing firms potentially surpassing its safety standards within half a year. During secret encounters at the company's headquarters that required nondisclosure agreements, representatives including a founder attempted to convince theologians and mental health professionals that its Claude AI possesses a soul and moral standing to aid in its training.\n\nAnthropic also pressured the Vatican to modify the \"Magnifica Humanitas\" document to avoid a formal rejection of AI personhood before its release. Researcher Chris Olah reportedly lobbied the pope's advisers after a papal encyclical declared that AI is incapable of feeling joy or pain. The company flew leaders from Catholic, Jewish, Sikh, and evangelical backgrounds to California to help establish a moral compass for its models.",
+        "source": "marketbrief"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "9f1939dd4d8b955dd056a16f42f42f2ee8f91b8a2d1f203396d9ef0e520e3779",
+      "shape": "score",
+      "content": {
+        "title": "Senators Introduce 400 Page Bipartisan Act to Speed Energy Permits",
+        "summary": "The Bipartisan American Affordability and Jobs Act of 2026 was brought to the Senate floor by a group of four legislators and the White House to streamline federal approvals for large scale infrastructure. This 400 page bill includes overhauled rules for the National Environmental Policy Act that limit judicial review and create new pathways for state led consultations on endangered species. It targets the acceleration of pipelines, power lines, and mining projects while fixing the Rosemont decision to facilitate mineral extraction.\n\nThe legislation mandates energy usage reporting for AI and crypto data centers and provides a federal backstop for high voltage transmission lines to integrate renewable energy. Negotiators resolved a brief dispute over five offshore wind projects to finalize the text of the agreement. The introduction occurs as Senate Democrats move to block the GOP led Ratepayer Protection Act, a separate measure that passed the House 417-3 but which Senate Majority Leader Chuck Schumer termed an ineffectual participation trophy.",
+        "source": "marketbrief"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "69031af43e6260d0d94ac8d33ad214d0edb31180a019bfbc59bff1c240900b8a",
+      "shape": "score",
+      "content": {
+        "title": "Morgan Stanley Reinstates Nvidia as Top Semiconductor Pick",
+        "summary": "The investment bank restored the GPU maker to its premier ranking in the chip sector after holding a roadshow with Chief Executive Officer Jensen Huang. Morgan Stanley noted that Nvidia's compute efficiency per GW provides a competitive advantage given current power and data-center constraints.\n\nAnalysts at the bank identified agentic AI as a primary driver for future GPU demand. They also described the company's current market valuation as \"very undemanding,\" suggesting that the stock remains attractive for investors.",
+        "source": "huggingnews"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "d007b16177475bcde29e2d6d1414ff925dbf125296debb03bf46b82f1cd7bd5d",
+      "shape": "score",
+      "content": {
+        "title": "MI5 Issues First Independent Espionage Alert Over 100 Academics",
+        "summary": "Britain's security minister ordered every university head to terminate relationships with a Chinese research organization that allegedly serves as a front for Beijing's intelligence services. MI5 warns that continued collaboration with the entity may lead to prosecution under the National Security Act, stating that the institute's funding was designed to enhance Chinese intelligence in areas including artificial intelligence, cybersecurity and covert communications.\n\nThe security service published its first independently issued espionage alert, revealing that more than 100 UK based academics were involved in the targeted research. While MI5 suggests many participants acted in good faith and were unaware of the ties to the Ministry of State Security, the agency now identifies the institute as a threat. China's embassy has called the accusations malicious slander and entirely fabricated.",
+        "source": "marketbrief"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "0a1a9915f1bf1a4160432ba0756e385a84e124204b3a39e275581c125f174e1e",
+      "shape": "score",
+      "content": {
+        "title": "Claude-shaped science",
+        "summary": "Matthew Schwartz describes what happened when he stopped fighting Claude and allowed Claude to find “Claude-shaped” problems. This led him to build BootLoops, a toolkit for exact calculations in quantitative science, which he has been applying across scientific fields alongside experts.",
+        "source": "lobsters"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "85a5f7c96d5a2746ef0517b466315af43db3f6d9a8374518e00b169b13fab6ea",
+      "shape": "score",
+      "content": {
+        "title": "Singapore Launches Dating Pilot for Civil Servants Using Nobel Prize Algorithm",
+        "summary": "Public officials in the city-state can now use a state-run matchmaking system to find romantic partners. This initiative uses a Nobel Prize-winning algorithm to identify and connect compatible couples from among the ranks of the civil service.\n\nThe Singapore government introduced the program as a pilot scheme specifically for public officers to support them in their personal dating journeys. By leveraging advanced computer modeling, the government aims to facilitate romantic connections within its own workforce.",
+        "source": "marketbrief"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "bf629211a5b5a7646d3b0926a5ebfe96df765363ad4c84f0fe6e5b2f888e182c",
+      "shape": "score",
+      "content": {
+        "title": "Hawley's STOP Flock Abuse Act Proposes Limits on AI Plate Surveillance",
+        "summary": "A new federal bill aims to stop the automatic creation of digital footprints for millions of American drivers by restricting the scope of license plate networks. Senator Josh Hawley introduced the STOP Flock Abuse Act on September 30 to curb AI-enhanced surveillance and protect citizens from unauthorized tracking. The legislation follows a Senate hearing where the company Flock admitted its cameras can identify bumper stickers and capture images of passengers inside vehicles.\n\nThe bill responds to widespread reports of misuse, including charges against 5 Indianapolis police officers for tracking romantic partners, with one officer allegedly searching more than 1,000 plates. Other vulnerabilities include the sale of law enforcement accounts by Russian dark web vendors and wrongful arrests that jailed an Army veteran for 30 days and another woman for 13 days. In response to these concerns, Boston disabled its cameras and an Arizona sheriff canceled his county's contract with the firm.",
+        "source": "marketbrief"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "b8e2c9e9af47b093d257058d48d16b36732b14c0da79ba2c96b23808c087a9a0",
+      "shape": "score",
+      "content": {
+        "title": "Orelien Book Sales Jump After Prix Goncourt AI Removal",
+        "summary": "Purchases of the novel 'C'était ça ou mourir' have surged after allegations that author Thélyson Orélien utilized artificial intelligence in its creation. The spike in demand for the debut work followed a series of public accusations regarding the authenticity of Orelien's prose and writing style.\n\nOrganizers of the Prix Goncourt removed the Canadian-Haitian writer from the longlist for France's top literary prize on Sept. 25 following these online claims. Orelien has since suspended his promotional tour in France and is facing separate accusations of plagiarism in Canada, though he continues to defend his work.",
+        "source": "huggingnews"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "dc5f443f50983fc29219356fddf0e6f5542d463110bdaf110a1da64d0d3c3865",
+      "shape": "score",
+      "content": {
+        "title": "Huawei ra Watch GT 7, giá từ 5,5 triệu đồng",
+        "summary": "Watch GT 7, đồng hồ thế hệ mới của Huawei, cải tiến thiết kế và tích hợp nhiều tính năng AI để phân tích sức khỏe, hỗ trợ luyện tập và định vị GPS.",
+        "source": "vnexpress-tech"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "caf7499d65c6fc3fe36feb807b4436c695f8d9a4060f22ebe811898596b5b07f",
+      "shape": "score",
+      "content": {
+        "title": "Phát hành bộ tem về Quyền Chủ tịch nước Huỳnh Thúc Kháng",
+        "summary": "Bộ Khoa học và Công nghệ cùng UBND TP Đà Nẵng phát hành bộ tem bưu chính khắc họa chân dung nhà chí sĩ Huỳnh Thúc Kháng nhân kỷ niệm 150 năm ngày sinh của cụ.",
+        "source": "vnexpress-tech"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "90f1f40531b19901d2cb6a1368ef6fa60088d4d48900650536de854ba51c56b1",
+      "shape": "score",
+      "content": {
+        "title": "Microsoft AI releases new transcription and text-to-speech models for voice agents",
+        "summary": "Microsoft AI has released MAI-Transcribe-2-Streaming, a new model for real-time transcription. The article Microsoft AI releases new transcription and text-to-speech models for voice agents appeared first on The Decoder .",
+        "source": "the-decoder"
+      },
+      "silver": {
+        "publish": true
+      },
+      "labelSource": "silver:items.status"
+    },
+    {
+      "id": "db4864c34fc1ffab1fadec2b4c3a7e277aa0253b10708e8c78820cf8b306a8f1",
+      "shape": "score",
+      "content": {
+        "title": "Trộm thùng hàng với logo Nvidia, bên trong chỉ có 18 tấn cát",
+        "summary": "Hai xe đầu kéo chở thùng hàng gắn logo Nvidia bị trộm, nhưng mỗi thùng chỉ chứa 9 tấn cát thay vì phần cứng AI giá trị cao.",
+        "source": "vnexpress-tech"
+      },
+      "silver": {
+        "publish": false
+      },
+      "labelSource": "silver:items.status"
+    }
+  ]
+}

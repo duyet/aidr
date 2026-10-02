@@ -1,0 +1,50 @@
+{
+  "step": "suggestion",
+  "builtAt": "2026-10-02",
+  "labelSources": [
+    "silver:translation_suggestions.status"
+  ],
+  "count": 2,
+  "cases": [
+    {
+      "id": "90b2d9f4-ecff-4230-9203-1151b5a66b80",
+      "field": "auto",
+      "lang": "vi",
+      "suggestion": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới\n\nplease update translation vietnamese to have better => Clef: Mô hình Decision Open Weight ...",
+      "item": {
+        "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+        "summary": "We are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement learning platform that allows developers to fine-tune decision models using their own data.",
+        "source_lang": "en"
+      },
+      "vi": {
+        "title": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới",
+        "summary": "Clef ra mắt dòng mô hình quyết định mở trọng lượng cùng nền tảng fine-tuning dựa trên RL, hỗ trợ tùy biến và triển khai mô hình linh hoạt."
+      },
+      "silver": {
+        "status": "rejected",
+        "rating": 0.3
+      },
+      "labelSource": "silver:translation_suggestions.status"
+    },
+    {
+      "id": "866393dd-1296-4fb5-89bb-47841a4e3411",
+      "field": "auto",
+      "lang": "vi",
+      "suggestion": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới\n\n=> Clef: Mô hình Decision Open Weight ...",
+      "item": {
+        "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+        "summary": "We are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement learning platform that allows developers to fine-tune decision models using their own data.",
+        "source_lang": "en"
+      },
+      "vi": {
+        "title": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới",
+        "summary": "Clef ra mắt dòng mô hình quyết định mở trọng lượng cùng nền tảng fine-tuning dựa trên RL, hỗ trợ tùy biến và triển khai mô hình linh hoạt."
+      },
+      "silver": {
+        "status": "rejected",
+        "rating": 0.2
+      },
+      "labelSource": "silver:translation_suggestions.status"
+    }
+  ]
+}

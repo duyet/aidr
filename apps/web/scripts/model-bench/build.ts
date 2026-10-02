@@ -15,12 +15,15 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { REVIEW_QUEUE_BUILDERS } from "./build-review-queue";
+import { buildDraftRepair } from "./steps-repair";
+import { buildRuleExtraction } from "./steps-rules";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webDir = path.resolve(here, "../..");
 export const benchDir = path.resolve(here, "../fixtures/bench");
 
-function d1<T>(sql: string): T[] {
+export function d1<T>(sql: string): T[] {
   if (!/^\s*(SELECT|WITH)\b/i.test(sql))
     throw new Error("model-bench build only runs SELECTs");
   const out = execFileSync(
@@ -63,7 +66,7 @@ export function interleave<T>(...groups: T[][]): T[] {
 const ids = (list: string[]) =>
   list.map((id) => `'${id.replace(/'/g, "")}'`).join(",");
 
-function write(step: string, labelSources: string[], cases: unknown[]) {
+export function write(step: string, labelSources: string[], cases: unknown[]) {
   mkdirSync(benchDir, { recursive: true });
   const file = path.join(benchDir, `${step}.json`);
   writeFileSync(
@@ -299,7 +302,7 @@ function buildReview() {
 /** TL;DR: the items each recent edition cited, and the stored bullets. */
 function buildTldr() {
   const snaps = d1<{ date: string; bullets_en: string; bullets_vi: string }>(
-    "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots WHERE bullets_en IS NOT NULL ORDER BY date DESC LIMIT 4"
+    "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots WHERE bullets_en IS NOT NULL ORDER BY date DESC LIMIT 20"
   );
   const cases = snaps.map((s) => {
     const en = JSON.parse(s.bullets_en) as {
@@ -400,7 +403,7 @@ function buildTopics() {
   write("topics", ["silver:topics.canonical"], cases);
 }
 
-export const BUILDERS: Record<string, () => void> = {
+export const BUILDERS: Record<string, () => void | Promise<void>> = {
   score: buildScore,
   "translate-en-vi": buildTranslateEnVi,
   "translate-vi-en": buildTranslateViEn,
@@ -408,4 +411,7 @@ export const BUILDERS: Record<string, () => void> = {
   tldr: buildTldr,
   cluster: buildCluster,
   topics: buildTopics,
+  ...REVIEW_QUEUE_BUILDERS,
+  "draft-repair": () => buildDraftRepair(),
+  "rule-extraction": () => buildRuleExtraction(),
 };

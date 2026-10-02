@@ -68,6 +68,12 @@ import {
   stubDb,
 } from "../bench-env";
 import { benchDir } from "./build";
+import {
+  REVIEW_QUEUE_STEPS,
+  reviewQueueDataset,
+} from "./steps-review-queue";
+import { draftRepairStep } from "./steps-repair";
+import { ruleExtractionStep } from "./steps-rules";
 
 /** Per-case outcome: `valid` = schema-valid output for this case;
  *  `metrics` feed the step aggregates (null = not applicable). */
@@ -107,7 +113,8 @@ export function loadCases(step: string): Case[] {
 }
 
 export function datasetOf(step: string): string {
-  return step === "jev" || step === "decision" ? "score" : step;
+  if (step === "jev" || step === "decision") return "score";
+  return reviewQueueDataset(step) ?? step;
 }
 
 const chunk = <T>(xs: T[], n: number): T[][] =>
@@ -595,6 +602,9 @@ export const STEPS: Record<string, StepDef> = {
   tldr: tldrStep,
   cluster: clusterStep,
   topics: topicsStep,
+  "draft-repair": draftRepairStep,
+  "rule-extraction": ruleExtractionStep,
+  ...REVIEW_QUEUE_STEPS,
 };
 
 /** Env pinned to one model for one step; the knowledge stub feeds real

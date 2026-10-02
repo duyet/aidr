@@ -1485,7 +1485,7 @@ function clipSummary(summary: string | undefined): string | undefined {
 
 /** The text the generator actually sees, so the draft check measures the
  * translation against the same (stripped, clipped) source. */
-function sentSource(
+export function sentSource(
   item: TranslateInput,
   titlesOnly: boolean
 ): { title: string; summary: string | undefined } {
@@ -1540,7 +1540,7 @@ function logTranslateBatchFailed(
   );
 }
 
-async function translateBatch(
+export async function translateBatch(
   env: Env,
   batch: TranslateInput[],
   timeoutMs: number,
