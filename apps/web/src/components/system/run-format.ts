@@ -226,6 +226,13 @@ const STEP_FAILURE_RE = /\b(?:fail(?:ed|ure)?|error|exhausted|timed out)\b/i;
 const STEP_FALLBACK_RE =
   /\b(?:fail(?:ed|ure)?|error|exhausted|timed out|thin|partial)\b|batch_failed/i;
 const STEP_IDLE_RE = /^(?:skipped\b|0 (?:pending|candidates)\b|recording$)/i;
+/** A step the Workflow engine cut short itself — a deploy resetting its
+ * Durable Object, an instance that went away, an internal engine fault, or a
+ * timeout. `safeStep` records these on the step log instead of filing a
+ * Bugsink issue, so this line is the only place an operator sees them; and
+ * because the engine retries before `safeStep` sees the failure, the step's
+ * work genuinely did not happen in that run. */
+const STEP_INTERRUPTED_RE = /^interrupted\b/i;
 
 /** One step's outcome from its recorded action and reason. A step that did
  *  only part of its work ("translated 2/3") or finished on a fallback
@@ -242,6 +249,7 @@ export function stepState(step: {
     if (total > 0 && done === 0) return "failed";
     if (done < total) return "degraded";
   }
+  if (STEP_INTERRUPTED_RE.test(action)) return "failed";
   if (STEP_FAILURE_RE.test(action)) return "failed";
   // "skipped" because the step itself threw ("tldr step failed") is a failure.
   if (STEP_IDLE_RE.test(action))

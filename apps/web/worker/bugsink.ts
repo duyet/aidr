@@ -136,18 +136,49 @@ export async function reportHealthAlert(
   });
 }
 
-/** Messages the Workflows engine raises when it interrupts a step itself: a
- * deploy replacing the Durable Object code, or an internal engine fault. The
- * engine retries or replays the step, so neither is an app error. */
-const ENGINE_INTERRUPTIONS = [
-  "Durable Object reset because its code was updated",
-  "Attempt failed due to internal workflows error",
+/** What the Workflows engine raises when it interrupts a step itself: a deploy
+ * replacing the Durable Object code, a Durable Object that went away under an
+ * in-flight call, an internal engine fault, or a step that outran its timeout.
+ * The engine retries or replays the step, so none of these is an app bug and
+ * none belongs in a Bugsink issue.
+ *
+ * The value is a short reason, not a tag, because `workflow-step.ts` writes it
+ * onto the run's step line — that is where the signal has to land once the
+ * Bugsink report is gone. */
+const ENGINE_INTERRUPTIONS: ReadonlyArray<readonly [RegExp, string]> = [
+  [
+    /durable object reset because its code was updated/i,
+    "durable object code updated",
+  ],
+  [
+    /durable object instance is no longer active/i,
+    "durable object instance went away",
+  ],
+  [/internal workflows error/i, "internal workflows error"],
+  [/(?:execution|step) timed out after \d+\s*ms/i, "step timed out"],
 ];
 
-export function isEngineInterruption(error: unknown): boolean {
+/** The text to match an interruption against.
+ *
+ * Deliberately not `String(error)` and not `instanceof Error`: the engine and
+ * the Durable Object RPC boundary both hand failures back structured-cloned,
+ * so the receiver sees a plain object (`String()` on one is `[object Object]`,
+ * `instanceof Error` is false) and the phrase survives only on `.message`.
+ * That is why #339 and #340 got through the previous `instanceof`-based
+ * filter while the messages were listed in it. */
+function interruptionText(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (error == null) return "";
+  const message = (error as { message?: unknown }).message;
+  return typeof message === "string" ? message : String(error);
+}
+
+/** Short reason when the engine (not this code) ended the step, else null. */
+export function engineInterruptionReason(error: unknown): string | null {
+  const text = interruptionText(error);
+  if (!text) return null;
   return (
-    error instanceof Error &&
-    ENGINE_INTERRUPTIONS.some((message) => error.message.includes(message))
+    ENGINE_INTERRUPTIONS.find(([pattern]) => pattern.test(text))?.[1] ?? null
   );
 }
 
@@ -156,9 +187,10 @@ export async function reportPipelineException(
   error: unknown,
   tags: Record<string, string>
 ): Promise<void> {
-  if (isEngineInterruption(error)) {
+  const interruption = engineInterruptionReason(error);
+  if (interruption) {
     console.warn(
-      `${tags.step ?? "pipeline"}: interrupted by the workflow engine`
+      `${tags.step ?? "pipeline"}: interrupted by the workflow engine (${interruption})`
     );
     return;
   }

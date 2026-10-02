@@ -89,7 +89,7 @@ export async function backfillTranslations(
           }
           return { count, tokens: partTokens };
         },
-        BACKFILL_TRANSLATE_STEP
+        { config: BACKFILL_TRANSLATE_STEP }
       );
     } catch (error) {
       console.error(`backfill-translate-${offset} step failed:`, error);

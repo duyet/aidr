@@ -370,7 +370,6 @@ export async function writeItems(
         await env.DB.batch(statements);
       }
     },
-    undefined,
-    true
+    { rethrowErrors: true }
   );
 }

@@ -70,7 +70,7 @@ export async function scoreNewRows(
           return [];
         }
       },
-      LLM_STEP
+      { config: LLM_STEP }
     )
   );
   recordStep(
