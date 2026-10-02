@@ -2,7 +2,7 @@
   "date": "2026-10-02",
   "dateline": "Friday, October 2, 2026",
   "theme": {
-    "intro": "date-slam",
+    "intro": "grid",
     "transition": "wipe",
     "background": "paper"
   },
@@ -26,7 +26,16 @@
     "facebook": "Today in AI: Broadcom lines up $60B for Anthropic's chips, Cloudflare launches Clef, and a ChatGPT Mac flaw gets patched."
   },
   "intro": {
-    "voice": "This is AI DR. Six AI stories that matter today. Let's go.",
+    "voice": [
+      {
+        "anchor": "gareth",
+        "text": "This is AI DR, your AI news for Friday, October second."
+      },
+      {
+        "anchor": "tabitha",
+        "text": "Six stories today. Here's what matters."
+      }
+    ],
     "title": "Six stories that matter today"
   },
   "stories": [
@@ -37,8 +46,19 @@
       "headline": "*Open-weight decision models*, now on Workers AI",
       "stat": "Clef + Clef-flash",
       "statLabel": "plus an RL fine-tuning platform",
-      "voice": "Number one. Cloudflare launches Clef, open-weight decision models on Workers AI, plus a new platform to fine-tune them with reinforcement learning on your own data.",
-      "images": ["assets/s1-1.png"],
+      "voice": [
+        {
+          "anchor": "gareth",
+          "text": "Cloudflare is launching Clef, open-weight decision models on Workers AI."
+        },
+        {
+          "anchor": "tabitha",
+          "text": "Plus a new platform to fine-tune them with reinforcement learning, on your own data."
+        }
+      ],
+      "images": [
+        "assets/s1-1.png"
+      ],
       "layout": "split",
       "statWord": "clef"
     },
@@ -49,7 +69,16 @@
       "headline": "Models that manage *their own context* as a file",
       "stat": "SOTA",
       "statLabel": "on BrowseComp-Plus and EdgeBench",
-      "voice": "Two. New research on Context Language Models. They manage their own context as a file, and beat state-of-the-art context management on BrowseComp-Plus and EdgeBench.",
+      "voice": [
+        {
+          "anchor": "tabitha",
+          "text": "In research, Context Language Models manage their own context as a file."
+        },
+        {
+          "anchor": "gareth",
+          "text": "And they beat state-of-the-art context management on BrowseComp-Plus and EdgeBench."
+        }
+      ],
       "images": [],
       "paper": {
         "venue": "arXiv:2609.37725",
@@ -65,8 +94,15 @@
       "headline": "MAI-Transcribe-2-Streaming goes real-time",
       "stat": "Real-time",
       "statLabel": "transcription for voice agents",
-      "voice": "Three. Microsoft AI releases MAI-Transcribe-2-Streaming for real-time transcription, expanding its voice agent lineup.",
-      "images": ["assets/s3-1.webp"],
+      "voice": [
+        {
+          "anchor": "gareth",
+          "text": "Microsoft AI has released MAI-Transcribe-2-Streaming, for real-time transcription, expanding its voice agent lineup."
+        }
+      ],
+      "images": [
+        "assets/s3-1.webp"
+      ],
       "layout": "full",
       "statWord": "real-time"
     },
@@ -77,8 +113,19 @@
       "headline": "*$60B credit facility* to fund AI chips",
       "stat": "$60B",
       "statLabel": "IPO eyed Nov 26 at $1.8T–$2T",
-      "voice": "Four. Broadcom lines up a sixty billion dollar credit facility to fund AI chips for Anthropic and its peers, as Anthropic eyes a November twenty-sixth IPO, valued at up to two trillion dollars.",
-      "images": ["assets/s4-2.webp"],
+      "voice": [
+        {
+          "anchor": "tabitha",
+          "text": "Broadcom is lining up a sixty billion dollar credit facility to fund AI chips for Anthropic and its peers."
+        },
+        {
+          "anchor": "gareth",
+          "text": "All as Anthropic eyes a November twenty-sixth IPO, valued at up to two trillion dollars."
+        }
+      ],
+      "images": [
+        "assets/s4-2.webp"
+      ],
       "layout": "stat",
       "statWord": "sixty"
     },
@@ -89,8 +136,15 @@
       "headline": "The AI music maker now speaks",
       "stat": "Public beta",
       "statLabel": "voiceovers + music, web and mobile",
-      "voice": "Five. Suno now generates spoken word. Voiceovers and background music, together, in public beta on web and mobile.",
-      "images": ["assets/s5-1.jpg"],
+      "voice": [
+        {
+          "anchor": "tabitha",
+          "text": "Suno now generates spoken word. Voiceovers and background music together, in public beta on web and mobile."
+        }
+      ],
+      "images": [
+        "assets/s5-1.jpg"
+      ],
       "layout": "full",
       "statWord": "public"
     },
@@ -101,14 +155,34 @@
       "headline": "A patched flaw could have *leaked sensitive data*",
       "stat": "Patched",
       "statLabel": "AI apps are targets too",
-      "voice": "And six. A patched flaw in ChatGPT's Mac app could have let hackers grab sensitive data. A reminder that AI software is a target too.",
-      "images": ["assets/s6-1.jpg"],
+      "voice": [
+        {
+          "anchor": "gareth",
+          "text": "And a patched flaw in ChatGPT's Mac app could have let hackers grab sensitive data."
+        },
+        {
+          "anchor": "tabitha",
+          "text": "A reminder that AI software is a target too."
+        }
+      ],
+      "images": [
+        "assets/s6-1.jpg"
+      ],
       "layout": "split",
       "statWord": "patched"
     }
   ],
   "outro": {
-    "voice": "That's AI DR for today. Every story, ranked and summarized, at aidr dot today. See you tomorrow.",
+    "voice": [
+      {
+        "anchor": "tabitha",
+        "text": "That's AI DR for today. Every story, ranked and summarized, at aidr dot today."
+      },
+      {
+        "anchor": "gareth",
+        "text": "See you tomorrow."
+      }
+    ],
     "title": "What's happening in AI today?"
   }
 }

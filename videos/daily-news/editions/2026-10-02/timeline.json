@@ -1,8 +1,8 @@
 {
   "date": "2026-10-02",
-  "total": 70.553,
+  "total": 81.193,
   "theme": {
-    "intro": "date-slam",
+    "intro": "grid",
     "transition": "wipe",
     "background": "paper"
   },
@@ -10,50 +10,50 @@
     {
       "id": "intro",
       "start": 0,
-      "dur": 5.736,
-      "voice": 4.336
+      "dur": 9.491,
+      "voice": 8.091
     },
     {
       "id": "s1",
-      "start": 5.736,
-      "dur": 9.673,
-      "voice": 8.673
+      "start": 9.491,
+      "dur": 10.841,
+      "voice": 9.841
     },
     {
       "id": "s2",
-      "start": 15.409,
-      "dur": 10.326,
-      "voice": 9.326
+      "start": 20.331,
+      "dur": 10.632,
+      "voice": 9.632
     },
     {
       "id": "s3",
-      "start": 25.735,
-      "dur": 8.419,
-      "voice": 7.419
+      "start": 30.963,
+      "dur": 9.438,
+      "voice": 8.438
     },
     {
       "id": "s4",
-      "start": 34.153,
-      "dur": 11.684,
-      "voice": 10.684
+      "start": 40.401,
+      "dur": 13.505,
+      "voice": 12.505
     },
     {
       "id": "s5",
-      "start": 45.838,
-      "dur": 7.87,
-      "voice": 6.87
+      "start": 53.906,
+      "dur": 7.896,
+      "voice": 6.896
     },
     {
       "id": "s6",
-      "start": 53.708,
-      "dur": 9.281,
-      "voice": 8.281
+      "start": 61.803,
+      "dur": 9.718,
+      "voice": 8.718
     },
     {
       "id": "outro",
-      "start": 62.989,
-      "dur": 7.564,
-      "voice": 5.564
+      "start": 71.52,
+      "dur": 9.673,
+      "voice": 7.673
     }
   ]
 }

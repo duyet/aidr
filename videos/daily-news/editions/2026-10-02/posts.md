@@ -1,6 +1,6 @@
 # Posts — AI;DR Daily 2026-10-02
 
-Files: `renders/aidr-daily-2026-10-02-16x9-4k.mp4`, `renders/aidr-daily-2026-10-02-9x16-4k.mp4`, covers `renders/cover-2026-10-02-16x9.png`, `renders/cover-2026-10-02-9x16.png`, captions `captions.srt`. Length 1:10 (70.553s).
+Files: `renders/aidr-daily-2026-10-02-16x9-4k.mp4`, `renders/aidr-daily-2026-10-02-9x16-4k.mp4`, covers `renders/cover-2026-10-02-16x9.png`, `renders/cover-2026-10-02-9x16.png`, captions `captions.srt`. Length 1:21 (81.193s).
 
 ## YouTube (16:9)
 
@@ -21,13 +21,13 @@ Six AI stories that matter today. Friday, October 2, 2026.
 
 Chapters
 0:00 Intro
-0:05 Cloudflare launches Clef
-0:15 Context Language Models
-0:25 Microsoft AI
-0:34 Broadcom x Anthropic
-0:45 Suno
-0:53 ChatGPT for Mac
-1:02 Outro
+0:09 Cloudflare launches Clef
+0:20 Context Language Models
+0:30 Microsoft AI
+0:40 Broadcom x Anthropic
+0:53 Suno
+1:01 ChatGPT for Mac
+1:11 Outro
 
 Sources
 1. https://blog.cloudflare.com/clef-decision-models/
