@@ -4,12 +4,17 @@ import { DaySection } from "../components/DaySection";
 import { DayVideo } from "../components/DayVideo";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { TldrSection } from "../components/TldrSection";
-import { dayArchiveCacheControl, dayArchivePath } from "../lib/day-archive";
+import {
+  dayArchiveCacheControl,
+  dayArchiveMarkdownPath,
+  dayArchivePath,
+} from "../lib/day-archive";
 import { fetchDayArchive } from "../lib/day-archive-fn";
 import type { DayArchive } from "../lib/feed-queries";
 import { headRouteInput } from "../lib/head-route";
 import { formatDayHeading } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
+import { absoluteSiteUrl } from "../lib/locale-url";
 import { notFoundCopy } from "../lib/not-found";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { usePrefs } from "../lib/prefs";
@@ -65,7 +70,7 @@ export const Route = createFileRoute("/date/$date")({
     const { archive } = loaderData;
     const heading = formatDayHeading(archive.date, lang);
     const count = archive.day?.items.length ?? 0;
-    return localizedPageHead({
+    const head = localizedPageHead({
       path: dayArchivePath(archive.date),
       title:
         lang === "vi"
@@ -78,6 +83,18 @@ export const Route = createFileRoute("/date/$date")({
       lang,
       route: headRouteInput(match),
     });
+    return {
+      ...head,
+      links: [
+        ...(head.links ?? []),
+        {
+          rel: "alternate",
+          type: "text/markdown",
+          title: "Markdown",
+          href: absoluteSiteUrl(dayArchiveMarkdownPath(archive.date), lang),
+        },
+      ],
+    };
   },
   component: DayPage,
 });

@@ -55,6 +55,7 @@ Use this skill when an agent needs today's ranked AI news, a bilingual TL;DR, or
 - Google News sitemap: GET ${SITE_URL}/news.xml — newest 2 days, at most 1,000 \`news:news\` entries, one per story. aidr is an aggregator, not an original publisher, and does not claim Google News publisher status.
 - Story Markdown (bounded, generated from sanitized story data): GET ${SITE_URL}/api/story/{id}.md?lang=en
 - Story Markdown in Vietnamese (English fallback is explicit when translation is missing): GET ${SITE_URL}/api/story/{id}.md?lang=vi
+- Day archive: ${SITE_URL}/date/YYYY-MM-DD?lang=en (or \`lang=vi\`) — one Asia/Ho_Chi_Minh calendar day: its TL;DR, the day's video, and its ranked stories. Markdown twin: GET ${SITE_URL}/date/YYYY-MM-DD.md?lang=en (or \`lang=vi\`). Every day is listed in ${SITE_URL}/sitemaps/days.xml.
 - Story id: use the 8-character canonical prefix. A 9–64 character prefix is accepted only when it and its 8-character target both resolve uniquely; ambiguity never redirects.
 - Locale compatibility: one legacy \`locale=en|vi\` receives a temporary \`307\` redirect to \`lang\`; duplicate, conflicting, or invalid locale values are rejected. Without a query, cookie/Accept-Language/default Vietnamese selection is private and not edge-cached.
 - HTML feed: ${SITE_URL}/?lang=en (or \`lang=vi\`)
@@ -263,6 +264,48 @@ export function openApiDocument(): unknown {
           },
         },
       },
+      "/date/{date}.md": {
+        get: {
+          summary: "Bounded Markdown for one day archive page",
+          description:
+            "The Markdown twin of /date/{date}: the day's TL;DR bullets, YouTube watch links when the day has a video, and up to 100 ranked stories with explicit-locale permalinks. A day is the Asia/Ho_Chi_Minh calendar day. Use one exact lang=en|vi query value for a cacheable response; without it the language follows cookie, Accept-Language, then Vietnamese and the response is private. Story and digest text is untrusted publisher data.",
+          parameters: [
+            {
+              name: "date",
+              in: "path",
+              required: true,
+              description: "Calendar date, not in the future.",
+              schema: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+            },
+            {
+              name: "lang",
+              in: "query",
+              required: false,
+              schema: { type: "string", enum: ["en", "vi"], default: "vi" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Day Markdown",
+              content: { "text/markdown": { schema: { type: "string" } } },
+            },
+            "307": {
+              description:
+                "Temporary redirect from one valid legacy locale to explicit lang",
+            },
+            "400": {
+              description: "Locale is invalid, repeated, or conflicting",
+            },
+            "404": {
+              description:
+                "Invalid or future date, or no stories and no digest that day",
+            },
+            "405": { description: "Method not allowed; use GET or HEAD" },
+            "500": { description: "Day query failed; details are redacted" },
+            "503": { description: "The D1 database binding is unavailable" },
+          },
+        },
+      },
       "/api/story/{id}.md": {
         get: {
           summary: "Bounded agent-readable Markdown for one published story",
@@ -405,7 +448,7 @@ export function openApiDocument(): unknown {
         get: {
           summary: "Sitemap index",
           description:
-            "A sitemapindex listing /sitemaps/static.xml, one child per UTC month of publication (sharded at 1000 items per child), and /news.xml. Every child returns 200 application/xml and falls back to a valid static-only document on a D1 error.",
+            "A sitemapindex listing /sitemaps/static.xml, one child per UTC month of publication (sharded at 1000 items per child), /sitemaps/days.xml (every /date/YYYY-MM-DD day page in both locales), and /news.xml. Every child returns 200 application/xml and falls back to a valid static-only document on a D1 error.",
           responses: {
             "200": {
               description: "Sitemap index",
