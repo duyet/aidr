@@ -250,6 +250,11 @@ function isStoryPath(pathname: string): boolean {
   return /^\/[0-9a-f]{8,64}$/.test(pathname);
 }
 
+/** `/date/YYYY-MM-DD`; an invalid or empty day still 404s → error policy. */
+function isDayArchiveRoutePath(pathname: string): boolean {
+  return /^\/date\/\d{4}-\d{2}-\d{2}$/.test(pathname);
+}
+
 function isExplicitPublicApiPath(pathname: string): boolean {
   const lower = pathname.toLowerCase();
   return (
@@ -342,7 +347,11 @@ function classifyRoute({
     return applyQueryPolicy(PUBLIC_POLICY, search);
   }
 
-  if (PUBLIC_STATIC_PATHS.has(pathname) || isStoryPath(decodedPath)) {
+  if (
+    PUBLIC_STATIC_PATHS.has(pathname) ||
+    isStoryPath(decodedPath) ||
+    isDayArchiveRoutePath(pathname)
+  ) {
     return applyQueryPolicy(PUBLIC_POLICY, search);
   }
 

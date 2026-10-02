@@ -1,4 +1,8 @@
 import {
+  DAY_VIDEO_TITLE_MAX,
+  parseYoutubeId,
+} from "../../src/lib/day-video.js";
+import {
   prepareTranslationQaInvalidation,
   prepareTranslationUpsert,
 } from "../d1-bind.js";
@@ -1015,4 +1019,154 @@ export async function decideSubmission(
   if (!result.ok) return { error: result.error, status: 404 };
   await writeAudit(env, `submissions.${action}`, id);
   return { ok: true };
+}
+
+export interface SetDayVideoInput {
+  /** 16:9 video for desktop: URL or 11-char id; null/"" clears it. */
+  video?: unknown;
+  /** 9:16 Short for mobile: URL or 11-char id; null/"" clears it. */
+  short?: unknown;
+  /** Display title; null/"" clears it. */
+  title?: unknown;
+}
+
+export interface DayVideoRecord {
+  date: string;
+  youtube_id: string | null;
+  short_id: string | null;
+  title: string | null;
+}
+
+const DAY_VIDEO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function validDayVideoDate(date: unknown): date is string {
+  if (typeof date !== "string" || !DAY_VIDEO_DATE_RE.test(date)) return false;
+  const ms = Date.parse(`${date}T00:00:00Z`);
+  return (
+    Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 10) === date
+  );
+}
+
+/** undefined = keep the stored value, null = clear, string = new id. */
+function dayVideoIdField(
+  value: unknown,
+  label: string
+): { id: string | null | undefined } | HandlerError {
+  if (value === undefined) return { id: undefined };
+  if (value === null || value === "") return { id: null };
+  const id = parseYoutubeId(value);
+  if (!id) {
+    return {
+      error: `${label} must be a YouTube URL or an 11-character video id`,
+      status: 400,
+    };
+  }
+  return { id };
+}
+
+/**
+ * Upsert the video and/or Short shown on `/date/:date`. Each field is set or
+ * cleared independently; omitted fields keep their stored value. A row must
+ * keep at least one of the two — use `deleteDayVideo` to remove it.
+ */
+export async function setDayVideo(
+  env: Env,
+  date: unknown,
+  input: SetDayVideoInput,
+  actor: string | null
+): Promise<{ ok: true; video: DayVideoRecord } | HandlerError> {
+  if (!validDayVideoDate(date)) {
+    return { error: "date must be a real YYYY-MM-DD day", status: 400 };
+  }
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return { error: "body must be an object", status: 400 };
+  }
+  const video = dayVideoIdField(input.video, "video");
+  if (isHandlerError(video)) return video;
+  const short = dayVideoIdField(input.short, "short");
+  if (isHandlerError(short)) return short;
+  if (
+    input.title !== undefined &&
+    input.title !== null &&
+    typeof input.title !== "string"
+  ) {
+    return { error: "title must be a string", status: 400 };
+  }
+  if (
+    video.id === undefined &&
+    short.id === undefined &&
+    input.title === undefined
+  ) {
+    return { error: "set at least one of video, short, title", status: 400 };
+  }
+
+  const existing = await env.DB.prepare(
+    "SELECT youtube_id, short_id, title FROM day_videos WHERE date = ?"
+  )
+    .bind(date)
+    .first<{
+      youtube_id: string | null;
+      short_id: string | null;
+      title: string | null;
+    }>();
+  const title =
+    input.title === undefined
+      ? (existing?.title ?? null)
+      : typeof input.title === "string" && input.title.trim()
+        ? input.title.trim().slice(0, DAY_VIDEO_TITLE_MAX)
+        : null;
+  const next: DayVideoRecord = {
+    date,
+    youtube_id:
+      video.id === undefined ? (existing?.youtube_id ?? null) : video.id,
+    short_id: short.id === undefined ? (existing?.short_id ?? null) : short.id,
+    title,
+  };
+  if (!next.youtube_id && !next.short_id) {
+    return {
+      error:
+        "a day video needs a video or a short; delete the row to remove both",
+      status: 400,
+    };
+  }
+
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO day_videos
+       (date, youtube_id, short_id, title, added_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(date) DO UPDATE SET
+       youtube_id = excluded.youtube_id,
+       short_id = excluded.short_id,
+       title = excluded.title,
+       added_by = excluded.added_by,
+       updated_at = excluded.updated_at`
+  )
+    .bind(date, next.youtube_id, next.short_id, next.title, actor, now, now)
+    .run();
+  await writeAudit(
+    env,
+    "day_video_set",
+    JSON.stringify({
+      date,
+      youtube_id: next.youtube_id,
+      short_id: next.short_id,
+    })
+  );
+  return { ok: true, video: next };
+}
+
+export async function deleteDayVideo(
+  env: Env,
+  date: unknown
+): Promise<{ ok: true; date: string; deleted: boolean } | HandlerError> {
+  if (!validDayVideoDate(date)) {
+    return { error: "date must be a real YYYY-MM-DD day", status: 400 };
+  }
+  const result = await env.DB.prepare("DELETE FROM day_videos WHERE date = ?")
+    .bind(date)
+    .run();
+  const deleted = (result.meta?.changes ?? 0) > 0;
+  if (deleted) await writeAudit(env, "day_video_delete", date);
+  return { ok: true, date, deleted };
 }

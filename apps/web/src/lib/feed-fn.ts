@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { readSession } from "./db";
 import { getFeed } from "./feed-queries";
-import type { FeedResponse, Lang } from "./types";
+import type { FeedItem, FeedResponse, Lang } from "./types";
 
 /** Server fn wrapping getFeed so the homepage loader can SSR stories. */
 export const fetchFeed = createServerFn({ method: "GET" })
@@ -33,15 +33,20 @@ function stripExpandableDetail(feed: FeedResponse): FeedResponse {
     ...feed,
     days: feed.days.map((day) => ({
       ...day,
-      items: day.items.map((item) => ({
-        ...item,
-        summary: null,
-        summary_vi: null,
-        sources: [],
-        lazyDetail: Boolean(
-          item.summary || item.summary_vi || item.sources.length > 0
-        ),
-      })),
+      items: day.items.map(stripItemDetail),
     })),
+  };
+}
+
+/** One collapsed-row item: expand-only fields dropped, `lazyDetail` set. */
+export function stripItemDetail(item: FeedItem): FeedItem {
+  return {
+    ...item,
+    summary: null,
+    summary_vi: null,
+    sources: [],
+    lazyDetail: Boolean(
+      item.summary || item.summary_vi || item.sources.length > 0
+    ),
   };
 }

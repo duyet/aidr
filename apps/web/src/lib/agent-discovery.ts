@@ -59,7 +59,7 @@ Use this skill when an agent needs today's ranked AI news, a bilingual TL;DR, or
 - Locale compatibility: one legacy \`locale=en|vi\` receives a temporary \`307\` redirect to \`lang\`; duplicate, conflicting, or invalid locale values are rejected. Without a query, cookie/Accept-Language/default Vietnamese selection is private and not edge-cached.
 - HTML feed: ${SITE_URL}/?lang=en (or \`lang=vi\`)
 - MCP read tools (NO auth): POST ${SITE_URL}/api/mcp with \`tools/call\` for ${PUBLIC_READ_TOOLS.map((tool) => `\`${tool.name}\``).join(", ")}; \`resources/read\` for \`aidr://digest\` and \`aidr://story/{id}\`. These are read-only, annotated \`readOnlyHint\` + \`untrustedContentHint\`, and rate limited to ${MCP_READ_LIMIT} calls per IP per ${MCP_READ_WINDOW_SEC} seconds.
-- MCP operator tools (REQUIRES admin \`Authorization: Bearer <NEWS_ADMIN_TOKEN>\`): \`tools/list\` additionally returns \`push_items\`, \`upsert_source\`, \`delete_source\`, \`trigger_ingest\`, \`get_status\`, \`list_sources\`, \`preview_ranking\`, and \`preview_tldr\`. Without the token the endpoint serves the read tools only; an anonymous call to an operator tool fails with an auth error and never reveals the operator inventory.
+- MCP operator tools (REQUIRES admin \`Authorization: Bearer <NEWS_ADMIN_TOKEN>\`): \`tools/list\` additionally returns \`push_items\`, \`upsert_source\`, \`delete_source\`, \`trigger_ingest\`, \`get_status\`, \`list_sources\`, \`preview_ranking\`, \`preview_tldr\`, \`set_day_video\`, and \`delete_day_video\`. Without the token the endpoint serves the read tools only; an anonymous call to an operator tool fails with an auth error and never reveals the operator inventory.
 - Docs: ${SITE_URL}/mcp?lang=en
 - OpenAPI: ${SITE_URL}/openapi.json
 
@@ -460,7 +460,7 @@ export function openApiDocument(): unknown {
             PUBLIC_READ_TOOLS.map((tool) => tool.name).join(", ") +
             " plus resources/read; an admin bearer token additionally unlocks " +
             "the operator tools (push_items, upsert_source, delete_source, " +
-            "trigger_ingest, get_status, list_sources, preview_ranking, preview_tldr). `tools/list` can only " +
+            "trigger_ingest, get_status, list_sources, preview_ranking, preview_tldr, set_day_video, delete_day_video). `tools/list` can only " +
             "ever return one registry or the other plus the public one, never a " +
             "mix. Anonymous requests that present a bearer token receive " +
             "checkAuth's plain HTTP 401/500 Response, not a JSON-RPC error " +
@@ -575,7 +575,7 @@ export function a2aAgentCard(): unknown {
         description:
           "POST /api/mcp with no auth returns four read-only tools (" +
           PUBLIC_READ_TOOLS.map((tool) => tool.name).join(", ") +
-          ") plus resources/read. Operator tools (push_items, upsert_source, delete_source, trigger_ingest, get_status, list_sources, preview_ranking, preview_tldr) require an admin Authorization: Bearer token; an unauthenticated tools/list never returns them and an anonymous call to one fails without naming them.",
+          ") plus resources/read. Operator tools (push_items, upsert_source, delete_source, trigger_ingest, get_status, list_sources, preview_ranking, preview_tldr, set_day_video, delete_day_video) require an admin Authorization: Bearer token; an unauthenticated tools/list never returns them and an anonymous call to one fails without naming them.",
       },
       {
         id: "story-markdown",

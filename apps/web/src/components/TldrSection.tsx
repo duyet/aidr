@@ -23,6 +23,9 @@ export function TldrSection({
   snapshotDate,
   layout = DEFAULT_AIDR_LAYOUT,
   layoutLabeled = false,
+  dateHref,
+  singleColumn = false,
+  showFreshness = true,
 }: {
   bullets: TldrBullet[];
   defaultCount: TldrCount;
@@ -43,6 +46,12 @@ export function TldrSection({
   layout?: AidrLayout;
   /** Show a tiny "Layout A/B/C" chip when `?aidr=` is set for QA. */
   layoutLabeled?: boolean;
+  /** Links the snapshot date (e.g. to its day archive page). */
+  dateHref?: string;
+  /** One bullet column, for narrow slots such as the day page sidebar. */
+  singleColumn?: boolean;
+  /** The live "Updated …" footer; off for archived days. */
+  showFreshness?: boolean;
 }): ReactElement | null {
   const { setPrefs } = usePrefs();
 
@@ -57,7 +66,7 @@ export function TldrSection({
     options[options.length - 1];
 
   const shown = bullets.slice(0, tldrShownCount(bullets.length, defaultCount));
-  const mid = Math.ceil(shown.length / 2);
+  const mid = singleColumn ? shown.length : Math.ceil(shown.length / 2);
 
   const selectedIndex = selectedOption ? options.indexOf(selectedOption) : -1;
   const nextOption =
@@ -76,11 +85,22 @@ export function TldrSection({
             AI;DR
           </h2>
           <span className="text-xs text-muted-foreground">
-            {snapshotDate
-              ? snapshotDate
-              : lang === "vi"
-                ? "24 giờ qua"
-                : "past 24 hours"}
+            {snapshotDate ? (
+              dateHref ? (
+                <a
+                  href={dateHref}
+                  className="rounded-sm hover:text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {snapshotDate}
+                </a>
+              ) : (
+                snapshotDate
+              )
+            ) : lang === "vi" ? (
+              "24 giờ qua"
+            ) : (
+              "past 24 hours"
+            )}
           </span>
           {layoutLabeled && (
             <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -155,7 +175,7 @@ export function TldrSection({
         <span>
           {totalStories} {lang === "vi" ? "tin" : "stories"}
         </span>
-        {lastFetchedAt ? (
+        {!showFreshness ? null : lastFetchedAt ? (
           <Link
             to="/data"
             suppressHydrationWarning

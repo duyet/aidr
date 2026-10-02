@@ -131,6 +131,38 @@ export const ADMIN_MCP_TOOLS = [
       "Generate the TL;DR from current data and return the en/vi bullets. Does not write the live edition and sends nothing; LLM calls are logged.",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "set_day_video",
+    description:
+      'Set the YouTube media on the day archive page /date/YYYY-MM-DD: `video` (16:9, shown on desktop) and/or `short` (9:16 Short, shown on mobile). Each accepts a youtu.be / watch / shorts / embed URL or an 11-character id; null or "" clears that field, an omitted field is kept. At least one must remain set.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          description: "Asia/Ho_Chi_Minh day, YYYY-MM-DD.",
+        },
+        video: { type: ["string", "null"] },
+        short: { type: ["string", "null"] },
+        title: { type: ["string", "null"] },
+      },
+      required: ["date"],
+    },
+  },
+  {
+    name: "delete_day_video",
+    description: "Remove both the video and the Short from a day archive page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          description: "Asia/Ho_Chi_Minh day, YYYY-MM-DD.",
+        },
+      },
+      required: ["date"],
+    },
+  },
 ] as const;
 
 export type AdminMcpToolName = (typeof ADMIN_MCP_TOOLS)[number]["name"];

@@ -180,6 +180,14 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
 - Rollback: redeploy the previous Worker, then
   `DROP TABLE clerk_verified_emails;`
 
+## 0046_day_videos.sql
+
+- Change: creates `day_videos` (date PK, `youtube_id`, `short_id`, title,
+  added_by, timestamps) for the optional video on `/date/YYYY-MM-DD`. No rows
+  are seeded.
+- Risk: none. The day page treats a missing table as "no video".
+- Rollback: redeploy the previous Worker, then `DROP TABLE day_videos;`
+
 ## 0045_translation_knowledge_seed_terms.sql
 
 - Change: seeds nine active `translation_knowledge` rules (keep-English

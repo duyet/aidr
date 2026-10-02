@@ -9,6 +9,7 @@ import {
   decideSubmission,
   decideSuggestion,
   decideTranslationKnowledge,
+  deleteDayVideo,
   deleteSource,
   getLlmCalls,
   getStatus,
@@ -26,6 +27,7 @@ import {
   regenerateTldr,
   reprocessToday,
   retryTelegramDigest,
+  setDayVideo,
   triggerIngest,
   updateItem,
   upsertSource,
@@ -240,6 +242,46 @@ async function handle(
     segments[0] === "sources"
   ) {
     const result = await deleteSource(env, segments[1]);
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result);
+  }
+
+  // Day archive media: PUT { video?, short?, title? } sets/clears each field;
+  // DELETE removes the day's row.
+  if (
+    method === "PUT" &&
+    segments.length === 2 &&
+    segments[0] === "day-videos"
+  ) {
+    const { body, error } = await parseJsonBody(request);
+    if (error) return Response.json({ error }, { status: 400 });
+    const actor = await adminActor(request, env);
+    const result = await setDayVideo(
+      env,
+      segments[1],
+      body as Parameters<typeof setDayVideo>[2],
+      actor
+    );
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result);
+  }
+
+  if (
+    method === "DELETE" &&
+    segments.length === 2 &&
+    segments[0] === "day-videos"
+  ) {
+    const result = await deleteDayVideo(env, segments[1]);
     if (isHandlerError(result)) {
       return Response.json(
         { error: result.error },

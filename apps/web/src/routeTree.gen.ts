@@ -33,6 +33,7 @@ import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiSystemRouteImport } from './routes/api/system'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
 import { Route as ContributeNewRouteImport } from './routes/contribute.new'
+import { Route as DateDateRouteImport } from './routes/date.$date'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
@@ -173,6 +174,11 @@ const ContributeNewRoute = ContributeNewRouteImport.update({
   path: '/contribute/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DateDateRoute = DateDateRouteImport.update({
+  id: '/date/$date',
+  path: '/date/$date',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInSplatRoute = SignInSplatRouteImport.update({
   id: '/sign-in/$',
   path: '/sign-in/$',
@@ -293,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
+  '/date/$date': typeof DateDateRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/contribute/': typeof ContributeIndexRoute
@@ -338,6 +345,7 @@ export interface FileRoutesByTo {
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
+  '/date/$date': typeof DateDateRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/contribute': typeof ContributeIndexRoute
@@ -384,6 +392,7 @@ export interface FileRoutesById {
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
+  '/date/$date': typeof DateDateRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/contribute/': typeof ContributeIndexRoute
@@ -431,6 +440,7 @@ export interface FileRouteTypes {
     | '/api/subscribe'
     | '/api/system'
     | '/contribute/new'
+    | '/date/$date'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/contribute/'
@@ -476,6 +486,7 @@ export interface FileRouteTypes {
     | '/api/subscribe'
     | '/api/system'
     | '/contribute/new'
+    | '/date/$date'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/contribute'
@@ -521,6 +532,7 @@ export interface FileRouteTypes {
     | '/api/subscribe'
     | '/api/system'
     | '/contribute/new'
+    | '/date/$date'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/contribute/'
@@ -567,6 +579,7 @@ export interface RootRouteChildren {
   ApiSubscribeRoute: typeof ApiSubscribeRouteWithChildren
   ApiSystemRoute: typeof ApiSystemRouteWithChildren
   ContributeNewRoute: typeof ContributeNewRoute
+  DateDateRoute: typeof DateDateRoute
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
   ContributeIndexRoute: typeof ContributeIndexRoute
@@ -744,6 +757,13 @@ declare module '@tanstack/react-router' {
       path: '/contribute/new'
       fullPath: '/contribute/new'
       preLoaderRoute: typeof ContributeNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/date/$date': {
+      id: '/date/$date'
+      path: '/date/$date'
+      fullPath: '/date/$date'
+      preLoaderRoute: typeof DateDateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in/$': {
@@ -961,6 +981,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSubscribeRoute: ApiSubscribeRouteWithChildren,
   ApiSystemRoute: ApiSystemRouteWithChildren,
   ContributeNewRoute: ContributeNewRoute,
+  DateDateRoute: DateDateRoute,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
   ContributeIndexRoute: ContributeIndexRoute,
@@ -972,6 +993,7 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
 
 import type { getRouter } from './router.tsx'
 import type { startInstance } from './start.ts'

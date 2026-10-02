@@ -176,6 +176,31 @@ under a `tldr-preview-…` operation id, no D1 writes besides `llm_calls`).
 Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>`
 (`apps/web/scripts/aidr-agent.ts`). `run` / `rerun` are dry unless `--live`.
 
+## Day archive (`/date/YYYY-MM-DD`)
+
+Read-only page per **audience day** (`Asia/Ho_Chi_Minh`, the key
+`tldr_snapshots.date` and the Telegram/email editions use, §10–12): the
+snapshot stored under that date, then every published item with
+`published_at` inside that ICT day ordered by `rank_score` (one group,
+bounded to 500, no source-share cap), plus the nearest earlier/later day with
+stories. The homepage feed's day headings stay UTC, so a story's heading can
+be one day before its archive page. `getDayArchive`
+(`src/lib/feed-queries.ts`) never writes — unlike `getFeed` it does not
+rebuild a snapshot. 404 for a malformed date, a date after today (ICT), or a
+day with neither stories nor a snapshot. With `?lang=`, days older than 3
+days (ranks frozen, §7) cache for a day at the edge; recent days for 5
+minutes. Without `?lang=` the response is private, like story pages.
+
+Optional media lives in `day_videos` (`date` PK, `youtube_id` 16:9 shown on
+md+, `short_id` 9:16 shown on mobile, `title`, `added_by`, timestamps; at
+least one id). Each falls back to the other at the other breakpoint;
+breakpoints are CSS, so SSR HTML stays cacheable. Set with
+`PUT /api/admin/day-videos/:date` `{ video?, short?, title? }` (YouTube URL
+or 11-char id; `null` clears a field, omitted keeps it), remove with
+`DELETE`, or the `set_day_video` / `delete_day_video` admin MCP tools, or
+`agent day-video <date> --video … --short …`. Ids are validated server-side.
+The player is a click-to-play `youtube-nocookie.com` facade.
+
 ## Ops pitfalls
 
 - LLM-heavy Workflow steps use `retries: 0` and a 4-minute timeout. A
@@ -918,12 +943,17 @@ drain it.
 | `tldr` | `generateTldr` | `ANYROUTER_TLDR_MODEL` | bilingual, item ids, bullet length, coverage | silver `tldr_snapshots` |
 | `cluster` | `clusterSimilar` | `ANYROUTER_MODEL` | same-story F1 | silver `duplicate_of` (distinct titles only) |
 | `topics` | `buildTopicMappingPrompt` → `parseTopicMappingResponse` | `ANYROUTER_MODEL` | canonical mapping | silver `topics.canonical` |
+| `draft-repair` | `translateBatch` with the draft check's `fix` lists (the one repair pass in `translateItems`) | `ANYROUTER_TRANSLATE_MODEL` | `acceptsRepair` (fewer issues, still VI, ≥80% length), all issues resolved | derived: stored VI rows `translationDraftIssues` flags, stratified by issue type |
+| `rule-extraction` | `buildRuleExtractionPrompt` → `validateRule` + `ruleIsEvidenced` (as `learnFromAcceptedSuggestion`, no D1 write) | `ANYROUTER_TRANSLATE_MODEL` | class-balanced: reusable + term + evidenced on positives, "one-off" on negatives | gold: active rule examples; derived: stored VI with a rule's `bad_vi` substituted, one-number fact fixes |
+| `suggestion` | `buildReviewPrompt` → `parseReviewResponse` (per field), or VI_STYLE + `buildUnifiedReviewPrompt` → `parseUnifiedVerdict` (`auto`), mapped to accepted / needs_review / rejected with prod thresholds (no output guard, no panel) | `ANYROUTER_TRANSLATE_MODEL` | status agreement | silver `translation_suggestions.status`; accepted rows left out (the applied edit is already in `translations`) |
+| `submission` | `buildSubmissionReviewPrompt` → `parseSubmissionVerdict`, accept at ≥0.6 (the chat fallback; prod asks Jev first) | `ANYROUTER_MODEL` | accept/reject agreement | silver `submissions.status`; og:description re-fetched at build for every case |
+| `judge-relevance`, `judge-source-quality`, `judge-safety` | `createJevJudgeExecutor`, one seat, score-panel or submission-gate subject shape | `JEV_PANEL_{RELEVANCE,SOURCE_QUALITY,SAFETY}_MODEL` | support/oppose agreement; abstain or transport failure = invalid | silver `items.status` published/rejected and `submissions.status` (`judge-score.json`; panel never ran in prod, no stored votes) |
+| `judge-translation-fidelity` | same, translation-gate subject shape | `JEV_PANEL_TRANSLATION_FIDELITY_MODEL` | same | silver `qa_rating` ≥0.7 and rejected suggestions (`judge-translation.json`) |
 
-Not benched yet: repair (`requestRepair`), reader-suggestion review and
-retranslate (`suggestions.ts`, `ANYROUTER_TRANSLATE_MODEL`), submission
-review (`submissions.ts`, `ANYROUTER_MODEL`), knowledge rule extraction,
-digest wrap (`mail/compose.ts`), and the JEV panel judges
-(`JEV_PANEL_*_MODEL`). Silver metrics show how close a model is to the
+Not benched yet: repair (`requestRepair`), suggestion retranslate
+(`suggestions.ts`), and digest wrap (`mail/compose.ts`). Review-queue data
+is thin (2026-10-02: 2 usable suggestions, 12 submissions), so treat those
+two steps as smoke checks, not rankings. Silver metrics show how close a model is to the
 current prod output, not whether it is correct. Rank models on gold and
 deterministic metrics first. Datasets hold no user ids, names or IP hashes.
 
