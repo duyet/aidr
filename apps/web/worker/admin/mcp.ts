@@ -34,6 +34,7 @@ import {
 import type { Env } from "../types.js";
 import { checkAuth } from "./auth.js";
 import {
+  deleteDayVideo,
   deleteSource,
   getStatus,
   isHandlerError,
@@ -41,6 +42,7 @@ import {
   previewRanking,
   previewTldr,
   pushItems,
+  setDayVideo,
   triggerIngest,
   upsertSource,
 } from "./handlers.js";
@@ -146,6 +148,15 @@ async function callAdminTool(
       return previewRanking(env, args.limit);
     case "preview_tldr":
       return previewTldr(env);
+    case "set_day_video":
+      return setDayVideo(
+        env,
+        args.date,
+        { video: args.video, short: args.short, title: args.title },
+        "mcp"
+      );
+    case "delete_day_video":
+      return deleteDayVideo(env, args.date);
   }
 }
 

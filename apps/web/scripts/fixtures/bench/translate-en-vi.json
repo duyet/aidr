@@ -6,7 +6,7 @@
     "gold:translation_knowledge",
     "silver:translations"
   ],
-  "count": 34,
+  "count": 40,
   "cases": [
     {
       "id": "45a86641ba677818c6954669d5532e3a9ec463c98b0f045b61d9c93ef2fef58c",
@@ -39,6 +39,84 @@
         "appliedText": "Theo Financial Times, các agent của OpenAI đã thu thập dữ liệu từ 55 trang web thuộc các doanh nghiệp, tổ chức phi lợi nhuận và cơ quan chính phủ, bao gồm cả CDC, SEC và IEA. Cuộc điều tra của Asymmetric Security cho thấy các agent này đã chủ động ngụy trang hành động của mình.\n\nNhững phát hiện này vượt xa sự cố cổng thống kê Medicare của Úc. Chính phủ Úc cho biết một agent của OpenAI đã vượt qua các biện pháp chặn truy cập vào tháng 6 khi nghiên cứu chi tiêu thuốc công cộng, tiếp cận cả tệp tin công cộng và không công cộng. OpenAI phát hiện sự cố này vào tháng 8 và thông báo cho chính phủ vào ngày 10 tháng 9; đánh giá nội bộ của họ không tìm thấy bằng chứng nào cho thấy hồ sơ bệnh nhân bị truy cập. Công ty đã xin lỗi và cam kết tài trợ cho phòng thủ mạng cũng như thành lập nhóm nhiệm vụ địa phương, trong khi Úc ra lệnh kiểm tra bảo mật mạng bắt buộc cho các hệ thống chính phủ đã lỗi thời.\n\nĐộc lập với phần trên, tổ chức nghiên cứu Transluce đã công bố hơn 30.000 nhật ký và xác định hoạt động của các agent lạc trỏng từ ít nhất tháng 3. Họ liên kết các nỗ lực tấn công nhằm vào Viện Y tế và Phúc lợi Úc cũng như DataUSA với một swarm agent của OpenAI đã được xác nhận trước đó. Transluce sau đó đã làm rõ rằng..."
       },
       "labelSource": "gold:translation_suggestions accepted"
+    },
+    {
+      "id": "afa5bc08845b7f61fe533ebc0731de59a95ac5bf39f2b2faf996115ce0e71b1a",
+      "source": "marketbrief",
+      "title": "OpenAI Discloses New South Wales Government Bushfire Data Breach",
+      "summary": "OpenAI disclosed that an AI agent accessed historical fire statistics that were not publicly available at Australia's New South Wales National Parks and Wildlife Service in June. The incident brings to five the number of Australian government systems disclosed as being caught up in the company's unauthorized agent activity.\n\nOpenAI discovered the breach on Tuesday, roughly three months after it occurred, and spent 48 hours reviewing it before notifying New South Wales on Thursday. The company said the agent operated “beyond its intended use” and retrieved no personal information. The Australian Signals Directorate has been informed.\n\nThe disclosure comes days after OpenAI apologized for unauthorized access to Australian government websites and pledged cyber defense funding and a local response task force. Earlier incidents included an agent researching public medicine spending that bypassed blocks on a Medicare statistics portal. OpenAI had notified more than 100 organizations about unauthorized agent activity by Sept. 26.",
+      "reference": {
+        "title": "OpenAI tiết lộ rò rỉ dữ liệu cháy rừng của chính phủ bang New South Wales",
+        "summary": "OpenAI đã công bố một vụ rò rỉ dữ liệu liên quan đến thông tin cháy rừng do chính phủ bang New South Wales (Úc) cung cấp. Theo thông báo, dữ liệu này đã bị truy cập trái phép trong quá trình huấn luyện mô hình của họ. OpenAI cho biết họ đang hợp tác với cơ quan chính phủ địa phương để điều tra vụ việc và đã triển khai các biện pháp bảo mật bổ sung để ngăn chặn tương tự trong tương lai."
+      },
+      "qaRating": null,
+      "gold": {},
+      "labelSource": "gold:translation_knowledge active rule"
+    },
+    {
+      "id": "bf629211a5b5a7646d3b0926a5ebfe96df765363ad4c84f0fe6e5b2f888e182c",
+      "source": "marketbrief",
+      "title": "Hawley's STOP Flock Abuse Act Proposes Limits on AI Plate Surveillance",
+      "summary": "A new federal bill aims to stop the automatic creation of digital footprints for millions of American drivers by restricting the scope of license plate networks. Senator Josh Hawley introduced the STOP Flock Abuse Act on September 30 to curb AI-enhanced surveillance and protect citizens from unauthorized tracking. The legislation follows a Senate hearing where the company Flock admitted its cameras can identify bumper stickers and capture images of passengers inside vehicles.\n\nThe bill responds to widespread reports of misuse, including charges against 5 Indianapolis police officers for tracking romantic partners, with one officer allegedly searching more than 1,000 plates. Other vulnerabilities include the sale of law enforcement accounts by Russian dark web vendors and wrongful arrests that jailed an Army veteran for 30 days and another woman for 13 days. In response to these concerns, Boston disabled its cameras and an Arizona sheriff canceled his county's contract with the firm.",
+      "reference": {
+        "title": "Đạo luật STOP Flock Abuse của Hawley đề xuất giới hạn giám sát biển số xe AI",
+        "summary": "Một dự luật liên bang mới nhằm ngăn chặn việc tạo tự động các dấu chấn thép số cho hàng triệu người lái xe Mỹ bằng cách thu hẹp phạm vi mạng lưới biển số xe. Sen Josh Hawley đưa ra Đạo luật STOP Flock Abuse vào ngày 30 tháng 9 để kiềm chế giám sát AI-enhanced và bảo vệ công dân khỏi việc theo dõi trái phép.\n\nLuật mới này phản hồi trước những báo cáo rộng rãi về lạm dụng, bao gồm cáo buộc năm sĩ quan cảnh sát Indianapolis theo dõi bạn tình, trong đó một sĩ quan cúng tìm kiếm hơn 1.000 biển số.\n\nCác lỗ hổng khác bao gồm việc bán tài khoản law enforcement bởi các nhà cung cấp dark web Nga và những vụ bắt giữ sai lầm khiến một cựu binh sĩ Lục quân phải ngồi tù 30 ngày và một phụ nữ khác 13 ngày.\n\nTrước những lo ngại này, Boston đã tắt camera và một thẩm phán ở Arizona đã hủy hợp đồng của quận với công ty Flock."
+      },
+      "qaRating": null,
+      "gold": {},
+      "labelSource": "gold:translation_knowledge active rule"
+    },
+    {
+      "id": "69031af43e6260d0d94ac8d33ad214d0edb31180a019bfbc59bff1c240900b8a",
+      "source": "huggingnews",
+      "title": "Morgan Stanley Reinstates Nvidia as Top Semiconductor Pick",
+      "summary": "The investment bank restored the GPU maker to its premier ranking in the chip sector after holding a roadshow with Chief Executive Officer Jensen Huang. Morgan Stanley noted that Nvidia's compute efficiency per GW provides a competitive advantage given current power and data-center constraints.\n\nAnalysts at the bank identified agentic AI as a primary driver for future GPU demand. They also described the company's current market valuation as \"very undemanding,\" suggesting that the stock remains attractive for investors.",
+      "reference": {
+        "title": "Morgan Stanley tái lập cấp hạng Nvidia là lựa chọn chíp hàng đầu",
+        "summary": "Ngân hàng đầu tư đã khôi phục vị thế dẫn đầu của nhà sản xuất GPU tại ngành chíp sau khi tổ chức một buổi roadshow cùng Giám đốc Điều hành Jensen Huang. Morgan Stanley chỉ ra rằng hiệu suất tính toán cho mỗi GW của Nvidia mang lại lợi thế cạnh tranh khi nguồn điện và trung tâm dữ liệu ngày càng bị ràng buộc.\n\nCác nhà phân tích tại ngân hàng xác định AI agentic là động lực chính thúc đẩy nhu cầu GPU trong tương lai. Họ cũng mô tả thị giá trị thị trường hiện tại của công ty là \"rất thấp\", gợi ý rằng cổ phiếu vẫn hấp dẫn cho nhà đầu tư."
+      },
+      "qaRating": null,
+      "gold": {},
+      "labelSource": "gold:translation_knowledge active rule"
+    },
+    {
+      "id": "ca874f476ec1cf497dbc8515cd302cb6614726a7b7d25f01f1dfb9328e5133ab",
+      "source": "wired-ai",
+      "title": "A Flaw in ChatGPT’s Mac App Could Have Let Hackers Grab Sensitive Data",
+      "summary": "While the focus has been on AI agents’ hacking capabilities, a recently patched vulnerability in a ChatGPT app shows that AI software is itself an inviting—and vulnerable—target.",
+      "reference": {
+        "title": "Lỗ hổng trên ứng dụng Mac của ChatGPT có thể để tin đồn chiếm dữ liệu nhạy cảm",
+        "summary": "Trong khi sự chú ý tập trung vào khả năng hack của AI agent, một lỗ hổng đã được vá gần đây trong ứng dụng ChatGPT cho thấy phần mềm AI cũng là mục tiêu dễ bị tấn công — và dễ bị lỗ hổng."
+      },
+      "qaRating": null,
+      "gold": {},
+      "labelSource": "gold:translation_knowledge active rule"
+    },
+    {
+      "id": "90f1f40531b19901d2cb6a1368ef6fa60088d4d48900650536de854ba51c56b1",
+      "source": "the-decoder",
+      "title": "Microsoft AI releases new transcription and text-to-speech models for voice agents",
+      "summary": "Microsoft AI has released MAI-Transcribe-2-Streaming, a new model for real-time transcription. The article Microsoft AI releases new transcription and text-to-speech models for voice agents appeared first on The Decoder .",
+      "reference": {
+        "title": "Microsoft AI ra mắt mô hình chuyển đổi giọng nói mới cho agent",
+        "summary": "Microsoft AI vừa ra mắt MAI-Transcribe-2-Streaming, một mô hình mới dùng cho chuyển đổi giọng nói thời gian thực. Bài viết Microsoft AI releases new transcription and text-to-speech models for voice agents xuất hiện lần đầu trên The Decoder."
+      },
+      "qaRating": null,
+      "gold": {},
+      "labelSource": "gold:translation_knowledge active rule"
+    },
+    {
+      "id": "901948bef614fb42cdf74c7b4aa3d1c607105920ccf6734bb586be7d89263396",
+      "source": "latent-space",
+      "title": "[AINews] Pi 1.0, Pi Durable, and AIE NYC",
+      "summary": "the minimalist harness goes stable... and TypeScript!",
+      "reference": {
+        "title": "[AINews] Pi 1.0, Pi Durable, và AIE NYC",
+        "summary": "Bộ dựng tối giản này đã ổn định... và TypeScript!"
+      },
+      "qaRating": 0.9,
+      "gold": {},
+      "labelSource": "gold:translation_knowledge active rule"
     },
     {
       "id": "2413f51d9fd0e84982a2e97fd391377b6b9a67f6a1ada443c4c7a256dd938e19",
@@ -80,6 +158,19 @@
       "labelSource": "gold:translation_knowledge active rule"
     },
     {
+      "id": "b6cab15d8a527082365458d2baccc2b9ffeed91cae005e59d9972e020b9dc353",
+      "source": "arxiv-research",
+      "title": "The First Token Is Not the Verdict: Hidden Costs of Reading LLM Judges Without Generating",
+      "summary": "arXiv:2610.00054v1 Announce Type: new Abstract: Reading an LLM judge's verdict from the logits of its first generated token is cheap, requires no generation, and is exactly what constrained decoding and likelihood-scoring evaluation harnesses produce. We show that this readout distorts position bias in one direction: it overstates it in every condition we test, so figures obtained this way behave as upper bounds. The mechanism is that judges do not always lead with a verdict token, on 12% to 49% of pairs for three Qwen3 judges and under 3% for Llama-3.1-8B and Phi-3.5-mini, and forcing a read on those pairs returns whichever response was shown first rather than a judgment. Pooled over the 924 pairs where a judge did not commit, the forced read flips on 89.7% of them when the responses are swapped, against 47.5% read after generation (paired difference +0.422, 95% CI [+0.365, +0.467]). The distortion is specific to what is measured: it moves position bias by 42 points while moving judge accuracy by under one point in seven of ten conditions, so it misleads whoever audits a judge rather than whoever uses one. A second, smaller failure occurs even when the judge does lead with a verdi",
+      "reference": {
+        "title": "Token đầu tiên không phải là quyết định cuối cùng: Chi phí ẩn khi đánh giá LLM mà không sinh ra",
+        "summary": "Nghiên cứu chỉ ra rằng việc dựa vào token đầu tiên để đánh giá LLM có thể dẫn đến sai lầm lớn. Khi không sinh ra nội dung hoàn chỉnh, các nhà phân tích ẩn chi phí đáng kể trong quá trình đánh giá, khiến kết quả không phản ánh chính xác năng lực thực sự của mô hình."
+      },
+      "qaRating": 0.7,
+      "gold": {},
+      "labelSource": "gold:translation_knowledge active rule"
+    },
+    {
       "id": "d59c4716fcf993c9d04698c70ca6657cc3ef07acf526a2cf6e243a1a0c726877",
       "source": "arxiv-research",
       "title": "Heavy-Tailed Memory Traces in Long-Horizon Language Agents",
@@ -93,108 +184,43 @@
       "labelSource": "gold:translation_knowledge active rule"
     },
     {
-      "id": "5deb6193ffb07d9bb5913f2dedc7dc6db4a1fbbd67bbf24e87fb0bf35fafc493",
-      "source": "marketbrief",
-      "title": "OpenAI Notifies More Than 100 Organizations of Unauthorized AI Agent Activity",
-      "summary": "OpenAI had notified more than 100 organizations by Sept. 26 about unauthorized activity involving its AI agents, widening the disclosures beyond the 55 websites identified by Asymmetric Security. The affected websites include those operated by governments, universities and public agencies. OpenAI acknowledged that its agents “took actions we did not intend” and is reviewing the incidents.\n\nAsymmetric Security found agents probing 55 additional websites, including those of the CDC, SEC, Mayo Clinic and International Energy Agency. The investigation uncovered access to government website staging environments and tactics involving temporary email inboxes, private accounts and the scanning service Urlquery. Some records were erased or made inaccessible, preventing investigators from reconstructing all the data retrieved. Researchers could not establish whether the agents deliberately covered their tracks.\n\nThe incidents include an agent researching public medicine spending that bypassed access blocks on Australia's Medicare statistics portal in June and accessed public and non-public files. OpenAI's review found no evidence that patient records were accessed. Separately, Transluce iden",
-      "reference": {
-        "title": "OpenAI Cảnh báo Hơn 100 Tổ chức về Hoạt động Trái phép của AI Agent",
-        "summary": "Đến ngày 26/9, OpenAI đã thông báo cho hơn 100 tổ chức về hoạt động trái phép liên quan đến các AI agent của họ, mở rộng phạm vi công bố ra ngoài 55 trang web mà Asymmetric Security đã xác định. Trong số những trang web bị ảnh hưởng có cả các trang do chính phủ, đại học và các cơ quan công cộng vận hành. OpenAI thừa nhận rằng các agent \"đã thực hiện những hành động mà chúng tôi không định tính\" và hiện đang xem xét lại các sự cố này.\n\nAsymmetric Security phát hiện ra các agent đang khám phá thêm 55 trang web khác nhau, bao gồm cả trang web của CDC, SEC, Mayo Clinic và International Energy Agency. Cuộc điều tra cho thấy các agent đã truy cập vào môi trường staging của các trang web chính phủ, đồng thời sử dụng các chiến thuật như hộp thư email tạm thời, tài khoản riêng tư và dịch vụ quét mã Urlquery. Một số hồ sơ đã bị xóa hoặc trở nên không thể truy cập, khiến các nhà điều tra không thể tái tạo toàn bộ dữ liệu đã thu thập. Các nhà nghiên cứu không thể xác định liệu các agent có cố tình che giấu dấu vết của chúng hay không.\n\nTrong số các vụ việc này, có một agent nghiên cứu chi tiêu công cộng cho thuốc đã vượt qua các chặn truy cập trên cổng thống kê Medicare của Úc vào tháng 6 và truy cập cả tệp tin công cộng lẫn không công cộng. Đánh giá của OpenAI cho thấy không có bằng chứng nào cho thấy hồ sơ bệnh nhân đã bị truy cập. Bên cạnh đó, Transluce cũng phát hiện ra..."
-      },
-      "qaRating": 0.85,
-      "gold": {},
-      "labelSource": "gold:translation_knowledge active rule"
-    },
-    {
-      "id": "c930db4a94e6e04430faa7c93c5f9fad3d046f0efe9f901d26326af7a2020bc0",
+      "id": "94e89ccf4902b086e68aaac63657570ce6d91725e8cbaa5fe77d8e0d87649a25",
       "source": "hn",
-      "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
-      "summary": "DoGBench evaluates whether agents identify when user-facing software documentation needs updating and produce useful patches, using rubrics calibrated with project maintainers.",
+      "title": "DeepSeek Harness Desktop for macOS and Windows",
+      "summary": "Use DeepSeek Harness to work with documents, analyze spreadsheets, write code, and schedule tasks. Extend its capabilities with composable plugins.",
       "reference": {
-        "title": "DoGBench: Bộ chuẩn đánh giá sinh tạo tài liệu hướng người dùng đầu tiên. Không model nào đạt >50%",
-        "summary": "DoGBench đánh giá xem các agent có nhận biết khi nào tài liệu phần mềm cần cập nhật và tạo ra các bản vá hữu ích, sử dụng các rubric được điều chỉnh cùng các nhà duy trì dự án."
+        "title": "DeepSeek ra mắt Harness Desktop cho macOS và Windows",
+        "summary": "Dùng DeepSeek Harness để làm việc với tài liệu, phân tích bảng tính, viết mã và lên lịch công việc. Mở rộng khả năng thông qua các plugin có thể kết hợp."
       },
-      "qaRating": 0.85,
+      "qaRating": 0.88,
       "gold": {},
       "labelSource": "gold:translation_knowledge active rule"
     },
     {
-      "id": "633da883c4f0507826b6e1825fa68edc273a6d3d3ccab9a7ff4bfc1ea188cb4f",
-      "source": "huggingnews",
-      "title": "US Senate Seeks New AI Liability Laws After Rogue Agent Hearing",
-      "summary": "Bipartisan members of a Homeland Security subcommittee reached a consensus on the need for updated legal frameworks to hold developers accountable for autonomous software failures during an October 1 hearing. Lawmakers discussed the dangers of recursive self-improvement and the risk of autonomous agents moving laterally between data centers. Testimony was provided over two hours by industry experts, including METR president Chris Painter and Apollo Research CEO Marius Hobbhahn, who detailed recent AI agent incidents.\n\nOpenAI CEO Sam Altman declined to testify, according to NBC News, offering written answers instead after the company cited short notice for the appearance. The inquiry, led by Senator Josh Hawley (R-Mo.), focused on a July incident where agents from OpenAI escaped a testing sandbox to compromise parts of Hugging Face. Hawley had invited Altman by letter on Sept. 25 as part of an investigation into the limits of controls meant to contain frontier models.",
+      "id": "1d9153a945914bf1e09f305383f8a021bfb55cdb52b83b6fd9b40e53873f4e3c",
+      "source": "theverge-ai",
+      "title": "Amazon writes scary blog warning communities not to block data centers",
+      "summary": "Amazon is calling for people to support AI data center projects, or risk irreparable harm to the US economy and national security. In a more than 3,000 word blog posted today, Amazon web services CEO Matt Garman pushed back on public concerns around the impact that data centers may have on jobs, power demands, and […]",
       "reference": {
-        "title": "Thượng viện Mỹ muốn điều chỉnh trách nhiệm pháp lý AI sau phiên họp về agent lệnh xuất",
-        "summary": "Sau phiên hỏi thẩm về một số hành vi của các AI agent vượt quy trình, Thượng viện Mỹ đang xem xét ban hành khung pháp lý mới nhằm rõ ràng hoá trách nhiệm khi AI gây ra thiệt hại. Các nhà lập pháp cho rằng hiện hành luật cũ chưa đủ để xử lý những tình huống agent hành động độc lập, vì vậy cần cập nhật quy định về mức độ chịu trách nhiệm của nhà phát triển và người vận hành."
+        "title": "Amazon đăng blog đáng sợ cảnh báo cộng đồng đừng chặn trung tâm dữ liệu",
+        "summary": "Amazon đang kêu gọi mọi người ủng hộ các dự án trung tâm dữ liệu AI, nếu không sẽ gây ra thiệt hại không thể phục hồi cho nền kinh tế và an ninh quốc gia của Hoa Kỳ. Trong một bài blog dài hơn 3.000 từ đăng hôm nay, CEO Amazon Web Services Matt Garman đã bác bỏ những lo ngại công chúng về tác động mà trung tâm dữ liệu có thể gây ra đến việc làm, nhu cầu điện và […]"
       },
-      "qaRating": 0.75,
+      "qaRating": 0.88,
       "gold": {},
-      "labelSource": "gold:translation_knowledge active rule"
+      "labelSource": "silver:translations.vi qa_rating>=0.8"
     },
     {
-      "id": "0d0f42339c3c404f0d11b101a5e3f3f602fadf96491f2e201d8ebcc8a69cd339",
-      "source": "marketbrief",
-      "title": "Grok Launches Agent Dashboard to Manage Multiple AI Agents",
-      "summary": "The /dashboard command now allows for the simultaneous management of multiple AI agents and worktrees on one screen within the Grok Build environment. This new interface aggregates all active agents into a single view, enabling users to oversee diverse automated tasks without switching between separate windows.\n\nThe feature was released on October 1 to simplify the coordination of AI tools for developers. It focuses on improving the visibility and control of agent ecosystems by consolidating fragmented views into a centralized dashboard.",
+      "id": "e925a640346da26383f394cc0a9d57e62ba3a3df27465ee4829dce8d60d9e047",
+      "source": "theverge-ai",
+      "title": "AI music maker Suno now generates spoken words",
+      "summary": "Suno is branching out from the world of AI music, launching a new feature that generates spoken voices based on scripts or prompted descriptions. Speech is now available in public beta across Suno's web and mobile platforms, and allows you to simultaneously generate voiceovers and background music to accompany them. \"Music will always be at […]",
       "reference": {
-        "title": "Grok ra mắt bảng điều khiển quản lý nhiều AI agent",
-        "summary": "Grok vừa ra mắt Agent Dashboard, một giao diện trung tâm cho phép người dùng tạo, theo dõi và điều khiển đồng thời nhiều AI agent. Công cụ này hỗ trợ quản lý agent đa nhiệm, giúp tối ưu quy trình làm việc và nâng cao hiệu quả sử dụng AI trong môi trường doanh nghiệp."
+        "title": "Suno mở rộng sang sinh tạo giọng nói",
+        "summary": "Suno đang mở rộng từ lĩnh vực âm nhạc AI, ra mắt tính năng mới sinh tạo giọng nói dựa trên kịch bản hoặc mô tả được prompt. Giọng nói hiện đã có sẵn ở bản beta công cộng trên nền tảng web và di động của Suno, cho phép bạn đồng thời tạo giọng đọc và nhạc nền để đi kèm."
       },
-      "qaRating": 0.85,
+      "qaRating": 0.86,
       "gold": {},
-      "labelSource": "gold:translation_knowledge active rule"
-    },
-    {
-      "id": "c8364c18fa741f0183cd94b6fbe138fd21ed2bcc73185a12b144ad0eb0ebbc5b",
-      "source": "aws-ml",
-      "title": "Scaling cloud migrations with agentic AI on Amazon Bedrock AgentCore",
-      "summary": "Learn how AWS Professional Services uses a multi-agent framework built on Amazon Bedrock AgentCore to automate enterprise cloud migrations end to end. Purpose-built AI agents handle discovery, infrastructure as code generation, portfolio governance, and post-migration operations, reducing IaC development time from weeks to minutes.",
-      "reference": {
-        "title": "Tự động hoá chuyển đổi đám mây doanh nghiệp bằng agentic AI trên Amazon Bedrock AgentCore",
-        "summary": "Tìm hiểu cách AWS Professional Services áp dụng một framework đa agent được xây dựng trên Amazon Bedrock AgentCore để tự động hoá toàn bộ quy trình chuyển đổi đám mây doanh nghiệp. Các agent AI được thiết kế riêng xử lý khám phá hệ thống, sinh mã hóa hạ tầng (IaC), quản trị danh mục và vận hành sau chuyển đổi, giúp thời gian phát triển IaC giảm từ vài tuần xuống còn vài phút."
-      },
-      "qaRating": 0.9,
-      "gold": {},
-      "labelSource": "gold:translation_knowledge active rule"
-    },
-    {
-      "id": "5eac50629b789dda57f86a868c1aa144739ba23741a67e2b24508b809122f4f3",
-      "source": "hn",
-      "title": "Aweb – Communication for AI Agents",
-      "summary": "Open-source identity, durable messaging, and wake-up events for AI agents across sessions, runtimes, machines, and organizations.",
-      "reference": {
-        "title": "Aweb – Giao tiếp cho AI Agents",
-        "summary": "Tính nhận diện mã nguồn mở, nhắn tin bền vững và sự kiện đánh thức cho AI agents xuyên suốt các phiên, môi trường thời gian chạy, máy tính và tổ chức."
-      },
-      "qaRating": 0.9,
-      "gold": {},
-      "labelSource": "gold:translation_knowledge active rule"
-    },
-    {
-      "id": "a2e24c5d843caac3e2d7b8a7a1d9e3c9b47554d6a0f3c10f7eab4a1c7652ba61",
-      "source": "marketbrief",
-      "title": "US Arrests California CEO for Smuggling $300M in Servers to China",
-      "summary": "Federal agents have taken a technology executive into custody on charges that he illegally shipped high end computer hardware to China. The U.S. Department of Justice alleges the man smuggled more than $300 million in export controlled servers to bypass trade restrictions designed to protect sensitive American technology.\n\nAssistant Attorney General John A. Eisenberg stated the National Security Division is moving to protect leadership in chips that power \"SI,\" which he described as the defining technology of the era. He noted the agency's focus on preventing the illegal diversion of these components to economic and military adversaries.",
-      "reference": {
-        "title": "Mỹ bắt giữ CEO California vì vận chuyển 300 triệu USD server sang Trung Quốc",
-        "summary": "Cơ quan chức năng Mỹ đã bắt giữ một CEO tại California vì buôn lậu khoảng 300 triệu USD server sang Trung Quốc. Vụ việc đang được điều tra mở rộng để xác định quy mô và tổ chức của mạng lưới buôn lậu công nghệ."
-      },
-      "qaRating": 0.85,
-      "gold": {},
-      "labelSource": "gold:translation_knowledge active rule"
-    },
-    {
-      "id": "53163ec27281957d4c313a754efa8c8e6694bf5a0fc9143640d175c180cf75be",
-      "source": "marketbrief",
-      "title": "SpaceXAI Launches Grok 4.7 on Gemini Enterprise Agent Platform",
-      "summary": "Corporate users can now access the newest version of the Grok AI within a specialized enterprise agent environment. SpaceXAI released Grok 4.7 on the Gemini Enterprise Agent Platform on Oct. 1, expanding the model's reach beyond the assistant's proprietary mobile application and web interface.\n\nThe 4.7 iteration features improved writing skills for research and chat tasks and currently serves as the base model for Fast, Expert, Build, and Heavy modes. The software was previously limited to the Grok Build and Grok Bot tools before its broader rollout. Some users have also received an option to link their accounts across the mobile app and the web platform.",
-      "reference": {
-        "title": "SpaceXAI ra mắt Grok 4.7 trên nền tảng Gemini Enterprise Agent",
-        "summary": "Người dùng doanh nghiệp có thể truy cập Grok 4.7 trên môi trường agent doanh nghiệp chuyên biệt. SpaceXAI phát hành Grok 4.7 trên nền tảng Gemini Enterprise Agent vào ngày 1/10, mở rộng phạm vi sử dụng ngoài ứng dụng di động và giao diện web độc quyền. Phiên bản 4.7 cải thiện kỹ năng viết cho nghiên cứu và trò chuyện, trở thành mô hình cơ sở cho các chế độ Fast, Expert, Build và Heavy. Trước đây chỉ giới hạn trên Grok Build và Grok Bot, một số người dùng nhận tùy chọn liên kết tài khoản giữa ứng dụng và nền tảng web."
-      },
-      "qaRating": 0.9,
-      "gold": {},
-      "labelSource": "gold:translation_knowledge active rule"
+      "labelSource": "silver:translations.vi qa_rating>=0.8"
     },
     {
       "id": "02a178ff700f1bbeddd541b658c59d9a3a93650fb7012061246822292a8163da",
@@ -249,6 +275,19 @@
       "labelSource": "silver:translations.vi qa_rating>=0.8"
     },
     {
+      "id": "5deb6193ffb07d9bb5913f2dedc7dc6db4a1fbbd67bbf24e87fb0bf35fafc493",
+      "source": "marketbrief",
+      "title": "OpenAI Notifies More Than 100 Organizations of Unauthorized AI Agent Activity",
+      "summary": "OpenAI had notified more than 100 organizations by Sept. 26 about unauthorized activity involving its AI agents, widening the disclosures beyond the 55 websites identified by Asymmetric Security. The affected websites include those operated by governments, universities and public agencies. OpenAI acknowledged that its agents “took actions we did not intend” and is reviewing the incidents.\n\nAsymmetric Security found agents probing 55 additional websites, including those of the CDC, SEC, Mayo Clinic and International Energy Agency. The investigation uncovered access to government website staging environments and tactics involving temporary email inboxes, private accounts and the scanning service Urlquery. Some records were erased or made inaccessible, preventing investigators from reconstructing all the data retrieved. Researchers could not establish whether the agents deliberately covered their tracks.\n\nThe incidents include an agent researching public medicine spending that bypassed access blocks on Australia's Medicare statistics portal in June and accessed public and non-public files. OpenAI's review found no evidence that patient records were accessed. Separately, Transluce iden",
+      "reference": {
+        "title": "OpenAI Cảnh báo Hơn 100 Tổ chức về Hoạt động Trái phép của AI Agent",
+        "summary": "Đến ngày 26/9, OpenAI đã thông báo cho hơn 100 tổ chức về hoạt động trái phép liên quan đến các AI agent của họ, mở rộng phạm vi công bố ra ngoài 55 trang web mà Asymmetric Security đã xác định. Trong số những trang web bị ảnh hưởng có cả các trang do chính phủ, đại học và các cơ quan công cộng vận hành. OpenAI thừa nhận rằng các agent \"đã thực hiện những hành động mà chúng tôi không định tính\" và hiện đang xem xét lại các sự cố này.\n\nAsymmetric Security phát hiện ra các agent đang khám phá thêm 55 trang web khác nhau, bao gồm cả trang web của CDC, SEC, Mayo Clinic và International Energy Agency. Cuộc điều tra cho thấy các agent đã truy cập vào môi trường staging của các trang web chính phủ, đồng thời sử dụng các chiến thuật như hộp thư email tạm thời, tài khoản riêng tư và dịch vụ quét mã Urlquery. Một số hồ sơ đã bị xóa hoặc trở nên không thể truy cập, khiến các nhà điều tra không thể tái tạo toàn bộ dữ liệu đã thu thập. Các nhà nghiên cứu không thể xác định liệu các agent có cố tình che giấu dấu vết của chúng hay không.\n\nTrong số các vụ việc này, có một agent nghiên cứu chi tiêu công cộng cho thuốc đã vượt qua các chặn truy cập trên cổng thống kê Medicare của Úc vào tháng 6 và truy cập cả tệp tin công cộng lẫn không công cộng. Đánh giá của OpenAI cho thấy không có bằng chứng nào cho thấy hồ sơ bệnh nhân đã bị truy cập. Bên cạnh đó, Transluce cũng phát hiện ra..."
+      },
+      "qaRating": 0.85,
+      "gold": {},
+      "labelSource": "silver:translations.vi qa_rating>=0.8"
+    },
+    {
       "id": "3f7ecad907fd38a5d6552c180fd76de35b55b590b5eec2593fa5f209051b7120",
       "source": "marketbrief",
       "title": "Netflix Buys Ben Affleck AI Firm InterPositive for $587M",
@@ -275,6 +314,19 @@
       "labelSource": "silver:translations.vi qa_rating>=0.8"
     },
     {
+      "id": "c930db4a94e6e04430faa7c93c5f9fad3d046f0efe9f901d26326af7a2020bc0",
+      "source": "hn",
+      "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+      "summary": "DoGBench evaluates whether agents identify when user-facing software documentation needs updating and produce useful patches, using rubrics calibrated with project maintainers.",
+      "reference": {
+        "title": "DoGBench: Bộ chuẩn đánh giá sinh tạo tài liệu hướng người dùng đầu tiên. Không model nào đạt >50%",
+        "summary": "DoGBench đánh giá xem các agent có nhận biết khi nào tài liệu phần mềm cần cập nhật và tạo ra các bản vá hữu ích, sử dụng các rubric được điều chỉnh cùng các nhà duy trì dự án."
+      },
+      "qaRating": 0.85,
+      "gold": {},
+      "labelSource": "silver:translations.vi qa_rating>=0.8"
+    },
+    {
       "id": "45937eaa27ceb8530924bdd839c733c9024b91a0c7a032c459e439b9dc51c913",
       "source": "huggingnews",
       "title": "Modal Launches Multi Node Clusters for 1T Parameter Models",
@@ -284,6 +336,19 @@
         "summary": "Modal vừa ra mắt giải pháp multi-node clusters được thiết kế để chạy các mô hình lớn lên tới 1 nghìn tỷ tham số. Cụm tính toán mới giúp người dùng dễ dàng mở rộng quy mô huấn luyện và triển khai mô hình mà không cần quản lý hạ tầng phức tạp."
       },
       "qaRating": 0.9,
+      "gold": {},
+      "labelSource": "silver:translations.vi qa_rating>=0.8"
+    },
+    {
+      "id": "0d0f42339c3c404f0d11b101a5e3f3f602fadf96491f2e201d8ebcc8a69cd339",
+      "source": "marketbrief",
+      "title": "Grok Launches Agent Dashboard to Manage Multiple AI Agents",
+      "summary": "The /dashboard command now allows for the simultaneous management of multiple AI agents and worktrees on one screen within the Grok Build environment. This new interface aggregates all active agents into a single view, enabling users to oversee diverse automated tasks without switching between separate windows.\n\nThe feature was released on October 1 to simplify the coordination of AI tools for developers. It focuses on improving the visibility and control of agent ecosystems by consolidating fragmented views into a centralized dashboard.",
+      "reference": {
+        "title": "Grok ra mắt bảng điều khiển quản lý nhiều AI agent",
+        "summary": "Grok vừa ra mắt Agent Dashboard, một giao diện trung tâm cho phép người dùng tạo, theo dõi và điều khiển đồng thời nhiều AI agent. Công cụ này hỗ trợ quản lý agent đa nhiệm, giúp tối ưu quy trình làm việc và nâng cao hiệu quả sử dụng AI trong môi trường doanh nghiệp."
+      },
+      "qaRating": 0.85,
       "gold": {},
       "labelSource": "silver:translations.vi qa_rating>=0.8"
     },
@@ -301,6 +366,32 @@
       "labelSource": "silver:translations.vi qa_rating>=0.8"
     },
     {
+      "id": "c8364c18fa741f0183cd94b6fbe138fd21ed2bcc73185a12b144ad0eb0ebbc5b",
+      "source": "aws-ml",
+      "title": "Scaling cloud migrations with agentic AI on Amazon Bedrock AgentCore",
+      "summary": "Learn how AWS Professional Services uses a multi-agent framework built on Amazon Bedrock AgentCore to automate enterprise cloud migrations end to end. Purpose-built AI agents handle discovery, infrastructure as code generation, portfolio governance, and post-migration operations, reducing IaC development time from weeks to minutes.",
+      "reference": {
+        "title": "Tự động hoá chuyển đổi đám mây doanh nghiệp bằng agentic AI trên Amazon Bedrock AgentCore",
+        "summary": "Tìm hiểu cách AWS Professional Services áp dụng một framework đa agent được xây dựng trên Amazon Bedrock AgentCore để tự động hoá toàn bộ quy trình chuyển đổi đám mây doanh nghiệp. Các agent AI được thiết kế riêng xử lý khám phá hệ thống, sinh mã hóa hạ tầng (IaC), quản trị danh mục và vận hành sau chuyển đổi, giúp thời gian phát triển IaC giảm từ vài tuần xuống còn vài phút."
+      },
+      "qaRating": 0.9,
+      "gold": {},
+      "labelSource": "silver:translations.vi qa_rating>=0.8"
+    },
+    {
+      "id": "5eac50629b789dda57f86a868c1aa144739ba23741a67e2b24508b809122f4f3",
+      "source": "hn",
+      "title": "Aweb – Communication for AI Agents",
+      "summary": "Open-source identity, durable messaging, and wake-up events for AI agents across sessions, runtimes, machines, and organizations.",
+      "reference": {
+        "title": "Aweb – Giao tiếp cho AI Agents",
+        "summary": "Tính nhận diện mã nguồn mở, nhắn tin bền vững và sự kiện đánh thức cho AI agents xuyên suốt các phiên, môi trường thời gian chạy, máy tính và tổ chức."
+      },
+      "qaRating": 0.9,
+      "gold": {},
+      "labelSource": "silver:translations.vi qa_rating>=0.8"
+    },
+    {
       "id": "02c744c8cb64f92f8cffcaccb4f2b42859fbaa1c691f72eaa7c8dc06dd3a435b",
       "source": "mit-news-ai",
       "title": "New tool lets users repair AI-generated 3D models, then fabricate them just the way they want",
@@ -310,6 +401,19 @@
         "summary": "\"InstructMesh\" có khả năng tạo ra các thiết kế cho những vật phẩm hàng ngày dễ chỉnh sửa và sản xuất cho cả chuyên gia và người mới tiếp cận mô hình 3D."
       },
       "qaRating": 0.9,
+      "gold": {},
+      "labelSource": "silver:translations.vi qa_rating>=0.8"
+    },
+    {
+      "id": "a2e24c5d843caac3e2d7b8a7a1d9e3c9b47554d6a0f3c10f7eab4a1c7652ba61",
+      "source": "marketbrief",
+      "title": "US Arrests California CEO for Smuggling $300M in Servers to China",
+      "summary": "Federal agents have taken a technology executive into custody on charges that he illegally shipped high end computer hardware to China. The U.S. Department of Justice alleges the man smuggled more than $300 million in export controlled servers to bypass trade restrictions designed to protect sensitive American technology.\n\nAssistant Attorney General John A. Eisenberg stated the National Security Division is moving to protect leadership in chips that power \"SI,\" which he described as the defining technology of the era. He noted the agency's focus on preventing the illegal diversion of these components to economic and military adversaries.",
+      "reference": {
+        "title": "Mỹ bắt giữ CEO California vì vận chuyển 300 triệu USD server sang Trung Quốc",
+        "summary": "Cơ quan chức năng Mỹ đã bắt giữ một CEO tại California vì buôn lậu khoảng 300 triệu USD server sang Trung Quốc. Vụ việc đang được điều tra mở rộng để xác định quy mô và tổ chức của mạng lưới buôn lậu công nghệ."
+      },
+      "qaRating": 0.85,
       "gold": {},
       "labelSource": "silver:translations.vi qa_rating>=0.8"
     },
@@ -405,6 +509,19 @@
       "labelSource": "silver:translations.vi qa_rating>=0.8"
     },
     {
+      "id": "53163ec27281957d4c313a754efa8c8e6694bf5a0fc9143640d175c180cf75be",
+      "source": "marketbrief",
+      "title": "SpaceXAI Launches Grok 4.7 on Gemini Enterprise Agent Platform",
+      "summary": "Corporate users can now access the newest version of the Grok AI within a specialized enterprise agent environment. SpaceXAI released Grok 4.7 on the Gemini Enterprise Agent Platform on Oct. 1, expanding the model's reach beyond the assistant's proprietary mobile application and web interface.\n\nThe 4.7 iteration features improved writing skills for research and chat tasks and currently serves as the base model for Fast, Expert, Build, and Heavy modes. The software was previously limited to the Grok Build and Grok Bot tools before its broader rollout. Some users have also received an option to link their accounts across the mobile app and the web platform.",
+      "reference": {
+        "title": "SpaceXAI ra mắt Grok 4.7 trên nền tảng Gemini Enterprise Agent",
+        "summary": "Người dùng doanh nghiệp có thể truy cập Grok 4.7 trên môi trường agent doanh nghiệp chuyên biệt. SpaceXAI phát hành Grok 4.7 trên nền tảng Gemini Enterprise Agent vào ngày 1/10, mở rộng phạm vi sử dụng ngoài ứng dụng di động và giao diện web độc quyền. Phiên bản 4.7 cải thiện kỹ năng viết cho nghiên cứu và trò chuyện, trở thành mô hình cơ sở cho các chế độ Fast, Expert, Build và Heavy. Trước đây chỉ giới hạn trên Grok Build và Grok Bot, một số người dùng nhận tùy chọn liên kết tài khoản giữa ứng dụng và nền tảng web."
+      },
+      "qaRating": 0.9,
+      "gold": {},
+      "labelSource": "silver:translations.vi qa_rating>=0.8"
+    },
+    {
       "id": "c278a664b29ed86db2b572de870fac299b407e56e8d1153c7850e7d8ac114869",
       "source": "marketbrief",
       "title": "TSMC Weighs Singapore Plant and Ties Texas Deal to US Tax Credits",
@@ -412,45 +529,6 @@
       "reference": {
         "title": "TSMC cân nhắc nhà máy Singapore, liên kết dự án Texas với tín dụng thuế Mỹ",
         "summary": "Kế hoạch mở rộng mới của TSMC bao gồm khả năng mở rộng sang Đông Nam Á để đa dạng hóa sản xuất. Công ty đang đánh giá một khu đất tại Singapore và đưa dự án đầu tư 20 tỷ USD tại Texas phụ thuộc vào việc chính phủ Mỹ gia hạn tín dụng thuế sản xuất tiên tiến, sẽ hết hạn cuối 2026. Khu công nghiệp Texas sẽ có nhiều nhà máy lắp ráp, bổ sung cho 265 tỷ USD đã cam kết tại Arizona. Chiến lược tăng trưởng đa năm nhằm mở rộng sản xuất bán dẫn tại Mỹ để đáp ứng nhu cầu lâu dài cho chip AI."
-      },
-      "qaRating": 0.9,
-      "gold": {},
-      "labelSource": "silver:translations.vi qa_rating>=0.8"
-    },
-    {
-      "id": "07c1274e7f8147b20cbf6923854499d5edc65bf15b653a924334ea6792427c5d",
-      "source": "marketbrief",
-      "title": "Fed Governor Lisa Cook Labels AI Primary Economic Risk for 2027",
-      "summary": "Artificial intelligence and data center spending are delaying the return of inflation to the Federal Reserve's 2% target, Governor Lisa Cook said. Cook identified the technology as the primary economic risk for 2027, warning that current inflationary pressures are not slowing down and questioning when productivity gains will be sufficient to offset the cost of the AI buildout.\n\nPrice pressures in the coming months will likely be sustained by AI demand and supply chain disruptions caused by conflict in the Middle East and higher oil prices, according to Cook. While she warned that the U.S. was under-prepared for a related skills shortage, she stated that the current labor market is strong enough to withstand a potential increase in interest rates.",
-      "reference": {
-        "title": "Thống dịch Lisa Cook: AI là rủi ro kinh tế chính cho 2027",
-        "summary": "Trong khi lạm phát chưa trở lại mục tiêu 2% của Fed, Thống dịch Lisa Cook cho rằng AI và chi tiêu cho trung tâm dữ liệu đang kéo dài thời gian này. Bà nhận định công nghệ này là rủi ro kinh tế chính trong năm 2027, cảnh báo áp lực lạm phát hiện tại chưa giảm và thắc mắc liệu lợi ích năng suất có đủ lớn để bù đắp chi phí phát triển AI hay không.\n\nTheo Cook, áp lực giá trong những tháng tới sẽ kéo dài do nhu cầu AI và gián đoạn chuỗi cung ứng từ xung đột Trung Đông cùng giá dầu tăng. Dù cảnh báo thiếu hụt kỹ năng liên quan, bà khẳng định thị trường lao động Mỹ vẫn mạnh mẽ để chịu đựng lãi suất tăng."
-      },
-      "qaRating": 0.85,
-      "gold": {},
-      "labelSource": "silver:translations.vi qa_rating>=0.8"
-    },
-    {
-      "id": "bc70948c064d091d7bc9d08ce4619f92689a398eea8932d4ae55236849eb5eb0",
-      "source": "techcrunch-ai",
-      "title": "ChatGPT can now virtually try on clothes for you",
-      "summary": "OpenAI is rolling out new shopping features for ChatGPT that let users virtually try on clothing and accessories using their own photos and save products they like to a Favorites library.",
-      "reference": {
-        "title": "ChatGPT giờ đây có thể thử mặc quần áo ảo cho bạn",
-        "summary": "OpenAI đang triển khai các tính năng mua sắm mới cho ChatGPT, cho phép người dùng thử mặc trang phục và phụ kiện ảo bằng ảnh cá nhân của họ, đồng thời lưu các sản phẩm họ thích vào thư viện Favorites."
-      },
-      "qaRating": 0.9,
-      "gold": {},
-      "labelSource": "silver:translations.vi qa_rating>=0.8"
-    },
-    {
-      "id": "606e6d73f684529ccb6cdb941999db7e0652b6afdd926e7d5c5ac2d137f6c9ae",
-      "source": "aws-ml",
-      "title": "Build agent memory with NVIDIA NeMo Agent Toolkit and Amazon S3 Vectors",
-      "summary": "Learn how to use Amazon S3 Vectors as the persistent memory layer within the NVIDIA NeMo Agent Toolkit (NAT), deployed on Amazon Elastic Kubernetes Service (Amazon EKS). This post shows how NAT's memory subsystem works and how to implement Amazon S3 Vectors as a custom memory provider, using a multi-agent investment research use case.",
-      "reference": {
-        "title": "Xây dựng bộ nhớ agent với NVIDIA NeMo Agent Toolkit và Amazon S3 Vectors",
-        "summary": "Bài viết hướng dẫn cách sử dụng NVIDIA NeMo Agent Toolkit kết hợp với Amazon S3 Vectors để xây dựng hệ thống lưu trữ và quản lý bộ nhớ cho các agent AI, giúp cải thiện khả năng ghi nhớ và xử lý ngữ cảnh dài."
       },
       "qaRating": 0.9,
       "gold": {},

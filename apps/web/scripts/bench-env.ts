@@ -25,6 +25,11 @@ export const MODEL_VARS = [
   "ANYROUTER_REVIEW_MODEL",
   "ANYROUTER_JEV_MODEL",
   "ANYROUTER_DECISION_MODEL",
+  // JEV panel judges: unset in wrangler.toml while the panel is off.
+  "JEV_PANEL_RELEVANCE_MODEL",
+  "JEV_PANEL_SOURCE_QUALITY_MODEL",
+  "JEV_PANEL_SAFETY_MODEL",
+  "JEV_PANEL_TRANSLATION_FIDELITY_MODEL",
 ] as const;
 export type ModelVar = (typeof MODEL_VARS)[number];
 
