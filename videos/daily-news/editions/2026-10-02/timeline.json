@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-02",
+  "total": 81.193,
+  "theme": {
+    "intro": "grid",
+    "transition": "wipe",
+    "background": "paper"
+  },
+  "segments": [
+    {
+      "id": "intro",
+      "start": 0,
+      "dur": 9.491,
+      "voice": 8.091
+    },
+    {
+      "id": "s1",
+      "start": 9.491,
+      "dur": 10.841,
+      "voice": 9.841
+    },
+    {
+      "id": "s2",
+      "start": 20.331,
+      "dur": 10.632,
+      "voice": 9.632
+    },
+    {
+      "id": "s3",
+      "start": 30.963,
+      "dur": 9.438,
+      "voice": 8.438
+    },
+    {
+      "id": "s4",
+      "start": 40.401,
+      "dur": 13.505,
+      "voice": 12.505
+    },
+    {
+      "id": "s5",
+      "start": 53.906,
+      "dur": 7.896,
+      "voice": 6.896
+    },
+    {
+      "id": "s6",
+      "start": 61.803,
+      "dur": 9.718,
+      "voice": 8.718
+    },
+    {
+      "id": "outro",
+      "start": 71.52,
+      "dur": 9.673,
+      "voice": 7.673
+    }
+  ]
+}

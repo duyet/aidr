@@ -46,6 +46,10 @@ const REACHABLE_AIDR_PATHS = new Set<string>([
   "/rss.xml",
   "/news.xml",
   "/sitemaps/static.xml",
+  "/sitemaps/days.xml",
+  // Day archive example and its Markdown twin.
+  "/date/2026-10-01",
+  "/date/2026-10-01.md",
   RSS_FEED_PATH,
   RSS_ALIAS_PATH,
   NEWS_SITEMAP_PATH,

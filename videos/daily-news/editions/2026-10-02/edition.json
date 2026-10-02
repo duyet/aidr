@@ -1,0 +1,111 @@
+{
+  "date": "2026-10-02",
+  "fetchedAt": "2026-10-02T10:32:05.918Z",
+  "stories": [
+    {
+      "rank": 1,
+      "text": "Clef launches open-weight decision models (Clef and Clef-flash) on Workers AI for fast classification and agentic workflows, plus a new RL platform letting developers fine-tune decision models on their own data.",
+      "category": "Tools",
+      "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+      "url": "https://blog.cloudflare.com/clef-decision-models/",
+      "source": "blog.cloudflare.com",
+      "permalink": "https://aidr.today/c0a0a5f5",
+      "images": [
+        {
+          "url": "https://blog.cloudflare.com/_emdash/api/media/file/01M3TJPKAE7MFBW626XHNC9QVA.png",
+          "local": "assets/s1-1.png"
+        },
+        {
+          "url": "https://pbs.twimg.com/card_img/2105683274794459136/ty6leAz4?format=webp&name=medium",
+          "local": "assets/s1-2.webp"
+        },
+        {
+          "url": "https://huggingnews.com/og/cloudflare-launches-first-in-house-ai-models-with-clef-release-a24250a0.png?v=1thkosr",
+          "local": "assets/s1-3.png"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "text": "Context Language Models (CLMs) manage their own context as a file, beating SOTA context management on BrowseComp-Plus and EdgeBench while enabling in-context and parametric learning of context strategies.",
+      "category": "Research",
+      "title": "Context Language Models",
+      "url": "https://arxiv.org/abs/2609.37725",
+      "source": "arxiv.org",
+      "permalink": "https://aidr.today/fc69f990",
+      "images": []
+    },
+    {
+      "rank": 3,
+      "text": "Microsoft AI releases MAI-Transcribe-2-Streaming for real-time transcription, expanding its voice agent model lineup.",
+      "category": "Models",
+      "title": "Microsoft AI releases new transcription and text-to-speech models for voice agents",
+      "url": "https://the-decoder.com/microsoft-ai-releases-new-transcription-and-text-to-speech-models-for-voice-agents/",
+      "source": "the-decoder.com",
+      "permalink": "https://aidr.today/90f1f405",
+      "images": [
+        {
+          "url": "https://the-decoder.com/wp-content/uploads/2026/10/MAI-quotation_marks_swarm_hq-1920x1167-1.webp",
+          "local": "assets/s3-1.webp"
+        },
+        {
+          "url": "https://media.wired.com/photos/6abeb2ae10b6b4f5a5628f89/master/pass/Palantir-Nurse-Strike-e2fab562-387a-496b-b88c-027860c47584.jpg",
+          "local": "assets/s3-2.jpg"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "text": "Broadcom coordinates a $60B credit facility to fund AI chips for Anthropic and peers, on top of a $42B convertible loan for Anthropic's $125.2B TPU lease, as the lab eyes a Nov 26 IPO at a $1.8T-$2T valuation.",
+      "category": "Funding",
+      "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+      "url": "https://marketbrief.now/ai/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5",
+      "source": "marketbrief.now",
+      "permalink": "https://aidr.today/e8a9e362",
+      "images": [
+        {
+          "url": "https://marketbrief.now/og/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5.png?v=1w7x3hu",
+          "local": "assets/s4-1.png"
+        },
+        {
+          "url": "https://pbs.twimg.com/card_img/2105878778836635648/ySCOi5Ui?format=webp&name=medium",
+          "local": "assets/s4-2.webp"
+        },
+        {
+          "url": "https://huggingnews.com/og/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5.png?v=1xpu0cy",
+          "local": "assets/s4-3.png"
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "text": "Suno adds spoken-word generation to its music platform, letting users create voiceovers and background music together in public beta on web and mobile.",
+      "category": "Products",
+      "title": "AI music maker Suno now generates spoken words",
+      "url": "https://www.theverge.com/ai-artificial-intelligence/1003925/suno-speech-ai-voice-feature-beta-availability",
+      "source": "theverge.com",
+      "permalink": "https://aidr.today/e925a640",
+      "images": [
+        {
+          "url": "https://platform.theverge.com/wp-content/uploads/sites/2/2026/10/Suno-AI-voices.jpg?crop=0%2C10.732984293194%2C100%2C78.534031413613&quality=90&strip=all&w=1200",
+          "local": "assets/s5-1.jpg"
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "text": "A patched flaw in ChatGPT's Mac app could have let hackers grab sensitive data, underscoring that AI software itself is a vulnerable target.",
+      "category": "Products",
+      "title": "A Flaw in ChatGPT’s Mac App Could Have Let Hackers Grab Sensitive Data",
+      "url": "https://www.wired.com/story/a-flaw-in-chatgpts-mac-app-could-have-let-hackers-grab-sensitive-data/",
+      "source": "wired.com",
+      "permalink": "https://aidr.today/ca874f47",
+      "images": [
+        {
+          "url": "https://media.wired.com/photos/6abc2c32f3865c0127252ad0/master/pass/GettyImages-2278945913.jpg",
+          "local": "assets/s6-1.jpg"
+        }
+      ]
+    }
+  ]
+}

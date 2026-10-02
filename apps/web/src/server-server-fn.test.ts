@@ -378,7 +378,7 @@ describe("server-function transport path", () => {
     );
 
     const invalidPage = await call(
-      new Request("https://aidr.today/submit?lang=fr")
+      new Request("https://aidr.today/contribute/new?lang=fr")
     );
     expect(invalidPage.status).toBe(400);
     expect(invalidPage.headers.get("content-type")).toContain("text/html");
@@ -392,7 +392,7 @@ describe("server-function transport path", () => {
     );
 
     const validPage = await call(
-      new Request("https://aidr.today/submit?lang=vi")
+      new Request("https://aidr.today/contribute/new?lang=vi")
     );
     expect(validPage.status).toBe(200);
     expect(validPage.headers.get("Content-Language")).toBe("vi");

@@ -12,3 +12,11 @@
 # Studio preview caches and per-machine state.
 */.waveform-cache/
 */.hyperframes/history-id
+# daily-news: per-edition generated output and third-party media
+daily-news/editions/*/assets/
+daily-news/editions/*/voice/
+daily-news/editions/*/out/
+daily-news/editions/*/renders/
+daily-news/editions/*/snap-*/
+daily-news/editions/*/assets-sheet.jpg
+daily-news/editions/*/voice-*/

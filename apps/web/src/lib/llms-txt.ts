@@ -7,6 +7,7 @@ import {
   SITE_NAME,
   SITE_URL,
 } from "./site";
+import { SITEMAP_DAYS_CHILD_PATH } from "./sitemap";
 
 /**
  * Public guidance for coding agents — consume aidr.today, do not invent a
@@ -46,6 +47,8 @@ ${PAGE_MARKDOWN_PATHS.map((path) => `- [${path.slice(1)}](${SITE_URL}${path})`).
 - [Story JSON](${SITE_URL}/api/story/0031a3a8) — one published story, bilingual.
 - [Story Markdown](${SITE_URL}/api/story/0031a3a8.md?lang=en) — the bounded, versioned \`aidr-story-markdown/v1\` representation.
 - [Story Markdown (Vietnamese)](${SITE_URL}/api/story/0031a3a8.md?lang=vi) — the English fallback is explicit when a translation is missing.
+- [Day archive](${SITE_URL}/date/2026-10-01?lang=en) — \`/date/YYYY-MM-DD\` is one Asia/Ho_Chi_Minh calendar day: its TL;DR, the day's video, and its ranked stories. Same page as \`?lang=vi\`.
+- [Day archive Markdown](${SITE_URL}/date/2026-10-01.md?lang=en) — \`/date/YYYY-MM-DD.md\`: digest bullets, YouTube links, and the ranked story list with permalinks. Every day is listed in [${SITE_URL}${SITEMAP_DAYS_CHILD_PATH}](${SITE_URL}${SITEMAP_DAYS_CHILD_PATH}).
 - [HTML feed](${SITE_URL}/?lang=en) — the same ranked feed as \`?lang=vi\`.
 - [Sitemap](${SITE_URL}/sitemap.xml) — a sitemap index; it points at the \`/sitemaps/*\` children and at \`/news.xml\`, covering every indexable URL in both locales.
 

@@ -33,6 +33,7 @@ export function FeedDays({
           day={day}
           lang={lang}
           selectedTag={selectedTag}
+          linkToDay
         />
       ))}
       {feed.hasMore && (

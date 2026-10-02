@@ -68,12 +68,23 @@ export function dayArchivePath(date: string, lang?: Lang): string {
   return lang ? withLang(path, lang) : path;
 }
 
-export function dayArchiveCacheControl(date: string, nowMs: number): string {
+/** Markdown twin of a day page: `/date/YYYY-MM-DD.md`. */
+export function dayArchiveMarkdownPath(date: string, lang?: Lang): string {
+  const path = `/date/${date}.md`;
+  return lang ? withLang(path, lang) : path;
+}
+
+/** True once a day is past the rank-settle window and no longer changes. */
+export function isSettledArchiveDate(date: string, nowMs: number): boolean {
   const settledBefore = localCalendarDate(
     nowMs - DAY_ARCHIVE_SETTLE_DAYS * DAY_SEC * 1000,
     AUDIENCE_TIMEZONE
   );
-  return date < settledBefore
+  return date < settledBefore;
+}
+
+export function dayArchiveCacheControl(date: string, nowMs: number): string {
+  return isSettledArchiveDate(date, nowMs)
     ? DAY_ARCHIVE_SETTLED_CACHE_CONTROL
     : DAY_ARCHIVE_RECENT_CACHE_CONTROL;
 }

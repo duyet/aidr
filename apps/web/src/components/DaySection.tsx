@@ -1,3 +1,4 @@
+import { dayArchivePath } from "../lib/day-archive";
 import { formatDayHeading } from "../lib/lang";
 import type { DayGroup, Lang } from "../lib/types";
 import { CategoryLabel } from "./CategoryLabel";
@@ -7,10 +8,13 @@ export function DaySection({
   day,
   lang,
   selectedTag,
+  linkToDay = false,
 }: {
   day: DayGroup;
   lang: Lang;
   selectedTag?: string | null;
+  /** Feed pages link each day heading to its /date archive page. */
+  linkToDay?: boolean;
 }) {
   const counts = Object.entries(day.categoryCounts).sort((a, b) => b[1] - a[1]);
   const shown = counts.slice(0, 7);
@@ -24,7 +28,16 @@ export function DaySection({
     <section className="pt-8 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-border pb-3">
         <h2 className="font-serif text-2xl font-medium tracking-tight">
-          {formatDayHeading(day.date, lang)}
+          {linkToDay ? (
+            <a
+              href={dayArchivePath(day.date, lang)}
+              className="rounded-sm hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {formatDayHeading(day.date, lang)}
+            </a>
+          ) : (
+            formatDayHeading(day.date, lang)
+          )}
         </h2>
         <span className="text-xs text-muted-foreground">
           {day.items.length}{" "}
@@ -39,6 +52,14 @@ export function DaySection({
           ))}
           {more > 0 && <span>+{more} more</span>}
         </span>
+        {linkToDay && (
+          <a
+            href={dayArchivePath(day.date, lang)}
+            className="ml-auto text-xs font-medium text-accent hover:underline"
+          >
+            {lang === "vi" ? "Xem cả ngày →" : "Full day →"}
+          </a>
+        )}
       </div>
       <div className="divide-y divide-border/60">
         {day.items.map((item, i) => (
