@@ -73,7 +73,7 @@ describe("free-plan hourly ingest", () => {
     expect(ingestYml).toContain("secrets.NEWS_ADMIN_TOKEN");
     expect(algorithm).toMatch(/GitHub Actions/);
     expect(algorithm).toMatch(/Durable Object/);
-    expect(algorithm).toMatch(/0\.12·min\(sourceCount, 8\)/);
+    expect(algorithm).toMatch(/0\.12·\(min\(sourceCount, 8\) − 1\)/);
     expect(algorithm).toMatch(/Merge \(LLM \+ title similarity\)/);
     expect(algorithm).not.toMatch(/Hourly instances come from `schedules`/);
     expect(algorithm).not.toContain("apps/news");

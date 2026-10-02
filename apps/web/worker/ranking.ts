@@ -51,6 +51,8 @@ export interface RankMember {
   sourceId: string;
   points: number;
   comments: number;
+  /** The item's URL; places a user submission in its outlet's family. */
+  url?: string;
 }
 
 /** The rank inputs a cluster earns. `sourceCount` is its distinct source
@@ -60,7 +62,7 @@ export interface RankMember {
 export function rankSignals(
   members: readonly RankMember[]
 ): Required<Pick<RankScoreInput, "points" | "comments" | "sourceCount">> {
-  const families = new Set(members.map((m) => sourceFamily(m.sourceId)));
+  const families = new Set(members.map((m) => sourceFamily(m.sourceId, m.url)));
   let points = 0;
   let comments = 0;
   for (const m of members) {
@@ -79,10 +81,10 @@ export function rankSignals(
  *  with `items` unaliased. One grouped scan of merged rows, not a subquery
  *  per item (the per-item form read ~1M rows for one 72h re-rank). */
 export const RANK_SIGNAL_COLUMNS =
-  "source_id, points, comments, COALESCE(merged.members, '[]') AS merged_members";
+  "source_id, points, comments, url AS signal_url, COALESCE(merged.members, '[]') AS merged_members";
 export const RANK_SIGNAL_JOIN = `LEFT JOIN (
     SELECT duplicate_of AS canonical_id,
-           json_group_array(json_array(source_id, points, comments)) AS members
+           json_group_array(json_array(source_id, points, comments, url)) AS members
     FROM items WHERE status = 'merged' GROUP BY duplicate_of
   ) AS merged ON merged.canonical_id = items.id`;
 
@@ -90,24 +92,27 @@ export interface RankSignalRow {
   source_id: string;
   points: number | null;
   comments: number | null;
+  /** Optional: rows read before the URL joined the signal columns. */
+  signal_url?: string | null;
   merged_members: string | null;
 }
 
 /** `rankSignals` for a row read with RANK_SIGNAL_COLUMNS. */
 export function rowRankSignals(row: RankSignalRow) {
-  const merged: [string, number | null, number | null][] = JSON.parse(
-    row.merged_members ?? "[]"
-  );
+  const merged: [string, number | null, number | null, (string | null)?][] =
+    JSON.parse(row.merged_members ?? "[]");
   return rankSignals([
     {
       sourceId: row.source_id,
       points: row.points ?? 0,
       comments: row.comments ?? 0,
+      url: row.signal_url ?? undefined,
     },
-    ...merged.map(([sourceId, points, comments]) => ({
+    ...merged.map(([sourceId, points, comments, url]) => ({
       sourceId,
       points: points ?? 0,
       comments: comments ?? 0,
+      url: url ?? undefined,
     })),
   ]);
 }

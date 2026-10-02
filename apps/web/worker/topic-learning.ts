@@ -125,6 +125,17 @@ export const LEARNING_THEME_DENYLIST = new Set([
   "policy",
   "llms",
   "agentic",
+  // Builder categories and the themes the tagger pairs with them.
+  "tools",
+  "frameworks",
+  "framework",
+  "data",
+  "devtools",
+  "data-engineering",
+  "vector-database",
+  "embedding",
+  "mlops",
+  "eval",
 ]);
 
 /**
@@ -174,6 +185,15 @@ export function isSpecificTrendingTopic(topic: string): boolean {
     "ollama",
     "vllm",
     "claude-code",
+    // Builder frameworks named by one word.
+    "langgraph",
+    "langsmith",
+    "crewai",
+    "autogen",
+    "mastra",
+    "llamaindex",
+    "dspy",
+    "sglang",
   ]);
   if (CODNAMES.has(normalizeTopicName(topic))) return true;
   return false;
@@ -245,6 +265,12 @@ export function extractTitleEntities(title: string): string[] {
     /\b(Fable\s+\d+(?:\.\d+)*)\b/gi,
     // Opus 5 / Sonnet 4.6 when Claude is omitted
     /\b((?:Opus|Sonnet|Haiku)\s+\d+(?:\.\d+)*)\b/gi,
+    // Builder frameworks and platforms that carry no version or inner capital
+    /\b(Workers\s+AI|Llama\s+Stack|Pydantic\s+AI|Semantic\s+Kernel|Mastra|DSPy|SGLang)\b/gi,
+    // OpenAI Agents SDK / Cloudflare Agents SDK / Vercel AI SDK
+    /\b((?:(?:OpenAI|Cloudflare|Claude|Google|Vercel|Microsoft)\s+)?(?:Agents?|AI)\s+SDK)\b/gi,
+    // Workers AI model ids: "@cf/meta/llama-4-scout" → "llama-4-scout"
+    /@(?:cf|hf)\/[\w.-]+\/([\w.-]+)/gi,
   ];
 
   for (const re of patterns) {

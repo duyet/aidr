@@ -66,6 +66,15 @@ export const JEV_THEME_TAGS = [
   "coding",
 ] as const;
 
+/** Tag each builder category adds, so a Jev-scored story still carries the
+ * theme chip the chat rubric would give it. */
+const BUILDER_CATEGORY_TAGS: Record<string, string> = {
+  Tools: "devtools",
+  Frameworks: "framework",
+  Data: "data-engineering",
+  "Open Source": "open-source",
+};
+
 /** Jev is BYOK-only: the TypeSafe key lives in AnyRouter Dashboard → BYOK,
  *  not in env. This hop never spends AnyRouter credits (0/0). */
 export type SystemOneQuestionType = "noul" | "choice" | "score";
@@ -377,16 +386,22 @@ export function suggestionVerdictFromJev(
  * (option -> description|null), never as an array. Descriptions are the
  * question text plus option context; `null` means "no extra description". */
 function choiceCriteriaMap(
-  options: readonly string[]
+  options: readonly string[],
+  definitions: Readonly<Record<string, string>> = {}
 ): Record<string, string | null> {
-  return Object.fromEntries(options.map((option) => [option, null]));
+  return Object.fromEntries(
+    options.map((option) => [option, definitions[option] ?? null])
+  );
 }
 
 /** Questions for one story's ranking inputs. Jev returns typed answers,
  * not the free-form tag list the chat rubric writes — one entity and one
  * theme, each allowed to be `none`. */
 export function jevScoreQuestions(
-  categories: readonly string[]
+  categories: readonly string[],
+  builderCategories: readonly string[] = [],
+  definitions: Readonly<Record<string, string>> = {},
+  categoryRule = ""
 ): SystemOneQuestions {
   return {
     is_ai_tech: {
@@ -408,8 +423,19 @@ export function jevScoreQuestions(
     category: {
       type: "choice",
       instructions: "Which single category fits this story?",
-      criteria: choiceCriteriaMap(categories),
+      criteria: choiceCriteriaMap(categories, definitions),
     },
+    ...(builderCategories.length > 0 && {
+      builder: {
+        type: "choice" as const,
+        instructions:
+          `Is this story mainly for AI and data engineers who build with it? Choose none unless the story is mainly about one of these. ${categoryRule}`.trim(),
+        criteria: choiceCriteriaMap(["none", ...builderCategories], {
+          none: "general AI news, not mainly about tools, frameworks, data engineering, or an open-source code release",
+          ...definitions,
+        }),
+      },
+    }),
     entity: {
       type: "choice",
       instructions:
@@ -539,7 +565,8 @@ export function importanceFromJev(
  * caller can fall back to the chat rubric for that item. */
 export function scoreJudgmentFromJev(
   answers: Record<string, SystemOneAnswer>,
-  categories: readonly string[]
+  categories: readonly string[],
+  builderCategories: readonly string[] = []
 ): JevScoreJudgment | null {
   const relevance = noulProb(answers, "is_ai_tech");
   const importance = importanceFromJev(answers);
@@ -547,10 +574,16 @@ export function scoreJudgmentFromJev(
   if (relevance === null || importance === null || quality === null) {
     return null;
   }
-  const category = choiceOf(answers, "category", categories);
+  // A builder pick is the more specific category, so it wins over the core one.
+  const builderPick = builderCategories.length
+    ? choiceOf(answers, "builder", ["none", ...builderCategories])
+    : "";
+  const builder = builderPick === "none" ? "" : builderPick;
+  const category = builder || choiceOf(answers, "category", categories);
   const tags = [
     choiceOf(answers, "entity", JEV_ENTITY_TAGS),
     choiceOf(answers, "theme", JEV_THEME_TAGS),
-  ].filter((tag) => tag && tag !== "none");
+    BUILDER_CATEGORY_TAGS[builder] ?? "",
+  ].filter((tag, i, all) => tag && tag !== "none" && all.indexOf(tag) === i);
   return { relevance, importance, quality, category, tags };
 }

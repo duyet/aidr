@@ -18,7 +18,10 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  CATEGORIES,
+  BUILDER_CATEGORIES,
+  CATEGORY_DEFINITIONS,
+  CATEGORY_RULE,
+  CORE_CATEGORIES,
   completeJson,
   type ScoreInput,
   sanitizeScoreResults,
@@ -102,7 +105,12 @@ function toInput(item: FixtureItem, i: number): ScoreInput {
 }
 
 async function scoreSystemOne(env: Env, items: FixtureItem[], model: string) {
-  const questions = jevScoreQuestions(CATEGORIES);
+  const questions = jevScoreQuestions(
+    CORE_CATEGORIES,
+    BUILDER_CATEGORIES,
+    CATEGORY_DEFINITIONS,
+    CATEGORY_RULE
+  );
   return mapLimit(items, 5, async (item) => {
     const res = await callSystemOne(
       env,
@@ -116,7 +124,11 @@ async function scoreSystemOne(env: Env, items: FixtureItem[], model: string) {
     if (model !== "typesafe/jev" && !servedByJev(res)) {
       return { score: null, raw: null };
     }
-    const judgment = scoreJudgmentFromJev(res.answers, CATEGORIES);
+    const judgment = scoreJudgmentFromJev(
+      res.answers,
+      CORE_CATEGORIES,
+      BUILDER_CATEGORIES
+    );
     return {
       score: judgment?.importance ?? null,
       raw: res.answers.importance ?? null,

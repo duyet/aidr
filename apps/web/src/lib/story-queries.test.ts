@@ -92,3 +92,62 @@ describe("getStory edge cases", () => {
     expect(Number.isFinite(item?.published_at)).toBe(false);
   });
 });
+
+/** An aggregator canonical that an official post replaced (worker
+ * `MergePlan.demoted`) is `merged` now, but its permalink is already in
+ * Telegram posts and past editions: it must resolve to the new canonical,
+ * which the permalink loader then redirects to. */
+describe("getStory for a merged id", () => {
+  const canonical: Row = { ...base, id: "c0a0a5f5".padEnd(64, "0") };
+
+  function mergedDb(mergedRows: Row[]) {
+    const stmt = (sql: string) => {
+      let args: unknown[] = [];
+      return {
+        sql,
+        get args() {
+          return args;
+        },
+        bind(...bound: unknown[]) {
+          args = bound;
+          return this;
+        },
+        async all() {
+          if (sql.includes("status = 'merged'")) return { results: mergedRows };
+          if (sql.includes("FROM items LIMIT 1")) return { results: [] };
+          return { results: [] };
+        },
+      };
+    };
+    return {
+      prepare: (sql: string) => stmt(sql),
+      async batch(stmts: { sql: string; args: unknown[] }[]) {
+        return stmts.map((s) => {
+          if (s.sql.includes("item_sources")) return { results: [] };
+          // Only the canonical's own prefix finds a published row.
+          return {
+            results: s.args[1] === canonical.id ? [canonical] : [],
+          };
+        });
+      },
+    } as unknown as Parameters<typeof getStory>[0];
+  }
+
+  it("resolves to the story it was merged into", async () => {
+    const item = await getStory(
+      mergedDb([{ duplicate_of: canonical.id }]),
+      "932a29ca"
+    );
+    expect(item?.id).toBe(canonical.id);
+  });
+
+  it("stays not-found for an unknown or ambiguous prefix", async () => {
+    expect(await getStory(mergedDb([]), "932a29ca")).toBeNull();
+    expect(
+      await getStory(
+        mergedDb([{ duplicate_of: canonical.id }, { duplicate_of: "other" }]),
+        "93"
+      )
+    ).toBeNull();
+  });
+});

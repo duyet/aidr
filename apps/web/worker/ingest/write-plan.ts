@@ -128,7 +128,8 @@ export function planNewItemWrite(input: {
           sources: unionSources(
             item.sources ?? [],
             canonicalUpdate.extraSources,
-            MAX_SOURCES_PER_ITEM
+            MAX_SOURCES_PER_ITEM,
+            item.url
           ),
         }
       : {}),
@@ -159,6 +160,7 @@ export function planNewItemWrite(input: {
         sourceId,
         points: effectiveItem.points ?? 0,
         comments: effectiveItem.comments ?? 0,
+        url: effectiveItem.url,
       },
       ...(absorbs ? (canonicalUpdate.members ?? []) : []),
     ]),

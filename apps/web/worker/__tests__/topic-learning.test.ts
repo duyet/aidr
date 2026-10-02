@@ -64,6 +64,46 @@ describe("extractTitleEntities", () => {
   });
 });
 
+describe("extractTitleEntities builder frameworks", () => {
+  it("names frameworks, SDKs, and platforms that carry no version", () => {
+    expect(
+      extractTitleEntities("CrewAI raises $40M to build agent teams")
+    ).toEqual(["CrewAI"]);
+    expect(
+      extractTitleEntities("Cloudflare expands Workers AI with new models")
+    ).toEqual(["Workers AI"]);
+    expect(
+      extractTitleEntities("OpenAI Agents SDK adds sandbox execution")
+    ).toEqual(["OpenAI Agents SDK"]);
+    expect(
+      extractTitleEntities("Meta ships Llama Stack for local agents")
+    ).toEqual(["Llama Stack"]);
+    expect(extractTitleEntities("Pydantic AI adds durable execution")).toEqual([
+      "Pydantic AI",
+    ]);
+    expect(extractTitleEntities("AutoGen and DSPy compared")).toEqual(
+      expect.arrayContaining(["AutoGen", "DSPy"])
+    );
+  });
+
+  it("keeps the model name from a Workers AI model id", () => {
+    expect(
+      extractTitleEntities(
+        "Run @cf/meta/llama-4-scout-17b-16e-instruct on Workers AI"
+      )
+    ).toEqual(["Workers AI", "llama-4-scout-17b-16e-instruct"]);
+  });
+
+  it("treats one-word framework names as trending topics, not category words", () => {
+    for (const name of ["langgraph", "crewai", "mastra", "workers-ai"]) {
+      expect(isSpecificTrendingTopic(name), name).toBe(true);
+    }
+    for (const name of ["tools", "frameworks", "data", "data-engineering"]) {
+      expect(isSpecificTrendingTopic(name), name).toBe(false);
+    }
+  });
+});
+
 describe("extractTitleEntities generic rules", () => {
   it("does not glue a following lowercase word onto a version (glm-5.3-nearly)", () => {
     const out = extractTitleEntities(

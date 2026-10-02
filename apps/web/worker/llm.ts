@@ -40,7 +40,9 @@ export const TRANSLATE_BATCH_SIZE = 3;
 // low max_tokens starves the actual answer entirely.
 const MAX_TOKENS = 8192;
 const MAX_STREAM_CONTENT_CHARS = 100_000;
-export const CATEGORIES = [
+/** The general news categories. Jev picks one of these in a single choice
+ * question, so this list stays within TypeSafe's ten-option limit. */
+export const CORE_CATEGORIES = [
   "Models",
   "Regulation",
   "Products",
@@ -52,6 +54,50 @@ export const CATEGORIES = [
   "Chips",
   "Funding",
 ] as const;
+
+/** Categories for the AI and data engineers who build with this news. Jev
+ * asks for these in a second choice question that overrides the core pick. */
+export const BUILDER_CATEGORIES = [
+  "Tools",
+  "Frameworks",
+  "Data",
+  "Open Source",
+] as const;
+
+export const CATEGORIES = [...CORE_CATEGORIES, ...BUILDER_CATEGORIES] as const;
+
+/** How to break ties between the launch-shaped categories. */
+export const CATEGORY_RULE =
+  "Tie-breaks: a model of any license is Models. Anything sold to or used by developers (a coding assistant, its plan, features, or add-ons) is Tools, not Products; a library or SDK they build on is Frameworks; Products is for end-user apps. A company open-sourcing code, a toolkit, or a project is Open Source. Releases only when none of these fit.";
+
+/** One line per category, shared by the chat rubric and Jev's choice
+ * criteria so both scorers draw the same lines. */
+export const CATEGORY_DEFINITIONS: Record<(typeof CATEGORIES)[number], string> =
+  {
+    Models:
+      "a new or updated model, open or closed weights (LLM, image, video, speech, embedding), its benchmarks, pricing, or access",
+    Regulation: "laws, policy, government action, and AI safety rules",
+    Products:
+      "a consumer or business AI app or feature for end users, not developers",
+    Agents:
+      "agent products, agent behavior, multi-agent systems, and agent incidents",
+    Research: "papers, studies, and research findings",
+    Industry:
+      "company news: acquisitions, partnerships, people, earnings, lawsuits, and market moves",
+    Infra:
+      "cloud, data centers, inference serving, compute capacity, and outages",
+    Releases:
+      "a launch that fits no more specific category; prefer Models, Products, Tools, or Frameworks first",
+    Chips: "AI chips, GPUs, accelerators, and the semiconductor supply chain",
+    Funding: "funding rounds, valuations, IPOs, and investment deals",
+    Tools:
+      "developer tools: coding assistants, IDEs, CLIs, developer APIs, and agent harnesses such as Codex, Cursor, or Claude Code",
+    Frameworks:
+      "agent frameworks, SDKs, and libraries developers build with, such as LangGraph, CrewAI, Mastra, Pydantic AI, DSPy, LlamaIndex, Agents SDK, and MCP servers",
+    Data: "data engineering for AI: vector databases, embeddings pipelines, ETL, warehouses and lakehouses, datasets, and retrieval (RAG) stacks",
+    "Open Source":
+      "an open-source code release, toolkit, or project where being open is the news; an open-weights model is still Models",
+  };
 
 /** Vietnamese house style. Literal translation reads badly to Vietnamese tech
  * readers, who expect fluent Vietnamese prose with the English jargon left
@@ -1014,8 +1060,12 @@ export interface ScoreInput {
 /** Scoring rubric sent to the model. Quality must prefer named, source-backed writing over thin duplicates. */
 export function scoreBatchPrompt(batch: ScoreInput[]): string {
   return `You are scoring AI/tech news items for relevance, importance, and source-backed quality.
-For each item, return relevance (0-1, is this genuinely AI/tech news), importance (1-10), quality (0-10), category (one of: ${CATEGORIES.join(", ")}), and tags — 3 to 6 topic labels per item.
+For each item, return relevance (0-1, is this genuinely AI/tech news), importance (1-10), quality (0-10), category (exactly one from the list below), and tags — 3 to 6 topic labels per item.
 In scope, even when the name is new and not in the tag list: a model release, a new kind of model (language, world, video, speech, open weights, mixture-of-experts), and a new AI lab. An unfamiliar name is not a reason to lower relevance.
+
+Categories (pick the most specific one that fits):
+${CATEGORIES.map((name) => `- ${name}: ${CATEGORY_DEFINITIONS[name]}.`).join("\n")}
+${CATEGORY_RULE}
 
 Importance rubric (use the whole scale; most items are not 7+):
 ${IMPORTANCE_BANDS.map((band) => `- ${band.range}: ${band.meaning}.`).join("\n")}
@@ -1031,8 +1081,8 @@ Topic label rules (this feeds a dynamic topic taxonomy, so consistency matters):
 - Mix specific entities (anthropic, openai, nvidia, qwen) with themes (multi-agent, open-source, fine-tuning, regulation).
 - Always use the same canonical spelling for the same concept: singular not plural ("llm" not "llms"), one standard hyphenation not synonyms ("open-source" not "opensource" or "oss"), no near-duplicates. If a topic could be phrased multiple ways, pick the most common/obvious industry term.
 - Prefer these canonical tags whenever they apply (reuse EXACTLY as written, don't invent variants):
-  entities: openai, anthropic, google, meta, xai, x, microsoft, amazon, nvidia, huggingface, deepseek, mistral, alibaba, apple, perplexity, together, fireworks, stability, claude, fable, opus, sonnet, haiku, gpt, gemini, grok, kimi, llama, qwen, gemma, phi, glm, olmo, codex, claude-code, cursor, composer, copilot, windsurf, openrouter, ollama, vllm, elon-musk, sam-altman
-  themes: llm, agent, multi-agent, agentic, harness, inference, open-source, fine-tuning, benchmark, reasoning, safety, regulation, funding, chips, gpu, infra, robotics, coding, rag, mcp, multimodal, diffusion, vision-language
+  entities: openai, anthropic, google, meta, xai, x, microsoft, amazon, nvidia, huggingface, deepseek, mistral, alibaba, apple, perplexity, together, fireworks, stability, claude, fable, opus, sonnet, haiku, gpt, gemini, grok, kimi, llama, qwen, gemma, phi, glm, olmo, codex, claude-code, cursor, composer, copilot, windsurf, openrouter, ollama, vllm, cloudflare, workers-ai, langchain, langgraph, crewai, autogen, mastra, pydantic-ai, llamaindex, dspy, agents-sdk, databricks, snowflake, elon-musk, sam-altman
+  themes: llm, agent, multi-agent, agentic, harness, inference, open-source, fine-tuning, benchmark, reasoning, safety, regulation, funding, chips, gpu, infra, robotics, coding, rag, mcp, multimodal, diffusion, vision-language, framework, devtools, data-engineering, vector-database, embedding, mlops, eval
   benchmarks: swe-bench, swe-bench-pro, livecodebench, arc-agi, arc-agi-2, mmlu, aider-polyglot
   Only invent a new tag when nothing above (or an equally obvious industry term) fits — new model/product names are encouraged when they recur.
 - 3-6 tags per item — enough to be genuinely browsable/filterable, not a single catch-all tag.
@@ -1204,7 +1254,11 @@ async function scoreOneWithSystemOne(
       );
       return null;
     }
-    const judgment = scoreJudgmentFromJev(jev.answers, CATEGORIES);
+    const judgment = scoreJudgmentFromJev(
+      jev.answers,
+      CORE_CATEGORIES,
+      BUILDER_CATEGORIES
+    );
     if (!judgment) return null;
     const [row] = sanitizeScoreResults(
       [{ i: item.i, ...judgment }],
@@ -1225,7 +1279,12 @@ export async function scoreItems(
   const batches = chunk(items, SCORE_BATCH_SIZE);
   // Token spend unchanged on the chat path; wall-clock divided (~3×).
   const questions = isSystemOneConfigured(env)
-    ? jevScoreQuestions(CATEGORIES)
+    ? jevScoreQuestions(
+        CORE_CATEGORIES,
+        BUILDER_CATEGORIES,
+        CATEGORY_DEFINITIONS,
+        CATEGORY_RULE
+      )
     : null;
   // System One hops in order: the decision router, then Jev. Each item a
   // hop misses moves to the next; whatever is left goes to the chat rubric.

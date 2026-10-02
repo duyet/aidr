@@ -97,6 +97,7 @@ describe("writeItems: merge into an existing canonical", () => {
     }));
     const mergePlan: MergePlan = {
       merged: new Map(),
+      demoted: new Map(),
       canonicalUpdates: new Map([
         [
           "canon",

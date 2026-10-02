@@ -86,6 +86,7 @@ function plan(
       Object.entries(merged).map(([id, duplicateOf]) => [id, { duplicateOf }])
     ),
     canonicalUpdates: new Map(Object.entries(canonicalUpdates)),
+    demoted: new Map(),
   };
 }
 

@@ -458,8 +458,13 @@ describe("buildMergePlan", () => {
     expect(update?.maxPoints).toBe(10);
     expect(update?.maxComments).toBe(1);
     expect(update?.members).toEqual([
-      { sourceId: "huggingnews", points: 50, comments: 5 },
-      { sourceId: "hn", points: 10, comments: 1 },
+      {
+        sourceId: "huggingnews",
+        points: 50,
+        comments: 5,
+        url: "https://example.com/b",
+      },
+      { sourceId: "hn", points: 10, comments: 1, url: "https://example.com/c" },
     ]);
   });
 

@@ -233,7 +233,10 @@ runtime through `upsert_source` with no deploy — see
 
 - **Flood gate.** A high-volume feed is cut before the scorer sees it, in
   this order: an optional named title pre-filter (`keywordFilter: "ai"`,
-  the same regex HN uses), then a hard newest-first `maxItems` cap applied
+  the same regex HN uses; it admits inflections such as agents,
+  fine-tuning, LLMs and benchmarks, and named frameworks, platforms and
+  data tooling such as LangGraph, Workers AI, vector databases and
+  embeddings, but never bare words like sdk, data or tools), then a hard newest-first `maxItems` cap applied
   after the since-window filter. The Vietnamese newsroom and the four AI
   newsrooms are capped at 6 items per run each, and so are the
   `marketbrief` / `huggingnews` mirror pair (their adapters go through
@@ -298,6 +301,11 @@ only: it changes no ranking, no prompt, and no LLM budget.
 
 Item id = `sha256(url)`; ids already in `items` are dropped.
 
+Exception: an official post already stored as a `merged` row (e.g. HN
+linked it first, so the feed's copy has the same id) is re-run as a new
+row when a fetch sees it again, it clears relevance, and it is a rewrite
+match for its non-official canonical (see 5). It then takes the story over.
+
 ### 3. Enrich
 
 Missing summary/thumbnail filled from the article page
@@ -337,6 +345,20 @@ Batches of 5.
   Regulation), plus one entity tag and one theme tag from fixed 10-value
   enums (`none` is dropped).
 - Neither System One hop emits a free-form tag list.
+- Categories: chat picks one of 14 — ten core (Models, Regulation,
+  Products, Agents, Research, Industry, Infra, Releases, Chips, Funding)
+  and four builder categories for AI and data engineers (Tools,
+  Frameworks, Data, Open Source). One-line definitions and the tie-break
+  rule live in `CATEGORY_DEFINITIONS` and `CATEGORY_RULE`
+  (`worker/llm.ts`) and feed both scorers: a model of any license is
+  Models; anything for developers is Tools; a library or SDK is
+  Frameworks; Products is end-user apps; Open Source is an open code
+  release where openness is the news; Releases is the last resort.
+- TypeSafe rejects more than ten options per question, so Jev asks two
+  choice questions: `category` (the ten core) and `builder` (none + the
+  four builder categories). A non-none builder answer overrides the core
+  pick and adds its theme tag (devtools, framework, data-engineering,
+  open-source). Old rows keep their category; no backfill.
 - Any item both hops miss (no key, non-2xx, timeout, non-Jev upstream, or
   incomplete answers) falls through to the chat rubric on the same fields,
   which still writes 3–6 free-form `tags`.
@@ -377,6 +399,9 @@ Batches of 5.
   `Name:` and a short name after a launch verb. The generic version rule
   is skipped on Vietnamese headlines; business themes (stock sales,
   earnings, industry news) are denylisted.
+  Extraction also names builder frameworks and platforms without a
+  version (Workers AI, Agents SDK, Llama Stack, Pydantic AI, Mastra, DSPy)
+  and the model name inside Workers AI ids (`@cf/<org>/<model>`).
 - Chip weight is source-count (capped at 8) so a merged multi-outlet
   story outranks a single-source mention of the same name.
 - Chips are ordered: models/products mentioned at least twice, then
@@ -406,11 +431,32 @@ deterministic pass.
   (market reaction, failed demo, wider rollout, a later benchmark)
   separate, with real Gemini 4 examples. Feed titles are fenced as
   untrusted data.
-- Same-story clusters collapse to a canonical item (existing item wins,
-  else highest rank).
+- A third, deterministic pass merges an official post with aggregator
+  rewrites of it (`clusterOfficialRewrites`). A source is official when
+  its catalog row lists `official` orgs (vendor newsrooms such as
+  `cloudflare-blog`, `openai`, `deepmind`), or when an item's URL host is
+  such a source's homepage or feed host (an HN link to the post, a
+  reader's submission). It merges a pair only when:
+  - the other item is from the aggregator family and was published
+    within 36h;
+  - its headline uses a launch verb and names one of the official orgs
+    plus the product the official headline leads with
+    ("Introducing Clef: …" → "clef");
+  - neither headline carries a follow-up word (stocks, rollout, capacity,
+    review, benchmark, analysis, lawsuit, outage, leak, halt, cancel,
+    recap).
+- Canonical: an official existing item stays canonical. Otherwise an
+  official new item that passes relevance and is a rewrite match (rule
+  above) for the would-be canonical takes over the cluster. Otherwise the
+  existing item wins, else the highest rank. A takeover demotes the old
+  canonical (`MergePlan.demoted`): it and everything merged into it point
+  at the official item, its sources, topics and reader engagement fold in,
+  and sent notifications move to the new id so nothing is posted twice. A
+  merged id's permalink resolves to its canonical (`getStory`).
 - Losers get status `merged` + `duplicate_of`. Their sources fold into
-  the canonical; only reader engagement (see 7) folds into its
-  points/comments (`worker/dedupe.ts`).
+  the canonical, deduped by URL without tracking parameters, never
+  repeating the canonical's own URL, official links first. Only reader
+  engagement (see 7) folds into its points/comments (`worker/dedupe.ts`).
 
 ### 6. Translate (LLM)
 
@@ -501,7 +547,9 @@ SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
   (`family` in `worker/sources/catalog.ts`, else the source id). One
   outlet gets no boost; HN + TechCrunch + Verge gets 1.24. Tweets in
   `item_sources` are display only, and the HuggingNews/MarketBrief mirror
-  pair counts once.
+  pair counts once. A user submission counts as the family of the
+  catalog source serving its URL host (a submitted Cloudflare post and the
+  Cloudflare feed count once).
 - `points`/`comments` = the highest values among cluster items whose
   source has `engagement: "reader"` (HN, Lobsters). Aggregator
   author/tweet counts are stored for display but never ranked.
@@ -702,6 +750,12 @@ chat-completions JSON judge. `/api/system` lists that chat chain after
 Jev on `models.decisions`. With `JEV_PANEL_ENABLED`, the JEV review
 panel then gives a second opinion that can only lower the value
 (submissions: scoring panel; suggestions: fidelity + safety panel).
+
+Accepted submission URLs are stored without tracking parameters
+(`canonicalSubmissionUrl`), so they hash to the feed's item id. A
+blank-title submission takes the page's `og:title` and its
+`article:published_time`. Submissions skip the keyword prefilter (a human
+chose them) but still face the `relevance < 0.4` hide rule.
 
 **Suggestions are reviewed on submit** (`worker/suggestions.ts`). A
 signed-in reader edits the title or summary of the language on screen:

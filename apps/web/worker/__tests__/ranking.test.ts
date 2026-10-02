@@ -223,13 +223,20 @@ describe("corroboration counts independent outlets, not tweets", () => {
   it("reads the merged members back through the real SQL", () => {
     const db = new DatabaseSync(":memory:");
     db.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, source_id TEXT,
-      points INTEGER, comments INTEGER, status TEXT, duplicate_of TEXT)`);
-    const add = db.prepare("INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)");
-    add.run("canon", "huggingnews", 120, 319, "published", null);
-    add.run("m1", "marketbrief", 89, 136, "merged", "canon");
-    add.run("m2", "hn", 250, 90, "merged", "canon");
-    add.run("m3", "theverge-ai", 0, 0, "rejected", "canon");
-    add.run("alone", "hn", 30, 5, "published", null);
+      points INTEGER, comments INTEGER, status TEXT, duplicate_of TEXT,
+      url TEXT)`);
+    const add = db.prepare("INSERT INTO items VALUES (?, ?, ?, ?, ?, ?, ?)");
+    const at = (id: string) => `https://example.com/${id}`;
+    add.run("canon", "huggingnews", 120, 319, "published", null, at("canon"));
+    add.run("m1", "marketbrief", 89, 136, "merged", "canon", at("m1"));
+    add.run("m2", "hn", 250, 90, "merged", "canon", at("m2"));
+    add.run("m3", "theverge-ai", 0, 0, "rejected", "canon", at("m3"));
+    add.run("alone", "hn", 30, 5, "published", null, at("alone"));
+    // Cloudflare's post from its feed, plus a reader's submission of it.
+    const clef = "https://blog.cloudflare.com/clef-decision-models/";
+    add.run("post", "cloudflare-blog", 0, 0, "published", null, clef);
+    add.run("sub", "user", 0, 0, "merged", "post", `${clef}?ref=x`);
+    add.run("agg", "huggingnews", 0, 0, "merged", "post", at("agg"));
     const read = (id: string) =>
       rowRankSignals(
         db
@@ -244,5 +251,7 @@ describe("corroboration counts independent outlets, not tweets", () => {
       sourceCount: 2,
     });
     expect(read("alone")).toEqual({ points: 30, comments: 5, sourceCount: 1 });
+    // The submission is the Cloudflare outlet again, not a third source.
+    expect(read("post").sourceCount).toBe(2);
   });
 });

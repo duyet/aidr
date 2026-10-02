@@ -83,6 +83,13 @@ export interface SourceSpec {
    * author/tweet counts.
    */
   engagement?: "reader" | "none";
+  /**
+   * The organizations whose own newsroom or blog this is (`["Cloudflare"]`
+   * for blog.cloudflare.com). An official item becomes its story's
+   * canonical over aggregator rewrites (`worker/dedupe.ts`). Omit for
+   * press, aggregators and community sites.
+   */
+  official?: readonly string[];
   /** Why this row exists / why these settings. Rendered into the PR evidence. */
   note?: string;
 }
@@ -203,6 +210,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "openai",
     name: "OpenAI News",
+    official: ["OpenAI"],
     type: "rss",
     config: {
       feed: "https://openai.com/news/rss.xml",
@@ -213,6 +221,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "anthropic",
     name: "Anthropic News",
+    official: ["Anthropic"],
     type: "anthropic",
     config: { homepage: "https://www.anthropic.com" },
     enabled: true,
@@ -221,6 +230,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "google-ai",
     name: "Google AI Blog",
+    official: ["Google"],
     type: "rss",
     config: {
       feed: "https://blog.google/technology/ai/rss/",
@@ -231,6 +241,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "hf-blog",
     name: "Hugging Face Blog",
+    official: ["Hugging Face"],
     type: "rss",
     config: {
       feed: "https://huggingface.co/blog/feed.xml",
@@ -250,6 +261,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "xai",
     name: "xAI News",
+    official: ["xAI"],
     type: "xai",
     config: { homepage: "https://x.ai", sitemap: "https://x.ai/sitemap.xml" },
     enabled: true,
@@ -257,6 +269,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "deepmind",
     name: "DeepMind Blog",
+    official: ["DeepMind", "Google"],
     type: "rss",
     config: {
       feed: "https://deepmind.google/blog/rss.xml",
@@ -267,6 +280,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "aws-ml",
     name: "AWS ML Blog",
+    official: ["AWS", "Amazon"],
     type: "rss",
     config: {
       feed: "https://aws.amazon.com/blogs/machine-learning/feed/",
@@ -277,6 +291,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "google-dev",
     name: "Google Developers Blog",
+    official: ["Google"],
     type: "rss",
     config: {
       feed: "https://developers.googleblog.com/rss/",
@@ -310,6 +325,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "google-research",
     name: "Google Research Blog",
+    official: ["Google"],
     type: "rss",
     config: {
       feed: "https://research.google/blog/rss/",
@@ -506,6 +522,7 @@ export const REGISTRY_0032: readonly SourceSpec[] = [
 export const CLOUDFLARE_BLOG_SOURCE: SourceSpec = {
   id: "cloudflare-blog",
   name: "Cloudflare Blog",
+  official: ["Cloudflare"],
   type: "rss",
   config: {
     feed: "https://blog.cloudflare.com/rss/",
@@ -583,6 +600,7 @@ export const REGISTRY_0044: readonly SourceSpec[] = [
   {
     id: "mistral",
     name: "Mistral AI",
+    official: ["Mistral"],
     type: "rss",
     config: {
       feed: "https://mistral.ai/news/rss",
@@ -595,6 +613,7 @@ export const REGISTRY_0044: readonly SourceSpec[] = [
   {
     id: "nvidia-blog",
     name: "NVIDIA Blog",
+    official: ["Nvidia"],
     type: "rss",
     config: {
       feed: "https://blogs.nvidia.com/feed/",
@@ -607,6 +626,7 @@ export const REGISTRY_0044: readonly SourceSpec[] = [
   {
     id: "nvidia-dev",
     name: "NVIDIA Developer Blog",
+    official: ["Nvidia"],
     type: "rss",
     config: {
       feed: "https://developer.nvidia.com/blog/feed/",
@@ -619,6 +639,7 @@ export const REGISTRY_0044: readonly SourceSpec[] = [
   {
     id: "microsoft-research",
     name: "Microsoft Research",
+    official: ["Microsoft"],
     type: "rss",
     config: {
       feed: "https://www.microsoft.com/en-us/research/feed/",
@@ -632,6 +653,7 @@ export const REGISTRY_0044: readonly SourceSpec[] = [
   {
     id: "apple-ml",
     name: "Apple Machine Learning Research",
+    official: ["Apple"],
     type: "rss",
     config: {
       feed: "https://machinelearning.apple.com/rss.xml",
@@ -644,6 +666,7 @@ export const REGISTRY_0044: readonly SourceSpec[] = [
   {
     id: "together-ai",
     name: "Together AI",
+    official: ["Together AI"],
     type: "rss",
     config: {
       feed: "https://www.together.ai/blog/rss.xml",
@@ -656,6 +679,7 @@ export const REGISTRY_0044: readonly SourceSpec[] = [
   {
     id: "github-ai",
     name: "GitHub Blog AI & ML",
+    official: ["GitHub"],
     type: "rss",
     config: {
       feed: "https://github.blog/ai-and-ml/feed/",
@@ -741,6 +765,57 @@ export function registrySourceIds(): string[] {
 
 export function findSourceSpec(id: string): SourceSpec | undefined {
   return SOURCE_REGISTRY.find((s) => s.id === id);
+}
+
+/** `items.source_id` of an accepted user submission (`worker/submissions.ts`). */
+export const USER_SOURCE_ID = "user";
+
+function urlHost(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  try {
+    return new URL(raw).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+/** The registry source whose homepage or feed host serves `url`, official
+ *  sources first. Lets a user submission of a blog.cloudflare.com post
+ *  stand for `cloudflare-blog`. */
+export function sourceSpecForUrl(
+  url: string | undefined
+): SourceSpec | undefined {
+  const host = urlHost(url);
+  if (!host) return undefined;
+  const matches = SOURCE_REGISTRY.filter(
+    (spec) =>
+      urlHost(spec.config.homepage) === host ||
+      urlHost(spec.config.feed) === host
+  );
+  return matches.find((spec) => spec.official?.length) ?? matches[0];
+}
+
+/** The registry source an item stands for: its own, except a user
+ *  submission, which stands for the source serving its URL (if any). */
+export function effectiveSourceSpec(
+  sourceId: string,
+  url?: string
+): SourceSpec | undefined {
+  if (sourceId === USER_SOURCE_ID) return sourceSpecForUrl(url);
+  return findSourceSpec(sourceId);
+}
+
+/** The official source an item comes from, if any (see `official`): its
+ *  own source, or the official source serving its URL (an HN link to an
+ *  OpenAI post, a user submission of a Cloudflare post). */
+export function officialSourceFor(
+  sourceId: string,
+  url?: string
+): SourceSpec | undefined {
+  const own = findSourceSpec(sourceId);
+  if (own?.official?.length) return own;
+  const byUrl = sourceSpecForUrl(url);
+  return byUrl?.official?.length ? byUrl : undefined;
 }
 
 /** Threshold for the stale detector, per source. */

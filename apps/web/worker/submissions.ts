@@ -1,5 +1,5 @@
 import { nn } from "./d1-bind.js";
-import { fetchOgData } from "./enrich.js";
+import { fetchOgData, type OgData } from "./enrich.js";
 import { sha256Hex } from "./hash.js";
 import {
   jevPanelRelevance,
@@ -7,6 +7,7 @@ import {
 } from "./jev-panel/score-review.js";
 import { callAnyrouter, parseJson } from "./llm.js";
 import {
+  canonicalizeMediaUrl,
   manifestWithoutArticleUrl,
   parseMediaManifest,
   primaryThumbnailUrl,
@@ -22,6 +23,7 @@ import {
   ONE_DAY_SEC,
   RATE_LIMIT_MESSAGES,
 } from "./rate-limit.js";
+import { USER_SOURCE_ID } from "./sources/catalog.js";
 import { callSystemOne, submissionRelevanceFromJev } from "./systemone.js";
 import { toEpochSeconds } from "./time.js";
 import { escapePromptPayload } from "./translation-review.js";
@@ -86,6 +88,14 @@ export function resolveSubmissionTitle(title: string, url: string): string {
   return `${host} story`.slice(0, MAX_TITLE_LENGTH).padEnd(MIN_TITLE_LENGTH);
 }
 
+/** The submitted URL without tracking parameters (utm_*, fbclid, …) or a
+ * fragment, so a link shared from social media hashes to the same item id
+ * as the feed's copy (`sha256(url)`) and the duplicate checks see it. Null
+ * for a URL that is not a public http(s) address. */
+export function canonicalSubmissionUrl(url: string): string | null {
+  return canonicalizeMediaUrl(url);
+}
+
 export interface SubmitStoryInput {
   url: string;
   title: string;
@@ -108,19 +118,21 @@ export async function submitStory(
 ): Promise<SubmitStoryResult> {
   const urlError = validateSubmissionUrl(input.url);
   if (urlError) return { ok: false, error: urlError };
+  const url = canonicalSubmissionUrl(input.url);
+  if (!url) return { ok: false, error: "url must be a public http(s) URL" };
   const titleError = validateSubmissionTitle(input.title);
   if (titleError) return { ok: false, error: titleError };
-  const title = resolveSubmissionTitle(input.title, input.url);
+  const title = resolveSubmissionTitle(input.title, url);
 
   const existingItem = await db
     .prepare("SELECT id FROM items WHERE url = ?")
-    .bind(input.url)
+    .bind(url)
     .first();
   if (existingItem) return { ok: false, error: "story already exists" };
 
   const existingSubmission = await db
     .prepare("SELECT id FROM submissions WHERE url = ?")
-    .bind(input.url)
+    .bind(url)
     .first();
   if (existingSubmission) {
     return { ok: false, error: "story already submitted" };
@@ -168,7 +180,7 @@ export async function submitStory(
     )
     .bind(
       nn(id),
-      nn(input.url),
+      nn(url),
       nn(title),
       nn(input.note),
       nn(input.userId),
@@ -280,6 +292,64 @@ function normalizedOgImage(
   };
 }
 
+/**
+ * Inserts an accepted submission into `items` with status='new' for the
+ * next ingest run's dedupe step to pick up and run through the ordinary
+ * score/merge/translate pipeline (see ingest/dedupe.ts). The id is
+ * sha256 of the canonical URL, matching what a feed fetch of the same post
+ * produces, so a post the feeds already have is not inserted twice
+ * (`ON CONFLICT DO NOTHING`) and a rewrite of it merges in the merge step.
+ * A blank-title submission takes the page's og:title, and the page's own
+ * publish time (never in the future) dates it.
+ *
+ * Deliberately not using d1-bind.ts's buildItemBindArgs — that's shaped for
+ * the ingest workflow's full 22-column upsert (llm scores, tags, rank,
+ * etc.), all of which are irrelevant here. Every column left out (points,
+ * comments, tags, rank_score, status) has a matching NOT NULL DEFAULT in the
+ * schema.
+ */
+async function insertAcceptedSubmission(
+  db: D1Database,
+  submission: PendingSubmissionRow,
+  og: OgData,
+  media: ReturnType<typeof normalizedOgImage>
+): Promise<string> {
+  const url = canonicalSubmissionUrl(submission.url) ?? submission.url;
+  const itemId = await sha256Hex(url);
+  const now = toEpochSeconds(Date.now());
+  const derivedTitle =
+    submission.title === resolveSubmissionTitle("", submission.url);
+  const title =
+    derivedTitle && og.title
+      ? og.title.slice(0, MAX_TITLE_LENGTH)
+      : submission.title;
+  const publishedAt =
+    og.publishedAt !== undefined && og.publishedAt > 0
+      ? Math.min(og.publishedAt, now)
+      : now;
+  await db
+    .prepare(
+      `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang, media_manifest)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO NOTHING`
+    )
+    .bind(
+      nn(itemId),
+      nn(USER_SOURCE_ID),
+      nn(submission.id),
+      nn(url),
+      nn(title),
+      nn(og.description),
+      nn(publishedAt),
+      nn(now),
+      nn(media.imageUrl),
+      "en",
+      serializeMediaManifest(media.mediaManifest)
+    )
+    .run();
+  return itemId;
+}
+
 export async function reviewPendingSubmissions(
   env: Env,
   cap = REVIEW_CAP_DEFAULT
@@ -389,34 +459,12 @@ export async function reviewPendingSubmissions(
         continue;
       }
 
-      const itemId = await sha256Hex(submission.url);
-      const now = Date.now();
-      // Deliberately not using d1-bind.ts's buildItemBindArgs — that's
-      // shaped for the ingest workflow's full 22-column upsert (llm
-      // scores, tags, rank, etc.), all of which are irrelevant here: this
-      // row only needs to exist with status='new' so the next ingest run's
-      // dedupe step picks it up and runs it through that same pipeline.
-      // Every column left out (points, comments, tags, rank_score, status)
-      // has a matching NOT NULL DEFAULT in the schema.
-      await env.DB.prepare(
-        `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang, media_manifest)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO NOTHING`
-      )
-        .bind(
-          nn(itemId),
-          nn("user"),
-          nn(submission.id),
-          nn(submission.url),
-          nn(submission.title),
-          nn(og.description),
-          nn(toEpochSeconds(now)),
-          nn(toEpochSeconds(now)),
-          nn(normalizedMedia.imageUrl),
-          "en",
-          serializeMediaManifest(normalizedMedia.mediaManifest)
-        )
-        .run();
+      const itemId = await insertAcceptedSubmission(
+        env.DB,
+        submission,
+        og,
+        normalizedMedia
+      );
 
       await env.DB.prepare(
         "UPDATE submissions SET status = 'accepted', rating = ?, review_note = ?, item_id = ? WHERE id = ?"
@@ -459,27 +507,12 @@ export async function acceptSubmissionById(
     og.imageUrl,
     submission.url
   );
-  const itemId = await sha256Hex(submission.url);
-  const now = Date.now();
-  await env.DB.prepare(
-    `INSERT INTO items (id, source_id, external_id, url, title, summary, published_at, fetched_at, image_url, source_lang, media_manifest)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(id) DO NOTHING`
-  )
-    .bind(
-      nn(itemId),
-      nn("user"),
-      nn(submission.id),
-      nn(submission.url),
-      nn(submission.title),
-      nn(og.description),
-      nn(toEpochSeconds(now)),
-      nn(toEpochSeconds(now)),
-      nn(normalizedMedia.imageUrl),
-      "en",
-      serializeMediaManifest(normalizedMedia.mediaManifest)
-    )
-    .run();
+  const itemId = await insertAcceptedSubmission(
+    env.DB,
+    submission,
+    og,
+    normalizedMedia
+  );
 
   await env.DB.prepare(
     "UPDATE submissions SET status = 'accepted', rating = ?, review_note = ?, item_id = ? WHERE id = ?"

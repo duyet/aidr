@@ -33,6 +33,58 @@ describe("AI title gate", () => {
     }
   });
 
+  it("matches builder frameworks, platforms, and data tooling by name", () => {
+    for (const title of [
+      "LangGraph 1.2 adds durable checkpoints",
+      "CrewAI raises Series B",
+      "AutoGen 0.6 rewrites its runtime",
+      "Mastra ships workflow suspend and resume",
+      "Pydantic AI gets typed tool retries",
+      "LlamaIndex launches a parsing service",
+      "Cloudflare expands Workers AI catalog",
+      "OpenAI Agents SDK adds sandboxes",
+      "Vercel AI SDK 6 is out",
+      "Benchmarking vector databases at a billion rows",
+      "How we cut embeddings cost by 80%",
+      "Databricks lakehouse adds feature stores",
+      "PyTorch 3.0 released",
+      "SGLang beats TensorRT on throughput",
+    ]) {
+      expect(isAiRelatedTitle(title), title).toBe(true);
+    }
+  });
+
+  it("matches inflected stems, not only the bare stem", () => {
+    // Each stem used to end at \\b, so "fine-tuning" and "agents" slipped
+    // through. The Cloudflare Clef post was filtered out in prod this way.
+    for (const title of [
+      "Introducing Clef: our open-source decision models, and new RL fine-tuning platform",
+      "New fine-tuning API",
+      "We fine-tuned a small model",
+      "Fine-tune once, serve anywhere",
+      "Coding agents in production",
+      "Transformers 5 drops TensorFlow",
+      "New benchmarks for long context",
+      "Why LLMs hallucinate",
+      "Two new AI labs open in Paris",
+    ]) {
+      expect(isAiRelatedTitle(title), title).toBe(true);
+    }
+  });
+
+  it("does not match generic engineering words on their own", () => {
+    for (const title of [
+      "A new framework for city budgets",
+      "Our data pipeline migration to a new warehouse",
+      "Best tools for woodworking",
+      "Stripe SDK 12 drops Node 16",
+      "ETL jobs at a bank",
+      "Embedding a tweet in your blog",
+    ]) {
+      expect(isAiRelatedTitle(title), title).toBe(false);
+    }
+  });
+
   it("does not match unrelated words that merely contain a keyword", () => {
     for (const title of [
       "Tesla Secures FSD Supervised Approval in Croatia",

@@ -132,16 +132,22 @@ async function existingCanonicalStatements(
       url: r.url ?? undefined,
     })),
     update.extraSources,
-    MAX_SOURCES_PER_ITEM
+    MAX_SOURCES_PER_ITEM,
+    existingRow?.url
   );
 
   // Items merged into it on earlier runs; this run's are in `update.members`
   // (their rows land in the same batch).
   const { results: mergedRows } = await env.DB.prepare(
-    "SELECT source_id, points, comments FROM items WHERE status = 'merged' AND duplicate_of = ?"
+    "SELECT source_id, points, comments, url FROM items WHERE status = 'merged' AND duplicate_of = ?"
   )
     .bind(canonicalId)
-    .all<{ source_id: string; points: number; comments: number }>();
+    .all<{
+      source_id: string;
+      points: number;
+      comments: number;
+      url: string;
+    }>();
 
   const rank = existingRow
     ? rankScore({
@@ -155,11 +161,13 @@ async function existingCanonicalStatements(
             sourceId: existingRow.source_id,
             points: update.maxPoints,
             comments: update.maxComments,
+            url: existingRow.url,
           },
           ...(mergedRows ?? []).map((r) => ({
             sourceId: r.source_id,
             points: r.points,
             comments: r.comments,
+            url: r.url,
           })),
           ...(update.members ?? []),
         ]),
@@ -182,6 +190,38 @@ async function existingCanonicalStatements(
       nn(canonicalId)
     ),
     ...replaceItemSources(env, canonicalId, mergedSources),
+  ];
+}
+
+/** Statements that hand a demoted canonical's story to the official item
+ * replacing it (`MergePlan.demoted`): the old canonical and everything
+ * merged into it point at the new one, so the cluster stays one level deep
+ * and its permalink resolves to the new canonical (`getStory`). Sent
+ * notifications move with the story, so the official item is not posted
+ * again and the day's sent count does not double. Its `item_sources` rows
+ * stay; merged items' sources are never shown. Runs after the new
+ * canonical's upsert in the same batch. */
+export function demotedCanonicalStatements(
+  db: D1Database,
+  demotedId: string,
+  canonicalId: string
+): D1PreparedStatement[] {
+  return [
+    db
+      .prepare(
+        "UPDATE items SET duplicate_of = ? WHERE status = 'merged' AND duplicate_of = ?"
+      )
+      .bind(nn(canonicalId), nn(demotedId)),
+    db
+      .prepare(
+        "UPDATE items SET status = 'merged', duplicate_of = ? WHERE id = ? AND status = 'published'"
+      )
+      .bind(nn(canonicalId), nn(demotedId)),
+    db
+      .prepare(
+        "UPDATE OR IGNORE notifications SET item_id = ? WHERE item_id = ?"
+      )
+      .bind(nn(canonicalId), nn(demotedId)),
   ];
 }
 
@@ -307,6 +347,15 @@ export async function writeItems(
       }
 
       const writtenIds = new Set(newRowIds);
+      for (const [demotedId, canonicalId] of mergePlan.demoted) {
+        // Only when the official item is written as this cluster's
+        // published canonical in this batch.
+        if (!newRowIds.has(canonicalId)) continue;
+        writtenIds.add(demotedId);
+        statements.push(
+          ...demotedCanonicalStatements(env.DB, demotedId, canonicalId)
+        );
+      }
       for (const [canonicalId, update] of mergePlan.canonicalUpdates) {
         if (!update.isExisting || newRowIds.has(canonicalId)) continue;
         writtenIds.add(canonicalId);

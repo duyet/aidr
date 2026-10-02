@@ -1,12 +1,15 @@
-import { findSourceSpec } from "./sources/catalog.js";
+import { effectiveSourceSpec } from "./sources/catalog.js";
 
 /** At most this share of a top list may come from one source family. */
 export const TOP_LIST_MAX_FAMILY_SHARE = 0.3;
 
 /** Family of a source id: the registry's `family`, else the id itself, so
- *  an operator-added source is its own family. */
-export function sourceFamily(sourceId: string): string {
-  return findSourceSpec(sourceId)?.family ?? sourceId;
+ *  an operator-added source is its own family. A user submission with its
+ *  `url` takes the family of the registry source serving that URL, so a
+ *  submitted Cloudflare post and the Cloudflare feed count once. */
+export function sourceFamily(sourceId: string, url?: string): string {
+  const spec = effectiveSourceSpec(sourceId, url);
+  return spec?.family ?? spec?.id ?? sourceId;
 }
 
 /** Per-family cap for a list of `limit` rows (10 → 3, 16 → 5, 8 → 3). */

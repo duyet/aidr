@@ -1,11 +1,14 @@
 import { completeJson, parseJson } from "./llm.js";
 import {
   buildMediaManifest,
+  canonicalizeMediaUrl,
   type MediaAsset,
   type MediaManifest,
 } from "./media.js";
 import { hasReaderEngagement, type RankMember } from "./ranking.js";
+import { officialSourceFor } from "./sources/catalog.js";
 import type { FetchedItemSource } from "./sources/types.js";
+import { extractTitleEntities } from "./topic-learning.js";
 import { unionTopics } from "./topics.js";
 import type { Env } from "./types.js";
 
@@ -222,6 +225,135 @@ export function clusterByTitleSimilarity(
   return emitClusters(uf, newItems, recentItems);
 }
 
+/** How far apart an official post and a rewrite of it may be published. */
+export const OFFICIAL_REWRITE_WINDOW_SEC = 36 * 60 * 60;
+
+/** Headline words of a follow-up story (market reaction, rollout, review,
+ * legal or security fallout, an event recap), which the cluster prompt keeps
+ * apart from the launch it follows. Either title carrying one blocks the
+ * official-rewrite match. */
+const LATER_DEVELOPMENT_RE =
+  /\b(?:stocks?|shares|investors?|markets?|rollouts?|rolls? out|expands?|expansion|capacity|reviews?|reviewed|hands-on|tested|benchmarks?|analysis|lawsuits?|sues?|sued|bans?|banned|outages?|breach(?:es)?|hack(?:ed|s)?|leak(?:s|ed)?|backlash|criticism|criticized|delays?|delayed|paus(?:es|ed)|halts?|halted|cancels?|cancell?ed|recap|roundup|live blog)\b/i;
+
+/** An aggregator rewrite reports the launch itself ("Cloudflare Launches
+ * …", "OpenAI Releases …"), not a ranking or a reaction. */
+const LAUNCH_VERB_RE =
+  /\b(?:launch(?:es|ed)|releas(?:es|ed)|unveil(?:s|ed)|introduc(?:es|ed)|debut(?:s|ed)|announc(?:es|ed)|open[- ]sourc(?:es|ed)|ships|shipped|rolls? out|unveiling|launching)\b/i;
+
+export interface OfficialRewriteInput {
+  title: string;
+  /** Epoch seconds. */
+  publishedAt: number;
+  /** `official` orgs of the item's source (`officialSourceFor`), if any. */
+  officialOrgs?: readonly string[];
+  /** True for an aggregator's rewrite (source family `aggregator`). */
+  aggregator?: boolean;
+}
+
+/** True when the aggregator item `other` reads as a rewrite of the official
+ * post `official`: published within 36h, its headline is a launch headline
+ * naming one of the official source's organizations AND the product the
+ * official headline leads with ("Clef" in "Introducing Clef: …" and
+ * "Cloudflare Launches … With clef Release"), and neither headline is a
+ * follow-up story. Aggregator rewrites share too few words with the
+ * original for the title pass; press coverage is left to the LLM. */
+export function isOfficialRewrite(
+  official: OfficialRewriteInput,
+  other: OfficialRewriteInput
+): boolean {
+  const orgs = official.officialOrgs;
+  if (!orgs?.length || !other.aggregator || other.officialOrgs?.length) {
+    return false;
+  }
+  if (
+    Math.abs(official.publishedAt - other.publishedAt) >
+    OFFICIAL_REWRITE_WINDOW_SEC
+  ) {
+    return false;
+  }
+  if (
+    LATER_DEVELOPMENT_RE.test(official.title) ||
+    LATER_DEVELOPMENT_RE.test(other.title) ||
+    !LAUNCH_VERB_RE.test(other.title)
+  ) {
+    return false;
+  }
+  const otherText = ` ${normalizeTitleForDedupe(other.title)} `;
+  const contains = (phrase: string) => {
+    const normalized = normalizeTitleForDedupe(phrase);
+    return normalized.length > 0 && otherText.includes(` ${normalized} `);
+  };
+  if (!orgs.some(contains)) return false;
+  const name = officialHeadlineName(official.title);
+  return (
+    name !== null &&
+    !orgs.some((org) => normalizeTitleForDedupe(org) === name) &&
+    contains(name)
+  );
+}
+
+const LAUNCH_LEAD_RE =
+  /^(?:introducing|announcing|meet|say hello to|welcome|launching)\s+/i;
+
+/** The product an official headline is about, normalized: the whole name
+ * it leads with ("Introducing Clef: …" → "clef", "Gemini 4 Argon: our next
+ * era…" → "gemini 4 argon"). Null when the headline leads with anything
+ * else ("Better prompt caching for GPT-6", a customer story) or the name
+ * runs on past the entity ("Gemini 3.8 Live …" is not "Gemini 3.8"), so a
+ * post that merely mentions a model never matches that model's launch. */
+export function officialHeadlineName(title: string): string | null {
+  const lead = title.trim().replace(LAUNCH_LEAD_RE, "");
+  const words = lead.split(/\s+/);
+  for (const entity of extractTitleEntities(lead)) {
+    const name = normalizeTitleForDedupe(entity);
+    if (!name) continue;
+    for (let n = 1; n <= words.length; n++) {
+      const head = normalizeTitleForDedupe(words.slice(0, n).join(" "));
+      if (head.length > name.length) break;
+      if (head !== name) continue;
+      const next = words[n];
+      const closed = /[:,;.!?]$/.test(words[n - 1]);
+      return !next || closed || !/^[A-Z0-9]/.test(next) ? name : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Deterministic pass for an official post and the aggregator rewrites of
+ * it (see `isOfficialRewrite`). Only pairs with exactly one official side
+ * are compared, so two posts from one newsroom never merge here.
+ */
+export function clusterOfficialRewrites(
+  newItems: readonly (OfficialRewriteInput & { i: number })[],
+  recentItems: readonly (OfficialRewriteInput & { id: string })[]
+): Cluster[] {
+  if (newItems.length === 0) return [];
+  const uf = unionFind();
+  for (const item of newItems) uf.ensure(`n:${item.i}`);
+  for (const item of recentItems) uf.ensure(`e:${item.id}`);
+  const matches = (a: OfficialRewriteInput, b: OfficialRewriteInput) =>
+    isOfficialRewrite(a, b) || isOfficialRewrite(b, a);
+
+  for (let i = 0; i < newItems.length; i++) {
+    for (let j = i + 1; j < newItems.length; j++) {
+      if (matches(newItems[i], newItems[j])) {
+        uf.union(`n:${newItems[i].i}`, `n:${newItems[j].i}`);
+      }
+    }
+    for (const existing of recentItems) {
+      if (matches(newItems[i], existing)) {
+        uf.union(`n:${newItems[i].i}`, `e:${existing.id}`);
+      }
+    }
+  }
+  return emitClusters(
+    uf,
+    newItems.map(({ i }) => ({ i, title: "" })),
+    recentItems.map(({ id }) => ({ id, title: "" }))
+  );
+}
+
 /** Union LLM clusters with title-similarity clusters so either signal wins. */
 export function mergeClusters(groups: Cluster[][]): Cluster[] {
   const newSeen = new Set<number>();
@@ -357,54 +489,102 @@ Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]
 
 export type CanonicalSelection =
   | { type: "existing"; id: string }
-  | { type: "new"; index: number };
+  | {
+      type: "new";
+      index: number;
+      /** A published, non-official canonical this official new item
+       * replaces: it becomes `merged` into the new item. */
+      demotes?: string;
+    };
 
-/** Existing item wins as canonical; otherwise the new item with the
- * highest rank in `ranks` (index -> rank) wins. Returns null only if the
- * cluster has no existing id and none of its "new" indices have a known
- * rank (shouldn't happen for a well-formed cluster). */
+export interface CanonicalPreference {
+  /** New items from an official source that clear the relevance bar. */
+  officialNew?: ReadonlySet<number>;
+  /** Existing items from an official source. */
+  officialExisting?: ReadonlySet<string>;
+}
+
+/** Picks a cluster's canonical, official sources first:
+ * - an official existing item stays canonical;
+ * - else an official new item wins, demoting a non-official existing
+ *   canonical (an aggregator rewrite published before the original);
+ * - else the existing item stays canonical;
+ * - else the new item with the highest rank in `ranks` (index -> rank).
+ * Among several official new items, the highest rank wins. Returns null
+ * only if the cluster has no existing id and none of its "new" indices have
+ * a known rank (shouldn't happen for a well-formed cluster). */
 export function selectCanonical(
   cluster: Cluster,
-  ranks: Map<number, number>
+  ranks: Map<number, number>,
+  preference: CanonicalPreference = {}
 ): CanonicalSelection | null {
-  if (cluster.existing.length > 0) {
-    return { type: "existing", id: cluster.existing[0] };
-  }
-
-  let bestIndex: number | null = null;
-  let bestRank = Number.NEGATIVE_INFINITY;
-  for (const i of cluster.new) {
-    const rank = ranks.get(i);
-    if (rank === undefined) continue;
-    if (bestIndex === null || rank > bestRank) {
-      bestIndex = i;
-      bestRank = rank;
+  const officialExisting = preference.officialExisting ?? new Set<string>();
+  const officialNew = preference.officialNew ?? new Set<number>();
+  const bestNew = (indices: readonly number[]): number | null => {
+    let bestIndex: number | null = null;
+    let bestRank = Number.NEGATIVE_INFINITY;
+    for (const i of indices) {
+      const rank = ranks.get(i);
+      if (rank === undefined) continue;
+      if (bestIndex === null || rank > bestRank) {
+        bestIndex = i;
+        bestRank = rank;
+      }
     }
+    return bestIndex;
+  };
+
+  const existing =
+    cluster.existing.find((id) => officialExisting.has(id)) ??
+    cluster.existing[0];
+  if (existing !== undefined && officialExisting.has(existing)) {
+    return { type: "existing", id: existing };
   }
-  return bestIndex === null ? null : { type: "new", index: bestIndex };
+  const official = bestNew(cluster.new.filter((i) => officialNew.has(i)));
+  if (official !== null) {
+    return existing === undefined
+      ? { type: "new", index: official }
+      : { type: "new", index: official, demotes: existing };
+  }
+  if (existing !== undefined) return { type: "existing", id: existing };
+  const best = bestNew(cluster.new);
+  return best === null ? null : { type: "new", index: best };
 }
 
 /** Merges `incoming` sources onto `base`, deduping by URL (base wins on
- * conflict, order preserved), capped at `cap` total. Sources without a URL
- * are kept as-is (can't be deduped by URL) but still count toward the cap. */
+ * conflict, order preserved), capped at `cap` total. URLs compare without
+ * tracking parameters, so a shared `?utm_…` link and the feed's copy are one
+ * source, and a source that is the story's own `ownUrl` is dropped. Sources
+ * without a URL are kept as-is (can't be deduped by URL) but still count
+ * toward the cap. An official source's link (`officialSourceFor`) moves to
+ * the front before the cap, so a story lists the vendor's own post first
+ * and never drops it. */
 export function unionSources(
   base: FetchedItemSource[],
   incoming: FetchedItemSource[],
-  cap: number
+  cap: number,
+  ownUrl?: string
 ): FetchedItemSource[] {
-  const seenUrls = new Set<string>();
-  const out: FetchedItemSource[] = [];
+  const key = (url: string) => canonicalizeMediaUrl(url) ?? url;
+  const seenUrls = new Set<string>(ownUrl ? [key(ownUrl)] : []);
+  const deduped: FetchedItemSource[] = [];
 
   for (const source of [...base, ...incoming]) {
-    if (out.length >= cap) break;
     if (source.url) {
-      if (seenUrls.has(source.url)) continue;
-      seenUrls.add(source.url);
+      const url = key(source.url);
+      if (seenUrls.has(url)) continue;
+      seenUrls.add(url);
     }
-    out.push(source);
+    deduped.push(source);
   }
 
-  return out;
+  const isOfficial = (source: FetchedItemSource) =>
+    source.kind === "source" &&
+    officialSourceFor(source.author ?? "", source.url) !== undefined;
+  return [
+    ...deduped.filter(isOfficial),
+    ...deduped.filter((source) => !isOfficial(source)),
+  ].slice(0, cap);
 }
 
 export interface MergeCandidate {
@@ -424,6 +604,11 @@ export interface MergeCandidate {
   /** Normalized media already collected for this candidate, if any. */
   imageUrl?: string | null;
   mediaManifest?: MediaManifest | null;
+  /** From an official source (`officialSourceFor`) and above the relevance
+   * bar, so it may become its cluster's canonical over an aggregator. */
+  official?: boolean;
+  /** Headline facts for `isOfficialRewrite`, which gates that takeover. */
+  headline?: OfficialRewriteInput;
 }
 
 export interface ExistingCandidate {
@@ -431,6 +616,12 @@ export interface ExistingCandidate {
   comments: number;
   imageUrl?: string | null;
   mediaManifest?: MediaManifest | null;
+  /** Read when an official new item demotes this canonical. */
+  sourceId?: string;
+  url?: string;
+  topics?: string[];
+  official?: boolean;
+  headline?: OfficialRewriteInput;
 }
 
 export interface MergePlanEntry {
@@ -463,6 +654,10 @@ export interface MergePlan {
    * cluster. Present for every cluster that produced a merge, including
    * ones whose canonical is itself a new item. */
   canonicalUpdates: Map<string, CanonicalUpdate>;
+  /** Existing canonical id -> the official new item replacing it. The
+   * existing item becomes `merged` into it, and so do the items already
+   * merged into the existing one (`foldDemotedCanonicals`). */
+  demoted: Map<string, string>;
 }
 
 /**
@@ -483,9 +678,16 @@ export function buildMergePlan(
 
   const merged = new Map<string, MergePlanEntry>();
   const canonicalUpdates = new Map<string, CanonicalUpdate>();
+  const demoted = new Map<string, string>();
+  const officialExisting = new Set(
+    [...existingById].filter(([, e]) => e.official).map(([id]) => id)
+  );
 
   for (const cluster of clusters) {
-    const canonical = selectCanonical(cluster, ranks);
+    const canonical = selectCanonical(cluster, ranks, {
+      officialNew: officialTakeovers(cluster, byIndex, ranks, existingById),
+      officialExisting,
+    });
     if (!canonical) continue;
 
     const canonicalId =
@@ -507,14 +709,41 @@ export function buildMergePlan(
     const members: RankMember[] = [];
     const extraMedia: MediaAsset[] = [];
     const extraImageUrls: string[] = [];
-    if (canonical.type === "existing") {
-      const existing = existingById.get(canonical.id);
+    const absorbedExistingId =
+      canonical.type === "existing" ? canonical.id : canonical.demotes;
+    if (absorbedExistingId !== undefined) {
+      const existing = existingById.get(absorbedExistingId);
       if (existing?.mediaManifest?.assets.length) {
         extraMedia.push(...existing.mediaManifest.assets);
       }
       if (existing?.imageUrl && !existing.mediaManifest?.assets.length) {
         extraImageUrls.push(existing.imageUrl);
       }
+    }
+    if (canonical.type === "new" && canonical.demotes !== undefined) {
+      // The demoted canonical folds in like any merged member: its URL
+      // becomes a source, its topics and reader engagement carry over.
+      const existing = existingById.get(canonical.demotes);
+      const sourceId = existing?.sourceId ?? "unknown";
+      demoted.set(canonical.demotes, canonicalId);
+      if (existing && hasReaderEngagement(sourceId)) {
+        maxPoints = Math.max(maxPoints, existing.points);
+        maxComments = Math.max(maxComments, existing.comments);
+      }
+      members.push({
+        sourceId,
+        points: existing?.points ?? 0,
+        comments: existing?.comments ?? 0,
+        url: existing?.url,
+      });
+      if (existing?.url) {
+        extraSources.push({
+          kind: "source",
+          url: existing.url,
+          author: sourceId,
+        });
+      }
+      extraTopics.push(...(existing?.topics ?? []));
     }
 
     for (const i of cluster.new) {
@@ -537,6 +766,7 @@ export function buildMergePlan(
         sourceId: candidate.sourceId,
         points: candidate.points,
         comments: candidate.comments,
+        url: candidate.url,
       });
       merged.set(candidate.id, { duplicateOf: canonicalId });
       extraSources.push(...(candidate.sources ?? []));
@@ -601,5 +831,99 @@ export function buildMergePlan(
     });
   }
 
-  return { merged, canonicalUpdates };
+  return { merged, canonicalUpdates, demoted };
+}
+
+/**
+ * The official new items allowed to become `cluster`'s canonical: those
+ * that clear the relevance bar (`official`) AND are provably the original of
+ * the item they would replace — the existing canonical, else the best-ranked
+ * new item — by `isOfficialRewrite`. A cluster only says "same story"; the
+ * LLM also groups an AWS or GitHub post about someone else's launch with
+ * that launch, and those must not take the story over.
+ */
+function officialTakeovers(
+  cluster: Cluster,
+  byIndex: ReadonlyMap<number, MergeCandidate>,
+  ranks: Map<number, number>,
+  existingById: ReadonlyMap<string, ExistingCandidate>
+): Set<number> {
+  const officialNew = cluster.new.filter((i) => byIndex.get(i)?.official);
+  if (officialNew.length === 0) return new Set();
+  const others = cluster.new.filter((i) => !officialNew.includes(i));
+  const existingId = cluster.existing[0];
+  let target: OfficialRewriteInput | undefined;
+  if (existingId !== undefined) {
+    target = existingById.get(existingId)?.headline;
+  } else {
+    const best = selectCanonical({ new: others, existing: [] }, ranks);
+    // Only official items in the cluster: rank decides among them.
+    if (best?.type !== "new") return new Set(officialNew);
+    target = byIndex.get(best.index)?.headline;
+  }
+  return new Set(
+    officialNew.filter((i) => {
+      const headline = byIndex.get(i)?.headline;
+      return (
+        headline !== undefined &&
+        target !== undefined &&
+        isOfficialRewrite(headline, target)
+      );
+    })
+  );
+}
+
+/** What a demoted canonical brings besides its own row: its `item_sources`
+ * and the items merged into it on earlier runs. Read by the merge step. */
+export interface DemotedCanonicalDetail {
+  /** The demoted item's own URL, already a source of the official item. */
+  url: string;
+  sources: FetchedItemSource[];
+  members: (RankMember & { id: string })[];
+}
+
+/**
+ * Folds each demoted canonical's sources and earlier merged items into the
+ * official item replacing it: its sources follow the demoted item's own URL
+ * (already first in `extraSources`), its merged items join `members` (rank
+ * corroboration) and their reader engagement. Pure; `details` comes from
+ * D1. A missing detail leaves the update as `buildMergePlan` made it.
+ */
+export function foldDemotedCanonicals(
+  plan: MergePlan,
+  details: ReadonlyMap<string, DemotedCanonicalDetail>,
+  sourceCap: number
+): MergePlan {
+  const canonicalUpdates = new Map(plan.canonicalUpdates);
+  for (const [demotedId, canonicalId] of plan.demoted) {
+    const detail = details.get(demotedId);
+    const update = canonicalUpdates.get(canonicalId);
+    if (!detail || !update) continue;
+    const own = update.extraSources.filter((src) => src.url === detail.url);
+    const rest = update.extraSources.filter((src) => src.url !== detail.url);
+    let { maxPoints, maxComments } = update;
+    // The official item itself, when it was merged under the rewrite before.
+    const members = detail.members.filter((m) => m.id !== canonicalId);
+    for (const m of members) {
+      if (!hasReaderEngagement(m.sourceId)) continue;
+      maxPoints = Math.max(maxPoints, m.points);
+      maxComments = Math.max(maxComments, m.comments);
+    }
+    canonicalUpdates.set(canonicalId, {
+      ...update,
+      extraSources: unionSources([...own, ...detail.sources], rest, sourceCap),
+      maxPoints,
+      maxComments,
+      members: [
+        ...(update.members ?? []),
+        ...members.map(({ sourceId, points, comments, url }) => ({
+          sourceId,
+          points,
+          comments,
+          url,
+        })),
+      ],
+    });
+  }
+  return { ...plan, canonicalUpdates };
 }
