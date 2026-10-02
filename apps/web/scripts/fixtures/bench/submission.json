@@ -1,9 +1,7 @@
 {
   "step": "submission",
   "builtAt": "2026-10-02",
-  "labelSources": [
-    "silver:submissions.status"
-  ],
+  "labelSources": ["silver:submissions.status"],
   "count": 12,
   "cases": [
     {

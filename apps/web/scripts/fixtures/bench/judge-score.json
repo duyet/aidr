@@ -1,10 +1,7 @@
 {
   "step": "judge-score",
   "builtAt": "2026-10-02",
-  "labelSources": [
-    "silver:submissions.status",
-    "silver:items.status"
-  ],
+  "labelSources": ["silver:submissions.status", "silver:items.status"],
   "count": 40,
   "cases": [
     {

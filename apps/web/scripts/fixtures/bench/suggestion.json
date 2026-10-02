@@ -1,9 +1,7 @@
 {
   "step": "suggestion",
   "builtAt": "2026-10-02",
-  "labelSources": [
-    "silver:translation_suggestions.status"
-  ],
+  "labelSources": ["silver:translation_suggestions.status"],
   "count": 2,
   "cases": [
     {

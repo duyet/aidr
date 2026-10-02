@@ -145,6 +145,9 @@ export function RunRow({
         .filter(Boolean)
         .join(" ")}
     >
+      {/* Row-wide click is a mouse convenience; the tokens button below is
+          the labelled, focusable disclosure trigger for the same action. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: progressive enhancement; the tokens button is the accessible trigger */}
       <div
         className={`grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 px-3 py-2.5 text-xs md:gap-x-4 ${RUN_ROW_GRID} ${
           canExpand ? "cursor-pointer hover:bg-muted/40" : ""

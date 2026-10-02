@@ -68,11 +68,8 @@ import {
   stubDb,
 } from "../bench-env";
 import { benchDir } from "./build";
-import {
-  REVIEW_QUEUE_STEPS,
-  reviewQueueDataset,
-} from "./steps-review-queue";
 import { draftRepairStep } from "./steps-repair";
+import { REVIEW_QUEUE_STEPS, reviewQueueDataset } from "./steps-review-queue";
 import { ruleExtractionStep } from "./steps-rules";
 
 /** Per-case outcome: `valid` = schema-valid output for this case;
