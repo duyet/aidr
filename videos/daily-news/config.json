@@ -16,9 +16,21 @@
   "fps": 30,
   "voice": {
     "provider": "heygen",
-    "id": "7e48c8d406b04a8089c5eb3cd057cb2e",
-    "speed": 1.1,
-    "volume": 1.0
+    "defaultAnchor": "gareth",
+    "gap": 0.28,
+    "volume": 1.0,
+    "anchors": {
+      "gareth": {
+        "id": "826be797681d4b1a92042b54b3c75c64",
+        "name": "Gareth - Conversational & Easygoing",
+        "speed": 1.0
+      },
+      "tabitha": {
+        "id": "a6752292cd204ac4a80a25fb575b1327",
+        "name": "Tabitha - Conversational & Easygoing",
+        "speed": 1.0
+      }
+    }
   },
   "music": {
     "file": "../aidr-launch/assets/bgm/news-theme-source.mp3",
