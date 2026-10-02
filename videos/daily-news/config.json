@@ -1,0 +1,71 @@
+{
+  "count": 6,
+  "api": "https://aidr.today/api/public?lang=en",
+  "formats": {
+    "16x9": {
+      "width": 1920,
+      "height": 1080,
+      "resolution": "landscape-4k"
+    },
+    "9x16": {
+      "width": 1080,
+      "height": 1920,
+      "resolution": "portrait-4k"
+    }
+  },
+  "fps": 30,
+  "voice": {
+    "provider": "heygen",
+    "defaultAnchor": "gareth",
+    "gap": 0.28,
+    "volume": 1.0,
+    "anchors": {
+      "gareth": {
+        "id": "826be797681d4b1a92042b54b3c75c64",
+        "name": "Gareth - Conversational & Easygoing",
+        "speed": 1.0
+      },
+      "tabitha": {
+        "id": "a6752292cd204ac4a80a25fb575b1327",
+        "name": "Tabitha - Conversational & Easygoing",
+        "speed": 1.0
+      }
+    }
+  },
+  "music": {
+    "file": "../aidr-launch/assets/bgm/news-theme-source.mp3",
+    "volume": 0.22,
+    "duckedVolume": 0.09
+  },
+  "sfx": {
+    "dir": "~/.claude/skills/media-use/audio/assets/sfx",
+    "volume": 0.35,
+    "cues": {
+      "open": "impact-bass-2",
+      "storyIn": "whoosh",
+      "rankHit": "impact-bass-1",
+      "statHit": "ping",
+      "tick": "click-soft",
+      "outro": "chime"
+    }
+  },
+  "timing": {
+    "intro": {
+      "lead": 0.9,
+      "tail": 0.5
+    },
+    "story": {
+      "lead": 0.55,
+      "tail": 0.45
+    },
+    "outro": {
+      "lead": 0.4,
+      "tail": 1.6
+    }
+  },
+  "captions": {
+    "burn": true,
+    "maxWords": 4,
+    "replace": [["AI DR", "AI;DR"], ["aidr dot today", "aidr.today"]]
+  }
+}
