@@ -668,3 +668,145 @@ describe("officialReadmissions", () => {
     ).toEqual([]);
   });
 });
+
+/** The exact prod rows after the first deploy: 932a (huggingnews) is the
+ * canonical; 0274 (marketbrief), c0a0 (HN's link to the post) and 271b (the
+ * reader's utm copy) are merged under it. The feed's copy of the post is
+ * deduped by c0a0's id, so c0a0 itself is re-admitted and takes over. */
+describe("Clef takeover from the stored HN copy (prod rows)", () => {
+  it("re-admits c0a0, plans the takeover, and the batch leaves one published story", () => {
+    const c0a0 = {
+      id: "c0a0a5f5",
+      source_id: "hn",
+      external_id: "49923692",
+      url: CLEF_URL,
+      title:
+        "Clef: Open-weight decision models, and new RL fine-tuning platform",
+      summary: null,
+      published_at: CLEF_AT + 2 * H,
+      points: 140,
+      comments: 60,
+      image_url: null,
+      source_lang: "en" as const,
+      media_manifest: null,
+      llm_relevance: 0.98,
+      canonical_source_id: "huggingnews",
+      canonical_url: REWRITE_URL,
+      canonical_title: REWRITE_TITLE,
+      canonical_published_at: CLEF_AT - H,
+    };
+    expect(officialReadmissions([c0a0])).toHaveLength(1);
+
+    const plan = buildMergePlan(
+      [{ new: [0], existing: ["932a29ca"] }],
+      [
+        {
+          i: 0,
+          id: "c0a0a5f5",
+          url: CLEF_URL,
+          sourceId: "hn",
+          points: 140,
+          comments: 60,
+          rank: 3,
+          official: true,
+          headline: item("hn", CLEF_URL, c0a0.title, c0a0.published_at),
+        },
+      ],
+      new Map<string, ExistingCandidate>([
+        [
+          "932a29ca",
+          {
+            points: 0,
+            comments: 0,
+            sourceId: "huggingnews",
+            url: REWRITE_URL,
+            headline: item(
+              "huggingnews",
+              REWRITE_URL,
+              REWRITE_TITLE,
+              CLEF_AT - H
+            ),
+          },
+        ],
+      ]),
+      8
+    );
+    expect(plan.demoted).toEqual(new Map([["932a29ca", "c0a0a5f5"]]));
+
+    const sqlite = new DatabaseSync(":memory:");
+    sqlite.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, source_id TEXT,
+      url TEXT, points INTEGER, comments INTEGER, status TEXT,
+      duplicate_of TEXT);
+      CREATE TABLE notifications (channel TEXT NOT NULL, item_id TEXT NOT NULL,
+      target TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
+      posted_at INTEGER NOT NULL, PRIMARY KEY (channel, item_id))`);
+    const add = sqlite.prepare(
+      "INSERT INTO items VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
+    add.run("932a29ca", "huggingnews", REWRITE_URL, 0, 0, "published", null);
+    add.run(
+      "0274f85d",
+      "marketbrief",
+      "https://marketbrief.now/ai/clef",
+      0,
+      0,
+      "merged",
+      "932a29ca"
+    );
+    add.run("c0a0a5f5", "hn", CLEF_URL, 140, 60, "merged", "932a29ca");
+    add.run(
+      "271b32be",
+      "user",
+      `${CLEF_URL}?utm_source=twitter`,
+      0,
+      0,
+      "merged",
+      "932a29ca"
+    );
+    sqlite
+      .prepare("INSERT INTO notifications VALUES (?, ?, ?, 'sent', ?)")
+      .run("telegram", "932a29ca", "@aidr", 1);
+    // The write batch upserts the re-admitted row as published first.
+    sqlite
+      .prepare(
+        "UPDATE items SET status = 'published', duplicate_of = NULL WHERE id = ?"
+      )
+      .run("c0a0a5f5");
+    const db = {
+      prepare: (sql: string) => ({
+        bind: (...args: unknown[]) => ({
+          run: () => sqlite.prepare(sql).run(...(args as string[])),
+        }),
+      }),
+    } as unknown as D1Database;
+    for (const statement of demotedCanonicalStatements(
+      db,
+      "932a29ca",
+      "c0a0a5f5"
+    )) {
+      (statement as unknown as { run: () => void }).run();
+    }
+    expect(
+      sqlite
+        .prepare("SELECT id, status, duplicate_of FROM items ORDER BY id")
+        .all()
+    ).toEqual([
+      { id: "0274f85d", status: "merged", duplicate_of: "c0a0a5f5" },
+      { id: "271b32be", status: "merged", duplicate_of: "c0a0a5f5" },
+      { id: "932a29ca", status: "merged", duplicate_of: "c0a0a5f5" },
+      { id: "c0a0a5f5", status: "published", duplicate_of: null },
+    ]);
+    expect(sqlite.prepare("SELECT item_id FROM notifications").all()).toEqual([
+      { item_id: "c0a0a5f5" },
+    ]);
+    const signals = rowRankSignals(
+      sqlite
+        .prepare(
+          `SELECT ${RANK_SIGNAL_COLUMNS} FROM items ${RANK_SIGNAL_JOIN} WHERE id = ?`
+        )
+        .get("c0a0a5f5") as unknown as RankSignalRow
+    );
+    // HN + aggregator pair + the reader's copy counted as Cloudflare.
+    expect(signals).toEqual({ points: 140, comments: 60, sourceCount: 3 });
+  });
+});
