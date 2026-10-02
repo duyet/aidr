@@ -465,7 +465,25 @@ system prompt: no parenthetical glosses, no calques, keep technical
 jargon in English, few-shot anchored). `translatePrompt` sends each item
 with a `keep` list from `worker/translation-terms.ts`, the same list the QA
 guard enforces, and instructs a full sentence-by-sentence translation with
-no condensing or added facts. Every item and translation row
+no condensing or added facts (Vietnamese summary ≥ ~80% of the source
+length). `VI_STYLE` also fixes headline sentence case, exact magnitudes
+(B = tỷ, M = triệu, T = nghìn tỷ; model sizes like "7B" stay), and lists
+known calques as bad → good examples.
+
+Right after generation, `worker/translation-draft-check.ts` runs a
+deterministic check against the exact (stripped, clipped) source the model
+saw: missing keep-English jargon, active `translation_knowledge` bad phrases
+(counted per occurrence, so one kept "agent" does not excuse an "đại lý";
+each non-AI "FBI agents" licenses one "đặc vụ"), wrong magnitude words
+("$20B" → "20 triệu"), a Title Case Vietnamese title, and a summary under
+0.6× the source length (sources ≥ 200 chars). Flagged items in a batch get
+one repair call with their issues as a `fix` list; a repaired row replaces
+the draft only when it has fewer issues, and the repair is skipped under
+25s of budget. Missing proper names are left to the review guard: they are
+too noisy to spend a call on. Migration 0045 seeds the calque and
+institution rules (open-weight, decision model, harness, hyperscaler;
+Senate = Thượng viện, Attorney General = Tổng chưởng lý, Governor = Thống
+đốc, White House = Nhà Trắng). Every item and translation row
 carries explicit `source_lang`/`target_lang` metadata; the reviewer never
 infers direction from Vietnamese diacritics. A Vietnamese source with an
 explicit `source_lang='vi'` is a real VI→EN pair: the bounded QA runtime can
@@ -613,6 +631,11 @@ Hourly.
 - Each bullet is a short digest (~2 sentences / 180–240 characters),
   not a headline and not a paragraph. The homepage clamps overflow to
   2 lines and sizes the thumbnail to that row.
+- `generateTldr` checks each `bullets_vi` entry against its cited items
+  (`tldrBulletIssues`: knowledge-rule calques and wrong magnitude words)
+  and sends the flagged bullets through one short repair call on the
+  translate chain when ≥ 30s of the TL;DR budget is left. A fixed bullet
+  is kept only when it has fewer issues; any failure keeps the originals.
 - If the LLM returns no bullets or a thin digest (fewer than
   min(8, item count), at least 2 when there are 2+ stories), a
   title-fallback snapshot is persisted (EN from item titles; VI from
@@ -674,6 +697,13 @@ deliberately non-spammy.
   2026-09-27..10-01 replay gave 1–4 qualifiers a day; the floor keeps a
   dead window's best weak story (one outlet, no reader engagement,
   importance 7 ≈ 5.6) from posting.
+- *Why this ranks* (story page, "Chi tiết bài viết" aside): `GET /api/story/{id}?ranking=1`
+  adds `ranking` from `worker/notify/story-ranking.ts`: UTC-day rank,
+  `rank_score`, importance, the live bar (same `trendingRankBar`), and per
+  channel (`telegram`, `telegram-en`) either the `notifications` post time or
+  the reason not posted: below_rank / below_importance / too_old /
+  outside_hours / budget_spent / pending. The homepage arrow means only "top
+  story of its UTC day", not a Telegram trending post.
 - Skip reasons are structured (`digest`: no_snapshot / already_sent /
   before_hour; `trending`: outside_hours / below_min_rank / budget_zero /
   none_unposted, with the live 24h max rank and the bar) and
@@ -847,6 +877,56 @@ else `auto`) or a comment, then acks from notes@ with
 `Reply-To: submit@`. Review happens in the normal gates later in the
 same run.
 
+## Model bench
+
+`pnpm --filter @aidr/web model-bench` (`scripts/model-bench.ts`) runs any
+model list through each LLM step with the real prompt builder and parser,
+one model at a time (no fallback hop; the failing-model skip list resets
+between models), and scores the output against datasets built from prod D1.
+
+```bash
+pnpm model-bench build [--steps score,tldr]      # SELECT-only refresh of fixtures/bench/*.json
+pnpm model-bench run --steps score,jev,translate-en-vi --models a,b --limit 10
+pnpm model-bench report a.json b.json --out scripts/fixtures/bench/reports/<date>.json
+```
+
+No `--models` = the step's wrangler.toml chain. Output: JSON plus a
+markdown report per step (quality, schema-valid rate, step metrics,
+p50/p95 per call, unit errors, 429s, tokens, billed and list-price cost)
+and a recommended chain per env var. The recommendation drops review ids
+that sit in a generator chain, and drops aliases from concrete-only vars.
+It does not know slice budgets or BYOK, so check the wrangler.toml comments
+before applying it. A run where every attempt failed with a provider error
+(BYOK, credit, 429, 5xx) is marked unavailable and left out of the ranking.
+Run it before changing any model chain.
+
+The bench uses the prod key, so it shares the prod rate limits and BYOK
+quotas. Run one step at a time (`--concurrency` defaults to 2). On
+2026-10-02 the z-ai BYOK upstream ran out of balance ("Insufficient
+balance" 429) while 7 bench processes ran in parallel. Prod `glm-4.6` review
+then logged its first failure of the day, so the bench may have helped
+drain it.
+
+| step | prod call → bench adapter | env var | output checked | label |
+|---|---|---|---|---|
+| `score` | `scoreBatchPrompt` → `sanitizeScoreResults` (chat backup) | `ANYROUTER_MODEL` | relevance, importance, quality, category, tags | gold importance band (`importance-eval.json`), silver status/category/tags |
+| `decision` | `callSystemOne` + `jevScoreQuestions` → `scoreJudgmentFromJev`; an answer not served by Jev is a miss, as in prod | `ANYROUTER_DECISION_MODEL` | same, plus `servedByJev` | same as score |
+| `jev` | same call, any answer counts | `ANYROUTER_JEV_MODEL` | same | same as score |
+| `translate-en-vi` | `translateItems` (VI_STYLE + glossary) | `ANYROUTER_TRANSLATE_MODEL` | protected terms, knowledge rules, blind back-translation by a fixed judge | gold: accepted suggestions, active knowledge rules; silver: stored VI |
+| `translate-vi-en` | `ENGLISH_TRANSLATION_SYSTEM_PROMPT` + `buildEnglishCandidatePrompt` → `parseRepairCandidate` | `ANYROUTER_ENGLISH_TRANSLATE_MODEL` | name keep, recall against stored EN | silver |
+| `review` | `requestReview` → `reviewPasses` | `ANYROUTER_REVIEW_MODEL` | pass/fail | silver `qa_rating` |
+| `tldr` | `generateTldr` | `ANYROUTER_TLDR_MODEL` | bilingual, item ids, bullet length, coverage | silver `tldr_snapshots` |
+| `cluster` | `clusterSimilar` | `ANYROUTER_MODEL` | same-story F1 | silver `duplicate_of` (distinct titles only) |
+| `topics` | `buildTopicMappingPrompt` → `parseTopicMappingResponse` | `ANYROUTER_MODEL` | canonical mapping | silver `topics.canonical` |
+
+Not benched yet: repair (`requestRepair`), reader-suggestion review and
+retranslate (`suggestions.ts`, `ANYROUTER_TRANSLATE_MODEL`), submission
+review (`submissions.ts`, `ANYROUTER_MODEL`), knowledge rule extraction,
+digest wrap (`mail/compose.ts`), and the JEV panel judges
+(`JEV_PANEL_*_MODEL`). Silver metrics show how close a model is to the
+current prod output, not whether it is correct. Rank models on gold and
+deterministic metrics first. Datasets hold no user ids, names or IP hashes.
+
 ## LLM transport
 
 All calls go through `callAnyrouter` (`worker/llm.ts`):
@@ -870,11 +950,12 @@ then this chat chain:
 
 TL;DR and translate use the same chain without Jev. The VI→EN generator
 uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer
-(`inclusionai/ling-3.0-flash-sante`, then `z-ai/glm-4.6`) shares no id with
-any generator chain and gets a 45s budget (`QA_REVIEW_TIMEOUT_MS`), 30s max
-for the first hop. GLM's first token lands at 12-20s, so as head it hit the
-20s cutoff; Ling answers the review prompt in 5-10s but streams nothing on
-the long generator prompts, so it is reviewer-only.
+(`z-ai/glm-4.6`, then `stealth/space-bunny-alpha`) shares no id with any
+generator chain and gets a 45s budget (`QA_REVIEW_TIMEOUT_MS`), 30s max for
+the first hop. Since ~08:40 UTC 2026-10-02 every `z-ai/*` id is BYOK-only on
+this key (404 in ~2s), so reviews depend on space-bunny (1 of 3 probe pairs
+inside the slice) until a Z.ai BYOK key is added; see the dated note in
+`wrangler.toml`.
 
 `@preset/aidr` heads the score, translate and TL;DR chains. It resolves to
 `poolside/laguna-s-2.1`; the ids behind it stay as a fallback in case the

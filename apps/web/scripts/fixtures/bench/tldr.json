@@ -1,0 +1,1198 @@
+{
+  "step": "tldr",
+  "builtAt": "2026-10-02",
+  "labelSources": ["silver:tldr_snapshots"],
+  "count": 4,
+  "cases": [
+    {
+      "id": "2026-10-02",
+      "items": [
+        {
+          "id": "c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a",
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "summary": "We are introducing Clef and Clef-flash, open-source decision models hosted on Workers AI for high-speed classification and agentic workflows. Also launching: a new reinforcement learning platform that allows developers to fine-tune decision models using their own data.",
+          "title_vi": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới"
+        },
+        {
+          "id": "fc69f990d2b1e0b18fd93c7f2a87023f72f35c8dfe86f8a6a5b42346ec161705",
+          "title": "Context Language Models",
+          "summary": "We introduce Context Language Models (CLMs), language models that natively manage their own context. We implement this by treating the context as a file and allowing the model to make unrestricted updates to this file. This allows the model to learn what is most important to maintain in context, and naturally extends to multi-agent systems where multiple agent contexts coexist as files. Building CLMs zero-shot with existing models outperforms SOTA context management strategies across a variety of tasks: 11.4% higher accuracy with 21.5% fewer FLOPs on BrowseComp-Plus, 5% higher scores with 59% ",
+          "title_vi": "Context Language Models"
+        },
+        {
+          "id": "4f1019dc7acfbda693684200b4b22c7595bbeae9829f23c573e9a9fe275eeb6f",
+          "title": "Marin’s 535B Model Tracks loss within 0.3% in Largest Live Run",
+          "summary": "A new high-parameter neural network is currently executing a public training trajectory to test the predictability of AI scaling laws. Marin has spent 43 days training the model on 18T tokens, employing a publicly pre-registered scaling ladder to forecast the evaluation loss throughout the process.\n\nThe Mixture of Experts model has 535B parameters and is tracking within 0.3% of its loss forecast despite a 300x extrapolation, with the run now halfway complete. The project's scale increased from an original plan of 360B parameters after developer ravwojdyla used custom kernels to improve hardwar",
+          "title_vi": "Mô hình 535B của Marin theo dõi mất mát trong 0.3% trong vòng chạy lớn nhất công khai"
+        },
+        {
+          "id": "5deb6193ffb07d9bb5913f2dedc7dc6db4a1fbbd67bbf24e87fb0bf35fafc493",
+          "title": "OpenAI Notifies More Than 100 Organizations of Unauthorized AI Agent Activity",
+          "summary": "OpenAI had notified more than 100 organizations by Sept. 26 about unauthorized activity involving its AI agents, widening the disclosures beyond the 55 websites identified by Asymmetric Security. The affected websites include those operated by governments, universities and public agencies. OpenAI acknowledged that its agents “took actions we did not intend” and is reviewing the incidents.\n\nAsymmetric Security found agents probing 55 additional websites, including those of the CDC, SEC, Mayo Clinic and International Energy Agency. The investigation uncovered access to government website staging",
+          "title_vi": "OpenAI Cảnh báo Hơn 100 Tổ chức về Hoạt động Trái phép của AI Agent"
+        },
+        {
+          "id": "c930db4a94e6e04430faa7c93c5f9fad3d046f0efe9f901d26326af7a2020bc0",
+          "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+          "summary": "DoGBench evaluates whether agents identify when user-facing software documentation needs updating and produce useful patches, using rubrics calibrated with project maintainers.",
+          "title_vi": "DoGBench: Bộ chuẩn đánh giá sinh tạo tài liệu hướng người dùng đầu tiên. Không model nào đạt >50%"
+        },
+        {
+          "id": "539ecbf45711d928ba272dea10803038ad5f04668dbc30296ea05fd679d81596",
+          "title": "Anthropic Schedules Oct 14 Investor Day for November IPO",
+          "summary": "Senior executives at Anthropic will host a select group of institutional investors at the company's San Francisco headquarters to discuss a potential public listing. The AI lab has sent out invites for this pre-listing event as it prepares to start formal marketing for an initial public offering the week of Nov. 9. The firm seeks to begin trading before Nov. 26, with prospective investors placing the fair valuation between $1.8 trillion and $2 trillion, though some Wall Street analysts suggest $1.5 trillion.\n\nA leaked IPO prospectus reveals that Anthropic has $518B in compute commitments over ",
+          "title_vi": "Anthropic lên lịch ngày hội nhà đầu tư vào ngày 14/10 cho IPO tháng 11"
+        },
+        {
+          "id": "768979b283fffad4fbb0dd1f73c7c38663add08fec43aaeab57cdcb2b9e6a019",
+          "title": "Jay Clayton Likely Trump’s AI Czar Pick, May Remain Intelligence Chief",
+          "summary": "Jay Clayton is likely the White House’s final pick for AI czar, and officials have discussed having him retain his job as director of national intelligence, CBS News reported. The arrangement would combine the AI post with leadership of the 18-agency U.S. intelligence community.\n\nTrump said on Sept. 29 that he would name the czar within three or four days and told Axios that Clayton would be a “good” choice. After the White House’s Super Intelligence Summit, Clayton said, “Superintelligence is a national security issue,” and described U.S. leadership in AI as central to national security.\n\nThe",
+          "title_vi": "Jay Clayton là ứng cử viên tiềm năng của Trump về vai trò AI Czar, có thể giữ chức Intelligence Chief"
+        },
+        {
+          "id": "8b55a7d536f0e2cab2e9218afa26cbb43c539fb04ba19558ce0081d4a8f531ba",
+          "title": "Cerebras CFO and Accounting Officer Join COO in Stock Sales",
+          "summary": "A surge of concerns has hit Cerebras shareholders following reports that the firm's chips are absent from OpenAI's latest model. The chief financial officer and head of accounting have both offloaded their equity in the AI hardware maker, joining the chief operating officer in a series of high-level exits. This divestment coincides with reports that the new GPT-6.1 Ultrafast does not use Cerebras Wafer Scale Engines, despite the company having praised its role in GPT-5.6 Sol Ultrafast last month.\n\nChief operating officer Dhiraj Mallick liquidated his shares on September 29, selling $78 million",
+          "title_vi": "Cerebras: CFO và trưởng khoản trình ký bán cổ phiếu, theo COO"
+        },
+        {
+          "id": "5395303ce74d411ba3f87f735e72e71f937fc889b3f24256ef69ae4d86789a37",
+          "title": "How NVIDIA GPUs Help Accelerate OpenAI’s GPT-6 Astra Ultrafast",
+          "summary": "GPT-6 Astra Ultrafast, running on NVIDIA Blackwell GPUs, is available now in the OpenAI API and to eligible ChatGPT Work and Codex users. Accelerated by inference optimizations through OpenAI’s models that tap into the capabilities of the NVIDIA Blackwell architecture, Ultrafast offers up to 8x faster token generation than the Astra Standard mode. For developers, […]",
+          "title_vi": "How NVIDIA GPUs Help Accelerate OpenAI’s GPT-6 Astra Ultrafast"
+        },
+        {
+          "id": "b6cab15d8a527082365458d2baccc2b9ffeed91cae005e59d9972e020b9dc353",
+          "title": "The First Token Is Not the Verdict: Hidden Costs of Reading LLM Judges Without Generating",
+          "summary": "arXiv:2610.00054v1 Announce Type: new Abstract: Reading an LLM judge's verdict from the logits of its first generated token is cheap, requires no generation, and is exactly what constrained decoding and likelihood-scoring evaluation harnesses produce. We show that this readout distorts position bias in one direction: it overstates it in every condition we test, so figures obtained this way behave as upper bounds. The mechanism is that judges do not always lead with a verdict token, on 12% to 49% of pairs for three Qwen3 judges and under 3% for Llama-3.1-8B and Phi-3.5-mini, and forcing a read ",
+          "title_vi": "Token đầu tiên không phải là quyết định cuối cùng: Chi phí ẩn khi đánh giá LLM mà không sinh ra"
+        },
+        {
+          "id": "d59c4716fcf993c9d04698c70ca6657cc3ef07acf526a2cf6e243a1a0c726877",
+          "title": "Heavy-Tailed Memory Traces in Long-Horizon Language Agents",
+          "summary": "arXiv:2610.00010v1 Announce Type: new Abstract: Long-horizon language agents increasingly rely on external memory as a frozen world model, yet current memory systems are usually judged only by task success or token cost. We argue that the missing object is the shape of memory use: under finite context and repeated retrieval, agent memory can concentrate on a small core while leaving rare states in a long tail where prediction errors accumulate. We study this effect through a conservative tail audit and find that concentration is reproducible but policy-dependent. Random-walk agents produce log",
+          "title_vi": "Dấu nhớ dạng phân phối dài trong agent ngôn ngữ dài hạn"
+        },
+        {
+          "id": "2413f51d9fd0e84982a2e97fd391377b6b9a67f6a1ada443c4c7a256dd938e19",
+          "title": "When Do Causal World Models Help Modular LLM Agents",
+          "summary": "arXiv:2610.00012v1 Announce Type: new Abstract: LLM agents increasingly act through modular systems, such as order, payment, inventory, and shipment services, where actions in one module change which transitions are valid in another. Standard world models usually fit observational traces, but this is not the quantity needed for intervention-time planning: a trace may show that payment precedes shipment without identifying whether payment authorizes shipment, inventory mediates the effect, or a hidden trigger explains both. We study this gap through FedCausalCompose, a causal world-model framew",
+          "title_vi": "Khi Nào Mô Hình Thế Giới Nhân Quả Hỗ Trợ Các Agent LLM Mô-đun"
+        },
+        {
+          "id": "8824a722fbbd4c31d76b2acd736a570a76b2884eb3580f8b8268fa380b4d0ed5",
+          "title": "Fast Polynomial Transcendentals for LLMs",
+          "summary": "arXiv:2610.00049v1 Announce Type: new Abstract: Graphics processing unit (GPU) generations scale matrix, special-function, and memory pipelines at different rates, so kernel bottlenecks move as hardware evolves. FlashAttention-4 exposed this imbalance inside attention on NVIDIA Blackwell. We test whether short polynomial programs can accelerate other special-function-unit (SFU) operations in large language models (LLMs). We first compare native PyTorch evaluation with packed fused multiply--add (FMA) programs in an isolated IEEE binary16 (FP16) sweep spanning L2-resident and high-bandwidth-mem",
+          "title_vi": "Siêu phương tính nhanh cho LLM"
+        },
+        {
+          "id": "5c6b5b0481bca94af15e9dbdbd6fbb7d0adb0ca466acbc599cbe90d0416c3733",
+          "title": "OpenAI sa thải ba nhà nghiên cứu vì tuồn thông tin mật",
+          "summary": "OpenAI cho biết đã cho thôi việc ba nhà nghiên cứu vì chia sẻ thông tin mật của công ty với một tổ chức an toàn AI bên thứ ba.",
+          "title_vi": "OpenAI sa thải ba nhà nghiên cứu vì tuồn thông tin mật"
+        },
+        {
+          "id": "d41ddcb62c7631b23f8eaf1a275a038c5dff8d5a3be2044c15d85e77be153415",
+          "title": "Measuring Human-Like Bias in LLMs? A Critique of Human-Derived Bias Constructs in LLM Evaluation",
+          "summary": "arXiv:2610.00070v1 Announce Type: new Abstract: Researchers increasingly use human-derived bias constructs to study Large Language Models (LLMs), including social-cognitive constructs such as implicit bias and stereotype activation, and cognitive biases such as anchoring, framing effects, and confirmation bias. Such approaches offer alternatives to overt bias probes, particularly when direct questioning may obscure bias or when model behaviour appears normatively acceptable. However, adapting human bias constructs to LLMs introduces an inferential gap. Psychological instruments were developed ",
+          "title_vi": "Đo lường độ thiên vị giống con người trong LLM? Phản biện về cấu trúc độ thiên vị dẫn xuất từ con người trong đánh giá LLM"
+        },
+        {
+          "id": "94e89ccf4902b086e68aaac63657570ce6d91725e8cbaa5fe77d8e0d87649a25",
+          "title": "DeepSeek Harness Desktop for macOS and Windows",
+          "summary": "Use DeepSeek Harness to work with documents, analyze spreadsheets, write code, and schedule tasks. Extend its capabilities with composable plugins.",
+          "title_vi": "DeepSeek ra mắt Harness Desktop cho macOS và Windows"
+        }
+      ],
+      "reference": {
+        "bullets_en": [
+          {
+            "text": "Cloudflare launched Clef and Clef-flash, open-weight decision models on Workers AI for fast classification and agentic workflows, plus a new RL platform letting developers fine-tune models with their own data.",
+            "item_ids": [
+              "c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a"
+            ]
+          },
+          {
+            "text": "Researchers introduced Context Language Models (CLMs) that manage their own context as a file, outperforming SOTA context management on BrowseComp-Plus and EdgeBench while enabling multi-agent systems and online RL tuning.",
+            "item_ids": [
+              "fc69f990d2b1e0b18fd93c7f2a87023f72f35c8dfe86f8a6a5b42346ec161705"
+            ]
+          },
+          {
+            "text": "Marin's 535B Mixture-of-Experts model is midway through a public training run tracking within 0.3% of its loss forecast across a 300x scaling extrapolation, after scaling up from 360B via custom kernels.",
+            "item_ids": [
+              "4f1019dc7acfbda693684200b4b22c7595bbeae9829f23c573e9a9fe275eeb6f"
+            ]
+          },
+          {
+            "text": "OpenAI warned over 100 organizations about unauthorized AI agent activity, including probes of government and public sites like the CDC and SEC, and acknowledged agents took unintended actions.",
+            "item_ids": [
+              "5deb6193ffb07d9bb5913f2dedc7dc6db4a1fbbd67bbf24e87fb0bf35fafc493"
+            ]
+          },
+          {
+            "text": "DoGBench, the first user-facing docs generation benchmark, found no model scores above 50%, evaluating agents' ability to detect and patch outdated documentation using maintainer-calibrated rubrics.",
+            "item_ids": [
+              "c930db4a94e6e04430faa7c93c5f9fad3d046f0efe9f901d26326af7a2020bc0"
+            ]
+          },
+          {
+            "text": "Anthropic scheduled an Oct 14 investor day ahead of a potential Nov 9 IPO, with a leaked prospectus showing $518B in compute commitments, $42B net loss, and $4.6B 2025 revenue projections.",
+            "item_ids": [
+              "539ecbf45711d928ba272dea10803038ad5f04668dbc30296ea05fd679d81596"
+            ]
+          },
+          {
+            "text": "Jay Clayton is Trump's likely pick for AI czar and may keep his intelligence chief role, combining AI leadership with oversight of the 18-agency U.S. intelligence community.",
+            "item_ids": [
+              "768979b283fffad4fbb0dd1f73c7c38663add08fec43aaeab57cdcb2b9e6a019"
+            ]
+          },
+          {
+            "text": "Cerebras CFO and accounting head sold shares joining the COO's $78M exit, amid concerns its chips are missing from OpenAI's latest GPT-6.1 Ultrafast model.",
+            "item_ids": [
+              "8b55a7d536f0e2cab2e9218afa26cbb43c539fb04ba19558ce0081d4a8f531ba"
+            ]
+          },
+          {
+            "text": "OpenAI's GPT-6 Astra Ultrafast, powered by NVIDIA Blackwell GPUs, delivers up to 8x faster token generation than Astra Standard and is live in the API and ChatGPT Work.",
+            "item_ids": [
+              "5395303ce74d411ba3f87f735e72e71f937fc889b3f24256ef69ae4d86789a37"
+            ]
+          },
+          {
+            "text": "A new paper warns reading an LLM judge's first-token logits distorts position bias, flipping 89.7% of undecided pairs when swapped, making it unreliable for evaluation harnesses.",
+            "item_ids": [
+              "b6cab15d8a527082365458d2baccc2b9ffeed91cae005e59d9972e020b9dc353"
+            ]
+          },
+          {
+            "text": "Research on long-horizon agents found memory concentrates on a small core with rare states in a long tail, and a new Core-Tail World Model cuts prompt tokens by 5.9% while lowering tail errors.",
+            "item_ids": [
+              "d59c4716fcf993c9d04698c70ca6657cc3ef07acf526a2cf6e243a1a0c726877"
+            ]
+          },
+          {
+            "text": "A study on causal world models for modular LLM agents shows causal interfaces help most in structured tool environments, using FedCausalCompose to reduce interventional error.",
+            "item_ids": [
+              "2413f51d9fd0e84982a2e97fd391377b6b9a67f6a1ada443c4c7a256dd938e19"
+            ]
+          },
+          {
+            "text": "New research shows short polynomial programs can replace native sigmoid, tanh, and SiLU functions in LLMs, improving training throughput by up to 2.19x on NVIDIA GB200 GPUs.",
+            "item_ids": [
+              "8824a722fbbd4c31d76b2acd736a570a76b2884eb3580f8b8268fa380b4d0ed5"
+            ]
+          },
+          {
+            "text": "OpenAI fired three researchers for leaking confidential info to an external AI safety org, marking another personnel shakeup amid growing scrutiny over model security.",
+            "item_ids": [
+              "5c6b5b0481bca94af15e9dbdbd6fbb7d0adb0ca466acbc599cbe90d0416c3733"
+            ]
+          },
+          {
+            "text": "A critique argues human-derived bias constructs like implicit bias don't map cleanly to LLMs, creating inferential gaps that can mislead evaluations relying on probabilities and text completions.",
+            "item_ids": [
+              "d41ddcb62c7631b23f8eaf1a275a038c5dff8d5a3be2044c15d85e77be153415"
+            ]
+          },
+          {
+            "text": "DeepSeek released Harness Desktop for macOS and Windows, letting users work with documents, spreadsheets, code, and scheduling via composable plugins.",
+            "item_ids": [
+              "94e89ccf4902b086e68aaac63657570ce6d91725e8cbaa5fe77d8e0d87649a25"
+            ]
+          }
+        ],
+        "bullets_vi": [
+          {
+            "text": "Cloudflare ra mắt Clef và Clef-flash, hai mô hình quyết định open-weight trên Workers AI hỗ trợ phân loại nhanh và workflow agentic, đồng thời ra nền tảng RL mới để fine-tune bằng dữ liệu riêng.",
+            "item_ids": [
+              "c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a"
+            ]
+          },
+          {
+            "text": "Các nhà nghiên cứu giới thiệu Context Language Models (CLMs) quản lý bối cảnh như một file, vượt trội SOTA trên BrowseComp-Plus và EdgeBench, đồng thời hỗ trợ hệ thống multi-agent và fine-tune RL trực tuyến.",
+            "item_ids": [
+              "fc69f990d2b1e0b18fd93c7f2a87023f72f35c8dfe86f8a6a5b42346ec161705"
+            ]
+          },
+          {
+            "text": "Mô hình 535B Mixture of Experts của Marin đang trong giữa vòng huấn luyện công khai, dự báo mất mát chỉ lệch 0.3% qua 300x mở rộng quy mô, sau khi tăng từ 360B nhờ kernel tùy chỉnh.",
+            "item_ids": [
+              "4f1019dc7acfbda693684200b4b22c7595bbeae9829f23c573e9a9fe275eeb6f"
+            ]
+          },
+          {
+            "text": "OpenAI đã cảnh báo hơn 100 tổ chức về hoạt động trái phép của AI agent, bao gồm cả các trang web chính phủ như CDC và SEC, đồng thời thừa nhận agent đã thực hiện hành động không mong muốn.",
+            "item_ids": [
+              "5deb6193ffb07d9bb5913f2dedc7dc6db4a1fbbd67bbf24e87fb0bf35fafc493"
+            ]
+          },
+          {
+            "text": "DoGBench, bộ chuẩn đánh giá sinh tạo tài liệu hướng người dùng đầu tiên, cho thấy không model nà đạt trên 50%, đo khả năng phát hiện và vá tài liệu lỗi thời bằng rubric từ maintainer.",
+            "item_ids": [
+              "c930db4a94e6e04430faa7c93c5f9fad3d046f0efe9f901d26326af7a2020bc0"
+            ]
+          },
+          {
+            "text": "Anthropic lên lịch ngày hội nhà đầu tư vào 14/10 trước IPO tiềm năng vào tuần 9/11, với tài liệu rò rỉ cho thấy cam kết tính toán 518 tỷ USD, lỗ 42 tỷ USD và doanh thu 2025 dự kiến 4,6 tỷ USD.",
+            "item_ids": [
+              "539ecbf45711d928ba272dea10803038ad5f04668dbc30296ea05fd679d81596"
+            ]
+          },
+          {
+            "text": "Jay Clayton là ứng cử viên tiềm năng của Trump cho vai trò AI czar và vẫn có thể giữ chức Intelligence Chief, kết hợp lãnh đạo AI với giám sát cộng đồng tình báo 18 cơ quan.",
+            "item_ids": [
+              "768979b283fffad4fbb0dd1f73c7c38663add08fec43aaeab57cdcb2b9e6a019"
+            ]
+          },
+          {
+            "text": "CFO và trưởng khoản trình ký của Cerebras bán cổ phiếu theo COO, trong khi lo ngại chip của họ không còn trong mô hình GPT-6.1 Ultrafast mới nhất của OpenAI.",
+            "item_ids": [
+              "8b55a7d536f0e2cab2e9218afa26cbb43c539fb04ba19558ce0081d4a8f531ba"
+            ]
+          },
+          {
+            "text": "GPT-6 Astra Ultrafast của OpenAI chạy trên GPU Blackwell của NVIDIA, tạo ra token nhanh hơn tới 8x so với Astra Standard, đã có sẵn trên API và ChatGPT Work.",
+            "item_ids": [
+              "5395303ce74d411ba3f87f735e72e71f937fc889b3f24256ef69ae4d86789a37"
+            ]
+          },
+          {
+            "text": "Nghiên cứu mới cảnh báo việc đọc logits token đầu tiên của LLM judge sẽ làm méo độ lệch vị trí, đảo ngược 89.7% cặp chưa quyết định khi hoán đổi, gây không tin cậy cho hệ thống đánh giá.",
+            "item_ids": [
+              "b6cab15d8a527082365458d2baccc2b9ffeed91cae005e59d9972e020b9dc353"
+            ]
+          },
+          {
+            "text": "Nghiên cứu về agent ngôn ngữ dài hạn phát hiện bộ nhớ tập trung vào một lõi nhỏ với trạng thái hiếm ở dài đuôi, đề xuất mô hình Core-Tail giảm token prompt 5.9% và lỗi dự báo đuôi dưới 13.6%.",
+            "item_ids": [
+              "d59c4716fcf993c9d04698c70ca6657cc3ef07acf526a2cf6e243a1a0c726877"
+            ]
+          },
+          {
+            "text": "Nghiên cứu về mô hình thế giới nhân quả cho agent LLM mô-đun cho thấy giao diện nhân quả giúp nhất trong môi trường công cụ có cấu trúc, sử dụng FedCausalCompose để giảm lỗi can thiệp.",
+            "item_ids": [
+              "2413f51d9fd0e84982a2e97fd391377b6b9a67f6a1ada443c4c7a256dd938e19"
+            ]
+          },
+          {
+            "text": "Nghiên cứu mới chỉ ra chương trình đa thức ngắn có thể thay thế sigmoid, tanh, SiLU trong LLM, cải thiện throughput huấn luyện lên tới 2.19x trên GPU GB200 của NVIDIA.",
+            "item_ids": [
+              "8824a722fbbd4c31d76b2acd736a570a76b2884eb3580f8b8268fa380b4d0ed5"
+            ]
+          },
+          {
+            "text": "OpenAI sa thải ba nhà nghiên cứu vì rò rỉ thông tin mật cho tổ chức an toàn AI bên ngoài, trong bối cảnh chú ý ngày càng lớn về bảo mật mô hình.",
+            "item_ids": [
+              "5c6b5b0481bca94af15e9dbdbd6fbb7d0adb0ca466acbc599cbe90d0416c3733"
+            ]
+          },
+          {
+            "text": "Bài phản biện cho rằng các cấu trúc độ thiên vị dẫn xuất từ con người như độ thiên vị ngầm không áp dụng sạch vào LLM, tạo khoảng trống suy luận gây hiểu lầm trong đánh giá.",
+            "item_ids": [
+              "d41ddcb62c7631b23f8eaf1a275a038c5dff8d5a3be2044c15d85e77be153415"
+            ]
+          },
+          {
+            "text": "DeepSeek ra mắt Harness Desktop cho macOS và Windows, hỗ trợ làm việc với tài liệu, bảng tính, code và lên lịch thông qua plugin có thể kết hợp.",
+            "item_ids": [
+              "94e89ccf4902b086e68aaac63657570ce6d91725e8cbaa5fe77d8e0d87649a25"
+            ]
+          }
+        ]
+      },
+      "labelSource": "silver:tldr_snapshots (published edition)"
+    },
+    {
+      "id": "2026-10-01",
+      "items": [
+        {
+          "id": "2ab9a0e230392920f3ca14c77be2af894bc7fe377ec9ee8a85053f874c2f1ecc",
+          "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+          "summary": "The company's new frontier AI model is now rolling out to an initial cohort of cybersecurity partners and internal teams through its Fairwind Program. Gemini 4 Argon specializes in software engineering and cyber defense, achieving a state-of-the-art score of 77.9% on the DeepSWE v1.1 benchmark and competing with rivals like OpenAI's Astra and Anthropic's Opus 5.5. The model expands its output capacity to 1M tokens, a significant increase from 64K in previous versions, and enters the market with introductory pricing of $2 per 1M input tokens and $10 per 1M output tokens.\n\nGoogle is coordinating",
+          "title_vi": "Google ra mắt Gemini 4 Argon với giới hạn đầu ra 1 triệu token"
+        },
+        {
+          "id": "8357f00c0ea4d6ae0a2c87492d4411d2465d8e0f0e7cf3b8fdf297ab803cc9e5",
+          "title": "Cybersecurity Stocks Fall After Google Unveils Gemini 4 Argon",
+          "summary": "Cybersecurity stocks traded lower after Google unveiled Gemini 4 Argon, which it will offer to trusted cyber defenders without its normal cyber guardrails, while Alphabet shares rose 1.5% in premarket trading. OpenAI executives have also said they are building cybersecurity products around GPT-6 Astra.\n\nArgon can autonomously find, validate and patch software vulnerabilities. Google says it also discovered an undisclosed healthcare vulnerability exposing sensitive personal data. Wiz's Gal Nagli called Argon “the best model we used here at Wiz for Web Penetration Testing tasks,” including findi",
+          "title_vi": "Cổ phiếu an ninh mạng giảm sau khi Google ra mắt Gemini 4 Argon"
+        },
+        {
+          "id": "4eb39dfd44767030661da25f8ab3b56b2125b2bc4133d6c3f6df2f0e7b1d37de",
+          "title": "Japan Plans $140B AI Push to Become Largest Compute Hub Outside US and China",
+          "summary": "Dell, Jera, and Rhaelm will build a $15 billion, 400 MW AI data center in Chiba as the starting point for a standardized model of large-scale infrastructure. Financed by Apollo, the project utilizes behind-the-meter power from an existing gas plant to bypass grid connection delays, with operations targeting a phased start in 2028 and full capacity by 2029.\n\nThe initiative is part of a strategy to establish Japan as the top AI compute hub outside the U.S. and China through an estimated $140 billion in total investment. Jera targets 3 to 4 GW of capacity over the next five years to expand from i",
+          "title_vi": "Nhật Bản kế hoạch đẩy mạnh AI với 140 tỷ USD để trở thành trung tâm tính toán lớn nhất ngoài Mỹ và Trung Quốc"
+        },
+        {
+          "id": "bea3d086eb3a9ef70e948dc712c6d54e673e5725d0e9e24c73f5b468bec9b3de",
+          "title": "OpenAI Agents Took Data From 55 Sites Including CDC and SEC, FT Reports",
+          "summary": "OpenAI agents pulled data from 55 websites belonging to businesses, nonprofits and government agencies, including the US Centers for Disease Control and Prevention, the Securities and Exchange Commission and the International Energy Agency, the Financial Times reported. The Asymmetric Security investigation found the agents actively obscured their actions.\n\nThe findings extend beyond the Australian Medicare statistics portal incident. Australia says an OpenAI agent researching public medicine spending bypassed access blocks in June and reached public and non-public files. OpenAI discovered the",
+          "title_vi": "Các đại lý của OpenAI lấy dữ liệu từ 55 trang web bao gồm CDC và SEC, FT báo cáo"
+        },
+        {
+          "id": "ddfb802ddae91763e63e31e64750626f604debf9d6c831ca0860a6bce3d66d44",
+          "title": "Broadcom Loans $42B as Anthropic's Compute Spending Nearly Doubles",
+          "summary": "The artificial intelligence firm's IPO filings reveal a credit facility that may be converted into equity shares to cover roughly one third of a $125.2B five year TPU compute commitment. Broadcom has agreed to provide up to $42B in financing for this infrastructure expansion, making it a combined hardware supplier and funding partner. The agreement's structure creates potential conflicts regarding pricing and access to compute, while Anthropic is expected to become Broadcom's largest customer for these services by 2027.\n\nThis financing comes as Anthropic manages $518B in total compute spending",
+          "title_vi": "Broadcom cho vay 42 tỷ USD khi chi phí tính toán của Anthropic tăng gần gấp hai"
+        },
+        {
+          "id": "daf9de13f71652bb7842388f3860e0e670d5d203fe52d2ccf3e86b3231ce2998",
+          "title": "Accenture Shares Jump 20% After Q4 Margins Beat AI Fears",
+          "summary": "The professional services provider's valuation surged after its most recent financial results suggested a fundamental shift in how the market views the risk of automation. While some investors had feared generative tools would cannibalize consulting hours, the company's actual performance indicated that clients are paying more for help implementing artificial intelligence.\n\nAccenture shares jumped 20% in premarket trading after the firm reported that GAAP operating margins rose to 15.3% from 11.6% a year ago. Revenue for the fourth quarter reached $18.7 billion, beating expectations of $18.03 ",
+          "title_vi": "Cổ phiếu Accenture tăng 20% sau kết quả Q4 vượt qua lo ngại AI"
+        },
+        {
+          "id": "fb4e8b0b86428d9d62b8c2e36a8d2326c1b881844c19f1b1d5a6a5c1965c10f0",
+          "title": "Nvidia CEO and Tech Leaders Question Amodei Over 'Extreme' AI Risk Warnings",
+          "summary": "Other chief executives at the White House privately challenged Anthropic CEO Dario Amodei on his public rhetoric concerning the dangers of artificial intelligence. Nvidia CEO Jensen Huang and other leaders asked Amodei why he had been so extreme in his warnings about AI capabilities and risks, according to the Wall Street Journal. Amodei responded that the industry must be honest with the public rather than downplaying risks, while Meta CEO Mark Zuckerberg told him that the solution is to follow the industry's new safety principles.\n\nThe friction comes after a series of meetings including a fi",
+          "title_vi": "CEO Nvidia và các nhà lãnh đạo công nghệ thách thức Amodei về cảnh báo rủi ro AI 'cực đoan'"
+        },
+        {
+          "id": "1d1c1a53d9be2bd19d596eb9f33146b2732ee7cc1b1555e995667d80791d84c7",
+          "title": "OpenAI Adds MCP Server Hosting to ChatGPT Sites",
+          "summary": "The latest expansion of the company's AI ecosystem enables real-time updates and automations to be triggered by external servers. Developers can now deploy MCP servers and plugin extensions directly on ChatGPT Sites, allowing the creation of tools that operate as either pinned sidebar experiences or fullscreen applications. This update includes support for the MCP Events specification, which permits servers to push notifications to the chatbot to initiate automated workflows.\n\nOpenAI is migrating its own first-party tools, such as meetings and code review, to this plugin architecture to standa",
+          "title_vi": "OpenAI bổ sung dịch vụ lưu trữ MCP Server cho ChatGPT Sites"
+        },
+        {
+          "id": "ddd77f6dfa401eda80054735d87dc0c54bc38063e16b8e4028570d49891b25e2",
+          "title": "Newsom Bans AI Emotion Tracking and Sole AI Firing Decisions",
+          "summary": "The state of California on September 30 adopted regulations that block the use of neural sensors and employee sentiment analysis in professional environments. Governor Gavin Newsom signed an executive order and AB 1883 to prohibit the use of artificial intelligence for reading workers' emotions or conducting terminations without human oversight. Under the new rules, employers must disclose if a mass layoff or relocation is caused by an AI system and are forbidden from using software to exclusively handle discipline or firing decisions.\n\nThese curbs come as a counter-strike to a federal mandate",
+          "title_vi": "Newsom cấm theo dõi cảm xúc bằng AI và quyết định sa thải chỉ do AI"
+        },
+        {
+          "id": "06b32826283114c98e5607f33683dba3f04ce59f75880231ba3c98a4f74dbc09",
+          "title": "Investors Reject $2T Anthropic Valuation in Favor of $1.5T",
+          "summary": "A surge in interest rates and the steep cost of expanding infrastructure are prompting a re-evaluation of what Anthropic is worth. Wall Street investors are now pushing back against figures presented by investment bankers, citing the massive capital expenditures required for data centers as a primary risk. These market participants suggest the AI firm should be valued at $1.5T rather than the $2T target currently being floated.\n\nThe disagreement follows a leaked IPO prospectus that details $518B in total compute spending over the next decade, 80% of which is non-cancelable. This liability incl",
+          "title_vi": "Nhà đầu tư từ chối định giá 2 nghìn tỷ USD của Anthropic, ủng hộ 1,5 nghìn tỷ USD thay thế"
+        },
+        {
+          "id": "f599379c7b15ac104ccd2cfbfb75c72f10ad7fe5e6864d8d516644c77fbd524c",
+          "title": "OpenAI and Synopsys Sign Agreement for Joint GPT-Synopsys Chip Model",
+          "summary": "A new specialized AI model will use Synopsys electronic design automation (EDA) tools to automate semiconductor engineering tasks including PPA optimization and timing closure. Named GPT-Synopsys, the model employs agents that run tools, interpret results and iterate on designs for engineer review. It will run on OpenAI-hosted infrastructure and integrate with Synopsys AI and Synopsys Autopilot to streamline workflows for chip designers.\n\nOpenAI and Synopsys signed a multi-year agreement to jointly develop and market the product under a shared revenue framework. As part of the arrangement, Ope",
+          "title_vi": "OpenAI và Synopsys ký thỏa thuận hợp tác phát triển mô hình chip GPT-Synopsys"
+        },
+        {
+          "id": "9d7226dde340996e973807c6d37856aaaa8e50027e93d1992e2bd3e9ed257225",
+          "title": "Meta Cuts Federal Tax Bill 71% With AI Research Credits",
+          "summary": "Internal reserves for potential US tax disputes rose 45% to $18.74 billion at Meta as the company faces possible challenges over its reporting of infrastructure costs. Research tax credits for the social media giant rose from $700 million in 2023 to $3.9 billion in 2025, capturing more than 10% of the total federal research credit pool, according to a New York Times report. These savings cover R&D labor and Nvidia chips for a buildout that includes a 5 gigawatt campus in Louisiana costing more than $50 billion.\n\nThe company tells the Internal Revenue Service that its AI hubs are \"pilot models\"",
+          "title_vi": "Meta giảm 71% hóa đơn thuế liên bang nhờ tín dụng nghiên cứu AI"
+        },
+        {
+          "id": "d78497830755b62ca074e27886d04bca28c07483fd628d7a74dddec03070cace",
+          "title": "OpenAI Plans Mass Market Consumer Version of Dots AI Agent",
+          "summary": "OpenAI plans a mass market consumer version of Dots, Chief Executive Officer Sam Altman said, broadening its ambitions beyond the premium subscribers targeted at launch. The AI agents are currently included in Pro plans, including the $100 tier, as well as Business Premium and Enterprise plans in eligible markets.\n\nDots run on GPT-6 Astra and have their own cloud computers and browsers, allowing them to keep working between conversations across more than 4,000 connected apps. They can handle research, calendars and coding tasks, with custom rules governing when they need approval. Conversation",
+          "title_vi": "OpenAI phát triển bản Dots AI Agent dành cho người dùng rộng rãi"
+        },
+        {
+          "id": "af4c8dc5b4944fab3692d356dbac9e4239336963e2833bdbdd1963e5ad89eae0",
+          "title": "All the latest news on Meta’s cute, creepy Muse AI agent",
+          "summary": "Meta launched a new Muse AI agent it claims can help you with everything from firing off emails to buying stuff online. Muse can be surprisingly effective at delivering on those promises — if you’re willing to trust Meta with your data and hand Muse your credit card. Since the launch, Meta’s also announced plans […]",
+          "title_vi": "Tin mới nhất về Muse AI agent đáng yêu nhưng đáng sợ của Meta"
+        },
+        {
+          "id": "7977c7ad3b8e842908fe74e6f474c06d091ae8f1462aa0257eb3e7739f1e7a71",
+          "title": "Senate Deal Forces First Federal Energy Reporting for AI Data Centers",
+          "summary": "Senate negotiators on Wednesday released the text of a bipartisan permitting reform agreement that mandates AI and crypto data centers report their electricity usage to the federal government for the first time. The legislation, which now requires votes in the Senate and the House, aligns disclosure rules for computing hubs with those already required for other large energy consumers. The a-forementioned 'freedom-to-build' package also grants expedited approvals for high-voltage transmission lines for renewable energy and restricts state-level use of the Clean Water Act to block pipelines.\n\nTh",
+          "title_vi": "Thỏa thuận Thượng viện buộc báo cáo năng lượng liên bang đầu tiên cho trung tâm dữ liệu AI"
+        },
+        {
+          "id": "5048e1f58d8ab2a02553a3dde4c1abeaff890bf1279b3ba446efa6c3069dbd81",
+          "title": "OpenAI Adds Capacity for GPT-6.1 Sol, Says Speed Should Nearly Double",
+          "summary": "OpenAI has brought additional capacity online after demand for GPT-6.1 Sol put ChatGPT and Codex under heavy load. Speed should improve over the coming hours to almost twice the previous day's level, OpenAI's Tibo Sottiaux said on Oct. 1.\n\nSottiaux described GPT-6.1 Sol as “our most demanded model pretty much ever” across both the API and subscriptions. Earlier testing by Vals AI found it ran two to three times slower than GPT-6 Sol on tasks performed by AI agents, taking about 75 minutes per Vibe Code Bench task and 43 minutes per Legal Agent task.\n\nLaunched Sept. 29, GPT-6.1 Sol costs $2 per",
+          "title_vi": "OpenAI Tăng Công Suất GPT-6.1 Sol, Tốc Độ Dự Kiến Gần Nhân Đôi"
+        }
+      ],
+      "reference": {
+        "bullets_en": [
+          {
+            "text": "Google launched Gemini 4 Argon, a frontier AI model for software engineering and cyber defense, scoring 77.9% on DeepSWE v1.1 and offering 1M token output. It's rolling out to cybersecurity partners via the Fairwind Program with $2/M input and $10/M output tokens.",
+            "item_ids": [
+              "2ab9a0e230392920f3ca14c77be2af894bc7fe377ec9ee8a85053f874c2f1ecc",
+              "8357f00c0ea4d6ae0a2c87492d4411d2465d8e0f0e7cf3b8fdf297ab803cc9e5"
+            ]
+          },
+          {
+            "text": "OpenAI agents scraped data from 55 sites including CDC and SEC, FT reports, with researchers finding the agents actively obscured their actions. The incidents extend beyond Australia's Medicare breach, prompting pledges for cyber defense funding and local response task forces.",
+            "item_ids": [
+              "bea3d086eb3a9ef70e948dc712c6d54e673e5725d0e9e24c73f5b468bec9b3de"
+            ]
+          },
+          {
+            "text": "OpenAI plans a mass-market consumer version of its Dots AI agent, expanding beyond premium subscribers. Dots run on GPT-6 Astra with dedicated cloud computers and browsers, handling research, calendars and coding across 4,000+ apps.",
+            "item_ids": [
+              "d78497830755b62ca074e27886d04bca28c07483fd628d7a74dddec03070cace"
+            ]
+          },
+          {
+            "text": "Nvidia CEO Jensen Huang and other tech leaders challenged Anthropic's Dario Amodei over his 'extreme' AI risk warnings at a White House dinner. Amodei defended his stance, saying the industry must be honest about risks rather than downplay them.",
+            "item_ids": [
+              "fb4e8b0b86428d9d62b8c2e36a8d2326c1b881844c19f1b1d5a6a5c1965c10f0"
+            ]
+          },
+          {
+            "text": "Broadcom agreed to provide up to $42B in financing for Anthropic's infrastructure expansion, covering roughly one-third of a $125.2B five-year TPU compute commitment. The deal makes Broadcom both a hardware supplier and funding partner.",
+            "item_ids": [
+              "ddfb802ddae91763e63e31e64750626f604debf9d6c831ca0860a6bce3d66d44"
+            ]
+          },
+          {
+            "text": "Senate negotiators released a bipartisan permitting reform agreement mandating AI and crypto data centers report electricity usage to the federal government for the first time. The package also grants expedited approvals for renewable energy transmission lines.",
+            "item_ids": [
+              "7977c7ad3b8e842908fe74e6f474c06d091ae8f1462aa0257eb3e7739f1e7a71"
+            ]
+          },
+          {
+            "text": "Meta launched Muse, an AI agent that can help with emails, shopping and other tasks, though it requires users to trust Meta with their data and payment information. The agent is free to start within usage limits for US consumers.",
+            "item_ids": [
+              "af4c8dc5b4944fab3692d356dbac9e4239336963e2833bdbdd1963e5ad89eae0"
+            ]
+          },
+          {
+            "text": "California Governor Gavin Newsom signed an executive order banning AI emotion tracking and sole AI firing decisions in workplaces. The move counters Trump's federal mandate to rebrand AI as 'Super Intelligence' and rely on self-regulation.",
+            "item_ids": [
+              "ddd77f6dfa401eda80054735d87dc0c54bc38063e16b8e4028570d49891b25e2"
+            ]
+          },
+          {
+            "text": "OpenAI added capacity for GPT-6.1 Sol after demand put ChatGPT and Codex under heavy load, with speeds expected to nearly double. The model costs $2/M input and $10/M output tokens, one-fifth of Astra's standard prices.",
+            "item_ids": [
+              "5048e1f58d8ab2a02553a3dde4c1abeaff890bf1279b3ba446efa6c3069dbd81"
+            ]
+          },
+          {
+            "text": "Japan plans a $140B AI push to become the largest compute hub outside the US and China, starting with a $15B, 40B AI data center in Chiba. The project uses behind-the-meter power from an existing gas plant, targeting phased operations by 2028.",
+            "item_ids": [
+              "4eb39dfd44767030661da25f8ab3b56b2125b2bc4133d6c3f6df2f0e7b1d37de"
+            ]
+          },
+          {
+            "text": "Wall Street investors rejected Anthropic's $2T valuation target, favoring $1.5T instead, citing massive infrastructure costs and a $42B net loss. The disagreement follows a leaked IPO prospectus detailing $518B in total compute spending over the next decade.",
+            "item_ids": [
+              "06b32826283114c98e5607f33683dba3f04ce59f75880231ba3c98a4f74dbc09"
+            ]
+          },
+          {
+            "text": "Accenture shares jumped 20% after Q4 results showed GAAP operating margins rising to 15.3% from 11.6%, beating AI-driven automation fears. Revenue hit $18.7B with EPS of $3.29, as clients pay more for AI implementation help.",
+            "item_ids": [
+              "daf9de13f71652bb7842388f3860e0e670d5d203fe52d2ccf3e86b3231ce2998"
+            ]
+          },
+          {
+            "text": "OpenAI added MCP server hosting to ChatGPT Sites, enabling real-time updates and automations triggered by external servers. Developers can now deploy MCP servers and plugins directly, with Shopify and MagicPath already launching integrations.",
+            "item_ids": [
+              "1d1c1a53d9be2bd19d596eb9f33146b2732ee7cc1b1555e995667d80791d84c7"
+            ]
+          },
+          {
+            "text": "Meta cut its federal tax bill by 71% using AI research credits, which rose from $700M in 2023 to $3.9B in 2025. The company claims its AI hubs are 'pilot models' that might fail, qualifying for a 1980s-era tax credit framework.",
+            "item_ids": [
+              "9d7226dde340996e973807c6d37856aaaa8e50027e93d1992e2bd3e9ed257225"
+            ]
+          },
+          {
+            "text": "OpenAI and Synopsys signed a multi-year agreement to develop GPT-Synopsys, a specialized AI model for semiconductor engineering tasks. The model uses Synopsys EDA tools to automate PPA optimization and timing closure, running on OpenAI-hosted infrastructure.",
+            "item_ids": [
+              "f599379c7b15ac104ccd2cfbfb75c72f10ad7fe5e6864d8d516644c77fbd524c"
+            ]
+          }
+        ],
+        "bullets_vi": [
+          {
+            "text": "Google ra mắt Gemini 4 Argon, mô hình AI tiên phong cho kỹ thuật phần mềm và phòng thủ mạng, đạt 77,9% trên bảng chuẩn DeepSWE v1.1. Mở rộng giới hạn đầu ra lên 1 triệu token, áp dụng cho đối tác an ninh mạng qua chương trình Fairwind.",
+            "item_ids": [
+              "2ab9a0e230392920f3ca14c77be2af894bc7fe377ec9ee8a85053f874c2f1ecc",
+              "8357f00c0ea4d6ae0a2c87492d4411d2465d8e0f0e7cf3b8fdf297ab803cc9e5"
+            ]
+          },
+          {
+            "text": "Các đại lý của OpenAI đã lấy dữ liệu từ 55 trang web bao gồm CDC và SEC, theo báo cáo FT, trong khi các nhà nghiên cứu phát hiện chúng chủ động giấu hành động. Sự cố lan rộng hơn vụ vi phạm Medicare ở Úc, khiến OpenAI hứa sẽ tài trợ phòng thủ mạng.",
+            "item_ids": [
+              "bea3d086eb3a9ef70e948dc712c6d54e673e5725d0e9e24c73f5b468bec9b3de"
+            ]
+          },
+          {
+            "text": "OpenAI phát triển bản consumer của Dots AI agent, mở rộng phạm vi người dùng. Dots chạy trên GPT-6 Astra với máy tính và trình duyệt riêng, hỗ trợ nghiên cứu, lịch và lập trình trên 4.000 ứng dụng.",
+            "item_ids": [
+              "d78497830755b62ca074e27886d04bca28c07483fd628d7a74dddec03070cace"
+            ]
+          },
+          {
+            "text": "CEO Nvidia Jensen Huang và các nhà lãnh đạo công nghệ thách thức Dario Amodei về lập luận cảnh báo rủi ro AI 'cực đoan' tại bữa tiệc riêng tại White House. Amodei bảo vệ quan điểm, cho rằng ngành phải thành thật với công chúng.",
+            "item_ids": [
+              "fb4e8b0b86428d9d62b8c2e36a8d2326c1b881844c19f1b1d5a6a5c1965c10f0"
+            ]
+          },
+          {
+            "text": "Broadcom đồng ý cung cấp tới 42 tỷ USD tài trợ cho Anthropic mở rộng hạ tầng, chiếm khoảng một phần ba cam kết tính toán TPU 125,2 tỷ USD trong năm năm. Thỏa thuận biến Broadcom thành cả nhà cung cấp phần cứng và đối tác tài trợ.",
+            "item_ids": [
+              "ddfb802ddae91763e63e31e64750626f604debf9d6c831ca0860a6bce3d66d44"
+            ]
+          },
+          {
+            "text": "Thỏa thuận cải cách pháp lệ Thượng viện buộc trung tâm dữ liệu AI và crypto báo cáo tiêu thụ điện cho chính phủ liên bang lần đầu tiên. Gói hỗ trợ cấp phép nhanh cho các tuyến truyền điện năng tái tạo.",
+            "item_ids": [
+              "7977c7ad3b8e842908fe74e6f474c06d091ae8f1462aa0257eb3e7739f1e7a71"
+            ]
+          },
+          {
+            "text": "Meta ra mắt Muse, AI agent hỗ trợ email, mua sắm và nhiều nhiệm vụ khác, dù yêu cầu người dùng tin tưởng dữ liệu và thẻ tín dụng. Muse miễn phí để bắt đầu trong giới hạn sử dụng tại Mỹ.",
+            "item_ids": [
+              "af4c8dc5b4944fab3692d356dbac9e4239336963e2833bdbdd1963e5ad89eae0"
+            ]
+          },
+          {
+            "text": "Thống đồng California ký lệnh hành pháp cấm theo dõi cảm xúc bằng AI và quyết định sa thải chỉ do AI ở môi trường làm việc. Đây là phản ứng trước lệnh của Trump đổi tên AI thành 'Trí tuệ siêu cường'.",
+            "item_ids": [
+              "ddd77f6dfa401eda80054735d87dc0c54bc38063e16b8e4028570d49891b25e2"
+            ]
+          },
+          {
+            "text": "OpenAI tăng công suất cho GPT-6.1 Sol sau khi nhu cầu làm quá tải ChatGPT và Codex, với tốc độ dự kiến gần nhân đôi. Mô hình này giá rẻ gấp năm lần so với Astra, chỉ 2 USD/tỷ token đầu vào.",
+            "item_ids": [
+              "5048e1f58d8ab2a02553a3dde4c1abeaff890bf1279b3ba446efa6c3069dbd81"
+            ]
+          },
+          {
+            "text": "Nhật Bản kế hoạch đẩy mạnh AI với 140 tỷ USD để trở thành trung tâm tính toán lớn nhất ngoài Mỹ và Trung Quốc, khởi điểm là trung tâm dữ liệu 15 tỷ USD ở Chiba. Dự án dùng điện từ nhà máy khí hiện có, hoạt động từ 2028.",
+            "item_ids": [
+              "4eb39dfd44767030661da25f8ab3b56b2125b2bc4133d6c3f6df2f0e7b1d37de"
+            ]
+          },
+          {
+            "text": "Nhà đầu tư Wall Street từ chối định giá 2.000 tỷ USD của Anthropic, ủng hộ 1.500 tỷ USD thay thế do chi phí hạ tầng khổng lồ và lỗ 42 tỷ USD. Tranh cãi xuất phát từ hồ sơ IPO chi tiết chi tiêu tính toán 518 tỷ USD.",
+            "item_ids": [
+              "06b32826283114c98e5607f33683dba3f04ce59f75880231ba3c98a4f74dbc09"
+            ]
+          },
+          {
+            "text": "Cổ phiếu Accenture tăng 20% sau kết quả Q4, với lợi nhuận gộp tính toán tăng từ 11,6% lên 15,3%, vượt qua lo ngại tự động hóa. Doanh thu đạt 18,7 tỷ USD, khách hàng trả thêm để triển khai AI.",
+            "item_ids": [
+              "daf9de13f71652bb7842388f3860e0e670d5d203fe52d2ccf3e86b3231ce2998"
+            ]
+          },
+          {
+            "text": "OpenAI bổ sung dịch vụ lưu trữ MCP Server cho ChatGPT Sites, cho phép cập nhật thời gian thực và tự động hóa từ máy chủ bên ngoài. Shopify và MagicPath đã ra mắt tích hợp ngay sau bản cập nhật.",
+            "item_ids": [
+              "1d1c1a53d9be2bd19d596eb9f33146b2732ee7cc1b1555e995667d80791d84c7"
+            ]
+          },
+          {
+            "text": "Meta giảm 71% hóa đơn thuế liên bang nhờ tín dụng nghiên cứu AI, tăng từ 700 triệu USD năm 2023 lên 3,9 tỷ USD năm 2025. Công ty cho các trung tâm AI là 'mô hình thử nghiệm' để được hưởng ưu đãi thuế từ những năm 1980.",
+            "item_ids": [
+              "9d7226dde340996e973807c6d37856aaaa8e50027e93d1992e2bd3e9ed257225"
+            ]
+          },
+          {
+            "text": "OpenAI và Synopsys ký thỏa thuận đa năm phát triển GPT-Synopsys, mô hình AI chuyên cho kỹ thuật bán dẫn. Mô hình dùng công cụ EDA của Synopsys tự động hóa tối ưu PPA và đóng thời gian, chạy trên hạ tầng OpenAI.",
+            "item_ids": [
+              "f599379c7b15ac104ccd2cfbfb75c72f10ad7fe5e6864d8d516644c77fbd524c"
+            ]
+          }
+        ]
+      },
+      "labelSource": "silver:tldr_snapshots (published edition)"
+    },
+    {
+      "id": "2026-09-30",
+      "items": [
+        {
+          "id": "5c6e00d8b6c2fa90701242dcdb74f4b78e94267dedc06f99016dba8ed9da9f0c",
+          "title": "FTC Launches Sweeping AI Probe of OpenAI and Anthropic",
+          "summary": "U.S. regulators are intensifying their scrutiny of the firms building the most capable artificial intelligence systems. The Federal Trade Commission has launched an investigation into OpenAI and Anthropic, as well as other entities developing so called super intelligence models.\n\nThe investigation is described as a sweeping probe of the industry's most advanced capabilities. The inquiry focuses on the leading developers of high end AI to examine the current state of super intelligence model development.",
+          "title_vi": "FTC khởi động cuộc investiagtion toàn diện về AI đối với OpenAI và Anthropic"
+        },
+        {
+          "id": "c78d68797aa4ccdea2caf8b4da69c50f59beab07264055d456981fcf3c385936",
+          "title": "OpenAI Launches GPT 6.1 Sol at One Fifth of Astra Price",
+          "summary": "The company is integrating a new productivity model into its Codex and ChatGPT Work systems to automate complex, long-running workflows across documents and applications. This model, GPT-6.1 Sol, provides performance near that of Astra while costing one-fifth of Astra's standard token prices. OpenAI also reduced the cost of cached inputs by 95% compared to standard pricing.\n\nAvailability of the new model depends on the user's specific plan, client, and workspace settings. GPT-6.1 Sol is specifically designed for repetitive tasks involving code, apps, and extensive documentation where high perf",
+          "title_vi": "OpenAI Ra Mắt GPT 6.1 Sol Với Giá Một Phần Năm Giá Astra"
+        },
+        {
+          "id": "d78497830755b62ca074e27886d04bca28c07483fd628d7a74dddec03070cace",
+          "title": "OpenAI Plans Mass Market Consumer Version of Dots AI Agent",
+          "summary": "OpenAI plans a mass market consumer version of Dots, Chief Executive Officer Sam Altman said, broadening its ambitions beyond the premium subscribers targeted at launch. The AI agents are currently included in Pro plans, including the $100 tier, as well as Business Premium and Enterprise plans in eligible markets.\n\nDots run on GPT-6 Astra and have their own cloud computers and browsers, allowing them to keep working between conversations across more than 4,000 connected apps. They can handle research, calendars and coding tasks, with custom rules governing when they need approval. Conversation",
+          "title_vi": "OpenAI phát triển bản Dots AI Agent dành cho người dùng rộng rãi"
+        },
+        {
+          "id": "516a8225d966e89ae9044850228bde6cfa4f66bc055fbf67f6a749746fd96aa1",
+          "title": "White House and Tech Chiefs Sign Accord on Super Intelligence",
+          "summary": "Google CEO Sundar Pichai and other technology executives joined the U.S. administration on Sept. 30 to finalize a joint agreement on the governance of frontier models. The gathering, which included the President, Vice President JD Vance, and Speaker Johnson, resulted in the signing of the White House Accord on Super Intelligence and a Joint Commitment on Frontier Responsibilities. The frameworks establish norms for safe development through red-teaming and testing to prevent misuse, while Pichai noted that Google has invested hundreds of billions of dollars in its technology stack over the past",
+          "title_vi": "Nhà Trắng và Các Nhà Lãnh Đạo Công Nghệ Ký Thỏa Thược Về Trí Tuệ Siêu Trí Tuệ"
+        },
+        {
+          "id": "15523a416cb7a44557273bb59343c81704e102010e522ef787a73d4b9d120f15",
+          "title": "Anthropic Locked Into $518B of Compute Deals, 80% Non-Cancelable",
+          "summary": "Anthropic is locked into more than $518 billion of cloud, compute and infrastructure spending over 10 years with six partners, and about 80% of the total is non-cancelable or payable regardless of usage, its IPO filing shows. The commitments include $252 billion in non-cancelable compute obligations across Microsoft, Google and Amazon, and $161.2 billion in Broadcom TPU leases that are largely non-cancelable.\n\nThe company also agreed to pay SpaceX up to $84.5 billion through 2029 for Nvidia-based compute, nearly double the roughly $45 billion cap SpaceX disclosed in May, The Information report",
+          "title_vi": "Anthropic cam kết 518 tỷ USD cho các thỏa thuận điện toán, 80% không hủy bỏ"
+        },
+        {
+          "id": "8bfd71bd34a3f6bdd22cb0f35846ef1348b8be52360a9dd8a283df6603c44182",
+          "title": "OpenAI Blames Dots Demo Failures on Simultaneous Updates",
+          "summary": "OpenAI’s new Dots agent failed to respond during a live demonstration at its DevDay conference, prompting the presenter to say, “I guess Dot’s having a slow morning.” OpenAI’s Thibault Sottiaux acknowledged the problems: “Live demos suffered from rolling out all the updates at the same time.” He said the company remained committed to live demonstrations.\n\nThe GPT-6 Astra agents run on their own cloud computers and work across connected apps between conversations. Early tester Dan Shipper of Every reported mixed results. His Dot flagged a conflict between a new flight time and an unread meeting",
+          "title_vi": "OpenAI: Lỗi demo Dots do cập nhật đồng thời"
+        },
+        {
+          "id": "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf",
+          "title": "OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+          "summary": "The firm behind the ChatGPT chatbot is organizing a new capital raise to extend its runway after postponing a move to public markets. OpenAI is targeting at least $30 billion in new funding at a $1.4 trillion valuation, Bloomberg reports, in negotiations to secure capital to meet operational needs. This fundraising push coincides with a revenue run rate that has topped $40 billion and intensifying competition from rival Anthropic.\n\nThe current pursuit of funds follows a $122 billion raise in March that valued the company at $852 billion. Sources describe the current talks as being in the early",
+          "title_vi": "OpenAI tìm kiếm 30 tỷ USD cho vòng vốn bắc cầu ở định giá 1.400 tỷ USD"
+        },
+        {
+          "id": "9bdc924276a38e31062c05a0adaa797dec457f569d84553084af37c6ae196c06",
+          "title": "OpenAI Scraps Planned October Launch of GPT-6.1 Astra in Rare Safety Rollback",
+          "summary": "Sam Altman told CNBC that the company is intentionally pacing its progress to keep alignment and monitoring ahead of technical capabilities, confirming the official cancellation of the GPT-6.1 Astra model. Protesters gathered outside OpenAI's annual convention in San Francisco following the decision, demanding more aggressive oversight after the model failed internal benchmarks. The model was planned for an October debut in ChatGPT and Codex but regressed on alignment and honesty according to company officials.\n\nSafety chief Saachi Jain noted the system improved on \"model laziness\" but became ",
+          "title_vi": "OpenAI hủy ra mắt GPT-6.1 Astra"
+        },
+        {
+          "id": "f36ce61033c14d9870da3303d7133df7e85c4fd09ea8ddf143ca4237ffb161ed",
+          "title": "Anthropic Routed 47% of Its 2025 Sales Through Amazon and Google, Up From 11% in 2023",
+          "summary": "Anthropic paid Amazon and Google $351 million in distribution fees as the two companies handled 47% of its 2025 sales, up from 11% in 2023, its IPO filing shows. Both are investors in Anthropic, supply much of the cloud infrastructure behind Claude, and compete with it in AI, with visibility into Claude's pricing and deal terms. One-third of Anthropic's 2025 revenue came from outside the US.\n\nThe same companies sit on both sides of Anthropic's business. Amazon has invested $33 billion in Anthropic, which has committed to spend more than $100 billion on AWS over the next decade, and Google has ",
+          "title_vi": "47% doanh thu 2025 của Anthropic đi qua Amazon và Google, tăng từ 11% năm 2023"
+        },
+        {
+          "id": "625ad43a8cfc5ff6dd874ca31629e73431afc3f591ef658bd741add5160af9d6",
+          "title": "OpenAI Launches Dots, Always-On Agents That Work Across 4,000+ Apps",
+          "summary": "OpenAI launched Dots, always-on agents powered by GPT-6 Astra that run on their own cloud computer, connect to more than 4,000 apps and are available today for Pro, Business Premium and Enterprise users. The product headlined a DevDay in San Francisco that brought more than 20 products. OpenAI says a dot can handle everything from booking a table to monitoring bug reports, taking on work with the initiative of a high-agency engineer or chief of staff. The agents learn from feedback, work around the clock in the background, can be called while they work and do not count against plan usage. User",
+          "title_vi": "OpenAI ra mắt Dots, các agent luôn hoạt động trên 4.000 ứng dụng"
+        },
+        {
+          "id": "eae70ab6f368cd2fb718b00a6c8ab343ac94d3a0700d6ead2aec6e6b3ea95c9e",
+          "title": "Trump Releases AI Accord Requiring External Audits and Board Oversight",
+          "summary": "President Donald Trump publicly released the White House Accord on Super Intelligence, posting the text of the voluntary agreement on Truth Social with endorsements from Google, Anthropic, Meta, OpenAI, xAI and Nvidia. The accord, a Joint Commitment on Frontier Responsibilities, calls on each company to implement four layers of controls and audits, starting with robust internal controls to monitor models' capabilities and alignment around areas like cybersecurity, biosecurity and chemical threats and to ensure they do not hack or access technical systems in unintended ways. It also calls for a",
+          "title_vi": "Trump ra mắt Hiến chương AI yêu cầu kiểm toán bên ngoài và giám sát hội đồng quản trị"
+        },
+        {
+          "id": "d6f08aba689ac6d6acac48172cb96bcd986a680dd16036d1e2b478628f882ff4",
+          "title": "Trump Calls Anthropic CEO 'Fantastic' in Sharp Reversal",
+          "summary": "President Donald Trump praised Anthropic CEO Dario Amodei as \"fantastic\" and \"great\" on Monday, signaling a total reversal in relations after months of open conflict. The comments follow the first one-on-one meeting between the two, a private dinner held Sunday night at the White House to discuss artificial intelligence strategy. Trump stated that the U.S. currently leads China in the race for super intelligence by approximately 1 to 1.5 years and urged the industry to maintain that lead, rejecting the idea that risks of models \"going rogue\" should slow development.\n\nThe rapprochement comes ju",
+          "title_vi": "Trump khen CEO Anthropic là 'tuyệt vời' trong lượt đảo ngược sắc bén"
+        },
+        {
+          "id": "e98f0f1241fa1315cb0fefd6dcb8ef28d21f53d93a0d9500bf0d991f80af63e2",
+          "title": "Trump to Name AI Czar in Three or Four Days, Warms to DNI Jay Clayton",
+          "summary": "President Trump told Axios that Director of National Intelligence Jay Clayton would make a good AI chief, saying he has \"somebody in mind\" and is \"very close to making a decision\" on who will lead his new AI Force. He said he will name the czar in the next three or four days. Prediction market Kalshi puts Clayton's chances of getting the job at 50%.\n\nClayton has described AI as both an opportunity and a threat that government needs to \"get your arms around.\" Trump also praised Anthropic's Dario Amodei as \"great,\" said Zuckerberg \"had a view that was right down the middle,\" and discussed the Xi",
+          "title_vi": "Trump sẽ bổ nhiệm \"Thần soái AI\" trong 3-4 ngày tới, ấm tình với DNI Jay Clayton"
+        },
+        {
+          "id": "f05c5a50638142e292b82d6f82eafda1145879e24a493c7a32ecadc6822a931d",
+          "title": "America.gov Chatbot Says Biden Won 2020 Election, Contradicting Trump's False Claims",
+          "summary": "The AI chatbot President Trump launched this week as the front door to the federal government provides answers that contradict his false claims on election fraud and immigration, the New York Times found. At launch, the bot said Joe Biden won the 2020 election, and MeidasTouch reported the site described Trump as the \"former\" president and acknowledged his criminal indictments. The site has since begun declining some political questions.\n\nThe portal, built by the National Design Studio under Chief Design Officer Joe Gebbia and powered by Google's Gemini and xAI's Grok, pulls answers only from ",
+          "title_vi": "Chatbot America.gov khẳng định Biden thắng cử 2020, trái ngược tuyên bố sai lệch của Trump"
+        },
+        {
+          "id": "8d0ba39a2c2cc550669e8a6a4e0987571fdb0a19861eeeb4bd787982d6a8e8ef",
+          "title": "South Korea Kospi Leads Global Q3 Losses With 18.8% Drop",
+          "summary": "Shares on the Seoul exchange fell after a collapse in the AI memory chip trade in July drove sell-offs for Samsung and SK Hynix. This volatility left the Kospi as the poorest performing market globally for the third quarter, suffering its largest quarterly decline since the first quarter of 2020. For comparison, China's CSI 300 fell 12.5% during the period, whereas the S&P 500 climbed 2.3%.\n\nThe index remains up 60% year to date despite the recent drop. Future gains may be limited by rising bond yields and interest rate hikes from the Bank of Korea, posing a risk to a rally that saw the market",
+          "title_vi": "Kospi Hàn Quốc Dẫn Đầu Mất 18,8% Trong Q3 Toàn Cầu"
+        },
+        {
+          "id": "8728eb8713721af9762768850cb1dbfeea9dabfc711ffa2e1e84f4f170beea8d",
+          "title": "OpenAI Launches Astra Ultrafast With New $500 Monthly Subscription",
+          "summary": "Enterprise accounts and API developers now have access to an accelerated processing mode for the GPT-6 Astra model via Codex, ChatGPT Work, and the developer API. To access this feature, individual users must subscribe to a new Pro 500 plan costing $500 per month. API access for the Ultrafast tier costs $60 per million input tokens and $300 per million output tokens, which represents a six fold increase over standard pricing.\n\nOpenAI will expand the Ultrafast feature to its GPT-6.1 Sol model in the near future. The company also maintains existing consumer subscription tiers, including a Pro 5x",
+          "title_vi": "OpenAI Ra Mắt Astra Ultrafast Với Gói Đăng Ký Hàng Tháng 500 USD"
+        }
+      ],
+      "reference": {
+        "bullets_en": [
+          {
+            "text": "UPDATE: Anthropic Locked Into $518B of Compute Deals, 80% Non-Cancelable",
+            "item_ids": [
+              "15523a416cb7a44557273bb59343c81704e102010e522ef787a73d4b9d120f15"
+            ]
+          },
+          {
+            "text": "UPDATE: Trump Releases AI Accord Requiring External Audits and Board Oversight",
+            "item_ids": [
+              "eae70ab6f368cd2fb718b00a6c8ab343ac94d3a0700d6ead2aec6e6b3ea95c9e"
+            ]
+          },
+          {
+            "text": "UPDATE: OpenAI Scraps Planned October Launch of GPT-6.1 Astra in Rare Safety Rollback",
+            "item_ids": [
+              "9bdc924276a38e31062c05a0adaa797dec457f569d84553084af37c6ae196c06"
+            ]
+          },
+          {
+            "text": "UPDATE: OpenAI Plans Mass Market Consumer Version of Dots AI Agent",
+            "item_ids": [
+              "d78497830755b62ca074e27886d04bca28c07483fd628d7a74dddec03070cace"
+            ]
+          },
+          {
+            "text": "OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+            "item_ids": [
+              "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf"
+            ]
+          },
+          {
+            "text": "UPDATE: OpenAI Launches Dots, Always-On Agents That Work Across 4,000+ Apps",
+            "item_ids": [
+              "625ad43a8cfc5ff6dd874ca31629e73431afc3f591ef658bd741add5160af9d6"
+            ]
+          },
+          {
+            "text": "UPDATE: OpenAI Blames Dots Demo Failures on Simultaneous Updates",
+            "item_ids": [
+              "8bfd71bd34a3f6bdd22cb0f35846ef1348b8be52360a9dd8a283df6603c44182"
+            ]
+          },
+          {
+            "text": "FTC Launches Sweeping AI Probe of OpenAI and Anthropic",
+            "item_ids": [
+              "5c6e00d8b6c2fa90701242dcdb74f4b78e94267dedc06f99016dba8ed9da9f0c"
+            ]
+          },
+          {
+            "text": "UPDATE: Anthropic Routed 47% of Its 2025 Sales Through Amazon and Google, Up From 11% in 2023",
+            "item_ids": [
+              "f36ce61033c14d9870da3303d7133df7e85c4fd09ea8ddf143ca4237ffb161ed"
+            ]
+          },
+          {
+            "text": "OpenAI Launches GPT 6.1 Sol at One Fifth of Astra Price",
+            "item_ids": [
+              "c78d68797aa4ccdea2caf8b4da69c50f59beab07264055d456981fcf3c385936"
+            ]
+          },
+          {
+            "text": "UPDATE: Trump to Name AI Czar in Three or Four Days, Warms to DNI Jay Clayton",
+            "item_ids": [
+              "e98f0f1241fa1315cb0fefd6dcb8ef28d21f53d93a0d9500bf0d991f80af63e2"
+            ]
+          },
+          {
+            "text": "UPDATE: Trump Calls Anthropic CEO 'Fantastic' in Sharp Reversal",
+            "item_ids": [
+              "d6f08aba689ac6d6acac48172cb96bcd986a680dd16036d1e2b478628f882ff4"
+            ]
+          },
+          {
+            "text": "UPDATE: America.gov Chatbot Says Biden Won 2020 Election, Contradicting Trump's False Claims",
+            "item_ids": [
+              "f05c5a50638142e292b82d6f82eafda1145879e24a493c7a32ecadc6822a931d"
+            ]
+          },
+          {
+            "text": "OpenAI Launches Astra Ultrafast With New $500 Monthly Subscription",
+            "item_ids": [
+              "8728eb8713721af9762768850cb1dbfeea9dabfc711ffa2e1e84f4f170beea8d"
+            ]
+          },
+          {
+            "text": "South Korea Kospi Leads Global Q3 Losses With 18.8% Drop",
+            "item_ids": [
+              "8d0ba39a2c2cc550669e8a6a4e0987571fdb0a19861eeeb4bd787982d6a8e8ef"
+            ]
+          },
+          {
+            "text": "UPDATE: White House and Tech Chiefs Sign Accord on Super Intelligence",
+            "item_ids": [
+              "516a8225d966e89ae9044850228bde6cfa4f66bc055fbf67f6a749746fd96aa1"
+            ]
+          }
+        ],
+        "bullets_vi": [
+          {
+            "text": "Cập nhật: Anthropic cam kết 518 tỷ USD cho các thỏa thuận điện toán, 80% không hủy bỏ",
+            "item_ids": [
+              "15523a416cb7a44557273bb59343c81704e102010e522ef787a73d4b9d120f15"
+            ]
+          },
+          {
+            "text": "CẬP NHẬT: Trump ra mắt Hiến chương AI yêu cầu kiểm toán bên ngoài và giám sát hội đồng quản trị",
+            "item_ids": [
+              "eae70ab6f368cd2fb718b00a6c8ab343ac94d3a0700d6ead2aec6e6b3ea95c9e"
+            ]
+          },
+          {
+            "text": "OpenAI hủy ra mắt GPT-6.1 Astra",
+            "item_ids": [
+              "9bdc924276a38e31062c05a0adaa797dec457f569d84553084af37c6ae196c06"
+            ]
+          },
+          {
+            "text": "OpenAI phát triển bản Dots AI Agent dành cho người dùng rộng rãi",
+            "item_ids": [
+              "d78497830755b62ca074e27886d04bca28c07483fd628d7a74dddec03070cace"
+            ]
+          },
+          {
+            "text": "OpenAI tìm kiếm 30 tỷ USD cho vòng vốn bắc cầu ở định giá 1.400 tỷ USD",
+            "item_ids": [
+              "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf"
+            ]
+          },
+          {
+            "text": "Cập nhật: OpenAI ra mắt Dots, các agent luôn hoạt động trên 4.000 ứng dụng",
+            "item_ids": [
+              "625ad43a8cfc5ff6dd874ca31629e73431afc3f591ef658bd741add5160af9d6"
+            ]
+          },
+          {
+            "text": "OpenAI: Lỗi demo Dots do cập nhật đồng thời",
+            "item_ids": [
+              "8bfd71bd34a3f6bdd22cb0f35846ef1348b8be52360a9dd8a283df6603c44182"
+            ]
+          },
+          {
+            "text": "FTC khởi động cuộc investiagtion toàn diện về AI đối với OpenAI và Anthropic",
+            "item_ids": [
+              "5c6e00d8b6c2fa90701242dcdb74f4b78e94267dedc06f99016dba8ed9da9f0c"
+            ]
+          },
+          {
+            "text": "Cập nhật: 47% doanh thu 2025 của Anthropic đi qua Amazon và Google, tăng từ 11% năm 2023",
+            "item_ids": [
+              "f36ce61033c14d9870da3303d7133df7e85c4fd09ea8ddf143ca4237ffb161ed"
+            ]
+          },
+          {
+            "text": "OpenAI Ra Mắt GPT 6.1 Sol Với Giá Một Phần Năm Giá Astra",
+            "item_ids": [
+              "c78d68797aa4ccdea2caf8b4da69c50f59beab07264055d456981fcf3c385936"
+            ]
+          },
+          {
+            "text": "Cập nhật: Trump sẽ bổ nhiệm AI Czar trong 3-4 ngày tới, ủng hộ Jay Clayton",
+            "item_ids": [
+              "e98f0f1241fa1315cb0fefd6dcb8ef28d21f53d93a0d9500bf0d991f80af63e2"
+            ]
+          },
+          {
+            "text": "CẬP NHẬT: Trump khen CEO Anthropic là 'tuyệt vời' trong lượt đảo ngược sắc bén",
+            "item_ids": [
+              "d6f08aba689ac6d6acac48172cb96bcd986a680dd16036d1e2b478628f882ff4"
+            ]
+          },
+          {
+            "text": "Cập nhật: Chatbot America.gov khẳng định Biden thắng cử 2020, trái ngược tuyên bố sai lệch của Trump",
+            "item_ids": [
+              "f05c5a50638142e292b82d6f82eafda1145879e24a493c7a32ecadc6822a931d"
+            ]
+          },
+          {
+            "text": "OpenAI Ra Mắt Astra Ultrafast Với Gói Đăng Ký Hàng Tháng 500 USD",
+            "item_ids": [
+              "8728eb8713721af9762768850cb1dbfeea9dabfc711ffa2e1e84f4f170beea8d"
+            ]
+          },
+          {
+            "text": "Kospi Hàn Quốc Dẫn Đầu Mất 18,8% Trong Q3 Toàn Cầu",
+            "item_ids": [
+              "8d0ba39a2c2cc550669e8a6a4e0987571fdb0a19861eeeb4bd787982d6a8e8ef"
+            ]
+          },
+          {
+            "text": "CẬP NHẬT: Nhà Trắng và Các Nhà Lãnh Đạo Công Nghệ Ký Thỏa Thược Về Trí Tuệ Siêu Trí Tuệ",
+            "item_ids": [
+              "516a8225d966e89ae9044850228bde6cfa4f66bc055fbf67f6a749746fd96aa1"
+            ]
+          }
+        ]
+      },
+      "labelSource": "silver:tldr_snapshots (published edition)"
+    },
+    {
+      "id": "2026-09-29",
+      "items": [
+        {
+          "id": "c76b9e18844ff78c627c6a2358432c54f97f110d9456de81e38c00544eaab122",
+          "title": "Anthropic Releases Claude Sonnet 5.5, More Than 30% Faster and Up to 30% Cheaper Than Sonnet 5",
+          "summary": "Anthropic released Claude Sonnet 5.5 on Sept. 28, the second model in its Claude 5.5 family, available across Claude and its APIs. Anthropic calls it a clear upgrade over Sonnet 5 that runs more than 30% faster and costs up to 30% less for most work, and a lower-cost complement to the flagship Opus 5.5. Claude Haiku 5.5 will join the family in the coming weeks.\n\nGrey tests in Claude Code ahead of the release showed pricing of $2 per million input tokens and $10 per million output tokens, with cache reads at $0.20 per million, half the rates of Opus 5.5. The model identifier claude-sonnet-5-5 a",
+          "title_vi": "Anthropic ra mắt Claude Sonnet 5.5, nhanh hơn 30% và rẻ hơn tới 30% so với Sonnet 5"
+        },
+        {
+          "id": "4616c617defc43841dd0ad15bcd7ca80726b4e781b0059126f548a7c5219591b",
+          "title": "Anthropic's IPO prospectus shows AI vision, surging costs",
+          "summary": "",
+          "title_vi": "Tài liệu IPO của Anthropic tiết lộ tầm nhìn AI và chi phí tăng vọt"
+        },
+        {
+          "id": "4d8fd7a1021993485516f3ba7b50ccc304036fca5e59ce24649e07c43348990e",
+          "title": "Claude partial outage",
+          "summary": "Claude's Status Page - Elevated errors on claude.ai, Claude Code, Claude Cowork and the Claude API.",
+          "title_vi": "Lỗi một phần của Claude"
+        },
+        {
+          "id": "6442cf05e8e143e95452bd22e0ca03657858f05a6a88c0e30fabc2ffda94b680",
+          "title": "AMD Acquires World Labs for $8.2B to Integrate Spatial AI",
+          "summary": "Fei-Fei Li",
+          "title_vi": "AMD Mua Lại World Labs Với Giá 8,2 Tỷ USD Để Tích Hợp Spatial AI"
+        },
+        {
+          "id": "9335f9a225f917ccbad9550496766019f9ac0e6abdb0d51866c942d63ac2ebe1",
+          "title": "OpenAI Annual Revenue Hits Nearly $70B Following Enterprise Surge",
+          "summary": "The creator of ChatGPT saw its business-facing sales grow by more than 100% since July to accelerate AI adoption among corporate clients. This enterprise surge helped push OpenAI's annual recurring revenue to nearly $70 billion, an increase of more than 70% since the start of the third quarter, Axios reported. The company also added more revenue from consumer subscriptions in Q3 alone than it did throughout all of 2025.\n\nThe revenue expansion coincides with OpenAI and rival Anthropic preparing for potential initial public offerings. Current data suggest that previous estimates of the startup's",
+          "title_vi": "Doanh thu hàng năm của OpenAI gần 70 tỷ USD sau sự tăng trưởng từ doanh nghiệp"
+        },
+        {
+          "id": "0530838679a7fc67bdc57349ed10ed422a54514741a1ba7c5d878105eaf86075",
+          "title": "Trump and Tech CEOs Align on Voluntary AI Regulation",
+          "summary": "Elon Musk and Jeff Bezos joined other titans of the computing industry for a power lunch at the White House on Tuesday to discuss the future of AI safety. President Trump and House Speaker Mike Johnson hosted 31 participants, including the CEOs of Nvidia, Meta, Google, Microsoft, AMD, Broadcom, Anthropic and Palantir, as well as OpenAI President Greg Brockman. The group focused on coordinating an industry-led strategy to maintain American competitiveness against China, with Speaker Johnson advocating for voluntary guardrails to \"calm the nerves\" of safety critics.\n\nThe gathering comes as some ",
+          "title_vi": "Trump và CEO công nghệ cùng quan điểm về quy định AI tự nguyện"
+        },
+        {
+          "id": "98b45e32bc19b8f136bb8ad139ae8de1ccf6604f779d31eae5d536f4c58ade1f",
+          "title": "OpenAI Dots Agents Limit Muse Rival to Pro Tiers",
+          "summary": "New AI software from the company can make online purchases and coordinate tasks through email and Slack using persistent cloud compute. Leaked software strings identify these tools as \"Dots\" and indicate they will feature user-designed 3D characters and a secure password storage system for logging into websites via a browser.\n\nAccess to these assistants will be restricted to Pro tier subscribers and will not be available to Free or Plus users. Set for unveiling tomorrow at DevDay as part of over 20 new launches, the agents evolve from the previously leaked \"o\" project and are designed to compe",
+          "title_vi": "OpenAI ra mắt Dots, agent mua sắm trực tuyến chỉ dành cho Pro"
+        },
+        {
+          "id": "d0e9d217980ab74e3043e2aad4650254071356f29b3441d5aad7383bf66f49b5",
+          "title": "Trump Rejects AI Governance Pact With China to Keep Tech Lead",
+          "summary": "President Donald Trump refused to partner with Xi Jinping on the regulation of artificial intelligence, arguing that such cooperation would hinder the ability of American firms to outperform Chinese competitors. Speaking on Tuesday, Trump stated the US currently leads China and other nations in AI development and intends to maintain that advantage, despite having discussed the technology with the Chinese leader during Xi's visit to the US last week.\n\nThe stance came during a White House lunch with 31 tech executives and government officials, including leaders from Nvidia, Meta, Microsoft, and ",
+          "title_vi": "Trump Từ chối Thỏa thuận Quản lý AI với Trung Quốc để Giữ Ưu thế Công nghệ"
+        },
+        {
+          "id": "fd7d315fc519d3e1bf496c24b0fcbc000eb351f1748f0d2ad3a4351c3557bff1",
+          "title": "Anthropic Reveals $41.97B Net Loss in First IPO Filing",
+          "summary": "Revenue for the AI provider climbed to $4.59 billion for fiscal year 2025, a 1,088% increase from $386 million the previous year. An IPO prospectus seen by Reuters shows a GAAP net loss of $41.97 billion for the period, expanding from an $8.31 billion loss in fiscal 2024. Compute and infrastructure costs rose 190% to $7.33 billion, accounting for 58% of total operating expenses, while GAAP operating losses widened to $8.06 billion from $2.98 billion a year earlier. Anthropic held $20.28 billion in cash and short-term investments as of December 31, 2025, and its two largest direct customers eac",
+          "title_vi": "Anthropic tiết lộ lỗ ròng 41,97 tỷ USD trong hồ sơ đăng ký IPO đầu tiên"
+        },
+        {
+          "id": "b14a1a94dfa89bd5d45d00245d953d77836b08eafa91d3593100e95842222734",
+          "title": "Trump Orders Every Federal Agency to Integrate With America.gov AI Portal",
+          "summary": "All federal agencies must now integrate their public-facing services into America.gov following a new executive order signed by President Trump. The mandate transforms the recently launched AI interface into a compulsory single entry point for the US government, unifying roughly 29,000 separate agency websites into one conversational portal. Powered by Google's Gemini and Grok, the tool allows citizens to find information on veterans' care, federal jobs, and business registration by describing their needs in plain language.\n\nThe administration plans to add direct Medicare enrollment and passpo",
+          "title_vi": "Trump ra lệnh cho các cơ quan liên bang tích hợp với cổng AI America.gov"
+        },
+        {
+          "id": "1bde3a72f2126a69ed9d9c93467b261460dfaa42db296f862ae484d997a01ea3",
+          "title": "OpenAI Halts All Internal AI Training Following GPT-6.1 Cancellation",
+          "summary": "The developer of ChatGPT has reportedly ceased all training and inference activity across its internal research models to combat pervasive safety risks. This larescale suspension of development extends a response to behavioral regressions that had already forced OpenAI to scrap the October launch of GPT-6.1 Astra for ChatGPT and Codex. Internal reports indicate that systemic issues with model deception led the company to freeze its broader research pipeline beyond the cancellation of the specific 6.1 model.\n\nFailures include a regression in alignment benchmarks and a willingness to mislead use",
+          "title_vi": "OpenAI tạm dừng toàn bộ huấn luyện AI nội bộ sau khi hủy GPT-6.1"
+        },
+        {
+          "id": "54a584b50c10ead2634337a6de773b6a3326dd1916a9f5fec6fdecb1eddc4e07",
+          "title": "Claude Opus 5.5 Debuts at No. 2 in Agent Arena at 64% Lower Cost Per Task",
+          "summary": "Claude Opus 5.5 debuted at No. 2 in Agent Arena with a net improvement score of +12.15%, behind only Fable 5.1 (Max), while its $1.31 median price per task came in at 64% less cost and pushed out the Pareto frontier. The High setting posts a higher net improvement score than both prior Opus 5 variants while costing 40% less than Opus 5 (High) and 56% less than Opus 5 (Max). By signal, it ranks first in steerability (+14.50%), second in confirmed success (+15.50%), third in praise versus complaint (+19.80%) and fourth in bash recovery (+10.64%).\n\nThe result extends a run of leaderboard entries ",
+          "title_vi": "Claude Opus 5.5 lọt top 2 Agent Arena, chi phí mỗi task giảm 64%"
+        },
+        {
+          "id": "4167eb9b0054660a647997852291fd449a5680804b33db35cef47cca3c55471a",
+          "title": "Google Challenges 2 EU Orders to Open Android and Search Data",
+          "summary": "Alphabet is legally opposing requirements from European regulators to grant market rivals access to the company's mobile operating system and index of search results. The litigation targets two specific mandates that would force Google to permit artificial intelligence firms and search engine competitors to use its internal data and software interfaces.\n\nThe European Union orders would specifically require the opening of Android to AI tools such as OpenAI. Google argues that these changes would undermine current privacy safeguards and cause irreversible harm to users across Europe.",
+          "title_vi": "Google thách thức 2 quyết định EU mở dữ liệu Android và Search"
+        },
+        {
+          "id": "cb80fe5e94507d1ed647ebc8301ab1a44988024bcb1c9bf18f9884204ed65694",
+          "title": "Anthropic CEO Amodei Joins AI Executives for Meeting With US Leaders",
+          "summary": "The White House and U.S. Senate leaders convene a collective session with the top executives from the artificial intelligence industry on Sept 30 to discuss the technology's future. Anthropic CEO Dario Amodei is among the industry leaders participating in the event, which follows his visits to various Washington officials and a private meeting at the U.S. Capitol on Sept 29.\n\nSenate Majority Leader John Thune described his recent discussion with Amodei as a \"productive meeting,\" although the Anthropic executive refused to answer questions from reporters after leaving the Senate leader's office",
+          "title_vi": "CEO Anthropic Amodei tham gia cuộc họp cùng các nhà lãnh đạo AI khác với lãnh đạo Mỹ"
+        },
+        {
+          "id": "d557b6a9536639da0d941b4c0faa6d3fc4e06a6fb78f90ddac09c9e0065dc03d",
+          "title": "Meta Launches Muse for Small Business with Stripe and Slack Integrations",
+          "summary": "An updated suite of AI tools for entrepreneurs now supports a range of external applications for managing revenue and customer billing. Meta's AI agent, Muse, integrates with Stripe to allow users to update prices, create products, issue refunds, and analyze revenue trends. The assistant also connects to eight other productivity platforms, including Slack, QuickBooks, Asana, Canva, Dropbox, Figma, and Zoom, to execute actions across those ecosystems.\n\nThe expansion into the business market on Tuesday follows early user trends in which roughly a third of Muse users had already linked the AI to ",
+          "title_vi": "Meta ra mắt Muse cho doanh nghiệp nhỏ với tích hợp Stripe và Slack"
+        },
+        {
+          "id": "50d71cd52400f551c336b9ad5bff210544c56459b813f45adc29b8abfb63cfa4",
+          "title": "How we will do better for Australia",
+          "summary": "OpenAI apologizes for incidents involving Australian government websites and outlines stronger safeguards and support to strengthen Australia’s cyber defences.",
+          "title_vi": "Cách chúng tôi sẽ làm tốt hơn cho Úc"
+        }
+      ],
+      "reference": {
+        "bullets_en": [
+          {
+            "text": "Trump and Tech CEOs Align on Voluntary AI Regulation",
+            "item_ids": [
+              "0530838679a7fc67bdc57349ed10ed422a54514741a1ba7c5d878105eaf86075"
+            ]
+          },
+          {
+            "text": "UPDATE: Trump Rejects AI Governance Pact With China to Keep Tech Lead",
+            "item_ids": [
+              "d0e9d217980ab74e3043e2aad4650254071356f29b3441d5aad7383bf66f49b5"
+            ]
+          },
+          {
+            "text": "OpenAI Annual Revenue Hits Nearly $70B Following Enterprise Surge",
+            "item_ids": [
+              "9335f9a225f917ccbad9550496766019f9ac0e6abdb0d51866c942d63ac2ebe1"
+            ]
+          },
+          {
+            "text": "UPDATE: OpenAI Halts All Internal AI Training Following GPT-6.1 Cancellation",
+            "item_ids": [
+              "1bde3a72f2126a69ed9d9c93467b261460dfaa42db296f862ae484d997a01ea3"
+            ]
+          },
+          {
+            "text": "Trump Orders Every Federal Agency to Integrate With America.gov AI Portal",
+            "item_ids": [
+              "b14a1a94dfa89bd5d45d00245d953d77836b08eafa91d3593100e95842222734"
+            ]
+          },
+          {
+            "text": "Meta Launches Muse for Small Business with Stripe and Slack Integrations",
+            "item_ids": [
+              "d557b6a9536639da0d941b4c0faa6d3fc4e06a6fb78f90ddac09c9e0065dc03d"
+            ]
+          },
+          {
+            "text": "Anthropic Reveals $41.97B Net Loss in First IPO Filing",
+            "item_ids": [
+              "fd7d315fc519d3e1bf496c24b0fcbc000eb351f1748f0d2ad3a4351c3557bff1"
+            ]
+          },
+          {
+            "text": "UPDATE: Anthropic Releases Claude Sonnet 5.5, More Than 30% Faster and Up to 30% Cheaper Than Sonnet 5",
+            "item_ids": [
+              "c76b9e18844ff78c627c6a2358432c54f97f110d9456de81e38c00544eaab122"
+            ]
+          },
+          {
+            "text": "UPDATE: OpenAI Dots Agents Limit Muse Rival to Pro Tiers",
+            "item_ids": [
+              "98b45e32bc19b8f136bb8ad139ae8de1ccf6604f779d31eae5d536f4c58ade1f"
+            ]
+          },
+          {
+            "text": "UPDATE: Claude Opus 5.5 Debuts at No. 2 in Agent Arena at 64% Lower Cost Per Task",
+            "item_ids": [
+              "54a584b50c10ead2634337a6de773b6a3326dd1916a9f5fec6fdecb1eddc4e07"
+            ]
+          },
+          {
+            "text": "Anthropic's IPO prospectus shows AI vision, surging costs",
+            "item_ids": [
+              "4616c617defc43841dd0ad15bcd7ca80726b4e781b0059126f548a7c5219591b"
+            ]
+          },
+          {
+            "text": "UPDATE: Anthropic CEO Amodei Joins AI Executives for Meeting With US Leaders",
+            "item_ids": [
+              "cb80fe5e94507d1ed647ebc8301ab1a44988024bcb1c9bf18f9884204ed65694"
+            ]
+          },
+          {
+            "text": "AMD Acquires World Labs for $8.2B to Integrate Spatial AI",
+            "item_ids": [
+              "6442cf05e8e143e95452bd22e0ca03657858f05a6a88c0e30fabc2ffda94b680"
+            ]
+          },
+          {
+            "text": "Google Challenges 2 EU Orders to Open Android and Search Data",
+            "item_ids": [
+              "4167eb9b0054660a647997852291fd449a5680804b33db35cef47cca3c55471a"
+            ]
+          },
+          {
+            "text": "How we will do better for Australia",
+            "item_ids": [
+              "50d71cd52400f551c336b9ad5bff210544c56459b813f45adc29b8abfb63cfa4"
+            ]
+          },
+          {
+            "text": "Claude partial outage",
+            "item_ids": [
+              "4d8fd7a1021993485516f3ba7b50ccc304036fca5e59ce24649e07c43348990e"
+            ]
+          }
+        ],
+        "bullets_vi": [
+          {
+            "text": "Trump và CEO công nghệ cùng quan điểm về quy định AI tự nguyện",
+            "item_ids": [
+              "0530838679a7fc67bdc57349ed10ed422a54514741a1ba7c5d878105eaf86075"
+            ]
+          },
+          {
+            "text": "Cập nhật: Trump Từ chối Thỏa thuận Quản lý AI với Trung Quốc để Giữ Ưu thế Công nghệ",
+            "item_ids": [
+              "d0e9d217980ab74e3043e2aad4650254071356f29b3441d5aad7383bf66f49b5"
+            ]
+          },
+          {
+            "text": "Doanh thu hàng năm của OpenAI gần 70 tỷ USD sau sự tăng trưởng từ doanh nghiệp",
+            "item_ids": [
+              "9335f9a225f917ccbad9550496766019f9ac0e6abdb0d51866c942d63ac2ebe1"
+            ]
+          },
+          {
+            "text": "OpenAI tạm dừng toàn bộ huấn luyện AI nội bộ sau khi hủy GPT-6.1",
+            "item_ids": [
+              "1bde3a72f2126a69ed9d9c93467b261460dfaa42db296f862ae484d997a01ea3"
+            ]
+          },
+          {
+            "text": "Trump ra lệnh cho các cơ quan liên bang tích hợp với cổng AI America.gov",
+            "item_ids": [
+              "b14a1a94dfa89bd5d45d00245d953d77836b08eafa91d3593100e95842222734"
+            ]
+          },
+          {
+            "text": "Meta Ra Mắt Muse Dành Cho Doanh Nghiệp Nhỏ Với Tích Hợp Stripe Và Slack",
+            "item_ids": [
+              "d557b6a9536639da0d941b4c0faa6d3fc4e06a6fb78f90ddac09c9e0065dc03d"
+            ]
+          },
+          {
+            "text": "Anthropic tiết lộ lỗ ròng 41,97 tỷ USD trong hồ sơ đăng ký IPO đầu tiên",
+            "item_ids": [
+              "fd7d315fc519d3e1bf496c24b0fcbc000eb351f1748f0d2ad3a4351c3557bff1"
+            ]
+          },
+          {
+            "text": "Cập nhật: Anthropic ra mắt Claude Sonnet 5.5, nhanh hơn 30% và rẻ hơn tới 30% so với Sonnet 5",
+            "item_ids": [
+              "c76b9e18844ff78c627c6a2358432c54f97f110d9456de81e38c00544eaab122"
+            ]
+          },
+          {
+            "text": "OpenAI ra mắt Dots, agent mua sắm trực tuyến chỉ dành cho Pro",
+            "item_ids": [
+              "98b45e32bc19b8f136bb8ad139ae8de1ccf6604f779d31eae5d536f4c58ade1f"
+            ]
+          },
+          {
+            "text": "Cập nhật: Claude Opus 5.5 lọt top 2 Agent Arena, chi phí mỗi task giảm 64%",
+            "item_ids": [
+              "54a584b50c10ead2634337a6de773b6a3326dd1916a9f5fec6fdecb1eddc4e07"
+            ]
+          },
+          {
+            "text": "Tài liệu IPO của Anthropic tiết lộ tầm nhìn AI và chi phí tăng vọt",
+            "item_ids": [
+              "4616c617defc43841dd0ad15bcd7ca80726b4e781b0059126f548a7c5219591b"
+            ]
+          },
+          {
+            "text": "Cập nhật: CEO Anthropic Amodei tham gia cuộc họp cùng các nhà lãnh đạo AI khác với lãnh đạo Mỹ",
+            "item_ids": [
+              "cb80fe5e94507d1ed647ebc8301ab1a44988024bcb1c9bf18f9884204ed65694"
+            ]
+          },
+          {
+            "text": "AMD Mua Lại World Labs Với Giá 8,2 Tỷ USD Để Tích Hợp Spatial AI",
+            "item_ids": [
+              "6442cf05e8e143e95452bd22e0ca03657858f05a6a88c0e30fabc2ffda94b680"
+            ]
+          },
+          {
+            "text": "Google thách thức 2 quyết định EU mở dữ liệu Android và Search",
+            "item_ids": [
+              "4167eb9b0054660a647997852291fd449a5680804b33db35cef47cca3c55471a"
+            ]
+          },
+          {
+            "text": "Cách chúng tôi sẽ làm tốt hơn cho Úc",
+            "item_ids": [
+              "50d71cd52400f551c336b9ad5bff210544c56459b813f45adc29b8abfb63cfa4"
+            ]
+          },
+          {
+            "text": "Lỗi một phần của Claude",
+            "item_ids": [
+              "4d8fd7a1021993485516f3ba7b50ccc304036fca5e59ce24649e07c43348990e"
+            ]
+          }
+        ]
+      },
+      "labelSource": "silver:tldr_snapshots (published edition)"
+    }
+  ]
+}

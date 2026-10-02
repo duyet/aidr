@@ -1,0 +1,12 @@
+[
+  {
+    "id": "seed-agent-keep-english",
+    "kind": "keep_english",
+    "source_term": "agent",
+    "vi_term": null,
+    "bad_vi": "[\"đại lý\",\"đặc vụ\"]",
+    "note": "AI agent stays \"agent\"/\"agents\" in English; \"đại lý\" means sales agent and \"đặc vụ\" secret agent.",
+    "status": "active",
+    "hits": 0
+  }
+]

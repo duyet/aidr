@@ -15,6 +15,7 @@
     "gen:source-migration": "tsx scripts/gen-source-migration.ts",
     "verify:source-feeds": "tsx scripts/verify-source-feeds.ts",
     "bench": "tsx scripts/quality-bench.ts",
+    "model-bench": "tsx scripts/model-bench.ts",
     "test": "vitest run",
     "test:workerd:clerk-proxy": "tsx scripts/clerk-proxy-workerd-smoke.ts",
     "test:workerd:story-og": "tsx scripts/story-og-workerd-smoke.ts",
