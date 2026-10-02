@@ -2501,3 +2501,82 @@ describe("LLM call cost and request id", () => {
     ]);
   });
 });
+
+describe("translateItems draft repair", () => {
+  // The seeded open-weight rule (migration 0045), served by a stub D1.
+  const ruleRow = {
+    id: "seed-open-weight-keep-english",
+    kind: "keep_english",
+    source_term: "open-weight",
+    vi_term: null,
+    bad_vi: '["mở trọng lượng"]',
+    note: null,
+    status: "active",
+    hits: 0,
+  };
+  const withRules: Env = {
+    ...env,
+    DB: {
+      prepare: () => {
+        const stmt = {
+          bind: () => stmt,
+          all: async () => ({ results: [ruleRow] }),
+          first: async () => null,
+          run: async () => ({ meta: { changes: 0 } }),
+        };
+        return stmt;
+      },
+    } as unknown as D1Database,
+  };
+  const item = { i: 0, title: "Clef releases open-weight decision models" };
+  // Prod 2026-10-02 rendering of this headline.
+  const draft = "Clef ra mắt các mô hình quyết định mở trọng lượng";
+  const rows = (title: string) =>
+    chatResponse(JSON.stringify({ results: [{ i: 0, title, summary: "" }] }));
+
+  beforeEach(() => vi.restoreAllMocks());
+
+  it("sends the flagged draft back once with a fix list and keeps the fixed Vietnamese", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(rows(draft))
+      .mockResolvedValueOnce(
+        rows("Clef ra mắt các decision model open-weight")
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [out] = await translateItems(withRules, [item]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairPrompt = JSON.parse(fetchMock.mock.calls[1][1].body).messages[1]
+      .content as string;
+    expect(repairPrompt).toContain('"fix"');
+    expect(repairPrompt).toContain("mở trọng lượng");
+    expect(out.title).toBe("Clef ra mắt các decision model open-weight");
+  });
+
+  // An English echo of the source passes every term check; it must never
+  // replace a Vietnamese draft.
+  it("keeps the Vietnamese draft when the repair is the English source", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(rows(draft))
+      .mockResolvedValueOnce(rows(item.title));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [out] = await translateItems(withRules, [item]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(out.title).toBe(draft);
+  });
+
+  it("makes no repair call for a clean draft", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        rows("Clef ra mắt các decision model open-weight")
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await translateItems(withRules, [item]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

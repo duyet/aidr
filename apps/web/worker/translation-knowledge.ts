@@ -2,6 +2,7 @@ import { nn } from "./d1-bind.js";
 import { callAnyrouter, parseJson } from "./llm.js";
 import type { TranslationPair } from "./translation-review.js";
 import { escapePromptPayload } from "./translation-review.js";
+import { NON_AI_AGENT_RE } from "./translation-terms.js";
 import type { Env } from "./types.js";
 
 /**
@@ -240,8 +241,31 @@ export function knowledgeViolations(
     (rule) =>
       rule.status === "active" &&
       mentionsSourceTerm(source, rule.source_term) &&
-      rule.bad_vi.some((bad) => containsViPhrase(candidate, bad))
+      rule.bad_vi.reduce((n, bad) => n + countViPhrase(candidate, bad), 0) >
+        allowedBadHits(source, rule)
   );
+}
+
+/** Occurrences of a whole Vietnamese phrase, case-insensitive. */
+export function countViPhrase(text: string, phrase: string): number {
+  return (
+    text
+      .normalize("NFC")
+      .match(
+        new RegExp(
+          `(?<![\\p{L}\\p{M}\\p{N}])${escapeRegex(phrase)}(?![\\p{L}\\p{M}\\p{N}])`,
+          "giu"
+        )
+      )?.length ?? 0
+  );
+}
+
+/** Forbidden renderings the source itself licenses. Counted per occurrence,
+ *  so one AI "agent" kept in English does not excuse an "đại lý" elsewhere,
+ *  while "FBI agents" → "đặc vụ FBI" stays correct. */
+function allowedBadHits(source: string, rule: KnowledgeRule): number {
+  if (rule.source_term !== "agent") return 0;
+  return source.match(NON_AI_AGENT_RE)?.length ?? 0;
 }
 
 /** Counts a QA catch per rule, so admins can see which rules earn their

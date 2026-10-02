@@ -23,7 +23,16 @@ import {
   servedByJev,
 } from "./systemone.js";
 import { sanitizeError } from "./telemetry-safe.js";
-import { viSystemPrompt } from "./translation-knowledge.js";
+import {
+  acceptsRepair,
+  tldrBulletIssues,
+  translationDraftIssues,
+} from "./translation-draft-check.js";
+import {
+  type KnowledgeRule,
+  loadActiveRules,
+  viSystemPrompt,
+} from "./translation-knowledge.js";
 import {
   KEEP_ENGLISH_PROSE,
   keepVerbatimList,
@@ -109,7 +118,7 @@ export const CATEGORY_DEFINITIONS: Record<(typeof CATEGORIES)[number], string> =
  * alone rather than calqued. */
 const VI_STYLE = `You are a Vietnamese tech journalist writing AI/tech news for Vietnamese readers.
 
-Write natural, fluent Vietnamese, never a word-by-word translation. Rephrase freely so every sentence follows Vietnamese structure and rhythm.
+Write natural, fluent Vietnamese, never a word-by-word translation. Restructure each sentence to follow Vietnamese word order and rhythm, but keep every fact it states: rephrasing changes the wording, never the content.
 
 Keep in English: product and model names (GPT, Claude, Qwen), company names, benchmark names, and the industry jargon Vietnamese readers already use in English — ${KEEP_ENGLISH_PROSE}. Mixed English/Vietnamese prose is expected. Do translate terms with a settled Vietnamese equivalent, e.g. open-source becomes mã nguồn mở.
 
@@ -119,11 +128,11 @@ NEVER translate word-by-word (calque). Read the whole sentence, then restate the
 
 Prefer everyday Vietnamese over stiff Sino-Vietnamese formalese when both exist and mean the same thing: "dùng" over "sử dụng" where it reads naturally, "hãng" or "công ty" over "tập đoàn" for an ordinary company, "mở" over "tiến hành mở". Formal Sino-Vietnamese isn't wrong, but reach for it only when the everyday word would sound too casual for the fact being reported.
 
-Numbers and units follow Vietnamese press style: "2,5 tỷ USD" not "2.5 billion USD", "300 triệu người dùng" not "300 million users" — translate the unit word, keep the digits, use Vietnamese decimal comma.
+Numbers and units follow Vietnamese press style: "2,5 tỷ USD" not "2.5 billion USD", "300 triệu người dùng" not "300 million users" — translate the unit word, keep the digits, use Vietnamese decimal comma. Magnitudes map exactly: B / bn / billion = tỷ, M / mn / million = triệu, T / trillion = nghìn tỷ. "$20B" is "20 tỷ USD", never "20 triệu USD". A model size such as "7B" or "235B" stays as written.
 
 Keep sentence subjects light: drop a pronoun or restated noun where Vietnamese naturally omits it across clauses (don't repeat "công ty này" every clause when context already carries it).
 
-Headlines: punchy and information-dense like Vietnamese tech press, but never clickbait — no teaser phrasing that withholds the actual news ("điều bất ngờ", "không thể tin nổi").
+Headlines: punchy and information-dense like Vietnamese tech press, but never clickbait — no teaser phrasing that withholds the actual news ("điều bất ngờ", "không thể tin nổi"). Use sentence case: capitalize only the first word and proper names, even when the English headline is in Title Case ("Nscale huy động 3,36 tỷ USD trước khi niêm yết trên NYSE", not "Nscale Huy Động 3,36 Tỷ USD Trước Khi Niêm Yết Trên NYSE").
 
 Example 1 — bad (parenthetical gloss + calque + robotic rhythm):
 "Các thử nghiệm trên bầy (swarm) Claude agent đã ghi nhận những lỗi phối hợp, hành vi thông đồng ngầm và phá hoại lẫn nhau."
@@ -132,7 +141,7 @@ Example 1 — good (English term kept plain, active verbs, natural flow):
 
 Example 2 — bad (calqued noun phrase, bureaucratic filler):
 "Công ty đã thực hiện việc ra mắt một mô hình mới với hiệu suất được cải thiện."
-Example 2 — good (concrete verb, trimmed):
+Example 2 — good (concrete verb, filler removed, every fact kept):
 "Công ty vừa ra mắt mô hình mới, hiệu suất được cải thiện rõ rệt."
 
 Example 3 — bad (over-formal Sino-Vietnamese where everyday words fit fine):
@@ -149,6 +158,15 @@ Example 5 — bad (one long stiff sentence, English clause order preserved):
 "Startup này, được thành lập vào năm 2023 bởi một nhóm cựu kỹ sư của OpenAI và đã huy động được 500 triệu USD, hiện đang mở rộng sang thị trường châu Á sau khi ra mắt sản phẩm mới."
 Example 5 — good (split into two, subject carried lightly):
 "Startup này do một nhóm cựu kỹ sư OpenAI thành lập năm 2023, đã huy động 500 triệu USD. Sau khi ra mắt sản phẩm mới, công ty đang mở rộng sang thị trường châu Á."
+
+Never calque these (bad → good):
+- "open-weight models" → "mô hình mở trọng lượng" ✗ → "mô hình open-weight" ✓
+- "decision models" → "mô hình quyết định" ✗ → "decision model" ✓
+- "AI agents" → "đại lý AI" / "đặc vụ AI" ✗ → "AI agent" ✓
+- "evaluation harness" → "dây chuyền đánh giá" ✗ → "harness đánh giá" ✓
+- "US hyperscalers" → "các cường thị trường Mỹ" ✗ → "các hyperscaler Mỹ" ✓
+- "training loss" → "mất mát huấn luyện" ✗ → "loss khi huấn luyện" ✓
+Proofread every Vietnamese word: no misspelled or invented words ("thỏa thúc", "công tắt"), and no English words left half-translated.
 
 Titles: concise headline style, viết hoa chữ cái đầu câu như báo chí Việt Nam, never ALL CAPS.
 Summaries: complete, natural sentences.`;
@@ -1465,20 +1483,40 @@ function clipSummary(summary: string | undefined): string | undefined {
   return (space > 400 ? slice.slice(0, space) : slice).trim();
 }
 
-function translatePrompt(batch: TranslateInput[], titlesOnly: boolean): string {
-  const items = batch.map(({ i, title, summary }) => {
-    const body =
-      titlesOnly || summary === undefined
-        ? undefined
-        : clipSummary(stripSourceBoilerplate(summary));
+/** The text the generator actually sees, so the draft check measures the
+ * translation against the same (stripped, clipped) source. */
+function sentSource(
+  item: TranslateInput,
+  titlesOnly: boolean
+): { title: string; summary: string | undefined } {
+  const summary =
+    titlesOnly || item.summary === undefined
+      ? undefined
+      : clipSummary(stripSourceBoilerplate(item.summary));
+  return { title: item.title, summary };
+}
+
+function translatePrompt(
+  batch: TranslateInput[],
+  titlesOnly: boolean,
+  fixes?: ReadonlyMap<number, string[]>
+): string {
+  const items = batch.map((item) => {
+    const { i } = item;
+    const { title, summary: body } = sentSource(item, titlesOnly);
     // The QA guard demands these back verbatim (translation-terms.ts).
     const keep = keepVerbatimList({ title, summary: body ?? "" });
     const fields = titlesOnly ? { i, title } : { i, title, summary: body };
-    return keep.length > 0 ? { ...fields, keep } : fields;
+    const fix = fixes?.get(i);
+    return {
+      ...fields,
+      ...(keep.length > 0 ? { keep } : {}),
+      ...(fix && fix.length > 0 ? { fix } : {}),
+    };
   });
   return `Translate these AI/tech news items into Vietnamese.
 
-Translate every sentence of each summary: do not shorten, summarize, or add facts, opinions, or context the source does not state. Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English.
+Translate every sentence of each summary: do not shorten, summarize, or add facts, opinions, or context the source does not state. A complete Vietnamese summary is about as long as the English one, at least 80% of its length. Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English. An item with a "fix" list was translated before and broke those rules; translate it again and fix every one.
 
 Items:
 ${JSON.stringify(items)}
@@ -1506,7 +1544,8 @@ async function translateBatch(
   env: Env,
   batch: TranslateInput[],
   timeoutMs: number,
-  titlesOnly: boolean
+  titlesOnly: boolean,
+  fixes?: ReadonlyMap<number, string[]>
 ): Promise<TranslateResult[]> {
   const system = await viSystemPrompt(
     env,
@@ -1517,7 +1556,7 @@ async function translateBatch(
     env,
     [
       { role: "system", content: system },
-      { role: "user", content: translatePrompt(batch, titlesOnly) },
+      { role: "user", content: translatePrompt(batch, titlesOnly, fixes) },
     ],
     {
       json: true,
@@ -1546,6 +1585,77 @@ async function translateBatch(
   );
 }
 
+/** Under this much budget a repair call would only starve later batches. */
+const TRANSLATE_REPAIR_MIN_MS = 25_000;
+
+/** One repair pass over the drafts the deterministic check flags
+ * (translation-draft-check.ts). A repaired row replaces its draft only when
+ * it has fewer issues, so a worse retry never overwrites a usable draft. */
+async function repairDrafts(
+  env: Env,
+  batch: TranslateInput[],
+  rows: TranslateResult[],
+  titlesOnly: boolean,
+  rules: KnowledgeRule[],
+  timeoutMs: number
+): Promise<TranslateResult[]> {
+  const byIndex = new Map(batch.map((item) => [item.i, item]));
+  const issuesOf = (row: TranslateResult): string[] => {
+    const item = byIndex.get(row.i);
+    if (!item) return [];
+    const sent = sentSource(item, titlesOnly);
+    return translationDraftIssues(
+      { title: sent.title, summary: sent.summary ?? "" },
+      row,
+      rules,
+      sent.summary === undefined
+    );
+  };
+  const fixes = new Map<number, string[]>();
+  for (const row of rows) {
+    const issues = issuesOf(row);
+    if (issues.length > 0) fixes.set(row.i, issues);
+  }
+  if (fixes.size === 0 || timeoutMs < TRANSLATE_REPAIR_MIN_MS) return rows;
+  const flagged = batch.filter((item) => fixes.has(item.i));
+  console.log(
+    JSON.stringify({
+      event: "translateItems.draft_repair",
+      indexes: [...fixes.keys()],
+      issues: [...fixes.values()].flat().slice(0, 10),
+    })
+  );
+  let repaired: TranslateResult[];
+  try {
+    repaired = await translateBatch(env, flagged, timeoutMs, titlesOnly, fixes);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    logTranslateBatchFailed(`draft repair: ${reason}`, flagged, titlesOnly);
+    return rows;
+  }
+  const drafts = new Map(rows.map((row) => [row.i, row]));
+  const better = new Map(
+    repaired
+      .filter((row) => {
+        const draft = drafts.get(row.i);
+        return (
+          draft !== undefined &&
+          acceptsRepair(
+            [draft.title, draft.summary],
+            [row.title, row.summary],
+            fixes.get(row.i)?.length ?? 0,
+            issuesOf(row).length
+          )
+        );
+      })
+      .map((row) => [row.i, row])
+  );
+  return rows.map((row) => {
+    const fixed = better.get(row.i);
+    return fixed ? { ...fixed, tokens: row.tokens + fixed.tokens } : row;
+  });
+}
+
 export async function translateItems(
   env: Env,
   items: TranslateInput[]
@@ -1553,6 +1663,8 @@ export async function translateItems(
   const results: TranslateResult[] = [];
   const deadline = Date.now() + TRANSLATE_TIMEOUT_MS;
   const needLlm: TranslateInput[] = [];
+  // Loaded once for every batch's draft check; never throws.
+  const rules = loadActiveRules(env);
 
   for (const item of items) {
     if (item.sourceLang === "vi") {
@@ -1581,11 +1693,19 @@ export async function translateItems(
       return [];
     }
     try {
-      return await translateBatch(
+      const rows = await translateBatch(
         env,
         batch,
         Math.min(TRANSLATE_BATCH_TIMEOUT_MS, remaining),
         titlesOnly
+      );
+      return await repairDrafts(
+        env,
+        batch,
+        rows,
+        titlesOnly,
+        await rules,
+        Math.min(TRANSLATE_BATCH_TIMEOUT_MS, deadline - Date.now())
       );
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -1787,6 +1907,89 @@ ${JSON.stringify(items)}
 Respond with strict JSON only: ${shape}`;
 }
 
+/** A bullet repair needs one short call; skip it rather than eat the
+ * budget the EN-only retry and the snapshot write depend on. */
+const TLDR_REPAIR_MIN_MS = 30_000;
+const TLDR_REPAIR_MAX_MS = 45_000;
+
+/** One repair call for Vietnamese bullets the draft check flags (calques,
+ * wrong magnitudes). A fixed bullet replaces the original only when it has
+ * fewer issues; any failure keeps the originals. */
+async function repairTldrViBullets(
+  env: Env,
+  bullets: TldrBullet[],
+  items: TldrItem[],
+  rules: KnowledgeRule[],
+  system: string,
+  timeoutMs: number
+): Promise<{ bullets: TldrBullet[]; tokens: number }> {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const sourceOf = (bullet: TldrBullet): string =>
+    bullet.item_ids
+      .map((id) => byId.get(id))
+      .filter((item): item is TldrItem => Boolean(item))
+      .map((item) => `${item.title}\n${item.summary ?? ""}`)
+      .join("\n");
+  const flagged = bullets
+    .map((bullet, i) => ({
+      i,
+      text: bullet.text,
+      fix: tldrBulletIssues(sourceOf(bullet), bullet.text, rules),
+    }))
+    .filter((entry) => entry.fix.length > 0);
+  if (flagged.length === 0 || timeoutMs < TLDR_REPAIR_MIN_MS) {
+    return { bullets, tokens: 0 };
+  }
+  try {
+    const { content, tokens } = await callAnyrouter(
+      env,
+      [
+        { role: "system", content: system },
+        {
+          role: "user",
+          content: `Fix these Vietnamese TL;DR bullets. Each "fix" list names the rules a bullet broke. Change only what the fix list requires; keep every fact and the bullet's length.
+
+Bullets:
+${JSON.stringify(flagged)}
+
+Respond with strict JSON only: {"bullets":[{"i":0,"text":"..."}]}`,
+        },
+      ],
+      {
+        json: true,
+        modelSpec: env.ANYROUTER_TRANSLATE_MODEL,
+        task: "tldr",
+        timeoutMs: Math.min(timeoutMs, TLDR_REPAIR_MAX_MS),
+        maxSliceMs: TRANSLATE_SLICE_MAX_MS,
+        maxTokens: TRANSLATE_MAX_TOKENS,
+      }
+    );
+    const parsed = parseJson<{ bullets?: unknown }>(content).bullets;
+    const out = [...bullets];
+    for (const entry of Array.isArray(parsed) ? parsed : []) {
+      const e = entry as { i?: unknown; text?: unknown };
+      const i = Number(e.i);
+      const was = flagged.find((f) => f.i === i);
+      if (!was || typeof e.text !== "string" || !e.text.trim()) continue;
+      const text = e.text.trim();
+      if (
+        acceptsRepair(
+          [was.text],
+          [text],
+          was.fix.length,
+          tldrBulletIssues(sourceOf(bullets[i]), text, rules).length
+        )
+      ) {
+        out[i] = { ...bullets[i], text };
+      }
+    }
+    return { bullets: out, tokens };
+  } catch (error) {
+    console.error("generateTldr VI bullet repair failed:", error);
+    return { bullets, tokens: 0 };
+  }
+}
+
 export async function generateTldr(
   env: Env,
   items: TldrItem[]
@@ -1845,10 +2048,18 @@ export async function generateTldr(
       totalTokens += tokens;
       const result = normalizeTldrResult(parseJson<unknown>(raw));
       if (result.bullets_en.length > 0 || result.bullets_vi.length > 0) {
+        const repaired = await repairTldrViBullets(
+          env,
+          sanitizeBulletIds(result.bullets_vi, items),
+          items,
+          await loadActiveRules(env),
+          viSystem,
+          deadline - Date.now()
+        );
         return {
           bullets_en: sanitizeBulletIds(result.bullets_en, items),
-          bullets_vi: sanitizeBulletIds(result.bullets_vi, items),
-          tokens: totalTokens,
+          bullets_vi: repaired.bullets,
+          tokens: totalTokens + repaired.tokens,
         };
       }
       lastError = `attempt ${attempt}/${ATTEMPTS} returned no bullets`;

@@ -41,6 +41,16 @@ describe("protected English terms", () => {
     );
   });
 
+  it("keeps model-type jargon so 'open weight' never becomes 'mở trọng lượng'", () => {
+    const { jargon } = extractProtectedTerms({
+      title: "Clef: open weight decision model and new RL fine-tuning platform",
+      summary: "",
+    });
+    expect(jargon).toEqual(
+      expect.arrayContaining(["open-weight", "decision model", "fine-tun"])
+    );
+  });
+
   it("does not demand 'agent' for law-enforcement agents", () => {
     const { jargon } = extractProtectedTerms({
       title:

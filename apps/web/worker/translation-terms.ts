@@ -16,15 +16,34 @@ export const KEEP_ENGLISH_TERMS = [
   "benchmark",
   "token",
   "open-weight",
+  "decision model",
+  "reasoning model",
+  "foundation model",
+  "world model",
+  "context window",
+  "guardrail",
+  "jailbreak",
+  "harness",
+  "hyperscaler",
+  "rollout",
+  "exploit",
+  "kill switch",
+  "red-team",
+  "sandbox",
+  "frontier model",
   "prompt",
   "chatbot",
   "swarm",
   "embedding",
 ] as const;
 
+/** Matched as whole words (plural allowed), not stems: the verb forms
+ * "harnessing" and "exploited" are ordinary English a journalist translates. */
+const WHOLE_WORD_TERMS = new Set<string>(["harness", "exploit"]);
+
 /** Prose form used in VI_STYLE. */
 export const KEEP_ENGLISH_PROSE =
-  "fine-tune, benchmark, agent, agentic, token, open-weights, prompt, chatbot, embedding, LLM, GPU, AI, swarm, multi-agent";
+  "fine-tune, benchmark, agent, agentic, token, open-weights, decision model, reasoning model, foundation model, world model, reinforcement learning (or RL), context window, guardrail, jailbreak, harness, hyperscaler, rollout, exploit, kill switch, red-teaming, sandbox, frontier model, MoE, prompt, chatbot, embedding, LLM, GPU, AI, swarm, multi-agent";
 
 /** Capitalized words a Vietnamese journalist correctly translates: places,
  * demonyms, calendar words, and English function words that open a sentence
@@ -197,16 +216,20 @@ function escapeRegex(text: string): string {
 }
 
 /** Word-bounded, case-insensitive. A stem may be followed by more letters
- * (agent → agents/agentic, fine-tun → fine-tuning). */
+ * (agent → agents/agentic, fine-tun → fine-tuning). Spaces and hyphens in a
+ * stem are interchangeable ("open weights" ⇔ "open-weight"). */
 function hasWord(text: string, word: string, stem: boolean): boolean {
   const tail = stem ? "[\\p{L}-]*" : "(?:s|es|'s|’s)?";
+  const body = stem
+    ? word.split(/[- ]/).map(escapeRegex).join("[- ]?")
+    : escapeRegex(word);
   return new RegExp(
-    `(?<![\\p{L}\\p{N}])${escapeRegex(word)}${tail}(?![\\p{L}\\p{N}])`,
+    `(?<![\\p{L}\\p{N}])${body}${tail}(?![\\p{L}\\p{N}])`,
     "iu"
   ).test(text);
 }
 
-const NON_AI_AGENT_RE =
+export const NON_AI_AGENT_RE =
   /\b(?:federal|fbi|secret|special|border|customs|immigration|free|travel|real[- ]estate|sports)\s+agents?\b/gi;
 
 const WORD_RE = /[A-Za-z][A-Za-z0-9]*(?:[.'’-][A-Za-z0-9]+)*/g;
@@ -393,7 +416,7 @@ export function extractProtectedTerms(source: {
     hasWord(
       term === "agent" ? text.replace(NON_AI_AGENT_RE, "") : text,
       term,
-      true
+      !WHOLE_WORD_TERMS.has(term)
     )
   );
   return {
@@ -445,7 +468,8 @@ export function missingProtectedTerms(
   return {
     names: terms.names.filter((name) => !hasName(text, coreOfCompound(name))),
     jargon: terms.jargon.filter(
-      (term) => !hasWord(text, coreOfCompound(term), true)
+      (term) =>
+        !hasWord(text, coreOfCompound(term), !WHOLE_WORD_TERMS.has(term))
     ),
   };
 }
@@ -458,6 +482,8 @@ export function keepVerbatimList(source: {
   const terms = extractProtectedTerms(source);
   return [
     ...terms.names,
-    ...terms.jargon.map((t) => (t === "fine-tun" ? "fine-tune" : t)),
+    ...terms.jargon.map((t) =>
+      t === "fine-tun" ? "fine-tune" : t === "red-team" ? "red-teaming" : t
+    ),
   ];
 }

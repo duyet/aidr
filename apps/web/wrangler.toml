@@ -110,12 +110,24 @@ ANYROUTER_ENGLISH_TRANSLATE_MODEL = "poolside/laguna-s-2.1"
 #   z-ai/glm-4.6                      9-10s / 11-12s, 3 of 3; prod route
 #                                     column records upstream glm-5.3-flash
 #   z-ai/glm-5.2                      10s / 11-12s, 3 of 3
+#   stealth/space-bunny-alpha         15s total, 1 of 3 inside the 30s
+#                                     slice (2026-10-02 requestReview)
 # Removed: inclusionai/ling-3.0-flash-sante (no response_format: 404
 # unsupported_parameters under require_parameters; prod invalid_response 5 of
 # 5 at the 1024-token cap). z-ai/glm-5.3-flash and z-ai/glm-4.5 502
-# upstream_exhausted 3 of 3; stealth/space-bunny-alpha 13s first token and
-# reasoning-only 1 of 3.
-ANYROUTER_REVIEW_MODEL = "z-ai/glm-4.6,z-ai/glm-5.2"
+# upstream_exhausted 3 of 3. (space-bunny was dropped earlier for 13s first
+# token and reasoning-only 1 of 3; it is back only as the fallback below.)
+# 2026-10-02: the 7-day review_failed spike (364x 404) came from the old
+# grok-4.7 / glm-5.3-flash / llama-3.3 chains (09-25..10-01). glm-4.6 then
+# reviewed 64/71 ok in prod until 08:31 UTC; from ~08:40 every z-ai id
+# (4.6, 4.7, 5.1, 5.2, glm-latest) returns 404 model_unavailable (BYOK-only)
+# on this key. Probed requestReview on 3-4 fixture pairs: space-bunny-alpha
+# 1/3 in the 30s slice (others time out); deepseek-v4.1-flash 404;
+# laguna-xs-2.1 invalid JSON 4/4; ling-3.0-flash-sante fails accept 3/4;
+# longcat-2.5-preview and nemotron-3.5-lightning time out 4/4. glm-4.6 stays
+# first (a 404 fails in ~2s) so a Z.ai BYOK key restores it; space-bunny is
+# the only non-BYOK fallback disjoint from the translate chain.
+ANYROUTER_REVIEW_MODEL = "z-ai/glm-4.6,stealth/space-bunny-alpha"
 # Canonical catalog id typesafe/jev (upstream alias jev-latest). System One
 # only: score judgments and review gates try it first; the chat chain above
 # is the backup. BYOK-only — Dashboard → BYOK → TypeSafe. Never add this id

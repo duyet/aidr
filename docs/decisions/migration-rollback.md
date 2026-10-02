@@ -180,6 +180,15 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
 - Rollback: redeploy the previous Worker, then
   `DROP TABLE clerk_verified_emails;`
 
+## 0045_translation_knowledge_seed_terms.sql
+
+- Change: seeds nine active `translation_knowledge` rules (keep-English
+  calques and preferred institution names) with `INSERT OR IGNORE`.
+- Risk: the rules feed the VI glossary and the draft/review checks, so a bad
+  rule triggers repairs; it never blocks a translation.
+- Rollback: `DELETE FROM translation_knowledge WHERE id LIKE 'seed-%' AND id != 'seed-agent-keep-english';`
+  (or set `status = 'disabled'` on one rule from the admin knowledge view).
+
 ## 0044_ai_sources_and_aggregator_caps.sql
 
 Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
