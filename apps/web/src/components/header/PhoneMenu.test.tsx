@@ -381,7 +381,7 @@ describe("mobile action sizing", () => {
       "Telegram Channel (Vietnamese)",
       "Telegram Channel (English)",
       "Email Subscription",
-      "Submit",
+      "Contribute",
       "Data Analytics",
       "Algorithms",
       "About",
