@@ -15,7 +15,7 @@ export const IMPORTANCE_BANDS = [
   {
     range: "1-3",
     meaning:
-      "minor, tangential, or promotional (tutorials, small releases, opinion, off-topic)",
+      "minor, tangential, or promotional: tutorials and how-to guides, weekly roundups and newsletters, small library or tool releases, opinion essays, gossip, off-topic",
   },
 ] as const;
 

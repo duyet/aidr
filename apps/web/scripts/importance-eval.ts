@@ -5,10 +5,11 @@
  * scoring code and compares each path against a hand-assigned expected band.
  *
  * Usage (from apps/web):
- *   pnpm exec tsx scripts/importance-eval.ts --out <file.json> [--paths jev,chat] [--limit N]
+ *   pnpm exec tsx scripts/importance-eval.ts --out <file.json> [--paths decision,jev,chat] [--limit N]
  *   pnpm exec tsx scripts/importance-eval.ts --compare <before.json> <after.json>
  *
- * One Jev call per item plus one chat call per 10 items. Reads
+ * One System One call per item per path (`decision` is `anyrouter/decision`,
+ * `jev` is `typesafe/jev`) plus one chat call per 10 items. Reads
  * ANYROUTER_API_KEY from the repo-root `.env.local`; never prints it.
  * Expected bands were written before any model run and are the reference,
  * not the old production scores (the chat era scored almost everything 6-9).
@@ -28,6 +29,7 @@ import {
   jevScoreQuestions,
   type SystemOneAnswer,
   scoreJudgmentFromJev,
+  servedByJev,
 } from "../worker/systemone";
 import type { Env } from "../worker/types";
 
@@ -48,6 +50,7 @@ interface EvalRow {
   publishedImportance: number;
   jev: number | null;
   jevRaw: SystemOneAnswer | null;
+  decision?: number | null;
   chat: number | null;
 }
 
@@ -98,11 +101,21 @@ function toInput(item: FixtureItem, i: number): ScoreInput {
   return { i, title: item.title, summary: item.summary, source: item.source };
 }
 
-async function scoreJev(env: Env, items: FixtureItem[]) {
+async function scoreSystemOne(env: Env, items: FixtureItem[], model: string) {
   const questions = jevScoreQuestions(CATEGORIES);
   return mapLimit(items, 5, async (item) => {
-    const res = await callSystemOne(env, toInput(item, 0), questions, "score");
+    const res = await callSystemOne(
+      env,
+      toInput(item, 0),
+      questions,
+      "score",
+      model
+    );
     if (!res) return { score: null, raw: null };
+    // Same guard as production: a router answer from a non-Jev decider is a miss.
+    if (model !== "typesafe/jev" && !servedByJev(res)) {
+      return { score: null, raw: null };
+    }
     const judgment = scoreJudgmentFromJev(res.answers, CATEGORIES);
     return {
       score: judgment?.importance ?? null,
@@ -140,12 +153,24 @@ function inBand(score: number | null, [lo, hi]: [number, number]): boolean {
   return score !== null && Math.round(score) >= lo && Math.round(score) <= hi;
 }
 
+/** Distance from the expected band (0 inside it). */
+function bandError(score: number, [lo, hi]: [number, number]): number {
+  return score < lo ? lo - score : score > hi ? score - hi : 0;
+}
+
 function summarize(label: string, scores: (number | null)[], rows: EvalRow[]) {
   const vals = scores.filter((s): s is number => s !== null);
   const hist = new Array(11).fill(0);
   for (const v of vals) hist[Math.round(v)]++;
   const hits = rows.filter((r, i) => inBand(scores[i] ?? null, r.expectedBand));
   const avg = vals.reduce((a, b) => a + b, 0) / Math.max(1, vals.length);
+  const errs = rows.flatMap((r, i) => {
+    const s = scores[i];
+    return s === null || s === undefined ? [] : [bandError(s, r.expectedBand)];
+  });
+  const mae = errs.length
+    ? Number((errs.reduce((a, b) => a + b, 0) / errs.length).toFixed(2))
+    : null;
   return {
     label,
     n: vals.length,
@@ -154,6 +179,7 @@ function summarize(label: string, scores: (number | null)[], rows: EvalRow[]) {
     high: vals.filter((v) => Math.round(v) >= 7).length,
     top: vals.filter((v) => Math.round(v) >= 9).length,
     bandAgreement: `${hits.length}/${rows.length}`,
+    mae,
     hist: hist.join(" "),
   };
 }
@@ -163,6 +189,11 @@ function report(rows: EvalRow[], tag: string) {
     summarize(
       `${tag} published`,
       rows.map((r) => r.publishedImportance),
+      rows
+    ),
+    summarize(
+      `${tag} decision`,
+      rows.map((r) => r.decision ?? null),
       rows
     ),
     summarize(
@@ -189,9 +220,13 @@ async function run() {
   if (!out) throw new Error("--out <file.json> is required");
   const env = readEnv();
 
+  const skip = items.map(() => ({ score: null, raw: null }));
+  const decision = paths.includes("decision")
+    ? await scoreSystemOne(env, items, "anyrouter/decision")
+    : skip;
   const jev = paths.includes("jev")
-    ? await scoreJev(env, items)
-    : items.map(() => ({ score: null, raw: null }));
+    ? await scoreSystemOne(env, items, "typesafe/jev")
+    : skip;
   const chat = paths.includes("chat")
     ? await scoreChat(env, items)
     : items.map(() => null);
@@ -202,6 +237,7 @@ async function run() {
     publishedImportance: item.publishedImportance,
     jev: jev[i]?.score ?? null,
     jevRaw: jev[i]?.raw ?? null,
+    decision: decision[i]?.score ?? null,
     chat: chat[i] ?? null,
   }));
   writeFileSync(out, JSON.stringify(rows, null, 2));

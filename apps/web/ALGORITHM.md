@@ -5,9 +5,25 @@ bilingual feed.
 
 - [Overview](#overview)
 - [Scheduling & coalesce](#scheduling--coalesce)
+- [Audience metrics (GA4 snapshot)](#audience-metrics-ga4-snapshot)
 - [Ingest HTTP / D1 contract](#ingest-http--d1-contract)
+- [Dry runs, reruns and previews (admin / MCP)](#dry-runs-reruns-and-previews-admin--mcp)
 - [Ops pitfalls](#ops-pitfalls)
 - [Pipeline (per hourly run)](#pipeline-per-hourly-run)
+  - [1. Fetch](#1-fetch)
+  - [1b. Per-source health + staleness](#1b-per-source-health--staleness)
+  - [2. Dedupe](#2-dedupe)
+  - [3. Enrich](#3-enrich)
+  - [4. Score (decision router, then Jev, then LLM)](#4-score-decision-router-then-jev-then-llm)
+  - [5. Merge (LLM + title similarity)](#5-merge-llm--title-similarity)
+  - [6. Translate (LLM)](#6-translate-llm)
+  - [7. Rank (pure code, `worker/ranking.ts`)](#7-rank-pure-code-workerrankingts)
+  - [8. Write](#8-write)
+  - [9. Backfill](#9-backfill)
+  - [10. TL;DR (LLM)](#10-tldr-llm)
+  - [11. Email digest](#11-email-digest)
+  - [12. Notify (`worker/notify/`)](#12-notify-workernotify)
+  - [13. Review gates (LLM, rating ≥ 0.6)](#13-review-gates-llm-rating--06)
 - [LLM transport](#llm-transport)
 - [Note on "system prompt"](#note-on-system-prompt)
 
@@ -189,511 +205,569 @@ Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>
 
 ## Pipeline (per hourly run)
 
-1. **Fetch** — each enabled source row (`sources` table) maps to an adapter
-   (`worker/sources/registry.ts`): HN via Algolia (AI-keyword pre-filter; `popularMinPoints` adds a
-   points-range search),
-   HuggingNews via its `__data.json` (+ per-story detail for body/sources),
-   Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default; broad
-   `filteredTags` such as `programming` keep only AI-keyword titles),
-   generic RSS (`openai`, `google-ai`, `hf-blog` feeds), Anthropic Newsroom
-   HTML (`/news` listing — no official RSS), xAI News via sitemap
-   (`https://x.ai/sitemap.xml` `/news/<slug>` locs + `/news` listing titles),
-   MarketBrief AI hub via `/{topic}/__data.json` (default topic `ai`;
-   war/politics stay out). Extra RSS: `deepmind`, `aws-ml`, `google-dev`.
+### 1. Fetch
 
-   The set of sources is **declarative**: one list in
-   `worker/sources/catalog.ts` generates the runtime seed, the migration, and
-   the `/api/system/sources` + `/data` surfaces, so a source cannot reach one
-   and miss the others. An operator can also add or enable an `rss` row at
-   runtime through `upsert_source` with no deploy — see
-   [`worker/README.md`](worker/README.md) → "Add a source without a deploy".
+Each enabled source row (`sources` table) maps to an adapter
+(`worker/sources/registry.ts`): HN via Algolia (AI-keyword pre-filter; `popularMinPoints` adds a
+points-range search),
+HuggingNews via its `__data.json` (+ per-story detail for body/sources),
+Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default; broad
+`filteredTags` such as `programming` keep only AI-keyword titles),
+generic RSS (`openai`, `google-ai`, `hf-blog` feeds), Anthropic Newsroom
+HTML (`/news` listing — no official RSS), xAI News via sitemap
+(`https://x.ai/sitemap.xml` `/news/<slug>` locs + `/news` listing titles),
+MarketBrief AI hub via `/{topic}/__data.json` (default topic `ai`;
+war/politics stay out). Extra RSS: `deepmind`, `aws-ml`, `google-dev`,
+plus lab/vendor blogs and newsletters added in migration 0044 (`mistral`,
+`nvidia-blog`, `nvidia-dev`, `microsoft-research`, `apple-ml`,
+`together-ai`, `github-ai`, `latent-space`, `interconnects`, `import-ai`,
+`bens-bites`, `ahead-of-ai`; broad feeds use `keywordFilter: "ai"`, each
+has a 2–4 `maxItems` cap).
 
-   - **Flood gate.** A high-volume feed is cut before the scorer sees it, in
-     this order: an optional named title pre-filter (`keywordFilter: "ai"`,
-     the same regex HN uses), then a hard newest-first `maxItems` cap applied
-     after the since-window filter. The Vietnamese newsroom and the four AI
-     newsrooms are capped at 6 items per run each. Newest-first is what makes
-     the cap safe: the 26h window means the head of the feed at the next run
-     is exactly what was published since the last one, so the cap samples the
-     live edge and dedupe drops the rest.
-   - **Feed share cap.** The flood gate only bounds new rows, and a source
-     without `maxItems` (e.g. `marketbrief`) can still dominate. `getFeed`
-     (`src/lib/feed-queries.ts`, `capSourceShare`) therefore also keeps each
-     source family's top-`rank_score` rows so none exceeds 25% of the served
-     feed (skipped below 4 distinct families; family as in the top-list cap
-     below, so the mirrored aggregators share one 25%). It runs at read time, so historic
-     rows are covered.
-   - **Top-list family cap.** The short ranked lists — homepage top stories
-     (`PUBLIC_STORY_LIMIT`), the TL;DR's 16 and the trending pick — go
-     through `pickDiverse` (`worker/source-diversity.ts`): at most
-     `ceil(0.3 × list size)` rows per source *family* (8 → 3, 16 → 5). A
-     family is `SourceSpec.family` in the catalog, else the source id;
-     `huggingnews` and `marketbrief` share `aggregator` because they publish
-     the same stories under the same slugs (they held 47 of the 24h top 50 on
-     2026-10-01). Each list reads a wider ranked pool (homepage 120 rows,
-     TL;DR the whole 24h window up to 300) so the cap has other stories to
-     take; if the pool still runs short, the best skipped rows fill the tail
-     rather than shrinking the list. Trending counts families across the
-     local day (today's sent posts seed the count, 1 per family while
-     another family qualifies); when only one family qualifies it still
-     posts.
-   - **Host pacing.** A row may set `minRequestIntervalMs` to serialise
-     same-host fetches; the first request to a host is never delayed.
-   - **Explicit source language.** A row with `sourceLang: "vi"` puts its
-     items on the VI→EN translation-QA path below. It is declared metadata,
-     never inferred from diacritics.
-   - A source that returns a non-2xx, or a 200 that is really an HTML page,
-     throws a typed `SourceFetchError` so the run records `fetch_failed` /
-     `parse_failed` rather than reporting a quiet feed.
+The set of sources is **declarative**: one list in
+`worker/sources/catalog.ts` generates the runtime seed, the migration, and
+the `/api/system/sources` + `/data` surfaces, so a source cannot reach one
+and miss the others. An operator can also add or enable an `rss` row at
+runtime through `upsert_source` with no deploy — see
+[`worker/README.md`](worker/README.md) → "Add a source without a deploy".
 
-1b. **Per-source health + staleness** — every source row gets a record in
-    `workflow_runs.stats.sourceHealth`: `fetched` / `scored` / `accepted` /
-    `rejected` / `merged`, a structured skip reason (`fetch_failed`,
-    `parse_failed`, `empty`, `all_rejected_below_relevance`, `disabled` — a
-    closed enum, never free text or a URL), and a count of consecutive
-    zero-item runs. The streak is **carried forward** from the previous run's
-    stats (one single-row read) rather than recomputed from run history, so
-    surfacing staleness on the read path costs nothing. A source at or over
-    its threshold is flagged stale in `/api/system/sources` and the `/data`
-    Algo tab: **336 consecutive runs** (7 days at the 30-minute cadence). That
-    number is measured, not round — 14 of the 21 registry feeds returned
-    nothing inside the 26h window when they were verified live, including
-    pre-existing ones that publish weekly, so the "e.g. 48 runs" in #230 would
-    have flagged healthy sources most of the weekend. A row may override it
-    with `staleAfterRuns` when a source's real cadence demands it; arXiv is
-    the known case (no weekend submissions, ~108 silent runs at 30 minutes) and is not in
-    the registry yet — see `ARXIV_NOT_ADDED_REASON` in
-    `worker/sources/catalog.ts`. A disabled source is reported `disabled`,
-    never `stale` — off is a decision, not a fault. This is observability
-    only: it changes no ranking, no prompt, and no LLM budget.
+- **Flood gate.** A high-volume feed is cut before the scorer sees it, in
+  this order: an optional named title pre-filter (`keywordFilter: "ai"`,
+  the same regex HN uses), then a hard newest-first `maxItems` cap applied
+  after the since-window filter. The Vietnamese newsroom and the four AI
+  newsrooms are capped at 6 items per run each, and so are the
+  `marketbrief` / `huggingnews` mirror pair (their adapters go through
+  the same `applyFloodGate` in `registry.ts`). Newest-first is what makes
+  the cap safe: the 26h window means the head of the feed at the next run
+  is exactly what was published since the last one, so the cap samples the
+  live edge and dedupe drops the rest.
+- **Feed share cap.** The flood gate only bounds new rows, and a source
+  without `maxItems` (e.g. `marketbrief`) can still dominate. `getFeed`
+  (`src/lib/feed-queries.ts`, `capSourceShare`) therefore also keeps each
+  source family's top-`rank_score` rows so none exceeds 25% of the served
+  feed (skipped below 4 distinct families; family as in the top-list cap
+  below, so the mirrored aggregators share one 25%). It runs at read time, so historic
+  rows are covered.
+- **Top-list family cap.** The short ranked lists — homepage top stories
+  (`PUBLIC_STORY_LIMIT`), the TL;DR's 16 and the trending pick — go
+  through `pickDiverse` (`worker/source-diversity.ts`): at most
+  `ceil(0.3 × list size)` rows per source *family* (8 → 3, 16 → 5). A
+  family is `SourceSpec.family` in the catalog, else the source id;
+  `huggingnews` and `marketbrief` share `aggregator` because they publish
+  the same stories under the same slugs (they held 47 of the 24h top 50 on
+  2026-10-01). Each list reads a wider ranked pool (homepage 120 rows,
+  TL;DR the whole 24h window up to 300) so the cap has other stories to
+  take; if the pool still runs short, the best skipped rows fill the tail
+  rather than shrinking the list. Trending counts families across the
+  local day (today's sent posts seed the count, 1 per family while
+  another family qualifies); when only one family qualifies it still
+  posts.
+- **Host pacing.** A row may set `minRequestIntervalMs` to serialise
+  same-host fetches; the first request to a host is never delayed.
+- **Explicit source language.** A row with `sourceLang: "vi"` puts its
+  items on the VI→EN translation-QA path below. It is declared metadata,
+  never inferred from diacritics.
+- A source that returns a non-2xx, or a 200 that is really an HTML page,
+  throws a typed `SourceFetchError` so the run records `fetch_failed` /
+  `parse_failed` rather than reporting a quiet feed.
 
-2. **Dedupe** — item id = `sha256(url)`; ids already in `items` are dropped.
+### 1b. Per-source health + staleness
 
-3. **Enrich** — missing summary/thumbnail filled from the article page
-   (`og:description` / `og:image` / Twitter / JSON-LD / supported video
-   poster fields), capped and failure-proof (`worker/enrich.ts`). The ordered,
-   bounded `media_manifest` is stored alongside the legacy `image_url`; video
-   posters stay nested on the video asset and are never emitted as extra image
-   candidates. HTML entities in media URLs (including double-escaped `&amp;`
-   in query strings) are decoded before storage, so thumbs are real article
-   images rather than a broken-src fallback.
+Every source row gets a record in
+`workflow_runs.stats.sourceHealth`: `fetched` / `scored` / `accepted` /
+`rejected` / `merged`, a structured skip reason (`fetch_failed`,
+`parse_failed`, `empty`, `all_rejected_below_relevance`, `disabled` — a
+closed enum, never free text or a URL), and a count of consecutive
+zero-item runs. The streak is **carried forward** from the previous run's
+stats (one single-row read) rather than recomputed from run history, so
+surfacing staleness on the read path costs nothing. A source at or over
+its threshold is flagged stale in `/api/system/sources` and the `/data`
+Algo tab: **336 consecutive runs** (7 days at the 30-minute cadence). That
+number is measured, not round — 14 of the 21 registry feeds returned
+nothing inside the 26h window when they were verified live, including
+pre-existing ones that publish weekly, so the "e.g. 48 runs" in #230 would
+have flagged healthy sources most of the weekend. A row may override it
+with `staleAfterRuns` when a source's real cadence demands it; arXiv is
+the known case (no weekend submissions, ~108 silent runs at 30 minutes) and is not in
+the registry yet — see `ARXIV_NOT_ADDED_REASON` in
+`worker/sources/catalog.ts`. A disabled source is reported `disabled`,
+never `stale` — off is a decision, not a fault. This is observability
+only: it changes no ranking, no prompt, and no LLM budget.
 
-   - **Media identity is the URL, not the content.** Duplicates are found by
-     `mediaIdentityKey` (host + path, minus resize and tracking variants). No
-     media is downloaded or hashed, so two different URLs that serve the same
-     bytes (a mirror, a renamed copy) stay as two assets.
-   - **A video poster is only URL-checked here.** At collection time the
-     poster URL passes the same URL policy as any image and nothing is
-     fetched. Its bytes are checked later, at Telegram send time (see Notify).
+### 2. Dedupe
 
-4. **Score (Jev, then LLM)** — batches of 5.
+Item id = `sha256(url)`; ids already in `items` are dropped.
 
-   - TypeSafe Jev (`typesafe/jev`, `POST /api/v1/systemone`) judges each
-     item first: relevance is P(AI/tech), importance is the
-     probability-weighted level on a 1–10 scale anchored by the shared bands
-     in `worker/importance-rubric.ts` (the chat rubric uses the same bands),
-     quality is a 0–9 score level, category is one choice from the fixed 10-value enum (legal
-     stories use Regulation), plus one entity tag and one theme tag from fixed
-     10-value enums (`none` is dropped).
-   - Jev does not emit a free-form tag list.
-   - Any item it misses (no key, non-2xx, or incomplete answers) falls
-     through to the chat rubric on the same fields, which still writes
-     3–6 free-form `tags`.
-   - Do not put `typesafe/jev` on `ANYROUTER_MODEL` — chat completions
-     reject it.
-   - **Hide rule:** `relevance < 0.4` → status `rejected` (never shown).
-   - **Optional JEV review panel** (`worker/jev-panel/`), off unless
-     `JEV_PANEL_ENABLED` is truthy. When on, two judges from different vendor
-     families (`JEV_PANEL_RELEVANCE_MODEL`, `JEV_PANEL_SOURCE_QUALITY_MODEL`)
-     review each scored row with an explicit quorum (`JEV_PANEL_QUORUM`,
-     default 2) and at most one debate round. The panel can only lower
-     relevance: `support` → `min(primary, panel mean)`, `oppose` → `0`,
-     no decision → primary (or `0` with `JEV_PANEL_FAIL_MODE=closed`). Same
-     model or same family for both roles is refused before any call; a bad
-     config always keeps the primary score. Results are memoized per run id +
-     item id, so a replayed step does not re-vote. An optional third judge
-     (`JEV_PANEL_SAFETY_MODEL`) joins when set. Each non-replayed run writes
-     an audit row to `jev_panel_verdicts` (admin `GET /api/admin/jev-verdicts`,
-     human override at `POST /api/admin/jev-verdicts/<id>/override`, also in
-     the admin panel). An `overturn` restores the pre-panel `llm_relevance`
-     if the item still holds the panel's value. Judges run concurrently
-     under the item budget. At most 10 items per scoring step go to the
-     panel (`JEV_PANEL_MAX_ITEMS_PER_STEP`), in input order; the rest keep
-     the primary score. Details: `worker/jev-panel/README.md`.
-   - Tags are then canonicalized (`normalizeTopics`) and captured into
-     `topic_daily` each ingest (~15 min). One mapping call asks about at
-     most 100 unseen tags (`MAX_UNSEEN_TOPICS_IN_PROMPT`); tags past that
-     become their own canonical, the same as after a failed call.
-   - Emerging entity/model names that clear a frequency/growth bar promote
-     into `learned_keywords` for title highlight and growth-boosted
-     homepage trending chips (`worker/topic-learning.ts`).
-   - Homepage trending prefers versioned model/product names extracted
-     from headlines (e.g. GPT-6 Astra, Fable 5.1) over generic themes like
-     `llm` / `agent`.
-   - Chip weight is source-count (capped at 8) so a merged multi-outlet
-     story outranks a single-source mention of the same name.
+### 3. Enrich
 
-5. **Merge (LLM + title similarity)** — one clustering call, plus a
-   deterministic pass.
+Missing summary/thumbnail filled from the article page
+(`og:description` / `og:image` / Twitter / JSON-LD / supported video
+poster fields), capped and failure-proof (`worker/enrich.ts`). The ordered,
+bounded `media_manifest` is stored alongside the legacy `image_url`; video
+posters stay nested on the video asset and are never emitted as extra image
+candidates. HTML entities in media URLs (including double-escaped `&amp;`
+in query strings) are decoded before storage, so thumbs are real article
+images rather than a broken-src fallback.
 
-   - The clustering call compares new items (title, url, source) with the
-     last 72h of published titles. It sees at most 100 new items
-     (`MAX_NEW_ITEMS_IN_CLUSTER_PROMPT`, input order) and 300 published
-     ones; new items past that are left to the title pass below.
-   - A deterministic title-similarity pass (normalized headlines / high
-     token overlap, including short-headline-inside-long) runs alongside
-     so same-story URLs the model misses still collapse.
-   - The prompt merges different outlets' first-day coverage of one
-     announcement whatever the headline angle, and keeps later developments
-     (market reaction, failed demo, wider rollout, a later benchmark)
-     separate, with real Gemini 4 examples. Feed titles are fenced as
-     untrusted data.
-   - Same-story clusters collapse to a canonical item (existing item wins,
-     else highest rank).
-   - Losers get status `merged` + `duplicate_of`. Their sources fold into
-     the canonical; only reader engagement (see 7) folds into its
-     points/comments (`worker/dedupe.ts`).
+- **Media identity is the URL, not the content.** Duplicates are found by
+  `mediaIdentityKey` (host + path, minus resize and tracking variants). No
+  media is downloaded or hashed, so two different URLs that serve the same
+  bytes (a mirror, a renamed copy) stay as two assets.
+- **A video poster is only URL-checked here.** At collection time the
+  poster URL passes the same URL policy as any image and nothing is
+  fetched. Its bytes are checked later, at Telegram send time (see Notify).
 
-6. **Translate (LLM)** — EN→VI in batches, journalist style (`VI_STYLE`
-   system prompt: no parenthetical glosses, no calques, keep technical
-   jargon in English, few-shot anchored). Every item and translation row
-   carries explicit `source_lang`/`target_lang` metadata; the reviewer never
-   infers direction from Vietnamese diacritics. A Vietnamese source with an
-   explicit `source_lang='vi'` is a real VI→EN pair: the bounded QA runtime can
-   create a missing English candidate with `ANYROUTER_ENGLISH_TRANSLATE_MODEL`,
-   then independently reviews that candidate. The review path lives in
-   `worker/translation-qa.ts`:
+### 4. Score (decision router, then Jev, then LLM)
 
-   - `ANYROUTER_REVIEW_MODEL` (legacy: explicit `ANYROUTER_QA_MODEL`) is
-     required. The reviewer chain must be concrete and disjoint from every
-     `ANYROUTER_TRANSLATE_MODEL` id; missing/overlapping config fails closed
-     rather than self-reviewing with the generator. English generation is also
-     explicit and never silently falls back.
-   - The strict `translation-semantic-v3` JSON verdict scores fidelity,
-     naturalness, and confidence separately. Deterministic entity, number,
-     date, unit, polarity, and uncertainty guards can override an optimistic
-     reviewer, alongside omission, addition, and terminology checks. Prompt
-     data is delimiter-escaped and output must be one exact bounded JSON object;
-     prose, fences, duplicate keys, and oversized responses are rejected.
-   - Accept requires no hard failure, fidelity/naturalness ≥ 0.7, and
-     confidence ≥ 0.6. An EN→VI failure gets at most one generator repair and
-     one independent re-review. VI→EN failures are not silently substituted;
-     disagreement, abstention, low confidence, malformed output, or exhausted
-     budget becomes an actionable terminal `human_review` state and preserves
-     the original candidate.
-   - `items.source_revision` plus source title/summary content CAS guards every
-     attempt, review marker, and repair write. A source-language/title/summary
-     write increments the revision and invalidates every candidate, including
-     writers that emit no translation. Immutable `translation_review_attempts`
-     rows are separate from leased `translation_review_state`; criteria, prompt,
-     policy, and model fingerprints are part of idempotency. Source revision is
-     part of every review uniqueness key, and a successful repair stores the
-     final re-review `attempt_id` rather than the initial attempt. Claims use a
-     five-minute lease (longer than the 210-second wall budget) and renew it
-     with a lease-token/source CAS after each provider phase. Marker and state
-     writes are committed as one guarded batch; a zero-row CAS is never
-     reported as an accepted translation. Cross-run failures use exponential
-     backoff and become terminal `human_review` after three automatic attempts;
-     one explicit human retry is separately bounded and recorded.
-   - One run makes at most 6 logical reviewer/generator calls, has a 210-second
-     wall budget, and allows two model attempts per logical call. Workflow
-     retries remain zero. Translation and review response snippets are
-     suppressed and provider errors are redacted before LLM telemetry or the
-     admin API. Authenticated operators resolve the queue through
-     `GET /api/admin/translation-reviews` and
-     `POST /api/admin/translation-reviews/:attemptId/resolve`; actor, action,
-     time, and note are persisted.
-   - `pnpm run verify:translation-schema` is a read-only migration gate run by
-     `pnpm run deploy`. A pre-0023 database fails before pending-row queries;
-     it is never reported as zero pending. Translation QA is wholly owned by
-     0023; #160's media migration is 0024 and #161's run-identity migration is
-     0025. Apply/verify migrations in order and never apply them from the QA
-     worker.
+Batches of 5.
 
-   Quality limits: deterministic checks and an independent model review are
-   risk controls, not a human-labeled quality score. There is no claim about
-   translation accuracy, recall, or production quality until an operator-approved
-   EN↔VI evaluation set and metrics are run.
+- `ANYROUTER_DECISION_MODEL` (`anyrouter/decision`, `POST /api/v1/systemone`)
+  judges each item first, with the same questions as Jev and a 15s cap.
+  It is a System One router: it forwards to TypeSafe Jev when the BYOK
+  key is healthy and to Fastino GLiNER when it is not. An answer is used
+  only if the response's served `model` is Jev (`jev-*`) on a TypeSafe
+  provider (`anyrouter_metadata.upstream.provider`); anything else is a
+  miss, because GLiNER's levels are not calibrated. `llm_calls` records
+  the served model in `route` and `provider`. Empty var → score starts at Jev.
+- TypeSafe Jev (`typesafe/jev`) judges the items the router missed:
+  relevance is P(AI/tech), importance is the probability-weighted level on
+  a 1–10 scale anchored by the shared bands in `worker/importance-rubric.ts`
+  (the chat rubric uses the same bands), quality is a 0–9 score level,
+  category is one choice from the fixed 10-value enum (legal stories use
+  Regulation), plus one entity tag and one theme tag from fixed 10-value
+  enums (`none` is dropped).
+- Neither System One hop emits a free-form tag list.
+- Any item both hops miss (no key, non-2xx, timeout, non-Jev upstream, or
+  incomplete answers) falls through to the chat rubric on the same fields,
+  which still writes 3–6 free-form `tags`.
+- Do not put `typesafe/jev` or `anyrouter/decision` on `ANYROUTER_MODEL`:
+  chat completions reject Jev and route the decision router to an entity
+  extractor.
+- **Hide rule:** `relevance < 0.4` → status `rejected` (never shown).
+- **Optional JEV review panel** (`worker/jev-panel/`), off unless
+  `JEV_PANEL_ENABLED` is truthy. When on, two judges from different vendor
+  families (`JEV_PANEL_RELEVANCE_MODEL`, `JEV_PANEL_SOURCE_QUALITY_MODEL`)
+  review each scored row with an explicit quorum (`JEV_PANEL_QUORUM`,
+  default 2) and at most one debate round. The panel can only lower
+  relevance: `support` → `min(primary, panel mean)`, `oppose` → `0`,
+  no decision → primary (or `0` with `JEV_PANEL_FAIL_MODE=closed`). Same
+  model or same family for both roles is refused before any call; a bad
+  config always keeps the primary score. Results are memoized per run id +
+  item id, so a replayed step does not re-vote. An optional third judge
+  (`JEV_PANEL_SAFETY_MODEL`) joins when set. Each non-replayed run writes
+  an audit row to `jev_panel_verdicts` (admin `GET /api/admin/jev-verdicts`,
+  human override at `POST /api/admin/jev-verdicts/<id>/override`, also in
+  the admin panel). An `overturn` restores the pre-panel `llm_relevance`
+  if the item still holds the panel's value. Judges run concurrently
+  under the item budget. At most 10 items per scoring step go to the
+  panel (`JEV_PANEL_MAX_ITEMS_PER_STEP`), in input order; the rest keep
+  the primary score. Details: `worker/jev-panel/README.md`.
+- Tags are then canonicalized (`normalizeTopics`) and captured into
+  `topic_daily` each ingest (~15 min). One mapping call asks about at
+  most 100 unseen tags (`MAX_UNSEEN_TOPICS_IN_PROMPT`); tags past that
+  become their own canonical, the same as after a failed call.
+- Emerging entity/model names that clear a frequency/growth bar promote
+  into `learned_keywords` for title highlight and growth-boosted
+  homepage trending chips (`worker/topic-learning.ts`).
+- Homepage trending prefers versioned model/product names extracted
+  from headlines (e.g. GPT-6 Astra, Fable 5.1) over generic themes like
+  `llm` / `agent`. Headline extraction (`extractTitleEntities`) uses
+  general rules, not only a family list: a capitalised name plus a
+  version, mixed-case coined names (LangSmith, ChatGPT), a leading
+  `Name:` and a short name after a launch verb. The generic version rule
+  is skipped on Vietnamese headlines; business themes (stock sales,
+  earnings, industry news) are denylisted.
+- Chip weight is source-count (capped at 8) so a merged multi-outlet
+  story outranks a single-source mention of the same name.
+- Chips are ordered: models/products mentioned at least twice, then
+  single mentions, then labs only as filler up to 8. A name counts as a
+  model/product when a headline produced it or it carries a version;
+  a hyphenated LLM tag alone (`daily-active-users`) does not.
+- `pnpm --filter @aidr/web bench` (`scripts/quality-bench.ts`) scores
+  trending, entity extraction, the keyword prefilter, source diversity
+  and importance against frozen hand-labelled gold sets in
+  `scripts/fixtures/quality-bench/`; keep a change only if it does not
+  lower the composite.
 
-7. **Rank (pure code, `worker/ranking.ts`)** — recomputed every run for
-   items published in the last 72h (`RANK_RECOMPUTE_WINDOW_SEC`, rolling, not
-   the UTC day), in one `UPDATE … json_each(?)` statement. A day's archive
-   order can shift for up to 3 days, then freezes. A pre-existing canonical
-   that absorbs a merge gets its rank recomputed from its whole cluster in
-   the same write.
+### 5. Merge (LLM + title similarity)
 
-   ```text
-   rank_score = importance
-              × (0.6 + 0.4·quality/10)      # quality modulates ±40%
-              × exp(−ageHours/36)           # freshness decay
-              × (1 + log10(1 + points + 0.5·comments))  # reader engagement, log-damped
-              × (1 + 0.12·(min(sourceCount, 8) − 1))    # extra independent outlets
-   ```
+One clustering call, plus a
+deterministic pass.
 
-   A story's cluster is the canonical item plus every `merged` item whose
-   `duplicate_of` points at it. `rankSignals` reads it one way everywhere
-   (insert, merge recompute, 72h re-rank, backfill, admin rate/preview;
-   SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
+- The clustering call compares new items (title, url, source) with the
+  last 72h of published titles. It sees at most 100 new items
+  (`MAX_NEW_ITEMS_IN_CLUSTER_PROMPT`, input order) and 300 published
+  ones; new items past that are left to the title pass below.
+- A deterministic title-similarity pass (normalized headlines / high
+  token overlap, including short-headline-inside-long) runs alongside
+  so same-story URLs the model misses still collapse.
+- The prompt merges different outlets' first-day coverage of one
+  announcement whatever the headline angle, and keeps later developments
+  (market reaction, failed demo, wider rollout, a later benchmark)
+  separate, with real Gemini 4 examples. Feed titles are fenced as
+  untrusted data.
+- Same-story clusters collapse to a canonical item (existing item wins,
+  else highest rank).
+- Losers get status `merged` + `duplicate_of`. Their sources fold into
+  the canonical; only reader engagement (see 7) folds into its
+  points/comments (`worker/dedupe.ts`).
 
-   - `sourceCount` = distinct source **families** in the cluster
-     (`family` in `worker/sources/catalog.ts`, else the source id). One
-     outlet gets no boost; HN + TechCrunch + Verge gets 1.24. Tweets in
-     `item_sources` are display only, and the HuggingNews/MarketBrief mirror
-     pair counts once.
-   - `points`/`comments` = the highest values among cluster items whose
-     source has `engagement: "reader"` (HN, Lobsters). Aggregator
-     author/tweet counts are stored for display but never ranked.
+### 6. Translate (LLM)
 
-8. **Write** — D1 upserts (`worker/d1-bind.ts` guards every bind). D1 is
-   the sole primary store. Migration `0024_item_media_manifest.sql` adds the
-   bounded JSON manifest; `image_url` remains the compatibility field.
+EN→VI in batches, journalist style (`VI_STYLE`
+system prompt: no parenthetical glosses, no calques, keep technical
+jargon in English, few-shot anchored). Every item and translation row
+carries explicit `source_lang`/`target_lang` metadata; the reviewer never
+infers direction from Vietnamese diacritics. A Vietnamese source with an
+explicit `source_lang='vi'` is a real VI→EN pair: the bounded QA runtime can
+create a missing English candidate with `ANYROUTER_ENGLISH_TRANSLATE_MODEL`,
+then independently reviews that candidate. The review path lives in
+`worker/translation-qa.ts`:
 
-9. **Backfill** — up to 15 older published items missing summary or
-   score/tags, and up to 45 missing Vietnamese titles, get
-   re-fetched/scored/translated per run until the backlog drains.
-   Translate skips LLM only when explicit `source_lang='vi'` metadata marks a
-   native source, retries leftover items one-at-a-time after a batch fail, and
-   the VI UI hides the EN badge when the painted title is Vietnamese or
-   `title_vi` exists.
+- `ANYROUTER_REVIEW_MODEL` (legacy: explicit `ANYROUTER_QA_MODEL`) is
+  required. The reviewer chain must be concrete and disjoint from every
+  `ANYROUTER_TRANSLATE_MODEL` id; missing/overlapping config fails closed
+  rather than self-reviewing with the generator. English generation is also
+  explicit and never silently falls back.
+- The strict `translation-semantic-v3` JSON verdict scores fidelity,
+  naturalness, and confidence separately. Deterministic entity, number,
+  date, unit, polarity, and uncertainty guards can override an optimistic
+  reviewer, alongside omission, addition, and terminology checks. Prompt
+  data is delimiter-escaped and output must be one exact bounded JSON object;
+  prose, fences, duplicate keys, and oversized responses are rejected.
+- Accept requires no hard failure, fidelity/naturalness ≥ 0.7, and
+  confidence ≥ 0.6. An EN→VI failure gets at most one generator repair and
+  one independent re-review. VI→EN failures are not silently substituted;
+  disagreement, abstention, low confidence, malformed output, or exhausted
+  budget becomes an actionable terminal `human_review` state and preserves
+  the original candidate.
+- `items.source_revision` plus source title/summary content CAS guards every
+  attempt, review marker, and repair write. A source-language/title/summary
+  write increments the revision and invalidates every candidate, including
+  writers that emit no translation. Immutable `translation_review_attempts`
+  rows are separate from leased `translation_review_state`; criteria, prompt,
+  policy, and model fingerprints are part of idempotency. Source revision is
+  part of every review uniqueness key, and a successful repair stores the
+  final re-review `attempt_id` rather than the initial attempt. Claims use a
+  five-minute lease (longer than the 210-second wall budget) and renew it
+  with a lease-token/source CAS after each provider phase. Marker and state
+  writes are committed as one guarded batch; a zero-row CAS is never
+  reported as an accepted translation. Cross-run failures use exponential
+  backoff and become terminal `human_review` after three automatic attempts;
+  one explicit human retry is separately bounded and recorded.
+- One run makes at most 6 logical reviewer/generator calls, has a 210-second
+  wall budget, and allows two model attempts per logical call. Workflow
+  retries remain zero. Translation and review response snippets are
+  suppressed and provider errors are redacted before LLM telemetry or the
+  admin API. Authenticated operators resolve the queue through
+  `GET /api/admin/translation-reviews` and
+  `POST /api/admin/translation-reviews/:attemptId/resolve`; actor, action,
+  time, and note are persisted.
+- `pnpm run verify:translation-schema` is a read-only migration gate run by
+  `pnpm run deploy`. A pre-0023 database fails before pending-row queries;
+  it is never reported as zero pending. Translation QA is wholly owned by
+  0023; #160's media migration is 0024 and #161's run-identity migration is
+  0025. Apply/verify migrations in order and never apply them from the QA
+  worker.
 
-10. **TL;DR (LLM)** — hourly.
+Quality limits: deterministic checks and an independent model review are
+risk controls, not a human-labeled quality score. There is no claim about
+translation accuracy, recall, or production quality until an operator-approved
+EN↔VI evaluation set and metrics are run.
 
-    - Generate today's **local** snapshot (`Asia/Ho_Chi_Minh` date key —
-      same identity the Telegram digest looks up for once-per-local-day
-      send) if missing, thin, EN-only (`bullets_vi` empty), or
-      **English-only `bullets_vi` while `title_vi` now exists**.
-    - Otherwise refresh a useful bilingual snapshot when the last write is
-      older than 3 hours.
-    - Content is always the top 16 items of the **rolling last 24h** by
-      rank (not ICT calendar-day-so-far), after the top-list family cap → up to 16 EN bullets + 16
-      independently-restated VI bullets, each linked to its `item_id`.
-    - Homepage thumbs and the story dialog need those ids. If the model
-      pastes `[hex]` into the bullet text instead of (or besides)
-      `item_ids`, parse recovers the ids and strips the citation.
-    - Each bullet is a short digest (~2 sentences / 180–240 characters),
-      not a headline and not a paragraph. The homepage clamps overflow to
-      2 lines and sizes the thumbnail to that row.
-    - If the LLM returns no bullets or a thin digest (fewer than
-      min(8, item count), at least 2 when there are 2+ stories), a
-      title-fallback snapshot is persisted (EN from item titles; VI from
-      `title_vi` or the English title if no translation — never invented
-      prose).
-    - If the LLM digest is useful in count but `bullets_vi` has no
-      Vietnamese diacritics and `title_vi` exists, keep the EN bullets and
-      replace VI with the `title_vi` fallback — never persist raw English
-      titles as `bullets_vi` once translations exist.
-    - Empty results are never persisted.
-    - The homepage also synthesizes a last-24h title-fallback at read time
-      when the stored snapshot is thin *or* English-only in VI while
-      `title_vi` exists, and persists it so the frozen EN copy cannot
-      return.
-    - UI shows 8 by default (user preference 8/12/16).
+### 7. Rank (pure code, `worker/ranking.ts`)
 
-11. **Email digest** — per-subscriber language and digest size (3/5/10
-    stories, default 5) to confirmed subscribers, once per their local
-    morning (from 07:00 in the subscriber's timezone). Copy comes from the
-    same edition as Telegram (`worker/digest/edition.ts`): `bullets_vi` or
-    `bullets_en` for that local date, with no cross-language fallback. An
-    empty column leaves `last_sent_date` unset so the next hourly run
-    retries. Idempotency stays on `subscribers.last_sent_date`, not the
-    `notifications` table.
+Recomputed every run for
+items published in the last 72h (`RANK_RECOMPUTE_WINDOW_SEC`, rolling, not
+the UTC day), in one `UPDATE … json_each(?)` statement. A day's archive
+order can shift for up to 3 days, then freezes. A pre-existing canonical
+that absorbs a merge gets its rank recomputed from its whole cluster in
+the same write.
 
-12. **Notify (`worker/notify/`)** — pluggable channel adapters (Telegram
-    plus optional JSON/Slack webhook via `NOTIFY_WEBHOOK_URL`),
-    deliberately non-spammy.
+```text
+rank_score = importance
+           × (0.6 + 0.4·quality/10)      # quality modulates ±40%
+           × exp(−ageHours/36)           # freshness decay
+           × (1 + log10(1 + points + 0.5·comments))  # reader engagement, log-damped
+           × (1 + 0.12·(min(sourceCount, 8) − 1))    # extra independent outlets
+```
 
-    - A normalized `AlertEvent` (severity, source, title, summary, metrics,
-      links, optional health snapshot) is the internal shape. Adapters in
-      `worker/notify/adapters.ts` render Telegram HTML, Slack
-      incoming-webhook JSON, or raw JSON.
-    - *Daily digest*: ONE message per local day per channel (Asia/Ho_Chi_Minh,
-      from 08:00). The Vietnamese channel (`TELEGRAM_VI_CHAT_ID`, falling
-      back to `TELEGRAM_CHAT_ID`) posts `bullets_vi` only. The English
-      channel (`TELEGRAM_EN_CHAT_ID`, same bot token)
-      posts `bullets_en` only. Neither falls back to the other language.
-      Each bullet links to its story permalink, plus a site button.
-    - *Trending*: an individual post only when the algo flags a story as
-      exceptional (`rank_score` at or above the trending bar and
-      `llm_importance ≥ 7`), capped at
-      3/day with a 3h minimum gap, one per run, and only during 09–23h
-      local: a story that qualifies overnight waits for the window and posts
-      then if it still ranks (before this the cap was often spent by
-      morning and the channel stayed silent all day). On a big-news day (a
-      launch event, a run of major stories) a story with
-      `llm_importance ≥ 9` may go past that cap and gap, up to 6/day with a
-      1h gap; the day's own scores open the extra room, no event list is
-      kept. Digest is the intended daily Telegram post.
-    - The trending bar is relative, so a rescored formula cannot silence or
-      flood the channel: `max(TRENDING_RANK_FLOOR = 6, the 0.995 percentile
-      of rank_score over published items in the last 72h)`, read once per
-      notify run. Both lanes use it. At 0.995 (about the top 2 of ~400) the
-      2026-09-27..10-01 replay gave 1–4 qualifiers a day; the floor keeps a
-      dead window's best weak story (one outlet, no reader engagement,
-      importance 7 ≈ 5.6) from posting.
-    - Skip reasons are structured (`digest`: no_snapshot / already_sent /
-      before_hour; `trending`: outside_hours / below_min_rank / budget_zero /
-      none_unposted, with the live 24h max rank and the bar) and
-      `console.info`'d plus stored on
-      `workflow_runs.stats.notifyReason`.
-    - Delivery state (status/attempts/last_error, bounded retries) lives in
-      the `notifications` table, keyed by channel and item/date rather than
-      locale. Telegram site links use flat `/{8-char}` permalinks with explicit
-      `lang=vi|en` plus `utm_source=telegram`; publisher links keep their own
-      URL and receive only the Telegram attribution parameter.
-    - The bounded Telegram Instant View decision, locale URLs, field/media
-      gates, and fallback checklist are in
-      [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).
-      IV is not enabled by this document; keep the normal message/photo path
-      until product and operations approve a manual POC. That record is a
-      **no-go**; the only automation it gained is a *field gate*
-      ([`worker/telegram-iv.ts`](worker/telegram-iv.ts)) that checks
-      `title`/`body`/`published_date`/`image_url`/`site_name`/`description`
-      for one `{id8}` + `lang` and answers `iv_eligible` with a reason. Run it
-      with `verify-aidr doctor iv --id <8hex> --lang vi|en` or
-      `GET /api/admin/notify/iv`. It invents no `rhash` and no query template.
-    - `sendMessage`/`sendPhoto` set `link_preview_options` explicitly
-      (`is_disabled`) rather than inheriting the API default: a preview would
-      attach to one arbitrary digest bullet or double the photo. Rationale and
-      the rejected `prefer_small_media`/`prefer_large_media`/`show_above_text`
-      values are in `worker/notify/telegram.ts`.
-    - The trending photo path attaches the **generated** first-party card
-      `/api/og/{id8}.png?lang=` (1200×630) — the same `og:image` the card gate
-      approves — instead of the upstream thumb, so a link preview can never be
-      a 404 hotlink-hostile image. The normalized manifest thumbnail remains
-      the fallback when the id cannot address a card.
-    - The trending post carries **one** inline button, "Read →" / "Đọc bài →",
-      pointing at the aidr story permalink (`/{id8}?lang=` + UTM). It used to be
-      two — "Read →" to the publisher, "AI;DR" to the permalink — which meant the
-      image above (already the first-party card) and the link pointed at
-      different stories. One canonical locale-stable URL for both.
-    - Not a `t.me/iv` wrapper: Instant View needs an editor-approved template and
-      an editor-generated `rhash`, which exists only inside the operator's IV
-      Editor session. Telegram's plain link preview from the page's own Open
-      Graph tags is the documented fallback
-      ([`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md)).
-    - A trending story with two or more images uses `sendMediaGroup` (2–10
-      photos: the story's own manifest images and video posters). One image
-      stays `sendPhoto` so the inline button remains — an album has no
-      `reply_markup`, so that link moves into the caption.
-    - **Video** (`worker/notify/video.ts`): a manifest video is preflighted with
-      bounded Range requests over `fetchWithSafeRedirects` (never a full
-      download): MP4 container, at most 20 MB, at most 300 s (`mvhd`, faststart
-      or trailing `moov`), size and duration known. Proven video-only stories use
-      `sendVideo` (with the poster as `thumbnail` only when it is a legal JPEG
-      thumbnail); video plus images uses one mixed `sendMediaGroup` (primary
-      video, its poster, then manifest order, deduped by `mediaIdentityKey`, at
-      most 10 items, at most 40 MB of video). An over-cap album is dropped whole,
-      never truncated. A skip, or a call Telegram rejects, falls back to the
-      photo path, then text. Durable multi-message delivery remains a follow-up.
-    - **What is checked before a send.** The poster is fetched and checked
-      (JPEG, at most 200 KB, at most 320 px) only when it is about to be used as
-      a `sendVideo` thumbnail; a poster that fails is left out and the video
-      still goes. Gallery photos (`sendPhoto`, album photos) are not
-      preflighted: Telegram fetches them, and if it rejects one the post falls
-      back to the generated card, then text.
-    - **Ambiguous sends are never repeated.** Only a JSON answer from Telegram
-      is a definite outcome. `ok: false` posted nothing, so the next transport
-      may run and the row is `failed` (retried up to 3 attempts). A timeout, a
-      dropped connection, or a non-JSON body (a proxy error page) is
-      *ambiguous*: Telegram downloads media itself, so the message may already
-      be posted. An ambiguous call ends the send with no fallback, is recorded
-      as `notifications.status = 'ambiguous'`, and is reported to
-      Sentry/Bugsink. That row is final: the trending query and the digest gate
-      skip it on later runs, and it does not count as a post. The cost is a
-      story or digest that is missed when the call really did fail; the owner
-      checks the channel and can resend a digest from admin. A failed album
-      button reply never changes an album that was already posted.
-    - **Media order: story image first, generated card as fallback.** The post
-      leads with the story's real photo. The first-party OG card
-      `/api/og/{id8}.png?lang=` is used when the story has no usable image, and
-      as a one-shot retry when Telegram rejects the image (hotlink-hostile or
-      dead upstream URLs) — it is 200 by construction, so the post keeps its
-      image instead of dropping to bare text. The card no longer occupies an
-      album slot.
-    - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
-      is `en`. Digest bullets come from that language's edition
-      (`worker/digest/edition.ts`) and never from the other column. Trending
-      copy is chosen by `Notifier.lang`: English posts the source title, and
-      Vietnamese posts `translations` when the title is present, otherwise
-      the source title. A second locale is another notifier entry.
+A story's cluster is the canonical item plus every `merged` item whose
+`duplicate_of` points at it. `rankSignals` reads it one way everywhere
+(insert, merge recompute, 72h re-rank, backfill, admin rate/preview;
+SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
 
-13. **Review gates (LLM, rating ≥ 0.6)** — user translation suggestions and
-    HN-style story submissions are judged (faithfulness / relevance / not
-    spam; submission text is treated strictly as data, never instructions)
-    before they touch the feed. Jev (`typesafe/jev`,
-    `POST /api/v1/systemone`, BYOK-only via Dashboard → BYOK → TypeSafe) is
-    tried first as a typed decision (`noul` intent/spam + `score` quality
-    mapped to relevance/rating); any Jev failure falls back to the existing
-    chat-completions JSON judge. `/api/system` lists that chat chain after
-    Jev on `models.decisions`. With `JEV_PANEL_ENABLED`, the JEV review
-    panel then gives a second opinion that can only lower the value
-    (submissions: scoring panel; suggestions: fidelity + safety panel).
+- `sourceCount` = distinct source **families** in the cluster
+  (`family` in `worker/sources/catalog.ts`, else the source id). One
+  outlet gets no boost; HN + TechCrunch + Verge gets 1.24. Tweets in
+  `item_sources` are display only, and the HuggingNews/MarketBrief mirror
+  pair counts once.
+- `points`/`comments` = the highest values among cluster items whose
+  source has `engagement: "reader"` (HN, Lobsters). Aggregator
+  author/tweet counts are stored for display but never ranked.
 
-    **Suggestions are reviewed on submit** (`worker/suggestions.ts`). A
-    signed-in reader edits the title or summary of the language on screen:
-    `vi` rewrites the Vietnamese translation, `en` rewrites the English
-    source of an English-source story (never ids or urls). The submit
-    server fn stores the row and runs `reviewSuggestionById` in the
-    request's `waitUntil`, logging LLM calls under a
-    `suggestion-review-…` run id. Flow per suggestion: claim
-    (`pending` → `reviewing`, conditional UPDATE) → rate (Jev, else chat
-    judge) → JEV panel can only lower → if rating ≥ 0.6, rewrite keeping the
-    reader's intent → output guard (no new links or markup, no runaway
-    length; a fooled model still cannot publish a payload) → text and
-    verdict written in one batch. Outcomes: `accepted` (with
-    `applied_text`, which may differ from the reader's text), `needs_review`
-    (valid, 0.4 ≤ rating < 0.6, waits for an admin), `rejected` (with the
-    reason). The hourly `review-suggestions` step is the safety net: it
-    reviews rows still `pending` and `reviewing` claims older than 10
-    minutes, never `needs_review`. Readers poll their verdict and see full
-    history (suggestions + submissions, keyset paged) on `/submit`; both
-    reads are keyed by the Clerk session user. TL;DR bullets are not
-    editable: snapshots are regenerated hourly and already sent.
+### 8. Write
 
-    **Free-form suggestions** (`field = 'auto'`, the default). The reader
-    writes one suggestion in any language; one planner call (chat judge,
-    no Jev) sees the source and Vietnamese title + summary and returns a
-    rating, a reason and edits for only the fields it names, limited to
-    vi.title, vi.summary and the English title of an English-source story.
-    Every edit passes the output guard (one failure rejects all), all edits
-    land in one batch, and `applied_changes` stores `{lang, field, before,
-    after}` per field. A valid comment with no concrete edit goes to
-    `needs_review`. Fixed-field rows from before keep the old path.
+D1 upserts (`worker/d1-bind.ts` guards every bind). D1 is
+the sole primary store. Migration `0024_item_media_manifest.sql` adds the
+bounded JSON manifest; `image_url` remains the compatibility field.
 
-    **Translation knowledge** (`worker/translation-knowledge.ts`, table
-    `translation_knowledge`). After an accepted VI suggestion (instant
-    review or admin approve) one extra call asks whether it teaches a
-    reusable rule (`keep_english` / `preferred_term` / `avoid`) or is a
-    one-off. Rule fields are validated as short terms (no newlines, links,
-    or sentences). A rule goes `active` only when the review rating is
-    ≥ 0.9 (admin approve counts as 1) and the edit itself proves it (term in
-    the source, forbidden phrase removed); otherwise `pending` for an admin
-    (`GET /api/admin/knowledge`, `POST /api/admin/knowledge/decide`
-    `{id, status}`). Active rules matching the input add a "Glossary" block
-    (≤ 8 rules, ≤ 800 chars) after VI_STYLE in translate, TL;DR, suggestion
-    rewrite and QA repair prompts, and translation QA fails `terminology`
-    when the EN source has the term and the VI text has a forbidden phrase
-    → repair; each catch increments the rule's `hits`. Seeded: "agent"
-    stays English, "đại lý"/"đặc vụ" fail ("tác nhân" is allowed).
+### 9. Backfill
 
-    **Email contributions** (`docs/decisions/email-contributions.md`).
-    Mail to `submit@aidr.today` reaches the `aidr-email` Worker
-    (`apps/email`), which only validates and stores: sender authenticated
-    by Cloudflare (DKIM or SPF aligned with the From domain, read only above
-    the first `Received:`), From = envelope sender, address = a live Clerk
-    account email that Clerk marks verified (`clerk_users.email_verified`,
-    from the webhook / clerk-sync) or another address Clerk has already verified (`clerk_verified_emails`), no
-    auto-reply/bounce/list mail, ≤ 1 MiB, ≤ 20 per user per day. It writes
-    an `inbound_emails` row: `pending` with parsed fields (the user's own
-    text, links, story reference), or `ignored` with a reason and no
-    content. No LLM runs there. The hourly `inbound-email` step (before
-    `review-suggestions`) turns pending rows into a submission (forward or
-    new mail with one link), a suggestion on the referenced story
-    (`submit+<id8>@`, `[aidr:<id8>]` subject marker, or one aidr.today story
-    link in the user's own text; `title:`/`summary:` prefix = fixed field,
-    else `auto`) or a comment, then acks from notes@ with
-    `Reply-To: submit@`. Review happens in the normal gates later in the
-    same run.
+Up to 15 older published items missing summary or
+score/tags, and up to 45 missing Vietnamese titles, get
+re-fetched/scored/translated per run until the backlog drains.
+Translate skips LLM only when explicit `source_lang='vi'` metadata marks a
+native source, retries leftover items one-at-a-time after a batch fail, and
+the VI UI hides the EN badge when the painted title is Vietnamese or
+`title_vi` exists.
+
+### 10. TL;DR (LLM)
+
+Hourly.
+
+- Generate today's **local** snapshot (`Asia/Ho_Chi_Minh` date key —
+  same identity the Telegram digest looks up for once-per-local-day
+  send) if missing, thin, EN-only (`bullets_vi` empty), or
+  **English-only `bullets_vi` while `title_vi` now exists**.
+- Otherwise refresh a useful bilingual snapshot when the last write is
+  older than 3 hours.
+- Content is always the top 16 items of the **rolling last 24h** by
+  rank (not ICT calendar-day-so-far), after the top-list family cap → up to 16 EN bullets + 16
+  independently-restated VI bullets, each linked to its `item_id`.
+- Homepage thumbs and the story dialog need those ids. If the model
+  pastes `[hex]` into the bullet text instead of (or besides)
+  `item_ids`, parse recovers the ids and strips the citation.
+- Each bullet is a short digest (~2 sentences / 180–240 characters),
+  not a headline and not a paragraph. The homepage clamps overflow to
+  2 lines and sizes the thumbnail to that row.
+- If the LLM returns no bullets or a thin digest (fewer than
+  min(8, item count), at least 2 when there are 2+ stories), a
+  title-fallback snapshot is persisted (EN from item titles; VI from
+  `title_vi` or the English title if no translation — never invented
+  prose).
+- If the LLM digest is useful in count but `bullets_vi` has no
+  Vietnamese diacritics and `title_vi` exists, keep the EN bullets and
+  replace VI with the `title_vi` fallback — never persist raw English
+  titles as `bullets_vi` once translations exist.
+- Empty results are never persisted.
+- The homepage also synthesizes a last-24h title-fallback at read time
+  when the stored snapshot is thin *or* English-only in VI while
+  `title_vi` exists, and persists it so the frozen EN copy cannot
+  return.
+- UI shows 8 by default (user preference 8/12/16).
+
+### 11. Email digest
+
+Per-subscriber language and digest size (3/5/10
+stories, default 5) to confirmed subscribers, once per their local
+morning (from 07:00 in the subscriber's timezone). Copy comes from the
+same edition as Telegram (`worker/digest/edition.ts`): `bullets_vi` or
+`bullets_en` for that local date, with no cross-language fallback. An
+empty column leaves `last_sent_date` unset so the next hourly run
+retries. Idempotency stays on `subscribers.last_sent_date`, not the
+`notifications` table.
+
+### 12. Notify (`worker/notify/`)
+
+Pluggable channel adapters (Telegram
+plus optional JSON/Slack webhook via `NOTIFY_WEBHOOK_URL`),
+deliberately non-spammy.
+
+- A normalized `AlertEvent` (severity, source, title, summary, metrics,
+  links, optional health snapshot) is the internal shape. Adapters in
+  `worker/notify/adapters.ts` render Telegram HTML, Slack
+  incoming-webhook JSON, or raw JSON.
+- *Daily digest*: ONE message per local day per channel (Asia/Ho_Chi_Minh,
+  from 08:00). The Vietnamese channel (`TELEGRAM_VI_CHAT_ID`, falling
+  back to `TELEGRAM_CHAT_ID`) posts `bullets_vi` only. The English
+  channel (`TELEGRAM_EN_CHAT_ID`, same bot token)
+  posts `bullets_en` only. Neither falls back to the other language.
+  Each bullet links to its story permalink, plus a site button.
+- *Trending*: an individual post only when the algo flags a story as
+  exceptional (`rank_score` at or above the trending bar and
+  `llm_importance ≥ 7`), capped at
+  3/day with a 3h minimum gap, one per run, and only during 09–23h
+  local: a story that qualifies overnight waits for the window and posts
+  then if it still ranks (before this the cap was often spent by
+  morning and the channel stayed silent all day). On a big-news day (a
+  launch event, a run of major stories) a story with
+  `llm_importance ≥ 9` may go past that cap and gap, up to 6/day with a
+  1h gap; the day's own scores open the extra room, no event list is
+  kept. Digest is the intended daily Telegram post.
+- The trending bar is relative, so a rescored formula cannot silence or
+  flood the channel: `max(TRENDING_RANK_FLOOR = 6, the 0.995 percentile
+  of rank_score over published items in the last 72h)`, read once per
+  notify run. Both lanes use it. At 0.995 (about the top 2 of ~400) the
+  2026-09-27..10-01 replay gave 1–4 qualifiers a day; the floor keeps a
+  dead window's best weak story (one outlet, no reader engagement,
+  importance 7 ≈ 5.6) from posting.
+- Skip reasons are structured (`digest`: no_snapshot / already_sent /
+  before_hour; `trending`: outside_hours / below_min_rank / budget_zero /
+  none_unposted, with the live 24h max rank and the bar) and
+  `console.info`'d plus stored on
+  `workflow_runs.stats.notifyReason`.
+- Delivery state (status/attempts/last_error, bounded retries) lives in
+  the `notifications` table, keyed by channel and item/date rather than
+  locale. Telegram site links use flat `/{8-char}` permalinks with explicit
+  `lang=vi|en` plus `utm_source=telegram`; publisher links keep their own
+  URL and receive only the Telegram attribution parameter.
+- The bounded Telegram Instant View decision, locale URLs, field/media
+  gates, and fallback checklist are in
+  [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).
+  IV is not enabled by this document; keep the normal message/photo path
+  until product and operations approve a manual POC. That record is a
+  **no-go**; the only automation it gained is a *field gate*
+  ([`worker/telegram-iv.ts`](worker/telegram-iv.ts)) that checks
+  `title`/`body`/`published_date`/`image_url`/`site_name`/`description`
+  for one `{id8}` + `lang` and answers `iv_eligible` with a reason. Run it
+  with `verify-aidr doctor iv --id <8hex> --lang vi|en` or
+  `GET /api/admin/notify/iv`. It invents no `rhash` and no query template.
+- `sendMessage`/`sendPhoto` set `link_preview_options` explicitly
+  (`is_disabled`) rather than inheriting the API default: a preview would
+  attach to one arbitrary digest bullet or double the photo. Rationale and
+  the rejected `prefer_small_media`/`prefer_large_media`/`show_above_text`
+  values are in `worker/notify/telegram.ts`.
+- The trending photo path attaches the **generated** first-party card
+  `/api/og/{id8}.png?lang=` (1200×630) — the same `og:image` the card gate
+  approves — instead of the upstream thumb, so a link preview can never be
+  a 404 hotlink-hostile image. The normalized manifest thumbnail remains
+  the fallback when the id cannot address a card.
+- The trending post carries **one** inline button, "Read →" / "Đọc bài →",
+  pointing at the aidr story permalink (`/{id8}?lang=` + UTM). It used to be
+  two — "Read →" to the publisher, "AI;DR" to the permalink — which meant the
+  image above (already the first-party card) and the link pointed at
+  different stories. One canonical locale-stable URL for both.
+- Not a `t.me/iv` wrapper: Instant View needs an editor-approved template and
+  an editor-generated `rhash`, which exists only inside the operator's IV
+  Editor session. Telegram's plain link preview from the page's own Open
+  Graph tags is the documented fallback
+  ([`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md)).
+- A trending story with two or more images uses `sendMediaGroup` (2–10
+  photos: the story's own manifest images and video posters). One image
+  stays `sendPhoto` so the inline button remains — an album has no
+  `reply_markup`, so that link moves into the caption.
+- **Video** (`worker/notify/video.ts`): a manifest video is preflighted with
+  bounded Range requests over `fetchWithSafeRedirects` (never a full
+  download): MP4 container, at most 20 MB, at most 300 s (`mvhd`, faststart
+  or trailing `moov`), size and duration known. Proven video-only stories use
+  `sendVideo` (with the poster as `thumbnail` only when it is a legal JPEG
+  thumbnail); video plus images uses one mixed `sendMediaGroup` (primary
+  video, its poster, then manifest order, deduped by `mediaIdentityKey`, at
+  most 10 items, at most 40 MB of video). An over-cap album is dropped whole,
+  never truncated. A skip, or a call Telegram rejects, falls back to the
+  photo path, then text. Durable multi-message delivery remains a follow-up.
+- **What is checked before a send.** The poster is fetched and checked
+  (JPEG, at most 200 KB, at most 320 px) only when it is about to be used as
+  a `sendVideo` thumbnail; a poster that fails is left out and the video
+  still goes. Gallery photos (`sendPhoto`, album photos) are not
+  preflighted: Telegram fetches them, and if it rejects one the post falls
+  back to the generated card, then text.
+- **Ambiguous sends are never repeated.** Only a JSON answer from Telegram
+  is a definite outcome. `ok: false` posted nothing, so the next transport
+  may run and the row is `failed` (retried up to 3 attempts). A timeout, a
+  dropped connection, or a non-JSON body (a proxy error page) is
+  *ambiguous*: Telegram downloads media itself, so the message may already
+  be posted. An ambiguous call ends the send with no fallback, is recorded
+  as `notifications.status = 'ambiguous'`, and is reported to
+  Sentry/Bugsink. That row is final: the trending query and the digest gate
+  skip it on later runs, and it does not count as a post. The cost is a
+  story or digest that is missed when the call really did fail; the owner
+  checks the channel and can resend a digest from admin. A failed album
+  button reply never changes an album that was already posted.
+- **Media order: story image first, generated card as fallback.** The post
+  leads with the story's real photo. The first-party OG card
+  `/api/og/{id8}.png?lang=` is used when the story has no usable image, and
+  as a one-shot retry when Telegram rejects the image (hotlink-hostile or
+  dead upstream URLs) — it is 200 by construction, so the post keeps its
+  image instead of dropping to bare text. The card no longer occupies an
+  album slot.
+- **Each channel is one language.** `telegram` is `vi` and `telegram-en`
+  is `en`. Digest bullets come from that language's edition
+  (`worker/digest/edition.ts`) and never from the other column. Trending
+  copy is chosen by `Notifier.lang`: English posts the source title, and
+  Vietnamese posts `translations` when the title is present, otherwise
+  the source title. A second locale is another notifier entry.
+
+### 13. Review gates (LLM, rating ≥ 0.6)
+
+User translation suggestions and
+HN-style story submissions are judged (faithfulness / relevance / not
+spam; submission text is treated strictly as data, never instructions)
+before they touch the feed. Jev (`typesafe/jev`,
+`POST /api/v1/systemone`, BYOK-only via Dashboard → BYOK → TypeSafe) is
+tried first as a typed decision (`noul` intent/spam + `score` quality
+mapped to relevance/rating); any Jev failure falls back to the existing
+chat-completions JSON judge. `/api/system` lists that chat chain after
+Jev on `models.decisions`. With `JEV_PANEL_ENABLED`, the JEV review
+panel then gives a second opinion that can only lower the value
+(submissions: scoring panel; suggestions: fidelity + safety panel).
+
+**Suggestions are reviewed on submit** (`worker/suggestions.ts`). A
+signed-in reader edits the title or summary of the language on screen:
+`vi` rewrites the Vietnamese translation, `en` rewrites the English
+source of an English-source story (never ids or urls). The submit
+server fn stores the row and runs `reviewSuggestionById` in the
+request's `waitUntil`, logging LLM calls under a
+`suggestion-review-…` run id. Flow per suggestion: claim
+(`pending` → `reviewing`, conditional UPDATE) → rate (Jev, else chat
+judge) → JEV panel can only lower → if rating ≥ 0.6, rewrite keeping the
+reader's intent → output guard (no new links or markup, no runaway
+length; a fooled model still cannot publish a payload) → text and
+verdict written in one batch. Outcomes: `accepted` (with
+`applied_text`, which may differ from the reader's text), `needs_review`
+(valid, 0.4 ≤ rating < 0.6, waits for an admin), `rejected` (with the
+reason). The hourly `review-suggestions` step is the safety net: it
+reviews rows still `pending` and `reviewing` claims older than 10
+minutes, never `needs_review`. Readers poll their verdict and see full
+history (suggestions + submissions, keyset paged) on `/submit`; both
+reads are keyed by the Clerk session user. TL;DR bullets are not
+editable: snapshots are regenerated hourly and already sent.
+
+**Free-form suggestions** (`field = 'auto'`, the default). The reader
+writes one suggestion in any language; one planner call (chat judge,
+no Jev) sees the source and Vietnamese title + summary and returns a
+rating, a reason and edits for only the fields it names, limited to
+vi.title, vi.summary and the English title of an English-source story.
+Every edit passes the output guard (one failure rejects all), all edits
+land in one batch, and `applied_changes` stores `{lang, field, before,
+after}` per field. A valid comment with no concrete edit goes to
+`needs_review`. Fixed-field rows from before keep the old path.
+
+**Translation knowledge** (`worker/translation-knowledge.ts`, table
+`translation_knowledge`). After an accepted VI suggestion (instant
+review or admin approve) one extra call asks whether it teaches a
+reusable rule (`keep_english` / `preferred_term` / `avoid`) or is a
+one-off. Rule fields are validated as short terms (no newlines, links,
+or sentences). A rule goes `active` only when the review rating is
+≥ 0.9 (admin approve counts as 1) and the edit itself proves it (term in
+the source, forbidden phrase removed); otherwise `pending` for an admin
+(`GET /api/admin/knowledge`, `POST /api/admin/knowledge/decide`
+`{id, status}`). Active rules matching the input add a "Glossary" block
+(≤ 8 rules, ≤ 800 chars) after VI_STYLE in translate, TL;DR, suggestion
+rewrite and QA repair prompts, and translation QA fails `terminology`
+when the EN source has the term and the VI text has a forbidden phrase
+→ repair; each catch increments the rule's `hits`. Seeded: "agent"
+stays English, "đại lý"/"đặc vụ" fail ("tác nhân" is allowed).
+
+**Email contributions** (`docs/decisions/email-contributions.md`).
+Mail to `submit@aidr.today` reaches the `aidr-email` Worker
+(`apps/email`), which only validates and stores: sender authenticated
+by Cloudflare (DKIM or SPF aligned with the From domain, read only above
+the first `Received:`), From = envelope sender, address = a live Clerk
+account email that Clerk marks verified (`clerk_users.email_verified`,
+from the webhook / clerk-sync) or another address Clerk has already verified (`clerk_verified_emails`), no
+auto-reply/bounce/list mail, ≤ 1 MiB, ≤ 20 per user per day. It writes
+an `inbound_emails` row: `pending` with parsed fields (the user's own
+text, links, story reference), or `ignored` with a reason and no
+content. No LLM runs there. The hourly `inbound-email` step (before
+`review-suggestions`) turns pending rows into a submission (forward or
+new mail with one link), a suggestion on the referenced story
+(`submit+<id8>@`, `[aidr:<id8>]` subject marker, or one aidr.today story
+link in the user's own text; `title:`/`summary:` prefix = fixed field,
+else `auto`) or a comment, then acks from notes@ with
+`Reply-To: submit@`. Review happens in the normal gates later in the
+same run.
 
 ## LLM transport
 

@@ -89,7 +89,8 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # google/*, meta/llama-*, meta/muse-spark-*, mistralai/*, moonshotai/*,
 # x-ai/*, minimax/m2.*, cohere/*, nex-agi/*, bytedance-seed/*, upstage/*,
 # xiaomi/*, stepfun-ai/*, tencent/*, ibm-granite/*, sakana/*, openrouter/free.
-# Score tries Jev first (ANYROUTER_JEV_MODEL), then ANYROUTER_MODEL.
+# Score tries ANYROUTER_DECISION_MODEL, then Jev (ANYROUTER_JEV_MODEL), then
+# ANYROUTER_MODEL.
 ANYROUTER_MODEL = "poolside/laguna-s-2.1,@preset/aidr,anyrouter/auto"
 ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,@preset/aidr,anyrouter/auto"
 # TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
@@ -118,6 +119,11 @@ ANYROUTER_REVIEW_MODEL = "z-ai/glm-4.6,z-ai/glm-5.2"
 # is the backup. BYOK-only — Dashboard → BYOK → TypeSafe. Never add this id
 # to a /chat/completions chain; Jev is rejected there.
 ANYROUTER_JEV_MODEL = "typesafe/jev"
+# Score calls this System One router before Jev. It routes to Jev when the
+# TypeSafe BYOK key is healthy and to Fastino GLiNER when not; GLiNER answers
+# carry no score distribution and fail validation, so those items fall to Jev
+# and then the chat chain. Empty = score starts at Jev.
+ANYROUTER_DECISION_MODEL = "anyrouter/decision"
 # Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
 # overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014
 # blocks the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).

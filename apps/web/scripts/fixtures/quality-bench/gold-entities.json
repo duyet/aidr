@@ -1,0 +1,355 @@
+{
+  "note": "Model/product names present in each title, labelled by hand before running extractTitleEntities. Labs are listed separately (info only). Match is exact trendingKey equality against `entities` or `aliases`; a shorter prefix (e.g. gemini-4 for gemini-4-argon) is counted as partial, which is a miss for recall.",
+  "titles": [
+    {
+      "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+      "entities": ["Gemini 4 Argon"],
+      "labs": ["Google"]
+    },
+    {
+      "title": "Anthropic says Zhipu's open-weight GLM-5.3 nearly matches Claude Mythos Preview at building exploits",
+      "entities": ["GLM-5.3", "Claude Mythos Preview"],
+      "aliases": { "Claude Mythos Preview": ["claude-mythos"] },
+      "labs": ["Anthropic", "Zhipu"]
+    },
+    {
+      "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+      "entities": ["DoGBench"],
+      "labs": []
+    },
+    {
+      "title": "Allen AI Releases Open Training Stack for 1 Trillion Parameter MoE Models",
+      "entities": [],
+      "labs": ["Allen AI"]
+    },
+    {
+      "title": "Black Forest Labs Ships FLUX 3 Image for High Precision Editing",
+      "entities": ["FLUX 3"],
+      "labs": ["Black Forest Labs"]
+    },
+    {
+      "title": "Runway Unveils Project Continuum OS Based on Real-Time Video",
+      "entities": ["Project Continuum"],
+      "labs": ["Runway"]
+    },
+    {
+      "title": "Shopify debuts Canvas, a way to build online stores by chatting with AI",
+      "entities": ["Canvas"],
+      "labs": []
+    },
+    {
+      "title": "Modal Launches Multi Node Clusters for 1T Parameter Models",
+      "entities": [],
+      "labs": []
+    },
+    {
+      "title": "ChatGPT can now virtually try on clothes for you",
+      "entities": ["ChatGPT"],
+      "labs": []
+    },
+    {
+      "title": "Show HN: Janus – Go binary that runs GGUF models via Vulkan on AMD/Intel/Nvidia",
+      "entities": ["Janus"],
+      "labs": []
+    },
+    {
+      "title": "Google's new Guided Vision feature can help you read the fine print",
+      "entities": ["Guided Vision"],
+      "labs": ["Google"]
+    },
+    {
+      "title": "Cybersecurity Stocks Fall After Google Unveils Gemini 4 Argon",
+      "entities": ["Gemini 4 Argon"],
+      "labs": ["Google"]
+    },
+    {
+      "title": "Musk's AI chatbot Grok reportedly encouraged Trump to capture  Venezuela's president",
+      "entities": ["Grok"],
+      "labs": []
+    },
+    {
+      "title": "Amazon releases its own Jev clone as decision models flood the web",
+      "entities": ["Jev"],
+      "labs": ["Amazon"]
+    },
+    {
+      "title": "Microsoft and Nvidia Set Oct 7 Event for RTX Spark and Surface",
+      "entities": ["RTX Spark"],
+      "labs": ["Microsoft", "Nvidia"]
+    },
+    {
+      "title": "SpaceXAI Launches Grok Imagine Video 1.5 Lite on fal and Venice",
+      "entities": ["Grok Imagine Video 1.5 Lite"],
+      "aliases": { "Grok Imagine Video 1.5 Lite": ["grok-imagine-video-1.5"] },
+      "labs": ["SpaceXAI"]
+    },
+    {
+      "title": "Tesla Cuts AI5 Chip RAM to 72GB for Optimus Volume",
+      "entities": ["AI5", "Optimus"],
+      "labs": []
+    },
+    {
+      "title": "SpaceXAI Launches Grok 4.7 on Gemini Enterprise Agent Platform",
+      "entities": ["Grok 4.7", "Gemini Enterprise Agent Platform"],
+      "aliases": { "Gemini Enterprise Agent Platform": ["gemini-enterprise"] },
+      "labs": ["SpaceXAI"]
+    },
+    {
+      "title": "Scaling cloud migrations with agentic AI on Amazon Bedrock AgentCore",
+      "entities": ["Amazon Bedrock AgentCore"],
+      "aliases": {
+        "Amazon Bedrock AgentCore": ["bedrock-agentcore", "agentcore"]
+      },
+      "labs": []
+    },
+    {
+      "title": "LangChain Launches LangSmith Fine-Tuning to Turn Agent Traces Into Models",
+      "entities": ["LangSmith Fine-Tuning"],
+      "aliases": { "LangSmith Fine-Tuning": ["langsmith"] },
+      "labs": ["LangChain"]
+    },
+    {
+      "title": "Cloudflare Launches First In-House AI Models With clef Release",
+      "entities": ["clef"],
+      "labs": ["Cloudflare"]
+    },
+    {
+      "title": "Anthropic Launches Claude Code Mods for User Customization",
+      "entities": ["Claude Code"],
+      "aliases": { "Claude Code": ["claude-code-mods"] },
+      "labs": ["Anthropic"]
+    },
+    {
+      "title": "GPT-Synopsys: Frontier Intelligence to Revolutionize Chip Design",
+      "entities": ["GPT-Synopsys"],
+      "labs": []
+    },
+    {
+      "title": "LFM2.5-2.6B Model Hits 54% Solve Rate With New Multi Harness RL",
+      "entities": ["LFM2.5-2.6B"],
+      "aliases": { "LFM2.5-2.6B": ["lfm2.5"] },
+      "labs": []
+    },
+    {
+      "title": "Grok Launches Agent Dashboard to Manage Multiple AI Agents",
+      "entities": ["Grok"],
+      "labs": []
+    },
+    {
+      "title": "Overmind's 9B Models Outperform GPT-5.6 Luna on Specialist Tasks",
+      "entities": ["GPT-5.6 Luna"],
+      "labs": ["Overmind"]
+    },
+    {
+      "title": "Gemini 4 Argon (High): Intelligence, Performance and Price Analysis",
+      "entities": ["Gemini 4 Argon"],
+      "labs": []
+    },
+    {
+      "title": "NVIDIA Releases Kumo Tabular: Open Tabular Foundation Models That Predict New Rows in a Single Forward Pass",
+      "entities": ["Kumo Tabular"],
+      "labs": ["NVIDIA"]
+    },
+    {
+      "title": "Adaption AI Beats GPT 5.6 and Claude Opus 5 in Data Synthesis",
+      "entities": ["GPT 5.6", "Claude Opus 5"],
+      "labs": ["Adaption AI"]
+    },
+    {
+      "title": "Introducing Olmo-core 3: Open, scalable training infrastructure for large MoEs",
+      "entities": ["Olmo-core 3"],
+      "labs": []
+    },
+    {
+      "title": "GPT-6.1 Sol replaces GPT-6 Sol after just 7 days, with near-Astra intelligence",
+      "entities": ["GPT-6.1 Sol", "GPT-6 Sol"],
+      "labs": []
+    },
+    {
+      "title": "LiteLLM Launches Lens to Improve Enterprise AI Agents via Traffic Data",
+      "entities": ["LiteLLM", "Lens"],
+      "aliases": { "Lens": ["litellm-lens"] },
+      "labs": []
+    },
+    {
+      "title": "OpenAI Adds MCP Server Hosting to ChatGPT Sites",
+      "entities": ["ChatGPT Sites"],
+      "labs": ["OpenAI"]
+    },
+    {
+      "title": "Cloudflare Opens Artifacts Beta to Let AI Agents Manage Git Repos",
+      "entities": ["Artifacts"],
+      "aliases": { "Artifacts": ["cloudflare-artifacts"] },
+      "labs": ["Cloudflare"]
+    },
+    {
+      "title": "OpenAI Plans Mass Market Consumer Version of Dots AI Agent",
+      "entities": ["Dots"],
+      "labs": ["OpenAI"]
+    },
+    {
+      "title": "Build agent memory with NVIDIA NeMo Agent Toolkit and Amazon S3 Vectors",
+      "entities": ["NeMo Agent Toolkit", "Amazon S3 Vectors"],
+      "aliases": { "Amazon S3 Vectors": ["s3-vectors"] },
+      "labs": ["NVIDIA"]
+    },
+    {
+      "title": "TomasuLLM: Out-of-Order Speculative Execution for LLM Agents",
+      "entities": ["TomasuLLM"],
+      "labs": []
+    },
+    {
+      "title": "GitHub Launches HydraFusion Multi Model Coding Assistant as Research Preview",
+      "entities": ["HydraFusion"],
+      "labs": ["GitHub"]
+    },
+    {
+      "title": "All the latest news on Meta's cute, creepy Muse AI agent",
+      "entities": ["Muse"],
+      "labs": ["Meta"]
+    },
+    {
+      "title": "Barclays Targets 50% Developer Adoption of Anthropic Claude by 2026",
+      "entities": ["Claude"],
+      "labs": ["Anthropic"]
+    },
+    {
+      "title": "Cohere Launches Embed 5 Models With Top ViDoRe V3 Scores",
+      "entities": ["Embed 5", "ViDoRe V3"],
+      "labs": ["Cohere"]
+    },
+    {
+      "title": "Google Gemini 4's Coding Skills Trail Benchmarks in Internal Tests",
+      "entities": ["Gemini 4"],
+      "labs": ["Google"]
+    },
+    {
+      "title": "CoreWeave Deploys First Production NVIDIA Rubin NVL72 for Cognition",
+      "entities": ["Rubin NVL72"],
+      "aliases": { "Rubin NVL72": ["nvidia-rubin-nvl72"] },
+      "labs": ["NVIDIA", "Cognition"]
+    },
+    {
+      "title": "OpenAI Adds Capacity for GPT-6.1 Sol, Says Speed Should Nearly Double",
+      "entities": ["GPT-6.1 Sol"],
+      "labs": ["OpenAI"]
+    },
+    {
+      "title": "webAI's 3.66B TwIL-LM3-Pro Beats VibeThinker by 35% in Formal Logic",
+      "entities": ["TwIL-LM3-Pro", "VibeThinker"],
+      "labs": ["webAI"]
+    },
+    {
+      "title": "Ideogram Launches 4.5 Image Model and Plans Open Weights Release",
+      "entities": ["Ideogram 4.5"],
+      "aliases": { "Ideogram 4.5": ["ideogram"] },
+      "labs": ["Ideogram"]
+    },
+    {
+      "title": "NVIDIA Researchers Introduce Physis-Lang: Self-Evolving Physical Language That Lifts Cosmos 3 Past Veo 3.1 on Physics Benchmarks",
+      "entities": ["Physis-Lang", "Cosmos 3", "Veo 3.1"],
+      "labs": ["NVIDIA"]
+    },
+    {
+      "title": "Creatify Launches Boreal-H3 for High Fidelity Video Ads",
+      "entities": ["Boreal-H3"],
+      "labs": ["Creatify"]
+    },
+    {
+      "title": "Perplexity Introduces Photon: A Rust-Based Retrieval Engine That Cuts p99 Latency From 800 ms to 65 ms",
+      "entities": ["Photon"],
+      "labs": ["Perplexity"]
+    },
+    {
+      "title": "Grok Bot Integrates Cursor and GitHub for Software Building",
+      "entities": ["Grok", "Cursor"],
+      "labs": []
+    },
+    {
+      "title": "OpenDLSS: A Vulkan Reimplementation of Nvidia's DLSS 5 Neural Rendering Network",
+      "entities": ["OpenDLSS", "DLSS 5"],
+      "labs": ["Nvidia"]
+    },
+    {
+      "title": "Codex Pricing: Pro has unlimited 5.6 usage",
+      "entities": ["Codex"],
+      "labs": []
+    },
+    {
+      "title": "Introducing SynthID Bio",
+      "entities": ["SynthID Bio"],
+      "labs": []
+    },
+    {
+      "title": "Implementing Multi-Environment Access for Claude Platform on AWS",
+      "entities": ["Claude Platform"],
+      "labs": []
+    },
+    {
+      "title": "How uniopen customized Amazon Nova to their retail moderation policies for production deployment",
+      "entities": ["Amazon Nova"],
+      "aliases": { "Amazon Nova": ["nova"] },
+      "labs": []
+    },
+    {
+      "title": "FTC Launches Sweeping AI Probe of OpenAI and Anthropic",
+      "entities": [],
+      "labs": ["OpenAI", "Anthropic"]
+    },
+    {
+      "title": "Anthropic Schedules Oct 14 Investor Day for November IPO",
+      "entities": [],
+      "labs": ["Anthropic"]
+    },
+    {
+      "title": "Nvidia and SoftBank Deliver Final $20B for OpenAI March Round",
+      "entities": [],
+      "labs": ["Nvidia", "OpenAI"]
+    },
+    {
+      "title": "US Arrests California CEO for Smuggling $300M in Servers to China",
+      "entities": [],
+      "labs": []
+    },
+    {
+      "title": "AI Web Text Hits 31% and Harms Language Model Training",
+      "entities": [],
+      "labs": []
+    },
+    {
+      "title": "US Senate Seeks New AI Liability Laws After Rogue Agent Hearing",
+      "entities": [],
+      "labs": []
+    },
+    {
+      "title": "Japan Plans $140B AI Push to Become Largest Compute Hub Outside US and China",
+      "entities": [],
+      "labs": []
+    },
+    {
+      "title": "Accenture Shares Jump 22% in Biggest One Day Gain on Record",
+      "entities": [],
+      "labs": []
+    },
+    {
+      "title": "Tesla Produces Several Hundred Optimus Robots Weekly at Fremont",
+      "entities": ["Optimus"],
+      "labs": []
+    },
+    {
+      "title": "Fed Governor Lisa Cook Labels AI Primary Economic Risk for 2027",
+      "entities": [],
+      "labs": []
+    },
+    {
+      "title": "South Korea Exports Hit Record $120.9B on AI Chip Demand",
+      "entities": [],
+      "labs": []
+    },
+    {
+      "title": "Moody's Projects US Data Centers Use 10% of Power by 2030",
+      "entities": [],
+      "labs": []
+    }
+  ]
+}

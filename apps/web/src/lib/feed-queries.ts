@@ -495,7 +495,11 @@ export async function getFeed(
   // Trending: prefer versioned models / products extracted from titles
   // (GPT-6 Astra, Fable 5.1) over generic score themes (llm, agent).
   const dayAgo = Math.floor(Date.now() / 1000) - 86400;
-  const { counts: tagCounts, displayByKey } = collectTrendingCandidates(
+  const {
+    counts: tagCounts,
+    displayByKey,
+    entityKeys,
+  } = collectTrendingCandidates(
     items.map((it) => ({
       title: it.title,
       tags: it.tags,
@@ -504,12 +508,12 @@ export async function getFeed(
     })),
     dayAgo
   );
-  const trending = rankTrendingWithGrowth(tagCounts, yesterdayCounts).map(
-    ({ tag, count }) => ({
-      tag: displayByKey.get(tag) ?? tag,
-      count,
-    })
-  );
+  const trending = rankTrendingWithGrowth(tagCounts, yesterdayCounts, {
+    entityKeys,
+  }).map(({ tag, count }) => ({
+    tag: displayByKey.get(tag) ?? tag,
+    count,
+  }));
 
   let tldr: FeedResponse["tldr"] = null;
   const tldrRow = tldrRes.results?.[0] as

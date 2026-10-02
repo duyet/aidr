@@ -13,7 +13,7 @@
  * score-batch budget.
  */
 export const AI_KEYWORD_RE =
-  /\b(ai|llm|gpt|claude|gemini|openai|anthropic|deepseek|qwen|mistral|llama|grok|kimi|glm|olmo|phi|gemma|model|language model|foundation model|open[- ]weights|world model|video model|speech model|voice model|mixture of experts|ai lab|research lab|agent|agentic|transformer|neural|machine learning|nvidia|hugging ?face|cursor|copilot|codex|windsurf|openrouter|ollama|vllm|mcp|rag|diffusion|multimodal|vision.?language|reasoning|fine.?tun|benchmark|swe.?bench|arc.?agi)\b/i;
+  /\b(ai|llm|gpt|claude|gemini|openai|anthropic|deepseek|qwen|mistral|llama|grok|kimi|glm|olmo|phi|gemma|models?|language models?|foundation model|open[- ]weights?|world models?|video models?|speech models?|voice models?|mixture of experts|ai lab|research lab|agent|agentic|transformer|neural|machine learning|nvidia|hugging ?face|cursor|copilot|codex|windsurf|openrouter|ollama|vllm|mcp|rag|diffusion|multimodal|vision.?language|reasoning|fine.?tun|benchmark|swe.?bench|arc.?agi|chatgpt|chatbots?|deepmind|perplexity|cohere|elevenlabs|midjourney|sora|nemotron|mimo|manus|black forest labs|meta muse|super ?intelligence|text.to.speech|dspy|langchain)\b/i;
 
 /** Named filter profiles a source row can opt into via `config.keywordFilter`. */
 export const KEYWORD_FILTERS: Record<string, RegExp> = {

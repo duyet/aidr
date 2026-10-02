@@ -153,13 +153,14 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("0027, 0030, 0032 and 0036 applied in order list exactly the registry rows", () => {
+  it("0027, 0030, 0032, 0036, 0043 and 0044 applied in order list exactly the registry rows", () => {
     const read = (name: string) =>
       readFileSync(resolve(dirname(MIGRATION_PATH), name), "utf8");
     const arxivSql = read("0030_arxiv_source.sql");
     const rangesSql = read("0032_community_source_ranges.sql");
     const cloudflareSql = read("0036_cloudflare_blog_source.sql");
     const hnScopeSql = read("0043_hn_model_scope.sql");
+    const aiSourcesSql = read("0044_ai_sources_and_aggregator_caps.sql");
     // A later migration replaces the earlier row with the same id.
     expect(
       normalize(
@@ -168,12 +169,13 @@ describe("registry / seed SQL / migration agreement", () => {
           parseSourceInsertRows(arxivSql),
           parseSourceInsertRows(rangesSql),
           parseSourceInsertRows(cloudflareSql),
-          parseSourceInsertRows(hnScopeSql)
+          parseSourceInsertRows(hnScopeSql),
+          parseSourceInsertRows(aiSourcesSql)
         )
       )
     ).toEqual(expected);
     // Never re-enables a source an operator switched off.
-    for (const sql of [arxivSql, rangesSql, cloudflareSql]) {
+    for (const sql of [arxivSql, rangesSql, cloudflareSql, aiSourcesSql]) {
       expect(sql).toContain("ON CONFLICT(id) DO UPDATE SET");
       expect(sql).not.toContain("enabled = excluded.enabled");
     }
@@ -243,5 +245,15 @@ describe("skip-reason enum", () => {
       "fetch_failed",
       "parse_failed",
     ]);
+  });
+});
+
+describe("aggregator flood gate", () => {
+  it("caps marketbrief and huggingnews, which are mirrors of each other", () => {
+    for (const id of ["marketbrief", "huggingnews"]) {
+      const spec = SOURCE_REGISTRY.find((s) => s.id === id);
+      expect(spec?.config.maxItems, id).toBe(6);
+      expect(spec?.family, id).toBe("aggregator");
+    }
   });
 });

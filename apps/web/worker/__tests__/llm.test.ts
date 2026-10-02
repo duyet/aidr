@@ -26,6 +26,7 @@ import {
   translateItems,
   VI_STYLE,
 } from "../llm.js";
+import { servedByJev } from "../systemone.js";
 import { sanitizeError } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
 
@@ -1140,6 +1141,169 @@ describe("model fallback chain", () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(results).toHaveLength(1);
+  });
+
+  describe("decision router before Jev", () => {
+    it("accepts only answers served by Jev", () => {
+      const r = (upstreamModel: string, upstreamProvider: string) => ({
+        answers: {},
+        inputTokens: 0,
+        upstreamModel,
+        upstreamProvider,
+      });
+      expect(servedByJev(r("jev-1.13.0", "typesafe-byok"))).toBe(true);
+      expect(servedByJev(r("typesafe/jev", ""))).toBe(true);
+      expect(servedByJev(r("fastino/gliner2.5-multi-v1", "fastino-byok"))).toBe(
+        false
+      );
+      expect(servedByJev(r("jev-1.13.0", "fastino-byok"))).toBe(false);
+      expect(servedByJev(r("", ""))).toBe(false);
+    });
+
+    const decisionEnv = {
+      ...env,
+      ANYROUTER_DECISION_MODEL: "anyrouter/decision",
+    };
+    const jevAnswers = (importance: string) => ({
+      is_ai_tech: { type: "noul", noul: 0.9 },
+      importance: { type: "score", score: importance },
+      quality: { type: "score", score: "8" },
+      category: { type: "choice", choice: "Models" },
+      entity: { type: "choice", choice: "openai" },
+      theme: { type: "choice", choice: "llm" },
+    });
+    const systemOneModelsOf = (fetchMock: ReturnType<typeof vi.fn>) =>
+      fetchMock.mock.calls
+        .filter((call) => String(call[0]).includes("/systemone"))
+        .map(
+          (call) =>
+            (
+              JSON.parse((call[1] as RequestInit).body as string) as {
+                model: string;
+              }
+            ).model
+        );
+
+    it("uses the decision answer and never calls Jev or chat", async () => {
+      const fetchMock = vi.fn(async (url: string) => {
+        if (!String(url).includes("/systemone")) {
+          return new Response("chat should not run", { status: 500 });
+        }
+        return Response.json({
+          model: "jev-1.13.0",
+          answers: jevAnswers("9"),
+          usage: { input_tokens: 30, output_tokens: 0, cost: 0 },
+        });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const results = await scoreItems(decisionEnv, scoreInput);
+      expect(systemOneModelsOf(fetchMock)).toEqual(["anyrouter/decision"]);
+      expect(chatModelsOf(fetchMock)).toEqual([]);
+      expect(results[0]?.importance).toBe(9);
+    });
+
+    it("falls to Jev when decision fails, then to chat when both fail", async () => {
+      const jevOk = vi.fn(async (_url: string, init?: RequestInit) => {
+        const { model } = JSON.parse(init?.body as string) as {
+          model: string;
+        };
+        if (model === "anyrouter/decision") {
+          return new Response("decision down", { status: 502 });
+        }
+        return Response.json({
+          model: "typesafe/jev",
+          answers: jevAnswers("5"),
+          usage: { input_tokens: 10, output_tokens: 0, cost: 0 },
+        });
+      });
+      vi.stubGlobal("fetch", jevOk);
+      const viaJev = await scoreItems(decisionEnv, scoreInput);
+      expect(systemOneModelsOf(jevOk)).toEqual([
+        "anyrouter/decision",
+        "typesafe/jev",
+      ]);
+      expect(chatModelsOf(jevOk)).toEqual([]);
+      expect(viaJev[0]?.importance).toBe(5);
+
+      const allDown = vi.fn(async (url: string) =>
+        String(url).includes("/systemone")
+          ? new Response("down", { status: 502 })
+          : completion(scorePayload)
+      );
+      vi.stubGlobal("fetch", allDown);
+      const viaChat = await scoreItems(decisionEnv, scoreInput);
+      expect(systemOneModelsOf(allDown)).toEqual([
+        "anyrouter/decision",
+        "typesafe/jev",
+      ]);
+      expect(chatModelsOf(allDown)).toEqual(["test-model"]);
+      expect(viaChat[0]?.category).toBe("Models");
+    });
+
+    // anyrouter/decision reroutes to GLiNER when Jev is unavailable. Its
+    // score answers parse (importance 1, quality 0 for a frontier launch) but
+    // are not on Jev's calibrated scale, so the item must move on to Jev.
+    it("rejects a degenerate decision answer and sends that item to Jev", async () => {
+      const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+        const body = JSON.parse(init?.body as string) as {
+          model: string;
+          state: { i: number };
+        };
+        if (body.model === "anyrouter/decision" && body.state.i === 1) {
+          return Response.json({
+            model: "fastino/gliner2.5-multi-v1",
+            anyrouter_metadata: {
+              model: "anyrouter/decision",
+              requestId: "req_gliner",
+              upstream: { provider: "fastino-byok" },
+            },
+            answers: {
+              ...jevAnswers("1"),
+              importance: {
+                type: "score",
+                score: 0,
+                probabilities: { "0": 0.24 },
+              },
+              quality: { type: "score", score: "0" },
+            },
+            usage: { input_tokens: 5, output_tokens: 0, cost: 0 },
+          });
+        }
+        return Response.json({
+          model: "jev-1.13.0",
+          answers: jevAnswers(body.model === "typesafe/jev" ? "4" : "8"),
+          usage: { input_tokens: 10, output_tokens: 0, cost: 0 },
+        });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const entries: LlmCallLogEntry[] = [];
+      setLlmCallLogger((entry) => {
+        entries.push(entry);
+      });
+
+      const results = await scoreItems(decisionEnv, [
+        { i: 0, title: "Launch", source: "openai.com" },
+        { i: 1, title: "Gadget", source: "hn" },
+      ]).finally(() => setLlmCallLogger(null));
+      // llm_calls records which upstream actually served the router call.
+      expect(entries.find((e) => e.requestId === "req_gliner")).toMatchObject({
+        task: "score",
+        model: "anyrouter/decision",
+        route: ["anyrouter/decision", "fastino/gliner2.5-multi-v1"],
+        provider: "fastino-byok",
+      });
+      expect(systemOneModelsOf(fetchMock)).toEqual([
+        "anyrouter/decision",
+        "anyrouter/decision",
+        "typesafe/jev",
+      ]);
+      expect(chatModelsOf(fetchMock)).toEqual([]);
+      expect(results.map((r) => [r.i, r.importance])).toEqual([
+        [0, 8],
+        [1, 4],
+      ]);
+    });
   });
 
   it("prefers the per-task translate model over ANYROUTER_MODEL", async () => {

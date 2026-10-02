@@ -121,6 +121,7 @@ async function previousRunStillOpen(
          ORDER BY CASE WHEN started_at > 1000000000000 THEN started_at / 1000 ELSE started_at END DESC, id DESC
          LIMIT 1`
       )
+      .bind()
       .first<{ started_at: number | null; finished_at: number | null }>();
     if (!row) return false;
     return blockedByOpenRun(row.started_at, row.finished_at, nowMs);

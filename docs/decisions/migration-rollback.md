@@ -180,6 +180,15 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
 - Rollback: redeploy the previous Worker, then
   `DROP TABLE clerk_verified_emails;`
 
+## 0044_ai_sources_and_aggregator_caps.sql
+
+Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
+`nvidia-blog`, `nvidia-dev`, `microsoft-research`, `apple-ml`, `together-ai`,
+`github-ai`, `latent-space`, `interconnects`, `import-ai`, `bens-bites`,
+`ahead-of-ai`) or disabling them, and by restoring the `marketbrief` config to
+`{"homepage":"https://marketbrief.now","topics":["ai"]}` and `huggingnews` to
+`{}`. Items already fetched stay.
+
 ## 0043_hn_model_scope.sql
 
 - Change: widens the Hacker News `sources.config` query so model releases,

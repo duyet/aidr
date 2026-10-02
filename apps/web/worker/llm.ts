@@ -15,9 +15,12 @@ import {
 } from "./jev-panel/score-review.js";
 import {
   callSystemOne,
+  decisionModelId,
   isSystemOneConfigured,
+  jevModelId,
   jevScoreQuestions,
   scoreJudgmentFromJev,
+  servedByJev,
 } from "./systemone.js";
 import { sanitizeError } from "./telemetry-safe.js";
 import { viSystemPrompt } from "./translation-knowledge.js";
@@ -1138,7 +1141,7 @@ export function sanitizeScoreResults(
   return out;
 }
 
-/** Chat-completions rubric. Backup for items Jev did not judge. */
+/** Chat-completions rubric. Backup for items no System One hop judged. */
 async function scoreBatchWithChat(
   env: Env,
   batch: ScoreInput[]
@@ -1163,13 +1166,19 @@ async function scoreBatchWithChat(
   }
 }
 
-/** One System One call per item. A miss (transport, bad answers) returns
- * null so that item stays on the chat backup. Tokens are that call's input
- * tokens — Jev output is free and uncounted. */
-async function scoreOneWithJev(
+/** Decision router hop cap. Router-to-Jev answers took ~9s in probes; the
+ * cap keeps decision (15s) + Jev (30s) + one chat slice (70s) per wave so
+ * two waves still fit the 4-minute score step. */
+const DECISION_TIMEOUT_MS = 15_000;
+
+/** One System One call per item on `model`. A miss (transport, bad
+ * answers) returns null so that item moves to the next hop. Tokens are that
+ * call's input tokens — System One output is free and uncounted. */
+async function scoreOneWithSystemOne(
   env: Env,
   item: ScoreInput,
-  questions: ReturnType<typeof jevScoreQuestions>
+  questions: ReturnType<typeof jevScoreQuestions>,
+  model: string
 ): Promise<ScoreResult | null> {
   try {
     const jev = await callSystemOne(
@@ -1181,9 +1190,20 @@ async function scoreOneWithJev(
         source: item.source,
       },
       questions,
-      "score"
+      "score",
+      model,
+      model === jevModelId(env) ? undefined : DECISION_TIMEOUT_MS
     );
     if (!jev) return null;
+    // A router hop can land on a non-Jev decider (GLiNER answers score
+    // questions with a bare index, e.g. importance 1 for a frontier launch).
+    // Only Jev's score scale is calibrated; anything else moves on.
+    if (model !== jevModelId(env) && !servedByJev(jev)) {
+      console.warn(
+        `scoreItems ${model} answered by ${jev.upstreamModel || "unknown"} (${jev.upstreamProvider || "unknown"}); skipped`
+      );
+      return null;
+    }
     const judgment = scoreJudgmentFromJev(jev.answers, CATEGORIES);
     if (!judgment) return null;
     const [row] = sanitizeScoreResults(
@@ -1193,7 +1213,7 @@ async function scoreOneWithJev(
     );
     return row ?? null;
   } catch (error) {
-    console.error("scoreItems jev item failed:", error);
+    console.error(`scoreItems ${model} item failed:`, error);
     return null;
   }
 }
@@ -1207,22 +1227,34 @@ export async function scoreItems(
   const questions = isSystemOneConfigured(env)
     ? jevScoreQuestions(CATEGORIES)
     : null;
+  // System One hops in order: the decision router, then Jev. Each item a
+  // hop misses moves to the next; whatever is left goes to the chat rubric.
+  const decision = decisionModelId(env);
+  const systemOneModels = questions
+    ? [...(decision ? [decision] : []), jevModelId(env)]
+    : [];
   const batchResults = await mapWithConcurrency(
     batches,
     SCORE_CONCURRENCY,
     async (batch) => {
-      const jevRows = questions
-        ? (
-            await Promise.all(
-              batch.map((item) => scoreOneWithJev(env, item, questions))
+      const rows: ScoreResult[] = [];
+      let missing = batch;
+      for (const model of systemOneModels) {
+        if (!questions || missing.length === 0) break;
+        const hopRows = (
+          await Promise.all(
+            missing.map((item) =>
+              scoreOneWithSystemOne(env, item, questions, model)
             )
-          ).filter((row): row is ScoreResult => row !== null)
-        : [];
-      const covered = new Set(jevRows.map((row) => row.i));
-      const missing = batch.filter((item) => !covered.has(item.i));
-      if (missing.length === 0) return jevRows;
+          )
+        ).filter((row): row is ScoreResult => row !== null);
+        rows.push(...hopRows);
+        const covered = new Set(hopRows.map((row) => row.i));
+        missing = missing.filter((item) => !covered.has(item.i));
+      }
+      if (missing.length === 0) return rows;
       const chatRows = await scoreBatchWithChat(env, missing);
-      return [...jevRows, ...chatRows];
+      return [...rows, ...chatRows];
     }
   );
 

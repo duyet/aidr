@@ -542,12 +542,197 @@ export const HN_SCOPE_SOURCE: SourceSpec = {
   enabled: true,
 };
 
+/**
+ * 0044. Caps the two aggregators and adds AI labs, vendors and newsletters,
+ * each verified live on 2026-10-02 (HTTP 200, parseable, dated items).
+ *
+ * - `marketbrief` / `huggingnews`: D1 over 7 days showed huggingnews is an
+ *   exact title mirror of marketbrief (321 of 321 titles in 3 days) and the
+ *   pair made 321 of ~640 fetched items; 30-minute runs had a median of 3 new
+ *   items and 80% of runs had 6 or fewer, so 6 matches the other newsrooms
+ *   and only trims bursts, which later runs pick up.
+ * - Broad vendor feeds use `keywordFilter` + a small `maxItems`; single-topic
+ *   labs and newsletters only get a cap.
+ * - Evaluated and left out: Qwen (newest post 2025), Replicate (newest post
+ *   2026-04), BAIR (2026-07), Meta AI / Cohere / Perplexity / Stability /
+ *   LangChain / DeepSeek / Microsoft AI (404, 403, 410 or no feed items),
+ *   GitHub release feeds for Ollama, vLLM and llama.cpp (titles are bare
+ *   version tags, so nothing for the scorer to judge).
+ */
+export const REGISTRY_0044: readonly SourceSpec[] = [
+  {
+    id: "huggingnews",
+    name: "HuggingNews",
+    type: "huggingnews",
+    config: { maxItems: 6 },
+    enabled: true,
+    family: "aggregator",
+  },
+  {
+    id: "marketbrief",
+    name: "MarketBrief",
+    type: "marketbrief",
+    config: {
+      homepage: "https://marketbrief.now",
+      topics: ["ai"],
+      maxItems: 6,
+    },
+    enabled: true,
+    family: "aggregator",
+  },
+  {
+    id: "mistral",
+    name: "Mistral AI",
+    type: "rss",
+    config: {
+      feed: "https://mistral.ai/news/rss",
+      homepage: "https://mistral.ai/news",
+      maxItems: 4,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "nvidia-blog",
+    name: "NVIDIA Blog",
+    type: "rss",
+    config: {
+      feed: "https://blogs.nvidia.com/feed/",
+      homepage: "https://blogs.nvidia.com",
+      keywordFilter: "ai",
+      maxItems: 4,
+    },
+    enabled: true,
+  },
+  {
+    id: "nvidia-dev",
+    name: "NVIDIA Developer Blog",
+    type: "rss",
+    config: {
+      feed: "https://developer.nvidia.com/blog/feed/",
+      homepage: "https://developer.nvidia.com/blog",
+      keywordFilter: "ai",
+      maxItems: 4,
+    },
+    enabled: true,
+  },
+  {
+    id: "microsoft-research",
+    name: "Microsoft Research",
+    type: "rss",
+    config: {
+      feed: "https://www.microsoft.com/en-us/research/feed/",
+      homepage: "https://www.microsoft.com/en-us/research/blog/",
+      keywordFilter: "ai",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "apple-ml",
+    name: "Apple Machine Learning Research",
+    type: "rss",
+    config: {
+      feed: "https://machinelearning.apple.com/rss.xml",
+      homepage: "https://machinelearning.apple.com",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "together-ai",
+    name: "Together AI",
+    type: "rss",
+    config: {
+      feed: "https://www.together.ai/blog/rss.xml",
+      homepage: "https://www.together.ai/blog",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "github-ai",
+    name: "GitHub Blog AI & ML",
+    type: "rss",
+    config: {
+      feed: "https://github.blog/ai-and-ml/feed/",
+      homepage: "https://github.blog/ai-and-ml/",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "latent-space",
+    name: "Latent Space",
+    type: "rss",
+    config: {
+      feed: "https://www.latent.space/feed",
+      homepage: "https://www.latent.space",
+      maxItems: 3,
+    },
+    enabled: true,
+  },
+  {
+    id: "interconnects",
+    name: "Interconnects",
+    type: "rss",
+    config: {
+      feed: "https://www.interconnects.ai/feed",
+      homepage: "https://www.interconnects.ai",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "import-ai",
+    name: "Import AI",
+    type: "rss",
+    config: {
+      feed: "https://importai.substack.com/feed",
+      homepage: "https://importai.substack.com",
+      maxItems: 2,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "bens-bites",
+    name: "Ben's Bites",
+    type: "rss",
+    config: {
+      feed: "https://www.bensbites.com/feed",
+      homepage: "https://www.bensbites.com",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "ahead-of-ai",
+    name: "Ahead of AI",
+    type: "rss",
+    config: {
+      feed: "https://magazine.sebastianraschka.com/feed",
+      homepage: "https://magazine.sebastianraschka.com",
+      maxItems: 2,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+];
+
 export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0027,
   [ARXIV_SOURCE],
   REGISTRY_0032,
   [CLOUDFLARE_BLOG_SOURCE],
-  [HN_SCOPE_SOURCE]
+  [HN_SCOPE_SOURCE],
+  REGISTRY_0044
 );
 
 export function registrySourceIds(): string[] {

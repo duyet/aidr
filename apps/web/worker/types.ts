@@ -26,6 +26,7 @@ export interface Env {
    *  the chat chain is the backup. Defaults to typesafe/jev. The TypeSafe
    *  BYOK key lives in the AnyRouter dashboard, not in env. */
   ANYROUTER_JEV_MODEL?: string;
+  ANYROUTER_DECISION_MODEL?: string;
   /** Master switch for the JEV review panel on the scoring path (#203). Unset
    *  or falsy keeps the pre-existing single-score behavior byte for byte. */
   JEV_PANEL_ENABLED?: string;

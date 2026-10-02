@@ -100,11 +100,30 @@ export interface SystemOneResponse {
   model: string;
   answers: Record<string, SystemOneAnswer>;
   usage: { input_tokens: number; output_tokens: number; cost: number };
+  /** `model` above is the served upstream (`jev-1.13.0`); this block names
+   * the router id that was requested and the provider (`typesafe-byok`). */
+  anyrouter_metadata?: {
+    model?: string;
+    requestId?: string;
+    upstream?: { provider?: string };
+  };
 }
 
 export interface SystemOneResult {
   answers: Record<string, SystemOneAnswer>;
   inputTokens: number;
+  /** Upstream model that answered (`jev-1.13.0`, `fastino/gliner2.5-…`);
+   * a router id such as `anyrouter/decision` resolves to one of these. */
+  upstreamModel: string;
+  /** Upstream provider (`typesafe-byok`, `fastino-byok`), "" when absent. */
+  upstreamProvider: string;
+}
+
+/** True when a System One answer was served by TypeSafe Jev — the only
+ * decider whose score levels match the importance bands. */
+export function servedByJev(result: SystemOneResult): boolean {
+  if (!/^(?:jev\b|typesafe\/jev\b)/i.test(result.upstreamModel)) return false;
+  return !result.upstreamProvider || /typesafe/i.test(result.upstreamProvider);
 }
 
 function clamp01(n: number): number {
@@ -115,6 +134,13 @@ function clamp01(n: number): number {
 export function jevModelId(env: Env): string {
   const first = (env.ANYROUTER_JEV_MODEL ?? "").split(",")[0]?.trim();
   return first || JEV_DEFAULT_MODEL;
+}
+
+/** System One router tried before Jev on score (`anyrouter/decision`), or
+ * null when unset so score goes straight to Jev. */
+export function decisionModelId(env: Env): string | null {
+  const first = (env.ANYROUTER_DECISION_MODEL ?? "").split(",")[0]?.trim();
+  return first || null;
 }
 
 /** False when no AnyRouter key is present — caller must use chat fallback. */
@@ -132,12 +158,13 @@ export async function callSystemOne(
   env: Env,
   state: string | object | unknown[],
   questions: SystemOneQuestions,
-  task: "review" | "score" = "review"
+  task: "review" | "score" = "review",
+  model: string = jevModelId(env),
+  timeoutMs = 30_000
 ): Promise<SystemOneResult | null> {
   if (!isSystemOneConfigured(env)) return null;
   if (!questions || Object.keys(questions).length === 0) return null;
   const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
-  const model = jevModelId(env);
   const attemptStartedAt = Date.now();
   const callId = newLlmCallId();
   let promptChars = 0;
@@ -182,7 +209,7 @@ export async function callSystemOne(
         model,
         questions,
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
     const safe = sanitizeError(error);
@@ -223,6 +250,8 @@ export async function callSystemOne(
     return fail("jev systemone response missing answers");
   }
   const inputTokens = data.usage?.input_tokens ?? 0;
+  const upstreamModel = typeof data.model === "string" ? data.model : "";
+  const upstreamProvider = data.anyrouter_metadata?.upstream?.provider ?? "";
   logLlmCall({
     ts: attemptStartedAt,
     task,
@@ -237,10 +266,18 @@ export async function callSystemOne(
     promptChars,
     responseSnippet: null,
     callId,
+    route:
+      upstreamModel && upstreamModel !== model
+        ? [model, upstreamModel]
+        : [model],
+    provider: upstreamProvider || null,
+    requestId: data.anyrouter_metadata?.requestId ?? null,
   });
   return {
     answers: data.answers,
     inputTokens,
+    upstreamModel,
+    upstreamProvider,
   };
 }
 

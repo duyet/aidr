@@ -410,7 +410,8 @@ function jevThenChat(jev: string[], chat: string[]): string[] {
  * arrays. Public config (which models power scoring/translate/TL;DR/decisions), not
  * a secret — safe to surface on /about and /system.
  *
- * Scoring and decisions try Jev (System One) first. The chat chain stays
+ * Scoring tries the decision router (`ANYROUTER_DECISION_MODEL`) and then
+ * Jev; decisions try Jev (System One) first. The chat chain stays
  * the backup and is listed after Jev. Translation and TL;DR stay chat-only:
  * Jev does not write prose, and it is rejected on /chat/completions. */
 export function getModelChains(env: {
@@ -418,6 +419,7 @@ export function getModelChains(env: {
   ANYROUTER_TRANSLATE_MODEL?: string;
   ANYROUTER_TLDR_MODEL?: string;
   ANYROUTER_JEV_MODEL?: string;
+  ANYROUTER_DECISION_MODEL?: string;
 }): ModelChains {
   const chat = splitModelChain(env.ANYROUTER_MODEL);
   const translation = splitModelChain(env.ANYROUTER_TRANSLATE_MODEL);
@@ -425,7 +427,10 @@ export function getModelChains(env: {
   const configuredJev = splitModelChain(env.ANYROUTER_JEV_MODEL);
   const jev = configuredJev.length ? configuredJev : [JEV_DEFAULT_MODEL];
   return {
-    scoring: jevThenChat(jev, chat),
+    scoring: jevThenChat(
+      [...splitModelChain(env.ANYROUTER_DECISION_MODEL).slice(0, 1), ...jev],
+      chat
+    ),
     translation: translation.length ? translation : chat,
     tldr: tldr.length ? tldr : chat,
     decisions: jevThenChat(jev, chat),
