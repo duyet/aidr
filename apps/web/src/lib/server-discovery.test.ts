@@ -52,10 +52,13 @@ describe("Worker discovery entry", () => {
     expect(body.trim().length).toBeGreaterThan(0);
   });
 
-  it("sitemap builder still emits urlset including /subscribe and /submit", () => {
+  it("sitemap builder still emits urlset including /subscribe and /contribute", () => {
     const xml = buildSitemapXml(staticSitemapUrls());
     expect(xml).toContain("<urlset");
     expect(xml).toContain(`${SITE_URL}/subscribe`);
-    expect(xml).toContain(`${SITE_URL}/submit`);
+    // The contributions form moved to /contribute; /submit survives only as a
+    // legacy redirect, so the crawler-facing surface is /contribute.
+    expect(xml).toContain(`${SITE_URL}/contribute`);
+    expect(xml).not.toContain(`${SITE_URL}/submit`);
   });
 });

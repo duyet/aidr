@@ -102,7 +102,7 @@ describe("normalizeLocaleRequest", () => {
 });
 
 describe("withSsrLocaleResponse", () => {
-  it.each(["/mcp", "/subscribe", "/changelog", "/submit"])(
+  it.each(["/mcp", "/subscribe", "/changelog", "/contribute"])(
     "applies the explicit-locale cache policy to %s",
     (path) => {
       const response = withSsrLocaleResponse(
@@ -193,20 +193,24 @@ describe("withSsrLocaleResponse", () => {
     expect(selected.headers.get("Vary")).toBe("Cookie, Accept-Language");
   });
 
-  it.each(["/", "/changelog", "/mcp", "/submit", "/subscribe", "/abcdef12"])(
-    "covers localized SSR route %s",
-    (path) => {
-      const response = withSsrLocaleResponse(
-        new Request(`https://aidr.today${path}?lang=en`),
-        html()
-      );
-      expect(response.headers.get("Content-Language")).toBe("en");
-      expect(response.headers.get("Cache-Control")).toBe(
-        SSR_LOCALIZED_CACHE_CONTROL
-      );
-      expect(response.headers.get("Vary")).toBeNull();
-    }
-  );
+  it.each([
+    "/",
+    "/changelog",
+    "/mcp",
+    "/contribute",
+    "/subscribe",
+    "/abcdef12",
+  ])("covers localized SSR route %s", (path) => {
+    const response = withSsrLocaleResponse(
+      new Request(`https://aidr.today${path}?lang=en`),
+      html()
+    );
+    expect(response.headers.get("Content-Language")).toBe("en");
+    expect(response.headers.get("Cache-Control")).toBe(
+      SSR_LOCALIZED_CACHE_CONTROL
+    );
+    expect(response.headers.get("Vary")).toBeNull();
+  });
 
   it.each(["/about", "/brand", "/data", "/privacy", "/terms"])(
     "covers language-neutral SSR route %s",
