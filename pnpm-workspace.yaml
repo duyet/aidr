@@ -32,6 +32,11 @@ minimumReleaseAgeExclude:
   - miniflare
   - "@cloudflare/workerd-*"
   - "@cloudflare/workers-types"
+  # cf 1.0.0-beta.12 pulls these in transitively; both are published from the
+  # cloudflare/workers-sdk monorepo alongside cf and only ship together, so
+  # enumerating them keeps every other package behind `minimumReleaseAge`.
+  - "@cloudflare/build-output-utils"
+  - "@cloudflare/config"
 
 nodeLinker: hoisted
 shamefullyHoist: true
