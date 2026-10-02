@@ -1,6 +1,6 @@
 /* @vitest-environment happy-dom */
 import { act } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import type {
   LlmCallRow,
@@ -40,6 +40,8 @@ function runWith(overrides: Partial<WorkflowRunRow> = {}): WorkflowRunRow {
   };
 }
 
+const roots: Root[] = [];
+
 function render(
   run: WorkflowRunRow,
   attemptsState: RunAttemptsState,
@@ -51,6 +53,7 @@ function render(
   const host = document.createElement("div");
   document.body.appendChild(host);
   const root = createRoot(host);
+  roots.push(root);
   act(() =>
     root.render(
       <RunDetails
@@ -82,6 +85,11 @@ const chainStats: WorkflowRunStats = {
 };
 
 afterEach(() => {
+  // Unmount before teardown so React has no scheduled work left to run
+  // after the DOM environment is gone.
+  act(() => {
+    for (const root of roots.splice(0)) root.unmount();
+  });
   document.body.innerHTML = "";
   delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean })
     .IS_REACT_ACT_ENVIRONMENT;
