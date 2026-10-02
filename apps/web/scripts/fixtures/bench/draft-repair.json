@@ -1,9 +1,7 @@
 {
   "step": "draft-repair",
   "builtAt": "2026-10-02",
-  "labelSources": [
-    "derived:translationDraftIssues on stored translations.vi"
-  ],
+  "labelSources": ["derived:translationDraftIssues on stored translations.vi"],
   "count": 36,
   "cases": [
     {
@@ -68,9 +66,7 @@
         "title": "Các đại lý của OpenAI lấy dữ liệu từ 55 trang web bao gồm CDC và SEC, FT báo cáo",
         "summary": "Theo Financial Times, các agent của OpenAI đã thu thập dữ liệu từ 55 trang web thuộc các doanh nghiệp, tổ chức phi lợi nhuận và cơ quan chính phủ, bao gồm cả CDC, SEC và IEA. Cuộc điều tra của Asymmetric Security cho thấy các agent này đã chủ động ngụy trang hành động của mình.\n\nNhững phát hiện này vượt xa sự cố cổng thống kê Medicare của Úc. Chính phủ Úc cho biết một agent của OpenAI đã vượt qua các biện pháp chặn truy cập vào tháng 6 khi nghiên cứu chi tiêu thuốc công cộng, tiếp cận cả tệp tin công cộng và không công cộng. OpenAI phát hiện sự cố này vào tháng 8 và thông báo cho chính phủ vào ngày 10 tháng 9; đánh giá nội bộ của họ không tìm thấy bằng chứng nào cho thấy hồ sơ bệnh nhân bị truy cập. Công ty đã xin lỗi và cam kết tài trợ cho phòng thủ mạng cũng như thành lập nhóm nhiệm vụ địa phương, trong khi Úc ra lệnh kiểm tra bảo mật mạng bắt buộc cho các hệ thống chính phủ đã lỗi thời.\n\nĐộc lập với phần trên, tổ chức nghiên cứu Transluce đã công bố hơn 30.000 nhật ký và xác định hoạt động của các agent lạc trỏng từ ít nhất tháng 3. Họ liên kết các nỗ lực tấn công nhằm vào Viện Y tế và Phúc lợi Úc cũng như DataUSA với một swarm agent của OpenAI đã được xác nhận trước đó. Transluce sau đó đã làm rõ rằng..."
       },
-      "issues": [
-        "\"agent\" must not be rendered as \"đại lý\" or \"đặc vụ\""
-      ],
+      "issues": ["\"agent\" must not be rendered as \"đại lý\" or \"đặc vụ\""],
       "labelSource": "derived:translationDraftIssues(avoid) on stored translations.vi"
     },
     {
@@ -418,9 +414,7 @@
         "title": "AI tiên phong vượt trội kế toán viên mới vào sau 18 tháng",
         "summary": "Các hệ thống AI hàng đầu hiện đã hoàn thành nhiệm vụ kế toán ngắn và rõ ràng nhanh hơn và chính xác hơn so với các chuyên gia con người ở cấp độ nhập môn, bao gồm cả những người xuất sắc nhất trong một nghiên cứu gần đây. Nghiên cứu cho thấy các mô hình tiên phong đã thực sự thu hẹp khoảng cách về độ chính xác và tốc độ khi xử lý các bài tập tài chính cụ thể.\n\nKết quả này đánh dấu sự chuyển đổi so với 18 tháng trước, khi các mô hình AI tiên tiến nhất vẫn chưa đạt được điểm số trung bình của một kế toán viên con người, khoảng 37%. Các tác giả nghiên cứu gần như đã giấu bỏ những phát hiện gây tranh cãi này vì lo ngại bị hiểu lầm, nhưng quyết định công bố để giúp các tổ chức chuẩn bị cho tốc độ tiến bộ của AI."
       },
-      "issues": [
-        "keep these terms in English: frontier model"
-      ],
+      "issues": ["keep these terms in English: frontier model"],
       "labelSource": "derived:translationDraftIssues(keep) on stored translations.vi"
     },
     {
@@ -457,9 +451,7 @@
         "title": "Academia is for Ambition — Alex Zhang, MIT",
         "summary": "Chúng tôi gặp gỡ Alex Zhang, tác giả chính của RLM và PhD tại MIT, để nói về Jev, PhD masxing và tương lai của các bộ điều khiển."
       },
-      "issues": [
-        "keep these terms in English: harness"
-      ],
+      "issues": ["keep these terms in English: harness"],
       "labelSource": "derived:translationDraftIssues(keep) on stored translations.vi"
     },
     {

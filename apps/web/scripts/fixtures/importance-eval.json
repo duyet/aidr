@@ -6,10 +6,7 @@
     "summary": "A post by Zach Leatherman (zachleat)",
     "publishedImportance": 2,
     "scoredOn": "2026-09-22",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "5159a3d492b232993c37a54ba7e78171c571e7754ea6f8a98fe90ee85062fb01",
@@ -18,10 +15,7 @@
     "summary": "Python web app to help rewrite your commit messages",
     "publishedImportance": 2,
     "scoredOn": "2026-09-24",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "df7d4125902b48d22b02f9d275ebd79140629100ff85c57b27c1b6896273f275",
@@ -30,10 +24,7 @@
     "summary": "TypeSafe",
     "publishedImportance": 3,
     "scoredOn": "2026-09-22",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "0fc7c0f362de8929a220430d0a0a3f3db010e53dc9ebd9592bf08fb6217427cd",
@@ -42,10 +33,7 @@
     "summary": "An open source multi-tool for exploring and publishing data",
     "publishedImportance": 3,
     "scoredOn": "2026-09-24",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "edb6d5a5f85d653b466798449f7af1b045edd134aa6602fec6105619cc9703cc",
@@ -54,10 +42,7 @@
     "summary": "Hey, you know it's like super obvious if you're using AI to write your scripts for TikTok and YouTube, right? [...] It's not just the general AI-isms of \"it's not …",
     "publishedImportance": 4,
     "scoredOn": "2026-09-22",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "3e2d690e13ec8705eb47c3df0c7636e8fad23f204a9c64fea46074e97f14e09d",
@@ -66,10 +51,7 @@
     "summary": "Google has enabled users to trigger third party services from within its AI assistant",
     "publishedImportance": 4,
     "scoredOn": "2026-09-23",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "0d7b498b4e4acf53536241240c81a8486edc16debe4534e0908265746ac63924",
@@ -78,10 +60,7 @@
     "summary": "LLM plugin for accessing Jev and other TypeSafe AI models",
     "publishedImportance": 4,
     "scoredOn": "2026-09-22",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "3230e49e6a31150d25559f264aa3b309e54578e269295e8a56f52f323b6a74fd",
@@ -90,10 +69,7 @@
     "summary": "Developers can now use the Muse interface to manage pull requests and notifications without exiting their current browser tab. The tool allows users to connect their accounts to review code changes, track repository issues, and leave comments directly within Muse, reducing the need to navigate betwe",
     "publishedImportance": 5,
     "scoredOn": "2026-09-24",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "ed32529d12f1af533123091d40861707e2658e8839e9df939153c9c4efac3666",
@@ -102,10 +78,7 @@
     "summary": "Amazon will deploy 5,000 additional Smart Delivery Glasses to drivers this year to improve navigation and package scanning. The rollout aims to put 20,000 devi…",
     "publishedImportance": 5,
     "scoredOn": "2026-09-21",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "cc00fc92f4fc71027e7f96e13f237c8b03dd15c6cf1c66ce9a3a4e5a90d579f4",
@@ -114,10 +87,7 @@
     "summary": "A newly unveiled testing platform from Teradyne measures every individual emitter in a microLED array to support high volume precision manufacturing. The system employs a spectrometer and high resolution camera to analyze spectral response, uniformity, and per pixel luminance across arrays containin",
     "publishedImportance": 6,
     "scoredOn": "2026-09-21",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "d2871d486c61275aa18316221b2aa4fe0c0c7a730e7f24a395d9c1672c5c3fc3",
@@ -126,10 +96,7 @@
     "summary": "Using GPT-5.6, V7 turns scattered company files into context agents can use to complete complex, source-linked work.",
     "publishedImportance": 6,
     "scoredOn": "2026-09-21",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "a124b92a0e6487f661f601c52e87a7517d191f8021df7176295f66e00ee28c13",
@@ -138,10 +105,7 @@
     "summary": "Trump admin sees China behind opposition to AI data centers",
     "publishedImportance": 6,
     "scoredOn": "2026-09-24",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "68ead6b6af2b71441cd0f5e7ee92c2f76d1d2603c4161faf27e658aafd17eb6c",
@@ -150,10 +114,7 @@
     "summary": "Introducing private, server-side memory to Private AI Compute for personal AI.",
     "publishedImportance": 7,
     "scoredOn": "2026-09-23",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "fdd92013840061b849a6d2a0efb859ee4b22c32425f59f0c4027ff0d4c3d8e94",
@@ -162,10 +123,7 @@
     "summary": "SpaceXAI has released Grok 4.7, its new flagship model for coding, agentic tasks, and knowledge work. Grok 4.7 is built on a larger base model and a longer reinforcement learning run. It still ships at the same price and speed as Grok 4.6. Is it deployable? Yes, as a hosted model. You can call grok-",
     "publishedImportance": 7,
     "scoredOn": "2026-09-22",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "432e47aabd8264e1a053cfec1286bdc426bffd156dbd38d1e070655d7b2dbcc9",
@@ -174,10 +132,7 @@
     "summary": "At Meta Connect 2026, Meta expanded its AI agent, Muse, and unveiled several new devices.",
     "publishedImportance": 7,
     "scoredOn": "2026-09-24",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "1bc897209ba053366dc5f3ed85e565fb8b0026a0c4c8fe8ecd6c9cdc09b89463",
@@ -186,10 +141,7 @@
     "summary": "",
     "publishedImportance": 7,
     "scoredOn": "2026-09-22",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "9fd3fcd02165c4af07f3f3d2c85dd236308376867f01cb16da48f54ac7971367",
@@ -198,10 +150,7 @@
     "summary": "vLLM maintainers and Inferact reported that TPUv7 hardware reached 709 tokens per second during low-concurrency decode for the Kimi K3 model. This performance beats the 450 tokens per second recorded by the Nvidia GB200 baseline for the same workload, representing a 56% increase in throughput. The i",
     "publishedImportance": 8,
     "scoredOn": "2026-09-23",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "a3a1fbc4ad550043392a0fc4c8392b869601df334b4d9156d8b1c041811ee4f2",
@@ -210,10 +159,7 @@
     "summary": "Alibaba's AI team Qwen has released Qwen-Audio-3.1, a lineup of five models for speech recognition (ASR), text-to-speech (TTS), and real-time interaction.",
     "publishedImportance": 8,
     "scoredOn": "2026-09-23",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "e497b8e0b957ba8b8a7abfcf2b14d5b2dd28562f60e65098eef0acd862d2fc10",
@@ -222,10 +168,7 @@
     "summary": "The artificial intelligence developer is pursuing an agreement with Stream Data Centers to operate its own compute infrastructure rather than relying on third party platforms. The deal would allow Anthropic to install either Nvidia GPUs or Google TPUs, which are co-designed with Broadcom, within ded",
     "publishedImportance": 8,
     "scoredOn": "2026-09-23",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "e640f2dcf790a72497f4fb52f8af01ba7280bc5bfe1337970f7ee20065121623",
@@ -234,10 +177,7 @@
     "summary": "A coalition of technology companies acted on a federal court order on Sept. 15 to seize 50 websites and disable more than 175 domains used by an AI powered fraud network. The operation dismantled EvilTokens, a platform launched in February 2026 that used artificial intelligence at every step of the ",
     "publishedImportance": 9,
     "scoredOn": "2026-09-23",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "7d8cafd290b827951dc604ea820b2abebd67b2c516ff2dc9184b73460b9ac936",
@@ -246,10 +186,7 @@
     "summary": "The GPT-6 Sol and Luna models launched today to provide a lower cost alternative to the GPT-6 Astra architecture. API prices for these new tiers are 50% lower than GPT-5.6 promotional pricing, with Sol priced at $2 per million input tokens and $10 per million output tokens. Luna costs $0.10 per mill",
     "publishedImportance": 9,
     "scoredOn": "2026-09-22",
-    "expectedBand": [
-      9,
-      10
-    ]
+    "expectedBand": [9, 10]
   },
   {
     "id": "2e05057e2efb685e21ff7a5a0302c2cb3791d92b21ce79b791df40f9e38d1411",
@@ -258,10 +195,7 @@
     "summary": "Daily active users for Meta",
     "publishedImportance": 9,
     "scoredOn": "2026-09-21",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "d7a37212ef1513c1d888802075405e999a06a8b5275b9433415a39d62838ebf3",
@@ -270,10 +204,7 @@
     "summary": "Cục Viễn thông cho biết sự tham gia của các mạng ảo giúp thị trường viễn thông cạnh tranh, tạo thêm lựa chọn mới cho người dùng di động.",
     "publishedImportance": 0,
     "scoredOn": "2026-09-30",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "0f191cc323f9bd4f909a4e0a99a51ef28069ff2078974436fa7ca896ed9da94a",
@@ -282,10 +213,7 @@
     "summary": "This year we are going to see many LLMs 1 being tested as robot-use agents. In the same way as an LLM can use tools like calculators, web search, and even complete computers (“computer-use agents”), an LLM can also use a robot as a tool. Think of it as Claude acting as the puppeteer of a robot body.",
     "publishedImportance": 0,
     "scoredOn": "2026-09-27",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "91bbbdb9d6a3496b9a7e808cd0190db634f078373163bd9d89a5f4526011c755",
@@ -294,10 +222,7 @@
     "summary": "Ánh sáng huỳnh quang giúp mô u não nổi bật trên màn hình để bác sĩ nhận diện các phần còn sót, cắt bỏ tối đa, tránh tổn thương mô não lành.",
     "publishedImportance": 1,
     "scoredOn": "2026-09-29",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "bb03740c822e08739809d799ae5aa19a083ce01822e7083d8eb3045f199dfb64",
@@ -306,10 +231,7 @@
     "summary": "Explore the open, connected registry of the U.S. power grid: utilities, power plants, transmission lines, EV charging, and more.",
     "publishedImportance": 1,
     "scoredOn": "2026-09-25",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "21aea061ef9876972445ecd32d66654ef21a886593cafb68479470c1f723aa22",
@@ -318,10 +240,7 @@
     "summary": "Grokipedia, the AI-powered online encyclopedia from SpaceXAI, appears to be updating articles once again after a months-long pause. In August, Lawfare reported that articles on Grokipedia hadn't reviewed edits since April, but the platform's live updates site is now showing various recent changes to",
     "publishedImportance": 2,
     "scoredOn": "2026-09-29",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "0f4417c69f97b5639c2ae6817d9f478181cb0a46987c610b961662db5362961d",
@@ -330,10 +249,7 @@
     "summary": "",
     "publishedImportance": 2,
     "scoredOn": "2026-10-01",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "eb5adf4ed5c7b18bcaecad5d5871642c75fa9cf584e8ee21ad70bb427f71658a",
@@ -342,10 +258,7 @@
     "summary": "Amazon Bedrock AgentCore Runtime Instances gives multi-agent workflows AWS managed EC2 infrastructure with GPUs, persistent volumes, and multi-day sessions. In this post, we deploy a three-agent music production pipeline where the agents colocate on one GPU instance, share a filesystem, and hand wor",
     "publishedImportance": 2,
     "scoredOn": "2026-09-30",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "f9fd2d096680e03d0ea1f93d8bbce28396762e23935ce9c3dc44bc507dbeb164",
@@ -354,10 +267,7 @@
     "summary": "The 2H27 mass production timeline for a new 8 rack interconnected server involves switching to a specific type of glass-free copper-clad laminate (CCL) to improve manufacturing efficiency. Supply chain checks by analyst Ming-Chi Kuo indicate that Nvidia is evaluating hydrocarbon resin-based CCL, pai",
     "publishedImportance": 3,
     "scoredOn": "2026-09-30",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "09d1d26fa19dd694ec40f7bb3bc136d48191abcd2b19156a45d7567a4b7fa32e",
@@ -366,10 +276,7 @@
     "summary": "A Blog post by H company on Hugging Face",
     "publishedImportance": 3,
     "scoredOn": "2026-09-28",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "f3968fd75263a1dc747663e30c01bb889fbfd1026767f94117a6fcdfadf77bc5",
@@ -378,10 +285,7 @@
     "summary": "According to the Wall Street Journal, some of Anthropic's longest-serving employees are considering buying land in remote parts of the US as a refuge in case AI goes awry. The report traces the company's deep ties to the Effective Altruism movement and a Bay Area network of \"doomers\" who've been gam",
     "publishedImportance": 3,
     "scoredOn": "2026-09-27",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "93a9625d3d92698edb1768ce0502bff01fa0bc12b1142e18ffbeea0547c44cfc",
@@ -390,10 +294,7 @@
     "summary": "Deploy a text-to-speech model on Amazon SageMaker AI with the AWS vLLM-Omni Deep Learning Container and stream generated speech over a persistent bidirectional connection. This Part 1 tutorial deploys Qwen3-TTS and streams speech through a Gradio application.",
     "publishedImportance": 4,
     "scoredOn": "2026-09-28",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "eddf5e09cb7cc5af205268578dce969d82ac07a834ecbe2fd56f31cbb6ecbd88",
@@ -402,10 +303,7 @@
     "summary": "Senate Democrats blocked legislation on Tuesday that would have forced AI data centers to cover their own electricity costs to prevent rate hikes for consumers. The Ratepayer Protection Act failed to secure the 60 votes needed to overcome a filibuster, passing with a 57-43 vote. Supporters led by Se",
     "publishedImportance": 4,
     "scoredOn": "2026-09-30",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "8aa70fff6f7183252ea76fe0372f2b5d9ed004b9570d01b68a738ec6b53c9214",
@@ -414,10 +312,7 @@
     "summary": "The head of AI startup Anthropic refused to speak with reporters on Sept. 28 after completing a session at the U.S. Capitol. Dario Amodei held a meeting in the office of Senate Majority Leader John Thune and left the building immediately after the discussion concluded. The encounter was part of a br",
     "publishedImportance": 4,
     "scoredOn": "2026-09-28",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "509f64549de1dc7dde90c19206601213387a0eba6bbec5be7549b705e0e91e07",
@@ -426,10 +321,7 @@
     "summary": "Claude Sonnet 5.5 is now available on Amazon Bedrock and Claude Platform on AWS. It's a smarter, more efficient Sonnet model for focused coding and knowledge work, with a lower cost per task at faster speed. This post covers what's new, when to choose Sonnet, and how to get started.",
     "publishedImportance": 5,
     "scoredOn": "2026-09-28",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "3eda5db8c05960eb16be6155f814cefe501dcadccb785705081734adcab5c79f",
@@ -438,10 +330,7 @@
     "summary": "Blue Cross Blue Shield says hospital use of AI tools led to an additional $942M in healthcare spending over a two-year period.",
     "publishedImportance": 5,
     "scoredOn": "2026-09-27",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "7d53ce1d393673ea59694b3edb2861334bb399dcdbafb6b78c8947d463ea9b6e",
@@ -450,10 +339,7 @@
     "summary": "Shares of MongoDB tumbled in pre-market trading Monday morning after the company announced the sudden departure of CEO Chirantan \"CJ\" Desai. The database software firm's stock fell 15.2% following the news that Desai resigned effective immediately, a move that occurred just one day before the compan",
     "publishedImportance": 5,
     "scoredOn": "2026-09-28",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "d10d1a1cc73e8ca38728e8fce3a35784913d5c4b0ec4da2533a394a8dc92afb0",
@@ -462,10 +348,7 @@
     "summary": "The GPU cloud provider secured $223M in equity led by ARCHIV and a $445M credit facility led by Taiwanese bank CTBC to grow its hardware footprint in the U.S. and Asia. Nvidia participated in the equity round and partners with GMI Cloud through an AI compute program; GMI is one of seven providers bu",
     "publishedImportance": 6,
     "scoredOn": "2026-09-30",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "8bfd71bd34a3f6bdd22cb0f35846ef1348b8be52360a9dd8a283df6603c44182",
@@ -474,10 +357,7 @@
     "summary": "OpenAI’s new Dots agent failed to respond during a live demonstration at its DevDay conference, prompting the presenter to say, “I guess Dot’s having a slow morning.” OpenAI’s Thibault Sottiaux acknowledged the problems: “Live demos suffered from rolling out all the updates at the same time.” He sai",
     "publishedImportance": 6,
     "scoredOn": "2026-09-30",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "4ce13aa64231a85db916f100c307bd4fd81e864fc238f54b1e039fdb38a850ec",
@@ -486,10 +366,7 @@
     "summary": "The White House has become the target of intensified political outreach by US semiconductor firms seeking to avoid new trade barriers. Nvidia and AMD have ramped up lobbying efforts directed at President Donald Trump to ensure their chips continue to flow into the Chinese market.\n\nPolitico reports t",
     "publishedImportance": 6,
     "scoredOn": "2026-09-29",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "0270e01737c7efa289612f0d71981a605c69e2f2e579047ea1cabfefb5e514ca",
@@ -498,10 +375,7 @@
     "summary": "Anthropic and OpenAI race to release smarter and cheaper models, OpenAI discloses nine misalignment incidents, and more!",
     "publishedImportance": 7,
     "scoredOn": "2026-09-30",
-    "expectedBand": [
-      1,
-      3
-    ]
+    "expectedBand": [1, 3]
   },
   {
     "id": "64af2877b036f98df4c24c3bcd3e443db79255fdf92f202a4d32e1eaf660804a",
@@ -510,10 +384,7 @@
     "summary": "China's Tencent has signed a multiyear agreement with Oracle to gain access to high performance artificial intelligence hardware. The contract is valued at approximately $7 billion over five years for the use of 100,000 advanced chips hosted across Oracle Asia data centers. Tencent will pay about 30",
     "publishedImportance": 7,
     "scoredOn": "2026-10-01",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "9fd154a651a85d3171ce49eb7010094c0db810749fefd46b18e32da5a56505bc",
@@ -522,10 +393,7 @@
     "summary": "China's President Xi Jinping stated that both the U.S. and China are 'AI powers' with a shared responsibility to ensure technology remains under human control during a White House visit on September 24. President Donald Trump told Xi that he and China want to leave \"super intelligence\" exactly where",
     "publishedImportance": 7,
     "scoredOn": "2026-09-25",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "1d1d4b5868f815e3ff0d3af899769bdf2b7f807edfede9add1a878fc64ecb68e",
@@ -534,10 +402,7 @@
     "summary": "Credentials and attack details for Hugging Face were left exposed on the open web after OpenAI agents created nearly 1 million link-shortener URLs to bypass internet restrictions during a cybersecurity evaluation. Independent researchers found the agents used a public screenshot website's virtual br",
     "publishedImportance": 8,
     "scoredOn": "2026-09-26",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "04885edf45af0b22aeb79396cabc8a37ca834a15e576cc6ae0b368c3c9a205f6",
@@ -546,10 +411,7 @@
     "summary": "We now have the full details of the \"morally binding\" AI safety deal announced by President Trump yesterday, in which top executives agreed to self-regulate their artificial intelligence technology. The accord, officially titled the Joint Commitment On Frontier Responsibilities, was shared online by",
     "publishedImportance": 8,
     "scoredOn": "2026-09-30",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "04915f94cc5d072fc237152859eaa3a6e282f96fa881af3a3bafa6d1a1618674",
@@ -558,10 +420,7 @@
     "summary": "The world's most prominent artificial intelligence labs are calling for new government regulations to prevent machines from evolving beyond human management. A coalition of researchers, including leadership from OpenAI, Anthropic, Meta, and Microsoft, has urged officials to probe autonomous research",
     "publishedImportance": 8,
     "scoredOn": "2026-09-28",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   },
   {
     "id": "6071f63e21f6425413eb63722b1604896ffdb702f04f5beb8c9ad701e7ae765e",
@@ -570,10 +429,7 @@
     "summary": "Explore more than 20 announcements from OpenAI DevDay 2026, including GPT-6 Astra, ChatGPT, Codex, APIs, security, and new tools for builders.",
     "publishedImportance": 9,
     "scoredOn": "2026-09-29",
-    "expectedBand": [
-      9,
-      10
-    ]
+    "expectedBand": [9, 10]
   },
   {
     "id": "15523a416cb7a44557273bb59343c81704e102010e522ef787a73d4b9d120f15",
@@ -582,10 +438,7 @@
     "summary": "Anthropic is locked into more than $518 billion of cloud, compute and infrastructure spending over 10 years with six partners, and about 80% of the total is non-cancelable or payable regardless of usage, its IPO filing shows. The commitments include $252 billion in non-cancelable compute obligations",
     "publishedImportance": 9,
     "scoredOn": "2026-09-29",
-    "expectedBand": [
-      7,
-      8
-    ]
+    "expectedBand": [7, 8]
   },
   {
     "id": "204daa415c18681ae07d241c3cbdbcf050c588d03a84ea44722b09c1ee5a2905",
@@ -594,9 +447,6 @@
     "summary": "Amazon, Alphabet, Microsoft, Oracle and Meta are currently investing roughly $800 billion in their technological infrastructure this year. Goldman Sachs strategists forecast these outlays will increase by 54% to $1.2 trillion in 2027, exceeding the $1.1 trillion consensus estimated by other Wall Str",
     "publishedImportance": 9,
     "scoredOn": "2026-09-25",
-    "expectedBand": [
-      4,
-      6
-    ]
+    "expectedBand": [4, 6]
   }
 ]

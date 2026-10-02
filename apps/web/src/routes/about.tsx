@@ -66,12 +66,13 @@ function AboutPage() {
         <h1>About AI;DR</h1>
         <p>
           AI;DR is a machine that reads the day's AI news and publishes one
-          ranked edition. The site is also called AI News, AIDR, AIDR Today,
-          and AI;DR Today, and it lives at aidr.today.
+          ranked edition. The site is also called AI News, AIDR, AIDR Today, and
+          AI;DR Today, and it lives at aidr.today.
         </p>
         <p className="text-muted-foreground">
-          People do not pick the order. Every 30 minutes the pipeline collects stories, including new model releases, new kinds of models, and new AI labs,
-          processes them, and asks JEV plus an LLM what deserves a place.
+          People do not pick the order. Every 30 minutes the pipeline collects
+          stories, including new model releases, new kinds of models, and new AI
+          labs, processes them, and asks JEV plus an LLM what deserves a place.
           AnyRouter runs those model calls. The result is combined into one
           snapshot, then distributed to the site, email, and Telegram. Every
           story still links back to the original post.
@@ -81,7 +82,9 @@ function AboutPage() {
       <section id="how-it-works" className="mt-10 scroll-mt-20">
         <div className="typeset typeset-page">
           <h2>How it works</h2>
-          <p className="text-muted-foreground">Six steps, one run every 30 minutes.</p>
+          <p className="text-muted-foreground">
+            Six steps, one run every 30 minutes.
+          </p>
         </div>
         <PipelineDiagram />
         <p className="typeset typeset-page mt-4 text-muted-foreground">
