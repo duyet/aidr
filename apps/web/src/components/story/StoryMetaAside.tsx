@@ -7,6 +7,7 @@ import type { FeedItem, Lang } from "../../lib/types";
 import { CategoryLabel } from "../CategoryLabel";
 import { fmtTime } from "./lib";
 import { MediaGallery } from "./MediaGallery";
+import { StoryRankingPanel } from "./StoryRankingPanel";
 import {
   formatStoryScore,
   formatStoryTimestamp,
@@ -270,6 +271,7 @@ export function StoryMetaAside({
             onClose={() => setOpenDetails(null)}
           />
         ) : null}
+        <StoryRankingPanel item={item} lang={lang} />
       </div>
     </aside>
   );
