@@ -667,6 +667,28 @@ describe("stepState / runStatus", () => {
     );
   });
 
+  // What `safeStep` records when the Workflow engine, not this code, ended a
+  // step. These never reach Bugsink any more, so this line is the only signal
+  // — it must not read as a healthy run.
+  it("does not read an engine-interrupted step as ok", () => {
+    for (const reason of [
+      "durable object code updated",
+      "durable object instance went away",
+      "internal workflows error",
+      "step timed out",
+    ]) {
+      expect(stepState({ action: "interrupted", reason })).toBe("failed");
+    }
+    expect(
+      runStatus(
+        run([
+          { name: "fetch", action: "9 items" },
+          { name: "tldr", action: "interrupted", reason: "step timed out" },
+        ])
+      )
+    ).toBe("degraded");
+  });
+
   it("marks the run degraded when any step is, ok only when all are", () => {
     expect(runStatus(run([{ name: "fetch", action: "9 items" }]))).toBe("ok");
     expect(

@@ -351,7 +351,7 @@ export async function planMerges(
           return serializeMergePlan(EMPTY_MERGE_PLAN);
         }
       },
-      LLM_STEP
+      { config: LLM_STEP }
     )
   );
 }

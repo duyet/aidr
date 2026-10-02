@@ -49,7 +49,7 @@ export async function qaTranslations(ctx: IngestContext): Promise<QaStats> {
         return { rated: 0, adjusted: 0, tokens: 0, error: "review failed" };
       }
     },
-    LLM_STEP
+    { config: LLM_STEP }
   );
   recordStep(steps, "qa-translations", qaStepSummary(stats));
   return stats;

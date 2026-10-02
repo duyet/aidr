@@ -354,8 +354,12 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     } finally {
       // Before close-run so its steps are the ones evaluated; a durable step
       // so a replay does not raise the same alerts twice.
-      const alerts = await safeStep(step, "health-check", [] as string[], () =>
-        runHealthCheck(this.env, { runId, steps, dryRun: mode.dryRun })
+      const alerts = await safeStep(
+        step,
+        "health-check",
+        [] as string[],
+        () => runHealthCheck(this.env, { runId, steps, dryRun: mode.dryRun }),
+        { steps }
       );
       recordStep(steps, "close-run", "recording");
       const stats = buildRunStats({
@@ -408,7 +412,9 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           async () => {
             await persistWorkflowRun(this.env.DB, row);
           },
-          LLM_STEP
+          // No `steps` here: `statsJson` is serialized above, so anything
+          // this step records would never reach the run row.
+          { config: LLM_STEP }
         );
       } catch (error) {
         console.error("close-run step failed:", error);

@@ -87,7 +87,7 @@ export async function backfillScores(
       }
       return { scoredCount, tokens };
     },
-    LLM_STEP
+    { config: LLM_STEP }
   );
   recordStep(
     steps,

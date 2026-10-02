@@ -37,7 +37,7 @@ export async function normalizeNewRowTopics(
           return [];
         }
       },
-      LLM_STEP
+      { config: LLM_STEP }
     )
   );
 }

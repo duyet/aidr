@@ -159,7 +159,7 @@ describe("llmStep", () => {
         );
         return ["ok"];
       },
-      { retries: { limit: 0, delay: 0 } }
+      { config: { retries: { limit: 0, delay: 0 } } }
     );
 
     expect(result).toEqual(["ok"]);

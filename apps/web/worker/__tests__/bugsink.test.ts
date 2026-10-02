@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bindSentry,
   bugsinkEnvelope,
+  engineInterruptionReason,
   reportPipelineException,
 } from "../bugsink";
 
@@ -31,21 +32,57 @@ describe("bugsink envelope", () => {
 describe("reportPipelineException", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  // A deploy resets the Workflow's Durable Object mid-step and the engine
-  // replays it; reporting that opens a Bugsink issue on every release.
-  it.each([
-    "Durable Object reset because its code was updated.",
-    "Attempt failed due to internal workflows error",
-  ])("does not report engine interruption: %s", async (message) => {
-    const fetchMock = vi.fn(async () => new Response("ok"));
-    vi.stubGlobal("fetch", fetchMock);
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    bindSentry({ SENTRY_DSN: "https://key@bugs.example/1" });
-    await reportPipelineException(new Error(message), {
-      step: "close-run",
-      kind: "exception",
-    });
-    expect(fetchMock).not.toHaveBeenCalled();
+  // None of these is an app bug — the engine retries or replays the step — so
+  // none may open a Bugsink issue. #339/#340 got through the previous filter
+  // because it required `error instanceof Error`, which is false for a failure
+  // that crossed the Durable Object RPC boundary; #333/#330 were never listed.
+  const INTERRUPTIONS = [
+    [
+      "Durable Object reset because its code was updated.",
+      "durable object code updated",
+    ],
+    [
+      "Attempt failed due to internal workflows error",
+      "internal workflows error",
+    ],
+    ["Execution timed out after 240000ms", "step timed out"],
+    [
+      "Connection closed: this Durable Object instance is no longer active. Reconnect or retry the request.",
+      "durable object instance went away",
+    ],
+  ] as const;
+
+  it.each(INTERRUPTIONS)(
+    "does not report engine interruption: %s",
+    async (message) => {
+      const fetchMock = vi.fn(async () => new Response("ok"));
+      vi.stubGlobal("fetch", fetchMock);
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      bindSentry({ SENTRY_DSN: "https://key@bugs.example/1" });
+      await reportPipelineException(new Error(message), {
+        step: "close-run",
+        kind: "exception",
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  );
+
+  // The RPC boundary hands the failure back structured-cloned, so the receiver
+  // gets a plain object: `instanceof Error` is false and `String()` on it is
+  // "[object Object]". Only `.message` still carries the phrase.
+  it.each(INTERRUPTIONS)(
+    "recognizes an interruption that arrived as a plain object: %s",
+    (message, reason) => {
+      expect(
+        engineInterruptionReason({ name: "Error", message, stack: "" })
+      ).toBe(reason);
+    }
+  );
+
+  it("recognizes an interruption thrown as a bare string", () => {
+    expect(engineInterruptionReason("Execution timed out after 60000ms")).toBe(
+      "step timed out"
+    );
   });
 
   it("still reports other exceptions", async () => {
@@ -54,5 +91,15 @@ describe("reportPipelineException", () => {
     bindSentry({ SENTRY_DSN: "https://key@bugs.example/1" });
     await reportPipelineException(new Error("boom"), { step: "close-run" });
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["a real app error", new Error("D1_ERROR: no such table: items")],
+    ["an aborted provider request", new Error("Provider request timed out")],
+    ["a non-error value", { code: "ENOENT" }],
+    ["nothing", null],
+    ["an empty string", "   "],
+  ])("does not mistake %s for an interruption", (_label, error) => {
+    expect(engineInterruptionReason(error)).toBeNull();
   });
 });

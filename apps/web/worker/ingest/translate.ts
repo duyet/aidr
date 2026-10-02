@@ -88,7 +88,7 @@ export async function translatePublishedRows(
           return [];
         }
       },
-      LLM_STEP
+      { config: LLM_STEP }
     )
   );
   const { summary, detail } = translateStepSummary(

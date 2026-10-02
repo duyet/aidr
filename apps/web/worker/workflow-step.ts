@@ -1,7 +1,11 @@
 import type { WorkflowStep } from "cloudflare:workers";
-import { reportPipelineException } from "./bugsink.js";
+import {
+  engineInterruptionReason,
+  reportPipelineException,
+} from "./bugsink.js";
 import { flushLlmCallWrites, withRunLlmCallLogger } from "./llm-call-log.js";
 import { isMediaManifestSchemaError } from "./media-schema.js";
+import { type RunStepInfo, recordStep } from "./run-stats.js";
 import { sanitizeError } from "./telemetry-safe.js";
 import type { Env } from "./types.js";
 
@@ -16,6 +20,24 @@ export type StepRetryConfig = {
   timeout?: string;
 };
 
+/** Everything `safeStep` needs beyond the four required arguments.
+ *
+ * An object rather than more positionals: the step log is only sometimes
+ * relevant and `rethrowErrors` is a bare `true`/`false`, so a sixth and
+ * seventh positional argument would be one `undefined` apart from a boolean
+ * and impossible to read at the call site. */
+export interface StepOptions {
+  /** Retry/timeout policy the step is scheduled with. Defaults to the
+   * engine's own, which for a 4-minute LLM step is not what we want. */
+  config?: StepRetryConfig;
+  /** This run's step line (`IngestContext.steps`). An engine interruption is
+   * recorded here; without it the run would look like a plain success. */
+  steps?: RunStepInfo[];
+  /** Rethrow instead of returning `fallback`, for the steps (write-d1,
+   * notify, backfill-content) whose failure the caller handles itself. */
+  rethrowErrors?: boolean;
+}
+
 /** Catch Workflow engine failures (timeout / retries exhausted). Inner
  * try/catch around the callback does not run when `step.do` itself throws,
  * and a failed step with retries:0 can skip later steps including close-run. */
@@ -28,9 +50,9 @@ export async function safeStep<T>(
   name: string,
   fallback: T,
   closure: () => Promise<T>,
-  config?: StepRetryConfig,
-  rethrowErrors = false
+  options: StepOptions = {}
 ): Promise<T> {
+  const { config, steps, rethrowErrors = false } = options;
   try {
     const result = config
       ? await (
@@ -47,6 +69,20 @@ export async function safeStep<T>(
     return result;
   } catch (error) {
     if (rethrowErrors || isMediaManifestSchemaError(error)) throw error;
+    // The engine can end a step without this code failing: a deploy resetting
+    // the Workflow's Durable Object, an instance that went away under an
+    // in-flight call, an internal engine fault, or a step that outran its
+    // timeout. Those are not app bugs, so `reportPipelineException` drops
+    // them — record the short reason on the run's step line instead, which is
+    // where the signal has to live once the Bugsink report is gone.
+    const interruption = engineInterruptionReason(error);
+    if (interruption) {
+      if (steps) recordStep(steps, name, "interrupted", interruption);
+      console.warn(
+        `${name} step interrupted by the workflow engine: ${interruption}`
+      );
+      return fallback;
+    }
     console.error(`${name} step failed:`, safeErrorMessage(error));
     await reportPipelineException(error, { step: name, kind: "exception" });
     return fallback;
@@ -71,6 +107,8 @@ export async function safeStep<T>(
  *
  * Only observability is affected: a failing insert is swallowed, and the
  * flush is bounded, so neither can change the pipeline's outcome.
+ *
+ * `options` mirrors `safeStep` — see there.
  */
 export async function llmStep<T>(
   step: WorkflowStep,
@@ -79,8 +117,7 @@ export async function llmStep<T>(
   name: string,
   fallback: T,
   closure: () => Promise<T>,
-  config?: StepRetryConfig,
-  rethrowErrors = false
+  options?: StepOptions
 ): Promise<T> {
   return safeStep(
     step,
@@ -93,7 +130,6 @@ export async function llmStep<T>(
         await flushLlmCallWrites();
       }
     },
-    config,
-    rethrowErrors
+    options
   );
 }

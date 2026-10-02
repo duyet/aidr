@@ -181,8 +181,7 @@ export async function backfillContent(ctx: IngestContext): Promise<number> {
       }
       return count;
     },
-    undefined,
-    true
+    { rethrowErrors: true }
   );
   recordStep(
     steps,

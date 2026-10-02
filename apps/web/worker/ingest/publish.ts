@@ -48,7 +48,7 @@ export async function generateTldr(ctx: IngestContext): Promise<{
         };
       }
     },
-    TLDR_STEP
+    { config: TLDR_STEP }
   );
   recordStep(
     steps,
@@ -99,7 +99,7 @@ async function previewTldr(ctx: IngestContext): Promise<{
         };
       }
     },
-    TLDR_STEP
+    { config: TLDR_STEP }
   );
   recordStep(
     steps,
@@ -163,8 +163,7 @@ export async function notifyChannels(ctx: IngestContext): Promise<{
       reasons: {} as Record<string, NotifyChannelReason>,
     },
     async () => dispatchStoryNotifications(env),
-    undefined,
-    true
+    { rethrowErrors: true }
   );
   recordStep(
     steps,
