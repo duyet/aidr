@@ -332,12 +332,25 @@ function localizedHeadLinks(path: string, lang: Lang): HeadLink[] {
 //     results page to point at.
 // ---------------------------------------------------------------------------
 
+/**
+ * Spoken and typed forms of the brand. JSON-LD only — not titles or copy.
+ * `name` stays `SITE_NAME` ("AI;DR").
+ */
+const BRAND_ALTERNATE_NAMES = [
+  "AI News",
+  "AIDR",
+  "AIDR Today",
+  "AI;DR Today",
+  "aidr.today",
+] as const;
+
 /** aidr as the publisher of the *site* (not of any individual story). */
 function siteOrganization(): JsonLdNode {
   return {
     "@type": "Organization",
     "@id": SITE_ORGANIZATION_ID,
     name: SITE_NAME,
+    alternateName: [...BRAND_ALTERNATE_NAMES],
     url: canonicalUrl("/"),
     logo: {
       "@type": "ImageObject",
@@ -447,6 +460,7 @@ function homepageGraph(opts: {
       "@id": SITE_WEBSITE_ID,
       url: opts.url,
       name: SITE_NAME,
+      alternateName: [...BRAND_ALTERNATE_NAMES],
       description: SITE_DESCRIPTION,
       inLanguage: schemaLang(opts.lang),
       publisher: { "@type": "Organization", "@id": SITE_ORGANIZATION_ID },

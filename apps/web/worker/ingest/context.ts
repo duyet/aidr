@@ -2,15 +2,17 @@ import type { WorkflowStep } from "cloudflare:workers";
 import type { RunStepInfo } from "../run-stats.js";
 import type { FetchedItem } from "../sources/types.js";
 import type { Env } from "../types.js";
+import type { IngestMode } from "./mode.js";
 
 /** What every ingest step needs: the Workflow step API, the Worker env, this
- * run's id (for LLM-call attribution), and the per-run step log that ends up
- * in `workflow_runs.stats`. */
+ * run's id (for LLM-call attribution), the per-run step log that ends up
+ * in `workflow_runs.stats`, and the run's mode (dry run / selected steps). */
 export interface IngestContext {
   step: WorkflowStep;
   env: Env;
   runId: string;
   steps: RunStepInfo[];
+  mode: IngestMode;
 }
 
 /** Below this LLM relevance a new item is stored as `rejected`, not shown. */
@@ -36,6 +38,18 @@ export const BACKFILL_TRANSLATE_STEP = {
  * ~50 minutes, or `record-run` never writes `workflow_runs`. */
 export const LLM_STEP = {
   retries: { limit: 0, delay: 0 },
+  timeout: "4 minutes",
+} as const;
+
+/** TL;DR step. `ensureDailyTldr` catches its own LLM/D1 errors, so the
+ * only way this step fails is the engine itself: a deploy resetting the
+ * Workflow Durable Object ("Durable Object reset because its code was
+ * updated") or an internal engine fault. With no retry the engine stores
+ * that failure and every replay returns it, so the edition is not
+ * refreshed that run (run 1ca7319a, 2026-10-01). One short retry re-runs
+ * it; the snapshot upsert is idempotent. */
+export const TLDR_STEP = {
+  retries: { limit: 1, delay: 10_000 },
   timeout: "4 minutes",
 } as const;
 

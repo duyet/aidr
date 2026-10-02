@@ -43,7 +43,7 @@ describe("parseOgTags", () => {
     );
   });
 
-  it("extracts og:image and og:description", () => {
+  it("extracts og:image, og:description and og:title", () => {
     const html = `
       <html><head>
         <meta property="og:title" content="A Story" />
@@ -54,7 +54,20 @@ describe("parseOgTags", () => {
     expect(parseOgTags(html)).toEqual({
       imageUrl: "https://example.com/hero.png",
       description: "A short description.",
+      title: "A Story",
     });
+  });
+
+  it("reads article:published_time as epoch seconds, ignoring a bad date", () => {
+    expect(
+      parseOgTags(
+        `<meta property="article:published_time" content="2026-10-01T15:34:02.111Z">`
+      ).publishedAt
+    ).toBe(Date.parse("2026-10-01T15:34:02Z") / 1000);
+    expect(
+      parseOgTags(`<meta property="article:published_time" content="soon">`)
+        .publishedAt
+    ).toBeUndefined();
   });
 
   it("falls back to <meta name=description> when there's no og:description", () => {

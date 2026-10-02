@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireClerkUser } from "./clerk-auth-fn";
-import { readSession } from "./db";
 
 export type SubmitVia = "web" | "agent";
 
@@ -13,15 +12,6 @@ export interface SubmissionInput {
   user_name?: string;
   /** Local coding agents set `agent`; humans omit or send `web`. */
   via?: SubmitVia;
-}
-
-export interface Submission {
-  id: string;
-  url: string;
-  title: string;
-  status: "pending" | "accepted" | "rejected";
-  created_at: number;
-  review_note: string | null;
 }
 
 const TITLE_MIN = 5;
@@ -87,31 +77,4 @@ export const submitStory = createServerFn({ method: "POST" })
     });
     if (!result.ok) throw new Error(result.error);
     return { id: result.id };
-  });
-
-export const fetchMySubmissions = createServerFn({ method: "GET" })
-  .inputValidator((input: { user_id?: string }) => input)
-  .handler(async ({ data }): Promise<Submission[]> => {
-    const { userId } = await requireClerkUser();
-    if (data.user_id && data.user_id !== userId) {
-      throw new Error("Sign in required");
-    }
-    const { env } = await import("cloudflare:workers");
-    const db = (env as { DB?: D1Database }).DB;
-    if (!db) return [];
-    try {
-      const { results } = await readSession(db)
-        .prepare(
-          `SELECT id, url, title, status, created_at, review_note
-           FROM submissions
-           WHERE user_id = ?
-           ORDER BY created_at DESC
-           LIMIT 50`
-        )
-        .bind(userId)
-        .all<Submission>();
-      return results ?? [];
-    } catch {
-      return [];
-    }
   });

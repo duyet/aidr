@@ -1,10 +1,11 @@
 name: News Ingest
 
-# Watchdog for the aidr.today ingest workflow. Primary hourly cadence is a
-# Durable Object alarm on the aidr Worker (not a Worker cron — Free plan is
-# at the 5-trigger cap). GitHub scheduled workflows can skip for hours, so
-# this file fires four independent cron expressions per hour. POSTs coalesce
-# in NewsIngestScheduler if a run started in the last 45 minutes.
+# Watchdog for the aidr.today ingest workflow. Primary cadence is a
+# 30-minute Durable Object alarm on the aidr Worker (not a Worker cron —
+# Free plan is at the 5-trigger cap). GitHub scheduled workflows can skip
+# for hours, so this file fires four independent cron expressions per hour.
+# POSTs coalesce in NewsIngestScheduler if a run started in the last 25
+# minutes.
 on:
   schedule:
     - cron: "5 * * * *"

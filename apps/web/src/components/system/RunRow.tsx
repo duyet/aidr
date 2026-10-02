@@ -19,6 +19,7 @@ import {
   runAnchorId,
   runDetailsId,
   runDisclosureLabel,
+  runMode,
   runStatus,
 } from "./run-format";
 
@@ -26,6 +27,7 @@ type RunStatus = ReturnType<typeof runStatus>;
 
 const STATUS_LABEL: Record<RunStatus, { en: string; vi: string }> = {
   ok: { en: "OK", vi: "OK" },
+  degraded: { en: "issues", vi: "có lỗi" },
   error: { en: "error", vi: "lỗi" },
   in_progress: { en: "running", vi: "đang chạy" },
   empty: { en: "empty", vi: "trống" },
@@ -36,6 +38,10 @@ const STATUS_STYLE: Record<RunStatus, { pill: string; dot: string }> = {
   ok: {
     pill: "border-transparent bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
     dot: "bg-emerald-500",
+  },
+  degraded: {
+    pill: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400",
+    dot: "bg-orange-500",
   },
   error: {
     pill: "border-transparent bg-destructive/10 text-destructive",
@@ -83,6 +89,7 @@ export function RunRow({
   onToggle: () => void;
 }) {
   const status = runStatus(r);
+  const mode = runMode(r);
   const style = STATUS_STYLE[status];
   const stats = r.stats;
   const llm = r.llm;
@@ -138,6 +145,9 @@ export function RunRow({
         .filter(Boolean)
         .join(" ")}
     >
+      {/* Row-wide click is a mouse convenience; the tokens button below is
+          the labelled, focusable disclosure trigger for the same action. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: progressive enhancement; the tokens button is the accessible trigger */}
       <div
         className={`grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 px-3 py-2.5 text-xs md:gap-x-4 ${RUN_ROW_GRID} ${
           canExpand ? "cursor-pointer hover:bg-muted/40" : ""
@@ -146,13 +156,30 @@ export function RunRow({
           if (canExpand) openFrom(tokenRef.current);
         }}
       >
-        {/* Status */}
-        <span
-          className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${style.pill}`}
-          title={status === "error" ? formatSafeError(r.error) : undefined}
-        >
-          <span aria-hidden className={`size-1.5 rounded-full ${style.dot}`} />
-          {STATUS_LABEL[status][lang]}
+        {/* Status, plus how the run was asked to run */}
+        <span className="flex flex-col items-start gap-0.5">
+          <span
+            className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${style.pill}`}
+            title={status === "error" ? formatSafeError(r.error) : undefined}
+          >
+            <span
+              aria-hidden
+              className={`size-1.5 rounded-full ${style.dot}`}
+            />
+            {STATUS_LABEL[status][lang]}
+          </span>
+          {mode ? (
+            <span
+              className="rounded border border-dashed border-border px-1.5 text-[10px] text-muted-foreground"
+              title={
+                mode === "dry-run"
+                  ? "No email or Telegram; TL;DR previewed only"
+                  : "Only selected steps ran"
+              }
+            >
+              {mode === "dry-run" ? "dry run" : "partial"}
+            </span>
+          ) : null}
         </span>
 
         {/* Started */}

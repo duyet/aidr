@@ -9,6 +9,13 @@ import { nn } from "./d1-bind.js";
 import { sha256Hex } from "./hash.js";
 import { callAnyrouter, VI_STYLE } from "./llm.js";
 import {
+  buildGlossaryBlock,
+  type KnowledgeRule,
+  loadActiveRules,
+  recordRuleHits,
+  withKnowledgeFailures,
+} from "./translation-knowledge.js";
+import {
   buildEnglishCandidatePrompt,
   buildTranslationRepairPrompt,
   buildTranslationReviewPrompt,
@@ -35,6 +42,8 @@ import {
   REVIEW_PROMPT_FINGERPRINT,
   REVIEW_SYSTEM_PROMPT,
   reviewPasses,
+  SEMANTIC_CHECKS,
+  semanticEvidence,
   type TranslationDirection,
   type TranslationLanguage,
   type TranslationPair,
@@ -826,7 +835,7 @@ async function finishFailure(
   return (results[0]?.meta?.changes ?? 0) === 1;
 }
 
-async function requestReview(
+export async function requestReview(
   env: Env,
   pair: TranslationPair,
   reviewerSpec: string,
@@ -844,7 +853,9 @@ async function requestReview(
       task: "review",
       timeoutMs,
       maxSliceMs: QA_REVIEW_SLICE_MAX_MS,
-      maxTokens: 1_024,
+      // v4 verdicts carry a back-translation of a summary of up to 2000
+      // chars; 1024 tokens truncated those into invalid JSON.
+      maxTokens: 2_048,
       accept: (content) =>
         parseTranslationReview(content, pair.direction) !== null,
       strictOutput: true,
@@ -852,25 +863,40 @@ async function requestReview(
     }
   );
   const review = parseTranslationReview(result.content, pair.direction);
-  if (!review) throw new Error("review output failed strict v3 validation");
+  if (!review) throw new Error("review output failed strict v4 validation");
   return { review, model: result.model, tokens: result.tokens };
 }
 
-async function requestRepair(
+export async function requestRepair(
   env: Env,
   pair: TranslationPair,
   review: TranslationReview,
   hardFailures: TranslationSemanticCheck[],
   generatorSpec: string,
-  timeoutMs: number
+  timeoutMs: number,
+  knowledge: KnowledgeRule[] = []
 ): Promise<{ candidate: TranslationText; model: string; tokens: number }> {
+  const evidence = semanticEvidence(pair, review);
   const result = await callAnyrouter(
     env,
     [
-      { role: "system", content: VI_STYLE },
+      {
+        role: "system",
+        content:
+          VI_STYLE +
+          buildGlossaryBlock(
+            knowledge,
+            `${pair.source.title}\n${pair.source.summary}`
+          ),
+      },
       {
         role: "user",
-        content: buildTranslationRepairPrompt(pair, review, hardFailures),
+        content: buildTranslationRepairPrompt(
+          pair,
+          review,
+          hardFailures,
+          evidence
+        ),
       },
     ],
     {
@@ -888,6 +914,24 @@ async function requestRepair(
   const candidate = parseRepairCandidate(result.content);
   if (!candidate) throw new Error("repair output failed strict validation");
   return { candidate, model: result.model, tokens: result.tokens };
+}
+
+/** Deterministic evidence an operator needs to fix the row by hand, then
+ * the reviewer's reason. Evidence leads so the 500-char attempt-row cut
+ * trims the reviewer prose, not the term list. */
+function auditReason(pair: TranslationPair, review: TranslationReview): string {
+  const evidence = semanticEvidence(pair, review);
+  const parts: string[] = [];
+  if (evidence.missingTerms.length > 0) {
+    parts.push(`missing terms: ${evidence.missingTerms.join(", ")}`);
+  }
+  if (evidence.backTranslationFailures.length > 0) {
+    parts.push(
+      `back-translation diverges: ${evidence.backTranslationFailures.join(", ")}`
+    );
+  }
+  parts.push(review.reason);
+  return parts.join(" | ");
 }
 
 const ENGLISH_CANDIDATE_SQL = `INSERT INTO translations (
@@ -1101,6 +1145,9 @@ export async function ratePendingTranslations(
     return { ...NO_QA_WORK, error: reviewer.reason };
   }
   const englishGenerator = resolveEnglishGeneratorChain(env);
+  // Active translation-knowledge rules: a broken one is a hard terminology
+  // failure (→ repair, with the rule in the repair prompt's glossary).
+  const knowledge = await loadActiveRules(env);
   const safeCap = boundedLimit(cap, QA_CAP, QA_CAP);
   const scanCap = boundedLimit(safeCap * 4, safeCap, QA_SCAN_CAP);
   const stats: TranslationQaStats = {
@@ -1204,10 +1251,20 @@ export async function ratePendingTranslations(
       continue;
     }
 
-    const hardFailures = detectHardSemanticFailures(
+    const checked = withKnowledgeFailures(
+      detectHardSemanticFailures(candidate.pair, initial.review),
       candidate.pair,
-      initial.review
+      knowledge,
+      SEMANTIC_CHECKS,
+      "terminology"
     );
+    const hardFailures = checked.failures;
+    if (checked.violated.length > 0) {
+      await recordRuleHits(
+        env,
+        checked.violated.map((rule) => rule.id)
+      );
+    }
     const initialFingerprint = await modelFingerprint(
       reviewer.chain.join(","),
       initial.model
@@ -1293,7 +1350,7 @@ export async function ratePendingTranslations(
           reason:
             candidate.pair.direction === "vi-en"
               ? `vi-en mismatch is cross-check only: ${initial.review.reason}`
-              : initial.review.reason,
+              : auditReason(candidate.pair, initial.review),
           reviewerChain: reviewer.chain.join(","),
           reviewerModel: initial.model,
           repairModel: null,
@@ -1322,7 +1379,8 @@ export async function ratePendingTranslations(
         initial.review,
         hardFailures,
         generator,
-        Math.min(QA_REPAIR_TIMEOUT_MS, Math.max(1, deadline - Date.now()))
+        Math.min(QA_REPAIR_TIMEOUT_MS, Math.max(1, deadline - Date.now())),
+        knowledge
       );
       stats.calls++;
       stats.tokens += repaired.tokens;
@@ -1478,10 +1536,13 @@ export async function ratePendingTranslations(
       continue;
     }
 
-    const replacementFailures = detectHardSemanticFailures(
+    const replacementFailures = withKnowledgeFailures(
+      detectHardSemanticFailures(replacementPair, recheck.review),
       replacementPair,
-      recheck.review
-    );
+      knowledge,
+      SEMANTIC_CHECKS,
+      "terminology"
+    ).failures;
     if (!reviewPasses(recheck.review, replacementFailures)) {
       const fingerprint = await modelFingerprint(
         reviewer.chain.join(","),
@@ -1520,7 +1581,7 @@ export async function ratePendingTranslations(
           decision: "human_review",
           review: recheck.review,
           hardFailures: replacementFailures,
-          reason: `repair failed re-review: ${recheck.review.reason}`,
+          reason: `repair failed re-review: ${auditReason(replacementPair, recheck.review)}`,
           reviewerChain: reviewer.chain.join(","),
           reviewerModel: recheck.model,
           repairModel: repaired.model,

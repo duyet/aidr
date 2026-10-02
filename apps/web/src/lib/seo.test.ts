@@ -769,24 +769,39 @@ describe("homepageHead JSON-LD (WebSite / Organization / ItemList)", () => {
       feed: feedWith(ids),
       route: INDEXABLE_ROUTE,
     });
+    const brandAliases = [
+      "AI News",
+      "AIDR",
+      "AIDR Today",
+      "AI;DR Today",
+      "aidr.today",
+    ];
     const website = node<
       JsonLdNode & {
         name: string;
+        alternateName: string[];
         url: string;
         publisher: { "@id": string };
         potentialAction?: unknown;
       }
     >(head, "WebSite");
     const org = node<
-      JsonLdNode & { name: string; url: string; logo: { url: string } }
+      JsonLdNode & {
+        name: string;
+        alternateName: string[];
+        url: string;
+        logo: { url: string };
+      }
     >(head, "Organization");
 
     expect(website["@id"]).toBe(SITE_WEBSITE_ID);
     expect(website.name).toBe(SITE_NAME);
+    expect(website.alternateName).toEqual(brandAliases);
     expect(website.url).toBe(`${SITE_URL}/?lang=en`);
     expect(website.publisher["@id"]).toBe(SITE_ORGANIZATION_ID);
     expect(org["@id"]).toBe(SITE_ORGANIZATION_ID);
     expect(org.name).toBe(SITE_NAME);
+    expect(org.alternateName).toEqual(brandAliases);
     expect(org.url).toBe(`${SITE_URL}/`);
     expect(org.logo.url).toBe(SITE_LOGO_URL);
     // No site-search results page exists, so no SearchAction is claimed.
@@ -1103,14 +1118,14 @@ describe("site_name is one constant (#224 brand resolution)", () => {
     ];
     for (const head of heads) {
       expect(metaContent(head.meta, "og:site_name")).toBe(SITE_NAME);
-      const body = jsonLdScripts(head.scripts)[0]?.children ?? "";
-      // The brand appears only inside the two site-level entity names.
+      // The visible brand stays AI;DR. "AI News" is an alternate name, never
+      // the entity name.
       for (const entity of head.jsonLd.filter((n) =>
         ["WebSite", "Organization"].includes(n["@type"])
       )) {
         expect(entity.name).toBe(SITE_NAME);
+        expect(entity.name).not.toBe("AI News");
       }
-      expect(body).not.toContain('"AI News"');
     }
   });
 

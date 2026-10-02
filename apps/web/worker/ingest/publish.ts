@@ -6,15 +6,26 @@ import {
 import { recordStep } from "../run-stats.js";
 import { sendDailyTldr } from "../subscribe/send.js";
 import { sanitizeError } from "../telemetry-safe.js";
-import { ensureDailyTldr } from "../tldr.js";
+import {
+  ensureDailyTldr,
+  previewDailyTldr,
+  summarizeTldrPreview,
+} from "../tldr.js";
 import { llmStep, safeStep } from "../workflow-step.js";
-import { type IngestContext, LLM_STEP } from "./context.js";
+import { type IngestContext, TLDR_STEP } from "./context.js";
+import { DRY_RUN_SKIP_REASON } from "./mode.js";
 
-/** Writes today's `tldr_snapshots` edition if it is due. */
-export async function generateTldr(
-  ctx: IngestContext
-): Promise<{ generated: boolean; tokens: number }> {
+export type TldrPreviewSummary = ReturnType<typeof summarizeTldrPreview>;
+
+/** Writes today's `tldr_snapshots` edition if it is due. A dry run builds
+ * the same edition as a preview instead and leaves the live row alone. */
+export async function generateTldr(ctx: IngestContext): Promise<{
+  generated: boolean;
+  tokens: number;
+  preview?: TldrPreviewSummary;
+}> {
   const { step, env, runId, steps } = ctx;
+  if (ctx.mode.dryRun) return previewTldr(ctx);
   const stats = await llmStep(
     step,
     env,
@@ -37,7 +48,7 @@ export async function generateTldr(
         };
       }
     },
-    LLM_STEP
+    TLDR_STEP
   );
   recordStep(
     steps,
@@ -48,9 +59,65 @@ export async function generateTldr(
   return stats;
 }
 
+/** Dry-run TL;DR: its own step name so a replay never mixes it with the
+ * live `tldr` step's memoized result. */
+async function previewTldr(ctx: IngestContext): Promise<{
+  generated: boolean;
+  tokens: number;
+  preview?: TldrPreviewSummary;
+}> {
+  const { step, env, runId, steps } = ctx;
+  const stats = await llmStep(
+    step,
+    env,
+    runId,
+    "tldr-preview",
+    {
+      generated: false,
+      tokens: 0,
+      reason: "tldr preview failed",
+      preview: undefined as TldrPreviewSummary | undefined,
+    },
+    async () => {
+      try {
+        const preview = await previewDailyTldr(env);
+        return {
+          generated: preview.generated,
+          tokens: preview.tokens,
+          reason: preview.reason,
+          preview: preview.generated
+            ? summarizeTldrPreview(preview)
+            : undefined,
+        };
+      } catch (error) {
+        console.error("tldr preview failed:", error);
+        return {
+          generated: false,
+          tokens: 0,
+          reason: sanitizeError(error)?.message ?? "tldr preview failed",
+          preview: undefined,
+        };
+      }
+    },
+    TLDR_STEP
+  );
+  recordStep(
+    steps,
+    "tldr",
+    stats.preview ? `preview: ${stats.preview.bullets} bullets` : "skipped",
+    `dry run, live snapshot untouched: ${stats.reason}`
+  );
+  // Never report a preview as a generated edition.
+  return { generated: false, tokens: stats.tokens, preview: stats.preview };
+}
+
 /** Emails the edition to due subscribers. Never breaks the ingest run. */
 export async function sendEmailDigest(ctx: IngestContext): Promise<number> {
   const { step, env, steps } = ctx;
+  if (ctx.mode.dryRun) {
+    recordStep(steps, "email", "skipped", DRY_RUN_SKIP_REASON);
+    return 0;
+  }
   const emailsSent = await safeStep(step, "email-digest", 0, async () => {
     try {
       return await sendDailyTldr(env);
@@ -84,6 +151,10 @@ export async function notifyChannels(ctx: IngestContext): Promise<{
   reasons: Record<string, NotifyChannelReason>;
 }> {
   const { step, env, steps } = ctx;
+  if (ctx.mode.dryRun) {
+    recordStep(steps, "notify", "skipped", DRY_RUN_SKIP_REASON);
+    return { sent: {}, reasons: {} };
+  }
   const result = await safeStep(
     step,
     "notify",

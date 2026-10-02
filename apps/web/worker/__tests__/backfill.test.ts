@@ -228,14 +228,58 @@ describe("BACKFILL_TRANSLATE_CAP", () => {
 });
 
 describe("buildMissingTranslationQuery", () => {
-  it("gates on published items missing a non-empty vi title", () => {
-    const sql = buildMissingTranslationQuery(15);
-    expect(sql).toContain("status = 'published'");
-    expect(sql).toContain("i.source_lang = 'en'");
-    expect(sql).not.toMatch(/i\.summary IS NOT NULL AND i\.summary != ''/);
-    expect(sql).toContain("NOT EXISTS");
-    expect(sql).toContain("lang = 'vi'");
-    expect(sql).toMatch(/t\.title IS NOT NULL AND t\.title != ''/);
+  // Run the real SQL: what matters is which items get retried, not its text.
+  function pick(
+    rows: {
+      id: string;
+      status?: string;
+      lang?: string;
+      summary?: string;
+      vi?: { title: string; summary: string } | null;
+    }[]
+  ): string[] {
+    const db = new DatabaseSync(":memory:");
+    db.exec(`CREATE TABLE items (id TEXT, title TEXT, summary TEXT,
+      source_lang TEXT, status TEXT, published_at INTEGER);
+      CREATE TABLE translations (item_id TEXT, lang TEXT, title TEXT, summary TEXT);`);
+    rows.forEach((r, n) => {
+      db.prepare("INSERT INTO items VALUES (?, 't', ?, ?, ?, ?)").run(
+        r.id,
+        r.summary ?? "",
+        r.lang ?? "en",
+        r.status ?? "published",
+        n
+      );
+      if (r.vi)
+        db.prepare("INSERT INTO translations VALUES (?, 'vi', ?, ?)").run(
+          r.id,
+          r.vi.title,
+          r.vi.summary
+        );
+    });
+    return (
+      db.prepare(buildMissingTranslationQuery(10)).all() as { id: string }[]
+    )
+      .map((r) => r.id)
+      .sort();
+  }
+
+  it("retries a missing VI title, and a VI summary the source has but the row lacks", () => {
+    expect(
+      pick([
+        { id: "no-vi", summary: "s", vi: null },
+        { id: "empty-title", vi: { title: "", summary: "" } },
+        {
+          id: "dropped-summary",
+          summary: "s",
+          vi: { title: "T", summary: "" },
+        },
+        { id: "complete", summary: "s", vi: { title: "T", summary: "S" } },
+        { id: "no-source-summary", vi: { title: "T", summary: "" } },
+        { id: "vi-source", lang: "vi", vi: null },
+        { id: "rejected", status: "rejected", vi: null },
+      ])
+    ).toEqual(["dropped-summary", "empty-title", "no-vi"]);
   });
 
   it("respects the given limit", () => {

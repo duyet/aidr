@@ -1,5 +1,5 @@
 import { AlertTriangle, Check, Circle } from "lucide-react";
-import { formatSafeDetail, type safeRunSteps } from "./run-format";
+import { formatSafeDetail, type safeRunSteps, stepState } from "./run-format";
 
 /** Workflow steps with an ok / skipped / failed marker per step. */
 export function RunStepList({
@@ -11,8 +11,9 @@ export function RunStepList({
     <ol className="space-y-1.5 text-xs">
       {steps.map((step, index) => {
         const action = formatSafeDetail(step.action, 160);
-        const isSkipped = /skip|no eligible|already_sent/i.test(action);
-        const isFailure = /fail|error/i.test(action);
+        const state = stepState(step);
+        const isSkipped = state === "skipped";
+        const isFailure = state === "failed" || state === "degraded";
         return (
           <li
             key={`${step.name}-${index}`}
@@ -20,7 +21,9 @@ export function RunStepList({
           >
             {isFailure ? (
               <AlertTriangle
-                className="mt-0.5 h-3 w-3 shrink-0 text-destructive"
+                className={`mt-0.5 h-3 w-3 shrink-0 ${
+                  state === "failed" ? "text-destructive" : "text-orange-500"
+                }`}
                 aria-hidden
               />
             ) : isSkipped ? (

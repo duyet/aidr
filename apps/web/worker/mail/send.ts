@@ -1,3 +1,4 @@
+import { SUBMIT_EMAIL } from "../../src/lib/site.js";
 import { sha256Hex } from "../hash.js";
 import type { Env } from "../types.js";
 import {
@@ -42,6 +43,8 @@ export interface SubscriberMail {
   unsubscribeToken: string;
   /** Language for the human-facing List-Unsubscribe page. */
   lang?: MailLang;
+  /** Where replies go. Omitted: submit@aidr.today. */
+  replyTo?: string;
 }
 
 /** Sends one subscriber email. Returns false when EMAIL is unbound or send throws. */
@@ -60,6 +63,7 @@ export async function sendSubscriberEmail(
       subject: mail.subject,
       html: mail.html,
       text: mail.text,
+      replyTo: mail.replyTo?.trim() || SUBMIT_EMAIL,
       headers: listUnsubscribeHeaders(mail.unsubscribeToken, mail.lang),
     });
     return true;

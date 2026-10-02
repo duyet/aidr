@@ -16,6 +16,9 @@ export function cf(args: string[]): string {
       cwd: webRoot,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      // The output is parsed as JSON; a shell with FORCE_COLOR set made cf
+      // wrap it in ANSI codes and blocked every deploy at the migration gate.
+      env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
     });
   } catch (error) {
     const stderr =

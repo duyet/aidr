@@ -1,20 +1,16 @@
 import { BACKFILL_SCORE_CAP, buildUnscoredItemsQuery } from "../backfill.js";
 import { scoreItems } from "../llm.js";
-import { rankScore } from "../ranking.js";
+import { type RankSignalRow, rankScore, rowRankSignals } from "../ranking.js";
 import { recordStep } from "../run-stats.js";
 import { normalizeTopics } from "../topics.js";
 import { llmStep } from "../workflow-step.js";
 import { type IngestContext, LLM_STEP } from "./context.js";
 
-interface UnscoredRow {
+interface UnscoredRow extends RankSignalRow {
   id: string;
   title: string;
   summary: string | null;
-  source_id: string;
-  points: number;
-  comments: number;
   published_at: number;
-  source_count: number;
 }
 
 /** Scores items that never got an LLM score (e.g. the score step failed on
@@ -64,11 +60,9 @@ export async function backfillScores(
           const rank = rankScore({
             importance: result.importance,
             quality: result.quality,
-            points: row.points ?? 0,
-            comments: row.comments ?? 0,
             publishedAt: row.published_at * 1000,
             now,
-            sourceCount: row.source_count,
+            ...rowRankSignals(row),
           });
           await env.DB.prepare(
             `UPDATE items SET

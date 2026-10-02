@@ -6,7 +6,10 @@ import {
   resolveSkipReason,
   type SourceRunHealth,
 } from "../source-health.js";
-import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "../workflow-run.js";
+import {
+  NOT_DRY_RUN_SQL,
+  WORKFLOW_RUN_STARTED_AT_ORDER_SQL,
+} from "../workflow-run.js";
 import { safeStep } from "../workflow-step.js";
 import type { IngestContext, NewRow } from "./context.js";
 import type { FetchFailureReason } from "./fetch.js";
@@ -89,6 +92,7 @@ export async function carrySourceStreaks(
       const { results } = await env.DB.prepare(
         `SELECT stats FROM workflow_runs
              WHERE id != ? AND stats IS NOT NULL AND stats LIKE '%"sourceHealth"%'
+               AND ${NOT_DRY_RUN_SQL}
              ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC
              LIMIT 1`
       )

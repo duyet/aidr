@@ -23,6 +23,8 @@ export const Route = createFileRoute("/subscribe")({
     localizedPageHead({
       path: "/subscribe",
       title: "Get AI;DR | Chrome, Telegram, Email",
+      description:
+        "Get the ranked AI news digest by email, on Telegram, or in the Chrome new-tab extension.",
       lang: match.context.lang,
       route: headRouteInput(match),
     }),

@@ -56,6 +56,14 @@ export interface RunStats {
   /** Health-check alert keys raised this run; later runs read them back as
    *  the alert cooldown (see `worker/health.ts`). Absent when none fired. */
   alerts?: string[];
+  /** `"dry-run"` when the run sent no email/Telegram and only previewed the
+   *  TL;DR (see `worker/ingest/mode.ts`). Absent on a normal run. */
+  mode?: "dry-run";
+  /** Steps the trigger asked for; absent when every step ran. */
+  selectedSteps?: string[];
+  /** A dry run's would-be edition: bullet count and the first few bullets,
+   *  bounded. The live `tldr_snapshots` row is not touched. */
+  tldrPreview?: { bullets: number; en: string[]; vi: string[] };
 }
 
 /** Every field defaults to zero/false/empty so a missing or failed step
@@ -84,6 +92,9 @@ export function buildRunStats(partial: Partial<RunStats> = {}): RunStats {
     notified: partial.notified ?? {},
     notifyReason: partial.notifyReason ?? {},
     ...(partial.alerts?.length ? { alerts: partial.alerts } : {}),
+    ...(partial.mode ? { mode: partial.mode } : {}),
+    ...(partial.selectedSteps ? { selectedSteps: partial.selectedSteps } : {}),
+    ...(partial.tldrPreview ? { tldrPreview: partial.tldrPreview } : {}),
   };
 }
 

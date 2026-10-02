@@ -19,11 +19,19 @@ import { type IngestContext, LLM_STEP } from "./ingest/context.js";
 import { dedupeNewRows } from "./ingest/dedupe.js";
 import { enrichNewRows } from "./ingest/enrich.js";
 import { fetchSources, loadSources, seedSourceHealth } from "./ingest/fetch.js";
+import { processInboundEmail } from "./ingest/inbound-email.js";
 import { planMerges } from "./ingest/merge.js";
+import {
+  ingestModeFromPayload,
+  ingestModeStats,
+  runChainStep,
+  skipUnselectedStep,
+} from "./ingest/mode.js";
 import {
   generateTldr,
   notifyChannels,
   sendEmailDigest,
+  type TldrPreviewSummary,
 } from "./ingest/publish.js";
 import {
   qaTranslations,
@@ -104,7 +112,13 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     /** Per-source outcome for this run, seeded for every source by
      *  `seedSourceHealth` and filled in by the fetch/score/partition steps. */
     const sourceHealth: Record<string, SourceRunHealth> = {};
-    const ctx: IngestContext = { step, env: this.env, runId, steps };
+    const mode = ingestModeFromPayload(event.payload);
+    const ctx: IngestContext = { step, env: this.env, runId, steps, mode };
+    /** Only a run whose fresh-item chain reached translate has a whole
+     *  per-source record; a partial or empty map would reset every source's
+     *  streak and blank /api/system source health. */
+    let sourceHealthComplete = false;
+    let tldrPreview: TldrPreviewSummary | undefined;
 
     // POST /api/admin/ingest `{id}` is the Workflow instance id. Persist
     // that row before prune/fetch/LLM and before any step.do: create() can
@@ -114,7 +128,13 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     const startedAt = toEpochSeconds(
       event.timestamp instanceof Date ? event.timestamp.getTime() : Date.now()
     );
-    await persistOpenedWorkflowRun(this.env.DB, runId, startedAt, "open-run");
+    await persistOpenedWorkflowRun(
+      this.env.DB,
+      runId,
+      startedAt,
+      "open-run",
+      ingestModeStats(mode)
+    );
 
     // Installs the D1-backed llm_calls logger so every scoreItems/
     // translateItems/generateTldr call below (and everything else that
@@ -136,29 +156,59 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     // Durable duplicate of the open-run upsert. Do not wrap in safeStep:
     // a caught engine yield would skip the callback and look like success.
     await step.do("open-run", async () => {
-      await persistOpenedWorkflowRun(this.env.DB, runId, startedAt, "open-run");
+      await persistOpenedWorkflowRun(
+        this.env.DB,
+        runId,
+        startedAt,
+        "open-run",
+        ingestModeStats(mode)
+      );
       return { id: runId, startedAt };
     });
 
     await pruneLlmCalls(this.env);
 
-    try {
-      await assertMediaManifestSchema(this.env.DB);
+    /** Fresh items from sources through the D1 write. Each chain step runs only
+     * when the run selected it and every step before it (see `runChainStep`);
+     * the caller has already checked `fetch`. Kept inline so this method stays
+     * the one place pipeline order lives. */
+    const ingestFreshItems = async (): Promise<{
+      itemsFetched: number;
+      itemsNew: number;
+      merged: number;
+      published: number;
+      rejected: number;
+      tokens: number;
+      /** Per-source health is only whole (outcomes, skip reasons, carried
+       *  streaks) once the chain reached translate. */
+      sourceHealthComplete: boolean;
+    }> => {
+      const result = {
+        itemsFetched: 0,
+        itemsNew: 0,
+        merged: 0,
+        published: 0,
+        rejected: 0,
+        tokens: 0,
+        sourceHealthComplete: false,
+      };
 
       // 1. Consume sources.
       const sources = await loadSources(ctx);
       seedSourceHealth(sourceHealth, sources);
       const fetched = await fetchSources(ctx, sources, sourceHealth, bySource);
-      itemsFetched = fetched.itemsFetched;
+      result.itemsFetched = fetched.itemsFetched;
+      if (!runChainStep(ctx, "dedupe")) return result;
 
       const dedupedRows = await dedupeNewRows(
         ctx,
         fetched.fetchedBySource,
         sources,
-        itemsFetched
+        fetched.itemsFetched
       );
-      itemsNew = dedupedRows.length;
+      result.itemsNew = dedupedRows.length;
       const newRows = await enrichNewRows(ctx, dedupedRows);
+      if (!runChainStep(ctx, "score")) return result;
 
       // 2. Score, normalize topics, cluster, translate.
       const scored = await scoreNewRows(ctx, newRows);
@@ -179,6 +229,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         canonicalTagsByItem,
         now
       );
+      if (!runChainStep(ctx, "translate")) return result;
 
       const publishedRows = selectPublishedRows(newRows, scored, mergePlan);
       const translated = await translatePublishedRows(
@@ -190,62 +241,105 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       // Plain deterministic derivation from already-memoized step outputs
       // (newRows/scored/mergePlan/translated) — replay-safe the same way
       // publishedRows is, no need for its own step.do.
-      merged = mergePlan.merged.size;
-      published = publishedRows.length;
-      rejected = newRows.length - merged - published;
+      result.merged = mergePlan.merged.size;
+      result.published = publishedRows.length;
+      result.rejected = newRows.length - result.merged - result.published;
 
       tallySourceOutcomes(sourceHealth, newRows, publishedRows, mergePlan);
       resolveSkipReasons(sourceHealth, fetched.fetchFailures);
       await carrySourceStreaks(ctx, sourceHealth);
+      result.sourceHealthComplete = true;
 
-      for (const score of scored.values())
-        scoreAndTranslateTokens += score.tokens;
+      for (const score of scored.values()) result.tokens += score.tokens;
       for (const translation of translated.values())
-        scoreAndTranslateTokens += translation.tokens;
+        result.tokens += translation.tokens;
 
       // 3. Persist and re-rank.
-      await writeItems(ctx, {
-        newRows,
-        scored,
-        translated,
-        mergePlan,
-        canonicalTagsByItem,
-        now,
-      });
+      if (runChainStep(ctx, "write")) {
+        await writeItems(ctx, {
+          newRows,
+          scored,
+          translated,
+          mergePlan,
+          canonicalTagsByItem,
+          now,
+        });
+      }
+      return result;
+    };
+
+    try {
+      await assertMediaManifestSchema(this.env.DB);
+
+      // 1–3. Consume sources, score, translate, persist and re-rank.
+      if (runChainStep(ctx, "fetch")) {
+        const fresh = await ingestFreshItems();
+        sourceHealthComplete = fresh.sourceHealthComplete;
+        itemsFetched = fresh.itemsFetched;
+        itemsNew = fresh.itemsNew;
+        merged = fresh.merged;
+        published = fresh.published;
+        rejected = fresh.rejected;
+        scoreAndTranslateTokens += fresh.tokens;
+      }
 
       // 4. Drain backlogs and review queues.
-      backfilledSummaries = await backfillContent(ctx);
+      if (!skipUnselectedStep(ctx, "backfill-content")) {
+        backfilledSummaries = await backfillContent(ctx);
+      }
 
-      const backfillTranslate = await backfillTranslations(ctx);
-      backfilledTranslations = backfillTranslate.translated;
-      backfillTranslateTokens = backfillTranslate.tokens;
+      if (!skipUnselectedStep(ctx, "backfill-translate")) {
+        const backfillTranslate = await backfillTranslations(ctx);
+        backfilledTranslations = backfillTranslate.translated;
+        backfillTranslateTokens = backfillTranslate.tokens;
+      }
 
-      const backfillScore = await backfillScores(ctx);
-      scoreAndTranslateTokens += backfillScore.tokens;
+      if (!skipUnselectedStep(ctx, "backfill-score")) {
+        const backfillScore = await backfillScores(ctx);
+        scoreAndTranslateTokens += backfillScore.tokens;
+      }
 
-      const qaStats = await qaTranslations(ctx);
-      qaRated = qaStats.rated;
-      qaAdjusted = qaStats.adjusted;
-      qaTokens = qaStats.tokens;
+      if (!skipUnselectedStep(ctx, "qa-translations")) {
+        const qaStats = await qaTranslations(ctx);
+        qaRated = qaStats.rated;
+        qaAdjusted = qaStats.adjusted;
+        qaTokens = qaStats.tokens;
+      }
 
-      const suggestionsStats = await reviewSuggestions(ctx);
-      suggestionsReviewed = suggestionsStats.reviewed;
-      suggestionsTokens = suggestionsStats.tokens;
+      if (!skipUnselectedStep(ctx, "inbound-email")) {
+        await processInboundEmail(ctx);
+      }
 
-      const submissionsStats = await reviewSubmissions(ctx);
-      submissionsReviewed = submissionsStats.reviewed;
-      submissionsTokens = submissionsStats.tokens;
+      if (!skipUnselectedStep(ctx, "review-suggestions")) {
+        const suggestionsStats = await reviewSuggestions(ctx);
+        suggestionsReviewed = suggestionsStats.reviewed;
+        suggestionsTokens = suggestionsStats.tokens;
+      }
 
-      // 5. Build the edition and publish it.
-      const tldrStats = await generateTldr(ctx);
-      tldrGenerated = tldrStats.generated;
-      tldrTokens = tldrStats.tokens;
+      if (!skipUnselectedStep(ctx, "review-submissions")) {
+        const submissionsStats = await reviewSubmissions(ctx);
+        submissionsReviewed = submissionsStats.reviewed;
+        submissionsTokens = submissionsStats.tokens;
+      }
 
-      emailsSent = await sendEmailDigest(ctx);
+      // 5. Build the edition and publish it. A dry run previews the TL;DR
+      // and records email/notify as skipped without calling either sender.
+      if (!skipUnselectedStep(ctx, "tldr")) {
+        const tldrStats = await generateTldr(ctx);
+        tldrGenerated = tldrStats.generated;
+        tldrTokens = tldrStats.tokens;
+        tldrPreview = tldrStats.preview;
+      }
 
-      const notifyResult = await notifyChannels(ctx);
-      notified = notifyResult.sent;
-      notifyReason = notifyResult.reasons;
+      if (!skipUnselectedStep(ctx, "email")) {
+        emailsSent = await sendEmailDigest(ctx);
+      }
+
+      if (!skipUnselectedStep(ctx, "notify")) {
+        const notifyResult = await notifyChannels(ctx);
+        notified = notifyResult.sent;
+        notifyReason = notifyResult.reasons;
+      }
     } catch (error) {
       // Do not rethrow. Cloudflare Workflows retry a thrown `run()` (and
       // skip later steps, including `record-run` in this finally). A
@@ -261,12 +355,13 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       // Before close-run so its steps are the ones evaluated; a durable step
       // so a replay does not raise the same alerts twice.
       const alerts = await safeStep(step, "health-check", [] as string[], () =>
-        runHealthCheck(this.env, { runId, steps })
+        runHealthCheck(this.env, { runId, steps, dryRun: mode.dryRun })
       );
       recordStep(steps, "close-run", "recording");
       const stats = buildRunStats({
+        ...ingestModeStats(mode),
         bySource,
-        sourceHealth,
+        sourceHealth: sourceHealthComplete ? sourceHealth : undefined,
         steps,
         new: itemsNew,
         merged,
@@ -290,6 +385,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         notified,
         notifyReason,
         alerts,
+        tldrPreview,
       });
 
       const row = {

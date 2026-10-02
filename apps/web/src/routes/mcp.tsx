@@ -21,6 +21,8 @@ export const Route = createFileRoute("/mcp")({
     localizedPageHead({
       path: "/mcp",
       title: "MCP | AI News",
+      description:
+        "Read the AI;DR digest and individual stories from an agent through the Model Context Protocol.",
       lang: match.context.lang,
       route: headRouteInput(match),
     }),

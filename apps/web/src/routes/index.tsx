@@ -7,6 +7,7 @@ import { TldrSection } from "../components/TldrSection";
 import { TrendingChips } from "../components/TrendingChips";
 import { parseAidrLayout } from "../lib/aidr-layout";
 import { AIDR_END_ID, AIDR_PAINT_GATE_LINK } from "../lib/aidr-paint-gate";
+import { dayArchivePath } from "../lib/day-archive";
 import { showFeedBrowseChrome } from "../lib/empty-feed";
 import { setCachedFeed } from "../lib/feed-cache";
 import { fetchFeed } from "../lib/feed-fn";
@@ -300,6 +301,11 @@ function IndexPage() {
                   tagsByItemId={tagsByItemId}
                   imageByItemId={imageByItemId}
                   snapshotDate={feed.tldr?.date}
+                  dateHref={
+                    feed.tldr?.date
+                      ? dayArchivePath(feed.tldr.date, lang)
+                      : undefined
+                  }
                   layout={parseAidrLayout(aidr)}
                   layoutLabeled={Boolean(aidr)}
                 />

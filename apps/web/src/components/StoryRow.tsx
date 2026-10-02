@@ -166,8 +166,15 @@ export function StoryRow({
           {hot && (
             <TrendingUp
               className="mr-1 inline h-4 w-4 align-[-2px] text-muted-foreground"
-              aria-hidden
-            />
+              role="img"
+              aria-label={
+                lang === "vi" ? "Tin hàng đầu hôm nay" : "Top story today"
+              }
+            >
+              <title>
+                {lang === "vi" ? "Tin hàng đầu hôm nay" : "Top story today"}
+              </title>
+            </TrendingUp>
           )}
           <TitleTag
             className={titleAs === ARTICLE_TITLE_TAG ? "inline" : undefined}

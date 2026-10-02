@@ -2,9 +2,10 @@ import { Badge, Skeleton } from "@aidr/ui";
 import type { ReactNode, RefObject } from "react";
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
 import { RunAttemptRows } from "./RunAttemptRows";
+import { RunCollectedItems } from "./RunCollectedItems";
 import { RunErrorsPanel } from "./RunErrorsPanel";
 import { RunModelLinks } from "./RunModelLinks";
-import { RunStepList } from "./RunStepList";
+import { RunWorkflowGraph } from "./RunWorkflowGraph";
 import { COPY, statusLabel } from "./run-details-copy";
 import {
   bySourceSubline,
@@ -150,6 +151,10 @@ export function RunDetails({
         </dl>
       </div>
 
+      <div className="border-t border-border/60 pt-3">
+        <RunCollectedItems runId={run.id} lang={lang} />
+      </div>
+
       <div className="grid gap-3 border-t border-border/60 pt-3 md:grid-cols-2">
         <div>
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -183,7 +188,7 @@ export function RunDetails({
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {copy.workflow}
           </p>
-          <RunStepList steps={steps} />
+          <RunWorkflowGraph steps={steps} attempts={attempts} />
         </div>
       ) : (
         <div className="border-t border-border/60 pt-3">
@@ -191,10 +196,17 @@ export function RunDetails({
         </div>
       )}
 
-      <div className="border-t border-border/60 pt-3">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      <details className="group border-t border-border/60 pt-3">
+        <summary className="mb-1.5 cursor-pointer list-none text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground">
+          <span
+            aria-hidden
+            className="mr-1 inline-block transition-transform group-open:rotate-90"
+          >
+            ›
+          </span>
           {copy.attempts}
-        </p>
+          {attempts.length > 0 ? ` · ${attempts.length}` : ""}
+        </summary>
         {attemptsState === "loading" ? (
           <>
             <Skeleton className="h-16 w-full" />
@@ -224,7 +236,7 @@ export function RunDetails({
                   : copy.noAttempts}
           </p>
         )}
-      </div>
+      </details>
     </fieldset>
   );
 }

@@ -31,6 +31,9 @@ import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiPublicRouteImport } from './routes/api/public'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiSystemRouteImport } from './routes/api/system'
+import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
+import { Route as ContributeNewRouteImport } from './routes/contribute.new'
+import { Route as DateDateRouteImport } from './routes/date.$date'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
@@ -46,6 +49,7 @@ import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
 import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
 import { Route as ApiSystemOverviewRouteImport } from './routes/api/system.overview'
 import { Route as ApiSystemRunAttemptsRouteImport } from './routes/api/system.run-attempts'
+import { Route as ApiSystemRunItemsRouteImport } from './routes/api/system.run-items'
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
 import { Route as ApiSystemSourcesRouteImport } from './routes/api/system.sources'
 import { Route as ApiWebhooksClerkRouteImport } from './routes/api/webhooks.clerk'
@@ -160,6 +164,21 @@ const ApiSystemRoute = ApiSystemRouteImport.update({
   path: '/api/system',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContributeIndexRoute = ContributeIndexRouteImport.update({
+  id: '/contribute/',
+  path: '/contribute/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContributeNewRoute = ContributeNewRouteImport.update({
+  id: '/contribute/new',
+  path: '/contribute/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DateDateRoute = DateDateRouteImport.update({
+  id: '/date/$date',
+  path: '/date/$date',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInSplatRoute = SignInSplatRouteImport.update({
   id: '/sign-in/$',
   path: '/sign-in/$',
@@ -235,6 +254,11 @@ const ApiSystemRunAttemptsRoute = ApiSystemRunAttemptsRouteImport.update({
   path: '/run-attempts',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiSystemRunItemsRoute = ApiSystemRunItemsRouteImport.update({
+  id: '/run-items',
+  path: '/run-items',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 const ApiSystemRunsRoute = ApiSystemRunsRouteImport.update({
   id: '/runs',
   path: '/runs',
@@ -274,8 +298,11 @@ export interface FileRoutesByFullPath {
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
+  '/contribute/new': typeof ContributeNewRoute
+  '/date/$date': typeof DateDateRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/contribute/': typeof ContributeIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -289,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
+  '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
@@ -316,8 +344,11 @@ export interface FileRoutesByTo {
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
+  '/contribute/new': typeof ContributeNewRoute
+  '/date/$date': typeof DateDateRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/contribute': typeof ContributeIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -331,6 +362,7 @@ export interface FileRoutesByTo {
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
+  '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
@@ -359,8 +391,11 @@ export interface FileRoutesById {
   '/api/public': typeof ApiPublicRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
+  '/contribute/new': typeof ContributeNewRoute
+  '/date/$date': typeof DateDateRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/contribute/': typeof ContributeIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -374,6 +409,7 @@ export interface FileRoutesById {
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
+  '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
@@ -403,8 +439,11 @@ export interface FileRouteTypes {
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/contribute/new'
+    | '/date/$date'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/contribute/'
     | '/api/admin/$'
     | '/api/feed/freshness'
     | '/api/og/$id'
@@ -418,6 +457,7 @@ export interface FileRouteTypes {
     | '/api/system/models'
     | '/api/system/overview'
     | '/api/system/run-attempts'
+    | '/api/system/run-items'
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
@@ -445,8 +485,11 @@ export interface FileRouteTypes {
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/contribute/new'
+    | '/date/$date'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/contribute'
     | '/api/admin/$'
     | '/api/feed/freshness'
     | '/api/og/$id'
@@ -460,6 +503,7 @@ export interface FileRouteTypes {
     | '/api/system/models'
     | '/api/system/overview'
     | '/api/system/run-attempts'
+    | '/api/system/run-items'
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
@@ -487,8 +531,11 @@ export interface FileRouteTypes {
     | '/api/public'
     | '/api/subscribe'
     | '/api/system'
+    | '/contribute/new'
+    | '/date/$date'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/contribute/'
     | '/api/admin/$'
     | '/api/feed/freshness'
     | '/api/og/$id'
@@ -502,6 +549,7 @@ export interface FileRouteTypes {
     | '/api/system/models'
     | '/api/system/overview'
     | '/api/system/run-attempts'
+    | '/api/system/run-items'
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
@@ -530,8 +578,11 @@ export interface RootRouteChildren {
   ApiPublicRoute: typeof ApiPublicRoute
   ApiSubscribeRoute: typeof ApiSubscribeRouteWithChildren
   ApiSystemRoute: typeof ApiSystemRouteWithChildren
+  ContributeNewRoute: typeof ContributeNewRoute
+  DateDateRoute: typeof DateDateRoute
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
+  ContributeIndexRoute: typeof ContributeIndexRoute
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
@@ -694,6 +745,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contribute/': {
+      id: '/contribute/'
+      path: '/contribute'
+      fullPath: '/contribute/'
+      preLoaderRoute: typeof ContributeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contribute/new': {
+      id: '/contribute/new'
+      path: '/contribute/new'
+      fullPath: '/contribute/new'
+      preLoaderRoute: typeof ContributeNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/date/$date': {
+      id: '/date/$date'
+      path: '/date/$date'
+      fullPath: '/date/$date'
+      preLoaderRoute: typeof DateDateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign-in/$': {
       id: '/sign-in/$'
       path: '/sign-in/$'
@@ -799,6 +871,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemRunAttemptsRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/system/run-items': {
+      id: '/api/system/run-items'
+      path: '/run-items'
+      fullPath: '/api/system/run-items'
+      preLoaderRoute: typeof ApiSystemRunItemsRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
     '/api/system/runs': {
       id: '/api/system/runs'
       path: '/runs'
@@ -856,6 +935,7 @@ interface ApiSystemRouteChildren {
   ApiSystemModelsRoute: typeof ApiSystemModelsRoute
   ApiSystemOverviewRoute: typeof ApiSystemOverviewRoute
   ApiSystemRunAttemptsRoute: typeof ApiSystemRunAttemptsRoute
+  ApiSystemRunItemsRoute: typeof ApiSystemRunItemsRoute
   ApiSystemRunsRoute: typeof ApiSystemRunsRoute
   ApiSystemSourcesRoute: typeof ApiSystemSourcesRoute
 }
@@ -868,6 +948,7 @@ const ApiSystemRouteChildren: ApiSystemRouteChildren = {
   ApiSystemModelsRoute: ApiSystemModelsRoute,
   ApiSystemOverviewRoute: ApiSystemOverviewRoute,
   ApiSystemRunAttemptsRoute: ApiSystemRunAttemptsRoute,
+  ApiSystemRunItemsRoute: ApiSystemRunItemsRoute,
   ApiSystemRunsRoute: ApiSystemRunsRoute,
   ApiSystemSourcesRoute: ApiSystemSourcesRoute,
 }
@@ -899,8 +980,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRoute: ApiPublicRoute,
   ApiSubscribeRoute: ApiSubscribeRouteWithChildren,
   ApiSystemRoute: ApiSystemRouteWithChildren,
+  ContributeNewRoute: ContributeNewRoute,
+  DateDateRoute: DateDateRoute,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
+  ContributeIndexRoute: ContributeIndexRoute,
   ApiAdminSplatRoute: ApiAdminSplatRoute,
   ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,

@@ -180,7 +180,8 @@ describe("notifications delivery idempotency", () => {
           id TEXT PRIMARY KEY, url TEXT, title TEXT, summary TEXT,
           image_url TEXT, media_manifest TEXT, category TEXT,
           points INTEGER, comments INTEGER, rank_score REAL,
-          llm_importance INTEGER, status TEXT, published_at INTEGER
+          llm_importance INTEGER, status TEXT, published_at INTEGER,
+          source_id TEXT
         );
         CREATE TABLE translations (
           item_id TEXT, lang TEXT, title TEXT, summary TEXT

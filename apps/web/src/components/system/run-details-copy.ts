@@ -90,6 +90,7 @@ export function statusLabel(
 ): string {
   const copy = COPY[lang];
   if (status === "ok") return copy.ok;
+  if (status === "degraded") return lang === "vi" ? "có lỗi" : "issues";
   if (status === "error") return copy.error;
   if (status === "empty") return copy.empty;
   if (status === "in_progress") return copy.inProgress;

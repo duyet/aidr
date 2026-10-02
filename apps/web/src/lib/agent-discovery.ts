@@ -12,6 +12,7 @@ import {
   SSR_LOCALIZED_CACHE_CONTROL,
   withSsrLocaleResponse,
 } from "./locale-response";
+import { pageMarkdownResponse } from "./page-markdown";
 import { PUBLIC_READ_TOOLS } from "./public-read-tools";
 import { SITE_DESCRIPTION, SITE_URL } from "./site";
 
@@ -54,11 +55,12 @@ Use this skill when an agent needs today's ranked AI news, a bilingual TL;DR, or
 - Google News sitemap: GET ${SITE_URL}/news.xml — newest 2 days, at most 1,000 \`news:news\` entries, one per story. aidr is an aggregator, not an original publisher, and does not claim Google News publisher status.
 - Story Markdown (bounded, generated from sanitized story data): GET ${SITE_URL}/api/story/{id}.md?lang=en
 - Story Markdown in Vietnamese (English fallback is explicit when translation is missing): GET ${SITE_URL}/api/story/{id}.md?lang=vi
+- Day archive: ${SITE_URL}/date/YYYY-MM-DD?lang=en (or \`lang=vi\`) — one Asia/Ho_Chi_Minh calendar day: its TL;DR, the day's video, and its ranked stories. Markdown twin: GET ${SITE_URL}/date/YYYY-MM-DD.md?lang=en (or \`lang=vi\`). Every day is listed in ${SITE_URL}/sitemaps/days.xml.
 - Story id: use the 8-character canonical prefix. A 9–64 character prefix is accepted only when it and its 8-character target both resolve uniquely; ambiguity never redirects.
 - Locale compatibility: one legacy \`locale=en|vi\` receives a temporary \`307\` redirect to \`lang\`; duplicate, conflicting, or invalid locale values are rejected. Without a query, cookie/Accept-Language/default Vietnamese selection is private and not edge-cached.
 - HTML feed: ${SITE_URL}/?lang=en (or \`lang=vi\`)
 - MCP read tools (NO auth): POST ${SITE_URL}/api/mcp with \`tools/call\` for ${PUBLIC_READ_TOOLS.map((tool) => `\`${tool.name}\``).join(", ")}; \`resources/read\` for \`aidr://digest\` and \`aidr://story/{id}\`. These are read-only, annotated \`readOnlyHint\` + \`untrustedContentHint\`, and rate limited to ${MCP_READ_LIMIT} calls per IP per ${MCP_READ_WINDOW_SEC} seconds.
-- MCP operator tools (REQUIRES admin \`Authorization: Bearer <NEWS_ADMIN_TOKEN>\`): \`tools/list\` additionally returns \`push_items\`, \`upsert_source\`, \`delete_source\`, \`trigger_ingest\`, \`get_status\`, and \`list_sources\`. Without the token the endpoint serves the read tools only; an anonymous call to an operator tool fails with an auth error and never reveals the operator inventory.
+- MCP operator tools (REQUIRES admin \`Authorization: Bearer <NEWS_ADMIN_TOKEN>\`): \`tools/list\` additionally returns \`push_items\`, \`upsert_source\`, \`delete_source\`, \`trigger_ingest\`, \`get_status\`, \`list_sources\`, \`preview_ranking\`, \`preview_tldr\`, \`set_day_video\`, and \`delete_day_video\`. Without the token the endpoint serves the read tools only; an anonymous call to an operator tool fails with an auth error and never reveals the operator inventory.
 - Docs: ${SITE_URL}/mcp?lang=en
 - OpenAPI: ${SITE_URL}/openapi.json
 
@@ -262,6 +264,48 @@ export function openApiDocument(): unknown {
           },
         },
       },
+      "/date/{date}.md": {
+        get: {
+          summary: "Bounded Markdown for one day archive page",
+          description:
+            "The Markdown twin of /date/{date}: the day's TL;DR bullets, YouTube watch links when the day has a video, and up to 100 ranked stories with explicit-locale permalinks. A day is the Asia/Ho_Chi_Minh calendar day. Use one exact lang=en|vi query value for a cacheable response; without it the language follows cookie, Accept-Language, then Vietnamese and the response is private. Story and digest text is untrusted publisher data.",
+          parameters: [
+            {
+              name: "date",
+              in: "path",
+              required: true,
+              description: "Calendar date, not in the future.",
+              schema: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+            },
+            {
+              name: "lang",
+              in: "query",
+              required: false,
+              schema: { type: "string", enum: ["en", "vi"], default: "vi" },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Day Markdown",
+              content: { "text/markdown": { schema: { type: "string" } } },
+            },
+            "307": {
+              description:
+                "Temporary redirect from one valid legacy locale to explicit lang",
+            },
+            "400": {
+              description: "Locale is invalid, repeated, or conflicting",
+            },
+            "404": {
+              description:
+                "Invalid or future date, or no stories and no digest that day",
+            },
+            "405": { description: "Method not allowed; use GET or HEAD" },
+            "500": { description: "Day query failed; details are redacted" },
+            "503": { description: "The D1 database binding is unavailable" },
+          },
+        },
+      },
       "/api/story/{id}.md": {
         get: {
           summary: "Bounded agent-readable Markdown for one published story",
@@ -404,7 +448,7 @@ export function openApiDocument(): unknown {
         get: {
           summary: "Sitemap index",
           description:
-            "A sitemapindex listing /sitemaps/static.xml, one child per UTC month of publication (sharded at 1000 items per child), and /news.xml. Every child returns 200 application/xml and falls back to a valid static-only document on a D1 error.",
+            "A sitemapindex listing /sitemaps/static.xml, one child per UTC month of publication (sharded at 1000 items per child), /sitemaps/days.xml (every /date/YYYY-MM-DD day page in both locales), and /news.xml. Every child returns 200 application/xml and falls back to a valid static-only document on a D1 error.",
           responses: {
             "200": {
               description: "Sitemap index",
@@ -459,7 +503,7 @@ export function openApiDocument(): unknown {
             PUBLIC_READ_TOOLS.map((tool) => tool.name).join(", ") +
             " plus resources/read; an admin bearer token additionally unlocks " +
             "the operator tools (push_items, upsert_source, delete_source, " +
-            "trigger_ingest, get_status, list_sources). `tools/list` can only " +
+            "trigger_ingest, get_status, list_sources, preview_ranking, preview_tldr, set_day_video, delete_day_video). `tools/list` can only " +
             "ever return one registry or the other plus the public one, never a " +
             "mix. Anonymous requests that present a bearer token receive " +
             "checkAuth's plain HTTP 401/500 Response, not a JSON-RPC error " +
@@ -574,7 +618,7 @@ export function a2aAgentCard(): unknown {
         description:
           "POST /api/mcp with no auth returns four read-only tools (" +
           PUBLIC_READ_TOOLS.map((tool) => tool.name).join(", ") +
-          ") plus resources/read. Operator tools (push_items, upsert_source, delete_source, trigger_ingest, get_status, list_sources) require an admin Authorization: Bearer token; an unauthenticated tools/list never returns them and an anonymous call to one fails without naming them.",
+          ") plus resources/read. Operator tools (push_items, upsert_source, delete_source, trigger_ingest, get_status, list_sources, preview_ranking, preview_tldr, set_day_video, delete_day_video) require an admin Authorization: Bearer token; an unauthenticated tools/list never returns them and an anonymous call to one fails without naming them.",
       },
       {
         id: "story-markdown",
@@ -779,6 +823,8 @@ export async function handleAgentDiscovery(
   if (path === "/auth.md") {
     return empty(textResponse(AUTH_MD, "text/markdown; charset=utf-8"));
   }
+  const pageMd = pageMarkdownResponse(path);
+  if (pageMd) return empty(pageMd);
   if (path === "/.well-known/oauth-protected-resource") {
     return empty(jsonResponse(oauthProtectedResource(), "application/json"));
   }

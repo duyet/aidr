@@ -11,11 +11,12 @@ import {
 import { isIvStoryId, ivCardUrl, TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
 import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
-import type {
-  DailyDigest,
-  Notifier,
-  SendResult,
-  StoryPayload,
+import {
+  type DailyDigest,
+  isSubrequestLimitError,
+  type Notifier,
+  type SendResult,
+  type StoryPayload,
 } from "./types.js";
 import { buildVideoAlbumMedia, planVideoDelivery } from "./video.js";
 
@@ -338,7 +339,8 @@ async function sendAlbumButton(
  * Send the story's video (or a mixed album) when the preflight proved it.
  * Returns null on a skip or when Telegram rejects the call, so the caller
  * falls back to the photo path, then text: a rejected call posts nothing. An
- * ambiguous call may have posted, so it is returned and ends the send.
+ * ambiguous call may have posted, so it is returned and ends the send; so
+ * does a call the runtime refused for lack of subrequests.
  */
 async function sendVideoStory(
   token: string,
@@ -369,7 +371,7 @@ async function sendVideoStory(
       reply_markup: replyMarkup,
     });
     if (res.ok) return { ok: true, messageId: telegramMessageId(res.result) };
-    if (res.ambiguous) return sendFailure(res);
+    if (res.ambiguous || res.budgetExhausted) return sendFailure(res);
     console.error(
       `telegram sendVideo failed for ${story.id}: ${res.description}; falling back`
     );
@@ -379,7 +381,7 @@ async function sendVideoStory(
     chat_id: chatId,
     media: buildVideoAlbumMedia(plan.items, caption),
   });
-  if (res.ambiguous) return sendFailure(res);
+  if (res.ambiguous || res.budgetExhausted) return sendFailure(res);
   if (!res.ok) {
     console.error(
       `telegram video sendMediaGroup failed for ${story.id}: ${res.description}; falling back`
@@ -395,6 +397,8 @@ interface TelegramResponse {
   ok: boolean;
   /** No usable answer from Telegram, so the message may or may not be posted. */
   ambiguous?: boolean;
+  /** The Worker refused the request (subrequest budget); nothing was sent. */
+  budgetExhausted?: boolean;
   /** `sendMessage`/`sendPhoto` return one message; `sendMediaGroup` returns an array. */
   result?: { message_id?: number } | Array<{ message_id?: number }>;
   description?: string;
@@ -411,6 +415,7 @@ function sendFailure(res: TelegramResponse): SendResult {
     ok: false,
     error: res.description ?? "unknown",
     ...(res.ambiguous ? { ambiguous: true } : {}),
+    ...(res.budgetExhausted ? { budgetExhausted: true } : {}),
   };
 }
 
@@ -440,6 +445,15 @@ async function callTelegram(
     status = res.status;
     raw = await res.text();
   } catch (error) {
+    // Out of subrequests: the runtime refused before anything was sent, so
+    // this is a clean retry, not an unknown outcome.
+    if (isSubrequestLimitError(error)) {
+      return {
+        ok: false,
+        budgetExhausted: true,
+        description: error instanceof Error ? error.message : String(error),
+      };
+    }
     return {
       ok: false,
       ambiguous: true,
@@ -556,7 +570,8 @@ function telegramChannel(options: {
         }
         // Each fallback below runs only after a definite rejection. An
         // ambiguous result may already be in the channel, so it ends the send.
-        if (album.ambiguous) return sendFailure(album);
+        // Out of subrequests, every fallback would be refused too.
+        if (album.ambiguous || album.budgetExhausted) return sendFailure(album);
         console.error(
           `telegram sendMediaGroup failed for ${story.id}: ${album.description}; falling back to one photo`
         );
@@ -564,7 +579,7 @@ function telegramChannel(options: {
         if (lead.ok) {
           return { ok: true, messageId: telegramMessageId(lead.result) };
         }
-        if (lead.ambiguous) return sendFailure(lead);
+        if (lead.ambiguous || lead.budgetExhausted) return sendFailure(lead);
         console.error(
           `telegram sendPhoto failed for ${story.id} ${gallery[0]}: ${lead.description}`
         );
@@ -573,7 +588,8 @@ function telegramChannel(options: {
           if (retry.ok) {
             return { ok: true, messageId: telegramMessageId(retry.result) };
           }
-          if (retry.ambiguous) return sendFailure(retry);
+          if (retry.ambiguous || retry.budgetExhausted)
+            return sendFailure(retry);
           console.error(
             `telegram sendPhoto card fallback failed for ${story.id}: ${retry.description}`
           );
@@ -585,7 +601,8 @@ function telegramChannel(options: {
           if (photo.ok) {
             return { ok: true, messageId: telegramMessageId(photo.result) };
           }
-          if (photo.ambiguous) return sendFailure(photo);
+          if (photo.ambiguous || photo.budgetExhausted)
+            return sendFailure(photo);
           console.error(
             `telegram sendPhoto failed for ${story.id} ${lead}: ${photo.description}`
           );
@@ -594,7 +611,8 @@ function telegramChannel(options: {
             if (retry.ok) {
               return { ok: true, messageId: telegramMessageId(retry.result) };
             }
-            if (retry.ambiguous) return sendFailure(retry);
+            if (retry.ambiguous || retry.budgetExhausted)
+              return sendFailure(retry);
             console.error(
               `telegram sendPhoto card fallback failed for ${story.id}: ${retry.description}`
             );
@@ -604,7 +622,8 @@ function telegramChannel(options: {
           if (photo.ok) {
             return { ok: true, messageId: telegramMessageId(photo.result) };
           }
-          if (photo.ambiguous) return sendFailure(photo);
+          if (photo.ambiguous || photo.budgetExhausted)
+            return sendFailure(photo);
           console.error(
             `telegram sendPhoto failed for ${story.id} ${card}: ${photo.description}`
           );

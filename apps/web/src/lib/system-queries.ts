@@ -1,3 +1,4 @@
+import { staleAfterRunsFor } from "../../worker/sources/catalog.js";
 import {
   safeErrorCode,
   safeErrorStatus,
@@ -7,6 +8,7 @@ import {
 } from "../../worker/telemetry-safe.js";
 import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "../../worker/workflow-run.js";
 import type { DbReader } from "./db";
+import { runItemWindow } from "./run-items";
 
 const JEV_DEFAULT_MODEL = "typesafe/jev";
 
@@ -117,6 +119,12 @@ export interface WorkflowRunStats {
   emailsSent?: number;
   notified?: Record<string, number>;
   notifyReason?: Record<string, unknown>;
+  /** `"dry-run"`: no email/Telegram went out, TL;DR was only previewed. */
+  mode?: "dry-run";
+  /** Steps a partial run was asked for; absent when every step ran. */
+  selectedSteps?: string[];
+  /** A dry run's would-be TL;DR (count + first bullets). */
+  tldrPreview?: { bullets: number; en: string[]; vi: string[] };
 }
 
 export interface WorkflowRunRow {
@@ -158,6 +166,12 @@ export interface LlmCallRow {
   route?: string[];
   /** Upstream provider that served the attempt, when reported. */
   provider?: string | null;
+  /** Shared by every attempt of one LLM invocation, from migration 0034. */
+  callId?: string | null;
+  /** USD AnyRouter charged for the attempt, from migration 0035. */
+  costUsd?: number | null;
+  /** AnyRouter request id (`req_…`), from migration 0035. */
+  requestId?: string | null;
 }
 
 export interface RunLlmSummary {
@@ -218,6 +232,14 @@ export interface DayCount {
 export interface LlmDayTaskCount {
   date: string;
   task: string;
+  calls: number;
+  failures: number;
+  tokens: number;
+}
+
+export interface LlmDayModelCount {
+  date: string;
+  model: string;
   calls: number;
   failures: number;
   tokens: number;
@@ -388,7 +410,8 @@ function jevThenChat(jev: string[], chat: string[]): string[] {
  * arrays. Public config (which models power scoring/translate/TL;DR/decisions), not
  * a secret — safe to surface on /about and /system.
  *
- * Scoring and decisions try Jev (System One) first. The chat chain stays
+ * Scoring tries the decision router (`ANYROUTER_DECISION_MODEL`) and then
+ * Jev; decisions try Jev (System One) first. The chat chain stays
  * the backup and is listed after Jev. Translation and TL;DR stay chat-only:
  * Jev does not write prose, and it is rejected on /chat/completions. */
 export function getModelChains(env: {
@@ -396,6 +419,7 @@ export function getModelChains(env: {
   ANYROUTER_TRANSLATE_MODEL?: string;
   ANYROUTER_TLDR_MODEL?: string;
   ANYROUTER_JEV_MODEL?: string;
+  ANYROUTER_DECISION_MODEL?: string;
 }): ModelChains {
   const chat = splitModelChain(env.ANYROUTER_MODEL);
   const translation = splitModelChain(env.ANYROUTER_TRANSLATE_MODEL);
@@ -403,7 +427,10 @@ export function getModelChains(env: {
   const configuredJev = splitModelChain(env.ANYROUTER_JEV_MODEL);
   const jev = configuredJev.length ? configuredJev : [JEV_DEFAULT_MODEL];
   return {
-    scoring: jevThenChat(jev, chat),
+    scoring: jevThenChat(
+      [...splitModelChain(env.ANYROUTER_DECISION_MODEL).slice(0, 1), ...jev],
+      chat
+    ),
     translation: translation.length ? translation : chat,
     tldr: tldr.length ? tldr : chat,
     decisions: jevThenChat(jev, chat),
@@ -457,6 +484,15 @@ const SQL = {
     WHERE ts >= (unixepoch('now') - 14 * 86400) * 1000
     GROUP BY date, task
     ORDER BY date ASC, task ASC`,
+  llmTokensByModel: `SELECT date(ts / 1000, 'unixepoch') AS date,
+           model,
+           COUNT(*) AS calls,
+           SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS failures,
+           SUM(COALESCE(tokens, 0)) AS tokens
+    FROM llm_calls
+    WHERE ts >= (unixepoch('now') - 14 * 86400) * 1000
+    GROUP BY date, model
+    ORDER BY date ASC, model ASC`,
 } as const;
 
 function runsSelectSql(hasRunStats: boolean, limit: number): string {
@@ -592,6 +628,9 @@ interface LlmCallDbRow {
   error_status?: number | null;
   route?: string | null;
   provider?: string | null;
+  call_id?: string | null;
+  cost_usd?: number | null;
+  request_id?: string | null;
 }
 
 const ROUTE_HOP_RE = /^[A-Za-z0-9@][A-Za-z0-9._:/@-]{0,119}$/;
@@ -643,12 +682,37 @@ function mapLlmCallRow(r: LlmCallDbRow): LlmCallRow {
       typeof r.provider === "string" && ROUTE_HOP_RE.test(r.provider)
         ? r.provider
         : null,
+    callId:
+      typeof r.call_id === "string" && /^[a-z0-9-]{1,36}$/.test(r.call_id)
+        ? r.call_id
+        : null,
+    costUsd:
+      typeof r.cost_usd === "number" &&
+      Number.isFinite(r.cost_usd) &&
+      r.cost_usd >= 0
+        ? r.cost_usd
+        : null,
+    requestId:
+      typeof r.request_id === "string" &&
+      /^req_[A-Za-z0-9]{1,64}$/.test(r.request_id)
+        ? r.request_id
+        : null,
   };
 }
 
 const LLM_SELECT_COLUMNS = `ts, run_id, task, model, ok, tokens, duration_ms,
   prompt_chars, error, prompt_tokens, completion_tokens, cached_tokens,
-  error_code, error_status, route, provider`;
+  error_code, error_status, route, provider, call_id, cost_usd, request_id`;
+
+/** Pre-0035 schema: same columns minus cost_usd/request_id. */
+const LLM_SELECT_COLUMNS_PRE_COST = `ts, run_id, task, model, ok, tokens,
+  duration_ms, prompt_chars, error, prompt_tokens, completion_tokens,
+  cached_tokens, error_code, error_status, route, provider, call_id`;
+
+/** Pre-0034 schema: same columns minus call_id. */
+const LLM_SELECT_COLUMNS_PRE_CALL_ID = `ts, run_id, task, model, ok, tokens,
+  duration_ms, prompt_chars, error, prompt_tokens, completion_tokens,
+  cached_tokens, error_code, error_status, route, provider`;
 
 /** Pre-0033 schema: same columns minus route/provider. */
 const LLM_SELECT_COLUMNS_PRE_ROUTE = `ts, run_id, task, model, ok, tokens,
@@ -680,6 +744,36 @@ async function queryLlmCallsByRunId(
     const { results } = await db
       .prepare(
         `SELECT ${LLM_SELECT_COLUMNS}
+         FROM llm_calls
+         WHERE ${where}
+         ORDER BY ts ASC
+         LIMIT ${LLM_ATTEMPTS_LIMIT}`
+      )
+      .bind(...binds)
+      .all<LlmCallDbRow>();
+    return finishLlmQuery(results);
+  } catch {
+    // 0035 columns may not exist yet.
+  }
+  try {
+    const { results } = await db
+      .prepare(
+        `SELECT ${LLM_SELECT_COLUMNS_PRE_COST}
+         FROM llm_calls
+         WHERE ${where}
+         ORDER BY ts ASC
+         LIMIT ${LLM_ATTEMPTS_LIMIT}`
+      )
+      .bind(...binds)
+      .all<LlmCallDbRow>();
+    return finishLlmQuery(results);
+  } catch {
+    // call_id may not exist yet.
+  }
+  try {
+    const { results } = await db
+      .prepare(
+        `SELECT ${LLM_SELECT_COLUMNS_PRE_CALL_ID}
          FROM llm_calls
          WHERE ${where}
          ORDER BY ts ASC
@@ -960,6 +1054,47 @@ export async function loadSystemRuns(db: DbReader): Promise<WorkflowRunRow[]> {
   }
 }
 
+export interface RunCollectedItem {
+  title: string;
+  url: string;
+}
+
+const RUN_ITEMS_CAP = 200;
+
+/** Titles and URLs of items first stored during this run (`fetched_at`
+ *  falls inside the run). Already-known items are not listed: ingest does
+ *  not rewrite `fetched_at` on update. */
+export async function loadRunItems(
+  db: DbReader,
+  runId: string,
+  nowSec = Math.floor(Date.now() / 1000)
+): Promise<{ items: RunCollectedItem[]; truncated: boolean }> {
+  const run = await db
+    .prepare(
+      "SELECT started_at, finished_at FROM workflow_runs WHERE id = ? LIMIT 1"
+    )
+    .bind(runId)
+    .first<{ started_at: number | null; finished_at: number | null }>();
+  const window = run
+    ? runItemWindow(run.started_at, run.finished_at, nowSec)
+    : null;
+  if (!window) return { items: [], truncated: false };
+  const { results } = await db
+    .prepare(
+      `SELECT title, url FROM items
+       WHERE fetched_at >= ? AND fetched_at <= ?
+       ORDER BY fetched_at DESC
+       LIMIT ?`
+    )
+    .bind(window.from, window.to, RUN_ITEMS_CAP + 1)
+    .all<RunCollectedItem>();
+  const rows = results ?? [];
+  return {
+    items: rows.slice(0, RUN_ITEMS_CAP),
+    truncated: rows.length > RUN_ITEMS_CAP,
+  };
+}
+
 /** Per-run LLM call detail, keyed only by the authoritative run id. */
 export async function loadRunAttempts(
   db: DbReader,
@@ -979,13 +1114,19 @@ export async function loadRunAttempts(
 /** Token burn + per-day usage feeding the overview/LLM tabs — one batch. */
 export interface SystemLlm {
   llmCallsPerDay: LlmDayTaskCount[];
+  llmTokensByModel: LlmDayModelCount[];
   tokens: { total: number; avgPerItem: number; perDay: DayCount[] };
 }
 
 export async function loadSystemLlm(db: DbReader): Promise<SystemLlm> {
   const { hasTokens, hasLlmCalls } = await probeSystemTables(db);
   const stmts = [];
-  if (hasLlmCalls) stmts.push(db.prepare(SQL.llmCallsPerDay));
+  if (hasLlmCalls) {
+    stmts.push(
+      db.prepare(SQL.llmCallsPerDay),
+      db.prepare(SQL.llmTokensByModel)
+    );
+  }
   if (hasTokens) {
     stmts.push(
       db.prepare(SQL.tokenTotal),
@@ -993,9 +1134,13 @@ export async function loadSystemLlm(db: DbReader): Promise<SystemLlm> {
       db.prepare(SQL.tokenPerDay)
     );
   }
-  const [llmPerDay, tokenTotalRes, tokenAvgRes, tokenPerDayRes] = stmts.length
-    ? await db.batch(stmts)
-    : [];
+  const rows = stmts.length ? await db.batch(stmts) : [];
+  let index = 0;
+  const llmPerDay = hasLlmCalls ? rows[index++] : undefined;
+  const llmByModel = hasLlmCalls ? rows[index++] : undefined;
+  const tokenTotalRes = hasTokens ? rows[index++] : undefined;
+  const tokenAvgRes = hasTokens ? rows[index++] : undefined;
+  const tokenPerDayRes = hasTokens ? rows[index++] : undefined;
 
   return {
     llmCallsPerDay: resultRows<{
@@ -1005,6 +1150,13 @@ export async function loadSystemLlm(db: DbReader): Promise<SystemLlm> {
       failures: number;
       tokens: number | null;
     }>(llmPerDay).map((r) => ({ ...r, tokens: r.tokens ?? 0 })),
+    llmTokensByModel: resultRows<{
+      date: string;
+      model: string;
+      calls: number;
+      failures: number;
+      tokens: number | null;
+    }>(llmByModel).map((r) => ({ ...r, tokens: r.tokens ?? 0 })),
     tokens: {
       total: firstRow<{ s: number | null }>(tokenTotalRes)?.s ?? 0,
       avgPerItem: Math.round(
@@ -1107,23 +1259,12 @@ export function mergeSourceHealth(
   return { health, stale };
 }
 
-/** Per-source stale threshold, mirroring `worker/source-health.ts`.
- *  Duplicated as a small literal rather than imported because
- *  `system-queries.ts` is shared with the public read path and must not grow
- *  a Worker-module dependency; `source-health.test.ts` asserts the two agree
- *  for every registry row. 168 consecutive runs is seven days at the hourly
- *  cadence — see the reasoning in `worker/source-health.ts`.
- *
- *  arXiv is the one override: it announces nothing on weekends, a measured
- *  ~54-run silent gap, so it carries `staleAfterRuns: 72` in the registry. */
-const DEFAULT_STALE_AFTER_RUNS = 168;
-
-const STALE_AFTER_RUNS_OVERRIDES: Record<string, number> = {
-  "arxiv-research": 72,
-};
-
+/** Per-source stale threshold, read from the source registry so the
+ *  dashboard and `worker/source-health.ts` can never disagree. `catalog.ts`
+ *  is import-free data, so this adds no Worker runtime dependency to the
+ *  public read path. */
 export function sourceStaleThreshold(id: string): number {
-  return STALE_AFTER_RUNS_OVERRIDES[id] ?? DEFAULT_STALE_AFTER_RUNS;
+  return staleAfterRunsFor(id);
 }
 
 export async function loadSystemSources(db: DbReader): Promise<SystemSources> {

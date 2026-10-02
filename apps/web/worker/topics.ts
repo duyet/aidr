@@ -65,7 +65,7 @@ export function unionTopics(
   return out;
 }
 
-function buildTopicMappingPrompt(
+export function buildTopicMappingPrompt(
   unseen: string[],
   existingCanonicals: string[]
 ): string {

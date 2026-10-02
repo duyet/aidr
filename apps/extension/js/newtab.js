@@ -33,6 +33,10 @@ const CATEGORY_VI = {
   Infra: "Hạ tầng",
   Agents: "Tác nhân",
   Chips: "Chip",
+  Tools: "Công cụ",
+  Frameworks: "Frameworks",
+  Data: "Dữ liệu",
+  "Open Source": "Mã nguồn mở",
 };
 
 function $(id) {

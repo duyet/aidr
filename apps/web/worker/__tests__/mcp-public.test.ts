@@ -107,7 +107,11 @@ class PublicFakeD1 {
       return { results: row ? [row] : [] };
     }
     // getPublicDigest: top stories.
-    if (sql.startsWith("SELECT i.id, i.url, i.title, tr.title AS title_vi")) {
+    if (
+      sql.startsWith(
+        "SELECT i.id, i.source_id, i.url, i.title, tr.title AS title_vi"
+      )
+    ) {
       return { results: this.published().slice(0, 8) };
     }
     // getPublicDigest / getFeed: thumbnail lookup for TL;DR item ids.
@@ -610,7 +614,7 @@ describe("anonymous input validation never reaches D1", () => {
   });
 
   it("redacts an internal failure instead of returning it", async () => {
-    db.failQueryPrefix = "SELECT i.id, i.url, i.title, tr.title";
+    db.failQueryPrefix = "SELECT i.id, i.source_id, i.url, i.title, tr.title";
     const { json } = await call({
       method: "tools/call",
       params: { name: "latest_ai_news", arguments: {} },

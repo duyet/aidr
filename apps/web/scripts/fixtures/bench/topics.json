@@ -1,0 +1,408 @@
+{
+  "step": "topics",
+  "builtAt": "2026-10-02",
+  "labelSources": ["silver:topics.canonical"],
+  "count": 50,
+  "cases": [
+    {
+      "id": "gpu",
+      "name": "gpu",
+      "silver": {
+        "canonical": "chips"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "ai",
+      "name": "ai",
+      "silver": {
+        "canonical": "llm"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "agentic",
+      "name": "agentic",
+      "silver": {
+        "canonical": "agent"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "legal",
+      "name": "legal",
+      "silver": {
+        "canonical": "regulation"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "ai-safety",
+      "name": "ai-safety",
+      "silver": {
+        "canonical": "safety"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "chatgpt",
+      "name": "chatgpt",
+      "silver": {
+        "canonical": "gpt"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "government",
+      "name": "government",
+      "silver": {
+        "canonical": "regulation"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "infrastructure",
+      "name": "infrastructure",
+      "silver": {
+        "canonical": "infra"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "pricing",
+      "name": "pricing",
+      "silver": {
+        "canonical": "llm-pricing"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "policy",
+      "name": "policy",
+      "silver": {
+        "canonical": "regulation"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "cybersecurity",
+      "name": "cybersecurity",
+      "silver": {
+        "canonical": "security"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "revenue",
+      "name": "revenue",
+      "silver": {
+        "canonical": "funding"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "reinforcement-learning",
+      "name": "reinforcement-learning",
+      "silver": {
+        "canonical": "rl"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "ai-agent",
+      "name": "ai-agent",
+      "silver": {
+        "canonical": "agent"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "agents",
+      "name": "agents",
+      "silver": {
+        "canonical": "agent"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "voice",
+      "name": "voice",
+      "silver": {
+        "canonical": "text-to-speech"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "ai-infrastructure",
+      "name": "ai-infrastructure",
+      "silver": {
+        "canonical": "infra"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "video-generation",
+      "name": "video-generation",
+      "silver": {
+        "canonical": "video"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "ai-agents",
+      "name": "ai-agents",
+      "silver": {
+        "canonical": "agent"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "aws",
+      "name": "aws",
+      "silver": {
+        "canonical": "amazon"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "security-breach",
+      "name": "security-breach",
+      "silver": {
+        "canonical": "security"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "kill-switch",
+      "name": "kill-switch",
+      "silver": {
+        "canonical": "safety"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "products",
+      "name": "products",
+      "silver": {
+        "canonical": "releases"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "ai-policy",
+      "name": "ai-policy",
+      "silver": {
+        "canonical": "regulation"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "ai-research",
+      "name": "ai-research",
+      "silver": {
+        "canonical": "research"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "diplomacy",
+      "name": "diplomacy",
+      "silver": {
+        "canonical": "geopolitics"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "benchmarks",
+      "name": "benchmarks",
+      "silver": {
+        "canonical": "benchmark"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "tts",
+      "name": "tts",
+      "silver": {
+        "canonical": "text-to-speech"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "software-engineering",
+      "name": "software-engineering",
+      "silver": {
+        "canonical": "software-development"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "legislation",
+      "name": "legislation",
+      "silver": {
+        "canonical": "regulation"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "data-engineering",
+      "name": "data-engineering",
+      "silver": {
+        "canonical": "data-engineering"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "devtools",
+      "name": "devtools",
+      "silver": {
+        "canonical": "devtools"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "collaboration",
+      "name": "collaboration",
+      "silver": {
+        "canonical": "collaboration"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "vietnam",
+      "name": "vietnam",
+      "silver": {
+        "canonical": "vietnam"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "chemistry",
+      "name": "chemistry",
+      "silver": {
+        "canonical": "chemistry"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "marin",
+      "name": "marin",
+      "silver": {
+        "canonical": "marin"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "scaling-laws",
+      "name": "scaling-laws",
+      "silver": {
+        "canonical": "scaling-laws"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "national-holiday",
+      "name": "national-holiday",
+      "silver": {
+        "canonical": "national-holiday"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "stock-sales",
+      "name": "stock-sales",
+      "silver": {
+        "canonical": "stock-sales"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "executive-departures",
+      "name": "executive-departures",
+      "silver": {
+        "canonical": "executive-departures"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "industry-news",
+      "name": "industry-news",
+      "silver": {
+        "canonical": "industry-news"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "small-business",
+      "name": "small-business",
+      "silver": {
+        "canonical": "small-business"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "llamacpp",
+      "name": "llamacpp",
+      "silver": {
+        "canonical": "llamacpp"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "memory-optimization",
+      "name": "memory-optimization",
+      "silver": {
+        "canonical": "memory-optimization"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "arms-sales",
+      "name": "arms-sales",
+      "silver": {
+        "canonical": "arms-sales"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "ryan-greenblatt",
+      "name": "ryan-greenblatt",
+      "silver": {
+        "canonical": "ryan-greenblatt"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "superhuman-ai",
+      "name": "superhuman-ai",
+      "silver": {
+        "canonical": "superhuman-ai"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "o-assistant",
+      "name": "o-assistant",
+      "silver": {
+        "canonical": "o-assistant"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "cloud-infra",
+      "name": "cloud-infra",
+      "silver": {
+        "canonical": "cloud-infra"
+      },
+      "labelSource": "silver:topics.canonical"
+    },
+    {
+      "id": "evolution",
+      "name": "evolution",
+      "silver": {
+        "canonical": "evolution"
+      },
+      "labelSource": "silver:topics.canonical"
+    }
+  ]
+}

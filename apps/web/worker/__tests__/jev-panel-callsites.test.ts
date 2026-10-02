@@ -82,6 +82,8 @@ function recordingDb(rows: {
         },
       };
     },
+    batch: async (statements: unknown[]) =>
+      statements.map(() => ({ success: true })),
   } as unknown as D1Database;
   return { db, calls };
 }
@@ -171,6 +173,14 @@ describe("translation-suggestion path", () => {
         ? [{ id: "s1", item_id: "item1", field: "title", suggestion: "Hay" }]
         : [],
     first: (sql: string) => {
+      if (sql.includes("FROM translation_suggestions"))
+        return {
+          id: "s1",
+          item_id: "item1",
+          lang: "vi",
+          field: "title",
+          suggestion: "Hay",
+        };
       if (sql.includes("FROM items"))
         return { title: "Original Title", summary: "Original summary" };
       if (sql.includes("FROM translations"))
@@ -202,7 +212,13 @@ describe("translation-suggestion path", () => {
         }),
       })
     );
-    expect(calls.some((c) => c.sql.includes("status = 'accepted'"))).toBe(true);
+    expect(
+      calls.some(
+        (c) =>
+          c.sql.includes("UPDATE translation_suggestions") &&
+          c.args[0] === "accepted"
+      )
+    ).toBe(true);
   });
 
   it("rejects the suggestion when the panel lowers its rating", async () => {
@@ -218,9 +234,9 @@ describe("translation-suggestion path", () => {
     const rejected = calls.find(
       (c) =>
         c.sql.includes("UPDATE translation_suggestions") &&
-        c.sql.includes("status = 'rejected'")
+        c.args[0] === "rejected"
     );
-    expect(rejected?.args[0]).toBe(0.2);
+    expect(rejected?.args[1]).toBe(0.2);
   });
 
   it("does not consult the panel for a suggestion already rejected", async () => {

@@ -1,0 +1,1364 @@
+{
+  "step": "cluster",
+  "builtAt": "2026-10-02",
+  "labelSources": ["silver:items.duplicate_of"],
+  "count": 30,
+  "cases": [
+    {
+      "id": "901948bef614fb42cdf74c7b4aa3d1c607105920ccf6734bb586be7d89263396",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Tàu SpaceX lập kỷ lục bay nhanh nhất đến trạm ISS",
+          "url": "https://vnexpress.net/tau-spacex-lap-ky-luc-bay-nhanh-nhat-den-tram-iss-5127535.html",
+          "source": "vnexpress-tech"
+        },
+        {
+          "i": 1,
+          "title": "Vinh danh 42 nhà khoa học của nhà nông",
+          "url": "https://vnexpress.net/vinh-danh-42-nha-khoa-hoc-cua-nha-nong-5127563.html",
+          "source": "vnexpress-tech"
+        },
+        {
+          "i": 2,
+          "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+          "url": "https://marketbrief.now/ai/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5",
+          "source": "marketbrief"
+        },
+        {
+          "i": 3,
+          "title": "Marin’s 535B Model Tracks loss within 0.3% in Largest Live Run",
+          "url": "https://huggingnews.com/ai/marins-535b-model-tracks-loss-within-03percent-in-largest-live-run-f207ebe1",
+          "source": "huggingnews"
+        },
+        {
+          "i": 4,
+          "title": "OpenAI Notifies More Than 100 Organizations of Unauthorized AI Agent Activity",
+          "url": "https://marketbrief.now/ai/openai-notifies-more-than-100-organizations-of-unauthorized-ai-agent-act-ecbdfb3e",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "901948bef614fb42cdf74c7b4aa3d1c607105920ccf6734bb586be7d89263396",
+          "title": "[AINews] Pi 1.0, Pi Durable, and AIE NYC"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "45937eaa27ceb8530924bdd839c733c9024b91a0c7a032c459e439b9dc51c913",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Modal Launches BYOC 2.0 for Private AI Agent Hosting",
+          "url": "https://huggingnews.com/ai/modal-launches-byoc-20-for-private-ai-agent-hosting-504ae782",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Modal Launches BYOC 2.0 for Private AI Agent Hosting",
+          "url": "https://marketbrief.now/ai/modal-launches-byoc-20-for-private-ai-agent-hosting-504ae782",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+          "url": "https://marketbrief.now/ai/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "45937eaa27ceb8530924bdd839c733c9024b91a0c7a032c459e439b9dc51c913",
+          "title": "Modal Launches Multi Node Clusters for 1T Parameter Models"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "eb0e00037b5a1b370d652d4987b290a09e4fcf1470df736c0b3e367143f39b8f",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Tác nhân AI Trung Quốc gian lận trong thử nghiệm",
+          "url": "https://vnexpress.net/tac-nhan-ai-trung-quoc-gian-lan-trong-thu-nghiem-5126382.html",
+          "source": "vnexpress-tech"
+        },
+        {
+          "i": 1,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 2,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+          "url": "https://marketbrief.now/ai/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "eb0e00037b5a1b370d652d4987b290a09e4fcf1470df736c0b3e367143f39b8f",
+          "title": "Tác nhân AI Trung Quốc cũng gian lận trong thử nghiệm"
+        }
+      ],
+      "silver": {
+        "sameStory": [0]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "a2e24c5d843caac3e2d7b8a7a1d9e3c9b47554d6a0f3c10f7eab4a1c7652ba61",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Feds Arrest Greg Lui for Smuggling $300M in Nvidia AI Servers to China",
+          "url": "https://huggingnews.com/geopolitics/feds-arrest-greg-lui-for-smuggling-300m-in-nvidia-ai-servers-to-china-fe0002c6",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Feds Arrest Greg Lui for Smuggling $300M in Nvidia AI Servers to China",
+          "url": "https://marketbrief.now/geopolitics/feds-arrest-greg-lui-for-smuggling-300m-in-nvidia-ai-servers-to-china-fe0002c6",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "$300M AI Server Smuggling to China Triggers US Probe of Nvidia",
+          "url": "https://huggingnews.com/tech/update-300m-ai-server-smuggling-to-china-triggers-us-probe-of-nvidia-751bd3e1",
+          "source": "huggingnews"
+        },
+        {
+          "i": 3,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 5,
+          "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+          "url": "https://marketbrief.now/ai/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "a2e24c5d843caac3e2d7b8a7a1d9e3c9b47554d6a0f3c10f7eab4a1c7652ba61",
+          "title": "US Arrests California CEO for Smuggling $300M in Servers to China"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1, 2]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "3b2f71e82cac1ec6135e91d65455ed459530b42d52f6f32dc262bc45c6dbb178",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Pi Ships Pi 1.0 With Pi Durable Runtime",
+          "url": "https://huggingnews.com/ai/pi-ships-pi-10-with-pi-durable-runtime-84ad57d0",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Pi Ships Pi 1.0 With Pi Durable Runtime",
+          "url": "https://marketbrief.now/ai/pi-ships-pi-10-with-pi-durable-runtime-84ad57d0",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+          "url": "https://marketbrief.now/ai/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "3b2f71e82cac1ec6135e91d65455ed459530b42d52f6f32dc262bc45c6dbb178",
+          "title": "Runway Unveils Project Continuum OS Based on Real-Time Video"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "e161f47e44c4a436825e8e0eb0e3dde85524e27e8bf8d9db01384af0ada884af",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Tesla Boosts AI5 RAM to 96GB After Initial Cut for Optimus",
+          "url": "https://huggingnews.com/tech/tesla-boosts-ai5-ram-to-96gb-after-initial-cut-for-optimus-4bece8d6",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Tesla Boosts AI5 RAM to 96GB After Initial Cut for Optimus",
+          "url": "https://marketbrief.now/tech/tesla-boosts-ai5-ram-to-96gb-after-initial-cut-for-optimus-4bece8d6",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+          "url": "https://marketbrief.now/ai/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "e161f47e44c4a436825e8e0eb0e3dde85524e27e8bf8d9db01384af0ada884af",
+          "title": "Tesla Cuts AI5 Chip RAM to 72GB for Optimus Volume"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "4b87db21e52e9d6cb9dbad27b8c5e8f94bc3930e88d5a622cf7a3738b7d6062b",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Black Forest Labs launches Flux 3 Image with multi-step editing that leaves the rest of your picture alone",
+          "url": "https://the-decoder.com/black-forest-labs-launches-flux-3-image-with-multi-step-editing-that-leaves-the-rest-of-your-picture-alone/",
+          "source": "the-decoder"
+        },
+        {
+          "i": 1,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 2,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+          "url": "https://marketbrief.now/ai/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "4b87db21e52e9d6cb9dbad27b8c5e8f94bc3930e88d5a622cf7a3738b7d6062b",
+          "title": "Black Forest Labs Ships FLUX 3 Image for High Precision Editing"
+        }
+      ],
+      "silver": {
+        "sameStory": [0]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "6061c5e00485694d7c5666d97dff0c0fa43224ebb6fa8b45e033555d147d30be",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Nvidia and Delta Develop Level 4 Autonomous Driving Systems",
+          "url": "https://huggingnews.com/tech/nvidia-and-delta-develop-level-4-autonomous-driving-systems-2d81f1f6",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Nvidia and Delta Develop Level 4 Autonomous Driving Systems",
+          "url": "https://marketbrief.now/tech/nvidia-and-delta-develop-level-4-autonomous-driving-systems-2d81f1f6",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+          "url": "https://marketbrief.now/ai/broadcom-gathers-60b-to-fund-ai-chips-for-anthropic-and-peers-37fea3a5",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "6061c5e00485694d7c5666d97dff0c0fa43224ebb6fa8b45e033555d147d30be",
+          "title": "Nvidia and SoftBank Deliver Final $20B for OpenAI March Round"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "cb060eee8ac15081e76d414cddf4a90d4f87f7c69d481197ee7e35c4f440fcfd",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "LangChain Launches MCP Adapters 2.0 for TypeScript Agents",
+          "url": "https://huggingnews.com/ai/langchain-launches-mcp-adapters-20-for-typescript-agents-7d1d6fe1",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "LangChain Launches MCP Adapters 2.0 for TypeScript Agents",
+          "url": "https://marketbrief.now/ai/langchain-launches-mcp-adapters-20-for-typescript-agents-7d1d6fe1",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Marin’s 535B Model Tracks loss within 0.3% in Largest Live Run",
+          "url": "https://huggingnews.com/ai/marins-535b-model-tracks-loss-within-03percent-in-largest-live-run-f207ebe1",
+          "source": "huggingnews"
+        }
+      ],
+      "existing": [
+        {
+          "id": "cb060eee8ac15081e76d414cddf4a90d4f87f7c69d481197ee7e35c4f440fcfd",
+          "title": "LangChain Launches LangSmith Fine-Tuning to Turn Agent Traces Into Models"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "0ff719d6f30314f35b9c976749f025f76718a99d180fbd2f1e8d029442c63367",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Bond Investor Demands Drive Up AI Data Center Funding Costs",
+          "url": "https://huggingnews.com/ai/bond-investor-demands-drive-up-ai-data-center-funding-costs-d04471c4",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Bond Investor Demands Drive Up AI Data Center Funding Costs",
+          "url": "https://marketbrief.now/ai/bond-investor-demands-drive-up-ai-data-center-funding-costs-d04471c4",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Marin’s 535B Model Tracks loss within 0.3% in Largest Live Run",
+          "url": "https://huggingnews.com/ai/marins-535b-model-tracks-loss-within-03percent-in-largest-live-run-f207ebe1",
+          "source": "huggingnews"
+        }
+      ],
+      "existing": [
+        {
+          "id": "0ff719d6f30314f35b9c976749f025f76718a99d180fbd2f1e8d029442c63367",
+          "title": "Uplifting conversion across the acquisition funnel with personalization using contextual bandits on AWS"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "4dae654fec00a13b7df0431321535a8f9d57c67d349080625d3f226c24845288",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Liquid AI d1 Decision Model Launches on OpenRouter with $0 Output",
+          "url": "https://huggingnews.com/ai/liquid-ai-d1-decision-model-launches-on-openrouter-with-0-output-ae28d3f6",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Liquid AI d1 Decision Model Launches on OpenRouter with $0 Output",
+          "url": "https://marketbrief.now/ai/liquid-ai-d1-decision-model-launches-on-openrouter-with-0-output-ae28d3f6",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Marin’s 535B Model Tracks loss within 0.3% in Largest Live Run",
+          "url": "https://huggingnews.com/ai/marins-535b-model-tracks-loss-within-03percent-in-largest-live-run-f207ebe1",
+          "source": "huggingnews"
+        }
+      ],
+      "existing": [
+        {
+          "id": "4dae654fec00a13b7df0431321535a8f9d57c67d349080625d3f226c24845288",
+          "title": "Amazon releases its own Jev clone as decision models flood the web"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "ef7ae9559e541788cfcc619b7a1c6ae44f122cd820a78d63a53167b74b857943",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Microsoft Launches AI Voice Suite With Top Ranked Transcription",
+          "url": "https://huggingnews.com/ai/microsoft-launches-ai-voice-suite-with-top-ranked-transcription-fda69b0f",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Microsoft Launches AI Voice Suite With Top Ranked Transcription",
+          "url": "https://marketbrief.now/ai/microsoft-launches-ai-voice-suite-with-top-ranked-transcription-fda69b0f",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Marin’s 535B Model Tracks loss within 0.3% in Largest Live Run",
+          "url": "https://huggingnews.com/ai/marins-535b-model-tracks-loss-within-03percent-in-largest-live-run-f207ebe1",
+          "source": "huggingnews"
+        }
+      ],
+      "existing": [
+        {
+          "id": "ef7ae9559e541788cfcc619b7a1c6ae44f122cd820a78d63a53167b74b857943",
+          "title": "Microsoft AI Hits 2.5% WER to Lead Streaming Transcription"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "12c7c4b93f1e3a449874069b9582785fa6a140290dd9946bd4dcebb519c16b4d",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "AI Agents Probed White House and Department of War Websites",
+          "url": "https://huggingnews.com/cybersecurity/ai-agents-probed-white-house-and-department-of-war-websites-df053323",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "AI Agents Probed White House and Department of War Websites",
+          "url": "https://marketbrief.now/cybersecurity/ai-agents-probed-white-house-and-department-of-war-websites-df053323",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "70% of Teens Use AI for Schoolwork With Plunging Test Scores",
+          "url": "https://huggingnews.com/ai/70percent-of-teens-use-ai-for-schoolwork-with-plunging-test-scores-027b8f87",
+          "source": "huggingnews"
+        },
+        {
+          "i": 3,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 5,
+          "title": "OpenAI Notifies More Than 100 Organizations of Unauthorized AI Agent Activity",
+          "url": "https://marketbrief.now/ai/openai-notifies-more-than-100-organizations-of-unauthorized-ai-agent-act-ecbdfb3e",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "12c7c4b93f1e3a449874069b9582785fa6a140290dd9946bd4dcebb519c16b4d",
+          "title": "AI Web Text Hits 31% and Harms Language Model Training"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1, 2]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Cloudflare Launches First In-House AI Models With clef Release",
+          "url": "https://huggingnews.com/ai/cloudflare-launches-first-in-house-ai-models-with-clef-release-a24250a0",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Cloudflare Launches First In-House AI Models With clef Release",
+          "url": "https://marketbrief.now/ai/cloudflare-launches-first-in-house-ai-models-with-clef-release-a24250a0",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Cloudflare First In House AI Runs 13x Faster Than Jev",
+          "url": "https://huggingnews.com/ai/cloudflare-first-in-house-ai-runs-13x-faster-than-jev-4db7df88",
+          "source": "huggingnews"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "OpenAI Notifies More Than 100 Organizations of Unauthorized AI Agent Activity",
+          "url": "https://marketbrief.now/ai/openai-notifies-more-than-100-organizations-of-unauthorized-ai-agent-act-ecbdfb3e",
+          "source": "marketbrief"
+        },
+        {
+          "i": 5,
+          "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+          "url": "https://dogbench.ai/",
+          "source": "hn"
+        }
+      ],
+      "existing": [
+        {
+          "id": "c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a",
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1, 2]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "a2d48c4baa3e1da59cde55681f600a7e4086ca1fd8ca1a3cd8ccff5713036473",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Hebbia Goes Headless to Put Finance Analysis in Claude and ChatGPT",
+          "url": "https://huggingnews.com/ai/hebbia-goes-headless-to-put-finance-analysis-in-claude-and-chatgpt-ac6f842e",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Hebbia Goes Headless to Put Finance Analysis in Claude and ChatGPT",
+          "url": "https://marketbrief.now/ai/hebbia-goes-headless-to-put-finance-analysis-in-claude-and-chatgpt-ac6f842e",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "OpenAI Notifies More Than 100 Organizations of Unauthorized AI Agent Activity",
+          "url": "https://marketbrief.now/ai/openai-notifies-more-than-100-organizations-of-unauthorized-ai-agent-act-ecbdfb3e",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "a2d48c4baa3e1da59cde55681f600a7e4086ca1fd8ca1a3cd8ccff5713036473",
+          "title": "Brian Chesky interview: AI agents need their own operating system"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "d5a3cc193ba3447c9b7d52feb2b44899036e2c437222dbaf11db207d0bd7816c",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Judge dismisses antitrust lawsuits over Google’s AI Overviews",
+          "url": "https://www.theverge.com/tech/1003589/google-ai-overviews-chegg-penske-lawsuits-dismissed",
+          "source": "theverge-ai"
+        },
+        {
+          "i": 1,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 2,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+          "url": "https://dogbench.ai/",
+          "source": "hn"
+        }
+      ],
+      "existing": [
+        {
+          "id": "d5a3cc193ba3447c9b7d52feb2b44899036e2c437222dbaf11db207d0bd7816c",
+          "title": "Judge Mehta Dismisses Chegg and Penske AI Lawsuits Against Google"
+        }
+      ],
+      "silver": {
+        "sameStory": [0]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "7cf298a6c887f15edb8711e34b46fa324acaa5df27ee912f32d31db1f2383569",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Trump Rejects AI Nationalization for 10% Government Stake",
+          "url": "https://huggingnews.com/ai/trump-rejects-ai-nationalization-for-10percent-government-stake-3c635665",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Trump Rejects AI Nationalization for 10% Government Stake",
+          "url": "https://marketbrief.now/ai/trump-rejects-ai-nationalization-for-10percent-government-stake-3c635665",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+          "url": "https://dogbench.ai/",
+          "source": "hn"
+        }
+      ],
+      "existing": [
+        {
+          "id": "7cf298a6c887f15edb8711e34b46fa324acaa5df27ee912f32d31db1f2383569",
+          "title": "Trump Rejects AI Regulation to Protect Trillions in Investment"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "afb744184d4a8fb364364525cf8a111273bd39cee523880a0ce4f2e6aefc169e",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "AutoSynthData: Generating Training Data for Enterprise Agents",
+          "url": "https://huggingface.co/blog/ServiceNow-AI/autosynthdata",
+          "source": "hf-blog"
+        },
+        {
+          "i": 1,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 2,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+          "url": "https://dogbench.ai/",
+          "source": "hn"
+        }
+      ],
+      "existing": [
+        {
+          "id": "afb744184d4a8fb364364525cf8a111273bd39cee523880a0ce4f2e6aefc169e",
+          "title": "LiteLLM Launches Lens to Improve Enterprise AI Agents via Traffic Data"
+        }
+      ],
+      "silver": {
+        "sameStory": [0]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "1ecc827b054bafd12b4d13d4350ca9c011f6f34203d9cdbed19e0dded36436ea",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Lý do Việt Nam có Ngày hội Đổi mới sáng tạo quốc gia",
+          "url": "https://vnexpress.net/ly-do-viet-nam-co-ngay-hoi-doi-moi-sang-tao-quoc-gia-5127125.html",
+          "source": "vnexpress-tech"
+        },
+        {
+          "i": 1,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 2,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+          "url": "https://dogbench.ai/",
+          "source": "hn"
+        }
+      ],
+      "existing": [
+        {
+          "id": "1ecc827b054bafd12b4d13d4350ca9c011f6f34203d9cdbed19e0dded36436ea",
+          "title": "Loạt kết quả từ hợp tác công nghệ Việt Nam - Australia"
+        }
+      ],
+      "silver": {
+        "sameStory": [0]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "83c37258bb45883463aecd9d67a0e96640e077ef7a89d7e89eb64da3d5946297",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Planet Labs Makes Contact With Google First Orbital AI Chips",
+          "url": "https://huggingnews.com/tech/planet-labs-makes-contact-with-google-first-orbital-ai-chips-f8c00d3d",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Planet Labs Makes Contact With Google First Orbital AI Chips",
+          "url": "https://marketbrief.now/tech/planet-labs-makes-contact-with-google-first-orbital-ai-chips-f8c00d3d",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+          "url": "https://dogbench.ai/",
+          "source": "hn"
+        }
+      ],
+      "existing": [
+        {
+          "id": "83c37258bb45883463aecd9d67a0e96640e077ef7a89d7e89eb64da3d5946297",
+          "title": "SpaceX Launches 4 Google TPUs in First Space AI Test"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "8357f00c0ea4d6ae0a2c87492d4411d2465d8e0f0e7cf3b8fdf297ab803cc9e5",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Google DeepMind Unveils Gemini 4 Argon with 1M Output Tokens for Coding, Knowledge Work and Cyber Defense",
+          "url": "https://www.marktechpost.com/2026/09/30/google-deepmind-unveils-gemini-4-argon-with-1m-output-tokens-for-coding-knowledge-work-and-cyber-defense/",
+          "source": "marktechpost"
+        },
+        {
+          "i": 1,
+          "title": "Alphabet Falls 2%, Reversing Early Gain After Gemini 4 Argon Launch",
+          "url": "https://huggingnews.com/ai/alphabet-falls-2percent-reversing-early-gain-after-gemini-4-argon-launch-7f1749f3",
+          "source": "huggingnews"
+        },
+        {
+          "i": 2,
+          "title": "Alphabet Falls 2%, Reversing Early Gain After Gemini 4 Argon Launch",
+          "url": "https://marketbrief.now/ai/alphabet-falls-2percent-reversing-early-gain-after-gemini-4-argon-launch-7f1749f3",
+          "source": "marketbrief"
+        },
+        {
+          "i": 3,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 5,
+          "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+          "url": "https://dogbench.ai/",
+          "source": "hn"
+        }
+      ],
+      "existing": [
+        {
+          "id": "8357f00c0ea4d6ae0a2c87492d4411d2465d8e0f0e7cf3b8fdf297ab803cc9e5",
+          "title": "Cybersecurity Stocks Fall After Google Unveils Gemini 4 Argon"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1, 2]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "3b1a6af7547f9a0d60d295d6ee01dfab124c850f3aa4a90a5173d82db3d06e1d",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Azure Models Still Vulnerable to Hidden Reasoning Extraction",
+          "url": "https://huggingnews.com/ai/azure-models-still-vulnerable-to-hidden-reasoning-extraction-e3dac726",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Azure Models Still Vulnerable to Hidden Reasoning Extraction",
+          "url": "https://marketbrief.now/ai/azure-models-still-vulnerable-to-hidden-reasoning-extraction-e3dac726",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+          "url": "https://dogbench.ai/",
+          "source": "hn"
+        }
+      ],
+      "existing": [
+        {
+          "id": "3b1a6af7547f9a0d60d295d6ee01dfab124c850f3aa4a90a5173d82db3d06e1d",
+          "title": "OpenAI says it stopped a campaign to steal its models' reasoning, but the trick still worked on Azure"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "8fac3ce4d39c6ea954ace788aa96ef7cb14d50048fb8978eddddab730ef17df3",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Mô hình AI tự thiết kế và cải tiến chip bán dẫn",
+          "url": "https://vnexpress.net/mo-hinh-ai-tu-thiet-ke-va-cai-tien-chip-ban-dan-5127088.html",
+          "source": "vnexpress-tech"
+        },
+        {
+          "i": 1,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 2,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 3,
+          "title": "Anthropic Schedules Oct 14 Investor Day for November IPO",
+          "url": "https://marketbrief.now/ai/anthropic-schedules-oct-14-investor-day-for-november-ipo-a522d053",
+          "source": "marketbrief"
+        }
+      ],
+      "existing": [
+        {
+          "id": "8fac3ce4d39c6ea954ace788aa96ef7cb14d50048fb8978eddddab730ef17df3",
+          "title": "GPT-Synopsys: Frontier Intelligence to Revolutionize Chip Design"
+        }
+      ],
+      "silver": {
+        "sameStory": [0]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Grok 4.7 Launches in General Apps After Limited Release",
+          "url": "https://huggingnews.com/ai/grok-47-launches-in-general-apps-after-limited-release-eb1f6886",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "xAI Adds Proactive Primary Bot to Grok for Assistant Management",
+          "url": "https://huggingnews.com/ai/xai-adds-proactive-primary-bot-to-grok-for-assistant-management-8808d143",
+          "source": "huggingnews"
+        },
+        {
+          "i": 2,
+          "title": "Trump Consulted Musk's Grok AI Before Maduro Capture",
+          "url": "https://huggingnews.com/us-politics/trump-consulted-musks-grok-ai-before-maduro-capture-abb60922",
+          "source": "huggingnews"
+        },
+        {
+          "i": 3,
+          "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+          "url": "https://blog.cloudflare.com/clef-decision-models/",
+          "source": "hn"
+        },
+        {
+          "i": 4,
+          "title": "Context Language Models",
+          "url": "https://arxiv.org/abs/2609.37725",
+          "source": "hn"
+        },
+        {
+          "i": 5,
+          "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+          "url": "https://huggingnews.com/ai/google-launches-gemini-4-argon-with-1m-token-output-limit-467d6d67",
+          "source": "huggingnews"
+        }
+      ],
+      "existing": [
+        {
+          "id": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+          "title": "Google ra Gemini 4 Argon mạnh nhất của công ty"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1, 2]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "102965c40535877fd2ab1eddf769069db530f84161092b5eb35af946e8776bc8",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "OpenAI Admits Models Attempted Access to Canadian Government Data",
+          "url": "https://huggingnews.com/ai/update-openai-admits-models-attempted-access-to-canadian-government-data-34c4db7b",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "OpenAI Admits Models Attempted Access to Canadian Government Data",
+          "url": "https://marketbrief.now/ai/update-openai-admits-models-attempted-access-to-canadian-government-data-34c4db7b",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+          "url": "https://huggingnews.com/ai/google-launches-gemini-4-argon-with-1m-token-output-limit-467d6d67",
+          "source": "huggingnews"
+        },
+        {
+          "i": 3,
+          "title": "Google ra Gemini 4 Argon mạnh nhất của công ty",
+          "url": "https://vnexpress.net/google-ra-gemini-4-argon-manh-nhat-cua-cong-ty-5126995.html",
+          "source": "vnexpress-tech"
+        },
+        {
+          "i": 4,
+          "title": "Cybersecurity Stocks Fall After Google Unveils Gemini 4 Argon",
+          "url": "https://huggingnews.com/ai/update-cybersecurity-stocks-fall-after-google-unveils-gemini-4-argon-63e3e860",
+          "source": "huggingnews"
+        }
+      ],
+      "existing": [
+        {
+          "id": "102965c40535877fd2ab1eddf769069db530f84161092b5eb35af946e8776bc8",
+          "title": "AI Agents Expand Government Hacks to Include Canada"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "61020cdda2cdcf26cc62f2dcabb69e84d856e492f43ca7612c29ccea49f8ddcb",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Tavus AI Fools 48% of Humans in First Video Turing Test Pass",
+          "url": "https://huggingnews.com/ai/tavus-ai-fools-48percent-of-humans-in-first-video-turing-test-pass-170f5fb1",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Tavus AI Fools 48% of Humans in First Video Turing Test Pass",
+          "url": "https://marketbrief.now/ai/tavus-ai-fools-48percent-of-humans-in-first-video-turing-test-pass-170f5fb1",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Nearly half of test subjects mistook Tavus' AI video avatar for a real person on a one-minute call",
+          "url": "https://the-decoder.com/nearly-half-of-test-subjects-mistook-tavus-ai-video-avatar-for-a-real-person-on-a-one-minute-call/",
+          "source": "the-decoder"
+        },
+        {
+          "i": 3,
+          "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+          "url": "https://huggingnews.com/ai/google-launches-gemini-4-argon-with-1m-token-output-limit-467d6d67",
+          "source": "huggingnews"
+        },
+        {
+          "i": 4,
+          "title": "FTC Launches Sweeping AI Probe of OpenAI and Anthropic",
+          "url": "https://marketbrief.now/ai/ftc-launches-sweeping-ai-probe-of-openai-and-anthropic-fe530abd",
+          "source": "marketbrief"
+        },
+        {
+          "i": 5,
+          "title": "Google ra Gemini 4 Argon mạnh nhất của công ty",
+          "url": "https://vnexpress.net/google-ra-gemini-4-argon-manh-nhat-cua-cong-ty-5126995.html",
+          "source": "vnexpress-tech"
+        }
+      ],
+      "existing": [
+        {
+          "id": "61020cdda2cdcf26cc62f2dcabb69e84d856e492f43ca7612c29ccea49f8ddcb",
+          "title": "SGLang AI Beats Level 9 Fox in Super Smash Bros Melee"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1, 2]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "0de5978e2c8eb330727552555dd92287898576f39bdc369c091283980a63afed",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Google’s Gemini 4 Argon Matches GPT-6 Astra in Tests at 40% Lower Launch Cost",
+          "url": "https://huggingnews.com/ai/update-googles-gemini-4-argon-matches-gpt-6-astra-in-tests-at-40percent-b49261be",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Google’s Gemini 4 Argon Matches GPT-6 Astra in Tests at 40% Lower Launch Cost",
+          "url": "https://marketbrief.now/ai/update-googles-gemini-4-argon-matches-gpt-6-astra-in-tests-at-40percent-b49261be",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Google Begins Gemini 4 Argon Rollout for Paying Customers",
+          "url": "https://huggingnews.com/ai/update-google-begins-gemini-4-argon-rollout-for-paying-customers-8f8400f2",
+          "source": "huggingnews"
+        },
+        {
+          "i": 3,
+          "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+          "url": "https://huggingnews.com/ai/google-launches-gemini-4-argon-with-1m-token-output-limit-467d6d67",
+          "source": "huggingnews"
+        },
+        {
+          "i": 4,
+          "title": "FTC Launches Sweeping AI Probe of OpenAI and Anthropic",
+          "url": "https://marketbrief.now/ai/ftc-launches-sweeping-ai-probe-of-openai-and-anthropic-fe530abd",
+          "source": "marketbrief"
+        },
+        {
+          "i": 5,
+          "title": "Google ra Gemini 4 Argon mạnh nhất của công ty",
+          "url": "https://vnexpress.net/google-ra-gemini-4-argon-manh-nhat-cua-cong-ty-5126995.html",
+          "source": "vnexpress-tech"
+        }
+      ],
+      "existing": [
+        {
+          "id": "0de5978e2c8eb330727552555dd92287898576f39bdc369c091283980a63afed",
+          "title": "Google releases Gemini 4 Argon, called its most powerful model yet"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1, 2]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "428780b8a2485408d9014d786b57581f01c59514ae8b12b7b59d3247562d7a59",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Một số iPhone 18 Pro gặp lỗi âm thanh",
+          "url": "https://vnexpress.net/mot-so-iphone-18-pro-gap-loi-am-thanh-5127432.html",
+          "source": "vnexpress-tech"
+        },
+        {
+          "i": 1,
+          "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+          "url": "https://huggingnews.com/ai/google-launches-gemini-4-argon-with-1m-token-output-limit-467d6d67",
+          "source": "huggingnews"
+        },
+        {
+          "i": 2,
+          "title": "FTC Launches Sweeping AI Probe of OpenAI and Anthropic",
+          "url": "https://marketbrief.now/ai/ftc-launches-sweeping-ai-probe-of-openai-and-anthropic-fe530abd",
+          "source": "marketbrief"
+        },
+        {
+          "i": 3,
+          "title": "Anthropic says Zhipu's open-weight GLM-5.3 nearly matches Claude Mythos Preview at building exploits",
+          "url": "https://the-decoder.com/anthropic-says-zhipus-open-weight-glm-5-3-nearly-matches-claude-mythos-preview-at-building-exploits/",
+          "source": "the-decoder"
+        }
+      ],
+      "existing": [
+        {
+          "id": "428780b8a2485408d9014d786b57581f01c59514ae8b12b7b59d3247562d7a59",
+          "title": "Lợi dụng sức hút iPhone 18 Pro và 18 Pro Max để lừa đảo"
+        }
+      ],
+      "silver": {
+        "sameStory": [0]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "89a230f4890a678d6a9c258c80415d677dd8b2b070781dc5b07851dbfea8a5cc",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Amazon Secures 690 MW of Nuclear Power From Constellation",
+          "url": "https://huggingnews.com/business/amazon-secures-690-mw-of-nuclear-power-from-constellation-0157054d",
+          "source": "huggingnews"
+        },
+        {
+          "i": 1,
+          "title": "Amazon Secures 690 MW of Nuclear Power From Constellation",
+          "url": "https://marketbrief.now/business/amazon-secures-690-mw-of-nuclear-power-from-constellation-0157054d",
+          "source": "marketbrief"
+        },
+        {
+          "i": 2,
+          "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+          "url": "https://huggingnews.com/ai/google-launches-gemini-4-argon-with-1m-token-output-limit-467d6d67",
+          "source": "huggingnews"
+        },
+        {
+          "i": 3,
+          "title": "FTC Launches Sweeping AI Probe of OpenAI and Anthropic",
+          "url": "https://marketbrief.now/ai/ftc-launches-sweeping-ai-probe-of-openai-and-anthropic-fe530abd",
+          "source": "marketbrief"
+        },
+        {
+          "i": 4,
+          "title": "Anthropic says Zhipu's open-weight GLM-5.3 nearly matches Claude Mythos Preview at building exploits",
+          "url": "https://the-decoder.com/anthropic-says-zhipus-open-weight-glm-5-3-nearly-matches-claude-mythos-preview-at-building-exploits/",
+          "source": "the-decoder"
+        }
+      ],
+      "existing": [
+        {
+          "id": "89a230f4890a678d6a9c258c80415d677dd8b2b070781dc5b07851dbfea8a5cc",
+          "title": "Amazon Secures 190 MW Nuclear Capacity in 20 Year Constellation Deal"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    },
+    {
+      "id": "2ab9a0e230392920f3ca14c77be2af894bc7fe377ec9ee8a85053f874c2f1ecc",
+      "newItems": [
+        {
+          "i": 0,
+          "title": "Gemini 4 Argon",
+          "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-argon/",
+          "source": "hn"
+        },
+        {
+          "i": 1,
+          "title": "Gemini 4 Argon: our next era of frontier intelligence",
+          "url": "https://deepmind.google/blog/gemini-4-argon-our-next-era-of-frontier-intelligence/",
+          "source": "deepmind"
+        },
+        {
+          "i": 2,
+          "title": "[AINews] Gemini 4 Argon: GDM’s answer to Astra/Fable, with 1M output",
+          "url": "https://www.latent.space/p/ainews-gemini-4-argon-gdms-answer",
+          "source": "latent-space"
+        },
+        {
+          "i": 3,
+          "title": "FTC Launches Sweeping AI Probe of OpenAI and Anthropic",
+          "url": "https://marketbrief.now/ai/ftc-launches-sweeping-ai-probe-of-openai-and-anthropic-fe530abd",
+          "source": "marketbrief"
+        },
+        {
+          "i": 4,
+          "title": "Anthropic says Zhipu's open-weight GLM-5.3 nearly matches Claude Mythos Preview at building exploits",
+          "url": "https://the-decoder.com/anthropic-says-zhipus-open-weight-glm-5-3-nearly-matches-claude-mythos-preview-at-building-exploits/",
+          "source": "the-decoder"
+        },
+        {
+          "i": 5,
+          "title": "Google ra Gemini 4 Argon mạnh nhất của công ty",
+          "url": "https://vnexpress.net/google-ra-gemini-4-argon-manh-nhat-cua-cong-ty-5126995.html",
+          "source": "vnexpress-tech"
+        }
+      ],
+      "existing": [
+        {
+          "id": "2ab9a0e230392920f3ca14c77be2af894bc7fe377ec9ee8a85053f874c2f1ecc",
+          "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit"
+        }
+      ],
+      "silver": {
+        "sameStory": [0, 1, 2]
+      },
+      "labelSource": "silver:items.duplicate_of"
+    }
+  ]
+}

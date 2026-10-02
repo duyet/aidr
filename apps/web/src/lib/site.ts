@@ -1,6 +1,9 @@
 /** Canonical public origin. Share tags, sitemap, and robots all use this. */
 export const SITE_URL = "https://aidr.today";
 
+/** Inbound contributions address (Email Routing → aidr-email Worker). */
+export const SUBMIT_EMAIL = "submit@aidr.today";
+
 /**
  * THE site name — one constant, one brand.
  *

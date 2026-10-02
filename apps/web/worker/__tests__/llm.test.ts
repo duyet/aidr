@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LlmCallLogEntry } from "../llm.js";
 import {
@@ -11,17 +13,20 @@ import {
   _normalizeTldrForTests as normalizeTldr,
   _parseJsonForTests as parseJson,
   raceTimeout,
+  resetUnavailableModels,
   sanitizeScoreResults,
   sanitizeTranslateResults,
   scoreBatchPrompt,
   scoreItems,
   setLlmCallLogger,
   TLDR_RETRY_RESERVE_MS,
+  TLDR_SLICE_MAX_MS,
   TLDR_TIMEOUT_MS,
   tldrAttemptTimeoutMs,
   translateItems,
   VI_STYLE,
 } from "../llm.js";
+import { servedByJev } from "../systemone.js";
 import { sanitizeError } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
 
@@ -33,6 +38,10 @@ const env: Env = {
   ANYROUTER_API_KEY: "test-key",
   NEWS_ADMIN_TOKEN: "test-token",
 };
+
+// The 404 circuit breaker is isolate-wide; one test's 404 must not skip
+// an id in the next.
+beforeEach(() => resetUnavailableModels());
 
 describe("LLM observability redaction", () => {
   it("suppresses sensitive reviewer snippets and provider response bodies", () => {
@@ -122,6 +131,28 @@ describe("scoreBatchPrompt", () => {
 describe("parseJson", () => {
   it("parses plain JSON", () => {
     expect(parseJson<{ a: number }>('{"a":1}')).toEqual({ a: 1 });
+  });
+
+  // Shapes Laguna S 2.1 streamed in the 2026-10-01 probe. Without repair the
+  // translate batch is dropped, and the TL;DR loses bullets_vi entirely.
+  it("drops a stray trailing closer", () => {
+    expect(parseJson('{"results":[{"i":0,"title":"x"}]}]')).toEqual({
+      results: [{ i: 0, title: "x" }],
+    });
+  });
+
+  it("keeps bullets_vi when the root is closed too early", () => {
+    const raw =
+      '{"bullets_en":[{"text":"a","item_ids":["1"]}]},"bullets_vi":[{"text":"b","item_ids":["1"]}]}';
+    expect(parseJson(raw)).toEqual({
+      bullets_en: [{ text: "a", item_ids: ["1"] }],
+      bullets_vi: [{ text: "b", item_ids: ["1"] }],
+    });
+  });
+
+  it("leaves brackets inside strings alone and still rejects truncation", () => {
+    expect(parseJson('{"t":"a]}\\"b"}]')).toEqual({ t: 'a]}"b' });
+    expect(() => parseJson('{"results":[{"i":0,"title":"cut')).toThrow();
   });
 
   it("strips markdown fences", () => {
@@ -1112,6 +1143,169 @@ describe("model fallback chain", () => {
     expect(results).toHaveLength(1);
   });
 
+  describe("decision router before Jev", () => {
+    it("accepts only answers served by Jev", () => {
+      const r = (upstreamModel: string, upstreamProvider: string) => ({
+        answers: {},
+        inputTokens: 0,
+        upstreamModel,
+        upstreamProvider,
+      });
+      expect(servedByJev(r("jev-1.13.0", "typesafe-byok"))).toBe(true);
+      expect(servedByJev(r("typesafe/jev", ""))).toBe(true);
+      expect(servedByJev(r("fastino/gliner2.5-multi-v1", "fastino-byok"))).toBe(
+        false
+      );
+      expect(servedByJev(r("jev-1.13.0", "fastino-byok"))).toBe(false);
+      expect(servedByJev(r("", ""))).toBe(false);
+    });
+
+    const decisionEnv = {
+      ...env,
+      ANYROUTER_DECISION_MODEL: "anyrouter/decision",
+    };
+    const jevAnswers = (importance: string) => ({
+      is_ai_tech: { type: "noul", noul: 0.9 },
+      importance: { type: "score", score: importance },
+      quality: { type: "score", score: "8" },
+      category: { type: "choice", choice: "Models" },
+      entity: { type: "choice", choice: "openai" },
+      theme: { type: "choice", choice: "llm" },
+    });
+    const systemOneModelsOf = (fetchMock: ReturnType<typeof vi.fn>) =>
+      fetchMock.mock.calls
+        .filter((call) => String(call[0]).includes("/systemone"))
+        .map(
+          (call) =>
+            (
+              JSON.parse((call[1] as RequestInit).body as string) as {
+                model: string;
+              }
+            ).model
+        );
+
+    it("uses the decision answer and never calls Jev or chat", async () => {
+      const fetchMock = vi.fn(async (url: string) => {
+        if (!String(url).includes("/systemone")) {
+          return new Response("chat should not run", { status: 500 });
+        }
+        return Response.json({
+          model: "jev-1.13.0",
+          answers: jevAnswers("9"),
+          usage: { input_tokens: 30, output_tokens: 0, cost: 0 },
+        });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const results = await scoreItems(decisionEnv, scoreInput);
+      expect(systemOneModelsOf(fetchMock)).toEqual(["anyrouter/decision"]);
+      expect(chatModelsOf(fetchMock)).toEqual([]);
+      expect(results[0]?.importance).toBe(9);
+    });
+
+    it("falls to Jev when decision fails, then to chat when both fail", async () => {
+      const jevOk = vi.fn(async (_url: string, init?: RequestInit) => {
+        const { model } = JSON.parse(init?.body as string) as {
+          model: string;
+        };
+        if (model === "anyrouter/decision") {
+          return new Response("decision down", { status: 502 });
+        }
+        return Response.json({
+          model: "typesafe/jev",
+          answers: jevAnswers("5"),
+          usage: { input_tokens: 10, output_tokens: 0, cost: 0 },
+        });
+      });
+      vi.stubGlobal("fetch", jevOk);
+      const viaJev = await scoreItems(decisionEnv, scoreInput);
+      expect(systemOneModelsOf(jevOk)).toEqual([
+        "anyrouter/decision",
+        "typesafe/jev",
+      ]);
+      expect(chatModelsOf(jevOk)).toEqual([]);
+      expect(viaJev[0]?.importance).toBe(5);
+
+      const allDown = vi.fn(async (url: string) =>
+        String(url).includes("/systemone")
+          ? new Response("down", { status: 502 })
+          : completion(scorePayload)
+      );
+      vi.stubGlobal("fetch", allDown);
+      const viaChat = await scoreItems(decisionEnv, scoreInput);
+      expect(systemOneModelsOf(allDown)).toEqual([
+        "anyrouter/decision",
+        "typesafe/jev",
+      ]);
+      expect(chatModelsOf(allDown)).toEqual(["test-model"]);
+      expect(viaChat[0]?.category).toBe("Models");
+    });
+
+    // anyrouter/decision reroutes to GLiNER when Jev is unavailable. Its
+    // score answers parse (importance 1, quality 0 for a frontier launch) but
+    // are not on Jev's calibrated scale, so the item must move on to Jev.
+    it("rejects a degenerate decision answer and sends that item to Jev", async () => {
+      const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+        const body = JSON.parse(init?.body as string) as {
+          model: string;
+          state: { i: number };
+        };
+        if (body.model === "anyrouter/decision" && body.state.i === 1) {
+          return Response.json({
+            model: "fastino/gliner2.5-multi-v1",
+            anyrouter_metadata: {
+              model: "anyrouter/decision",
+              requestId: "req_gliner",
+              upstream: { provider: "fastino-byok" },
+            },
+            answers: {
+              ...jevAnswers("1"),
+              importance: {
+                type: "score",
+                score: 0,
+                probabilities: { "0": 0.24 },
+              },
+              quality: { type: "score", score: "0" },
+            },
+            usage: { input_tokens: 5, output_tokens: 0, cost: 0 },
+          });
+        }
+        return Response.json({
+          model: "jev-1.13.0",
+          answers: jevAnswers(body.model === "typesafe/jev" ? "4" : "8"),
+          usage: { input_tokens: 10, output_tokens: 0, cost: 0 },
+        });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const entries: LlmCallLogEntry[] = [];
+      setLlmCallLogger((entry) => {
+        entries.push(entry);
+      });
+
+      const results = await scoreItems(decisionEnv, [
+        { i: 0, title: "Launch", source: "openai.com" },
+        { i: 1, title: "Gadget", source: "hn" },
+      ]).finally(() => setLlmCallLogger(null));
+      // llm_calls records which upstream actually served the router call.
+      expect(entries.find((e) => e.requestId === "req_gliner")).toMatchObject({
+        task: "score",
+        model: "anyrouter/decision",
+        route: ["anyrouter/decision", "fastino/gliner2.5-multi-v1"],
+        provider: "fastino-byok",
+      });
+      expect(systemOneModelsOf(fetchMock)).toEqual([
+        "anyrouter/decision",
+        "anyrouter/decision",
+        "typesafe/jev",
+      ]);
+      expect(chatModelsOf(fetchMock)).toEqual([]);
+      expect(results.map((r) => [r.i, r.importance])).toEqual([
+        [0, 8],
+        [1, 4],
+      ]);
+    });
+  });
+
   it("prefers the per-task translate model over ANYROUTER_MODEL", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       completion(
@@ -1912,6 +2106,26 @@ describe("normalizeTag", () => {
 });
 
 describe("tldr chain budget", () => {
+  // What the first hop really gets, not the cap: modelAttemptTimeoutMs holds
+  // back a slice per fallback, which is how a 135s cap became ~100s and
+  // timed Laguna (102-119s on the 26K VI prompt) out in production.
+  it("gives the configured TL;DR chain's first hop Laguna's worst case", () => {
+    const toml = readFileSync(
+      fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
+      "utf8"
+    );
+    const chain = /ANYROUTER_TLDR_MODEL = "([^"]+)"/
+      .exec(toml)?.[1]
+      ?.split(",");
+    expect(chain?.length).toBeGreaterThan(0);
+    const firstHop = modelAttemptTimeoutMs(
+      tldrAttemptTimeoutMs(TLDR_TIMEOUT_MS, 2),
+      chain?.length ?? 0,
+      TLDR_SLICE_MAX_MS
+    );
+    expect(firstHop).toBeGreaterThanOrEqual(125_000);
+  });
+
   // `ingest/context.ts` LLM_STEP timeout, which the tldr step runs inside.
   const LLM_STEP_TIMEOUT_MS = 4 * 60_000;
 
@@ -2082,5 +2296,287 @@ describe("LLM call route", () => {
       "dots/note:free",
     ]);
     expect(entries[0]?.provider).toBe("AtlasCloud");
+  });
+});
+
+describe("404 circuit breaker", () => {
+  const messages = [{ role: "user" as const, content: "hi" }];
+  const ok = () =>
+    sseResponse([{ choices: [{ delta: { content: '{"ok":true}' } }] }]);
+  const requested = (fetchMock: ReturnType<typeof vi.fn>) =>
+    fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body).model);
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  // Translate runs several batches per step; a 404'd head (missing preset,
+  // BYOK-only id) should cost one request per run, not one per batch.
+  it("skips an id that 404'd on later calls", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) =>
+      JSON.parse(String(init.body)).model === "gone/model"
+        ? new Response('{"error":{"code":"model_not_found"}}', { status: 404 })
+        : ok()
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const spec = { modelSpec: "gone/model,ok/model", json: true };
+
+    await callAnyrouter(env, messages, spec);
+    await callAnyrouter(env, messages, spec);
+
+    expect(requested(fetchMock)).toEqual([
+      "gone/model",
+      "ok/model",
+      "ok/model",
+    ]);
+  });
+
+  // A rate-limited id also sits out the next batch instead of 429ing again.
+  it("skips an id that 429'd on later calls", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("busy", { status: 429 }))
+      .mockResolvedValueOnce(ok())
+      .mockResolvedValueOnce(ok());
+    vi.stubGlobal("fetch", fetchMock);
+    const spec = { modelSpec: "limited/model,ok/model", json: true };
+
+    await callAnyrouter(env, messages, spec);
+    await callAnyrouter(env, messages, spec);
+
+    expect(requested(fetchMock)).toEqual([
+      "limited/model",
+      "ok/model",
+      "ok/model",
+    ]);
+  });
+
+  // 5xx is transient upstream state; the id must stay in the chain.
+  it("keeps an id after a transient failure", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("busy", { status: 502 }))
+      .mockResolvedValueOnce(ok())
+      .mockResolvedValueOnce(ok());
+    vi.stubGlobal("fetch", fetchMock);
+    const spec = { modelSpec: "flaky/model,ok/model", json: true };
+
+    await callAnyrouter(env, messages, spec);
+    await callAnyrouter(env, messages, spec);
+
+    expect(requested(fetchMock)).toEqual([
+      "flaky/model",
+      "ok/model",
+      "flaky/model",
+    ]);
+  });
+
+  // A chain where every id 404'd still sends requests, so a dashboard fix
+  // takes effect without waiting out the skip window.
+  it("fails open when every id is marked unavailable", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("gone", { status: 404 }))
+      .mockResolvedValueOnce(ok());
+    vi.stubGlobal("fetch", fetchMock);
+    const spec = { modelSpec: "only/model", json: true };
+
+    await expect(callAnyrouter(env, messages, spec)).rejects.toThrow(
+      /chain exhausted/
+    );
+    await callAnyrouter(env, messages, spec);
+
+    expect(requested(fetchMock)).toEqual(["only/model", "only/model"]);
+  });
+});
+
+describe("LLM call id", () => {
+  afterEach(() => {
+    setLlmCallLogger(null);
+    vi.unstubAllGlobals();
+  });
+
+  // /data groups a fallback chain by call_id; attempts from one invocation
+  // must share it, and separate invocations must never merge.
+  it("shares one id across a fallback chain and not across calls", async () => {
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) =>
+        JSON.parse(String(init.body)).model === "down/model"
+          ? new Response("busy", { status: 502 })
+          : sseResponse([{ choices: [{ delta: { content: '{"ok":1}' } }] }])
+      )
+    );
+    const messages = [{ role: "user" as const, content: "hi" }];
+    const spec = { modelSpec: "down/model,ok/model", json: true };
+
+    await callAnyrouter(env, messages, spec);
+    await callAnyrouter(env, messages, spec);
+
+    const ids = entries.map((entry) => entry.callId);
+    expect(entries.map((entry) => entry.model)).toEqual([
+      "down/model",
+      "ok/model",
+      "down/model",
+      "ok/model",
+    ]);
+    expect(ids[0]).toMatch(/^[a-z0-9-]{1,36}$/);
+    expect(ids[1]).toBe(ids[0]);
+    expect(ids[3]).toBe(ids[2]);
+    expect(ids[2]).not.toBe(ids[0]);
+  });
+});
+
+describe("LLM call cost and request id", () => {
+  const messages = [{ role: "user" as const, content: "hi" }];
+  let entries: LlmCallLogEntry[];
+
+  beforeEach(() => {
+    entries = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+  });
+
+  afterEach(() => {
+    setLlmCallLogger(null);
+    vi.unstubAllGlobals();
+  });
+
+  // /data shows what each attempt cost; a missing price must read as
+  // unknown, never as free.
+  it("logs AnyRouter's usage.cost, or null when it is missing", async () => {
+    const content = { choices: [{ delta: { content: '{"ok":1}' } }] };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          sseResponse([
+            content,
+            { usage: { total_tokens: 10, cost: 0.0012, is_byok: false } },
+            { anyrouter_metadata: { usage: { totalTokens: 10 } } },
+          ])
+        )
+        .mockResolvedValueOnce(sseResponse([content]))
+    );
+
+    await callAnyrouter(env, messages, { modelSpec: "a/model", json: true });
+    await callAnyrouter(env, messages, { modelSpec: "a/model", json: true });
+
+    expect(entries.map((entry) => entry.costUsd)).toEqual([0.0012, null]);
+  });
+
+  // AnyRouter needs the request id for every failure report, so a non-200
+  // attempt keeps the header id; the stream metadata id is the fallback.
+  it("keeps the request id on failed attempts and from stream metadata", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response("busy", {
+            status: 502,
+            headers: { "X-Request-ID": "req_abc123" },
+          })
+        )
+        .mockResolvedValueOnce(
+          sseResponse([
+            { choices: [{ delta: { content: '{"ok":1}' } }] },
+            { anyrouter_metadata: { requestId: "req_def456" } },
+          ])
+        )
+    );
+
+    await callAnyrouter(env, messages, {
+      modelSpec: "down/model,ok/model",
+      json: true,
+    });
+
+    expect(entries.map((entry) => entry.requestId)).toEqual([
+      "req_abc123",
+      "req_def456",
+    ]);
+  });
+});
+
+describe("translateItems draft repair", () => {
+  // The seeded open-weight rule (migration 0045), served by a stub D1.
+  const ruleRow = {
+    id: "seed-open-weight-keep-english",
+    kind: "keep_english",
+    source_term: "open-weight",
+    vi_term: null,
+    bad_vi: '["mở trọng lượng"]',
+    note: null,
+    status: "active",
+    hits: 0,
+  };
+  const withRules: Env = {
+    ...env,
+    DB: {
+      prepare: () => {
+        const stmt = {
+          bind: () => stmt,
+          all: async () => ({ results: [ruleRow] }),
+          first: async () => null,
+          run: async () => ({ meta: { changes: 0 } }),
+        };
+        return stmt;
+      },
+    } as unknown as D1Database,
+  };
+  const item = { i: 0, title: "Clef releases open-weight decision models" };
+  // Prod 2026-10-02 rendering of this headline.
+  const draft = "Clef ra mắt các mô hình quyết định mở trọng lượng";
+  const rows = (title: string) =>
+    chatResponse(JSON.stringify({ results: [{ i: 0, title, summary: "" }] }));
+
+  beforeEach(() => vi.restoreAllMocks());
+
+  it("sends the flagged draft back once with a fix list and keeps the fixed Vietnamese", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(rows(draft))
+      .mockResolvedValueOnce(
+        rows("Clef ra mắt các decision model open-weight")
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [out] = await translateItems(withRules, [item]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairPrompt = JSON.parse(fetchMock.mock.calls[1][1].body).messages[1]
+      .content as string;
+    expect(repairPrompt).toContain('"fix"');
+    expect(repairPrompt).toContain("mở trọng lượng");
+    expect(out.title).toBe("Clef ra mắt các decision model open-weight");
+  });
+
+  // An English echo of the source passes every term check; it must never
+  // replace a Vietnamese draft.
+  it("keeps the Vietnamese draft when the repair is the English source", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(rows(draft))
+      .mockResolvedValueOnce(rows(item.title));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [out] = await translateItems(withRules, [item]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(out.title).toBe(draft);
+  });
+
+  it("makes no repair call for a clean draft", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        rows("Clef ra mắt các decision model open-weight")
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await translateItems(withRules, [item]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

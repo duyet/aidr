@@ -2,6 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { StoryRow } from "../components/StoryRow";
 import { ARTICLE_DATE_TAG, ARTICLE_TITLE_TAG } from "../lib/article-headings";
+import { archiveDateOfSec, dayArchivePath } from "../lib/day-archive";
 import { headRouteInput } from "../lib/head-route";
 import { formatDayHeading } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
@@ -92,6 +93,9 @@ function StoryContent({ item, lang }: { item: FeedItem; lang: Lang }) {
   const date = Number.isFinite(published.getTime())
     ? published.toISOString().slice(0, 10)
     : null;
+  // Day pages use the audience (ICT) day, which can be one later than the
+  // UTC heading; link to the page that actually lists this story.
+  const archiveDate = archiveDateOfSec(item.published_at);
 
   return (
     <div>
@@ -110,7 +114,16 @@ function StoryContent({ item, lang }: { item: FeedItem; lang: Lang }) {
       {date && (
         <div className="border-b-2 border-foreground/80 pb-2">
           <ARTICLE_DATE_TAG className="text-xl font-bold">
-            {formatDayHeading(date, lang)}
+            {archiveDate ? (
+              <a
+                href={dayArchivePath(archiveDate, lang)}
+                className="hover:text-accent hover:underline"
+              >
+                {formatDayHeading(date, lang)}
+              </a>
+            ) : (
+              formatDayHeading(date, lang)
+            )}
           </ARTICLE_DATE_TAG>
         </div>
       )}

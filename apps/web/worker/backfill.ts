@@ -6,7 +6,7 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "./media.js";
-import { SOURCE_COUNT_COLUMN } from "./ranking.js";
+import { RANK_SIGNAL_COLUMNS, RANK_SIGNAL_JOIN } from "./ranking.js";
 
 /**
  * Pure helpers for the "backfill" workflow steps that fill in
@@ -66,6 +66,10 @@ export function buildMissingTranslationQuery(
             SELECT 1 FROM translations t
             WHERE t.item_id = i.id AND t.lang = 'vi'
               AND t.title IS NOT NULL AND t.title != ''
+              -- A summary the source has but the VI row lacks (a batch
+              -- that kept the title and dropped the summary) also counts.
+              AND (i.summary IS NULL OR i.summary = ''
+                   OR (t.summary IS NOT NULL AND t.summary != ''))
           )
           ORDER BY i.published_at DESC
           LIMIT ${limit}`;
@@ -74,9 +78,9 @@ export function buildMissingTranslationQuery(
 /** Published items that never got a score (empty tags and no category).
  * Most-recent first so today's feed heals before the long tail. */
 export function buildUnscoredItemsQuery(limit = BACKFILL_SCORE_CAP): string {
-  return `SELECT id, title, summary, source_id, points, comments, published_at,
-                 ${SOURCE_COUNT_COLUMN}
-          FROM items
+  return `SELECT id, title, summary, published_at,
+                 ${RANK_SIGNAL_COLUMNS}
+          FROM items ${RANK_SIGNAL_JOIN}
           WHERE status = 'published'
             AND (category IS NULL OR category = '')
             AND (tags IS NULL OR tags = '' OR tags = '[]')

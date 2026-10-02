@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sha256Hex } from "../hash.js";
 import {
   _buildSubmissionReviewPromptForTests as buildSubmissionReviewPrompt,
+  canonicalSubmissionUrl,
   isSubmissionRateLimited,
   MAX_PENDING_SUBMISSIONS_PER_USER,
   MAX_TITLE_LENGTH,
@@ -443,5 +445,143 @@ describe("reviewPendingSubmissions", () => {
     await expect(reviewPendingSubmissions({ ...env, DB: db })).resolves.toEqual(
       { reviewed: 0, tokens: 0 }
     );
+  });
+});
+
+/** The Clef case (2026-10-01): a reader submitted Cloudflare's own post with
+ * blank title and the share link's utm_* parameters. The feed's copy of the
+ * post is the bare URL, so the submission must hash to that same item id,
+ * and it must carry the post's real headline and date — a placeholder title
+ * ("blog.cloudflare.com: clef decision models") and the review time would
+ * keep it from matching the aggregator rewrites already published. */
+describe("accepted submission of an official post (Clef)", () => {
+  const SHARED =
+    "https://blog.cloudflare.com/clef-decision-models/?utm_campaign=cf_blog&utm_content=20261001&utm_medium=organic_social&utm_source=twitter";
+  const CANONICAL = "https://blog.cloudflare.com/clef-decision-models/";
+  const OG_TITLE =
+    "Introducing Clef: our open-source decision models, and new RL fine-tuning platform";
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("drops tracking parameters and fragments, keeps the path", () => {
+    expect(canonicalSubmissionUrl(SHARED)).toBe(CANONICAL);
+    expect(canonicalSubmissionUrl(`${CANONICAL}#comments`)).toBe(CANONICAL);
+    expect(canonicalSubmissionUrl("http://127.0.0.1/admin")).toBeNull();
+  });
+
+  it("dedupes and stores the submission under the canonical URL", async () => {
+    const { db, calls } = makeDb();
+    const result = await submitStory(db, { url: SHARED, title: "" });
+    expect(result.ok).toBe(true);
+    const exists = calls.find((c) => c.sql.includes("FROM items WHERE url"));
+    expect(exists?.args).toEqual([CANONICAL]);
+    const insert = calls.find((c) => c.sql.includes("INSERT INTO submissions"));
+    expect(insert?.args[1]).toBe(CANONICAL);
+  });
+
+  it("inserts the item under the feed's id with og:title and the post's publish time", async () => {
+    const dbCalls: { sql: string; args: unknown[] }[] = [];
+    const db = {
+      prepare(sql: string) {
+        const bound = () => ({
+          all: async () => ({
+            results: sql.includes("FROM submissions")
+              ? [
+                  {
+                    id: "27103d0d",
+                    url: SHARED,
+                    title: resolveSubmissionTitle("", SHARED),
+                    note: "",
+                  },
+                ]
+              : [],
+          }),
+          first: async () => null,
+          run: async () => ({ success: true }),
+        });
+        return {
+          ...bound(),
+          bind: (...args: unknown[]) => {
+            dbCalls.push({ sql, args });
+            return bound();
+          },
+        };
+      },
+    } as unknown as D1Database;
+    let call = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => {
+        call++;
+        if (call === 1) {
+          return htmlResponse(
+            `<meta property="og:title" content="${OG_TITLE}">
+             <meta property="article:published_time" content="2026-10-01T15:34:02.111Z">
+             <meta property="og:description" content="Clef and Clef-flash">`
+          );
+        }
+        return chatResponse(JSON.stringify({ relevance: 0.9, note: "ok" }));
+      })
+    );
+
+    await reviewPendingSubmissions({ ...env, DB: db });
+
+    const insert = dbCalls.find((c) => c.sql.includes("INSERT INTO items"));
+    expect(insert?.args[0]).toBe(await sha256Hex(CANONICAL));
+    expect(insert?.args[1]).toBe("user");
+    expect(insert?.args[3]).toBe(CANONICAL);
+    expect(insert?.args[4]).toBe(OG_TITLE);
+    expect(insert?.args[6]).toBe(Date.parse("2026-10-01T15:34:02Z") / 1000);
+  });
+
+  it("keeps a title the submitter typed", async () => {
+    const dbCalls: { sql: string; args: unknown[] }[] = [];
+    const db = {
+      prepare(sql: string) {
+        const bound = () => ({
+          all: async () => ({
+            results: sql.includes("FROM submissions")
+              ? [
+                  {
+                    id: "s2",
+                    url: CANONICAL,
+                    title: "Cloudflare ships Clef",
+                    note: "",
+                  },
+                ]
+              : [],
+          }),
+          first: async () => null,
+          run: async () => ({ success: true }),
+        });
+        return {
+          ...bound(),
+          bind: (...args: unknown[]) => {
+            dbCalls.push({ sql, args });
+            return bound();
+          },
+        };
+      },
+    } as unknown as D1Database;
+    let call = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => {
+        call++;
+        if (call === 1) {
+          return htmlResponse(
+            `<meta property="og:title" content="${OG_TITLE}">`
+          );
+        }
+        return chatResponse(JSON.stringify({ relevance: 0.9, note: "ok" }));
+      })
+    );
+
+    await reviewPendingSubmissions({ ...env, DB: db });
+
+    const insert = dbCalls.find((c) => c.sql.includes("INSERT INTO items"));
+    expect(insert?.args[4]).toBe("Cloudflare ships Clef");
   });
 });

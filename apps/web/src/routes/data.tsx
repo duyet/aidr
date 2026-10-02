@@ -13,7 +13,6 @@ import { TAB_PANEL } from "../components/system/tab-spacing";
 import { useAdmin } from "../lib/admin";
 import { type DataTab, parseDataTab } from "../lib/data-tab";
 import { headRouteInput } from "../lib/head-route";
-import { useLang } from "../lib/lang-context";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
@@ -42,6 +41,8 @@ export const Route = createFileRoute("/data")({
     pageHead({
       path: "/data",
       title: "Pipeline | AI News",
+      description:
+        "How AI;DR collects sources, ranks stories, and publishes the AI news edition.",
       route: headRouteInput(match),
     }),
   component: SystemPage,
@@ -58,7 +59,8 @@ const TABS: { value: DataTab; label: string }[] = [
 ];
 
 export function SystemPage() {
-  const lang: Lang = useLang();
+  // /data is an operator page: English only, whatever the site language.
+  const lang: Lang = "en";
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const admin = useAdmin();
@@ -76,6 +78,12 @@ export function SystemPage() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Live ingest, content, and token use.
+            <span className="mt-1 block font-mono text-xs">
+              AI;DR {import.meta.env.VITE_AIDR_VERSION || "dev"}
+              {import.meta.env.VITE_AIDR_SHA
+                ? ` · ${import.meta.env.VITE_AIDR_SHA}`
+                : ""}
+            </span>
           </p>
         </header>
 

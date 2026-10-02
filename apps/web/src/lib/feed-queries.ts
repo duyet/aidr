@@ -7,6 +7,7 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../../worker/media.js";
+import { sourceFamily } from "../../worker/source-diversity.js";
 import { AUDIENCE_TIMEZONE, localCalendarDate } from "../../worker/time.js";
 import {
   collectTrendingCandidates,
@@ -16,6 +17,8 @@ import {
   rankTrendingWithGrowth,
   topicDailyCountsStmt,
 } from "../../worker/topic-learning.js";
+import { archiveDateOfSec, dayBoundsSec } from "./day-archive";
+import { DAY_VIDEO_TITLE_MAX, type DayVideo, isYoutubeId } from "./day-video";
 import type { DbReader } from "./db";
 import { NEWEST_PUBLISHED_FETCHED_AT_SQL } from "./feed-freshness";
 import { parseStoredBullets } from "./tldr-bullets";
@@ -370,14 +373,17 @@ export function feedDaysAndBefore(search: URLSearchParams): {
   };
 }
 
-/** No single source may hold more than this share of the served feed. */
+/** No single source family may hold more than this share of the served
+ *  feed (family = catalog `family`, else the source id). */
 export const FEED_MAX_SOURCE_SHARE = 0.25;
-/** Below this many distinct sources a 25% cap is unsatisfiable, so skip it. */
+/** Below this many distinct families a 25% cap is unsatisfiable, so skip it. */
 const FEED_SHARE_CAP_MIN_SOURCES = 4;
 
 /**
- * Enforce the per-source share cap on the selected rows. Each source keeps
- * its highest-`rank_score` items up to the largest per-source count `c` with
+ * Enforce the per-family share cap on the selected rows. Mirrored sources
+ * (huggingnews + marketbrief) share one family, so the pair cannot hold
+ * twice the share. Each family keeps its highest-`rank_score` items up to
+ * the largest per-family count `c` with
  * `c <= share * sum(min(count_s, c))`. Read-time on purpose: the ingest flood
  * gate only bounds new rows, so historic rows from a firehose still need
  * this. Input order is preserved.
@@ -385,14 +391,15 @@ const FEED_SHARE_CAP_MIN_SOURCES = 4;
 export function capSourceShare<
   T extends { source_id: string; rank_score: number },
 >(items: T[], share = FEED_MAX_SOURCE_SHARE): T[] {
-  const bySource = new Map<string, T[]>();
+  const byFamily = new Map<string, T[]>();
   for (const it of items) {
-    const list = bySource.get(it.source_id) ?? [];
+    const family = sourceFamily(it.source_id);
+    const list = byFamily.get(family) ?? [];
     list.push(it);
-    bySource.set(it.source_id, list);
+    byFamily.set(family, list);
   }
-  if (bySource.size < FEED_SHARE_CAP_MIN_SOURCES) return items;
-  const sizes = [...bySource.values()].map((l) => l.length);
+  if (byFamily.size < FEED_SHARE_CAP_MIN_SOURCES) return items;
+  const sizes = [...byFamily.values()].map((l) => l.length);
   let cap = Math.max(...sizes);
   while (cap > 1) {
     const total = sizes.reduce((sum, n) => sum + Math.min(n, cap), 0);
@@ -400,7 +407,7 @@ export function capSourceShare<
     cap--;
   }
   const keep = new Set<T>();
-  for (const list of bySource.values()) {
+  for (const list of byFamily.values()) {
     for (const it of [...list]
       .sort((a, b) => b.rank_score - a.rank_score)
       .slice(0, cap)) {
@@ -490,7 +497,11 @@ export async function getFeed(
   // Trending: prefer versioned models / products extracted from titles
   // (GPT-6 Astra, Fable 5.1) over generic score themes (llm, agent).
   const dayAgo = Math.floor(Date.now() / 1000) - 86400;
-  const { counts: tagCounts, displayByKey } = collectTrendingCandidates(
+  const {
+    counts: tagCounts,
+    displayByKey,
+    entityKeys,
+  } = collectTrendingCandidates(
     items.map((it) => ({
       title: it.title,
       tags: it.tags,
@@ -499,12 +510,12 @@ export async function getFeed(
     })),
     dayAgo
   );
-  const trending = rankTrendingWithGrowth(tagCounts, yesterdayCounts).map(
-    ({ tag, count }) => ({
-      tag: displayByKey.get(tag) ?? tag,
-      count,
-    })
-  );
+  const trending = rankTrendingWithGrowth(tagCounts, yesterdayCounts, {
+    entityKeys,
+  }).map(({ tag, count }) => ({
+    tag: displayByKey.get(tag) ?? tag,
+    count,
+  }));
 
   let tldr: FeedResponse["tldr"] = null;
   const tldrRow = tldrRes.results?.[0] as
@@ -562,4 +573,158 @@ export async function getFeed(
       null,
     hasMore: (olderRes.results ?? []).length > 0,
   });
+}
+
+/** Hard ceiling on one day archive page; a real day is well under this. */
+export const DAY_ARCHIVE_ITEM_LIMIT = 500;
+
+export interface DayArchive {
+  date: string;
+  /** That day's stories ranked like the feed's day group; null when none. */
+  day: DayGroup | null;
+  /** The `tldr_snapshots` row with this exact date, if any. */
+  tldr: FeedResponse["tldr"];
+  video: DayVideo | null;
+  /** Nearest earlier / later audience-zone day with a published story. */
+  prevDate: string | null;
+  nextDate: string | null;
+}
+
+function parseDayVideoRow(row: unknown): DayVideo | null {
+  if (!row || typeof row !== "object") return null;
+  const r = row as Record<string, unknown>;
+  const youtubeId = isYoutubeId(r.youtube_id) ? r.youtube_id : null;
+  const shortId = isYoutubeId(r.short_id) ? r.short_id : null;
+  if (!youtubeId && !shortId) return null;
+  return {
+    youtube_id: youtubeId,
+    short_id: shortId,
+    title:
+      typeof r.title === "string" && r.title.trim()
+        ? r.title.trim().slice(0, DAY_VIDEO_TITLE_MAX)
+        : null,
+  };
+}
+
+/**
+ * Read-only archive of one audience-zone (ICT) day: its published stories (bounded), the
+ * snapshot stored under that date, the optional day video, and the nearest
+ * neighbouring days. Unlike `getFeed` it never writes: an archive read must
+ * not rebuild or persist a TL;DR snapshot. No source-share cap — the page
+ * lists the whole day.
+ */
+export async function getDayArchive(
+  db: DbReader,
+  date: string
+): Promise<DayArchive> {
+  const { start, end } = dayBoundsSec(date);
+  const [hasLlmTokens, hasImageUrl, hasMediaManifest] = await Promise.all([
+    supportsLlmTokens(db),
+    supportsImageUrl(db),
+    supportsMediaManifest(db),
+  ]);
+  const itemSelect = ITEM_SELECT_BASE.replace(
+    "{tokens}",
+    hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""
+  )
+    .replace("{image}", hasImageUrl ? ", i.image_url" : "")
+    .replace("{media}", hasMediaManifest ? ", i.media_manifest" : "");
+
+  const [itemsRes, tldrRes, prevRes, nextRes] = await db.batch([
+    db
+      .prepare(
+        `${itemSelect} AND i.published_at >= ? AND i.published_at < ?
+         ORDER BY i.rank_score DESC LIMIT ${DAY_ARCHIVE_ITEM_LIMIT}`
+      )
+      .bind(start, end),
+    db
+      .prepare(
+        "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots WHERE date = ? LIMIT 1"
+      )
+      .bind(date),
+    db
+      .prepare(
+        `SELECT MAX(published_at) AS at FROM items
+         WHERE status = 'published' AND published_at < ?`
+      )
+      .bind(start),
+    db
+      .prepare(
+        `SELECT MIN(published_at) AS at FROM items
+         WHERE status = 'published' AND published_at >= ?`
+      )
+      .bind(end),
+  ]);
+
+  let video: DayVideo | null = null;
+  try {
+    const row = await db
+      .prepare(
+        "SELECT youtube_id, short_id, title FROM day_videos WHERE date = ? LIMIT 1"
+      )
+      .bind(date)
+      .first();
+    video = parseDayVideoRow(row);
+  } catch {
+    // day_videos not migrated yet — the page renders without the TV slot
+  }
+
+  const items = ((itemsRes.results ?? []) as ItemRow[]).map(toFeedItem);
+  let tldr: FeedResponse["tldr"] = null;
+  const tldrRow = tldrRes.results?.[0] as
+    | { date: string; bullets_en: string; bullets_vi: string }
+    | undefined;
+  if (tldrRow) {
+    try {
+      tldr = withTldrImages(
+        {
+          date: tldrRow.date,
+          bullets_en: parseStoredBullets(JSON.parse(tldrRow.bullets_en)),
+          bullets_vi: parseStoredBullets(JSON.parse(tldrRow.bullets_vi)),
+        },
+        imageUrlByItemId(items)
+      );
+    } catch {
+      // malformed snapshot — the day still lists its stories
+    }
+  }
+
+  const neighbour = (res: D1Result | undefined): string | null => {
+    const at = (res?.results?.[0] as { at: number | null } | undefined)?.at;
+    return typeof at === "number" ? archiveDateOfSec(at) : null;
+  };
+  // One group for the whole audience-zone day; `groupByDay` would split it
+  // at UTC midnight. Same in-day order as the feed: rank_score descending.
+  const categoryCounts: Record<string, number> = {};
+  for (const it of items) {
+    if (it.category)
+      categoryCounts[it.category] = (categoryCounts[it.category] ?? 0) + 1;
+  }
+  const bounded = boundFeedResponse({
+    tldr,
+    days:
+      items.length > 0
+        ? [
+            {
+              date,
+              items: [...items].sort((a, b) => b.rank_score - a.rank_score),
+              categoryCounts,
+            },
+          ]
+        : [],
+    categories: [],
+    trending: [],
+    totalStories: items.length,
+    updatedAt: 0,
+    lastFetchedAt: null,
+    hasMore: false,
+  });
+  return {
+    date,
+    day: bounded.days[0] ?? null,
+    tldr: bounded.tldr,
+    video,
+    prevDate: neighbour(prevRes),
+    nextDate: neighbour(nextRes),
+  };
 }

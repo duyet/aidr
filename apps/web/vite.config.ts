@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
@@ -15,15 +16,20 @@ function readWranglerVar(wrangler: string, name: string): string | undefined {
   )?.[1];
 }
 
-function configuredPublicProxyUrl(mode: string): string {
+/** Root .env files (where .env.example is documented) then app-local ones,
+ *  which win. Vite itself only reads VITE_* from the app dir, so anything
+ *  the browser needs from the root env is passed through `define` below. */
+function buildEnv(mode: string): Record<string, string> {
   const appEnvDir = fileURLToPath(new URL(".", import.meta.url));
   const repoEnvDir = fileURLToPath(new URL("../../", import.meta.url));
-  // .env.example is documented at the repository root. App-local env files
-  // remain supported and intentionally override the root values.
-  const env = {
+  return {
     ...loadEnv(mode, repoEnvDir, ""),
     ...loadEnv(mode, appEnvDir, ""),
   };
+}
+
+function configuredPublicProxyUrl(mode: string): string {
+  const env = buildEnv(mode);
 
   if (env.VITE_CLERK_PROXY_URL !== undefined) {
     throw new Error(
@@ -134,11 +140,40 @@ const baseConfig: UserConfig = {
   },
 };
 
+function buildIdentity(): { version: string; sha: string } {
+  const version =
+    JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"))
+      .version ?? "";
+  const fromEnv = process.env.GITHUB_SHA?.trim();
+  if (fromEnv) return { version, sha: fromEnv.slice(0, 7) };
+  try {
+    const sha = execSync("git rev-parse --short=7 HEAD", {
+      cwd: fileURLToPath(new URL(".", import.meta.url)),
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+    return { version, sha };
+  } catch {
+    return { version, sha: "" };
+  }
+}
+
+const identity = buildIdentity();
+
 export default defineConfig(({ mode }) => ({
   ...baseConfig,
   define: {
+    "import.meta.env.VITE_AIDR_VERSION": JSON.stringify(identity.version),
+    "import.meta.env.VITE_AIDR_SHA": JSON.stringify(identity.sha),
     "import.meta.env.CLERK_PROXY_URL": JSON.stringify(
       configuredPublicProxyUrl(mode)
+    ),
+    // A local deploy keeps the key in the repo-root .env.local, which Vite
+    // does not read for VITE_*; without this the bundle shipped no key and
+    // Clerk never mounted (2026-10-01). CI passes it as a process env var.
+    "import.meta.env.VITE_CLERK_PUBLISHABLE_KEY": JSON.stringify(
+      buildEnv(mode).VITE_CLERK_PUBLISHABLE_KEY ?? ""
     ),
   },
 }));

@@ -8,6 +8,8 @@ import {
 import {
   decideSubmission,
   decideSuggestion,
+  decideTranslationKnowledge,
+  deleteDayVideo,
   deleteSource,
   getLlmCalls,
   getStatus,
@@ -18,10 +20,14 @@ import {
   listPendingSubmissions,
   listPendingSuggestions,
   listSources,
+  listTranslationKnowledge,
+  previewRanking,
+  previewTldr,
   pushItems,
   regenerateTldr,
   reprocessToday,
   retryTelegramDigest,
+  setDayVideo,
   triggerIngest,
   updateItem,
   upsertSource,
@@ -245,10 +251,77 @@ async function handle(
     return Response.json(result);
   }
 
+  // Day archive media: PUT { video?, short?, title? } sets/clears each field;
+  // DELETE removes the day's row.
+  if (
+    method === "PUT" &&
+    segments.length === 2 &&
+    segments[0] === "day-videos"
+  ) {
+    const { body, error } = await parseJsonBody(request);
+    if (error) return Response.json({ error }, { status: 400 });
+    const actor = await adminActor(request, env);
+    const result = await setDayVideo(
+      env,
+      segments[1],
+      body as Parameters<typeof setDayVideo>[2],
+      actor
+    );
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result);
+  }
+
+  if (
+    method === "DELETE" &&
+    segments.length === 2 &&
+    segments[0] === "day-videos"
+  ) {
+    const result = await deleteDayVideo(env, segments[1]);
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result);
+  }
+
   if (method === "POST" && segments.length === 1 && segments[0] === "ingest") {
-    const force = new URL(request.url).searchParams.get("force") === "1";
+    // The GitHub watchdog posts no body; `?force=1` stays supported and
+    // a JSON body `{ force?, dryRun?, steps? }` adds the dry-run/rerun knobs.
+    const text = await request.text();
+    let body: Record<string, unknown> = {};
+    if (text.trim()) {
+      try {
+        const parsed: unknown = JSON.parse(text);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          return Response.json(
+            { error: "body must be a JSON object" },
+            { status: 400 }
+          );
+        }
+        body = parsed as Record<string, unknown>;
+      } catch {
+        return Response.json({ error: "invalid JSON body" }, { status: 400 });
+      }
+    }
+    const queryForce = new URL(request.url).searchParams.get("force") === "1";
     try {
-      const result = await triggerIngest(env, { force });
+      const result = await triggerIngest(env, {
+        ...body,
+        force: queryForce ? true : body.force,
+      });
+      if (isHandlerError(result)) {
+        return Response.json(
+          { error: result.error },
+          { status: result.status ?? 400 }
+        );
+      }
       return Response.json(result);
     } catch (error) {
       // Persist / create / canStart / markStarted must not become Actions
@@ -313,6 +386,31 @@ async function handle(
       );
     }
     return Response.json(result);
+  }
+
+  // Read-only previews for a local agent: no D1 writes, no sends.
+  if (
+    method === "GET" &&
+    segments.length === 2 &&
+    segments[0] === "preview" &&
+    segments[1] === "ranking"
+  ) {
+    const url = new URL(request.url);
+    return Response.json(
+      await previewRanking(env, url.searchParams.get("limit")),
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  if (
+    method === "POST" &&
+    segments.length === 2 &&
+    segments[0] === "preview" &&
+    segments[1] === "tldr"
+  ) {
+    return Response.json(await previewTldr(env), {
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
   if (
@@ -422,6 +520,38 @@ async function handle(
     return Response.json(
       await listPendingSuggestions(env, url.searchParams.get("limit"))
     );
+  }
+
+  if (
+    method === "GET" &&
+    segments.length === 1 &&
+    segments[0] === "knowledge"
+  ) {
+    const url = new URL(request.url);
+    return Response.json(
+      await listTranslationKnowledge(env, url.searchParams.get("status"))
+    );
+  }
+
+  if (
+    method === "POST" &&
+    segments.length === 2 &&
+    segments[0] === "knowledge" &&
+    segments[1] === "decide"
+  ) {
+    const { body, error } = await parseJsonBody(request);
+    if (error) return Response.json({ error }, { status: 400 });
+    const result = await decideTranslationKnowledge(
+      env,
+      (body ?? {}) as Parameters<typeof decideTranslationKnowledge>[1]
+    );
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result);
   }
 
   if (

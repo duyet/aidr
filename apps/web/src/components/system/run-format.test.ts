@@ -13,23 +13,29 @@ import {
   formatSecondsShort,
   formatTimestamp,
   formatTokenValue,
+  groupFailedAttempts,
+  groupFallbackTransitions,
   hasRunDetails,
   isPreIdentityRun,
   llmTokens,
   nextOpenId,
   normalizeRunTokens,
+  RUN_STALL_SEC,
   runAxisHeading,
   runAxisTime,
   runDetailsId,
   runDisclosureLabel,
   runFallbackKindLabel,
+  runMode,
   runModelsDisclosure,
   runStatus,
   safeRunSteps,
   shortModel,
   statusVariant,
   stepFallbackNotes,
+  stepState,
   tokenBreakdown,
+  tokenBurnModelName,
 } from "./run-format";
 
 /**
@@ -78,6 +84,9 @@ describe("shortModel", () => {
     expect(shortModel("anyrouter/auto")).toBe("auto");
     expect(shortModel("google/gemma-4-26b-a4b-it")).toBe("gemma-4-26b-a4b-it");
     expect(shortModel("typesafe/jev")).toBe("jev");
+    expect(tokenBurnModelName("typesafe/jev")).toBe("Jev");
+    expect(tokenBurnModelName("anyrouter/auto")).toBe("AnyRouter");
+    expect(tokenBurnModelName("@preset/aidr")).toBe("AnyRouter");
   });
 
   it("passes through ids without a provider prefix", () => {
@@ -592,5 +601,133 @@ describe("runModelsDisclosure (#189 review)", () => {
     expect(
       runModelsDisclosure("loading", [], preIdentityStats, undefined, [attempt])
     ).toBe("attributed");
+  });
+});
+
+describe("groupFailedAttempts", () => {
+  const fail = (model: string, error: string, errorCode = "timeout") => ({
+    ts: 1,
+    runId: "r",
+    task: "review",
+    model,
+    ok: false,
+    tokens: 0,
+    durationMs: 12_500,
+    promptChars: null,
+    promptTokens: null,
+    completionTokens: null,
+    cachedTokens: null,
+    error,
+    errorCode,
+    errorStatus: null,
+  });
+
+  // 13 identical timeouts are one problem; the panel must say so once with
+  // a count, and still keep a different error on its own line.
+  it("collapses identical failures into one counted line, most frequent first", () => {
+    const groups = groupFailedAttempts([
+      fail("z-ai/glm-4.7", "Provider request timed out"),
+      fail("x/other", "Provider request failed (502)", "provider_error"),
+      fail("z-ai/glm-4.7", "Provider request timed out"),
+      fail("z-ai/glm-4.7", "Provider request timed out"),
+    ]);
+    expect(groups.map((g) => [g.count, g.model, g.errorCode])).toEqual([
+      [3, "z-ai/glm-4.7", "timeout"],
+      [1, "x/other", "provider_error"],
+    ]);
+  });
+});
+
+describe("stepState / runStatus", () => {
+  const run = (steps: { name: string; action: string; reason?: string }[]) => ({
+    id: "r",
+    started_at: 1,
+    finished_at: 2,
+    items_fetched: 10,
+    items_new: 1,
+    error: null,
+    stats: { steps },
+  });
+
+  // A run that left items untranslated or a TL;DR on a fallback is not "OK"
+  // even though nothing threw: the badge must say there were issues.
+  it("treats partial or fallback steps as degraded, zero-of-N as failed", () => {
+    expect(stepState({ action: "translated 3/3 items" })).toBe("ok");
+    expect(stepState({ action: "translated 2/3 items" })).toBe("degraded");
+    expect(stepState({ action: "translated 0/1" })).toBe("failed");
+    expect(
+      stepState({ action: "generated", reason: "LLM thin (chain exhausted)" })
+    ).toBe("degraded");
+    expect(stepState({ action: "skipped", reason: "no eligible" })).toBe(
+      "skipped"
+    );
+    // Real wording from run 1ca7319a: the step threw and recorded "skipped".
+    expect(stepState({ action: "skipped", reason: "tldr step failed" })).toBe(
+      "failed"
+    );
+  });
+
+  it("marks the run degraded when any step is, ok only when all are", () => {
+    expect(runStatus(run([{ name: "fetch", action: "9 items" }]))).toBe("ok");
+    expect(
+      runStatus(
+        run([
+          { name: "fetch", action: "9 items" },
+          { name: "translate", action: "translated 1/2 items" },
+        ])
+      )
+    ).toBe("degraded");
+  });
+});
+
+describe("dry and partial runs", () => {
+  // A backfill-only dry run fetches nothing on purpose; calling it "empty"
+  // hides whether the steps it did run worked.
+  it("rates a dry run by its steps, not by its zero fetch count", () => {
+    const run = {
+      id: "r",
+      started_at: 1,
+      finished_at: 2,
+      items_fetched: 0,
+      items_new: 0,
+      error: null,
+      stats: {
+        mode: "dry-run" as const,
+        selectedSteps: ["backfill-translate"],
+        steps: [
+          { name: "backfill-translate", action: "translated 33 summaries" },
+        ],
+      },
+    };
+    expect(runMode(run)).toBe("dry-run");
+    expect(runStatus(run)).toBe("ok");
+  });
+
+  it("groups identical fallback transitions with a count", () => {
+    const t = { task: "translate", from: "@preset/aidr", to: "anyrouter/auto" };
+    const groups = groupFallbackTransitions([t, t, { ...t, from: "x/y" }, t]);
+    expect(groups.map((g) => [g.from, g.count])).toEqual([
+      ["@preset/aidr", 3],
+      ["x/y", 1],
+    ]);
+  });
+});
+
+describe("open runs", () => {
+  // The open-run row is persisted with finished_at = started_at, so "done"
+  // must come from close-run, or a running pipeline reads as finished+empty.
+  const opened = (ageSec: number) => ({
+    id: "r",
+    started_at: Math.floor(Date.now() / 1000) - ageSec,
+    finished_at: Math.floor(Date.now() / 1000) - ageSec,
+    items_fetched: 0,
+    items_new: 0,
+    error: null,
+    stats: { steps: [{ name: "open-run", action: "started" }] },
+  });
+
+  it("shows a run without close-run as running, then stalled", () => {
+    expect(runStatus(opened(60))).toBe("in_progress");
+    expect(runStatus(opened(RUN_STALL_SEC + 60))).toBe("error");
   });
 });

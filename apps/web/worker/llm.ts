@@ -6,6 +6,7 @@ import {
 } from "../src/lib/tldr-bullets";
 import { chunk } from "./chunk.js";
 import { mapWithConcurrency } from "./concurrency.js";
+import { IMPORTANCE_BANDS } from "./importance-rubric.js";
 import {
   type JevScoreItem,
   type JevScoreReviewOutcome,
@@ -14,16 +15,36 @@ import {
 } from "./jev-panel/score-review.js";
 import {
   callSystemOne,
+  decisionModelId,
   isSystemOneConfigured,
+  jevModelId,
   jevScoreQuestions,
   scoreJudgmentFromJev,
+  servedByJev,
 } from "./systemone.js";
 import { sanitizeError } from "./telemetry-safe.js";
+import {
+  acceptsRepair,
+  tldrBulletIssues,
+  translationDraftIssues,
+} from "./translation-draft-check.js";
+import {
+  type KnowledgeRule,
+  loadActiveRules,
+  viSystemPrompt,
+} from "./translation-knowledge.js";
+import {
+  KEEP_ENGLISH_PROSE,
+  keepVerbatimList,
+  stripSourceBoilerplate,
+} from "./translation-terms.js";
 import type { Env } from "./types.js";
 
 /** 15-item score JSON routinely misses a 25s hang-cap (0 tokens, 100%
  *  fail). 5 titles still fill a batch and finish inside SCORE_SLICE_MAX. */
-const SCORE_BATCH_SIZE = 5;
+export const SCORE_BATCH_SIZE = 5;
+/** Score batches run this many at a time. */
+export const SCORE_CONCURRENCY = 3;
 /** 15-item translate JSON + VI_STYLE routinely times out native Gemma 4
  *  at the 90s attempt cap; 3 titles still fill a homepage row and finish. */
 export const TRANSLATE_BATCH_SIZE = 3;
@@ -33,7 +54,9 @@ export const TRANSLATE_BATCH_SIZE = 3;
 // low max_tokens starves the actual answer entirely.
 const MAX_TOKENS = 8192;
 const MAX_STREAM_CONTENT_CHARS = 100_000;
-export const CATEGORIES = [
+/** The general news categories. Jev picks one of these in a single choice
+ * question, so this list stays within TypeSafe's ten-option limit. */
+export const CORE_CATEGORIES = [
   "Models",
   "Regulation",
   "Products",
@@ -46,14 +69,58 @@ export const CATEGORIES = [
   "Funding",
 ] as const;
 
+/** Categories for the AI and data engineers who build with this news. Jev
+ * asks for these in a second choice question that overrides the core pick. */
+export const BUILDER_CATEGORIES = [
+  "Tools",
+  "Frameworks",
+  "Data",
+  "Open Source",
+] as const;
+
+export const CATEGORIES = [...CORE_CATEGORIES, ...BUILDER_CATEGORIES] as const;
+
+/** How to break ties between the launch-shaped categories. */
+export const CATEGORY_RULE =
+  "Tie-breaks: a model of any license is Models. Anything sold to or used by developers (a coding assistant, its plan, features, or add-ons) is Tools, not Products; a library or SDK they build on is Frameworks; Products is for end-user apps. A company open-sourcing code, a toolkit, or a project is Open Source. Releases only when none of these fit.";
+
+/** One line per category, shared by the chat rubric and Jev's choice
+ * criteria so both scorers draw the same lines. */
+export const CATEGORY_DEFINITIONS: Record<(typeof CATEGORIES)[number], string> =
+  {
+    Models:
+      "a new or updated model, open or closed weights (LLM, image, video, speech, embedding), its benchmarks, pricing, or access",
+    Regulation: "laws, policy, government action, and AI safety rules",
+    Products:
+      "a consumer or business AI app or feature for end users, not developers",
+    Agents:
+      "agent products, agent behavior, multi-agent systems, and agent incidents",
+    Research: "papers, studies, and research findings",
+    Industry:
+      "company news: acquisitions, partnerships, people, earnings, lawsuits, and market moves",
+    Infra:
+      "cloud, data centers, inference serving, compute capacity, and outages",
+    Releases:
+      "a launch that fits no more specific category; prefer Models, Products, Tools, or Frameworks first",
+    Chips: "AI chips, GPUs, accelerators, and the semiconductor supply chain",
+    Funding: "funding rounds, valuations, IPOs, and investment deals",
+    Tools:
+      "developer tools: coding assistants, IDEs, CLIs, developer APIs, and agent harnesses such as Codex, Cursor, or Claude Code",
+    Frameworks:
+      "agent frameworks, SDKs, and libraries developers build with, such as LangGraph, CrewAI, Mastra, Pydantic AI, DSPy, LlamaIndex, Agents SDK, and MCP servers",
+    Data: "data engineering for AI: vector databases, embeddings pipelines, ETL, warehouses and lakehouses, datasets, and retrieval (RAG) stacks",
+    "Open Source":
+      "an open-source code release, toolkit, or project where being open is the news; an open-weights model is still Models",
+  };
+
 /** Vietnamese house style. Literal translation reads badly to Vietnamese tech
  * readers, who expect fluent Vietnamese prose with the English jargon left
  * alone rather than calqued. */
 const VI_STYLE = `You are a Vietnamese tech journalist writing AI/tech news for Vietnamese readers.
 
-Write natural, fluent Vietnamese, never a word-by-word translation. Rephrase freely so every sentence follows Vietnamese structure and rhythm.
+Write natural, fluent Vietnamese, never a word-by-word translation. Restructure each sentence to follow Vietnamese word order and rhythm, but keep every fact it states: rephrasing changes the wording, never the content.
 
-Keep in English: product and model names (GPT, Claude, Qwen), company names, benchmark names, and the industry jargon Vietnamese readers already use in English — fine-tune, benchmark, agent, token, LLM, GPU, AI, swarm, multi-agent. Mixed English/Vietnamese prose is expected. Do translate terms with a settled Vietnamese equivalent, e.g. open-source becomes mã nguồn mở.
+Keep in English: product and model names (GPT, Claude, Qwen), company names, benchmark names, and the industry jargon Vietnamese readers already use in English — ${KEEP_ENGLISH_PROSE}. Mixed English/Vietnamese prose is expected. Do translate terms with a settled Vietnamese equivalent, e.g. open-source becomes mã nguồn mở.
 
 NEVER add a parenthetical English gloss after a Vietnamese word, like "bầy (swarm)" or "đa tác nhân (multi-agent)". Pick one: the English term on its own, or a natural Vietnamese word on its own — never both stapled together.
 
@@ -61,11 +128,11 @@ NEVER translate word-by-word (calque). Read the whole sentence, then restate the
 
 Prefer everyday Vietnamese over stiff Sino-Vietnamese formalese when both exist and mean the same thing: "dùng" over "sử dụng" where it reads naturally, "hãng" or "công ty" over "tập đoàn" for an ordinary company, "mở" over "tiến hành mở". Formal Sino-Vietnamese isn't wrong, but reach for it only when the everyday word would sound too casual for the fact being reported.
 
-Numbers and units follow Vietnamese press style: "2,5 tỷ USD" not "2.5 billion USD", "300 triệu người dùng" not "300 million users" — translate the unit word, keep the digits, use Vietnamese decimal comma.
+Numbers and units follow Vietnamese press style: "2,5 tỷ USD" not "2.5 billion USD", "300 triệu người dùng" not "300 million users" — translate the unit word, keep the digits, use Vietnamese decimal comma. Magnitudes map exactly: B / bn / billion = tỷ, M / mn / million = triệu, T / trillion = nghìn tỷ. "$20B" is "20 tỷ USD", never "20 triệu USD". A model size such as "7B" or "235B" stays as written.
 
 Keep sentence subjects light: drop a pronoun or restated noun where Vietnamese naturally omits it across clauses (don't repeat "công ty này" every clause when context already carries it).
 
-Headlines: punchy and information-dense like Vietnamese tech press, but never clickbait — no teaser phrasing that withholds the actual news ("điều bất ngờ", "không thể tin nổi").
+Headlines: punchy and information-dense like Vietnamese tech press, but never clickbait — no teaser phrasing that withholds the actual news ("điều bất ngờ", "không thể tin nổi"). Use sentence case: capitalize only the first word and proper names, even when the English headline is in Title Case ("Nscale huy động 3,36 tỷ USD trước khi niêm yết trên NYSE", not "Nscale Huy Động 3,36 Tỷ USD Trước Khi Niêm Yết Trên NYSE").
 
 Example 1 — bad (parenthetical gloss + calque + robotic rhythm):
 "Các thử nghiệm trên bầy (swarm) Claude agent đã ghi nhận những lỗi phối hợp, hành vi thông đồng ngầm và phá hoại lẫn nhau."
@@ -74,7 +141,7 @@ Example 1 — good (English term kept plain, active verbs, natural flow):
 
 Example 2 — bad (calqued noun phrase, bureaucratic filler):
 "Công ty đã thực hiện việc ra mắt một mô hình mới với hiệu suất được cải thiện."
-Example 2 — good (concrete verb, trimmed):
+Example 2 — good (concrete verb, filler removed, every fact kept):
 "Công ty vừa ra mắt mô hình mới, hiệu suất được cải thiện rõ rệt."
 
 Example 3 — bad (over-formal Sino-Vietnamese where everyday words fit fine):
@@ -92,6 +159,15 @@ Example 5 — bad (one long stiff sentence, English clause order preserved):
 Example 5 — good (split into two, subject carried lightly):
 "Startup này do một nhóm cựu kỹ sư OpenAI thành lập năm 2023, đã huy động 500 triệu USD. Sau khi ra mắt sản phẩm mới, công ty đang mở rộng sang thị trường châu Á."
 
+Never calque these (bad → good):
+- "open-weight models" → "mô hình mở trọng lượng" ✗ → "mô hình open-weight" ✓
+- "decision models" → "mô hình quyết định" ✗ → "decision model" ✓
+- "AI agents" → "đại lý AI" / "đặc vụ AI" ✗ → "AI agent" ✓
+- "evaluation harness" → "dây chuyền đánh giá" ✗ → "harness đánh giá" ✓
+- "US hyperscalers" → "các cường thị trường Mỹ" ✗ → "các hyperscaler Mỹ" ✓
+- "training loss" → "mất mát huấn luyện" ✗ → "loss khi huấn luyện" ✓
+Proofread every Vietnamese word: no misspelled or invented words ("thỏa thúc", "công tắt"), and no English words left half-translated.
+
 Titles: concise headline style, viết hoa chữ cái đầu câu như báo chí Việt Nam, never ALL CAPS.
 Summaries: complete, natural sentences.`;
 
@@ -106,6 +182,8 @@ export interface LlmUsageBreakdown {
   promptTokens: number | null;
   completionTokens: number | null;
   cachedTokens: number | null;
+  /** USD AnyRouter charged (`usage.cost`); null when not reported. */
+  costUsd: number | null;
 }
 
 interface AnyrouterCompletion extends LlmUsageBreakdown {
@@ -154,6 +232,18 @@ export interface LlmCallLogEntry {
   route?: string[] | null;
   /** Upstream provider that served the attempt, when reported. */
   provider?: string | null;
+  /** Shared by every attempt of one callAnyrouter/callSystemOne
+   *  invocation, so a fallback chain reads as one call. */
+  callId?: string | null;
+  /** USD AnyRouter reported for the attempt; null without usage. */
+  costUsd?: number | null;
+  /** AnyRouter request id, kept for failure reports. */
+  requestId?: string | null;
+}
+
+/** Short id grouping one invocation's attempts in `llm_calls.call_id`. */
+export function newLlmCallId(): string {
+  return crypto.randomUUID().slice(0, 8);
 }
 
 export type LlmCallLogger = (entry: LlmCallLogEntry) => void | Promise<void>;
@@ -262,6 +352,7 @@ interface Usage {
   cached_tokens?: number;
   cachedTokens?: number;
   prompt_tokens_details?: { cached_tokens?: number };
+  cost?: unknown;
 }
 
 interface StreamEvent {
@@ -275,7 +366,7 @@ interface StreamEvent {
   // The trailing metadata frame has been seen nesting usage under either key.
   metadata?: { usage?: Usage };
   /** `model` is the catalog model a preset/router resolved to. */
-  anyrouter_metadata?: { usage?: Usage; model?: string };
+  anyrouter_metadata?: { usage?: Usage; model?: string; requestId?: string };
 }
 
 /** What actually served an attempt: the requested id, then each id a
@@ -285,6 +376,14 @@ export interface LlmRouteTrace {
   resolved: string | null;
   upstream: string | null;
   provider: string | null;
+  /** AnyRouter request id (`X-Request-ID`, else stream metadata). */
+  requestId?: string | null;
+}
+
+const REQUEST_ID_RE = /^req_[A-Za-z0-9]{1,64}$/;
+
+function safeRequestId(value: unknown): string | null {
+  return typeof value === "string" && REQUEST_ID_RE.test(value) ? value : null;
 }
 
 const ROUTE_HOP_RE = /^[A-Za-z0-9@][A-Za-z0-9._:/@-]{0,119}$/;
@@ -328,7 +427,13 @@ function parseUsage(usage: Usage): LlmUsageBreakdown {
   );
   const total = pickNumber(usage.total_tokens, usage.totalTokens);
   const tokens = total ?? (promptTokens ?? 0) + (completionTokens ?? 0);
-  return { tokens, promptTokens, completionTokens, cachedTokens };
+  const costUsd =
+    typeof usage.cost === "number" &&
+    Number.isFinite(usage.cost) &&
+    usage.cost >= 0
+      ? usage.cost
+      : null;
+  return { tokens, promptTokens, completionTokens, cachedTokens, costUsd };
 }
 
 function emptyUsage(): LlmUsageBreakdown {
@@ -337,6 +442,7 @@ function emptyUsage(): LlmUsageBreakdown {
     promptTokens: null,
     completionTokens: null,
     cachedTokens: null,
+    costUsd: null,
   };
 }
 
@@ -425,6 +531,10 @@ async function streamCompletion(
     signal: opts.signal ?? AbortSignal.timeout(opts.timeoutMs),
   });
 
+  // Read before the status check so a failed attempt keeps its id too.
+  if (opts.trace) {
+    opts.trace.requestId = safeRequestId(res.headers.get("x-request-id"));
+  }
   if (!res.ok) {
     const body = await readBoundedErrorBody(res);
     const requested = opts.maxTokens ?? MAX_TOKENS;
@@ -474,6 +584,9 @@ async function streamCompletion(
       if (upstream && !event.anyrouter_metadata) opts.trace.upstream = upstream;
       const provider = routeHop(event.provider);
       if (provider) opts.trace.provider = provider;
+      opts.trace.requestId ??= safeRequestId(
+        event.anyrouter_metadata?.requestId
+      );
     }
     const delta = event.choices?.[0]?.delta;
     const outputLimit = opts.maxOutputChars ?? MAX_STREAM_CONTENT_CHARS;
@@ -492,7 +605,14 @@ async function streamCompletion(
     }
     const usage =
       event.usage ?? event.anyrouter_metadata?.usage ?? event.metadata?.usage;
-    if (usage) usageBreakdown = parseUsage(usage);
+    if (usage) {
+      // A later usage event without `cost` must not erase an earlier one.
+      const parsed = parseUsage(usage);
+      usageBreakdown = {
+        ...parsed,
+        costUsd: parsed.costUsd ?? usageBreakdown.costUsd,
+      };
+    }
   };
 
   const reader = res.body.getReader();
@@ -558,7 +678,10 @@ export const MODEL_SLICE_MAX_MS = 25_000;
 /** 15-item score / 16-bullet TL;DR JSON cannot finish in 25s; every
  *  model then logs 0 tokens and the chain looks 100% dead. */
 export const SCORE_SLICE_MAX_MS = 70_000;
-export const TLDR_SLICE_MAX_MS = 90_000;
+/** The ~26K-char bilingual TL;DR takes Laguna S 2.1 102-119s to finish
+ *  (probe 2026-10-01), so a 90s cap killed it every time. Stays inside the
+ *  first attempt's window (TLDR_TIMEOUT_MS - TLDR_RETRY_RESERVE_MS). */
+export const TLDR_SLICE_MAX_MS = 135_000;
 /** Translate used the 25s leftover cap; anyrouter/auto often needs longer
  *  to finish a 3-item JSON batch when it is the only hop. */
 export const TRANSLATE_SLICE_MAX_MS = 60_000;
@@ -647,6 +770,30 @@ export function raceTimeout<T>(
   });
 }
 
+/** A 404 from AnyRouter (model_not_found, or model_unavailable for a
+ *  BYOK-only id) does not change within a run, so the id is skipped by
+ *  later calls in this isolate instead of each batch paying for it again.
+ *  A 429 (billing_concurrency_limited hit @preset/aidr 27x in one run)
+ *  skips it briefly. 5xx and timeouts never trip it. */
+const SKIP_MODEL_TTL_MS: Record<number, number> = {
+  404: 15 * 60_000,
+  429: 2 * 60_000,
+};
+const unavailableModels = new Map<string, number>();
+
+function isUnavailable(model: string): boolean {
+  const until = unavailableModels.get(model);
+  if (until === undefined) return false;
+  if (until > Date.now()) return true;
+  unavailableModels.delete(model);
+  return false;
+}
+
+/** Test hook: forget every skipped id. */
+export function resetUnavailableModels(): void {
+  unavailableModels.clear();
+}
+
 /**
  * Tries each model in the configured chain until one returns usable content.
  * Transport errors, non-200s, timeouts and empty/unusable completions all
@@ -674,8 +821,14 @@ async function callAnyrouter(
   } = {}
 ): Promise<AnyrouterCallResult> {
   const task = opts.task ?? "other";
-  const models = parseModels(opts.modelSpec || env.ANYROUTER_MODEL);
-  if (models.length === 0) throw new Error("anyrouter model is not configured");
+  const configured = parseModels(opts.modelSpec || env.ANYROUTER_MODEL);
+  if (configured.length === 0)
+    throw new Error("anyrouter model is not configured");
+  // Skipped ids take no budget slice. If every id is skipped, try them all
+  // again rather than fail without a request.
+  const callId = newLlmCallId();
+  const live = configured.filter((model) => !isUnavailable(model));
+  const models = live.length > 0 ? live : configured;
 
   // One budget for the whole chain, so a long chain cannot outlive the
   // workflow step that a single call was sized to fit inside. Each attempt
@@ -743,6 +896,9 @@ async function callAnyrouter(
           sensitive: opts.sensitive,
           route: buildRoute(model, trace),
           provider: trace.provider,
+          callId,
+          costUsd: result.costUsd,
+          requestId: trace.requestId ?? null,
         });
         failures.push(`${model}: anyrouter response failed accept check`);
         continue;
@@ -764,9 +920,18 @@ async function callAnyrouter(
         sensitive: opts.sensitive,
         route: buildRoute(model, trace),
         provider: trace.provider,
+        callId,
+        costUsd: result.costUsd,
+        requestId: trace.requestId ?? null,
       });
       return { ...result, model };
     } catch (error) {
+      const status =
+        error instanceof Error
+          ? /^anyrouter request failed: (\d{3})\b/.exec(error.message)?.[1]
+          : undefined;
+      const skipMs = status ? SKIP_MODEL_TTL_MS[Number(status)] : undefined;
+      if (skipMs) unavailableModels.set(model, Date.now() + skipMs);
       const msg = sanitizeProviderError(error);
       failures.push(`${model}: ${msg}`);
       console.error(`anyrouter model ${model} failed: ${msg}`);
@@ -786,6 +951,9 @@ async function callAnyrouter(
         sensitive: opts.sensitive,
         route: buildRoute(model, trace),
         provider: trace.provider,
+        callId,
+        costUsd: null,
+        requestId: trace.requestId ?? null,
       });
     }
   }
@@ -804,6 +972,8 @@ export async function completeJson(
     task?: LlmTask;
     timeoutMs?: number;
     maxTokens?: number;
+    /** Per-model cap for long prompts (default MODEL_SLICE_MAX_MS). */
+    maxSliceMs?: number;
   } = {}
 ): Promise<string> {
   const result = await callAnyrouter(env, messages, {
@@ -811,6 +981,7 @@ export async function completeJson(
     task: opts.task ?? "other",
     timeoutMs: opts.timeoutMs,
     maxTokens: opts.maxTokens,
+    maxSliceMs: opts.maxSliceMs,
   });
   return result.content;
 }
@@ -853,7 +1024,49 @@ function parseJson<T>(raw: string): T {
       text = text.slice(start, end + 1);
     }
   }
-  return JSON.parse(text) as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    const repaired = dropStrayClosers(text);
+    if (repaired === text) throw error;
+    return JSON.parse(repaired) as T;
+  }
+}
+
+/**
+ * Laguna S 2.1 (serves translate and TL;DR) often emits one stray
+ * closer: a trailing `]` after the root object, or a `}` that ends the root
+ * before `,"bullets_vi":[...]` (probe 2026-10-01). A plain parse then drops
+ * the batch, or keeps only bullets_en and the VI digest falls back to
+ * titles. Only closers that cannot belong (wrong type, nothing open, or
+ * closing the root while a `,` follows) are removed; strings are skipped.
+ */
+function dropStrayClosers(text: string): string {
+  const stack: string[] = [];
+  let out = "";
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      out += ch;
+      if (ch === "\\") {
+        out += text[++i] ?? "";
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{" || ch === "[") stack.push(ch === "{" ? "}" : "]");
+    else if (ch === "}" || ch === "]") {
+      const closesRoot = stack.length === 1;
+      const next = text.slice(i + 1).trimStart()[0];
+      if (stack.at(-1) !== ch || (closesRoot && next === ",")) continue;
+      stack.pop();
+    }
+    out += ch;
+  }
+  return out;
 }
 
 export interface ScoreInput {
@@ -870,7 +1083,15 @@ export interface ScoreInput {
 /** Scoring rubric sent to the model. Quality must prefer named, source-backed writing over thin duplicates. */
 export function scoreBatchPrompt(batch: ScoreInput[]): string {
   return `You are scoring AI/tech news items for relevance, importance, and source-backed quality.
-For each item, return relevance (0-1, is this genuinely AI/tech news), importance (0-10), quality (0-10), category (one of: ${CATEGORIES.join(", ")}), and tags — 3 to 6 topic labels per item.
+For each item, return relevance (0-1, is this genuinely AI/tech news), importance (1-10), quality (0-10), category (exactly one from the list below), and tags — 3 to 6 topic labels per item.
+In scope, even when the name is new and not in the tag list: a model release, a new kind of model (language, world, video, speech, open weights, mixture-of-experts), and a new AI lab. An unfamiliar name is not a reason to lower relevance.
+
+Categories (pick the most specific one that fits):
+${CATEGORIES.map((name) => `- ${name}: ${CATEGORY_DEFINITIONS[name]}.`).join("\n")}
+${CATEGORY_RULE}
+
+Importance rubric (use the whole scale; most items are not 7+):
+${IMPORTANCE_BANDS.map((band) => `- ${band.range}: ${band.meaning}.`).join("\n")}
 
 Quality rubric (this is what ranking multiplies — be strict):
 - 8–10: primary reporting or original research with a named publisher/host, concrete facts, not a rewrite of another headline.
@@ -883,8 +1104,8 @@ Topic label rules (this feeds a dynamic topic taxonomy, so consistency matters):
 - Mix specific entities (anthropic, openai, nvidia, qwen) with themes (multi-agent, open-source, fine-tuning, regulation).
 - Always use the same canonical spelling for the same concept: singular not plural ("llm" not "llms"), one standard hyphenation not synonyms ("open-source" not "opensource" or "oss"), no near-duplicates. If a topic could be phrased multiple ways, pick the most common/obvious industry term.
 - Prefer these canonical tags whenever they apply (reuse EXACTLY as written, don't invent variants):
-  entities: openai, anthropic, google, meta, xai, x, microsoft, amazon, nvidia, huggingface, deepseek, mistral, alibaba, apple, perplexity, together, fireworks, stability, claude, fable, opus, sonnet, haiku, gpt, gemini, grok, kimi, llama, qwen, gemma, phi, glm, olmo, codex, claude-code, cursor, composer, copilot, windsurf, openrouter, ollama, vllm, elon-musk, sam-altman
-  themes: llm, agent, multi-agent, agentic, harness, inference, open-source, fine-tuning, benchmark, reasoning, safety, regulation, funding, chips, gpu, infra, robotics, coding, rag, mcp, multimodal, diffusion, vision-language
+  entities: openai, anthropic, google, meta, xai, x, microsoft, amazon, nvidia, huggingface, deepseek, mistral, alibaba, apple, perplexity, together, fireworks, stability, claude, fable, opus, sonnet, haiku, gpt, gemini, grok, kimi, llama, qwen, gemma, phi, glm, olmo, codex, claude-code, cursor, composer, copilot, windsurf, openrouter, ollama, vllm, cloudflare, workers-ai, langchain, langgraph, crewai, autogen, mastra, pydantic-ai, llamaindex, dspy, agents-sdk, databricks, snowflake, elon-musk, sam-altman
+  themes: llm, agent, multi-agent, agentic, harness, inference, open-source, fine-tuning, benchmark, reasoning, safety, regulation, funding, chips, gpu, infra, robotics, coding, rag, mcp, multimodal, diffusion, vision-language, framework, devtools, data-engineering, vector-database, embedding, mlops, eval
   benchmarks: swe-bench, swe-bench-pro, livecodebench, arc-agi, arc-agi-2, mmlu, aider-polyglot
   Only invent a new tag when nothing above (or an equally obvious industry term) fits — new model/product names are encouraged when they recur.
 - 3-6 tags per item — enough to be genuinely browsable/filterable, not a single catch-all tag.
@@ -993,7 +1214,7 @@ export function sanitizeScoreResults(
   return out;
 }
 
-/** Chat-completions rubric. Backup for items Jev did not judge. */
+/** Chat-completions rubric. Backup for items no System One hop judged. */
 async function scoreBatchWithChat(
   env: Env,
   batch: ScoreInput[]
@@ -1018,13 +1239,19 @@ async function scoreBatchWithChat(
   }
 }
 
-/** One System One call per item. A miss (transport, bad answers) returns
- * null so that item stays on the chat backup. Tokens are that call's input
- * tokens — Jev output is free and uncounted. */
-async function scoreOneWithJev(
+/** Decision router hop cap. Router-to-Jev answers took ~9s in probes; the
+ * cap keeps decision (15s) + Jev (30s) + one chat slice (70s) per wave so
+ * two waves still fit the 4-minute score step. */
+const DECISION_TIMEOUT_MS = 15_000;
+
+/** One System One call per item on `model`. A miss (transport, bad
+ * answers) returns null so that item moves to the next hop. Tokens are that
+ * call's input tokens — System One output is free and uncounted. */
+async function scoreOneWithSystemOne(
   env: Env,
   item: ScoreInput,
-  questions: ReturnType<typeof jevScoreQuestions>
+  questions: ReturnType<typeof jevScoreQuestions>,
+  model: string
 ): Promise<ScoreResult | null> {
   try {
     const jev = await callSystemOne(
@@ -1036,10 +1263,25 @@ async function scoreOneWithJev(
         source: item.source,
       },
       questions,
-      "score"
+      "score",
+      model,
+      model === jevModelId(env) ? undefined : DECISION_TIMEOUT_MS
     );
     if (!jev) return null;
-    const judgment = scoreJudgmentFromJev(jev.answers, CATEGORIES);
+    // A router hop can land on a non-Jev decider (GLiNER answers score
+    // questions with a bare index, e.g. importance 1 for a frontier launch).
+    // Only Jev's score scale is calibrated; anything else moves on.
+    if (model !== jevModelId(env) && !servedByJev(jev)) {
+      console.warn(
+        `scoreItems ${model} answered by ${jev.upstreamModel || "unknown"} (${jev.upstreamProvider || "unknown"}); skipped`
+      );
+      return null;
+    }
+    const judgment = scoreJudgmentFromJev(
+      jev.answers,
+      CORE_CATEGORIES,
+      BUILDER_CATEGORIES
+    );
     if (!judgment) return null;
     const [row] = sanitizeScoreResults(
       [{ i: item.i, ...judgment }],
@@ -1048,7 +1290,7 @@ async function scoreOneWithJev(
     );
     return row ?? null;
   } catch (error) {
-    console.error("scoreItems jev item failed:", error);
+    console.error(`scoreItems ${model} item failed:`, error);
     return null;
   }
 }
@@ -1059,26 +1301,42 @@ export async function scoreItems(
 ): Promise<ScoreResult[]> {
   const batches = chunk(items, SCORE_BATCH_SIZE);
   // Token spend unchanged on the chat path; wall-clock divided (~3×).
-  const SCORE_CONCURRENCY = 3;
   const questions = isSystemOneConfigured(env)
-    ? jevScoreQuestions(CATEGORIES)
+    ? jevScoreQuestions(
+        CORE_CATEGORIES,
+        BUILDER_CATEGORIES,
+        CATEGORY_DEFINITIONS,
+        CATEGORY_RULE
+      )
     : null;
+  // System One hops in order: the decision router, then Jev. Each item a
+  // hop misses moves to the next; whatever is left goes to the chat rubric.
+  const decision = decisionModelId(env);
+  const systemOneModels = questions
+    ? [...(decision ? [decision] : []), jevModelId(env)]
+    : [];
   const batchResults = await mapWithConcurrency(
     batches,
     SCORE_CONCURRENCY,
     async (batch) => {
-      const jevRows = questions
-        ? (
-            await Promise.all(
-              batch.map((item) => scoreOneWithJev(env, item, questions))
+      const rows: ScoreResult[] = [];
+      let missing = batch;
+      for (const model of systemOneModels) {
+        if (!questions || missing.length === 0) break;
+        const hopRows = (
+          await Promise.all(
+            missing.map((item) =>
+              scoreOneWithSystemOne(env, item, questions, model)
             )
-          ).filter((row): row is ScoreResult => row !== null)
-        : [];
-      const covered = new Set(jevRows.map((row) => row.i));
-      const missing = batch.filter((item) => !covered.has(item.i));
-      if (missing.length === 0) return jevRows;
+          )
+        ).filter((row): row is ScoreResult => row !== null);
+        rows.push(...hopRows);
+        const covered = new Set(hopRows.map((row) => row.i));
+        missing = missing.filter((item) => !covered.has(item.i));
+      }
+      if (missing.length === 0) return rows;
       const chatRows = await scoreBatchWithChat(env, missing);
-      return [...jevRows, ...chatRows];
+      return [...rows, ...chatRows];
     }
   );
 
@@ -1225,11 +1483,40 @@ function clipSummary(summary: string | undefined): string | undefined {
   return (space > 400 ? slice.slice(0, space) : slice).trim();
 }
 
-function translatePrompt(batch: TranslateInput[], titlesOnly: boolean): string {
-  const items = batch.map(({ i, title, summary }) =>
-    titlesOnly ? { i, title } : { i, title, summary: clipSummary(summary) }
-  );
+/** The text the generator actually sees, so the draft check measures the
+ * translation against the same (stripped, clipped) source. */
+export function sentSource(
+  item: TranslateInput,
+  titlesOnly: boolean
+): { title: string; summary: string | undefined } {
+  const summary =
+    titlesOnly || item.summary === undefined
+      ? undefined
+      : clipSummary(stripSourceBoilerplate(item.summary));
+  return { title: item.title, summary };
+}
+
+function translatePrompt(
+  batch: TranslateInput[],
+  titlesOnly: boolean,
+  fixes?: ReadonlyMap<number, string[]>
+): string {
+  const items = batch.map((item) => {
+    const { i } = item;
+    const { title, summary: body } = sentSource(item, titlesOnly);
+    // The QA guard demands these back verbatim (translation-terms.ts).
+    const keep = keepVerbatimList({ title, summary: body ?? "" });
+    const fields = titlesOnly ? { i, title } : { i, title, summary: body };
+    const fix = fixes?.get(i);
+    return {
+      ...fields,
+      ...(keep.length > 0 ? { keep } : {}),
+      ...(fix && fix.length > 0 ? { fix } : {}),
+    };
+  });
   return `Translate these AI/tech news items into Vietnamese.
+
+Translate every sentence of each summary: do not shorten, summarize, or add facts, opinions, or context the source does not state. A complete Vietnamese summary is about as long as the English one, at least 80% of its length. Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English. An item with a "fix" list was translated before and broke those rules; translate it again and fix every one.
 
 Items:
 ${JSON.stringify(items)}
@@ -1253,17 +1540,23 @@ function logTranslateBatchFailed(
   );
 }
 
-async function translateBatch(
+export async function translateBatch(
   env: Env,
   batch: TranslateInput[],
   timeoutMs: number,
-  titlesOnly: boolean
+  titlesOnly: boolean,
+  fixes?: ReadonlyMap<number, string[]>
 ): Promise<TranslateResult[]> {
+  const system = await viSystemPrompt(
+    env,
+    VI_STYLE,
+    batch.map((item) => `${item.title}\n${item.summary ?? ""}`).join("\n")
+  );
   const { content: raw, tokens } = await callAnyrouter(
     env,
     [
-      { role: "system", content: VI_STYLE },
-      { role: "user", content: translatePrompt(batch, titlesOnly) },
+      { role: "system", content: system },
+      { role: "user", content: translatePrompt(batch, titlesOnly, fixes) },
     ],
     {
       json: true,
@@ -1292,6 +1585,77 @@ async function translateBatch(
   );
 }
 
+/** Under this much budget a repair call would only starve later batches. */
+const TRANSLATE_REPAIR_MIN_MS = 25_000;
+
+/** One repair pass over the drafts the deterministic check flags
+ * (translation-draft-check.ts). A repaired row replaces its draft only when
+ * it has fewer issues, so a worse retry never overwrites a usable draft. */
+async function repairDrafts(
+  env: Env,
+  batch: TranslateInput[],
+  rows: TranslateResult[],
+  titlesOnly: boolean,
+  rules: KnowledgeRule[],
+  timeoutMs: number
+): Promise<TranslateResult[]> {
+  const byIndex = new Map(batch.map((item) => [item.i, item]));
+  const issuesOf = (row: TranslateResult): string[] => {
+    const item = byIndex.get(row.i);
+    if (!item) return [];
+    const sent = sentSource(item, titlesOnly);
+    return translationDraftIssues(
+      { title: sent.title, summary: sent.summary ?? "" },
+      row,
+      rules,
+      sent.summary === undefined
+    );
+  };
+  const fixes = new Map<number, string[]>();
+  for (const row of rows) {
+    const issues = issuesOf(row);
+    if (issues.length > 0) fixes.set(row.i, issues);
+  }
+  if (fixes.size === 0 || timeoutMs < TRANSLATE_REPAIR_MIN_MS) return rows;
+  const flagged = batch.filter((item) => fixes.has(item.i));
+  console.log(
+    JSON.stringify({
+      event: "translateItems.draft_repair",
+      indexes: [...fixes.keys()],
+      issues: [...fixes.values()].flat().slice(0, 10),
+    })
+  );
+  let repaired: TranslateResult[];
+  try {
+    repaired = await translateBatch(env, flagged, timeoutMs, titlesOnly, fixes);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    logTranslateBatchFailed(`draft repair: ${reason}`, flagged, titlesOnly);
+    return rows;
+  }
+  const drafts = new Map(rows.map((row) => [row.i, row]));
+  const better = new Map(
+    repaired
+      .filter((row) => {
+        const draft = drafts.get(row.i);
+        return (
+          draft !== undefined &&
+          acceptsRepair(
+            [draft.title, draft.summary],
+            [row.title, row.summary],
+            fixes.get(row.i)?.length ?? 0,
+            issuesOf(row).length
+          )
+        );
+      })
+      .map((row) => [row.i, row])
+  );
+  return rows.map((row) => {
+    const fixed = better.get(row.i);
+    return fixed ? { ...fixed, tokens: row.tokens + fixed.tokens } : row;
+  });
+}
+
 export async function translateItems(
   env: Env,
   items: TranslateInput[]
@@ -1299,6 +1663,8 @@ export async function translateItems(
   const results: TranslateResult[] = [];
   const deadline = Date.now() + TRANSLATE_TIMEOUT_MS;
   const needLlm: TranslateInput[] = [];
+  // Loaded once for every batch's draft check; never throws.
+  const rules = loadActiveRules(env);
 
   for (const item of items) {
     if (item.sourceLang === "vi") {
@@ -1327,11 +1693,19 @@ export async function translateItems(
       return [];
     }
     try {
-      return await translateBatch(
+      const rows = await translateBatch(
         env,
         batch,
         Math.min(TRANSLATE_BATCH_TIMEOUT_MS, remaining),
         titlesOnly
+      );
+      return await repairDrafts(
+        env,
+        batch,
+        rows,
+        titlesOnly,
+        await rules,
+        Math.min(TRANSLATE_BATCH_TIMEOUT_MS, deadline - Date.now())
       );
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -1415,8 +1789,11 @@ const EMPTY_TLDR: TldrResult = { bullets_en: [], bullets_vi: [], tokens: 0 };
 /** One deadline shared by both generateTldr attempts. The `tldr` Workflow
  * step times out at 4 minutes (`LLM_STEP`). Two 240s attempts could run for
  * 8, so the step threw before the retry or the title fallback ran and the
- * run wrote no snapshot. 200s leaves room for the D1 reads and write. */
-export const TLDR_TIMEOUT_MS = 200_000;
+ * run wrote no snapshot; the 10s left over covers the D1 reads and write. */
+/** 230s: the first attempt (230-60 = 170s) must give the first hop of a
+ *  two-model TL;DR chain Laguna's full 102-119s, after modelAttemptTimeoutMs
+ *  reserves a slice for the fallback. Still inside the 4-minute step. */
+export const TLDR_TIMEOUT_MS = 230_000;
 /** Held back from the bilingual attempt so the EN-only retry still runs. */
 export const TLDR_RETRY_RESERVE_MS = 60_000;
 
@@ -1530,6 +1907,89 @@ ${JSON.stringify(items)}
 Respond with strict JSON only: ${shape}`;
 }
 
+/** A bullet repair needs one short call; skip it rather than eat the
+ * budget the EN-only retry and the snapshot write depend on. */
+const TLDR_REPAIR_MIN_MS = 30_000;
+const TLDR_REPAIR_MAX_MS = 45_000;
+
+/** One repair call for Vietnamese bullets the draft check flags (calques,
+ * wrong magnitudes). A fixed bullet replaces the original only when it has
+ * fewer issues; any failure keeps the originals. */
+async function repairTldrViBullets(
+  env: Env,
+  bullets: TldrBullet[],
+  items: TldrItem[],
+  rules: KnowledgeRule[],
+  system: string,
+  timeoutMs: number
+): Promise<{ bullets: TldrBullet[]; tokens: number }> {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const sourceOf = (bullet: TldrBullet): string =>
+    bullet.item_ids
+      .map((id) => byId.get(id))
+      .filter((item): item is TldrItem => Boolean(item))
+      .map((item) => `${item.title}\n${item.summary ?? ""}`)
+      .join("\n");
+  const flagged = bullets
+    .map((bullet, i) => ({
+      i,
+      text: bullet.text,
+      fix: tldrBulletIssues(sourceOf(bullet), bullet.text, rules),
+    }))
+    .filter((entry) => entry.fix.length > 0);
+  if (flagged.length === 0 || timeoutMs < TLDR_REPAIR_MIN_MS) {
+    return { bullets, tokens: 0 };
+  }
+  try {
+    const { content, tokens } = await callAnyrouter(
+      env,
+      [
+        { role: "system", content: system },
+        {
+          role: "user",
+          content: `Fix these Vietnamese TL;DR bullets. Each "fix" list names the rules a bullet broke. Change only what the fix list requires; keep every fact and the bullet's length.
+
+Bullets:
+${JSON.stringify(flagged)}
+
+Respond with strict JSON only: {"bullets":[{"i":0,"text":"..."}]}`,
+        },
+      ],
+      {
+        json: true,
+        modelSpec: env.ANYROUTER_TRANSLATE_MODEL,
+        task: "tldr",
+        timeoutMs: Math.min(timeoutMs, TLDR_REPAIR_MAX_MS),
+        maxSliceMs: TRANSLATE_SLICE_MAX_MS,
+        maxTokens: TRANSLATE_MAX_TOKENS,
+      }
+    );
+    const parsed = parseJson<{ bullets?: unknown }>(content).bullets;
+    const out = [...bullets];
+    for (const entry of Array.isArray(parsed) ? parsed : []) {
+      const e = entry as { i?: unknown; text?: unknown };
+      const i = Number(e.i);
+      const was = flagged.find((f) => f.i === i);
+      if (!was || typeof e.text !== "string" || !e.text.trim()) continue;
+      const text = e.text.trim();
+      if (
+        acceptsRepair(
+          [was.text],
+          [text],
+          was.fix.length,
+          tldrBulletIssues(sourceOf(bullets[i]), text, rules).length
+        )
+      ) {
+        out[i] = { ...bullets[i], text };
+      }
+    }
+    return { bullets: out, tokens };
+  } catch (error) {
+    console.error("generateTldr VI bullet repair failed:", error);
+    return { bullets, tokens: 0 };
+  }
+}
+
 export async function generateTldr(
   env: Env,
   items: TldrItem[]
@@ -1538,6 +1998,11 @@ export async function generateTldr(
   let totalTokens = 0;
   let lastError: string | undefined;
   const deadline = Date.now() + TLDR_TIMEOUT_MS;
+  const viSystem = await viSystemPrompt(
+    env,
+    VI_STYLE,
+    items.map((item) => `${item.title}\n${item.summary ?? ""}`).join("\n")
+  );
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     // First attempt: bilingual journalist restatement. Second attempt
     // drops VI so a timeout/starved-content failure still yields EN
@@ -1556,7 +2021,7 @@ export async function generateTldr(
         env,
         bilingual
           ? [
-              { role: "system", content: VI_STYLE },
+              { role: "system", content: viSystem },
               { role: "user", content: tldrPrompt(items, true) },
             ]
           : [{ role: "user", content: tldrPrompt(items, false) }],
@@ -1583,10 +2048,18 @@ export async function generateTldr(
       totalTokens += tokens;
       const result = normalizeTldrResult(parseJson<unknown>(raw));
       if (result.bullets_en.length > 0 || result.bullets_vi.length > 0) {
+        const repaired = await repairTldrViBullets(
+          env,
+          sanitizeBulletIds(result.bullets_vi, items),
+          items,
+          await loadActiveRules(env),
+          viSystem,
+          deadline - Date.now()
+        );
         return {
           bullets_en: sanitizeBulletIds(result.bullets_en, items),
-          bullets_vi: sanitizeBulletIds(result.bullets_vi, items),
-          tokens: totalTokens,
+          bullets_vi: repaired.bullets,
+          tokens: totalTokens + repaired.tokens,
         };
       }
       lastError = `attempt ${attempt}/${ATTEMPTS} returned no bullets`;

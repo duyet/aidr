@@ -44,6 +44,12 @@ export const ADMIN_TOOL_VI: Record<string, string> = {
   delete_source: "Xóa một nguồn tin theo id.",
   trigger_ingest: "Kích hoạt một lượt thu thập tin tức mới.",
   get_status: "Xem 10 lượt chạy gần nhất và số lượng tin theo trạng thái.",
+  preview_ranking:
+    "Chỉ đọc: các tin đứng đầu hiện tại và dữ liệu tính điểm xếp hạng.",
+  preview_tldr: "Xem trước TL;DR từ dữ liệu hiện tại mà không xuất bản.",
+  set_day_video:
+    "Gắn video YouTube (máy tính) và/hoặc Short (điện thoại) cho trang /date/YYYY-MM-DD.",
+  delete_day_video: "Gỡ video và Short khỏi trang một ngày.",
 };
 
 /** Anonymous client config: no credential at all. */

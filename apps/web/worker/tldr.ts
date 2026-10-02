@@ -1,4 +1,6 @@
+import { stripTitleMarker } from "../src/lib/plain-text.js";
 import { generateTldr, type TldrBullet } from "./llm.js";
+import { pickDiverse } from "./source-diversity.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE, toEpochSeconds } from "./time.js";
 import {
@@ -12,23 +14,32 @@ import type { Env } from "./types.js";
  * stories that land after the first successful generate of the day. */
 export const TLDR_REFRESH_MS = 3 * 60 * 60 * 1000;
 
+/** Stories per TL;DR edition. */
+export const TLDR_MAX_ITEMS = 16;
+/** The whole 24h window is the candidate pool (~120 rows on a normal day):
+ * mirrored aggregators can fill the top 50 alone, so a small over-fetch
+ * would leave the source-family cap nothing else to pick. Bounded for
+ * spike days. */
+const TLDR_CANDIDATE_LIMIT = 300;
+
 interface ItemRow {
   id: string;
+  source_id: string;
   title: string;
   summary: string | null;
   title_vi: string | null;
 }
 
-const TOP_ITEMS_SQL = `SELECT i.id, i.title, i.summary, tr.title AS title_vi
+const TOP_ITEMS_SQL = `SELECT i.id, i.source_id, i.title, i.summary, tr.title AS title_vi
      FROM items i
      LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
      WHERE i.status = 'published' AND i.published_at >= ?
      ORDER BY i.rank_score DESC
-     LIMIT 16`;
+     LIMIT ${TLDR_CANDIDATE_LIMIT}`;
 
 /**
- * Pure query builder for the top-items lookup, so the gating logic
- * (published, fresh, ranked, capped at 16) can be verified without a D1
+ * Pure query builder for the top-items candidate pool, so the gating logic
+ * (published, fresh, ranked) can be verified without a D1
  * binding. `nowMs` is epoch milliseconds; `items.published_at` is stored
  * as epoch seconds, so the bound `since` value is normalized to seconds.
  */
@@ -40,6 +51,15 @@ export function buildTopItemsQuery(nowMs: number): {
     sql: TOP_ITEMS_SQL,
     since: toEpochSeconds(nowMs) - 24 * 60 * 60,
   };
+}
+
+/** The edition's stories: the top TLDR_MAX_ITEMS of the 24h window by rank,
+ * with no source family over its share (`pickDiverse`). Shared by the
+ * hourly write and the dry-run preview so both pick the same items. */
+async function loadTopItems(env: Env, nowMs: number): Promise<ItemRow[]> {
+  const { sql, since } = buildTopItemsQuery(nowMs);
+  const { results } = await env.DB.prepare(sql).bind(since).all<ItemRow>();
+  return pickDiverse(results ?? [], { limit: TLDR_MAX_ITEMS });
 }
 
 /** Snapshot / digest calendar date: local day in Asia/Ho_Chi_Minh, not UTC. */
@@ -169,8 +189,7 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
       bullets_vi: string | null;
     }>();
 
-  const { sql, since } = buildTopItemsQuery(nowMs);
-  const { results } = await env.DB.prepare(sql).bind(since).all<ItemRow>();
+  const results = await loadTopItems(env, nowMs);
 
   const existingParsed = existing
     ? {
@@ -183,9 +202,9 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
   if (
     !shouldRefreshExistingSnapshot({
       existing: existingParsed,
-      itemCount: results?.length ?? 0,
+      itemCount: results.length,
       nowMs,
-      hasTitleVi: itemsHaveTitleVi(results ?? []),
+      hasTitleVi: itemsHaveTitleVi(results),
     })
   ) {
     const age = nowMs - (existingParsed?.created_at ?? 0);
@@ -196,13 +215,67 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
     };
   }
 
-  if (!results || results.length === 0)
+  if (results.length === 0)
     return {
       generated: false,
       tokens: 0,
       reason: "no published items in window",
     };
 
+  const composed = await composeTldr(env, results);
+  if (!composed.ok) return composed.stats;
+  const { bullets_en, bullets_vi } = composed;
+
+  await env.DB.prepare(
+    `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(date) DO UPDATE SET
+       bullets_en = excluded.bullets_en,
+       bullets_vi = excluded.bullets_vi,
+       created_at = excluded.created_at`
+  )
+    .bind(
+      date,
+      JSON.stringify(bullets_en),
+      JSON.stringify(bullets_vi),
+      Date.now()
+    )
+    .run();
+
+  return {
+    generated: true,
+    tokens: composed.tokens,
+    reason: composeReason(composed),
+  };
+}
+
+type ComposedTldr =
+  | {
+      ok: true;
+      bullets_en: TldrBullet[];
+      bullets_vi: TldrBullet[];
+      tokens: number;
+      persistReason?: string;
+    }
+  | { ok: false; stats: TldrRunStats };
+
+function composeReason(composed: Extract<ComposedTldr, { ok: true }>): string {
+  return (
+    composed.persistReason ??
+    `generated ${composed.bullets_en.length + composed.bullets_vi.length} bullets`
+  );
+}
+
+/** LLM digest plus the thin / English-only-VI fallbacks: exactly the
+ * bullets `ensureDailyTldr` would persist, without touching D1. */
+async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
+  // Stored rows may still carry a wire "UPDATE:" marker; bullets quote titles.
+  const results = rows.map((row) => ({
+    ...row,
+    title: stripTitleMarker(row.title),
+    title_vi:
+      row.title_vi == null ? row.title_vi : stripTitleMarker(row.title_vi),
+  }));
   const tldr = await generateTldr(
     env,
     results.map((row) => ({
@@ -228,9 +301,12 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
       const detail = tldr.error ?? "returned no bullets";
       console.error(`generateTldr produced no persistable bullets: ${detail}`);
       return {
-        generated: false,
-        tokens: tldr.tokens,
-        reason: `LLM failed: ${detail}`,
+        ok: false,
+        stats: {
+          generated: false,
+          tokens: tldr.tokens,
+          reason: `LLM failed: ${detail}`,
+        },
       };
     }
     bullets_en = fallback.bullets_en;
@@ -246,27 +322,68 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
     console.error(persistReason);
   }
 
-  await env.DB.prepare(
-    `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(date) DO UPDATE SET
-       bullets_en = excluded.bullets_en,
-       bullets_vi = excluded.bullets_vi,
-       created_at = excluded.created_at`
-  )
-    .bind(
-      date,
-      JSON.stringify(bullets_en),
-      JSON.stringify(bullets_vi),
-      Date.now()
-    )
-    .run();
-
   return {
-    generated: true,
+    ok: true,
+    bullets_en,
+    bullets_vi,
     tokens: tldr.tokens,
-    reason:
-      persistReason ??
-      `generated ${bullets_en.length + bullets_vi.length} bullets`,
+    persistReason,
+  };
+}
+
+export interface TldrPreview extends TldrRunStats {
+  date: string;
+  itemCount: number;
+  bullets_en: TldrBullet[];
+  bullets_vi: TldrBullet[];
+}
+
+/** The edition a run would write right now, ignoring the refresh gate.
+ * Reads D1 and calls the LLM; never writes `tldr_snapshots`. Used by dry
+ * runs and the admin preview. */
+export async function previewDailyTldr(env: Env): Promise<TldrPreview> {
+  const nowMs = Date.now();
+  const date = tldrSnapshotDate(nowMs);
+  const results = await loadTopItems(env, nowMs);
+  const empty = {
+    date,
+    itemCount: results.length,
+    bullets_en: [],
+    bullets_vi: [],
+  };
+  if (results.length === 0) {
+    return {
+      ...empty,
+      generated: false,
+      tokens: 0,
+      reason: "no published items in window",
+    };
+  }
+  const composed = await composeTldr(env, results);
+  if (!composed.ok) return { ...empty, ...composed.stats };
+  return {
+    ...empty,
+    generated: true,
+    tokens: composed.tokens,
+    reason: `preview: ${composeReason(composed)}`,
+    bullets_en: composed.bullets_en,
+    bullets_vi: composed.bullets_vi,
+  };
+}
+
+const PREVIEW_BULLETS = 3;
+const PREVIEW_TEXT = 160;
+
+/** Bounded TL;DR preview for `workflow_runs.stats` (a dry run's edition). */
+export function summarizeTldrPreview(preview: {
+  bullets_en: TldrBullet[];
+  bullets_vi: TldrBullet[];
+}): { bullets: number; en: string[]; vi: string[] } {
+  const head = (bullets: TldrBullet[]) =>
+    bullets.slice(0, PREVIEW_BULLETS).map((b) => b.text.slice(0, PREVIEW_TEXT));
+  return {
+    bullets: Math.max(preview.bullets_en.length, preview.bullets_vi.length),
+    en: head(preview.bullets_en),
+    vi: head(preview.bullets_vi),
   };
 }

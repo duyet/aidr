@@ -1,11 +1,20 @@
 import { anyrouterModelUrl, isValidAnyrouterModel } from "../../lib/anyrouter";
 import { formatTokens } from "../../lib/format";
 import type { LlmCallRow } from "../../lib/system-queries";
-import { formatMs, formatSafeDetail, formatSafeError } from "./run-format";
+import {
+  type ChainAttempt,
+  formatCostUsd,
+  formatMs,
+  formatSafeDetail,
+  formatSafeError,
+  groupChainCalls,
+} from "./run-format";
 
 const COPY = {
   en: {
     calls: "calls",
+    attempts: "attempts",
+    fellBack: "fell back",
     ok: "ok",
     failed: "failed",
     via: "via",
@@ -18,6 +27,8 @@ const COPY = {
   },
   vi: {
     calls: "lần gọi",
+    attempts: "lượt thử",
+    fellBack: "chuyển dự phòng",
     ok: "thành công",
     failed: "lỗi",
     via: "qua",
@@ -46,39 +57,50 @@ function ModelHop({ id }: { id: string }) {
   );
 }
 
-/** `@preset/aidr → x/y → x/y:free`. Rows from before the route column
- *  show the requested model alone. */
-function Route({ call, title }: { call: LlmCallRow; title: string }) {
-  const route = call.route?.length ? call.route : [call.model];
+/** One hop of a chain call: the requested id, what it resolved to (the
+ *  last route hop), its status, time, and the error code when it failed. */
+function Hop({ hop }: { hop: ChainAttempt }) {
+  const route = hop.route?.length ? hop.route : [hop.model];
+  const resolved = route.length > 1 ? route[route.length - 1] : null;
+  const error = hop.ok ? null : formatSafeError(hop.error);
   return (
     <span
-      className="flex min-w-0 flex-wrap items-center gap-x-1 font-mono text-[11px]"
-      title={title}
+      className={`inline-flex min-w-0 flex-wrap items-center gap-x-1 rounded border px-1.5 py-0.5 font-mono text-[11px] ${
+        hop.ok
+          ? "border-emerald-500/40 bg-emerald-500/5"
+          : "border-destructive/40 bg-destructive/5"
+      }`}
+      title={[route.join(" → "), hop.provider, error]
+        .filter(Boolean)
+        .join(" · ")}
     >
-      {route.map((hop, i) => (
-        <span key={`${hop}-${i}`} className="flex items-center gap-x-1">
-          {i > 0 ? (
-            <span aria-hidden className="text-muted-foreground">
-              →
-            </span>
-          ) : null}
-          <span
-            className={
-              i === 0 && route.length > 1
-                ? "text-muted-foreground"
-                : "text-foreground"
-            }
-          >
-            <ModelHop id={hop} />
-          </span>
+      <span
+        aria-hidden
+        className={hop.ok ? "text-emerald-600" : "text-destructive"}
+      >
+        {hop.ok ? "✓" : "✕"}
+      </span>
+      <ModelHop id={hop.model} />
+      {resolved ? (
+        <span className="text-muted-foreground">
+          → <ModelHop id={resolved} />
         </span>
-      ))}
+      ) : null}
+      {hop.provider ? (
+        <span className="font-sans text-[10px] text-muted-foreground">
+          via {formatSafeDetail(hop.provider, 60)}
+        </span>
+      ) : null}
+      <span className="text-[10px] text-muted-foreground tabular-nums">
+        {formatMs(hop.durationMs)}
+      </span>
+      {!hop.ok && (hop.errorCode || hop.errorStatus) ? (
+        <span className="text-[10px] text-destructive">
+          {hop.errorStatus ?? hop.errorCode}
+        </span>
+      ) : null}
     </span>
   );
-}
-
-function tokenOrDash(value: number | null): string {
-  return value != null ? formatTokens(value) : "—";
 }
 
 export function RunAttemptRows({
@@ -92,76 +114,71 @@ export function RunAttemptRows({
   if (attempts.length === 0) {
     return <p className="text-xs text-muted-foreground">{copy.empty}</p>;
   }
-  const okCount = attempts.filter((call) => call.ok).length;
-  const failCount = attempts.length - okCount;
+  const calls = groupChainCalls(attempts as ChainAttempt[]);
+  const okCalls = calls.filter((call) => call.ok).length;
+  const failedCalls = calls.length - okCalls;
+  const failedHops = attempts.filter((a) => !a.ok).length;
+  const totalCost = calls.reduce<number | null>(
+    (sum, call) => (call.costUsd === null ? sum : (sum ?? 0) + call.costUsd),
+    null
+  );
 
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        {attempts.length} {copy.calls} ·{" "}
+        {calls.length} {copy.calls} ·{" "}
         <span className="text-emerald-700 dark:text-emerald-400">
-          {okCount} {copy.ok}
+          {okCalls} {copy.ok}
         </span>
-        {failCount > 0 ? (
+        {failedCalls > 0 ? (
           <>
             {" "}
             ·{" "}
             <span className="text-destructive">
-              {failCount} {copy.failed}
+              {failedCalls} {copy.failed}
             </span>
           </>
         ) : null}
+        {" · "}
+        {attempts.length} {copy.attempts}
+        {failedHops > 0 ? ` (${failedHops} ${copy.fellBack})` : ""}
+        {totalCost !== null ? ` · ${formatCostUsd(totalCost)}` : ""}
       </p>
       <ul className="divide-y divide-border/60 overflow-hidden rounded-md border border-border bg-muted/30">
-        {attempts.map((call, i) => (
+        {calls.map((call) => (
           <li
-            key={`${call.ts}-${call.model}-${i}`}
-            className={`grid grid-cols-[auto_1fr_auto] items-start gap-x-2 gap-y-0.5 px-3 py-2 text-xs ${
+            key={call.key}
+            className={`grid grid-cols-[auto_1fr_auto] items-start gap-x-2 px-3 py-2 text-xs ${
               call.ok ? "" : "bg-destructive/5"
             }`}
           >
             <span
+              role="img"
               aria-label={call.ok ? copy.ok : copy.failed}
-              className={`mt-1 size-2 shrink-0 rounded-full ${
+              className={`mt-1.5 size-2 shrink-0 rounded-full ${
                 call.ok ? "bg-emerald-500" : "bg-destructive"
               }`}
             />
-            <div className="min-w-0 space-y-0.5">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span className="rounded border border-border px-1.5 text-[10px] text-muted-foreground">
-                  {formatSafeDetail(call.task, 80)}
+            <div className="flex min-w-0 flex-wrap items-center gap-1">
+              <span className="rounded border border-border px-1.5 text-[10px] text-muted-foreground">
+                {formatSafeDetail(call.task, 80)}
+              </span>
+              {call.hops.map((hop, i) => (
+                <span
+                  key={`${hop.ts}-${hop.model}-${i}`}
+                  className="flex min-w-0 items-center gap-1"
+                >
+                  {i > 0 ? (
+                    <span aria-hidden className="text-muted-foreground">
+                      →
+                    </span>
+                  ) : null}
+                  <Hop hop={hop} />
                 </span>
-                <Route call={call} title={copy.routeTitle} />
-                {call.provider ? (
-                  <span className="text-[10px] text-muted-foreground">
-                    {copy.via} {formatSafeDetail(call.provider, 120)}
-                  </span>
-                ) : null}
-              </div>
-              {call.ok ? (
-                <p className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                  {copy.in} {tokenOrDash(call.promptTokens)} · {copy.out}{" "}
-                  {tokenOrDash(call.completionTokens)}
-                  {call.cachedTokens != null && call.cachedTokens > 0 ? (
-                    <span className="text-emerald-700 dark:text-emerald-400">
-                      {" "}
-                      · {copy.cached} {formatTokens(call.cachedTokens)}
-                    </span>
-                  ) : null}
-                </p>
-              ) : (
-                <p className="break-words text-[11px] text-destructive">
-                  {formatSafeError(call.error)}
-                  {call.errorCode ? (
-                    <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">
-                      {call.errorCode}
-                    </span>
-                  ) : null}
-                  {call.errorStatus ? (
-                    <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">
-                      HTTP {call.errorStatus}
-                    </span>
-                  ) : null}
+              ))}
+              {call.ok ? null : (
+                <p className="w-full break-words text-[11px] text-destructive">
+                  {formatSafeError(call.hops[call.hops.length - 1]?.error)}
                 </p>
               )}
             </div>
@@ -170,6 +187,9 @@ export function RunAttemptRows({
               <div className="text-[10px] text-muted-foreground">
                 {call.tokens === 0 ? "0" : formatTokens(call.tokens)}{" "}
                 {copy.tokens}
+                {call.costUsd !== null
+                  ? ` · ${formatCostUsd(call.costUsd)}`
+                  : ""}
               </div>
             </div>
           </li>

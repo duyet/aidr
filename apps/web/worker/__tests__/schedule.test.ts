@@ -53,7 +53,7 @@ describe("free-plan hourly ingest", () => {
     // and any that fell through would answer with the SPA HTML shell, which
     // reads to a search engine as a broken favicon.
     expect(wrangler).toContain(
-      'run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/favicon-120x120.png", "/apple-touch-icon.png", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]'
+      'run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/favicon-120x120.png", "/apple-touch-icon.png", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/about.md", "/subscribe.md", "/data.md", "/brand.md", "/changelog.md", "/privacy.md", "/terms.md", "/mcp.md", "/contribute.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]'
     );
     expect(wrangler).toMatch(/binding\s*=\s*"ASSETS"/);
   });
@@ -73,7 +73,7 @@ describe("free-plan hourly ingest", () => {
     expect(ingestYml).toContain("secrets.NEWS_ADMIN_TOKEN");
     expect(algorithm).toMatch(/GitHub Actions/);
     expect(algorithm).toMatch(/Durable Object/);
-    expect(algorithm).toMatch(/0\.12·min\(sourceCount, 8\)/);
+    expect(algorithm).toMatch(/0\.12·\(min\(sourceCount, 8\) − 1\)/);
     expect(algorithm).toMatch(/Merge \(LLM \+ title similarity\)/);
     expect(algorithm).not.toMatch(/Hourly instances come from `schedules`/);
     expect(algorithm).not.toContain("apps/news");
@@ -87,52 +87,51 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
-  // Concrete models that passed a live probe go first; anyrouter/auto is the
-  // last resort so one bad auto pick cannot burn a whole step's time budget.
-  const liveChain = ["@preset/aidr", "anyrouter/auto", "anyrouter/free"];
-
-  it("ends score and translate chains with the router safety nets", () => {
-    for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TRANSLATE_MODEL"]) {
-      expect(idsOf(name), name).toEqual(liveChain);
-    }
-  });
-
-  // Production always streams. Nemotron 3 120B / Super never stream a token
-  // and Ultra buffers 56-140s, so a non-streaming probe that rated them
-  // fastest put a 42s hang at the head of every chain (run ddb11132).
-  it("keeps models that hang when streamed out of every chain", () => {
-    const hangs = [
-      "nvidia/nemotron-3-120b-a12b",
-      "nvidia/nemotron-3-super-120b-a12b",
-      "nvidia/nemotron-3-ultra-550b-a55b",
-    ];
+  // Router aliases are the safety net: they go last so one bad pick cannot
+  // burn a step's budget, and a chain that ends without one can strand a run.
+  it("ends score, translate and tldr chains with the router safety nets", () => {
     for (const name of [
       "ANYROUTER_MODEL",
       "ANYROUTER_TRANSLATE_MODEL",
       "ANYROUTER_TLDR_MODEL",
-      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
-      "ANYROUTER_REVIEW_MODEL",
-    ]) {
-      for (const id of hangs) expect(idsOf(name), name).not.toContain(id);
-    }
-    expect(idsOf("ANYROUTER_TLDR_MODEL").slice(-2)).toEqual([
-      "anyrouter/auto",
-      "anyrouter/free",
-    ]);
-  });
-
-  it("drops chat ids that failed every live call", () => {
-    for (const name of [
-      "ANYROUTER_MODEL",
-      "ANYROUTER_TRANSLATE_MODEL",
-      "ANYROUTER_TLDR_MODEL",
-      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
     ]) {
       const ids = idsOf(name);
-      expect(ids, name).not.toContain("meta/llama-4-scout-17b-16e-instruct");
-      expect(ids, name).not.toContain("deepseek/deepseek-v4.1-flash");
-      expect(ids, name).not.toContain("minimax/m3");
-      expect(ids, name).not.toContain("meta/llama-3.3-70b-instruct");
+      expect(ids.at(-1), name).toMatch(/^anyrouter\//);
+      const firstAlias = ids.findIndex((id) => id.startsWith("anyrouter/"));
+      expect(
+        ids.slice(firstAlias).every((id) => id.startsWith("anyrouter/")),
+        name
+      ).toBe(true);
+    }
+  });
+
+  const chains = [
+    "ANYROUTER_MODEL",
+    "ANYROUTER_TRANSLATE_MODEL",
+    "ANYROUTER_TLDR_MODEL",
+    "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
+    "ANYROUTER_REVIEW_MODEL",
+  ];
+
+  // Chains are picked by a streaming probe (production always streams with
+  // json_object; a non-streaming probe put 42s hangs at the head, run
+  // ddb11132). An id without a probe row in wrangler.toml was never
+  // measured, and ids listed only as removed/BYOK-only have no row.
+  it("backs every chain id with a streaming probe row", () => {
+    for (const name of chains) {
+      for (const id of idsOf(name)) {
+        const escaped = id.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+        expect(wrangler, `${name}: ${id}`).toMatch(
+          new RegExp(`^#\\s+${escaped}\\s+\\S`, "m")
+        );
+      }
+    }
+  });
+
+  it("never repeats an id inside a chain", () => {
+    for (const name of chains) {
+      const ids = idsOf(name);
+      expect(new Set(ids).size, name).toBe(ids.length);
     }
   });
 
@@ -156,51 +155,6 @@ describe("live AnyRouter model chains", () => {
     for (const id of ids) {
       expect(id.startsWith("anyrouter/"), id).toBe(false);
       expect(id.startsWith("@"), id).toBe(false);
-    }
-  });
-
-  it("does not hard-code 404/502 flash fallbacks", () => {
-    for (const name of [
-      "ANYROUTER_MODEL",
-      "ANYROUTER_TRANSLATE_MODEL",
-      "ANYROUTER_TLDR_MODEL",
-    ]) {
-      const ids = idsOf(name);
-      expect(ids, name).not.toContain("inclusionai/ling-3.0-flash");
-      expect(ids, name).not.toContain("google/gemma-4-26b-a4b-it");
-      expect(ids, name).not.toContain("z-ai/glm-4.7-flash");
-      expect(ids, name).not.toContain("google/gemma-4-31b");
-      expect(ids, name).not.toContain("google/gemma-4-31b-it");
-    }
-  });
-
-  it("omits delisted, BYOK-only, and rejected replacement ids", () => {
-    const blocked = [
-      "stealth/ox-alpha",
-      "deepseek/DeepSeek-V4-Flash",
-      "stepfun-ai/step-3.7-flash",
-      "aisingapore/gemma-sea-lion-v4-27b-it",
-      "google/gemini-2.5-flash-lite",
-      "google/gemini-2.5-flash",
-      "google/gemini-3.7-flash",
-      "google/gemini-3.6-flash",
-      "google/gemini-3.8-flash",
-      "qwen/qwen3.7-flash",
-      // BYOK-only on AnyRouter: keyless calls 404 (anyrouter#3655).
-      "google/gemini-3.5-flash",
-      // No provisioned upstream key: 404/502 (anyrouter#3817).
-      "minimax/m3",
-    ];
-    for (const name of [
-      "ANYROUTER_MODEL",
-      "ANYROUTER_TRANSLATE_MODEL",
-      "ANYROUTER_TLDR_MODEL",
-      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
-    ]) {
-      const ids = idsOf(name);
-      for (const id of blocked) {
-        expect(ids, name).not.toContain(id);
-      }
     }
   });
 
@@ -244,7 +198,6 @@ describe("translate batch size", () => {
   it("caps score/tldr/translate attempts so auto is not killed mid-route", () => {
     expect(llm).toMatch(/MODEL_SLICE_MAX_MS = 25_000/);
     expect(llm).toMatch(/SCORE_SLICE_MAX_MS = 70_000/);
-    expect(llm).toMatch(/TLDR_SLICE_MAX_MS = 90_000/);
     expect(llm).toMatch(/TRANSLATE_SLICE_MAX_MS = 60_000/);
     expect(llm).toMatch(/FALLBACK_FLOOR_MS = 20_000/);
     expect(llm).toMatch(/SCORE_BATCH_SIZE = 5/);
@@ -322,8 +275,8 @@ describe("backfill-translate checkpoints", () => {
   });
 
   it("persists workflow_runs before pruneLlmCalls and without safeStep", () => {
-    const persistIdx = workflow.indexOf(
-      'persistOpenedWorkflowRun(this.env.DB, runId, startedAt, "open-run")'
+    const persistIdx = workflow.search(
+      /persistOpenedWorkflowRun\(\s*this\.env\.DB,\s*runId,\s*startedAt,\s*"open-run"/
     );
     const pruneIdx = workflow.indexOf("await pruneLlmCalls(this.env)");
     expect(persistIdx).toBeGreaterThan(0);
@@ -382,7 +335,7 @@ describe("create-path workflow_runs persist", () => {
       ingestSchedule.indexOf("async function startCreatedIngest")
     );
     const persistIdx = startFn.indexOf("persistCreatedIngestRunVerified");
-    const createIdx = startFn.indexOf("NEWS_INGEST.create({ id })");
+    const createIdx = startFn.indexOf("NEWS_INGEST.create(");
     expect(persistIdx).toBeGreaterThan(0);
     expect(createIdx).toBeGreaterThan(persistIdx);
   });

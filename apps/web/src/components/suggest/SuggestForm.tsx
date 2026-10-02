@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
+import type { SuggestionStatusView } from "../../../worker/contributions.js";
 import { bearerHeaders } from "../../lib/clerk-user";
-import { submitSuggestion } from "../../lib/suggest-fn";
+import { fetchSuggestionStatus, submitSuggestion } from "../../lib/suggest-fn";
 import type { Lang } from "../../lib/types";
+import { SuggestionVerdict } from "./SuggestionVerdict";
 
+const POLL_INTERVAL_MS = 2500;
+/** Past this the review is left to the hourly step; the reader is pointed
+ *  at their contributions page instead of a spinner that never ends. */
+const POLL_TIMEOUT_MS = 45_000;
+
+/** One free-form suggestion about a story — a fix to its title, summary or
+ *  translation, or a correction in any language. The reviewer decides which
+ *  fields it changes. */
 export function SuggestForm({
   itemId,
-  field,
   lang,
   userId,
   userName,
@@ -14,7 +23,6 @@ export function SuggestForm({
   onInitialTextConsumed,
 }: {
   itemId: string;
-  field: "title" | "summary";
   lang: Lang;
   userId: string;
   userName: string;
@@ -26,26 +34,97 @@ export function SuggestForm({
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle"
-  );
+  // A hint for the reviewer: the language the reader was looking at.
+  // Selection-to-suggest only runs over Vietnamese text, so it hints vi.
+  const [hintLang, setHintLang] = useState<Lang>(lang);
+  const [status, setStatus] = useState<
+    "idle" | "sending" | "reviewing" | "done" | "timeout" | "error"
+  >("idle");
   const [error, setError] = useState<string | null>(null);
+  const [submittedId, setSubmittedId] = useState<string | null>(null);
+  const [verdict, setVerdict] = useState<SuggestionStatusView | null>(null);
+
+  // Poll the owner-only status until the instant review lands a verdict.
+  useEffect(() => {
+    if (status !== "reviewing" || !submittedId) return;
+    let cancelled = false;
+    const startedAt = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      try {
+        const token = await getToken();
+        const row = await fetchSuggestionStatus({
+          data: { id: submittedId },
+          ...bearerHeaders(token),
+        });
+        if (cancelled) return;
+        if (row && row.status !== "pending" && row.status !== "reviewing") {
+          setVerdict(row);
+          setStatus("done");
+          return;
+        }
+      } catch {
+        // A failed poll is retried until the timeout.
+      }
+      if (cancelled) return;
+      if (Date.now() - startedAt >= POLL_TIMEOUT_MS) {
+        setStatus("timeout");
+        return;
+      }
+      timer = setTimeout(poll, POLL_INTERVAL_MS);
+    };
+    timer = setTimeout(poll, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [status, submittedId, getToken]);
 
   useEffect(() => {
     if (!initialText) return;
     setOpen(true);
+    setHintLang("vi");
     setText(`"${initialText}" → `);
     onInitialTextConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialText]);
 
-  if (status === "sent") {
+  const vi = lang === "vi";
+  if (status === "reviewing") {
     return (
-      <span className="text-xs text-muted-foreground">
-        {lang === "vi"
-          ? "Đã gửi — đang chờ duyệt"
-          : "Submitted — pending review"}
+      <span className="text-xs text-muted-foreground" aria-live="polite">
+        {vi
+          ? "Đã gửi — AI đang duyệt góp ý…"
+          : "Submitted — the reviewer is checking it…"}
       </span>
+    );
+  }
+  if (status === "timeout") {
+    return (
+      <span className="text-xs text-muted-foreground" aria-live="polite">
+        {vi
+          ? "Vẫn đang duyệt. Xem kết quả ở "
+          : "Still reviewing. See the result in "}
+        <a href="/submit" className="underline underline-offset-2">
+          {vi ? "đóng góp của bạn" : "your contributions"}
+        </a>
+        .
+      </span>
+    );
+  }
+  if (status === "done" && verdict) {
+    return (
+      <div className="w-full max-w-full" aria-live="polite">
+        <SuggestionVerdict
+          status={verdict.status}
+          suggestion={verdict.suggestion}
+          appliedText={verdict.applied_text}
+          changes={verdict.applied_changes}
+          rating={verdict.rating}
+          note={verdict.review_note}
+          lang={lang}
+        />
+      </div>
     );
   }
 
@@ -56,7 +135,7 @@ export function SuggestForm({
         onClick={() => setOpen(true)}
         className="text-xs text-accent underline underline-offset-2 hover:no-underline"
       >
-        {lang === "vi" ? "Góp ý bản dịch" : "Suggest better translation"}
+        {vi ? "Góp ý chỉnh sửa" : "Suggest an edit"}
       </button>
     );
   }
@@ -71,17 +150,18 @@ export function SuggestForm({
         setError(null);
         try {
           const token = await getToken();
-          await submitSuggestion({
+          const { id } = await submitSuggestion({
             data: {
               item_id: itemId,
-              field,
+              lang: hintLang,
               suggestion: text,
               user_id: userId,
               user_name: userName,
             },
             ...bearerHeaders(token),
           });
-          setStatus("sent");
+          setSubmittedId(id);
+          setStatus("reviewing");
         } catch (err) {
           setStatus("error");
           setError(err instanceof Error ? err.message : null);
@@ -94,9 +174,9 @@ export function SuggestForm({
         rows={3}
         maxLength={2000}
         placeholder={
-          lang === "vi"
-            ? "Đề xuất bản dịch tốt hơn..."
-            : "Suggest a better translation..."
+          vi
+            ? "Tiêu đề, tóm tắt hay bản dịch cần sửa gì? Viết bằng ngôn ngữ nào cũng được."
+            : "What should change in the title, summary or translation? Any language is fine."
         }
         className="min-h-16 w-full max-w-full resize-y rounded-md border border-border bg-background p-2 text-sm"
       />
@@ -127,7 +207,6 @@ export function SuggestForm({
 
 export function SuggestFormGate({
   itemId,
-  field,
   lang,
   useUser,
   useAuth,
@@ -135,7 +214,6 @@ export function SuggestFormGate({
   onInitialTextConsumed,
 }: {
   itemId: string;
-  field: "title" | "summary";
   lang: Lang;
   useUser: any;
   useAuth: any;
@@ -149,7 +227,6 @@ export function SuggestFormGate({
   return (
     <SuggestForm
       itemId={itemId}
-      field={field}
       lang={lang}
       userId={user.id}
       userName={userName}

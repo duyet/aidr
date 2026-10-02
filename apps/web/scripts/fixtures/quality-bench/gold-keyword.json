@@ -1,0 +1,190 @@
+{
+  "note": "Rule: ai=true when the story is substantively about AI/ML (models, agents, AI products, AI labs, AI chips/compute), not when it only mentions AI in passing. Ambiguous titles are left out. Positives come from sources the prefilter does NOT gate (so a miss can show). Recall is weighted above precision: a dropped real story costs more than noise reaching the scorer.",
+  "titles": [
+    {
+      "title": "Cohere Launches Embed 5 Models With Top ViDoRe V3 Scores",
+      "ai": true
+    },
+    {
+      "title": "Modal Launches Multi Node Clusters for 1T Parameter Models",
+      "ai": true
+    },
+    {
+      "title": "Allen AI Releases Open Training Stack for 1 Trillion Parameter MoE Models",
+      "ai": true
+    },
+    {
+      "title": "Black Forest Labs Ships FLUX 3 Image for High Precision Editing",
+      "ai": true
+    },
+    {
+      "title": "Runway Unveils Project Continuum OS Based on Real-Time Video",
+      "ai": true
+    },
+    {
+      "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+      "ai": true
+    },
+    {
+      "title": "SpaceXAI Launches Grok 4.7 on Gemini Enterprise Agent Platform",
+      "ai": true
+    },
+    {
+      "title": "Measuring Human-Like Bias in LLMs? A Critique of Human-Derived Bias Constructs in LLM Evaluation",
+      "ai": true
+    },
+    {
+      "title": "When Do Causal World Models Help Modular LLM Agents",
+      "ai": true
+    },
+    {
+      "title": "Doxx.net Raises $38M for P2P Networking for AI Agents",
+      "ai": true
+    },
+    {
+      "title": "Grok Launches Agent Dashboard to Manage Multiple AI Agents",
+      "ai": true
+    },
+    { "title": "ChatGPT can now virtually try on clothes for you", "ai": true },
+    {
+      "title": "Ideogram says its new model can edit part of an image without messing up the rest",
+      "ai": true
+    },
+    {
+      "title": "Introducing Olmo-core 3: Open, scalable training infrastructure for large MoEs",
+      "ai": true
+    },
+    {
+      "title": "NVIDIA Releases Kumo Tabular: Open Tabular Foundation Models That Predict New Rows in a Single Forward Pass",
+      "ai": true
+    },
+    {
+      "title": "Perplexity Open Sources 9B Parameter SOTA Embedding Model",
+      "ai": true
+    },
+    {
+      "title": "GPT-6.1 Sol replaces GPT-6 Sol after just 7 days, with near-Astra intelligence",
+      "ai": true
+    },
+    {
+      "title": "Amazon releases its own Jev clone as decision models flood the web",
+      "ai": true
+    },
+    {
+      "title": "Tencent Leases 100,000 Oracle AI Chips Unavailable in China for $7B",
+      "ai": true
+    },
+    {
+      "title": "Creatify Launches Boreal-H3 for High Fidelity Video Ads",
+      "ai": true
+    },
+    { "title": "Introducing SynthID Bio", "ai": true },
+    { "title": "Codex Pricing: Pro has unlimited 5.6 usage", "ai": true },
+    {
+      "title": "Physis-Lang: Self-Evolving Physical Language That Lifts Cosmos 3 Past Veo 3.1 on Physics Benchmarks",
+      "ai": true
+    },
+    {
+      "title": "Accelerating Spatio-Temporal Attention for Video Diffusion on TPUs",
+      "ai": true
+    },
+    {
+      "title": "CoreWeave Deploys First Production NVIDIA Rubin NVL72 for Cognition",
+      "ai": true
+    },
+    { "title": "Google ra Gemini 4 Argon mạnh nhất của công ty", "ai": true },
+    {
+      "title": "Tác nhân AI Trung Quốc cũng gian lận trong thử nghiệm",
+      "ai": true
+    },
+    { "title": "OpenAI Adds MCP Server Hosting to ChatGPT Sites", "ai": true },
+    {
+      "title": "Anthropic Launches Claude Code Mods for User Customization",
+      "ai": true
+    },
+    {
+      "title": "Show HN: Janus – Go binary that runs GGUF models via Vulkan on AMD/Intel/Nvidia",
+      "ai": true
+    },
+    {
+      "title": "AI Web Text Hits 31% and Harms Language Model Training",
+      "ai": true
+    },
+    {
+      "title": "Fed Barr Sees Only 2 Months of 2% Inflation in Past 20 Months",
+      "ai": false
+    },
+    {
+      "title": "Long Lake Acquires Amex GBT for $6.3B in 40th Deal",
+      "ai": false
+    },
+    {
+      "title": "White House Projects $49 Trillion Cost for DSA Policies",
+      "ai": false
+    },
+    {
+      "title": "Senators Introduce 400 Page Bipartisan Act to Speed Energy Permits",
+      "ai": false
+    },
+    {
+      "title": "MI5 Issues First Independent Espionage Alert Over 100 Academics",
+      "ai": false
+    },
+    {
+      "title": "US September Layoffs Hit Lowest Level Since 2022",
+      "ai": false
+    },
+    {
+      "title": "China Extends US Trade Truce Through January 2027",
+      "ai": false
+    },
+    {
+      "title": "US Reaffirms Taiwan Policy After Xi Visit, Confirms $11 Billion in Arms Sales",
+      "ai": false
+    },
+    {
+      "title": "Phát hành bộ tem về Quyền Chủ tịch nước Huỳnh Thúc Kháng",
+      "ai": false
+    },
+    {
+      "title": "Apple cho chọn sẵn màu, cấu hình iPhone Duo trước ngày đặt mua",
+      "ai": false
+    },
+    {
+      "title": "Vô lăng gaming 2 triệu đồng thu hút người mua tập lái",
+      "ai": false
+    },
+    { "title": "Typeclasses vs Modules", "ai": false },
+    { "title": "We Should be Able to Change our Languages", "ai": false },
+    { "title": "He Built This City", "ai": false },
+    {
+      "title": "Minneapolis Council Mandates Human Monitors for Robotaxis in 7-4 Vote",
+      "ai": false
+    },
+    {
+      "title": "Apple Debuts 6 Inch Home Hub Oct 13 Under CEO John Ternus",
+      "ai": false
+    },
+    {
+      "title": "South Korea Kospi Leads Global Q3 Losses With 18.8% Drop",
+      "ai": false
+    },
+    { "title": "Lists that keep track of their reversal", "ai": false },
+    {
+      "title": "Rust 1.92 Released With Faster Compile Times",
+      "ai": false,
+      "synthetic": true
+    },
+    {
+      "title": "Mail Server Phishing Campaign Targets Retailers",
+      "ai": false,
+      "synthetic": true
+    },
+    {
+      "title": "Model Railroad Club Opens New Exhibition Hall",
+      "ai": false,
+      "synthetic": true
+    },
+    { "title": "Rag Rugs: A Weaving Tutorial", "ai": false, "synthetic": true }
+  ]
+}

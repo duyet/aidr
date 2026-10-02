@@ -34,11 +34,15 @@ import {
 import type { Env } from "../types.js";
 import { checkAuth } from "./auth.js";
 import {
+  deleteDayVideo,
   deleteSource,
   getStatus,
   isHandlerError,
   listSources,
+  previewRanking,
+  previewTldr,
   pushItems,
+  setDayVideo,
   triggerIngest,
   upsertSource,
 } from "./handlers.js";
@@ -133,9 +137,26 @@ async function callAdminTool(
     case "delete_source":
       return deleteSource(env, args.id as string);
     case "trigger_ingest":
-      return triggerIngest(env);
+      return triggerIngest(env, {
+        force: args.force,
+        dryRun: args.dryRun,
+        steps: args.steps,
+      });
     case "get_status":
       return getStatus(env);
+    case "preview_ranking":
+      return previewRanking(env, args.limit);
+    case "preview_tldr":
+      return previewTldr(env);
+    case "set_day_video":
+      return setDayVideo(
+        env,
+        args.date,
+        { video: args.video, short: args.short, title: args.title },
+        "mcp"
+      );
+    case "delete_day_video":
+      return deleteDayVideo(env, args.date);
   }
 }
 

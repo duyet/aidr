@@ -112,12 +112,12 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className={itemClassName}>
           <Link
-            to="/submit"
+            to="/contribute"
             search={{ lang: navigationLang }}
-            onClick={() => track("nav_click", { to: "/submit" })}
+            onClick={() => track("nav_click", { to: "/contribute" })}
           >
             <Plus aria-hidden />
-            Submit
+            Contribute
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className={itemClassName}>

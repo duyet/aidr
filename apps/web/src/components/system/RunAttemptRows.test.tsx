@@ -37,8 +37,7 @@ afterEach(() => {
 });
 
 describe("RunAttemptRows", () => {
-  // A preset or router alias hides which model ran; the panel must show
-  // the whole route so a failing upstream model is visible.
+  // A preset or router alias hides which model ran; the row must name it.
   it("shows the preset, the model it resolved to, and the provider", () => {
     const el = render([
       {
@@ -47,30 +46,39 @@ describe("RunAttemptRows", () => {
         provider: "AtlasCloud",
       },
     ]);
-    expect(el.textContent).toContain(
-      "@preset/aidr→dots-studio/dots-3-note-preview"
-    );
+    expect(el.textContent).toContain("@preset/aidr");
+    expect(el.textContent).toContain("dots-studio/dots-3-note-preview");
     expect(el.textContent).toContain("via AtlasCloud");
   });
 
-  it("falls back to the requested model for rows without a route", () => {
-    const el = render([{ ...base, model: "typesafe/jev" }]);
-    expect(el.textContent).toContain("typesafe/jev");
-    expect(el.textContent).not.toContain("→");
-  });
-
-  it("puts the error and its code on a failed attempt", () => {
+  // A 429 on the preset followed by a fallback success is one call that
+  // worked, not a failure plus an unrelated success.
+  it("puts a call's retries on one row and counts calls, not attempts", () => {
     const el = render([
       {
         ...base,
+        ts: 1,
         ok: false,
-        tokens: 0,
+        error: "Provider rate limit reached",
+        errorCode: "rate_limited",
+        errorStatus: 429,
+      },
+      { ...base, ts: 2, model: "anyrouter/auto" },
+      {
+        ...base,
+        ts: 3,
+        ok: false,
         error: "Provider request timed out",
         errorCode: "timeout",
       },
     ]);
-    expect(el.textContent).toContain("1 calls · 0 ok · 1 failed");
+    expect(el.querySelectorAll("li")).toHaveLength(2);
+    expect(el.textContent).toContain("2 calls · 1 ok · 1 failed · 3 attempts");
     expect(el.textContent).toContain("Provider request timed out");
-    expect(el.textContent).toContain("timeout");
+  });
+
+  it("shows the price when AnyRouter reported one", () => {
+    const el = render([{ ...base, costUsd: 0.0012 } as LlmCallRow]);
+    expect(el.textContent).toContain("$0.0012");
   });
 });

@@ -18,14 +18,16 @@ import {
 } from "../tldr-lang.js";
 
 describe("buildTopItemsQuery", () => {
-  it("gates on status='published', ranks by rank_score DESC, caps at 16", () => {
+  it("gates on status='published', ranks by rank_score DESC, reads source_id", () => {
     const { sql } = buildTopItemsQuery(Date.now());
     expect(sql).toContain("status = 'published'");
     expect(sql).toContain("published_at >= ?");
     expect(sql).toContain("translations");
     expect(sql).toContain("title_vi");
     expect(sql).toMatch(/ORDER BY i.rank_score DESC/);
-    expect(sql).toMatch(/LIMIT 16/);
+    // The pool is wider than the edition: the source-family cap picks from it.
+    expect(sql).toContain("i.source_id");
+    expect(sql).not.toMatch(/LIMIT 16\b/);
   });
 
   it("normalizes `since` to epoch seconds, 24h before now", () => {

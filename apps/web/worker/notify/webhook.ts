@@ -9,6 +9,7 @@ import type {
   SendResult,
   StoryPayload,
 } from "./types.js";
+import { TRENDING_BURST_MIN_IMPORTANCE } from "./types.js";
 
 /**
  * Generic JSON/Slack webhook. `NOTIFY_WEBHOOK_URL` posts the normalized
@@ -62,7 +63,13 @@ export function digestEvent(digest: DailyDigest): AlertEvent {
 
 export function storyEvent(story: StoryPayload): AlertEvent {
   return {
-    severity: story.rank_score >= 30 ? "warning" : "info",
+    // Every story reaching here already cleared the relative trending bar;
+    // "warning" marks the exceptional ones by importance, which (unlike an
+    // absolute rank) survives scale changes in the rank formula.
+    severity:
+      (story.llm_importance ?? 0) >= TRENDING_BURST_MIN_IMPORTANCE
+        ? "warning"
+        : "info",
     source: "aidr.today",
     title: story.title,
     summary: story.summary ?? "",

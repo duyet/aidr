@@ -64,6 +64,14 @@ function PrivacyPage() {
           <code>chrome.storage</code> on your device so a new tab still paints
           if the network is down.
         </li>
+        <li>
+          <strong className="text-foreground">Email contributions.</strong> If
+          you sign in and send mail to submit@aidr.today, we keep the text you
+          wrote (not quoted mail or attachments), its links and the sending
+          address until we have acknowledged it, then drop the address. Text
+          kept as a comment is cleared after 90 days. Mail from addresses not
+          tied to an account keeps no content, only a reason and a hash.
+        </li>
       </ul>
       <p className="text-muted-foreground">
         There is no account, no advertising, and no sale of data. We do not use

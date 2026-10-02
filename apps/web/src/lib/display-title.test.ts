@@ -52,3 +52,15 @@ describe("localizedTitle", () => {
     });
   });
 });
+
+describe("localizedTitle wire markers", () => {
+  // Rows stored before ingest stripped markers still paint without them.
+  it("drops UPDATE: in English and Cập nhật: in Vietnamese", () => {
+    const item = {
+      title: "UPDATE: Qwen3.8 tops Cline",
+      title_vi: "Cập nhật: Qwen3.8 dẫn đầu Cline",
+    };
+    expect(localizedTitle(item, "en").text).toBe("Qwen3.8 tops Cline");
+    expect(localizedTitle(item, "vi").text).toBe("Qwen3.8 dẫn đầu Cline");
+  });
+});

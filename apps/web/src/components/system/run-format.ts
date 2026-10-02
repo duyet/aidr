@@ -141,7 +141,24 @@ export function formatSafeError(value: unknown): string {
     );
 }
 
+/** Chart label for a stored model id. Known families get a short name. */
+export function tokenBurnModelName(model: string): string {
+  const id = model.trim().toLowerCase();
+  if (!id) return "Unknown";
+  if (id.includes("jev")) return "Jev";
+  if (id.startsWith("anyrouter/") || id.startsWith("@preset/"))
+    return "AnyRouter";
+  if (id.includes("laguna")) return "Laguna";
+  if (id.includes("glm")) return "GLM";
+  if (id.includes("ling")) return "Ling";
+  if (id.includes("gemini")) return "Gemini";
+  const short = shortModel(model);
+  return short ? short.charAt(0).toUpperCase() + short.slice(1) : "Unknown";
+}
+
 export function shortModel(model: string): string {
+  // A preset's name is the whole id: "@preset/aidr" → "aidr" reads as a model.
+  if (model.startsWith("@")) return model;
   // anyrouter/auto → auto; provider/org/model-name → model-name
   const parts = model.split("/");
   return parts[parts.length - 1] || model;
@@ -192,7 +209,48 @@ export function hasRunDetails(
   );
 }
 
-export type RunStatus = "ok" | "error" | "empty" | "in_progress" | "unknown";
+export type RunStatus =
+  | "ok"
+  | "degraded"
+  | "error"
+  | "empty"
+  | "in_progress"
+  | "unknown";
+
+/** Longest a run may stay open before it counts as stalled (runs take ~10m). */
+export const RUN_STALL_SEC = 30 * 60;
+
+export type StepState = "ok" | "skipped" | "degraded" | "failed";
+
+const STEP_FAILURE_RE = /\b(?:fail(?:ed|ure)?|error|exhausted|timed out)\b/i;
+const STEP_FALLBACK_RE =
+  /\b(?:fail(?:ed|ure)?|error|exhausted|timed out|thin|partial)\b|batch_failed/i;
+const STEP_IDLE_RE = /^(?:skipped\b|0 (?:pending|candidates)\b|recording$)/i;
+
+/** One step's outcome from its recorded action and reason. A step that did
+ *  only part of its work ("translated 2/3") or finished on a fallback
+ *  ("generated" + "LLM thin (chain exhausted …)") is degraded, not ok. */
+export function stepState(step: {
+  action: string;
+  reason?: string;
+}): StepState {
+  const action = step.action.trim();
+  const ratio = /(\d+)\s*\/\s*(\d+)/.exec(action);
+  if (ratio) {
+    const done = Number(ratio[1]);
+    const total = Number(ratio[2]);
+    if (total > 0 && done === 0) return "failed";
+    if (done < total) return "degraded";
+  }
+  if (STEP_FAILURE_RE.test(action)) return "failed";
+  // "skipped" because the step itself threw ("tldr step failed") is a failure.
+  if (STEP_IDLE_RE.test(action))
+    return step.reason && STEP_FAILURE_RE.test(step.reason)
+      ? "failed"
+      : "skipped";
+  if (step.reason && STEP_FALLBACK_RE.test(step.reason)) return "degraded";
+  return "ok";
+}
 
 /** Lifecycle of the lazily fetched per-run attempt rows. */
 export type RunAttemptsState =
@@ -206,8 +264,25 @@ export type RunAttemptsState =
 export function runStatus(run: WorkflowRunRow): RunStatus {
   if (run.error) return "error";
   if (run.started_at != null && run.finished_at == null) return "in_progress";
-  if (run.items_fetched === 0) return "empty";
-  if (run.items_fetched == null) return "unknown";
+  // The open-run row is written with finished_at = started_at and only the
+  // open-run step; close-run replaces it with every step. So a row that
+  // still holds just open-run is running, or stalled past RUN_STALL_SEC.
+  const recorded = safeRunSteps(run.stats);
+  if (
+    run.started_at != null &&
+    recorded.length === 1 &&
+    recorded[0]?.name === "open-run"
+  ) {
+    const ageSec = Date.now() / 1000 - run.started_at;
+    return ageSec < RUN_STALL_SEC ? "in_progress" : "error";
+  }
+  if (run.items_fetched === 0 && !runMode(run)) return "empty";
+  if (run.items_fetched == null && !runMode(run)) return "unknown";
+  // A run is only ok when every step is: one failed or partial step means
+  // readers may be missing translations or a full TL;DR.
+  const states = safeRunSteps(run.stats).map(stepState);
+  if (states.some((state) => state === "failed" || state === "degraded"))
+    return "degraded";
   return "ok";
 }
 
@@ -246,6 +321,29 @@ export function fallbackTransitions(
     }
   }
   return transitions;
+}
+
+/** Identical transitions with a count, most frequent first, so a chain that
+ *  fell back the same way 23 times reads as one line. */
+export function groupFallbackTransitions(
+  transitions: FallbackTransition[]
+): (FallbackTransition & { count: number })[] {
+  const groups = new Map<string, FallbackTransition & { count: number }>();
+  for (const t of transitions) {
+    const key = `${t.task}\u0000${t.from}\u0000${t.to}`;
+    const group = groups.get(key);
+    if (group) group.count++;
+    else groups.set(key, { ...t, count: 1 });
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count);
+}
+
+/** A run asked to skip sending (dry run) or to run only some steps. Such
+ *  runs fetch nothing by design, so "0 fetched" must not read as empty. */
+export function runMode(run: WorkflowRunRow): "dry-run" | "partial" | null {
+  if (run.stats?.mode === "dry-run") return "dry-run";
+  if (Array.isArray(run.stats?.selectedSteps)) return "partial";
+  return null;
 }
 
 /** Provider/fallback failures the workflow only reports inside a step's
@@ -572,4 +670,103 @@ export function llmTokens(
   llm?: RunLlmSummary
 ): number {
   return normalizeRunTokens(stats, llm).total ?? 0;
+}
+
+export interface FailedAttemptGroup {
+  task: string;
+  model: string;
+  error: string;
+  errorCode: string | null;
+  count: number;
+}
+
+/** Collapses identical failures (same task, model and error) into one line
+ *  with a count, most frequent first, so 13 identical timeouts read as one
+ *  problem instead of 13 rows. */
+export function groupFailedAttempts(
+  attempts: LlmCallRow[]
+): FailedAttemptGroup[] {
+  const groups = new Map<string, FailedAttemptGroup>();
+  for (const attempt of attempts) {
+    if (attempt.ok) continue;
+    const task = formatSafeDetail(attempt.task, 80);
+    const model = formatSafeDetail(attempt.model, 160);
+    const error = formatSafeError(attempt.error);
+    const key = `${task}\u0000${model}\u0000${attempt.errorCode ?? ""}\u0000${error}`;
+    const group = groups.get(key);
+    if (group) group.count++;
+    else
+      groups.set(key, {
+        task,
+        model,
+        error,
+        errorCode: attempt.errorCode,
+        count: 1,
+      });
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count);
+}
+
+/** Attempt row plus the per-invocation id and price (migration 0034). */
+export type ChainAttempt = LlmCallRow & {
+  callId?: string | null;
+  costUsd?: number | null;
+};
+
+export interface ChainCall {
+  key: string;
+  task: string;
+  hops: ChainAttempt[];
+  ok: boolean;
+  durationMs: number;
+  tokens: number;
+  /** Null when AnyRouter reported no price for any hop. */
+  costUsd: number | null;
+}
+
+/** One fallback-chain invocation per row: its attempts (hops) in order.
+ *  Rows logged with a call id group exactly; older rows are grouped per
+ *  task, closing a call at its first success. */
+export function groupChainCalls(attempts: ChainAttempt[]): ChainCall[] {
+  const sorted = [...attempts].sort((a, b) => a.ts - b.ts);
+  const calls: ChainCall[] = [];
+  const byId = new Map<string, ChainCall>();
+  const openByTask = new Map<string, ChainCall>();
+  const start = (a: ChainAttempt, key: string): ChainCall => {
+    const call: ChainCall = {
+      key,
+      task: a.task,
+      hops: [],
+      ok: false,
+      durationMs: 0,
+      tokens: 0,
+      costUsd: null,
+    };
+    calls.push(call);
+    return call;
+  };
+  sorted.forEach((a, index) => {
+    let call: ChainCall;
+    if (a.callId) {
+      call = byId.get(a.callId) ?? start(a, a.callId);
+      byId.set(a.callId, call);
+    } else {
+      const open = openByTask.get(a.task);
+      call = open && !open.ok ? open : start(a, `${a.task}-${index}`);
+      openByTask.set(a.task, call);
+    }
+    call.hops.push(a);
+    call.ok = call.ok || a.ok;
+    call.durationMs += a.durationMs;
+    call.tokens += a.tokens;
+    if (typeof a.costUsd === "number" && Number.isFinite(a.costUsd))
+      call.costUsd = (call.costUsd ?? 0) + a.costUsd;
+  });
+  return calls;
+}
+
+export function formatCostUsd(value: number): string {
+  if (value === 0) return "$0";
+  if (value < 0.0001) return "<$0.0001";
+  return `$${value < 0.01 ? value.toFixed(4) : value.toFixed(3)}`;
 }

@@ -463,6 +463,20 @@ describe("getModelChains", () => {
     expect(chains.decisions).toEqual(["typesafe/jev", ...chat]);
   });
 
+  it("lists the decision router ahead of Jev on scoring only", () => {
+    const chains = getModelChains({
+      ANYROUTER_MODEL: chat.join(","),
+      ANYROUTER_JEV_MODEL: "typesafe/jev",
+      ANYROUTER_DECISION_MODEL: "anyrouter/decision",
+    });
+    expect(chains.scoring).toEqual([
+      "anyrouter/decision",
+      "typesafe/jev",
+      ...chat,
+    ]);
+    expect(chains.decisions).toEqual(["typesafe/jev", ...chat]);
+  });
+
   it("does not put Jev on translation or tldr", () => {
     const chains = getModelChains({
       ANYROUTER_MODEL: chat.join(","),

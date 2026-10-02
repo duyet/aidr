@@ -1,5 +1,9 @@
 import { nn } from "./d1-bind.js";
-import { buildRunStats, serializeRunStats } from "./run-stats.js";
+import {
+  buildRunStats,
+  type RunStats,
+  serializeRunStats,
+} from "./run-stats.js";
 import { sanitizeRunError, sanitizeRunStatsJson } from "./telemetry-safe.js";
 
 /** Upsert used by ingest open-run / close-run. ON CONFLICT so a Workflow
@@ -30,6 +34,11 @@ ON CONFLICT(id) DO UPDATE SET
  * and not INSERT RETURNING — is the 2xx gate. */
 export const WORKFLOW_RUN_STARTED_AT_ORDER_SQL =
   "CASE WHEN started_at > 1000000000000 THEN started_at / 1000 ELSE started_at END";
+
+/** WHERE fragment that leaves dry runs (`stats.mode = "dry-run"`) out of
+ * history readers: their skipped sends and previewed TL;DR say nothing
+ * about the live pipeline's health or a source's streak. */
+export const NOT_DRY_RUN_SQL = `(stats IS NULL OR stats NOT LIKE '%"mode":"dry-run"%')`;
 
 export const SELECT_LATEST_WORKFLOW_RUN_ID_SQL = `SELECT id FROM workflow_runs ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT 1`;
 
@@ -148,7 +157,8 @@ export type OpenedRunStepName = "create" | "open-run";
 export function openedWorkflowRun(
   id: string,
   startedAt: number,
-  stepName: OpenedRunStepName
+  stepName: OpenedRunStepName,
+  extra: Pick<RunStats, "mode" | "selectedSteps"> = {}
 ): WorkflowRunRecord {
   return {
     id,
@@ -159,6 +169,7 @@ export function openedWorkflowRun(
     error: null,
     statsJson: serializeRunStats(
       buildRunStats({
+        ...extra,
         steps: [{ name: stepName, action: "started" }],
       })
     ),
@@ -172,11 +183,15 @@ export async function persistOpenedWorkflowRun(
   db: D1Runner | undefined,
   id: string | null | undefined,
   startedAt: number,
-  stepName: OpenedRunStepName
+  stepName: OpenedRunStepName,
+  extra?: Pick<RunStats, "mode" | "selectedSteps">
 ): Promise<void> {
   if (!db || !id) return;
   try {
-    await persistWorkflowRun(db, openedWorkflowRun(id, startedAt, stepName));
+    await persistWorkflowRun(
+      db,
+      openedWorkflowRun(id, startedAt, stepName, extra)
+    );
   } catch (error) {
     console.error(`${stepName} d1 failed:`, error);
   }

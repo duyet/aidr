@@ -123,7 +123,7 @@ const LANG_PROPERTY = {
 } as const;
 
 /**
- * The scoring pipeline's fixed 10-value taxonomy, imported from its one
+ * The scoring pipeline's fixed category taxonomy, imported from its one
  * definition. A second copy here would be a third taxonomy that silently
  * disagrees with `/api/feed`'s `category` values.
  */

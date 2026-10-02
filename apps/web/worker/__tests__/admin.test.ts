@@ -13,6 +13,7 @@ import {
 } from "../admin/handlers.js";
 import { handleMcpRequest } from "../admin/mcp.js";
 import { sha256Hex } from "../hash.js";
+import type { IngestTickResult } from "../ingest-schedule.js";
 import * as llm from "../llm.js";
 import { tldrSnapshotDate } from "../tldr.js";
 import type { Env } from "../types.js";
@@ -84,7 +85,7 @@ class FakeD1 {
 
     if (
       sql.startsWith(
-        "SELECT id, title, summary, source_id, points, comments, published_at, source_lang, (SELECT COUNT(*) FROM item_sources"
+        "SELECT id, title, summary, published_at, source_lang, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
       )
     ) {
       const [since] = args as [number];
@@ -95,7 +96,7 @@ class FakeD1 {
               row.status === "published" &&
               Number(row.published_at ?? 0) >= since
           )
-          .map((row) => ({ ...row, source_count: 0 })),
+          .map((row) => ({ ...row, merged_members: "[]" })),
       };
     }
 
@@ -317,9 +318,8 @@ class FakeD1 {
       return { success: true };
     }
 
-    if (
-      sql.startsWith("SELECT i.id, i.title, i.summary, tr.title AS title_vi")
-    ) {
+    // The TL;DR top-items read; match its shape, not its exact column list.
+    if (/^SELECT i\.id,.*tr\.title AS title_vi/s.test(sql)) {
       const [since] = args as [number];
       return {
         results: Array.from(this.items.values())
@@ -358,12 +358,12 @@ class FakeD1 {
 
     if (
       sql.startsWith(
-        "SELECT id, points, comments, published_at, llm_relevance, llm_importance, llm_quality, (SELECT COUNT(*) FROM item_sources"
+        "SELECT id, published_at, llm_relevance, llm_importance, llm_quality, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
       )
     ) {
       const [id] = args as [string];
       const row = this.items.get(id);
-      return row ? { ...row, source_count: 0 } : null;
+      return row ? { ...row, merged_members: "[]" } : null;
     }
 
     if (sql.startsWith("UPDATE items SET status = ? WHERE id = ?")) {
@@ -1033,7 +1033,7 @@ describe("updateItem", () => {
 describe("triggerIngest", () => {
   it("creates a workflow instance when no scheduler is bound", async () => {
     const env = makeEnv();
-    const result = await triggerIngest(env);
+    const result = (await triggerIngest(env)) as IngestTickResult;
     expect(result.skipped).toBe(false);
     expect(result.id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -1065,7 +1065,7 @@ describe("triggerIngest", () => {
         }),
       } as unknown as DurableObjectNamespace,
     });
-    const result = await triggerIngest(env);
+    const result = (await triggerIngest(env)) as IngestTickResult;
     expect(result).toEqual({
       id: null,
       skipped: true,
@@ -1099,7 +1099,9 @@ describe("triggerIngest", () => {
         }),
       } as unknown as DurableObjectNamespace,
     });
-    const result = await triggerIngest(env, { force: true });
+    const result = (await triggerIngest(env, {
+      force: true,
+    })) as IngestTickResult;
     expect(canStart).toHaveBeenCalledWith({ force: true });
     expect(result.skipped).toBe(false);
     expect(startInstance).not.toHaveBeenCalled();
@@ -1122,7 +1124,9 @@ describe("triggerIngest", () => {
       error: null,
       stats: "{}",
     });
-    const result = await triggerIngest(env, { force: true });
+    const result = (await triggerIngest(env, {
+      force: true,
+    })) as IngestTickResult;
     expect(result.skipped).toBe(false);
     expect(result.id).not.toBe(leftover);
     const runs = (env.DB as unknown as FakeD1).workflowRuns;

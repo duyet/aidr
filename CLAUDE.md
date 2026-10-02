@@ -28,3 +28,5 @@ pnpm --filter @aidr/web dev
 Narrowest first: `pnpm exec biome lint <path>`, then `pnpm --filter @aidr/web test` / `check-types`. Root: `pnpm run lint`, `pnpm run test`, `pnpm run check-types`.
 
 Live public surfaces: `.agents/skills/verify-aidr/bin/verify-aidr doctor` then `drive <feature>` (skill `.agents/skills/verify-aidr/`).
+
+Audit production or dry-run pipeline steps (no email/Telegram): `pnpm --filter @aidr/web agent audit` / `run --steps tldr --wait` — see `apps/web/scripts/aidr-agent.ts` and ALGORITHM.md "Dry runs".

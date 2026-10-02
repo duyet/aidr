@@ -375,11 +375,13 @@ describe("handleClerkWebhook", () => {
       received: true,
       action: "upserted",
     });
-    expect(statements).toHaveLength(1);
+    expect(statements).toHaveLength(2);
     expect(statements[0].sql).toContain(CLERK_USER_UPSERT_SQL);
+    expect(statements[1].sql).toContain("DELETE FROM clerk_verified_emails");
     expect(statements[0].args).toEqual([
       "user_2abc",
       "duyet@example.com",
+      0, // the fixture's address carries no Clerk verification
       1_700_000_000,
       NOW_SEC,
     ]);
