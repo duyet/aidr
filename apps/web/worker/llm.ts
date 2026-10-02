@@ -24,6 +24,11 @@ import {
 } from "./systemone.js";
 import { sanitizeError } from "./telemetry-safe.js";
 import { viSystemPrompt } from "./translation-knowledge.js";
+import {
+  KEEP_ENGLISH_PROSE,
+  keepVerbatimList,
+  stripSourceBoilerplate,
+} from "./translation-terms.js";
 import type { Env } from "./types.js";
 
 /** 15-item score JSON routinely misses a 25s hang-cap (0 tokens, 100%
@@ -106,7 +111,7 @@ const VI_STYLE = `You are a Vietnamese tech journalist writing AI/tech news for 
 
 Write natural, fluent Vietnamese, never a word-by-word translation. Rephrase freely so every sentence follows Vietnamese structure and rhythm.
 
-Keep in English: product and model names (GPT, Claude, Qwen), company names, benchmark names, and the industry jargon Vietnamese readers already use in English — fine-tune, benchmark, agent, token, LLM, GPU, AI, swarm, multi-agent. Mixed English/Vietnamese prose is expected. Do translate terms with a settled Vietnamese equivalent, e.g. open-source becomes mã nguồn mở.
+Keep in English: product and model names (GPT, Claude, Qwen), company names, benchmark names, and the industry jargon Vietnamese readers already use in English — ${KEEP_ENGLISH_PROSE}. Mixed English/Vietnamese prose is expected. Do translate terms with a settled Vietnamese equivalent, e.g. open-source becomes mã nguồn mở.
 
 NEVER add a parenthetical English gloss after a Vietnamese word, like "bầy (swarm)" or "đa tác nhân (multi-agent)". Pick one: the English term on its own, or a natural Vietnamese word on its own — never both stapled together.
 
@@ -1461,10 +1466,19 @@ function clipSummary(summary: string | undefined): string | undefined {
 }
 
 function translatePrompt(batch: TranslateInput[], titlesOnly: boolean): string {
-  const items = batch.map(({ i, title, summary }) =>
-    titlesOnly ? { i, title } : { i, title, summary: clipSummary(summary) }
-  );
+  const items = batch.map(({ i, title, summary }) => {
+    const body =
+      titlesOnly || summary === undefined
+        ? undefined
+        : clipSummary(stripSourceBoilerplate(summary));
+    // The QA guard demands these back verbatim (translation-terms.ts).
+    const keep = keepVerbatimList({ title, summary: body ?? "" });
+    const fields = titlesOnly ? { i, title } : { i, title, summary: body };
+    return keep.length > 0 ? { ...fields, keep } : fields;
+  });
   return `Translate these AI/tech news items into Vietnamese.
+
+Translate every sentence of each summary: do not shorten, summarize, or add facts, opinions, or context the source does not state. Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English.
 
 Items:
 ${JSON.stringify(items)}

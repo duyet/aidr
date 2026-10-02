@@ -462,7 +462,10 @@ deterministic pass.
 
 EN→VI in batches, journalist style (`VI_STYLE`
 system prompt: no parenthetical glosses, no calques, keep technical
-jargon in English, few-shot anchored). Every item and translation row
+jargon in English, few-shot anchored). `translatePrompt` sends each item
+with a `keep` list from `worker/translation-terms.ts`, the same list the QA
+guard enforces, and instructs a full sentence-by-sentence translation with
+no condensing or added facts. Every item and translation row
 carries explicit `source_lang`/`target_lang` metadata; the reviewer never
 infers direction from Vietnamese diacritics. A Vietnamese source with an
 explicit `source_lang='vi'` is a real VI→EN pair: the bounded QA runtime can
@@ -475,15 +478,34 @@ then independently reviews that candidate. The review path lives in
   `ANYROUTER_TRANSLATE_MODEL` id; missing/overlapping config fails closed
   rather than self-reviewing with the generator. English generation is also
   explicit and never silently falls back.
-- The strict `translation-semantic-v3` JSON verdict scores fidelity,
-  naturalness, and confidence separately. Deterministic entity, number,
-  date, unit, polarity, and uncertainty guards can override an optimistic
-  reviewer, alongside omission, addition, and terminology checks. Prompt
-  data is delimiter-escaped and output must be one exact bounded JSON object;
-  prose, fences, duplicate keys, and oversized responses are rejected.
+- The strict `translation-semantic-v4` JSON verdict (`schema_version` 3)
+  scores fidelity, naturalness, and confidence separately and carries the
+  reviewer's literal `back_translation` of the candidate, written before it
+  compares the source (candidate is serialized first). It costs no extra
+  call and inherits the reviewer chain's disjointness; it is not a blind
+  back-translation.
+- For EN→VI, the English back-translation is compared with the English
+  source deterministically: every source number must survive, a source
+  negation or hedge must survive, and content-word recall must be ≥ 0.4
+  (else `omission`).
+- Deterministic entity, number, date, unit, polarity, uncertainty, and
+  terminology guards can override an optimistic reviewer. Names (acronyms,
+  camelCase/digit tokens such as GPT-5.6, headline names, short capitalized
+  runs) and the keep-English jargon in `worker/translation-terms.ts`
+  (fine-tune, agent, benchmark, token, open-weights, prompt, chatbot, …)
+  must appear verbatim in the Vietnamese; a miss is
+  `entities`/`terminology`. Polarity and uncertainty are one-way: a source
+  negation or hedge must survive; additions are the reviewer's `addition`
+  call. Feed chrome (aggregator "Back to live feed" lines, arXiv listing
+  headers) is stripped before every guard.
+- Prompt data is delimiter-escaped and output must be one exact bounded
+  JSON object; prose, fences, duplicate keys, and oversized responses are
+  rejected.
 - Accept requires no hard failure, fidelity/naturalness ≥ 0.7, and
   confidence ≥ 0.6. An EN→VI failure gets at most one generator repair and
-  one independent re-review. VI→EN failures are not silently substituted;
+  one independent re-review. The repair prompt receives the missing English
+  terms, the back-translation, and its divergent checks as untrusted
+  metadata, and must translate the whole source. VI→EN failures are not silently substituted;
   disagreement, abstention, low confidence, malformed output, or exhausted
   budget becomes an actionable terminal `human_review` state and preserves
   the original candidate.
@@ -516,10 +538,12 @@ then independently reviews that candidate. The review path lives in
   0025. Apply/verify migrations in order and never apply them from the QA
   worker.
 
-Quality limits: deterministic checks and an independent model review are
-risk controls, not a human-labeled quality score. There is no claim about
-translation accuracy, recall, or production quality until an operator-approved
-EN↔VI evaluation set and metrics are run.
+Quality limits: `pnpm exec tsx scripts/translation-eval.ts` runs 30 real
+production EN→VI pairs (`scripts/fixtures/translation-eval.json`). `guard`
+mode measures the deterministic guards alone; `run` mode measures reviewer
+accept rate, term preservation, and a blind back-translation instrument
+(`--candidates` reuses an earlier run's candidates to isolate QA changes).
+These are automated proxies, not a human-labeled quality score.
 
 ### 7. Rank (pure code, `worker/ranking.ts`)
 

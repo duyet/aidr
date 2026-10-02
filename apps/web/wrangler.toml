@@ -92,7 +92,9 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # Score tries ANYROUTER_DECISION_MODEL, then Jev (ANYROUTER_JEV_MODEL), then
 # ANYROUTER_MODEL.
 ANYROUTER_MODEL = "poolside/laguna-s-2.1,@preset/aidr,anyrouter/auto"
-ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,@preset/aidr,anyrouter/auto"
+# Translate drops @preset/aidr: 11/87 ok over 24h (44 rate-limited) and each
+# id costs a 20s fallback slice (2026-10-02).
+ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,anyrouter/auto"
 # TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
 # the first hop's budget, and Laguna needs 102-119s on the 26K VI prompt.
 ANYROUTER_TLDR_MODEL = "poolside/laguna-s-2.1,anyrouter/auto"
