@@ -24,9 +24,9 @@ import { SOURCE_REGISTRY } from "../sources/catalog.js";
 
 /** The lowest value any future per-source `staleAfterRuns` override may take
  *  without re-deriving the measurement. arXiv freezes across a weekend for
- *  ~54 consecutive hourly runs, so anything at or below that would flag a
+ *  ~108 consecutive runs at a 30-minute cadence, so anything at or below that would flag a
  *  healthy arXiv row every weekend. */
-const ARXIV_MIN_OVERRIDE = 72;
+const ARXIV_MIN_OVERRIDE = 144;
 
 function health(patch: Partial<SourceRunHealth> = {}): SourceRunHealth {
   return { ...emptySourceHealth(), ...patch };
@@ -202,10 +202,10 @@ describe("stale detector", () => {
     expect(isSourceStale(health({ emptyRuns: 47 }), "hn")).toBe(false);
     expect(isSourceStale(health({ emptyRuns: 48 }), "hn")).toBe(false);
     expect(
-      isSourceStale(health({ emptyRuns: 167 }), "hn"),
-      "the documented default is 168 consecutive runs (7 days at the hourly cadence)"
+      isSourceStale(health({ emptyRuns: 335 }), "hn"),
+      "the documented default is 336 consecutive runs (7 days at the 30-minute cadence)"
     ).toBe(false);
-    expect(isSourceStale(health({ emptyRuns: 168 }), "hn")).toBe(true);
+    expect(isSourceStale(health({ emptyRuns: 336 }), "hn")).toBe(true);
   });
 
   it("never calls a disabled source stale", () => {
@@ -224,14 +224,14 @@ describe("stale detector", () => {
     // them as broken on a quiet weekend. This test pins that reasoning to the
     // number so a future "let's make the alarm more sensitive" change has to
     // confront it.
-    expect(DEFAULT_STALE_AFTER_RUNS).toBe(168);
+    expect(DEFAULT_STALE_AFTER_RUNS).toBe(336);
     expect(DEFAULT_STALE_AFTER_RUNS).toBeGreaterThan(ARXIV_MIN_OVERRIDE);
   });
 
   it("gives arXiv the lower weekend-safe threshold and every other row the default", () => {
-    // arXiv accepts no weekend submissions, leaving a measured ~54
-    // consecutive silent runs every weekend, so the documented 72 clears that
-    // and the 168 default would be needlessly slow while 48 would false-positive.
+    // arXiv accepts no weekend submissions, leaving ~108 consecutive silent
+    // runs every weekend at a 30-minute cadence, so the documented 144 clears
+    // that and the 336 default would be needlessly slow while 48 would false-positive.
     // Every registry row gets its own documented threshold, else the default.
     for (const spec of SOURCE_REGISTRY) {
       expect(staleAfterRunsFor(spec.id)).toBe(
@@ -245,7 +245,7 @@ describe("stale detector", () => {
       DEFAULT_STALE_AFTER_RUNS
     );
     // The floor any future arXiv override has to clear.
-    expect(ARXIV_MIN_OVERRIDE).toBeGreaterThan(54);
+    expect(ARXIV_MIN_OVERRIDE).toBeGreaterThan(108);
   });
 
   it("keeps the read model's thresholds in step with the worker", () => {
@@ -255,10 +255,10 @@ describe("stale detector", () => {
   });
 
   it("reports the streak and threshold together for the dashboard", () => {
-    expect(sourceStaleVerdict(health({ emptyRuns: 200 }), "hn")).toEqual({
+    expect(sourceStaleVerdict(health({ emptyRuns: 400 }), "hn")).toEqual({
       stale: true,
-      emptyRuns: 200,
-      threshold: 168,
+      emptyRuns: 400,
+      threshold: 336,
     });
   });
 });
@@ -277,7 +277,7 @@ describe("read-model merge", () => {
       observed: true,
       emptyRuns: 3,
       stale: false,
-      staleAfterRuns: 168,
+      staleAfterRuns: 336,
     });
     expect(merged["off-source"]).toMatchObject({
       observed: true,
@@ -305,7 +305,7 @@ describe("read-model merge", () => {
         hn: { ...emptySourceHealth(), fetched: 4 },
         "dead-feed": {
           ...emptySourceHealth(),
-          emptyRuns: 168,
+          emptyRuns: 336,
           skipReason: "fetch_failed",
         },
         "off-source": {

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   MAIL_FORMATS,
   mailFormatHasImages,
@@ -22,7 +22,7 @@ import {
   settingsUrl,
   unsubscribeUrl,
 } from "../mail/render.js";
-import { digestFrom, notesFrom } from "../mail/send.js";
+import { digestFrom, notesFrom, sendSubscriberEmail } from "../mail/send.js";
 import {
   applyPlaceholders,
   applyTemplate,
@@ -488,6 +488,25 @@ describe("from addresses", () => {
         EMAIL_FROM: "hello@aidr.today",
       } as import("../types.js").Env).email
     ).toBe("hello@aidr.today");
+  });
+});
+
+describe("reply-to", () => {
+  it("sends subscriber mail with Reply-To submit@aidr.today", async () => {
+    const send = vi.fn(async () => {});
+    const env = { EMAIL: { send } } as unknown as import("../types.js").Env;
+    const ok = await sendSubscriberEmail(env, {
+      to: "reader@example.com",
+      from: { email: "digest@aidr.today", name: "aidr" },
+      subject: "AI;DR",
+      html: "<p>hi</p>",
+      text: "hi",
+      unsubscribeToken: "tok",
+    });
+    expect(ok).toBe(true);
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ replyTo: "submit@aidr.today" })
+    );
   });
 });
 

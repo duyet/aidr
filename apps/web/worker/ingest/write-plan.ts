@@ -18,7 +18,7 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../media.js";
-import { rankScore } from "../ranking.js";
+import { rankScore, rankSignals } from "../ranking.js";
 import type { FetchedItem } from "../sources/types.js";
 import { MAX_MERGED_TOPICS, unionTopics } from "../topics.js";
 import { RELEVANCE_THRESHOLD } from "./context.js";
@@ -73,6 +73,7 @@ export interface NewItemWrite {
 }
 
 export function planNewItemWrite(input: {
+  sourceId: string;
   item: FetchedItem;
   score: ItemScore | undefined;
   translation: ItemTranslation | undefined;
@@ -81,11 +82,20 @@ export function planNewItemWrite(input: {
   canonicalTags: string[] | undefined;
   now: number;
 }): NewItemWrite {
-  const { item, score, translation, mergeEntry, canonicalUpdate, now } = input;
+  const {
+    sourceId,
+    item,
+    score,
+    translation,
+    mergeEntry,
+    canonicalUpdate,
+    now,
+  } = input;
   const absorbs = canonicalUpdate && !canonicalUpdate.isExisting;
 
-  // A canonical new item absorbs the rest of its cluster's points/comments
-  // (max) and sources (union, capped) before its own row is written.
+  // A canonical new item absorbs the rest of its cluster's reader
+  // points/comments (max) and sources (union, capped) before its own row is
+  // written.
   const currentThumbnail = primaryThumbnailUrl(
     item.mediaManifest,
     item.imageUrl,
@@ -118,7 +128,8 @@ export function planNewItemWrite(input: {
           sources: unionSources(
             item.sources ?? [],
             canonicalUpdate.extraSources,
-            MAX_SOURCES_PER_ITEM
+            MAX_SOURCES_PER_ITEM,
+            item.url
           ),
         }
       : {}),
@@ -139,13 +150,20 @@ export function planNewItemWrite(input: {
   const rank = rankScore({
     importance: score?.importance ?? 5,
     quality: score?.quality ?? 5,
-    points: effectiveItem.points ?? 0,
-    comments: effectiveItem.comments ?? 0,
     // item.publishedAt is epoch seconds (normalized at dedupe time);
     // rankScore's decay formula operates in milliseconds.
     publishedAt: effectiveItem.publishedAt * 1000,
     now,
-    sourceCount: effectiveItem.sources?.length ?? 0,
+    // Same members RANK_SIGNAL_COLUMNS reads once the batch lands.
+    ...rankSignals([
+      {
+        sourceId,
+        points: effectiveItem.points ?? 0,
+        comments: effectiveItem.comments ?? 0,
+        url: effectiveItem.url,
+      },
+      ...(absorbs ? (canonicalUpdate.members ?? []) : []),
+    ]),
   });
 
   return {

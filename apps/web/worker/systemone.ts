@@ -66,6 +66,15 @@ export const JEV_THEME_TAGS = [
   "coding",
 ] as const;
 
+/** Tag each builder category adds, so a Jev-scored story still carries the
+ * theme chip the chat rubric would give it. */
+const BUILDER_CATEGORY_TAGS: Record<string, string> = {
+  Tools: "devtools",
+  Frameworks: "framework",
+  Data: "data-engineering",
+  "Open Source": "open-source",
+};
+
 /** Jev is BYOK-only: the TypeSafe key lives in AnyRouter Dashboard → BYOK,
  *  not in env. This hop never spends AnyRouter credits (0/0). */
 export type SystemOneQuestionType = "noul" | "choice" | "score";
@@ -100,11 +109,30 @@ export interface SystemOneResponse {
   model: string;
   answers: Record<string, SystemOneAnswer>;
   usage: { input_tokens: number; output_tokens: number; cost: number };
+  /** `model` above is the served upstream (`jev-1.13.0`); this block names
+   * the router id that was requested and the provider (`typesafe-byok`). */
+  anyrouter_metadata?: {
+    model?: string;
+    requestId?: string;
+    upstream?: { provider?: string };
+  };
 }
 
 export interface SystemOneResult {
   answers: Record<string, SystemOneAnswer>;
   inputTokens: number;
+  /** Upstream model that answered (`jev-1.13.0`, `fastino/gliner2.5-…`);
+   * a router id such as `anyrouter/decision` resolves to one of these. */
+  upstreamModel: string;
+  /** Upstream provider (`typesafe-byok`, `fastino-byok`), "" when absent. */
+  upstreamProvider: string;
+}
+
+/** True when a System One answer was served by TypeSafe Jev — the only
+ * decider whose score levels match the importance bands. */
+export function servedByJev(result: SystemOneResult): boolean {
+  if (!/^(?:jev\b|typesafe\/jev\b)/i.test(result.upstreamModel)) return false;
+  return !result.upstreamProvider || /typesafe/i.test(result.upstreamProvider);
 }
 
 function clamp01(n: number): number {
@@ -115,6 +143,13 @@ function clamp01(n: number): number {
 export function jevModelId(env: Env): string {
   const first = (env.ANYROUTER_JEV_MODEL ?? "").split(",")[0]?.trim();
   return first || JEV_DEFAULT_MODEL;
+}
+
+/** System One router tried before Jev on score (`anyrouter/decision`), or
+ * null when unset so score goes straight to Jev. */
+export function decisionModelId(env: Env): string | null {
+  const first = (env.ANYROUTER_DECISION_MODEL ?? "").split(",")[0]?.trim();
+  return first || null;
 }
 
 /** False when no AnyRouter key is present — caller must use chat fallback. */
@@ -132,12 +167,13 @@ export async function callSystemOne(
   env: Env,
   state: string | object | unknown[],
   questions: SystemOneQuestions,
-  task: "review" | "score" = "review"
+  task: "review" | "score" = "review",
+  model: string = jevModelId(env),
+  timeoutMs = 30_000
 ): Promise<SystemOneResult | null> {
   if (!isSystemOneConfigured(env)) return null;
   if (!questions || Object.keys(questions).length === 0) return null;
   const baseUrl = env.ANYROUTER_BASE_URL || "https://anyrouter.dev/api/v1";
-  const model = jevModelId(env);
   const attemptStartedAt = Date.now();
   const callId = newLlmCallId();
   let promptChars = 0;
@@ -182,7 +218,7 @@ export async function callSystemOne(
         model,
         questions,
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
     const safe = sanitizeError(error);
@@ -223,6 +259,8 @@ export async function callSystemOne(
     return fail("jev systemone response missing answers");
   }
   const inputTokens = data.usage?.input_tokens ?? 0;
+  const upstreamModel = typeof data.model === "string" ? data.model : "";
+  const upstreamProvider = data.anyrouter_metadata?.upstream?.provider ?? "";
   logLlmCall({
     ts: attemptStartedAt,
     task,
@@ -237,10 +275,18 @@ export async function callSystemOne(
     promptChars,
     responseSnippet: null,
     callId,
+    route:
+      upstreamModel && upstreamModel !== model
+        ? [model, upstreamModel]
+        : [model],
+    provider: upstreamProvider || null,
+    requestId: data.anyrouter_metadata?.requestId ?? null,
   });
   return {
     answers: data.answers,
     inputTokens,
+    upstreamModel,
+    upstreamProvider,
   };
 }
 
@@ -340,16 +386,22 @@ export function suggestionVerdictFromJev(
  * (option -> description|null), never as an array. Descriptions are the
  * question text plus option context; `null` means "no extra description". */
 function choiceCriteriaMap(
-  options: readonly string[]
+  options: readonly string[],
+  definitions: Readonly<Record<string, string>> = {}
 ): Record<string, string | null> {
-  return Object.fromEntries(options.map((option) => [option, null]));
+  return Object.fromEntries(
+    options.map((option) => [option, definitions[option] ?? null])
+  );
 }
 
 /** Questions for one story's ranking inputs. Jev returns typed answers,
  * not the free-form tag list the chat rubric writes — one entity and one
  * theme, each allowed to be `none`. */
 export function jevScoreQuestions(
-  categories: readonly string[]
+  categories: readonly string[],
+  builderCategories: readonly string[] = [],
+  definitions: Readonly<Record<string, string>> = {},
+  categoryRule = ""
 ): SystemOneQuestions {
   return {
     is_ai_tech: {
@@ -371,8 +423,19 @@ export function jevScoreQuestions(
     category: {
       type: "choice",
       instructions: "Which single category fits this story?",
-      criteria: choiceCriteriaMap(categories),
+      criteria: choiceCriteriaMap(categories, definitions),
     },
+    ...(builderCategories.length > 0 && {
+      builder: {
+        type: "choice" as const,
+        instructions:
+          `Is this story mainly for AI and data engineers who build with it? Choose none unless the story is mainly about one of these. ${categoryRule}`.trim(),
+        criteria: choiceCriteriaMap(["none", ...builderCategories], {
+          none: "general AI news, not mainly about tools, frameworks, data engineering, or an open-source code release",
+          ...definitions,
+        }),
+      },
+    }),
     entity: {
       type: "choice",
       instructions:
@@ -502,7 +565,8 @@ export function importanceFromJev(
  * caller can fall back to the chat rubric for that item. */
 export function scoreJudgmentFromJev(
   answers: Record<string, SystemOneAnswer>,
-  categories: readonly string[]
+  categories: readonly string[],
+  builderCategories: readonly string[] = []
 ): JevScoreJudgment | null {
   const relevance = noulProb(answers, "is_ai_tech");
   const importance = importanceFromJev(answers);
@@ -510,10 +574,16 @@ export function scoreJudgmentFromJev(
   if (relevance === null || importance === null || quality === null) {
     return null;
   }
-  const category = choiceOf(answers, "category", categories);
+  // A builder pick is the more specific category, so it wins over the core one.
+  const builderPick = builderCategories.length
+    ? choiceOf(answers, "builder", ["none", ...builderCategories])
+    : "";
+  const builder = builderPick === "none" ? "" : builderPick;
+  const category = builder || choiceOf(answers, "category", categories);
   const tags = [
     choiceOf(answers, "entity", JEV_ENTITY_TAGS),
     choiceOf(answers, "theme", JEV_THEME_TAGS),
-  ].filter((tag) => tag && tag !== "none");
+    BUILDER_CATEGORY_TAGS[builder] ?? "",
+  ].filter((tag, i, all) => tag && tag !== "none" && all.indexOf(tag) === i);
   return { relevance, importance, quality, category, tags };
 }

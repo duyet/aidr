@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Send } from "lucide-react";
 import { useClerkModule } from "../../lib/clerk-user";
 import { useLang } from "../../lib/lang-context";
-import { SUBMIT_EMAIL } from "../../lib/site";
+import { SITE_URL, SUBMIT_EMAIL } from "../../lib/site";
 import { SubmitGate } from "../submit/SubmitGate";
 
 /** Shared /contribute shell: heading, sign-in gating, then either the
@@ -25,10 +25,12 @@ export function ContributeShell({ mode }: { mode: "list" | "new" }) {
             : "Contribute"}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {lang === "vi" ? "Chia sẻ một bài viết." : "Share an AI story."}{" "}
-        {lang === "vi"
-          ? "Local agent: xem /llms.txt — cùng form, set via=agent, cần đăng nhập."
-          : "Local agents: see /llms.txt — same form, set via=agent, sign-in required."}
+        {lang === "vi" ? "Chia sẻ một bài viết." : "Share an AI story."} If you
+        are AI, please read{" "}
+        <a href={`${SITE_URL}/llms.txt`} className="underline">
+          llms.txt
+        </a>
+        .
       </p>
       <p className="mt-1 text-sm text-muted-foreground">
         {lang === "vi"

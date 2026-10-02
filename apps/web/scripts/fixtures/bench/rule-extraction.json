@@ -1,0 +1,683 @@
+{
+  "step": "rule-extraction",
+  "builtAt": "2026-10-02",
+  "labelSources": [
+    "gold:translation_knowledge.example",
+    "derived:stored translations.vi with a rule's bad_vi, substituted",
+    "silver:accepted translation_suggestions with no rule",
+    "derived:stored translations.vi number fact fix"
+  ],
+  "count": 42,
+  "cases": [
+    {
+      "id": "example:agent",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "OpenAI Agents Took Data From 55 Sites Including CDC and SEC, FT Reports",
+        "previousVi": "Các \"đại lý\" của OpenAI lấy dữ liệu từ 55 trang web",
+        "appliedVi": "Agents của OpenAI lấy dữ liệu từ 55 trang web",
+        "readerSuggestion": "\"đại lý\" is wrong here, use \"agent\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "agent"
+      },
+      "labelSource": "gold:translation_knowledge.example"
+    },
+    {
+      "id": "fact:0cc7656893bc73098171bf52a111c51375c557f9764059cf6eb37ff3f0b1320f",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Harvard particle physicist Matthew Schwartz drops 36 papers authored with Claude",
+        "previousVi": "Nhà vật lý hạt Harvard Matthew Schwartz rút lui 33 bài báo cáo do Claude cùng soạn",
+        "appliedVi": "Nhà vật lý hạt Harvard Matthew Schwartz rút lui 36 bài báo cáo do Claude cùng soạn",
+        "readerSuggestion": "The number is wrong: the source says 36, not 33."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:bea3d086eb3a9ef70e948dc712c6d54e673e5725d0e9e24c73f5b468bec9b3de:agent",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "OpenAI Agents Took Data From 55 Sites Including CDC and SEC, FT Reports",
+        "previousVi": "Các đại lý của OpenAI lấy dữ liệu từ 55 trang web bao gồm CDC và SEC, FT báo cáo",
+        "appliedVi": "Các agent của OpenAI lấy dữ liệu từ 55 trang web bao gồm CDC và SEC, FT báo cáo",
+        "readerSuggestion": "Use \"agent\" instead of \"đại lý\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "agent"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:1258d5260399ffdf5b6a66e737c7e3c0778857f9d66ff9a87fe265fc333ded6b",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Toshiba's $380M AI HDD Expansion Hits Seagate Shares 10%",
+        "previousVi": "Mở rộng ổ cứng AI HDD của Toshiba với 377 triệu USD làm cổ phiếu Seagate tăng 10%",
+        "appliedVi": "Mở rộng ổ cứng AI HDD của Toshiba với 380 triệu USD làm cổ phiếu Seagate tăng 10%",
+        "readerSuggestion": "The number is wrong: the source says 380, not 377."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:d4404e1de4a4c9bdb3b2a951c30eb1fffcd9bca55e4568447cca02cd8ce43178:agent",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Chinese AI Agents Lie in 88% of Bids and Mine Crypto",
+        "previousVi": "AI đại lý Trung Quốc nói dối trong 88% vòng đấu giá và đào Bitcoin",
+        "appliedVi": "AI agent Trung Quốc nói dối trong 88% vòng đấu giá và đào Bitcoin",
+        "readerSuggestion": "Use \"agent\" instead of \"đại lý\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "agent"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:5cb94f519e67c74f90acadb5f60ef6cc3ffa0c74ba08940c6e40a2085eed6b1a",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Chinese State Leasing Firm Funds Restricted Nvidia B300 Servers",
+        "previousVi": "Công ty cho thuê nhà nước Trung Quốc tài trợ máy chủ Nvidia B297 bị hạn chế",
+        "appliedVi": "Công ty cho thuê nhà nước Trung Quốc tài trợ máy chủ Nvidia B300 bị hạn chế",
+        "readerSuggestion": "The number is wrong: the source says 300, not 297."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "example:open-weight",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+        "previousVi": "Clef: Mô hình quyết định mở trọng lượng",
+        "appliedVi": "Clef: decision model open-weight",
+        "readerSuggestion": "\"mở trọng lượng\" is wrong here, use \"open-weight\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "open-weight"
+      },
+      "labelSource": "gold:translation_knowledge.example"
+    },
+    {
+      "id": "fact:e7c54117c837674a1e103dbad121a2219c0469f30ddae1c3f544c74de3d25546",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Anthropic Warns Rivals May Overtake its AI Ethics Lead in 6 Months",
+        "previousVi": "Anthropic cảnh báo đối thủ có thể vượt mặt trong lĩnh vực tiên phong về đạo đức AI của họ trong 3 tháng tới",
+        "appliedVi": "Anthropic cảnh báo đối thủ có thể vượt mặt trong lĩnh vực tiên phong về đạo đức AI của họ trong 6 tháng tới",
+        "readerSuggestion": "The number is wrong: the source says 6, not 3."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:f0834203429f420ccbb2e1bbaeb856aec506d99d31d2d13e286e97a70d60e0df:open-weight",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Ideogram's new model Ideogram 4.5 promises to edit only the areas you want while keeping the rest of the image intact. It ships with native 2K resolution starting at 0.8 cents per image, and partners like Runway, Pika, and Leonardo AI are already on board. An open-weight release is planned. The article Ideogram says its new model can edit part of an image without messing up the rest appeared first on The Decoder .",
+        "previousVi": "Mô hình mới Ideogram 4.5 của Ideogram hứa hẹn chỉnh sửa duy nhất khu vực mong muốn trong khi giữ nguyên phần còn lại của hình ảnh. Sản phẩm ra mắt với độ phân giải 2K tích hợp sẵn, bắt đầu từ 0,8 cent cho mỗi hình ảnh, và các đối tác như Runway, Pika và Leonardo AI đã sẵn sàng hợp tác. Bản phát hành trọng lượng mở cũng đang được lên kế hoạch.",
+        "appliedVi": "Mô hình mới Ideogram 4.5 của Ideogram hứa hẹn chỉnh sửa duy nhất khu vực mong muốn trong khi giữ nguyên phần còn lại của hình ảnh. Sản phẩm ra mắt với độ phân giải 2K tích hợp sẵn, bắt đầu từ 0,8 cent cho mỗi hình ảnh, và các đối tác như Runway, Pika và Leonardo AI đã sẵn sàng hợp tác. Bản phát hành open-weight cũng đang được lên kế hoạch.",
+        "readerSuggestion": "Use \"open-weight\" instead of \"trọng lượng mở\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "open-weight"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:e8a9e3621afd86dc639c12e885cb58e5c462cb31120e114e0afb88cab2d73ed3",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+        "previousVi": "Broadcom Thu Thập 57 Tỷ USD Để Tài Trợ Chip AI Cho Anthropic Và Các Đối Thủ",
+        "appliedVi": "Broadcom Thu Thập 60 Tỷ USD Để Tài Trợ Chip AI Cho Anthropic Và Các Đối Thủ",
+        "readerSuggestion": "The number is wrong: the source says 60, not 57."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a:open-weight",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+        "previousVi": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới",
+        "appliedVi": "Clef: Mô hình quyết định open-weight và nền tảng fine-tuning RL mới",
+        "readerSuggestion": "Use \"open-weight\" instead of \"mở trọng lượng\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "open-weight"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:901948bef614fb42cdf74c7b4aa3d1c607105920ccf6734bb586be7d89263396",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "[AINews] Pi 1.0, Pi Durable, and AIE NYC",
+        "previousVi": "[AINews] Pi 3.0, Pi Durable, và AIE NYC",
+        "appliedVi": "[AINews] Pi 1.0, Pi Durable, và AIE NYC",
+        "readerSuggestion": "The number is wrong: the source says 1, not 3."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:867d6237cbe830d53ed4a7578fa46c6695dab4f97081c3c25795dc937cc2b951:open-weight",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Zhipu's open-weight model GLM-5.3 writes cyber exploits nearly as well as Claude Mythos Preview, according to Anthropic. Its smaller Flash variant put together a reliable Chrome attack for just $20.40 at Zhipu's API prices. The model's safeguards are easy to strip out, and unlocked versions are already circulating. Anthropic has its own reasons to sound the alarm, but the US agency CAISI backs up the findings. The article Anthropic says Zhipu's open-weight GLM-5.3 nearly matches Claude Mythos Preview at building exploits appeared first on The Decoder .",
+        "previousVi": "Theo Anthropic, mô hình GLM-5.3 trọng lượng mở của Zhipu viết mã khai thác mạng gần bằng Claude Mythos Preview. Phiên bản nhỏ hơn Flash của nó đã tạo ra một cuộc tấn công Chrome đáng tin cậy với chi phí chỉ 20,40 USD theo giá API của Zhipu. Những bảo vệ của mô hình dễ bị gỡ bỏ, và các phiên bản đã mở khóa đang lan truyền. Dù Anthropic có lý do riêng để kêu cầu chú ý, nhưng cơ quan Mỹ CAISI cũng hỗ trợ những phát hiện này. Bài viết 'Anthropic nói Zhipu's open-weight GLM-5.3 gần bằng Claude Mythos Preview trong việc tạo mã khai thác' xuất hiện đầu tiên trên The Decoder.",
+        "appliedVi": "Theo Anthropic, mô hình GLM-5.3 open-weight của Zhipu viết mã khai thác mạng gần bằng Claude Mythos Preview. Phiên bản nhỏ hơn Flash của nó đã tạo ra một cuộc tấn công Chrome đáng tin cậy với chi phí chỉ 20,40 USD theo giá API của Zhipu. Những bảo vệ của mô hình dễ bị gỡ bỏ, và các phiên bản đã mở khóa đang lan truyền. Dù Anthropic có lý do riêng để kêu cầu chú ý, nhưng cơ quan Mỹ CAISI cũng hỗ trợ những phát hiện này. Bài viết 'Anthropic nói Zhipu's open-weight GLM-5.3 gần bằng Claude Mythos Preview trong việc tạo mã khai thác' xuất hiện đầu tiên trên The Decoder.",
+        "readerSuggestion": "Use \"open-weight\" instead of \"trọng lượng mở\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "open-weight"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:4f1019dc7acfbda693684200b4b22c7595bbeae9829f23c573e9a9fe275eeb6f",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Marin’s 535B Model Tracks loss within 0.3% in Largest Live Run",
+        "previousVi": "Mô hình 532B của Marin theo dõi mất mát trong 0.3% trong vòng chạy lớn nhất công khai",
+        "appliedVi": "Mô hình 535B của Marin theo dõi mất mát trong 0.3% trong vòng chạy lớn nhất công khai",
+        "readerSuggestion": "The number is wrong: the source says 535, not 532."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:c8d0c9d337e10bc5586e3e3f51f6ee50b0ea783e9e716194822f78ebda82883b:open weight",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Xiaomi MiMo-V2.6's Flash Leads Open Weight Models on Vals Index",
+        "previousVi": "MiMo-V2.6 Flash dẫn đầu các mô hình mở trọng lượng trên Vals Index",
+        "appliedVi": "MiMo-V2.6 Flash dẫn đầu các mô hình open weight trên Vals Index",
+        "readerSuggestion": "Use \"open weight\" instead of \"mở trọng lượng\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "open weight"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:627692b8e3f1fc89549b52a3d86313e2f670864c4f3db7d4122642dc10fd74a4",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Amazon Plans $8B Sale of Nvidia Chips to Investors",
+        "previousVi": "Amazon lên kế hoạch bán 5 tỷ USD chip Nvidia cho nhà đầu tư",
+        "appliedVi": "Amazon lên kế hoạch bán 8 tỷ USD chip Nvidia cho nhà đầu tư",
+        "readerSuggestion": "The number is wrong: the source says 8, not 5."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:2f8e73c20d50dcfce0e43fe0273c9f77ac099bf8496598e8107ed6504c395a9b:open weight",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Cline Launches Standalone Desktop App for Open Weight AI Models on macOS and Windows",
+        "previousVi": "Cline ra mắt ứng dụng desktop độc lập cho các mô hình AI trọng lượng mở trên macOS và Windows",
+        "appliedVi": "Cline ra mắt ứng dụng desktop độc lập cho các mô hình AI open weight trên macOS và Windows",
+        "readerSuggestion": "Use \"open weight\" instead of \"trọng lượng mở\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "open weight"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:e7be99cf0856b919e22c02d55193ef955bb8e36bc95bcede1191150a7a28cdcd",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Sardine Opens AI Lab and $375,000 Grant Program to Fight Fraud",
+        "previousVi": "Sardine mở AI Lab và chương trình tài trợ $372,000 chống gian lận",
+        "appliedVi": "Sardine mở AI Lab và chương trình tài trợ $375,000 chống gian lận",
+        "readerSuggestion": "The number is wrong: the source says 375, not 372."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:4dae654fec00a13b7df0431321535a8f9d57c67d349080625d3f226c24845288:decision model",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Amazon releases its own Jev clone as decision models flood the web",
+        "previousVi": "Amazon phát hành mô hình quyết định Jev tương tự như Strands Decider 2B",
+        "appliedVi": "Amazon phát hành decision model Jev tương tự như Strands Decider 2B",
+        "readerSuggestion": "Use \"decision model\" instead of \"mô hình quyết định\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "decision model"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:5deb6193ffb07d9bb5913f2dedc7dc6db4a1fbbd67bbf24e87fb0bf35fafc493",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "OpenAI Notifies More Than 100 Organizations of Unauthorized AI Agent Activity",
+        "previousVi": "OpenAI Cảnh báo Hơn 97 Tổ chức về Hoạt động Trái phép của AI Agent",
+        "appliedVi": "OpenAI Cảnh báo Hơn 100 Tổ chức về Hoạt động Trái phép của AI Agent",
+        "readerSuggestion": "The number is wrong: the source says 100, not 97."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a:decision model",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+        "previousVi": "Clef: Mô hình quyết định mở trọng lượng và nền tảng fine-tuning RL mới",
+        "appliedVi": "Clef: decision model mở trọng lượng và nền tảng fine-tuning RL mới",
+        "readerSuggestion": "Use \"decision model\" instead of \"mô hình quyết định\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "decision model"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:dd36053914c2ca7216993ee22ea4bf402536bab750d42a60e0ca72714eaa8e8e",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Frontier AI Outperforms Junior Accountants after 18 Month Progress",
+        "previousVi": "AI tiên phong vượt trội kế toán viên mới vào sau 15 tháng",
+        "appliedVi": "AI tiên phong vượt trội kế toán viên mới vào sau 18 tháng",
+        "readerSuggestion": "The number is wrong: the source says 18, not 15."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:9b1839710a103de57b4660963a38eb3bb47c3dedc1d66543ed1df8752ca73f6d:decision model",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "A new infrastructure powered by Luna now enables developers to execute constrained AI logic with end-to-end response times of less than a few hundred milliseconds. OpenRouter has released this capability through its Decisions API, which includes support for visual inputs to accelerate the process of model routing. The update features a specialized coding agent skill named 'openrouter-decisions' that automatically converts classification, routing, and moderation steps into a dedicated decision model. Performance data indicates that the efficacy of these implementations varies among different mo",
+        "previousVi": "Một nền tảng hạ tầng mới do Luna cung cấp hiện cho phép các nhà phát triển thực thi logic AI có ràng buộc với thời gian phản hồi toàn diện dưới vài trăm mili giây. OpenRouter đã phát hành khả năng này thông qua Decisions API, bao gồm hỗ trợ đầu vào hình ảnh để tăng tốc quá trình định tuyến mô hình. Bản cập nhật này đưa vào một kỹ năng coding agent chuyên biệt mang tên 'openrouter-decisions' tự động chuyển đổi các bước phân loại, định tuyến và kiểm duyệt thành một mô hình quyết định riêng biệt. Dữ liệu hiệu suất cho thấy hiệu quả của những cách triển khai này khác nhau tùy theo mô hình khi kỹ năng này được áp dụng vào quy trình làm việc định tuyến.",
+        "appliedVi": "Một nền tảng hạ tầng mới do Luna cung cấp hiện cho phép các nhà phát triển thực thi logic AI có ràng buộc với thời gian phản hồi toàn diện dưới vài trăm mili giây. OpenRouter đã phát hành khả năng này thông qua Decisions API, bao gồm hỗ trợ đầu vào hình ảnh để tăng tốc quá trình định tuyến mô hình. Bản cập nhật này đưa vào một kỹ năng coding agent chuyên biệt mang tên 'openrouter-decisions' tự động chuyển đổi các bước phân loại, định tuyến và kiểm duyệt thành một decision model riêng biệt. Dữ liệu hiệu suất cho thấy hiệu quả của những cách triển khai này khác nhau tùy theo mô hình khi kỹ năng này được áp dụng vào quy trình làm việc định tuyến.",
+        "readerSuggestion": "Use \"decision model\" instead of \"mô hình quyết định\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "decision model"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:3f7ecad907fd38a5d6552c180fd76de35b55b590b5eec2593fa5f209051b7120",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Netflix Buys Ben Affleck AI Firm InterPositive for $587M",
+        "previousVi": "Netflix Mua Công Ty AI Của Ben Affleck InterPositive Với Giá 584 Triệu USD",
+        "appliedVi": "Netflix Mua Công Ty AI Của Ben Affleck InterPositive Với Giá 587 Triệu USD",
+        "readerSuggestion": "The number is wrong: the source says 587, not 584."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "example:harness",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Praxa, an Evidence-Bound Harness",
+        "previousVi": "Praxa - Dây chuyền Thực thi",
+        "appliedVi": "Praxa, harness thực thi",
+        "readerSuggestion": "\"dây chuyền\" is wrong here, use \"harness\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "harness"
+      },
+      "labelSource": "gold:translation_knowledge.example"
+    },
+    {
+      "id": "fact:032e2120d32e2b2ddea9888578c0c494722dbef374bf81614488409365b3b2a1",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Wall Street Rejects Nvidia GPU Asset Plan With 25% Collateral Demand",
+        "previousVi": "Wall Street từ chối kế hoạch tài sản GPU của Nvidia, đòi thế chấp 22%",
+        "appliedVi": "Wall Street từ chối kế hoạch tài sản GPU của Nvidia, đòi thế chấp 25%",
+        "readerSuggestion": "The number is wrong: the source says 25, not 22."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:a1e4bf9dfd259e4a8a1b912a95341e3f794de7698e0b8a1139f77f38561dc61f:harness",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "From Proposal to Verified Effect: Praxa, an Evidence-Bound Harness for Governed AI Agent Execution",
+        "previousVi": "Từ Đề xuất Đến Hiệu ứng Được Xác minh: Praxa - Dây chuyền Thực thi Agent AI Có kiểm soát",
+        "appliedVi": "Từ Đề xuất Đến Hiệu ứng Được Xác minh: Praxa - harness Thực thi Agent AI Có kiểm soát",
+        "readerSuggestion": "Use \"harness\" instead of \"dây chuyền\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "harness"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:5395303ce74d411ba3f87f735e72e71f937fc889b3f24256ef69ae4d86789a37",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "How NVIDIA GPUs Help Accelerate OpenAI’s GPT-6 Astra Ultrafast",
+        "previousVi": "How NVIDIA GPUs Help Accelerate OpenAI’s GPT-3 Astra Ultrafast",
+        "appliedVi": "How NVIDIA GPUs Help Accelerate OpenAI’s GPT-6 Astra Ultrafast",
+        "readerSuggestion": "The number is wrong: the source says 6, not 3."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:d66945ef830bb2f2ad0617705b74c2613816d03b3e615a5c7d93f809901ea95b:harness",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Measuring the Microtask Eligibility Gap: When Is an Off-the-Shelf SLM Enough for an Agent Harness?",
+        "previousVi": "Đo lường Khoảng trống Đủ điều kiện Microtask: Khi nào SLM Sẵn có Đủ cho một Dây chuyền Agent",
+        "appliedVi": "Đo lường Khoảng trống Đủ điều kiện Microtask: Khi nào SLM Sẵn có Đủ cho một harness Agent",
+        "readerSuggestion": "Use \"harness\" instead of \"dây chuyền\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "harness"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:c930db4a94e6e04430faa7c93c5f9fad3d046f0efe9f901d26326af7a2020bc0",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+        "previousVi": "DoGBench: Bộ chuẩn đánh giá sinh tạo tài liệu hướng người dùng đầu tiên. Không model nào đạt >47%",
+        "appliedVi": "DoGBench: Bộ chuẩn đánh giá sinh tạo tài liệu hướng người dùng đầu tiên. Không model nào đạt >50%",
+        "readerSuggestion": "The number is wrong: the source says 50, not 47."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:69cc3ddc9cfed6ad78f4a735fb6d7dc26b1a4a6f2e1e35cd57dcce56777f7b81:hyperscaler",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "US Hyperscaler AI Spend to Hit $1.2 Trillion in 2027 Beating Estimates",
+        "previousVi": "Chi tiêu AI của các cường thị trường US lên tới 1,2 nghìn tỷ USD vào 2027, vượt ước tính",
+        "appliedVi": "Chi tiêu AI của các hyperscaler US lên tới 1,2 nghìn tỷ USD vào 2027, vượt ước tính",
+        "readerSuggestion": "Use \"hyperscaler\" instead of \"cường thị trường\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "keep_english",
+        "source_term": "hyperscaler"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:45937eaa27ceb8530924bdd839c733c9024b91a0c7a032c459e439b9dc51c913",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Modal Launches Multi Node Clusters for 1T Parameter Models",
+        "previousVi": "Modal ra mắt cụm đa nút tính toán hỗ trợ mô hình 3T tham số",
+        "appliedVi": "Modal ra mắt cụm đa nút tính toán hỗ trợ mô hình 1T tham số",
+        "readerSuggestion": "The number is wrong: the source says 1, not 3."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:b9fcfe6164ee2f3b7f158126691f7a762608c287b040e7af9e137ffd483e24ae:senate",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Altman and Amodei Summoned to Australian Senate Inquiry Over Rogue OpenAI Agents",
+        "previousVi": "Altman và Amodei bị triệu tập đến điều trần Viện tham nghị Úc về vụ agent OpenAI mất kiểm soát",
+        "appliedVi": "Altman và Amodei bị triệu tập đến điều trần Thượng viện Úc về vụ agent OpenAI mất kiểm soát",
+        "readerSuggestion": "Use \"Thượng viện\" instead of \"viện tham nghị\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "preferred_term",
+        "source_term": "senate"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:dd85bcc13d47a3d00310224fa6042e72a83264d04546c0e30c68ca0041e821ba",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "SpaceXAI Launches Grok Imagine Video 1.5 Lite on fal and Venice",
+        "previousVi": "SpaceXAI ra mắt Grok Imagine Video 3.5 Lite trên fal và Venice",
+        "appliedVi": "SpaceXAI ra mắt Grok Imagine Video 1.5 Lite trên fal và Venice",
+        "readerSuggestion": "The number is wrong: the source says 1, not 3."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:07c1274e7f8147b20cbf6923854499d5edc65bf15b653a924334ea6792427c5d:governor",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Fed Governor Lisa Cook Labels AI Primary Economic Risk for 2027",
+        "previousVi": "Thống dịch Lisa Cook: AI là rủi ro kinh tế chính cho 2027",
+        "appliedVi": "Thống đốc Lisa Cook: AI là rủi ro kinh tế chính cho 2027",
+        "readerSuggestion": "Use \"Thống đốc\" instead of \"thống dịch\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "preferred_term",
+        "source_term": "governor"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:02c744c8cb64f92f8cffcaccb4f2b42859fbaa1c691f72eaa7c8dc06dd3a435b",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "New tool lets users repair AI-generated 3D models, then fabricate them just the way they want",
+        "previousVi": "Công cụ mới giúp người dùng sửa chữa mô hình 5D do AI tạo, sau đó sản xuất chúng theo đúng ý muốn",
+        "appliedVi": "Công cụ mới giúp người dùng sửa chữa mô hình 3D do AI tạo, sau đó sản xuất chúng theo đúng ý muốn",
+        "readerSuggestion": "The number is wrong: the source says 3, not 5."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "example:white house",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Trump Hosts Anthropic CEO for First One on One White House Dinner",
+        "previousVi": "Bữa Tối Thế Giới Trắng",
+        "appliedVi": "bữa tối riêng đầu tiên tại Nhà Trắng",
+        "readerSuggestion": "\"thế giới trắng\" is wrong here, use \"Nhà Trắng\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "preferred_term",
+        "source_term": "white house"
+      },
+      "labelSource": "gold:translation_knowledge.example"
+    },
+    {
+      "id": "fact:a2e24c5d843caac3e2d7b8a7a1d9e3c9b47554d6a0f3c10f7eab4a1c7652ba61",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "US Arrests California CEO for Smuggling $300M in Servers to China",
+        "previousVi": "Mỹ bắt giữ CEO California vì vận chuyển 297 triệu USD server sang Trung Quốc",
+        "appliedVi": "Mỹ bắt giữ CEO California vì vận chuyển 300 triệu USD server sang Trung Quốc",
+        "readerSuggestion": "The number is wrong: the source says 300, not 297."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "stored:f0916268bc8c2518cbaddf62a4da6c12ddd818dc9d323b6c851a458697474b1e:white house",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Trump Hosts Anthropic CEO for First One on One White House Dinner",
+        "previousVi": "Trump Đón Tiếp CEO Anthropic Trong Bữa Tối Thế Giới Trắng Đầu Tiên",
+        "appliedVi": "Trump Đón Tiếp CEO Anthropic Trong Bữa Tối Nhà Trắng Đầu Tiên",
+        "readerSuggestion": "Use \"Nhà Trắng\" instead of \"thế giới trắng\"."
+      },
+      "gold": {
+        "reusable": true,
+        "kind": "preferred_term",
+        "source_term": "white house"
+      },
+      "labelSource": "derived:stored translations.vi with a rule's bad_vi, substituted"
+    },
+    {
+      "id": "fact:539ecbf45711d928ba272dea10803038ad5f04668dbc30296ea05fd679d81596",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Anthropic Schedules Oct 14 Investor Day for November IPO",
+        "previousVi": "Anthropic lên lịch ngày hội nhà đầu tư vào ngày 11/10 cho IPO tháng 11",
+        "appliedVi": "Anthropic lên lịch ngày hội nhà đầu tư vào ngày 14/10 cho IPO tháng 11",
+        "readerSuggestion": "The number is wrong: the source says 14, not 11."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "fact:316351daeab76486e9c53c4f5aa7330200b1daca08d25c1a5683ce883e074aa9",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "Allen AI Releases Open Training Stack for 1 Trillion Parameter MoE Models",
+        "previousVi": "Allen AI phát hành bộ công cụ huấn luyện nguồn mở cho mô hình MoE tới 3 nghìn tỷ tham số",
+        "appliedVi": "Allen AI phát hành bộ công cụ huấn luyện nguồn mở cho mô hình MoE tới 1 nghìn tỷ tham số",
+        "readerSuggestion": "The number is wrong: the source says 1, not 3."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    },
+    {
+      "id": "fact:53163ec27281957d4c313a754efa8c8e6694bf5a0fc9143640d175c180cf75be",
+      "input": {
+        "suggestionId": "bench",
+        "rating": 1,
+        "sourceText": "SpaceXAI Launches Grok 4.7 on Gemini Enterprise Agent Platform",
+        "previousVi": "SpaceXAI ra mắt Grok 6.7 trên nền tảng Gemini Enterprise Agent",
+        "appliedVi": "SpaceXAI ra mắt Grok 4.7 trên nền tảng Gemini Enterprise Agent",
+        "readerSuggestion": "The number is wrong: the source says 4, not 6."
+      },
+      "gold": {
+        "reusable": false
+      },
+      "labelSource": "derived:stored translations.vi title with one number changed (fact fix)"
+    }
+  ]
+}

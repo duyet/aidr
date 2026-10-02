@@ -205,12 +205,27 @@ async function queryStories(
 }
 
 /** Look up a single published story by id (or id prefix). Shared by the
- * /api/story/$id route and the $slug permalink page loader. */
+ * /api/story/$id route and the $slug permalink page loader. A merged item
+ * resolves to the story it was merged into: an aggregator canonical that an
+ * official post later replaced (`MergePlan.demoted`) keeps its shared
+ * links, and the permalink loader redirects them to the new canonical. */
 export async function getStory(
   db: DbReader,
   idPrefix: string
 ): Promise<FeedItem | null> {
-  return (await queryStories(db, idPrefix, 1))[0] ?? null;
+  const story = (await queryStories(db, idPrefix, 1))[0];
+  if (story) return story;
+  const { results } = await db
+    .prepare(
+      `SELECT duplicate_of FROM items
+       WHERE substr(id, 1, ?) = ? AND status = 'merged'
+         AND duplicate_of IS NOT NULL LIMIT 2`
+    )
+    .bind(idPrefix.length, idPrefix)
+    .all<{ duplicate_of: string }>();
+  // An ambiguous prefix resolves to nothing rather than to a guess.
+  if (results?.length !== 1) return null;
+  return (await queryStories(db, results[0].duplicate_of, 1))[0] ?? null;
 }
 
 /** Lookup used by the Markdown route to reject ambiguous id prefixes. */

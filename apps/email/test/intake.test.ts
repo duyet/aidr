@@ -147,17 +147,16 @@ describe("sender validation", () => {
     });
   });
 
-  it("ignores an extra address until it is confirmed, then accepts it for its owner", async () => {
+  it("accepts an extra address only after Clerk has verified it for that account", async () => {
     const work = "alice@work.test";
-    db.prepare(
-      "INSERT INTO contributor_emails (id, user_id, email, status, created_at) VALUES ('a1', ?, ?, 'pending', 0)"
-    ).run(USER, work);
     expect(await receive(raw({ from: work, body: "hi there" }), work)).toEqual({
       status: "ignored",
       reason: "unknown_sender",
     });
 
-    db.prepare("UPDATE contributor_emails SET status = 'confirmed'").run();
+    db.prepare(
+      "INSERT INTO clerk_verified_emails (user_id, email) VALUES (?, ?)"
+    ).run(USER, work);
     const out = await receive(raw({ from: work, body: "hi there" }), work);
     expect(out.status).toBe("pending");
     expect(rows().find((r) => r.status === "pending")).toMatchObject({

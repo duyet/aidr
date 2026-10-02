@@ -16,16 +16,18 @@ import {
  * can import them. */
 
 /** Minimum gap between `NEWS_INGEST.create()` calls. GitHub's 15-minute
- * watchdog and the hourly Durable Object alarm both hit the same endpoint;
- * without this, overlapping Workflow instances stack up and starve. */
-export const INGEST_MIN_INTERVAL_MS = 45 * 60 * 1000;
+ * watchdog and the 30-minute Durable Object alarm both hit the same
+ * endpoint; without this, overlapping Workflow instances stack up and
+ * starve. 25 minutes lets the 30-minute alarm through and still drops the
+ * watchdog tick that lands 15 minutes after a start. */
+export const INGEST_MIN_INTERVAL_MS = 25 * 60 * 1000;
 
 /** Recurring Durable Object alarm interval. Not a Worker cron trigger —
  * DO alarms do not count against the Free-plan 5-cron cap. */
-export const INGEST_ALARM_INTERVAL_MS = 60 * 60 * 1000;
+export const INGEST_ALARM_INTERVAL_MS = 30 * 60 * 1000;
 
-/** First alarm after a cold arm (deploy / first public hit) so the hourly
- * loop starts without waiting a full hour. */
+/** First alarm after a cold arm (deploy / first public hit) so the
+ * loop starts without waiting a full interval. */
 export const INGEST_ALARM_ARM_DELAY_MS = 15_000;
 
 export const INGEST_SCHEDULER_NAME = "default";
@@ -42,7 +44,7 @@ export interface IngestTickOpts {
   force?: boolean;
   /** False for a dry or partial run: it is gated by the coalesce window
    *  like any trigger, but never counts as the last started run and never
-   *  pushes the hourly alarm back. Defaults to true. */
+   *  pushes the 30-minute alarm back. Defaults to true. */
   scheduled?: boolean;
 }
 
@@ -56,7 +58,7 @@ export interface IngestTriggerOpts {
  *
  * HTTP ingest persists `workflow_runs` on the Worker D1 binding (the one
  * `/api/system` reads) **before** `NEWS_INGEST.create({ id })` in this
- * isolate. The Durable Object only gates the 45-minute coalesce and
+ * isolate. The Durable Object only gates the 25-minute coalesce and
  * records last-started — it must not be the create() path, because a
  * Workflow id is not a `workflow_runs` row. */
 export interface IngestSchedulerRpc {
@@ -86,7 +88,7 @@ export async function tickIngest(
   if (env.NEWS_INGEST_SCHEDULER) {
     const stub = schedulerStub(env.NEWS_INGEST_SCHEDULER);
     // Fail closed on gate errors — do not swallow into skipped:false
-    // (that would bypass the 45-minute coalesce during a DO outage).
+    // (that would bypass the 25-minute coalesce during a DO outage).
     const gate = await stub.canStart(
       scheduled ? { force: opts.force } : { force: opts.force, scheduled }
     );
@@ -182,6 +184,24 @@ export async function ensureIngestAlarm(env: {
 }): Promise<void> {
   if (!env.NEWS_INGEST_SCHEDULER) return;
   await schedulerStub(env.NEWS_INGEST_SCHEDULER).ensureArmed();
+}
+
+/** How long an unclosed run (finished_at still equal to started_at) blocks
+ * the next start. Longer than the alarm so a slow run is not overlapped,
+ * and short enough that a crashed row cannot stall collection all day. */
+export const INGEST_OPEN_RUN_MAX_MS = 90 * 60 * 1000;
+
+/** True when the latest real run is still open and young enough to wait for. */
+export function blockedByOpenRun(
+  startedAt: number | null,
+  finishedAt: number | null,
+  nowMs: number
+): boolean {
+  if (startedAt == null || finishedAt == null) return false;
+  const startSec = toEpochSeconds(startedAt);
+  const endSec = toEpochSeconds(finishedAt);
+  if (!Number.isFinite(startSec) || startSec !== endSec) return false;
+  return nowMs - startSec * 1000 < INGEST_OPEN_RUN_MAX_MS;
 }
 
 export function shouldSkipIngest(

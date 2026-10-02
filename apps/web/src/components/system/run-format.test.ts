@@ -35,6 +35,7 @@ import {
   stepFallbackNotes,
   stepState,
   tokenBreakdown,
+  tokenBurnModelName,
 } from "./run-format";
 
 /**
@@ -83,6 +84,9 @@ describe("shortModel", () => {
     expect(shortModel("anyrouter/auto")).toBe("auto");
     expect(shortModel("google/gemma-4-26b-a4b-it")).toBe("gemma-4-26b-a4b-it");
     expect(shortModel("typesafe/jev")).toBe("jev");
+    expect(tokenBurnModelName("typesafe/jev")).toBe("Jev");
+    expect(tokenBurnModelName("anyrouter/auto")).toBe("AnyRouter");
+    expect(tokenBurnModelName("@preset/aidr")).toBe("AnyRouter");
   });
 
   it("passes through ids without a provider prefix", () => {

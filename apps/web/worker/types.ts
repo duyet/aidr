@@ -3,7 +3,7 @@ export interface Env {
   ASSETS?: Fetcher;
   DB: D1Database;
   NEWS_INGEST: Workflow;
-  /** Singleton DO that arms an hourly alarm and coalesces ingest triggers.
+  /** Singleton DO that arms a 30-minute alarm and coalesces ingest triggers.
    *  Optional so node tests can omit it; production wrangler always binds it. */
   NEWS_INGEST_SCHEDULER?: DurableObjectNamespace;
   ANYROUTER_BASE_URL: string;
@@ -26,6 +26,7 @@ export interface Env {
    *  the chat chain is the backup. Defaults to typesafe/jev. The TypeSafe
    *  BYOK key lives in the AnyRouter dashboard, not in env. */
   ANYROUTER_JEV_MODEL?: string;
+  ANYROUTER_DECISION_MODEL?: string;
   /** Master switch for the JEV review panel on the scoring path (#203). Unset
    *  or falsy keeps the pre-existing single-score behavior byte for byte. */
   JEV_PANEL_ENABLED?: string;
@@ -99,8 +100,7 @@ export interface Env {
   /** Override notes From address (default notes@aidr.today). */
   EMAIL_NOTES_FROM?: string;
   EMAIL_FROM_NAME?: string;
-  /** Reply-To for digest mail (e.g. submit@aidr.today, the email intake).
-   *  Unset: replies go to the From address. */
+  /** Override digest Reply-To. Unset: submit@aidr.today. */
   EMAIL_REPLY_TO?: string;
   /** HMAC secret for unsubscribe tokens. When unset, legacy UUID tokens are used. */
   NEWS_UNSUBSCRIBE_SECRET?: string;

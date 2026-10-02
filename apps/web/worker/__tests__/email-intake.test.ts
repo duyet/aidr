@@ -4,11 +4,6 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  addContributorEmail,
-  confirmContributorEmail,
-  removeContributorEmail,
-} from "../email-intake/aliases.js";
-import {
   classifyInbound,
   type InboundFields,
 } from "../email-intake/classify.js";
@@ -291,58 +286,5 @@ describe("classifyInbound", () => {
         ownText: "title: Mô hình mới",
       })
     ).toEqual({ kind: "suggestion", field: "title", text: "Mô hình mới" });
-  });
-});
-
-describe("extra addresses", () => {
-  it("confirms with a single-use token", async () => {
-    expect(
-      await addContributorEmail(
-        env(),
-        USER,
-        "alice@work.test",
-        "https://aidr.today"
-      )
-    ).toEqual({ ok: true });
-    const token = sent[0].text.match(/token=([0-9a-f]{64})/)?.[1] ?? null;
-    expect(await confirmContributorEmail(env().DB, token)).toBe(true);
-    expect(await confirmContributorEmail(env().DB, token)).toBe(false);
-    expect(db.prepare("SELECT status FROM contributor_emails").get()).toEqual({
-      status: "confirmed",
-    });
-  });
-
-  it("caps confirmation mails even when the address is removed and re-added", async () => {
-    const victim = "victim@example.net";
-    for (let i = 0; i < 5; i++) {
-      expect(
-        await addContributorEmail(env(), USER, victim, "https://aidr.today")
-      ).toEqual({ ok: true });
-      const row = db.prepare("SELECT id FROM contributor_emails").get() as {
-        id: string;
-      };
-      expect(await removeContributorEmail(env().DB, USER, row.id)).toBe(true);
-    }
-    expect(
-      (await addContributorEmail(env(), USER, victim, "https://aidr.today")).ok
-    ).toBe(false);
-    expect(sent).toHaveLength(5);
-  });
-
-  it("refuses another account's email", async () => {
-    db.prepare(
-      "INSERT INTO clerk_users (id, email, created_at, updated_at) VALUES ('user_bob', 'bob@example.com', 0, 0)"
-    ).run();
-    expect(
-      (
-        await addContributorEmail(
-          env(),
-          USER,
-          "bob@example.com",
-          "https://aidr.today"
-        )
-      ).ok
-    ).toBe(false);
-    expect(sent).toHaveLength(0);
   });
 });

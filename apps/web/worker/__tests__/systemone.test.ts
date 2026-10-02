@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LlmCallLogEntry } from "../llm.js";
-import { CATEGORIES, setLlmCallLogger } from "../llm.js";
+import {
+  BUILDER_CATEGORIES,
+  CATEGORY_DEFINITIONS,
+  CATEGORY_RULE,
+  CORE_CATEGORIES,
+  setLlmCallLogger,
+} from "../llm.js";
 import {
   callSystemOne,
   isSystemOneConfigured,
@@ -15,6 +21,16 @@ import {
   suggestionVerdictFromJev,
 } from "../systemone.js";
 import type { Env } from "../types.js";
+
+/** The questions scoreItems sends, built from the live taxonomy. */
+function productionQuestions() {
+  return jevScoreQuestions(
+    CORE_CATEGORIES,
+    BUILDER_CATEGORIES,
+    CATEGORY_DEFINITIONS,
+    CATEGORY_RULE
+  );
+}
 
 function envWith(overrides: Partial<Env> = {}): Env {
   return {
@@ -183,7 +199,7 @@ describe("answer mapping", () => {
       "8",
       "9",
     ]);
-    const questions = jevScoreQuestions(CATEGORIES);
+    const questions = productionQuestions();
     expect(Array.isArray(questions.importance.criteria)).toBe(true);
     expect(questions.importance.criteria).toEqual([...JEV_IMPORTANCE_LEVELS]);
     expect(questions.importance.criteria).toHaveLength(10);
@@ -194,8 +210,8 @@ describe("answer mapping", () => {
   });
 
   it("sends choice criteria as object maps, not arrays", () => {
-    const questions = jevScoreQuestions(CATEGORIES);
-    for (const id of ["category", "entity", "theme"] as const) {
+    const questions = productionQuestions();
+    for (const id of ["category", "builder", "entity", "theme"] as const) {
       const question = questions[id];
       expect(question.type).toBe("choice");
       const criteria = question.criteria;
@@ -208,7 +224,11 @@ describe("answer mapping", () => {
       }
     }
     expect(Object.keys(questions.category.criteria as object)).toEqual([
-      ...CATEGORIES,
+      ...CORE_CATEGORIES,
+    ]);
+    expect(Object.keys(questions.builder!.criteria as object)).toEqual([
+      "none",
+      ...BUILDER_CATEGORIES,
     ]);
     expect(Object.keys(questions.entity.criteria as object)).toEqual([
       "none",
@@ -237,8 +257,8 @@ describe("answer mapping", () => {
   });
 
   it("keeps every Jev criteria entry within TypeSafe's ten-item limit", () => {
-    const questions = jevScoreQuestions(CATEGORIES);
-    expect(CATEGORIES).toHaveLength(10);
+    const questions = productionQuestions();
+    expect(CORE_CATEGORIES).toHaveLength(10);
     expect(JEV_SCORE_LEVELS).toHaveLength(10);
 
     for (const question of Object.values(questions)) {
@@ -271,6 +291,43 @@ describe("answer mapping", () => {
       category: "Models",
       tags: ["openai"],
     });
+  });
+
+  it("lets a builder pick override the core category and add its theme tag", () => {
+    const answers = {
+      is_ai_tech: { type: "noul", noul: 0.9 },
+      importance: { type: "score", score: "6" },
+      quality: { type: "score", score: "7" },
+      category: { type: "choice", choice: "Releases" },
+      entity: { type: "choice", choice: "none" },
+      theme: { type: "choice", choice: "agent" },
+    } as const;
+    expect(
+      scoreJudgmentFromJev(
+        { ...answers, builder: { type: "choice", choice: "Frameworks" } },
+        CORE_CATEGORIES,
+        BUILDER_CATEGORIES
+      )
+    ).toMatchObject({ category: "Frameworks", tags: ["agent", "framework"] });
+    expect(
+      scoreJudgmentFromJev(
+        { ...answers, builder: { type: "choice", choice: "none" } },
+        CORE_CATEGORIES,
+        BUILDER_CATEGORIES
+      )
+    ).toMatchObject({ category: "Releases", tags: ["agent"] });
+    // "open-source" is both a theme and the Open Source tag: one chip, not two.
+    expect(
+      scoreJudgmentFromJev(
+        {
+          ...answers,
+          theme: { type: "choice", choice: "open-source" },
+          builder: { type: "choice", choice: "Open Source" },
+        },
+        CORE_CATEGORIES,
+        BUILDER_CATEGORIES
+      )
+    ).toMatchObject({ category: "Open Source", tags: ["open-source"] });
   });
 
   it("rejects a Jev score above the supported maximum", () => {

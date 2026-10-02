@@ -128,7 +128,7 @@ read — surfacing staleness costs nothing on the request path). A source at or
 over its threshold is flagged `stale` in `/api/system/sources` and the `/data`
 Algo tab.
 
-- Default: **168 consecutive runs** (7 days at the hourly cadence). Chosen
+- Default: **336 consecutive runs** (7 days at the 30-minute cadence). Chosen
   against measured cadence, not roundness: when the registry was verified
   live, 14 of 21 feeds returned nothing inside the 26h window — including
   pre-existing ones like `lastweekin-ai` (a weekly newsletter) and
@@ -138,8 +138,8 @@ Algo tab.
 - Override per row with `staleAfterRuns` in the registry when a source's real
   cadence demands it. The known case is arXiv: it accepts no weekend
   submissions, so its newest `submittedDate` is frozen from ~Fri 18:00 UTC to
-  ~Mon 00:00 UTC and the 26h window leaves a measured **~54** consecutive
-  silent runs, so 72 is the floor for it.
+  ~Mon 00:00 UTC and the 26h window leaves about **108** consecutive
+  silent runs at a 30-minute cadence, so 144 is the floor for it.
 
 ### arXiv is not in the registry, and why
 

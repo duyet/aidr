@@ -104,6 +104,38 @@ export const LEARNING_THEME_DENYLIST = new Set([
   "agi",
   "transformer",
   "update",
+  // Business / newsroom themes the tagger emits as hyphenated tags.
+  "industry-news",
+  "stock-sales",
+  "executive-departures",
+  "partnerships",
+  "partnership",
+  "acquisition",
+  "acquisitions",
+  "earnings",
+  "lawsuit",
+  "lawsuits",
+  "layoffs",
+  "valuation",
+  "investment",
+  "data-center",
+  "data-centers",
+  "ai-agents",
+  "outage",
+  "policy",
+  "llms",
+  "agentic",
+  // Builder categories and the themes the tagger pairs with them.
+  "tools",
+  "frameworks",
+  "framework",
+  "data",
+  "devtools",
+  "data-engineering",
+  "vector-database",
+  "embedding",
+  "mlops",
+  "eval",
 ]);
 
 /**
@@ -153,10 +185,46 @@ export function isSpecificTrendingTopic(topic: string): boolean {
     "ollama",
     "vllm",
     "claude-code",
+    // Builder frameworks named by one word.
+    "langgraph",
+    "langsmith",
+    "crewai",
+    "autogen",
+    "mastra",
+    "llamaindex",
+    "dspy",
+    "sglang",
   ]);
   if (CODNAMES.has(normalizeTopicName(topic))) return true;
   return false;
 }
+
+/** Tier words that may follow a version number ("Grok 4.1 Fast"). */
+const VERSION_VARIANTS = new Set([
+  "flash",
+  "pro",
+  "max",
+  "mini",
+  "nano",
+  "ultra",
+  "lite",
+  "turbo",
+  "plus",
+  "fast",
+  "preview",
+  "thinking",
+  "instant",
+  "air",
+  "omni",
+  "coder",
+  "code",
+  // Curated codenames seen after a version (GPT-6 Astra, GPT-5.6 Luna,
+  // Gemini 4 Argon).
+  "sol",
+  "astra",
+  "luna",
+  "argon",
+]);
 
 /**
  * Pulls versioned model / product names from a headline so trending can
@@ -164,9 +232,31 @@ export function isSpecificTrendingTopic(topic: string): boolean {
  */
 export function extractTitleEntities(title: string): string[] {
   if (!title.trim()) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const add = (raw: string) => {
+    const key = trendingKey(raw);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(raw);
+  };
+
+  // GPT-6 Astra, GPT-5.6 Sol, GLM-5.3-Flash, o3-pro, DeepSeek-V3.2. Only
+  // closed-list tier words extend the name, so "GLM-5.3 nearly" and
+  // "Grok 4.7 Tops" stay "GLM-5.3" / "Grok 4.7".
+  const family =
+    /\b((?:GPT|Claude|Gemini|Grok|Llama|Qwen|Fable|Codex|Composer|Phi|Gemma|GLM|Kimi|Olmo|DeepSeek|o[1-4])[- ]?\d+(?:\.\d+)*)(?:([- ])([A-Za-z][a-zA-Z0-9]*))?\b/gi;
+  for (const match of title.matchAll(family)) {
+    const base = match[1]!;
+    const suffix = match[3];
+    add(
+      suffix && VERSION_VARIANTS.has(suffix.toLowerCase())
+        ? `${base}${match[2]}${suffix}`
+        : base
+    );
+  }
+
   const patterns: RegExp[] = [
-    // GPT-6 Astra, GPT-5.6 Sol, GLM-5.3-Flash, o3-pro, DeepSeek-V3.2
-    /\b((?:GPT|Claude|Gemini|Grok|Llama|Qwen|Fable|Codex|Composer|Phi|Gemma|GLM|Kimi|Olmo|DeepSeek|o[1-4])[- ]?\d+(?:\.\d+)*(?:[- ](?:Flash|Pro|Max|Mini|Nano|Ultra|Sol|Astra|Opus|Sonnet|Haiku|Code|Thinking|V\d|[A-Z][a-zA-Z0-9]+))?)\b/gi,
     // Claude Opus 5 / Claude Sonnet 4.6 / Claude Code
     /\b(Claude(?:\s+(?:Opus|Sonnet|Haiku|Code))(?:\s+\d+(?:\.\d+)*)?)\b/gi,
     // Muse Spark 1.3 Max
@@ -175,23 +265,322 @@ export function extractTitleEntities(title: string): string[] {
     /\b(Fable\s+\d+(?:\.\d+)*)\b/gi,
     // Opus 5 / Sonnet 4.6 when Claude is omitted
     /\b((?:Opus|Sonnet|Haiku)\s+\d+(?:\.\d+)*)\b/gi,
+    // Builder frameworks and platforms that carry no version or inner capital
+    /\b(Workers\s+AI|Llama\s+Stack|Pydantic\s+AI|Semantic\s+Kernel|Mastra|DSPy|SGLang)\b/gi,
+    // OpenAI Agents SDK / Cloudflare Agents SDK / Vercel AI SDK
+    /\b((?:(?:OpenAI|Cloudflare|Claude|Google|Vercel|Microsoft)\s+)?(?:Agents?|AI)\s+SDK)\b/gi,
+    // Workers AI model ids: "@cf/meta/llama-4-scout" → "llama-4-scout"
+    /@(?:cf|hf)\/[\w.-]+\/([\w.-]+)/gi,
   ];
 
-  const seen = new Set<string>();
-  const out: string[] = [];
   for (const re of patterns) {
-    re.lastIndex = 0;
     for (const match of title.matchAll(re)) {
       const raw = match[1]?.trim();
-      if (!raw) continue;
-      const key = trendingKey(raw);
-      if (!key || seen.has(key)) continue;
-      // Drop bare "Claude" / "GPT" if somehow captured without a version —
-      // patterns above require a digit or a product qualifier.
-      if (!/\d/.test(key) && !/-/.test(key) && !/\s/.test(raw)) continue;
-      seen.add(key);
-      out.push(raw);
+      if (raw) add(raw);
     }
+  }
+  for (const name of extractVersionedNames(title)) add(name);
+  for (const name of extractMixedCaseNames(title)) add(name);
+  for (const name of extractLaunchObjects(title)) add(name);
+  const lead = extractLeadingName(title);
+  if (lead) add(lead);
+  // "Gemini 4" inside "Gemini 4 Argon", "Opus 5" inside "Claude Opus 5".
+  const keys = out.map(trendingKey);
+  return out.filter((_, i) =>
+    keys.every(
+      (other, j) =>
+        j === i ||
+        (!other.startsWith(`${keys[i]}-`) && !other.endsWith(`-${keys[i]}`))
+    )
+  );
+}
+
+/** Capitalised headline words that never start or continue a product name:
+ * function words, headline verbs, months, and counters ("Top 10"). */
+const NAME_STOPWORDS = new Set(
+  `a an the and or of for with on in to at by from via vs versus after before
+  over into as is are was be can will now new its their your our his her how
+  why what when who first next last top record phase part series level stage
+  round step day week chapter episode season section article page volume
+  issue number no gen launches launch launched releases release released
+  unveils unveil ships ship debuts debut introduces introducing introduce
+  announces announce adds add beats beat outperforms outperform deploys
+  deploy plans plan cuts cut opens open sets set hits hit lifts lift past
+  replaces replace says say brings bring builds build integrates integrate
+  tops top trails trail falls fall joins join raises raise acquires acquire
+  buys buy targets target holds hold shares share drops drop partners gets
+  get wins win leads lead makes make takes take uses use fires fire hires
+  hire weighs reports report expands expand rolls roll tests test pays pay
+  delivers deliver spends spend jumps jump surges surge reaches reach
+  passes pass hosts host vote votes more less than about nearly up multi
+  try order orders challenges fixes cancels halts scraps tops
+  jan feb mar apr may jun jul aug
+  sep sept oct nov dec january february march april june july august
+  september october november december q1 q2 q3 q4 h1 h2`.split(/\s+/)
+);
+
+/** Labs / companies: a boundary, not part of a product name
+ * ("Google Gemini 4" → "Gemini 4", "NVIDIA Rubin NVL72" → "Rubin NVL72"). */
+const LAB_NAMES = new Set([
+  "openai",
+  "anthropic",
+  "google",
+  "deepmind",
+  "nvidia",
+  "microsoft",
+  "meta",
+  "apple",
+  "xai",
+  "spacexai",
+  "spacex",
+  "tesla",
+  "alibaba",
+  "baidu",
+  "tencent",
+  "bytedance",
+  "zhipu",
+  "huawei",
+  "samsung",
+  "intel",
+  "amd",
+  "ibm",
+  "github",
+  "deepseek",
+  "langchain",
+  "softbank",
+  "huggingface",
+  "youtube",
+  "linkedin",
+]);
+
+/** Units and counters that make a number a size, not a version. */
+const NUMBER_UNIT =
+  /^(%|x|[kmbt]|gb|tb|mb|ms|tokens?|params?|parameters?|days?|hours?|weeks?|months?|years?|minutes?|seconds?|million|billion|trillion|percent|times|people|users|sites|of)$/i;
+
+interface TitleToken {
+  word: string;
+  possessive: boolean;
+  /** Ends a phrase: trailing punctuation, a possessive, or a dash after. */
+  boundary: boolean;
+}
+
+function tokenizeTitle(title: string): TitleToken[] {
+  const tokens: TitleToken[] = [];
+  for (const raw of title.split(/\s+/)) {
+    if (!raw) continue;
+    if (/^[-–—|/]+$/.test(raw)) {
+      const prev = tokens[tokens.length - 1];
+      if (prev) prev.boundary = true;
+      continue;
+    }
+    let word = raw.replace(/^[("'‘“[]+/, "").replace(/[)"'’”\],:;.!?]+$/, "");
+    const possessive = /['’]s$/i.test(word);
+    if (possessive) word = word.slice(0, -2);
+    if (!word) continue;
+    tokens.push({
+      word,
+      possessive,
+      boundary:
+        possessive || word.length < raw.replace(/^[("'‘“[]+/, "").length,
+    });
+  }
+  return tokens;
+}
+
+const isNameWord = (w: string) =>
+  /^[A-Z]/.test(w) &&
+  // "Prompting", "Following", "Including": headline gerunds, not names.
+  !/^[A-Z][a-z]{3,}ing$/.test(w) &&
+  !NAME_STOPWORDS.has(w.toLowerCase()) &&
+  !LAB_NAMES.has(w.toLowerCase());
+
+/** Letters only Vietnamese uses among Latin scripts. */
+const VIETNAMESE_LETTERS =
+  /[ăđơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i;
+
+/** "4", "5.6", "V3" — a bare release number, not a count ("100") or year. */
+const isBareVersion = (w: string) =>
+  /^[vV]?\d+(?:\.\d+)*$/.test(w) && !/^\d{3,}$/.test(w);
+
+/** "GPT-5.6", "LFM2.5-2.6B", "AI5", "Boreal-H3", "TwIL-LM3-Pro". */
+const isAttachedVersion = (w: string) =>
+  /^[A-Z][A-Za-z]*(?:-[A-Za-z]+)*-?[A-Za-z]?\d[\w.-]*$/.test(w) &&
+  !/^[A-Z]\d+[A-Z]?$/.test(w) &&
+  !NAME_STOPWORDS.has(w.toLowerCase());
+
+/**
+ * Generic "Name + version" rule: 1–3 capitalised words before a bare
+ * version ("FLUX 3", "Grok Imagine Video 1.5 Lite", "Cosmos 3"), or a
+ * token that carries its own version ("GLM-5.3", "Rubin NVL72"), plus
+ * closed-list tier words after it.
+ */
+function extractVersionedNames(title: string): string[] {
+  const tokens = tokenizeTitle(title);
+  // Vietnamese headlines capitalise ordinary nouns ("Hacker 17 tuổi"), so
+  // only self-versioned tokens and curated families count there.
+  const vietnamese = VIETNAMESE_LETTERS.test(title);
+  const out: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i]!;
+    const bare = isBareVersion(tok.word);
+    if (bare ? vietnamese : !isAttachedVersion(tok.word)) continue;
+    if (bare) {
+      const next = tokens[i + 1]?.word ?? "";
+      if (!tok.boundary && NUMBER_UNIT.test(next)) continue;
+    }
+    // "GPT-6.1" names itself; walking left would take in headline verbs
+    // ("Cancels GPT-6 Astra").
+    let start = i;
+    while (
+      bare &&
+      start > 0 &&
+      i - start < 3 &&
+      !tokens[start - 1]!.boundary &&
+      isNameWord(tokens[start - 1]!.word)
+    ) {
+      start--;
+    }
+    if (bare && start === i) continue;
+    let end = i;
+    while (
+      end + 1 < tokens.length &&
+      end - i < 2 &&
+      !tokens[end]!.boundary &&
+      VERSION_VARIANTS.has(tokens[end + 1]!.word.toLowerCase()) &&
+      /^[A-Z]/.test(tokens[end + 1]!.word)
+    ) {
+      end++;
+    }
+    out.push(
+      tokens
+        .slice(start, end + 1)
+        .map((t) => t.word)
+        .join(" ")
+    );
+  }
+  return out;
+}
+
+const LAUNCH_VERB =
+  /^(launches|unveils|ships|debuts|introduces|introducing|releases|announces|opens)$/i;
+
+/** Generic heads that follow a launch verb without naming a product. */
+const GENERIC_OBJECT =
+  /^(ai|agents?|models?|lab|tools?|apps?|features?|platform|plans?|bill|program|fund|probe|service|beta|sweeping|major|own|its)$/i;
+
+/** "LiteLLM Launches Lens to…", "NVIDIA Releases Kumo Tabular: …",
+ * "Shopify debuts Canvas, …": a short name right after a launch verb that
+ * ends the phrase (punctuation or a lowercase word follows). */
+function extractLaunchObjects(title: string): string[] {
+  const tokens = tokenizeTitle(title);
+  const out: string[] = [];
+  for (let i = 0; i + 1 < tokens.length; i++) {
+    if (tokens[i]!.boundary || !LAUNCH_VERB.test(tokens[i]!.word)) continue;
+    let end = i;
+    while (
+      end + 1 < tokens.length &&
+      end - i < 3 &&
+      (end === i || !tokens[end]!.boundary) &&
+      isNameWord(tokens[end + 1]!.word)
+    ) {
+      end++;
+    }
+    const words = tokens.slice(i + 1, end + 1);
+    // "Artifacts Beta" → "Artifacts": the release stage is not the name.
+    if (words.length > 1 && /^(beta|alpha|preview)$/i.test(words.at(-1)!.word))
+      words.pop();
+    if (words.length === 0 || words.length > 2) continue;
+    if (GENERIC_OBJECT.test(words[0]!.word)) continue;
+    const after = tokens[end + 1];
+    if (
+      after &&
+      !tokens[end]!.boundary &&
+      /^[A-Z]/.test(after.word) &&
+      !NAME_STOPWORDS.has(after.word.toLowerCase())
+    )
+      continue;
+    out.push(words.map((t) => t.word).join(" "));
+  }
+  return out;
+}
+
+/** Kicker words that open a headline with a colon but name nothing. */
+const HEADLINE_KICKERS =
+  /^(show|ask|tell|launch|update|breaking|exclusive|opinion|analysis|review|interview|report|quoting|ai|llms?|agents?|podcast|video|watch|explainer|guide|tutorial|paper|thread)$/i;
+
+/** "GPT-Synopsys: Frontier Intelligence…", "TomasuLLM: Out-of-Order…" —
+ * a one- or two-word name before the headline's first colon. */
+function extractLeadingName(title: string): string | null {
+  const match = /^([^\s:]+(?:\s[^\s:]+)?):\s/.exec(title.trim());
+  if (!match) return null;
+  const words = match[1]!.split(" ");
+  if (
+    words.some(
+      (w) => !isNameWord(w) || HEADLINE_KICKERS.test(w) || ORG_SUFFIX.test(w)
+    )
+  )
+    return null;
+  return match[1]!;
+}
+
+const ORG_SUFFIX =
+  /^(foundation|labs?|inc|corp|corporation|ltd|llc|institute|university|group|holdings|ventures|capital)$/i;
+
+/** "LangSmith", "DoGBench", "ChatGPT": an inner capital after a lowercase
+ * letter is a coined product name. MoE / MoEs and "McDonald" are not. */
+const isMixedCase = (w: string) =>
+  /^[A-Z][A-Za-z0-9]*[a-z][A-Z]/.test(w) &&
+  !/^[A-Z][a-z][A-Z]s?$/.test(w) &&
+  !/^Ma?c[A-Z]/.test(w);
+
+/** Coined mixed-case names plus up to two capitalised words after them
+ * ("SynthID Bio", "NeMo Agent Toolkit"). Labs and possessives are skipped. */
+function extractMixedCaseNames(title: string): string[] {
+  const tokens = tokenizeTitle(title);
+  const out: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i]!;
+    if (tok.possessive || !isMixedCase(tok.word) || !isNameWord(tok.word))
+      continue;
+    let end = i;
+    while (
+      end + 1 < tokens.length &&
+      end - i < 2 &&
+      !tokens[end]!.boundary &&
+      isNameWord(tokens[end + 1]!.word) &&
+      !/\d/.test(tokens[end + 1]!.word)
+    ) {
+      end++;
+    }
+    // Title Case runs on ("MongoDB Stock Plummets 15%"): keep the extension
+    // only when the phrase ends right after it.
+    const after = tokens[end + 1];
+    if (
+      end > i &&
+      !tokens[end]!.boundary &&
+      after &&
+      /^[A-Z0-9$]/.test(after.word) &&
+      !NAME_STOPWORDS.has(after.word.toLowerCase())
+    ) {
+      end = i;
+    }
+    // "TypeSafe AI's Jev": the run is an owner, not the product.
+    if (tokens.slice(i + 1, end + 1).some((t) => t.possessive)) {
+      i = end;
+      continue;
+    }
+    // "OpenID Foundation", "Acme Labs": an organisation, not a product.
+    if (tokens.slice(i + 1, end + 2).some((t) => ORG_SUFFIX.test(t.word))) {
+      i = end + 1;
+      continue;
+    }
+    out.push(
+      tokens
+        .slice(i, end + 1)
+        .map((t) => t.word)
+        .join(" ")
+    );
+    i = end;
   }
   return out;
 }
@@ -507,6 +896,9 @@ export function rankTrendingWithGrowth(
     cap?: number;
     /** When true (default), drop theme denylist tags from the primary list. */
     entitiesOnly?: boolean;
+    /** Keys extracted from headlines (`collectTrendingCandidates`): a
+     * coined single-word name like "chatgpt" is specific only by origin. */
+    entityKeys?: ReadonlySet<string>;
   }
 ): { tag: string; count: number }[] {
   const hotMin = opts?.hotMin ?? 2;
@@ -524,7 +916,13 @@ export function rankTrendingWithGrowth(
     const growth =
       yesterday === 0 ? (count >= hotMin ? 1.25 : 1) : count / yesterday;
     const growthBoost = growth >= 1.5 ? 1.35 : growth >= 1.2 ? 1.15 : 1;
-    const specific = isSpecificTrendingTopic(tag);
+    const key = trendingKey(tag);
+    // With origins known, an LLM tag like "daily-active-users" is specific
+    // only when a headline also names it or it carries a version.
+    const specific = opts?.entityKeys
+      ? opts.entityKeys.has(key) ||
+        (isSpecificTrendingTopic(tag) && (/\d/.test(key) || !key.includes("-")))
+      : isSpecificTrendingTopic(tag);
     const versionBoost = /\d/.test(trendingKey(tag))
       ? 1.55
       : specific
@@ -553,10 +951,14 @@ export function rankTrendingWithGrowth(
   const hotSpecific = specificPool
     .filter((t) => t.count >= hotMin)
     .slice(0, cap);
+  // Single-mention models/products still beat bare labs as filler.
   let picked =
-    hotSpecific.length > 0
+    hotSpecific.length >= floor
       ? hotSpecific
-      : specificPool.slice(0, Math.min(floor, specificPool.length));
+      : [...hotSpecific, ...specificPool.filter((t) => t.count < hotMin)].slice(
+          0,
+          floor
+        );
 
   if (picked.length < floor && entitiesOnly) {
     const filler = scored.filter(
@@ -594,9 +996,14 @@ export function collectTrendingCandidates(
     sourceCount?: number;
   }[],
   sinceEpochSec: number
-): { counts: Map<string, number>; displayByKey: Map<string, string> } {
+): {
+  counts: Map<string, number>;
+  displayByKey: Map<string, string>;
+  entityKeys: Set<string>;
+} {
   const counts = new Map<string, number>();
   const displayByKey = new Map<string, string>();
+  const entityKeys = new Set<string>();
 
   const bump = (display: string, weight: number) => {
     const key = trendingKey(display);
@@ -620,8 +1027,11 @@ export function collectTrendingCandidates(
       if (LEARNING_THEME_DENYLIST.has(normalizeTopicName(tag))) continue;
       bump(displayKeywordFromTopic(tag), weight);
     }
-    for (const ent of extractTitleEntities(it.title)) bump(ent, weight);
+    for (const ent of extractTitleEntities(it.title)) {
+      bump(ent, weight);
+      entityKeys.add(trendingKey(ent));
+    }
   }
 
-  return { counts, displayByKey };
+  return { counts, displayByKey, entityKeys };
 }

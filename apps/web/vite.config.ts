@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
@@ -139,9 +140,32 @@ const baseConfig: UserConfig = {
   },
 };
 
+function buildIdentity(): { version: string; sha: string } {
+  const version =
+    JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"))
+      .version ?? "";
+  const fromEnv = process.env.GITHUB_SHA?.trim();
+  if (fromEnv) return { version, sha: fromEnv.slice(0, 7) };
+  try {
+    const sha = execSync("git rev-parse --short=7 HEAD", {
+      cwd: fileURLToPath(new URL(".", import.meta.url)),
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+    return { version, sha };
+  } catch {
+    return { version, sha: "" };
+  }
+}
+
+const identity = buildIdentity();
+
 export default defineConfig(({ mode }) => ({
   ...baseConfig,
   define: {
+    "import.meta.env.VITE_AIDR_VERSION": JSON.stringify(identity.version),
+    "import.meta.env.VITE_AIDR_SHA": JSON.stringify(identity.sha),
     "import.meta.env.CLERK_PROXY_URL": JSON.stringify(
       configuredPublicProxyUrl(mode)
     ),

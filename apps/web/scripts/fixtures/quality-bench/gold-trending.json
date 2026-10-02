@@ -1,0 +1,133 @@
+{
+  "note": "Model/product names that really trended in the snapshot's last 24h (labelled from titles, before running the code). A chip hits when its trendingKey equals a key or an alias.",
+  "entities": [
+    {
+      "name": "Gemini 4 Argon",
+      "aliases": ["gemini-4-argon", "gemini-4"]
+    },
+    {
+      "name": "Grok 4.7",
+      "aliases": ["grok-4.7"]
+    },
+    {
+      "name": "Grok Imagine Video 1.5 Lite",
+      "aliases": [
+        "grok-imagine-video-1.5-lite",
+        "grok-imagine-video-1.5",
+        "grok-imagine"
+      ]
+    },
+    {
+      "name": "FLUX 3",
+      "aliases": ["flux-3"]
+    },
+    {
+      "name": "Claude Code",
+      "aliases": ["claude-code", "claude-code-mods"]
+    },
+    {
+      "name": "GPT-5.6 Luna",
+      "aliases": ["gpt-5.6-luna", "gpt-5.6"]
+    },
+    {
+      "name": "Claude Opus 5",
+      "aliases": ["claude-opus-5", "opus-5"]
+    },
+    {
+      "name": "LFM2.5-2.6B",
+      "aliases": ["lfm2.5-2.6b", "lfm2.5"]
+    },
+    {
+      "name": "Olmo-core 3",
+      "aliases": ["olmo-core-3"]
+    },
+    {
+      "name": "GPT-Synopsys",
+      "aliases": ["gpt-synopsys"]
+    },
+    {
+      "name": "LangSmith",
+      "aliases": ["langsmith", "langsmith-fine-tuning"]
+    },
+    {
+      "name": "Project Continuum",
+      "aliases": ["project-continuum"]
+    },
+    {
+      "name": "Kumo Tabular",
+      "aliases": ["kumo-tabular"]
+    },
+    {
+      "name": "RTX Spark",
+      "aliases": ["rtx-spark"]
+    },
+    {
+      "name": "Dots",
+      "aliases": ["dots"]
+    },
+    {
+      "name": "Jev",
+      "aliases": ["jev"]
+    },
+    {
+      "name": "clef",
+      "aliases": ["clef"]
+    },
+    {
+      "name": "DeepSeek Harness",
+      "aliases": ["deepseek-harness"]
+    },
+    {
+      "name": "Bedrock AgentCore",
+      "aliases": ["bedrock-agentcore", "agentcore", "amazon-bedrock-agentcore"]
+    }
+  ],
+  "junk": [
+    "ai",
+    "model",
+    "models",
+    "new",
+    "llm",
+    "llms",
+    "agent",
+    "agents",
+    "agentic",
+    "launch",
+    "release",
+    "releases",
+    "update",
+    "data",
+    "tech",
+    "news",
+    "funding",
+    "chips",
+    "gpu",
+    "ipo",
+    "safety",
+    "regulation",
+    "policy",
+    "startup",
+    "research",
+    "benchmark",
+    "open-source",
+    "enterprise",
+    "inference",
+    "coding",
+    "security",
+    "ai-agents",
+    "data-centers",
+    "data-center",
+    "layoffs",
+    "valuation",
+    "lawsuit",
+    "investment",
+    "industry-news",
+    "stock-sales",
+    "executive-departures",
+    "partnerships",
+    "acquisition",
+    "earnings",
+    "lawsuits",
+    "outage"
+  ]
+}

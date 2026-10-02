@@ -7,7 +7,7 @@ import { hnAdapter } from "./hn.js";
 import { huggingNewsAdapter } from "./huggingnews.js";
 import { lobstersAdapter } from "./lobsters.js";
 import { marketBriefAdapter } from "./marketbrief.js";
-import { rssAdapter } from "./rss.js";
+import { applyFloodGate, rssAdapter } from "./rss.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 import { xaiAdapter } from "./xai.js";
 
@@ -35,12 +35,24 @@ function normalized(adapter: SourceAdapter): SourceAdapter {
   };
 }
 
+/** `rss` applies its own flood gate; the aggregator adapters read no config
+ *  for it, so the shared `maxItems` / `keywordFilter` gate wraps them here. */
+function floodGated(adapter: SourceAdapter): SourceAdapter {
+  return {
+    type: adapter.type,
+    async fetchItems(config, sinceEpochSec) {
+      const items = await adapter.fetchItems(config, sinceEpochSec);
+      return applyFloodGate(items, config);
+    },
+  };
+}
+
 export const adapters: Record<string, SourceAdapter> = {
   hn: normalized(hnAdapter),
-  huggingnews: normalized(huggingNewsAdapter),
+  huggingnews: normalized(floodGated(huggingNewsAdapter)),
   lobsters: normalized(lobstersAdapter),
   rss: normalized(rssAdapter),
   anthropic: normalized(anthropicAdapter),
-  marketbrief: normalized(marketBriefAdapter),
+  marketbrief: normalized(floodGated(marketBriefAdapter)),
   xai: normalized(xaiAdapter),
 };

@@ -270,7 +270,7 @@ describe("glossary block", () => {
 
 describe("translation QA enforcement", () => {
   const acceptingReview = {
-    schema_version: 2,
+    schema_version: 3,
     direction: "en-vi",
     verdict: "accept",
     fidelity: 0.95,
@@ -278,6 +278,10 @@ describe("translation QA enforcement", () => {
     confidence: 0.9,
     checks: Object.fromEntries(SEMANTIC_CHECKS.map((c) => [c, "pass"])),
     reason: "ok",
+    back_translation: {
+      title: AGENTS_EN,
+      summary: "The FT reported the findings.",
+    },
   } as unknown as TranslationReview;
 
   function pair(viTitle: string): TranslationPair {

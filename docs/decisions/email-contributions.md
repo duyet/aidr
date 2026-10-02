@@ -61,8 +61,10 @@ Every check fails closed. Nothing is ever sent back from the email Worker
    `dmarc=fail` always ignores. No such header: ignore.
 5. Identity (`src/identity.ts`): the address (lowercased) must match exactly
    one live `clerk_users.email` with `email_verified = 1` (duplicates are
-   ambiguous and ignored), or a `confirmed` `contributor_emails` row whose
-   owner is a live account. `email_verified` (migration 0040) is Clerk's own
+   ambiguous and ignored), or any address in `clerk_verified_emails` (0041)
+   for exactly one live account. Those rows are the addresses Clerk already
+   marks verified, rewritten on each webhook and clerk-sync. `email_verified`
+   (migration 0040) is Clerk's own
    `verification.status === "verified"` for that address, written by the
    Clerk webhook and by `POST /api/admin/clerk-sync`
    (`clerkEmailVerified` in `worker/clerk-users.ts`).
@@ -149,28 +151,18 @@ Verdicts are not mailed; they show on `/contribute` (follow-up).
 
 ### Digest Reply-To
 
-`SubscriberMail.replyTo` (new optional field, `worker/mail/send.ts`). The
-digest sets it from `EMAIL_REPLY_TO` only when configured. Owner decision:
-leave it unset, so digest replies are unchanged; acks use
-`Reply-To: submit@`.
+`SubscriberMail.replyTo` (`worker/mail/send.ts`). Subscriber mail
+(digest, confirm, welcome, campaigns) sends `Reply-To: submit@aidr.today`
+unless `EMAIL_REPLY_TO` overrides it. Acks use the same address.
 
-## Extra addresses (whitelist)
+## Extra addresses
 
-1. On `/contribute` the user adds an address (`ContributorEmails` component,
-   server fns in `src/lib/contribute-email-fn.ts`).
-2. We mail a confirmation link to it. The token is 32 random bytes; only its
-   SHA-256 is stored; it expires after 24 h and is single-use.
-3. `GET /api/contribute-email/confirm?token=…` shows a page with a button;
-   the `POST` confirms. GET never confirms, because mail security scanners
-   prefetch links and would otherwise confirm an address an attacker added.
-4. Only `confirmed` rows are accepted by the email Worker. The user can list
-   and remove addresses.
-
-Abuse limits: at most 5 addresses per user (any status) and 5 confirmation
-mails per user per day, counted in `contributor_email_sends`, which removing
-an address does not touch. An address that is another account's Clerk email,
-or held by another user, is refused; another user's pending row can be taken
-only after it expires.
+`/contribute` lists the addresses Clerk has already verified for the signed-in
+account (`ContributorEmails`, `fetchContributorEmails`). There is no second
+confirmation mail. The email Worker accepts a non-primary address only when
+`clerk_verified_emails` names exactly one live account. Adding another address
+is done in the Clerk account; the next webhook or `POST /api/admin/clerk-sync`
+rewrites that table.
 
 ## Prompt injection
 
@@ -190,16 +182,17 @@ text. Field and story selection are fixed rules, never a model.
   immediately and the text unless it is a comment.
 - The step purges each run: ignored rows after 30 days, comment text after
   90 days, all rows after 365 days.
-- Contributor addresses are deleted when the user removes them; expired
-  pending ones are deleted on the next add by anyone.
+- Verified addresses are replaced from Clerk on each account upsert. A
+  soft-deleted account no longer matches, because the lookup joins
+  `clerk_users.deleted_at IS NULL`.
 
 ## Deploy
 
 1. Apply the migration: `pnpm --filter @aidr/web d1:migrate`
-   (`0040_email_contributions.sql`) before the web deploy (the Clerk
-   upsert writes the new `email_verified` column), then run
-   `POST /api/admin/clerk-sync` once so existing accounts get their
-   verification status.
+   (`0040_email_contributions.sql`, then `0041_clerk_verified_emails.sql`)
+   before the web deploy (the Clerk upsert writes `email_verified` and
+   replaces `clerk_verified_emails`), then run `POST /api/admin/clerk-sync`
+   once so existing accounts get their verified addresses.
 2. Deploy `aidr` (CI on push to master). It must be live before mail arrives
    so the `inbound-email` step exists, though rows simply wait otherwise.
 3. Deploy the email Worker: `pnpm --filter @aidr/email deploy`
@@ -239,8 +232,8 @@ text. Field and story selection are fixed rules, never a model.
 1. Account emails count only when Clerk marks them verified (stored as
    `clerk_users.email_verified`).
 2. SRS forwarders (envelope differs from header From) are ignored in v1.
-3. Digest replies stay unchanged (`EMAIL_REPLY_TO` unset); acks use
-   `Reply-To: submit@aidr.today`.
+3. Subscriber mail and acks use `Reply-To: submit@aidr.today`
+   (`EMAIL_REPLY_TO` overrides the digest).
 4. No admin UI for comments now. Verdicts are not mailed back; they show on
    `/contribute`.
 

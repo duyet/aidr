@@ -1,6 +1,5 @@
 import handler from "@tanstack/react-start/server-entry";
 import { handleClerkProxy, isClerkProxyPath } from "../worker/clerk-proxy";
-import { handleContributorEmailConfirm } from "../worker/email-intake/confirm-http";
 import { handleAidrZipRequest } from "../worker/extension-zip";
 import { ensureIngestAlarm, tickIngest } from "../worker/ingest-schedule";
 import { NewsIngestScheduler } from "../worker/ingest-scheduler";
@@ -13,6 +12,10 @@ import {
   handleAgentDiscovery,
   withHomepageHeaders,
 } from "./lib/agent-discovery";
+import {
+  handleDayMarkdownRequest,
+  isDayMarkdownPath,
+} from "./lib/day-markdown";
 import { readSession } from "./lib/db";
 import { withHomepageInlineStylesheets } from "./lib/inline-stylesheet";
 import { llmsTxtResponse } from "./lib/llms-txt";
@@ -48,10 +51,12 @@ import { NEWS_SITEMAP_PATH, RSS_ALIAS_PATH, RSS_FEED_PATH } from "./lib/site";
 import {
   buildSitemapIndexXml,
   buildSitemapXml,
+  loadDaySitemapUrls,
   loadSitemapMonthCounts,
   loadSitemapShardUrls,
   parseSitemapShardPath,
   robotsResponse,
+  SITEMAP_DAYS_CHILD_PATH,
   SITEMAP_STATIC_CHILD_PATH,
   safeSitemapIndexResponse,
   safeSitemapResponse,
@@ -97,6 +102,10 @@ export default {
     if (isStoryMarkdownPath(path)) {
       return handleStoryMarkdownRequest(request, env?.DB);
     }
+    // Same for the day archive's Markdown twin (`/date/YYYY-MM-DD.md`).
+    if (isDayMarkdownPath(path)) {
+      return handleDayMarkdownRequest(request, await resolveDb(env));
+    }
     if (path === "/favicon.ico") {
       // public/favicon.ico is a real multi-size ICO and handlePublicAsset
       // already served it above, so this only runs when the assets binding is
@@ -115,9 +124,6 @@ export default {
     }
     if (path === "/aidr.zip") {
       return handleAidrZipRequest(request);
-    }
-    if (path === "/api/contribute-email/confirm") {
-      return handleContributorEmailConfirm(request, env);
     }
     if (
       path === "/api/public" ||
@@ -138,7 +144,7 @@ export default {
 
     // Discovery surfaces are Worker-owned and run before the SPA catch-all.
     // `/sitemap.xml` is a <sitemapindex> now: one static child, one child per
-    // UTC month of publication, and the news sitemap. Every child keeps the
+    // UTC month of publication, the day archive child, and the news sitemap. Every child keeps the
     // fail-closed contract — 200 valid XML, static-only on a D1 error.
     if (path === "/sitemap.xml") {
       try {
@@ -155,6 +161,12 @@ export default {
     }
     if (path === SITEMAP_STATIC_CHILD_PATH) {
       return sitemapResponse(buildSitemapXml(staticSitemapUrls()));
+    }
+    if (path === SITEMAP_DAYS_CHILD_PATH) {
+      return safeSitemapResponse(async () => {
+        const db = await resolveDb(env);
+        return db ? loadDaySitemapUrls(readSession(db)) : [];
+      });
     }
     const shard = parseSitemapShardPath(path);
     if (shard) {

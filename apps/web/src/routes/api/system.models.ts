@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { logosForModels } from "../../lib/anyrouter";
 import {
   MODELS_CACHE_CONTROL,
   resolveWorkerEnv,
@@ -14,10 +15,14 @@ export const Route = createFileRoute("/api/system/models")({
     handlers: {
       GET: async ({ context }: { context: any }) => {
         const env = await resolveWorkerEnv(context);
-        return systemJson(
-          { models: getModelChains(env ?? {}) },
-          MODELS_CACHE_CONTROL
-        );
+        const models = getModelChains(env ?? {});
+        const logos = logosForModels([
+          ...models.scoring,
+          ...models.translation,
+          ...models.tldr,
+          ...models.decisions,
+        ]);
+        return systemJson({ models, logos }, MODELS_CACHE_CONTROL);
       },
     },
   },

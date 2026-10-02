@@ -199,7 +199,7 @@ describe("translation QA cross-run retry state", () => {
       ).run();
       const review = (verdict: "repair" | "accept") =>
         JSON.stringify({
-          schema_version: 2,
+          schema_version: 3,
           direction: "en-vi",
           verdict,
           fidelity: 0.95,
@@ -218,6 +218,10 @@ describe("translation QA cross-run retry state", () => {
           },
           reason:
             verdict === "repair" ? "needs repair" : "faithful and natural",
+          back_translation: {
+            title: "A catalog entry for Model X",
+            summary: "Release date 2024-05-01.",
+          },
         });
       let call = 0;
       vi.stubGlobal(

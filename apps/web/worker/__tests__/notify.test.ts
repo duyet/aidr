@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertNotifyConfig,
-  buildMaxRankQuery,
+  buildRankWindowQuery,
   buildTrendingQuery,
   classifyDigestSkip,
   classifyTrendingSkip,
@@ -17,9 +17,11 @@ import {
   TRENDING_MAX_PER_DAY,
   TRENDING_MIN_GAP_SEC,
   TRENDING_MIN_IMPORTANCE,
-  TRENDING_MIN_RANK,
+  TRENDING_RANK_FLOOR,
+  TRENDING_RANK_PERCENTILE,
   trendingBudget,
   trendingImportanceFloor,
+  trendingRankBar,
 } from "../notify/index.js";
 import {
   buildDigestMessage,
@@ -119,7 +121,7 @@ describe("buildTrendingQuery", () => {
     expect(binds).toEqual([
       "telegram",
       1_700_000_000 - 24 * 3600,
-      TRENDING_MIN_RANK,
+      TRENDING_RANK_FLOOR,
       TRENDING_MIN_IMPORTANCE,
     ]);
   });
@@ -340,6 +342,27 @@ describe("trending story message", () => {
     expect(storyUrl({ id: "abcdef1234567890" }, "en")).toBe(
       "https://aidr.today/abcdef12?lang=en"
     );
+  });
+});
+
+describe("webhook severity", () => {
+  // Every webhook story already cleared the relative trending bar; severity
+  // must not hang off an absolute rank that a formula change can make
+  // unreachable (a fixed rank >= 30 went dead with Phase B's rescale).
+  it("marks exceptional importance, not a high absolute rank", () => {
+    expect(
+      storyEvent(
+        story({ rank_score: 1, llm_importance: TRENDING_BURST_MIN_IMPORTANCE })
+      ).severity
+    ).toBe("warning");
+    expect(
+      storyEvent(
+        story({
+          rank_score: 1000,
+          llm_importance: TRENDING_BURST_MIN_IMPORTANCE - 1,
+        })
+      ).severity
+    ).toBe("info");
   });
 });
 
@@ -1009,35 +1032,70 @@ describe("trendingImportanceFloor", () => {
 });
 
 describe("classifyTrendingSkip", () => {
+  const BAR = 12;
   it("reports below_min_rank when the live max is under the bar", () => {
-    expect(classifyTrendingSkip(16.93, 1, 0, 14)).toBe("below_min_rank");
+    expect(classifyTrendingSkip(BAR - 0.01, 1, 0, 14, BAR)).toBe(
+      "below_min_rank"
+    );
   });
   it("reports budget_zero before looking at rank", () => {
-    expect(classifyTrendingSkip(30, 0, 0, 14)).toBe("budget_zero");
+    expect(classifyTrendingSkip(BAR, 0, 0, 14, BAR)).toBe("budget_zero");
   });
   it("reports none_unposted when rank clears the bar but nothing is left", () => {
-    expect(classifyTrendingSkip(30, 1, 0, 14)).toBe("none_unposted");
+    expect(classifyTrendingSkip(BAR, 1, 0, 14, BAR)).toBe("none_unposted");
   });
   it("returns null when a candidate may be sent", () => {
-    expect(classifyTrendingSkip(30, 1, 2, 14)).toBeNull();
+    expect(classifyTrendingSkip(BAR, 1, 2, 14, BAR)).toBeNull();
   });
   // 2026-09-30: all 6 daily posts went out between 00:33 and 08:36 local,
   // so both channels were silent for the whole audience day.
   it("holds a sendable story outside the 09-23 local window", () => {
     for (const hour of [0, 3, 8, 23]) {
-      expect(classifyTrendingSkip(30, 1, 2, hour)).toBe("outside_hours");
+      expect(classifyTrendingSkip(BAR, 1, 2, hour, BAR)).toBe("outside_hours");
     }
-    expect(classifyTrendingSkip(30, 1, 2, 9)).toBeNull();
-    expect(classifyTrendingSkip(30, 1, 2, 22)).toBeNull();
+    expect(classifyTrendingSkip(BAR, 1, 2, 9, BAR)).toBeNull();
+    expect(classifyTrendingSkip(BAR, 1, 2, 22, BAR)).toBeNull();
   });
 });
 
-describe("buildMaxRankQuery", () => {
-  it("selects MAX(rank_score) over the published 24h window", () => {
-    const { sql, binds } = buildMaxRankQuery(1_700_000_000_000);
-    expect(sql).toContain("MAX(rank_score)");
+describe("buildRankWindowQuery", () => {
+  it("reads published ranks over the 72h bar window", () => {
+    const { sql, binds } = buildRankWindowQuery(1_700_000_000_000);
+    expect(sql).toContain("rank_score, published_at");
     expect(sql).toContain("status = 'published'");
-    expect(binds).toEqual([1_700_000_000 - 24 * 3600]);
+    expect(binds).toEqual([1_700_000_000 - 72 * 3600]);
+  });
+});
+
+describe("trendingRankBar", () => {
+  // ~400 ranks spread like a normal 72h window, well above the floor.
+  const window = Array.from({ length: 400 }, (_, i) => 2 + i * 0.05);
+
+  // A rescored formula (new importance rubric, new corroboration) must move
+  // the bar with it instead of silencing or flooding the channel.
+  it("scales with the window: doubling every rank doubles the bar", () => {
+    const bar = trendingRankBar(window);
+    expect(bar).toBeGreaterThan(TRENDING_RANK_FLOOR);
+    expect(trendingRankBar(window.map((r) => r * 2))).toBeCloseTo(bar * 2, 6);
+  });
+
+  it("lets only the window's top tail through", () => {
+    const bar = trendingRankBar(window);
+    const above = window.filter((r) => r >= bar).length;
+    expect(above).toBeGreaterThan(0);
+    expect(above).toBeLessThanOrEqual(
+      Math.ceil(window.length * (1 - TRENDING_RANK_PERCENTILE))
+    );
+  });
+
+  // A dead window's percentile is tiny; its best weak story must not post.
+  it("holds the floor on a dead window", () => {
+    const dead = Array.from({ length: 400 }, () => 1.5);
+    expect(trendingRankBar(dead)).toBe(TRENDING_RANK_FLOOR);
+    expect(trendingRankBar([])).toBe(TRENDING_RANK_FLOOR);
+    expect(classifyTrendingSkip(4, 1, 1, 14, trendingRankBar(dead))).toBe(
+      "below_min_rank"
+    );
   });
 });
 
@@ -1045,7 +1103,7 @@ describe("trending thresholds", () => {
   // The burst lane only means something if it asks for more than the
   // normal lane does.
   it("keeps the normal importance bar below the big-news burst bar", () => {
-    expect(TRENDING_MIN_RANK).toBeGreaterThan(0);
+    expect(TRENDING_RANK_FLOOR).toBeGreaterThan(0);
     expect(TRENDING_MIN_IMPORTANCE).toBeLessThan(TRENDING_BURST_MIN_IMPORTANCE);
   });
   it("a usual day gets at most 3 posts, a big-news day at most 6", () => {

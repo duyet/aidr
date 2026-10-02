@@ -13,6 +13,11 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-10",
+    en: "Every day now has its own page at aidr.today/date/YYYY-MM-DD: that day's AI;DR on top, then every story from the day in ranked order, with links to the day before and after. Click the AI;DR date on the homepage or the date on any story to get there. Some days also carry a short video you can play right on the page.",
+    vi: "Mỗi ngày giờ có trang riêng tại aidr.today/date/YYYY-MM-DD: AI;DR của ngày đó ở trên cùng, bên dưới là toàn bộ tin trong ngày theo thứ hạng, kèm liên kết sang ngày trước và ngày sau. Bấm vào ngày của AI;DR trên trang chủ hoặc ngày đăng của bất kỳ tin nào để mở. Một số ngày còn có video ngắn xem ngay trên trang.",
+  },
+  {
+    date: "2026-10",
     en: "Sign-in works again. The site had been loading a test Clerk key, so every attempt to sign in or sign up failed with an error. Subscribing by email and the extension now sign in normally.",
     vi: "Đăng nhập đã hoạt động trở lại. Trang từng dùng nhầm khoá Clerk thử nghiệm nên mọi lần đăng nhập hoặc đăng ký đều báo lỗi. Giờ đăng ký bằng email và tiện ích đều đăng nhập bình thường.",
   },
@@ -151,6 +156,7 @@ export const Route = createFileRoute("/changelog")({
     localizedPageHead({
       path: "/changelog",
       title: "Changelog | AI News",
+      description: "Reader-facing changes to AI;DR on aidr.today.",
       lang: match.context.lang,
       route: headRouteInput(match),
     }),

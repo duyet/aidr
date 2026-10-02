@@ -32,6 +32,9 @@ minimumReleaseAgeExclude:
   - miniflare
   - "@cloudflare/workerd-*"
   - "@cloudflare/workers-types"
+  # cf 1.0.0-beta.x deps published in lockstep with cf itself.
+  - "@cloudflare/config"
+  - "@cloudflare/build-output-utils"
 
 nodeLinker: hoisted
 shamefullyHoist: true

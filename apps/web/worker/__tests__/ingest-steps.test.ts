@@ -86,6 +86,7 @@ function plan(
       Object.entries(merged).map(([id, duplicateOf]) => [id, { duplicateOf }])
     ),
     canonicalUpdates: new Map(Object.entries(canonicalUpdates)),
+    demoted: new Map(),
   };
 }
 
@@ -361,6 +362,7 @@ describe("persistedViTranslation", () => {
 describe("planNewItemWrite", () => {
   it("falls back to neutral scores when unscored and still publishes", () => {
     const out = planNewItemWrite({
+      sourceId: "hn",
       item: row("a").item,
       score: undefined,
       translation: undefined,
@@ -377,6 +379,7 @@ describe("planNewItemWrite", () => {
 
   it("makes a new canonical absorb its cluster's engagement, sources and topics", () => {
     const base = {
+      sourceId: "hn",
       item: row("a", "hn", {
         points: 1,
         sources: [{ kind: "source" as const, url: "https://a" }],
@@ -395,6 +398,7 @@ describe("planNewItemWrite", () => {
         maxComments: 7,
         extraTopics: ["agents"],
         extraSources: [{ kind: "discussion", url: "https://b" }],
+        members: [{ sourceId: "techcrunch-ai", points: 0, comments: 0 }],
       }),
     });
     expect(absorbed.item.points).toBe(50);
@@ -411,6 +415,7 @@ describe("planNewItemWrite", () => {
 
   it("ignores an update targeting an existing item (handled separately)", () => {
     const out = planNewItemWrite({
+      sourceId: "hn",
       item: row("a", "hn", { points: 1 }).item,
       score: score(0.9),
       translation: undefined,
@@ -424,6 +429,7 @@ describe("planNewItemWrite", () => {
 
   it("does not rewrite item_sources for a merged row", () => {
     const out = planNewItemWrite({
+      sourceId: "hn",
       item: row("a", "hn", {
         sources: [{ kind: "source", url: "https://a" }],
       }).item,

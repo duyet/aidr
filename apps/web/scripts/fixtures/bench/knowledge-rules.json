@@ -1,0 +1,102 @@
+[
+  {
+    "id": "seed-agent-keep-english",
+    "kind": "keep_english",
+    "source_term": "agent",
+    "vi_term": null,
+    "bad_vi": "[\"đại lý\",\"đặc vụ\"]",
+    "note": "AI agent stays \"agent\"/\"agents\" in English; \"đại lý\" means sales agent and \"đặc vụ\" secret agent.",
+    "status": "active",
+    "hits": 0
+  },
+  {
+    "id": "seed-open-weight-keep-english",
+    "kind": "keep_english",
+    "source_term": "open-weight",
+    "vi_term": null,
+    "bad_vi": "[\"mở trọng lượng\",\"trọng lượng mở\"]",
+    "note": "\"Open-weight\" stays in English; \"trọng lượng\" is physical weight, not model weights.",
+    "status": "active",
+    "hits": 0
+  },
+  {
+    "id": "seed-open-weight-spaced-keep-english",
+    "kind": "keep_english",
+    "source_term": "open weight",
+    "vi_term": null,
+    "bad_vi": "[\"mở trọng lượng\",\"trọng lượng mở\"]",
+    "note": "\"Open weight\" stays in English; \"trọng lượng\" is physical weight, not model weights.",
+    "status": "active",
+    "hits": 0
+  },
+  {
+    "id": "seed-decision-model-keep-english",
+    "kind": "keep_english",
+    "source_term": "decision model",
+    "vi_term": null,
+    "bad_vi": "[\"mô hình quyết định\"]",
+    "note": "\"Decision model\" is a product category; keep it in English.",
+    "status": "active",
+    "hits": 0
+  },
+  {
+    "id": "seed-harness-keep-english",
+    "kind": "keep_english",
+    "source_term": "harness",
+    "vi_term": null,
+    "bad_vi": "[\"dây chuyền\"]",
+    "note": "An evaluation/agent harness stays \"harness\"; \"dây chuyền\" is an assembly line.",
+    "status": "active",
+    "hits": 0
+  },
+  {
+    "id": "seed-hyperscaler-keep-english",
+    "kind": "keep_english",
+    "source_term": "hyperscaler",
+    "vi_term": null,
+    "bad_vi": "[\"cường thị trường\"]",
+    "note": "\"Hyperscaler\" stays in English.",
+    "status": "active",
+    "hits": 0
+  },
+  {
+    "id": "seed-senate-preferred",
+    "kind": "preferred_term",
+    "source_term": "senate",
+    "vi_term": "Thượng viện",
+    "bad_vi": "[\"viện tham nghị\"]",
+    "note": "Senate is \"Thượng viện\".",
+    "status": "active",
+    "hits": 0
+  },
+  {
+    "id": "seed-attorney-general-preferred",
+    "kind": "preferred_term",
+    "source_term": "attorney general",
+    "vi_term": "Tổng chưởng lý",
+    "bad_vi": "[\"trưởng kiểm sát\"]",
+    "note": "Attorney General is \"Tổng chưởng lý\".",
+    "status": "active",
+    "hits": 0
+  },
+  {
+    "id": "seed-governor-preferred",
+    "kind": "preferred_term",
+    "source_term": "governor",
+    "vi_term": "Thống đốc",
+    "bad_vi": "[\"thống dịch\"]",
+    "note": "Governor (state or central bank) is \"Thống đốc\".",
+    "status": "active",
+    "hits": 0
+  },
+  {
+    "id": "seed-white-house-preferred",
+    "kind": "preferred_term",
+    "source_term": "white house",
+    "vi_term": "Nhà Trắng",
+    "bad_vi": "[\"thế giới trắng\"]",
+    "note": "White House is \"Nhà Trắng\".",
+    "status": "active",
+    "hits": 0
+  }
+]

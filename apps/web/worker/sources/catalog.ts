@@ -76,6 +76,20 @@ export interface SourceSpec {
    * them together (`worker/source-diversity.ts`). Omit to use the id.
    */
   family?: string;
+  /**
+   * `"reader"` when the adapter's points/comments are reader votes and
+   * discussion (HN, Lobsters), the only engagement `rank_score` counts.
+   * Omit (`"none"`) when they mean something else, e.g. an aggregator's
+   * author/tweet counts.
+   */
+  engagement?: "reader" | "none";
+  /**
+   * The organizations whose own newsroom or blog this is (`["Cloudflare"]`
+   * for blog.cloudflare.com). An official item becomes its story's
+   * canonical over aggregator rewrites (`worker/dedupe.ts`). Omit for
+   * press, aggregators and community sites.
+   */
+  official?: readonly string[];
   /** Why this row exists / why these settings. Rendered into the PR evidence. */
   note?: string;
 }
@@ -84,8 +98,8 @@ export interface SourceSpec {
  * Default "this feed has rotted" threshold, in consecutive runs.
  *
  * Measured against the live feed cadence rather than picked for a round
- * number: runs are hourly (ALGORITHM.md § Scheduling), so 168 runs is seven
- * days. Every source in this registry has historically published at least
+ * number: runs are every 30 minutes (ALGORITHM.md § Scheduling), so 336
+ * runs is seven days. Every source in this registry has historically published at least
  * weekly — `lastweekin-ai` is a weekly newsletter, `mit-tr-ai` /
  * `google-research` publish a few times a week — so a two-day threshold
  * (the "e.g. 48 runs" in #230) would flag healthy low-frequency sources as
@@ -94,7 +108,7 @@ export interface SourceSpec {
  * deliver is the real rot signal: a moved URL, a redesigned feed, a paywall,
  * or a dead host.
  */
-export const DEFAULT_STALE_AFTER_RUNS = 168;
+export const DEFAULT_STALE_AFTER_RUNS = 336;
 
 /**
  * arXiv was evaluated for this change and deliberately NOT added. Both halves
@@ -143,9 +157,9 @@ export const DEFAULT_STALE_AFTER_RUNS = 168;
  *   // arXiv accepts no weekend submissions, so its newest submittedDate is
  *   // frozen from ~Fri 18:00 UTC to ~Mon 00:00 UTC. The 26h since-window
  *   // keeps the last Friday paper visible until ~Sat 20:00 UTC, leaving a
- *   // measured ~54 consecutive silent runs. 72 clears that with margin while
+ *   // measured ~108 consecutive silent runs at 30 minutes. 144 clears that with margin while
  *   // still flagging a genuinely dead row inside three days, not a week.
- *   staleAfterRuns: 72,
+ *   staleAfterRuns: 144,
  * }
  * ```
  *
@@ -167,6 +181,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     id: "hn",
     name: "Hacker News",
     type: "hn",
+    engagement: "reader",
     config: {
       query:
         "AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek",
@@ -186,6 +201,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     id: "lobsters",
     name: "Lobsters",
     type: "lobsters",
+    engagement: "reader",
     config: { tags: ["ai", "ml", "vibecoding"] },
     enabled: true,
   },
@@ -194,6 +210,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "openai",
     name: "OpenAI News",
+    official: ["OpenAI"],
     type: "rss",
     config: {
       feed: "https://openai.com/news/rss.xml",
@@ -204,6 +221,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "anthropic",
     name: "Anthropic News",
+    official: ["Anthropic"],
     type: "anthropic",
     config: { homepage: "https://www.anthropic.com" },
     enabled: true,
@@ -212,6 +230,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "google-ai",
     name: "Google AI Blog",
+    official: ["Google"],
     type: "rss",
     config: {
       feed: "https://blog.google/technology/ai/rss/",
@@ -222,6 +241,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "hf-blog",
     name: "Hugging Face Blog",
+    official: ["Hugging Face"],
     type: "rss",
     config: {
       feed: "https://huggingface.co/blog/feed.xml",
@@ -241,6 +261,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "xai",
     name: "xAI News",
+    official: ["xAI"],
     type: "xai",
     config: { homepage: "https://x.ai", sitemap: "https://x.ai/sitemap.xml" },
     enabled: true,
@@ -248,6 +269,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "deepmind",
     name: "DeepMind Blog",
+    official: ["DeepMind", "Google"],
     type: "rss",
     config: {
       feed: "https://deepmind.google/blog/rss.xml",
@@ -258,6 +280,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "aws-ml",
     name: "AWS ML Blog",
+    official: ["AWS", "Amazon"],
     type: "rss",
     config: {
       feed: "https://aws.amazon.com/blogs/machine-learning/feed/",
@@ -268,6 +291,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "google-dev",
     name: "Google Developers Blog",
+    official: ["Google"],
     type: "rss",
     config: {
       feed: "https://developers.googleblog.com/rss/",
@@ -301,6 +325,7 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
   {
     id: "google-research",
     name: "Google Research Blog",
+    official: ["Google"],
     type: "rss",
     config: {
       feed: "https://research.google/blog/rss/",
@@ -442,8 +467,8 @@ export const ARXIV_SOURCE: SourceSpec = {
     maxItems: 6,
   },
   enabled: true,
-  // No weekend announcements: ~54 measured silent runs Fri-Mon.
-  staleAfterRuns: 72,
+  // No weekend announcements: ~108 silent runs Fri-Mon at a 30-minute cadence.
+  staleAfterRuns: 144,
 };
 
 /**
@@ -469,6 +494,7 @@ export const REGISTRY_0032: readonly SourceSpec[] = [
     id: "hn",
     name: "Hacker News",
     type: "hn",
+    engagement: "reader",
     config: {
       query:
         "AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek",
@@ -480,6 +506,7 @@ export const REGISTRY_0032: readonly SourceSpec[] = [
     id: "lobsters",
     name: "Lobsters",
     type: "lobsters",
+    engagement: "reader",
     config: {
       tags: ["ai", "ml", "vibecoding"],
       filteredTags: ["programming", "compsci", "devops", "security"],
@@ -495,6 +522,7 @@ export const REGISTRY_0032: readonly SourceSpec[] = [
 export const CLOUDFLARE_BLOG_SOURCE: SourceSpec = {
   id: "cloudflare-blog",
   name: "Cloudflare Blog",
+  official: ["Cloudflare"],
   type: "rss",
   config: {
     feed: "https://blog.cloudflare.com/rss/",
@@ -503,8 +531,8 @@ export const CLOUDFLARE_BLOG_SOURCE: SourceSpec = {
     maxItems: 5,
   },
   enabled: true,
-  // After the AI filter it can go a week without a match.
-  staleAfterRuns: 336,
+  // After the AI filter it can go two weeks without a match.
+  staleAfterRuns: 672,
 };
 
 /** Later migrations replace earlier rows with the same id, in order. */
@@ -516,11 +544,219 @@ export function mergeRegistryRows(
   return [...byId.values()];
 }
 
+/** 0043. Same HN row as 0032, with a wider query so a new model release,
+ * a new kind of model, or a new AI lab is searchable before the title gate. */
+export const HN_SCOPE_SOURCE: SourceSpec = {
+  id: "hn",
+  name: "Hacker News",
+  type: "hn",
+  engagement: "reader",
+  config: {
+    query:
+      'AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek OR "language model" OR "foundation model" OR "open weights" OR "AI lab" OR "world model" OR "video model"',
+    popularMinPoints: 40,
+  },
+  enabled: true,
+};
+
+/**
+ * 0044. Caps the two aggregators and adds AI labs, vendors and newsletters,
+ * each verified live on 2026-10-02 (HTTP 200, parseable, dated items).
+ *
+ * - `marketbrief` / `huggingnews`: D1 over 7 days showed huggingnews is an
+ *   exact title mirror of marketbrief (321 of 321 titles in 3 days) and the
+ *   pair made 321 of ~640 fetched items; 30-minute runs had a median of 3 new
+ *   items and 80% of runs had 6 or fewer, so 6 matches the other newsrooms
+ *   and only trims bursts, which later runs pick up.
+ * - Broad vendor feeds use `keywordFilter` + a small `maxItems`; single-topic
+ *   labs and newsletters only get a cap.
+ * - Evaluated and left out: Qwen (newest post 2025), Replicate (newest post
+ *   2026-04), BAIR (2026-07), Meta AI / Cohere / Perplexity / Stability /
+ *   LangChain / DeepSeek / Microsoft AI (404, 403, 410 or no feed items),
+ *   GitHub release feeds for Ollama, vLLM and llama.cpp (titles are bare
+ *   version tags, so nothing for the scorer to judge).
+ */
+export const REGISTRY_0044: readonly SourceSpec[] = [
+  {
+    id: "huggingnews",
+    name: "HuggingNews",
+    type: "huggingnews",
+    config: { maxItems: 6 },
+    enabled: true,
+    family: "aggregator",
+  },
+  {
+    id: "marketbrief",
+    name: "MarketBrief",
+    type: "marketbrief",
+    config: {
+      homepage: "https://marketbrief.now",
+      topics: ["ai"],
+      maxItems: 6,
+    },
+    enabled: true,
+    family: "aggregator",
+  },
+  {
+    id: "mistral",
+    name: "Mistral AI",
+    official: ["Mistral"],
+    type: "rss",
+    config: {
+      feed: "https://mistral.ai/news/rss",
+      homepage: "https://mistral.ai/news",
+      maxItems: 4,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "nvidia-blog",
+    name: "NVIDIA Blog",
+    official: ["Nvidia"],
+    type: "rss",
+    config: {
+      feed: "https://blogs.nvidia.com/feed/",
+      homepage: "https://blogs.nvidia.com",
+      keywordFilter: "ai",
+      maxItems: 4,
+    },
+    enabled: true,
+  },
+  {
+    id: "nvidia-dev",
+    name: "NVIDIA Developer Blog",
+    official: ["Nvidia"],
+    type: "rss",
+    config: {
+      feed: "https://developer.nvidia.com/blog/feed/",
+      homepage: "https://developer.nvidia.com/blog",
+      keywordFilter: "ai",
+      maxItems: 4,
+    },
+    enabled: true,
+  },
+  {
+    id: "microsoft-research",
+    name: "Microsoft Research",
+    official: ["Microsoft"],
+    type: "rss",
+    config: {
+      feed: "https://www.microsoft.com/en-us/research/feed/",
+      homepage: "https://www.microsoft.com/en-us/research/blog/",
+      keywordFilter: "ai",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "apple-ml",
+    name: "Apple Machine Learning Research",
+    official: ["Apple"],
+    type: "rss",
+    config: {
+      feed: "https://machinelearning.apple.com/rss.xml",
+      homepage: "https://machinelearning.apple.com",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "together-ai",
+    name: "Together AI",
+    official: ["Together AI"],
+    type: "rss",
+    config: {
+      feed: "https://www.together.ai/blog/rss.xml",
+      homepage: "https://www.together.ai/blog",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "github-ai",
+    name: "GitHub Blog AI & ML",
+    official: ["GitHub"],
+    type: "rss",
+    config: {
+      feed: "https://github.blog/ai-and-ml/feed/",
+      homepage: "https://github.blog/ai-and-ml/",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "latent-space",
+    name: "Latent Space",
+    type: "rss",
+    config: {
+      feed: "https://www.latent.space/feed",
+      homepage: "https://www.latent.space",
+      maxItems: 3,
+    },
+    enabled: true,
+  },
+  {
+    id: "interconnects",
+    name: "Interconnects",
+    type: "rss",
+    config: {
+      feed: "https://www.interconnects.ai/feed",
+      homepage: "https://www.interconnects.ai",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "import-ai",
+    name: "Import AI",
+    type: "rss",
+    config: {
+      feed: "https://importai.substack.com/feed",
+      homepage: "https://importai.substack.com",
+      maxItems: 2,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "bens-bites",
+    name: "Ben's Bites",
+    type: "rss",
+    config: {
+      feed: "https://www.bensbites.com/feed",
+      homepage: "https://www.bensbites.com",
+      maxItems: 3,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "ahead-of-ai",
+    name: "Ahead of AI",
+    type: "rss",
+    config: {
+      feed: "https://magazine.sebastianraschka.com/feed",
+      homepage: "https://magazine.sebastianraschka.com",
+      maxItems: 2,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+];
+
 export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0027,
   [ARXIV_SOURCE],
   REGISTRY_0032,
-  [CLOUDFLARE_BLOG_SOURCE]
+  [CLOUDFLARE_BLOG_SOURCE],
+  [HN_SCOPE_SOURCE],
+  REGISTRY_0044
 );
 
 export function registrySourceIds(): string[] {
@@ -529,6 +765,57 @@ export function registrySourceIds(): string[] {
 
 export function findSourceSpec(id: string): SourceSpec | undefined {
   return SOURCE_REGISTRY.find((s) => s.id === id);
+}
+
+/** `items.source_id` of an accepted user submission (`worker/submissions.ts`). */
+export const USER_SOURCE_ID = "user";
+
+function urlHost(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  try {
+    return new URL(raw).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+/** The registry source whose homepage or feed host serves `url`, official
+ *  sources first. Lets a user submission of a blog.cloudflare.com post
+ *  stand for `cloudflare-blog`. */
+export function sourceSpecForUrl(
+  url: string | undefined
+): SourceSpec | undefined {
+  const host = urlHost(url);
+  if (!host) return undefined;
+  const matches = SOURCE_REGISTRY.filter(
+    (spec) =>
+      urlHost(spec.config.homepage) === host ||
+      urlHost(spec.config.feed) === host
+  );
+  return matches.find((spec) => spec.official?.length) ?? matches[0];
+}
+
+/** The registry source an item stands for: its own, except a user
+ *  submission, which stands for the source serving its URL (if any). */
+export function effectiveSourceSpec(
+  sourceId: string,
+  url?: string
+): SourceSpec | undefined {
+  if (sourceId === USER_SOURCE_ID) return sourceSpecForUrl(url);
+  return findSourceSpec(sourceId);
+}
+
+/** The official source an item comes from, if any (see `official`): its
+ *  own source, or the official source serving its URL (an HN link to an
+ *  OpenAI post, a user submission of a Cloudflare post). */
+export function officialSourceFor(
+  sourceId: string,
+  url?: string
+): SourceSpec | undefined {
+  const own = findSourceSpec(sourceId);
+  if (own?.official?.length) return own;
+  const byUrl = sourceSpecForUrl(url);
+  return byUrl?.official?.length ? byUrl : undefined;
 }
 
 /** Threshold for the stale detector, per source. */

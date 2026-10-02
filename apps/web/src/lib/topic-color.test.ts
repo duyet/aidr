@@ -111,11 +111,19 @@ function contrastRatio(foreground: string, background: string): number {
 }
 
 describe("categoryColor", () => {
-  it("maps every canonical category to a stable distinct palette slot", () => {
-    const colors = CATEGORY_NAMES.map(categoryColor);
+  it("maps every canonical category to a stable palette slot", () => {
+    // Twelve hues for fifteen categories: three builder categories share a
+    // hue with a category they rarely sit next to. Everything else is distinct.
+    const shared = new Set(["Frameworks", "Data", "Open Source"]);
+    const colors = CATEGORY_NAMES.filter((name) => !shared.has(name)).map(
+      categoryColor
+    );
     expect(
       new Set(colors.map((color) => `${color.light}/${color.dark}`)).size
-    ).toBe(CATEGORY_NAMES.length);
+    ).toBe(CATEGORY_NAMES.length - shared.size);
+    expect(categoryColor("Frameworks")).toEqual(categoryColor("Chips"));
+    expect(categoryColor("Data")).toEqual(categoryColor("Products"));
+    expect(categoryColor("Open Source")).toEqual(categoryColor("Releases"));
 
     for (const name of CATEGORY_NAMES) {
       const color = categoryColor(name);

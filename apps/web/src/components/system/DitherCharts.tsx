@@ -115,6 +115,16 @@ export function TokensLineChart({
 
 export const TokensBarChart = TokensLineChart;
 
+const SERIES_COLORS: DitherColor[] = [
+  "purple",
+  "blue",
+  "green",
+  "orange",
+  "pink",
+  "red",
+  "grey",
+];
+
 const TASK_BURN_COLORS: Record<string, DitherColor> = {
   score: "purple",
   translate: "blue",
@@ -130,10 +140,13 @@ export function TokenBurnSection({
   data,
   emptyLabel,
   formatValue,
+  seriesNoun = "task",
 }: {
   data: LlmDayTaskCount[];
   emptyLabel: string;
   formatValue?: (n: number) => string;
+  /** What each stacked series is. "model" changes the summary badge. */
+  seriesNoun?: "task" | "model";
 }) {
   if (data.length === 0) return <EmptyNote label={emptyLabel} />;
   const fmt = formatValue ?? String;
@@ -168,7 +181,12 @@ export function TokenBurnSection({
   const config: ChartConfig = Object.fromEntries(
     tasks.map((task) => [
       task,
-      { label: task, color: TASK_BURN_COLORS[task] ?? "grey" },
+      {
+        label: task,
+        color:
+          TASK_BURN_COLORS[task] ??
+          SERIES_COLORS[tasks.indexOf(task) % SERIES_COLORS.length],
+      },
     ])
   );
 
@@ -188,7 +206,7 @@ export function TokenBurnSection({
                 : "—",
             ],
             [
-              "top task",
+              seriesNoun === "model" ? "top model" : "top task",
               topTask
                 ? `${topTask[0]} ${Math.round((topTask[1] / Math.max(total, 1)) * 100)}%`
                 : "—",

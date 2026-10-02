@@ -6,8 +6,9 @@ export function normalizeEmail(address: string): string {
  * The account id an address belongs to, or null. Accepted: a live Clerk
  * account's email that Clerk marks verified (exactly one row; duplicates are
  * ambiguous and drop; an unverified account email is a stranger), or
- * an extra address the user confirmed, owned by a live account. Pending or
- * expired extra addresses count as strangers.
+ * any other address Clerk has already verified on that account
+ * (`clerk_verified_emails`). Addresses we have not seen as verified count
+ * as strangers.
  */
 export async function resolveSender(
   db: D1Database,
@@ -27,13 +28,15 @@ export async function resolveSender(
     return clerk[0].email_verified === 1 ? clerk[0].id : null;
   }
 
-  const alias = await db
+  const { results: verified } = await db
     .prepare(
-      `SELECT c.user_id FROM contributor_emails c
-       JOIN clerk_users u ON u.id = c.user_id AND u.deleted_at IS NULL
-       WHERE c.email = ? AND c.status = 'confirmed'`
+      `SELECT e.user_id FROM clerk_verified_emails e
+       JOIN clerk_users u ON u.id = e.user_id AND u.deleted_at IS NULL
+       WHERE e.email = ?
+       LIMIT 2`
     )
     .bind(email)
-    .first<{ user_id: string }>();
-  return alias?.user_id ?? null;
+    .all<{ user_id: string }>();
+  if (verified.length !== 1) return null;
+  return verified[0].user_id;
 }

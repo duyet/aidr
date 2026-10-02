@@ -1,7 +1,18 @@
+import {
+  dayArchivePath,
+  isSettledArchiveDate,
+  latestArchiveDate,
+} from "./day-archive";
+import {
+  DAY_VIDEO_TITLE_MAX,
+  isYoutubeId,
+  youtubeThumbnailUrl,
+} from "./day-video";
 import type { DbReader } from "./db";
 import { DEFAULT_LANG } from "./lang";
 import { isLocalizedSsrPath } from "./locale-routing";
 import { absoluteSiteUrl, withLang } from "./locale-url";
+import { PAGE_MARKDOWN_PATHS } from "./page-markdown";
 import { NEWS_SITEMAP_PATH, SITE_URL } from "./site";
 import { storyPath } from "./slug";
 import type { Lang } from "./types";
@@ -139,7 +150,14 @@ export function staticSitemapUrls(now: number = Date.now()): SitemapUrl[] {
         priority: "0.4",
       },
     ];
-  });
+  }).concat(
+    PAGE_MARKDOWN_PATHS.map((path) => ({
+      loc: `${SITE_URL}${path}`,
+      ...(lastmod ? { lastmod } : {}),
+      changefreq: "weekly" as const,
+      priority: "0.3",
+    }))
+  );
 }
 
 /** The generated, always-200 story card used as the sitemap image. */
@@ -241,6 +259,7 @@ export async function safeSitemapResponse(
 export const SITEMAP_SHARD_ITEM_LIMIT = 1000;
 export const SITEMAP_CHILD_DIR = "/sitemaps";
 export const SITEMAP_STATIC_CHILD_PATH = `${SITEMAP_CHILD_DIR}/static.xml`;
+export const SITEMAP_DAYS_CHILD_PATH = `${SITEMAP_CHILD_DIR}/days.xml`;
 const SHARD_MONTH_RE = /^(\d{4}-\d{2})(?:-(\d+))?$/;
 
 export interface SitemapIndexEntry {
@@ -329,6 +348,10 @@ export function sitemapIndexEntries(
     }
   }
   entries.push({
+    loc: `${SITE_URL}${SITEMAP_DAYS_CHILD_PATH}`,
+    ...(generated ? { lastmod: generated } : {}),
+  });
+  entries.push({
     loc: `${SITE_URL}${NEWS_SITEMAP_PATH}`,
     ...(generated ? { lastmod: generated } : {}),
   });
@@ -404,4 +427,130 @@ export async function safeSitemapIndexResponse(
       buildSitemapIndexXml(sitemapIndexEntries([], Date.now()))
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Day archive child (`/sitemaps/days.xml`)
+//
+// One `/date/YYYY-MM-DD` page per audience-zone day (Asia/Ho_Chi_Minh, the
+// key `tldr_snapshots.date` is written under) that has a published story or a
+// stored digest. A day is two URLs, so `SITEMAP_DAY_LIMIT` keeps the child
+// far under the 50,000-URL ceiling for decades before it needs sharding.
+// ---------------------------------------------------------------------------
+
+export const SITEMAP_DAY_LIMIT = 5000;
+
+/**
+ * Days with a published story or a digest, newest first. `updated` is the
+ * newest publish/fetch/digest write that day in epoch seconds
+ * (`tldr_snapshots.created_at` is written in milliseconds). The `+7 hours`
+ * shift is the fixed Asia/Ho_Chi_Minh offset `dayBoundsSec` uses.
+ */
+const DAY_ROWS_SQL = `SELECT date, MAX(updated) AS updated FROM (
+  SELECT date(published_at, 'unixepoch', '+7 hours') AS date,
+         MAX(max(published_at, COALESCE(fetched_at, 0))) AS updated
+  FROM items WHERE status = 'published'
+  GROUP BY 1
+  UNION ALL
+  SELECT date, CASE WHEN created_at > 1000000000000 THEN created_at / 1000
+                    ELSE COALESCE(created_at, 0) END AS updated
+  FROM tldr_snapshots
+)
+WHERE date IS NOT NULL
+GROUP BY date ORDER BY date DESC
+LIMIT ?`;
+
+const DAY_VIDEO_ROWS_SQL =
+  "SELECT date, youtube_id, short_id, title, updated_at FROM day_videos";
+
+const DAY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export interface SitemapDayRow {
+  date: string | null;
+  updated: number | null;
+}
+
+export interface SitemapDayVideoRow {
+  date: string | null;
+  youtube_id: string | null;
+  short_id: string | null;
+  title: string | null;
+  updated_at: number | null;
+}
+
+/**
+ * Both explicit-locale URLs for each day. Days still inside the rank-settle
+ * window change hourly; settled days are frozen archive pages. The vi entry
+ * carries the day video's YouTube thumbnail, like a story's single image.
+ */
+export function daySitemapUrls(
+  days: SitemapDayRow[],
+  videos: SitemapDayVideoRow[] = [],
+  now: number = Date.now()
+): SitemapUrl[] {
+  const videoByDate = new Map<string, SitemapDayVideoRow>();
+  for (const video of videos) {
+    if (video.date) videoByDate.set(video.date, video);
+  }
+  const today = latestArchiveDate(now);
+  return days.flatMap((day) => {
+    if (!day.date || !DAY_DATE_RE.test(day.date) || day.date > today) {
+      return [];
+    }
+    const video = videoByDate.get(day.date);
+    const lastmod = sitemapLastmod(
+      Math.max(epochSeconds(day.updated), epochSeconds(video?.updated_at)) ||
+        null
+    );
+    const settled = isSettledArchiveDate(day.date, now);
+    const shared = {
+      ...(lastmod ? { lastmod } : {}),
+      changefreq: settled ? "monthly" : "daily",
+      priority: settled ? "0.5" : "0.6",
+    };
+    const thumbId = isYoutubeId(video?.youtube_id)
+      ? video.youtube_id
+      : isYoutubeId(video?.short_id)
+        ? video.short_id
+        : null;
+    const title = video?.title?.trim().slice(0, DAY_VIDEO_TITLE_MAX);
+    return [
+      {
+        loc: absoluteSiteUrl(dayArchivePath(day.date), "vi"),
+        ...shared,
+        ...(thumbId
+          ? {
+              image: youtubeThumbnailUrl(thumbId),
+              ...(title ? { imageTitle: title } : {}),
+            }
+          : {}),
+      },
+      { loc: absoluteSiteUrl(dayArchivePath(day.date), "en"), ...shared },
+    ];
+  });
+}
+
+/** Seconds from a seconds-or-milliseconds epoch (`day_videos` writes ms). */
+function epochSeconds(epoch: number | null | undefined): number {
+  if (typeof epoch !== "number" || !Number.isFinite(epoch)) return 0;
+  return epoch > 1e12 ? Math.floor(epoch / 1000) : epoch;
+}
+
+export async function loadDaySitemapUrls(
+  db: DbReader,
+  now: number = Date.now()
+): Promise<SitemapUrl[]> {
+  const { results } = await db
+    .prepare(DAY_ROWS_SQL)
+    .bind(SITEMAP_DAY_LIMIT)
+    .all<SitemapDayRow>();
+  let videos: SitemapDayVideoRow[] = [];
+  try {
+    videos =
+      (await db.prepare(DAY_VIDEO_ROWS_SQL).all<SitemapDayVideoRow>())
+        .results ?? [];
+  } catch {
+    // day_videos not migrated yet — days are listed without thumbnails
+  }
+  return daySitemapUrls(results ?? [], videos, now);
 }

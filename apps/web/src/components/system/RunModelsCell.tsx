@@ -1,5 +1,6 @@
 import { anyrouterModelUrl, isValidAnyrouterModel } from "../../lib/anyrouter";
 import type { RunLlmSummary } from "../../lib/system-queries";
+import { ModelLogo } from "./ModelLogo";
 import { formatSafeDetail, shortModel } from "./run-format";
 
 /** The row stays one line; the full list is in the title and the dialog. */
@@ -28,6 +29,7 @@ export function RunModelsCell({ llm }: { llm?: RunLlmSummary }) {
                 ·
               </span>
             ) : null}
+            <ModelLogo model={model} />
             {isValidAnyrouterModel(model) ? (
               <a
                 href={anyrouterModelUrl(model)}

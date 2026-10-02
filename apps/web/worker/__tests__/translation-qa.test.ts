@@ -25,6 +25,11 @@ import {
   TranslationReviewSchemaError,
   translationRetryDelaySeconds,
 } from "../translation-qa.js";
+import {
+  BACK_TRANSLATION_MIN_RECALL,
+  backTranslationRecall,
+  semanticEvidence,
+} from "../translation-review.js";
 import type { Env } from "../types.js";
 
 const env: Env = {
@@ -145,7 +150,7 @@ function review(
   overrides: Partial<TranslationReview> = {}
 ): TranslationReview {
   return {
-    schema_version: 2,
+    schema_version: 3,
     direction,
     verdict: "accept",
     fidelity: 0.95,
@@ -163,6 +168,10 @@ function review(
       terminology: "pass",
     },
     reason: "faithful and natural",
+    back_translation: {
+      title: "OpenAI says Model X is not available in 2024",
+      summary: "The launch is confirmed on 2024-05-01 for 10 million USD.",
+    },
     ...overrides,
   };
 }
@@ -398,9 +407,11 @@ describe("translation review contracts", () => {
     ["It costs one-fifth of the price.", "Giá chỉ bằng một phần năm."],
     ["Llama 70B runs in 15m.", "Llama 70B chạy trong 15m."],
   ])("accepts equivalent formatting: %s", (source, candidate) => {
+    const pair = viPair(source, candidate);
+    // A faithful round trip, so only the candidate-side guards are tested.
     const failures = detectHardSemanticFailures(
-      viPair(source, candidate),
-      review("en-vi")
+      pair,
+      review("en-vi", { back_translation: pair.source })
     );
     expect(failures).not.toContain("units");
     expect(failures).not.toContain("numbers");
@@ -443,7 +454,7 @@ describe("translation review contracts", () => {
     expect(QA_MAX_REVIEW_CALLS).toBe(6);
     expect(QA_MAX_MANUAL_RETRIES).toBe(1);
     expect(QA_LEASE_SECONDS).toBeGreaterThan(QA_WALL_BUDGET_MS / 1000);
-    expect(QA_CRITERIA_VERSION).toBe("translation-semantic-v3");
+    expect(QA_CRITERIA_VERSION).toBe("translation-semantic-v4");
   });
 
   it("backs off failed attempts and caps them at a terminal human state", () => {
@@ -980,5 +991,178 @@ describe("translation QA runtime", () => {
     expect(buildPendingQaQuery()).toContain(
       "t.qa_source_revision != i.source_revision"
     );
+  });
+});
+
+describe("translation-semantic-v4: back-translation and term guards", () => {
+  function enVi(
+    source: { title: string; summary: string },
+    candidate: { title: string; summary: string }
+  ): TranslationPair {
+    return {
+      source,
+      candidate,
+      sourceLang: "en",
+      targetLang: "vi",
+      direction: "en-vi",
+    };
+  }
+
+  it("requires the reviewer's back_translation in the strict verdict", () => {
+    const { back_translation: _bt, ...withoutBack } = review("en-vi");
+    expect(
+      parseTranslationReview(JSON.stringify(withoutBack), "en-vi")
+    ).toBeNull();
+    expect(
+      parseTranslationReview(JSON.stringify(review("en-vi")), "en-vi")
+        ?.back_translation.title
+    ).toBe("OpenAI says Model X is not available in 2024");
+    expect(
+      parseTranslationReview(
+        JSON.stringify({ ...review("en-vi"), schema_version: 2 }),
+        "en-vi"
+      )
+    ).toBeNull();
+  });
+
+  it("asks for the back-translation before the source is compared", () => {
+    const prompt = buildTranslationReviewPrompt(
+      enVi(
+        { title: "Source title", summary: "Source summary." },
+        { title: "Tiêu đề", summary: "Tóm tắt." }
+      )
+    );
+    expect(prompt).toContain('"back_translation"');
+    expect(prompt).toContain('"schema_version":3');
+    // Candidate is serialized first so the reviewer reads it before the source.
+    expect(prompt.indexOf("Tiêu đề")).toBeLessThan(
+      prompt.indexOf("Source title")
+    );
+  });
+
+  it("fails a candidate whose back-translation loses a number, a negation, or most claims", () => {
+    const source = {
+      title: "Modal ships 1T-parameter clusters",
+      summary:
+        "Developers can train models with as many as 1T parameters. The clusters do not need manual setup, and Decagon already reached that scale using RDMA nodes and sticky sessions.",
+    };
+    const pair = enVi(source, {
+      title: "Modal ra mắt cụm 1T tham số",
+      summary: "Modal ra mắt cụm máy cho Decagon dùng RDMA.",
+    });
+    const evidence = semanticEvidence(
+      pair,
+      review("en-vi", {
+        back_translation: {
+          title: "Modal launches clusters",
+          summary: "Modal launches clusters for Decagon using RDMA.",
+        },
+      })
+    );
+    expect(evidence.backTranslationFailures).toEqual(
+      expect.arrayContaining(["numbers", "polarity", "omission"])
+    );
+    expect(
+      backTranslationRecall(source, {
+        title: "Modal launches clusters",
+        summary: "Modal launches clusters for Decagon using RDMA.",
+      })
+    ).toBeLessThan(BACK_TRANSLATION_MIN_RECALL);
+  });
+
+  it("feeds missing terms and the back-translation into the repair prompt", () => {
+    const pair = enVi(
+      { title: "Musk’s AI chatbot Grok", summary: "Grok answered." },
+      { title: "Trợ lý ảo Grok của Musk", summary: "Grok đã trả lời." }
+    );
+    const verdict = review("en-vi", {
+      verdict: "repair",
+      back_translation: {
+        title: "Musk's virtual assistant Grok",
+        summary: "Grok answered.",
+      },
+    });
+    const evidence = semanticEvidence(pair, verdict);
+    expect(evidence.missingTerms).toEqual(["AI", "chatbot"]);
+    const prompt = buildTranslationRepairPrompt(
+      pair,
+      verdict,
+      detectHardSemanticFailures(pair, verdict),
+      evidence
+    );
+    expect(prompt).toContain("missing_terms");
+    expect(prompt).toContain("chatbot");
+    expect(prompt).toContain("virtual assistant");
+    expect(detectHardSemanticFailures(pair, verdict)).toEqual(
+      expect.arrayContaining(["entities", "terminology"])
+    );
+  });
+
+  // Production false positives that sent faithful rows (reviewer fidelity
+  // 0.9–1.0) to human review under v3.
+  it("does not read 'không gian' (space) or 'hay không' (whether) as negation", () => {
+    const source = {
+      title:
+        "Google thinks SpaceX’s Starship has to launch 1,600 times before space data centers get off the ground",
+      summary:
+        "Google launched its first advanced chip into orbit to pave the way for space data centers.",
+    };
+    const pair = enVi(source, {
+      title:
+        "Google cho rằng Starship của SpaceX cần phóng 1.600 lần trước khi trung tâm dữ liệu không gian hoạt động",
+      summary:
+        "Google đã phóng con chip tiên tiến đầu tiên lên quỹ đạo, mở đường cho trung tâm dữ liệu không gian.",
+    });
+    expect(
+      detectHardSemanticFailures(
+        pair,
+        review("en-vi", { back_translation: source })
+      )
+    ).not.toContain("polarity");
+  });
+
+  it("lets a candidate add 'có thể' for 'can' but not drop a source hedge", () => {
+    const can = {
+      title: "ChatGPT can now virtually try on clothes for you",
+      summary: "OpenAI is rolling out new shopping features for ChatGPT.",
+    };
+    expect(
+      detectHardSemanticFailures(
+        enVi(can, {
+          title: "ChatGPT giờ có thể thử quần áo ảo cho bạn",
+          summary: "OpenAI đang triển khai tính năng mua sắm mới cho ChatGPT.",
+        }),
+        review("en-vi", { back_translation: can })
+      )
+    ).not.toContain("uncertainty");
+    const hedged = {
+      title: "OpenAI may launch Model X next week",
+      summary: "The company reportedly plans the launch.",
+    };
+    expect(
+      detectHardSemanticFailures(
+        enVi(hedged, {
+          title: "OpenAI ra mắt Model X tuần tới",
+          summary: "Công ty ra mắt sản phẩm.",
+        }),
+        review("en-vi", { back_translation: hedged })
+      )
+    ).toContain("uncertainty");
+  });
+
+  it("ignores feed chrome and Vietnamese day/month dates in number checks", () => {
+    const source = {
+      title: "OpenAI notifies more than 100 organizations",
+      summary:
+        "← Back to live feed · 1 stories across 1 day OpenAI had notified more than 100 organizations by Sept. 26.",
+    };
+    const failures = detectHardSemanticFailures(
+      enVi(source, {
+        title: "OpenAI cảnh báo hơn 100 tổ chức",
+        summary: "Đến ngày 26/9, OpenAI đã thông báo cho hơn 100 tổ chức.",
+      }),
+      review("en-vi", { back_translation: source })
+    );
+    expect(failures).not.toContain("numbers");
   });
 });
