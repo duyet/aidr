@@ -1,0 +1,219 @@
+1
+00:00:01,172 --> 00:00:02,452
+This is AI;DR.
+
+2
+00:00:02,452 --> 00:00:03,615
+Six AI stories that
+
+3
+00:00:03,615 --> 00:00:04,546
+matter today.
+
+4
+00:00:04,546 --> 00:00:05,427
+Let's go.
+
+5
+00:00:06,558 --> 00:00:07,527
+Number one.
+
+6
+00:00:07,527 --> 00:00:08,963
+Cloudflare launches Clef,
+
+7
+00:00:08,963 --> 00:00:10,204
+open-weight decision models on
+
+8
+00:00:10,204 --> 00:00:11,329
+Workers AI,
+
+9
+00:00:11,329 --> 00:00:12,221
+plus a new platform
+
+10
+00:00:12,221 --> 00:00:13,113
+to fine-tune them with
+
+11
+00:00:13,113 --> 00:00:14,199
+reinforcement learning on your
+
+12
+00:00:14,199 --> 00:00:15,130
+own data.
+
+13
+00:00:16,231 --> 00:00:16,967
+Two.
+
+14
+00:00:16,967 --> 00:00:18,364
+New research on Context
+
+15
+00:00:18,364 --> 00:00:19,527
+Language Models.
+
+16
+00:00:19,527 --> 00:00:20,264
+They manage their own
+
+17
+00:00:20,264 --> 00:00:21,428
+context as a file,
+
+18
+00:00:21,428 --> 00:00:22,941
+and beat state-of-the-art context
+
+19
+00:00:22,941 --> 00:00:24,493
+management on BrowseComp-Plus and
+
+20
+00:00:24,493 --> 00:00:25,457
+EdgeBench.
+
+21
+00:00:26,557 --> 00:00:27,526
+Three.
+
+22
+00:00:27,526 --> 00:00:30,629
+Microsoft AI releases MAI-Transcribe-2-Streaming
+
+23
+00:00:30,629 --> 00:00:32,026
+for real-time transcription,
+
+24
+00:00:32,026 --> 00:00:33,150
+expanding its voice agent
+
+25
+00:00:33,150 --> 00:00:33,893
+lineup.
+
+26
+00:00:34,936 --> 00:00:35,712
+Four.
+
+27
+00:00:35,712 --> 00:00:36,759
+Broadcom lines up a
+
+28
+00:00:36,759 --> 00:00:37,923
+sixty billion dollar credit
+
+29
+00:00:37,923 --> 00:00:39,048
+facility to fund AI
+
+30
+00:00:39,048 --> 00:00:40,017
+chips for Anthropic and
+
+31
+00:00:40,017 --> 00:00:40,715
+its peers,
+
+32
+00:00:40,715 --> 00:00:41,763
+as Anthropic eyes a
+
+33
+00:00:41,763 --> 00:00:43,314
+November twenty-sixth IPO,
+
+34
+00:00:43,314 --> 00:00:43,973
+valued at up to
+
+35
+00:00:43,973 --> 00:00:45,563
+two trillion dollars.
+
+36
+00:00:46,620 --> 00:00:47,358
+Five.
+
+37
+00:00:47,358 --> 00:00:48,559
+Suno now generates spoken
+
+38
+00:00:48,559 --> 00:00:49,219
+word.
+
+39
+00:00:49,219 --> 00:00:50,654
+Voiceovers and background music,
+
+40
+00:00:50,654 --> 00:00:51,236
+together,
+
+41
+00:00:51,236 --> 00:00:52,206
+in public beta on
+
+42
+00:00:52,206 --> 00:00:53,447
+web and mobile.
+
+43
+00:00:54,490 --> 00:00:55,266
+And six.
+
+44
+00:00:55,266 --> 00:00:56,352
+A patched flaw in
+
+45
+00:00:56,352 --> 00:00:58,020
+ChatGPT's Mac app could
+
+46
+00:00:58,020 --> 00:00:58,912
+have let hackers grab
+
+47
+00:00:58,912 --> 00:01:00,115
+sensitive data.
+
+48
+00:01:00,115 --> 00:01:01,084
+A reminder that AI
+
+49
+00:01:01,084 --> 00:01:01,977
+software is a target
+
+50
+00:01:01,977 --> 00:01:02,710
+too.
+
+51
+00:01:03,660 --> 00:01:05,250
+That's AI;DR for today.
+
+52
+00:01:05,250 --> 00:01:06,026
+Every story,
+
+53
+00:01:06,026 --> 00:01:07,151
+ranked and summarized,
+
+54
+00:01:07,151 --> 00:01:08,276
+at aidr.today.
+
+55
+00:01:08,276 --> 00:01:09,139
+See you tomorrow.

@@ -1,0 +1,882 @@
+/* AI;DR Daily — "Yellow Desk" broadcast template.
+   One stylesheet, two formats: #root carries .f-16x9 or .f-9x16 and the layout
+   variables below; every element reads them. Brand: videos/brand/brand.md. */
+
+:root {
+  --paper: #f7f7f5;
+  --ink: #0a0a0a;
+  --yellow: #f5c518;
+  --soft: #fdf6d8;
+  --amber: #b45309;
+  --muted: #474747;
+  --hair: rgba(10, 10, 10, 0.12);
+  --serif: "EB Garamond Variable", Georgia, serif;
+  --sans: "Source Sans 3 Variable", Helvetica, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+#root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--sans);
+  color: var(--ink);
+}
+
+/* ---------- format variables ---------- */
+.f-16x9 {
+  --pad: 72px;
+  --bar-top: 40px;
+  --bar-h: 64px;
+  --logo: 64px;
+  --media-x: 72px;
+  --media-y: 150px;
+  --media-w: 1050px;
+  --media-h: 640px;
+  --rank: 148px;
+  --rank-x: 40px;
+  --rank-y: 112px;
+  --text-x: 1176px;
+  --text-y: 170px;
+  --text-w: 672px;
+  --cat: 26px;
+  --kicker: 34px;
+  --head: 70px;
+  --stat: 104px;
+  --stat-label: 28px;
+  --src: 24px;
+  --cap-y: 832px;
+  --cap: 46px;
+  --cap-w: 1500px;
+  --tick-y: 980px;
+  --tick-h: 100px;
+  --tick: 34px;
+}
+.f-9x16 {
+  --pad: 56px;
+  --bar-top: 72px;
+  --bar-h: 72px;
+  --logo: 72px;
+  --media-x: 40px;
+  --media-y: 200px;
+  --media-w: 1000px;
+  --media-h: 600px;
+  --rank: 150px;
+  --rank-x: 20px;
+  --rank-y: 160px;
+  --text-x: 64px;
+  --text-y: 850px;
+  --text-w: 952px;
+  --cat: 30px;
+  --kicker: 38px;
+  --head: 78px;
+  --stat: 96px;
+  --stat-label: 30px;
+  --src: 28px;
+  --cap-y: 1376px;
+  --cap: 60px;
+  --cap-w: 960px;
+  --tick-y: 1556px;
+  --tick-h: 92px;
+  --tick: 34px;
+}
+
+.ground {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+}
+.scene {
+  overflow: hidden;
+}
+.cam {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 45%;
+}
+
+/* ---------- broadcast chrome (stories only) ---------- */
+#chrome {
+  pointer-events: none;
+}
+.bar {
+  z-index: 2;
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  top: var(--bar-top);
+  height: var(--bar-h);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.bar .logo {
+  width: var(--logo);
+  height: var(--logo);
+  display: block;
+}
+.bar .show {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: calc(var(--logo) * 0.56);
+  letter-spacing: -0.01em;
+}
+.live {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 16px;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.14em;
+}
+.live .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--yellow);
+  display: block;
+}
+.bar .spacer {
+  flex: 1;
+}
+.bar .dateline {
+  font-size: 24px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.counter {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.counter .seg {
+  width: 34px;
+  height: 8px;
+  background: var(--hair);
+  position: relative;
+  overflow: hidden;
+  display: block;
+}
+.counter .fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform-origin: 0 50%;
+  display: block;
+}
+.counter .num {
+  font-weight: 700;
+  font-size: 24px;
+  margin-left: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.f-9x16 .bar .dateline {
+  display: none;
+}
+.f-9x16 .counter .seg {
+  width: 26px;
+}
+
+.ticker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--tick-y);
+  height: var(--tick-h);
+  background: var(--ink);
+  color: var(--paper);
+  overflow: hidden;
+}
+.ticker .label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  background: var(--yellow);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: calc(var(--tick) * 0.8);
+  letter-spacing: 0.12em;
+}
+.ticker .crawl {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: var(--tick);
+  font-weight: 600;
+}
+.ticker .crawl span {
+  display: inline-block;
+  padding-right: 28px;
+}
+.ticker .crawl b {
+  color: var(--yellow);
+  font-family: var(--serif);
+  font-weight: 600;
+  padding-right: 28px;
+}
+.f-9x16 .footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1690px;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.f-16x9 .footer {
+  display: none;
+}
+
+/* ---------- story ---------- */
+.media {
+  position: absolute;
+  left: var(--media-x);
+  top: var(--media-y);
+  width: var(--media-w);
+  height: var(--media-h);
+  overflow: hidden;
+  background: var(--ink);
+}
+.media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.media .shade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 30%;
+  background: linear-gradient(transparent, rgba(10, 10, 10, 0.55));
+}
+.media .credit {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  color: var(--paper);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+
+.paper {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  padding: 130px 64px 56px;
+  border: 1px solid var(--hair);
+}
+.paper .venue {
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: 0.12em;
+  color: #b31b1b;
+}
+.paper .ptitle {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 84px;
+  line-height: 1;
+  margin-top: 26px;
+}
+.paper .rule {
+  height: 1px;
+  background: var(--hair);
+  margin: 30px 0;
+  transform-origin: 0 50%;
+}
+.paper .abs {
+  font-size: 30px;
+  line-height: 1.4;
+  color: #2a2a2a;
+}
+.f-9x16 .paper .ptitle {
+  font-size: 78px;
+}
+.f-9x16 .paper .abs {
+  font-size: 30px;
+}
+
+.rank {
+  position: absolute;
+  left: var(--rank-x);
+  top: var(--rank-y);
+  width: var(--rank);
+  height: var(--rank);
+  background: var(--yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: calc(var(--rank) * 0.62);
+  line-height: 1;
+  z-index: 3;
+}
+
+.copy {
+  position: absolute;
+  left: var(--text-x);
+  top: var(--text-y);
+  width: var(--text-w);
+}
+.cat {
+  display: inline-block;
+  font-weight: 800;
+  font-size: var(--cat);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.kicker {
+  font-weight: 700;
+  font-size: var(--kicker);
+  line-height: 1.2;
+  white-space: nowrap;
+  margin-top: 14px;
+  color: var(--muted);
+}
+.head {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: var(--head);
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+  margin-top: 14px;
+}
+.head .mk {
+  background-image: linear-gradient(var(--yellow), var(--yellow));
+  background-repeat: no-repeat;
+  background-position: 0 88%;
+  background-size: 0% 38%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.statrow {
+  margin-top: 34px;
+  padding-top: 26px;
+  border-top: 1px solid var(--hair);
+}
+.stat {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: var(--stat);
+  line-height: 1;
+  display: block;
+}
+.stat-label {
+  font-size: var(--stat-label);
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 10px;
+  display: block;
+}
+.src {
+  font-size: var(--src);
+  color: var(--muted);
+  margin-top: 24px;
+  display: block;
+}
+.src b {
+  color: var(--ink);
+}
+.f-9x16 .statrow {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+  padding-top: 22px;
+}
+.f-9x16 .stat-label {
+  margin-top: 0;
+}
+
+/* ---------- intro / outro (yellow field) ---------- */
+.field {
+  position: absolute;
+  inset: 0;
+  background: var(--yellow);
+}
+.semi {
+  position: absolute;
+  font-family: var(--serif);
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 0.8;
+  opacity: 0.08;
+}
+.f-16x9 .semi {
+  right: 60px;
+  top: -40px;
+  font-size: 1200px;
+}
+.f-9x16 .semi {
+  right: -40px;
+  top: 980px;
+  font-size: 1100px;
+}
+.stack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.f-16x9 .stack {
+  top: 190px;
+}
+.f-9x16 .stack {
+  top: 470px;
+  padding: 0 60px;
+}
+.stack .biglogo {
+  width: 220px;
+  height: 220px;
+  display: block;
+}
+.stack .eyebrow {
+  margin-top: 44px;
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: 0.22em;
+}
+.stack .title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 108px;
+  line-height: 1;
+  margin-top: 20px;
+  letter-spacing: -0.015em;
+}
+.f-9x16 .stack .title {
+  font-size: 112px;
+}
+.stack .date {
+  margin-top: 26px;
+  font-size: 32px;
+  font-weight: 600;
+}
+.dots {
+  display: flex;
+  gap: 22px;
+  margin-top: 48px;
+}
+.dots span {
+  width: 76px;
+  height: 76px;
+  border: 2px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 44px;
+}
+.f-9x16 .dots {
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 400px;
+}
+.f-9x16 .dots span {
+  width: 110px;
+  height: 110px;
+  font-size: 60px;
+}
+.stack .url {
+  margin-top: 40px;
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.stack .url .mk2 {
+  background: var(--ink);
+  color: var(--yellow);
+  padding: 4px 18px;
+  display: inline-block;
+}
+.stack .follow {
+  margin-top: 26px;
+  font-size: 30px;
+  font-weight: 600;
+}
+
+/* ---------- stinger wipe ---------- */
+.wipe {
+  z-index: 20;
+}
+.wipe .panel {
+  position: absolute;
+  inset: 0;
+  background: var(--yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wipe .panel .n {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 520px;
+  line-height: 1;
+  display: block;
+}
+.f-9x16 .wipe .panel .n {
+  font-size: 600px;
+}
+.wipe .edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -26px;
+  width: 26px;
+  background: var(--ink);
+}
+
+/* ---------- captions ---------- */
+.cap {
+  z-index: 15;
+}
+.cap .line {
+  position: absolute;
+  left: 50%;
+  top: var(--cap-y);
+  width: var(--cap-w);
+  margin-left: calc(var(--cap-w) / -2);
+  text-align: center;
+  font-weight: 800;
+  font-size: var(--cap);
+  line-height: 1.15;
+}
+.cap .w {
+  display: inline-block;
+  padding: 2px 10px 6px;
+  background: #f7f7f5;
+}
+
+/* ---------- backgrounds (theme.background) ---------- */
+.bg-soft .ground {
+  background: var(--soft);
+}
+.bg-grid .ground {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--hair) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hair) 1px, transparent 1px);
+  background-size: 120px 120px;
+}
+
+/* ---------- story layouts (story.layout) ---------- */
+/* full: the post image fills the frame, copy sits on a paper card like a lower third. */
+.f-16x9 .l-full .media {
+  left: 0;
+  top: 130px;
+  width: 100%;
+  height: 850px;
+}
+.f-9x16 .l-full .media {
+  left: 0;
+  top: 170px;
+  width: 100%;
+  height: 1386px;
+}
+.l-full .media .shade {
+  height: 60%;
+}
+.l-full .copy {
+  background: var(--paper);
+  padding: 34px 40px 36px;
+}
+.f-16x9 .l-full .copy {
+  left: 72px;
+  top: auto;
+  bottom: 300px;
+  width: 1100px;
+}
+.f-9x16 .l-full .copy {
+  left: 40px;
+  top: 760px;
+  width: 1000px;
+}
+.f-16x9 .l-full .rank { left: auto; right: 72px; top: 170px; }
+.f-9x16 .l-full .rank {
+  left: 40px;
+  top: 210px;
+}
+.f-16x9 .l-full .statrow {
+  display: flex;
+  align-items: baseline;
+  gap: 26px;
+}
+.f-16x9 .l-full .stat {
+  font-size: 80px;
+}
+.l-full .media .credit { top: auto; bottom: 24px; right: 72px; }
+.f-9x16 .l-full .media .credit { bottom: 24px; right: 40px; }
+
+/* stat: the number is the story; the image becomes an inset. */
+.l-stat .media {
+  border: 1px solid var(--hair);
+}
+.f-16x9 .l-stat .media {
+  left: auto;
+  right: 72px;
+  top: 170px;
+  width: 620px;
+  height: 420px;
+}
+.f-16x9 .l-stat .copy {
+  left: 72px;
+  top: 170px;
+  width: 1060px;
+}
+.f-16x9 .l-stat .rank {
+  left: auto;
+  right: 640px;
+  top: 130px;
+  width: 110px;
+  height: 110px;
+  font-size: 68px;
+}
+.l-stat .statrow {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+.f-16x9 .l-stat .stat {
+  font-size: 300px;
+  letter-spacing: -0.03em;
+}
+.f-9x16 .l-stat .media {
+  left: 40px;
+  top: 200px;
+  width: 1000px;
+  height: 460px;
+}
+.f-9x16 .l-stat .copy {
+  top: 720px;
+}
+.f-9x16 .l-stat .statrow {
+  display: block;
+}
+.f-9x16 .l-stat .stat {
+  font-size: 260px;
+  letter-spacing: -0.03em;
+}
+.f-9x16 .l-stat .stat-label {
+  margin-top: 8px;
+}
+.l-stat .stat .hl {
+  background: var(--yellow);
+  padding: 0 18px;
+  display: inline-block;
+}
+.l-stat .head {
+  font-size: calc(var(--head) * 0.8);
+}
+
+/* ---------- intro variants (theme.intro) ---------- */
+.slam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.f-16x9 .slam {
+  top: 120px;
+}
+.f-9x16 .slam {
+  top: 440px;
+}
+.slam .dow {
+  font-weight: 800;
+  font-size: 64px;
+  letter-spacing: 0.4em;
+  margin-right: -0.4em;
+}
+.slam .day {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 440px;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+.slam .mon {
+  font-weight: 800;
+  font-size: 64px;
+  letter-spacing: 0.4em;
+  margin-right: -0.4em;
+}
+.f-9x16 .slam .day {
+  font-size: 520px;
+}
+.slam-tail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+.f-16x9 .slam-tail {
+  top: 770px;
+}
+.f-9x16 .slam-tail {
+  top: 1330px;
+  padding: 0 60px;
+}
+.slam-tail .title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 84px;
+  line-height: 1.02;
+}
+.slam-tail .with {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 22px;
+  font-weight: 800;
+  font-size: 30px;
+  letter-spacing: 0.18em;
+}
+.slam-tail .with svg {
+  width: 58px;
+  height: 58px;
+  display: block;
+}
+
+.hstack {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+}
+.f-16x9 .hstack {
+  left: 120px;
+  top: 150px;
+  width: 1680px;
+  gap: 14px;
+}
+.f-9x16 .hstack {
+  left: 60px;
+  top: 300px;
+  width: 960px;
+  gap: 18px;
+}
+.hstack .row {
+  display: flex;
+  align-items: baseline;
+  gap: 26px;
+  border-bottom: 1px solid rgba(10, 10, 10, 0.25);
+  padding-bottom: 12px;
+}
+.hstack .row .n {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 64px;
+  width: 70px;
+  display: block;
+}
+.hstack .row .t {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 60px;
+  line-height: 1.05;
+  display: block;
+}
+.f-9x16 .hstack .row .t {
+  font-size: 58px;
+}
+
+/* ---------- transitions (theme.transition) ---------- */
+.wipe .half {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: var(--yellow);
+}
+.wipe .half.top {
+  top: 0;
+}
+.wipe .half.bot {
+  bottom: 0;
+}
+.wipe .half .n {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1;
+}
+.wipe .ink-panel {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  color: var(--yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wipe .ink-panel .n {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 520px;
+  line-height: 1;
+  display: block;
+}
+
+.hdate {
+  font-weight: 800;
+  font-size: 34px;
+  letter-spacing: 0.2em;
+  padding-bottom: 18px;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 3px solid var(--ink);
+}
+
+.f-9x16 .src {
+  display: none;
+}
+
+/* On the yellow field the logo tile inverts: ink tile, yellow letters. */
+.field ~ .cam svg rect { fill: var(--ink); }
+.field ~ .cam svg path { fill: var(--yellow); }
