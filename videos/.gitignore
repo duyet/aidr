@@ -18,3 +18,5 @@ daily-news/editions/*/voice/
 daily-news/editions/*/out/
 daily-news/editions/*/renders/
 daily-news/editions/*/snap-*/
+daily-news/editions/*/assets-sheet.jpg
+daily-news/editions/*/voice-*/
