@@ -1,9 +1,7 @@
 {
   "step": "tldr",
   "builtAt": "2026-10-02",
-  "labelSources": [
-    "silver:tldr_snapshots"
-  ],
+  "labelSources": ["silver:tldr_snapshots"],
   "count": 20,
   "cases": [
     {

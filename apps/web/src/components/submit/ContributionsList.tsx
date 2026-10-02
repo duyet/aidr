@@ -299,6 +299,7 @@ export function ContributionsList({
                 className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-3 px-3 py-2 text-left text-sm hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <span
+                  role="img"
                   aria-label={statusText(c, lang)}
                   title={statusText(c, lang)}
                   className={`size-2 rounded-full ${GROUP_DOT[statusGroup(c.status)]}`}

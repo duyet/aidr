@@ -153,6 +153,7 @@ export function RunAttemptRows({
             }`}
           >
             <span
+              role="img"
               aria-label={call.ok ? copy.ok : copy.failed}
               className={`mt-1.5 size-2 shrink-0 rounded-full ${
                 call.ok ? "bg-emerald-500" : "bg-destructive"
