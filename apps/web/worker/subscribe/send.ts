@@ -362,6 +362,43 @@ export async function sendEmailLane(
   return { sent, failed, stampedDate };
 }
 
+/** Admin preview: today's VI and EN digest mail to one address, rendered
+ *  exactly as the lane sends it (design layout). Nothing is stamped. */
+export async function previewDigestEmail(
+  env: Env,
+  to: string
+): Promise<Record<string, string>> {
+  const { date } = getLocalHourAndDate(Date.now(), DEFAULT_TIMEZONE);
+  const out: Record<string, string> = {};
+  for (const lang of ["vi", "en"] as const) {
+    const size = digestSizeFor(null);
+    const edition = await loadEdition(env, date, lang, size);
+    if (!edition) {
+      out[lang] = `no ${lang} edition for ${date}`;
+      continue;
+    }
+    const { subject, html, text } = await renderEditionEmail(
+      env,
+      edition,
+      "preview",
+      size,
+      normalizeMailFormat(null)
+    );
+    const ok = await sendSubscriberEmail(env, {
+      to,
+      from: digestFrom(env),
+      subject: `[preview] ${subject}`,
+      html,
+      text,
+      unsubscribeToken: "preview",
+      lang,
+      replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
+    });
+    out[lang] = ok ? "sent" : "failed";
+  }
+  return out;
+}
+
 export async function sendDailyTldr(env: Env): Promise<number> {
   if (!env.EMAIL) {
     console.error("EMAIL binding not configured; skipping daily digest");

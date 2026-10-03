@@ -53,6 +53,7 @@ import {
 import { listMailContent } from "../../../worker/mail/content.js";
 import { previewDigest } from "../../../worker/notify/index.js";
 import { ivFieldGateForOperator } from "../../../worker/notify/iv-gate.js";
+import { previewDigestEmail } from "../../../worker/subscribe/send.js";
 import {
   listTranslationReviewQueue,
   resolveTranslationReview,
@@ -606,6 +607,23 @@ async function handle(
       );
     }
     return Response.json(result);
+  }
+
+  if (
+    method === "POST" &&
+    segments.length === 3 &&
+    segments[0] === "notify" &&
+    segments[1] === "digest" &&
+    segments[2] === "preview-email"
+  ) {
+    const body = (await request.json().catch(() => null)) as {
+      email?: unknown;
+    } | null;
+    const email = typeof body?.email === "string" ? body.email.trim() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return Response.json({ error: "email required" }, { status: 400 });
+    }
+    return Response.json(await previewDigestEmail(env, email));
   }
 
   if (

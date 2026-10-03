@@ -1,5 +1,6 @@
+import { dayArchiveOgPath, dayArchivePath } from "../../src/lib/day-archive.js";
 import { highlightTitle, TITLE_KEYWORDS } from "../../src/lib/highlight.js";
-import { withSiteLang } from "../../src/lib/locale-url.js";
+import { absoluteSiteUrl, withSiteLang } from "../../src/lib/locale-url.js";
 import {
   type MailFormat,
   normalizeMailFormat,
@@ -309,23 +310,22 @@ function largeImageSrc(imageUrl: string | undefined): string | null {
   return safe && !isGeneratedOgCard(safe) ? safe : null;
 }
 
-/** First real thumbnail: http(s), not a generated OG card. */
-export function digestHeroSrc(stories: DigestStory[]): string | null {
-  for (const story of stories) {
-    const src = largeImageSrc(story.imageUrl);
-    if (src) return src;
-  }
-  return null;
-}
-
 function largeImage(src: string, className: string): string {
   return `<img class="${className}" src="${escapeHtml(src)}" width="${LARGE_PX}" alt="" style="display:block;width:100%;max-width:${LARGE_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic">`;
 }
 
-function heroRow(src: string): string {
+/** The day card (`/api/og/date/…`, the day's top stories as a photo grid),
+ *  linked to the day page. Same image as the Telegram digest and the day
+ *  page's og:image, so every channel leads with one picture of the day. */
+export function digestDayCardSrc(date: string, lang: MailLang): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return absoluteSiteUrl(dayArchiveOgPath(date), lang);
+}
+
+function heroRow(src: string, href: string, alt: string): string {
   return `<tr>
       <td style="padding:20px ${PAD} 4px">
-        ${largeImage(src, "mail-hero")}
+        <a href="${escapeHtml(href)}" style="text-decoration:none;border:0">${largeImage(src, "mail-hero").replace('alt=""', `alt="${escapeHtml(alt)}"`)}</a>
       </td>
     </tr>`;
 }
@@ -360,8 +360,17 @@ export function renderDigestEmail(input: DigestEmailInput): {
       }),
     };
   }
-  // `large` gives every story its own image, so a hero would repeat story 1.
-  const hero = format === "design" ? digestHeroSrc(input.stories) : null;
+  // Image layouts lead with the day card; it is the whole day, so it never
+  // repeats a story's own image.
+  const hero =
+    format === "design" || format === "large"
+      ? digestDayCardSrc(input.date, input.lang)
+      : null;
+  const dayHref = withMailUtm(
+    absoluteSiteUrl(dayArchivePath(input.date), input.lang),
+    "digest",
+    input.lang
+  );
   const readMore =
     input.lang === "vi" ? "Đọc trên aidr.today" : "Read on aidr.today";
   const storyCta = input.lang === "vi" ? "Đọc thêm" : "Read more";
@@ -399,10 +408,10 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const innerRows = `<tr>
       <td style="padding:28px ${PAD} 12px;font-family:${SERIF};font-size:22px;line-height:1.3;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
     </tr>
-    ${hero ? heroRow(hero) : ""}
+    ${hero ? heroRow(hero, dayHref, heading) : ""}
     ${htmlItems}
     <tr>
-      <td style="padding:16px ${PAD} 28px;font-family:${SANS};font-size:14px;line-height:1.4"><a href="${escapeHtml(withMailUtm(SITE_URL, "digest", input.lang))}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${escapeHtml(readMore)}</a></td>
+      <td style="padding:16px ${PAD} 28px;font-family:${SANS};font-size:14px;line-height:1.4"><a href="${escapeHtml(hero ? dayHref : withMailUtm(SITE_URL, "digest", input.lang))}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${escapeHtml(readMore)}</a></td>
     </tr>
     ${mailFooterHtml(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
 

@@ -301,7 +301,7 @@ describe("buildDigestEmail", () => {
     expect(html).not.toContain("127.0.0.1");
   });
 
-  it("uses the first photo thumbnail and skips a generated OG card", () => {
+  it("leads with the day card linked to the day page", () => {
     const { html } = buildDigestEmail(
       "2026-08-16",
       [
@@ -318,22 +318,26 @@ describe("buildDigestEmail", () => {
       "tok"
     );
     const hero = html.match(/class="mail-hero" src="([^"]+)"/);
-    expect(hero?.[1]).toBe("https://cdn.example/photos/claude-stage.jpg");
-    expect(html).not.toContain(
-      'class="mail-hero" src="https://marketbrief.now/og/'
+    // Same image as the Telegram digest and the day page's og:image.
+    expect(hero?.[1]).toBe(
+      "https://aidr.today/api/og/date/2026-08-16.png?lang=en"
     );
+    expect(html).toContain('href="https://aidr.today/date/2026-08-16?lang=en');
     expect(html).toContain(">Read on aidr.today</a>");
     expect(html).not.toMatch(/Read on aidr\.today[\s\S]{0,80}background/);
   });
 
-  it("omits the hero image when no story image canonicalizes", () => {
+  it("keeps the day card when no story image canonicalizes", () => {
     const { html } = buildDigestEmail(
       "2026-08-16",
       [{ text: "Plain story", image_url: "not a url" }],
       "en",
       "tok"
     );
-    expect(html).not.toContain('class="mail-hero"');
+    expect(html).toContain(
+      'class="mail-hero" src="https://aidr.today/api/og/date/'
+    );
+    expect(html).not.toContain("not a url");
   });
 });
 
@@ -369,9 +373,7 @@ describe("digestBulletsWithImages", () => {
     expect(html).not.toContain(
       'class="mail-hero" src="https://news.example/og/'
     );
-    expect(html).toContain(
-      'class="mail-hero" src="https://cdn.example/photos/room.jpg"'
-    );
+    expect(html).toContain('src="https://cdn.example/photos/room.jpg"');
   });
 });
 
@@ -512,9 +514,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     });
     vi.setSystemTime(fixedNow);
     await sendDailyTldr(env);
-    expect(sentHtml[0]).toContain(
-      'class="mail-hero" src="https://cdn.example/photos/room.jpg"'
-    );
+    expect(sentHtml[0]).toContain('src="https://cdn.example/photos/room.jpg"');
     expect(sentHtml[0]).not.toContain(
       'class="mail-hero" src="https://news.example/og/'
     );

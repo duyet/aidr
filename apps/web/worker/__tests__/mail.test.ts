@@ -320,8 +320,11 @@ describe("renderNoteEmail", () => {
     });
     expect(html).toContain('src="https://aidr.today/og/abc.png"');
     expect(html).toContain('width="64"');
-    expect(html).not.toContain('class="mail-hero"');
-    expect(html.match(/<img /g)?.length).toBe(2);
+    // The hero is the day card, never a story's own image.
+    expect(html).toContain(
+      'class="mail-hero" src="https://aidr.today/api/og/date/2026-09-10.png?lang=en"'
+    );
+    expect(html.match(/<img /g)?.length).toBe(3);
   });
 
   describe("image layouts", () => {
@@ -358,10 +361,10 @@ describe("renderNoteEmail", () => {
       expect(render(undefined)).toBe(html);
     });
 
-    it("large shows one full-width image per story and no hero", () => {
+    it("large shows the day card and one full-width image per story", () => {
       const html = render("large");
-      // A hero would repeat the first story's image right above it.
-      expect(html).not.toContain('class="mail-hero"');
+      // The day card is the whole day, so it does not repeat story 1's image.
+      expect(html.match(/class="mail-hero"/g)?.length).toBe(1);
       expect(html).not.toContain('width="64"');
       expect(html.match(/class="mail-large"/g)?.length).toBe(1);
       expect(html).toContain(
@@ -422,7 +425,8 @@ describe("renderNoteEmail", () => {
       settingsUrl: "https://aidr.today/subscribe?settings=tok",
     });
     expect(html).not.toContain("javascript:");
-    expect(html.match(/<img /g)?.length).toBe(1);
+    // Logo and day card only.
+    expect(html.match(/<img /g)?.length).toBe(2);
   });
 
   it("colors keywords with the website topic palette", () => {
