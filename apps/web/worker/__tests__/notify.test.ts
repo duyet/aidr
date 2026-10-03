@@ -1124,3 +1124,17 @@ describe("trending thresholds", () => {
     expect(TRENDING_BURST_MIN_IMPORTANCE).toBe(9);
   });
 });
+
+describe("channelLanguageRows", () => {
+  // There is no English translation, so a Vietnamese source must not reach
+  // the English channel (VnExpress posted there on 2026-10-03).
+  it("keeps Vietnamese-titled stories off the English channel only", async () => {
+    const { channelLanguageRows } = await import("../notify/index.js");
+    const rows = [
+      { title: "Dấu ấn Mark Zuckerberg trong thỏa thuận AI" },
+      { title: "Google launches Gemini 4" },
+    ];
+    expect(channelLanguageRows(rows, "en")).toEqual([rows[1]]);
+    expect(channelLanguageRows(rows, "vi")).toEqual(rows);
+  });
+});

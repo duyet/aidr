@@ -1,3 +1,4 @@
+import { looksVietnamese } from "../../src/lib/display-title.js";
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { stripTitleMarker } from "../../src/lib/plain-text.js";
 import { storyPath } from "../../src/lib/slug.js";
@@ -248,6 +249,16 @@ export function shouldSendDigest(
  *  Vietnamese prefers the VI translation (English source only when that
  *  translation is empty). English posts the source title and summary and
  *  never reads the Vietnamese translation. */
+/** The English channel posts source copy and there is no English translation,
+ *  so a Vietnamese-language source (VnExpress) would post in Vietnamese
+ *  there. Drop those rows; the Vietnamese channel still gets them. */
+export function channelLanguageRows<T extends { title: string }>(
+  rows: T[],
+  lang: Lang
+): T[] {
+  return lang === "en" ? rows.filter((r) => !looksVietnamese(r.title)) : rows;
+}
+
 export function buildTrendingQuery(
   channel: string,
   nowMs: number,
@@ -654,11 +665,14 @@ export async function dispatchStoryNotifications(
       const { results: sentToday } = await env.DB.prepare(today.sql)
         .bind(...today.binds)
         .all<{ source_id: string; n: number }>();
-      const candidates = pickDiverse(results ?? [], {
-        limit: TRENDING_MAX_PER_DAY,
-        maxPerFamily: TRENDING_MAX_PER_FAMILY,
-        initialCounts: familyCounts(sentToday ?? []),
-      }).map(({ source_id: _sourceId, ...row }) => hydrateStory(row));
+      const candidates = pickDiverse(
+        channelLanguageRows(results ?? [], notifier.lang),
+        {
+          limit: TRENDING_MAX_PER_DAY,
+          maxPerFamily: TRENDING_MAX_PER_FAMILY,
+          initialCounts: familyCounts(sentToday ?? []),
+        }
+      ).map(({ source_id: _sourceId, ...row }) => hydrateStory(row));
       const afterQuery = classifyTrendingSkip(
         maxRank,
         budget,
