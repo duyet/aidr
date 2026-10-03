@@ -55,7 +55,10 @@ async function fetchTilePhotos(
     const batch = urls.slice(i, i + FETCH_BATCH);
     const images = await Promise.all(
       batch.map((url) =>
-        url && !isHeadlineCardImage(url) ? fetchStoryOgImage(url) : null
+        url && !isHeadlineCardImage(url)
+          ? // The render is cached, so a slow publisher CDN is worth the wait.
+            fetchStoryOgImage(url, { timeoutMs: 5000 })
+          : null
       )
     );
     images.forEach((image, j) => {

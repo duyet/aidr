@@ -47,7 +47,10 @@ function clip(value: string, max: number): string {
  */
 export function hasDayOgCopy(item: FeedItem, lang: Lang): boolean {
   if (lang === "en") return !looksVietnamese(item.title);
-  return !localizedTitle(item, lang).fallbackFromEnglish;
+  // A stored Vietnamese title can be the English text copied over; it must
+  // read as Vietnamese, not just exist.
+  const vi = localizedTitle(item, lang);
+  return !vi.fallbackFromEnglish && looksVietnamese(vi.text);
 }
 
 export function dayOgTile(
