@@ -1,6 +1,6 @@
 import { dayArchivePath } from "../../src/lib/day-archive.js";
 import { DEFAULT_LANG } from "../../src/lib/lang.js";
-import { withSiteLang } from "../../src/lib/locale-url.js";
+import { absoluteSiteUrl, withSiteLang } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
@@ -124,23 +124,54 @@ export function storyUrl(
 
 /** TL;DR digest: header + linked bullet list, capped under the message
  *  limit — bullets that would overflow are dropped from the tail. */
-export function buildDigestMessage(digest: DailyDigest): string {
+/** Telegram counts a caption's limit on visible text (after entity parsing);
+ *  keep headroom under TELEGRAM_IV_LIMITS.captionChars. */
+const DIGEST_CAPTION_CAP = 1000;
+
+/** Day card image for the digest date, e.g. `/api/og/date/2026-10-03.png?lang=vi`. */
+export function digestCardUrl(digest: Pick<DailyDigest, "date" | "lang">) {
+  return absoluteSiteUrl(`/api/og/date/${digest.date}.png`, digest.lang);
+}
+
+/** Digest as a photo caption: same lines, capped on visible length. */
+export function buildDigestCaption(digest: DailyDigest): string {
+  return buildDigestMessage(digest, DIGEST_CAPTION_CAP);
+}
+
+/** Keycap numbers for the ranked bullets (the edition is at most 8). */
+const DIGEST_MARKS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
+
+function digestMark(index: number): string {
+  return DIGEST_MARKS[index] ?? "▫️";
+}
+
+export function buildDigestMessage(
+  digest: DailyDigest,
+  visibleCap = MESSAGE_CAP
+): string {
   const label =
     digest.lang === "en"
       ? `🗞 AI news today — ${digest.date}`
       : `🗞 AI hôm nay có gì — ${digest.date}`;
-  const header = `<b><a href="${escapeHtml(digestDayUrl(digest))}">${label}</a></b>`;
+  // Plain bold: the button and the card already open the day page.
+  const header = `<b>${label}</b>`;
   const lines: string[] = [header];
-  let length = header.length;
-  for (const bullet of digest.bullets) {
+  // Raw HTML length bounds the 4096 message limit; a caption's 1024 is on
+  // visible text, so count that when a smaller cap is asked for.
+  const measure = (raw: string, visible: string) =>
+    visibleCap < MESSAGE_CAP ? visible.length : raw.length;
+  let length = measure(header, label);
+  for (const [index, bullet] of digest.bullets.entries()) {
+    const mark = digestMark(index);
     const text = escapeHtml(bullet.text);
     const safeUrl = bullet.url ? canonicalizeMediaUrl(bullet.url) : null;
     const line = safeUrl
-      ? `•  ${text} <a href="${escapeHtml(withUtm(safeUrl, digest.lang))}">→</a>`
-      : `•  ${text}`;
-    if (length + line.length + 2 > MESSAGE_CAP) break;
+      ? `${mark} ${text} <a href="${escapeHtml(withUtm(safeUrl, digest.lang))}">→</a>`
+      : `${mark} ${text}`;
+    const size = measure(line, `${mark} ${bullet.text}${safeUrl ? " →" : ""}`);
+    if (length + size + 2 > visibleCap) break;
     lines.push(line);
-    length += line.length + 2;
+    length += size + 2;
   }
   return lines.join("\n\n");
 }
@@ -537,6 +568,22 @@ function telegramChannel(options: {
 
     async sendDigest(env: Env, digest: DailyDigest): Promise<SendResult> {
       const token = env.TELEGRAM_BOT_TOKEN as string;
+      // The day card leads as a photo with the bullets as its caption.
+      const photo = await callTelegram(token, "sendPhoto", {
+        chat_id: options.chatId(env),
+        photo: digestCardUrl(digest),
+        caption: buildDigestCaption(digest),
+        parse_mode: "HTML",
+        reply_markup: buildDigestReplyMarkup(digest),
+      });
+      if (photo.ok) {
+        return { ok: true, messageId: telegramMessageId(photo.result) };
+      }
+      // Only a definite rejection may fall back; an ambiguous one may be posted.
+      if (photo.ambiguous || photo.budgetExhausted) return sendFailure(photo);
+      console.error(
+        `telegram digest sendPhoto failed: ${photo.description}; sending text`
+      );
       const msg = await callTelegram(token, "sendMessage", {
         chat_id: options.chatId(env),
         text: buildDigestMessage(digest),

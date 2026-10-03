@@ -24,6 +24,7 @@ import {
   trendingRankBar,
 } from "../notify/index.js";
 import {
+  buildDigestCaption,
   buildDigestMessage,
   buildDigestReplyMarkup,
   buildStoryCaption,
@@ -161,7 +162,10 @@ describe("digest message", () => {
     expect(msg).toContain("AI hôm nay có gì — 2026-08-17");
     expect(msg).toContain("OpenAI &lt;ships&gt; GPT-6 &amp; more");
     expect(msg).toContain("lang=vi&amp;utm_source=telegram");
-    expect(msg).toContain("•  No-link bullet");
+    expect(msg).toContain("No-link bullet");
+    // Ranked bullets read as numbers, not dots.
+    expect(msg).toContain("1️⃣ ");
+    expect(msg).not.toContain("•");
   });
 
   it("uses English header and button copy when the digest falls back to EN", () => {
@@ -182,10 +186,25 @@ describe("digest message", () => {
     );
   });
 
-  it("links the header to the day page", () => {
-    expect(buildDigestMessage(digest)).toContain(
-      'href="https://aidr.today/date/2026-08-17?lang=vi&amp;utm_source=telegram"'
+  it("keeps the header plain text; the button opens the day page", () => {
+    expect(buildDigestMessage(digest).split("\n")[0]).toBe(
+      "<b>🗞 AI hôm nay có gì — 2026-08-17</b>"
     );
+  });
+
+  it("caps the photo caption on visible text, not raw HTML", () => {
+    const long: DailyDigest = {
+      lang: "vi",
+      date: "2026-08-17",
+      bullets: Array.from({ length: 20 }, (_, i) => ({
+        text: `bullet ${i} ${"x".repeat(100)}`,
+        url: "https://aidr.today/abcdef12",
+      })),
+    };
+    const caption = buildDigestCaption(long);
+    const visible = caption.replace(/<[^>]+>/g, "");
+    expect(visible.length).toBeLessThanOrEqual(1024);
+    expect(caption).toContain("5️⃣ ");
   });
 
   it("drops overflow bullets to stay under the message cap", () => {
@@ -458,9 +477,12 @@ describe("telegram channels", () => {
     );
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(body.chat_id).toBe("@aidr_today");
-    expect(body.text).toContain("AI news today");
-    expect(body.text).not.toContain("AI hôm nay");
-    expect(body.text).not.toContain("-100");
+    expect(body.caption).toContain("AI news today");
+    expect(body.caption).not.toContain("AI hôm nay");
+    expect(body.caption).not.toContain("-100");
+    expect(body.photo).toBe(
+      "https://aidr.today/api/og/date/2026-08-17.png?lang=en"
+    );
   });
 });
 
@@ -761,11 +783,12 @@ describe("telegramNotifier gating", () => {
         "fetch",
         vi
           .fn()
-          .mockResolvedValue(
-            new Response(
-              JSON.stringify({ ok: false, description: "chat not found" }),
-              { status: 400 }
-            )
+          .mockImplementation(
+            async () =>
+              new Response(
+                JSON.stringify({ ok: false, description: "chat not found" }),
+                { status: 400 }
+              )
           )
       );
       const result = await telegramNotifier.sendDigest(tgEnv, {
@@ -828,12 +851,11 @@ describe("telegramNotifier gating", () => {
       { lang: "vi", date: "2026-08-17", bullets: [] }
     );
     const digestBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
-    // The day card (the day page's og:image) shows above the digest text.
-    expect(digestBody.link_preview_options).toEqual({
-      url: "https://aidr.today/date/2026-08-17?lang=vi&utm_source=telegram",
-      prefer_large_media: true,
-      show_above_text: true,
-    });
+    // The digest is the day card photo with the bullets as its caption.
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendPhoto");
+    expect(digestBody.photo).toBe(
+      "https://aidr.today/api/og/date/2026-08-17.png?lang=vi"
+    );
 
     // Force the text path: an id with no card shape and no usable thumbnail.
     await telegramNotifier.sendStory(
