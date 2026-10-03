@@ -36,6 +36,7 @@ describe("reportPipelineException", () => {
   it.each([
     "Durable Object reset because its code was updated.",
     "Attempt failed due to internal workflows error",
+    "Connection closed: this Durable Object instance is no longer active. Reconnect or retry the request.",
   ])("does not report engine interruption: %s", async (message) => {
     const fetchMock = vi.fn(async () => new Response("ok"));
     vi.stubGlobal("fetch", fetchMock);

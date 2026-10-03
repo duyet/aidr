@@ -137,11 +137,12 @@ export async function reportHealthAlert(
 }
 
 /** Messages the Workflows engine raises when it interrupts a step itself: a
- * deploy replacing the Durable Object code, or an internal engine fault. The
+ * deploy replacing or retiring the Durable Object, or an internal engine fault. The
  * engine retries or replays the step, so neither is an app error. */
 const ENGINE_INTERRUPTIONS = [
   "Durable Object reset because its code was updated",
   "Attempt failed due to internal workflows error",
+  "this Durable Object instance is no longer active",
 ];
 
 export function isEngineInterruption(error: unknown): boolean {
