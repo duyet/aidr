@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ChevronLeft, ChevronRight, Home } from "lucide-react";
 import { DayBriefing } from "../components/DayBriefing";
 import { DaySection } from "../components/DaySection";
 import { DayVideo } from "../components/DayVideo";
@@ -102,29 +103,47 @@ export const Route = createFileRoute("/date/$date")({
 });
 
 function DayNav({ archive, lang }: { archive: DayArchive; lang: Lang }) {
-  const linkClass = "text-muted-foreground hover:text-accent";
+  const pill =
+    "inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card px-3 py-1.5 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground";
+  const muted = `${pill} pointer-events-none opacity-40`;
+  const prevLabel = lang === "vi" ? "Ngày trước" : "Previous day";
+  const nextLabel = lang === "vi" ? "Ngày sau" : "Next day";
   return (
     <nav
       aria-label={lang === "vi" ? "Chuyển ngày" : "Day navigation"}
-      className="flex items-center justify-between gap-3 py-4 text-sm"
+      className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm"
     >
-      {archive.prevDate ? (
-        <a href={dayArchivePath(archive.prevDate, lang)} className={linkClass}>
-          ← {formatDayHeading(archive.prevDate, lang)}
-        </a>
-      ) : (
-        <span />
-      )}
-      <Link to="/" search={{ lang }} className={linkClass}>
+      <div className="flex items-center gap-2">
+        {archive.prevDate ? (
+          <a
+            href={dayArchivePath(archive.prevDate, lang)}
+            className={pill}
+            title={prevLabel}
+          >
+            <ChevronLeft className="size-4" aria-hidden />
+            {formatDayHeading(archive.prevDate, lang)}
+          </a>
+        ) : null}
+        {archive.nextDate ? (
+          <a
+            href={dayArchivePath(archive.nextDate, lang)}
+            className={pill}
+            title={nextLabel}
+          >
+            {formatDayHeading(archive.nextDate, lang)}
+            <ChevronRight className="size-4" aria-hidden />
+          </a>
+        ) : (
+          <span className={muted} aria-hidden>
+            {nextLabel}
+            <ChevronRight className="size-4" />
+          </span>
+        )}
+      </div>
+      <Link to="/" search={{ lang }} className={pill}>
+        <Home className="size-4" aria-hidden />
         {lang === "vi" ? "Bảng tin hôm nay" : "Live feed"}
       </Link>
-      {archive.nextDate ? (
-        <a href={dayArchivePath(archive.nextDate, lang)} className={linkClass}>
-          {formatDayHeading(archive.nextDate, lang)} →
-        </a>
-      ) : (
-        <span />
-      )}
     </nav>
   );
 }
