@@ -236,7 +236,10 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
                   date={archive.date}
                   lang={lang}
                   topicByItemId={topicByItemId}
+                  categoryByItemId={categoryByItemId}
                   pathByItemId={pathByItemId}
+                  tagsByItemId={tagsByItemId}
+                  imageByItemId={imageByItemId}
                 />
               </div>
             </div>

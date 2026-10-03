@@ -1,22 +1,30 @@
+import { DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
 import type { Lang, TldrBullet } from "../lib/types";
+import { TldrBulletList } from "./TldrBulletList";
 
 /**
- * Compact text-only AI;DR list that sits beside the day's video. No story
- * thumbnails: the video is the only image in the hero, so the list stays
- * scannable and fits the video's height (it scrolls inside on md+).
+ * AI;DR list beside the day's video or card. Same rows as the homepage
+ * digest (topic colours, keyword highlights, click opens the story dialog),
+ * in one column that fits the hero's height (it scrolls inside on md+).
  */
 export function DayBriefing({
   bullets,
   date,
   lang,
   topicByItemId,
+  categoryByItemId,
   pathByItemId,
+  tagsByItemId,
+  imageByItemId,
 }: {
   bullets: TldrBullet[];
   date: string;
   lang: Lang;
   topicByItemId: Map<string, string>;
+  categoryByItemId: Map<string, string>;
   pathByItemId: Map<string, string>;
+  tagsByItemId: Map<string, string[]>;
+  imageByItemId: Map<string, string>;
 }) {
   return (
     <section className="flex h-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-card">
@@ -26,46 +34,20 @@ export function DayBriefing({
           {date} · {bullets.length} {lang === "vi" ? "tin" : "stories"}
         </span>
       </header>
-      <ol className="min-h-0 flex-1 divide-y divide-border/50 overflow-y-auto overscroll-contain">
-        {bullets.map((b, i) => {
-          const id = b.item_ids?.[0];
-          const topic = id ? topicByItemId.get(id) : undefined;
-          const href = id ? pathByItemId.get(id) : undefined;
-          const body = (
-            <>
-              <span className="w-5 shrink-0 pt-0.5 text-right font-serif text-sm tabular-nums text-muted-foreground">
-                {i + 1}
-              </span>
-              <span className="min-w-0">
-                {topic && (
-                  <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-accent">
-                    {topic}
-                  </span>
-                )}
-                <span className="line-clamp-2 text-sm leading-snug">
-                  {b.text}
-                </span>
-              </span>
-            </>
-          );
-          const rowClass = "flex gap-3 px-4 py-2.5";
-          return (
-            <li key={`${i}-${id ?? ""}`}>
-              {href ? (
-                <a
-                  href={href}
-                  title={b.text}
-                  className={`${rowClass} transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none`}
-                >
-                  {body}
-                </a>
-              ) : (
-                <div className={rowClass}>{body}</div>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+        <TldrBulletList
+          shown={bullets}
+          mid={bullets.length}
+          layout={DEFAULT_AIDR_LAYOUT}
+          numbered
+          lang={lang}
+          topicByItemId={topicByItemId}
+          categoryByItemId={categoryByItemId}
+          pathByItemId={pathByItemId}
+          tagsByItemId={tagsByItemId}
+          imageByItemId={imageByItemId}
+        />
+      </div>
     </section>
   );
 }
