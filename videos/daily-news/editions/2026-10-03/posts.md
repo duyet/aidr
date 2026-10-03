@@ -4,9 +4,9 @@ Files: `renders/aidr-daily-2026-10-03-16x9-4k.mp4`, `renders/aidr-daily-2026-10-
 
 ## YouTube (16:9)
 
-**Title** (74/100)
+**Title** (85/100)
 
-AI News Today: Ai2 AstaBrief, Meta at the White House & more | Oct 3, 2026
+AI News Today: OpenAI model tried to restart itself, GPT-6.1 Sol & more | Oct 3, 2026
 
 **Description**
 
@@ -48,7 +48,7 @@ Every story, ranked and summarized daily: https://aidr.today
 
 **Title**
 
-A perfect math score, a model that tried to restart itself, and more AI news today. Oct 3, 2 #Shorts
+An OpenAI model tried to restart itself + 5 more AI stories today #Shorts
 
 **Description**
 
