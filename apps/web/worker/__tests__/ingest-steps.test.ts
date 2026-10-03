@@ -13,7 +13,6 @@ import {
   LLM_STEP,
   RELEVANCE_THRESHOLD,
 } from "../ingest/context.js";
-import { TRANSLATE_TIMEOUT_MS } from "../llm.js";
 import { pendingRowToNewRow } from "../ingest/dedupe.js";
 import { applyEnrichment } from "../ingest/enrich.js";
 import { enabledSourcesOf, seedSourceHealth } from "../ingest/fetch.js";
@@ -46,6 +45,7 @@ import {
   planExistingCanonicalMedia,
   planNewItemWrite,
 } from "../ingest/write-plan.js";
+import { TRANSLATE_TIMEOUT_MS } from "../llm.js";
 import { rankScore } from "../ranking.js";
 import { emptySourceHealth, type SourceRunHealth } from "../source-health.js";
 
