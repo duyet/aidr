@@ -37,7 +37,7 @@ export const BACKFILL_TRANSLATE_STEP = {
   timeout: "5 minutes",
 } as const;
 
-/** Score / translate / merge / TL;DR / backfill-score. Same retry trap as
+/** Score / translate / merge / backfill-score. Same retry trap as
  * backfill-translate: a timed-out or exhausted LLM step must not retry for
  * ~50 minutes, or `record-run` never writes `workflow_runs`. Translate
  * slices call `translateItems`, whose deadline is `TRANSLATE_TIMEOUT_MS`
