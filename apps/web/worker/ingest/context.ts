@@ -27,18 +27,26 @@ export const MERGE_CANDIDATE_LIMIT = 300;
 
 /** Backfill-translate slices already catch LLM failures. Default Workflow
  * retries (5 × 10 min) stacked 15 slices and left ingest instances running
- * past the next GitHub POST, so later runs never reached record-run. */
+ * past the next GitHub POST, so later runs never reached record-run.
+ * The timeout sits above `TRANSLATE_TIMEOUT_MS` so a slow model can return
+ * and the D1 upserts after `translateItems` still run. At 2 minutes the
+ * engine killed the slice before that deadline (one batch plus a repair
+ * pass already exceeds 2 minutes). */
 export const BACKFILL_TRANSLATE_STEP = {
   retries: { limit: 0, delay: 0 },
-  timeout: "2 minutes",
+  timeout: "5 minutes",
 } as const;
 
 /** Score / translate / merge / TL;DR / backfill-score. Same retry trap as
  * backfill-translate: a timed-out or exhausted LLM step must not retry for
- * ~50 minutes, or `record-run` never writes `workflow_runs`. */
+ * ~50 minutes, or `record-run` never writes `workflow_runs`. Translate
+ * slices call `translateItems`, whose deadline is `TRANSLATE_TIMEOUT_MS`
+ * (4 minutes). A step timeout equal to that deadline leaves no time for the
+ * D1 writes after it returns, so the engine can kill the step as the call
+ * is finishing. */
 export const LLM_STEP = {
   retries: { limit: 0, delay: 0 },
-  timeout: "4 minutes",
+  timeout: "5 minutes",
 } as const;
 
 /** TL;DR step. `ensureDailyTldr` catches its own LLM/D1 errors, so the

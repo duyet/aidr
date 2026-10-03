@@ -203,7 +203,9 @@ The player is a click-to-play `youtube-nocookie.com` facade.
 
 ## Ops pitfalls
 
-- LLM-heavy Workflow steps use `retries: 0` and a 4-minute timeout. A
+- LLM-heavy Workflow steps use `retries: 0`. `LLM_STEP` and
+  `BACKFILL_TRANSLATE_STEP` time out at 5 minutes, above
+  `TRANSLATE_TIMEOUT_MS`, so a slow translate can return and write. A
   failed score/TL;DR call must not abort close-run.
 - Just before close-run, the `health-check` step (`worker/health.ts`)
   reports to Sentry/Bugsink when: a Telegram channel has no post for >26h

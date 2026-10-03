@@ -1459,7 +1459,7 @@ export function sanitizeTranslateResults(
 
 /** Whole translateItems call. Several 3-item batches share this so a
  *  15-item backfill cannot stack 5 × 300s. */
-const TRANSLATE_TIMEOUT_MS = 240_000;
+export const TRANSLATE_TIMEOUT_MS = 240_000;
 /** 25s hang-cap + two 20s floors so leftover actually reaches fallbacks. */
 const TRANSLATE_BATCH_TIMEOUT_MS = 70_000;
 const TRANSLATE_MAX_TOKENS = 4096;
