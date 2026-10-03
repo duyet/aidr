@@ -28,6 +28,10 @@ export interface StoryPayload {
 export interface DigestBullet {
   text: string;
   url: string | null;
+  /** The TL;DR model's pick for this story, when it gave a valid one. */
+  emoji?: string;
+  /** Story category, for the fallback mark when there is no emoji. */
+  category?: string | null;
 }
 
 export interface DailyDigest {

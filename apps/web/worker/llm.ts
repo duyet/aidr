@@ -1769,6 +1769,21 @@ export interface TldrItem {
 export interface TldrBullet {
   text: string;
   item_ids: string[];
+  /** One emoji the model picked for the story's topic (Telegram bullet mark). */
+  emoji?: string;
+}
+
+/** A single emoji (with optional variation selector / ZWJ sequence), else
+ *  undefined, so a model that returns text or several icons is ignored. */
+export function sanitizeBulletEmoji(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const v = value.trim();
+  if (!v || v.length > 16) return undefined;
+  const graphemes = [
+    ...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v),
+  ];
+  if (graphemes.length !== 1) return undefined;
+  return /\p{Extended_Pictographic}/u.test(v) ? v : undefined;
 }
 
 export interface TldrResult {
@@ -1826,9 +1841,11 @@ function normalizeBullets(input: unknown): TldrBullet[] {
       const e = entry as Record<string, unknown>;
       const text = typeof e.text === "string" ? e.text : undefined;
       if (!text) continue;
+      const emoji = sanitizeBulletEmoji(e.emoji);
       out.push({
         text: stripBracketItemIds(text),
         item_ids: collectBulletItemIds(e, text),
+        ...(emoji ? { emoji } : {}),
       });
     }
   }
@@ -1890,8 +1907,8 @@ function tldrPrompt(items: TldrItem[], bilingual: boolean): string {
     ? "in both English and Vietnamese"
     : "in English only";
   const shape = bilingual
-    ? '{"bullets_en":[{"text":"...","item_ids":["..."]}],"bullets_vi":[{"text":"...","item_ids":["..."]}]}'
-    : '{"bullets_en":[{"text":"...","item_ids":["..."]}],"bullets_vi":[]}';
+    ? '{"bullets_en":[{"emoji":"🧠","text":"...","item_ids":["..."]}],"bullets_vi":[{"emoji":"🧠","text":"...","item_ids":["..."]}]}'
+    : '{"bullets_en":[{"emoji":"🧠","text":"...","item_ids":["..."]}],"bullets_vi":[]}';
   const viNote = bilingual
     ? `
 The Vietnamese bullets are NOT a translation pass over the English ones — write them the way a Vietnamese tech journalist would independently state the same facts, following the house style above.
@@ -1900,6 +1917,8 @@ The Vietnamese bullets are NOT a translation pass over the English ones — writ
   return `Summarize the following ${items.length} AI/tech news items into at most ${n} TL;DR digest bullets (one per distinct story), ${langs}. Each bullet must reference the item_ids (an array) it was derived from: most bullets summarize a single story, so item_ids has one id; when several items report the same story or theme, write ONE synthesizing bullet citing ALL of their ids instead of separate bullets.
 
 Each bullet is a short digest, not an article: about 2 sentences or 180–240 characters (English and Vietnamese). State the what and the why (or who/impact). Keep named entities (models, labs, products) in the text. Do not pad with filler, and do not write a paragraph. Put story ids only in the item_ids array — never as [id] in the bullet text.
+
+Give each bullet an "emoji": ONE emoji that fits that specific story (e.g. 💰 a funding round, ⚖️ a court ruling or law, 🔌 chips, 🤖 an agent launch, 🧠 a new model, 🔓 an open-source release, 🛡️ security). Pick it per story, not one for the whole digest; the same story uses the same emoji in both languages. Never put the emoji in the text.
 ${viNote}
 Items:
 ${JSON.stringify(items)}

@@ -29,6 +29,7 @@ import {
   buildDigestReplyMarkup,
   buildStoryCaption,
   buildStoryReplyMarkup,
+  digestMark,
   escapeHtml,
   resolveStoryMedia,
   STORY_PHOTO_LINK_PREVIEW,
@@ -163,8 +164,7 @@ describe("digest message", () => {
     expect(msg).toContain("OpenAI &lt;ships&gt; GPT-6 &amp; more");
     expect(msg).toContain("lang=vi&amp;utm_source=telegram");
     expect(msg).toContain("No-link bullet");
-    // Ranked bullets read as numbers, not dots.
-    expect(msg).toContain("1️⃣ ");
+    // Each bullet leads with a topic icon, not a dot.
     expect(msg).not.toContain("•");
   });
 
@@ -204,7 +204,7 @@ describe("digest message", () => {
     const caption = buildDigestCaption(long);
     const visible = caption.replace(/<[^>]+>/g, "");
     expect(visible.length).toBeLessThanOrEqual(1024);
-    expect(caption).toContain("5️⃣ ");
+    expect(caption.split("📰").length - 1).toBeGreaterThan(4);
   });
 
   it("drops overflow bullets to stay under the message cap", () => {
@@ -1143,6 +1143,18 @@ describe("trending thresholds", () => {
     expect(TRENDING_MAX_PER_DAY).toBe(3);
     expect(TRENDING_BURST_MAX_PER_DAY).toBe(6);
     expect(TRENDING_BURST_MIN_IMPORTANCE).toBe(9);
+  });
+});
+
+describe("digestMark", () => {
+  // The icon should say what the story is about: the TL;DR model's pick,
+  // then the category, then a neutral newspaper.
+  it("prefers the model emoji, then the category, then 📰", () => {
+    expect(digestMark({ text: "x", url: null, emoji: "💰" })).toBe("💰");
+    expect(digestMark({ text: "x", url: null, category: "Chips" })).toBe("🔌");
+    expect(digestMark({ text: "x", url: null, category: "Unknown" })).toBe(
+      "📰"
+    );
   });
 });
 

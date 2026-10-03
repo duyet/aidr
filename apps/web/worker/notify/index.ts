@@ -464,6 +464,8 @@ async function loadDigest(
     return {
       text: bullet.text,
       url: item ? absoluteSiteUrl(storyPath(item), lang) : null,
+      ...(bullet.emoji ? { emoji: bullet.emoji } : {}),
+      category: item?.category ?? null,
     };
   });
   return { lang, date: edition.date, bullets: resolved };

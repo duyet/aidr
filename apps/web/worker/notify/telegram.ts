@@ -14,6 +14,7 @@ import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
 import {
   type DailyDigest,
+  type DigestBullet,
   isSubrequestLimitError,
   type Notifier,
   type SendResult,
@@ -138,11 +139,32 @@ export function buildDigestCaption(digest: DailyDigest): string {
   return buildDigestMessage(digest, DIGEST_CAPTION_CAP);
 }
 
-/** Keycap numbers for the ranked bullets (the edition is at most 8). */
-const DIGEST_MARKS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
+/** Fallback mark per category when the TL;DR model gave no emoji
+ *  (older snapshots, title-fallback digests). */
+const CATEGORY_MARKS: Record<string, string> = {
+  agents: "🤖",
+  chips: "🔌",
+  data: "📊",
+  frameworks: "🧩",
+  funding: "💰",
+  industry: "🏢",
+  infra: "🏗️",
+  legal: "⚖️",
+  models: "🧠",
+  opensource: "🔓",
+  "open source": "🔓",
+  products: "📱",
+  regulation: "🏛️",
+  releases: "🚀",
+  research: "🔬",
+  tools: "🛠️",
+};
 
-function digestMark(index: number): string {
-  return DIGEST_MARKS[index] ?? "▫️";
+/** Story-specific mark: the model's emoji, else the category's, else 📰. */
+export function digestMark(bullet: DigestBullet): string {
+  if (bullet.emoji) return bullet.emoji;
+  const key = bullet.category?.trim().toLowerCase() ?? "";
+  return CATEGORY_MARKS[key] ?? "📰";
 }
 
 export function buildDigestMessage(
@@ -161,8 +183,8 @@ export function buildDigestMessage(
   const measure = (raw: string, visible: string) =>
     visibleCap < MESSAGE_CAP ? visible.length : raw.length;
   let length = measure(header, label);
-  for (const [index, bullet] of digest.bullets.entries()) {
-    const mark = digestMark(index);
+  for (const bullet of digest.bullets) {
+    const mark = digestMark(bullet);
     const text = escapeHtml(bullet.text);
     const safeUrl = bullet.url ? canonicalizeMediaUrl(bullet.url) : null;
     const line = safeUrl

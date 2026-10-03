@@ -6,6 +6,7 @@ export interface TldrBulletLike {
   item_id?: string;
   item_ids?: string[];
   image_url?: string;
+  emoji?: string;
 }
 
 /** Newer snapshots store `item_ids: string[]`; older rows used `item_id`. */
@@ -46,11 +47,14 @@ export function topBullets(
         const ids = itemIds.filter(
           (id): id is string => typeof id === "string" && id.length > 0
         );
+        const emoji =
+          typeof b.emoji === "string" && b.emoji ? b.emoji : undefined;
         return {
           text: String(b.text ?? "").trim(),
           item_id,
           ...(ids.length > 0 ? { item_ids: ids } : {}),
           ...(image_url ? { image_url } : {}),
+          ...(emoji ? { emoji } : {}),
         };
       })
       .filter((bullet) => bullet.text.length > 0);
