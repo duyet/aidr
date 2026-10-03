@@ -149,6 +149,36 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
     if (item.image_url) imageByItemId.set(item.id, item.image_url);
   }
 
+  // The day's video leads; without one, the day card (the page's og:image)
+  // takes its place so the hero still shows the day at a glance.
+  const hero = archive.video ? (
+    <DayVideo
+      video={archive.video}
+      fallbackTitle={`AI;DR — ${heading}`}
+      lang={lang}
+    />
+  ) : items.length > 0 ? (
+    <a
+      href={dayArchiveOgPath(archive.date, lang)}
+      target="_blank"
+      rel="noopener"
+      className="block overflow-hidden rounded-2xl border border-border/80 bg-[#f5c518]"
+    >
+      <img
+        src={dayArchiveOgPath(archive.date, lang)}
+        width={1200}
+        height={630}
+        alt={
+          lang === "vi"
+            ? `Top tin AI ngày ${heading}`
+            : `Top AI stories, ${heading}`
+        }
+        fetchPriority="high"
+        className="aspect-[1200/630] h-auto w-full"
+      />
+    </a>
+  ) : null;
+
   const tldr =
     bullets.length > 0 ? (
       <TldrSection
@@ -164,7 +194,7 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
         tagsByItemId={tagsByItemId}
         imageByItemId={imageByItemId}
         snapshotDate={archive.tldr?.date}
-        singleColumn={Boolean(archive.video)}
+        singleColumn={Boolean(hero)}
         showFreshness={false}
       />
     ) : null;
@@ -175,13 +205,9 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
       <h1 className="font-serif text-3xl font-medium tracking-tight">
         {heading}
       </h1>
-      {archive.video ? (
+      {hero ? (
         <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <DayVideo
-            video={archive.video}
-            fallbackTitle={`AI;DR — ${heading}`}
-            lang={lang}
-          />
+          {hero}
           {bullets.length > 0 && (
             // md+: the list takes the video's height and scrolls inside.
             <div className="relative min-h-[18rem]">
