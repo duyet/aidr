@@ -54,6 +54,11 @@ bindings = [
 tag = "v1"
 new_sqlite_classes = ["NewsIngestScheduler"]
 
+# Rendered OG PNGs shared across every region (src/lib/og-cache.ts).
+[[r2_buckets]]
+binding = "OG_CACHE"
+bucket_name = "aidr-og"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "aidr"

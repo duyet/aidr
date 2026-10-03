@@ -2,6 +2,8 @@ export interface Env {
   /** Static files from dist/client (`[assets] binding = "ASSETS"`). */
   ASSETS?: Fetcher;
   DB: D1Database;
+  /** Rendered OG PNGs, the shared tier behind the edge cache. */
+  OG_CACHE?: R2Bucket;
   NEWS_INGEST: Workflow;
   /** Singleton DO that arms a 30-minute alarm and coalesces ingest triggers.
    *  Optional so node tests can omit it; production wrangler always binds it. */
