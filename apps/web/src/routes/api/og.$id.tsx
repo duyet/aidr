@@ -1,6 +1,7 @@
 import { cache, ImageResponse } from "@cf-wasm/og/workerd";
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
+import { cachedOgResponse } from "../../lib/og-cache";
 import {
   loadOgFontAsset,
   loadStoryOgFonts,
@@ -59,24 +60,26 @@ export const Route = createFileRoute("/api/og/$id")({
         if (!idPrefix) {
           return Response.json({ error: "not found" }, { status: 404 });
         }
-        const item = await getStory(readSession(db), idPrefix);
-        if (!item) {
-          return Response.json({ error: "not found" }, { status: 404 });
-        }
+        return cachedOgResponse(request, ctx, async () => {
+          const item = await getStory(readSession(db), idPrefix);
+          if (!item) {
+            return Response.json({ error: "not found" }, { status: 404 });
+          }
 
-        const lang = storyOgLanguage(
-          new URL(request.url).searchParams.get("lang")
-        );
-        const [fonts, image] = await Promise.all([
-          loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
-          fetchStoryOgImage(item.image_url),
-        ]);
-        return await ImageResponse.async(storyOgCard(item, image, lang), {
-          ...storyOgRenderOptions(fonts),
-          headers: {
-            "Cache-Control": OG_CACHE_CONTROL,
-            "Content-Language": lang,
-          },
+          const lang = storyOgLanguage(
+            new URL(request.url).searchParams.get("lang")
+          );
+          const [fonts, image] = await Promise.all([
+            loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
+            fetchStoryOgImage(item.image_url),
+          ]);
+          return await ImageResponse.async(storyOgCard(item, image, lang), {
+            ...storyOgRenderOptions(fonts),
+            headers: {
+              "Cache-Control": OG_CACHE_CONTROL,
+              "Content-Language": lang,
+            },
+          });
         });
       },
     },
