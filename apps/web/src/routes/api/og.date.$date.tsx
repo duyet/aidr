@@ -28,6 +28,9 @@ function dayOgCacheControl(date: string): string {
     : "public, max-age=600, s-maxage=3600, stale-while-revalidate=3600";
 }
 
+/** Stories whose photos are fetched to fill the grid. */
+const DAY_OG_CANDIDATES = 12;
+
 export const Route = createFileRoute("/api/og/date/$date")({
   server: {
     handlers: {
@@ -70,21 +73,34 @@ export const Route = createFileRoute("/api/og/date/$date")({
         return cachedOgResponse(request, ctx, async () => {
           const archive = await getDayArchive(readSession(db), date);
           const all = archive.day?.items ?? [];
-          // Prefer stories with a photo so the grid reads as a picture board.
-          const withImage = all.filter((item) => item.image_url);
-          const pool = withImage.length >= 4 ? withImage : all;
-          const items = pool.slice(0, dayOgTileCount(pool.length));
-          if (items.length === 0) {
+          if (all.length === 0) {
             return Response.json({ error: "not found" }, { status: 404 });
           }
-
           const lang = storyOgLanguage(
             new URL(request.url).searchParams.get("lang")
           );
-          const [fonts, images] = await Promise.all([
+          // Fetch photos for the top dozen and keep rank order among the ones
+          // that loaded, so a dead or hotlink-blocked thumbnail does not leave
+          // a blank tile while a lower story has a real photo.
+          const candidates = all.slice(0, DAY_OG_CANDIDATES);
+          const [fonts, fetched] = await Promise.all([
             loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
-            Promise.all(items.map((item) => fetchStoryOgImage(item.image_url))),
+            Promise.all(
+              candidates.map((item) => fetchStoryOgImage(item.image_url))
+            ),
           ]);
+          const loaded = candidates
+            .map((item, i) => ({ item, image: fetched[i] }))
+            .filter((c) => c.image);
+          const picked =
+            loaded.length >= 4
+              ? loaded.slice(0, dayOgTileCount(loaded.length))
+              : all.slice(0, dayOgTileCount(all.length)).map((item) => ({
+                  item,
+                  image: fetched[candidates.indexOf(item)] ?? null,
+                }));
+          const items = picked.map((p) => p.item);
+          const images = picked.map((p) => p.image);
           const tiles = items.map((item, i) =>
             dayOgTile(item, images[i], lang)
           );
