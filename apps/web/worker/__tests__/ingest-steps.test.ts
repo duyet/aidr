@@ -8,7 +8,11 @@ import {
   uniqueById,
 } from "../ingest/backfill.js";
 import type { NewRow, SourceRow } from "../ingest/context.js";
-import { RELEVANCE_THRESHOLD } from "../ingest/context.js";
+import {
+  BACKFILL_TRANSLATE_STEP,
+  LLM_STEP,
+  RELEVANCE_THRESHOLD,
+} from "../ingest/context.js";
 import { pendingRowToNewRow } from "../ingest/dedupe.js";
 import { applyEnrichment } from "../ingest/enrich.js";
 import { enabledSourcesOf, seedSourceHealth } from "../ingest/fetch.js";
@@ -41,6 +45,7 @@ import {
   planExistingCanonicalMedia,
   planNewItemWrite,
 } from "../ingest/write-plan.js";
+import { TRANSLATE_TIMEOUT_MS } from "../llm.js";
 import { rankScore } from "../ranking.js";
 import { emptySourceHealth, type SourceRunHealth } from "../source-health.js";
 
@@ -549,5 +554,29 @@ describe("run-step summaries", () => {
     expect(notifyStepSummary({ telegram: 2, email: 1 })).toBe(
       "telegram: 2, email: 1"
     );
+  });
+});
+
+/** Workflow `step.do` timeout strings: "<n> <unit>". */
+function stepTimeoutMs(timeout: string): number {
+  const match = /^(\d+) (seconds|minutes|hours)$/.exec(timeout);
+  if (!match) throw new Error(`unparsed step timeout: ${timeout}`);
+  const n = Number(match[1]);
+  const unit = match[2];
+  if (unit === "seconds") return n * 1000;
+  if (unit === "minutes") return n * 60_000;
+  return n * 3_600_000;
+}
+
+describe("translate step timeouts", () => {
+  // A step killed at or before TRANSLATE_TIMEOUT_MS drops the whole
+  // translateItems batch: the engine wins the race, D1 never sees the rows,
+  // and the next run retries the same slice (issue #355).
+  it("outlives translateItems so the D1 upsert after it can run", () => {
+    for (const config of [BACKFILL_TRANSLATE_STEP, LLM_STEP]) {
+      expect(stepTimeoutMs(config.timeout)).toBeGreaterThan(
+        TRANSLATE_TIMEOUT_MS
+      );
+    }
   });
 });

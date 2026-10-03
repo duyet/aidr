@@ -1459,7 +1459,7 @@ export function sanitizeTranslateResults(
 
 /** Whole translateItems call. Several 3-item batches share this so a
  *  15-item backfill cannot stack 5 × 300s. */
-const TRANSLATE_TIMEOUT_MS = 240_000;
+export const TRANSLATE_TIMEOUT_MS = 240_000;
 /** 25s hang-cap + two 20s floors so leftover actually reaches fallbacks. */
 const TRANSLATE_BATCH_TIMEOUT_MS = 70_000;
 const TRANSLATE_MAX_TOKENS = 4096;
@@ -1802,7 +1802,7 @@ const EMPTY_TLDR: TldrResult = { bullets_en: [], bullets_vi: [], tokens: 0 };
  * the default 120s so a reasoning model that spends its first slice on
  * hidden tokens still has time to emit content (or hand off). */
 /** One deadline shared by both generateTldr attempts. The `tldr` Workflow
- * step times out at 4 minutes (`LLM_STEP`). Two 240s attempts could run for
+ * step times out at 4 minutes (`TLDR_STEP`). Two 240s attempts could run for
  * 8, so the step threw before the retry or the title fallback ran and the
  * run wrote no snapshot; the 10s left over covers the D1 reads and write. */
 /** 230s: the first attempt (230-60 = 170s) must give the first hop of a
