@@ -179,6 +179,25 @@ describe("empty-run streak", () => {
     expect(carried.arxiv.skipReason).toBe("empty");
   });
 
+  it("writes 0 for the push source so a streak that cannot reset is not kept", () => {
+    // `user` fetched 0 again. Without the carry hold, the stored streak
+    // would climb forever. A real feed with the same history still climbs.
+    const past = DEFAULT_STALE_AFTER_RUNS + 100;
+    const carried = carrySourceEmptyRuns(
+      {
+        user: health({ fetched: 0, skipReason: "empty" }),
+        "arstechnica-ai": health({ fetched: 0, skipReason: "empty" }),
+      },
+      {
+        user: health({ emptyRuns: past }),
+        "arstechnica-ai": health({ emptyRuns: past }),
+      }
+    );
+    expect(carried.user.fetched).toBe(0);
+    expect(carried.user.emptyRuns).toBe(0);
+    expect(carried["arstechnica-ai"].emptyRuns).toBe(past + 1);
+  });
+
   it("reads the previous run's streaks out of a stats blob", () => {
     expect(
       parsePreviousEmptyRuns(
@@ -335,6 +354,44 @@ describe("read-model merge", () => {
       },
     });
     expect(stale).toEqual(["dead-feed"]);
+  });
+
+  it("does not report a push source stale when the stored streak is past the threshold", () => {
+    // This is the path `/data` uses (`mergeSourceHealth`), not `isSourceStale`.
+    // The row type is `push` and the stored streak is already over 336.
+    const past = DEFAULT_STALE_AFTER_RUNS + 100;
+    const { health: merged, stale } = mergeSourceHealth(
+      [
+        ingestRow({ id: "user", name: "User submissions", type: "push" }),
+        ingestRow({
+          id: "arstechnica-ai",
+          name: "Ars Technica AI",
+          type: "rss",
+        }),
+      ],
+      {
+        sourceHealth: {
+          user: {
+            ...emptySourceHealth(),
+            emptyRuns: past,
+            skipReason: "empty",
+          },
+          "arstechnica-ai": {
+            ...emptySourceHealth(),
+            emptyRuns: past,
+            skipReason: "empty",
+          },
+        },
+      }
+    );
+    expect(merged.user).toMatchObject({
+      observed: true,
+      fetched: 0,
+      emptyRuns: past,
+      stale: false,
+    });
+    expect(merged["arstechnica-ai"]).toMatchObject({ stale: true });
+    expect(stale).toEqual(["arstechnica-ai"]);
   });
 
   it("treats a run with no sourceHealth at all as unknown, not as a mass failure", () => {
