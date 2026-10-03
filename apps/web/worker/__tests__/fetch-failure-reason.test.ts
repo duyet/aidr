@@ -1,9 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
 import type { WorkflowStep } from "cloudflare:workers";
-import type { IngestContext } from "../ingest/context.js";
+import { describe, expect, it, vi } from "vitest";
+import type { IngestContext, SourceRow } from "../ingest/context.js";
 import { fetchSources } from "../ingest/fetch.js";
 import { emptySourceHealth } from "../source-health.js";
-import type { SourceRow } from "../ingest/context.js";
 
 /**
  * The Workflow engine structured-clones a thrown `SourceFetchError` across

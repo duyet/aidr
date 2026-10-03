@@ -53,7 +53,8 @@ export function sourceFetchFailureReason(
   const reason = (error as { reason?: unknown } | null)?.reason;
   if (reason === "fetch_failed" || reason === "parse_failed") return reason;
   const text = interruptionText(error);
-  if (text.includes("rss feed returned an HTML document")) return "parse_failed";
+  if (text.includes("rss feed returned an HTML document"))
+    return "parse_failed";
   if (
     /rss feed returned \d+\b/.test(text) ||
     text.includes("SourceFetchError:")
