@@ -186,7 +186,9 @@ html[data-theme="dark"] .news-content {
   background: color-mix(in srgb, var(--background) 80%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .topbar-inner {
@@ -354,7 +356,8 @@ html[data-theme="dark"] .news-content {
 
 .search input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring, #0a0a0a33) 70%, transparent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--ring, #0a0a0a33) 70%, transparent);
 }
 
 .actions {
@@ -399,7 +402,9 @@ html[data-theme="dark"] .news-content {
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .header-menu-trigger:hover,
@@ -973,7 +978,9 @@ html[data-theme="dark"] .news-content {
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .chip:hover {
@@ -1041,7 +1048,9 @@ html[data-theme="dark"] .news-content {
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.15s ease, opacity 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .trend-chip:hover,
@@ -1080,25 +1089,57 @@ html[data-theme="dark"] .topic-colored {
   padding: calc(var(--pad) + 1rem) 1.5rem calc(var(--pad) + 1.25rem);
 }
 
+.page.is-brief .tldr-head {
+  margin: calc(-1 * (var(--pad) + 1rem)) -1.5rem 0.75rem;
+  padding: 0.75rem 1.5rem;
+}
+
 .tldr {
   margin: 0.25rem 0 0;
   padding: calc(var(--pad) + 0.5rem) 1.125rem;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: 1.25rem;
+  border-radius: 1rem;
   background: var(--card);
+  overflow: hidden;
 }
 
+/* Yellow masthead, same band as the web TldrSection / day card. */
 .tldr-head {
   display: flex;
-  align-items: baseline;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  margin: calc(-1 * (var(--pad) + 0.5rem)) -1.125rem 0.75rem;
+  padding: 0.75rem 1.125rem;
+  background: var(--brand);
+  color: #0a0a0a;
+}
+
+.tldr-head .muted {
+  color: #0a0a0a;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+}
+
+.tldr-head .tldr-counts {
+  background: #0a0a0a1a;
+}
+
+.tldr-head .tldr-counts button {
+  color: #0a0a0a;
+}
+
+.tldr-head .tldr-counts button[aria-pressed="true"] {
+  background: #0a0a0a;
+  color: #f5c518;
 }
 
 .tldr-title {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.75rem;
 }
 
@@ -1133,7 +1174,9 @@ html[data-theme="dark"] .topic-colored {
   cursor: pointer;
   font: inherit;
   padding: 0.25rem 0.625rem;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .tldr-counts button[aria-pressed="true"] {
@@ -2017,7 +2060,9 @@ html[data-theme="dark"] .topic-colored {
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.25rem 0.625rem;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .story-dialog-dual[aria-pressed="true"] {
