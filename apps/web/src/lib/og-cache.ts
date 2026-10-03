@@ -11,7 +11,7 @@
 
 /** Bump when a card's design or selection changes: a deploy does not purge
  *  either tier, so old renders would otherwise live out their TTL. */
-const OG_RENDER_VERSION = "7";
+const OG_RENDER_VERSION = "8";
 
 type WaitUntil = { waitUntil?: (p: Promise<unknown>) => void } | undefined;
 
@@ -82,7 +82,10 @@ export async function cachedOgResponse(
   }
 
   const res = await render();
-  if (!res.ok) return res;
+  // Only a rendered PNG is stored; an error or JSON body never is.
+  if (!res.ok || !res.headers.get("content-type")?.startsWith("image/png")) {
+    return res;
+  }
   const bytes = await res.arrayBuffer();
   const out = new Response(bytes, res);
   if (cache) await background(ctx, cache.put(edgeKey, out.clone()));

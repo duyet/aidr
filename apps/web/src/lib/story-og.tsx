@@ -278,6 +278,10 @@ export async function fetchStoryOgImage(
         // No WebP: CDNs that negotiate (TechCrunch/Photon) would send it, and
         // the rasterizer cannot draw it.
         Accept: "image/png,image/jpeg,image/gif",
+        // Without a User-Agent, TechCrunch's CDN answers WebP whatever the
+        // Accept header says (checked from a Worker, 2026-10-03).
+        "User-Agent":
+          "Mozilla/5.0 (compatible; AIDRBot/1.0; +https://aidr.today)",
       },
       signal: controller.signal,
     });
