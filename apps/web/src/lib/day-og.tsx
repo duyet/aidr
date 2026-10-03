@@ -107,9 +107,9 @@ function tile(t: DayOgTile, index: number, w: number, h: number) {
             left: 0,
             right: 0,
             bottom: 0,
-            height: `${Math.round(h * 0.75)}px`,
+            height: `${Math.round(h * 0.85)}px`,
             backgroundImage:
-              "linear-gradient(to bottom, rgba(10,10,10,0), rgba(10,10,10,0.92))",
+              "linear-gradient(to bottom, rgba(10,10,10,0), rgba(10,10,10,0.82) 45%, rgba(10,10,10,0.96))",
           }}
         />
       ) : null}
