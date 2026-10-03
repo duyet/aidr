@@ -21,6 +21,7 @@ import { loadOgFontAsset, loadStoryOgFonts } from "../../lib/og-fonts";
 import {
   fetchStoryOgImage,
   type StoryOgImage,
+  storyOgImageFromBytes,
   storyOgLanguage,
 } from "../../lib/story-og";
 
@@ -41,9 +42,55 @@ const DAY_OG_CANDIDATES = 18;
  *  queues, and the queued fetches spend their timeout waiting. */
 const FETCH_BATCH = 6;
 
+/** Source photos are kept this long in R2 so EN and VI renders, and later
+ *  hourly re-renders, reuse them instead of re-fetching from the publisher
+ *  (some CDNs throttle repeat fetches). */
+const SOURCE_PHOTO_MAX_AGE_MS = 7 * 86_400_000;
+
+async function sourcePhotoKey(url: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(url)
+  );
+  const hex = [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `src/${hex}`;
+}
+
+async function fetchTilePhoto(
+  url: string,
+  bucket: R2Bucket | undefined
+): Promise<StoryOgImage | null> {
+  const key = bucket ? await sourcePhotoKey(url) : "";
+  if (bucket) {
+    const obj = await bucket.get(key).catch(() => null);
+    const at = Number(obj?.customMetadata?.fetchedAt ?? 0);
+    if (obj && Date.now() - at < SOURCE_PHOTO_MAX_AGE_MS) {
+      return storyOgImageFromBytes(new Uint8Array(await obj.arrayBuffer()));
+    }
+  }
+  // The render is cached, so a slow publisher CDN is worth the wait.
+  const image = await fetchStoryOgImage(url, { timeoutMs: 5000 });
+  if (image && bucket) {
+    const bytes = Uint8Array.from(
+      atob(image.dataUri.slice(image.dataUri.indexOf(",") + 1)),
+      (c) => c.charCodeAt(0)
+    );
+    await bucket
+      .put(key, bytes, {
+        httpMetadata: { contentType: image.mimeType },
+        customMetadata: { fetchedAt: String(Date.now()) },
+      })
+      .catch(() => undefined);
+  }
+  return image;
+}
+
 /** Photos in rank order, fetched 6 at a time until the grid is full. */
 async function fetchTilePhotos(
-  urls: Array<string | null>
+  urls: Array<string | null>,
+  bucket: R2Bucket | undefined
 ): Promise<Array<StoryOgImage | null>> {
   const out: Array<StoryOgImage | null> = urls.map(() => null);
   let found = 0;
@@ -55,10 +102,7 @@ async function fetchTilePhotos(
     const batch = urls.slice(i, i + FETCH_BATCH);
     const images = await Promise.all(
       batch.map((url) =>
-        url && !isHeadlineCardImage(url)
-          ? // The render is cached, so a slow publisher CDN is worth the wait.
-            fetchStoryOgImage(url, { timeoutMs: 5000 })
-          : null
+        url && !isHeadlineCardImage(url) ? fetchTilePhoto(url, bucket) : null
       )
     );
     images.forEach((image, j) => {
@@ -144,7 +188,10 @@ export const Route = createFileRoute("/api/og/date/$date")({
             const candidates = all.slice(0, DAY_OG_CANDIDATES);
             const [fonts, fetched] = await Promise.all([
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
-              fetchTilePhotos(candidates.map((item) => item.image_url)),
+              fetchTilePhotos(
+                candidates.map((item) => item.image_url),
+                env?.OG_CACHE
+              ),
             ]);
             const scored = candidates.map((item, i) => ({
               item,
