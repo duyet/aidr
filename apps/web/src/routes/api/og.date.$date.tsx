@@ -31,6 +31,18 @@ function dayOgCacheControl(date: string): string {
 /** Stories whose photos are fetched to fill the grid. */
 const DAY_OG_CANDIDATES = 12;
 
+/** Aggregator share images that are just the headline set in type; on the
+ * card they repeat the tile title in English. */
+function isHeadlineCardImage(url: string | null): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    return u.hostname === "huggingnews.com" && u.pathname.startsWith("/og/");
+  } catch {
+    return false;
+  }
+}
+
 export const Route = createFileRoute("/api/og/date/$date")({
   server: {
     handlers: {
@@ -79,26 +91,28 @@ export const Route = createFileRoute("/api/og/date/$date")({
           const lang = storyOgLanguage(
             new URL(request.url).searchParams.get("lang")
           );
-          // Fetch photos for the top dozen and keep rank order among the ones
-          // that loaded, so a dead or hotlink-blocked thumbnail does not leave
-          // a blank tile while a lower story has a real photo.
+          // Fetch photos for the top dozen so a dead, hotlink-blocked or WebP
+          // thumbnail does not cost the grid a photo a lower story has.
           const candidates = all.slice(0, DAY_OG_CANDIDATES);
           const [fonts, fetched] = await Promise.all([
             loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
             Promise.all(
-              candidates.map((item) => fetchStoryOgImage(item.image_url))
+              candidates.map((item) =>
+                isHeadlineCardImage(item.image_url)
+                  ? null
+                  : fetchStoryOgImage(item.image_url)
+              )
             ),
           ]);
-          const loaded = candidates
-            .map((item, i) => ({ item, image: fetched[i] }))
-            .filter((c) => c.image);
-          const picked =
-            loaded.length >= 4
-              ? loaded.slice(0, dayOgTileCount(loaded.length))
-              : all.slice(0, dayOgTileCount(all.length)).map((item) => ({
-                  item,
-                  image: fetched[candidates.indexOf(item)] ?? null,
-                }));
+          const scored = candidates.map((item, i) => ({
+            item,
+            image: fetched[i],
+          }));
+          // Real photos first, in rank order; text tiles fill the rest.
+          const picked = [
+            ...scored.filter((c) => c.image),
+            ...scored.filter((c) => !c.image),
+          ].slice(0, dayOgTileCount(scored.length));
           const items = picked.map((p) => p.item);
           const images = picked.map((p) => p.image);
           const tiles = items.map((item, i) =>
