@@ -1,13 +1,13 @@
 import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import { type AidrLayout, DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
 import { dayOgDateParts } from "../lib/day-og";
 import { timeAgo } from "../lib/lang";
 import { type TldrCount, usePrefs } from "../lib/prefs";
 import { tldrCountOptions, tldrShownCount } from "../lib/tldr-links";
 import type { Lang, TldrBullet } from "../lib/types";
-import { DayCardPreview } from "./DayCardPreview";
+import { DayCardChip, DayCardOverlay } from "./DayCardPreview";
 import { TldrBulletList } from "./TldrBulletList";
 
 export function TldrSection({
@@ -56,6 +56,7 @@ export function TldrSection({
   showFreshness?: boolean;
 }): ReactElement | null {
   const { setPrefs } = usePrefs();
+  const [preview, setPreview] = useState(false);
 
   if (bullets.length === 0) return null;
 
@@ -121,7 +122,12 @@ export function TldrSection({
         </div>
         <div className="flex items-center gap-2">
           {snapshotDate && dateHref ? (
-            <DayCardPreview date={snapshotDate} href={dateHref} lang={lang} />
+            <DayCardChip
+              date={snapshotDate}
+              href={dateHref}
+              lang={lang}
+              onPreview={setPreview}
+            />
           ) : null}
           {options.length > 0 && (
             <div className="flex gap-1 rounded-full bg-[#0a0a0a]/10 p-0.5 text-xs">
@@ -148,7 +154,10 @@ export function TldrSection({
         </div>
       </div>
 
-      <div className="px-4 py-5 sm:px-5">
+      <div className="relative px-4 py-5 sm:px-5">
+        {snapshotDate && dateHref ? (
+          <DayCardOverlay date={snapshotDate} lang={lang} open={preview} />
+        ) : null}
         <TldrBulletList
           shown={shown}
           mid={mid}
