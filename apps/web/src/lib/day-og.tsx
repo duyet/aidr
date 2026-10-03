@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { localizedTitle } from "./display-title";
+import { localizedTitle, looksVietnamese } from "./display-title";
 import type { StoryOgImage } from "./story-og";
 import type { FeedItem, Lang } from "./types";
 
@@ -40,6 +40,16 @@ function clip(value: string, max: number): string {
   return clean.length <= max ? clean : `${clean.slice(0, max - 1).trimEnd()}…`;
 }
 
+/**
+ * True when the item has a headline in the card's language. No fallback: an
+ * English card never shows a Vietnamese source title (VnExpress), and a
+ * Vietnamese card never shows an untranslated English one.
+ */
+export function hasDayOgCopy(item: FeedItem, lang: Lang): boolean {
+  if (lang === "en") return !looksVietnamese(item.title);
+  return !localizedTitle(item, lang).fallbackFromEnglish;
+}
+
 export function dayOgTile(
   item: FeedItem,
   image: StoryOgImage | null,
@@ -73,7 +83,7 @@ export function dayOgDateParts(
 
 function tile(t: DayOgTile, index: number, w: number, h: number) {
   const hasImage = Boolean(t.image);
-  const titleSize = w > 400 ? 26 : 21;
+  const titleSize = hasImage ? (w > 400 ? 26 : 21) : w > 400 ? 34 : 28;
   const lines = hasImage ? 2 : 4;
   /** Kicker + clamped title + padding; the photo takes the rest. */
   const textPanel = hasImage ? Math.ceil(titleSize * 1.15 * lines) + 52 : 0;
@@ -128,10 +138,12 @@ function tile(t: DayOgTile, index: number, w: number, h: number) {
           position: "absolute",
           left: "16px",
           right: "16px",
-          bottom: "14px",
+          ...(hasImage
+            ? { bottom: "14px" }
+            : { top: "56px", bottom: "18px", justifyContent: "flex-end" }),
           display: "flex",
           flexDirection: "column",
-          gap: "4px",
+          gap: hasImage ? "4px" : "10px",
         }}
       >
         {t.kicker ? (

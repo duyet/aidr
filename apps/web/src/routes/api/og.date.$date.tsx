@@ -11,6 +11,7 @@ import {
   dayOgCard,
   dayOgTile,
   dayOgTileCount,
+  hasDayOgCopy,
 } from "../../lib/day-og";
 import { readSession } from "../../lib/db";
 import { getDayArchive } from "../../lib/feed-queries";
@@ -29,7 +30,7 @@ function dayOgCacheControl(date: string): string {
 }
 
 /** Stories whose photos are fetched to fill the grid. */
-const DAY_OG_CANDIDATES = 12;
+const DAY_OG_CANDIDATES = 18;
 
 /** Aggregator share images that are just the headline set in type; on the
  * card they repeat the tile title in English. */
@@ -84,13 +85,15 @@ export const Route = createFileRoute("/api/og/date/$date")({
 
         return cachedOgResponse(request, ctx, async () => {
           const archive = await getDayArchive(readSession(db), date);
-          const all = archive.day?.items ?? [];
-          if (all.length === 0) {
-            return Response.json({ error: "not found" }, { status: 404 });
-          }
           const lang = storyOgLanguage(
             new URL(request.url).searchParams.get("lang")
           );
+          const all = (archive.day?.items ?? []).filter((item) =>
+            hasDayOgCopy(item, lang)
+          );
+          if (all.length === 0) {
+            return Response.json({ error: "not found" }, { status: 404 });
+          }
           // Fetch photos for the top dozen so a dead, hotlink-blocked or WebP
           // thumbnail does not cost the grid a photo a lower story has.
           const candidates = all.slice(0, DAY_OG_CANDIDATES);

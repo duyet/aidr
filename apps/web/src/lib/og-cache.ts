@@ -3,6 +3,10 @@
  * CDN on its own, so without this every card request re-fetches the story
  * images and re-runs satori. Keyed by the full URL (path + `?lang=`).
  */
+/** Bump when a card's design or selection changes: a deploy does not purge
+ *  the edge cache, so old renders would otherwise live out their TTL. */
+const OG_RENDER_VERSION = "3";
+
 type WaitUntil = { waitUntil?: (p: Promise<unknown>) => void } | undefined;
 
 function edgeCache(): Cache | null {
@@ -17,7 +21,9 @@ export async function cachedOgResponse(
   render: () => Promise<Response>
 ): Promise<Response> {
   const cache = edgeCache();
-  const key = new Request(new URL(request.url).toString(), { method: "GET" });
+  const keyUrl = new URL(request.url);
+  keyUrl.searchParams.set("_r", OG_RENDER_VERSION);
+  const key = new Request(keyUrl.toString(), { method: "GET" });
   const hit = await cache?.match(key).catch(() => undefined);
   // A cached Response has immutable headers; the router appends its own, so
   // hand it a mutable copy.
