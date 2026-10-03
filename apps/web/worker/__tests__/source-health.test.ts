@@ -261,6 +261,25 @@ describe("stale detector", () => {
       threshold: 336,
     });
   });
+
+  it("does not call the push source stale, and still flags a silent feed", () => {
+    // `user` is type `push`: no adapter on purpose, items arrive through
+    // submissions. A fetch of 0 is honest and must not become a stale alarm.
+    // `arstechnica-ai` is a real feed; the same streak is still rot.
+    const past = DEFAULT_STALE_AFTER_RUNS + 100;
+    expect(sourceStaleVerdict(health({ emptyRuns: past }), "user")).toEqual({
+      stale: false,
+      emptyRuns: past,
+      threshold: DEFAULT_STALE_AFTER_RUNS,
+    });
+    expect(
+      sourceStaleVerdict(health({ emptyRuns: past }), "arstechnica-ai")
+    ).toEqual({
+      stale: true,
+      emptyRuns: past,
+      threshold: DEFAULT_STALE_AFTER_RUNS,
+    });
+  });
 });
 
 describe("read-model merge", () => {

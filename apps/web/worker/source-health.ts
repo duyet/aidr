@@ -32,6 +32,7 @@ import {
   DEFAULT_STALE_AFTER_RUNS,
   findSourceSpec,
   staleAfterRunsFor,
+  USER_SOURCE_ID,
 } from "./sources/catalog.js";
 
 /**
@@ -118,6 +119,10 @@ export function parseSourceHealth(value: unknown): SourceRunHealth | null {
  */
 export function isSourceStale(health: SourceRunHealth, id: string): boolean {
   if (health.skipReason === "disabled") return false;
+  // `push` is the only intentional no-adapter type. Its one row is `user`;
+  // items arrive through submissions, so a fetch of 0 is not silence. A
+  // typo'd type is a different id and still goes stale.
+  if (id === USER_SOURCE_ID) return false;
   return health.emptyRuns >= staleAfterRunsFor(id);
 }
 
@@ -194,7 +199,12 @@ export function carrySourceEmptyRuns(
   for (const [id, health] of Object.entries(current)) {
     out[id] = {
       ...health,
-      emptyRuns: nextEmptyRuns(previous[id]?.emptyRuns ?? 0, health.fetched),
+      // The push row never delivers through the fetch loop, so its streak
+      // cannot reset on its own. Leave it at 0. fetched stays 0.
+      emptyRuns:
+        id === USER_SOURCE_ID
+          ? 0
+          : nextEmptyRuns(previous[id]?.emptyRuns ?? 0, health.fetched),
     };
   }
   return out;
