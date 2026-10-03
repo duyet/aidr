@@ -106,10 +106,24 @@ function tile(t: DayOgTile, index: number, w: number, h: number) {
             position: "absolute",
             left: 0,
             right: 0,
-            bottom: 0,
-            height: `${Math.round(h * 0.85)}px`,
+            bottom: `${Math.round(h * 0.6)}px`,
+            height: `${Math.round(h * 0.25)}px`,
             backgroundImage:
-              "linear-gradient(to bottom, rgba(10,10,10,0), rgba(10,10,10,0.82) 45%, rgba(10,10,10,0.96))",
+              "linear-gradient(to bottom, rgba(10,10,10,0), rgba(10,10,10,0.88))",
+          }}
+        />
+      ) : null}
+      {hasImage ? (
+        // Solid under the text: screenshots of other sites carry their own
+        // headlines, which a soft gradient lets show through.
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: `${Math.round(h * 0.6)}px`,
+            backgroundColor: "rgba(10,10,10,0.88)",
           }}
         />
       ) : null}
