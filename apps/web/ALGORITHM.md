@@ -716,12 +716,12 @@ deliberately non-spammy.
   1h gap; the day's own scores open the extra room, no event list is
   kept. Digest is the intended daily Telegram post.
 - The trending bar is relative, so a rescored formula cannot silence or
-  flood the channel: `max(TRENDING_RANK_FLOOR = 6, the 0.995 percentile
+  flood the channel: `max(TRENDING_RANK_FLOOR = 3, the 0.98 percentile
   of rank_score over published items in the last 72h)`, read once per
-  notify run. Both lanes use it. At 0.995 (about the top 2 of ~400) the
-  2026-09-27..10-01 replay gave 1–4 qualifiers a day; the floor keeps a
-  dead window's best weak story (one outlet, no reader engagement,
-  importance 7 ≈ 5.6) from posting.
+  notify run. Both lanes use it. At 0.98 (about the top 8 of ~400) the
+  daily cap and gap do the limiting; 0.995 with a floor of 6 left the
+  channels silent once the rank scale fell to a 3–8 max (2026-10-02). The
+  floor keeps a dead window's weakest stories from posting.
 - *Why this ranks* (story page, "Chi tiết bài viết" aside): `GET /api/story/{id}?ranking=1`
   adds `ranking` from `worker/notify/story-ranking.ts`: UTC-day rank,
   `rank_score`, importance, the live bar (same `trendingRankBar`), and per

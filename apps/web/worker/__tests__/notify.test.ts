@@ -28,7 +28,6 @@ import {
   buildDigestReplyMarkup,
   buildStoryCaption,
   buildStoryReplyMarkup,
-  DIGEST_LINK_PREVIEW,
   escapeHtml,
   resolveStoryMedia,
   STORY_PHOTO_LINK_PREVIEW,
@@ -174,11 +173,20 @@ describe("digest message", () => {
     };
     expect(buildDigestMessage(english)).toContain("AI news today");
     expect(buildDigestMessage(english)).toContain("lang=en");
-    const markup = buildDigestReplyMarkup("en") as {
+    const markup = buildDigestReplyMarkup(english) as {
       inline_keyboard: { text: string; url: string }[][];
     };
     expect(markup.inline_keyboard[0][0].text).toContain("full digest");
-    expect(markup.inline_keyboard[0][0].url).toContain("lang=en");
+    // The button opens that day's page, not the live homepage.
+    expect(markup.inline_keyboard[0][0].url).toBe(
+      "https://aidr.today/date/2026-08-17?lang=en&utm_source=telegram"
+    );
+  });
+
+  it("links the header to the day page", () => {
+    expect(buildDigestMessage(digest)).toContain(
+      'href="https://aidr.today/date/2026-08-17?lang=vi&amp;utm_source=telegram"'
+    );
   });
 
   it("drops overflow bullets to stay under the message cap", () => {
@@ -821,8 +829,12 @@ describe("telegramNotifier gating", () => {
       { lang: "vi", date: "2026-08-17", bullets: [] }
     );
     const digestBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
-    expect(digestBody.link_preview_options).toEqual(DIGEST_LINK_PREVIEW);
-    expect(digestBody.link_preview_options).toEqual({ is_disabled: true });
+    // The day card (the day page's og:image) shows above the digest text.
+    expect(digestBody.link_preview_options).toEqual({
+      url: "https://aidr.today/date/2026-08-17?lang=vi&utm_source=telegram",
+      prefer_large_media: true,
+      show_above_text: true,
+    });
 
     // Force the text path: an id with no card shape and no usable thumbnail.
     await telegramNotifier.sendStory(
@@ -1093,7 +1105,7 @@ describe("trendingRankBar", () => {
     const dead = Array.from({ length: 400 }, () => 1.5);
     expect(trendingRankBar(dead)).toBe(TRENDING_RANK_FLOOR);
     expect(trendingRankBar([])).toBe(TRENDING_RANK_FLOOR);
-    expect(classifyTrendingSkip(4, 1, 1, 14, trendingRankBar(dead))).toBe(
+    expect(classifyTrendingSkip(2, 1, 1, 14, trendingRankBar(dead))).toBe(
       "below_min_rank"
     );
   });

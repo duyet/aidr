@@ -53,6 +53,7 @@ import { Route as ApiSystemRunItemsRouteImport } from './routes/api/system.run-i
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
 import { Route as ApiSystemSourcesRouteImport } from './routes/api/system.sources'
 import { Route as ApiWebhooksClerkRouteImport } from './routes/api/webhooks.clerk'
+import { Route as ApiOgDateDateRouteImport } from './routes/api/og.date.$date'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -274,6 +275,11 @@ const ApiWebhooksClerkRoute = ApiWebhooksClerkRouteImport.update({
   path: '/api/webhooks/clerk',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOgDateDateRoute = ApiOgDateDateRouteImport.update({
+  id: '/api/og/date/$date',
+  path: '/api/og/date/$date',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -320,6 +326,7 @@ export interface FileRoutesByFullPath {
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
+  '/api/og/date/$date': typeof ApiOgDateDateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -366,6 +373,7 @@ export interface FileRoutesByTo {
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
+  '/api/og/date/$date': typeof ApiOgDateDateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -413,6 +421,7 @@ export interface FileRoutesById {
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
+  '/api/og/date/$date': typeof ApiOgDateDateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -461,6 +470,7 @@ export interface FileRouteTypes {
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
+    | '/api/og/date/$date'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -507,6 +517,7 @@ export interface FileRouteTypes {
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
+    | '/api/og/date/$date'
   id:
     | '__root__'
     | '/'
@@ -553,6 +564,7 @@ export interface FileRouteTypes {
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
+    | '/api/og/date/$date'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -587,6 +599,7 @@ export interface RootRouteChildren {
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
   ApiWebhooksClerkRoute: typeof ApiWebhooksClerkRoute
+  ApiOgDateDateRoute: typeof ApiOgDateDateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -899,6 +912,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksClerkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/og/date/$date': {
+      id: '/api/og/date/$date'
+      path: '/api/og/date/$date'
+      fullPath: '/api/og/date/$date'
+      preLoaderRoute: typeof ApiOgDateDateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -989,6 +1009,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
   ApiWebhooksClerkRoute: ApiWebhooksClerkRoute,
+  ApiOgDateDateRoute: ApiOgDateDateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

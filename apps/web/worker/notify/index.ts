@@ -84,13 +84,18 @@ export const NOTIFY_MAX_ATTEMPTS = 3;
  *  qualifier for five days). A story must reach the TRENDING_RANK_PERCENTILE
  *  of the last TRENDING_BAR_WINDOW_SEC of published ranks: at 0.995 that is
  *  the top two or so of ~400 items, which gave 1–4 qualifiers a day on
- *  2026-09-27..10-01 (0.99 gave up to 6). */
-export const TRENDING_RANK_PERCENTILE = 0.995;
+ *  2026-09-27..10-01 (0.99 gave up to 6). 2026-10-03: the rank scale fell
+ *  again (72h max ~3–8), so one post went out on 10-02 with 26 importance-7+
+ *  stories; 0.98 (top ~8 of ~400) lets the 3/day cap and 3h gap do the
+ *  limiting. */
+export const TRENDING_RANK_PERCENTILE = 0.98;
 export const TRENDING_BAR_WINDOW_SEC = 72 * 60 * 60;
 /** The bar never drops below this, so a dead window cannot post its best
  *  weak story. A fresh importance-7 story from one outlet with no reader
- *  engagement ranks ~5.6 and stays under it. */
-export const TRENDING_RANK_FLOOR = 6;
+ *  engagement ranks ~5.6 and stays under it. Lowered to 3 on 2026-10-03:
+ *  at 6 the floor, not the percentile, set the bar, and the day's whole
+ *  rank range sat below it. */
+export const TRENDING_RANK_FLOOR = 3;
 /** 7, not 8: Jev scores most big stories 7, so at 8 only one story a day
  *  qualified and the channels went silent after the morning digest
  *  (2026-10-01). Rank >= 30 and the daily cap/gap still keep it rare. */

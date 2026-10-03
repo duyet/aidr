@@ -68,6 +68,12 @@ export function dayArchivePath(date: string, lang?: Lang): string {
   return lang ? withLang(path, lang) : path;
 }
 
+/** Day card image (`/api/og/date/YYYY-MM-DD.png`), see `lib/day-og.tsx`. */
+export function dayArchiveOgPath(date: string, lang?: Lang): string {
+  const path = `/api/og/date/${date}.png`;
+  return lang ? withLang(path, lang) : path;
+}
+
 /** Markdown twin of a day page: `/date/YYYY-MM-DD.md`. */
 export function dayArchiveMarkdownPath(date: string, lang?: Lang): string {
   const path = `/date/${date}.md`;

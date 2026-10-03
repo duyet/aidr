@@ -7,6 +7,7 @@ import { TldrSection } from "../components/TldrSection";
 import {
   dayArchiveCacheControl,
   dayArchiveMarkdownPath,
+  dayArchiveOgPath,
   dayArchivePath,
 } from "../lib/day-archive";
 import { fetchDayArchive } from "../lib/day-archive-fn";
@@ -80,6 +81,7 @@ export const Route = createFileRoute("/date/$date")({
         lang === "vi"
           ? `AI;DR và ${count} tin AI được xếp hạng ngày ${heading}.`
           : `The AI;DR digest and ${count} ranked AI stories from ${heading}.`,
+      imageUrl: absoluteSiteUrl(dayArchiveOgPath(archive.date), lang),
       lang,
       route: headRouteInput(match),
     });

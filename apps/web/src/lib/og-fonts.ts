@@ -93,3 +93,35 @@ export function storyOgRenderOptions(
     ...(fonts.length ? { fonts } : {}),
   };
 }
+
+export type OgAssetEnv = {
+  ASSETS?: { fetch: (r: Request) => Promise<Response> };
+};
+
+function assetsGet(path: string): Request {
+  // Same trick as worker/public-assets.ts — bypass SPA not_found handling.
+  return new Request(`https://assets.local${path}`, {
+    method: "GET",
+    headers: { Accept: "*/*" },
+  });
+}
+
+/** Read a font from the Worker ASSETS binding; null on any miss. */
+export async function loadOgFontAsset(
+  env: OgAssetEnv | undefined,
+  path: string
+): Promise<ArrayBuffer | null> {
+  try {
+    const res = await env?.ASSETS?.fetch(assetsGet(path));
+    if (!res?.ok) return null;
+    // A miss answered with the SPA shell would be a >1000 byte HTML buffer,
+    // and satori throws on that instead of degrading. Same guard as
+    // worker/public-assets.ts, because it is the same binding.
+    const ctype = (res.headers.get("content-type") ?? "").toLowerCase();
+    if (ctype.includes("text/html")) return null;
+    const buf = await res.arrayBuffer();
+    return buf.byteLength > 1000 ? buf : null;
+  } catch {
+    return null;
+  }
+}

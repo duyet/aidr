@@ -1,3 +1,4 @@
+import { dayArchivePath } from "../../src/lib/day-archive.js";
 import { DEFAULT_LANG } from "../../src/lib/lang.js";
 import { withSiteLang } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
@@ -53,19 +54,18 @@ export interface LinkPreviewOptions {
 /**
  * The four Bot API flags, and why this adapter sets the one it sets.
  *
- * - `is_disabled` — SET, on every message. Both messages build their links as
- *   HTML `<a>` entities and inline buttons, which Telegram never turns into a
- *   preview, so a preview can only appear if a future copy edit pastes a bare
- *   URL into a bullet. That preview would attach to ONE arbitrary bullet and
- *   misdescribe the whole digest, so it is turned off explicitly rather than
- *   inherited from whatever the API default happens to be.
+ * - `is_disabled` — SET on story messages. Their links are HTML `<a>`
+ *   entities and inline buttons; a preview could only attach to an arbitrary
+ *   link, so it is turned off explicitly. The digest instead pins its preview
+ *   to the day page (`digestLinkPreview`).
  * - `prefer_small_media` — not set. There is no small-media affordance to
- *   prefer: the trending post already ships one large generated card, and a
- *   digest preview per bullet would be 8 images in one message.
- * - `prefer_large_media` — not set, for the same reason. The trending photo
+ *   prefer: the trending post already ships one large generated card.
+ * - `prefer_large_media` — set on the digest only, so the day card shows
+ *   full width. Not set on stories: the trending photo
  *   path is already large-media by construction (`/api/og/{id}.png`,
  *   1200x630), so asking for large media again changes nothing.
- * - `show_above_text` — not set. With `is_disabled` there is no preview to
+ * - `show_above_text` — set on the digest only (card first, then bullets).
+ *   Not set on stories: with `is_disabled` there is no preview to
  *   place, and on the photo path the card IS the message, not an attachment
  *   under the caption.
  *
@@ -75,7 +75,28 @@ export interface LinkPreviewOptions {
  * through `articleHead` emitting the generated card as `og:image` and the
  * shared `SITE_NAME` as `og:site_name` (#231).
  */
-export const DIGEST_LINK_PREVIEW: LinkPreviewOptions = { is_disabled: true };
+/** Day page for the digest date, e.g. `/date/2026-10-03?lang=vi`. */
+export function digestDayUrl(digest: Pick<DailyDigest, "date" | "lang">) {
+  return withUtm(
+    new URL(dayArchivePath(digest.date), SITE_URL).toString(),
+    digest.lang
+  );
+}
+
+/**
+ * The digest shows the day page's preview above the text: Telegram builds it
+ * from the page's `og:image`, the generated day card (`/api/og/date/…`). The
+ * preview is pinned to the day URL, so a bullet link can never take its place.
+ */
+export function digestLinkPreview(
+  digest: Pick<DailyDigest, "date" | "lang">
+): LinkPreviewOptions & { url: string } {
+  return {
+    url: digestDayUrl(digest),
+    prefer_large_media: true,
+    show_above_text: true,
+  };
+}
 export const STORY_TEXT_LINK_PREVIEW: LinkPreviewOptions = {
   is_disabled: true,
 };
@@ -104,10 +125,11 @@ export function storyUrl(
 /** TL;DR digest: header + linked bullet list, capped under the message
  *  limit — bullets that would overflow are dropped from the tail. */
 export function buildDigestMessage(digest: DailyDigest): string {
-  const header =
+  const label =
     digest.lang === "en"
-      ? `<b>🗞 AI news today — ${digest.date}</b>`
-      : `<b>🗞 AI hôm nay có gì — ${digest.date}</b>`;
+      ? `🗞 AI news today — ${digest.date}`
+      : `🗞 AI hôm nay có gì — ${digest.date}`;
+  const header = `<b><a href="${escapeHtml(digestDayUrl(digest))}">${label}</a></b>`;
   const lines: string[] = [header];
   let length = header.length;
   for (const bullet of digest.bullets) {
@@ -123,7 +145,10 @@ export function buildDigestMessage(digest: DailyDigest): string {
   return lines.join("\n\n");
 }
 
-export function buildDigestReplyMarkup(lang: Lang = DEFAULT_LANG): object {
+export function buildDigestReplyMarkup(
+  digest: Pick<DailyDigest, "date" | "lang">
+): object {
+  const lang = digest.lang;
   return {
     inline_keyboard: [
       [
@@ -132,7 +157,7 @@ export function buildDigestReplyMarkup(lang: Lang = DEFAULT_LANG): object {
             lang === "en"
               ? "Read the full digest on aidr.today →"
               : "Xem đầy đủ trên aidr.today →",
-          url: withUtm(SITE_URL, lang),
+          url: digestDayUrl(digest),
         },
       ],
     ],
@@ -516,8 +541,8 @@ function telegramChannel(options: {
         chat_id: options.chatId(env),
         text: buildDigestMessage(digest),
         parse_mode: "HTML",
-        reply_markup: buildDigestReplyMarkup(digest.lang),
-        link_preview_options: DIGEST_LINK_PREVIEW,
+        reply_markup: buildDigestReplyMarkup(digest),
+        link_preview_options: digestLinkPreview(digest),
       });
       if (!msg.ok) return sendFailure(msg);
       return { ok: true, messageId: telegramMessageId(msg.result) };
