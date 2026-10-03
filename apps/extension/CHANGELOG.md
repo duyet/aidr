@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.20](https://github.com/duyet/aidr/compare/aidr-v0.1.19...aidr-v0.1.20) (2026-10-03)
+
+
+### ✨ Features
+
+* **web:** add builder categories and let official posts own their story ([8a0153d](https://github.com/duyet/aidr/commit/8a0153d5388082316962b0cdf7e3f5e3fbca465e))
+
+
+### 🐛 Bug Fixes
+
+* apply biome lint and format fixes ([#346](https://github.com/duyet/aidr/issues/346)) ([56e7a50](https://github.com/duyet/aidr/commit/56e7a50431ed652375ae04b5c54c9e6fd0bab5d6))
+* **extension:** make density slider visible, drop About tab, match web Get AI;DR menu ([#324](https://github.com/duyet/aidr/issues/324)) ([228a512](https://github.com/duyet/aidr/commit/228a512b5474a2d58944d13f8116cad91e71811c))
+
 ## [0.1.19](https://github.com/duyet/aidr/compare/aidr-v0.1.18...aidr-v0.1.19) (2026-09-30)
 
 
