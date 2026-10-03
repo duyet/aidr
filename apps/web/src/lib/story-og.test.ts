@@ -131,7 +131,6 @@ describe("story OG image payload boundary", () => {
       [pngBytes(64, 48), "image/png"],
       [jpegBytes(320, 200), "image/jpeg"],
       [gifBytes(32, 32), "image/gif"],
-      [webpBytes(300, 200), "image/webp"],
     ] as const) {
       const image = storyOgImageFromBytes(bytes);
       expect(image?.mimeType, mime).toBe(mime);
@@ -141,24 +140,19 @@ describe("story OG image payload boundary", () => {
     }
   });
 
-  it("inlines a real libwebp lossless WebP instead of falling back", async () => {
-    // A VP8L (lossless) chunk is the variant whose size lives in the 28-bit
-    // little-endian header run; a mis-decode here silently rejected every
-    // lossless thumbnail.
+  it("treats WebP as a miss: the rasterizer draws it as an empty panel", async () => {
+    // resvg renders a WebP <img> as nothing (seen live on TechCrunch photos,
+    // which Photon serves as WebP), so the card must use its fallback instead.
+    expect(storyOgImageFromBytes(webpBytes(300, 200))).toBeNull();
     const bytes = new Uint8Array(
       await readFile(resolve(FIXTURE_DIR, "webp-lossless-1200x630.webp"))
     );
-    const image = storyOgImageFromBytes(bytes);
-    expect(image?.mimeType).toBe("image/webp");
-    expect(image?.byteLength).toBe(bytes.byteLength);
-    expect(image?.dataUri).toMatch(/^data:image\/webp;base64,/);
-
-    // The same payload must survive the whole bounded fetch boundary.
+    expect(storyOgImageFromBytes(bytes)).toBeNull();
     const fetched = await fetchStoryOgImage("https://cdn.example.com/p.webp", {
       fetcher: async () =>
         new Response(bytes, { headers: { "content-type": "image/webp" } }),
     });
-    expect(fetched?.mimeType).toBe("image/webp");
+    expect(fetched).toBeNull();
   });
 
   it("falls back for a real lossless WebP past the pixel ceiling", async () => {

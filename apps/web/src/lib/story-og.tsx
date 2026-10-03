@@ -196,6 +196,9 @@ export function storyOgImageFromBytes(bytes: Uint8Array): StoryOgImage | null {
   const container = readRasterContainer(bytes);
   if (!container) return null;
   const mimeType = container.mimeType;
+  // resvg (the @cf-wasm/og rasterizer) draws a WebP <img> as nothing, so the
+  // card would show an empty panel. A miss lets the caller use a fallback.
+  if (mimeType === "image/webp") return null;
   return {
     dataUri: `data:${mimeType};base64,${encodeBase64(bytes)}`,
     mimeType,
@@ -272,7 +275,9 @@ export async function fetchStoryOgImage(
       credentials: "omit",
       referrerPolicy: "no-referrer",
       headers: {
-        Accept: "image/png,image/jpeg,image/gif,image/webp",
+        // No WebP: CDNs that negotiate (TechCrunch/Photon) would send it, and
+        // the rasterizer cannot draw it.
+        Accept: "image/png,image/jpeg,image/gif",
       },
       signal: controller.signal,
     });
