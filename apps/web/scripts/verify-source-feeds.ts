@@ -21,16 +21,69 @@
  * Exit code is 1 when any row fails, so CI / a pre-merge check can use it.
  */
 
+import { pathToFileURL } from "node:url";
 import { SOURCE_REGISTRY } from "../worker/sources/catalog.js";
 import { applyFloodGate, parseRssItems } from "../worker/sources/rss.js";
+
+export type ProbeVerdict = "PASS" | "FAIL" | "SKIP";
+
+/** What this tool can fetch for one registry row. */
+export type ProbeTarget =
+  | { action: "probe"; key: "feed" | "sitemap"; url: string }
+  | { action: "skip"; reason: string }
+  | { action: "fail"; error: string };
+
+/**
+ * URL key each adapter actually reads. `rss` uses `config.feed`. `xai` is
+ * configured with `config.sitemap` (the adapter fetches that same sitemap
+ * URL). Every other adapter builds one or more URLs that are not a single
+ * config field, so this tool cannot probe them.
+ */
+const PROBE_KEY_BY_TYPE: Record<string, "feed" | "sitemap"> = {
+  rss: "feed",
+  xai: "sitemap",
+};
+
+export function resolveProbeTarget(row: {
+  type: string;
+  config: Record<string, unknown>;
+}): ProbeTarget {
+  const key = PROBE_KEY_BY_TYPE[row.type];
+  if (!key) {
+    return {
+      action: "skip",
+      reason: "not probeable by this tool (no single public URL)",
+    };
+  }
+  const raw = row.config[key];
+  const url = typeof raw === "string" ? raw.trim() : "";
+  if (!url) {
+    return {
+      action: "fail",
+      error:
+        key === "feed"
+          ? "no feed URL in registry config"
+          : "no sitemap URL in registry config",
+    };
+  }
+  return { action: "probe", key, url };
+}
+
+/** A SKIP is a verdict, not a failure. Only FAIL breaks the exit code. */
+export function runShouldFail(verdicts: readonly ProbeVerdict[]): boolean {
+  return verdicts.some((verdict) => verdict === "FAIL");
+}
 
 interface ProbeResult {
   id: string;
   name: string;
   type: string;
+  /** Registry config key the URL came from (`feed`, `sitemap`), or empty. */
+  urlKey: string;
   url: string;
   status: number;
   ok: boolean;
+  verdict: ProbeVerdict;
   finalUrl: string;
   contentType: string;
   bytes: number;
@@ -59,9 +112,40 @@ interface ProbeResult {
  * limits, keeping this a read-only probe with no Worker dependency. */
 const MAX_REDIRECTS = 3;
 
+function emptyResult(
+  row: { id: string; name: string; type: string } | undefined,
+  id: string,
+  extra: Partial<ProbeResult> & Pick<ProbeResult, "verdict">
+): ProbeResult {
+  return {
+    id,
+    name: row?.name ?? id,
+    type: row?.type ?? "unknown",
+    urlKey: "",
+    url: "",
+    status: 0,
+    ok: false,
+    finalUrl: "",
+    contentType: "",
+    bytes: 0,
+    rawItems: 0,
+    inWindow: 0,
+    items: 0,
+    newest: "",
+    oldest: "",
+    usable: 0,
+    skipped: [],
+    gate: { keywordFilter: null, maxItems: null },
+    first3: [],
+    newest3: [],
+    ...extra,
+  };
+}
+
 async function probe(
   id: string,
   url: string,
+  urlKey: "feed" | "sitemap",
   matchSince: (publishedAt: number) => boolean
 ): Promise<ProbeResult> {
   const row = SOURCE_REGISTRY.find((s) => s.id === id);
@@ -70,9 +154,11 @@ async function probe(
     id,
     name: row?.name ?? id,
     type: row?.type ?? "rss",
+    urlKey,
     url,
     status: 0,
     ok: false,
+    verdict: "FAIL",
     finalUrl: url,
     contentType: "",
     bytes: 0,
@@ -133,6 +219,18 @@ async function probe(
 
   const xml = await res.text();
   base.bytes = xml.length;
+
+  // A sitemap is not an RSS channel. The xAI adapter parses `<loc>` itself;
+  // this probe only proves the configured URL answers.
+  if (urlKey === "sitemap") {
+    base.ok = xml.length > 0;
+    base.verdict = base.ok ? "PASS" : "FAIL";
+    base.skipped.push(
+      "sitemap probe checks the HTTP response only; the adapter parses locs"
+    );
+    if (!base.ok) base.error = "empty sitemap";
+    return base;
+  }
   const parsed = parseRssItems(xml);
   base.rawItems = parsed.length;
 
@@ -202,6 +300,7 @@ async function probe(
       publishedAt: new Date(item.publishedAt).toISOString(),
     }));
   base.ok = usable.length > 0;
+  base.verdict = base.ok ? "PASS" : "FAIL";
   if (!base.ok) {
     base.error =
       "0 usable items in the whole feed (need >=1 with title + absolute URL + date)";
@@ -219,13 +318,6 @@ function floodGate(
   return applyFloodGate(items, config);
 }
 
-function feedUrl(id: string): string | null {
-  const row = SOURCE_REGISTRY.find((s) => s.id === id);
-  if (!row) return null;
-  const config = row.config as { feed?: unknown };
-  return typeof config.feed === "string" ? config.feed : null;
-}
-
 /** The pipeline's own 26h overlap window (worker/workflow.ts SINCE_WINDOW_SEC). */
 const SINCE_WINDOW_SEC = 26 * 60 * 60;
 const matchSince = (publishedAt: number) =>
@@ -241,34 +333,39 @@ async function main() {
 
   const results: ProbeResult[] = [];
   for (const id of targets) {
-    const url = feedUrl(id);
-    if (!url) {
-      results.push({
-        id,
-        name: id,
-        type: "unknown",
-        url: "",
-        status: 0,
-        ok: false,
-        finalUrl: "",
-        contentType: "",
-        bytes: 0,
-        rawItems: 0,
-        inWindow: 0,
-        items: 0,
-        newest: "",
-        oldest: "",
-        usable: 0,
-        skipped: ["no feed URL in registry config"],
-        gate: { keywordFilter: null, maxItems: null },
-        first3: [],
-        newest3: [],
-        error: "no feed URL in registry config",
-      });
+    const row = SOURCE_REGISTRY.find((s) => s.id === id);
+    if (!row) {
+      results.push(
+        emptyResult(undefined, id, {
+          verdict: "FAIL",
+          error: "not in the source registry",
+          skipped: ["not in the source registry"],
+        })
+      );
+      continue;
+    }
+    const target = resolveProbeTarget(row);
+    if (target.action === "skip") {
+      results.push(
+        emptyResult(row, id, {
+          verdict: "SKIP",
+          skipped: [target.reason],
+        })
+      );
+      continue;
+    }
+    if (target.action === "fail") {
+      results.push(
+        emptyResult(row, id, {
+          verdict: "FAIL",
+          error: target.error,
+          skipped: [target.error],
+        })
+      );
       continue;
     }
     process.stderr.write(`verifying ${id} … `);
-    const result = await probe(id, url, matchSince);
+    const result = await probe(id, target.url, target.key, matchSince);
     process.stderr.write(
       result.ok
         ? `OK ${result.status} ${result.contentType} ${result.items} items this run / ${result.usable} usable in feed\n`
@@ -293,6 +390,7 @@ async function main() {
   } else {
     for (const r of results) {
       console.log(`\n### ${r.id} — ${r.name} [${r.type}]`);
+      console.log(`  url key     ${r.urlKey || "—"}`);
       console.log(`  url         ${r.url}`);
       console.log(
         `  status      ${r.status} ${r.contentType} (${r.bytes} bytes)`
@@ -327,15 +425,23 @@ async function main() {
         console.log(`    - ${item.publishedAt}  ${item.title}`);
         console.log(`      ${item.url}`);
       }
-      console.log(`  verdict     ${r.ok ? "PASS" : "FAIL"}`);
+      console.log(`  verdict     ${r.verdict}`);
     }
   }
 
-  const failed = results.filter((r) => !r.ok);
-  const quiet = results.filter((r) => r.ok && r.items === 0);
+  const failed = results.filter((r) => r.verdict === "FAIL");
+  const skippedProbe = results.filter((r) => r.verdict === "SKIP");
+  const quiet = results.filter((r) => r.verdict === "PASS" && r.items === 0);
+  const passed = results.filter((r) => r.verdict === "PASS").length;
   console.log(
-    `\n${results.length - failed.length}/${results.length} sources verified live.`
+    `\n${passed}/${results.length - skippedProbe.length} probed sources verified live.`
   );
+  if (skippedProbe.length) {
+    console.log(
+      `${skippedProbe.length} source(s) not probeable by this tool ` +
+        `(${skippedProbe.map((s) => s.id).join(", ")}).`
+    );
+  }
   if (quiet.length) {
     console.log(
       `${quiet.length} valid feed(s) had nothing in the 26h window right now ` +
@@ -343,7 +449,7 @@ async function main() {
         `weekend publication freeze; the stale threshold accounts for it.`
     );
   }
-  if (failed.length) {
+  if (runShouldFail(results.map((r) => r.verdict))) {
     console.log(
       `FAILED: ${failed.map((f) => `${f.id} (${f.error ?? "no usable items"})`).join(", ")}`
     );
@@ -351,4 +457,9 @@ async function main() {
   }
 }
 
-await main();
+const invokedDirectly =
+  process.argv[1] !== undefined &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly) {
+  await main();
+}
