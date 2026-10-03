@@ -73,7 +73,10 @@ export function dayOgDateParts(
 
 function tile(t: DayOgTile, index: number, w: number, h: number) {
   const hasImage = Boolean(t.image);
-  const titleSize = w > 400 ? 30 : 24;
+  const titleSize = w > 400 ? 26 : 21;
+  const lines = hasImage ? 2 : 4;
+  /** Kicker + clamped title + padding; the photo takes the rest. */
+  const textPanel = hasImage ? Math.ceil(titleSize * 1.15 * lines) + 52 : 0;
   return (
     <div
       key={index}
@@ -87,6 +90,8 @@ function tile(t: DayOgTile, index: number, w: number, h: number) {
       }}
     >
       {t.image ? (
+        // Photo on top, solid text panel below: screenshots of other sites
+        // carry their own headlines, so nothing is drawn over the image.
         <img
           src={t.image.dataUri}
           alt=""
@@ -95,35 +100,8 @@ function tile(t: DayOgTile, index: number, w: number, h: number) {
             left: 0,
             top: 0,
             width: `${w}px`,
-            height: `${h}px`,
+            height: `${h - textPanel}px`,
             objectFit: "cover",
-          }}
-        />
-      ) : null}
-      {hasImage ? (
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: `${Math.round(h * 0.6)}px`,
-            height: `${Math.round(h * 0.25)}px`,
-            backgroundImage:
-              "linear-gradient(to bottom, rgba(10,10,10,0), rgba(10,10,10,0.88))",
-          }}
-        />
-      ) : null}
-      {hasImage ? (
-        // Solid under the text: screenshots of other sites carry their own
-        // headlines, which a soft gradient lets show through.
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: `${Math.round(h * 0.6)}px`,
-            backgroundColor: "rgba(10,10,10,0.88)",
           }}
         />
       ) : null}
@@ -178,10 +156,10 @@ function tile(t: DayOgTile, index: number, w: number, h: number) {
             color: hasImage ? "#ffffff" : INK,
             display: "-webkit-box",
             WebkitBoxOrient: "vertical",
-            WebkitLineClamp: hasImage ? 3 : 4,
+            WebkitLineClamp: lines,
             textOverflow: "ellipsis",
             overflow: "hidden",
-            maxHeight: `${Math.ceil(titleSize * 1.15 * (hasImage ? 3 : 4))}px`,
+            maxHeight: `${Math.ceil(titleSize * 1.15 * lines)}px`,
           }}
         >
           {t.title}
