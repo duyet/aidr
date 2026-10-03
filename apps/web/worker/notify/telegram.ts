@@ -685,3 +685,14 @@ export const telegramEnNotifier: Notifier = telegramChannel({
   chatId: (env) => telegramChatId(env, "en").id,
   enabled: (env) => telegramEnabled(env, "en"),
 });
+
+/** Admin preview: same send path, any chat (the staging channel), so a format
+ *  change can be checked before it reaches the real channels. */
+export function telegramPreviewNotifier(lang: Lang, chatId: string): Notifier {
+  return telegramChannel({
+    id: `telegram-preview-${lang}`,
+    lang,
+    chatId: () => chatId,
+    enabled: (env) => Boolean(env.TELEGRAM_BOT_TOKEN?.trim() && chatId),
+  });
+}

@@ -22,7 +22,11 @@ import {
 import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "../time.js";
 import type { Env } from "../types.js";
-import { telegramEnNotifier, telegramNotifier } from "./telegram.js";
+import {
+  telegramEnNotifier,
+  telegramNotifier,
+  telegramPreviewNotifier,
+} from "./telegram.js";
 import {
   type DailyDigest,
   type DigestBullet,
@@ -759,6 +763,31 @@ export async function dispatchStoryNotifications(
   const report: NotifyRunResult = { sent, reasons };
   console.info("notify", report);
   return report;
+}
+
+/** Admin preview: today's VI and EN digests to one chat (staging). Nothing
+ *  is recorded, so the real 08:00 send is unaffected. */
+export async function previewDigest(
+  env: Env,
+  chatId: string
+): Promise<Record<string, string>> {
+  const { date } = getLocalHourAndDate(Date.now(), DIGEST_TIMEZONE);
+  const out: Record<string, string> = {};
+  for (const lang of ["vi", "en"] as const) {
+    const digest = await loadDigest(env, date, lang);
+    if (!digest) {
+      out[lang] = `no ${lang} snapshot for ${date}`;
+      continue;
+    }
+    const result = await telegramPreviewNotifier(lang, chatId).sendDigest(
+      env,
+      digest
+    );
+    out[lang] = result.ok
+      ? `sent ${result.messageId}`
+      : `failed: ${result.error}`;
+  }
+  return out;
 }
 
 /** Admin/manual: send today's digest now, ignoring the 08:00 local gate

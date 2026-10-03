@@ -51,6 +51,7 @@ import {
   wrapCampaign,
 } from "../../../worker/mail/campaigns.js";
 import { listMailContent } from "../../../worker/mail/content.js";
+import { previewDigest } from "../../../worker/notify/index.js";
 import { ivFieldGateForOperator } from "../../../worker/notify/iv-gate.js";
 import {
   listTranslationReviewQueue,
@@ -605,6 +606,23 @@ async function handle(
       );
     }
     return Response.json(result);
+  }
+
+  if (
+    method === "POST" &&
+    segments.length === 3 &&
+    segments[0] === "notify" &&
+    segments[1] === "digest" &&
+    segments[2] === "preview"
+  ) {
+    const body = (await request.json().catch(() => null)) as {
+      chat_id?: unknown;
+    } | null;
+    const chatId = typeof body?.chat_id === "string" ? body.chat_id.trim() : "";
+    if (!/^-?\d+$|^@\w+$/.test(chatId)) {
+      return Response.json({ error: "chat_id required" }, { status: 400 });
+    }
+    return Response.json(await previewDigest(env, chatId));
   }
 
   if (
