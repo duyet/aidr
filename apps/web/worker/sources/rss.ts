@@ -1,3 +1,4 @@
+import { interruptionText } from "../bugsink.js";
 import { fetchWithSafeRedirects } from "../enrich.js";
 import {
   buildMediaManifest,
@@ -35,6 +36,31 @@ export class SourceFetchError extends Error {
     this.name = "SourceFetchError";
     this.reason = reason;
   }
+}
+
+/**
+ * Read a fetch failure after `step.do`. The Workflow engine structured-clones
+ * the thrown error, so the catch receives a plain object: `instanceof
+ * SourceFetchError` is false and only `.message` survives
+ * (`SourceFetchError: <message>`, same read as `interruptionText`).
+ * The HTML-document message is `parse_failed`; an HTTP status or any other
+ * `SourceFetchError` message is `fetch_failed`.
+ */
+export function sourceFetchFailureReason(
+  error: unknown
+): "fetch_failed" | "parse_failed" | null {
+  if (error instanceof SourceFetchError) return error.reason;
+  const reason = (error as { reason?: unknown } | null)?.reason;
+  if (reason === "fetch_failed" || reason === "parse_failed") return reason;
+  const text = interruptionText(error);
+  if (text.includes("rss feed returned an HTML document")) return "parse_failed";
+  if (
+    /rss feed returned \d+\b/.test(text) ||
+    text.includes("SourceFetchError:")
+  ) {
+    return "fetch_failed";
+  }
+  return null;
 }
 
 function decodeXml(value: string): string {

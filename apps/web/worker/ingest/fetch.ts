@@ -2,7 +2,7 @@ import { chunk } from "../chunk.js";
 import { recordSourceHealth, recordStep } from "../run-stats.js";
 import { emptySourceHealth, type SourceRunHealth } from "../source-health.js";
 import { adapters } from "../sources/registry.js";
-import { SourceFetchError } from "../sources/rss.js";
+import { sourceFetchFailureReason } from "../sources/rss.js";
 import { ensureVendorBlogSources } from "../sources/seed.js";
 import type { FetchedItem } from "../sources/types.js";
 import { safeStep } from "../workflow-step.js";
@@ -99,16 +99,16 @@ export async function fetchSources(
             }
           )
           .catch((error: unknown) => {
-            // A typed `SourceFetchError` is the adapter telling us *why*
-            // it produced nothing (403/5xx, or a 200 that is really an
-            // HTML error page). It is recorded so the dashboard can say
-            // so; everything else is logged and treated as a plain
+            // A `SourceFetchError` is the adapter telling us *why* it
+            // produced nothing (403/5xx, or a 200 that is really an HTML
+            // error page). The workflow step structured-clones that error,
+            // so the class is gone here and the reason is read back from
+            // the message. Everything else is logged and treated as a plain
             // failure. `sanitizeError` is applied at write time, so the
             // raw error never reaches D1 or an API response.
             console.error(`fetch-${source.id} step failed:`, error);
-            if (error instanceof SourceFetchError) {
-              fetchFailures.set(source.id, error.reason);
-            }
+            const reason = sourceFetchFailureReason(error);
+            if (reason) fetchFailures.set(source.id, reason);
             return [] as FetchedItem[];
           })
       )

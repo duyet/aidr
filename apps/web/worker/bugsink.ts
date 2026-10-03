@@ -166,7 +166,7 @@ const ENGINE_INTERRUPTIONS: ReadonlyArray<readonly [RegExp, string]> = [
  * `instanceof Error` is false) and the phrase survives only on `.message`.
  * That is why #339 and #340 got through the previous `instanceof`-based
  * filter while the messages were listed in it. */
-function interruptionText(error: unknown): string {
+export function interruptionText(error: unknown): string {
   if (typeof error === "string") return error;
   if (error == null) return "";
   const message = (error as { message?: unknown }).message;
