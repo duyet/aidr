@@ -1,5 +1,5 @@
 import { ImageIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { dayArchiveOgPath } from "../lib/day-archive";
 import type { Lang } from "../lib/types";
 
@@ -41,8 +41,8 @@ export function DayCardChip({
 
 /**
  * The day card laid over the digest content while the chip is hovered. The
- * image is requested on first intent only and then stays mounted, so later
- * hovers show it instantly.
+ * image loads shortly after the page settles (or on first hover, if sooner)
+ * and then stays mounted, so hovers show it instantly.
  */
 export function DayCardOverlay({
   date,
@@ -55,6 +55,11 @@ export function DayCardOverlay({
 }) {
   const [wanted, setWanted] = useState(false);
   if (open && !wanted) setWanted(true);
+  // Warm the image once the page has settled, so the first hover is instant.
+  useEffect(() => {
+    const timer = setTimeout(() => setWanted(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
   return (
     <div
       aria-hidden
