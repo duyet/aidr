@@ -115,7 +115,7 @@ describe("buildTrendingQuery", () => {
     // An ambiguous send may already be posted, so it is excluded like `sent`.
     expect(sql).toContain("n.status IN ('sent', 'ambiguous')");
     expect(sql).toContain("tr.lang = 'vi'");
-    expect(sql).toContain("THEN 'vi' ELSE 'en' END AS lang");
+    expect(sql).toContain("tr.title AS tr_title");
     expect(sql).toContain("i.media_manifest");
     expect(binds).toEqual([
       "telegram",
@@ -125,11 +125,10 @@ describe("buildTrendingQuery", () => {
     ]);
   });
 
-  it("keeps the English channel on source copy, never the Vietnamese translation", () => {
+  it("reads the English translation for the English channel, never the Vietnamese one", () => {
     const { sql } = buildTrendingQuery("telegram-en", 1_700_000_000_000, "en");
-    expect(sql).toContain("'en' AS lang");
+    expect(sql).toContain("tr.lang = 'en'");
     expect(sql).not.toContain("tr.lang = 'vi'");
-    expect(sql).not.toContain("THEN 'vi'");
   });
 });
 
@@ -1125,16 +1124,42 @@ describe("trending thresholds", () => {
   });
 });
 
-describe("channelLanguageRows", () => {
-  // There is no English translation, so a Vietnamese source must not reach
-  // the English channel (VnExpress posted there on 2026-10-03).
-  it("keeps Vietnamese-titled stories off the English channel only", async () => {
-    const { channelLanguageRows } = await import("../notify/index.js");
-    const rows = [
-      { title: "Dấu ấn Mark Zuckerberg trong thỏa thuận AI" },
-      { title: "Google launches Gemini 4" },
-    ];
-    expect(channelLanguageRows(rows, "en")).toEqual([rows[1]]);
-    expect(channelLanguageRows(rows, "vi")).toEqual(rows);
+describe("channelCopy", () => {
+  const base = { id: "x" };
+  // Each channel posts only its own language. A VnExpress story reaches the
+  // English channel through its vi→en translation (posted in Vietnamese
+  // there on 2026-10-03 before this rule).
+  it("uses the channel-language translation when it exists", async () => {
+    const { channelCopy } = await import("../notify/index.js");
+    const row = {
+      ...base,
+      source_title: "Dấu ấn Mark Zuckerberg",
+      source_summary: "Tóm tắt",
+      tr_title: "Mark Zuckerberg's mark",
+      tr_summary: "Summary",
+    };
+    expect(channelCopy(row, "en")).toEqual({
+      ...base,
+      title: "Mark Zuckerberg's mark",
+      summary: "Summary",
+      lang: "en",
+    });
+  });
+
+  it("posts source copy only when the source is in the channel language", async () => {
+    const { channelCopy } = await import("../notify/index.js");
+    const vi = {
+      ...base,
+      source_title: "Dấu ấn Mark Zuckerberg",
+      source_summary: "Tóm tắt",
+      tr_title: null,
+      tr_summary: null,
+    };
+    const en = { ...vi, source_title: "Gemini 4", source_summary: "S" };
+    expect(channelCopy(vi, "vi")?.title).toBe("Dấu ấn Mark Zuckerberg");
+    expect(channelCopy(vi, "en")).toBeNull();
+    expect(channelCopy(en, "en")?.lang).toBe("en");
+    // No English fallback on the Vietnamese channel.
+    expect(channelCopy(en, "vi")).toBeNull();
   });
 });

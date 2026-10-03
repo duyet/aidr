@@ -245,20 +245,48 @@ export function shouldSendDigest(
   );
 }
 
-/** Pure query builder: unposted trending candidates for a channel.
- *  Vietnamese prefers the VI translation (English source only when that
- *  translation is empty). English posts the source title and summary and
- *  never reads the Vietnamese translation. */
-/** The English channel posts source copy and there is no English translation,
- *  so a Vietnamese-language source (VnExpress) would post in Vietnamese
- *  there. Drop those rows; the Vietnamese channel still gets them. */
-export function channelLanguageRows<T extends { title: string }>(
-  rows: T[],
-  lang: Lang
-): T[] {
-  return lang === "en" ? rows.filter((r) => !looksVietnamese(r.title)) : rows;
+/** Raw candidate copy: the source text plus this channel's translation. */
+export interface ChannelCopyRow {
+  source_title: string;
+  source_summary: string | null;
+  tr_title: string | null;
+  tr_summary: string | null;
 }
 
+/**
+ * Copy for a channel in that channel's language only, no fallback: the
+ * channel-language translation when it exists, else the source text when the
+ * source is already in that language, else null (the story is skipped on
+ * this channel). A Vietnamese source (VnExpress) reaches the English channel
+ * through its vi→en translation, never as Vietnamese text.
+ */
+export function channelCopy<T extends ChannelCopyRow>(
+  row: T,
+  lang: Lang
+):
+  | (Omit<T, keyof ChannelCopyRow> & {
+      title: string;
+      summary: string | null;
+      lang: Lang;
+    })
+  | null {
+  const { source_title, source_summary, tr_title, tr_summary, ...rest } = row;
+  const translated = tr_title?.trim();
+  if (translated) {
+    return {
+      ...rest,
+      title: translated,
+      summary: tr_summary?.trim() || null,
+      lang,
+    };
+  }
+  const sourceLang: Lang = looksVietnamese(source_title) ? "vi" : "en";
+  if (sourceLang !== lang) return null;
+  return { ...rest, title: source_title, summary: source_summary, lang };
+}
+
+/** Pure query builder: unposted trending candidates for a channel, with the
+ *  source copy and that channel's translation (see `channelCopy`). */
 export function buildTrendingQuery(
   channel: string,
   nowMs: number,
@@ -266,19 +294,12 @@ export function buildTrendingQuery(
   minImportance: number = TRENDING_MIN_IMPORTANCE,
   minRank: number = TRENDING_RANK_FLOOR
 ): { sql: string; binds: [string, number, number, number] } {
-  const copy =
-    lang === "en"
-      ? `i.title AS title,
-                 i.summary AS summary,
-                 'en' AS lang`
-      : `COALESCE(NULLIF(TRIM(tr.title), ''), i.title) AS title,
-                 COALESCE(NULLIF(TRIM(tr.summary), ''), i.summary) AS summary,
-                 CASE WHEN NULLIF(TRIM(tr.title), '') IS NOT NULL
-                   THEN 'vi' ELSE 'en' END AS lang`;
-  const translationJoin =
-    lang === "en"
-      ? ""
-      : "LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'\n          ";
+  const trLang = lang === "en" ? "en" : "vi";
+  const copy = `i.title AS source_title,
+                 i.summary AS source_summary,
+                 tr.title AS tr_title,
+                 tr.summary AS tr_summary`;
+  const translationJoin = `LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = '${trLang}'\n          `;
   return {
     sql: `SELECT i.id, i.url,
                  ${copy},
@@ -660,13 +681,20 @@ export async function dispatchStoryNotifications(
       );
       const { results } = await env.DB.prepare(sql)
         .bind(...binds)
-        .all<StoryRow & { source_id: string }>();
+        .all<
+          Omit<StoryRow, "title" | "summary" | "lang"> &
+            ChannelCopyRow & {
+              source_id: string;
+            }
+        >();
       const today = buildTrendingSourcesTodayQuery(notifier.id, dayStartMs);
       const { results: sentToday } = await env.DB.prepare(today.sql)
         .bind(...today.binds)
         .all<{ source_id: string; n: number }>();
       const candidates = pickDiverse(
-        channelLanguageRows(results ?? [], notifier.lang),
+        (results ?? [])
+          .map((row) => channelCopy(row, notifier.lang))
+          .filter((row) => row !== null),
         {
           limit: TRENDING_MAX_PER_DAY,
           maxPerFamily: TRENDING_MAX_PER_FAMILY,

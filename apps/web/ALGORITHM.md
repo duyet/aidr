@@ -812,9 +812,11 @@ deliberately non-spammy.
 - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
   is `en`. Digest bullets come from that language's edition
   (`worker/digest/edition.ts`) and never from the other column. Trending
-  copy is chosen by `Notifier.lang`: English posts the source title, and
-  Vietnamese posts `translations` when the title is present, otherwise
-  the source title. A second locale is another notifier entry.
+  copy is chosen by `Notifier.lang` with no fallback (`channelCopy`): the
+  `translations` row for that language when it has a title, else the
+  source text only when the source is already in that language, else the
+  story is skipped on that channel. A VnExpress story reaches `telegram-en`
+  through its vi→en translation. A second locale is another notifier entry.
 
 ### 13. Review gates (LLM, rating ≥ 0.6)
 
