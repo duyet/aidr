@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveProbeTarget,
   runShouldFail,
+  verdictForUnprobed,
 } from "../../scripts/verify-source-feeds.js";
 import { SOURCE_REGISTRY } from "../sources/catalog.js";
 
@@ -13,8 +14,11 @@ function row(id: string) {
 
 describe("verify-source-feeds URL resolution", () => {
   it("reads the config key the adapter is configured with", () => {
-    // rssAdapter reads config.feed. The xAI row is config.sitemap; the
-    // adapter fetches that same sitemap (it does not read config.feed).
+    // rssAdapter reads config.feed. xaiAdapter hardcodes
+    // SITEMAP_URL = "https://x.ai/sitemap.xml" and ignores
+    // config (fetchItems(_config, ...)). The catalog stores that
+    // same URL at config.sitemap, which is the string this probe
+    // fetches.
     expect(resolveProbeTarget(row("openai"))).toEqual({
       action: "probe",
       key: "feed",
@@ -27,7 +31,7 @@ describe("verify-source-feeds URL resolution", () => {
     });
   });
 
-  it("skips adapters with no single public URL, and a skip does not fail the run", () => {
+  it("skips adapters with no single public URL", () => {
     for (const id of [
       "hn",
       "anthropic",
@@ -35,11 +39,24 @@ describe("verify-source-feeds URL resolution", () => {
       "marketbrief",
       "lobsters",
     ]) {
-      expect(resolveProbeTarget(row(id)).action).toBe("skip");
+      const target = resolveProbeTarget(row(id));
+      expect(target.action).toBe("skip");
+      if (target.action === "probe") continue;
+      expect(runShouldFail([verdictForUnprobed(target)])).toBe(false);
     }
-    expect(runShouldFail(["SKIP", "PASS"])).toBe(false);
-    expect(runShouldFail(["SKIP"])).toBe(false);
-    expect(runShouldFail(["FAIL", "SKIP"])).toBe(true);
+  });
+
+  it("fails a typo'd source type, and that verdict fails the run", () => {
+    const target = resolveProbeTarget({
+      type: "rsss",
+      config: { feed: "https://example.com/rss.xml" },
+    });
+    expect(target).toEqual({
+      action: "fail",
+      error: 'unknown source type "rsss"',
+    });
+    if (target.action === "probe") throw new Error("typo was probed");
+    expect(runShouldFail([verdictForUnprobed(target)])).toBe(true);
   });
 
   it("still fails an rss row that has no feed URL", () => {

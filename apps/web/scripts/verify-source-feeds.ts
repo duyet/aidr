@@ -34,15 +34,23 @@ export type ProbeTarget =
   | { action: "fail"; error: string };
 
 /**
- * URL key each adapter actually reads. `rss` uses `config.feed`. `xai` is
- * configured with `config.sitemap` (the adapter fetches that same sitemap
- * URL). Every other adapter builds one or more URLs that are not a single
- * config field, so this tool cannot probe them.
+ * rssAdapter reads config.feed. xaiAdapter hardcodes SITEMAP_URL and
+ * ignores config; the catalog stores that same URL at config.sitemap,
+ * which is what this probe fetches. SKIP is only the adapters with no
+ * single public URL. Any other type fails.
  */
 const PROBE_KEY_BY_TYPE: Record<string, "feed" | "sitemap"> = {
   rss: "feed",
   xai: "sitemap",
 };
+
+const UNPROBEABLE_TYPES = new Set([
+  "hn",
+  "anthropic",
+  "huggingnews",
+  "marketbrief",
+  "lobsters",
+]);
 
 export function resolveProbeTarget(row: {
   type: string;
@@ -50,9 +58,15 @@ export function resolveProbeTarget(row: {
 }): ProbeTarget {
   const key = PROBE_KEY_BY_TYPE[row.type];
   if (!key) {
+    if (UNPROBEABLE_TYPES.has(row.type)) {
+      return {
+        action: "skip",
+        reason: "not probeable by this tool (no single public URL)",
+      };
+    }
     return {
-      action: "skip",
-      reason: "not probeable by this tool (no single public URL)",
+      action: "fail",
+      error: `unknown source type "${row.type}"`,
     };
   }
   const raw = row.config[key];
@@ -72,6 +86,13 @@ export function resolveProbeTarget(row: {
 /** A SKIP is a verdict, not a failure. Only FAIL breaks the exit code. */
 export function runShouldFail(verdicts: readonly ProbeVerdict[]): boolean {
   return verdicts.some((verdict) => verdict === "FAIL");
+}
+
+/** Verdict main() records when it does not fetch. A probe is fetched first. */
+export function verdictForUnprobed(
+  target: Exclude<ProbeTarget, { action: "probe" }>
+): ProbeVerdict {
+  return target.action === "skip" ? "SKIP" : "FAIL";
 }
 
 interface ProbeResult {
@@ -348,7 +369,7 @@ async function main() {
     if (target.action === "skip") {
       results.push(
         emptyResult(row, id, {
-          verdict: "SKIP",
+          verdict: verdictForUnprobed(target),
           skipped: [target.reason],
         })
       );
@@ -357,7 +378,7 @@ async function main() {
     if (target.action === "fail") {
       results.push(
         emptyResult(row, id, {
-          verdict: "FAIL",
+          verdict: verdictForUnprobed(target),
           error: target.error,
           skipped: [target.error],
         })
