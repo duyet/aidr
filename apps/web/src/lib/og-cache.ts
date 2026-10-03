@@ -19,7 +19,9 @@ export async function cachedOgResponse(
   const cache = edgeCache();
   const key = new Request(new URL(request.url).toString(), { method: "GET" });
   const hit = await cache?.match(key).catch(() => undefined);
-  if (hit) return hit;
+  // A cached Response has immutable headers; the router appends its own, so
+  // hand it a mutable copy.
+  if (hit) return new Response(hit.body, hit);
   const res = await render();
   if (cache && res.ok) {
     const put = cache.put(key, res.clone()).catch(() => undefined);
