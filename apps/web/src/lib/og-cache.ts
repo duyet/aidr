@@ -11,7 +11,7 @@
 
 /** Bump when a card's design or selection changes: a deploy does not purge
  *  either tier, so old renders would otherwise live out their TTL. */
-const OG_RENDER_VERSION = "6";
+const OG_RENDER_VERSION = "7";
 
 type WaitUntil = { waitUntil?: (p: Promise<unknown>) => void } | undefined;
 
