@@ -54,6 +54,10 @@ bindings = [
 tag = "v1"
 new_sqlite_classes = ["NewsIngestScheduler"]
 
+# WebP → JPEG for OG card photos (resvg cannot draw WebP).
+[images]
+binding = "IMAGES"
+
 # Rendered OG PNGs shared across every region (src/lib/og-cache.ts).
 [[r2_buckets]]
 binding = "OG_CACHE"

@@ -140,6 +140,18 @@ describe("story OG image payload boundary", () => {
     }
   });
 
+  it("re-encodes WebP when a transcoder is given (VnExpress serves only WebP)", async () => {
+    const jpeg = jpegBytes(320, 200);
+    const fetched = await fetchStoryOgImage("https://cdn.example.com/p.webp", {
+      fetcher: async () =>
+        new Response(webpBytes(300, 200), {
+          headers: { "content-type": "image/webp" },
+        }),
+      transcodeWebp: async () => jpeg,
+    });
+    expect(fetched?.mimeType).toBe("image/jpeg");
+  });
+
   it("treats WebP as a miss: the rasterizer draws it as an empty panel", async () => {
     // resvg renders a WebP <img> as nothing (seen live on TechCrunch photos,
     // which Photon serves as WebP), so the card must use its fallback instead.

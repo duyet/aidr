@@ -10,6 +10,7 @@ import {
 import { idPrefixFromSlug } from "../../lib/slug";
 import {
   fetchStoryOgImage,
+  imagesBindingTranscoder,
   storyOgCard,
   storyOgLanguage,
 } from "../../lib/story-og";
@@ -74,7 +75,9 @@ export const Route = createFileRoute("/api/og/$id")({
             );
             const [fonts, image] = await Promise.all([
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
-              fetchStoryOgImage(item.image_url),
+              fetchStoryOgImage(item.image_url, {
+                transcodeWebp: imagesBindingTranscoder(env?.IMAGES),
+              }),
             ]);
             return await ImageResponse.async(storyOgCard(item, image, lang), {
               ...storyOgRenderOptions(fonts),

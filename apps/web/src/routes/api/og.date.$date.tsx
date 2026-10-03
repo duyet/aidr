@@ -20,6 +20,7 @@ import { cachedOgResponse } from "../../lib/og-cache";
 import { loadOgFontAsset, loadStoryOgFonts } from "../../lib/og-fonts";
 import {
   fetchStoryOgImage,
+  imagesBindingTranscoder,
   type StoryOgImage,
   storyOgImageFromBytes,
   storyOgLanguage,
@@ -60,7 +61,8 @@ async function sourcePhotoKey(url: string): Promise<string> {
 
 async function fetchTilePhoto(
   url: string,
-  bucket: R2Bucket | undefined
+  bucket: R2Bucket | undefined,
+  images: ImagesBinding | undefined
 ): Promise<StoryOgImage | null> {
   const key = bucket ? await sourcePhotoKey(url) : "";
   if (bucket) {
@@ -71,7 +73,10 @@ async function fetchTilePhoto(
     }
   }
   // The render is cached, so a slow publisher CDN is worth the wait.
-  const image = await fetchStoryOgImage(url, { timeoutMs: 5000 });
+  const image = await fetchStoryOgImage(url, {
+    timeoutMs: 5000,
+    transcodeWebp: imagesBindingTranscoder(images),
+  });
   if (image && bucket) {
     const bytes = Uint8Array.from(
       atob(image.dataUri.slice(image.dataUri.indexOf(",") + 1)),
@@ -90,7 +95,8 @@ async function fetchTilePhoto(
 /** Photos in rank order, fetched 6 at a time until the grid is full. */
 async function fetchTilePhotos(
   urls: Array<string | null>,
-  bucket: R2Bucket | undefined
+  bucket: R2Bucket | undefined,
+  imagesBinding: ImagesBinding | undefined
 ): Promise<Array<StoryOgImage | null>> {
   const out: Array<StoryOgImage | null> = urls.map(() => null);
   let found = 0;
@@ -102,7 +108,9 @@ async function fetchTilePhotos(
     const batch = urls.slice(i, i + FETCH_BATCH);
     const images = await Promise.all(
       batch.map((url) =>
-        url && !isHeadlineCardImage(url) ? fetchTilePhoto(url, bucket) : null
+        url && !isHeadlineCardImage(url)
+          ? fetchTilePhoto(url, bucket, imagesBinding)
+          : null
       )
     );
     images.forEach((image, j) => {
@@ -190,7 +198,8 @@ export const Route = createFileRoute("/api/og/date/$date")({
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
               fetchTilePhotos(
                 candidates.map((item) => item.image_url),
-                env?.OG_CACHE
+                env?.OG_CACHE,
+                env?.IMAGES
               ),
             ]);
             const scored = candidates.map((item, i) => ({

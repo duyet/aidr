@@ -239,6 +239,26 @@ async function readBoundedBody(response: Response): Promise<Uint8Array | null> {
 export interface StoryImageFetchOptions {
   fetcher?: typeof fetch;
   timeoutMs?: number;
+  /** Re-encode a WebP payload (the renderer cannot draw WebP) to a format it
+   *  can, e.g. via the Cloudflare Images binding. Null means a miss. */
+  transcodeWebp?: (bytes: Uint8Array) => Promise<Uint8Array | null>;
+}
+
+/** WebP → JPEG through the Cloudflare Images binding. */
+export function imagesBindingTranscoder(
+  images: ImagesBinding | undefined
+): StoryImageFetchOptions["transcodeWebp"] {
+  if (!images) return undefined;
+  return async (bytes) => {
+    try {
+      const out = await images
+        .input(new Blob([new Uint8Array(bytes)]).stream())
+        .output({ format: "image/jpeg", quality: 85 });
+      return new Uint8Array(await out.response().arrayBuffer());
+    } catch {
+      return null;
+    }
+  };
 }
 
 /**
@@ -306,7 +326,15 @@ export async function fetchStoryOgImage(
       }
     }
     const bytes = await readBoundedBody(response);
-    return bytes ? storyOgImageFromBytes(bytes) : null;
+    if (!bytes) return null;
+    if (
+      options.transcodeWebp &&
+      readRasterContainer(bytes)?.mimeType === "image/webp"
+    ) {
+      const jpeg = await options.transcodeWebp(bytes);
+      return jpeg ? storyOgImageFromBytes(jpeg) : null;
+    }
+    return storyOgImageFromBytes(bytes);
   } catch {
     return null;
   } finally {

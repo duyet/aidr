@@ -4,6 +4,8 @@ export interface Env {
   DB: D1Database;
   /** Rendered OG PNGs, the shared tier behind the edge cache. */
   OG_CACHE?: R2Bucket;
+  /** Cloudflare Images: WebP → JPEG for OG photos the renderer cannot draw. */
+  IMAGES?: ImagesBinding;
   NEWS_INGEST: Workflow;
   /** Singleton DO that arms a 30-minute alarm and coalesces ingest triggers.
    *  Optional so node tests can omit it; production wrangler always binds it. */
