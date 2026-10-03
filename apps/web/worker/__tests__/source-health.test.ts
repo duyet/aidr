@@ -179,6 +179,25 @@ describe("empty-run streak", () => {
     expect(carried.arxiv.skipReason).toBe("empty");
   });
 
+  it("writes 0 for the push source so a streak that cannot reset is not kept", () => {
+    // `user` fetched 0 again. Without the carry hold, the stored streak
+    // would climb forever. A real feed with the same history still climbs.
+    const past = DEFAULT_STALE_AFTER_RUNS + 100;
+    const carried = carrySourceEmptyRuns(
+      {
+        user: health({ fetched: 0, skipReason: "empty" }),
+        "arstechnica-ai": health({ fetched: 0, skipReason: "empty" }),
+      },
+      {
+        user: health({ emptyRuns: past }),
+        "arstechnica-ai": health({ emptyRuns: past }),
+      }
+    );
+    expect(carried.user.fetched).toBe(0);
+    expect(carried.user.emptyRuns).toBe(0);
+    expect(carried["arstechnica-ai"].emptyRuns).toBe(past + 1);
+  });
+
   it("reads the previous run's streaks out of a stats blob", () => {
     expect(
       parsePreviousEmptyRuns(
@@ -261,6 +280,25 @@ describe("stale detector", () => {
       threshold: 336,
     });
   });
+
+  it("does not call the push source stale, and still flags a silent feed", () => {
+    // `user` is type `push`: no adapter on purpose, items arrive through
+    // submissions. A fetch of 0 is honest and must not become a stale alarm.
+    // `arstechnica-ai` is a real feed; the same streak is still rot.
+    const past = DEFAULT_STALE_AFTER_RUNS + 100;
+    expect(sourceStaleVerdict(health({ emptyRuns: past }), "user")).toEqual({
+      stale: false,
+      emptyRuns: past,
+      threshold: DEFAULT_STALE_AFTER_RUNS,
+    });
+    expect(
+      sourceStaleVerdict(health({ emptyRuns: past }), "arstechnica-ai")
+    ).toEqual({
+      stale: true,
+      emptyRuns: past,
+      threshold: DEFAULT_STALE_AFTER_RUNS,
+    });
+  });
 });
 
 describe("read-model merge", () => {
@@ -316,6 +354,44 @@ describe("read-model merge", () => {
       },
     });
     expect(stale).toEqual(["dead-feed"]);
+  });
+
+  it("does not report a push source stale when the stored streak is past the threshold", () => {
+    // This is the path `/data` uses (`mergeSourceHealth`), not `isSourceStale`.
+    // The row type is `push` and the stored streak is already over 336.
+    const past = DEFAULT_STALE_AFTER_RUNS + 100;
+    const { health: merged, stale } = mergeSourceHealth(
+      [
+        ingestRow({ id: "user", name: "User submissions", type: "push" }),
+        ingestRow({
+          id: "arstechnica-ai",
+          name: "Ars Technica AI",
+          type: "rss",
+        }),
+      ],
+      {
+        sourceHealth: {
+          user: {
+            ...emptySourceHealth(),
+            emptyRuns: past,
+            skipReason: "empty",
+          },
+          "arstechnica-ai": {
+            ...emptySourceHealth(),
+            emptyRuns: past,
+            skipReason: "empty",
+          },
+        },
+      }
+    );
+    expect(merged.user).toMatchObject({
+      observed: true,
+      fetched: 0,
+      emptyRuns: past,
+      stale: false,
+    });
+    expect(merged["arstechnica-ai"]).toMatchObject({ stale: true });
+    expect(stale).toEqual(["arstechnica-ai"]);
   });
 
   it("treats a run with no sourceHealth at all as unknown, not as a mass failure", () => {

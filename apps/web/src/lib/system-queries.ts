@@ -1246,8 +1246,12 @@ export function mergeSourceHealth(
       continue;
     }
     const threshold = sourceStaleThreshold(source.id);
+    // Same rule as `isSourceStale`: `push` is the no-adapter pseudo-type
+    // (`user`). A typo'd type is not `"push"` and stays visible.
     const isStale =
-      parsed.skipReason !== "disabled" && parsed.emptyRuns >= threshold;
+      source.type !== "push" &&
+      parsed.skipReason !== "disabled" &&
+      parsed.emptyRuns >= threshold;
     if (isStale) stale.push(source.id);
     health[source.id] = {
       ...parsed,
