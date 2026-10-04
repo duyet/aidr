@@ -242,6 +242,33 @@ describe("routeIndexability", () => {
       cacheControl: PRIVATE_CACHE_CONTROL,
     });
   });
+
+  it("does not force no-store on the unlisted submit document", () => {
+    // /contribute/new is a real localized page left out of the sitemap.
+    // A private stamp here wins over the explicit-lang edge TTL.
+    expect(routeIndexability({ pathname: "/contribute/new" })).toMatchObject({
+      kind: "public",
+      robots: NOINDEX_FOLLOW_ROBOTS,
+    });
+    expect(
+      routeIndexability({ pathname: "/contribute/new" }).cacheControl
+    ).toBeUndefined();
+    expect(
+      routeIndexability({
+        pathname: "/contribute/new",
+        search: new URLSearchParams([["lang", "en"]]),
+      }).cacheControl
+    ).toBeUndefined();
+    expect(
+      routeIndexability({
+        pathname: "/contribute/new",
+        search: new URLSearchParams([["token", "secret"]]),
+      })
+    ).toMatchObject({
+      kind: "private",
+      cacheControl: PRIVATE_CACHE_CONTROL,
+    });
+  });
 });
 
 /**

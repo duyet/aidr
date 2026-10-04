@@ -71,6 +71,17 @@ const PUBLIC_POLICY: RouteIndexabilityPolicy = {
   referrerPolicy: SAFE_REFERRER_POLICY,
 };
 
+/**
+ * A real localized document that is not a sitemap URL (`/contribute/new`).
+ * No `cacheControl`: stamping `private, no-store` here blocks the explicit-lang
+ * edge TTL in `withSsrLocaleResponse`. Robots stay noindex.
+ */
+const LOCALIZED_UNLISTED_POLICY: RouteIndexabilityPolicy = {
+  kind: "public",
+  robots: NOINDEX_FOLLOW_ROBOTS,
+  referrerPolicy: SAFE_REFERRER_POLICY,
+};
+
 const FACETED_POLICY: RouteIndexabilityPolicy = {
   kind: "faceted",
   robots: NOINDEX_FOLLOW_ROBOTS,
@@ -359,6 +370,12 @@ function classifyRoute({
     return isExplicitPublicApiPath(pathname)
       ? applyQueryPolicy(API_POLICY, search)
       : PRIVATE_POLICY;
+  }
+
+  // Real route, not a sitemap URL. The unknown-route private stamp used to
+  // keep `?lang=` off the edge cache. Robots stay noindex.
+  if (pathname === "/contribute/new") {
+    return applyQueryPolicy(LOCALIZED_UNLISTED_POLICY, search);
   }
 
   return NOT_FOUND_POLICY;
