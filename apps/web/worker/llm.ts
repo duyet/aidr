@@ -694,6 +694,10 @@ export const TLDR_SLICE_MAX_MS = 135_000;
 /** Translate used the 25s leftover cap; anyrouter/auto often needs longer
  *  to finish a 3-item JSON batch when it is the only hop. */
 export const TRANSLATE_SLICE_MAX_MS = 60_000;
+/** gemini-3-flash often answers in 4–7s, but on 2026-10-04 16 of 98
+ *  translate calls died at the 20s first-token cap with zero tokens.
+ *  The attempt slice is still the hang cap; this only stops the early abort. */
+export const TRANSLATE_FIRST_TOKEN_MS = 35_000;
 const FALLBACK_FLOOR_MS = 20_000;
 
 /**
@@ -1494,16 +1498,29 @@ export function sanitizeTranslateResults(
   const validIndexes = new Set(batch.map((b) => b.i));
   const seen = new Set<number>();
   const out: TranslateResult[] = [];
-  for (const entry of raw) {
-    if (!entry || typeof entry !== "object") continue;
-    const e = entry as Record<string, unknown>;
-    const i = Number(e.i);
-    if (!Number.isInteger(i) || !validIndexes.has(i) || seen.has(i)) continue;
+  const take = (i: number, e: Record<string, unknown>) => {
+    if (!Number.isInteger(i) || !validIndexes.has(i) || seen.has(i)) return;
     const title = typeof e.title === "string" ? e.title.trim() : "";
-    if (!title) continue;
+    if (!title) return;
     seen.add(i);
     const summary = typeof e.summary === "string" ? e.summary.trim() : "";
     out.push({ i, title, summary, tokens: tokensPerItem });
+  };
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const e = entry as Record<string, unknown>;
+    take(Number(e.i ?? e.index), e);
+  }
+  // Gemini sometimes returns one object per story and omits `i`. Trust the
+  // order only when it lines up with the batch, so a short or long array
+  // cannot be assigned to the wrong story.
+  if (out.length === 0 && raw.length === batch.length) {
+    raw.forEach((entry, position) => {
+      if (!entry || typeof entry !== "object") return;
+      const item = batch[position];
+      if (!item) return;
+      take(item.i, entry as Record<string, unknown>);
+    });
   }
   return out;
 }
@@ -1519,8 +1536,18 @@ const TRANSLATE_MAX_TOKENS = 4096;
 const TRANSLATE_SUMMARY_MAX_CHARS = 2000;
 
 function parseTranslateRows(raw: string): unknown {
-  const parsed = parseJson<{ results?: unknown } | unknown[]>(raw);
-  return Array.isArray(parsed) ? parsed : parsed.results;
+  const parsed = parseJson<Record<string, unknown> | unknown[]>(raw);
+  if (Array.isArray(parsed)) return parsed;
+  for (const key of ["results", "translations", "items"] as const) {
+    const value = parsed[key];
+    if (Array.isArray(value)) return value;
+  }
+  return undefined;
+}
+
+/** Test hook. Gemini has returned `translations` instead of `results`. */
+export function _parseTranslateRowsForTests(raw: string): unknown {
+  return parseTranslateRows(raw);
 }
 
 function clipSummary(summary: string | undefined): string | undefined {
@@ -1634,6 +1661,7 @@ export async function translateBatch(
       sensitive: true,
       timeoutMs,
       maxSliceMs: TRANSLATE_SLICE_MAX_MS,
+      firstTokenMs: TRANSLATE_FIRST_TOKEN_MS,
       maxTokens: TRANSLATE_MAX_TOKENS,
       accept: (content) => {
         try {

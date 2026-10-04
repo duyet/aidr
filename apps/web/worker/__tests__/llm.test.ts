@@ -13,6 +13,7 @@ import {
   normalizeTag,
   _normalizeTldrForTests as normalizeTldr,
   _parseJsonForTests as parseJson,
+  _parseTranslateRowsForTests as parseTranslateRows,
   RULES_OVERVIEW,
   raceTimeout,
   resetUnavailableModels,
@@ -28,6 +29,7 @@ import {
   TLDR_RETRY_RESERVE_MS,
   TLDR_SLICE_MAX_MS,
   TLDR_TIMEOUT_MS,
+  TRANSLATE_FIRST_TOKEN_MS,
   tldrAttemptTimeoutMs,
   translateItems,
   VI_STYLE,
@@ -2104,6 +2106,40 @@ describe("sanitizeTranslateResults", () => {
       { i: 1, title: "Thế giới", summary: "", tokens: 4 },
     ]);
   });
+
+  it("reads index when i is absent, and zips a same-length array onto the batch", () => {
+    expect(
+      sanitizeTranslateResults(
+        [{ index: 1, title: "Thế giới", summary: "Một câu." }],
+        batch,
+        1
+      )
+    ).toEqual([{ i: 1, title: "Thế giới", summary: "Một câu.", tokens: 1 }]);
+    expect(
+      sanitizeTranslateResults(
+        [
+          { title: "Xin chào", summary: "A" },
+          { title: "Thế giới", summary: "B" },
+        ],
+        batch,
+        1
+      )
+    ).toEqual([
+      { i: 0, title: "Xin chào", summary: "A", tokens: 1 },
+      { i: 1, title: "Thế giới", summary: "B", tokens: 1 },
+    ]);
+    expect(sanitizeTranslateResults([{ title: "only one" }], batch, 1)).toEqual(
+      []
+    );
+  });
+
+  it("reads a translations array from Gemini JSON", () => {
+    expect(
+      parseTranslateRows(
+        '{"translations":[{"title":"Xin chào","summary":"Một câu."}]}'
+      )
+    ).toEqual([{ title: "Xin chào", summary: "Một câu." }]);
+  });
 });
 
 describe("modelAttemptTimeoutMs", () => {
@@ -2365,9 +2401,11 @@ describe("timeouts are recorded as timeouts", () => {
     for (const hop of hops) {
       expect(sanitizeError(hop.error)?.code, hop.model).toBe("timeout");
     }
-    // The no-first-token cutoff stops m/1 eating 42s of the 70s batch; the
-    // old split left the last three hops 4.7s each.
-    expect(hops[0]?.durationMs).toBeLessThanOrEqual(20_000);
+    // Translate waits TRANSLATE_FIRST_TOKEN_MS, not the 20s score cap:
+    // gemini-3-flash was aborted at 20s with zero tokens. The cap still
+    // stops m/1 eating the whole 42s slice. Later hops keep a real slice.
+    expect(hops[0]?.durationMs).toBe(TRANSLATE_FIRST_TOKEN_MS);
+    expect(hops[0]?.durationMs).toBeLessThan(42_000);
     for (const hop of hops.slice(2)) {
       expect(hop.durationMs, hop.model).toBeGreaterThanOrEqual(5_000);
     }
