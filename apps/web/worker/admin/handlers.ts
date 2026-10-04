@@ -43,6 +43,7 @@ import {
 import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics } from "../topics.js";
 import type { Env } from "../types.js";
+import { SELECT_RECENT_WORKFLOW_RUNS_SQL } from "../workflow-run.js";
 
 export async function writeAudit(
   env: Env,
@@ -478,7 +479,7 @@ function sanitizeAdminRunRow(
 
 export async function getStatus(env: Env) {
   const { results: runs } = await env.DB.prepare(
-    "SELECT * FROM workflow_runs ORDER BY started_at DESC LIMIT 10"
+    SELECT_RECENT_WORKFLOW_RUNS_SQL
   ).all();
   const { results: itemsByStatus } = await env.DB.prepare(
     "SELECT status, COUNT(*) as c FROM items GROUP BY status"

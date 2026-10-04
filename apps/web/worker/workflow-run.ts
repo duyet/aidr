@@ -42,6 +42,10 @@ export const NOT_DRY_RUN_SQL = `(stats IS NULL OR stats NOT LIKE '%"mode":"dry-r
 
 export const SELECT_LATEST_WORKFLOW_RUN_ID_SQL = `SELECT id FROM workflow_runs ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT 1`;
 
+/** `GET /api/admin/status` run list. Same epoch normalization as lastRun so
+ * a leftover millisecond `started_at` cannot hide a newer seconds row. */
+export const SELECT_RECENT_WORKFLOW_RUNS_SQL = `SELECT * FROM workflow_runs ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT 10`;
+
 const PERSIST_ATTEMPTS = 3;
 
 export interface WorkflowRunRecord {

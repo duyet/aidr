@@ -9,6 +9,7 @@ import {
   persistOpenedWorkflowRunVerified,
   persistWorkflowRun,
   SELECT_LATEST_WORKFLOW_RUN_ID_SQL,
+  SELECT_RECENT_WORKFLOW_RUNS_SQL,
   UPSERT_WORKFLOW_RUN_SQL,
   WORKFLOW_RUN_STARTED_AT_ORDER_SQL,
 } from "../workflow-run.js";
@@ -152,6 +153,17 @@ describe("SELECT_LATEST_WORKFLOW_RUN_ID_SQL", () => {
     );
     expect(SELECT_LATEST_WORKFLOW_RUN_ID_SQL).not.toContain(
       "ORDER BY started_at DESC, id DESC"
+    );
+  });
+});
+
+describe("SELECT_RECENT_WORKFLOW_RUNS_SQL", () => {
+  it("orders the admin status list like lastRun, not by raw started_at", () => {
+    expect(SELECT_RECENT_WORKFLOW_RUNS_SQL).toContain(
+      `${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT 10`
+    );
+    expect(SELECT_RECENT_WORKFLOW_RUNS_SQL).not.toContain(
+      "ORDER BY started_at DESC"
     );
   });
 });
