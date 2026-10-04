@@ -701,11 +701,17 @@ deliberately non-spammy.
   `worker/notify/adapters.ts` render Telegram HTML, Slack
   incoming-webhook JSON, or raw JSON.
 - *Daily digest*: ONE message per local day per channel (Asia/Ho_Chi_Minh,
-  from 08:00). The Vietnamese channel (`TELEGRAM_VI_CHAT_ID`, falling
-  back to `TELEGRAM_CHAT_ID`) posts `bullets_vi` only. The English
-  channel (`TELEGRAM_EN_CHAT_ID`, same bot token)
-  posts `bullets_en` only. Neither falls back to the other language.
-  Each bullet links to its story permalink, plus a site button.
+  from 08:00). The photo is the day card (`/api/og/date/{date}.png`) and
+  the caption lists those same tiles — that calendar day's ranked stories,
+  photos first — not the rolling 24h TL;DR, which still leads with
+  yesterday after midnight. The photo URL carries `v`, a token of the tile
+  ids, because Telegram caches a photo by URL. Email still sends the
+  snapshot (`bullets_vi` / `bullets_en` only, no cross-language fallback).
+  The Vietnamese channel (`TELEGRAM_VI_CHAT_ID`, falling back to
+  `TELEGRAM_CHAT_ID`) and the English channel (`TELEGRAM_EN_CHAT_ID`, same
+  bot token) each use their own language. Each line links to its story
+  permalink, plus a site button. When the day has no card stories, the
+  caption falls back to that language's snapshot.
 - *Trending*: an individual post only when the algo flags a story as
   exceptional (`rank_score` at or above the trending bar and
   `llm_importance ≥ 7`), capped at
@@ -802,8 +808,8 @@ deliberately non-spammy.
   Sentry/Bugsink. That row is final: the trending query and the digest gate
   skip it on later runs, and it does not count as a post. The cost is a
   story or digest that is missed when the call really did fail; the owner
-  checks the channel and can resend a digest from admin. A failed album
-  button reply never changes an album that was already posted.
+  checks the channel and can resend a digest from admin. An album is one
+  message: its Read link is in the caption, not a second reply.
 - **Media order: story image first, generated card as fallback.** The post
   leads with the story's real photo. The first-party OG card
   `/api/og/{id8}.png?lang=` is used when the story has no usable image, and

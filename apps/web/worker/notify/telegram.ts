@@ -12,6 +12,7 @@ import {
 import { isIvStoryId, ivCardUrl, TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
 import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
+import { digestForCard } from "./day-card.js";
 import {
   type DailyDigest,
   type DigestBullet,
@@ -27,8 +28,9 @@ export { escapeHtml };
 /**
  * Telegram channel adapter.
  *
- * - Daily digest: one message — TL;DR bullet list, each bullet linked to
- *   its story permalink, with a button to the site.
+ * - Daily digest: one message — the day card's stories, each linked to
+ *   its permalink, with a button to the site. The rolling TL;DR is not
+ *   the caption: it still leads with yesterday after midnight.
  * - Trending story: the generated branded card, plus any other story images
  *   Telegram will take in one album (`sendMediaGroup`, 2–10). One image stays
  *   `sendPhoto` so the Read / AI;DR buttons remain. Text is the fallback.
@@ -129,9 +131,18 @@ export function storyUrl(
  *  keep headroom under TELEGRAM_IV_LIMITS.captionChars. */
 const DIGEST_CAPTION_CAP = 1000;
 
-/** Day card image for the digest date, e.g. `/api/og/date/2026-10-03.png?lang=vi`. */
-export function digestCardUrl(digest: Pick<DailyDigest, "date" | "lang">) {
-  return absoluteSiteUrl(`/api/og/date/${digest.date}.png`, digest.lang);
+/** Day card image for the digest date, e.g. `/api/og/date/2026-10-03.png?lang=vi`.
+ *  `version` is the tile-id token. Telegram caches a photo by URL, so a
+ *  new grid needs a new URL. */
+export function digestCardUrl(
+  digest: Pick<DailyDigest, "date" | "lang">,
+  version?: string
+) {
+  const url = new URL(
+    absoluteSiteUrl(`/api/og/date/${digest.date}.png`, digest.lang)
+  );
+  if (version) url.searchParams.set("v", version);
+  return url.toString();
 }
 
 /** Digest as a photo caption: same lines, capped on visible length. */
@@ -220,8 +231,13 @@ export function buildDigestReplyMarkup(
 /** Headlines are one bounded line in the feed; clip before the caption cap. */
 const CAPTION_TITLE_CAP = 300;
 
-/** Trending story caption: bold title, trimmed summary, meta line. */
-export function buildStoryCaption(story: StoryPayload): string {
+/** Trending story caption: bold title, trimmed summary, meta line.
+ *  `reservedVisible` keeps a trailing line (the album Read link) inside
+ *  the 1024 cap. Telegram counts that line after entity parsing. */
+export function buildStoryCaption(
+  story: StoryPayload,
+  reservedVisible = 0
+): string {
   const title = clipCaptionText(story.title, CAPTION_TITLE_CAP);
   const parts = [`<b>🔥 ${escapeHtml(title)}</b>`];
   const meta = storyMetaLine(story);
@@ -229,7 +245,11 @@ export function buildStoryCaption(story: StoryPayload): string {
   // upper bound. Budget from what the title and meta already spent instead of
   // hoping the 1024 ceiling holds by accident.
   const used =
-    parts[0].length + (meta ? 2 + meta.length : 0) + 2 + 1 /* the "…" below */;
+    parts[0].length +
+    (meta ? 2 + meta.length : 0) +
+    2 +
+    1 /* the "…" below */ +
+    reservedVisible;
   const summaryCap = Math.min(
     CAPTION_SUMMARY_CAP,
     TELEGRAM_IV_LIMITS.captionChars - used
@@ -240,6 +260,25 @@ export function buildStoryCaption(story: StoryPayload): string {
   }
   if (meta) parts.push(meta);
   return parts.join("\n\n");
+}
+
+function albumReadLabel(lang: Lang): string {
+  return lang === "en" ? "Read →" : "Đọc bài →";
+}
+
+/** Visible chars of the blank line plus the Read label. The href is not
+ *  visible, so it is not reserved against the 1024 caption cap. */
+function albumLinkReserve(lang: Lang): number {
+  return "\n\n".length + albumReadLabel(lang).length;
+}
+
+/** `sendMediaGroup` has no `reply_markup`, so the Read link is one HTML
+ *  line under the story caption. */
+export function buildAlbumCaption(story: StoryPayload): string {
+  const caption = buildStoryCaption(story, albumLinkReserve(story.lang));
+  const href = escapeHtml(withUtm(storyUrl(story, story.lang), story.lang));
+  const label = escapeHtml(albumReadLabel(story.lang));
+  return `${caption}\n\n<a href="${href}">${label}</a>`;
 }
 
 /** Clip with an ellipsis; escaping can only lengthen the result, never shorten
@@ -382,38 +421,6 @@ export function storyPhotoUrl(story: StoryPayload): string | null {
 }
 
 /**
- * `sendMediaGroup` has no `reply_markup`, so an album is followed by a short
- * reply that carries the native Read button.
- */
-function albumButtonText(story: StoryPayload): string {
-  return story.lang === "en" ? "Read the full story:" : "Đọc toàn bài:";
-}
-
-/** Follow an album with the reply that carries the native Read button. */
-async function sendAlbumButton(
-  token: string,
-  chatId: string,
-  story: StoryPayload,
-  messageId: string,
-  replyMarkup: object
-): Promise<void> {
-  const button = await callTelegram(token, "sendMessage", {
-    chat_id: chatId,
-    text: albumButtonText(story),
-    reply_markup: replyMarkup,
-    reply_parameters: messageId
-      ? { message_id: Number(messageId), allow_sending_without_reply: true }
-      : undefined,
-    link_preview_options: { is_disabled: true },
-  });
-  if (!button.ok) {
-    console.error(
-      `telegram album button failed for ${story.id}: ${button.description}`
-    );
-  }
-}
-
-/**
  * Send the story's video (or a mixed album) when the preflight proved it.
  * Returns null on a skip or when Telegram rejects the call, so the caller
  * falls back to the photo path, then text: a rejected call posts nothing. An
@@ -457,7 +464,7 @@ async function sendVideoStory(
   }
   const res = await callTelegram(token, "sendMediaGroup", {
     chat_id: chatId,
-    media: buildVideoAlbumMedia(plan.items, caption),
+    media: buildVideoAlbumMedia(plan.items, buildAlbumCaption(story)),
   });
   if (res.ambiguous || res.budgetExhausted) return sendFailure(res);
   if (!res.ok) {
@@ -466,9 +473,7 @@ async function sendVideoStory(
     );
     return null;
   }
-  const messageId = telegramMessageId(res.result);
-  await sendAlbumButton(token, chatId, story, messageId, replyMarkup);
-  return { ok: true, messageId };
+  return { ok: true, messageId: telegramMessageId(res.result) };
 }
 
 interface TelegramResponse {
@@ -590,11 +595,13 @@ function telegramChannel(options: {
 
     async sendDigest(env: Env, digest: DailyDigest): Promise<SendResult> {
       const token = env.TELEGRAM_BOT_TOKEN as string;
-      // The day card leads as a photo with the bullets as its caption.
+      // The photo and the caption are the same day's card. The edition
+      // bullets stay the fallback when that day has no published stories.
+      const shown = await digestForCard(env, digest);
       const photo = await callTelegram(token, "sendPhoto", {
         chat_id: options.chatId(env),
-        photo: digestCardUrl(digest),
-        caption: buildDigestCaption(digest),
+        photo: digestCardUrl(digest, shown.version),
+        caption: buildDigestCaption(shown.digest),
         parse_mode: "HTML",
         reply_markup: buildDigestReplyMarkup(digest),
       });
@@ -608,7 +615,7 @@ function telegramChannel(options: {
       );
       const msg = await callTelegram(token, "sendMessage", {
         chat_id: options.chatId(env),
-        text: buildDigestMessage(digest),
+        text: buildDigestMessage(shown.digest),
         parse_mode: "HTML",
         reply_markup: buildDigestReplyMarkup(digest),
         link_preview_options: digestLinkPreview(digest),
@@ -644,6 +651,7 @@ function telegramChannel(options: {
         });
 
       if (gallery.length >= 2) {
+        const albumCaption = buildAlbumCaption(story);
         const album = await callTelegram(token, "sendMediaGroup", {
           chat_id: chatId,
           media: gallery.map((media, index) =>
@@ -651,16 +659,14 @@ function telegramChannel(options: {
               ? {
                   type: "photo",
                   media,
-                  caption,
+                  caption: albumCaption,
                   parse_mode: "HTML",
                 }
               : { type: "photo", media }
           ),
         });
         if (album.ok) {
-          const messageId = telegramMessageId(album.result);
-          await sendAlbumButton(token, chatId, story, messageId, replyMarkup);
-          return { ok: true, messageId };
+          return { ok: true, messageId: telegramMessageId(album.result) };
         }
         // Each fallback below runs only after a definite rejection. An
         // ambiguous result may already be in the channel, so it ends the send.

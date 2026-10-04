@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
-import { localizedTitle, looksVietnamese } from "./display-title";
+import { dayCardTileCount, hasDayOgCopy } from "./day-card-pick";
+import { localizedTitle } from "./display-title";
 import type { StoryOgImage } from "./story-og";
 import type { FeedItem, Lang } from "./types";
 
@@ -13,6 +14,10 @@ export const DAY_OG_HEIGHT = 630;
 /** 3×2 grid; a thin day falls back to 2×2 or one row. */
 export const DAY_OG_MAX_TILES = 6;
 
+export function dayOgTileCount(available: number): number {
+  return dayCardTileCount(available);
+}
+
 const YELLOW = "#f5c518";
 const INK = "#0a0a0a";
 const CREAM = "#fdf5d8";
@@ -22,12 +27,6 @@ const KICKER_ON_CREAM = "#b45309";
 const PAD = 36;
 const GAP = 12;
 const HEADER = 92;
-
-export function dayOgTileCount(available: number): number {
-  if (available >= 6) return 6;
-  if (available >= 4) return 4;
-  return Math.max(0, Math.min(3, available));
-}
 
 export interface DayOgTile {
   title: string;
@@ -40,18 +39,7 @@ function clip(value: string, max: number): string {
   return clean.length <= max ? clean : `${clean.slice(0, max - 1).trimEnd()}…`;
 }
 
-/**
- * True when the item has a headline in the card's language. No fallback: an
- * English card never shows a Vietnamese source title (VnExpress), and a
- * Vietnamese card never shows an untranslated English one.
- */
-export function hasDayOgCopy(item: FeedItem, lang: Lang): boolean {
-  if (lang === "en") return !looksVietnamese(item.title);
-  // A stored Vietnamese title can be the English text copied over; it must
-  // read as Vietnamese, not just exist.
-  const vi = localizedTitle(item, lang);
-  return !vi.fallbackFromEnglish && looksVietnamese(vi.text);
-}
+export { hasDayOgCopy };
 
 export function dayOgTile(
   item: FeedItem,

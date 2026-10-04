@@ -317,6 +317,7 @@ describe("Telegram video delivery", () => {
       parse_mode: "HTML",
     });
     expect(body?.reply_markup).toBeDefined();
+    expect(String(body?.caption ?? "")).not.toContain("<a href");
     // The poster is not a legal thumbnail (not probed as JPEG <=320px here).
     expect(body?.thumbnail).toBeUndefined();
   });
@@ -332,7 +333,8 @@ describe("Telegram video delivery", () => {
         { type: "image", url: "https://img.example/b.jpg?w=800" },
       ])
     );
-    const [album, button] = f.tg();
+    expect(f.tg()).toHaveLength(1);
+    const album = f.tg()[0];
     expect(album.url).toContain("/sendMediaGroup");
     const media = album.body?.media as Array<Record<string, unknown>>;
     expect(media.map((m) => [m.type, m.media])).toEqual([
@@ -342,10 +344,10 @@ describe("Telegram video delivery", () => {
       ["photo", "https://img.example/b.jpg?w=200"],
     ]);
     expect(media[0]).toMatchObject({ parse_mode: "HTML", duration: 30 });
-    expect(media[0].caption).toBeTruthy();
+    expect(String(media[0].caption)).toContain("<a href=");
+    expect(String(media[0].caption)).toContain("utm_source=telegram");
     expect(media[1].caption).toBeUndefined();
     expect(album.body?.reply_markup).toBeUndefined();
-    expect(button.url).toContain("/sendMessage");
   });
 
   it("supports a mixed album of two videos and a photo", async () => {
@@ -536,14 +538,13 @@ describe("Telegram video delivery", () => {
     expect(methods(f)).toEqual(["sendMediaGroup"]);
   });
 
-  it("keeps a posted video album as sent when its button reply times out", async () => {
-    // The album is already in the channel. A failed button reply must not
-    // turn that into a photo fallback or a retry next hour.
-    const f = stubFetch({ [VIDEO]: { file: mp4(10, true) } }, (method) =>
-      method === "sendMessage"
-        ? timeout()
-        : { ok: true, result: [{ message_id: 9 }] }
-    );
+  it("sends a video album as one message and does not send a follow-up", async () => {
+    // The album is the only Telegram call. A follow-up reply used to time
+    // out after the album was posted and turn the send into a retry.
+    const f = stubFetch({ [VIDEO]: { file: mp4(10, true) } }, () => ({
+      ok: true,
+      result: [{ message_id: 9 }],
+    }));
     const result = await telegramNotifier.sendStory(
       env,
       story([
@@ -552,7 +553,10 @@ describe("Telegram video delivery", () => {
       ])
     );
     expect(result).toEqual({ ok: true, messageId: "9" });
-    expect(methods(f)).toEqual(["sendMediaGroup", "sendMessage"]);
+    expect(methods(f)).toEqual(["sendMediaGroup"]);
+    const media = f.tg()[0].body?.media as Array<{ caption?: string }>;
+    expect(media[0]?.caption).toContain("<a href=");
+    expect(media[0]?.caption).toContain("utm_source=telegram");
   });
 
   it("sends the video without a thumbnail when the poster is hotlink-blocked", async () => {
@@ -587,7 +591,7 @@ describe("Telegram video delivery", () => {
     expect(f.tg()[0].body?.photo).toBe(poster);
   });
 
-  it("uses locale-aware links in the album button", async () => {
+  it("uses locale-aware links in the album caption", async () => {
     const f = stubFetch({ [VIDEO]: { file: mp4(10, true) } });
     await telegramNotifier.sendStory(
       env,
@@ -599,12 +603,12 @@ describe("Telegram video delivery", () => {
         { lang: "en" }
       )
     );
-    const button = f.tg()[1].body as {
-      reply_markup: { inline_keyboard: Array<Array<{ url: string }>> };
-    };
-    const link = button.reply_markup.inline_keyboard[0][0].url;
-    expect(link).toContain("lang=en");
-    expect(link).toContain("utm_source=telegram");
+    expect(methods(f)).not.toContain("sendMessage");
+    const media = f.tg()[0].body?.media as Array<{ caption?: string }>;
+    const caption = media[0]?.caption ?? "";
+    expect(caption).toContain("lang=en");
+    expect(caption).toContain("utm_source=telegram");
+    expect(caption).toContain(">Read →</a>");
   });
 
   it("leaves a no-video story byte-identical to the photo path", async () => {

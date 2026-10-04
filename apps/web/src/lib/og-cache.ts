@@ -11,7 +11,7 @@
 
 /** Bump when a card's design or selection changes: a deploy does not purge
  *  either tier, so old renders would otherwise live out their TTL. */
-const OG_RENDER_VERSION = "9";
+const OG_RENDER_VERSION = "10";
 
 type WaitUntil = { waitUntil?: (p: Promise<unknown>) => void } | undefined;
 
@@ -27,11 +27,15 @@ function edgeCache(): Cache | null {
   return c?.default ?? null;
 }
 
-/** R2 key: `v4/api/og/date/2026-10-03.png/vi`. Query strings other than
- *  `lang` (cache busters, utm) never create a new object. */
+/** R2 key: `v10/api/og/date/2026-10-03.png/vi` or `…/vi/k3f0a` when `v` is
+ *  set. Telegram caches a photo by its full URL, so the digest sends a `v`
+ *  of the tile ids and that value is part of the key. Other query strings
+ *  (utm) stay out. */
 export function ogObjectKey(url: URL): string {
   const lang = url.searchParams.get("lang") === "vi" ? "vi" : "en";
-  return `v${OG_RENDER_VERSION}${url.pathname}/${lang}`;
+  const stamp = url.searchParams.get("v") ?? "";
+  const version = /^[a-z0-9]{4,16}$/.test(stamp) ? `/${stamp}` : "";
+  return `v${OG_RENDER_VERSION}${url.pathname}/${lang}${version}`;
 }
 
 function background(ctx: WaitUntil, work: Promise<unknown>): Promise<void> {

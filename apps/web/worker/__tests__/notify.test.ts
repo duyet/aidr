@@ -24,6 +24,7 @@ import {
   trendingRankBar,
 } from "../notify/index.js";
 import {
+  buildAlbumCaption,
   buildDigestCaption,
   buildDigestMessage,
   buildDigestReplyMarkup,
@@ -244,6 +245,29 @@ describe("trending story message", () => {
     );
     expect(checkIvCaption(caption).ok).toBe(true);
     expect(caption.length).toBeLessThanOrEqual(TELEGRAM_IV_LIMITS.captionChars);
+  });
+
+  it("reserves the album read link inside the 1024 caption cap", () => {
+    for (const lang of ["vi", "en"] as const) {
+      const caption = buildAlbumCaption(
+        story({
+          lang,
+          title: "T".repeat(5_000),
+          summary: "s".repeat(5_000),
+        })
+      );
+      // Tags and the href are not visible. Telegram counts what remains.
+      const visible = caption.replace(/<[^>]+>/g, "");
+      expect(visible.length).toBeLessThanOrEqual(
+        TELEGRAM_IV_LIMITS.captionChars
+      );
+      const label = lang === "en" ? "Read →" : "Đọc bài →";
+      expect(caption).toContain(`>${label}</a>`);
+      expect(caption).toContain("utm_source=telegram");
+      expect(caption).toContain(`lang=${lang}`);
+      expect(visible).not.toContain("utm_source=telegram");
+      expect(visible).not.toContain("https://");
+    }
   });
 
   it("names only the images that do not fit in a Telegram album", () => {
@@ -484,6 +508,71 @@ describe("telegram channels", () => {
       "https://aidr.today/api/og/date/2026-08-17.png?lang=en"
     );
   });
+
+  it("lists the day card, not the rolling TL;DR, and busts the photo URL", async () => {
+    // The snapshot still leads with yesterday's long prose. The card is
+    // today's ranked stories. The caption has to be the card.
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, result: { message_id: 4 } }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return {
+              all: async () => ({
+                results: [
+                  {
+                    id: "4474df4c11111111",
+                    title: "Pop!_OS bans AI-generated code",
+                    title_vi: "Pop!_OS cấm mã AI trong phần lớn phần mềm",
+                    category: "opensource",
+                    image_url: "https://img.example/pop.jpg",
+                  },
+                  {
+                    id: "99a754ae11111111",
+                    title: "First woman to lead a trillion-dollar company",
+                    title_vi: "Nữ tướng công nghệ dẫn dắt công ty nghìn tỷ",
+                    category: "industry",
+                    image_url: "https://img.example/lead.jpg",
+                  },
+                ],
+              }),
+            };
+          },
+        };
+      },
+    };
+    await telegramNotifier.sendDigest(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+        DB: db,
+      } as unknown as Env,
+      {
+        lang: "vi",
+        date: "2026-10-04",
+        bullets: [
+          {
+            text: "Aleph Alpha ra mắt Kolibri, mô hình open-weight 78B với cửa sổ ngữ cảnh lên tới 1 triệu token",
+            url: null,
+          },
+        ],
+      }
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(body.caption).toContain("Pop!_OS cấm mã AI");
+    expect(body.caption).toContain("Nữ tướng công nghệ");
+    expect(body.caption).not.toContain("cửa sổ ngữ cảnh");
+    expect(body.photo).toContain(
+      "https://aidr.today/api/og/date/2026-10-04.png?"
+    );
+    expect(body.photo).toContain("lang=vi");
+    expect(body.photo).toMatch(/[?&]v=[a-z0-9]+/);
+  });
 });
 
 describe("telegramNotifier gating", () => {
@@ -564,7 +653,12 @@ describe("telegramNotifier gating", () => {
     // Call 0 is the bounded video preflight; the mock is not a real MP4 so the
     // video is skipped and the poster photo album is sent as before.
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://cdn.example/clip.mp4");
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes("/sendMessage")
+      )
+    ).toBe(false);
     fetchMock.mock.calls.shift();
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
@@ -573,15 +667,16 @@ describe("telegramNotifier gating", () => {
       "https://img.example/b.jpg",
       "https://img.example/poster.jpg",
     ]);
-    // Albums cannot carry buttons: the link must not leak into the caption
-    // as text; a reply to the album carries the native button instead.
-    expect(body.media[0].caption).not.toContain("<a href");
+    // Albums cannot carry buttons. The same URL the button would use is one
+    // HTML link in the caption, and nothing follows the album.
+    const href = escapeHtml(
+      withUtm(storyUrl({ id: "abcdef1234567890" }, "vi"), "vi")
+    );
+    expect(body.media[0].caption).toContain(`<a href="${href}">Đọc bài →</a>`);
+    expect(body.media[0].caption).toContain("utm_source=telegram");
+    expect(body.media[0].caption).toContain("lang=vi");
     expect(body.media[0].parse_mode).toBe("HTML");
     expect(body.reply_markup).toBeUndefined();
-    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
-    const button = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
-    expect(button.reply_markup.inline_keyboard[0][0].text).toContain("Đọc bài");
-    expect(button.reply_parameters.message_id).toBe(21);
     expect(
       body.media.some((item: { media: string }) => item.media.endsWith(".mp4"))
     ).toBe(false);
@@ -747,13 +842,10 @@ describe("telegramNotifier gating", () => {
       expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
     });
 
-    it("keeps a posted album as sent when its button reply times out", async () => {
-      // A thrown button call used to fail the whole story, and the next hourly
-      // run posted the album again.
-      const fetchMock = vi
-        .fn()
-        .mockImplementationOnce(ok)
-        .mockImplementationOnce(timeout);
+    it("sends a photo album as one message and does not send a follow-up", async () => {
+      // A second reply used to time out after the album was already in the
+      // channel, and the next hourly run posted the album again.
+      const fetchMock = vi.fn().mockImplementationOnce(ok);
       vi.stubGlobal("fetch", fetchMock);
 
       const result = await telegramNotifier.sendStory(
@@ -761,7 +853,13 @@ describe("telegramNotifier gating", () => {
         story({ media_manifest: twoImages })
       );
       expect(result).toEqual({ ok: true, messageId: "7" });
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
+      const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+      expect(body.reply_markup).toBeUndefined();
+      expect(body.media[0].caption).toContain("<a href=");
+      expect(body.media[0].caption).toContain("utm_source=telegram");
+      expect(body.media[0].caption).toContain("lang=vi");
     });
 
     it("reports a timed-out digest as ambiguous instead of throwing", async () => {

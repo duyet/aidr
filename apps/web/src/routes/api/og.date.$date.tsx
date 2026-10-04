@@ -5,13 +5,13 @@ import {
   isSettledArchiveDate,
   parseArchiveDate,
 } from "../../lib/day-archive";
+import { isDayCardPhotoUrl, pickDayCardItems } from "../../lib/day-card-pick";
 import {
   DAY_OG_HEIGHT,
   DAY_OG_MAX_TILES,
   DAY_OG_WIDTH,
   dayOgCard,
   dayOgTile,
-  dayOgTileCount,
   hasDayOgCopy,
 } from "../../lib/day-og";
 import { readSession } from "../../lib/db";
@@ -108,7 +108,7 @@ async function fetchTilePhotos(
     const batch = urls.slice(i, i + FETCH_BATCH);
     const images = await Promise.all(
       batch.map((url) =>
-        url && !isHeadlineCardImage(url)
+        isDayCardPhotoUrl(url)
           ? fetchTilePhoto(url, bucket, imagesBinding)
           : null
       )
@@ -119,23 +119,6 @@ async function fetchTilePhotos(
     });
   }
   return out;
-}
-
-/** Aggregator share images that are just the headline set in type; on the
- * card they repeat the tile title in English. */
-const HEADLINE_CARD_HOSTS = new Set(["huggingnews.com", "marketbrief.now"]);
-
-function isHeadlineCardImage(url: string | null): boolean {
-  if (!url) return false;
-  try {
-    const u = new URL(url);
-    return (
-      HEADLINE_CARD_HOSTS.has(u.hostname.replace(/^www\./, "")) &&
-      u.pathname.startsWith("/og/")
-    );
-  } catch {
-    return false;
-  }
 }
 
 export const Route = createFileRoute("/api/og/date/$date")({
@@ -194,25 +177,18 @@ export const Route = createFileRoute("/api/og/date/$date")({
             // Fetch photos for the top dozen so a dead, hotlink-blocked or WebP
             // thumbnail does not cost the grid a photo a lower story has.
             const candidates = all.slice(0, DAY_OG_CANDIDATES);
+            // Same order the digest caption lists. A photo that fails to
+            // download stays in its slot as a text tile.
+            const items = pickDayCardItems(candidates);
             const [fonts, fetched] = await Promise.all([
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
               fetchTilePhotos(
-                candidates.map((item) => item.image_url),
+                items.map((item) => item.image_url),
                 env?.OG_CACHE,
                 env?.IMAGES
               ),
             ]);
-            const scored = candidates.map((item, i) => ({
-              item,
-              image: fetched[i] ?? null,
-            }));
-            // Real photos first, in rank order; text tiles fill the rest.
-            const picked = [
-              ...scored.filter((c) => c.image),
-              ...scored.filter((c) => !c.image),
-            ].slice(0, dayOgTileCount(scored.length));
-            const items = picked.map((p) => p.item);
-            const images = picked.map((p) => p.image);
+            const images = items.map((_, i) => fetched[i] ?? null);
             const tiles = items.map((item, i) =>
               dayOgTile(item, images[i], lang)
             );
