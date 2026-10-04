@@ -1,5 +1,6 @@
-import { scoreItems } from "../llm.js";
-import { recordStep } from "../run-stats.js";
+import { chunk } from "../chunk.js";
+import { SCORE_BATCH_SIZE, scoreItems } from "../llm.js";
+import { type RunStepInfo, recordStep } from "../run-stats.js";
 import type { SourceRunHealth } from "../source-health.js";
 import { jsonMap, mapEntries } from "../workflow-run.js";
 import { llmStep } from "../workflow-step.js";
@@ -37,47 +38,107 @@ export function tallyScored(
   }
 }
 
+/** What the `score` line on the run says.
+ *
+ * An engine interrupt is not "scored 0 items". That line made a killed step
+ * look like a successful empty score and hid a batch that had already
+ * finished. A later batch's interrupt keeps the count from the batches that
+ * returned. */
+export function scoreStepRecord(
+  newCount: number,
+  scoredCount: number,
+  interruption?: string
+): { action: string; reason?: string } {
+  if (newCount === 0) return { action: "skipped", reason: "no new items" };
+  if (interruption && scoredCount === 0) {
+    return { action: "interrupted", reason: interruption };
+  }
+  return {
+    action: `scored ${scoredCount} items`,
+    ...(interruption ? { reason: interruption } : {}),
+  };
+}
+
+function interruptionSince(
+  steps: readonly RunStepInfo[],
+  name: string,
+  from: number
+): string | undefined {
+  const mark = steps
+    .slice(from)
+    .find((step) => step.name === name && step.action === "interrupted");
+  return mark ? (mark.reason ?? "interrupted") : undefined;
+}
+
 export async function scoreNewRows(
   ctx: IngestContext,
   newRows: readonly NewRow[]
 ): Promise<Map<string, ItemScore>> {
   const { step, env, runId, steps } = ctx;
-  const scored = jsonMap(
+  if (newRows.length === 0) {
     await llmStep(
       step,
       env,
       runId,
       "score",
       [] as [string, ItemScore][],
-      async () => {
-        if (newRows.length === 0) return [];
-        try {
-          const results = await scoreItems(
-            env,
-            newRows.map((row, i) => ({
-              i,
-              // Decision identity: lets the optional JEV panel key its
-              // idempotency to this item inside this run.
-              id: row.id,
-              title: row.item.title,
-              summary: row.item.summary,
-              source: row.source.id,
-            }))
-          );
-          return mapEntries(keyResultsById(newRows, results));
-        } catch (error) {
-          console.error("score step failed:", error);
-          return [];
-        }
-      },
+      async () => [],
       { config: LLM_STEP }
-    )
-  );
-  recordStep(
-    steps,
-    "score",
-    newRows.length === 0 ? "skipped" : `scored ${scored.size} items`,
-    newRows.length === 0 ? "no new items" : undefined
-  );
+    );
+    const record = scoreStepRecord(0, 0);
+    recordStep(steps, "score", record.action, record.reason);
+    return new Map();
+  }
+
+  // One durable step per batch. `step.do` only checkpoints a return, so an
+  // engine timeout of a single shared step used to drop every batch,
+  // including ones that had already finished, and the fallback `[]` was
+  // recorded as "scored 0 items".
+  const batches = chunk(newRows, SCORE_BATCH_SIZE);
+  const scored = new Map<string, ItemScore>();
+  let interruption: string | undefined;
+  for (let index = 0; index < batches.length; index++) {
+    const batch = batches[index] ?? [];
+    const name = `score-${index}`;
+    const from = steps.length;
+    const entries = jsonMap(
+      await llmStep(
+        step,
+        env,
+        runId,
+        `score-${index}`,
+        [] as [string, ItemScore][],
+        async () => {
+          try {
+            const results = await scoreItems(
+              env,
+              batch.map((row, i) => ({
+                i,
+                // Decision identity: lets the optional JEV panel key its
+                // idempotency to this item inside this run.
+                id: row.id,
+                title: row.item.title,
+                summary: row.item.summary,
+                source: row.source.id,
+              }))
+            );
+            return mapEntries(keyResultsById(batch, results));
+          } catch (error) {
+            console.error("score step failed:", error);
+            return [];
+          }
+        },
+        { config: LLM_STEP, steps }
+      )
+    );
+    const batchInterrupted = interruptionSince(steps, name, from);
+    if (batchInterrupted) {
+      interruption = batchInterrupted;
+      continue;
+    }
+    for (const [id, item] of entries) scored.set(id, item);
+  }
+  const record = scoreStepRecord(newRows.length, scored.size, interruption);
+  recordStep(steps, "score", record.action, record.reason);
   return scored;
 }

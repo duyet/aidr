@@ -7,6 +7,7 @@ import {
 import { chunk } from "./chunk.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { IMPORTANCE_BANDS } from "./importance-rubric.js";
+import { LLM_STEP } from "./ingest/context.js";
 import {
   type JevScoreItem,
   type JevScoreReviewOutcome,
@@ -1222,6 +1223,36 @@ export function sanitizeScoreResults(
   return out;
 }
 
+/** Decision router hop cap. Router-to-Jev answers took ~9s in probes. */
+export const SCORE_DECISION_TIMEOUT_MS = 15_000;
+/** Jev hop cap. Passed explicitly so it cannot drift from `callSystemOne`'s
+ * default and from the score-step budget below. */
+export const SCORE_JEV_TIMEOUT_MS = 30_000;
+/** Left after the last call so the step can return. A budget equal to
+ * `LLM_STEP` is killed on the way out and the return is lost. */
+const SCORE_STEP_SLACK_MS = 1_000;
+
+/** Workflow `timeout` strings are `"<n> minutes"` (also seconds or hours). */
+function workflowTimeoutMs(timeout: string): number {
+  const amount = Number.parseInt(timeout, 10);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  if (/\bseconds?\b/i.test(timeout)) return amount * 1_000;
+  if (/\bhours?\b/i.test(timeout)) return amount * 3_600_000;
+  return amount * 60_000;
+}
+
+/** Chat-chain budget for one score batch. Two batches — decision, then Jev,
+ * then this — stay strictly inside `LLM_STEP`. Do not raise that step. */
+export function scoreChatTimeoutMs(
+  stepTimeoutMs = workflowTimeoutMs(LLM_STEP.timeout)
+): number {
+  const hops = SCORE_DECISION_TIMEOUT_MS + SCORE_JEV_TIMEOUT_MS;
+  const perBatch = Math.floor((stepTimeoutMs - SCORE_STEP_SLACK_MS) / 2) - hops;
+  return Math.max(1, perBatch);
+}
+
+export const SCORE_CHAT_TIMEOUT_MS = scoreChatTimeoutMs();
+
 /** Chat-completions rubric. Backup for items no System One hop judged. */
 async function scoreBatchWithChat(
   env: Env,
@@ -1235,6 +1266,9 @@ async function scoreBatchWithChat(
       {
         json: true,
         task: "score",
+        // Omitting this uses the 120s request default. Two batches of
+        // decision + Jev + that default are ~330s and outlive LLM_STEP.
+        timeoutMs: SCORE_CHAT_TIMEOUT_MS,
         maxSliceMs: SCORE_SLICE_MAX_MS,
       }
     );
@@ -1246,11 +1280,6 @@ async function scoreBatchWithChat(
     return [];
   }
 }
-
-/** Decision router hop cap. Router-to-Jev answers took ~9s in probes; the
- * cap keeps decision (15s) + Jev (30s) + one chat slice (70s) per wave so
- * two waves still fit the 4-minute score step. */
-const DECISION_TIMEOUT_MS = 15_000;
 
 /** One System One call per item on `model`. A miss (transport, bad
  * answers) returns null so that item moves to the next hop. Tokens are that
@@ -1273,7 +1302,9 @@ async function scoreOneWithSystemOne(
       questions,
       "score",
       model,
-      model === jevModelId(env) ? undefined : DECISION_TIMEOUT_MS
+      model === jevModelId(env)
+        ? SCORE_JEV_TIMEOUT_MS
+        : SCORE_DECISION_TIMEOUT_MS
     );
     if (!jev) return null;
     // A router hop can land on a non-Jev decider (GLiNER answers score
@@ -1327,29 +1358,41 @@ export async function scoreItems(
     batches,
     SCORE_CONCURRENCY,
     async (batch) => {
+      // A throw here used to reject the whole wave, so a batch that had
+      // already finished was dropped with the one that failed.
       const rows: ScoreResult[] = [];
-      let missing = batch;
-      for (const model of systemOneModels) {
-        if (!questions || missing.length === 0) break;
-        const hopRows = (
-          await Promise.all(
-            missing.map((item) =>
-              scoreOneWithSystemOne(env, item, questions, model)
+      try {
+        let missing = batch;
+        for (const model of systemOneModels) {
+          if (!questions || missing.length === 0) break;
+          const hopRows = (
+            await Promise.all(
+              missing.map((item) =>
+                scoreOneWithSystemOne(env, item, questions, model)
+              )
             )
-          )
-        ).filter((row): row is ScoreResult => row !== null);
-        rows.push(...hopRows);
-        const covered = new Set(hopRows.map((row) => row.i));
-        missing = missing.filter((item) => !covered.has(item.i));
+          ).filter((row): row is ScoreResult => row !== null);
+          rows.push(...hopRows);
+          const covered = new Set(hopRows.map((row) => row.i));
+          missing = missing.filter((item) => !covered.has(item.i));
+        }
+        if (missing.length === 0) return rows;
+        const chatRows = await scoreBatchWithChat(env, missing);
+        return [...rows, ...chatRows];
+      } catch (error) {
+        console.error("scoreItems batch failed:", error);
+        return rows;
       }
-      if (missing.length === 0) return rows;
-      const chatRows = await scoreBatchWithChat(env, missing);
-      return [...rows, ...chatRows];
     }
   );
 
   const rows = batchResults.flat();
-  return applyJevScoreReview(env, items, rows);
+  try {
+    return await applyJevScoreReview(env, items, rows);
+  } catch (error) {
+    console.error("scoreItems review failed:", error);
+    return rows;
+  }
 }
 
 /**

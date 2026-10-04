@@ -1037,14 +1037,19 @@ Translate runs in batches of 3 (summaries clipped, title-only retry) and
 each backfill slice is its own Workflow step so a finished batch is written
 even if a later slice times out.
 
-- Score batches of 5 with a 70s hang-cap.
+- Score batches of 5. One model attempt stays on the 70s hang-cap. The chat
+  chain passes `timeoutMs` so two batches — decision 15s, Jev 30s, then
+  chat — stay inside the 5-minute `LLM_STEP` (the 120s default made two
+  batches about 330s). The ingest score step is one Workflow step per
+  batch, so a finished batch is kept when a later one is interrupted, and
+  that interrupt is not recorded as zero items scored.
 - TL;DR uses a 135s hang-cap (Laguna needs 102-119s on the ~26K-char prompt).
 - Translate attempts use a 60s hang-cap so `anyrouter/auto` is not killed
   mid-route (a 25s cap made every score/TL;DR model log 0 tokens).
 
 None of these budgets are raised by adding sources. The flood gate above is
 what makes extra coverage fit inside them: `scoreItems` runs 3 concurrent
-batches of 5 (15 items) inside a 4-minute step, and the measured steady state
+batches of 5 (15 items) inside the 5-minute score step, and the measured steady state
 is ~4 new items per run. Each new source row's `maxItems` is therefore capped
 at or below one score batch (5), and the whole Vietnamese + newsroom addition
 is bounded at 6 items per run per source on a 26h window that dedupe then
