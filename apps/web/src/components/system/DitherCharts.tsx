@@ -1,4 +1,5 @@
 import { Badge } from "@aidr/ui";
+import { useMemo, useState } from "react";
 import type {
   DayCount,
   LlmDayTaskCount,
@@ -9,15 +10,18 @@ import { BarChart } from "../dither-kit/bar-chart";
 import type { ChartConfig } from "../dither-kit/chart-context";
 import { Grid } from "../dither-kit/grid";
 import { Legend } from "../dither-kit/legend";
-import type { DitherColor } from "../dither-kit/palette";
+import { type DitherColor, rgb, seedOfColor } from "../dither-kit/palette";
 import { Pie } from "../dither-kit/pie";
 import { PieChart } from "../dither-kit/pie-chart";
 import { Tooltip } from "../dither-kit/tooltip";
 import { XAxis } from "../dither-kit/x-axis";
 import { YAxis } from "../dither-kit/y-axis";
-
-const shortDay = (date: string | null | undefined) =>
-  typeof date === "string" && date.length >= 5 ? date.slice(5) : "—";
+import {
+  amountsForDate,
+  buildTokenBurn,
+  chartDayLabel,
+  dateAtHover,
+} from "./token-burn";
 
 function EmptyNote({ label }: { label: string }) {
   return <p className="text-sm text-muted-foreground">{label}</p>;
@@ -32,7 +36,11 @@ export function ItemsAreaChart({
   emptyLabel: string;
 }) {
   if (data.length === 0) return <EmptyNote label={emptyLabel} />;
-  const rows = data.map((d) => ({ day: shortDay(d.date), items: d.count }));
+  const rows = data.map((d) => ({
+    day: chartDayLabel(d.date),
+    date: d.date,
+    items: d.count,
+  }));
   const config: ChartConfig = {
     items: { label: "Items", color: "green" },
   };
@@ -42,7 +50,7 @@ export function ItemsAreaChart({
       <XAxis dataKey="day" />
       <YAxis />
       <Bar dataKey="items" />
-      <Tooltip />
+      <Tooltip labelKey="date" showTotal />
     </BarChart>
   );
 }
@@ -70,7 +78,8 @@ export function DailyMetricChart({
   const points = Array.isArray(data) ? data : [];
   if (points.length === 0) return <EmptyNote label={emptyLabel} />;
   const rows = points.map((d) => ({
-    day: shortDay(d?.date),
+    day: chartDayLabel(d?.date),
+    date: d?.date ?? "—",
     [seriesKey]: d?.count ?? 0,
   }));
   const config: ChartConfig = {
@@ -82,7 +91,7 @@ export function DailyMetricChart({
       <XAxis dataKey="day" />
       <YAxis />
       <Bar dataKey={seriesKey} />
-      <Tooltip />
+      <Tooltip labelKey="date" showTotal />
     </BarChart>
   );
 }
@@ -98,7 +107,11 @@ export function TokensLineChart({
   formatValue?: (n: number) => string;
 }) {
   if (data.length === 0) return <EmptyNote label={emptyLabel} />;
-  const rows = data.map((d) => ({ day: shortDay(d.date), tokens: d.count }));
+  const rows = data.map((d) => ({
+    day: chartDayLabel(d.date),
+    date: d.date,
+    tokens: d.count,
+  }));
   const config: ChartConfig = {
     tokens: { label: "Tokens", color: "purple" },
   };
@@ -108,7 +121,7 @@ export function TokensLineChart({
       <XAxis dataKey="day" />
       <YAxis tickFormatter={formatValue} />
       <Bar dataKey="tokens" />
-      <Tooltip />
+      <Tooltip labelKey="date" showTotal />
     </BarChart>
   );
 }
@@ -135,6 +148,14 @@ const TASK_BURN_COLORS: Record<string, DitherColor> = {
   other: "grey",
 };
 
+function burnColor(name: string, series: string[]): DitherColor {
+  return (
+    TASK_BURN_COLORS[name] ??
+    SERIES_COLORS[series.indexOf(name) % SERIES_COLORS.length] ??
+    "grey"
+  );
+}
+
 /** Stacked dither bars of LLM tokens per day by task, with call metrics. */
 export function TokenBurnSection({
   data,
@@ -148,45 +169,28 @@ export function TokenBurnSection({
   /** What each stacked series is. "model" changes the summary badge. */
   seriesNoun?: "task" | "model";
 }) {
-  if (data.length === 0) return <EmptyNote label={emptyLabel} />;
+  const view = useMemo(() => buildTokenBurn(data), [data]);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  if (!view) return <EmptyNote label={emptyLabel} />;
   const fmt = formatValue ?? String;
-  const tasks = [...new Set(data.map((r) => r.task))].sort();
-
-  const tokensByDate = new Map<string, Map<string, number>>();
-  let calls = 0;
-  let failures = 0;
-  const tokensByTask = new Map<string, number>();
-  for (const row of data) {
-    calls += row.calls;
-    failures += row.failures;
-    tokensByTask.set(row.task, (tokensByTask.get(row.task) ?? 0) + row.tokens);
-    const day = tokensByDate.get(row.date) ?? new Map<string, number>();
-    day.set(row.task, (day.get(row.task) ?? 0) + row.tokens);
-    tokensByDate.set(row.date, day);
-  }
-  const dates = [...tokensByDate.keys()].sort();
-  const rows = dates.map((date) => {
-    const day = tokensByDate.get(date) ?? new Map<string, number>();
-    const entry: Record<string, string | number> = { day: shortDay(date) };
-    for (const task of tasks) entry[task] = day.get(task) ?? 0;
-    return entry;
-  });
-  const dayTotals = dates.map((date) =>
-    tasks.reduce((sum, t) => sum + (tokensByDate.get(date)?.get(t) ?? 0), 0)
+  const hoverDate = dateAtHover(view, hoverIndex);
+  const amounts = amountsForDate(view, hoverDate);
+  const rows = view.days.map((day) => ({
+    day: day.day,
+    date: day.date,
+    ...day.values,
+  }));
+  const peak = view.days.reduce((best, day) =>
+    day.total > best.total ? day : best
   );
-  const total = dayTotals.reduce((sum, n) => sum + n, 0);
-  const peakIdx = dayTotals.indexOf(Math.max(...dayTotals, 0));
-  const topTask = [...tokensByTask.entries()].sort((a, b) => b[1] - a[1])[0];
+  const top = view.series
+    .map((name) => [name, view.totals[name] ?? 0] as const)
+    .sort((a, b) => b[1] - a[1])[0];
 
   const config: ChartConfig = Object.fromEntries(
-    tasks.map((task) => [
-      task,
-      {
-        label: task,
-        color:
-          TASK_BURN_COLORS[task] ??
-          SERIES_COLORS[tasks.indexOf(task) % SERIES_COLORS.length],
-      },
+    view.series.map((name) => [
+      name,
+      { label: name, color: burnColor(name, view.series) },
     ])
   );
 
@@ -195,20 +199,18 @@ export function TokenBurnSection({
       <div className="flex flex-wrap gap-2">
         {(
           [
-            ["tokens", fmt(total)],
-            ["calls", String(calls)],
-            ["failures", String(failures)],
-            ["avg/day", fmt(Math.round(total / Math.max(dates.length, 1)))],
+            ["tokens", fmt(view.total)],
+            ["calls", String(view.calls)],
+            ["failures", String(view.failures)],
             [
-              "peak",
-              peakIdx >= 0
-                ? `${fmt(dayTotals[peakIdx] ?? 0)} ${dates[peakIdx] ?? ""}`
-                : "—",
+              "avg/day",
+              fmt(Math.round(view.total / Math.max(view.days.length, 1))),
             ],
+            ["peak", `${fmt(peak.total)} ${peak.date}`],
             [
               seriesNoun === "model" ? "top model" : "top task",
-              topTask
-                ? `${topTask[0]} ${Math.round((topTask[1] / Math.max(total, 1)) * 100)}%`
+              top
+                ? `${top[0]} ${Math.round((top[1] / Math.max(view.total, 1)) * 100)}%`
                 : "—",
             ],
           ] as const
@@ -227,30 +229,49 @@ export function TokenBurnSection({
         config={config}
         stackType="stacked"
         className="h-52 w-full"
+        onHoverChange={setHoverIndex}
       >
         <Grid />
         <XAxis dataKey="day" />
         <YAxis tickFormatter={formatValue} />
-        {tasks.map((task) => (
-          <Bar key={task} dataKey={task} />
+        {view.series.map((name) => (
+          <Bar key={name} dataKey={name} />
         ))}
-        <Tooltip />
-        <Legend />
+        <Tooltip labelKey="date" showTotal valueFormatter={(n) => fmt(n)} />
       </BarChart>
 
-      <dl className="divide-y divide-border text-sm">
-        {tasks.map((task) => (
-          <div
-            key={task}
-            className="flex items-center justify-between gap-4 py-1.5 first:pt-0 last:pb-0"
-          >
-            <dt className="text-muted-foreground">{task}</dt>
-            <dd className="font-mono tabular-nums text-foreground">
-              {fmt(tokensByTask.get(task) ?? 0)}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <div className="space-y-1.5">
+        <p
+          className={`font-mono text-xs ${hoverDate ? "text-foreground" : "text-muted-foreground"}`}
+          aria-live="polite"
+        >
+          {hoverDate ?? "Last 14 days"}
+        </p>
+        <dl className="divide-y divide-border text-sm">
+          {view.series.map((name) => (
+            <div
+              key={name}
+              className="flex items-center justify-between gap-4 py-1.5 first:pt-0 last:pb-0"
+            >
+              <dt className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                <span
+                  className="size-2 shrink-0 rounded-[1px]"
+                  style={{
+                    backgroundColor: rgb(
+                      seedOfColor(burnColor(name, view.series)).fill
+                    ),
+                  }}
+                  aria-hidden
+                />
+                <span className="break-words">{name}</span>
+              </dt>
+              <dd className="font-mono tabular-nums text-foreground">
+                {fmt(amounts[name] ?? 0)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }

@@ -1,41 +1,12 @@
 import { useMemo, useState } from "react";
 import { formatTokens } from "../../lib/format";
-import type {
-  LlmDayModelCount,
-  LlmDayTaskCount,
-  SystemLlm,
-} from "../../lib/system-queries";
+import type { SystemLlm } from "../../lib/system-queries";
 import { useSystemData } from "../../lib/use-system-stats";
 import { CardData, CardSkeleton } from "./CardData";
 import { ChartCard } from "./ChartCard";
 import { TokenBurnSection } from "./DitherCharts";
 import { API } from "./endpoints";
-import { tokenBurnModelName } from "./run-format";
-
-type BurnBy = "task" | "model";
-
-function modelSeries(rows: LlmDayModelCount[]): LlmDayTaskCount[] {
-  const merged = new Map<string, LlmDayTaskCount>();
-  for (const row of rows) {
-    const task = tokenBurnModelName(row.model);
-    const key = `${row.date}\0${task}`;
-    const current = merged.get(key);
-    if (!current) {
-      merged.set(key, {
-        date: row.date,
-        task,
-        calls: row.calls,
-        failures: row.failures,
-        tokens: row.tokens,
-      });
-      continue;
-    }
-    current.calls += row.calls;
-    current.failures += row.failures;
-    current.tokens += row.tokens;
-  }
-  return [...merged.values()];
-}
+import { type BurnBy, rowsForBurn } from "./token-burn";
 
 export function TokenBurnCard() {
   const state = useSystemData<SystemLlm>(API.llm);
@@ -45,29 +16,25 @@ export function TokenBurnCard() {
       ? "Tokens per day by task, stacked (14 days)"
       : "Tokens per day by model, stacked (14 days)";
   return (
-    <ChartCard
-      title="Token burn"
-      subtitle={subtitle}
-      className="md:col-span-2"
-      action={<BurnSwitch value={by} onChange={setBy} />}
-    >
-      <CardData state={state} skeleton={<CardSkeleton tall />}>
-        {(l) => <TokenBurnBody rows={l} by={by} />}
-      </CardData>
+    <ChartCard title="Token burn" subtitle={subtitle} className="md:col-span-2">
+      <div className="space-y-3">
+        <BurnSwitch value={by} onChange={setBy} />
+        <CardData state={state} skeleton={<CardSkeleton tall />}>
+          {(l) => <TokenBurnBody rows={l} by={by} />}
+        </CardData>
+      </div>
     </ChartCard>
   );
 }
 
 function TokenBurnBody({ rows, by }: { rows: SystemLlm; by: BurnBy }) {
   const data = useMemo(
-    () =>
-      by === "model"
-        ? modelSeries(rows.llmTokensByModel ?? [])
-        : rows.llmCallsPerDay,
+    () => rowsForBurn(by, rows.llmCallsPerDay, rows.llmTokensByModel),
     [by, rows]
   );
   return (
     <TokenBurnSection
+      key={by}
       data={data}
       emptyLabel="No token data yet."
       formatValue={formatTokens}
@@ -88,7 +55,8 @@ function BurnSwitch({
     { id: "model", label: "By Model" },
   ];
   return (
-    <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
+    <fieldset className="m-0 grid w-full min-w-0 grid-cols-2 gap-1.5 rounded-xl border-0 bg-muted/40 p-1.5 text-muted-foreground">
+      <legend className="sr-only">Token burn grouping</legend>
       {options.map((option) => {
         const selected = value === option.id;
         return (
@@ -96,10 +64,10 @@ function BurnSwitch({
             key={option.id}
             type="button"
             aria-pressed={selected}
-            className={`rounded px-2 py-1 ${
+            className={`inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
               selected
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-background text-foreground shadow-2xs"
+                : "hover:text-foreground"
             }`}
             onClick={() => onChange(option.id)}
           >
@@ -107,6 +75,6 @@ function BurnSwitch({
           </button>
         );
       })}
-    </div>
+    </fieldset>
   );
 }

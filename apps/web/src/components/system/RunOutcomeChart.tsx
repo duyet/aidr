@@ -100,7 +100,7 @@ export function RunOutcomeChart({
         {SERIES.map((key) => (
           <Bar key={key} dataKey={key} />
         ))}
-        <Tooltip labelKey="at" />
+        <Tooltip labelKey="at" showTotal />
       </BarChart>
       {/* In-flow, with window totals: the overlay <Legend> would sit on top of
           the plot, and the totals are the number operators actually want. */}
