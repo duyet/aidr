@@ -110,7 +110,7 @@ export interface Env {
   FACEBOOK_APP_SECRET?: string;
   /** Graph version for this install, for example v26.0. Unset uses v26.0. */
   FACEBOOK_GRAPH_VERSION?: string;
-  /** Public origin of the links this Page posts. Unset uses SITE_URL. */
+  /** Public origin of the links this Page posts. Unset uses src/lib/site.ts. */
   SITE_URL?: string;
   /** Cloudflare Email Sending binding. Optional: absent until Email Sending
    *  is onboarded for aidr.today, so all use sites must guard for it. */

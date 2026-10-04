@@ -86,7 +86,10 @@ describe("Facebook Page posts", () => {
       digest
     );
     expect(result).toEqual({ ok: true, messageId: "111_222" });
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
     expect(url).toBe("https://graph.facebook.com/v26.0/100/feed");
     expect(init.method).toBe("POST");
     const headers = init.headers as Record<string, string>;
@@ -99,9 +102,12 @@ describe("Facebook Page posts", () => {
       facebookLink("https://example.test/date/2026-10-04", "en")
     );
     expect(body.link).toContain("utm_source=facebook");
+    expect(new URL(body.link).searchParams.get("lang")).toBe("en");
     expect(body.message).toContain("AI news today — 2026-10-04");
-    expect(body.message).toContain("• A lab ships a small model");
+    expect(body.message).toContain("A lab ships a small model");
+    expect(body.message).toContain("\n\nA second lab publishes the weights");
     expect(body.message).not.toMatch(/https?:\/\//);
+    expect(body.message).not.toContain("…");
     expect(JSON.stringify(body)).not.toContain("page-token");
     expect(JSON.stringify(body)).not.toContain("hotlink");
   });
@@ -110,9 +116,38 @@ describe("Facebook Page posts", () => {
     const post = buildFacebookStory(story);
     expect(post.link).toContain("utm_source=facebook");
     expect(post.link).toContain("abcd1234");
+    expect(new URL(post.link).searchParams.get("lang")).toBe("en");
     expect(post.link).not.toContain("example.com");
-    expect(post.message).toContain("A lab ships a small model");
-    expect(post.message).toContain("The weights are public");
+    expect(post.message).toBe(
+      [
+        "A lab ships a small model",
+        "The weights are public.",
+        "The benchmark is narrow.",
+      ].join("\n\n")
+    );
+  });
+
+  it("posts the full summary as paragraphs and leaves a version number intact", () => {
+    const summary = [
+      "The lab released the weights under Apache-2.0.",
+      "Training took 12 hours on one 8xH100 node.",
+      "The reported score is 3.5 points above the previous 7B checkpoint.",
+      "The paper names the data mix and the learning rate.",
+    ].join(" ");
+    const post = buildFacebookStory({
+      ...story,
+      title: "A lab ships a small model\nwith public weights",
+      summary: `${summary}\n\nNo third-party image is attached.`,
+    });
+    expect(
+      post.message.startsWith(
+        "A lab ships a small model with public weights\n\n"
+      )
+    ).toBe(true);
+    expect(post.message).toContain("3.5 points above");
+    expect(post.message).toContain("No third-party image is attached.");
+    expect(post.message).not.toContain("…");
+    expect(post.message.length).toBeGreaterThan(summary.length);
   });
 
   it("does not retry a policy block, and does retry a rate limit", async () => {

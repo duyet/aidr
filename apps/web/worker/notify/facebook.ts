@@ -1,5 +1,5 @@
 import { dayArchivePath } from "../../src/lib/day-archive.js";
-import { withSiteLang } from "../../src/lib/locale-url.js";
+import { withLang } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
@@ -21,8 +21,9 @@ import {
  *
  * The dispatcher already caps this channel the same way as the other
  * English channel: one digest per local day, and the same trending bar,
- * cap, and gap. Copy is a short summary plus one link on this install's
- * public origin. Engagement-bait lines are refused before the request.
+ * cap, and gap. The message is the full edition text or the full story
+ * summary, in paragraphs, plus one link on this install's public origin.
+ * Engagement-bait lines are refused before the request.
  *
  * A policy or auth error (and any answer we cannot trust) is recorded as
  * `ambiguous`, which the dispatcher does not retry. Repeating those calls
@@ -32,10 +33,8 @@ import {
 
 const DEFAULT_GRAPH_VERSION = "v26.0";
 const GRAPH_ORIGIN = "https://graph.facebook.com";
-const MESSAGE_CAP = 1500;
-const TITLE_CAP = 200;
-const SUMMARY_CAP = 280;
-const BULLET_CAP = 160;
+/** Graph rejects a feed `message` past this. A normal post never reaches it. */
+const MESSAGE_CAP = 63_206;
 
 /** Meta asked us to stop. Another call in the same hour makes a ban likelier. */
 const TERMINAL_CODES = new Set([10, 100, 190, 200, 368]);
@@ -94,22 +93,64 @@ export function facebookSiteOrigin(env: Env): string {
   return parsed.origin;
 }
 
-/** Day page or story permalink, attributed to the Page. */
+/** Day page or story permalink, attributed to the Page.
+ *  `withLang`, not `withSiteLang`: the latter only rewrites aidr.today, and
+ *  the default language is Vietnamese. A fork origin would otherwise post
+ *  the English digest onto the Vietnamese day page. */
 export function facebookLink(url: string, lang: Lang): string {
-  const withLang = withSiteLang(url, lang);
-  const parsed = new URL(withLang);
+  const localized = withLang(url, lang);
+  const parsed = new URL(localized);
   parsed.searchParams.set("utm_source", "facebook");
   parsed.searchParams.set("utm_medium", "social");
   return parsed.toString();
 }
 
-function clip(value: string, cap: number): string {
-  const clean = value.replace(/\s+/g, " ").trim();
-  if (clean.length <= cap) return clean;
-  return `${clean.slice(0, Math.max(1, cap - 1)).trimEnd()}…`;
+function oneLine(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
 }
 
-/** Digest body. The link attachment is the day page, so bullets stay text. */
+/** Sentences already in the text. A period inside a version or a
+ *  decimal stays put because the next word has to look like a new sentence. */
+function sentences(value: string): string[] {
+  const clean = value
+    .replace(/[ \t]*\n+[ \t]*/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+  if (!clean) return [];
+  return clean
+    .split(/(?<=[.!?])\s+(?=[A-Z0-9"“])/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** One paragraph per sentence. Blank lines already in the source stay
+ *  as paragraph breaks, and each block is still split into sentences. */
+function asParagraphs(value: string): string[] {
+  const blocks = value
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  return blocks.flatMap((block) => sentences(block));
+}
+
+/** Join paragraphs. Drop a whole trailing paragraph only if Graph would
+ *  reject the message. Never cut a sentence in half. */
+function joinParagraphs(paragraphs: string[]): string {
+  const kept: string[] = [];
+  let length = 0;
+  for (const paragraph of paragraphs) {
+    const next =
+      length === 0 ? paragraph.length : length + 2 + paragraph.length;
+    if (next > MESSAGE_CAP) break;
+    kept.push(paragraph);
+    length = next;
+  }
+  return kept.join("\n\n");
+}
+
+/** Digest body. The link attachment is the day page, so the text stays
+ *  the edition itself: one paragraph per sentence, no clipped line. */
 export function buildFacebookDigest(
   digest: DailyDigest,
   origin: string = SITE_URL
@@ -121,21 +162,19 @@ export function buildFacebookDigest(
     digest.lang === "en"
       ? `AI news today — ${digest.date}`
       : `AI hôm nay — ${digest.date}`;
-  const lines = [heading, ""];
+  const paragraphs = [heading];
   for (const bullet of digest.bullets) {
-    const text = clip(bullet.text, BULLET_CAP);
-    if (!text) continue;
-    lines.push(`• ${text}`);
+    paragraphs.push(...asParagraphs(bullet.text));
   }
-  const message = clip(lines.join("\n"), MESSAGE_CAP);
   const link = facebookLink(
     new URL(dayArchivePath(digest.date), origin).toString(),
     digest.lang
   );
-  return { message, link };
+  return { message: joinParagraphs(paragraphs), link };
 }
 
-/** One trending story. The link attachment is that story, not the publisher. */
+/** One trending story. Title, then the full summary as paragraphs.
+ *  The link attachment is that story, not the publisher. */
 export function buildFacebookStory(
   story: StoryPayload,
   origin: string = SITE_URL
@@ -143,17 +182,13 @@ export function buildFacebookStory(
   message: string;
   link: string;
 } {
-  const parts = [clip(story.title, TITLE_CAP)];
-  if (story.summary) {
-    const summary = clip(story.summary, SUMMARY_CAP);
-    if (summary) parts.push(summary);
-  }
-  const message = clip(parts.join("\n\n"), MESSAGE_CAP);
+  const paragraphs = [oneLine(story.title)].filter(Boolean);
+  if (story.summary) paragraphs.push(...asParagraphs(story.summary));
   const link = facebookLink(
     new URL(storyPath(story, story.lang), origin).toString(),
     story.lang
   );
-  return { message, link };
+  return { message: joinParagraphs(paragraphs), link };
 }
 
 function redact(value: string, token: string): string {
