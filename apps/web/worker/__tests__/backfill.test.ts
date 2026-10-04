@@ -319,11 +319,12 @@ describe("buildMissingTranslationQuery", () => {
 });
 
 describe("buildUnscoredItemsQuery", () => {
-  it("gates on published items with empty category and tags", () => {
+  it("selects published items that never received an LLM score", () => {
     const sql = buildUnscoredItemsQuery(15);
     expect(sql).toContain("status = 'published'");
-    expect(sql).toMatch(/category IS NULL OR category = ''/);
-    expect(sql).toMatch(/tags = '\[]'/);
+    expect(sql).toContain("llm_relevance IS NULL");
+    // Merge fills tags without a score. Empty tags would hide those rows.
+    expect(sql).not.toContain("tags = '[]'");
   });
 
   it("orders most-recent-first and respects the given limit", () => {

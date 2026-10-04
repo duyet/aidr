@@ -84,15 +84,15 @@ export function buildMissingTranslationQuery(
           LIMIT ${limit}`;
 }
 
-/** Published items that never got a score (empty tags and no category).
- * Most-recent first so today's feed heals before the long tail. */
+/** Published items that never got an LLM score (`llm_relevance` still null).
+ * Merge writes tags onto a canonical and does not set the score columns, so
+ * an empty-tags check never sees those rows again. Most-recent first. */
 export function buildUnscoredItemsQuery(limit = BACKFILL_SCORE_CAP): string {
   return `SELECT id, title, summary, published_at,
                  ${RANK_SIGNAL_COLUMNS}
           FROM items ${RANK_SIGNAL_JOIN}
           WHERE status = 'published'
-            AND (category IS NULL OR category = '')
-            AND (tags IS NULL OR tags = '' OR tags = '[]')
+            AND llm_relevance IS NULL
           ORDER BY published_at DESC
           LIMIT ${limit}`;
 }
