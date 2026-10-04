@@ -91,13 +91,17 @@ export function StoryThumb({
   lang?: Lang;
   variant?: "feed" | "card";
 }): ReactElement {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  // Keep every URL that already failed. A later failure must not bring an
+  // earlier one back, or the publisher image and the OG card load forever.
+  const [failedSrcs, setFailedSrcs] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
   const [open, setOpen] = useState(false);
   const labelId = useId();
   const url = resizeCdnImageUrl(src, variant === "card" ? "card" : "thumb");
-  const remote = url && url !== failedSrc ? url : null;
+  const remote = url && !failedSrcs.has(url) ? url : null;
   const og = storyOgThumbUrl(itemId, lang);
-  const ogSrc = og && og !== failedSrc ? og : null;
+  const ogSrc = og && !failedSrcs.has(og) ? og : null;
   const showSrc = remote ?? ogSrc ?? STORY_THUMB_PLACEHOLDER;
   const zoomSrc = remote ? (resizeCdnImageUrl(src, "full") ?? remote) : ogSrc;
 
@@ -135,7 +139,13 @@ export function StoryThumb({
       aria-hidden={alt || zoomSrc ? undefined : true}
       onError={(event) => {
         if (showSrc !== STORY_THUMB_PLACEHOLDER) {
-          setFailedSrc(showSrc);
+          const broken = showSrc;
+          setFailedSrcs((current) => {
+            if (current.has(broken)) return current;
+            const next = new Set(current);
+            next.add(broken);
+            return next;
+          });
           return;
         }
         event.currentTarget.style.visibility = "hidden";
