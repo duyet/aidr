@@ -15,7 +15,12 @@ describe("model logos", () => {
     expect(modelLogoUrl("@preset/aidr")).toBe(ANYROUTER_LOGO_URL);
     expect(modelLogoUrl("typesafe/jev")).toBe(JEV_LOGO_URL);
     expect(modelLogoUrl("poolside/laguna-s-2.1")).toBe(POOLSIDE_LOGO_URL);
+    // Vendor families stay null so the UI can draw its own monogram.
     expect(modelLogoUrl("google/gemini-3")).toBeNull();
+    expect(modelLogoUrl("google/gemma-4-31b")).toBeNull();
+    expect(modelLogoUrl("google/gemma-4-26b-a4b-it")).toBeNull();
+    expect(modelLogoUrl("z-ai/glm-4.6")).toBeNull();
+    expect(modelLogoUrl("stealth/space-bunny-alpha")).toBeNull();
     expect(
       logosForModels([
         "typesafe/jev",

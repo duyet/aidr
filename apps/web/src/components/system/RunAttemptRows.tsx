@@ -1,6 +1,7 @@
 import { anyrouterModelUrl, isValidAnyrouterModel } from "../../lib/anyrouter";
 import { formatTokens } from "../../lib/format";
 import type { LlmCallRow } from "../../lib/system-queries";
+import { ModelLogo } from "./ModelLogo";
 import {
   type ChainAttempt,
   formatCostUsd,
@@ -43,8 +44,7 @@ const COPY = {
 
 function ModelHop({ id }: { id: string }) {
   const label = formatSafeDetail(id, 160);
-  if (!isValidAnyrouterModel(id)) return <span title={label}>{label}</span>;
-  return (
+  const name = isValidAnyrouterModel(id) ? (
     <a
       href={anyrouterModelUrl(id)}
       target="_blank"
@@ -54,6 +54,14 @@ function ModelHop({ id }: { id: string }) {
     >
       {label}
     </a>
+  ) : (
+    <span title={label}>{label}</span>
+  );
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <ModelLogo model={id} />
+      {name}
+    </span>
   );
 }
 
