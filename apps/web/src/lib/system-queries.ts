@@ -452,13 +452,11 @@ export function getModelChains(env: {
 const SQL = {
   itemsCount: "SELECT COUNT(*) AS c FROM items",
   translationsCount: "SELECT COUNT(*) AS c FROM translations",
-  // Alias `n`, not `c`, so a test stub for translationsCount cannot swallow
-  // these narrower counts.
   viTitles:
-    "SELECT COUNT(*) AS n FROM translations WHERE lang = 'vi' AND title IS NOT NULL AND TRIM(title) != ''",
+    "SELECT COUNT(*) AS c FROM translations WHERE lang = 'vi' AND title IS NOT NULL AND TRIM(title) != ''",
   viSummaries:
-    "SELECT COUNT(*) AS n FROM translations WHERE lang = 'vi' AND summary IS NOT NULL AND TRIM(summary) != ''",
-  contentEdits: "SELECT COUNT(*) AS n FROM item_content_log",
+    "SELECT COUNT(*) AS c FROM translations WHERE lang = 'vi' AND summary IS NOT NULL AND TRIM(summary) != ''",
+  contentEdits: "SELECT COUNT(*) AS c FROM item_content_log",
   tldrCount: "SELECT COUNT(*) AS c FROM tldr_snapshots",
   subscribersCount: "SELECT COUNT(*) AS c FROM subscribers",
   sourcesCount: "SELECT COUNT(*) AS c FROM sources",
@@ -615,8 +613,21 @@ async function loadDatabaseBytes(db: DbReader): Promise<number | null> {
   }
 }
 
-function countN(res: { results?: unknown[] } | undefined): number {
-  return firstRow<{ n: number | null }>(res)?.n ?? 0;
+type NamedStatement = [string, D1PreparedStatement];
+
+/** Names stay on the statements. A probe-gated insert then cannot move a
+ * later count onto the wrong row of a variable-length batch. */
+async function batchNamed(
+  db: DbReader,
+  entries: readonly NamedStatement[]
+): Promise<Record<string, { results?: unknown[] } | undefined>> {
+  const rows = await db.batch(entries.map(([, statement]) => statement));
+  const out: Record<string, { results?: unknown[] } | undefined> = {};
+  for (let i = 0; i < entries.length; i++) {
+    const name = entries[i]?.[0];
+    if (name) out[name] = rows[i];
+  }
+  return out;
 }
 
 async function probeLlmRunIdentity(db: DbReader): Promise<boolean> {
@@ -987,56 +998,55 @@ export async function loadSystemOverview(
 ): Promise<SystemOverview> {
   const [{ hasTokens, hasRunStats, hasContentLog }, databaseBytes] =
     await Promise.all([probeSystemTables(db), loadDatabaseBytes(db)]);
-  const stmts = [
-    db.prepare(SQL.itemsCount),
-    db.prepare(SQL.translationsCount),
-    db.prepare(SQL.tldrCount),
-    db.prepare(SQL.subscribersCount),
-    db.prepare(SQL.sourcesCount),
-    db.prepare(SQL.itemSourcesCount),
-    db.prepare(runsSelectSql(hasRunStats, 30)),
-    db.prepare(SQL.latestTldr),
+  const entries: NamedStatement[] = [
+    ["items", db.prepare(SQL.itemsCount)],
+    ["translations", db.prepare(SQL.translationsCount)],
+    ["tldr", db.prepare(SQL.tldrCount)],
+    ["subscribers", db.prepare(SQL.subscribersCount)],
+    ["sources", db.prepare(SQL.sourcesCount)],
+    ["itemSources", db.prepare(SQL.itemSourcesCount)],
+    ["runs", db.prepare(runsSelectSql(hasRunStats, 30))],
+    ["latestTldr", db.prepare(SQL.latestTldr)],
   ];
   if (hasTokens) {
-    stmts.push(db.prepare(SQL.tokenTotal), db.prepare(SQL.tokenAvg));
+    entries.push(
+      ["tokenTotal", db.prepare(SQL.tokenTotal)],
+      ["tokenAvg", db.prepare(SQL.tokenAvg)]
+    );
   }
-  const catalogAt = stmts.length;
-  stmts.push(db.prepare(SQL.viTitles), db.prepare(SQL.viSummaries));
-  if (hasContentLog) stmts.push(db.prepare(SQL.contentEdits));
-  const batch = await db.batch(stmts);
-  const itemsTotal = batch[0];
-  const translationsTotal = batch[1];
-  const tldrTotal = batch[2];
-  const subscribersTotal = batch[3];
-  const sourcesTotal = batch[4];
-  const itemSourcesTotal = batch[5];
-  const runs = batch[6];
-  const latestTldr = batch[7];
-  const tokenTotalRes = hasTokens ? batch[8] : undefined;
-  const tokenAvgRes = hasTokens ? batch[9] : undefined;
+  entries.push(
+    ["viTitles", db.prepare(SQL.viTitles)],
+    ["viSummaries", db.prepare(SQL.viSummaries)]
+  );
+  if (hasContentLog) {
+    entries.push(["contentEdits", db.prepare(SQL.contentEdits)]);
+  }
+  const row = await batchNamed(db, entries);
 
-  const runRows = resultRows<RunDbRow>(runs).map(normalizeRunRow);
-  const tokenTotal = firstRow<{ s: number | null }>(tokenTotalRes)?.s ?? 0;
+  const runRows = resultRows<RunDbRow>(row.runs).map(normalizeRunRow);
+  const tokenTotal = firstRow<{ s: number | null }>(row.tokenTotal)?.s ?? 0;
   const tokenAvg = Math.round(
-    firstRow<{ a: number | null }>(tokenAvgRes)?.a ?? 0
+    firstRow<{ a: number | null }>(row.tokenAvg)?.a ?? 0
   );
 
   return {
     totals: {
-      items: firstRow<{ c: number }>(itemsTotal)?.c ?? 0,
-      translations: firstRow<{ c: number }>(translationsTotal)?.c ?? 0,
-      tldrSnapshots: firstRow<{ c: number }>(tldrTotal)?.c ?? 0,
-      subscribers: firstRow<{ c: number }>(subscribersTotal)?.c ?? 0,
-      sources: firstRow<{ c: number }>(sourcesTotal)?.c ?? 0,
-      itemSourcesRows: firstRow<{ c: number }>(itemSourcesTotal)?.c ?? 0,
-      viTitles: countN(batch[catalogAt]),
-      viSummaries: countN(batch[catalogAt + 1]),
-      contentEdits: hasContentLog ? countN(batch[catalogAt + 2]) : 0,
+      items: firstRow<{ c: number }>(row.items)?.c ?? 0,
+      translations: firstRow<{ c: number }>(row.translations)?.c ?? 0,
+      tldrSnapshots: firstRow<{ c: number }>(row.tldr)?.c ?? 0,
+      subscribers: firstRow<{ c: number }>(row.subscribers)?.c ?? 0,
+      sources: firstRow<{ c: number }>(row.sources)?.c ?? 0,
+      itemSourcesRows: firstRow<{ c: number }>(row.itemSources)?.c ?? 0,
+      viTitles: firstRow<{ c: number }>(row.viTitles)?.c ?? 0,
+      viSummaries: firstRow<{ c: number }>(row.viSummaries)?.c ?? 0,
+      contentEdits: hasContentLog
+        ? (firstRow<{ c: number }>(row.contentEdits)?.c ?? 0)
+        : 0,
     },
     tokens: { total: tokenTotal, avgPerItem: tokenAvg },
     runsToday: countRunsToday(runRows),
     lastRun: runRows[0] ?? null,
-    latestTldrDate: firstRow<{ date: string }>(latestTldr)?.date ?? null,
+    latestTldrDate: firstRow<{ date: string }>(row.latestTldr)?.date ?? null,
     databaseBytes,
   };
 }
@@ -1362,58 +1372,46 @@ export async function loadSystemStats(
     loadDatabaseBytes(db),
   ]);
 
-  const stmts = [
-    db.prepare(SQL.itemsCount),
-    db.prepare(SQL.translationsCount),
-    db.prepare(SQL.tldrCount),
-    db.prepare(SQL.subscribersCount),
-    db.prepare(SQL.sourcesCount),
-    db.prepare(SQL.itemSourcesCount),
-    db.prepare(SQL.byStatus),
-    db.prepare(SQL.bySource),
-    db.prepare(SQL.byCategory),
-    db.prepare(SQL.itemsPerDay),
-    db.prepare(runsSelectSql(hasRunStats, 30)),
-    db.prepare(SQL.latestTldr),
-    db.prepare(SQL.ingestSources),
+  const entries: NamedStatement[] = [
+    ["items", db.prepare(SQL.itemsCount)],
+    ["translations", db.prepare(SQL.translationsCount)],
+    ["tldr", db.prepare(SQL.tldrCount)],
+    ["subscribers", db.prepare(SQL.subscribersCount)],
+    ["sources", db.prepare(SQL.sourcesCount)],
+    ["itemSources", db.prepare(SQL.itemSourcesCount)],
+    ["byStatus", db.prepare(SQL.byStatus)],
+    ["bySource", db.prepare(SQL.bySource)],
+    ["byCategory", db.prepare(SQL.byCategory)],
+    ["perDay", db.prepare(SQL.itemsPerDay)],
+    ["runs", db.prepare(runsSelectSql(hasRunStats, 30))],
+    ["latestTldr", db.prepare(SQL.latestTldr)],
+    ["ingestSources", db.prepare(SQL.ingestSources)],
   ];
   if (hasTokens) {
-    stmts.push(
-      db.prepare(SQL.tokenTotal),
-      db.prepare(SQL.tokenAvg),
-      db.prepare(SQL.tokenPerDay)
+    entries.push(
+      ["tokenTotal", db.prepare(SQL.tokenTotal)],
+      ["tokenAvg", db.prepare(SQL.tokenAvg)],
+      ["tokenPerDay", db.prepare(SQL.tokenPerDay)]
     );
   }
-  const catalogAt = stmts.length;
-  stmts.push(db.prepare(SQL.viTitles), db.prepare(SQL.viSummaries));
-  if (hasContentLog) stmts.push(db.prepare(SQL.contentEdits));
-  const batch = await db.batch(stmts);
-  const itemsTotal = batch[0];
-  const translationsTotal = batch[1];
-  const tldrTotal = batch[2];
-  const subscribersTotal = batch[3];
-  const sourcesTotal = batch[4];
-  const itemSourcesTotal = batch[5];
-  const byStatus = batch[6];
-  const bySource = batch[7];
-  const byCategory = batch[8];
-  const perDay = batch[9];
-  const runs = batch[10];
-  const latestTldr = batch[11];
-  const sourceRows = batch[12];
-  const tokenTotalRes = hasTokens ? batch[13] : undefined;
-  const tokenAvgRes = hasTokens ? batch[14] : undefined;
-  const tokenPerDayRes = hasTokens ? batch[15] : undefined;
+  entries.push(
+    ["viTitles", db.prepare(SQL.viTitles)],
+    ["viSummaries", db.prepare(SQL.viSummaries)]
+  );
+  if (hasContentLog) {
+    entries.push(["contentEdits", db.prepare(SQL.contentEdits)]);
+  }
+  const row = await batchNamed(db, entries);
 
-  const tokenTotal = firstRow<{ s: number | null }>(tokenTotalRes)?.s ?? 0;
+  const tokenTotal = firstRow<{ s: number | null }>(row.tokenTotal)?.s ?? 0;
   const tokenAvg = Math.round(
-    firstRow<{ a: number | null }>(tokenAvgRes)?.a ?? 0
+    firstRow<{ a: number | null }>(row.tokenAvg)?.a ?? 0
   );
   const tokenPerDay = resultRows<{ date: string; count: number | null }>(
-    tokenPerDayRes
+    row.tokenPerDay
   ).map((r) => ({ date: r.date, count: r.count ?? 0 }));
 
-  const runRowsRaw = resultRows<RunDbRow>(runs).map(normalizeRunRow);
+  const runRowsRaw = resultRows<RunDbRow>(row.runs).map(normalizeRunRow);
   const runsToday = countRunsToday(runRowsRaw);
 
   let llmCallsPerDay: LlmDayTaskCount[] = [];
@@ -1442,21 +1440,23 @@ export async function loadSystemStats(
 
   return {
     totals: {
-      items: firstRow<{ c: number }>(itemsTotal)?.c ?? 0,
-      translations: firstRow<{ c: number }>(translationsTotal)?.c ?? 0,
-      tldrSnapshots: firstRow<{ c: number }>(tldrTotal)?.c ?? 0,
-      subscribers: firstRow<{ c: number }>(subscribersTotal)?.c ?? 0,
-      sources: firstRow<{ c: number }>(sourcesTotal)?.c ?? 0,
-      itemSourcesRows: firstRow<{ c: number }>(itemSourcesTotal)?.c ?? 0,
-      viTitles: countN(batch[catalogAt]),
-      viSummaries: countN(batch[catalogAt + 1]),
-      contentEdits: hasContentLog ? countN(batch[catalogAt + 2]) : 0,
+      items: firstRow<{ c: number }>(row.items)?.c ?? 0,
+      translations: firstRow<{ c: number }>(row.translations)?.c ?? 0,
+      tldrSnapshots: firstRow<{ c: number }>(row.tldr)?.c ?? 0,
+      subscribers: firstRow<{ c: number }>(row.subscribers)?.c ?? 0,
+      sources: firstRow<{ c: number }>(row.sources)?.c ?? 0,
+      itemSourcesRows: firstRow<{ c: number }>(row.itemSources)?.c ?? 0,
+      viTitles: firstRow<{ c: number }>(row.viTitles)?.c ?? 0,
+      viSummaries: firstRow<{ c: number }>(row.viSummaries)?.c ?? 0,
+      contentEdits: hasContentLog
+        ? (firstRow<{ c: number }>(row.contentEdits)?.c ?? 0)
+        : 0,
     },
     databaseBytes,
-    itemsByStatus: resultRows<NamedCount>(byStatus),
-    itemsBySource: resultRows<NamedCount>(bySource),
-    itemsByCategory: resultRows<NamedCount>(byCategory),
-    itemsPerDay: resultRows<DayCount>(perDay),
+    itemsByStatus: resultRows<NamedCount>(row.byStatus),
+    itemsBySource: resultRows<NamedCount>(row.bySource),
+    itemsByCategory: resultRows<NamedCount>(row.byCategory),
+    itemsPerDay: resultRows<DayCount>(row.perDay),
     tokens: {
       total: tokenTotal,
       avgPerItem: tokenAvg,
@@ -1465,12 +1465,11 @@ export async function loadSystemStats(
     runs: runRows,
     runsToday,
     lastRun: runRows[0] ?? null,
-    latestTldrDate: firstRow<{ date: string }>(latestTldr)?.date ?? null,
+    latestTldrDate: firstRow<{ date: string }>(row.latestTldr)?.date ?? null,
     models: getModelChains(env),
     llmCallsPerDay,
-    ingestSources:
-      resultRows<Parameters<typeof mapSourceRow>[0]>(sourceRows).map(
-        mapSourceRow
-      ),
+    ingestSources: resultRows<Parameters<typeof mapSourceRow>[0]>(
+      row.ingestSources
+    ).map(mapSourceRow),
   };
 }
