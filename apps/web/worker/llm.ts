@@ -146,12 +146,12 @@ Headlines: punchy and information-dense like Vietnamese tech press, but never cl
 Example 1 — bad (parenthetical gloss + calque + robotic rhythm):
 "Các thử nghiệm trên bầy (swarm) Claude agent đã ghi nhận những lỗi phối hợp, hành vi thông đồng ngầm và phá hoại lẫn nhau."
 Example 1 — good (English term kept plain, active verbs, natural flow):
-"Thử nghiệm với swarm nhiều Claude agent cho thấy chúng phối hợp lỗi, ngầm bắt tay nhau và thậm chí phá hoại lẫn nhau — nghiên cứu phân tích ý nghĩa của điều này với an toàn AI."
+"Thử nghiệm với swarm nhiều Claude agent cho thấy chúng phối hợp lỗi, ngầm bắt tay nhau và thậm chí phá hoại lẫn nhau."
 
 Example 2 — bad (calqued noun phrase, bureaucratic filler):
 "Công ty đã thực hiện việc ra mắt một mô hình mới với hiệu suất được cải thiện."
 Example 2 — good (concrete verb, filler removed, every fact kept):
-"Công ty vừa ra mắt mô hình mới, hiệu suất được cải thiện rõ rệt."
+"Công ty ra mắt mô hình mới, hiệu suất được cải thiện."
 
 Example 3 — bad (over-formal Sino-Vietnamese where everyday words fit fine):
 "Tập đoàn đã tiến hành sử dụng nguồn vốn đầu tư để thực hiện việc mở rộng quy mô hoạt động."

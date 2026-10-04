@@ -1951,6 +1951,13 @@ describe("setLlmCallLogger", () => {
 });
 
 describe("VI_STYLE", () => {
+  it("good examples restate the bad line and do not add a fact", () => {
+    expect(VI_STYLE).toContain("cho thấy chúng phối hợp lỗi");
+    expect(VI_STYLE).not.toContain("an toàn AI");
+    expect(VI_STYLE).not.toContain("rõ rệt");
+    expect(VI_STYLE).toContain("hiệu suất được cải thiện.");
+  });
+
   it("prefers everyday Vietnamese over Sino-Vietnamese formalese", () => {
     expect(VI_STYLE).toContain("sử dụng");
     expect(VI_STYLE).toContain("dùng");
