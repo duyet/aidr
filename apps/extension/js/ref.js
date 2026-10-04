@@ -55,7 +55,9 @@ export function tagSiteLinks(root, contentBySelector = {}, lang = "vi") {
   if (!root?.querySelectorAll) return;
   const defaults = {
     "a.brand": "brand",
-    "a#submit-btn": "submit",
+    "a#contribute-btn": "contribute",
+    "a#phone-contribute-link": "contribute",
+    "a#tldr-updated": "data",
     "a#sign-in-btn": "sign_in",
     "a.sign-in-btn": "sign_in",
     "form.search": "search",

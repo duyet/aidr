@@ -16,5 +16,10 @@ with an image model.
 - Marquee: 1400×560
 - Store icon: 128×128 (package already ships `icons/icon128.png`)
 
-Drop captured PNGs here when you have them. Upload them in the CWS
-dashboard, not inside the zip.
+Captured for the 0.1.20 update, from a real unpacked new tab:
+
+- `screenshot-light-1280x800.png`
+- `screenshot-dark-1280x800.png`
+- `promo-440x280.png` — the light frame scaled to 440×280
+
+Upload them in the CWS dashboard, not inside the zip.

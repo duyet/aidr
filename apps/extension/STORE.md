@@ -1,15 +1,14 @@
-# Chrome Web Store — first submit packet
+# Chrome Web Store — update packet
 
-Do **not** invent a store URL until the item is published. Unpacked zips
-never auto-update; CWS installs do (Chrome checks Google's update
-service). Do **not** set `update_url` in `manifest.json`.
+This is an update to the published item
+https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg.
+Unpacked zips never auto-update; CWS installs do (Chrome checks Google's
+update service). Do **not** set `update_url` in `manifest.json`.
 
-Dashboard: https://chrome.google.com/webstore/devconsole  
-Publisher account: one-time **$5** fee + **2-step verification** required.
+Dashboard: https://chrome.google.com/webstore/devconsole
 
-After publish, set `EXTENSION_STORE_URL` in
-`apps/web/src/lib/extension-release.ts` so `/api/extension` can point
-users at the listing.
+`EXTENSION_STORE_URL` in `apps/web/src/lib/extension-release.ts` already
+points at that listing. Leave it.
 
 ---
 
@@ -23,12 +22,12 @@ pnpm --filter @aidr/web pack-cws
 | | |
 |---|---|
 | File | `apps/extension/dist/aidr-cws.zip` |
-| Version | `0.1.16` (must match `manifest.json` + `package.json`) |
+| Version | `0.1.20` (must match `manifest.json` + `package.json` after the release PR) |
 | Layout | `manifest.json` at zip **root** (not under `aidr/`) |
 | Store flavor | no `optional_host_permissions`, `connect-src` = `aidr.today` only |
 | Do **not** upload | `https://aidr.today/aidr.zip` / `public/aidr.zip` (nested Load unpacked zip) |
 
-Visibility for first submit: **Unlisted** (test install URL) or **Public**.
+Visibility: keep the existing listing **Public**. This upload is an update, not a new item.
 
 ---
 
@@ -60,9 +59,10 @@ aidr replaces Chrome's new tab with today's AI;DR and ranked AI stories from aid
 Open a new tab and see the same public digest as the website: numbered AI;DR summaries, category chips, trending topics, and ranked story rows. No account. No ads. No browsing-history access.
 
 What you get
-• Today's AI;DR digest from aidr.today
-• Day-grouped top stories with tags and thumbnails
+• Today's AI;DR digest from aidr.today, opened on that day's date
+• Day-grouped top stories with tags, thumbnails, and reader votes
 • Light / dark / system theme, English or Vietnamese
+• Intro video, loaded only after you press play
 • Offline paint from a short local cache of the last digest
 
 How it works
@@ -81,9 +81,10 @@ aidr thay tab mới của Chrome bằng bản tin AI;DR hôm nay và tin AI đư
 Mở thẻ mới để xem cùng bản tin công khai như trên website: tóm tắt AI;DR có đánh số, chip chuyên mục, chủ đề đang nổi, và danh sách tin kèm điểm/bình luận. Không tài khoản. Không quảng cáo. Không truy cập lịch sử duyệt web.
 
 Bạn nhận được
-• Bản tin AI;DR hôm nay từ aidr.today
-• Tin nổi bật theo ngày kèm thẻ và ảnh thu nhỏ
+• Bản tin AI;DR hôm nay từ aidr.today, mở đầu bằng ngày của bản tin
+• Tin nổi bật theo ngày kèm thẻ, ảnh thu nhỏ, và số phiếu bạn đọc
 • Giao diện sáng / tối / theo hệ thống, tiếng Anh hoặc tiếng Việt
+• Video giới thiệu, chỉ tải sau khi bạn bấm xem
 • Hiển thị offline từ bộ nhớ đệm ngắn của bản tin gần nhất
 
 Cách hoạt động
@@ -166,7 +167,7 @@ Certify honestly; must match https://aidr.today/privacy.
 | Transferred for unrelated purpose | **No** |
 | Limited Use certification | **Yes** — collection only for the single purpose |
 
-Data handling note for reviewers: settings + digest cache stay in `chrome.storage` on-device. Network calls go only to `https://aidr.today` over HTTPS.
+Data handling note for reviewers: settings + digest cache stay in `chrome.storage` on-device. The digest is fetched from `https://aidr.today` over HTTPS. Opening the intro video loads a YouTube embed from `https://www.youtube-nocookie.com` only after the reader presses play.
 
 ---
 
@@ -177,27 +178,25 @@ See [`store/README.md`](./store/README.md). Capture from a real Load unpacked ne
 | Asset | Size | Status |
 |---|---|---|
 | Store icon | 128×128 | Ready — `icons/icon128.png` (also in package) |
-| Screenshot(s) | **1280×800** (1–5, square corners, full bleed) | **You must capture** → drop in `store/` |
-| Small promo tile | **440×280** | **You must create/capture** → drop in `store/` |
-| Marquee (optional) | 1400×560 | Optional |
+| Screenshot, light | **1280×800** | Ready — `store/screenshot-light-1280x800.png` |
+| Screenshot, dark | **1280×800** | Ready — `store/screenshot-dark-1280x800.png` |
+| Small promo tile | **440×280** | Ready — `store/promo-440x280.png` (scaled from the light capture) |
+| Marquee (optional) | 1400×560 | Skip |
 
-Suggested screenshot frames:
-1. New tab with AI;DR + story list (light theme)
-2. Same view, dark theme
-3. Settings panel open (theme / language / sections)
+Both screenshots are headless Chrome frames of the unpacked new tab with the live 2026-10-04 digest. The promo is that light frame scaled to the store tile. Do not replace them with generated images. Settings panel is not included.
 
 ---
 
 ## Account & publish checklist
 
-1. [ ] Chrome Web Store developer account ($5) + 2SV enabled
-2. [ ] Capture ≥1 screenshot 1280×800 + small tile 440×280 into `apps/extension/store/`
-3. [ ] `pnpm --filter @aidr/web pack-cws` → upload `apps/extension/dist/aidr-cws.zip`
-4. [ ] Paste listing fields above (EN; add VI locale in dashboard if offered)
-5. [ ] Paste single purpose + permission justifications
-6. [ ] Privacy practices + policy URL
-7. [ ] Submit for review (Unlisted first is safer)
-8. [ ] After live: set `EXTENSION_STORE_URL` and redeploy web
+1. [x] Chrome Web Store item already published (account + 2SV already done)
+2. [x] Screenshots 1280×800 (light + dark) and promo 440×280 in `apps/extension/store/`
+3. [ ] After `aidr-v0.1.20` exists: `pnpm --filter @aidr/web pack-cws` → upload `apps/extension/dist/aidr-cws.zip` on the existing item (do not upload `aidr.zip`)
+4. [ ] Paste listing fields above if the dashboard copy is still the older text (EN; add VI locale if offered)
+5. [ ] Confirm single purpose + permission justifications still match
+6. [ ] Confirm privacy practices. The new sentence is the intro video on `youtube-nocookie.com`, only after play
+7. [ ] Submit the update for review on the existing public item
+8. [x] `EXTENSION_STORE_URL` already points at the listing. Do not clear it
 
 ---
 

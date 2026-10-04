@@ -54,14 +54,14 @@ function expectedMap(digest) {
     brandMark: "AI;DR",
     brandTagline: "Hôm nay AI có gì mới?",
     searchPlaceholder: "Tìm kiếm...",
-    submit: "Gửi bài",
+    submit: "Contribute",
     telegramPresent: true,
     headerMenuPresent: true,
     headerMenuItems: [
       "Telegram Channel (Vietnamese)",
       "Telegram Channel (English)",
       "Email Subscription",
-      "Submit",
+      "Contribute",
       "Data Analytics",
       "Algorithms",
       "About",
@@ -131,7 +131,7 @@ function featureMapFromHtml(html, js = "") {
       "Telegram Channel (Vietnamese)",
       "Telegram Channel (English)",
       "Email Subscription",
-      "Submit",
+      "Contribute",
       "Data Analytics",
       "Algorithms",
       "About",
@@ -143,15 +143,18 @@ function featureMapFromHtml(html, js = "") {
     signInPresent: /id="sign-in-btn"/.test(html) || /Sign in/.test(html),
     phoneMenuPresent: /id="phone-menu"/.test(html),
     profileAbsent: !/id="profile"/.test(html) && !/Clerk/.test(html),
-    submit: pick(/id="submit-btn"[^>]*aria-label="([^"]+)"/),
+    submit: pick(/id="contribute-btn"[^>]*aria-label="([^"]+)"/),
     langSelected: /data-lang="vi"[^>]*aria-pressed="true"/.test(html)
       ? "vi"
       : "en",
     allChip: chips[0] || "",
     categoryCount: chips.length,
     trendingCount: trends.length,
-    aidrHeading: /<h2>\s*AI;DR\s*<\/h2>/.test(html),
-    aidrDate: pick(/id="tldr-meta"[^>]*>([\s\S]*?)<\/span>/),
+    aidrHeading:
+      /class="tldr-day"/.test(html) || /<h2>\s*AI;DR\s*<\/h2>/.test(html),
+    aidrDate:
+      pick(/data-snapshot-date="([^"]+)"/) ||
+      pick(/id="tldr-meta"[^>]*>([\s\S]*?)<\/span>/),
     layoutA: /data-aidr-layout="a"/.test(html),
     columns: lists,
     thumbs,

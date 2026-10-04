@@ -135,6 +135,11 @@ const WEBSITE_ENTRIES: ChangelogEntry[] = [
 
 const EXTENSION_ENTRIES: ChangelogEntry[] = [
   {
+    date: "2026-10",
+    en: "The new tab opens on the day’s date, previews that day’s card, and links each day to its archive. The header can play the intro video, and each story shows its reader votes.",
+    vi: "Tab mới mở đầu bằng ngày của bản tin, xem trước ảnh tóm tắt, và mỗi ngày dẫn tới trang lưu trữ. Header có nút xem video giới thiệu, và mỗi tin hiện số phiếu của bạn đọc.",
+  },
+  {
     date: "2026-09",
     en: "New tab matches the live homepage: day-grouped stories, header actions, footer, and the same reader fonts.",
     vi: "Tab mới khớp trang chủ: tin theo ngày, nút trên header, footer, và cùng phông chữ đọc tin.",

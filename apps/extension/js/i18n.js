@@ -63,6 +63,9 @@ const COPY = {
     vi: "Tiếng Việt",
     en: "English",
     open: "Mở",
+    introOpen: "Xem video giới thiệu AI;DR",
+    introMenu: "Video giới thiệu",
+    introTitle: "AI;DR là gì?",
   },
   en: {
     lede: "What's happening in AI today?",
@@ -127,6 +130,9 @@ const COPY = {
     vi: "Vietnamese",
     en: "English",
     open: "Open",
+    introOpen: "Watch the AI;DR intro video",
+    introMenu: "Intro video",
+    introTitle: "What is AI;DR?",
   },
 };
 

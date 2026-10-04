@@ -253,12 +253,19 @@ function applyChrome(settings) {
     const node = $(id);
     if (node) node.placeholder = searchPh;
   }
-  const submitBtn = $("submit-btn");
-  if (submitBtn) {
-    const label = t(settings, "submit");
-    submitBtn.title = label;
-    submitBtn.setAttribute("aria-label", label);
+  const introBtn = $("intro-video-btn");
+  if (introBtn) {
+    const label = t(settings, "introOpen");
+    introBtn.title = label;
+    introBtn.setAttribute("aria-label", label);
   }
+  const introMenu = $("phone-intro-label");
+  if (introMenu) introMenu.textContent = t(settings, "introMenu");
+  const introTitle = t(settings, "introTitle");
+  const introHeading = $("intro-dialog-title");
+  if (introHeading) introHeading.textContent = introTitle;
+  const introFrame = $("intro-dialog-frame");
+  if (introFrame) introFrame.title = introTitle;
   $("trending-label").textContent = t(settings, "trending");
   for (const id of ["open-settings", "open-settings-compact"]) {
     const node = $(id);
@@ -340,6 +347,177 @@ function tldrShown(bullets, settings) {
   return bullets.slice(0, 8);
 }
 
+const SNAPSHOT_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const INTRO_VIDEO_ID = "tynoWx03zDc";
+
+function dayOgDateParts(date, lang) {
+  if (!SNAPSHOT_DATE.test(date)) return null;
+  const parsed = new Date(`${date}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const locale = lang === "vi" ? "vi-VN" : "en-US";
+  const fmt = (options) =>
+    new Intl.DateTimeFormat(locale, { timeZone: "UTC", ...options }).format(
+      parsed
+    );
+  return {
+    day: date.slice(8, 10),
+    weekday: fmt({ weekday: "long" }).toUpperCase(),
+    monthYear:
+      lang === "vi"
+        ? `THÁNG ${Number(date.slice(5, 7))} ${date.slice(0, 4)}`
+        : fmt({ month: "long", year: "numeric" }).toUpperCase(),
+  };
+}
+
+function dayPageUrl(date, lang) {
+  return withExtRef(`https://aidr.today/date/${date}`, "day", lang);
+}
+
+function dayCardImageUrl(date, lang) {
+  const url = new URL(`https://aidr.today/api/og/date/${date}.png`);
+  url.searchParams.set("lang", lang);
+  return url.toString();
+}
+
+function renderTldrMasthead(settings, date) {
+  const title = $("tldr-title");
+  const section = $("section-tldr");
+  if (!title || !section) return;
+  const lang = uiLang(settings);
+  const parts = dayOgDateParts(date, lang);
+  title.replaceChildren();
+  if (!parts) {
+    delete section.dataset.snapshotDate;
+    const heading = document.createElement("h2");
+    heading.textContent = "AI;DR";
+    const meta = document.createElement("span");
+    meta.className = "muted";
+    meta.id = "tldr-meta";
+    meta.textContent = t(settings, "tldrMeta");
+    title.append(heading, meta);
+    syncDayCard(settings, "");
+    return;
+  }
+  section.dataset.snapshotDate = date;
+  const day = document.createElement("span");
+  day.className = "tldr-day";
+  day.textContent = parts.day;
+  const link = document.createElement("a");
+  link.className = "tldr-date";
+  link.href = dayPageUrl(date, lang);
+  const weekday = document.createElement("span");
+  weekday.textContent = parts.weekday;
+  const monthYear = document.createElement("span");
+  monthYear.textContent = parts.monthYear;
+  link.append(weekday, monthYear);
+  title.append(day, link);
+  syncDayCard(settings, date);
+}
+
+function syncDayCard(settings, date) {
+  const chip = $("day-card-chip");
+  const label = $("day-card-label");
+  const overlay = $("day-card-overlay");
+  if (!chip) return;
+  const lang = uiLang(settings);
+  const parts = dayOgDateParts(date, lang);
+  if (!parts) {
+    chip.hidden = true;
+    chip.href = "https://aidr.today/";
+    delete chip.dataset.og;
+    overlay?.classList.remove("is-open");
+    return;
+  }
+  chip.hidden = false;
+  chip.href = dayPageUrl(date, lang);
+  chip.dataset.og = dayCardImageUrl(date, lang);
+  chip.setAttribute(
+    "aria-label",
+    lang === "vi" ? `Xem ảnh tóm tắt ngày ${date}` : `Preview the ${date} card`
+  );
+  if (label) {
+    label.textContent = lang === "vi" ? "AI;DR hôm nay" : "AI;DR daily";
+  }
+  const img = $("day-card-img");
+  if (img?.dataset.og && img.dataset.og !== chip.dataset.og) {
+    img.removeAttribute("src");
+    delete img.dataset.og;
+  }
+}
+
+function armDayCardImage() {
+  const chip = $("day-card-chip");
+  const img = $("day-card-img");
+  const src = chip?.dataset.og;
+  if (!src || !img || img.dataset.og === src) return;
+  img.dataset.og = src;
+  img.src = src;
+}
+
+let dayCardArmed = false;
+
+function bindDayCard() {
+  const chip = $("day-card-chip");
+  const overlay = $("day-card-overlay");
+  if (!chip || !overlay) return;
+  const show = (open) => {
+    if (chip.hidden) return;
+    if (open) armDayCardImage();
+    overlay.classList.toggle("is-open", open);
+  };
+  chip.addEventListener("pointerenter", () => show(true));
+  chip.addEventListener("pointerleave", () => show(false));
+  chip.addEventListener("focus", () => show(true));
+  chip.addEventListener("blur", () => show(false));
+  if (!dayCardArmed) {
+    dayCardArmed = true;
+    setTimeout(armDayCardImage, 2000);
+  }
+}
+
+function introEmbedUrl(id) {
+  const params = new URLSearchParams({
+    autoplay: "1",
+    controls: "0",
+    modestbranding: "1",
+    showinfo: "0",
+    fs: "0",
+    rel: "0",
+    iv_load_policy: "3",
+    disablekb: "1",
+    playsinline: "1",
+  });
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${params}`;
+}
+
+function openIntroVideo() {
+  const dialog = $("intro-dialog");
+  const frame = $("intro-dialog-frame");
+  if (!dialog || !frame) return;
+  closePhoneMenu();
+  frame.src = introEmbedUrl(INTRO_VIDEO_ID);
+  dialog.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+function closeIntroVideo() {
+  const dialog = $("intro-dialog");
+  const frame = $("intro-dialog-frame");
+  if (!dialog || dialog.hidden) return;
+  dialog.hidden = true;
+  frame?.removeAttribute("src");
+  if ($("phone-menu")?.hidden !== false) document.body.style.overflow = "";
+}
+
+function bindIntroVideo() {
+  $("intro-video-btn")?.addEventListener("click", openIntroVideo);
+  $("phone-intro-video")?.addEventListener("click", openIntroVideo);
+  $("intro-dialog-backdrop")?.addEventListener("click", closeIntroVideo);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeIntroVideo();
+  });
+}
+
 function renderTldr(settings, digest) {
   const section = $("section-tldr");
   const cols = $("tldr-cols");
@@ -357,7 +535,7 @@ function renderTldr(settings, digest) {
     return;
   }
   section.hidden = false;
-  $("tldr-meta").textContent = digest.tldr?.date || t(settings, "tldrMeta");
+  renderTldrMasthead(settings, digest.tldr?.date || "");
 
   const options = [];
   if (bullets.length > 8) {
@@ -671,6 +849,13 @@ function renderStoryRow(settings, story, index, hot) {
   ext.rel = "noopener noreferrer";
   ext.setAttribute("aria-label", "Open story link");
   ext.append(externalLinkIcon());
+  const host = publisherHost(ext.href);
+  if (host) {
+    const publisher = document.createElement("span");
+    publisher.className = "story-publisher";
+    publisher.textContent = host;
+    ext.append(publisher);
+  }
   titleWrap.append(document.createTextNode(" "), ext);
 
   const cat = document.createElement("span");
@@ -683,7 +868,7 @@ function renderStoryRow(settings, story, index, hot) {
     ? timeAgo(story.published_at, lang)
     : "";
 
-  head.append(n, titleWrap, cat, when);
+  head.append(n, titleWrap, renderVotes(settings, story), cat, when);
 
   let detail = null;
   if (hasDetails) {
@@ -754,6 +939,60 @@ function renderStoryRow(settings, story, index, hot) {
   return row;
 }
 
+function publisherHost(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return host || null;
+  } catch {
+    return null;
+  }
+}
+
+function voteChevron(direction) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute(
+    "d",
+    direction === "up" ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"
+  );
+  svg.append(path);
+  return svg;
+}
+
+function renderVotes(settings, story) {
+  const lang = uiLang(settings);
+  const net = typeof story.vote_net === "number" ? story.vote_net : 0;
+  const wrap = document.createElement("span");
+  wrap.className = "story-votes";
+  const label = lang === "vi" ? "Đăng nhập để bình chọn" : "Sign in to vote";
+  const href = withExtRef("https://aidr.today/sign-in", "vote", lang);
+  const link = () => {
+    const anchor = document.createElement("a");
+    anchor.className = "story-vote";
+    anchor.href = href;
+    anchor.title = label;
+    anchor.setAttribute("aria-label", label);
+    return anchor;
+  };
+  const up = link();
+  up.append(voteChevron("up"));
+  const down = link();
+  down.append(voteChevron("down"));
+  const count = document.createElement("span");
+  count.className = "story-vote-net";
+  const sr = document.createElement("span");
+  sr.className = "sr-only";
+  sr.textContent = lang === "vi" ? "Tổng phiếu " : "Reader votes ";
+  count.append(sr, document.createTextNode(String(net)));
+  wrap.append(up, count, down);
+  return wrap;
+}
+
 function renderStories(settings, digest) {
   const root = $("section-days");
   clearSectionContent(root);
@@ -778,9 +1017,21 @@ function renderStories(settings, digest) {
     head.className = "day-head";
 
     const title = document.createElement("h2");
-    title.textContent = day.date
+    const heading = day.date
       ? formatDayHeading(day.date, lang)
       : t(settings, "stories");
+    const archiveHref = SNAPSHOT_DATE.test(day.date || "")
+      ? dayPageUrl(day.date, lang)
+      : "";
+    if (archiveHref) {
+      const link = document.createElement("a");
+      link.className = "day-link";
+      link.href = archiveHref;
+      link.textContent = heading;
+      title.append(link);
+    } else {
+      title.textContent = heading;
+    }
 
     const count = document.createElement("span");
     count.className = "day-count";
@@ -809,11 +1060,18 @@ function renderStories(settings, digest) {
     }
     if (more > 0) {
       const bit = document.createElement("span");
-      bit.textContent = `+${more} ${t(settings, "footerMore")}`;
+      bit.textContent = lang === "vi" ? `+${more} nữa` : `+${more} more`;
       cats.append(bit);
     }
 
     head.append(title, count, cats);
+    if (archiveHref) {
+      const full = document.createElement("a");
+      full.className = "day-full";
+      full.href = archiveHref;
+      full.textContent = lang === "vi" ? "Xem cả ngày →" : "Full day →";
+      head.append(full);
+    }
     section.append(head);
 
     const list = document.createElement("div");
@@ -1094,6 +1352,8 @@ async function main() {
   bindPrefs(() => settings, refresh);
   bindPhoneMenu();
   bindHeaderMenu();
+  bindIntroVideo();
+  bindDayCard();
   pushSettings = async (next) => {
     settings = await saveSettings(next);
     applyAppearance(settings);

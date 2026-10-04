@@ -104,6 +104,7 @@ test("normalizeDigest keeps /api/feed days and flattens stories", () => {
             title: "X",
             points: 12,
             comments: 3,
+            vote_net: 4,
             category: "Infra",
           },
         ],
@@ -115,6 +116,7 @@ test("normalizeDigest keeps /api/feed days and flattens stories", () => {
   });
   assert.equal(digest.stories[0].id, "x");
   assert.equal(digest.stories[0].points, 12);
+  assert.equal(digest.stories[0].vote_net, 4);
   assert.equal(digest.days.length, 1);
   assert.equal(digest.days[0].date, "2026-09-05");
   assert.equal(digest.categories[0].name, "Infra");

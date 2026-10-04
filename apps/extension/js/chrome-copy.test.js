@@ -77,7 +77,7 @@ test("wide header uses the web Get AI;DR menu", () => {
       "Telegram Channel (English)",
       "Email Subscription",
       "hr",
-      "Submit",
+      "Contribute",
       "Data Analytics",
       "Algorithms",
       "hr",
@@ -109,11 +109,12 @@ test("phone menu mirrors the web navigation and closes from its control", () => 
     "Get AI;DR",
     "Telegram",
     "Data",
-    "Submit",
+    "Contribute",
     "duyet.net",
   ]) {
     assert.ok(html.includes(`<span>${label}</span>`));
   }
+  assert.match(html, /id="phone-intro-label"[^>]*>Video giới thiệu</);
   assert.match(html, /id="close-menu"/);
   assert.match(css, /\.phone-menu-panel[\s\S]*border-radius:\s*1\.5rem/);
   assert.match(js, /close-menu/);
@@ -124,11 +125,30 @@ test("preferences popover exposes close for Escape handling", () => {
   assert.match(panel, /return \{ close \};/);
 });
 
-test("Submit is available from the Get AI;DR menu", () => {
-  assert.match(html, /id="submit-btn"[^>]*href="https:\/\/aidr\.today\/submit"/);
-  assert.doesNotMatch(html, /id="submit-btn"[^>]*hidden/);
+test("Contribute replaces Submit in the Get AI;DR menu", () => {
+  assert.match(
+    html,
+    /id="contribute-btn"[^>]*href="https:\/\/aidr\.today\/contribute"/
+  );
+  assert.doesNotMatch(html, /id="submit-btn"/);
+  assert.doesNotMatch(html, /id="phone-submit-link"/);
   assert.doesNotMatch(js, /applySubmitVisibility/);
   assert.doesNotMatch(js, /dataset\.signedIn/);
+});
+
+test("new tab follows the live digest masthead, day links, and intro video", () => {
+  assert.match(html, /id="day-card-chip"/);
+  assert.match(html, /id="intro-video-btn"/);
+  assert.match(html, /id="phone-intro-video"/);
+  assert.match(js, /className = "tldr-day"/);
+  assert.match(js, /Xem cả ngày →/);
+  assert.match(js, /Full day →/);
+  assert.match(js, /story-publisher/);
+  assert.match(js, /story-votes/);
+  assert.match(js, /tynoWx03zDc/);
+  assert.match(js, /youtube-nocookie\.com/);
+  assert.match(css, /\.tldr-head \.tldr-counts button\[aria-pressed="true"\][\s\S]*?#fff/);
+  assert.doesNotMatch(js, /story-host/);
 });
 
 test("brief layout centers AI;DR when the daily feed is off", () => {

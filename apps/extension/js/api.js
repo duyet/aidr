@@ -100,6 +100,7 @@ function normalizeStory(raw) {
     points: Number(raw.points) || 0,
     comments: Number(raw.comments) || 0,
     rank_score: Number(raw.rank_score) || 0,
+    vote_net: typeof raw.vote_net === "number" ? raw.vote_net : 0,
     sources,
   };
 }
