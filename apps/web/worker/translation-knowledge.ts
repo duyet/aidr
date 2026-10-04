@@ -2,7 +2,7 @@ import { nn } from "./d1-bind.js";
 import { callAnyrouter, parseJson } from "./llm.js";
 import type { TranslationPair } from "./translation-review.js";
 import { escapePromptPayload } from "./translation-review.js";
-import { NON_AI_AGENT_RE, RULES_OVERVIEW } from "./translation-terms.js";
+import { NON_AI_AGENT_RE } from "./translation-terms.js";
 import type { Env } from "./types.js";
 
 /**
@@ -219,16 +219,15 @@ export async function loadActiveRules(env: Env): Promise<KnowledgeRule[]> {
   }
 }
 
-/** House style, then the short rules overview, then the glossary for `text`.
- *  Translate, TL;DR, and repair all come through here. Never throws: a
- *  missing knowledge table yields no glossary and still returns the overview. */
+/** `VI_STYLE` plus the glossary for `text`. Never throws. QA repair does not
+ *  call this; it builds the glossary itself. Do not append a rules block
+ *  here — it would hit TL;DR and suggestions and still miss that repair. */
 export async function viSystemPrompt(
   env: Env,
   base: string,
   text: string
 ): Promise<string> {
-  const glossary = buildGlossaryBlock(await loadActiveRules(env), text);
-  return `${base}${RULES_OVERVIEW}${glossary}`;
+  return base + buildGlossaryBlock(await loadActiveRules(env), text);
 }
 
 /** Active rules an EN→VI candidate breaks: the source mentions the term and

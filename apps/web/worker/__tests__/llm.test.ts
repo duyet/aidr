@@ -12,6 +12,7 @@ import {
   normalizeTag,
   _normalizeTldrForTests as normalizeTldr,
   _parseJsonForTests as parseJson,
+  RULES_OVERVIEW,
   raceTimeout,
   resetUnavailableModels,
   sanitizeScoreResults,
@@ -616,7 +617,17 @@ describe("streaming anyrouter responses", () => {
     expect(style).toContain("cho thấy chúng phối hợp lỗi"); // the good-example anchor
   });
 
-  it("leads the Vietnamese summary with the news and copies the keep list", async () => {
+  it("locks the translate rules overview ahead of the length rule", () => {
+    expect(RULES_OVERVIEW).toBe(
+      `Keep every fact: names, numbers, dates, who did what, and hedges such as "may" or "reportedly". Add nothing.
+Translate every summary sentence. Merging two clauses is allowed only when every fact remains. Cutting a sentence is a failed translation.
+Write a Vietnamese headline in sentence case: the first word and proper names only. Returning the English title unchanged is a failed translation, unless that title is already Vietnamese.
+No English gloss in parentheses. Write "RAG", not "RAG (Retrieval-Augmented Generation)". A year, a percent, or a bare label such as "(SEC)" or "(YC S22)" may stay.
+A vague word is not a number. "Countless" is not "hàng triệu". Do not swap who did what: if A accuses B, do not write B's thing of A.`
+    );
+  });
+
+  it("puts that overview in the translate user message and keeps the 80% rule", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(chatResponse(JSON.stringify({ results: [] })));
@@ -625,22 +636,16 @@ describe("streaming anyrouter responses", () => {
     await translateItems(env, [{ i: 0, title: "New model released" }]);
 
     const { messages } = JSON.parse(fetchMock.mock.calls[0][1].body);
-    const system = messages[0].content as string;
     const user = messages[1].content as string;
-    // Overview follows the house style, including its worked examples.
-    expect(system.indexOf("Rules, in order:")).toBeGreaterThan(
-      system.indexOf("bầy (swarm)")
+    const overviewAt = user.indexOf(RULES_OVERVIEW);
+    expect(overviewAt).toBeGreaterThan(-1);
+    expect(user.indexOf("at least 80% of its length")).toBeGreaterThan(
+      overviewAt
     );
-    expect(user).toContain(
-      "The Vietnamese summary leads with the news fact, stays about as long as the source, and copies every keep-list term in English."
-    );
-    expect(user).toContain("at least 80% of its length");
-    expect(user).toContain(
-      'Bad: "Đã ghi nhận việc OpenAI tiến hành ra mắt một agent suy luận mã nguồn mở."'
-    );
-    expect(user).toContain(
-      'Good: "OpenAI ra mắt agent inference mã nguồn mở."'
-    );
+    expect(user).toContain('"(SEC)"');
+    expect(user).toContain('"(YC S22)"');
+    expect(user).toContain("Clef ra mắt decision model open-weight");
+    expect(messages[0].content).not.toContain(RULES_OVERVIEW);
   });
 
   it("sends the same Vietnamese style rules as a system message when generating the TL;DR", async () => {
@@ -656,14 +661,13 @@ describe("streaming anyrouter responses", () => {
     const { messages } = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(messages[0].role).toBe("system");
     expect(messages[0].content).toMatch(/parenthetical/i);
-    expect(messages[0].content).toContain("Rules, in order:");
     expect(messages[1].role).toBe("user");
+    expect(messages[1].content).toContain("about 2 sentences");
     expect(messages[1].content).toContain(
-      "states the same who, what, and number as the story"
+      "the why must come from the cited items"
     );
-    expect(messages[1].content).toContain("technical terms left in English");
-    expect(messages[1].content).toContain(
-      "not a word-for-word translation of the English bullet"
+    expect(messages[1].content).not.toContain(
+      "Cutting a sentence is a failed translation"
     );
   });
 
@@ -2582,10 +2586,8 @@ describe("translateItems draft repair", () => {
 
     const [out] = await translateItems(withRules, [item]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const repairMessages = JSON.parse(fetchMock.mock.calls[1][1].body).messages;
-    const repairSystem = repairMessages[0].content as string;
-    const repairPrompt = repairMessages[1].content as string;
-    expect(repairSystem).toContain("Rules, in order:");
+    const repairPrompt = JSON.parse(fetchMock.mock.calls[1][1].body).messages[1]
+      .content as string;
     expect(repairPrompt).toContain('"fix"');
     expect(repairPrompt).toContain("mở trọng lượng");
     expect(out.title).toBe("Clef ra mắt các decision model open-weight");

@@ -1504,6 +1504,15 @@ export function sentSource(
   return { title: item.title, summary };
 }
 
+/** Lines the translate user message states before the length rule. The house
+ *  style already carries the long version; this is the short card a small
+ *  model follows. Locked by test. Not appended inside viSystemPrompt. */
+export const RULES_OVERVIEW = `Keep every fact: names, numbers, dates, who did what, and hedges such as "may" or "reportedly". Add nothing.
+Translate every summary sentence. Merging two clauses is allowed only when every fact remains. Cutting a sentence is a failed translation.
+Write a Vietnamese headline in sentence case: the first word and proper names only. Returning the English title unchanged is a failed translation, unless that title is already Vietnamese.
+No English gloss in parentheses. Write "RAG", not "RAG (Retrieval-Augmented Generation)". A year, a percent, or a bare label such as "(SEC)" or "(YC S22)" may stay.
+A vague word is not a number. "Countless" is not "hàng triệu". Do not swap who did what: if A accuses B, do not write B's thing of A.`;
+
 function translatePrompt(
   batch: TranslateInput[],
   titlesOnly: boolean,
@@ -1524,10 +1533,16 @@ function translatePrompt(
   });
   return `Translate these AI/tech news items into Vietnamese.
 
-Translate every sentence of each summary: do not shorten, summarize, or add facts, opinions, or context the source does not state. A complete Vietnamese summary is about as long as the English one, at least 80% of its length. Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English. The Vietnamese summary leads with the news fact, stays about as long as the source, and copies every keep-list term in English. An item with a "fix" list was translated before and broke those rules; translate it again and fix every one.
+${RULES_OVERVIEW}
 
-Bad: "Đã ghi nhận việc OpenAI tiến hành ra mắt một agent suy luận mã nguồn mở."
-Good: "OpenAI ra mắt agent inference mã nguồn mở."
+A complete Vietnamese summary is about as long as the English one, at least 80% of its length. Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English. An item with a "fix" list was translated before and broke those rules; translate it again and fix every one.
+
+Bad: "Clef ra mắt mô hình quyết định mở trọng lượng". Good: "Clef ra mắt decision model open-weight".
+Bad: "Các đại lý AI của OpenAI đã xâm nhập". Good: "Các AI agent của OpenAI đã xâm nhập".
+Bad: "các hệ thống RAG (Retrieval-Augmented Generation)". Good: "các hệ thống RAG".
+Bad: "Nscale Huy Động 3,36 Tỷ USD Trước Khi Niêm Yết Trên NYSE". Good: "Nscale huy động 3,36 tỷ USD trước khi niêm yết trên NYSE".
+Bad: "Các quỹ trái phiếu rộng đã hấp thụ khoản nợ AI sau khi các ngân hàng rút lui." Good: "Người vay AI đã bán khoảng 55 tỷ USD trái phiếu high-yield trong năm nay. Các quỹ trái phiếu rộng hấp thụ khoản nợ đó sau khi ngân hàng rút lui."
+Bad: "Nvidia và SoftBank giao nốt 20 triệu USD". Good: "Nvidia và SoftBank giao nốt 20 tỷ USD".
 
 Items:
 ${JSON.stringify(items)}
@@ -1922,12 +1937,12 @@ function tldrPrompt(items: TldrItem[], bilingual: boolean): string {
     : '{"bullets_en":[{"emoji":"🧠","text":"...","item_ids":["..."]}],"bullets_vi":[]}';
   const viNote = bilingual
     ? `
-The Vietnamese bullet states the same who, what, and number as the story, in friendly Vietnamese, with technical terms left in English. It is not a word-for-word translation of the English bullet. Follow the house style above.
+The Vietnamese bullets are NOT a translation pass over the English ones — write them the way a Vietnamese tech journalist would independently state the same facts, following the house style above.
 `
     : "";
   return `Summarize the following ${items.length} AI/tech news items into at most ${n} TL;DR digest bullets (one per distinct story), ${langs}. Each bullet must reference the item_ids (an array) it was derived from: most bullets summarize a single story, so item_ids has one id; when several items report the same story or theme, write ONE synthesizing bullet citing ALL of their ids instead of separate bullets.
 
-Each bullet is a short digest, not an article: about 2 sentences or 180–240 characters (English and Vietnamese). State the what and the why (or who/impact). Keep named entities (models, labs, products) in the text. Do not pad with filler, and do not write a paragraph. Put story ids only in the item_ids array — never as [id] in the bullet text.
+Each bullet is a short digest, not an article: about 2 sentences or 180–240 characters (English and Vietnamese). State the what and the why (or who/impact); the why must come from the cited items. Keep named entities (models, labs, products) in the text. Do not pad with filler, and do not write a paragraph. Put story ids only in the item_ids array — never as [id] in the bullet text.
 
 Give each bullet an "emoji": ONE emoji that fits that specific story (e.g. 💰 a funding round, ⚖️ a court ruling or law, 🔌 chips, 🤖 an agent launch, 🧠 a new model, 🔓 an open-source release, 🛡️ security). Pick it per story, not one for the whole digest; the same story uses the same emoji in both languages. Never put the emoji in the text.
 ${viNote}

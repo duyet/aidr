@@ -21,7 +21,6 @@ import {
   type TranslationPair,
   type TranslationReview,
 } from "../translation-review.js";
-import { RULES_OVERVIEW } from "../translation-terms.js";
 import type { Env } from "../types.js";
 
 const migrationsDir = path.resolve(
@@ -239,39 +238,25 @@ describe("learning a rule from an accepted suggestion", () => {
   });
 });
 
-describe("rules overview", () => {
-  // Exact text, so deleting a priority fails this test.
-  it("locks the overview lines", () => {
-    expect(RULES_OVERVIEW).toBe(`
-
-Rules, in order:
-1. The news: who did what, the number, the date, the polarity, and the uncertainty. Do not shorten, add, or flip a fact.
-2. Friendly Vietnamese press voice: spoken rhythm, active verbs, everyday words when they mean the same thing. No calque, no bureaucratic filler, no parenthetical English gloss.
-3. Keep English technical terms in English. Settled Vietnamese stays Vietnamese: open-source is "mã nguồn mở"; billion is "tỷ" and million is "triệu". Never "đại lý" or "đặc vụ" for an AI agent.
-`);
-  });
-
-  it("appends the overview after the base style and before the glossary", async () => {
+describe("vi system prompt", () => {
+  it("appends only the glossary, and still returns the base when the table is missing", async () => {
     const { env } = freshEnv();
     const prompt = await viSystemPrompt(env, "BASE", "The agent ships.");
-    expect(prompt.indexOf(RULES_OVERVIEW)).toBe("BASE".length);
-    expect(prompt.indexOf("Glossary")).toBeGreaterThan(
-      prompt.indexOf(RULES_OVERVIEW)
-    );
+    expect(prompt.startsWith("BASE")).toBe(true);
+    expect(prompt.indexOf("Glossary")).toBeGreaterThan("BASE".length);
     expect(prompt).toContain('Keep "agent" in English');
-  });
+    expect(prompt).not.toContain("Cutting a sentence is a failed translation");
 
-  it("still returns the overview when the knowledge table is missing", async () => {
-    const env = {
+    const missing = {
       DB: {
         prepare() {
           throw new Error("no such table: translation_knowledge");
         },
       },
     } as unknown as Env;
-    await expect(viSystemPrompt(env, "BASE", "The agent ships.")).resolves.toBe(
-      `BASE${RULES_OVERVIEW}`
-    );
+    await expect(
+      viSystemPrompt(missing, "BASE", "The agent ships.")
+    ).resolves.toBe("BASE");
   });
 });
 

@@ -35,42 +35,15 @@ export const KEEP_ENGLISH_TERMS = [
   "chatbot",
   "swarm",
   "embedding",
-  "RAG",
-  "MCP",
-  "SDK",
-  "GPU",
-  "inference",
-  "LoRA",
 ] as const;
 
 /** Matched as whole words (plural allowed), not stems: the verb forms
- * "harnessing" and "exploited" are ordinary English a journalist translates,
- * and a short acronym must not swallow a longer name ("MCP" ≠ "McPherson"). */
-const WHOLE_WORD_TERMS = new Set<string>([
-  "harness",
-  "exploit",
-  "RAG",
-  "MCP",
-  "SDK",
-  "GPU",
-  "LoRA",
-]);
+ * "harnessing" and "exploited" are ordinary English a journalist translates. */
+const WHOLE_WORD_TERMS = new Set<string>(["harness", "exploit"]);
 
-/** Prose form used in VI_STYLE. A term is added here only when the QA guard
- * demands it too. "fine-tune" and "finetune" share the "fine-tun" stem.
- * "open-source" stays off both lists: the rendering is "mã nguồn mở". */
+/** Prose form used in VI_STYLE. */
 export const KEEP_ENGLISH_PROSE =
-  "fine-tune, finetune, benchmark, agent, agentic, token, open-weights, decision model, reasoning model, foundation model, world model, reinforcement learning (or RL), context window, guardrail, jailbreak, harness, hyperscaler, rollout, exploit, kill switch, red-teaming, sandbox, frontier model, MoE, prompt, chatbot, embedding, LLM, GPU, AI, swarm, multi-agent, RAG, MCP, SDK, inference, LoRA";
-
-/** Three priorities, a few lines, appended after the house style and before
- * the glossary. Locked by test so a later edit cannot drop a line. */
-export const RULES_OVERVIEW = `
-
-Rules, in order:
-1. The news: who did what, the number, the date, the polarity, and the uncertainty. Do not shorten, add, or flip a fact.
-2. Friendly Vietnamese press voice: spoken rhythm, active verbs, everyday words when they mean the same thing. No calque, no bureaucratic filler, no parenthetical English gloss.
-3. Keep English technical terms in English. Settled Vietnamese stays Vietnamese: open-source is "mã nguồn mở"; billion is "tỷ" and million is "triệu". Never "đại lý" or "đặc vụ" for an AI agent.
-`;
+  "fine-tune, benchmark, agent, agentic, token, open-weights, decision model, reasoning model, foundation model, world model, reinforcement learning (or RL), context window, guardrail, jailbreak, harness, hyperscaler, rollout, exploit, kill switch, red-teaming, sandbox, frontier model, MoE, prompt, chatbot, embedding, LLM, GPU, AI, swarm, multi-agent";
 
 /** Capitalized words a Vietnamese journalist correctly translates: places,
  * demonyms, calendar words, and English function words that open a sentence
