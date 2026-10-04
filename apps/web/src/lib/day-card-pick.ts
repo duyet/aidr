@@ -26,7 +26,9 @@ export function hasDayOgCopy(
   return !vi.fallbackFromEnglish && looksVietnamese(vi.text);
 }
 
-export function isDayCardPhotoUrl(url: string | null | undefined): boolean {
+export function isDayCardPhotoUrl(
+  url: string | null | undefined
+): url is string {
   if (!url) return false;
   try {
     const u = new URL(url);
@@ -60,6 +62,10 @@ export function pickDayCardItems<T extends { image_url?: string | null }>(
   const ordered = [...photos, ...rest];
   return ordered.slice(0, dayCardTileCount(ranked.length));
 }
+
+/** Ranked stories the caption and the OG card both consider. The lead
+ *  grid is six; whatever is left in this window is the follow-up. */
+export const DAY_CARD_CANDIDATES = 18;
 
 /**
  * Lead grid, then the next highlights that did not fit on it.

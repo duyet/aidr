@@ -5,7 +5,11 @@ import {
   isSettledArchiveDate,
   parseArchiveDate,
 } from "../../lib/day-archive";
-import { isDayCardPhotoUrl, splitDayHighlights } from "../../lib/day-card-pick";
+import {
+  DAY_CARD_CANDIDATES,
+  isDayCardPhotoUrl,
+  splitDayHighlights,
+} from "../../lib/day-card-pick";
 import {
   DAY_OG_HEIGHT,
   DAY_OG_MAX_TILES,
@@ -35,9 +39,6 @@ function dayOgCacheControl(date: string): string {
     ? dayArchiveCacheControl(date, Date.now())
     : "public, max-age=600, s-maxage=3600, stale-while-revalidate=3600";
 }
-
-/** Stories whose photos are fetched to fill the grid. */
-const DAY_OG_CANDIDATES = 18;
 
 /** A Worker keeps at most 6 outbound connections open; a larger burst
  *  queues, and the queued fetches spend their timeout waiting. */
@@ -176,7 +177,7 @@ export const Route = createFileRoute("/api/og/date/$date")({
             }
             // Fetch photos for the top dozen so a dead, hotlink-blocked or WebP
             // thumbnail does not cost the grid a photo a lower story has.
-            const candidates = all.slice(0, DAY_OG_CANDIDATES);
+            const candidates = all.slice(0, DAY_CARD_CANDIDATES);
             // `part=2` is the next highlight grid. The digest caption lists
             // the same stories. A photo that fails to download stays in its
             // slot as a text tile.

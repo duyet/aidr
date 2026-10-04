@@ -1,35 +1,19 @@
-import { dayBoundsSec } from "../../src/lib/day-archive.js";
 import {
+  DAY_CARD_CANDIDATES,
   hasDayOgCopy,
   splitDayHighlights,
 } from "../../src/lib/day-card-pick.js";
+import { readSession } from "../../src/lib/db.js";
 import {
   localizedTitle,
   looksVietnamese,
 } from "../../src/lib/display-title.js";
+import { getDayArchive } from "../../src/lib/feed-queries.js";
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { FeedItem, Lang } from "../../src/lib/types.js";
 import type { Env } from "../types.js";
 import type { DailyDigest, DigestBullet } from "./types.js";
-
-/** Highlight candidates after the language filter. The card renderer
- *  keeps the same slice (`DAY_OG_CANDIDATES`). */
-const DAY_CARD_CANDIDATES = 18;
-
-/** Ranked rows read before that filter. A Vietnamese card drops stories
- *  with no Vietnamese title, so the limit has to sit above the slice. */
-const DAY_CARD_QUERY_LIMIT = 200;
-
-interface DayRow {
-  id: string;
-  title: string;
-  title_vi: string | null;
-  summary: string | null;
-  summary_vi: string | null;
-  category: string | null;
-  image_url: string | null;
-}
 
 export interface DayCardPage {
   bullets: DigestBullet[];
@@ -43,28 +27,8 @@ export interface DayCardPage {
   photo: boolean;
 }
 
-function asItem(row: DayRow): FeedItem {
-  return {
-    id: row.id,
-    url: "",
-    title: row.title,
-    title_vi: row.title_vi,
-    summary: row.summary,
-    summary_vi: row.summary_vi,
-    category: row.category,
-    published_at: 0,
-    points: 0,
-    comments: 0,
-    rank_score: 0,
-    source_id: "",
-    tags: [],
-    sources: [],
-    llm_tokens: 0,
-    image_url: row.image_url,
-  };
-}
-
-/** FNV-1a, base36. Short enough for a query param and an R2 key segment. */
+/** FNV-1a, base36. Padded so a short stamp still matches the R2 key
+ *  pattern (`^[a-z0-9]{4,16}$`); otherwise those digests share one object. */
 export function dayCardVersion(ids: readonly string[]): string {
   let hash = 2166136261;
   const text = ids.join("\n");
@@ -72,7 +36,7 @@ export function dayCardVersion(ids: readonly string[]): string {
     hash ^= text.charCodeAt(i);
     hash = Math.imul(hash, 16777619);
   }
-  return (hash >>> 0).toString(36);
+  return (hash >>> 0).toString(36).padStart(4, "0");
 }
 
 /** One extra clause after the headline. The caption budget still trims it. */
@@ -104,6 +68,29 @@ function clipExtra(value: string, cap: number): string {
   return `${base}…`;
 }
 
+/** "U.S." and "Ph.D." — a period after a single capital, at a word start
+ *  or after another initial, is not the end of the sentence. */
+function isInitialismPeriod(value: string, index: number): boolean {
+  if (value[index] !== ".") return false;
+  const prev = value[index - 1];
+  if (!prev || !/^[A-Z]$/.test(prev)) return false;
+  const before = value[index - 2];
+  return before === undefined || before === "." || /\s/.test(before);
+}
+
+/** The first sentence, including its closing mark. A period only counts
+ *  when whitespace follows and it is not an initialism. */
+function firstSentence(value: string): string {
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i];
+    if (ch !== "." && ch !== "!" && ch !== "?" && ch !== "…") continue;
+    if (isInitialismPeriod(value, i)) continue;
+    if (i + 1 >= value.length || !/\s/.test(value[i + 1] ?? "")) continue;
+    return value.slice(0, i + 1);
+  }
+  return value;
+}
+
 /** Headline, plus the first sentence of that language's summary. */
 export function highlightBulletText(item: HighlightCopy, lang: Lang): string {
   const title = localizedTitle(item, lang).text.replace(/\s+/g, " ").trim();
@@ -114,7 +101,7 @@ export function highlightBulletText(item: HighlightCopy, lang: Lang): string {
     extra = extra.slice(title.length).replace(/^[\s.:;—–-]+/, "");
   }
   if (!extra) return title;
-  const sentence = extra.split(/(?<=[.!?…])\s+/)[0] ?? extra;
+  const sentence = firstSentence(extra);
   if (!sentence || sentence.toLowerCase() === title.toLowerCase()) return title;
   return `${title} — ${clipExtra(sentence, HIGHLIGHT_SUMMARY_CAP)}`;
 }
@@ -135,8 +122,9 @@ function moreHeadline(lang: Lang, date: string): string {
 
 /**
  * The stories painted on the day's card, then the next highlights when
- * the lead grid cannot hold them. Calendar day in the audience zone, not
- * the rolling 24h TL;DR.
+ * the lead grid cannot hold them. Same archive read as the OG card,
+ * including the manifest thumbnail, so the caption names those tiles.
+ * Calendar day in the audience zone, not the rolling 24h TL;DR.
  */
 export async function loadDayCardPages(
   env: Pick<Env, "DB">,
@@ -144,20 +132,8 @@ export async function loadDayCardPages(
   lang: Lang
 ): Promise<DayCardPage[] | null> {
   if (!env.DB) return null;
-  const { start, end } = dayBoundsSec(date);
-  const { results } = await env.DB.prepare(
-    `SELECT i.id, i.title, tr.title AS title_vi, i.summary,
-            tr.summary AS summary_vi, i.category, i.image_url
-     FROM items i
-     LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-     WHERE i.status = 'published' AND i.published_at >= ? AND i.published_at < ?
-     ORDER BY i.rank_score DESC
-     LIMIT ${DAY_CARD_QUERY_LIMIT}`
-  )
-    .bind(start, end)
-    .all<DayRow>();
-  const ranked = (results ?? [])
-    .map(asItem)
+  const archive = await getDayArchive(readSession(env.DB), date);
+  const ranked = (archive.day?.items ?? [])
     .filter((item) => hasDayOgCopy(item, lang))
     .slice(0, DAY_CARD_CANDIDATES);
   const { lead, more, moreIsCard } = splitDayHighlights(ranked);

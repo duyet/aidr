@@ -639,6 +639,15 @@ function telegramChannel(options: {
       // fallback when the day has no published stories.
       const pages = await digestPages(env, digest);
       let firstId = "";
+      // The lead is already in the channel. An unknown follow-up must not
+      // be retried (that would post the lead again) and must not be stored
+      // as a clean send (the tail may be missing).
+      const unresolvedFollowUp = (res: TelegramResponse): SendResult => ({
+        ok: false,
+        ambiguous: true,
+        messageId: firstId,
+        error: res.description ?? "unknown",
+      });
       for (const [index, page] of pages.entries()) {
         const fitted = fitHighlightDigest(page.digest, page.headline);
         const caption = buildDigestCaption(fitted, page.headline);
@@ -650,14 +659,19 @@ function telegramChannel(options: {
               }
             : undefined;
         const markup = index === 0 ? buildDigestReplyMarkup(digest) : undefined;
-        if (!page.photo) {
-          const text = await callTelegram(token, "sendMessage", {
+        const sendCaption = () =>
+          callTelegram(token, "sendMessage", {
             chat_id: chatId,
             text: caption,
             parse_mode: "HTML",
             link_preview_options: STORY_TEXT_LINK_PREVIEW,
             reply_parameters: replyTo,
           });
+        if (!page.photo) {
+          const text = await sendCaption();
+          if (index > 0 && (text.ambiguous || text.budgetExhausted)) {
+            return unresolvedFollowUp(text);
+          }
           if (!text.ok) {
             console.error(
               `telegram digest follow-up failed: ${text.description}`
@@ -679,10 +693,22 @@ function telegramChannel(options: {
           continue;
         }
         if (index > 0) {
+          if (photo.ambiguous || photo.budgetExhausted) {
+            return unresolvedFollowUp(photo);
+          }
           console.error(
-            `telegram digest follow-up photo failed: ${photo.description}`
+            `telegram digest follow-up photo failed: ${photo.description}; sending text`
           );
-          break;
+          const text = await sendCaption();
+          if (text.ambiguous || text.budgetExhausted) {
+            return unresolvedFollowUp(text);
+          }
+          if (!text.ok) {
+            console.error(
+              `telegram digest follow-up failed: ${text.description}`
+            );
+          }
+          continue;
         }
         // Only a definite rejection may fall back; an ambiguous one may be posted.
         if (photo.ambiguous || photo.budgetExhausted) return sendFailure(photo);
