@@ -10,6 +10,7 @@ export function SuggestTranslation(props: {
   itemId: string;
   lang: Lang;
   initialText?: string;
+  suggestionAttempt?: number;
   onInitialTextConsumed?: () => void;
 }) {
   // Any Clerk failure degrades to a sign-in prompt — never the router's
@@ -35,11 +36,13 @@ function SuggestTranslationInner({
   itemId,
   lang,
   initialText,
+  suggestionAttempt,
   onInitialTextConsumed,
 }: {
   itemId: string;
   lang: Lang;
   initialText?: string;
+  suggestionAttempt?: number;
   onInitialTextConsumed?: () => void;
 }) {
   const { mod, publishableKey } = useClerkModule();
@@ -58,6 +61,7 @@ function SuggestTranslationInner({
           SignInButton={SignInButton}
           useClerk={useClerk}
           initialText={initialText}
+          suggestionAttempt={suggestionAttempt}
         />
       </SignedOut>
       <SignedIn>

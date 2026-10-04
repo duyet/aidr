@@ -11,6 +11,8 @@ export interface SelectionButtonState {
 export interface SuggestSelection {
   selectionButton: SelectionButtonState | null;
   pendingSuggestion: { field: SuggestField; text: string } | null;
+  /** Increments on every accepted selection, even when the text repeats. */
+  suggestionAttempt: number;
   /** Moves the current selection into the suggestion form. */
   acceptSelection: () => void;
   clearPending: () => void;
@@ -31,6 +33,7 @@ export function useSuggestSelection(
     field: SuggestField;
     text: string;
   } | null>(null);
+  const [suggestionAttempt, setSuggestionAttempt] = useState(0);
 
   useEffect(() => {
     if (!enabled) return;
@@ -108,12 +111,16 @@ export function useSuggestSelection(
   return {
     selectionButton,
     pendingSuggestion,
+    suggestionAttempt,
     acceptSelection: () => {
       if (!selectionButton) return;
       setPendingSuggestion({
         field: selectionButton.field,
         text: selectionButton.text,
       });
+      // A repeated string must still count as a new request, or the
+      // signed-out sign-in modal stays dismissed.
+      setSuggestionAttempt((attempt) => attempt + 1);
       setSelectionButton(null);
     },
     clearPending: () => setPendingSuggestion(null),
