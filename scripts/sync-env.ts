@@ -67,13 +67,15 @@ const WORKER_OPTIONAL = [
   // and a fine-grained PAT (issues:write) for aidr-alert GitHub issues.
   "TELEGRAM_OWNER_CHAT_ID",
   "GITHUB_ALERT_TOKEN",
-  // English Facebook Page token. The Page id is a wrangler var. Unset token
-  // leaves the channel off.
-  "FACEBOOK_PAGE_ACCESS_TOKEN",
-  // Mint a replacement Page token. The hourly post uses the Page token.
-  // The app id is a wrangler var, not a secret, so a bulk upload cannot
-  // collide with that binding.
+  // Facebook Page for this install. Empty in git. The hourly post uses the
+  // Page id and Page token. The app id and secret mint a replacement token.
+  // Graph version and SITE_URL are optional public overrides.
+  "FACEBOOK_PAGE_ID",
+  "FACEBOOK_APP_ID",
   "FACEBOOK_APP_SECRET",
+  "FACEBOOK_PAGE_ACCESS_TOKEN",
+  "FACEBOOK_GRAPH_VERSION",
+  "SITE_URL",
 ] as const;
 
 /** Secrets GitHub Actions workflows read (`secrets.*`). */
@@ -94,11 +96,10 @@ const GITHUB_OPTIONAL = [
   "CLOUDFLARE_ZONE_ID",
   "CLERK_PUBLISHABLE_KEY",
   "SENTRY_DSN",
-  // Page token posts. App id and secret mint a replacement Page token.
-  // Neither secret is written into git.
-  "FACEBOOK_PAGE_ACCESS_TOKEN",
+  "FACEBOOK_PAGE_ID",
   "FACEBOOK_APP_ID",
   "FACEBOOK_APP_SECRET",
+  "FACEBOOK_PAGE_ACCESS_TOKEN",
 ] as const;
 
 const args = new Set(process.argv.slice(2));
