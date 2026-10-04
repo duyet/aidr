@@ -107,8 +107,13 @@ export function StoryDetail({
   const paragraphsVi = splitParagraphs(item.summary_vi);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const { selectionButton, pendingSuggestion, acceptSelection, clearPending } =
-    useSuggestSelection(containerRef, vietnameseVisible);
+  const {
+    selectionButton,
+    pendingSuggestion,
+    acceptSelection,
+    clearPending,
+    suggestionAttempt,
+  } = useSuggestSelection(containerRef, vietnameseVisible);
 
   return (
     <div ref={containerRef} className="relative space-y-4">
@@ -162,6 +167,7 @@ export function StoryDetail({
               itemId={item.id}
               lang={lang}
               initialText={pendingSuggestion?.text}
+              suggestionAttempt={suggestionAttempt}
               onInitialTextConsumed={clearPending}
             />
             <SuggestionBadge itemId={item.id} expanded lang={lang} />
