@@ -31,6 +31,8 @@ class FakeD1 {
   llmCalls: Record<string, unknown>[] = [];
   topics = new Map<string, Record<string, unknown>>();
   tldrSnapshots = new Map<string, Record<string, unknown>>();
+  contentLog: Record<string, unknown>[] = [];
+  statementOrder: string[] = [];
 
   prepare(sql: string) {
     const db = this;
@@ -56,6 +58,8 @@ class FakeD1 {
   }
 
   private exec(sql: string, args: unknown[]): unknown {
+    this.statementOrder.push(sql);
+
     if (sql.startsWith("SELECT id FROM workflow_runs WHERE id = ?")) {
       const [id] = args as [string];
       const row = this.workflowRuns.find((r) => r.id === id);
@@ -106,7 +110,54 @@ class FakeD1 {
     ) {
       const [id] = args as [string];
       const row = this.items.get(id);
-      return row ? { id: row.id, source_lang: row.source_lang } : null;
+      if (!row) return null;
+      const translation = this.translations.get(`${id}:vi`);
+      return {
+        id: row.id,
+        source_lang: row.source_lang,
+        summary: row.summary ?? null,
+        summary_vi: translation?.summary ?? null,
+      };
+    }
+
+    if (sql.startsWith("INSERT INTO item_content_log")) {
+      const field = sql.includes("'summary'") ? "summary" : "title";
+      const unchanged = (stored: unknown, next: unknown) => {
+        const left = stored == null ? "" : String(stored);
+        const right = next == null ? "" : String(next);
+        return left === right;
+      };
+      if (sql.includes("FROM items")) {
+        const [after, reason, createdAt, id, compared] = args;
+        const row = this.items.get(id as string);
+        const lang = /SELECT id, '([^']+)'/.exec(sql)?.[1] ?? "en";
+        if (row && !unchanged(row[field], compared)) {
+          this.contentLog.push({
+            item_id: id,
+            lang,
+            field,
+            before_text: row[field] ?? null,
+            after_text: after,
+            reason,
+            created_at: createdAt,
+          });
+        }
+        return { success: true };
+      }
+      const [after, reason, createdAt, id, lang, compared] = args;
+      const row = this.translations.get(`${id}:${lang}`);
+      if (row && !unchanged(row[field], compared)) {
+        this.contentLog.push({
+          item_id: id,
+          lang,
+          field,
+          before_text: row[field] ?? null,
+          after_text: after,
+          reason,
+          created_at: createdAt,
+        });
+      }
+      return { success: true };
     }
 
     if (sql.startsWith("INSERT INTO items")) {
@@ -622,6 +673,70 @@ describe("pushItems", () => {
     expect(
       (env.DB as unknown as FakeD1).translations.get(`${id}:vi`)?.source_lang
     ).toBe("vi");
+  });
+
+  it("logs a changed Vietnamese title before the upsert and skips a repeat", async () => {
+    const env = makeEnv();
+    const url = "https://example.com/vi-log";
+    const first = await pushItems(env, {
+      url,
+      title: "English title",
+      summary: "Keep this",
+      source_lang: "vi",
+      title_vi: "Tiêu đề cũ",
+      summary_vi: "Tóm tắt giữ",
+    });
+    expect(isHandlerError(first)).toBe(false);
+    const id = await sha256Hex(url);
+    const db = env.DB as unknown as FakeD1;
+    expect(db.contentLog).toEqual([]);
+
+    db.statementOrder = [];
+    const second = await pushItems(env, {
+      url,
+      title: "English title",
+      title_vi: "Tiêu đề mới",
+    });
+    expect(isHandlerError(second)).toBe(false);
+    const titleLog = db.statementOrder.findIndex(
+      (sql) => sql.includes("FROM translations") && sql.includes("'title'")
+    );
+    const translationUpsert = db.statementOrder.findIndex((sql) =>
+      sql.startsWith("INSERT INTO translations")
+    );
+    const itemLog = db.statementOrder.findIndex(
+      (sql) => sql.includes("FROM items") && sql.includes("'title'")
+    );
+    const itemUpsert = db.statementOrder.findIndex((sql) =>
+      sql.startsWith("INSERT INTO items")
+    );
+    expect(titleLog).toBeGreaterThanOrEqual(0);
+    expect(titleLog).toBeLessThan(translationUpsert);
+    expect(itemLog).toBeGreaterThanOrEqual(0);
+    expect(itemLog).toBeLessThan(itemUpsert);
+    expect(db.statementOrder[itemLog]).toContain("SELECT id, 'vi', 'title'");
+    expect(db.contentLog).toEqual([
+      expect.objectContaining({
+        item_id: id,
+        lang: "vi",
+        field: "title",
+        before_text: "Tiêu đề cũ",
+        after_text: "Tiêu đề mới",
+        reason: "admin",
+      }),
+    ]);
+    expect(db.items.get(id)?.summary).toBe("Keep this");
+    expect(db.translations.get(`${id}:vi`)?.summary).toBe("Tóm tắt giữ");
+    expect(db.translations.get(`${id}:vi`)?.title).toBe("Tiêu đề mới");
+
+    const logged = db.contentLog.length;
+    const third = await pushItems(env, {
+      url,
+      title: "English title",
+      title_vi: "Tiêu đề mới",
+    });
+    expect(isHandlerError(third)).toBe(false);
+    expect(db.contentLog).toHaveLength(logged);
   });
 
   it("rejects items missing url or title", async () => {

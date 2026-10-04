@@ -10,6 +10,7 @@ import {
   nn,
   prepareContentChangeLogs,
   prepareItemContentChangeLog,
+  prepareLoggedTranslationUpsert,
   TRANSLATION_BIND_ARITY,
   TRANSLATION_QA_INVALIDATION_SQL,
   TRANSLATION_UPSERT_SQL,
@@ -390,10 +391,20 @@ describe("translation QA invalidation SQL", () => {
     expect(prepared[0]?.sql).toContain("FROM translations");
     expect(prepared[0]?.sql).toContain("IFNULL(title, '') != IFNULL(?, '')");
     expect(prepared[1]?.sql).toContain("IFNULL(summary, '') != IFNULL(?, '')");
-    expect(prepared[0]?.args[0]).toBe("Tiêu đề mới");
-    expect(prepared[0]?.args[1]).toBe("correction");
-    expect(prepared[0]?.args[3]).toBe("abc");
-    expect(prepared[0]?.args[4]).toBe("vi");
+    expect(prepared[0]?.args.filter((_, i) => i !== 2)).toEqual([
+      "Tiêu đề mới",
+      "correction",
+      "abc",
+      "vi",
+      "Tiêu đề mới",
+    ]);
+    expect(prepared[1]?.args.filter((_, i) => i !== 2)).toEqual([
+      "Tóm tắt mới",
+      "correction",
+      "abc",
+      "vi",
+      "Tóm tắt mới",
+    ]);
   });
 
   it("logs an English item field before the items update", () => {
@@ -414,10 +425,64 @@ describe("translation QA invalidation SQL", () => {
       field: "title",
       text: "New title",
       reason: "suggestion",
+      lang: "vi",
     });
     expect(prepared[0]?.sql).toContain("FROM items");
-    expect(prepared[0]?.sql).toContain("'en'");
-    expect(prepared[0]?.args[1]).toBe("suggestion");
+    expect(prepared[0]?.sql).toContain("SELECT id, 'vi', 'title'");
+    expect(prepared[0]?.sql).toContain("IFNULL(title, '') != IFNULL(?, '')");
+    expect(prepared[0]?.sql).not.toContain("AND lang = ?");
+    expect(prepared[0]?.args.at(-1)).toBe("New title");
+    expect(prepared[0]?.args.filter((_, i) => i !== 2)).toEqual([
+      "New title",
+      "suggestion",
+      "abc",
+      "New title",
+    ]);
+
+    prepareItemContentChangeLog(db, {
+      id: "abc",
+      field: "title",
+      text: "New title",
+      reason: "suggestion",
+    });
+    expect(prepared[1]?.sql).toContain("SELECT id, 'en', 'title'");
+  });
+
+  it("writes translation logs before the upsert", () => {
+    const prepared: { sql: string; args: unknown[] }[] = [];
+    const db = {
+      prepare(sql: string) {
+        const stmt = {
+          bind(...args: unknown[]) {
+            prepared.push({ sql, args });
+            return stmt;
+          },
+        };
+        return stmt;
+      },
+    } as unknown as D1Database;
+    const statements = prepareLoggedTranslationUpsert(db, {
+      id: "abc",
+      title: "Tiêu đề mới",
+      summary: "Tóm tắt mới",
+      reason: "admin",
+      sourceLang: "en",
+      targetLang: "vi",
+    });
+    expect(statements).toHaveLength(3);
+    expect(prepared[0]?.sql).toContain("FROM translations");
+    expect(prepared[0]?.sql).toContain("IFNULL(title, '') != IFNULL(?, '')");
+    expect(prepared[1]?.sql).toContain("IFNULL(summary, '') != IFNULL(?, '')");
+    expect(prepared[2]?.sql).toContain("INSERT INTO translations");
+    expect(prepared[2]?.sql).toContain("qa_rating = NULL");
+    expect(prepared[2]?.args).toEqual([
+      "abc",
+      "vi",
+      "en",
+      "vi",
+      "Tiêu đề mới",
+      "Tóm tắt mới",
+    ]);
   });
 
   it("invalidates the candidate marker when only its source changes", () => {

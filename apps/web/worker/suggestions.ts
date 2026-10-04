@@ -1,9 +1,8 @@
 import {
   nn,
-  prepareContentChangeLogs,
   prepareItemContentChangeLog,
+  prepareLoggedTranslationUpsert,
   prepareTranslationQaInvalidation,
-  prepareTranslationUpsert,
 } from "./d1-bind.js";
 import {
   jevPanelRelevance,
@@ -494,31 +493,19 @@ function prepareApply(
       ).bind(nn(row.item_id)),
     ];
   }
-  return [
-    ...prepareContentChangeLogs(env.DB, {
-      id: row.item_id,
-      lang: "vi",
-      title:
-        target.field === "title" ? text : (target.translation?.title ?? null),
-      summary:
-        target.field === "summary"
-          ? text
-          : (target.translation?.summary ?? null),
-      reason: "suggestion",
-    }),
-    prepareTranslationUpsert(env.DB, {
-      id: row.item_id,
-      lang: "vi",
-      sourceLang: target.item.source_lang === "vi" ? "vi" : "en",
-      targetLang: "vi",
-      title:
-        target.field === "title" ? text : (target.translation?.title ?? null),
-      summary:
-        target.field === "summary"
-          ? text
-          : (target.translation?.summary ?? null),
-    }),
-  ];
+  const title =
+    target.field === "title" ? text : (target.translation?.title ?? null);
+  const summary =
+    target.field === "summary" ? text : (target.translation?.summary ?? null);
+  return prepareLoggedTranslationUpsert(env.DB, {
+    id: row.item_id,
+    lang: "vi",
+    sourceLang: target.item.source_lang === "vi" ? "vi" : "en",
+    targetLang: "vi",
+    title,
+    summary,
+    reason: "suggestion",
+  });
 }
 
 function prepareVerdict(
@@ -851,23 +838,21 @@ function prepareUnifiedApply(
   }));
   const vi = edits.filter((e) => e.lang === "vi");
   if (vi.length > 0) {
-    const pick = (field: SuggestionField) =>
-      vi.find((e) => e.field === field)?.text ?? currentFor(story, "vi", field);
+    const title =
+      vi.find((e) => e.field === "title")?.text ??
+      currentFor(story, "vi", "title");
+    const summary =
+      vi.find((e) => e.field === "summary")?.text ??
+      currentFor(story, "vi", "summary");
     statements.push(
-      ...prepareContentChangeLogs(env.DB, {
-        id: itemId,
-        lang: "vi",
-        title: pick("title"),
-        summary: pick("summary"),
-        reason: "suggestion",
-      }),
-      prepareTranslationUpsert(env.DB, {
+      ...prepareLoggedTranslationUpsert(env.DB, {
         id: itemId,
         lang: "vi",
         sourceLang: story.item.source_lang === "vi" ? "vi" : "en",
         targetLang: "vi",
-        title: pick("title"),
-        summary: pick("summary"),
+        title,
+        summary,
+        reason: "suggestion",
       })
     );
   }

@@ -3,8 +3,8 @@ import {
   buildItemSourceBindArgs,
   MAX_SOURCES_PER_ITEM,
   nn,
-  prepareContentChangeLogs,
-  prepareTranslationUpsert,
+  prepareItemContentChangeLog,
+  prepareLoggedTranslationUpsert,
 } from "../d1-bind.js";
 import {
   type CanonicalUpdate,
@@ -312,6 +312,13 @@ export async function writeItems(
         });
 
         statements.push(
+          prepareItemContentChangeLog(env.DB, {
+            id,
+            field: "summary",
+            text: plan.item.summary ?? null,
+            reason: "ingest",
+            lang: item.sourceLang ?? "en",
+          }),
           env.DB.prepare(UPSERT_ITEM_SQL).bind(
             ...buildItemBindArgs({
               id,
@@ -329,20 +336,14 @@ export async function writeItems(
 
         if (plan.translation) {
           statements.push(
-            ...prepareContentChangeLogs(env.DB, {
-              id,
-              lang: "vi",
-              title: plan.translation.title,
-              summary: plan.translation.summary,
-              reason: "ingest",
-            }),
-            prepareTranslationUpsert(env.DB, {
+            ...prepareLoggedTranslationUpsert(env.DB, {
               id,
               lang: "vi",
               sourceLang: item.sourceLang ?? "en",
               targetLang: "vi",
               title: plan.translation.title,
               summary: plan.translation.summary,
+              reason: "ingest",
             })
           );
         }

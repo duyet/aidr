@@ -165,4 +165,77 @@ describe("writeItems: merge into an existing canonical", () => {
     // The window re-rank still ran for the untouched item.
     expect(row("other").rank_score).not.toBe(1);
   });
+
+  it("logs a summary change before the item upsert and leaves title unlogged", async () => {
+    const prepared: { sql: string; args: unknown[] }[] = [];
+    const ctx = {
+      env: {
+        DB: {
+          prepare(sql: string) {
+            const statement = {
+              bind(...args: unknown[]) {
+                prepared.push({ sql, args });
+                return statement;
+              },
+              async first() {
+                return null;
+              },
+              async all() {
+                return { results: [] as unknown[] };
+              },
+              run() {},
+            };
+            return statement;
+          },
+          async batch(stmts: { run(): void }[]) {
+            for (const s of stmts) s.run();
+            return [];
+          },
+        },
+      } as unknown as Env,
+      step: { do: (_name: string, fn: () => Promise<unknown>) => fn() },
+    } as unknown as IngestContext;
+
+    await writeItems(ctx, {
+      newRows: [
+        {
+          id: "item-vi",
+          source: { id: "vn", type: "rss", config: "{}", enabled: 1 },
+          item: {
+            url: "https://example.com/vi",
+            title: "Tiêu đề",
+            summary: "Tóm tắt nguồn",
+            publishedAt: 1_700_000_000,
+            sourceLang: "vi",
+          },
+        },
+      ],
+      scored: new Map(),
+      translated: new Map(),
+      mergePlan: {
+        merged: new Map(),
+        demoted: new Map(),
+        canonicalUpdates: new Map(),
+      },
+      canonicalTagsByItem: new Map(),
+      now: Date.UTC(2026, 9, 1, 12),
+    });
+
+    const itemFieldLogs = prepared.filter(
+      (row) =>
+        row.sql.includes("item_content_log") && row.sql.includes("FROM items")
+    );
+    expect(itemFieldLogs).toHaveLength(1);
+    expect(itemFieldLogs[0]?.sql).toContain("'summary'");
+    expect(itemFieldLogs[0]?.sql).toContain("SELECT id, 'vi', 'summary'");
+    expect(itemFieldLogs[0]?.sql).not.toContain("'title'");
+    expect(itemFieldLogs[0]?.args[1]).toBe("ingest");
+    expect(itemFieldLogs[0]?.args.at(-1)).toBe("Tóm tắt nguồn");
+    const logAt = prepared.indexOf(itemFieldLogs[0]!);
+    const upsertAt = prepared.findIndex((row) =>
+      row.sql.startsWith("INSERT INTO items")
+    );
+    expect(logAt).toBeGreaterThanOrEqual(0);
+    expect(logAt).toBeLessThan(upsertAt);
+  });
 });
