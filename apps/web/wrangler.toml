@@ -176,12 +176,11 @@ CLERK_PROXY_TIMEOUT_MS = "10000"
 # TELEGRAM_CHAT_ID is the old Vietnamese name; the Worker reads these two.
 TELEGRAM_VI_CHAT_ID = "-1004420104760"
 TELEGRAM_EN_CHAT_ID = "@aidr_today"
-# English Page https://www.facebook.com/aidr.today. Public id, not a secret.
-# FACEBOOK_PAGE_ACCESS_TOKEN is the Worker secret that turns posting on.
-FACEBOOK_PAGE_ID = "1371114472749405"
-# Public app id. FACEBOOK_APP_SECRET and FACEBOOK_PAGE_ACCESS_TOKEN are
-# Worker secrets. The secret mints a new Page token; the Page token posts.
-FACEBOOK_APP_ID = "1815124866288485"
+# Facebook Page posting is off until FACEBOOK_PAGE_ID and
+# FACEBOOK_PAGE_ACCESS_TOKEN are set. The app id and secret only mint a
+# replacement token. All four live in .env.local. Do not commit them.
+# `pnpm facebook:mint` writes the Page token. `pnpm sync-env` uploads the
+# secrets and skips a name that is still a [vars] binding.
 # GA4 property read by the Worker for the /data Audience tab (page views,
 # DAU, MAU). Public config, not a secret — the credential that actually
 # authorises the read is the GA4_SERVICE_ACCOUNT_JSON secret. With either one
