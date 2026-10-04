@@ -87,14 +87,11 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
-  // Router aliases are the safety net: they go last so one bad pick cannot
-  // burn a step's budget, and a chain that ends without one can strand a run.
-  it("ends score, translate and tldr chains with the router safety nets", () => {
-    for (const name of [
-      "ANYROUTER_MODEL",
-      "ANYROUTER_TRANSLATE_MODEL",
-      "ANYROUTER_TLDR_MODEL",
-    ]) {
+  // Router aliases are the safety net on score and TL;DR: they go last so
+  // one bad pick cannot burn a step's budget. Translate ends on Laguna;
+  // Gemma free models are tried first and anyrouter/auto is not in that chain.
+  it("ends score and tldr chains with the router safety nets", () => {
+    for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TLDR_MODEL"]) {
       const ids = idsOf(name);
       expect(ids.at(-1), name).toMatch(/^anyrouter\//);
       const firstAlias = ids.findIndex((id) => id.startsWith("anyrouter/"));
@@ -146,6 +143,18 @@ describe("live AnyRouter model chains", () => {
     expect(reviewer).not.toContain("anyrouter/auto");
     for (const model of reviewer)
       expect(generators.has(model), model).toBe(false);
+  });
+
+  it("tries Gemma free models before Laguna on translate", () => {
+    expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual([
+      "google/gemma-4-31b",
+      "google/gemma-4-26b-a4b-it",
+      "poolside/laguna-s-2.1",
+    ]);
+    expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
+      "google/gemma-4-31b",
+      "poolside/laguna-s-2.1",
+    ]);
   });
 
   it("configures a separate explicit VI→EN generator", () => {
