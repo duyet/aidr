@@ -112,29 +112,44 @@ function isNumberYearOrPercent(text: string): boolean {
   return /^[+-]?(?:\d+(?:[.,]\d+)*)%?$/.test(text.replace(/\s/g, ""));
 }
 
-/** "tác nhân (agent)", "RAG (Retrieval-Augmented Generation)". A bare label
- * ("USD", "NYSE", "Anthropic") is not a gloss; neither is a number, a year,
- * or a percentage. Each hit costs a repair call. */
-function isEnglishGloss(inside: string): boolean {
+/** First letters of a parenthetical expansion. Hyphen parts each contribute
+ * one letter: "Retrieval-Augmented Generation" → RAG. */
+function glossInitials(text: string): string {
+  let initials = "";
+  for (const word of text.split(/\s+/)) {
+    for (const part of word.split(/[-'’]/)) {
+      const letter = part.match(/[A-Za-z]/);
+      if (letter) initials += letter[0].toUpperCase();
+    }
+  }
+  return initials;
+}
+
+/** "tác nhân (agent)", "bầy (swarm)", "RAG (Retrieval-Augmented Generation)".
+ * An all-lowercase interior is a gloss. A Title Case interior is a gloss
+ * only when the word before the parenthesis is an all-caps acronym whose
+ * initials match (RAG, CCC). A bare label ("USD", "NYSE", "Anthropic"), a
+ * place or product name ("New York", "Claude Code", "Sam Altman"), a number,
+ * a year, or a percentage is not. Each hit costs a repair call. */
+function isEnglishGloss(before: string, inside: string): boolean {
   const text = inside.trim();
   if (!text || isNumberYearOrPercent(text)) return false;
   if (/\P{ASCII}/u.test(text)) return false;
   const letters = text.match(/[A-Za-z]/g)?.length ?? 0;
   const significant = text.replace(/\s/g, "");
   if (letters < 2 || letters / significant.length < 0.8) return false;
+  // Do not exempt short lowercase words: "(agent)" would slip through with "(beta)".
   if (/^[a-z]+(?:[-'’][a-z]+)*$/.test(text)) return true;
-  const words = text.split(/\s+/);
-  return (
-    words.length >= 2 &&
-    words.every((word) => /^[A-Za-z]+(?:[-'’][A-Za-z]+)*$/.test(word))
-  );
+  return /^[A-Z]{2,}$/.test(before) && glossInitials(text) === before;
 }
 
 function glossIssues(viText: string): string[] {
   const issues: string[] = [];
   for (const match of viText.normalize("NFC").matchAll(GLOSS_RE)) {
-    if (!isEnglishGloss(match[1] ?? "")) continue;
-    const snippet = match[0].replace(/\s+/g, " ").trim();
+    const whole = match[0];
+    const before = whole.slice(0, whole.lastIndexOf("(")).trim();
+    if (!isEnglishGloss(before, match[1] ?? "")) continue;
+    const snippet = whole.replace(/\s+/g, " ").trim();
     issues.push(
       `"${snippet}" is a parenthetical English gloss; drop the gloss and keep one term`
     );
@@ -147,8 +162,9 @@ const NON_ASCII_RE = /\P{ASCII}/u;
 
 /** "Nscale Huy Động 3,36 Tỷ USD Trước Khi Niêm Yết". Words copied from the
  * English source (names, kept jargon) and the first word of each clause are
- * not counted, so "Nhà Trắng" or "Hoa Kỳ" inside a normal sentence-case
- * headline passes. */
+ * not counted. Title Case means at least three counted Vietnamese words are
+ * capitalized and none of them is lowercase, so an institution inside a
+ * sentence-case headline ("Bộ Tư pháp Hoa Kỳ kiện OpenAI") passes. */
 export function isTitleCaseVi(viTitle: string, sourceTitle: string): boolean {
   const sourceWords = new Set(
     (sourceTitle.match(VI_WORD_RE) ?? []).map((w) => w.toLowerCase())
@@ -166,7 +182,7 @@ export function isTitleCaseVi(viTitle: string, sourceTitle: string): boolean {
       if (/^\p{Lu}/u.test(word)) capitalized++;
     }
   }
-  return capitalized >= 3 && capitalized / Math.max(1, vietnamese) >= 0.6;
+  return capitalized >= 3 && capitalized === vietnamese;
 }
 
 /** Issues in one translated item, as instructions for the repair prompt.
@@ -210,7 +226,7 @@ export function translationDraftIssues(
 }
 
 /** Issues in one Vietnamese TL;DR bullet against the items it cites. A
- * bullet is a digest, so only calques and magnitudes are checked. */
+ * bullet is a digest: calques, magnitudes, and parenthetical glosses. */
 export function tldrBulletIssues(
   sourceText: string,
   bullet: string,
@@ -221,6 +237,7 @@ export function tldrBulletIssues(
   return [
     ...avoidIssues(source, candidate, rules),
     ...magnitudeIssues(sourceText, bullet),
+    ...glossIssues(bullet),
   ];
 }
 
