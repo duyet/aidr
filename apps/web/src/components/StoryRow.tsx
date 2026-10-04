@@ -16,6 +16,7 @@ import type { FeedItem, Lang } from "../lib/types";
 import { CategoryLabel } from "./CategoryLabel";
 import { HighlightedText } from "./HighlightedText";
 import { StoryDetail } from "./StoryDetail";
+import { StoryVotes } from "./story/StoryVotes";
 
 function StoryRowHeader({
   hasDetails,
@@ -249,6 +250,14 @@ export function StoryRow({
               )}
             </a>
           )}
+        </span>
+        <span className="shrink-0">
+          <StoryVotes
+            itemId={item.id}
+            voteNet={item.vote_net ?? 0}
+            lang={lang}
+            compact
+          />
         </span>
         <span className="hidden shrink-0 text-sm text-muted-foreground sm:block">
           {item.category ? (

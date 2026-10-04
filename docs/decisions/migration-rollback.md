@@ -249,6 +249,18 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
 - Risk: none for stored rows. Building the indexes reads `items` once.
 - Rollback: `DROP INDEX IF EXISTS idx_items_status_published_at; DROP INDEX IF EXISTS idx_items_status_fetched_at; DROP INDEX IF EXISTS idx_items_merged_members;`
 
+## 0049_item_votes.sql
+
+- Change: creates `item_votes` (item_id, user_id, value, updated_at). One
+  row per signed-in reader per story. `value` is +1 or -1. Clearing a vote
+  deletes the row, so `SUM(value)` is the net that `rank_score` folds into
+  reader engagement. No rows are seeded.
+- Risk: none for mail or Telegram. Feed and story reads treat a missing
+  table as "no votes". Apply this before deploying the Worker that writes
+  a vote or recomputes rank from `item_votes`, or those statements fail.
+- Rollback: redeploy the previous Worker, then `DROP TABLE item_votes;`
+  Rank scores already written keep the vote term until the next re-rank.
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`

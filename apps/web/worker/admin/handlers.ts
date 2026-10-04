@@ -429,6 +429,7 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
           points: signals.points,
           comments: signals.comments,
           source_count: signals.sourceCount,
+          vote_net: signals.voteNet,
         },
       };
     }),

@@ -7,6 +7,8 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../../worker/media.js";
+import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
+import { itemVotesTableReady } from "../../worker/votes.js";
 import type { DbReader } from "./db";
 import type { ContentLogEntry, FeedItem, ItemSource } from "./types";
 
@@ -99,6 +101,7 @@ function mapStoryRow(
     tags: parseTags(row.tags),
     sources: [],
     llm_tokens: asNumber(row.llm_tokens),
+    vote_net: asNumber(row.vote_net),
     image_url:
       imageUrl && imageUrl.length <= MAX_PUBLIC_MEDIA_URL_LENGTH
         ? imageUrl
@@ -133,11 +136,13 @@ async function queryStories(
   idPrefix: string,
   requestedLimit: number
 ): Promise<FeedItem[]> {
-  const [hasLlmTokens, hasImageUrl, hasMediaManifest] = await Promise.all([
-    probeColumn(db, "llm_tokens", llmTokensSupported),
-    probeColumn(db, "image_url", imageUrlSupported),
-    supportsMediaManifest(db),
-  ]);
+  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes] =
+    await Promise.all([
+      probeColumn(db, "llm_tokens", llmTokensSupported),
+      probeColumn(db, "image_url", imageUrlSupported),
+      supportsMediaManifest(db),
+      itemVotesTableReady(db),
+    ]);
   llmTokensSupported = hasLlmTokens;
   imageUrlSupported = hasImageUrl;
 
@@ -150,7 +155,9 @@ async function queryStories(
               ${hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""}
               ${hasImageUrl ? ", i.image_url" : ""}
               ${hasMediaManifest ? ", i.media_manifest" : ""}
+              ${hasVotes ? `, ${VOTE_NET_COLUMN}` : ""}
        FROM items i
+       ${hasVotes ? VOTE_NET_JOIN_I : ""}
        LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
        WHERE substr(i.id, 1, ?) = ? AND i.status = 'published' LIMIT ${limit}`;
 

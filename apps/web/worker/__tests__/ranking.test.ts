@@ -7,6 +7,7 @@ import {
   type RankSignalRow,
   rankScore,
   rankSignals,
+  readerEngagement,
   rowRankSignals,
   sourceBoost,
 } from "../ranking.js";
@@ -39,6 +40,41 @@ describe("rankScore", () => {
     const low = rankScore({ ...base, points: 1, comments: 0 });
     const high = rankScore({ ...base, points: 500, comments: 200 });
     expect(high).toBeGreaterThan(low);
+  });
+
+  it("folds reader votes beside points and lets downvotes lower the score", () => {
+    const base = {
+      importance: 8,
+      quality: 8,
+      points: 40,
+      comments: 10,
+      publishedAt: NOW,
+      now: NOW,
+    };
+    const plain = rankScore(base);
+    const up = rankScore({ ...base, voteNet: 5 });
+    const down = rankScore({ ...base, voteNet: -5 });
+    expect(up).toBeGreaterThan(plain);
+    expect(down).toBeLessThan(plain);
+    // Five votes must not outrank a story whose source points are far higher.
+    const crowded = rankScore({
+      ...base,
+      points: 400,
+      comments: 80,
+      voteNet: 0,
+    });
+    expect(up).toBeLessThan(crowded);
+    // Zero votes is the historical engagement term.
+    expect(readerEngagement(40, 10, 0)).toBeCloseTo(
+      1 + Math.log10(1 + 40 + 0.5 * 10),
+      10
+    );
+    // A downvote still moves a story that has no HN points.
+    expect(readerEngagement(0, 0, -1)).toBeLessThan(readerEngagement(0, 0, 0));
+    expect(readerEngagement(0, 0, -1)).toBeGreaterThan(0);
+    expect(
+      rankScore({ ...base, points: 0, comments: 0, voteNet: -100 })
+    ).toBeGreaterThanOrEqual(0);
   });
 
   it("is monotonic in quality", () => {
@@ -224,7 +260,10 @@ describe("corroboration counts independent outlets, not tweets", () => {
     const db = new DatabaseSync(":memory:");
     db.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, source_id TEXT,
       points INTEGER, comments INTEGER, status TEXT, duplicate_of TEXT,
-      url TEXT)`);
+      url TEXT);
+      CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        PRIMARY KEY (item_id, user_id))`);
     const add = db.prepare("INSERT INTO items VALUES (?, ?, ?, ?, ?, ?, ?)");
     const at = (id: string) => `https://example.com/${id}`;
     add.run("canon", "huggingnews", 120, 319, "published", null, at("canon"));
@@ -237,6 +276,9 @@ describe("corroboration counts independent outlets, not tweets", () => {
     add.run("post", "cloudflare-blog", 0, 0, "published", null, clef);
     add.run("sub", "user", 0, 0, "merged", "post", `${clef}?ref=x`);
     add.run("agg", "huggingnews", 0, 0, "merged", "post", at("agg"));
+    db.prepare(
+      "INSERT INTO item_votes VALUES ('canon', 'user_a', 1, 1), ('alone', 'user_a', 1, 1), ('alone', 'user_b', -1, 1)"
+    ).run();
     const read = (id: string) =>
       rowRankSignals(
         db
@@ -249,8 +291,14 @@ describe("corroboration counts independent outlets, not tweets", () => {
       points: 250,
       comments: 90,
       sourceCount: 2,
+      voteNet: 1,
     });
-    expect(read("alone")).toEqual({ points: 30, comments: 5, sourceCount: 1 });
+    expect(read("alone")).toEqual({
+      points: 30,
+      comments: 5,
+      sourceCount: 1,
+      voteNet: 0,
+    });
     // The submission is the Cloudflare outlet again, not a third source.
     expect(read("post").sourceCount).toBe(2);
   });
