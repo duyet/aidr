@@ -88,8 +88,9 @@ describe("live AnyRouter model chains", () => {
   }
 
   // Router aliases are the safety net on score and TL;DR: they go last so
-  // one bad pick cannot burn a step's budget. Translate ends on Laguna;
-  // Gemma free models are tried first and anyrouter/auto is not in that chain.
+  // one bad pick cannot burn a step's budget. Translate ends on Laguna.
+  // Gemini 3 Flash is tried first, then Gemma, and anyrouter/auto is not
+  // in that chain.
   it("ends score and tldr chains with the router safety nets", () => {
     for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TLDR_MODEL"]) {
       const ids = idsOf(name);
@@ -145,13 +146,15 @@ describe("live AnyRouter model chains", () => {
       expect(generators.has(model), model).toBe(false);
   });
 
-  it("tries Gemma free models before Laguna on translate", () => {
+  it("tries probed Gemini before Gemma, and Gemma before Laguna, on translate", () => {
     expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual([
+      "google/gemini-3-flash",
       "google/gemma-4-31b",
       "google/gemma-4-26b-a4b-it",
       "poolside/laguna-s-2.1",
     ]);
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
+      "google/gemini-3-flash",
       "google/gemma-4-31b",
       "poolside/laguna-s-2.1",
     ]);

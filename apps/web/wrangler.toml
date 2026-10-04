@@ -88,10 +88,14 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 #                            TL;DR; TL;DR is the one place it paid off
 #                            (resolved to Laguna, 3 prod successes in the 24h
 #                            before the recheck). Off the translate chains.
+#   google/gemini-3-flash    2026-10-04 streaming json_object: HTTP 200, usable
+#                            vi JSON in 2-6s. Heads both translate chains so
+#                            a production timeout on Gemma or Laguna does not
+#                            spend the batch budget first.
 #   google/gemma-4-31b       catalog id; OpenRouter wire google/gemma-4-31b-it:free.
-#                            Heads both translate chains (2026-10-04).
-#   google/gemma-4-26b-a4b-it catalog id; OpenRouter :free BYOK hop. Second
-#                            hop on VI translate only.
+#                            Next translate hop after Gemini 3 Flash.
+#   google/gemma-4-26b-a4b-it catalog id; OpenRouter :free BYOK hop. VI
+#                            translate only, after Gemini 3 Flash and Gemma 31B.
 # Laguna often emits one stray `]`/`}`; parseJson drops it (llm.ts).
 # Removed 2026-10-01: anyrouter/free (dots-3-note-preview, reasoning-only on
 # big prompts, prod translate 0 of 8), anyrouter/latest (space-bunny, same
@@ -100,27 +104,26 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # and -super never stream a token; -ultra buffers 56-140s;
 # deepseek-v4.1-flash, minimax/m3 fail.
 # BYOK-only on this key (404 "model_unavailable"): openai/*, qwen/*,
-# google/* other than the two Gemma translate ids above, meta/llama-*,
+# google/* other than gemini-3-flash and the two Gemma translate ids above, meta/llama-*,
 # meta/muse-spark-*, mistralai/*, moonshotai/*,
 # x-ai/*, minimax/m2.*, cohere/*, nex-agi/*, bytedance-seed/*, upstage/*,
 # xiaomi/*, stepfun-ai/*, tencent/*, ibm-granite/*, sakana/*, openrouter/free.
 # Score tries ANYROUTER_DECISION_MODEL, then Jev (ANYROUTER_JEV_MODEL), then
 # ANYROUTER_MODEL.
 ANYROUTER_MODEL = "poolside/laguna-s-2.1,@preset/aidr,anyrouter/auto"
-# Translate tries the Gemma free catalog ids first. Each extra id still
-# reserves a 20s fallback slice (2026-10-02); Laguna stays last so a Gemma
-# miss still translates. Dropped @preset/aidr (11/87 ok over 24h, 44
-# rate-limited) and anyrouter/auto (prod translate 0 of 8).
-ANYROUTER_TRANSLATE_MODEL = "google/gemma-4-31b,google/gemma-4-26b-a4b-it,poolside/laguna-s-2.1"
+# Translate tries the probed Gemini 3 Flash first, then the Gemma free
+# catalog ids. Each extra id still reserves a 20s fallback slice
+# (2026-10-02); Laguna stays last. Dropped @preset/aidr (11/87 ok over 24h,
+# 44 rate-limited) and anyrouter/auto (prod translate 0 of 8).
+ANYROUTER_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-4-31b,google/gemma-4-26b-a4b-it,poolside/laguna-s-2.1"
 # TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
 # the first hop's budget, and Laguna needs 102-119s on the 26K VI prompt.
 ANYROUTER_TLDR_MODEL = "poolside/laguna-s-2.1,anyrouter/auto"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
-# (router aliases and presets are filtered out of this chain). Gemma 31B
-# first, Laguna fallback. The 26B id stays off this chain so the first hop
-# keeps a single 20s fallback slice.
-ANYROUTER_ENGLISH_TRANSLATE_MODEL = "google/gemma-4-31b,poolside/laguna-s-2.1"
+# (router aliases and presets are filtered out of this chain). Gemini 3
+# Flash first, then Gemma 31B, Laguna last. The 26B id stays off this chain.
+ANYROUTER_ENGLISH_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-4-31b,poolside/laguna-s-2.1"
 # Translation semantic review: explicit concrete ids, disjoint from every
 # generator id; missing/overlapping config fails closed. Max 2 ids.
 # Review probe on 3 prod pairs with provider.require_parameters (first
