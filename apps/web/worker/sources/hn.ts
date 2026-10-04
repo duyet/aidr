@@ -1,4 +1,5 @@
 import { AI_KEYWORD_RE } from "./keywords.js";
+import { SourceFetchError } from "./rss.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 
 interface AlgoliaHit {
@@ -41,7 +42,12 @@ function hitToItem(hit: AlgoliaHit): FetchedItem | null {
 
 async function search(url: string): Promise<AlgoliaHit[]> {
   const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    throw new SourceFetchError(
+      "fetch_failed",
+      `hn search returned ${res.status}`
+    );
+  }
   const data = (await res.json()) as AlgoliaResponse;
   return data.hits ?? [];
 }

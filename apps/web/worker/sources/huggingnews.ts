@@ -1,5 +1,6 @@
 import { fetchWithSafeRedirects } from "../enrich.js";
 import { toEpochSeconds } from "../time.js";
+import { SourceFetchError } from "./rss.js";
 import type { FetchedItem, FetchedItemSource, SourceAdapter } from "./types.js";
 
 const DATA_URL = "https://huggingnews.com/__data.json";
@@ -154,7 +155,12 @@ function storyToRawStory(story: Record<string, unknown>): RawStory | null {
 
 async function fetchRawStories(): Promise<RawStory[]> {
   const res = await fetch(DATA_URL, { signal: AbortSignal.timeout(10_000) });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    throw new SourceFetchError(
+      "fetch_failed",
+      `huggingnews feed returned ${res.status}`
+    );
+  }
   const payload = (await res.json()) as { nodes?: unknown[] };
   const nodes = payload.nodes ?? [];
 
@@ -349,7 +355,12 @@ async function fetchFromSitemap(): Promise<FetchedItem[]> {
   const res = await fetch(`${SITEMAP_URL_PREFIX}${dateStr}.xml`, {
     signal: AbortSignal.timeout(10_000),
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    throw new SourceFetchError(
+      "fetch_failed",
+      `huggingnews sitemap returned ${res.status}`
+    );
+  }
   const xml = await res.text();
 
   const items: FetchedItem[] = [];
@@ -385,6 +396,8 @@ export const huggingNewsAdapter: SourceAdapter = {
       const sitemapItems = await fetchFromSitemap();
       return sitemapItems.filter((item) => item.publishedAt >= sinceEpochSec);
     } catch (error) {
+      // Network failures stay an empty list. A typed fetch failure must not.
+      if (error instanceof SourceFetchError) throw error;
       console.error("huggingnews adapter failed:", error);
       return [];
     }

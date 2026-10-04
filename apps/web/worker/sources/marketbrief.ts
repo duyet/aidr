@@ -1,5 +1,6 @@
 import { toEpochSeconds } from "../time.js";
 import { fetchStoryDetailByUrl, resolve } from "./huggingnews.js";
+import { SourceFetchError } from "./rss.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 
 const ORIGIN = "https://marketbrief.now";
@@ -158,7 +159,12 @@ export const marketBriefAdapter: SourceAdapter = {
         signal: AbortSignal.timeout(12_000),
         headers: { Accept: "application/json" },
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        throw new SourceFetchError(
+          "fetch_failed",
+          `marketbrief feed returned ${res.status}`
+        );
+      }
       const payload: unknown = await res.json();
       for (const item of parseMarketBriefPayload(payload)) {
         if (item.publishedAt < sinceEpochSec) continue;

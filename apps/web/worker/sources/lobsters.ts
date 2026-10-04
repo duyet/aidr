@@ -1,4 +1,5 @@
 import { isAiRelatedTitle } from "./keywords.js";
+import { SourceFetchError } from "./rss.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 
 interface LobstersStory {
@@ -49,7 +50,12 @@ async function fetchTag(tag: string): Promise<LobstersStory[]> {
       headers: { Accept: "application/json" },
     }
   );
-  if (!res.ok) return [];
+  if (!res.ok) {
+    throw new SourceFetchError(
+      "fetch_failed",
+      `lobsters feed returned ${res.status}`
+    );
+  }
   const data = (await res.json()) as unknown;
   return Array.isArray(data) ? (data as LobstersStory[]) : [];
 }
