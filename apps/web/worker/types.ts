@@ -108,6 +108,12 @@ export interface Env {
   FACEBOOK_APP_ID?: string;
   /** Worker secret. Never logged. Not used on the hourly post. */
   FACEBOOK_APP_SECRET?: string;
+  /** Threads user id. Empty leaves the channel off. Not a wrangler var:
+   *  nothing here is a committed id, and the notifier is not registered. */
+  THREADS_USER_ID?: string;
+  /** Threads user token (`threads_basic`, `threads_content_publish`).
+   *  Empty leaves the channel off. This repo does not mint or refresh it. */
+  THREADS_ACCESS_TOKEN?: string;
   /** Cloudflare Email Sending binding. Optional: absent until Email Sending
    *  is onboarded for aidr.today, so all use sites must guard for it. */
   EMAIL?: SendEmail;

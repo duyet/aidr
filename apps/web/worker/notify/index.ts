@@ -59,7 +59,8 @@ import { webhookNotifier } from "./webhook.js";
  * the next hourly run sends it.
  */
 
-/** Registered delivery channels; add discord/... here. */
+/** Registered delivery channels. Threads (`threads.ts`) is not registered:
+ *  the daily payload exists, and nothing here calls the Threads API. */
 export const notifiers: Notifier[] = [
   telegramNotifier,
   telegramEnNotifier,
