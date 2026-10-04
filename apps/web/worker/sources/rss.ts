@@ -91,6 +91,30 @@ function stripHtml(value: string): string {
     .trim();
 }
 
+const RSS_SUMMARY_MAX_CHARS = 1200;
+
+/** Clip on a sentence inside 1200 characters. A hard cut ends with `…`
+ * so a mid-sentence feed description is visible to the missing-summary
+ * query (LIKE '%…'). A raw slice is not. */
+function clipFeedSummary(text: string): string {
+  if (text.length <= RSS_SUMMARY_MAX_CHARS) return text;
+  const slice = text.slice(0, RSS_SUMMARY_MAX_CHARS);
+  const trimmed = slice.trimEnd();
+  const boundary = Math.max(
+    slice.lastIndexOf(". "),
+    slice.lastIndexOf("! "),
+    slice.lastIndexOf("? "),
+    /[.!?]$/.test(trimmed) ? trimmed.length - 1 : -1
+  );
+  if (boundary >= 0) return slice.slice(0, boundary + 1).trim();
+  // Leave one character for `…`. A 1200-character slice plus the mark
+  // is 1201 and still not a sentence the missing-summary query can see.
+  const room = slice.slice(0, RSS_SUMMARY_MAX_CHARS - 1);
+  const space = room.lastIndexOf(" ");
+  const cut = (space > 0 ? room.slice(0, space) : room).trimEnd();
+  return /(?:\.{3}|…)\s*$/.test(cut) ? cut : `${cut}…`;
+}
+
 function linkHref(block: string): string | null {
   const match = block.match(/<link[^>]*href="([^"]+)"/i);
   const href = match?.[1]?.trim();
@@ -273,7 +297,7 @@ export function parseRssItems(xml: string): FetchedItem[] {
     const rawSummary =
       tagText(chunk, "description") ?? tagText(chunk, "summary");
     const summary = rawSummary
-      ? stripHtml(rawSummary).slice(0, 1200)
+      ? clipFeedSummary(stripHtml(rawSummary))
       : undefined;
     const media = mediaCandidatesFromBlock(chunk);
     const mediaManifest = buildMediaManifest(media);

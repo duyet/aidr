@@ -53,7 +53,11 @@ export function buildMissingMediaQuery(limit = BACKFILL_CONTENT_CAP): string {
 /**
  * Published English-source items with no usable Vietnamese title yet. Title-only
  * rows (no English summary) still get a title translation — the UI must not
- * invent one. Evaluated fresh each run so the same-run content-backfill
+ * invent one. A non-empty VI summary is still missing when it is a length-cut
+ * of a long English source: at least 200 characters and under 60% of that
+ * length, the same bar as translationDraftIssues. That is how a same-run
+ * replacement of a short blurb is translated again. This query does not write
+ * a translation. Evaluated fresh each run so the same-run content-backfill
  * is picked up without unioning result sets in application code.
  */
 export function buildMissingTranslationQuery(
@@ -68,8 +72,13 @@ export function buildMissingTranslationQuery(
               AND t.title IS NOT NULL AND t.title != ''
               -- A summary the source has but the VI row lacks (a batch
               -- that kept the title and dropped the summary) also counts.
+              -- length(vi) * 5 < length(en) * 3 is vi/en < 0.6 without
+              -- SQLite integer division. Source under 200 characters stays
+              -- done: the ratio is not meaningful there.
               AND (i.summary IS NULL OR i.summary = ''
-                   OR (t.summary IS NOT NULL AND t.summary != ''))
+                   OR (t.summary IS NOT NULL AND t.summary != ''
+                       AND NOT (length(i.summary) >= 200
+                                AND length(t.summary) * 5 < length(i.summary) * 3)))
           )
           ORDER BY i.published_at DESC
           LIMIT ${limit}`;

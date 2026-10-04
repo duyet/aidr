@@ -101,6 +101,58 @@ describe("parseRssItems", () => {
       summary: "Notes on prompting.",
     });
   });
+
+  it("clips a long description on a sentence inside 1200 characters", () => {
+    const sentence = "The lab released a new open model today.";
+    const body = `${sentence}${" Extra detail keeps going without a stop".repeat(40)}`;
+    expect(body.length).toBeGreaterThan(1200);
+    expect(body.slice(0, 1200).endsWith(".")).toBe(false);
+
+    const [item] = parseRssItems(`<item>
+      <title>Long</title>
+      <link>https://example.com/long</link>
+      <description>${body}</description>
+    </item>`);
+
+    expect(item.summary).toBe(sentence);
+    expect(item.summary?.length).toBeLessThanOrEqual(1200);
+  });
+
+  it("ends a mid-sentence cut with an ellipsis so backfill can see it", () => {
+    const body = "word ".repeat(300).trim();
+    expect(body.length).toBeGreaterThan(1200);
+    expect(body.includes(".")).toBe(false);
+
+    const [item] = parseRssItems(`<item>
+      <title>Cut</title>
+      <link>https://example.com/cut</link>
+      <description>${body}</description>
+    </item>`);
+
+    // A raw slice(0, 1200) ends mid-sentence with no ellipsis, so
+    // summaryLooksCutOff is false and LIKE '%…' never selects the row.
+    // The mark has to fit inside the same 1200 characters.
+    expect(item.summary?.endsWith("…")).toBe(true);
+    expect(item.summary).not.toBe(body.slice(0, 1200));
+    expect(item.summary?.length).toBeLessThanOrEqual(1200);
+    const kept = item.summary?.slice(0, -1) ?? "";
+    expect(body.startsWith(kept)).toBe(true);
+  });
+
+  it("keeps a spaceless cut inside 1200 characters and marks it", () => {
+    const body = "x".repeat(1500);
+    const [item] = parseRssItems(`<item>
+      <title>Blob</title>
+      <link>https://example.com/blob</link>
+      <description>${body}</description>
+    </item>`);
+
+    // slice(0, 1200) + "…" is 1201 characters and still mid-token.
+    expect(item.summary?.endsWith("…")).toBe(true);
+    expect(item.summary?.length).toBeLessThanOrEqual(1200);
+    expect(item.summary).not.toBe(`${body.slice(0, 1200)}…`);
+    expect(body.startsWith(item.summary?.slice(0, -1) ?? "")).toBe(true);
+  });
 });
 
 describe("rssAdapter", () => {

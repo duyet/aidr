@@ -285,6 +285,37 @@ describe("buildMissingTranslationQuery", () => {
   it("respects the given limit", () => {
     expect(buildMissingTranslationQuery(3)).toContain("LIMIT 3");
   });
+
+  it("selects a short VI summary again after the English source grew", () => {
+    // Same bar as translationDraftIssues: source >= 200 and vi/en < 0.6.
+    // A non-empty VI summary of the old blurb must not count as done once
+    // the English summary is the longer text.
+    const source = "S".repeat(200);
+    expect(
+      pick([
+        {
+          id: "cut",
+          summary: source,
+          vi: { title: "T", summary: "V".repeat(119) },
+        },
+        {
+          id: "kept",
+          summary: source,
+          vi: { title: "T", summary: "V".repeat(120) },
+        },
+        {
+          id: "short-source",
+          summary: "S".repeat(199),
+          vi: { title: "T", summary: "V" },
+        },
+      ])
+    ).toEqual(["cut"]);
+    // Selecting the row again is the whole job. The query must not write
+    // a replacement translation.
+    const sql = buildMissingTranslationQuery();
+    expect(sql).toMatch(/^\s*SELECT\b/);
+    expect(sql).not.toMatch(/\b(INSERT|UPDATE|DELETE|REPLACE)\b/);
+  });
 });
 
 describe("buildUnscoredItemsQuery", () => {

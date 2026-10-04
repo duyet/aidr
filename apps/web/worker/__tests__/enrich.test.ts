@@ -176,6 +176,31 @@ describe("enrichMissingContent", () => {
     expect(item.summary).toBe("Fetched description");
   });
 
+  it("replaces an ellipsis blurb with the complete description parseOgTags chose", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      htmlResponse(`
+        <meta property="og:image" content="https://example.com/og.png">
+        <meta property="og:description" content="An IPO prospectus seen by Reu…" />
+        <p>An IPO prospectus seen by Reuters put the first-year loss at $41.97 billion.</p>
+      `)
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    // The blurb is truthy and the row already has media, so today's enrich
+    // never fetches and never replaces it. The cut-off text would be scored
+    // and translated.
+    const item = makeItem({
+      summary: "An IPO prospectus seen by Reu…",
+      imageUrl: "https://example.com/already.png",
+    });
+    await enrichMissingContent([item]);
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(item.summary).toBe(
+      "An IPO prospectus seen by Reuters put the first-year loss at $41.97 billion."
+    );
+  });
+
   it("never overwrites a summary the adapter already provided (e.g. huggingnews body)", async () => {
     vi.stubGlobal(
       "fetch",

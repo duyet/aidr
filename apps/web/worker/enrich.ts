@@ -408,7 +408,12 @@ export async function enrichMissingContent(
   items: FetchedItem[]
 ): Promise<void> {
   for (const item of items) normalizeExistingMedia(item);
-  const candidates = items.filter((item) => !item.summary || !hasMedia(item));
+  // A finished summary with media needs nothing. A blurb ending in … or
+  // ... still needs the article, or it is scored and translated as-is.
+  const candidates = items.filter(
+    (item) =>
+      !item.summary || summaryLooksCutOff(item.summary) || !hasMedia(item)
+  );
   const toEnrich = candidates.slice(0, MAX_ENRICH_FETCHES);
 
   for (let i = 0; i < toEnrich.length; i += ENRICH_BATCH_SIZE) {
@@ -426,7 +431,10 @@ export async function enrichMissingContent(
 
         const og = await fetchOgData(item.url);
         fetched.push(...mediaCandidatesFromOg(og, 20));
-        if (!item.summary && og.description) item.summary = og.description;
+        // A cut-off blurb must not block the finished description
+        // parseOgTags already chose.
+        const summary = preferCompleteSummary(item.summary, og.description);
+        if (summary) item.summary = summary;
 
         let manifest = manifestWithoutArticleUrl(
           buildMediaManifest([
