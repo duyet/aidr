@@ -84,9 +84,10 @@ jobs:
           pnpm --filter @aidr/web pack-extension
           pnpm --filter @aidr/web pack-cws
 
-      # aidr-<version>.zip is the Load unpacked zip (nested aidr/ folder);
+      # aidr.zip is the stable name https://aidr.today/aidr.zip follows.
+      # aidr-<version>.zip is that same Load unpacked zip (nested aidr/ folder).
       # aidr-cws-<version>.zip has manifest.json at the root for the Chrome
-      # Web Store.
+      # Web Store. Do not upload the store zip as aidr.zip.
       - name: Attach extension zips to the release
         if: ${{ steps.tag.outputs.tag != '' }}
         shell: bash
@@ -100,5 +101,6 @@ jobs:
             exit 1
           fi
           cp apps/web/public/aidr.zip "aidr-$version.zip"
+          cp apps/web/public/aidr.zip aidr.zip
           cp apps/extension/dist/aidr-cws.zip "aidr-cws-$version.zip"
-          gh release upload "$TAG" "aidr-$version.zip" "aidr-cws-$version.zip" --clobber
+          gh release upload "$TAG" "aidr-$version.zip" "aidr-cws-$version.zip" aidr.zip --clobber
