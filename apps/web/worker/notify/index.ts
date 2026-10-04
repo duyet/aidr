@@ -22,6 +22,7 @@ import {
 import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "../time.js";
 import type { Env } from "../types.js";
+import { facebookEnNotifier } from "./facebook.js";
 import {
   telegramEnNotifier,
   telegramNotifier,
@@ -62,6 +63,7 @@ import { webhookNotifier } from "./webhook.js";
 export const notifiers: Notifier[] = [
   telegramNotifier,
   telegramEnNotifier,
+  facebookEnNotifier,
   webhookNotifier,
 ];
 
@@ -631,7 +633,7 @@ export async function dispatchStoryNotifications(
           );
           await reportDeliveryFailure(
             env,
-            `telegram ${notifier.id} digest ${failureLabel(result)}: ${result.error ?? "unknown"}`,
+            `${notifier.id} digest ${failureLabel(result)}: ${result.error ?? "unknown"}`,
             { channel: notifier.id, kind: "digest" }
           );
         } else {
@@ -738,7 +740,7 @@ export async function dispatchStoryNotifications(
             );
             await reportDeliveryFailure(
               env,
-              `telegram ${notifier.id} trending ${failureLabel(result)}: ${result.error ?? "unknown"}`,
+              `${notifier.id} trending ${failureLabel(result)}: ${result.error ?? "unknown"}`,
               { channel: notifier.id, kind: "trending" }
             );
           } else {
@@ -802,13 +804,13 @@ export async function forceSendDigest(
   const key = digestKey(date);
   let sent = 0;
   let sawSnapshot = false;
+  let enabled = 0;
   for (const notifier of notifiers) {
-    if (!notifier.enabled(env)) {
-      return {
-        sent: 0,
-        reason: `${notifier.id} not configured (missing bot token or chat id)`,
-      };
-    }
+    // A channel that is off (no Facebook token, no webhook) must not abort
+    // the channels that are on, and must not be reported as the reason a
+    // digest failed to send.
+    if (!notifier.enabled(env)) continue;
+    enabled++;
     const digest = await loadDigest(env, date, notifier.lang);
     if (!digest) continue;
     sawSnapshot = true;
@@ -825,6 +827,9 @@ export async function forceSendDigest(
     await recordDelivery(env, notifier.id, target, key, result);
     if (result.ok) sent++;
     else return { sent, reason: result.error ?? "send failed" };
+  }
+  if (enabled === 0) {
+    return { sent: 0, reason: "no channel configured" };
   }
   if (!sawSnapshot) {
     return { sent: 0, reason: `no TL;DR snapshot for ${date}` };

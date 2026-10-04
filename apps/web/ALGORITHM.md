@@ -40,7 +40,8 @@ One hourly run does three jobs. Prompts live in `worker/llm.ts`; the steps live 
 Publish has two deliveries and they do not share a clock or a table:
 
 - **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject and heading are a fixed short title (`AI;DR — <date> · Today in AI`); the first story is the preheader. Idempotency is `subscribers.last_sent_date`. A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
-- **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories are Telegram-only.
+- **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
+- **Facebook** (`worker/notify/facebook.ts`) — English Page only (`facebook-en`, https://www.facebook.com/aidr.today), same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes our page for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried.
 
 An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next hourly run retries. Email is not a `Notifier`: a notifier is one target plus a trending post.
 
@@ -701,7 +702,7 @@ retries. Idempotency stays on `subscribers.last_sent_date`, not the
 
 ### 12. Notify (`worker/notify/`)
 
-Pluggable channel adapters (Telegram
+Pluggable channel adapters (Telegram, the English Facebook Page,
 plus optional JSON/Slack webhook via `NOTIFY_WEBHOOK_URL`),
 deliberately non-spammy.
 
@@ -838,6 +839,19 @@ deliberately non-spammy.
   source text only when the source is already in that language, else the
   story is skipped on that channel. A VnExpress story reaches `telegram-en`
   through its vi→en translation. A second locale is another notifier entry.
+- **Facebook** (`facebook-en`) is English only and uses the same gates.
+  Each send is one `POST /{page-id}/feed` link post (`message` + `link`)
+  on Graph `v26.0`. The link is the day page or the story permalink with
+  `utm_source=facebook`. The Page preview comes from that page's own
+  Open Graph tags. There is no photo upload, no video, no comment, and no
+  Messenger send. Copy that asks people to like, share, or comment is
+  refused before the request. Error codes 10, 100, 190, 200, and 368 are
+  stored as `ambiguous` and not retried. Rate limits (4, 17, 32, 80001,
+  80006) wait for the next hourly run. `FACEBOOK_PAGE_ID` is public config
+  (`1371114472749405`). `FACEBOOK_PAGE_ACCESS_TOKEN` turns posting on. The
+  token is a Page access token with `pages_manage_posts`,
+  `pages_read_engagement`, and `pages_show_list`, from a person who can
+  `CREATE_CONTENT` on https://www.facebook.com/aidr.today.
 
 ### 13. Review gates (LLM, rating ≥ 0.6)
 

@@ -67,6 +67,12 @@ const WORKER_OPTIONAL = [
   // and a fine-grained PAT (issues:write) for aidr-alert GitHub issues.
   "TELEGRAM_OWNER_CHAT_ID",
   "GITHUB_ALERT_TOKEN",
+  // English Facebook Page token. The Page id is a wrangler var. Unset token
+  // leaves the channel off.
+  "FACEBOOK_PAGE_ACCESS_TOKEN",
+  // Mint a replacement Page token. The hourly post uses the Page token.
+  "FACEBOOK_APP_ID",
+  "FACEBOOK_APP_SECRET",
 ] as const;
 
 /** Secrets GitHub Actions workflows read (`secrets.*`). */
@@ -87,6 +93,11 @@ const GITHUB_OPTIONAL = [
   "CLOUDFLARE_ZONE_ID",
   "CLERK_PUBLISHABLE_KEY",
   "SENTRY_DSN",
+  // Page token posts. App id and secret mint a replacement Page token.
+  // Neither secret is written into git.
+  "FACEBOOK_PAGE_ACCESS_TOKEN",
+  "FACEBOOK_APP_ID",
+  "FACEBOOK_APP_SECRET",
 ] as const;
 
 const args = new Set(process.argv.slice(2));
@@ -226,11 +237,14 @@ function syncWorker(secrets: Record<string, string>): boolean {
     writeFileSync(
       tmpFile,
       JSON.stringify(
-        Object.entries(secrets).map(([name, text]) => ({
-          name,
-          text,
-          type: "secret_text",
-        })),
+        {
+          secrets: Object.fromEntries(
+            Object.entries(secrets).map(([name, text]) => [
+              name,
+              { type: "secret_text", name, text },
+            ])
+          ),
+        },
         null,
         2
       )
