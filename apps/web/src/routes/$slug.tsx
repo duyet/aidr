@@ -13,9 +13,7 @@ import { idPrefixFromSlug, storyCanonicalRedirect } from "../lib/slug";
 import { fetchStory } from "../lib/story-fn";
 import type { FeedItem, Lang } from "../lib/types";
 
-type LoaderResult =
-  | { kind: "story"; item: FeedItem }
-  | { kind: "missing"; lang: Lang };
+type LoaderResult = { kind: "story"; item: FeedItem } | { kind: "missing" };
 
 /** Matches /api/story/$id — published stories are public and change
  * rarely, so the permalink HTML is edge-cacheable. Missing slugs stay
@@ -26,9 +24,9 @@ const STORY_PAGE_CACHE_CONTROL =
 export const Route = createFileRoute("/$slug")({
   loader: async ({ params, context, location }): Promise<LoaderResult> => {
     const idPrefix = idPrefixFromSlug(params.slug);
-    if (!idPrefix) return { kind: "missing", lang: context.lang };
+    if (!idPrefix) return { kind: "missing" };
     const item = await fetchStory({ data: { idPrefix } });
-    if (!item) return { kind: "missing", lang: context.lang };
+    if (!item) return { kind: "missing" };
     const to = storyCanonicalRedirect(
       params.slug,
       item,
@@ -60,8 +58,7 @@ export const Route = createFileRoute("/$slug")({
   },
   head: ({ loaderData, match }) => {
     if (!loaderData || loaderData.kind === "missing") {
-      const lang = loaderData?.kind === "missing" ? loaderData.lang : "vi";
-      return notFoundHead(notFoundCopy(lang).documentTitle);
+      return notFoundHead(notFoundCopy(match.context.lang).documentTitle);
     }
     return articleHead(loaderData.item, match.context.lang, {
       route: headRouteInput(match),
@@ -89,12 +86,7 @@ function NotFoundStory({ lang }: { lang: Lang }) {
 
 function StoryContent({ item, lang }: { item: FeedItem; lang: Lang }) {
   // A row with no usable timestamp still renders; only the day heading is dropped.
-  const published = new Date(item.published_at * 1000);
-  const date = Number.isFinite(published.getTime())
-    ? published.toISOString().slice(0, 10)
-    : null;
-  // Day pages use the audience (ICT) day, which can be one later than the
-  // UTC heading; link to the page that actually lists this story.
+  // The heading names the same Asia/Ho_Chi_Minh day the archive link opens.
   const archiveDate = archiveDateOfSec(item.published_at);
 
   return (
@@ -111,19 +103,15 @@ function StoryContent({ item, lang }: { item: FeedItem; lang: Lang }) {
           1 {lang === "vi" ? "tin" : "story"}
         </span>
       </div>
-      {date && (
+      {archiveDate && (
         <div className="border-b-2 border-foreground/80 pb-2">
           <ARTICLE_DATE_TAG className="text-xl font-bold">
-            {archiveDate ? (
-              <a
-                href={dayArchivePath(archiveDate, lang)}
-                className="hover:text-accent hover:underline"
-              >
-                {formatDayHeading(date, lang)}
-              </a>
-            ) : (
-              formatDayHeading(date, lang)
-            )}
+            <a
+              href={dayArchivePath(archiveDate, lang)}
+              className="hover:text-accent hover:underline"
+            >
+              {formatDayHeading(archiveDate, lang)}
+            </a>
           </ARTICLE_DATE_TAG>
         </div>
       )}
@@ -145,7 +133,7 @@ function StoryPage() {
 
   if (data.kind === "missing") {
     return idPrefixFromSlug(slug) ? (
-      <NotFoundStory lang={data.lang} />
+      <NotFoundStory lang={lang} />
     ) : (
       <NotFoundPage />
     );
