@@ -3,6 +3,7 @@ import {
   buildItemSourceBindArgs,
   MAX_SOURCES_PER_ITEM,
   nn,
+  prepareContentChangeLogs,
   prepareTranslationUpsert,
 } from "../d1-bind.js";
 import {
@@ -328,6 +329,13 @@ export async function writeItems(
 
         if (plan.translation) {
           statements.push(
+            ...prepareContentChangeLogs(env.DB, {
+              id,
+              lang: "vi",
+              title: plan.translation.title,
+              summary: plan.translation.summary,
+              reason: "ingest",
+            }),
             prepareTranslationUpsert(env.DB, {
               id,
               lang: "vi",

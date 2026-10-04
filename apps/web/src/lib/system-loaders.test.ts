@@ -139,6 +139,10 @@ describe("loadSystemOverview", () => {
       "COUNT(*) AS c FROM item_sources": {
         all: () => ({ results: [{ c: 55 }] }),
       },
+      "lang = 'vi' AND title": { all: () => ({ results: [{ n: 6 }] }) },
+      "lang = 'vi' AND summary": { all: () => ({ results: [{ n: 5 }] }) },
+      "FROM item_content_log": { all: () => ({ results: [{ n: 2 }] }) },
+      pragma_page_count: { first: () => ({ bytes: 4096 }) },
       "FROM workflow_runs ORDER BY": {
         all: () => ({ results: [RUN_ROW, todayRun] }),
       },
@@ -158,18 +162,23 @@ describe("loadSystemOverview", () => {
       subscribers: 9,
       sources: 4,
       itemSourcesRows: 55,
+      viTitles: 6,
+      viSummaries: 5,
+      contentEdits: 2,
     });
+    expect(o.databaseBytes).toBe(4096);
     expect(o.tokens).toEqual({ total: 1200, avgPerItem: 25 });
     expect(o.lastRun?.id).toBe("run-1");
     expect(o.lastRun?.stats).toEqual({ bySource: { hn: 3 }, tokens: 120 });
     expect(o.runsToday).toBe(1);
     expect(o.latestTldrDate).toBe("2026-01-02");
 
-    // One batch, all ten statements in it; the only sequential queries
-    // were the three migration probes.
+    // One batch: the original ten, plus Vietnamese fill counts and the
+    // content-log count. Sequential reads are the four migration probes.
+    // Database size uses .first() and stays outside the batch.
     expect(batches).toHaveLength(1);
-    expect(batches[0]).toHaveLength(10);
-    expect(directAlls).toHaveLength(3);
+    expect(batches[0]).toHaveLength(13);
+    expect(directAlls).toHaveLength(4);
     expect(directAlls.every((s) => s.includes("LIMIT 1"))).toBe(true);
   });
 
@@ -181,7 +190,7 @@ describe("loadSystemOverview", () => {
     await q.loadSystemOverview(db);
 
     expect(batches).toHaveLength(2);
-    expect(directAlls).toHaveLength(3);
+    expect(directAlls).toHaveLength(4);
   });
 
   it("omits token statements when the llm_tokens column is not migrated", async () => {
@@ -199,7 +208,8 @@ describe("loadSystemOverview", () => {
     expect(o.tokens).toEqual({ total: 0, avgPerItem: 0 });
     // The failed probe keeps migration-gated statements out of the batch
     // — otherwise one missing column would 500 the whole endpoint.
-    expect(batches[0]).toHaveLength(8);
+    // Vietnamese counts stay; the content-log probe still succeeds here.
+    expect(batches[0]).toHaveLength(11);
     expect(batches[0]?.some((s) => s.includes("llm_tokens"))).toBe(false);
   });
 });

@@ -188,6 +188,16 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
 - Risk: none. The day page treats a missing table as "no video".
 - Rollback: redeploy the previous Worker, then `DROP TABLE day_videos;`
 
+## 0047_item_content_log.sql
+
+- Change: creates `item_content_log` (item, language, field, before, after,
+  reason, time) and an index on `(item_id, created_at)`. No rows are seeded.
+  Story reads treat a missing table as "no history". Apply this before the
+  Worker that inserts a log row, or those writes fail.
+- Risk: none for ranking, mail, or Telegram. A failed insert aborts the
+  translation write it shares a batch with.
+- Rollback: redeploy the previous Worker, then `DROP TABLE item_content_log;`
+
 ## 0045_translation_knowledge_seed_terms.sql
 
 - Change: seeds nine active `translation_knowledge` rules (keep-English

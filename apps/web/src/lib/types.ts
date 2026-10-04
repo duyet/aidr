@@ -10,6 +10,15 @@ export interface ItemSource {
   url: string | null;
 }
 
+export interface ContentLogEntry {
+  field: "title" | "summary";
+  lang: string;
+  before_text: string | null;
+  after_text: string | null;
+  reason: string;
+  created_at: number;
+}
+
 export interface FeedItem {
   id: string;
   url: string;
@@ -29,6 +38,8 @@ export interface FeedItem {
   image_url: string | null;
   /** Bounded additive media manifest; omitted for a single legacy image. */
   media_manifest?: MediaManifest;
+  /** Recent title/summary edits. Set by getStory. Omitted on feed rows. */
+  content_log?: ContentLogEntry[];
   /** Set only on SSR feed items, which ship without summary/sources to
    * keep the dehydrated payload small. When true the row lazily refetches
    * the full story from /api/story on first expand. Never set by

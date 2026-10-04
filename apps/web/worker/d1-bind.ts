@@ -161,6 +161,75 @@ export function prepareTranslationQaInvalidation(
   return db.prepare(TRANSLATION_QA_INVALIDATION_SQL).bind(nn(itemId));
 }
 
+export const CONTENT_LOG_FIELDS = ["title", "summary"] as const;
+export type ContentLogField = (typeof CONTENT_LOG_FIELDS)[number];
+export type ContentChangeReason =
+  | "ingest"
+  | "backfill"
+  | "suggestion"
+  | "admin"
+  | "correction";
+
+/** Insert a history row only when this translation field already exists and
+ * the new text differs. Run it in the same batch, before the upsert, so the
+ * first insert of a row does not log. */
+function translationFieldLogSql(field: ContentLogField): string {
+  return `INSERT INTO item_content_log (
+  item_id, lang, field, before_text, after_text, reason, created_at
+)
+SELECT item_id, lang, '${field}', ${field}, ?, ?, ?
+FROM translations
+WHERE item_id = ? AND lang = ? AND IFNULL(${field}, '') != IFNULL(?, '')`;
+}
+
+/** Same guard for an English title or summary stored on `items`. */
+function itemFieldLogSql(field: ContentLogField): string {
+  return `INSERT INTO item_content_log (
+  item_id, lang, field, before_text, after_text, reason, created_at
+)
+SELECT id, 'en', '${field}', ${field}, ?, ?, ?
+FROM items
+WHERE id = ? AND IFNULL(${field}, '') != IFNULL(?, '')`;
+}
+
+export function prepareContentChangeLogs(
+  db: D1Database,
+  args: {
+    id: string;
+    lang?: string;
+    title: string | null;
+    summary: string | null;
+    reason: ContentChangeReason;
+  }
+): D1PreparedStatement[] {
+  const createdAt = Math.floor(Date.now() / 1000);
+  const lang = args.lang ?? "vi";
+  const fields: Array<[ContentLogField, string | null]> = [
+    ["title", args.title],
+    ["summary", args.summary],
+  ];
+  return fields.map(([field, after]) =>
+    db
+      .prepare(translationFieldLogSql(field))
+      .bind(nn(after), args.reason, createdAt, nn(args.id), lang, nn(after))
+  );
+}
+
+export function prepareItemContentChangeLog(
+  db: D1Database,
+  args: {
+    id: string;
+    field: ContentLogField;
+    text: string | null;
+    reason: ContentChangeReason;
+  }
+): D1PreparedStatement {
+  const createdAt = Math.floor(Date.now() / 1000);
+  return db
+    .prepare(itemFieldLogSql(args.field))
+    .bind(nn(args.text), args.reason, createdAt, nn(args.id), nn(args.text));
+}
+
 /**
  * Pure builder for `item_sources` insert bind args, one row per source,
  * capped at `MAX_SOURCES_PER_ITEM` and positioned 0..n in array order.

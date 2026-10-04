@@ -1,5 +1,7 @@
 import {
   nn,
+  prepareContentChangeLogs,
+  prepareItemContentChangeLog,
   prepareTranslationQaInvalidation,
   prepareTranslationUpsert,
 } from "./d1-bind.js";
@@ -477,6 +479,12 @@ function prepareApply(
   if (target.lang === "en") {
     const column = target.field === "title" ? "title" : "summary";
     return [
+      prepareItemContentChangeLog(env.DB, {
+        id: row.item_id,
+        field: column,
+        text,
+        reason: "suggestion",
+      }),
       env.DB.prepare(`UPDATE items SET ${column} = ? WHERE id = ?`).bind(
         nn(text),
         nn(row.item_id)
@@ -487,6 +495,17 @@ function prepareApply(
     ];
   }
   return [
+    ...prepareContentChangeLogs(env.DB, {
+      id: row.item_id,
+      lang: "vi",
+      title:
+        target.field === "title" ? text : (target.translation?.title ?? null),
+      summary:
+        target.field === "summary"
+          ? text
+          : (target.translation?.summary ?? null),
+      reason: "suggestion",
+    }),
     prepareTranslationUpsert(env.DB, {
       id: row.item_id,
       lang: "vi",
@@ -835,6 +854,13 @@ function prepareUnifiedApply(
     const pick = (field: SuggestionField) =>
       vi.find((e) => e.field === field)?.text ?? currentFor(story, "vi", field);
     statements.push(
+      ...prepareContentChangeLogs(env.DB, {
+        id: itemId,
+        lang: "vi",
+        title: pick("title"),
+        summary: pick("summary"),
+        reason: "suggestion",
+      }),
       prepareTranslationUpsert(env.DB, {
         id: itemId,
         lang: "vi",
@@ -848,6 +874,12 @@ function prepareUnifiedApply(
   const enTitle = edits.find((e) => e.lang === "en" && e.field === "title");
   if (enTitle) {
     statements.push(
+      prepareItemContentChangeLog(env.DB, {
+        id: itemId,
+        field: "title",
+        text: enTitle.text,
+        reason: "suggestion",
+      }),
       env.DB.prepare("UPDATE items SET title = ? WHERE id = ?").bind(
         nn(enTitle.text),
         nn(itemId)

@@ -119,6 +119,27 @@ describe("translationDraftIssues", () => {
     expect(complete).toEqual([]);
   });
 
+  // Prod glosses: "tác nhân (agent)", "RAG (Retrieval-Augmented Generation)".
+  // A year, a count, or a percentage in parentheses is not a gloss.
+  it("flags a parenthetical English gloss and ignores a year", () => {
+    const issues = translationDraftIssues(
+      { title: "Story", summary: "Founded then." },
+      {
+        title: "Tác nhân (agent)",
+        summary:
+          "Hãng dùng RAG (Retrieval-Augmented Generation). Ra mắt bước (3) năm (2024), tăng (12%).",
+      },
+      [],
+      false
+    );
+    expect(issues).toHaveLength(2);
+    expect(issues.join("\n")).toContain("(agent)");
+    expect(issues.join("\n")).toContain("(Retrieval-Augmented Generation)");
+    expect(issues.join("\n")).not.toContain("(2024)");
+    expect(issues.join("\n")).not.toContain("(3)");
+    expect(issues.join("\n")).not.toContain("(12%)");
+  });
+
   it("asks for kept jargon the draft translated away", () => {
     const issues = translationDraftIssues(
       { title: "OpenAI pauses frontier model", summary: LONG_EN },

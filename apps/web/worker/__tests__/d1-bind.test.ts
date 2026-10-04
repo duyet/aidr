@@ -8,6 +8,8 @@ import {
   ITEM_SOURCE_LANG_BIND_INDEX,
   MAX_SOURCES_PER_ITEM,
   nn,
+  prepareContentChangeLogs,
+  prepareItemContentChangeLog,
   TRANSLATION_BIND_ARITY,
   TRANSLATION_QA_INVALIDATION_SQL,
   TRANSLATION_UPSERT_SQL,
@@ -362,6 +364,60 @@ describe("translation QA invalidation SQL", () => {
     expect(TRANSLATION_UPSERT_SQL).toContain("qa_direction = NULL");
     expect(TRANSLATION_UPSERT_SQL).toContain("qa_reviewer_model = NULL");
     expect(TRANSLATION_UPSERT_SQL).toContain("qa_criteria_version = NULL");
+  });
+
+  it("logs a translation change only when the stored text differs", () => {
+    const prepared: { sql: string; args: unknown[] }[] = [];
+    const db = {
+      prepare(sql: string) {
+        const stmt = {
+          bind(...args: unknown[]) {
+            prepared.push({ sql, args });
+            return stmt;
+          },
+        };
+        return stmt;
+      },
+    } as unknown as D1Database;
+    const logs = prepareContentChangeLogs(db, {
+      id: "abc",
+      title: "Tiêu đề mới",
+      summary: "Tóm tắt mới",
+      reason: "correction",
+    });
+    expect(logs).toHaveLength(2);
+    expect(prepared[0]?.sql).toContain("item_content_log");
+    expect(prepared[0]?.sql).toContain("FROM translations");
+    expect(prepared[0]?.sql).toContain("IFNULL(title, '') != IFNULL(?, '')");
+    expect(prepared[1]?.sql).toContain("IFNULL(summary, '') != IFNULL(?, '')");
+    expect(prepared[0]?.args[0]).toBe("Tiêu đề mới");
+    expect(prepared[0]?.args[1]).toBe("correction");
+    expect(prepared[0]?.args[3]).toBe("abc");
+    expect(prepared[0]?.args[4]).toBe("vi");
+  });
+
+  it("logs an English item field before the items update", () => {
+    const prepared: { sql: string; args: unknown[] }[] = [];
+    const db = {
+      prepare(sql: string) {
+        const stmt = {
+          bind(...args: unknown[]) {
+            prepared.push({ sql, args });
+            return stmt;
+          },
+        };
+        return stmt;
+      },
+    } as unknown as D1Database;
+    prepareItemContentChangeLog(db, {
+      id: "abc",
+      field: "title",
+      text: "New title",
+      reason: "suggestion",
+    });
+    expect(prepared[0]?.sql).toContain("FROM items");
+    expect(prepared[0]?.sql).toContain("'en'");
+    expect(prepared[0]?.args[1]).toBe("suggestion");
   });
 
   it("invalidates the candidate marker when only its source changes", () => {

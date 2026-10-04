@@ -106,6 +106,42 @@ function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const GLOSS_RE = /[\p{L}\p{M}][\p{L}\p{M}\p{N}'’]*\s*\(([^)]*)\)/gu;
+
+function isNumberYearOrPercent(text: string): boolean {
+  return /^[+-]?(?:\d+(?:[.,]\d+)*)%?$/.test(text.replace(/\s/g, ""));
+}
+
+/** "tác nhân (agent)", "RAG (Retrieval-Augmented Generation)". A bare label
+ * ("USD", "NYSE", "Anthropic") is not a gloss; neither is a number, a year,
+ * or a percentage. Each hit costs a repair call. */
+function isEnglishGloss(inside: string): boolean {
+  const text = inside.trim();
+  if (!text || isNumberYearOrPercent(text)) return false;
+  if (/\P{ASCII}/u.test(text)) return false;
+  const letters = text.match(/[A-Za-z]/g)?.length ?? 0;
+  const significant = text.replace(/\s/g, "");
+  if (letters < 2 || letters / significant.length < 0.8) return false;
+  if (/^[a-z]+(?:[-'’][a-z]+)*$/.test(text)) return true;
+  const words = text.split(/\s+/);
+  return (
+    words.length >= 2 &&
+    words.every((word) => /^[A-Za-z]+(?:[-'’][A-Za-z]+)*$/.test(word))
+  );
+}
+
+function glossIssues(viText: string): string[] {
+  const issues: string[] = [];
+  for (const match of viText.normalize("NFC").matchAll(GLOSS_RE)) {
+    if (!isEnglishGloss(match[1] ?? "")) continue;
+    const snippet = match[0].replace(/\s+/g, " ").trim();
+    issues.push(
+      `"${snippet}" is a parenthetical English gloss; drop the gloss and keep one term`
+    );
+  }
+  return issues;
+}
+
 const VI_WORD_RE = /[\p{L}\p{M}][\p{L}\p{M}\p{N}'’-]*/gu;
 const NON_ASCII_RE = /\P{ASCII}/u;
 
@@ -153,12 +189,9 @@ export function translationDraftIssues(
     );
   }
   issues.push(...avoidIssues(src, cand, rules));
-  issues.push(
-    ...magnitudeIssues(
-      `${src.title}\n${src.summary}`,
-      `${cand.title}\n${cand.summary}`
-    )
-  );
+  const viText = `${cand.title}\n${cand.summary}`;
+  issues.push(...magnitudeIssues(`${src.title}\n${src.summary}`, viText));
+  issues.push(...glossIssues(viText));
   if (isTitleCaseVi(cand.title, src.title)) {
     issues.push(
       "the title is in Title Case; use Vietnamese sentence case (capitalize only the first word and proper names)"

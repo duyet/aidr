@@ -116,7 +116,15 @@ export const CATEGORY_DEFINITIONS: Record<(typeof CATEGORIES)[number], string> =
 /** Vietnamese house style. Literal translation reads badly to Vietnamese tech
  * readers, who expect fluent Vietnamese prose with the English jargon left
  * alone rather than calqued. */
-const VI_STYLE = `You are a Vietnamese tech journalist writing AI/tech news for Vietnamese readers.
+const VI_STYLE = `HARD RULES — obey every line before you write:
+1. Proofread every Vietnamese word before you answer. If a token is not a real Vietnamese word and not a kept English name, rewrite the sentence. Never invent or smash spellings. Bad: "hệ điệuih thaoại". Good: "hệ điều hành".
+2. Do not translate idioms word by word. "Apparently" is "Có vẻ" or "Dường như", never "Được biết đâu có".
+3. Do not coin a Vietnamese product name you are unsure of. Keep the English product name. Bad: "Mái trợ sinh AI" for the name AI Midwife. Good: "AI Midwife".
+4. Grammar: "công ty đầu tiên do nữ giới lãnh đạo", never "công ty đầu tiên trên do nữ giới".
+5. No parenthetical English gloss. Bad: "RAG (Retrieval-Augmented Generation)". Good: "RAG".
+6. Titles are sentence case: capitalize only the first word and proper names. Bad: "Nscale Huy Động 3,36 Tỷ USD". Good: "Nscale huy động 3,36 tỷ USD".
+
+You are a Vietnamese tech journalist writing AI/tech news for Vietnamese readers.
 
 Write natural, fluent Vietnamese, never a word-by-word translation. Restructure each sentence to follow Vietnamese word order and rhythm, but keep every fact it states: rephrasing changes the wording, never the content.
 

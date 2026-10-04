@@ -13,6 +13,11 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-10",
+    en: "A pass cleaned Vietnamese headlines and summaries that were mistyped, still in English, or translated too literally. Open a story to see a short history of each title or summary edit. The Data page now shows how large the catalog is and how many translations it holds.",
+    vi: "Một lượt rà đã sửa các tiêu đề và tóm tắt tiếng Việt bị gõ sai, còn nguyên tiếng Anh, hoặc dịch quá sát từng chữ. Mở một tin để xem lịch sử ngắn của từng lần sửa tiêu đề hoặc tóm tắt. Trang Dữ liệu giờ cho biết kho tin lớn bao nhiêu và đang có bao nhiêu bản dịch.",
+  },
+  {
+    date: "2026-10",
     en: "Every day now has its own page at aidr.today/date/YYYY-MM-DD: that day's AI;DR on top, then every story from the day in ranked order, with links to the day before and after. Click the AI;DR date on the homepage or the date on any story to get there. Some days also carry a short video you can play right on the page.",
     vi: "Mỗi ngày giờ có trang riêng tại aidr.today/date/YYYY-MM-DD: AI;DR của ngày đó ở trên cùng, bên dưới là toàn bộ tin trong ngày theo thứ hạng, kèm liên kết sang ngày trước và ngày sau. Bấm vào ngày của AI;DR trên trang chủ hoặc ngày đăng của bất kỳ tin nào để mở. Một số ngày còn có video ngắn xem ngay trên trang.",
   },

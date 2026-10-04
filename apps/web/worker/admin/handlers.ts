@@ -3,6 +3,7 @@ import {
   parseYoutubeId,
 } from "../../src/lib/day-video.js";
 import {
+  prepareContentChangeLogs,
   prepareTranslationQaInvalidation,
   prepareTranslationUpsert,
 } from "../d1-bind.js";
@@ -205,14 +206,23 @@ export async function pushItems(
       .run();
 
     if (item.title_vi) {
-      await prepareTranslationUpsert(env.DB, {
-        id,
-        lang: "vi",
-        sourceLang,
-        targetLang: "vi",
-        title: item.title_vi,
-        summary: item.summary_vi ?? null,
-      }).run();
+      await env.DB.batch([
+        ...prepareContentChangeLogs(env.DB, {
+          id,
+          lang: "vi",
+          title: item.title_vi,
+          summary: item.summary_vi ?? null,
+          reason: "admin",
+        }),
+        prepareTranslationUpsert(env.DB, {
+          id,
+          lang: "vi",
+          sourceLang,
+          targetLang: "vi",
+          title: item.title_vi,
+          summary: item.summary_vi ?? null,
+        }),
+      ]);
     } else if (existing) {
       await prepareTranslationQaInvalidation(env.DB, id).run();
     }
@@ -738,6 +748,13 @@ export async function reprocessToday(
         tokens += result.tokens;
         translatedCount++;
         statements.push(
+          ...prepareContentChangeLogs(env.DB, {
+            id: row.id,
+            lang: "vi",
+            title: result.title,
+            summary: result.summary,
+            reason: "admin",
+          }),
           prepareTranslationUpsert(env.DB, {
             id: row.id,
             lang: "vi",

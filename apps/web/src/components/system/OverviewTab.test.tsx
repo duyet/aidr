@@ -38,7 +38,11 @@ const OVERVIEW: SystemOverview = {
     subscribers: 42,
     sources: 5,
     itemSourcesRows: 1234,
+    viTitles: 1100,
+    viSummaries: 1000,
+    contentEdits: 4,
   },
+  databaseBytes: 25_000_000,
   tokens: { total: 9_000_000, avgPerItem: 7290 },
   runsToday: 7,
   lastRun: {

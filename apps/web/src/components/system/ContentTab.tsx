@@ -54,6 +54,17 @@ function SourceVolumeCard() {
   );
 }
 
+function formatBytes(bytes: number | null): string {
+  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatCount(value: number): string {
+  return value.toLocaleString("en-US");
+}
+
 function CatalogCard() {
   const state = useSystemData<SystemOverview>(API.overview);
   return (
@@ -63,11 +74,16 @@ function CatalogCard() {
           <dl className="divide-y divide-border text-sm">
             {(
               [
-                ["Translations", o.totals.translations],
-                ["AI;DR digests", o.totals.tldrSnapshots],
+                ["Database size", formatBytes(o.databaseBytes)],
+                ["Stories", formatCount(o.totals.items)],
+                ["Translations", formatCount(o.totals.translations)],
+                ["Vietnamese titles", formatCount(o.totals.viTitles)],
+                ["Vietnamese summaries", formatCount(o.totals.viSummaries)],
+                ["Content edits", formatCount(o.totals.contentEdits)],
+                ["AI;DR digests", formatCount(o.totals.tldrSnapshots)],
                 ["Latest digest", o.latestTldrDate ?? "—"],
-                ["Configured sources", o.totals.sources],
-                ["Key-source citations", o.totals.itemSourcesRows],
+                ["Configured sources", formatCount(o.totals.sources)],
+                ["Key-source citations", formatCount(o.totals.itemSourcesRows)],
               ] as const
             ).map(([label, value]) => (
               <div

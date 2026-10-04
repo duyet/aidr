@@ -8,7 +8,7 @@ import {
   primaryThumbnailUrl,
 } from "../../worker/media.js";
 import type { DbReader } from "./db";
-import type { FeedItem, ItemSource } from "./types";
+import type { ContentLogEntry, FeedItem, ItemSource } from "./types";
 
 const STORY_URL_MAX_LENGTH = 1024;
 
@@ -209,12 +209,52 @@ async function queryStories(
  * resolves to the story it was merged into: an aggregator canonical that an
  * official post later replaced (`MergePlan.demoted`) keeps its shared
  * links, and the permalink loader redirects them to the new canonical. */
+const CONTENT_LOG_SQL = `SELECT field, lang, before_text, after_text, reason, created_at
+FROM item_content_log
+WHERE item_id = ?
+ORDER BY created_at DESC, id DESC
+LIMIT 12`;
+
+async function attachContentLog(
+  db: DbReader,
+  story: FeedItem
+): Promise<FeedItem> {
+  try {
+    const { results } = await db.prepare(CONTENT_LOG_SQL).bind(story.id).all<{
+      field: string;
+      lang: string;
+      before_text: string | null;
+      after_text: string | null;
+      reason: string;
+      created_at: number;
+    }>();
+    const content_log: ContentLogEntry[] = (results ?? []).flatMap((row) =>
+      row.field === "title" || row.field === "summary"
+        ? [
+            {
+              field: row.field,
+              lang: row.lang,
+              before_text: row.before_text,
+              after_text: row.after_text,
+              reason: row.reason,
+              created_at: Number(row.created_at) || 0,
+            },
+          ]
+        : []
+    );
+    return { ...story, content_log };
+  } catch {
+    // The table arrives in 0047. A story still renders without history.
+    return story;
+  }
+}
+
 export async function getStory(
   db: DbReader,
   idPrefix: string
 ): Promise<FeedItem | null> {
   const story = (await queryStories(db, idPrefix, 1))[0];
-  if (story) return story;
+  if (story) return attachContentLog(db, story);
   const { results } = await db
     .prepare(
       `SELECT duplicate_of FROM items
@@ -225,7 +265,9 @@ export async function getStory(
     .all<{ duplicate_of: string }>();
   // An ambiguous prefix resolves to nothing rather than to a guess.
   if (results?.length !== 1) return null;
-  return (await queryStories(db, results[0].duplicate_of, 1))[0] ?? null;
+  const canonical =
+    (await queryStories(db, results[0].duplicate_of, 1))[0] ?? null;
+  return canonical ? attachContentLog(db, canonical) : null;
 }
 
 /** Lookup used by the Markdown route to reject ambiguous id prefixes. */

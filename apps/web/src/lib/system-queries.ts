@@ -271,7 +271,15 @@ export interface SystemStats {
     subscribers: number;
     sources: number;
     itemSourcesRows: number;
+    /** Vietnamese rows with a non-empty title. */
+    viTitles: number;
+    /** Vietnamese rows with a non-empty summary. */
+    viSummaries: number;
+    /** Title and summary edits recorded in `item_content_log`. */
+    contentEdits: number;
   };
+  /** D1 file size in bytes, or null when the pragma read fails. */
+  databaseBytes: number | null;
   itemsByStatus: NamedCount[];
   itemsBySource: NamedCount[];
   itemsByCategory: NamedCount[];
@@ -444,6 +452,13 @@ export function getModelChains(env: {
 const SQL = {
   itemsCount: "SELECT COUNT(*) AS c FROM items",
   translationsCount: "SELECT COUNT(*) AS c FROM translations",
+  // Alias `n`, not `c`, so a test stub for translationsCount cannot swallow
+  // these narrower counts.
+  viTitles:
+    "SELECT COUNT(*) AS n FROM translations WHERE lang = 'vi' AND title IS NOT NULL AND TRIM(title) != ''",
+  viSummaries:
+    "SELECT COUNT(*) AS n FROM translations WHERE lang = 'vi' AND summary IS NOT NULL AND TRIM(summary) != ''",
+  contentEdits: "SELECT COUNT(*) AS n FROM item_content_log",
   tldrCount: "SELECT COUNT(*) AS c FROM tldr_snapshots",
   subscribersCount: "SELECT COUNT(*) AS c FROM subscribers",
   sourcesCount: "SELECT COUNT(*) AS c FROM sources",
@@ -554,6 +569,7 @@ let llmTokensSupported: boolean | null = null;
 let llmCallsSupported: boolean | null = null;
 let llmRunIdentitySupported: boolean | null = null;
 let runStatsSupported: boolean | null = null;
+let contentLogSupported: boolean | null = null;
 
 /** Column/table probes run in parallel once per isolate; each flag caches
  * in module scope so repeat hits skip the round-trip. Probes stay
@@ -563,6 +579,7 @@ async function probeSystemTables(db: DbReader): Promise<{
   hasTokens: boolean;
   hasRunStats: boolean;
   hasLlmCalls: boolean;
+  hasContentLog: boolean;
 }> {
   const probe = async (sql: string): Promise<boolean> => {
     try {
@@ -572,15 +589,38 @@ async function probeSystemTables(db: DbReader): Promise<{
       return false;
     }
   };
-  const [hasTokens, hasRunStats, hasLlmCalls] = await Promise.all([
-    llmTokensSupported ?? probe("SELECT llm_tokens FROM items LIMIT 1"),
-    runStatsSupported ?? probe("SELECT stats FROM workflow_runs LIMIT 1"),
-    llmCallsSupported ?? probe("SELECT ts FROM llm_calls LIMIT 1"),
-  ]);
+  const [hasTokens, hasRunStats, hasLlmCalls, hasContentLog] =
+    await Promise.all([
+      llmTokensSupported ?? probe("SELECT llm_tokens FROM items LIMIT 1"),
+      runStatsSupported ?? probe("SELECT stats FROM workflow_runs LIMIT 1"),
+      llmCallsSupported ?? probe("SELECT ts FROM llm_calls LIMIT 1"),
+      contentLogSupported ?? probe("SELECT id FROM item_content_log LIMIT 1"),
+    ]);
   llmTokensSupported = hasTokens;
   runStatsSupported = hasRunStats;
   llmCallsSupported = hasLlmCalls;
-  return { hasTokens, hasRunStats, hasLlmCalls };
+  contentLogSupported = hasContentLog;
+  return { hasTokens, hasRunStats, hasLlmCalls, hasContentLog };
+}
+
+/** Page count times page size. Kept outside the batch: a pragma failure
+ * must not abort the catalog counts. */
+async function loadDatabaseBytes(db: DbReader): Promise<number | null> {
+  try {
+    const row = await db
+      .prepare(
+        "SELECT (SELECT * FROM pragma_page_count()) * (SELECT * FROM pragma_page_size()) AS bytes"
+      )
+      .first<{ bytes: number | null }>();
+    const bytes = row?.bytes;
+    return typeof bytes === "number" && Number.isFinite(bytes) ? bytes : null;
+  } catch {
+    return null;
+  }
+}
+
+function countN(res: { results?: unknown[] } | undefined): number {
+  return firstRow<{ n: number | null }>(res)?.n ?? 0;
 }
 
 async function probeLlmRunIdentity(db: DbReader): Promise<boolean> {
@@ -943,12 +983,14 @@ export interface SystemOverview {
   runsToday: number;
   lastRun: WorkflowRunRow | null;
   latestTldrDate: string | null;
+  databaseBytes: number | null;
 }
 
 export async function loadSystemOverview(
   db: DbReader
 ): Promise<SystemOverview> {
-  const { hasTokens, hasRunStats } = await probeSystemTables(db);
+  const [{ hasTokens, hasRunStats, hasContentLog }, databaseBytes] =
+    await Promise.all([probeSystemTables(db), loadDatabaseBytes(db)]);
   const stmts = [
     db.prepare(SQL.itemsCount),
     db.prepare(SQL.translationsCount),
@@ -962,18 +1004,20 @@ export async function loadSystemOverview(
   if (hasTokens) {
     stmts.push(db.prepare(SQL.tokenTotal), db.prepare(SQL.tokenAvg));
   }
-  const [
-    itemsTotal,
-    translationsTotal,
-    tldrTotal,
-    subscribersTotal,
-    sourcesTotal,
-    itemSourcesTotal,
-    runs,
-    latestTldr,
-    tokenTotalRes,
-    tokenAvgRes,
-  ] = await db.batch(stmts);
+  const catalogAt = stmts.length;
+  stmts.push(db.prepare(SQL.viTitles), db.prepare(SQL.viSummaries));
+  if (hasContentLog) stmts.push(db.prepare(SQL.contentEdits));
+  const batch = await db.batch(stmts);
+  const itemsTotal = batch[0];
+  const translationsTotal = batch[1];
+  const tldrTotal = batch[2];
+  const subscribersTotal = batch[3];
+  const sourcesTotal = batch[4];
+  const itemSourcesTotal = batch[5];
+  const runs = batch[6];
+  const latestTldr = batch[7];
+  const tokenTotalRes = hasTokens ? batch[8] : undefined;
+  const tokenAvgRes = hasTokens ? batch[9] : undefined;
 
   const runRows = resultRows<RunDbRow>(runs).map(normalizeRunRow);
   const tokenTotal = firstRow<{ s: number | null }>(tokenTotalRes)?.s ?? 0;
@@ -989,11 +1033,15 @@ export async function loadSystemOverview(
       subscribers: firstRow<{ c: number }>(subscribersTotal)?.c ?? 0,
       sources: firstRow<{ c: number }>(sourcesTotal)?.c ?? 0,
       itemSourcesRows: firstRow<{ c: number }>(itemSourcesTotal)?.c ?? 0,
+      viTitles: countN(batch[catalogAt]),
+      viSummaries: countN(batch[catalogAt + 1]),
+      contentEdits: hasContentLog ? countN(batch[catalogAt + 2]) : 0,
     },
     tokens: { total: tokenTotal, avgPerItem: tokenAvg },
     runsToday: countRunsToday(runRows),
     lastRun: runRows[0] ?? null,
     latestTldrDate: firstRow<{ date: string }>(latestTldr)?.date ?? null,
+    databaseBytes,
   };
 }
 
@@ -1308,8 +1356,15 @@ export async function loadSystemStats(
     ANYROUTER_JEV_MODEL?: string;
   } = {}
 ): Promise<SystemStats> {
-  const [{ hasTokens, hasRunStats, hasLlmCalls }, hasLlmRunIdentity] =
-    await Promise.all([probeSystemTables(db), probeLlmRunIdentity(db)]);
+  const [
+    { hasTokens, hasRunStats, hasLlmCalls, hasContentLog },
+    hasLlmRunIdentity,
+    databaseBytes,
+  ] = await Promise.all([
+    probeSystemTables(db),
+    probeLlmRunIdentity(db),
+    loadDatabaseBytes(db),
+  ]);
 
   const stmts = [
     db.prepare(SQL.itemsCount),
@@ -1333,24 +1388,26 @@ export async function loadSystemStats(
       db.prepare(SQL.tokenPerDay)
     );
   }
-  const [
-    itemsTotal,
-    translationsTotal,
-    tldrTotal,
-    subscribersTotal,
-    sourcesTotal,
-    itemSourcesTotal,
-    byStatus,
-    bySource,
-    byCategory,
-    perDay,
-    runs,
-    latestTldr,
-    sourceRows,
-    tokenTotalRes,
-    tokenAvgRes,
-    tokenPerDayRes,
-  ] = await db.batch(stmts);
+  const catalogAt = stmts.length;
+  stmts.push(db.prepare(SQL.viTitles), db.prepare(SQL.viSummaries));
+  if (hasContentLog) stmts.push(db.prepare(SQL.contentEdits));
+  const batch = await db.batch(stmts);
+  const itemsTotal = batch[0];
+  const translationsTotal = batch[1];
+  const tldrTotal = batch[2];
+  const subscribersTotal = batch[3];
+  const sourcesTotal = batch[4];
+  const itemSourcesTotal = batch[5];
+  const byStatus = batch[6];
+  const bySource = batch[7];
+  const byCategory = batch[8];
+  const perDay = batch[9];
+  const runs = batch[10];
+  const latestTldr = batch[11];
+  const sourceRows = batch[12];
+  const tokenTotalRes = hasTokens ? batch[13] : undefined;
+  const tokenAvgRes = hasTokens ? batch[14] : undefined;
+  const tokenPerDayRes = hasTokens ? batch[15] : undefined;
 
   const tokenTotal = firstRow<{ s: number | null }>(tokenTotalRes)?.s ?? 0;
   const tokenAvg = Math.round(
@@ -1395,7 +1452,11 @@ export async function loadSystemStats(
       subscribers: firstRow<{ c: number }>(subscribersTotal)?.c ?? 0,
       sources: firstRow<{ c: number }>(sourcesTotal)?.c ?? 0,
       itemSourcesRows: firstRow<{ c: number }>(itemSourcesTotal)?.c ?? 0,
+      viTitles: countN(batch[catalogAt]),
+      viSummaries: countN(batch[catalogAt + 1]),
+      contentEdits: hasContentLog ? countN(batch[catalogAt + 2]) : 0,
     },
+    databaseBytes,
     itemsByStatus: resultRows<NamedCount>(byStatus),
     itemsBySource: resultRows<NamedCount>(bySource),
     itemsByCategory: resultRows<NamedCount>(byCategory),
