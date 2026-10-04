@@ -44,6 +44,19 @@ describe("pickDayCardItems", () => {
     expect(split.moreIsCard).toBe(true);
   });
 
+  it("keeps a three-story tail as text, since three tiles are not a 2×2", () => {
+    // A threshold of `>= 3` would paint this tail as a second card. The
+    // ten-story day above stays a card; this one must not.
+    const items = Array.from({ length: 9 }, (_, i) => ({
+      id: `s${i}`,
+      image_url: `https://cdn.example/${i}.jpg`,
+    }));
+    const split = splitDayHighlights(items);
+    expect(split.lead).toHaveLength(6);
+    expect(split.more.map((item) => item.id)).toEqual(["s6", "s7", "s8"]);
+    expect(split.moreIsCard).toBe(false);
+  });
+
   it("does not make a card out of a one- or two-story tail", () => {
     const items = Array.from({ length: 8 }, (_, i) => ({
       id: `s${i}`,

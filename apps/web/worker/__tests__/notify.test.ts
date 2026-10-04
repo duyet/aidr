@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  DAY_CARD_CANDIDATES,
+  hasDayOgCopy,
+  splitDayHighlights,
+} from "../../src/lib/day-card-pick.js";
+import { readSession } from "../../src/lib/db.js";
+import { getDayArchive } from "../../src/lib/feed-queries.js";
+import { dayCardVersion, loadDayCardPages } from "../notify/day-card.js";
+import {
   assertNotifyConfig,
   buildRankWindowQuery,
   buildTrendingQuery,
@@ -50,6 +58,54 @@ import { checkIvCaption, TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
 import type { Env } from "../types.js";
 
 afterEach(() => vi.unstubAllGlobals());
+
+/** Enough of D1 for `getDayArchive`: column probes, the day batch, and the
+ *  video read. Rows keep the order they are given. */
+function dayArchiveDb(rows: Array<Record<string, unknown>>) {
+  const items = rows.map((row, index) => ({
+    url: `https://example.com/${String(row.id ?? index)}`,
+    summary: null,
+    summary_vi: null,
+    published_at: 1_700_000_000 - index,
+    points: 0,
+    comments: 0,
+    rank_score: rows.length - index,
+    source_id: "hn",
+    tags: "[]",
+    ...row,
+  }));
+  const resultFor = (sql: string) => {
+    if (sql.includes("FROM items i")) return { results: items };
+    if (
+      sql.includes("MAX(published_at)") ||
+      sql.includes("MIN(published_at)")
+    ) {
+      return { results: [{ at: null }] };
+    }
+    return { results: [] };
+  };
+  const prepare = (sql: string) => {
+    const stmt = {
+      sql,
+      bind() {
+        return stmt;
+      },
+      async all() {
+        return resultFor(sql);
+      },
+      async first() {
+        return null;
+      },
+    };
+    return stmt;
+  };
+  return {
+    prepare,
+    async batch(stmts: Array<{ sql: string }>) {
+      return stmts.map((stmt) => resultFor(stmt.sql));
+    },
+  };
+}
 
 const story = (over: Partial<StoryPayload> = {}): StoryPayload => ({
   id: "abcdef1234567890",
@@ -518,34 +574,22 @@ describe("telegram channels", () => {
       })
     );
     vi.stubGlobal("fetch", fetchMock);
-    const db = {
-      prepare() {
-        return {
-          bind() {
-            return {
-              all: async () => ({
-                results: [
-                  {
-                    id: "4474df4c11111111",
-                    title: "Pop!_OS bans AI-generated code",
-                    title_vi: "Pop!_OS cấm mã AI trong phần lớn phần mềm",
-                    category: "opensource",
-                    image_url: "https://img.example/pop.jpg",
-                  },
-                  {
-                    id: "99a754ae11111111",
-                    title: "First woman to lead a trillion-dollar company",
-                    title_vi: "Nữ tướng công nghệ dẫn dắt công ty nghìn tỷ",
-                    category: "industry",
-                    image_url: "https://img.example/lead.jpg",
-                  },
-                ],
-              }),
-            };
-          },
-        };
+    const db = dayArchiveDb([
+      {
+        id: "4474df4c11111111",
+        title: "Pop!_OS bans AI-generated code",
+        title_vi: "Pop!_OS cấm mã AI trong phần lớn phần mềm",
+        category: "opensource",
+        image_url: "https://img.example/pop.jpg",
       },
-    };
+      {
+        id: "99a754ae11111111",
+        title: "First woman to lead a trillion-dollar company",
+        title_vi: "Nữ tướng công nghệ dẫn dắt công ty nghìn tỷ",
+        category: "industry",
+        image_url: "https://img.example/lead.jpg",
+      },
+    ]);
     await telegramNotifier.sendDigest(
       {
         TELEGRAM_BOT_TOKEN: "token",
@@ -601,11 +645,7 @@ describe("telegram channels", () => {
       {
         TELEGRAM_BOT_TOKEN: "token",
         TELEGRAM_CHAT_ID: "chat",
-        DB: {
-          prepare: () => ({
-            bind: () => ({ all: async () => ({ results: rows }) }),
-          }),
-        },
+        DB: dayArchiveDb(rows),
       } as unknown as Env,
       {
         lang: "vi",
@@ -659,11 +699,7 @@ describe("telegram channels", () => {
       {
         TELEGRAM_BOT_TOKEN: "token",
         TELEGRAM_CHAT_ID: "chat",
-        DB: {
-          prepare: () => ({
-            bind: () => ({ all: async () => ({ results: rows }) }),
-          }),
-        },
+        DB: dayArchiveDb(rows),
       } as unknown as Env,
       {
         lang: "vi",
@@ -685,6 +721,205 @@ describe("telegram channels", () => {
     expect(more.photo).toBeUndefined();
     expect(more.reply_markup).toBeUndefined();
     expect(more.reply_parameters.message_id).toBe(41);
+  });
+
+  it("names the manifest photo, so the caption lead matches the card", async () => {
+    // The column is a headline card or an overlong URL. The card paints the
+    // manifest primary. A raw image_url read would drop the headline-card
+    // story out of the six-photo lead.
+    const overlong = `https://cdn.example/${"a".repeat(600)}.jpg`;
+    const rows = [
+      {
+        id: "aa00000111111111",
+        title: "Headline column is not the photo",
+        title_vi: "Ảnh thật từ manifest dẫn đầu",
+        image_url: "https://huggingnews.com/og/story.png",
+        media_manifest: JSON.stringify({
+          version: 1,
+          assets: [{ type: "image", url: "https://cdn.example/real-a.jpg" }],
+        }),
+      },
+      {
+        id: "aa00000211111111",
+        title: "Overlong column is not the photo",
+        title_vi: "Ảnh thật thứ hai từ manifest",
+        image_url: overlong,
+        media_manifest: JSON.stringify({
+          version: 1,
+          assets: [{ type: "image", url: "https://cdn.example/real-b.jpg" }],
+        }),
+      },
+      ...Array.from({ length: 6 }, (_, i) => ({
+        id: `aa00000${i + 3}11111111`,
+        title: `Plain photo ${i + 3}`,
+        title_vi: `Ảnh thường số ${i + 3}`,
+        image_url: `https://cdn.example/plain-${i + 3}.jpg`,
+      })),
+    ];
+    const db = dayArchiveDb(rows);
+    const archive = await getDayArchive(
+      readSession(db as unknown as D1Database),
+      "2026-10-04"
+    );
+    const card = splitDayHighlights(
+      (archive.day?.items ?? [])
+        .filter((item) => hasDayOgCopy(item, "vi"))
+        .slice(0, DAY_CARD_CANDIDATES)
+    );
+    const pages = await loadDayCardPages(
+      { DB: db } as unknown as Env,
+      "2026-10-04",
+      "vi"
+    );
+    const leadIds = [
+      "aa00000111111111",
+      "aa00000211111111",
+      "aa00000311111111",
+      "aa00000411111111",
+      "aa00000511111111",
+      "aa00000611111111",
+    ];
+    expect(card.lead.map((item) => item.id)).toEqual(leadIds);
+    expect(archive.day?.items[0]?.image_url).toBe(
+      "https://cdn.example/real-a.jpg"
+    );
+    expect(archive.day?.items[1]?.image_url).toBe(
+      "https://cdn.example/real-b.jpg"
+    );
+    expect(pages?.[0]?.version).toBe(dayCardVersion(leadIds));
+    const leadText = pages?.[0]?.bullets
+      .map((bullet) => bullet.text)
+      .join("\n");
+    expect(leadText).toContain("Ảnh thật từ manifest dẫn đầu");
+    expect(leadText).toContain("Ảnh thật thứ hai từ manifest");
+    expect(leadText).not.toContain("Ảnh thường số 8");
+  });
+
+  it("sends the follow-up caption as text when Telegram rejects the second photo", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ok: false, description: "wrong type of content" }),
+          { status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 42 } }), {
+          status: 200,
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const rows = Array.from({ length: 10 }, (_, i) => ({
+      id: `cc${i.toString(16).padStart(6, "0")}11111111`,
+      title: `English story ${i}`,
+      title_vi: `tin nổi bật số ${i}`,
+      image_url: `https://img.example/${i}.jpg`,
+    }));
+    const result = await telegramNotifier.sendDigest(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+        DB: dayArchiveDb(rows),
+      } as unknown as Env,
+      {
+        lang: "vi",
+        date: "2026-10-04",
+        bullets: [{ text: "edition bullet", url: null }],
+      }
+    );
+    expect(result).toEqual({ ok: true, messageId: "41" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendPhoto");
+    expect(fetchMock.mock.calls[2]?.[0]).toContain("/sendMessage");
+    const photo = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    const text = JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string);
+    expect(text.text).toBe(photo.caption);
+    expect(text.reply_markup).toBeUndefined();
+    expect(text.reply_parameters.message_id).toBe(41);
+  });
+
+  it("does not retry the lead when the follow-up photo outcome is unknown", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
+          status: 200,
+        })
+      )
+      .mockRejectedValueOnce(
+        new DOMException("The operation timed out.", "TimeoutError")
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const rows = Array.from({ length: 10 }, (_, i) => ({
+      id: `dd${i.toString(16).padStart(6, "0")}11111111`,
+      title: `English story ${i}`,
+      title_vi: `tin nổi bật số ${i}`,
+      image_url: `https://img.example/${i}.jpg`,
+    }));
+    const result = await telegramNotifier.sendDigest(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+        DB: dayArchiveDb(rows),
+      } as unknown as Env,
+      {
+        lang: "vi",
+        date: "2026-10-04",
+        bullets: [{ text: "edition bullet", url: null }],
+      }
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      ambiguous: true,
+      messageId: "41",
+    });
+    expect(result.budgetExhausted).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendPhoto");
+  });
+
+  it("does not retry the lead when the follow-up is refused for budget", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
+          status: 200,
+        })
+      )
+      .mockRejectedValueOnce(new Error("Too many subrequests by this script"));
+    vi.stubGlobal("fetch", fetchMock);
+    const rows = Array.from({ length: 8 }, (_, i) => ({
+      id: `ee${i.toString(16).padStart(6, "0")}11111111`,
+      title: `English story ${i}`,
+      title_vi: `tin nổi bật số ${i}`,
+      image_url: `https://img.example/${i}.jpg`,
+    }));
+    const result = await telegramNotifier.sendDigest(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+        DB: dayArchiveDb(rows),
+      } as unknown as Env,
+      {
+        lang: "vi",
+        date: "2026-10-04",
+        bullets: [{ text: "edition bullet", url: null }],
+      }
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      ambiguous: true,
+      messageId: "41",
+    });
+    expect(result.budgetExhausted).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
   });
 });
 
