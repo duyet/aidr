@@ -841,7 +841,9 @@ deliberately non-spammy.
   through its vi→en translation. A second locale is another notifier entry.
 - **Facebook** (`facebook-en`) is English only and uses the same gates.
   Each send is one `POST /{page-id}/feed` link post (`message` + `link`)
-  on Graph `FACEBOOK_GRAPH_VERSION` (default `v26.0`). The link is the day
+  on Graph `FACEBOOK_GRAPH_VERSION` (default `v26.0`). The message is the
+  full edition or the full story summary, one paragraph per sentence.
+  It is not clipped to a caption line. The link is the day
   page or the story permalink on `SITE_URL` (the install origin, default
   `src/lib/site.ts`) with `utm_source=facebook`. The Page preview comes
   from that page's own
