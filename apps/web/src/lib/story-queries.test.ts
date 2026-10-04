@@ -151,3 +151,98 @@ describe("getStory for a merged id", () => {
     ).toBeNull();
   });
 });
+
+/**
+ * Edit history is a getStory read, capped so a permalink stays small. A
+ * database that has not applied migration 0047 must still return the story:
+ * the field is omitted, and the page renders without a history list.
+ */
+describe("getStory content log", () => {
+  function contentLogDb(log: Row[] | Error) {
+    const prepared: string[] = [];
+    const stmt = (sql: string) => {
+      prepared.push(sql);
+      return {
+        sql,
+        bind() {
+          return this;
+        },
+        async all() {
+          if (sql.includes("item_content_log")) {
+            if (log instanceof Error) throw log;
+            return { results: log };
+          }
+          if (sql.includes("FROM items LIMIT 1")) return { results: [] };
+          return { results: [base] };
+        },
+      };
+    };
+    return {
+      prepared,
+      db: {
+        prepare: (sql: string) => stmt(sql),
+        async batch(stmts: { sql: string }[]) {
+          return stmts.map((s) =>
+            s.sql.includes("item_sources")
+              ? { results: [] }
+              : { results: [base] }
+          );
+        },
+      } as unknown as Parameters<typeof getStory>[0],
+    };
+  }
+
+  it("reads at most 12 rows, newest first, and coerces created_at with Number", async () => {
+    const { db, prepared } = contentLogDb([
+      {
+        field: "title",
+        lang: "en",
+        before_text: "Old title",
+        after_text: "New title",
+        reason: "ingest",
+        created_at: "1700000002",
+      },
+      {
+        field: "summary",
+        lang: "vi",
+        before_text: "Tóm tắt cũ",
+        after_text: "Tóm tắt mới",
+        reason: "backfill",
+        created_at: "1700000001",
+      },
+    ]);
+    const item = await getStory(db, "abcdef12");
+    const logSql = prepared.find((sql) => sql.includes("item_content_log"));
+    expect(logSql).toContain("ORDER BY created_at DESC, id DESC");
+    expect(logSql).toContain("LIMIT 12");
+    expect(item?.content_log).toEqual([
+      {
+        field: "title",
+        lang: "en",
+        before_text: "Old title",
+        after_text: "New title",
+        reason: "ingest",
+        created_at: 1700000002,
+      },
+      {
+        field: "summary",
+        lang: "vi",
+        before_text: "Tóm tắt cũ",
+        after_text: "Tóm tắt mới",
+        reason: "backfill",
+        created_at: 1700000001,
+      },
+    ]);
+    expect(item?.content_log?.map((entry) => typeof entry.created_at)).toEqual([
+      "number",
+      "number",
+    ]);
+  });
+
+  it("omits content_log when item_content_log does not exist", async () => {
+    const { db } = contentLogDb(new Error("no such table: item_content_log"));
+    const item = await getStory(db, "abcdef12");
+    expect(item?.id).toBe(base.id);
+    expect(item?.content_log).toBeUndefined();
+  });
+});

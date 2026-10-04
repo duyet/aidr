@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { storyMarkdownUrl } from "../lib/seo";
-import { storyPath } from "../lib/slug";
 import { sanitizeImageUrl } from "../lib/tldr-images";
-import type { ContentLogEntry, FeedItem, Lang } from "../lib/types";
+import type { FeedItem, Lang } from "../lib/types";
 import { useSuggestSelection } from "../lib/use-suggest-selection";
 import { SuggestionBadge, SuggestTranslation } from "./SuggestTranslation";
 import { BilingualSummary } from "./story/BilingualSummary";
@@ -26,9 +25,9 @@ function logReason(reason: string, lang: Lang): string {
     case "suggestion":
       return vi ? "Góp ý" : "Suggestion";
     case "ingest":
-      return vi ? "Khi đăng tin" : "When the story was added";
+      return vi ? "Viết lại khi thu tin" : "Rewritten on ingest";
     case "backfill":
-      return vi ? "Bản dịch bổ sung" : "Added translation";
+      return vi ? "Thay nội dung đã lưu" : "Replaced stored text";
     case "admin":
       return vi ? "Biên tập" : "Editor";
     default:
@@ -37,27 +36,7 @@ function logReason(reason: string, lang: Lang): string {
 }
 
 function ContentHistory({ item, lang }: { item: FeedItem; lang: Lang }) {
-  const [rows, setRows] = useState<ContentLogEntry[] | null>(
-    item.content_log ?? null
-  );
-  useEffect(() => {
-    if (item.content_log) {
-      setRows(item.content_log);
-      return;
-    }
-    let cancelled = false;
-    fetch(`/api/story${storyPath(item)}`)
-      .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
-      .then((full) => {
-        if (!cancelled) setRows(full?.content_log ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setRows([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [item]);
+  const rows = item.content_log;
   if (!rows || rows.length === 0) return null;
   return (
     <details className="not-typeset text-xs text-muted-foreground">
@@ -79,11 +58,13 @@ function ContentHistory({ item, lang }: { item: FeedItem; lang: Lang }) {
                 ? "Tóm tắt"
                 : "Summary"}
             {" · "}
+            <span className="uppercase">{entry.lang}</span>
+            {" · "}
             {logReason(entry.reason, lang)}
-            <div>
+            <div lang={entry.lang}>
               <span className="line-through">{clipLog(entry.before_text)}</span>
             </div>
-            <div>{clipLog(entry.after_text)}</div>
+            <div lang={entry.lang}>{clipLog(entry.after_text)}</div>
           </li>
         ))}
       </ul>

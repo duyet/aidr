@@ -92,8 +92,9 @@ export function StoryRow({
 }) {
   const TitleTag = titleAs;
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
-  // SSR feed items ship without summary/sources (`lazyDetail`) — the full
-  // story is refetched from /api/story on first expand.
+  // First expand loads /api/story when the row is a lean SSR item
+  // (`lazyDetail`) or the feed omitted `content_log`. A permalink item
+  // already came from getStory and keeps the log it arrived with.
   const [detail, setDetail] = useState<FeedItem | null>(null);
   const detailRequested = useRef(false);
   useEffect(() => {
@@ -124,7 +125,11 @@ export function StoryRow({
 
   const toggleExpanded = () => {
     if (!hasDetails) return;
-    if (!expanded && item.lazyDetail && !detailRequested.current) {
+    if (
+      !expanded &&
+      !detailRequested.current &&
+      (item.lazyDetail || item.content_log == null)
+    ) {
       detailRequested.current = true;
       fetch(`/api/story${storyPath(item, lang)}`)
         .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
