@@ -25,6 +25,13 @@ vi.mock("./SuggestTranslation", () => ({
   SuggestionBadge: () => null,
 }));
 
+// The vote server fn imports cloudflare:workers. Happy-dom has no resolver
+// for that module; this test does not cast a vote.
+vi.mock("../lib/vote-fn", () => ({
+  castStoryVote: () => Promise.resolve({ myVote: 0, voteNet: 0, rankScore: 0 }),
+  fetchMyVotes: () => Promise.resolve({ votes: {}, nets: {} }),
+}));
+
 const lean: FeedItem = {
   id: "abcdef12deadbeef",
   url: "https://www.example.com/post",
