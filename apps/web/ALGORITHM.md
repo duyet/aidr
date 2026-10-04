@@ -41,7 +41,7 @@ Publish has two deliveries and they do not share a clock or a table:
 
 - **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject and heading are a fixed short title (`AI;DR — <date> · Today in AI`); the first story is the preheader. Idempotency is `subscribers.last_sent_date`. A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
-- **Facebook** (`worker/notify/facebook.ts`) — English Page only (`facebook-en`, https://www.facebook.com/aidr.today), same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes our page for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried.
+- **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
 
 An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next hourly run retries. Email is not a `Notifier`: a notifier is one target plus a trending post.
 
@@ -841,17 +841,20 @@ deliberately non-spammy.
   through its vi→en translation. A second locale is another notifier entry.
 - **Facebook** (`facebook-en`) is English only and uses the same gates.
   Each send is one `POST /{page-id}/feed` link post (`message` + `link`)
-  on Graph `v26.0`. The link is the day page or the story permalink with
-  `utm_source=facebook`. The Page preview comes from that page's own
+  on Graph `FACEBOOK_GRAPH_VERSION` (default `v26.0`). The message is the
+  full edition or the full story summary, one paragraph per sentence.
+  It is not clipped to a caption line. The link is the day
+  page or the story permalink on `SITE_URL` (the install origin, default
+  `src/lib/site.ts`) with `utm_source=facebook`. The Page preview comes
+  from that page's own
   Open Graph tags. There is no photo upload, no video, no comment, and no
   Messenger send. Copy that asks people to like, share, or comment is
   refused before the request. Error codes 10, 100, 190, 200, and 368 are
   stored as `ambiguous` and not retried. Rate limits (4, 17, 32, 80001,
-  80006) wait for the next hourly run. `FACEBOOK_PAGE_ID` is public config
-  (`1371114472749405`). `FACEBOOK_PAGE_ACCESS_TOKEN` turns posting on. The
-  token is a Page access token with `pages_manage_posts`,
-  `pages_read_engagement`, and `pages_show_list`, from a person who can
-  `CREATE_CONTENT` on https://www.facebook.com/aidr.today.
+  80006) wait for the next hourly run. `FACEBOOK_PAGE_ID`, `FACEBOOK_APP_ID`,
+  `FACEBOOK_APP_SECRET`, and `FACEBOOK_PAGE_ACCESS_TOKEN` come from the
+  install's `.env.local`. None of them are committed. The Page token posts.
+  The app id and secret only mint a replacement Page token.
 
 ### 13. Review gates (LLM, rating ≥ 0.6)
 
