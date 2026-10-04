@@ -28,7 +28,11 @@ function makeDb(stubs: Record<string, Stub>) {
   const binds: { sql: string; args: unknown[] }[] = [];
 
   const prepare = (sql: string) => {
-    const key = Object.keys(stubs).find((k) => sql.includes(k));
+    // Longest key wins, so a narrow count is not swallowed by a shorter
+    // stub whose text is a prefix of the same statement.
+    const key = Object.keys(stubs)
+      .filter((candidate) => sql.includes(candidate))
+      .sort((a, b) => b.length - a.length)[0];
     const stub: Stub = (key ? stubs[key] : {}) ?? {};
     const runAll = () =>
       Promise.resolve().then(
@@ -139,9 +143,13 @@ describe("loadSystemOverview", () => {
       "COUNT(*) AS c FROM item_sources": {
         all: () => ({ results: [{ c: 55 }] }),
       },
-      "lang = 'vi' AND title": { all: () => ({ results: [{ n: 6 }] }) },
-      "lang = 'vi' AND summary": { all: () => ({ results: [{ n: 5 }] }) },
-      "FROM item_content_log": { all: () => ({ results: [{ n: 2 }] }) },
+      "lang = 'vi' AND title IS NOT NULL": {
+        all: () => ({ results: [{ c: 6 }] }),
+      },
+      "lang = 'vi' AND summary IS NOT NULL": {
+        all: () => ({ results: [{ c: 5 }] }),
+      },
+      "FROM item_content_log": { all: () => ({ results: [{ c: 2 }] }) },
       "SELECT 1 AS ok": {
         all: () => ({ results: [], meta: { size_after: 4096 } }),
       },
@@ -218,6 +226,30 @@ describe("loadSystemOverview", () => {
     // Vietnamese counts stay; the content-log probe still succeeds here.
     expect(batches[0]).toHaveLength(11);
     expect(batches[0]?.some((s) => s.includes("llm_tokens"))).toBe(false);
+  });
+
+  it("omits the content-log count when item_content_log is missing", async () => {
+    const q = await freshQueries();
+    const { db, batches } = makeDb({
+      "SELECT id FROM item_content_log LIMIT 1": {
+        all: () => {
+          throw new Error("no such table: item_content_log");
+        },
+      },
+      "SELECT 1 AS ok": {
+        all: () => ({ results: [], meta: { size_after: 4096 } }),
+      },
+    });
+
+    const o = await q.loadSystemOverview(db);
+
+    expect(o.totals.contentEdits).toBe(0);
+    expect(o.databaseBytes).toBe(4096);
+    expect(
+      batches.some((sqls) =>
+        sqls.some((sql) => sql.includes("FROM item_content_log"))
+      )
+    ).toBe(false);
   });
 });
 
