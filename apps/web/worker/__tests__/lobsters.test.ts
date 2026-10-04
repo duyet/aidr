@@ -79,11 +79,15 @@ describe("lobstersAdapter", () => {
     expect(items.filter((i) => i.externalId === "a1")).toHaveLength(1);
   });
 
-  it("survives a filtered tag that returns an error", async () => {
-    const items = await lobstersAdapter.fetchItems(
-      { tags: ["ai"], filteredTags: ["not-a-tag", "programming"] },
-      0
-    );
-    expect(items.map((i) => i.externalId).sort()).toEqual(["a1", "p1"]);
+  it("throws fetch_failed when a tag returns a non-2xx", async () => {
+    await expect(
+      lobstersAdapter.fetchItems(
+        { tags: ["ai"], filteredTags: ["not-a-tag", "programming"] },
+        0
+      )
+    ).rejects.toMatchObject({
+      name: "SourceFetchError",
+      reason: "fetch_failed",
+    });
   });
 });

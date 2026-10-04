@@ -1,3 +1,4 @@
+import { SourceFetchError } from "./rss.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 
 const NEWS_URL = "https://www.anthropic.com/news";
@@ -99,7 +100,12 @@ export const anthropicAdapter: SourceAdapter = {
       signal: AbortSignal.timeout(12_000),
       headers: { Accept: "text/html" },
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      throw new SourceFetchError(
+        "fetch_failed",
+        `anthropic news returned ${res.status}`
+      );
+    }
     const html = await res.text();
     const sinceMs = sinceEpochSec * 1000;
     return parseAnthropicNews(html).filter(

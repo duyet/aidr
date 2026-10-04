@@ -1,3 +1,4 @@
+import { SourceFetchError } from "./rss.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 
 const SITEMAP_URL = "https://x.ai/sitemap.xml";
@@ -104,7 +105,12 @@ export const xaiAdapter: SourceAdapter = {
         headers: { Accept: "text/html" },
       }),
     ]);
-    if (!sitemapRes.ok) return [];
+    if (!sitemapRes.ok) {
+      throw new SourceFetchError(
+        "fetch_failed",
+        `xai sitemap returned ${sitemapRes.status}`
+      );
+    }
     const xml = await sitemapRes.text();
     const titles = htmlRes.ok
       ? parseXaiNews(await htmlRes.text())
