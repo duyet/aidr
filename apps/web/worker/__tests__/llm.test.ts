@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LLM_STEP } from "../ingest/context.js";
 import type { LlmCallLogEntry } from "../llm.js";
 import {
   buildRoute,
@@ -15,6 +16,10 @@ import {
   RULES_OVERVIEW,
   raceTimeout,
   resetUnavailableModels,
+  SCORE_CHAT_TIMEOUT_MS,
+  SCORE_DECISION_TIMEOUT_MS,
+  SCORE_JEV_TIMEOUT_MS,
+  SCORE_SLICE_MAX_MS,
   sanitizeScoreResults,
   sanitizeTranslateResults,
   scoreBatchPrompt,
@@ -2143,6 +2148,76 @@ describe("normalizeTag", () => {
     expect(normalizeTag("x".repeat(41))).toBeNull();
   });
 });
+
+describe("score step budget", () => {
+  afterEach(() => {
+    setLlmCallLogger(null);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  // Two batches of decision 15s + Jev 30s + the 120s chat default are ~330s,
+  // past LLM_STEP. The chat call has to pass timeoutMs. Raising the step
+  // limit is not the fix.
+  it("keeps two score batches strictly inside LLM_STEP", () => {
+    expect(LLM_STEP.timeout).toBe("5 minutes");
+    const stepMs = 5 * 60_000;
+    const oneBatch =
+      SCORE_DECISION_TIMEOUT_MS + SCORE_JEV_TIMEOUT_MS + SCORE_CHAT_TIMEOUT_MS;
+    expect(oneBatch * 2).toBeLessThan(stepMs);
+    // Still a chain budget, not a single 70s slice: a one-id chain can use
+    // the hang-cap, and a later id still has time.
+    expect(SCORE_CHAT_TIMEOUT_MS).toBeGreaterThan(SCORE_SLICE_MAX_MS);
+    expect(SCORE_CHAT_TIMEOUT_MS).toBeLessThan(120_000);
+  });
+
+  it("passes that chat budget instead of the 120s request default", async () => {
+    vi.useFakeTimers();
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(tokenThenHang));
+    const pending = scoreItems(
+      {
+        ...env,
+        ANYROUTER_API_KEY: "",
+        ANYROUTER_MODEL: "m/1,m/2,m/3",
+      },
+      [{ i: 0, title: "Story", source: "hn" }]
+    );
+    await vi.advanceTimersByTimeAsync(SCORE_CHAT_TIMEOUT_MS);
+    await pending;
+    const spent = entries
+      .filter((entry) => entry.task === "score")
+      .reduce((sum, entry) => sum + entry.durationMs, 0);
+    expect(spent).toBe(SCORE_CHAT_TIMEOUT_MS);
+    expect(spent).toBeLessThan(120_000);
+  });
+});
+
+/** One SSE token, then silence until abort. A first token clears the 20s
+ * cutoff so the attempt runs out the chain budget the score call passed. */
+function tokenThenHang(_url: string, init?: RequestInit) {
+  const signal = init?.signal;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(
+        new TextEncoder().encode(
+          'data: {"choices":[{"delta":{"content":"{"}}]}\n\n'
+        )
+      );
+      const abort = () => {
+        controller.error(
+          new DOMException("The operation was aborted.", "AbortError")
+        );
+      };
+      if (signal?.aborted) abort();
+      else signal?.addEventListener("abort", abort, { once: true });
+    },
+  });
+  return new Response(stream, { status: 200 });
+}
 
 describe("tldr chain budget", () => {
   // What the first hop really gets, not the cap: modelAttemptTimeoutMs holds

@@ -309,6 +309,11 @@ describe("LLM step telemetry identity (#189)", () => {
     expect(workflow).toMatch(
       /llmStep\(\s*step,\s*env,\s*runId,\s*`backfill-translate-\$\{offset\}`/
     );
+    // A finished score batch is its own step, so a later interrupt cannot
+    // drop it or record the whole step as zero items scored.
+    expect(workflow).toMatch(
+      /llmStep\(\s*step,\s*env,\s*runId,\s*`score-\$\{index\}`/
+    );
   });
 
   it("keeps the top-of-run install as a default, not the only one", () => {
