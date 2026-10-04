@@ -121,7 +121,7 @@ export function RunDurationChart({
         <XAxis dataKey="label" maxTicks={4} />
         <YAxis tickFormatter={tickLabel} />
         <Bar dataKey="seconds" />
-        <Tooltip labelKey="at" valueFormatter={secondsLabel} />
+        <Tooltip labelKey="at" showTotal valueFormatter={secondsLabel} />
       </BarChart>
     </div>
   );

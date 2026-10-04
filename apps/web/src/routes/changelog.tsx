@@ -13,6 +13,11 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-10",
+    en: "Charts on the Data page now name the day under your cursor and show that day's total. The token chart switches between task and model, and pointing at a day filters the breakdown under it.",
+    vi: "Biểu đồ trên trang Dữ liệu giờ ghi ngày bạn đang trỏ và hiện tổng của ngày đó. Biểu đồ token chuyển được giữa theo tác vụ và theo mô hình, và khi trỏ vào một ngày thì bảng phía dưới chỉ còn số của ngày ấy.",
+  },
+  {
+    date: "2026-10",
     en: "You can vote a story up or down. The tally moves that story's rank, so stories readers back are more likely to trend. Sign in to vote. Anyone can see the count.",
     vi: "Bạn có thể bình chọn lên hoặc xuống cho từng tin. Tổng phiếu làm đổi thứ hạng, nên tin được nhiều người ủng hộ dễ nổi bật hơn. Đăng nhập để bình chọn. Ai cũng xem được số phiếu.",
   },

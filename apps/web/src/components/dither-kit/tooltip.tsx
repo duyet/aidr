@@ -6,6 +6,17 @@ import { useCommonChart } from "./common-context"
 import { cn } from "./lib"
 import { rgb } from "./palette"
 
+/** Sum of every series in one hovered bucket, including zeroes and dimmed rows. */
+export function tooltipSeriesTotal(
+  items: readonly { value: number }[]
+): number {
+  let sum = 0
+  for (const item of items) {
+    if (Number.isFinite(item.value)) sum += item.value
+  }
+  return sum
+}
+
 export type TooltipVariant = "default" | "frosted-glass"
 
 const VARIANT: Record<TooltipVariant, string> = {
@@ -22,10 +33,15 @@ export function Tooltip({
   labelKey,
   valueFormatter,
   variant = "default",
+  showTotal = false,
+  totalLabel = "Total",
 }: {
   labelKey?: string
   valueFormatter?: (value: number, name: string) => string
   variant?: TooltipVariant
+  /** Extra row: the sum of the series in the hovered bucket. */
+  showTotal?: boolean
+  totalLabel?: string
 }) {
   const chart = useCommonChart()
   const show = chart.ready && chart.hoverIndex != null
@@ -40,6 +56,10 @@ export function Tooltip({
 
   const heading = chart.heading(index, labelKey)
   const items = chart.itemsAt(index)
+  const total = tooltipSeriesTotal(items)
+  const totalText = valueFormatter
+    ? valueFormatter(total, totalLabel)
+    : total.toLocaleString()
 
   return (
     <AnimatePresence>
@@ -96,6 +116,15 @@ export function Tooltip({
                 </span>
               </div>
             ))}
+            {showTotal && (
+              <div className="mt-0.5 flex items-center gap-1.5 border-t border-border pt-0.5 font-mono text-[11px] text-popover-foreground tabular-nums">
+                <span className="size-2" aria-hidden />
+                <span className="text-muted-foreground">{totalLabel}</span>
+                <span className="ml-auto pl-2 font-medium text-foreground">
+                  {totalText}
+                </span>
+              </div>
+            )}
           </div>
         </motion.div>
       )}
