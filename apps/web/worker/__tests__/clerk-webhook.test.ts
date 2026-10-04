@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CLERK_USER_DELETE_SQL,
@@ -81,6 +85,57 @@ function userEvent(type: string, over: Record<string, unknown> = {}) {
   };
 }
 
+function verifiedUser(type: string, email: string) {
+  return userEvent(type, {
+    email_addresses: [
+      {
+        id: "e1",
+        email_address: email,
+        verification: { status: "verified" },
+      },
+    ],
+    primary_email_address_id: "e1",
+  });
+}
+
+type SqliteInput = null | number | bigint | string | NodeJS.ArrayBufferView;
+
+function toSqliteInput(value: unknown): SqliteInput {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "bigint" ||
+    ArrayBuffer.isView(value)
+  ) {
+    return value as SqliteInput;
+  }
+  throw new TypeError("Unsupported SQLite bind value");
+}
+
+/** Executes the webhook's D1 statements. The recording fake does not. */
+class SqliteMirror {
+  constructor(readonly db: DatabaseSync) {}
+
+  prepare(sql: string) {
+    const statement = this.db.prepare(sql);
+    let args: SqliteInput[] = [];
+    const prepared = {
+      bind: (...next: unknown[]) => {
+        args = next.map(toSqliteInput);
+        return prepared;
+      },
+      run: async () => {
+        statement.run(...args);
+        return { success: true };
+      },
+      first: async () => statement.get(...args) ?? null,
+      all: async () => ({ results: statement.all(...args) }),
+    };
+    return prepared;
+  }
+}
+
 async function signedRequest(
   body: string,
   options: {
@@ -105,7 +160,7 @@ async function signedRequest(
     "svix-id": id,
     "svix-timestamp": timestamp,
     "svix-signature": options.tamperSignature
-      ? `v1=${Buffer.from("wrong-signature").toString("base64")}`
+      ? `v1,${Buffer.from("wrong-signature").toString("base64")}`
       : signature,
     ...(options.type ? { "svix-type": options.type } : {}),
     ...options.headers,
@@ -257,6 +312,33 @@ describe("verifyClerkWebhookSignature", () => {
     ).resolves.toMatchObject({ reason: "malformed_timestamp" });
   });
 
+  it("verifies a v1,<base64> signature whose padding ends with =", async () => {
+    const body = "{}";
+    const id = "msg_pad";
+    const timestamp = String(NOW_SEC);
+    const header = await svixSignatureHeader(SECRET, id, timestamp, body);
+    // Svix joins the version and the signature with a comma. HMAC-SHA256
+    // base64 carries a trailing `=`, which a split on `=` would drop.
+    expect(header).toMatch(/^v1,[A-Za-z0-9+/]+={1,2}$/);
+
+    await expect(
+      verifyClerkWebhookSignature({
+        headers: new Headers({
+          "svix-id": id,
+          "svix-timestamp": timestamp,
+          "svix-signature": header,
+        }),
+        body,
+        secret: SECRET,
+        nowMs: NOW_MS,
+      })
+    ).resolves.toMatchObject({
+      verified: true,
+      reason: "verified",
+      timestamp: NOW_SEC,
+    });
+  });
+
   it("accepts any matching v1 entry in a rotated signature list", async () => {
     const body = "{}";
     const good = await svixSignatureHeader(
@@ -268,7 +350,7 @@ describe("verifyClerkWebhookSignature", () => {
     const headers = new Headers({
       "svix-id": "msg_1",
       "svix-timestamp": String(NOW_SEC),
-      "svix-signature": `v1=${Buffer.from("stale-rotation").toString("base64")} ${good}`,
+      "svix-signature": `v1,${Buffer.from("stale-rotation").toString("base64")} ${good}`,
     });
 
     await expect(
@@ -532,6 +614,72 @@ describe("handleClerkWebhook", () => {
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({ error: "sync failed" });
+  });
+
+  it("leaves a deleted account deleted when user.updated is older", async () => {
+    const sqlite = new DatabaseSync(":memory:");
+    const migrationDir = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../migrations"
+    );
+    sqlite.exec(
+      [
+        "0026_clerk_users.sql",
+        "0040_email_contributions.sql",
+        "0041_clerk_verified_emails.sql",
+      ]
+        .map((name) => readFileSync(path.join(migrationDir, name), "utf8"))
+        .join("\n")
+    );
+    const db = new SqliteMirror(sqlite) as unknown as D1Database;
+    const deletedAt = NOW_SEC - 20;
+    const staleAt = NOW_SEC - 100;
+    try {
+      const created = await handleClerkWebhook(
+        await signedRequest(
+          JSON.stringify(verifiedUser("user.created", "keep@example.com")),
+          { type: "user.created", timestamp: String(NOW_SEC - 200) }
+        ),
+        { DB: db, CLERK_WEBHOOK_SECRET: SECRET }
+      );
+      expect(created.status).toBe(200);
+
+      const deleted = await handleClerkWebhook(
+        await signedRequest(JSON.stringify(userEvent("user.deleted")), {
+          type: "user.deleted",
+          timestamp: String(deletedAt),
+        }),
+        { DB: db, CLERK_WEBHOOK_SECRET: SECRET }
+      );
+      expect(deleted.status).toBe(200);
+
+      const stale = await handleClerkWebhook(
+        await signedRequest(
+          JSON.stringify(verifiedUser("user.updated", "back@example.com")),
+          { type: "user.updated", timestamp: String(staleAt) }
+        ),
+        { DB: db, CLERK_WEBHOOK_SECRET: SECRET }
+      );
+      expect(stale.status).toBe(200);
+      await expect(stale.json()).resolves.toEqual({
+        received: true,
+        action: "upserted",
+      });
+
+      const row = sqlite
+        .prepare("SELECT deleted_at FROM clerk_users WHERE id = ?")
+        .get("user_2abc") as { deleted_at: number };
+      expect(row.deleted_at).toBe(deletedAt);
+      const emails = sqlite
+        .prepare(
+          "SELECT email FROM clerk_verified_emails WHERE user_id = ? ORDER BY email"
+        )
+        .all("user_2abc") as { email: string }[];
+      // The stale delivery must not put the deleted account's address back.
+      expect(emails.map((entry) => entry.email)).toEqual(["keep@example.com"]);
+    } finally {
+      sqlite.close();
+    }
   });
 
   it("reports a missing D1 binding instead of dropping the event", async () => {
