@@ -182,12 +182,13 @@ FROM translations
 WHERE item_id = ? AND lang = ? AND IFNULL(${field}, '') != IFNULL(?, '')`;
 }
 
-/** Same guard for an English title or summary stored on `items`. */
-function itemFieldLogSql(field: ContentLogField): string {
+/** Same guard for a title or summary stored on `items`. `lang` is the source
+ * language written on the log row; `items` has no language column. */
+function itemFieldLogSql(field: ContentLogField, lang: "en" | "vi"): string {
   return `INSERT INTO item_content_log (
   item_id, lang, field, before_text, after_text, reason, created_at
 )
-SELECT id, 'en', '${field}', ${field}, ?, ?, ?
+SELECT id, '${lang}', '${field}', ${field}, ?, ?, ?
 FROM items
 WHERE id = ? AND IFNULL(${field}, '') != IFNULL(?, '')`;
 }
@@ -222,12 +223,34 @@ export function prepareItemContentChangeLog(
     field: ContentLogField;
     text: string | null;
     reason: ContentChangeReason;
+    lang?: SourceLanguage;
   }
 ): D1PreparedStatement {
   const createdAt = Math.floor(Date.now() / 1000);
+  const lang = args.lang === "vi" ? "vi" : "en";
   return db
-    .prepare(itemFieldLogSql(args.field))
+    .prepare(itemFieldLogSql(args.field, lang))
     .bind(nn(args.text), args.reason, createdAt, nn(args.id), nn(args.text));
+}
+
+/** Field logs, then the translation upsert. Call sites pass title and summary
+ * once so the history row and the stored row cannot drift. */
+export function prepareLoggedTranslationUpsert(
+  db: D1Database,
+  args: {
+    id: string;
+    lang?: SourceLanguage;
+    sourceLang?: SourceLanguage;
+    targetLang?: SourceLanguage;
+    title: string | null;
+    summary: string | null;
+    reason: ContentChangeReason;
+  }
+): D1PreparedStatement[] {
+  return [
+    ...prepareContentChangeLogs(db, args),
+    prepareTranslationUpsert(db, args),
+  ];
 }
 
 /**

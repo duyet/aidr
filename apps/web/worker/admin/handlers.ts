@@ -3,9 +3,9 @@ import {
   parseYoutubeId,
 } from "../../src/lib/day-video.js";
 import {
-  prepareContentChangeLogs,
+  prepareItemContentChangeLog,
+  prepareLoggedTranslationUpsert,
   prepareTranslationQaInvalidation,
-  prepareTranslationUpsert,
 } from "../d1-bind.js";
 import { sha256Hex } from "../hash.js";
 import { validateIngestMode } from "../ingest/mode.js";
@@ -157,17 +157,44 @@ export async function pushItems(
     const publishedAt = item.published_at ?? now;
 
     const existing = await env.DB.prepare(
-      "SELECT id, source_lang FROM items WHERE id = ?"
+      `SELECT id, source_lang, summary,
+              (SELECT summary FROM translations
+               WHERE item_id = items.id AND lang = 'vi') AS summary_vi
+       FROM items WHERE id = ?`
     )
       .bind(id)
-      .first<{ id: string; source_lang?: SourceLanguage }>();
+      .first<{
+        id: string;
+        source_lang?: SourceLanguage;
+        summary: string | null;
+        summary_vi: string | null;
+      }>();
     const sourceLang =
       item.source_lang ?? (existing?.source_lang === "vi" ? "vi" : "en");
     if (existing) updated++;
     else inserted++;
 
-    await env.DB.prepare(
-      `INSERT INTO items (
+    const summary =
+      typeof item.summary === "string"
+        ? item.summary
+        : (existing?.summary ?? null);
+    const statements: D1PreparedStatement[] = [
+      prepareItemContentChangeLog(env.DB, {
+        id,
+        field: "title",
+        text: item.title,
+        reason: "admin",
+        lang: sourceLang,
+      }),
+      prepareItemContentChangeLog(env.DB, {
+        id,
+        field: "summary",
+        text: summary,
+        reason: "admin",
+        lang: sourceLang,
+      }),
+      env.DB.prepare(
+        `INSERT INTO items (
         id, source_id, external_id, url, title, summary,
         published_at, fetched_at, points, comments,
         llm_relevance, llm_importance, llm_quality, category, tags,
@@ -182,14 +209,13 @@ export async function pushItems(
         tags = excluded.tags,
         status = excluded.status,
         source_lang = excluded.source_lang`
-    )
-      .bind(
+      ).bind(
         id,
         sourceId,
         null,
         item.url,
         item.title,
-        item.summary ?? null,
+        summary,
         publishedAt,
         now,
         item.points ?? 0,
@@ -202,30 +228,30 @@ export async function pushItems(
         0,
         status,
         sourceLang
-      )
-      .run();
+      ),
+    ];
 
     if (item.title_vi) {
-      await env.DB.batch([
-        ...prepareContentChangeLogs(env.DB, {
-          id,
-          lang: "vi",
-          title: item.title_vi,
-          summary: item.summary_vi ?? null,
-          reason: "admin",
-        }),
-        prepareTranslationUpsert(env.DB, {
+      const summaryVi =
+        typeof item.summary_vi === "string"
+          ? item.summary_vi
+          : (existing?.summary_vi ?? null);
+      statements.push(
+        ...prepareLoggedTranslationUpsert(env.DB, {
           id,
           lang: "vi",
           sourceLang,
           targetLang: "vi",
           title: item.title_vi,
-          summary: item.summary_vi ?? null,
-        }),
-      ]);
+          summary: summaryVi,
+          reason: "admin",
+        })
+      );
     } else if (existing) {
-      await prepareTranslationQaInvalidation(env.DB, id).run();
+      statements.push(prepareTranslationQaInvalidation(env.DB, id));
     }
+
+    await env.DB.batch(statements);
   }
 
   return { inserted, updated, ids };
@@ -748,20 +774,14 @@ export async function reprocessToday(
         tokens += result.tokens;
         translatedCount++;
         statements.push(
-          ...prepareContentChangeLogs(env.DB, {
-            id: row.id,
-            lang: "vi",
-            title: result.title,
-            summary: result.summary,
-            reason: "admin",
-          }),
-          prepareTranslationUpsert(env.DB, {
+          ...prepareLoggedTranslationUpsert(env.DB, {
             id: row.id,
             lang: "vi",
             sourceLang: row.source_lang === "vi" ? "vi" : "en",
             targetLang: "vi",
             title: result.title,
             summary: result.summary,
+            reason: "admin",
           })
         );
       }

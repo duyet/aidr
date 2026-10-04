@@ -1,8 +1,5 @@
 import { buildMissingTranslationQuery } from "../backfill.js";
-import {
-  prepareContentChangeLogs,
-  prepareTranslationUpsert,
-} from "../d1-bind.js";
+import { prepareLoggedTranslationUpsert } from "../d1-bind.js";
 import { TRANSLATE_BATCH_SIZE, translateItems } from "../llm.js";
 import { recordStep } from "../run-stats.js";
 import { llmStep, safeStep } from "../workflow-step.js";
@@ -77,23 +74,19 @@ export async function backfillTranslations(
               partTokens += result.tokens;
               const row = rows[result.i];
               if (!row || !result.title) continue;
-              await env.DB.batch([
-                ...prepareContentChangeLogs(env.DB, {
-                  id: row.id,
-                  lang: "vi",
-                  title: result.title,
-                  summary: result.summary ?? "",
-                  reason: "backfill",
-                }),
-                prepareTranslationUpsert(env.DB, {
+              const title = result.title;
+              const summary = result.summary ?? "";
+              await env.DB.batch(
+                prepareLoggedTranslationUpsert(env.DB, {
                   id: row.id,
                   lang: "vi",
                   sourceLang: backfillSourceLang(row.source_lang),
                   targetLang: "vi",
-                  title: result.title,
-                  summary: result.summary ?? "",
-                }),
-              ]);
+                  title,
+                  summary,
+                  reason: "backfill",
+                })
+              );
               count++;
             }
           } catch (error) {
