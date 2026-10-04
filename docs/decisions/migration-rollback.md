@@ -231,6 +231,24 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
 - Risk: none for existing rows. Apply before relying on that list under load.
 - Rollback: `DROP INDEX idx_items_fetched_at;`
 
+## 0048_items_read_indexes.sql
+
+- Change: three indexes on `items`. No rows are rewritten.
+  - `idx_items_status_published_at (status, published_at DESC)` serves
+    `status = 'published'` plus a `published_at` range, `ORDER BY published_at`,
+    and the day-archive `MIN`/`MAX(published_at)`.
+  - `idx_items_status_fetched_at (status, fetched_at DESC)` serves
+    `SELECT MAX(fetched_at) FROM items WHERE status = 'published'`.
+  - `idx_items_merged_members (duplicate_of, source_id, points, comments, url) WHERE status = 'merged'`
+    serves the re-rank join `FROM items WHERE status = 'merged' GROUP BY duplicate_of`.
+    It is partial, so published re-rank updates do not maintain it.
+- Apply: `pnpm --filter @aidr/web d1:migrate` on the target database. The
+  statements are `CREATE INDEX IF NOT EXISTS`, so running the file again is
+  safe. Apply before expecting the cheaper plans; reads stay correct without
+  the indexes.
+- Risk: none for stored rows. Building the indexes reads `items` once.
+- Rollback: `DROP INDEX IF EXISTS idx_items_status_published_at; DROP INDEX IF EXISTS idx_items_status_fetched_at; DROP INDEX IF EXISTS idx_items_merged_members;`
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`
