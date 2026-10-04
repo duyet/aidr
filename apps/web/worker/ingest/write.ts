@@ -98,7 +98,8 @@ async function existingCanonicalStatements(
 ): Promise<D1PreparedStatement[]> {
   const existingRow = await env.DB.prepare(
     `SELECT tags, url, image_url, media_manifest, source_id,
-            published_at, llm_importance, llm_quality
+            published_at, llm_importance, llm_quality,
+            (SELECT COALESCE(SUM(value), 0) FROM item_votes WHERE item_id = items.id) AS vote_net
      FROM items WHERE id = ?`
   )
     .bind(canonicalId)
@@ -108,6 +109,7 @@ async function existingCanonicalStatements(
         published_at: number;
         llm_importance: number | null;
         llm_quality: number | null;
+        vote_net: number | null;
       }
     >();
   const media = planExistingCanonicalMedia(existingRow, update);
@@ -172,6 +174,9 @@ async function existingCanonicalStatements(
           })),
           ...(update.members ?? []),
         ]),
+        // The window re-rank reads vote_net itself. This write skips that
+        // row, so the merge score has to carry the votes or they vanish.
+        voteNet: existingRow.vote_net ?? 0,
       })
     : null;
 

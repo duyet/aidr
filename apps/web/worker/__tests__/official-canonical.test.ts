@@ -523,6 +523,9 @@ describe("demotion against real SQL (Clef rows from D1)", () => {
     sqlite.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, source_id TEXT,
       url TEXT, points INTEGER, comments INTEGER, status TEXT,
       duplicate_of TEXT);
+      CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        PRIMARY KEY (item_id, user_id));
       CREATE TABLE notifications (channel TEXT NOT NULL, item_id TEXT NOT NULL,
       target TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
       posted_at INTEGER NOT NULL, PRIMARY KEY (channel, item_id))`);
@@ -737,6 +740,9 @@ describe("Clef takeover from the stored HN copy (prod rows)", () => {
     sqlite.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, source_id TEXT,
       url TEXT, points INTEGER, comments INTEGER, status TEXT,
       duplicate_of TEXT);
+      CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        PRIMARY KEY (item_id, user_id));
       CREATE TABLE notifications (channel TEXT NOT NULL, item_id TEXT NOT NULL,
       target TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
       posted_at INTEGER NOT NULL, PRIMARY KEY (channel, item_id))`);
@@ -807,6 +813,11 @@ describe("Clef takeover from the stored HN copy (prod rows)", () => {
         .get("c0a0a5f5") as unknown as RankSignalRow
     );
     // HN + aggregator pair + the reader's copy counted as Cloudflare.
-    expect(signals).toEqual({ points: 140, comments: 60, sourceCount: 3 });
+    expect(signals).toEqual({
+      points: 140,
+      comments: 60,
+      sourceCount: 3,
+      voteNet: 0,
+    });
   });
 });

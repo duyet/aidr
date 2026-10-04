@@ -7,6 +7,7 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../../worker/media.js";
+import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
 import { sourceFamily } from "../../worker/source-diversity.js";
 import { AUDIENCE_TIMEZONE, localCalendarDate } from "../../worker/time.js";
 import {
@@ -17,6 +18,7 @@ import {
   rankTrendingWithGrowth,
   topicDailyCountsStmt,
 } from "../../worker/topic-learning.js";
+import { itemVotesTableReady } from "../../worker/votes.js";
 import { archiveDateOfSec, dayBoundsSec } from "./day-archive";
 import { DAY_VIDEO_TITLE_MAX, type DayVideo, isYoutubeId } from "./day-video";
 import type { DbReader } from "./db";
@@ -53,6 +55,7 @@ interface ItemRow {
   rank_score: number;
   source_id: string;
   tags: string;
+  vote_net?: number;
   llm_tokens?: number;
   image_url?: string | null;
   media_manifest?: string | null;
@@ -61,11 +64,27 @@ interface ItemRow {
 const ITEM_SELECT_BASE = `
   SELECT i.id, i.url, i.title, t.title AS title_vi, i.summary,
          t.summary AS summary_vi, i.category,
-         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}
+         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}{votes}
   FROM items i
-  LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
+  {vote_join}LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
   WHERE i.status = 'published'
 `;
+
+function itemSelectSql(
+  hasLlmTokens: boolean,
+  hasImageUrl: boolean,
+  hasMediaManifest: boolean,
+  hasVotes: boolean
+): string {
+  return ITEM_SELECT_BASE.replace(
+    "{tokens}",
+    hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""
+  )
+    .replace("{image}", hasImageUrl ? ", i.image_url" : "")
+    .replace("{media}", hasMediaManifest ? ", i.media_manifest" : "")
+    .replace("{votes}", hasVotes ? `, ${VOTE_NET_COLUMN}` : "")
+    .replace("{vote_join}", hasVotes ? `${VOTE_NET_JOIN_I}\n  ` : "");
+}
 
 let llmTokensSupported: boolean | null = null;
 let imageUrlSupported: boolean | null = null;
@@ -135,6 +154,7 @@ function toFeedItem(row: ItemRow): FeedItem {
         : null;
     })(),
     ...(exposedManifest ? { media_manifest: exposedManifest } : {}),
+    vote_net: typeof row.vote_net === "number" ? row.vote_net : 0,
   };
 }
 
@@ -433,17 +453,19 @@ export async function getFeed(
     : Math.floor(Date.now() / 1000);
   const since = until - days * 86400;
 
-  const [hasLlmTokens, hasImageUrl, hasMediaManifest] = await Promise.all([
-    supportsLlmTokens(db),
-    supportsImageUrl(db),
-    supportsMediaManifest(db),
-  ]);
-  const itemSelect = ITEM_SELECT_BASE.replace(
-    "{tokens}",
-    hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""
-  )
-    .replace("{image}", hasImageUrl ? ", i.image_url" : "")
-    .replace("{media}", hasMediaManifest ? ", i.media_manifest" : "");
+  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes] =
+    await Promise.all([
+      supportsLlmTokens(db),
+      supportsImageUrl(db),
+      supportsMediaManifest(db),
+      itemVotesTableReady(db),
+    ]);
+  const itemSelect = itemSelectSql(
+    hasLlmTokens,
+    hasImageUrl,
+    hasMediaManifest,
+    hasVotes
+  );
 
   let sql = `${itemSelect} AND i.published_at >= ? AND i.published_at < ?`;
   const binds: unknown[] = [since, until];
@@ -624,17 +646,19 @@ export async function getDayArchive(
   date: string
 ): Promise<DayArchive> {
   const { start, end } = dayBoundsSec(date);
-  const [hasLlmTokens, hasImageUrl, hasMediaManifest] = await Promise.all([
-    supportsLlmTokens(db),
-    supportsImageUrl(db),
-    supportsMediaManifest(db),
-  ]);
-  const itemSelect = ITEM_SELECT_BASE.replace(
-    "{tokens}",
-    hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""
-  )
-    .replace("{image}", hasImageUrl ? ", i.image_url" : "")
-    .replace("{media}", hasMediaManifest ? ", i.media_manifest" : "");
+  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes] =
+    await Promise.all([
+      supportsLlmTokens(db),
+      supportsImageUrl(db),
+      supportsMediaManifest(db),
+      itemVotesTableReady(db),
+    ]);
+  const itemSelect = itemSelectSql(
+    hasLlmTokens,
+    hasImageUrl,
+    hasMediaManifest,
+    hasVotes
+  );
 
   const [itemsRes, tldrRes, prevRes, nextRes] = await db.batch([
     db

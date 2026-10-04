@@ -604,7 +604,7 @@ the same write.
 rank_score = importance
            × (0.6 + 0.4·quality/10)      # quality modulates ±40%
            × exp(−ageHours/36)           # freshness decay
-           × (1 + log10(1 + points + 0.5·comments))  # reader engagement, log-damped
+           × (1 + log10(1 + points + voteNet + 0.5·comments))  # reader engagement, log-damped
            × (1 + 0.12·(min(sourceCount, 8) − 1))    # extra independent outlets
 ```
 
@@ -623,6 +623,14 @@ SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
 - `points`/`comments` = the highest values among cluster items whose
   source has `engagement: "reader"` (HN, Lobsters). Aggregator
   author/tweet counts are stored for display but never ranked.
+- `voteNet` = `SUM(value)` from `item_votes` on that item (one row per
+  signed-in user, `+1` or `-1`; clearing deletes the row). It sits beside
+  points inside the same log. When `points + voteNet + 0.5·comments` is
+  negative the log is mirrored (`1 − log10(1 − signal)`) and floored at 0,
+  so downvotes lower the score and `rank_score` stays ≥ 0. The hourly
+  re-rank reads the sum through `RANK_SIGNAL_JOIN`. Trending still uses
+  `rank_score` only. A vote does not change digest or email selection
+  except by moving that score.
 
 ### 8. Write
 

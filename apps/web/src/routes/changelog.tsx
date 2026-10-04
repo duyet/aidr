@@ -13,6 +13,11 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-10",
+    en: "You can vote a story up or down. The tally moves that story's rank, so stories readers back are more likely to trend. Sign in to vote. Anyone can see the count.",
+    vi: "Bạn có thể bình chọn lên hoặc xuống cho từng tin. Tổng phiếu làm đổi thứ hạng, nên tin được nhiều người ủng hộ dễ nổi bật hơn. Đăng nhập để bình chọn. Ai cũng xem được số phiếu.",
+  },
+  {
+    date: "2026-10",
     en: "A pass cleaned Vietnamese headlines and summaries that were mistyped, still in English, or translated too literally. Open a story to see a short history of each title or summary edit. The Data page now shows how large the catalog is and how many translations it holds.",
     vi: "Một lượt rà đã sửa các tiêu đề và tóm tắt tiếng Việt bị gõ sai, còn nguyên tiếng Anh, hoặc dịch quá sát từng chữ. Mở một tin để xem lịch sử ngắn của từng lần sửa tiêu đề hoặc tóm tắt. Trang Dữ liệu giờ cho biết kho tin lớn bao nhiêu và đang có bao nhiêu bản dịch.",
   },

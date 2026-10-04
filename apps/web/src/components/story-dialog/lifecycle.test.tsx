@@ -14,6 +14,13 @@ vi.mock("../SuggestTranslation", () => ({
   SuggestTranslation: () => null,
 }));
 
+// The vote server fn imports cloudflare:workers. Happy-dom has no resolver
+// for that module; the dialog lifecycle does not cast a vote.
+vi.mock("../../lib/vote-fn", () => ({
+  castStoryVote: () => Promise.resolve({ myVote: 0, voteNet: 0, rankScore: 0 }),
+  fetchMyVotes: () => Promise.resolve({ votes: {}, nets: {} }),
+}));
+
 const actEnvironment = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT: boolean;
 };

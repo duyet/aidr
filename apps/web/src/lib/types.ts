@@ -40,6 +40,8 @@ export interface FeedItem {
   media_manifest?: MediaManifest;
   /** Recent title/summary edits. Set by getStory. Omitted on feed rows. */
   content_log?: ContentLogEntry[];
+  /** Net of signed-in reader votes. 0 when nobody has voted. */
+  vote_net?: number;
   /** Set only on SSR feed items, which ship without summary/sources to
    * keep the dehydrated payload small. When true the row lazily refetches
    * the full story from /api/story on first expand. Never set by

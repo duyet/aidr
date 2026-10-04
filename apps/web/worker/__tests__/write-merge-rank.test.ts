@@ -50,7 +50,10 @@ describe("writeItems: merge into an existing canonical", () => {
         tags TEXT, url TEXT, image_url TEXT, media_manifest TEXT,
         source_id TEXT, duplicate_of TEXT);
       CREATE TABLE item_sources (item_id TEXT, position INTEGER, kind TEXT,
-        author TEXT, posted_at INTEGER, quote TEXT, url TEXT);`);
+        author TEXT, posted_at INTEGER, quote TEXT, url TEXT);
+      CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        PRIMARY KEY (item_id, user_id));`);
     const add = db.prepare(
       `INSERT INTO items VALUES (?, ?, ?, ?, 0, 8, 8, ?, '[]',
          'https://example.com/' || ?, NULL, NULL, ?, ?)`
