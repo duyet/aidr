@@ -46,6 +46,6 @@ pnpm facebook:mint --sync
 
 Do not run a full `pnpm sync-env` just to refresh this token. That command also uploads the rest of `.env.local`.
 
-If Cloudflare says a name is already in use, that name is still a `[vars]` binding. `--sync` leaves it, uploads the rest, and still writes GitHub. Remove the var, deploy, then run `--sync` again so the Page id exists as a secret. Until that deploy, the old var keeps the channel on.
+If Cloudflare says a name is already in use, that name is still a `[vars]` binding. `--sync` leaves it, uploads the rest, and still writes GitHub. Remove the var, deploy, then run `--sync` again so the Page id exists as a secret. Until that deploy, the old var keeps the channel on. The deploy that deletes the var turns posting off until that second `--sync`, because the Page id is not a secret yet. Run `--sync` immediately after the deploy. `pnpm sync-env` skips the same collision, so one var does not reject the rest of the Worker secrets.
 
 The Page token's `expires_at` is `0`. It still dies if the admin changes their Facebook password, removes the app, or loses the Page role. Mint again when that happens. Do not print the token or the app secret.

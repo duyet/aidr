@@ -110,7 +110,7 @@ export interface Env {
   FACEBOOK_APP_SECRET?: string;
   /** Graph version for this install, for example v26.0. Unset uses v26.0. */
   FACEBOOK_GRAPH_VERSION?: string;
-  /** Public origin of the links this Page posts. Unset uses SITE_URL. */
+  /** Public origin of the links this Page posts. Unset uses src/lib/site.ts. */
   SITE_URL?: string;
   /** Threads user id. Empty leaves the channel off. Not a wrangler var:
    *  nothing here is a committed id, and the notifier is not registered. */
