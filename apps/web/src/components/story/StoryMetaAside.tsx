@@ -181,6 +181,7 @@ export function StoryMetaAside({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const tokenCount = storyTokenCount(item.llm_tokens);
   const showTokenDetails = tokenCount !== null && tokenCount > 0;
+  const copy = STORY_DETAILS_COPY[lang];
 
   return (
     <aside className="not-typeset min-w-0 space-y-5 md:border-l md:border-border md:pl-6">
@@ -234,7 +235,7 @@ export function StoryMetaAside({
       <div className="text-xs leading-relaxed text-muted-foreground">
         <div>
           <Clock className="inline h-3 w-3 align-[-1px]" aria-hidden />{" "}
-          {fmtTime(item.published_at, lang)} · {item.source_id} · score{" "}
+          {fmtTime(item.published_at, lang)} · {item.source_id} · {copy.score}{" "}
           {formatStoryScore(item.rank_score)}
           {showTokenDetails ? (
             <>

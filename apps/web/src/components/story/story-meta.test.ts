@@ -72,6 +72,33 @@ describe("story token metadata helpers", () => {
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('aria-label="Show token details · 787 tokens"');
     expect(html).toContain("787 tokens");
+    expect(html).toContain("Score 20.6");
     expect(html).not.toContain("The current story API does not link");
+  });
+
+  it("uses the Vietnamese score label on the always-visible meta line", () => {
+    const item: FeedItem = {
+      id: "abcdef1234567890",
+      url: "https://example.com/story",
+      title: "A story",
+      title_vi: null,
+      summary: null,
+      summary_vi: null,
+      category: null,
+      published_at: 1_700_000_000,
+      points: 0,
+      comments: 0,
+      rank_score: 20.6,
+      source_id: "marketbrief",
+      tags: [],
+      sources: [],
+      llm_tokens: 0,
+      image_url: null,
+    };
+    const html = renderToStaticMarkup(
+      createElement(StoryMetaAside, { item, lang: "vi", imageUrl: null })
+    );
+    expect(html).toContain("Điểm 20.6");
+    expect(html).not.toContain("score");
   });
 });
