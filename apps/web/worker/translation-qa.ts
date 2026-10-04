@@ -5,7 +5,7 @@
  * module owns D1 schema gating, explicit source/target pair creation, leases,
  * compare-and-set writes, bounded retries, and immutable provenance.
  */
-import { nn } from "./d1-bind.js";
+import { nn, prepareContentChangeLogs } from "./d1-bind.js";
 import { sha256Hex } from "./hash.js";
 import { callAnyrouter, VI_STYLE } from "./llm.js";
 import {
@@ -780,21 +780,35 @@ async function finishWithMarker(
     stateDecision: input.decision,
     stateTerminal: input.terminal,
   });
+  // A replacement writes title and summary. Log those fields before that
+  // UPDATE. An unchanged field inserts nothing, and a log row is not the
+  // compare-and-swap: the marker stays the statement that must change 1 row.
+  const contentLogs = input.replacement
+    ? prepareContentChangeLogs(db, {
+        id: input.candidate.row.id,
+        lang: input.candidate.row.lang,
+        title: input.candidateText.title,
+        summary: input.candidateText.summary,
+        reason: "correction",
+      })
+    : [];
   // Commit the lease-guarded state first.  The marker update then requires
   // that exact committed state, so a lost CAS cannot leave a new marker
   // attached to the old state (or vice versa). D1 batches are transactional;
   // these shared predicates make zero-row results fail closed as well.
   const results = await db.batch([
     state,
+    ...contentLogs,
     marker,
     prepareAttemptInsert(db, input.attempt),
     ...(input.additionalAttempts ?? []).map((attempt) =>
       prepareAttemptInsert(db, attempt)
     ),
   ]);
+  const markerIndex = 1 + contentLogs.length;
   return (
     (results[0]?.meta?.changes ?? 0) === 1 &&
-    (results[1]?.meta?.changes ?? 0) === 1
+    (results[markerIndex]?.meta?.changes ?? 0) === 1
   );
 }
 
@@ -968,20 +982,29 @@ async function createEnglishCandidate(
   row: EnglishSourceRow,
   candidate: TranslationText
 ): Promise<boolean> {
-  const result = await db
-    .prepare(ENGLISH_CANDIDATE_SQL)
-    .bind(
-      row.id,
-      candidate.title,
-      candidate.summary,
-      row.id,
-      row.source_title,
-      dbSummary(row.source_summary),
-      row.source_revision,
-      row.source_lang
-    )
-    .run();
-  return (result.meta?.changes ?? 0) === 1;
+  const contentLogs = prepareContentChangeLogs(db, {
+    id: row.id,
+    lang: "en",
+    title: candidate.title,
+    summary: candidate.summary,
+    reason: "correction",
+  });
+  const results = await db.batch([
+    ...contentLogs,
+    db
+      .prepare(ENGLISH_CANDIDATE_SQL)
+      .bind(
+        row.id,
+        candidate.title,
+        candidate.summary,
+        row.id,
+        row.source_title,
+        dbSummary(row.source_summary),
+        row.source_revision,
+        row.source_lang
+      ),
+  ]);
+  return (results[contentLogs.length]?.meta?.changes ?? 0) === 1;
 }
 
 async function ensureEnglishCandidates(

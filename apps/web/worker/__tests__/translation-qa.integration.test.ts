@@ -80,6 +80,18 @@ function makeDatabase(): { db: SqliteD1; close: () => void } {
       qa_at INTEGER,
       PRIMARY KEY (item_id, lang)
     );
+    CREATE TABLE IF NOT EXISTS item_content_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_id TEXT NOT NULL,
+      lang TEXT NOT NULL,
+      field TEXT NOT NULL,
+      before_text TEXT,
+      after_text TEXT,
+      reason TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_item_content_log_item
+      ON item_content_log (item_id, created_at DESC);
     INSERT INTO items (id, title, summary)
     VALUES ('item-1', 'OpenAI ships Model X', 'The launch is 2024-05-01.');
     INSERT INTO translations (item_id, lang, title, summary)
