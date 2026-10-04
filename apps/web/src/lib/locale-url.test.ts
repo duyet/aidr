@@ -5,6 +5,7 @@ import {
   hasCanonicalLocaleQuery,
   localeCacheControl,
   neutralLocaleRedirect,
+  sameOriginRedirectUrl,
   withLang,
   withSiteLang,
 } from "./locale-url";
@@ -79,6 +80,65 @@ describe("canonical locale query policy", () => {
     expect(
       canonicalLocaleRedirect("/abcdef12", "?lang=en", "", "en")
     ).toBeNull();
+  });
+});
+
+describe("same-origin locale redirects", () => {
+  const attack = "https://aidr.today//evil.example?locale=en";
+
+  it("rejects scheme-relative, backslash, and cross-origin targets", () => {
+    expect(sameOriginRedirectUrl("//evil.example?lang=en", attack)).toBeNull();
+    expect(
+      sameOriginRedirectUrl("/\\evil.example?lang=en", "https://aidr.today/")
+    ).toBeNull();
+    expect(
+      sameOriginRedirectUrl("\\\\evil.example?lang=en", "https://aidr.today/")
+    ).toBeNull();
+    expect(
+      sameOriginRedirectUrl(
+        "https://evil.example/?lang=en",
+        "https://aidr.today/"
+      )
+    ).toBeNull();
+    expect(
+      sameOriginRedirectUrl(
+        "https://aidr.today//evil.example?lang=en",
+        "https://aidr.today/"
+      )
+    ).toBeNull();
+    expect(
+      sameOriginRedirectUrl("http://aidr.today/?lang=en", "https://aidr.today/")
+    ).toBeNull();
+  });
+
+  it("keeps homepage, story, and day targets on the request origin", () => {
+    expect(
+      sameOriginRedirectUrl("/?lang=en", "https://aidr.today/?locale=en")?.href
+    ).toBe("https://aidr.today/?lang=en");
+    expect(
+      sameOriginRedirectUrl(
+        "/abcdef12?utm_source=telegram&lang=en#sources",
+        "https://aidr.today/abcdef12?locale=en"
+      )?.href
+    ).toBe("https://aidr.today/abcdef12?utm_source=telegram&lang=en#sources");
+    expect(
+      sameOriginRedirectUrl(
+        "/date/2026-10-02.md?lang=en",
+        "https://aidr.today/date/2026-10-02.md?locale=en"
+      )?.href
+    ).toBe("https://aidr.today/date/2026-10-02.md?lang=en");
+    expect(
+      sameOriginRedirectUrl(
+        "/api/story/abcdef12.md?lang=en",
+        "https://aidr.today/api/story/abcdef12.md?locale=en"
+      )?.href
+    ).toBe("https://aidr.today/api/story/abcdef12.md?lang=en");
+    expect(
+      sameOriginRedirectUrl(
+        "https://aidr.today/subscribe?lang=en",
+        "https://aidr.today/extension?locale=en"
+      )?.href
+    ).toBe("https://aidr.today/subscribe?lang=en");
   });
 });
 
