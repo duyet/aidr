@@ -61,7 +61,8 @@ function formatBytes(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatCount(value: number): string {
+function formatCount(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "—";
   return value.toLocaleString("en-US");
 }
 
