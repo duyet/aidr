@@ -651,6 +651,77 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
       )
     ).toBe(true);
   });
+
+  it("leaves last_sent_date unset when the local date is tomorrow relative to the snapshot", async () => {
+    // 22:00 UTC is 07:00 in Tokyo (UTC+9), so the local day is already
+    // 2026-08-17. The only snapshot is the UTC day 2026-08-16. Sending that
+    // fallback must not count as today's digest.
+    const fixedNow = Date.UTC(2026, 7, 16, 22, 0, 0);
+    expect(getLocalHourAndDate(fixedNow, "Asia/Tokyo")).toEqual({
+      hour: DIGEST_LOCAL_HOUR,
+      date: "2026-08-17",
+    });
+    const updates: { sql: string; args: unknown[] }[] = [];
+    const sent: string[] = [];
+    const subscribers = [
+      {
+        email: "ahead@example.com",
+        lang: "en",
+        unsubscribe_token: "t1",
+        timezone: "Asia/Tokyo",
+        last_sent_date: null,
+      },
+    ];
+    const snapshot = {
+      date: "2026-08-16",
+      bullets_en: JSON.stringify([{ text: "yesterday's story" }]),
+      bullets_vi: JSON.stringify([{ text: "tin hôm qua" }]),
+      sent_at: null,
+    };
+    const db = {
+      batch: async (statements: { run: () => Promise<unknown> }[]) => {
+        for (const stmt of statements) await stmt.run();
+        return [];
+      },
+      prepare(sql: string) {
+        let boundDate: string | null = null;
+        const bound = () => ({
+          first: async () => (boundDate === snapshot.date ? snapshot : null),
+          all: async () => ({
+            results: sql.includes("FROM items") ? [] : subscribers,
+          }),
+          run: async () => ({ success: true }),
+        });
+        return {
+          ...bound(),
+          bind: (...args: unknown[]) => {
+            boundDate = typeof args[0] === "string" ? args[0] : null;
+            if (sql.startsWith("UPDATE")) updates.push({ sql, args });
+            return bound();
+          },
+        };
+      },
+    };
+    const env = {
+      DB: db,
+      EMAIL: {
+        send: async (msg: { to: string }) => {
+          sent.push(msg.to);
+        },
+      },
+    } as unknown as Env;
+    vi.setSystemTime(fixedNow);
+    await sendDailyTldr(env);
+
+    expect(sent).toEqual(["ahead@example.com"]);
+    expect(
+      updates.some(
+        (u) =>
+          u.sql.includes("UPDATE subscribers") &&
+          u.args.includes("ahead@example.com")
+      )
+    ).toBe(false);
+  });
 });
 
 describe("primaryItemId", () => {
