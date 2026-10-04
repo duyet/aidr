@@ -1,5 +1,5 @@
 import { dayArchivePath } from "../../src/lib/day-archive.js";
-import { withSiteLang } from "../../src/lib/locale-url.js";
+import { withLang } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
@@ -94,10 +94,13 @@ export function facebookSiteOrigin(env: Env): string {
   return parsed.origin;
 }
 
-/** Day page or story permalink, attributed to the Page. */
+/** Day page or story permalink, attributed to the Page.
+ *  `withLang`, not `withSiteLang`: the latter only rewrites aidr.today, and
+ *  the default language is Vietnamese. A fork origin would otherwise post
+ *  the English digest onto the Vietnamese day page. */
 export function facebookLink(url: string, lang: Lang): string {
-  const withLang = withSiteLang(url, lang);
-  const parsed = new URL(withLang);
+  const localized = withLang(url, lang);
+  const parsed = new URL(localized);
   parsed.searchParams.set("utm_source", "facebook");
   parsed.searchParams.set("utm_medium", "social");
   return parsed.toString();

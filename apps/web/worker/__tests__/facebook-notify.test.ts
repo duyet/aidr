@@ -99,6 +99,7 @@ describe("Facebook Page posts", () => {
       facebookLink("https://example.test/date/2026-10-04", "en")
     );
     expect(body.link).toContain("utm_source=facebook");
+    expect(new URL(body.link).searchParams.get("lang")).toBe("en");
     expect(body.message).toContain("AI news today — 2026-10-04");
     expect(body.message).toContain("• A lab ships a small model");
     expect(body.message).not.toMatch(/https?:\/\//);
@@ -110,6 +111,7 @@ describe("Facebook Page posts", () => {
     const post = buildFacebookStory(story);
     expect(post.link).toContain("utm_source=facebook");
     expect(post.link).toContain("abcd1234");
+    expect(new URL(post.link).searchParams.get("lang")).toBe("en");
     expect(post.link).not.toContain("example.com");
     expect(post.message).toContain("A lab ships a small model");
     expect(post.message).toContain("The weights are public");
