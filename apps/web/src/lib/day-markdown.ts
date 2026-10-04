@@ -20,6 +20,7 @@ import {
   absoluteSiteUrl,
   canonicalLocaleRedirect,
   localeCacheControl,
+  sameOriginRedirectUrl,
 } from "./locale-url";
 import { SITE_NAME } from "./site";
 import { storyPath } from "./slug";
@@ -196,10 +197,12 @@ export async function handleDayMarkdownRequest(
       locale.lang
     );
     if (target) {
+      const location = sameOriginRedirectUrl(target, url);
+      if (!location) return errorResponse(400, "Invalid language", method);
       return new Response(null, {
         status: 307,
         headers: {
-          Location: new URL(target, url).toString(),
+          Location: location.toString(),
           "Cache-Control": "private, no-store",
         },
       });

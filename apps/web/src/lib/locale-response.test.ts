@@ -79,6 +79,42 @@ describe("normalizeLocaleRequest", () => {
     expect(invalid?.headers.get("content-type")).toContain("application/json");
   });
 
+  it("does not send a scheme-relative pathname to another origin", () => {
+    for (const url of [
+      "https://aidr.today//evil.example?locale=en",
+      "https://aidr.today/\\evil.example?locale=en",
+    ]) {
+      const response = normalizeLocaleRequest(new Request(url), {
+        format: "html",
+      });
+      expect(response?.status).toBe(400);
+      expect(response?.headers.get("Location")).toBeNull();
+      expect(response?.headers.get("Cache-Control")).toBe(
+        LOCALE_PRIVATE_CACHE_CONTROL
+      );
+      expect(response?.headers.get("Content-Language")).toBe("en, vi");
+      expect(response?.headers.get("Vary")).toContain("Cookie");
+      expect(response?.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+      expect(response?.headers.get("Referrer-Policy")).toBe("no-referrer");
+    }
+  });
+
+  it.each([
+    ["/", "https://aidr.today/?lang=en"],
+    ["/abcdef12", "https://aidr.today/abcdef12?lang=en"],
+    ["/date/2026-10-02", "https://aidr.today/date/2026-10-02?lang=en"],
+  ])("redirects a legacy locale on %s to the same origin", (path, location) => {
+    const response = normalizeLocaleRequest(
+      new Request(`https://aidr.today${path}?locale=en`),
+      { format: "html" }
+    );
+    expect(response?.status).toBe(307);
+    expect(response?.headers.get("Location")).toBe(location);
+    expect(response?.headers.get("Cache-Control")).toBe(
+      LOCALE_PRIVATE_CACHE_CONTROL
+    );
+  });
+
   it("rejects repeated, conflicting, and invalid values", () => {
     for (const search of [
       "?lang=en&lang=vi",

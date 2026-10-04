@@ -14,6 +14,7 @@ import {
   hasCanonicalLocaleQuery,
   hasLocaleQuery,
   neutralLocaleRedirect,
+  sameOriginRedirectUrl,
 } from "./locale-url";
 import { NOINDEX_NOFOLLOW_ROBOTS } from "./route-indexability";
 import { isServerFnRequest } from "./server-fn-request";
@@ -77,9 +78,21 @@ function localeRedirect(
   request: Request,
   target: URL | string,
   lang: Lang,
-  status: number
+  status: number,
+  format: "html" | "json" = "html"
 ): Response {
-  const location = new URL(target, request.url);
+  const location = sameOriginRedirectUrl(target, request.url);
+  if (!location) {
+    return localeErrorResponse(
+      request,
+      {
+        ok: false,
+        code: "invalid_locale",
+        message: "Locale must be exactly vi or en.",
+      },
+      format
+    );
+  }
   const headers = new Headers({
     "Cache-Control": LOCALE_PRIVATE_CACHE_CONTROL,
     "Content-Language": lang,
@@ -94,9 +107,10 @@ function localeRedirect(
 export function temporaryLocaleRedirect(
   request: Request,
   target: URL | string,
-  lang: Lang
+  lang: Lang,
+  format: "html" | "json" = "html"
 ): Response {
-  return localeRedirect(request, target, lang, LOCALE_REDIRECT_STATUS);
+  return localeRedirect(request, target, lang, LOCALE_REDIRECT_STATUS, format);
 }
 
 /** Permanent (308) locale hop; see {@link PERMANENT_LOCALE_REDIRECT_STATUS}. */
@@ -205,8 +219,13 @@ export function normalizeLocaleRequest(
   if (options.neutralPath && hasLocaleQuery(url.search)) {
     const href = neutralLocaleRedirect(url.pathname, url.search, url.hash);
     if (href) {
-      const response = temporaryLocaleRedirect(request, href, "en");
-      if (resolution.explicit) {
+      const response = temporaryLocaleRedirect(
+        request,
+        href,
+        "en",
+        options.format
+      );
+      if (response.status === LOCALE_REDIRECT_STATUS && resolution.explicit) {
         response.headers.append(
           "Set-Cookie",
           langCookieHeader(resolution.lang)
@@ -222,7 +241,14 @@ export function normalizeLocaleRequest(
       url.hash,
       resolution.lang
     );
-    if (href) return temporaryLocaleRedirect(request, href, resolution.lang);
+    if (href) {
+      return temporaryLocaleRedirect(
+        request,
+        href,
+        resolution.lang,
+        options.format
+      );
+    }
   }
   return null;
 }

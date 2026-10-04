@@ -9,6 +9,7 @@ import {
   absoluteSiteUrl,
   canonicalLocaleRedirect,
   localeCacheControl,
+  sameOriginRedirectUrl,
 } from "./locale-url";
 import { storyPath } from "./slug";
 import { getStoryCandidates } from "./story-queries";
@@ -979,18 +980,19 @@ function canonicalRedirectTarget(
   requestUrl: URL,
   id: string,
   locale: ResolvedLocale
-): URL {
+): URL | null {
   const pathname = `/api/story/${id.slice(0, 8)}.md`;
   const normalized = locale.legacy
     ? canonicalLocaleRedirect(pathname, requestUrl.search, "", locale.lang)
     : null;
-  const target = new URL(
+  const target = sameOriginRedirectUrl(
     normalized ?? `${pathname}${requestUrl.search}`,
     requestUrl
   );
+  if (!target) return null;
   target.hash = "";
   target.search = boundedRedirectSearch(target, locale.lang);
-  return target;
+  return sameOriginRedirectUrl(target, requestUrl);
 }
 
 function corsHeaders(): Headers {
@@ -1100,18 +1102,28 @@ async function lookupStoryForMarkdown(
 
 function redirectResponse(
   target: URL,
+  requestUrl: URL,
   lang: Lang,
   method: string,
   status: 307 | 308
 ): Response {
-  const body = `Use ${target.pathname}${target.search} for the canonical locale.`;
+  const location = sameOriginRedirectUrl(target, requestUrl);
+  if (!location) {
+    return errorResponse(
+      400,
+      "Invalid language",
+      "Locale must be exactly vi or en.",
+      method
+    );
+  }
+  const body = `Use ${location.pathname}${location.search} for the canonical locale.`;
   const headers = responseHeaders({
     cacheControl: STORY_MARKDOWN_PRIVATE_CACHE_CONTROL,
     contentLanguage: lang,
     contentType: "text/plain; charset=utf-8",
     vary: "Cookie, Accept-Language",
   });
-  headers.set("Location", target.toString());
+  headers.set("Location", location.toString());
   headers.set(
     "Content-Length",
     String(new TextEncoder().encode(body).byteLength)
@@ -1234,8 +1246,17 @@ export async function handleStoryMarkdownRequest(
 
   if (id.length > 8 || locale.legacy) {
     const target = canonicalRedirectTarget(requestUrl, id, locale);
+    if (!target) {
+      return errorResponse(
+        400,
+        "Invalid language",
+        "Locale must be exactly vi or en.",
+        method
+      );
+    }
     return redirectResponse(
       target,
+      requestUrl,
       locale.lang,
       method,
       locale.legacy ? 307 : 308
