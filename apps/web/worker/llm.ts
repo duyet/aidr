@@ -1524,7 +1524,10 @@ function translatePrompt(
   });
   return `Translate these AI/tech news items into Vietnamese.
 
-Translate every sentence of each summary: do not shorten, summarize, or add facts, opinions, or context the source does not state. A complete Vietnamese summary is about as long as the English one, at least 80% of its length. Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English. An item with a "fix" list was translated before and broke those rules; translate it again and fix every one.
+Translate every sentence of each summary: do not shorten, summarize, or add facts, opinions, or context the source does not state. A complete Vietnamese summary is about as long as the English one, at least 80% of its length. Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English. The Vietnamese summary leads with the news fact, stays about as long as the source, and copies every keep-list term in English. An item with a "fix" list was translated before and broke those rules; translate it again and fix every one.
+
+Bad: "Đã ghi nhận việc OpenAI tiến hành ra mắt một agent suy luận mã nguồn mở."
+Good: "OpenAI ra mắt agent inference mã nguồn mở."
 
 Items:
 ${JSON.stringify(items)}
@@ -1919,7 +1922,7 @@ function tldrPrompt(items: TldrItem[], bilingual: boolean): string {
     : '{"bullets_en":[{"emoji":"🧠","text":"...","item_ids":["..."]}],"bullets_vi":[]}';
   const viNote = bilingual
     ? `
-The Vietnamese bullets are NOT a translation pass over the English ones — write them the way a Vietnamese tech journalist would independently state the same facts, following the house style above.
+The Vietnamese bullet states the same who, what, and number as the story, in friendly Vietnamese, with technical terms left in English. It is not a word-for-word translation of the English bullet. Follow the house style above.
 `
     : "";
   return `Summarize the following ${items.length} AI/tech news items into at most ${n} TL;DR digest bullets (one per distinct story), ${langs}. Each bullet must reference the item_ids (an array) it was derived from: most bullets summarize a single story, so item_ids has one id; when several items report the same story or theme, write ONE synthesizing bullet citing ALL of their ids instead of separate bullets.

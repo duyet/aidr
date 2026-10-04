@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   extractProtectedTerms,
+  KEEP_ENGLISH_PROSE,
+  KEEP_ENGLISH_TERMS,
   keepVerbatimList,
   missingProtectedTerms,
+  RULES_OVERVIEW,
   stripSourceBoilerplate,
 } from "../translation-terms";
 
@@ -116,6 +119,74 @@ describe("protected English terms", () => {
         "arXiv:2610.00012v1 Announce Type: new Abstract: LLM agents act."
       )
     ).toBe("LLM agents act.");
+  });
+
+  it("demands a kept technical term verbatim", () => {
+    const source = {
+      title: "The lab shipped an inference SDK",
+      summary: "It fine-tunes LoRA adapters and serves RAG over MCP on GPU.",
+    };
+    const missing = missingProtectedTerms(source, {
+      title: "Lab giao một bộ suy luận",
+      summary: "Nó tinh chỉnh bộ thích ứng và phục vụ truy xuất trên bộ xử lý.",
+    });
+    expect(missing.jargon).toEqual(
+      expect.arrayContaining([
+        "inference",
+        "SDK",
+        "fine-tun",
+        "LoRA",
+        "RAG",
+        "MCP",
+        "GPU",
+      ])
+    );
+    expect(keepVerbatimList(source)).toEqual(
+      expect.arrayContaining([
+        "inference",
+        "SDK",
+        "fine-tune",
+        "LoRA",
+        "RAG",
+        "MCP",
+        "GPU",
+      ])
+    );
+  });
+
+  it("keeps the guard and the prompt on the same new terms", () => {
+    for (const term of ["RAG", "MCP", "SDK", "GPU", "inference", "LoRA"]) {
+      expect(KEEP_ENGLISH_TERMS).toContain(term);
+      expect(KEEP_ENGLISH_PROSE.toLowerCase()).toContain(term.toLowerCase());
+    }
+    // "finetune" and "fine-tune" are one stem. The guard demands it; the
+    // prompt names both spellings. "open-source" is neither.
+    expect(KEEP_ENGLISH_PROSE).toContain("finetune");
+    expect(KEEP_ENGLISH_TERMS).toContain("fine-tun");
+    expect(KEEP_ENGLISH_PROSE).not.toMatch(/open-source/);
+    expect(KEEP_ENGLISH_TERMS.join(" ")).not.toMatch(/open-source/);
+    expect(
+      keepVerbatimList({ title: "We finetune LoRA", summary: "" })
+    ).toEqual(expect.arrayContaining(["fine-tune", "LoRA"]));
+  });
+
+  it('renders open-source as "mã nguồn mở" instead of keeping the English', () => {
+    const source = {
+      title: "Meta open-sources a coding model",
+      summary: "The open-source release is free.",
+    };
+    expect(extractProtectedTerms(source).jargon).toEqual([]);
+    expect(keepVerbatimList(source).join(" ")).not.toMatch(/open-source/);
+    expect(RULES_OVERVIEW).toContain('open-source is "mã nguồn mở"');
+  });
+
+  it("does not treat a longer name as a short acronym", () => {
+    expect(
+      extractProtectedTerms({
+        title: "McPherson joins the lab",
+        summary: "A fragile consensus, not a RAG paper.",
+      }).jargon
+    ).toEqual(["RAG"]);
   });
 
   it("gives the generator a readable keep list", () => {

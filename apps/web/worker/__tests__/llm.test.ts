@@ -616,6 +616,33 @@ describe("streaming anyrouter responses", () => {
     expect(style).toContain("cho thấy chúng phối hợp lỗi"); // the good-example anchor
   });
 
+  it("leads the Vietnamese summary with the news and copies the keep list", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(chatResponse(JSON.stringify({ results: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await translateItems(env, [{ i: 0, title: "New model released" }]);
+
+    const { messages } = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const system = messages[0].content as string;
+    const user = messages[1].content as string;
+    // Overview follows the house style, including its worked examples.
+    expect(system.indexOf("Rules, in order:")).toBeGreaterThan(
+      system.indexOf("bầy (swarm)")
+    );
+    expect(user).toContain(
+      "The Vietnamese summary leads with the news fact, stays about as long as the source, and copies every keep-list term in English."
+    );
+    expect(user).toContain("at least 80% of its length");
+    expect(user).toContain(
+      'Bad: "Đã ghi nhận việc OpenAI tiến hành ra mắt một agent suy luận mã nguồn mở."'
+    );
+    expect(user).toContain(
+      'Good: "OpenAI ra mắt agent inference mã nguồn mở."'
+    );
+  });
+
   it("sends the same Vietnamese style rules as a system message when generating the TL;DR", async () => {
     const fetchMock = vi
       .fn()
@@ -629,7 +656,15 @@ describe("streaming anyrouter responses", () => {
     const { messages } = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(messages[0].role).toBe("system");
     expect(messages[0].content).toMatch(/parenthetical/i);
+    expect(messages[0].content).toContain("Rules, in order:");
     expect(messages[1].role).toBe("user");
+    expect(messages[1].content).toContain(
+      "states the same who, what, and number as the story"
+    );
+    expect(messages[1].content).toContain("technical terms left in English");
+    expect(messages[1].content).toContain(
+      "not a word-for-word translation of the English bullet"
+    );
   });
 
   it("requests a stream so anyrouter answers inline instead of queuing", async () => {
@@ -2547,8 +2582,10 @@ describe("translateItems draft repair", () => {
 
     const [out] = await translateItems(withRules, [item]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const repairPrompt = JSON.parse(fetchMock.mock.calls[1][1].body).messages[1]
-      .content as string;
+    const repairMessages = JSON.parse(fetchMock.mock.calls[1][1].body).messages;
+    const repairSystem = repairMessages[0].content as string;
+    const repairPrompt = repairMessages[1].content as string;
+    expect(repairSystem).toContain("Rules, in order:");
     expect(repairPrompt).toContain('"fix"');
     expect(repairPrompt).toContain("mở trọng lượng");
     expect(out.title).toBe("Clef ra mắt các decision model open-weight");
