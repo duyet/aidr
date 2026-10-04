@@ -32,7 +32,7 @@ const SENSITIVE_QUERY_KEY_RE =
 /** Keep the Markdown contract compatible with PR #149. */
 const STORY_MARKDOWN_PATH = /^\/api\/story\/[^/]+\.md(?:\/|$)/;
 const STORY_JSON_PATH = /^\/api\/story\/[^/]+$/;
-const OG_PATH = /^\/api\/og\/[^/]+$/;
+const OG_PATH = /^\/api\/og\/(?:[^/]+|date\/[^/]+)$/;
 const ENCODED_PATH_SEPARATOR = /%(?:2f|5c)/i;
 const ENCODED_PERCENT = /%25/gi;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: mirrors TanStack Router's path sanitizer
