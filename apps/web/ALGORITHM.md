@@ -704,8 +704,9 @@ deliberately non-spammy.
   (Asia/Ho_Chi_Minh, from 08:00), plus a follow-up only when more stories
   are worth sending. The lead photo is the day card
   (`/api/og/date/{date}.png`) and the caption names those same tiles, with
-  titles shortened so every tile fits. Stories that do not fit the lead
-  grid go next: four or more become a second card (`part=2`, its own `v`
+  the first sentence of that language's summary after the title when one
+  exists. Lines are clipped so every tile still fits. Stories that do not
+  fit the lead grid go next: four or more become a second card (`part=2`, its own `v`
   token, because Telegram caches a photo by URL); one to three are a short
   text reply. This is that calendar day's ranked stories, photos first,
   not the rolling 24h TL;DR. Email still sends the snapshot (`bullets_vi`
