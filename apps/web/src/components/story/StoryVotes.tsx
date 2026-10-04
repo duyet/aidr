@@ -83,6 +83,29 @@ function signInHref(lang: Lang): string {
   return withLang("/sign-in", lang);
 }
 
+/** Feed rows are `items-baseline`. A 32px button lifts the chevron off the title. */
+function voteHit(compact: boolean | undefined, pressed = false) {
+  const box = compact
+    ? "inline-flex h-5 w-5 items-center justify-center rounded-sm"
+    : "inline-flex size-8 items-center justify-center rounded-md hover:bg-muted";
+  const tone = pressed
+    ? "text-foreground"
+    : "text-muted-foreground hover:text-foreground";
+  return `${box} ${tone}`;
+}
+
+function VoteIcon({
+  direction,
+  compact,
+}: {
+  direction: "up" | "down";
+  compact?: boolean;
+}) {
+  const className = compact ? "h-3.5 w-3.5" : "h-4 w-4";
+  const Icon = direction === "up" ? ChevronUp : ChevronDown;
+  return <Icon className={className} aria-hidden />;
+}
+
 /** The feed row header is a button. A vote control inside it must not toggle the row. */
 function keepRowClosed(event: { stopPropagation(): void }) {
   event.stopPropagation();
@@ -122,30 +145,28 @@ function SignInVotes({
 }) {
   const href = signInHref(lang);
   const label = signInLabel(lang);
-  const linkClass =
-    "inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground";
   return (
-    <span className="inline-flex items-center">
+    <span className="inline-flex items-center self-center">
       <a
         href={href}
-        className={linkClass}
+        className={voteHit(compact)}
         aria-label={label}
         title={label}
         onClick={keepRowClosed}
         onKeyDown={keepRowClosed}
       >
-        <ChevronUp className="h-4 w-4" aria-hidden />
+        <VoteIcon direction="up" compact={compact} />
       </a>
       <VoteCount voteNet={voteNet} lang={lang} />
       <a
         href={href}
-        className={linkClass}
+        className={voteHit(compact)}
         aria-label={label}
         title={label}
         onClick={keepRowClosed}
         onKeyDown={keepRowClosed}
       >
-        <ChevronDown className="h-4 w-4" aria-hidden />
+        <VoteIcon direction="down" compact={compact} />
       </a>
       {!compact && (
         <a
@@ -165,11 +186,13 @@ function SignedInVotes({
   itemId,
   voteNet,
   lang,
+  compact,
   getToken,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
+  compact?: boolean;
   getToken: () => Promise<string | null>;
 }) {
   const [net, setNet] = useState(voteNet);
@@ -229,18 +252,11 @@ function SignedInVotes({
     }
   }
 
-  const buttonClass = (pressed: boolean) =>
-    `inline-flex size-8 items-center justify-center rounded-md hover:bg-muted ${
-      pressed
-        ? "text-foreground"
-        : "text-muted-foreground hover:text-foreground"
-    }`;
-
   return (
-    <span className="inline-flex items-center">
+    <span className="inline-flex items-center self-center">
       <button
         type="button"
-        className={buttonClass(mine === 1)}
+        className={voteHit(compact, mine === 1)}
         aria-pressed={mine === 1}
         aria-label={voteLabel(lang, 1, mine === 1)}
         disabled={busy || mine === null}
@@ -250,12 +266,12 @@ function SignedInVotes({
         }}
         onKeyDown={keepRowClosed}
       >
-        <ChevronUp className="h-4 w-4" aria-hidden />
+        <VoteIcon direction="up" compact={compact} />
       </button>
       <VoteCount voteNet={net} lang={lang} />
       <button
         type="button"
-        className={buttonClass(mine === -1)}
+        className={voteHit(compact, mine === -1)}
         aria-pressed={mine === -1}
         aria-label={voteLabel(lang, -1, mine === -1)}
         disabled={busy || mine === null}
@@ -265,7 +281,7 @@ function SignedInVotes({
         }}
         onKeyDown={keepRowClosed}
       >
-        <ChevronDown className="h-4 w-4" aria-hidden />
+        <VoteIcon direction="down" compact={compact} />
       </button>
     </span>
   );
@@ -295,6 +311,7 @@ function ClerkVotes({
           itemId={itemId}
           voteNet={voteNet}
           lang={lang}
+          compact={compact}
           useAuth={useAuth}
         />
       </SignedIn>
@@ -306,11 +323,13 @@ function AuthedVotes({
   itemId,
   voteNet,
   lang,
+  compact,
   useAuth,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
+  compact?: boolean;
   useAuth: () => { getToken: () => Promise<string | null> };
 }) {
   const { getToken } = useAuth();
@@ -319,6 +338,7 @@ function AuthedVotes({
       itemId={itemId}
       voteNet={voteNet}
       lang={lang}
+      compact={compact}
       getToken={getToken}
     />
   );

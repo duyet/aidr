@@ -251,7 +251,7 @@ export function StoryRow({
             </a>
           )}
         </span>
-        <span className="shrink-0">
+        <span className="inline-flex shrink-0 self-center">
           <StoryVotes
             itemId={item.id}
             voteNet={item.vote_net ?? 0}
