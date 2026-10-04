@@ -154,14 +154,21 @@ export async function svixSignatureHeader(
     key,
     new TextEncoder().encode(svixSignedContent(id, timestamp, body))
   );
-  return `${SIGNATURE_VERSION}=${bytesToBase64(mac)}`;
+  return `${SIGNATURE_VERSION},${bytesToBase64(mac)}`;
 }
 
-/** Every `v1=<base64>` entry in a space-separated signature header. */
+/**
+ * Every `v1,<base64>` entry in a space-separated signature header.
+ * The version and the signature are separated by the first comma. Base64
+ * padding is `=`, so splitting on `=` drops a real signature.
+ */
 function parseSignatureHeader(header: string): Uint8Array[] {
   const candidates: Uint8Array[] = [];
   for (const part of header.split(" ")) {
-    const [version, value] = part.split("=", 2);
+    const comma = part.indexOf(",");
+    if (comma <= 0) continue;
+    const version = part.slice(0, comma);
+    const value = part.slice(comma + 1);
     if (version !== SIGNATURE_VERSION || !value) continue;
     const bytes = base64ToBytes(value);
     if (bytes) candidates.push(bytes);

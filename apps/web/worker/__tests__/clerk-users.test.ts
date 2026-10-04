@@ -184,6 +184,61 @@ describe("clerk_users mirror", () => {
     }
   });
 
+  it("keeps a deletion when user.updated is older than deleted_at", async () => {
+    const store = row();
+    try {
+      await upsertClerkUser(store.db, {
+        id: "user_a",
+        email: "keep@example.com",
+        emailVerified: true,
+        verifiedEmails: ["keep@example.com"],
+        createdAt: 10,
+        updatedAt: 10,
+      });
+      await softDeleteClerkUser(store.db, "user_a", 100);
+
+      await upsertClerkUser(store.db, {
+        id: "user_a",
+        email: "back@example.com",
+        emailVerified: true,
+        verifiedEmails: ["back@example.com"],
+        createdAt: 10,
+        // Older than the tombstone: a redelivered user.updated.
+        updatedAt: 50,
+      });
+
+      expect(await countClerkUsers(store.db)).toBe(0);
+      expect(store.read()[0]?.deleted_at).toBe(100);
+      const emails = await store.db
+        .prepare(
+          "SELECT email FROM clerk_verified_emails WHERE user_id = ? ORDER BY email"
+        )
+        .bind("user_a")
+        .all<{ email: string }>();
+      expect(emails.results).toEqual([{ email: "keep@example.com" }]);
+
+      await upsertClerkUser(store.db, {
+        id: "user_a",
+        email: "live@example.com",
+        emailVerified: true,
+        verifiedEmails: ["live@example.com"],
+        createdAt: 10,
+        updatedAt: 150,
+      });
+      expect(await countClerkUsers(store.db)).toBe(1);
+      expect(store.read()[0]?.deleted_at).toBeNull();
+      const restored = await store.db
+        .prepare(
+          "SELECT email FROM clerk_verified_emails WHERE user_id = ? ORDER BY email"
+        )
+        .bind("user_a")
+        .all<{ email: string }>();
+      expect(restored.results).toEqual([{ email: "live@example.com" }]);
+    } finally {
+      store.close();
+    }
+  });
+
   it("restores an account that Clerk reports as updated after a delete", async () => {
     const store = row();
     try {

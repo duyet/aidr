@@ -32,6 +32,11 @@ export const CLERK_USERS_COUNT_SQL = `SELECT COUNT(*) AS c
  * `created_at` is only written on insert — a later event must never rewrite
  * when the account was created, and the webhook's own timestamp is used when
  * Clerk omits the field.
+ *
+ * On conflict, keep `deleted_at` when it is newer than this delivery's
+ * `updated_at`. For a webhook that value is the verified `svix-timestamp`
+ * (`receivedAt`). A newer `user.updated` may clear the tombstone.
+ * `user.deleted` still soft-deletes through `CLERK_USER_DELETE_SQL`.
  */
 export const CLERK_USER_UPSERT_SQL = `INSERT INTO ${CLERK_USERS_TABLE} (
   id, email, email_verified, created_at, updated_at, deleted_at
@@ -41,7 +46,12 @@ ON CONFLICT(id) DO UPDATE SET
   email = excluded.email,
   email_verified = excluded.email_verified,
   updated_at = excluded.updated_at,
-  deleted_at = NULL`;
+  deleted_at = CASE
+    WHEN ${CLERK_USERS_TABLE}.deleted_at IS NOT NULL
+     AND ${CLERK_USERS_TABLE}.deleted_at > excluded.updated_at
+    THEN ${CLERK_USERS_TABLE}.deleted_at
+    ELSE NULL
+  END`;
 
 /** Soft delete. Keeps the account row for audit; the count reads it out. */
 export const CLERK_USER_DELETE_SQL = `UPDATE ${CLERK_USERS_TABLE}
@@ -56,7 +66,8 @@ export interface ClerkUserSyncRow {
    *  contributions to submit@aidr.today. */
   emailVerified?: boolean;
   /** Every address Clerk marks verified, lowercased. When set, replaces
-   *  `clerk_verified_emails` for this account (0041). */
+   *  `clerk_verified_emails` for this account (0041) unless this delivery
+   *  is older than the stored `deleted_at`. */
   verifiedEmails?: readonly string[];
   /** Clerk's `created_at`; the verified receipt time when Clerk omits it. */
   createdAt: number;
@@ -81,24 +92,42 @@ export function prepareClerkUserUpsert(
   return db.prepare(CLERK_USER_UPSERT_SQL).bind(...bindArgs(row));
 }
 
+/**
+ * A delivery older than the stored tombstone must not replace addresses.
+ * `receivedAt` is the verified `svix-timestamp` (`row.updatedAt`).
+ */
+const STALE_TOMBSTONE_SQL = `EXISTS (
+    SELECT 1 FROM ${CLERK_USERS_TABLE}
+     WHERE id = ?
+       AND deleted_at IS NOT NULL
+       AND deleted_at > ?
+  )`;
+
 export function clerkVerifiedEmailStatements(
   db: Pick<D1Database, "prepare">,
   userId: string,
-  emails: readonly string[]
+  emails: readonly string[],
+  receivedAt: number
 ): D1PreparedStatement[] {
   const unique = [
     ...new Set(emails.map((email) => email.trim().toLowerCase())),
   ].filter((email) => email.includes("@"));
   return [
     db
-      .prepare("DELETE FROM clerk_verified_emails WHERE user_id = ?")
-      .bind(userId),
+      .prepare(
+        `DELETE FROM clerk_verified_emails
+          WHERE user_id = ?
+            AND NOT ${STALE_TOMBSTONE_SQL}`
+      )
+      .bind(userId, userId, receivedAt),
     ...unique.map((email) =>
       db
         .prepare(
-          "INSERT INTO clerk_verified_emails (user_id, email) VALUES (?, ?)"
+          `INSERT INTO clerk_verified_emails (user_id, email)
+           SELECT ?, ?
+            WHERE NOT ${STALE_TOMBSTONE_SQL}`
         )
-        .bind(userId, email)
+        .bind(userId, email, userId, receivedAt)
     ),
   ];
 }
@@ -112,7 +141,8 @@ export async function upsertClerkUser(
     for (const statement of clerkVerifiedEmailStatements(
       db,
       row.id,
-      row.verifiedEmails
+      row.verifiedEmails,
+      row.updatedAt
     )) {
       await statement.run();
     }
@@ -129,7 +159,12 @@ export async function upsertClerkUsers(
     rows.flatMap((row) => [
       prepareClerkUserUpsert(db, row),
       ...(row.verifiedEmails
-        ? clerkVerifiedEmailStatements(db, row.id, row.verifiedEmails)
+        ? clerkVerifiedEmailStatements(
+            db,
+            row.id,
+            row.verifiedEmails,
+            row.updatedAt
+          )
         : []),
     ])
   );
