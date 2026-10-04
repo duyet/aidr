@@ -71,7 +71,8 @@ const WORKER_OPTIONAL = [
   // leaves the channel off.
   "FACEBOOK_PAGE_ACCESS_TOKEN",
   // Mint a replacement Page token. The hourly post uses the Page token.
-  "FACEBOOK_APP_ID",
+  // The app id is a wrangler var, not a secret, so a bulk upload cannot
+  // collide with that binding.
   "FACEBOOK_APP_SECRET",
 ] as const;
 
