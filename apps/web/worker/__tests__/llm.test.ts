@@ -12,6 +12,7 @@ import {
   normalizeTag,
   _normalizeTldrForTests as normalizeTldr,
   _parseJsonForTests as parseJson,
+  RULES_OVERVIEW,
   raceTimeout,
   resetUnavailableModels,
   sanitizeScoreResults,
@@ -616,6 +617,37 @@ describe("streaming anyrouter responses", () => {
     expect(style).toContain("cho thấy chúng phối hợp lỗi"); // the good-example anchor
   });
 
+  it("locks the translate rules overview ahead of the length rule", () => {
+    expect(RULES_OVERVIEW).toBe(
+      `Keep every fact: names, numbers, dates, who did what, and hedges such as "may" or "reportedly". Add nothing.
+Translate every summary sentence. Merging two clauses is allowed only when every fact remains. Cutting a sentence is a failed translation.
+Write a Vietnamese headline in sentence case: the first word and proper names only. Returning the English title unchanged is a failed translation, unless that title is already Vietnamese.
+No English gloss in parentheses. Write "RAG", not "RAG (Retrieval-Augmented Generation)". A year, a percent, or a bare label such as "(SEC)" or "(YC S22)" may stay.
+A vague word is not a number. "Countless" is not "hàng triệu". Do not swap who did what: if A accuses B, do not write B's thing of A.`
+    );
+  });
+
+  it("puts that overview in the translate user message and keeps the 80% rule", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(chatResponse(JSON.stringify({ results: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await translateItems(env, [{ i: 0, title: "New model released" }]);
+
+    const { messages } = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const user = messages[1].content as string;
+    const overviewAt = user.indexOf(RULES_OVERVIEW);
+    expect(overviewAt).toBeGreaterThan(-1);
+    expect(user.indexOf("at least 80% of its length")).toBeGreaterThan(
+      overviewAt
+    );
+    expect(user).toContain('"(SEC)"');
+    expect(user).toContain('"(YC S22)"');
+    expect(user).toContain("Clef ra mắt decision model open-weight");
+    expect(messages[0].content).not.toContain(RULES_OVERVIEW);
+  });
+
   it("sends the same Vietnamese style rules as a system message when generating the TL;DR", async () => {
     const fetchMock = vi
       .fn()
@@ -630,6 +662,13 @@ describe("streaming anyrouter responses", () => {
     expect(messages[0].role).toBe("system");
     expect(messages[0].content).toMatch(/parenthetical/i);
     expect(messages[1].role).toBe("user");
+    expect(messages[1].content).toContain("about 2 sentences");
+    expect(messages[1].content).toContain(
+      "the why must come from the cited items"
+    );
+    expect(messages[1].content).not.toContain(
+      "Cutting a sentence is a failed translation"
+    );
   });
 
   it("requests a stream so anyrouter answers inline instead of queuing", async () => {

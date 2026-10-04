@@ -476,11 +476,11 @@ Step 2 — hard semantic checks. Compare the candidate (and your back_translatio
 - numbers: values and quantities
 - dates: calendar dates and temporal anchors
 - units: currencies, scales, percentages, and measurement units
-- polarity: positive/negative and asserted/uncertain meaning
+- polarity: positive/negative and asserted/uncertain meaning. Fail when the actor is reversed: if A accuses B, the candidate must not make it B's thing of A.
 - uncertainty: may/might/could/reported language must not become certain
-- omission: no material source claim disappears
-- addition: no unsupported claim appears
-- terminology: technical meaning and target-language usage stay correct. Product/model/company names and AI jargon that Vietnamese tech readers use in English (agent, benchmark, token, fine-tune, open-weights, prompt, LLM, GPU) must stay in English; a Vietnamese calque of them fails.
+- omission: no material source claim disappears. Fail when a figure, a cap, a paid-only limit, or a stop disappears.
+- addition: no unsupported claim appears. Fail when a patch, a city, a cause, or a number appears that the source does not state.
+- terminology: technical meaning and target-language usage stay correct. Product/model/company names and AI jargon that Vietnamese tech readers use in English (agent, benchmark, token, fine-tune, open-weights, prompt, LLM, GPU, decision model, harness, hyperscaler, kill switch) must stay in English. Never write "đại lý", "mô hình quyết định", "mở trọng lượng", "dây chuyền", "cường thị trường", "công tắt", or "mất mát huấn luyện" for those English terms. A Vietnamese calque of them fails.
 
 Score fidelity, naturalness, and confidence independently from 0 to 1. Use verdict "accept" only when scores are at least 0.7, confidence is at least 0.6, and every hard check passes. Use "repair" when one bounded rewrite is likely to help. Use "abstain" when evidence is insufficient or the pair is unsafe to judge.
 
@@ -516,7 +516,7 @@ ${escapePromptPayload({
 })}
 </untrusted_review_metadata>
 
-Translate the whole source; do not shorten or summarize it. Every missing_terms entry must appear verbatim, in English, in the rewrite. back_translation is how the previous candidate reads in the source language; fix every place it diverges from the source.
+Translate the whole source; do not shorten or summarize it. Every missing_terms entry must appear verbatim, in English, in the rewrite. back_translation is how the previous candidate reads in the source language; fix every place it diverges from the source. Do not invent a number: "countless" is not "hàng triệu". Do not reverse the actor. Never write "đại lý", "mô hình quyết định", "mở trọng lượng", "dây chuyền", "cường thị trường", "công tắt", or "mất mát huấn luyện"; keep decision model, harness, hyperscaler, and kill switch in English.
 
 Respond with strict JSON only: {"title":"...","summary":"..."}`;
 }

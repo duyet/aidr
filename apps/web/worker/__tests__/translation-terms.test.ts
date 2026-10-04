@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   extractProtectedTerms,
+  KEEP_ENGLISH_PROSE,
+  KEEP_ENGLISH_TERMS,
   keepVerbatimList,
   missingProtectedTerms,
   stripSourceBoilerplate,
@@ -116,6 +118,27 @@ describe("protected English terms", () => {
         "arXiv:2610.00012v1 Announce Type: new Abstract: LLM agents act."
       )
     ).toBe("LLM agents act.");
+  });
+
+  it("demands a kept term verbatim and leaves open-source to Vietnamese", () => {
+    const missing = missingProtectedTerms(
+      {
+        title: "Anthropic fine-tunes an open-source agent",
+        summary: "The open-source release beats the benchmark.",
+      },
+      {
+        title: "Anthropic tinh chỉnh một agent",
+        summary: "Bản phát hành bỏ qua bài kiểm tra.",
+      }
+    );
+    expect(missing.jargon).toEqual(
+      expect.arrayContaining(["fine-tun", "benchmark"])
+    );
+    expect(missing.jargon).not.toContain("agent");
+    expect(missing.jargon.join(" ")).not.toMatch(/open-source/);
+    expect(KEEP_ENGLISH_TERMS.join(" ")).not.toMatch(/open-source/);
+    expect(KEEP_ENGLISH_PROSE).not.toMatch(/open-source/);
+    expect(KEEP_ENGLISH_PROSE).toContain("fine-tune");
   });
 
   it("gives the generator a readable keep list", () => {

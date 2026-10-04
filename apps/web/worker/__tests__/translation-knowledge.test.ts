@@ -12,6 +12,7 @@ import {
   learnFromAcceptedSuggestion,
   loadActiveRules,
   validateRule,
+  viSystemPrompt,
   withKnowledgeFailures,
 } from "../translation-knowledge.js";
 import {
@@ -234,6 +235,28 @@ describe("learning a rule from an accepted suggestion", () => {
     expect(
       validateRule({ kind: "delete_all", source_term: "agent", bad_vi: ["x"] })
     ).toBeNull();
+  });
+});
+
+describe("vi system prompt", () => {
+  it("appends only the glossary, and still returns the base when the table is missing", async () => {
+    const { env } = freshEnv();
+    const prompt = await viSystemPrompt(env, "BASE", "The agent ships.");
+    expect(prompt.startsWith("BASE")).toBe(true);
+    expect(prompt.indexOf("Glossary")).toBeGreaterThan("BASE".length);
+    expect(prompt).toContain('Keep "agent" in English');
+    expect(prompt).not.toContain("Cutting a sentence is a failed translation");
+
+    const missing = {
+      DB: {
+        prepare() {
+          throw new Error("no such table: translation_knowledge");
+        },
+      },
+    } as unknown as Env;
+    await expect(
+      viSystemPrompt(missing, "BASE", "The agent ships.")
+    ).resolves.toBe("BASE");
   });
 });
 

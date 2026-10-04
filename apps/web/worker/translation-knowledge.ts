@@ -219,7 +219,9 @@ export async function loadActiveRules(env: Env): Promise<KnowledgeRule[]> {
   }
 }
 
-/** `VI_STYLE` plus the glossary for `text`. Never throws. */
+/** `VI_STYLE` plus the glossary for `text`. Never throws. QA repair does not
+ *  call this; it builds the glossary itself. Do not append a rules block
+ *  here — it would hit TL;DR and suggestions and still miss that repair. */
 export async function viSystemPrompt(
   env: Env,
   base: string,
