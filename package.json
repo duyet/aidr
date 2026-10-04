@@ -13,6 +13,7 @@
     "deploy": "pnpm --filter @aidr/web run deploy",
     "cf:deploy:prod": "pnpm --filter @aidr/web cf:deploy:prod",
     "sync-env": "pnpm --filter @aidr/web exec tsx ../../scripts/sync-env.ts",
+    "facebook:mint": "pnpm --filter @aidr/web exec tsx ../../scripts/mint-facebook-page-token.ts",
     "config": "pnpm sync-env"
   }
 }

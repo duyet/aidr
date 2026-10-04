@@ -96,8 +96,8 @@ export interface Env {
   TELEGRAM_CHAT_ID?: string;
   /** Optional JSON/Slack incoming webhook for the same AlertEvent fan-out. */
   NOTIFY_WEBHOOK_URL?: string;
-  /** Numeric Page id for https://www.facebook.com/aidr.today. Public.
-   *  Set in wrangler.toml. The channel stays off until the token is set. */
+  /** Page id for this install. Worker secret from .env.local. The channel
+   *  stays off until this and FACEBOOK_PAGE_ACCESS_TOKEN are both set. */
   FACEBOOK_PAGE_ID?: string;
   /** Never-expiring Page access token from a long-lived user token, with
    *  pages_manage_posts, pages_read_engagement, and pages_show_list.
@@ -108,6 +108,10 @@ export interface Env {
   FACEBOOK_APP_ID?: string;
   /** Worker secret. Never logged. Not used on the hourly post. */
   FACEBOOK_APP_SECRET?: string;
+  /** Graph version for this install, for example v26.0. Unset uses v26.0. */
+  FACEBOOK_GRAPH_VERSION?: string;
+  /** Public origin of the links this Page posts. Unset uses SITE_URL. */
+  SITE_URL?: string;
   /** Cloudflare Email Sending binding. Optional: absent until Email Sending
    *  is onboarded for aidr.today, so all use sites must guard for it. */
   EMAIL?: SendEmail;

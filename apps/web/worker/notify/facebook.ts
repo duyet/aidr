@@ -13,16 +13,16 @@ import {
 } from "./types.js";
 
 /**
- * English Facebook Page (https://www.facebook.com/aidr.today).
+ * The Facebook Page named by FACEBOOK_PAGE_ID. No Page is built in.
  *
  * Official Graph only: one link post to `/{page-id}/feed`. Facebook builds
  * the preview from our own page, so the Worker never uploads a photo,
  * a video, or a publisher image. No comments, no Messenger, no likes.
  *
- * The dispatcher already caps this channel: one digest per local day from
- * 08:00 Asia/Ho_Chi_Minh, and the same trending bar, 3/day and 3h gap as
- * Telegram (6/day and 1h on a burst day). Copy is a short summary plus one
- * aidr.today link. Engagement-bait lines are refused before the request.
+ * The dispatcher already caps this channel the same way as the other
+ * English channel: one digest per local day, and the same trending bar,
+ * cap, and gap. Copy is a short summary plus one link on this install's
+ * public origin. Engagement-bait lines are refused before the request.
  *
  * A policy or auth error (and any answer we cannot trust) is recorded as
  * `ambiguous`, which the dispatcher does not retry. Repeating those calls
@@ -30,7 +30,7 @@ import {
  * the next hourly run tries once.
  */
 
-const GRAPH_VERSION = "v26.0";
+const DEFAULT_GRAPH_VERSION = "v26.0";
 const GRAPH_ORIGIN = "https://graph.facebook.com";
 const MESSAGE_CAP = 1500;
 const TITLE_CAP = 200;
@@ -69,6 +69,31 @@ export function facebookEnabled(env: Env): boolean {
   return Boolean(pageId && token);
 }
 
+/** Graph version for this install. Unset stays on the current default. */
+export function facebookGraphVersion(env: Env): string {
+  const raw = env.FACEBOOK_GRAPH_VERSION?.trim() || DEFAULT_GRAPH_VERSION;
+  if (!/^v\d+\.\d+$/.test(raw)) {
+    throw new Error("FACEBOOK_GRAPH_VERSION is not a Graph version");
+  }
+  return raw;
+}
+
+/** Origin of the day page and story permalinks. One place to retarget a fork. */
+export function facebookSiteOrigin(env: Env): string {
+  const raw = env.SITE_URL?.trim();
+  if (!raw) return SITE_URL;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error("SITE_URL is not an absolute URL");
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("SITE_URL is not an absolute URL");
+  }
+  return parsed.origin;
+}
+
 /** Day page or story permalink, attributed to the Page. */
 export function facebookLink(url: string, lang: Lang): string {
   const withLang = withSiteLang(url, lang);
@@ -85,7 +110,10 @@ function clip(value: string, cap: number): string {
 }
 
 /** Digest body. The link attachment is the day page, so bullets stay text. */
-export function buildFacebookDigest(digest: DailyDigest): {
+export function buildFacebookDigest(
+  digest: DailyDigest,
+  origin: string = SITE_URL
+): {
   message: string;
   link: string;
 } {
@@ -101,14 +129,17 @@ export function buildFacebookDigest(digest: DailyDigest): {
   }
   const message = clip(lines.join("\n"), MESSAGE_CAP);
   const link = facebookLink(
-    new URL(dayArchivePath(digest.date), SITE_URL).toString(),
+    new URL(dayArchivePath(digest.date), origin).toString(),
     digest.lang
   );
   return { message, link };
 }
 
 /** One trending story. The link attachment is that story, not the publisher. */
-export function buildFacebookStory(story: StoryPayload): {
+export function buildFacebookStory(
+  story: StoryPayload,
+  origin: string = SITE_URL
+): {
   message: string;
   link: string;
 } {
@@ -119,7 +150,7 @@ export function buildFacebookStory(story: StoryPayload): {
   }
   const message = clip(parts.join("\n\n"), MESSAGE_CAP);
   const link = facebookLink(
-    new URL(storyPath(story, story.lang), SITE_URL).toString(),
+    new URL(storyPath(story, story.lang), origin).toString(),
     story.lang
   );
   return { message, link };
@@ -156,7 +187,8 @@ async function publishLink(
   token: string,
   pageId: string,
   message: string,
-  link: string
+  link: string,
+  version: string
 ): Promise<SendResult> {
   if (ENGAGEMENT_BAIT.test(message)) {
     return {
@@ -169,7 +201,7 @@ async function publishLink(
   let raw = "";
   try {
     const res = await fetch(
-      `${GRAPH_ORIGIN}/${GRAPH_VERSION}/${encodeURIComponent(pageId)}/feed`,
+      `${GRAPH_ORIGIN}/${version}/${encodeURIComponent(pageId)}/feed`,
       {
         method: "POST",
         headers: {
@@ -222,13 +254,25 @@ export const facebookEnNotifier: Notifier = {
 
   async sendDigest(env, digest): Promise<SendResult> {
     const { pageId, token } = facebookConfigured(env);
-    const post = buildFacebookDigest(digest);
-    return publishLink(token, pageId, post.message, post.link);
+    const post = buildFacebookDigest(digest, facebookSiteOrigin(env));
+    return publishLink(
+      token,
+      pageId,
+      post.message,
+      post.link,
+      facebookGraphVersion(env)
+    );
   },
 
   async sendStory(env, story): Promise<SendResult> {
     const { pageId, token } = facebookConfigured(env);
-    const post = buildFacebookStory(story);
-    return publishLink(token, pageId, post.message, post.link);
+    const post = buildFacebookStory(story, facebookSiteOrigin(env));
+    return publishLink(
+      token,
+      pageId,
+      post.message,
+      post.link,
+      facebookGraphVersion(env)
+    );
   },
 };
