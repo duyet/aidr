@@ -120,14 +120,14 @@ describe("translationDraftIssues", () => {
   });
 
   // Prod glosses: "tác nhân (agent)", "RAG (Retrieval-Augmented Generation)".
-  // A year, a count, or a percentage in parentheses is not a gloss.
+  // A year, a count, a percentage, or a single-token label is not a gloss.
   it("flags a parenthetical English gloss and ignores a year", () => {
     const issues = translationDraftIssues(
       { title: "Story", summary: "Founded then." },
       {
         title: "Tác nhân (agent)",
         summary:
-          "Hãng dùng RAG (Retrieval-Augmented Generation). Ra mắt bước (3) năm (2024), tăng (12%).",
+          "Hãng dùng RAG (Retrieval-Augmented Generation). Ra mắt bước (3) năm (2024), tăng (12%). Niêm yết (NYSE), hãng (Anthropic), giá (USD).",
       },
       [],
       false
@@ -138,6 +138,29 @@ describe("translationDraftIssues", () => {
     expect(issues.join("\n")).not.toContain("(2024)");
     expect(issues.join("\n")).not.toContain("(3)");
     expect(issues.join("\n")).not.toContain("(12%)");
+    expect(issues.join("\n")).not.toContain("(NYSE)");
+    expect(issues.join("\n")).not.toContain("(Anthropic)");
+    expect(issues.join("\n")).not.toContain("(USD)");
+  });
+
+  // All-lowercase glosses and acronym expansions still fail. A Title Case
+  // name after an ordinary word is the name, not a gloss.
+  it("flags a lowercase gloss and an acronym expansion, not a proper name", () => {
+    const issues = translationDraftIssues(
+      { title: "Story", summary: "The swarm failed at the congress." },
+      {
+        title: "Thử nghiệm bầy (swarm) cho thấy chúng phối hợp lỗi",
+        summary:
+          "đa tác nhân (multi-agent). CCC (Chaos Communication Congress). thành phố (New York), bang (New South Wales), chip (Blackwell Ultra), công cụ (Claude Code), vòng (Series A), báo (The Verge), luật (CHIPS Act), đạo luật (EU AI Act), CEO (Sam Altman). mô hình mở và đại lý.",
+      },
+      [],
+      false
+    );
+    expect(issues).toEqual([
+      `"bầy (swarm)" is a parenthetical English gloss; drop the gloss and keep one term`,
+      `"nhân (multi-agent)" is a parenthetical English gloss; drop the gloss and keep one term`,
+      `"CCC (Chaos Communication Congress)" is a parenthetical English gloss; drop the gloss and keep one term`,
+    ]);
   });
 
   it("asks for kept jargon the draft translated away", () => {
@@ -194,6 +217,14 @@ describe("isTitleCaseVi", () => {
     [
       "OpenAI Agents Leak 53 User Images to External Sites",
       "OpenAI Agents rò rỉ 53 ảnh người dùng ra các trang web bên ngoài",
+    ],
+    // Capitals here are the institution. The verb is already lowercase.
+    ["US Justice Department sues OpenAI", "Bộ Tư pháp Hoa Kỳ kiện OpenAI"],
+    ["US Supreme Court hears OpenAI", "Tòa án Tối cao Hoa Kỳ xử OpenAI"],
+    ["SEC fines Goldman", "Ủy ban Chứng khoán Hoa Kỳ phạt Goldman"],
+    [
+      "Hanoi University of Science and Technology opens an AI lab",
+      "Đại học Bách khoa Hà Nội mở lab AI",
     ],
   ])("passes %s", (en, vi) => {
     expect(isTitleCaseVi(vi, en)).toBe(false);
@@ -253,6 +284,17 @@ describe("tldrBulletIssues", () => {
       RULES
     );
     expect(issues).toHaveLength(2);
+  });
+
+  it("flags a parenthetical gloss in a VI bullet and keeps a place name", () => {
+    const issues = tldrBulletIssues(
+      "A swarm of agents failed in New York.",
+      "Thử nghiệm bầy (swarm) tại thành phố (New York) cho thấy chúng phối hợp lỗi.",
+      []
+    );
+    expect(issues).toEqual([
+      `"bầy (swarm)" is a parenthetical English gloss; drop the gloss and keep one term`,
+    ]);
   });
 });
 

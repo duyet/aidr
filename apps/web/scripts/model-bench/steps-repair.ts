@@ -59,7 +59,9 @@ const issueKind = (issue: string): string =>
         ? "titlecase"
         : issue.includes("source length")
           ? "length"
-          : "magnitude";
+          : issue.includes("parenthetical English gloss")
+            ? "gloss"
+            : "magnitude";
 
 export const draftRepairStep: StepDef = {
   envVar: "ANYROUTER_TRANSLATE_MODEL",

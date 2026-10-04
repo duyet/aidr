@@ -117,7 +117,7 @@ export const CATEGORY_DEFINITIONS: Record<(typeof CATEGORIES)[number], string> =
  * readers, who expect fluent Vietnamese prose with the English jargon left
  * alone rather than calqued. */
 const VI_STYLE = `HARD RULES — obey every line before you write:
-1. Proofread every Vietnamese word before you answer. If a token is not a real Vietnamese word and not a kept English name, rewrite the sentence. Never invent or smash spellings. Bad: "hệ điệuih thaoại". Good: "hệ điều hành".
+1. Proofread every Vietnamese word before you answer. If a Vietnamese word is misspelled or two words are smashed together, fix that word in place. Do not translate a kept English term (harness, sandbox, prompt, open-weight, swarm) and do not rewrite the sentence. Never invent or smash spellings. Bad: "hệ điệuih thaoại". Good: "hệ điều hành".
 2. Do not translate idioms word by word. "Apparently" is "Có vẻ" or "Dường như", never "Được biết đâu có".
 3. Do not coin a Vietnamese product name you are unsure of. Keep the English product name. Bad: "Mái trợ sinh AI" for the name AI Midwife. Good: "AI Midwife".
 4. Grammar: "công ty đầu tiên do nữ giới lãnh đạo", never "công ty đầu tiên trên do nữ giới".
