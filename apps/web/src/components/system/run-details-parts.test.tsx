@@ -6,6 +6,7 @@
  */
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { POOLSIDE_LOGO_URL } from "../../lib/anyrouter";
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
 import { RunErrorsPanel } from "./RunErrorsPanel";
 import { RunModelLinks } from "./RunModelLinks";
@@ -30,6 +31,39 @@ describe("RunModelLinks", () => {
     );
     expect(html.match(/<a /g)?.length).toBe(1);
     expect(html).toContain("not a model");
+  });
+
+  it("puts a family mark beside every model name and keeps Laguna's logo", () => {
+    const html = renderToStaticMarkup(
+      <RunModelLinks
+        models={[
+          "google/gemma-4-31b",
+          "google/gemma-4-26b-a4b-it",
+          "google/gemini-3.5-flash",
+          "z-ai/glm-4.6",
+          "stealth/space-bunny-alpha",
+          "poolside/laguna-s-2.1",
+          "deepseek/deepseek-v4.1-flash",
+          "minimax/m3",
+        ]}
+      />
+    );
+    expect(html.match(/>Ge</g)).toHaveLength(2);
+    expect(html).toContain(">Gm<");
+    expect(html).toContain(">GL<");
+    expect(html).toContain(">Sb<");
+    expect(html).toContain(">De<");
+    expect(html).toContain(">Mx<");
+    expect(html).toContain("gemma-4-31b");
+    expect(html).toContain("glm-4.6");
+    const imgs = [...html.matchAll(/<img [^>]*src="([^"]+)"/g)].map(
+      (match) => match[1]
+    );
+    expect(imgs).toEqual([POOLSIDE_LOGO_URL]);
+    expect(html).not.toMatch(
+      /googleusercontent|zhipu|githubusercontent|lobehub|google\.com\/s2/
+    );
+    expect(html).toContain('aria-hidden="true"');
   });
 });
 

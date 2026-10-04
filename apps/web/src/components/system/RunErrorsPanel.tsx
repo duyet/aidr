@@ -1,4 +1,5 @@
 import type { LlmCallRow, WorkflowRunRow } from "../../lib/system-queries";
+import { ModelLogo } from "./ModelLogo";
 import { COPY } from "./run-details-copy";
 import {
   type fallbackTransitions,
@@ -58,8 +59,16 @@ export function RunErrorsPanel({
                         {t.task}
                       </span>
                       {" · "}
-                      <span className="font-mono text-[11px]">
-                        {shortModel(t.from)} → {shortModel(t.to)}
+                      <span className="inline-flex flex-wrap items-center gap-x-1 font-mono text-[11px]">
+                        <span className="inline-flex items-center gap-1">
+                          <ModelLogo model={t.from} />
+                          {shortModel(t.from)}
+                        </span>
+                        <span aria-hidden>→</span>
+                        <span className="inline-flex items-center gap-1">
+                          <ModelLogo model={t.to} />
+                          {shortModel(t.to)}
+                        </span>
                       </span>
                     </span>
                   </li>
@@ -97,7 +106,8 @@ export function RunErrorsPanel({
                       {group.task}
                     </span>
                     {" · "}
-                    <span className="font-mono text-[11px]">
+                    <span className="inline-flex items-center gap-1 font-mono text-[11px]">
+                      <ModelLogo model={group.model} />
                       {shortModel(group.model)}
                     </span>
                     {" · "}

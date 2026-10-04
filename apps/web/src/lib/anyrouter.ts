@@ -16,7 +16,11 @@ export const ANYROUTER_LOGO_URL = PROVIDER_LOGO.anyrouter;
 export const JEV_LOGO_URL = PROVIDER_LOGO.typesafe;
 export const POOLSIDE_LOGO_URL = PROVIDER_LOGO.poolside;
 
-/** Public logo for a model id, or null when we have no mark to show. */
+/**
+ * First-party logo URL, or null. Gemma, Gemini, GLM, and the other
+ * families are not listed here: ModelLogo draws an original monogram
+ * instead of hotlinking a trademark SVG.
+ */
 export function modelLogoUrl(model: string): string | null {
   const id = model.trim().toLowerCase();
   if (!id) return null;

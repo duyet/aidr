@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { LlmCallRow } from "../../lib/system-queries";
+import { ModelLogo } from "./ModelLogo";
 import { RunAttemptRows } from "./RunAttemptRows";
 import { RunStepList } from "./RunStepList";
 import {
@@ -148,7 +149,8 @@ function StepDetail({
                         {g.count}×
                       </span>
                       <span className="min-w-0 break-words">
-                        <span className="font-mono text-[11px]">
+                        <span className="inline-flex items-center gap-1 font-mono text-[11px]">
+                          <ModelLogo model={g.model} />
                           {shortModel(g.model)}
                         </span>
                         {" · "}

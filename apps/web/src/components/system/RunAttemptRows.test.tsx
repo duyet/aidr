@@ -38,6 +38,21 @@ afterEach(() => {
 
 describe("RunAttemptRows", () => {
   // A preset or router alias hides which model ran; the row must name it.
+  it("marks a Gemma hop with a monogram instead of a hotlinked logo", () => {
+    const el = render([{ ...base, model: "google/gemma-4-31b" }]);
+    expect(el.textContent).toContain("Ge");
+    expect(el.textContent).toContain("google/gemma-4-31b");
+    expect(el.querySelector("img")).toBeNull();
+  });
+
+  it("keeps the Laguna image mark on a hop", () => {
+    const el = render([{ ...base, model: "poolside/laguna-s-2.1" }]);
+    expect(el.querySelector("img")?.getAttribute("src")).toContain(
+      "poolside-color.svg"
+    );
+    expect(el.textContent).not.toContain("Ge");
+  });
+
   it("shows the preset, the model it resolved to, and the provider", () => {
     const el = render([
       {
