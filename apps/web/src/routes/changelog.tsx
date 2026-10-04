@@ -157,14 +157,19 @@ const EXTENSION_ENTRIES: ChangelogEntry[] = [
 ];
 
 export const Route = createFileRoute("/changelog")({
-  head: ({ match }) =>
-    localizedPageHead({
+  head: ({ match }) => {
+    const lang = match.context.lang;
+    const vi = lang === "vi";
+    return localizedPageHead({
       path: "/changelog",
-      title: "Changelog | AI News",
-      description: "Reader-facing changes to AI;DR on aidr.today.",
-      lang: match.context.lang,
+      title: vi ? "Nhật ký thay đổi | AI News" : "Changelog | AI News",
+      description: vi
+        ? "Những thay đổi dành cho người đọc trên AI;DR tại aidr.today."
+        : "Reader-facing changes to AI;DR on aidr.today.",
+      lang,
       route: headRouteInput(match),
-    }),
+    });
+  },
   component: ChangelogPage,
 });
 

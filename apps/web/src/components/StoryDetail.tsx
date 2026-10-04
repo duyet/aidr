@@ -135,7 +135,6 @@ export function StoryDetail({
         <div className="min-w-0 space-y-4">
           {showBilingual ? (
             <BilingualSummary
-              item={item}
               lang={lang}
               paragraphsEn={paragraphsEn}
               paragraphsVi={paragraphsVi}
@@ -144,6 +143,7 @@ export function StoryDetail({
             paragraphs.length > 0 && (
               <div
                 data-suggest-field="summary"
+                lang={lang === "vi" && item.summary_vi?.trim() ? "vi" : "en"}
                 className="typeset typeset-reader max-w-3xl"
               >
                 {paragraphs.map((p) => (

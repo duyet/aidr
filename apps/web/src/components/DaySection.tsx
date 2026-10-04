@@ -50,7 +50,9 @@ export function DaySection({
               <span className="font-medium text-foreground/80">{count}</span>
             </span>
           ))}
-          {more > 0 && <span>+{more} more</span>}
+          {more > 0 && (
+            <span>{lang === "vi" ? `+${more} nữa` : `+${more} more`}</span>
+          )}
         </span>
         {linkToDay && (
           <a
