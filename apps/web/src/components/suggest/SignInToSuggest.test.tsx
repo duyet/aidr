@@ -154,7 +154,7 @@ describe("SignInToSuggest", () => {
   });
 
   it("keeps the static sign-in control working without SignInButton", () => {
-    const openSignIn = vi.fn(() => {
+    const openSignIn = vi.fn((): void => {
       throw new Error("not ready");
     });
     const clerk = { openSignIn };
