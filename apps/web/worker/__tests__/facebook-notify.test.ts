@@ -86,7 +86,10 @@ describe("Facebook Page posts", () => {
       digest
     );
     expect(result).toEqual({ ok: true, messageId: "111_222" });
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
     expect(url).toBe("https://graph.facebook.com/v26.0/100/feed");
     expect(init.method).toBe("POST");
     const headers = init.headers as Record<string, string>;
