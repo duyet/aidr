@@ -32,7 +32,7 @@ const SENSITIVE_QUERY_KEY_RE =
 /** Keep the Markdown contract compatible with PR #149. */
 const STORY_MARKDOWN_PATH = /^\/api\/story\/[^/]+\.md(?:\/|$)/;
 const STORY_JSON_PATH = /^\/api\/story\/[^/]+$/;
-const OG_PATH = /^\/api\/og\/[^/]+$/;
+const OG_PATH = /^\/api\/og\/(?:[^/]+|date\/[^/]+)$/;
 const ENCODED_PATH_SEPARATOR = /%(?:2f|5c)/i;
 const ENCODED_PERCENT = /%25/gi;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: mirrors TanStack Router's path sanitizer
@@ -68,6 +68,17 @@ export interface RouteIndexabilityPolicy {
 const PUBLIC_POLICY: RouteIndexabilityPolicy = {
   kind: "public",
   robots: INDEXABLE_ROBOTS,
+  referrerPolicy: SAFE_REFERRER_POLICY,
+};
+
+/**
+ * A real localized document that is not a sitemap URL (`/contribute/new`).
+ * No `cacheControl`: stamping `private, no-store` here blocks the explicit-lang
+ * edge TTL in `withSsrLocaleResponse`. Robots stay noindex.
+ */
+const LOCALIZED_UNLISTED_POLICY: RouteIndexabilityPolicy = {
+  kind: "public",
+  robots: NOINDEX_FOLLOW_ROBOTS,
   referrerPolicy: SAFE_REFERRER_POLICY,
 };
 
@@ -359,6 +370,12 @@ function classifyRoute({
     return isExplicitPublicApiPath(pathname)
       ? applyQueryPolicy(API_POLICY, search)
       : PRIVATE_POLICY;
+  }
+
+  // Real route, not a sitemap URL. The unknown-route private stamp used to
+  // keep `?lang=` off the edge cache. Robots stay noindex.
+  if (pathname === "/contribute/new") {
+    return applyQueryPolicy(LOCALIZED_UNLISTED_POLICY, search);
   }
 
   return NOT_FOUND_POLICY;

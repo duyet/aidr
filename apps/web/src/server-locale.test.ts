@@ -399,6 +399,25 @@ describe("Worker locale redirects", () => {
     expect(explicit.headers.get("Cache-Control")).toContain("s-maxage=300");
     expect(explicit.headers.get("X-Robots-Tag")).toBe("index, follow");
 
+    // Left out of the sitemap, so indexability used to stamp private, no-store
+    // and the explicit-lang edge TTL never landed.
+    const submit = await fetchLocale(
+      new Request("https://aidr.today/contribute/new?lang=en")
+    );
+    expect(submit.status).toBe(200);
+    expect(submit.headers.get("Content-Language")).toBe("en");
+    expect(submit.headers.get("Cache-Control")).toBe(
+      "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+    );
+    expect(submit.headers.get("Vary")).toBeNull();
+    const bareSubmit = await fetchLocale(
+      new Request("https://aidr.today/contribute/new", {
+        headers: { cookie: "news_lang=vi" },
+      })
+    );
+    expect(bareSubmit.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(bareSubmit.headers.get("Vary")).toBe("Cookie, Accept-Language");
+
     // The reported regression: a bare permalink is private and varied, but a
     // private cache policy is not a robots policy. It must be indexable so the
     // URL a human types or a Telegram link carries can rank (#223).

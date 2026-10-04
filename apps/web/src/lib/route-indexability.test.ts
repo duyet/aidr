@@ -64,6 +64,7 @@ describe("routeIndexability", () => {
       "/api/system",
       "/api/system/overview",
       "/api/og/abcdef12",
+      "/api/og/date/2026-10-03.png",
       "/api/story/abcdef12",
       "/api/story/abcdef12.md",
     ]) {
@@ -239,6 +240,33 @@ describe("routeIndexability", () => {
     expect(routeIndexability({ pathname: "/missing-page" })).toMatchObject({
       kind: "not-found",
       robots: NOINDEX_FOLLOW_ROBOTS,
+      cacheControl: PRIVATE_CACHE_CONTROL,
+    });
+  });
+
+  it("does not force no-store on the unlisted submit document", () => {
+    // /contribute/new is a real localized page left out of the sitemap.
+    // A private stamp here wins over the explicit-lang edge TTL.
+    expect(routeIndexability({ pathname: "/contribute/new" })).toMatchObject({
+      kind: "public",
+      robots: NOINDEX_FOLLOW_ROBOTS,
+    });
+    expect(
+      routeIndexability({ pathname: "/contribute/new" }).cacheControl
+    ).toBeUndefined();
+    expect(
+      routeIndexability({
+        pathname: "/contribute/new",
+        search: new URLSearchParams([["lang", "en"]]),
+      }).cacheControl
+    ).toBeUndefined();
+    expect(
+      routeIndexability({
+        pathname: "/contribute/new",
+        search: new URLSearchParams([["token", "secret"]]),
+      })
+    ).toMatchObject({
+      kind: "private",
       cacheControl: PRIVATE_CACHE_CONTROL,
     });
   });
@@ -434,6 +462,44 @@ describe("withRouteIndexabilityHeaders", () => {
       expect(response.headers.get("Cache-Control")).toBe(PRIVATE_CACHE_CONTROL);
       expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
     }
+  });
+
+  it("keeps an explicit-lang day-card PNG on the public header the route set", async () => {
+    const recent =
+      "public, max-age=600, s-maxage=3600, stale-while-revalidate=3600";
+    const settled =
+      "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";
+
+    for (const [path, cacheControl] of [
+      ["/api/og/date/2026-10-03.png?lang=en", recent],
+      ["/api/og/date/2026-09-01.png?lang=en", settled],
+    ] as const) {
+      const response = await withRouteIndexabilityHeaders(
+        new Request(`${SITE_URL}${path}`),
+        new Response(new Uint8Array([137, 80, 78, 71]), {
+          headers: {
+            "Cache-Control": cacheControl,
+            "Content-Type": "image/png",
+          },
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("image/png");
+      expect(response.headers.get("Cache-Control")).toBe(cacheControl);
+      expect(response.headers.get("X-Robots-Tag")).toBe(NOINDEX_FOLLOW_ROBOTS);
+    }
+
+    const missing = await withRouteIndexabilityHeaders(
+      new Request(`${SITE_URL}/api/og/date/2026-10-03.png?lang=en`),
+      new Response("missing", {
+        status: 404,
+        headers: { "Cache-Control": recent },
+      })
+    );
+
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("Cache-Control")).toBe(PRIVATE_CACHE_CONTROL);
   });
 
   it("allowlists feed freshness as a cacheable noindex API", async () => {

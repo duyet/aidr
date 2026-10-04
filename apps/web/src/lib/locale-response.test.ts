@@ -308,6 +308,27 @@ describe("SSR indexability contract", () => {
     }
   );
 
+  it("caches an explicit-lang submit document and keeps the bare one private", async () => {
+    const explicit = await documentResponse("/contribute/new?lang=en");
+    expect(explicit.response.headers.get("Content-Language")).toBe("en");
+    expect(explicit.response.headers.get("Cache-Control")).toBe(
+      SSR_LOCALIZED_CACHE_CONTROL
+    );
+    expect(explicit.response.headers.get("Vary")).toBeNull();
+    expect(explicit.response.headers.get("X-Robots-Tag")).toBe(
+      NOINDEX_FOLLOW_ROBOTS
+    );
+
+    const bare = await documentResponse("/contribute/new", {
+      headers: { cookie: "news_lang=en" },
+    });
+    expect(bare.response.headers.get("Cache-Control")).toBe(
+      LOCALE_PRIVATE_CACHE_CONTROL
+    );
+    expect(bare.response.headers.get("Vary")).toBe("Cookie, Accept-Language");
+    expect(bare.response.headers.get("Content-Language")).toBe("en");
+  });
+
   it.each(["/?lang=vi", "/?lang=en", "/abcdef12?lang=en", "/mcp?lang=vi"])(
     "keeps explicit-locale %s indexable and publicly cacheable",
     async (path) => {
