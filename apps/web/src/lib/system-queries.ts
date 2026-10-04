@@ -603,16 +603,12 @@ async function probeSystemTables(db: DbReader): Promise<{
   return { hasTokens, hasRunStats, hasLlmCalls, hasContentLog };
 }
 
-/** Page count times page size. Kept outside the batch: a pragma failure
- * must not abort the catalog counts. */
+/** D1 refuses page-count pragmas. A normal read still reports `size_after`
+ * on the result meta, which is the database file size in bytes. */
 async function loadDatabaseBytes(db: DbReader): Promise<number | null> {
   try {
-    const row = await db
-      .prepare(
-        "SELECT (SELECT * FROM pragma_page_count()) * (SELECT * FROM pragma_page_size()) AS bytes"
-      )
-      .first<{ bytes: number | null }>();
-    const bytes = row?.bytes;
+    const result = await db.prepare("SELECT 1 AS ok").all();
+    const bytes = result.meta?.size_after;
     return typeof bytes === "number" && Number.isFinite(bytes) ? bytes : null;
   } catch {
     return null;

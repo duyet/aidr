@@ -142,7 +142,9 @@ describe("loadSystemOverview", () => {
       "lang = 'vi' AND title": { all: () => ({ results: [{ n: 6 }] }) },
       "lang = 'vi' AND summary": { all: () => ({ results: [{ n: 5 }] }) },
       "FROM item_content_log": { all: () => ({ results: [{ n: 2 }] }) },
-      pragma_page_count: { first: () => ({ bytes: 4096 }) },
+      "SELECT 1 AS ok": {
+        all: () => ({ results: [], meta: { size_after: 4096 } }),
+      },
       "FROM workflow_runs ORDER BY": {
         all: () => ({ results: [RUN_ROW, todayRun] }),
       },
@@ -174,12 +176,16 @@ describe("loadSystemOverview", () => {
     expect(o.latestTldrDate).toBe("2026-01-02");
 
     // One batch: the original ten, plus Vietnamese fill counts and the
-    // content-log count. Sequential reads are the four migration probes.
-    // Database size uses .first() and stays outside the batch.
+    // content-log count. Sequential reads are the four migration probes
+    // plus the size read (`SELECT 1`), whose meta carries size_after.
     expect(batches).toHaveLength(1);
     expect(batches[0]).toHaveLength(13);
-    expect(directAlls).toHaveLength(4);
-    expect(directAlls.every((s) => s.includes("LIMIT 1"))).toBe(true);
+    expect(directAlls).toHaveLength(5);
+    expect(
+      directAlls
+        .filter((s) => !s.includes("SELECT 1 AS ok"))
+        .every((s) => s.includes("LIMIT 1"))
+    ).toBe(true);
   });
 
   it("runs the migration probes once per isolate, not per request", async () => {
@@ -190,7 +196,8 @@ describe("loadSystemOverview", () => {
     await q.loadSystemOverview(db);
 
     expect(batches).toHaveLength(2);
-    expect(directAlls).toHaveLength(4);
+    // Probes are cached. The size read runs on every request.
+    expect(directAlls).toHaveLength(6);
   });
 
   it("omits token statements when the llm_tokens column is not migrated", async () => {
