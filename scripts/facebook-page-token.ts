@@ -39,25 +39,34 @@ export function selectPage(
   );
 }
 
-/** Replace listed keys and append any that are missing. Other lines stay. */
+/** Replace listed keys and append any that are missing. Other lines stay.
+ *  A repeated key is updated every time. Deleting it from the pending map
+ *  on the first hit used to write the literal `undefined` on the next one,
+ *  and a later read keeps the last value. */
 export function upsertEnv(
   content: string,
   updates: Record<string, string>
 ): string {
-  const pending = { ...updates };
+  if (content.trim() === "") {
+    const text = Object.entries(updates)
+      .map(([key, value]) => `${key}=${value}`)
+      .join("\n");
+    return text.length === 0 ? "" : `${text}\n`;
+  }
+  const seen = new Set<string>();
   const lines = content.split("\n");
   const out = lines.map((line) => {
     const eq = line.indexOf("=");
     if (eq === -1) return line;
     const key = line.slice(0, eq).trim();
-    if (!Object.hasOwn(pending, key)) return line;
-    const value = pending[key];
-    delete pending[key];
-    return `${key}=${value}`;
+    if (!Object.hasOwn(updates, key)) return line;
+    seen.add(key);
+    return `${key}=${updates[key]}`;
   });
-  for (const [key, value] of Object.entries(pending)) {
+  const missing = Object.keys(updates).filter((key) => !seen.has(key));
+  if (missing.length > 0) {
     if (out.length > 0 && out[out.length - 1] !== "") out.push("");
-    out.push(`${key}=${value}`);
+    for (const key of missing) out.push(`${key}=${updates[key]}`);
   }
   const text = out.join("\n");
   return text.endsWith("\n") || text.length === 0 ? text : `${text}\n`;
@@ -68,18 +77,44 @@ export function mask(value: string): string {
   return `${value.slice(0, 4)}…${value.slice(-4)}`;
 }
 
-/** Cloudflare error 10053: the name is already a wrangler var. */
-export function collidingBinding(text: string): string | undefined {
-  const match = text.match(/Binding name '([A-Za-z0-9_]+)' already in use/);
-  return match?.[1];
+/** Cloudflare error 10053. The API says
+ *  `Binding name 'NAME' already in use. Please use a different name and try again.`
+ *  A bulk call can name more than one. A fresh regex each call: a shared
+ *  global regexp would keep `lastIndex` and miss the next error. */
+export function collidingBindings(text: string): string[] {
+  return [
+    ...text.matchAll(/Binding name '([A-Za-z0-9_]+)' already in use/g),
+  ].flatMap((match) => (match[1] ? [match[1]] : []));
 }
 
-/** Drop secret values and Graph tokens before anything is printed. */
+/** First colliding name, for a one-binding error. */
+export function collidingBinding(text: string): string | undefined {
+  return collidingBindings(text)[0];
+}
+
+/** Drop the pending names Cloudflare refused because they are still vars.
+ *  Undefined when this error is not that collision, so the caller stops. */
+export function collisionSkip(
+  pending: readonly string[],
+  text: string
+): { keep: string[]; skipped: string[] } | undefined {
+  const hit = new Set(collidingBindings(text));
+  const skipped = pending.filter((key) => hit.has(key));
+  if (skipped.length === 0) return undefined;
+  const drop = new Set(skipped);
+  return {
+    keep: pending.filter((key) => !drop.has(key)),
+    skipped,
+  };
+}
+
+/** Drop secret values and Graph tokens before anything is printed.
+ *  Longer values first, so a short value that is also a prefix of a token
+ *  cannot split that token and leave the rest visible. */
 export function redactSecrets(text: string, secrets: string[]): string {
   let out = text;
-  for (const secret of secrets) {
-    if (secret.length < 8) continue;
-    out = out.split(secret).join("[redacted]");
-  }
+  const unique = [...new Set(secrets.filter((secret) => secret.length >= 8))];
+  unique.sort((a, b) => b.length - a.length);
+  for (const secret of unique) out = out.split(secret).join("[redacted]");
   return out.replace(/EAA[A-Za-z0-9]+/g, "[redacted]");
 }

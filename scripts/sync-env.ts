@@ -4,6 +4,7 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { collisionSkip, redactSecrets } from "./facebook-page-token.js";
 
 /**
  * Sync local env → GitHub Actions secrets + Cloudflare Worker secrets.
@@ -220,7 +221,10 @@ function run(
   };
 }
 
-function syncWorker(secrets: Record<string, string>): boolean {
+function syncWorker(
+  secrets: Record<string, string>,
+  required: readonly string[]
+): boolean {
   const keys = Object.keys(secrets);
   console.log(`\n[workers] ${WORKER_NAME} — ${keys.length} secret(s)`);
   for (const key of keys) console.log(`  · ${key}  ${mask(secrets[key])}`);
@@ -234,45 +238,62 @@ function syncWorker(secrets: Record<string, string>): boolean {
     return true;
   }
 
-  const tmpFile = join(os.tmpdir(), `aidr-worker-secrets-${Date.now()}.json`);
+  // One bulk call is atomic. A name that is still a wrangler var (Cloudflare
+  // error 10053) rejects the whole batch, including Clerk and Telegram.
+  // Drop those names and upload the rest. The var keeps its old value.
+  const skipped: string[] = [];
+  const pending = { ...secrets };
+  const tmpFile = join(
+    os.tmpdir(),
+    `aidr-worker-secrets-${process.pid}-${Date.now()}.json`
+  );
   try {
-    writeFileSync(
-      tmpFile,
-      JSON.stringify(
-        {
-          secrets: Object.fromEntries(
-            Object.entries(secrets).map(([name, text]) => [
-              name,
-              { type: "secret_text", name, text },
-            ])
-          ),
-        },
-        null,
-        2
-      )
-    );
-    const result = run(
-      "pnpm",
-      [
-        "exec",
-        "cf",
-        "workers",
-        "secrets",
-        "bulk",
-        "--worker",
-        WORKER_NAME,
-        "--file",
+    while (Object.keys(pending).length > 0) {
+      writeFileSync(
         tmpFile,
-      ],
-      { cwd: appDir }
-    );
-    if (!result.ok) {
-      console.error(`  [error] cf workers secrets bulk failed`);
-      if (result.stderr) console.error(result.stderr.trim());
-      return false;
+        JSON.stringify(
+          {
+            secrets: Object.fromEntries(
+              Object.entries(pending).map(([name, text]) => [
+                name,
+                { type: "secret_text", name, text },
+              ])
+            ),
+          },
+          null,
+          2
+        ),
+        { mode: 0o600 }
+      );
+      const result = run(
+        "pnpm",
+        [
+          "exec",
+          "cf",
+          "workers",
+          "secrets",
+          "bulk",
+          "--worker",
+          WORKER_NAME,
+          "--file",
+          tmpFile,
+        ],
+        { cwd: appDir }
+      );
+      if (result.ok) break;
+      const text = redactSecrets(
+        `${result.stderr}\n${result.stdout}`,
+        Object.values(secrets)
+      );
+      const step = collisionSkip(Object.keys(pending), text);
+      if (!step) {
+        console.error(`  [error] cf workers secrets bulk failed`);
+        if (text.trim()) console.error(text.trim());
+        return false;
+      }
+      for (const name of step.skipped) delete pending[name];
+      skipped.push(...step.skipped);
     }
-    console.log(`  [ok] Worker ${WORKER_NAME}`);
-    return true;
   } finally {
     try {
       unlinkSync(tmpFile);
@@ -280,6 +301,21 @@ function syncWorker(secrets: Record<string, string>): boolean {
       /* ignore */
     }
   }
+
+  if (skipped.length > 0) {
+    console.log(
+      `  [skip] still Worker vars (deploy without the var, then sync again): ${skipped.join(", ")}`
+    );
+  }
+  const blocked = skipped.filter((key) => required.includes(key));
+  if (blocked.length > 0) {
+    console.error(
+      `  [error] required secrets still Worker vars: ${blocked.join(", ")}`
+    );
+    return false;
+  }
+  console.log(`  [ok] Worker ${WORKER_NAME}`);
+  return true;
 }
 
 function ensureGh(): boolean {
@@ -392,7 +428,7 @@ function main(): void {
       missingRequired = true;
       console.warn(`\n[workers] missing required: ${missing.join(", ")}`);
     }
-    if (!syncWorker(present)) failed = true;
+    if (!syncWorker(present, WORKER_REQUIRED)) failed = true;
   }
 
   if (doGithub) {
