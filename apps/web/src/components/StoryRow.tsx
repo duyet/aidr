@@ -97,9 +97,46 @@ export function StoryRow({
   // already came from getStory and keeps the log it arrived with.
   const [detail, setDetail] = useState<FeedItem | null>(null);
   const detailRequested = useRef(false);
-  useEffect(() => {
-    detailRequested.current = false;
+  // A response can land after the reader has switched language.
+  const langRef = useRef(lang);
+  langRef.current = lang;
+  // Drop the previous language's story during render so the effect
+  // below sees an open lazy row with no detail. An effect-only reset
+  // would still close over the old detail and skip the refetch.
+  const [seenLang, setSeenLang] = useState(lang);
+  if (seenLang !== lang) {
+    setSeenLang(lang);
     setDetail(null);
+    detailRequested.current = false;
+  }
+
+  const loadDetail = (requestedLang: Lang) => {
+    let stale = false;
+    detailRequested.current = true;
+    fetch(`/api/story${storyPath(item, requestedLang)}`)
+      .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
+      .then((full) => {
+        if (stale || langRef.current !== requestedLang) return;
+        // Fall back to the lean row so the loading line clears even
+        // when the story lookup misses.
+        setDetail(full ?? item);
+      })
+      .catch(() => {
+        if (stale || langRef.current !== requestedLang) return;
+        // Show the lean row (meta/topics) and allow a retry on the
+        // next expand.
+        detailRequested.current = false;
+        setDetail(item);
+      });
+    return () => {
+      stale = true;
+    };
+  };
+
+  useEffect(() => {
+    // expanded && lazyDetail && !detail: the open row is on Loading.
+    if (!(expanded && item.lazyDetail && !detail)) return;
+    return loadDetail(lang);
   }, [lang]);
   const { text: title, fallbackFromEnglish } = localizedTitle(item, lang);
   const summary =
@@ -130,20 +167,7 @@ export function StoryRow({
       !detailRequested.current &&
       (item.lazyDetail || item.content_log == null)
     ) {
-      detailRequested.current = true;
-      fetch(`/api/story${storyPath(item, lang)}`)
-        .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
-        .then((full) => {
-          // Fall back to the lean row so the loading line clears even
-          // when the story lookup misses.
-          setDetail(full ?? item);
-        })
-        .catch(() => {
-          // Show the lean row (meta/topics) and allow a retry on the
-          // next expand.
-          detailRequested.current = false;
-          setDetail(item);
-        });
+      loadDetail(lang);
     }
     setExpanded((v) => {
       const next = !v;
