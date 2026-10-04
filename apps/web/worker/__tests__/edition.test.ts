@@ -7,8 +7,10 @@ import {
 import type { Env } from "../types.js";
 
 function db(rows: Record<string, EditionSnapshot | undefined>) {
-  return {
-    prepare() {
+  const prepared: string[] = [];
+  const database = {
+    prepare(sql: string) {
+      prepared.push(sql);
       return {
         bind(date: string) {
           return {
@@ -18,6 +20,7 @@ function db(rows: Record<string, EditionSnapshot | undefined>) {
       };
     },
   } as unknown as Env["DB"];
+  return { database, prepared };
 }
 
 const enOnly: EditionSnapshot = {
@@ -37,23 +40,34 @@ describe("editionBullets", () => {
 
 describe("loadEdition", () => {
   it("returns null for an empty language column and the other language intact", async () => {
-    const env = { DB: db({ "2026-08-16": enOnly }) } as Env;
+    const { database, prepared } = db({ "2026-08-16": enOnly });
+    const env = { DB: database } as Env;
     const now = new Date("2026-08-16T03:00:00Z");
     expect(await loadEdition(env, "2026-08-16", "vi", 8, now)).toBeNull();
     const en = await loadEdition(env, "2026-08-16", "en", 8, now);
     expect(en?.bullets.map((b) => b.text)).toEqual(["English story"]);
     expect(en?.date).toBe("2026-08-16");
+    // Each lane reads only its column. The other language's JSON stays put.
+    expect(prepared).toEqual([
+      "SELECT date, bullets_vi FROM tldr_snapshots WHERE date = ?",
+      "SELECT date, bullets_en FROM tldr_snapshots WHERE date = ?",
+    ]);
   });
 
   it("uses the UTC-dated row only when the requested local date is missing", async () => {
-    const env = { DB: db({ "2026-08-16": enOnly }) } as Env;
+    const { database, prepared } = db({ "2026-08-16": enOnly });
+    const env = { DB: database } as Env;
     const now = new Date("2026-08-16T03:00:00Z");
     const edition = await loadEdition(env, "2026-08-15", "en", 8, now);
     expect(edition?.date).toBe("2026-08-16");
     expect(edition?.bullets).toHaveLength(1);
+    expect(prepared).toEqual([
+      "SELECT date, bullets_en FROM tldr_snapshots WHERE date = ?",
+      "SELECT date, bullets_en FROM tldr_snapshots WHERE date = ?",
+    ]);
 
     const sameDayMiss = await loadEdition(
-      { DB: db({}) } as Env,
+      { DB: db({}).database } as Env,
       "2026-08-16",
       "en",
       8,

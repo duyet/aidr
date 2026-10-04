@@ -86,6 +86,12 @@ export function editionBullets(
   return topBullets(column, max);
 }
 
+/** One language column. The other language's JSON is unused on this read. */
+function editionSnapshotSql(lang: Lang): string {
+  const column = lang === "en" ? "bullets_en" : "bullets_vi";
+  return `SELECT date, ${column} FROM tldr_snapshots WHERE date = ?`;
+}
+
 /**
  * The digest for `date` in one language.
  * Uses that calendar row, then the UTC-dated row only when the requested
@@ -99,8 +105,7 @@ export async function loadEdition(
   max: number,
   now: Date = new Date()
 ): Promise<Edition | null> {
-  const sql =
-    "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots WHERE date = ?";
+  const sql = editionSnapshotSql(lang);
   let snapshot = await env.DB.prepare(sql).bind(date).first<EditionSnapshot>();
   if (!snapshot) {
     const utcDate = now.toISOString().slice(0, 10);
