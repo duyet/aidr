@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickDayCardItems } from "./day-card-pick";
+import { pickDayCardItems, splitDayHighlights } from "./day-card-pick";
 
 describe("pickDayCardItems", () => {
   it("keeps rank order inside the photo group, then the text tiles", () => {
@@ -24,6 +24,35 @@ describe("pickDayCardItems", () => {
       "photo-e",
       "photo-f",
     ]);
+  });
+
+  it("keeps the lead grid to six and gives the next four their own card", () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      id: `s${i}`,
+      image_url: `https://cdn.example/${i}.jpg`,
+    }));
+    const split = splitDayHighlights(items);
+    expect(split.lead.map((item) => item.id)).toEqual([
+      "s0",
+      "s1",
+      "s2",
+      "s3",
+      "s4",
+      "s5",
+    ]);
+    expect(split.more.map((item) => item.id)).toEqual(["s6", "s7", "s8", "s9"]);
+    expect(split.moreIsCard).toBe(true);
+  });
+
+  it("does not make a card out of a one- or two-story tail", () => {
+    const items = Array.from({ length: 8 }, (_, i) => ({
+      id: `s${i}`,
+      image_url: `https://cdn.example/${i}.jpg`,
+    }));
+    const split = splitDayHighlights(items);
+    expect(split.lead).toHaveLength(6);
+    expect(split.more.map((item) => item.id)).toEqual(["s6", "s7"]);
+    expect(split.moreIsCard).toBe(false);
   });
 
   it("fills a short day with text tiles after the photos", () => {

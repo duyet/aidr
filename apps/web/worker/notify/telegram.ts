@@ -12,7 +12,7 @@ import {
 import { isIvStoryId, ivCardUrl, TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
 import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
-import { digestForCard } from "./day-card.js";
+import { digestPages } from "./day-card.js";
 import {
   type DailyDigest,
   type DigestBullet,
@@ -28,9 +28,10 @@ export { escapeHtml };
 /**
  * Telegram channel adapter.
  *
- * - Daily digest: one message — the day card's stories, each linked to
- *   its permalink, with a button to the site. The rolling TL;DR is not
- *   the caption: it still leads with yesterday after midnight.
+ * - Daily digest: a highlight photo of the day's top card. Stories that
+ *   do not fit go in a second message (another card, or a short text
+ *   reply). The rolling TL;DR is not the caption: it still leads with
+ *   yesterday after midnight.
  * - Trending story: the generated branded card, plus any other story images
  *   Telegram will take in one album (`sendMediaGroup`, 2–10). One image stays
  *   `sendPhoto` so the Read / AI;DR buttons remain. Text is the fallback.
@@ -136,18 +137,51 @@ const DIGEST_CAPTION_CAP = 1000;
  *  new grid needs a new URL. */
 export function digestCardUrl(
   digest: Pick<DailyDigest, "date" | "lang">,
-  version?: string
+  version?: string,
+  part?: 2
 ) {
   const url = new URL(
     absoluteSiteUrl(`/api/og/date/${digest.date}.png`, digest.lang)
   );
   if (version) url.searchParams.set("v", version);
+  if (part === 2) url.searchParams.set("part", "2");
   return url.toString();
 }
 
 /** Digest as a photo caption: same lines, capped on visible length. */
-export function buildDigestCaption(digest: DailyDigest): string {
-  return buildDigestMessage(digest, DIGEST_CAPTION_CAP);
+export function buildDigestCaption(
+  digest: DailyDigest,
+  headline?: string
+): string {
+  return buildDigestMessage(digest, DIGEST_CAPTION_CAP, headline);
+}
+
+function clipHighlightText(value: string, cap: number): string {
+  const clean = value.replace(/\s+/g, " ").trim();
+  if (cap <= 1) return "";
+  if (clean.length <= cap) return clean;
+  return `${clean.slice(0, Math.max(1, cap - 1)).trimEnd()}…`;
+}
+
+/** Shorten every title so the whole card fits in one caption. Dropping
+ *  the tail used to leave stories on the image that the text never named. */
+export function fitHighlightDigest(
+  digest: DailyDigest,
+  headline?: string
+): DailyDigest {
+  const n = digest.bullets.length;
+  if (n === 0) return digest;
+  const label = headline ?? digestHeadline(digest);
+  // Blank line, mark, spaces, and the arrow, per story.
+  const fixed = label.length + n * (2 + 4 + 1 + 2);
+  const each = Math.max(32, Math.floor((DIGEST_CAPTION_CAP - fixed) / n));
+  return {
+    ...digest,
+    bullets: digest.bullets.map((bullet) => ({
+      ...bullet,
+      text: clipHighlightText(bullet.text, each),
+    })),
+  };
 }
 
 /** Fallback mark per category when the TL;DR model gave no emoji
@@ -178,14 +212,18 @@ export function digestMark(bullet: DigestBullet): string {
   return CATEGORY_MARKS[key] ?? "📰";
 }
 
+function digestHeadline(digest: Pick<DailyDigest, "date" | "lang">): string {
+  return digest.lang === "en"
+    ? `🗞 AI news today — ${digest.date}`
+    : `🗞 AI hôm nay có gì — ${digest.date}`;
+}
+
 export function buildDigestMessage(
   digest: DailyDigest,
-  visibleCap = MESSAGE_CAP
+  visibleCap = MESSAGE_CAP,
+  headline?: string
 ): string {
-  const label =
-    digest.lang === "en"
-      ? `🗞 AI news today — ${digest.date}`
-      : `🗞 AI hôm nay có gì — ${digest.date}`;
+  const label = headline ?? digestHeadline(digest);
   // Plain bold: the button and the card already open the day page.
   const header = `<b>${label}</b>`;
   const lines: string[] = [header];
@@ -595,33 +633,74 @@ function telegramChannel(options: {
 
     async sendDigest(env: Env, digest: DailyDigest): Promise<SendResult> {
       const token = env.TELEGRAM_BOT_TOKEN as string;
-      // The photo and the caption are the same day's card. The edition
-      // bullets stay the fallback when that day has no published stories.
-      const shown = await digestForCard(env, digest);
-      const photo = await callTelegram(token, "sendPhoto", {
-        chat_id: options.chatId(env),
-        photo: digestCardUrl(digest, shown.version),
-        caption: buildDigestCaption(shown.digest),
-        parse_mode: "HTML",
-        reply_markup: buildDigestReplyMarkup(digest),
-      });
-      if (photo.ok) {
-        return { ok: true, messageId: telegramMessageId(photo.result) };
+      const chatId = options.chatId(env);
+      // Lead card is the highlight. Leftovers are a second card when they
+      // fill a grid, otherwise a short text reply. The edition is the
+      // fallback when the day has no published stories.
+      const pages = await digestPages(env, digest);
+      let firstId = "";
+      for (const [index, page] of pages.entries()) {
+        const fitted = fitHighlightDigest(page.digest, page.headline);
+        const caption = buildDigestCaption(fitted, page.headline);
+        const replyTo =
+          index > 0 && firstId
+            ? {
+                message_id: Number(firstId),
+                allow_sending_without_reply: true,
+              }
+            : undefined;
+        const markup = index === 0 ? buildDigestReplyMarkup(digest) : undefined;
+        if (!page.photo) {
+          const text = await callTelegram(token, "sendMessage", {
+            chat_id: chatId,
+            text: caption,
+            parse_mode: "HTML",
+            link_preview_options: STORY_TEXT_LINK_PREVIEW,
+            reply_parameters: replyTo,
+          });
+          if (!text.ok) {
+            console.error(
+              `telegram digest follow-up failed: ${text.description}`
+            );
+          }
+          continue;
+        }
+        const photo = await callTelegram(token, "sendPhoto", {
+          chat_id: chatId,
+          photo: digestCardUrl(digest, page.version, page.part),
+          caption,
+          parse_mode: "HTML",
+          reply_markup: markup,
+          reply_parameters: replyTo,
+        });
+        if (photo.ok) {
+          const id = telegramMessageId(photo.result);
+          if (index === 0) firstId = id;
+          continue;
+        }
+        if (index > 0) {
+          console.error(
+            `telegram digest follow-up photo failed: ${photo.description}`
+          );
+          break;
+        }
+        // Only a definite rejection may fall back; an ambiguous one may be posted.
+        if (photo.ambiguous || photo.budgetExhausted) return sendFailure(photo);
+        console.error(
+          `telegram digest sendPhoto failed: ${photo.description}; sending text`
+        );
+        const msg = await callTelegram(token, "sendMessage", {
+          chat_id: chatId,
+          text: buildDigestMessage(fitted),
+          parse_mode: "HTML",
+          reply_markup: buildDigestReplyMarkup(digest),
+          link_preview_options: digestLinkPreview(digest),
+        });
+        if (!msg.ok) return sendFailure(msg);
+        return { ok: true, messageId: telegramMessageId(msg.result) };
       }
-      // Only a definite rejection may fall back; an ambiguous one may be posted.
-      if (photo.ambiguous || photo.budgetExhausted) return sendFailure(photo);
-      console.error(
-        `telegram digest sendPhoto failed: ${photo.description}; sending text`
-      );
-      const msg = await callTelegram(token, "sendMessage", {
-        chat_id: options.chatId(env),
-        text: buildDigestMessage(shown.digest),
-        parse_mode: "HTML",
-        reply_markup: buildDigestReplyMarkup(digest),
-        link_preview_options: digestLinkPreview(digest),
-      });
-      if (!msg.ok) return sendFailure(msg);
-      return { ok: true, messageId: telegramMessageId(msg.result) };
+      if (!firstId) return { ok: false, error: "digest was not sent" };
+      return { ok: true, messageId: firstId };
     },
 
     async sendStory(env: Env, story: StoryPayload): Promise<SendResult> {

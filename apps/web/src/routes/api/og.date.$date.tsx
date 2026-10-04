@@ -5,7 +5,7 @@ import {
   isSettledArchiveDate,
   parseArchiveDate,
 } from "../../lib/day-archive";
-import { isDayCardPhotoUrl, pickDayCardItems } from "../../lib/day-card-pick";
+import { isDayCardPhotoUrl, splitDayHighlights } from "../../lib/day-card-pick";
 import {
   DAY_OG_HEIGHT,
   DAY_OG_MAX_TILES,
@@ -177,9 +177,16 @@ export const Route = createFileRoute("/api/og/date/$date")({
             // Fetch photos for the top dozen so a dead, hotlink-blocked or WebP
             // thumbnail does not cost the grid a photo a lower story has.
             const candidates = all.slice(0, DAY_OG_CANDIDATES);
-            // Same order the digest caption lists. A photo that fails to
-            // download stays in its slot as a text tile.
-            const items = pickDayCardItems(candidates);
+            // `part=2` is the next highlight grid. The digest caption lists
+            // the same stories. A photo that fails to download stays in its
+            // slot as a text tile.
+            const part =
+              new URL(request.url).searchParams.get("part") === "2" ? 2 : 1;
+            const split = splitDayHighlights(candidates);
+            const items = part === 2 ? split.more : split.lead;
+            if (items.length === 0) {
+              return Response.json({ error: "not found" }, { status: 404 });
+            }
             const [fonts, fetched] = await Promise.all([
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
               fetchTilePhotos(

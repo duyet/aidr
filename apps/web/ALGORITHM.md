@@ -700,18 +700,21 @@ deliberately non-spammy.
   links, optional health snapshot) is the internal shape. Adapters in
   `worker/notify/adapters.ts` render Telegram HTML, Slack
   incoming-webhook JSON, or raw JSON.
-- *Daily digest*: ONE message per local day per channel (Asia/Ho_Chi_Minh,
-  from 08:00). The photo is the day card (`/api/og/date/{date}.png`) and
-  the caption lists those same tiles — that calendar day's ranked stories,
-  photos first — not the rolling 24h TL;DR, which still leads with
-  yesterday after midnight. The photo URL carries `v`, a token of the tile
-  ids, because Telegram caches a photo by URL. Email still sends the
-  snapshot (`bullets_vi` / `bullets_en` only, no cross-language fallback).
-  The Vietnamese channel (`TELEGRAM_VI_CHAT_ID`, falling back to
-  `TELEGRAM_CHAT_ID`) and the English channel (`TELEGRAM_EN_CHAT_ID`, same
-  bot token) each use their own language. Each line links to its story
-  permalink, plus a site button. When the day has no card stories, the
-  caption falls back to that language's snapshot.
+- *Daily digest*: one highlight post per local day per channel
+  (Asia/Ho_Chi_Minh, from 08:00), plus a follow-up only when more stories
+  are worth sending. The lead photo is the day card
+  (`/api/og/date/{date}.png`) and the caption names those same tiles, with
+  titles shortened so every tile fits. Stories that do not fit the lead
+  grid go next: four or more become a second card (`part=2`, its own `v`
+  token, because Telegram caches a photo by URL); one to three are a short
+  text reply. This is that calendar day's ranked stories, photos first,
+  not the rolling 24h TL;DR. Email still sends the snapshot (`bullets_vi`
+  / `bullets_en` only, no cross-language fallback). The Vietnamese channel
+  (`TELEGRAM_VI_CHAT_ID`, falling back to `TELEGRAM_CHAT_ID`) and the
+  English channel (`TELEGRAM_EN_CHAT_ID`, same bot token) each use their
+  own language. Each line links to its story permalink. The site button is
+  on the lead post only. When the day has no card stories, the caption
+  falls back to that language's snapshot.
 - *Trending*: an individual post only when the algo flags a story as
   exceptional (`rank_score` at or above the trending bar and
   `llm_importance ≥ 7`), capped at

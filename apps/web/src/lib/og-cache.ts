@@ -28,14 +28,15 @@ function edgeCache(): Cache | null {
 }
 
 /** R2 key: `v10/api/og/date/2026-10-03.png/vi` or `…/vi/k3f0a` when `v` is
- *  set. Telegram caches a photo by its full URL, so the digest sends a `v`
- *  of the tile ids and that value is part of the key. Other query strings
- *  (utm) stay out. */
+ *  set, plus `/p2` for the second highlight grid. Telegram caches a photo
+ *  by its full URL, so the digest sends a `v` of the tile ids and that
+ *  value is part of the key. Other query strings (utm) stay out. */
 export function ogObjectKey(url: URL): string {
   const lang = url.searchParams.get("lang") === "vi" ? "vi" : "en";
   const stamp = url.searchParams.get("v") ?? "";
   const version = /^[a-z0-9]{4,16}$/.test(stamp) ? `/${stamp}` : "";
-  return `v${OG_RENDER_VERSION}${url.pathname}/${lang}${version}`;
+  const part = url.searchParams.get("part") === "2" ? "/p2" : "";
+  return `v${OG_RENDER_VERSION}${url.pathname}/${lang}${version}${part}`;
 }
 
 function background(ctx: WaitUntil, work: Promise<unknown>): Promise<void> {

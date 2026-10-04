@@ -572,6 +572,119 @@ describe("telegram channels", () => {
     );
     expect(body.photo).toContain("lang=vi");
     expect(body.photo).toMatch(/[?&]v=[a-z0-9]+/);
+    expect(body.photo).not.toContain("part=2");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends the next highlights as a second card when the lead grid is full", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 42 } }), {
+          status: 200,
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const rows = Array.from({ length: 10 }, (_, i) => ({
+      id: `aa${i.toString(16).padStart(6, "0")}11111111`,
+      title: `English story ${i}`,
+      title_vi: `tin nổi bật số ${i} ${"Rất dài ".repeat(40)}`,
+      category: "research",
+      image_url: `https://img.example/${i}.jpg`,
+    }));
+    await telegramNotifier.sendDigest(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+        DB: {
+          prepare: () => ({
+            bind: () => ({ all: async () => ({ results: rows }) }),
+          }),
+        },
+      } as unknown as Env,
+      {
+        lang: "vi",
+        date: "2026-10-04",
+        bullets: [{ text: "yesterday prose that must not lead", url: null }],
+      }
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const lead = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    const more = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendPhoto");
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendPhoto");
+    expect(lead.caption).toContain("tin nổi bật số 0");
+    expect(lead.caption).toContain("tin nổi bật số 5");
+    expect(lead.caption).not.toContain("tin nổi bật số 6");
+    expect(lead.caption.replace(/<[^>]+>/g, "").length).toBeLessThanOrEqual(
+      1000
+    );
+    expect(lead.reply_markup).toBeDefined();
+    expect(lead.photo).not.toContain("part=2");
+    expect(more.caption).toContain("Thêm tin nổi bật");
+    expect(more.caption).toContain("tin nổi bật số 6");
+    expect(more.caption).not.toContain("tin nổi bật số 0");
+    expect(more.photo).toContain("part=2");
+    expect(more.reply_markup).toBeUndefined();
+    expect(more.reply_parameters.message_id).toBe(41);
+  });
+
+  it("sends a thin tail as text, not a second card", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 42 } }), {
+          status: 200,
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const rows = Array.from({ length: 8 }, (_, i) => ({
+      id: `bb${i.toString(16).padStart(6, "0")}11111111`,
+      title: `English story ${i}`,
+      title_vi: `tin nổi bật số ${i}`,
+      category: "research",
+      image_url: `https://img.example/${i}.jpg`,
+    }));
+    await telegramNotifier.sendDigest(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+        DB: {
+          prepare: () => ({
+            bind: () => ({ all: async () => ({ results: rows }) }),
+          }),
+        },
+      } as unknown as Env,
+      {
+        lang: "vi",
+        date: "2026-10-04",
+        bullets: [{ text: "edition bullet", url: null }],
+      }
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendPhoto");
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
+    const lead = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    const more = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    expect(lead.caption).toContain("tin nổi bật số 5");
+    expect(lead.caption).not.toContain("tin nổi bật số 6");
+    expect(more.text).toContain("Thêm tin nổi bật");
+    expect(more.text).toContain("tin nổi bật số 6");
+    expect(more.text).toContain("tin nổi bật số 7");
+    expect(more.text).not.toContain("tin nổi bật số 0");
+    expect(more.photo).toBeUndefined();
+    expect(more.reply_markup).toBeUndefined();
+    expect(more.reply_parameters.message_id).toBe(41);
   });
 });
 
