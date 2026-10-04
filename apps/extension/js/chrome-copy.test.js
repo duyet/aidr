@@ -145,6 +145,7 @@ test("new tab follows the live digest masthead, day links, and intro video", () 
   assert.match(js, /Full day →/);
   assert.match(js, /story-publisher/);
   assert.match(js, /story-votes/);
+  assert.match(css, /\.story-vote \{[^}]*width:\s*1\.25rem/);
   assert.match(js, /tynoWx03zDc/);
   assert.match(js, /youtube-nocookie\.com/);
   assert.match(css, /\.tldr-head \.tldr-counts button\[aria-pressed="true"\][\s\S]*?#fff/);
