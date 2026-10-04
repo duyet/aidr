@@ -203,7 +203,7 @@ export const PUBLIC_READ_TOOLS: readonly PublicReadToolDefinition[] = [
           type: "string",
           pattern: PUBLIC_READ_BEFORE_PATTERN,
           description:
-            "Exclusive upper bound (UTC midnight of this date). Page backwards " +
+            "Exclusive upper bound (Asia/Ho_Chi_Minh midnight of this date). Page backwards " +
             "through older days with it.",
         },
       },
