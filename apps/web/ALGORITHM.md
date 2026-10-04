@@ -183,8 +183,9 @@ Read-only page per **audience day** (`Asia/Ho_Chi_Minh`, the key
 snapshot stored under that date, then every published item with
 `published_at` inside that ICT day ordered by `rank_score` (one group,
 bounded to 500, no source-share cap), plus the nearest earlier/later day with
-stories. The homepage feed's day headings stay UTC, so a story's heading can
-be one day before its archive page. `getDayArchive`
+stories. The homepage feed buckets that same ICT day (`groupByDay` via
+`archiveDateOfSec`), and `before` pages end at that day's ICT midnight, so a
+heading's Full day link is the archive that contains the story. `getDayArchive`
 (`src/lib/feed-queries.ts`) never writes — unlike `getFeed` it does not
 rebuild a snapshot. 404 for a malformed date, a date after today (ICT), or a
 day with neither stories nor a snapshot. With `?lang=`, days older than 3

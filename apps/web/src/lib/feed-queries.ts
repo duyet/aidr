@@ -218,7 +218,11 @@ async function attachSourcesAndTopics(
 function groupByDay(items: FeedItem[]): DayGroup[] {
   const map = new Map<string, FeedItem[]>();
   for (const item of items) {
-    const date = new Date(item.published_at * 1000).toISOString().slice(0, 10);
+    // Audience-zone day, the same key `/date/YYYY-MM-DD` uses. A UTC date
+    // files 17:00Z–24:00Z publishes on the previous day, and the Full day
+    // link then opens an archive window that does not contain the story.
+    const date = archiveDateOfSec(item.published_at);
+    if (!date) continue;
     const list = map.get(date) ?? [];
     list.push(item);
     map.set(date, list);
@@ -422,8 +426,10 @@ export async function getFeed(
   opts: { category?: string; q?: string; days?: number; before?: string } = {}
 ): Promise<FeedResponse> {
   const days = opts.days ?? (opts.q ? 30 : 3);
+  // `before` is the audience-zone day `groupByDay` emits. Cut at that day's
+  // ICT midnight so the next page does not bisect a Vietnam day.
   const until = opts.before
-    ? Math.floor(Date.parse(`${opts.before}T00:00:00Z`) / 1000)
+    ? dayBoundsSec(opts.before).start
     : Math.floor(Date.now() / 1000);
   const since = until - days * 86400;
 
@@ -693,8 +699,8 @@ export async function getDayArchive(
     const at = (res?.results?.[0] as { at: number | null } | undefined)?.at;
     return typeof at === "number" ? archiveDateOfSec(at) : null;
   };
-  // One group for the whole audience-zone day; `groupByDay` would split it
-  // at UTC midnight. Same in-day order as the feed: rank_score descending.
+  // One group for the requested audience-zone day. The query window is
+  // already that day. Same in-day order as the feed: rank_score descending.
   const categoryCounts: Record<string, number> = {};
   for (const it of items) {
     if (it.category)
