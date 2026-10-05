@@ -205,10 +205,11 @@ The player is a click-to-play `youtube-nocookie.com` facade.
 
 ## Ops pitfalls
 
-- LLM-heavy Workflow steps use `retries: 0`. `LLM_STEP` and
-  `BACKFILL_TRANSLATE_STEP` time out at 5 minutes, above
-  `TRANSLATE_TIMEOUT_MS`, so a slow translate can return and write. A
-  failed score/TL;DR call must not abort close-run.
+- `LLM_STEP` and `BACKFILL_TRANSLATE_STEP` use `retries: 0` and a 5-minute
+  timeout, above `TRANSLATE_TIMEOUT_MS`, so a slow translate can return and
+  write. `TLDR_STEP` uses one retry (`limit: 1`, `delay: 10_000`) and a
+  4-minute timeout, because a Durable Object reset used to fail the edition
+  for the rest of the hour. A failed score/TL;DR call must not abort close-run.
 - Just before close-run, the `health-check` step (`worker/health.ts`)
   reports to Sentry/Bugsink when: a Telegram channel has no post for >26h
   (a missed daily digest; checked during local 09–23h), >50% of the run's
@@ -226,7 +227,9 @@ The player is a click-to-play `youtube-nocookie.com` facade.
   and sent to Sentry, never fail the step.
 - `run()` still upserts at start **before** `pruneLlmCalls` / fetch / LLM.
   Do not wrap `open-run` in `safeStep`.
-- Score and TL;DR hang-cap per model at 70s/90s (translate stays 25s).
+- Per-model caps in `worker/llm.ts`: score `SCORE_SLICE_MAX_MS` 70s, TL;DR
+  `TLDR_SLICE_MAX_MS` 135s, translate first token `TRANSLATE_FIRST_TOKEN_MS`
+  35s.
 - Do not treat GitHub Actions SUCCESS as a finished ingest. Poll
   `GET /api/system` (no-store) until `lastRun.id` matches the POST `id`
   (or at least is no longer the previous id) and `runsToday > 0`.
@@ -274,7 +277,8 @@ runtime through `upsert_source` with no deploy — see
   is exactly what was published since the last one, so the cap samples the
   live edge and dedupe drops the rest.
 - **Feed share cap.** The flood gate only bounds new rows, and a source
-  without `maxItems` (e.g. `marketbrief`) can still dominate. `getFeed`
+  that omits `maxItems` can still dominate the served feed. `marketbrief`
+  is already capped at 6 by the flood gate. `getFeed`
   (`src/lib/feed-queries.ts`, `capSourceShare`) therefore also keeps each
   source family's top-`rank_score` rows so none exceeds 25% of the served
   feed (skipped below 4 distinct families; family as in the top-list cap
