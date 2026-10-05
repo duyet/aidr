@@ -7,6 +7,7 @@ import {
   langFromQuery,
   readLangFromCookie,
   resolveLocale,
+  statusLabel,
   timeAgo,
 } from "./lang";
 
@@ -118,6 +119,16 @@ describe("categoryLabel", () => {
     for (const name of ["uncategorized", "Mixed Case", "brand-new-topic"]) {
       expect(categoryLabel(name, "vi"), name).toBe(name);
     }
+  });
+});
+
+describe("statusLabel", () => {
+  it("names a merged item in Vietnamese and leaves English and unknown statuses raw", () => {
+    // /data charts items.status. Ingest writes "merged", so the Vietnamese
+    // bar must name it. An unrecognized status stays the raw DB value.
+    expect(statusLabel("merged", "vi")).toBe("Đã gộp");
+    expect(statusLabel("merged", "en")).toBe("merged");
+    expect(statusLabel("not-a-status", "vi")).toBe("not-a-status");
   });
 });
 
