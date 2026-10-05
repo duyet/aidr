@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { dayBoundsSec } from "../../src/lib/day-archive.js";
 import { classifyStoryTrending, dayBounds } from "../notify/story-ranking.js";
 
 const base = {
@@ -41,7 +42,10 @@ describe("classifyStoryTrending", () => {
       })
     ).toBe("posted");
   });
-  it("splits UTC days like the homepage grouping", () => {
-    expect(dayBounds(86400 + 5)).toEqual([86400, 172800]);
+  it("buckets 18:00 UTC into the Asia/Ho_Chi_Minh day that starts at 17:00 UTC", () => {
+    const publishedAtSec = Date.parse("2026-10-05T18:00:00Z") / 1000;
+    const { start, end } = dayBoundsSec("2026-10-06");
+    expect(dayBounds(publishedAtSec)).toEqual([start, end]);
+    expect(start).toBe(Date.parse("2026-10-05T17:00:00Z") / 1000);
   });
 });
