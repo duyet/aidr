@@ -340,7 +340,7 @@ export function parseRssItems(xml: string): FetchedItem[] {
       tagText(chunk, "published") ??
       tagText(chunk, "updated");
     const publishedMs = pub ? Date.parse(pub) : Number.NaN;
-    const publishedAt = Number.isFinite(publishedMs) ? publishedMs : Date.now();
+    const publishedAt = Number.isFinite(publishedMs) ? publishedMs : Number.NaN;
     const rawSummary =
       tagText(chunk, "description") ?? tagText(chunk, "summary");
     const summary = rawSummary
@@ -426,7 +426,7 @@ export const rssAdapter: SourceAdapter = {
     }
     const sinceMs = sinceEpochSec * 1000;
     const inWindow = parseRssItems(xml).filter(
-      (item) => item.publishedAt >= sinceMs
+      (item) => Number.isFinite(item.publishedAt) && item.publishedAt >= sinceMs
     );
     const sourceLang = sourceLangOf(config);
     return applyFloodGate(inWindow, config).map((item) => ({
