@@ -153,6 +153,19 @@ describe("parseRssItems", () => {
     expect(item.summary).not.toBe(`${body.slice(0, 1200)}…`);
     expect(body.startsWith(item.summary?.slice(0, -1) ?? "")).toBe(true);
   });
+
+  it("decodes numeric references and &nbsp; in RSS text", () => {
+    const [item] = parseRssItems(`<item>
+      <title>AT&amp;T&#8217;s model &#x26; more</title>
+      <link>https://example.com/entities</link>
+      <description>hello&nbsp;world</description>
+    </item>`);
+
+    // &#8217; is U+2019. &#x26; and &amp; each become "&" once.
+    expect(item.title).toBe("AT&T\u2019s model & more");
+    // A missed &nbsp; decode would leave the letters "nbsp".
+    expect(item.summary).toBe("hello world");
+  });
 });
 
 describe("rssAdapter", () => {

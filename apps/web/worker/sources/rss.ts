@@ -64,6 +64,50 @@ export function sourceFetchFailureReason(
   return null;
 }
 
+const XML_NAMED_REFS: Record<string, string> = {
+  nbsp: " ",
+  rsquo: "\u2019",
+  lsquo: "\u2018",
+  ldquo: "\u201c",
+  rdquo: "\u201d",
+  mdash: "\u2014",
+  ndash: "\u2013",
+  hellip: "\u2026",
+};
+
+/** One pass. The replacement is not scanned again, so `&#38;lt;` stays
+ * `&lt;`. Code points outside 0..0x10FFFF and surrogates stay written. */
+function decodeXmlReference(
+  match: string,
+  decimal: string | undefined,
+  hex: string | undefined,
+  name: string | undefined
+): string {
+  if (name) return XML_NAMED_REFS[name] ?? match;
+  const digits = hex ?? decimal;
+  if (!digits) return match;
+  const codePoint = Number.parseInt(digits, hex ? 16 : 10);
+  if (
+    !Number.isInteger(codePoint) ||
+    codePoint < 0 ||
+    codePoint > 0x10ffff ||
+    (codePoint >= 0xd800 && codePoint <= 0xdfff)
+  ) {
+    return match;
+  }
+  return String.fromCodePoint(codePoint);
+}
+
+const XML_CHAR_REF = new RegExp(
+  `&#(\\d+);|&#[xX]([0-9a-fA-F]+);|&(${Object.keys(XML_NAMED_REFS).join("|")});`,
+  "g"
+);
+
+/**
+ * Unwrap CDATA, then decode entities once. Numeric refs and the short
+ * named set share one replace so a decoded `&` is not read again.
+ * `&amp;` is last: `&amp;lt;` must stay `&lt;`.
+ */
 function decodeXml(value: string): string {
   return value
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -71,6 +115,9 @@ function decodeXml(value: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
+    .replace(XML_CHAR_REF, (match, decimal, hex, name) =>
+      decodeXmlReference(match, decimal, hex, name)
+    )
     .replace(/&amp;/g, "&")
     .trim();
 }
