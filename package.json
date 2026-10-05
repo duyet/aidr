@@ -7,7 +7,7 @@
     "build": "pnpm --filter @aidr/web build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "check-types": "pnpm --filter @aidr/web check-types",
+    "check-types": "pnpm --filter @aidr/web --filter @aidr/email check-types",
     "validate": "pnpm run lint && pnpm run check-types && pnpm run test && pnpm run validate:deploy-artifact",
     "validate:deploy-artifact": "pnpm --filter @aidr/web run validate:deploy-artifact",
     "deploy": "pnpm --filter @aidr/web run deploy",
