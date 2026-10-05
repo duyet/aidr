@@ -332,6 +332,13 @@ export function buildTrendingQuery(
   };
 }
 
+/** Today's trending count and the last trending post. A `digest:%` row is
+ *  neither: the morning digest must not open the 3-hour gap. */
+export const trendingGapSql = `SELECT
+         SUM(CASE WHEN item_id NOT LIKE 'digest:%' AND posted_at >= ? THEN 1 ELSE 0 END) AS sent_today,
+         MAX(CASE WHEN item_id NOT LIKE 'digest:%' THEN posted_at END) AS last_posted_at
+       FROM notifications WHERE channel = ? AND status = 'sent'`;
+
 /** Per-source count of the trending stories a channel already sent today,
  *  so the family cap spans the day and not just one run's single post. */
 export function buildTrendingSourcesTodayQuery(
@@ -646,21 +653,13 @@ export async function dispatchStoryNotifications(
     }
 
     // --- 2. Trending stories (algo-detected, rate-limited) ---
-    const stats = await env.DB.prepare(
-      `SELECT
-         SUM(CASE WHEN item_id NOT LIKE 'digest:%' AND posted_at >= ? THEN 1 ELSE 0 END) AS sent_today,
-         MAX(posted_at) AS last_posted_at
-       FROM notifications WHERE channel = ? AND status = 'sent'`
-    )
+    const stats = await env.DB.prepare(trendingGapSql)
       .bind(dayStartMs, notifier.id)
       .first<{ sent_today: number | null; last_posted_at: number | null }>();
 
-    // A digest sent seconds ago shouldn't block a genuine trending post
-    // forever, but the gap keeps this run from double-posting: budget is
-    // computed before this run's digest is counted.
     const importanceFloor = trendingImportanceFloor(
       stats?.sent_today ?? 0,
-      sent[notifier.id] > 0 ? null : (stats?.last_posted_at ?? null),
+      stats?.last_posted_at ?? null,
       now
     );
     budget = importanceFloor === null ? 0 : 1;

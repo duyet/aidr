@@ -28,6 +28,7 @@ import {
   TRENDING_RANK_FLOOR,
   TRENDING_RANK_PERCENTILE,
   trendingBudget,
+  trendingGapSql,
   trendingImportanceFloor,
   trendingRankBar,
 } from "../notify/index.js";
@@ -1539,6 +1540,15 @@ describe("trendingImportanceFloor", () => {
       trendingImportanceFloor(0, ago(TRENDING_BURST_MIN_GAP_SEC), now)
     ).toBe(TRENDING_BURST_MIN_IMPORTANCE);
   });
+  // The 08:00 digest is not a trending post. After it, sent_today is 0 and
+  // lastPostedAtMs is null, so an importance-7 story still clears the floor.
+  // A trending row one hour ago is inside the 3h gap and still raises it.
+  it("keeps the normal floor when the only sent row is a digest", () => {
+    expect(trendingImportanceFloor(0, null, now)).toBe(TRENDING_MIN_IMPORTANCE);
+    expect(trendingImportanceFloor(0, ago(60 * 60), now)).toBe(
+      TRENDING_BURST_MIN_IMPORTANCE
+    );
+  });
   it("posts nothing past the burst cap or inside the burst gap", () => {
     expect(
       trendingImportanceFloor(TRENDING_BURST_MAX_PER_DAY, null, now)
@@ -1546,6 +1556,12 @@ describe("trendingImportanceFloor", () => {
     expect(
       trendingImportanceFloor(0, ago(TRENDING_BURST_MIN_GAP_SEC - 1), now)
     ).toBeNull();
+  });
+  it("ignores digest rows when it reads the last trending post", () => {
+    expect(trendingGapSql).toContain(
+      "MAX(CASE WHEN item_id NOT LIKE 'digest:%' THEN posted_at END) AS last_posted_at"
+    );
+    expect(trendingGapSql).not.toContain("MAX(posted_at)");
   });
   it("puts the floor into the candidate query", () => {
     const { binds } = buildTrendingQuery(

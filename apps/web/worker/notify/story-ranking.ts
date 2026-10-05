@@ -11,6 +11,7 @@ import {
   DIGEST_TIMEZONE,
   localDayStartMs,
   TRENDING_MIN_IMPORTANCE,
+  trendingGapSql,
   trendingImportanceFloor,
   trendingRankBar,
 } from "./index.js";
@@ -127,13 +128,7 @@ export async function loadStoryRanking(
     .bind(itemId, ...TRENDING_CHANNELS);
   const dayStartMs = localDayStartMs(nowMs, DIGEST_TIMEZONE);
   const statsStmts = TRENDING_CHANNELS.map((channel) =>
-    db
-      .prepare(
-        `SELECT SUM(CASE WHEN item_id NOT LIKE 'digest:%' AND posted_at >= ? THEN 1 ELSE 0 END) AS sent_today,
-                MAX(posted_at) AS last_posted_at
-         FROM notifications WHERE channel = ? AND status = 'sent'`
-      )
-      .bind(dayStartMs, channel)
+    db.prepare(trendingGapSql).bind(dayStartMs, channel)
   );
   const [dayRes, windowRes, notifRes, ...statRes] = await db.batch([
     dayStmt,
