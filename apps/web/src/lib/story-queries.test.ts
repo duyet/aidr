@@ -44,6 +44,15 @@ describe("getStory edge cases", () => {
     expect(await getStory(makeDb([]), "00000000")).toBeNull();
   });
 
+  it("returns null when two published stories share the id prefix", async () => {
+    const twin = {
+      ...base,
+      id: "abcdef12cafebabeabcdef12cafebabeabcdef12cafebabeabcdef12cafebabe",
+      title: "A different story",
+    };
+    expect(await getStory(makeDb([base, twin]), "abcdef12")).toBeNull();
+  });
+
   it("empties a source link that is not a public http(s) URL", async () => {
     for (const url of [
       "javascript:alert(1)",

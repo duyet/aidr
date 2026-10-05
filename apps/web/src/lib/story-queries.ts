@@ -260,7 +260,11 @@ export async function getStory(
   db: DbReader,
   idPrefix: string
 ): Promise<FeedItem | null> {
-  const story = (await queryStories(db, idPrefix, 1))[0];
+  const stories = await queryStories(db, idPrefix, 2);
+  // Two published rows share the prefix: refuse rather than guess. Zero
+  // published rows still fall through to the merged lookup below.
+  if (stories.length > 1) return null;
+  const story = stories[0];
   if (story) return attachContentLog(db, story);
   const { results } = await db
     .prepare(
