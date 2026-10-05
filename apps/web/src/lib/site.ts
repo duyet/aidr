@@ -52,7 +52,7 @@ export const SITE_NAME = "AI;DR";
 export const SITE_TITLE = "AI News | ranked AI digest | aidr.today";
 export const SITE_SLOGAN = "AI news ranked and summary";
 export const SITE_DESCRIPTION =
-  "AI News (aidr.today) ranks AI stories hourly from HN, HuggingNews, and more. LLM-scored AI;DR digest in English and Vietnamese — every item links to the source.";
+  "AI News (aidr.today) ranks AI stories every 30 minutes from HN, HuggingNews, and more. LLM-scored AI;DR digest in English and Vietnamese — every item links to the source.";
 
 /**
  * Brand mark, used as the JSON-LD `Organization.logo`. `public/logo-sm.png`
