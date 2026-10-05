@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SITE_URL } from "../../lib/site";
 import { storyPath } from "../../lib/slug";
 import type { FeedItem, Lang } from "../../lib/types";
 import { formatStoryScore, formatStoryTimestamp } from "./story-meta";
@@ -35,6 +36,19 @@ const COPY = {
 
 const CHANNEL_LABEL = { telegram: "vi", "telegram-en": "en" } as const;
 
+/**
+ * Path for the ranking fetch. `storyPath` already includes `?lang=`, so
+ * `ranking` is set on the URL. A second `?` would be swallowed into `lang`.
+ */
+export function rankingRequestPath(
+  item: Pick<FeedItem, "id">,
+  lang: Lang
+): string {
+  const url = new URL(`/api/story${storyPath(item, lang)}`, SITE_URL);
+  url.searchParams.set("ranking", "1");
+  return `${url.pathname}${url.search}`;
+}
+
 /** "Why this ranks" / Telegram trending status, loaded when first opened. */
 export function StoryRankingPanel({
   item,
@@ -51,7 +65,7 @@ export function StoryRankingPanel({
   useEffect(() => {
     if (!open || ranking || state === "loading") return;
     setState("loading");
-    fetch(`/api/story${storyPath(item, lang)}?ranking=1`)
+    fetch(rankingRequestPath(item, lang))
       .then((res) =>
         res.ok
           ? (res.json() as Promise<{ ranking?: StoryRanking }>)
