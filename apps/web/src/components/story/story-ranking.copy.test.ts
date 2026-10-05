@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  describeTelegramStatus,
-  type StoryRanking,
-} from "./story-ranking";
+import { describeTelegramStatus, type StoryRanking } from "./story-ranking";
 
 // Search snippets and the ranking panel must name the 30-minute alarm,
 // not the old hourly wording. Email and Telegram clocks are separate gates.
@@ -26,11 +23,11 @@ describe("pending ranking copy", () => {
     expect(describeTelegramStatus("vi", pending, ranking, () => "")).toBe(
       "Đủ điều kiện; chờ lượt chạy 30 phút tiếp theo."
     );
-    expect(describeTelegramStatus("en", pending, ranking, () => "")).not.toMatch(
-      /hourly/i
-    );
-    expect(describeTelegramStatus("vi", pending, ranking, () => "")).not.toMatch(
-      /hàng giờ/
-    );
+    expect(
+      describeTelegramStatus("en", pending, ranking, () => "")
+    ).not.toMatch(/hourly/i);
+    expect(
+      describeTelegramStatus("vi", pending, ranking, () => "")
+    ).not.toMatch(/hàng giờ/);
   });
 });
