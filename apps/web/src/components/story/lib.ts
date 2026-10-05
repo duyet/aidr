@@ -3,7 +3,13 @@ import type { Lang } from "../../lib/types";
 export function fmtTime(epochSec: number, lang: Lang): string {
   return new Date(epochSec * 1000).toLocaleString(
     lang === "vi" ? "vi-VN" : "en-US",
-    { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
+    {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "Asia/Ho_Chi_Minh",
+    }
   );
 }
 
