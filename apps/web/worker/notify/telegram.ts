@@ -639,9 +639,9 @@ function telegramChannel(options: {
       // fallback when the day has no published stories.
       const pages = await digestPages(env, digest);
       let firstId = "";
-      // The lead is already in the channel. An unknown follow-up must not
-      // be retried (that would post the lead again) and must not be stored
-      // as a clean send (the tail may be missing).
+      // The lead is already in the channel. A follow-up that did not land
+      // must not be retried as a full digest (that would post the lead
+      // again) and must not be stored as a clean send (the tail is missing).
       const unresolvedFollowUp = (res: TelegramResponse): SendResult => ({
         ok: false,
         ambiguous: true,
@@ -669,9 +669,7 @@ function telegramChannel(options: {
           });
         if (!page.photo) {
           const text = await sendCaption();
-          if (index > 0 && (text.ambiguous || text.budgetExhausted)) {
-            return unresolvedFollowUp(text);
-          }
+          if (index > 0 && !text.ok) return unresolvedFollowUp(text);
           if (!text.ok) {
             console.error(
               `telegram digest follow-up failed: ${text.description}`
@@ -700,14 +698,7 @@ function telegramChannel(options: {
             `telegram digest follow-up photo failed: ${photo.description}; sending text`
           );
           const text = await sendCaption();
-          if (text.ambiguous || text.budgetExhausted) {
-            return unresolvedFollowUp(text);
-          }
-          if (!text.ok) {
-            console.error(
-              `telegram digest follow-up failed: ${text.description}`
-            );
-          }
+          if (!text.ok) return unresolvedFollowUp(text);
           continue;
         }
         // Only a definite rejection may fall back; an ambiguous one may be posted.

@@ -921,6 +921,54 @@ describe("telegram channels", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
   });
+
+  it("does not mark the digest sent when Telegram rejects the follow-up page", async () => {
+    // A definite Bot API rejection of the tail used to log and still return
+    // ok, so the day was stored as sent and the missing page was never
+    // retried. The lead is already in the channel, so it must not be posted
+    // again either.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ok: false, description: "wrong type of content" }),
+          { status: 200 }
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const rows = Array.from({ length: 8 }, (_, i) => ({
+      id: `ff${i.toString(16).padStart(6, "0")}11111111`,
+      title: `English story ${i}`,
+      title_vi: `tin nổi bật số ${i}`,
+      image_url: `https://img.example/${i}.jpg`,
+    }));
+    const result = await telegramNotifier.sendDigest(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        TELEGRAM_CHAT_ID: "chat",
+        DB: dayArchiveDb(rows),
+      } as unknown as Env,
+      {
+        lang: "vi",
+        date: "2026-10-04",
+        bullets: [{ text: "edition bullet", url: null }],
+      }
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      ambiguous: true,
+      messageId: "41",
+    });
+    expect(result.budgetExhausted).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendPhoto");
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
+  });
 });
 
 describe("telegramNotifier gating", () => {
