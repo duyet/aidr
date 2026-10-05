@@ -13,6 +13,8 @@ import {
   titleSimilarity,
   unionSources,
 } from "../dedupe.js";
+import type { NewRow, SourceRow } from "../ingest/context.js";
+import { collapseSameUrl } from "../ingest/dedupe.js";
 import type { FetchedItemSource } from "../sources/types.js";
 import type { Env } from "../types.js";
 
@@ -598,5 +600,39 @@ describe("clusterSimilar fallback", () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(clusters).toEqual([{ new: [0], existing: ["abc123"] }]);
+  });
+});
+
+describe("collapseSameUrl", () => {
+  function source(id: string): SourceRow {
+    return { id, type: "rss", config: "{}", enabled: 1 };
+  }
+
+  /** Same id, so these are one URL seen from two feeds. */
+  function row(sourceId: string, points: number): NewRow {
+    return {
+      id: "same-url",
+      source: source(sourceId),
+      item: {
+        url: "https://example.com/shared-story",
+        title: "Shared story",
+        publishedAt: 1_700_000_000,
+        points,
+      },
+    };
+  }
+
+  it("keeps the official source when two feeds share an id", () => {
+    const hn = row("hn", 200);
+    const openai = row("openai", 1);
+    expect(collapseSameUrl([hn, openai])).toEqual([openai]);
+    expect(collapseSameUrl([openai, hn])).toEqual([openai]);
+  });
+
+  it("keeps the higher points when neither source is official", () => {
+    const quiet = row("techcrunch-ai", 3);
+    const loud = row("theverge-ai", 40);
+    expect(collapseSameUrl([quiet, loud])).toEqual([loud]);
+    expect(collapseSameUrl([loud, quiet])).toEqual([loud]);
   });
 });

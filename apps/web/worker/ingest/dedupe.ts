@@ -87,6 +87,45 @@ export async function toCandidates(
   return candidates;
 }
 
+function isOfficialRow(row: NewRow): boolean {
+  return officialSourceFor(row.source.id, row.item.url) !== undefined;
+}
+
+/** The later row replaces the earlier one when it should be the one stored. */
+function preferLaterRow(row: NewRow, earlier: NewRow): boolean {
+  const rowOfficial = isOfficialRow(row);
+  const earlierOfficial = isOfficialRow(earlier);
+  if (rowOfficial !== earlierOfficial) return rowOfficial;
+  const points = row.item.points ?? 0;
+  const earlierPoints = earlier.item.points ?? 0;
+  if (points !== earlierPoints) return points > earlierPoints;
+  return (row.item.comments ?? 0) > (earlier.item.comments ?? 0);
+}
+
+/** One row per item id. Two feeds can emit the same URL in one run, and
+ * both would upsert one primary key. An official source wins. When neither
+ * or both are official, the higher `points` wins, then `comments`, then
+ * the earlier row. */
+export function collapseSameUrl(rows: readonly NewRow[]): NewRow[] {
+  const kept = new Map<string, NewRow>();
+  const order: string[] = [];
+  for (const row of rows) {
+    const earlier = kept.get(row.id);
+    if (earlier === undefined) {
+      kept.set(row.id, row);
+      order.push(row.id);
+      continue;
+    }
+    if (preferLaterRow(row, earlier)) kept.set(row.id, row);
+  }
+  const collapsed: NewRow[] = [];
+  for (const id of order) {
+    const row = kept.get(id);
+    if (row) collapsed.push(row);
+  }
+  return collapsed;
+}
+
 /** A merged row plus the published canonical it was merged into. */
 export interface MergedOfficialRow extends PendingNewRow {
   llm_relevance: number | null;
@@ -167,7 +206,7 @@ export async function dedupeNewRows(
 ): Promise<NewRow[]> {
   const { step, env, steps } = ctx;
   const newRows = await safeStep(step, "dedupe", [] as NewRow[], async () => {
-    const candidates = await toCandidates(fetchedBySource);
+    const candidates = collapseSameUrl(await toCandidates(fetchedBySource));
 
     const existingIds = new Set<string>();
     for (const part of chunk(candidates, DEDUPE_IN_CHUNK)) {
@@ -181,13 +220,15 @@ export async function dedupeNewRows(
     }
 
     const rows = candidates.filter((c) => !existingIds.has(c.id));
-    rows.push(
-      ...(await readmitOfficialRows(
-        env.DB,
-        candidates.filter((c) => existingIds.has(c.id)),
-        sources
-      ))
-    );
+    for (const row of await readmitOfficialRows(
+      env.DB,
+      candidates.filter((c) => existingIds.has(c.id)),
+      sources
+    )) {
+      // The fetched row for this id is the one that just arrived.
+      if (rows.some((existing) => existing.id === row.id)) continue;
+      rows.push(row);
+    }
 
     // Rows inserted directly with status='new' (e.g. an accepted user
     // submission, or an admin push) never came through a source's
