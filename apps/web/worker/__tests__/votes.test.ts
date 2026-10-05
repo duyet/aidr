@@ -1,7 +1,13 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { rankScore } from "../ranking.js";
-import { applyVote, listReaderVotes, nextVote } from "../votes.js";
+import {
+  applyVote,
+  itemVotesTableReady,
+  listReaderVotes,
+  nextVote,
+  resetItemVotesTableProbe,
+} from "../votes.js";
 
 const ITEM = "a".repeat(64);
 const OTHER = "b".repeat(64);
@@ -73,6 +79,56 @@ function expected(published: number, voteNet: number) {
     now: NOW,
   });
 }
+
+describe("itemVotesTableReady", () => {
+  it("returns false on a thrown probe and true once the next probe succeeds", async () => {
+    resetItemVotesTableProbe();
+    let calls = 0;
+    const db = {
+      prepare() {
+        return {
+          async all() {
+            calls += 1;
+            if (calls === 1) throw new Error("d1 unavailable");
+            return { results: [] };
+          },
+        };
+      },
+    };
+    expect(await itemVotesTableReady(db)).toBe(false);
+    expect(await itemVotesTableReady(db)).toBe(true);
+    expect(calls).toBe(2);
+  });
+
+  it("keeps a successful probe and does not probe again", async () => {
+    resetItemVotesTableProbe();
+    let calls = 0;
+    const ok = {
+      prepare() {
+        return {
+          async all() {
+            calls += 1;
+            return { results: [] };
+          },
+        };
+      },
+    };
+    expect(await itemVotesTableReady(ok)).toBe(true);
+
+    const failing = {
+      prepare() {
+        return {
+          async all() {
+            calls += 1;
+            throw new Error("should not run");
+          },
+        };
+      },
+    };
+    expect(await itemVotesTableReady(failing)).toBe(true);
+    expect(calls).toBe(1);
+  });
+});
 
 describe("nextVote", () => {
   it("clears the same button and replaces the other one", () => {

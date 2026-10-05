@@ -169,17 +169,23 @@ export async function listReaderVotes(
 
 let votesTableReady: boolean | null = null;
 
+/** Tests reset the isolate-lifetime cache between cases. */
+export function resetItemVotesTableProbe(): void {
+  votesTableReady = null;
+}
+
 /** Feed and story reads skip the join until the migration is applied.
- * A successful probe stays true for the life of the isolate. */
+ * A successful probe stays true for the life of the isolate.
+ * A thrown probe is not stored, so the next read tries again. */
 export async function itemVotesTableReady(db: {
   prepare(sql: string): { all(): Promise<unknown> };
 }): Promise<boolean> {
   if (votesTableReady !== null) return votesTableReady;
   try {
     await db.prepare("SELECT item_id FROM item_votes LIMIT 1").all();
-    votesTableReady = true;
   } catch {
-    votesTableReady = false;
+    return false;
   }
-  return votesTableReady;
+  votesTableReady = true;
+  return true;
 }
