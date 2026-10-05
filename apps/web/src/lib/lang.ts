@@ -227,6 +227,7 @@ const STATUS_LABELS_VI: Record<string, string> = {
   new: "Mới",
   published: "Đã đăng",
   rejected: "Từ chối",
+  merged: "Đã gộp",
   pending: "Đang chờ",
   accepted: "Đã duyệt",
 };
