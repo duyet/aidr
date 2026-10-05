@@ -204,9 +204,9 @@ async function existingCanonicalStatements(
  * merged into it point at the new one, so the cluster stays one level deep
  * and its permalink resolves to the new canonical (`getStory`). Sent
  * notifications move with the story, so the official item is not posted
- * again and the day's sent count does not double. Its `item_sources` rows
- * stay; merged items' sources are never shown. Runs after the new
- * canonical's upsert in the same batch. */
+ * again and the day's sent count does not double. Reader votes move too.
+ * Its `item_sources` rows stay; merged items' sources are never shown.
+ * Runs after the new canonical's upsert in the same batch. */
 export function demotedCanonicalStatements(
   db: D1Database,
   demotedId: string,
@@ -228,7 +228,31 @@ export function demotedCanonicalStatements(
         "UPDATE OR IGNORE notifications SET item_id = ? WHERE item_id = ?"
       )
       .bind(nn(canonicalId), nn(demotedId)),
+    // Colliding votes go first. `UPDATE OR IGNORE` would leave the demoted
+    // row behind for a reader who voted on both ids, and nothing shows that
+    // item's votes once it is merged.
+    demotedVoteConflictDelete(db, demotedId, canonicalId),
+    db
+      .prepare("UPDATE item_votes SET item_id = ? WHERE item_id = ?")
+      .bind(nn(canonicalId), nn(demotedId)),
   ];
+}
+
+/** Drop demoted votes for readers who already have a canonical row.
+ * The canonical value stays. Must run before the `item_id` update. */
+export function demotedVoteConflictDelete(
+  db: D1Database,
+  demotedId: string,
+  canonicalId: string
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `DELETE FROM item_votes WHERE item_id = ?
+         AND user_id IN (
+           SELECT user_id FROM item_votes WHERE item_id = ?
+         )`
+    )
+    .bind(nn(demotedId), nn(canonicalId));
 }
 
 /** One statement for the whole re-rank: the scores travel as a single JSON
@@ -302,6 +326,23 @@ export async function writeItems(
     undefined,
     async () => {
       const statements: D1PreparedStatement[] = [];
+      // Vote rows move in this batch, after the upsert. The re-rank reads
+      // D1 before that and skips written ids, so the new rank needs the
+      // demoted net now. Sum it before the batch.
+      const voteNetByCanonical = new Map<string, number>();
+      for (const [demotedId, canonicalId] of mergePlan.demoted) {
+        if (!newRowIds.has(canonicalId)) continue;
+        const row = await env.DB.prepare(
+          `SELECT COALESCE(SUM(value), 0) AS vote_net
+           FROM item_votes WHERE item_id = ?`
+        )
+          .bind(nn(demotedId))
+          .first<{ vote_net: number | null }>();
+        voteNetByCanonical.set(
+          canonicalId,
+          (voteNetByCanonical.get(canonicalId) ?? 0) + (row?.vote_net ?? 0)
+        );
+      }
 
       for (const { id, source, item } of newRows) {
         const mergeEntry = mergePlan.merged.get(id);
@@ -314,6 +355,7 @@ export async function writeItems(
           canonicalUpdate: mergePlan.canonicalUpdates.get(id),
           canonicalTags: canonicalTagsByItem.get(id),
           now,
+          voteNet: voteNetByCanonical.get(id) ?? 0,
         });
 
         statements.push(

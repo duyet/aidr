@@ -2,7 +2,11 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { MergePlan } from "../dedupe.js";
 import type { IngestContext } from "../ingest/context.js";
-import { writeItems } from "../ingest/write.js";
+import {
+  demotedCanonicalStatements,
+  demotedVoteConflictDelete,
+  writeItems,
+} from "../ingest/write.js";
 import { rankScore, rankSignals } from "../ranking.js";
 import type { Env } from "../types.js";
 
@@ -240,5 +244,203 @@ describe("writeItems: merge into an existing canonical", () => {
     );
     expect(logAt).toBeGreaterThanOrEqual(0);
     expect(logAt).toBeLessThan(upsertAt);
+  });
+});
+
+describe("writeItems: an official post takes the canonical", () => {
+  const OFFICIAL_URL = "https://blog.example.com/official";
+  const REWRITE_URL = "https://news.example.com/rewrite";
+
+  /** The demoted aggregator canonical, its readers, and the `item_votes`
+   * rows they left on it: two voted only there (must move), one voted on
+   * both ids (collides on the `(item_id, user_id)` primary key). */
+  function seeded(): DatabaseSync {
+    const db = new DatabaseSync(":memory:");
+    db.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, status TEXT, duplicate_of TEXT);
+      CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        PRIMARY KEY (item_id, user_id));
+      CREATE TABLE notifications (channel TEXT NOT NULL, item_id TEXT NOT NULL,
+        target TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
+        posted_at INTEGER NOT NULL, PRIMARY KEY (channel, item_id));`);
+    db.prepare("INSERT INTO items VALUES (?, 'published', NULL)").run("canon");
+    // The official item's row lands earlier in the same batch.
+    db.prepare("INSERT INTO items VALUES (?, 'published', NULL)").run("post");
+    const vote = db.prepare("INSERT INTO item_votes VALUES (?, ?, ?, 1)");
+    vote.run("canon", "only-demoted", 1);
+    vote.run("canon", "also-only-demoted", 1);
+    vote.run("canon", "both", -1);
+    vote.run("post", "both", 1);
+    return db;
+  }
+
+  it("moves the votes and leaves one row for a reader who voted on both ids", async () => {
+    const db = seeded();
+    const env = d1(db);
+
+    await env.batch(
+      demotedCanonicalStatements(
+        env as unknown as D1Database,
+        "canon",
+        "post"
+      ) as unknown as { run(): void }[]
+    );
+
+    expect(
+      db
+        .prepare(
+          "SELECT item_id, user_id, value FROM item_votes ORDER BY user_id"
+        )
+        .all()
+    ).toEqual([
+      { item_id: "post", user_id: "also-only-demoted", value: 1 },
+      // The canonical's own vote survives; the demoted duplicate is gone.
+      { item_id: "post", user_id: "both", value: 1 },
+      { item_id: "post", user_id: "only-demoted", value: 1 },
+    ]);
+    expect(
+      db
+        .prepare("SELECT COUNT(*) AS n FROM item_votes WHERE item_id = 'canon'")
+        .get()
+    ).toEqual({ n: 0 });
+  });
+
+  it("deletes the colliding votes before the move", () => {
+    const sent: { sql: string; args: unknown[] }[] = [];
+    const db = {
+      prepare: (sql: string) => ({
+        bind: (...args: unknown[]) => {
+          sent.push({ sql, args });
+          return {};
+        },
+      }),
+    } as unknown as D1Database;
+
+    demotedCanonicalStatements(db, "canon", "post");
+
+    const deleteAt = sent.findIndex((s) =>
+      s.sql.includes("DELETE FROM item_votes")
+    );
+    const moveAt = sent.findIndex((s) =>
+      s.sql.includes("UPDATE item_votes SET")
+    );
+    // Order matters: moving first would either collide or, under
+    // UPDATE OR IGNORE, strand the demoted row on an item nothing shows.
+    expect(deleteAt).toBeGreaterThanOrEqual(0);
+    expect(moveAt).toBeGreaterThan(deleteAt);
+    expect(sent[deleteAt]?.args).toEqual(["canon", "post"]);
+    const helper: { sql: string }[] = [];
+    demotedVoteConflictDelete(
+      {
+        prepare: (sql: string) => ({
+          bind: () => {
+            helper.push({ sql });
+            return {};
+          },
+        }),
+      } as unknown as D1Database,
+      "canon",
+      "post"
+    );
+    expect(helper[0]?.sql).toBe(sent[deleteAt]?.sql);
+  });
+
+  it("ranks the new canonical on the votes it takes over", async () => {
+    const now = Date.UTC(2026, 9, 1, 12);
+    const nowSec = now / 1000;
+    const db = new DatabaseSync(":memory:");
+    db.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, source_id TEXT,
+        external_id TEXT, url TEXT, title TEXT, summary TEXT,
+        published_at INTEGER, fetched_at INTEGER, points INTEGER,
+        comments INTEGER, llm_relevance REAL, llm_importance REAL,
+        llm_quality REAL, category TEXT, tags TEXT, rank_score REAL,
+        status TEXT, llm_tokens INTEGER, duplicate_of TEXT, image_url TEXT,
+        source_lang TEXT, media_manifest TEXT);
+      CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        PRIMARY KEY (item_id, user_id));
+      CREATE TABLE notifications (channel TEXT NOT NULL, item_id TEXT NOT NULL,
+        target TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
+        posted_at INTEGER NOT NULL, PRIMARY KEY (channel, item_id));
+      CREATE TABLE item_content_log (item_id TEXT, lang TEXT, field TEXT,
+        before_text TEXT, after_text TEXT, reason TEXT, created_at INTEGER);`);
+    db.prepare(
+      `INSERT INTO items (id, source_id, url, title, published_at, points,
+         comments, tags, rank_score, status, duplicate_of)
+       VALUES ('canon', 'aggregator', ?, 'Story', ?, 0, 0, '[]', 1,
+         'published', NULL)`
+    ).run(REWRITE_URL, nowSec - 3 * 3600);
+    const vote = db.prepare("INSERT INTO item_votes VALUES (?, ?, ?, 1)");
+    // Net on the demoted id: +1 + 1 - 1 = 1.
+    vote.run("canon", "only-demoted", 1);
+    vote.run("canon", "also-only-demoted", 1);
+    vote.run("canon", "both", -1);
+    vote.run("post", "both", 1);
+
+    const ctx = {
+      env: { DB: d1(db) } as unknown as Env,
+      step: { do: (_name: string, fn: () => Promise<unknown>) => fn() },
+    } as unknown as IngestContext;
+
+    await writeItems(ctx, {
+      newRows: [
+        {
+          id: "post",
+          source: { id: "official", type: "rss", config: "{}", enabled: 1 },
+          item: {
+            url: OFFICIAL_URL,
+            title: "Story",
+            summary: "The official post.",
+            publishedAt: nowSec - 3600,
+            sourceLang: "en",
+          },
+        },
+      ],
+      scored: new Map(),
+      translated: new Map(),
+      mergePlan: {
+        merged: new Map(),
+        demoted: new Map([["canon", "post"]]),
+        canonicalUpdates: new Map([
+          [
+            "post",
+            {
+              isExisting: false,
+              extraSources: [],
+              extraTopics: [],
+              maxPoints: 0,
+              maxComments: 0,
+              members: [],
+            },
+          ],
+        ]),
+      } satisfies MergePlan,
+      canonicalTagsByItem: new Map(),
+      now,
+    });
+
+    const stored = (
+      db.prepare("SELECT rank_score FROM items WHERE id = 'post'").get() as {
+        rank_score: number;
+      }
+    ).rank_score;
+    const rankInput = {
+      importance: 5,
+      quality: 5,
+      publishedAt: (nowSec - 3600) * 1000,
+      now,
+      ...rankSignals([
+        { sourceId: "official", points: 0, comments: 0, url: OFFICIAL_URL },
+      ]),
+    };
+    // The batch moves +1 of net votes onto this row after the re-rank read
+    // D1 and skipped the new id, so the stored score has to carry it.
+    expect(stored).toBeCloseTo(rankScore({ ...rankInput, voteNet: 1 }), 6);
+    expect(stored).not.toBeCloseTo(rankScore(rankInput), 6);
+    expect(
+      db
+        .prepare("SELECT COUNT(*) AS n FROM item_votes WHERE item_id = 'canon'")
+        .get()
+    ).toEqual({ n: 0 });
   });
 });

@@ -489,7 +489,7 @@ describe("source mix", () => {
 });
 
 describe("demotedCanonicalStatements", () => {
-  it("re-points the cluster, demotes the old canonical and moves sent notifications", () => {
+  it("re-points the cluster, demotes the old canonical and moves sent notifications and votes", () => {
     const sent: { sql: string; args: unknown[] }[] = [];
     const db = {
       prepare: (sql: string) => ({
@@ -504,6 +504,10 @@ describe("demotedCanonicalStatements", () => {
       ["clef-post", "932a29ca"],
       ["clef-post", "932a29ca"],
       ["clef-post", "932a29ca"],
+      // (item_id, user_id) is the primary key, so the collision delete runs
+      // before the move.
+      ["932a29ca", "clef-post"],
+      ["clef-post", "932a29ca"],
     ]);
     expect(sent[0].sql).toMatch(
       /SET duplicate_of = \? WHERE status = 'merged'/
@@ -514,6 +518,8 @@ describe("demotedCanonicalStatements", () => {
     // Moved, not copied: the Telegram post is not repeated and the day's
     // sent count stays one.
     expect(sent[2].sql).toMatch(/UPDATE OR IGNORE notifications SET item_id/);
+    expect(sent[3].sql).toMatch(/DELETE FROM item_votes/);
+    expect(sent[4].sql).toMatch(/UPDATE item_votes SET item_id/);
   });
 });
 
