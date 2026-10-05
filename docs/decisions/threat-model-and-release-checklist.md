@@ -59,7 +59,7 @@ Run before a deploy. Tick each line with evidence (a PR comment or run link).
 6. Deploy with `pnpm --filter @aidr/web deploy` (not `cf migrate`, which drops
    Workflow and Durable Object bindings).
 7. After deploy: `.agents/skills/verify-aidr/bin/verify-aidr doctor`, then
-   `GET /api/health`, and one hourly run reaching email and Telegram.
+   `GET /api/health`, and one ingest run (the 30-minute alarm) reaching email, Telegram, and, when the Page is configured, Facebook.
 8. Live checks that CI cannot do: public and private route headers and
    redirects, locale caching, `/__clerk/*` rate-limit rule present and read
    back.
