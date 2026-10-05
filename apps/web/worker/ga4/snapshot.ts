@@ -190,7 +190,9 @@ function safeJsonParse(raw: string): unknown {
  * missing day cannot blank the tab.
  */
 export function ga4Audience(snapshot: Ga4Snapshot): Ga4Audience {
-  const daily = [...snapshot.daily].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const daily = [...snapshot.daily].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0
+  );
   const dau = daily.length ? (daily[daily.length - 1]?.users ?? null) : null;
 
   const mau = snapshot.totals.users;

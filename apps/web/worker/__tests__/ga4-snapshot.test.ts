@@ -90,6 +90,22 @@ describe("ga4Audience", () => {
     expect(audience.avgDailyViews).toBe(20);
   });
 
+  it("uses the later row when the latest day is duplicated", () => {
+    const audience = ga4Audience(
+      parseGa4Snapshot({
+        ...BASE,
+        daily: [
+          { date: "2026-09-02", views: 1, users: 4, sessions: 1 },
+          { date: "2026-09-03", views: 1, users: 2, sessions: 1 },
+          { date: "2026-09-03", views: 1, users: 7, sessions: 1 },
+        ],
+      })!
+    );
+
+    // Equal dates compare as 0, so a stable sort keeps this later input row last.
+    expect(audience.dau).toBe(7);
+  });
+
   it("still reports the 28-day totals when the daily series is empty", () => {
     const audience = ga4Audience(parseGa4Snapshot(BASE)!);
     expect(audience.dau).toBeNull();
