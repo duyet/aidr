@@ -166,6 +166,19 @@ describe("parseRssItems", () => {
     // A missed &nbsp; decode would leave the letters "nbsp".
     expect(item.summary).toBe("hello world");
   });
+
+  it("still returns an undated item with a non-finite publishedAt", () => {
+    const [item] = parseRssItems(`<item>
+      <title>No clock</title>
+      <link>https://example.com/undated</link>
+      <description>Missing pubDate.</description>
+    </item>`);
+
+    // Summary clipping tests rely on parseRssItems keeping the row.
+    // A Date.now() stand-in would make Number.isFinite true and look fresh.
+    expect(item.url).toBe("https://example.com/undated");
+    expect(Number.isFinite(item.publishedAt)).toBe(false);
+  });
 });
 
 describe("rssAdapter", () => {
@@ -186,6 +199,33 @@ describe("rssAdapter", () => {
       Math.floor(Date.parse("2026-09-08T00:00:00Z") / 1000)
     );
     expect(old).toHaveLength(0);
+  });
+
+  it("omits an undated item and keeps a dated item inside the window", async () => {
+    const xml = `<?xml version="1.0"?>
+<rss><channel>
+<item>
+  <title>Dated</title>
+  <link>https://example.com/dated</link>
+  <pubDate>Mon, 07 Sep 2026 00:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>Undated</title>
+  <link>https://example.com/undated</link>
+</item>
+</channel></rss>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(xml, { status: 200 }))
+    );
+    const items = await rssAdapter.fetchItems(
+      { feed: "https://example.com/feed.xml" },
+      Math.floor(Date.parse("2026-09-06T00:00:00Z") / 1000)
+    );
+    // Date.now() used to put the undated URL inside every since-window.
+    expect(items.map((item) => item.url)).toEqual([
+      "https://example.com/dated",
+    ]);
   });
 });
 
