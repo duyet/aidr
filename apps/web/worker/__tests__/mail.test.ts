@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -8,7 +9,7 @@ import {
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
 import { topicColor } from "../../src/lib/topic-color.js";
-import { previewCampaign } from "../mail/campaigns.js";
+import { previewCampaign, sendCampaign } from "../mail/campaigns.js";
 import { parseWrapJson } from "../mail/compose.js";
 import { parseRssItems } from "../mail/content.js";
 import { markdownToEmailHtml, markdownToPlainText } from "../mail/markdown.js";
@@ -22,6 +23,7 @@ import {
   settingsUrl,
   unsubscribeUrl,
 } from "../mail/render.js";
+import { resetMailSchemaCache } from "../mail/schema.js";
 import { digestFrom, notesFrom, sendSubscriberEmail } from "../mail/send.js";
 import {
   applyPlaceholders,
@@ -553,5 +555,228 @@ describe("parseRssItems", () => {
         excerpt: "Hello",
       },
     ]);
+  });
+});
+
+type SqliteArg = null | number | bigint | string | NodeJS.ArrayBufferView;
+
+/** In-memory D1. Applies the UPDATE `sendCampaign` runs so tests can read it. */
+function mailD1(db: DatabaseSync): D1Database {
+  return {
+    prepare(sql: string) {
+      let args: SqliteArg[] = [];
+      const stmt = {
+        bind(...values: unknown[]) {
+          args = values as SqliteArg[];
+          return stmt;
+        },
+        async first<T>() {
+          return (db.prepare(sql).get(...args) as T | undefined) ?? null;
+        },
+        async all<T>() {
+          return { results: db.prepare(sql).all(...args) as T[] };
+        },
+        async run() {
+          db.prepare(sql).run(...args);
+          return { success: true, meta: { changes: 0 } };
+        },
+      };
+      return stmt;
+    },
+    async batch(statements: Array<{ run: () => Promise<unknown> }>) {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    },
+  } as unknown as D1Database;
+}
+
+function seedMailDb(): DatabaseSync {
+  const db = new DatabaseSync(":memory:");
+  db.exec(`
+    CREATE TABLE subscribers (
+      email TEXT PRIMARY KEY,
+      confirmed INTEGER NOT NULL DEFAULT 0,
+      unsubscribe_token TEXT NOT NULL
+    );
+    CREATE TABLE email_campaigns (
+      id TEXT PRIMARY KEY,
+      template_id TEXT,
+      subject TEXT NOT NULL,
+      preheader TEXT NOT NULL DEFAULT '',
+      body_md TEXT NOT NULL DEFAULT '',
+      cta_label TEXT NOT NULL DEFAULT '',
+      cta_url TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'draft',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      sent_at INTEGER,
+      sent_count INTEGER NOT NULL DEFAULT 0,
+      failed_count INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE email_sends (
+      campaign_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      sent_at INTEGER,
+      error TEXT,
+      PRIMARY KEY (campaign_id, email)
+    );
+  `);
+  return db;
+}
+
+const CAMPAIGN_ID = "camp-partial";
+
+function seedCampaign(
+  db: DatabaseSync,
+  status = "draft",
+  failedCount = 0
+): void {
+  db.prepare(
+    `INSERT INTO email_campaigns
+       (id, subject, preheader, body_md, cta_label, cta_url, status,
+        created_at, updated_at, sent_count, failed_count)
+     VALUES (?, 'Hello', '', 'Body', '', '', ?, 1, 1, 0, ?)`
+  ).run(CAMPAIGN_ID, status, failedCount);
+}
+
+function seedSubscriber(db: DatabaseSync, email: string, confirmed = 1): void {
+  db.prepare(
+    `INSERT INTO subscribers (email, confirmed, unsubscribe_token)
+     VALUES (?, ?, ?)`
+  ).run(email, confirmed, `tok-${email}`);
+}
+
+function storedCampaign(db: DatabaseSync): {
+  status: string;
+  sent_count: number;
+  failed_count: number;
+} {
+  return db
+    .prepare(
+      `SELECT status, sent_count, failed_count
+       FROM email_campaigns WHERE id = ?`
+    )
+    .get(CAMPAIGN_ID) as {
+    status: string;
+    sent_count: number;
+    failed_count: number;
+  };
+}
+
+function campaignEnv(
+  db: DatabaseSync,
+  send: (mail: { to: string }) => Promise<void>
+): import("../types.js").Env {
+  return {
+    DB: mailD1(db),
+    EMAIL: { send },
+  } as unknown as import("../types.js").Env;
+}
+
+describe("sendCampaign", () => {
+  it("returns 400 when nobody is confirmed", async () => {
+    resetMailSchemaCache();
+    const db = seedMailDb();
+    seedCampaign(db);
+    seedSubscriber(db, "quiet@example.com", 0);
+    const send = vi.fn(async () => {});
+    const result = await sendCampaign(campaignEnv(db, send), CAMPAIGN_ID);
+    expect(result).toEqual({ error: "no subscribers", status: 400 });
+    expect(storedCampaign(db).status).toBe("draft");
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("stays draft when one recipient fails", async () => {
+    resetMailSchemaCache();
+    const db = seedMailDb();
+    seedCampaign(db);
+    seedSubscriber(db, "ok@example.com");
+    seedSubscriber(db, "bad@example.com");
+    const result = await sendCampaign(
+      campaignEnv(db, async (mail) => {
+        if (mail.to === "bad@example.com") throw new Error("smtp down");
+      }),
+      CAMPAIGN_ID
+    );
+    expect(result).toEqual({ ok: true, sent: 1, failed: 1 });
+    expect(storedCampaign(db)).toMatchObject({
+      status: "draft",
+      failed_count: 1,
+    });
+  });
+
+  it("retries only the address that failed, then marks sent", async () => {
+    resetMailSchemaCache();
+    const db = seedMailDb();
+    seedCampaign(db);
+    seedSubscriber(db, "ok@example.com");
+    seedSubscriber(db, "bad@example.com");
+    const reject = new Set(["bad@example.com"]);
+    const mailed: string[] = [];
+    const env = campaignEnv(db, async (mail) => {
+      mailed.push(mail.to);
+      if (reject.has(mail.to)) throw new Error("smtp down");
+    });
+    const first = await sendCampaign(env, CAMPAIGN_ID);
+    expect(first).toEqual({ ok: true, sent: 1, failed: 1 });
+    expect(storedCampaign(db)).toMatchObject({
+      status: "draft",
+      failed_count: 1,
+    });
+
+    mailed.length = 0;
+    reject.clear();
+    const second = await sendCampaign(env, CAMPAIGN_ID);
+    expect(mailed).toEqual(["bad@example.com"]);
+    expect(second).toEqual({ ok: true, sent: 1, failed: 0 });
+    expect(storedCampaign(db)).toMatchObject({
+      status: "sent",
+      failed_count: 0,
+    });
+  });
+
+  it("retries a campaign left marked sent with failures", async () => {
+    resetMailSchemaCache();
+    const db = seedMailDb();
+    seedCampaign(db, "sent", 1);
+    seedSubscriber(db, "ok@example.com");
+    seedSubscriber(db, "bad@example.com");
+    db.prepare(
+      `INSERT INTO email_sends (campaign_id, email, sent_at, error)
+       VALUES (?, 'ok@example.com', 1, NULL)`
+    ).run(CAMPAIGN_ID);
+    db.prepare(
+      `INSERT INTO email_sends (campaign_id, email, sent_at, error)
+       VALUES (?, 'bad@example.com', 1, 'email send failed')`
+    ).run(CAMPAIGN_ID);
+
+    const mailed: string[] = [];
+    const result = await sendCampaign(
+      campaignEnv(db, async (mail) => {
+        mailed.push(mail.to);
+      }),
+      CAMPAIGN_ID
+    );
+    expect(mailed).toEqual(["bad@example.com"]);
+    expect(result).toEqual({ ok: true, sent: 1, failed: 0 });
+    expect(storedCampaign(db)).toMatchObject({
+      status: "sent",
+      failed_count: 0,
+    });
+  });
+
+  it("returns 409 when the campaign is already sent", async () => {
+    resetMailSchemaCache();
+    const db = seedMailDb();
+    seedCampaign(db, "sent", 0);
+    const send = vi.fn(async () => {});
+    const result = await sendCampaign(campaignEnv(db, send), CAMPAIGN_ID);
+    expect(result).toEqual({ error: "campaign already sent", status: 409 });
+    expect(send).not.toHaveBeenCalled();
+    expect(storedCampaign(db)).toMatchObject({
+      status: "sent",
+      failed_count: 0,
+    });
   });
 });
