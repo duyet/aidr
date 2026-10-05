@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import type { SuggestionStatusView } from "../../../worker/contributions.js";
 import { bearerHeaders } from "../../lib/clerk-user";
+import { withLang } from "../../lib/locale-url";
 import { fetchSuggestionStatus, submitSuggestion } from "../../lib/suggest-fn";
 import type { Lang } from "../../lib/types";
 import { SuggestionVerdict } from "./SuggestionVerdict";
+
+/** Contributions list for the language the reader is using. */
+export function suggestionTimeoutHref(lang: Lang): string {
+  return withLang("/contribute", lang);
+}
 
 const POLL_INTERVAL_MS = 2500;
 /** Past this the review is left to the hourly step; the reader is pointed
@@ -105,7 +111,10 @@ export function SuggestForm({
         {vi
           ? "Vẫn đang duyệt. Xem kết quả ở "
           : "Still reviewing. See the result in "}
-        <a href="/submit" className="underline underline-offset-2">
+        <a
+          href={suggestionTimeoutHref(lang)}
+          className="underline underline-offset-2"
+        >
           {vi ? "đóng góp của bạn" : "your contributions"}
         </a>
         .
