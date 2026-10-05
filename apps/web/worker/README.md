@@ -11,23 +11,6 @@ sources, ranks items, and publishes the daily edition. Primary store is D1
 | Rank | `llm.ts`, `ranking.ts`, `tldr.ts` → `tldr_snapshots` |
 | Publish | `digest/edition.ts` shared by `subscribe/send.ts` (email) and `notify/` (Telegram VI, Telegram EN, optional webhook) |
 
-## Wiring into the build (action needed from the frontend/entry-server owner)
-
-`wrangler.toml` points `main` at `dist/server/server.js`, which is produced
-by the TanStack Start / `@cloudflare/vite-plugin` build from `src/server.ts`.
-
-For the Workflow class and Durable Object scheduler in this directory to end
-up in the final Worker bundle, re-export them from `apps/web/src/server.ts`:
-
-```ts
-export { NewsIngestWorkflow } from "../worker/workflow";
-export { NewsIngestScheduler } from "../worker/ingest-scheduler";
-```
-
-Everything else (migrations, adapters, LLM calls, ranking, the workflow
-itself) is fully implemented in this directory and does not depend on the
-frontend.
-
 ## Sources
 
 ### One registry, three consumers
@@ -59,7 +42,7 @@ seed change, and no deploy. Use the existing admin MCP tool (or
 `POST /api/admin/sources` with the same body):
 
 ```bash
-curl -X POST https://aidr.today/api/admin/mcp \
+curl -X POST https://aidr.today/api/mcp \
   -H "Authorization: Bearer $NEWS_ADMIN_TOKEN" \
   -H 'content-type: application/json' \
   -d '{
