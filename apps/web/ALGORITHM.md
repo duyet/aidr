@@ -9,7 +9,7 @@ bilingual feed.
 - [Ingest HTTP / D1 contract](#ingest-http--d1-contract)
 - [Dry runs, reruns and previews (admin / MCP)](#dry-runs-reruns-and-previews-admin--mcp)
 - [Ops pitfalls](#ops-pitfalls)
-- [Pipeline (per hourly run)](#pipeline-per-hourly-run)
+- [Pipeline (per ingest run)](#pipeline-per-ingest-run)
   - [1. Fetch](#1-fetch)
   - [1b. Per-source health + staleness](#1b-per-source-health--staleness)
   - [2. Dedupe](#2-dedupe)
@@ -29,7 +29,7 @@ bilingual feed.
 
 ## Overview
 
-One hourly run does three jobs. Prompts live in `worker/llm.ts`; the steps live in `worker/ingest/` (one module per step), run in order by `worker/workflow.ts`.
+One ingest run does three jobs. The scheduler starts one every 30 minutes, with a 25-minute coalesce (`INGEST_MIN_INTERVAL_MS`). Prompts live in `worker/llm.ts`; the steps live in `worker/ingest/` (one module per step), run in order by `worker/workflow.ts`.
 
 | Phase | What it writes | Where |
 | --- | --- | --- |
@@ -43,7 +43,7 @@ Publish has two deliveries and they do not share a clock or a table:
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
 
-An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next hourly run retries. Email is not a `Notifier`: a notifier is one target plus a trending post.
+An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next run retries. Email is not a `Notifier`: a notifier is one target plus a trending post.
 
 ## Scheduling & coalesce
 
@@ -235,7 +235,7 @@ The player is a click-to-play `youtube-nocookie.com` facade.
   (or at least is no longer the previous id) and `runsToday > 0`.
 - Do not invent a `:05/:20/:35/:50` schedule fire.
 
-## Pipeline (per hourly run)
+## Pipeline (per ingest run)
 
 ### 1. Fetch
 
@@ -700,7 +700,7 @@ stories, default 5) to confirmed subscribers, once per their local
 morning (from 07:00 in the subscriber's timezone). Copy comes from the
 same edition as Telegram (`worker/digest/edition.ts`): `bullets_vi` or
 `bullets_en` for that local date, with no cross-language fallback. An
-empty column leaves `last_sent_date` unset so the next hourly run
+empty column leaves `last_sent_date` unset so the next run
 retries. Idempotency stays on `subscribers.last_sent_date`, not the
 `notifications` table.
 
@@ -855,7 +855,7 @@ deliberately non-spammy.
   Messenger send. Copy that asks people to like, share, or comment is
   refused before the request. Error codes 10, 100, 190, 200, and 368 are
   stored as `ambiguous` and not retried. Rate limits (4, 17, 32, 80001,
-  80006) wait for the next hourly run. `FACEBOOK_PAGE_ID`, `FACEBOOK_APP_ID`,
+  80006) wait for the next run. `FACEBOOK_PAGE_ID`, `FACEBOOK_APP_ID`,
   `FACEBOOK_APP_SECRET`, and `FACEBOOK_PAGE_ACCESS_TOKEN` come from the
   install's `.env.local`. None of them are committed. The Page token posts.
   The app id and secret only mint a replacement Page token.

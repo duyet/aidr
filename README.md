@@ -46,11 +46,11 @@ Cloudflare Worker (`aidr`), TanStack Start frontend, D1 as the primary store.
 
 ## Pipeline
 
-One hourly `NewsIngestWorkflow`. The contract is [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md).
+The scheduler starts a `NewsIngestWorkflow` every 30 minutes, with a 25-minute coalesce (`INGEST_MIN_INTERVAL_MS`). The contract is [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md).
 
 1. **Consume** — enabled sources (`worker/sources/`) are fetched, deduped, and enriched into `items`.
 2. **Rank** — score, translate, then a pure `rank_score` (`worker/ranking.ts`). The top of the last 24h becomes today's TL;DR snapshot: `bullets_en` and `bullets_vi` (`worker/tldr.ts`).
-3. **Publish** — one edition per language (`worker/digest/edition.ts`). Email uses the subscriber's timezone from 07:00 and their digest size. Telegram VI and Telegram EN each post once from 08:00 `Asia/Ho_Chi_Minh`. A missing language column is skipped and retried; it is not filled from the other language. Trending posts stay on Telegram.
+3. **Publish** — one edition per language (`worker/digest/edition.ts`). Email uses the subscriber's timezone from 07:00 and their digest size. Telegram VI, Telegram EN, and the English Facebook Page (`facebook-en`) each post once from 08:00 `Asia/Ho_Chi_Minh`, on the same trending bar. A missing language column is skipped and retried; it is not filled from the other language.
 
 ## Local development
 
