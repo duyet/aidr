@@ -3,6 +3,7 @@
  * posted it. Read-only; reuses the notifier's own bar, budget and hours so
  * the story page cannot drift from what the hourly run decides.
  */
+import { archiveDateOfSec, dayBoundsSec } from "../../src/lib/day-archive.js";
 import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "../time.js";
 import {
@@ -80,11 +81,13 @@ export function classifyStoryTrending(input: {
   return notPosted("pending");
 }
 
-/** Position within the story's UTC day (the homepage grouping), rank_score
- *  desc, ties by id so it is stable. */
+/** Position within the story's Asia/Ho_Chi_Minh day (the same day as the
+ *  homepage archive), rank_score desc, ties by id so it is stable. */
 export function dayBounds(publishedAtSec: number): [number, number] {
-  const start = Math.floor(publishedAtSec / 86400) * 86400;
-  return [start, start + 86400];
+  const date = archiveDateOfSec(publishedAtSec);
+  if (!date) return [0, 0];
+  const { start, end } = dayBoundsSec(date);
+  return [start, end];
 }
 
 export async function loadStoryRanking(
