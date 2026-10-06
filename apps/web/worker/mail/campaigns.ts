@@ -362,9 +362,16 @@ export async function sendCampaign(
 
   const status =
     failed > 0 ? "draft" : sent > 0 || everyoneAlreadySent ? "sent" : "draft";
+  // `sent_count` is the campaign's lifetime total, so a retry adds to it: it
+  // mails only the addresses still missing a null-error `email_sends` row, and
+  // each of those flips exactly one row, so no address is counted twice.
+  // Overwriting with the per-run count would drop the earlier run's
+  // deliveries from the row. `failed_count` is the other thing the operator
+  // reads, so it stays this run's failures — the count still owed a retry,
+  // which is what the 409 guard above keys on.
   await env.DB.prepare(
     `UPDATE email_campaigns
-     SET status = ?, sent_at = ?, sent_count = ?, failed_count = ?, updated_at = ?
+     SET status = ?, sent_at = ?, sent_count = sent_count + ?, failed_count = ?, updated_at = ?
      WHERE id = ?`
   )
     .bind(status, Date.now(), sent, failed, Date.now(), id)

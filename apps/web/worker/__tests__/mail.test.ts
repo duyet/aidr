@@ -630,14 +630,15 @@ const CAMPAIGN_ID = "camp-partial";
 function seedCampaign(
   db: DatabaseSync,
   status = "draft",
-  failedCount = 0
+  failedCount = 0,
+  sentCount = 0
 ): void {
   db.prepare(
     `INSERT INTO email_campaigns
        (id, subject, preheader, body_md, cta_label, cta_url, status,
         created_at, updated_at, sent_count, failed_count)
-     VALUES (?, 'Hello', '', 'Body', '', '', ?, 1, 1, 0, ?)`
-  ).run(CAMPAIGN_ID, status, failedCount);
+     VALUES (?, 'Hello', '', 'Body', '', '', ?, 1, 1, ?, ?)`
+  ).run(CAMPAIGN_ID, status, sentCount, failedCount);
 }
 
 function seedSubscriber(db: DatabaseSync, email: string, confirmed = 1): void {
@@ -762,6 +763,70 @@ describe("sendCampaign", () => {
     expect(result).toEqual({ ok: true, sent: 1, failed: 0 });
     expect(storedCampaign(db)).toMatchObject({
       status: "sent",
+      failed_count: 0,
+    });
+  });
+
+  it("adds a retry's sends to sent_count instead of replacing it", async () => {
+    resetMailSchemaCache();
+    const db = seedMailDb();
+    seedCampaign(db);
+    seedSubscriber(db, "ok1@example.com");
+    seedSubscriber(db, "ok2@example.com");
+    seedSubscriber(db, "bad@example.com");
+    const reject = new Set(["bad@example.com"]);
+    const env = campaignEnv(db, async (mail) => {
+      if (reject.has(mail.to)) throw new Error("smtp down");
+    });
+
+    expect(await sendCampaign(env, CAMPAIGN_ID)).toEqual({
+      ok: true,
+      sent: 2,
+      failed: 1,
+    });
+    expect(storedCampaign(db)).toMatchObject({
+      status: "draft",
+      sent_count: 2,
+      failed_count: 1,
+    });
+
+    reject.clear();
+    expect(await sendCampaign(env, CAMPAIGN_ID)).toEqual({
+      ok: true,
+      sent: 1,
+      failed: 0,
+    });
+    expect(storedCampaign(db)).toMatchObject({
+      status: "sent",
+      sent_count: 3,
+      failed_count: 0,
+    });
+  });
+
+  it("adds to a legacy campaign's sent_count when retrying it", async () => {
+    resetMailSchemaCache();
+    const db = seedMailDb();
+    // A row the pre-accumulate code left marked sent: 100 delivered, 1 owed.
+    seedCampaign(db, "sent", 1, 100);
+    seedSubscriber(db, "ok@example.com");
+    seedSubscriber(db, "bad@example.com");
+    db.prepare(
+      `INSERT INTO email_sends (campaign_id, email, sent_at, error)
+       VALUES (?, 'ok@example.com', 1, NULL)`
+    ).run(CAMPAIGN_ID);
+    db.prepare(
+      `INSERT INTO email_sends (campaign_id, email, sent_at, error)
+       VALUES (?, 'bad@example.com', 1, 'email send failed')`
+    ).run(CAMPAIGN_ID);
+
+    const result = await sendCampaign(
+      campaignEnv(db, async () => {}),
+      CAMPAIGN_ID
+    );
+    expect(result).toEqual({ ok: true, sent: 1, failed: 0 });
+    expect(storedCampaign(db)).toMatchObject({
+      status: "sent",
+      sent_count: 101,
       failed_count: 0,
     });
   });
