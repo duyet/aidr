@@ -2,6 +2,7 @@ import type { WorkflowStep } from "cloudflare:workers";
 import { describe, expect, it, vi } from "vitest";
 import type { IngestContext, SourceRow } from "../ingest/context.js";
 import { fetchSources } from "../ingest/fetch.js";
+import { resolveSkipReasons } from "../ingest/source-health.js";
 import { emptySourceHealth } from "../source-health.js";
 
 /**
@@ -9,6 +10,11 @@ import { emptySourceHealth } from "../source-health.js";
  * `step.do`. The `.catch` in `fetchSources` receives a plain `Error` whose
  * message is `SourceFetchError: <original message>` (`instanceof` is false).
  * Run 5872dfd2 logged exactly that and then stored `skipReason: "empty"`.
+ *
+ * A throw that is *not* a `SourceFetchError` is still a failed fetch, not a
+ * quiet feed — `other` below throws a plain `Error` and must come back
+ * `fetch_failed`, otherwise a crashed step reads `empty` on the dashboard
+ * (#357).
  */
 function cloningStep(): WorkflowStep {
   return {
@@ -61,6 +67,12 @@ describe("fetchSources records a cloned SourceFetchError", () => {
     expect(fetchFailures.get("arstechnica-ai")).toBe("fetch_failed");
     expect(fetchFailures.get("marktechpost")).toBe("parse_failed");
     expect(fetchFailures.has("quiet")).toBe(false);
-    expect(fetchFailures.has("other")).toBe(false);
+    expect(fetchFailures.get("other")).toBe("fetch_failed");
+
+    resolveSkipReasons(sourceHealth, fetchFailures);
+    expect(sourceHealth["arstechnica-ai"].skipReason).toBe("fetch_failed");
+    expect(sourceHealth.marktechpost.skipReason).toBe("parse_failed");
+    expect(sourceHealth.quiet.skipReason).toBe("empty");
+    expect(sourceHealth.other.skipReason).toBe("fetch_failed");
   });
 });
