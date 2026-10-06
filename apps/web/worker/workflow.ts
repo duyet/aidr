@@ -54,6 +54,7 @@ import { setLlmCallLogger, withLlmCallContext } from "./llm.js";
 import { createD1LlmCallLogger, pruneLlmCalls } from "./llm-call-log.js";
 import { assertMediaManifestSchema } from "./media-schema.js";
 import type { NotifyChannelReason } from "./notify/index.js";
+import { pruneSubscribeAttempts } from "./rate-limit.js";
 import {
   buildRunStats,
   type RunStepInfo,
@@ -167,6 +168,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     });
 
     await pruneLlmCalls(this.env);
+    await pruneSubscribeAttempts(this.env.DB);
 
     /** Fresh items from sources through the D1 write. Each chain step runs only
      * when the run selected it and every step before it (see `runChainStep`);

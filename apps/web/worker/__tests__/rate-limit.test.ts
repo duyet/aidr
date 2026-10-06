@@ -4,6 +4,7 @@ import {
   checkRateLimit,
   hashIp,
   ONE_DAY_SEC,
+  pruneSubscribeAttempts,
 } from "../rate-limit.js";
 
 describe("buildRateLimitQuery", () => {
@@ -146,5 +147,55 @@ describe("hashIp", () => {
     const hash = await hashIp("203.0.113.42");
     expect(hash).not.toContain("203.0.113.42");
     expect(hash).toMatch(/^[0-9a-f]{64}$/); // sha256 hex
+  });
+});
+
+function makeDeleteDb(throwOnRun = false) {
+  const calls: { sql: string; args: unknown[] }[] = [];
+  const db = {
+    prepare(sql: string) {
+      return {
+        bind: (...args: unknown[]) => {
+          calls.push({ sql, args });
+          return {
+            run: async () => {
+              if (throwOnRun)
+                throw new Error("no such table: subscribe_attempts");
+              return { success: true };
+            },
+          };
+        },
+      };
+    },
+  };
+  return { db: db as unknown as D1Database, calls };
+}
+
+describe("pruneSubscribeAttempts", () => {
+  it("deletes rows older than one day behind nowMs", async () => {
+    const { db, calls } = makeDeleteDb();
+    await pruneSubscribeAttempts(db, 1_000_000_000_000);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].sql).toContain("DELETE FROM subscribe_attempts");
+    expect(calls[0].sql).toContain("created_at < ?");
+    expect(calls[0].args[0]).toBe(1_000_000_000_000 - ONE_DAY_SEC * 1000);
+    expect(calls[0].args[0]).toBe(1_000_000_000_000 - 86_400_000);
+    expect(ONE_DAY_SEC * 1000).toBe(86_400_000);
+  });
+
+  it("defaults the cutoff to Date.now()", async () => {
+    const before = Date.now();
+    const { db, calls } = makeDeleteDb();
+    await pruneSubscribeAttempts(db);
+    const after = Date.now();
+    const cutoff = calls[0].args[0] as number;
+    expect(cutoff).toBeGreaterThanOrEqual(before - ONE_DAY_SEC * 1000);
+    expect(cutoff).toBeLessThanOrEqual(after - ONE_DAY_SEC * 1000);
+  });
+
+  it("never throws when the table is absent", async () => {
+    const { db } = makeDeleteDb(true);
+    await expect(pruneSubscribeAttempts(db)).resolves.toBeUndefined();
   });
 });
