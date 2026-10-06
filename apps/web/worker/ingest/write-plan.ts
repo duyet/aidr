@@ -81,6 +81,9 @@ export function planNewItemWrite(input: {
   canonicalUpdate: CanonicalUpdate | undefined;
   canonicalTags: string[] | undefined;
   now: number;
+  /** Net of `item_votes` moving onto this row from a demoted canonical.
+   * This run's re-rank skips the new id, so 0 would drop those votes. */
+  voteNet?: number;
 }): NewItemWrite {
   const {
     sourceId,
@@ -90,6 +93,7 @@ export function planNewItemWrite(input: {
     mergeEntry,
     canonicalUpdate,
     now,
+    voteNet = 0,
   } = input;
   const absorbs = canonicalUpdate && !canonicalUpdate.isExisting;
 
@@ -164,6 +168,7 @@ export function planNewItemWrite(input: {
       },
       ...(absorbs ? (canonicalUpdate.members ?? []) : []),
     ]),
+    voteNet,
   });
 
   return {
