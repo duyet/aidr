@@ -249,7 +249,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
 
       tallySourceOutcomes(sourceHealth, newRows, publishedRows, mergePlan);
       resolveSkipReasons(sourceHealth, fetched.fetchFailures);
-      await carrySourceStreaks(ctx, sourceHealth);
+      await carrySourceStreaks(ctx, sourceHealth, sources);
       result.sourceHealthComplete = true;
 
       for (const score of scored.values()) result.tokens += score.tokens;

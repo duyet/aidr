@@ -1300,8 +1300,9 @@ export function mergeSourceHealth(
       continue;
     }
     const threshold = sourceStaleThreshold(source.id);
-    // Same rule as `isSourceStale`: `push` is the no-adapter pseudo-type
-    // (`user`). A typo'd type is not `"push"` and stays visible.
+    // Same rule as `isSourceStale`: every `push` row is the no-adapter
+    // pseudo-type, not just `user`, and the ingest writer now holds those
+    // streaks at 0 to match. A typo'd type is not `"push"` and stays visible.
     const isStale =
       source.type !== "push" &&
       parsed.skipReason !== "disabled" &&

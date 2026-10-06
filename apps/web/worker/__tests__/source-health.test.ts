@@ -170,7 +170,7 @@ describe("empty-run streak", () => {
       hn: health({ fetched: 0, emptyRuns: 3 }),
       arxiv: health({ fetched: 0, emptyRuns: 70 }),
     };
-    const carried = carrySourceEmptyRuns(current, previous);
+    const carried = carrySourceEmptyRuns(current, previous, new Set());
     expect(carried.hn.emptyRuns).toBe(0);
     expect(carried.arxiv.emptyRuns).toBe(71);
     // No history for a brand-new source row → start at 1, not at another
@@ -191,11 +191,50 @@ describe("empty-run streak", () => {
       {
         user: health({ emptyRuns: past }),
         "arstechnica-ai": health({ emptyRuns: past }),
-      }
+      },
+      new Set(["user"])
     );
     expect(carried.user.fetched).toBe(0);
     expect(carried.user.emptyRuns).toBe(0);
     expect(carried["arstechnica-ai"].emptyRuns).toBe(past + 1);
+  });
+
+  it("holds every push id at 0, not just `user`, and still ages an rss id", () => {
+    // `upsert_source` accepts type `push` for any id, and no push row is ever
+    // fetched, so the streak cannot reset on its own. `/data` exempts every
+    // push row by type, so the writer has to hold every push id too — or the
+    // stored streak climbs forever with nothing reading it. `external` is a
+    // real feed: the same history still ages and can go stale.
+    const past = DEFAULT_STALE_AFTER_RUNS + 100;
+    const carried = carrySourceEmptyRuns(
+      {
+        external: health({ fetched: 0, skipReason: "empty" }),
+        "rss-external": health({ fetched: 0, skipReason: "empty" }),
+      },
+      {
+        external: health({ emptyRuns: past }),
+        "rss-external": health({ emptyRuns: past }),
+      },
+      new Set(["external"])
+    );
+    expect(carried.external.fetched).toBe(0);
+    expect(carried.external.emptyRuns).toBe(0);
+    expect(isSourceStale(carried.external, "external", "push")).toBe(false);
+    expect(carried["rss-external"].emptyRuns).toBe(past + 1);
+    expect(isSourceStale(carried["rss-external"], "rss-external", "rss")).toBe(
+      true
+    );
+  });
+
+  it("keeps holding `user` at 0 when the caller has no type information", () => {
+    // Degrading to an empty push set must not start ageing the submissions
+    // row, which has no adapter by design.
+    const carried = carrySourceEmptyRuns(
+      { user: health({ fetched: 0, skipReason: "empty" }) },
+      { user: health({ emptyRuns: 400 }) },
+      new Set()
+    );
+    expect(carried.user.emptyRuns).toBe(0);
   });
 
   it("reads the previous run's streaks out of a stats blob", () => {
@@ -298,6 +337,23 @@ describe("stale detector", () => {
       emptyRuns: past,
       threshold: DEFAULT_STALE_AFTER_RUNS,
     });
+  });
+
+  it("exempts any id whose type is push, and only that type", () => {
+    // The reader (`mergeSourceHealth`) keys off the row type, so the detector
+    // does too. A typo'd type is not `"push"` and stays visible.
+    const past = DEFAULT_STALE_AFTER_RUNS + 100;
+    expect(isSourceStale(health({ emptyRuns: past }), "external", "push")).toBe(
+      false
+    );
+    expect(
+      sourceStaleVerdict(health({ emptyRuns: past }), "external", "push")
+    ).toMatchObject({ stale: false, emptyRuns: past });
+    expect(isSourceStale(health({ emptyRuns: past }), "external", "rss")).toBe(
+      true
+    );
+    // `user` stays exempt on its own, so a caller with no type cannot false-alarm.
+    expect(isSourceStale(health({ emptyRuns: past }), "user")).toBe(false);
   });
 });
 
