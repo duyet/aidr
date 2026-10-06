@@ -103,12 +103,14 @@ export async function fetchSources(
             // produced nothing (403/5xx, or a 200 that is really an HTML
             // error page). The workflow step structured-clones that error,
             // so the class is gone here and the reason is read back from
-            // the message. Everything else is logged and treated as a plain
-            // failure. `sanitizeError` is applied at write time, so the
-            // raw error never reaches D1 or an API response.
+            // the message. Anything else that reached this catch is still
+            // a failed fetch — recording nothing would report a crashed
+            // step as `empty`, i.e. a quiet feed. `sanitizeError` is
+            // applied at write time, so the raw error never reaches D1 or
+            // an API response.
             console.error(`fetch-${source.id} step failed:`, error);
-            const reason = sourceFetchFailureReason(error);
-            if (reason) fetchFailures.set(source.id, reason);
+            const reason = sourceFetchFailureReason(error) ?? "fetch_failed";
+            fetchFailures.set(source.id, reason);
             return [] as FetchedItem[];
           })
       )
