@@ -6,10 +6,7 @@ import type { SVGProps } from "react";
  *
  *  Decorative by default — every call site sits next to a label — so
  *  `aria-hidden` is on unless the caller overrides it. */
-export function ChromeMark({
-  className,
-  ...props
-}: SVGProps<SVGSVGElement>) {
+export function ChromeMark({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
