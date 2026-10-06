@@ -283,7 +283,8 @@ export async function sendCampaign(
   }
 
   const testEmail = opts.testEmail?.trim();
-  if (!testEmail && campaign.status === "sent") {
+  // `sent` with failures is not final — those readers still need the blast.
+  if (!testEmail && campaign.status === "sent" && !campaign.failed_count) {
     return { error: "campaign already sent", status: 409 };
   }
   if (testEmail) {
@@ -315,9 +316,20 @@ export async function sendCampaign(
     return { error: "no subscribers", status: 400 };
   }
 
+  const { results: deliveredRows } = await env.DB.prepare(
+    "SELECT email FROM email_sends WHERE campaign_id = ? AND error IS NULL"
+  )
+    .bind(id)
+    .all<{ email: string }>();
+  const delivered = new Set((deliveredRows ?? []).map((row) => row.email));
+  const everyoneAlreadySent = subscribers.every((sub) =>
+    delivered.has(sub.email)
+  );
+
   let sent = 0;
   let failed = 0;
   for (const sub of subscribers) {
+    if (delivered.has(sub.email)) continue;
     const rendered = previewCampaign(campaign, sub.unsubscribe_token);
     const ok = await sendSubscriberEmail(env, {
       to: sub.email,
@@ -348,12 +360,14 @@ export async function sendCampaign(
     }
   }
 
+  const status =
+    failed > 0 ? "draft" : sent > 0 || everyoneAlreadySent ? "sent" : "draft";
   await env.DB.prepare(
     `UPDATE email_campaigns
-     SET status = 'sent', sent_at = ?, sent_count = ?, failed_count = ?, updated_at = ?
+     SET status = ?, sent_at = ?, sent_count = ?, failed_count = ?, updated_at = ?
      WHERE id = ?`
   )
-    .bind(Date.now(), sent, failed, Date.now(), id)
+    .bind(status, Date.now(), sent, failed, Date.now(), id)
     .run();
 
   return { ok: true, sent, failed };
