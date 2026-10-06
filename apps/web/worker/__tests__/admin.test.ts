@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { adminActor, checkAuth } from "../admin/auth.js";
 import {
+  deleteSource,
   getLlmCalls,
   isHandlerError,
   listItems,
@@ -261,8 +262,8 @@ class FakeD1 {
 
     if (sql.startsWith("DELETE FROM sources WHERE id = ?")) {
       const [id] = args as [string];
-      this.sources.delete(id);
-      return { success: true };
+      const changes = this.sources.delete(id) ? 1 : 0;
+      return { success: true, meta: { changes } };
     }
 
     if (sql.startsWith("SELECT * FROM workflow_runs")) {
@@ -779,6 +780,28 @@ describe("upsertSource", () => {
       config: { query: "AI" },
     });
     expect(isHandlerError(result)).toBe(false);
+  });
+});
+
+describe("deleteSource", () => {
+  it("returns ok when the id deleted a row", async () => {
+    const env = makeEnv();
+    const db = env.DB as unknown as FakeD1;
+    db.sources.set("src-1", { id: "src-1" });
+
+    const result = await deleteSource(env, "src-1");
+    expect(isHandlerError(result)).toBe(false);
+    expect(result).toEqual({ ok: true, id: "src-1" });
+    expect(db.sources.has("src-1")).toBe(false);
+  });
+
+  it("returns 404 when no source matches the id", async () => {
+    const env = makeEnv();
+    const result = await deleteSource(env, "missing");
+    expect(isHandlerError(result)).toBe(true);
+    if (!isHandlerError(result)) throw new Error("unreachable");
+    expect(result.status).toBe(404);
+    expect(result.error).toBe("source not found");
   });
 });
 
