@@ -321,7 +321,12 @@ export async function deleteSource(
   if (!id) {
     return { error: "id is required", status: 400 };
   }
-  await env.DB.prepare("DELETE FROM sources WHERE id = ?").bind(id).run();
+  const result = await env.DB.prepare("DELETE FROM sources WHERE id = ?")
+    .bind(id)
+    .run();
+  if ((result.meta?.changes ?? 0) === 0) {
+    return { error: "source not found", status: 404 };
+  }
   return { ok: true, id };
 }
 
