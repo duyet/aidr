@@ -7,12 +7,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "@aidr/ui";
-import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Mail, Send } from "lucide-react";
 import { type DeliverTab, parseDeliverTab } from "../../lib/deliver-tab";
 import { useLang } from "../../lib/lang-context";
 import { RSS_FEED_PATH } from "../../lib/site";
+import { ChromeMark } from "../header/ChromeMark";
 import { ChromeChannel } from "./ChromeChannel";
 import { EmailChannel } from "./EmailChannel";
 import { TelegramChannel } from "./TelegramChannel";
@@ -60,7 +60,7 @@ export function DeliverPage({
             value="chrome"
             className="h-11 gap-2 text-sm sm:text-base"
           >
-            <RiChromeLine className="size-4" aria-hidden />
+            <ChromeMark className="size-4" aria-hidden />
             Chrome
           </TabsTrigger>
           <TabsTrigger

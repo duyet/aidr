@@ -144,11 +144,12 @@ describe("compact header icon buttons", () => {
 
     expect(compact).toContain('from "./GetAIDRMenu"');
     expect(compact).toContain("<GetAIDRMenu compact />");
-    expect(compact).not.toContain("<RiChromeLine");
+    expect(compact).not.toContain("<ChromeMark");
     expect(compact).not.toContain("<Send");
     expect(compact).not.toContain('aria-label="Telegram"');
     expect(wide).toContain('from "./GetAIDRMenu"');
     expect(wide).toContain("<GetAIDRMenu />");
+    expect(menu).toContain("ChromeMark");
     expect(menu).toContain("Chrome Extension");
     expect(menu).toContain("Telegram Channel (Vietnamese)");
     expect(menu).toContain("Telegram Channel (English)");

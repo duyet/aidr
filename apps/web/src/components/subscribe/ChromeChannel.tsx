@@ -7,7 +7,6 @@ import {
   CardTitle,
 } from "@aidr/ui";
 import { trackChannelClick } from "@aidr/ui/track";
-import { RiChromeLine } from "@remixicon/react";
 import {
   CheckCircle2,
   Languages,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { EXTENSION_VERSION } from "../../lib/extension-release";
 import { CHROME_WEB_STORE_URL } from "../../lib/site";
+import { ChromeMark } from "../header/ChromeMark";
 import type { Lang } from "../../lib/types";
 import { BrowserFrame } from "./BrowserFrame";
 import { ChannelSplit } from "./ChannelSplit";
@@ -87,7 +87,7 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
                 trackChannelClick("chrome", { to: "chrome_web_store" })
               }
             >
-              <RiChromeLine className="mr-2 size-5" aria-hidden />
+              <ChromeMark className="mr-2 size-5" aria-hidden />
               {t("Chrome Web Store", "Chrome Web Store")}
             </a>
           </Button>

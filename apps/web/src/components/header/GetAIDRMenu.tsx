@@ -7,7 +7,6 @@ import {
   DropdownMenuTrigger,
 } from "@aidr/ui";
 import { track, trackChannelClick } from "@aidr/ui/track";
-import { RiChromeLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
 import {
   ChevronDown,
@@ -25,6 +24,7 @@ import {
 } from "../../lib/chrome";
 import { useLang } from "../../lib/lang-context";
 import { EXTENSION_PATH, TELEGRAM_EN_URL, TELEGRAM_URL } from "../../lib/site";
+import { ChromeMark } from "./ChromeMark";
 
 /** Trailing marker on the items that leave the site. It sits at the far edge
  *  of the row so it reads as "opens elsewhere" and never competes with the
@@ -69,7 +69,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             search={{ lang: navigationLang }}
             onClick={() => trackChannelClick("chrome", { to: EXTENSION_PATH })}
           >
-            <RiChromeLine aria-hidden />
+            <ChromeMark aria-hidden />
             Chrome Extension
           </Link>
         </DropdownMenuItem>

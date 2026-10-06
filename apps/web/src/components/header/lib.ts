@@ -1,5 +1,4 @@
 import type { TrackChannel } from "@aidr/ui/track";
-import { RiChromeLine } from "@remixicon/react";
 import {
   Database,
   Globe,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import type { AriaAttributes, ComponentType } from "react";
 import { DUYET_URL, EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
+import { ChromeMark } from "./ChromeMark";
 
 // Routes whose content is English-only — the EN|VI toggle is disabled
 // while on one of these, rather than offering a translation that doesn't
@@ -56,7 +56,7 @@ export const SITE_LINKS: {
     href: EXTENSION_PATH,
     label: "Get AI;DR",
     internal: true,
-    icon: RiChromeLine,
+    icon: ChromeMark,
     channel: "chrome",
   },
   {
