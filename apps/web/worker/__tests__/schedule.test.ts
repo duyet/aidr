@@ -295,6 +295,15 @@ describe("backfill-translate checkpoints", () => {
     expect(persistIdx).toBeLessThan(pruneIdx);
     expect(workflow).not.toMatch(/safeStep\(\s*step,\s*"open-run"/);
   });
+
+  it("prunes subscribe attempts after pruneLlmCalls", () => {
+    const pruneIdx = workflow.indexOf("await pruneLlmCalls(this.env)");
+    const attemptsIdx = workflow.indexOf(
+      "await pruneSubscribeAttempts(this.env.DB)"
+    );
+    expect(pruneIdx).toBeGreaterThan(0);
+    expect(attemptsIdx).toBeGreaterThan(pruneIdx);
+  });
 });
 
 describe("LLM step telemetry identity (#189)", () => {

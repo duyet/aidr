@@ -59,6 +59,25 @@ export async function hashIp(ip: string): Promise<string> {
 
 export const ONE_DAY_SEC = 24 * 60 * 60;
 
+/** Retention for `subscribe_attempts`: subscribe, anonymous MCP reads and
+ * failed admin auth only ever insert, so without this the table grows without
+ * a bound. Every rate-limit window here is at most ONE_DAY_SEC, so a row older
+ * than that cannot affect any count. Never throws — the table is absent in
+ * some envs/stubs, the same way the inserts tolerate it. */
+export async function pruneSubscribeAttempts(
+  db: D1Database,
+  nowMs = Date.now()
+): Promise<void> {
+  try {
+    await db
+      .prepare("DELETE FROM subscribe_attempts WHERE created_at < ?")
+      .bind(nowMs - ONE_DAY_SEC * 1000)
+      .run();
+  } catch {
+    // subscribe_attempts table may be absent in test stubs
+  }
+}
+
 /** Bilingual (EN / VI) rate-limit messages for the UI, in the "Bạn gửi quá
  * nhanh — thử lại sau" style the product asked for. */
 export const RATE_LIMIT_MESSAGES = {
