@@ -44,7 +44,7 @@ describe("site chrome copy", () => {
       .map((f) => readFileSync(join(here, f), "utf8"))
       .join("\n");
     expect(header).toContain("EXTENSION_PATH");
-    expect(header).toContain("RiChromeLine");
+    expect(header).toContain("ChromeMark");
     expect(header).not.toContain("CHROME_WEB_STORE_URL");
     expect(header).not.toContain(CHROME_WEB_STORE_URL);
     expect(header).not.toContain('label: "Blog"');
