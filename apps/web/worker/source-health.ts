@@ -116,13 +116,25 @@ export function parseSourceHealth(value: unknown): SourceRunHealth | null {
  * A source is stale when it has produced nothing for `staleAfterRuns` runs in
  * a row. A *disabled* source is not stale — it is off, which the dashboard
  * already shows and which is not a failure.
+ *
+ * `type` is the source row's adapter key, and `push` is the only intentional
+ * no-adapter type: `upsert_source` accepts it for any id, no such row is ever
+ * fetched, so a streak of 0 is not silence. The dashboard already reads
+ * staleness off the same type (`mergeSourceHealth` in
+ * `src/lib/system-queries.ts`), so the writer exempts *every* push id rather
+ * than just `user` — otherwise the two sides disagree on an operator push row
+ * and its streak climbs forever with nothing reading it. The `user` id stays
+ * exempt on its own, so a caller holding only an id cannot turn the
+ * submissions row into a false alarm. A typo'd type is not `push` and still
+ * goes stale.
  */
-export function isSourceStale(health: SourceRunHealth, id: string): boolean {
+export function isSourceStale(
+  health: SourceRunHealth,
+  id: string,
+  type?: string
+): boolean {
   if (health.skipReason === "disabled") return false;
-  // `push` is the only intentional no-adapter type. Its one row is `user`;
-  // items arrive through submissions, so a fetch of 0 is not silence. A
-  // typo'd type is a different id and still goes stale.
-  if (id === USER_SOURCE_ID) return false;
+  if (type === "push" || id === USER_SOURCE_ID) return false;
   return health.emptyRuns >= staleAfterRunsFor(id);
 }
 
@@ -134,10 +146,11 @@ export interface SourceStaleVerdict {
 
 export function sourceStaleVerdict(
   health: SourceRunHealth,
-  id: string
+  id: string,
+  type?: string
 ): SourceStaleVerdict {
   return {
-    stale: isSourceStale(health, id),
+    stale: isSourceStale(health, id, type),
     emptyRuns: health.emptyRuns,
     threshold: staleAfterRunsFor(id),
   };
@@ -190,19 +203,27 @@ export function resolveSkipReason(input: {
  * source to 0; a run that fetched nothing increments it. A source that
  * appears for the first time (an operator just added it through
  * `upsert_source`) starts at 0 rather than inheriting a stranger's streak.
+ *
+ * `pushIds` is every source row whose `type` is `push`. Those rows never go
+ * through the fetch loop, so their streak cannot reset on its own and would
+ * climb forever while the dashboard — which reads the same type — never
+ * flags them. Holding them at 0 is what keeps the writer and the reader
+ * agreeing. `USER_SOURCE_ID` is held on its own too, so a caller with no
+ * type information degrades to today's behavior rather than to a false alarm.
  */
 export function carrySourceEmptyRuns(
   current: Record<string, SourceRunHealth>,
-  previous: Record<string, SourceRunHealth>
+  previous: Record<string, SourceRunHealth>,
+  pushIds: ReadonlySet<string> = new Set()
 ): Record<string, SourceRunHealth> {
   const out: Record<string, SourceRunHealth> = {};
   for (const [id, health] of Object.entries(current)) {
     out[id] = {
       ...health,
-      // The push row never delivers through the fetch loop, so its streak
+      // A push row never delivers through the fetch loop, so its streak
       // cannot reset on its own. Leave it at 0. fetched stays 0.
       emptyRuns:
-        id === USER_SOURCE_ID
+        pushIds.has(id) || id === USER_SOURCE_ID
           ? 0
           : nextEmptyRuns(previous[id]?.emptyRuns ?? 0, health.fetched),
     };

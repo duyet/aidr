@@ -11,7 +11,7 @@ import {
   WORKFLOW_RUN_STARTED_AT_ORDER_SQL,
 } from "../workflow-run.js";
 import { safeStep } from "../workflow-step.js";
-import type { IngestContext, NewRow } from "./context.js";
+import type { IngestContext, NewRow, SourceRow } from "./context.js";
 import type { FetchFailureReason } from "./fetch.js";
 
 /**
@@ -81,7 +81,8 @@ export function previousHealthFromStreaks(
  */
 export async function carrySourceStreaks(
   ctx: IngestContext,
-  sourceHealth: Record<string, SourceRunHealth>
+  sourceHealth: Record<string, SourceRunHealth>,
+  sources: readonly SourceRow[]
 ): Promise<void> {
   const { step, env, runId } = ctx;
   const previousEmptyRuns = await safeStep(
@@ -101,11 +102,19 @@ export async function carrySourceStreaks(
       return parsePreviousEmptyRuns(results?.[0]?.stats ?? null);
     }
   );
+  // `load-sources` already read `type` for every row, so the push ids come
+  // free — no second query, and the same rows the fetch loop skipped.
+  const pushIds = new Set(
+    sources
+      .filter((source) => source.type === "push")
+      .map((source) => source.id)
+  );
   Object.assign(
     sourceHealth,
     carrySourceEmptyRuns(
       sourceHealth,
-      previousHealthFromStreaks(previousEmptyRuns)
+      previousHealthFromStreaks(previousEmptyRuns),
+      pushIds
     )
   );
 }
