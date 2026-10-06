@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getOwnSuggestion, listContributions } from "../contributions.js";
 import { resetLlmCallLogSchemaCache } from "../llm-call-log.js";
 import {
+  approveSuggestionById,
   REVIEW_CLAIM_STALE_MS,
   reviewPendingSuggestions,
   reviewSuggestionById,
@@ -341,6 +342,74 @@ describe("instant suggestion review", () => {
     const hourly = await reviewPendingSuggestions(env, 10, later);
     expect(hourly.reviewed).toBe(1);
     expect(suggestionRow(db, "s1").status).toBe("accepted");
+  });
+});
+
+describe("approveSuggestionById — a failed re-translation", () => {
+  /** The model is the stub, not the status write: the rewrite step returns
+   *  an empty translation, so the guided re-translation yields nothing. */
+  function stubEmptyRewrite() {
+    const fetchMock = vi.fn(async (url: unknown, init: unknown) => {
+      if (String(url).includes("/systemone")) {
+        return new Response("down", { status: 500 });
+      }
+      const body = JSON.parse((init as { body: string }).body) as {
+        messages: { content: string }[];
+      };
+      const prompt = body.messages.map((m) => m.content).join("\n");
+      if (prompt.includes("READER-SUBMITTED, UNTRUSTED DATA")) {
+        const id = /"id":"([^"]+)"/.exec(prompt)?.[1];
+        return chat(
+          JSON.stringify({ results: [{ id, valid: true, rating: 1 }] })
+        );
+      }
+      return chat(JSON.stringify({ translation: "" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  function seedPending(db: DatabaseSync) {
+    db.prepare(
+      "INSERT INTO translation_suggestions (id, item_id, lang, field, suggestion, user_id, created_at, status) VALUES ('s1', 'item1', 'vi', 'title', 'OpenAI ra mắt mô hình', 'user-a', 1, 'pending')"
+    ).run();
+  }
+
+  it("parks the approved row at needs_review instead of rejecting it", async () => {
+    const db = freshDb();
+    const env = envFor(db);
+    stubEmptyRewrite();
+    seedPending(db);
+
+    const result = await approveSuggestionById(env, "s1");
+    expect(result).toEqual({ ok: false, error: "re-translation failed" });
+
+    // Not `rejected`: the human approved it, so it has to stay reviewable.
+    const row = suggestionRow(db, "s1");
+    expect(row.status).toBe("needs_review");
+    expect(row.status).not.toBe("rejected");
+    expect(row.review_note).toBe("human approved but re-translation failed");
+    // Nothing was applied, so the readers' text is untouched.
+    expect(row.applied_text).toBeNull();
+    expect(viTitle(db)).toBe("OpenAI ra mat mo hinh");
+  });
+
+  it("stays retryable — a second approve passes the status guard", async () => {
+    const db = freshDb();
+    const env = envFor(db);
+    const fetchMock = stubEmptyRewrite();
+    seedPending(db);
+
+    expect((await approveSuggestionById(env, "s1")).ok).toBe(false);
+    expect(suggestionRow(db, "s1").status).toBe("needs_review");
+    const callsAfterFirst = fetchMock.mock.calls.length;
+
+    // The guard allows `pending` or `needs_review`, so the retry reaches the
+    // model rather than being refused as "not found or not pending".
+    const retry = await approveSuggestionById(env, "s1");
+    expect(retry).toEqual({ ok: false, error: "re-translation failed" });
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+    expect(suggestionRow(db, "s1").status).toBe("needs_review");
   });
 });
 

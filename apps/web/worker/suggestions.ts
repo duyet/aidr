@@ -1353,11 +1353,14 @@ export async function approveSuggestionById(
     : null;
   if (guard) return { ok: false, error: guard };
 
+  // A model miss is not a rejection: the human approved this row, and only
+  // `pending` / `needs_review` can be approved again. Park it for review
+  // instead of `rejected`, which would strand it.
   if (!rewritten) {
     await prepareVerdict(
       env,
       id,
-      "rejected",
+      "needs_review",
       1,
       "human approved but re-translation failed",
       null
