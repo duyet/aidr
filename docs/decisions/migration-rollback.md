@@ -261,6 +261,21 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
 - Rollback: redeploy the previous Worker, then `DROP TABLE item_votes;`
   Rank scores already written keep the vote term until the next re-rank.
 
+## 0050_subscriber_token_and_source_indexes.sql
+
+- Change: two indexes, no rows rewritten.
+  - `idx_subscribers_unsubscribe_token (unsubscribe_token)` on `subscribers`
+    is UNIQUE and serves the confirm/unsubscribe/prefs token lookups.
+  - `idx_items_source_published (source_id, published_at)` on `items`
+    serves the public sources rollup join.
+- Apply: `pnpm --filter @aidr/web d1:migrate` on the target database.
+  `CREATE INDEX IF NOT EXISTS` is safe to re-run.
+- Risk: the UNIQUE index fails at apply time if a duplicate
+  `unsubscribe_token` already exists; check
+  `SELECT unsubscribe_token, COUNT(*) FROM subscribers GROUP BY 1 HAVING COUNT(*) > 1`
+  first. Reads stay correct without either index.
+- Rollback: `DROP INDEX IF EXISTS idx_subscribers_unsubscribe_token; DROP INDEX IF EXISTS idx_items_source_published;`
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`
