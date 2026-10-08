@@ -276,6 +276,19 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   first. Reads stay correct without either index.
 - Rollback: `DROP INDEX IF EXISTS idx_subscribers_unsubscribe_token; DROP INDEX IF EXISTS idx_items_source_published;`
 
+## 0051_social_trending_sources.sql
+
+- Change: upserts `reddit-ml`, `reddit-localllama`, `reddit-singularity`,
+  `techmeme` (name/type/config, never `enabled`), then
+  `UPDATE sources SET enabled = 0 WHERE id = 'vnexpress-tech'`.
+- Risk: none for existing rows. The upserts only create rows; the UPDATE
+  flips one flag. If `vnexpress-tech` was already disabled the UPDATE is a
+  no-op; if an operator re-enabled it on purpose, this re-disables it — the
+  intended semantics of this change.
+- Rollback: `DELETE FROM sources WHERE id IN ('reddit-ml', 'reddit-localllama', 'reddit-singularity', 'techmeme'); UPDATE sources SET enabled = 1 WHERE id = 'vnexpress-tech';`
+  Items already ingested from the new rows keep their `source_id` and stay
+  readable; they just stop refreshing.
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`

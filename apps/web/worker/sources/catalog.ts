@@ -750,13 +750,104 @@ export const REGISTRY_0044: readonly SourceSpec[] = [
   },
 ];
 
+/**
+ * Added on 2026-10-06; created in D1 by `0051_social_trending_sources.sql`.
+ *
+ * "Trending on X" is not fetchable: the X API is pay-per-use ($0.005 per
+ * post read, 7-day search only), Nitter is offline, RSSHub's twitter routes
+ * 503, and x.com 403s datacenter egress. The three AI subreddits' `hot/.rss`
+ * and Techmeme's feed are the social-trending proxy — they surface what the
+ * community is actually discussing. Reddit item URLs are the comments
+ * permalinks (the .rss <link>), which is the discussion signal itself; the
+ * shared "reddit" family keeps the three from jointly dominating the top
+ * lists. No `engagement` flag: the feed carries no vote counts.
+ *
+ * `vnexpress-tech` is re-declared `enabled: false` — the registry carries
+ * the intent and the migration's UPDATE flips the production row (`enabled`
+ * is operator-owned; the runtime seed never writes it). It was the only
+ * `sourceLang: "vi"` row, so the VI→EN translate path idles until another
+ * vi source joins.
+ */
+export const REGISTRY_0051: readonly SourceSpec[] = [
+  {
+    id: "vnexpress-tech",
+    name: "VnExpress Khoa học & Công nghệ",
+    type: "rss",
+    config: {
+      feed: "https://vnexpress.net/rss/khoa-hoc-cong-nghe.rss",
+      homepage: "https://vnexpress.net/khoa-hoc-cong-nghe",
+      sourceLang: "vi",
+      maxItems: 6,
+    },
+    enabled: false,
+  },
+  {
+    id: "reddit-ml",
+    name: "r/MachineLearning",
+    type: "rss",
+    family: "reddit",
+    config: {
+      feed: "https://www.reddit.com/r/MachineLearning/hot/.rss",
+      homepage: "https://www.reddit.com/r/MachineLearning/",
+      // Three rows share the www.reddit.com host inside one parallel fetch
+      // group; reddit 429s unauthenticated bursts, so same-host requests
+      // serialise at 3s (measured: rapid bursts 429, spaced 200s).
+      minRequestIntervalMs: 3000,
+      maxItems: 6,
+    },
+    enabled: true,
+  },
+  {
+    id: "reddit-localllama",
+    name: "r/LocalLLaMA",
+    type: "rss",
+    family: "reddit",
+    config: {
+      feed: "https://www.reddit.com/r/LocalLLaMA/hot/.rss",
+      homepage: "https://www.reddit.com/r/LocalLLaMA/",
+      minRequestIntervalMs: 3000,
+      maxItems: 4,
+    },
+    enabled: true,
+  },
+  {
+    id: "reddit-singularity",
+    name: "r/singularity",
+    type: "rss",
+    family: "reddit",
+    config: {
+      feed: "https://www.reddit.com/r/singularity/hot/.rss",
+      homepage: "https://www.reddit.com/r/singularity/",
+      // Broadest of the three — futurology drift — so the shared AI title
+      // filter applies here even though the subreddit is the scope.
+      keywordFilter: "ai",
+      minRequestIntervalMs: 3000,
+      maxItems: 4,
+    },
+    enabled: true,
+  },
+  {
+    id: "techmeme",
+    name: "Techmeme",
+    type: "rss",
+    config: {
+      feed: "https://www.techmeme.com/feed.xml",
+      homepage: "https://www.techmeme.com/",
+      keywordFilter: "ai",
+      maxItems: 6,
+    },
+    enabled: true,
+  },
+];
+
 export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0027,
   [ARXIV_SOURCE],
   REGISTRY_0032,
   [CLOUDFLARE_BLOG_SOURCE],
   [HN_SCOPE_SOURCE],
-  REGISTRY_0044
+  REGISTRY_0044,
+  REGISTRY_0051
 );
 
 export function registrySourceIds(): string[] {
