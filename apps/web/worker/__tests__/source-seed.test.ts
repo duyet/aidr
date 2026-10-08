@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SOURCE_REGISTRY } from "../sources/catalog.js";
+import { parseSourceInsertRows, SOURCE_REGISTRY } from "../sources/catalog.js";
 import {
   ensureVendorBlogSources,
   resetVendorBlogSeedCache,
@@ -57,11 +57,17 @@ describe("ensureVendorBlogSources", () => {
     expect(conflict).not.toMatch(/enabled\s*=/);
   });
 
-  it("keeps every registry row enabled in the seed, matching the migration", () => {
-    const seeded = [
-      ...VENDOR_BLOG_SEED_SQL.matchAll(/, (\d)\)(?:,|\n|;)/g),
-    ].map((m) => m[1]);
+  it("seeds each registry row with its own enabled flag", () => {
+    // The INSERT writes the registry's flag so a row the catalog disables
+    // (e.g. vnexpress-tech, off since 0051) also seeds disabled — the seed
+    // runs before migrations apply, so an `enabled = 1` here would fetch a
+    // dead source in that gap. The flag is still operator-owned afterwards:
+    // the upsert never touches it.
+    const seeded = parseSourceInsertRows(VENDOR_BLOG_SEED_SQL);
     expect(seeded).toHaveLength(SOURCE_REGISTRY.length);
-    expect(seeded.every((v) => v === "1")).toBe(true);
+    for (const row of seeded) {
+      const spec = SOURCE_REGISTRY.find((s) => s.id === row.id);
+      expect(row.enabled, row.id).toBe(spec?.enabled);
+    }
   });
 });
