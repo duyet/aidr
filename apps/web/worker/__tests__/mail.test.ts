@@ -361,6 +361,11 @@ describe("renderNoteEmail", () => {
       expect(html).not.toContain('class="mail-large"');
       expect(images(html)).toBe(4);
       expect(render(undefined)).toBe(html);
+      // The thumbnail is the second cell in the row: the story text comes
+      // first, so the image sits on the right of the item.
+      expect(html.indexOf("Real photo")).toBeLessThan(
+        html.indexOf("cdn.example/photo.jpg")
+      );
     });
 
     it("large shows the day card and one full-width image per story", () => {
