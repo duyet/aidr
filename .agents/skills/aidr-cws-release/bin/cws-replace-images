@@ -1,0 +1,26 @@
+#!/bin/bash
+# Replace every image in one Store listing slot of the CURRENT editing
+# language, then upload new files in order.
+#   cws-replace-images <localized|global|small|marquee> <file>...
+# Slots are the page's file inputs in DOM order: icon, localized, global,
+# small promo tile, marquee. A remove control only reacts to real pointer
+# events on the visible image (hover, click, then "Remove" in the confirm
+# dialog); JS .click() does nothing and stacks dialogs.
+set -euo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+C="$HERE/cws-chrome"
+slot="$1"; shift
+b64() { base64 < "$1" | tr -d '\n'; }
+TAG="$(b64 "$HERE/js/tag-slots.js")"
+MARK="$(b64 "$HERE/js/mark-visible-image.js")"
+OK="$(b64 "$HERE/js/mark-confirm.js")"
+for _ in 1 2 3 4 5 6; do
+  left=$("$C" "eval -b $TAG" "eval 'window.__slot=\"$slot\";1'" "eval -b $MARK" 2>&1 | tail -1)
+  [[ "$left" == '"0"' ]] && break
+  "$C" "scrollintoview [data-x2=img]" "hover [data-x2=img]" "wait 500" \
+    "click [data-x=rm]" "wait 900" "eval -b $OK" "click [data-x=ok]" "wait 1500" >/dev/null
+done
+for f in "$@"; do
+  "$C" "eval -b $TAG" "upload [data-slot=$slot] $f" "wait 5000" >/dev/null
+  echo "uploaded $(basename "$f") → $slot"
+done
