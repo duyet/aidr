@@ -1,7 +1,21 @@
 import { createContext, useContext } from "react";
 
 export type ReaderFont = "sans" | "serif";
-export type ReaderDensity = "compact" | "comfortable" | "spacious";
+export type ReaderDensity =
+  | "dense"
+  | "compact"
+  | "medium"
+  | "comfortable"
+  | "spacious";
+
+/** Slider order, tightest → loosest. */
+export const READER_DENSITIES: ReaderDensity[] = [
+  "dense",
+  "compact",
+  "medium",
+  "comfortable",
+  "spacious",
+];
 export type ReaderBg = "default" | "cream" | "gray" | "dark" | "black";
 export type TldrCount = 8 | 12 | 16;
 
@@ -37,7 +51,7 @@ export const DEFAULT_SECTION_ORDER: SectionKey[] = [
 export const DEFAULT_PREFS: Prefs = {
   font: "sans",
   fontSize: 1,
-  density: "compact",
+  density: "medium",
   bg: "default",
   sections: { trending: true, tldr: true, days: true, categories: true },
   sectionOrder: [...DEFAULT_SECTION_ORDER],
@@ -56,6 +70,12 @@ function clampFontSize(value: unknown): number {
       ? value
       : DEFAULT_PREFS.fontSize;
   return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, n));
+}
+
+function validDensity(value: unknown): ReaderDensity {
+  return READER_DENSITIES.includes(value as ReaderDensity)
+    ? (value as ReaderDensity)
+    : DEFAULT_PREFS.density;
 }
 
 function clampTldrCount(value: unknown): TldrCount {
@@ -88,6 +108,7 @@ export function loadPrefs(): Prefs {
       ...DEFAULT_PREFS,
       ...parsed,
       fontSize: clampFontSize(parsed.fontSize),
+      density: validDensity(parsed.density),
       tldrCount: clampTldrCount(parsed.tldrCount),
       sections: { ...DEFAULT_PREFS.sections, ...parsed.sections },
       sectionOrder,
@@ -112,7 +133,9 @@ export function savePrefs(prefs: Prefs): void {
 }
 
 const DENSITY_PAD: Record<ReaderDensity, string> = {
+  dense: "0.375rem",
   compact: "0.5rem",
+  medium: "0.625rem",
   comfortable: "0.75rem",
   spacious: "1.125rem",
 };
@@ -122,7 +145,9 @@ const DENSITY_TYPESET: Record<
   ReaderDensity,
   { leading: string; leadingDark: string; flow: string }
 > = {
+  dense: { leading: "1.45", leadingDark: "1.55", flow: "0.8em" },
   compact: { leading: "1.55", leadingDark: "1.65", flow: "0.95em" },
+  medium: { leading: "1.62", leadingDark: "1.72", flow: "1.1em" },
   comfortable: { leading: "1.7", leadingDark: "1.8", flow: "1.25em" },
   spacious: { leading: "1.9", leadingDark: "2", flow: "1.6em" },
 };

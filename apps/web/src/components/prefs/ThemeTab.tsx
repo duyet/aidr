@@ -13,8 +13,8 @@ import { useEffect, useState } from "react";
 import {
   applyReaderTheme,
   DEFAULT_PREFS,
+  READER_DENSITIES,
   type ReaderBg,
-  type ReaderDensity,
   type ReaderFont,
   usePrefs,
 } from "../../lib/prefs";
@@ -26,8 +26,6 @@ const BG_SWATCHES: { key: ReaderBg; color: string }[] = [
   { key: "dark", color: "#2a2a28" },
   { key: "black", color: "#000000" },
 ];
-
-const DENSITIES: ReaderDensity[] = ["compact", "comfortable", "spacious"];
 
 export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
   const { prefs, setPrefs } = usePrefs();
@@ -177,12 +175,14 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
           <input
             type="range"
             min={0}
-            max={2}
+            max={READER_DENSITIES.length - 1}
             step={1}
-            value={DENSITIES.indexOf(prefs.density)}
+            value={READER_DENSITIES.indexOf(prefs.density)}
             onChange={(e) => {
               track("prefs_change", { pref: "density" });
-              setPrefs({ density: DENSITIES[Number(e.target.value)] });
+              setPrefs({
+                density: READER_DENSITIES[Number(e.target.value)],
+              });
             }}
             className="reader-slider w-full"
             aria-label={t("Density", "Mật độ")}
