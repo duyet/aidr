@@ -170,7 +170,7 @@ importers:
     dependencies:
       postal-mime:
         specifier: ^4.0.2
-        version: 4.0.4
+        version: 4.0.5
     devDependencies:
       '@aidr/tsconfig':
         specifier: workspace:*
@@ -4071,8 +4071,8 @@ packages:
     resolution: {integrity: sha512-nDywThFk1i4BQK4twPQ6TA4RT8bDY96yeuCVBWL3ePARCiEKDRSrNGbFIgUJpLp+XeIR65v8ra7WuJOFUBtkMA==}
     engines: {node: '>=8'}
 
-  postal-mime@4.0.4:
-    resolution: {integrity: sha512-LC9FypbNof/NfF07rHg5ev2zx6KwmqfcaGQPhSSdwJSnp04MImO+7ByCPh+3bkILupgMG5fn2WrThRy4WDqHoA==}
+  postal-mime@4.0.5:
+    resolution: {integrity: sha512-fWu1Cmo2ef6LCwgHU1fVrqo55eyFP31F7hH0j/wMWkQYYdh+H8zz3nBf3EYRQelkmTfDrbDfTvPUQEBT8DS/jw==}
     engines: {node: '>=20'}
 
   postcss-selector-parser@7.1.6:
@@ -8234,7 +8234,7 @@ snapshots:
     dependencies:
       find-up: 3.0.0
 
-  postal-mime@4.0.4: {}
+  postal-mime@4.0.5: {}
 
   postcss-selector-parser@7.1.6:
     dependencies:
