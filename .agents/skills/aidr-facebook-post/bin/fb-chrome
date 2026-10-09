@@ -1,0 +1,28 @@
+#!/bin/bash
+# Drive the AI;DR Facebook Page in the user's running Chrome over DevTools.
+# Needs "Allow remote debugging for this browser instance" on at
+# chrome://inspect/#remote-debugging. Never opens a separate Chrome.
+#
+#   fb-chrome "<agent-browser cmd>" ["<cmd>" ...]
+#
+# Every call switches to the facebook.com/aidr.today tab (opening one if
+# missing) and runs the commands as one batch.
+set -euo pipefail
+PAGE="${FB_PAGE:-aidr.today}"
+URL="https://www.facebook.com/$PAGE/"
+PORT_FILE="$HOME/Library/Application Support/Google/Chrome/DevToolsActivePort"
+if [[ ! -f "$PORT_FILE" ]]; then
+  echo "Chrome remote debugging is off: enable it at chrome://inspect/#remote-debugging" >&2
+  exit 2
+fi
+WS="ws://127.0.0.1:$(sed -n 1p "$PORT_FILE")$(sed -n 2p "$PORT_FILE")"
+ab() { timeout 180 agent-browser --cdp "$WS" "$@"; }
+find_tab() { ab tab list 2>/dev/null | grep -m1 "facebook.com/$PAGE" | grep -o '\[t[0-9]*\]' | tr -d '[]' || true; }
+TAB=$(find_tab)
+if [[ -z "$TAB" ]]; then
+  ab tab new "$URL" >/dev/null
+  sleep 8
+  TAB=$(find_tab)
+fi
+[[ -n "$TAB" ]] || { echo "no tab for facebook.com/$PAGE" >&2; exit 3; }
+ab batch --bail "tab $TAB" "$@"
