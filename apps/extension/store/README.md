@@ -13,7 +13,19 @@ CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   pnpm --filter @aidr/extension store-assets
 # other folder or one language:
 node apps/extension/scripts/store-assets.mjs --out /tmp/store --lang en
+# one edition:
+pnpm --filter @aidr/extension store-assets --date 2026-10-09
 ```
+
+Without `--date` it uses the newest edition with at least 8 AI;DR
+bullets and 8 ranked stories, checked against `/date/<date>.md`, for
+up to 7 days back. If today's edition qualifies it is the live digest
+(`/api/public`), the same data the new tab loads. A past edition is
+rebuilt from public reads: that day's bullets come from
+`/date/<date>.md` (EN + VI), joined by story id to the full items in
+`/api/feed?days=3&before=<date + 1>`; categories, trending and day rows
+come from that feed. The day card is `/api/og/date/<date>.png`, which
+the new tab requests for the edition date.
 
 `scripts/store-assets.mjs` fetches today's `/api/public` and
 `/api/feed?days=3` from aidr.today per language, serves this extension
@@ -21,13 +33,13 @@ folder over loopback with that digest and the scene's settings seeded
 into `newtab.html`, and drives headless Chrome over the DevTools
 protocol. Every scene has the day feed on: with it off the page centers
 the AI;DR card (`.page.is-brief`) and leaves an empty band under the
-chips. A scene reloads (up to 3 tries) if a thumbnail fails to load.
+chips. A scene reloads (up to 3 tries) if a thumbnail fails to load,
+and images are decoded synchronously before capture so none paint blank.
 Pings to `/api/extension` are blocked so captures do not count
 as installs. Output is JPEG quality 90, so no file has an alpha channel.
 
-The data is live, so frames change from day to day. Early in the day
-the newest date has few stories and the day card may have empty panels;
-run it later in the day for a fuller frame. Look at every image before
+The data is real, so frames change with the edition. The 0.1.21
+images use the 2026-10-09 edition. Look at every image before
 uploading.
 
 ## Files

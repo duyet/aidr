@@ -2,16 +2,20 @@
 /**
  * Chrome Web Store listing images, captured from the real unpacked new tab.
  *
- * Serves this folder over loopback with today's live aidr.today digest
+ * Serves this folder over loopback with a real aidr.today edition
  * injected, drives headless Chrome over the DevTools protocol, and writes:
  *
  *   store/{en,vi}-{1..5}-<scene>.jpg   1280×800 screenshots
  *   store/promo-440x280.jpg            small promo tile
  *   store/marquee-1400x560.jpg         marquee promo tile
  *
+ * Edition: `--date YYYY-MM-DD`, else the newest one with 8 bullets and
+ * 8 ranked stories (today's live digest when it already qualifies).
+ *
  * JPEG only, so no file carries an alpha channel.
  *
  *   pnpm --filter @aidr/extension store-assets
+ *   pnpm --filter @aidr/extension store-assets --date 2026-10-09
  *   CHROME_BIN=/path/to/chrome node apps/extension/scripts/store-assets.mjs --out /tmp/store
  */
 import { spawn } from "node:child_process";
@@ -114,6 +118,99 @@ async function liveDigest(lang) {
     fetchJson(apiUrl(SITE, "/api/feed?days=3", lang)),
   ]);
   return enrichDigest(normalizeDigest(publicRaw), feedRaw);
+}
+
+/** A frame needs 8 AI;DR bullets and a full top 3 for the day card. */
+const FULL_EDITION = { bullets: 8, stories: 8 };
+const LOOKBACK_DAYS = 7;
+
+async function fetchText(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+  return res.text();
+}
+
+function shiftDate(date, days) {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The day archive markdown (`/date/<date>.md`) is the only public read
+ * scoped to one edition. Bullets end with an optional story link
+ * `([story](https://aidr.today/<8 hex>?lang=..))`.
+ */
+async function dayArchive(date, lang) {
+  const md = await fetchText(apiUrl(SITE, `/date/${date}.md`, lang));
+  const section = (heading) =>
+    md.split(/^## /m).find((part) => part.startsWith(heading)) || "";
+  const bullets = section("AI;DR")
+    .split("\n")
+    .filter((line) => line.startsWith("- "))
+    .map((line) => {
+      const link = line.match(
+        / \(\[[^\]]+\]\(https:\/\/aidr\.today\/([0-9a-f]{8})\b[^)]*\)\)$/
+      );
+      return {
+        text: (link ? line.slice(0, link.index) : line).slice(2).trim(),
+        shortId: link?.[1] || null,
+      };
+    });
+  const stories = section(lang === "vi" ? "Tin xếp hạng" : "Ranked stories")
+    .split("\n")
+    .filter((line) => /^\d+\. /.test(line)).length;
+  return { bullets, stories };
+}
+
+/**
+ * One past edition in the shape js/api.js builds: that date's AI;DR
+ * bullets from the day archive, joined to full items (ids, thumbs, tags)
+ * from `/api/feed` paged to end on that date.
+ */
+async function editionDigest(date, lang) {
+  const [en, vi, feedRaw] = await Promise.all([
+    dayArchive(date, "en"),
+    dayArchive(date, "vi"),
+    fetchJson(
+      apiUrl(SITE, `/api/feed?days=3&before=${shiftDate(date, 1)}`, lang)
+    ),
+  ]);
+  const items = (feedRaw.days || []).flatMap((day) => day.items || []);
+  const toBullet = ({ text, shortId }) => {
+    const item = shortId && items.find((it) => it.id.startsWith(shortId));
+    return {
+      text,
+      item_ids: item ? [item.id] : [],
+      image_url: item?.image_url || null,
+    };
+  };
+  const raw = {
+    tldr: {
+      date,
+      bullets_en: en.bullets.map(toBullet),
+      bullets_vi: vi.bullets.map(toBullet),
+    },
+    stories: [],
+  };
+  return enrichDigest(normalizeDigest(raw), feedRaw);
+}
+
+/** Newest edition date with FULL_EDITION, walking back from today's. */
+async function latestFullEdition(fromDate) {
+  for (let i = 0; i < LOOKBACK_DAYS; i++) {
+    const date = shiftDate(fromDate, -i);
+    const { bullets, stories } = await dayArchive(date, "en");
+    if (
+      bullets.length >= FULL_EDITION.bullets &&
+      stories >= FULL_EDITION.stories
+    ) {
+      return date;
+    }
+  }
+  throw new Error(
+    `no full edition in the ${LOOKBACK_DAYS} days to ${fromDate}`
+  );
 }
 
 function sceneSettings(lang, scene) {
@@ -290,7 +387,22 @@ const BROKEN = `[...document.images].filter((img) => {
 
 async function settle(cdp) {
   await waitFor(cdp, SETTLED, "images and fonts");
-  await sleep(700);
+  // decoding="async" thumbs can be complete but paint blank in headless;
+  // sync decode makes the next paint include them.
+  await evaluate(
+    cdp,
+    `Promise.all([...document.images].map((img) => {
+      img.decoding = "sync";
+      img.loading = "eager";
+      if (img.currentSrc) img.src = img.currentSrc;
+      return img.decode().catch(() => {});
+    }))`
+  );
+  await evaluate(
+    cdp,
+    "new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))"
+  );
+  await sleep(1500);
 }
 
 async function scrollToStories(cdp) {
@@ -452,8 +564,14 @@ async function main() {
 
   try {
     const digests = new Map();
+    const today = (await fetchJson(apiUrl(SITE, "/api/public", "en"))).tldr
+      ?.date;
+    const date = argValue("--date", "") || (await latestFullEdition(today));
+    const live = date === today;
     for (const lang of langs) {
-      const digest = await liveDigest(lang);
+      const digest = live
+        ? await liveDigest(lang)
+        : await editionDigest(date, lang);
       digests.set(lang, digest);
       await setViewport(cdp, SHOT);
       for (const [i, scene] of SCENES.entries()) {
@@ -488,8 +606,7 @@ async function main() {
       );
     }
 
-    const date = digests.get(heroLang)?.tldr?.date || "unknown";
-    console.log(JSON.stringify({ digestDate: date, written }, null, 2));
+    console.log(JSON.stringify({ edition: date, live, written }, null, 2));
   } finally {
     await chrome.close();
     server.close();
