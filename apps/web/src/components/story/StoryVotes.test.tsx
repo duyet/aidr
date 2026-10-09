@@ -26,6 +26,6 @@ describe("StoryVotes", () => {
     // The feed row aligns on the text baseline. A 32px hit lifts the chevron
     // above the title, which is the broken up/down mark on the homepage.
     expect(html).not.toContain("size-8");
-    expect(html).toContain("h-5 w-5");
+    expect(html).toContain("h-5 w-3.5");
   });
 });
