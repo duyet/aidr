@@ -6,8 +6,10 @@
  * The API covers the package only. Listing text, screenshots and promo
  * tiles are changed by hand in the dashboard (see apps/extension/STORE.md).
  *
- * Env: CWS_CLIENT_ID, CWS_CLIENT_SECRET, CWS_REFRESH_TOKEN
- *      (OAuth client with scope https://www.googleapis.com/auth/chromewebstore)
+ * Env: CWS_PUBLISHER_ID (dashboard → Publisher → Settings; also the first
+ *      id in the dashboard URL), CWS_CLIENT_ID, CWS_CLIENT_SECRET,
+ *      CWS_REFRESH_TOKEN (OAuth client with scope
+ *      https://www.googleapis.com/auth/chromewebstore)
  *
  * Usage:
  *   pnpm --filter @aidr/web cws-publish            # upload + publish
@@ -19,16 +21,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultCwsZipDest } from "../src/lib/aidr-zip";
 
-const PUBLISHER_ID = "f3ade5ba-783b-414a-a7e3-4616458bc590";
 const ITEM_ID = "cagjehdlblcobkghgbbilnpefelbmpcg";
 const API = "https://chromewebstore.googleapis.com";
-const ITEM = `publishers/${PUBLISHER_ID}/items/${ITEM_ID}`;
 
 function env(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not set`);
   return value;
 }
+
+const ITEM = `publishers/${env("CWS_PUBLISHER_ID")}/items/${ITEM_ID}`;
 
 async function accessToken(): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
