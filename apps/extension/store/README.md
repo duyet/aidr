@@ -19,7 +19,10 @@ node apps/extension/scripts/store-assets.mjs --out /tmp/store --lang en
 `/api/feed?days=3` from aidr.today per language, serves this extension
 folder over loopback with that digest and the scene's settings seeded
 into `newtab.html`, and drives headless Chrome over the DevTools
-protocol. Pings to `/api/extension` are blocked so captures do not count
+protocol. Every scene has the day feed on: with it off the page centers
+the AI;DR card (`.page.is-brief`) and leaves an empty band under the
+chips. A scene reloads (up to 3 tries) if a thumbnail fails to load.
+Pings to `/api/extension` are blocked so captures do not count
 as installs. Output is JPEG quality 90, so no file has an alpha channel.
 
 The data is live, so frames change from day to day. Early in the day
@@ -31,11 +34,11 @@ uploading.
 
 | File | Size | How it is made |
 |---|---|---|
-| `en-1-digest.jpg`, `vi-1-digest.jpg` | 1280×800 | Light theme, feed off. Masthead date and the numbered AI;DR bullets. |
+| `en-1-digest.jpg`, `vi-1-digest.jpg` | 1280×800 | Light theme, top of the page. Masthead date and the numbered AI;DR bullets, first day of the feed below. |
 | `en-2-stories.jpg`, `vi-2-stories.jpg` | 1280×800 | Light theme, feed on, scrolled to the first day heading. Day-grouped ranked rows with votes, category and time in columns. |
-| `en-3-day-card.jpg`, `vi-3-day-card.jpg` | 1280×800 | Light theme; clicks the image side of the image/text switch and waits for the day card from `aidr.today/api/og/date/<date>.png`. |
+| `en-3-day-card.jpg`, `vi-3-day-card.jpg` | 1280×800 | Light theme, feed on; clicks the image side of the image/text switch and waits for the day card from `aidr.today/api/og/date/<date>.png`. |
 | `en-4-dark.jpg`, `vi-4-dark.jpg` | 1280×800 | Dark theme, feed on, top of the page. |
-| `en-5-settings.jpg`, `vi-5-settings.jpg` | 1280×800 | Light theme; clicks the Aa button. Theme tab: light/dark, font, text size, the 5-step density slider at its medium default, background. The EN/VI toggle shows in the header. |
+| `en-5-settings.jpg`, `vi-5-settings.jpg` | 1280×800 | Light theme, feed on; clicks the Aa button. Theme tab: light/dark, font, text size, the 5-step density slider at its medium default, background. The EN/VI toggle shows in the header. |
 | `promo-440x280.jpg` | 440×280 | HTML composition: brand yellow `#f5c518`, ink `#0a0a0a`, "AI;DR" in EB Garamond, tagline in Source Sans 3 (fonts from `../fonts`), and a crop of a 2× English new-tab capture (light, feed on). |
 | `marquee-1400x560.jpg` | 1400×560 | Same composition at marquee size with a larger crop and a "Free · English & Tiếng Việt · aidr.today" line. |
 

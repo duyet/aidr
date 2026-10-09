@@ -46,11 +46,15 @@ const MIME = {
   ".woff2": "font/woff2",
 };
 
-/** One selling point per frame. Same five scenes in every language. */
+/**
+ * One selling point per frame. Same five scenes in every language.
+ * Feed on everywhere: with it off the page centers the AI;DR card
+ * (.page.is-brief) and leaves an empty band under the chips.
+ */
 const SCENES = [
   {
     slug: "digest",
-    settings: { theme: "light" },
+    settings: { theme: "light", sections: { days: true } },
   },
   {
     slug: "stories",
@@ -59,7 +63,7 @@ const SCENES = [
   },
   {
     slug: "day-card",
-    settings: { theme: "light" },
+    settings: { theme: "light", sections: { days: true } },
     act: openDayCard,
   },
   {
@@ -68,16 +72,10 @@ const SCENES = [
   },
   {
     slug: "settings",
-    settings: { theme: "light" },
+    settings: { theme: "light", sections: { days: true } },
     act: openSettings,
   },
 ];
-
-/** Feed on, light: the AI;DR card sits right under the chips. */
-const HERO_SCENE = {
-  slug: "hero",
-  settings: { theme: "light", sections: { days: true } },
-};
 
 const TAGLINE = {
   head: "AI news,<br>too long; didn't read",
@@ -283,6 +281,13 @@ const SETTLED = `(() => {
   });
 })()`;
 
+/** On-screen images that finished without pixels (a flaky remote thumb). */
+const BROKEN = `[...document.images].filter((img) => {
+  const r = img.getBoundingClientRect();
+  const onScreen = r.bottom > 0 && r.top < innerHeight && r.width > 0;
+  return onScreen && img.currentSrc && img.complete && img.naturalWidth === 0;
+}).map((img) => img.currentSrc)`;
+
 async function settle(cdp) {
   await waitFor(cdp, SETTLED, "images and fonts");
   await sleep(700);
@@ -352,14 +357,22 @@ async function captureScene(cdp, origin, pages, lang, digest, scene) {
     type: MIME[".html"],
     body: newtabHtml(digest, settings),
   });
-  await load(cdp, `${origin}${path}`, settings.theme);
-  await waitFor(
-    cdp,
-    `document.querySelectorAll("#tldr-cols li").length > 0`,
-    "AI;DR bullets"
-  );
-  if (scene.act) await scene.act(cdp);
-  await settle(cdp);
+  for (let attempt = 1; ; attempt++) {
+    await load(cdp, `${origin}${path}`, settings.theme);
+    await waitFor(
+      cdp,
+      `document.querySelectorAll("#tldr-cols li").length > 0`,
+      "AI;DR bullets"
+    );
+    if (scene.act) await scene.act(cdp);
+    await settle(cdp);
+    const broken = await evaluate(cdp, BROKEN);
+    if (broken.length === 0) break;
+    if (attempt === 3) {
+      console.warn(`${lang}-${scene.slug}: images still broken`, broken);
+      break;
+    }
+  }
   return capture(cdp);
 }
 
@@ -458,7 +471,7 @@ async function main() {
       pages,
       heroLang,
       digests.get(heroLang),
-      HERO_SCENE
+      SCENES[0]
     );
     pages.set("/hero.jpg", { type: MIME[".jpg"], body: hero });
     for (const spec of [
