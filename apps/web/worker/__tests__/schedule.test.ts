@@ -53,7 +53,7 @@ describe("free-plan hourly ingest", () => {
     // and any that fell through would answer with the SPA HTML shell, which
     // reads to a search engine as a broken favicon.
     expect(wrangler).toContain(
-      'run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/favicon-120x120.png", "/apple-touch-icon.png", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/about.md", "/subscribe.md", "/data.md", "/brand.md", "/changelog.md", "/privacy.md", "/terms.md", "/mcp.md", "/contribute.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]'
+      'run_worker_first = ["/", "/favicon.ico", "/logo-sm.png", "/logo.png", "/logo-icon.png", "/logo.svg", "/og.jpg", "/favicon.svg", "/favicon-120x120.png", "/apple-touch-icon.png", "/sitemap.xml", "/sitemaps/*", "/news.xml", "/feed.xml", "/rss.xml", "/feed.json", "/robots.txt", "/llms.txt", "/auth.md", "/about.md", "/subscribe.md", "/data.md", "/brand.md", "/release.md", "/privacy.md", "/terms.md", "/mcp.md", "/contribute.md", "/openapi.json", "/.well-known/*", "/api/*", "/__clerk/*", "/_serverFn", "/_serverFn/*", "/aidr.zip"]'
     );
     expect(wrangler).toMatch(/binding\s*=\s*"ASSETS"/);
   });

@@ -85,6 +85,14 @@ async function resolveDb(env?: Env): Promise<D1Database | undefined> {
   return (await resolveEnv(env))?.DB;
 }
 
+/** Retired page paths and where they moved. Each is a locale-safe 301
+ *  (307 when the request carries an explicit locale, see below), mirrored
+ *  in-app by the matching route's `beforeLoad` for client navigations. */
+const LEGACY_PAGE_REDIRECTS: Record<string, string | undefined> = {
+  "/extension": "/subscribe",
+  "/changelog": "/release",
+};
+
 function isHtmlRequest(request: Request): boolean {
   return /(^|,)\s*(\*\/\*|text\/html)/.test(
     request.headers.get("Accept") || "*/*"
@@ -234,7 +242,7 @@ export default {
             : "html",
         neutralPath:
           isLanguageNeutralSsrPath(path) && !isPrivateSsrPath(path, url.search),
-        redirectPath: path === "/extension" ? "/subscribe" : undefined,
+        redirectPath: LEGACY_PAGE_REDIRECTS[path],
         allowRedirect: isApi || htmlRequest,
       });
       if (normalized) {
@@ -242,9 +250,10 @@ export default {
       }
     }
 
-    if (path === "/extension" && htmlRequest) {
+    const legacyDest = LEGACY_PAGE_REDIRECTS[path];
+    if (legacyDest && htmlRequest) {
       const dest = new URL(request.url);
-      dest.pathname = "/subscribe";
+      dest.pathname = legacyDest;
       const resolution = resolveRequestLocale(request);
       if (!resolution.ok) {
         return localeErrorResponse(request, resolution, "html");

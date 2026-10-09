@@ -984,10 +984,10 @@ describe("static page JSON-LD (WebPage / BreadcrumbList)", () => {
   it("roots the breadcrumb at the language-matched homepage", () => {
     const vi = node<
       JsonLdNode & { itemListElement: { item: string; name: string }[] }
-    >(headFor("/changelog", "vi"), "BreadcrumbList");
+    >(headFor("/release", "vi"), "BreadcrumbList");
     const en = node<
       JsonLdNode & { itemListElement: { item: string; name: string }[] }
-    >(headFor("/changelog", "en"), "BreadcrumbList");
+    >(headFor("/release", "en"), "BreadcrumbList");
 
     expect(vi.itemListElement[0]?.item).toBe(`${SITE_URL}/?lang=vi`);
     expect(en.itemListElement[0]?.item).toBe(`${SITE_URL}/?lang=en`);

@@ -60,7 +60,7 @@ describe("staticSitemapUrls", () => {
     expect(locs).toContain(`${SITE_URL}/mcp?lang=vi`);
     expect(locs).toContain(`${SITE_URL}/mcp?lang=en`);
     expect(locs).toContain(`${SITE_URL}/subscribe?lang=vi`);
-    expect(locs).toContain(`${SITE_URL}/changelog?lang=en`);
+    expect(locs).toContain(`${SITE_URL}/release?lang=en`);
     expect(locs).toContain(`${SITE_URL}/privacy`);
     expect(locs).toContain(`${SITE_URL}/terms`);
     expect(locs).toContain(`${SITE_URL}/contribute?lang=en`);

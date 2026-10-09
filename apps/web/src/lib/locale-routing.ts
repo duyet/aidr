@@ -106,10 +106,10 @@ const PRIVATE_NEUTRAL_SSR_PREFIXES = ["/sign-in", "/sign-up"];
 
 const LOCALIZED_SSR_PATHS = new Set([
   "/",
-  "/changelog",
   "/mcp",
   "/contribute",
   "/contribute/new",
+  "/release",
   "/subscribe",
 ]);
 
@@ -157,6 +157,7 @@ export function isLocaleAwareApiPath(pathname: string): boolean {
 export function isLocalizedSsrPath(pathname: string): boolean {
   const path = normalizedPath(pathname);
   if (LOCALIZED_SSR_PATHS.has(path)) return true;
+  if (/^\/release\/v\d+\.\d+\.\d+$/.test(path)) return true;
   if (!path.startsWith("/") || path.slice(1).includes("/")) return false;
   const slug = path.slice(1);
   return /^[0-9a-f]{8,64}$/.test(slug) || /-[0-9a-f]{8,64}$/.test(slug);
