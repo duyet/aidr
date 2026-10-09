@@ -1696,14 +1696,65 @@ describe("channelCopy", () => {
       ...base,
       source_title: "Dấu ấn Mark Zuckerberg",
       source_summary: "Tóm tắt",
+      source_lang: "vi",
       tr_title: null,
       tr_summary: null,
     };
-    const en = { ...vi, source_title: "Gemini 4", source_summary: "S" };
+    const en = {
+      ...vi,
+      source_title: "Gemini 4",
+      source_summary: "S",
+      source_lang: null,
+    };
     expect(channelCopy(vi, "vi")?.title).toBe("Dấu ấn Mark Zuckerberg");
     expect(channelCopy(vi, "en")).toBeNull();
     expect(channelCopy(en, "en")?.lang).toBe("en");
     // No English fallback on the Vietnamese channel.
     expect(channelCopy(en, "vi")).toBeNull();
+  });
+
+  // The two mistakes a diacritic guess makes. Both rows look unambiguous to
+  // `looksVietnamese` and are classified the wrong way by it.
+  it("routes an ASCII Vietnamese source by source_lang, not by its diacritics", async () => {
+    const { channelCopy } = await import("../notify/index.js");
+    // No diacritic anywhere: a diacritic check reads this as English.
+    const row = {
+      ...base,
+      source_title: "Mo hinh AI cua Meta ra mat",
+      source_summary: "Tóm tắt",
+      source_lang: "vi",
+      tr_title: null,
+      tr_summary: null,
+    };
+    expect(channelCopy(row, "vi")?.title).toBe("Mo hinh AI cua Meta ra mat");
+    expect(channelCopy(row, "en")).toBeNull();
+  });
+
+  it("keeps an English source carrying a Vietnamese name on the English channel", async () => {
+    const { channelCopy } = await import("../notify/index.js");
+    // A diacritic check reads this as Vietnamese and would skip English.
+    const row = {
+      ...base,
+      source_title: "Nguyễn's startup raises a new round",
+      source_summary: "Summary",
+      source_lang: null,
+      tr_title: null,
+      tr_summary: null,
+    };
+    expect(channelCopy(row, "en")?.title).toBe("Nguyễn's startup raises a new round");
+    expect(channelCopy(row, "vi")).toBeNull();
+  });
+
+  it("still prefers the translation when source_lang disagrees with the channel", async () => {
+    const { channelCopy } = await import("../notify/index.js");
+    const row = {
+      ...base,
+      source_title: "Mo hinh AI cua Meta ra mat",
+      source_summary: "Tóm tắt",
+      source_lang: "vi",
+      tr_title: "Meta's new AI model",
+      tr_summary: "Summary",
+    };
+    expect(channelCopy(row, "en")?.title).toBe("Meta's new AI model");
   });
 });

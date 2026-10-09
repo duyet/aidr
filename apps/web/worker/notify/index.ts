@@ -1,4 +1,4 @@
-import { looksVietnamese } from "../../src/lib/display-title.js";
+
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { stripTitleMarker } from "../../src/lib/plain-text.js";
 import { storyPath } from "../../src/lib/slug.js";
@@ -258,6 +258,8 @@ export interface ChannelCopyRow {
   source_summary: string | null;
   tr_title: string | null;
   tr_summary: string | null;
+  /** The pipeline's explicit language for the source, or null for English. */
+  source_lang?: string | null;
 }
 
 /**
@@ -266,6 +268,12 @@ export interface ChannelCopyRow {
  * source is already in that language, else null (the story is skipped on
  * this channel). A Vietnamese source (VnExpress) reaches the English channel
  * through its vi→en translation, never as Vietnamese text.
+ *
+ * The source language is the `source_lang` column, never a diacritic guess:
+ * a Vietnamese headline typed without diacritics reads as English and would
+ * post on the English channel, and an English headline naming a Vietnamese
+ * person reads as Vietnamese and would be skipped there. Most English rows
+ * leave `source_lang` null, so only an explicit `vi` is Vietnamese.
  */
 export function channelCopy<T extends ChannelCopyRow>(
   row: T,
@@ -277,7 +285,14 @@ export function channelCopy<T extends ChannelCopyRow>(
       lang: Lang;
     })
   | null {
-  const { source_title, source_summary, tr_title, tr_summary, ...rest } = row;
+  const {
+    source_title,
+    source_summary,
+    tr_title,
+    tr_summary,
+    source_lang,
+    ...rest
+  } = row;
   const translated = tr_title?.trim();
   if (translated) {
     return {
@@ -287,7 +302,7 @@ export function channelCopy<T extends ChannelCopyRow>(
       lang,
     };
   }
-  const sourceLang: Lang = looksVietnamese(source_title) ? "vi" : "en";
+  const sourceLang: Lang = source_lang === "vi" ? "vi" : "en";
   if (sourceLang !== lang) return null;
   return { ...rest, title: source_title, summary: source_summary, lang };
 }
@@ -304,6 +319,7 @@ export function buildTrendingQuery(
   const trLang = lang === "en" ? "en" : "vi";
   const copy = `i.title AS source_title,
                  i.summary AS source_summary,
+                 i.source_lang AS source_lang,
                  tr.title AS tr_title,
                  tr.summary AS tr_summary`;
   const translationJoin = `LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = '${trLang}'\n          `;
