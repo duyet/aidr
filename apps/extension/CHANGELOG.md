@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.22](https://github.com/duyet/aidr/compare/aidr-v0.1.21...aidr-v0.1.22) (2026-10-09)
+
+
+### ✨ Features
+
+* Chrome Web Store listing refresh, store-assets, full-width day card, release skills ([#489](https://github.com/duyet/aidr/issues/489)) ([ed6696c](https://github.com/duyet/aidr/commit/ed6696cfe881a0354c858e8c36dbf23769f37190))
+
 ## [0.1.21](https://github.com/duyet/aidr/compare/aidr-v0.1.20...aidr-v0.1.21) (2026-10-09)
 
 
