@@ -1,0 +1,468 @@
+{
+  "version": "0.1.0",
+  "kicker": "First public release",
+  "headline": "AI;DR goes public at aidr.today",
+  "dates": "Sep 7 – 30, 2026",
+  "captures": {
+    "story": "/15523a41?lang=en@200",
+    "telegram": "/subscribe?tab=telegram&lang=en@250",
+    "mcp": "/mcp?lang=en@200",
+    "sources": "/data?tab=sources&lang=en@300",
+    "data": "/data?lang=en"
+  },
+  "scenes": [
+    {
+      "shot": "story",
+      "url": "aidr.today/15523a41",
+      "label": "Stories",
+      "title": "A page for every story",
+      "mark": "every story",
+      "rows": [
+        [
+          "Link",
+          "aidr.today/15523a41"
+        ],
+        [
+          "Sources",
+          "Inline, under the summary"
+        ],
+        [
+          "Share",
+          "A branded card with the photo"
+        ]
+      ],
+      "to": {
+        "x": 0.1,
+        "y": 0.29,
+        "w": 0.57
+      },
+      "focus": {
+        "x": 0.125,
+        "y": 0.565,
+        "w": 0.535,
+        "h": 0.235
+      },
+      "to9": {
+        "x": 0.12,
+        "y": 0.5,
+        "w": 0.42
+      },
+      "focus9": {
+        "x": 0.13,
+        "y": 0.565,
+        "w": 0.4,
+        "h": 0.235
+      }
+    },
+    {
+      "shot": "telegram",
+      "url": "aidr.today/subscribe?tab=telegram",
+      "label": "Get AI;DR",
+      "title": "Get it where you read",
+      "mark": "where you read",
+      "rows": [
+        [
+          "Telegram",
+          "@aidr_today and @aihomnay"
+        ],
+        [
+          "Email",
+          "English and Vietnamese editions"
+        ],
+        [
+          "Chrome",
+          "Today's AI;DR on every new tab"
+        ]
+      ],
+      "to": {
+        "x": 0.1,
+        "y": 0.2,
+        "w": 0.62
+      },
+      "focus": {
+        "x": 0.115,
+        "y": 0.415,
+        "w": 0.36,
+        "h": 0.19
+      }
+    },
+    {
+      "shot": "mcp",
+      "url": "aidr.today/mcp",
+      "label": "Open access",
+      "title": "Read it anywhere",
+      "mark": "anywhere",
+      "rows": [
+        [
+          "RSS",
+          "aidr.today/feed.xml"
+        ],
+        [
+          "MCP",
+          "No account, no key"
+        ],
+        [
+          "Markdown",
+          "Every story, for agents"
+        ]
+      ],
+      "to": {
+        "x": 0.1,
+        "y": 0.0,
+        "w": 0.62
+      },
+      "focus": {
+        "x": 0.112,
+        "y": 0.05,
+        "w": 0.6,
+        "h": 0.165
+      },
+      "to9": {
+        "x": 0.11,
+        "y": 0.03,
+        "w": 0.36
+      },
+      "focus9": {
+        "x": 0.112,
+        "y": 0.05,
+        "w": 0.34,
+        "h": 0.165
+      }
+    },
+    {
+      "shot": "sources",
+      "url": "aidr.today/data?tab=sources",
+      "label": "Sources",
+      "title": "More sources, fairer ranking",
+      "mark": "fairer ranking",
+      "rows": [
+        [
+          "Sources",
+          "From 3 to 25"
+        ],
+        [
+          "Same story",
+          "Outlets merge into one row"
+        ],
+        [
+          "Fair share",
+          "No source fills over a quarter"
+        ]
+      ],
+      "to": {
+        "x": 0.1,
+        "y": 0.15,
+        "w": 0.6
+      },
+      "focus": {
+        "x": 0.125,
+        "y": 0.265,
+        "w": 0.14,
+        "h": 0.55
+      },
+      "to9": {
+        "x": 0.11,
+        "y": 0.24,
+        "w": 0.3
+      },
+      "focus9": {
+        "x": 0.125,
+        "y": 0.265,
+        "w": 0.14,
+        "h": 0.3
+      }
+    },
+    {
+      "shot": "data",
+      "url": "aidr.today/data",
+      "label": "Data",
+      "title": "The pipeline in the open",
+      "mark": "in the open",
+      "rows": [
+        [
+          "Runs",
+          "Every ingest, with its health"
+        ],
+        [
+          "Models",
+          "Scoring, translation, digest"
+        ],
+        [
+          "Tokens",
+          "Use per day, by task"
+        ]
+      ],
+      "to": {
+        "x": 0.1,
+        "y": 0.24,
+        "w": 0.4
+      },
+      "focus": {
+        "x": 0.12,
+        "y": 0.49,
+        "w": 0.36,
+        "h": 0.11
+      }
+    }
+  ],
+  "stats": [
+    [
+      "332",
+      "commits"
+    ],
+    [
+      "98",
+      "features"
+    ],
+    [
+      "102",
+      "fixes"
+    ],
+    [
+      "25",
+      "news sources, up from 3"
+    ]
+  ],
+  "also": "Also new: an RSS feed in both languages, a Google News sitemap, and short story links.",
+  "closing": "Ranked AI news, in English and Vietnamese.",
+  "vi": {
+    "kicker": "Bản phát hành công khai đầu tiên",
+    "headline": "AI;DR chính thức ra mắt tại aidr.today",
+    "dates": "7 – 30/9/2026",
+    "ui": {
+      "inNumbers": "qua các con số",
+      "releaseNotes": "Ghi chú phát hành"
+    },
+    "captures": {
+      "story": "/15523a41?lang=vi@200",
+      "telegram": "/subscribe?tab=telegram&lang=vi@250",
+      "mcp": "/mcp?lang=vi@200",
+      "sources": "/data?tab=sources&lang=vi@300",
+      "data": "/data?lang=vi"
+    },
+    "scenes": [
+      {
+        "url": "aidr.today/15523a41?lang=vi",
+        "label": "Tin",
+        "title": "Mỗi tin một trang riêng",
+        "mark": "một trang riêng",
+        "rows": [
+          [
+            "Đường dẫn",
+            "aidr.today/15523a41"
+          ],
+          [
+            "Nguồn",
+            "Hiện ngay dưới phần tóm tắt"
+          ],
+          [
+            "Chia sẻ",
+            "Thẻ AI;DR kèm ảnh của tin"
+          ]
+        ],
+        "focus": {
+          "x": 0.13,
+          "y": 0.625,
+          "w": 0.535,
+          "h": 0.255
+        },
+        "focus9": {
+          "x": 0.13,
+          "y": 0.635,
+          "w": 0.4,
+          "h": 0.262
+        },
+        "to9": {
+          "x": 0.12,
+          "y": 0.59,
+          "w": 0.42
+        }
+      },
+      {
+        "url": "aidr.today/subscribe?tab=telegram&lang=vi",
+        "label": "Nhận AI;DR",
+        "title": "Đọc ở nơi bạn quen",
+        "mark": "nơi bạn quen",
+        "rows": [
+          [
+            "Telegram",
+            "@aidr_today và @aihomnay"
+          ],
+          [
+            "Email",
+            "Hai bản tiếng Anh và tiếng Việt"
+          ],
+          [
+            "Chrome",
+            "AI;DR hôm nay ở mỗi tab mới"
+          ]
+        ]
+      },
+      {
+        "url": "aidr.today/mcp?lang=vi",
+        "label": "Truy cập mở",
+        "title": "Đọc ở bất cứ đâu",
+        "mark": "bất cứ đâu",
+        "rows": [
+          [
+            "RSS",
+            "aidr.today/feed.xml"
+          ],
+          [
+            "MCP",
+            "Không cần tài khoản hay key"
+          ],
+          [
+            "Markdown",
+            "Mỗi tin, cho AI agent"
+          ]
+        ]
+      },
+      {
+        "label": "Nguồn tin",
+        "title": "Thêm nguồn, xếp hạng công bằng hơn",
+        "mark": "công bằng hơn",
+        "rows": [
+          [
+            "Nguồn",
+            "Từ 3 lên 25"
+          ],
+          [
+            "Cùng một tin",
+            "Gộp thành một dòng"
+          ],
+          [
+            "Công bằng",
+            "Không nguồn nào quá một phần tư"
+          ]
+        ],
+        "focus9": {
+          "x": 0.125,
+          "y": 0.265,
+          "w": 0.14,
+          "h": 0.315
+        }
+      },
+      {
+        "label": "Dữ liệu",
+        "title": "Quy trình xử lý công khai",
+        "mark": "công khai",
+        "rows": [
+          [
+            "Lượt chạy",
+            "Mỗi lượt thu thập, kèm tình trạng"
+          ],
+          [
+            "Model",
+            "Chấm điểm, dịch, tóm tắt"
+          ],
+          [
+            "Token",
+            "Lượng dùng mỗi ngày, theo bước"
+          ]
+        ]
+      }
+    ],
+    "stats": [
+      [
+        "332",
+        "commit"
+      ],
+      [
+        "98",
+        "tính năng"
+      ],
+      [
+        "102",
+        "bản sửa lỗi"
+      ],
+      [
+        "25",
+        "nguồn tin, từ 3"
+      ]
+    ],
+    "also": "Cũng mới: RSS cho cả hai ngôn ngữ, sitemap Google News và đường dẫn tin ngắn.",
+    "closing": "Tin AI được xếp hạng, bằng tiếng Anh và tiếng Việt.",
+    "voice": {
+      "cast": true,
+      "speed": 1.1,
+      "title": "AI DR, phiên bản không chấm một chấm không. Bản phát hành công khai đầu tiên.",
+      "scenes": [
+        "Mỗi tin giờ có một trang riêng, với đường dẫn ngắn, các nguồn chính, và thẻ chia sẻ kèm ảnh.",
+        "Bạn nhận bản tin ở nơi bạn quen: Telegram hai ngôn ngữ, email, hay mỗi tab mới trên Chrome.",
+        "Và đọc được ở bất cứ đâu: có RSS, còn AI agent đọc tin qua MCP mà không cần tài khoản.",
+        "Số nguồn tăng từ ba lên hai mươi lăm, và nhiều trang cùng đưa một tin giờ gộp thành một dòng.",
+        "Trang Dữ liệu cho thấy toàn bộ quy trình: từng lượt chạy, các model làm việc, và lượng token."
+      ],
+      "stats": "Ba trăm ba mươi hai commit, chỉ trong ba tuần.",
+      "close": "Đọc ngay tại AI DR chấm today."
+    },
+    "captionReplace": [
+      [
+        "AI DR chấm today",
+        "aidr.today"
+      ],
+      [
+        "không chấm một chấm không",
+        "0.1.0"
+      ],
+      [
+        "Ba trăm ba mươi hai",
+        "332"
+      ],
+      [
+        "hai mươi lăm",
+        "25"
+      ],
+      [
+        "từ ba lên",
+        "từ 3 lên"
+      ]
+    ]
+  },
+  "voice": {
+    "cast": true,
+    "speed": 1.05,
+    "title": "AI DR, version zero point one point zero. Our first public release.",
+    "scenes": [
+      "Every story now has its own page, with a short link, its key sources, and a card that's made for sharing.",
+      "You can get the digest wherever you read: on Telegram in two languages, by email, or in every new Chrome tab.",
+      "And it reads anywhere. There's an RSS feed, and AI agents can pull the news over MCP, no account needed.",
+      "We went from three sources to twenty-five, and when many outlets cover a story, they merge into one row.",
+      "The data page shows the whole pipeline: every run, the models doing the work, and the tokens they use."
+    ],
+    "stats": "That's three hundred thirty-two commits in three weeks.",
+    "close": "Read it at AI DR dot today."
+  },
+  "captionReplace": [
+    [
+      "zero point one point zero",
+      "0.1.0"
+    ],
+    [
+      "three hundred thirty-two",
+      "332"
+    ],
+    [
+      "twenty-five,",
+      "25,"
+    ],
+    [
+      "twenty-five",
+      "25"
+    ],
+    [
+      "three sources",
+      "3 sources"
+    ]
+  ],
+  "motion": {
+    "num": 0.08,
+    "label": 0.16,
+    "title": 0.24,
+    "marker": 0.75,
+    "cam": 1.1,
+    "focus": 2.0,
+    "rows": 2.1
+  }
+}

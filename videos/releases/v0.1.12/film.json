@@ -1,0 +1,458 @@
+{
+  "version": "0.1.12",
+  "kicker": "What's new",
+  "headline": "Every day gets a page, and you get a vote",
+  "dates": "Oct 1 – 9, 2026",
+  "captures": {
+    "day": "/date/2026-10-08?lang=en",
+    "daycard": "/api/og/date/2026-10-08.png",
+    "rows": "/?lang=en@700",
+    "why": "/90b333df?lang=en#Why this ranks",
+    "home-vi": "/date/2026-10-08?lang=vi@450"
+  },
+  "scenes": [
+    {
+      "shot": "day",
+      "url": "aidr.today/date/2026-10-08",
+      "label": "Day pages",
+      "title": "Each date, one address",
+      "mark": "one address",
+      "rows": [
+        [
+          "Address",
+          "aidr.today/date/YYYY-MM-DD"
+        ],
+        [
+          "Inside",
+          "The day's AI;DR, every story ranked"
+        ],
+        [
+          "Links",
+          "The day before and the day after"
+        ]
+      ],
+      "to": {
+        "x": 0.1,
+        "y": 0.08,
+        "w": 0.6
+      },
+      "focus": {
+        "x": 0.12,
+        "y": 0.095,
+        "w": 0.25,
+        "h": 0.035
+      },
+      "to9": {
+        "x": 0.11,
+        "y": 0.08,
+        "w": 0.34
+      }
+    },
+    {
+      "shot": "daycard",
+      "url": "aidr.today/date/2026-10-08 · day card",
+      "label": "Day card",
+      "title": "One card sums up the day",
+      "mark": "sums up the day",
+      "rows": [
+        [
+          "Stories",
+          "The day's top six, with photos"
+        ],
+        [
+          "Leads",
+          "The email and the Telegram post"
+        ],
+        [
+          "Shares",
+          "When you share a day page"
+        ]
+      ],
+      "from": {
+        "x": -0.15,
+        "y": -0.4,
+        "w": 1.3
+      },
+      "to": {
+        "x": 0.01,
+        "y": -0.17,
+        "w": 0.98
+      },
+      "to9": {
+        "x": 0.01,
+        "y": -0.17,
+        "w": 0.98
+      }
+    },
+    {
+      "shot": "rows",
+      "url": "aidr.today",
+      "label": "Votes",
+      "title": "Vote stories up or down",
+      "mark": "up or down",
+      "rows": [
+        [
+          "Who",
+          "Signed-in readers"
+        ],
+        [
+          "Effect",
+          "The tally moves the rank"
+        ],
+        [
+          "Count",
+          "Anyone can see it"
+        ]
+      ],
+      "to": {
+        "x": 0.3,
+        "y": 0.06,
+        "w": 0.45
+      },
+      "focus": {
+        "x": 0.664,
+        "y": 0.128,
+        "w": 0.044,
+        "h": 0.036
+      }
+    },
+    {
+      "shot": "why",
+      "url": "aidr.today/90b333df",
+      "label": "Ranking",
+      "title": "See why a story ranks",
+      "mark": "why",
+      "rows": [
+        [
+          "Window",
+          "A rolling 72 hours"
+        ],
+        [
+          "Signals",
+          "Corroboration and engagement"
+        ],
+        [
+          "Fairness",
+          "Each source family capped"
+        ]
+      ],
+      "to": {
+        "x": 0.62,
+        "y": 0.57,
+        "w": 0.33
+      },
+      "focus": {
+        "x": 0.688,
+        "y": 0.595,
+        "w": 0.178,
+        "h": 0.31
+      },
+      "to9": {
+        "x": 0.66,
+        "y": 0.592,
+        "w": 0.28
+      }
+    },
+    {
+      "shot": "home-vi",
+      "url": "aidr.today/date/2026-10-08?lang=vi",
+      "label": "Tiếng Việt",
+      "title": "Better Vietnamese",
+      "mark": "Vietnamese",
+      "rows": [
+        [
+          "Check",
+          "Translated back to English"
+        ],
+        [
+          "Terms",
+          "Tech words stay in English"
+        ],
+        [
+          "Readers",
+          "Accepted suggestions become rules"
+        ]
+      ],
+      "to": {
+        "x": 0.1,
+        "y": 0.12,
+        "w": 0.6
+      },
+      "focus": {
+        "x": 0.12,
+        "y": 0.305,
+        "w": 0.5,
+        "h": 0.135
+      },
+      "to9": {
+        "x": 0.12,
+        "y": 0.27,
+        "w": 0.42
+      },
+      "focus9": {
+        "x": 0.125,
+        "y": 0.305,
+        "w": 0.4,
+        "h": 0.135
+      }
+    }
+  ],
+  "stats": [
+    [
+      "230",
+      "commits"
+    ],
+    [
+      "58",
+      "features"
+    ],
+    [
+      "109",
+      "fixes"
+    ],
+    [
+      "+17",
+      "news sources"
+    ],
+    [
+      "30",
+      "minutes between runs"
+    ]
+  ],
+  "also": "Also new: a Facebook Page, a Contribute page, and stories by email to submit@aidr.today.",
+  "closing": "Every day's AI news, on its own page.",
+  "motion": {
+    "num": 0.08,
+    "label": 0.16,
+    "title": 0.24,
+    "marker": 0.75,
+    "cam": 1.1,
+    "focus": 2.0,
+    "rows": 2.1
+  },
+  "voice": {
+    "speed": 1.05,
+    "title": "AI DR, version zero point one point twelve.",
+    "scenes": [
+      "Every day now gets its own page: that day's digest, and every story, ranked.",
+      "One card sums up the day's top six stories. It's what leads the email and the Telegram post.",
+      "If you're signed in, you can vote a story up or down, and the tally moves its rank.",
+      "Open any story to see why it ranks: its score, its outlets, and when it went out.",
+      "Vietnamese gets checked by translating it back, and tech terms stay in English."
+    ],
+    "stats": "That's two hundred thirty commits, seventeen new sources, and a fresh run every thirty minutes.",
+    "close": "Read it at AI DR dot today.",
+    "cast": true
+  },
+  "captionReplace": [
+    [
+      "zero point one point twelve",
+      "0.1.12"
+    ],
+    [
+      "two hundred thirty",
+      "230"
+    ],
+    [
+      "seventeen",
+      "17"
+    ],
+    [
+      "thirty",
+      "30"
+    ]
+  ],
+  "vi": {
+    "kicker": "Có gì mới",
+    "headline": "Mỗi ngày một trang, mỗi người một phiếu",
+    "dates": "1 – 9/10/2026",
+    "ui": {
+      "inNumbers": "qua các con số",
+      "releaseNotes": "Ghi chú phát hành"
+    },
+    "captures": {
+      "day": "/date/2026-10-08?lang=vi",
+      "daycard": "/api/og/date/2026-10-08.png?lang=vi",
+      "rows": "/?lang=vi@700",
+      "why": "/90b333df?lang=vi#Vì sao xếp hạng này",
+      "home-vi": "/date/2026-10-08?lang=vi@450"
+    },
+    "scenes": [
+      {
+        "url": "aidr.today/date/2026-10-08?lang=vi",
+        "label": "Trang theo ngày",
+        "title": "Mỗi ngày, một địa chỉ",
+        "mark": "một địa chỉ",
+        "rows": [
+          [
+            "Địa chỉ",
+            "aidr.today/date/YYYY-MM-DD"
+          ],
+          [
+            "Bên trong",
+            "AI;DR của ngày, mọi tin theo hạng"
+          ],
+          [
+            "Liên kết",
+            "Sang ngày trước và ngày sau"
+          ]
+        ]
+      },
+      {
+        "url": "aidr.today/date/2026-10-08 · ảnh tóm tắt",
+        "label": "Ảnh tóm tắt",
+        "title": "Một ảnh tóm gọn cả ngày",
+        "mark": "tóm gọn cả ngày",
+        "rows": [
+          [
+            "Tin",
+            "Sáu tin nổi bật, kèm ảnh"
+          ],
+          [
+            "Mở đầu",
+            "Bản tin email và bài Telegram"
+          ],
+          [
+            "Chia sẻ",
+            "Khi bạn chia sẻ trang ngày"
+          ]
+        ]
+      },
+      {
+        "url": "aidr.today/?lang=vi",
+        "label": "Bình chọn",
+        "title": "Bình chọn lên hoặc xuống",
+        "mark": "lên hoặc xuống",
+        "rows": [
+          [
+            "Ai",
+            "Bạn đọc đã đăng nhập"
+          ],
+          [
+            "Tác dụng",
+            "Tổng phiếu đổi thứ hạng"
+          ],
+          [
+            "Số phiếu",
+            "Ai cũng xem được"
+          ]
+        ],
+        "to": {
+          "x": 0.3,
+          "y": 0.0,
+          "w": 0.45
+        },
+        "focus": {
+          "x": 0.664,
+          "y": 0.06,
+          "w": 0.044,
+          "h": 0.035
+        },
+        "to9": {
+          "x": 0.22,
+          "y": 0.0,
+          "w": 0.5
+        }
+      },
+      {
+        "url": "aidr.today/90b333df?lang=vi",
+        "label": "Xếp hạng",
+        "title": "Vì sao tin xếp hạng này",
+        "mark": "Vì sao",
+        "rows": [
+          [
+            "Khung giờ",
+            "72 giờ gần nhất"
+          ],
+          [
+            "Tín hiệu",
+            "Số nguồn đưa tin và tương tác"
+          ],
+          [
+            "Công bằng",
+            "Giới hạn mỗi nhóm nguồn"
+          ]
+        ]
+      },
+      {
+        "label": "Tiếng Việt",
+        "title": "Tiếng Việt chuẩn hơn",
+        "mark": "chuẩn hơn",
+        "rows": [
+          [
+            "Kiểm tra",
+            "Dịch ngược lại sang tiếng Anh"
+          ],
+          [
+            "Thuật ngữ",
+            "Giữ nguyên tiếng Anh"
+          ],
+          [
+            "Bạn đọc",
+            "Gợi ý được duyệt thành quy tắc"
+          ]
+        ]
+      }
+    ],
+    "stats": [
+      [
+        "230",
+        "commit"
+      ],
+      [
+        "58",
+        "tính năng"
+      ],
+      [
+        "109",
+        "bản sửa lỗi"
+      ],
+      [
+        "+17",
+        "nguồn tin mới"
+      ],
+      [
+        "30",
+        "phút giữa hai lượt cập nhật"
+      ]
+    ],
+    "also": "Cũng mới: Fanpage Facebook, trang Đóng góp, và gửi tin qua email tới submit@aidr.today.",
+    "closing": "Tin AI mỗi ngày, mỗi ngày một trang.",
+    "voice": {
+      "speed": 1.15,
+      "title": "AI DR, phiên bản không chấm một chấm mười hai.",
+      "scenes": [
+        "Giờ mỗi ngày đều có trang riêng: bản tin của ngày đó, và toàn bộ tin, xếp theo thứ hạng.",
+        "Một ảnh tóm gọn sáu tin nổi bật trong ngày, mở đầu cả email lẫn bài đăng Telegram.",
+        "Đăng nhập để bình chọn lên hoặc xuống, và tổng phiếu sẽ đổi thứ hạng của tin.",
+        "Mở một tin để xem vì sao nó đứng ở đó: điểm số, số nguồn, và lúc được đăng.",
+        "Tiếng Việt được kiểm tra bằng cách dịch ngược, còn thuật ngữ kỹ thuật giữ tiếng Anh."
+      ],
+      "stats": "Hai trăm ba mươi commit, thêm mười bảy nguồn, và ba mươi phút cập nhật một lần.",
+      "close": "Đọc ngay tại AI DR chấm today.",
+      "cast": true
+    },
+    "captionReplace": [
+      [
+        "AI DR chấm today",
+        "aidr.today"
+      ],
+      [
+        "không chấm một chấm mười hai",
+        "0.1.12"
+      ],
+      [
+        "Hai trăm ba mươi",
+        "230"
+      ],
+      [
+        "mười bảy",
+        "17"
+      ],
+      [
+        "ba mươi",
+        "30"
+      ]
+    ]
+  }
+}

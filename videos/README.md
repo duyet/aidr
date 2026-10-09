@@ -43,6 +43,7 @@ To regenerate an existing video, open its folder: `BRIEF.md` and `STORYBOARD.md`
 | Feature release | [`specs/feature-release.md`](specs/feature-release.md) | — | Planned |
 | New source | [`specs/new-source.md`](specs/new-source.md) | — | Planned |
 | Daily Brief (top stories, every day, 16:9 + 9:16, 4K) | [`daily-news/README.md`](daily-news/README.md) | `daily-news/` | Template built; one edition per day under `daily-news/editions/<date>/`. Skill: `aidr-daily-news` |
+| Release film (one per aidr.today release, 16:9, 58s) | [`releases/README.md`](releases/README.md) | `releases/<v>/` | v0.1.0 and v0.1.12 built from one template (`releases/scripts/`) |
 | Story clip (automated, per news item) | [`specs/story-clip.md`](specs/story-clip.md) | — | Planned, see [`docs/story-clips-plan.md`](docs/story-clips-plan.md) |
 
 Details per series: [`docs/series.md`](docs/series.md).
