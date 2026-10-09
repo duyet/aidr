@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21](https://github.com/duyet/aidr/compare/aidr-v0.1.20...aidr-v0.1.21) (2026-10-09)
+
+
+### ✨ Features
+
+* five density steps, aligned story rows, image/text day card switch (web + extension) ([#485](https://github.com/duyet/aidr/issues/485)) ([d49fc1b](https://github.com/duyet/aidr/commit/d49fc1bfca9a630943a82600754f12dc9ff43cc6))
+
 ## [0.1.20](https://github.com/duyet/aidr/compare/aidr-v0.1.19...aidr-v0.1.20) (2026-10-04)
 
 
