@@ -7,7 +7,7 @@ import { timeAgo } from "../lib/lang";
 import { type TldrCount, usePrefs } from "../lib/prefs";
 import { tldrCountOptions, tldrShownCount } from "../lib/tldr-links";
 import type { Lang, TldrBullet } from "../lib/types";
-import { DayCardOverlay, DayCardViewSwitch } from "./DayCardPreview";
+import { DayCardView, DayCardViewSwitch } from "./DayCardPreview";
 import { TldrBulletList } from "./TldrBulletList";
 
 export function TldrSection({
@@ -156,12 +156,12 @@ export function TldrSection({
         </div>
       </div>
 
-      <div className="relative px-4 py-5 sm:px-5">
+      <div className="px-4 py-5 sm:px-5">
         {snapshotDate && dateHref ? (
-          <DayCardOverlay date={snapshotDate} lang={lang} open={preview} />
+          <DayCardView date={snapshotDate} lang={lang} open={preview} />
         ) : null}
-        {/* While the day card covers the list, keep its links out of reach. */}
-        <div inert={preview}>
+        {/* The day card takes the list's place; the footer stays. */}
+        <div hidden={preview}>
           <TldrBulletList
             shown={shown}
             mid={mid}
@@ -200,24 +200,24 @@ export function TldrSection({
               </button>
             )
           )}
+        </div>
 
-          <div className="mt-4 flex justify-between text-xs text-muted-foreground">
-            <span>
-              {totalStories} {lang === "vi" ? "tin" : "stories"}
-            </span>
-            {!showFreshness ? null : lastFetchedAt ? (
-              <Link
-                to="/data"
-                suppressHydrationWarning
-                className="rounded-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
-                {timeAgo(lastFetchedAt, updatedAt, lang)}
-              </Link>
-            ) : (
-              <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
-            )}
-          </div>
+        <div className="mt-4 flex justify-between text-xs text-muted-foreground">
+          <span>
+            {totalStories} {lang === "vi" ? "tin" : "stories"}
+          </span>
+          {!showFreshness ? null : lastFetchedAt ? (
+            <Link
+              to="/data"
+              suppressHydrationWarning
+              className="rounded-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
+              {timeAgo(lastFetchedAt, updatedAt, lang)}
+            </Link>
+          ) : (
+            <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
+          )}
         </div>
       </div>
     </section>

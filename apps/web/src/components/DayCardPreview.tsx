@@ -6,7 +6,7 @@ import type { Lang } from "../lib/types";
 /**
  * Image | text switch in the digest masthead, styled like the 8 | 12 count
  * pills beside it. "Image" swaps the bullet list for the day card
- * (`DayCardOverlay`); "text" brings the list back.
+ * (`DayCardView`); "text" brings the list back.
  */
 export function DayCardViewSwitch({
   lang,
@@ -59,11 +59,12 @@ export function DayCardViewSwitch({
 }
 
 /**
- * The day card laid over the digest content while the image view is on. The
- * image loads shortly after the page settles (or on first switch, if sooner)
- * and then stays mounted, so switching shows it instantly.
+ * The day card shown in place of the bullet list while the image view is
+ * on, at the full body width (capped so it fits the screen). The image loads
+ * shortly after the page settles (or on first switch, if sooner) and then
+ * stays mounted, so switching shows it instantly.
  */
-export function DayCardOverlay({
+export function DayCardView({
   date,
   lang,
   open,
@@ -80,12 +81,7 @@ export function DayCardOverlay({
     return () => clearTimeout(timer);
   }, []);
   return (
-    <div
-      aria-hidden={!open}
-      className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-card p-3 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none ${
-        open ? "scale-100 opacity-100" : "scale-[0.98] opacity-0"
-      }`}
-    >
+    <div hidden={!open} className={open ? "flex justify-center" : "hidden"}>
       {wanted ? (
         <img
           src={dayArchiveOgPath(date, lang)}
@@ -97,7 +93,7 @@ export function DayCardOverlay({
           width={1200}
           height={630}
           decoding="async"
-          className="max-h-full w-auto max-w-full rounded-xl object-contain shadow-lg"
+          className="h-auto max-h-[min(70vh,630px)] w-auto max-w-full rounded-xl object-contain shadow-lg"
         />
       ) : null}
     </div>
