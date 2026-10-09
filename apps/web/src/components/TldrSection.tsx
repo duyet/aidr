@@ -200,24 +200,24 @@ export function TldrSection({
               </button>
             )
           )}
-        </div>
 
-        <div className="mt-4 flex justify-between text-xs text-muted-foreground">
-          <span>
-            {totalStories} {lang === "vi" ? "tin" : "stories"}
-          </span>
-          {!showFreshness ? null : lastFetchedAt ? (
-            <Link
-              to="/data"
-              suppressHydrationWarning
-              className="rounded-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
-              {timeAgo(lastFetchedAt, updatedAt, lang)}
-            </Link>
-          ) : (
-            <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
-          )}
+          <div className="mt-4 flex justify-between text-xs text-muted-foreground">
+            <span>
+              {totalStories} {lang === "vi" ? "tin" : "stories"}
+            </span>
+            {!showFreshness ? null : lastFetchedAt ? (
+              <Link
+                to="/data"
+                suppressHydrationWarning
+                className="rounded-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
+                {timeAgo(lastFetchedAt, updatedAt, lang)}
+              </Link>
+            ) : (
+              <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
+            )}
+          </div>
         </div>
       </div>
     </section>
