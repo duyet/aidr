@@ -28,6 +28,7 @@ export const release: Release = {
     },
   ],
   youtubeId: "_9kg_U0BajE",
+  youtubeIdVi: "Endnh6KvCNg",
   cover: {
     src: "/releases/v0.1.12/day-page.webp",
     width: 1440,
