@@ -1,0 +1,215 @@
+{
+  "date": "2026-10-10",
+  "dateline": "Saturday, October 10, 2026",
+  "theme": {
+    "intro": "grid",
+    "transition": "shutter",
+    "background": "grid"
+  },
+  "thumb": {
+    "story": 5,
+    "hook": "A cap that turns thoughts into prompts"
+  },
+  "post": {
+    "hook": "OpenAI's revenue revision hits AI stocks, TypeSafe AI raises $870M, and a cap turns thoughts into prompts.",
+    "hashtags": [
+      "AI",
+      "AINews",
+      "OpenAI",
+      "Nvidia",
+      "Amazon",
+      "a16z",
+      "AIStocks",
+      "TechNews"
+    ],
+    "tiktok": "OpenAI's $20B revenue revision hits AI stocks, a16z leads an $870M round for TypeSafe AI, and a cap turns thoughts into prompts. Your take? 👇",
+    "facebook": "Today in AI: a report that OpenAI's September revenue run rate was $20B lower than thought sends AI stocks down, TypeSafe AI raises about $870M, and Sabi is building a cap that turns thoughts into prompts.",
+    "youtubeTitle": "AI News Today: OpenAI revenue revision hits AI stocks, TypeSafe AI's $870M & more | Oct 10, 2026",
+    "shortsTitle": "OpenAI's revenue revision hits AI stocks + 5 more AI stories today"
+  },
+  "intro": {
+    "voice": [
+      {
+        "anchor": "ivanna",
+        "text": "This is AI DR, your AI news for Saturday, October tenth."
+      },
+      {
+        "anchor": "allison",
+        "text": "A twenty billion dollar revision rattles AI stocks, and a cap turns thoughts into prompts."
+      }
+    ],
+    "title": "Six stories that matter today",
+    "focus": [
+      {
+        "rank": 1,
+        "word": "twenty"
+      },
+      {
+        "rank": 5,
+        "word": "cap"
+      }
+    ]
+  },
+  "stories": [
+    {
+      "rank": 1,
+      "category": "Industry",
+      "kicker": "AI stocks slide",
+      "headline": "*OpenAI's revenue revised down*, AI stocks fall",
+      "stat": "−$20B",
+      "statLabel": "OpenAI's September annualized revenue vs. earlier reports",
+      "statWord": "twenty",
+      "layout": "stat",
+      "images": [
+        "assets/s1-1.jpg"
+      ],
+      "voice": [
+        {
+          "anchor": "alex",
+          "text": "AI stocks are falling, Nvidia, Oracle and CoreWeave among them, after CNBC reported OpenAI's September annualized revenue was twenty billion dollars lower than thought."
+        },
+        {
+          "anchor": "tyler-cruz",
+          "text": "The revision has rattled investor confidence in the AI infrastructure chain."
+        }
+      ],
+      "source": "CNBC"
+    },
+    {
+      "rank": 2,
+      "category": "Funding",
+      "kicker": "TypeSafe AI raises",
+      "headline": "a16z leads a *big bet on AI coding*",
+      "stat": "$870M",
+      "statLabel": "led by a16z at a $7.5B valuation",
+      "statWord": "eight",
+      "layout": "split",
+      "images": [
+        "assets/s2-1.jpg"
+      ],
+      "voice": [
+        {
+          "anchor": "kristen",
+          "text": "TypeSafe AI, maker of Jev, has raised about eight hundred seventy million dollars, led by a16z, at a seven and a half billion dollar valuation."
+        },
+        {
+          "anchor": "ivanna",
+          "text": "Sequoia joined too, a sign of investor appetite for AI coding infrastructure."
+        }
+      ],
+      "source": "Bloomberg"
+    },
+    {
+      "rank": 3,
+      "category": "Security",
+      "kicker": "Influence operation",
+      "headline": "Iran *weaponizes ChatGPT* for disinformation",
+      "stat": "Fake articles",
+      "statLabel": "placed in real U.S. publications",
+      "statWord": "fake",
+      "layout": "split",
+      "images": [],
+      "paper": {
+        "venue": "washingtonpost.com",
+        "title": "Iran's ChatGPT fake-news campaign"
+      },
+      "voice": [
+        {
+          "anchor": "allison",
+          "text": "An Iranian campaign has used ChatGPT to plant fake articles in real U.S. publications."
+        },
+        {
+          "anchor": "alex",
+          "text": "It shows how generative AI, and AI agents, are being weaponized for influence campaigns."
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "category": "Safety",
+      "kicker": "OpenAI fires researchers",
+      "headline": "OpenAI defends firing *three safety researchers*",
+      "stat": "3",
+      "statLabel": "safety researchers fired after an investigation",
+      "statWord": "three",
+      "layout": "stat",
+      "images": [
+        "assets/s4-1.jpg"
+      ],
+      "voice": [
+        {
+          "anchor": "tyler-cruz",
+          "text": "OpenAI is defending its firing of three safety researchers, saying an investigation found they violated policies on handling sensitive information."
+        },
+        {
+          "anchor": "kristen",
+          "text": "The firings have sparked internal concern, and criticism of the company's safety culture."
+        }
+      ],
+      "source": "CNBC"
+    },
+    {
+      "rank": 5,
+      "category": "Hardware",
+      "kicker": "Sabi's neuro-sensor cap",
+      "headline": "A cap that turns *thoughts into prompts*",
+      "stat": "$50M",
+      "statLabel": "seed · a cap with 100K neuro-sensors",
+      "statWord": "fifty",
+      "layout": "split",
+      "images": [
+        "assets/s5-1.jpg"
+      ],
+      "voice": [
+        {
+          "anchor": "ivanna",
+          "text": "Sabi has raised fifty million dollars in seed funding for a baseball cap with a hundred thousand neuro-sensors that turn neural signals into text prompts for AI."
+        },
+        {
+          "anchor": "allison",
+          "text": "The goal: control AI agents through thought alone."
+        }
+      ],
+      "source": "Forbes"
+    },
+    {
+      "rank": 6,
+      "category": "Infrastructure",
+      "kicker": "Amazon drops NDAs",
+      "headline": "Amazon ends NDAs in *data center talks*",
+      "stat": "After Microsoft",
+      "statLabel": "following its earlier move",
+      "statWord": "following",
+      "layout": "split",
+      "images": [],
+      "paper": {
+        "venue": "",
+        "title": "Data center deals with local governments",
+        "abstract": "Amazon will stop using NDAs when negotiating data center deals with local governments, following Microsoft's earlier move."
+      },
+      "voice": [
+        {
+          "anchor": "alex",
+          "text": "And finally, Amazon will stop using NDAs when it negotiates data center deals with local governments, following Microsoft's earlier move."
+        },
+        {
+          "anchor": "tyler-cruz",
+          "text": "The aim is to rebuild community trust amid backlash over AI infrastructure secrecy."
+        }
+      ]
+    }
+  ],
+  "outro": {
+    "voice": [
+      {
+        "anchor": "ivanna",
+        "text": "That's AI DR for today. Every story, ranked and summarized, at aidr dot today."
+      },
+      {
+        "anchor": "allison",
+        "text": "See you tomorrow."
+      }
+    ],
+    "title": "What's happening in AI today?"
+  }
+}

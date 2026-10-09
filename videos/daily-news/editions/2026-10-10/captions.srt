@@ -1,0 +1,303 @@
+1
+00:00:00,900 --> 00:00:02,305
+This is AI;DR,
+
+2
+00:00:02,305 --> 00:00:03,535
+your AI news for
+
+3
+00:00:03,535 --> 00:00:04,046
+Saturday,
+
+4
+00:00:04,046 --> 00:00:05,267
+October tenth.
+
+5
+00:00:05,267 --> 00:00:06,440
+A twenty billion dollar
+
+6
+00:00:06,440 --> 00:00:08,251
+revision rattles AI stocks,
+
+7
+00:00:08,251 --> 00:00:09,191
+and a cap turns
+
+8
+00:00:09,191 --> 00:00:10,968
+thoughts into prompts.
+
+9
+00:00:11,518 --> 00:00:13,062
+AI stocks are falling,
+
+10
+00:00:13,062 --> 00:00:13,840
+Nvidia,
+
+11
+00:00:13,840 --> 00:00:15,558
+Oracle and CoreWeave among
+
+12
+00:00:15,558 --> 00:00:15,872
+them,
+
+13
+00:00:15,872 --> 00:00:18,054
+after CNBC reported OpenAI's
+
+14
+00:00:18,054 --> 00:00:19,715
+September annualized revenue was
+
+15
+00:00:19,715 --> 00:00:21,468
+twenty billion dollars lower
+
+16
+00:00:21,468 --> 00:00:22,804
+than thought.
+
+17
+00:00:22,804 --> 00:00:24,244
+The revision has rattled
+
+18
+00:00:24,244 --> 00:00:25,741
+investor confidence in the
+
+19
+00:00:25,741 --> 00:00:28,320
+AI infrastructure chain.
+
+20
+00:00:28,820 --> 00:00:30,283
+TypeSafe AI,
+
+21
+00:00:30,283 --> 00:00:31,502
+maker of Jev,
+
+22
+00:00:31,502 --> 00:00:32,686
+has raised about eight
+
+23
+00:00:32,686 --> 00:00:34,846
+hundred seventy million dollars,
+
+24
+00:00:34,846 --> 00:00:36,948
+led by a16z,
+
+25
+00:00:36,959 --> 00:00:37,725
+at a seven and
+
+26
+00:00:37,725 --> 00:00:38,781
+a half billion dollar
+
+27
+00:00:38,781 --> 00:00:40,153
+valuation.
+
+28
+00:00:40,153 --> 00:00:41,767
+Sequoia joined too,
+
+29
+00:00:41,767 --> 00:00:42,974
+a sign of investor
+
+30
+00:00:42,974 --> 00:00:44,588
+appetite for AI coding
+
+31
+00:00:44,588 --> 00:00:46,085
+infrastructure.
+
+32
+00:00:46,586 --> 00:00:48,188
+An Iranian campaign has
+
+33
+00:00:48,188 --> 00:00:49,837
+used ChatGPT to plant
+
+34
+00:00:49,837 --> 00:00:51,149
+fake articles in real
+
+35
+00:00:51,149 --> 00:00:51,497
+U.S.
+
+36
+00:00:51,497 --> 00:00:52,810
+publications.
+
+37
+00:00:52,810 --> 00:00:54,180
+It shows how generative
+
+38
+00:00:54,180 --> 00:00:54,714
+AI,
+
+39
+00:00:54,714 --> 00:00:55,945
+and AI agents,
+
+40
+00:00:55,945 --> 00:00:57,245
+are being weaponized for
+
+41
+00:00:57,245 --> 00:00:59,347
+influence campaigns.
+
+42
+00:00:59,848 --> 00:01:01,450
+OpenAI is defending its
+
+43
+00:01:01,450 --> 00:01:02,994
+firing of three safety
+
+44
+00:01:02,994 --> 00:01:03,633
+researchers,
+
+45
+00:01:03,633 --> 00:01:05,200
+saying an investigation found
+
+46
+00:01:05,200 --> 00:01:07,453
+they violated policies on
+
+47
+00:01:07,453 --> 00:01:09,973
+handling sensitive information.
+
+48
+00:01:09,973 --> 00:01:11,993
+The firings have sparked
+
+49
+00:01:11,993 --> 00:01:13,909
+internal concern,
+
+50
+00:01:13,909 --> 00:01:15,430
+and criticism of the
+
+51
+00:01:15,430 --> 00:01:17,671
+company's safety culture.
+
+52
+00:01:18,171 --> 00:01:19,506
+Sabi has raised fifty
+
+53
+00:01:19,506 --> 00:01:20,667
+million dollars in seed
+
+54
+00:01:20,667 --> 00:01:21,967
+funding for a baseball
+
+55
+00:01:21,967 --> 00:01:23,140
+cap with a hundred
+
+56
+00:01:23,140 --> 00:01:24,893
+thousand neuro-sensors that turn
+
+57
+00:01:24,893 --> 00:01:26,402
+neural signals into text
+
+58
+00:01:26,402 --> 00:01:28,250
+prompts for AI.
+
+59
+00:01:28,250 --> 00:01:29,167
+The goal:
+
+60
+00:01:29,167 --> 00:01:30,665
+control AI agents through
+
+61
+00:01:30,665 --> 00:01:32,326
+thought alone.
+
+62
+00:01:32,826 --> 00:01:33,604
+And finally,
+
+63
+00:01:33,604 --> 00:01:34,985
+Amazon will stop using
+
+64
+00:01:34,985 --> 00:01:36,611
+NDAs when it negotiates
+
+65
+00:01:36,611 --> 00:01:37,783
+data center deals with
+
+66
+00:01:37,783 --> 00:01:38,828
+local governments,
+
+67
+00:01:38,828 --> 00:01:41,326
+following Microsoft's earlier move.
+
+68
+00:01:41,326 --> 00:01:42,034
+The aim is to
+
+69
+00:01:42,034 --> 00:01:43,752
+rebuild community trust amid
+
+70
+00:01:43,752 --> 00:01:46,202
+backlash over AI infrastructure
+
+71
+00:01:46,202 --> 00:01:47,631
+secrecy.
+
+72
+00:01:47,981 --> 00:01:50,036
+That's AI;DR for today.
+
+73
+00:01:50,036 --> 00:01:51,092
+Every story,
+
+74
+00:01:51,092 --> 00:01:52,346
+ranked and summarized,
+
+75
+00:01:52,346 --> 00:01:54,437
+at aidr.today.
+
+76
+00:01:54,437 --> 00:01:56,052
+See you tomorrow.

@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-10",
+  "fetchedAt": "2026-10-09T19:04:55.449Z",
+  "stories": [
+    {
+      "rank": 1,
+      "text": "AI stocks including Nvidia, Oracle and CoreWeave dropped after CNBC reported OpenAI's September annualized revenue was $20B lower than previously thought. The revision rattled investor confidence in the AI infrastructure chain.",
+      "category": "Industry",
+      "title": "Nvidia, Oracle, CoreWeave, and other AI stocks fell after a report that OpenAI's annualized revenue at September's end was $20B less than previously reported (CNBC)",
+      "url": "https://www.techmeme.com/261008/p42",
+      "source": "techmeme.com",
+      "permalink": "https://aidr.today/90b333df",
+      "images": [
+        {
+          "url": "https://image.cnbcfm.com/api/v1/image/108369620-1790703036232-gettyimages-2297209357-20090101260929-99-803103.jpeg?h=1080&v=1790703099&w=1920",
+          "local": "assets/s1-1.jpg"
+        }
+      ],
+      "text_vi": "Cổ phiếu AI bao gồm Nvidia, Oracle và CoreWeave sụt giảm sau khi CNBC đưa tin doanh thu tính theo năm của OpenAI vào cuối tháng 9 thấp hơn 20 tỷ USD so với thông tin trước. Bản điều chỉnh này làm suy yếu niềm tin nhà đầu tư vào chuỗi hạ tầng AI.",
+      "title_vi": "Cổ phiếu Nvidia, Oracle, CoreWeave và các mã AI khác sụt giảm sau báo cáo doanh thu tính theo năm vào cuối tháng 9 của OpenAI thấp hơn 20 tỷ USD so với thông tin trước đó (CNBC)"
+    },
+    {
+      "rank": 2,
+      "text": "TypeSafe AI raised ~$870M led by a16z at a $7.5B valuation, with Sequoia and others participating. The Jev developer's funding underscores investor appetite for AI coding infrastructure.",
+      "category": "Funding",
+      "title": "Jev developer TypeSafe AI raised ~$870M led by a16z at a $7.5B valuation with Sequoia and others participating (Bloomberg)",
+      "url": "https://www.techmeme.com/261009/p13",
+      "source": "techmeme.com",
+      "permalink": "https://aidr.today/4240042e",
+      "images": [
+        {
+          "url": "https://assets.bwbx.io/images/users/iqjWHBFdfxIU/itiT8l7WhjoE/v1/1200x800.jpg",
+          "local": "assets/s2-1.jpg"
+        },
+        {
+          "url": "https://huggingnews.com/og/a16z-leads-870m-funding-round-for-typesafe-ai-bfe6b851.png?v=17zuoyc",
+          "local": "assets/s2-2.png"
+        },
+        {
+          "url": "https://marketbrief.now/og/a16z-leads-870m-funding-round-for-typesafe-ai-bfe6b851.png?v=1lcg6k4",
+          "local": "assets/s2-3.png"
+        }
+      ],
+      "text_vi": "TypeSafe AI huy động khoảng 870 triệu USD do a16z dẫn dắt ở định giá 7,5 tỷ USD, với sự tham gia của Sequoia và các nhà đầu tư khác. Khoản gọi vốn này phản ánh nhu cầu lớn về hạ tầng lập trình AI.",
+      "title_vi": "TypeSafe AI huy động khoảng 870 triệu USD do a16z dẫn dắt ở định giá 7,5 tỷ USD"
+    },
+    {
+      "rank": 3,
+      "text": "An Iranian campaign used ChatGPT to plant fake articles in real U.S. publications, highlighting how generative AI is weaponized for disinformation. The operation shows the growing use of AI agents in influence campaigns.",
+      "category": "Regulation",
+      "title": "Iranian campaign planted fake articles in real U.S. publications using ChatGPT",
+      "url": "https://www.washingtonpost.com/technology/2026/10/09/chatgpt-users-iran-planted-ai-generated-articles-us-news-media/",
+      "source": "washingtonpost.com",
+      "permalink": "https://aidr.today/3ad2fc4c",
+      "images": [],
+      "text_vi": "Một chiến dịch của Iran đã dùng ChatGPT để đăng bài viết giả mạo lên các ấn phẩm thực sự tại Mỹ, cho thấy cách AI bị lạm dụng cho tán phá thông tin sai lệch.",
+      "title_vi": null
+    },
+    {
+      "rank": 4,
+      "text": "OpenAI defended firing three safety researchers, saying an investigation found they violated policies on handling sensitive information. The firings have sparked internal concern and criticism over the company's safety culture.",
+      "category": null,
+      "title": null,
+      "url": null,
+      "source": null,
+      "permalink": null,
+      "images": [
+        {
+          "url": "https://image.cnbcfm.com/api/v1/image/108377590-1791480338571-gettyimages-2297785644-_04a8884_zmdnebzw.jpeg?h=1080&v=1791480361&w=1920",
+          "local": "assets/s4-1.jpg"
+        }
+      ],
+      "text_vi": "OpenAI bảo vệ quyết định sa thải ba nhà nghiên cứu an toàn sau khi điều tra cho rằng họ vi phạm chính sách xử lý thông tin nhạy cảm. Vụ sa thải đã gây lo ngại nội bộ và chỉ trích về văn hóa an toàn của công ty.",
+      "title_vi": null
+    },
+    {
+      "rank": 5,
+      "text": "Sabi raised $50M in seed funding to build a baseball cap with 100K neuro-sensors that convert neural signals into text prompts for AI systems. The device aims to let users control AI agents through thought alone.",
+      "category": null,
+      "title": null,
+      "url": null,
+      "source": null,
+      "permalink": null,
+      "images": [
+        {
+          "url": "https://imageio.forbes.com/specials-images/imageserve/6ac6b5ea2dd6be48ba37d54c/0x0.jpg?crop=1920%2C1080%2Cx0%2Cy0%2Csafe&fit=bounds&format=jpg&height=900&width=1600",
+          "local": "assets/s5-1.jpg"
+        }
+      ],
+      "text_vi": "Sabi huy động 50 triệu USD vòng seed để phát triển mũ lưỡi trai trang bị 100.000 cảm biến não không tiếp xúc, chuyển đổi tín hiệu não thành prompt cho AI. Thiết bị này hướng tới việc điều khiển AI agent chỉ bằng suy nghĩ.",
+      "title_vi": null
+    },
+    {
+      "rank": 6,
+      "text": "Amazon will stop using NDAs when negotiating data center deals with local governments, following Microsoft's earlier move. The shift aims to rebuild community trust amid backlash over AI infrastructure secrecy.",
+      "category": null,
+      "title": null,
+      "url": null,
+      "source": null,
+      "permalink": null,
+      "images": [],
+      "text_vi": "Amazon sẽ ngừng dùng NDA khi đàm phán hợp đồng trung tâm dữ liệu với chính quyền địa phương, theo sau đòn bẩy tương tự từ Microsoft. Biến động này nhằm tái thiết lòng tin cộng đồng trước phản ứng tiêu cực.",
+      "title_vi": null
+    }
+  ]
+}
