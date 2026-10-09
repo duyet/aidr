@@ -27,6 +27,7 @@ export const release: Release = {
       label: { en: "between pipeline runs", vi: "giữa hai lượt cập nhật" },
     },
   ],
+  youtubeId: "_9kg_U0BajE",
   cover: {
     src: "/releases/v0.1.12/day-page.webp",
     width: 1440,
