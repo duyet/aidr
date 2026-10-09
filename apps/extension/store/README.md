@@ -3,23 +3,48 @@
 These files are **dashboard-only**. The zip packer skips this directory
 and `.md` files — do not ship screenshots in the extension package.
 
-Capture from a real Load unpacked new tab. Do not invent screenshots
-with an image model.
+Capture from the real unpacked new tab. Do not invent screenshots with
+an image model.
 
-## Required
+## Regenerate
 
-- Screenshots: **1280×800** (at least one, up to 5) of the new tab
-- Small promo tile: **440×280**
+```bash
+CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  pnpm --filter @aidr/extension store-assets
+# other folder or one language:
+node apps/extension/scripts/store-assets.mjs --out /tmp/store --lang en
+```
 
-## Optional
+`scripts/store-assets.mjs` fetches today's `/api/public` and
+`/api/feed?days=3` from aidr.today per language, serves this extension
+folder over loopback with that digest and the scene's settings seeded
+into `newtab.html`, and drives headless Chrome over the DevTools
+protocol. Pings to `/api/extension` are blocked so captures do not count
+as installs. Output is JPEG quality 90, so no file has an alpha channel.
 
-- Marquee: 1400×560
-- Store icon: 128×128 (package already ships `icons/icon128.png`)
+The data is live, so frames change from day to day. Early in the day
+the newest date has few stories and the day card may have empty panels;
+run it later in the day for a fuller frame. Look at every image before
+uploading.
 
-Captured for the 0.1.20 update, from a real unpacked new tab:
+## Files
 
-- `screenshot-light-1280x800.png`
-- `screenshot-dark-1280x800.png`
-- `promo-440x280.png` — the light frame scaled to 440×280
+| File | Size | How it is made |
+|---|---|---|
+| `en-1-digest.jpg`, `vi-1-digest.jpg` | 1280×800 | Light theme, feed off. Masthead date and the numbered AI;DR bullets. |
+| `en-2-stories.jpg`, `vi-2-stories.jpg` | 1280×800 | Light theme, feed on, scrolled to the first day heading. Day-grouped ranked rows with votes, category and time in columns. |
+| `en-3-day-card.jpg`, `vi-3-day-card.jpg` | 1280×800 | Light theme; clicks the image side of the image/text switch and waits for the day card from `aidr.today/api/og/date/<date>.png`. |
+| `en-4-dark.jpg`, `vi-4-dark.jpg` | 1280×800 | Dark theme, feed on, top of the page. |
+| `en-5-settings.jpg`, `vi-5-settings.jpg` | 1280×800 | Light theme; clicks the Aa button. Theme tab: light/dark, font, text size, the 5-step density slider at its medium default, background. The EN/VI toggle shows in the header. |
+| `promo-440x280.jpg` | 440×280 | HTML composition: brand yellow `#f5c518`, ink `#0a0a0a`, "AI;DR" in EB Garamond, tagline in Source Sans 3 (fonts from `../fonts`), and a crop of a 2× English new-tab capture (light, feed on). |
+| `marquee-1400x560.jpg` | 1400×560 | Same composition at marquee size with a larger crop and a "Free · English & Tiếng Việt · aidr.today" line. |
 
-Upload them in the CWS dashboard, not inside the zip.
+`en-*` go in **Global screenshots**, `vi-*` in **Localized
+screenshots → Vietnamese**. Store icon is `icons/icon128.png` (already
+in the package).
+
+Check before upload:
+
+```bash
+sips -g pixelWidth -g pixelHeight -g hasAlpha apps/extension/store/*.jpg
+```

@@ -22,7 +22,7 @@ pnpm --filter @aidr/web pack-cws
 | | |
 |---|---|
 | File | `apps/extension/dist/aidr-cws.zip` |
-| Version | `0.1.20` (must match `manifest.json` + `package.json` after the release PR) |
+| Version | `0.1.21` (must match `manifest.json` + `package.json`; release-please owns the bump) |
 | Layout | `manifest.json` at zip **root** (not under `aidr/`) |
 | Store flavor | no `optional_host_permissions`, `connect-src` = `aidr.today` only |
 | Do **not** upload | `https://aidr.today/aidr.zip` / `public/aidr.zip` (nested Load unpacked zip) |
@@ -42,57 +42,85 @@ aidr
 ### Short description (≤132 chars) — English
 
 ```
-AI;DR digest from aidr.today on every new tab. No account.
+Today's AI;DR digest and ranked AI stories from aidr.today on every new tab. English or Vietnamese. No account, no ads.
 ```
 
 ### Short description — Vietnamese
 
 ```
-Bản tin AI;DR từ aidr.today mỗi khi mở thẻ mới. Không cần tài khoản.
+Bản tin AI;DR và tin AI xếp hạng từ aidr.today mỗi khi mở thẻ mới. Tiếng Việt hoặc tiếng Anh. Không tài khoản, không quảng cáo.
 ```
 
 ### Detailed description — English
 
 ```
-aidr replaces Chrome's new tab with today's AI;DR and ranked AI stories from aidr.today.
+aidr replaces Chrome's new tab with today's AI;DR: the short daily digest of AI news from aidr.today, plus the ranked stories behind it.
 
-Open a new tab and see the same public digest as the website: numbered AI;DR summaries, category chips, trending topics, and ranked story rows. No account. No ads. No browsing-history access.
+Open a new tab and you see the same digest as the website. Numbered one-line summaries, category labels, trending topics, and story rows grouped by day. No account. No ads. No access to your browsing history.
+
+New in 0.1.21
+• Five density steps, from dense to spacious. Medium is the default.
+• Story rows line up: title, compact votes, category and time sit in columns, the same as aidr.today.
+• Image / text switch on the day card. Pick the picture card of the day's top stories, or the numbered text list.
+• The new tab now matches aidr.today, so moving between the two feels the same.
 
 What you get
-• Today's AI;DR digest from aidr.today, opened on that day's date
-• Day-grouped top stories with tags, thumbnails, and reader votes
-• Light / dark / system theme, English or Vietnamese
+• Today's AI;DR digest, opened on that day's date
+• Ranked story rows grouped by day, with category, source and votes
+• Day card as an image or as text
+• Light, dark or system theme, five background tones, sans or serif, text size and density
+• English or Vietnamese
 • Intro video, loaded only after you press play
-• Offline paint from a short local cache of the last digest
+• A short local cache of the last digest, so the tab still paints offline
 
 How it works
-The extension fetches public JSON from https://aidr.today (GET /api/public and /api/feed) and paints it in the new tab. Settings stay in chrome.storage on your device.
+The extension reads public JSON from https://aidr.today (GET /api/public and /api/feed) and paints it in the new tab. Settings stay in chrome.storage on your device.
 
+Links
+Website: https://aidr.today
+What changed: https://aidr.today/changelog
+Release notes: https://aidr.today/release
 Privacy: https://aidr.today/privacy
-Homepage: https://aidr.today/subscribe
 Support: https://github.com/duyet/aidr/issues
+Telegram (Vietnamese): https://t.me/aihomnay
+Telegram (English): https://t.me/aidr_today
+Facebook: https://www.facebook.com/aidr.today/
 ```
 
 ### Detailed description — Vietnamese
 
 ```
-aidr thay tab mới của Chrome bằng bản tin AI;DR hôm nay và tin AI được xếp hạng từ aidr.today.
+aidr thay thẻ mới của Chrome bằng AI;DR hôm nay: bản tin AI ngắn mỗi ngày từ aidr.today, kèm danh sách tin được xếp hạng.
 
-Mở thẻ mới để xem cùng bản tin công khai như trên website: tóm tắt AI;DR có đánh số, chip chuyên mục, chủ đề đang nổi, và danh sách tin kèm điểm/bình luận. Không tài khoản. Không quảng cáo. Không truy cập lịch sử duyệt web.
+Mở thẻ mới là thấy cùng bản tin như trên website. Tóm tắt một dòng có đánh số, nhãn chuyên mục, chủ đề đang nổi, và danh sách tin chia theo ngày. Không cần tài khoản. Không quảng cáo. Không truy cập lịch sử duyệt web.
+
+Mới trong 0.1.21
+• Năm mức mật độ, từ dày đến thoáng. Mặc định là vừa.
+• Hàng tin thẳng cột: tiêu đề, số phiếu gọn, chuyên mục và thời gian, giống aidr.today.
+• Nút chuyển ảnh / chữ trên thẻ ngày. Chọn ảnh tóm tắt các tin nổi bật trong ngày, hoặc danh sách chữ có đánh số.
+• Thẻ mới giờ giống aidr.today, chuyển qua lại giữa hai nơi không thấy khác.
 
 Bạn nhận được
-• Bản tin AI;DR hôm nay từ aidr.today, mở đầu bằng ngày của bản tin
-• Tin nổi bật theo ngày kèm thẻ, ảnh thu nhỏ, và số phiếu bạn đọc
-• Giao diện sáng / tối / theo hệ thống, tiếng Anh hoặc tiếng Việt
+• Bản tin AI;DR hôm nay, mở đầu bằng ngày của bản tin
+• Tin xếp hạng chia theo ngày, kèm chuyên mục, nguồn và số phiếu
+• Thẻ ngày dạng ảnh hoặc dạng chữ
+• Giao diện sáng, tối hoặc theo hệ thống, năm màu nền, chữ không chân hoặc có chân, cỡ chữ và mật độ
+• Tiếng Việt hoặc tiếng Anh
 • Video giới thiệu, chỉ tải sau khi bạn bấm xem
-• Hiển thị offline từ bộ nhớ đệm ngắn của bản tin gần nhất
+• Bộ nhớ đệm ngắn của bản tin gần nhất, để thẻ vẫn hiện khi offline
 
 Cách hoạt động
-Tiện ích tải JSON công khai từ https://aidr.today (GET /api/public và /api/feed) rồi vẽ lên tab mới. Cài đặt lưu trong chrome.storage trên máy bạn.
+Tiện ích đọc JSON công khai từ https://aidr.today (GET /api/public và /api/feed) rồi hiển thị trên thẻ mới. Cài đặt lưu trong chrome.storage trên máy bạn.
 
+Liên kết
+Website: https://aidr.today
+Thay đổi: https://aidr.today/changelog
+Ghi chú phát hành: https://aidr.today/release
 Quyền riêng tư: https://aidr.today/privacy
-Trang chủ: https://aidr.today/subscribe
 Hỗ trợ: https://github.com/duyet/aidr/issues
+Telegram (tiếng Việt): https://t.me/aihomnay
+Telegram (tiếng Anh): https://t.me/aidr_today
+Facebook: https://www.facebook.com/aidr.today/
 ```
 
 ### Category
@@ -173,30 +201,40 @@ Data handling note for reviewers: settings + digest cache stay in `chrome.storag
 
 ## Listing assets (dashboard only — not in the zip)
 
-See [`store/README.md`](./store/README.md). Capture from a real Load unpacked new tab. Do **not** invent screenshots with an image model.
+See [`store/README.md`](./store/README.md). Regenerate all of them with
+`pnpm --filter @aidr/extension store-assets`. Every screenshot is a
+headless Chrome frame of the real unpacked new tab with the live digest.
+Do **not** invent screenshots with an image model.
 
-| Asset | Size | Status |
-|---|---|---|
-| Store icon | 128×128 | Ready — `icons/icon128.png` (also in package) |
-| Screenshot, light | **1280×800** | Ready — `store/screenshot-light-1280x800.png` |
-| Screenshot, dark | **1280×800** | Ready — `store/screenshot-dark-1280x800.png` |
-| Small promo tile | **440×280** | Ready — `store/promo-440x280.png` (scaled from the light capture) |
-| Marquee (optional) | 1400×560 | Skip |
+| Asset | Size | Dashboard slot | File |
+|---|---|---|---|
+| Store icon | 128×128 | Store icon | `icons/icon128.png` (also in package) |
+| Screenshot 1 — AI;DR digest | **1280×800** | Global screenshots | `store/en-1-digest.jpg` |
+| Screenshot 2 — ranked story rows | **1280×800** | Global screenshots | `store/en-2-stories.jpg` |
+| Screenshot 3 — day card image view | **1280×800** | Global screenshots | `store/en-3-day-card.jpg` |
+| Screenshot 4 — dark theme | **1280×800** | Global screenshots | `store/en-4-dark.jpg` |
+| Screenshot 5 — settings (density, theme) | **1280×800** | Global screenshots | `store/en-5-settings.jpg` |
+| Vietnamese screenshots 1–5 | **1280×800** | Localized screenshots → Vietnamese | `store/vi-1-digest.jpg` … `store/vi-5-settings.jpg` |
+| Small promo tile | **440×280** | Small promo tile | `store/promo-440x280.jpg` |
+| Marquee | **1400×560** | Marquee promo tile | `store/marquee-1400x560.jpg` |
 
-Both screenshots are headless Chrome frames of the unpacked new tab with the live 2026-10-04 digest. The promo is that light frame scaled to the store tile. Do not replace them with generated images. Settings panel is not included.
+All JPEG, no alpha channel. Check with
+`sips -g pixelWidth -g pixelHeight -g hasAlpha apps/extension/store/*.jpg`.
 
 ---
 
 ## Account & publish checklist
 
 1. [x] Chrome Web Store item already published (account + 2SV already done)
-2. [x] Screenshots 1280×800 (light + dark) and promo 440×280 in `apps/extension/store/`
-3. [ ] After `aidr-v0.1.20` exists: `pnpm --filter @aidr/web pack-cws` → upload `apps/extension/dist/aidr-cws.zip` on the existing item (do not upload `aidr.zip`)
-4. [ ] Paste listing fields above if the dashboard copy is still the older text (EN; add VI locale if offered)
-5. [ ] Confirm single purpose + permission justifications still match
-6. [ ] Confirm privacy practices. The new sentence is the intro video on `youtube-nocookie.com`, only after play
-7. [ ] Submit the update for review on the existing public item
-8. [x] `EXTENSION_STORE_URL` already points at the listing. Do not clear it
+2. [x] `0.1.21` on master (`manifest.json` + `package.json`)
+3. [x] Screenshots (5 EN + 5 VI, 1280×800), promo 440×280 and marquee 1400×560 in `apps/extension/store/`
+4. [ ] `pnpm --filter @aidr/web pack-cws` → upload `apps/extension/dist/aidr-cws.zip` on the existing item (do not upload `aidr.zip`), or `pnpm --filter @aidr/web cws-publish --upload-only`
+5. [ ] Paste the short and detailed descriptions above (EN; VI under the Vietnamese locale)
+6. [ ] Replace Global screenshots with `en-1` … `en-5`, Localized (Vietnamese) with `vi-1` … `vi-5`, then the small promo tile and marquee
+7. [ ] Confirm single purpose + permission justifications still match
+8. [ ] Confirm privacy practices (intro video on `youtube-nocookie.com`, only after play)
+9. [ ] Submit the update for review on the existing public item
+10. [x] `EXTENSION_STORE_URL` already points at the listing. Do not clear it
 
 ---
 
