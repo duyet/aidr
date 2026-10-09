@@ -7,6 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { hostOrder, loadCast } from "./cast.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
@@ -104,7 +105,11 @@ const theme = {
 const d = new Date(`${date}T12:00:00Z`);
 const DOW = d.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
 const MON = d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
-const anchors = Object.keys(config.voice.anchors);
+// Hosts take turns in the seeded cast order, in speaking order (intro, stories, outro).
+const order = hostOrder(Object.keys(loadCast(config).hosts), date);
+let turn = 0;
+const host = () => order[turn++ % order.length];
+const introHosts = [host(), host()];
 const money = (t) => t.match(/\$[\d.,]+\s?[BMKT]?/)?.[0];
 const thumb = edition.stories.find((s) => money(s.text)) ?? edition.stories[0];
 
@@ -133,13 +138,17 @@ const stories = edition.stories.map((s, i) => {
     layout,
     images: s.images.map((im) => im.local),
     ...(s.images.length ? {} : { paper: { venue: s.source, title: s.title } }),
-    voice: sentences.map((text, k) => ({
-      anchor: anchors[(i + k) % anchors.length],
+    voice: sentences.map((text) => ({
+      anchor: host(),
       text,
     })),
     _bullet: s.text,
   };
 });
+
+const signOff = host();
+let closer = host();
+if (closer === introHosts[0]) closer = host();
 
 const draft = {
   date,
@@ -155,11 +164,11 @@ const draft = {
   intro: {
     voice: [
       {
-        anchor: anchors[0],
+        anchor: introHosts[0],
         text: `This is AI DR, your AI news for ${DOW}, ${MON} ${d.getUTCDate()}.`,
       },
       {
-        anchor: anchors[1 % anchors.length],
+        anchor: introHosts[1],
         text: "TODO a fresh line about today",
       },
     ],
@@ -169,10 +178,10 @@ const draft = {
   outro: {
     voice: [
       {
-        anchor: anchors[1 % anchors.length],
+        anchor: signOff,
         text: "That's AI DR for today. Every story, ranked and summarized, at aidr dot today.",
       },
-      { anchor: anchors[0], text: "See you tomorrow." },
+      { anchor: closer, text: "See you tomorrow." },
     ],
     title: "What's happening in AI today?",
   },

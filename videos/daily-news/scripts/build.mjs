@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Build one edition into renderable HyperFrames projects, one per format, plus its sound, captions,
 // cover stills and post copy. Inputs: config.json, editions/<date>/{edition,script}.json, voice/.
-// Usage: node scripts/build.mjs 2026-10-02 [--no-audio]
+// Usage: node scripts/build.mjs 2026-10-02 [--lang vi] [--no-audio]
 //
 // Output (ignored by git):  editions/<date>/out/<fmt>/        HyperFrames project (index.html, assets, audio)
 //                           editions/<date>/out/cover-<fmt>/  one-frame project for the cover still
 // Output (tracked):         editions/<date>/captions.srt, posts.md, timeline.json
+// With --lang vi: script.vi.json in; voice-vi/, out-vi/, captions.vi.srt, timeline.vi.json and the vi block of posts.md out.
 import { execFileSync } from "node:child_process";
 import {
   cpSync,
@@ -17,18 +18,74 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { cutOf } from "./lang.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const BRAND = resolve(ROOT, "../brand");
 const date = process.argv[2];
 if (!date) throw new Error("usage: build.mjs <date> [--no-audio]");
 const withAudio = !process.argv.includes("--no-audio");
+const cut = cutOf(process.argv);
 
 const read = (p) => JSON.parse(readFileSync(p, "utf8"));
 const config = read(join(ROOT, "config.json"));
 const dir = join(ROOT, "editions", date);
 const edition = read(join(dir, "edition.json"));
-const script = read(join(dir, "script.json"));
+const script = read(join(dir, cut.script));
+
+// Screen and post copy per language (facts and headlines come from the script).
+const UI = {
+  en: {
+    locale: "en-US",
+    daily: "AI;DR DAILY",
+    topIn: (n) => `TOP ${n} IN AI`,
+    brief: "DAILY BRIEF",
+    topToday: (n) => `TOP ${n} TODAY`,
+    via: "via",
+    follow: "A new brief every day. Follow for tomorrow's.",
+    intro: "Intro",
+    outro: "Outro",
+    stories: (n) => `${n} AI stories that matter today.`,
+    tags: ["AI", "AINews", "TechNews"],
+    ytTitle: (lead, date) => `AI News Today: ${lead} & more | ${date}`,
+    chapters: "Chapters",
+    sources: "Sources",
+    today: "Today's stories:",
+    daily2: "Every story, ranked and summarized daily:",
+    ytTags: ["AI news today", "artificial intelligence", "AI;DR"],
+    captions: "English",
+    ask: "Which one matters most to you? 👇",
+    bio: "Full brief: link in bio · aidr.today",
+    read: "Read every story, ranked and summarized:",
+    more: "more",
+    query: "",
+  },
+  vi: {
+    locale: "vi-VN",
+    daily: "AI;DR MỖI NGÀY",
+    topIn: (n) => `TOP ${n} TIN AI`,
+    brief: "BẢN TIN NGÀY",
+    topToday: (n) => `TOP ${n} HÔM NAY`,
+    via: "nguồn",
+    follow: "Bản tin mới mỗi ngày. Theo dõi để xem ngày mai.",
+    intro: "Mở đầu",
+    outro: "Kết",
+    stories: (n) => `${n} tin AI đáng chú ý hôm nay.`,
+    tags: ["AI", "TinAI", "CongNghe"],
+    ytTitle: (lead, date) => `Tin AI hôm nay: ${lead} và hơn nữa | ${date}`,
+    chapters: "Mục lục",
+    sources: "Nguồn",
+    today: "Tin hôm nay:",
+    daily2: "Mọi tin AI, xếp hạng và tóm tắt mỗi ngày:",
+    ytTags: ["tin AI hôm nay", "trí tuệ nhân tạo", "AI;DR"],
+    captions: "tiếng Việt",
+    ask: "Tin nào đáng chú ý nhất với bạn? 👇",
+    bio: "Bản tin đầy đủ: link ở bio · aidr.today",
+    read: "Đọc mọi tin, xếp hạng và tóm tắt:",
+    more: "tin khác",
+    query: "?lang=vi",
+  },
+}[cut.lang];
 const theme = {
   intro: "grid",
   transition: "wipe",
@@ -77,11 +134,11 @@ const segs = [
 ];
 let clock = 0;
 for (const seg of segs) {
-  const wav = join(dir, "voice", `${seg.id}.wav`);
+  const wav = join(dir, cut.voice, `${seg.id}.wav`);
   if (!existsSync(wav))
     throw new Error(`missing voice ${seg.id}: run scripts/voice.mjs ${date}`);
   seg.voiceDur = probe(wav);
-  seg.words = read(join(dir, "voice", `${seg.id}.words.json`));
+  seg.words = read(join(dir, cut.voice, `${seg.id}.words.json`));
   seg.start = clock;
   seg.voiceStart = clock + seg.timing.lead;
   seg.dur = seg.timing.lead + seg.voiceDur + seg.timing.tail;
@@ -92,21 +149,35 @@ const intro = segs[0];
 const outro = segs.at(-1);
 const storySegs = segs.filter((s) => s.kind === "story");
 
+// Spoken words compare without case, punctuation or Vietnamese diacritics.
+const norm = (t) =>
+  t
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "");
+
 // The stat lands on its spoken word (script: statWord), else 40% into the line.
 for (const seg of storySegs) {
-  const key = seg.story.statWord?.toLowerCase();
-  const hit =
-    key &&
-    seg.words.find((w) =>
-      w.text
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "")
-        .startsWith(key)
-    );
+  const key = seg.story.statWord && norm(seg.story.statWord);
+  const hit = key && seg.words.find((w) => norm(w.text).startsWith(key));
   seg.statAt =
     seg.voiceStart +
     (hit ? Math.max(0.6, hit.start - 0.15) : Math.min(2.4, seg.voiceDur * 0.4));
 }
+
+// Intro focus: a grid tile lifts on the word that names its story (script.intro.focus: [{ rank, word }]).
+let fromWord = 0;
+const introFocus = (script.intro.focus ?? []).map((f) => {
+  const k = intro.words.findIndex(
+    (w, i) => i >= fromWord && norm(w.text).startsWith(norm(f.word))
+  );
+  if (k < 0)
+    throw new Error(`intro.focus: "${f.word}" is not in the intro line`);
+  fromWord = k + 1;
+  return { rank: f.rank, at: r3(intro.voiceStart + intro.words[k].start) };
+});
 
 // ---------------------------------------------------------------- captions
 function captionChunks(segList) {
@@ -166,7 +237,7 @@ const srtTime = (t) => {
   return `${pad2(Math.floor(ms / 3600000))}:${pad2(Math.floor(ms / 60000) % 60)}:${pad2(Math.floor(ms / 1000) % 60)},${String(ms % 1000).padStart(3, "0")}`;
 };
 writeFileSync(
-  join(dir, "captions.srt"),
+  join(dir, cut.captions),
   allCaps
     .map(
       (c, i) =>
@@ -190,8 +261,11 @@ const logoSvg = readFileSync(join(BRAND, "assets/logo.svg"), "utf8").replace(
 );
 const logo = (cls) => logoSvg.replace("<svg ", `<svg class="${cls}" `);
 const d = new Date(`${date}T12:00:00Z`);
-const DOW = d.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
-const MON = d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
+const DOW = d.toLocaleDateString(UI.locale, {
+  weekday: "long",
+  timeZone: "UTC",
+});
+const MON = d.toLocaleDateString(UI.locale, { month: "long", timeZone: "UTC" });
 const DAY = d.getUTCDate();
 const dateline =
   script.dateline ?? `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`;
@@ -216,20 +290,20 @@ function introHtml() {
         const face = img
           ? `<img id="g${s.rank}-img" src="${esc(img)}" alt="" /><div class="tshade"></div>`
           : `<div class="tpaper"><span>${esc(s.paper?.venue ?? byRank[s.rank]?.source ?? "")}</span><b>${esc(s.paper?.title ?? s.kicker)}</b></div>`;
-        return `<div class="tile${img ? "" : " noimg"}">${face}<span class="tr">${s.rank}</span><div class="tt"><div class="tk">${esc(s.kicker)}</div><div class="th">${esc(s.headline.replace(/\*/g, ""))}</div></div><span class="tbar"></span></div>`;
+        return `<div class="tile${img ? "" : " noimg"}" data-rank="${s.rank}">${face}<span class="tr">${s.rank}</span><div class="tt"><div class="tk">${esc(s.kicker)}</div><div class="th">${esc(s.headline.replace(/\*/g, ""))}</div></div><span class="tbar"></span></div>`;
       })
       .join("");
-    body = `<div class="ghead"><div class="gdate"><span class="gday">${pad2(DAY)}</span><span class="gmon">${esc(DOW.toUpperCase())}<br/>${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</span></div><div class="gbrand">${logo("")}<span>AI;DR DAILY<br/>TOP ${script.stories.length} IN AI</span></div></div><div class="tiles">${tiles}</div><div class="gfoot">${esc(script.intro.title)}</div>`;
+    body = `<div class="ghead"><div class="gdate"><span class="gday">${pad2(DAY)}</span><span class="gmon">${esc(DOW.toUpperCase())}<br/>${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</span></div><div class="gbrand">${logo("")}<span>${esc(UI.daily)}<br/>${esc(UI.topIn(script.stories.length))}</span></div></div><div class="tiles">${tiles}</div><div class="gfoot">${esc(script.intro.title)}</div>`;
   } else if (v === "date-slam") {
     body = `<div class="slam"><span class="dow">${esc(DOW.toUpperCase())}</span><span class="day">${pad2(DAY)}</span><span class="mon">${esc(MON.toUpperCase())}</span></div>
-      <div class="slam-tail"><div class="title">${esc(script.intro.title)}</div><div class="with">${logo("")}<span>AI;DR DAILY BRIEF</span></div></div>`;
+      <div class="slam-tail"><div class="title">${esc(script.intro.title)}</div><div class="with">${logo("")}<span>AI;DR ${esc(UI.brief)}</span></div></div>`;
   } else if (v === "headline-stack") {
     body = `<div class="hstack"><div class="hdate"><span>${esc(DOW.toUpperCase())} ${pad2(DAY)} ${esc(MON.toUpperCase())}</span><span>AI;DR TOP ${script.stories.length}</span></div>${script.stories.map((s) => `<div class="row"><span class="n">${s.rank}</span><span class="t">${esc(s.kicker)}</span></div>`).join("")}</div>`;
   } else {
-    body = `<div class="stack">${logo("biglogo")}<div class="eyebrow">AI;DR DAILY BRIEF</div><div class="title">${esc(script.intro.title)}</div><div class="date">${esc(dateline)}</div>
+    body = `<div class="stack">${logo("biglogo")}<div class="eyebrow">AI;DR ${esc(UI.brief)}</div><div class="title">${esc(script.intro.title)}</div><div class="date">${esc(dateline)}</div>
       <div class="dots">${script.stories.map((s) => `<span>${s.rank}</span>`).join("")}</div></div>`;
   }
-  return `<section id="intro" class="clip scene" data-start="0" data-duration="${r3(intro.dur + 0.2)}" data-track-index="1">
+  return `<section id="intro" class="clip scene" data-start="0" data-duration="${r3(intro.dur + 0.05)}" data-track-index="1">
     <div class="field"></div><div class="cam"><div class="semi">;</div>${body}</div></section>`;
 }
 
@@ -250,11 +324,11 @@ function storyHtml(seg, i) {
       `<div class="shade"></div><div class="credit">${esc(source)}</div>`;
   } else {
     const p = s.paper ?? {};
-    media = `<div class="paper"><div class="venue">${esc(p.venue ?? source)}</div><div class="ptitle">${esc(p.title ?? ed.title ?? s.kicker)}</div><div class="rule"></div><div class="abs">${esc(p.abstract ?? ed.text ?? "")}</div></div>`;
+    media = `<div class="paper"><div class="venue">${esc(p.venue ?? source)}</div><div class="ptitle">${esc(p.title ?? (cut.lang === "en" ? ed.title : ed.title_vi) ?? s.kicker)}</div><div class="rule"></div><div class="abs">${esc(p.abstract ?? (cut.lang === "en" ? ed.text : ed.text_vi) ?? "")}</div></div>`;
   }
   const stat =
     layout === "stat" ? `<span class="hl">${esc(s.stat)}</span>` : esc(s.stat);
-  return `<section id="story-${s.rank}" class="clip scene l-${layout}" data-start="${r3(seg.start)}" data-duration="${r3(seg.dur + 0.2)}" data-track-index="${2 + (i % 2)}">
+  return `<section id="story-${s.rank}" class="clip scene l-${layout}" data-start="${r3(seg.start)}" data-duration="${r3(seg.dur + 0.05)}" data-track-index="${2 + (i % 2)}">
     <div class="cam">
       <div class="media">${media}</div>
       <div class="rank">${s.rank}</div>
@@ -263,7 +337,7 @@ function storyHtml(seg, i) {
         <div class="kicker">${esc(s.kicker)}</div>
         <div class="head">${marked(s.headline)}</div>
         <div class="statrow"><span class="stat">${stat}</span><span class="stat-label">${esc(s.statLabel ?? "")}</span></div>
-        <span class="src">via <b>${esc(source)}</b></span>
+        ${source ? `<span class="src">${UI.via} <b>${esc(source)}</b></span>` : ""}
       </div>
     </div></section>`;
 }
@@ -277,9 +351,9 @@ function chromeHtml() {
     )
     .join("");
   return `<div id="chrome" class="clip" data-start="${r3(intro.dur)}" data-duration="${r3(outro.start - intro.dur)}" data-track-index="4" style="z-index:10">
-    <div class="bar">${logo("logo")}<span class="show">AI;DR</span><span class="live"><span class="dot"></span>DAILY BRIEF</span><span class="spacer"></span>
+    <div class="bar">${logo("logo")}<span class="show">AI;DR</span><span class="live"><span class="dot"></span>${esc(UI.brief)}</span><span class="spacer"></span>
       <span class="dateline">${esc(dateline)}</span><span class="counter">${Array.from({ length: n }, () => '<span class="seg"><span class="fill"></span></span>').join("")}<span class="num">01/${pad2(n)}</span></span></div>
-    <div class="ticker"><div class="crawl">${items}${items}</div><div class="label">TOP ${n} TODAY</div></div>
+    <div class="ticker"><div class="crawl">${items}${items}</div><div class="label">${esc(UI.topToday(n))}</div></div>
     <div class="footer">AIDR.TODAY</div></div>`;
 }
 
@@ -287,7 +361,7 @@ function outroHtml() {
   return `<section id="outro" class="clip scene" data-start="${r3(outro.start)}" data-duration="${r3(outro.dur)}" data-track-index="1">
     <div class="field"></div><div class="cam"><div class="semi">;</div>
     <div class="stack">${logo("biglogo")}<div class="title">${esc(script.outro.title)}</div>
-    <div class="url"><span class="mk2">aidr.today</span></div><div class="follow">${esc(script.outro.follow ?? "A new brief every day. Follow for tomorrow's.")}</div></div></div></section>`;
+    <div class="url"><span class="mk2">aidr.today</span></div><div class="follow">${esc(script.outro.follow ?? UI.follow)}</div></div></div></section>`;
 }
 
 const wipes = segs.slice(1).map((seg) => ({
@@ -321,7 +395,7 @@ function capsHtml() {
 function page(fmt, body, duration, extraHead = "") {
   const f = config.formats[fmt];
   return `<!doctype html>
-<html lang="en">
+<html lang="${cut.lang}">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=${f.width}, height=${f.height}" />
@@ -373,15 +447,17 @@ function buildMix(outFile) {
   if (theme.intro === "headline-stack")
     for (const [i] of script.stories.entries())
       cues.push([C.tick, 0.25 + i * 0.22 + 0.1, 0.7]);
-  if (theme.intro === "grid")
+  if (theme.intro === "grid") {
     for (const [i] of script.stories.entries())
       cues.push([C.tick, 0.8 + i * 0.3, 0.7]);
+    for (const f of introFocus) cues.push([C.tick, f.at - 0.05, 0.8]);
+  }
   if (theme.intro === "date-slam") cues.push([C.rankHit, 0.45, 0.9]);
 
   const inputs = [];
   const filters = [];
   segs.forEach((seg, i) => {
-    inputs.push("-i", join(dir, "voice", `${seg.id}.wav`));
+    inputs.push("-i", join(dir, cut.voice, `${seg.id}.wav`));
     filters.push(
       `[${i}:a]aresample=48000,aformat=channel_layouts=stereo,adelay=${Math.round(seg.voiceStart * 1000)}:all=1[v${i}]`
     );
@@ -450,7 +526,7 @@ function coverHtml(fmt) {
   .cv .img{position:absolute;object-fit:cover;display:block}
   .cv .date{position:absolute;font-family:var(--serif);font-weight:600;line-height:.85;letter-spacing:-.04em}
   .cv .mon{position:absolute;font-weight:800;letter-spacing:.3em}
-  .cv .hook{position:absolute;font-family:var(--serif);font-weight:500;line-height:1.0;letter-spacing:-.01em}
+  .cv .hook{position:absolute;font-family:var(--serif);font-weight:500;line-height:1.2;letter-spacing:-.01em}
   .cv .hook span{background:var(--ink);color:var(--yellow);padding:0 14px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
   .cv ul{position:absolute;list-style:none;font-weight:700}
   .cv li{display:flex;gap:18px;align-items:baseline;border-top:2px solid var(--ink);padding:10px 0}
@@ -477,13 +553,13 @@ function coverHtml(fmt) {
     <div class="date">${pad2(DAY)}</div><div class="mon">${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</div>
     <div class="hook"><span>${esc(t.hook ?? lead.kicker)}</span></div>
     <ul>${list}</ul>
-    <div class="brand">${logo("")}AI;DR DAILY</div></div>
+    <div class="brand">${logo("")}${esc(UI.daily)}</div></div>
     <script>document.fonts.ready.then(()=>{const h=document.querySelector('.hook');let p=parseFloat(getComputedStyle(h).fontSize);while(h.scrollHeight>p*1.0*3+4&&p>40){p-=2;h.style.fontSize=p+'px'}window.__timelines.main=gsap.timeline({paused:true});});</script>`;
   return page(fmt, body, 1, `<style>${css}</style>`);
 }
 
 // ---------------------------------------------------------------- write projects
-const outRoot = join(dir, "out");
+const outRoot = join(dir, cut.out);
 const mixShared = join(outRoot, "mix.wav");
 mkdirSync(outRoot, { recursive: true });
 if (withAudio) buildMix(mixShared);
@@ -494,7 +570,12 @@ for (const fmt of Object.keys(config.formats)) {
     fmt,
     total,
     transition: theme.transition,
-    intro: { variant: theme.intro, start: 0, dur: r3(intro.dur) },
+    intro: {
+      variant: theme.intro,
+      start: 0,
+      dur: r3(intro.dur),
+      focus: introFocus,
+    },
     chrome: { start: r3(intro.dur), dur: r3(outro.start - intro.dur) },
     stories: storySegs.map((s) => ({
       start: r3(s.start),
@@ -552,43 +633,61 @@ for (const fmt of Object.keys(config.formats)) {
 // ---------------------------------------------------------------- timeline + posts
 const mmss = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
 writeFileSync(
-  join(dir, "timeline.json"),
+  join(dir, cut.timeline),
   `${JSON.stringify({ date, total, theme, segments: segs.map((s) => ({ id: s.id, start: r3(s.start), dur: r3(s.dur), voice: r3(s.voiceDur) })) }, null, 2)}\n`
 );
 
 const P = script.post ?? {};
-const hook = P.hook ?? `${script.stories.length} AI stories that matter today.`;
-const tags = P.hashtags ?? ["AI", "AINews", "TechNews"];
+const hook = P.hook ?? UI.stories(script.stories.length);
+const tags = P.hashtags ?? UI.tags;
 const hashtags = (n) =>
   tags
     .slice(0, n)
     .map((t) => `#${t}`)
     .join(" ");
-const shortDate = `${MON.slice(0, 3)} ${DAY}, ${d.getUTCFullYear()}`;
+const shortDate =
+  cut.lang === "en"
+    ? `${MON.slice(0, 3)} ${DAY}, ${d.getUTCFullYear()}`
+    : `${DAY}/${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`;
 const list = script.stories
   .map((s) => `${s.rank}. ${s.kicker}: ${s.headline.replace(/\*/g, "")}`)
   .join("\n");
 const sources = script.stories
-  .map((s) => `${s.rank}. ${byRank[s.rank]?.url ?? ""}`)
+  .filter((s) => byRank[s.rank]?.url)
+  .map((s) => `${s.rank}. ${byRank[s.rank].url}`)
   .join("\n");
-const chapters = [
-  `0:00 Intro`,
-  ...storySegs.map((s) => `${mmss(s.start)} ${s.story.kicker}`),
-  `${mmss(outro.start)} Outro`,
-].join("\n");
+// YouTube rejects chapters shorter than 10 s: a short intro takes the first story's title at 0:00,
+// any other short chapter folds into the one before it.
+const marks = [
+  { t: 0, label: UI.intro },
+  ...storySegs.map((s) => ({ t: s.start, label: s.story.kicker })),
+  { t: outro.start, label: UI.outro },
+];
+for (let i = 0; i < marks.length; ) {
+  const end = marks[i + 1]?.t ?? total;
+  if (end - marks[i].t >= 10 || marks.length === 1) i++;
+  else if (i === 0) marks.splice(0, 2, { t: 0, label: marks[1].label });
+  else marks.splice(i, 1);
+}
+const chapters = marks.map((m) => `${mmss(m.t)} ${m.label}`).join("\n");
+const dayUrl = `https://aidr.today/date/${date}${UI.query}`;
+const home = `https://aidr.today${UI.query ? `/${UI.query}` : ""}`;
 const ytTitle = (
   P.youtubeTitle ??
-  `AI News Today: ${script.stories
-    .slice(0, 2)
-    .map((s) => s.kicker)
-    .join(", ")} & more | ${shortDate}`
+  UI.ytTitle(
+    script.stories
+      .slice(0, 2)
+      .map((s) => s.kicker)
+      .join(", "),
+    shortDate
+  )
 ).slice(0, 100);
 
-writeFileSync(
-  join(dir, "posts.md"),
-  `# Posts — AI;DR Daily ${date}
+// posts.md holds one block per language; a build rewrites only its own block.
+const block = `<!-- posts:${cut.lang} -->
+# Posts (${cut.lang.toUpperCase()}) — AI;DR Daily ${date}
 
-Files: \`renders/aidr-daily-${date}-16x9-4k.mp4\`, \`renders/aidr-daily-${date}-9x16-4k.mp4\`, covers \`renders/cover-${date}-16x9.png\`, \`renders/cover-${date}-9x16.png\`, captions \`captions.srt\`. Length ${mmss(total)} (${total}s).
+Files: \`renders/${cut.video(date, "16x9")}\`, \`renders/${cut.video(date, "9x16")}\`, covers \`renders/${cut.cover(date, "16x9")}\`, \`renders/${cut.cover(date, "9x16")}\`, captions \`${cut.captions}\`. Length ${mmss(total)} (${total}s).
 
 ## YouTube (16:9)
 
@@ -602,18 +701,19 @@ ${hook} ${dateline}.
 
 ${list}
 
-Chapters
+${UI.chapters}
 ${chapters}
 
-Sources
+${UI.sources}
 ${sources}
 
-Every story, ranked and summarized daily: https://aidr.today
+${UI.today} ${dayUrl}
+${UI.daily2} ${home}
 
 ${hashtags(5)}
 
-**Tags:** ${[...tags, "AI news today", "artificial intelligence", "AI;DR"].join(", ")}
-**Captions:** upload \`captions.srt\` (English). **Thumbnail:** \`cover-${date}-16x9.png\`.
+**Tags:** ${[...tags, ...UI.ytTags].join(", ")}
+**Captions:** upload \`${cut.captions}\` (${UI.captions}). **Thumbnail:** \`${cut.cover(date, "16x9")}\`.
 
 ## YouTube Shorts (9:16)
 
@@ -625,15 +725,15 @@ ${(P.shortsTitle ?? `${hook} ${shortDate}`).slice(0, 92)} #Shorts
 
 ${list}
 
-https://aidr.today ${hashtags(4)}
+${dayUrl} · ${home} ${hashtags(4)}
 
 ## TikTok (9:16)
 
-${P.tiktok ?? `${hook} Which one matters most to you? 👇`}
+${P.tiktok ?? `${hook} ${UI.ask}`}
 
 ${hashtags(5)}
 
-Cover: \`cover-${date}-9x16.png\`. Captions are burned in.
+Cover: \`${cut.cover(date, "9x16")}\`. Captions are burned in.
 
 ## Instagram Reels (9:16)
 
@@ -641,7 +741,7 @@ ${hook}
 
 ${list}
 
-Full brief: link in bio · aidr.today
+${UI.bio}
 
 ${hashtags(8)}
 
@@ -651,7 +751,8 @@ ${P.facebook ?? `${hook} ${dateline}.`}
 
 ${list}
 
-Read every story, ranked and summarized: https://aidr.today
+${UI.today} ${dayUrl}
+${UI.read} ${home}
 
 ${hashtags(4)}
 
@@ -663,13 +764,29 @@ ${script.stories
   .slice(0, 3)
   .map((s) => `${s.rank}. ${s.kicker}`)
   .join("\n")}
-+${Math.max(0, script.stories.length - 3)} more → https://aidr.today
-`
++${Math.max(0, script.stories.length - 3)} ${UI.more} → ${dayUrl}
+<!-- /posts:${cut.lang} -->
+`;
+const postsPath = join(dir, "posts.md");
+const blocks = Object.fromEntries(
+  [
+    ...(existsSync(postsPath) ? readFileSync(postsPath, "utf8") : "").matchAll(
+      /<!-- posts:(\w+) -->[\s\S]*?<!-- \/posts:\1 -->\n/g
+    ),
+  ].map((m) => [m[1], m[0]])
+);
+blocks[cut.lang] = block;
+writeFileSync(
+  postsPath,
+  ["en", "vi"]
+    .filter((l) => blocks[l])
+    .map((l) => blocks[l])
+    .join("\n")
 );
 
 console.log(
   `✓ ${date}: ${total}s · intro=${theme.intro} · transition=${theme.transition} · bg=${theme.background}`
 );
 console.log(
-  `  out/${Object.keys(config.formats).join(", out/")} · captions.srt (${allCaps.length} cues) · posts.md`
+  `  ${cut.out}/${Object.keys(config.formats).join(`, ${cut.out}/`)} · ${cut.captions} (${allCaps.length} cues) · posts.md (${cut.lang})`
 );

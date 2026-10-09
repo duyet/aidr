@@ -15,20 +15,27 @@
   },
   "fps": 30,
   "voice": {
-    "provider": "heygen",
-    "defaultAnchor": "gareth",
+    "provider": "elevenlabs",
+    "cast": "../brand/voices.json",
+    "lang": "en",
     "gap": 0.28,
     "volume": 1.0,
-    "anchors": {
-      "gareth": {
-        "id": "826be797681d4b1a92042b54b3c75c64",
-        "name": "Gareth - Conversational & Easygoing",
-        "speed": 1.0
+    "heygen": {
+      "byGender": {
+        "male": "gareth",
+        "female": "tabitha"
       },
-      "tabitha": {
-        "id": "a6752292cd204ac4a80a25fb575b1327",
-        "name": "Tabitha - Conversational & Easygoing",
-        "speed": 1.0
+      "anchors": {
+        "gareth": {
+          "id": "826be797681d4b1a92042b54b3c75c64",
+          "name": "Gareth - Conversational & Easygoing",
+          "speed": 1.0
+        },
+        "tabitha": {
+          "id": "a6752292cd204ac4a80a25fb575b1327",
+          "name": "Tabitha - Conversational & Easygoing",
+          "speed": 1.0
+        }
       }
     }
   },
@@ -66,6 +73,6 @@
   "captions": {
     "burn": true,
     "maxWords": 4,
-    "replace": [["AI DR", "AI;DR"], ["aidr dot today", "aidr.today"]]
+    "replace": [["AI DR", "AI;DR"], ["aidr dot today", "aidr.today"], ["aidr chấm today", "aidr.today"]]
   }
 }

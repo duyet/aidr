@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Pull today's edition from the public API and download each story's real post media.
+// Pull today's edition (English, plus the Vietnamese bullet and title for the vi cut) from the public API and download each story's real post media.
 // Writes editions/<date>/edition.json (tracked) and editions/<date>/assets/ (ignored, third-party).
 // Usage: node scripts/fetch.mjs [--count 6]
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -15,7 +15,7 @@ const UA = {
 };
 
 const data = await (await fetch(config.api, { headers: UA })).json();
-const { date, bullets_en } = data.tldr;
+const { date, bullets_en, bullets_vi = [] } = data.tldr;
 const byId = Object.fromEntries(data.stories.map((s) => [s.id, s]));
 const dir = join(ROOT, "editions", date);
 mkdirSync(join(dir, "assets"), { recursive: true });
@@ -65,8 +65,10 @@ for (const [i, bullet] of bullets_en.slice(0, count).entries()) {
   stories.push({
     rank,
     text: bullet.text,
+    text_vi: bullets_vi[i]?.text ?? null,
     category: lead.category ?? null,
     title: lead.title ?? null,
+    title_vi: lead.title_vi ?? null,
     url: lead.url ?? null,
     source: lead.url ? new URL(lead.url).hostname.replace(/^www\./, "") : null,
     permalink: lead.id ? `https://aidr.today/${lead.id.slice(0, 8)}` : null,
