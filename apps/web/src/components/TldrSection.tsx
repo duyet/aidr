@@ -7,7 +7,7 @@ import { timeAgo } from "../lib/lang";
 import { type TldrCount, usePrefs } from "../lib/prefs";
 import { tldrCountOptions, tldrShownCount } from "../lib/tldr-links";
 import type { Lang, TldrBullet } from "../lib/types";
-import { DayCardChip, DayCardOverlay } from "./DayCardPreview";
+import { DayCardOverlay, DayCardViewSwitch } from "./DayCardPreview";
 import { TldrBulletList } from "./TldrBulletList";
 
 export function TldrSection({
@@ -122,11 +122,13 @@ export function TldrSection({
         </div>
         <div className="flex items-center gap-2">
           {snapshotDate && dateHref ? (
-            <DayCardChip
-              date={snapshotDate}
-              href={dateHref}
+            <DayCardViewSwitch
               lang={lang}
-              onPreview={setPreview}
+              showImage={preview}
+              onChange={(showImage) => {
+                track("tldr_view", { view: showImage ? "image" : "text" });
+                setPreview(showImage);
+              }}
             />
           ) : null}
           {options.length > 0 && (
