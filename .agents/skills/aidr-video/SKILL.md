@@ -58,3 +58,15 @@ For per-story automated clips, use the `aidr-story-clip` skill instead. For the 
 - [ ] The owner approved the preview, then the render ran.
 - [ ] The render was reviewed with `aidr-video-review`, its top five fixes applied, and it scores at least 8/10.
 - [ ] The report names the MP4 path, the real duration, and anything skipped.
+
+## Voices
+
+The voice cast lives in `videos/brand/voices.json` (ElevenLabs): five
+English hosts and four Vietnamese hosts, the owner's picks. Every voiced
+AI;DR video — release films, the daily brief, changelog/feature clips —
+uses it the same way: hosts alternate per scene or story like a TV show or
+podcast, never the same voice twice in a row, opener and closer differ,
+order from a seeded shuffle (seed = edition date or release version) so
+re-renders match. Short natural hand-offs between hosts are fine. Add a
+voice to the account from the shared library when it is missing
+(`POST /v1/voices/add/{public_owner_id}/{voice_id}`).

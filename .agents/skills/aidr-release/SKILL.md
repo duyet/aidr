@@ -39,12 +39,13 @@ it; this file says the order, the gates, and what "done" means.
 4. **Films** — skills `aidr-video`, `aidr-motion-designer`,
    `aidr-video-review`. Project `videos/releases/vX.Y.Z/` (sources in git,
    renders gitignored). Render matrix:
-   `aidr-vX.Y.Z-{en,vi}-{16x9,9x16}.mp4` with a natural voice-over and
-   burned-in captions per language. `youtube.md` holds the metadata for
+   `aidr-vX.Y.Z-{en,vi}-{16x9,9x16}.mp4` with voice-over from the cast in
+   `videos/brand/voices.json` (English: the English hosts alternating like a
+   TV show; Vietnamese: its own hosts, same rules) and burned-in captions per language. `youtube.md` holds the metadata for
    every cut. Review to 8/10.
 5. **YouTube** — skill `aidr-youtube-upload`, channel
    `UCGDB5uD8znydgMg2XLOj04w`, through the user's Chrome. Upload the four
-   cuts (16:9 as videos, 9:16 as Shorts) into the "AI;DR Releases"
+   cuts (16:9 as videos, 9:16 as Shorts) into the "AI;DR"
    playlist. Put the ids in the release file: `youtubeId` (EN 16:9),
    `youtubeIdVi` (VI 16:9).
 6. **Extension** (only if it changed) — skill `aidr-cws-release`: package

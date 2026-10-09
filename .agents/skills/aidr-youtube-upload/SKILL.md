@@ -41,11 +41,11 @@ Write it in `videos/<project>/youtube.md` first, then paste from there.
   4. 3–5 hashtags at the end: `#AI #AInews #AIDR` (+ `#tinAI` for VI).
 - **Tags**: AI;DR, aidr.today, AI news, AI digest, release notes, plus
   the release's feature words; VI cut adds Vietnamese terms.
-- **Playlist**: release films → "AI;DR Releases"; daily briefs →
-  "AI;DR Daily"; Shorts → same playlist as their long cut. Create the
-  playlist in the dialog if missing (Public).
-- **Thumbnail**: the cover still from `renders/*-cover.png` (1280×720,
-  < 2 MB; downscale with `sips -Z 1280` if needed).
+- **Playlist**: the channel's existing **"AI;DR"** playlist for every
+  AI;DR video (release films, daily briefs, Shorts). Don't create new
+  playlists unless the user asks.
+- **Thumbnail**: the cover still from `renders/*-cover.png` (1920×1080
+  works, must be < 2 MB; downscale with `sips -Z 1920` if needed).
 - **Language**: video language English or Vietnamese to match the cut;
   category Science & Technology.
 - 9:16 renders ≤ 3 min upload as Shorts automatically; give them the same
@@ -57,24 +57,67 @@ Run each line through `bin/yt-chrome`. Prefer `find role … click --name`
 or tagging elements from JS (`eval -b <base64>` → set `data-x`) and then a
 real `click [data-x=…]`; Studio's buttons ignore JS `.click()` in places.
 
-1. `find role button click --name 'Create'` → `find role menuitem click --name 'Upload videos'`
-   (or the upload icon on the dashboard).
-2. `upload 'input[name=Filedata]' <mp4>` — upload starts, the Details step
-   opens.
-3. Title: the title box is a contenteditable `#textbox` inside
-   `ytcp-social-suggestions-textbox#title-textarea`; select all and type.
-   Description: the `#textbox` inside `#description-textarea`.
-4. Thumbnail: `upload 'input#file-loader' <cover.png>` (Details step).
-5. Playlist: open the "Select" playlist dropdown, tick the playlist, Done.
-6. Audience: radio `VIDEO_MADE_FOR_KIDS_NOT_MFK`.
-7. "Show more": tags input (comma-separated), language, category.
-8. Next → Video elements (skip) → Next → Checks (wait for "No issues
-   found" or report what it says) → Next → Visibility: radio `PUBLIC`
-   → Publish (Save).
-9. Read the video link from the confirmation dialog
-   (`https://youtu.be/<id>`), close it, and report the id. Then put it
-   where it belongs (release file `youtubeId` / `youtubeIdVi`, Web Store
-   promo video if asked).
+**The Studio tab is usually a hidden background tab** (`document.visibilityState
+=== "hidden"`). Animations stall there, so closed menus and dialogs stay
+painted on top of the form and swallow clicks, and screenshots lag. Rules
+that follow from it:
+
+- Start each upload from a fresh load (`open …/videos/upload`) and
+  `set viewport 1600 1000` (the user's window may be phone-narrow).
+- Before every click on a form control, `scrollIntoView` it from JS (the
+  dialog scrolls inside its own container; `click` alone may miss). If a
+  click doesn't change `aria-checked`, check `document.elementFromPoint` —
+  a closed `ytcp-text-menu`/`ytcp-playlist-dialog` `tp-yt-paper-dialog`
+  (`opened=false`) or a `tp-yt-iron-overlay-backdrop` is on top. Set those
+  to `display:none`, and clear that inline style again before reopening
+  the playlist picker.
+- Trust DOM reads (`aria-checked`, `textContent`) over screenshots.
+- In `batch --bail` a failed step (e.g. `scrollintoview`) silently skips
+  the rest; check each result.
+
+1. Create menu: `find role button click --name Create --exact`; the
+   "Upload videos" `tp-yt-paper-item` may never get a size, so tag it from
+   JS and call `.click()` on it (JS click works here). The
+   `?d=ud` URL does not open the dialog.
+2. `upload input[name=Filedata] <mp4>` — the Details step can take ~20 s
+   to render in a background tab; the `youtu.be/<id>` link shows there.
+3. Title / description: `#title-textarea #textbox` and
+   `#description-textarea #textbox` are contenteditable; from JS:
+   `el.focus(); document.execCommand('selectAll');
+   document.execCommand('insertText', false, text)` keeps newlines. Read
+   `innerText` back to verify.
+4. Thumbnail: `upload input#file-loader <cover.png>`.
+5. Playlist: click `ytcp-video-metadata-playlists ytcp-dropdown-trigger`,
+   find the leaf whose text is exactly `AI;DR` inside `ytcp-playlist-dialog`
+   (there is also a playlist named `AI`), click its `ytcp-checkbox-lit`,
+   then `find role button click --name Done`. Verify
+   `ytcp-video-metadata-playlists` text is `AI;DR`.
+6. Audience: `[name=VIDEO_MADE_FOR_KIDS_NOT_MFK]`.
+7. "Show more" is `ytcp-button#toggle-button`. It reveals:
+   - Paid promotion: `[name=VIDEO_PAID_PRODUCT_PLACEMENT_NO]` (required).
+   - AI use (required): `[name=VIDEO_HAS_ALTERED_CONTENT_NO]` / `_YES`.
+     The question covers making a real person say/do something, altering
+     real footage, a realistic fake scene, or AI music as the focus — not
+     AI voice-over on motion graphics. Answer No for AI;DR films unless the
+     user says otherwise.
+   - Tags: focus `#tags-container input` from JS, `keyboard inserttext
+     "<comma list>"`, then `press Enter` — Enter splits the list into
+     chips. Don't `click` the input (it opens a chip for editing) and don't
+     press Backspace in it (it deletes chips). The `type <sel> <text>`
+     command mis-parses selectors with spaces.
+   - Language: `ytcp-form-language-input ytcp-text-dropdown-trigger`; the
+     items are `tp-yt-paper-item` inside `ytcp-text-menu`. Studio remembers
+     the last language and category, so read them first and only change
+     what differs. `find text '<item>' click --exact` works for the
+     category menu (`ytcp-form-select#category`).
+8. `click #next-button` three times (Video elements → Checks → Visibility);
+   the Checks step should read "Copyright No issues found / Community
+   Guidelines No issues found". Then `click [name=PUBLIC]` →
+   `click #done-button` (label "Publish").
+9. `ytcp-video-share-dialog` shows "Video published" and the
+   `https://youtu.be/<id>` link. Report the id and put it where it belongs
+   (release `STATUS.json` row `youtubeId`/`youtubeUrl`/`uploaded`, release
+   file `youtubeId` / `youtubeIdVi`, Web Store promo video if asked).
 
 Selectors drift: if one is missing, take a screenshot
 (`screenshot <path>`), read the page with `snapshot -i`, update this skill
