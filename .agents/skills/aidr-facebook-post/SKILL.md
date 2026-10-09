@@ -42,6 +42,12 @@ Then check two things before pasting:
   `https://aidr.today/release/vX.Y.Z?lang=en` (VI posts use `?lang=vi`).
   Check with `curl -sL "<url>" | grep og:title`.
 
+Daily brief: use the "Facebook Page" block of
+`videos/daily-news/editions/<date>/posts.md`, add `Watch: <youtu.be link
+of the EN 16:9>`, and make `Today's stories:
+https://aidr.today/date/<date>?lang=en` the **last** link so it becomes the
+preview. Record `facebookUrl` on the daily `en-16x9` row.
+
 ## Steps
 
 The tab is usually hidden in the background: run `set viewport 1600 1000`
