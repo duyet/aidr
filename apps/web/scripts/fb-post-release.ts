@@ -28,7 +28,9 @@ if (!release) {
 }
 
 const t = (s: { en: string; vi: string }) => s[lang];
-const link = `${SITE_URL}${releasePath(release)}${lang === "vi" ? "?lang=vi" : ""}`;
+// Always name the language: without ?lang the page's OG tags fall back to
+// Vietnamese and Facebook builds a Vietnamese preview for the English post.
+const link = `${SITE_URL}${releasePath(release)}?lang=${lang}`;
 const film =
   (lang === "vi" ? release.youtubeIdVi : undefined) ?? release.youtubeId;
 const highlights = release.highlights
