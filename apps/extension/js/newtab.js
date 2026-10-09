@@ -414,61 +414,75 @@ function renderTldrMasthead(settings, date) {
   syncDayCard(settings, date);
 }
 
+/** Image | text masthead switch (web DayCardViewSwitch). Text is default. */
+let dayCardImageOn = false;
+
 function syncDayCard(settings, date) {
-  const chip = $("day-card-chip");
-  const label = $("day-card-label");
-  const overlay = $("day-card-overlay");
-  if (!chip) return;
+  const view = $("day-card-switch");
+  const imageBtn = $("day-card-image");
+  const textBtn = $("day-card-text");
+  if (!view || !imageBtn || !textBtn) return;
   const lang = uiLang(settings);
   const parts = dayOgDateParts(date, lang);
   if (!parts) {
-    chip.hidden = true;
-    chip.href = "https://aidr.today/";
-    delete chip.dataset.og;
-    overlay?.classList.remove("is-open");
+    view.hidden = true;
+    delete view.dataset.og;
+    dayCardImageOn = false;
+    applyDayCardView();
     return;
   }
-  chip.hidden = false;
-  chip.href = dayPageUrl(date, lang);
-  chip.dataset.og = dayCardImageUrl(date, lang);
-  chip.setAttribute(
-    "aria-label",
-    lang === "vi" ? `Xem ảnh tóm tắt ngày ${date}` : `Preview the ${date} card`
-  );
-  if (label) {
-    label.textContent = lang === "vi" ? "AI;DR hôm nay" : "AI;DR daily";
-  }
+  view.hidden = false;
+  view.dataset.og = dayCardImageUrl(date, lang);
+  view.setAttribute("aria-label", lang === "vi" ? "Kiểu hiển thị" : "View");
+  const imageLabel = lang === "vi" ? "Xem ảnh tóm tắt" : "Show day card";
+  const textLabel = lang === "vi" ? "Xem dạng chữ" : "Show text";
+  imageBtn.setAttribute("aria-label", imageLabel);
+  imageBtn.title = imageLabel;
+  textBtn.setAttribute("aria-label", textLabel);
+  textBtn.title = textLabel;
   const img = $("day-card-img");
-  if (img?.dataset.og && img.dataset.og !== chip.dataset.og) {
-    img.removeAttribute("src");
-    delete img.dataset.og;
+  if (img) {
+    img.alt =
+      lang === "vi"
+        ? `Ảnh tóm tắt AI;DR ngày ${date}`
+        : `AI;DR card for ${date}`;
+    if (img.dataset.og && img.dataset.og !== view.dataset.og) {
+      img.removeAttribute("src");
+      delete img.dataset.og;
+    }
   }
+  applyDayCardView();
 }
 
 function armDayCardImage() {
-  const chip = $("day-card-chip");
+  const src = $("day-card-switch")?.dataset.og;
   const img = $("day-card-img");
-  const src = chip?.dataset.og;
   if (!src || !img || img.dataset.og === src) return;
   img.dataset.og = src;
   img.src = src;
 }
 
+function applyDayCardView() {
+  const open = dayCardImageOn;
+  if (open) armDayCardImage();
+  $("day-card-overlay")?.classList.toggle("is-open", open);
+  $("day-card-overlay")?.setAttribute("aria-hidden", open ? "false" : "true");
+  $("day-card-image")?.setAttribute("aria-pressed", open ? "true" : "false");
+  $("day-card-text")?.setAttribute("aria-pressed", open ? "false" : "true");
+}
+
 let dayCardArmed = false;
 
 function bindDayCard() {
-  const chip = $("day-card-chip");
-  const overlay = $("day-card-overlay");
-  if (!chip || !overlay) return;
-  const show = (open) => {
-    if (chip.hidden) return;
-    if (open) armDayCardImage();
-    overlay.classList.toggle("is-open", open);
+  const imageBtn = $("day-card-image");
+  const textBtn = $("day-card-text");
+  if (!imageBtn || !textBtn) return;
+  const choose = (image) => {
+    dayCardImageOn = image;
+    applyDayCardView();
   };
-  chip.addEventListener("pointerenter", () => show(true));
-  chip.addEventListener("pointerleave", () => show(false));
-  chip.addEventListener("focus", () => show(true));
-  chip.addEventListener("blur", () => show(false));
+  imageBtn.addEventListener("click", () => choose(true));
+  textBtn.addEventListener("click", () => choose(false));
   if (!dayCardArmed) {
     dayCardArmed = true;
     setTimeout(armDayCardImage, 2000);
@@ -868,7 +882,13 @@ function renderStoryRow(settings, story, index, hot) {
     ? timeAgo(story.published_at, lang)
     : "";
 
-  head.append(n, titleWrap, renderVotes(settings, story), cat, when);
+  // Votes, category and time share one first-line-high cluster so every
+  // row's columns line up, even when the title wraps.
+  const meta = document.createElement("span");
+  meta.className = "story-meta";
+  meta.append(renderVotes(settings, story), cat, when);
+
+  head.append(n, titleWrap, meta);
 
   let detail = null;
   if (hasDetails) {
@@ -1065,13 +1085,6 @@ function renderStories(settings, digest) {
     }
 
     head.append(title, count, cats);
-    if (archiveHref) {
-      const full = document.createElement("a");
-      full.className = "day-full";
-      full.href = archiveHref;
-      full.textContent = lang === "vi" ? "Xem cả ngày →" : "Full day →";
-      head.append(full);
-    }
     section.append(head);
 
     const list = document.createElement("div");

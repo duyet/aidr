@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS = {
     categories: true,
   },
   sectionOrder: [...DEFAULT_SECTION_ORDER],
-  density: "comfortable",
+  density: "medium",
   storyCount: 8,
   tldrCount: 8,
   /** Show EN|VI side-by-side in the story dialog (matches web bilingualDialog pref). */
@@ -48,7 +48,14 @@ const FONTS = ["sans", "serif"];
 const LEGACY_FONTS = ["system", "editorial", "humanist", "mono"];
 const THEMES = ["light", "dark", "system"];
 const BGS = ["default", "cream", "gray", "dark", "black"];
-const DENSITIES = ["compact", "comfortable", "spacious"];
+/** Tight → airy, in slider order. Matches web READER_DENSITIES. */
+export const DENSITIES = [
+  "dense",
+  "compact",
+  "medium",
+  "comfortable",
+  "spacious",
+];
 const LANGUAGES = ["vi", "en", "both"];
 const TLDR_COUNTS = [8, 12, 16];
 const FONT_SIZE_MIN = 0.85;

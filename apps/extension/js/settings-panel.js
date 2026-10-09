@@ -1,13 +1,13 @@
 import { t } from "./i18n.js";
 import {
   allowCustomApiBase,
+  DENSITIES,
   ensureHostPermission,
   isDarkAppearance,
   saveSettings,
 } from "./settings.js";
 import { track } from "./track.js";
 
-const DENSITIES = ["compact", "comfortable", "spacious"];
 const TLDR_COUNTS = [8, 12, 16];
 const FONTS = ["sans", "serif"];
 const BG_SWATCHES = [
@@ -170,12 +170,12 @@ export function mountSettingsPanel(root, settings, onSaved) {
       type: "range",
       className: "prefs-slider",
       min: "0",
-      max: "2",
+      max: String(DENSITIES.length - 1),
       step: "1",
       value: String(densityIdx),
       "aria-label": t(state, "density"),
       onInput: async (event) => {
-        state.density = DENSITIES[Number(event.target.value)] || "compact";
+        state.density = DENSITIES[Number(event.target.value)] || "medium";
         await persist({ repaint: false });
       },
     });
