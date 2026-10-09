@@ -494,7 +494,7 @@ async function main() {
     "/brand",
     "/submit",
     "/mcp",
-    "/changelog",
+    "/release",
     "/subscribe",
     "/data",
     "/privacy",

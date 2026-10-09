@@ -138,7 +138,7 @@ describe("normalizeLocaleRequest", () => {
 });
 
 describe("withSsrLocaleResponse", () => {
-  it.each(["/mcp", "/subscribe", "/changelog", "/contribute/new"])(
+  it.each(["/mcp", "/subscribe", "/release", "/contribute/new"])(
     "applies the explicit-locale cache policy to %s",
     (path) => {
       const response = withSsrLocaleResponse(
@@ -231,7 +231,7 @@ describe("withSsrLocaleResponse", () => {
 
   it.each([
     "/",
-    "/changelog",
+    "/release",
     "/mcp",
     "/contribute/new",
     "/subscribe",

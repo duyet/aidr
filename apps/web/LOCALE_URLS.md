@@ -42,7 +42,7 @@ toggle writes both `news_lang` and an explicit URL.
 
 The Worker applies the locale response policy to every TanStack SSR response:
 
-- Localized pages (`/`, story pages, `/mcp`, `/subscribe`, `/changelog`, and
+- Localized pages (`/`, story pages, `/mcp`, `/subscribe`, `/release`, and
   `/submit`) have explicit `vi`/`en` canonicals, hreflang links, and sitemap
   entries. Only one valid `lang` is publicly cacheable; bare and header-selected
   variants are private.

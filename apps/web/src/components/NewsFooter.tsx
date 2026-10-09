@@ -27,6 +27,7 @@ import {
 const FOOTER_LINKS: { to: string; label: string }[] = [
   { to: "/about", label: "About" },
   { to: "/data", label: "Data / Pipeline" },
+  { to: "/release", label: "Release notes" },
   { to: "/privacy", label: "Privacy" },
   { to: "/terms", label: "Terms" },
 ];

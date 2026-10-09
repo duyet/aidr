@@ -34,6 +34,8 @@ import { Route as ApiSystemRouteImport } from './routes/api/system'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
 import { Route as ContributeNewRouteImport } from './routes/contribute.new'
 import { Route as DateDateRouteImport } from './routes/date.$date'
+import { Route as ReleaseIndexRouteImport } from './routes/release.index'
+import { Route as ReleaseVersionRouteImport } from './routes/release.$version'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
@@ -180,6 +182,16 @@ const DateDateRoute = DateDateRouteImport.update({
   path: '/date/$date',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReleaseIndexRoute = ReleaseIndexRouteImport.update({
+  id: '/release/',
+  path: '/release/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReleaseVersionRoute = ReleaseVersionRouteImport.update({
+  id: '/release/$version',
+  path: '/release/$version',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInSplatRoute = SignInSplatRouteImport.update({
   id: '/sign-in/$',
   path: '/sign-in/$',
@@ -306,9 +318,11 @@ export interface FileRoutesByFullPath {
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
   '/date/$date': typeof DateDateRoute
+  '/release/$version': typeof ReleaseVersionRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/contribute/': typeof ContributeIndexRoute
+  '/release/': typeof ReleaseIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -353,9 +367,11 @@ export interface FileRoutesByTo {
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
   '/date/$date': typeof DateDateRoute
+  '/release/$version': typeof ReleaseVersionRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/contribute': typeof ContributeIndexRoute
+  '/release': typeof ReleaseIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -401,9 +417,11 @@ export interface FileRoutesById {
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
   '/date/$date': typeof DateDateRoute
+  '/release/$version': typeof ReleaseVersionRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/contribute/': typeof ContributeIndexRoute
+  '/release/': typeof ReleaseIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -450,9 +468,11 @@ export interface FileRouteTypes {
     | '/api/system'
     | '/contribute/new'
     | '/date/$date'
+    | '/release/$version'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/contribute/'
+    | '/release/'
     | '/api/admin/$'
     | '/api/feed/freshness'
     | '/api/og/$id'
@@ -497,9 +517,11 @@ export interface FileRouteTypes {
     | '/api/system'
     | '/contribute/new'
     | '/date/$date'
+    | '/release/$version'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/contribute'
+    | '/release'
     | '/api/admin/$'
     | '/api/feed/freshness'
     | '/api/og/$id'
@@ -544,9 +566,11 @@ export interface FileRouteTypes {
     | '/api/system'
     | '/contribute/new'
     | '/date/$date'
+    | '/release/$version'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/contribute/'
+    | '/release/'
     | '/api/admin/$'
     | '/api/feed/freshness'
     | '/api/og/$id'
@@ -592,9 +616,11 @@ export interface RootRouteChildren {
   ApiSystemRoute: typeof ApiSystemRouteWithChildren
   ContributeNewRoute: typeof ContributeNewRoute
   DateDateRoute: typeof DateDateRoute
+  ReleaseVersionRoute: typeof ReleaseVersionRoute
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
   ContributeIndexRoute: typeof ContributeIndexRoute
+  ReleaseIndexRoute: typeof ReleaseIndexRoute
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
@@ -777,6 +803,20 @@ declare module '@tanstack/react-router' {
       path: '/date/$date'
       fullPath: '/date/$date'
       preLoaderRoute: typeof DateDateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/release/': {
+      id: '/release/'
+      path: '/release'
+      fullPath: '/release/'
+      preLoaderRoute: typeof ReleaseIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/release/$version': {
+      id: '/release/$version'
+      path: '/release/$version'
+      fullPath: '/release/$version'
+      preLoaderRoute: typeof ReleaseVersionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in/$': {
@@ -1002,9 +1042,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSystemRoute: ApiSystemRouteWithChildren,
   ContributeNewRoute: ContributeNewRoute,
   DateDateRoute: DateDateRoute,
+  ReleaseVersionRoute: ReleaseVersionRoute,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
   ContributeIndexRoute: ContributeIndexRoute,
+  ReleaseIndexRoute: ReleaseIndexRoute,
   ApiAdminSplatRoute: ApiAdminSplatRoute,
   ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,

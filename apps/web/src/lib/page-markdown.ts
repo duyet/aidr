@@ -7,7 +7,7 @@ export const PAGE_MARKDOWN_PATHS = [
   "/subscribe.md",
   "/data.md",
   "/brand.md",
-  "/changelog.md",
+  "/release.md",
   "/privacy.md",
   "/terms.md",
   "/mcp.md",
@@ -46,9 +46,9 @@ const PAGES: Record<PageMarkdownPath, { title: string; body: string }> = {
     title: "Brand",
     body: "Name, mark, and colors for AI;DR.",
   },
-  "/changelog.md": {
-    title: "Changelog",
-    body: "Reader-facing changes to the site.",
+  "/release.md": {
+    title: "Release notes",
+    body: "Every release of the site, newest first: what shipped, screenshots, and the changelog. Each version has its own page at /release/vX.Y.Z.",
   },
   "/privacy.md": {
     title: "Privacy",

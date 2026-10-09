@@ -18,8 +18,9 @@ describe("Worker discovery entry", () => {
     expect(src).toContain("llmsTxtResponse");
     expect(src).toContain('path === "/sitemap.xml"');
     expect(src).toContain('path === "/robots.txt"');
-    expect(src).toContain('path === "/extension"');
-    expect(src).toContain('dest.pathname = "/subscribe"');
+    expect(src).toContain('"/extension": "/subscribe"');
+    expect(src).toContain('"/changelog": "/release"');
+    expect(src).toContain("dest.pathname = legacyDest");
     expect(src).toContain("legacyStoryRedirectPath");
   });
 

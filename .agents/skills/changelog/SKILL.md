@@ -1,15 +1,15 @@
 ---
 name: changelog
-description: Add a reader-facing entry to aidr.today's /changelog page after shipping a user-visible change. Use when finishing a feature, UI change, or fix that readers can notice — or when asked to update/backfill the changelog from commits or release notes.
+description: Add a reader-facing entry to aidr.today's /release pages after shipping a user-visible change. Use when finishing a feature, UI change, or fix that readers can notice — or when asked to update/backfill the changelog from commits or release notes.
 ---
 
 # Changelog entries
 
-aidr.today keeps a small, hand-curated changelog at `/changelog` — "notable changes for readers", not a commit log.
+aidr.today keeps its reader-facing changelog at `/release`: one page per version (`apps/web/src/content/releases/vX.Y.Z.ts`, `highlights` + `changes`), plus `apps/web/src/content/releases/earlier.ts` for the Chrome extension notes and anything shipped before v0.1.0. `/changelog` redirects there.
 
 ## Where
 
-`apps/web/src/routes/changelog.tsx` — two arrays, **newest first**:
+`apps/web/src/content/releases/earlier.ts` — two arrays, **newest first** (version pages live next to it):
 
 - `WEBSITE_ENTRIES` — site/feed/pipeline changes readers can see
 - `EXTENSION_ENTRIES` — Chrome extension changes
@@ -43,7 +43,7 @@ Skip internal-only work: lint/format, CI, refactors, dependency bumps, secrets p
 ## Verify
 
 ```bash
-pnpm exec biome check apps/web/src/routes/changelog.tsx
+pnpm exec biome check apps/web/src/content/releases
 ```
 
-Then load `/changelog` on the dev server and eyeball both languages via the header language toggle.
+Then load `/release` on the dev server and eyeball both languages via the header language toggle.

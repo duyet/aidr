@@ -13,6 +13,7 @@ import { DEFAULT_LANG } from "./lang";
 import { isLocalizedSsrPath } from "./locale-routing";
 import { absoluteSiteUrl, withLang } from "./locale-url";
 import { PAGE_MARKDOWN_PATHS } from "./page-markdown";
+import { RELEASES, releasePath } from "./releases/index";
 import { NEWS_SITEMAP_PATH, SITE_URL } from "./site";
 import { storyPath } from "./slug";
 import type { Lang } from "./types";
@@ -21,7 +22,7 @@ export const SITEMAP_STATIC_PATHS = [
   "/",
   "/about",
   "/brand",
-  "/changelog",
+  "/release",
   "/privacy",
   "/terms",
   "/mcp",
@@ -133,31 +134,34 @@ export function sitemapLastmod(
  */
 export function staticSitemapUrls(now: number = Date.now()): SitemapUrl[] {
   const lastmod = sitemapLastmod(now);
-  return SITEMAP_STATIC_PATHS.flatMap((path) => {
-    if (isLocalizedSsrPath(path)) {
-      return (["vi", "en"] as const).map((lang) => ({
-        loc: absoluteSiteUrl(path, lang),
-        ...(lastmod ? { lastmod } : {}),
-        changefreq: path === "/" ? "hourly" : "weekly",
-        priority: path === "/" ? "1.0" : "0.4",
-      }));
-    }
-    return [
-      {
+  const paths = [...SITEMAP_STATIC_PATHS, ...RELEASES.map(releasePath)];
+  return paths
+    .flatMap((path) => {
+      if (isLocalizedSsrPath(path)) {
+        return (["vi", "en"] as const).map((lang) => ({
+          loc: absoluteSiteUrl(path, lang),
+          ...(lastmod ? { lastmod } : {}),
+          changefreq: path === "/" ? "hourly" : "weekly",
+          priority: path === "/" ? "1.0" : "0.4",
+        }));
+      }
+      return [
+        {
+          loc: `${SITE_URL}${path}`,
+          ...(lastmod ? { lastmod } : {}),
+          changefreq: "weekly",
+          priority: "0.4",
+        },
+      ];
+    })
+    .concat(
+      PAGE_MARKDOWN_PATHS.map((path) => ({
         loc: `${SITE_URL}${path}`,
         ...(lastmod ? { lastmod } : {}),
-        changefreq: "weekly",
-        priority: "0.4",
-      },
-    ];
-  }).concat(
-    PAGE_MARKDOWN_PATHS.map((path) => ({
-      loc: `${SITE_URL}${path}`,
-      ...(lastmod ? { lastmod } : {}),
-      changefreq: "weekly" as const,
-      priority: "0.3",
-    }))
-  );
+        changefreq: "weekly" as const,
+        priority: "0.3",
+      }))
+    );
 }
 
 /** The generated, always-200 story card used as the sitemap image. */
