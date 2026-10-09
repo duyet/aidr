@@ -20,3 +20,13 @@ daily-news/editions/*/renders/
 daily-news/editions/*/snap-*/
 daily-news/editions/*/assets-sheet.jpg
 daily-news/editions/*/voice-*/
+# releases: per-release captures, generated audio and output
+releases/*/capture/
+releases/*/capture-*/
+releases/*/renders/
+releases/*/snapshots/
+releases/*/assets/audio/
+releases/*/node_modules/
+releases/*/.hyperframes/
+releases/STATUS.json
+daily-news/editions/*/out-*/

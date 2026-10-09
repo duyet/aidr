@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>AI;DR v0.1.0 release film (vi, 16x9)</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+@font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-wght-normal-BqRLTx4X.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-vietnamese-wght-normal-C1uRvKPU.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:"Source Sans 3 Variable";font-style:normal;font-weight:200 900;font-display:block;src:url("assets/fonts/captured-source-sans-3-latin-ext-wght-normal-C8iNium2.woff2")format("woff2-variations");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:EB Garamond Variable;font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-latin-wght-normal-CRpggXlh.woff2")format("woff2-variations");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:EB Garamond Variable;font-style:normal;font-weight:400 800;font-display:block;src:url("assets/fonts/captured-eb-garamond-vietnamese-wght-normal-DvUmmjCN.woff2")format("woff2-variations");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { overflow: hidden; background: #f7f7f5; }
+      #root {
+        position: relative; width: 100%; height: 100%; overflow: hidden; background: #f7f7f5;
+        font-family: "Source Sans 3 Variable", sans-serif; color: #0a0a0a;
+        -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision;
+      }
+      .scene { position: absolute; inset: 0; overflow: hidden; }
+      .out, .push { position: absolute; inset: 0; }
+      .push { transform-origin: 62% 50%; }
+      .bloom {
+        position: absolute; width: 1300px; height: 1300px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(245,197,24,0.5) 0%, rgba(253,246,216,0.62) 34%, rgba(249,221,116,0.16) 54%, rgba(247,247,245,0) 70%);
+      }
+      .ember {
+        position: absolute; left: -380px; bottom: -520px; width: 1000px; height: 1000px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(180,83,9,0.16) 0%, rgba(180,83,9,0.05) 40%, rgba(180,83,9,0) 68%);
+      }
+      .chrome-top {
+        position: absolute; left: 120px; top: 64px; font-size: 17px; font-weight: 600; letter-spacing: 0.2em;
+        text-transform: uppercase; color: rgba(10,10,10,0.72);
+      }
+      .chrome-top .d { margin-left: 22px; font-weight: 400; letter-spacing: 0.12em; }
+      .nc { text-transform: none; }
+      .pagenum {
+        position: absolute; right: 120px; bottom: 56px; font-size: 17px; letter-spacing: 0.16em;
+        font-variant-numeric: tabular-nums; color: rgba(10,10,10,0.72);
+      }
+      .left { position: absolute; left: 120px; top: 170px; width: 600px; }
+      .num { font-family: "EB Garamond Variable", serif; font-weight: 400; font-size: 120px; line-height: 0.84; letter-spacing: -0.02em; }
+      .num .of { font-family: "Source Sans 3 Variable", sans-serif; font-size: 22px; letter-spacing: 0.12em; margin-left: 14px; color: rgba(10,10,10,0.6); }
+      .label { margin-top: 40px; font-size: 17px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #b45309; }
+      .title {
+        margin-top: 16px; font-family: "EB Garamond Variable", serif; font-weight: 500; font-size: 76px;
+        line-height: 1.04; letter-spacing: -0.01em; isolation: isolate;
+       text-wrap: balance; }
+      .mk { position: relative; white-space: nowrap; }
+      .hl {
+        position: absolute; left: -0.06em; right: -0.06em; bottom: 0.08em; height: 0.4em; z-index: -1;
+        background: #f5c518; transform-origin: 0% 50%;
+      }
+      .rows { margin-top: 44px; border-bottom: 1px solid rgba(10,10,10,0.18); }
+      .row { display: grid; grid-template-columns: 150px 1fr; align-items: baseline; padding: 15px 0; border-top: 1px solid rgba(10,10,10,0.18); }
+      .row .k { font-size: 16px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(10,10,10,0.62); }
+      .row .v { font-size: 27px; line-height: 1.25; }
+      .win { position: absolute; border: 1px solid rgba(10,10,10,0.18); border-radius: 18px; overflow: hidden; background: #f7f7f5; }
+      .bar { display: flex; align-items: center; padding: 0 20px; background: #ededeb; border-bottom: 1px solid rgba(10,10,10,0.1); }
+      .dots { display: flex; gap: 8px; }
+      .dots i { display: block; width: 12px; height: 12px; border-radius: 50%; background: rgba(10,10,10,0.16); }
+      .url {
+        margin-left: 24px; flex: 1; height: 32px; display: flex; align-items: center; padding: 0 16px; white-space: nowrap; overflow: hidden;
+        border-radius: 16px; background: #fff; border: 1px solid rgba(10,10,10,0.08); font-size: 17px; color: rgba(10,10,10,0.72);
+      }
+      .view { position: absolute; left: 0; right: 0; bottom: 0; overflow: hidden; background: #f7f7f5; }
+      .cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+      .cam img { display: block; width: 100%; height: 100%; }
+      .focus { position: absolute; border: 6px solid #f5c518; border-radius: 22px; box-shadow: 0 0 0 6000px rgba(247,247,245,0.5); }
+      /* title */
+      .t-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .t-kicker { font-size: 19px; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; color: #b45309; }
+      .t-lock { margin-top: 34px; display: flex; align-items: baseline; gap: 44px; }
+      .wm { display: block; width: 472px; height: 200px; margin-bottom: -35px; fill: #1c1917; overflow: visible; }
+      .t-ver { position: relative; isolation: isolate; font-family: "EB Garamond Variable", serif; font-weight: 500; font-size: 190px; line-height: 1; letter-spacing: -0.02em; }
+      .t-ver .hl { height: 0.3em; bottom: 0.1em; }
+      .t-head { margin-top: 46px; font-family: "EB Garamond Variable", serif; font-style: italic; font-weight: 400; font-size: 58px; line-height: 1.1; text-align: center; max-width: 1500px;  text-wrap: balance; }
+      .t-dates { margin-top: 26px; font-size: 22px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(10,10,10,0.68); }
+      /* stats */
+      .st-wrap { position: absolute; left: 120px; right: 120px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+      .st-label { font-size: 17px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #b45309; }
+      .st-row { margin-top: 30px; display: flex; gap: 48px; }
+      .stat { flex: 1; border-top: 1px solid #0a0a0a; padding-top: 22px; }
+      .sv { font-family: "EB Garamond Variable", serif; font-weight: 400; font-size: 150px; line-height: 0.9; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+      .sl { margin-top: 18px; font-size: 24px; color: rgba(10,10,10,0.72); }
+      .st-also { margin-top: 70px; font-family: "EB Garamond Variable", serif; font-size: 44px; line-height: 1.2; max-width: 1500px;  text-wrap: balance; }
+      /* close */
+      .c-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .tile { display: block; width: 168px; height: 168px; }
+      .c-line { margin-top: 52px; font-family: "EB Garamond Variable", serif; font-weight: 500; font-size: 68px; line-height: 1.08; text-align: center; max-width: 1500px; letter-spacing: -0.01em;  text-wrap: balance; }
+      .c-url { position: relative; isolation: isolate; margin-top: 34px; font-size: 64px; font-weight: 600; letter-spacing: 0.01em; }
+      .c-url .hl { height: 0.36em; bottom: 0.06em; }
+      .c-notes { margin-top: 30px; font-size: 22px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(10,10,10,0.68); }
+      /* captions: paper chips, the spoken word gets the marker */
+      .cap { z-index: 15; }
+      .cap .line { position: absolute; left: 50%; top: 966px; width: 1400px; margin-left: -700px; text-align: center; font-weight: 700; font-size: 40px; line-height: 1.15; }
+      .cap .w { display: inline-block; padding: 2px 10px 6px; background: #f7f7f5; }
+      /* 9:16 */
+      .f-9x16 .bloom { left: -110px !important; top: 380px !important; }
+      .f-9x16 .push { transform-origin: 50% 50%; }
+      .f-9x16 .chrome-top { left: 80px; top: 220px; font-size: 19px; }
+      .f-9x16 .chrome-top .d { margin-left: 16px; }
+      .f-9x16 .pagenum { right: 140px; top: 222px; bottom: auto; font-size: 19px; }
+      .f-9x16 .left { left: 80px; top: 290px; width: 860px; }
+      .f-9x16 .num { font-size: 104px; }
+      .f-9x16 .label { margin-top: 26px; font-size: 19px; }
+      .f-9x16 .title { margin-top: 10px; font-size: 74px; }
+      .f-9x16 .title.long { font-size: 50px; }
+      .f-9x16 .rows { position: absolute; left: 0; top: 980px; width: 860px; margin-top: 0; }
+      .f-9x16 .row { grid-template-columns: 180px 1fr; padding: 14px 0; }
+      .f-9x16 .row .k { font-size: 18px; }
+      .f-9x16 .row .v { font-size: 30px; }
+      .f-9x16 .t-lock { flex-direction: column; align-items: center; gap: 4px; }
+      .f-9x16 .wm { width: 590px; height: 250px; margin-bottom: 0; }
+      .f-9x16 .t-ver { font-size: 180px; }
+      .f-9x16 .t-head { max-width: 800px; font-size: 52px; }
+      .f-9x16 .t-kicker, .f-9x16 .t-dates { font-size: 22px; }
+      .f-9x16 .st-wrap { left: 80px; right: 140px; }
+      .f-9x16 .st-row { flex-wrap: wrap; gap: 44px 40px; }
+      .f-9x16 .stat { flex: 0 0 calc(50% - 20px); }
+      .f-9x16 .sv { font-size: 120px; }
+      .f-9x16 .st-also { margin-top: 56px; font-size: 42px; }
+      .f-9x16 .c-wrap { padding: 0 140px 0 80px; }
+      .f-9x16 .c-line { font-size: 58px; max-width: 900px; }
+      .f-9x16 .c-notes { font-size: 20px; letter-spacing: 0.1em; }
+      .f-9x16 .cap .line { top: 1505px; width: 900px; margin-left: -480px; font-size: 50px; }
+
+    </style>
+  </head>
+  <body>
+    <div id="root" class="f-16x9" data-composition-id="main" data-start="0" data-duration="51.5" data-width="1920" data-height="1080" data-fps="30">
+      <section id="title" class="clip scene" data-start="0" data-duration="6.5" data-track-index="0">
+        <div class="out" id="title-out"><div class="push" id="title-push">
+          <div class="bloom" style="left:310px;top:-110px"></div>
+          <div class="ember"></div>
+          <div class="t-wrap">
+            <div class="t-kicker" id="t-kicker">Bản phát hành công khai đầu tiên</div>
+            <div class="t-lock"><svg class="wm" viewBox="0 0 260 110" aria-hidden="true">
+  <defs>
+    <clipPath id="wm-left" clipPathUnits="userSpaceOnUse"><rect x="-20" y="0" width="118" height="110"/></clipPath>
+    <clipPath id="wm-right" clipPathUnits="userSpaceOnUse"><rect x="118" y="0" width="160" height="110"/></clipPath>
+  </defs>
+  <g clip-path="url(#wm-left)"><g id="wm-ai"><path d="M69.6 91L55.3 91L49.2 73.4L23.0 73.4L16.9 91L2.5 91L27.6 22.2L44.6 22.2L69.6 91ZM37.1 36.2L36.1 32.8L35.8 33.9Q35.3 35.6 34.6 37.9Q33.9 40.1 26.2 62.6L26.2 62.6L46.0 62.6L39.2 42.8L37.1 36.2Z"/><path d="M88.9 91L74.5 91L74.5 22.2L88.9 22.2L88.9 91Z"/></g></g>
+  <g clip-path="url(#wm-right)"><g id="wm-dr"><path d="M188.0 56.1L188.0 56.1Q188.0 66.7 183.8 74.7Q179.6 82.6 172.0 86.8Q164.4 91 154.5 91L154.5 91L126.7 91L126.7 22.2L151.6 22.2Q169.0 22.2 178.5 31.0Q188.0 39.7 188.0 56.1ZM173.5 56.1L173.5 56.1Q173.5 45.0 167.7 39.2Q162.0 33.3 151.3 33.3L151.3 33.3L141.1 33.3L141.1 79.9L153.3 79.9Q162.6 79.9 168.0 73.5Q173.5 67.1 173.5 56.1Z"/><path d="M257.9 91L241.7 91L225.7 64.9L208.9 64.9L208.9 91L194.4 91L194.4 22.2L228.8 22.2Q241.1 22.2 247.8 27.5Q254.5 32.8 254.5 42.7L254.5 42.7Q254.5 49.9 250.4 55.2Q246.3 60.4 239.3 62.1L239.3 62.1L257.9 91ZM240.0 43.3L240.0 43.3Q240.0 33.4 227.3 33.4L227.3 33.4L208.9 33.4L208.9 53.7L227.7 53.7Q233.8 53.7 236.9 51.0Q240.0 48.2 240.0 43.3Z"/></g></g>
+  <path id="wm-dot" d="M114.9 54.3L100.8 54.3L100.8 40.5L114.9 40.5L114.9 54.3Z"/><path id="wm-comma" d="M114.9 77.3L114.9 87.8Q114.9 93.6 113.7 98.1Q112.4 102.6 109.6 106.5L109.6 106.5L100.6 106.5Q103.8 102.5 105.5 98.5Q107.1 94.5 107.1 91L107.1 91L100.8 91L100.8 77.3L114.9 77.3Z"/>
+</svg><div class="t-ver" id="t-ver">v0.1.0<i class="hl" id="t-hl"></i></div></div>
+            <div class="t-head" id="t-head">AI;DR chính thức ra mắt tại aidr.today</div>
+            <div class="t-dates" id="t-dates">7 – 30/9/2026</div>
+          </div>
+        </div></div>
+      </section>
+
+      <section id="s0" class="clip scene" data-start="6.5" data-duration="6" data-track-index="1">
+        <div class="out" id="s0-out"><div class="push" id="s0-push">
+          <div class="bloom" style="left:1080px;top:-260px"></div>
+          <div class="ember"></div>
+          <div class="chrome-top" id="s0-chrome">AI;DR <span class="nc">v0.1.0</span><span class="d">7 – 30/9/2026</span></div>
+          <div class="left">
+            <div class="num" id="s0-num">01<span class="of">/ 05</span></div>
+            <div class="label" id="s0-label">Tin</div>
+            <h2 class="title" id="s0-title">Mỗi tin <span class="mk">một trang riêng<i class="hl"></i></span></h2>
+            <div class="rows"><div class="row" id="s0-r0"><span class="k">Đường dẫn</span><span class="v">aidr.today/15523a41</span></div><div class="row" id="s0-r1"><span class="k">Nguồn</span><span class="v">Hiện ngay dưới phần tóm tắt</span></div><div class="row" id="s0-r2"><span class="k">Chia sẻ</span><span class="v">Thẻ AI;DR kèm ảnh của tin</span></div></div>
+          </div>
+          <div class="win" id="s0-win" style="left:790px;top:150px;width:1010px;height:780px">
+            <div class="bar" style="height:52px"><span class="dots"><i></i><i></i><i></i></span><span class="url">aidr.today/15523a41?lang=vi</span></div>
+            <div class="view" style="top:52px">
+              <div class="cam" id="s0-cam" style="width:2720px;height:1700px">
+                <img src="capture/story.png" alt="" /><div class="focus" id="s0-focus" style="left:353.6px;top:1062.5px;width:1455.2px;height:433.5px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pagenum">01 / 05</div>
+        </div></div>
+      </section>
+
+      <section id="s1" class="clip scene" data-start="12.5" data-duration="8" data-track-index="1">
+        <div class="out" id="s1-out"><div class="push" id="s1-push">
+          <div class="bloom" style="left:980px;top:60px"></div>
+          <div class="ember"></div>
+          <div class="chrome-top" id="s1-chrome">AI;DR <span class="nc">v0.1.0</span><span class="d">7 – 30/9/2026</span></div>
+          <div class="left">
+            <div class="num" id="s1-num">02<span class="of">/ 05</span></div>
+            <div class="label" id="s1-label">Nhận AI;DR</div>
+            <h2 class="title" id="s1-title">Đọc ở <span class="mk">nơi bạn quen<i class="hl"></i></span></h2>
+            <div class="rows"><div class="row" id="s1-r0"><span class="k">Telegram</span><span class="v">@aidr_today và @aihomnay</span></div><div class="row" id="s1-r1"><span class="k">Email</span><span class="v">Hai bản tiếng Anh và tiếng Việt</span></div><div class="row" id="s1-r2"><span class="k">Chrome</span><span class="v">AI;DR hôm nay ở mỗi tab mới</span></div></div>
+          </div>
+          <div class="win" id="s1-win" style="left:790px;top:150px;width:1010px;height:780px">
+            <div class="bar" style="height:52px"><span class="dots"><i></i><i></i><i></i></span><span class="url">aidr.today/subscribe?tab=telegram&amp;lang=vi</span></div>
+            <div class="view" style="top:52px">
+              <div class="cam" id="s1-cam" style="width:2720px;height:1700px">
+                <img src="capture/telegram.png" alt="" /><div class="focus" id="s1-focus" style="left:312.8px;top:705.5px;width:979.1999999999999px;height:323px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pagenum">02 / 05</div>
+        </div></div>
+      </section>
+
+      <section id="s2" class="clip scene" data-start="20.5" data-duration="6.5" data-track-index="1">
+        <div class="out" id="s2-out"><div class="push" id="s2-push">
+          <div class="bloom" style="left:1160px;top:-120px"></div>
+          <div class="ember"></div>
+          <div class="chrome-top" id="s2-chrome">AI;DR <span class="nc">v0.1.0</span><span class="d">7 – 30/9/2026</span></div>
+          <div class="left">
+            <div class="num" id="s2-num">03<span class="of">/ 05</span></div>
+            <div class="label" id="s2-label">Truy cập mở</div>
+            <h2 class="title" id="s2-title">Đọc ở <span class="mk">bất cứ đâu<i class="hl"></i></span></h2>
+            <div class="rows"><div class="row" id="s2-r0"><span class="k">RSS</span><span class="v">aidr.today/feed.xml</span></div><div class="row" id="s2-r1"><span class="k">MCP</span><span class="v">Không cần tài khoản hay key</span></div><div class="row" id="s2-r2"><span class="k">Markdown</span><span class="v">Mỗi tin, cho AI agent</span></div></div>
+          </div>
+          <div class="win" id="s2-win" style="left:790px;top:150px;width:1010px;height:780px">
+            <div class="bar" style="height:52px"><span class="dots"><i></i><i></i><i></i></span><span class="url">aidr.today/mcp?lang=vi</span></div>
+            <div class="view" style="top:52px">
+              <div class="cam" id="s2-cam" style="width:2720px;height:1700px">
+                <img src="capture/mcp.png" alt="" /><div class="focus" id="s2-focus" style="left:304.64px;top:85px;width:1632px;height:280.5px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pagenum">03 / 05</div>
+        </div></div>
+      </section>
+
+      <section id="s3" class="clip scene" data-start="27" data-duration="7.5" data-track-index="1">
+        <div class="out" id="s3-out"><div class="push" id="s3-push">
+          <div class="bloom" style="left:1020px;top:-40px"></div>
+          <div class="ember"></div>
+          <div class="chrome-top" id="s3-chrome">AI;DR <span class="nc">v0.1.0</span><span class="d">7 – 30/9/2026</span></div>
+          <div class="left">
+            <div class="num" id="s3-num">04<span class="of">/ 05</span></div>
+            <div class="label" id="s3-label">Nguồn tin</div>
+            <h2 class="title long" id="s3-title">Thêm nguồn, xếp hạng <span class="mk">công bằng hơn<i class="hl"></i></span></h2>
+            <div class="rows"><div class="row" id="s3-r0"><span class="k">Nguồn</span><span class="v">Từ 3 lên 25</span></div><div class="row" id="s3-r1"><span class="k">Cùng một tin</span><span class="v">Gộp thành một dòng</span></div><div class="row" id="s3-r2"><span class="k">Công bằng</span><span class="v">Không nguồn nào quá một phần tư</span></div></div>
+          </div>
+          <div class="win" id="s3-win" style="left:790px;top:150px;width:1010px;height:780px">
+            <div class="bar" style="height:52px"><span class="dots"><i></i><i></i><i></i></span><span class="url">aidr.today/data?tab=sources</span></div>
+            <div class="view" style="top:52px">
+              <div class="cam" id="s3-cam" style="width:2720px;height:1700px">
+                <img src="capture/sources.png" alt="" /><div class="focus" id="s3-focus" style="left:340px;top:450.5px;width:380.8px;height:935.0000000000001px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pagenum">04 / 05</div>
+        </div></div>
+      </section>
+
+      <section id="s4" class="clip scene" data-start="34.5" data-duration="6" data-track-index="1">
+        <div class="out" id="s4-out"><div class="push" id="s4-push">
+          <div class="bloom" style="left:1120px;top:40px"></div>
+          <div class="ember"></div>
+          <div class="chrome-top" id="s4-chrome">AI;DR <span class="nc">v0.1.0</span><span class="d">7 – 30/9/2026</span></div>
+          <div class="left">
+            <div class="num" id="s4-num">05<span class="of">/ 05</span></div>
+            <div class="label" id="s4-label">Dữ liệu</div>
+            <h2 class="title" id="s4-title">Quy trình xử lý <span class="mk">công khai<i class="hl"></i></span></h2>
+            <div class="rows"><div class="row" id="s4-r0"><span class="k">Lượt chạy</span><span class="v">Mỗi lượt thu thập, kèm tình trạng</span></div><div class="row" id="s4-r1"><span class="k">Model</span><span class="v">Chấm điểm, dịch, tóm tắt</span></div><div class="row" id="s4-r2"><span class="k">Token</span><span class="v">Lượng dùng mỗi ngày, theo bước</span></div></div>
+          </div>
+          <div class="win" id="s4-win" style="left:790px;top:150px;width:1010px;height:780px">
+            <div class="bar" style="height:52px"><span class="dots"><i></i><i></i><i></i></span><span class="url">aidr.today/data</span></div>
+            <div class="view" style="top:52px">
+              <div class="cam" id="s4-cam" style="width:2720px;height:1700px">
+                <img src="capture/data.png" alt="" /><div class="focus" id="s4-focus" style="left:326.4px;top:833px;width:979.1999999999999px;height:187px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pagenum">05 / 05</div>
+        </div></div>
+      </section>
+      <section id="stats" class="clip scene" data-start="40.5" data-duration="6.5" data-track-index="0">
+        <div class="out" id="stats-out"><div class="push" id="stats-push">
+          <div class="bloom" style="left:820px;top:-420px"></div>
+          <div class="ember"></div>
+          <div class="st-wrap">
+            <div class="st-label" id="st-label"><span class="nc">v0.1.0</span> qua các con số · 7 – 30/9/2026</div>
+            <div class="st-row"><div class="stat" id="st0"><div class="sv" data-pre="" data-num="332" data-post="">332</div><div class="sl">commit</div></div><div class="stat" id="st1"><div class="sv" data-pre="" data-num="98" data-post="">98</div><div class="sl">tính năng</div></div><div class="stat" id="st2"><div class="sv" data-pre="" data-num="102" data-post="">102</div><div class="sl">bản sửa lỗi</div></div><div class="stat" id="st3"><div class="sv" data-pre="" data-num="25" data-post="">25</div><div class="sl">nguồn tin, từ 3</div></div></div>
+            <div class="st-also" id="st-also">Cũng mới: RSS cho cả hai ngôn ngữ, sitemap Google News và đường dẫn tin ngắn.</div>
+          </div>
+        </div></div>
+      </section>
+      <section id="close" class="clip scene" data-start="47" data-duration="4.5" data-track-index="0">
+        <div class="push" id="close-push">
+          <div class="bloom" style="left:310px;top:-160px"></div>
+          <div class="ember"></div>
+          <div class="c-wrap">
+            <div id="c-tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" class="tile" aria-hidden="true">
+  <rect width="160" height="160" rx="30" fill="#f5c518"/>
+  <path fill="#1c1917" transform="translate(12.9688 46.7422) scale(0.515625)" d="M69.6 91L55.3 91L49.2 73.4L23.0 73.4L16.9 91L2.5 91L27.6 22.2L44.6 22.2L69.6 91ZM37.1 36.2L36.1 32.8L35.8 33.9Q35.3 35.6 34.6 37.9Q33.9 40.1 26.2 62.6L26.2 62.6L46.0 62.6L39.2 42.8L37.1 36.2ZM88.9 91L74.5 91L74.5 22.2L88.9 22.2L88.9 91ZM114.9 54.3L100.8 54.3L100.8 40.5L114.9 40.5L114.9 54.3ZM114.9 77.3L114.9 87.8Q114.9 93.6 113.7 98.1Q112.4 102.6 109.6 106.5L109.6 106.5L100.6 106.5Q103.8 102.5 105.5 98.5Q107.1 94.5 107.1 91L107.1 91L100.8 91L100.8 77.3L114.9 77.3ZM188.0 56.1L188.0 56.1Q188.0 66.7 183.8 74.7Q179.6 82.6 172.0 86.8Q164.4 91 154.5 91L154.5 91L126.7 91L126.7 22.2L151.6 22.2Q169.0 22.2 178.5 31.0Q188.0 39.7 188.0 56.1ZM173.5 56.1L173.5 56.1Q173.5 45.0 167.7 39.2Q162.0 33.3 151.3 33.3L151.3 33.3L141.1 33.3L141.1 79.9L153.3 79.9Q162.6 79.9 168.0 73.5Q173.5 67.1 173.5 56.1ZM257.9 91L241.7 91L225.7 64.9L208.9 64.9L208.9 91L194.4 91L194.4 22.2L228.8 22.2Q241.1 22.2 247.8 27.5Q254.5 32.8 254.5 42.7L254.5 42.7Q254.5 49.9 250.4 55.2Q246.3 60.4 239.3 62.1L239.3 62.1L257.9 91ZM240.0 43.3L240.0 43.3Q240.0 33.4 227.3 33.4L227.3 33.4L208.9 33.4L208.9 53.7L227.7 53.7Q233.8 53.7 236.9 51.0Q240.0 48.2 240.0 43.3Z"/>
+</svg>
+</div>
+            <div class="c-line" id="c-line">Tin AI được xếp hạng, bằng tiếng Anh và tiếng Việt.</div>
+            <div class="c-url" id="c-url">aidr.today<i class="hl" id="c-hl"></i></div>
+            <div class="c-notes" id="c-notes">Ghi chú phát hành · <span class="nc">aidr.today/release/v0.1.0</span></div>
+          </div>
+        </div>
+      </section>
+      <div id="cap-0" class="clip cap" data-start="0.55" data-duration="1.022" data-track-index="6"><div class="line"><span class="w">AI;DR,</span></div></div>
+      <div id="cap-1" class="clip cap" data-start="1.572" data-duration="2.206" data-track-index="6"><div class="line"><span class="w">phiên</span> <span class="w">bản</span> <span class="w">0.1.0.</span></div></div>
+      <div id="cap-2" class="clip cap" data-start="3.778" data-duration="2.422" data-track-index="6"><div class="line"><span class="w">Bản</span> <span class="w">phát</span> <span class="w">hành</span> <span class="w">công</span> <span class="w">khai</span> <span class="w">đầu</span> <span class="w">tiên.</span></div></div>
+      <div id="cap-3" class="clip cap" data-start="6.8" data-duration="1.8" data-track-index="6"><div class="line"><span class="w">Mỗi</span> <span class="w">tin</span> <span class="w">giờ</span> <span class="w">có</span> <span class="w">một</span> <span class="w">trang</span> <span class="w">riêng,</span></div></div>
+      <div id="cap-4" class="clip cap" data-start="8.6" data-duration="0.986" data-track-index="6"><div class="line"><span class="w">với</span> <span class="w">đường</span> <span class="w">dẫn</span> <span class="w">ngắn,</span></div></div>
+      <div id="cap-5" class="clip cap" data-start="9.586" data-duration="0.79" data-track-index="6"><div class="line"><span class="w">các</span> <span class="w">nguồn</span> <span class="w">chính,</span></div></div>
+      <div id="cap-6" class="clip cap" data-start="10.376" data-duration="1.661" data-track-index="6"><div class="line"><span class="w">và</span> <span class="w">thẻ</span> <span class="w">chia</span> <span class="w">sẻ</span> <span class="w">kèm</span> <span class="w">ảnh.</span></div></div>
+      <div id="cap-7" class="clip cap" data-start="12.8" data-duration="3.123" data-track-index="6"><div class="line"><span class="w">Bạn</span> <span class="w">nhận</span> <span class="w">bản</span> <span class="w">tin</span> <span class="w">ở</span> <span class="w">nơi</span> <span class="w">bạn</span> <span class="w">quen:</span></div></div>
+      <div id="cap-8" class="clip cap" data-start="15.923" data-duration="2.218" data-track-index="6"><div class="line"><span class="w">Telegram</span> <span class="w">hai</span> <span class="w">ngôn</span> <span class="w">ngữ,</span> <span class="w">email,</span></div></div>
+      <div id="cap-9" class="clip cap" data-start="18.141" data-duration="2.059" data-track-index="6"><div class="line"><span class="w">hay</span> <span class="w">mỗi</span> <span class="w">tab</span> <span class="w">mới</span> <span class="w">trên</span> <span class="w">Chrome.</span></div></div>
+      <div id="cap-10" class="clip cap" data-start="20.8" data-duration="1.695" data-track-index="6"><div class="line"><span class="w">Và</span> <span class="w">đọc</span> <span class="w">được</span> <span class="w">ở</span> <span class="w">bất</span> <span class="w">cứ</span> <span class="w">đâu:</span></div></div>
+      <div id="cap-11" class="clip cap" data-start="22.495" data-duration="2.403" data-track-index="6"><div class="line"><span class="w">có</span> <span class="w">RSS,</span> <span class="w">còn</span> <span class="w">AI</span> <span class="w">agent</span> <span class="w">đọc</span> <span class="w">tin</span> <span class="w">qua</span> <span class="w">MCP</span></div></div>
+      <div id="cap-12" class="clip cap" data-start="24.898" data-duration="1.743" data-track-index="6"><div class="line"><span class="w">mà</span> <span class="w">không</span> <span class="w">cần</span> <span class="w">tài</span> <span class="w">khoản.</span></div></div>
+      <div id="cap-13" class="clip cap" data-start="27.3" data-duration="2.635" data-track-index="6"><div class="line"><span class="w">Số</span> <span class="w">nguồn</span> <span class="w">tăng</span> <span class="w">từ 3 lên</span> <span class="w">25,</span></div></div>
+      <div id="cap-14" class="clip cap" data-start="29.935" data-duration="1.87" data-track-index="6"><div class="line"><span class="w">và</span> <span class="w">nhiều</span> <span class="w">trang</span> <span class="w">cùng</span> <span class="w">đưa</span> <span class="w">một</span> <span class="w">tin</span></div></div>
+      <div id="cap-15" class="clip cap" data-start="31.805" data-duration="2.395" data-track-index="6"><div class="line"><span class="w">giờ</span> <span class="w">gộp</span> <span class="w">thành</span> <span class="w">một</span> <span class="w">dòng.</span></div></div>
+      <div id="cap-16" class="clip cap" data-start="34.8" data-duration="0.604" data-track-index="6"><div class="line"><span class="w">Trang</span> <span class="w">Dữ</span> <span class="w">liệu</span></div></div>
+      <div id="cap-17" class="clip cap" data-start="35.404" data-duration="1.288" data-track-index="6"><div class="line"><span class="w">cho</span> <span class="w">thấy</span> <span class="w">toàn</span> <span class="w">bộ</span> <span class="w">quy</span> <span class="w">trình:</span></div></div>
+      <div id="cap-18" class="clip cap" data-start="36.692" data-duration="0.825" data-track-index="6"><div class="line"><span class="w">từng</span> <span class="w">lượt</span> <span class="w">chạy,</span></div></div>
+      <div id="cap-19" class="clip cap" data-start="37.517" data-duration="0.94" data-track-index="6"><div class="line"><span class="w">các</span> <span class="w">model</span> <span class="w">làm</span> <span class="w">việc,</span></div></div>
+      <div id="cap-20" class="clip cap" data-start="38.457" data-duration="1.441" data-track-index="6"><div class="line"><span class="w">và</span> <span class="w">lượng</span> <span class="w">token.</span></div></div>
+      <div id="cap-21" class="clip cap" data-start="41" data-duration="1.405" data-track-index="6"><div class="line"><span class="w">332</span> <span class="w">commit,</span></div></div>
+      <div id="cap-22" class="clip cap" data-start="42.405" data-duration="1.742" data-track-index="6"><div class="line"><span class="w">chỉ</span> <span class="w">trong</span> <span class="w">ba</span> <span class="w">tuần.</span></div></div>
+      <div id="cap-23" class="clip cap" data-start="47.5" data-duration="2.59" data-track-index="6"><div class="line"><span class="w">Đọc</span> <span class="w">ngay</span> <span class="w">tại</span> <span class="w">aidr.today.</span></div></div>
+      <audio id="a-mix" src="assets/audio/mix-vi.wav" data-start="0" data-duration="51.5" data-track-index="10" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__FILM = {"EXIT":0.3,"S":{"win":0,"num":0.08,"label":0.16,"title":0.24,"marker":0.75,"cam":1.1,"focus":2,"rows":2.1},"TOTAL":51.5,"title":{"kind":"title","start":0,"dur":6.5,"voiceAt":0.55},"stats":{"kind":"stats","start":40.5,"dur":6.5,"voiceAt":41,"count":4},"close":{"kind":"close","start":47,"dur":4.5,"voiceAt":47.5},"scenes":[{"start":6.5,"dur":6,"rows":3,"from":{"x":-43.826086956521735,"y":0,"scale":0.40281329923273657},"to":{"x":-176.84210526315792,"y":-320.5263157894737,"scale":0.65015479876161},"focus":true},{"start":12.5,"dur":8,"rows":3,"from":{"x":-43.826086956521735,"y":0,"scale":0.40281329923273657},"to":{"x":-162.5806451612903,"y":-203.22580645161287,"scale":0.5977229601518026},"focus":true},{"start":20.5,"dur":6.5,"rows":3,"from":{"x":-43.826086956521735,"y":0,"scale":0.40281329923273657},"to":{"x":-162.5806451612903,"y":0,"scale":0.5977229601518026},"focus":true},{"start":27,"dur":7.5,"rows":3,"from":{"x":-43.826086956521735,"y":0,"scale":0.40281329923273657},"to":{"x":-168,"y":-157.5,"scale":0.6176470588235294},"focus":true},{"start":34.5,"dur":6,"rows":3,"from":{"x":-43.826086956521735,"y":0,"scale":0.40281329923273657},"to":{"x":-252,"y":-378,"scale":0.9264705882352942},"focus":true}],"caps":[{"start":0.55,"words":[0.55]},{"start":1.572,"words":[1.572,1.943,2.141]},{"start":3.778,"words":[3.778,4.01,4.312,4.59,4.881,5.101,5.333]},{"start":6.8,"words":[6.8,7.125,7.346,7.601,7.764,7.949,8.251]},{"start":8.6,"words":[8.6,8.878,9.122,9.273]},{"start":9.586,"words":[9.586,9.807,10.062]},{"start":10.376,"words":[10.376,10.492,10.596,10.782,10.91,11.177]},{"start":12.8,"words":[12.8,13.322,13.74,14.031,14.333,14.518,14.785,15.122]},{"start":15.923,"words":[15.923,16.55,16.736,17.107,17.595]},{"start":18.141,"words":[18.141,18.338,18.559,18.814,19.035,19.406]},{"start":20.8,"words":[20.8,21.113,21.346,21.74,21.845,22.031,22.193]},{"start":22.495,"words":[22.495,22.669,23.041,23.226,23.517,23.888,24.132,24.318,24.504]},{"start":24.898,"words":[24.898,25.014,25.293,25.456,25.641]},{"start":27.3,"words":[27.3,27.66,28.055,28.38,28.949]},{"start":29.935,"words":[29.935,30.144,30.411,30.737,30.98,31.247,31.549]},{"start":31.805,"words":[31.805,32.06,32.327,32.826,33.175]},{"start":34.8,"words":[34.8,35.09,35.241]},{"start":35.404,"words":[35.404,35.589,35.822,36.089,36.216,36.379]},{"start":36.692,"words":[36.692,36.959,37.226]},{"start":37.517,"words":[37.517,37.726,38.004,38.179]},{"start":38.457,"words":[38.457,38.596,38.875]},{"start":41,"words":[41,42.022]},{"start":42.405,"words":[42.405,42.567,42.858,43.02]},{"start":47.5,"words":[47.5,47.976,48.15,48.371]}]};
+// The single paused timeline for a release film. Inlined into both compositions by build.mjs,
+// which sets window.__FILM (all times in seconds). Motion rules: aidr-motion-designer.
+(function () {
+  const F = window.__FILM;
+  const tl = gsap.timeline({ paused: true });
+
+  // Parking ease: each frame covers k of the remaining distance, normalised to end at rest.
+  const park = (dur, k = 0.15) => (p) =>
+    (1 - Math.pow(1 - k, p * dur * 30)) / (1 - Math.pow(1 - k, dur * 30));
+  const arrive = (target, from, at, dur = 0.6, k = 0.15) =>
+    tl.fromTo(target, from, { x: 0, y: 0, opacity: 1, filter: "blur(0px)", duration: dur, ease: park(dur, k) }, at);
+  // The one linear root push per section, from its first frame.
+  const push = (target, at, dur, to = 1.025) =>
+    tl.fromTo(target, { scale: 1 }, { scale: to, duration: dur, ease: "none" }, at);
+  // Leave left with horizontal blur, ahead of the next section's entrance.
+  const leave = (target, end) =>
+    tl.to(target, { x: -150, filter: "blur(6px)", duration: F.EXIT, ease: "power3.in" }, end - F.EXIT);
+  const sweep = (target, at, dur = 0.4) =>
+    tl.fromTo(target, { scaleX: 0 }, { scaleX: 1, duration: dur, ease: "power2.out" }, at);
+
+  // ── title ──────────────────────────────────────────────
+  push("#title-push", 0, F.title.dur, 1.03);
+  tl.fromTo("#wm-dot", { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.36, ease: park(0.36, 0.19) }, 0.05);
+  tl.fromTo("#wm-comma", { scale: 0, transformOrigin: "50% 20%" }, { scale: 1, duration: 0.36, ease: park(0.36, 0.19) }, 0.12);
+  tl.fromTo("#wm-ai", { x: 150, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, ease: park(0.6) }, 0.7);
+  tl.fromTo("#wm-dr", { x: -150, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, ease: park(0.6) }, 0.76);
+  arrive("#t-ver", { x: 0, y: 40, opacity: 0, filter: "blur(8px)" }, 1.4, 0.5, 0.19);
+  sweep("#t-hl", 1.8);
+  arrive("#t-kicker", { y: -16, opacity: 0, filter: "blur(4px)" }, 1.9, 0.5);
+  arrive("#t-head", { y: 26, opacity: 0, filter: "blur(6px)" }, 2.1, 0.6);
+  arrive("#t-dates", { y: 16, opacity: 0, filter: "blur(4px)" }, 2.35, 0.5);
+  leave("#title-out", F.title.dur);
+
+  // ── highlights ─────────────────────────────────────────
+  F.scenes.forEach((s, i) => {
+    const t = s.start;
+    const S = F.S;
+    const id = "#s" + i;
+    push(id + "-push", t, s.dur, 1.022);
+    arrive(id + "-win", { x: 260, y: 0, opacity: 1, filter: "blur(12px)" }, t + S.win, 0.6, 0.17);
+    tl.fromTo(id + "-cam", s.from, { x: s.to.x, y: s.to.y, scale: s.to.scale, duration: 1.1, ease: park(1.1, 0.12) }, t + S.cam);
+    arrive(id + "-chrome", { y: -12, opacity: 1 }, t + 0.05, 0.5);
+    arrive(id + "-num", { x: -60, opacity: 1, filter: "blur(6px)" }, t + S.num, 0.6);
+    arrive(id + "-label", { x: -40, opacity: 0 }, t + S.label, 0.5);
+    arrive(id + "-title", { x: -50, opacity: 0, filter: "blur(6px)" }, t + S.title, 0.6);
+    sweep(id + "-title .hl", t + S.marker);
+    for (let r = 0; r < s.rows; r++) {
+      arrive(id + "-r" + r, { y: 24, opacity: 0 }, t + S.rows + r * 0.1, 0.5);
+    }
+    if (s.focus) {
+      tl.fromTo(id + "-focus", { opacity: 0, scale: 1.04, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.45, ease: park(0.45) }, t + S.focus);
+    }
+    leave(id + "-out", t + s.dur);
+  });
+
+  // ── in numbers ─────────────────────────────────────────
+  const st = F.stats.start;
+  push("#stats-push", st, F.stats.dur, 1.025);
+  arrive("#st-label", { x: -40, opacity: 1 }, st, 0.5);
+  for (let i = 0; i < F.stats.count; i++) {
+    const el = document.querySelector("#st" + i + " .sv");
+    const pre = el.dataset.pre, post = el.dataset.post, num = Number(el.dataset.num);
+    const at = st + 0.1 + i * 0.1;
+    arrive("#st" + i, { y: 40, opacity: i === 0 ? 1 : 0, filter: "blur(6px)" }, at, 0.6);
+    const box = { v: 0 };
+    tl.fromTo(box, { v: 0 }, {
+      v: num, duration: 0.6, ease: park(0.6, 0.15),
+      onUpdate: () => { el.textContent = pre + Math.round(box.v) + post; },
+    }, at);
+  }
+  arrive("#st-also", { y: 26, opacity: 0, filter: "blur(4px)" }, st + 1.2, 0.6);
+  leave("#stats-out", st + F.stats.dur);
+
+  // ── close ──────────────────────────────────────────────
+  const c = F.close.start;
+  push("#close-push", c, F.close.dur, 1.03);
+  tl.fromTo("#c-tile", { scale: 0.7, opacity: 1, filter: "blur(8px)" }, { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.6, ease: park(0.6, 0.17) }, c);
+  arrive("#c-line", { y: 30, opacity: 0, filter: "blur(6px)" }, c + 0.8, 0.6);
+  arrive("#c-url", { y: 24, opacity: 0, filter: "blur(4px)" }, c + 1.2, 0.5);
+  sweep("#c-hl", c + 1.45);
+  arrive("#c-notes", { y: 16, opacity: 0 }, c + 1.9, 0.5);
+
+  // ── captions: each line rises in, the spoken word gets the marker ──
+  F.caps.forEach((C, ci) => {
+    const line = document.querySelector("#cap-" + ci + " .line");
+    tl.fromTo(line, { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.18, ease: "power2.out" }, C.start);
+    line.querySelectorAll(".w").forEach((w, k) => {
+      tl.set(w, { backgroundColor: "#f5c518" }, C.words[k]);
+      if (k < C.words.length - 1) tl.set(w, { backgroundColor: "#f7f7f5" }, C.words[k + 1]);
+    });
+  });
+
+  tl.to({}, { duration: F.TOTAL }, 0);
+  window.__timelines["main"] = tl;
+})();
+
+    </script>
+  </body>
+</html>

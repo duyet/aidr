@@ -1,0 +1,115 @@
+1
+00:00:00,550 --> 00:00:01,351
+AI;DR,
+
+2
+00:00:01,351 --> 00:00:03,499
+version 0.1.0.
+
+3
+00:00:03,499 --> 00:00:05,694
+Our first public release.
+
+4
+00:00:06,300 --> 00:00:08,750
+Every story now has its own page,
+
+5
+00:00:08,750 --> 00:00:09,725
+with a short link,
+
+6
+00:00:09,725 --> 00:00:10,781
+its key sources,
+
+7
+00:00:10,781 --> 00:00:11,838
+and a card that's
+
+8
+00:00:11,838 --> 00:00:13,627
+made for sharing.
+
+9
+00:00:14,300 --> 00:00:15,380
+You can get the digest
+
+10
+00:00:15,380 --> 00:00:16,390
+wherever you read:
+
+11
+00:00:16,390 --> 00:00:18,317
+on Telegram in two languages,
+
+12
+00:00:18,317 --> 00:00:19,223
+by email,
+
+13
+00:00:19,223 --> 00:00:21,700
+or in every new Chrome tab.
+
+14
+00:00:22,300 --> 00:00:23,647
+And it reads anywhere.
+
+15
+00:00:23,647 --> 00:00:25,168
+There's an RSS feed,
+
+16
+00:00:25,168 --> 00:00:26,584
+and AI agents can
+
+17
+00:00:26,584 --> 00:00:28,500
+pull the news over MCP,
+
+18
+00:00:28,500 --> 00:00:30,200
+no account needed.
+
+19
+00:00:30,800 --> 00:00:34,701
+We went from 3 sources to 25,
+
+20
+00:00:34,701 --> 00:00:35,978
+and when many outlets
+
+21
+00:00:35,978 --> 00:00:37,522
+cover a story,
+
+22
+00:00:37,522 --> 00:00:40,200
+they merge into one row.
+
+23
+00:00:40,800 --> 00:00:41,915
+The data page shows
+
+24
+00:00:41,915 --> 00:00:43,041
+the whole pipeline:
+
+25
+00:00:43,041 --> 00:00:43,772
+every run,
+
+26
+00:00:43,772 --> 00:00:45,003
+the models doing the work,
+
+27
+00:00:45,003 --> 00:00:47,198
+and the tokens they use.
+
+28
+00:00:48,000 --> 00:00:51,751
+That's 332 commits in three weeks.
+
+29
+00:00:54,500 --> 00:00:57,043
+Read it at aidr.today.
