@@ -37,7 +37,8 @@
     "smoke": "tsx scripts/smoke.ts",
     "agent": "tsx scripts/aidr-agent.ts",
     "release-notes": "tsx scripts/release-notes.ts",
-    "fb-post-release": "dotenvx run -f ../../.env.local --ignore=MISSING_ENV_FILE -- tsx scripts/fb-post-release.ts"
+    "fb-post-release": "dotenvx run -f ../../.env.local --ignore=MISSING_ENV_FILE -- tsx scripts/fb-post-release.ts",
+    "fb-post": "dotenvx run -f ../../.env.local --ignore=MISSING_ENV_FILE -- tsx scripts/fb-post.ts"
   },
   "dependencies": {
     "@aidr/libs": "workspace:*",
