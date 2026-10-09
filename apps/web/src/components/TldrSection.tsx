@@ -160,44 +160,47 @@ export function TldrSection({
         {snapshotDate && dateHref ? (
           <DayCardOverlay date={snapshotDate} lang={lang} open={preview} />
         ) : null}
-        <TldrBulletList
-          shown={shown}
-          mid={mid}
-          layout={layout}
-          numbered={numbered}
-          lang={lang}
-          topicByItemId={topicByItemId}
-          categoryByItemId={categoryByItemId}
-          pathByItemId={pathByItemId}
-          tagsByItemId={tagsByItemId}
-          imageByItemId={imageByItemId}
-        />
+        {/* While the day card covers the list, keep its links out of reach. */}
+        <div inert={preview}>
+          <TldrBulletList
+            shown={shown}
+            mid={mid}
+            layout={layout}
+            numbered={numbered}
+            lang={lang}
+            topicByItemId={topicByItemId}
+            categoryByItemId={categoryByItemId}
+            pathByItemId={pathByItemId}
+            tagsByItemId={tagsByItemId}
+            imageByItemId={imageByItemId}
+          />
 
-        {nextOption ? (
-          <button
-            type="button"
-            onClick={() => {
-              track("prefs_change", { pref: "tldrCount" });
-              setPrefs({ tldrCount: nextOption.nominal });
-            }}
-            className="mt-3 text-xs font-semibold text-accent hover:underline"
-          >
-            {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
-          </button>
-        ) : (
-          canCollapse && (
+          {nextOption ? (
             <button
               type="button"
               onClick={() => {
                 track("prefs_change", { pref: "tldrCount" });
-                setPrefs({ tldrCount: options[0].nominal });
+                setPrefs({ tldrCount: nextOption.nominal });
               }}
               className="mt-3 text-xs font-semibold text-accent hover:underline"
             >
-              {lang === "vi" ? "Thu gọn" : "Show less ↑"}
+              {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
             </button>
-          )
-        )}
+          ) : (
+            canCollapse && (
+              <button
+                type="button"
+                onClick={() => {
+                  track("prefs_change", { pref: "tldrCount" });
+                  setPrefs({ tldrCount: options[0].nominal });
+                }}
+                className="mt-3 text-xs font-semibold text-accent hover:underline"
+              >
+                {lang === "vi" ? "Thu gọn" : "Show less ↑"}
+              </button>
+            )
+          )}
+        </div>
 
         <div className="mt-4 flex justify-between text-xs text-muted-foreground">
           <span>
