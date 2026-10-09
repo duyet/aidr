@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.13](https://github.com/duyet/aidr/compare/web-v0.1.12...web-v0.1.13) (2026-10-09)
+
+
+### ✨ Features
+
+* Chrome Web Store listing refresh, store-assets, full-width day card, release skills ([#489](https://github.com/duyet/aidr/issues/489)) ([ed6696c](https://github.com/duyet/aidr/commit/ed6696cfe881a0354c858e8c36dbf23769f37190))
+* five density steps, aligned story rows, image/text day card switch (web + extension) ([#485](https://github.com/duyet/aidr/issues/485)) ([d49fc1b](https://github.com/duyet/aidr/commit/d49fc1bfca9a630943a82600754f12dc9ff43cc6))
+* **web:** release notes at /release (v0.1.0, v0.1.12), film hero, replaces /changelog ([#491](https://github.com/duyet/aidr/issues/491)) ([92a077b](https://github.com/duyet/aidr/commit/92a077b4ffaf8c475a477831feb0c85ea39ebf32))
+
 ## [0.1.12](https://github.com/duyet/aidr/compare/web-v0.1.11...web-v0.1.12) (2026-10-09)
 
 
