@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/duyet/aidr/compare/web-v0.1.11...web-v0.1.12) (2026-10-09)
+
+
+### 🐛 Bug Fixes
+
+* **smoke:** check the news child's publication_date, not lastmod ([0702fde](https://github.com/duyet/aidr/commit/0702fde878d962e793a330df452511e18082f730))
+
 ## [0.1.11](https://github.com/duyet/aidr/compare/web-v0.1.10...web-v0.1.11) (2026-10-09)
 
 
