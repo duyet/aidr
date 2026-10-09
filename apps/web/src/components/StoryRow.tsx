@@ -259,12 +259,14 @@ export function StoryRow({
         {/* Votes, category and time sit on the title's first line in fixed
             columns, so every row lines up however the title wraps. */}
         <span className={`${FIRST_LINE} gap-3 text-sm text-muted-foreground`}>
-          <StoryVotes
-            itemId={item.id}
-            voteNet={item.vote_net ?? 0}
-            lang={lang}
-            compact
-          />
+          <span className="flex w-12 justify-center">
+            <StoryVotes
+              itemId={item.id}
+              voteNet={item.vote_net ?? 0}
+              lang={lang}
+              compact
+            />
+          </span>
           <span className="hidden w-24 truncate text-right sm:block">
             {item.category ? (
               <CategoryLabel name={item.category} lang={lang} />
