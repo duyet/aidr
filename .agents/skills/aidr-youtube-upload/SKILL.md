@@ -45,7 +45,16 @@ Write it in `videos/<project>/youtube.md` first, then paste from there.
   AI;DR video (release films, daily briefs, Shorts). Don't create new
   playlists unless the user asks.
 - **Thumbnail**: the cover still from `renders/*-cover.png` (1920×1080
-  works, must be < 2 MB; downscale with `sips -Z 1920` if needed).
+  works, must be < 2 MB; downscale with `sips -Z 1920` if needed). Daily
+  covers are 4K PNGs (~2.8 MB): convert a copy in a scratch dir with
+  `sips -s format jpeg -s formatOptions 90 … --out x.jpg && sips -Z 1920
+  x.jpg` (~260 KB). Shorts get no custom thumbnail.
+- **Daily brief**: metadata is in `videos/daily-news/editions/<date>/posts.md`
+  (`<!-- posts:en -->` / `<!-- posts:vi -->` blocks, "YouTube (16:9)" and
+  "YouTube Shorts (9:16)" sections). Upload the file named in that cut's
+  `STATUS.json` row (`path`), not the "Files:" line in posts.md, which can
+  go stale after a re-render. Add the Chrome / Telegram / Facebook link
+  lines after the aidr.today links.
 - **Language**: video language English or Vietnamese to match the cut;
   category Science & Technology.
 - 9:16 renders ≤ 3 min upload as Shorts automatically; give them the same
