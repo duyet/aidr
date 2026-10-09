@@ -62,13 +62,7 @@
       I.start
     );
     if (I.variant === "grid") {
-      // Frame 0 is the finished grid. Then each tile is underlined in turn, and the grid drifts.
-      tl.fromTo(
-        ".gfoot",
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, ease: LAND },
-        I.start + 0.5
-      );
+      // Frame 0 is the finished grid (title included). Then each tile is underlined in turn, and the grid drifts.
       tl.fromTo(
         ".tiles",
         { y: 0 },
@@ -89,6 +83,34 @@
           I.start
         );
       });
+      // A tile lifts while the intro names its story; the others step back.
+      const F = I.focus ?? [];
+      F.forEach((f) => {
+        const tile = $(`.tile[data-rank="${f.rank}"]`);
+        const others = $$(".tile").filter((t) => t !== tile);
+        tl.to(
+          tile,
+          { scale: 1.06, opacity: 1, zIndex: 2, duration: 0.3, ease: LAND },
+          f.at - 0.1
+        );
+        tl.to(
+          others,
+          {
+            scale: 1,
+            opacity: 0.4,
+            zIndex: 1,
+            duration: 0.3,
+            ease: "power2.out",
+          },
+          f.at - 0.1
+        );
+      });
+      if (F.length)
+        tl.to(
+          ".tile",
+          { scale: 1, opacity: 1, duration: 0.3, ease: "power2.inOut" },
+          I.dur - 0.45
+        );
     } else if (I.variant === "date-slam") {
       tl.fromTo(
         ".slam .dow",
@@ -190,9 +212,16 @@
       { yPercent: 0, duration: 0.5, ease: LAND },
       D.chrome.start + 0.25
     );
+    // The chrome clip is display:none at build time, so show it (hidden) while the crawl is measured.
     const crawl = $(".ticker .crawl");
+    const chrome = crawl.closest("[data-start]");
+    const saved = chrome.getAttribute("style");
+    chrome.style.display = "block";
+    chrome.style.visibility = "hidden";
     const labelW = $(".ticker .label").offsetWidth;
     const half = crawl.scrollWidth / 2; // crawl content is written twice for a seamless loop
+    if (saved === null) chrome.removeAttribute("style");
+    else chrome.setAttribute("style", saved);
     const speed = vertical ? 150 : 170; // px per second
     const crawlDur = D.chrome.dur;
     tl.fromTo(
@@ -341,12 +370,14 @@
         { y: 0, opacity: 1, duration: 0.5, ease: LAND },
         S.statAt + 4 * F
       );
-      tl.fromTo(
-        $(".src", sc),
-        { opacity: 0 },
-        { opacity: 1, duration: 0.5, ease: "power1.out" },
-        S.statAt + 0.4
-      );
+      // The credit is left out when the story has no source.
+      if ($(".src", sc))
+        tl.fromTo(
+          $(".src", sc),
+          { opacity: 0 },
+          { opacity: 1, duration: 0.5, ease: "power1.out" },
+          S.statAt + 0.4
+        );
     });
 
     // ---------- outro ----------

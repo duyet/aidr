@@ -65,33 +65,35 @@ body {
   --tick-h: 100px;
   --tick: 34px;
 }
+/* 9:16: TikTok, Reels and Shorts cover the bottom ~28% with their own text and buttons, so the
+   story copy ends above ~1130px, captions sit at 60–67% and the ticker ends by 72%. */
 .f-9x16 {
   --pad: 56px;
   --bar-top: 72px;
   --bar-h: 72px;
   --logo: 72px;
   --media-x: 40px;
-  --media-y: 200px;
+  --media-y: 180px;
   --media-w: 1000px;
-  --media-h: 600px;
+  --media-h: 470px;
   --rank: 150px;
   --rank-x: 20px;
-  --rank-y: 160px;
+  --rank-y: 140px;
   --text-x: 64px;
-  --text-y: 850px;
+  --text-y: 690px;
   --text-w: 952px;
   --cat: 30px;
   --kicker: 38px;
-  --head: 78px;
-  --stat: 96px;
+  --head: 70px;
+  --stat: 88px;
   --stat-label: 30px;
   --src: 28px;
-  --cap-y: 1376px;
-  --cap: 60px;
+  --cap-y: 1150px;
+  --cap: 56px;
   --cap-w: 960px;
-  --tick-y: 1556px;
-  --tick-h: 92px;
-  --tick: 34px;
+  --tick-y: 1300px;
+  --tick-h: 84px;
+  --tick: 32px;
 }
 
 .ground {
@@ -245,7 +247,7 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  top: 1690px;
+  top: 1410px;
   text-align: center;
   font-size: 30px;
   font-weight: 700;
@@ -325,10 +327,10 @@ body {
   color: #2a2a2a;
 }
 .f-9x16 .paper .ptitle {
-  font-size: 78px;
+  font-size: 58px;
 }
 .f-9x16 .paper .abs {
-  font-size: 30px;
+  font-size: 26px;
 }
 
 .rank {
@@ -613,7 +615,7 @@ body {
   left: 0;
   top: 170px;
   width: 100%;
-  height: 1386px;
+  height: 1130px;
 }
 .l-full .media .shade {
   height: 60%;
@@ -630,7 +632,7 @@ body {
 }
 .f-9x16 .l-full .copy {
   left: 40px;
-  top: 760px;
+  top: 600px;
   width: 1000px;
 }
 .f-16x9 .l-full .rank {
@@ -695,18 +697,19 @@ body {
 }
 .f-9x16 .l-stat .media {
   left: 40px;
-  top: 200px;
+  top: 180px;
   width: 1000px;
-  height: 460px;
+  height: 400px;
 }
 .f-9x16 .l-stat .copy {
-  top: 720px;
+  top: 620px;
 }
 .f-9x16 .l-stat .statrow {
   display: block;
+  margin-top: 18px;
 }
 .f-9x16 .l-stat .stat {
-  font-size: 260px;
+  font-size: 190px;
   letter-spacing: -0.03em;
 }
 .f-9x16 .l-stat .stat-label {
@@ -840,7 +843,7 @@ body {
   left: 0;
   right: 0;
   height: 50%;
-  background: var(--yellow);
+  background: var(--ink);
 }
 .wipe .half.top {
   top: 0;
@@ -980,11 +983,12 @@ body {
   grid-template-rows: repeat(2, 1fr);
   gap: 18px;
 }
+/* The grid ends by 72% and clears the right-side buttons of TikTok, Reels and Shorts. */
 .f-9x16 .tiles {
   left: 40px;
-  right: 40px;
-  top: 360px;
-  bottom: 300px;
+  right: 120px;
+  top: 340px;
+  bottom: 560px;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(3, 1fr);
   gap: 16px;
@@ -1074,7 +1078,10 @@ body {
   color: var(--ink);
 }
 .f-9x16 .th {
-  font-size: 36px;
+  font-size: 32px;
+}
+.f-9x16 .tpaper b {
+  font-size: 38px;
 }
 .f-9x16 .tk {
   font-size: 21px;
@@ -1109,6 +1116,5 @@ body {
   display: none;
 }
 .f-9x16 .gfoot {
-  top: 1650px;
-  font-size: 76px;
+  display: none;
 }

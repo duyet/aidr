@@ -21,7 +21,9 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `scripts/fetch.mjs` | yes | Edition + real post media from `https://aidr.today/api/public?lang=en` |
 | `scripts/new.mjs` | yes | Start the day: fetch, media contact sheet, draft `script.json` |
 | `scripts/daily.mjs` | yes | Voice → build → lint → snapshots (→ render) for a written script |
-| `scripts/voice.mjs` | yes | HeyGen TTS per sentence and anchor, joined per segment, with word timings |
+| `scripts/voice.mjs` | yes | ElevenLabs TTS (the cast in `../brand/voices.json`) per sentence and anchor, HeyGen as fallback, joined per segment, with word timings |
+| `scripts/lang.mjs` | yes | The cut's language (`--lang vi`) and its file names |
+| `scripts/cast.mjs` | yes | The voice cast: host keys, seeded host order, the "never twice in a row" check |
 | `scripts/build.mjs` | yes | Timeline, both compositions, audio mix, captions, covers, post copy |
 | `scripts/render.mjs` | yes | 4K MP4s and cover PNGs |
 | `editions/<date>/edition.json` | yes | What the API said that day (the facts) |
@@ -39,6 +41,8 @@ node scripts/new.mjs                     # fetch edition + media, assets-sheet.j
 node scripts/daily.mjs <date>            # refuses drafts; voice → build → lint → snapshots (snap-16x9/, snap-9x16/)
 node scripts/daily.mjs <date> --render   # same, then renders/*.mp4 (4K) + cover PNGs, ~15–25 min
 ```
+
+**Vietnamese cut.** Write `editions/<date>/script.vi.json` (same shape; Vietnamese voice and screen text from the edition's `text_vi`/`title_vi`, anchors from the `vi` hosts in `voices.json`), then add `--lang vi` to `daily.mjs`, `voice.mjs`, `build.mjs` or `render.mjs`. It writes `voice-vi/`, `out-vi/`, `snap-vi-*/`, `captions.vi.srt`, `timeline.vi.json`, the `vi` block of `posts.md` (links with `?lang=vi`), and `renders/aidr-daily-<date>-vi-<fmt>-4k.mp4` / `cover-<date>-vi-<fmt>.png`. Screen labels (date, "BẢN TIN NGÀY", "nguồn") come from the `UI` table in `build.mjs`.
 
 The single steps still work on their own: `fetch.mjs`, `voice.mjs <date>`, `build.mjs <date> [--no-audio]`, `render.mjs <date> [--only 9x16]`. Voice parts are cached per sentence (anchor + text), so a wording fix re-voices only that sentence.
 
@@ -58,7 +62,8 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
   },
   "thumb": { "story": 4, "hook": "$60B to fund Anthropic's AI chips" },   // cover still
   "post": { "hook": "...", "hashtags": ["AI", "..."], "tiktok": "...", "facebook": "...", "youtubeTitle": "...", "shortsTitle": "..." },
-  "intro": { "voice": [{ "anchor": "gareth", "text": "This is AI DR, ..." }, { "anchor": "tabitha", "text": "..." }], "title": "Six stories that matter today" },
+  "intro": { "voice": [{ "anchor": "ivanna", "text": "This is AI DR, ..." }, { "anchor": "allison", "text": "..." }], "title": "Six stories that matter today",
+             "focus": [{ "rank": 1, "word": "twenty" }] },   // grid intro: tile lifts (others dim) on the spoken word that names its story
   "stories": [{
     "rank": 1,
     "category": "Tools",                     // label (amber small caps)
@@ -70,10 +75,10 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
     "images": ["assets/s1-1.png"],           // curated from assets/; several = crossfade; [] = typographic card
     "paper": { "venue": "arXiv:2609.37725", "title": "..." },  // the no-image card
     "source": "blog.cloudflare.com",         // optional override of the credit
-    "anchor": "gareth",                      // optional; stories alternate anchors by default
-    "voice": [{ "anchor": "gareth", "text": "Cloudflare is launching Clef, ..." }, { "anchor": "tabitha", "text": "Plus ..." }]  // or one string
+    "anchor": "alex",                        // optional; host key from the cast; default follows the seeded host order
+    "voice": [{ "anchor": "alex", "text": "Cloudflare is launching Clef, ..." }, { "anchor": "kristen", "text": "Plus ..." }]  // or one string
   }],
-  "outro": { "voice": [{ "anchor": "tabitha", "text": "That's AI DR for today. ..." }, { "anchor": "gareth", "text": "See you tomorrow." }], "title": "What's happening in AI today?", "follow": "..." }
+  "outro": { "voice": [{ "anchor": "kristen", "text": "That's AI DR for today. ..." }, { "anchor": "allison", "text": "See you tomorrow." }], "title": "What's happening in AI today?", "follow": "..." }
 }
 ```
 
@@ -85,7 +90,7 @@ Spoken text says "AI DR" and "aidr dot today"; `config.captions.replace` shows t
 |-----|---------|
 | `count` | Stories per edition (fetch takes the top N bullets) |
 | `formats` | Size per format and its 4K render preset |
-| `voice` | `anchors` (name → HeyGen voice id + speed), `defaultAnchor`, `gap` (breath between parts, s), gain. List voices: `node ~/.claude/skills/media-use/audio/scripts/heygen-tts.mjs --list` |
+| `voice` | `provider` (`elevenlabs`), `cast` (path to `voices.json`), `lang` (`en` \| `vi` hosts), `gap` (breath between parts, s), `volume`; `heygen` is the fallback: `anchors` (name → HeyGen voice id + speed) and `byGender` (which HeyGen anchor stands in for a cast host) |
 | `music` | Bed (the launch film's "News Theme"), level, ducked level; ducking is a sidechain on the voice |
 | `sfx` | Library dir, master level, and which effect plays on each cue (`open`, `storyIn`, `rankHit`, `statHit`, `tick`, `outro`) |
 | `timing` | Lead and tail around each voice line, per segment kind; the video length follows the voice |
@@ -97,7 +102,8 @@ One mixed track (`out/mix.wav`, 48 kHz stereo, loudness-normalised to about −1
 
 ## Known issues
 
-- HeyGen sign-in expires; `npx hyperframes auth status` before `voice.mjs`.
+- Voices need `$ELEVENLABS_API_KEY`; a failed ElevenLabs call (quota, key) falls back to HeyGen for that sentence and prints `!`. HeyGen sign-in expires; `npx hyperframes auth status` before `voice.mjs`.
+- Anchors follow the show rule: never the same host twice in a row, closer differs from opener. `voice.mjs` refuses a script that breaks it. `new.mjs` drafts anchors in a host order shuffled with the date as seed.
 - `lint` reports about 65 warnings (`nested_structure_needs_subcomposition`, `timeline_track_too_dense`): the composition is one generated file by design. Errors must be 0.
 - Some API media is wrong for the story (a manifest can carry another story's photo) or is a text-heavy OG card that crops badly in 9:16. Look at the contact sheet of `assets/` and curate `images` in `script.json`.
 - `config.json` `music.file` points at `../aidr-launch/assets/bgm/news-theme-source.mp3`.

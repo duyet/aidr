@@ -17,7 +17,7 @@ if [[ ! -f "$PORT_FILE" ]]; then
 fi
 WS="ws://127.0.0.1:$(sed -n 1p "$PORT_FILE")$(sed -n 2p "$PORT_FILE")"
 ab() { timeout 180 agent-browser --cdp "$WS" "$@"; }
-find_tab() { ab tab list 2>/dev/null | grep -m1 "studio.youtube.com/channel/$CHANNEL" | grep -o '\[t[0-9]*\]' | tr -d '[]' || true; }
+find_tab() { ab tab list 2>/dev/null | grep -m1 -E "studio.youtube.com/(channel/$CHANNEL|video/)" | grep -o '\[t[0-9]*\]' | tr -d '[]' || true; }
 TAB=$(find_tab)
 if [[ -z "$TAB" ]]; then
   ab tab new "$STUDIO" >/dev/null

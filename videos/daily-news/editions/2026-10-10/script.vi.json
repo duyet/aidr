@@ -1,0 +1,216 @@
+{
+  "date": "2026-10-10",
+  "lang": "vi",
+  "dateline": "Thứ Bảy, 10 tháng 10, 2026",
+  "theme": {
+    "intro": "grid",
+    "transition": "shutter",
+    "background": "grid"
+  },
+  "thumb": {
+    "story": 5,
+    "hook": "Chiếc mũ biến suy nghĩ thành prompt"
+  },
+  "post": {
+    "hook": "Doanh thu OpenAI bị điều chỉnh làm cổ phiếu AI giảm, TypeSafe AI huy động 870 triệu USD, và chiếc mũ biến suy nghĩ thành prompt.",
+    "hashtags": [
+      "AI",
+      "TinAI",
+      "OpenAI",
+      "Nvidia",
+      "Amazon",
+      "a16z",
+      "CongNghe"
+    ],
+    "tiktok": "Doanh thu OpenAI bị điều chỉnh 20 tỷ USD, a16z dẫn dắt vòng 870 triệu USD cho TypeSafe AI, và mũ đọc tín hiệu não. Bạn nghĩ sao? 👇",
+    "facebook": "Tin AI hôm nay: cổ phiếu AI giảm sau tin doanh thu năm của OpenAI thấp hơn 20 tỷ USD so với trước, TypeSafe AI huy động khoảng 870 triệu USD, và Sabi làm chiếc mũ biến suy nghĩ thành prompt.",
+    "youtubeTitle": "Tin AI hôm nay: Cổ phiếu AI giảm vì doanh thu OpenAI, TypeSafe AI gọi 870 triệu USD | 10/10/2026",
+    "shortsTitle": "Doanh thu OpenAI bị điều chỉnh, cổ phiếu AI giảm + 5 tin AI khác"
+  },
+  "intro": {
+    "voice": [
+      {
+        "anchor": "thanh",
+        "text": "Đây là AI DR, tin AI của bạn ngày thứ Bảy, mười tháng Mười."
+      },
+      {
+        "anchor": "duc-huy",
+        "text": "Doanh thu OpenAI bị điều chỉnh làm cổ phiếu AI giảm, và một chiếc mũ biến suy nghĩ thành prompt."
+      }
+    ],
+    "title": "Sáu tin AI đáng chú ý hôm nay",
+    "focus": [
+      {
+        "rank": 1,
+        "word": "doanh"
+      },
+      {
+        "rank": 5,
+        "word": "mu"
+      }
+    ]
+  },
+  "stories": [
+    {
+      "rank": 1,
+      "category": "Ngành",
+      "kicker": "Cổ phiếu AI giảm",
+      "headline": "*Doanh thu OpenAI bị điều chỉnh*, cổ phiếu AI giảm",
+      "stat": "−20 TỶ USD",
+      "statLabel": "doanh thu năm của OpenAI cuối tháng 9 so với tin trước",
+      "statWord": "hai",
+      "layout": "stat",
+      "images": [
+        "assets/s1-1.jpg"
+      ],
+      "source": "CNBC",
+      "voice": [
+        {
+          "anchor": "an-nhien",
+          "text": "Cổ phiếu AI như Nvidia, Oracle và CoreWeave đang giảm, sau khi CNBC đưa tin doanh thu năm của OpenAI cuối tháng Chín thấp hơn hai mươi tỷ đô la so với trước."
+        },
+        {
+          "anchor": "phan-anh",
+          "text": "Điều này làm suy yếu niềm tin nhà đầu tư vào hạ tầng AI."
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "category": "Gọi vốn",
+      "kicker": "TypeSafe AI gọi vốn",
+      "headline": "a16z đặt cược lớn vào *lập trình AI*",
+      "stat": "870 triệu USD",
+      "statLabel": "do a16z dẫn dắt, định giá 7,5 tỷ USD",
+      "statWord": "tam",
+      "layout": "split",
+      "images": [
+        "assets/s2-1.jpg"
+      ],
+      "source": "Bloomberg",
+      "voice": [
+        {
+          "anchor": "thanh",
+          "text": "TypeSafe AI vừa huy động khoảng tám trăm bảy mươi triệu đô la, do a16z dẫn dắt, ở mức định giá bảy phẩy năm tỷ đô."
+        },
+        {
+          "anchor": "duc-huy",
+          "text": "Sequoia cũng tham gia, cho thấy nhu cầu lớn về hạ tầng lập trình AI."
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "category": "Bảo mật",
+      "kicker": "Chiến dịch thông tin",
+      "headline": "Iran *dùng ChatGPT* để lan tin giả",
+      "stat": "Bài giả",
+      "statLabel": "đăng trên ấn phẩm thật tại Mỹ",
+      "statWord": "gia",
+      "layout": "split",
+      "images": [],
+      "paper": {
+        "venue": "washingtonpost.com",
+        "title": "Chiến dịch tin giả bằng ChatGPT của Iran",
+        "abstract": "Một chiến dịch của Iran đã dùng ChatGPT để đăng bài viết giả mạo lên các ấn phẩm thực sự tại Mỹ."
+      },
+      "voice": [
+        {
+          "anchor": "an-nhien",
+          "text": "Một chiến dịch của Iran đã dùng ChatGPT để đăng bài viết giả mạo lên các ấn phẩm thật tại Mỹ."
+        },
+        {
+          "anchor": "phan-anh",
+          "text": "Đây là ví dụ cho thấy AI bị lạm dụng để lan truyền thông tin sai lệch."
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "category": "An toàn",
+      "kicker": "OpenAI sa thải",
+      "headline": "OpenAI bảo vệ việc sa thải *ba nhà nghiên cứu*",
+      "stat": "3",
+      "statLabel": "nhà nghiên cứu an toàn bị sa thải",
+      "statWord": "sa",
+      "layout": "stat",
+      "images": [
+        "assets/s4-1.jpg"
+      ],
+      "source": "CNBC",
+      "voice": [
+        {
+          "anchor": "thanh",
+          "text": "OpenAI bảo vệ quyết định sa thải ba nhà nghiên cứu an toàn, cho rằng họ vi phạm chính sách xử lý thông tin nhạy cảm."
+        },
+        {
+          "anchor": "duc-huy",
+          "text": "Vụ việc gây lo ngại nội bộ và chỉ trích về văn hóa an toàn của công ty."
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "category": "Phần cứng",
+      "kicker": "Mũ cảm biến não Sabi",
+      "headline": "Chiếc mũ biến *suy nghĩ thành prompt*",
+      "stat": "50 triệu USD",
+      "statLabel": "vòng seed · 100.000 cảm biến não",
+      "statWord": "nam",
+      "layout": "split",
+      "images": [
+        "assets/s5-1.jpg"
+      ],
+      "source": "Forbes",
+      "voice": [
+        {
+          "anchor": "an-nhien",
+          "text": "Sabi huy động năm mươi triệu đô la vòng seed để làm mũ lưỡi trai có một trăm nghìn cảm biến não, chuyển tín hiệu não thành prompt cho AI."
+        },
+        {
+          "anchor": "phan-anh",
+          "text": "Mục tiêu là điều khiển AI agent chỉ bằng suy nghĩ."
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "category": "Hạ tầng",
+      "kicker": "Amazon bỏ NDA",
+      "headline": "Amazon bỏ NDA khi *đàm phán trung tâm dữ liệu*",
+      "stat": "Sau Microsoft",
+      "statLabel": "theo động thái trước đó",
+      "statWord": "theo",
+      "layout": "split",
+      "images": [],
+      "paper": {
+        "venue": "",
+        "title": "Hợp đồng trung tâm dữ liệu",
+        "abstract": "Amazon sẽ ngừng dùng NDA khi đàm phán hợp đồng trung tâm dữ liệu với chính quyền địa phương, theo sau Microsoft."
+      },
+      "voice": [
+        {
+          "anchor": "thanh",
+          "text": "Và cuối cùng, Amazon sẽ ngừng dùng NDA khi đàm phán hợp đồng trung tâm dữ liệu với chính quyền địa phương, theo bước Microsoft."
+        },
+        {
+          "anchor": "duc-huy",
+          "text": "Mục đích là lấy lại lòng tin của cộng đồng."
+        }
+      ]
+    }
+  ],
+  "outro": {
+    "voice": [
+      {
+        "anchor": "an-nhien",
+        "text": "AI DR hôm nay đến đây là hết. Mọi tin đều được xếp hạng và tóm tắt tại aidr chấm today."
+      },
+      {
+        "anchor": "phan-anh",
+        "text": "Hẹn gặp lại ngày mai."
+      }
+    ],
+    "title": "Hôm nay AI có gì mới?"
+  }
+}
