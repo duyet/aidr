@@ -1,48 +1,67 @@
-import { ImageIcon } from "lucide-react";
+import { AlignLeft, ImageIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { dayArchiveOgPath } from "../lib/day-archive";
 import type { Lang } from "../lib/types";
 
 /**
- * The black "AI;DR hôm nay" chip in the digest masthead. Hover or focus asks
- * the parent to swap the bullet list for the day card (`DayCardOverlay`);
- * leaving brings the text back. Clicking opens the day page.
+ * Image | text switch in the digest masthead, styled like the 8 | 12 count
+ * pills beside it. "Image" swaps the bullet list for the day card
+ * (`DayCardOverlay`); "text" brings the list back.
  */
-export function DayCardChip({
-  date,
-  href,
+export function DayCardViewSwitch({
   lang,
-  onPreview,
+  showImage,
+  onChange,
 }: {
-  date: string;
-  href: string;
   lang: Lang;
-  onPreview: (open: boolean) => void;
+  showImage: boolean;
+  onChange: (showImage: boolean) => void;
 }) {
-  const label =
-    lang === "vi" ? `Xem ảnh tóm tắt ngày ${date}` : `Preview the ${date} card`;
+  const views = [
+    {
+      image: true,
+      Icon: ImageIcon,
+      label: lang === "vi" ? "Xem ảnh tóm tắt" : "Show day card",
+    },
+    {
+      image: false,
+      Icon: AlignLeft,
+      label: lang === "vi" ? "Xem dạng chữ" : "Show text",
+    },
+  ];
   return (
-    <a
-      href={href}
-      aria-label={label}
-      onPointerEnter={() => onPreview(true)}
-      onPointerLeave={() => onPreview(false)}
-      onFocus={() => onPreview(true)}
-      onBlur={() => onPreview(false)}
-      className="inline-flex items-center gap-1.5 bg-[#0a0a0a] px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white transition-transform hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+    <fieldset
+      aria-label={lang === "vi" ? "Kiểu hiển thị" : "View"}
+      className="m-0 flex min-w-0 gap-1 rounded-full border-0 bg-[#0a0a0a]/10 p-0.5"
     >
-      <ImageIcon className="size-3.5" aria-hidden />
-      <span className="hidden sm:inline">
-        {lang === "vi" ? "AI;DR hôm nay" : "AI;DR daily"}
-      </span>
-    </a>
+      {views.map(({ image, Icon, label }) => {
+        const active = showImage === image;
+        return (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={active}
+            aria-label={label}
+            title={label}
+            onClick={() => onChange(image)}
+            className={`inline-flex h-6 w-8 items-center justify-center rounded-full transition-[background-color,color] duration-150 ${
+              active
+                ? "bg-[#0a0a0a] text-white"
+                : "text-[#0a0a0a]/70 hover:text-[#0a0a0a]"
+            }`}
+          >
+            <Icon className="size-3.5" aria-hidden />
+          </button>
+        );
+      })}
+    </fieldset>
   );
 }
 
 /**
- * The day card laid over the digest content while the chip is hovered. The
- * image loads shortly after the page settles (or on first hover, if sooner)
- * and then stays mounted, so hovers show it instantly.
+ * The day card laid over the digest content while the image view is on. The
+ * image loads shortly after the page settles (or on first switch, if sooner)
+ * and then stays mounted, so switching shows it instantly.
  */
 export function DayCardOverlay({
   date,
@@ -62,7 +81,7 @@ export function DayCardOverlay({
   }, []);
   return (
     <div
-      aria-hidden
+      aria-hidden={!open}
       className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-card p-3 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none ${
         open ? "scale-100 opacity-100" : "scale-[0.98] opacity-0"
       }`}
@@ -70,7 +89,11 @@ export function DayCardOverlay({
       {wanted ? (
         <img
           src={dayArchiveOgPath(date, lang)}
-          alt=""
+          alt={
+            lang === "vi"
+              ? `Ảnh tóm tắt AI;DR ngày ${date}`
+              : `AI;DR card for ${date}`
+          }
           width={1200}
           height={630}
           decoding="async"

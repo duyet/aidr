@@ -7,7 +7,7 @@ import { timeAgo } from "../lib/lang";
 import { type TldrCount, usePrefs } from "../lib/prefs";
 import { tldrCountOptions, tldrShownCount } from "../lib/tldr-links";
 import type { Lang, TldrBullet } from "../lib/types";
-import { DayCardChip, DayCardOverlay } from "./DayCardPreview";
+import { DayCardOverlay, DayCardViewSwitch } from "./DayCardPreview";
 import { TldrBulletList } from "./TldrBulletList";
 
 export function TldrSection({
@@ -122,11 +122,13 @@ export function TldrSection({
         </div>
         <div className="flex items-center gap-2">
           {snapshotDate && dateHref ? (
-            <DayCardChip
-              date={snapshotDate}
-              href={dateHref}
+            <DayCardViewSwitch
               lang={lang}
-              onPreview={setPreview}
+              showImage={preview}
+              onChange={(showImage) => {
+                track("tldr_view", { view: showImage ? "image" : "text" });
+                setPreview(showImage);
+              }}
             />
           ) : null}
           {options.length > 0 && (
@@ -158,61 +160,64 @@ export function TldrSection({
         {snapshotDate && dateHref ? (
           <DayCardOverlay date={snapshotDate} lang={lang} open={preview} />
         ) : null}
-        <TldrBulletList
-          shown={shown}
-          mid={mid}
-          layout={layout}
-          numbered={numbered}
-          lang={lang}
-          topicByItemId={topicByItemId}
-          categoryByItemId={categoryByItemId}
-          pathByItemId={pathByItemId}
-          tagsByItemId={tagsByItemId}
-          imageByItemId={imageByItemId}
-        />
+        {/* While the day card covers the list, keep its links out of reach. */}
+        <div inert={preview}>
+          <TldrBulletList
+            shown={shown}
+            mid={mid}
+            layout={layout}
+            numbered={numbered}
+            lang={lang}
+            topicByItemId={topicByItemId}
+            categoryByItemId={categoryByItemId}
+            pathByItemId={pathByItemId}
+            tagsByItemId={tagsByItemId}
+            imageByItemId={imageByItemId}
+          />
 
-        {nextOption ? (
-          <button
-            type="button"
-            onClick={() => {
-              track("prefs_change", { pref: "tldrCount" });
-              setPrefs({ tldrCount: nextOption.nominal });
-            }}
-            className="mt-3 text-xs font-semibold text-accent hover:underline"
-          >
-            {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
-          </button>
-        ) : (
-          canCollapse && (
+          {nextOption ? (
             <button
               type="button"
               onClick={() => {
                 track("prefs_change", { pref: "tldrCount" });
-                setPrefs({ tldrCount: options[0].nominal });
+                setPrefs({ tldrCount: nextOption.nominal });
               }}
               className="mt-3 text-xs font-semibold text-accent hover:underline"
             >
-              {lang === "vi" ? "Thu gọn" : "Show less ↑"}
+              {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
             </button>
-          )
-        )}
-
-        <div className="mt-4 flex justify-between text-xs text-muted-foreground">
-          <span>
-            {totalStories} {lang === "vi" ? "tin" : "stories"}
-          </span>
-          {!showFreshness ? null : lastFetchedAt ? (
-            <Link
-              to="/data"
-              suppressHydrationWarning
-              className="rounded-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
-              {timeAgo(lastFetchedAt, updatedAt, lang)}
-            </Link>
           ) : (
-            <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
+            canCollapse && (
+              <button
+                type="button"
+                onClick={() => {
+                  track("prefs_change", { pref: "tldrCount" });
+                  setPrefs({ tldrCount: options[0].nominal });
+                }}
+                className="mt-3 text-xs font-semibold text-accent hover:underline"
+              >
+                {lang === "vi" ? "Thu gọn" : "Show less ↑"}
+              </button>
+            )
           )}
+
+          <div className="mt-4 flex justify-between text-xs text-muted-foreground">
+            <span>
+              {totalStories} {lang === "vi" ? "tin" : "stories"}
+            </span>
+            {!showFreshness ? null : lastFetchedAt ? (
+              <Link
+                to="/data"
+                suppressHydrationWarning
+                className="rounded-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
+                {timeAgo(lastFetchedAt, updatedAt, lang)}
+              </Link>
+            ) : (
+              <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
+            )}
+          </div>
         </div>
       </div>
     </section>

@@ -54,14 +54,6 @@ export function DaySection({
             <span>{lang === "vi" ? `+${more} nữa` : `+${more} more`}</span>
           )}
         </span>
-        {linkToDay && (
-          <a
-            href={dayArchivePath(day.date, lang)}
-            className="ml-auto text-xs font-medium text-accent hover:underline"
-          >
-            {lang === "vi" ? "Xem cả ngày →" : "Full day →"}
-          </a>
-        )}
       </div>
       <div className="divide-y divide-border/60">
         {day.items.map((item, i) => (

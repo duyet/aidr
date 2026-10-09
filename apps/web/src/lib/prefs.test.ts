@@ -136,6 +136,22 @@ describe("prefs", () => {
     expect(spacious["--reader-font-size"]).toBe("1");
   });
 
+  it("defaults to the middle density and maps the new levels", () => {
+    expect(DEFAULT_PREFS.density).toBe("medium");
+    const medium = readerCssVars(DEFAULT_PREFS);
+    expect(medium["--reader-pad"]).toBe("0.625rem");
+    expect(
+      readerCssVars({ ...DEFAULT_PREFS, density: "dense" })["--reader-pad"]
+    ).toBe("0.375rem");
+  });
+
+  it("keeps saved density levels and drops unknown ones", () => {
+    savePrefs({ ...DEFAULT_PREFS, density: "compact" });
+    expect(loadPrefs().density).toBe("compact");
+    localStorage.setItem("news_prefs", JSON.stringify({ density: "huge" }));
+    expect(loadPrefs().density).toBe("medium");
+  });
+
   it("returns defaults when window is unavailable (SSR)", () => {
     vi.unstubAllGlobals();
     expect(loadPrefs()).toEqual(DEFAULT_PREFS);

@@ -137,19 +137,81 @@ test("Contribute replaces Submit in the Get AI;DR menu", () => {
 });
 
 test("new tab follows the live digest masthead, day links, and intro video", () => {
-  assert.match(html, /id="day-card-chip"/);
   assert.match(html, /id="intro-video-btn"/);
   assert.match(html, /id="phone-intro-video"/);
   assert.match(js, /className = "tldr-day"/);
-  assert.match(js, /Xem cả ngày →/);
-  assert.match(js, /Full day →/);
+  // The day heading itself links to the archive; no separate "Full day" link.
+  assert.match(js, /link\.className = "day-link"/);
+  assert.doesNotMatch(js, /Xem cả ngày|Full day/);
+  assert.doesNotMatch(css, /\.day-full/);
   assert.match(js, /story-publisher/);
   assert.match(js, /story-votes/);
-  assert.match(css, /\.story-vote \{[^}]*width:\s*1\.25rem/);
+  assert.match(css, /\.story-vote \{[^}]*width:\s*0\.875rem/);
   assert.match(js, /tynoWx03zDc/);
   assert.match(js, /youtube-nocookie\.com/);
   assert.match(css, /\.tldr-head \.tldr-counts button\[aria-pressed="true"\][\s\S]*?#fff/);
   assert.doesNotMatch(js, /story-host/);
+});
+
+test("story row meta columns line up on the title's first line", () => {
+  // Wrapped titles must not drag votes/category/time to the row middle.
+  assert.match(js, /meta\.append\(renderVotes\(settings, story\), cat, when\)/);
+  assert.match(css, /\.story-head \{[^}]*align-items:\s*flex-start/);
+  assert.match(
+    css,
+    /\.story-meta \{[^}]*align-items:\s*center;[^}]*height:\s*1lh/
+  );
+  assert.match(css, /\.story-votes \{[^}]*width:\s*3rem/);
+  // Fixed width so "21 giờ trước" fits and every row's columns share an x.
+  assert.match(
+    css,
+    /\.story-cat,\n\.story-when \{[^}]*width:\s*6\.5rem;[^}]*text-align:\s*right;[^}]*white-space:\s*nowrap/
+  );
+  assert.match(
+    css,
+    /\.story-cat \{\s*width:\s*6rem;\s*text-overflow:\s*ellipsis/
+  );
+});
+
+test("masthead image | text switch replaces the day card chip", () => {
+  // Same control as web DayCardViewSwitch: text by default, image stays
+  // open until the reader switches back (no hover preview).
+  assert.match(html, /id="day-card-switch"/);
+  assert.match(html, /id="day-card-image" aria-pressed="false"/);
+  assert.match(html, /id="day-card-text" aria-pressed="true"/);
+  assert.doesNotMatch(html, /day-card-chip/);
+  assert.match(js, /Xem ảnh tóm tắt/);
+  assert.match(js, /Show day card/);
+  assert.match(js, /Xem dạng chữ/);
+  assert.match(js, /Show text/);
+  assert.doesNotMatch(js, /pointerenter/);
+  // Styled like the 8 | 12 count pills: 32x24 buttons, 14px icons.
+  assert.match(
+    css,
+    /\.day-card-switch \{[^}]*padding:\s*2px;[^}]*background:\s*#0a0a0a1a/
+  );
+  assert.match(
+    css,
+    /\.day-card-switch button \{[^}]*width:\s*2rem;\s*height:\s*1\.5rem/
+  );
+  assert.match(
+    css,
+    /\.day-card-switch button\[aria-pressed="true"\] \{\s*background:\s*#0a0a0a;\s*color:\s*#fff/
+  );
+  assert.match(css, /\.day-card-switch svg \{\s*width:\s*0\.875rem/);
+});
+
+test("image view makes the covered AI;DR list inert, text view restores it", () => {
+  const fn = js.match(/function applyDayCardView\(\) \{[\s\S]*?\n\}/)[0];
+  for (const id of ["tldr-cols", "tldr-more"]) {
+    assert.match(fn, new RegExp(`\\$\\("${id}"\\)`));
+  }
+  assert.match(fn, /toggleAttribute\("inert", open\)/);
+  assert.match(fn, /removeAttribute\("aria-hidden"\)/);
+  // The masthead switch must stay usable, so it is never made inert.
+  assert.doesNotMatch(fn, /day-card-switch/);
+  // Resetting with no snapshot date goes back to text, which clears inert.
+  assert.match(js, /dayCardImageOn = false;\s*applyDayCardView\(\);/);
 });
 
 test("brief layout centers AI;DR when the daily feed is off", () => {
@@ -175,12 +237,22 @@ test("section tiles follow Cat > Trending > AI;DR > Daily feed", () => {
 });
 
 test("density drives AI;DR and day story row spacing", () => {
-  assert.match(css, /:root\s*\{[^}]*--pad:\s*0\.75rem/);
-  assert.match(css, /html\[data-density="compact"\]\s*\{\s*--pad:\s*0\.5rem/);
-  assert.match(
-    css,
-    /html\[data-density="spacious"\]\s*\{\s*--pad:\s*1\.125rem/
-  );
+  // Same five steps as web readerCssVars; :root is the "medium" default.
+  assert.match(css, /:root\s*\{[^}]*--pad:\s*0\.625rem;\s*--leading:\s*1\.62/);
+  for (const [density, pad, leading] of [
+    ["dense", "0\\.375rem", "1\\.45"],
+    ["compact", "0\\.5rem", "1\\.55"],
+    ["comfortable", "0\\.75rem", "1\\.7"],
+    ["spacious", "1\\.125rem", "1\\.9"],
+  ]) {
+    assert.match(
+      css,
+      new RegExp(
+        `html\\[data-density="${density}"\\]\\s*\\{\\s*--pad:\\s*${pad};\\s*--leading:\\s*${leading};`
+      )
+    );
+  }
+  assert.match(css, /\.tldr-list \{[^}]*line-height:\s*calc\(var\(--leading\)/);
   for (const selector of [
     "\\.tldr",
     "\\.tldr-cols",

@@ -83,10 +83,10 @@ function signInHref(lang: Lang): string {
   return withLang("/sign-in", lang);
 }
 
-/** Feed rows are `items-baseline`. A 32px button lifts the chevron off the title. */
+/** Feed rows keep a one-line meta strip; the compact hit box stays inside it. */
 function voteHit(compact: boolean | undefined, pressed = false) {
   const box = compact
-    ? "inline-flex h-5 w-5 items-center justify-center rounded-sm"
+    ? "inline-flex h-5 w-3.5 items-center justify-center rounded-sm"
     : "inline-flex size-8 items-center justify-center rounded-md hover:bg-muted";
   const tone = pressed
     ? "text-foreground"
@@ -101,7 +101,7 @@ function VoteIcon({
   direction: "up" | "down";
   compact?: boolean;
 }) {
-  const className = compact ? "h-3.5 w-3.5" : "h-4 w-4";
+  const className = compact ? "h-3 w-3" : "h-4 w-4";
   const Icon = direction === "up" ? ChevronUp : ChevronDown;
   return <Icon className={className} aria-hidden />;
 }
@@ -124,10 +124,19 @@ function voteLabel(lang: Lang, value: 1 | -1, pressed: boolean): string {
   return pressed ? "Remove downvote" : "Downvote";
 }
 
-function VoteCount({ voteNet, lang }: { voteNet: number; lang: Lang }) {
+function VoteCount({
+  voteNet,
+  lang,
+  compact,
+}: {
+  voteNet: number;
+  lang: Lang;
+  compact?: boolean;
+}) {
   const label = lang === "vi" ? "Tổng phiếu" : "Reader votes";
+  const size = compact ? "min-w-4 text-[11px]" : "min-w-6 text-xs";
   return (
-    <span className="min-w-6 text-center text-xs tabular-nums text-muted-foreground">
+    <span className={`${size} text-center tabular-nums text-muted-foreground`}>
       <span className="sr-only">{label} </span>
       {voteNet}
     </span>
@@ -157,7 +166,7 @@ function SignInVotes({
       >
         <VoteIcon direction="up" compact={compact} />
       </a>
-      <VoteCount voteNet={voteNet} lang={lang} />
+      <VoteCount voteNet={voteNet} lang={lang} compact={compact} />
       <a
         href={href}
         className={voteHit(compact)}
@@ -268,7 +277,7 @@ function SignedInVotes({
       >
         <VoteIcon direction="up" compact={compact} />
       </button>
-      <VoteCount voteNet={net} lang={lang} />
+      <VoteCount voteNet={net} lang={lang} compact={compact} />
       <button
         type="button"
         className={voteHit(compact, mine === -1)}

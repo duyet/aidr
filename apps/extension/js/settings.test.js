@@ -5,6 +5,7 @@ import {
   clampFontSize,
   DEFAULT_API_BASE,
   DEFAULT_SETTINGS,
+  DENSITIES,
   isDarkAppearance,
   normalizeApiBase,
   normalizeSettings,
@@ -29,7 +30,7 @@ test("normalizeSettings clamps size, count, and unknown enums", () => {
   assert.equal(settings.fontSize, 1.25);
   assert.equal(settings.bg, "default");
   assert.equal(settings.language, "vi");
-  assert.equal(settings.density, "comfortable");
+  assert.equal(settings.density, "medium");
   assert.equal(settings.storyCount, 1);
   assert.equal(settings.tldrCount, 8);
   assert.equal(settings.apiBase, DEFAULT_API_BASE);
@@ -104,8 +105,23 @@ test("DEFAULT_SETTINGS matches website PrefsPanel shape", () => {
   assert.equal(DEFAULT_SETTINGS.font, "sans");
   assert.equal(DEFAULT_SETTINGS.fontSize, 1);
   assert.equal(DEFAULT_SETTINGS.bg, "default");
-  assert.equal(DEFAULT_SETTINGS.density, "comfortable");
+  assert.equal(DEFAULT_SETTINGS.density, "medium");
   assert.equal("accent" in DEFAULT_SETTINGS, false);
+});
+
+test("normalizeSettings keeps every density step, including pre-0.1.21 values", () => {
+  // Old installs saved compact/comfortable/spacious; they must survive the
+  // move to five steps instead of resetting to the new default.
+  for (const density of DENSITIES) {
+    assert.equal(normalizeSettings({ density }).density, density);
+  }
+  assert.deepEqual(DENSITIES, [
+    "dense",
+    "compact",
+    "medium",
+    "comfortable",
+    "spacious",
+  ]);
 });
 
 test("normalizeSettings normalizes sectionOrder", () => {

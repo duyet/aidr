@@ -18,6 +18,12 @@ import { HighlightedText } from "./HighlightedText";
 import { StoryDetail } from "./StoryDetail";
 import { StoryVotes } from "./story/StoryVotes";
 
+/**
+ * One title line tall (title is `leading-snug`), content centered in it.
+ * Carries no text size of its own, so `em` is the title's font size.
+ */
+const FIRST_LINE = "flex h-[1.375em] shrink-0 items-center";
+
 function StoryRowHeader({
   hasDetails,
   expanded,
@@ -31,7 +37,7 @@ function StoryRowHeader({
   onToggle: () => void;
   children: ReactNode;
 }) {
-  const className = `flex items-baseline gap-3 ${
+  const className = `flex items-start gap-3 ${
     hasDetails ? "cursor-pointer" : ""
   } ${expanded ? "bg-muted/60" : matchColor ? "topic-hl-row" : ""}`;
   const style = {
@@ -185,8 +191,10 @@ export function StoryRow({
         matchColor={matchColor}
         onToggle={toggleExpanded}
       >
-        <span className="w-5 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
-          {index}
+        <span className={`${FIRST_LINE} w-5 justify-end`}>
+          <span className="text-sm tabular-nums text-muted-foreground">
+            {index}
+          </span>
         </span>
         <span
           className={`min-w-0 flex-1 leading-snug ${
@@ -251,26 +259,30 @@ export function StoryRow({
             </a>
           )}
         </span>
-        <span className="inline-flex shrink-0 self-center">
-          <StoryVotes
-            itemId={item.id}
-            voteNet={item.vote_net ?? 0}
-            lang={lang}
-            compact
-          />
-        </span>
-        <span className="hidden shrink-0 text-sm text-muted-foreground sm:block">
-          {item.category ? (
-            <CategoryLabel name={item.category} lang={lang} />
-          ) : null}
-        </span>
-        <span
-          className="hidden w-20 shrink-0 text-right text-sm text-muted-foreground md:block"
-          suppressHydrationWarning
-        >
-          {Number.isFinite(item.published_at)
-            ? timeAgo(item.published_at, Date.now(), lang)
-            : ""}
+        {/* Votes, category and time sit on the title's first line in fixed
+            columns, so every row lines up however the title wraps. */}
+        <span className={`${FIRST_LINE} gap-3`}>
+          <span className="flex w-12 justify-center">
+            <StoryVotes
+              itemId={item.id}
+              voteNet={item.vote_net ?? 0}
+              lang={lang}
+              compact
+            />
+          </span>
+          <span className="hidden w-24 truncate text-right text-sm text-muted-foreground sm:block">
+            {item.category ? (
+              <CategoryLabel name={item.category} lang={lang} />
+            ) : null}
+          </span>
+          <span
+            className="hidden w-[6.5rem] whitespace-nowrap text-right text-sm text-muted-foreground md:block"
+            suppressHydrationWarning
+          >
+            {Number.isFinite(item.published_at)
+              ? timeAgo(item.published_at, Date.now(), lang)
+              : ""}
+          </span>
         </span>
       </StoryRowHeader>
 
