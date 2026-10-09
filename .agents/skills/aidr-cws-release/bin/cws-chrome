@@ -1,0 +1,27 @@
+#!/bin/bash
+# Drive the user's running Chrome over DevTools (not an extension, so the
+# Web Store's "extensions gallery cannot be scripted" block does not apply).
+# Needs "Allow remote debugging for this browser instance" on at
+# chrome://inspect/#remote-debugging.
+#
+#   cws-chrome "<agent-browser cmd>" ["<cmd>" ...]
+#
+# Every call first switches to the Web Store dashboard tab (opening one if
+# none exists), then runs the commands in one batch, so they never land on
+# whatever tab the user has in front.
+set -euo pipefail
+DASH="https://chrome.google.com/webstore/devconsole/f3ade5ba-783b-414a-a7e3-4616458bc590/cagjehdlblcobkghgbbilnpefelbmpcg/edit"
+PORT_FILE="$HOME/Library/Application Support/Google/Chrome/DevToolsActivePort"
+if [[ ! -f "$PORT_FILE" ]]; then
+  echo "Chrome remote debugging is off: enable it at chrome://inspect/#remote-debugging" >&2
+  exit 2
+fi
+WS="ws://127.0.0.1:$(sed -n 1p "$PORT_FILE")$(sed -n 2p "$PORT_FILE")"
+ab() { timeout 120 agent-browser --cdp "$WS" "$@"; }
+TAB=$(ab tab list 2>/dev/null | grep -m1 "chrome.google.com/webstore/devconsole" | grep -o '\[t[0-9]*\]' | tr -d '[]' || true)
+if [[ -z "$TAB" ]]; then
+  ab tab new "$DASH" >/dev/null
+  sleep 6
+  TAB=$(ab tab list | grep -m1 "chrome.google.com/webstore/devconsole" | grep -o '\[t[0-9]*\]' | tr -d '[]')
+fi
+ab batch --bail "tab $TAB" "$@"
