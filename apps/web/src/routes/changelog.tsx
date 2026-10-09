@@ -13,6 +13,11 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-10",
+    en: "Density now has five steps, from dense to spacious, and starts in the middle. In the story list, votes, category and time sit in fixed columns on the title's first line, so rows line up even when a title wraps. The AI;DR masthead has an image/text switch: pick image to see the day card in place of the list.",
+    vi: "Mật độ giờ có năm mức, từ dày đến thoáng, mặc định ở giữa. Trong danh sách tin, phiếu bầu, chuyên mục và thời gian nằm thành cột cố định ngang dòng đầu của tiêu đề, nên các dòng thẳng hàng kể cả khi tiêu đề xuống dòng. Đầu khung AI;DR có nút chuyển ảnh/chữ: chọn ảnh để xem ảnh tóm tắt của ngày thay cho danh sách.",
+  },
+  {
+    date: "2026-10",
     en: "The Get AI;DR menu now has a Facebook Page link next to the two Telegram channels.",
     vi: "Menu Nhận AI;DR giờ có thêm mục Fanpage Facebook bên cạnh hai kênh Telegram.",
   },
@@ -144,6 +149,11 @@ const WEBSITE_ENTRIES: ChangelogEntry[] = [
 ];
 
 const EXTENSION_ENTRIES: ChangelogEntry[] = [
+  {
+    date: "2026-10",
+    en: "The new tab matches the website again: five density steps starting in the middle, story rows with votes, category and time in aligned columns, and an image/text switch for the day card.",
+    vi: "Tab mới lại giống trang web: năm mức mật độ mặc định ở giữa, dòng tin có phiếu bầu, chuyên mục và thời gian thẳng cột, và nút chuyển ảnh/chữ cho ảnh tóm tắt của ngày.",
+  },
   {
     date: "2026-10",
     en: "The new tab opens on the day’s date, previews that day’s card, and links each day to its archive. The header can play the intro video, and each story shows its reader votes.",
