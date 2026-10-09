@@ -35,7 +35,9 @@
     "cf:deploy:prod": "dotenvx run -f ../../.env.production -f ../../.env.production.local --ignore=MISSING_ENV_FILE -- pnpm run deploy && pnpm run smoke",
     "config": "tsx ../../scripts/sync-env.ts",
     "smoke": "tsx scripts/smoke.ts",
-    "agent": "tsx scripts/aidr-agent.ts"
+    "agent": "tsx scripts/aidr-agent.ts",
+    "release-notes": "tsx scripts/release-notes.ts",
+    "fb-post-release": "dotenvx run -f ../../.env.local --ignore=MISSING_ENV_FILE -- tsx scripts/fb-post-release.ts"
   },
   "dependencies": {
     "@aidr/libs": "workspace:*",
