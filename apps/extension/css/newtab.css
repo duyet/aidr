@@ -1245,15 +1245,23 @@ html[data-theme="dark"] .topic-colored {
     transform 0.2s ease;
 }
 
+/* Open card takes the list's place so it can use the full body width. */
 .day-card-overlay.is-open {
+  position: relative;
   opacity: 1;
   transform: scale(1);
 }
 
+.day-card-overlay.is-open ~ .tldr-cols,
+.day-card-overlay.is-open ~ .tldr-more {
+  display: none;
+}
+
 .day-card-overlay img {
   max-width: 100%;
-  max-height: 100%;
+  max-height: min(70vh, 630px);
   width: auto;
+  height: auto;
   border-radius: 0.75rem;
   object-fit: contain;
   box-shadow: 0 10px 24px rgb(0 0 0 / 18%);
