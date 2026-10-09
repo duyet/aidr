@@ -23,7 +23,7 @@ export const release: Release = {
       label: { en: "news sources (3 → 25)", vi: "nguồn tin (3 → 25)" },
     },
   ],
-  youtubeId: "8Tng0STx3m0",
+  youtubeId: "wTxqGmqPsMk",
   cover: {
     src: "/releases/v0.1.0/home.webp",
     width: 1440,
