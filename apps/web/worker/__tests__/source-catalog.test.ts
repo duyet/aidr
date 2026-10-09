@@ -153,7 +153,7 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("0027, 0030, 0032, 0036, 0043 and 0044 applied in order list exactly the registry rows", () => {
+  it("0027, 0030, 0032, 0036, 0043, 0044 and 0051 applied in order list exactly the registry rows", () => {
     const read = (name: string) =>
       readFileSync(resolve(dirname(MIGRATION_PATH), name), "utf8");
     const arxivSql = read("0030_arxiv_source.sql");
@@ -161,21 +161,37 @@ describe("registry / seed SQL / migration agreement", () => {
     const cloudflareSql = read("0036_cloudflare_blog_source.sql");
     const hnScopeSql = read("0043_hn_model_scope.sql");
     const aiSourcesSql = read("0044_ai_sources_and_aggregator_caps.sql");
-    // A later migration replaces the earlier row with the same id.
-    expect(
-      normalize(
-        mergeRegistryRows(
-          parseSourceInsertRows(migrationSql),
-          parseSourceInsertRows(arxivSql),
-          parseSourceInsertRows(rangesSql),
-          parseSourceInsertRows(cloudflareSql),
-          parseSourceInsertRows(hnScopeSql),
-          parseSourceInsertRows(aiSourcesSql)
-        )
-      )
-    ).toEqual(expected);
+    const socialSql = read("0051_social_trending_sources.sql");
+    // A later migration replaces the earlier row with the same id; a later
+    // `UPDATE sources SET enabled = 0` is a disable, not a row, so it is
+    // applied to the merged rows by hand.
+    const disabledIds = new Set(
+      [
+        ...socialSql.matchAll(
+          /UPDATE sources SET enabled = 0 WHERE id = '([a-z0-9-]+)'/gi
+        ),
+      ].map((m) => m[1])
+    );
+    const applied = mergeRegistryRows(
+      parseSourceInsertRows(migrationSql),
+      parseSourceInsertRows(arxivSql),
+      parseSourceInsertRows(rangesSql),
+      parseSourceInsertRows(cloudflareSql),
+      parseSourceInsertRows(hnScopeSql),
+      parseSourceInsertRows(aiSourcesSql),
+      parseSourceInsertRows(socialSql)
+    ).map((row) =>
+      disabledIds.has(row.id) ? { ...row, enabled: false } : row
+    );
+    expect(normalize(applied)).toEqual(expected);
     // Never re-enables a source an operator switched off.
-    for (const sql of [arxivSql, rangesSql, cloudflareSql, aiSourcesSql]) {
+    for (const sql of [
+      arxivSql,
+      rangesSql,
+      cloudflareSql,
+      aiSourcesSql,
+      socialSql,
+    ]) {
       expect(sql).toContain("ON CONFLICT(id) DO UPDATE SET");
       expect(sql).not.toContain("enabled = excluded.enabled");
     }

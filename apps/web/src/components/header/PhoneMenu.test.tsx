@@ -380,6 +380,7 @@ describe("mobile action sizing", () => {
       "Chrome Extension",
       "Telegram Channel (Vietnamese)",
       "Telegram Channel (English)",
+      "Facebook Page",
       "Email Subscription",
       "Contribute",
       "Data Analytics",
@@ -432,6 +433,7 @@ describe("mobile action sizing", () => {
     const external = new Set([
       "Telegram Channel (Vietnamese)",
       "Telegram Channel (English)",
+      "Facebook Page",
     ]);
     for (const item of within(menu).getAllByRole("menuitem")) {
       const label = item.textContent ?? "";

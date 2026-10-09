@@ -13,6 +13,11 @@ interface ChangelogEntry {
 const WEBSITE_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-10",
+    en: "The Get AI;DR menu now has a Facebook Page link next to the two Telegram channels.",
+    vi: "Menu Nhận AI;DR giờ có thêm mục Fanpage Facebook bên cạnh hai kênh Telegram.",
+  },
+  {
+    date: "2026-10",
     en: "Charts on the Data page now name the day under your cursor and show that day's total. The token chart switches between task and model, and pointing at a day filters the breakdown under it.",
     vi: "Biểu đồ trên trang Dữ liệu giờ ghi ngày bạn đang trỏ và hiện tổng của ngày đó. Biểu đồ token chuyển được giữa theo tác vụ và theo mô hình, và khi trỏ vào một ngày thì bảng phía dưới chỉ còn số của ngày ấy.",
   },

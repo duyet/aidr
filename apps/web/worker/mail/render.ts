@@ -334,7 +334,8 @@ function thumbCell(imageUrl: string | undefined): string {
   const safe = imageUrl ? safeHref(imageUrl) : null;
   if (!safe) return "";
   const src = escapeHtml(safe);
-  return `<td width="${THUMB_PX}" style="width:${THUMB_PX}px;vertical-align:top;padding-right:12px">
+  // Second cell in the row — the thumbnail sits on the right of the text.
+  return `<td width="${THUMB_PX}" style="width:${THUMB_PX}px;vertical-align:top;padding-left:12px">
         <img src="${src}" width="${THUMB_PX}" alt="" style="display:block;width:${THUMB_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic">
       </td>`;
 }
@@ -395,7 +396,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
       const thumb = format === "design" ? thumbCell(story.imageUrl) : "";
       const large = format === "large" ? largeImageSrc(story.imageUrl) : null;
       const inner = thumb
-        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>${thumb}<td style="vertical-align:top">${body}</td></tr></table>`
+        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td style="vertical-align:top">${body}</td>${thumb}</tr></table>`
         : large
           ? `<div style="padding-bottom:12px">${largeImage(large, "mail-large")}</div>${body}`
           : body;

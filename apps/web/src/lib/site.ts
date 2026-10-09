@@ -78,6 +78,10 @@ export const TELEGRAM_HANDLE = "@aihomnay";
 export const TELEGRAM_EN_URL = "https://t.me/aidr_today";
 export const TELEGRAM_EN_HANDLE = "@aidr_today";
 
+/** Public Facebook Page. Lives here beside the Telegram URLs so the header
+ *  menu, the footer, and any future share surface cannot drift apart. */
+export const FACEBOOK_URL = "https://www.facebook.com/aidr.today/";
+
 /** Public GitHub repository. */
 export const GITHUB_URL = "https://github.com/duyet/aidr";
 /** Canonical ranking/ingest pipeline doc (not the old monorepo apps/news path). */

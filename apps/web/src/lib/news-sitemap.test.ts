@@ -106,6 +106,28 @@ describe("buildNewsSitemapXml", () => {
     expect([...xml.matchAll(/<url>/g)].length).toBe(2);
   });
 
+  // The smoke gate asserts every sitemap child's <loc> carries a freshness
+  // stamp, and for this document that stamp is news:publication_date, not
+  // lastmod. One per url, or a crawler has no publication date to index on.
+  it("stamps every url with exactly one publication date", () => {
+    const xml = buildNewsSitemapXml([
+      {
+        loc: `${SITE_URL}/abcdef12?lang=vi`,
+        title: "OpenAI ra mắt mô hình mới",
+        language: "vi",
+        publicationDate: "2026-08-18T03:53:20+07:00",
+      },
+      {
+        loc: `${SITE_URL}/bcdef123?lang=en`,
+        title: "Anthropic ships something",
+        language: "en",
+        publicationDate: "2026-08-18T04:00:00+07:00",
+      },
+    ]);
+    expect([...xml.matchAll(/<news:publication_date>/g)]).toHaveLength(2);
+    expect([...xml.matchAll(/<loc>/g)]).toHaveLength(2);
+  });
+
   it("emits a valid empty urlset when there is nothing to submit", () => {
     const xml = buildNewsSitemapXml([]);
     expectWellFormedXml(xml, "news.xml");

@@ -198,12 +198,21 @@ async function main() {
           childBody.startsWith("<?xml"),
           `sitemap child ${child} is not an XML document`
         );
-        // Every <loc> must carry a <lastmod>.
+        // Every <loc> must carry a freshness stamp. The Google News child
+        // states it as <news:publication_date>, which the news protocol
+        // defines for that purpose; the plain sitemap children use
+        // <lastmod>. Counting one kind across every child asserted a
+        // requirement /news.xml was never built to meet.
         const locs = [...childBody.matchAll(/<loc>/g)].length;
-        const lastmods = [...childBody.matchAll(/<lastmod>/g)].length;
+        const news = child.includes("news.xml");
+        const stamps = news
+          ? [...childBody.matchAll(/<news:publication_date>/g)].length
+          : [...childBody.matchAll(/<lastmod>/g)].length;
         assert(
-          lastmods === locs,
-          `sitemap child ${child} has ${locs} locs and ${lastmods} lastmods`
+          stamps === locs,
+          `sitemap child ${child} has ${locs} locs and ${stamps} ${
+            news ? "publication dates" : "lastmods"
+          }`
         );
       }
       const staticChild = await (
