@@ -23,8 +23,14 @@ import {
   PHONE_GET_AIDR_TRIGGER_CLASS,
 } from "../../lib/chrome";
 import { useLang } from "../../lib/lang-context";
-import { EXTENSION_PATH, TELEGRAM_EN_URL, TELEGRAM_URL } from "../../lib/site";
+import {
+  EXTENSION_PATH,
+  FACEBOOK_URL,
+  TELEGRAM_EN_URL,
+  TELEGRAM_URL,
+} from "../../lib/site";
 import { ChromeMark } from "./ChromeMark";
+import { FacebookMark } from "./FacebookMark";
 
 /** Trailing marker on the items that leave the site. It sits at the far edge
  *  of the row so it reads as "opens elsewhere" and never competes with the
@@ -94,6 +100,18 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           >
             <Send aria-hidden />
             Telegram Channel (English)
+            <ExternalMarker />
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className={itemClassName}>
+          <a
+            href={FACEBOOK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => track("nav_click", { to: "facebook" })}
+          >
+            <FacebookMark />
+            Facebook Page
             <ExternalMarker />
           </a>
         </DropdownMenuItem>
