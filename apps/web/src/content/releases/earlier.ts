@@ -17,6 +17,13 @@ export const EXTENSION_ENTRIES: EarlierEntry[] = [
   {
     date: "2026-10",
     text: {
+      en: "The new tab matches the website again: five density steps starting in the middle, story rows with votes, category and time in aligned columns, and an image/text switch that shows the day card at full width.",
+      vi: "Tab mới lại giống trang web: năm mức mật độ mặc định ở giữa, dòng tin có phiếu bầu, chuyên mục và thời gian thẳng cột, và nút chuyển ảnh/chữ hiện ảnh tóm tắt của ngày ở toàn bộ chiều rộng.",
+    },
+  },
+  {
+    date: "2026-10",
+    text: {
       en: "The new tab opens on the day’s date, previews that day’s card, and links each day to its archive. The header can play the intro video, and each story shows its reader votes.",
       vi: "Tab mới mở đầu bằng ngày của bản tin, xem trước ảnh tóm tắt, và mỗi ngày dẫn tới trang lưu trữ. Header có nút xem video giới thiệu, và mỗi tin hiện số phiếu của bạn đọc.",
     },
