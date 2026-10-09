@@ -1,0 +1,69 @@
+{
+  "$comment": "AI;DR voice cast (ElevenLabs). Mix hosts in each language like a TV show or podcast: alternate per scene/story, never the same voice twice in a row, opener and closer differ; order picked by a seeded shuffle (seed = edition date or release version) so re-renders match. Owner's picks, 2026-10-10.",
+  "provider": "elevenlabs",
+  "model": "eleven_multilingual_v2",
+  "settings": {
+    "stability": 0.45,
+    "similarity_boost": 0.75,
+    "style": 0.1,
+    "use_speaker_boost": true
+  },
+  "en": [
+    {
+      "id": "yl2ZDV1MzN4HbQJbMihG",
+      "name": "Alex",
+      "gender": "male",
+      "url": "https://elevenlabs.io/voices/yl2ZDV1MzN4HbQJbMihG"
+    },
+    {
+      "id": "xctasy8XvGp2cVO9HL9k",
+      "name": "Allison",
+      "gender": "female",
+      "url": "https://elevenlabs.io/voices/xctasy8XvGp2cVO9HL9k"
+    },
+    {
+      "id": "SA7eD52NRr8WAehitVt1",
+      "name": "Tyler Cruz",
+      "gender": "male",
+      "url": "https://elevenlabs.io/voices/SA7eD52NRr8WAehitVt1"
+    },
+    {
+      "id": "0S5oIfi8zOZixuSj8K6n",
+      "name": "Ivanna",
+      "gender": "female",
+      "url": "https://elevenlabs.io/voices/0S5oIfi8zOZixuSj8K6n"
+    },
+    {
+      "id": "dfeOmy6Uay63tNhyO99j",
+      "name": "Kristen",
+      "gender": "female",
+      "url": "https://elevenlabs.io/voices/dfeOmy6Uay63tNhyO99j"
+    }
+  ],
+  "vi": [
+    {
+      "id": "w2KTJ6MO4SIK6nWK4YH8",
+      "name": "Đức Huy",
+      "gender": "male",
+      "url": "https://elevenlabs.io/voices/w2KTJ6MO4SIK6nWK4YH8"
+    },
+    {
+      "id": "8PEPqUGgvwN1Fk9KR8jV",
+      "name": "An Nhiên",
+      "gender": "female",
+      "url": "https://elevenlabs.io/voices/8PEPqUGgvwN1Fk9KR8jV"
+    },
+    {
+      "id": "N0Z0aL8qHhzwUHwRBcVo",
+      "name": "Thanh",
+      "gender": "female",
+      "url": "https://elevenlabs.io/voices/N0Z0aL8qHhzwUHwRBcVo"
+    },
+    {
+      "id": "mgBpvrNosWzExdPuRbXP",
+      "name": "Phan Anh",
+      "gender": "male",
+      "url": "https://elevenlabs.io/voices/mgBpvrNosWzExdPuRbXP"
+    }
+  ]
+}
