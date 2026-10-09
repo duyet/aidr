@@ -69,7 +69,8 @@ each image is made.
    `edit/package` → `find role button click --name 'Upload new package'`
    → `upload 'input[type=file][accept=".zip,.crx"]' <zip>`; check the Draft
    block shows the new version. Or via API
-   (needs `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`):
+   (needs `CWS_PUBLISHER_ID`, `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`,
+   `CWS_REFRESH_TOKEN`):
    `pnpm --filter @aidr/web cws-publish` uploads the zip, submits it for
    review and prints the status. `--upload-only` leaves it as a draft so
    the user can edit the listing first and press Submit. `--status` only
@@ -105,6 +106,6 @@ each image is made.
 4. OAuth Playground → "Use your own OAuth credentials" → scope
    `https://www.googleapis.com/auth/chromewebstore` → authorize →
    exchange for tokens → copy the refresh token.
-5. Put `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN` in
-   `.env.local` and run `pnpm sync-env` if CI should have them too.
+5. Put `CWS_PUBLISHER_ID`, `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`,
+   `CWS_REFRESH_TOKEN` in `.env.local` and run `pnpm sync-env` if CI should have them too.
 The account must own the item and have 2-step verification on.
