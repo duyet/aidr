@@ -201,6 +201,19 @@ test("masthead image | text switch replaces the day card chip", () => {
   assert.match(css, /\.day-card-switch svg \{\s*width:\s*0\.875rem/);
 });
 
+test("image view makes the covered AI;DR list inert, text view restores it", () => {
+  const fn = js.match(/function applyDayCardView\(\) \{[\s\S]*?\n\}/)[0];
+  for (const id of ["tldr-cols", "tldr-more"]) {
+    assert.match(fn, new RegExp(`\\$\\("${id}"\\)`));
+  }
+  assert.match(fn, /toggleAttribute\("inert", open\)/);
+  assert.match(fn, /removeAttribute\("aria-hidden"\)/);
+  // The masthead switch must stay usable, so it is never made inert.
+  assert.doesNotMatch(fn, /day-card-switch/);
+  // Resetting with no snapshot date goes back to text, which clears inert.
+  assert.match(js, /dayCardImageOn = false;\s*applyDayCardView\(\);/);
+});
+
 test("brief layout centers AI;DR when the daily feed is off", () => {
   assert.match(css, /\.page\.is-brief/);
   assert.match(css, /\.page\.is-brief \.tldr[\s\S]*margin-top:\s*auto/);

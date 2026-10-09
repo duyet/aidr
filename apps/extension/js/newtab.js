@@ -469,6 +469,18 @@ function applyDayCardView() {
   $("day-card-overlay")?.setAttribute("aria-hidden", open ? "false" : "true");
   $("day-card-image")?.setAttribute("aria-pressed", open ? "true" : "false");
   $("day-card-text")?.setAttribute("aria-pressed", open ? "false" : "true");
+  // The overlay lets pointer events through; keep clicks and tab focus off
+  // the covered bullets, more/less button and footer while the card shows.
+  for (const covered of [
+    $("tldr-cols"),
+    $("tldr-more"),
+    document.querySelector(".tldr-foot"),
+  ]) {
+    if (!covered) continue;
+    covered.toggleAttribute("inert", open);
+    if (open) covered.setAttribute("aria-hidden", "true");
+    else covered.removeAttribute("aria-hidden");
+  }
 }
 
 let dayCardArmed = false;
