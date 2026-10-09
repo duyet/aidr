@@ -1,4 +1,3 @@
-
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { stripTitleMarker } from "../../src/lib/plain-text.js";
 import { storyPath } from "../../src/lib/slug.js";
@@ -131,10 +130,13 @@ export function digestKey(localDate: string): string {
   return `digest:${localDate}`;
 }
 
+/** A previous send timed out with no answer (`outcome_unknown`): it may be
+ *  posted, so it is never retried, but it is not a confirmed delivery either. */
 export type DigestSkipReason =
   | "sent"
   | "no_snapshot"
   | "already_sent"
+  | "outcome_unknown"
   | "before_hour"
   | "send_failed";
 
@@ -208,13 +210,20 @@ export function hydrateStory(row: StoryRow): StoryPayload {
 export function classifyDigestSkip(
   existing: NotificationRow | null,
   localHour: number
-): Extract<DigestSkipReason, "before_hour" | "already_sent"> | null {
+): Extract<
+  DigestSkipReason,
+  "before_hour" | "already_sent" | "outcome_unknown"
+> | null {
   if (localHour < DIGEST_LOCAL_HOUR) return "before_hour";
   if (!existing) return null;
   if (existing.status === "failed" && existing.attempts < NOTIFY_MAX_ATTEMPTS) {
     return null;
   }
-  return "already_sent";
+  // An `ambiguous` row is final like `sent`, so it is never resent. Reporting
+  // it as `already_sent` would claim a delivery nobody confirmed: the two
+  // production timeouts behind #463 left a digest that may or may not be in
+  // the channel, and the run record said it went out.
+  return existing.status === "ambiguous" ? "outcome_unknown" : "already_sent";
 }
 
 /** Why trending will not post, or null if a candidate may be sent. */
@@ -240,7 +249,8 @@ export function classifyTrendingSkip(
 
 /** True when today's digest should go out for this channel: at/after the
  *  local send hour, and not already sent (failed rows retry while under
- *  the attempt cap). */
+ *  the attempt cap; an `ambiguous` row never retries, because the message may
+ *  already be in the channel and a resend would double-post it). */
 export function shouldSendDigest(
   existing: NotificationRow | null,
   localHour: number

@@ -1272,6 +1272,41 @@ describe("telegramNotifier gating", () => {
       expect(result).toMatchObject({ ok: false, ambiguous: true });
     });
 
+    // The two production events behind #463 were a first-page timeout on both
+    // `telegram` and `telegram-en`, 16 seconds apart. Both must resolve the
+    // same way: an unknown outcome, never a clean send and never a retry.
+    it("leaves a timed-out first page unresolved on both language channels", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockImplementation(timeout));
+
+      for (const notifier of [telegramNotifier, telegramEnNotifier]) {
+        const result = await notifier.sendDigest(tgEnv, {
+          lang: notifier.lang,
+          date: "2026-08-17",
+          bullets: [],
+        });
+        expect(result).toMatchObject({ ok: false, ambiguous: true });
+        // No message id: nothing confirmed what Telegram did with it.
+        expect(result.messageId).toBeUndefined();
+      }
+    });
+
+    it("keeps a timed-out digest out of the next hour's send", async () => {
+      // The recovery half of the policy: recordDelivery stores the ambiguous
+      // result, and both the gate and shouldSendDigest then refuse to resend.
+      vi.stubGlobal("fetch", vi.fn().mockImplementation(timeout));
+      const result = await telegramNotifier.sendDigest(tgEnv, {
+        lang: "vi",
+        date: "2026-08-17",
+        bullets: [],
+      });
+
+      const existing = { status: "ambiguous" as const, attempts: 1 };
+      expect(shouldSendDigest(existing, 12)).toBe(false);
+      expect(classifyDigestSkip(existing, 12)).toBe("outcome_unknown");
+      // Recorded as ambiguous, never as the clean `sent` it is not.
+      expect(result.ok).toBe(false);
+    });
+
     it("still treats a JSON error from Telegram as a definite rejection", async () => {
       // Telegram answered, so nothing was posted and a retry is safe.
       vi.stubGlobal(
@@ -1499,11 +1534,28 @@ describe("classifyDigestSkip", () => {
       "already_sent"
     );
   });
-  it("returns already_sent for an ambiguous row, whatever its attempts", () => {
-    // The digest may be in the channel already; resending would double-post.
+  it("returns outcome_unknown, not already_sent, for an ambiguous row", () => {
+    // The digest may be in the channel already, so it must never be resent.
+    // But it was not confirmed either: `already_sent` would report a delivery
+    // nobody saw, which is exactly the two production timeouts in #463.
     expect(classifyDigestSkip({ status: "ambiguous", attempts: 1 }, 12)).toBe(
-      "already_sent"
+      "outcome_unknown"
     );
+  });
+  it("returns outcome_unknown for an ambiguous row at the attempt cap", () => {
+    expect(
+      classifyDigestSkip(
+        { status: "ambiguous", attempts: NOTIFY_MAX_ATTEMPTS },
+        12
+      )
+    ).toBe("outcome_unknown");
+  });
+  it("still retries a definite failure under the cap", () => {
+    // The control for the two cases above: Telegram answered and rejected, so
+    // nothing was posted and a retry is safe.
+    expect(
+      classifyDigestSkip({ status: "failed", attempts: 1 }, 12)
+    ).toBeNull();
   });
   it("returns null when a digest should go out", () => {
     expect(classifyDigestSkip(null, 12)).toBeNull();
@@ -1741,7 +1793,9 @@ describe("channelCopy", () => {
       tr_title: null,
       tr_summary: null,
     };
-    expect(channelCopy(row, "en")?.title).toBe("Nguyễn's startup raises a new round");
+    expect(channelCopy(row, "en")?.title).toBe(
+      "Nguyễn's startup raises a new round"
+    );
     expect(channelCopy(row, "vi")).toBeNull();
   });
 
