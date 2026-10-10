@@ -163,7 +163,7 @@ if (steps.includes("render")) {
 // uploaded elsewhere must not get a second public copy.
 async function seedFromSite() {
   for (const l of langs) {
-    const res = await fetch(`https://aidr.today/date/${date}.md${l === "vi" ? "?lang=vi" : ""}`);
+    const res = await fetch(`https://aidr.today/date/${date}.md?lang=${l}`);
     if (!res.ok) continue;
     const md = await res.text();
     const ids = {
