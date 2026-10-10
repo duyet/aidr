@@ -399,12 +399,22 @@ async function loadBulletDetails(
   ];
   if (ids.length === 0) return bullets;
   const placeholders = ids.map(() => "?").join(", ");
-  const { results } = await env.DB.prepare(
-    `SELECT id, image_url, title, title_vi, category, url FROM items WHERE id IN (${placeholders})`
-  )
-    .bind(...ids)
-    .all<BulletItemRow>();
-  return digestBulletsWithItems(bullets, results ?? [], lang);
+  // title_vi lives in translations, like the feed query (ITEM_SELECT_BASE).
+  // A failed lookup must never block the send: fall back to the bare bullets.
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT i.id, i.image_url, i.title, t.title AS title_vi, i.category, i.url
+       FROM items i
+       LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
+       WHERE i.id IN (${placeholders})`
+    )
+      .bind(...ids)
+      .all<BulletItemRow>();
+    return digestBulletsWithItems(bullets, results ?? [], lang);
+  } catch (error) {
+    console.warn("digest: bullet details lookup failed", error);
+    return digestBulletsWithItems(bullets, [], lang);
+  }
 }
 
 /** The day's video in `lang` only (`youtube_id`, else `short_id`). A
