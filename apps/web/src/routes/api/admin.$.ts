@@ -4,6 +4,7 @@ import {
   checkAdminAuth,
   checkAdminAuthRateLimit,
   isRequestAdmin,
+  recordAdminAuthFailure,
 } from "../../../worker/admin/auth.js";
 import {
   decideSubmission,
@@ -111,6 +112,9 @@ async function handle(
     const rateLimited = await checkAdminAuthRateLimit(request, env);
     if (rateLimited) return rateLimited;
     const admin = await isRequestAdmin(request, env);
+    // A wrong bearer here is a failed guess like any other admin route;
+    // without counting it, `/me` is an unthrottled token oracle.
+    if (!admin) await recordAdminAuthFailure(request, env);
     return Response.json({ admin });
   }
 
