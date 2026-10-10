@@ -214,7 +214,7 @@ GA4_PROPERTY_ID = ""
 # then these From addresses can deliver. Override with EMAIL_FROM / EMAIL_NOTES_FROM.
 EMAIL_FROM = "digest@aidr.today"
 EMAIL_NOTES_FROM = "notes@aidr.today"
-EMAIL_FROM_NAME = "aidr"
+EMAIL_FROM_NAME = "AI;DR"
 
 [[send_email]]
 name = "EMAIL"

@@ -126,6 +126,9 @@ export interface Env {
   EMAIL_FROM_NAME?: string;
   /** Override digest Reply-To. Unset: submit@aidr.today. */
   EMAIL_REPLY_TO?: string;
+  /** Physical mailing address for the mail footer (CAN-SPAM). Unset: the
+   *  footer leaves the address line out. */
+  MAIL_POSTAL_ADDRESS?: string;
   /** HMAC secret for unsubscribe tokens. When unset, legacy UUID tokens are used. */
   NEWS_UNSUBSCRIBE_SECRET?: string;
   /** Owner address for new-subscriber pings. When unset, email ping is skipped. */

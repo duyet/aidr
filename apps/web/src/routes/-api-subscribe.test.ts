@@ -114,7 +114,9 @@ describe("GET /api/subscribe/preview", () => {
 
   it("passes the layout and story count to the renderer", async () => {
     const large = (await preview("lang=en&n=3&format=large")).html;
-    expect(large.match(/class="mail-large"/g)?.length).toBe(3);
+    // Story 1 is the lead (one large image); the other two get their own.
+    expect(large.match(/class="mail-lead-image"/g)?.length).toBe(1);
+    expect(large.match(/class="mail-large"/g)?.length).toBe(2);
     expect(large).not.toContain("Story 4");
 
     const none = (await preview("lang=en&n=5&format=no-images")).html;
@@ -122,8 +124,8 @@ describe("GET /api/subscribe/preview", () => {
     expect(none).not.toContain("cdn.example");
 
     const thumbs = (await preview("lang=en&format=design")).html;
-    expect(thumbs.match(/class="mail-hero"/g)?.length).toBe(1);
-    expect(thumbs.match(/<img [^>]*width="64"/g)?.length).toBe(5);
+    expect(thumbs.match(/class="mail-lead-image"/g)?.length).toBe(1);
+    expect(thumbs.match(/class="m-thumb"/g)?.length).toBe(4);
   });
 
   it("is the mail the send path renders, byte for byte", async () => {

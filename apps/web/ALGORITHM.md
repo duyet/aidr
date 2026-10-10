@@ -39,7 +39,7 @@ One ingest run does three jobs. The scheduler starts one every 30 minutes, with 
 
 Publish has two deliveries and they do not share a clock or a table:
 
-- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject and heading are a fixed short title (`AI;DR — <date> · Today in AI`); the first story is the preheader. Idempotency is `subscribers.last_sent_date`. A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
+- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
 
@@ -713,6 +713,25 @@ subscriber gets nothing, and the next 30-minute run sends it. An
 empty column leaves `last_sent_date` unset so the next run
 retries. Idempotency stays on `subscribers.last_sent_date`, not the
 `notifications` table.
+
+The mail itself (`worker/mail/render.ts`, one function per block): the
+subject leads with the top one or two headlines plus "+N more" (about 60
+characters, localized), with a written preheader. The header has the
+wordmark, the spelled-out date, "N stories · M min read" and a link to the
+other language's day page. Next comes the day's video for that language
+(`day_videos`, `youtube_id` then `short_id`, no fallback across languages;
+the block is left out when there is none). Then the lead story (large image
+that is never a generated OG card, category · source, headline, summary),
+then compact rows (number, category · source, linked headline, one
+sentence, 84px thumbnail). After the rows: one "See all" button, the
+channel strip (Telegram, YouTube, Chrome extension) and the footer (view in
+browser, settings, unsubscribe, how we rank, "Forwarded this?", and
+`MAIL_POSTAL_ADDRESS` when set). The headline is `items.title` or
+`title_vi` for that language only; without it, the bullet's first sentence.
+Every link carries `utm_content` for its position (`lead`, `s2`…, `cta`,
+`video`, `channel-*`). Layouts: `design` (lead image plus thumbnails),
+`large` (an image per story), `no-images`, `text`. Admin preview:
+`GET /api/admin/mail/preview?date=&lang=&format=`.
 
 ### 12. Notify (`worker/notify/`)
 

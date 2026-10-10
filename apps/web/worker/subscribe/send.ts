@@ -1,7 +1,8 @@
+import { parseDayVideoRow } from "../../src/lib/feed-queries.js";
+import { categoryLabel } from "../../src/lib/lang.js";
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import {
   type MailFormat,
-  mailFormatHasImages,
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
 import { SITE_URL } from "../../src/lib/site.js";
@@ -14,7 +15,7 @@ import {
   topBullets,
 } from "../digest/edition.js";
 import {
-  digestSubjectLine,
+  type DigestVideo,
   renderDigestEmail,
   renderNoteEmail,
   settingsUrl,
@@ -114,39 +115,54 @@ export function shouldSendForSubscriber(
   return sub.last_sent_date !== localDate;
 }
 
+/** A snapshot bullet joined with its `items` row (see `loadBulletDetails`). */
+export interface DigestBullet extends TldrBulletLike {
+  /** `title` or `title_vi` for the edition's language; never the other one. */
+  headline?: string;
+  /** Publisher host, `www.` dropped. */
+  source?: string;
+  category?: string;
+}
+
+/** Extras the edition renderer loads beside the bullets. */
+export interface DigestExtras {
+  video?: DigestVideo | null;
+  postalAddress?: string;
+}
+
 /** Builds the plain-text and HTML bodies for a subscriber's daily digest email. */
 export function buildDigestEmail(
   date: string,
-  bullets: TldrBulletLike[],
+  bullets: DigestBullet[],
   lang: string,
   unsubscribeToken: string,
   max = MAX_BULLETS,
-  format: MailFormat = "design"
+  format: MailFormat = "design",
+  extras: DigestExtras = {}
 ): { subject: string; html: string; text: string } {
   const mailLang = lang === "en" ? "en" : "vi";
   const items = bullets.slice(0, max);
-  const subject = digestSubjectLine(date, mailLang);
-  return {
-    subject,
-    ...renderDigestEmail({
-      subject,
-      date,
-      lang: mailLang,
-      stories: items.map((b) => ({
-        text: b.text,
-        url: b.item_id
-          ? absoluteSiteUrl(storyPath({ id: b.item_id }), mailLang)
-          : absoluteSiteUrl("/", mailLang),
-        imageUrl: b.image_url
-          ? (canonicalizeMediaImageUrl(b.image_url) ?? undefined)
-          : undefined,
-      })),
-      unsubscribeUrl: unsubscribeUrl(unsubscribeToken, mailLang),
-      settingsUrl: settingsUrl(unsubscribeToken, mailLang),
-      preheader: items[0]?.text,
-      format,
-    }),
-  };
+  return renderDigestEmail({
+    date,
+    lang: mailLang,
+    stories: items.map((b) => ({
+      text: b.text,
+      url: b.item_id
+        ? absoluteSiteUrl(storyPath({ id: b.item_id }), mailLang)
+        : absoluteSiteUrl("/", mailLang),
+      imageUrl: b.image_url
+        ? (canonicalizeMediaImageUrl(b.image_url) ?? undefined)
+        : undefined,
+      headline: b.headline,
+      source: b.source,
+      category: b.category,
+    })),
+    unsubscribeUrl: unsubscribeUrl(unsubscribeToken, mailLang),
+    settingsUrl: settingsUrl(unsubscribeToken, mailLang),
+    format,
+    video: extras.video,
+    postalAddress: extras.postalAddress,
+  });
 }
 
 /**
@@ -190,6 +206,7 @@ export async function sendConfirmEmail(
     lang: vi ? "vi" : "en",
     unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
     settingsUrl: settingsUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    postalAddress: env.MAIL_POSTAL_ADDRESS,
     cta: {
       label: vi ? "Xác nhận đăng ký" : "Confirm subscription",
       url: confirmUrl(sub.unsubscribe_token),
@@ -251,6 +268,7 @@ export async function sendSettingsChangeEmail(
     lang: vi ? "vi" : "en",
     unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
     settingsUrl: settingsUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    postalAddress: env.MAIL_POSTAL_ADDRESS,
     cta: {
       label: vi ? "Áp dụng cài đặt" : "Apply settings",
       url: settingsChangeUrl(sub.unsubscribe_token, prefs),
@@ -284,6 +302,7 @@ export async function sendWelcomeEmail(
     lang: vi ? "vi" : "en",
     unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
     settingsUrl: settingsUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    postalAddress: env.MAIL_POSTAL_ADDRESS,
     cta: { label: vi ? "Mở aidr.today" : "Open aidr.today", url: SITE_URL },
   });
   return sendSubscriberEmail(env, {
@@ -320,10 +339,56 @@ export function digestBulletsWithImages(
   });
 }
 
-async function loadBulletImages(
+interface BulletItemRow {
+  id: string;
+  image_url?: string | null;
+  title?: string | null;
+  title_vi?: string | null;
+  category?: string | null;
+  url?: string | null;
+}
+
+function sourceHost(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "") || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Joins each bullet to its own item through `item_ids` (never by position):
+ *  image, headline in `lang` only, category and source host. */
+export function digestBulletsWithItems(
+  bullets: TldrBulletLike[],
+  rows: BulletItemRow[],
+  lang: "en" | "vi"
+): DigestBullet[] {
+  const byId = new Map(rows.filter((r) => r.id).map((r) => [r.id, r]));
+  return digestBulletsWithImages(bullets, rows).map((bullet) => {
+    const ids = [
+      ...(bullet.item_ids ?? []),
+      ...(bullet.item_id ? [bullet.item_id] : []),
+    ];
+    const row = ids.map((id) => byId.get(id)).find(Boolean);
+    if (!row) return bullet;
+    const title = (lang === "en" ? row.title : row.title_vi)?.trim();
+    const category = row.category?.trim();
+    const source = sourceHost(row.url);
+    return {
+      ...bullet,
+      ...(title ? { headline: title } : {}),
+      ...(category ? { category: categoryLabel(category, lang) } : {}),
+      ...(source ? { source } : {}),
+    };
+  });
+}
+
+async function loadBulletDetails(
   env: Pick<Env, "DB">,
-  bullets: TldrBulletLike[]
-): Promise<TldrBulletLike[]> {
+  bullets: TldrBulletLike[],
+  lang: "en" | "vi"
+): Promise<DigestBullet[]> {
   const ids = [
     ...new Set(
       bullets.flatMap((bullet) => [
@@ -335,33 +400,58 @@ async function loadBulletImages(
   if (ids.length === 0) return bullets;
   const placeholders = ids.map(() => "?").join(", ");
   const { results } = await env.DB.prepare(
-    `SELECT id, image_url FROM items WHERE id IN (${placeholders})`
+    `SELECT id, image_url, title, title_vi, category, url FROM items WHERE id IN (${placeholders})`
   )
     .bind(...ids)
-    .all<{ id: string; image_url: string | null }>();
-  return digestBulletsWithImages(bullets, results ?? []);
+    .all<BulletItemRow>();
+  return digestBulletsWithItems(bullets, results ?? [], lang);
 }
 
-/** The digest mail for one edition, exactly as it is sent: loads story
- *  images when the layout shows them, then renders. The subscribe preview
- *  calls this too, so the preview is the mail that arrives. */
-export async function renderEditionEmail(
+/** The day's video in `lang` only (`youtube_id`, else `short_id`). A
+ *  missing row, column or table means no video block. */
+async function loadDigestVideo(
   env: Pick<Env, "DB">,
+  date: string,
+  lang: "en" | "vi"
+): Promise<DigestVideo | null> {
+  try {
+    const row = await env.DB.prepare(
+      `SELECT youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi
+       FROM day_videos WHERE date = ? LIMIT 1`
+    )
+      .bind(date)
+      .first();
+    const video = parseDayVideoRow(row)[lang];
+    const id = video?.youtube_id ?? video?.short_id;
+    return id ? { youtubeId: id, title: video?.title ?? null } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The digest mail for one edition, exactly as it is sent: joins the
+ *  bullets to their items and the day video, then renders. The subscribe
+ *  and admin previews call this too, so the preview is the mail that arrives. */
+export async function renderEditionEmail(
+  env: Pick<Env, "DB" | "MAIL_POSTAL_ADDRESS">,
   edition: Pick<Edition, "date" | "lang" | "bullets">,
   unsubscribeToken: string,
   size: number,
   format: MailFormat
 ): Promise<{ subject: string; html: string; text: string }> {
-  const bullets = mailFormatHasImages(format)
-    ? await loadBulletImages(env, edition.bullets)
-    : edition.bullets;
+  const lang = edition.lang === "en" ? "en" : "vi";
+  const [bullets, video] = await Promise.all([
+    loadBulletDetails(env, edition.bullets, lang),
+    loadDigestVideo(env, edition.date, lang),
+  ]);
   return buildDigestEmail(
     edition.date,
     bullets,
     edition.lang,
     unsubscribeToken,
     size,
-    format
+    format,
+    { video, postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined }
   );
 }
 
