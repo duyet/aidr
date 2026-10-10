@@ -115,6 +115,19 @@ From the contact sheets and, after render, a few frames of each MP4:
 - [ ] Two 4K MP4s and two covers in `renders/`; `posts.md` and `captions.srt` written.
 - [ ] Sources committed; renders not. Report: paths, durations, anything skipped.
 
+## Weekly edition
+
+The same template makes a weekly cut ("AI;DR Weekly") from `GET https://aidr.today/api/week/<YYYY-Www>`. The week is the ISO week (Monday..Sunday) of Asia/Ho_Chi_Minh dates, which is how the Worker keys its snapshots (`scripts/week.mjs`, tested by `node --test scripts/week.test.mjs`). The "date" argument of every script is `week-<week>`, e.g. `week-2026-W41`.
+
+```bash
+node scripts/fetch-week.mjs [--week 2026-W41] [--count 8]   # default week: the last closed one; edition.json (kind "weekly") + assets/
+node scripts/new.mjs --week [2026-W41]                      # fetch-week + assets-sheet.jpg + draft script.json (intro from intro_en)
+# write editions/week-<week>/script.json (and script.vi.json from text_vi / intro_vi, never from English)
+node scripts/publish.mjs week-2026-W41 --steps render      # daily.mjs --render per language
+```
+
+`build.mjs` reads `edition.kind === "weekly"`: labels "WEEKLY EDITION" / "BẢN TIN TUẦN", the dateline is the week range, files are `renders/aidr-weekly-<week>-<lang>-<fmt>-4k.mp4` and `cover-weekly-<week>-<lang>-<fmt>.png`, and `posts.md` links to `https://aidr.today/week/<week>` (`?lang=vi`). Daily output is unchanged. For weekly, `publish.mjs` only runs `--steps render` (and `--dry-run`); upload, attach and telegram are planned, not wired, and exit with a message.
+
 ## Voices
 
 The voice cast lives in `videos/brand/voices.json` (ElevenLabs): five

@@ -19,7 +19,8 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `template/style.css` | yes | All layout, both formats (`.f-16x9` / `.f-9x16` variables), layouts, intros, transitions |
 | `template/motion.js` | yes | The single GSAP timeline, driven by `window.__DN` from the build |
 | `scripts/fetch.mjs` | yes | Edition + real post media from `https://aidr.today/api/public?lang=en` |
-| `scripts/new.mjs` | yes | Start the day: fetch, media contact sheet, draft `script.json` |
+| `scripts/new.mjs` | yes | Start the day: fetch, media contact sheet, draft `script.json` (`--week` for the weekly edition) |
+| `scripts/fetch-week.mjs`, `scripts/week.mjs`, `scripts/media.mjs` | yes | Weekly edition fetch; ISO-week math (with `week.test.mjs`); download helper shared with `fetch.mjs` |
 | `scripts/daily.mjs` | yes | Voice → build → lint → snapshots (→ render) for a written script |
 | `scripts/voice.mjs` | yes | ElevenLabs TTS (the cast in `../brand/voices.json`) per sentence and anchor, HeyGen as fallback, joined per segment, with word timings; checks the ElevenLabs quota first and switches the whole cut to no-voice when it is short |
 | `scripts/novoice.mjs` | yes | The no-voice helpers: reading-speed word timing, the quota check, `QuotaError` |
@@ -59,6 +60,19 @@ The single steps still work on their own: `daily.mjs <date> [--lang vi] [--rende
 **Vietnamese cut.** Write `editions/<date>/script.vi.json` (same shape; Vietnamese voice and screen text from the edition's `text_vi`/`title_vi`, anchors from the `vi` hosts in `voices.json`), then add `--lang vi` to `daily.mjs`, `voice.mjs`, `build.mjs` or `render.mjs`. It writes `voice-vi/`, `out-vi/`, `snap-vi-*/`, `captions.vi.srt`, `timeline.vi.json`, the `vi` block of `posts.md` (links with `?lang=vi`), and `renders/aidr-daily-<date>-vi-<fmt>-4k.mp4` / `cover-<date>-vi-<fmt>.png`. Screen labels (date, "BẢN TIN NGÀY", "nguồn") come from the `UI` table in `build.mjs`.
 
 Lower-level steps: `fetch.mjs`, `voice.mjs <date>`, `build.mjs <date> [--no-audio]`, `render.mjs <date> [--only 9x16]`. Voice parts are cached per sentence (anchor + text), so a wording fix re-voices only that sentence.
+
+## Weekly edition
+
+The same template makes a weekly cut ("AI;DR Weekly") from `GET https://aidr.today/api/week/<YYYY-Www>`. The week is the ISO week (Monday..Sunday) of Asia/Ho_Chi_Minh dates, which is how the Worker keys its snapshots (`scripts/week.mjs`, tested by `node --test scripts/week.test.mjs`). The "date" argument of every script is `week-<week>`, e.g. `week-2026-W41`.
+
+```bash
+node scripts/fetch-week.mjs [--week 2026-W41] [--count 8]   # default week: the last closed one; edition.json (kind "weekly") + assets/
+node scripts/new.mjs --week [2026-W41]                      # fetch-week + assets-sheet.jpg + draft script.json (intro from intro_en)
+# write editions/week-<week>/script.json (and script.vi.json from text_vi / intro_vi, never from English)
+node scripts/publish.mjs week-2026-W41 --steps render      # daily.mjs --render per language
+```
+
+`build.mjs` reads `edition.kind === "weekly"`: labels "WEEKLY EDITION" / "BẢN TIN TUẦN", the dateline is the week range, files are `renders/aidr-weekly-<week>-<lang>-<fmt>-4k.mp4` and `cover-weekly-<week>-<lang>-<fmt>.png`, and `posts.md` links to `https://aidr.today/week/<week>` (`?lang=vi`). Daily output is unchanged. For weekly, `publish.mjs` only runs `--steps render` (and `--dry-run`); upload, attach and telegram are planned, not wired, and exit with a message.
 
 ## script.json
 
