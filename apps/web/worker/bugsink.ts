@@ -182,6 +182,18 @@ export function engineInterruptionReason(error: unknown): string | null {
   );
 }
 
+/** An LLM provider failure that the model chain already absorbed: every model
+ * in the chain errored, timed out or failed its accept check. The step
+ * returns its fallback and `health.ts` alerts on the run's LLM failure rate
+ * (and on a failed TL;DR streak), so a Bugsink issue per burst only adds
+ * noise. A genuine app bug (TypeError, bad SQL, schema mismatch) does not match. */
+const PROVIDER_FAILURE =
+  /anyrouter (?:chain exhausted|request (?:failed|timed out)|budget exhausted|invalid response|provider error)|jev request failed/i;
+
+export function isProviderFailure(error: unknown): boolean {
+  return PROVIDER_FAILURE.test(interruptionText(error));
+}
+
 /** Exception path used by the ingest workflow. Database rows stay as they are. */
 export async function reportPipelineException(
   error: unknown,
@@ -191,6 +203,12 @@ export async function reportPipelineException(
   if (interruption) {
     console.warn(
       `${tags.step ?? "pipeline"}: interrupted by the workflow engine (${interruption})`
+    );
+    return;
+  }
+  if (isProviderFailure(error)) {
+    console.warn(
+      `${tags.step ?? "pipeline"}: provider failure absorbed by the model chain`
     );
     return;
   }

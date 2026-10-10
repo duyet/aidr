@@ -117,6 +117,30 @@ describe("safeStep engine interruptions", () => {
     vi.unstubAllGlobals();
   });
 
+  // An exhausted model chain is a provider outage the step already absorbs by
+  // returning its fallback; it must warn, not raise a Cloudflare/Bugsink issue.
+  it("warns instead of reporting when the model chain is exhausted", async () => {
+    const fetchMock = vi.fn(async () => new Response("ok"));
+    vi.stubGlobal("fetch", fetchMock);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await safeStep(
+      stepFailingWith(
+        new Error("anyrouter chain exhausted: a/b: anyrouter request timed out")
+      ),
+      "translate",
+      "fallback",
+      async () => "value"
+    );
+
+    expect(result).toBe("fallback");
+    expect(warn).toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   // `rethrowErrors` is checked before the interruption branch, so these three
   // steps still hand engine interruptions to their caller — which then lands
   // them in the run-level catch, where `reportPipelineException` filters them.

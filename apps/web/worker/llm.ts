@@ -4,6 +4,7 @@ import {
   extractBracketItemIds,
   stripBracketItemIds,
 } from "../src/lib/tldr-bullets";
+import { isProviderFailure } from "./bugsink.js";
 import { chunk } from "./chunk.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import {
@@ -1018,7 +1019,8 @@ async function callAnyrouter(
       const msg = sanitizeProviderError(error);
       recordRunOutcome(model, msg === "anyrouter request timed out");
       failures.push(`${model}: ${msg}`);
-      console.error(`anyrouter model ${model} failed: ${msg}`);
+      // The chain moves on to the next model; only exhaustion is a failure.
+      console.warn(`anyrouter model ${model} failed: ${msg}`);
       logLlmCall({
         ts: attemptStartedAt,
         task,
@@ -1351,7 +1353,10 @@ async function scoreBatchWithChat(
     const rows = Array.isArray(parsed) ? parsed : parsed.results;
     return sanitizeScoreResults(rows, batch, Math.ceil(tokens / batch.length));
   } catch (error) {
-    console.error("scoreItems batch failed:", error);
+    (isProviderFailure(error) ? console.warn : console.error)(
+      "scoreItems batch failed:",
+      error
+    );
     return [];
   }
 }
@@ -1455,7 +1460,10 @@ export async function scoreItems(
         const chatRows = await scoreBatchWithChat(env, missing);
         return [...rows, ...chatRows];
       } catch (error) {
-        console.error("scoreItems batch failed:", error);
+        (isProviderFailure(error) ? console.warn : console.error)(
+      "scoreItems batch failed:",
+      error
+    );
         return rows;
       }
     }
