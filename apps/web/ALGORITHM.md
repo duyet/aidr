@@ -1002,6 +1002,12 @@ drain it.
 | `judge-relevance`, `judge-source-quality`, `judge-safety` | `createJevJudgeExecutor`, one seat, score-panel or submission-gate subject shape | `JEV_PANEL_{RELEVANCE,SOURCE_QUALITY,SAFETY}_MODEL` | support/oppose agreement; abstain or transport failure = invalid | silver `items.status` published/rejected and `submissions.status` (`judge-score.json`; panel never ran in prod, no stored votes) |
 | `judge-translation-fidelity` | same, translation-gate subject shape | `JEV_PANEL_TRANSLATION_FIDELITY_MODEL` | same | silver `qa_rating` ≥0.7 and rejected suggestions (`judge-translation.json`) |
 
+The `cluster` row is silver, so a model that merges what prod missed
+scores as a false positive. `scripts/cluster-gold-eval.ts` scores the
+cluster call against hand-labelled same-story groups that reached the prod
+24h pool unmerged on 2026-10-10 (`fixtures/quality-bench/cluster-gold.json`,
+96 rows, topic-only negatives included). Rank cluster models on it first.
+
 Not benched yet: repair (`requestRepair`), suggestion retranslate
 (`suggestions.ts`), and digest wrap (`mail/compose.ts`). Review-queue data
 is thin (2026-10-02: 2 usable suggestions, 12 submissions), so treat those
