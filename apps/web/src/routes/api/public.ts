@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withEtag } from "../../lib/etag";
 import {
   API_CONTENT_LANGUAGE,
   resolveApiRequestLocale,
@@ -38,11 +39,14 @@ export const Route = createFileRoute("/api/public")({
           if (policy.vary) headers.set("Vary", policy.vary);
         }
         headers.set("Content-Language", API_CONTENT_LANGUAGE);
-        return new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers,
-        });
+        return withEtag(
+          request,
+          new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers,
+          })
+        );
       },
     },
   },

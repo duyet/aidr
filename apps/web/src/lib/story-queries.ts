@@ -15,6 +15,25 @@ import type { ContentLogEntry, FeedItem, ItemSource } from "./types";
 
 const STORY_URL_MAX_LENGTH = 1024;
 
+/**
+ * Index-friendly id-prefix predicate. `substr(col, 1, n) = ?` alone cannot use
+ * the `items` primary key or `idx_item_sources_item`, so every story lookup
+ * scanned both tables (2026-10 D1 analytics: ~70% of all rows read). The
+ * half-open range `[prefix, prefix || U+FFFF)` lets SQLite seek the index
+ * under BINARY collation (ids are ASCII hex, so every id starting with the
+ * prefix sorts inside it); the trailing `substr` keeps the match exact.
+ * Binds: (prefix, prefix + U+FFFF, prefix.length, prefix).
+ */
+export function idPrefixPredicate(column: string): string {
+  return `${column} >= ? AND ${column} < ? AND substr(${column}, 1, ?) = ?`;
+}
+
+export function idPrefixBinds(
+  prefix: string
+): [string, string, number, string] {
+  return [prefix, `${prefix}\uffff`, prefix.length, prefix];
+}
+
 let llmTokensSupported: boolean | null = null;
 let imageUrlSupported: boolean | null = null;
 let mediaManifestSupported: boolean | null = null;
@@ -161,22 +180,22 @@ async function queryStories(
        FROM items i
        ${hasVotes ? VOTE_NET_JOIN_I : ""}
        LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
-       WHERE substr(i.id, 1, ?) = ? AND i.status = 'published' LIMIT ${limit}`;
+       WHERE ${idPrefixPredicate("i.id")} AND i.status = 'published' LIMIT ${limit}`;
 
   // item_sources is keyed by the full id, so the same predicate lets both
-  // reads ride one db.batch — one D1 round-trip. Prefix matching uses substr
-  // rather than LIKE because a full 64-char LIKE pattern can exceed SQLite's
-  // pattern-complexity limit (D1_ERROR).
+  // reads ride one db.batch — one D1 round-trip. Prefix matching never uses
+  // LIKE: a full 64-char LIKE pattern can exceed SQLite's pattern-complexity
+  // limit (D1_ERROR). See idPrefixPredicate for why it is a range.
   const sourcesSql = `SELECT item_id, kind, author, posted_at, quote, url
        FROM item_sources
-       WHERE substr(item_id, 1, ?) = ? ORDER BY item_id, position`;
+       WHERE ${idPrefixPredicate("item_id")} ORDER BY item_id, position`;
 
   let rows: unknown[] = [];
   let sourceRows: Record<string, unknown>[] = [];
   try {
     const [itemRes, sourcesRes] = await db.batch([
-      db.prepare(itemSql).bind(idPrefix.length, idPrefix),
-      db.prepare(sourcesSql).bind(idPrefix.length, idPrefix),
+      db.prepare(itemSql).bind(...idPrefixBinds(idPrefix)),
+      db.prepare(sourcesSql).bind(...idPrefixBinds(idPrefix)),
     ]);
     rows = Array.isArray(itemRes.results) ? itemRes.results : [];
     sourceRows = Array.isArray(sourcesRes.results)
@@ -187,13 +206,13 @@ async function queryStories(
     // resolves without sources via a fallback read.
     const itemResult = await db
       .prepare(itemSql)
-      .bind(idPrefix.length, idPrefix)
+      .bind(...idPrefixBinds(idPrefix))
       .all<Record<string, unknown>>();
     rows = Array.isArray(itemResult.results) ? itemResult.results : [];
     try {
       const sourceResult = await db
         .prepare(sourcesSql)
-        .bind(idPrefix.length, idPrefix)
+        .bind(...idPrefixBinds(idPrefix))
         .all<Record<string, unknown>>();
       sourceRows = Array.isArray(sourceResult.results)
         ? sourceResult.results
@@ -271,10 +290,10 @@ export async function getStory(
   const { results } = await db
     .prepare(
       `SELECT duplicate_of FROM items
-       WHERE substr(id, 1, ?) = ? AND status = 'merged'
+       WHERE ${idPrefixPredicate("id")} AND status = 'merged'
          AND duplicate_of IS NOT NULL LIMIT 2`
     )
-    .bind(idPrefix.length, idPrefix)
+    .bind(...idPrefixBinds(idPrefix))
     .all<{ duplicate_of: string }>();
   // An ambiguous prefix resolves to nothing rather than to a guess.
   if (results?.length !== 1) return null;

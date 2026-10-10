@@ -122,8 +122,8 @@ class PublicFakeD1 {
     }
 
     // getStoryCandidates.
-    if (sql.includes("WHERE substr(i.id, 1, ?) = ?")) {
-      const [length, prefix] = args as [number, string];
+    if (sql.includes("substr(i.id, 1, ?) = ?")) {
+      const [, , length, prefix] = args as [string, string, number, string];
       return {
         results: this.published()
           .filter((row) => row.id.slice(0, length) === prefix)

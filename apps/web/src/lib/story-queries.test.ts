@@ -135,7 +135,7 @@ describe("getStory for a merged id", () => {
           if (s.sql.includes("item_sources")) return { results: [] };
           // Only the canonical's own prefix finds a published row.
           return {
-            results: s.args[1] === canonical.id ? [canonical] : [],
+            results: s.args[0] === canonical.id ? [canonical] : [],
           };
         });
       },

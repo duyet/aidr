@@ -22,7 +22,7 @@ import type { Env } from "../types.js";
  *    `items` schema after 27 migrations;
  *  - `getFeed`'s five-statement batch, its `INSERT INTO tldr_snapshots`
  *    read-time rebuild, and `ensureTopicLearningSchema`'s DDL;
- *  - `getStoryCandidates`' `substr(i.id, 1, ?) = ?` prefix matching, which
+ *  - `getStoryCandidates`' id-prefix range matching, which
  *    is the query an ambiguous-id rejection depends on;
  *  - the rate limiter's real `SELECT COUNT(*)` over a real
  *    `subscribe_attempts(ip_hash, created_at)` table.
