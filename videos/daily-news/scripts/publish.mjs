@@ -4,7 +4,7 @@
 // finished (YouTube cannot replace a file, Telegram cannot unpost), so rerunning is always safe.
 // The runner never writes scripts: script.json (and script.vi.json) must be written first.
 // Usage: node scripts/publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram]
-//        [--chat <telegram chat id>] [--prod] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
+//        [--no-voice] [--chat <telegram chat id>] [--prod] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
 // --uploader api (YouTube Data API, headless) is the default when YOUTUBE_REFRESH_TOKEN is set, else chrome (owner's Chrome).
 // --privacy applies to the api uploader only (default public).
 // Telegram goes to $TELEGRAM_STAGING_CHAT_ID (from .env.local) unless --chat is given; --prod posts to the real channels.
@@ -26,7 +26,7 @@ const argv = process.argv.slice(2);
 const date = argv[0];
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? ""))
   throw new Error(
-    "usage: publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--chat <id>] [--prod] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
+    "usage: publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--no-voice] [--chat <id>] [--prod] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
   );
 const flag = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);
 const list = (n, all) => (flag(n) ? flag(n).split(",").filter(Boolean) : all);
@@ -36,6 +36,7 @@ const uploader = flag("--uploader") ?? (process.env.YOUTUBE_REFRESH_TOKEN ? "api
 const privacy = flag("--privacy") ?? "public";
 const dry = argv.includes("--dry-run");
 const prod = argv.includes("--prod");
+const noVoice = argv.includes("--no-voice");
 for (const l of langs) if (!["en", "vi"].includes(l)) throw new Error(`--lang ${l}: en | vi`);
 if (!["chrome", "api"].includes(uploader)) throw new Error(`--uploader ${uploader}: chrome | api`);
 if (!["private", "unlisted", "public"].includes(privacy)) throw new Error(`--privacy ${privacy}: private | unlisted | public`);
@@ -144,6 +145,7 @@ const summary = (what, targets) =>
 
 // 1. Render.
 if (steps.includes("render")) {
+  const rendered = new Set();
   for (const l of langs) {
     const todo = byLang(l).filter((r) => !existsSync(r.path) || !existsSync(r.cover));
     summary(`render ${l}`, todo.map((r) => r.cut));
@@ -152,7 +154,8 @@ if (steps.includes("render")) {
       for (const r of todo) r.state = "rendering";
       save();
     }
-    run(process.execPath, [join(ROOT, "scripts/daily.mjs"), date, ...cutFor(l).args, "--render"]);
+    run(process.execPath, [join(ROOT, "scripts/daily.mjs"), date, ...cutFor(l).args, "--render", ...(noVoice ? ["--no-voice"] : [])]);
+    for (const r of todo) rendered.add(r.cut);
   }
   for (const r of mine) {
     if (dry) continue;
@@ -160,6 +163,10 @@ if (steps.includes("render")) {
     r.duration = Number(Number(probe(r.path, "-show_entries", "format=duration", "-of", "csv=p=0")).toFixed(2));
     r.sizeMB = Number((statSync(r.path).size / 1e6).toFixed(1));
     if (!["uploaded", "attached", "posted"].includes(r.state)) r.state = "rendered";
+    // Whether the cut has narration: build.mjs records it in the language's timeline.json.
+    const tl = join(dir, cutFor(r.lang).timeline);
+    if ((rendered.has(r.cut) || r.voice === undefined) && existsSync(tl))
+      r.voice = JSON.parse(readFileSync(tl, "utf8")).voice !== false;
   }
   save();
 }
@@ -263,6 +270,7 @@ console.log(`\n${dry ? "(dry run, nothing executed)\n" : ""}STATUS ${date}`);
 for (const r of mine) {
   const bits = [
     r.state,
+    r.voice !== undefined && (r.voice ? "voice" : "no voice"),
     r.duration && `${r.duration}s ${r.sizeMB}MB`,
     r.youtube?.url,
     r.attached && "attached",

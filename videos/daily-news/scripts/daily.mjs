@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Run an edition end to end once script.json is written: check it, voice, build, lint, snapshot, and
 // (with --render) render both formats at 4K.
-// Usage: node scripts/daily.mjs <date> [--lang vi] [--render]
+// Voice falls back to a no-voice cut (music bed, read-along captions) when ElevenLabs is out of quota;
+// --no-voice forces it. See voice.mjs.
+// Usage: node scripts/daily.mjs <date> [--lang vi] [--render] [--no-voice]
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -12,6 +14,7 @@ const HF = ["--yes", "hyperframes@0.8.96"];
 const date = process.argv[2];
 if (!date) throw new Error("usage: daily.mjs <date> [--lang vi] [--render]");
 const cut = cutOf(process.argv);
+const noVoice = process.argv.includes("--no-voice");
 const dir = join(ROOT, "editions", date);
 const node = (script, ...args) =>
   execFileSync(
@@ -41,7 +44,7 @@ const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
 // Unattended runs (AIDR_NO_HEYGEN=1 or CI) have no HeyGen fallback, so skip its sign-in check.
 const noHeygen = process.env.AIDR_NO_HEYGEN === "1" || process.env.CI === "true";
 const auth = (() => {
-  if (noHeygen) return "valid";
+  if (noHeygen || noVoice) return "valid";
   try {
     return hf(ROOT, "auth", "status");
   } catch (e) {
@@ -52,7 +55,7 @@ if (!/valid/.test(auth))
   console.warn(
     `! HeyGen sign-in looks expired: run \`npx hyperframes auth login\` if voicing${config.voice.provider === "heygen" ? "" : " falls back to HeyGen and"} fails`
   );
-node("voice.mjs");
+node("voice.mjs", ...(noVoice ? ["--no-voice"] : []));
 node("build.mjs");
 
 // 4. Lint and snapshot both formats.

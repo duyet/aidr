@@ -6,7 +6,10 @@
 // voiced separately and joined with a short breath into one segment file.
 // Writes editions/<date>/voice/<id>.wav and <id>.words.json (word timings for captions and cues).
 // Parts are cached by provider + voice + text, so editing one sentence re-voices only that sentence.
-// Usage: node scripts/voice.mjs 2026-10-02 [--lang vi]
+// If ElevenLabs cannot voice the day (quota short for the uncached sentences, key missing or rejected,
+// or --no-voice), nothing is voiced: voice/mode.json says { "voice": false } and build.mjs makes the
+// silent cut (music bed, sfx, read-along captions). No HeyGen fallback and no mixed cut in that case.
+// Usage: node scripts/voice.mjs 2026-10-02 [--lang vi] [--no-voice]
 import { execFile, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -20,6 +23,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { castProblems, hostOrder, loadCast } from "./cast.mjs";
 import { cutOf } from "./lang.mjs";
+import { QuotaError, partsOf, quotaShortfall } from "./novoice.mjs";
 
 const run = promisify(execFile);
 const ROOT = resolve(import.meta.dirname, "..");
@@ -54,12 +58,10 @@ const segments = [
   { id: "outro", line: script.outro.voice, anchor: script.outro.anchor },
 ].map((seg, i) => ({
   ...seg,
-  parts: (typeof seg.line === "string" ? [{ text: seg.line }] : seg.line).map(
-    (p) => ({
-      anchor: p.anchor ?? seg.anchor ?? order[i % order.length],
-      text: p.text,
-    })
-  ),
+  parts: partsOf(seg.line).map((p) => ({
+    anchor: p.anchor ?? seg.anchor ?? order[i % order.length],
+    text: p.text,
+  })),
 }));
 
 const problems = castProblems(segments.flatMap((s) => s.parts));
@@ -96,11 +98,13 @@ async function limited(fn) {
 }
 
 // ElevenLabs with-timestamps: mp3 → 48 kHz mono wav, character alignment → [{ id, text, start, end }].
+let stop = null; // the first QuotaError: parts still queued must not call the API
 async function elevenlabs(voiceId, text, wav, wordsFile) {
   if (!process.env.ELEVENLABS_API_KEY)
-    throw new Error("ELEVENLABS_API_KEY is not set");
-  const call = () =>
-    fetch(
+    throw new QuotaError("ELEVENLABS_API_KEY is not set");
+  const call = () => {
+    if (stop) throw stop;
+    return fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`,
       {
         method: "POST",
@@ -115,12 +119,20 @@ async function elevenlabs(voiceId, text, wav, wordsFile) {
         }),
       }
     );
+  };
   let res = await limited(call);
   for (let k = 1; res.status === 429 && k <= 4; k++) {
     await new Promise((r) => setTimeout(r, 2000 * k));
     res = await limited(call);
   }
-  if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    // 401 is a rejected key or an exhausted quota; 402 is billing; quota_exceeded can ride on a 429.
+    const msg = `ElevenLabs ${res.status}: ${body.slice(0, 200)}`;
+    throw res.status === 401 || res.status === 402 || /quota_exceeded/i.test(body)
+      ? new QuotaError(msg)
+      : new Error(msg);
+  }
   const data = await res.json();
   const mp3 = `${wav}.mp3`;
   writeFileSync(mp3, Buffer.from(data.audio_base64, "base64"));
@@ -174,8 +186,8 @@ async function heygenTts(a, text, wav, wordsFile) {
   ]);
 }
 
-// One part: the cast host via ElevenLabs, else the HeyGen anchor of the same gender.
-async function voicePart({ anchor, text }) {
+// The cast host and the HeyGen anchor that stands in for it, and the cache file of a part.
+function lookup({ anchor, text }) {
   const host = cast.hosts[anchor];
   const hg =
     heygen.anchors[anchor] ?? heygen.anchors[heygen.byGender[host?.gender]];
@@ -192,6 +204,13 @@ async function voicePart({ anchor, text }) {
       .slice(0, 12);
     return join(dir, cut.voice, "parts", `${anchor}-${key}.wav`);
   };
+  return { host, hg, file };
+}
+
+// One part: the cast host via ElevenLabs, else the HeyGen anchor of the same gender.
+async function voicePart(part) {
+  const { anchor, text } = part;
+  const { host, hg, file } = lookup(part);
   let wav = null;
   if (host && config.voice.provider === "elevenlabs") {
     wav = file("elevenlabs", host.id);
@@ -205,6 +224,10 @@ async function voicePart({ anchor, text }) {
         );
         console.log(`+ ${anchor} (elevenlabs): ${text.slice(0, 60)}`);
       } catch (e) {
+        if (e instanceof QuotaError) {
+          stop ??= e;
+          throw e;
+        }
         if (NO_HEYGEN)
           throw new Error(
             `ElevenLabs failed for ${anchor} and the HeyGen fallback is off (AIDR_NO_HEYGEN/CI): ${e.message.slice(0, 200)}`
@@ -237,7 +260,56 @@ async function voicePart({ anchor, text }) {
   };
 }
 
-await Promise.all(
+// ---- no-voice decision: before any synthesis, and again if a part hits a quota or key error.
+const modeFile = join(dir, cut.voice, "mode.json");
+function setMode(voice, reason) {
+  writeFileSync(modeFile, `${JSON.stringify(voice ? { voice } : { voice, reason }, null, 2)}\n`);
+}
+function goNoVoice(reason) {
+  for (const seg of segments)
+    rmSync(join(dir, cut.voice, `${seg.id}.wav`), { force: true });
+  setMode(false, reason);
+  console.log(`! no voice: ${reason}`);
+  console.log(
+    "  the cut keeps the music bed and sfx, with read-along captions timed by config.timing.noVoice"
+  );
+  process.exit(0);
+}
+
+if (process.argv.includes("--no-voice")) goNoVoice("--no-voice");
+
+if (config.voice.provider === "elevenlabs") {
+  // Characters still to synthesize: uncached sentences by a cast host, each file once.
+  const todo = new Map();
+  for (const part of segments.flatMap((s) => s.parts)) {
+    const { host, file } = lookup(part);
+    if (host && !existsSync(file("elevenlabs", host.id)))
+      todo.set(file("elevenlabs", host.id), part.text.length);
+  }
+  const needed = [...todo.values()].reduce((a, b) => a + b, 0);
+  if (needed > 0) {
+    if (!process.env.ELEVENLABS_API_KEY)
+      goNoVoice(`ELEVENLABS_API_KEY is not set (${needed} characters to voice)`);
+    try {
+      const res = await fetch("https://api.elevenlabs.io/v1/user/subscription", {
+        headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY },
+      });
+      if (res.status === 401)
+        goNoVoice("ElevenLabs rejected the API key (401)");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const sub = await res.json();
+      const short = quotaShortfall(needed, sub);
+      if (short) goNoVoice(short);
+      console.log(
+        `✓ ElevenLabs quota ok: ${needed} characters to voice, ${sub.character_limit - sub.character_count} left`
+      );
+    } catch (e) {
+      console.warn(`! could not read the ElevenLabs quota (${e.message}); voicing anyway, a quota error mid-run still ends in a no-voice cut`);
+    }
+  }
+}
+
+const settled = await Promise.allSettled(
   segments.map(async (seg) => {
     const parts = await Promise.all(seg.parts.map(voicePart));
     const out = join(dir, cut.voice, `${seg.id}.wav`);
@@ -281,3 +353,8 @@ await Promise.all(
     );
   })
 );
+const failed = settled.filter((r) => r.status === "rejected");
+const quota = failed.find((r) => r.reason instanceof QuotaError);
+if (quota) goNoVoice(quota.reason.message);
+if (failed.length) throw failed[0].reason;
+setMode(true);
