@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@aidr/tsconfig": "workspace:*",
-    "@cloudflare/workers-types": "5.20261009.1",
+    "@cloudflare/workers-types": "5.20261010.1",
     "@types/node": "^25.6.0",
     "typescript": "*",
     "vitest": "^5.0.0",
