@@ -133,16 +133,23 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 ANYROUTER_MODEL = "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anyrouter/auto"
 # Translate tries the probed Gemini 3 Flash first, then the Gemma free
 # catalog ids. Each extra id still reserves a 20s fallback slice
-# (2026-10-02); Laguna stays last. Dropped @preset/aidr (11/87 ok over 24h,
+# (2026-10-02). Dropped @preset/aidr (11/87 ok over 24h,
 # 44 rate-limited) and anyrouter/auto (prod translate 0 of 8).
 # gemma-latest (30/30 served, fidelity 0.944 in the 2026-10-10 bake-off)
 # before the gemma-4-31b :free route, kept until duyet/anyrouter#4798.
-ANYROUTER_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-latest,google/gemma-4-31b,google/gemma-4-26b-a4b-it,poolside/laguna-s-2.1"
+# 2026-10-11 (llm_calls, 7d, translate ok/n): gemini-3-flash 819/1035,
+# laguna 73/185, gemma-4-31b 110/366 (213 timeouts), gemma-4-26b 35/148
+# (103 timeouts, dropped). Laguna moved ahead of 31b. gemma-latest stays
+# second: summarize uses this chain and it served 20/20 there while
+# gemini-3-flash 502d 21/21.
+ANYROUTER_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-latest,poolside/laguna-s-2.1,google/gemma-4-31b"
 # TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
 # the first hop's budget, and Laguna needs 102-119s on the 26K VI prompt.
 # 2026-10-10 tldr bench (3 cases): gpt-5.6-luna quality 1.0, p50 37s,
-# ~$0.005/run; laguna 0.973, p50 99s. anyrouter/auto (→ laguna) stays last.
-ANYROUTER_TLDR_MODEL = "openai/gpt-5.6-luna,anyrouter/auto"
+# ~$0.005/run; laguna 0.973, p50 99s.
+# 2026-10-11: anyrouter/auto 0/26 on tldr over 7d (22 timeouts); replaced
+# by gemini-3-flash (tldr 3/3 at ~4s, translate 819/1035).
+ANYROUTER_TLDR_MODEL = "openai/gpt-5.6-luna,google/gemini-3-flash"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
 # (router aliases and presets are filtered out of this chain). Gemini 3
