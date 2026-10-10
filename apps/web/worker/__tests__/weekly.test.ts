@@ -206,7 +206,7 @@ describe("weekly gate", () => {
 class WeeklyD1 {
   writes: { sql: string; args: unknown[] }[] = [];
   reads: string[] = [];
-  constructor(private existing: Record<string, unknown> | null = null) {}
+  constructor(private existing: Record<string, unknown>[] = []) {}
 
   prepare(sql: string) {
     this.reads.push(sql);
@@ -220,6 +220,7 @@ class WeeklyD1 {
           },
         ];
       }
+      if (/FROM weekly_snapshots/.test(sql)) return this.existing;
       if (/duplicate_of/.test(sql)) return [];
       if (/FROM items i/.test(sql)) {
         return [
@@ -242,8 +243,7 @@ class WeeklyD1 {
     };
     const bound = {
       all: async () => ({ results: answer() }),
-      first: async () =>
-        /FROM weekly_snapshots/.test(sql) ? this.existing : null,
+      first: async () => null,
       run: async () => {
         this.writes.push({ sql, args });
         return { success: true, meta: { changes: 1 } };
@@ -276,6 +276,18 @@ const GOOD_COPY = JSON.stringify({
   ],
 });
 
+/** A complete row: LLM copy in both languages. */
+function completeRow(week: string) {
+  return {
+    week,
+    fallback: 0,
+    intro_vi: "x",
+    stories_vi: '[{"item_id":"a","text":"y"}]',
+    updated_at: MONDAY - 1000,
+    created_at: MONDAY - 1000,
+  };
+}
+
 describe("weekly step", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -287,12 +299,13 @@ describe("weekly step", () => {
   });
 
   it("writes last week's edition once, with each language in its own column", async () => {
-    const db = new WeeklyD1();
+    const db = new WeeklyD1([completeRow("2026-W40")]);
     const stats = await ensureWeeklyEdition(env(db), MONDAY);
     expect(stats).toMatchObject({ generated: true, week: "2026-W41" });
     expect(db.writes).toHaveLength(1);
     const args = db.writes[0].args;
     expect(args[0]).toBe("2026-W41");
+    expect(args[1]).toBe(2);
     expect(args[5]).toBe("Alpha defined the week.");
     expect(args[6]).toBe("Alpha là tâm điểm của tuần.");
     expect(JSON.parse(args[8] as string)).toEqual([
@@ -301,14 +314,17 @@ describe("weekly step", () => {
     expect(args[9]).toBe(0);
   });
 
-  it("is one cheap read and no LLM call when the week is already written", async () => {
-    const db = new WeeklyD1({
-      fallback: 0,
-      intro_vi: "x",
-      stories_vi: '[{"item_id":"a","text":"y"}]',
-      updated_at: MONDAY - 1000,
-      created_at: MONDAY - 1000,
-    });
+  it("recovers an older missing week first, so a late deploy or a failed Monday never skips an issue", async () => {
+    const db = new WeeklyD1();
+    const stats = await ensureWeeklyEdition(env(db), MONDAY);
+    expect(stats).toMatchObject({ generated: true, week: "2026-W40" });
+    expect(db.writes[0].args.slice(0, 2)).toEqual(["2026-W40", 1]);
+    // One edition (one LLM call) per run; the next run writes W41.
+    expect(db.writes).toHaveLength(1);
+  });
+
+  it("is one cheap read and no LLM call when every week is already written", async () => {
+    const db = new WeeklyD1([completeRow("2026-W40"), completeRow("2026-W41")]);
     const stats = await ensureWeeklyEdition(env(db), MONDAY);
     expect(stats.generated).toBe(false);
     expect(db.reads).toHaveLength(1);
@@ -317,13 +333,15 @@ describe("weekly step", () => {
 
   it("never replaces a real edition with title lines when a retry's LLM fails", async () => {
     llmContent.value = new Error("chain exhausted");
-    const db = new WeeklyD1({
-      fallback: 0,
-      intro_vi: null,
-      stories_vi: "[]",
-      updated_at: MONDAY - WEEKLY_RETRY_MS,
-      created_at: MONDAY - WEEKLY_RETRY_MS,
-    });
+    const db = new WeeklyD1([
+      completeRow("2026-W40"),
+      {
+        ...completeRow("2026-W41"),
+        intro_vi: null,
+        stories_vi: "[]",
+        updated_at: MONDAY - WEEKLY_RETRY_MS,
+      },
+    ]);
     const stats = await ensureWeeklyEdition(env(db), MONDAY);
     expect(stats.reason).toMatch(/^kept existing edition/);
     expect(db.writes).toEqual([]);

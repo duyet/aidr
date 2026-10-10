@@ -8,7 +8,12 @@
  * `WEEKLY_RETRY_MS`), so the 30-minute schedule makes it a Monday job.
  */
 import { stripTitleMarker } from "../src/lib/plain-text.js";
-import { lastClosedWeek, weekBounds, weekIssue } from "../src/lib/week.js";
+import {
+  lastClosedWeek,
+  shiftWeek,
+  weekBounds,
+  weekIssue,
+} from "../src/lib/week.js";
 import { topBullets } from "./digest/edition.js";
 import {
   callAnyrouter,
@@ -30,6 +35,8 @@ export const WEEKLY_MAX_STORIES = 10;
 const WEEKLY_WINDOW_CANDIDATES = 60;
 /** A fallback or English-only row is retried this often, not every run. */
 export const WEEKLY_RETRY_MS = 6 * 60 * 60 * 1000;
+/** Closed weeks the step looks back over for a missing edition. */
+export const WEEKLY_BACKFILL_WEEKS = 4;
 const WEEKLY_TIMEOUT_MS = 200_000;
 const WEEKLY_MAX_TOKENS = 4096;
 /** Each day a story led a daily edition adds this much (up to 3 days). */
@@ -449,6 +456,7 @@ async function buildWeeklyEdition(
 }
 
 interface ExistingWeekRow {
+  week: string;
   fallback: number;
   intro_vi: string | null;
   stories_vi: string | null;
@@ -456,43 +464,84 @@ interface ExistingWeekRow {
   created_at: number;
 }
 
-/** The `weekly` ingest step: writes the last closed week once. */
+/** Closed weeks the step may still build, oldest first: the last
+ * `WEEKLY_BACKFILL_WEEKS`, from the first issue on. A deploy after Monday,
+ * or a Monday where every run failed, still gets its week written. */
+export function weeksToConsider(nowMs: number): string[] {
+  const last = lastClosedWeek(nowMs);
+  const weeks: string[] = [];
+  for (let back = WEEKLY_BACKFILL_WEEKS - 1; back >= 0; back--) {
+    const week = shiftWeek(last, -back);
+    if (week && weekIssue(week) !== null) weeks.push(week);
+  }
+  return weeks;
+}
+
+/** The `weekly` ingest step: writes the oldest closed week (within the
+ * backfill window) that has no complete edition. At most one LLM call per
+ * run; when every week is written it is one D1 read. */
 export async function ensureWeeklyEdition(
   env: Env,
   nowMs: number = Date.now()
 ): Promise<WeeklyRunStats> {
-  const week = lastClosedWeek(nowMs);
-  const existing = await env.DB.prepare(
-    "SELECT fallback, intro_vi, stories_vi, updated_at, created_at FROM weekly_snapshots WHERE week = ?"
+  const weeks = weeksToConsider(nowMs);
+  const latest = lastClosedWeek(nowMs);
+  if (weeks.length === 0) {
+    return {
+      generated: false,
+      tokens: 0,
+      reason: "before the first weekly issue",
+      week: latest,
+    };
+  }
+  const { results } = await env.DB.prepare(
+    "SELECT week, fallback, intro_vi, stories_vi, updated_at, created_at FROM weekly_snapshots WHERE week >= ?"
   )
-    .bind(week)
-    .first<ExistingWeekRow>();
-  const gate = weeklyGateReason({
-    issue: weekIssue(week),
-    existing: existing ?? null,
-    nowMs,
-  });
-  if (gate) return { generated: false, tokens: 0, reason: gate, week };
+    .bind(weeks[0])
+    .all<ExistingWeekRow>();
+  const rows = new Map((results ?? []).map((row) => [row.week, row]));
 
-  const built = await buildWeeklyEdition(env, week);
-  const { edition } = built;
-  if (!edition) {
-    return {
-      generated: false,
-      tokens: built.tokens,
-      reason: built.reason,
-      week,
-    };
+  let lastReason = "edition already written";
+  let tokens = 0;
+  for (const week of weeks) {
+    const existing = rows.get(week) ?? null;
+    const gate = weeklyGateReason({
+      issue: weekIssue(week),
+      existing,
+      nowMs,
+    });
+    if (gate) {
+      lastReason = gate;
+      continue;
+    }
+    const built = await buildWeeklyEdition(env, week);
+    tokens += built.tokens;
+    // No stories that week (no LLM call was made): try the next one.
+    if (!built.edition) {
+      lastReason = built.reason;
+      continue;
+    }
+    // A failed retry must not replace a real edition with title lines.
+    if (existing && existing.fallback === 0 && built.edition.fallback) {
+      return {
+        generated: false,
+        tokens,
+        reason: `kept existing edition: ${built.reason}`,
+        week,
+      };
+    }
+    await writeWeeklyEdition(env, built.edition, existing, nowMs);
+    return { generated: true, tokens, reason: built.reason, week };
   }
-  // A failed retry must not replace a real edition with title lines.
-  if (existing && existing.fallback === 0 && edition.fallback) {
-    return {
-      generated: false,
-      tokens: built.tokens,
-      reason: `kept existing edition: ${built.reason}`,
-      week,
-    };
-  }
+  return { generated: false, tokens, reason: lastReason, week: latest };
+}
+
+async function writeWeeklyEdition(
+  env: Env,
+  edition: WeeklyEdition,
+  existing: ExistingWeekRow | null,
+  nowMs: number
+): Promise<void> {
   await env.DB.prepare(
     `INSERT INTO weekly_snapshots (week, issue, start_date, end_date, item_ids,
        intro_en, intro_vi, stories_en, stories_vi, fallback, created_at, updated_at)
@@ -524,7 +573,6 @@ export async function ensureWeeklyEdition(
       nowMs
     )
     .run();
-  return { generated: true, tokens: built.tokens, reason: built.reason, week };
 }
 
 export interface WeeklyPreview extends WeeklyRunStats {

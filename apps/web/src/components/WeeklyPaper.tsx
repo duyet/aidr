@@ -64,7 +64,7 @@ function LeadStory({ story, lang }: { story: WeekStory; lang: Lang }) {
   const image = resizeCdnImageUrl(story.item.image_url, "full");
   const href = storyPath(story.item, lang);
   return (
-    <article className="grid gap-5 border-b-2 border-foreground pb-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:gap-8">
+    <article className="typeset grid gap-5 border-b-2 border-foreground pb-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:gap-8">
       {image ? (
         <a href={href} className="block overflow-hidden bg-muted">
           <img
@@ -79,7 +79,7 @@ function LeadStory({ story, lang }: { story: WeekStory; lang: Lang }) {
       <div className={image ? "" : "md:col-span-2"}>
         <Kicker story={story} lang={lang} />
         <h2 className="mt-2 font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-          <a href={href} className="hover:underline">
+          <a href={href} className="font-semibold no-underline hover:underline">
             {headline}
           </a>
         </h2>
@@ -98,7 +98,7 @@ function ColumnStory({ story, lang }: { story: WeekStory; lang: Lang }) {
   const image = resizeCdnImageUrl(story.item.image_url, "card");
   const href = storyPath(story.item, lang);
   return (
-    <article className="mb-6 break-inside-avoid border-b border-border pb-5">
+    <article className="typeset mb-6 break-inside-avoid border-b border-border pb-5">
       {image && story.rank <= 4 ? (
         <a href={href} className="mb-3 block overflow-hidden bg-muted">
           <img
@@ -112,7 +112,7 @@ function ColumnStory({ story, lang }: { story: WeekStory; lang: Lang }) {
       ) : null}
       <Kicker story={story} lang={lang} />
       <h3 className="mt-1.5 font-serif text-xl font-semibold leading-snug">
-        <a href={href} className="hover:underline">
+        <a href={href} className="font-semibold no-underline hover:underline">
           {headline}
         </a>
       </h3>
@@ -136,7 +136,12 @@ export function WeeklyPaper({
   lang: Lang;
 }) {
   const vi = lang === "vi";
-  const stories = weekStoriesFor(edition, lang);
+  // Numbered within this language: a story with no line here is left out,
+  // so the paper never skips from 01 to 03.
+  const stories = weekStoriesFor(edition, lang).map((story, index) => ({
+    ...story,
+    rank: index + 1,
+  }));
   const [lead, ...rest] = stories;
   const intro = weekIntro(edition, lang);
   const range = formatWeekRange(edition.start_date, edition.end_date, lang);
@@ -189,7 +194,7 @@ export function WeeklyPaper({
       {intro ? (
         <section
           aria-label={vi ? "Lời mở đầu" : "From the editor"}
-          className="border-b border-border py-6"
+          className="typeset border-b border-border py-6"
         >
           <p className="mx-auto max-w-3xl font-serif text-xl leading-relaxed first-letter:float-left first-letter:mr-2 first-letter:font-bold first-letter:text-6xl first-letter:leading-[0.85]">
             {intro}
