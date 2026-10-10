@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.1.14](https://github.com/duyet/aidr/compare/web-v0.1.13...web-v0.1.14) (2026-10-10)
+
+
+### ✨ Features
+
+* **email:** one-click feedback on the digest ([#545](https://github.com/duyet/aidr/issues/545)) ([1fb80e4](https://github.com/duyet/aidr/commit/1fb80e4ea7f16aa41d44175d799aaf48962fe912))
+* **email:** redesign the daily digest mail ([#544](https://github.com/duyet/aidr/issues/544)) ([b3948d8](https://github.com/duyet/aidr/commit/b3948d86dcc1fbee34bad09c061fbffd843aa22c))
+* **llm:** gemma-latest and glm-latest for score/cluster, luna for TL;DR ([#541](https://github.com/duyet/aidr/issues/541)) ([fccb318](https://github.com/duyet/aidr/commit/fccb318877873c9bb2ad6313b02888fe6021adfe))
+* **translate:** tighten VI style, flag doubled words, add bullet bake-off ([#519](https://github.com/duyet/aidr/issues/519)) ([caef34d](https://github.com/duyet/aidr/commit/caef34d7b34bae6391e73f679047d014016f7b7c))
+* **videos:** daily video workflow with per-language day page and Telegram ([#511](https://github.com/duyet/aidr/issues/511)) ([8043272](https://github.com/duyet/aidr/commit/8043272ac0ec4e54c964ad5104e85a3933e015fe))
+
+
+### 🐛 Bug Fixes
+
+* **admin:** Clerk token check fails closed without CLERK_ISSUER ([#523](https://github.com/duyet/aidr/issues/523)) ([e65bd51](https://github.com/duyet/aidr/commit/e65bd51f2dcd77b9846458339bc250fa43345ff8))
+* **admin:** count wrong bearers on /api/admin/me and /api/mcp ([#526](https://github.com/duyet/aidr/issues/526)) ([813f79d](https://github.com/duyet/aidr/commit/813f79d5e2b93a18369a19d1a3e5ec10f9a95ab9))
+* **admin:** mail preview route was shadowed by the generic GET /mail handler ([#546](https://github.com/duyet/aidr/issues/546)) ([188d348](https://github.com/duyet/aidr/commit/188d34849f8f8e0b8b200a5feca503c6bee71909))
+* **clerk:** webhook trusts the signed body type over svix-type ([#529](https://github.com/duyet/aidr/issues/529)) ([dc3e705](https://github.com/duyet/aidr/commit/dc3e70596649fc28810bc8e9ceef993c9f24fb88))
+* **email:** join translations for the VI title; never let the lookup block a send ([#547](https://github.com/duyet/aidr/issues/547)) ([6d1c570](https://github.com/duyet/aidr/commit/6d1c5705f655964680c07310e11baad55e6e31de))
+* **email:** wait for the subscriber's local-date edition ([#542](https://github.com/duyet/aidr/issues/542)) ([39ef52b](https://github.com/duyet/aidr/commit/39ef52be71ba0124c0a49394c237ef361e1f60a7))
+* **health:** owner DM errors name Telegram's reason, rejected summary DM stops retrying ([#527](https://github.com/duyet/aidr/issues/527)) ([c992607](https://github.com/duyet/aidr/commit/c9926073affe2a2514206863ca237b05156b44aa)), closes [#521](https://github.com/duyet/aidr/issues/521)
+* **ingest:** report email digest failures instead of calling them no subscribers ([#535](https://github.com/duyet/aidr/issues/535)) ([c1cd7bc](https://github.com/duyet/aidr/commit/c1cd7bc6cbfc811b033cb46689754b2a0788748e)), closes [#533](https://github.com/duyet/aidr/issues/533)
+* **ingest:** strip feed chrome from summaries; add gold cluster eval ([#540](https://github.com/duyet/aidr/issues/540)) ([200c78c](https://github.com/duyet/aidr/commit/200c78c3ef90936b3edfcc4986000b660c2b007e))
+* **llm:** log Jev/decision fetch timeouts as timeouts ([#538](https://github.com/duyet/aidr/issues/538)) ([c015b3d](https://github.com/duyet/aidr/commit/c015b3df57ea06fe8429406c3051bdb1b8a75ca6))
+* **notify:** claim each delivery before sending it ([#536](https://github.com/duyet/aidr/issues/536)) ([e70afda](https://github.com/duyet/aidr/commit/e70afda3095c58473b5ed423ca174a53f60aee02))
+* **notify:** fit Telegram captions instead of cutting them mid-sentence ([#518](https://github.com/duyet/aidr/issues/518)) ([9530d27](https://github.com/duyet/aidr/commit/9530d27a462079f6e1fed50e4289521a99fb1ee0))
+* **notify:** give Telegram media-by-URL calls a 45s timeout ([#530](https://github.com/duyet/aidr/issues/530)) ([f9ec226](https://github.com/duyet/aidr/commit/f9ec22653a4be1855cc1f554f3b88bbf1f1d44fd)), closes [#482](https://github.com/duyet/aidr/issues/482) [#483](https://github.com/duyet/aidr/issues/483)
+* **notify:** webhook timeout is ambiguous, not sent ([#528](https://github.com/duyet/aidr/issues/528)) ([5afd698](https://github.com/duyet/aidr/commit/5afd698c22ba6f9d90651f09cf0364e54d078e1f))
+* **scripts:** stop syncing FACEBOOK_APP_SECRET to the Worker and GitHub ([#537](https://github.com/duyet/aidr/issues/537)) ([d04c70a](https://github.com/duyet/aidr/commit/d04c70a10645b16f85014b8f79930104a9490df8)), closes [#525](https://github.com/duyet/aidr/issues/525)
+* **subscribe:** confirm settings changes for subscribed addresses by email ([#534](https://github.com/duyet/aidr/issues/534)) ([#543](https://github.com/duyet/aidr/issues/543)) ([f6b79f4](https://github.com/duyet/aidr/commit/f6b79f4253e9e03d7abf9d4a543b898a25c2f553))
+* **web:** link the English Facebook release post with ?lang=en ([#497](https://github.com/duyet/aidr/issues/497)) ([a829158](https://github.com/duyet/aidr/commit/a8291587d685343e6a14c02e0839249ada5768ce))
+* **web:** read the Chrome Web Store publisher id from CWS_PUBLISHER_ID ([#492](https://github.com/duyet/aidr/issues/492)) ([66b6b88](https://github.com/duyet/aidr/commit/66b6b88191adaec8d49e95f014a7c062c09c922f))
+
 ## [0.1.13](https://github.com/duyet/aidr/compare/web-v0.1.12...web-v0.1.13) (2026-10-09)
 
 
