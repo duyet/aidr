@@ -330,6 +330,26 @@ describe("articleHead", () => {
       .map((t) => ("content" in t ? t.content : ""));
     expect(descriptions.every((d) => d === item.summary)).toBe(true);
   });
+
+  // A shared VI permalink must not preview the English headline when a
+  // translation exists: <title>, og:title and twitter:title follow the page.
+  it("uses the stored Vietnamese title and summary on the VI page", () => {
+    const vi = {
+      ...item,
+      title_vi: "Stripe mua lại OpenRouter",
+      summary_vi: "Hãng thanh toán mua cổng mô hình.",
+    };
+    const head = articleHead(vi, "vi");
+    expect(head.meta).toContainEqual({
+      title: "Stripe mua lại OpenRouter | AI;DR",
+    });
+    expect(metaContent(head.meta, "og:title")).toBe(vi.title_vi);
+    expect(metaContent(head.meta, "twitter:title")).toBe(vi.title_vi);
+    expect(metaContent(head.meta, "description")).toBe(vi.summary_vi);
+    const en = articleHead(vi, "en");
+    expect(metaContent(en.meta, "og:title")).toBe(item.title);
+    expect(metaContent(en.meta, "description")).toBe(item.summary);
+  });
 });
 
 describe("routeRobotsMeta", () => {
