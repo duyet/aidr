@@ -10,8 +10,10 @@
  *   pnpm --filter @aidr/web agent run [--steps a,b] [--force] [--wait]
  *   pnpm --filter @aidr/web agent rerun <step> [--force] [--wait]
  *   pnpm --filter @aidr/web agent day-video <YYYY-MM-DD> [--video <url|id>]
- *     [--short <url|id>] [--title <text>] [--clear-video] [--clear-short]
- *     [--delete]
+ *     [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video]
+ *     [--clear-short] [--delete]
+ *   pnpm --filter @aidr/web agent day-video-telegram <YYYY-MM-DD>
+ *     --lang en|vi [--chat <id>]   (sends a real Telegram message)
  *
  * `run` and `rerun` are dry runs unless `--live` is passed. A dry run sends
  * no email, Telegram or owner alert and only previews the TL;DR, but still
@@ -118,9 +120,17 @@ function parseArgs(argv: string[]): Args {
 }
 
 function takesValue(flag: string): boolean {
-  return ["run", "runs", "limit", "steps", "video", "short", "title"].includes(
-    flag
-  );
+  return [
+    "run",
+    "runs",
+    "limit",
+    "steps",
+    "video",
+    "short",
+    "title",
+    "lang",
+    "chat",
+  ].includes(flag);
 }
 
 function flagNumber(args: Args, name: string, fallback: number): number {
@@ -284,20 +294,28 @@ async function tldrPreview(): Promise<void> {
 async function dayVideo(args: Args, date: string | undefined): Promise<void> {
   if (!date) fail("day-video needs a YYYY-MM-DD date");
   const pathname = `/api/admin/day-videos/${encodeURIComponent(date)}`;
-  if (args.flags.has("delete")) {
-    const result = await api<{ deleted: boolean }>(pathname, {
-      method: "DELETE",
-      admin: true,
-    });
-    print(result, `day-video ${date}: ${result.deleted ? "deleted" : "none"}`);
-    return;
-  }
-  const body: Record<string, string | null> = {};
   const value = (name: string): string | undefined => {
     const raw = args.flags.get(name);
     if (raw === true) fail(`--${name} needs a value`);
     return raw;
   };
+  const lang = value("lang");
+  if (lang !== undefined && lang !== "en" && lang !== "vi") {
+    fail("--lang must be en or vi");
+  }
+  if (args.flags.has("delete")) {
+    const result = await api<{ deleted: boolean }>(
+      lang ? `${pathname}?lang=${lang}` : pathname,
+      { method: "DELETE", admin: true }
+    );
+    print(
+      result,
+      `day-video ${date}${lang ? ` (${lang})` : ""}: ${result.deleted ? "deleted" : "none"}`
+    );
+    return;
+  }
+  const body: Record<string, string | null> = {};
+  if (lang) body.lang = lang;
   const video = value("video");
   const short = value("short");
   const title = value("title");
@@ -306,7 +324,7 @@ async function dayVideo(args: Args, date: string | undefined): Promise<void> {
   if (title !== undefined) body.title = title;
   if (args.flags.has("clear-video")) body.video = null;
   if (args.flags.has("clear-short")) body.short = null;
-  if (Object.keys(body).length === 0) {
+  if (Object.keys(body).filter((key) => key !== "lang").length === 0) {
     fail("day-video needs --video, --short, --title, --clear-* or --delete");
   }
   const result = await api<{
@@ -314,7 +332,31 @@ async function dayVideo(args: Args, date: string | undefined): Promise<void> {
   }>(pathname, { method: "PUT", body, admin: true });
   print(
     result,
-    `day-video ${date}: video=${result.video.youtube_id ?? "-"} short=${result.video.short_id ?? "-"} → ${base}/date/${date}`
+    `day-video ${date}${lang ? ` (${lang})` : ""}: video=${result.video.youtube_id ?? "-"} short=${result.video.short_id ?? "-"} → ${base}/date/${date}`
+  );
+}
+
+/** Post the day's video for one language to Telegram (a real message). */
+async function dayVideoTelegram(
+  args: Args,
+  date: string | undefined
+): Promise<void> {
+  if (!date) fail("day-video-telegram needs a YYYY-MM-DD date");
+  const lang = args.flags.get("lang");
+  if (lang !== "en" && lang !== "vi") fail("--lang en|vi is required");
+  const chat = args.flags.get("chat");
+  if (chat === true) fail("--chat needs a value");
+  const result = await api<{ chat_id: string; message_id: string }>(
+    `/api/admin/day-videos/${encodeURIComponent(date)}/telegram`,
+    {
+      method: "POST",
+      body: { lang, ...(chat ? { chat_id: chat } : {}) },
+      admin: true,
+    }
+  );
+  print(
+    result,
+    `day-video-telegram ${date} (${lang}): message ${result.message_id} in chat ${result.chat_id}`
   );
 }
 
@@ -424,9 +466,11 @@ async function main(): Promise<void> {
       return trigger(args, parseSteps(stepArg));
     case "day-video":
       return dayVideo(args, stepArg);
+    case "day-video-telegram":
+      return dayVideoTelegram(args, stepArg);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--clear-video] [--clear-short] [--delete]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>]"
       );
   }
 }

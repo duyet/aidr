@@ -170,12 +170,10 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
 
   // The day's video leads; without one, the day card (the page's og:image)
   // takes its place so the hero still shows the day at a glance.
-  const hero = archive.video ? (
-    <DayVideo
-      video={archive.video}
-      fallbackTitle={`AI;DR — ${heading}`}
-      lang={lang}
-    />
+  // Only this language's video: the other language's is never shown.
+  const video = archive.videos[lang];
+  const hero = video ? (
+    <DayVideo video={video} fallbackTitle={`AI;DR — ${heading}`} lang={lang} />
   ) : items.length > 0 ? (
     <a
       href={dayArchiveOgPath(archive.date, lang)}

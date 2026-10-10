@@ -65,7 +65,10 @@ function archive(overrides: Partial<DayArchive> = {}): DayArchive {
         { text: "Ý thứ hai" },
       ],
     },
-    video: { youtube_id: "dQw4w9WgXcQ", short_id: "abcdefghijk", title: null },
+    videos: {
+      en: { youtube_id: "dQw4w9WgXcQ", short_id: "abcdefghijk", title: null },
+      vi: null,
+    },
     prevDate: "2026-07-31",
     nextDate: null,
     ...overrides,
@@ -122,7 +125,7 @@ describe("renderDayMarkdown", () => {
           categoryCounts: {},
         },
         tldr: null,
-        video: null,
+        videos: { en: null, vi: null },
       }),
       "en"
     );

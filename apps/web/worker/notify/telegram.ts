@@ -1,4 +1,5 @@
 import { dayArchivePath } from "../../src/lib/day-archive.js";
+import { youtubeThumbnailUrl } from "../../src/lib/day-video.js";
 import { DEFAULT_LANG } from "../../src/lib/lang.js";
 import { absoluteSiteUrl, withSiteLang } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
@@ -866,4 +867,90 @@ export function telegramPreviewNotifier(lang: Lang, chatId: string): Notifier {
     chatId: () => chatId,
     enabled: (env) => Boolean(env.TELEGRAM_BOT_TOKEN?.trim() && chatId),
   });
+}
+
+export interface DayVideoPost {
+  date: string;
+  lang: Lang;
+  youtubeId: string;
+  /** Stored display title; a default headline is used when empty. */
+  title: string | null;
+}
+
+/** Same date headline as the digest: "AI;DR Daily Brief — 2026-10-03". */
+function dayVideoTitle(post: Pick<DayVideoPost, "date" | "lang" | "title">) {
+  const title = post.title?.trim();
+  if (title) return title;
+  return post.lang === "vi"
+    ? `Bản tin AI;DR — ${post.date}`
+    : `AI;DR Daily Brief — ${post.date}`;
+}
+
+export function dayVideoWatchUrl(youtubeId: string): string {
+  return `https://youtu.be/${youtubeId}`;
+}
+
+export function buildDayVideoCaption(post: DayVideoPost): string {
+  return `<b>${escapeHtml(dayVideoTitle(post))}</b>\n\n${escapeHtml(dayVideoWatchUrl(post.youtubeId))}`;
+}
+
+export function buildDayVideoReplyMarkup(post: DayVideoPost): object {
+  return {
+    inline_keyboard: [
+      [
+        { text: "▶ YouTube", url: dayVideoWatchUrl(post.youtubeId) },
+        {
+          text:
+            post.lang === "en"
+              ? "Day page on aidr.today"
+              : "Trang ngày trên aidr.today",
+          url: digestDayUrl(post),
+        },
+      ],
+    ],
+  };
+}
+
+/**
+ * Post a day's YouTube video to Telegram: the video thumbnail as a photo with
+ * the title, the watch link and the YouTube / day page buttons. YouTube has no
+ * `maxresdefault.jpg` for some uploads, so a definite `sendPhoto` rejection
+ * falls back to a text message (the link preview shows the video). An
+ * ambiguous outcome is never retried: Telegram may already have posted it.
+ */
+export async function sendDayVideoToTelegram(
+  env: Env,
+  chatId: string,
+  post: DayVideoPost
+): Promise<SendResult> {
+  const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
+  if (!token) return { ok: false, error: "TELEGRAM_BOT_TOKEN is not set" };
+  const caption = buildDayVideoCaption(post);
+  const reply_markup = buildDayVideoReplyMarkup(post);
+  const photo = await callTelegram(token, "sendPhoto", {
+    chat_id: chatId,
+    photo: youtubeThumbnailUrl(post.youtubeId, "maxres"),
+    caption,
+    parse_mode: "HTML",
+    reply_markup,
+  });
+  if (photo.ok) {
+    return { ok: true, messageId: telegramMessageId(photo.result) };
+  }
+  if (photo.ambiguous || photo.budgetExhausted) return sendFailure(photo);
+  console.error(
+    `telegram day video sendPhoto failed: ${photo.description}; sending text`
+  );
+  const text = await callTelegram(token, "sendMessage", {
+    chat_id: chatId,
+    text: caption,
+    parse_mode: "HTML",
+    reply_markup,
+    link_preview_options: {
+      url: dayVideoWatchUrl(post.youtubeId),
+      prefer_large_media: true,
+    },
+  });
+  if (!text.ok) return sendFailure(text);
+  return { ok: true, messageId: telegramMessageId(text.result) };
 }

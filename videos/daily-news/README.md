@@ -26,9 +26,11 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `scripts/cast.mjs` | yes | The voice cast: host keys, seeded host order, the "never twice in a row" check |
 | `scripts/build.mjs` | yes | Timeline, both compositions, audio mix, captions, covers, post copy |
 | `scripts/render.mjs` | yes | 4K MP4s and cover PNGs |
+| `scripts/publish.mjs` | yes | The one idempotent runner: render → upload → attach → telegram, state in `STATUS.json` |
 | `editions/<date>/edition.json` | yes | What the API said that day (the facts) |
 | `editions/<date>/script.json` | yes | The day's creative choices and spoken script (written by the agent) |
 | `editions/<date>/captions.srt`, `posts.md`, `timeline.json` | yes | Generated, kept as the day's record |
+| `editions/<date>/STATUS.json` | no | One row per cut (`<date>-<lang>-<fmt>`): render facts, YouTube id/url, attached, Telegram message |
 | `editions/<date>/assets/`, `assets-sheet.jpg`, `voice/`, `out/`, `renders/`, `snap-*/` | no | Third-party media and regenerable output |
 
 ## Daily run
@@ -38,13 +40,23 @@ From `videos/daily-news/` (on machines where `node`/`npx` are nvm shell function
 ```bash
 node scripts/new.mjs                     # fetch edition + media, assets-sheet.jpg, draft script.json (theme rotated vs yesterday)
 # write editions/<date>/script.json      # the agent: replace every TODO, rewrite the voice, delete _bullet
-node scripts/daily.mjs <date>            # refuses drafts; voice → build → lint → snapshots (snap-16x9/, snap-9x16/)
-node scripts/daily.mjs <date> --render   # same, then renders/*.mp4 (4K) + cover PNGs, ~15–25 min
+# in parallel, a sonnet subagent writes script.vi.json from the edition's text_vi (Vietnamese hosts)
+node scripts/publish.mjs <date> --steps render   # daily.mjs --render per language: 4K MP4s + covers, fills STATUS.json
+# review snap-*/ contact sheets and the renders
+node scripts/publish.mjs <date> --steps upload,attach   # YouTube (serial, owner's Chrome), then the day page
+node scripts/publish.mjs <date> --steps telegram        # staging chat first
+node scripts/publish.mjs <date> --steps telegram --prod # then the real channels
 ```
+
+`publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--chat <id>] [--prod] [--dry-run]` never writes scripts: it exits with a message when `script.json` / `script.vi.json` is missing or still a draft. State is `editions/<date>/STATUS.json`, one row per cut (`<date>-<lang>-<fmt>`: `path`, `cover`, `state`, `sizeMB`, `duration`, `youtube {id,url}`, `attached`, `telegram {chat_id,message_id}`); every step skips cuts it already finished (YouTube cannot replace a file, Telegram cannot unpost), so a rerun resumes. Uploads run one at a time and stop on the first failure; 16x9 is a `long` video with its cover as thumbnail, 9x16 a `short`. `attach` runs `agent day-video` with both ids and the title from `posts.md`. `telegram` posts to `$TELEGRAM_STAGING_CHAT_ID` (read from the repo `.env.local`) unless `--chat` is given; only `--prod` posts to the real channels. `--dry-run` prints every command and runs none.
+
+The anchors are the cast in `../brand/voices.json`: several voices per cut, alternating per story, seeded by the date (see `scripts/cast.mjs`).
+
+The single steps still work on their own: `daily.mjs <date> [--lang vi] [--render]` (refuses drafts; voice → build → lint → snapshots in `snap-16x9/`, `snap-9x16/`).
 
 **Vietnamese cut.** Write `editions/<date>/script.vi.json` (same shape; Vietnamese voice and screen text from the edition's `text_vi`/`title_vi`, anchors from the `vi` hosts in `voices.json`), then add `--lang vi` to `daily.mjs`, `voice.mjs`, `build.mjs` or `render.mjs`. It writes `voice-vi/`, `out-vi/`, `snap-vi-*/`, `captions.vi.srt`, `timeline.vi.json`, the `vi` block of `posts.md` (links with `?lang=vi`), and `renders/aidr-daily-<date>-vi-<fmt>-4k.mp4` / `cover-<date>-vi-<fmt>.png`. Screen labels (date, "BẢN TIN NGÀY", "nguồn") come from the `UI` table in `build.mjs`.
 
-The single steps still work on their own: `fetch.mjs`, `voice.mjs <date>`, `build.mjs <date> [--no-audio]`, `render.mjs <date> [--only 9x16]`. Voice parts are cached per sentence (anchor + text), so a wording fix re-voices only that sentence.
+Lower-level steps: `fetch.mjs`, `voice.mjs <date>`, `build.mjs <date> [--no-audio]`, `render.mjs <date> [--only 9x16]`. Voice parts are cached per sentence (anchor + text), so a wording fix re-voices only that sentence.
 
 ## script.json
 

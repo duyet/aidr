@@ -29,7 +29,7 @@ import {
   shouldRebuildTldrForDisplay,
 } from "./tldr-fallback";
 import { imageUrlByItemId, withTldrImages } from "./tldr-images";
-import type { DayGroup, FeedItem, FeedResponse } from "./types";
+import type { DayGroup, FeedItem, FeedResponse, Lang } from "./types";
 
 /** Hard serialized-body budget for the public feed endpoint. */
 export const FEED_RESPONSE_MAX_BYTES = 1_000_000;
@@ -612,25 +612,40 @@ export interface DayArchive {
   day: DayGroup | null;
   /** The `tldr_snapshots` row with this exact date, if any. */
   tldr: FeedResponse["tldr"];
-  video: DayVideo | null;
+  /** Per language; one never stands in for the other. */
+  videos: Record<Lang, DayVideo | null>;
   /** Nearest earlier / later audience-zone day with a published story. */
   prevDate: string | null;
   nextDate: string | null;
 }
 
-function parseDayVideoRow(row: unknown): DayVideo | null {
-  if (!row || typeof row !== "object") return null;
-  const r = row as Record<string, unknown>;
-  const youtubeId = isYoutubeId(r.youtube_id) ? r.youtube_id : null;
-  const shortId = isYoutubeId(r.short_id) ? r.short_id : null;
+function parseDayVideoColumns(
+  youtube: unknown,
+  short: unknown,
+  title: unknown
+): DayVideo | null {
+  const youtubeId = isYoutubeId(youtube) ? youtube : null;
+  const shortId = isYoutubeId(short) ? short : null;
   if (!youtubeId && !shortId) return null;
   return {
     youtube_id: youtubeId,
     short_id: shortId,
     title:
-      typeof r.title === "string" && r.title.trim()
-        ? r.title.trim().slice(0, DAY_VIDEO_TITLE_MAX)
+      typeof title === "string" && title.trim()
+        ? title.trim().slice(0, DAY_VIDEO_TITLE_MAX)
         : null,
+  };
+}
+
+/** The `en` columns and the `_vi` columns of one `day_videos` row. */
+export function parseDayVideoRow(row: unknown): Record<Lang, DayVideo | null> {
+  const r = (row && typeof row === "object" ? row : {}) as Record<
+    string,
+    unknown
+  >;
+  return {
+    en: parseDayVideoColumns(r.youtube_id, r.short_id, r.title),
+    vi: parseDayVideoColumns(r.youtube_id_vi, r.short_id_vi, r.title_vi),
   };
 }
 
@@ -686,15 +701,16 @@ export async function getDayArchive(
       .bind(end),
   ]);
 
-  let video: DayVideo | null = null;
+  let videos: Record<Lang, DayVideo | null> = { en: null, vi: null };
   try {
     const row = await db
       .prepare(
-        "SELECT youtube_id, short_id, title FROM day_videos WHERE date = ? LIMIT 1"
+        `SELECT youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi
+         FROM day_videos WHERE date = ? LIMIT 1`
       )
       .bind(date)
       .first();
-    video = parseDayVideoRow(row);
+    videos = parseDayVideoRow(row);
   } catch {
     // day_videos not migrated yet — the page renders without the TV slot
   }
@@ -753,7 +769,7 @@ export async function getDayArchive(
     date,
     day: bounded.days[0] ?? null,
     tldr: bounded.tldr,
-    video,
+    videos,
     prevDate: neighbour(prevRes),
     nextDate: neighbour(nextRes),
   };

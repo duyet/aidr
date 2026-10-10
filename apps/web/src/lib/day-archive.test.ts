@@ -192,11 +192,12 @@ describe("getDayArchive", () => {
     expect(archive.tldr?.bullets_vi[0]?.text).toBe("Bản tin tiếng Việt");
     expect(archive.prevDate).toBe("2026-09-30");
     expect(archive.nextDate).toBe("2026-10-03");
-    expect(archive.video).toEqual({
+    expect(archive.videos.en).toEqual({
       youtube_id: "B3vKYiV7rOw",
       short_id: "fStNAQhJo3M",
       title: null,
     });
+    expect(archive.videos.vi).toBeNull();
 
     const itemsSql = prepared.find((p) => p.sql.includes("FROM items i"));
     expect(itemsSql?.binds).toEqual([
@@ -227,7 +228,7 @@ describe("getDayArchive", () => {
     const archive = await getDayArchive(db, "2026-10-02");
     expect(archive.day).toBeNull();
     expect(archive.tldr).toBeNull();
-    expect(archive.video).toBeNull();
+    expect(archive.videos).toEqual({ en: null, vi: null });
     expect(archive.prevDate).toBeNull();
   });
 
@@ -235,6 +236,32 @@ describe("getDayArchive", () => {
     const { db } = fakeDb({
       video: { youtube_id: "javascript:x", short_id: null, title: "t" },
     });
-    expect((await getDayArchive(db, "2026-10-02")).video).toBeNull();
+    expect((await getDayArchive(db, "2026-10-02")).videos.en).toBeNull();
+  });
+
+  it("keeps each language's video apart: a vi-only row gives no en video and vice versa", async () => {
+    const viOnly = fakeDb({
+      video: {
+        youtube_id: null,
+        short_id: null,
+        title: null,
+        youtube_id_vi: "B3vKYiV7rOw",
+        short_id_vi: null,
+        title_vi: " Bản tin ",
+      },
+    });
+    const vi = await getDayArchive(viOnly.db, "2026-10-02");
+    expect(vi.videos.en).toBeNull();
+    expect(vi.videos.vi).toEqual({
+      youtube_id: "B3vKYiV7rOw",
+      short_id: null,
+      title: "Bản tin",
+    });
+    const enOnly = fakeDb({
+      video: { youtube_id: "B3vKYiV7rOw", short_id: null, title: null },
+    });
+    const en = await getDayArchive(enOnly.db, "2026-10-02");
+    expect(en.videos.vi).toBeNull();
+    expect(en.videos.en?.youtube_id).toBe("B3vKYiV7rOw");
   });
 });

@@ -27,6 +27,7 @@ import {
   regenerateTldr,
   reprocessToday,
   retryTelegramDigest,
+  sendDayVideoTelegram,
   setDayVideo,
   triggerIngest,
   updateItem,
@@ -253,8 +254,9 @@ async function handle(
     return Response.json(result);
   }
 
-  // Day archive media: PUT { video?, short?, title? } sets/clears each field;
-  // DELETE removes the day's row.
+  // Day archive media: PUT { lang?, video?, short?, title? } sets/clears each
+  // field of one language; DELETE removes the day's row (or `?lang=` only that
+  // language).
   if (
     method === "PUT" &&
     segments.length === 2 &&
@@ -283,7 +285,35 @@ async function handle(
     segments.length === 2 &&
     segments[0] === "day-videos"
   ) {
-    const result = await deleteDayVideo(env, segments[1]);
+    // `?lang=en|vi` clears only that language; without it the row goes.
+    const result = await deleteDayVideo(
+      env,
+      segments[1],
+      new URL(request.url).searchParams.get("lang") ?? undefined
+    );
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result);
+  }
+
+  // Post the day's video to Telegram: { lang: "en"|"vi", chat_id? }.
+  if (
+    method === "POST" &&
+    segments.length === 3 &&
+    segments[0] === "day-videos" &&
+    segments[2] === "telegram"
+  ) {
+    const { body, error } = await parseJsonBody(request);
+    if (error) return Response.json({ error }, { status: 400 });
+    const result = await sendDayVideoTelegram(
+      env,
+      segments[1],
+      body as Parameters<typeof sendDayVideoTelegram>[2]
+    );
     if (isHandlerError(result)) {
       return Response.json(
         { error: result.error },

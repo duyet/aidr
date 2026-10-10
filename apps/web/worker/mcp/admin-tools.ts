@@ -134,7 +134,7 @@ export const ADMIN_MCP_TOOLS = [
   {
     name: "set_day_video",
     description:
-      'Set the YouTube media on the day archive page /date/YYYY-MM-DD: `video` (16:9, shown on desktop) and/or `short` (9:16 Short, shown on mobile). Each accepts a youtu.be / watch / shorts / embed URL or an 11-character id; null or "" clears that field, an omitted field is kept. At least one must remain set.',
+      'Set the YouTube media on the day archive page /date/YYYY-MM-DD: `video` (16:9, shown on desktop) and/or `short` (9:16 Short, shown on mobile). Each accepts a youtu.be / watch / shorts / embed URL or an 11-character id; null or "" clears that field, an omitted field is kept. `lang` ("en" default, or "vi") picks which language page gets it; the two never fall back to each other. At least one id must remain set across both languages.',
     inputSchema: {
       type: "object",
       properties: {
@@ -142,6 +142,7 @@ export const ADMIN_MCP_TOOLS = [
           type: "string",
           description: "Asia/Ho_Chi_Minh day, YYYY-MM-DD.",
         },
+        lang: { type: "string", enum: ["en", "vi"] },
         video: { type: ["string", "null"] },
         short: { type: ["string", "null"] },
         title: { type: ["string", "null"] },
@@ -151,7 +152,8 @@ export const ADMIN_MCP_TOOLS = [
   },
   {
     name: "delete_day_video",
-    description: "Remove both the video and the Short from a day archive page.",
+    description:
+      "Remove the video and the Short from a day archive page. With `lang` only that language's media is removed; without it the whole row (both languages) goes.",
     inputSchema: {
       type: "object",
       properties: {
@@ -159,8 +161,26 @@ export const ADMIN_MCP_TOOLS = [
           type: "string",
           description: "Asia/Ho_Chi_Minh day, YYYY-MM-DD.",
         },
+        lang: { type: "string", enum: ["en", "vi"] },
       },
       required: ["date"],
+    },
+  },
+  {
+    name: "send_day_video_telegram",
+    description:
+      "Post the day's stored 16:9 YouTube video for `lang` to Telegram (thumbnail, title, YouTube and day page buttons). Sends to `chat_id` when given, else the language's configured channel. Fails with 404 when that language has no video; the other language's is never used. This sends a real Telegram message.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          description: "Asia/Ho_Chi_Minh day, YYYY-MM-DD.",
+        },
+        lang: { type: "string", enum: ["en", "vi"] },
+        chat_id: { type: "string" },
+      },
+      required: ["date", "lang"],
     },
   },
 ] as const;

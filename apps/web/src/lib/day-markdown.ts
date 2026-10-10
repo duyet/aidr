@@ -77,7 +77,7 @@ export function renderDayMarkdown(archive: DayArchive, lang: Lang): string {
     );
   }
 
-  const video = archive.video;
+  const video = archive.videos[lang];
   if (video && (video.youtube_id || video.short_id)) {
     lines.push("", "## Video", "");
     if (video.title) lines.push(inlineText(video.title), "");

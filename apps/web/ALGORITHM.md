@@ -194,14 +194,22 @@ days (ranks frozen, §7) cache for a day at the edge; recent days for 5
 minutes. Without `?lang=` the response is private, like story pages.
 
 Optional media lives in `day_videos` (`date` PK, `youtube_id` 16:9 shown on
-md+, `short_id` 9:16 shown on mobile, `title`, `added_by`, timestamps; at
-least one id). Each falls back to the other at the other breakpoint;
-breakpoints are CSS, so SSR HTML stays cacheable. Set with
-`PUT /api/admin/day-videos/:date` `{ video?, short?, title? }` (YouTube URL
-or 11-char id; `null` clears a field, omitted keeps it), remove with
-`DELETE`, or the `set_day_video` / `delete_day_video` admin MCP tools, or
-`agent day-video <date> --video … --short …`. Ids are validated server-side.
-The player is a click-to-play `youtube-nocookie.com` facade.
+md+, `short_id` 9:16 shown on mobile, `title`, the same three as `*_vi`,
+`added_by`, timestamps; at least one of the four ids). Each language shows only
+its own columns: no fallback between `en` and `vi`. Within a language each id
+falls back to the other at the other breakpoint; breakpoints are CSS, so SSR
+HTML stays cacheable. Set with `PUT /api/admin/day-videos/:date`
+`{ lang?: "en"|"vi", video?, short?, title? }` (YouTube URL or 11-char id;
+`null` clears a field, omitted keeps it; `lang` defaults to `en`), remove with
+`DELETE` (`?lang=` clears one language), or the `set_day_video` /
+`delete_day_video` admin MCP tools, or
+`agent day-video <date> [--lang vi] --video … --short …`. Ids are validated
+server-side. Post a language's video to Telegram with
+`POST /api/admin/day-videos/:date/telegram` `{ lang, chat_id? }` (default chat
+`TELEGRAM_EN_CHAT_ID` / `TELEGRAM_VI_CHAT_ID`; `sendPhoto` of the maxres
+thumbnail, text fallback), the `send_day_video_telegram` MCP tool, or
+`agent day-video-telegram <date> --lang en|vi [--chat <id>]`. The player is a
+click-to-play `youtube-nocookie.com` facade.
 
 ## Ops pitfalls
 

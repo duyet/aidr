@@ -2,6 +2,7 @@ import {
   DAY_VIDEO_TITLE_MAX,
   parseYoutubeId,
 } from "../../src/lib/day-video.js";
+import type { Lang } from "../../src/lib/types.js";
 import {
   prepareItemContentChangeLog,
   prepareLoggedTranslationUpsert,
@@ -18,6 +19,7 @@ import {
 } from "../llm.js";
 import { createD1LlmCallLogger, flushLlmCallWrites } from "../llm-call-log.js";
 import { forceSendDigest } from "../notify/index.js";
+import { sendDayVideoToTelegram, telegramChatId } from "../notify/telegram.js";
 import {
   RANK_SIGNAL_COLUMNS,
   RANK_SIGNAL_JOIN,
@@ -1066,6 +1068,8 @@ export async function decideSubmission(
 }
 
 export interface SetDayVideoInput {
+  /** Language of the video: "en" (default) or "vi". Never falls back. */
+  lang?: unknown;
   /** 16:9 video for desktop: URL or 11-char id; null/"" clears it. */
   video?: unknown;
   /** 9:16 Short for mobile: URL or 11-char id; null/"" clears it. */
@@ -1074,12 +1078,26 @@ export interface SetDayVideoInput {
   title?: unknown;
 }
 
+/** The record returned for the language that was written. */
 export interface DayVideoRecord {
   date: string;
+  lang: Lang;
   youtube_id: string | null;
   short_id: string | null;
   title: string | null;
 }
+
+interface DayVideoRow {
+  youtube_id: string | null;
+  short_id: string | null;
+  title: string | null;
+  youtube_id_vi: string | null;
+  short_id_vi: string | null;
+  title_vi: string | null;
+}
+
+const DAY_VIDEO_COLUMNS =
+  "youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi";
 
 const DAY_VIDEO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -1089,6 +1107,28 @@ function validDayVideoDate(date: unknown): date is string {
   return (
     Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 10) === date
   );
+}
+
+/** undefined = English (the default); anything but "en"/"vi" is rejected. */
+function dayVideoLang(value: unknown): { lang: Lang } | HandlerError {
+  if (value === undefined) return { lang: "en" };
+  if (value === "en" || value === "vi") return { lang: value };
+  return { error: 'lang must be "en" or "vi"', status: 400 };
+}
+
+/** The language's own columns of a row; the other language is never read. */
+function dayVideoForLang(row: DayVideoRow | null, lang: Lang) {
+  return lang === "vi"
+    ? {
+        youtube_id: row?.youtube_id_vi ?? null,
+        short_id: row?.short_id_vi ?? null,
+        title: row?.title_vi ?? null,
+      }
+    : {
+        youtube_id: row?.youtube_id ?? null,
+        short_id: row?.short_id ?? null,
+        title: row?.title ?? null,
+      };
 }
 
 /** undefined = keep the stored value, null = clear, string = new id. */
@@ -1108,10 +1148,17 @@ function dayVideoIdField(
   return { id };
 }
 
+function hasAnyDayVideoId(row: DayVideoRow): boolean {
+  return Boolean(
+    row.youtube_id || row.short_id || row.youtube_id_vi || row.short_id_vi
+  );
+}
+
 /**
- * Upsert the video and/or Short shown on `/date/:date`. Each field is set or
- * cleared independently; omitted fields keep their stored value. A row must
- * keep at least one of the two — use `deleteDayVideo` to remove it.
+ * Upsert the video and/or Short shown on `/date/:date` for one language
+ * (`lang`, default "en"). Each field is set or cleared independently;
+ * omitted fields keep their stored value. The row must keep at least one id
+ * across both languages — use `deleteDayVideo` to remove it.
  */
 export async function setDayVideo(
   env: Env,
@@ -1125,6 +1172,9 @@ export async function setDayVideo(
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return { error: "body must be an object", status: 400 };
   }
+  const langField = dayVideoLang(input.lang);
+  if (isHandlerError(langField)) return langField;
+  const { lang } = langField;
   const video = dayVideoIdField(input.video, "video");
   if (isHandlerError(video)) return video;
   const short = dayVideoIdField(input.short, "short");
@@ -1145,31 +1195,45 @@ export async function setDayVideo(
   }
 
   const existing = await env.DB.prepare(
-    "SELECT youtube_id, short_id, title FROM day_videos WHERE date = ?"
+    `SELECT ${DAY_VIDEO_COLUMNS} FROM day_videos WHERE date = ?`
   )
     .bind(date)
-    .first<{
-      youtube_id: string | null;
-      short_id: string | null;
-      title: string | null;
-    }>();
+    .first<DayVideoRow>();
+  const current = dayVideoForLang(existing, lang);
   const title =
     input.title === undefined
-      ? (existing?.title ?? null)
+      ? current.title
       : typeof input.title === "string" && input.title.trim()
         ? input.title.trim().slice(0, DAY_VIDEO_TITLE_MAX)
         : null;
   const next: DayVideoRecord = {
     date,
-    youtube_id:
-      video.id === undefined ? (existing?.youtube_id ?? null) : video.id,
-    short_id: short.id === undefined ? (existing?.short_id ?? null) : short.id,
+    lang,
+    youtube_id: video.id === undefined ? current.youtube_id : video.id,
+    short_id: short.id === undefined ? current.short_id : short.id,
     title,
   };
-  if (!next.youtube_id && !next.short_id) {
+  const row: DayVideoRow = {
+    youtube_id: existing?.youtube_id ?? null,
+    short_id: existing?.short_id ?? null,
+    title: existing?.title ?? null,
+    youtube_id_vi: existing?.youtube_id_vi ?? null,
+    short_id_vi: existing?.short_id_vi ?? null,
+    title_vi: existing?.title_vi ?? null,
+  };
+  if (lang === "vi") {
+    row.youtube_id_vi = next.youtube_id;
+    row.short_id_vi = next.short_id;
+    row.title_vi = next.title;
+  } else {
+    row.youtube_id = next.youtube_id;
+    row.short_id = next.short_id;
+    row.title = next.title;
+  }
+  if (!hasAnyDayVideoId(row)) {
     return {
       error:
-        "a day video needs a video or a short; delete the row to remove both",
+        "a day video needs a video or a short; delete the row to remove everything",
       status: 400,
     };
   }
@@ -1177,22 +1241,38 @@ export async function setDayVideo(
   const now = Date.now();
   await env.DB.prepare(
     `INSERT INTO day_videos
-       (date, youtube_id, short_id, title, added_by, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+       (date, youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi,
+        added_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(date) DO UPDATE SET
        youtube_id = excluded.youtube_id,
        short_id = excluded.short_id,
        title = excluded.title,
+       youtube_id_vi = excluded.youtube_id_vi,
+       short_id_vi = excluded.short_id_vi,
+       title_vi = excluded.title_vi,
        added_by = excluded.added_by,
        updated_at = excluded.updated_at`
   )
-    .bind(date, next.youtube_id, next.short_id, next.title, actor, now, now)
+    .bind(
+      date,
+      row.youtube_id,
+      row.short_id,
+      row.title,
+      row.youtube_id_vi,
+      row.short_id_vi,
+      row.title_vi,
+      actor,
+      now,
+      now
+    )
     .run();
   await writeAudit(
     env,
     "day_video_set",
     JSON.stringify({
       date,
+      lang,
       youtube_id: next.youtube_id,
       short_id: next.short_id,
     })
@@ -1200,17 +1280,146 @@ export async function setDayVideo(
   return { ok: true, video: next };
 }
 
+/**
+ * Remove a day's video. Without `lang` the whole row goes (both languages);
+ * with `lang` only that language's fields are cleared, and the row goes when
+ * no id remains in either language.
+ */
 export async function deleteDayVideo(
   env: Env,
-  date: unknown
-): Promise<{ ok: true; date: string; deleted: boolean } | HandlerError> {
+  date: unknown,
+  lang?: unknown
+): Promise<
+  { ok: true; date: string; lang?: Lang; deleted: boolean } | HandlerError
+> {
   if (!validDayVideoDate(date)) {
     return { error: "date must be a real YYYY-MM-DD day", status: 400 };
   }
-  const result = await env.DB.prepare("DELETE FROM day_videos WHERE date = ?")
+  if (lang === undefined || lang === null) {
+    const result = await env.DB.prepare("DELETE FROM day_videos WHERE date = ?")
+      .bind(date)
+      .run();
+    const deleted = (result.meta?.changes ?? 0) > 0;
+    if (deleted) await writeAudit(env, "day_video_delete", date);
+    return { ok: true, date, deleted };
+  }
+  const langField = dayVideoLang(lang);
+  if (isHandlerError(langField)) return langField;
+  const scope = langField.lang;
+  const existing = await env.DB.prepare(
+    `SELECT ${DAY_VIDEO_COLUMNS} FROM day_videos WHERE date = ?`
+  )
     .bind(date)
-    .run();
-  const deleted = (result.meta?.changes ?? 0) > 0;
-  if (deleted) await writeAudit(env, "day_video_delete", date);
-  return { ok: true, date, deleted };
+    .first<DayVideoRow>();
+  const stored = dayVideoForLang(existing, scope);
+  if (!existing || (!stored.youtube_id && !stored.short_id && !stored.title)) {
+    return { ok: true, date, lang: scope, deleted: false };
+  }
+  const remaining: DayVideoRow = {
+    ...existing,
+    ...(scope === "vi"
+      ? { youtube_id_vi: null, short_id_vi: null, title_vi: null }
+      : { youtube_id: null, short_id: null, title: null }),
+  };
+  if (hasAnyDayVideoId(remaining)) {
+    const columns =
+      scope === "vi"
+        ? "youtube_id_vi = NULL, short_id_vi = NULL, title_vi = NULL"
+        : "youtube_id = NULL, short_id = NULL, title = NULL";
+    await env.DB.prepare(
+      `UPDATE day_videos SET ${columns}, updated_at = ? WHERE date = ?`
+    )
+      .bind(Date.now(), date)
+      .run();
+  } else {
+    await env.DB.prepare("DELETE FROM day_videos WHERE date = ?")
+      .bind(date)
+      .run();
+  }
+  await writeAudit(
+    env,
+    "day_video_delete",
+    JSON.stringify({ date, lang: scope })
+  );
+  return { ok: true, date, lang: scope, deleted: true };
+}
+
+export interface SendDayVideoTelegramInput {
+  lang?: unknown;
+  /** Override target chat (e.g. the staging channel); default is the
+   *  language's configured channel. */
+  chat_id?: unknown;
+}
+
+/**
+ * Post a day's video (the given language's `youtube_id`) to Telegram. 404 when
+ * that language has no 16:9 video — the other language's is never used.
+ */
+export async function sendDayVideoTelegram(
+  env: Env,
+  date: unknown,
+  input: SendDayVideoTelegramInput
+): Promise<{ ok: true; chat_id: string; message_id: string } | HandlerError> {
+  if (!validDayVideoDate(date)) {
+    return { error: "date must be a real YYYY-MM-DD day", status: 400 };
+  }
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return { error: "body must be an object", status: 400 };
+  }
+  if (input.lang !== "en" && input.lang !== "vi") {
+    return { error: 'lang must be "en" or "vi"', status: 400 };
+  }
+  const lang: Lang = input.lang;
+  if (
+    input.chat_id !== undefined &&
+    (typeof input.chat_id !== "string" || !input.chat_id.trim())
+  ) {
+    return { error: "chat_id must be a non-empty string", status: 400 };
+  }
+  const row = await env.DB.prepare(
+    `SELECT ${DAY_VIDEO_COLUMNS} FROM day_videos WHERE date = ?`
+  )
+    .bind(date)
+    .first<DayVideoRow>();
+  const stored = dayVideoForLang(row, lang);
+  if (!stored.youtube_id) {
+    return {
+      error: `no ${lang} youtube_id stored for ${date}; set it first`,
+      status: 404,
+    };
+  }
+  const chat = (input.chat_id as string | undefined)?.trim();
+  const chatId = chat ?? telegramChatId(env, lang).id;
+  if (!chatId) {
+    return {
+      error: `no Telegram chat for ${lang}: pass chat_id or set ${telegramChatId(env, lang).source}`,
+      status: 409,
+    };
+  }
+  if (!env.TELEGRAM_BOT_TOKEN?.trim()) {
+    return { error: "TELEGRAM_BOT_TOKEN is not set", status: 409 };
+  }
+  const sent = await sendDayVideoToTelegram(env, chatId, {
+    date,
+    lang,
+    youtubeId: stored.youtube_id,
+    title: stored.title,
+  });
+  if (!sent.ok) {
+    return {
+      error: `telegram send failed: ${sent.error ?? "unknown"}${sent.ambiguous ? " (outcome unknown; check the chat before retrying)" : ""}`,
+      status: 502,
+    };
+  }
+  await writeAudit(
+    env,
+    "day_video_telegram",
+    JSON.stringify({
+      date,
+      lang,
+      chat_id: chatId,
+      message_id: sent.messageId ?? null,
+    })
+  );
+  return { ok: true, chat_id: chatId, message_id: sent.messageId ?? "" };
 }
