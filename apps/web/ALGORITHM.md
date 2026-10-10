@@ -1036,12 +1036,12 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
 
-- `@preset/aidr` (workspace preset, resolves to Laguna)
 - `poolside/laguna-s-2.1` (the only concrete id that streams usable JSON on
   this key for translate and TL;DR)
-- `anyrouter/auto`, then `anyrouter/free` (router safety nets, always last)
+- `anyrouter/auto` (router safety net, always last)
 
-TL;DR and translate use the same chain without Jev. The VI→EN generator
+TL;DR uses `poolside/laguna-s-2.1` alone, so Laguna keeps the whole budget
+(`anyrouter/auto` was 0 of 26 there over 2026-10-03..10). The VI→EN generator
 uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer
 (`z-ai/glm-4.6`, then `stealth/space-bunny-alpha`) shares no id with any
 generator chain and gets a 45s budget (`QA_REVIEW_TIMEOUT_MS`), 30s max for
@@ -1050,10 +1050,8 @@ this key (404 in ~2s), so reviews depend on space-bunny (1 of 3 probe pairs
 inside the slice) until a Z.ai BYOK key is added; see the dated note in
 `wrangler.toml`.
 
-`@preset/aidr` heads the score, translate and TL;DR chains. It resolves to
-`poolside/laguna-s-2.1`; the ids behind it stay as a fallback in case the
-preset 404s or 429s again (both happened until AnyRouter fixed them on
-2026-10-01).
+`@preset/aidr` left the chains on 2026-10-10: it resolves to Laguna, which
+already heads them, and was 2 of 30 ok over the prior 7 days.
 
 An id that returns 404 (`model_not_found`, BYOK-only `model_unavailable`)
 is skipped by later calls in the same isolate for 15 minutes, and a 429

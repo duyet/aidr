@@ -110,15 +110,19 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # xiaomi/*, stepfun-ai/*, tencent/*, ibm-granite/*, sakana/*, openrouter/free.
 # Score tries ANYROUTER_DECISION_MODEL, then Jev (ANYROUTER_JEV_MODEL), then
 # ANYROUTER_MODEL.
-ANYROUTER_MODEL = "poolside/laguna-s-2.1,@preset/aidr,anyrouter/auto"
+# @preset/aidr dropped 2026-10-10: 2 of 30 attempts ok in 7 days (28 timeouts
+# at the 20s slice); it resolves to Laguna, which already heads the chain.
+ANYROUTER_MODEL = "poolside/laguna-s-2.1,anyrouter/auto"
 # Translate tries the probed Gemini 3 Flash first, then the Gemma free
 # catalog ids. Each extra id still reserves a 20s fallback slice
 # (2026-10-02); Laguna stays last. Dropped @preset/aidr (11/87 ok over 24h,
 # 44 rate-limited) and anyrouter/auto (prod translate 0 of 8).
 ANYROUTER_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-4-31b,google/gemma-4-26b-a4b-it,poolside/laguna-s-2.1"
-# TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
+# TL;DR is Laguna alone: every extra id reserves a 20s fallback slice out of
 # the first hop's budget, and Laguna needs 102-119s on the 26K VI prompt.
-ANYROUTER_TLDR_MODEL = "poolside/laguna-s-2.1,anyrouter/auto"
+# anyrouter/auto was 0 of 26 on tldr over 2026-10-03..10 (22 timeouts, 4x 502;
+# it routes to nemotron-3-ultra, which returned "{}" on a 2026-10-10 probe).
+ANYROUTER_TLDR_MODEL = "poolside/laguna-s-2.1"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
 # (router aliases and presets are filtered out of this chain). Gemini 3

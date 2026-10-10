@@ -87,12 +87,12 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
-  // Router aliases are the safety net on score and TL;DR: they go last so
-  // one bad pick cannot burn a step's budget. Translate ends on Laguna.
-  // Gemini 3 Flash is tried first, then Gemma, and anyrouter/auto is not
-  // in that chain.
-  it("ends score and tldr chains with the router safety nets", () => {
-    for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TLDR_MODEL"]) {
+  // Router aliases are the safety net on score: they go last so one bad
+  // pick cannot burn a step's budget. TL;DR is Laguna alone (anyrouter/auto
+  // was 0/26 there). Translate ends on Laguna; Gemini 3 Flash is tried
+  // first, then Gemma, and anyrouter/auto is not in that chain.
+  it("ends the score chain with the router safety net", () => {
+    for (const name of ["ANYROUTER_MODEL"]) {
       const ids = idsOf(name);
       expect(ids.at(-1), name).toMatch(/^anyrouter\//);
       const firstAlias = ids.findIndex((id) => id.startsWith("anyrouter/"));
