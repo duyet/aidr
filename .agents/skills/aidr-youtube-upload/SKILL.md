@@ -143,10 +143,11 @@ One-time OAuth setup (owner):
 
 1. Google Cloud project, enable **YouTube Data API v3**, OAuth consent
    screen, create an OAuth client of type **Desktop app**.
-2. `YOUTUBE_CLIENT_ID=... YOUTUBE_CLIENT_SECRET=... node bin/yt-oauth.mjs`,
-   open the printed URL signed in as the channel owner, approve
-   (`youtube.upload` + `youtube`). It prints `YOUTUBE_REFRESH_TOKEN=...`
-   (never written to disk). Store all three in `.env.local` / the sandbox
+2. Put `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` in `.env.local`, run
+   `node .agents/skills/aidr-youtube-upload/bin/yt-oauth.mjs` from the repo
+   root, open the printed URL signed in as the channel owner, approve
+   (`youtube.upload` + `youtube`). It writes `YOUTUBE_REFRESH_TOKEN` into
+   `.env.local` (`--print` prints it instead). Copy all three to the sandbox
    secrets.
 3. Publish the consent screen (**In production**). In **Testing** status the
    refresh token expires after 7 days.
