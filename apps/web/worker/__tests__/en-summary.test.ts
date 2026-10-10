@@ -217,8 +217,19 @@ describe("enSummaryIssues", () => {
     ["OpenAI raised money…"],
     ["OpenAI raised money. See https://example.com."],
     ["OpenAI raised money. 120 comments."],
+    ["OpenAI raised money. 312 points by pg."],
+    ["No usable factual content beyond the title was provided."],
   ])("rejects teaser or page chrome: %s", (text) => {
     expect(enSummaryIssues(source, text)).not.toEqual([]);
+  });
+
+  // Benchmark scores were rejected as forum counters, so ~half of each
+  // backfill batch failed and was retried forever.
+  it("accepts a benchmark score in points", () => {
+    const bench = "Grok 4.7 scored 46 points on the Intelligence Index.";
+    expect(
+      enSummaryIssues(bench, "Grok 4.7 scored 46 points on the index.")
+    ).toEqual([]);
   });
 
   it("rejects a number the source does not contain", () => {
