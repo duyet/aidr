@@ -93,7 +93,13 @@ each image is made.
    review" (keep checked) and a "Submit For Review" button. Status then
    reads "Pending review". If Google asks the user to verify the account,
    that is theirs; never type passwords.
-8. **After review**, `cws-publish --status` shows the published version.
+8. **Replacing a pending submission** (a newer version shipped while the
+   last one is still in review): on `edit`, open "View more menu options"
+   → "Cancel review" → in the dialog click "Cancel review" (click it by its
+   `snapshot -i` ref; a tagged JS target missed). Status returns to the
+   live state, the draft unlocks; upload the new package and submit again.
+   Review restarts.
+9. **After review**, `cws-publish --status` shows the published version.
    `EXTENSION_STORE_URL` in `apps/web/src/lib/extension-release.ts` already
    points at the listing; leave it.
 
