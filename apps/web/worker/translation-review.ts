@@ -529,8 +529,16 @@ export function buildEnglishCandidatePrompt(pair: TranslationPair): string {
 ${escapePromptPayload({ source_lang: pair.sourceLang, target_lang: pair.targetLang, source: pair.source })}
 </untrusted_translation_source>
 
+${ENGLISH_OUTPUT_RULE}
+
 Respond with strict JSON only: {"title":"...","summary":"..."}`;
 }
+
+/** The English column is shown as the story itself. Site navigation that
+ * leaked into a source ("← Back to live feed · 1 stories across 1 day") must
+ * not be carried over. Locked by test. */
+export const ENGLISH_OUTPUT_RULE =
+  'Write fluent, grammatical English news prose. Never copy site navigation, breadcrumbs, story counters, or other page UI text (such as "← Back to live feed · 1 stories across 1 day") into the title or summary; start with the news itself.';
 
 export function directionFor(
   sourceLang: TranslationLanguage,

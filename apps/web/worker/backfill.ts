@@ -31,6 +31,8 @@ export function buildMissingSummaryQuery(limit = BACKFILL_CONTENT_CAP): string {
           WHERE status = 'published' AND (
             summary IS NULL OR summary = ''
             OR rtrim(summary) LIKE '%…' OR rtrim(summary) LIKE '%...'
+            OR rtrim(summary) LIKE '%[…]' OR rtrim(summary) LIKE '%[...]'
+            OR summary LIKE '%Read more%' OR summary LIKE '%Continue reading%'
           )
           ORDER BY published_at DESC
           LIMIT ${limit}`;

@@ -203,9 +203,13 @@ function extractMetaContent(
  * og:description, falling back to <meta name="description">. HTML
  * entities in the description and og:image URL are decoded.
  */
-/** A publisher blurb cut off with an ellipsis, not a finished sentence. */
+/** A publisher blurb cut off with an ellipsis, not a finished sentence.
+ * WordPress-style RSS excerpts end in "[…]" or a "Read more" link; they are
+ * teasers too, and must make enrich/backfill fetch the article body. */
 export function summaryLooksCutOff(text: string): boolean {
-  return /(?:\.{3}|…)\s*$/.test(text.trim());
+  return /(?:\.{3}|…|\[(?:…|\.{3})\]|\b(?:Read more|Continue reading)\b[^.!?]{0,80})\s*$/i.test(
+    text.trim()
+  );
 }
 
 /** Keep whichever summary is a finished sentence. A cut-off blurb never
