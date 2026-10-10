@@ -560,6 +560,25 @@ async function sendVideoStory(
   return { ok: true, messageId: telegramMessageId(res.result) };
 }
 
+/** `sendMessage` answers once Telegram stores the text. */
+export const TELEGRAM_TEXT_TIMEOUT_MS = 15_000;
+/**
+ * Media sent by URL is downloaded by Telegram before it answers. The digest
+ * card is rendered on demand at that URL (`/api/og/date/…png`, a new `v` per
+ * edition, so cold on first fetch): tile photos in batches of 6, up to 5s per
+ * batch, until the grid fills, then the PNG render. That can pass 15s, and an abort
+ * then is an unknown outcome (AIDR-8/9), so media calls wait longer.
+ */
+export const TELEGRAM_MEDIA_TIMEOUT_MS = 45_000;
+
+const MEDIA_METHODS = new Set(["sendPhoto", "sendMediaGroup", "sendVideo"]);
+
+export function telegramTimeoutMs(method: string): number {
+  return MEDIA_METHODS.has(method)
+    ? TELEGRAM_MEDIA_TIMEOUT_MS
+    : TELEGRAM_TEXT_TIMEOUT_MS;
+}
+
 interface TelegramResponse {
   ok: boolean;
   /** No usable answer from Telegram, so the message may or may not be posted. */
@@ -607,7 +626,7 @@ async function callTelegram(
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(telegramTimeoutMs(method)),
     });
     status = res.status;
     raw = await res.text();
