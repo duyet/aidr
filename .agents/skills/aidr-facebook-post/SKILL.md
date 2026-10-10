@@ -69,11 +69,19 @@ first and trust DOM reads over screenshots.
 4. `find role button click --name Next --exact` → "Post settings": audience
    Public, "Publish now", Boost off → `find role button click --name Post
    --exact`.
-5. Permalink: reload the Page, find the new post ("Just now"); Facebook
-   fills the timestamp link's `href` only on hover, so `mouse move <x> <y>`
-   over the timestamp, then read the enclosing `<a>` from
-   `document.elementFromPoint(x, y)`. Strip the query string:
-   `https://www.facebook.com/aidr.today/posts/pfbid…`.
+5. Permalink: reload the Page and scroll to the posts. Facebook fills the
+   timestamp link's `href` only on a real hover, and its text is
+   obfuscated, so JS text matches and `hover` by name both miss. What works:
+   `snapshot -i`, take the ref of the `link "… ago"` just above the post's
+   `link "AI;DR vX.Y.Z — …"`, then in **one** batch (refs only live within
+   a batch) `snapshot -i` → `scrollintoview @eN` → `get box @eN`; then
+   `mouse move <x+w/2> <y+h/2>` and read
+   `document.elementFromPoint(x, y).closest("a").href`. Strip the query
+   string: `https://www.facebook.com/aidr.today/posts/pfbid…`.
+6. If the composer button click does nothing, the Page is scrolled past
+   it: `eval window.scrollTo(0,0)` first. Check the editor exists
+   (`[role=dialog] [contenteditable=true]`) and has focus before typing,
+   or the text goes nowhere.
 
 Selectors drift: if one is missing, take a screenshot, read
 `snapshot -i`, and update this skill with what worked.
