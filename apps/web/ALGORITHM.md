@@ -773,6 +773,12 @@ deliberately non-spammy.
   locale. Telegram site links use flat `/{8-char}` permalinks with explicit
   `lang=vi|en` plus `utm_source=telegram`; publisher links keep their own
   URL and receive only the Telegram attribution parameter.
+- Claim before send: each digest or trending send first upserts its row to
+  `sending` in one statement (`claimDelivery`), and only the dispatch whose
+  write changed a row sends. A retried notify step or a forced run that
+  overlaps a scheduled one finds the claim and posts nothing. A `sending`
+  row is never re-claimed, however old: no outcome was recorded, so it is
+  final like `ambiguous`.
 - The bounded Telegram Instant View decision, locale URLs, field/media
   gates, and fallback checklist are in
   [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).
