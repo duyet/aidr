@@ -1,0 +1,358 @@
+{
+  "version": "0.1.13",
+  "kicker": "What's new",
+  "headline": "Read it your way",
+  "dates": "Oct 9, 2026",
+  "captures": {
+    "prefs": "/?lang=en#button:Reader preferences",
+    "rows": "/?lang=en@860",
+    "daycard": "/?lang=en#button:Show day card",
+    "release": "/release?lang=en"
+  },
+  "scenes": [
+    {
+      "shot": "prefs",
+      "url": "aidr.today · Reader preferences",
+      "label": "Density",
+      "title": "Five steps of density",
+      "mark": "Five steps",
+      "rows": [
+        [
+          "Steps",
+          "Dense to spacious"
+        ],
+        [
+          "Default",
+          "Medium, in the middle"
+        ],
+        [
+          "Where",
+          "Aa → Theme → Density"
+        ]
+      ],
+      "to": {
+        "x": 0.53,
+        "y": 0.05,
+        "w": 0.46
+      },
+      "focus": {
+        "x": 0.574,
+        "y": 0.39,
+        "w": 0.2,
+        "h": 0.065
+      },
+      "to9": {
+        "x": 0.56,
+        "y": 0.28,
+        "w": 0.23
+      }
+    },
+    {
+      "shot": "rows",
+      "url": "aidr.today",
+      "label": "Story rows",
+      "title": "Rows that line up",
+      "mark": "line up",
+      "rows": [
+        [
+          "Votes",
+          "Beside every headline"
+        ],
+        [
+          "Category",
+          "In its own column"
+        ],
+        [
+          "Time",
+          "Right-aligned, at a glance"
+        ]
+      ],
+      "to": {
+        "x": 0.45,
+        "y": 0.02,
+        "w": 0.55
+      },
+      "focus": {
+        "x": 0.664,
+        "y": 0.045,
+        "w": 0.21,
+        "h": 0.52
+      },
+      "to9": {
+        "x": 0.62,
+        "y": 0.04,
+        "w": 0.3
+      }
+    },
+    {
+      "shot": "daycard",
+      "url": "aidr.today",
+      "label": "Day card",
+      "title": "Image or text, one tap",
+      "mark": "one tap",
+      "rows": [
+        [
+          "Switch",
+          "Two icons in the masthead"
+        ],
+        [
+          "Image",
+          "The day card, full width"
+        ],
+        [
+          "Text",
+          "The numbered digest"
+        ]
+      ],
+      "to": {
+        "x": 0.1,
+        "y": 0.17,
+        "w": 0.8
+      },
+      "focus": {
+        "x": 0.741,
+        "y": 0.236,
+        "w": 0.062,
+        "h": 0.042
+      },
+      "to9": {
+        "x": 0.45,
+        "y": 0.2,
+        "w": 0.4
+      }
+    },
+    {
+      "shot": "release",
+      "url": "aidr.today/release",
+      "label": "Release notes",
+      "title": "Every release, its own page",
+      "mark": "its own page",
+      "rows": [
+        [
+          "List",
+          "aidr.today/release"
+        ],
+        [
+          "Inside",
+          "Highlights, changelog, film"
+        ],
+        [
+          "Films",
+          "English and Vietnamese"
+        ]
+      ],
+      "to": {
+        "x": 0.2,
+        "y": 0.08,
+        "w": 0.6
+      },
+      "focus": {
+        "x": 0.232,
+        "y": 0.315,
+        "w": 0.525,
+        "h": 0.255
+      },
+      "to9": {
+        "x": 0.23,
+        "y": 0.3,
+        "w": 0.4
+      }
+    }
+  ],
+  "stats": [
+    [
+      "5",
+      "density steps"
+    ],
+    [
+      "1",
+      "tap from card to text"
+    ],
+    [
+      "4",
+      "films for every release"
+    ]
+  ],
+  "also": "Also new: the Chrome extension's new tab matches the site, and its Web Store listing is refreshed.",
+  "closing": "Dense, spacious, or one card: read it your way.",
+  "motion": {
+    "num": 0.08,
+    "label": 0.16,
+    "title": 0.24,
+    "marker": 0.75,
+    "cam": 1.1,
+    "focus": 2.0,
+    "rows": 2.1
+  },
+  "voice": {
+    "speed": 1.05,
+    "title": "AI DR, version zero point one point thirteen.",
+    "scenes": [
+      "Pick how dense the page feels: five steps, from dense to spacious, starting in the middle.",
+      "Story rows line up now. Votes, category, and time each sit in their own column.",
+      "One tap switches the digest between the day card and the text list.",
+      "And every release has its own page, with highlights, the full changelog, and a film."
+    ],
+    "stats": "Five density steps, and four films for every release.",
+    "close": "Read it at AI DR dot today.",
+    "cast": true
+  },
+  "captionReplace": [
+    [
+      "zero point one point thirteen",
+      "0.1.13"
+    ],
+    [
+      "Five density",
+      "5 density"
+    ],
+    [
+      "four films",
+      "4 films"
+    ]
+  ],
+  "vi": {
+    "kicker": "Có gì mới",
+    "headline": "Đọc theo cách của bạn",
+    "dates": "9/10/2026",
+    "ui": {
+      "inNumbers": "qua các con số",
+      "releaseNotes": "Ghi chú phát hành"
+    },
+    "captures": {
+      "prefs": "/?lang=vi#button:Tuỳ chỉnh hiển thị",
+      "rows": "/?lang=vi@860",
+      "daycard": "/?lang=vi#button:Xem ảnh tóm tắt",
+      "release": "/release?lang=vi"
+    },
+    "scenes": [
+      {
+        "url": "aidr.today · Tuỳ chỉnh hiển thị",
+        "label": "Mật độ",
+        "title": "Năm mức mật độ",
+        "mark": "Năm mức",
+        "rows": [
+          [
+            "Các mức",
+            "Từ dày đến thoáng"
+          ],
+          [
+            "Mặc định",
+            "Ở giữa"
+          ],
+          [
+            "Ở đâu",
+            "Aa → Giao diện → Mật độ"
+          ]
+        ]
+      },
+      {
+        "url": "aidr.today/?lang=vi",
+        "label": "Dòng tin",
+        "title": "Dòng tin thẳng hàng",
+        "mark": "thẳng hàng",
+        "rows": [
+          [
+            "Phiếu bầu",
+            "Cạnh mỗi tiêu đề"
+          ],
+          [
+            "Chuyên mục",
+            "Một cột riêng"
+          ],
+          [
+            "Thời gian",
+            "Căn phải, nhìn là thấy"
+          ]
+        ]
+      },
+      {
+        "url": "aidr.today/?lang=vi",
+        "label": "Ảnh tóm tắt",
+        "title": "Ảnh hay chữ, một chạm",
+        "mark": "một chạm",
+        "rows": [
+          [
+            "Nút chuyển",
+            "Hai biểu tượng trên đầu"
+          ],
+          [
+            "Ảnh",
+            "Ảnh tóm tắt, toàn chiều rộng"
+          ],
+          [
+            "Chữ",
+            "Bản tin đánh số"
+          ]
+        ]
+      },
+      {
+        "url": "aidr.today/release?lang=vi",
+        "label": "Ghi chú phát hành",
+        "title": "Mỗi bản phát hành một trang",
+        "mark": "một trang",
+        "rows": [
+          [
+            "Danh sách",
+            "aidr.today/release"
+          ],
+          [
+            "Bên trong",
+            "Điểm nổi bật, thay đổi, video"
+          ],
+          [
+            "Video",
+            "Tiếng Anh và tiếng Việt"
+          ]
+        ]
+      }
+    ],
+    "stats": [
+      [
+        "5",
+        "mức mật độ"
+      ],
+      [
+        "1",
+        "chạm từ ảnh sang chữ"
+      ],
+      [
+        "4",
+        "video cho mỗi bản phát hành"
+      ]
+    ],
+    "also": "Cũng mới: tab mới của tiện ích Chrome giống trang web, và trang Chrome Web Store được làm mới.",
+    "closing": "Dày, thoáng, hay một ảnh: đọc theo cách của bạn.",
+    "voice": {
+      "speed": 1.15,
+      "title": "AI DR, phiên bản không chấm một chấm mười ba.",
+      "scenes": [
+        "Chọn độ dày của trang: năm mức, từ dày đến thoáng, mặc định ở giữa.",
+        "Các dòng tin giờ thẳng hàng: phiếu bầu, chuyên mục và thời gian, mỗi thứ một cột.",
+        "Một chạm để chuyển bản tin giữa ảnh tóm tắt và danh sách chữ.",
+        "Và mỗi bản phát hành có trang riêng, với điểm nổi bật, nhật ký thay đổi, và một video."
+      ],
+      "stats": "Năm mức mật độ, và bốn video cho mỗi bản phát hành.",
+      "close": "Đọc ngay tại AI DR chấm today.",
+      "cast": true
+    },
+    "captionReplace": [
+      [
+        "AI DR chấm today",
+        "aidr.today"
+      ],
+      [
+        "không chấm một chấm mười ba",
+        "0.1.13"
+      ],
+      [
+        "Năm mức",
+        "5 mức"
+      ],
+      [
+        "bốn video",
+        "4 video"
+      ]
+    ]
+  }
+}
