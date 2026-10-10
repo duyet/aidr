@@ -62,7 +62,7 @@ export function classifyStoryTrending(input: {
 }): TelegramTrendingStatus {
   const n = input.notification;
   if (n?.status === "sent") return { state: "posted", postedAt: n.posted_at };
-  if (n?.status === "ambiguous")
+  if (n?.status === "ambiguous" || n?.status === "sending")
     return { state: "ambiguous", postedAt: n.posted_at };
   const notPosted = (reason: TrendingNotPostedReason) =>
     ({ state: "not_posted", reason }) as const;

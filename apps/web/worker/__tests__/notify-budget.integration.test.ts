@@ -144,3 +144,79 @@ describe("notify under an exhausted subrequest budget", () => {
     expect(replay).not.toHaveBeenCalled();
   });
 });
+
+// #531: a send went out before its row was written, so a retried step or a
+// forced run overlapping a scheduled one could post the same digest twice.
+describe("claim before send", () => {
+  it("two concurrent dispatches post each digest exactly once", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const fetchMock = vi.fn(async () => {
+      // Hold every send open so the other dispatch runs meanwhile.
+      await gate;
+      return new Response(
+        JSON.stringify({ ok: true, result: { message_id: 7 } }),
+        { headers: { "content-type": "application/json" } }
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = dispatchStoryNotifications(env);
+    const second = dispatchStoryNotifications(env);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    release();
+    const reports = await Promise.all([first, second]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2); // one per channel
+    const total = reports
+      .flatMap((r) => Object.values(r.sent))
+      .reduce((a, b) => a + b, 0);
+    expect(total).toBe(2);
+    expect(digestRows().map((r) => r.status)).toEqual(["sent", "sent"]);
+  });
+
+  it("does not resend after a success whose step is retried", async () => {
+    vi.stubGlobal("fetch", telegramOk());
+    await dispatchStoryNotifications(env);
+    const retry = telegramOk();
+    vi.stubGlobal("fetch", retry);
+    const report = await dispatchStoryNotifications(env);
+    expect(retry).not.toHaveBeenCalled();
+    expect(report.reasons.telegram?.digest).toBe("already_sent");
+  });
+
+  it("keeps a timed-out send final", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new DOMException("The operation timed out.", "TimeoutError");
+      })
+    );
+    await dispatchStoryNotifications(env);
+    expect(digestRows().map((r) => r.status)).toEqual([
+      "ambiguous",
+      "ambiguous",
+    ]);
+    const next = telegramOk();
+    vi.stubGlobal("fetch", next);
+    const report = await dispatchStoryNotifications(env);
+    expect(next).not.toHaveBeenCalled();
+    expect(report.reasons.telegram?.digest).toBe("outcome_unknown");
+  });
+
+  it("never re-claims a claim whose outcome was not recorded", async () => {
+    // A dispatch that died between claim and record leaves `sending`.
+    sqlite
+      .prepare(
+        "INSERT INTO notifications (channel, item_id, target, status, attempts, posted_at) VALUES ('telegram', ?, '@vi', 'sending', 0, 0)"
+      )
+      .run(digestKey(DATE));
+    const fetchMock = telegramOk();
+    vi.stubGlobal("fetch", fetchMock);
+    const report = await dispatchStoryNotifications(env);
+    expect(report.reasons.telegram?.digest).toBe("outcome_unknown");
+    expect(fetchMock).toHaveBeenCalledTimes(1); // telegram-en only
+  });
+});

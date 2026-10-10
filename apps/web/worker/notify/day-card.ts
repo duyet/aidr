@@ -13,6 +13,7 @@ import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { FeedItem, Lang } from "../../src/lib/types.js";
 import type { Env } from "../types.js";
+import { firstSentence } from "./fit-text.js";
 import type { DailyDigest, DigestBullet } from "./types.js";
 
 export interface DayCardPage {
@@ -39,8 +40,9 @@ export function dayCardVersion(ids: readonly string[]): string {
   return (hash >>> 0).toString(36).padStart(4, "0");
 }
 
-/** One extra clause after the headline. The caption budget still trims it. */
-const HIGHLIGHT_SUMMARY_CAP = 90;
+/** One extra clause after the headline: a whole sentence or nothing. The
+ *  caption fitter drops clauses whole when the tiles do not all fit. */
+const HIGHLIGHT_SUMMARY_CAP = 160;
 
 type HighlightCopy = {
   title: string;
@@ -60,55 +62,49 @@ function sameLanguageSummary(item: HighlightCopy, lang: Lang): string | null {
   return raw;
 }
 
-function clipExtra(value: string, cap: number): string {
-  if (value.length <= cap) return value;
-  const slice = value.slice(0, cap);
-  const space = slice.lastIndexOf(" ");
-  const base = (space > cap * 0.6 ? slice.slice(0, space) : slice).trimEnd();
-  return `${base}…`;
-}
-
-/** "U.S." and "Ph.D." — a period after a single capital, at a word start
- *  or after another initial, is not the end of the sentence. */
-function isInitialismPeriod(value: string, index: number): boolean {
-  if (value[index] !== ".") return false;
-  const prev = value[index - 1];
-  if (!prev || !/^[A-Z]$/.test(prev)) return false;
-  const before = value[index - 2];
-  return before === undefined || before === "." || /\s/.test(before);
-}
-
-/** The first sentence, including its closing mark. A period only counts
- *  when whitespace follows and it is not an initialism. */
-function firstSentence(value: string): string {
-  for (let i = 0; i < value.length; i++) {
-    const ch = value[i];
-    if (ch !== "." && ch !== "!" && ch !== "?" && ch !== "…") continue;
-    if (isInitialismPeriod(value, i)) continue;
-    if (i + 1 >= value.length || !/\s/.test(value[i + 1] ?? "")) continue;
-    return value.slice(0, i + 1);
-  }
-  return value;
-}
-
-/** Headline, plus the first sentence of that language's summary. */
-export function highlightBulletText(item: HighlightCopy, lang: Lang): string {
+/** The headline, and the first sentence of that language's summary when it
+ *  fits whole. A long first sentence is left out rather than cut. */
+export function highlightParts(
+  item: HighlightCopy,
+  lang: Lang
+): { title: string; extra: string | null } {
   const title = localizedTitle(item, lang).text.replace(/\s+/g, " ").trim();
   const summary = sameLanguageSummary(item, lang);
-  if (!summary) return title;
+  if (!summary) return { title, extra: null };
   let extra = summary;
   if (extra.toLowerCase().startsWith(title.toLowerCase())) {
     extra = extra.slice(title.length).replace(/^[\s.:;—–-]+/, "");
   }
-  if (!extra) return title;
-  const sentence = firstSentence(extra);
-  if (!sentence || sentence.toLowerCase() === title.toLowerCase()) return title;
-  return `${title} — ${clipExtra(sentence, HIGHLIGHT_SUMMARY_CAP)}`;
+  const sentence = extra ? firstSentence(extra) : "";
+  if (
+    !sentence ||
+    sentence.length > HIGHLIGHT_SUMMARY_CAP ||
+    sentence.toLowerCase() === title.toLowerCase()
+  ) {
+    return { title, extra: null };
+  }
+  return { title, extra: sentence };
+}
+
+/** Headline, plus the first sentence of that language's summary. */
+export function highlightBulletText(item: HighlightCopy, lang: Lang): string {
+  const { title, extra } = highlightParts(item, lang);
+  return extra ? `${title} — ${extra}` : title;
+}
+
+/** `text` is the full line; `lead` is the headline alone, the shorter copy
+ *  the caption fitter falls back to. Absent when there is no clause. */
+function highlightBullet(
+  item: HighlightCopy,
+  lang: Lang
+): Pick<DigestBullet, "text" | "lead"> {
+  const { title, extra } = highlightParts(item, lang);
+  return extra ? { text: `${title} — ${extra}`, lead: title } : { text: title };
 }
 
 function toBullets(items: FeedItem[], lang: Lang): DigestBullet[] {
   return items.map((item) => ({
-    text: highlightBulletText(item, lang),
+    ...highlightBullet(item, lang),
     url: absoluteSiteUrl(storyPath(item, lang), lang),
     category: item.category,
   }));

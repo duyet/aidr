@@ -3,8 +3,43 @@ import {
   decodeHtmlEntities,
   enrichMissingContent,
   parseOgTags,
+  preferCompleteSummary,
+  summaryLooksCutOff,
 } from "../enrich.js";
 import type { FetchedItem } from "../sources/types.js";
+
+// An RSS teaser ("… failing to keep users' data safe. […]") was stored as
+// the English summary while the Vietnamese one was a full summary of the
+// article. A teaser must count as cut off so enrich/backfill replace it.
+describe("summaryLooksCutOff teaser endings", () => {
+  it("flags WordPress [Ellipsis] and read-more teasers", () => {
+    for (const text of [
+      "Sam Altman unveiled Dots, failing to keep users' data safe. […]",
+      "Sam Altman unveiled Dots. [...]",
+      "Sam Altman unveiled Dots. Read more",
+      "Sam Altman unveiled Dots. Continue reading →",
+      "Sam Altman unveiled Dots…",
+    ]) {
+      expect(summaryLooksCutOff(text)).toBe(true);
+    }
+  });
+
+  it("does not flag a finished sentence", () => {
+    expect(summaryLooksCutOff("Sam Altman unveiled Dots.")).toBe(false);
+    expect(
+      summaryLooksCutOff("Readers can read more about Dots in the docs.")
+    ).toBe(false);
+  });
+
+  it("lets the full article body replace a [Ellipsis] teaser", () => {
+    expect(
+      preferCompleteSummary(
+        "Sam Altman unveiled Dots. […]",
+        "Sam Altman unveiled Dots, an agent that promises privacy."
+      )
+    ).toBe("Sam Altman unveiled Dots, an agent that promises privacy.");
+  });
+});
 
 describe("decodeHtmlEntities", () => {
   it("decodes named entities", () => {
@@ -30,6 +65,14 @@ describe("decodeHtmlEntities", () => {
 });
 
 describe("parseOgTags", () => {
+  // Story a60e74fc: page chrome became the start of a digest bullet.
+  it("drops page chrome before the article text", () => {
+    const html = `<html><head><meta property="og:description" content="← Back to live feed · 2 stories across 1 day Consumer card issuers saw fraud fall." /></head></html>`;
+    expect(parseOgTags(html).description).toBe(
+      "Consumer card issuers saw fraud fall."
+    );
+  });
+
   it("replaces a cut-off og:description with the article paragraphs", () => {
     const html = `
       <html><head>

@@ -1,3 +1,4 @@
+import { reportPipelineException } from "../bugsink.js";
 import {
   dispatchStoryNotifications,
   type NotifyChannelReason,
@@ -11,7 +12,7 @@ import {
   previewDailyTldr,
   summarizeTldrPreview,
 } from "../tldr.js";
-import { llmStep, safeStep } from "../workflow-step.js";
+import { llmStep, safeErrorMessage, safeStep } from "../workflow-step.js";
 import { type IngestContext, TLDR_STEP } from "./context.js";
 import { DRY_RUN_SKIP_REASON } from "./mode.js";
 
@@ -118,15 +119,31 @@ export async function sendEmailDigest(ctx: IngestContext): Promise<number> {
     recordStep(steps, "email", "skipped", DRY_RUN_SKIP_REASON);
     return 0;
   }
-  const emailsSent = await safeStep(step, "email-digest", 0, async () => {
-    try {
-      return await sendDailyTldr(env);
-    } catch (error) {
-      // Never let a digest-send failure break the ingest workflow.
-      console.error("email-digest step failed:", error);
-      return 0;
+  const result = await safeStep<{ sent: number; error?: string }>(
+    step,
+    "email-digest",
+    { sent: 0 },
+    async () => {
+      try {
+        return { sent: await sendDailyTldr(env) };
+      } catch (error) {
+        // Never let a digest-send failure break the ingest workflow, but do
+        // not pass it off as "no subscribers" either: report it and record
+        // the step as failed. Plain data, so the engine can memoize it.
+        console.error("email-digest step failed:", error);
+        await reportPipelineException(error, {
+          step: "email-digest",
+          kind: "exception",
+        });
+        return { sent: 0, error: safeErrorMessage(error) };
+      }
     }
-  });
+  );
+  if (result.error) {
+    recordStep(steps, "email", "failed", result.error);
+    return 0;
+  }
+  const emailsSent = result.sent;
   recordStep(
     steps,
     "email",

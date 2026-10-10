@@ -296,6 +296,45 @@ describe("tldrBulletIssues", () => {
       `"bầy (swarm)" is a parenthetical English gloss; drop the gloss and keep one term`,
     ]);
   });
+
+  // Prod 2026-10-08: both shipped because no check saw the doubled word.
+  it("flags a doubled Vietnamese word so the bullet gets a repair", () => {
+    expect(
+      tldrBulletIssues(
+        "Meta pulled out of the acquisition deal.",
+        "Meta rút lui khỏi thỏa thỏa thuận mua lại.",
+        []
+      )
+    ).toEqual([`"thỏa thỏa" repeats a word; write "thỏa" once`]);
+  });
+
+  it("does not flag reduplication, English names, or a single word", () => {
+    expect(
+      tldrBulletIssues(
+        "People are slowly adopting Bora Bora tools.",
+        "Người người từ từ dùng công cụ Bora Bora.",
+        []
+      )
+    ).toEqual([]);
+  });
+});
+
+describe("translationDraftIssues stutter", () => {
+  it("flags a doubled magnitude word in a title", () => {
+    const issues = translationDraftIssues(
+      { title: "Hone raises $60M seed at a $285M valuation", summary: "" },
+      {
+        title:
+          "Hone huy động 60 triệu USD vòng seed với định giá 285 triệu triệu USD",
+        summary: "",
+      },
+      [],
+      true
+    );
+    expect(issues).toContain(
+      `"triệu triệu" repeats a word; write "triệu" once`
+    );
+  });
 });
 
 describe("new keep-English terms", () => {

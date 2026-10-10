@@ -330,8 +330,10 @@ async function maybeSendDailySummary(
   if (!shouldSendDailySummary(hour, date, history)) return null;
   try {
     const summary = await readDailySummary(env, nowMs, date);
-    const sent = await sendOwnerDm(env, formatDailySummary(summary));
-    return sent ? dailySummaryKey(date) : null;
+    // A rejected DM (bot not started, wrong chat id) would be rejected and
+    // reported again on every run of the window, so it also uses up the day.
+    const outcome = await sendOwnerDm(env, formatDailySummary(summary));
+    return outcome === "failed" ? null : dailySummaryKey(date);
   } catch (error) {
     console.error("daily summary failed:", error);
     return null;

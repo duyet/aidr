@@ -58,6 +58,28 @@ const HOSTILE_URLS = [
 ];
 
 describe("visibleMediaAssets", () => {
+  // Manifests stored before the build-time filter still hold aggregator
+  // cards; the dialog must hide them without waiting for a re-enrich.
+  it("hides stored generated cards when a real image exists", () => {
+    const assets = visibleMediaAssets(
+      manifestOf([
+        { type: "image", url: "https://marketbrief.now/og/story.png" },
+        { type: "image", url: "https://huggingnews.com/og/story.png" },
+        image("/article.jpg"),
+      ])
+    );
+    expect(assets.map((a) => a.url)).toEqual([`${CDN}/article.jpg`]);
+    expect(assets[0].index).toBe(1);
+  });
+
+  it("still shows a card when it is the only media", () => {
+    const card = "https://marketbrief.now/og/story.png";
+    const assets = visibleMediaAssets(
+      manifestOf([{ type: "image", url: card }])
+    );
+    expect(assets.map((a) => a.url)).toEqual([card]);
+  });
+
   it("keeps the manifest's own order with 1-based indices", () => {
     const assets = visibleMediaAssets(
       manifestOf([image("/b.jpg"), image("/a.jpg"), video("/c.mp4", "/p.jpg")])
@@ -365,17 +387,25 @@ describe("MediaGallery", () => {
     ).toBe("Story video 1 of 1");
   });
 
-  it("falls back to the local site mark when an image fails", () => {
+  it("drops a failed image when other media remain", () => {
+    // A dead upstream URL must not leave the site mark posing as story media.
     const { container } = renderGallery(
       manifestOf([image("/broken.jpg"), image("/ok.jpg")])
     );
-    const [broken, ok] = Array.from(container.querySelectorAll("img"));
+    const [broken] = Array.from(container.querySelectorAll("img"));
     fireEvent.error(broken);
+    const srcs = Array.from(container.querySelectorAll("img")).map((img) =>
+      img.getAttribute("src")
+    );
+    expect(srcs).toEqual([`${CDN}/ok.jpg`]);
+  });
+
+  it("falls back to the local site mark when the only image fails", () => {
+    const { container } = renderGallery(manifestOf([image("/broken.jpg")]));
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
     expect(container.querySelector("img")?.getAttribute("src")).toBe(
       "/favicon.svg"
     );
-    // The healthy asset is untouched.
-    expect(ok.getAttribute("src")).toBe(`${CDN}/ok.jpg`);
     expect(container.innerHTML).not.toContain("broken.jpg");
   });
 

@@ -12,7 +12,8 @@ describe("StoryVotes", () => {
     expect(html).toContain(">4<");
     expect(html).toContain('href="/sign-in?lang=en"');
     expect(html).toContain("Sign in to vote");
-    expect(html).toContain("size-8");
+    expect(html).toContain("Was this useful?");
+    expect(html).toContain("lucide-thumbs-up");
     expect(html).not.toContain("castStoryVote");
   });
 

@@ -382,6 +382,25 @@ language's edition for the local date. An empty column is skipped and
 retried next hour. `sent_at` on the snapshot is a legacy "mailed at least
 once" flag; nothing reads it to decide a send.
 
+The mail layout (`worker/mail/render.ts`, one function per block): the
+subject leads with the top one or two headlines plus "+N more" (about 60
+characters, localized), with a written preheader. The header has the
+wordmark, the spelled-out date, "N stories · M min read" and a link to the
+other language's day page. Next comes the day's video for that language
+(`day_videos`, `youtube_id` then `short_id`, no fallback across languages;
+the block is left out when there is none). Then the lead story (large image
+that is never a generated OG card, category · source, headline, summary),
+then compact rows (number, category · source, linked headline, one
+sentence, 84px thumbnail). After the rows: one "See all" button, the
+channel strip (Telegram, YouTube, Chrome extension) and the footer (view in
+browser, settings, unsubscribe, how we rank, "Forwarded this?", and
+`MAIL_POSTAL_ADDRESS` when set). The headline is `items.title` or
+`title_vi` for that language only; without it, the bullet's first sentence.
+Every link carries `utm_content` for its position (`lead`, `s2`…, `cta`,
+`video`, `channel-*`). Layouts: `design` (lead image plus thumbnails),
+`large` (an image per story), `no-images`, `text`. Admin preview:
+`GET /api/admin/mail/preview?date=&lang=&format=`.
+
 ### Telegram
 
 The `notify` step posts the same edition: Vietnamese to

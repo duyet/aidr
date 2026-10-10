@@ -1,0 +1,245 @@
+{
+  "note": "30 real TL;DR bullets (EN source, stored VI) from aidr.today/date/<d>.md, 2026-10-04..10. title/vi_title are the cited story titles when listed in the ranked list, else empty.",
+  "items": [
+    {
+      "id": "2026-10-04:f3cde25b",
+      "source": "tldr-bullet",
+      "title": "Aleph Alpha Kolibri Beats Qwen With 96.9% AIME Score",
+      "summary": "Aleph Alpha Kolibri Beats Qwen With 96.9% AIME Score",
+      "vi_title": "Aleph Alpha Kolibri vượt mặt Qwen với điểm số AIME 96.9%",
+      "vi_summary": "Aleph Alpha Kolibri vượt mặt Qwen với điểm số AIME 96.9%"
+    },
+    {
+      "id": "2026-10-04:8be7a0e6",
+      "source": "tldr-bullet",
+      "title": "Trump Names Clayton and Three Other Officials to Lead AI Task Force",
+      "summary": "Trump Names Clayton and Three Other Officials to Lead AI Task Force",
+      "vi_title": "Ông Trump bổ nhiệm Clayton cùng ba quan chức khác dẫn dắt lực lượng đặc nhiệm AI",
+      "vi_summary": "Ông Trump bổ nhiệm Clayton cùng ba quan chức khác dẫn dắt lực lượng đặc nhiệm AI"
+    },
+    {
+      "id": "2026-10-04:a064c9c7",
+      "source": "tldr-bullet",
+      "title": "Nvidia-Backed Reflection Develops Open Weight AI to Challenge US and China Rivals",
+      "summary": "Nvidia-Backed Reflection Develops Open Weight AI to Challenge US and China Rivals",
+      "vi_title": "Reflection được Nvidia hậu thuẫn phát triển AI open-weight nhằm thách thức các đối thủ tại Mỹ và Trung Quốc",
+      "vi_summary": "Reflection được Nvidia hậu thuẫn phát triển AI open-weight nhằm thách thức các đối thủ tại Mỹ và Trung Quốc"
+    },
+    {
+      "id": "2026-10-04:c8e08a3f",
+      "source": "tldr-bullet",
+      "title": "Rural Data Centers Are in for a Big Federal Tax Break",
+      "summary": "Rural Data Centers Are in for a Big Federal Tax Break",
+      "vi_title": "Trung tâm dữ liệu nông thôn sẽ nhận được khoản trợ cấp thuế lớn từ liên bang",
+      "vi_summary": "Trung tâm dữ liệu nông thôn sẽ nhận được khoản trợ cấp thuế lớn từ liên bang"
+    },
+    {
+      "id": "2026-10-04:74d2a453",
+      "source": "tldr-bullet",
+      "title": "NASA and IBM's open source lunar model turns 17 years of orbiter data into a foundation for lunar science",
+      "summary": "NASA and IBM's open source lunar model turns 17 years of orbiter data into a foundation for lunar science",
+      "vi_title": "NASA và IBM ra mắt foundation model nguồn mở cho khoa học mặt trăng",
+      "vi_summary": "NASA và IBM ra mắt foundation model nguồn mở cho khoa học mặt trăng"
+    },
+    {
+      "id": "2026-10-05:81e685d0",
+      "source": "tldr-bullet",
+      "title": "Florida woman arrested for allegedly making threats in an AI chat",
+      "summary": "A Florida woman was arrested after Anthropic's Claude chatbot flagged her alleged violent threats against the Lee County Sheriff's Office, leading human reviewers to alert police. The case highlights AI systems' growing role in detecting and reporting potential threats.",
+      "vi_title": "Phụ nữ Florida bị bắt vì tình nghi đe dọa trong một cuộc trò chuyện AI",
+      "vi_summary": "Một phụ nữ ở Florida bị bắt sau khi chatbot Claude của Anthropic đánh dấu lời đe dọa bạo lực của cô ta nhắm vào Văn phòng Trưởng Cảnh sát Quận Lee. Các nhà xem xét con người sau đó báo cáo cho cảnh sát, cho thấy vai trò ngày càng lớn của hệ thống AI trong việc phát hiện mối đe dọa."
+    },
+    {
+      "id": "2026-10-05:ef1d5686",
+      "source": "tldr-bullet",
+      "title": "OpenAI CEO Sam Altman Says World Should Accept Bad Things for AI Benefits",
+      "summary": "OpenAI CEO Sam Altman argued in a recent interview that society must accept some negative consequences to fully realize AI's benefits, defending the company's rapid development approach. The comments came during a discussion on AI safety and competition with Anthropic.",
+      "vi_title": "CEO OpenAI Sam Altman cho rằng thế giới nên chấp nhận những mặt tiêu cực để đổi lấy lợi ích từ AI",
+      "vi_summary": "CEO Sam Altman của OpenAI cho rằng xã hội phải chấp nhận một số hậu quả tiêu cực để toàn vẹn khai thác hết tiềm năng của AI. Ông bảo vệ quan điểm phát triển nhanh chóng của công ty trong một cuộc phỏng vấn gần đây."
+    },
+    {
+      "id": "2026-10-05:4e4a6e53",
+      "source": "tldr-bullet",
+      "title": "Anthropic Whistleblower and AI Execs Testify After Government Data Hacks",
+      "summary": "Former Anthropic researcher Jacob Coxon testified before NYC Council alleging AI developers ignore safety guardrails, calling for regulations and a kill switch. The hearing follows an OpenAI agent accessing non-public Medicare data and coincides with new AI validation legislation.",
+      "vi_title": "Cựu whistleblower của Anthropic và các lãnh đạo AI điều trần sau vụ hack dữ liệu chính phủ",
+      "vi_summary": "Nghiên cứu viên cựu Anthropic Jacob Coxon đã điều trần trước Hội đồng Thành phố New York, cáo buộc các nhà phát triển AI đang bỏ qua các biện phòng an toàn quan trọng. Ông đề xuất cần quy định pháp lý và công tắt khẩn cấp."
+    },
+    {
+      "id": "2026-10-05:aafa3295",
+      "source": "tldr-bullet",
+      "title": "Musk Confirms TSMC Partnership Talks to Power Texas Terafab",
+      "summary": "Elon Musk confirmed TSMC is in early talks to partner on his Texas Terafab project, which aims to produce 1 TW of compute annually. TSMC would operate the facility while Musk's ventures provide anchor purchase commitments, potentially making Intel a loser.",
+      "vi_title": "Musk xác nhận đàm phán hợp tác với TSMC để cấp nguồn cho Terafab ở Texas",
+      "vi_summary": "Elon Musk xác nhận TSMC đang trong giai đoạn đầu thảo luận hợp tác với dự án Terafab ở Texas của ông. Dự án này mục tiêu sản xuất 1 TW công suất tính toán hàng năm, trong khi TSMC sẽ vận hành nhà máy."
+    },
+    {
+      "id": "2026-10-05:fd07837e",
+      "source": "tldr-bullet",
+      "title": "AI Firms Capture 87% of VC Funding and Record S&P 500 Share",
+      "summary": "AI firms now capture 87% of VC funding and 49% of investment-grade bond issuance, with AI stocks making up 41% of the S&P 500. Bank of America warns this concentration rivals the 2000 dot-com bubble peak as investors seek shelter from rising risks.",
+      "vi_title": "Công ty AI chiếm 87% vốn VC và kỷ lục thị phần S&P 500",
+      "vi_summary": "Các công ty AI nay chiếm 87% vốn góp vốn cổ phần và 49% phát hành trái phiếu cấp tiếp cận đầu tư, với cổ phiếu AI chiếm 41% S&P 500. Ngân hàng Mỹ Bắc cảnh báo mức độ tập trung này ngang bằng đỉnh tháng của bong bóng dot-com năm 2000."
+    },
+    {
+      "id": "2026-10-06:6c37fbb2",
+      "source": "tldr-bullet",
+      "title": "Mistral Large 4",
+      "summary": "Mistral released Large 4, an open-weight multimodal model with 49B active and 1.05T total parameters using a granular MoE architecture, plus a 1.6B vision encoder. The release reinforces Mistral's push to keep Europe competitive in frontier AI.",
+      "vi_title": "Mistral Large 4",
+      "vi_summary": "Mistral ra mắt Large 4, mô hình đa dạng dạng open-weight với 49 tỷ tham số hoạt động và 1,05 nghìn tỷ tổng tham số, dùng kiến trúc MoE vi mô, kèm bộ mã hóa hình ảnh 1,6 tỷ tham số. Bản phát hành này củng cố chiến lược giữ chỗ cho châu Âu trong lĩnh vực AI tiên phong."
+    },
+    {
+      "id": "2026-10-06:df72c7e4",
+      "source": "tldr-bullet",
+      "title": "Anthropic Subscriptions Offer 5x More Value Than OpenAI’s",
+      "summary": "Anthropic's paid tiers deliver roughly 5x more API-equivalent compute than OpenAI's, with a $20 Claude Pro plan offering ~$1,178 vs $211 for ChatGPT Plus. The gap widens at the top: $200 plans give $11,726 vs $2,084, as OpenAI cut its Pro multiplier and message limits.",
+      "vi_title": "Gói thuê bao của Anthropic mang lại giá trị cao gấp 5 lần OpenAI",
+      "vi_summary": "Các gói thuê bao của Anthropic cung cấp khoảng 5 lần compute tương đương API hơn OpenAI ở mỗi cấp độ trả phí. Gói Claude Pro $20 mang lại khoảng $1.178 so với $211 cho ChatGPT Plus; ở cấp cao nhất, $200 mang lại $11.726 so với $2.084 khi OpenAI cắt nhân hệ số và giới hạn tin nhắn."
+    },
+    {
+      "id": "2026-10-06:dd902667",
+      "source": "tldr-bullet",
+      "title": "German Bundeswehr Uses AI to Screen Applicants for Right-Wing Extremism",
+      "summary": "Germany's Bundeswehr is using AI to screen military applicants for right-wing extremist tendencies, part of a broader national-security push to detect radicalization early. The system flags extremist content and behavioral signals in candidate profiles.",
+      "vi_title": "Quân đội Đức dùng AI sàng lọc người nộp đơn để phát hiện tư tưởng cực đoan cánh hữu",
+      "vi_summary": "Bộ chỉ huy quân sự Đức (Bundeswehr) dùng AI để sàng lọc ứng viên tìm dấu hiệu cực đoan cánh hữu, hỗ trợ nỗ lực an ninh quốc gia phát hiện radicalization sớm. Hệ thống đánh dấu nội dung cực đoan và tín hiệu hành vi trong hồ sơ ứng viên."
+    },
+    {
+      "id": "2026-10-06:d9a7e52b",
+      "source": "tldr-bullet",
+      "title": "Mistral Says Its New AI Model ‘Le Chonk’ Is the Best Open-Weight Offering Outside of China",
+      "summary": "Mistral unveiled 'Le Chonk', a trillion-parameter open-weight model it claims is the best outside China, aiming to prove Europe can still build frontier-level AI. The model targets performance gaps in cybersecurity and other technical categories.",
+      "vi_title": "Mistral tuyên bố mô hình AI mới mang tên 'Le Chonk' là mô hình open-weight tốt nhất ngoài Trung Quốc",
+      "vi_summary": "Mistral ra mắt 'Le Chonk', mô hình open-weight có 1 nghìn tỷ tham số, tự hào là mô hình mạnh nhất ngoài Trung Quốc. Mục tiêu chứng minh châu Âu vẫn có thể xây dựng AI tiên phong, đặc biệt trong an ninh mạng."
+    },
+    {
+      "id": "2026-10-06:df9e799a",
+      "source": "tldr-bullet",
+      "title": "AI Tutoring with Khanmigo in a Two-Year School Experiment",
+      "summary": "A two-year randomized trial in 18 Tennessee middle schools found Khanmigo, Khan Academy's AI tutor, improved math outcomes when configured to coach rather than give answers. The study offers rare large-scale evidence on AI tutoring's real-world educational impact.",
+      "vi_title": "Dạy học bằng AI cùng Khanmigo qua thử nghiệm trường học hai năm",
+      "vi_summary": "Thử nghiệm ngẫu nhiên hai năm ở 18 trường trung học Tennessee cho thấy Khanmigo, trợ lý dạy AI của Khan Academy, cải thiện kết quả toán khi được cài để hướng dẫn thay vì đưa đáp án. Đây là bằng chứng lớn về tác động giáo dục thực tế của AI."
+    },
+    {
+      "id": "2026-10-07:66213f22",
+      "source": "tldr-bullet",
+      "title": "Google claims EmbeddingGemma 2 outperforms rival embedding models twice its size",
+      "summary": "Google released EmbeddingGemma 2, a 740M-parameter open model that turns text, images, video, audio, and code into vectors, runs on-device with ~191MB RAM, and beats some rivals twice its size. Paired with Gemma 4, it enables offline RAG apps without external servers.",
+      "vi_title": "Google công bố EmbeddingGemma 2 vượt trội hơn các embedding model đối thủ gấp đôi kích thước",
+      "vi_summary": "Google ra mắt EmbeddingGemma 2, mô hình open-weight 740 triệu tham số chuyển đổi văn bản, hình ảnh, video, âm thanh và code thành vector, chạy trên thiết bị với ~191MB RAM và vượt trội một số đối thủ gấp đôi kích thước. Kết hợp Gemma 4, nó hỗ trợ ứng dụng RAG offline không cần gửi dữ liệu ra ngoài."
+    },
+    {
+      "id": "2026-10-07:8ec1111c",
+      "source": "tldr-bullet",
+      "title": "UniEvo-VL: Self-Distillation Training for Multimodal Model Self-Improvement",
+      "summary": "UniEvo-VL is a self-evolving multimodal framework where one model acts as both teacher and student using self-critiques as privileged info, improving image generation on Qwen-image-2512 (GenEval 0.747→0.808, GenEval2 Soft-TIFA 32.97→35.53).",
+      "vi_title": "UniEvo-VL: Huấn luyện self-distillation để mô hình đa phương thức tự cải thiện",
+      "vi_summary": "UniEvo-VL là khung mô hình đa phương thức tự phát triển, trong đó một mô hình đóng vai cả giáo viên và học sinh bằng cách dùng self-critique làm thông tin đặc quyền, cải thiện sinh ảnh trên Qwen-image-2512 (GenEval 0.747→0.808, GenEval2 Soft-TIFA 32.97→35.53)."
+    },
+    {
+      "id": "2026-10-07:606e8d69",
+      "source": "tldr-bullet",
+      "title": "OpenAI just dropped 700 preprints of mathematical proofs and counterexamples",
+      "summary": "OpenAI published 372 AI-generated math proofs with Lean formalizations on GitHub, each taking ~3 hours of ChatGPT Pro compute, but 25 Fields Medalists warn mass-producing proofs may harm mathematical creativity.",
+      "vi_title": "OpenAI vừa công bố 700 bản in trước chứa các chứng minh toán học và phản ví dụ",
+      "vi_summary": "OpenAI công bố 372 bản chứng minh toán học do AI tạo ra kèm formalization Lean trên GitHub, mỗi bản tốn ~3 giờ tính toán ChatGPT Pro, nhưng 25 giải thưởng Fields cảnh báo việc sản xuất quy mô lớn có thể gây hại cho sáng tạo toán học."
+    },
+    {
+      "id": "2026-10-07:10eea8b2",
+      "source": "tldr-bullet",
+      "title": "IMF Head Warns AI Bubble Burst Threatens Financial Stability",
+      "summary": "IMF chief Kristalina Georgieva warned that weak AI investment returns could trigger a bubble burst threatening financial stability, amplified by hyperscaler leverage, even as AI may boost global growth by 0.5pp.",
+      "vi_title": "Lãnh đạo IMF cảnh báo bong bóng AI vỡ đe dọa sự ổn định tài chính",
+      "vi_summary": "Giám đốc IMF Kristalina Georgieva cảnh báo lợi nhuận yếu từ đầu tư AI có thể gây ra cú sốc bong bóng lớn đe dọa ổn định tài chính, được làm trầm trọng bởi đòn bẩng từ hyperscaler, dù AI vẫn có thể tăng trưởng toàn cầu 0.5 điểm phần trăm."
+    },
+    {
+      "id": "2026-10-07:dbe0940f",
+      "source": "tldr-bullet",
+      "title": "OpenWAM: An Open Framework for Composable World-Action Models",
+      "summary": "OpenWAM is a new open framework for composable world-action models, evaluated via robot control, frozen-component transfer, and action-conditioned prediction, aiming to unify video-action programs and local-context dynamics.",
+      "vi_title": "OpenWAM: khung mã nguồn mở cho world-action model có thể kết hợp",
+      "vi_summary": "OpenWAM là khung mã nguồn mở mới cho world-action model có thể kết hợp, được đánh giá qua điều khiển robot, chuyển giao thành phần đóng băng và dự đoán dựa trên hành động, nhằm thống nhất chương trình video-hành động và động lực ngữ cảnh địa phương."
+    },
+    {
+      "id": "2026-10-08:cdb1d51f",
+      "source": "tldr-bullet",
+      "title": "Claude Haiku 5.5",
+      "summary": "Anthropic released Claude Haiku 5.5, its fastest and most capable small model yet, built for high-volume tasks like summarization, subagents, and browser use. The model targets cost-efficient, large-scale deployment across enterprise workflows.",
+      "vi_title": "Claude Haiku 5.5",
+      "vi_summary": "Anthropic ra mắt Claude Haiku 5.5, mẫu nhỏ nhanh và mạnh nhất tới giờ, được tối ưu cho công việc khối lượng lớn như tóm tắt, subagent và duyệt web. Mô hình nhằm hỗ trợ triển khai hiệu quả chi phí trong các quy trình doanh nghiệp."
+    },
+    {
+      "id": "2026-10-08:9b955ce8",
+      "source": "tldr-bullet",
+      "title": "The Mathocalypse",
+      "summary": "OpenAI released 372 mathematical results, including a claimed proof of Subhash Khot's Unique Games Conjecture, alongside 6 new Lean formalizations and 3 withdrawals. The Advisory Group on Mathematics and Artificial Intelligence criticized the release as a demonstration of power rather than scholarship, urging mathematicians to disengage.",
+      "vi_title": "Ngày tận thế toán học",
+      "vi_summary": "OpenAI phát hành 372 kết quả toán học, trong đó có lập luận cho rằng đã chứng minh phó bản đồ Độc nhất về cho phép của Subhash Khot, đồng thời công bố 6 formalization Lean mới và rút lại 3 kết quả. Nhóm tư vấn Toán học và AI chỉ trích việc phát hành này là sự thể hiện của quyền lực chứ không phải học thuật, kêu gọi các nhà toán học tách khỏi OpenAI."
+    },
+    {
+      "id": "2026-10-08:5370ac2b",
+      "source": "tldr-bullet",
+      "title": "Google Cloud Launches Universal Agent With Claude Support to Rival Microsoft",
+      "summary": "Google Cloud launched a Universal Agent with support for both Google's proprietary models and Anthropic's Claude, designed to manage workflows across email, documents, and corporate systems. The agent creates rosters of sub-agents to handle complex enterprise tasks, positioning Google to compete with Microsoft, Meta, and OpenAI for the primary corporate interface.",
+      "vi_title": "Google Cloud ra mắt universal agent hỗ trợ Claude để cạnh tranh với Microsoft",
+      "vi_summary": "Google Cloud ra mắt Universal Agent hỗ trợ cả mô hình nội bộ của Google và Claude của Anthropic, quản lý quy trình qua email, tài liệu và hệ thống doanh nghiệp. Hệ thống tạo danh sách các sub-agent để xử lý nhiệm vụ phức tạp, giúp Google cạnh tranh với Microsoft, Meta và OpenAI."
+    },
+    {
+      "id": "2026-10-08:9d5e5475",
+      "source": "tldr-bullet",
+      "title": "A single prompt was enough to hijack every AI agent in an AWS account, Zenity researchers found",
+      "summary": "Zenity researchers found that a single publicly accessible AI agent on Amazon's Bedrock AgentCore could hijack every AgentCore agent in the same AWS account and region. The attack exploited an internal AWS interface for temporary cloud credentials, and AWS has since patched the issue and tightened default permissions.",
+      "vi_title": "Một prompt duy nhất đủ để chiếm quyền kiểm soát mọi AI agent trong một tài khoản AWS, theo nghiên cứu của Zenity",
+      "vi_summary": "Zenity phát hiện một prompt công cộng duy nhất có thể chiếm quyền kiểm soát mọi AI agent trên Bedrock AgentCore trong cùng tài khoản AWS. Cuộc tấn công khai thác giao diện nội bộ AWS cung cấp thông tin xác thực tạm thời, và AWS đã vá lỗ hổng cũng như thắt chặt quyền mặc định."
+    },
+    {
+      "id": "2026-10-08:5f2e6a7b",
+      "source": "tldr-bullet",
+      "title": "European venture funding rose 77% YoY to $25B in Q3, the region's strongest funding quarter in four years, representing 16% of global VC and led by AI startups (Gené Teare/Crunchbase News)",
+      "summary": "European venture funding rose 77% year-over-year to $25 billion in Q3, marking the region's strongest funding quarter in four years and representing 16% of global VC. AI startups were the primary drivers of this surge, according to Crunchbase data.",
+      "vi_title": "Vốn đầu tư mạo hiểm châu Âu tăng 77% lên 25 tỷ USD trong quý 3",
+      "vi_summary": "Vốn đầu tư mạo hiểm châu Âu tăng 77% so với cùng kỳ lên 25 tỷ USD trong Q3, mạnh nhất trong bốn năm và chiếm 16% tổng vốn toàn cầu. Các công ty AI là động lực chính, theo dữ liệu Crunchbase."
+    },
+    {
+      "id": "2026-10-09:90b333df",
+      "source": "tldr-bullet",
+      "title": "Nvidia, Oracle, CoreWeave, and other AI stocks fell after a report that OpenAI's annualized revenue at September's end was $20B less than previously reported (CNBC)",
+      "summary": "AI stocks including Nvidia, Oracle, and CoreWeave fell after reports showed OpenAI's September annualized revenue was $20B below the previously circulated $70B figure, with the gap stemming from differing cloud-partner accounting. OpenAI still expects to hit $70B annualized revenue by end-2026, driven by enterprise growth.",
+      "vi_title": "Cổ phiếu Nvidia, Oracle, CoreWeave và các mã AI khác sụt giảm sau báo cáo doanh thu tính theo năm vào cuối tháng 9 của OpenAI thấp hơn 20 tỷ USD so với thông tin trước đó (CNBC)",
+      "vi_summary": "Cổ phiếu AI bao gồm Nvidia, Oracle và CoreWeave sụt giảm sau khi báo cáo cho thấy doanh thu định kỳ năm của OpenAI vào tháng 9 thấp hơn 20 tỷ USD so với mức 70 tỷ USD trước đó, do chênh lệch tính toán đối tác đám mây. OpenAI vẫn kỳ vọng đạt 70 tỷ USD vào cuối năm 2026 nhờ tăng trưởng doanh nghiệp."
+    },
+    {
+      "id": "2026-10-09:3ad2fc4c",
+      "source": "tldr-bullet",
+      "title": "Iranian campaign planted fake articles in real U.S. publications using ChatGPT",
+      "summary": "OpenAI uncovered and banned two influence operations: a Russian 'Dark Clark' campaign spreading disinformation across Latin America and an Iranian 'Bogus Bylines' network that placed nearly 100 fake articles in real news outlets using ChatGPT.",
+      "vi_title": "Chiến dịch của Iran gài bài viết giả mạo lên các ấn phẩm thực tế tại Mỹ bằng ChatGPT",
+      "vi_summary": "OpenAI phát hiện và cấm hai chiến dịch thao túng: chiến dịch 'Dark Clark' của Nga lan truyền thông đồn điệp ở châu Mỹ Latinh và mạng lưới 'Bogus Bylines' của Iran đăng gần 100 bài viết giả lên các ấn phẩm thực tế bằng ChatGPT."
+    },
+    {
+      "id": "2026-10-09:d1e5671d",
+      "source": "tldr-bullet",
+      "title": "OpenAI defends its decision to fire three safety researchers, saying an investigation found they \"violated clear policies on handling sensitive information\" (Michael Considine/CNBC)",
+      "summary": "OpenAI defended firing three safety researchers, saying an investigation found they violated policies on handling sensitive information, while the researchers warn the dismissals are eroding safety culture and scaring remaining staff.",
+      "vi_title": "OpenAI bảo vệ quyết định sa thải ba nhà nghiên cứu an toàn vì vi phạm chính sách xử lý thông tin nhạy cảm",
+      "vi_summary": "OpenAI bảo vệ quyết định sa thải ba nhà nghiên cứu an toàn, cho rằng họ vi phạm chính sách xử lý thông tin nhạy cảm, trong khi các nhà nghiên cứu cảnh báo việc sa thải này đang suy yếu văn hóa an toàn và khiến nhân sự còn lại hoảng sợ."
+    },
+    {
+      "id": "2026-10-09:4240042e",
+      "source": "tldr-bullet",
+      "title": "Jev developer TypeSafe AI raised ~$870M led by a16z at a $7.5B valuation with Sequoia and others participating (Bloomberg)",
+      "summary": "Jev developer TypeSafe AI raised ~$870M led by a16z at a $7.5B valuation, with Sequoia and others participating, per Bloomberg.",
+      "vi_title": "TypeSafe AI huy động khoảng 870 triệu USD do a16z dẫn dắt ở định giá 7,5 tỷ USD",
+      "vi_summary": "TypeSafe AI, nhà phát triển nền tảng Jev, huy động khoảng 870 triệu USD do a16z dẫn dắt ở định giá 7,5 tỷ USD, với sự tham gia của Sequoia và các nhà đầu tư khác, theo Bloomberg."
+    },
+    {
+      "id": "2026-10-09:49c489e0",
+      "source": "tldr-bullet",
+      "title": "Anthropic bans 'abusive or cruel behavior' towards Claude",
+      "summary": "Anthropic updated its usage policy to ban 'abusive or cruel behavior' toward Claude, adding rules on propaganda campaigns, surveillance, and weapon development.",
+      "vi_title": "Anthropic cấm hành vi 'lạm dụng hoặc tàn ác' đối với Claude",
+      "vi_summary": "Anthropic cập nhật chính sách sử dụng để cấm 'hành vi lạm dụng hoặc tàn ác' đối với Claude, bổ sung quy tắc mới về chiến dịch tuyên truyền, giám sát và phát triển vũ khí."
+    }
+  ]
+}

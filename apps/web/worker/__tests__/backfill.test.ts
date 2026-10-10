@@ -18,6 +18,13 @@ describe("buildMissingSummaryQuery", () => {
     expect(sql).toContain("media_manifest");
   });
 
+  it("re-fetches stored RSS teasers so they are replaced by the article", () => {
+    const sql = buildMissingSummaryQuery(15);
+    expect(sql).toContain("LIKE '%[…]'");
+    expect(sql).toContain("LIKE '%[...]'");
+    expect(sql).toContain("'%Read more%'");
+  });
+
   it("orders most-recent-first and respects the given limit", () => {
     const sql = buildMissingSummaryQuery(7);
     expect(sql).toMatch(/ORDER BY published_at DESC/);

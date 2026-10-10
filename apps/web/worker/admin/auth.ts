@@ -39,7 +39,8 @@ export async function checkAdminAuthRateLimit(
   return null;
 }
 
-async function recordAdminAuthFailure(
+/** Counts one failed bearer attempt toward `checkAdminAuthRateLimit`. */
+export async function recordAdminAuthFailure(
   request: Request,
   env: Env
 ): Promise<void> {

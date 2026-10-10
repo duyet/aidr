@@ -5,9 +5,13 @@ import {
   buildDigestEmail,
   DIGEST_LOCAL_HOUR,
   digestBulletsWithImages,
+  digestBulletsWithItems,
   getLocalHourAndDate,
   primaryItemId,
+  sendConfirmEmail,
   sendDailyTldr,
+  sendSettingsChangeEmail,
+  sendWelcomeEmail,
   shouldSendForSubscriber,
   snapshotHasBullets,
   topBullets,
@@ -190,7 +194,7 @@ describe("buildDigestEmail", () => {
     expect(text).toContain("story 4");
     expect(text).not.toContain("story 5");
     expect(html).not.toContain("story 5");
-    expect(html).toContain("Adjust settings");
+    expect(html).toContain(">Settings</a>");
     expect(html).toContain("subscribe?settings=tok");
   });
 
@@ -261,7 +265,7 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("&quot;quoted&quot;");
   });
 
-  it("keeps the subject and heading short and whole, however long the first bullet is", () => {
+  it("leads the subject with the top headline, cut whole at a word, and keeps story text out of the preheader", () => {
     const long =
       "OpenAI ships a coding model that rewrites entire repositories overnight and then keeps going past any reasonable subject length";
     const { subject, html } = buildDigestEmail(
@@ -277,32 +281,46 @@ describe("buildDigestEmail", () => {
       "en",
       "tok"
     );
-    const hero = canonicalizeMediaImageUrl(
+    const photo = canonicalizeMediaImageUrl(
       "https://cdn.example/hero-shot.jpg?utm_source=newsletter"
     );
-    expect(hero).toBeTruthy();
+    expect(photo).toBeTruthy();
     expect(canonicalizeMediaImageUrl("javascript:alert(1)")).toBeNull();
     expect(
       canonicalizeMediaImageUrl("http://127.0.0.1/private.jpg")
     ).toBeNull();
-    // A cut subject reads as broken in an inbox, so the title is fixed and
-    // the story text goes to the preheader instead.
-    expect(subject).toBe("AI;DR — 2026-08-16 · Today in AI");
-    expect(subject).not.toContain("…");
-    expect(subject).not.toContain("OpenAI");
-    expect(subject.length).toBeLessThanOrEqual(40);
+    // The inbox shows ~60 characters: lead with the news, never a bare date.
+    expect(subject.startsWith("OpenAI ships a coding model")).toBe(true);
+    expect(subject.endsWith("… + 2 more")).toBe(true);
+    expect(subject.length).toBeLessThanOrEqual(60);
     expect(html).toContain(`<title>${subject}</title>`);
-    expect(html).toContain(`>${subject}</td>`);
-    expect(html).toContain(`opacity:0">${long}</div>`);
-    expect(html).toContain('class="mail-hero"');
-    expect(html).toContain(`src="${hero}"`);
-    expect(html.match(/class="mail-hero"/g)?.length).toBe(1);
+    // The preheader is written on purpose, not story 1's text cut mid-sentence.
+    expect(html).toContain("Sunday's 3 AI stories in 1 minute.");
+    expect(html).not.toContain(`opacity:0;mso-hide:all">${long}`);
+    // The lead's image is unsafe, so no lead image; story 3 keeps its photo.
+    expect(html).not.toContain("mail-lead-image");
+    expect(html).toContain(`src="${photo}"`);
     expect(html).not.toContain("javascript:");
     expect(html).not.toContain("127.0.0.1");
   });
 
-  it("leads with the day card linked to the day page", () => {
-    const { html } = buildDigestEmail(
+  it("leads with the top story's own photo, never the day card or an OG card", () => {
+    const lead = buildDigestEmail(
+      "2026-08-16",
+      [
+        {
+          text: "Photo story",
+          image_url: "https://cdn.example/photos/claude-stage.jpg",
+        },
+        { text: "Other story" },
+      ],
+      "en",
+      "tok"
+    ).html;
+    expect(lead).toContain(
+      'class="mail-lead-image" src="https://cdn.example/photos/claude-stage.jpg"'
+    );
+    const card = buildDigestEmail(
       "2026-08-16",
       [
         {
@@ -316,42 +334,109 @@ describe("buildDigestEmail", () => {
       ],
       "en",
       "tok"
-    );
-    const hero = html.match(/class="mail-hero" src="([^"]+)"/);
-    // Same image as the Telegram digest and the day page's og:image.
-    expect(hero?.[1]).toBe(
-      "https://aidr.today/api/og/date/2026-08-16.png?lang=en"
-    );
-    expect(html).toContain('href="https://aidr.today/date/2026-08-16?lang=en');
-    expect(html).toContain(">Read on aidr.today</a>");
-    expect(html).not.toMatch(/Read on aidr\.today[\s\S]{0,80}background/);
+    ).html;
+    expect(card).not.toContain("mail-lead-image");
+    expect(card).not.toContain("/api/og/date/");
+    // The one CTA goes to the day page.
+    expect(card).toContain('href="https://aidr.today/date/2026-08-16?lang=en');
+    expect(card).toContain("See all stories on aidr.today");
+    expect(card).not.toContain("Read more");
   });
 
-  it("keeps the day card when no story image canonicalizes", () => {
+  it("shows no image at all when no story image canonicalizes", () => {
     const { html } = buildDigestEmail(
       "2026-08-16",
       [{ text: "Plain story", image_url: "not a url" }],
       "en",
       "tok"
     );
-    expect(html).toContain(
-      'class="mail-hero" src="https://aidr.today/api/og/date/'
-    );
+    expect(html).not.toContain("mail-lead-image");
+    expect(html).not.toContain("/api/og/date/");
     expect(html).not.toContain("not a url");
+  });
+
+  it("renders the day video for its language and omits it otherwise", () => {
+    const video = { youtubeId: "R3j93-pO9ac", title: "Today in two minutes" };
+    const withVideo = buildDigestEmail(
+      "2026-08-16",
+      bullets,
+      "en",
+      "tok",
+      5,
+      "design",
+      { video }
+    );
+    expect(withVideo.html).toContain(
+      "https://i.ytimg.com/vi/R3j93-pO9ac/hqdefault.jpg"
+    );
+    expect(withVideo.html).toContain("Today in two minutes");
+    const without = buildDigestEmail("2026-08-16", bullets, "en", "tok");
+    expect(without.html).not.toContain("i.ytimg.com");
   });
 });
 
 describe("digest subject in Vietnamese", () => {
-  it("uses the Vietnamese label and never the English one", () => {
+  it("leads with the Vietnamese story and never the English label", () => {
     const { subject, text } = buildDigestEmail(
       "2026-08-16",
       [{ text: "tin ".repeat(60) }],
       "vi",
       "tok"
     );
-    expect(subject).toBe("AI;DR — 2026-08-16 · Tin AI hôm nay");
-    expect(subject).not.toContain("…");
-    expect(text.startsWith(`${subject}\n`)).toBe(true);
+    expect(subject.startsWith("tin tin")).toBe(true);
+    expect(subject.length).toBeLessThanOrEqual(60);
+    expect(subject).not.toContain("Today in AI");
+    expect(
+      text.startsWith("AI;DR — Chủ Nhật, 16 tháng 8, 2026\n1 tin · 1 phút đọc")
+    ).toBe(true);
+  });
+});
+
+describe("digestBulletsWithItems", () => {
+  const rows = [
+    {
+      id: "b",
+      title: "English title B",
+      title_vi: null,
+      category: "Agent",
+      url: "https://www.techcrunch.com/x",
+      image_url: "https://cdn.example/b.jpg",
+    },
+    {
+      id: "a",
+      title: "English title A",
+      title_vi: "Tiêu đề A",
+      category: "Funding",
+      url: "https://bloomberg.com/y",
+      image_url: null,
+    },
+  ];
+  const bullets = [
+    { text: "Bullet A. More.", item_ids: ["a"] },
+    { text: "Bullet B. More.", item_ids: ["b"] },
+  ];
+
+  it("joins each bullet to its own item by id, not by position", () => {
+    const en = digestBulletsWithItems(bullets, rows, "en");
+    expect(en[0]).toMatchObject({
+      headline: "English title A",
+      category: "Funding",
+      source: "bloomberg.com",
+    });
+    expect(en[1]).toMatchObject({
+      headline: "English title B",
+      source: "techcrunch.com",
+      image_url: "https://cdn.example/b.jpg",
+    });
+  });
+
+  it("uses title_vi for Vietnamese and never falls back to the English title", () => {
+    const vi = digestBulletsWithItems(bullets, rows, "vi");
+    expect(vi[0]?.headline).toBe("Tiêu đề A");
+    expect(vi[1]?.headline).toBeUndefined();
+    const { html } = buildDigestEmail("2026-08-16", vi, "vi", "tok");
+    expect(html).not.toContain("English title B");
+    expect(html).toContain(">Bullet B.</font>");
   });
 });
 
@@ -371,7 +456,7 @@ describe("digestBulletsWithImages", () => {
     expect(hydrated[1]?.image_url).toBe("https://cdn.example/photos/room.jpg");
     const { html } = buildDigestEmail("2026-09-29", hydrated, "en", "tok");
     expect(html).not.toContain(
-      'class="mail-hero" src="https://news.example/og/'
+      'class="mail-lead-image" src="https://news.example/og/'
     );
     expect(html).toContain('src="https://cdn.example/photos/room.jpg"');
   });
@@ -582,6 +667,80 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     expect(sentTo).toEqual(["nextday@example.com"]);
   });
 
+  it("waits for the subscriber's local-date edition instead of mailing the UTC-dated one, then sends it once (#532)", async () => {
+    // 2026-08-16T20:00Z is 08:00 on 2026-08-17 in Auckland (UTC+12): past
+    // the digest hour, but only the UTC-dated 2026-08-16 snapshot exists.
+    const snapshots = new Map<string, unknown>([
+      [
+        "2026-08-16",
+        {
+          date: "2026-08-16",
+          bullets_en: JSON.stringify([{ text: "yesterday" }]),
+          bullets_vi: JSON.stringify([]),
+          sent_at: null,
+        },
+      ],
+    ]);
+    const subscriber = {
+      email: "nz@example.com",
+      lang: "en",
+      unsubscribe_token: "t1",
+      timezone: "Pacific/Auckland",
+      last_sent_date: null as string | null,
+    };
+    const sentSubjects: string[] = [];
+    const db = {
+      batch: async () => [],
+      prepare(sql: string) {
+        const bound = (args: unknown[]) => ({
+          first: async () =>
+            sql.includes("FROM tldr_snapshots")
+              ? (snapshots.get(args[0] as string) ?? null)
+              : null,
+          all: async () => ({
+            results: sql.includes("FROM subscribers") ? [subscriber] : [],
+          }),
+          run: async () => {
+            if (sql.startsWith("UPDATE subscribers SET last_sent_date")) {
+              subscriber.last_sent_date = args[0] as string;
+            }
+            return { success: true };
+          },
+        });
+        return { ...bound([]), bind: (...args: unknown[]) => bound(args) };
+      },
+    };
+    const env = {
+      DB: db,
+      EMAIL: {
+        send: async (msg: { subject: string }) => {
+          sentSubjects.push(msg.subject);
+        },
+      },
+    } as unknown as Env;
+
+    vi.setSystemTime(Date.UTC(2026, 7, 16, 20, 0, 0));
+    await sendDailyTldr(env);
+    expect(sentSubjects).toEqual([]);
+    expect(subscriber.last_sent_date).toBeNull();
+
+    // The next 30-minute tick, after the local-date edition is written.
+    snapshots.set("2026-08-17", {
+      date: "2026-08-17",
+      bullets_en: JSON.stringify([{ text: "today" }]),
+      bullets_vi: JSON.stringify([]),
+      sent_at: null,
+    });
+    vi.setSystemTime(Date.UTC(2026, 7, 16, 20, 30, 0));
+    await sendDailyTldr(env);
+    expect(sentSubjects).toHaveLength(1);
+    expect(subscriber.last_sent_date).toBe("2026-08-17");
+
+    vi.setSystemTime(Date.UTC(2026, 7, 16, 21, 0, 0));
+    await sendDailyTldr(env);
+    expect(sentSubjects).toHaveLength(1);
+  });
+
   it("does not send Vietnamese from English bullets, and still sends the English subscriber", async () => {
     const fixedNow = Date.UTC(2026, 7, 16, 3, 0, 0);
     const updates: { sql: string; args: unknown[] }[] = [];
@@ -651,77 +810,6 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
       )
     ).toBe(true);
   });
-
-  it("leaves last_sent_date unset when the local date is tomorrow relative to the snapshot", async () => {
-    // 22:00 UTC is 07:00 in Tokyo (UTC+9), so the local day is already
-    // 2026-08-17. The only snapshot is the UTC day 2026-08-16. Sending that
-    // fallback must not count as today's digest.
-    const fixedNow = Date.UTC(2026, 7, 16, 22, 0, 0);
-    expect(getLocalHourAndDate(fixedNow, "Asia/Tokyo")).toEqual({
-      hour: DIGEST_LOCAL_HOUR,
-      date: "2026-08-17",
-    });
-    const updates: { sql: string; args: unknown[] }[] = [];
-    const sent: string[] = [];
-    const subscribers = [
-      {
-        email: "ahead@example.com",
-        lang: "en",
-        unsubscribe_token: "t1",
-        timezone: "Asia/Tokyo",
-        last_sent_date: null,
-      },
-    ];
-    const snapshot = {
-      date: "2026-08-16",
-      bullets_en: JSON.stringify([{ text: "yesterday's story" }]),
-      bullets_vi: JSON.stringify([{ text: "tin hôm qua" }]),
-      sent_at: null,
-    };
-    const db = {
-      batch: async (statements: { run: () => Promise<unknown> }[]) => {
-        for (const stmt of statements) await stmt.run();
-        return [];
-      },
-      prepare(sql: string) {
-        let boundDate: string | null = null;
-        const bound = () => ({
-          first: async () => (boundDate === snapshot.date ? snapshot : null),
-          all: async () => ({
-            results: sql.includes("FROM items") ? [] : subscribers,
-          }),
-          run: async () => ({ success: true }),
-        });
-        return {
-          ...bound(),
-          bind: (...args: unknown[]) => {
-            boundDate = typeof args[0] === "string" ? args[0] : null;
-            if (sql.startsWith("UPDATE")) updates.push({ sql, args });
-            return bound();
-          },
-        };
-      },
-    };
-    const env = {
-      DB: db,
-      EMAIL: {
-        send: async (msg: { to: string }) => {
-          sent.push(msg.to);
-        },
-      },
-    } as unknown as Env;
-    vi.setSystemTime(fixedNow);
-    await sendDailyTldr(env);
-
-    expect(sent).toEqual(["ahead@example.com"]);
-    expect(
-      updates.some(
-        (u) =>
-          u.sql.includes("UPDATE subscribers") &&
-          u.args.includes("ahead@example.com")
-      )
-    ).toBe(false);
-  });
 });
 
 describe("primaryItemId", () => {
@@ -732,4 +820,51 @@ describe("primaryItemId", () => {
     );
     expect(primaryItemId({ text: "a" })).toBeUndefined();
   });
+});
+
+describe("note mails share the digest shell", () => {
+  const sub = { email: "r@aidr.today", lang: "en", unsubscribe_token: "tok" };
+  const prefs = {
+    lang: "vi" as const,
+    timezone: "Asia/Ho_Chi_Minh",
+    digest_size: 10,
+    mail_format: "large" as const,
+  };
+
+  it.each([
+    [
+      "confirm",
+      (env: Env) => sendConfirmEmail(env, sub),
+      "Confirm subscription",
+    ],
+    ["welcome", (env: Env) => sendWelcomeEmail(env, sub), "Open aidr.today"],
+    [
+      "settings change",
+      (env: Env) => sendSettingsChangeEmail(env, sub, prefs),
+      "set_lang=vi",
+    ],
+  ])(
+    "%s mail has the wordmark header, the footer and the postal address",
+    async (_name, send, needle) => {
+      const sent: Array<{
+        html: string;
+        text: string;
+        from: { name: string };
+      }> = [];
+      const env = {
+        EMAIL: { send: async (m: (typeof sent)[number]) => void sent.push(m) },
+        MAIL_POSTAL_ADDRESS: "PO Box 1",
+      } as unknown as Env;
+      expect(await send(env)).toBe(true);
+      const { html, text, from } = sent[0]!;
+      expect(from.name).toBe("AI;DR");
+      expect(html).toContain(">AI;DR</span>");
+      expect(html).toContain("AI news, ranked and summarized");
+      expect(html).toContain("max-width:600px");
+      expect(html).toContain("unsubscribe=tok");
+      expect(html).toContain("AI;DR · PO Box 1");
+      expect(html).toContain(needle);
+      expect(text).toContain("AI;DR · PO Box 1");
+    }
+  );
 });

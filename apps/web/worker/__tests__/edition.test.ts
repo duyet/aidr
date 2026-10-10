@@ -38,27 +38,14 @@ describe("editionBullets", () => {
 describe("loadEdition", () => {
   it("returns null for an empty language column and the other language intact", async () => {
     const env = { DB: db({ "2026-08-16": enOnly }) } as Env;
-    const now = new Date("2026-08-16T03:00:00Z");
-    expect(await loadEdition(env, "2026-08-16", "vi", 8, now)).toBeNull();
-    const en = await loadEdition(env, "2026-08-16", "en", 8, now);
+    expect(await loadEdition(env, "2026-08-16", "vi", 8)).toBeNull();
+    const en = await loadEdition(env, "2026-08-16", "en", 8);
     expect(en?.bullets.map((b) => b.text)).toEqual(["English story"]);
     expect(en?.date).toBe("2026-08-16");
   });
 
-  it("uses the UTC-dated row only when the requested local date is missing", async () => {
+  it("returns null when the requested date is missing, with no fallback to another date", async () => {
     const env = { DB: db({ "2026-08-16": enOnly }) } as Env;
-    const now = new Date("2026-08-16T03:00:00Z");
-    const edition = await loadEdition(env, "2026-08-15", "en", 8, now);
-    expect(edition?.date).toBe("2026-08-16");
-    expect(edition?.bullets).toHaveLength(1);
-
-    const sameDayMiss = await loadEdition(
-      { DB: db({}) } as Env,
-      "2026-08-16",
-      "en",
-      8,
-      now
-    );
-    expect(sameDayMiss).toBeNull();
+    expect(await loadEdition(env, "2026-08-17", "en", 8)).toBeNull();
   });
 });

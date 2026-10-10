@@ -121,6 +121,19 @@ describe("webhookDeliveryId", () => {
     expect(webhookDeliveryId("story", "abc123")).toBe("news:story:abc123");
   });
 
+  it("defers without spending an attempt when the Worker is out of subrequests", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValueOnce(new Error("Too many subrequests."))
+    );
+    const result = await webhookNotifier.sendDigest(
+      { NOTIFY_WEBHOOK_URL: "https://example.com/hook" } as Env,
+      { lang: "vi", date: "2026-08-19", bullets: [] }
+    );
+    expect(result).toMatchObject({ ok: false, budgetExhausted: true });
+    vi.unstubAllGlobals();
+  });
+
   it("sends Idempotency-Key and skips retry after timeout", async () => {
     const fetchMock = vi.fn().mockRejectedValueOnce(
       Object.assign(new Error("The operation was aborted due to timeout"), {
@@ -132,8 +145,10 @@ describe("webhookDeliveryId", () => {
       { NOTIFY_WEBHOOK_URL: "https://example.com/hook" } as Env,
       { lang: "vi", date: "2026-08-19", bullets: [] }
     );
-    expect(result.ok).toBe(true);
-    expect(result.messageId).toBe("news:digest:2026-08-19:ambiguous-timeout");
+    // Not `ok`: the receiver may or may not have it, so the dispatcher
+    // records `ambiguous` (final, never resent) instead of `sent`.
+    expect(result.ok).toBe(false);
+    expect(result.ambiguous).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.com/hook",
       expect.objectContaining({

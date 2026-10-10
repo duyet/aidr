@@ -240,8 +240,7 @@ function uploadWorker(env: Record<string, string>, keys: string[]): string[] {
   }
   const skipped: string[] = [];
   let pending = [...keys];
-  // A file, not `--body`. The bulk JSON holds the Page token and the app
-  // secret, and `--body` puts that JSON on the process command line.
+  // A file, not `--body`. The bulk JSON holds the Page token, and `--body` puts that JSON on the process command line.
   const tmpFile = join(
     tmpdir(),
     `aidr-facebook-secrets-${process.pid}-${Date.now()}.json`
@@ -353,7 +352,6 @@ async function run(secrets: string[]): Promise<void> {
   const keys = [
     "FACEBOOK_PAGE_ID",
     "FACEBOOK_APP_ID",
-    "FACEBOOK_APP_SECRET",
     "FACEBOOK_PAGE_ACCESS_TOKEN",
     "FACEBOOK_GRAPH_VERSION",
     "SITE_URL",

@@ -32,7 +32,11 @@ import {
   readMcpResource,
 } from "../mcp/resources.js";
 import type { Env } from "../types.js";
-import { checkAuth } from "./auth.js";
+import {
+  checkAdminAuthRateLimit,
+  checkAuth,
+  recordAdminAuthFailure,
+} from "./auth.js";
 import {
   deleteDayVideo,
   deleteSource,
@@ -230,8 +234,16 @@ export async function handleMcpRequest(
   request: Request,
   env: Env
 ): Promise<Response> {
+  // Bearer guesses share the REST admin routes' per-IP failure budget.
+  const rateLimited = await checkAdminAuthRateLimit(request, env);
+  if (rateLimited) return rateLimited;
   const auth = resolveMcpAuth(request, env);
-  if (auth.kind === "denied") return auth.response;
+  if (auth.kind === "denied") {
+    if (auth.response.status === 401) {
+      await recordAdminAuthFailure(request, env);
+    }
+    return auth.response;
+  }
 
   let body: JsonRpcRequest;
   try {

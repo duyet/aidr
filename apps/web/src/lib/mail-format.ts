@@ -1,8 +1,9 @@
 /**
  * Digest email layouts, stored in `subscribers.mail_format`.
- * - `no-images`: designed card, no story images.
- * - `design`: one hero image plus a small thumbnail per story (column default).
- * - `large`: one large image per story, no separate hero.
+ * - `no-images`: designed card, no story or video images.
+ * - `design`: a large image on the lead story, an 84px thumbnail per other
+ *   story (column default).
+ * - `large`: a large image on every story.
  * - `text`: plain text list.
  * Shared by the Worker renderer and the browser forms, so keep it dependency-free.
  */

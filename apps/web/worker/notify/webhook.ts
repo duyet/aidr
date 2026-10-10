@@ -9,7 +9,10 @@ import type {
   SendResult,
   StoryPayload,
 } from "./types.js";
-import { TRENDING_BURST_MIN_IMPORTANCE } from "./types.js";
+import {
+  isSubrequestLimitError,
+  TRENDING_BURST_MIN_IMPORTANCE,
+} from "./types.js";
 
 /**
  * Generic JSON/Slack webhook. `NOTIFY_WEBHOOK_URL` posts the normalized
@@ -132,15 +135,19 @@ async function postWebhook(
     }
     return { ok: true, messageId: deliveryId };
   } catch (error) {
-    // Timeout after the receiver may have accepted the POST — do not
-    // retry (at-most-once). Idempotency-Key covers receivers that support it.
-    if (isTimeoutError(error)) {
-      return { ok: true, messageId: `${deliveryId}:ambiguous-timeout` };
+    const message = error instanceof Error ? error.message : String(error);
+    // The Worker ran out of subrequests before the POST left: nothing was
+    // sent, so defer to the next run without spending an attempt.
+    if (isSubrequestLimitError(error)) {
+      return { ok: false, budgetExhausted: true, error: message };
     }
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
+    // Timeout after the receiver may have accepted the POST — do not
+    // retry (at-most-once), and do not report it as sent. Idempotency-Key
+    // covers receivers that support it.
+    if (isTimeoutError(error)) {
+      return { ok: false, ambiguous: true, error: `timeout: ${message}` };
+    }
+    return { ok: false, error: message };
   }
 }
 

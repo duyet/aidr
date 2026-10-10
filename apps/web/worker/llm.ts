@@ -175,7 +175,17 @@ Never calque these (bad → good):
 - "evaluation harness" → "dây chuyền đánh giá" ✗ → "harness đánh giá" ✓
 - "US hyperscalers" → "các cường thị trường Mỹ" ✗ → "các hyperscaler Mỹ" ✓
 - "training loss" → "mất mát huấn luyện" ✗ → "loss khi huấn luyện" ✓
-Proofread every Vietnamese word: no misspelled or invented words ("thỏa thúc", "công tắt"), and no English words left half-translated.
+- "a mismatch between the two versions" → "sự bất đối xứng giữa hai phiên bản" ✗ → "hai phiên bản không khớp nhau" ✓
+- "the departure" (a person leaving) → "sự chuyển đi này" ✗ → "việc rời đi này" ✓
+- "enterprise growth" (the business-customer segment) → "tăng trưởng doanh nghiệp" ✗ → "tăng trưởng mảng doanh nghiệp" ✓
+- A named conjecture, theorem, or paper title you cannot render with certainty stays in English: "Unique Games Conjecture" → "phó bản đồ Độc nhất về cho phép" ✗ → "Unique Games Conjecture" ✓
+
+Write only Vietnamese plus the English terms the rules above keep. Never a word from a third language, and never an English word that has a plain Vietnamese equivalent (bad → good):
+- "subscriptions" → "abonnement" ✗ → "gói thuê bao" ✓
+- "senators" → "các senators" ✗ → "các thượng nghị sĩ" ✓
+- "AI-powered chip design tools" → "công cụ thiết kế chip AI-powered" ✗ → "công cụ thiết kế chip dùng AI" ✓
+
+Proofread every Vietnamese word: no misspelled or invented words ("thỏa thúc", "công tắt", "địch chính trị" for "địa chính trị", "gây trái"), no word written twice ("thỏa thỏa thuận", "285 triệu triệu USD"), and no English words left half-translated.
 
 Titles: concise headline style, viết hoa chữ cái đầu câu như báo chí Việt Nam, never ALL CAPS.
 Summaries: complete, natural sentences.`;
@@ -2008,7 +2018,7 @@ function tldrPrompt(items: TldrItem[], bilingual: boolean): string {
     : '{"bullets_en":[{"emoji":"🧠","text":"...","item_ids":["..."]}],"bullets_vi":[]}';
   const viNote = bilingual
     ? `
-The Vietnamese bullets are NOT a translation pass over the English ones — write them the way a Vietnamese tech journalist would independently state the same facts, following the house style above.
+Each Vietnamese bullet states exactly the facts of the English bullet with the same item_ids: every name, number, date, and hedge, and nothing more. Do not drop a name (a co-investor, a source outlet), and do not add an intensifier or a detail the English bullet lacks ("mạnh mẽ", "vừa", "trực tiếp"). Write it the way a Vietnamese tech journalist would say it, following the house style above, never word by word.
 `
     : "";
   return `Summarize the following ${items.length} AI/tech news items into at most ${n} TL;DR digest bullets (one per distinct story), ${langs}. Each bullet must reference the item_ids (an array) it was derived from: most bullets summarize a single story, so item_ids has one id; when several items report the same story or theme, write ONE synthesizing bullet citing ALL of their ids instead of separate bullets.

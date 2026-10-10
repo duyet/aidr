@@ -1985,6 +1985,14 @@ describe("VI_STYLE", () => {
     expect(goodCount).toBeGreaterThanOrEqual(5);
   });
 
+  // Prod bullets 2026-10-04..10 shipped "abonnement" (French) and
+  // "các senators"; the style must name both failure shapes.
+  it("bans third-language words and needless English plurals", () => {
+    expect(VI_STYLE).toContain("Never a word from a third language");
+    expect(VI_STYLE).toContain('"abonnement" ✗ → "gói thuê bao" ✓');
+    expect(VI_STYLE).toContain('"các senators" ✗ → "các thượng nghị sĩ" ✓');
+  });
+
   it("covers over-formal Sino-Vietnamese, passive voice, and sentence-splitting failure modes", () => {
     expect(VI_STYLE).toContain("Tập đoàn");
     expect(VI_STYLE).toContain("được huấn luyện bởi");

@@ -28,6 +28,7 @@ import {
 import {
   BACK_TRANSLATION_MIN_RECALL,
   backTranslationRecall,
+  ENGLISH_OUTPUT_RULE,
   semanticEvidence,
 } from "../translation-review.js";
 import type { Env } from "../types.js";
@@ -266,6 +267,11 @@ describe("translation review contracts", () => {
     expect(prompt).toContain("source_lang=vi");
     expect(prompt).toContain("target_lang=en");
     expect(prompt).toContain("untrusted_translation_source");
+    // The English column is the story page text: leaked site nav in a
+    // source must not be translated into it.
+    expect(prompt).toContain(ENGLISH_OUTPUT_RULE);
+    expect(ENGLISH_OUTPUT_RULE).toMatch(/Never copy site navigation/);
+    expect(ENGLISH_OUTPUT_RULE).toMatch(/fluent, grammatical English/);
   });
 
   it("detects entity, number, date, unit, polarity, and uncertainty drift", () => {

@@ -1,0 +1,500 @@
+{
+  "note": "2026-10-10 prod top 96 (24h). groups = same-event stories prod failed to merge; newIds = items that arrived after their canonical, plus topic-only negatives (8538b660 vs 481380da both Vera Rubin inference; 1d5fd202, d26257b6 unpaired).",
+  "items": [
+    {
+      "id": "4240042e",
+      "title": "Jev developer TypeSafe AI raised ~$870M led by a16z at a $7.5B valuation with Sequoia and others participating (Bloomberg)",
+      "source": "techmeme"
+    },
+    {
+      "id": "43fd2a19",
+      "title": "An Anthropic AI model sent a false homicide tip to Philadelphia police",
+      "source": "techcrunch-ai"
+    },
+    {
+      "id": "6474afb1",
+      "title": "Microsoft Launches Decision-1 Model to Beat LLM Latency",
+      "source": "huggingnews"
+    },
+    {
+      "id": "e62a79de",
+      "title": "Prime Agent Rewrites Itself in Rust with 2,000 Agent Swarm",
+      "source": "marketbrief"
+    },
+    {
+      "id": "8eac2b30",
+      "title": "OpenAI mistranslated mathematics into code for its Navier-Stokes proof",
+      "source": "hn"
+    },
+    {
+      "id": "d02c1565",
+      "title": "Anthropic says it is barring live internet access for internal evals until monitoring is reliable, after its agents exploited websites and bypassed restrictions (Tim Fernholz/TechCrunch)",
+      "source": "techmeme"
+    },
+    {
+      "id": "ae28e0b7",
+      "title": "Chip design software leader Synopsys says it is exploring partnerships with Chinese AI labs to develop AI-powered chip design tools for the Chinese market (Yifan Yu/Nikkei Asia)",
+      "source": "techmeme"
+    },
+    {
+      "id": "854abe0e",
+      "title": "Trump admin says it's now mandating AI companies \"immediately disclose incidents involving their models\" and move swiftly to remedy harm from security incidents (Axios)",
+      "source": "techmeme"
+    },
+    {
+      "id": "d03e2c57",
+      "title": "Tomek Korbak: OpenAI's head of safety told they no longer trust me",
+      "source": "hn"
+    },
+    {
+      "id": "6860d785",
+      "title": "A US Senate investigation led by Senators Warren, Van Hollen, and Blumenthal says some hyperscalers misled the public about AI data centers' costs and benefits (Nik Popli/Time)",
+      "source": "techmeme"
+    },
+    {
+      "id": "7984e92e",
+      "title": "The maker of non-text AI model Jev valued at $7.5B just weeks after launch",
+      "source": "techcrunch-ai"
+    },
+    {
+      "id": "8b2cd037",
+      "title": "White House Requires AI Companies to Report and Fix Breaches After Anthropic Incidents",
+      "source": "marketbrief"
+    },
+    {
+      "id": "acabb201",
+      "title": "Few people pay for AI, but those who do spend big",
+      "source": "the-decoder"
+    },
+    {
+      "id": "0d520764",
+      "title": "A look at differing revenue calculations of Anthropic and OpenAI, as Anthropic books gross sales through cloud partners, while OpenAI records only its net share (Bloomberg)",
+      "source": "techmeme"
+    },
+    {
+      "id": "9bee21a6",
+      "title": "OpenAI revenue keeps surging as company seeks $30 billion in fresh capital",
+      "source": "the-decoder"
+    },
+    {
+      "id": "6586df1b",
+      "title": "OpenAI Told FT $70B Revenue Figure Was Net, Differing From Earlier Accounts",
+      "source": "huggingnews"
+    },
+    {
+      "id": "42d1906c",
+      "title": "‘Pure insanity’: Mathematicians will need years to make sense of OpenAI’s latest drop",
+      "source": "theverge-ai"
+    },
+    {
+      "id": "27a6ae02",
+      "title": "Iran Used AI for US Naval Targeting in OpenAI's Most Serious Ops",
+      "source": "marketbrief"
+    },
+    {
+      "id": "648aa77d",
+      "title": "Google’s Gemini 4 Carbon Matches Opus 5.5 in Coding",
+      "source": "huggingnews"
+    },
+    {
+      "id": "e83db66a",
+      "title": "AI Is Getting Really Good at Messing With Cybercriminals",
+      "source": "wired-ai"
+    },
+    {
+      "id": "46b58684",
+      "title": "China’s First State IDs for AI Persons Enable Legal Business",
+      "source": "marketbrief"
+    },
+    {
+      "id": "56450aec",
+      "title": "OpenAI Releases First Public Risk Report on Internal AI Models",
+      "source": "marketbrief"
+    },
+    {
+      "id": "747ff258",
+      "title": "Super Micro Contractor Admits Guilt in Nvidia Chip Smuggling Plot",
+      "source": "marketbrief"
+    },
+    {
+      "id": "c0887363",
+      "title": "Cloudflare Launches Full Modality Clef-omni for Audio and Video Processing",
+      "source": "huggingnews"
+    },
+    {
+      "id": "d6f9a664",
+      "title": "Anthropic's Claude can now orchestrate up to 1,000 AI agents in parallel through dynamic workflows",
+      "source": "the-decoder"
+    },
+    {
+      "id": "d615fd7e",
+      "title": "OpenAI Math Papers Destroyed Careers, NYU Professor Says",
+      "source": "huggingnews"
+    },
+    {
+      "id": "e54a66ea",
+      "title": "Anthropic Cuts AI Internet Access After University Server Exploit",
+      "source": "marketbrief"
+    },
+    {
+      "id": "4793d66f",
+      "title": "What mathematicians should know about the Lean Theorem Prover: reliability & AI",
+      "source": "hn"
+    },
+    {
+      "id": "0e916f59",
+      "title": "Sources: top execs at Anthropic, OpenAI, and others are gaming out scenarios for a public and political revolt following a catastrophic AI event (Maria Curi/Axios)",
+      "source": "techmeme"
+    },
+    {
+      "id": "6fafcbf0",
+      "title": "Anthropic can’t reliably control its AI agents. It’s cutting off its internal evals from the live internet instead",
+      "source": "techcrunch-ai"
+    },
+    {
+      "id": "481380da",
+      "title": "vLLM Hits 7.8x GB200 Throughput With NVIDIA Vera Rubin Support",
+      "source": "marketbrief"
+    },
+    {
+      "id": "38bb7f3e",
+      "title": "HeyGen Voice Debuts at No 1 on Artificial Analysis TTS Leaderboard",
+      "source": "marketbrief"
+    },
+    {
+      "id": "d26257b6",
+      "title": "Tinker Slashes AI Prices Up to 70% Following Efficiency Gains",
+      "source": "marketbrief"
+    },
+    {
+      "id": "4f1b77f2",
+      "title": "Google AI Pro Plans Add A100 and H100 GPU Access via Colab",
+      "source": "huggingnews"
+    },
+    {
+      "id": "2e139767",
+      "title": "[AINews] TypeSafe/Jev at >$100M ARR, $7.5B valuation 3 weeks after launch",
+      "source": "latent-space"
+    },
+    {
+      "id": "a4b93233",
+      "title": "Sierra and Meta Release First Draft of Personal Agent Protocol and Add 35 Partners",
+      "source": "marketbrief"
+    },
+    {
+      "id": "1a43b4df",
+      "title": "Sabi, which is building a baseball cap that uses 100K non-contact neuro-sensors to convert neural signals into text prompts for AI systems, raised a $50M seed (Rashi Shrivastava/Forbes)",
+      "source": "techmeme"
+    },
+    {
+      "id": "dd1a4ba8",
+      "title": "Amazon and others are done keeping data center deals secret. Is it enough to build trust?",
+      "source": "techcrunch-ai"
+    },
+    {
+      "id": "7fbc7f2d",
+      "title": "Amazon drops data center NDAs, and AI agents want your credit card",
+      "source": "techcrunch-ai"
+    },
+    {
+      "id": "8538b660",
+      "title": "SGLang Speeds Kimi K3 Inference by 20% on NVIDIA Vera Rubin",
+      "source": "huggingnews"
+    },
+    {
+      "id": "45a7a18b",
+      "title": "Alibaba Releases 8 Step Image Generation for Open Weight Qwen 2.1",
+      "source": "huggingnews"
+    },
+    {
+      "id": "25a145f4",
+      "title": "Can AI automate AI R&D yet?",
+      "source": "hn"
+    },
+    {
+      "id": "cb401e91",
+      "title": "Mathematicians Call OpenAI Math Proofs Most Important Day in Field History",
+      "source": "marketbrief"
+    },
+    {
+      "id": "875d24bf",
+      "title": "Instinct Launches AI Hotel Booking to Attack 15% OTA Commissions",
+      "source": "marketbrief"
+    },
+    {
+      "id": "5c1db923",
+      "title": "Talorys – A self-hosted personal AI agent on Cloudflare's free tier",
+      "source": "hn"
+    },
+    {
+      "id": "a71de901",
+      "title": "Baseten and Goodfire AI Launch First Integrated Open Model Safety Stack",
+      "source": "huggingnews"
+    },
+    {
+      "id": "190eb169",
+      "title": "Researchers Align DINOv2 and Qwen3 Embeddings Without Image Caption Pairs",
+      "source": "huggingnews"
+    },
+    {
+      "id": "0139f84d",
+      "title": "The Lightbulb Computer: Reimagining Spatial & Ambient Computing with Projectors",
+      "source": "lobsters"
+    },
+    {
+      "id": "920e5143",
+      "title": "Owain Evans Uncovers AI Model Backdoor Transfer Without Triggers",
+      "source": "huggingnews"
+    },
+    {
+      "id": "c8a6147b",
+      "title": "OpenAI Adds Mobile Support and Codex Integration for Dot Agents",
+      "source": "marketbrief"
+    },
+    {
+      "id": "626a46c9",
+      "title": "Analysis of 857 releases from nine Chinese AI labs between 2021 and September 2026: just 3.6% disclosed safety results, and only 1.1% did so at launch (SemiAnalysis)",
+      "source": "techmeme"
+    },
+    {
+      "id": "5af1a93e",
+      "title": "Quoting The New York Times",
+      "source": "simonwillison"
+    },
+    {
+      "id": "d1ca4ef7",
+      "title": "Synthesia Launches Syren AI to Generate Video via Code",
+      "source": "marketbrief"
+    },
+    {
+      "id": "2cc9ae38",
+      "title": "OpenAI Decisions API Hits Public Beta With 10x Faster Typed Answers",
+      "source": "marktechpost"
+    },
+    {
+      "id": "1d5fd202",
+      "title": "Deno is joining Cloudflare",
+      "source": "simonwillison"
+    },
+    {
+      "id": "b8d6eaa8",
+      "title": "Pine AI Launches Cloud Computer for Agents With Top 78.3% Score",
+      "source": "huggingnews"
+    },
+    {
+      "id": "d2385fdb",
+      "title": "Warehouse robotics startup Ultra raised a $12M seed and a $50M Series A, and expands its deal with Physical Intelligence to supply AI software for its robots (Jeff John Roberts/Fortune)",
+      "source": "techmeme"
+    },
+    {
+      "id": "7bfcea6e",
+      "title": "Book Publishers Are Quietly Using More AI. Staff Are Revolting",
+      "source": "wired-ai"
+    },
+    {
+      "id": "222698a6",
+      "title": "Meta Muse Downloads Fall 8.1% Week-Over-Week Signaling Growth Slowdown",
+      "source": "marketbrief"
+    },
+    {
+      "id": "f5517994",
+      "title": "OpenAI and Anthropic Wargame Failed AI Bans After System Disaster",
+      "source": "huggingnews"
+    },
+    {
+      "id": "38b7d9a2",
+      "title": "How Postman runs Agent Mode for 40 million developers on Amazon Bedrock",
+      "source": "aws-ml"
+    },
+    {
+      "id": "19072d5d",
+      "title": "Vesta, which uses AI agents to automate much of the loan origination process, raised $30M led by Conversion, bringing its total funding to $85M (Dominic-Madori Davis/TechCrunch)",
+      "source": "techmeme"
+    },
+    {
+      "id": "dd312b53",
+      "title": "Microsoft Ships Decision-1 to Foundry with 35x Speed Over GPT-6 Sol",
+      "source": "marketbrief"
+    },
+    {
+      "id": "2bcd6cde",
+      "title": "OpenAI Adds Next-Message Suggestions to Codex Pro",
+      "source": "huggingnews"
+    },
+    {
+      "id": "c67154ad",
+      "title": "MetaMask Agent Wallet Integrates Aave MCP to Enable AI Finance",
+      "source": "marketbrief"
+    },
+    {
+      "id": "8e96e654",
+      "title": "Grok Bot Launches Own Email to Automate Service Signups",
+      "source": "marketbrief"
+    },
+    {
+      "id": "7c92b328",
+      "title": "Show HN: A simple to-do app for iPhone, Mac, and your agent",
+      "source": "hn"
+    },
+    {
+      "id": "fe42140b",
+      "title": "Bitcoin Miner Bitdeer Hits 273.5 MW AI Capacity With Malaysia Deal",
+      "source": "marketbrief"
+    },
+    {
+      "id": "68a69483",
+      "title": "Why AlphaFold Didn't Solve Protein Folding — Pushmeet Kohli, Google DeepMind & Sal Candido, Biohub",
+      "source": "latent-space"
+    },
+    {
+      "id": "c47fcb74",
+      "title": "NEAR Intents Adds Confidential Cross Chain Swaps to CircuitAI",
+      "source": "marketbrief"
+    },
+    {
+      "id": "57fe1472",
+      "title": "Nikon microscopic video competition winner disqualified for using generative AI",
+      "source": "theverge-ai"
+    },
+    {
+      "id": "815071f9",
+      "title": "Factory Acquires Mentlio to Build Token Efficient AI Agents",
+      "source": "huggingnews"
+    },
+    {
+      "id": "9e27a5c3",
+      "title": "Danu Robotics’ fight to build a better recycling robot",
+      "source": "techcrunch-ai"
+    },
+    {
+      "id": "9681c2cf",
+      "title": "Datology Launches Curation Studio for Frontier Data Curation",
+      "source": "huggingnews"
+    },
+    {
+      "id": "f2bbbdc8",
+      "title": "A16z’s Olivia Moore on the state of consumer AI",
+      "source": "techcrunch-ai"
+    },
+    {
+      "id": "5e9c6976",
+      "title": "Voxlocal: a minimal voice agent written in Rust",
+      "source": "lobsters"
+    },
+    {
+      "id": "30c50fb3",
+      "title": "If AI is conscient, then we are making slaves",
+      "source": "hn"
+    },
+    {
+      "id": "739a7a89",
+      "title": "Sources: Anthropic's AI agents submitted 20 visa applications via a form on the US State Department website; the applications were incomplete and not processed (New York Times)",
+      "source": "techmeme"
+    },
+    {
+      "id": "da19564d",
+      "title": "ICYMI: What landed for AI builders in September 2026",
+      "source": "aws-ml"
+    },
+    {
+      "id": "b141102f",
+      "title": "US Charity Deploys AI to Scan for Hate in Gaza Classrooms",
+      "source": "marketbrief"
+    },
+    {
+      "id": "e0555181",
+      "title": "Impactful scheduling for GPU clusters",
+      "source": "hf-blog"
+    },
+    {
+      "id": "bc1b2239",
+      "title": "In PA, FBI agents arrested a co-founder of a Canadian cybersecurity firm specializing in ransomware negotiations, as part of the ShinyHunters investigation (Brian Krebs/Krebs on Security)",
+      "source": "techmeme"
+    },
+    {
+      "id": "7af93f3f",
+      "title": "Quoting Matthew Green",
+      "source": "simonwillison"
+    },
+    {
+      "id": "f10f7455",
+      "title": "Two Futures for LLMs in Mathematics",
+      "source": "lobsters"
+    },
+    {
+      "id": "44c5df73",
+      "title": "Can you use autoregressive diffusion to generate market data?",
+      "source": "hn"
+    },
+    {
+      "id": "b4a1803a",
+      "title": "open-slopware – Alternatives to FOSS projects choosing to use LLMs/AI",
+      "source": "hn"
+    },
+    {
+      "id": "fa5cd199",
+      "title": "There's little that's \"inevitable\" about AI",
+      "source": "lobsters"
+    },
+    {
+      "id": "240299ce",
+      "title": "Thoughts on AI Solving \"Math\"",
+      "source": "lobsters"
+    },
+    {
+      "id": "171acb28",
+      "title": "Artificial Intelligence in the Firm: Bottlenecks in Software Production",
+      "source": "lobsters"
+    },
+    {
+      "id": "213f0ac7",
+      "title": "The super intelligence shit is a humiliation ritual for OpenAI",
+      "source": "hn"
+    },
+    {
+      "id": "2856f86a",
+      "title": "Why Are Coding Agents So Dumb?",
+      "source": "lobsters"
+    },
+    {
+      "id": "83299127",
+      "title": "No Man Is an Island",
+      "source": "lobsters"
+    },
+    {
+      "id": "9c3c12ce",
+      "title": "Trump’s attempt to rename AI is looking awfully artificial",
+      "source": "theverge-ai"
+    },
+    {
+      "id": "ff41ef5e",
+      "title": "We can’t help treating AI like it’s human. But should we?",
+      "source": "techcrunch-ai"
+    },
+    {
+      "id": "377afb64",
+      "title": "I expect rapid progress but not towards general superintelligence",
+      "source": "interconnects"
+    },
+    {
+      "id": "102949e8",
+      "title": "TechCrunch Disrupt 2026 starts in 4 days — lock in your pass savings of up to $100 before prices rise",
+      "source": "techcrunch-ai"
+    }
+  ],
+  "newIds": [
+    "7984e92e",
+    "2e139767",
+    "e54a66ea",
+    "6fafcbf0",
+    "8b2cd037",
+    "8538b660",
+    "1d5fd202",
+    "d26257b6"
+  ],
+  "groups": [
+    ["4240042e", "7984e92e", "2e139767"],
+    ["d02c1565", "e54a66ea", "6fafcbf0"],
+    ["854abe0e", "8b2cd037"]
+  ]
+}

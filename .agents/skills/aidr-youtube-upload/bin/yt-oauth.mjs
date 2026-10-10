@@ -77,6 +77,14 @@ if (!res.ok || !body.refresh_token) {
   process.exit(1);
 }
 console.error(`Granted scopes: ${body.scope}`);
+const me = await (await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", { headers: { authorization: `Bearer ${body.access_token}` } })).json();
+const ch = me.items?.[0];
+const want = process.env.YOUTUBE_CHANNEL_ID || "UCGDB5uD8znydgMg2XLOj04w";
+console.error(`Channel: ${ch?.snippet?.title ?? "-"} (${ch?.id ?? "none"})`);
+if (ch?.id !== want) {
+  console.error(`Not the AI;DR channel (${want}). Run again and pick the AI;DR channel on Google's "Choose an account or brand account" screen. Nothing written.`);
+  process.exit(1);
+}
 const line = `YOUTUBE_REFRESH_TOKEN=${body.refresh_token}`;
 if (process.argv.includes("--print")) {
   console.log(line);

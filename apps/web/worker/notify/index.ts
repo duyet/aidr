@@ -51,6 +51,11 @@ import { webhookNotifier } from "./webhook.js";
  * later hourly runs up to NOTIFY_MAX_ATTEMPTS. An `ambiguous` send (no usable
  * answer, so the message may be posted) is never retried.
  *
+ * Every send is claimed before it goes out (`claimDelivery`): one atomic
+ * upsert moves the row to `sending`, and only the run whose write changed a
+ * row sends. A retried Workflow step or a forced run overlapping a scheduled
+ * one finds the claim and posts nothing (#531).
+ *
  * Notify runs last in the hourly Workflow, and the subrequest budget is per
  * Workflow instance, so fetch, LLM and D1 work earlier in the run can leave it
  * empty. A send the runtime refuses for that reason (`budgetExhausted`) posted
@@ -223,7 +228,12 @@ export function classifyDigestSkip(
   // it as `already_sent` would claim a delivery nobody confirmed: the two
   // production timeouts behind #463 left a digest that may or may not be in
   // the channel, and the run record said it went out.
-  return existing.status === "ambiguous" ? "outcome_unknown" : "already_sent";
+  // A `sending` row is a claim whose send never recorded an answer (another
+  // dispatch is mid-send, or it died mid-send): it may be posted, so it is
+  // final like `ambiguous`.
+  return existing.status === "ambiguous" || existing.status === "sending"
+    ? "outcome_unknown"
+    : "already_sent";
 }
 
 /** Why trending will not post, or null if a candidate may be sent. */
@@ -341,7 +351,7 @@ export function buildTrendingQuery(
                  i.source_id
           FROM items i
           LEFT JOIN notifications n ON n.item_id = i.id AND n.channel = ?
-            AND (n.status IN ('sent', 'ambiguous') OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
+            AND (n.status IN ('sent', 'ambiguous', 'sending') OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
           ${translationJoin}WHERE i.status = 'published'
             AND i.published_at >= ?
             AND i.rank_score >= ?
@@ -508,12 +518,45 @@ async function loadDigest(
 }
 
 /**
+ * Claims one delivery before its send. Inserts a `sending` row, or moves a
+ * retryable `failed` row to `sending`, in ONE statement; D1 runs it
+ * atomically, so of two concurrent dispatches exactly one sees a changed
+ * row. Only that one sends, then `recordDelivery` stamps the outcome.
+ *
+ * A `sending` row is never re-claimed, however old: it means a send started
+ * and no outcome was recorded (the run died, or D1 failed after the post),
+ * so nothing proves it was not posted. Like `ambiguous`, it costs at most a
+ * missed post, never a second one.
+ */
+export async function claimDelivery(
+  env: Pick<Env, "DB">,
+  channel: string,
+  target: string,
+  key: string
+): Promise<boolean> {
+  const result = await env.DB.prepare(
+    `INSERT INTO notifications (channel, item_id, target, status, attempts, message_id, last_error, posted_at)
+     VALUES (?, ?, ?, 'sending', 0, NULL, NULL, ?)
+     ON CONFLICT(channel, item_id) DO UPDATE SET
+       status = 'sending',
+       target = excluded.target,
+       posted_at = excluded.posted_at
+     WHERE notifications.status = 'failed'
+       AND notifications.attempts < ${NOTIFY_MAX_ATTEMPTS}`
+  )
+    .bind(nn(channel), nn(key), nn(target), Date.now())
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}
+
+/**
  * Delivery state is keyed by (channel, item_id) only. `lang` is NOT part of
  * the key: an EN/VI comparison must never create a second row or a second
  * post for the same story. The upsert bumps `attempts` rather than inserting,
  * so a retry updates one row.
  *
- * Status is `sent`, `failed` (the channel rejected it, nothing was posted,
+ * Status is `sending` (claimed by `claimDelivery`, outcome not yet recorded),
+ * `sent`, `failed` (the channel rejected it, nothing was posted,
  * retried up to NOTIFY_MAX_ATTEMPTS) or `ambiguous` (no usable answer, the
  * message may be posted). An `ambiguous` row is final like `sent`: the
  * trending query and the digest gate both skip it, so an unknown outcome costs
@@ -532,6 +575,7 @@ export async function recordDelivery(
       `INSERT INTO notifications (channel, item_id, target, status, attempts, message_id, last_error, posted_at)
        VALUES (?, ?, ?, 'failed', 0, NULL, ?, ?)
        ON CONFLICT(channel, item_id) DO UPDATE SET
+         status = 'failed',
          last_error = excluded.last_error`
     )
       .bind(nn(channel), nn(key), nn(target), result.error ?? null, Date.now())
@@ -648,6 +692,9 @@ export async function dispatchStoryNotifications(
       } else if (budgetSpent) {
         digestReason = "send_failed";
         digestError = BUDGET_SPENT_ERROR;
+      } else if (!(await claimDelivery(env, notifier.id, target, key))) {
+        // Another dispatch claimed it between the read above and now.
+        digestReason = "outcome_unknown";
       } else {
         const result = await attemptSend(() =>
           notifier.sendDigest(env, digest)
@@ -749,6 +796,11 @@ export async function dispatchStoryNotifications(
           if (budgetSpent) {
             trendingReason = "send_failed";
             break;
+          }
+          if (!(await claimDelivery(env, notifier.id, target, story.id))) {
+            // Another dispatch claimed this story first.
+            trendingReason = "none_unposted";
+            continue;
           }
           const result = await attemptSend(() =>
             notifier.sendStory(env, story)

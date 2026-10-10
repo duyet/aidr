@@ -231,7 +231,21 @@ async function audit(args: Args): Promise<void> {
       )
     : null;
   const lastRun = overview.lastRun as RunRow | undefined;
+  // Digest "useful?" votes; needs NEWS_ADMIN_TOKEN, null until 0054 is applied.
+  const mailFeedback = env("NEWS_ADMIN_TOKEN")
+    ? await api<{
+        feedback: Array<{
+          date: string;
+          lang: string;
+          yes: number;
+          no: number;
+        }> | null;
+      }>("/api/admin/mail/feedback?days=7", { admin: true }).then(
+        (r) => r.feedback
+      )
+    : null;
   const result = {
+    mailFeedback,
     health: {
       runsToday: overview.runsToday,
       lastRun: lastRun ? compactRun(lastRun) : null,

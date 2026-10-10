@@ -157,6 +157,42 @@ function glossIssues(viText: string): string[] {
   return issues;
 }
 
+/** Vietnamese reduplications that are correct as written ("từ từ",
+ * "người người"). Any other doubled Vietnamese syllable is a generation
+ * stutter. */
+const VI_REDUPLICATION = new Set([
+  "từ",
+  "người",
+  "nhà",
+  "ngày",
+  "đâu",
+  "nơi",
+  "năm",
+  "tháng",
+  "đời",
+  "mãi",
+  "xa",
+  "lâu",
+]);
+
+/** A Vietnamese syllable written twice in a row: "thỏa thỏa thuận",
+ * "285 triệu triệu USD" (prod 2026-10-08). Only syllables with Vietnamese
+ * diacritics count, so English names and kept jargon never trip it. */
+function stutterIssues(viText: string): string[] {
+  const issues: string[] = [];
+  const seen = new Set<string>();
+  for (const match of viText
+    .normalize("NFC")
+    .matchAll(/(?<![\p{L}\p{M}])([\p{L}\p{M}]+)\s+\1(?![\p{L}\p{M}])/giu)) {
+    const word = (match[1] ?? "").toLowerCase();
+    if (!NON_ASCII_RE.test(word) || VI_REDUPLICATION.has(word)) continue;
+    if (seen.has(word)) continue;
+    seen.add(word);
+    issues.push(`"${match[0]}" repeats a word; write "${match[1]}" once`);
+  }
+  return issues;
+}
+
 const VI_WORD_RE = /[\p{L}\p{M}][\p{L}\p{M}\p{N}'’-]*/gu;
 const NON_ASCII_RE = /\P{ASCII}/u;
 
@@ -208,6 +244,7 @@ export function translationDraftIssues(
   const viText = `${cand.title}\n${cand.summary}`;
   issues.push(...magnitudeIssues(`${src.title}\n${src.summary}`, viText));
   issues.push(...glossIssues(viText));
+  issues.push(...stutterIssues(viText));
   if (isTitleCaseVi(cand.title, src.title)) {
     issues.push(
       "the title is in Title Case; use Vietnamese sentence case (capitalize only the first word and proper names)"
@@ -226,7 +263,8 @@ export function translationDraftIssues(
 }
 
 /** Issues in one Vietnamese TL;DR bullet against the items it cites. A
- * bullet is a digest: calques, magnitudes, and parenthetical glosses. */
+ * bullet is a digest: calques, magnitudes, parenthetical glosses, and
+ * doubled words. */
 export function tldrBulletIssues(
   sourceText: string,
   bullet: string,
@@ -238,6 +276,7 @@ export function tldrBulletIssues(
     ...avoidIssues(source, candidate, rules),
     ...magnitudeIssues(sourceText, bullet),
     ...glossIssues(bullet),
+    ...stutterIssues(bullet),
   ];
 }
 

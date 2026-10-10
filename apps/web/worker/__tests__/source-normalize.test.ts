@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { adapters } from "../sources/registry.js";
+import { adapters, normalizeFetchedItem } from "../sources/registry.js";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -29,5 +29,24 @@ describe("source adapter normalization", () => {
     expect(items[0]?.title).toBe("OpenAI's agents & tools");
     expect(items[0]?.summary).toBe("It’s here");
     expect(items[0]?.url).toBe("https://example.com/a?x=1&y=2");
+  });
+});
+
+// Story a60e74fc: a digest bullet opened with "← Back to live feed · 1
+// stories across 1 day", page chrome stored as the summary's first words.
+// Ingest must store the article text only, or every later prompt (score,
+// TL;DR, translate) reads the chrome as news.
+describe("feed chrome in summaries", () => {
+  it("strips the aggregator back-to-feed line before storage", () => {
+    const item = normalizeFetchedItem({
+      title: "OpenAI notifies organizations",
+      url: "https://example.com/story",
+      publishedAt: 0,
+      summary:
+        "← Back to live feed · 1 stories across 1 day OpenAI had notified more than 100 organizations by Sept. 26.",
+    });
+    expect(item.summary).toBe(
+      "OpenAI had notified more than 100 organizations by Sept. 26."
+    );
   });
 });

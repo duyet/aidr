@@ -5,7 +5,6 @@ import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
 import { usePrefs } from "../lib/prefs";
 import type { FeedItem, Lang } from "../lib/types";
 import { StoryDetail } from "./StoryDetail";
-import { StoryVotes } from "./story/StoryVotes";
 import { DialogHeader } from "./story-dialog/DialogHeader";
 import {
   isBilingualDialog,
@@ -114,16 +113,12 @@ export function StoryDialog({
             </p>
           )}
           {item && (
-            <>
-              <div className="mb-4">
-                <StoryVotes
-                  itemId={item.id}
-                  voteNet={item.vote_net ?? 0}
-                  lang={lang}
-                />
-              </div>
-              <StoryDetail item={item} lang={lang} bilingual={bilingual} />
-            </>
+            <StoryDetail
+              item={item}
+              lang={lang}
+              bilingual={bilingual}
+              showVotes
+            />
           )}
 
           {relatedItems.length > 0 && (

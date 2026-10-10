@@ -10,6 +10,10 @@ export interface StoryPayload {
   url: string;
   title: string;
   summary: string | null;
+  /** Telegram only: a rewrite of `summary` that fits the caption budget,
+   *  stored in `notify_summaries`. Set at send time, never read from D1 rows
+   *  of another language. */
+  caption_summary?: string | null;
   image_url: string | null;
   /** Typed candidates. Image URLs (and video posters) ride a Telegram album
    * when there is more than one. Video files stay deferred. */
@@ -27,6 +31,9 @@ export interface StoryPayload {
  *  aidr.today (null when the bullet has no resolvable item). */
 export interface DigestBullet {
   text: string;
+  /** The headline alone, when `text` also carries a summary clause. The
+   *  caption fitter drops the clause (not part of the headline) first. */
+  lead?: string;
   url: string | null;
   /** The TL;DR model's pick for this story, when it gave a valid one. */
   emoji?: string;

@@ -213,7 +213,8 @@ export function previewCampaign(
     CampaignRow,
     "subject" | "preheader" | "body_md" | "cta_label" | "cta_url"
   >,
-  token = "preview"
+  token = "preview",
+  postalAddress?: string
 ) {
   const cta =
     campaign.cta_label && campaign.cta_url
@@ -227,6 +228,7 @@ export function previewCampaign(
     mailKind: "notes",
     unsubscribeUrl: unsubscribeUrl(token),
     settingsUrl: settingsUrl(token),
+    postalAddress,
   });
 }
 
@@ -294,7 +296,7 @@ export async function sendCampaign(
       .bind(testEmail)
       .first<{ email: string; unsubscribe_token: string }>();
     const token = sub?.unsubscribe_token ?? "preview";
-    const rendered = previewCampaign(campaign, token);
+    const rendered = previewCampaign(campaign, token, env.MAIL_POSTAL_ADDRESS);
     const sent = await sendSubscriberEmail(env, {
       to: testEmail,
       from: notesFrom(env),
@@ -330,7 +332,11 @@ export async function sendCampaign(
   let failed = 0;
   for (const sub of subscribers) {
     if (delivered.has(sub.email)) continue;
-    const rendered = previewCampaign(campaign, sub.unsubscribe_token);
+    const rendered = previewCampaign(
+      campaign,
+      sub.unsubscribe_token,
+      env.MAIL_POSTAL_ADDRESS
+    );
     const ok = await sendSubscriberEmail(env, {
       to: sub.email,
       from: notesFrom(env),

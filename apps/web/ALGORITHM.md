@@ -39,7 +39,7 @@ One ingest run does three jobs. The scheduler starts one every 30 minutes, with 
 
 Publish has two deliveries and they do not share a clock or a table:
 
-- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject and heading are a fixed short title (`AI;DR — <date> · Today in AI`); the first story is the preheader. Idempotency is `subscribers.last_sent_date`. A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
+- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
 
@@ -362,6 +362,11 @@ images rather than a broken-src fallback.
   `mediaIdentityKey` (host + path, minus resize and tracking variants). No
   media is downloaded or hashed, so two different URLs that serve the same
   bytes (a mirror, a renamed copy) stay as two assets.
+- **Generated share cards are a fallback only.** An image whose path is an
+  OG generator (`/og/…`, `/api/og`, `og-image`/`og-card` file names, see
+  `isGeneratedOgCard`) is dropped from a manifest, including merged
+  cluster manifests, whenever any other image or video remains. The story
+  dialog applies the same rule to stored manifests at render time.
 - **A video poster is only URL-checked here.** At collection time the
   poster URL passes the same URL policy as any image and nothing is
   fetched. Its bytes are checked later, at Telegram send time (see Notify).
@@ -707,10 +712,31 @@ Per-subscriber language and digest size (3/5/10
 stories, default 5) to confirmed subscribers, once per their local
 morning (from 07:00 in the subscriber's timezone). Copy comes from the
 same edition as Telegram (`worker/digest/edition.ts`): `bullets_vi` or
-`bullets_en` for that local date, with no cross-language fallback. An
+`bullets_en` for that local date, with no cross-language fallback and
+no fallback to another date: until the local-date row exists the
+subscriber gets nothing, and the next 30-minute run sends it. An
 empty column leaves `last_sent_date` unset so the next run
 retries. Idempotency stays on `subscribers.last_sent_date`, not the
 `notifications` table.
+
+The mail itself (`worker/mail/render.ts`, one function per block): the
+subject leads with the top one or two headlines plus "+N more" (about 60
+characters, localized), with a written preheader. The header has the
+wordmark, the spelled-out date, "N stories · M min read" and a link to the
+other language's day page. Next comes the day's video for that language
+(`day_videos`, `youtube_id` then `short_id`, no fallback across languages;
+the block is left out when there is none). Then the lead story (large image
+that is never a generated OG card, category · source, headline, summary),
+then compact rows (number, category · source, linked headline, one
+sentence, 84px thumbnail). After the rows: one "See all" button, the
+channel strip (Telegram, YouTube, Chrome extension) and the footer (view in
+browser, settings, unsubscribe, how we rank, "Forwarded this?", and
+`MAIL_POSTAL_ADDRESS` when set). The headline is `items.title` or
+`title_vi` for that language only; without it, the bullet's first sentence.
+Every link carries `utm_content` for its position (`lead`, `s2`…, `cta`,
+`video`, `channel-*`). After the button, a "Was today's edition useful?" row links to `GET /feedback?d=&l=&v=1|0&t=<token>`. That stores one vote per subscriber and date in `email_feedback` (0054); the last click wins. Counts are at `GET /api/admin/mail/feedback` and in `aidr-agent audit`. Layouts: `design` (lead image plus thumbnails),
+`large` (an image per story), `no-images`, `text`. Admin preview:
+`GET /api/admin/mail/preview?date=&lang=&format=`.
 
 ### 12. Notify (`worker/notify/`)
 
@@ -727,7 +753,7 @@ deliberately non-spammy.
   are worth sending. The lead photo is the day card
   (`/api/og/date/{date}.png`) and the caption names those same tiles, with
   the first sentence of that language's summary after the title when one
-  exists. Lines are clipped so every tile still fits. Stories that do not
+  exists. Every tile still fits: a summary clause is a whole first sentence or left out, and the caption drops clauses (longest first) before it shortens any headline, at a word boundary (`fitHighlightDigest`). Stories that do not
   fit the lead grid go next: four or more become a second card (`part=2`, its own `v`
   token, because Telegram caches a photo by URL); one to three are a short
   text reply. This is that calendar day's ranked stories, photos first,
@@ -773,6 +799,12 @@ deliberately non-spammy.
   locale. Telegram site links use flat `/{8-char}` permalinks with explicit
   `lang=vi|en` plus `utm_source=telegram`; publisher links keep their own
   URL and receive only the Telegram attribution parameter.
+- Claim before send: each digest or trending send first upserts its row to
+  `sending` in one statement (`claimDelivery`), and only the dispatch whose
+  write changed a row sends. A retried notify step or a forced run that
+  overlaps a scheduled one finds the claim and posts nothing. A `sending`
+  row is never re-claimed, however old: no outcome was recorded, so it is
+  final like `ambiguous`.
 - The bounded Telegram Instant View decision, locale URLs, field/media
   gates, and fallback checklist are in
   [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).
@@ -804,6 +836,17 @@ deliberately non-spammy.
   Editor session. Telegram's plain link preview from the page's own Open
   Graph tags is the documented fallback
   ([`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md)).
+- **Telegram text always fits; nothing is cut mid-word** (`worker/notify/fit-text.ts`).
+  A trending caption has 1024 visible characters; the summary gets what the
+  title, meta line and album Read link leave (`storySummaryBudget`, at most
+  500). In order: the channel's own summary when it fits; else a stored
+  rewrite in `notify_summaries` (one LLM call at send time through
+  `completeJson`, only for the story about to be posted, keyed by item and
+  language, regenerated when the source summary changes; rejected unless
+  non-empty, in budget, finished, no ellipsis, and in the channel's language);
+  else whole leading sentences with no ellipsis; else whole words plus `…`.
+  A failed model call never blocks the send. Raw text is cut first and
+  escaped after, so an HTML entity is never split.
 - A trending story with two or more images uses `sendMediaGroup` (2–10
   photos: the story's own manifest images and video posters). One image
   stays `sendPhoto` so the inline button remains — an album has no
@@ -866,7 +909,8 @@ deliberately non-spammy.
   80006) wait for the next run. `FACEBOOK_PAGE_ID`, `FACEBOOK_APP_ID`,
   `FACEBOOK_APP_SECRET`, and `FACEBOOK_PAGE_ACCESS_TOKEN` come from the
   install's `.env.local`. None of them are committed. The Page token posts.
-  The app id and secret only mint a replacement Page token.
+  The app id and secret only mint a replacement Page token. The secret stays
+  in `.env.local`: no Worker or workflow reads it, so nothing syncs it.
 
 ### 13. Review gates (LLM, rating ≥ 0.6)
 
@@ -1002,6 +1046,12 @@ drain it.
 | `judge-relevance`, `judge-source-quality`, `judge-safety` | `createJevJudgeExecutor`, one seat, score-panel or submission-gate subject shape | `JEV_PANEL_{RELEVANCE,SOURCE_QUALITY,SAFETY}_MODEL` | support/oppose agreement; abstain or transport failure = invalid | silver `items.status` published/rejected and `submissions.status` (`judge-score.json`; panel never ran in prod, no stored votes) |
 | `judge-translation-fidelity` | same, translation-gate subject shape | `JEV_PANEL_TRANSLATION_FIDELITY_MODEL` | same | silver `qa_rating` ≥0.7 and rejected suggestions (`judge-translation.json`) |
 
+The `cluster` row is silver, so a model that merges what prod missed
+scores as a false positive. `scripts/cluster-gold-eval.ts` scores the
+cluster call against hand-labelled same-story groups that reached the prod
+24h pool unmerged on 2026-10-10 (`fixtures/quality-bench/cluster-gold.json`,
+96 rows, topic-only negatives included). Rank cluster models on it first.
+
 Not benched yet: repair (`requestRepair`), suggestion retranslate
 (`suggestions.ts`), and digest wrap (`mail/compose.ts`). Review-queue data
 is thin (2026-10-02: 2 usable suggestions, 12 submissions), so treat those
@@ -1025,10 +1075,17 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
 
-- `@preset/aidr` (workspace preset, resolves to Laguna)
-- `poolside/laguna-s-2.1` (the only concrete id that streams usable JSON on
-  this key for translate and TL;DR)
-- `anyrouter/auto`, then `anyrouter/free` (router safety nets, always last)
+- `google/gemma-latest` (rolling alias, served `gemma-4-31b` on 2026-10-10)
+- `z-ai/glm-latest` (rolling alias, served `glm-5.2`)
+- `@preset/aidr` (workspace preset, served `gemma-4-31b` on 2026-10-10)
+- `anyrouter/auto` (router safety net, always last; served Laguna)
+
+This chain also runs the cluster call. On the gold cluster set, Laguna
+scored F1 0.51, while Gemma, GLM 5.2 and the preset scored 1.0. TL;DR uses
+`openai/gpt-5.6-luna`, then `anyrouter/auto`. Translate puts
+`google/gemma-latest` before the `gemma-4-31b` :free route. The rolling
+aliases follow new models without a deploy, so re-probe what they serve
+before reading a bench row as a fixed model.
 
 TL;DR and translate use the same chain without Jev. The VI→EN generator
 uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer

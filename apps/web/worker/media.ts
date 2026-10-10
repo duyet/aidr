@@ -409,6 +409,39 @@ export function isGenericImageUrl(url: string): boolean {
   );
 }
 
+/**
+ * A text-on-card share image rendered by a site's OG generator
+ * (`/og/<slug>.png`, `/api/og?...`, `og-card-*.png`). It shows the
+ * headline, not the story, so it is only a fallback picture.
+ */
+export function isGeneratedOgCard(url: string): boolean {
+  try {
+    const parts = new URL(url).pathname.toLowerCase().split("/");
+    return (
+      parts.includes("og") ||
+      parts.some((part) => /og[-_]?(image|card)/.test(part))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Drop generated share cards when any real media remains. A cluster merges
+ * several pages, and aggregators (marketbrief, huggingnews) each add their
+ * own card for the same story; those are noise next to the original
+ * article's image, but still better than nothing when they are all we have.
+ */
+export function withoutGeneratedCards<T extends { type: string; url: string }>(
+  assets: readonly T[]
+): T[] {
+  const isCard = (asset: T) =>
+    asset.type === "image" && isGeneratedOgCard(asset.url);
+  return assets.some((asset) => !isCard(asset))
+    ? assets.filter((asset) => !isCard(asset))
+    : [...assets];
+}
+
 function normalizeCandidate(
   candidate: MediaCandidate,
   allowGenericImage = false
@@ -520,13 +553,12 @@ export function buildMediaManifest(
       )
       .filter((identity): identity is string => identity !== null)
   );
-  const assets = ranked
-    .filter(({ asset }) => {
+  const assets = withoutGeneratedCards(ranked.map(({ asset }) => asset))
+    .filter((asset) => {
       if (asset.type !== "image") return true;
       return !posterIdentities.has(mediaIdentityKey("image", asset.url) ?? "");
     })
-    .slice(0, MAX_MEDIA_ASSETS)
-    .map(({ asset }) => asset);
+    .slice(0, MAX_MEDIA_ASSETS);
 
   return { version: MEDIA_MANIFEST_VERSION, assets };
 }

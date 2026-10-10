@@ -13,7 +13,7 @@ export function BilingualSummary({
   paragraphsVi: string[];
 }) {
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:divide-x lg:divide-border">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-0 lg:divide-x lg:divide-border">
       {[
         {
           key: "en" as const,
@@ -32,7 +32,7 @@ export function BilingualSummary({
             key={col.key}
             data-suggest-field={col.isVi ? "summary" : undefined}
             lang={col.key}
-            className={i === 0 ? undefined : "pt-4 lg:pt-0 lg:pl-6"}
+            className={i === 0 ? "lg:pr-8" : "pt-4 lg:pt-0 lg:pl-8"}
           >
             {col.paragraphs.length > 0 && (
               <div className="typeset typeset-reader">

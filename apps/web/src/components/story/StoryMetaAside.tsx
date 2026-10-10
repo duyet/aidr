@@ -8,6 +8,7 @@ import { CategoryLabel } from "../CategoryLabel";
 import { fmtTime } from "./lib";
 import { MediaGallery } from "./MediaGallery";
 import { StoryRankingPanel } from "./StoryRankingPanel";
+import { StoryVotes } from "./StoryVotes";
 import {
   formatStoryScore,
   formatStoryTimestamp,
@@ -169,10 +170,12 @@ export function StoryMetaAside({
   item,
   lang,
   imageUrl,
+  showVotes,
 }: {
   item: FeedItem;
   lang: Lang;
   imageUrl: string | null;
+  showVotes?: boolean;
 }) {
   const [openDetails, setOpenDetails] = useState<string | null>(null);
   const detailsId = "story-tokens";
@@ -185,6 +188,9 @@ export function StoryMetaAside({
 
   return (
     <aside className="not-typeset min-w-0 space-y-5 md:border-l md:border-border md:pl-6">
+      {showVotes && (
+        <StoryVotes itemId={item.id} voteNet={item.vote_net ?? 0} lang={lang} />
+      )}
       {/* The bounded media manifest (#160) is the source of truth for ordered
           image/video assets; `imageUrl` stays the single legacy thumbnail used
           when the manifest has nothing renderable. */}

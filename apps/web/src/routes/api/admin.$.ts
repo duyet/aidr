@@ -4,6 +4,7 @@ import {
   checkAdminAuth,
   checkAdminAuthRateLimit,
   isRequestAdmin,
+  recordAdminAuthFailure,
 } from "../../../worker/admin/auth.js";
 import {
   decideSubmission,
@@ -52,6 +53,8 @@ import {
   wrapCampaign,
 } from "../../../worker/mail/campaigns.js";
 import { listMailContent } from "../../../worker/mail/content.js";
+import { feedbackCounts } from "../../../worker/mail/feedback.js";
+import { renderDigestPreview } from "../../../worker/mail/preview.js";
 import { previewDigest } from "../../../worker/notify/index.js";
 import { ivFieldGateForOperator } from "../../../worker/notify/iv-gate.js";
 import { previewDigestEmail } from "../../../worker/subscribe/send.js";
@@ -111,6 +114,9 @@ async function handle(
     const rateLimited = await checkAdminAuthRateLimit(request, env);
     if (rateLimited) return rateLimited;
     const admin = await isRequestAdmin(request, env);
+    // A wrong bearer here is a failed guess like any other admin route;
+    // without counting it, `/me` is an unthrottled token oracle.
+    if (!admin) await recordAdminAuthFailure(request, env);
     return Response.json({ admin });
   }
 
@@ -519,6 +525,32 @@ async function handle(
     const url = new URL(request.url);
     const result = await listItems(env, url.searchParams.get("limit"));
     return Response.json(result);
+  }
+
+  // The digest mail as HTML for one date/lang/format; nothing is sent.
+  // Before the generic GET /mail handler, which would swallow it.
+  if (
+    method === "GET" &&
+    segments.length === 2 &&
+    segments[0] === "mail" &&
+    segments[1] === "preview"
+  ) {
+    return renderDigestPreview(env, new URL(request.url).searchParams);
+  }
+  // Digest "useful?" votes per date and language: ?days=N (default 14).
+  if (
+    method === "GET" &&
+    segments.length === 2 &&
+    segments[0] === "mail" &&
+    segments[1] === "feedback"
+  ) {
+    const days = Number(new URL(request.url).searchParams.get("days"));
+    try {
+      return Response.json({ feedback: await feedbackCounts(env, days) });
+    } catch (error) {
+      // email_feedback not migrated yet (0054): report it, do not 500.
+      return Response.json({ feedback: null, error: String(error) });
+    }
   }
 
   if (method === "GET" && segments[0] === "mail") {

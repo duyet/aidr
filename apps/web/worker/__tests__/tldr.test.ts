@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { sanitizeBulletIds } from "../llm.js";
 import {
   buildTopItemsQuery,
+  cleanTldrRows,
   fallbackTldrFromItems,
   isThinTldr,
   shouldPersistTldr,
@@ -16,6 +17,27 @@ import {
   looksVietnamese,
   needsViTitleFallback,
 } from "../tldr-lang.js";
+
+describe("cleanTldrRows", () => {
+  // Rows stored before ingest stripped feed chrome still carry it, and the
+  // model copied it into a digest bullet (story a60e74fc).
+  it("strips feed chrome from stored summaries and wire markers from titles", () => {
+    const [row] = cleanTldrRows([
+      {
+        id: "a60e74fc",
+        source_id: "huggingnews",
+        title: "UPDATE: OpenAI notifies organizations",
+        summary:
+          "← Back to live feed · 1 stories across 1 day OpenAI had notified more than 100 organizations.",
+        title_vi: null,
+      },
+    ]);
+    expect(row?.summary).toBe(
+      "OpenAI had notified more than 100 organizations."
+    );
+    expect(row?.title).toBe("OpenAI notifies organizations");
+  });
+});
 
 describe("buildTopItemsQuery", () => {
   it("gates on status='published', ranks by rank_score DESC, reads source_id", () => {

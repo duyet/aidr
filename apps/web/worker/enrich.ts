@@ -8,6 +8,7 @@ import {
   primaryThumbnailUrl,
 } from "./media.js";
 import type { FetchedItem } from "./sources/types.js";
+import { stripSourceBoilerplate } from "./translation-terms.js";
 
 const MAX_ENRICH_FETCHES = 20;
 const ENRICH_BATCH_SIZE = 4;
@@ -202,9 +203,13 @@ function extractMetaContent(
  * og:description, falling back to <meta name="description">. HTML
  * entities in the description and og:image URL are decoded.
  */
-/** A publisher blurb cut off with an ellipsis, not a finished sentence. */
+/** A publisher blurb cut off with an ellipsis, not a finished sentence.
+ * WordPress-style RSS excerpts end in "[…]" or a "Read more" link; they are
+ * teasers too, and must make enrich/backfill fetch the article body. */
 export function summaryLooksCutOff(text: string): boolean {
-  return /(?:\.{3}|…)\s*$/.test(text.trim());
+  return /(?:\.{3}|…|\[(?:…|\.{3})\]|\b(?:Read more|Continue reading)\b[^.!?]{0,80})\s*$/i.test(
+    text.trim()
+  );
 }
 
 /** Keep whichever summary is a finished sentence. A cut-off blurb never
@@ -265,7 +270,11 @@ export function parseOgTags(html: string): OgData {
     ? decodeHtmlEntities(rawDescription).trim() || undefined
     : undefined;
   const article = articleSummary(html);
-  const summary = preferCompleteSummary(description, article);
+  const picked = preferCompleteSummary(description, article);
+  // Page chrome ("← Back to live feed · …") is not article text.
+  const summary = picked
+    ? stripSourceBoilerplate(picked).trim() || undefined
+    : undefined;
 
   const rawTitle = extractMetaContent(html, "property", "og:title");
   const title = rawTitle ? decodeHtmlEntities(rawTitle).trim() : "";

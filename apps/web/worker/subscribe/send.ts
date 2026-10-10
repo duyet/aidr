@@ -1,7 +1,8 @@
+import { parseDayVideoRow } from "../../src/lib/feed-queries.js";
+import { categoryLabel } from "../../src/lib/lang.js";
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import {
   type MailFormat,
-  mailFormatHasImages,
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
 import { SITE_URL } from "../../src/lib/site.js";
@@ -14,7 +15,7 @@ import {
   topBullets,
 } from "../digest/edition.js";
 import {
-  digestSubjectLine,
+  type DigestVideo,
   renderDigestEmail,
   renderNoteEmail,
   settingsUrl,
@@ -114,39 +115,55 @@ export function shouldSendForSubscriber(
   return sub.last_sent_date !== localDate;
 }
 
+/** A snapshot bullet joined with its `items` row (see `loadBulletDetails`). */
+export interface DigestBullet extends TldrBulletLike {
+  /** `title` or `title_vi` for the edition's language; never the other one. */
+  headline?: string;
+  /** Publisher host, `www.` dropped. */
+  source?: string;
+  category?: string;
+}
+
+/** Extras the edition renderer loads beside the bullets. */
+export interface DigestExtras {
+  video?: DigestVideo | null;
+  postalAddress?: string;
+}
+
 /** Builds the plain-text and HTML bodies for a subscriber's daily digest email. */
 export function buildDigestEmail(
   date: string,
-  bullets: TldrBulletLike[],
+  bullets: DigestBullet[],
   lang: string,
   unsubscribeToken: string,
   max = MAX_BULLETS,
-  format: MailFormat = "design"
+  format: MailFormat = "design",
+  extras: DigestExtras = {}
 ): { subject: string; html: string; text: string } {
   const mailLang = lang === "en" ? "en" : "vi";
   const items = bullets.slice(0, max);
-  const subject = digestSubjectLine(date, mailLang);
-  return {
-    subject,
-    ...renderDigestEmail({
-      subject,
-      date,
-      lang: mailLang,
-      stories: items.map((b) => ({
-        text: b.text,
-        url: b.item_id
-          ? absoluteSiteUrl(storyPath({ id: b.item_id }), mailLang)
-          : absoluteSiteUrl("/", mailLang),
-        imageUrl: b.image_url
-          ? (canonicalizeMediaImageUrl(b.image_url) ?? undefined)
-          : undefined,
-      })),
-      unsubscribeUrl: unsubscribeUrl(unsubscribeToken, mailLang),
-      settingsUrl: settingsUrl(unsubscribeToken, mailLang),
-      preheader: items[0]?.text,
-      format,
-    }),
-  };
+  return renderDigestEmail({
+    date,
+    lang: mailLang,
+    stories: items.map((b) => ({
+      text: b.text,
+      url: b.item_id
+        ? absoluteSiteUrl(storyPath({ id: b.item_id }), mailLang)
+        : absoluteSiteUrl("/", mailLang),
+      imageUrl: b.image_url
+        ? (canonicalizeMediaImageUrl(b.image_url) ?? undefined)
+        : undefined,
+      headline: b.headline,
+      source: b.source,
+      category: b.category,
+    })),
+    unsubscribeUrl: unsubscribeUrl(unsubscribeToken, mailLang),
+    settingsUrl: settingsUrl(unsubscribeToken, mailLang),
+    format,
+    video: extras.video,
+    postalAddress: extras.postalAddress,
+    feedbackToken: unsubscribeToken,
+  });
 }
 
 /**
@@ -159,9 +176,8 @@ export function buildDigestEmail(
  * hourly runs as different timezones cross 7am. Each subscriber gets the
  * edition for their local date in their language. An empty column is not
  * filled from the other language; that subscriber is retried next hour.
- * A missing local row can still mail the UTC-dated snapshot. That send does
- * not stamp `last_sent_date`, so the local day's snapshot still goes out
- * once it exists. A missing edition stamps nothing.
+ * A missing local-date row sends and stamps nothing; the subscriber gets
+ * that edition on the first run after it exists.
  *
  * A per-subscriber failure is logged and swallowed without stamping
  * `last_sent_date`, so that subscriber is retried on the next hourly run.
@@ -191,9 +207,72 @@ export async function sendConfirmEmail(
     lang: vi ? "vi" : "en",
     unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
     settingsUrl: settingsUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    postalAddress: env.MAIL_POSTAL_ADDRESS,
     cta: {
       label: vi ? "Xác nhận đăng ký" : "Confirm subscription",
       url: confirmUrl(sub.unsubscribe_token),
+    },
+  });
+  return sendSubscriberEmail(env, {
+    to: sub.email,
+    from: digestFrom(env),
+    subject,
+    html,
+    text,
+    unsubscribeToken: sub.unsubscribe_token,
+    lang: vi ? "vi" : "en",
+  });
+}
+
+export interface RequestedPrefs {
+  lang: "en" | "vi";
+  timezone: string;
+  digest_size: number;
+  mail_format: MailFormat;
+}
+
+/** The confirm link plus the settings it applies once clicked. The params
+ *  are `set_*` because mail rendering rewrites every link's `lang`. */
+export function settingsChangeUrl(
+  token: string,
+  prefs: RequestedPrefs
+): string {
+  const params = new URLSearchParams({
+    set_lang: prefs.lang,
+    set_timezone: prefs.timezone,
+    set_digest_size: String(prefs.digest_size),
+    set_mail_format: prefs.mail_format,
+  });
+  return `${confirmUrl(token)}&${params.toString()}`;
+}
+
+/** A signup form re-submitted for an already-confirmed address. The new
+ *  settings apply only when the mailbox owner clicks the link (#534). */
+export async function sendSettingsChangeEmail(
+  env: Env,
+  sub: { email: string; lang: string; unsubscribe_token: string },
+  prefs: RequestedPrefs
+): Promise<boolean> {
+  const vi = sub.lang !== "en";
+  const subject = vi
+    ? "Xác nhận thay đổi cài đặt AI;DR"
+    : "Confirm your AI;DR settings change";
+  const settingsList = vi
+    ? `- Ngôn ngữ: ${prefs.lang}\n- Múi giờ: ${prefs.timezone}\n- Số tin: ${prefs.digest_size}\n- Định dạng: ${prefs.mail_format}\n`
+    : `- Language: ${prefs.lang}\n- Timezone: ${prefs.timezone}\n- Stories: ${prefs.digest_size}\n- Format: ${prefs.mail_format}\n`;
+  const bodyMd = vi
+    ? `Có người vừa đăng ký lại địa chỉ này với các cài đặt sau:\n\n${settingsList}\nBấm nút bên dưới để áp dụng. Nếu không phải bạn, cứ bỏ qua email này — cài đặt hiện tại sẽ giữ nguyên.\n`
+    : `Someone just signed up this address again with these settings:\n\n${settingsList}\nClick the button below to apply them. If this wasn't you, ignore this email — your current settings stay as they are.\n`;
+  const { html, text } = renderNoteEmail({
+    subject,
+    bodyMd,
+    lang: vi ? "vi" : "en",
+    unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    settingsUrl: settingsUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    postalAddress: env.MAIL_POSTAL_ADDRESS,
+    cta: {
+      label: vi ? "Áp dụng cài đặt" : "Apply settings",
+      url: settingsChangeUrl(sub.unsubscribe_token, prefs),
     },
   });
   return sendSubscriberEmail(env, {
@@ -224,6 +303,7 @@ export async function sendWelcomeEmail(
     lang: vi ? "vi" : "en",
     unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
     settingsUrl: settingsUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    postalAddress: env.MAIL_POSTAL_ADDRESS,
     cta: { label: vi ? "Mở aidr.today" : "Open aidr.today", url: SITE_URL },
   });
   return sendSubscriberEmail(env, {
@@ -260,10 +340,56 @@ export function digestBulletsWithImages(
   });
 }
 
-async function loadBulletImages(
+interface BulletItemRow {
+  id: string;
+  image_url?: string | null;
+  title?: string | null;
+  title_vi?: string | null;
+  category?: string | null;
+  url?: string | null;
+}
+
+function sourceHost(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "") || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Joins each bullet to its own item through `item_ids` (never by position):
+ *  image, headline in `lang` only, category and source host. */
+export function digestBulletsWithItems(
+  bullets: TldrBulletLike[],
+  rows: BulletItemRow[],
+  lang: "en" | "vi"
+): DigestBullet[] {
+  const byId = new Map(rows.filter((r) => r.id).map((r) => [r.id, r]));
+  return digestBulletsWithImages(bullets, rows).map((bullet) => {
+    const ids = [
+      ...(bullet.item_ids ?? []),
+      ...(bullet.item_id ? [bullet.item_id] : []),
+    ];
+    const row = ids.map((id) => byId.get(id)).find(Boolean);
+    if (!row) return bullet;
+    const title = (lang === "en" ? row.title : row.title_vi)?.trim();
+    const category = row.category?.trim();
+    const source = sourceHost(row.url);
+    return {
+      ...bullet,
+      ...(title ? { headline: title } : {}),
+      ...(category ? { category: categoryLabel(category, lang) } : {}),
+      ...(source ? { source } : {}),
+    };
+  });
+}
+
+async function loadBulletDetails(
   env: Pick<Env, "DB">,
-  bullets: TldrBulletLike[]
-): Promise<TldrBulletLike[]> {
+  bullets: TldrBulletLike[],
+  lang: "en" | "vi"
+): Promise<DigestBullet[]> {
   const ids = [
     ...new Set(
       bullets.flatMap((bullet) => [
@@ -274,34 +400,69 @@ async function loadBulletImages(
   ];
   if (ids.length === 0) return bullets;
   const placeholders = ids.map(() => "?").join(", ");
-  const { results } = await env.DB.prepare(
-    `SELECT id, image_url FROM items WHERE id IN (${placeholders})`
-  )
-    .bind(...ids)
-    .all<{ id: string; image_url: string | null }>();
-  return digestBulletsWithImages(bullets, results ?? []);
+  // title_vi lives in translations, like the feed query (ITEM_SELECT_BASE).
+  // A failed lookup must never block the send: fall back to the bare bullets.
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT i.id, i.image_url, i.title, t.title AS title_vi, i.category, i.url
+       FROM items i
+       LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
+       WHERE i.id IN (${placeholders})`
+    )
+      .bind(...ids)
+      .all<BulletItemRow>();
+    return digestBulletsWithItems(bullets, results ?? [], lang);
+  } catch (error) {
+    console.warn("digest: bullet details lookup failed", error);
+    return digestBulletsWithItems(bullets, [], lang);
+  }
 }
 
-/** The digest mail for one edition, exactly as it is sent: loads story
- *  images when the layout shows them, then renders. The subscribe preview
- *  calls this too, so the preview is the mail that arrives. */
-export async function renderEditionEmail(
+/** The day's video in `lang` only (`youtube_id`, else `short_id`). A
+ *  missing row, column or table means no video block. */
+async function loadDigestVideo(
   env: Pick<Env, "DB">,
+  date: string,
+  lang: "en" | "vi"
+): Promise<DigestVideo | null> {
+  try {
+    const row = await env.DB.prepare(
+      `SELECT youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi
+       FROM day_videos WHERE date = ? LIMIT 1`
+    )
+      .bind(date)
+      .first();
+    const video = parseDayVideoRow(row)[lang];
+    const id = video?.youtube_id ?? video?.short_id;
+    return id ? { youtubeId: id, title: video?.title ?? null } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The digest mail for one edition, exactly as it is sent: joins the
+ *  bullets to their items and the day video, then renders. The subscribe
+ *  and admin previews call this too, so the preview is the mail that arrives. */
+export async function renderEditionEmail(
+  env: Pick<Env, "DB" | "MAIL_POSTAL_ADDRESS">,
   edition: Pick<Edition, "date" | "lang" | "bullets">,
   unsubscribeToken: string,
   size: number,
   format: MailFormat
 ): Promise<{ subject: string; html: string; text: string }> {
-  const bullets = mailFormatHasImages(format)
-    ? await loadBulletImages(env, edition.bullets)
-    : edition.bullets;
+  const lang = edition.lang === "en" ? "en" : "vi";
+  const [bullets, video] = await Promise.all([
+    loadBulletDetails(env, edition.bullets, lang),
+    loadDigestVideo(env, edition.date, lang),
+  ]);
   return buildDigestEmail(
     edition.date,
     bullets,
     edition.lang,
     unsubscribeToken,
     size,
-    format
+    format,
+    { video, postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined }
   );
 }
 
@@ -354,15 +515,11 @@ export async function sendEmailLane(
       continue;
     }
 
-    // Stamp only the edition for this local date. The UTC fallback is an
-    // older snapshot; recording localDate would skip today's edition.
-    if (edition.date === localDate) {
-      await env.DB.prepare(
-        "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
-      )
-        .bind(localDate, sub.email)
-        .run();
-    }
+    await env.DB.prepare(
+      "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
+    )
+      .bind(localDate, sub.email)
+      .run();
     sent++;
     stampedDate = edition.date;
   }

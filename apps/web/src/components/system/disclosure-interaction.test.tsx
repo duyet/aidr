@@ -7,6 +7,12 @@ import type { FeedItem } from "../../lib/types";
 import { StoryMetaAside } from "../story/StoryMetaAside";
 import { RunRow } from "./RunRow";
 
+// The aside can render votes; their server fns import `cloudflare:workers`.
+vi.mock("../../lib/vote-fn", () => ({
+  castStoryVote: vi.fn(),
+  fetchMyVotes: vi.fn(),
+}));
+
 const item: FeedItem = {
   id: "story-1",
   url: "https://example.test/story-1",

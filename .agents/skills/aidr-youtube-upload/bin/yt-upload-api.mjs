@@ -110,6 +110,17 @@ log("refresh token");
   token = body.access_token;
 }
 
+// The token belongs to whichever channel was picked on the consent screen; a personal channel
+// there would publish AI;DR videos in the wrong place.
+const CHANNEL = process.env.YOUTUBE_CHANNEL_ID || "UCGDB5uD8znydgMg2XLOj04w";
+{
+  const me = await call("channel", `${API}/channels?part=snippet&mine=true`);
+  const ch = me.items?.[0];
+  if (ch?.id !== CHANNEL)
+    fail("channel", `token is for ${ch?.id ?? "no channel"} (${ch?.snippet?.title ?? "-"}), expected ${CHANNEL}; re-run yt-oauth.mjs and pick the AI;DR channel`);
+  log(`channel ${ch.snippet.title} (${ch.id})`);
+}
+
 // --- 2. resumable upload --------------------------------------------------
 const size = statSync(mp4).size;
 log(`upload ${basename(mp4)} (${(size / 1e6).toFixed(1)} MB) as ${privacy}`);

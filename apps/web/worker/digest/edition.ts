@@ -87,29 +87,21 @@ export function editionBullets(
 }
 
 /**
- * The digest for `date` in one language.
- * Uses that calendar row, then the UTC-dated row only when the requested
- * row is missing and the UTC date is different. Returns null when the
- * chosen row has no bullets in `lang`.
+ * The digest for `date` in one language. Returns null when that calendar
+ * row is missing or has no bullets in `lang`. There is no fallback to
+ * another date: a caller that sends once per date must wait for its row.
  */
 export async function loadEdition(
   env: Pick<Env, "DB">,
   date: string,
   lang: Lang,
-  max: number,
-  now: Date = new Date()
+  max: number
 ): Promise<Edition | null> {
-  const sql =
-    "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots WHERE date = ?";
-  let snapshot = await env.DB.prepare(sql).bind(date).first<EditionSnapshot>();
-  if (!snapshot) {
-    const utcDate = now.toISOString().slice(0, 10);
-    if (utcDate !== date) {
-      snapshot = await env.DB.prepare(sql)
-        .bind(utcDate)
-        .first<EditionSnapshot>();
-    }
-  }
+  const snapshot = await env.DB.prepare(
+    "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots WHERE date = ?"
+  )
+    .bind(date)
+    .first<EditionSnapshot>();
   if (!snapshot) return null;
   const bullets = editionBullets(snapshot, lang, max);
   if (bullets.length === 0) return null;

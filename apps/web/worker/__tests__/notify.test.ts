@@ -173,7 +173,7 @@ describe("buildTrendingQuery", () => {
     expect(sql).toContain("status = 'published'");
     expect(sql).toContain("n.item_id IS NULL");
     // An ambiguous send may already be posted, so it is excluded like `sent`.
-    expect(sql).toContain("n.status IN ('sent', 'ambiguous')");
+    expect(sql).toContain("n.status IN ('sent', 'ambiguous', 'sending')");
     expect(sql).toContain("tr.lang = 'vi'");
     expect(sql).toContain("tr.title AS tr_title");
     expect(sql).toContain("i.media_manifest");
@@ -288,10 +288,20 @@ describe("trending story message", () => {
     expect(caption).toContain("💬 45");
   });
 
-  it("truncates long summaries under Telegram's caption limit", () => {
-    const caption = buildStoryCaption(story({ summary: "x".repeat(2000) }));
+  it("fits long summaries under Telegram's caption limit without cutting a word", () => {
+    const caption = buildStoryCaption(
+      story({ summary: "Alpha beta gamma delta. ".repeat(200) })
+    );
     expect(caption.length).toBeLessThan(1024);
-    expect(caption).toContain("…");
+    // Whole sentences, so no ellipsis at all.
+    expect(caption).not.toContain("…");
+    expect(caption).toContain("Alpha beta gamma delta.\n\n#llm");
+  });
+
+  it("leaves out a summary that is one unbreakable token rather than cutting it", () => {
+    const caption = buildStoryCaption(story({ summary: "x".repeat(2000) }));
+    expect(caption).not.toContain("xxx");
+    expect(caption).toContain("#llm");
   });
 
   it("keeps a long title plus a long summary inside the 1024-char caption cap", () => {

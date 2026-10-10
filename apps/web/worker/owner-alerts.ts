@@ -252,13 +252,43 @@ async function reportSideEffectError(what: string, error: unknown) {
   }
 }
 
+/**
+ * Error text for a rejected owner DM. Telegram's `description` says why (a
+ * bare status does not). A 400 "chat not found" or a 403 means the current
+ * bot cannot reach TELEGRAM_OWNER_CHAT_ID: the owner never pressed Start in
+ * this bot (common right after TELEGRAM_BOT_TOKEN changes bots), blocked it,
+ * or the id is wrong. Resending the same request cannot fix that.
+ */
+export async function ownerDmError(res: Response): Promise<string> {
+  let description = "";
+  try {
+    const body = (await res.json()) as { description?: unknown } | null;
+    if (typeof body?.description === "string") description = body.description;
+  } catch {
+    // Not JSON: the status alone is all there is.
+  }
+  const head = `owner DM HTTP ${res.status}${description ? `: ${description}` : ""}`;
+  const unreachable = res.status === 403 || /chat not found/i.test(description);
+  return unreachable
+    ? `${head} (bot cannot reach TELEGRAM_OWNER_CHAT_ID: open the bot and press Start, or fix the chat id)`
+    : head;
+}
+
+/**
+ * `sent`: delivered. `rejected`: Telegram refused it with a 4xx (not 429),
+ * so the same DM will be refused again until a human fixes the bot or chat.
+ * `failed`: not configured, or a transient error (timeout, 429, 5xx).
+ */
+export type OwnerDmOutcome = "sent" | "rejected" | "failed";
+
 export async function sendOwnerDm(
   env: Pick<Env, "TELEGRAM_BOT_TOKEN" | "TELEGRAM_OWNER_CHAT_ID">,
   text: string
-): Promise<boolean> {
+): Promise<OwnerDmOutcome> {
   const token = env.TELEGRAM_BOT_TOKEN;
   const chatId = env.TELEGRAM_OWNER_CHAT_ID;
-  if (!token || !chatId) return false;
+  if (!token || !chatId) return "failed";
+  let outcome: OwnerDmOutcome = "failed";
   try {
     const res = await fetch(
       `https://api.telegram.org/bot${token}/sendMessage`,
@@ -274,11 +304,16 @@ export async function sendOwnerDm(
         signal: AbortSignal.timeout(TIMEOUT_MS),
       }
     );
-    if (!res.ok) throw new Error(`owner DM HTTP ${res.status}`);
-    return true;
+    if (!res.ok) {
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        outcome = "rejected";
+      }
+      throw new Error(await ownerDmError(res));
+    }
+    return "sent";
   } catch (error) {
     await reportSideEffectError("owner-dm", error);
-    return false;
+    return outcome;
   }
 }
 

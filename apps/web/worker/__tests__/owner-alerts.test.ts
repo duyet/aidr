@@ -17,6 +17,7 @@ import {
   formatDailySummary,
   MAX_GITHUB_WRITES_PER_RUN,
   notifyOwner,
+  ownerDmError,
   routeRepo,
   sendOwnerDm,
   shouldSendDailySummary,
@@ -66,7 +67,10 @@ function mockFetch(handler: (c: Call) => unknown) {
   return calls;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe("routing and fingerprint", () => {
   it("sends LLM failures to anyrouter and the rest to aidr", () => {
@@ -147,10 +151,60 @@ describe("daily summary once per day", () => {
 describe("side effects", () => {
   it("does nothing without secrets", async () => {
     const calls = mockFetch(() => ({}));
-    expect(await sendOwnerDm({}, "hi")).toBe(false);
+    expect(await sendOwnerDm({}, "hi")).toBe("failed");
     expect(await fileGithubIssues({}, [llmIssue], ctx)).toEqual({});
     await notifyOwner({}, [llmIssue], ctx);
     expect(calls).toEqual([]);
+  });
+
+  // AIDR-10: a bare "owner DM HTTP 400" hid why Telegram refused the DM.
+  // After TELEGRAM_BOT_TOKEN moves to another bot, the owner has not started
+  // it, and the fix is a human action, so the error must say so.
+  it("names the Telegram reason and the fix when the owner chat is unreachable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              ok: false,
+              error_code: 400,
+              description: "Bad Request: chat not found",
+            }),
+            { status: 400 }
+          )
+      )
+    );
+    const errors: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((_what, e) => {
+      errors.push(e instanceof Error ? e.message : String(e));
+    });
+    expect(
+      await sendOwnerDm(
+        { TELEGRAM_BOT_TOKEN: "t", TELEGRAM_OWNER_CHAT_ID: "1" },
+        "hi"
+      )
+    ).toBe("rejected");
+    expect(errors[0]).toContain(
+      "owner DM HTTP 400: Bad Request: chat not found"
+    );
+    expect(errors[0]).toContain("press Start");
+  });
+
+  it("keeps other Telegram rejections as plain status plus reason", async () => {
+    const res = new Response(
+      JSON.stringify({
+        ok: false,
+        description: "Bad Request: can't parse entities",
+      }),
+      { status: 400 }
+    );
+    expect(await ownerDmError(res)).toBe(
+      "owner DM HTTP 400: Bad Request: can't parse entities"
+    );
+    expect(
+      await ownerDmError(new Response("bad gateway", { status: 502 }))
+    ).toBe("owner DM HTTP 502");
   });
 
   it("creates a labelled issue in the routed repo when none is open", async () => {

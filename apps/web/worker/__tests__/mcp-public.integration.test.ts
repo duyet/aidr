@@ -428,6 +428,26 @@ describe("#227 anonymous MCP against real SQLite", () => {
     expect(keys[0].ip_hash).toBe(`mcp-read:${sha256Hex(ip)}`);
   });
 
+  it("wrong admin bearers are throttled per IP, so the MCP gate is not an unlimited token oracle", async () => {
+    const ip = "198.51.100.9";
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      const res = await rpc(
+        { method: "tools/list" },
+        { ip, token: `bad-${i}` }
+      );
+      statuses.push(res.status);
+    }
+    expect(statuses.slice(0, 10).every((s) => s === 401)).toBe(true);
+    expect(statuses[10]).toBe(429);
+    // Even the right token is refused from that IP once the budget is spent.
+    const right = await rpc(
+      { method: "tools/list" },
+      { ip, token: "integration-admin-token" }
+    );
+    expect(right.status).toBe(429);
+  });
+
   it("an anonymous operator call writes nothing", async () => {
     const before = db.db.prepare("SELECT COUNT(*) AS c FROM items").get() as {
       c: number;
