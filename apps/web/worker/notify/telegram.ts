@@ -14,6 +14,8 @@ import { isIvStoryId, ivCardUrl, TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
 import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
 import { digestPages } from "./day-card.js";
+import { fitText, fitWords } from "./fit-text.js";
+import { captionSummaryFor } from "./story-summary.js";
 import {
   type DailyDigest,
   type DigestBullet,
@@ -157,15 +159,14 @@ export function buildDigestCaption(
   return buildDigestMessage(digest, DIGEST_CAPTION_CAP, headline);
 }
 
-function clipHighlightText(value: string, cap: number): string {
-  const clean = value.replace(/\s+/g, " ").trim();
-  if (cap <= 1) return "";
-  if (clean.length <= cap) return clean;
-  return `${clean.slice(0, Math.max(1, cap - 1)).trimEnd()}…`;
-}
+/** Smallest a headline may be squeezed to before the tail would be dropped. */
+const MIN_HIGHLIGHT_CHARS = 32;
 
-/** Shorten every title so the whole card fits in one caption. Dropping
- *  the tail used to leave stories on the image that the text never named. */
+/** Fit every story into one caption. Dropping the tail used to leave stories
+ *  on the image that the text never named. Cut in this order, so no line ends
+ *  mid-sentence: (1) drop whole summary clauses, longest first, keeping the
+ *  headline; (2) only if the headlines alone still overflow, shorten the
+ *  longest headlines at a word boundary. */
 export function fitHighlightDigest(
   digest: DailyDigest,
   headline?: string
@@ -174,14 +175,48 @@ export function fitHighlightDigest(
   if (n === 0) return digest;
   const label = headline ?? digestHeadline(digest);
   // Blank line, mark, spaces, and the arrow, per story.
-  const fixed = label.length + n * (2 + 4 + 1 + 2);
-  const each = Math.max(32, Math.floor((DIGEST_CAPTION_CAP - fixed) / n));
+  const room = DIGEST_CAPTION_CAP - label.length - n * (2 + 4 + 1 + 2);
+  const bullets = digest.bullets.map((bullet) => ({
+    ...bullet,
+    text: bullet.text.replace(/\s+/g, " ").trim(),
+  }));
+  const total = () => bullets.reduce((sum, b) => sum + b.text.length, 0);
+  while (total() > room) {
+    let pick = -1;
+    let gain = 0;
+    bullets.forEach((bullet, i) => {
+      const saved = bullet.lead ? bullet.text.length - bullet.lead.length : 0;
+      if (saved > gain) {
+        gain = saved;
+        pick = i;
+      }
+    });
+    if (pick < 0) break;
+    bullets[pick] = { ...bullets[pick], text: bullets[pick].lead as string };
+    bullets[pick].lead = undefined;
+  }
+  if (total() > room) {
+    // Lowest ceiling every line can share; lines under it are untouched.
+    let ceiling = Math.max(
+      MIN_HIGHLIGHT_CHARS,
+      ...bullets.map((b) => b.text.length)
+    );
+    while (
+      ceiling > MIN_HIGHLIGHT_CHARS &&
+      bullets.reduce((sum, b) => sum + Math.min(b.text.length, ceiling), 0) >
+        room
+    ) {
+      ceiling--;
+    }
+    for (const bullet of bullets) {
+      if (bullet.text.length > ceiling) {
+        bullet.text = fitWords(bullet.text, ceiling) || bullet.text;
+      }
+    }
+  }
   return {
     ...digest,
-    bullets: digest.bullets.map((bullet) => ({
-      ...bullet,
-      text: clipHighlightText(bullet.text, each),
-    })),
+    bullets: bullets.map(({ lead: _lead, ...bullet }) => bullet),
   };
 }
 
@@ -270,31 +305,49 @@ export function buildDigestReplyMarkup(
 /** Headlines are one bounded line in the feed; clip before the caption cap. */
 const CAPTION_TITLE_CAP = 300;
 
-/** Trending story caption: bold title, trimmed summary, meta line.
+/** The caption title: whole, else whole words. A headline with no space to cut
+ *  at (a pasted URL) is the one place a hard cut is the only option. */
+function captionTitle(title: string): string {
+  const clean = title.replace(/\s+/g, " ").trim();
+  return (
+    fitWords(clean, CAPTION_TITLE_CAP) ||
+    `${clean.slice(0, CAPTION_TITLE_CAP - 1)}…`
+  );
+}
+
+/** Characters left for the summary: the 1024 caption cap minus the title,
+ *  meta line, separators and `reservedVisible`, never above the readable
+ *  `CAPTION_SUMMARY_CAP`. Telegram counts the caption AFTER entity parsing,
+ *  so the raw escaped title is an upper bound. */
+export function storySummaryBudget(
+  story: StoryPayload,
+  reservedVisible = 0
+): number {
+  const title = `<b>🔥 ${escapeHtml(captionTitle(story.title))}</b>`;
+  const meta = storyMetaLine(story);
+  const used =
+    title.length + (meta ? 2 + meta.length : 0) + 2 + reservedVisible;
+  return Math.min(CAPTION_SUMMARY_CAP, TELEGRAM_IV_LIMITS.captionChars - used);
+}
+
+/** Trending story caption: bold title, summary that fits, meta line.
  *  `reservedVisible` keeps a trailing line (the album Read link) inside
- *  the 1024 cap. Telegram counts that line after entity parsing. */
+ *  the 1024 cap. Telegram counts that line after entity parsing.
+ *
+ *  The summary is `story.caption_summary` (written to fit by
+ *  `captionSummaryFor`) when present, else the channel's own summary cut at a
+ *  sentence boundary, else at a word boundary. Raw text is cut first and
+ *  escaped after, so an entity is never split. */
 export function buildStoryCaption(
   story: StoryPayload,
   reservedVisible = 0
 ): string {
-  const title = clipCaptionText(story.title, CAPTION_TITLE_CAP);
-  const parts = [`<b>🔥 ${escapeHtml(title)}</b>`];
+  const parts = [`<b>🔥 ${escapeHtml(captionTitle(story.title))}</b>`];
   const meta = storyMetaLine(story);
-  // Telegram counts the caption AFTER entity parsing, so the raw string is an
-  // upper bound. Budget from what the title and meta already spent instead of
-  // hoping the 1024 ceiling holds by accident.
-  const used =
-    parts[0].length +
-    (meta ? 2 + meta.length : 0) +
-    2 +
-    1 /* the "…" below */ +
-    reservedVisible;
-  const summaryCap = Math.min(
-    CAPTION_SUMMARY_CAP,
-    TELEGRAM_IV_LIMITS.captionChars - used
-  );
-  if (story.summary && summaryCap > 1) {
-    const summary = clipCaptionText(story.summary, summaryCap);
+  const summaryCap = storySummaryBudget(story, reservedVisible);
+  const source = story.caption_summary || story.summary;
+  if (source && summaryCap > 1) {
+    const summary = fitText(source, summaryCap);
     if (summary) parts.push(escapeHtml(summary));
   }
   if (meta) parts.push(meta);
@@ -318,14 +371,6 @@ export function buildAlbumCaption(story: StoryPayload): string {
   const href = escapeHtml(withUtm(storyUrl(story, story.lang), story.lang));
   const label = escapeHtml(albumReadLabel(story.lang));
   return `${caption}\n\n<a href="${href}">${label}</a>`;
-}
-
-/** Clip with an ellipsis; escaping can only lengthen the result, never shorten
- *  it, so the cap is computed on the raw text first. */
-function clipCaptionText(value: string, cap: number): string {
-  if (cap <= 1) return "";
-  if (value.length <= cap) return value;
-  return `${value.slice(0, cap - 1).trimEnd()}…`;
 }
 
 function storyMetaLine(story: StoryPayload): string {
@@ -721,9 +766,17 @@ function telegramChannel(options: {
       return { ok: true, messageId: firstId };
     },
 
-    async sendStory(env: Env, story: StoryPayload): Promise<SendResult> {
+    async sendStory(env: Env, payload: StoryPayload): Promise<SendResult> {
       const token = env.TELEGRAM_BOT_TOKEN as string;
       const chatId = options.chatId(env);
+      // The album caption has the least room (it carries the Read link), so
+      // one summary written to that budget fits the photo and text posts too.
+      const caption_summary = await captionSummaryFor(
+        env,
+        payload,
+        storySummaryBudget(payload, albumLinkReserve(payload.lang))
+      );
+      const story = caption_summary ? { ...payload, caption_summary } : payload;
       const caption = buildStoryCaption(story);
       const replyMarkup = buildStoryReplyMarkup(story);
       const { gallery, card } = resolveStoryMedia(story);

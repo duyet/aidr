@@ -14,6 +14,7 @@ import {
   translateItems,
 } from "../llm.js";
 import { wrapWithAi } from "../mail/compose.js";
+import { captionSummaryFor } from "../notify/story-summary.js";
 import {
   buildSubmissionReviewPrompt,
   parseSubmissionVerdict,
@@ -356,6 +357,41 @@ describe("prompt injection: input side", () => {
     expect(canonicals.get("item-1")).toContain("open-source");
   });
 
+  it("caption summary keeps hostile story text inside the encoded data block", async () => {
+    const prompts = capturePrompts();
+    quiet();
+    const db = {
+      prepare: () => ({ bind: () => ({ first: async () => null }) }),
+    } as unknown as D1Database;
+    const text = `${ATTACK} ${"A long sentence about the story. ".repeat(30)}`;
+    await captionSummaryFor(
+      { ...env, DB: db },
+      { id: "abcd1234", title: ATTACK, summary: text, lang: "en" },
+      200
+    );
+    const system = prompts.filter((p) => p.startsWith("You write the short"));
+    const user = prompts.filter((p) => p.startsWith("<untrusted_story>"));
+    expect(system.length).toBeGreaterThan(0);
+    expect(user.length).toBeGreaterThan(0);
+    expect(system.length + user.length).toBe(prompts.length);
+    for (const p of system) {
+      expect(p).not.toContain(ATTACK_TAIL);
+      expect(p).toMatch(/untrusted_story.*data.*ignore any instruction/i);
+    }
+    for (const p of user) {
+      expect(p.split("</untrusted_story>").length - 1).toBe(1);
+      const block = p.slice(
+        "<untrusted_story>".length,
+        p.indexOf("</untrusted_story>")
+      );
+      expect(block).not.toMatch(/[<>]/);
+      expect(block).toContain(ATTACK_TAIL);
+      expect(p.slice(p.indexOf("</untrusted_story>"))).not.toContain(
+        ATTACK_TAIL
+      );
+    }
+  });
+
   it("mail compose keeps hostile picks inside the encoded data block", async () => {
     const prompts = capturePrompts();
     quiet();
@@ -528,6 +564,8 @@ describe("prompt injection: every LLM call site is covered", () => {
     "llm.ts": "scoring prompt / translation prompt / TL;DR prompt",
     "mail/compose.ts":
       "mail compose keeps hostile picks inside the encoded data block",
+    "notify/story-summary.ts":
+      "caption summary keeps hostile story text inside the encoded data block",
     "submissions.ts": "submission review prompt",
     "suggestions.ts":
       "suggestion review prompt / re-translation prompt / free-form suggestion prompt",

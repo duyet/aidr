@@ -727,7 +727,7 @@ deliberately non-spammy.
   are worth sending. The lead photo is the day card
   (`/api/og/date/{date}.png`) and the caption names those same tiles, with
   the first sentence of that language's summary after the title when one
-  exists. Lines are clipped so every tile still fits. Stories that do not
+  exists. Every tile still fits: a summary clause is a whole first sentence or left out, and the caption drops clauses (longest first) before it shortens any headline, at a word boundary (`fitHighlightDigest`). Stories that do not
   fit the lead grid go next: four or more become a second card (`part=2`, its own `v`
   token, because Telegram caches a photo by URL); one to three are a short
   text reply. This is that calendar day's ranked stories, photos first,
@@ -804,6 +804,17 @@ deliberately non-spammy.
   Editor session. Telegram's plain link preview from the page's own Open
   Graph tags is the documented fallback
   ([`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md)).
+- **Telegram text always fits; nothing is cut mid-word** (`worker/notify/fit-text.ts`).
+  A trending caption has 1024 visible characters; the summary gets what the
+  title, meta line and album Read link leave (`storySummaryBudget`, at most
+  500). In order: the channel's own summary when it fits; else a stored
+  rewrite in `notify_summaries` (one LLM call at send time through
+  `completeJson`, only for the story about to be posted, keyed by item and
+  language, regenerated when the source summary changes; rejected unless
+  non-empty, in budget, finished, no ellipsis, and in the channel's language);
+  else whole leading sentences with no ellipsis; else whole words plus `…`.
+  A failed model call never blocks the send. Raw text is cut first and
+  escaped after, so an HTML entity is never split.
 - A trending story with two or more images uses `sendMediaGroup` (2–10
   photos: the story's own manifest images and video posters). One image
   stays `sendPhoto` so the inline button remains — an album has no
