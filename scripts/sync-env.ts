@@ -199,9 +199,10 @@ function pick(
   return { present, missing };
 }
 
+/** Never echo any part of a secret: terminal scrollback and pasted logs
+ *  outlive the session. Length is enough to spot an empty or truncated value. */
 function mask(value: string): string {
-  if (value.length <= 8) return "****";
-  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+  return `**** (${value.length} chars)`;
 }
 
 function run(
