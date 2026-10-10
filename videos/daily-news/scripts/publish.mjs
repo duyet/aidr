@@ -4,10 +4,13 @@
 // finished (YouTube cannot replace a file, Telegram cannot unpost), so rerunning is always safe.
 // The runner never writes scripts: script.json (and script.vi.json) must be written first.
 // Usage: node scripts/publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram]
-//        [--no-voice] [--chat <telegram chat id>] [--prod] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
+//        [--no-voice] [--chat <telegram chat id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card]
+//        [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
 // --uploader api (YouTube Data API, headless) is the default when YOUTUBE_REFRESH_TOKEN is set, else chrome (owner's Chrome).
 // --privacy applies to the api uploader only (default public).
-// Telegram goes to $TELEGRAM_STAGING_CHAT_ID (from .env.local) unless --chat is given; --prod posts to the real channels.
+// Telegram uploads the video file itself (sendVideo, a <50 MB copy next to the render; needs only the render, the YouTube button
+// appears when the cut has an id). It goes to $TELEGRAM_STAGING_CHAT_ID (from .env.local) unless --chat is given; --prod posts to
+// the real channels. --telegram-mode card keeps the old Worker path (YouTube thumbnail card; needs the attached ids).
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   existsSync,
@@ -16,8 +19,9 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { cutFor } from "./lang.mjs";
+import { envVar, makeTelegramCopy, makeThumbnail, sendVideo, tgCopyPath, tgEncodeArgs, videoCaption, videoReplyMarkup } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const REPO = resolve(ROOT, "../..");
@@ -26,7 +30,7 @@ const argv = process.argv.slice(2);
 const date = argv[0];
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? ""))
   throw new Error(
-    "usage: publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--no-voice] [--chat <id>] [--prod] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
+    "usage: publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--no-voice] [--chat <id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
   );
 const flag = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);
 const list = (n, all) => (flag(n) ? flag(n).split(",").filter(Boolean) : all);
@@ -37,6 +41,10 @@ const privacy = flag("--privacy") ?? "public";
 const dry = argv.includes("--dry-run");
 const prod = argv.includes("--prod");
 const noVoice = argv.includes("--no-voice");
+const tgFmt = flag("--telegram-fmt") ?? "16x9";
+const tgMode = flag("--telegram-mode") ?? "video";
+if (!["16x9", "9x16"].includes(tgFmt)) throw new Error(`--telegram-fmt ${tgFmt}: 16x9 | 9x16`);
+if (!["video", "card"].includes(tgMode)) throw new Error(`--telegram-mode ${tgMode}: video | card`);
 for (const l of langs) if (!["en", "vi"].includes(l)) throw new Error(`--lang ${l}: en | vi`);
 if (!["chrome", "api"].includes(uploader)) throw new Error(`--uploader ${uploader}: chrome | api`);
 if (!["private", "unlisted", "public"].includes(privacy)) throw new Error(`--privacy ${privacy}: private | unlisted | public`);
@@ -130,15 +138,6 @@ const lastJson = (text) => {
     } catch {}
   return null;
 };
-
-// env from .env.local for the staging chat.
-function stagingChat() {
-  if (process.env.TELEGRAM_STAGING_CHAT_ID) return process.env.TELEGRAM_STAGING_CHAT_ID;
-  const f = join(REPO, ".env.local");
-  if (!existsSync(f)) return null;
-  const m = readFileSync(f, "utf8").match(/^TELEGRAM_STAGING_CHAT_ID=["']?([^"'\s#]+)/m);
-  return m?.[1] ?? null;
-}
 
 const summary = (what, targets) =>
   console.log(`\n▶ ${what}: ${targets.length ? targets.join(", ") : "nothing to do"}`);
@@ -243,23 +242,50 @@ if (steps.includes("attach")) {
   }
 }
 
-// 4. Telegram, once per language.
+// 4. Telegram, once per language: the video file itself (default) or the Worker's YouTube card.
+// Chats: --chat <id> for every language; else staging; with --prod each language's channel (env, else the wrangler.toml default).
+const PROD_CHATS = { en: ["TELEGRAM_EN_CHAT_ID", "@aidr_today"], vi: ["TELEGRAM_VI_CHAT_ID", "-1004420104760"] };
 if (steps.includes("telegram")) {
-  const chat = flag("--chat") ?? (prod ? null : stagingChat());
-  if (!prod && !chat && !dry) throw new Error("no staging chat: set TELEGRAM_STAGING_CHAT_ID (.env.local), pass --chat <id>, or --prod");
-  const where = prod && !flag("--chat") ? "PRODUCTION channels" : `chat ${chat ?? "$TELEGRAM_STAGING_CHAT_ID"}${prod ? "" : " (staging)"}`;
-  const todo = langs.filter((l) => byLang(l).some((r) => r.fmt === "16x9" && !r.telegram));
-  summary(`telegram → ${where}`, todo);
+  const override = flag("--chat");
+  const staging = envVar("TELEGRAM_STAGING_CHAT_ID");
+  if (!prod && !override && !staging && !dry) throw new Error("no staging chat: set TELEGRAM_STAGING_CHAT_ID (.env.local), pass --chat <id>, or --prod");
+  const chatFor = (l) => override ?? (prod ? (envVar(PROD_CHATS[l][0]) ?? PROD_CHATS[l][1]) : staging);
+  const where = prod && !override ? "PRODUCTION channels" : `chat ${override ?? staging ?? "$TELEGRAM_STAGING_CHAT_ID"}${prod ? "" : " (staging)"}`;
+  const fmt = tgMode === "card" ? "16x9" : tgFmt;
+  const todo = langs.filter((l) => byLang(l).some((r) => r.fmt === fmt && !r.telegram));
+  summary(`telegram ${tgMode === "card" ? "card" : `video ${fmt}`} → ${where}`, todo);
+  const token = envVar("TELEGRAM_BOT_TOKEN");
+  if (tgMode === "video" && todo.length && !token && !dry) throw new Error("TELEGRAM_BOT_TOKEN is not set (env or .env.local)");
   for (const l of todo) {
-    const target = byLang(l).find((r) => r.fmt === "16x9");
-    const args = ["--filter", "@aidr/web", "agent", "day-video-telegram", date, "--lang", l];
-    if (chat) args.push("--chat", chat);
-    const out = run("pnpm", args, { cwd: REPO });
-    if (dry) continue;
-    const json = lastJson(out);
-    const message_id = find(json, "message_id");
-    if (message_id === undefined) throw new Error(`${l}: no message_id in day-video-telegram output`);
-    target.telegram = { chat_id: find(json, "chat_id") ?? chat ?? "prod", message_id };
+    const target = byLang(l).find((r) => r.fmt === fmt);
+    const chat = chatFor(l);
+    if (tgMode === "card") {
+      const args = ["--filter", "@aidr/web", "agent", "day-video-telegram", date, "--lang", l];
+      if (chat) args.push("--chat", chat);
+      const out = run("pnpm", args, { cwd: REPO });
+      if (dry) continue;
+      const json = lastJson(out);
+      const message_id = find(json, "message_id");
+      if (message_id === undefined) throw new Error(`${l}: no message_id in day-video-telegram output`);
+      target.telegram = { chat_id: find(json, "chat_id") ?? chat ?? "prod", message_id };
+      target.state = "posted";
+      save();
+      continue;
+    }
+    const title = ytTitle(l) ?? (l === "vi" ? `Bản tin AI;DR — ${date}` : `AI;DR Daily Brief — ${date}`);
+    const markup = videoReplyMarkup({ date, lang: l, youtubeId: target.youtube?.id });
+    const copy = tgCopyPath(target.path);
+    if (dry) {
+      show(process.env.FFMPEG || "ffmpeg", tgEncodeArgs(target.path, copy, fmt));
+      console.log(`  sendVideo ${target.cut} → ${chat}: ${videoCaption(title)} ${JSON.stringify(markup)}`);
+      continue;
+    }
+    if (!existsSync(target.path) || !existsSync(target.cover)) throw new Error(`${target.cut}: not rendered; run --steps render`);
+    const tg = makeTelegramCopy(target.path, fmt);
+    const thumb = makeThumbnail(target.cover, join(dirname(tg), `thumb-${target.cut}.jpg`));
+    show("sendVideo", [target.cut, "→", String(chat), `${(statSync(tg).size / 1e6).toFixed(1)}MB`]);
+    const sent = await sendVideo({ token, chatId: chat, file: tg, thumb, caption: videoCaption(title), replyMarkup: markup });
+    target.telegram = { ...sent, file: "video" };
     target.state = "posted";
     save();
   }
