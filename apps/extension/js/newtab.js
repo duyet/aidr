@@ -10,7 +10,7 @@ import {
 } from "./settings.js";
 import { bindPrefsPopover } from "./settings-panel.js";
 import { NEWS_SITE, storyPermalink } from "./site-url.js";
-import { bindAidrDialogLink, openStoryDialog } from "./story-dialog.js";
+import { bindAidrDialogLink, openStoryDialogLazy } from "./dialog-link.js";
 import { topicColor } from "./topic-color.js";
 import { track, trackChannelClick } from "./track.js";
 import {
@@ -194,7 +194,7 @@ function renderThumbRow(settings, digest, bullet, n) {
   const primaryId = bullet.item_ids?.[0];
   if (primaryId) {
     bindAidrDialogLink(link, () =>
-      openStoryDialog({
+      openStoryDialogLazy({
         apiBase: settings.apiBase,
         language: uiLang(settings),
         itemId: primaryId,
@@ -844,7 +844,7 @@ function renderStoryRow(settings, story, index, hot) {
   appendHighlighted(article, title, story.tags || []);
   if (story.id) {
     bindAidrDialogLink(article, () =>
-      openStoryDialog({
+      openStoryDialogLazy({
         apiBase: settings.apiBase,
         language: lang,
         itemId: story.id,
@@ -1338,6 +1338,7 @@ async function main() {
       void fetchDigest(settings.apiBase, {
         campaign: "refresh",
         lang: uiLang(settings),
+        force: true,
       })
         .then((result) => {
           applyLive(result);

@@ -1,5 +1,6 @@
 import { fetchStory } from "./api.js";
 import { safeHttpUrl } from "./settings.js";
+import { withExtRef } from "./ref.js";
 import { NEWS_SITE, siteUrl, storyPermalink } from "./site-url.js";
 import { topicColor } from "./topic-color.js";
 
@@ -36,25 +37,6 @@ const DIALOG_COPY = {
 
 function t(lang, key) {
   return (lang === "vi" ? DIALOG_COPY.vi : DIALOG_COPY.en)[key] || "";
-}
-
-/** Left-click without modifiers — same gate as the website StoryDialog. */
-export function isUnmodifiedLeftClick(event) {
-  return (
-    event.button === 0 &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.shiftKey &&
-    !event.altKey
-  );
-}
-
-export function bindAidrDialogLink(anchor, onOpen) {
-  anchor.addEventListener("click", (event) => {
-    if (!isUnmodifiedLeftClick(event)) return;
-    event.preventDefault();
-    onOpen();
-  });
 }
 
 let openRoot = null;
@@ -240,6 +222,7 @@ export function openStoryDialog({
   let currentStory = null;
   const ctx = {
     apiBase,
+    panel,
     titleEl,
     body,
     lang,
@@ -285,6 +268,7 @@ export function openStoryDialog({
 function paintStory(story, ctx) {
   const {
     apiBase,
+    panel,
     titleEl,
     body,
     lang,
@@ -309,12 +293,17 @@ function paintStory(story, ctx) {
     Boolean(story.title_vi) ||
     Boolean(story.summary_vi) ||
     (story.sources || []).some((s) => s?.author?.vi || s?.quote?.vi);
+  const showBilingual = Boolean(bilingual && hasVi);
+  panel.classList.toggle("is-bilingual", showBilingual);
 
-  if (bilingual && hasVi) {
-    paintBilingualBody(body, story, lang);
-  } else {
-    paintMonoBody(body, story, lang);
-  }
+  // Same shape as the website StoryDetail: reading column + 240px aside.
+  const main = el("div", { className: "story-dialog-main" });
+  const aside = el("aside", { className: "story-dialog-aside" });
+  body.append(el("div", { className: "story-dialog-layout" }, [main, aside]));
+
+  if (showBilingual) paintBilingualSummary(main, story);
+  else paintMonoSummary(main, story, lang);
+  paintSources(main, story, lang);
 
   const related = (relatedIds || [])
     .filter((id) => id && id !== itemId)
@@ -348,75 +337,138 @@ function paintStory(story, ctx) {
       ul.append(li);
     }
     wrap.append(ul);
-    body.append(wrap);
+    main.append(wrap);
   }
+
+  // Website aside order: votes, media, topics, meta.
+  aside.append(storyVotes(story, lang));
+  paintThumbnail(aside, story);
+  paintTopics(aside, story, lang);
+  paintMeta(aside, story, lang);
 }
 
-function paintMonoBody(body, story, lang) {
-  const summary = pickSummary(story, lang);
-  const paragraphs = splitParagraphs(summary);
-  if (paragraphs.length) {
-    const wrap = document.createElement("div");
-    wrap.className = "story-dialog-summary";
-    for (const p of paragraphs) {
-      const node = document.createElement("p");
-      node.textContent = p;
-      wrap.append(node);
-    }
-    body.append(wrap);
+function paintMonoSummary(main, story, lang) {
+  const paragraphs = splitParagraphs(pickSummary(story, lang));
+  if (!paragraphs.length) return;
+  const wrap = document.createElement("div");
+  wrap.className = "story-dialog-summary";
+  for (const p of paragraphs) {
+    const node = document.createElement("p");
+    node.textContent = p;
+    wrap.append(node);
   }
-  if ((story.tags || []).length) {
-    const tags = document.createElement("div");
-    tags.className = "story-dialog-tags";
-    for (const tag of story.tags) {
-      const chip = document.createElement("span");
-      chip.className = "story-tag";
-      paintTopic(chip, tag);
-      chip.textContent = tag;
-      tags.append(chip);
-    }
-    body.append(tags);
-  }
-  paintTopics(body, story, lang);
-  paintSources(body, story, lang);
-  paintThumbnail(body, story);
+  main.append(wrap);
 }
 
-function paintBilingualBody(body, story, lang) {
+function paintBilingualSummary(main, story) {
   const cols = document.createElement("div");
   cols.className = "story-dialog-bilingual";
+  const parasEn = splitParagraphs(story.summary || "");
+  const parasVi = splitParagraphs(story.summary_vi || "");
   cols.append(
-    paintBilingualColumn(
-      story.title,
-      story.title_vi,
-      splitParagraphs(story.summary || ""),
-      splitParagraphs(story.summary_vi || ""),
-      false
-    ),
-    paintBilingualColumn(
-      story.title,
-      story.title_vi,
-      splitParagraphs(story.summary || ""),
-      splitParagraphs(story.summary_vi || ""),
-      true
-    )
+    paintBilingualColumn(story.title, story.title_vi, parasEn, parasVi, false),
+    paintBilingualColumn(story.title, story.title_vi, parasEn, parasVi, true)
   );
-  body.append(cols);
-  if ((story.tags || []).length) {
-    const tags = document.createElement("div");
-    tags.className = "story-dialog-tags";
-    for (const tag of story.tags) {
-      const chip = document.createElement("span");
-      chip.className = "story-tag";
-      paintTopic(chip, tag);
-      chip.textContent = tag;
-      tags.append(chip);
-    }
-    body.append(tags);
+  main.append(cols);
+}
+
+const THUMB_PATHS = {
+  up: [
+    "M7 10v12",
+    "M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z",
+  ],
+  down: [
+    "M17 14V2",
+    "M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z",
+  ],
+};
+
+function thumbIcon(direction) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  for (const [key, value] of Object.entries({
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "2",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "aria-hidden": "true",
+  })) {
+    svg.setAttribute(key, value);
   }
-  paintTopics(body, story, lang);
-  paintSources(body, story, lang);
-  paintThumbnail(body, story);
+  for (const d of THUMB_PATHS[direction]) {
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
+}
+
+/**
+ * Signed-out variant of the website's StoryVotes pill. The extension has no
+ * account session (requests use credentials: "omit"), so both thumbs link to
+ * sign-in on aidr.today, the same as a signed-out reader on the site.
+ */
+export function storyVotes(story, lang) {
+  const copy = VOTE_COPY[lang === "en" ? "en" : "vi"];
+  const href = withExtRef(siteUrl("/sign-in", lang), "vote", lang);
+  const net = typeof story?.vote_net === "number" ? story.vote_net : 0;
+  const thumb = (direction) =>
+    el(
+      "a",
+      {
+        className: "story-vote-hit",
+        href,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        "aria-label": copy.signIn,
+        title: copy.signIn,
+      },
+      [thumbIcon(direction)]
+    );
+  return el("div", { className: "story-votes" }, [
+    el("span", { className: "story-votes-label" }, [copy.useful]),
+    el("span", { className: "story-votes-pill" }, [
+      thumb("up"),
+      el("span", { className: "story-votes-net" }, [
+        el("span", { className: "sr-only" }, [`${copy.total} `]),
+        String(net),
+      ]),
+      thumb("down"),
+    ]),
+    el(
+      "a",
+      {
+        className: "story-votes-signin",
+        href,
+        target: "_blank",
+        rel: "noopener noreferrer",
+      },
+      [copy.signIn]
+    ),
+  ]);
+}
+
+const VOTE_COPY = {
+  en: {
+    useful: "Was this useful?",
+    signIn: "Sign in to vote",
+    total: "Reader votes",
+  },
+  vi: {
+    useful: "Tin này hữu ích?",
+    signIn: "Đăng nhập để bình chọn",
+    total: "Tổng phiếu",
+  },
+};
+
+function paintMeta(aside, story, lang) {
+  const when = story.published_at ? fmtTime(story.published_at, lang) : "";
+  const host = publisherHost(story.url);
+  const text = [when, host].filter(Boolean).join(" · ");
+  if (!text) return;
+  aside.append(el("div", { className: "story-dialog-meta" }, [text]));
 }
 
 function paintBilingualColumn(

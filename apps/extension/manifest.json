@@ -19,8 +19,13 @@
     "page": "options.html",
     "open_in_tab": false
   },
+  "background": {
+    "service_worker": "js/background.js",
+    "type": "module"
+  },
   "permissions": [
-    "storage"
+    "storage",
+    "alarms"
   ],
   "host_permissions": [
     "https://aidr.today/*"

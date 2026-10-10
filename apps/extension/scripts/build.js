@@ -21,7 +21,16 @@ if (manifest.manifest_version !== 3) fail("expected Manifest V3");
 if (manifest.chrome_url_overrides?.newtab !== "newtab.html") {
   fail("newtab override must be newtab.html");
 }
+const ALLOWED_PERMISSIONS = new Set(["storage", "alarms"]);
 if (!manifest.permissions?.includes("storage")) fail("storage permission");
+for (const permission of manifest.permissions || []) {
+  if (!ALLOWED_PERMISSIONS.has(permission)) {
+    fail(`permission ${permission} is not in the reviewed allowlist`);
+  }
+}
+if (manifest.background?.service_worker !== "js/background.js") {
+  fail("background.service_worker must be js/background.js");
+}
 if (!manifest.host_permissions?.includes("https://aidr.today/*")) {
   fail("host_permissions must include https://aidr.today/*");
 }
@@ -68,6 +77,9 @@ const required = [
   "js/ref.js",
   "js/site-url.js",
   "js/update.js",
+  "js/background.js",
+  "js/dialog-link.js",
+  "js/story-dialog.js",
   "icons/icon16.png",
   "icons/icon32.png",
   "icons/icon48.png",
