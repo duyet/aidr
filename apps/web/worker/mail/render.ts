@@ -5,6 +5,7 @@ import {
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
 import { SITE_URL } from "../../src/lib/site.js";
+import { isGeneratedOgCard } from "../media.js";
 import { feedbackUrl } from "./feedback.js";
 import {
   escapeHtml,
@@ -918,19 +919,6 @@ export function renderNoteEmail(input: NoteEmailInput): {
 /* ------------------------------------------------------------------ */
 /* Digest                                                             */
 /* ------------------------------------------------------------------ */
-
-/** Generated social cards (text-on-card OG images) are not story images. */
-export function isGeneratedOgCard(url: string): boolean {
-  try {
-    const parts = new URL(url).pathname.toLowerCase().split("/");
-    return (
-      parts.includes("og") ||
-      parts.some((part) => /og[-_]?(image|card)/.test(part))
-    );
-  } catch {
-    return false;
-  }
-}
 
 function storyHref(
   story: DigestStory,

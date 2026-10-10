@@ -362,6 +362,11 @@ images rather than a broken-src fallback.
   `mediaIdentityKey` (host + path, minus resize and tracking variants). No
   media is downloaded or hashed, so two different URLs that serve the same
   bytes (a mirror, a renamed copy) stay as two assets.
+- **Generated share cards are a fallback only.** An image whose path is an
+  OG generator (`/og/…`, `/api/og`, `og-image`/`og-card` file names, see
+  `isGeneratedOgCard`) is dropped from a manifest, including merged
+  cluster manifests, whenever any other image or video remains. The story
+  dialog applies the same rule to stored manifests at render time.
 - **A video poster is only URL-checked here.** At collection time the
   poster URL passes the same URL policy as any image and nothing is
   fetched. Its bytes are checked later, at Telegram send time (see Notify).
