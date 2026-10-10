@@ -711,6 +711,7 @@ export function articleHead(
     title: string;
     title_vi?: string | null;
     summary: string | null;
+    summary_vi?: string | null;
     image_url: string | null;
     category: string | null;
     url?: string | null;
@@ -723,13 +724,15 @@ export function articleHead(
   // `storyUrl` is the one function that builds this string, and it is the same
   // one `og:url` and the canonical link carry, so the graph cannot drift.
   const url = storyUrl(item, lang);
-  const title = `${item.title} | ${SITE_NAME}`;
-  const summary = item.summary?.trim() ?? "";
-  const description = summary || SITE_DESCRIPTION;
   const headline = localizedTitle(
     { title: item.title, title_vi: item.title_vi ?? null },
     lang
   );
+  const title = `${headline.text} | ${SITE_NAME}`;
+  // A stored Vietnamese summary wins on the VI page; never invent one.
+  const summaryVi = lang === "vi" ? (item.summary_vi?.trim() ?? "") : "";
+  const summary = summaryVi || (item.summary?.trim() ?? "");
+  const description = summary || SITE_DESCRIPTION;
   const publisher = storyPublisher(item.sources, item.url);
   const article: JsonLdNode = {
     "@type": "NewsArticle",
@@ -774,9 +777,9 @@ export function articleHead(
       siteOgDimensions: true,
     }).map((tag) =>
       "property" in tag && tag.property === "og:title"
-        ? { property: "og:title", content: item.title }
+        ? { property: "og:title", content: headline.text }
         : "name" in tag && tag.name === "twitter:title"
-          ? { name: "twitter:title", content: item.title }
+          ? { name: "twitter:title", content: headline.text }
           : tag
     ),
     links: [
