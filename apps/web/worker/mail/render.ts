@@ -1,52 +1,66 @@
-import { dayArchiveOgPath, dayArchivePath } from "../../src/lib/day-archive.js";
-import { highlightTitle, TITLE_KEYWORDS } from "../../src/lib/highlight.js";
+import { dayArchivePath } from "../../src/lib/day-archive.js";
 import { absoluteSiteUrl, withSiteLang } from "../../src/lib/locale-url.js";
 import {
   type MailFormat,
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
 import { SITE_URL } from "../../src/lib/site.js";
-import { topicColor } from "../../src/lib/topic-color.js";
 import {
   escapeHtml,
   markdownToEmailHtml,
   markdownToPlainText,
   safeHref,
 } from "./markdown.js";
-import { type MailUtmKind, withMailUtm } from "./utm.js";
+import { type MailUtmKind, type MailUtmOptions, withMailUtm } from "./utm.js";
 
 export const NOTES_FROM = {
   email: "notes@aidr.today",
-  name: "aidr",
+  name: "AI;DR",
 } as const;
 
 export const NEWS_FROM = {
   email: "digest@aidr.today",
-  name: "aidr",
+  name: "AI;DR",
 } as const;
 
 const DATA_URL = `${SITE_URL}/data`;
-/**
- * Square 128px PNG at site root (Worker ASSETS). Displayed 36px with
- * width/height 72 so retina/Gmail proxy stay sharp. Do not wrap this
- * <img> in the same <a> as the wordmark — Gmail collapses that to a
- * blue text link and drops the image.
- */
+const SUBSCRIBE_URL = `${SITE_URL}/subscribe`;
+/** Square 128px PNG at site root (Worker ASSETS). The mail header now uses
+ *  the text wordmark on a yellow marker (readable on light and dark), but
+ *  the PNG stays the public brand asset other surfaces link to. */
 export const MAIL_LOGO_URL = `${SITE_URL}/logo-icon.png`;
-const LOGO_SRC_PX = 72;
-const LOGO_CSS_PX = 36;
-const PAD = "32px";
 
-/** Editorial tokens from apps/web/src/styles.css — hex so email clients stay honest. */
-const BG = "#f7f7f5";
+/** Channel links shown under the stories. */
+export const TELEGRAM_URL: Record<MailLang, string> = {
+  en: "https://t.me/aidr_today",
+  vi: "https://t.me/aihomnay",
+};
+export const YOUTUBE_URL = "https://youtube.com/@_duyet";
+export const CHROME_EXTENSION_URL =
+  "https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg";
+
+/** Column width and side padding. 600 is the email standard. */
+const WIDTH = 600;
+const PAD = "32px";
+const INNER_PX = WIDTH - 2 * 32;
+const THUMB_PX = 84;
+
+/** Editorial tokens (the redesign canvas). Six-digit hex only: Outlook and
+ *  older clients ignore 8-digit alpha colours. */
+const BG = "#efede6";
 const CARD = "#ffffff";
-const FG = "#0a0a0a";
-const MUTED = "#474747";
-const ACCENT = "#b45309";
-const ACCENT_FG = "#fffefb";
-const HAIRLINE = "#0a0a0a14";
-/** Site families first (--editorial-font-serif / --content-font-sans in
- *  apps/web/src/styles.css), then system fallbacks.
+const FG = "#141413";
+const BODY = "#34332e";
+const MUTED = "#5f5e58";
+const FAINT = "#b5b2a8";
+const ACCENT = "#9a4a07";
+const ACCENT_FG = "#ffffff";
+const MARKER = "#f5c518";
+const HAIRLINE = "#ece9e1";
+const BORDER = "#e3e0d7";
+const INK = "#141413";
+const INK_MUTED = "#c9c7bf";
+/** Site families first, then system fallbacks.
  *  No double quotes — these are interpolated into style="font-family:…" and
  *  a " inside the value would terminate the HTML attribute (Gmail then
  *  paints blue underlined leftovers). Multi-word names take single quotes:
@@ -55,10 +69,9 @@ const HAIRLINE = "#0a0a0a14";
 const SERIF = "'EB Garamond', Garamond, Georgia, 'Times New Roman', serif";
 const SANS =
   "'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
-/** The site self-hosts these under hashed /assets names, so mail loads the
- *  same families from Google Fonts. Clients that ignore <link> use the stack. */
+/** Clients that ignore <link> use the stack. */
 const FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Source+Sans+3:wght@400;500;600&display=swap";
+  "https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;0,600;1,500&family=Source+Sans+3:wght@400;600;700&display=swap";
 
 export type MailLang = "en" | "vi";
 
@@ -77,114 +90,268 @@ export interface NoteEmailInput {
   lang?: MailLang;
   /** UTM medium/campaign for aidr.today CTAs. Default welcome. */
   mailKind?: MailUtmKind;
+  /** CAN-SPAM mailing address (env MAIL_POSTAL_ADDRESS). Line omitted when empty. */
+  postalAddress?: string;
 }
 
 export interface DigestStory {
+  /** The TL;DR bullet in the edition's language. */
   text: string;
+  /** Link target (the story page on aidr.today). */
   url?: string;
   imageUrl?: string;
+  /** `items.title` / `items.title_vi` for the edition's language. Never the
+   *  other language's title: without it the bullet's first sentence is used. */
+  headline?: string;
+  /** Publisher host of the original article, e.g. `techcrunch.com`. */
+  source?: string;
+  category?: string;
+}
+
+export interface DigestVideo {
+  /** YouTube video (or Short) id for this date and language. */
+  youtubeId: string;
+  title?: string | null;
 }
 
 export interface DigestEmailInput {
-  subject: string;
   date: string;
   stories: DigestStory[];
   lang: MailLang;
   unsubscribeUrl: string;
   settingsUrl: string;
+  /** Overrides the computed subject (the `<title>`). */
+  subject?: string;
+  /** Overrides the computed preheader. */
   preheader?: string;
   /** See src/lib/mail-format.ts. Default `design`. */
   format?: MailFormat;
+  /** The day's video in this language; null/absent omits the block. */
+  video?: DigestVideo | null;
+  /** Stories on the day page, for "See all N stories". Absent: no number. */
+  totalStories?: number;
+  postalAddress?: string;
 }
 
-function ctaButton(label: string, url: string): string {
-  const safe = safeHref(url);
-  if (!safe) return "";
-  const href = escapeHtml(safe);
-  const text = escapeHtml(label);
-  // Padding lives on the <td>, not the <a>. Gmail otherwise shrinks the
-  // pill to the text box and paints a blue underline through the label.
-  // <font color> is the last color Gmail still honors on links.
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px">
-  <tr>
-    <td align="center" bgcolor="${ACCENT}" valign="middle" style="background-color:${ACCENT};border-radius:8px;padding:14px 28px;mso-padding-alt:14px 28px">
-      <a class="mail-cta" href="${href}" target="_blank" style="font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${ACCENT_FG};text-decoration:none;display:inline-block;-webkit-text-size-adjust:none">
-        <span style="color:${ACCENT_FG} !important;text-decoration:none !important;border-bottom:0 !important"><font color="${ACCENT_FG}">${text}</font></span>
-      </a>
-    </td>
-  </tr>
-</table>`;
+/* ------------------------------------------------------------------ */
+/* Copy                                                               */
+/* ------------------------------------------------------------------ */
+
+const WEEKDAYS: Record<MailLang, string[]> = {
+  en: [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ],
+  // Hard-coded: ICU output for `vi` differs between Node and Workers.
+  vi: [
+    "Chủ Nhật",
+    "Thứ Hai",
+    "Thứ Ba",
+    "Thứ Tư",
+    "Thứ Năm",
+    "Thứ Sáu",
+    "Thứ Bảy",
+  ],
+};
+
+const MONTHS_EN = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function parseIsoDate(
+  date: string
+): { y: number; m: number; d: number; wd: number } | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) return null;
+  const [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const at = new Date(Date.UTC(y, m - 1, d));
+  if (at.getUTCMonth() !== m - 1) return null;
+  return { y, m, d, wd: at.getUTCDay() };
 }
 
-function brandHeader(lang: MailLang, kind: MailUtmKind): string {
-  const tagline =
-    lang === "vi" ? "Tin AI xếp hạng và tóm tắt" : "AI news ranked and summary";
-  const home = escapeHtml(withMailUtm(SITE_URL, kind, lang));
-  return `<tr>
-      <td style="padding:32px ${PAD} 24px;border-bottom:1px solid ${HAIRLINE}">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td style="vertical-align:middle;padding-right:14px">
-              <a href="${home}" style="text-decoration:none;border:0">
-                <img src="${MAIL_LOGO_URL}" width="${LOGO_SRC_PX}" height="${LOGO_SRC_PX}" alt="AI;DR" style="display:block;width:${LOGO_CSS_PX}px;height:${LOGO_CSS_PX}px;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic">
-              </a>
-            </td>
-            <td style="vertical-align:middle">
-              <div style="font-family:${SERIF};font-size:26px;line-height:1.15;font-weight:500;color:${FG}">AI;DR</div>
-              <div style="margin-top:4px;font-family:${SANS};font-size:13px;line-height:1.35;color:${MUTED}">${escapeHtml(tagline)}</div>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>`;
+/** "Saturday, October 10, 2026" / "Thứ Bảy, 10 tháng 10, 2026". */
+export function formatMailDate(date: string, lang: MailLang): string {
+  const p = parseIsoDate(date);
+  if (!p) return date;
+  const weekday = WEEKDAYS[lang][p.wd];
+  return lang === "vi"
+    ? `${weekday}, ${p.d} tháng ${p.m}, ${p.y}`
+    : `${weekday}, ${MONTHS_EN[p.m - 1]} ${p.d}, ${p.y}`;
 }
 
-function mailFooterHtml(
+function weekdayOf(date: string, lang: MailLang): string | null {
+  const p = parseIsoDate(date);
+  return p ? WEEKDAYS[lang][p.wd] : null;
+}
+
+/** Reading time at ~200 words a minute, at least one. */
+export function readMinutes(stories: DigestStory[]): number {
+  const words = stories
+    .map((s) => `${s.headline ?? ""} ${s.text}`)
+    .join(" ")
+    .split(/\s+/)
+    .filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200));
+}
+
+function countLine(n: number, minutes: number, lang: MailLang): string {
+  return lang === "vi"
+    ? `${n} tin · ${minutes} phút đọc`
+    : `${n} ${n === 1 ? "story" : "stories"} · ${minutes} min read`;
+}
+
+/** Sentence split that keeps "$7.5B", "U.S." and "13x." intact enough. */
+function sentences(text: string): string[] {
+  return text
+    .trim()
+    .split(/(?<=[.!?])\s+(?=[\p{Lu}\d"“‘'])/u)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/** Drops a trailing "(Bloomberg)"-style publisher tag from a title. */
+function cleanHeadline(title: string): string {
+  return title
+    .trim()
+    .replace(/\s*\((?:[^()\d]{2,30})\)$/u, "")
+    .trim();
+}
+
+export function storyHeadline(story: DigestStory): string {
+  const h = story.headline ? cleanHeadline(story.headline) : "";
+  return h || sentences(story.text)[0] || story.text.trim();
+}
+
+/** One sentence under a headline. With a stored headline the bullet's first
+ *  sentence carries the facts; without one the first sentence already is
+ *  the headline, so the next sentence is used. */
+export function storySummary(story: DigestStory): string {
+  const parts = sentences(story.text);
+  if (story.headline?.trim()) return parts[0] ?? "";
+  return parts[1] ?? "";
+}
+
+function cutAtWord(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max * 0.5 ? cut.slice(0, space) : cut).replace(/[\s,;:.–—-]+$/u, "")}…`;
+}
+
+/** Visible subject length the inbox shows before it truncates. */
+export const SUBJECT_TARGET = 60;
+
+function moreSuffix(n: number, lang: MailLang): string {
+  if (n <= 0) return "";
+  return lang === "vi" ? ` + ${n} tin` : ` + ${n} more`;
+}
+
+/**
+ * Subject that leads with the news: the top one or two headlines plus
+ * "+N more", about 60 visible characters. Two headlines only when both fit
+ * whole; otherwise the first, cut at a word. With no headlines (no stories)
+ * it falls back to a fixed dated title.
+ */
+export function digestSubjectLine(
+  date: string,
   lang: MailLang,
-  unsubscribeUrl: string,
-  settingsUrl: string
+  headlines: string[] = [],
+  count = headlines.length
 ): string {
-  const unsub = escapeHtml(withSiteLang(unsubscribeUrl, lang));
-  const settings = escapeHtml(withSiteLang(settingsUrl, lang));
-  const unsubLabel = lang === "vi" ? "Hủy đăng ký" : "Unsubscribe";
-  const settingsLabel = lang === "vi" ? "Chỉnh cài đặt" : "Adjust settings";
-  const dataLabel = lang === "vi" ? "Dữ liệu / pipeline" : "Data / Pipeline";
-  const why =
-    lang === "vi"
-      ? "Bạn nhận email này vì đã đăng ký tại aidr.today."
-      : "You are receiving this because you subscribed at aidr.today.";
-  const linkStyle = `color:${ACCENT};text-decoration:none;font-weight:500`;
-  return `<tr>
-      <td style="padding:28px ${PAD} 48px;border-top:1px solid ${HAIRLINE};font-family:${SANS};font-size:12px;line-height:1.7;color:${MUTED}">
-        ${why}<br>
-        <a href="${unsub}" style="${linkStyle}">${escapeHtml(unsubLabel)}</a>
-        <span style="color:${MUTED};padding:0 8px">·</span>
-        <a href="${settings}" style="${linkStyle}">${escapeHtml(settingsLabel)}</a>
-        <span style="color:${MUTED};padding:0 8px">·</span>
-        <a href="${DATA_URL}" style="${linkStyle}">${escapeHtml(dataLabel)}</a>
-      </td>
-    </tr>`;
-}
-
-function mailFooterText(
-  lang: MailLang,
-  unsubscribeUrl: string,
-  settingsUrl: string
-): string {
-  const unsub = withSiteLang(unsubscribeUrl, lang);
-  const settings = withSiteLang(settingsUrl, lang);
-  if (lang === "vi") {
-    return `Hủy đăng ký: ${unsub}\nChỉnh cài đặt: ${settings}\nDữ liệu / pipeline: ${DATA_URL}`;
+  const heads = headlines.map((h) => h.trim()).filter(Boolean);
+  if (heads.length === 0) {
+    const label = lang === "vi" ? "Tin AI hôm nay" : "Today in AI";
+    return `AI;DR — ${date} · ${label}`;
   }
-  return `Unsubscribe: ${unsub}\nAdjust settings: ${settings}\nData / Pipeline: ${DATA_URL}`;
+  if (heads.length >= 2) {
+    const two = `${heads[0]}, ${heads[1]}${moreSuffix(count - 2, lang)}`;
+    if (two.length <= SUBJECT_TARGET + 4) return two;
+  }
+  const suffix = moreSuffix(count - 1, lang);
+  return `${cutAtWord(heads[0], SUBJECT_TARGET - suffix.length)}${suffix}`;
 }
+
+/** Inbox preview line, written on purpose rather than story 1's text. */
+export function digestPreheader(
+  date: string,
+  lang: MailLang,
+  count: number,
+  minutes: number,
+  hasVideo: boolean
+): string {
+  const wd = weekdayOf(date, lang);
+  if (lang === "vi") {
+    const day = wd
+      ? ` ${wd.charAt(0).toLowerCase()}${wd.slice(1)}`
+      : " hôm nay";
+    return `${count} tin AI${day} trong ${minutes} phút${hasVideo ? ", kèm video tóm tắt" : ""}. Tiêu đề, nguồn và một câu tóm tắt cho mỗi tin.`;
+  }
+  const day = wd ? `${wd}'s` : "Today's";
+  return `${day} ${count} AI ${count === 1 ? "story" : "stories"} in ${minutes} ${minutes === 1 ? "minute" : "minutes"}${hasVideo ? ", plus the video brief" : ""}. Headline, source and one line each.`;
+}
+
+/** Hidden filler after the preheader so body text does not leak into the
+ *  inbox preview. Raw markup — never pass it through escapeHtml. */
+const PREHEADER_PAD = "&zwnj;&nbsp;".repeat(90);
+
+/* ------------------------------------------------------------------ */
+/* Shell                                                              */
+/* ------------------------------------------------------------------ */
+
+const HEAD_STYLE = `
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  a { text-decoration: none; }
+  .mail-cta, .mail-cta span, .mail-cta font { color: ${ACCENT_FG} !important; text-decoration: none !important; border-bottom: 0 !important; }
+  u + #body .mail-cta { color: ${ACCENT_FG} !important; text-decoration: none !important; }
+  @media only screen and (max-width: 480px) {
+    .m-wrap { padding: 12px 8px !important; }
+    .m-pad { padding-left: 20px !important; padding-right: 20px !important; }
+    .m-body { font-size: 16px !important; }
+    .m-stack { display: block !important; width: 100% !important; text-align: left !important; padding-left: 0 !important; padding-top: 10px !important; }
+    .m-tap { display: inline-block !important; min-height: 44px !important; line-height: 44px !important; }
+    .m-head { font-size: 22px !important; }
+    .m-hide { display: none !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .m-bg { background: #141413 !important; }
+    .m-card { background: #1f1e1b !important; border-color: #34332e !important; }
+    .m-soft { background: #262520 !important; }
+    .m-fg { color: #f2f0ea !important; }
+    .m-muted { color: #b5b2a8 !important; }
+    .m-link { color: #f0a35e !important; }
+    .m-rule { border-color: #34332e !important; }
+  }
+  [data-ogsc] .m-bg { background: #141413 !important; }
+  [data-ogsc] .m-card { background: #1f1e1b !important; }
+  [data-ogsc] .m-fg { color: #f2f0ea !important; }
+  [data-ogsc] .m-muted { color: #b5b2a8 !important; }
+  [data-ogsc] .m-link { color: #f0a35e !important; }
+`;
 
 function wrapHtml(opts: {
   lang: MailLang;
   subject: string;
   preheader: string;
+  /** Rows inside the white card. */
   innerRows: string;
-  mailKind: MailUtmKind;
+  /** Rows under the card, on the page background. */
+  footerRows: string;
 }): string {
   const preheader = escapeHtml(opts.preheader.trim());
   return `<!DOCTYPE html>
@@ -192,23 +359,23 @@ function wrapHtml(opts: {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>${escapeHtml(opts.subject)}</title>
+<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <link rel="stylesheet" href="${escapeHtml(FONTS_HREF)}">
-<style type="text/css">
-  a { text-decoration: none; }
-  a.mail-story { color: ${ACCENT} !important; text-decoration: underline !important; font-weight: 500; }
-  .mail-cta, .mail-cta span, .mail-cta font { color: ${ACCENT_FG} !important; text-decoration: none !important; border-bottom: 0 !important; }
-  u + #body .mail-cta { color: ${ACCENT_FG} !important; text-decoration: none !important; }
-</style>
+<style type="text/css">${HEAD_STYLE}</style>
 </head>
-<body id="body" style="margin:0;padding:0;background:${BG}">
-${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${preheader}</div>` : ""}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG}">
+<body id="body" class="m-bg" style="margin:0;padding:0;background:${BG}">
+${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${preheader}${PREHEADER_PAD}</div>` : ""}
+<table role="presentation" class="m-bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG}">
   <tr>
-    <td align="center" style="padding:32px 16px">
-      <table role="presentation" width="540" cellpadding="0" cellspacing="0" style="width:100%;max-width:540px;background:${CARD};color:${FG};border:1px solid ${HAIRLINE};border-radius:12px">
-        ${brandHeader(opts.lang, opts.mailKind)}
+    <td class="m-wrap" align="center" style="padding:24px 16px 40px">
+      <table role="presentation" class="m-card" width="${WIDTH}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${WIDTH}px;background:${CARD};color:${FG};border:1px solid ${BORDER};border-radius:14px">
         ${opts.innerRows}
+      </table>
+      <table role="presentation" width="${WIDTH}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${WIDTH}px">
+        ${opts.footerRows}
       </table>
     </td>
   </tr>
@@ -217,10 +384,391 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">
 </html>`;
 }
 
-/**
- * Editorial digest/note: ~540px cream/white column, hosted logo,
- * serif wordmark, Gmail-proof accent CTAs, table-based for Outlook.
- */
+/* ------------------------------------------------------------------ */
+/* Blocks                                                             */
+/* ------------------------------------------------------------------ */
+
+function link(
+  href: string,
+  label: string,
+  style: string,
+  cls = "m-link"
+): string {
+  return `<a class="${cls}" href="${escapeHtml(href)}" target="_blank" style="${style}">${escapeHtml(label)}</a>`;
+}
+
+function wordmark(size: number): string {
+  // A yellow marker behind dark text: Gmail drops linear-gradient, and dark
+  // ink on yellow reads the same on a light or a dark background.
+  return `<span style="font-family:${SERIF};font-size:${size}px;line-height:1;font-weight:600;letter-spacing:-0.01em;color:${INK};background-color:${MARKER};padding:0 4px">AI;DR</span>`;
+}
+
+function tagline(lang: MailLang): string {
+  return lang === "vi"
+    ? "Tin AI, xếp hạng và tóm tắt"
+    : "AI news, ranked and summarized";
+}
+
+interface HeaderMeta {
+  date: string;
+  count: number;
+  minutes: number;
+  switchHref: string;
+}
+
+/** Wordmark and tagline; the digest adds date, count and a language switch. */
+export function headerBlock(
+  lang: MailLang,
+  homeHref: string,
+  meta?: HeaderMeta
+): string {
+  const brand = `<a href="${escapeHtml(homeHref)}" target="_blank" style="text-decoration:none">${wordmark(32)}</a>
+          <div class="m-muted" style="padding-top:10px;font-family:${SANS};font-size:13px;line-height:1.35;color:${MUTED}">${escapeHtml(tagline(lang))}</div>`;
+  if (!meta) {
+    return `<tr>
+      <td class="m-pad m-rule" style="padding:28px ${PAD} 20px;border-bottom:1px solid ${HAIRLINE}">${brand}</td>
+    </tr>`;
+  }
+  const other = lang === "vi" ? "Read in English" : "Đọc bằng Tiếng Việt";
+  return `<tr>
+      <td class="m-pad m-rule" style="padding:28px ${PAD} 20px;border-bottom:1px solid ${HAIRLINE}">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td valign="bottom" style="vertical-align:bottom">${brand}</td>
+            <td class="m-stack" align="right" valign="bottom" style="vertical-align:bottom;text-align:right;font-family:${SANS};padding-left:16px">
+              <div class="m-fg" style="font-size:13px;line-height:1.4;font-weight:600;color:${FG}">${escapeHtml(formatMailDate(meta.date, lang))}</div>
+              <div class="m-muted" style="font-size:12px;line-height:1.4;color:${MUTED}">${escapeHtml(countLine(meta.count, meta.minutes, lang))}</div>
+              ${link(meta.switchHref, other, `font-family:${SANS};font-size:12px;line-height:1.6;font-weight:600;color:${ACCENT};text-decoration:none`, "m-link m-tap")}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
+function youtubeThumb(id: string): string {
+  return `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
+}
+
+/** Dark card with the YouTube thumbnail and a play mark. The thumbnail is
+ *  a cell background so the play mark sits on it; where backgrounds are
+ *  dropped (Outlook desktop) the cell stays yellow with the mark. */
+export function videoBlock(
+  video: DigestVideo,
+  href: string,
+  lang: MailLang,
+  showImage: boolean
+): string {
+  const kicker = lang === "vi" ? "Xem bản tin video" : "Watch the daily brief";
+  const title =
+    video.title?.trim() ||
+    (lang === "vi"
+      ? "Tin hôm nay trong chưa tới hai phút"
+      : "Today's stories in under two minutes");
+  const safe = escapeHtml(href);
+  const thumb = escapeHtml(youtubeThumb(video.youtubeId));
+  const play = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto"><tr><td width="38" height="38" align="center" valign="middle" bgcolor="${INK}" style="width:38px;height:38px;border-radius:19px;background:${INK};color:${ACCENT_FG};font-family:${SANS};font-size:14px;line-height:38px;text-align:center"><a href="${safe}" target="_blank" style="color:${ACCENT_FG};text-decoration:none">&#9654;</a></td></tr></table>`;
+  const media = showImage
+    ? `<td class="m-stack" width="150" height="84" align="center" valign="middle" background="${thumb}" bgcolor="${MARKER}" style="width:150px;height:84px;border-radius:8px;background-color:${MARKER};background-image:url(${thumb});background-size:cover;background-position:center">${play}</td>`
+    : "";
+  return `<tr>
+      <td class="m-pad" style="padding:22px ${PAD} 6px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${INK}" style="background:${INK};border-radius:12px">
+          <tr>
+            <td style="padding:14px">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  ${media}
+                  <td class="m-stack" valign="middle" style="vertical-align:middle;${showImage ? "padding-left:16px;" : ""}font-family:${SANS}">
+                    <a href="${safe}" target="_blank" style="text-decoration:none;color:${ACCENT_FG}">
+                      <div style="font-size:11px;line-height:1.4;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:${MARKER}"><font color="${MARKER}">${escapeHtml(kicker)}</font></div>
+                      <div style="padding-top:4px;font-family:${SERIF};font-size:19px;line-height:1.25;color:${ACCENT_FG}"><font color="${ACCENT_FG}">${escapeHtml(title)}</font></div>
+                      <div style="padding-top:4px;font-size:12px;line-height:1.4;color:${INK_MUTED}"><font color="${INK_MUTED}">YouTube</font></div>
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
+function metaLine(story: DigestStory, accent: boolean): string {
+  const parts: string[] = [];
+  if (story.category) {
+    parts.push(
+      `<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${accent ? ACCENT : MUTED}" class="${accent ? "m-link" : "m-muted"}">${escapeHtml(story.category)}</span>`
+    );
+  }
+  if (story.source) {
+    parts.push(
+      `<span class="m-muted" style="font-size:12px;color:${MUTED}">${escapeHtml(story.source)}</span>`
+    );
+  }
+  if (parts.length === 0) return "";
+  return `<div style="font-family:${SANS};line-height:1.4">${parts.join(`<span style="color:${FAINT};padding:0 6px">·</span>`)}</div>`;
+}
+
+/** A real image for full-width use: http(s), not a generated OG card. */
+function largeImageSrc(imageUrl: string | undefined): string | null {
+  const safe = imageUrl ? safeHref(imageUrl) : null;
+  return safe && !isGeneratedOgCard(safe) ? safe : null;
+}
+
+function largeImage(src: string, alt: string, className: string): string {
+  return `<img class="${className}" src="${escapeHtml(src)}" width="${INNER_PX}" alt="${escapeHtml(alt)}" style="display:block;width:100%;max-width:${INNER_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:10px;-ms-interpolation-mode:bicubic">`;
+}
+
+/** Story 1: large image, category · source, big headline, its summary. */
+export function leadStory(
+  story: DigestStory,
+  href: string,
+  lang: MailLang,
+  showImage: boolean
+): string {
+  const headline = storyHeadline(story);
+  const image = showImage ? largeImageSrc(story.imageUrl) : null;
+  const kicker = lang === "vi" ? "Tin chính" : "Lead story";
+  const readLabel = lang === "vi" ? "Đọc tóm tắt →" : "Read the summary →";
+  const safe = escapeHtml(href);
+  return `<tr>
+      <td class="m-pad" style="padding:22px ${PAD} 8px">
+        <div class="m-muted" style="padding-bottom:12px;font-family:${SANS};font-size:11px;line-height:1.4;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${MUTED}">${escapeHtml(kicker)}</div>
+        ${image ? `<a href="${safe}" target="_blank" style="text-decoration:none;border:0">${largeImage(image, headline, "mail-lead-image")}</a><div style="height:16px;line-height:16px;font-size:0">&nbsp;</div>` : ""}
+        ${metaLine(story, true)}
+        <a class="m-fg" href="${safe}" target="_blank" style="display:block;padding-top:6px;font-family:${SERIF};font-size:27px;line-height:1.2;font-weight:600;color:${FG};text-decoration:none"><font class="m-fg" color="${FG}"><span class="m-head">${escapeHtml(headline)}</span></font></a>
+        <div class="m-fg m-body" style="padding-top:8px;font-family:${SANS};font-size:15px;line-height:1.6;color:${BODY}">${escapeHtml(story.text.trim())}</div>
+        ${link(href, readLabel, `display:inline-block;margin-top:12px;font-family:${SANS};font-size:14px;font-weight:600;color:${ACCENT};text-decoration:none`, "m-link m-tap")}
+      </td>
+    </tr>`;
+}
+
+function thumbCell(
+  imageUrl: string | undefined,
+  alt: string,
+  href: string
+): string {
+  const safe = imageUrl ? safeHref(imageUrl) : null;
+  if (!safe) return "";
+  return `<td class="m-thumb" width="${THUMB_PX}" valign="top" style="width:${THUMB_PX}px;vertical-align:top;padding-left:16px">
+            <a href="${escapeHtml(href)}" target="_blank" style="text-decoration:none;border:0"><img src="${escapeHtml(safe)}" width="${THUMB_PX}" alt="${escapeHtml(alt)}" style="display:block;width:${THUMB_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic"></a>
+          </td>`;
+}
+
+/** Compact row: number, category · source, linked headline, one sentence,
+ *  an 84px thumbnail (`design`) or a full-width image above (`large`). */
+export function storyRow(
+  story: DigestStory,
+  n: number,
+  href: string,
+  format: MailFormat
+): string {
+  const headline = storyHeadline(story);
+  const summary = storySummary(story);
+  const safe = escapeHtml(href);
+  const large = format === "large" ? largeImageSrc(story.imageUrl) : null;
+  const thumb =
+    format === "design" ? thumbCell(story.imageUrl, headline, href) : "";
+  const text = `${metaLine(story, false)}
+              <a class="m-fg" href="${safe}" target="_blank" style="display:block;padding-top:4px;font-family:${SERIF};font-size:19px;line-height:1.25;font-weight:600;color:${FG};text-decoration:none"><font class="m-fg" color="${FG}">${escapeHtml(headline)}</font></a>
+              ${summary ? `<div class="m-fg m-body" style="padding-top:4px;font-family:${SANS};font-size:14px;line-height:1.55;color:${BODY}">${escapeHtml(summary)}</div>` : ""}`;
+  return `<tr>
+      <td class="m-pad" style="padding:14px ${PAD}">
+        ${large ? `<a href="${safe}" target="_blank" style="text-decoration:none;border:0">${largeImage(large, headline, "mail-large")}</a><div style="height:12px;line-height:12px;font-size:0">&nbsp;</div>` : ""}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td width="26" valign="top" class="m-link" style="width:26px;vertical-align:top;padding-top:2px;font-family:${SERIF};font-size:26px;line-height:1;color:${ACCENT}">${n}</td>
+            <td valign="top" style="vertical-align:top">
+              ${text}
+            </td>
+            ${thumb}
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
+function sectionLabel(label: string): string {
+  return `<tr>
+      <td class="m-pad" style="padding:18px ${PAD} 4px">
+        <div class="m-muted m-rule" style="border-top:1px solid ${HAIRLINE};padding-top:18px;font-family:${SANS};font-size:11px;line-height:1.4;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${MUTED}">${escapeHtml(label)}</div>
+      </td>
+    </tr>`;
+}
+
+/** Bulletproof button: VML roundrect for Outlook desktop, a padded <td> for
+ *  everyone else. Padding lives on the <td>, not the <a> — Gmail otherwise
+ *  shrinks the pill to the text box and paints a blue underline through the
+ *  label. <font color> is the last colour Gmail still honours on links. */
+export function ctaButton(
+  label: string,
+  url: string,
+  fullWidth = false
+): string {
+  const safe = safeHref(url);
+  if (!safe) return "";
+  const href = escapeHtml(safe);
+  const text = escapeHtml(label);
+  const vmlWidth = fullWidth ? INNER_PX : 280;
+  return `<!--[if mso]>
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${href}" style="height:48px;v-text-anchor:middle;width:${vmlWidth}px" arcsize="17%" stroke="f" fillcolor="${ACCENT}">
+<w:anchorlock/>
+<center style="color:${ACCENT_FG};font-family:Arial,sans-serif;font-size:15px;font-weight:bold">${text}</center>
+</v:roundrect>
+<![endif]-->
+<!--[if !mso]><!-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"${fullWidth ? ' width="100%"' : ""} style="margin:8px 0">
+  <tr>
+    <td align="center" bgcolor="${ACCENT}" valign="middle" style="background-color:${ACCENT};border-radius:8px;padding:14px 28px;mso-padding-alt:14px 28px">
+      <a class="mail-cta" href="${href}" target="_blank" style="font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${ACCENT_FG};text-decoration:none;display:inline-block;-webkit-text-size-adjust:none">
+        <span style="color:${ACCENT_FG} !important;text-decoration:none !important;border-bottom:0 !important"><font color="${ACCENT_FG}">${text}</font></span>
+      </a>
+    </td>
+  </tr>
+</table>
+<!--<![endif]-->`;
+}
+
+function ctaRow(label: string, url: string): string {
+  return `<tr>
+      <td class="m-pad" style="padding:16px ${PAD} 28px">${ctaButton(label, url, true)}</td>
+    </tr>`;
+}
+
+/** Telegram (per language), YouTube and the Chrome extension. */
+export function channelsBlock(lang: MailLang): string {
+  const vi = lang === "vi";
+  const items = [
+    {
+      key: "telegram",
+      url: TELEGRAM_URL[lang],
+      label: vi ? "Telegram AI Hôm Nay" : "Telegram",
+      sub: vi ? "Mỗi tin ngay khi có" : "Every story as it lands",
+    },
+    {
+      key: "youtube",
+      url: YOUTUBE_URL,
+      label: "YouTube",
+      sub: vi ? "Video tóm tắt mỗi ngày" : "The daily video brief",
+    },
+    {
+      key: "chrome",
+      url: CHROME_EXTENSION_URL,
+      label: vi ? "Tiện ích Chrome" : "Chrome extension",
+      sub: vi ? "AI;DR trong mỗi tab mới" : "AI;DR in every new tab",
+    },
+  ];
+  const cells = items
+    .map((it, i) => {
+      const href = escapeHtml(
+        withMailUtm(it.url, "digest", lang, {
+          content: `channel-${it.key}`,
+          external: true,
+        })
+      );
+      return `<td class="m-stack" width="33%" valign="top" style="width:33%;vertical-align:top;${i > 0 ? "padding-left:12px;" : ""}font-family:${SANS}">
+            <a class="m-fg m-tap" href="${href}" target="_blank" style="display:block;text-decoration:none;color:${FG}">
+              <div class="m-fg" style="font-size:13px;line-height:1.4;font-weight:600;color:${FG}"><font class="m-fg" color="${FG}">${escapeHtml(it.label)} →</font></div>
+              <div class="m-muted m-hide" style="font-size:12px;line-height:1.4;color:${MUTED}">${escapeHtml(it.sub)}</div>
+            </a>
+          </td>`;
+    })
+    .join("\n");
+  return `<tr>
+      <td class="m-pad m-rule" style="padding:20px ${PAD} 22px;border-top:1px solid ${HAIRLINE}">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+          ${cells}
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
+interface FooterOpts {
+  lang: MailLang;
+  unsubscribeUrl: string;
+  settingsUrl: string;
+  kind: MailUtmKind;
+  /** Digest only: the day page. */
+  viewInBrowserUrl?: string;
+  postalAddress?: string;
+}
+
+/** Why you get this, the links, "Forwarded this?", the postal address. */
+export function footerBlock(o: FooterOpts): string {
+  const vi = o.lang === "vi";
+  const style = `font-weight:600;color:${ACCENT};text-decoration:none`;
+  const sep = `<span style="color:${FAINT};padding:0 6px">·</span>`;
+  const links = [
+    o.viewInBrowserUrl
+      ? link(
+          o.viewInBrowserUrl,
+          vi ? "Xem trên web" : "View in browser",
+          style,
+          "m-link m-tap"
+        )
+      : "",
+    link(
+      withSiteLang(o.settingsUrl, o.lang),
+      vi ? "Cài đặt" : "Settings",
+      style,
+      "m-link m-tap"
+    ),
+    link(
+      withSiteLang(o.unsubscribeUrl, o.lang),
+      vi ? "Hủy đăng ký" : "Unsubscribe",
+      style,
+      "m-link m-tap"
+    ),
+    link(
+      withMailUtm(DATA_URL, o.kind, o.lang, { content: "footer-data" }),
+      vi ? "Cách xếp hạng" : "How we rank",
+      style,
+      "m-link m-tap"
+    ),
+  ].filter(Boolean);
+  const why = vi
+    ? "Bạn nhận email này vì đã đăng ký tại aidr.today. Mỗi ngày một email."
+    : "You get this because you subscribed at aidr.today. One email a day.";
+  const forwarded = `${escapeHtml(vi ? "Được chuyển tiếp?" : "Forwarded this?")} ${link(
+    withMailUtm(SUBSCRIBE_URL, o.kind, o.lang, { content: "footer-subscribe" }),
+    vi ? "Đăng ký" : "Subscribe",
+    style,
+    "m-link m-tap"
+  )}`;
+  const address = o.postalAddress?.trim();
+  return `<tr>
+      <td class="m-pad m-muted" align="center" style="padding:22px 48px 0;font-family:${SANS};font-size:13px;line-height:1.7;color:${MUTED};text-align:center">
+        <div>${escapeHtml(why)}</div>
+        <div style="padding-top:6px">${links.join(sep)}</div>
+        <div style="padding-top:6px">${forwarded}</div>
+        ${address ? `<div style="padding-top:6px">AI;DR · ${escapeHtml(address)}</div>` : ""}
+      </td>
+    </tr>`;
+}
+
+function footerText(o: FooterOpts): string {
+  const vi = o.lang === "vi";
+  const lines = [
+    o.viewInBrowserUrl
+      ? `${vi ? "Xem trên web" : "View in browser"}: ${o.viewInBrowserUrl}`
+      : "",
+    `${vi ? "Cài đặt" : "Settings"}: ${withSiteLang(o.settingsUrl, o.lang)}`,
+    `${vi ? "Hủy đăng ký" : "Unsubscribe"}: ${withSiteLang(o.unsubscribeUrl, o.lang)}`,
+    `${vi ? "Cách xếp hạng" : "How we rank"}: ${DATA_URL}`,
+    `${vi ? "Được chuyển tiếp? Đăng ký" : "Forwarded this? Subscribe"}: ${SUBSCRIBE_URL}`,
+    o.postalAddress?.trim() ? `AI;DR · ${o.postalAddress.trim()}` : "",
+  ];
+  return lines.filter(Boolean).join("\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Note mail (confirm, welcome, settings change, campaigns)           */
+/* ------------------------------------------------------------------ */
+
 export function renderNoteEmail(input: NoteEmailInput): {
   html: string;
   text: string;
@@ -228,70 +776,49 @@ export function renderNoteEmail(input: NoteEmailInput): {
   const lang: MailLang = normalizeMailLang(input.lang);
   const mailKind: MailUtmKind = input.mailKind ?? "welcome";
   const body = markdownToEmailHtml(input.bodyMd);
-  const cta =
+  const ctaUrl =
     input.cta?.label && input.cta.url
-      ? ctaButton(input.cta.label, withMailUtm(input.cta.url, mailKind, lang))
-      : "";
-  const innerRows = `<tr>
-      <td style="padding:28px ${PAD} 28px;font-family:${SANS};font-size:16px;line-height:1.65;color:${FG}">
+      ? withMailUtm(input.cta.url, mailKind, lang, { content: "cta" })
+      : null;
+  const cta = ctaUrl ? ctaButton(input.cta!.label, ctaUrl) : "";
+  const footer: FooterOpts = {
+    lang,
+    unsubscribeUrl: input.unsubscribeUrl,
+    settingsUrl: input.settingsUrl,
+    kind: mailKind,
+    postalAddress: input.postalAddress,
+  };
+  const innerRows = `${headerBlock(lang, withMailUtm(SITE_URL, mailKind, lang, { content: "header" }))}
+    <tr>
+      <td class="m-pad m-fg m-body" style="padding:28px ${PAD} 28px;font-family:${SANS};font-size:16px;line-height:1.65;color:${FG}">
         ${body}
         ${cta}
       </td>
-    </tr>
-    ${mailFooterHtml(lang, input.unsubscribeUrl, input.settingsUrl)}`;
+    </tr>`;
 
   const html = wrapHtml({
     lang,
     subject: input.subject,
     preheader: input.preheader ?? "",
     innerRows,
-    mailKind,
+    footerRows: footerBlock(footer),
   });
 
-  const safeCtaUrl =
-    input.cta?.label && input.cta.url
-      ? safeHref(withMailUtm(input.cta.url, mailKind, lang))
-      : null;
+  const safeCtaUrl = ctaUrl ? safeHref(ctaUrl) : null;
   const textParts = [
     markdownToPlainText(input.bodyMd),
     safeCtaUrl ? `${input.cta!.label}: ${safeCtaUrl}` : "",
-    mailFooterText(lang, input.unsubscribeUrl, input.settingsUrl),
+    footerText(footer),
   ].filter(Boolean);
 
   return { html, text: textParts.join("\n\n") };
 }
 
-/** Keyword highlights mirroring the website (HighlightedText): tag-hash
- *  palette, light-mode shades (mail body is always light), escaped first
- *  so markup can never break out of a segment. */
-export function highlightStoryHtml(text: string): string {
-  const segments = highlightTitle(text, TITLE_KEYWORDS);
-  return segments
-    .map((s) => {
-      const safe = escapeHtml(s.text);
-      if (s.highlighted && s.tag) {
-        const color = topicColor(s.tag).light;
-        return `<span style="color:${color};font-weight:600">${safe}</span>`;
-      }
-      if (s.highlighted) {
-        return `<span style="color:${ACCENT};font-weight:600">${safe}</span>`;
-      }
-      return safe;
-    })
-    .join("");
-}
+/* ------------------------------------------------------------------ */
+/* Digest                                                             */
+/* ------------------------------------------------------------------ */
 
-const THUMB_PX = 64;
-const LARGE_PX = 476;
-
-/** Short fixed title, used as the mail subject and the in-mail heading.
- *  Story text goes in the preheader, so nothing here is ever cut. */
-export function digestSubjectLine(date: string, lang: MailLang): string {
-  const label = lang === "vi" ? "Tin AI hôm nay" : "Today in AI";
-  return `AI;DR — ${date} · ${label}`;
-}
-
-/** Generated social cards (text-on-card OG images) are not story thumbnails. */
+/** Generated social cards (text-on-card OG images) are not story images. */
 export function isGeneratedOgCard(url: string): boolean {
   try {
     const parts = new URL(url).pathname.toLowerCase().split("/");
@@ -304,127 +831,159 @@ export function isGeneratedOgCard(url: string): boolean {
   }
 }
 
-/** A real image for full-width use: http(s), not a generated OG card. */
-function largeImageSrc(imageUrl: string | undefined): string | null {
-  const safe = imageUrl ? safeHref(imageUrl) : null;
-  return safe && !isGeneratedOgCard(safe) ? safe : null;
-}
-
-function largeImage(src: string, className: string): string {
-  return `<img class="${className}" src="${escapeHtml(src)}" width="${LARGE_PX}" alt="" style="display:block;width:100%;max-width:${LARGE_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic">`;
-}
-
-/** The day card (`/api/og/date/…`, the day's top stories as a photo grid),
- *  linked to the day page. Same image as the Telegram digest and the day
- *  page's og:image, so every channel leads with one picture of the day. */
-export function digestDayCardSrc(date: string, lang: MailLang): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  return absoluteSiteUrl(dayArchiveOgPath(date), lang);
-}
-
-function heroRow(src: string, href: string, alt: string): string {
-  return `<tr>
-      <td style="padding:20px ${PAD} 4px">
-        <a href="${escapeHtml(href)}" style="text-decoration:none;border:0">${largeImage(src, "mail-hero").replace('alt=""', `alt="${escapeHtml(alt)}"`)}</a>
-      </td>
-    </tr>`;
-}
-
-function thumbCell(imageUrl: string | undefined): string {
-  const safe = imageUrl ? safeHref(imageUrl) : null;
-  if (!safe) return "";
-  const src = escapeHtml(safe);
-  // Second cell in the row — the thumbnail sits on the right of the text.
-  return `<td width="${THUMB_PX}" style="width:${THUMB_PX}px;vertical-align:top;padding-left:12px">
-        <img src="${src}" width="${THUMB_PX}" alt="" style="display:block;width:${THUMB_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic">
-      </td>`;
+function storyHref(
+  story: DigestStory,
+  lang: MailLang,
+  content: string
+): string {
+  const opts: MailUtmOptions = { content };
+  return (
+    safeHref(withMailUtm(story.url ?? SITE_URL, "digest", lang, opts)) ??
+    withMailUtm(SITE_URL, "digest", lang, opts)
+  );
 }
 
 export function renderDigestEmail(input: DigestEmailInput): {
+  subject: string;
   html: string;
   text: string;
 } {
-  const heading = digestSubjectLine(input.date, input.lang);
+  const lang = input.lang;
   const format = normalizeMailFormat(input.format);
-  const home = withMailUtm(SITE_URL, "digest", input.lang);
-  const textLines = input.stories.map((s, i) => `${i + 1}. ${s.text}`);
-  const text = `${heading}\n\n${textLines.join("\n")}\n\n${home}\n\n${mailFooterText(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
+  const stories = input.stories;
+  const count = stories.length;
+  const minutes = readMinutes(stories);
+  const video = input.video?.youtubeId ? input.video : null;
+  const subject =
+    input.subject ??
+    digestSubjectLine(
+      input.date,
+      lang,
+      stories.slice(0, 2).map(storyHeadline),
+      count
+    );
+  const preheader =
+    input.preheader ??
+    digestPreheader(input.date, lang, count, minutes, Boolean(video));
+  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(input.date);
+  const dayUrl = validDate
+    ? absoluteSiteUrl(dayArchivePath(input.date), lang)
+    : absoluteSiteUrl("/", lang);
+  const otherLang: MailLang = lang === "vi" ? "en" : "vi";
+  const switchUrl = validDate
+    ? absoluteSiteUrl(dayArchivePath(input.date), otherLang)
+    : absoluteSiteUrl("/", otherLang);
+  const videoUrl = video
+    ? withMailUtm(
+        `https://youtu.be/${encodeURIComponent(video.youtubeId)}`,
+        "digest",
+        lang,
+        {
+          content: "video",
+          external: true,
+        }
+      )
+    : null;
+  const total =
+    input.totalStories && input.totalStories >= count
+      ? input.totalStories
+      : null;
+  const ctaLabel =
+    lang === "vi"
+      ? total
+        ? `Xem đủ ${total} tin trên aidr.today`
+        : "Xem tất cả tin trên aidr.today"
+      : total
+        ? `See all ${total} stories on aidr.today`
+        : "See all stories on aidr.today";
+  const ctaUrl = withMailUtm(dayUrl, "digest", lang, { content: "cta" });
+  const footer: FooterOpts = {
+    lang,
+    unsubscribeUrl: input.unsubscribeUrl,
+    settingsUrl: input.settingsUrl,
+    kind: "digest",
+    viewInBrowserUrl: withMailUtm(dayUrl, "digest", lang, {
+      content: "view-in-browser",
+    }),
+    postalAddress: input.postalAddress,
+  };
+
+  const heading = `AI;DR — ${formatMailDate(input.date, lang)}`;
+  const textStories = stories.map((s, i) => {
+    const href = storyHref(s, lang, i === 0 ? "lead" : `s${i + 1}`);
+    const summary = i === 0 ? s.text.trim() : storySummary(s);
+    return [
+      `${i + 1}. ${storyHeadline(s)}`,
+      summary ? `   ${summary}` : "",
+      `   ${href}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  });
+  const text = [
+    `${heading}\n${countLine(count, minutes, lang)}`,
+    textStories.join("\n\n"),
+    videoUrl
+      ? `${lang === "vi" ? "Xem bản tin video" : "Watch the daily brief"}: ${videoUrl}`
+      : "",
+    `${ctaLabel}: ${ctaUrl}`,
+    footerText(footer),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const homeHref = withMailUtm(SITE_URL, "digest", lang, { content: "header" });
+  const header = headerBlock(lang, homeHref, {
+    date: input.date,
+    count,
+    minutes,
+    switchHref: withMailUtm(switchUrl, "digest", otherLang, {
+      content: "lang-switch",
+    }),
+  });
+
   if (format === "text") {
     return {
+      subject,
       text,
       html: wrapHtml({
-        lang: input.lang,
-        subject: input.subject,
-        preheader: input.preheader ?? input.stories[0]?.text ?? "",
-        innerRows: `<tr><td style="padding:28px ${PAD};font-family:${SANS};font-size:15px;line-height:1.55;color:${FG};white-space:pre-wrap">${escapeHtml(text)}</td></tr>`,
-        mailKind: "digest",
+        lang,
+        subject,
+        preheader,
+        innerRows: `${header}
+    <tr><td class="m-pad m-fg" style="padding:28px ${PAD};font-family:${SANS};font-size:15px;line-height:1.55;color:${FG};white-space:pre-wrap">${escapeHtml(text)}</td></tr>`,
+        footerRows: "",
       }),
     };
   }
-  // Image layouts lead with the day card; it is the whole day, so it never
-  // repeats a story's own image.
-  const hero =
-    format === "design" || format === "large"
-      ? digestDayCardSrc(input.date, input.lang)
-      : null;
-  const dayHref = withMailUtm(
-    absoluteSiteUrl(dayArchivePath(input.date), input.lang),
-    "digest",
-    input.lang
-  );
-  const readMore =
-    input.lang === "vi" ? "Đọc trên aidr.today" : "Read on aidr.today";
-  const storyCta = input.lang === "vi" ? "Đọc thêm" : "Read more";
 
-  const htmlItems = input.stories
-    .map((story, i) => {
-      const n = i + 1;
-      const text = highlightStoryHtml(story.text);
-      const href =
-        safeHref(withMailUtm(story.url ?? SITE_URL, "digest", input.lang)) ??
-        withMailUtm(SITE_URL, "digest", input.lang);
-      const more = `<a class="mail-story" href="${escapeHtml(href)}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${escapeHtml(storyCta)}</a>`;
-      const rule =
-        i < input.stories.length - 1
-          ? `border-bottom:1px solid ${HAIRLINE};`
-          : "";
-      const body = `<div style="font-family:${SANS};font-size:14px;line-height:1.55;color:${FG}">
-          <span style="font-family:${SERIF};font-size:15px;line-height:1.4;color:${ACCENT};font-weight:500">${n}.</span>
-          ${text}
-          <div style="margin-top:6px;font-family:${SANS};font-size:13px;line-height:1.4">${more}</div>
-        </div>`;
-      const thumb = format === "design" ? thumbCell(story.imageUrl) : "";
-      const large = format === "large" ? largeImageSrc(story.imageUrl) : null;
-      const inner = thumb
-        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td style="vertical-align:top">${body}</td>${thumb}</tr></table>`
-        : large
-          ? `<div style="padding-bottom:12px">${largeImage(large, "mail-large")}</div>${body}`
-          : body;
-      return `<tr>
-      <td style="padding:12px ${PAD};${rule}">${inner}</td>
-    </tr>`;
-    })
-    .join("\n");
-
-  const innerRows = `<tr>
-      <td style="padding:28px ${PAD} 12px;font-family:${SERIF};font-size:22px;line-height:1.3;font-weight:500;color:${FG}">${escapeHtml(heading)}</td>
-    </tr>
-    ${hero ? heroRow(hero, dayHref, heading) : ""}
-    ${htmlItems}
-    <tr>
-      <td style="padding:16px ${PAD} 28px;font-family:${SANS};font-size:14px;line-height:1.4"><a href="${escapeHtml(hero ? dayHref : withMailUtm(SITE_URL, "digest", input.lang))}" style="color:${ACCENT};text-decoration:underline;font-weight:500">${escapeHtml(readMore)}</a></td>
-    </tr>
-    ${mailFooterHtml(input.lang, input.unsubscribeUrl, input.settingsUrl)}`;
+  const showImages = format === "design" || format === "large";
+  const [lead, ...rest] = stories;
+  const rows = [
+    header,
+    video && videoUrl ? videoBlock(video, videoUrl, lang, showImages) : "",
+    lead
+      ? leadStory(lead, storyHref(lead, lang, "lead"), lang, showImages)
+      : "",
+    rest.length > 0
+      ? sectionLabel(lang === "vi" ? "Tin khác hôm nay" : "Also today")
+      : "",
+    ...rest.map((s, i) =>
+      storyRow(s, i + 2, storyHref(s, lang, `s${i + 2}`), format)
+    ),
+    ctaRow(ctaLabel, ctaUrl),
+    channelsBlock(lang),
+  ];
 
   const html = wrapHtml({
-    lang: input.lang,
-    subject: input.subject,
-    preheader: input.preheader ?? input.stories[0]?.text ?? "",
-    innerRows,
-    mailKind: "digest",
+    lang,
+    subject,
+    preheader,
+    innerRows: rows.filter(Boolean).join("\n    "),
+    footerRows: footerBlock(footer),
   });
 
-  return { html, text };
+  return { subject, html, text };
 }
 
 export function unsubscribeUrl(token: string, lang: MailLang = "vi"): string {

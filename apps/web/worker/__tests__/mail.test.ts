@@ -8,20 +8,21 @@ import {
   mailFormatHasImages,
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
-import { topicColor } from "../../src/lib/topic-color.js";
 import { previewCampaign, sendCampaign } from "../mail/campaigns.js";
 import { parseWrapJson } from "../mail/compose.js";
 import { parseRssItems } from "../mail/content.js";
 import { markdownToEmailHtml, markdownToPlainText } from "../mail/markdown.js";
 import {
+  type DigestStory,
+  digestSubjectLine,
+  formatMailDate,
   listUnsubscribeHeaders,
   MAIL_LOGO_URL,
   NEWS_FROM,
   NOTES_FROM,
   renderDigestEmail,
   renderNoteEmail,
-  settingsUrl,
-  unsubscribeUrl,
+  SUBJECT_TARGET,
 } from "../mail/render.js";
 import { resetMailSchemaCache } from "../mail/schema.js";
 import { digestFrom, notesFrom, sendSubscriberEmail } from "../mail/send.js";
@@ -135,342 +136,396 @@ describe("MAIL_LOGO_URL", () => {
   });
 });
 
+const UNSUB = "https://aidr.today/subscribe?unsubscribe=tok";
+const SETTINGS = "https://aidr.today/subscribe?settings=tok";
+
+function story(n: number, extra: Partial<DigestStory> = {}): DigestStory {
+  return {
+    text: `Company ${n} shipped model ${n} to every user today. The launch shows how fast the field moves.`,
+    url: `https://aidr.today/story-${n}`,
+    imageUrl: `https://cdn.example.com/photo-${n}.jpg`,
+    headline: `Company ${n} ships model ${n}`,
+    source: `news${n}.example.com`,
+    category: n % 2 ? "Models" : "Agents",
+    ...extra,
+  };
+}
+
+function digest(
+  over: Partial<Parameters<typeof renderDigestEmail>[0]> = {}
+): ReturnType<typeof renderDigestEmail> {
+  return renderDigestEmail({
+    date: "2026-10-10",
+    lang: "en",
+    stories: [1, 2, 3, 4, 5].map((n) => story(n)),
+    unsubscribeUrl: UNSUB,
+    settingsUrl: SETTINGS,
+    ...over,
+  });
+}
+
+const VIDEO = { youtubeId: "R3j93-pO9ac", title: null };
+
 describe("renderNoteEmail", () => {
-  it("emits a 540px table layout with logo, wordmark, CTA, and unsubscribe", () => {
+  it("shares the 600px shell, wordmark, CTA and footer with the digest", () => {
     const { html, text } = renderNoteEmail({
       subject: "A note",
       preheader: "Inbox preview",
       bodyMd: "Hello **friend**.",
       lang: "en",
       cta: { label: "Read", url: "https://blog.duyet.net/x" },
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+      unsubscribeUrl: UNSUB,
+      settingsUrl: SETTINGS,
     });
-    expect(html).toContain("max-width:540px");
-    expect(html).toContain(`src="${MAIL_LOGO_URL}"`);
-    expect(html).toContain('width="72"');
-    expect(html).toContain('height="72"');
-    expect(html).toContain('alt="AI;DR"');
-    expect(MAIL_LOGO_URL).toBe("https://aidr.today/logo-icon.png");
-    expect(html).toContain("https://aidr.today/logo-icon.png");
-    expect(html).not.toContain("/assets/logo");
-    expect(html).toContain("padding:32px");
-    expect(html).toContain("padding:14px 28px");
-    expect(html).toContain("padding:28px 32px 48px");
-    expect(html).toContain('<font color="#fffefb">');
-    expect(html).toContain('id="body"');
-    expect(html).toContain("mail-cta");
-    expect(html).toContain("AI;DR");
-    expect(html).toContain("AI news ranked and summary");
-    expect(html).toContain("Inbox preview");
-    expect(html).toContain("#b45309");
-    expect(html).toContain("#fffefb !important");
-    expect(html).toContain("text-decoration:none !important");
-    expect(html).toContain("background-color:#b45309");
-    expect(html).toContain("#f7f7f5");
-    expect(html).toContain("#ffffff");
-    expect(html).toContain("'EB Garamond', Garamond, Georgia");
-    expect(html).toContain("'Source Sans 3', -apple-system");
-    expect(html).not.toContain('font-family:Georgia,"');
-    expect(html).not.toContain('"Times New Roman"');
-    expect(html).not.toContain('"Source Sans 3"');
-    expect(html).not.toContain('"Segoe UI"');
-    expect(html).toContain("Unsubscribe");
-    expect(html).toContain("Adjust settings");
-    expect(html).toContain("/data");
-    expect(html).toMatch(/color:#b45309;text-decoration:none/);
-    expect(text).toContain("Hello friend.");
+    expect(html).toContain("max-width:600px");
+    expect(html).toContain(">AI;DR</span>");
+    expect(html).toContain("AI news, ranked and summarized");
+    expect(html).toContain("<strong>friend</strong>");
+    expect(html).toContain(">Read</font>");
+    expect(html).toContain("v:roundrect");
+    expect(html).toContain("Inbox preview&zwnj;&nbsp;");
+    expect(html).toContain("unsubscribe=tok&amp;lang=en");
     expect(text).toContain("Read: https://blog.duyet.net/x");
-    expect(text).toContain("Adjust settings:");
+    expect(text).toContain(
+      "Unsubscribe: https://aidr.today/subscribe?unsubscribe=tok&lang=en"
+    );
+    // A note has no day page: no date line, no "View in browser".
+    expect(html).not.toContain("View in browser");
+    expect(html).not.toContain("min read");
   });
 
-  it("uses Vietnamese header tagline and footer labels", () => {
-    const { html, text } = renderNoteEmail({
+  it("uses the Vietnamese tagline and footer labels", () => {
+    const { html } = renderNoteEmail({
       subject: "Chào",
-      bodyMd: "Xin chào",
+      bodyMd: "Xin chào.",
       lang: "vi",
-      cta: { label: "Mở aidr.today", url: "https://aidr.today" },
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+      unsubscribeUrl: UNSUB,
+      settingsUrl: SETTINGS,
     });
-    expect(html).toContain("Tin AI xếp hạng và tóm tắt");
-    expect(html).toContain("Hủy đăng ký");
-    expect(html).toContain("Chỉnh cài đặt");
-    expect(html).toContain("Mở aidr.today");
-    expect(html).toContain("utm_medium=welcome");
-    expect(text).toContain("Hủy đăng ký:");
+    expect(html).toContain("Tin AI, xếp hạng và tóm tắt");
+    expect(html).toContain(">Hủy đăng ký</a>");
+    expect(html).toContain(">Cài đặt</a>");
+    expect(html).toContain('lang="vi"');
   });
 
-  it("keeps tokenized footer links in the selected language", () => {
-    expect(unsubscribeUrl("tok-en", "en")).toBe(
-      "https://aidr.today/subscribe?unsubscribe=tok-en&lang=en"
-    );
-    expect(settingsUrl("tok-en", "en")).toBe(
-      "https://aidr.today/subscribe?settings=tok-en&lang=en"
-    );
-    const { html, text } = renderDigestEmail({
-      subject: "Digest",
-      date: "2026-09-10",
-      stories: [{ text: "English story" }],
-      lang: "en",
-      unsubscribeUrl: unsubscribeUrl("secret-token", "en"),
-      settingsUrl: settingsUrl("secret-token", "en"),
-    });
-    expect(html).toContain("unsubscribe=secret-token&amp;lang=en");
-    expect(html).toContain("settings=secret-token&amp;lang=en");
-    expect(text).toContain("unsubscribe=secret-token&lang=en");
-  });
-
-  it("shares the logo shell with digest mail", () => {
-    const { html } = renderDigestEmail({
-      subject: "Digest",
-      date: "2026-09-10",
-      stories: [{ text: "Story one", url: "https://aidr.today/" }],
-      lang: "en",
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
-    });
-    expect(html).toContain(`src="${MAIL_LOGO_URL}"`);
-    expect(html).toContain("max-width:540px");
-    expect(html).toContain("#fffefb !important");
-    expect(html).toContain("Read on aidr.today");
-    expect(html).toContain("utm_source=email");
-    expect(html).toContain("utm_medium=digest");
-    expect(html).toContain("2026-09-10");
-    expect(html).toContain("Story one");
-    expect(html).toContain("border-bottom:1px solid");
-    expect(html).toContain(
-      'style="color:#b45309;text-decoration:underline;font-weight:500"'
-    );
-    expect(html).not.toContain('font-family:Georgia,"');
-    expect(html).not.toContain('"Times New Roman"');
-    expect(html).not.toContain(
-      "color:#0a0a0a;text-decoration:none;font-weight:500"
-    );
-    expect(html).toContain('class="mail-story"');
-    expect(html).toContain(">Read more</a>");
-    expect(html).not.toContain(">Story one</a>");
-  });
-
-  it("keeps digest story body as plain text with a bottom Read more link", () => {
-    const { html } = renderDigestEmail({
-      subject: "Digest",
-      date: "2026-09-10",
-      stories: [
-        { text: "No url story" },
-        { text: "Has url", url: "https://example.com/x" },
-      ],
-      lang: "en",
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
-    });
-    expect(html).toContain('class="mail-story"');
-    expect(html).not.toContain(">No url story</a>");
-    expect(html).not.toContain(">Has url</a>");
-    expect(html).toContain("No url story");
-    expect(html).toContain("Has url");
-    expect(html).toContain(">Read more</a>");
-    expect(html).toContain("utm_medium=digest");
-    expect(html).toContain('href="https://example.com/x"');
-    expect(
-      (html.match(/text-decoration:underline;font-weight:500/g) ?? []).length
-    ).toBeGreaterThanOrEqual(2);
-  });
-
-  it("uses Đọc thêm for Vietnamese digest story links", () => {
-    const { html } = renderDigestEmail({
-      subject: "Digest",
-      date: "2026-09-10",
-      stories: [{ text: "Tin một", url: "https://aidr.today/ai/abcd1234" }],
-      lang: "vi",
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
-    });
-    expect(html).toContain(">Đọc thêm</a>");
-    expect(html).not.toContain(">Tin một</a>");
-    expect(html).toContain("Tin một");
-  });
-
-  it("omits non-http(s) CTA urls", () => {
+  it("prints the postal address only when one is set", () => {
+    const base = {
+      subject: "S",
+      bodyMd: "B",
+      lang: "en" as const,
+      unsubscribeUrl: UNSUB,
+      settingsUrl: SETTINGS,
+    };
+    expect(renderNoteEmail(base).html).not.toContain("AI;DR · ");
     const { html, text } = renderNoteEmail({
-      subject: "A note",
-      bodyMd: "Hello",
-      cta: { label: "Bad", url: "javascript:alert(1)" },
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
+      ...base,
+      postalAddress: "1 Main St, Springfield",
     });
-    expect(html).not.toContain("javascript:");
-    expect(html).not.toContain(">Bad<");
-    expect(text).not.toContain("Bad:");
+    expect(html).toContain("AI;DR · 1 Main St, Springfield");
+    expect(text).toContain("AI;DR · 1 Main St, Springfield");
+  });
+});
+
+describe("digestSubjectLine", () => {
+  it("leads with two whole headlines and the rest as +N more when they fit", () => {
+    expect(
+      digestSubjectLine(
+        "2026-10-10",
+        "en",
+        ["TypeSafe raises $870M", "AI sends police a false tip"],
+        7
+      )
+    ).toBe("TypeSafe raises $870M, AI sends police a false tip + 5 more");
   });
 
-  it("renders a thumbnail when the story has an imageUrl", () => {
-    const { html } = renderDigestEmail({
-      subject: "Digest",
-      date: "2026-09-10",
-      stories: [
-        {
-          text: "Story with thumb",
-          url: "https://aidr.today/ai/abcd1234",
-          imageUrl: "https://aidr.today/og/abc.png",
-        },
-        { text: "Story without thumb", url: "https://aidr.today/" },
+  it("falls back to one headline cut at a word when two do not fit", () => {
+    const subject = digestSubjectLine(
+      "2026-10-10",
+      "en",
+      [
+        "Jev developer TypeSafe AI raised about $870M led by a16z at a $7.5B valuation",
+        "An Anthropic model sent Philadelphia police a false homicide tip",
       ],
-      lang: "en",
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
-    });
-    expect(html).toContain('src="https://aidr.today/og/abc.png"');
-    expect(html).toContain('width="64"');
-    // The hero is the day card, never a story's own image.
-    expect(html).toContain(
-      'class="mail-hero" src="https://aidr.today/api/og/date/2026-09-10.png?lang=en"'
+      5
     );
-    expect(html.match(/<img /g)?.length).toBe(3);
+    expect(subject.endsWith("… + 4 more")).toBe(true);
+    expect(subject.length).toBeLessThanOrEqual(SUBJECT_TARGET);
+    expect(subject).not.toContain("Anthropic");
+    expect(subject).not.toMatch(/\s…/);
   });
 
-  describe("image layouts", () => {
-    const render = (format: string | undefined) =>
-      renderDigestEmail({
-        subject: "Digest",
-        date: "2026-09-10",
-        stories: [
-          { text: "Generated card", imageUrl: "https://aidr.today/og/abc.png" },
-          { text: "Real photo", imageUrl: "https://cdn.example/photo.jpg" },
-          { text: "No image" },
-        ],
-        lang: "en",
-        unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-        settingsUrl: "https://aidr.today/subscribe?settings=tok",
-        format: format as never,
-      }).html;
-    // The logo is the one <img> every layout has.
-    const images = (html: string) => html.match(/<img /g)?.length ?? 0;
+  it("is localized and keeps the fixed title when there are no headlines", () => {
+    expect(
+      digestSubjectLine("2026-10-10", "vi", ["Tin một", "Tin hai"], 5)
+    ).toBe("Tin một, Tin hai + 3 tin");
+    expect(digestSubjectLine("2026-10-10", "en")).toBe(
+      "AI;DR — 2026-10-10 · Today in AI"
+    );
+  });
+});
 
-    it("no-images keeps the designed card but shows no story image", () => {
-      const html = render("no-images");
-      expect(images(html)).toBe(1);
-      expect(html).not.toContain("cdn.example");
-      expect(html).toContain(">Read more</a>");
+describe("formatMailDate", () => {
+  it("spells the date out per language", () => {
+    expect(formatMailDate("2026-10-10", "en")).toBe(
+      "Saturday, October 10, 2026"
+    );
+    expect(formatMailDate("2026-10-10", "vi")).toBe(
+      "Thứ Bảy, 10 tháng 10, 2026"
+    );
+    expect(formatMailDate("not-a-date", "en")).toBe("not-a-date");
+  });
+});
+
+describe("renderDigestEmail", () => {
+  it("EN with video: header, video, lead, rows, one CTA, channels, footer in order", () => {
+    const { html, subject } = digest({ video: VIDEO, totalStories: 8 });
+    const order = [
+      ">AI;DR</span>",
+      "Saturday, October 10, 2026",
+      "5 stories · 1 min read",
+      ">Đọc bằng Tiếng Việt</a>",
+      "Watch the daily brief",
+      "Lead story",
+      "Company 1 ships model 1</span>",
+      "Also today",
+      "Company 5 ships model 5",
+      "See all 8 stories on aidr.today",
+      "t.me/aidr_today",
+      "View in browser",
+    ].map((needle) => html.indexOf(needle));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(html).toContain(`<title>${subject}</title>`);
+    expect(subject).toContain("Company 1 ships model 1");
+  });
+
+  it("links the video thumbnail to youtu.be with UTM, in its own language only", () => {
+    const { html, text } = digest({ video: VIDEO });
+    expect(html).toContain("https://i.ytimg.com/vi/R3j93-pO9ac/hqdefault.jpg");
+    expect(html).toContain(
+      "https://youtu.be/R3j93-pO9ac?utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest&amp;utm_content=video"
+    );
+    expect(html).toContain("&#9654;");
+    expect(text).toContain(
+      "Watch the daily brief: https://youtu.be/R3j93-pO9ac?"
+    );
+  });
+
+  it("omits the video block when the day has no video", () => {
+    const { html, text } = digest({ video: null });
+    expect(html).not.toContain("i.ytimg.com");
+    expect(html).not.toContain("Watch the daily brief");
+    expect(text).not.toContain("youtu.be");
+    expect(html).not.toContain("plus the video brief");
+  });
+
+  it("VI: localized header, labels, channel and no English copy", () => {
+    const { html, subject } = digest({
+      lang: "vi",
+      video: VIDEO,
+      stories: [1, 2, 3].map((n) =>
+        story(n, { headline: `Tin số ${n} về AI` })
+      ),
+    });
+    expect(html).toContain('lang="vi"');
+    expect(html).toContain("Thứ Bảy, 10 tháng 10, 2026");
+    expect(html).toContain("3 tin · 1 phút đọc");
+    expect(html).toContain(">Read in English</a>");
+    expect(html).toContain("Xem bản tin video");
+    expect(html).toContain("Tin chính");
+    expect(html).toContain("Tin khác hôm nay");
+    expect(html).toContain("Xem tất cả tin trên aidr.today");
+    expect(html).toContain("t.me/aihomnay");
+    expect(html).not.toContain("t.me/aidr_today");
+    expect(html).toContain(">Xem trên web</a>");
+    expect(html).not.toContain("Lead story");
+    expect(html).not.toContain("See all");
+    expect(subject).toBe("Tin số 1 về AI, Tin số 2 về AI + 1 tin");
+  });
+
+  it("shows category · source, the headline and one sentence per row, with no Read more links", () => {
+    const { html } = digest();
+    expect(html).toContain(">news2.example.com</span>");
+    expect(html).toContain(">Agents</span>");
+    expect(html).toContain(">Company 2 ships model 2</font>");
+    expect(html).toContain(
+      "Company 2 shipped model 2 to every user today.</div>"
+    );
+    expect(html).not.toContain(
+      "The launch shows how fast the field moves.</div>\n            </td>"
+    );
+    expect(html).not.toContain("Read more");
+    expect(html.match(/class="mail-cta"/g)?.length).toBe(1);
+  });
+
+  it("uses the bullet's first sentence as the headline when no title is stored", () => {
+    const { html } = digest({
+      stories: [story(1), story(2, { headline: undefined })],
+    });
+    expect(html).toContain(
+      ">Company 2 shipped model 2 to every user today.</font>"
+    );
+    expect(html).toContain("The launch shows how fast the field moves.</div>");
+  });
+
+  it("tags each link with its position", () => {
+    const { html } = digest({ video: VIDEO });
+    for (const content of [
+      "lead",
+      "s2",
+      "s5",
+      "cta",
+      "video",
+      "channel-telegram",
+      "channel-youtube",
+      "channel-chrome",
+      "view-in-browser",
+      "lang-switch",
+    ]) {
+      expect(html).toContain(`utm_content=${content}`);
+    }
+  });
+
+  it("gives every story image its headline as alt text", () => {
+    const { html } = digest();
+    expect(html).toContain('alt="Company 1 ships model 1"');
+    expect(html).toContain('alt="Company 3 ships model 3"');
+    expect(html).not.toContain('alt=""');
+  });
+
+  it("has dark mode, a mobile rule and no 8-digit hex colours", () => {
+    const { html } = digest({ video: VIDEO });
+    expect(html).toContain('<meta name="color-scheme" content="light dark">');
+    expect(html).toContain(
+      '<meta name="supported-color-schemes" content="light dark">'
+    );
+    expect(html).toContain("@media (prefers-color-scheme: dark)");
+    expect(html).toContain("@media only screen and (max-width: 480px)");
+    expect(html).not.toMatch(/#[0-9a-fA-F]{8}\b/);
+    expect(html).toContain("background-color:#f5c518");
+  });
+
+  it("keeps the font stacks free of double quotes and loads the webfonts", () => {
+    const { html } = digest();
+    expect(html).toContain(
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond'
+    );
+    expect(html).not.toMatch(/font-family:[^;>]*"[^>]*['\w]/);
+    expect(html).not.toContain("&quot;");
+    expect(html).toContain("'Source Sans 3', -apple-system");
+    expect(html).toContain("font-family:'EB Garamond'");
+  });
+
+  it("writes a padded preheader instead of story 1's text", () => {
+    const { html } = digest({ video: VIDEO });
+    expect(html).toContain(
+      "Saturday's 5 AI stories in 1 minute, plus the video brief. Headline, source and one line each.&zwnj;&nbsp;"
+    );
+  });
+
+  it("prints the postal address only when set", () => {
+    expect(digest().html).not.toContain("AI;DR · ");
+    expect(digest({ postalAddress: "PO Box 1" }).html).toContain(
+      "AI;DR · PO Box 1"
+    );
+  });
+
+  it("lists headline and URL per story in the plain-text part", () => {
+    const { text } = digest();
+    expect(
+      text.startsWith(
+        "AI;DR — Saturday, October 10, 2026\n5 stories · 1 min read"
+      )
+    ).toBe(true);
+    expect(text).toContain(
+      "2. Company 2 ships model 2\n   Company 2 shipped model 2 to every user today.\n   https://aidr.today/story-2?"
+    );
+    expect(text).toContain("utm_content=s2");
+    expect(text).toContain(
+      "View in browser: https://aidr.today/date/2026-10-10?"
+    );
+  });
+
+  it("stays under Gmail's 102 KB clip with ten stories in the largest layout", () => {
+    const { html } = digest({
+      format: "large",
+      video: VIDEO,
+      postalAddress: "PO Box 1",
+      stories: Array.from({ length: 10 }, (_, i) => story(i + 1)),
+    });
+    expect(new TextEncoder().encode(html).length).toBeLessThan(100 * 1024);
+  });
+
+  describe("formats", () => {
+    const imageCount = (html: string) =>
+      html.match(/cdn\.example\.com\/photo-/g)?.length ?? 0;
+
+    it("design: lead image plus an 84px thumbnail per row", () => {
+      const { html } = digest({ format: "design" });
+      expect(html.match(/class="mail-lead-image"/g)?.length).toBe(1);
+      expect(html.match(/class="m-thumb"/g)?.length).toBe(4);
+      expect(imageCount(html)).toBe(5);
     });
 
-    it("design shows one hero and a small thumbnail per story image", () => {
-      const html = render("design");
-      expect(html.match(/class="mail-hero"/g)?.length).toBe(1);
-      expect(html.match(/<img [^>]*width="64"/g)?.length).toBe(2);
-      expect(html).not.toContain('class="mail-large"');
-      expect(images(html)).toBe(4);
-      expect(render(undefined)).toBe(html);
-      // The thumbnail is the second cell in the row: the story text comes
-      // first, so the image sits on the right of the item.
-      expect(html.indexOf("Real photo")).toBeLessThan(
-        html.indexOf("cdn.example/photo.jpg")
-      );
+    it("large: lead image plus a full-width image per row", () => {
+      const { html } = digest({ format: "large" });
+      expect(html.match(/class="mail-lead-image"/g)?.length).toBe(1);
+      expect(html.match(/class="mail-large"/g)?.length).toBe(4);
+      expect(html).not.toContain("m-thumb");
     });
 
-    it("large shows the day card and one full-width image per story", () => {
-      const html = render("large");
-      // The day card is the whole day, so it does not repeat story 1's image.
-      expect(html.match(/class="mail-hero"/g)?.length).toBe(1);
-      expect(html).not.toContain('width="64"');
-      expect(html.match(/class="mail-large"/g)?.length).toBe(1);
-      expect(html).toContain(
-        'class="mail-large" src="https://cdn.example/photo.jpg" width="476"'
-      );
-      // Generated text-on-card images are unreadable noise at full width.
-      expect(html).not.toContain("/og/abc.png");
+    it("no-images: same layout without any story or video image", () => {
+      const { html } = digest({ format: "no-images", video: VIDEO });
+      expect(imageCount(html)).toBe(0);
+      expect(html).not.toContain("i.ytimg.com");
+      expect(html).toContain("Watch the daily brief");
+      expect(html).toContain("Lead story");
+      expect(html).toContain("See all stories on aidr.today");
     });
 
-    it("text has no story image and no story markup", () => {
-      const html = render("text");
-      expect(images(html)).toBe(1);
+    it("text: the plain-text body, no story markup", () => {
+      const { html, text } = digest({ format: "text" });
+      expect(imageCount(html)).toBe(0);
       expect(html).toContain("white-space:pre-wrap");
-      expect(html).not.toContain('class="mail-story"');
+      expect(html).not.toContain("Lead story");
+      expect(text).toContain("1. Company 1 ships model 1");
     });
+
+    it("lead never uses a generated OG card as its large image", () => {
+      const { html } = digest({
+        stories: [
+          story(1, { imageUrl: "https://aidr.today/api/og/abc.png" }),
+          story(2),
+        ],
+      });
+      expect(html).not.toContain("mail-lead-image");
+    });
+
+    it("drops non-http(s) image urls", () => {
+      const { html } = digest({
+        stories: [story(1), story(2, { imageUrl: "javascript:alert(1)" })],
+      });
+      expect(html).not.toContain("javascript:");
+    });
+  });
+
+  it("escapes story text", () => {
+    const { html } = digest({
+      stories: [
+        story(1, { headline: "<b>x</b>", text: "<script>y</script>. Two." }),
+      ],
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain("<b>x</b>");
+    expect(html).toContain("&lt;b&gt;x&lt;/b&gt;");
   });
 
   it("normalizes stored layouts and defaults to design", () => {
-    for (const format of MAIL_FORMATS) {
-      expect(normalizeMailFormat(format)).toBe(format);
-    }
-    // `design` is the column default, so old rows keep their thumbnails.
-    expect(normalizeMailFormat(null)).toBe("design");
-    expect(normalizeMailFormat("huge")).toBe("design");
-    expect(MAIL_FORMATS.filter(mailFormatHasImages)).toEqual([
-      "design",
-      "large",
-    ]);
-  });
-
-  it("uses the site font families with a webfont link and a valid stack", () => {
-    const { html } = renderDigestEmail({
-      subject: "Digest",
-      date: "2026-09-10",
-      stories: [{ text: "Story" }],
-      lang: "en",
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
-    });
-    expect(html).toContain(
-      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&amp;family=Source+Sans+3:wght@400;500;600&amp;display=swap">'
-    );
-    expect(html).toContain("font-family:'Source Sans 3', -apple-system");
-    expect(html).toContain("font-family:'EB Garamond', Garamond");
-    // Unquoted `Source Sans 3` is invalid CSS and drops the declaration;
-    // a double quote would end the style attribute.
-    expect(html).not.toMatch(/font-family:[^;"]*[^'"]Source Sans 3/);
-    expect(html).not.toMatch(/font-family:[^;]*"[^>]*;/);
-  });
-
-  it("drops non-http(s) story imageUrls", () => {
-    const { html } = renderDigestEmail({
-      subject: "Digest",
-      date: "2026-09-10",
-      stories: [{ text: "Bad thumb", imageUrl: "javascript:alert(1)" }],
-      lang: "en",
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
-    });
-    expect(html).not.toContain("javascript:");
-    // Logo and day card only.
-    expect(html.match(/<img /g)?.length).toBe(2);
-  });
-
-  it("colors keywords with the website topic palette", () => {
-    const { html } = renderDigestEmail({
-      subject: "Digest",
-      date: "2026-09-10",
-      stories: [
-        { text: "OpenAI releases a new model", url: "https://aidr.today/" },
-      ],
-      lang: "en",
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
-    });
-    expect(html).toContain(
-      `<span style="color:${topicColor("OpenAI").light};font-weight:600">OpenAI</span>`
-    );
-  });
-
-  it("escapes markup before highlighting keywords", () => {
-    const { html } = renderDigestEmail({
-      subject: "Digest",
-      date: "2026-09-10",
-      stories: [
-        {
-          text: "OpenAI <script>alert(1)</script>",
-          url: "https://aidr.today/",
-        },
-      ],
-      lang: "en",
-      unsubscribeUrl: "https://aidr.today/subscribe?unsubscribe=tok",
-      settingsUrl: "https://aidr.today/subscribe?settings=tok",
-    });
-    expect(html).not.toContain("<script>");
-    expect(html).toContain("&lt;script&gt;");
-    expect(html).toContain(
-      `<span style="color:${topicColor("OpenAI").light};font-weight:600">OpenAI</span>`
-    );
+    expect(normalizeMailFormat("large")).toBe("large");
+    expect(normalizeMailFormat("bogus")).toBe("design");
+    expect(MAIL_FORMATS).toContain("no-images");
+    expect(mailFormatHasImages("design")).toBe(true);
+    expect(mailFormatHasImages("text")).toBe(false);
   });
 });
 
@@ -508,7 +563,7 @@ describe("reply-to", () => {
     const env = { EMAIL: { send } } as unknown as import("../types.js").Env;
     const ok = await sendSubscriberEmail(env, {
       to: "reader@example.com",
-      from: { email: "digest@aidr.today", name: "aidr" },
+      from: { email: "digest@aidr.today", name: "AI;DR" },
       subject: "AI;DR",
       html: "<p>hi</p>",
       text: "hi",

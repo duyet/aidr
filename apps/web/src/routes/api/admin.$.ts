@@ -53,6 +53,7 @@ import {
   wrapCampaign,
 } from "../../../worker/mail/campaigns.js";
 import { listMailContent } from "../../../worker/mail/content.js";
+import { renderDigestPreview } from "../../../worker/mail/preview.js";
 import { previewDigest } from "../../../worker/notify/index.js";
 import { ivFieldGateForOperator } from "../../../worker/notify/iv-gate.js";
 import { previewDigestEmail } from "../../../worker/subscribe/send.js";
@@ -641,6 +642,16 @@ async function handle(
       );
     }
     return Response.json(result);
+  }
+
+  // The digest mail as HTML for one date/lang/format; nothing is sent.
+  if (
+    method === "GET" &&
+    segments.length === 2 &&
+    segments[0] === "mail" &&
+    segments[1] === "preview"
+  ) {
+    return renderDigestPreview(env, new URL(request.url).searchParams);
   }
 
   if (

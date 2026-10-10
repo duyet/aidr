@@ -77,6 +77,8 @@ const WORKER_OPTIONAL = [
   "FACEBOOK_PAGE_ACCESS_TOKEN",
   "FACEBOOK_GRAPH_VERSION",
   "SITE_URL",
+  // Postal address in the mail footer (CAN-SPAM). Unset: no address line.
+  "MAIL_POSTAL_ADDRESS",
 ] as const;
 
 /** Secrets GitHub Actions workflows read (`secrets.*`). */
