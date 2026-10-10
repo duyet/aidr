@@ -1,0 +1,20 @@
+# Daily at 09:00 Asia/Ho_Chi_Minh: one hour after the 08:00 Telegram edition, when the
+# day's tldr_snapshots row has been sent and is the edition the video should match.
+agent: ./agent.md
+environment_id: ./environment.yaml
+vault_ids: []          # second apply pass: the vlt_... ID from claude-lock.json (README step 4)
+schedule:
+  type: cron
+  expression: "0 9 * * *"
+  timezone: Asia/Ho_Chi_Minh
+budget:
+  type: limit
+  max_list_cost: {amount: "3000", currency: USD}
+initial_events:
+  - type: user.message
+    content:
+      - type: text
+        text: |
+          Make and publish today's AI;DR Daily Brief (date: today in Asia/Ho_Chi_Minh).
+          YouTube privacy: private.
+          Telegram: staging chat only.

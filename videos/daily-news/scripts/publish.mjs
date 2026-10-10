@@ -4,7 +4,9 @@
 // finished (YouTube cannot replace a file, Telegram cannot unpost), so rerunning is always safe.
 // The runner never writes scripts: script.json (and script.vi.json) must be written first.
 // Usage: node scripts/publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram]
-//        [--chat <telegram chat id>] [--prod] [--dry-run]
+//        [--chat <telegram chat id>] [--prod] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
+// --uploader api (YouTube Data API, headless) is the default when YOUTUBE_REFRESH_TOKEN is set, else chrome (owner's Chrome).
+// --privacy applies to the api uploader only (default public).
 // Telegram goes to $TELEGRAM_STAGING_CHAT_ID (from .env.local) unless --chat is given; --prod posts to the real channels.
 import { execFileSync, spawnSync } from "node:child_process";
 import {
@@ -24,15 +26,19 @@ const argv = process.argv.slice(2);
 const date = argv[0];
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? ""))
   throw new Error(
-    "usage: publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--chat <id>] [--prod] [--dry-run]"
+    "usage: publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--chat <id>] [--prod] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
   );
 const flag = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);
 const list = (n, all) => (flag(n) ? flag(n).split(",").filter(Boolean) : all);
 const langs = list("--lang", ["en", "vi"]);
 const steps = list("--steps", STEPS);
+const uploader = flag("--uploader") ?? (process.env.YOUTUBE_REFRESH_TOKEN ? "api" : "chrome");
+const privacy = flag("--privacy") ?? "public";
 const dry = argv.includes("--dry-run");
 const prod = argv.includes("--prod");
 for (const l of langs) if (!["en", "vi"].includes(l)) throw new Error(`--lang ${l}: en | vi`);
+if (!["chrome", "api"].includes(uploader)) throw new Error(`--uploader ${uploader}: chrome | api`);
+if (!["private", "unlisted", "public"].includes(privacy)) throw new Error(`--privacy ${privacy}: private | unlisted | public`);
 for (const s of steps) if (!STEPS.includes(s)) throw new Error(`--steps ${s}: ${STEPS.join(" | ")}`);
 
 const dir = join(ROOT, "editions", date);
@@ -187,17 +193,19 @@ async function seedFromSite() {
 if (steps.includes("upload")) {
   await seedFromSite();
   const todo = mine.filter((r) => !r.youtube?.id);
-  summary("upload to YouTube (public, owner's Chrome)", todo.map((r) => r.cut));
+  summary(uploader === "api" ? `upload to YouTube (${privacy}, Data API)` : "upload to YouTube (public, owner's Chrome)", todo.map((r) => r.cut));
   for (const r of todo) {
     if (!dry && !existsSync(r.path)) throw new Error(`${r.cut}: ${r.path} is not rendered; run --steps render`);
     const kind = FMT_KIND[r.fmt];
     const args = [r.path, "--meta", join(dir, "posts.md"), "--lang", r.lang, "--kind", kind];
     if (r.fmt === "16x9") args.push("--cover", r.cover);
-    const out = run(join(REPO, ".agents/skills/aidr-youtube-upload/bin/yt-upload"), args);
+    const bin = join(REPO, ".agents/skills/aidr-youtube-upload/bin", uploader === "api" ? "yt-upload-api.mjs" : "yt-upload");
+    if (uploader === "api") args.push("--privacy", privacy);
+    const out = run(bin, args);
     if (dry) continue;
     const id = out.match(/^ID=(\S+)/m)?.[1];
     const url = out.match(/^URL=(\S+)/m)?.[1];
-    if (!id) throw new Error(`${r.cut}: yt-upload printed no ID=; stopping`);
+    if (!id) throw new Error(`${r.cut}: uploader printed no ID=; stopping`);
     r.youtube = { id, url, oembed: out.match(/^OEMBED=(.*)$/m)?.[1] };
     r.state = "uploaded";
     save();

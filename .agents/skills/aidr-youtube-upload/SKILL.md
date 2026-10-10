@@ -119,6 +119,47 @@ playlist, tags. A failure prints `FAIL: <step>` and saves a screenshot to
   row (`youtubeId`/`youtubeUrl`/`uploaded`), release file `youtubeId` /
   `youtubeIdVi`, Web Store promo video if asked.
 
+## Headless (API) upload: `bin/yt-upload-api.mjs`
+
+For sandboxes with no Chrome (Claude Managed Agents). Node 22, no deps. Same
+args and output as `bin/yt-upload`, plus `--privacy private|unlisted|public`
+(default public):
+
+```bash
+bin/yt-upload-api.mjs <mp4> --meta <youtube.md|posts.md> --lang en|vi --kind long|short [--cover <png>] [--privacy ...]
+```
+
+Env: `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN`.
+It reads metadata with `bin/yt-meta.py`, uploads (category 28, language,
+not made for kids, `containsSyntheticMedia: false` like the Studio "No"),
+sets the thumbnail for long cuts (a cover of 2 MB or more is converted to a
+1920-wide JPEG with `ffmpeg` in a temp dir), adds the video to the **AI;DR**
+playlist, and prints `ID=`, `URL=`, `OEMBED=`. Errors print `FAIL: <step>`
+and exit 1; after the upload step the message names the uploaded video id so
+nothing is uploaded twice. `publish.mjs --uploader api|chrome` picks it
+(default `api` when `YOUTUBE_REFRESH_TOKEN` is set).
+
+One-time OAuth setup (owner):
+
+1. Google Cloud project, enable **YouTube Data API v3**, OAuth consent
+   screen, create an OAuth client of type **Desktop app**.
+2. `YOUTUBE_CLIENT_ID=... YOUTUBE_CLIENT_SECRET=... node bin/yt-oauth.mjs`,
+   open the printed URL signed in as the channel owner, approve
+   (`youtube.upload` + `youtube`). It prints `YOUTUBE_REFRESH_TOKEN=...`
+   (never written to disk). Store all three in `.env.local` / the sandbox
+   secrets.
+3. Publish the consent screen (**In production**). In **Testing** status the
+   refresh token expires after 7 days.
+
+Caveats: Google's docs once said videos from unverified API projects (created
+after 28 Jul 2020) are locked to private until a compliance audit. The current
+`videos.insert` page says they are not restricted. Do the first run with
+`--privacy private`, check the video in Studio, then rely on public. If a
+video comes back locked, request the audit via the YouTube API Services
+audit form. The default quota is 10,000 units/day plus a separate bucket of
+100 `videos.insert` calls/day; four uploads/day with thumbnail and playlist
+cost about 400 units.
+
 ## Troubleshooting (hard-won Studio notes)
 
 Drive Studio through `bin/yt-chrome "<agent-browser cmd>" …`. Prefer

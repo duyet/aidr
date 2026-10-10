@@ -16,7 +16,6 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { castProblems, hostOrder, loadCast } from "./cast.mjs";
@@ -24,10 +23,13 @@ import { cutOf } from "./lang.mjs";
 
 const run = promisify(execFile);
 const ROOT = resolve(import.meta.dirname, "..");
-const TTS = join(
-  homedir(),
-  ".claude/skills/media-use/audio/scripts/heygen-tts.mjs"
+const TTS = resolve(
+  ROOT,
+  "../../.agents/skills/media-use/audio/scripts/heygen-tts.mjs"
 );
+// HeyGen needs an interactive sign-in, so unattended runs (CI, a Managed Agents sandbox) set
+// AIDR_NO_HEYGEN=1: a part ElevenLabs cannot voice then fails the run instead of falling back.
+const NO_HEYGEN = process.env.AIDR_NO_HEYGEN === "1" || process.env.CI === "true";
 
 const date = process.argv[2];
 if (!date) throw new Error("usage: voice.mjs <date> [--lang vi]");
@@ -203,6 +205,10 @@ async function voicePart({ anchor, text }) {
         );
         console.log(`+ ${anchor} (elevenlabs): ${text.slice(0, 60)}`);
       } catch (e) {
+        if (NO_HEYGEN)
+          throw new Error(
+            `ElevenLabs failed for ${anchor} and the HeyGen fallback is off (AIDR_NO_HEYGEN/CI): ${e.message.slice(0, 200)}`
+          );
         console.warn(
           `! ElevenLabs failed for ${anchor}, falling back to HeyGen: ${e.message.slice(0, 200)}`
         );
@@ -211,6 +217,10 @@ async function voicePart({ anchor, text }) {
     }
   }
   if (!wav) {
+    if (NO_HEYGEN)
+      throw new Error(
+        `${anchor}: no ElevenLabs voice for this part and the HeyGen fallback is off (AIDR_NO_HEYGEN/CI)`
+      );
     wav = file("heygen", hg.id);
     if (!existsSync(wav)) {
       await heygenTts(hg, text, wav, wav.replace(/\.wav$/, ".words.json"));

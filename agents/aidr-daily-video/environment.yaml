@@ -1,0 +1,27 @@
+# Cloud sandbox for the daily video run.
+# Networking is unrestricted on purpose: scripts/fetch.mjs downloads each story's images and
+# video from whatever host the source post links (news sites, CDNs, X, GitHub, arXiv), so no
+# fixed allowed_hosts list can cover a day's media. Secrets stay scoped per host in the vault
+# (each credential lists its own allowed_hosts), so open egress does not widen where they go.
+name: aidr-daily-video
+description: Node 22, pnpm, ffmpeg, Chromium deps and fonts for HyperFrames 4K renders.
+config:
+  type: cloud
+  networking:
+    type: unrestricted
+  packages:
+    apt:
+      - ffmpeg            # voice.mjs, build.mjs mix, publish.mjs ffprobe
+      - python3           # aidr-youtube-upload/bin/yt-meta.py
+      - git
+      - jq
+      - fonts-noto-core   # Vietnamese diacritics fallback; template fonts load from the repo
+      - fonts-noto-color-emoji
+      - libnss3           # headless Chrome runtime libs for `hyperframes browser ensure`
+      - libatk-bridge2.0-0
+      - libgbm1
+      - libasound2        # libasound2t64 on Ubuntu 24.04+; the sandbox base image is not documented
+      - libxkbcommon0
+      - libgtk-3-0
+    npm:
+      - pnpm@12.10.1      # matches packageManager in the root package.json

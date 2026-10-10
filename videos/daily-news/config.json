@@ -45,7 +45,7 @@
     "duckedVolume": 0.09
   },
   "sfx": {
-    "dir": "~/.claude/skills/media-use/audio/assets/sfx",
+    "dir": "../../.agents/skills/media-use/audio/assets/sfx",
     "volume": 0.35,
     "cues": {
       "open": "impact-bass-2",
