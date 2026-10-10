@@ -384,15 +384,39 @@ function nameCandidates(title: string, summary: string): string[] {
   });
 }
 
+/** One leading page-chrome segment: a back/breadcrumb link, a story or
+ * reading-time counter, or a skip link. Aggregator pages (huggingnews,
+ * marketbrief) put these before the story body, and og/<p> extraction picks
+ * them up. Matched only at the start, so article text is never touched. */
+const LEADING_CHROME_RE = new RegExp(
+  `^\\s*(?:${[
+    // "← Back to live feed", "Back to all stories", "‹ Back to news"
+    "[←‹«<]?\\s*Back to (?:the )?(?:[\\w-]+ ){0,2}(?:feed|news|stories|articles|home|homepage|list|index|top)\\b",
+    // "1 stories across 1 day" (a bare "3 stories" can be article text)
+    "\\d+\\s+stor(?:y|ies)\\s+across\\s+\\d+\\s+days?",
+    // "5 min read", "3 minute read"
+    "\\d+\\s*min(?:ute)?s?\\s+read",
+    "Skip to (?:main )?content",
+  ].join("|")})\\s*[·•|:—–-]?\\s*`,
+  "i"
+);
+
+/** Strips every leading chrome segment, however many are chained. */
+function stripLeadingChrome(text: string): string {
+  let out = text;
+  for (let next = out.replace(LEADING_CHROME_RE, ""); next !== out; ) {
+    out = next;
+    next = out.replace(LEADING_CHROME_RE, "");
+  }
+  return out;
+}
+
 /** Feed chrome that ingest leaves at the start of some summaries: arXiv
- * listing headers and aggregator "back to feed" lines. It is not article
- * text, so no guard should demand it survive. */
+ * listing headers and aggregator navigation ("← Back to live feed · 1
+ * stories across 1 day"). It is not article text: it must not reach the
+ * stored English summary, the translator, or any guard. */
 export function stripSourceBoilerplate(text: string): string {
-  return text
-    .replace(
-      /^\s*←?\s*Back to live feed\s*·\s*\d+\s+stor(?:y|ies) across \d+ days?\s*/i,
-      ""
-    )
+  return stripLeadingChrome(text)
     .replace(/^\s*arXiv:\S+\s+Announce Type:\s*\S+\s+Abstract:\s*/i, "")
     .replace(/^\s*See what[’']s happening and join the conversation\s*$/i, "");
 }

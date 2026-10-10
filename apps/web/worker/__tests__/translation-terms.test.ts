@@ -120,6 +120,32 @@ describe("protected English terms", () => {
     ).toBe("LLM agents act.");
   });
 
+  // 403 huggingnews rows stored "← Back to live feed · 1 stories across 1
+  // day …" as the English summary, shown verbatim on the story page. The
+  // strip must catch other aggregators' nav too, not one exact string.
+  it("strips chained page chrome in any order, not one fixed string", () => {
+    for (const chrome of [
+      "← Back to live feed · 1 stories across 1 day ",
+      "Back to all stories | 5 min read · ",
+      "‹ Back to news — 3 stories across 2 days ",
+      "Skip to content ← Back to the feed ",
+    ]) {
+      expect(
+        stripSourceBoilerplate(`${chrome}Satya Nadella unveiled it.`)
+      ).toBe("Satya Nadella unveiled it.");
+    }
+  });
+
+  it("keeps article text that merely looks like chrome", () => {
+    for (const text of [
+      "3 stories dominated the week: OpenAI shipped.",
+      "Microsoft said users can go back to the old feed.",
+      "Back to basics: Anthropic trims Claude's prompt.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
   it("demands a kept term verbatim and leaves open-source to Vietnamese", () => {
     const missing = missingProtectedTerms(
       {
