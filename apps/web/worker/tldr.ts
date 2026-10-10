@@ -8,6 +8,7 @@ import {
   itemsHaveTitleVi,
   needsViTitleFallback,
 } from "./tldr-lang.js";
+import { stripSourceBoilerplate } from "./translation-terms.js";
 import type { Env } from "./types.js";
 
 /** Re-run the daily snapshot this often so the homepage TL;DR tracks
@@ -22,7 +23,7 @@ export const TLDR_MAX_ITEMS = 16;
  * spike days. */
 const TLDR_CANDIDATE_LIMIT = 300;
 
-interface ItemRow {
+export interface ItemRow {
   id: string;
   source_id: string;
   title: string;
@@ -266,16 +267,24 @@ function composeReason(composed: Extract<ComposedTldr, { ok: true }>): string {
   );
 }
 
-/** LLM digest plus the thin / English-only-VI fallbacks: exactly the
- * bullets `ensureDailyTldr` would persist, without touching D1. */
-async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
-  // Stored rows may still carry a wire "UPDATE:" marker; bullets quote titles.
-  const results = rows.map((row) => ({
+/** Stored rows may still carry a wire "UPDATE:" marker (bullets quote
+ * titles) or, if stored before ingest stripped it, feed chrome at the start
+ * of the summary: the model copied "← Back to live feed · …" into a bullet. */
+export function cleanTldrRows<T extends ItemRow>(rows: T[]): T[] {
+  return rows.map((row) => ({
     ...row,
     title: stripTitleMarker(row.title),
     title_vi:
       row.title_vi == null ? row.title_vi : stripTitleMarker(row.title_vi),
+    summary:
+      row.summary == null ? row.summary : stripSourceBoilerplate(row.summary),
   }));
+}
+
+/** LLM digest plus the thin / English-only-VI fallbacks: exactly the
+ * bullets `ensureDailyTldr` would persist, without touching D1. */
+async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
+  const results = cleanTldrRows(rows);
   const tldr = await generateTldr(
     env,
     results.map((row) => ({

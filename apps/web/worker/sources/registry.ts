@@ -2,6 +2,7 @@ import {
   cleanTitle,
   decodeHtmlEntitiesOnce,
 } from "../../src/lib/plain-text.js";
+import { stripSourceBoilerplate } from "../translation-terms.js";
 import { anthropicAdapter } from "./anthropic.js";
 import { hnAdapter } from "./hn.js";
 import { huggingNewsAdapter } from "./huggingnews.js";
@@ -13,14 +14,19 @@ import { xaiAdapter } from "./xai.js";
 
 /** Feeds escape headlines once more than XML needs (`&#039;`, `&amp;`) and
  *  wire services prefix them with "UPDATE:". Every adapter's output goes
- *  through here so stored titles and summaries are plain text. The URL, and
+ *  through here so stored titles and summaries are plain text, without
+ *  feed chrome such as "← Back to live feed · 1 stories across 1 day". The URL, and
  *  with it the item id, is untouched. */
 export function normalizeFetchedItem(item: FetchedItem): FetchedItem {
   return {
     ...item,
     title: cleanTitle(item.title) || item.title,
     ...(item.summary !== undefined
-      ? { summary: decodeHtmlEntitiesOnce(item.summary) }
+      ? {
+          summary: stripSourceBoilerplate(
+            decodeHtmlEntitiesOnce(item.summary)
+          ).trim(),
+        }
       : {}),
   };
 }
