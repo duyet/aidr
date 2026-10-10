@@ -70,7 +70,13 @@ const TEASER_PATTERNS: readonly RegExp[] = [
   /\bsign up\b/i,
   /https?:\/\//i,
   /\bwww\./i,
-  /\b\d+\s+(?:comments?|points?|upvotes?|views?|likes?|shares?)\b/i,
+  // Forum counters ("123 points by x", "45 comments"). Bare "46 points" is a
+  // benchmark score and stays allowed.
+  /\b\d+\s+(?:comments?|upvotes?)\b/i,
+  /\b\d+\s+points?\s+by\b/i,
+  // The model describing its input instead of the news.
+  /\bno (?:usable|additional|further) (?:factual )?(?:content|facts|information)\b/i,
+  /\b(?:was|were) provided\b/i,
 ];
 
 const NUMBER_RE = /\d+(?:[.,]\d+)*/g;
@@ -124,6 +130,7 @@ Rules:
 - Every sentence ends with a full stop. Never end with an ellipsis.
 - Do not start with "This article" or "The post"; state the news.
 - If the text has no usable facts beyond the title, write one sentence from the title.
+- Never mention the input, the title, or missing content; only state the news.
 
 Items:
 ${JSON.stringify(batch.map(({ i, title, summary }) => ({ i, title, text: summary })))}
