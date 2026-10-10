@@ -1,0 +1,3 @@
+# The container only. Credentials are added with `ant beta:vaults:credentials create` (README).
+type: vault
+display_name: aidr-daily-video

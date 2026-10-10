@@ -38,7 +38,10 @@ if (todo.length) {
 
 // 2. Voice (cached per sentence), 3. build. HeyGen is the voice fallback, so check its sign-in.
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
+// Unattended runs (AIDR_NO_HEYGEN=1 or CI) have no HeyGen fallback, so skip its sign-in check.
+const noHeygen = process.env.AIDR_NO_HEYGEN === "1" || process.env.CI === "true";
 const auth = (() => {
+  if (noHeygen) return "valid";
   try {
     return hf(ROOT, "auth", "status");
   } catch (e) {

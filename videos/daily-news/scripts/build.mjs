@@ -16,7 +16,6 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { cutOf } from "./lang.mjs";
 
@@ -420,7 +419,7 @@ ${body}
 
 // ---------------------------------------------------------------- audio
 function buildMix(outFile) {
-  const sfxDir = config.sfx.dir.replace(/^~/, homedir());
+  const sfxDir = resolve(ROOT, config.sfx.dir);
   const sfxMeta = read(join(sfxDir, "manifest.json"));
   // Seconds from the start of each effect file to its loudest point, so the PEAK lands on the hit.
   const PEAK = {
