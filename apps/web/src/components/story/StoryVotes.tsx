@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, ThumbsDown, ThumbsUp } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { bearerHeaders, useClerkModule } from "../../lib/clerk-user";
 import { withLang } from "../../lib/locale-url";
 import type { Lang } from "../../lib/types";
@@ -87,9 +87,11 @@ function signInHref(lang: Lang): string {
 function voteHit(compact: boolean | undefined, pressed = false) {
   const box = compact
     ? "inline-flex h-5 w-3.5 items-center justify-center rounded-sm"
-    : "inline-flex size-8 items-center justify-center rounded-md hover:bg-muted";
+    : "inline-flex h-8 items-center justify-center rounded-full px-3 transition-colors hover:bg-muted disabled:opacity-60";
   const tone = pressed
-    ? "text-foreground"
+    ? compact
+      ? "text-foreground"
+      : "bg-primary/10 text-primary hover:bg-primary/15"
     : "text-muted-foreground hover:text-foreground";
   return `${box} ${tone}`;
 }
@@ -101,9 +103,12 @@ function VoteIcon({
   direction: "up" | "down";
   compact?: boolean;
 }) {
-  const className = compact ? "h-3 w-3" : "h-4 w-4";
+  if (!compact) {
+    const Thumb = direction === "up" ? ThumbsUp : ThumbsDown;
+    return <Thumb className="h-4 w-4" aria-hidden />;
+  }
   const Icon = direction === "up" ? ChevronUp : ChevronDown;
-  return <Icon className={className} aria-hidden />;
+  return <Icon className="h-3 w-3" aria-hidden />;
 }
 
 /** The feed row header is a button. A vote control inside it must not toggle the row. */
@@ -134,11 +139,40 @@ function VoteCount({
   compact?: boolean;
 }) {
   const label = lang === "vi" ? "Tổng phiếu" : "Reader votes";
-  const size = compact ? "min-w-4 text-[11px]" : "min-w-6 text-xs";
+  const size = compact
+    ? "min-w-4 text-[11px] text-muted-foreground"
+    : "min-w-6 text-sm font-medium text-foreground";
   return (
-    <span className={`${size} text-center tabular-nums text-muted-foreground`}>
+    <span className={`${size} text-center tabular-nums`}>
       <span className="sr-only">{label} </span>
       {voteNet}
+    </span>
+  );
+}
+
+/** Dialog: a labelled pill so the control reads as feedback, not stray arrows. */
+function VoteGroup({
+  lang,
+  compact,
+  children,
+}: {
+  lang: Lang;
+  compact?: boolean;
+  children: ReactNode;
+}) {
+  if (compact) {
+    return (
+      <span className="inline-flex items-center self-center">{children}</span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-3">
+      <span className="text-sm text-muted-foreground">
+        {lang === "vi" ? "Tin này hữu ích?" : "Was this useful?"}
+      </span>
+      <span className="inline-flex items-center rounded-full border border-border bg-background p-0.5">
+        {children}
+      </span>
     </span>
   );
 }
@@ -155,7 +189,7 @@ function SignInVotes({
   const href = signInHref(lang);
   const label = signInLabel(lang);
   return (
-    <span className="inline-flex items-center self-center">
+    <VoteGroup lang={lang} compact={compact}>
       <a
         href={href}
         className={voteHit(compact)}
@@ -187,7 +221,7 @@ function SignInVotes({
           {label}
         </a>
       )}
-    </span>
+    </VoteGroup>
   );
 }
 
@@ -262,7 +296,7 @@ function SignedInVotes({
   }
 
   return (
-    <span className="inline-flex items-center self-center">
+    <VoteGroup lang={lang} compact={compact}>
       <button
         type="button"
         className={voteHit(compact, mine === 1)}
@@ -292,7 +326,7 @@ function SignedInVotes({
       >
         <VoteIcon direction="down" compact={compact} />
       </button>
-    </span>
+    </VoteGroup>
   );
 }
 
