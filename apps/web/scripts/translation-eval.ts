@@ -4,9 +4,10 @@
  * (`scripts/fixtures/translation-eval.json`).
  *
  * Usage (from apps/web):
- *   pnpm exec tsx scripts/translation-eval.ts guard
+ *   pnpm exec tsx scripts/translation-eval.ts guard [--fixture <file.json>]
  *   pnpm exec tsx scripts/translation-eval.ts run --out <file.json>
  *        [--candidates <earlier-run.json>] [--generate] [--limit N]
+ *        [--model <id[,fallback...]>] [--fixture <file.json>]
  *   pnpm exec tsx scripts/translation-eval.ts compare <before.json> <after.json>
  *
  * `guard` makes no LLM calls: it runs the deterministic guards with an
@@ -20,13 +21,24 @@
  * of the final VI text, made by the reviewer chain from the VI text alone,
  * is the fidelity instrument; it is not part of the pipeline.
  *
+ * `--model` pins ANYROUTER_TRANSLATE_MODEL (generation and repair) for a
+ * model bake-off. `--fixture` swaps the item set, e.g.
+ * `scripts/fixtures/translation-eval-bullets.json` (30 real TL;DR bullets).
+ * Every run reports generator latency and AnyRouter-billed cost, the
+ * reviewer's naturalness, and the VI/EN summary length ratio.
+ *
  * Reads ANYROUTER_API_KEY from the repo-root `.env.local`; never prints it.
  * Provider failures are counted apart from quality failures.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { translateItems } from "../worker/llm";
+import {
+  type LlmCallLogEntry,
+  setLlmCallLogger,
+  translateItems,
+  withLlmCallContext,
+} from "../worker/llm";
 import {
   detectHardSemanticFailures,
   requestRepair,
@@ -73,6 +85,7 @@ interface ItemResult {
     fidelity: number;
     hardFailures: string[];
     passed: boolean;
+    naturalness: number;
   } | null;
   repaired: boolean;
   final: TranslationText | null;
@@ -87,12 +100,28 @@ interface ItemResult {
     contentRecall: number;
   } | null;
   calls: number;
+  /** Generator wall time and billed USD for the candidate (with --generate). */
+  genMs: number | null;
+  genCostUsd: number | null;
+  /** VI summary chars / EN summary chars of the candidate. */
+  lengthRatio: number | null;
 }
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 function readEnv(): Env {
-  return benchEnv({}, stubDb());
+  const model = arg("--model");
+  return benchEnv(model ? { ANYROUTER_TRANSLATE_MODEL: model } : {}, stubDb());
+}
+
+/** Billed USD per LLM call context (one context per generated item). */
+const costByContext = new Map<string, number>();
+function logCost(entry: LlmCallLogEntry): void {
+  if (!entry.runId || entry.costUsd == null) return;
+  costByContext.set(
+    entry.runId,
+    (costByContext.get(entry.runId) ?? 0) + entry.costUsd
+  );
 }
 
 function arg(name: string): string | undefined {
@@ -102,7 +131,10 @@ function arg(name: string): string | undefined {
 
 function loadFixture(): FixtureItem[] {
   const raw = JSON.parse(
-    readFileSync(path.join(here, "fixtures/translation-eval.json"), "utf-8")
+    readFileSync(
+      arg("--fixture") ?? path.join(here, "fixtures/translation-eval.json"),
+      "utf-8"
+    )
   ) as { items: FixtureItem[] };
   const limit = Number(arg("--limit") ?? raw.items.length);
   return raw.items.slice(0, limit);
@@ -228,12 +260,21 @@ async function evalItem(
     backTranslation: null,
     bt: null,
     calls: 0,
+    genMs: null,
+    genCostUsd: null,
+    lengthRatio: null,
   };
   if (!result.candidate) {
     result.calls++;
-    const [row] = await translateItems(env, [
-      { i: 0, title: item.title, summary: item.summary, sourceLang: "en" },
-    ]).catch(() => []);
+    const context = `gen:${item.id}`;
+    const started = Date.now();
+    const [row] = await withLlmCallContext(context, () =>
+      translateItems(env, [
+        { i: 0, title: item.title, summary: item.summary, sourceLang: "en" },
+      ])
+    ).catch(() => []);
+    result.genMs = Date.now() - started;
+    result.genCostUsd = costByContext.get(context) ?? null;
     if (!row?.summary) {
       result.providerFailure = "translate";
       return result;
@@ -241,6 +282,10 @@ async function evalItem(
     result.candidate = { title: row.title, summary: row.summary };
   }
   const candidate = result.candidate;
+  if (item.summary)
+    result.lengthRatio = Number(
+      (candidate.summary.length / item.summary.length).toFixed(3)
+    );
   result.termsInitial = termScore(item, candidate);
   const pair = pairFor(item, candidate);
   let review: Awaited<ReturnType<typeof requestReview>>;
@@ -263,6 +308,7 @@ async function evalItem(
     fidelity: review.review.fidelity,
     hardFailures: failures,
     passed,
+    naturalness: review.review.naturalness,
   };
   result.final = candidate;
   result.finalPassed = passed;
@@ -351,6 +397,32 @@ function summarize(rows: ItemResult[]) {
       : null,
     repaired: rows.filter((r) => r.repaired).length,
     meanReviewerFidelity: avg(reviewed.map((r) => r.initial?.fidelity ?? 0)),
+    meanReviewerNaturalness: avg(
+      reviewed.map((r) => r.initial?.naturalness ?? 0)
+    ),
+    meanLengthRatio: avg(
+      rows.flatMap((r) => (r.lengthRatio === null ? [] : [r.lengthRatio]))
+    ),
+    shortSummaries: rows.filter(
+      (r) => r.lengthRatio !== null && r.lengthRatio < 0.8
+    ).length,
+    generation: (() => {
+      const ms = rows
+        .flatMap((r) => (r.genMs === null ? [] : [r.genMs]))
+        .sort((a, b) => a - b);
+      const costs = rows.flatMap((r) =>
+        r.genCostUsd === null ? [] : [r.genCostUsd]
+      );
+      return {
+        p50Ms: ms.length ? ms[Math.floor(ms.length / 2)] : null,
+        p95Ms: ms.length
+          ? ms[Math.min(ms.length - 1, Math.floor(ms.length * 0.95))]
+          : null,
+        billedUsd: costs.length
+          ? Number(costs.reduce((a, b) => a + b, 0).toFixed(5))
+          : null,
+      };
+    })(),
     hardFailures: hard,
     termPreservationInitial: terms("termsInitial"),
     termPreservationFinal: terms("termsFinal"),
@@ -388,6 +460,7 @@ async function runMode(): Promise<void> {
       )
     : null;
   const generate = process.argv.includes("--generate");
+  setLlmCallLogger(logCost);
   const rows = await mapLimit(items, 3, (item) =>
     evalItem(
       env,
@@ -399,6 +472,7 @@ async function runMode(): Promise<void> {
           : { title: item.vi_title, summary: item.vi_summary }
     )
   );
+  setLlmCallLogger(null);
   const summary = summarize(rows);
   writeFileSync(out, JSON.stringify({ summary, rows }, null, 2));
   console.log(JSON.stringify(summary, null, 2));
