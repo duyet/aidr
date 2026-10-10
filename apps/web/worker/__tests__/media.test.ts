@@ -4,6 +4,7 @@ import {
   canonicalizeMediaUrl,
   decodeUrlEntities,
   firstImageUrl,
+  isGeneratedOgCard,
   MAX_MEDIA_ASSETS,
   MAX_MEDIA_URL_LENGTH,
   manifestWithoutArticleUrl,
@@ -374,5 +375,56 @@ describe("stored media manifests", () => {
         { type: "video", url: "https://example.com/v.mp4" },
       ],
     });
+  });
+});
+
+describe("generated share cards", () => {
+  const marketbrief = "https://marketbrief.now/og/prime-agent-rust.png";
+  const huggingnews = "https://huggingnews.com/og/story.png";
+  const original = "https://primeintellect.ai/images/prime-agent-rust.jpg";
+
+  // A cluster merges every source page's og:image. Aggregators render a
+  // headline-on-card image per story, which says nothing the dialog does
+  // not already say; only the original article's picture belongs there.
+  it("drops aggregator cards when the cluster has a real image", () => {
+    const merged = mergeMediaManifests(
+      buildMediaManifest([{ type: "image", url: marketbrief }]),
+      buildMediaManifest([{ type: "image", url: huggingnews }]),
+      buildMediaManifest([{ type: "image", url: original }])
+    );
+    expect(merged.assets).toEqual([{ type: "image", url: original }]);
+  });
+
+  it("keeps cards as the fallback when nothing else exists", () => {
+    const merged = mergeMediaManifests(
+      buildMediaManifest([{ type: "image", url: marketbrief }]),
+      buildMediaManifest([{ type: "image", url: huggingnews }])
+    );
+    expect(merged.assets.map((asset) => asset.url)).toEqual([
+      marketbrief,
+      huggingnews,
+    ]);
+  });
+
+  it("treats a video as better media than a card", () => {
+    const manifest = buildMediaManifest([
+      { type: "image", url: "https://example.com/api/og?title=x" },
+      { type: "video", url: "https://example.com/demo.mp4" },
+    ]);
+    expect(manifest.assets).toEqual([
+      { type: "video", url: "https://example.com/demo.mp4" },
+    ]);
+  });
+
+  it("recognises generator paths, not ordinary article images", () => {
+    expect(isGeneratedOgCard(marketbrief)).toBe(true);
+    expect(isGeneratedOgCard("https://example.com/api/og?title=x")).toBe(true);
+    expect(isGeneratedOgCard("https://example.com/og-card-launch.png")).toBe(
+      true
+    );
+    expect(isGeneratedOgCard(original)).toBe(false);
+    expect(isGeneratedOgCard("https://example.com/blog/logo-design.png")).toBe(
+      false
+    );
   });
 });

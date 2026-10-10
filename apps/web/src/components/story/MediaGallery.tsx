@@ -4,6 +4,7 @@ import {
   MAX_MEDIA_ASSETS,
   type MediaManifest,
   mediaIdentityKey,
+  withoutGeneratedCards,
 } from "../../../worker/media.js";
 import { publisherHost } from "../../lib/publisher-host";
 import type { Lang } from "../../lib/types";
@@ -66,7 +67,14 @@ export function visibleMediaAssets(
 ): VisibleMediaAsset[] {
   const visible: VisibleMediaAsset[] = [];
   const seen = new Set<string>();
-  const assets = Array.isArray(manifest?.assets) ? manifest.assets : [];
+  // Stored manifests predate the build-time card filter, so apply it here too.
+  const assets = Array.isArray(manifest?.assets)
+    ? withoutGeneratedCards(
+        manifest.assets.filter(
+          (asset) => asset && typeof asset.url === "string"
+        )
+      )
+    : [];
   for (const asset of assets) {
     if (visible.length >= MAX_MEDIA_ASSETS) break;
     if (!asset || (asset.type !== "image" && asset.type !== "video")) continue;
