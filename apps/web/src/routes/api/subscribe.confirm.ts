@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   confirmSubscription,
   isSubscribeError,
+  settingsChangeFromParams,
 } from "../../../worker/subscribe/handlers.js";
 import type { Env } from "../../../worker/types.js";
 import { SITE_URL } from "../../lib/site.js";
@@ -39,8 +40,13 @@ export const Route = createFileRoute("/api/subscribe/confirm")({
             { status: 500 }
           );
         }
-        const token = new URL(request.url).searchParams.get("token");
-        const result = await confirmSubscription(env, token);
+        const params = new URL(request.url).searchParams;
+        const token = params.get("token");
+        const result = await confirmSubscription(
+          env,
+          token,
+          settingsChangeFromParams(params)
+        );
         if (isSubscribeError(result)) {
           return redirect(`${SITE_URL}/subscribe`);
         }
