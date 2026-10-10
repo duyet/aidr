@@ -21,7 +21,8 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `scripts/fetch.mjs` | yes | Edition + real post media from `https://aidr.today/api/public?lang=en` |
 | `scripts/new.mjs` | yes | Start the day: fetch, media contact sheet, draft `script.json` |
 | `scripts/daily.mjs` | yes | Voice → build → lint → snapshots (→ render) for a written script |
-| `scripts/voice.mjs` | yes | ElevenLabs TTS (the cast in `../brand/voices.json`) per sentence and anchor, HeyGen as fallback, joined per segment, with word timings |
+| `scripts/voice.mjs` | yes | ElevenLabs TTS (the cast in `../brand/voices.json`) per sentence and anchor, HeyGen as fallback, joined per segment, with word timings; checks the ElevenLabs quota first and switches the whole cut to no-voice when it is short |
+| `scripts/novoice.mjs` | yes | The no-voice helpers: reading-speed word timing, the quota check, `QuotaError` |
 | `scripts/lang.mjs` | yes | The cut's language (`--lang vi`) and its file names |
 | `scripts/cast.mjs` | yes | The voice cast: host keys, seeded host order, the "never twice in a row" check |
 | `scripts/build.mjs` | yes | Timeline, both compositions, audio mix, captions, covers, post copy |
@@ -48,7 +49,7 @@ node scripts/publish.mjs <date> --steps telegram        # staging chat first
 node scripts/publish.mjs <date> --steps telegram --prod # then the real channels
 ```
 
-`publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--chat <id>] [--prod] [--dry-run]` never writes scripts: it exits with a message when `script.json` / `script.vi.json` is missing or still a draft. State is `editions/<date>/STATUS.json`, one row per cut (`<date>-<lang>-<fmt>`: `path`, `cover`, `state`, `sizeMB`, `duration`, `youtube {id,url}`, `attached`, `telegram {chat_id,message_id}`); every step skips cuts it already finished (YouTube cannot replace a file, Telegram cannot unpost), so a rerun resumes. Uploads run one at a time and stop on the first failure; 16x9 is a `long` video with its cover as thumbnail, 9x16 a `short`. `attach` runs `agent day-video` with both ids and the title from `posts.md`. `telegram` posts to `$TELEGRAM_STAGING_CHAT_ID` (read from the repo `.env.local`) unless `--chat` is given; only `--prod` posts to the real channels. `--dry-run` prints every command and runs none.
+`publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--no-voice] [--chat <id>] [--prod] [--dry-run]` never writes scripts: it exits with a message when `script.json` / `script.vi.json` is missing or still a draft. State is `editions/<date>/STATUS.json`, one row per cut (`<date>-<lang>-<fmt>`: `path`, `cover`, `state`, `voice` (`true` narrated, `false` no-voice), `sizeMB`, `duration`, `youtube {id,url}`, `attached`, `telegram {chat_id,message_id}`); every step skips cuts it already finished (YouTube cannot replace a file, Telegram cannot unpost), so a rerun resumes. Uploads run one at a time and stop on the first failure; 16x9 is a `long` video with its cover as thumbnail, 9x16 a `short`. `attach` runs `agent day-video` with both ids and the title from `posts.md`. `telegram` posts to `$TELEGRAM_STAGING_CHAT_ID` (read from the repo `.env.local`) unless `--chat` is given; only `--prod` posts to the real channels. `--dry-run` prints every command and runs none.
 
 The anchors are the cast in `../brand/voices.json`: several voices per cut, alternating per story, seeded by the date (see `scripts/cast.mjs`).
 
@@ -105,16 +106,26 @@ Spoken text says "AI DR" and "aidr dot today"; `config.captions.replace` shows t
 | `voice` | `provider` (`elevenlabs`), `cast` (path to `voices.json`), `lang` (`en` \| `vi` hosts), `gap` (breath between parts, s), `volume`; `heygen` is the fallback: `anchors` (name → HeyGen voice id + speed) and `byGender` (which HeyGen anchor stands in for a cast host) |
 | `music` | Bed (the launch film's "News Theme"), level, ducked level; ducking is a sidechain on the voice |
 | `sfx` | Library dir, master level, and which effect plays on each cue (`open`, `storyIn`, `rankHit`, `statHit`, `tick`, `outro`) |
-| `timing` | Lead and tail around each voice line, per segment kind; the video length follows the voice |
+| `timing` | Lead and tail around each voice line, per segment kind; the video length follows the voice. `noVoice.wordsPerSecond` (`en` 2.6, `vi` 3.2) is the reading speed that times a no-voice cut |
 | `captions` | Burn in or not, words per caption, spoken → shown replacements |
 
 ## Sound
 
 One mixed track (`out/mix.wav`, 48 kHz stereo, loudness-normalised to about −14 LUFS): voice lines placed at `start + lead`; the music bed under a sidechain duck with a fade in and a 2.5 s fade out; effects placed so each one's peak lands on its visual hit (wipe, rank tile, stat). Change the sound by editing `config.sfx.cues`, not the build.
 
+## No voice (out of ElevenLabs quota)
+
+Rule: if ElevenLabs cannot voice the day, the cut goes **no-voice**; it is never half voiced and never falls back to HeyGen for that reason.
+
+`voice.mjs` adds up the characters of the sentences it still has to synthesize (uncached only), then reads `GET https://api.elevenlabs.io/v1/user/subscription` (`character_limit - character_count`). It goes no-voice when the remaining characters are fewer than needed, when `$ELEVENLABS_API_KEY` is missing or rejected (401), or when a quota/key error (401, 402, `quota_exceeded`) hits mid-run. It prints `! no voice: <reason>` and writes `voice/mode.json` (`{ "voice": false, "reason": ... }`). A fully cached day needs no quota and no key. Other ElevenLabs errors still fall back to HeyGen per sentence.
+
+`build.mjs` then makes the silent cut: the music bed at its normal level (no ducking) and the sfx, then the same loudness normalisation; every segment lasts `lead + words / config.timing.noVoice.wordsPerSecond[lang] + tail`; the word times (captions, `statWord`, `intro.focus`) are spread evenly over the estimate, so the captions are the read-along. `timeline.json` gets `"voice": false`. `posts.md` is unchanged (it never claims narration). `publish.mjs` records `voice: true|false` per cut in `STATUS.json` and prints `voice` / `no voice` in its summary.
+
+`--no-voice` forces it: `daily.mjs`, `voice.mjs`, `build.mjs` and `publish.mjs` (render step) accept it. Remove the flag, rerun with quota, and delete the renders to get the narrated cut back.
+
 ## Known issues
 
-- Voices need `$ELEVENLABS_API_KEY`; a failed ElevenLabs call (quota, key) falls back to HeyGen for that sentence and prints `!`. HeyGen sign-in expires; `npx hyperframes auth status` before `voice.mjs`.
+- Voices need `$ELEVENLABS_API_KEY`; a non-quota ElevenLabs error falls back to HeyGen for that sentence and prints `!` (quota and key errors make the cut no-voice, see above). HeyGen sign-in expires; `npx hyperframes auth status` before `voice.mjs`.
 - Anchors follow the show rule: never the same host twice in a row, closer differs from opener. `voice.mjs` refuses a script that breaks it. `new.mjs` drafts anchors in a host order shuffled with the date as seed.
 - `lint` reports about 65 warnings (`nested_structure_needs_subcomposition`, `timeline_track_too_dense`): the composition is one generated file by design. Errors must be 0.
 - Some API media is wrong for the story (a manifest can carry another story's photo) or is a text-heavy OG card that crops badly in 9:16. Look at the contact sheet of `assets/` and curate `images` in `script.json`.

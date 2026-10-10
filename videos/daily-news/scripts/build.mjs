@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Build one edition into renderable HyperFrames projects, one per format, plus its sound, captions,
 // cover stills and post copy. Inputs: config.json, editions/<date>/{edition,script}.json, voice/.
-// Usage: node scripts/build.mjs 2026-10-02 [--lang vi] [--no-audio]
+// Usage: node scripts/build.mjs 2026-10-02 [--lang vi] [--no-audio] [--no-voice]
+// No-voice cut (--no-voice, or voice.mjs left voice/mode.json at { "voice": false }): durations and word
+// times come from a reading-speed estimate (config.timing.noVoice), captions are burned from the script
+// text, and the mix is the music bed (not ducked) plus sfx.
 //
 // Output (ignored by git):  editions/<date>/out/<fmt>/        HyperFrames project (index.html, assets, audio)
 //                           editions/<date>/out/cover-<fmt>/  one-frame project for the cover still
@@ -18,6 +21,7 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { cutOf } from "./lang.mjs";
+import { estimateWords, partsOf } from "./novoice.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const BRAND = resolve(ROOT, "../brand");
@@ -31,6 +35,10 @@ const config = read(join(ROOT, "config.json"));
 const dir = join(ROOT, "editions", date);
 const edition = read(join(dir, "edition.json"));
 const script = read(join(dir, cut.script));
+const modeFile = join(dir, cut.voice, "mode.json");
+const noVoice =
+  process.argv.includes("--no-voice") ||
+  (existsSync(modeFile) && read(modeFile).voice === false);
 
 // Screen and post copy per language (facts and headlines come from the script).
 const UI = {
@@ -133,11 +141,24 @@ const segs = [
 ];
 let clock = 0;
 for (const seg of segs) {
-  const wav = join(dir, cut.voice, `${seg.id}.wav`);
-  if (!existsSync(wav))
-    throw new Error(`missing voice ${seg.id}: run scripts/voice.mjs ${date}`);
-  seg.voiceDur = probe(wav);
-  seg.words = read(join(dir, cut.voice, `${seg.id}.words.json`));
+  if (noVoice) {
+    const line = {
+      intro: script.intro,
+      outro: script.outro,
+    }[seg.id]?.voice ?? seg.story.voice;
+    seg.words = estimateWords(
+      partsOf(line),
+      { wordsPerSecond: config.timing.noVoice.wordsPerSecond, gap: config.voice.gap },
+      cut.lang
+    );
+    seg.voiceDur = seg.words.at(-1).end;
+  } else {
+    const wav = join(dir, cut.voice, `${seg.id}.wav`);
+    if (!existsSync(wav))
+      throw new Error(`missing voice ${seg.id}: run scripts/voice.mjs ${date}`);
+    seg.voiceDur = probe(wav);
+    seg.words = read(join(dir, cut.voice, `${seg.id}.words.json`));
+  }
   seg.start = clock;
   seg.voiceStart = clock + seg.timing.lead;
   seg.dur = seg.timing.lead + seg.voiceDur + seg.timing.tail;
@@ -455,28 +476,33 @@ function buildMix(outFile) {
 
   const inputs = [];
   const filters = [];
-  segs.forEach((seg, i) => {
-    inputs.push("-i", join(dir, cut.voice, `${seg.id}.wav`));
+  // No-voice: no voice inputs, so the music index starts at 0.
+  const nv = noVoice ? 0 : segs.length;
+  if (!noVoice) {
+    segs.forEach((seg, i) => {
+      inputs.push("-i", join(dir, cut.voice, `${seg.id}.wav`));
+      filters.push(
+        `[${i}:a]aresample=48000,aformat=channel_layouts=stereo,adelay=${Math.round(seg.voiceStart * 1000)}:all=1[v${i}]`
+      );
+    });
     filters.push(
-      `[${i}:a]aresample=48000,aformat=channel_layouts=stereo,adelay=${Math.round(seg.voiceStart * 1000)}:all=1[v${i}]`
+      `${segs.map((_, i) => `[v${i}]`).join("")}amix=inputs=${nv}:normalize=0,volume=${config.voice.volume},apad=whole_dur=${total}[voice]`
     );
-  });
-  const nv = segs.length;
-  filters.push(
-    `${segs.map((_, i) => `[v${i}]`).join("")}amix=inputs=${nv}:normalize=0,volume=${config.voice.volume},apad=whole_dur=${total}[voice]`
-  );
+  }
   inputs.push("-i", resolve(ROOT, config.music.file));
   filters.push(
     `[${nv}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${total},volume=${config.music.volume},afade=t=in:d=0.4,afade=t=out:st=${r3(total - 2.5)}:d=2.5[bgm]`
   );
-  filters.push(`[voice]asplit=2[vmix][vkey]`);
-  const duckRatio = Math.max(
-    2,
-    (config.music.volume / config.music.duckedVolume) * 2
-  );
-  filters.push(
-    `[bgm][vkey]sidechaincompress=threshold=0.02:ratio=${r3(duckRatio)}:attack=15:release=350[duck]`
-  );
+  if (!noVoice) {
+    filters.push(`[voice]asplit=2[vmix][vkey]`);
+    const duckRatio = Math.max(
+      2,
+      (config.music.volume / config.music.duckedVolume) * 2
+    );
+    filters.push(
+      `[bgm][vkey]sidechaincompress=threshold=0.02:ratio=${r3(duckRatio)}:attack=15:release=350[duck]`
+    );
+  }
   cues.forEach(([name, at, gain], k) => {
     const idx = nv + 1 + k;
     inputs.push("-i", join(sfxDir, sfxMeta[name].file));
@@ -489,7 +515,9 @@ function buildMix(outFile) {
     `${cues.map((_, k) => `[x${k}]`).join("")}amix=inputs=${cues.length}:normalize=0[sfx]`
   );
   filters.push(
-    `[vmix][duck][sfx]amix=inputs=3:normalize=0,atrim=0:${total},loudnorm=I=-14:TP=-1.5:LRA=11[out]`
+    noVoice
+      ? `[bgm][sfx]amix=inputs=2:normalize=0,atrim=0:${total},loudnorm=I=-14:TP=-1.5:LRA=11[out]`
+      : `[vmix][duck][sfx]amix=inputs=3:normalize=0,atrim=0:${total},loudnorm=I=-14:TP=-1.5:LRA=11[out]`
   );
   execFileSync("ffmpeg", [
     "-v",
@@ -633,7 +661,7 @@ for (const fmt of Object.keys(config.formats)) {
 const mmss = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
 writeFileSync(
   join(dir, cut.timeline),
-  `${JSON.stringify({ date, total, theme, segments: segs.map((s) => ({ id: s.id, start: r3(s.start), dur: r3(s.dur), voice: r3(s.voiceDur) })) }, null, 2)}\n`
+  `${JSON.stringify({ date, total, voice: !noVoice, theme, segments: segs.map((s) => ({ id: s.id, start: r3(s.start), dur: r3(s.dur), voice: r3(s.voiceDur) })) }, null, 2)}\n`
 );
 
 const P = script.post ?? {};
@@ -784,7 +812,7 @@ writeFileSync(
 );
 
 console.log(
-  `✓ ${date}: ${total}s · intro=${theme.intro} · transition=${theme.transition} · bg=${theme.background}`
+  `✓ ${date}: ${total}s${noVoice ? " · NO VOICE (estimated read-along timing)" : ""} · intro=${theme.intro} · transition=${theme.transition} · bg=${theme.background}`
 );
 console.log(
   `  ${cut.out}/${Object.keys(config.formats).join(`, ${cut.out}/`)} · ${cut.captions} (${allCaps.length} cues) · posts.md (${cut.lang})`

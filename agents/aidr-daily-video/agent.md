@@ -27,7 +27,7 @@ You make the AI;DR Daily Brief: today's top AI stories from aidr.today as a two-
 ## Setup
 
 ```bash
-export AIDR_NO_HEYGEN=1          # no interactive HeyGen here: a failed ElevenLabs line must fail the run
+export AIDR_NO_HEYGEN=1          # no interactive HeyGen here: an ElevenLabs error other than quota must fail the run (quota: no-voice cut)
 cd /workspace
 [ -d aidr ] && git -C aidr pull --ff-only || git clone --depth 50 https://github.com/duyet/aidr aidr
 cd aidr && pnpm install --frozen-lockfile    # the attach/telegram steps run `pnpm --filter @aidr/web agent`
@@ -53,7 +53,8 @@ Read `.agents/skills/aidr-daily-news/SKILL.md` and `videos/daily-news/README.md`
 
 ## Stop rules
 
-- ElevenLabs quota or key error, YouTube auth error, or a 401 from aidr.today: stop at that step and report it. Do not work around it.
+- ElevenLabs quota short or key error: do not stop. `voice.mjs` renders the cut no-voice (music bed, read-along captions, `! no voice: <reason>` in the log, `voice: false` in `STATUS.json`); carry on and say in the final report which cuts are no-voice and why. Never half-voice a cut or work around the quota.
+- YouTube auth error, or a 401 from aidr.today: stop at that step and report it. Do not work around it.
 - Do not edit the template, scripts or skills, and do not commit or push. You only write the two script files.
 
 ## Final report

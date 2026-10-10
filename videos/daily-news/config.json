@@ -57,6 +57,9 @@
     }
   },
   "timing": {
+    "noVoice": {
+      "wordsPerSecond": { "en": 2.6, "vi": 3.2 }
+    },
     "intro": {
       "lead": 0.9,
       "tail": 0.5
