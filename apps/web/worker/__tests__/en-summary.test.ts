@@ -159,6 +159,8 @@ describe("backfill-en-summary candidates", () => {
   it("picks English-source published rows lacking a current rewrite, newest first", () => {
     const sqlite = db();
     insert(sqlite, { id: "old", summary: "Old.", publishedAt: 1 });
+    // A visible teaser outranks newer clean rows: readers see "[…]" until fixed.
+    insert(sqlite, { id: "teaser", summary: "Cut off […]", publishedAt: 0 });
     insert(sqlite, { id: "new", summary: "New [&#8230;]", publishedAt: 3 });
     insert(sqlite, { id: "done", summary: "Done.", publishedAt: 2 });
     writeEn(sqlite, "done", "Done summary.");
@@ -187,7 +189,7 @@ describe("backfill-en-summary candidates", () => {
     const ids = (
       sqlite.prepare(buildMissingEnSummaryQuery(10)).all() as { id: string }[]
     ).map((r) => r.id);
-    expect(ids).toEqual(["new", "stale", "old"]);
+    expect(ids).toEqual(["new", "teaser", "stale", "old"]);
   });
 
   it("is a selectable pipeline step that runs before tldr, email and notify", () => {
