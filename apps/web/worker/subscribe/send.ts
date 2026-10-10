@@ -162,6 +162,7 @@ export function buildDigestEmail(
     format,
     video: extras.video,
     postalAddress: extras.postalAddress,
+    feedbackToken: unsubscribeToken,
   });
 }
 
