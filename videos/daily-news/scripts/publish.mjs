@@ -159,7 +159,33 @@ if (steps.includes("render")) {
 }
 
 // 2. Upload, serially, in the owner's Chrome. Stops on the first failure.
+// STATUS.json is local, so first take ids already on the live day page: a date
+// uploaded elsewhere must not get a second public copy.
+async function seedFromSite() {
+  for (const l of langs) {
+    const res = await fetch(`https://aidr.today/date/${date}.md${l === "vi" ? "?lang=vi" : ""}`);
+    if (!res.ok) continue;
+    const md = await res.text();
+    const ids = {
+      "16x9": md.match(/^- YouTube: \S+watch\?v=([\w-]{11})/m)?.[1],
+      "9x16": md.match(/^- YouTube Shorts: \S+\/shorts\/([\w-]{11})/m)?.[1],
+    };
+    for (const r of byLang(l)) {
+      const id = ids[r.fmt];
+      if (!id || r.youtube?.id) continue;
+      // A Worker without per-language videos serves the EN ids on ?lang=vi; one video never serves both cuts.
+      if (rows.some((o) => o.lang !== l && o.youtube?.id === id)) continue;
+      console.log(`  ${r.cut}: already on ${date} day page as ${id}, skipping upload`);
+      r.youtube = { id, url: `https://youtu.be/${id}`, seeded: true };
+      r.attached = true;
+      if (!["posted"].includes(r.state)) r.state = "attached";
+    }
+  }
+  if (!dry) save();
+}
+
 if (steps.includes("upload")) {
+  await seedFromSite();
   const todo = mine.filter((r) => !r.youtube?.id);
   summary("upload to YouTube (public, owner's Chrome)", todo.map((r) => r.cut));
   for (const r of todo) {
@@ -190,7 +216,10 @@ if (steps.includes("attach")) {
     const title = ytTitle(l);
     const args = ["--filter", "@aidr/web", "agent", "day-video", date, "--lang", l, "--video", long?.youtube?.id ?? "<16x9 id>", "--short", short?.youtube?.id ?? "<9x16 id>"];
     if (title) args.push("--title", title);
-    run("pnpm", args, { cwd: REPO });
+    const out = run("pnpm", args, { cwd: REPO });
+    // A Worker without per-language day videos ignores `lang` and would write VI ids into the EN columns.
+    if (!dry && !out.includes(`"lang": "${l}"`) && !out.includes(`"lang":"${l}"`))
+      throw new Error(`${l}: the day-video response has no lang=${l}; is the per-language Worker (migration 0052) deployed?`);
     for (const r of dry ? [] : byLang(l)) {
       r.attached = true;
       if (r.state === "uploaded") r.state = "attached";
