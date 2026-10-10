@@ -47,7 +47,7 @@ Read `.agents/skills/aidr-daily-news/SKILL.md` and `videos/daily-news/README.md`
 5. Review: read the `snap-*` contact sheets and a few frames of each MP4 (`ffmpeg -ss <t> -frames:v 1`). Frame 0 is the full grid with the date; no text over text; every on-screen fact is in `edition.json`. Fix the script and rerun step 4 until clean (at most three passes; then stop and report).
 6. `node scripts/publish.mjs <date> --steps upload --uploader api --privacy <privacy>`.
 7. `node scripts/publish.mjs <date> --steps attach`.
-8. `node scripts/publish.mjs <date> --steps telegram` (staging) - or `--steps telegram --prod` only when the kickoff said prod.
+8. `node scripts/publish.mjs <date> --steps telegram --telegram-mode card` (staging) - or add `--prod` only when the kickoff said prod. Card mode, not the default video upload: the Bot API token sits in the URL path of `api.telegram.org`, and the vault substitutes only headers and body, so the sandbox cannot hold `TELEGRAM_BOT_TOKEN`.
 
 `publish.mjs` is idempotent (state in `editions/<date>/STATUS.json`): after a failure, fix the cause and rerun the same step; it skips what is done. Never upload the same cut twice by hand.
 

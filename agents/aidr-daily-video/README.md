@@ -90,5 +90,6 @@ Resume after a good manual run (`ant beta:deployments resume --deployment-id "$D
 
 ## Known gaps
 
+- Telegram posts the Worker's YouTube card (`--telegram-mode card`), not the video file. `publish.mjs` defaults to uploading the video with `sendVideo`, but the bot token is part of the `api.telegram.org/bot<token>/...` URL path, and vault `environment_variable` credentials are substituted in request headers and body only, never in the URL path. Direct video posting from the sandbox needs a different token route (a Worker endpoint that accepts the file, or a custom tool).
 - The `packages` shape (`apt`, `npm`) and the sandbox's CPU, memory and session time limits are not in the docs used here; measure the 4K render time on the first run. Locally a 4K cut takes 15-25 min; four cuts in-sandbox may take over an hour.
 - Fallback for slow renders: `npx hyperframes cloud render --resolution 4k` (HeyGen-hosted, billed per credit, 4K at 1.5x) with a `HEYGEN_API_KEY` credential scoped to `api.heygen.com`. `publish.mjs` does not support it yet.
