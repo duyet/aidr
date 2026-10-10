@@ -76,7 +76,7 @@
     "@types/react-dom": "^19.3.0",
     "cf": "1.0.0-beta.14",
     "esbuild": "0.28.2",
-    "happy-dom": "20.14.5",
+    "happy-dom": "20.14.6",
     "miniflare": "5.20260918.0-alpha",
     "subset-font": "^2.9.0",
     "tailwindcss": "^4.0.0",

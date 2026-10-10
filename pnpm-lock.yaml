@@ -186,7 +186,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.3(@types/node@25.9.9)(happy-dom@20.14.5(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.3.4(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
+        version: 5.0.3(@types/node@25.9.9)(happy-dom@20.14.6(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.3.4(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
       wrangler:
         specifier: ^4.147.0
         version: 4.149.0(@cloudflare/workers-types@5.20261010.1)(@types/node@25.9.9)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -296,8 +296,8 @@ importers:
         specifier: 0.28.2
         version: 0.28.2
       happy-dom:
-        specifier: 20.14.5
-        version: 20.14.5(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: 20.14.6
+        version: 20.14.6(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       miniflare:
         specifier: 5.20260918.0-alpha
         version: 5.20260918.0-alpha(@types/node@25.9.9)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -321,7 +321,7 @@ importers:
         version: 6.1.1(supports-color@10.2.2)(typescript@7.0.2)(vite@8.3.4(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
       vitest:
         specifier: ^5.0.0
-        version: 5.0.3(@types/node@25.9.9)(happy-dom@20.14.5(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.3.4(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
+        version: 5.0.3(@types/node@25.9.9)(happy-dom@20.14.6(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.3.4(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
       wrangler:
         specifier: ^4.147.0
         version: 4.149.0(@cloudflare/workers-types@5.20261010.1)(@types/node@25.9.9)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -3403,8 +3403,8 @@ packages:
       crossws:
         optional: true
 
-  happy-dom@20.14.5:
-    resolution: {integrity: sha512-x/RzkpWO40bTjIoT30iQtt64FLLmH/iRcUCN2X//bLx7H3ifkdfPXyqsro/OYtqzIAhiLMMA7mmiOR9C3NOKjQ==}
+  happy-dom@20.14.6:
+    resolution: {integrity: sha512-5DDsf4QmEIlRL6NkCv/fxSjYHHkZceL/IaYQdJc2h3G7DRTEai++VTjbfL0LB9geW2VrA3+vrjF3Efx+OTtX0Q==}
     engines: {node: '>=20.0.0'}
 
   harfbuzzjs@1.6.2:
@@ -7648,7 +7648,7 @@ snapshots:
       rou3: 0.8.1
       srvx: 0.11.22
 
-  happy-dom@20.14.5(bufferutil@4.1.0)(utf-8-validate@6.0.6):
+  happy-dom@20.14.6(bufferutil@4.1.0)(utf-8-validate@6.0.6):
     dependencies:
       '@types/node': 25.9.9
       '@types/whatwg-mimetype': 3.0.2
@@ -8889,7 +8889,7 @@ snapshots:
     optionalDependencies:
       vite: 8.3.4(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)
 
-  vitest@5.0.3(@types/node@25.9.9)(happy-dom@20.14.5(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.3.4(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)):
+  vitest@5.0.3(@types/node@25.9.9)(happy-dom@20.14.6(bufferutil@4.1.0)(utf-8-validate@6.0.6))(vite@8.3.4(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/mocker': 5.0.3(vite@8.3.4(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
@@ -8907,7 +8907,7 @@ snapshots:
       why-is-node-running: 3.2.1
     optionalDependencies:
       '@types/node': 25.9.9
-      happy-dom: 20.14.5(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      happy-dom: 20.14.6(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
       - msw
 
