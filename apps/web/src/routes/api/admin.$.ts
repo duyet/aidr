@@ -654,7 +654,6 @@ async function handle(
     return Response.json(result);
   }
 
-
   if (
     method === "POST" &&
     segments.length === 3 &&
