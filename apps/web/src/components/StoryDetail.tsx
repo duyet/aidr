@@ -87,10 +87,13 @@ export function StoryDetail({
   item,
   lang,
   bilingual,
+  showVotes,
 }: {
   item: FeedItem;
   lang: Lang;
   bilingual?: boolean;
+  /** Dialog only: feed rows already carry votes in their header. */
+  showVotes?: boolean;
 }) {
   const hasVi = Boolean(item.title_vi || item.summary_vi);
   const showBilingual = Boolean(bilingual) && hasVi;
@@ -182,7 +185,12 @@ export function StoryDetail({
           </a>
         </div>
 
-        <StoryMetaAside item={item} lang={lang} imageUrl={imageUrl} />
+        <StoryMetaAside
+          item={item}
+          lang={lang}
+          imageUrl={imageUrl}
+          showVotes={showVotes}
+        />
       </div>
     </div>
   );
