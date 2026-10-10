@@ -38,6 +38,18 @@ Each folder is its own HyperFrames project because one project may hold only one
 | `<v>*/index.html`, `assets/fonts/`, `<v>/captions-<lang>.srt` | yes | Generated compositions, staged brand fonts, caption tracks |
 | `capture/`, `capture-<lang>/`, `assets/audio/`, `renders/`, `snapshots/` | no | Third-party photos, voice cache and regenerable output |
 
+## capture.sh click syntax
+
+`scripts/capture.sh <out-dir> <name>=<path>[@<scrollY>][#<click>] ...` saves a 2720x1700 screenshot of a live page. After `#`, the click is one of:
+
+| Spec | Meaning |
+|------|---------|
+| `#Why this ranks` | click the element with that text |
+| `#button:Reader preferences` | click a button by its accessible name (retried until `aria-pressed` sticks) |
+| `#button:Show day card>button:Show text` | several clicks in order, joined by `>` (the two forms can be mixed) |
+
+`/api/...` paths are downloaded as-is. The `button:` form and `>` chains land with the v0.1.13 release PR (#507); until it merges, `capture.sh` on master only has the text click.
+
 ## New release film
 
 1. Read the release page source `apps/web/src/content/releases/v<x>.ts` and pick five highlights.

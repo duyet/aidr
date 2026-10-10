@@ -1,0 +1,286 @@
+#!/bin/bash
+# Upload one AI;DR cut to YouTube Studio in the user's running Chrome.
+#
+#   yt-upload <mp4> --meta <youtube.md|posts.md> --lang en|vi --kind long|short
+#             [--cover <png>] [--resume-from thumb|playlist] [--no-publish]
+#             [--publish-anyway]
+#
+# Opens the upload dialog, uploads the file, fills title / description /
+# thumbnail / playlist "AI;DR" / audience / paid promotion / AI-content answer /
+# tags / video language, publishes as Public, then checks YouTube's oEmbed.
+# Prints `ID=<id>` and the final URL. Needs Chrome remote debugging (see
+# bin/yt-chrome), agent-browser, jq, curl and python3. Never run two at once.
+#
+# Before Public it waits (30 s polls, up to ~18 min) until the footer says
+# "Checks complete". If Studio still shows "We're still checking your content"
+# after Publish, it clicks "Go back", waits 30 s and tries again.
+# --publish-anyway skips the wait and clicks "Publish anyway".
+set -uo pipefail
+
+BIN="$(cd "$(dirname "$0")" && pwd)"
+Y="$BIN/yt-chrome"
+CHANNEL="${YT_CHANNEL:-UCGDB5uD8znydgMg2XLOj04w}"
+FAIL_DIR="${YT_FAIL_DIR:-${TMPDIR:-/tmp}}"
+POLL_S=30
+POLL_MAX=20   # 20 x 30 s = 10 min (Go back / retry loop)
+CHECK_MAX=36  # 36 x 30 s = 18 min (wait for "Checks complete")
+
+usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+
+MP4=""; META_SRC=""; LANGC=""; KIND=""; COVER="-"; FROM=""; NOPUB=0; ANYWAY=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --meta) META_SRC=$2; shift 2 ;;
+    --lang) LANGC=$2; shift 2 ;;
+    --kind) KIND=$2; shift 2 ;;
+    --cover) COVER=$2; shift 2 ;;
+    --resume-from) FROM=$2; shift 2 ;;
+    --no-publish) NOPUB=1; shift ;;
+    --publish-anyway) ANYWAY=1; shift ;;
+    -h|--help) usage ;;
+    -*) echo "unknown option $1" >&2; usage ;;
+    *) MP4=$1; shift ;;
+  esac
+done
+[[ -f "$MP4" && -f "$META_SRC" && $LANGC =~ ^(en|vi)$ && $KIND =~ ^(long|short)$ ]] || usage
+[[ -z $FROM || $FROM =~ ^(thumb|playlist)$ ]] || usage
+[[ $COVER == - || -f $COVER ]] || { echo "cover not found: $COVER" >&2; exit 2; }
+for t in jq curl python3 base64; do command -v $t >/dev/null || { echo "missing tool: $t" >&2; exit 2; }; done
+MP4=$(cd "$(dirname "$MP4")" && pwd)/$(basename "$MP4")
+[[ $COVER == - ]] || COVER=$(cd "$(dirname "$COVER")" && pwd)/$(basename "$COVER")
+
+META=$(mktemp "${TMPDIR:-/tmp}/yt-meta.XXXXXX")
+trap 'rm -f "$META"' EXIT
+if grep -q '<!-- posts:' "$META_SRC"; then SRCFLAG=--daily; else SRCFLAG=--release; fi
+python3 -I "$BIN/yt-meta.py" $SRCFLAG "$META_SRC" --lang "$LANGC" --kind "$KIND" > "$META" || exit 1
+
+b64() { printf '%s' "$1" | base64 | tr -d '\n'; }
+b64file() { base64 < "$1" | tr -d '\n'; }
+# Run JS in the Studio tab, print the last result line (strings come back quoted).
+ev() { $Y "eval -b $(b64 "$1")" 2>&1 | grep -vE '^\s*$|^✓|^  https?://' | tail -1; }
+UNG=$(cat "$BIN/js/unghost.js"); REG=$(cat "$BIN/js/reghost.js")
+log() { echo "[yt-upload] $*" >&2; }
+fail() { echo "FAIL: $*"; $Y "screenshot $FAIL_DIR/yt-upload-fail-$(date +%s).png" >/dev/null 2>&1; exit 1; }
+
+# The Studio tab is usually hidden: stale closed dialogs stay painted and
+# swallow clicks. unghost hides them, reghost restores them before reopening.
+unghost() { ev "$UNG" >/dev/null; }
+reghost() { ev "$REG" >/dev/null; }
+
+open_dialog() {
+  local ok=0
+  if [[ $(ev 'document.querySelectorAll("input[name=Filedata]").length') == '1' ]]; then ok=1; else
+    $Y "open https://studio.youtube.com/channel/$CHANNEL/videos/upload" "wait 8000" >/dev/null 2>&1
+    $Y "set viewport 1600 1000" "wait 2000" >/dev/null 2>&1
+  fi
+  for i in 1 2 3 4; do
+    [[ $ok == 1 ]] && break
+    # Right after a load a real click on Create does nothing; JS .click() works.
+    ev '(()=>{const b=[...document.querySelectorAll("button")].find(b=>b.textContent.trim()==="Create"||b.getAttribute("aria-label")==="Create");b.click();return 1})()' >/dev/null
+    sleep 2.5
+    ev '(()=>{const it=[...document.querySelectorAll("tp-yt-paper-item")].find(e=>/Upload videos/.test(e.textContent));if(it)it.click();return !!it})()' >/dev/null
+    sleep 4
+    [[ $(ev 'document.querySelectorAll("input[name=Filedata]").length') == '1' ]] && ok=1
+  done
+  [[ $ok == 1 ]] || fail "no Filedata input"
+}
+
+upload_file() {
+  local r=""
+  $Y "upload input[name=Filedata] \"$MP4\"" >/dev/null 2>&1
+  for i in $(seq 1 20); do
+    sleep 5; r=$(ev '!!document.querySelector("#title-textarea #textbox")')
+    [[ $r == *true* ]] && break
+  done
+  [[ $r == *true* ]] || fail "details step never rendered"
+  sleep 2
+}
+
+# Title + description via execCommand insertText (keeps newlines). For the
+# first seconds of an upload the insert does nothing, so retry until it takes.
+fill_text() {
+  local M JS out=""
+  M=$(cat "$META")
+  JS="(()=>{const m=$M;const set=(sel,v)=>{const el=document.querySelector(sel);el.focus();document.execCommand('selectAll');document.execCommand('insertText',false,v);return el.innerText;};const t=set('#title-textarea #textbox',m.title);const d=set('#description-textarea #textbox',m.desc);return JSON.stringify({t,dOk:d.trim()===m.desc.trim(),dLen:d.length});})()"
+  for i in $(seq 1 12); do
+    sleep 6; out=$(ev "$JS")
+    echo "$out" | grep -q 'dOk\\":true' && return 0
+  done
+  fail "fill: $out"
+}
+
+# Pick the "AI;DR" playlist (there is also one named "AI"). Returns 0 on success.
+playlist_once() {
+  local r=""
+  reghost
+  ev '(()=>{const t=document.querySelector("ytcp-video-metadata-playlists ytcp-dropdown-trigger");t.scrollIntoView({block:"center"});t.setAttribute("data-x","pl");return 1})()' >/dev/null
+  [[ $(ev '!!document.querySelector("ytcp-playlist-dialog tp-yt-paper-dialog")?.opened') == true ]] || $Y "click [data-x=pl]" "wait 3000" >/dev/null 2>&1
+  # The list can take ~20 s to load.
+  for i in $(seq 1 10); do
+    r=$(ev '(()=>{const d=document.querySelector("ytcp-playlist-dialog");const lab=[...d.querySelectorAll("*")].filter(e=>e.textContent.trim()==="AI;DR"&&![...e.children].some(c=>c.textContent.trim()==="AI;DR"));if(lab.length!==1)return "labels="+lab.length;let n=lab[0];while(n&&!n.querySelector("ytcp-checkbox-lit"))n=n.parentElement;n.querySelector("ytcp-checkbox-lit").setAttribute("data-x","aidrpl");return "ok"})()')
+    [[ $r == *ok* ]] && break
+    sleep 2
+  done
+  if [[ $r != *ok* ]]; then log "playlist label: $r"; return 1; fi
+  $Y "click [data-x=aidrpl]" "wait 800" "find role button click --name Done" "wait 1500" >/dev/null 2>&1
+  r=$(ev 'document.querySelector("ytcp-video-metadata-playlists").textContent.trim()')
+  [[ $r == '"AI;DR"' ]] || { log "playlist value: $r"; return 1; }
+}
+
+playlist_step() {
+  [[ $(ev 'document.querySelector("ytcp-video-metadata-playlists").textContent.trim()') == '"AI;DR"' ]] && return 0
+  log "playlist"
+  playlist_once && return 0
+  # The picker sometimes fails to load the first time (labels=0 / at <anonymous>):
+  # close it and open it again once.
+  log "playlist: retry after reopening the dialog"
+  $Y "find role button click --name Done" "wait 1500" >/dev/null 2>&1
+  playlist_once || fail "playlist (after retry)"
+}
+
+radios() {
+  local r
+  clickname() { ev "(()=>{const r=document.querySelector('[name=$1]');r.scrollIntoView({block:'center'});return 1})()" >/dev/null; $Y "click [name=$1]" "wait 700" >/dev/null 2>&1; }
+  clickname VIDEO_MADE_FOR_KIDS_NOT_MFK
+  ev '(()=>{const b=document.querySelector("ytcp-button#toggle-button");b.scrollIntoView({block:"center"});return b.textContent.trim()})()' >/dev/null
+  r=$(ev '!!document.querySelector("[name=VIDEO_PAID_PRODUCT_PLACEMENT_NO]")&&document.querySelector("[name=VIDEO_PAID_PRODUCT_PLACEMENT_NO]").offsetParent!==null')
+  [[ $r == *true* ]] || $Y "click ytcp-button#toggle-button" "wait 2000" >/dev/null 2>&1
+  unghost
+  clickname VIDEO_PAID_PRODUCT_PLACEMENT_NO
+  clickname VIDEO_HAS_ALTERED_CONTENT_NO
+  r=$(ev '["VIDEO_MADE_FOR_KIDS_NOT_MFK","VIDEO_PAID_PRODUCT_PLACEMENT_NO","VIDEO_HAS_ALTERED_CONTENT_NO"].map(n=>document.querySelector("[name="+n+"]").getAttribute("aria-checked")).join(",")')
+  [[ $r == '"true,true,true"' ]] || fail "radios: $r"
+}
+
+tags_step() {
+  local tags
+  tags=$(jq -r .tags "$META")
+  ev '(()=>{const i=document.querySelector("#tags-container input");i.scrollIntoView({block:"center"});i.focus();return 1})()' >/dev/null
+  $Y "keyboard inserttext \"$tags\"" "wait 300" "press Enter" "wait 1000" >/dev/null 2>&1
+}
+
+# Studio remembers the last video language: always set it and read it back.
+lang_cur() { ev 'document.querySelector("ytcp-form-language-input").textContent.replace(/\s+/g," ").trim()'; }
+lang_pick() {
+  local want=$1 open pick
+  open='(()=>{const t=document.querySelector("ytcp-form-language-input ytcp-text-dropdown-trigger");t.scrollIntoView({block:"center"});t.click();return 1})()'
+  pick='(()=>{const m=[...document.querySelectorAll("ytcp-text-menu")].find(m=>m.querySelector("tp-yt-paper-dialog")?.opened);if(!m)return "nomenu";const it=[...m.querySelectorAll("tp-yt-paper-item")].find(e=>e.textContent.trim()==="WANT");const o={bubbles:true,composed:true,cancelable:true,button:0};for(const t of ["pointerdown","mousedown","pointerup","mouseup","click"])it.dispatchEvent(new (t.startsWith("pointer")?PointerEvent:MouseEvent)(t,o));return "ok"})()'
+  pick=${pick/WANT/$want}
+  # reghost first: the playlist/radios steps leave closed menus hidden, and the
+  # language menu will not open while its dialog is still display:none.
+  $Y "eval -b $(b64 "$REG")" "wait 500" "eval -b $(b64 "$open")" "wait 3000" "eval -b $(b64 "$pick")" "wait 2000" "eval -b $(b64 "$UNG")" >/dev/null 2>&1
+}
+lang_step() {
+  local want cur
+  want=$([[ $LANGC == en ]] && echo English || echo Vietnamese)
+  for i in 1 2 3; do
+    cur=$(lang_cur)
+    [[ $cur == *"Video language $want"* ]] && { log "language $want"; return 0; }
+    lang_pick "$want"
+  done
+  fail "language: wanted $want, got $cur"
+}
+
+# --- details ---------------------------------------------------------------
+ID=""
+if [[ -z $FROM ]]; then
+  log "open upload dialog"; open_dialog
+  log "upload file"; upload_file
+  ID=$(ev '[...document.querySelectorAll("a")].map(a=>a.href).filter(h=>h.includes("youtu.be/"))[0]||""' | tr -d '"' | sed 's#.*/##')
+  log "id=${ID:-unknown until published (Shorts)}"
+  fill_text
+fi
+if [[ ${FROM:-thumb} == thumb && $COVER != - ]]; then
+  log "thumbnail"; $Y "upload input#file-loader \"$COVER\"" "wait 5000" >/dev/null 2>&1
+fi
+playlist_step
+unghost
+log "radios"; radios
+log "tags"; tags_step
+lang_step
+CHECK='["#title-textarea #textbox","ytcp-form-select#category","ytcp-form-language-input","ytcp-video-metadata-playlists"].map(s=>document.querySelector(s).textContent.replace(/\s+/g," ").trim().slice(0,70)).join(" || ")+" || tags="+[...document.querySelectorAll("#tags-container ytcp-chip")].map(c=>c.textContent.trim()).join(",")'
+echo "CHECK: $(ev "$CHECK")"
+
+if [[ $NOPUB == 1 ]]; then
+  echo "ID=${ID}"
+  echo "Stopped before publish (--no-publish). Dialog is open in Studio."
+  exit 0
+fi
+
+# --- publish ---------------------------------------------------------------
+ST='[...document.querySelectorAll("[id^=step-badge-]")].map(e=>e.getAttribute("state")).join(",")+" | checks:"+((document.querySelector("ytcp-uploads-checks")||{}).textContent||"").replace(/\s+/g," ").slice(0,120)'
+unghost
+$Y "click #next-button" "wait 3000" "click #next-button" "wait 3000" "eval -b $(b64 "$ST")" "click #next-button" "wait 3000" "eval -b $(b64 "$ST")" 2>&1 | grep '^"' | sed 's/^/STEPS: /'
+# Wait for YouTube's checks with a POSITIVE test: the footer must read
+# "Checks complete. No issues found." An empty text or an eval error counts as
+# "not done yet" (a negative test published mid-check and left the video
+# private). The copyright check on a Short can take ~10 min.
+FOOT='((document.querySelector("ytcp-uploads-dialog ytcp-video-upload-progress")||document.querySelector("ytcp-video-upload-progress")||{}).textContent||"").replace(/\s+/g," ").trim().slice(0,120)'
+if [[ $ANYWAY != 1 ]]; then
+  done_checks=0
+  for i in $(seq 1 $CHECK_MAX); do
+    f=$(ev "$FOOT")
+    if [[ $f == *"Checks complete"* ]]; then log "checks: $f"; done_checks=1; break; fi
+    log "checks not complete ($i/$CHECK_MAX): ${f:-<empty>}; waiting ${POLL_S}s"
+    sleep $POLL_S
+  done
+  [[ $done_checks == 1 ]] || fail "checks did not report \"Checks complete\" after $((CHECK_MAX * POLL_S / 60)) min (last: $f); rerun later with --resume-from playlist, or use --publish-anyway"
+fi
+$Y "click [name=PUBLIC]" "wait 1000" >/dev/null 2>&1
+r=$(ev "document.querySelector('[name=PUBLIC]').getAttribute('aria-checked')+' '+document.querySelector('#done-button').textContent.trim()")
+[[ $r == '"true Publish"' ]] || fail "visibility step: $r"
+
+# State after clicking Publish: the "We're still checking your content" modal
+# (its buttons get data-x tags for a real click), or the "Video published"
+# share dialog. A 16:9 upload shows its youtu.be link in the Details step
+# already, so only the share dialog counts as published.
+STATE='(()=>{document.querySelectorAll("[data-x=goback],[data-x=anyway]").forEach(e=>e.removeAttribute("data-x"));const find=(d,t)=>[...d.querySelectorAll("ytcp-button, button")].find(b=>b.textContent.trim().toLowerCase()===t);const dl=[...document.querySelectorAll("ytcp-dialog, tp-yt-paper-dialog")].find(d=>/still checking/i.test(d.textContent)&&d.getClientRects().length>0&&(find(d,"go back")||find(d,"publish anyway")));if(dl){if(find(dl,"go back"))find(dl,"go back").setAttribute("data-x","goback");if(find(dl,"publish anyway"))find(dl,"publish anyway").setAttribute("data-x","anyway")}const sd=[...document.querySelectorAll("ytcp-video-share-dialog")].filter(e=>e.getClientRects().length>0);const full=sd.map(e=>e.textContent).join(" ");const hrefs=sd.flatMap(e=>[...e.querySelectorAll("a")].map(a=>a.href));const txt=full.match(/(?:youtu\.be\/|youtube\.com\/shorts\/)[A-Za-z0-9_-]{11}/g)||[];const links=[...new Set([...hrefs.filter(h=>/youtu\.be\/|youtube\.com\/shorts\//.test(h)),...txt])];return JSON.stringify({modal:!!dl,pub:/published/i.test(full),links})})()'
+
+LINKS=""
+for attempt in $(seq 1 $POLL_MAX); do
+  $Y "click #done-button" "wait 4000" >/dev/null 2>&1
+  S=""
+  for j in 1 2 3 4 5 6; do
+    S=$(ev "$STATE")
+    [[ $S == *'modal\":true'* || $S == *'pub\":true'* ]] && break
+    sleep 3
+  done
+  if [[ $S == *'modal\":true'* ]]; then
+    if [[ $ANYWAY == 1 ]]; then
+      log "still checking: clicking Publish anyway"
+      $Y "click [data-x=anyway]" "wait 6000" >/dev/null 2>&1
+      for j in 1 2 3 4 5; do S=$(ev "$STATE"); [[ $S == *'pub\":true'* ]] && break; sleep 3; done
+    else
+      log "still checking (try $attempt/$POLL_MAX): Go back, retry in ${POLL_S}s; footer: $(ev "$FOOT")"
+      $Y "click [data-x=goback]" "wait 1500" >/dev/null 2>&1
+      unghost
+      sleep $POLL_S
+      continue
+    fi
+  fi
+  if [[ $S == *'pub\":true'* ]]; then LINKS=$S; break; fi
+  fail "publish: no share dialog and no checks modal: $S"
+done
+[[ -n $LINKS ]] || fail "checks still running after $((POLL_MAX * POLL_S / 60)) min; rerun later with --resume-from playlist, or use --publish-anyway"
+
+PUB_ID=$(printf '%s' "$LINKS" | grep -oE '(youtu\.be/|shorts/)[A-Za-z0-9_-]{11}' | head -1 | sed -E 's#.*/##')
+[[ -n $PUB_ID ]] && ID=$PUB_ID
+[[ -n $ID ]] || fail "published but no video id found: $LINKS"
+if [[ $KIND == short ]]; then URL="https://www.youtube.com/shorts/$ID"; else URL="https://youtu.be/$ID"; fi
+
+# --- verify public ---------------------------------------------------------
+# oEmbed: 200 = public, 403 = still private, 401/404 = not visible yet.
+code=000
+for i in 1 2 3 4 5 6; do
+  code=$(curl -s -o /dev/null -w '%{http_code}' "https://www.youtube.com/oembed?url=https://youtu.be/$ID")
+  [[ $code == 200 ]] && break
+  sleep 10
+done
+echo "ID=$ID"
+echo "URL=$URL"
+if [[ $code == 200 ]]; then
+  echo "OEMBED=200 public"
+else
+  echo "OEMBED=$code (not public yet; 403 means still private)"
+  exit 1
+fi

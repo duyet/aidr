@@ -1,0 +1,1 @@
+(()=>{document.querySelectorAll("ytcp-text-menu tp-yt-paper-dialog, ytcp-playlist-dialog tp-yt-paper-dialog").forEach(d=>d.style.display="");return "reghost"})()

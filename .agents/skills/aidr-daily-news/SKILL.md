@@ -119,3 +119,13 @@ order from a seeded shuffle (seed = edition date or release version) so
 re-renders match. Short natural hand-offs between hosts are fine. Add a
 voice to the account from the shared library when it is missing
 (`POST /v1/voices/add/{public_owner_id}/{voice_id}`).
+
+## Delegation
+
+To keep the daily cheap, hand the mechanical steps to subagents named
+`<model>-<level>-<task>`: `haiku-low-*` for the render and status report,
+contact sheets, and the oEmbed check after upload; `sonnet-medium-*` for
+`posts.md` copy and the Vietnamese `script.vi.json`. Picking pictures,
+writing the anchors' lines, the frame review and anything on the owner's
+Chrome stay in the main session. Renders and uploads are serial. Full plan:
+`aidr-release` → Delegation.

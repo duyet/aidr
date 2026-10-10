@@ -1,0 +1,1 @@
+(()=>{let n=0;document.querySelectorAll("ytcp-text-menu tp-yt-paper-dialog, ytcp-playlist-dialog tp-yt-paper-dialog").forEach(d=>{if(!d.opened&&getComputedStyle(d).display!=="none"){d.style.display="none";n++}});document.querySelectorAll("tp-yt-iron-overlay-backdrop").forEach(b=>{if(getComputedStyle(b).display!=="none"){b.style.display="none";n++}});return "unghost "+n})()
