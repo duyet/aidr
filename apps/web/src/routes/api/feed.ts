@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
+import { withEtag } from "../../lib/etag";
 import { feedDaysAndBefore, getFeed } from "../../lib/feed-queries";
 import {
   API_CONTENT_LANGUAGE,
@@ -51,15 +52,18 @@ export const Route = createFileRoute("/api/feed")({
             before,
           });
           const policy = localeCacheControl(url.search, FEED_CACHE_CONTROL);
-          return Response.json(
-            { ...feed, lang, available_langs: ["en", "vi"] },
-            {
-              headers: {
-                "Cache-Control": policy.cacheControl,
-                "Content-Language": API_CONTENT_LANGUAGE,
-                ...(policy.vary ? { Vary: policy.vary } : {}),
-              },
-            }
+          return withEtag(
+            request,
+            Response.json(
+              { ...feed, lang, available_langs: ["en", "vi"] },
+              {
+                headers: {
+                  "Cache-Control": policy.cacheControl,
+                  "Content-Language": API_CONTENT_LANGUAGE,
+                  ...(policy.vary ? { Vary: policy.vary } : {}),
+                },
+              }
+            )
           );
         } catch (e) {
           console.error("feed:", e);
