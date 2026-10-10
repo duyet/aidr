@@ -5,6 +5,14 @@ import { apiUrl, normalizeLang } from "./site-url.js";
 
 const CACHE_KEY = "newsTabFeedCache";
 
+/**
+ * A saved digest younger than this paints without any network call. The
+ * pipeline publishes every 30 minutes and the API edge caches for 5, so a
+ * newer copy cannot exist sooner. The service worker refreshes the cache on a
+ * 30-minute alarm (js/background.js), so most new tabs open with zero fetches.
+ */
+export const CACHE_FRESH_MS = 5 * 60 * 1000;
+
 function asChrome() {
   return globalThis.chrome;
 }
@@ -300,13 +308,18 @@ function cacheSlot(apiBase, lang = "vi") {
   return `${CACHE_KEY}:${normalizeApiBase(apiBase)}:${normalizeLang(lang)}`;
 }
 
-async function readJson(url) {
+/**
+ * `cache: "default"` lets the browser reuse a response inside the API's own
+ * Cache-Control max-age. The API sends no ETag / Last-Modified, so there is
+ * no conditional request to make. The reload button passes "no-cache".
+ */
+async function readJson(url, cache = "default") {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_MS);
   try {
     const response = await fetch(url, {
       credentials: "omit",
-      cache: "no-store",
+      cache,
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`http ${response.status}`);
@@ -318,16 +331,31 @@ async function readJson(url) {
   }
 }
 
-export async function readCachedDigest(apiBase, lang = "vi") {
+/** Saved digest plus when it was saved. Null when nothing is cached. */
+export async function readCacheEntry(apiBase, lang = "vi") {
   try {
     const key = cacheSlot(apiBase, lang);
     const bag = await asChrome().storage.local.get(key);
     const cached = bag?.[key];
-    if (cached?.digest) return normalizeDigest(cached.digest);
+    if (cached?.digest) {
+      return {
+        digest: normalizeDigest(cached.digest),
+        savedAt: Number(cached.savedAt) || 0,
+      };
+    }
   } catch {
     // ignore
   }
   return null;
+}
+
+export async function readCachedDigest(apiBase, lang = "vi") {
+  return (await readCacheEntry(apiBase, lang))?.digest || null;
+}
+
+export function isCacheFresh(entry, now = Date.now()) {
+  const age = now - (Number(entry?.savedAt) || 0);
+  return age >= 0 && age < CACHE_FRESH_MS;
 }
 
 export async function writeCachedDigest(digest, apiBase, lang = "vi") {
@@ -359,13 +387,18 @@ function tagged(url, content, lang = "vi") {
   return withExtRef(url, content, lang);
 }
 
-export async function fetchDigest(apiBase, { campaign, lang = "vi" } = {}) {
+export async function fetchDigest(
+  apiBase,
+  { campaign, lang = "vi", force = false } = {}
+) {
   const base = normalizeApiBase(apiBase);
   const content = campaign || "hydrate";
   const locale = normalizeLang(lang);
+  const cache = force ? "no-cache" : "default";
   try {
     const data = await readJson(
-      tagged(publicUrl(base, locale), content, locale)
+      tagged(publicUrl(base, locale), content, locale),
+      cache
     );
     let digest = normalizeDigest(data);
     try {
@@ -374,7 +407,8 @@ export async function fetchDigest(apiBase, { campaign, lang = "vi" } = {}) {
           apiUrl(base, "/api/feed?days=3", locale),
           `${content}_feed`.slice(0, 64),
           locale
-        )
+        ),
+        cache
       );
       digest = enrichDigest(digest, feed);
     } catch {
@@ -387,7 +421,8 @@ export async function fetchDigest(apiBase, { campaign, lang = "vi" } = {}) {
   } catch {
     try {
       const data = await readJson(
-        tagged(feedUrl(base, locale), `${content}_feed`, locale)
+        tagged(feedUrl(base, locale), `${content}_feed`, locale),
+        cache
       );
       const digest = normalizeDigest(data);
       digest.lastFetchedAt = Date.now();
@@ -402,8 +437,9 @@ export async function fetchDigest(apiBase, { campaign, lang = "vi" } = {}) {
 }
 
 /**
- * Last saved digest first, then a live pull. `onCache` runs before any
- * network so a new tab can paint immediately and refresh in the background.
+ * Stale-while-revalidate. `onCache` runs before any network so a new tab can
+ * paint immediately. A cache younger than CACHE_FRESH_MS is the answer; an
+ * older one is revalidated in the background.
  */
 export async function hydrateDigest(
   apiBase,
@@ -411,8 +447,12 @@ export async function hydrateDigest(
 ) {
   const base = normalizeApiBase(apiBase);
   const locale = normalizeLang(lang);
-  const cached = await readCachedDigest(base, locale);
+  const entry = await readCacheEntry(base, locale);
+  const cached = entry?.digest || null;
   if (cached) onCache?.(cached);
+  if (cached && isCacheFresh(entry)) {
+    return { digest: cached, source: "cache", stale: false };
+  }
   const campaign = cached ? "hydrate_live" : "hydrate_miss";
   try {
     const live = await fetchDigest(base, { campaign, lang: locale });
@@ -426,4 +466,16 @@ export async function hydrateDigest(
     }
     throw error;
   }
+}
+
+/**
+ * Background refresh for the service worker alarm. Skips the network while
+ * the saved digest is still fresh. Returns true when it fetched.
+ */
+export async function prefetchDigest(apiBase, lang = "vi") {
+  const base = normalizeApiBase(apiBase);
+  const locale = normalizeLang(lang);
+  if (isCacheFresh(await readCacheEntry(base, locale))) return false;
+  await fetchDigest(base, { campaign: "prefetch", lang: locale });
+  return true;
 }

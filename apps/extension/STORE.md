@@ -168,6 +168,12 @@ Replaces the Chrome new tab with the public AI;DR digest and ranked AI stories f
 Save appearance/language settings and a short local cache of the last digest so a new tab still renders offline.
 ```
 
+### `alarms`
+
+```
+Refresh the saved digest every 30 minutes in the background (only when the saved copy is older than 5 minutes), so a new tab paints instantly without waiting for the network.
+```
+
 ### Host permission `https://aidr.today/*`
 
 ```

@@ -52,6 +52,8 @@ Production default is `https://aidr.today`.
 ## Permissions
 
 - `storage` — settings (`sync`, with `local` fallback) and feed cache
+- `alarms` — the service worker (`js/background.js`) refreshes the feed
+  cache every 30 minutes, only when the cache is older than 5 minutes
 - `host_permissions`: `https://aidr.today/*`
 - `optional_host_permissions`: `http://localhost/*` and `http://127.0.0.1/*`
   for a local API (`http://localhost:3014`)

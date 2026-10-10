@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { bindAidrDialogLink, isUnmodifiedLeftClick } from "./story-dialog.js";
+import { bindAidrDialogLink, isUnmodifiedLeftClick } from "./dialog-link.js";
 
 test("isUnmodifiedLeftClick ignores cmd/ctrl/middle clicks so the permalink still works", () => {
   assert.equal(isUnmodifiedLeftClick({ button: 0 }), true);
