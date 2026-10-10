@@ -82,7 +82,7 @@ opens the upload dialog in the Studio tab → uploads the file → title and
 description → thumbnail → playlist **AI;DR** (retries once by reopening
 the picker) → "not made for kids", paid promotion No, AI-content No →
 tags → video language (set, read back, up to 3 tries) → prints a `CHECK:`
-line → Next ×3 → waits until the footer stops saying "Checking" → Public →
+line → Next ×3 → waits until the footer says "Checks complete" → Public →
 Publish → reads the "Video published" dialog → `curl` oEmbed.
 
 It prints `ID=<id>`, `URL=<link>` and `OEMBED=200 public`, and exits 1 if
@@ -94,11 +94,18 @@ playlist, tags. A failure prints `FAIL: <step>` and saves a screenshot to
 - **Checks.** Publishing while YouTube is still checking raises "We're
   still checking your content" (Publish anyway / Go back). The tool waits
   for the footer (`ytcp-uploads-dialog ytcp-video-upload-progress`, ends
-  with "Checks complete. No issues found.") polling every 30 s for up to
-  10 min. If the modal still appears, it clicks **Go back**, waits 30 s and
-  publishes again. It never clicks "Publish anyway" unless you pass
-  `--publish-anyway` (only when the owner agrees to publish before checks
-  finish).
+  with "Checks complete. No issues found."). The wait is a positive test:
+  it polls every 30 s (up to 18 min) until the text contains "Checks
+  complete"; an empty text or an eval error counts as not done yet (a
+  "no longer says Checking" test once published mid-check and left the
+  video "Saved as private"). If the modal still appears after Publish, it
+  clicks **Go back**, waits 30 s and publishes again. It never clicks
+  "Publish anyway" unless you pass `--publish-anyway` (only when the owner
+  agrees to publish before checks finish).
+- **Time.** Expect 5–10 minutes of checks per upload (the copyright check on
+  a Short took about 10 min). Uploading the next cut meanwhile is not
+  possible in the same Studio tab, so the release flow should render or
+  review the next cut while the upload waits.
 - **Resume.** After a failure the upload dialog is still open in Studio.
   `--resume-from thumb` skips the file and text steps and continues from the
   thumbnail; `--resume-from playlist` continues from the playlist.

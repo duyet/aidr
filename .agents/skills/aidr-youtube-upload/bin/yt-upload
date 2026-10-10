@@ -11,8 +11,8 @@
 # Prints `ID=<id>` and the final URL. Needs Chrome remote debugging (see
 # bin/yt-chrome), agent-browser, jq, curl and python3. Never run two at once.
 #
-# Before Public it waits (30 s polls, up to ~10 min) until the footer stops
-# saying "Checking". If Studio still shows "We're still checking your content"
+# Before Public it waits (30 s polls, up to ~18 min) until the footer says
+# "Checks complete". If Studio still shows "We're still checking your content"
 # after Publish, it clicks "Go back", waits 30 s and tries again.
 # --publish-anyway skips the wait and clicks "Publish anyway".
 set -uo pipefail
@@ -22,7 +22,8 @@ Y="$BIN/yt-chrome"
 CHANNEL="${YT_CHANNEL:-UCGDB5uD8znydgMg2XLOj04w}"
 FAIL_DIR="${YT_FAIL_DIR:-${TMPDIR:-/tmp}}"
 POLL_S=30
-POLL_MAX=20   # 20 x 30 s = 10 min
+POLL_MAX=20   # 20 x 30 s = 10 min (Go back / retry loop)
+CHECK_MAX=36  # 36 x 30 s = 18 min (wait for "Checks complete")
 
 usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
@@ -210,17 +211,20 @@ fi
 ST='[...document.querySelectorAll("[id^=step-badge-]")].map(e=>e.getAttribute("state")).join(",")+" | checks:"+((document.querySelector("ytcp-uploads-checks")||{}).textContent||"").replace(/\s+/g," ").slice(0,120)'
 unghost
 $Y "click #next-button" "wait 3000" "click #next-button" "wait 3000" "eval -b $(b64 "$ST")" "click #next-button" "wait 3000" "eval -b $(b64 "$ST")" 2>&1 | grep '^"' | sed 's/^/STEPS: /'
-# Wait for YouTube's checks: the footer reads "Checking ..." and ends with
-# "Checks complete. No issues found." Publishing earlier raises the
-# "still checking" modal, which is handled below as a fallback.
+# Wait for YouTube's checks with a POSITIVE test: the footer must read
+# "Checks complete. No issues found." An empty text or an eval error counts as
+# "not done yet" (a negative test published mid-check and left the video
+# private). The copyright check on a Short can take ~10 min.
 FOOT='((document.querySelector("ytcp-uploads-dialog ytcp-video-upload-progress")||document.querySelector("ytcp-video-upload-progress")||{}).textContent||"").replace(/\s+/g," ").trim().slice(0,120)'
 if [[ $ANYWAY != 1 ]]; then
-  for i in $(seq 1 $POLL_MAX); do
+  done_checks=0
+  for i in $(seq 1 $CHECK_MAX); do
     f=$(ev "$FOOT")
-    [[ $f == *[Cc]hecking* ]] || { log "checks: ${f:-no footer text}"; break; }
-    log "checks running ($i/$POLL_MAX): $f; waiting ${POLL_S}s"
+    if [[ $f == *"Checks complete"* ]]; then log "checks: $f"; done_checks=1; break; fi
+    log "checks not complete ($i/$CHECK_MAX): ${f:-<empty>}; waiting ${POLL_S}s"
     sleep $POLL_S
   done
+  [[ $done_checks == 1 ]] || fail "checks did not report \"Checks complete\" after $((CHECK_MAX * POLL_S / 60)) min (last: $f); rerun later with --resume-from playlist, or use --publish-anyway"
 fi
 $Y "click [name=PUBLIC]" "wait 1000" >/dev/null 2>&1
 r=$(ev "document.querySelector('[name=PUBLIC]').getAttribute('aria-checked')+' '+document.querySelector('#done-button').textContent.trim()")
