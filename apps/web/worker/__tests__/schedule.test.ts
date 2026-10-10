@@ -149,12 +149,14 @@ describe("live AnyRouter model chains", () => {
   it("tries probed Gemini before Gemma, and Gemma before Laguna, on translate", () => {
     expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual([
       "google/gemini-3-flash",
+      "google/gemma-latest",
       "google/gemma-4-31b",
       "google/gemma-4-26b-a4b-it",
       "poolside/laguna-s-2.1",
     ]);
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
       "google/gemini-3-flash",
+      "google/gemma-latest",
       "google/gemma-4-31b",
       "poolside/laguna-s-2.1",
     ]);
