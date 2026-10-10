@@ -133,3 +133,32 @@ describe("checkAdminAuth / isRequestAdmin (Clerk path mocked, no real JWKS fetch
     expect(await isRequestAdmin(req, env)).toBe(false);
   });
 });
+
+describe("verifyClerkToken issuer gate", () => {
+  function fakeJwt(payload: Record<string, unknown>): string {
+    const enc = (o: unknown) =>
+      btoa(JSON.stringify(o))
+        .replace(/=+$/, "")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_");
+    return `${enc({ alg: "RS256", kid: "k1" })}.${enc(payload)}.c2ln`;
+  }
+
+  it("rejects without fetching JWKS when CLERK_ISSUER is unset, so a forged iss cannot point key lookup at an attacker host", async () => {
+    const { verifyClerkToken } =
+      await vi.importActual<typeof import("../admin/clerk.js")>(
+        "../admin/clerk.js"
+      );
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const token = fakeJwt({
+      iss: "https://attacker.example",
+      sub: "user_1",
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+    await expect(
+      verifyClerkToken(token, makeEnv({ CLERK_ISSUER: undefined }))
+    ).resolves.toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+});
