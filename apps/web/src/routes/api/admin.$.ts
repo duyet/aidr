@@ -526,6 +526,16 @@ async function handle(
     return Response.json(result);
   }
 
+  // The digest mail as HTML for one date/lang/format; nothing is sent.
+  // Before the generic GET /mail handler, which would swallow it.
+  if (
+    method === "GET" &&
+    segments.length === 2 &&
+    segments[0] === "mail" &&
+    segments[1] === "preview"
+  ) {
+    return renderDigestPreview(env, new URL(request.url).searchParams);
+  }
   if (method === "GET" && segments[0] === "mail") {
     return handleMail("GET", segments.slice(1), request, env);
   }
@@ -644,15 +654,6 @@ async function handle(
     return Response.json(result);
   }
 
-  // The digest mail as HTML for one date/lang/format; nothing is sent.
-  if (
-    method === "GET" &&
-    segments.length === 2 &&
-    segments[0] === "mail" &&
-    segments[1] === "preview"
-  ) {
-    return renderDigestPreview(env, new URL(request.url).searchParams);
-  }
 
   if (
     method === "POST" &&
