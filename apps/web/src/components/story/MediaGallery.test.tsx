@@ -387,17 +387,25 @@ describe("MediaGallery", () => {
     ).toBe("Story video 1 of 1");
   });
 
-  it("falls back to the local site mark when an image fails", () => {
+  it("drops a failed image when other media remain", () => {
+    // A dead upstream URL must not leave the site mark posing as story media.
     const { container } = renderGallery(
       manifestOf([image("/broken.jpg"), image("/ok.jpg")])
     );
-    const [broken, ok] = Array.from(container.querySelectorAll("img"));
+    const [broken] = Array.from(container.querySelectorAll("img"));
     fireEvent.error(broken);
+    const srcs = Array.from(container.querySelectorAll("img")).map((img) =>
+      img.getAttribute("src")
+    );
+    expect(srcs).toEqual([`${CDN}/ok.jpg`]);
+  });
+
+  it("falls back to the local site mark when the only image fails", () => {
+    const { container } = renderGallery(manifestOf([image("/broken.jpg")]));
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
     expect(container.querySelector("img")?.getAttribute("src")).toBe(
       "/favicon.svg"
     );
-    // The healthy asset is untouched.
-    expect(ok.getAttribute("src")).toBe(`${CDN}/ok.jpg`);
     expect(container.innerHTML).not.toContain("broken.jpg");
   });
 

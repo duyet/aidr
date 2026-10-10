@@ -137,17 +137,21 @@ function MediaImage({
   alt,
   label,
   itemId,
+  solo,
 }: {
   asset: Extract<VisibleMediaAsset, { kind: "image" }>;
   alt: string;
   label: string;
   itemId?: string;
+  /** Only asset in the gallery: a failure falls back to the site mark. */
+  solo: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState(false);
 
-  // A dead CDN image must not leave a broken frame behind. The site mark is
-  // local, so a failed remote asset costs zero extra requests.
+  // A dead CDN image must not leave a broken frame behind. With other media
+  // beside it, drop the frame; alone, the local site mark holds the slot.
+  if (failed && !solo) return null;
   if (failed) {
     return (
       <img
@@ -338,6 +342,7 @@ export function MediaGallery({
             alt={copy.imageAlt(asset.index, total, host)}
             label={copy.zoom(asset.index, total)}
             itemId={itemId}
+            solo={total === 1}
           />
         ) : (
           <MediaVideo
