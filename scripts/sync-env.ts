@@ -18,7 +18,8 @@ import { collisionSkip, redactSecrets } from "./facebook-page-token.js";
  *
  * Reads (later files win): root `.env` → `.env.local` → `.env.production` →
  * `.env.production.local`, then `apps/web` `.env` / `.env.local` /
- * `.env.production` / `.dev.vars`.
+ * `.env.production`. `apps/web/.dev.vars` is never read: it holds local-dev
+ * values (Clerk test keys) that would overwrite the live ones.
  *
  * Never prints secret values — only key names and masked suffixes.
  */
@@ -157,7 +158,8 @@ function loadEnvFiles(): { env: Record<string, string>; sources: string[] } {
     join(rootDir, ".env.local"),
     join(appDir, ".env"),
     join(appDir, ".env.local"),
-    join(appDir, ".dev.vars"),
+    // Not apps/web/.dev.vars: `wrangler dev` values (Clerk test instance)
+    // would win over the live keys and be pushed to production.
     // Production last so `pnpm sync-env` prefers live keys for Worker/GH.
     join(rootDir, ".env.production"),
     join(rootDir, ".env.production.local"),
@@ -397,7 +399,7 @@ Usage:
 
 Env files (later wins):
   .env  .env.local  .env.production  .env.production.local
-  apps/web/.env  .env.local  .env.production  .dev.vars
+  apps/web/.env  .env.local  .env.production   (never .dev.vars)
 `);
 }
 
