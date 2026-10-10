@@ -5,6 +5,7 @@ import {
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
 import { SITE_URL } from "../../src/lib/site.js";
+import { feedbackUrl } from "./feedback.js";
 import {
   escapeHtml,
   markdownToEmailHtml,
@@ -57,6 +58,8 @@ const ACCENT = "#9a4a07";
 const ACCENT_FG = "#ffffff";
 const MARKER = "#f5c518";
 const HAIRLINE = "#ece9e1";
+const SOFT = "#f7f5ef";
+const PILL = "#d6d2c6";
 const BORDER = "#e3e0d7";
 const INK = "#141413";
 const INK_MUTED = "#c9c7bf";
@@ -131,6 +134,8 @@ export interface DigestEmailInput {
   /** Stories on the day page, for "See all N stories". Absent: no number. */
   totalStories?: number;
   postalAddress?: string;
+  /** Subscriber token for the Yes / Not really links. Absent: no feedback row. */
+  feedbackToken?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -710,6 +715,29 @@ function ctaRow(label: string, url: string): string {
     </tr>`;
 }
 
+/** "Was today's edition useful?" with Yes / Not really pills. */
+export function feedbackBlock(
+  date: string,
+  lang: MailLang,
+  token: string
+): string {
+  const vi = lang === "vi";
+  const pill = (vote: 0 | 1, label: string) =>
+    `<td style="padding-right:8px"><a class="m-fg m-rule" href="${escapeHtml(feedbackUrl(date, lang, vote, token))}" target="_blank" style="display:inline-block;padding:10px 18px;border:1px solid ${PILL};border-radius:999px;font-family:${SANS};font-size:14px;line-height:20px;font-weight:600;color:${FG};text-decoration:none"><font class="m-fg" color="${FG}">${escapeHtml(label)}</font></a></td>`;
+  return `<tr>
+      <td class="m-pad m-soft m-rule" bgcolor="${SOFT}" style="padding:18px ${PAD};background:${SOFT};border-top:1px solid ${HAIRLINE}">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td class="m-stack m-fg" valign="middle" style="vertical-align:middle;font-family:${SANS};font-size:14px;line-height:1.4;font-weight:600;color:${FG}">${escapeHtml(vi ? "Bản tin hôm nay có hữu ích không?" : "Was today's edition useful?")}</td>
+            <td class="m-stack" align="right" valign="middle" style="vertical-align:middle;text-align:right">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-table"><tr>${pill(1, vi ? "Có" : "Yes")}${pill(0, vi ? "Chưa lắm" : "Not really")}</tr></table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
 /** Telegram (per language), YouTube and the Chrome extension. */
 export function channelsBlock(lang: MailLang): string {
   const vi = lang === "vi";
@@ -1045,6 +1073,9 @@ export function renderDigestEmail(input: DigestEmailInput): {
       storyRow(s, i + 2, storyHref(s, lang, `s${i + 2}`), format, lang)
     ),
     ctaRow(ctaLabel, ctaUrl),
+    input.feedbackToken && validDate
+      ? feedbackBlock(input.date, lang, input.feedbackToken)
+      : "",
     channelsBlock(lang),
   ];
 

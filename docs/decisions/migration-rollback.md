@@ -314,6 +314,20 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
 - Rollback: `DROP TABLE notify_summaries;`. The summaries are regenerated on
   the next send.
 
+## 0054_email_feedback.sql
+
+- Change: new table `email_feedback` (one vote per subscriber token and
+  edition date) and one index. Written by `GET /feedback` from the digest
+  mail's Yes / Not really links; read by `GET /api/admin/mail/feedback` and
+  `aidr-agent audit`. No existing table is touched.
+- Risk: none for the pipeline. Apply it before deploying the Worker that
+  sends the links; until then `/feedback` still shows the thank-you page but
+  logs the failed write and stores nothing.
+- Rollback: roll the Worker back first (old mail has no feedback links), then
+  `DROP INDEX IF EXISTS idx_email_feedback_date_lang; DROP TABLE IF EXISTS email_feedback;`.
+  Export first if the votes matter:
+  `SELECT date, lang, vote, COUNT(*) FROM email_feedback GROUP BY 1, 2, 3;`
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`

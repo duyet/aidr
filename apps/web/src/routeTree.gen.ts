@@ -17,6 +17,7 @@ import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as DataRouteImport } from './routes/data'
 import { Route as ExtensionRouteImport } from './routes/extension'
+import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as MailRouteImport } from './routes/mail'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -95,6 +96,11 @@ const DataRoute = DataRouteImport.update({
 const ExtensionRoute = ExtensionRouteImport.update({
   id: '/extension',
   path: '/extension',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackRoute = FeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MailRoute = MailRouteImport.update({
@@ -302,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
+  '/feedback': typeof FeedbackRoute
   '/mail': typeof MailRoute
   '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
@@ -351,6 +358,7 @@ export interface FileRoutesByTo {
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
+  '/feedback': typeof FeedbackRoute
   '/mail': typeof MailRoute
   '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
@@ -401,6 +409,7 @@ export interface FileRoutesById {
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
+  '/feedback': typeof FeedbackRoute
   '/mail': typeof MailRoute
   '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
@@ -452,6 +461,7 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/data'
     | '/extension'
+    | '/feedback'
     | '/mail'
     | '/mcp'
     | '/privacy'
@@ -501,6 +511,7 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/data'
     | '/extension'
+    | '/feedback'
     | '/mail'
     | '/mcp'
     | '/privacy'
@@ -550,6 +561,7 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/data'
     | '/extension'
+    | '/feedback'
     | '/mail'
     | '/mcp'
     | '/privacy'
@@ -600,6 +612,7 @@ export interface RootRouteChildren {
   ChangelogRoute: typeof ChangelogRoute
   DataRoute: typeof DataRoute
   ExtensionRoute: typeof ExtensionRoute
+  FeedbackRoute: typeof FeedbackRoute
   MailRoute: typeof MailRoute
   McpRoute: typeof McpRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -684,6 +697,13 @@ declare module '@tanstack/react-router' {
       path: '/extension'
       fullPath: '/extension'
       preLoaderRoute: typeof ExtensionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback': {
+      id: '/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof FeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mail': {
@@ -1026,6 +1046,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChangelogRoute: ChangelogRoute,
   DataRoute: DataRoute,
   ExtensionRoute: ExtensionRoute,
+  FeedbackRoute: FeedbackRoute,
   MailRoute: MailRoute,
   McpRoute: McpRoute,
   PrivacyRoute: PrivacyRoute,
@@ -1056,13 +1077,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
