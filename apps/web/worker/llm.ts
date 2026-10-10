@@ -1461,9 +1461,9 @@ export async function scoreItems(
         return [...rows, ...chatRows];
       } catch (error) {
         (isProviderFailure(error) ? console.warn : console.error)(
-      "scoreItems batch failed:",
-      error
-    );
+          "scoreItems batch failed:",
+          error
+        );
         return rows;
       }
     }
