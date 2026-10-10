@@ -465,7 +465,7 @@ GROUP BY date ORDER BY date DESC
 LIMIT ?`;
 
 const DAY_VIDEO_ROWS_SQL =
-  "SELECT date, youtube_id, short_id, title, updated_at FROM day_videos";
+  "SELECT date, youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi, updated_at FROM day_videos";
 
 const DAY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -479,13 +479,17 @@ export interface SitemapDayVideoRow {
   youtube_id: string | null;
   short_id: string | null;
   title: string | null;
+  youtube_id_vi?: string | null;
+  short_id_vi?: string | null;
+  title_vi?: string | null;
   updated_at: number | null;
 }
 
 /**
  * Both explicit-locale URLs for each day. Days still inside the rank-settle
- * window change hourly; settled days are frozen archive pages. The vi entry
- * carries the day video's YouTube thumbnail, like a story's single image.
+ * window change hourly; settled days are frozen archive pages. Each locale's
+ * entry carries that language's day video thumbnail, like a story's single
+ * image; a locale without its own video gets none (no cross-language use).
  */
 export function daySitemapUrls(
   days: SitemapDayRow[],
@@ -501,7 +505,8 @@ export function daySitemapUrls(
     if (!day.date || !DAY_DATE_RE.test(day.date) || day.date > today) {
       return [];
     }
-    const video = videoByDate.get(day.date);
+    const date = day.date;
+    const video = videoByDate.get(date);
     const lastmod = sitemapLastmod(
       Math.max(epochSeconds(day.updated), epochSeconds(video?.updated_at)) ||
         null
@@ -512,15 +517,17 @@ export function daySitemapUrls(
       changefreq: settled ? "monthly" : "daily",
       priority: settled ? "0.5" : "0.6",
     };
-    const thumbId = isYoutubeId(video?.youtube_id)
-      ? video.youtube_id
-      : isYoutubeId(video?.short_id)
-        ? video.short_id
-        : null;
-    const title = video?.title?.trim().slice(0, DAY_VIDEO_TITLE_MAX);
-    return [
-      {
-        loc: absoluteSiteUrl(dayArchivePath(day.date), "vi"),
+    const entry = (lang: "vi" | "en"): SitemapUrl => {
+      const ids =
+        lang === "vi"
+          ? [video?.youtube_id_vi, video?.short_id_vi]
+          : [video?.youtube_id, video?.short_id];
+      const thumbId = ids.find((id): id is string => isYoutubeId(id));
+      const title = (lang === "vi" ? video?.title_vi : video?.title)
+        ?.trim()
+        .slice(0, DAY_VIDEO_TITLE_MAX);
+      return {
+        loc: absoluteSiteUrl(dayArchivePath(date), lang),
         ...shared,
         ...(thumbId
           ? {
@@ -528,9 +535,9 @@ export function daySitemapUrls(
               ...(title ? { imageTitle: title } : {}),
             }
           : {}),
-      },
-      { loc: absoluteSiteUrl(dayArchivePath(day.date), "en"), ...shared },
-    ];
+      };
+    };
+    return [entry("vi"), entry("en")];
   });
 }
 

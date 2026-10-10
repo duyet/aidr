@@ -42,6 +42,7 @@ import {
   previewRanking,
   previewTldr,
   pushItems,
+  sendDayVideoTelegram,
   setDayVideo,
   triggerIngest,
   upsertSource,
@@ -152,11 +153,21 @@ async function callAdminTool(
       return setDayVideo(
         env,
         args.date,
-        { video: args.video, short: args.short, title: args.title },
+        {
+          lang: args.lang,
+          video: args.video,
+          short: args.short,
+          title: args.title,
+        },
         "mcp"
       );
     case "delete_day_video":
-      return deleteDayVideo(env, args.date);
+      return deleteDayVideo(env, args.date, args.lang);
+    case "send_day_video_telegram":
+      return sendDayVideoTelegram(env, args.date, {
+        lang: args.lang,
+        chat_id: args.chat_id,
+      });
   }
 }
 

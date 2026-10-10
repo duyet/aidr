@@ -48,7 +48,7 @@ describe("daySitemapUrls", () => {
     expect(Number(recent?.priority)).toBeGreaterThan(Number(settled?.priority));
   });
 
-  it("puts the YouTube thumbnail on the vi entry only and lets the video move lastmod", () => {
+  it("puts each language's own YouTube thumbnail on its locale entry only and lets the video move lastmod", () => {
     const [viUrl, enUrl] = daySitemapUrls(
       [{ date: "2026-08-01", updated: sec("2026-08-01T05:00:00Z") }],
       [
@@ -63,19 +63,20 @@ describe("daySitemapUrls", () => {
       ],
       NOW
     );
-    expect(viUrl?.image).toBe(
+    // The stored video is English: the en entry gets it, vi does not.
+    expect(enUrl?.image).toBe(
       "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
     );
-    expect(viUrl?.imageTitle).toBe("AI;DR <Daily> & brief");
-    expect(viUrl?.lastmod).toBe("2026-08-05");
-    expect(enUrl?.image).toBeUndefined();
+    expect(enUrl?.imageTitle).toBe("AI;DR <Daily> & brief");
+    expect(enUrl?.lastmod).toBe("2026-08-05");
+    expect(viUrl?.image).toBeUndefined();
     const xml = buildSitemapXml([viUrl!, enUrl!]);
     expectWellFormedXml(xml, "days child with image");
     expect(xml).toContain('xmlns:image="');
   });
 
   it("falls back to the Short thumbnail and drops invalid video ids", () => {
-    const [withShort] = daySitemapUrls(
+    const [, withShort] = daySitemapUrls(
       [{ date: "2026-08-01", updated: 1 }],
       [
         {
@@ -91,7 +92,7 @@ describe("daySitemapUrls", () => {
     expect(withShort?.image).toBe(
       "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg"
     );
-    const [noImage] = daySitemapUrls(
+    const [, noImage] = daySitemapUrls(
       [{ date: "2026-08-02", updated: 1 }],
       [
         {
@@ -105,6 +106,30 @@ describe("daySitemapUrls", () => {
       NOW
     );
     expect(noImage?.image).toBeUndefined();
+  });
+
+  it("gives the vi entry a Vietnamese video thumbnail without using the English one", () => {
+    const [viUrl, enUrl] = daySitemapUrls(
+      [{ date: "2026-08-01", updated: 1 }],
+      [
+        {
+          date: "2026-08-01",
+          youtube_id: null,
+          short_id: null,
+          title: null,
+          youtube_id_vi: "B3vKYiV7rOw",
+          short_id_vi: null,
+          title_vi: "Bản tin AI;DR",
+          updated_at: null,
+        },
+      ],
+      NOW
+    );
+    expect(viUrl?.image).toBe(
+      "https://i.ytimg.com/vi/B3vKYiV7rOw/hqdefault.jpg"
+    );
+    expect(viUrl?.imageTitle).toBe("Bản tin AI;DR");
+    expect(enUrl?.image).toBeUndefined();
   });
 
   it("skips malformed and future dates (the page would 404)", () => {

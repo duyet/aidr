@@ -289,6 +289,20 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0052_day_videos_vi.sql
+
+- Change: rebuilds `day_videos` (create new, copy, drop, rename) to add
+  `youtube_id_vi`, `short_id_vi`, `title_vi` and a CHECK that needs one of
+  the four ids. Existing rows keep their English ids; the `_vi` columns start
+  NULL.
+- Risk: the table is dropped inside the migration, so it must run as one
+  unit. Deploy this migration before the Worker that reads the `_vi` columns.
+- Rollback: Vietnamese rows are lost on a rebuild back to the old shape, so
+  save them first: `SELECT * FROM day_videos WHERE youtube_id_vi IS NOT NULL
+  OR short_id_vi IS NOT NULL;`. Then recreate `day_videos` with the 0046
+  columns and copy `date, youtube_id, short_id, title, added_by, created_at,
+  updated_at` for rows where `youtube_id IS NOT NULL OR short_id IS NOT NULL`.
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`

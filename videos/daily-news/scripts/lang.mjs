@@ -2,7 +2,10 @@
 // with its own voice, output, caption and render files next to the English ones.
 export function cutOf(argv) {
   const i = argv.indexOf("--lang");
-  const lang = i > 0 ? argv[i + 1] : "en";
+  return cutFor(i > 0 ? argv[i + 1] : "en");
+}
+
+export function cutFor(lang) {
   if (!["en", "vi"].includes(lang)) throw new Error(`--lang ${lang}: en | vi`);
   const dot = lang === "en" ? "" : `.${lang}`;
   const dash = lang === "en" ? "" : `-${lang}`;

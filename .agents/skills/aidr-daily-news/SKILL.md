@@ -9,7 +9,7 @@ One template, a new edition every day. Scripts do the mechanics; your job is the
 
 Reference for every file and field: `videos/daily-news/README.md`. Brand rules: `videos/brand/brand.md`.
 
-## The run (three commands and one writing pass)
+## The run (writing passes, then `publish.mjs`)
 
 From `videos/daily-news/`. If `node` is an nvm shell function, put `~/.nvm/versions/node/<v>/bin` on `PATH` and call `command node`.
 
@@ -17,12 +17,19 @@ From `videos/daily-news/`. If `node` is an nvm shell function, put `~/.nvm/versi
 git pull
 node scripts/new.mjs                 # fetch edition + media, assets-sheet.jpg, draft script.json
 # → read editions/<date>/assets-sheet.jpg and edition.json, then rewrite script.json (below)
-node scripts/daily.mjs <date>        # refuses drafts; voice → build → lint → snapshots
-# → read snap-16x9/ and snap-9x16/ contact sheets; fix script.json; rerun daily.mjs
-node scripts/daily.mjs <date> --render   # two 4K MP4s + two cover PNGs in renders/
+# → in parallel, a sonnet subagent writes script.vi.json from the edition's text_vi (Vietnamese hosts)
+node scripts/publish.mjs <date> --steps render      # voice → build → lint → snapshots → 4K renders, per language
+# → read snap-*/ contact sheets and a few frames of each render; fix the script; rerun
+node scripts/publish.mjs <date> --steps upload,attach   # YouTube serially (owner's Chrome), then the day page
+node scripts/publish.mjs <date> --steps telegram        # staging chat first; look at it
+node scripts/publish.mjs <date> --steps telegram --prod # then the real channels
 ```
 
-Vietnamese cut, when asked: write `script.vi.json` from the edition's `text_vi` (same facts, Vietnamese hosts `thanh`, `duc-huy`, `an-nhien`, `phan-anh` in the seeded order, statWord without diacritics is fine), then `daily.mjs <date> --lang vi [--render]`. Avoid descenders in a giant `stat` (`−20 TỶ USD`, not `tỷ`).
+`publish.mjs` is idempotent: state is `editions/<date>/STATUS.json` (ignored), one row per cut, and each step skips cuts already done (YouTube cannot replace a file, Telegram cannot unpost). It refuses to start until `script.json` (and `script.vi.json`) are finished; it never writes them. `--dry-run` prints every command. `--lang en` runs one language only. Upload, attach and telegram are public: say what will happen before running them, and never run `--prod` before the staging post was checked. `daily.mjs <date> [--lang vi] [--render]` still runs a single language by hand.
+
+Vietnamese cut: write `script.vi.json` from the edition's `text_vi` (same facts, Vietnamese hosts `thanh`, `duc-huy`, `an-nhien`, `phan-anh` in the seeded order, statWord without diacritics is fine). Avoid descenders in a giant `stat` (`−20 TỶ USD`, not `tỷ`).
+
+Voices: each cut uses several voices from the `voices.json` cast, alternating per story and seeded by the date; see Voices below.
 
 Then commit the sources (`script.json`, `edition.json`, `captions.srt`, `posts.md`, `timeline.json`, template changes) on a branch, push when the owner asks, and hand over the MP4 and cover paths, the duration and `posts.md`. Renders, media and voice files stay ignored.
 
@@ -127,5 +134,5 @@ To keep the daily cheap, hand the mechanical steps to subagents named
 contact sheets, and the oEmbed check after upload; `sonnet-medium-*` for
 `posts.md` copy and the Vietnamese `script.vi.json`. Picking pictures,
 writing the anchors' lines, the frame review and anything on the owner's
-Chrome stay in the main session. Renders and uploads are serial. Full plan:
+Chrome stay in the main session. The `script.vi.json` pass runs in parallel with the English writing; `publish.mjs` render, upload, attach and telegram run in the main session. Renders and uploads are serial. Full plan:
 `aidr-release` → Delegation.
