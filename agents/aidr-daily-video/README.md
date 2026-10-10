@@ -20,6 +20,8 @@ Requires `ant` 1.34.0 or later and `ant auth status` showing the intended org an
 
 One row per secret. Mint tokens for this agent; do not reuse personal ones.
 
+Shortcut: `node agents/aidr-daily-video/vault-sync.mjs` copies all six from the repo `.env.local` (values go to `ant` over stdin, never printed). It skips names already in the vault; `--replace` archives and re-adds them after a rotation. The manual `add` loop below does the same one secret at a time.
+
 | `secret_name` | Allowed host | Step | Injection |
 |---------------|--------------|------|-----------|
 | `ELEVENLABS_API_KEY` | `api.elevenlabs.io` | voice | header (`xi-api-key`) |
@@ -33,7 +35,7 @@ The access token the refresh returns is a real value inside the sandbox; it is s
 
 ```sh
 ant apply --dry-run -v agents/aidr-daily-video/agent.md agents/aidr-daily-video/environment.yaml agents/aidr-daily-video/vault.yaml
-ant apply agents/aidr-daily-video/agent.md agents/aidr-daily-video/environment.yaml agents/aidr-daily-video/vault.yaml
+ant apply --yes agents/aidr-daily-video/agent.md agents/aidr-daily-video/environment.yaml agents/aidr-daily-video/vault.yaml
 
 VAULT_ID=$(jq -r '.resources["./agents/aidr-daily-video/vault.yaml"].id' claude-lock.json)
 
@@ -88,8 +90,15 @@ Resume after a good manual run (`ant beta:deployments resume --deployment-id "$D
 
 `bash` (always allowed) holds every credential: it uploads to YouTube, writes the day page through the aidr admin API, and posts to Telegram. Limits: each secret reaches only its host; the kickoff picks privacy and staging vs prod; `publish.mjs` skips cuts already done within a session. Across sessions there is no `STATUS.json`, so the agent checks the day page first; a second manual run on the same day can still upload twice if that check is skipped.
 
+## First run (2026-10-10, session `sesn_01EX1MeCpHft5WRdf3rJjtEq`)
+
+- Setup, scripts, four 4K renders and review all worked in the sandbox: 77 min active, list cost $4.50. Renders ran about 15-20 min per cut.
+- It stopped at upload: the English cuts were already on the day page. Step 0 (`publish.mjs --steps check`) now runs first, and `render` skips published cuts, so a repeat costs seconds, not an hour. The Vietnamese cuts for that date were still unpublished; step 0 now narrows the run to `--lang vi` in that case.
+- ElevenLabs had 0 characters left, so every cut was no-voice.
+- `sleep` over ~4 minutes in one tool call crashed the tool (the render kept going); the prompt caps polls at `sleep 200`.
+
 ## Known gaps
 
 - Telegram posts the Worker's YouTube card (`--telegram-mode card`), not the video file. `publish.mjs` defaults to uploading the video with `sendVideo`, but the bot token is part of the `api.telegram.org/bot<token>/...` URL path, and vault `environment_variable` credentials are substituted in request headers and body only, never in the URL path. Direct video posting from the sandbox needs a different token route (a Worker endpoint that accepts the file, or a custom tool).
-- The `packages` shape (`apt`, `npm`) and the sandbox's CPU, memory and session time limits are not in the docs used here; measure the 4K render time on the first run. Locally a 4K cut takes 15-25 min; four cuts in-sandbox may take over an hour.
+- The `packages` shape (`apt`, `npm`) and the sandbox's CPU, memory and session time limits are not in the docs used here.
 - Fallback for slow renders: `npx hyperframes cloud render --resolution 4k` (HeyGen-hosted, billed per credit, 4K at 1.5x) with a `HEYGEN_API_KEY` credential scoped to `api.heygen.com`. `publish.mjs` does not support it yet.

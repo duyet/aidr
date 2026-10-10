@@ -3,7 +3,9 @@
 // State lives in editions/<date>/STATUS.json (ignored): one row per cut. A step skips cuts it already
 // finished (YouTube cannot replace a file, Telegram cannot unpost), so rerunning is always safe.
 // The runner never writes scripts: script.json (and script.vi.json) must be written first.
-// Usage: node scripts/publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram]
+// --steps check needs no script: it exits 3 when every requested cut is already on the live day page
+// (run it before writing scripts; render also skips published cuts).
+// Usage: node scripts/publish.mjs <date> [--lang en,vi] [--steps check|render,upload,attach,telegram]
 //        [--no-voice] [--chat <telegram chat id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card]
 //        [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
 // --uploader api (YouTube Data API, headless) is the default when YOUTUBE_REFRESH_TOKEN is set, else chrome (owner's Chrome).
@@ -48,7 +50,8 @@ if (!["video", "card"].includes(tgMode)) throw new Error(`--telegram-mode ${tgMo
 for (const l of langs) if (!["en", "vi"].includes(l)) throw new Error(`--lang ${l}: en | vi`);
 if (!["chrome", "api"].includes(uploader)) throw new Error(`--uploader ${uploader}: chrome | api`);
 if (!["private", "unlisted", "public"].includes(privacy)) throw new Error(`--privacy ${privacy}: private | unlisted | public`);
-for (const s of steps) if (!STEPS.includes(s)) throw new Error(`--steps ${s}: ${STEPS.join(" | ")}`);
+const checkOnly = steps.length === 1 && steps[0] === "check";
+if (!checkOnly) for (const s of steps) if (!STEPS.includes(s)) throw new Error(`--steps ${s}: check | ${STEPS.join(" | ")}`);
 
 const dir = join(ROOT, "editions", date);
 const statusPath = join(dir, "STATUS.json");
@@ -81,7 +84,7 @@ const draft = (l) => {
     .filter((s) => s.includes("TODO") || s.includes('"_bullet"'));
   return bad.length ? `${file} is still a draft (${bad.length} TODO/_bullet lines)` : null;
 };
-const problems = langs.map(draft).filter(Boolean);
+const problems = checkOnly ? [] : langs.map(draft).filter(Boolean);
 if (problems.length) {
   console.error(
     `✗ The newsroom writing pass (an agent) is required first; publish.mjs does not write scripts:\n  ${problems.join("\n  ")}\n` +
@@ -92,7 +95,7 @@ if (problems.length) {
 
 // State.
 const rows = existsSync(statusPath) ? JSON.parse(readFileSync(statusPath, "utf8")) : [];
-const save = () => !dry && writeFileSync(statusPath, `${JSON.stringify(rows, null, 2)}\n`);
+const save = () => !dry && !checkOnly && writeFileSync(statusPath, `${JSON.stringify(rows, null, 2)}\n`);
 const cutName = (l, f) => `${date}-${l}-${f}`;
 for (const l of langs)
   for (const f of Object.keys(config.formats)) {
@@ -142,11 +145,24 @@ const lastJson = (text) => {
 const summary = (what, targets) =>
   console.log(`\n▶ ${what}: ${targets.length ? targets.join(", ") : "nothing to do"}`);
 
-// 1. Render.
+// 0. Check: is the date already published? Cheap, so it runs before any writing or rendering.
+if (checkOnly) {
+  await seedFromSite();
+  const left = mine.filter((r) => !r.youtube?.id);
+  if (!left.length) {
+    console.log(`✓ ${date}: every cut is already on the day page; nothing to publish`);
+    process.exit(3);
+  }
+  console.log(`▶ ${date}: to publish: ${left.map((r) => r.cut).join(", ")}`);
+  process.exit(0);
+}
+
+// 1. Render. A cut already on the live day page is never rendered again.
 if (steps.includes("render")) {
+  await seedFromSite();
   const rendered = new Set();
   for (const l of langs) {
-    const todo = byLang(l).filter((r) => !existsSync(r.path) || !existsSync(r.cover));
+    const todo = byLang(l).filter((r) => !r.youtube?.id && (!existsSync(r.path) || !existsSync(r.cover)));
     summary(`render ${l}`, todo.map((r) => r.cut));
     if (!todo.length) continue;
     if (!dry) {

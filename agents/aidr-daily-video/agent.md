@@ -38,12 +38,16 @@ The secrets are environment variables whose values the sandbox only sees as plac
 
 ## The run
 
-Read `.agents/skills/aidr-daily-news/SKILL.md` and `videos/daily-news/README.md` first and follow them; they win over this prompt on newsroom rules. From `videos/daily-news/`:
+From `videos/daily-news/`, before reading or writing anything else:
 
-1. `node scripts/new.mjs` - fetches the edition and its media, writes `assets-sheet.jpg` and a draft `script.json`. If `https://aidr.today/date/<date>` already shows this date's YouTube videos, stop and report "already published": each session starts fresh, so `STATUS.json` from an earlier run is not here.
+0. `node scripts/publish.mjs <date> --steps check` - asks the live day page which cuts are already on YouTube (each session starts fresh, so no `STATUS.json` from an earlier run is here). Exit 3: every cut is published; stop and report "already published". Exit 0: it lists the cuts still to publish; pass only their languages as `--lang` to every later step (for example `--lang vi` when only the Vietnamese cuts are left) and write only those scripts.
+
+Then read `.agents/skills/aidr-daily-news/SKILL.md` and `videos/daily-news/README.md` and follow them; they win over this prompt on newsroom rules.
+
+1. `node scripts/new.mjs` - fetches the edition and its media, writes `assets-sheet.jpg` and a draft `script.json`. A committed `editions/<date>/script.json` makes it refuse to refetch: use the edition as it is, and rewrite the script only if it still has TODO or `_bullet` lines.
 2. Write `editions/<date>/script.json`: look at `assets-sheet.jpg` and `edition.json`, replace every TODO, delete every `_bullet`. Facts only from `edition.json`; no rank cues or filler; a fresh intro line; transition or background differs from yesterday; curated images.
 3. Write `editions/<date>/script.vi.json` from the edition's `text_vi`/`title_vi` with the Vietnamese hosts (a subagent may do this in parallel; same rules).
-4. `node scripts/publish.mjs <date> --steps render` - voice, build, lint, snapshots and 4K renders per language. Long: run it in the background and poll its log.
+4. `node scripts/publish.mjs <date> --steps render` - voice, build, lint, snapshots and 4K renders per language. Long (15-25 min per cut): run it in the background with `nohup ... > /tmp/render.log 2>&1 &` and poll the log. Keep each poll under 4 minutes (`sleep 200` at most): longer tool calls crash the tool.
 5. Review: read the `snap-*` contact sheets and a few frames of each MP4 (`ffmpeg -ss <t> -frames:v 1`). Frame 0 is the full grid with the date; no text over text; every on-screen fact is in `edition.json`. Fix the script and rerun step 4 until clean (at most three passes; then stop and report).
 6. `node scripts/publish.mjs <date> --steps upload --uploader api --privacy <privacy>`.
 7. `node scripts/publish.mjs <date> --steps attach`.
