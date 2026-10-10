@@ -303,6 +303,17 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   columns and copy `date, youtube_id, short_id, title, added_by, created_at,
   updated_at` for rows where `youtube_id IS NOT NULL OR short_id IS NOT NULL`.
 
+## 0053_notify_summaries.sql
+
+- Change: adds the `notify_summaries` cache (one short Telegram caption
+  summary per item and language). Nothing is seeded; no existing table is
+  touched.
+- Risk: none for readers. Deploy it before the Worker that reads it; if the
+  table is missing the Worker logs a warning and trims the caption at a
+  sentence or word boundary instead.
+- Rollback: `DROP TABLE notify_summaries;`. The summaries are regenerated on
+  the next send.
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`

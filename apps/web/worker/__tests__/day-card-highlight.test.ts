@@ -46,7 +46,7 @@ describe("highlightBulletText", () => {
     ).toBe(item.title_vi);
   });
 
-  it("clips the same-language sentence at 90 and drops a Vietnamese summary on English", () => {
+  it("leaves out a first sentence that is too long to keep whole, and drops a Vietnamese summary on English", () => {
     const text = highlightBulletText(
       {
         title: "Short title",
@@ -56,10 +56,11 @@ describe("highlightBulletText", () => {
       },
       "en"
     );
-    expect(text.startsWith("Short title — ")).toBe(true);
-    const extra = text.slice("Short title — ".length);
-    expect(extra.endsWith("…")).toBe(true);
-    expect(extra.slice(0, -1).length).toBeLessThanOrEqual(90);
+    // The sentence is longer than the clause cap: the headline stands alone,
+    // with no half sentence and no ellipsis.
+    expect(text).toBe("Short title");
+    expect(text).not.toContain("word");
+    expect(text).not.toContain("…");
     expect(text).not.toContain("tail");
     expect(text).not.toContain("Next sentence");
     expect(text).not.toContain("tiếng Việt");
