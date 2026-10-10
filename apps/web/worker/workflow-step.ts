@@ -1,6 +1,7 @@
 import type { WorkflowStep } from "cloudflare:workers";
 import {
   engineInterruptionReason,
+  isProviderFailure,
   reportPipelineException,
 } from "./bugsink.js";
 import { flushLlmCallWrites, withRunLlmCallLogger } from "./llm-call-log.js";
@@ -83,7 +84,11 @@ export async function safeStep<T>(
       );
       return fallback;
     }
-    console.error(`${name} step failed:`, safeErrorMessage(error));
+    // An exhausted model chain is a provider outage, not an app bug. The
+    // fallback is returned either way; warn instead of raising an issue
+    // (`health.ts` alerts on the run's LLM failure rate).
+    const log = isProviderFailure(error) ? console.warn : console.error;
+    log(`${name} step failed:`, safeErrorMessage(error));
     await reportPipelineException(error, { step: name, kind: "exception" });
     return fallback;
   }
