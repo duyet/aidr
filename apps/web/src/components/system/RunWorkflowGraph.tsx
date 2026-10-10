@@ -21,7 +21,12 @@ const PHASES: { label: string; steps: string[] }[] = [
   { label: "Ingest", steps: ["fetch", "dedupe", "score", "translate"] },
   {
     label: "Backfill",
-    steps: ["backfill-content", "backfill-translate", "backfill-score"],
+    steps: [
+      "backfill-content",
+      "backfill-translate",
+      "backfill-en-summary",
+      "backfill-score",
+    ],
   },
   {
     label: "Review",
@@ -38,6 +43,7 @@ const STEP_TASK: Record<string, string> = {
   "backfill-score": "score",
   translate: "translate",
   "backfill-translate": "translate",
+  "backfill-en-summary": "summarize",
   "qa-translations": "review",
   "review-suggestions": "review",
   "review-submissions": "review",

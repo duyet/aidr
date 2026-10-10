@@ -1,4 +1,5 @@
 import { stripTitleMarker } from "../../src/lib/plain-text.js";
+import { enSummarySql } from "../en-summary.js";
 import type { Env } from "../types.js";
 
 export interface MailContentItem {
@@ -55,7 +56,7 @@ export async function listMailContent(env: Env): Promise<{
 }> {
   const items: MailContentItem[] = [];
   const { results } = await env.DB.prepare(
-    `SELECT title, url, summary FROM items
+    `SELECT title, url, ${enSummarySql("items")} AS summary FROM items
      WHERE status = 'published'
      ORDER BY published_at DESC
      LIMIT 20`

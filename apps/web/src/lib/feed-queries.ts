@@ -1,3 +1,4 @@
+import { enSummarySql } from "../../worker/en-summary.js";
 import {
   boundedPublicManifest,
   canonicalizeMediaImageUrl,
@@ -62,7 +63,8 @@ interface ItemRow {
 }
 
 const ITEM_SELECT_BASE = `
-  SELECT i.id, i.url, i.title, t.title AS title_vi, i.summary,
+  SELECT i.id, i.url, i.title, t.title AS title_vi,
+         ${enSummarySql("i")} AS summary,
          t.summary AS summary_vi, i.category,
          i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}{votes}
   FROM items i

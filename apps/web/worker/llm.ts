@@ -6,6 +6,12 @@ import {
 } from "../src/lib/tldr-bullets";
 import { chunk } from "./chunk.js";
 import { mapWithConcurrency } from "./concurrency.js";
+import {
+  type EnSummaryInput,
+  type EnSummaryResult,
+  enSummaryPrompt,
+  sanitizeEnSummaryResults,
+} from "./en-summary.js";
 import { IMPORTANCE_BANDS } from "./importance-rubric.js";
 import { LLM_STEP } from "./ingest/context.js";
 import {
@@ -220,6 +226,7 @@ interface AnyrouterCallResult extends AnyrouterCompletion {
 export type LlmTask =
   | "score"
   | "translate"
+  | "summarize"
   | "tldr"
   | "cluster"
   | "review"
@@ -1864,6 +1871,54 @@ export async function translateItems(
   }
 
   return results;
+}
+
+/** One call per `EN_SUMMARY_BATCH_SIZE` stories. Same model chain as the
+ * Vietnamese translation: it reads the same source and writes about as much. */
+const EN_SUMMARY_TIMEOUT_MS = 70_000;
+const EN_SUMMARY_MAX_TOKENS = 2048;
+
+/** LLM English summaries for English-source stories (worker/en-summary.ts).
+ * Input goes through `sentSource`, the exact text the VI translator sees, so
+ * both languages carry the same facts. Rows that fail the deterministic
+ * guard are dropped; the caller keeps the raw summary for them. */
+export async function summarizeEnglish(
+  env: Env,
+  items: { i: number; title: string; summary: string }[]
+): Promise<{ results: EnSummaryResult[]; tokens: number }> {
+  const batch: EnSummaryInput[] = items
+    .map((item) => ({
+      i: item.i,
+      title: item.title,
+      summary: sentSource({ ...item, sourceLang: "en" }, false).summary ?? "",
+    }))
+    .filter((item) => item.summary.length > 0);
+  if (batch.length === 0) return { results: [], tokens: 0 };
+  const { content, tokens } = await callAnyrouter(
+    env,
+    [{ role: "user", content: enSummaryPrompt(batch) }],
+    {
+      json: true,
+      modelSpec: env.ANYROUTER_TRANSLATE_MODEL,
+      task: "summarize",
+      sensitive: true,
+      timeoutMs: EN_SUMMARY_TIMEOUT_MS,
+      maxSliceMs: TRANSLATE_SLICE_MAX_MS,
+      firstTokenMs: TRANSLATE_FIRST_TOKEN_MS,
+      maxTokens: EN_SUMMARY_MAX_TOKENS,
+      accept: (raw) => {
+        try {
+          return sanitizeEnSummaryResults(parseJson(raw), batch).length > 0;
+        } catch {
+          return false;
+        }
+      },
+    }
+  );
+  return {
+    results: sanitizeEnSummaryResults(parseJson(content), batch),
+    tokens,
+  };
 }
 
 export interface TldrItem {

@@ -1,3 +1,4 @@
+import { enSummarySql } from "../../worker/en-summary.js";
 import {
   boundedPublicManifest,
   canonicalizeMediaImageUrl,
@@ -149,7 +150,8 @@ async function queryStories(
   // The Markdown contract needs at most two rows to detect a prefix
   // collision. The number is clamped before interpolation, never user input.
   const limit = Math.min(Math.max(Math.trunc(requestedLimit), 1), 2);
-  const itemSql = `SELECT i.id, i.url, i.title, t.title AS title_vi, i.summary,
+  const itemSql = `SELECT i.id, i.url, i.title, t.title AS title_vi,
+              ${enSummarySql("i")} AS summary,
               t.summary AS summary_vi, i.category, i.published_at,
               i.points, i.comments, i.rank_score, i.source_id, i.tags
               ${hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""}
