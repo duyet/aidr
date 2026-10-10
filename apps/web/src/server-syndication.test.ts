@@ -235,7 +235,10 @@ describe("/feed.xml locale contract", () => {
     expect(alias.headers.get("content-type")).toBe(
       "application/rss+xml; charset=utf-8"
     );
-    expect(await alias.text()).toBe(await canonical.text());
+    // lastBuildDate is the render clock; two renders may straddle a second.
+    const stable = (xml: string) =>
+      xml.replace(/<lastBuildDate>[^<]*<\/lastBuildDate>/, "");
+    expect(stable(await alias.text())).toBe(stable(await canonical.text()));
   });
 
   it("emits only canonical explicit-locale item links", async () => {
