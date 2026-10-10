@@ -6,7 +6,11 @@ import { ensureMailSchema } from "../mail/schema.js";
 import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import type { Env } from "../types.js";
 import { notifyOwnerOfNewSubscriber } from "./owner-notify.js";
-import { sendConfirmEmail, sendWelcomeEmail } from "./send.js";
+import {
+  sendConfirmEmail,
+  sendSettingsChangeEmail,
+  sendWelcomeEmail,
+} from "./send.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -115,7 +119,8 @@ export function normalizeSource(source: unknown): SubscribeSource {
 
 /** Inserts a pending subscriber (double opt-in): the row stays
  * `confirmed = 0` until the confirmation link is clicked, and digests only go
- * to confirmed rows. An already-confirmed row keeps its confirmation. `lang` defaults to 'vi' unless
+ * to confirmed rows. An already-confirmed row is left unchanged; it gets a
+ * mail whose link applies the submitted settings. `lang` defaults to 'vi' unless
  * 'en' is explicitly given. `timezone` defaults to DEFAULT_TIMEZONE unless
  * a valid IANA timezone string is given. */
 export async function subscribe(
@@ -127,7 +132,7 @@ export async function subscribe(
   ip?: string | null,
   digestSize?: unknown,
   mailFormat?: unknown
-): Promise<{ ok: true; pending: boolean } | SubscribeError> {
+): Promise<{ ok: true; pending: true } | SubscribeError> {
   if (!isValidEmail(email) || !isDeliverableDomain(email)) {
     return { error: "invalid email", status: 400 };
   }
@@ -165,6 +170,37 @@ export async function subscribe(
     console.warn("subscribe: no cf context; skipping rate limit");
   }
 
+  // A confirmed address keeps its settings until the mailbox owner clicks
+  // the link. The response matches a new signup, so it does not reveal
+  // whether the address is subscribed.
+  const existing = await env.DB.prepare(
+    "SELECT confirmed, lang, unsubscribe_token FROM subscribers WHERE email = ?"
+  )
+    .bind(email)
+    .first<{ confirmed: number; lang: string; unsubscribe_token: string }>();
+  if (existing?.confirmed === 1) {
+    void sendSettingsChangeEmail(
+      env,
+      {
+        email,
+        lang: existing.lang,
+        unsubscribe_token: existing.unsubscribe_token,
+      },
+      {
+        lang: normalizedLang,
+        timezone: normalizedTimezone,
+        digest_size: size,
+        mail_format: format,
+      }
+    ).catch((error) => {
+      console.error(
+        "settings change email skipped:",
+        error instanceof Error ? error.message : "error"
+      );
+    });
+    return { ok: true, pending: true };
+  }
+
   await env.DB.prepare(
     `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format)
      VALUES (?, ?, ?, ?, 0, ?, ?, ?)
@@ -189,7 +225,6 @@ export async function subscribe(
   )
     .bind(email)
     .first<{ confirmed: number; unsubscribe_token: string }>();
-  if (row?.confirmed === 1) return { ok: true, pending: false };
 
   // Confirmation mail is best-effort — the row stays pending if EMAIL is down
   // and the subscriber can submit the form again.
@@ -207,11 +242,27 @@ export async function subscribe(
   return { ok: true, pending: true };
 }
 
+/** The settings carried by the settings-change mail's confirm link
+ * (`settingsChangeUrl`), or undefined for a plain confirm link. */
+export function settingsChangeFromParams(
+  params: URLSearchParams
+): Parameters<typeof updatePrefsByToken>[2] | undefined {
+  if (!params.has("set_lang")) return undefined;
+  return {
+    lang: params.get("set_lang"),
+    timezone: params.get("set_timezone"),
+    digest_size: params.get("set_digest_size") ?? undefined,
+    mail_format: params.get("set_mail_format") ?? undefined,
+  };
+}
+
 /** Confirms a pending subscriber by the token sent in the confirmation mail,
- * then sends the welcome mail and tells the owner. Idempotent. */
+ * then sends the welcome mail and tells the owner. Idempotent. With `prefs`
+ * (the settings-change mail's link), also applies those settings. */
 export async function confirmSubscription(
   env: Env,
-  token: unknown
+  token: unknown,
+  prefs?: Parameters<typeof updatePrefsByToken>[2]
 ): Promise<{ ok: true; token: string } | SubscribeError> {
   if (typeof token !== "string" || token.length === 0) {
     return { error: "token is required", status: 400 };
@@ -230,6 +281,10 @@ export async function confirmSubscription(
       source: string | null;
     }>();
   if (!row) return { error: "not found", status: 404 };
+  if (prefs) {
+    const updated = await updatePrefsByToken(env, token, prefs);
+    if (isSubscribeError(updated)) return updated;
+  }
   if (row.confirmed === 1) return { ok: true, token };
 
   await env.DB.prepare(

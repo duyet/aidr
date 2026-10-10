@@ -206,6 +206,67 @@ export async function sendConfirmEmail(
   });
 }
 
+export interface RequestedPrefs {
+  lang: "en" | "vi";
+  timezone: string;
+  digest_size: number;
+  mail_format: MailFormat;
+}
+
+/** The confirm link plus the settings it applies once clicked. The params
+ *  are `set_*` because mail rendering rewrites every link's `lang`. */
+export function settingsChangeUrl(
+  token: string,
+  prefs: RequestedPrefs
+): string {
+  const params = new URLSearchParams({
+    set_lang: prefs.lang,
+    set_timezone: prefs.timezone,
+    set_digest_size: String(prefs.digest_size),
+    set_mail_format: prefs.mail_format,
+  });
+  return `${confirmUrl(token)}&${params.toString()}`;
+}
+
+/** A signup form re-submitted for an already-confirmed address. The new
+ *  settings apply only when the mailbox owner clicks the link (#534). */
+export async function sendSettingsChangeEmail(
+  env: Env,
+  sub: { email: string; lang: string; unsubscribe_token: string },
+  prefs: RequestedPrefs
+): Promise<boolean> {
+  const vi = sub.lang !== "en";
+  const subject = vi
+    ? "Xác nhận thay đổi cài đặt AI;DR"
+    : "Confirm your AI;DR settings change";
+  const settingsList = vi
+    ? `- Ngôn ngữ: ${prefs.lang}\n- Múi giờ: ${prefs.timezone}\n- Số tin: ${prefs.digest_size}\n- Định dạng: ${prefs.mail_format}\n`
+    : `- Language: ${prefs.lang}\n- Timezone: ${prefs.timezone}\n- Stories: ${prefs.digest_size}\n- Format: ${prefs.mail_format}\n`;
+  const bodyMd = vi
+    ? `Có người vừa đăng ký lại địa chỉ này với các cài đặt sau:\n\n${settingsList}\nBấm nút bên dưới để áp dụng. Nếu không phải bạn, cứ bỏ qua email này — cài đặt hiện tại sẽ giữ nguyên.\n`
+    : `Someone just signed up this address again with these settings:\n\n${settingsList}\nClick the button below to apply them. If this wasn't you, ignore this email — your current settings stay as they are.\n`;
+  const { html, text } = renderNoteEmail({
+    subject,
+    bodyMd,
+    lang: vi ? "vi" : "en",
+    unsubscribeUrl: unsubscribeUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    settingsUrl: settingsUrl(sub.unsubscribe_token, vi ? "vi" : "en"),
+    cta: {
+      label: vi ? "Áp dụng cài đặt" : "Apply settings",
+      url: settingsChangeUrl(sub.unsubscribe_token, prefs),
+    },
+  });
+  return sendSubscriberEmail(env, {
+    to: sub.email,
+    from: digestFrom(env),
+    subject,
+    html,
+    text,
+    unsubscribeToken: sub.unsubscribe_token,
+    lang: vi ? "vi" : "en",
+  });
+}
+
 export async function sendWelcomeEmail(
   env: Env,
   sub: { email: string; lang: string; unsubscribe_token: string }
