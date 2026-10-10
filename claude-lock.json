@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "origin": {
+    "base_url": "https://api.anthropic.com",
+    "organization_id": "83e16be9-b104-455b-be4f-1b7595d0c097",
+    "workspace_id": "wrkspc_01W9GMocae4sijAzueyWRYfP"
+  },
+  "resources": {
+    "./agents/aidr-daily-video/agent.md": {
+      "kind": "agent",
+      "id": "agent_01QrnfsCEkg1uvj8Krg54boR",
+      "version": "1",
+      "hash": "1490c0e47308dbd3b40693104f182af9",
+      "remote_hash": "d4ad8f34931cbc7040eec2bb3b695fae"
+    },
+    "./agents/aidr-daily-video/deployment-daily.yaml": {
+      "kind": "deployment",
+      "id": "depl_01YE2cvFovabYmuguyCRg13m",
+      "hash": "7d96fc6724a76cf9858dd7beebfb48ea",
+      "remote_hash": "7d96fc6724a76cf9858dd7beebfb48ea"
+    },
+    "./agents/aidr-daily-video/environment.yaml": {
+      "kind": "environment",
+      "id": "env_01VcTjD3ELTva3GStL88in9u",
+      "hash": "f48c3be2c59b4b66787e0536e577b190",
+      "remote_hash": "9c2354c192fb4acff7e09e059bab0994"
+    },
+    "./agents/aidr-daily-video/vault.yaml": {
+      "kind": "vault",
+      "id": "vlt_011CftafA7Q9XsQ3QhMZoamB",
+      "hash": "5e94850cce5180cd0a50fbea894a92af",
+      "remote_hash": "5e94850cce5180cd0a50fbea894a92af"
+    }
+  }
+}

@@ -2,7 +2,7 @@
 # day's tldr_snapshots row has been sent and is the edition the video should match.
 agent: ./agent.md
 environment_id: ./environment.yaml
-vault_ids: []          # second apply pass: the vlt_... ID from claude-lock.json (README step 4)
+vault_ids: [vlt_011CftafA7Q9XsQ3QhMZoamB]
 schedule:
   type: cron
   expression: "0 9 * * *"
