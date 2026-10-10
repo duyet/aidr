@@ -707,7 +707,9 @@ Per-subscriber language and digest size (3/5/10
 stories, default 5) to confirmed subscribers, once per their local
 morning (from 07:00 in the subscriber's timezone). Copy comes from the
 same edition as Telegram (`worker/digest/edition.ts`): `bullets_vi` or
-`bullets_en` for that local date, with no cross-language fallback. An
+`bullets_en` for that local date, with no cross-language fallback and
+no fallback to another date: until the local-date row exists the
+subscriber gets nothing, and the next 30-minute run sends it. An
 empty column leaves `last_sent_date` unset so the next run
 retries. Idempotency stays on `subscribers.last_sent_date`, not the
 `notifications` table.

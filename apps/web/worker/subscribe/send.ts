@@ -354,15 +354,11 @@ export async function sendEmailLane(
       continue;
     }
 
-    // Stamp only the edition for this local date. The UTC fallback is an
-    // older snapshot; recording localDate would skip today's edition.
-    if (edition.date === localDate) {
-      await env.DB.prepare(
-        "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
-      )
-        .bind(localDate, sub.email)
-        .run();
-    }
+    await env.DB.prepare(
+      "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
+    )
+      .bind(localDate, sub.email)
+      .run();
     sent++;
     stampedDate = edition.date;
   }
