@@ -1043,10 +1043,17 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
 
-- `@preset/aidr` (workspace preset, resolves to Laguna)
-- `poolside/laguna-s-2.1` (the only concrete id that streams usable JSON on
-  this key for translate and TL;DR)
-- `anyrouter/auto`, then `anyrouter/free` (router safety nets, always last)
+- `google/gemma-latest` (rolling alias, served `gemma-4-31b` on 2026-10-10)
+- `z-ai/glm-latest` (rolling alias, served `glm-5.2`)
+- `@preset/aidr` (workspace preset, served `gemma-4-31b` on 2026-10-10)
+- `anyrouter/auto` (router safety net, always last; served Laguna)
+
+This chain also runs the cluster call. On the gold cluster set, Laguna
+scored F1 0.51, while Gemma, GLM 5.2 and the preset scored 1.0. TL;DR uses
+`openai/gpt-5.6-luna`, then `anyrouter/auto`. Translate puts
+`google/gemma-latest` before the `gemma-4-31b` :free route. The rolling
+aliases follow new models without a deploy, so re-probe what they serve
+before reading a bench row as a fixed model.
 
 TL;DR and translate use the same chain without Jev. The VI→EN generator
 uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer

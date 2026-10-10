@@ -92,6 +92,20 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 #                            vi JSON in 2-6s. Heads both translate chains so
 #                            a production timeout on Gemma or Laguna does not
 #                            spend the batch budget first.
+#   google/gemma-latest      2026-10-10 rolling alias → gemma-4-31b (paid
+#                            route). Streaming json_object via the prod
+#                            client (cluster-gold-eval): 2 of 2 and 3 of 3,
+#                            p50 10-16s on the 96-title cluster prompt.
+#   z-ai/glm-latest          2026-10-10 rolling alias → glm-5.2. Cluster 2 of
+#                            2, p50 7.6s. glm-flash-latest (→ glm-4.7-flash)
+#                            writes reasoning prose before JSON: not used.
+#   openai/gpt-5.6-luna      2026-10-10: no longer BYOK-only on this key.
+#                            TL;DR 3 of 3, p50 37s; cluster 3 of 3, p50 4.4s.
+#   Not usable on this key 2026-10-10 (404 BYOK-only): gemini-flash-latest
+#   (→ gemini-3.8-flash), gemini-pro-latest (→ gemini-3.1-pro),
+#   qwen-flash-latest, claude-haiku-latest, claude-sonnet-latest.
+#   deepseek-flash-latest (→ deepseek-v4-flash) answers small prompts but
+#   sent no token within 20s on the cluster prompt.
 #   google/gemma-4-31b       catalog id; OpenRouter wire google/gemma-4-31b-it:free.
 #                            Next translate hop after Gemini 3 Flash.
 #   google/gemma-4-26b-a4b-it catalog id; OpenRouter :free BYOK hop. VI
@@ -110,20 +124,30 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # xiaomi/*, stepfun-ai/*, tencent/*, ibm-granite/*, sakana/*, openrouter/free.
 # Score tries ANYROUTER_DECISION_MODEL, then Jev (ANYROUTER_JEV_MODEL), then
 # ANYROUTER_MODEL.
-ANYROUTER_MODEL = "poolside/laguna-s-2.1,@preset/aidr,anyrouter/auto"
+# 2026-10-10: cluster gold eval (scripts/cluster-gold-eval.ts, 96-row 24h
+# pool, 3 reps): laguna-s-2.1 F1 0.51 (17 false merges, missed 8 pairs);
+# gemma-4-31b, glm-5.2, gpt-5.6-luna and @preset/aidr 1.0. Score bench
+# (gold band hit): gemma 0.60, laguna 0.20. Rolling aliases probed here:
+# google/gemma-latest → gemma-4-31b, z-ai/glm-latest → glm-5.2.
+# @preset/aidr now serves gemma-4-31b; anyrouter/auto serves laguna.
+ANYROUTER_MODEL = "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anyrouter/auto"
 # Translate tries the probed Gemini 3 Flash first, then the Gemma free
 # catalog ids. Each extra id still reserves a 20s fallback slice
 # (2026-10-02); Laguna stays last. Dropped @preset/aidr (11/87 ok over 24h,
 # 44 rate-limited) and anyrouter/auto (prod translate 0 of 8).
-ANYROUTER_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-4-31b,google/gemma-4-26b-a4b-it,poolside/laguna-s-2.1"
+# gemma-latest (30/30 served, fidelity 0.944 in the 2026-10-10 bake-off)
+# before the gemma-4-31b :free route, kept until duyet/anyrouter#4798.
+ANYROUTER_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-latest,google/gemma-4-31b,google/gemma-4-26b-a4b-it,poolside/laguna-s-2.1"
 # TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
 # the first hop's budget, and Laguna needs 102-119s on the 26K VI prompt.
-ANYROUTER_TLDR_MODEL = "poolside/laguna-s-2.1,anyrouter/auto"
+# 2026-10-10 tldr bench (3 cases): gpt-5.6-luna quality 1.0, p50 37s,
+# ~$0.005/run; laguna 0.973, p50 99s. anyrouter/auto (→ laguna) stays last.
+ANYROUTER_TLDR_MODEL = "openai/gpt-5.6-luna,anyrouter/auto"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
 # (router aliases and presets are filtered out of this chain). Gemini 3
 # Flash first, then Gemma 31B, Laguna last. The 26B id stays off this chain.
-ANYROUTER_ENGLISH_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-4-31b,poolside/laguna-s-2.1"
+ANYROUTER_ENGLISH_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-latest,google/gemma-4-31b,poolside/laguna-s-2.1"
 # Translation semantic review: explicit concrete ids, disjoint from every
 # generator id; missing/overlapping config fails closed. Max 2 ids.
 # Review probe on 3 prod pairs with provider.require_parameters (first
