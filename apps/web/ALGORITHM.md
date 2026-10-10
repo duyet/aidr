@@ -129,7 +129,7 @@ an unknown step name is rejected at the trigger and dropped (never a crash)
 inside the Workflow. The mode travels as `create({ id, params })` and
 `worker/ingest/mode.ts` owns the step names:
 `fetch, dedupe, score, translate, write, backfill-content,
-backfill-translate, backfill-score, qa-translations, inbound-email,
+backfill-translate, backfill-en-summary, backfill-score, qa-translations, inbound-email,
 review-suggestions, review-submissions, tldr, email, notify`. In a dry run
 `inbound-email` only classifies the pending batch (no rows written, no
 acknowledgements sent).
@@ -665,6 +665,31 @@ Translate skips LLM only when explicit `source_lang='vi'` metadata marks a
 native source, retries leftover items one-at-a-time after a batch fail, and
 the VI UI hides the EN badge when the painted title is Vietnamese or
 `title_vi` exists.
+
+**English summary (`backfill-en-summary`, LLM).** `items.summary` is the
+upstream text as fetched (RSS teaser, og:description) and stays raw: dedupe,
+scoring, translation, QA and the TL;DR input read it. Readers see
+`items.summary_en` (migration 0055), one fluent, neutral English summary of
+at most 2–4 sentences written by `summarizeEnglish` (task `summarize`,
+`ANYROUTER_TRANSLATE_MODEL` chain, 4 stories per call) from the same
+stripped, clipped source the Vietnamese translator sees (`sentSource`), so
+both languages carry the same facts. `worker/en-summary.ts` rejects output
+with `[…]`, "Read more", a trailing ellipsis, links, counters, an unfinished
+sentence, or a number the source lacks; a rejected row keeps the raw text
+and is retried next run. `summary_en_revision` stores the
+`items.source_revision` it was written from; the 0023 trigger bumps that on
+any title/summary change (re-ingest, backfill-content replacing a teaser,
+admin push), so a stale rewrite stops showing and the row is queued again.
+The write is guarded on that revision. The step runs after
+backfill-content and before tldr/email/notify, so fresh stories ship with
+it; it takes up to 24 English-source published rows per run, newest first.
+Vietnamese-source rows get English from the VI→EN translation path instead.
+Reader-facing queries (feed, story dialog and Markdown, mail content,
+notify incl. Telegram and `facebook-en`) select `enSummarySql()`:
+`summary_en` when current, else raw `summary`. This is an English-only
+fallback; the Vietnamese column never reads `summary_en`. Drain on demand
+(a dry run still writes D1, sends nothing):
+`pnpm --filter @aidr/web agent run --steps backfill-en-summary --force --wait`.
 
 ### 10. TL;DR (LLM)
 

@@ -13,6 +13,7 @@ import {
 import { bindSentry, reportPipelineException } from "./bugsink.js";
 import { runHealthCheck } from "./health.js";
 import { backfillContent } from "./ingest/backfill.js";
+import { backfillEnSummaries } from "./ingest/backfill-en-summary.js";
 import { backfillScores } from "./ingest/backfill-score.js";
 import { backfillTranslations } from "./ingest/backfill-translate.js";
 import { type IngestContext, LLM_STEP } from "./ingest/context.js";
@@ -294,6 +295,13 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         const backfillTranslate = await backfillTranslations(ctx);
         backfilledTranslations = backfillTranslate.translated;
         backfillTranslateTokens = backfillTranslate.tokens;
+      }
+
+      // After backfill-content (a replaced teaser re-queues) and before
+      // tldr/email/notify, so fresh stories ship with their English summary.
+      if (!skipUnselectedStep(ctx, "backfill-en-summary")) {
+        const enSummary = await backfillEnSummaries(ctx);
+        backfillTranslateTokens += enSummary.tokens;
       }
 
       if (!skipUnselectedStep(ctx, "backfill-score")) {

@@ -5,6 +5,7 @@ import type { Lang } from "../../src/lib/types.js";
 import { reportDeliveryFailure } from "../bugsink.js";
 import { nn } from "../d1-bind.js";
 import { loadEdition, primaryItemId } from "../digest/edition.js";
+import { enSummarySql } from "../en-summary.js";
 import {
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
@@ -338,7 +339,7 @@ export function buildTrendingQuery(
 ): { sql: string; binds: [string, number, number, number] } {
   const trLang = lang === "en" ? "en" : "vi";
   const copy = `i.title AS source_title,
-                 i.summary AS source_summary,
+                 ${enSummarySql("i")} AS source_summary,
                  i.source_lang AS source_lang,
                  tr.title AS tr_title,
                  tr.summary AS tr_summary`;

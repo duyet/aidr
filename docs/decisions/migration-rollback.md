@@ -328,6 +328,18 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Export first if the votes matter:
   `SELECT date, lang, vote, COUNT(*) FROM email_feedback GROUP BY 1, 2, 3;`
 
+## 0055_items_summary_en.sql
+
+- Change: adds `items.summary_en` (LLM English summary) and
+  `items.summary_en_revision`. Nothing is seeded; `items.summary` is not
+  touched.
+- Risk: reader queries (feed, story, mail, notify) select these columns, so
+  apply it before deploying the Worker. Until the backfill-en-summary step
+  fills a row, readers see the raw summary as before.
+- Rollback: roll the Worker back first, then
+  `ALTER TABLE items DROP COLUMN summary_en_revision; ALTER TABLE items DROP COLUMN summary_en;`.
+  The summaries are regenerated after a re-apply.
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`
@@ -466,3 +478,4 @@ manual `DELETE` or `UPDATE`):
 These notes are untested against production. Confirming a Time Travel
 timestamp and running any destructive statement needs an operator with D1
 access; nothing here runs from CI.
+
