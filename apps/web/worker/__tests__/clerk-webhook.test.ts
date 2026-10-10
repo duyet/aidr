@@ -440,6 +440,19 @@ describe("parseClerkUserEvent", () => {
     );
     expect(clerkEventType(new Headers(), {})).toBeNull();
   });
+
+  it("refuses an unsigned svix-type header that contradicts the signed body type", () => {
+    expect(
+      clerkEventType(new Headers({ "svix-type": "user.deleted" }), {
+        type: "user.created",
+      })
+    ).toBeNull();
+    expect(
+      clerkEventType(new Headers({ "svix-type": "user.created" }), {
+        type: "user.created",
+      })
+    ).toBe("user.created");
+  });
 });
 
 describe("handleClerkWebhook", () => {

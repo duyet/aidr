@@ -255,18 +255,22 @@ const HANDLED_EVENT_TYPES: ClerkWebhookEventType[] = [
   "user.deleted",
 ];
 
-/** `svix-type` header first, then an in-body `type` for older deliveries. */
+/** The signed in-body `type` wins. The `svix-type` header is outside the
+ *  Svix signature, so it is only a fallback for a body without `type`, and
+ *  a header that disagrees with the body rejects the delivery: otherwise a
+ *  replayed `user.created` could be relabelled `user.deleted`. */
 export function clerkEventType(
   headers: Headers,
   payload: unknown
 ): string | null {
   const header = headers.get(SVIX_TYPE_HEADER);
-  if (header) return header;
+  let body: string | null = null;
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
     const type = (payload as { type?: unknown }).type;
-    if (typeof type === "string" && type) return type;
+    if (typeof type === "string" && type) body = type;
   }
-  return null;
+  if (body && header && header !== body) return null;
+  return body ?? header ?? null;
 }
 
 function epochSecondsOrNull(value: unknown): number | null {
