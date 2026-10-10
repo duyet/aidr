@@ -1,19 +1,26 @@
 #!/usr/bin/env node
 // One-time helper: mint the YouTube refresh token for bin/yt-upload-api.mjs.
 //
-//   YOUTUBE_CLIENT_ID=... YOUTUBE_CLIENT_SECRET=... node bin/yt-oauth.mjs [--port 8976]
+//   node .agents/skills/aidr-youtube-upload/bin/yt-oauth.mjs [--port 8976] [--print]
 //
-// Prints an auth URL (OAuth client type "Desktop app"), listens on
-// http://127.0.0.1:<port>, exchanges the code and prints the refresh token.
-// Sign in as the account that owns the AI;DR channel. The token is only
-// printed, never written to disk: put it in YOUTUBE_REFRESH_TOKEN (.env.local
-// or the sandbox secret store).
+// Reads YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET from the environment or the
+// repo's .env.local (OAuth client type "Desktop app"), prints an auth URL,
+// listens on http://127.0.0.1:<port>, exchanges the code and writes
+// YOUTUBE_REFRESH_TOKEN back into .env.local (gitignored). Sign in as the
+// account that owns the AI;DR channel. `--print` prints the token instead.
 import { createHash, randomBytes } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ENV_FILE = join(dirname(fileURLToPath(import.meta.url)), "../../../../.env.local");
+// Values already in the environment win over .env.local.
+if (existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE);
 
 const { YOUTUBE_CLIENT_ID: clientId, YOUTUBE_CLIENT_SECRET: clientSecret } = process.env;
 if (!clientId || !clientSecret) {
-  console.error("set YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET");
+  console.error(`set YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET (env or ${ENV_FILE})`);
   process.exit(2);
 }
 const pi = process.argv.indexOf("--port");
@@ -69,5 +76,15 @@ if (!res.ok || !body.refresh_token) {
   console.error(`token exchange failed: HTTP ${res.status} ${JSON.stringify(body)}`);
   process.exit(1);
 }
-console.error(`Granted scopes: ${body.scope}\n\nSet this (keep it secret):`);
-console.log(`YOUTUBE_REFRESH_TOKEN=${body.refresh_token}`);
+console.error(`Granted scopes: ${body.scope}`);
+const line = `YOUTUBE_REFRESH_TOKEN=${body.refresh_token}`;
+if (process.argv.includes("--print")) {
+  console.log(line);
+} else {
+  const text = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, "utf8") : "";
+  const next = /^YOUTUBE_REFRESH_TOKEN=.*$/m.test(text)
+    ? text.replace(/^YOUTUBE_REFRESH_TOKEN=.*$/m, line)
+    : `${text}${text && !text.endsWith("\n") ? "\n" : ""}${line}\n`;
+  writeFileSync(ENV_FILE, next, { mode: 0o600 });
+  console.error(`Wrote YOUTUBE_REFRESH_TOKEN to ${ENV_FILE}`);
+}
