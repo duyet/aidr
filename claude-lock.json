@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "origin": {
+    "base_url": "https://api.anthropic.com",
+    "organization_id": "83e16be9-b104-455b-be4f-1b7595d0c097",
+    "workspace_id": "wrkspc_01SLEQCzw1sxbmdmpHtFw1JC"
+  },
+  "resources": {
+    "./agents/aidr-daily-video/agent.md": {
+      "kind": "agent",
+      "id": "agent_014m965DXZ3LkXyxEz5DNyuj",
+      "version": "1",
+      "hash": "e649d11afb3850fbbb74a73c06ad9505",
+      "remote_hash": "dba0eb63f4d47d76eb6a5d093ce802b1"
+    },
+    "./agents/aidr-daily-video/environment.yaml": {
+      "kind": "environment",
+      "id": "env_011sX5Mm8ptZxWdm6U8F8BkW",
+      "hash": "f48c3be2c59b4b66787e0536e577b190",
+      "remote_hash": "9c2354c192fb4acff7e09e059bab0994"
+    },
+    "./agents/aidr-daily-video/vault.yaml": {
+      "kind": "vault",
+      "id": "vlt_011CfteeSteF3fSkboHAfE6V",
+      "hash": "5e94850cce5180cd0a50fbea894a92af",
+      "remote_hash": "5e94850cce5180cd0a50fbea894a92af"
+    }
+  }
+}
