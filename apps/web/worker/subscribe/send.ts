@@ -159,9 +159,8 @@ export function buildDigestEmail(
  * hourly runs as different timezones cross 7am. Each subscriber gets the
  * edition for their local date in their language. An empty column is not
  * filled from the other language; that subscriber is retried next hour.
- * A missing local row can still mail the UTC-dated snapshot. That send does
- * not stamp `last_sent_date`, so the local day's snapshot still goes out
- * once it exists. A missing edition stamps nothing.
+ * A missing local-date row sends and stamps nothing; the subscriber gets
+ * that edition on the first run after it exists.
  *
  * A per-subscriber failure is logged and swallowed without stamping
  * `last_sent_date`, so that subscriber is retried on the next hourly run.
@@ -354,15 +353,11 @@ export async function sendEmailLane(
       continue;
     }
 
-    // Stamp only the edition for this local date. The UTC fallback is an
-    // older snapshot; recording localDate would skip today's edition.
-    if (edition.date === localDate) {
-      await env.DB.prepare(
-        "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
-      )
-        .bind(localDate, sub.email)
-        .run();
-    }
+    await env.DB.prepare(
+      "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
+    )
+      .bind(localDate, sub.email)
+      .run();
     sent++;
     stampedDate = edition.date;
   }
