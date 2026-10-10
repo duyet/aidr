@@ -18,6 +18,8 @@
  * `run` and `rerun` are dry runs unless `--live` is passed. A dry run sends
  * no email, Telegram or owner alert and only previews the TL;DR, but still
  * writes fetched items to D1 (see apps/web/ALGORITHM.md, "Dry runs").
+ * `rerun weekly --wait` previews last week's weekly edition (`weeklyPreview`
+ * in the run summary) without writing `weekly_snapshots`.
  *
  * Reads NEWS_ADMIN_TOKEN and optional AIDR_BASE_URL (default
  * https://aidr.today) from the environment or the repo-root `.env.local`.
@@ -162,6 +164,7 @@ interface RunRow {
     mode?: string;
     selectedSteps?: string[];
     tldrPreview?: unknown;
+    weeklyPreview?: unknown;
     published?: number;
     tokens?: number;
   } | null;
@@ -181,6 +184,7 @@ function compactRun(run: RunRow) {
     published: run.stats?.published,
     tokens: run.stats?.tokens,
     tldrPreview: run.stats?.tldrPreview,
+    weeklyPreview: run.stats?.weeklyPreview,
     steps: (run.stats?.steps ?? []).map((s) =>
       s.reason
         ? `${s.name}: ${s.action} (${s.reason})`

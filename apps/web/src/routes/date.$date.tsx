@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Home } from "lucide-react";
+import { ChevronLeft, ChevronRight, Home, Newspaper } from "lucide-react";
 import { DayBriefing } from "../components/DayBriefing";
 import { DaySection } from "../components/DaySection";
 import { DayVideo } from "../components/DayVideo";
@@ -24,6 +24,7 @@ import { localizedPageHead, notFoundHead } from "../lib/seo";
 import { storyPath } from "../lib/slug";
 import { displayTldrBullets } from "../lib/tldr-fallback";
 import type { Lang } from "../lib/types";
+import { weekPath } from "../lib/week";
 
 type LoaderResult =
   | { kind: "day"; archive: DayArchive }
@@ -140,10 +141,18 @@ function DayNav({ archive, lang }: { archive: DayArchive; lang: Lang }) {
           </span>
         )}
       </div>
-      <Link to="/" search={{ lang }} className={pill}>
-        <Home className="size-4" aria-hidden />
-        {lang === "vi" ? "Bảng tin hôm nay" : "Live feed"}
-      </Link>
+      <div className="flex items-center gap-2">
+        {archive.week ? (
+          <a href={weekPath(archive.week, lang)} className={pill}>
+            <Newspaper className="size-4" aria-hidden />
+            {lang === "vi" ? "Bản tin tuần" : "Weekly edition"}
+          </a>
+        ) : null}
+        <Link to="/" search={{ lang }} className={pill}>
+          <Home className="size-4" aria-hidden />
+          {lang === "vi" ? "Bảng tin hôm nay" : "Live feed"}
+        </Link>
+      </div>
     </nav>
   );
 }

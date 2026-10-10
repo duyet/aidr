@@ -29,6 +29,7 @@ export const SITEMAP_STATIC_PATHS = [
   "/contribute",
   "/subscribe",
   "/data",
+  "/weeks",
 ] as const;
 
 export interface SitemapUrl {

@@ -26,6 +26,7 @@ import {
 // Footer is always English, regardless of site language.
 const FOOTER_LINKS: { to: string; label: string }[] = [
   { to: "/about", label: "About" },
+  { to: "/weeks", label: "Weekly edition" },
   { to: "/data", label: "Data / Pipeline" },
   { to: "/release", label: "Release notes" },
   { to: "/privacy", label: "Privacy" },

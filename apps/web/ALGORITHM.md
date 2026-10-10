@@ -21,6 +21,7 @@ bilingual feed.
   - [8. Write](#8-write)
   - [9. Backfill](#9-backfill)
   - [10. TL;DR (LLM)](#10-tldr-llm)
+  - [10b. Weekly edition (LLM)](#10b-weekly-edition-llm)
   - [11. Email digest](#11-email-digest)
   - [12. Notify (`worker/notify/`)](#12-notify-workernotify)
   - [13. Review gates (LLM, rating ≥ 0.6)](#13-review-gates-llm-rating--06)
@@ -130,7 +131,7 @@ inside the Workflow. The mode travels as `create({ id, params })` and
 `worker/ingest/mode.ts` owns the step names:
 `fetch, dedupe, score, translate, write, backfill-content,
 backfill-translate, backfill-en-summary, backfill-score, qa-translations, inbound-email,
-review-suggestions, review-submissions, tldr, email, notify`. In a dry run
+review-suggestions, review-submissions, tldr, weekly, email, notify`. In a dry run
 `inbound-email` only classifies the pending batch (no rows written, no
 acknowledgements sent).
 
@@ -139,7 +140,10 @@ acknowledgements sent).
   `skipped` / `dry run: no email or telegram`. The TL;DR step runs as
   `tldr-preview`: same items, LLM and fallbacks as `ensureDailyTldr`, no
   `tldr_snapshots` upsert; `stats.tldrPreview` keeps the bullet count and
-  the first 3 bullets per language. `runHealthCheck` returns before any
+  the first 3 bullets per language. The weekly step runs as
+  `weekly-preview`: it builds last closed week's edition, ignores the gate,
+  writes no `weekly_snapshots` row, and keeps a bounded `stats.weeklyPreview`
+  (`agent rerun weekly --wait`). `runHealthCheck` returns before any
   Bugsink health alert, owner Telegram DM, GitHub alert issue or daily
   summary. Stats carry `mode: "dry-run"`.
 - **`steps: [...]`** — only those steps run; the rest record `skipped` /
@@ -730,6 +734,49 @@ Hourly.
   `title_vi` exists, and persists it so the frozen EN copy cannot
   return.
 - UI shows 8 by default (user preference 8/12/16).
+
+### 10b. Weekly edition (LLM)
+
+`worker/weekly.ts`, step `weekly` (after `tldr`), table `weekly_snapshots`
+(0056). Pure week rules: `src/lib/week.ts`.
+
+- **Key.** The ISO week (`YYYY-Www`, Monday..Sunday) of audience-zone dates:
+  the same seven days as the `tldr_snapshots` rows and `/date/` pages. The
+  first run after Monday 00:00 ICT builds the week that just closed.
+  `issue` counts weeks from `WEEKLY_FIRST_WEEK` (2026-W40 = issue 1), never
+  from a row count.
+- **Gate (cheap).** One `SELECT` over the last 4 closed weeks
+  (`WEEKLY_BACKFILL_WEEKS`, from the first issue on); the oldest week that
+  needs work is built, at most one per run, so a late deploy or a failed
+  Monday never skips an issue. Per week: no row → build; a complete row (LLM
+  copy, `intro_vi` and `stories_vi` set) → skip; a `fallback` or
+  English-only row → retry at most every 6h (`WEEKLY_RETRY_MS`). A week
+  with no stories makes no LLM call and the next week is tried. A retry
+  whose LLM fails never overwrites a real edition with title lines.
+- **Candidates.** Every published story a daily edition of that week cited
+  (merged duplicates mapped to `duplicate_of`), plus the week's top 60
+  uncited stories by `llm_importance`.
+- **Rank.** Not stored `rank_score`: it decays 36h and freezes at 72h, so a
+  Monday build would favour the weekend. `weeklyScore` is `rankScore` at age
+  zero (importance, quality, points/comments, net votes), × (1 + 0.25 per
+  day in a daily edition, max 3), × 1.15 for a top-3 spot. Then
+  `pickDiverse` caps source families; top 10.
+- **Copy.** One bilingual call on the TL;DR chain (`ANYROUTER_TLDR_MODEL`,
+  VI house style + glossary): `intro_en`/`intro_vi` (2–3 sentences) and one
+  sentence per story per language. A VI line without diacritics is dropped.
+- **Languages never fall back.** EN falls back to the item title. VI falls
+  back to `title_vi` only; a story with neither has no VI line and is left
+  out of the VI page. No model copy at all → title lines with `fallback = 1`.
+  Nothing is persisted without at least one EN story.
+- **Surfaces.** `/week/YYYY-Www` (newspaper layout; 404 for a malformed,
+  pre-launch or open week and for a language with no stories), `/weeks`
+  index, `/week/YYYY-Www.md`, and language-neutral JSON
+  `GET /api/week/YYYY-Www` (both languages in separate fields; read by the
+  weekly video, `videos/daily-news/scripts/fetch-week.mjs`). Day pages link
+  to their week only when its row exists. Cache: explicit `?lang=` is
+  public, the newest week caches 5 minutes, older weeks a day.
+- **No delivery yet.** The weekly edition is not emailed, posted to
+  Telegram or Facebook; it is a page (and a video script, rendered by hand).
 
 ### 11. Email digest
 

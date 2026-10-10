@@ -3,25 +3,44 @@
 // script.json from the bullets. The draft is a starting point: the agent rewrites every voice line and
 // screen line (see the aidr-daily-news skill) before voicing.
 // Theme choices rotate against the previous edition so two days in a row never look the same.
-// Usage: node scripts/new.mjs [--count 6] [--force]
+// Weekly edition: `--week [<YYYY-Www>]` (default: the last closed week) fetches editions/week-<week> with
+// fetch-week.mjs and drafts a "AI;DR Weekly" script instead.
+// Usage: node scripts/new.mjs [--count 6] [--force] [--week [2026-W41]]
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { hostOrder, loadCast } from "./cast.mjs";
+import { formatRange, lastClosedWeek, parseWeek } from "./week.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
-const passthrough = process.argv.slice(2).filter((a) => a !== "--force");
+const weekIdx = process.argv.indexOf("--week");
+const weekly = weekIdx > 0;
+const week = weekly
+  ? /^\d{4}-W\d{2}$/.test(process.argv[weekIdx + 1] ?? "")
+    ? process.argv[weekIdx + 1]
+    : lastClosedWeek()
+  : null;
+if (weekly) parseWeek(week);
+const passthrough = process.argv
+  .slice(2)
+  .filter((a) => a !== "--force" && a !== week && a !== "--week");
 execFileSync(
   process.execPath,
-  [join(ROOT, "scripts/fetch.mjs"), ...passthrough],
+  [
+    join(ROOT, weekly ? "scripts/fetch-week.mjs" : "scripts/fetch.mjs"),
+    ...(weekly ? ["--week", week] : []),
+    ...passthrough,
+  ],
   { stdio: "inherit" }
 );
 
 const editions = readdirSync(join(ROOT, "editions"))
-  .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+  .filter((d) =>
+    weekly ? /^week-\d{4}-W\d{2}$/.test(d) : /^\d{4}-\d{2}-\d{2}$/.test(d)
+  )
   .sort();
-const date = editions.at(-1);
+const date = weekly ? `week-${week}` : editions.at(-1);
 const dir = join(ROOT, "editions", date);
 const edition = JSON.parse(readFileSync(join(dir, "edition.json"), "utf8"));
 
@@ -102,9 +121,12 @@ const theme = {
   ),
 };
 
-const d = new Date(`${date}T12:00:00Z`);
+const d = new Date(`${weekly ? edition.start_date : date}T12:00:00Z`);
 const DOW = d.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
 const MON = d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
+const range = weekly
+  ? formatRange(edition.start_date, edition.end_date)
+  : null;
 // Hosts take turns in the seeded cast order, in speaking order (intro, stories, outro).
 const order = hostOrder(Object.keys(loadCast(config).hosts), date);
 let turn = 0;
@@ -152,12 +174,16 @@ if (closer === introHosts[0]) closer = host();
 
 const draft = {
   date,
-  dateline: `${DOW}, ${MON} ${d.getUTCDate()}, ${d.getUTCFullYear()}`,
+  dateline: weekly
+    ? `Week of ${range}`
+    : `${DOW}, ${MON} ${d.getUTCDate()}, ${d.getUTCFullYear()}`,
   theme,
   thumb: { story: thumb.rank, hook: "TODO 3–7 words" },
   post: {
     hook: "TODO one sentence",
-    hashtags: ["AI", "AINews", "TechNews"],
+    hashtags: weekly
+      ? ["AI", "AINews", "AIWeekly"]
+      : ["AI", "AINews", "TechNews"],
     tiktok: "TODO",
     facebook: "TODO",
   },
@@ -165,25 +191,32 @@ const draft = {
     voice: [
       {
         anchor: introHosts[0],
-        text: `This is AI DR, your AI news for ${DOW}, ${MON} ${d.getUTCDate()}.`,
+        text: weekly
+          ? `This is AI DR Weekly, issue ${edition.issue}, your week in AI for ${range}.`
+          : `This is AI DR, your AI news for ${DOW}, ${MON} ${d.getUTCDate()}.`,
       },
       {
         anchor: introHosts[1],
-        text: "TODO a fresh line about today",
+        // Weekly: the Worker's English intro is the starting point; rewrite it for speech.
+        text: weekly
+          ? edition.intro_en || "TODO a fresh line about this week"
+          : "TODO a fresh line about today",
       },
     ],
-    title: `${["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"][stories.length] ?? stories.length} stories that matter today`,
+    title: `${["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"][stories.length] ?? stories.length} stories that ${weekly ? "shaped the week" : "matter today"}`,
   },
   stories,
   outro: {
     voice: [
       {
         anchor: signOff,
-        text: "That's AI DR for today. Every story, ranked and summarized, at aidr dot today.",
+        text: weekly
+          ? "That's the week in AI. Every story, ranked and summarized, at aidr dot today."
+          : "That's AI DR for today. Every story, ranked and summarized, at aidr dot today.",
       },
-      { anchor: closer, text: "See you tomorrow." },
+      { anchor: closer, text: weekly ? "See you next week." : "See you tomorrow." },
     ],
-    title: "What's happening in AI today?",
+    title: weekly ? "What happened in AI this week?" : "What's happening in AI today?",
   },
 };
 writeFileSync(scriptPath, `${JSON.stringify(draft, null, 2)}\n`);

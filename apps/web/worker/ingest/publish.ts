@@ -12,6 +12,11 @@ import {
   previewDailyTldr,
   summarizeTldrPreview,
 } from "../tldr.js";
+import {
+  ensureWeeklyEdition,
+  previewWeeklyEdition,
+  summarizeWeeklyPreview,
+} from "../weekly.js";
 import { llmStep, safeErrorMessage, safeStep } from "../workflow-step.js";
 import { type IngestContext, TLDR_STEP } from "./context.js";
 import { DRY_RUN_SKIP_REASON } from "./mode.js";
@@ -110,6 +115,83 @@ async function previewTldr(ctx: IngestContext): Promise<{
   );
   // Never report a preview as a generated edition.
   return { generated: false, tokens: stats.tokens, preview: stats.preview };
+}
+
+export type WeeklyPreviewSummary = NonNullable<
+  ReturnType<typeof summarizeWeeklyPreview>
+>;
+
+/** Writes last week's `weekly_snapshots` edition once the week has closed.
+ * A dry run builds it as a preview (`weekly-preview`) and writes nothing.
+ * Never breaks the ingest run. */
+export async function generateWeekly(ctx: IngestContext): Promise<{
+  generated: boolean;
+  tokens: number;
+  preview?: WeeklyPreviewSummary;
+}> {
+  const { step, env, runId, steps } = ctx;
+  const dry = ctx.mode.dryRun;
+  const stats = await llmStep(
+    step,
+    env,
+    runId,
+    dry ? "weekly-preview" : "weekly",
+    {
+      generated: false,
+      tokens: 0,
+      reason: "weekly step failed",
+      preview: null as WeeklyPreviewSummary | null,
+    },
+    async () => {
+      try {
+        if (dry) {
+          const preview = await previewWeeklyEdition(env);
+          return {
+            generated: false,
+            tokens: preview.tokens,
+            reason: preview.reason,
+            preview: summarizeWeeklyPreview(preview.edition),
+          };
+        }
+        const result = await ensureWeeklyEdition(env);
+        return {
+          generated: result.generated,
+          tokens: result.tokens,
+          reason: `${result.week}: ${result.reason}`,
+          preview: null as WeeklyPreviewSummary | null,
+        };
+      } catch (error) {
+        console.error("weekly step failed:", error);
+        return {
+          generated: false,
+          tokens: 0,
+          reason: sanitizeError(error)?.message ?? "weekly failed",
+          preview: null as WeeklyPreviewSummary | null,
+        };
+      }
+    },
+    { config: TLDR_STEP }
+  );
+  if (dry) {
+    recordStep(
+      steps,
+      "weekly",
+      stats.preview ? `preview: ${stats.preview.stories} stories` : "skipped",
+      `dry run, live edition untouched: ${stats.reason}`
+    );
+    return {
+      generated: false,
+      tokens: stats.tokens,
+      preview: stats.preview ?? undefined,
+    };
+  }
+  recordStep(
+    steps,
+    "weekly",
+    stats.generated ? "generated" : "skipped",
+    stats.reason
+  );
+  return { generated: stats.generated, tokens: stats.tokens };
 }
 
 /** Emails the edition to due subscribers. Never breaks the ingest run. */

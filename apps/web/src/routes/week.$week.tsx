@@ -1,0 +1,123 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { NotFoundPage } from "../components/NotFoundPage";
+import { WeeklyPaper, weeklyTitle } from "../components/WeeklyPaper";
+import { headRouteInput } from "../lib/head-route";
+import { useLang } from "../lib/lang-context";
+import { absoluteSiteUrl } from "../lib/locale-url";
+import { notFoundCopy } from "../lib/not-found";
+import { NOT_FOUND_HEADER } from "../lib/not-found-status";
+import { localizedPageHead, notFoundHead } from "../lib/seo";
+import { resizeCdnImageUrl } from "../lib/tldr-images";
+import type { Lang } from "../lib/types";
+import {
+  formatWeekRange,
+  weekCacheControl,
+  weekMarkdownPath,
+  weekPath,
+} from "../lib/week";
+import { fetchWeekEdition } from "../lib/week-fn";
+import {
+  isWeekEmptyIn,
+  type WeekEdition,
+  weekIntro,
+  weekStoriesFor,
+} from "../lib/week-queries";
+
+type LoaderResult =
+  | { kind: "week"; edition: WeekEdition }
+  | { kind: "missing"; lang: Lang };
+
+/** og/twitter description: the intro in this language, else a plain line. */
+function weekDescription(edition: WeekEdition, lang: Lang): string {
+  const intro = weekIntro(edition, lang);
+  if (intro) return intro.length > 200 ? `${intro.slice(0, 199)}…` : intro;
+  const count = weekStoriesFor(edition, lang).length;
+  const range = formatWeekRange(edition.start_date, edition.end_date, lang);
+  return lang === "vi"
+    ? `${count} tin AI đáng đọc nhất tuần ${range}.`
+    : `The ${count} AI stories that mattered in the week of ${range}.`;
+}
+
+export const Route = createFileRoute("/week/$week")({
+  loader: async ({ params, context }): Promise<LoaderResult> => {
+    const edition = await fetchWeekEdition({ data: { week: params.week } });
+    // A language with no stories 404s; the other language is not shown.
+    if (!edition || isWeekEmptyIn(edition, context.lang)) {
+      return { kind: "missing", lang: context.lang };
+    }
+    return { kind: "week", edition };
+  },
+  headers: ({ loaderData, match }): Record<string, string> => {
+    if (!loaderData || loaderData.kind === "missing") {
+      return {
+        [NOT_FOUND_HEADER]: "1",
+        "Cache-Control": "private, no-store",
+        "Content-Language": match.context.lang,
+        Vary: "Cookie, Accept-Language",
+      };
+    }
+    // Same rule as the day archive: only an explicit `?lang=` response is
+    // shareable; a cookie/Accept-Language pick stays private.
+    const explicitLocale =
+      match.search.lang !== undefined && match.search.locale === undefined;
+    return {
+      "Cache-Control": explicitLocale
+        ? weekCacheControl(loaderData.edition.week, Date.now())
+        : "private, no-store",
+      "Content-Language": match.context.lang,
+      ...(explicitLocale ? {} : { Vary: "Cookie, Accept-Language" }),
+    };
+  },
+  head: ({ loaderData, match }) => {
+    if (!loaderData || loaderData.kind === "missing") {
+      const lang = loaderData?.kind === "missing" ? loaderData.lang : "vi";
+      return notFoundHead(notFoundCopy(lang).documentTitle);
+    }
+    const lang = match.context.lang;
+    const { edition } = loaderData;
+    const range = formatWeekRange(edition.start_date, edition.end_date, lang);
+    const lead = weekStoriesFor(edition, lang)[0];
+    // The lead story's publisher image; never a generated card.
+    const leadImage = resizeCdnImageUrl(lead?.item.image_url, "full");
+    const head = localizedPageHead({
+      path: weekPath(edition.week),
+      title:
+        lang === "vi"
+          ? `${weeklyTitle(lang)} số ${edition.issue} · ${range}`
+          : `${weeklyTitle(lang)} No. ${edition.issue} · ${range}`,
+      description: weekDescription(edition, lang),
+      ...(leadImage ? { imageUrl: leadImage } : {}),
+      lang,
+      route: headRouteInput(match),
+    });
+    return {
+      ...head,
+      // The site card size does not describe a publisher photo.
+      meta: leadImage
+        ? (head.meta ?? []).filter(
+            (m) =>
+              !("property" in m) ||
+              (m.property !== "og:image:width" &&
+                m.property !== "og:image:height")
+          )
+        : head.meta,
+      links: [
+        ...(head.links ?? []),
+        {
+          rel: "alternate",
+          type: "text/markdown",
+          title: "Markdown",
+          href: absoluteSiteUrl(weekMarkdownPath(edition.week), lang),
+        },
+      ],
+    };
+  },
+  component: WeekPage,
+});
+
+function WeekPage() {
+  const data = Route.useLoaderData();
+  const lang = useLang();
+  if (data.kind === "missing") return <NotFoundPage />;
+  return <WeeklyPaper edition={data.edition} lang={lang} />;
+}

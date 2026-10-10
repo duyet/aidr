@@ -18,7 +18,16 @@ export function cutFor(lang) {
     captions: `captions${dot}.srt`,
     timeline: `timeline${dot}.json`,
     snap: (fmt) => `snap${dash}-${fmt}`,
-    video: (date, fmt) => `aidr-daily-${date}${dash}-${fmt}-4k.mp4`,
-    cover: (date, fmt) => `cover-${date}${dash}-${fmt}.png`,
+    video: (date, fmt) =>
+      isWeekly(date)
+        ? `aidr-weekly-${date.slice(5)}${dash}-${fmt}-4k.mp4`
+        : `aidr-daily-${date}${dash}-${fmt}-4k.mp4`,
+    cover: (date, fmt) =>
+      isWeekly(date)
+        ? `cover-weekly-${date.slice(5)}${dash}-${fmt}.png`
+        : `cover-${date}${dash}-${fmt}.png`,
   };
 }
+
+// A weekly edition's directory (and "date" argument) is `week-<YYYY-Www>`, e.g. week-2026-W41.
+export const isWeekly = (date) => /^week-\d{4}-W\d{2}$/.test(date);

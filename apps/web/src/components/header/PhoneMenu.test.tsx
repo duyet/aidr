@@ -284,6 +284,7 @@ describe("mobile action sizing", () => {
         .map((link) => link.textContent)
     ).toEqual([
       "News",
+      "Weekly",
       "About",
       "Brand",
       "MCP",

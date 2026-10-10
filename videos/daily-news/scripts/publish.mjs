@@ -8,6 +8,7 @@
 // Usage: node scripts/publish.mjs <date> [--lang en,vi] [--steps check|render,upload,attach,telegram]
 //        [--no-voice] [--chat <telegram chat id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card]
 //        [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
+// Weekly editions (week-YYYY-Www): only `--steps render` (and --dry-run); the other steps are planned, not wired.
 // --uploader api (YouTube Data API, headless) is the default when YOUTUBE_REFRESH_TOKEN is set, else chrome (owner's Chrome).
 // --privacy applies to the api uploader only (default public).
 // Telegram uploads the video file itself (sendVideo, a <50 MB copy next to the render; needs only the render, the YouTube button
@@ -22,7 +23,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { cutFor } from "./lang.mjs";
+import { cutFor, isWeekly } from "./lang.mjs";
 import { envVar, makeTelegramCopy, makeThumbnail, sendVideo, tgCopyPath, tgEncodeArgs, videoCaption, videoReplyMarkup } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -30,9 +31,9 @@ const REPO = resolve(ROOT, "../..");
 const STEPS = ["render", "upload", "attach", "telegram"];
 const argv = process.argv.slice(2);
 const date = argv[0];
-if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? ""))
+if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") && !isWeekly(date ?? ""))
   throw new Error(
-    "usage: publish.mjs <date> [--lang en,vi] [--steps render,upload,attach,telegram] [--no-voice] [--chat <id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
+    "usage: publish.mjs <date | week-YYYY-Www> [--lang en,vi] [--steps render,upload,attach,telegram] [--no-voice] [--chat <id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
   );
 const flag = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);
 const list = (n, all) => (flag(n) ? flag(n).split(",").filter(Boolean) : all);
@@ -52,6 +53,16 @@ if (!["chrome", "api"].includes(uploader)) throw new Error(`--uploader ${uploade
 if (!["private", "unlisted", "public"].includes(privacy)) throw new Error(`--privacy ${privacy}: private | unlisted | public`);
 const checkOnly = steps.length === 1 && steps[0] === "check";
 if (!checkOnly) for (const s of steps) if (!STEPS.includes(s)) throw new Error(`--steps ${s}: check | ${STEPS.join(" | ")}`);
+
+// Weekly editions (`week-2026-W41`): only the render step is wired. Upload, attach and telegram have no weekly
+// page or YouTube/Telegram flow yet, so refuse them before anything runs.
+const weekly = isWeekly(date);
+if (weekly && (checkOnly || steps.some((s) => s !== "render") || !argv.includes("--steps"))) {
+  console.error(
+    `✗ ${date}: ${checkOnly ? "--steps check" : "upload, attach and telegram"} are not wired for weekly editions yet (planned). Use --steps render (and --dry-run).`
+  );
+  process.exit(1);
+}
 
 const dir = join(ROOT, "editions", date);
 const statusPath = join(dir, "STATUS.json");
@@ -190,6 +201,7 @@ if (steps.includes("render")) {
 // STATUS.json is local, so first take ids already on the live day page: a date
 // uploaded elsewhere must not get a second public copy.
 async function seedFromSite() {
+  if (weekly) return; // no weekly day page yet
   for (const l of langs) {
     const res = await fetch(`https://aidr.today/date/${date}.md?lang=${l}`);
     if (!res.ok) continue;

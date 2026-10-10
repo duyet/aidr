@@ -1,6 +1,8 @@
 {
   "count": 6,
   "api": "https://aidr.today/api/public?lang=en",
+  "weekApi": "https://aidr.today/api/week",
+  "weekCount": 8,
   "formats": {
     "16x9": {
       "width": 1920,

@@ -21,6 +21,7 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { cutOf } from "./lang.mjs";
+import { formatRange, parseWeek } from "./week.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -41,7 +42,7 @@ const noVoice =
   (existsSync(modeFile) && read(modeFile).voice === false);
 
 // Screen and post copy per language (facts and headlines come from the script).
-const UI = {
+const UI_BASE = {
   en: {
     locale: "en-US",
     daily: "AI;DR DAILY",
@@ -92,7 +93,35 @@ const UI = {
     more: "tin khác",
     query: "?lang=vi",
   },
-}[cut.lang];
+};
+// The weekly edition swaps the labels and copy that say "daily"/"today"; everything else is shared.
+const WEEKLY = edition.kind === "weekly";
+const UI_WEEKLY = {
+  en: {
+    daily: "AI;DR WEEKLY",
+    topIn: (n) => `TOP ${n} OF THE WEEK`,
+    brief: "WEEKLY EDITION",
+    topToday: (n) => `TOP ${n} THIS WEEK`,
+    follow: "A new edition every week. Follow for next week's.",
+    stories: (n) => `${n} AI stories that mattered this week.`,
+    ytTitle: (lead, week) => `AI News This Week: ${lead} & more | ${week}`,
+    today: "This week's stories:",
+    daily2: "Every story, ranked and summarized:",
+  },
+  vi: {
+    daily: "AI;DR MỖI TUẦN",
+    topIn: (n) => `TOP ${n} TIN AI TUẦN`,
+    brief: "BẢN TIN TUẦN",
+    topToday: (n) => `TOP ${n} TUẦN NÀY`,
+    follow: "Bản tin mới mỗi tuần. Theo dõi để xem tuần sau.",
+    stories: (n) => `${n} tin AI đáng chú ý tuần này.`,
+    ytTitle: (lead, week) => `Tin AI tuần này: ${lead} và hơn nữa | ${week}`,
+    today: "Tin trong tuần:",
+    daily2: "Mọi tin AI, xếp hạng và tóm tắt:",
+  },
+};
+const UI = { ...UI_BASE[cut.lang], ...(WEEKLY ? UI_WEEKLY[cut.lang] : {}) };
+const issueTag = WEEKLY ? ` · ${cut.lang === "vi" ? "Số" : "Issue"} ${edition.issue}` : "";
 const theme = {
   intro: "grid",
   transition: "wipe",
@@ -280,15 +309,23 @@ const logoSvg = readFileSync(join(BRAND, "assets/logo.svg"), "utf8").replace(
   ""
 );
 const logo = (cls) => logoSvg.replace("<svg ", `<svg class="${cls}" `);
-const d = new Date(`${date}T12:00:00Z`);
-const DOW = d.toLocaleDateString(UI.locale, {
-  weekday: "long",
-  timeZone: "UTC",
-});
-const MON = d.toLocaleDateString(UI.locale, { month: "long", timeZone: "UTC" });
-const DAY = d.getUTCDate();
+// Weekly: the date parts become the week (WEEK / 41 / OCT 5–11) and the dateline the week range.
+const d = new Date(`${WEEKLY ? edition.start_date : date}T12:00:00Z`);
+const DOW = WEEKLY
+  ? cut.lang === "vi" ? "Tuần" : "Week"
+  : d.toLocaleDateString(UI.locale, {
+      weekday: "long",
+      timeZone: "UTC",
+    });
+const MON = WEEKLY
+  ? formatRange(edition.start_date, edition.end_date, UI.locale).replace(/(,? |\/)\d{4}$/, "")
+  : d.toLocaleDateString(UI.locale, { month: "long", timeZone: "UTC" });
+const DAY = WEEKLY ? parseWeek(edition.week).n : d.getUTCDate();
 const dateline =
-  script.dateline ?? `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`;
+  script.dateline ??
+  (WEEKLY
+    ? `${cut.lang === "vi" ? "Tuần" : "Week of"} ${formatRange(edition.start_date, edition.end_date, UI.locale)}`
+    : `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`);
 const byRank = Object.fromEntries(edition.stories.map((s) => [s.rank, s]));
 
 // Wrap *starred* phrases in the yellow marker; default marks the whole headline.
@@ -320,7 +357,7 @@ function introHtml() {
   } else if (v === "headline-stack") {
     body = `<div class="hstack"><div class="hdate"><span>${esc(DOW.toUpperCase())} ${pad2(DAY)} ${esc(MON.toUpperCase())}</span><span>AI;DR TOP ${script.stories.length}</span></div>${script.stories.map((s) => `<div class="row"><span class="n">${s.rank}</span><span class="t">${esc(s.kicker)}</span></div>`).join("")}</div>`;
   } else {
-    body = `<div class="stack">${logo("biglogo")}<div class="eyebrow">AI;DR ${esc(UI.brief)}</div><div class="title">${esc(script.intro.title)}</div><div class="date">${esc(dateline)}</div>
+    body = `<div class="stack">${logo("biglogo")}<div class="eyebrow">AI;DR ${esc(UI.brief)}${esc(issueTag)}</div><div class="title">${esc(script.intro.title)}</div><div class="date">${esc(dateline)}</div>
       <div class="dots">${script.stories.map((s) => `<span>${s.rank}</span>`).join("")}</div></div>`;
   }
   return `<section id="intro" class="clip scene" data-start="0" data-duration="${r3(intro.dur + 0.05)}" data-track-index="1">
@@ -419,7 +456,7 @@ function page(fmt, body, duration, extraHead = "") {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=${f.width}, height=${f.height}" />
-<title>AI;DR Daily ${date} ${fmt}</title>
+<title>AI;DR ${WEEKLY ? "Weekly" : "Daily"} ${WEEKLY ? edition.week : date} ${fmt}</title>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
 <style>
 ${fontFaces}
@@ -672,8 +709,9 @@ const hashtags = (n) =>
     .slice(0, n)
     .map((t) => `#${t}`)
     .join(" ");
-const shortDate =
-  cut.lang === "en"
+const shortDate = WEEKLY
+  ? edition.week
+  : cut.lang === "en"
     ? `${MON.slice(0, 3)} ${DAY}, ${d.getUTCFullYear()}`
     : `${DAY}/${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`;
 const list = script.stories
@@ -697,7 +735,9 @@ for (let i = 0; i < marks.length; ) {
   else marks.splice(i, 1);
 }
 const chapters = marks.map((m) => `${mmss(m.t)} ${m.label}`).join("\n");
-const dayUrl = `https://aidr.today/date/${date}${UI.query}`;
+const dayUrl = WEEKLY
+  ? `https://aidr.today/week/${edition.week}${UI.query}`
+  : `https://aidr.today/date/${date}${UI.query}`;
 const home = `https://aidr.today${UI.query ? `/${UI.query}` : ""}`;
 const ytTitle = (
   P.youtubeTitle ??
@@ -712,7 +752,7 @@ const ytTitle = (
 
 // posts.md holds one block per language; a build rewrites only its own block.
 const block = `<!-- posts:${cut.lang} -->
-# Posts (${cut.lang.toUpperCase()}) — AI;DR Daily ${date}
+# Posts (${cut.lang.toUpperCase()}) — AI;DR ${WEEKLY ? `Weekly ${edition.week}` : `Daily ${date}`}
 
 Files: \`renders/${cut.video(date, "16x9")}\`, \`renders/${cut.video(date, "9x16")}\`, covers \`renders/${cut.cover(date, "16x9")}\`, \`renders/${cut.cover(date, "9x16")}\`, captions \`${cut.captions}\`. Length ${mmss(total)} (${total}s).
 

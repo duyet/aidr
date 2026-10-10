@@ -47,6 +47,8 @@ const RESERVED_TOP = new Set([
   // Day archive pages: `/date/YYYY-MM-DD`. A hex-shaped second segment
   // (`/date/deadbeef`) must 404 on that route, not 308 to a story.
   "date",
+  // Weekly editions: `/week/YYYY-Www`, same reason.
+  "week",
   // TanStack Start's server-function transport. Production function ids are
   // sha256 hex, so this path is shaped exactly like a legacy `/{cat}/{hash}`
   // story URL. Without this entry every server function (submit included) is
