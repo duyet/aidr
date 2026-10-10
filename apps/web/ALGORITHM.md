@@ -883,7 +883,8 @@ deliberately non-spammy.
   80006) wait for the next run. `FACEBOOK_PAGE_ID`, `FACEBOOK_APP_ID`,
   `FACEBOOK_APP_SECRET`, and `FACEBOOK_PAGE_ACCESS_TOKEN` come from the
   install's `.env.local`. None of them are committed. The Page token posts.
-  The app id and secret only mint a replacement Page token.
+  The app id and secret only mint a replacement Page token. The secret stays
+  in `.env.local`: no Worker or workflow reads it, so nothing syncs it.
 
 ### 13. Review gates (LLM, rating ≥ 0.6)
 
