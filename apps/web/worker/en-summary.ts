@@ -36,7 +36,7 @@ export function enSummarySql(alias = "i"): string {
 
 /**
  * English-source published items with a summary but no current LLM English
- * summary, newest first. The teaser rows (`[…]`, "Read more") are a subset:
+ * summary: visible teaser excerpts first, then newest first. The teaser rows (`[…]`, "Read more") are a subset:
  * once backfill-content replaces a teaser, the revision bump re-queues it.
  */
 export function buildMissingEnSummaryQuery(
@@ -48,7 +48,9 @@ export function buildMissingEnSummaryQuery(
             AND summary IS NOT NULL AND TRIM(summary) != ''
             AND (summary_en IS NULL OR summary_en = ''
                  OR summary_en_revision IS NOT source_revision)
-          ORDER BY published_at DESC
+          ORDER BY (summary LIKE '%[…]' OR summary LIKE '%[...]' OR summary LIKE '%[&#8230;]'
+                    OR summary LIKE '%Read more' OR summary LIKE '%Continue reading') DESC,
+                   published_at DESC
           LIMIT ${limit}`;
 }
 
