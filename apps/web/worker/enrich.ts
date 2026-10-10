@@ -8,6 +8,7 @@ import {
   primaryThumbnailUrl,
 } from "./media.js";
 import type { FetchedItem } from "./sources/types.js";
+import { stripSourceBoilerplate } from "./translation-terms.js";
 
 const MAX_ENRICH_FETCHES = 20;
 const ENRICH_BATCH_SIZE = 4;
@@ -265,7 +266,11 @@ export function parseOgTags(html: string): OgData {
     ? decodeHtmlEntities(rawDescription).trim() || undefined
     : undefined;
   const article = articleSummary(html);
-  const summary = preferCompleteSummary(description, article);
+  const picked = preferCompleteSummary(description, article);
+  // Page chrome ("← Back to live feed · …") is not article text.
+  const summary = picked
+    ? stripSourceBoilerplate(picked).trim() || undefined
+    : undefined;
 
   const rawTitle = extractMetaContent(html, "property", "og:title");
   const title = rawTitle ? decodeHtmlEntities(rawTitle).trim() : "";

@@ -30,6 +30,14 @@ describe("decodeHtmlEntities", () => {
 });
 
 describe("parseOgTags", () => {
+  // Story a60e74fc: page chrome became the start of a digest bullet.
+  it("drops page chrome before the article text", () => {
+    const html = `<html><head><meta property="og:description" content="← Back to live feed · 2 stories across 1 day Consumer card issuers saw fraud fall." /></head></html>`;
+    expect(parseOgTags(html).description).toBe(
+      "Consumer card issuers saw fraud fall."
+    );
+  });
+
   it("replaces a cut-off og:description with the article paragraphs", () => {
     const html = `
       <html><head>
