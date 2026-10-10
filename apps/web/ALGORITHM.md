@@ -1094,6 +1094,9 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 - Reasoning-model fallback (extracts JSON from `message.reasoning` when
   content is starved).
 - Comma-separated model fallback chains (`ANYROUTER_MODEL`).
+- Skips: a 404 skips an id for 15 min and a 429 for 2 min (isolate-wide).
+  Inside a run (`withLlmCallContext`), an id that times out 3 times in a
+  row is skipped for the rest of that run; a served call resets the count.
 - Per-task overrides (`ANYROUTER_TRANSLATE_MODEL` /
   `ANYROUTER_TLDR_MODEL`).
 
@@ -1107,8 +1110,10 @@ then this chat chain:
 
 This chain also runs the cluster call. On the gold cluster set, Laguna
 scored F1 0.51, while Gemma, GLM 5.2 and the preset scored 1.0. TL;DR uses
-`openai/gpt-5.6-luna`, then `anyrouter/auto`. Translate puts
-`google/gemma-latest` before the `gemma-4-31b` :free route. The rolling
+`openai/gpt-5.6-luna`, then `google/gemini-3-flash` (`anyrouter/auto`
+served 0 of 26 tldr calls over 7 days). Translate runs
+`google/gemini-3-flash`, `google/gemma-latest`, Laguna, then the
+`gemma-4-31b` :free route, ordered by 7-day success rate (2026-10-11). The rolling
 aliases follow new models without a deploy, so re-probe what they serve
 before reading a bench row as a fixed model.
 

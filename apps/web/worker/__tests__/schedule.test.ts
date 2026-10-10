@@ -87,20 +87,22 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
-  // Router aliases are the safety net on score and TL;DR: they go last so
-  // one bad pick cannot burn a step's budget. Translate ends on Laguna.
-  // Gemini 3 Flash is tried first, then Gemma, and anyrouter/auto is not
-  // in that chain.
-  it("ends score and tldr chains with the router safety nets", () => {
-    for (const name of ["ANYROUTER_MODEL", "ANYROUTER_TLDR_MODEL"]) {
-      const ids = idsOf(name);
-      expect(ids.at(-1), name).toMatch(/^anyrouter\//);
-      const firstAlias = ids.findIndex((id) => id.startsWith("anyrouter/"));
-      expect(
-        ids.slice(firstAlias).every((id) => id.startsWith("anyrouter/")),
-        name
-      ).toBe(true);
-    }
+  // Router aliases are the safety net on score: they go last so one bad
+  // pick cannot burn a step's budget. Translate does not use
+  // anyrouter/auto. TL;DR has no alias either: anyrouter/auto served 0 of
+  // 26 tldr calls over 7 days (2026-10-11, 22 timeouts), so it only spent
+  // the fallback slice.
+  it("ends the score chain with the router safety net", () => {
+    const ids = idsOf("ANYROUTER_MODEL");
+    expect(ids.at(-1)).toMatch(/^anyrouter\//);
+    const firstAlias = ids.findIndex((id) => id.startsWith("anyrouter/"));
+    expect(
+      ids.slice(firstAlias).every((id) => id.startsWith("anyrouter/"))
+    ).toBe(true);
+  });
+
+  it("keeps anyrouter/auto off the TL;DR chain", () => {
+    expect(idsOf("ANYROUTER_TLDR_MODEL")).not.toContain("anyrouter/auto");
   });
 
   const chains = [
@@ -146,13 +148,14 @@ describe("live AnyRouter model chains", () => {
       expect(generators.has(model), model).toBe(false);
   });
 
-  it("tries probed Gemini before Gemma, and Gemma before Laguna, on translate", () => {
+  // Order follows 7-day prod success rate (2026-10-11): Laguna 39% beat
+  // gemma-4-31b 30%; gemma-4-26b (24%, mostly timeouts) was dropped.
+  it("orders the translate chain by measured success rate", () => {
     expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual([
       "google/gemini-3-flash",
       "google/gemma-latest",
-      "google/gemma-4-31b",
-      "google/gemma-4-26b-a4b-it",
       "poolside/laguna-s-2.1",
+      "google/gemma-4-31b",
     ]);
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
       "google/gemini-3-flash",

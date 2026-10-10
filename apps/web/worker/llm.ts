@@ -819,9 +819,58 @@ function isUnavailable(model: string): boolean {
   return false;
 }
 
+/** Timeouts come in bursts where every hop of a chain hangs together, and
+ *  each hung hop burns its full slice (15-30s) on every call of the run.
+ *  After this many consecutive timeouts within one run (withLlmCallContext),
+ *  the id is skipped for the rest of that run. A success resets the count.
+ *  Calls outside a run never trip it. */
+export const RUN_TIMEOUT_BREAKER_THRESHOLD = 3;
+/** Runs tracked at once; the oldest is dropped past this (concurrent runs). */
+const RUN_BREAKER_MAX_RUNS = 8;
+const runTimeoutStreaks = new Map<string, Map<string, number>>();
+
+function runStreaks(runId: string): Map<string, number> {
+  let streaks = runTimeoutStreaks.get(runId);
+  if (!streaks) {
+    streaks = new Map();
+    runTimeoutStreaks.set(runId, streaks);
+    if (runTimeoutStreaks.size > RUN_BREAKER_MAX_RUNS) {
+      const oldest = runTimeoutStreaks.keys().next().value;
+      if (oldest !== undefined) runTimeoutStreaks.delete(oldest);
+    }
+  }
+  return streaks;
+}
+
+function isTrippedForRun(model: string): boolean {
+  const runId = currentLlmCallRunId();
+  if (!runId) return false;
+  return (
+    (runTimeoutStreaks.get(runId)?.get(model) ?? 0) >=
+    RUN_TIMEOUT_BREAKER_THRESHOLD
+  );
+}
+
+function recordRunOutcome(model: string, timedOut: boolean): void {
+  const runId = currentLlmCallRunId();
+  if (!runId) return;
+  const streaks = runStreaks(runId);
+  if (!timedOut) {
+    streaks.delete(model);
+    return;
+  }
+  const count = (streaks.get(model) ?? 0) + 1;
+  streaks.set(model, count);
+  if (count === RUN_TIMEOUT_BREAKER_THRESHOLD)
+    console.warn(
+      `anyrouter model ${model} skipped for run ${runId} after ${count} consecutive timeouts`
+    );
+}
+
 /** Test hook: forget every skipped id. */
 export function resetUnavailableModels(): void {
   unavailableModels.clear();
+  runTimeoutStreaks.clear();
 }
 
 /**
@@ -854,10 +903,13 @@ async function callAnyrouter(
   const configured = parseModels(opts.modelSpec || env.ANYROUTER_MODEL);
   if (configured.length === 0)
     throw new Error("anyrouter model is not configured");
-  // Skipped ids take no budget slice. If every id is skipped, try them all
-  // again rather than fail without a request.
+  // Skipped ids (404/429, or the per-run timeout breaker) take no budget
+  // slice. If every id is skipped, try them all again rather than fail
+  // without a request.
   const callId = newLlmCallId();
-  const live = configured.filter((model) => !isUnavailable(model));
+  const live = configured.filter(
+    (model) => !isUnavailable(model) && !isTrippedForRun(model)
+  );
   const models = live.length > 0 ? live : configured;
 
   // One budget for the whole chain, so a long chain cannot outlive the
@@ -933,6 +985,7 @@ async function callAnyrouter(
         failures.push(`${model}: anyrouter response failed accept check`);
         continue;
       }
+      recordRunOutcome(model, false);
       console.log(`anyrouter completion served by ${model}`);
       logLlmCall({
         ts: attemptStartedAt,
@@ -963,6 +1016,7 @@ async function callAnyrouter(
       const skipMs = status ? SKIP_MODEL_TTL_MS[Number(status)] : undefined;
       if (skipMs) unavailableModels.set(model, Date.now() + skipMs);
       const msg = sanitizeProviderError(error);
+      recordRunOutcome(model, msg === "anyrouter request timed out");
       failures.push(`${model}: ${msg}`);
       console.error(`anyrouter model ${model} failed: ${msg}`);
       logLlmCall({

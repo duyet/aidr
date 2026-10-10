@@ -15,6 +15,7 @@ import {
   _parseJsonForTests as parseJson,
   _parseTranslateRowsForTests as parseTranslateRows,
   RULES_OVERVIEW,
+  RUN_TIMEOUT_BREAKER_THRESHOLD,
   raceTimeout,
   resetUnavailableModels,
   SCORE_CHAT_TIMEOUT_MS,
@@ -33,6 +34,7 @@ import {
   tldrAttemptTimeoutMs,
   translateItems,
   VI_STYLE,
+  withLlmCallContext,
 } from "../llm.js";
 import { servedByJev } from "../systemone.js";
 import { sanitizeError } from "../telemetry-safe.js";
@@ -2552,6 +2554,85 @@ describe("404 circuit breaker", () => {
     await callAnyrouter(env, messages, spec);
 
     expect(requested(fetchMock)).toEqual(["only/model", "only/model"]);
+  });
+});
+
+describe("per-run timeout breaker", () => {
+  const messages = [{ role: "user" as const, content: "hi" }];
+  const ok = () =>
+    sseResponse([{ choices: [{ delta: { content: '{"ok":true}' } }] }]);
+  const requested = (fetchMock: ReturnType<typeof vi.fn>) =>
+    fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body).model);
+  // What raceTimeout throws; sanitized to "anyrouter request timed out".
+  const hung = () =>
+    Promise.reject(
+      new Error("anyrouter model slow/model timed out after 20000ms")
+    );
+  const spec = { modelSpec: "slow/model,ok/model", json: true };
+  const slowFirst = () =>
+    vi.fn(async (_url: string, init: RequestInit) =>
+      JSON.parse(String(init.body)).model === "slow/model" ? hung() : ok()
+    );
+  const slowCount = (fetchMock: ReturnType<typeof vi.fn>) =>
+    requested(fetchMock).filter((m) => m === "slow/model").length;
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  // Prod bursts: every hop of a chain hangs together and each call in the
+  // run paid the full slice again. After N timeouts the run stops asking.
+  it("skips an id for the rest of the run after N consecutive timeouts", async () => {
+    const fetchMock = slowFirst();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await withLlmCallContext("run-a", async () => {
+      for (let i = 0; i < RUN_TIMEOUT_BREAKER_THRESHOLD + 2; i++)
+        await callAnyrouter(env, messages, spec);
+    });
+
+    expect(slowCount(fetchMock)).toBe(RUN_TIMEOUT_BREAKER_THRESHOLD);
+  });
+
+  // The breaker is per run: the next run (30 min later) tries the id again.
+  it("does not carry a tripped id into another run", async () => {
+    const fetchMock = slowFirst();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await withLlmCallContext("run-a", async () => {
+      for (let i = 0; i < RUN_TIMEOUT_BREAKER_THRESHOLD; i++)
+        await callAnyrouter(env, messages, spec);
+    });
+    await withLlmCallContext("run-b", () => callAnyrouter(env, messages, spec));
+
+    expect(requested(fetchMock).at(-2)).toBe("slow/model");
+  });
+
+  // Only consecutive timeouts count; a served call resets the streak.
+  it("resets the streak on success", async () => {
+    let call = 0;
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      if (JSON.parse(String(init.body)).model !== "slow/model") return ok();
+      call++;
+      return call === RUN_TIMEOUT_BREAKER_THRESHOLD ? ok() : hung();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await withLlmCallContext("run-a", async () => {
+      for (let i = 0; i < RUN_TIMEOUT_BREAKER_THRESHOLD + 1; i++)
+        await callAnyrouter(env, messages, spec);
+    });
+
+    expect(slowCount(fetchMock)).toBe(RUN_TIMEOUT_BREAKER_THRESHOLD + 1);
+  });
+
+  // Admin/MCP calls outside a run keep the old behavior.
+  it("never trips outside a run", async () => {
+    const fetchMock = slowFirst();
+    vi.stubGlobal("fetch", fetchMock);
+
+    for (let i = 0; i < RUN_TIMEOUT_BREAKER_THRESHOLD + 1; i++)
+      await callAnyrouter(env, messages, spec);
+
+    expect(slowCount(fetchMock)).toBe(RUN_TIMEOUT_BREAKER_THRESHOLD + 1);
   });
 });
 
