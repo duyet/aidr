@@ -103,11 +103,9 @@ export interface Env {
    *  pages_manage_posts, pages_read_engagement, and pages_show_list.
    *  Worker secret. Never logged. */
   FACEBOOK_PAGE_ACCESS_TOKEN?: string;
-  /** Public Meta app id. Used with FACEBOOK_APP_SECRET to mint a new Page
-   *  token. An app token cannot publish by itself. */
+  /** Public Meta app id. Used locally with FACEBOOK_APP_SECRET (never
+   *  synced to the Worker) to mint a new Page token. An app token cannot publish by itself. */
   FACEBOOK_APP_ID?: string;
-  /** Worker secret. Never logged. Not used on the hourly post. */
-  FACEBOOK_APP_SECRET?: string;
   /** Graph version for this install, for example v26.0. Unset uses v26.0. */
   FACEBOOK_GRAPH_VERSION?: string;
   /** Public origin of the links this Page posts. Unset uses src/lib/site.ts. */

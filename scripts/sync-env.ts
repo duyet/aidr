@@ -70,11 +70,10 @@ const WORKER_OPTIONAL = [
   "TELEGRAM_OWNER_CHAT_ID",
   "GITHUB_ALERT_TOKEN",
   // Facebook Page for this install. Empty in git. The hourly post uses the
-  // Page id and Page token. The app id and secret mint a replacement token.
+  // Page id and Page token. The app id and secret stay local; they only mint a replacement token.
   // Graph version and SITE_URL are optional public overrides.
   "FACEBOOK_PAGE_ID",
   "FACEBOOK_APP_ID",
-  "FACEBOOK_APP_SECRET",
   "FACEBOOK_PAGE_ACCESS_TOKEN",
   "FACEBOOK_GRAPH_VERSION",
   "SITE_URL",
@@ -100,7 +99,6 @@ const GITHUB_OPTIONAL = [
   "SENTRY_DSN",
   "FACEBOOK_PAGE_ID",
   "FACEBOOK_APP_ID",
-  "FACEBOOK_APP_SECRET",
   "FACEBOOK_PAGE_ACCESS_TOKEN",
 ] as const;
 
