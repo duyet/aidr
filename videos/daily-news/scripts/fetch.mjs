@@ -2,7 +2,7 @@
 // Pull today's edition (English, plus the Vietnamese bullet and title for the vi cut) from the public API and download each story's real post media.
 // Writes editions/<date>/edition.json (tracked) and editions/<date>/assets/ (ignored, third-party).
 // Usage: node scripts/fetch.mjs [--count 6]
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -18,6 +18,16 @@ const data = await (await fetch(config.api, { headers: UA })).json();
 const { date, bullets_en, bullets_vi = [] } = data.tldr;
 const byId = Object.fromEntries(data.stories.map((s) => [s.id, s]));
 const dir = join(ROOT, "editions", date);
+// A written script is tied to the edition it was written from. Later runs the same day can re-rank
+// the edition; refetching then would pair yesterday's script with other stories' media.
+const written = ["script.json", "script.vi.json"].some((f) => {
+  const p = join(dir, f);
+  return existsSync(p) && !/TODO|"_bullet"/.test(readFileSync(p, "utf8"));
+});
+if (written && !process.argv.includes("--force")) {
+  console.error(`editions/${date} already has a written script; refusing to refetch (the edition may have changed). Use --force to refetch anyway.`);
+  process.exit(1);
+}
 mkdirSync(join(dir, "assets"), { recursive: true });
 
 const EXT = {
