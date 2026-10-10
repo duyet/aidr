@@ -221,6 +221,14 @@ export async function callSystemOne(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
+    // AbortSignal.timeout rejects with a TimeoutError whose workerd message
+    // does not always say "timeout", so classify by name. Otherwise every
+    // slow Jev/decision call is logged as a generic provider error.
+    const name = error instanceof Error ? error.name : "";
+    if (name === "TimeoutError" || name === "AbortError") {
+      console.error(`jev systemone request timed out after ${timeoutMs}ms`);
+      return fail(`jev systemone request timed out after ${timeoutMs}ms`);
+    }
     const safe = sanitizeError(error);
     const message = safe?.message ?? "Provider request failed";
     console.error("jev systemone request failed:", message);
