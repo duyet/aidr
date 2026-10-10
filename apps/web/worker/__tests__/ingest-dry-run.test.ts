@@ -22,7 +22,7 @@ vi.mock("../notify/index.js", async (original) => ({
 vi.mock("../owner-alerts.js", async (original) => ({
   ...(await original<typeof import("../owner-alerts.js")>()),
   notifyOwner: vi.fn(async () => undefined),
-  sendOwnerDm: vi.fn(async () => true),
+  sendOwnerDm: vi.fn(async () => "sent"),
 }));
 vi.mock("../bugsink.js", async (original) => ({
   ...(await original<typeof import("../bugsink.js")>()),
@@ -244,6 +244,29 @@ describe("dry run never distributes", () => {
     expect(reportHealthAlert).toHaveBeenCalled();
     expect(notifyOwner).toHaveBeenCalled();
   });
+
+  // AIDR-10: a DM Telegram rejects (bot not started, wrong chat) is rejected
+  // again on every run of the summary window. Recording the day's key stops
+  // the retry; a transient failure keeps it open for the next run.
+  it.each([
+    ["rejected", true],
+    ["failed", false],
+  ] as const)(
+    "daily summary DM %s records the day: %s",
+    async (outcome, recorded) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(Date.UTC(2026, 9, 10, 3, 0, 0)); // 10:00 Asia/Ho_Chi_Minh
+      vi.mocked(sendOwnerDm).mockResolvedValueOnce(outcome);
+      try {
+        const env = { ...makeEnv(), TELEGRAM_BOT_TOKEN: "t" } as Env;
+        const keys = await runHealthCheck(env, { runId: "run-1", steps: [] });
+        expect(sendOwnerDm).toHaveBeenCalledTimes(1);
+        expect(keys.includes("daily-summary:2026-10-10")).toBe(recorded);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
 
   it("keeps the dry-run marker and preview through stats sanitizing", () => {
     const stats = JSON.parse(
