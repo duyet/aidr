@@ -173,7 +173,7 @@ describe("buildTrendingQuery", () => {
     expect(sql).toContain("status = 'published'");
     expect(sql).toContain("n.item_id IS NULL");
     // An ambiguous send may already be posted, so it is excluded like `sent`.
-    expect(sql).toContain("n.status IN ('sent', 'ambiguous')");
+    expect(sql).toContain("n.status IN ('sent', 'ambiguous', 'sending')");
     expect(sql).toContain("tr.lang = 'vi'");
     expect(sql).toContain("tr.title AS tr_title");
     expect(sql).toContain("i.media_manifest");
