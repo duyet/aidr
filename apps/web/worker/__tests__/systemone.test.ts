@@ -5,6 +5,7 @@ import {
   CATEGORY_DEFINITIONS,
   CATEGORY_RULE,
   CORE_CATEGORIES,
+  redactLlmCallEntry,
   setLlmCallLogger,
 } from "../llm.js";
 import {
@@ -20,6 +21,7 @@ import {
   submissionRelevanceFromJev,
   suggestionVerdictFromJev,
 } from "../systemone.js";
+import { sanitizeError } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
 
 /** The questions scoreItems sends, built from the live taxonomy. */
@@ -409,6 +411,37 @@ describe("callSystemOne observability", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ task: "review", ok: false });
     expect(entries[0]?.error).toMatch(/422/);
+    setLlmCallLogger(null);
+  });
+
+  it("logs an aborted fetch as a timeout, not a provider error", async () => {
+    // Prod llm_calls held 121 Jev/decision rows at exactly 15000/30000ms
+    // logged as "Provider request failed": timeouts hidden as outages.
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new DOMException("The operation was aborted.", "TimeoutError");
+      })
+    );
+    const result = await callSystemOne(
+      envWith(),
+      "state",
+      { q: { type: "noul", instructions: "x" } },
+      "score",
+      "anyrouter/decision",
+      15_000
+    );
+    expect(result).toBeNull();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ task: "score", ok: false });
+    expect(sanitizeError(entries[0]?.error)?.code).toBe("timeout");
+    expect(redactLlmCallEntry(entries[0]!).error).toBe(
+      "anyrouter request timed out"
+    );
     setLlmCallLogger(null);
   });
 
