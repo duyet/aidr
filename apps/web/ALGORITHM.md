@@ -742,14 +742,17 @@ Hourly.
 
 - **Key.** The ISO week (`YYYY-Www`, Monday..Sunday) of audience-zone dates:
   the same seven days as the `tldr_snapshots` rows and `/date/` pages. The
-  step only ever targets `lastClosedWeek(now)`, so the first run after
-  Monday 00:00 ICT builds it. `issue` counts weeks from `WEEKLY_FIRST_WEEK`
-  (2026-W40 = issue 1), never from a row count.
-- **Gate (cheap).** One `SELECT` on `weekly_snapshots`: no row → build; a
-  complete row (LLM copy, `intro_vi` and `stories_vi` set) → skip; a
-  `fallback` or English-only row → retry at most every 6h
-  (`WEEKLY_RETRY_MS`). A retry whose LLM fails never overwrites a real
-  edition with title lines.
+  first run after Monday 00:00 ICT builds the week that just closed.
+  `issue` counts weeks from `WEEKLY_FIRST_WEEK` (2026-W40 = issue 1), never
+  from a row count.
+- **Gate (cheap).** One `SELECT` over the last 4 closed weeks
+  (`WEEKLY_BACKFILL_WEEKS`, from the first issue on); the oldest week that
+  needs work is built, at most one per run, so a late deploy or a failed
+  Monday never skips an issue. Per week: no row → build; a complete row (LLM
+  copy, `intro_vi` and `stories_vi` set) → skip; a `fallback` or
+  English-only row → retry at most every 6h (`WEEKLY_RETRY_MS`). A week
+  with no stories makes no LLM call and the next week is tried. A retry
+  whose LLM fails never overwrites a real edition with title lines.
 - **Candidates.** Every published story a daily edition of that week cited
   (merged duplicates mapped to `duplicate_of`), plus the week's top 60
   uncited stories by `llm_importance`.
