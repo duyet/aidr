@@ -69,6 +69,10 @@ import {
   handleStoryMarkdownRequest,
   isStoryMarkdownPath,
 } from "./lib/story-markdown";
+import {
+  handleWeekMarkdownRequest,
+  isWeekMarkdownPath,
+} from "./lib/week-markdown";
 
 async function resolveEnv(env?: Env): Promise<Env | undefined> {
   if (env?.DB) return env;
@@ -113,6 +117,10 @@ export default {
     // Same for the day archive's Markdown twin (`/date/YYYY-MM-DD.md`).
     if (isDayMarkdownPath(path)) {
       return handleDayMarkdownRequest(request, await resolveDb(env));
+    }
+    // And the weekly edition's (`/week/YYYY-Www.md`).
+    if (isWeekMarkdownPath(path)) {
+      return handleWeekMarkdownRequest(request, await resolveDb(env));
     }
     if (path === "/favicon.ico") {
       // public/favicon.ico is a real multi-size ICO and handlePublicAsset

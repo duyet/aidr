@@ -605,6 +605,33 @@ export async function getFeed(
   });
 }
 
+/** Published stories by exact id, in the order of `ids` (missing or
+ * unpublished ids are left out). Collapsed rows, like the day archive. */
+export async function getItemsByIds(
+  db: DbReader,
+  ids: readonly string[]
+): Promise<FeedItem[]> {
+  if (ids.length === 0) return [];
+  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes] =
+    await Promise.all([
+      supportsLlmTokens(db),
+      supportsImageUrl(db),
+      supportsMediaManifest(db),
+      itemVotesTableReady(db),
+    ]);
+  const { results } = await db
+    .prepare(
+      `${itemSelectSql(hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes)} AND i.id IN (SELECT value FROM json_each(?))`
+    )
+    .bind(JSON.stringify(ids))
+    .all<ItemRow>();
+  const byId = new Map((results ?? []).map((row) => [row.id, toFeedItem(row)]));
+  return ids.flatMap((id) => {
+    const item = byId.get(id);
+    return item ? [item] : [];
+  });
+}
+
 /** Hard ceiling on one day archive page; a real day is well under this. */
 export const DAY_ARCHIVE_ITEM_LIMIT = 500;
 
@@ -619,6 +646,9 @@ export interface DayArchive {
   /** Nearest earlier / later audience-zone day with a published story. */
   prevDate: string | null;
   nextDate: string | null;
+  /** ISO week of this day when that week has a weekly edition; set by the
+   * page loader only, so the link never points at a 404. */
+  week?: string | null;
 }
 
 function parseDayVideoColumns(

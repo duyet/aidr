@@ -340,6 +340,20 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   `ALTER TABLE items DROP COLUMN summary_en_revision; ALTER TABLE items DROP COLUMN summary_en;`.
   The summaries are regenerated after a re-apply.
 
+## 0056_weekly_snapshots.sql
+
+- Change: new table `weekly_snapshots` (one row per ISO week: ranked item
+  ids, EN/VI intro and one-liners, `fallback`). Written by the ingest
+  `weekly` step; read by `/week/*`, `/weeks`, `/week/*.md` and
+  `/api/week/*`. No existing table is touched.
+- Risk: none for the daily pipeline. Before it is applied the `weekly` step
+  records `failed` (no such table) and every weekly surface 404s; the day
+  page shows no week link.
+- Rollback: roll the Worker back first, then
+  `DROP TABLE IF EXISTS weekly_snapshots;`. Editions are rebuilt only for the
+  last closed week after a re-apply; export older weeks first if they matter:
+  `SELECT week, issue, intro_en, intro_vi FROM weekly_snapshots;`
+
 ## 0039_suggestion_applied_changes.sql
 
 - Change: adds the nullable `translation_suggestions.applied_changes`

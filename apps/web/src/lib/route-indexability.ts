@@ -266,6 +266,11 @@ function isDayArchiveRoutePath(pathname: string): boolean {
   return /^\/date\/\d{4}-\d{2}-\d{2}$/.test(pathname);
 }
 
+/** `/week/YYYY-Www`; a missing or open week still 404s → error policy. */
+function isWeekRoutePath(pathname: string): boolean {
+  return /^\/week\/\d{4}-w\d{2}$/.test(pathname);
+}
+
 function isExplicitPublicApiPath(pathname: string): boolean {
   const lower = pathname.toLowerCase();
   return (
@@ -275,6 +280,7 @@ function isExplicitPublicApiPath(pathname: string): boolean {
     lower === "/api/public" ||
     lower === "/api/system" ||
     lower.startsWith("/api/system/") ||
+    /^\/api\/week\/\d{4}-w\d{2}$/.test(lower) ||
     STORY_JSON_PATH.test(pathname) ||
     STORY_MARKDOWN_PATH.test(pathname) ||
     OG_PATH.test(pathname)
@@ -361,7 +367,8 @@ function classifyRoute({
   if (
     PUBLIC_STATIC_PATHS.has(pathname) ||
     isStoryPath(decodedPath) ||
-    isDayArchiveRoutePath(pathname)
+    isDayArchiveRoutePath(pathname) ||
+    isWeekRoutePath(pathname)
   ) {
     return applyQueryPolicy(PUBLIC_POLICY, search);
   }

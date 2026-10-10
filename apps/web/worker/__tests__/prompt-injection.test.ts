@@ -35,6 +35,7 @@ import {
   type TranslationReview,
 } from "../translation-qa.js";
 import type { Env } from "../types.js";
+import { weeklyPrompt } from "../weekly.js";
 
 /** A non-streaming chat body as the SSE stream callAnyrouter reads:
  *  each choice's `message` becomes a `delta`. */
@@ -203,6 +204,27 @@ describe("prompt injection: input side", () => {
     await generateTldr(env, [{ id: "1", title: ATTACK, summary: ATTACK }]);
     expect(prompts.length).toBeGreaterThan(0);
     for (const p of prompts) expectContained(p);
+  });
+
+  it("weekly edition prompt keeps hostile text inside JSON", () => {
+    const prompt = weeklyPrompt("2026-W41", [
+      {
+        id: "1",
+        source_id: "hn",
+        title: ATTACK,
+        title_vi: ATTACK,
+        summary: ATTACK,
+        category: null,
+        importance: 5,
+        quality: 5,
+        points: 0,
+        comments: 0,
+        vote_net: 0,
+        editionDays: 0,
+        bestPosition: null,
+      },
+    ]);
+    expectContained(prompt);
   });
 
   it("submission review prompt fences and escapes title, note, url and og metadata", () => {
@@ -573,6 +595,7 @@ describe("prompt injection: every LLM call site is covered", () => {
     "topics.ts": "topic mapping prompt",
     "translation-knowledge.ts": "translation knowledge extraction prompt",
     "translation-qa.ts": "translation QA prompts",
+    "weekly.ts": "weekly edition prompt keeps hostile text inside JSON",
   };
   const workerDir = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),

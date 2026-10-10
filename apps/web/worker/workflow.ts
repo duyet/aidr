@@ -30,9 +30,11 @@ import {
 } from "./ingest/mode.js";
 import {
   generateTldr,
+  generateWeekly,
   notifyChannels,
   sendEmailDigest,
   type TldrPreviewSummary,
+  type WeeklyPreviewSummary,
 } from "./ingest/publish.js";
 import {
   qaTranslations,
@@ -107,6 +109,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     let submissionsTokens = 0;
     let tldrGenerated = false;
     let tldrTokens = 0;
+    let weeklyTokens = 0;
+    let weeklyPreview: WeeklyPreviewSummary | undefined;
     let emailsSent = 0;
     let notified: Record<string, number> = {};
     let notifyReason: Record<string, NotifyChannelReason> = {};
@@ -341,6 +345,14 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         tldrPreview = tldrStats.preview;
       }
 
+      // Last week's edition, once the week has closed (the first run on a
+      // Monday, ICT). Every other run it is one D1 read and a skip.
+      if (!skipUnselectedStep(ctx, "weekly")) {
+        const weeklyStats = await generateWeekly(ctx);
+        weeklyTokens = weeklyStats.tokens;
+        weeklyPreview = weeklyStats.preview;
+      }
+
       if (!skipUnselectedStep(ctx, "email")) {
         emailsSent = await sendEmailDigest(ctx);
       }
@@ -387,7 +399,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           qaTokens +
           suggestionsTokens +
           submissionsTokens +
-          tldrTokens,
+          tldrTokens +
+          weeklyTokens,
         backfilledSummaries,
         backfilledTranslations,
         qaRated,
@@ -400,6 +413,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         notifyReason,
         alerts,
         tldrPreview,
+        weeklyPreview,
       });
 
       const row = {

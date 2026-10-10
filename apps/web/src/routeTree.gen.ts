@@ -24,6 +24,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SubmitRouteImport } from './routes/submit'
 import { Route as SubscribeRouteImport } from './routes/subscribe'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as WeeksRouteImport } from './routes/weeks'
 import { Route as CatSlugRouteImport } from './routes/$cat.$slug'
 import { Route as ApiExtensionRouteImport } from './routes/api/extension'
 import { Route as ApiFeedRouteImport } from './routes/api/feed'
@@ -39,6 +40,7 @@ import { Route as ReleaseIndexRouteImport } from './routes/release.index'
 import { Route as ReleaseVersionRouteImport } from './routes/release.$version'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
+import { Route as WeekWeekRouteImport } from './routes/week.$week'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
 import { Route as ApiFeedFreshnessRouteImport } from './routes/api/feed.freshness'
 import { Route as ApiOgIdRouteImport } from './routes/api/og.$id'
@@ -56,6 +58,7 @@ import { Route as ApiSystemRunItemsRouteImport } from './routes/api/system.run-i
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
 import { Route as ApiSystemSourcesRouteImport } from './routes/api/system.sources'
 import { Route as ApiWebhooksClerkRouteImport } from './routes/api/webhooks.clerk'
+import { Route as ApiWeekWeekRouteImport } from './routes/api/week.$week'
 import { Route as ApiOgDateDateRouteImport } from './routes/api/og.date.$date'
 
 const IndexRoute = IndexRouteImport.update({
@@ -133,6 +136,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WeeksRoute = WeeksRouteImport.update({
+  id: '/weeks',
+  path: '/weeks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CatSlugRoute = CatSlugRouteImport.update({
   id: '/$cat/$slug',
   path: '/$cat/$slug',
@@ -206,6 +214,11 @@ const SignInSplatRoute = SignInSplatRouteImport.update({
 const SignUpSplatRoute = SignUpSplatRouteImport.update({
   id: '/sign-up/$',
   path: '/sign-up/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WeekWeekRoute = WeekWeekRouteImport.update({
+  id: '/week/$week',
+  path: '/week/$week',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminSplatRoute = ApiAdminSplatRouteImport.update({
@@ -293,6 +306,11 @@ const ApiWebhooksClerkRoute = ApiWebhooksClerkRouteImport.update({
   path: '/api/webhooks/clerk',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWeekWeekRoute = ApiWeekWeekRouteImport.update({
+  id: '/api/week/$week',
+  path: '/api/week/$week',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOgDateDateRoute = ApiOgDateDateRouteImport.update({
   id: '/api/og/date/$date',
   path: '/api/og/date/$date',
@@ -315,6 +333,7 @@ export interface FileRoutesByFullPath {
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
+  '/weeks': typeof WeeksRoute
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRouteWithChildren
@@ -328,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/release/$version': typeof ReleaseVersionRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/week/$week': typeof WeekWeekRoute
   '/contribute/': typeof ContributeIndexRoute
   '/release/': typeof ReleaseIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
@@ -347,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
+  '/api/week/$week': typeof ApiWeekWeekRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
 }
 export interface FileRoutesByTo {
@@ -365,6 +386,7 @@ export interface FileRoutesByTo {
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
+  '/weeks': typeof WeeksRoute
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRouteWithChildren
@@ -378,6 +400,7 @@ export interface FileRoutesByTo {
   '/release/$version': typeof ReleaseVersionRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/week/$week': typeof WeekWeekRoute
   '/contribute': typeof ContributeIndexRoute
   '/release': typeof ReleaseIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
@@ -397,6 +420,7 @@ export interface FileRoutesByTo {
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
+  '/api/week/$week': typeof ApiWeekWeekRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
 }
 export interface FileRoutesById {
@@ -416,6 +440,7 @@ export interface FileRoutesById {
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
+  '/weeks': typeof WeeksRoute
   '/$cat/$slug': typeof CatSlugRoute
   '/api/extension': typeof ApiExtensionRoute
   '/api/feed': typeof ApiFeedRouteWithChildren
@@ -429,6 +454,7 @@ export interface FileRoutesById {
   '/release/$version': typeof ReleaseVersionRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/week/$week': typeof WeekWeekRoute
   '/contribute/': typeof ContributeIndexRoute
   '/release/': typeof ReleaseIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
@@ -448,6 +474,7 @@ export interface FileRoutesById {
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
+  '/api/week/$week': typeof ApiWeekWeekRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
 }
 export interface FileRouteTypes {
@@ -468,6 +495,7 @@ export interface FileRouteTypes {
     | '/submit'
     | '/subscribe'
     | '/terms'
+    | '/weeks'
     | '/$cat/$slug'
     | '/api/extension'
     | '/api/feed'
@@ -481,6 +509,7 @@ export interface FileRouteTypes {
     | '/release/$version'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/week/$week'
     | '/contribute/'
     | '/release/'
     | '/api/admin/$'
@@ -500,6 +529,7 @@ export interface FileRouteTypes {
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
+    | '/api/week/$week'
     | '/api/og/date/$date'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -518,6 +548,7 @@ export interface FileRouteTypes {
     | '/submit'
     | '/subscribe'
     | '/terms'
+    | '/weeks'
     | '/$cat/$slug'
     | '/api/extension'
     | '/api/feed'
@@ -531,6 +562,7 @@ export interface FileRouteTypes {
     | '/release/$version'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/week/$week'
     | '/contribute'
     | '/release'
     | '/api/admin/$'
@@ -550,6 +582,7 @@ export interface FileRouteTypes {
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
+    | '/api/week/$week'
     | '/api/og/date/$date'
   id:
     | '__root__'
@@ -568,6 +601,7 @@ export interface FileRouteTypes {
     | '/submit'
     | '/subscribe'
     | '/terms'
+    | '/weeks'
     | '/$cat/$slug'
     | '/api/extension'
     | '/api/feed'
@@ -581,6 +615,7 @@ export interface FileRouteTypes {
     | '/release/$version'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/week/$week'
     | '/contribute/'
     | '/release/'
     | '/api/admin/$'
@@ -600,6 +635,7 @@ export interface FileRouteTypes {
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/webhooks/clerk'
+    | '/api/week/$week'
     | '/api/og/date/$date'
   fileRoutesById: FileRoutesById
 }
@@ -619,6 +655,7 @@ export interface RootRouteChildren {
   SubmitRoute: typeof SubmitRoute
   SubscribeRoute: typeof SubscribeRoute
   TermsRoute: typeof TermsRoute
+  WeeksRoute: typeof WeeksRoute
   CatSlugRoute: typeof CatSlugRoute
   ApiExtensionRoute: typeof ApiExtensionRoute
   ApiFeedRoute: typeof ApiFeedRouteWithChildren
@@ -632,12 +669,14 @@ export interface RootRouteChildren {
   ReleaseVersionRoute: typeof ReleaseVersionRoute
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
+  WeekWeekRoute: typeof WeekWeekRoute
   ContributeIndexRoute: typeof ContributeIndexRoute
   ReleaseIndexRoute: typeof ReleaseIndexRoute
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
   ApiWebhooksClerkRoute: typeof ApiWebhooksClerkRoute
+  ApiWeekWeekRoute: typeof ApiWeekWeekRoute
   ApiOgDateDateRoute: typeof ApiOgDateDateRoute
 }
 
@@ -748,6 +787,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/weeks': {
+      id: '/weeks'
+      path: '/weeks'
+      fullPath: '/weeks'
+      preLoaderRoute: typeof WeeksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$cat/$slug': {
       id: '/$cat/$slug'
       path: '/$cat/$slug'
@@ -851,6 +897,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-up/$'
       fullPath: '/sign-up/$'
       preLoaderRoute: typeof SignUpSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/week/$week': {
+      id: '/week/$week'
+      path: '/week/$week'
+      fullPath: '/week/$week'
+      preLoaderRoute: typeof WeekWeekRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/$': {
@@ -972,6 +1025,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksClerkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/week/$week': {
+      id: '/api/week/$week'
+      path: '/api/week/$week'
+      fullPath: '/api/week/$week'
+      preLoaderRoute: typeof ApiWeekWeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/og/date/$date': {
       id: '/api/og/date/$date'
       path: '/api/og/date/$date'
@@ -1053,6 +1113,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubmitRoute: SubmitRoute,
   SubscribeRoute: SubscribeRoute,
   TermsRoute: TermsRoute,
+  WeeksRoute: WeeksRoute,
   CatSlugRoute: CatSlugRoute,
   ApiExtensionRoute: ApiExtensionRoute,
   ApiFeedRoute: ApiFeedRouteWithChildren,
@@ -1066,12 +1127,14 @@ const rootRouteChildren: RootRouteChildren = {
   ReleaseVersionRoute: ReleaseVersionRoute,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
+  WeekWeekRoute: WeekWeekRoute,
   ContributeIndexRoute: ContributeIndexRoute,
   ReleaseIndexRoute: ReleaseIndexRoute,
   ApiAdminSplatRoute: ApiAdminSplatRoute,
   ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
   ApiWebhooksClerkRoute: ApiWebhooksClerkRoute,
+  ApiWeekWeekRoute: ApiWeekWeekRoute,
   ApiOgDateDateRoute: ApiOgDateDateRoute,
 }
 export const routeTree = rootRouteImport

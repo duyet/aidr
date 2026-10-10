@@ -26,6 +26,7 @@ export const PIPELINE_STEPS = [
   "review-suggestions",
   "review-submissions",
   "tldr",
+  "weekly",
   "email",
   "notify",
 ] as const;

@@ -64,6 +64,16 @@ export interface RunStats {
   /** A dry run's would-be edition: bullet count and the first few bullets,
    *  bounded. The live `tldr_snapshots` row is not touched. */
   tldrPreview?: { bullets: number; en: string[]; vi: string[] };
+  /** A dry run's would-be weekly edition (last closed week), bounded. The
+   *  live `weekly_snapshots` row is not touched. */
+  weeklyPreview?: {
+    week: string;
+    stories: number;
+    intro_en: string | null;
+    intro_vi: string | null;
+    en: string[];
+    vi: string[];
+  };
 }
 
 /** Every field defaults to zero/false/empty so a missing or failed step
@@ -95,6 +105,7 @@ export function buildRunStats(partial: Partial<RunStats> = {}): RunStats {
     ...(partial.mode ? { mode: partial.mode } : {}),
     ...(partial.selectedSteps ? { selectedSteps: partial.selectedSteps } : {}),
     ...(partial.tldrPreview ? { tldrPreview: partial.tldrPreview } : {}),
+    ...(partial.weeklyPreview ? { weeklyPreview: partial.weeklyPreview } : {}),
   };
 }
 

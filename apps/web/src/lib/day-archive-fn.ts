@@ -3,6 +3,8 @@ import { parseArchiveDate } from "./day-archive";
 import { readSession } from "./db";
 import { stripItemDetail } from "./feed-fn";
 import { type DayArchive, getDayArchive } from "./feed-queries";
+import { weekOfArchiveDate } from "./week";
+import { weekEditionExists } from "./week-queries";
 
 /**
  * Server fn for the `/date/$date` loader. Returns null for an invalid or
@@ -19,7 +21,15 @@ export const fetchDayArchive = createServerFn({ method: "GET" })
     const db = (env as { DB?: D1Database }).DB;
     if (!db) return null;
     try {
-      const archive = await getDayArchive(readSession(db), date);
+      const session = readSession(db);
+      const candidateWeek = weekOfArchiveDate(date);
+      const [found, hasWeek] = await Promise.all([
+        getDayArchive(session, date),
+        candidateWeek
+          ? weekEditionExists(session, candidateWeek)
+          : Promise.resolve(false),
+      ]);
+      const archive = { ...found, week: hasWeek ? candidateWeek : null };
       return archive.day
         ? {
             ...archive,

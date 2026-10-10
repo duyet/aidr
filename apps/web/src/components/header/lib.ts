@@ -1,5 +1,6 @@
 import type { TrackChannel } from "@aidr/ui/track";
 import {
+  BookOpenText,
   Database,
   Globe,
   Info,
@@ -49,6 +50,7 @@ export const SITE_LINKS: {
   channel?: TrackChannel;
 }[] = [
   { href: "/", label: "News", internal: true, icon: Newspaper },
+  { href: "/weeks", label: "Weekly", internal: true, icon: BookOpenText },
   { href: "/about", label: "About", internal: true, icon: Info },
   { href: "/brand", label: "Brand", internal: true, icon: Palette },
   { href: "/mcp", label: "MCP", internal: true, icon: Plug },

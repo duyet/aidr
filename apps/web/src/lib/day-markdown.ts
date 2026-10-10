@@ -40,7 +40,7 @@ export function isDayMarkdownPath(pathname: string): boolean {
 }
 
 /** One line of untrusted text, bounded and safe inside Markdown. */
-function inlineText(value: string): string {
+export function inlineText(value: string): string {
   const flat = value
     // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping them is the point
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
