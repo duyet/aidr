@@ -16,13 +16,17 @@ import {
   type DigestStory,
   digestSubjectLine,
   formatMailDate,
+  headlineOverlap,
   listUnsubscribeHeaders,
   MAIL_LOGO_URL,
+  mailCategoryLabel,
   NEWS_FROM,
   NOTES_FROM,
   renderDigestEmail,
   renderNoteEmail,
   SUBJECT_TARGET,
+  SUMMARY_OVERLAP_MAX,
+  storySummary,
 } from "../mail/render.js";
 import { resetMailSchemaCache } from "../mail/schema.js";
 import { digestFrom, notesFrom, sendSubscriberEmail } from "../mail/send.js";
@@ -366,6 +370,75 @@ describe("renderDigestEmail", () => {
       ">Company 2 shipped model 2 to every user today.</font>"
     );
     expect(html).toContain("The launch shows how fast the field moves.</div>");
+  });
+
+  it("skips a first sentence that only restates the headline", () => {
+    const restated = {
+      text: "An Anthropic AI model sent a false homicide tip to Philadelphia police. The company found out two months later.",
+      headline:
+        "An Anthropic AI model sent a false homicide tip to Philadelphia police",
+    };
+    expect(headlineOverlap(restated.headline, restated.text)).toBeGreaterThan(
+      SUMMARY_OVERLAP_MAX
+    );
+    expect(storySummary(restated)).toBe(
+      "The company found out two months later."
+    );
+    // Nothing new to say: no summary rather than the headline twice.
+    expect(
+      storySummary({
+        text: "Microsoft launches Decision-1 to beat LLM latency.",
+        headline: "Microsoft Launches Decision-1 Model to Beat LLM Latency",
+      })
+    ).toBe("");
+    // A first sentence with new facts stays.
+    expect(
+      storySummary({
+        text: "a16z led the round with Sequoia in. Investors bet on non-text models.",
+        headline: "TypeSafe AI raises $870M",
+      })
+    ).toBe("a16z led the round with Sequoia in.");
+    const { html } = digest({ stories: [story(1), story(2, restated)] });
+    expect(html).not.toContain("Philadelphia police.</div>");
+    expect(html).toContain("The company found out two months later.</div>");
+  });
+
+  it("labels categories in Vietnamese for the Vietnamese mail only", () => {
+    const vi = digest({
+      lang: "vi",
+      stories: [
+        story(1, { category: "Funding" }),
+        story(2, { category: "Research" }),
+      ],
+    }).html;
+    expect(vi).toContain(">Gọi vốn</span>");
+    expect(vi).toContain(">Nghiên cứu</span>");
+    expect(vi).not.toContain(">Funding</span>");
+    expect(
+      digest({ stories: [story(1, { category: "Funding" })] }).html
+    ).toContain(">Funding</span>");
+    expect(mailCategoryLabel("Something New", "vi")).toBe("Something New");
+  });
+
+  it("makes a failed image a quiet grey box and crops tall lead photos", () => {
+    const { html } = digest();
+    expect(html).toMatch(
+      /<img [^>]*alt="Company 2 ships model 2"[^>]*font-size:11px;line-height:1.35;color:#6b6a64/
+    );
+    expect(html).toMatch(
+      /class="m-thumb"[\s\S]{0,400}background-color:#ece9e1/
+    );
+    expect(html).toMatch(
+      /max-height:300px;overflow:hidden[^>]*>\s*<img class="mail-lead-image"/
+    );
+  });
+
+  it("stacks the header date under the wordmark on phones", () => {
+    const { html } = digest();
+    expect(html).toContain(
+      ".m-block { display: block !important; width: 100% !important; text-align: left !important;"
+    );
+    expect(html.match(/<td class="m-block/g)?.length).toBe(2);
   });
 
   it("tags each link with its position", () => {

@@ -241,10 +241,40 @@ export function storyHeadline(story: DigestStory): string {
 /** One sentence under a headline. With a stored headline the bullet's first
  *  sentence carries the facts; without one the first sentence already is
  *  the headline, so the next sentence is used. */
+function tokens(text: string): string[] {
+  return text
+    .toLowerCase()
+    .normalize("NFC")
+    .split(/[^\p{L}\p{N}$%.]+/u)
+    .map((t) => t.replace(/^\.+|\.+$/g, ""))
+    .filter((t) => t.length > 1);
+}
+
+/** Share of the headline's words that the sentence repeats (0..1). */
+export function headlineOverlap(headline: string, sentence: string): number {
+  const head = new Set(tokens(headline));
+  if (head.size === 0) return 0;
+  const said = new Set(tokens(sentence));
+  let hit = 0;
+  for (const t of head) if (said.has(t)) hit++;
+  return hit / head.size;
+}
+
+/** Above this the sentence only restates the headline. */
+export const SUMMARY_OVERLAP_MAX = 0.7;
+
+/** One sentence under a headline: the first sentence of the bullet that does
+ *  not restate the headline, or nothing. */
 export function storySummary(story: DigestStory): string {
+  const headline = storyHeadline(story);
   const parts = sentences(story.text);
-  if (story.headline?.trim()) return parts[0] ?? "";
-  return parts[1] ?? "";
+  return (
+    parts.find(
+      (part) =>
+        part !== headline &&
+        headlineOverlap(headline, part) <= SUMMARY_OVERLAP_MAX
+    ) ?? ""
+  );
 }
 
 function cutAtWord(text: string, max: number): string {
@@ -323,6 +353,8 @@ const HEAD_STYLE = `
     .m-wrap { padding: 12px 8px !important; }
     .m-pad { padding-left: 20px !important; padding-right: 20px !important; }
     .m-body { font-size: 16px !important; }
+    .m-block { display: block !important; width: 100% !important; text-align: left !important; padding-left: 0 !important; }
+    .m-block-gap { padding-top: 12px !important; }
     .m-stack { display: block !important; width: 100% !important; text-align: left !important; padding-left: 0 !important; padding-top: 10px !important; }
     .m-tap { display: inline-block !important; min-height: 44px !important; line-height: 44px !important; }
     .m-head { font-size: 22px !important; }
@@ -434,8 +466,8 @@ export function headerBlock(
       <td class="m-pad m-rule" style="padding:28px ${PAD} 20px;border-bottom:1px solid ${HAIRLINE}">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td valign="bottom" style="vertical-align:bottom">${brand}</td>
-            <td class="m-stack" align="right" valign="bottom" style="vertical-align:bottom;text-align:right;font-family:${SANS};padding-left:16px">
+            <td class="m-block" valign="bottom" style="vertical-align:bottom">${brand}</td>
+            <td class="m-block m-block-gap" align="right" valign="bottom" style="vertical-align:bottom;text-align:right;font-family:${SANS};padding-left:16px">
               <div class="m-fg" style="font-size:13px;line-height:1.4;font-weight:600;color:${FG}">${escapeHtml(formatMailDate(meta.date, lang))}</div>
               <div class="m-muted" style="font-size:12px;line-height:1.4;color:${MUTED}">${escapeHtml(countLine(meta.count, meta.minutes, lang))}</div>
               ${link(meta.switchHref, other, `font-family:${SANS};font-size:12px;line-height:1.6;font-weight:600;color:${ACCENT};text-decoration:none`, "m-link m-tap")}
@@ -495,11 +527,38 @@ export function videoBlock(
     </tr>`;
 }
 
-function metaLine(story: DigestStory, accent: boolean): string {
+/** Vietnamese labels for the category taxonomy (worker/llm.ts CATEGORIES)
+ *  in the mail. The site keeps categories in English (src/lib/lang.ts
+ *  categoryLabel); the Vietnamese mail reads them as words. Unknown names
+ *  pass through unchanged. */
+const CATEGORY_VI: Record<string, string> = {
+  Models: "Mô hình",
+  Regulation: "Chính sách",
+  Products: "Sản phẩm",
+  Agents: "Agent",
+  Agent: "Agent",
+  Research: "Nghiên cứu",
+  Industry: "Ngành",
+  Infra: "Hạ tầng",
+  Releases: "Phát hành",
+  Chips: "Chip",
+  Funding: "Gọi vốn",
+  Safety: "An toàn",
+  Tools: "Công cụ",
+  Frameworks: "Framework",
+  Data: "Dữ liệu",
+  "Open Source": "Mã nguồn mở",
+};
+
+export function mailCategoryLabel(category: string, lang: MailLang): string {
+  return lang === "vi" ? (CATEGORY_VI[category] ?? category) : category;
+}
+
+function metaLine(story: DigestStory, accent: boolean, lang: MailLang): string {
   const parts: string[] = [];
   if (story.category) {
     parts.push(
-      `<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${accent ? ACCENT : MUTED}" class="${accent ? "m-link" : "m-muted"}">${escapeHtml(story.category)}</span>`
+      `<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${accent ? ACCENT : MUTED}" class="${accent ? "m-link" : "m-muted"}">${escapeHtml(mailCategoryLabel(story.category, lang))}</span>`
     );
   }
   if (story.source) {
@@ -517,8 +576,21 @@ function largeImageSrc(imageUrl: string | undefined): string | null {
   return safe && !isGeneratedOgCard(safe) ? safe : null;
 }
 
+/** When an image fails, its alt text reads as a quiet grey caption, not a
+ *  big blue serif link. */
+const ALT_STYLE = `font-family:${SANS};font-size:11px;line-height:1.35;color:#6b6a64`;
+
+/** Lead images taller than this are cropped from the bottom (a portrait
+ *  photo would otherwise fill a whole phone screen). The wrapper does the
+ *  crop, so the image keeps its aspect ratio where overflow is ignored. */
+const LEAD_MAX_H = 300;
+
 function largeImage(src: string, alt: string, className: string): string {
-  return `<img class="${className}" src="${escapeHtml(src)}" width="${INNER_PX}" alt="${escapeHtml(alt)}" style="display:block;width:100%;max-width:${INNER_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:10px;-ms-interpolation-mode:bicubic">`;
+  return `<img class="${className}" src="${escapeHtml(src)}" width="${INNER_PX}" alt="${escapeHtml(alt)}" style="display:block;width:100%;max-width:${INNER_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:10px;-ms-interpolation-mode:bicubic;${ALT_STYLE}">`;
+}
+
+function leadImage(src: string, alt: string): string {
+  return `<div style="max-height:${LEAD_MAX_H}px;overflow:hidden;border-radius:10px;background-color:${HAIRLINE}">${largeImage(src, alt, "mail-lead-image")}</div>`;
 }
 
 /** Story 1: large image, category · source, big headline, its summary. */
@@ -536,8 +608,8 @@ export function leadStory(
   return `<tr>
       <td class="m-pad" style="padding:22px ${PAD} 8px">
         <div class="m-muted" style="padding-bottom:12px;font-family:${SANS};font-size:11px;line-height:1.4;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${MUTED}">${escapeHtml(kicker)}</div>
-        ${image ? `<a href="${safe}" target="_blank" style="text-decoration:none;border:0">${largeImage(image, headline, "mail-lead-image")}</a><div style="height:16px;line-height:16px;font-size:0">&nbsp;</div>` : ""}
-        ${metaLine(story, true)}
+        ${image ? `<a href="${safe}" target="_blank" style="text-decoration:none;border:0">${leadImage(image, headline)}</a><div style="height:16px;line-height:16px;font-size:0">&nbsp;</div>` : ""}
+        ${metaLine(story, true, lang)}
         <a class="m-fg" href="${safe}" target="_blank" style="display:block;padding-top:6px;font-family:${SERIF};font-size:27px;line-height:1.2;font-weight:600;color:${FG};text-decoration:none"><font class="m-fg" color="${FG}"><span class="m-head">${escapeHtml(headline)}</span></font></a>
         <div class="m-fg m-body" style="padding-top:8px;font-family:${SANS};font-size:15px;line-height:1.6;color:${BODY}">${escapeHtml(story.text.trim())}</div>
         ${link(href, readLabel, `display:inline-block;margin-top:12px;font-family:${SANS};font-size:14px;font-weight:600;color:${ACCENT};text-decoration:none`, "m-link m-tap")}
@@ -553,7 +625,7 @@ function thumbCell(
   const safe = imageUrl ? safeHref(imageUrl) : null;
   if (!safe) return "";
   return `<td class="m-thumb" width="${THUMB_PX}" valign="top" style="width:${THUMB_PX}px;vertical-align:top;padding-left:16px">
-            <a href="${escapeHtml(href)}" target="_blank" style="text-decoration:none;border:0"><img src="${escapeHtml(safe)}" width="${THUMB_PX}" alt="${escapeHtml(alt)}" style="display:block;width:${THUMB_PX}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic"></a>
+            <a href="${escapeHtml(href)}" target="_blank" style="display:block;text-decoration:none;border:0;border-radius:8px;overflow:hidden;background-color:${HAIRLINE};${ALT_STYLE}"><img src="${escapeHtml(safe)}" width="${THUMB_PX}" alt="${escapeHtml(alt)}" style="display:block;width:${THUMB_PX}px;height:auto;max-height:${THUMB_PX}px;border:0;outline:none;text-decoration:none;border-radius:8px;-ms-interpolation-mode:bicubic;${ALT_STYLE}"></a>
           </td>`;
 }
 
@@ -563,7 +635,8 @@ export function storyRow(
   story: DigestStory,
   n: number,
   href: string,
-  format: MailFormat
+  format: MailFormat,
+  lang: MailLang
 ): string {
   const headline = storyHeadline(story);
   const summary = storySummary(story);
@@ -571,7 +644,7 @@ export function storyRow(
   const large = format === "large" ? largeImageSrc(story.imageUrl) : null;
   const thumb =
     format === "design" ? thumbCell(story.imageUrl, headline, href) : "";
-  const text = `${metaLine(story, false)}
+  const text = `${metaLine(story, false, lang)}
               <a class="m-fg" href="${safe}" target="_blank" style="display:block;padding-top:4px;font-family:${SERIF};font-size:19px;line-height:1.25;font-weight:600;color:${FG};text-decoration:none"><font class="m-fg" color="${FG}">${escapeHtml(headline)}</font></a>
               ${summary ? `<div class="m-fg m-body" style="padding-top:4px;font-family:${SANS};font-size:14px;line-height:1.55;color:${BODY}">${escapeHtml(summary)}</div>` : ""}`;
   return `<tr>
@@ -969,7 +1042,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
       ? sectionLabel(lang === "vi" ? "Tin khác hôm nay" : "Also today")
       : "",
     ...rest.map((s, i) =>
-      storyRow(s, i + 2, storyHref(s, lang, `s${i + 2}`), format)
+      storyRow(s, i + 2, storyHref(s, lang, `s${i + 2}`), format, lang)
     ),
     ctaRow(ctaLabel, ctaUrl),
     channelsBlock(lang),
