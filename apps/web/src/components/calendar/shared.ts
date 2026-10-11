@@ -1,15 +1,6 @@
 import type { CalendarDay } from "../../lib/calendar";
 import type { Lang } from "../../lib/types";
 
-/** Heat steps use the feed's accent (the same amber as home highlights). */
-export const HEAT_CLASS = [
-  "bg-muted/60",
-  "bg-accent/15",
-  "bg-accent/35",
-  "bg-accent/65 text-accent-foreground",
-  "bg-accent text-accent-foreground",
-] as const;
-
 export const WEEKDAYS: Record<Lang, string[]> = {
   en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
   vi: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"],
@@ -65,6 +56,22 @@ export function formatDay(
     lang === "vi" ? "vi-VN" : "en-US",
     { weekday: style, month: style, day: "numeric", timeZone: "UTC" }
   );
+}
+
+/** Weekday of a `YYYY-MM-DD`: "T2".."CN" or "Mon".."Sun". */
+export function weekdayShort(date: string, lang: Lang): string {
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return WEEKDAYS[lang][(dow + 6) % 7];
+}
+
+/**
+ * Runner-up titles in the page language. Vietnamese shows only translated
+ * titles, never the English one in their place.
+ */
+export function runnerTitles(day: CalendarDay, lang: Lang): string[] {
+  return day.runners
+    .map((r) => (lang === "vi" ? r.title_vi : r.title))
+    .filter((t): t is string => !!t);
 }
 
 export function editionsLabel(n: number, lang: Lang): string {

@@ -31,6 +31,8 @@ const day = (date: string, count: number): CalendarDay => ({
   title_vi: null,
   image_url: null,
   tags: [],
+  runners: [],
+  categories: [],
 });
 
 const OCTOBER: CalendarMonth = {
