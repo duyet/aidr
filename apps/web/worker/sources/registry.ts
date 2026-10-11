@@ -38,8 +38,8 @@ export function normalizeFetchedItem(item: FetchedItem): FetchedItem {
 function normalized(adapter: SourceAdapter): SourceAdapter {
   return {
     type: adapter.type,
-    async fetchItems(config, sinceEpochSec) {
-      const items = await adapter.fetchItems(config, sinceEpochSec);
+    async fetchItems(config, sinceEpochSec, secrets) {
+      const items = await adapter.fetchItems(config, sinceEpochSec, secrets);
       return items.map(normalizeFetchedItem);
     },
   };
@@ -52,8 +52,8 @@ function normalized(adapter: SourceAdapter): SourceAdapter {
 function floodGated(adapter: SourceAdapter): SourceAdapter {
   return {
     type: adapter.type,
-    async fetchItems(config, sinceEpochSec) {
-      const items = await adapter.fetchItems(config, sinceEpochSec);
+    async fetchItems(config, sinceEpochSec, secrets) {
+      const items = await adapter.fetchItems(config, sinceEpochSec, secrets);
       return applyFloodGate(items, config);
     },
   };

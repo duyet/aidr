@@ -152,18 +152,33 @@ export async function fetchWithSafeRedirects(
   return (await fetchWithSafeRedirectsResolved(raw, init)).response;
 }
 
+/** Drop `Authorization` once a redirect leaves the starting origin, so a
+ *  source token never reaches a host it was not issued for. */
+function credentialsFor(
+  headers: HeadersInit | undefined,
+  url: string,
+  startOrigin: string
+): HeadersInit | undefined {
+  if (new URL(url).origin === startOrigin) return headers;
+  const out = new Headers(headers);
+  out.delete("authorization");
+  return out;
+}
+
 /** Like `fetchWithSafeRedirects`, plus the URL that finally answered. */
 export async function fetchWithSafeRedirectsResolved(
   raw: string,
   init: RequestInit = {}
 ): Promise<{ response: Response; url: string }> {
   let current = raw;
+  const startOrigin = new URL(raw).origin;
   for (let redirect = 0; redirect <= MAX_ENRICH_REDIRECTS; redirect++) {
     if (!isFetchableUrl(current)) {
       throw new Error(`blocked fetch URL: ${logSafeUrl(current)}`);
     }
     const response = await fetch(current, {
       ...init,
+      headers: credentialsFor(init.headers, current, startOrigin),
       redirect: "manual",
     });
     const status = response.status;

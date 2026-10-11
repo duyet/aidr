@@ -29,10 +29,17 @@ export interface FetchedItem {
   mediaManifest?: MediaManifest;
 }
 
+/** Worker secrets an adapter may need. Kept out of `config`, which is
+ *  stored in D1 and served by `/api/system/sources`. */
+export interface SourceSecrets {
+  githubToken?: string;
+}
+
 export interface SourceAdapter {
   type: string;
   fetchItems(
     config: Record<string, unknown>,
-    sinceEpochSec: number
+    sinceEpochSec: number,
+    secrets?: SourceSecrets
   ): Promise<FetchedItem[]>;
 }

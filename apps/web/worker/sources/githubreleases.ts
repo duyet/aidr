@@ -42,7 +42,7 @@ function releaseNotes(body: string): string | undefined {
 export const githubReleasesAdapter: SourceAdapter = {
   type: "githubreleases",
 
-  async fetchItems(config, sinceEpochSec) {
+  async fetchItems(config, sinceEpochSec, secrets) {
     const repo = asString(config.repo);
     if (!REPO_RE.test(repo)) {
       throw new Error("githubreleases: config.repo must be owner/name");
@@ -54,6 +54,11 @@ export const githubReleasesAdapter: SourceAdapter = {
       {
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
+        // Any token lifts the shared-egress limit from 60 to 5,000 req/h;
+        // public release reads need no scope.
+        ...(secrets?.githubToken
+          ? { Authorization: `Bearer ${secrets.githubToken}` }
+          : {}),
       }
     );
     const sinceMs = sinceEpochSec * 1000;
