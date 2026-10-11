@@ -428,3 +428,30 @@ describe("SSR indexability contract", () => {
     );
   });
 });
+
+describe("withSsrLocaleResponse Vary on ?lang= pages", () => {
+  it("drops Cookie/Accept-Language Vary when ?lang= selects the page", () => {
+    const res = withSsrLocaleResponse(
+      new Request(
+        "https://aidr.today/?lang=vi&utm_source=extension&ref=extension"
+      ),
+      new Response("x", {
+        headers: {
+          "Content-Type": "text/html",
+          Vary: "Cookie, Accept-Language, Accept-Encoding",
+        },
+      })
+    );
+    expect(res.headers.get("Cache-Control")).toBe(SSR_LOCALIZED_CACHE_CONTROL);
+    expect(res.headers.get("Vary")).toBe("Accept-Encoding");
+  });
+
+  it("keeps bare / private and varied", () => {
+    const res = withSsrLocaleResponse(
+      new Request("https://aidr.today/?utm_source=extension"),
+      html()
+    );
+    expect(res.headers.get("Cache-Control")).toBe(LOCALE_PRIVATE_CACHE_CONTROL);
+    expect(res.headers.get("Vary")).toContain("Cookie");
+  });
+});
