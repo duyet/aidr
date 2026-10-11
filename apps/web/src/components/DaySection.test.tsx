@@ -106,7 +106,7 @@ describe("dense story table", () => {
     const legend = vi.match(/<div class="story-legend[^"]*"[^>]*>/)?.[0] ?? "";
     expect(legend).toContain('aria-hidden="true"');
     expect(legend).toContain(
-      "sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.2rem]"
+      "sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.6rem]"
     );
     for (const label of ["#", "Tin", "Chủ đề", "Lúc", "Điểm"]) {
       expect(vi).toContain(`>${label}<`);
@@ -122,7 +122,7 @@ describe("dense story table", () => {
     const row = html.match(/<div class="story-row[^"]*"/)?.[0] ?? "";
     expect(row).toContain("grid-cols-[1.4rem_minmax(0,1fr)_3rem]");
     expect(row).toContain(
-      "sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.2rem]"
+      "sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.6rem]"
     );
     // Desktop: one-line title; topic and time have their own columns.
     expect(html).toMatch(/class="story-title[^"]*sm:truncate/);
