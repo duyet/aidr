@@ -289,6 +289,22 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0057_source_refresh.sql
+
+- Change: upserts the re-declared rows (`reddit-ml`, `reddit-localllama`,
+  `reddit-singularity`, `xai`, `ahead-of-ai`, `arstechnica-ai`) and 13 new
+  probation rows (name/type/config, never `enabled`), then
+  `UPDATE sources SET enabled = 0` for the first five. `arstechnica-ai`
+  gets the technology-lab feed URL and the AI title filter.
+- Risk: none for existing items. The disables are the intended semantics even
+  if an operator had re-enabled one. The new rows add at most 1 to 2 items
+  per source per run, and each is a normal row an operator can switch off.
+- Rollback: `DELETE FROM sources WHERE id IN ('release-ollama', 'release-vllm', 'release-transformers', 'release-codex', 'hf-papers', 'openrouter-models', 'hf-models-qwen', 'hf-models-deepseek', 'hf-models-moonshotai', 'hf-models-zai-org', 'hf-models-mistralai', 'ai2', 'genk-ai'); UPDATE sources SET enabled = 1 WHERE id IN ('reddit-ml', 'reddit-localllama', 'reddit-singularity', 'xai', 'ahead-of-ai');`
+  and set `arstechnica-ai` back to `https://arstechnica.com/ai/feed/` without
+  `keywordFilter`. Items already ingested keep their `source_id` and stay
+  readable; they just stop refreshing. Roll the Worker back first: an old
+  Worker has no adapter for the four new types and skips those rows.
+
 ## 0052_day_videos_vi.sql
 
 - Change: rebuilds `day_videos` (create new, copy, drop, rename) to add

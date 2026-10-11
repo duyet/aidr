@@ -11,9 +11,12 @@ import {
   DEFAULT_STALE_AFTER_RUNS,
   describeSkipReason,
   emptySourceHealth,
+  FETCH_FAILED_ALERT_RUNS,
+  isSourceFailing,
   isSourceStale,
   nextEmptyRuns,
-  parsePreviousEmptyRuns,
+  nextFailedRuns,
+  parsePreviousStreaks,
   parseSourceHealth,
   resolveSkipReason,
   type SourceRunHealth,
@@ -114,6 +117,7 @@ describe("per-source stats parsing", () => {
         merged: 0,
         skipReason: "",
         emptyRuns: 0,
+        failedRuns: 7,
       })
     ).toEqual({
       fetched: 4,
@@ -123,6 +127,7 @@ describe("per-source stats parsing", () => {
       merged: 0,
       skipReason: "",
       emptyRuns: 0,
+      failedRuns: 7,
     });
   });
 
@@ -239,19 +244,138 @@ describe("empty-run streak", () => {
 
   it("reads the previous run's streaks out of a stats blob", () => {
     expect(
-      parsePreviousEmptyRuns(
+      parsePreviousStreaks(
         JSON.stringify({
           bySource: { hn: 1 },
-          sourceHealth: { hn: { emptyRuns: 12 }, arxiv: { emptyRuns: 5 } },
+          sourceHealth: {
+            hn: { emptyRuns: 12 },
+            arxiv: { emptyRuns: 5, failedRuns: 5 },
+          },
         })
       )
-    ).toEqual({ hn: 12, arxiv: 5 });
+    ).toEqual({
+      // A run written before failedRuns existed starts that streak at 0.
+      hn: { emptyRuns: 12, failedRuns: 0 },
+      arxiv: { emptyRuns: 5, failedRuns: 5 },
+    });
     // Pre-#230 run: no sourceHealth key at all.
     expect(
-      parsePreviousEmptyRuns(JSON.stringify({ bySource: { hn: 1 } }))
+      parsePreviousStreaks(JSON.stringify({ bySource: { hn: 1 } }))
     ).toEqual({});
-    expect(parsePreviousEmptyRuns("not json")).toEqual({});
-    expect(parsePreviousEmptyRuns(null)).toEqual({});
+    expect(parsePreviousStreaks("not json")).toEqual({});
+    expect(parsePreviousStreaks(null)).toEqual({});
+  });
+});
+
+describe("fetch-failure streak", () => {
+  it("alerts after 48 failed runs, one day at the 30-minute cadence", () => {
+    expect(FETCH_FAILED_ALERT_RUNS).toBe(48);
+    expect(isSourceFailing(health({ failedRuns: 47 }), "xai")).toBe(false);
+    expect(isSourceFailing(health({ failedRuns: 48 }), "xai")).toBe(true);
+  });
+
+  it("fires long before the 336-run empty-feed threshold would", () => {
+    // 135 failed runs is where reddit-* sat before anyone looked.
+    const reddit = health({
+      fetched: 0,
+      skipReason: "fetch_failed",
+      emptyRuns: 135,
+      failedRuns: 135,
+    });
+    expect(isSourceStale(reddit, "reddit-ml")).toBe(false);
+    expect(isSourceFailing(reddit, "reddit-ml")).toBe(true);
+  });
+
+  it("is not tripped by a quiet feed, however long it stays quiet", () => {
+    const quiet = health({
+      skipReason: "empty",
+      emptyRuns: 600,
+      failedRuns: 0,
+    });
+    expect(isSourceFailing(quiet, "mistral")).toBe(false);
+  });
+
+  it("exempts disabled and push rows", () => {
+    const failing = health({ failedRuns: 500 });
+    expect(isSourceFailing({ ...failing, skipReason: "disabled" }, "xai")).toBe(
+      false
+    );
+    expect(isSourceFailing(failing, "external", "push")).toBe(false);
+    expect(isSourceFailing(failing, "user")).toBe(false);
+    expect(isSourceFailing(failing, "external", "rss")).toBe(true);
+  });
+
+  it("advances only on fetch_failed and resets on anything else", () => {
+    expect(nextFailedRuns(0, "fetch_failed")).toBe(1);
+    expect(nextFailedRuns(47, "fetch_failed")).toBe(48);
+    expect(nextFailedRuns(47, "parse_failed")).toBe(0);
+    expect(nextFailedRuns(47, "empty")).toBe(0);
+    expect(nextFailedRuns(47, "")).toBe(0);
+    expect(nextFailedRuns(-4, "fetch_failed")).toBe(1);
+  });
+
+  it("carries the streak forward per source, resets on a good run, and holds push rows at 0", () => {
+    const carried = carrySourceEmptyRuns(
+      {
+        blocked: health({ skipReason: "fetch_failed" }),
+        recovered: health({ fetched: 3 }),
+        quiet: health({ skipReason: "empty" }),
+        fresh: health({ skipReason: "fetch_failed" }),
+        user: health({ skipReason: "fetch_failed" }),
+      },
+      {
+        blocked: health({ emptyRuns: 47, failedRuns: 47 }),
+        recovered: health({ emptyRuns: 60, failedRuns: 60 }),
+        quiet: health({ emptyRuns: 60, failedRuns: 12 }),
+        user: health({ failedRuns: 30 }),
+      },
+      new Set()
+    );
+    expect(carried.blocked.failedRuns).toBe(48);
+    expect(isSourceFailing(carried.blocked, "blocked")).toBe(true);
+    expect(carried.recovered.failedRuns).toBe(0);
+    expect(carried.quiet.failedRuns).toBe(0);
+    expect(carried.fresh.failedRuns).toBe(1);
+    expect(carried.user.failedRuns).toBe(0);
+  });
+
+  it("lists failing ids beside stale ids in the read model, off-rows excluded", () => {
+    const sources = [
+      ingestRow({ id: "blocked" }),
+      ingestRow({ id: "ok" }),
+      ingestRow({ id: "off-source", enabled: false }),
+      ingestRow({ id: "pushed", type: "push" }),
+    ];
+    const {
+      health: merged,
+      stale,
+      failing,
+    } = mergeSourceHealth(sources, {
+      sourceHealth: {
+        blocked: {
+          ...emptySourceHealth(),
+          skipReason: "fetch_failed",
+          emptyRuns: 48,
+          failedRuns: 48,
+        },
+        ok: { ...emptySourceHealth(), fetched: 2 },
+        "off-source": {
+          ...emptySourceHealth(),
+          skipReason: "disabled",
+          failedRuns: 900,
+        },
+        pushed: { ...emptySourceHealth(), failedRuns: 900 },
+      },
+    });
+    expect(failing).toEqual(["blocked"]);
+    expect(stale).toEqual([]);
+    expect(merged.blocked).toMatchObject({
+      failing: true,
+      failAfterRuns: 48,
+      failedRuns: 48,
+    });
+    expect(merged.ok).toMatchObject({ failing: false });
+    expect(merged["off-source"]).toMatchObject({ failing: false });
   });
 });
 

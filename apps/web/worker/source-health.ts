@@ -30,6 +30,7 @@
  */
 import {
   DEFAULT_STALE_AFTER_RUNS,
+  FETCH_FAILED_ALERT_RUNS,
   findSourceSpec,
   staleAfterRunsFor,
   USER_SOURCE_ID,
@@ -74,6 +75,10 @@ export interface SourceRunHealth {
   skipReason: SourceSkipReason | "";
   /** Consecutive runs (including this one) with `fetched === 0`. */
   emptyRuns: number;
+  /** Consecutive runs (including this one) whose skip reason is `fetch_failed`.
+   *  Separate from `emptyRuns`: a host that blocks the Worker is broken from
+   *  the first run, long before a quiet feed would be called stale. */
+  failedRuns: number;
 }
 
 export function emptySourceHealth(): SourceRunHealth {
@@ -85,6 +90,7 @@ export function emptySourceHealth(): SourceRunHealth {
     merged: 0,
     skipReason: "",
     emptyRuns: 0,
+    failedRuns: 0,
   };
 }
 
@@ -109,6 +115,7 @@ export function parseSourceHealth(value: unknown): SourceRunHealth | null {
     merged: num(raw.merged),
     skipReason: reason,
     emptyRuns: num(raw.emptyRuns),
+    failedRuns: num(raw.failedRuns),
   };
 }
 
@@ -157,12 +164,39 @@ export function sourceStaleVerdict(
 }
 
 /**
+ * A source is failing when its last `FETCH_FAILED_ALERT_RUNS` runs all failed
+ * to fetch (48 runs, one day at the 30-minute cadence). It is the second alarm
+ * beside `isSourceStale`: stale waits a week of silence on purpose, because a
+ * quiet feed is normal, but a non-2xx on every run for a day is never normal.
+ * Disabled and `push` rows are exempt for the same reasons as in
+ * `isSourceStale`.
+ */
+export function isSourceFailing(
+  health: SourceRunHealth,
+  id: string,
+  type?: string
+): boolean {
+  if (health.skipReason === "disabled") return false;
+  if (type === "push" || id === USER_SOURCE_ID) return false;
+  return health.failedRuns >= FETCH_FAILED_ALERT_RUNS;
+}
+
+/**
  * Advance the streak. A run that fetched anything resets it to 0; a run that
  * fetched nothing increments it. The previous value is read from the prior
  * run's `stats` by the workflow (see `carrySourceEmptyRuns`).
  */
 export function nextEmptyRuns(previous: number, fetched: number): number {
   if (fetched > 0) return 0;
+  return Math.max(0, Math.floor(previous)) + 1;
+}
+
+/** Advance the fetch-failure streak: only a `fetch_failed` run extends it. */
+export function nextFailedRuns(
+  previous: number,
+  skipReason: SourceSkipReason | ""
+): number {
+  if (skipReason !== "fetch_failed") return 0;
   return Math.max(0, Math.floor(previous)) + 1;
 }
 
@@ -226,17 +260,27 @@ export function carrySourceEmptyRuns(
         pushIds.has(id) || id === USER_SOURCE_ID
           ? 0
           : nextEmptyRuns(previous[id]?.emptyRuns ?? 0, health.fetched),
+      failedRuns:
+        pushIds.has(id) || id === USER_SOURCE_ID
+          ? 0
+          : nextFailedRuns(previous[id]?.failedRuns ?? 0, health.skipReason),
     };
   }
   return out;
 }
 
+export interface SourceStreaks {
+  emptyRuns: number;
+  failedRuns: number;
+}
+
 /** Read the previous run's per-source streaks out of a `workflow_runs.stats`
- *  JSON blob. Tolerates the pre-#230 shape (no `sourceHealth` key) and
- *  malformed JSON, both of which mean "no history", i.e. streaks start at 0. */
-export function parsePreviousEmptyRuns(
+ *  JSON blob. Tolerates the pre-#230 shape (no `sourceHealth` key), a run
+ *  from before `failedRuns` existed (that streak starts at 0), and malformed
+ *  JSON, all of which mean "no history". */
+export function parsePreviousStreaks(
   statsJson: unknown
-): Record<string, number> {
+): Record<string, SourceStreaks> {
   if (typeof statsJson !== "string" || !statsJson) return {};
   let parsed: unknown;
   try {
@@ -247,10 +291,10 @@ export function parsePreviousEmptyRuns(
   if (!parsed || typeof parsed !== "object") return {};
   const health = (parsed as Record<string, unknown>).sourceHealth;
   if (!health || typeof health !== "object" || Array.isArray(health)) return {};
-  const out: Record<string, number> = {};
+  const out: Record<string, SourceStreaks> = {};
   for (const [id, value] of Object.entries(health as Record<string, unknown>)) {
     const row = parseSourceHealth(value);
-    if (row) out[id] = row.emptyRuns;
+    if (row) out[id] = { emptyRuns: row.emptyRuns, failedRuns: row.failedRuns };
   }
   return out;
 }
@@ -275,4 +319,9 @@ export function describeSkipReason(reason: SourceSkipReason | ""): string {
   }
 }
 
-export { DEFAULT_STALE_AFTER_RUNS, findSourceSpec, staleAfterRunsFor };
+export {
+  DEFAULT_STALE_AFTER_RUNS,
+  FETCH_FAILED_ALERT_RUNS,
+  findSourceSpec,
+  staleAfterRunsFor,
+};

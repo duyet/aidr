@@ -38,6 +38,7 @@
  * | `sourceLang` | `"en"` (default) or `"vi"`. `"vi"` is explicit metadata that puts the item on the real VI→EN translation-QA path; it is never inferred from diacritics. |
  * | `maxItems` | flood gate: hard cap on items returned per fetch, applied newest-first **after** the since-window filter. Bounds per-run LLM volume for firehose feeds. |
  * | `keywordFilter` | named title pre-filter (`"ai"`). Reuses the same regex the HN adapter uses. Applied *before* `maxItems` so the cap is filled with relevant items. |
+ * | `timezone` | a fixed UTC offset (`"+07:00"`) for a feed whose dates carry no zone. Applied only to a date string that has none; a date with a zone is never shifted. |
  * | `minRequestIntervalMs` | per-host minimum spacing between fetches. Needed for hosts that reject concurrent requests (arXiv asks for ≥3s between API calls). Serialises same-host fetches across the workflow's parallel source groups; the fetch itself still goes through the single `enrich.ts` boundary. |
  *
  * ## Staleness
@@ -58,6 +59,10 @@ export type SourceType =
   | "anthropic"
   | "marketbrief"
   | "xai"
+  | "githubreleases"
+  | "hfpapers"
+  | "hfmodels"
+  | "openrouter"
   | "push";
 
 export interface SourceSpec {
@@ -92,7 +97,17 @@ export interface SourceSpec {
   official?: readonly string[];
   /** Why this row exists / why these settings. Rendered into the PR evidence. */
   note?: string;
+  /**
+   * A new source that has not earned a full slot yet. `source-catalog.test.ts`
+   * holds probation rows to `PROBATION_MAX_ITEMS`, no reader engagement, and
+   * `official` only for a first-party feed on its own host. Graduating is
+   * deleting this flag (ALGORITHM.md, "Probation").
+   */
+  probation?: true;
 }
+
+/** Most items a probation source may add per run. */
+export const PROBATION_MAX_ITEMS = 2;
 
 /**
  * Default "this feed has rotted" threshold, in consecutive runs.
@@ -109,6 +124,17 @@ export interface SourceSpec {
  * or a dead host.
  */
 export const DEFAULT_STALE_AFTER_RUNS = 336;
+
+/**
+ * Consecutive `fetch_failed` runs before a source is flagged `failing`
+ * (48 runs, one day at the 30-minute cadence). Separate from the stale
+ * threshold: an empty feed can be normal for a week, but a host that answers
+ * every request with a non-2xx is broken from the first run. Five sources sat
+ * at `fetch_failed` for 135 to 517 runs: only the 336-run empty streak existed
+ * (a failed fetch counts there too), so `xai` and `arstechnica-ai` were flagged
+ * after 14 days and `reddit-*` never.
+ */
+export const FETCH_FAILED_ALERT_RUNS = 48;
 
 /**
  * arXiv was evaluated for this change and deliberately NOT added. Both halves
@@ -574,7 +600,9 @@ export const HN_SCOPE_SOURCE: SourceSpec = {
  *   2026-04), BAIR (2026-07), Meta AI / Cohere / Perplexity / Stability /
  *   LangChain / DeepSeek / Microsoft AI (404, 403, 410 or no feed items),
  *   GitHub release feeds for Ollama, vLLM and llama.cpp (titles are bare
- *   version tags, so nothing for the scorer to judge).
+ *   version tags, so nothing for the scorer to judge; 0057 adds Ollama, vLLM,
+ *   Transformers and Codex releases through the GitHub API with a synthesized
+ *   "<project> <tag>" title, minor releases only).
  */
 export const REGISTRY_0044: readonly SourceSpec[] = [
   {
@@ -840,6 +868,235 @@ export const REGISTRY_0051: readonly SourceSpec[] = [
   },
 ];
 
+const WORKERS_BLOCKED_NOTE =
+  "Disabled in 0057: answers the Worker with HTTP 403 on every run";
+
+/**
+ * 0057 (2026-10-11). Source audit from /api/system/sources.
+ *
+ * Disabled, with the reason in `note` (the migration flips the production
+ * rows, since `enabled` is operator-owned): `reddit-*` and `xai` fetch_failed
+ * for 135 to 517 runs with 0 items ever (Reddit and x.ai refuse Workers
+ * egress, though both answer from a laptop). `ahead-of-ai` produced nothing
+ * in 409 runs; its feed is alive (newest post 2026-09-29, a post every two
+ * to three weeks), so this one is a quiet-feed call, not a broken fetch.
+ * `arstechnica-ai` (fetch_failed for 517 runs) moves to the
+ * feeds.arstechnica.com technology-lab feed; 7 of its 20 titles pass the AI
+ * keyword filter on 2026-10-11, so the filter is added with the URL.
+ * `mistral` is unchanged: its feed parses (89 items on 2026-10-11) and the
+ * only post since it was seeded, Mistral Large 4 on 2026-10-06, was already
+ * stored from docs.mistral.ai.
+ *
+ * Added on probation (`PROBATION_MAX_ITEMS` per run, no reader engagement),
+ * every endpoint checked against its robots.txt on 2026-10-11:
+ * - GitHub releases through api.github.com, not `releases.atom`: github.com
+ *   disallows `/*.atom$` for every crawler. Minor `x.y.0` tags only. Not
+ *   added: llama.cpp (tags are build numbers, no minor to filter on) and
+ *   Claude Code (2.1.N, a minor bump almost never happens).
+ * - HF daily papers, OpenRouter new models, five HF organizations' new models.
+ * - Ai2 (official) and Genk AI (Vietnamese, dates carry a UTC+7 zone today,
+ *   `timezone` covers a feed that drops it).
+ *
+ * Rows on a shared host (github, huggingface, openrouter) carry no `feed` or
+ * `homepage`, so `sourceSpecForUrl` cannot claim an unrelated github.com or
+ * huggingface.co link for them, and none is `official`.
+ */
+export const REGISTRY_0057: readonly SourceSpec[] = [
+  {
+    id: "reddit-ml",
+    name: "r/MachineLearning",
+    type: "rss",
+    family: "reddit",
+    config: {
+      feed: "https://www.reddit.com/r/MachineLearning/hot/.rss",
+      homepage: "https://www.reddit.com/r/MachineLearning/",
+      minRequestIntervalMs: 3000,
+      maxItems: 6,
+    },
+    enabled: false,
+    note: `${WORKERS_BLOCKED_NOTE} (135+ runs, 0 items); Reddit refuses Workers egress.`,
+  },
+  {
+    id: "reddit-localllama",
+    name: "r/LocalLLaMA",
+    type: "rss",
+    family: "reddit",
+    config: {
+      feed: "https://www.reddit.com/r/LocalLLaMA/hot/.rss",
+      homepage: "https://www.reddit.com/r/LocalLLaMA/",
+      minRequestIntervalMs: 3000,
+      maxItems: 4,
+    },
+    enabled: false,
+    note: `${WORKERS_BLOCKED_NOTE} (135+ runs, 0 items); Reddit refuses Workers egress.`,
+  },
+  {
+    id: "reddit-singularity",
+    name: "r/singularity",
+    type: "rss",
+    family: "reddit",
+    config: {
+      feed: "https://www.reddit.com/r/singularity/hot/.rss",
+      homepage: "https://www.reddit.com/r/singularity/",
+      keywordFilter: "ai",
+      minRequestIntervalMs: 3000,
+      maxItems: 4,
+    },
+    enabled: false,
+    note: `${WORKERS_BLOCKED_NOTE} (135+ runs, 0 items); Reddit refuses Workers egress.`,
+  },
+  {
+    id: "xai",
+    name: "xAI News",
+    official: ["xAI"],
+    type: "xai",
+    config: { homepage: "https://x.ai", sitemap: "https://x.ai/sitemap.xml" },
+    enabled: false,
+    note: `${WORKERS_BLOCKED_NOTE} (517 runs, 0 items); x.ai sits behind a Cloudflare challenge.`,
+  },
+  {
+    id: "ahead-of-ai",
+    name: "Ahead of AI",
+    type: "rss",
+    config: {
+      feed: "https://magazine.sebastianraschka.com/feed",
+      homepage: "https://magazine.sebastianraschka.com",
+      maxItems: 2,
+    },
+    enabled: false,
+    staleAfterRuns: 672,
+    note: "Disabled in 0057: 0 items in 409 runs. The feed is alive (newest post 2026-09-29, one every two to three weeks); re-enable when a post lands inside a window.",
+  },
+  {
+    id: "arstechnica-ai",
+    name: "Ars Technica AI",
+    type: "rss",
+    config: {
+      feed: "https://feeds.arstechnica.com/arstechnica/technology-lab",
+      homepage: "https://arstechnica.com/ai/",
+      keywordFilter: "ai",
+      maxItems: 6,
+    },
+    enabled: true,
+    note: "arstechnica.com/ai/feed/ failed on every Worker run (517). This is the technology-lab feed, which is not AI-only, so it needs the AI title filter; check it in production.",
+  },
+  {
+    id: "release-ollama",
+    name: "Ollama releases",
+    type: "githubreleases",
+    family: "oss-release",
+    probation: true,
+    config: { repo: "ollama/ollama", project: "Ollama", maxItems: 1 },
+    enabled: true,
+    staleAfterRuns: 1344,
+  },
+  {
+    id: "release-vllm",
+    name: "vLLM releases",
+    type: "githubreleases",
+    family: "oss-release",
+    probation: true,
+    config: { repo: "vllm-project/vllm", project: "vLLM", maxItems: 1 },
+    enabled: true,
+    staleAfterRuns: 1344,
+  },
+  {
+    id: "release-transformers",
+    name: "Transformers releases",
+    type: "githubreleases",
+    family: "oss-release",
+    probation: true,
+    config: {
+      repo: "huggingface/transformers",
+      project: "Hugging Face Transformers",
+      maxItems: 1,
+    },
+    enabled: true,
+    staleAfterRuns: 1344,
+  },
+  {
+    id: "release-codex",
+    name: "Codex CLI releases",
+    type: "githubreleases",
+    family: "oss-release",
+    probation: true,
+    config: { repo: "openai/codex", project: "OpenAI Codex CLI", maxItems: 1 },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "hf-papers",
+    name: "Hugging Face Daily Papers",
+    type: "hfpapers",
+    family: "hf",
+    probation: true,
+    config: { maxItems: PROBATION_MAX_ITEMS },
+    enabled: true,
+    // The list does not change on weekends: ~120 silent runs Fri to Mon.
+    staleAfterRuns: 144,
+  },
+  {
+    id: "openrouter-models",
+    name: "OpenRouter new models",
+    type: "openrouter",
+    family: "openrouter",
+    probation: true,
+    config: { maxItems: PROBATION_MAX_ITEMS },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  ...(
+    [
+      ["qwen", "Qwen", "Qwen"],
+      ["deepseek", "deepseek-ai", "DeepSeek"],
+      ["moonshotai", "moonshotai", "Moonshot AI"],
+      ["zai-org", "zai-org", "Z.ai"],
+      ["mistralai", "mistralai", "Mistral AI"],
+    ] as const
+  ).map(
+    ([slug, author, label]): SourceSpec => ({
+      id: `hf-models-${slug}`,
+      name: `${label} models on Hugging Face`,
+      type: "hfmodels",
+      family: "hf-models",
+      probation: true,
+      config: { author, maxItems: PROBATION_MAX_ITEMS },
+      enabled: true,
+      staleAfterRuns: 672,
+    })
+  ),
+  {
+    id: "ai2",
+    name: "Ai2 Blog",
+    official: ["Ai2", "Allen Institute for AI"],
+    type: "rss",
+    probation: true,
+    config: {
+      feed: "https://allenai.org/rss.xml",
+      homepage: "https://allenai.org/blog",
+      maxItems: PROBATION_MAX_ITEMS,
+    },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+  {
+    id: "genk-ai",
+    name: "GenK AI",
+    type: "rss",
+    family: "vi-press",
+    probation: true,
+    config: {
+      feed: "https://genk.vn/rss/ai.rss",
+      homepage: "https://genk.vn/ai.chn",
+      sourceLang: "vi",
+      timezone: "+07:00",
+      maxItems: PROBATION_MAX_ITEMS,
+    },
+    enabled: true,
+    note: "Second sourceLang vi row (vnexpress-tech is off), so the VI to EN translate path runs again.",
+  },
+];
+
 export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0027,
   [ARXIV_SOURCE],
@@ -847,7 +1104,8 @@ export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   [CLOUDFLARE_BLOG_SOURCE],
   [HN_SCOPE_SOURCE],
   REGISTRY_0044,
-  REGISTRY_0051
+  REGISTRY_0051,
+  REGISTRY_0057
 );
 
 export function registrySourceIds(): string[] {

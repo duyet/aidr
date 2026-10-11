@@ -50,6 +50,7 @@ const ZERO: SourceHealthView = {
   merged: 0,
   skipReason: "",
   emptyRuns: 0,
+  failedRuns: 0,
 };
 
 function agoLabel(epochSec: number | null): string {
@@ -73,6 +74,13 @@ function HealthCell({ health }: { health: SourceHealthView | undefined }) {
       >
         —
       </span>
+    );
+  }
+  if (h.failing) {
+    return (
+      <Badge variant="destructive" className="font-normal">
+        failing · {h.failedRuns}/{h.failAfterRuns} runs
+      </Badge>
     );
   }
   if (h.stale) {

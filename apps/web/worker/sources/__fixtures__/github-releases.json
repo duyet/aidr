@@ -1,0 +1,74 @@
+[
+  {
+    "tag_name": "v0.41.0",
+    "name": "v0.41.0",
+    "html_url": "https://github.com/ollama/ollama/releases/tag/v0.41.0",
+    "body": "## What's Changed\n* New **multimodal** embeddings by [@someone](https://github.com/someone) in https://github.com/ollama/ollama/pull/18820\n",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-10T12:00:00Z"
+  },
+  {
+    "tag_name": "v0.40.3",
+    "name": "v0.40.3",
+    "html_url": "https://github.com/ollama/ollama/releases/tag/v0.40.3",
+    "body": "Patch release.",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-11T01:39:04Z"
+  },
+  {
+    "tag_name": "v0.42.0-rc0",
+    "name": "v0.42.0-rc0",
+    "html_url": "https://github.com/ollama/ollama/releases/tag/v0.42.0-rc0",
+    "body": "Release candidate.",
+    "draft": false,
+    "prerelease": true,
+    "published_at": "2026-10-10T20:00:00Z"
+  },
+  {
+    "tag_name": "v0.43.0",
+    "name": "v0.43.0",
+    "html_url": "https://github.com/ollama/ollama/releases/tag/v0.43.0",
+    "body": "Not published yet.",
+    "draft": true,
+    "prerelease": false,
+    "published_at": "2026-10-10T21:00:00Z"
+  },
+  {
+    "tag_name": "rust-v0.163.0",
+    "name": "0.163.0",
+    "html_url": "https://github.com/ollama/ollama/releases/tag/rust-v0.163.0",
+    "body": "",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-10T08:00:00Z"
+  },
+  {
+    "tag_name": "v0.31.1rc0",
+    "name": "v0.31.1rc0",
+    "html_url": "https://github.com/ollama/ollama/releases/tag/v0.31.1rc0",
+    "body": "rc without a hyphen",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-10T07:00:00Z"
+  },
+  {
+    "tag_name": "b11552",
+    "name": "b11552",
+    "html_url": "https://github.com/ollama/ollama/releases/tag/b11552",
+    "body": "build number",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-10T06:00:00Z"
+  },
+  {
+    "tag_name": "v0.39.0",
+    "name": "v0.39.0",
+    "html_url": "https://github.com/ollama/ollama/releases/tag/v0.39.0",
+    "body": "Older than the window.",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-09-01T00:00:00Z"
+  }
+]
