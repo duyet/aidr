@@ -268,10 +268,30 @@ export async function ownerDmError(res: Response): Promise<string> {
     // Not JSON: the status alone is all there is.
   }
   const head = `owner DM HTTP ${res.status}${description ? `: ${description}` : ""}`;
+  if (/USER_BOT_TO_BOT_DISABLED/i.test(description)) {
+    return `${head} (TELEGRAM_OWNER_CHAT_ID is a bot account: set it to your own user id, from @userinfobot)`;
+  }
   const unreachable = res.status === 403 || /chat not found/i.test(description);
   return unreachable
     ? `${head} (bot cannot reach TELEGRAM_OWNER_CHAT_ID: open the bot and press Start, or fix the chat id)`
     : head;
+}
+
+/** Chat ids Telegram can take: a numeric id or an @channelusername. */
+export function isValidOwnerChatId(chatId: string): boolean {
+  return /^-?\d+$/.test(chatId) || /^@\w{4,}$/.test(chatId);
+}
+
+/**
+ * Chat ids Telegram refused permanently in this isolate. A bad
+ * TELEGRAM_OWNER_CHAT_ID stays bad until a human changes the secret, so
+ * later DMs in the same isolate skip the call instead of failing again.
+ */
+const rejectedChatIds = new Set<string>();
+
+/** Test hook: forget remembered rejections. */
+export function resetOwnerDmRejections(): void {
+  rejectedChatIds.clear();
 }
 
 /**
@@ -288,7 +308,15 @@ export async function sendOwnerDm(
   const token = env.TELEGRAM_BOT_TOKEN;
   const chatId = env.TELEGRAM_OWNER_CHAT_ID;
   if (!token || !chatId) return "failed";
-  let outcome: OwnerDmOutcome = "failed";
+  if (rejectedChatIds.has(chatId) || !isValidOwnerChatId(chatId)) {
+    if (!rejectedChatIds.has(chatId)) {
+      rejectedChatIds.add(chatId);
+      console.warn(
+        "owner DM skipped: TELEGRAM_OWNER_CHAT_ID is not a numeric Telegram user id (get yours from @userinfobot)"
+      );
+    }
+    return "rejected";
+  }
   try {
     const res = await fetch(
       `https://api.telegram.org/bot${token}/sendMessage`,
@@ -305,15 +333,20 @@ export async function sendOwnerDm(
       }
     );
     if (!res.ok) {
+      const message = await ownerDmError(res);
       if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-        outcome = "rejected";
+        // Config error (bot id, chat not found, blocked): a human must fix the
+        // secret, so warn once and stop retrying instead of raising an issue.
+        rejectedChatIds.add(chatId);
+        console.warn(message);
+        return "rejected";
       }
-      throw new Error(await ownerDmError(res));
+      throw new Error(message);
     }
     return "sent";
   } catch (error) {
     await reportSideEffectError("owner-dm", error);
-    return outcome;
+    return "failed";
   }
 }
 

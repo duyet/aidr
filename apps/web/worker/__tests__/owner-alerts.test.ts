@@ -18,6 +18,7 @@ import {
   MAX_GITHUB_WRITES_PER_RUN,
   notifyOwner,
   ownerDmError,
+  resetOwnerDmRejections,
   routeRepo,
   sendOwnerDm,
   shouldSendDailySummary,
@@ -68,6 +69,7 @@ function mockFetch(handler: (c: Call) => unknown) {
 }
 
 afterEach(() => {
+  resetOwnerDmRejections();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -175,20 +177,46 @@ describe("side effects", () => {
           )
       )
     );
-    const errors: string[] = [];
-    vi.spyOn(console, "error").mockImplementation((_what, e) => {
-      errors.push(e instanceof Error ? e.message : String(e));
+    const warns: string[] = [];
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation((m) => {
+      warns.push(String(m));
     });
+    const env = { TELEGRAM_BOT_TOKEN: "t", TELEGRAM_OWNER_CHAT_ID: "1" };
+    expect(await sendOwnerDm(env, "hi")).toBe("rejected");
+    expect(warns[0]).toContain(
+      "owner DM HTTP 400: Bad Request: chat not found"
+    );
+    expect(warns[0]).toContain("press Start");
+    // A config error is a warning, never an exception report.
+    expect(errors).not.toHaveBeenCalled();
+    // Permanent: the same chat id is not sent to Telegram again.
+    expect(await sendOwnerDm(env, "again")).toBe("rejected");
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+    expect(warns).toHaveLength(1);
+  });
+
+  it("names the fix when the owner chat id belongs to a bot", async () => {
+    const res = new Response(
+      JSON.stringify({
+        ok: false,
+        description: "Bad Request: USER_BOT_TO_BOT_DISABLED",
+      }),
+      { status: 400 }
+    );
+    expect(await ownerDmError(res)).toContain("is a bot account");
+  });
+
+  it("rejects a malformed owner chat id without calling Telegram", async () => {
+    const calls = mockFetch(() => ({}));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(
       await sendOwnerDm(
-        { TELEGRAM_BOT_TOKEN: "t", TELEGRAM_OWNER_CHAT_ID: "1" },
+        { TELEGRAM_BOT_TOKEN: "t", TELEGRAM_OWNER_CHAT_ID: "not-an-id" },
         "hi"
       )
     ).toBe("rejected");
-    expect(errors[0]).toContain(
-      "owner DM HTTP 400: Bad Request: chat not found"
-    );
-    expect(errors[0]).toContain("press Start");
+    expect(calls).toEqual([]);
   });
 
   it("keeps other Telegram rejections as plain status plus reason", async () => {
