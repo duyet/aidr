@@ -273,13 +273,39 @@ describe("CalendarButton trigger without JS", () => {
       const trigger = screen.getByRole("link", { name: "Lịch các số báo" });
       expect(trigger.getAttribute("href")).toBe(calendarPath(undefined, "vi"));
 
-      expect(fireEvent.click(trigger, { ctrlKey: true })).toBe(true);
-      expect(fireEvent.click(trigger, { metaKey: true })).toBe(true);
-      expect(fireEvent.click(trigger, { shiftKey: true })).toBe(true);
-      expect(fireEvent.click(trigger, { button: 1 })).toBe(true);
+      const modified = [
+        { ctrlKey: true },
+        { metaKey: true },
+        { shiftKey: true },
+        { altKey: true },
+        { button: 1 },
+      ];
+      for (const init of modified) {
+        expect(fireEvent.click(trigger, init)).toBe(true);
+        expect(trigger.getAttribute("aria-expanded")).toBe("false");
+        expect(screen.queryByRole("dialog")).toBeNull();
+      }
+      expect(track).not.toHaveBeenCalled();
 
       expect(fireEvent.click(trigger)).toBe(false);
       await screen.findByRole("dialog");
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    }
+  );
+
+  it.each(["popover", "sheet"] as const)(
+    "%s trigger opens on Enter without navigating",
+    async (surface) => {
+      render(<CalendarButton lang="en" surface={surface} />);
+      const trigger = screen.getByRole("link", OPEN_EN);
+      trigger.focus();
+      expect(document.activeElement).toBe(trigger);
+      fireEvent.keyDown(trigger, { key: "Enter" });
+      // browsers turn Enter on a focused link into a click; happy-dom does not
+      const navigated = fireEvent.click(trigger, { detail: 0 });
+      await screen.findByRole("dialog");
+      expect(navigated).toBe(false);
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
     }
   );
 });
