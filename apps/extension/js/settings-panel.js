@@ -1,6 +1,7 @@
 import { t } from "./i18n.js";
 import {
   allowCustomApiBase,
+  DEFAULT_SETTINGS,
   DENSITIES,
   ensureHostPermission,
   isDarkAppearance,
@@ -175,7 +176,7 @@ export function mountSettingsPanel(root, settings, onSaved) {
       value: String(densityIdx),
       "aria-label": t(state, "density"),
       onInput: async (event) => {
-        state.density = DENSITIES[Number(event.target.value)] || "medium";
+        state.density = DENSITIES[Number(event.target.value)] || DEFAULT_SETTINGS.density;
         await persist({ repaint: false });
       },
     });

@@ -237,13 +237,15 @@ test("section tiles follow Cat > Trending > AI;DR > Daily feed", () => {
 });
 
 test("density drives AI;DR and day story row spacing", () => {
-  // Same five steps as web readerCssVars; :root is the "medium" default.
+  // Same seven steps as web readerCssVars; :root is the "medium" default.
   assert.match(css, /:root\s*\{[^}]*--pad:\s*0\.625rem;\s*--leading:\s*1\.62/);
   for (const [density, pad, leading] of [
     ["dense", "0\\.375rem", "1\\.45"],
     ["compact", "0\\.5rem", "1\\.55"],
     ["comfortable", "0\\.75rem", "1\\.7"],
+    ["relaxed", "0\\.9rem", "1\\.8"],
     ["spacious", "1\\.125rem", "1\\.9"],
+    ["airy", "1\\.375rem", "2"],
   ]) {
     assert.match(
       css,

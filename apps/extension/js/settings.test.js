@@ -30,7 +30,7 @@ test("normalizeSettings clamps size, count, and unknown enums", () => {
   assert.equal(settings.fontSize, 1.25);
   assert.equal(settings.bg, "default");
   assert.equal(settings.language, "vi");
-  assert.equal(settings.density, "medium");
+  assert.equal(settings.density, "spacious");
   assert.equal(settings.storyCount, 1);
   assert.equal(settings.tldrCount, 8);
   assert.equal(settings.apiBase, DEFAULT_API_BASE);
@@ -105,7 +105,7 @@ test("DEFAULT_SETTINGS matches website PrefsPanel shape", () => {
   assert.equal(DEFAULT_SETTINGS.font, "sans");
   assert.equal(DEFAULT_SETTINGS.fontSize, 1);
   assert.equal(DEFAULT_SETTINGS.bg, "default");
-  assert.equal(DEFAULT_SETTINGS.density, "medium");
+  assert.equal(DEFAULT_SETTINGS.density, "spacious");
   assert.equal("accent" in DEFAULT_SETTINGS, false);
 });
 
@@ -120,7 +120,9 @@ test("normalizeSettings keeps every density step, including pre-0.1.21 values", 
     "compact",
     "medium",
     "comfortable",
+    "relaxed",
     "spacious",
+    "airy",
   ]);
 });
 

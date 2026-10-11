@@ -6,7 +6,9 @@ export type ReaderDensity =
   | "compact"
   | "medium"
   | "comfortable"
-  | "spacious";
+  | "relaxed"
+  | "spacious"
+  | "airy";
 
 /** Slider order, tightest → loosest. */
 export const READER_DENSITIES: ReaderDensity[] = [
@@ -14,7 +16,9 @@ export const READER_DENSITIES: ReaderDensity[] = [
   "compact",
   "medium",
   "comfortable",
+  "relaxed",
   "spacious",
+  "airy",
 ];
 export type ReaderBg = "default" | "cream" | "gray" | "dark" | "black";
 export type TldrCount = 8 | 12 | 16;
@@ -137,7 +141,9 @@ const DENSITY_PAD: Record<ReaderDensity, string> = {
   compact: "0.5rem",
   medium: "0.625rem",
   comfortable: "0.75rem",
+  relaxed: "0.9rem",
   spacious: "1.125rem",
+  airy: "1.375rem",
 };
 
 /** Maps density → shadcn/typeset rhythm (leading + block flow). */
@@ -149,7 +155,9 @@ const DENSITY_TYPESET: Record<
   compact: { leading: "1.55", leadingDark: "1.65", flow: "0.95em" },
   medium: { leading: "1.62", leadingDark: "1.72", flow: "1.1em" },
   comfortable: { leading: "1.7", leadingDark: "1.8", flow: "1.25em" },
+  relaxed: { leading: "1.8", leadingDark: "1.9", flow: "1.4em" },
   spacious: { leading: "1.9", leadingDark: "2", flow: "1.6em" },
+  airy: { leading: "2", leadingDark: "2.1", flow: "1.85em" },
 };
 
 export function readerCssVars(prefs: Prefs): Record<string, string> {

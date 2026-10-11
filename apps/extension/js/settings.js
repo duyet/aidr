@@ -33,7 +33,8 @@ export const DEFAULT_SETTINGS = {
     categories: true,
   },
   sectionOrder: [...DEFAULT_SECTION_ORDER],
-  density: "medium",
+  /** Near the airy end: the new tab is read at a glance, not scanned. */
+  density: "spacious",
   storyCount: 8,
   tldrCount: 8,
   /** Show EN|VI side-by-side in the story dialog (matches web bilingualDialog pref). */
@@ -54,7 +55,9 @@ export const DENSITIES = [
   "compact",
   "medium",
   "comfortable",
+  "relaxed",
   "spacious",
+  "airy",
 ];
 const LANGUAGES = ["vi", "en", "both"];
 const TLDR_COUNTS = [8, 12, 16];
