@@ -22,7 +22,10 @@ const GA_MEASUREMENT_ID = resolveMeasurementId(
   importMetaEnv?.VITE_MEASUREMENT_ID
 );
 
-const POSTHOG_API_KEY = importMetaEnv?.VITE_POSTHOG_KEY;
+/** PostHog loads only when the project token is configured (env, not code). */
+const POSTHOG_PROJECT_TOKEN = importMetaEnv?.VITE_POSTHOG_PROJECT_TOKEN?.trim();
+const POSTHOG_HOST =
+  importMetaEnv?.VITE_POSTHOG_HOST?.trim() || "https://us.i.posthog.com";
 
 const SELINE_TOKEN = importMetaEnv?.VITE_SELINE_TOKEN;
 
@@ -80,10 +83,10 @@ function bootstrapAnalytics(): void {
     });
   }
 
-  if (POSTHOG_API_KEY) {
+  if (POSTHOG_PROJECT_TOKEN) {
     loadInlineScript(`
-      !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return this.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-      posthog.init('${POSTHOG_API_KEY}',{api_host:'https://app.posthog.com'})
+      !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return this.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+      posthog.init('${POSTHOG_PROJECT_TOKEN}',{api_host:'${POSTHOG_HOST}',defaults:'2026-05-30',capture_exceptions:true})
     `);
   }
 
