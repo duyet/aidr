@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
-import { estimateSeconds, fromModel, speakable, templateScript, validateScript, vnToday, writeScript } from "./auto-script.mjs";
+import { estimateSeconds, fromModel, speakable, statSpoken, templateScript, validateScript, vnToday, writeScript } from "./auto-script.mjs";
 import { castProblems } from "./cast.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -86,4 +86,29 @@ test("speakable reads money units; vnToday is UTC+7", () => {
   assert.equal(speakable("raised ~$870M at a $7.5B valuation"), "raised about $870 million at a $7.5 billion valuation");
   assert.equal(vnToday(new Date("2026-10-10T18:00:00Z")), "2026-10-11");
   assert.equal(vnToday(new Date("2026-10-10T16:00:00Z")), "2026-10-10");
+});
+
+test("a stat counts as spoken in any equivalent spoken form, but a different number does not", () => {
+  const spoken = [
+    ["$25B", "Anthropic raised 25 billion dollars this week."],
+    ["$25B", "Anthropic raised $25 billion this week."],
+    ["$25B", "It raised $25,000,000,000 in a round."],
+    ["$25B", "It raised twenty. Then $25B came in."],
+    ["25", "A $25 billion round."],
+    ["4.2%", "Growth hit 4.2 percent."],
+    ["4.2 percent", "Growth hit 4.2% in a year."],
+    ["1.5M", "Over 1.5 million users joined."],
+    ["1,500", "Over 1.5 thousand users joined."],
+    ["$300K", "A 300 THOUSAND dollar grant."],
+  ];
+  for (const [stat, voice] of spoken) assert.ok(statSpoken(voice, stat), `${stat} in "${voice}"`);
+  const notSpoken = [
+    ["$25B", "Anthropic raised $250 billion."],
+    ["$25B", "Anthropic raised 25 million dollars."],
+    ["$25B", "Anthropic raised $52 billion."],
+    ["4.2%", "Growth hit 4.2 billion."],
+    ["4.2%", "Growth hit 4.3 percent."],
+    ["25%", "Growth hit 25 users."],
+  ];
+  for (const [stat, voice] of notSpoken) assert.equal(statSpoken(voice, stat), false, `${stat} in "${voice}"`);
 });
