@@ -1,6 +1,6 @@
 import { track } from "@aidr/ui/track";
-import { TrendingUp } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import { ChevronDown, TrendingUp } from "lucide-react";
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
   ARTICLE_TITLE_TAG,
@@ -202,6 +202,25 @@ export function StoryRow({
     });
   };
 
+  // Plain primary click on the title toggles the row in place; modified
+  // or non-primary clicks keep the permalink (new tab, etc.). Either way
+  // the row's own onClick must not run a second toggle.
+  const onTitleClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.stopPropagation();
+    if (
+      !hasDetails ||
+      e.button !== 0 ||
+      e.metaKey ||
+      e.ctrlKey ||
+      e.shiftKey ||
+      e.altKey
+    ) {
+      return;
+    }
+    e.preventDefault();
+    toggleExpanded();
+  };
+
   const detailsOpen = expanded && hasDetails;
   const host = item.url ? publisherHost(item.url) : null;
   const time = Number.isFinite(item.published_at)
@@ -217,7 +236,17 @@ export function StoryRow({
         matchColor={matchColor}
         onToggle={toggleExpanded}
       >
-        <span className="story-rank text-right text-sm tabular-nums text-muted-foreground">
+        <span className="story-rank inline-flex items-baseline justify-end gap-0.5 text-right text-sm tabular-nums text-muted-foreground">
+          {hasDetails && (
+            <ChevronDown
+              data-testid="story-row-chevron"
+              data-expanded={expanded ? "true" : "false"}
+              aria-hidden="true"
+              className={`h-3.5 w-3.5 shrink-0 self-center opacity-60 transition-transform motion-reduce:transition-none ${
+                expanded ? "rotate-180" : ""
+              }`}
+            />
+          )}
           {index}
         </span>
         <span
@@ -244,7 +273,7 @@ export function StoryRow({
             <a
               href={storyPath(item, lang)}
               lang={fallbackFromEnglish ? "en" : undefined}
-              onClick={(e) => e.stopPropagation()}
+              onClick={onTitleClick}
               className="hover:underline hover:underline-offset-2"
             >
               <HighlightedText text={title} tags={item.tags} />
@@ -272,7 +301,7 @@ export function StoryRow({
                 track("story_open", { item_id: item.id });
               }}
               className="ml-1 text-xs font-normal text-muted-foreground hover:text-foreground"
-              aria-label="Open story link"
+              aria-label={lang === "vi" ? "Mở bài gốc" : "Open original"}
             >
               <SpriteIcon
                 name="external-link"
