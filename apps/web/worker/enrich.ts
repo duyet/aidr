@@ -149,6 +149,14 @@ export async function fetchWithSafeRedirects(
   raw: string,
   init: RequestInit = {}
 ): Promise<Response> {
+  return (await fetchWithSafeRedirectsResolved(raw, init)).response;
+}
+
+/** Like `fetchWithSafeRedirects`, plus the URL that finally answered. */
+export async function fetchWithSafeRedirectsResolved(
+  raw: string,
+  init: RequestInit = {}
+): Promise<{ response: Response; url: string }> {
   let current = raw;
   for (let redirect = 0; redirect <= MAX_ENRICH_REDIRECTS; redirect++) {
     if (!isFetchableUrl(current)) {
@@ -163,7 +171,7 @@ export async function fetchWithSafeRedirects(
       throw new Error(`blocked final fetch URL: ${logSafeUrl(response.url)}`);
     }
     if (![301, 302, 303, 307, 308].includes(status)) {
-      return response;
+      return { response, url: current };
     }
     const location = response.headers.get("location");
     if (!location) throw new Error("redirect response has no location");

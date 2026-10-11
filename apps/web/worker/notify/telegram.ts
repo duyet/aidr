@@ -516,18 +516,27 @@ async function sendVideoStory(
   chatId: string,
   story: StoryPayload,
   caption: string,
-  replyMarkup: object
+  replyMarkup: object,
+  /** Why video was not posted, when the story had video. */
+  fallback: string[] = []
 ): Promise<SendResult | null> {
-  let plan: Awaited<ReturnType<typeof planVideoDelivery>>;
-  try {
-    plan = await planVideoDelivery(story);
-  } catch (error) {
-    console.error(
-      `telegram video plan failed for ${story.id}: ${error instanceof Error ? error.message : "unknown"}`
-    );
+  if (!story.media_manifest?.assets?.some((asset) => asset.type === "video")) {
     return null;
   }
-  if (!plan) return null;
+  let plan: Awaited<ReturnType<typeof planVideoDelivery>>;
+  const skips: string[] = [];
+  try {
+    plan = await planVideoDelivery(story, skips);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown";
+    fallback.push(`video:plan_failed:${message}`);
+    console.error(`telegram video plan failed for ${story.id}: ${message}`);
+    return null;
+  }
+  if (!plan) {
+    fallback.push(...(skips.length > 0 ? skips : ["video:none_sendable"]));
+    return null;
+  }
   if (plan.method === "sendVideo") {
     const res = await callTelegram(token, "sendVideo", {
       chat_id: chatId,
@@ -541,6 +550,7 @@ async function sendVideoStory(
     });
     if (res.ok) return { ok: true, messageId: telegramMessageId(res.result) };
     if (res.ambiguous || res.budgetExhausted) return sendFailure(res);
+    fallback.push(`sendVideo:${res.description ?? "unknown"}`);
     console.error(
       `telegram sendVideo failed for ${story.id}: ${res.description}; falling back`
     );
@@ -552,6 +562,7 @@ async function sendVideoStory(
   });
   if (res.ambiguous || res.budgetExhausted) return sendFailure(res);
   if (!res.ok) {
+    fallback.push(`sendMediaGroup(video):${res.description ?? "unknown"}`);
     console.error(
       `telegram video sendMediaGroup failed for ${story.id}: ${res.description}; falling back`
     );
@@ -800,114 +811,147 @@ function telegramChannel(options: {
       const replyMarkup = buildStoryReplyMarkup(story);
       const { gallery, card } = resolveStoryMedia(story);
 
+      const fallback: string[] = [];
       const video = await sendVideoStory(
         token,
         chatId,
         story,
         caption,
-        replyMarkup
+        replyMarkup,
+        fallback
       );
       if (video) return video;
+      const result = await sendPhotoOrText();
+      // A downgrade (video -> photo -> text) is silent unless the reason lands
+      // somewhere: `last_error` keeps it on the sent row, the log on the Worker.
+      if (fallback.length === 0 || result.ambiguous || result.budgetExhausted) {
+        return result;
+      }
+      const note = `fallback ${result.ok ? "ok" : "failed"}: ${fallback.join("; ")}`;
+      console.warn(
+        JSON.stringify({
+          event: "telegram_story_fallback",
+          story: story.id,
+          reasons: fallback,
+          delivered: result.ok,
+        })
+      );
+      return {
+        ...result,
+        error: result.error ? `${result.error} | ${note}` : note,
+      };
 
-      const sendOne = (photo: string) =>
-        callTelegram(token, "sendPhoto", {
-          chat_id: chatId,
-          photo,
-          caption,
-          parse_mode: "HTML",
-          reply_markup: replyMarkup,
-          link_preview_options: STORY_PHOTO_LINK_PREVIEW,
-        });
+      async function sendPhotoOrText(): Promise<SendResult> {
+        const sendOne = (photo: string) =>
+          callTelegram(token, "sendPhoto", {
+            chat_id: chatId,
+            photo,
+            caption,
+            parse_mode: "HTML",
+            reply_markup: replyMarkup,
+            link_preview_options: STORY_PHOTO_LINK_PREVIEW,
+          });
 
-      if (gallery.length >= 2) {
-        const albumCaption = buildAlbumCaption(story);
-        const album = await callTelegram(token, "sendMediaGroup", {
-          chat_id: chatId,
-          media: gallery.map((media, index) =>
-            index === 0
-              ? {
-                  type: "photo",
-                  media,
-                  caption: albumCaption,
-                  parse_mode: "HTML",
-                }
-              : { type: "photo", media }
-          ),
-        });
-        if (album.ok) {
-          return { ok: true, messageId: telegramMessageId(album.result) };
-        }
-        // Each fallback below runs only after a definite rejection. An
-        // ambiguous result may already be in the channel, so it ends the send.
-        // Out of subrequests, every fallback would be refused too.
-        if (album.ambiguous || album.budgetExhausted) return sendFailure(album);
-        console.error(
-          `telegram sendMediaGroup failed for ${story.id}: ${album.description}; falling back to one photo`
-        );
-        const lead = await sendOne(gallery[0]);
-        if (lead.ok) {
-          return { ok: true, messageId: telegramMessageId(lead.result) };
-        }
-        if (lead.ambiguous || lead.budgetExhausted) return sendFailure(lead);
-        console.error(
-          `telegram sendPhoto failed for ${story.id} ${gallery[0]}: ${lead.description}`
-        );
-        if (card && card !== gallery[0]) {
-          const retry = await sendOne(card);
-          if (retry.ok) {
-            return { ok: true, messageId: telegramMessageId(retry.result) };
+        if (gallery.length >= 2) {
+          const albumCaption = buildAlbumCaption(story);
+          const album = await callTelegram(token, "sendMediaGroup", {
+            chat_id: chatId,
+            media: gallery.map((media, index) =>
+              index === 0
+                ? {
+                    type: "photo",
+                    media,
+                    caption: albumCaption,
+                    parse_mode: "HTML",
+                  }
+                : { type: "photo", media }
+            ),
+          });
+          if (album.ok) {
+            return { ok: true, messageId: telegramMessageId(album.result) };
           }
-          if (retry.ambiguous || retry.budgetExhausted)
-            return sendFailure(retry);
+          // Each fallback below runs only after a definite rejection. An
+          // ambiguous result may already be in the channel, so it ends the send.
+          // Out of subrequests, every fallback would be refused too.
+          if (album.ambiguous || album.budgetExhausted)
+            return sendFailure(album);
+          fallback.push(`sendMediaGroup:${album.description ?? "unknown"}`);
           console.error(
-            `telegram sendPhoto card fallback failed for ${story.id}: ${retry.description}`
+            `telegram sendMediaGroup failed for ${story.id}: ${album.description}; falling back to one photo`
           );
-        }
-      } else {
-        const lead = gallery[0] ?? null;
-        if (lead) {
-          const photo = await sendOne(lead);
-          if (photo.ok) {
-            return { ok: true, messageId: telegramMessageId(photo.result) };
+          const lead = await sendOne(gallery[0]);
+          if (lead.ok) {
+            return { ok: true, messageId: telegramMessageId(lead.result) };
           }
-          if (photo.ambiguous || photo.budgetExhausted)
-            return sendFailure(photo);
+          if (lead.ambiguous || lead.budgetExhausted) return sendFailure(lead);
+          fallback.push(`sendPhoto:${lead.description ?? "unknown"}`);
           console.error(
-            `telegram sendPhoto failed for ${story.id} ${lead}: ${photo.description}`
+            `telegram sendPhoto failed for ${story.id} ${gallery[0]}: ${lead.description}`
           );
-          if (card && card !== lead) {
+          if (card && card !== gallery[0]) {
             const retry = await sendOne(card);
             if (retry.ok) {
               return { ok: true, messageId: telegramMessageId(retry.result) };
             }
             if (retry.ambiguous || retry.budgetExhausted)
               return sendFailure(retry);
+            fallback.push(`sendPhoto(card):${retry.description ?? "unknown"}`);
             console.error(
               `telegram sendPhoto card fallback failed for ${story.id}: ${retry.description}`
             );
           }
-        } else if (card) {
-          const photo = await sendOne(card);
-          if (photo.ok) {
-            return { ok: true, messageId: telegramMessageId(photo.result) };
+        } else {
+          const lead = gallery[0] ?? null;
+          if (lead) {
+            const photo = await sendOne(lead);
+            if (photo.ok) {
+              return { ok: true, messageId: telegramMessageId(photo.result) };
+            }
+            if (photo.ambiguous || photo.budgetExhausted)
+              return sendFailure(photo);
+            fallback.push(`sendPhoto:${photo.description ?? "unknown"}`);
+            console.error(
+              `telegram sendPhoto failed for ${story.id} ${lead}: ${photo.description}`
+            );
+            if (card && card !== lead) {
+              const retry = await sendOne(card);
+              if (retry.ok) {
+                return { ok: true, messageId: telegramMessageId(retry.result) };
+              }
+              if (retry.ambiguous || retry.budgetExhausted)
+                return sendFailure(retry);
+              fallback.push(
+                `sendPhoto(card):${retry.description ?? "unknown"}`
+              );
+              console.error(
+                `telegram sendPhoto card fallback failed for ${story.id}: ${retry.description}`
+              );
+            }
+          } else if (card) {
+            const photo = await sendOne(card);
+            if (photo.ok) {
+              return { ok: true, messageId: telegramMessageId(photo.result) };
+            }
+            if (photo.ambiguous || photo.budgetExhausted)
+              return sendFailure(photo);
+            fallback.push(`sendPhoto:${photo.description ?? "unknown"}`);
+            console.error(
+              `telegram sendPhoto failed for ${story.id} ${card}: ${photo.description}`
+            );
           }
-          if (photo.ambiguous || photo.budgetExhausted)
-            return sendFailure(photo);
-          console.error(
-            `telegram sendPhoto failed for ${story.id} ${card}: ${photo.description}`
-          );
         }
-      }
 
-      const msg = await callTelegram(token, "sendMessage", {
-        chat_id: chatId,
-        text: caption,
-        parse_mode: "HTML",
-        reply_markup: replyMarkup,
-        link_preview_options: STORY_TEXT_LINK_PREVIEW,
-      });
-      if (!msg.ok) return sendFailure(msg);
-      return { ok: true, messageId: telegramMessageId(msg.result) };
+        if (gallery.length > 0 || card) fallback.push("photo:none_sent");
+        const msg = await callTelegram(token, "sendMessage", {
+          chat_id: chatId,
+          text: caption,
+          parse_mode: "HTML",
+          reply_markup: replyMarkup,
+          link_preview_options: STORY_TEXT_LINK_PREVIEW,
+        });
+        if (!msg.ok) return sendFailure(msg);
+        return { ok: true, messageId: telegramMessageId(msg.result) };
+      }
     },
   };
 }

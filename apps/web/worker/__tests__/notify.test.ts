@@ -1056,7 +1056,8 @@ describe("telegramNotifier gating", () => {
         },
       })
     );
-    expect(result).toEqual({ ok: true, messageId: "21" });
+    expect(result).toMatchObject({ ok: true, messageId: "21" });
+    expect(result.error).toBe("fallback ok: video:size_unknown");
     // Call 0 is the bounded video preflight; the mock is not a real MP4 so the
     // video is skipped and the poster photo album is sent as before.
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://cdn.example/clip.mp4");
@@ -1148,7 +1149,8 @@ describe("telegramNotifier gating", () => {
       { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
       story({ image_url: "https://img.example/hotlink-hostile.png" })
     );
-    expect(result).toEqual({ ok: true, messageId: "31" });
+    expect(result).toMatchObject({ ok: true, messageId: "31" });
+    expect(result.error).toMatch(/^fallback ok: sendPhoto:/);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const first = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(first.photo).toBe("https://img.example/hotlink-hostile.png");
@@ -1184,7 +1186,8 @@ describe("telegramNotifier gating", () => {
       { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
       story({ image_url: big })
     );
-    expect(result).toEqual({ ok: true, messageId: "41" });
+    expect(result).toMatchObject({ ok: true, messageId: "41" });
+    expect(result.error).toMatch(/^fallback ok: sendPhoto:/);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(
       fetchMock.mock.calls.every((call) =>

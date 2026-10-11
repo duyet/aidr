@@ -70,6 +70,8 @@ interface Origin {
   total?: number;
   /** Non-2xx answer for every request, to model a hotlink-blocked origin. */
   status?: number;
+  /** Answer every request with a 301 to this URL (http -> https upgrade). */
+  redirect?: string;
 }
 
 /** Fetch stub: Range-aware media origins plus a recording Telegram endpoint. */
@@ -98,6 +100,12 @@ function stubFetch(
     const origin = origins[url];
     if (!origin) return new Response("nope", { status: 404 });
     if (origin.status) return new Response("denied", { status: origin.status });
+    if (origin.redirect) {
+      return new Response(null, {
+        status: 301,
+        headers: { location: origin.redirect },
+      });
+    }
     const headers: Record<string, string> = {
       "content-type": origin.type ?? "video/mp4",
     };
@@ -289,7 +297,6 @@ describe("probeVideo", () => {
       "http://127.0.0.1/a.mp4",
       "https://user:pw@cdn.example/a.mp4",
       "https://cdn.example:8443/a.mp4",
-      "http://cdn.example/a.mp4",
     ]) {
       expect((await probeVideo(url)).ok).toBe(false);
     }
@@ -457,11 +464,89 @@ describe("Telegram video delivery", () => {
       env,
       story([{ type: "video", url: VIDEO, poster_url: poster }])
     );
-    expect(result).toEqual({ ok: true, messageId: "9" });
+    expect(result).toMatchObject({ ok: true, messageId: "9" });
+    expect(result.error).toBe("fallback ok: sendVideo:wrong file identifier");
     expect(f.tg().map((c) => c.url.split("/").pop())).toEqual([
       "sendVideo",
       "sendPhoto",
     ]);
+  });
+
+  describe("story 7b847b25 (Odyssey-3): three http videos behind a 301", () => {
+    const base = "the-decoder.com/wp-content/uploads/2030/10";
+    const intro = `${base}/odyseey_3_demo_intro.mp4`;
+    const demo3 = `${base}/odyseey_3_demo-3.mp4`;
+    const demo2 = `${base}/odyseey_3_demo-2.mp4`;
+    const sizes = new Map([
+      [intro, 20_381_451],
+      [demo3, 25_413_016],
+      [demo2, 4_123_629],
+    ]);
+    const origins = (): Record<string, Origin> =>
+      Object.fromEntries(
+        [intro, demo3, demo2].flatMap((u) => [
+          [
+            `http://${u}`,
+            { file: new Uint8Array(0), redirect: `https://${u}` },
+          ],
+          [`https://${u}`, { file: mp4(20, true), total: sizes.get(u) }],
+        ])
+      );
+    const assets = [intro, demo3, demo2].map((u) => ({
+      type: "video",
+      url: `http://${u}`,
+      poster_url: poster,
+    }));
+
+    it("sends the one video Telegram accepts, as https, not a photo", async () => {
+      const f = stubFetch(origins());
+      const result = await telegramNotifier.sendStory(env, story(assets));
+      expect(result).toEqual({ ok: true, messageId: "5" });
+      expect(f.tg()).toHaveLength(1);
+      expect(f.tg()[0].url).toContain("/sendVideo");
+      expect(f.tg()[0].body?.video).toBe(`https://${demo2}`);
+    });
+
+    it("records why each larger video was skipped when only a photo is left", async () => {
+      const only = origins();
+      only[`https://${demo2}`] = { file: mp4(20, true), total: 30_000_000 };
+      const f = stubFetch(only);
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const result = await telegramNotifier.sendStory(env, story(assets));
+      expect(f.tg()).toHaveLength(1);
+      expect(f.tg()[0].url).toContain("/sendPhoto");
+      expect(result).toMatchObject({ ok: true });
+      expect(result.error).toBe(
+        "fallback ok: video:oversized; video:oversized; video:oversized"
+      );
+      const logged = warn.mock.calls
+        .map((c) => String(c[0]))
+        .find((line) => line.includes("telegram_story_fallback"));
+      expect(JSON.parse(logged as string)).toMatchObject({
+        story: "abcdef1234567890",
+        delivered: true,
+        reasons: ["video:oversized", "video:oversized", "video:oversized"],
+      });
+      warn.mockRestore();
+    });
+  });
+
+  it("notes photo -> text when no photo could be sent", async () => {
+    stubFetch(
+      { [VIDEO]: { file: mp4(10, true), total: 30_000_000 } },
+      (method) =>
+        method === "sendMessage"
+          ? { ok: true, result: { message_id: 3 } }
+          : { ok: false, description: "bad photo" }
+    );
+    const result = await telegramNotifier.sendStory(
+      env,
+      story([{ type: "video", url: VIDEO, poster_url: poster }])
+    );
+    expect(result).toMatchObject({ ok: true, messageId: "3" });
+    expect(result.error).toBe(
+      "fallback ok: video:oversized; sendPhoto:bad photo; sendPhoto(card):bad photo; photo:none_sent"
+    );
   });
 
   it("does not fall back after a non-JSON Telegram body", async () => {

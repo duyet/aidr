@@ -373,10 +373,21 @@ export function mediaIdentityKey(
   const url = canonicalizeMediaUrl(canonicalUrl);
   if (!url) return null;
   const parsed = new URL(url);
+  let host = parsed.hostname.toLowerCase();
   let pathname = parsed.pathname;
+  // Jetpack Photon (`i0.wp.com/example.com/path`) proxies the origin file.
+  const photon = /^i[0-3]\.wp\.com$/.test(host)
+    ? pathname.match(/^\/([^/]+\.[^/]+)(\/.+)$/)
+    : null;
+  if (photon) {
+    host = photon[1].toLowerCase();
+    pathname = photon[2];
+  }
   if (type === "image") {
     pathname = pathname
       .replace(/[.:@](?:orig|large|medium|small|thumb|\d+x\d+)$/i, "")
+      // WordPress derivatives: `photo-1024x576.jpg`, `photo-scaled.jpg`.
+      .replace(/-(?:\d{2,5}x\d{2,5}|scaled)(?=\.[^/.]+$)/i, "")
       .replace(
         /[._-](?:width|resize|resized|size)[-_]?\d+(?:x\d+)?(?=\.[^/.]+$)/i,
         ""
@@ -385,8 +396,8 @@ export function mediaIdentityKey(
   }
   removeQueryKeys(parsed, RESIZE_QUERY_KEYS);
   // http and https variants of the same host/path are one content identity.
-  const port = parsed.port ? `:${parsed.port}` : "";
-  return `${parsed.hostname.toLowerCase()}${port}${pathname}${parsed.search}`;
+  const port = parsed.port && !photon ? `:${parsed.port}` : "";
+  return `${host}${port}${pathname}${parsed.search}`;
 }
 
 export function isGenericImageUrl(url: string): boolean {
