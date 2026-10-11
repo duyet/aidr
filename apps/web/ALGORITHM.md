@@ -626,7 +626,7 @@ the same write.
 rank_score = importance
            × (0.6 + 0.4·quality/10)      # quality modulates ±40%
            × exp(−ageHours/36)           # freshness decay
-           × (1 + log10(1 + points + voteNet + 0.5·comments))  # reader engagement, log-damped
+           × (1 + log10(1 + points + 10·voteNet + 0.5·comments))  # reader engagement, log-damped
            × (1 + 0.12·(min(sourceCount, 8) − 1))    # extra independent outlets
 ```
 
@@ -646,10 +646,11 @@ SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
   source has `engagement: "reader"` (HN, Lobsters). Aggregator
   author/tweet counts are stored for display but never ranked.
 - `voteNet` = `SUM(value)` from `item_votes` on that item (one row per
-  signed-in user, `+1` or `-1`; clearing deletes the row). It sits beside
-  points inside the same log. When `points + voteNet + 0.5·comments` is
-  negative the log is mirrored (`1 − log10(1 − signal)`) and floored at 0,
-  so downvotes lower the score and `rank_score` stays ≥ 0. The hourly
+  signed-in user, `+1` or `-1`; clearing deletes the row), weighted ×10
+  (`READER_VOTE_WEIGHT`): one reader vote counts as 10 source points inside
+  the same log. A vote re-ranks its item at once (`applyVote`). When `points + voteNet + 0.5·comments` is
+  negative the factor is `1 / (1 + log10(1 − signal))`, in (0, 1), so
+  downvotes lower the score without ever zeroing it. The hourly
   re-rank reads the sum through `RANK_SIGNAL_JOIN`. Trending still uses
   `rank_score` only. A vote does not change digest or email selection
   except by moving that score.

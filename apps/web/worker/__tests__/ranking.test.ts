@@ -5,6 +5,7 @@ import {
   RANK_SIGNAL_COLUMNS,
   RANK_SIGNAL_JOIN,
   type RankSignalRow,
+  READER_VOTE_WEIGHT,
   rankScore,
   rankSignals,
   readerEngagement,
@@ -301,5 +302,24 @@ describe("corroboration counts independent outlets, not tweets", () => {
     });
     // The submission is the Cloudflare outlet again, not a third source.
     expect(read("post").sourceCount).toBe(2);
+  });
+});
+
+describe("reader vote weight", () => {
+  it("counts one aidr reader vote as READER_VOTE_WEIGHT source points", () => {
+    expect(READER_VOTE_WEIGHT).toBe(10);
+    expect(readerEngagement(0, 0, 1)).toBeCloseTo(
+      readerEngagement(10, 0, 0),
+      10
+    );
+  });
+
+  it("lowers but never erases a story on downvotes", () => {
+    for (const net of [-1, -5, -50]) {
+      const f = readerEngagement(0, 0, net);
+      expect(f).toBeGreaterThan(0);
+      expect(f).toBeLessThan(readerEngagement(0, 0, 0));
+    }
+    expect(readerEngagement(0, 0, -5)).toBeLessThan(readerEngagement(0, 0, -1));
   });
 });

@@ -101,9 +101,11 @@ describe("weekly ranking", () => {
       importance: 7,
       vote_net: 3,
     });
+    // Reader votes weigh 10 points each (READER_VOTE_WEIGHT), so three
+    // votes now outrank two edition days: the owner wants votes to lead.
     expect(
       rankWeeklyCandidates([quiet, voted, featured]).map((c) => c.id)
-    ).toEqual(["featured", "voted", "quiet"]);
+    ).toEqual(["voted", "featured", "quiet"]);
   });
 
   it("counts a merged duplicate's edition days toward its canonical story", () => {
