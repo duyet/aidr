@@ -19,6 +19,7 @@ export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
         <img
           src={day.image_url}
           alt=""
+          loading="lazy"
           referrerPolicy="no-referrer"
           className="aspect-video w-full bg-muted object-cover"
         />

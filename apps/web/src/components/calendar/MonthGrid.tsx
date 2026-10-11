@@ -16,8 +16,7 @@ const TILE_PAGE =
 const RING = " ring-2 ring-foreground";
 const DOT =
   "absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-current";
-const PAGE_DOT =
-  "absolute right-1.5 top-1.5 size-1.5 rounded-full bg-foreground";
+const PAGE_DOT = "absolute right-1.5 top-1.5 size-1.5 rounded-full bg-current";
 
 /**
  * Month heat grid for the header popover and sheet. Edition days link to

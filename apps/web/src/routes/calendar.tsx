@@ -20,8 +20,11 @@ export const Route = createFileRoute("/calendar")({
       ? { month: search.month }
       : {},
   loaderDeps: ({ search }) => ({ month: search.month }),
+  // `today` is computed once here so the cached HTML and hydration agree
+  // across the UTC+7 midnight boundary.
   loader: async ({ deps }) => ({
     cal: await fetchCalendarMonth({ data: { month: deps.month } }),
+    today: latestArchiveDate(Date.now()),
   }),
   headers: ({ match }): Record<string, string> => {
     const explicitLocale =
@@ -54,7 +57,7 @@ export const Route = createFileRoute("/calendar")({
 });
 
 function CalendarRoute() {
-  const { cal } = Route.useLoaderData();
+  const { cal, today } = Route.useLoaderData();
   const lang = useLang();
 
   if (!cal) {
@@ -67,7 +70,5 @@ function CalendarRoute() {
     );
   }
 
-  return (
-    <CalendarPage cal={cal} lang={lang} today={latestArchiveDate(Date.now())} />
-  );
+  return <CalendarPage cal={cal} lang={lang} today={today} />;
 }
