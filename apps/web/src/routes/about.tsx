@@ -60,11 +60,12 @@ function PipelineDiagram() {
   );
 }
 
-/** The interactive bench-machine figure (public/how-it-works.html, served at /how-it-works). It picks
- *  up the site theme from this document and posts its height back so the
- *  frame never scrolls. The ASCII flow below stays as the text version. */
+/** The interactive bench-machine figure (public/how-it-works.html, served
+ *  at /how-it-works). It picks up the site theme from this document and
+ *  posts its height back so the frame never scrolls. The ASCII flow below
+ *  stays as the text version. */
 function HowItWorksFigure() {
-  const [height, setHeight] = useState(560);
+  const [height, setHeight] = useState(900);
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
