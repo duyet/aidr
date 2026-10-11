@@ -8,12 +8,16 @@ import { fileURLToPath } from "node:url";
 import * as k from "./kit/iso-kit.mjs";
 import * as M from "./model.mjs";
 
+const SNAP = JSON.parse(
+  readFileSync(new URL("./snapshot.json", import.meta.url), "utf8")
+);
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const kitScript = () =>
   readFileSync(join(HERE, "kit/iso-kit.mjs"), "utf8").replace(/^export /gm, "");
 const theme = process.argv.includes("--light") ? "light" : "dark";
 const WIDTH = 760,
-  HEIGHT = 320;
+  HEIGHT = 290;
 
 // World plan (x along the line, y toward the front, z up).
 const PLATE = { x: -280, y: -62, w: 560, d: 124, r: 9 };
@@ -50,7 +54,7 @@ const P = k.fitProjection(
   ],
   WIDTH,
   HEIGHT,
-  { pad: 22, azimuth: 71 }
+  { pad: 18, headroom: 24, azimuth: 71 }
 );
 const at = (p) => k.iso(p, P);
 const S = (paths, style) => k.solidSvg(paths, style);
@@ -108,7 +112,7 @@ function plate() {
     );
   }
   for (let h = 0; h <= HOURS; h += 6) {
-    const clock = String((M.START_HOUR + h) % 24).padStart(2, "0");
+    const clock = String(Math.floor(M.ictHour(SNAP, h))).padStart(2, "0");
     out.push(
       k.faceTextSvg(
         k.topMatrix([hourX(h), RULER.y + 7.2], 0.6, P, "x"),
@@ -163,28 +167,34 @@ function plate() {
   return out.join("");
 }
 
-// Fetch: four source canisters feed a hopper; a sieve under it drops seen ids into a reject bin.
+// Fetch: one pin per enabled source (from D1) feeds a hopper; a sieve under it drops seen ids into a reject bin.
 function intake() {
   const out = [];
-  const cans = [
-    [-262, -40],
-    [-262, -22],
-    [-244, -46],
-    [-244, -28],
-  ];
+  const rack = { x: -274, y: -56, w: 46, d: 44, r: 3 };
   out.push(
-    S(slab({ x: -272, y: -54, w: 46, d: 42, r: 3 }, 0, 4, 4, 0.6), {
+    S(slab(rack, 0, 4, 4, 0.6), {
       tone: "mid",
+      inner: k.sideSeam(rack, 2, P, 4),
     })
   );
-  for (const [x, y] of byDepth(cans)) {
-    const h = 20 + ((((x + y) % 7) + 7) % 7);
-    out.push(S(cyl(x, y, 6.4, 4, h, 32, 0.6), { tone: "mid" }));
-    out.push(L(k.sideArc(x, y, 6.4, 4 + h - 4, P, 18), { tone: "faint" }));
-    out.push(S(cyl(x, y, 4.6, 4 + h, 2.4, 28), { tone: "mid" }));
-    out.push(L(k.knurl(x, y, 4.6, 4 + h, 6.4 + h, 26, P), { tone: "lo" }));
-    out.push(D([at([x, y, 6.4 + h])], { size: 0.5, tone: "hi" }));
+  out.push(
+    L(k.planOutline(k.insetPlan(rack, 2.4), 4, P, 3), { tone: "faint" })
+  );
+  const cols = 10,
+    rows = Math.ceil(SNAP.sources / cols),
+    pitch = 4.1;
+  const pins = [];
+  for (let i = 0; i < SNAP.sources; i++)
+    pins.push([
+      rack.x + 4.6 + (i % cols) * pitch,
+      rack.y + 5 + Math.floor(i / cols) * pitch * 1.6,
+    ]);
+  for (const [x, y] of byDepth(pins)) {
+    out.push(S(cyl(x, y, 1.5, 4, 5, 12), { tone: "mid", crease: "none" }));
+    out.push(D([at([x, y, 9])], { size: 0.45, tone: "hi" }));
   }
+  if (rows * pitch * 1.6 > rack.d)
+    throw new Error("source pins overflow their rack");
   // hopper on four legs
   const [hx, hy] = HOP;
   for (const [x, y] of byDepth(
@@ -520,8 +530,9 @@ const gaugeNeedle = (importance) => {
 
 // Rank: the subject. A backboard ruled in √score, twenty bars, a gate after the 16th.
 const BOARD_H = 78;
+const SCORE_UNIT = 6.2;
 const scoreZ = (s) =>
-  RACK_TOP + Math.min(BOARD_H - 10, 9.6 * Math.sqrt(Math.max(0, s)));
+  RACK_TOP + Math.min(BOARD_H - 8, SCORE_UNIT * Math.max(0, s));
 function rackBack() {
   const out = [];
   out.push(S(slab(RACK, 0, RACK_TOP, 4, 0.6), { tone: "mid" }));
@@ -532,8 +543,8 @@ function rackBack() {
   out.push(S(slab(board, 0, BOARD_H, 3, 0.5), { tone: "mid" }));
   const face = board.y + board.d;
   const rules = [];
-  for (let s = 1; s <= 7; s++) {
-    const z = scoreZ(s * s);
+  for (let s = 1; s <= 5; s++) {
+    const z = scoreZ(s * 2);
     rules.push(
       k.pathOf(
         [
@@ -545,13 +556,13 @@ function rackBack() {
     );
   }
   out.push(L(rules.join(""), { tone: "faint" }));
-  for (let s = 1; s <= 7; s++)
+  for (let s = 1; s <= 5; s++)
     out.push(
       k.faceTextSvg(
         k
-          .sideMatrix([board.x + 4.5, face, scoreZ(s * s) + 1.2], 0, P, "left")
+          .sideMatrix([board.x + 4.5, face, scoreZ(s * 2) + 1.2], 0, P, "left")
           .replace(/matrix\(([^)]*)\)/, (m) => m),
-        String(s * s),
+        String(s * 2),
         { size: 2.4, tone: "lo" }
       )
     );
@@ -706,6 +717,18 @@ function platen() {
 }
 
 // Publish: email box (07:00 local), Telegram lamp and Facebook lamp (08:00 ICT).
+// One lamp per channel: [y on the box top, send hour, channel].
+const LAMPS = [
+  [
+    [-4.2, M.EMAIL_HOUR, "email EN"],
+    [4.2, M.EMAIL_HOUR, "email VI"],
+  ],
+  [
+    [-4.2, M.NOTIFY_HOUR, "Telegram VI"],
+    [4.2, M.NOTIFY_HOUR, "Telegram EN"],
+  ],
+  [[0, M.NOTIFY_HOUR, "Facebook EN"]],
+];
 function outlets() {
   const out = [];
   const base = { x: 214, y: -26, w: 62, d: 52, r: 3 };
@@ -734,9 +757,11 @@ function outlets() {
         { tone: "lo" }
       )
     );
-    out.push(
-      `<g data-lamp="${i}" data-on="0">${S(cyl(x, 0, 3.6, z + 12, 3, 24, 0.4), { tone: "mid" })}</g>`
-    );
+    for (const [ly, hour, channel] of LAMPS[i]) {
+      out.push(
+        `<g data-lamp data-hour="${hour}" data-on="0"><title>${channel}</title>${S(cyl(x, ly, 2.4, z + 12, 2.6, 20, 0.3), { tone: "mid" })}</g>`
+      );
+    }
     out.push(
       D(
         [
@@ -795,7 +820,7 @@ function hourCursor() {
 const NOTES = [
   ["clock", "1", "Every 30 min", [-246, 38, 16], [-30, 34]],
   ["intake", "2", "Fetch + dedupe", [-224, 0, 58], [0, -34]],
-  ["score", "3", "LLM score", [-132, 0, 56], [0, -30]],
+  ["score", "3", "JEV + LLM score", [-132, 0, 56], [0, -30]],
   ["rank", "4", "Rank", [40, -28, 78], [0, -22]],
   ["press", "5", "TL;DR EN + VI", [176, 0, 113], [0, -22]],
   ["publish", "6", "Email · Telegram · FB", [246, 0, 40], [16, -44]],
@@ -852,7 +877,12 @@ ${strip(readFileSync(join(HERE, "model.mjs"), "utf8"))}
 const P = ${JSON.stringify(P)};
 const C = ${JSON.stringify({ RACK_TOP, BAR_W, BAR_D, BAR_Y, SLOT, RACKX: RACK.x, BOARD_H, HOURS, RULER, CLOCK, GANTRY_X, DIAL_R, DIAL_TOP, BELT, BELT_TOP })};
 const slotX = (i) => C.RACKX + 4 + i * C.SLOT;
+const SCORE_UNIT = ${SCORE_UNIT};
 const scoreZ = ${scoreZ.toString().replace(/RACK_TOP|BOARD_H/g, (m) => `C.${m}`)};
+const SNAP = ${JSON.stringify(SNAP)};
+const STORIES = storiesOf(SNAP);
+const byRef = new Map(SNAP.items.map((it) => [it.ref, it]));
+const bulletOf = new Map(SNAP.tldr.en.flatMap((b) => b.ids.map((id) => [id, b.text])));
 const hourX = (t) => C.RULER.x + 6 + (t / C.HOURS) * (C.RULER.w - 12);
 const clockNeedle = ${clockNeedle.toString().replace(/k\./g, "").replace(/CLOCK/g, "C.CLOCK")};
 const gaugeNeedle = ${gaugeNeedle
@@ -871,16 +901,18 @@ const still = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 // one bar per story, each in its own group so it can slide between slots
-const bars = STORIES.map((s, id) => { const g = document.createElementNS("http://www.w3.org/2000/svg", "g"); g.dataset.id = id; barsG.appendChild(g); return { id, g, x: null, h: 0, key: "" }; });
+const bars = STORIES.map((s) => { const g = document.createElementNS("http://www.w3.org/2000/svg", "g"); g.dataset.id = s.id; barsG.appendChild(g); return { id: s.id, g, x: null, h: 0, key: "" }; });
 function barSvg(h, lit, dim) {
   const plan = { x: 0, y: C.BAR_Y, w: C.BAR_W, d: C.BAR_D, r: 0.6 };
   const top = Math.max(0.6, h);
-  return solidSvg(slabOf(plan, C.RACK_TOP, top, P, 2, 0.3), { tone: dim ? "lo" : lit ? "hi" : "mid", crease: dim ? "faint" : "lo", lit });
+  return solidSvg(slabOf(plan, C.RACK_TOP, top, P, 2, 0.3), { tone: dim ? "lo" : "hi", crease: dim ? "faint" : "lo", lit });
 }
 let t = 0, target = 0, touring = true, frame = 0, last = 0, visible = false, idle = 0, beltPhase = 0, stamp = 0, lastSnap = -1;
-const snapAt = (tt) => { const day = Math.floor((START_HOUR + tt) / 24); return day * 100 + Math.floor((tt - (day * 24 - START_HOUR)) / TLDR_REFRESH_H); };
+// a TL;DR snapshot is written for each new local date and refreshed after 3h
+const ictAbs = (tt) => SNAP.start / 3600 + ICT_OFFSET_H + tt;
+const snapAt = (tt) => { const h = ictAbs(tt), day = Math.floor(h / 24); return day * 100 + Math.floor((h - day * 24) / TLDR_REFRESH_H); };
 function draw(dt) {
-  const rows = board(t);
+  const rows = board(STORIES, t);
   const slotOf = new Map(rows.map((r) => [r.id, r]));
   const order = [];
   for (const b of bars) {
@@ -898,13 +930,12 @@ function draw(dt) {
     order.push(b);
   }
   order.sort((a, b) => a.x - b.x).forEach((b) => barsG.appendChild(b.g));
-  const local = (START_HOUR + t) % 24, day = Math.floor((START_HOUR + t) / 24);
+  const local = ictHour(SNAP, t), date = new Date((SNAP.start + t * 3600 + ICT_OFFSET_H * 3600) * 1000).toISOString().slice(5, 10);
   cursor.setAttribute("transform", translateAlong(P, [hourX(t), 0, 0]));
   cneedle.setAttribute("d", clockNeedle((t % RUN_EVERY_H) / RUN_EVERY_H));
   // lamps: once per local date, at the send hour
-  const sent = [local >= EMAIL_HOUR, local >= NOTIFY_HOUR, local >= NOTIFY_HOUR];
-  lamps.forEach((l, i) => l.setAttribute("data-on", sent[i] ? "1" : "0"));
-  flag.style.opacity = sent[0] ? "1" : "0";
+  lamps.forEach((l) => l.setAttribute("data-on", local >= Number(l.dataset.hour) ? "1" : "0"));
+  flag.style.opacity = local >= EMAIL_HOUR ? "1" : "0";
   // press: a new snapshot each 3h or new local day
   const snap = snapAt(t);
   if (snap !== lastSnap) { if (lastSnap !== -1) stamp = 1; lastSnap = snap; }
@@ -924,7 +955,8 @@ function draw(dt) {
     g.setAttribute("transform", translateAlong(P, [x, 0, 0]));
     if (Math.abs(x - C.GANTRY_X) < 12.5) under = i;
   });
-  const next = upcoming(t)[0];
+  // the gauge reads the importance the scorer gave the next story fetched
+  const next = STORIES.find((s) => s.fetched > t);
   const imp = under === null || !next ? 0 : next.importance;
   gauge.v += (imp - gauge.v) * (dt ? 1 - Math.exp(-dt / 0.18) : 1);
   gneedle.setAttribute("d", gaugeNeedle(gauge.v));
@@ -932,25 +964,40 @@ function draw(dt) {
   drawIO();
   const top = rows[0];
   const hh = String(Math.floor(local)).padStart(2, "0") + ":" + (local % 1 >= 0.5 ? "30" : "00");
-  const text = hh + " · day " + (day + 1) + " · TL;DR " + inTldr + " · #1 " + (top ? top.score.toFixed(1) : "–");
+  const text = date + " " + hh + " ICT · TL;DR " + inTldr + " · #1 " + (top ? top.score.toFixed(2) : "–");
   if (readout.textContent !== text) readout.textContent = text;
   stage.setAttribute("aria-valuenow", String(t.toFixed(1)));
   stage.setAttribute("aria-valuetext", hh + ", " + inTldr + " stories in the TL;DR, top story: " + (top ? top.s.title : "none"));
   const title = document.querySelector("[data-top]");
-  if (title && top) { const s = top.s; const tx = top.s.title + " — importance " + s.importance + ", " + s.sources + " outlets, " + (s.votes >= 0 ? "+" : "") + s.votes + " votes, " + top.age.toFixed(1) + "h old → " + top.score.toFixed(1); if (title.textContent !== tx) title.textContent = tx; }
+  if (title && top) { const s = top.s; const tx = "#1 " + s.title + " (" + s.source + ") · importance " + s.importance + " · quality " + s.quality + " · " + s.sourceCount + (s.sourceCount === 1 ? " outlet" : " outlets") + " · " + s.points + " pts · " + (s.voteNet >= 0 ? "+" : "") + s.voteNet + " votes · " + top.age.toFixed(1) + "h old → " + top.score.toFixed(2); if (title.textContent !== tx) title.textContent = tx; }
 }
 const gauge = { v: 0 };
-const inList = document.querySelector("[data-in]"), outList = document.querySelector("[data-out]");
+const inList = document.querySelector("[data-in]"), outList = document.querySelector("[data-out]"), inHead = document.querySelector("[data-in-head]"), outHead = document.querySelector("[data-out-head]");
+// hours into the window when the stored TL;DR was written (created_at is in ms)
+const SNAPPED = Math.min(C.HOURS - 0.25, (SNAP.tldr.created / 1000 - SNAP.start) / 3600);
 const esc = (x) => x.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
 let ioKey = "";
 function drawIO() {
-  const fresh = STORIES.map((s, id) => ({ s, id, age: t - s.born })).filter((r) => r.age >= 0).sort((a, b) => a.age - b.age).slice(0, 5);
-  const top = board(t).filter((r) => r.inWindow).slice(0, TELEGRAM_BULLETS);
-  const key = fresh.map((r) => r.id).join() + "|" + top.map((r) => r.id).join();
+  const seen = fetchedBy(SNAP, t);
+  const fresh = seen.slice(0, 5);
+  const top = board(STORIES, t).filter((r) => r.inWindow).slice(0, TELEGRAM_BULLETS);
+  const key = fresh.length + "|" + (t < SNAPPED) + "|" + top.map((r) => r.id).join();
   if (key === ioKey) return;
   ioKey = key;
-  inList.innerHTML = fresh.map((r) => { const [src, raw] = EXAMPLES[r.id]; return \`<li><span class="src">\${esc(src)} · \${r.age < 1 ? "just now" : r.age.toFixed(0) + "h ago"}</span><span class="raw">\${esc(raw)}</span> <span class="meta">\${r.s.points} pts · \${r.s.comments} comments</span></li>\`; }).join("");
-  outList.innerHTML = top.map((r) => \`<li>\${esc(EXAMPLES[r.id][2])} <span class="meta">\${r.score.toFixed(1)}</span></li>\`).join("");
+  const count = (st) => seen.filter((it) => it.fetched > t - 24 && it.status === st).length;
+  inHead.textContent = "In · last 24h: " + count("published") + " new, " + count("merged") + " merged, " + count("rejected") + " rejected";
+  inList.innerHTML = fresh.map((it) => { const ago = t - it.fetched; return \`<li><span class="src">\${esc(it.source)} · \${ago < 1 ? "this hour" : ago.toFixed(0) + "h ago"} · <b data-status="\${it.status}">\${it.status}</b></span><span class="raw">\${esc(it.title)}</span></li>\`; }).join("");
+  outHead.textContent = t < SNAPPED ? "Out · top 8 by rank at this hour" : "Out · top 8 by rank, with the TL;DR bullet stored " + SNAP.tldr.date;
+  const shown = new Map();
+  outList.innerHTML = top.map((r, i) => {
+    const b = bulletOf.get(r.s.ref);
+    const head = \`<span class="raw">\${esc(r.s.title)}</span>\`;
+    let body;
+    if (!b || t < SNAPPED) body = head;
+    else if (shown.has(b)) body = head + ' <span class="meta">shares bullet #' + shown.get(b) + "</span>";
+    else { shown.set(b, i + 1); body = esc(b); }
+    return \`<li>\${body} <span class="meta">\${r.score.toFixed(2)}</span></li>\`;
+  }).join("");
 }
 function tick(now) {
   const dt = last ? Math.min((now - last) / 1000, 1 / 30) : 1 / 60;
@@ -1016,6 +1063,12 @@ const css = `<style>
 [data-part="flag"]{transition:opacity .4s}
 .aidr-top{display:block;margin-top:.4em;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-text);opacity:.8;min-height:1.6em}
 </style>`;
+const ict = (sec) =>
+  new Date((sec + M.ICT_OFFSET_H * 3600) * 1000)
+    .toISOString()
+    .slice(0, 16)
+    .replace("T", " ");
+const CAPTION = `Real data: ${SNAP.items.length} items from production D1, fetched ${ict(SNAP.start)} to ${ict(SNAP.end)} ICT, from ${SNAP.sources} enabled sources. Every 30 minutes a run starts (one turn of the dial; a run asked for inside the 25-minute arc is skipped). Fetch drops any URL already stored (id = sha256 of the URL). A decision router, JEV and then an LLM score importance and quality in batches of 5, and same-story items are merged into one story. The rack re-ranks the last 72 hours with the Worker's rank formula: importance^1.5/√10 × (0.6 + 0.4·quality/10) × age decay × min(engagement × source boost, 3.25) × votes × breaking boost. Engagement counts only Hacker News and Lobsters points; the source boost counts distinct outlet families in the story. Bar height is the score, ruled every 2. The TL;DR takes the top 16 of the rolling 24 hours into an English and a Vietnamese list that never fill in for each other; it is written for each new local date and refreshed after 3 hours. Each channel sends once per local date.`;
 const body =
   css +
   k.plateHtml({
@@ -1024,30 +1077,26 @@ const body =
     hint: "Move across to turn the clock · ← →",
     readout: "",
     keys: [
-      {
-        mark: "lit",
-        label:
-          "Top bar: the #1 story right now, scored by the real rank formula",
-      },
+      { mark: "lit", label: "Outlined bar: the #1 story at this hour" },
       {
         mark: "raised",
-        label: "Bars left of the gate: the 16 stories in the TL;DR",
+        label:
+          "Bars left of the gate: the top 16 of the last 24 hours, the TL;DR's input",
       },
       {
         mark: "line",
         label:
-          "Outlets: email box and flag 07:00, Telegram ticker (8 bullets) and Facebook 08:00; only the English page is wired to Facebook",
+          "Outlets: email 07:00 in each subscriber's timezone (EN and VI lanes); Telegram (VI and EN) and Facebook (EN only) 08:00 ICT",
       },
     ],
-    caption:
-      "Every 30 minutes a run starts: one turn of the dial; a run asked for inside the 25-minute arc is skipped (coalesce). Sources pour into the hopper, the sieve drops ids already stored, the belt carries new stories under a gauge that scores them five at a time, and the rack re-ranks the last 72 hours: rank = importance^1.5/√10 × quality × decay × engagement × votes × breaking, drawn on a √score scale over thirty sample stories. Stories older than 24 hours fall out of the TL;DR window and go dark. The press writes one snapshot with English and Vietnamese pages that never fill in for each other; email, Telegram and Facebook (English only) each send once per local day.",
-    body: `<div class="iso-stage" style="touch-action:pan-y" tabindex="0" role="slider" aria-label="AI;DR clock: arrow keys move time by half an hour" aria-valuemin="0" aria-valuemax="${HOURS}" aria-valuenow="0">${svg}</div><span class="aidr-top" data-top></span><div class="aidr-io"><section><h3>In · raw items from sources</h3><ol data-in></ol></section><div class="aidr-arrow" aria-hidden="true">→</div><section><h3>Out · TL;DR, top 8 (as sent to Telegram)</h3><ol data-out></ol></section></div>`,
+    caption: CAPTION,
+    body: `<div class="iso-stage" style="touch-action:pan-y" tabindex="0" role="slider" aria-label="AI;DR clock: arrow keys move time by half an hour" aria-valuemin="0" aria-valuemax="${HOURS}" aria-valuenow="0">${svg}</div><span class="aidr-top" data-top></span><div class="aidr-io"><section><h3 data-in-head>In</h3><ol data-in></ol></section><div class="aidr-arrow" aria-hidden="true">→</div><section><h3 data-out-head>Out</h3><ol data-out></ol></section></div>`,
   });
 const STATIONS = [
   ["clock", "Schedule: a run every 30 min"],
   ["intake", "Fetch + dedupe"],
-  ["score", "Score (LLM, batches of 5)"],
-  ["rank", "Rank (top 16 → TL;DR)"],
+  ["score", "Score: router → JEV → LLM, batches of 5; then merge"],
+  ["rank", "Rank: last 72h; top 16 of 24h → TL;DR"],
   ["press", "TL;DR snapshot (EN + VI)"],
   ["publish", "Email · Telegram · Facebook"],
 ];
