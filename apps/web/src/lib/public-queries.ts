@@ -14,6 +14,7 @@ import {
   PUBLIC_BULLET_CAP,
   PUBLIC_RESPONSE_MAX_BYTES,
   PUBLIC_STORY_LIMIT,
+  PUBLIC_STORY_MAX,
 } from "./public-bounds";
 import { parseStoredBullets } from "./tldr-bullets";
 import { isThinDisplayTldr, synthesizeTldrFromItems } from "./tldr-fallback";
@@ -34,6 +35,7 @@ export {
   PUBLIC_BULLET_CAP,
   PUBLIC_RESPONSE_MAX_BYTES,
   PUBLIC_STORY_LIMIT,
+  PUBLIC_STORY_MAX,
 } from "./public-bounds";
 
 /** Above the ~180–240 digest target so `/api/public` can return longer bullets. */
@@ -254,6 +256,44 @@ async function loadTopStories(
   }
 }
 
+/** Same four column-set fallbacks as the top-stories query, keyed by id
+ *  instead of rank/window: a cited item may be older than the 48h window. */
+const STORIES_BY_ID_SQL = [
+  STORIES_SQL,
+  STORIES_SQL_NO_MEDIA,
+  STORIES_SQL_MEDIA_NO_IMAGE,
+  STORIES_SQL_LEGACY,
+].map((sql) =>
+  sql
+    .replace("i.published_at >= ?", "i.id IN ({placeholders})")
+    .replace(/\nORDER BY i\.rank_score DESC\nLIMIT \?$/, "")
+);
+
+/** Published rows for the given ids, in the order of `ids`. */
+async function loadStoriesByIds(
+  db: DbReader,
+  ids: string[]
+): Promise<PublicStory[]> {
+  if (ids.length === 0) return [];
+  const placeholders = ids.map(() => "?").join(",");
+  for (let i = 0; i < STORIES_BY_ID_SQL.length; i++) {
+    try {
+      const { results } = await db
+        .prepare(STORIES_BY_ID_SQL[i]!.replace("{placeholders}", placeholders))
+        .bind(...ids)
+        .all<StoryRow>();
+      const byId = new Map((results ?? []).map((row) => [row.id, row]));
+      return ids.flatMap((id) => {
+        const row = byId.get(id);
+        return row ? [toPublicStory(row)] : [];
+      });
+    } catch (error) {
+      if (i === STORIES_BY_ID_SQL.length - 1) throw error;
+    }
+  }
+  return [];
+}
+
 function resolvePublicTldr(
   tldr: PublicDigest["tldr"],
   stories: PublicStory[]
@@ -358,7 +398,19 @@ export async function getPublicDigest(db: DbReader): Promise<PublicDigest> {
     stories
   );
 
-  const images = imageUrlByItemId(stories);
+  // Every item a bullet cites (either language) must resolve in `stories`,
+  // not only the top PUBLIC_STORY_LIMIT: append the cited rows the top list
+  // missed, deduped, up to PUBLIC_STORY_MAX in total.
+  const topIds = new Set(stories.map((s) => s.id));
+  const citedMissing = collectTldrItemIds(tldr)
+    .filter((id) => !topIds.has(id))
+    .slice(0, Math.max(0, PUBLIC_STORY_MAX - stories.length));
+  const allStories = [
+    ...stories,
+    ...(await loadStoriesByIds(db, citedMissing)),
+  ];
+
+  const images = imageUrlByItemId(allStories);
   const missing = collectTldrItemIds(tldr).filter((id) => !images.has(id));
   if (missing.length > 0) {
     for (const [id, url] of await loadImagesForIds(db, missing)) {
@@ -368,13 +420,13 @@ export async function getPublicDigest(db: DbReader): Promise<PublicDigest> {
 
   return boundPublicDigest({
     tldr: withTldrImages(tldr, images),
-    stories,
+    stories: allStories,
     updatedAt: Date.now(),
   });
 }
 
-/** Look up og/thumbnails for TL;DR item ids that are not in the top-8
- * stories payload. Best-effort: a missing `image_url` column returns
+/** Look up og/thumbnails for TL;DR item ids that are not in the stories
+ * payload (unpublished, or past PUBLIC_STORY_MAX). Best-effort: a missing `image_url` column returns
  * an empty map so the digest still ships. */
 async function loadImagesForIds(
   db: DbReader,

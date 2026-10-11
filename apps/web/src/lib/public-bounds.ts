@@ -16,6 +16,9 @@
 
 /** Top stories on the public digest — keep the payload well under 50KB. */
 export const PUBLIC_STORY_LIMIT = 8;
+/** Hard ceiling on `stories`: the top stories plus every item a TL;DR bullet
+ *  cites (both languages), so a bullet's `item_ids` resolve in `stories`. */
+export const PUBLIC_STORY_MAX = 30;
 /** Snapshots store at most 16; cap again so a bloated row cannot balloon. */
 export const PUBLIC_BULLET_CAP = 16;
 /** Hard serialized-body budget for the unauthenticated public digest. */

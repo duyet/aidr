@@ -9,6 +9,7 @@ import {
   normalizeStoredBullets,
   PUBLIC_RESPONSE_MAX_BYTES,
   PUBLIC_STORY_LIMIT,
+  PUBLIC_STORY_MAX,
 } from "./public-queries";
 
 interface TldrRow {
@@ -46,6 +47,8 @@ function story(id: string, extra: Partial<StoryRow> = {}): StoryRow {
 function makeDb(opts: {
   tldr?: TldrRow | null;
   stories?: StoryRow[];
+  /** Rows returned by the by-id story lookup (`i.id IN`). */
+  citedStories?: StoryRow[];
   extraImages?: Array<{ id: string; image_url: string | null }>;
   failImageColumn?: boolean;
   failMediaColumn?: boolean;
@@ -68,6 +71,9 @@ function makeDb(opts: {
             }
             if (opts.failMediaColumn && sql.includes("media_manifest")) {
               throw new Error("no such column: media_manifest");
+            }
+            if (sql.includes("i.id IN")) {
+              return { results: opts.citedStories ?? [] };
             }
             if (sql.includes("id IN")) {
               return { results: opts.extraImages ?? [] };
@@ -335,6 +341,63 @@ describe("getPublicDigest", () => {
     const db = makeDb({ tldr: bilingualTldr, stories });
     const digest = await getPublicDigest(db);
     expect(digest.stories.length).toBeLessThanOrEqual(PUBLIC_STORY_LIMIT);
+  });
+
+  it("includes every story cited by a bullet, beyond the top stories", async () => {
+    const top = Array.from({ length: PUBLIC_STORY_LIMIT }, (_, i) =>
+      story(`top${i}`)
+    );
+    const cited = Array.from({ length: 14 }, (_, i) =>
+      i < PUBLIC_STORY_LIMIT ? `top${i}` : `old${i}`
+    );
+    const bullets = (prefix: string) =>
+      JSON.stringify(
+        cited.map((id, i) => ({
+          text: `${prefix} ${i}`,
+          item_ids: [id],
+        }))
+      );
+    const db = makeDb({
+      tldr: {
+        date: "2026-10-11",
+        bullets_en: bullets("en"),
+        bullets_vi: bullets("vi"),
+      },
+      stories: top,
+      citedStories: cited
+        .filter((id) => id.startsWith("old"))
+        .map((id) => story(id)),
+    });
+    const digest = await getPublicDigest(db);
+    expect(digest.tldr?.bullets_en).toHaveLength(14);
+    const ids = digest.stories.map((s) => s.id);
+    for (const bullet of digest.tldr?.bullets_en ?? []) {
+      for (const id of bullet.item_ids ?? []) expect(ids).toContain(id);
+    }
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.slice(0, PUBLIC_STORY_LIMIT)).toEqual(top.map((s) => s.id));
+    expect(digest.stories).toHaveLength(14);
+  });
+
+  it("includes vi-only cited stories and bounds stories at PUBLIC_STORY_MAX", async () => {
+    const top = Array.from({ length: PUBLIC_STORY_LIMIT }, (_, i) =>
+      story(`top${i}`)
+    );
+    const many = Array.from({ length: 40 }, (_, i) => `x${i}`);
+    const db = makeDb({
+      tldr: {
+        date: "2026-10-11",
+        bullets_en: JSON.stringify([{ text: "en", item_ids: ["top0"] }]),
+        bullets_vi: JSON.stringify(
+          many.map((id) => ({ text: id, item_ids: [id] }))
+        ),
+      },
+      stories: top,
+      citedStories: many.map((id) => story(id)),
+    });
+    const digest = await getPublicDigest(db);
+    expect(digest.stories.length).toBeLessThanOrEqual(PUBLIC_STORY_MAX);
+    expect(digest.stories.map((s) => s.id)).toContain("x0");
   });
 
   it("falls back to title-based tldr when the snapshot is thin", async () => {

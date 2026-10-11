@@ -310,6 +310,14 @@ runtime through `upsert_source` with no deploy — see
   local day (today's sent posts seed the count, 1 per family while
   another family qualifies); when only one family qualifies it still
   posts.
+- **Public digest `stories` (`getPublicDigest`).** `GET /api/public`
+  returns the top `PUBLIC_STORY_LIMIT` (8) stories plus every published
+  item cited by a returned TL;DR bullet in either language (up to 16
+  bullets x 8 `item_ids`), deduped and loaded by id (no 48h window),
+  capped at `PUBLIC_STORY_MAX` (30) in total. Consumers can always resolve
+  a bullet's `item_ids` in `stories`; ids past the cap or unpublished stay
+  unresolved. The 50 KB body cap still trims tail stories. The homepage SSR
+  payload is separate and unchanged.
 - **Host pacing.** A row may set `minRequestIntervalMs` to serialise
   same-host fetches; the first request to a host is never delayed.
 - **Explicit source language.** A row with `sourceLang: "vi"` puts its
