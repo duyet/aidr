@@ -11,6 +11,13 @@ export const CALENDAR_PATH = "/calendar";
 
 const MONTH_RE = /^(\d{4})-(\d{2})$/;
 
+/** A story ranked below the day's lead, shown as a runner-up in the preview. */
+export interface CalendarRunner {
+  title: string;
+  /** Vietnamese title; null when not translated (no fallback to English). */
+  title_vi: string | null;
+}
+
 export interface CalendarDay {
   date: string;
   /** Published stories that day. */
@@ -22,6 +29,10 @@ export interface CalendarDay {
   image_url: string | null;
   /** Top story's tags, for the same keyword highlight as the feed. */
   tags: string[];
+  /** Up to 2 stories ranked just below the lead. */
+  runners: CalendarRunner[];
+  /** The day's 3 most common categories, most common first. */
+  categories: string[];
 }
 
 export interface CalendarMonth {
@@ -94,11 +105,4 @@ export function heatLevel(count: number, max: number): 0 | 1 | 2 | 3 | 4 {
 export function calendarPath(month?: string, lang?: Lang): string {
   const path = month ? `${CALENDAR_PATH}?month=${month}` : CALENDAR_PATH;
   return lang ? withLang(path, lang) : path;
-}
-
-export function formatMonthHeading(month: string, lang: Lang): string {
-  return new Date(`${month}-01T00:00:00Z`).toLocaleDateString(
-    lang === "vi" ? "vi-VN" : "en-US",
-    { month: "long", year: "numeric", timeZone: "UTC" }
-  );
 }
