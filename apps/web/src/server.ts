@@ -17,6 +17,7 @@ import {
   isDayMarkdownPath,
 } from "./lib/day-markdown";
 import { readSession } from "./lib/db";
+import { cachedSsrResponse } from "./lib/edge-cache";
 import { withHomepageInlineStylesheets } from "./lib/inline-stylesheet";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import {
@@ -304,18 +305,20 @@ export default {
       );
     }
 
-    return withSsrLocaleResponse(
-      request,
-      await withRouteIndexabilityHeaders(
+    return cachedSsrResponse(request, ctx, async () =>
+      withSsrLocaleResponse(
         request,
-        handlePublicCors(request, () =>
-          handleSubscribeCors(request, async () =>
-            withHomepageHeaders(
-              request,
-              withHomepageInlineStylesheets(
+        await withRouteIndexabilityHeaders(
+          request,
+          handlePublicCors(request, () =>
+            handleSubscribeCors(request, async () =>
+              withHomepageHeaders(
                 request,
-                applyNotFoundHttpStatus(await handler.fetch(request)),
-                env.ASSETS
+                withHomepageInlineStylesheets(
+                  request,
+                  applyNotFoundHttpStatus(await handler.fetch(request)),
+                  env.ASSETS
+                )
               )
             )
           )

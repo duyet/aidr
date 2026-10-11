@@ -53,6 +53,20 @@ function appendVary(headers: Headers, value: string): void {
   headers.set("Vary", [...present].join(", "));
 }
 
+function removeVary(headers: Headers, value: string): void {
+  const current = headers.get("Vary");
+  if (!current) return;
+  const drop = new Set(
+    value.split(",").map((part) => part.trim().toLowerCase())
+  );
+  const kept = current
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part && !drop.has(part.toLowerCase()));
+  if (kept.length) headers.set("Vary", kept.join(", "));
+  else headers.delete("Vary");
+}
+
 function fallbackForRequest(request: Request): Lang {
   return fallbackLang({
     cookie: request.headers.get("cookie"),
@@ -335,6 +349,9 @@ export function withSsrLocaleResponse(
     headers.set("Content-Language", lang);
     if (hasCanonicalLocaleQuery(url.search)) {
       setSafePublicPolicy(headers, SSR_LOCALIZED_CACHE_CONTROL);
+      // The explicit `?lang=` fully selects the representation, so a Cookie /
+      // Accept-Language Vary would only fragment shared caches.
+      removeVary(headers, LOCALE_VARY);
     } else {
       // Private + varied is a cache-isolation requirement, not a robots one.
       // Indexability for this response is owned by `routeIndexability` alone:
