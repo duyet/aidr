@@ -3,7 +3,7 @@ import { dayArchivePath } from "../lib/day-archive";
 import { formatDayHeading } from "../lib/lang";
 import type { DayGroup, Lang } from "../lib/types";
 import { CategoryLabel } from "./CategoryLabel";
-import { StoryRow } from "./StoryRow";
+import { STORY_ROW_COLS, StoryRow } from "./StoryRow";
 
 export function DaySection({
   day,
@@ -82,6 +82,16 @@ export function DaySection({
             <span>{lang === "vi" ? `+${more} nữa` : `+${more} more`}</span>
           )}
         </span>
+      </div>
+      <div
+        className={`story-legend ${STORY_ROW_COLS} border-b border-border/60 pb-1.5 pt-2 text-[0.72rem] uppercase tracking-[0.08em] text-muted-foreground`}
+        aria-hidden="true"
+      >
+        <span className="text-right">#</span>
+        <span>{t("Story", "Tin")}</span>
+        <span className="hidden sm:block">{t("Topic", "Chủ đề")}</span>
+        <span className="hidden text-right sm:block">{t("Time", "Lúc")}</span>
+        <span className="text-right">{t("Score", "Điểm")}</span>
       </div>
       <div className="divide-y divide-border/60">
         {visible.map((item, i) => (

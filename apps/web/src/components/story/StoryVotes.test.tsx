@@ -30,3 +30,23 @@ describe("StoryVotes", () => {
     expect(html).toContain("h-5 w-3.5");
   });
 });
+
+// The dense feed row's Score column shows upvote only; the dialog and the
+// expanded details keep up and down.
+describe("StoryVotes upOnly", () => {
+  it("drops the down arrow and keeps the count", () => {
+    const html = renderToStaticMarkup(
+      <StoryVotes itemId={ITEM} voteNet={3} lang="en" compact upOnly />
+    );
+    expect(html).toContain(">3<");
+    expect(html).toContain("chevron-up");
+    expect(html).not.toContain("chevron-down");
+  });
+
+  it("keeps both arrows by default", () => {
+    const html = renderToStaticMarkup(
+      <StoryVotes itemId={ITEM} voteNet={3} lang="en" compact />
+    );
+    expect(html).toContain("chevron-down");
+  });
+});

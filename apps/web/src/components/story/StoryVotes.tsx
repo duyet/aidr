@@ -186,10 +186,12 @@ function SignInVotes({
   voteNet,
   lang,
   compact,
+  upOnly,
 }: {
   voteNet: number;
   lang: Lang;
   compact?: boolean;
+  upOnly?: boolean;
 }) {
   const href = signInHref(lang);
   const label = signInLabel(lang);
@@ -206,16 +208,18 @@ function SignInVotes({
         <VoteIcon direction="up" compact={compact} />
       </a>
       <VoteCount voteNet={voteNet} lang={lang} compact={compact} />
-      <a
-        href={href}
-        className={voteHit(compact)}
-        aria-label={label}
-        title={label}
-        onClick={keepRowClosed}
-        onKeyDown={keepRowClosed}
-      >
-        <VoteIcon direction="down" compact={compact} />
-      </a>
+      {!upOnly && (
+        <a
+          href={href}
+          className={voteHit(compact)}
+          aria-label={label}
+          title={label}
+          onClick={keepRowClosed}
+          onKeyDown={keepRowClosed}
+        >
+          <VoteIcon direction="down" compact={compact} />
+        </a>
+      )}
       {!compact && (
         <a
           href={href}
@@ -235,12 +239,14 @@ function SignedInVotes({
   voteNet,
   lang,
   compact,
+  upOnly,
   getToken,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
   compact?: boolean;
+  upOnly?: boolean;
   getToken: () => Promise<string | null>;
 }) {
   const [net, setNet] = useState(voteNet);
@@ -317,20 +323,22 @@ function SignedInVotes({
         <VoteIcon direction="up" compact={compact} />
       </button>
       <VoteCount voteNet={net} lang={lang} compact={compact} />
-      <button
-        type="button"
-        className={voteHit(compact, mine === -1)}
-        aria-pressed={mine === -1}
-        aria-label={voteLabel(lang, -1, mine === -1)}
-        disabled={busy || mine === null}
-        onClick={(event) => {
-          keepRowClosed(event);
-          void click(-1);
-        }}
-        onKeyDown={keepRowClosed}
-      >
-        <VoteIcon direction="down" compact={compact} />
-      </button>
+      {!upOnly && (
+        <button
+          type="button"
+          className={voteHit(compact, mine === -1)}
+          aria-pressed={mine === -1}
+          aria-label={voteLabel(lang, -1, mine === -1)}
+          disabled={busy || mine === null}
+          onClick={(event) => {
+            keepRowClosed(event);
+            void click(-1);
+          }}
+          onKeyDown={keepRowClosed}
+        >
+          <VoteIcon direction="down" compact={compact} />
+        </button>
+      )}
     </VoteGroup>
   );
 }
@@ -340,19 +348,26 @@ function ClerkVotes({
   voteNet,
   lang,
   compact,
+  upOnly,
   mod,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
   compact?: boolean;
+  upOnly?: boolean;
   mod: NonNullable<ReturnType<typeof useClerkModule>["mod"]>;
 }) {
   const { SignedIn, SignedOut, useAuth } = mod;
   return (
     <>
       <SignedOut>
-        <SignInVotes voteNet={voteNet} lang={lang} compact={compact} />
+        <SignInVotes
+          voteNet={voteNet}
+          lang={lang}
+          compact={compact}
+          upOnly={upOnly}
+        />
       </SignedOut>
       <SignedIn>
         <AuthedVotes
@@ -360,6 +375,7 @@ function ClerkVotes({
           voteNet={voteNet}
           lang={lang}
           compact={compact}
+          upOnly={upOnly}
           useAuth={useAuth}
         />
       </SignedIn>
@@ -372,12 +388,14 @@ function AuthedVotes({
   voteNet,
   lang,
   compact,
+  upOnly,
   useAuth,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
   compact?: boolean;
+  upOnly?: boolean;
   useAuth: () => { getToken: () => Promise<string | null> };
 }) {
   const { getToken } = useAuth();
@@ -387,26 +405,36 @@ function AuthedVotes({
       voteNet={voteNet}
       lang={lang}
       compact={compact}
+      upOnly={upOnly}
       getToken={getToken}
     />
   );
 }
 
-/** Up / down and the net. Signed-out controls link to sign-in and store nothing. */
+/** Up / down and the net (`upOnly`: the dense feed row's Score column, no down arrow). Signed-out controls link to sign-in and store nothing. */
 export function StoryVotes({
   itemId,
   voteNet,
   lang,
   compact,
+  upOnly,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
   compact?: boolean;
+  upOnly?: boolean;
 }) {
   const { mod, publishableKey } = useClerkModule();
   if (!mod || !publishableKey) {
-    return <SignInVotes voteNet={voteNet} lang={lang} compact={compact} />;
+    return (
+      <SignInVotes
+        voteNet={voteNet}
+        lang={lang}
+        compact={compact}
+        upOnly={upOnly}
+      />
+    );
   }
   return (
     <ClerkVotes
@@ -414,6 +442,7 @@ export function StoryVotes({
       voteNet={voteNet}
       lang={lang}
       compact={compact}
+      upOnly={upOnly}
       mod={mod}
     />
   );
