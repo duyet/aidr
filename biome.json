@@ -17,7 +17,8 @@
       "!**/.output",
       "!**/routeTree.gen.ts",
       "!**/public",
-      "!**/src/components/dither-kit/**"
+      "!**/src/components/dither-kit/**",
+      "!**/scripts/how-it-works/kit/**"
     ]
   },
   "formatter": {
