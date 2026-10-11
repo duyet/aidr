@@ -1,9 +1,10 @@
-import { ChevronDown, ChevronUp, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { bearerHeaders, useClerkModule } from "../../lib/clerk-user";
 import { withLang } from "../../lib/locale-url";
 import type { Lang } from "../../lib/types";
 import { castStoryVote, fetchMyVotes } from "../../lib/vote-fn";
+import { SpriteIcon } from "../IconSprite";
 
 type Mine = -1 | 0 | 1;
 
@@ -107,8 +108,12 @@ function VoteIcon({
     const Thumb = direction === "up" ? ThumbsUp : ThumbsDown;
     return <Thumb className="h-4 w-4" aria-hidden />;
   }
-  const Icon = direction === "up" ? ChevronUp : ChevronDown;
-  return <Icon className="h-3 w-3" aria-hidden />;
+  return (
+    <SpriteIcon
+      name={direction === "up" ? "chevron-up" : "chevron-down"}
+      className="h-3 w-3"
+    />
+  );
 }
 
 /** The feed row header is a button. A vote control inside it must not toggle the row. */

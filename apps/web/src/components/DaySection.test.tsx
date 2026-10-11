@@ -49,3 +49,41 @@ describe("day category overflow", () => {
     expect(html).toContain("+1 more");
   });
 });
+
+// The homepage renders at most `limit` rows per day so a busy day does not
+// put ~100 rows of markup in the first HTML. The rest stays one click away.
+describe("day story limit", () => {
+  const many = (n: number): DayGroup => ({
+    ...day,
+    items: Array.from({ length: n }, (_, i) => ({
+      ...item,
+      id: `abcdef12deadbe${String(i).padStart(2, "0")}`,
+    })),
+  });
+
+  it("renders only `limit` rows and a bilingual Load more with the rest", () => {
+    const vi = renderToStaticMarkup(
+      <DaySection day={many(35)} lang="vi" limit={30} />
+    );
+    expect(vi.match(/id="item-/g)).toHaveLength(30);
+    expect(vi).toContain("Xem thêm (5)");
+    const en = renderToStaticMarkup(
+      <DaySection day={many(35)} lang="en" limit={30} />
+    );
+    expect(en).toContain("Load more (5)");
+  });
+
+  it("counts the whole day when the payload carries only part of it", () => {
+    const html = renderToStaticMarkup(
+      <DaySection day={{ ...many(30), totalItems: 78 }} lang="en" limit={30} />
+    );
+    expect(html).toContain("78 stories");
+    expect(html).toContain("Load more (48)");
+  });
+
+  it("shows every row and no button without a limit (date archive)", () => {
+    const html = renderToStaticMarkup(<DaySection day={many(35)} lang="en" />);
+    expect(html.match(/id="item-/g)).toHaveLength(35);
+    expect(html).not.toContain("Load more");
+  });
+});

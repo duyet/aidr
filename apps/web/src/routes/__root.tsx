@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { ClerkRootProvider } from "../components/ClerkRootProvider";
 import { HeaderBar } from "../components/HeaderBar";
+import { IconSprite } from "../components/IconSprite";
 import { NewsFooter } from "../components/NewsFooter";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { PageViewTracker } from "../components/PageViewTracker";
@@ -233,6 +234,7 @@ function RootComponent() {
         <HeadContent />
       </head>
       <body>
+        <IconSprite />
         <LangContext.Provider value={navigationLang}>
           <PrefsContext.Provider value={{ prefs, setPrefs }}>
             <ThemeProvider>

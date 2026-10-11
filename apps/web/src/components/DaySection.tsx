@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { dayArchivePath } from "../lib/day-archive";
 import { formatDayHeading } from "../lib/lang";
 import type { DayGroup, Lang } from "../lib/types";
@@ -9,13 +10,41 @@ export function DaySection({
   lang,
   selectedTag,
   linkToDay = false,
+  limit,
+  onLoadAll,
 }: {
   day: DayGroup;
   lang: Lang;
   selectedTag?: string | null;
   /** Feed pages link each day heading to its /date archive page. */
   linkToDay?: boolean;
+  /** Render at most this many stories until the reader asks for more. */
+  limit?: number;
+  /** Fetch the rest of a day the payload carries only part of
+   * (`day.totalItems`). Resolves false when the fetch failed. */
+  onLoadAll?: (day: DayGroup) => Promise<boolean>;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const total = day.totalItems ?? day.items.length;
+  const visible =
+    limit === undefined || expanded ? day.items : day.items.slice(0, limit);
+  const hidden = total - visible.length;
+  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
+
+  async function loadMore() {
+    if (day.totalItems !== undefined && day.totalItems > day.items.length) {
+      if (!onLoadAll) return;
+      setLoading(true);
+      try {
+        if (!(await onLoadAll(day))) return;
+      } finally {
+        setLoading(false);
+      }
+    }
+    setExpanded(true);
+  }
+
   const counts = Object.entries(day.categoryCounts).sort((a, b) => b[1] - a[1]);
   const shown = counts.slice(0, 7);
   const more = counts.length - shown.length;
@@ -40,8 +69,7 @@ export function DaySection({
           )}
         </h2>
         <span className="text-xs text-muted-foreground">
-          {day.items.length}{" "}
-          {lang === "vi" ? "tin" : day.items.length === 1 ? "story" : "stories"}
+          {total} {lang === "vi" ? "tin" : total === 1 ? "story" : "stories"}
         </span>
         <span className="hidden flex-wrap gap-x-3 text-xs text-muted-foreground md:flex">
           {shown.map(([name, count]) => (
@@ -56,7 +84,7 @@ export function DaySection({
         </span>
       </div>
       <div className="divide-y divide-border/60">
-        {day.items.map((item, i) => (
+        {visible.map((item, i) => (
           <StoryRow
             key={item.id}
             item={item}
@@ -67,6 +95,20 @@ export function DaySection({
           />
         ))}
       </div>
+      {hidden > 0 && (
+        <div className="pt-4 text-center">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={loadMore}
+            className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:border-accent hover:text-accent disabled:opacity-50"
+          >
+            {loading
+              ? t("Loading…", "Đang tải…")
+              : t(`Load more (${hidden})`, `Xem thêm (${hidden})`)}
+          </button>
+        </div>
+      )}
     </section>
   );
 }

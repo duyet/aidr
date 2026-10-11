@@ -12,6 +12,7 @@ import { showFeedBrowseChrome } from "../lib/empty-feed";
 import { setCachedFeed } from "../lib/feed-cache";
 import { fetchFeed } from "../lib/feed-fn";
 import { headRouteInput } from "../lib/head-route";
+import { mergeRefreshedFeed } from "../lib/homepage-feed";
 import { timeAgo } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
 import { withLang } from "../lib/locale-url";
@@ -19,7 +20,7 @@ import { usePrefs } from "../lib/prefs";
 import { homepageHead } from "../lib/seo";
 import { storyPath } from "../lib/slug";
 import { displayTldrBullets } from "../lib/tldr-fallback";
-import type { FeedResponse } from "../lib/types";
+import type { DayGroup, FeedResponse } from "../lib/types";
 
 export interface IndexSearch {
   q?: string;
@@ -96,9 +97,11 @@ function IndexPage() {
     if (loaderFeed) {
       setFeed(loaderFeed);
       setError(false);
-      if (!q) setCachedFeed(loaderFeed, lang);
+      // Not cached for the header typeahead: the loader carries one trimmed
+      // day (shapeHomepageFeed), and the typeahead fetches /api/feed itself
+      // when the cache is empty.
     }
-  }, [loaderFeed, lang, q]);
+  }, [loaderFeed]);
 
   // Client refresh (and first paint when the loader had no D1, e.g. prerender).
   useEffect(() => {
@@ -128,17 +131,7 @@ function IndexPage() {
         .then((res) => (res.ok ? (res.json() as Promise<FeedResponse>) : null))
         .then((res) => {
           if (!cancelled && res) {
-            setFeed((prev) => {
-              if (!prev) return res;
-              const older = prev.days.filter(
-                (d) => !res.days.some((n) => n.date === d.date)
-              );
-              return {
-                ...res,
-                days: [...res.days, ...older],
-                hasMore: prev.hasMore || res.hasMore,
-              };
-            });
+            setFeed((prev) => (prev ? mergeRefreshedFeed(prev, res) : res));
             setCachedFeed(res, lang);
           }
         })
@@ -171,15 +164,17 @@ function IndexPage() {
   const pathByItemId = new Map<string, string>();
   const tagsByItemId = new Map<string, string[]>();
   const imageByItemId = new Map<string, string>();
-  for (const day of feed.days) {
-    for (const item of day.items) {
-      const topic = item.tags[0] ?? item.category;
-      if (topic) topicByItemId.set(item.id, topic);
-      if (item.category) categoryByItemId.set(item.id, item.category);
-      pathByItemId.set(item.id, storyPath(item, lang));
-      if (item.tags.length > 0) tagsByItemId.set(item.id, item.tags);
-      if (item.image_url) imageByItemId.set(item.id, item.image_url);
-    }
+  const linkedItems = [
+    ...feed.days.flatMap((day) => day.items),
+    ...(feed.tldrItems ?? []),
+  ];
+  for (const item of linkedItems) {
+    const topic = item.tags[0] ?? item.category;
+    if (topic) topicByItemId.set(item.id, topic);
+    if (item.category) categoryByItemId.set(item.id, item.category);
+    pathByItemId.set(item.id, storyPath(item, lang));
+    if (item.tags.length > 0) tagsByItemId.set(item.id, item.tags);
+    if (item.image_url) imageByItemId.set(item.id, item.image_url);
   }
 
   const toggleCategory = (name: string) => {
@@ -206,7 +201,8 @@ function IndexPage() {
                   (categoryCounts[item.category] ?? 0) + 1;
               }
             }
-            return { ...day, items, categoryCounts };
+            // A filtered day counts what it shows, not the day's full total.
+            return { ...day, items, categoryCounts, totalItems: undefined };
           })
           .filter((day) => day.items.length > 0);
 
@@ -227,6 +223,17 @@ function IndexPage() {
         totalStories: prev.totalStories + older.totalStories,
       };
     });
+  }
+
+  function replaceDay(full: DayGroup) {
+    setFeed((prev) =>
+      prev
+        ? {
+            ...prev,
+            days: prev.days.map((d) => (d.date === full.date ? full : d)),
+          }
+        : prev
+    );
   }
 
   const brief = !q && prefs.sections.tldr && !prefs.sections.days;
@@ -323,6 +330,7 @@ function IndexPage() {
                   q={q}
                   selectedCategoryCount={selectedCategories.size}
                   onMergeOlder={mergeOlderDays}
+                  onLoadDay={replaceDay}
                 />
               </div>
             );

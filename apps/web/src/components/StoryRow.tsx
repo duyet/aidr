@@ -1,5 +1,5 @@
 import { track } from "@aidr/ui/track";
-import { ExternalLink, TrendingUp } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -15,6 +15,7 @@ import { type TopicColor, topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
 import { CategoryLabel } from "./CategoryLabel";
 import { HighlightedText } from "./HighlightedText";
+import { SpriteIcon } from "./IconSprite";
 import { StoryDetail } from "./StoryDetail";
 import { StoryVotes } from "./story/StoryVotes";
 
@@ -250,7 +251,10 @@ export function StoryRow({
               className="ml-1 text-xs text-muted-foreground hover:text-foreground"
               aria-label="Open story link"
             >
-              <ExternalLink className="inline h-3.5 w-3.5 align-baseline" />
+              <SpriteIcon
+                name="external-link"
+                className="inline h-3.5 w-3.5 align-baseline"
+              />
               {publisherHost(item.url) && (
                 <span className="ml-1 hidden sm:inline">
                   {publisherHost(item.url)}
