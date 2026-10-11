@@ -1,4 +1,7 @@
-import { staleAfterRunsFor } from "../../worker/sources/catalog.js";
+import {
+  FETCH_FAILED_ALERT_RUNS,
+  staleAfterRunsFor,
+} from "../../worker/sources/catalog.js";
 import {
   safeErrorCode,
   safeErrorStatus,
@@ -47,6 +50,8 @@ export interface RunSourceHealth {
   skipReason: SourceSkipReason | "";
   /** Consecutive runs with `fetched === 0`, carried forward by the worker. */
   emptyRuns: number;
+  /** Consecutive runs whose skip reason is `fetch_failed`. */
+  failedRuns: number;
 }
 
 /** A source with no health row in the last run — enabled but not yet fetched
@@ -62,6 +67,10 @@ export interface ObservedSourceHealth extends RunSourceHealth {
   stale: boolean;
   /** Consecutive silent runs this source is allowed before it is flagged. */
   staleAfterRuns: number;
+  /** True when the last `failAfterRuns` runs all failed to fetch. */
+  failing: boolean;
+  /** Consecutive failed fetches allowed before the source is flagged. */
+  failAfterRuns: number;
 }
 
 export type SourceHealthView = ObservedSourceHealth | UnknownSourceHealth;
@@ -89,6 +98,7 @@ export function parseRunSourceHealth(value: unknown): RunSourceHealth | null {
     merged: finiteCount(raw.merged),
     skipReason: reason,
     emptyRuns: finiteCount(raw.emptyRuns),
+    failedRuns: finiteCount(raw.failedRuns),
   };
 }
 
@@ -1234,6 +1244,9 @@ export interface SystemSources {
   health: Record<string, SourceHealthView>;
   /** Ids flagged stale: silent for at least their own threshold of runs. */
   stale: string[];
+  /** Ids flagged failing: every one of the last `FETCH_FAILED_ALERT_RUNS`
+   *  runs failed to fetch. Separate from `stale`, which waits a week. */
+  failing: string[];
   /** Epoch seconds of the run `health` came from, or null when unknown. */
   healthRunAt: number | null;
 }
@@ -1251,9 +1264,14 @@ export interface SystemSources {
 export function mergeSourceHealth(
   sources: IngestSourceRow[],
   stats: WorkflowRunStats | null
-): { health: Record<string, SourceHealthView>; stale: string[] } {
+): {
+  health: Record<string, SourceHealthView>;
+  stale: string[];
+  failing: string[];
+} {
   const health: Record<string, SourceHealthView> = {};
   const stale: string[] = [];
+  const failing: string[] = [];
   const recorded = stats?.sourceHealth;
   for (const source of sources) {
     const raw = recorded?.[source.id];
@@ -1267,8 +1285,11 @@ export function mergeSourceHealth(
         merged: 0,
         skipReason: "disabled",
         emptyRuns: 0,
+        failedRuns: 0,
         stale: false,
         staleAfterRuns: 0,
+        failing: false,
+        failAfterRuns: 0,
       };
       continue;
     }
@@ -1282,6 +1303,7 @@ export function mergeSourceHealth(
         merged: 0,
         skipReason: "",
         emptyRuns: 0,
+        failedRuns: 0,
       };
       continue;
     }
@@ -1296,6 +1318,7 @@ export function mergeSourceHealth(
         merged: 0,
         skipReason: "",
         emptyRuns: 0,
+        failedRuns: 0,
       };
       continue;
     }
@@ -1308,14 +1331,21 @@ export function mergeSourceHealth(
       parsed.skipReason !== "disabled" &&
       parsed.emptyRuns >= threshold;
     if (isStale) stale.push(source.id);
+    const isFailing =
+      source.type !== "push" &&
+      parsed.skipReason !== "disabled" &&
+      parsed.failedRuns >= FETCH_FAILED_ALERT_RUNS;
+    if (isFailing) failing.push(source.id);
     health[source.id] = {
       ...parsed,
       observed: true,
       stale: isStale,
       staleAfterRuns: threshold,
+      failing: isFailing,
+      failAfterRuns: FETCH_FAILED_ALERT_RUNS,
     };
   }
-  return { health, stale };
+  return { health, stale, failing };
 }
 
 /** Per-source stale threshold, read from the source registry so the
@@ -1339,13 +1369,17 @@ export async function loadSystemSources(db: DbReader): Promise<SystemSources> {
     resultRows<Parameters<typeof mapSourceRow>[0]>(sourceRows).map(
       mapSourceRow
     );
-  const { health, stale } = mergeSourceHealth(ingestSources, lastRun?.stats);
+  const { health, stale, failing } = mergeSourceHealth(
+    ingestSources,
+    lastRun?.stats
+  );
   return {
     ingestSources,
     volume: resultRows<NamedCount>(bySource),
     lastRunBySource: lastRun?.stats?.bySource,
     health,
     stale,
+    failing,
     healthRunAt: lastRun?.started_at ?? null,
   };
 }

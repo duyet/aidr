@@ -4,10 +4,14 @@ import {
 } from "../../src/lib/plain-text.js";
 import { stripSourceBoilerplate } from "../translation-terms.js";
 import { anthropicAdapter } from "./anthropic.js";
+import { githubReleasesAdapter } from "./githubreleases.js";
+import { hfModelsAdapter } from "./hfmodels.js";
+import { hfPapersAdapter } from "./hfpapers.js";
 import { hnAdapter } from "./hn.js";
 import { huggingNewsAdapter } from "./huggingnews.js";
 import { lobstersAdapter } from "./lobsters.js";
 import { marketBriefAdapter } from "./marketbrief.js";
+import { openRouterAdapter } from "./openrouter.js";
 import { applyFloodGate, rssAdapter } from "./rss.js";
 import type { FetchedItem, SourceAdapter } from "./types.js";
 import { xaiAdapter } from "./xai.js";
@@ -34,20 +38,22 @@ export function normalizeFetchedItem(item: FetchedItem): FetchedItem {
 function normalized(adapter: SourceAdapter): SourceAdapter {
   return {
     type: adapter.type,
-    async fetchItems(config, sinceEpochSec) {
-      const items = await adapter.fetchItems(config, sinceEpochSec);
+    async fetchItems(config, sinceEpochSec, secrets) {
+      const items = await adapter.fetchItems(config, sinceEpochSec, secrets);
       return items.map(normalizeFetchedItem);
     },
   };
 }
 
 /** `rss` applies its own flood gate; the aggregator adapters read no config
- *  for it, so the shared `maxItems` / `keywordFilter` gate wraps them here. */
+ *  for it, so the shared `maxItems` / `keywordFilter` gate wraps them here.
+ *  `hfpapers` is not wrapped: it caps by upvotes, and this gate re-sorts by
+ *  date. */
 function floodGated(adapter: SourceAdapter): SourceAdapter {
   return {
     type: adapter.type,
-    async fetchItems(config, sinceEpochSec) {
-      const items = await adapter.fetchItems(config, sinceEpochSec);
+    async fetchItems(config, sinceEpochSec, secrets) {
+      const items = await adapter.fetchItems(config, sinceEpochSec, secrets);
       return applyFloodGate(items, config);
     },
   };
@@ -61,4 +67,8 @@ export const adapters: Record<string, SourceAdapter> = {
   anthropic: normalized(anthropicAdapter),
   marketbrief: normalized(floodGated(marketBriefAdapter)),
   xai: normalized(xaiAdapter),
+  githubreleases: normalized(floodGated(githubReleasesAdapter)),
+  hfpapers: normalized(hfPapersAdapter),
+  hfmodels: normalized(floodGated(hfModelsAdapter)),
+  openrouter: normalized(floodGated(openRouterAdapter)),
 };

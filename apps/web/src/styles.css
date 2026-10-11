@@ -36,6 +36,14 @@
   --color-ring: var(--ring);
   --color-brand: var(--brand);
   --color-brand-soft: var(--brand-soft);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-heat-4: var(--heat-4);
+  --color-heat-1-fg: var(--heat-1-fg);
+  --color-heat-2-fg: var(--heat-2-fg);
+  --color-heat-3-fg: var(--heat-3-fg);
+  --color-heat-4-fg: var(--heat-4-fg);
   /* Popover tokens for dither-kit chart tooltips. */
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
@@ -126,6 +134,15 @@
 
   --brand: #f5c518;
   --brand-soft: #fdf6d8;
+  /* Header calendar heat ramp (brand yellow); -fg is the tile number color. */
+  --heat-1: #fbeeb4;
+  --heat-2: #f8dc6a;
+  --heat-3: #f5c518;
+  --heat-4: #c99a06;
+  --heat-1-fg: #0a0a0a;
+  --heat-2-fg: #0a0a0a;
+  --heat-3-fg: #0a0a0a;
+  --heat-4-fg: #0a0a0a;
   --input: #0a0a0a14;
   --chart-1: #f5c518;
   --chart-2: #d97706;
@@ -192,6 +209,14 @@
 
   --brand: #f5c518;
   --brand-soft: #292209;
+  --heat-1: #3a300b;
+  --heat-2: #6b5612;
+  --heat-3: #b8930f;
+  --heat-4: #f5c518;
+  --heat-1-fg: #fafafa;
+  --heat-2-fg: #fafafa;
+  --heat-3-fg: #0a0a0a;
+  --heat-4-fg: #0a0a0a;
 }
 
 @layer base {

@@ -41,11 +41,14 @@ function sourceAlerts(s: SystemSources) {
         health: ObservedSourceHealth;
       } => row.health?.observed === true
     );
-  const stale = rows.filter((row) => row.health.stale);
+  const failing = rows.filter((row) => row.health.failing);
+  const stale = rows.filter((row) => row.health.stale && !row.health.failing);
   const problems = rows
-    .filter((row) => !row.health.stale && row.health.skipReason)
+    .filter(
+      (row) => !row.health.stale && !row.health.failing && row.health.skipReason
+    )
     .sort((a, b) => b.health.emptyRuns - a.health.emptyRuns);
-  return { stale, problems: problems.slice(0, 6) };
+  return { failing, stale, problems: problems.slice(0, 6) };
 }
 
 function SourceHealthCard() {
@@ -58,7 +61,7 @@ function SourceHealthCard() {
     >
       <CardData state={state} skeleton={<Skeleton className="h-20 w-full" />}>
         {(s) => {
-          const { stale, problems } = sourceAlerts(s);
+          const { failing, stale, problems } = sourceAlerts(s);
           const totals = (s.ingestSources ?? []).reduce(
             (acc, source) => {
               const h = s.health?.[source.id];
@@ -79,6 +82,13 @@ function SourceHealthCard() {
                 <span className="font-mono"> {totals.rejected}</span> rejected
                 below the relevance floor.
               </p>
+              {failing.length > 0 ? (
+                <p className="text-destructive">
+                  <span className="font-medium">Failing</span> — every fetch
+                  failed for at least {failing[0].health.failAfterRuns} runs:{" "}
+                  {failing.map((row) => row.source.name).join(", ")}
+                </p>
+              ) : null}
               {stale.length > 0 ? (
                 <p className="text-destructive">
                   <span className="font-medium">Stale</span> — silent for more
@@ -103,7 +113,9 @@ function SourceHealthCard() {
                   ))}
                 </ul>
               ) : null}
-              {stale.length === 0 && problems.length === 0 ? (
+              {failing.length === 0 &&
+              stale.length === 0 &&
+              problems.length === 0 ? (
                 <p>Every configured source delivered or explained itself.</p>
               ) : null}
             </div>

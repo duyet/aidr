@@ -5,10 +5,12 @@ import { fetchSources } from "../ingest/fetch.js";
 import { resolveSkipReasons } from "../ingest/source-health.js";
 import { emptySourceHealth } from "../source-health.js";
 import { anthropicAdapter } from "../sources/anthropic.js";
+import { hfPapersAdapter } from "../sources/hfpapers.js";
 import { hnAdapter } from "../sources/hn.js";
 import { huggingNewsAdapter } from "../sources/huggingnews.js";
 import { lobstersAdapter } from "../sources/lobsters.js";
 import { marketBriefAdapter } from "../sources/marketbrief.js";
+import { openRouterAdapter } from "../sources/openrouter.js";
 import type { SourceAdapter } from "../sources/types.js";
 import { xaiAdapter } from "../sources/xai.js";
 
@@ -48,6 +50,8 @@ const ADAPTERS: readonly (readonly [string, SourceAdapter])[] = [
   ["huggingnews", huggingNewsAdapter],
   ["xai", xaiAdapter],
   ["marketbrief", marketBriefAdapter],
+  ["hfpapers", hfPapersAdapter],
+  ["openrouter", openRouterAdapter],
 ];
 
 describe("non-RSS non-2xx is fetch_failed, not an empty feed", () => {

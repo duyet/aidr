@@ -21,8 +21,21 @@ import {
 } from "../source-diversity.js";
 import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "../time.js";
+import { stripEmbeddedChrome } from "../translation-terms.js";
 import type { Env } from "../types.js";
 import { facebookEnNotifier } from "./facebook.js";
+import {
+  countSuppression,
+  dedupReason,
+  eventKey,
+  postability,
+  type SuppressionCounts,
+} from "./post-quality.js";
+import {
+  digestItemIds,
+  loadPostedEvents,
+  recordDigestItems,
+} from "./posted-events.js";
 import {
   telegramEnNotifier,
   telegramNotifier,
@@ -155,6 +168,11 @@ export interface NotifyChannelReason {
   localHour: number;
   localDate: string;
   digestError?: string;
+  /** Trending candidates this run dropped before sending, by reason
+   *  (`dedup:canonical`, `dedup:event`, `gate:chrome`, `gate:short`,
+   *  `gate:missing`). A candidate that stays blocked is counted again on
+   *  every run that sees it. */
+  suppressed?: SuppressionCounts;
 }
 
 export interface NotifyRunResult {
@@ -340,7 +358,7 @@ export function buildTrendingQuery(
                  ${copy},
                  i.image_url, i.media_manifest, i.category,
                  i.points, i.comments, i.rank_score, i.llm_importance,
-                 i.source_id
+                 i.source_id, i.duplicate_of
           FROM items i
           LEFT JOIN notifications n ON n.item_id = i.id AND n.channel = ?
             AND (n.status IN ('sent', 'ambiguous', 'sending') OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
@@ -500,13 +518,21 @@ async function loadDigest(
     const itemId = primaryItemId(bullet);
     const item = itemId ? items.get(itemId) : undefined;
     return {
-      text: bullet.text,
+      text: stripEmbeddedChrome(bullet.text),
       url: item ? absoluteSiteUrl(storyPath(item), lang) : null,
       ...(bullet.emoji ? { emoji: bullet.emoji } : {}),
       category: item?.category ?? null,
     };
   });
-  return { lang, date: edition.date, bullets: resolved };
+  const citedItemIds = [
+    ...new Set(
+      edition.bullets.flatMap((bullet) => [
+        ...(bullet.item_id ? [bullet.item_id] : []),
+        ...(bullet.item_ids ?? []),
+      ])
+    ),
+  ];
+  return { lang, date: edition.date, bullets: resolved, citedItemIds };
 }
 
 /**
@@ -649,6 +675,7 @@ export async function dispatchStoryNotifications(
   const maxRank = recentRanks.length > 0 ? Math.max(...recentRanks) : null;
 
   const digestByLang = new Map<Lang, DailyDigest | null>();
+  const digestIdsByLang = new Map<Lang, string[]>();
   // Set once a send is refused for lack of subrequests: every later send in
   // this dispatch would be refused too, and each refusal is not a real try.
   let budgetSpent = false;
@@ -662,6 +689,7 @@ export async function dispatchStoryNotifications(
     let digestError: string | undefined;
     let trendingReason: TrendingSkipReason = "none_unposted";
     let budget = 0;
+    const suppressed: SuppressionCounts = {};
 
     // --- 1. Daily TL;DR digest (once per local day) ---
     const existing = await env.DB.prepare(
@@ -688,6 +716,16 @@ export async function dispatchStoryNotifications(
         // Another dispatch claimed it between the read above and now.
         digestReason = "outcome_unknown";
       } else {
+        let shownIds = digestIdsByLang.get(notifier.lang);
+        if (!shownIds) {
+          shownIds = await digestItemIds(
+            env,
+            digest.date,
+            notifier.lang,
+            digest.citedItemIds ?? []
+          );
+          digestIdsByLang.set(notifier.lang, shownIds);
+        }
         const result = await attemptSend(() =>
           notifier.sendDigest(env, digest)
         );
@@ -713,6 +751,9 @@ export async function dispatchStoryNotifications(
           digestReason = "sent";
         }
         await recordDelivery(env, notifier.id, target, key, result);
+        if (result.ok || result.ambiguous) {
+          await recordDigestItems(env, notifier.id, digest.date, shownIds);
+        }
         if (result.ok) sent[notifier.id]++;
       }
     }
@@ -758,22 +799,55 @@ export async function dispatchStoryNotifications(
           Omit<StoryRow, "title" | "summary" | "lang"> &
             ChannelCopyRow & {
               source_id: string;
+              duplicate_of: string | null;
             }
         >();
       const today = buildTrendingSourcesTodayQuery(notifier.id, dayStartMs);
       const { results: sentToday } = await env.DB.prepare(today.sql)
         .bind(...today.binds)
         .all<{ source_id: string; n: number }>();
-      const candidates = pickDiverse(
-        (results ?? [])
-          .map((row) => channelCopy(row, notifier.lang))
-          .filter((row) => row !== null),
-        {
-          limit: TRENDING_MAX_PER_DAY,
-          maxPerFamily: TRENDING_MAX_PER_FAMILY,
-          initialCounts: familyCounts(sentToday ?? []),
+
+      // Drop what must not post before the diversity pick, so a rejected
+      // candidate frees its slot for the next one instead of leaving the
+      // run with nothing.
+      const postable = (results ?? []).flatMap((row) => {
+        const sourceTitle = row.source_title;
+        const copy = channelCopy(row, notifier.lang);
+        if (!copy) return [];
+        const gate = postability(copy);
+        if (!gate.ok) {
+          countSuppression(suppressed, `gate:${gate.reason}`);
+          return [];
         }
-      ).map(({ source_id: _sourceId, ...row }) => hydrateStory(row));
+        return [{ copy, source_id: copy.source_id, sourceTitle }];
+      });
+      let fresh = postable;
+      if (postable.length > 0) {
+        const posted = await loadPostedEvents(env, notifier.id, now, [
+          date,
+          getLocalHourAndDate(now - 24 * 60 * 60 * 1000, DIGEST_TIMEZONE).date,
+        ]);
+        fresh = postable.filter(({ copy, sourceTitle }) => {
+          const reason = dedupReason(
+            {
+              itemId: copy.id,
+              canonicalId: copy.duplicate_of ?? copy.id,
+              eventKey: eventKey(sourceTitle),
+            },
+            posted
+          );
+          if (reason) countSuppression(suppressed, `dedup:${reason}`);
+          return reason === null;
+        });
+      }
+      const candidates = pickDiverse(fresh, {
+        limit: TRENDING_MAX_PER_DAY,
+        maxPerFamily: TRENDING_MAX_PER_FAMILY,
+        initialCounts: familyCounts(sentToday ?? []),
+      }).map(({ copy }) => {
+        const { source_id: _sourceId, duplicate_of: _dup, ...row } = copy;
+        return hydrateStory(row);
+      });
       const afterQuery = classifyTrendingSkip(
         maxRank,
         budget,
@@ -831,6 +905,7 @@ export async function dispatchStoryNotifications(
       localHour: hour,
       localDate: date,
       digestError,
+      suppressed,
     };
   }
 
@@ -895,6 +970,19 @@ export async function forceSendDigest(
       };
     }
     await recordDelivery(env, notifier.id, target, key, result);
+    if (result.ok || result.ambiguous) {
+      await recordDigestItems(
+        env,
+        notifier.id,
+        digest.date,
+        await digestItemIds(
+          env,
+          digest.date,
+          notifier.lang,
+          digest.citedItemIds ?? []
+        )
+      );
+    }
     if (result.ok) sent++;
     else return { sent, reason: result.error ?? "send failed" };
   }

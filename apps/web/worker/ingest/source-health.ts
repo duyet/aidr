@@ -2,9 +2,10 @@ import type { MergePlan } from "../dedupe.js";
 import {
   carrySourceEmptyRuns,
   emptySourceHealth,
-  parsePreviousEmptyRuns,
+  parsePreviousStreaks,
   resolveSkipReason,
   type SourceRunHealth,
+  type SourceStreaks,
 } from "../source-health.js";
 import {
   NOT_DRY_RUN_SQL,
@@ -58,22 +59,22 @@ export function resolveSkipReasons(
   }
 }
 
-/** The previous run stored full per-source records; only the `emptyRuns`
- * streak is carried forward, so rehydrate just that field rather than
- * trusting the rest of a JSON column written by an older build. */
+/** The previous run stored full per-source records; only the two streaks are
+ * carried forward, so rehydrate just those fields rather than trusting the
+ * rest of a JSON column written by an older build. */
 export function previousHealthFromStreaks(
-  previousEmptyRuns: Record<string, number>
+  previousStreaks: Record<string, SourceStreaks>
 ): Record<string, SourceRunHealth> {
   return Object.fromEntries(
-    Object.entries(previousEmptyRuns).map(([id, emptyRuns]) => [
+    Object.entries(previousStreaks).map(([id, streaks]) => [
       id,
-      { ...emptySourceHealth(), emptyRuns },
+      { ...emptySourceHealth(), ...streaks },
     ])
   );
 }
 
 /**
- * Carry the empty-run streaks forward from the previous run's stats instead
+ * Carry the empty-run and fetch-failure streaks forward from the previous run's stats instead
  * of scanning run history, so surfacing "stale" on the read path stays a
  * single-row read no matter how long a feed has been dead. Inside a step so
  * a Workflow replay returns the memoized result rather than incrementing the
@@ -85,10 +86,10 @@ export async function carrySourceStreaks(
   sources: readonly SourceRow[]
 ): Promise<void> {
   const { step, env, runId } = ctx;
-  const previousEmptyRuns = await safeStep(
+  const previousStreaks = await safeStep(
     step,
     "carry-source-streaks",
-    {} as Record<string, number>,
+    {} as Record<string, SourceStreaks>,
     async () => {
       const { results } = await env.DB.prepare(
         `SELECT stats FROM workflow_runs
@@ -99,7 +100,7 @@ export async function carrySourceStreaks(
       )
         .bind(runId)
         .all<{ stats: string | null }>();
-      return parsePreviousEmptyRuns(results?.[0]?.stats ?? null);
+      return parsePreviousStreaks(results?.[0]?.stats ?? null);
     }
   );
   // `load-sources` already read `type` for every row, so the push ids come
@@ -113,7 +114,7 @@ export async function carrySourceStreaks(
     sourceHealth,
     carrySourceEmptyRuns(
       sourceHealth,
-      previousHealthFromStreaks(previousEmptyRuns),
+      previousHealthFromStreaks(previousStreaks),
       pushIds
     )
   );

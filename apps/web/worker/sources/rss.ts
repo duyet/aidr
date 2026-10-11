@@ -5,6 +5,7 @@ import {
   type MediaCandidate,
   primaryThumbnailUrl,
 } from "../media.js";
+import { parseFeedDate, parseUtcOffset } from "./feed-date.js";
 import { KEYWORD_FILTERS } from "./keywords.js";
 import type { FetchedItem, SourceAdapter, SourceLanguage } from "./types.js";
 
@@ -143,7 +144,7 @@ const RSS_SUMMARY_MAX_CHARS = 1200;
 /** Clip on a sentence inside 1200 characters. A hard cut ends with `…`
  * so a mid-sentence feed description is visible to the missing-summary
  * query (LIKE '%…'). A raw slice is not. */
-function clipFeedSummary(text: string): string {
+export function clipFeedSummary(text: string): string {
   if (text.length <= RSS_SUMMARY_MAX_CHARS) return text;
   const slice = text.slice(0, RSS_SUMMARY_MAX_CHARS);
   const trimmed = slice.trimEnd();
@@ -323,7 +324,10 @@ export function resetRssHostQueues(): void {
   hostLastStart.clear();
 }
 
-export function parseRssItems(xml: string): FetchedItem[] {
+export function parseRssItems(
+  xml: string,
+  options: { utcOffsetMinutes?: number | null } = {}
+): FetchedItem[] {
   const chunks =
     xml.match(/<(?:item|entry)\b[\s\S]*?<\/(?:item|entry)>/gi) ?? [];
   const items: FetchedItem[] = [];
@@ -339,7 +343,9 @@ export function parseRssItems(xml: string): FetchedItem[] {
       tagText(chunk, "pubDate") ??
       tagText(chunk, "published") ??
       tagText(chunk, "updated");
-    const publishedMs = pub ? Date.parse(pub) : Number.NaN;
+    const publishedMs = pub
+      ? parseFeedDate(pub, options.utcOffsetMinutes)
+      : Number.NaN;
     const publishedAt = Number.isFinite(publishedMs) ? publishedMs : Number.NaN;
     const rawSummary =
       tagText(chunk, "description") ?? tagText(chunk, "summary");
@@ -382,6 +388,8 @@ export function parseRssItems(xml: string): FetchedItem[] {
  *   diacritics, per ALGORITHM.md § Translate.
  * - `maxItems` / `keywordFilter` — the flood gate, see `applyFloodGate`.
  * - `minRequestIntervalMs` — per-host pacing, see `pacedFetch`.
+ * - `timezone` — a fixed UTC offset (`"+07:00"`) for feeds whose dates carry
+ *   no zone, see `parseFeedDate`. A date that has a zone is never shifted.
  */
 export const rssAdapter: SourceAdapter = {
   type: "rss",
@@ -425,7 +433,9 @@ export const rssAdapter: SourceAdapter = {
       );
     }
     const sinceMs = sinceEpochSec * 1000;
-    const inWindow = parseRssItems(xml).filter(
+    const inWindow = parseRssItems(xml, {
+      utcOffsetMinutes: parseUtcOffset(config.timezone),
+    }).filter(
       (item) => Number.isFinite(item.publishedAt) && item.publishedAt >= sinceMs
     );
     const sourceLang = sourceLangOf(config);

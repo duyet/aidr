@@ -183,7 +183,8 @@ describe("notifications delivery idempotency", () => {
           llm_importance INTEGER, status TEXT, published_at INTEGER,
           source_id TEXT, source_lang TEXT,
           source_revision INTEGER NOT NULL DEFAULT 0,
-          summary_en TEXT, summary_en_revision INTEGER
+          summary_en TEXT, summary_en_revision INTEGER,
+          duplicate_of TEXT
         );
         CREATE TABLE translations (
           item_id TEXT, lang TEXT, title TEXT, summary TEXT

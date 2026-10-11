@@ -277,7 +277,62 @@ plus lab/vendor blogs and newsletters added in migration 0044 (`mistral`,
 `nvidia-blog`, `nvidia-dev`, `microsoft-research`, `apple-ml`,
 `together-ai`, `github-ai`, `latent-space`, `interconnects`, `import-ai`,
 `bens-bites`, `ahead-of-ai`; broad feeds use `keywordFilter: "ai"`, each
-has a 2–4 `maxItems` cap).
+has a 2–4 `maxItems` cap). Migration 0057 (2026-10-11) disables the sources
+that refuse Workers egress and adds the probation sources in the table below.
+
+#### Source table (migration 0057 changes)
+
+| id | adapter | family | state | decision |
+| --- | --- | --- | --- | --- |
+| `reddit-ml`, `reddit-localllama`, `reddit-singularity` | `rss` | `reddit` | disabled | Reddit refuses Workers egress: `fetch_failed` on all 135+ runs, 0 items. |
+| `xai` | `xai` | n/a | disabled | x.ai answers the Worker with HTTP 403: 517 runs, 0 items. |
+| `ahead-of-ai` | `rss` | n/a | disabled | 0 items in 409 runs. The feed is alive (newest post 2026-09-29, one every two to three weeks), so this is a quiet-feed call. |
+| `arstechnica-ai` | `rss` | n/a | enabled | Re-pointed to `feeds.arstechnica.com/arstechnica/technology-lab` with `keywordFilter: "ai"`; the old URL failed on 517 runs. 7 of 20 titles pass the filter. |
+| `mistral` | `rss` | n/a | unchanged | No code bug. The feed parses (89 items); its only post since seeding, Mistral Large 4, was already stored from `docs.mistral.ai`. |
+| `release-ollama`, `release-vllm`, `release-transformers`, `release-codex` | `githubreleases` | `oss-release` | probation, 1 per run | GitHub REST API, `x.y.0` tags only. |
+| `hf-papers` | `hfpapers` | `hf` | probation, 2 per run | Daily papers, top by upvotes; upvotes are not engagement. |
+| `openrouter-models` | `openrouter` | `openrouter` | probation, 2 per run | Models with `created` inside the since-window; `:variant` ids skipped. |
+| `hf-models-qwen`, `-deepseek`, `-moonshotai`, `-zai-org`, `-mistralai` | `hfmodels` | `hf-models` | probation, 2 per run | New release repos of one organization; quantized, adapter, SAE, draft and conversion repos skipped. |
+| `ai2` | `rss` | n/a | probation, official | `allenai.org/rss.xml`. |
+| `genk-ai` | `rss` (`sourceLang: "vi"`, `timezone: "+07:00"`) | `vi-press` | probation, 2 per run | Second Vietnamese row, so the VI→EN path runs again while `vnexpress-tech` is off. |
+
+Decisions behind the table:
+
+- **GitHub releases use the API, not `releases.atom`.** `github.com/robots.txt`
+  disallows `/*.atom$` for `User-agent: *`, and no source may fetch what a
+  robots.txt disallows. `api.github.com` serves no robots.txt. Titles are
+  `"<project> <tag>"` (a bare tag gives the scorer nothing); the body is the
+  summary. llama.cpp is not added (its tags are build numbers such as
+  `b11552`, so no minor release can be told apart) and neither is Claude Code
+  (`2.1.N`, a minor bump almost never happens).
+- **Shared hosts.** `sourceSpecForUrl` maps a link to the registry row whose
+  `homepage` or `feed` host serves it. The github, huggingface and openrouter
+  rows therefore carry no `feed` or `homepage` (they use `repo`, `author`),
+  and none is `official`; an HN link to any github.com page keeps `hn`.
+- **OpenRouter keeps no cursor.** Adapters get only `(config, sinceEpochSec)`
+  and none persists state, so "new since the last run" is `created` inside the
+  26h since-window; a model seen on a previous run has the same URL and
+  ingest drops it as already stored.
+- **Timezone.** `timezone` is a fixed UTC offset applied only to a date that
+  has no zone; `Date.parse` is never used for those, because it reads the host
+  timezone. GenK's live feed already says `+07`, so the key is a guard.
+
+#### Probation
+
+A new source starts with `probation: true` in the catalog. The rule, held by
+`worker/__tests__/source-catalog.test.ts`:
+
+- at most 2 items per run (1 for the `oss-release` family);
+- no `engagement: "reader"`, and no `points` or `comments` from the adapter;
+- `official` only for a first-party feed on its own host (it makes a row the
+  canonical over aggregator rewrites, so a shared-host row never gets it);
+- a `family` for related feeds, so they count once in `sourceCount` and in
+  `pickDiverse`.
+
+A probation source graduates by deleting the flag, once it has delivered
+accepted stories on its own for two weeks (`/api/system/sources`:
+`accepted` against `fetched`). A source that is `failing` or `stale` in that
+time is disabled instead.
 
 The set of sources is **declarative**: one list in
 `worker/sources/catalog.ts` generates the runtime seed, the migration, and
@@ -360,6 +415,19 @@ the registry yet — see `ARXIV_NOT_ADDED_REASON` in
 `worker/sources/catalog.ts`. A disabled source is reported `disabled`,
 never `stale` — off is a decision, not a fault. This is observability
 only: it changes no ranking, no prompt, and no LLM budget.
+
+A second, shorter alarm covers broken fetches. `sourceHealth.failedRuns`
+counts consecutive runs whose skip reason is `fetch_failed` (carried forward
+like `emptyRuns`, reset by any other outcome). At **48 consecutive runs** (one
+day; `FETCH_FAILED_ALERT_RUNS` in `worker/sources/catalog.ts`) the source is
+listed in `failing` beside `stale` in `/api/system/sources`, flagged `failing`
+in the `/data` sources table, and called out first in the Algo tab. The
+336-run empty threshold missed this: a failed fetch is also an empty run, but
+five sources sat at `fetch_failed` for 135 to 517 runs, so `xai` and
+`arstechnica-ai` were flagged only after 336 runs and `reddit-*` never. A
+quiet feed never sets `failedRuns`. Disabled and `push`
+rows are exempt. Runs written before the field existed count from 0, so the
+alarm arms about a day after the deploy.
 
 ### 2. Dedupe
 
@@ -916,6 +984,63 @@ deliberately non-spammy.
   daily cap and gap do the limiting; 0.995 with a floor of 6 left the
   channels silent once the rank scale fell to a 3–8 max (2026-10-02). The
   floor keeps a dead window's weakest stories from posting.
+- *Trending never repeats an event and never posts junk copy*
+  (`worker/notify/post-quality.ts`, `posted-events.ts`). Both checks run on
+  the full candidate query result, before `pickDiverse`, so a rejected story
+  frees its slot for the next one instead of costing the run its post.
+  - **Postability gate** (`postability(story)`, pure): the channel-language
+    summary is rejected when it is missing (`gate:missing`, a title-only
+    post), carries source chrome anywhere (`gate:chrome`: "Back to live
+    feed", "N stories across N day", "Skip to content", "View the full
+    context on <outlet>", the patterns `stripSourceBoilerplate` strips, plus a
+    "5 min read" opener), or is under 80 characters (`gate:short`, which
+    catches the "From <outlet>." stub). Digest lines get the other half: the
+    day card's summary clause and the snapshot bullet text pass through
+    `stripEmbeddedChrome`, so chrome that reaches a stored summary never
+    becomes a digest clause.
+  - **Cross-post dedup**: each `PostedEvent` is
+    `{channelGroup, itemId, canonicalId, eventKey, postedAt, kind}`. The
+    channel's events are its trending posts in the last 48 hours (statuses
+    `sent`, `ambiguous`, `sending`) plus every story its digest carried on the
+    current and previous local dates. `canonicalId` is the `duplicate_of`
+    chain root. A candidate is dropped when its root matches a posted root
+    (`dedup:canonical`), or when its event key matches (`dedup:event`):
+    source-title token Jaccard of at least 0.2 with at least 3 shared tokens
+    (`significantTitleTokens`, the merge step's tokenizer) and at least two
+    shared named entities (names from `extractProtectedTerms`, plus a short
+    org list, minus filler like "AI"; a name found in either title counts
+    once the other title contains it, because a Title Case headline hides its
+    own names from the extractor). 0.2 sits between the 2026-10-08..11
+    audit's same-event pairs (0.21 Nvidia/Reflection across outlets, 0.35
+    TypeSafe) and its different-story pairs sharing an entity (0.03 to
+    0.10). Two shared names and three shared tokens are there because the
+    ratio alone matches different deals by one company: "Nvidia signs AI chip
+    deal with Saudi Arabia's Humain" vs "Nvidia Negotiates $25B Reflection AI
+    Deal" scores 0.23 on Nvidia, AI and "deal", and short pairs like "Nvidia
+    launches Rubin GPU" / "Nvidia stock falls on Rubin delay" clear 0.2 on two
+    words. No LLM call.
+  - **Not in v1**: a repost for a material update (a changed number, a new
+    development) is never allowed, because telling an update from a rewrite
+    needs more than a title compare and a wrong "update" is a duplicate post.
+    Two stories about one event with no shared title words ("OpenAI defends
+    firing three safety researchers" and "Fired OpenAI staff dispute
+    misconduct charges", 0.09) still both post. Vietnamese-source titles
+    (VnExpress) only match Vietnamese titles, since the key is the source
+    title.
+  - **What the digest showed**: `notify_digest_items` (migration 0057) holds
+    the story ids of each digest, written when it sends: the day card's
+    stories (what the caption lists), else every id the snapshot's bullets
+    cite. The TL;DR snapshot cannot stand in, because it is rewritten every
+    run and by trending time cites the very stories trending would post.
+    Apply 0057 before deploying; without the table digest dedup is off and the
+    Worker logs it. A channel with no digest row for the date (failed, not yet
+    sent) contributes no digest events.
+  - **Recorded**: `workflow_runs.stats.notifyReason.<channel>.suppressed` is a
+    count per reason (`dedup:canonical`, `dedup:event`, `gate:chrome`,
+    `gate:short`, `gate:missing`) for the candidates that run dropped. A
+    blocked candidate is re-judged and re-counted every run until it ages out
+    of the 24h window. The `notify` step line stays unchanged (240-character
+    cap).
 - *Why this ranks* (story page, "Chi tiết bài viết" aside): `GET /api/story/{id}?ranking=1`
   adds `ranking` from `worker/notify/story-ranking.ts`: UTC-day rank,
   `rank_score`, importance, the live bar (same `trendingRankBar`), and per

@@ -700,6 +700,7 @@ describe("loadSystemSources", () => {
         merged: 0,
         skipReason: "",
         emptyRuns: 0,
+        failedRuns: 0,
       },
       blog: {
         observed: true,
@@ -710,11 +711,15 @@ describe("loadSystemSources", () => {
         merged: 0,
         skipReason: "disabled",
         emptyRuns: 0,
+        failedRuns: 0,
         stale: false,
         staleAfterRuns: 0,
+        failing: false,
+        failAfterRuns: 0,
       },
     });
     expect(s.stale).toEqual([]);
+    expect(s.failing).toEqual([]);
     expect(s.healthRunAt).toBe(RUN_ROW.started_at);
     expect(batches).toHaveLength(1);
     expect(batches[0]).toHaveLength(3);

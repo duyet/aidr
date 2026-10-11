@@ -3,16 +3,21 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SOURCE_SKIP_REASONS as READ_MODEL_SKIP_REASONS } from "../../src/lib/system-queries.js";
+import { sourceFamily } from "../source-diversity.js";
 import { SOURCE_SKIP_REASONS } from "../source-health.js";
 import {
   ARXIV_NOT_ADDED_REASON,
   buildSourceMigrationSql,
   buildSourceSeedSql,
   DEFAULT_STALE_AFTER_RUNS,
+  effectiveSourceSpec,
   mergeRegistryRows,
+  officialSourceFor,
+  PROBATION_MAX_ITEMS,
   parseSourceInsertRows,
   registrySourceIds,
   SOURCE_REGISTRY,
+  sourceSpecForUrl,
   staleAfterRunsFor,
 } from "../sources/catalog.js";
 import { adapters } from "../sources/registry.js";
@@ -146,6 +151,110 @@ describe("declarative source registry", () => {
   });
 });
 
+describe("source refresh 0057", () => {
+  const byId = (id: string) => SOURCE_REGISTRY.find((s) => s.id === id);
+
+  it("holds every probation row to the probation rule", () => {
+    const probation = SOURCE_REGISTRY.filter((s) => s.probation);
+    expect(probation.length).toBeGreaterThan(0);
+    for (const spec of probation) {
+      const maxItems = spec.config.maxItems as number;
+      expect(maxItems, `${spec.id} maxItems`).toBeGreaterThan(0);
+      expect(maxItems, `${spec.id} maxItems`).toBeLessThanOrEqual(
+        spec.family === "oss-release" ? 1 : PROBATION_MAX_ITEMS
+      );
+      expect(spec.engagement ?? "none", `${spec.id} engagement`).toBe("none");
+      // Official means the organization's own newsroom on its own host.
+      if (spec.official?.length) {
+        expect(spec.config.feed, `${spec.id} official needs a feed`).toBeTypeOf(
+          "string"
+        );
+        expect(
+          spec.config.homepage,
+          `${spec.id} official needs a homepage`
+        ).toBeTypeOf("string");
+      }
+    }
+  });
+
+  it("puts related feeds in one family so they count once", () => {
+    const familyOf = (id: string) => byId(id)?.family;
+    expect(
+      ["ollama", "vllm", "transformers", "codex"].map((n) =>
+        familyOf(`release-${n}`)
+      )
+    ).toEqual(["oss-release", "oss-release", "oss-release", "oss-release"]);
+    expect(familyOf("hf-papers")).toBe("hf");
+    expect(familyOf("openrouter-models")).toBe("openrouter");
+    expect(
+      SOURCE_REGISTRY.filter((s) => s.id.startsWith("hf-models-")).map(
+        (s) => s.family
+      )
+    ).toEqual(Array(5).fill("hf-models"));
+    expect(familyOf("genk-ai")).toBe("vi-press");
+    expect(sourceFamily("release-ollama")).toBe("oss-release");
+    expect(sourceFamily("release-vllm")).toBe(sourceFamily("release-codex"));
+  });
+
+  it("gives shared-host rows no feed or homepage, so they claim no foreign link", () => {
+    const shared = SOURCE_REGISTRY.filter((s) =>
+      ["githubreleases", "hfpapers", "hfmodels", "openrouter"].includes(s.type)
+    );
+    expect(shared.length).toBe(11);
+    for (const spec of shared) {
+      expect(spec.config.feed, spec.id).toBeUndefined();
+      expect(spec.config.homepage, spec.id).toBeUndefined();
+      expect(spec.official, spec.id).toBeUndefined();
+    }
+    // An HN or user link to any github.com / huggingface.co page keeps the
+    // source it came in with instead of landing in oss-release or hf-models.
+    expect(
+      effectiveSourceSpec("hn", "https://github.com/random/repo")?.id
+    ).toBe("hn");
+    expect(sourceSpecForUrl("https://github.com/random/repo")).toBeUndefined();
+    expect(
+      sourceSpecForUrl("https://huggingface.co/Qwen/Qwen3.8-27B")?.id
+    ).toBe("hf-blog");
+    expect(
+      officialSourceFor("hn", "https://github.com/ollama/ollama/releases")
+    ).toBeUndefined();
+    expect(sourceSpecForUrl("https://allenai.org/blog/x")?.id).toBe("ai2");
+    expect(officialSourceFor("hn", "https://allenai.org/blog/x")?.id).toBe(
+      "ai2"
+    );
+  });
+
+  it("disables the sources that refuse Workers egress and says why", () => {
+    for (const id of [
+      "reddit-ml",
+      "reddit-localllama",
+      "reddit-singularity",
+      "xai",
+      "ahead-of-ai",
+    ]) {
+      const spec = byId(id);
+      expect(spec?.enabled, id).toBe(false);
+      expect(spec?.note, id).toMatch(/Disabled in 0057/);
+    }
+  });
+
+  it("points Ars Technica at the technology-lab feed behind the AI title filter", () => {
+    const ars = byId("arstechnica-ai");
+    expect(ars?.enabled).toBe(true);
+    expect(ars?.config.feed).toBe(
+      "https://feeds.arstechnica.com/arstechnica/technology-lab"
+    );
+    expect(ars?.config.keywordFilter).toBe("ai");
+  });
+
+  it("declares GenK AI as a Vietnamese row with an explicit UTC+7", () => {
+    const genk = byId("genk-ai");
+    expect(genk?.config.sourceLang).toBe("vi");
+    expect(genk?.config.timezone).toBe("+07:00");
+    expect(genk?.enabled).toBe(true);
+  });
+});
+
 describe("registry / seed SQL / migration agreement", () => {
   it("the checked-in migration is exactly what the registry generates", () => {
     expect(migrationSql).toBe(
@@ -153,7 +262,7 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("0027, 0030, 0032, 0036, 0043, 0044 and 0051 applied in order list exactly the registry rows", () => {
+  it("0027, 0030, 0032, 0036, 0043, 0044, 0051 and 0057 applied in order list exactly the registry rows", () => {
     const read = (name: string) =>
       readFileSync(resolve(dirname(MIGRATION_PATH), name), "utf8");
     const arxivSql = read("0030_arxiv_source.sql");
@@ -162,15 +271,18 @@ describe("registry / seed SQL / migration agreement", () => {
     const hnScopeSql = read("0043_hn_model_scope.sql");
     const aiSourcesSql = read("0044_ai_sources_and_aggregator_caps.sql");
     const socialSql = read("0051_social_trending_sources.sql");
+    const refreshSql = read("0058_source_refresh.sql");
     // A later migration replaces the earlier row with the same id; a later
     // `UPDATE sources SET enabled = 0` is a disable, not a row, so it is
     // applied to the merged rows by hand.
     const disabledIds = new Set(
-      [
-        ...socialSql.matchAll(
-          /UPDATE sources SET enabled = 0 WHERE id = '([a-z0-9-]+)'/gi
-        ),
-      ].map((m) => m[1])
+      [socialSql, refreshSql].flatMap((sql) =>
+        [
+          ...sql.matchAll(
+            /UPDATE sources SET enabled = 0 WHERE id = '([a-z0-9-]+)'/gi
+          ),
+        ].map((m) => m[1])
+      )
     );
     const applied = mergeRegistryRows(
       parseSourceInsertRows(migrationSql),
@@ -179,7 +291,8 @@ describe("registry / seed SQL / migration agreement", () => {
       parseSourceInsertRows(cloudflareSql),
       parseSourceInsertRows(hnScopeSql),
       parseSourceInsertRows(aiSourcesSql),
-      parseSourceInsertRows(socialSql)
+      parseSourceInsertRows(socialSql),
+      parseSourceInsertRows(refreshSql)
     ).map((row) =>
       disabledIds.has(row.id) ? { ...row, enabled: false } : row
     );
@@ -191,6 +304,7 @@ describe("registry / seed SQL / migration agreement", () => {
       cloudflareSql,
       aiSourcesSql,
       socialSql,
+      refreshSql,
     ]) {
       expect(sql).toContain("ON CONFLICT(id) DO UPDATE SET");
       expect(sql).not.toContain("enabled = excluded.enabled");

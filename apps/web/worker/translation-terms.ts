@@ -384,6 +384,21 @@ function nameCandidates(title: string, summary: string): string[] {
   });
 }
 
+/** Chrome specific enough to strip wherever it sits. The bare "Back to top"
+ * leading form is not here: it reads as article text mid-sentence. */
+const CHROME_ANYWHERE = [
+  // "← Back to live feed", the aggregator's own label, or an arrowed link
+  "[←‹«]?\\s*Back to (?:the )?live feed",
+  "[←‹«]\\s*Back to (?:the |all )?(?:stories|news|articles|home|homepage)",
+  // "1 stories across 1 day" (a bare "3 stories" can be article text)
+  "\\d+\\s+stor(?:y|ies)\\s+across\\s+\\d+\\s+days?",
+  "Skip to (?:main )?content",
+  // "From Bloomberg. View the full context on Techmeme."
+  "View the full context on [A-Z][\\w.]*(?: [A-Z][\\w.]*){0,2}\\.?",
+];
+
+const CHROME_SEPARATOR = "\\s*[·•|:—–-]?\\s*";
+
 /** One leading page-chrome segment: a back/breadcrumb link, a story or
  * reading-time counter, or a skip link. Aggregator pages (huggingnews,
  * marketbrief) put these before the story body, and og/<p> extraction picks
@@ -392,14 +407,35 @@ const LEADING_CHROME_RE = new RegExp(
   `^\\s*(?:${[
     // "← Back to live feed", "Back to all stories", "‹ Back to news"
     "[←‹«<]?\\s*Back to (?:the )?(?:[\\w-]+ ){0,2}(?:feed|news|stories|articles|home|homepage|list|index|top)\\b",
-    // "1 stories across 1 day" (a bare "3 stories" can be article text)
-    "\\d+\\s+stor(?:y|ies)\\s+across\\s+\\d+\\s+days?",
+    ...CHROME_ANYWHERE,
     // "5 min read", "3 minute read"
     "\\d+\\s*min(?:ute)?s?\\s+read",
-    "Skip to (?:main )?content",
-  ].join("|")})\\s*[·•|:—–-]?\\s*`,
+  ].join("|")})${CHROME_SEPARATOR}`,
   "i"
 );
+
+const EMBEDDED_CHROME_RE = new RegExp(
+  `(?:${CHROME_ANYWHERE.join("|")})${CHROME_SEPARATOR}`,
+  "gi"
+);
+
+/** True when the text carries page chrome at its start or anywhere inside. */
+export function hasSourceChrome(text: string): boolean {
+  return (
+    LEADING_CHROME_RE.test(text) ||
+    new RegExp(EMBEDDED_CHROME_RE.source, "i").test(text)
+  );
+}
+
+/** Removes page chrome wherever it sits. A digest line is a headline plus a
+ * summary clause, so chrome lands mid-line, not at the start where
+ * `stripSourceBoilerplate` looks. */
+export function stripEmbeddedChrome(text: string): string {
+  return stripSourceBoilerplate(text)
+    .replace(EMBEDDED_CHROME_RE, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
 
 /** Strips every leading chrome segment, however many are chained. */
 function stripLeadingChrome(text: string): string {
