@@ -80,9 +80,9 @@ Do not POST unauthenticated spam.
 
 ## Ranking (do not reimplement)
 
-rank_score = importance × (0.6 + 0.4·quality/10) × exp(−ageHours/36) × (1 + log10(1 + points + voteNet + 0.5·comments)) × (1 + 0.12·min(sourceCount, 8))
+rank_score = importance^1.5/√10 × (0.6 + 0.4·quality/10) × exp(−ageHours/36) (steeper after 24h) × min((1 + log10(1 + points + 0.5·comments)) × (1 + 0.12·(min(sourceCount, 8) − 1)), 3.25) × (1 + 0.2·min(voteNet, 6)) × a fading boost for importance ≥ 8 in the first hours
 
-voteNet is the sum of signed-in reader votes on that story. A negative net lowers the score through the same log.
+voteNet is the sum of signed-in reader votes on that story. Each net vote is ×1.2, up to six; a negative net divides by the same amount.
 `;
 
 export const AUTH_MD = `# auth.md

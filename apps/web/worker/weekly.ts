@@ -23,7 +23,7 @@ import {
   TRANSLATE_FIRST_TOKEN_MS,
   VI_STYLE,
 } from "./llm.js";
-import { rankScore } from "./ranking.js";
+import { rankScoreWithoutBreaking } from "./ranking.js";
 import { pickDiverse } from "./source-diversity.js";
 import { looksVietnamese } from "./tldr-lang.js";
 import { viSystemPrompt } from "./translation-knowledge.js";
@@ -98,11 +98,11 @@ export interface WeeklyEdition {
  * Week-level importance without time decay. Stored `rank_score` decays with
  * age (36h) and freezes 72h after publish, so on a Monday build a Sunday
  * story would outrank Monday's lead on age alone. This uses the same inputs
- * as `rankScore` at age zero, then rewards days spent in a daily edition:
+ * as `rankScore` at age zero (minus the breaking boost), then rewards days spent in a daily edition:
  * the editors' (LLM's) pick on the day is the strongest signal we have.
  */
 export function weeklyScore(c: WeeklyCandidate): number {
-  const base = rankScore({
+  const base = rankScoreWithoutBreaking({
     importance: c.importance ?? 0,
     quality: c.quality ?? 0,
     points: c.points,

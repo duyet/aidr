@@ -1,16 +1,24 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import {
+  BREAKING_BOOST,
+  BREAKING_IMPORTANCE,
   buildRerankQuery,
+  ENGAGEMENT_BOOST_CAP,
+  IMPORTANCE_EXPONENT,
+  LOW_IMPORTANCE_ENGAGEMENT_CAP,
   RANK_SIGNAL_COLUMNS,
   RANK_SIGNAL_JOIN,
   type RankSignalRow,
-  READER_VOTE_WEIGHT,
+  READER_VOTE_CAP,
+  READER_VOTE_GAIN,
   rankScore,
+  rankScoreWithoutBreaking,
   rankSignals,
   readerEngagement,
   rowRankSignals,
   sourceBoost,
+  voteFactor,
 } from "../ranking.js";
 
 const NOW = Date.now();
@@ -43,7 +51,7 @@ describe("rankScore", () => {
     expect(high).toBeGreaterThan(low);
   });
 
-  it("folds reader votes beside points and lets downvotes lower the score", () => {
+  it("lets reader votes and downvotes move the score", () => {
     const base = {
       importance: 8,
       quality: 8,
@@ -53,29 +61,16 @@ describe("rankScore", () => {
       now: NOW,
     };
     const plain = rankScore(base);
-    const up = rankScore({ ...base, voteNet: 5 });
-    const down = rankScore({ ...base, voteNet: -5 });
-    expect(up).toBeGreaterThan(plain);
-    expect(down).toBeLessThan(plain);
-    // Five votes must not outrank a story whose source points are far higher.
-    const crowded = rankScore({
-      ...base,
-      points: 400,
-      comments: 80,
-      voteNet: 0,
-    });
-    expect(up).toBeLessThan(crowded);
-    // Zero votes is the historical engagement term.
-    expect(readerEngagement(40, 10, 0)).toBeCloseTo(
+    expect(rankScore({ ...base, voteNet: 5 })).toBeGreaterThan(plain);
+    expect(rankScore({ ...base, voteNet: -5 })).toBeLessThan(plain);
+    expect(
+      rankScore({ ...base, points: 0, comments: 0, voteNet: -100 })
+    ).toBeGreaterThan(0);
+    // Without votes the engagement term is the plain source log.
+    expect(readerEngagement(40, 10)).toBeCloseTo(
       1 + Math.log10(1 + 40 + 0.5 * 10),
       10
     );
-    // A downvote still moves a story that has no HN points.
-    expect(readerEngagement(0, 0, -1)).toBeLessThan(readerEngagement(0, 0, 0));
-    expect(readerEngagement(0, 0, -1)).toBeGreaterThan(0);
-    expect(
-      rankScore({ ...base, points: 0, comments: 0, voteNet: -100 })
-    ).toBeGreaterThanOrEqual(0);
   });
 
   it("is monotonic in quality", () => {
@@ -189,12 +184,14 @@ describe("hourly re-rank keeps the source boost", () => {
     now: 1_790_659_371_000 + 8.09 * 3_600_000,
   };
 
-  it("matches the stored prod score only when the boost is dropped", () => {
-    expect(rankScore(item)).toBeCloseTo(8.66, 1);
-    expect(rankScore({ ...item, sourceCount: 8 })).toBeCloseTo(
-      rankScore(item) * sourceBoost(8),
-      6
-    );
+  it("prices the dropped sourceCount at the full boost", () => {
+    // The 8.66 stored in prod came from the formula before 2026-10-11, so it
+    // is no longer a fixture. The regression it caught was a re-rank that
+    // dropped sourceCount, which must still cost the whole boost.
+    const rebuilt = rankScore(item);
+    const corroborated = rankScore({ ...item, sourceCount: 8 });
+    expect(corroborated).toBeGreaterThan(rebuilt);
+    expect(corroborated / rebuilt).toBeLessThanOrEqual(sourceBoost(8));
   });
 
   it("reads the cluster signals for every re-ranked row", () => {
@@ -305,21 +302,130 @@ describe("corroboration counts independent outlets, not tweets", () => {
   });
 });
 
-describe("reader vote weight", () => {
-  it("counts one aidr reader vote as READER_VOTE_WEIGHT source points", () => {
-    expect(READER_VOTE_WEIGHT).toBe(10);
-    expect(readerEngagement(0, 0, 1)).toBeCloseTo(
-      readerEngagement(10, 0, 0),
-      10
+describe("reader votes", () => {
+  it("one vote is a clear nudge and five roughly double the story", () => {
+    expect(voteFactor(0)).toBe(1);
+    expect(voteFactor(1)).toBeCloseTo(1 + READER_VOTE_GAIN, 10);
+    expect(voteFactor(5)).toBeCloseTo(2, 10);
+  });
+
+  it("is bounded: votes past the cap add nothing", () => {
+    expect(voteFactor(READER_VOTE_CAP + 10)).toBe(voteFactor(READER_VOTE_CAP));
+    expect(voteFactor(-READER_VOTE_CAP - 10)).toBe(
+      voteFactor(-READER_VOTE_CAP)
     );
   });
 
   it("lowers but never erases a story on downvotes", () => {
     for (const net of [-1, -5, -50]) {
-      const f = readerEngagement(0, 0, net);
+      const f = voteFactor(net);
       expect(f).toBeGreaterThan(0);
-      expect(f).toBeLessThan(readerEngagement(0, 0, 0));
+      expect(f).toBeLessThan(1);
     }
-    expect(readerEngagement(0, 0, -5)).toBeLessThan(readerEngagement(0, 0, -1));
+    expect(voteFactor(-5)).toBeLessThan(voteFactor(-1));
+  });
+
+  it("moves a story by the same ratio whatever its HN points", () => {
+    const base = {
+      importance: 8,
+      quality: 8,
+      publishedAt: NOW - 30 * 3_600_000,
+      now: NOW,
+      comments: 0,
+    };
+    // Yandex outage 2026-10-11: with the old weight-10-in-the-log term, one
+    // vote on a zero-point story doubled its engagement and put it at #2.
+    for (const points of [0, 40, 400]) {
+      const ratio =
+        rankScore({ ...base, points, voteNet: 1 }) /
+        rankScore({ ...base, points });
+      expect(ratio).toBeCloseTo(voteFactor(1), 10);
+    }
+  });
+});
+
+describe("ranking rules from the 2026-10-11 replay", () => {
+  const H = 3_600_000;
+  const base = {
+    importance: 7,
+    quality: 7,
+    points: 100,
+    comments: 20,
+    sourceCount: 1,
+    now: NOW,
+  };
+
+  it("decays faster after 24h than the plain 36h curve", () => {
+    const at = (hours: number) =>
+      rankScore({ ...base, publishedAt: NOW - hours * H });
+    expect(at(12) / at(0)).toBeCloseTo(Math.exp(-12 / 36), 10);
+    expect(at(48) / at(24)).toBeCloseTo(
+      Math.exp(-24 / 36) * Math.exp(-24 / 24),
+      10
+    );
+  });
+
+  it("caps engagement x corroboration so volume cannot hold a stale top", () => {
+    const at = (points: number, comments: number) =>
+      rankScore({
+        ...base,
+        points,
+        comments,
+        sourceCount: 8,
+        publishedAt: NOW,
+      });
+    expect(at(100_000, 5000)).toBeCloseTo(at(2000, 500), 10);
+    expect(at(100_000, 5000) / at(0, 0)).toBeGreaterThan(
+      ENGAGEMENT_BOOST_CAP / 2
+    );
+    const single = (points: number) =>
+      rankScore({
+        ...base,
+        points,
+        comments: 0,
+        sourceCount: 1,
+        publishedAt: NOW,
+      });
+    expect(single(1_000_000) / single(0)).toBeCloseTo(ENGAGEMENT_BOOST_CAP, 10);
+  });
+
+  it("spreads importance: a 9 beats a 7 by more than the linear 9/7", () => {
+    const at = (importance: number) =>
+      rankScoreWithoutBreaking({
+        ...base,
+        importance,
+        publishedAt: NOW - 30 * H,
+      });
+    expect(at(9) / at(7)).toBeCloseTo((9 / 7) ** IMPORTANCE_EXPONENT, 10);
+    expect(at(9) / at(7)).toBeGreaterThan(9 / 7);
+  });
+
+  it("keeps a minor item's engagement boost small", () => {
+    const quiet = {
+      ...base,
+      importance: 3,
+      points: 0,
+      comments: 0,
+      publishedAt: NOW,
+    };
+    const viral = { ...quiet, points: 2000, comments: 600 };
+    expect(rankScore(viral) / rankScore(quiet)).toBeCloseTo(
+      LOW_IMPORTANCE_ENGAGEMENT_CAP,
+      10
+    );
+    expect(
+      rankScore({ ...viral, importance: 4 }) /
+        rankScore({ ...quiet, importance: 4 })
+    ).toBeGreaterThan(LOW_IMPORTANCE_ENGAGEMENT_CAP);
+  });
+
+  it("boosts fresh importance >= 8 and fades the boost within hours", () => {
+    const lift = (importance: number, hours: number) => {
+      const input = { ...base, importance, publishedAt: NOW - hours * H };
+      return rankScore(input) / rankScoreWithoutBreaking(input);
+    };
+    expect(lift(BREAKING_IMPORTANCE, 0)).toBeCloseTo(1 + BREAKING_BOOST, 10);
+    expect(lift(BREAKING_IMPORTANCE, 12)).toBeLessThan(1.01);
+    expect(lift(BREAKING_IMPORTANCE - 1, 0)).toBe(1);
   });
 });

@@ -178,6 +178,17 @@ Read-only previews: `GET /api/admin/preview/ranking?limit=N`
 `POST /api/admin/preview/tldr` (`preview_tldr`: en/vi bullets, LLM calls
 under a `tldr-preview-…` operation id, no D1 writes besides `llm_calls`).
 
+Ranking replay: `pnpm --filter @aidr/web rank-replay [--days 14] [--cache f]
+[--formulas current,D+I+B,final]` reads the last 14 days of published items,
+merged members, vote nets and TL;DR snapshots from prod D1 (`cf d1 query`,
+SELECT only, no writes) and recomputes rank at hourly `now` for each named
+formula. It prints TL;DR overlap of the hourly top 8, duplicate-event slots
+and age of the top 30, hours-to-top-10 for importance 8+, top-10 overlap with
+the old formula, and how far one vote moves an item. Points and votes are
+their final values, not their values at each hour, and the TL;DR snapshot was
+picked under the formula live then, so treat it as a comparison between
+formulas, not a forecast. Run it before changing `worker/ranking.ts`.
+
 Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>`
 (`apps/web/scripts/aidr-agent.ts`). `run` / `rerun` are dry unless `--live`.
 
@@ -640,12 +651,39 @@ that absorbs a merge gets its rank recomputed from its whole cluster in
 the same write.
 
 ```text
-rank_score = importance
-           × (0.6 + 0.4·quality/10)      # quality modulates ±40%
-           × exp(−ageHours/36)           # freshness decay
-           × (1 + log10(1 + points + 10·voteNet + 0.5·comments))  # reader engagement, log-damped
-           × (1 + 0.12·(min(sourceCount, 8) − 1))    # extra independent outlets
+rank_score = importance^1.5 / √10             # 10 stays 10; 7 → 5.9, 8 → 7.2
+           × (0.6 + 0.4·quality/10)           # quality modulates ±40%
+           × decay(age)                       # exp(−age/36h); after 24h also × exp(−(age−24h)/24h)
+           × min(engagement × sourceBoost, 3.25)
+           × (1 + 0.2·min(voteNet, 6))        # reader votes; net < 0: 1 / (1 + 0.2·min(−voteNet, 6))
+           × breaking(age)                    # importance ≥ 8 only: 1 + 0.4·exp(−age/3h)
+
+engagement  = 1 + log10(1 + points + 0.5·comments)   # capped at 1.3 when importance < 4
+sourceBoost = 1 + 0.12·(min(sourceCount, 8) − 1)     # extra independent outlets
 ```
+
+Constants live in `worker/ranking.ts` (`IMPORTANCE_EXPONENT`,
+`DECAY_*`, `ENGAGEMENT_BOOST_CAP`, `LOW_IMPORTANCE_*`, `BREAKING_*`,
+`READER_VOTE_GAIN`, `READER_VOTE_CAP`). Why each rule exists, from the
+2026-10-11 audit and `rank-replay` (below):
+
+- **Decay ramp and boost cap.** 5 of the top 30 were older than 36h. After
+  24h the decay steepens, and `engagement × sourceBoost` stops at 3.25 so
+  HN volume plus many outlets cannot hold a stale story up.
+- **Importance power.** The scorer clusters on 7. The power spreads 7 from
+  9–10 without moving the 10 end.
+- **Low-importance engagement cap.** A minor item with a loud thread (below
+  importance 4) gets at most ×1.3 from engagement.
+- **Breaking boost.** A fresh importance-8+ story gets up to ×1.4 that fades
+  in a few hours. `weeklyScore` uses `rankScoreWithoutBreaking`, because at
+  age zero the boost would lift every 8 over every 7.
+- **Votes are a separate factor, not points.** They used to count as 10 HN
+  points inside the log, so one vote on a zero-point story doubled its
+  engagement and put a single-vote story at #2 (Yandex outage, 2026-10-11).
+  Now one vote is ×1.2, five are ×2, and the factor stops at six votes
+  (×2.2), whatever the story's HN points. Replay: five votes put a fresh
+  top-30 story into the top 5 in 92% of hours; one vote moves a top-10
+  neighbour at most 22 places, down from 216.
 
 A story's cluster is the canonical item plus every `merged` item whose
 `duplicate_of` points at it. `rankSignals` reads it one way everywhere
@@ -663,12 +701,11 @@ SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
   source has `engagement: "reader"` (HN, Lobsters). Aggregator
   author/tweet counts are stored for display but never ranked.
 - `voteNet` = `SUM(value)` from `item_votes` on that item (one row per
-  signed-in user, `+1` or `-1`; clearing deletes the row), weighted ×10
-  (`READER_VOTE_WEIGHT`): one reader vote counts as 10 source points inside
-  the same log. A vote re-ranks its item at once (`applyVote`). When `points + voteNet + 0.5·comments` is
-  negative the factor is `1 / (1 + log10(1 − signal))`, in (0, 1), so
-  downvotes lower the score without ever zeroing it. The hourly
-  re-rank reads the sum through `RANK_SIGNAL_JOIN`. Trending still uses
+  signed-in user, `+1` or `-1`; clearing deletes the row). `voteFactor`
+  turns it into the multiplier above: ×1.2 per net vote up to six, and
+  the inverse for a net downvote, so downvotes lower the score without
+  ever zeroing it. A vote re-ranks its item at once (`applyVote`). The
+  hourly re-rank reads the sum through `RANK_SIGNAL_JOIN`. Trending still uses
   `rank_score` only. A vote does not change digest or email selection
   except by moving that score.
 

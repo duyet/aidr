@@ -99,10 +99,10 @@ describe("weekly ranking", () => {
       id: "voted",
       source_id: "reddit-ml",
       importance: 7,
-      vote_net: 3,
+      vote_net: 4,
     });
-    // Reader votes weigh 10 points each (READER_VOTE_WEIGHT), so three
-    // votes now outrank two edition days: the owner wants votes to lead.
+    // Four votes are x1.8 (READER_VOTE_GAIN 0.2 each), more than two edition
+    // days with a top slot (1.5 x 1.15): the owner wants votes to lead.
     expect(
       rankWeeklyCandidates([quiet, voted, featured]).map((c) => c.id)
     ).toEqual(["voted", "featured", "quiet"]);
