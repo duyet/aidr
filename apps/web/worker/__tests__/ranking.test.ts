@@ -429,3 +429,126 @@ describe("ranking rules from the 2026-10-11 replay", () => {
     expect(lift(BREAKING_IMPORTANCE - 1, 0)).toBe(1);
   });
 });
+
+describe("ranking rules, literal anchors", () => {
+  const H = 3_600_000;
+  const base = {
+    importance: 7,
+    quality: 7,
+    points: 100,
+    comments: 20,
+    sourceCount: 1,
+    now: NOW,
+  };
+
+  it("pins the importance curve: 10 stays 10, 7 is about 5.86", () => {
+    const at = (importance: number) =>
+      rankScoreWithoutBreaking({
+        ...base,
+        importance,
+        quality: 10,
+        points: 0,
+        comments: 0,
+        publishedAt: NOW,
+      });
+    expect(at(10)).toBeCloseTo(10, 8);
+    expect(at(7)).toBeCloseTo(5.857, 3);
+  });
+
+  it("a 48h-old story scores under 15% of the same story fresh", () => {
+    const at = (hours: number) =>
+      rankScore({ ...base, publishedAt: NOW - hours * H });
+    expect(at(48) / at(0)).toBeLessThan(0.15);
+    expect(at(48) / at(0)).toBeGreaterThan(0.05);
+  });
+
+  it("importance 9 beats 7 by 1.40 to 1.50x at a fixed age", () => {
+    const at = (importance: number) =>
+      rankScoreWithoutBreaking({
+        ...base,
+        importance,
+        publishedAt: NOW - 30 * H,
+      });
+    const ratio = at(9) / at(7);
+    expect(ratio).toBeGreaterThan(1.4);
+    expect(ratio).toBeLessThan(1.5);
+  });
+
+  it("one net vote is exactly x1.2, six are x2.2, seven are still x2.2", () => {
+    const at = (voteNet: number) =>
+      rankScore({ ...base, voteNet, publishedAt: NOW });
+    expect(at(1) / at(0)).toBeCloseTo(1.2, 10);
+    expect(at(6) / at(0)).toBeCloseTo(2.2, 10);
+    expect(at(7)).toBeCloseTo(at(6), 10);
+    expect(at(-1) / at(0)).toBeCloseTo(1 / 1.2, 10);
+  });
+
+  it("pins the engagement cap at 3.25, the minor-item cap at 1.3 and the breaking boost at 1.4", () => {
+    const at = (over: object) =>
+      rankScore({ ...base, comments: 0, publishedAt: NOW, ...over });
+    expect(at({ points: 1_000_000 }) / at({ points: 0 })).toBeCloseTo(3.25, 10);
+    expect(
+      at({ importance: 3, points: 5000 }) / at({ importance: 3, points: 0 })
+    ).toBeCloseTo(1.3, 10);
+    expect(
+      at({ importance: 8 }) /
+        rankScoreWithoutBreaking({
+          ...base,
+          importance: 8,
+          comments: 0,
+          publishedAt: NOW,
+        })
+    ).toBeCloseTo(1.4, 10);
+  });
+});
+
+describe("rankScore on malformed input", () => {
+  const input = {
+    importance: 7,
+    quality: 7,
+    points: 10,
+    comments: 2,
+    publishedAt: NOW,
+    now: NOW,
+  };
+
+  it.each([
+    ["NaN importance", { importance: Number.NaN }],
+    ["negative importance", { importance: -3 }],
+    ["NaN quality", { quality: Number.NaN }],
+    ["NaN publishedAt", { publishedAt: Number.NaN }],
+    ["Infinity publishedAt", { publishedAt: Number.NEGATIVE_INFINITY }],
+    ["+Infinity voteNet", { voteNet: Number.POSITIVE_INFINITY }],
+    ["-Infinity voteNet", { voteNet: Number.NEGATIVE_INFINITY }],
+  ])("%s yields a finite, non-negative score", (_name, over) => {
+    for (const fn of [rankScore, rankScoreWithoutBreaking]) {
+      const score = fn({ ...input, ...over });
+      expect(Number.isFinite(score)).toBe(true);
+      expect(score).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("clamps importance and quality to 0..10", () => {
+    expect(rankScore({ ...input, importance: 99 })).toBeCloseTo(
+      rankScore({ ...input, importance: 10 }),
+      10
+    );
+    expect(rankScore({ ...input, quality: 99 })).toBeCloseTo(
+      rankScore({ ...input, quality: 10 }),
+      10
+    );
+    expect(rankScore({ ...input, importance: -3 })).toBe(0);
+  });
+
+  it("treats a future publish time as age zero", () => {
+    expect(
+      rankScore({ ...input, publishedAt: NOW + 5 * 3_600_000 })
+    ).toBeCloseTo(rankScore(input), 10);
+  });
+
+  it("an infinite vote count is a no-op, not a runaway", () => {
+    expect(
+      rankScore({ ...input, voteNet: Number.POSITIVE_INFINITY })
+    ).toBeCloseTo(rankScore(input), 10);
+  });
+});

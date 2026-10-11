@@ -5,7 +5,6 @@ import {
   type ModerationItem,
   parseTags,
   type RateDraft,
-  rankBreakdown,
 } from "./lib";
 
 function ItemRow({
@@ -27,7 +26,6 @@ function ItemRow({
   onApplyRate: (id: string) => void;
   onModerate: (id: string, body: Record<string, unknown>) => void;
 }) {
-  const breakdown = rankBreakdown(item);
   return (
     <tr className="border-b border-border/50 align-top">
       <td className="py-1 pr-2 whitespace-nowrap tabular-nums text-muted-foreground">
@@ -66,13 +64,12 @@ function ItemRow({
             <div>
               points: {item.points ?? 0}, comments: {item.comments ?? 0}
             </div>
-            <div>ageHours: {breakdown.ageHours.toFixed(2)}</div>
-            <div>qualityFactor: {breakdown.qualityFactor.toFixed(3)}</div>
-            <div>decay: {breakdown.decay.toFixed(3)}</div>
-            <div>engagement: {breakdown.engagement.toFixed(3)}</div>
             <div>
-              computed rank: {breakdown.computed.toFixed(3)} (stored:{" "}
-              {item.rank_score?.toFixed?.(3) ?? "—"})
+              importance: {item.llm_importance ?? "—"}, quality:{" "}
+              {item.llm_quality ?? "—"}
+            </div>
+            <div>
+              rank_score (server): {item.rank_score?.toFixed?.(3) ?? "—"}
             </div>
           </div>
         </details>

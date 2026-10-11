@@ -75,6 +75,12 @@ export function voteFactor(voteNet = 0): number {
   return voteNet >= 0 ? 1 + steps : 1 / (1 + steps);
 }
 
+/** LLM scores are 0-10; a stray negative, >10 or NaN must not reach the
+ *  power, which is NaN for a negative base and unbounded above 10. */
+function clampScore(value: number): number {
+  return Number.isFinite(value) ? Math.min(10, Math.max(0, value)) : 0;
+}
+
 /** `rankScore` without the fresh-story breaking boost. The weekly edition
  * scores at age zero, where the boost would lift every importance-8 story
  * over the importance-7 ones for no reason the week cares about. */
@@ -89,7 +95,8 @@ export function rankScoreWithoutBreaking({
   voteNet = 0,
 }: RankScoreInput): number {
   const ageHours = Math.max(0, (now - publishedAt) / (1000 * 60 * 60));
-  const qualityFactor = 0.6 + 0.4 * (quality / 10);
+  importance = clampScore(importance);
+  const qualityFactor = 0.6 + 0.4 * (clampScore(quality) / 10);
   let decay = Math.exp(-ageHours / DECAY_TIME_CONSTANT_HOURS);
   if (ageHours > DECAY_RAMP_START_HOURS) {
     decay *= Math.exp(
@@ -106,7 +113,8 @@ export function rankScoreWithoutBreaking({
   );
   const weight =
     importance ** IMPORTANCE_EXPONENT / 10 ** (IMPORTANCE_EXPONENT - 1);
-  return weight * qualityFactor * decay * crowd * voteFactor(voteNet);
+  const score = weight * qualityFactor * decay * crowd * voteFactor(voteNet);
+  return Number.isFinite(score) ? score : 0;
 }
 
 export function rankScore(input: RankScoreInput): number {
@@ -115,10 +123,11 @@ export function rankScore(input: RankScoreInput): number {
     (input.now - input.publishedAt) / (1000 * 60 * 60)
   );
   const breaking =
-    input.importance >= BREAKING_IMPORTANCE
+    clampScore(input.importance) >= BREAKING_IMPORTANCE
       ? 1 + BREAKING_BOOST * Math.exp(-ageHours / BREAKING_TIME_CONSTANT_HOURS)
       : 1;
-  return rankScoreWithoutBreaking(input) * breaking;
+  const score = rankScoreWithoutBreaking(input) * breaking;
+  return Number.isFinite(score) ? score : 0;
 }
 
 /** True when a source's points/comments are reader votes and discussion. */

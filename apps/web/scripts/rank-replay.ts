@@ -528,8 +528,11 @@ function parseArgs(argv: string[]): Args {
   const args: Args = { days: 14, refresh: false, json: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--days") args.days = Number(argv[++i]);
-    else if (a === "--cache") args.cache = argv[++i];
+    if (a === "--days") {
+      args.days = Number(argv[++i]);
+      if (!Number.isInteger(args.days) || args.days < 1)
+        throw new Error("--days must be a positive integer");
+    } else if (a === "--cache") args.cache = argv[++i];
     else if (a === "--refresh") args.refresh = true;
     else if (a === "--json") args.json = true;
     else if (a === "--formulas") args.formulas = argv[++i].split(",");

@@ -813,10 +813,10 @@ Hourly.
   (merged duplicates mapped to `duplicate_of`), plus the week's top 60
   uncited stories by `llm_importance`.
 - **Rank.** Not stored `rank_score`: it decays 36h and freezes at 72h, so a
-  Monday build would favour the weekend. `weeklyScore` is `rankScore` at age
-  zero (importance, quality, points/comments, net votes), × (1 + 0.25 per
-  day in a daily edition, max 3), × 1.15 for a top-3 spot. Then
-  `pickDiverse` caps source families; top 10.
+  Monday build would favour the weekend. `weeklyScore` is
+  `rankScoreWithoutBreaking` at age zero (importance, quality, points/comments,
+  net votes), × (1 + 0.25 per day in a daily edition, max 3), × 1.15 for a
+  top-3 spot. Then `pickDiverse` caps source families; top 10.
 - **Copy.** One bilingual call on the TL;DR chain (`ANYROUTER_TLDR_MODEL`,
   VI house style + glossary): `intro_en`/`intro_vi` (2–3 sentences) and one
   sentence per story per language. A VI line without diacritics is dropped.

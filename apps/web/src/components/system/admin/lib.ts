@@ -90,26 +90,6 @@ export interface RateDraft {
   quality: string;
 }
 
-// Mirrors worker/ranking.ts's rankScore formula — kept in sync manually for
-// this client-side "analyze" breakdown display.
-export function rankBreakdown(item: ModerationItem) {
-  const now = Date.now();
-  const ageHours = Math.max(0, (now - item.published_at * 1000) / 3_600_000);
-  const importance = item.llm_importance ?? 0;
-  const quality = item.llm_quality ?? 0;
-  const qualityFactor = 0.6 + 0.4 * (quality / 10);
-  const decay = Math.exp(-ageHours / 36);
-  const engagement =
-    1 + Math.log10(1 + (item.points ?? 0) + 0.5 * (item.comments ?? 0));
-  return {
-    ageHours,
-    qualityFactor,
-    decay,
-    engagement,
-    computed: importance * qualityFactor * decay * engagement,
-  };
-}
-
 export function parseTags(raw: string | null): string[] {
   if (!raw) return [];
   try {
