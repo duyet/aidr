@@ -285,6 +285,7 @@ describe("mobile action sizing", () => {
     ).toEqual([
       "News",
       "Weekly",
+      "Calendar",
       "About",
       "Brand",
       "MCP",

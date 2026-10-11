@@ -14,6 +14,7 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as BrandRouteImport } from './routes/brand'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as DataRouteImport } from './routes/data'
 import { Route as ExtensionRouteImport } from './routes/extension'
@@ -84,6 +85,11 @@ const AboutRoute = AboutRouteImport.update({
 const BrandRoute = BrandRouteImport.update({
   id: '/brand',
   path: '/brand',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChangelogRoute = ChangelogRouteImport.update({
@@ -323,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/brand': typeof BrandRoute
+  '/calendar': typeof CalendarRoute
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
@@ -376,6 +383,7 @@ export interface FileRoutesByTo {
   '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/brand': typeof BrandRoute
+  '/calendar': typeof CalendarRoute
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
@@ -430,6 +438,7 @@ export interface FileRoutesById {
   '/$slug': typeof SlugRoute
   '/about': typeof AboutRoute
   '/brand': typeof BrandRoute
+  '/calendar': typeof CalendarRoute
   '/changelog': typeof ChangelogRoute
   '/data': typeof DataRoute
   '/extension': typeof ExtensionRoute
@@ -485,6 +494,7 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/about'
     | '/brand'
+    | '/calendar'
     | '/changelog'
     | '/data'
     | '/extension'
@@ -538,6 +548,7 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/about'
     | '/brand'
+    | '/calendar'
     | '/changelog'
     | '/data'
     | '/extension'
@@ -591,6 +602,7 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/about'
     | '/brand'
+    | '/calendar'
     | '/changelog'
     | '/data'
     | '/extension'
@@ -645,6 +657,7 @@ export interface RootRouteChildren {
   SlugRoute: typeof SlugRoute
   AboutRoute: typeof AboutRoute
   BrandRoute: typeof BrandRoute
+  CalendarRoute: typeof CalendarRoute
   ChangelogRoute: typeof ChangelogRoute
   DataRoute: typeof DataRoute
   ExtensionRoute: typeof ExtensionRoute
@@ -715,6 +728,13 @@ declare module '@tanstack/react-router' {
       path: '/brand'
       fullPath: '/brand'
       preLoaderRoute: typeof BrandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/changelog': {
@@ -1103,6 +1123,7 @@ const rootRouteChildren: RootRouteChildren = {
   SlugRoute: SlugRoute,
   AboutRoute: AboutRoute,
   BrandRoute: BrandRoute,
+  CalendarRoute: CalendarRoute,
   ChangelogRoute: ChangelogRoute,
   DataRoute: DataRoute,
   ExtensionRoute: ExtensionRoute,
