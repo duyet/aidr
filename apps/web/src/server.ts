@@ -17,7 +17,11 @@ import {
   isDayMarkdownPath,
 } from "./lib/day-markdown";
 import { readSession } from "./lib/db";
-import { cachedLocaleResponse, cachedSsrResponse } from "./lib/edge-cache";
+import {
+  bareLocalizedCacheLang,
+  cachedLocaleResponse,
+  cachedSsrResponse,
+} from "./lib/edge-cache";
 import { withHomepageInlineStylesheets } from "./lib/inline-stylesheet";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import {
@@ -30,6 +34,7 @@ import {
   resolveApiRequestLocale,
   resolveRequestLocale,
   resolveServerFnLocaleRequest,
+  SSR_LOCALIZED_CACHE_CONTROL,
   temporaryLocaleRedirect,
   withSsrLocaleResponse,
 } from "./lib/locale-response";
@@ -313,7 +318,7 @@ export default {
       );
     }
 
-    return cachedSsrResponse(request, ctx, async () =>
+    const renderSsr = async () =>
       withSsrLocaleResponse(
         request,
         await withRouteIndexabilityHeaders(
@@ -331,8 +336,21 @@ export default {
             )
           )
         )
-      )
-    );
+      );
+    // Localized pages without `?lang=` (bare `/`, `/{8-hex}`) pick the
+    // language from Cookie/Accept-Language, so they stay private to clients;
+    // the Worker cache still keys them by the resolved language.
+    const bareLocale = bareLocalizedCacheLang(request);
+    if (bareLocale) {
+      return cachedLocaleResponse(
+        request,
+        ctx,
+        bareLocale,
+        SSR_LOCALIZED_CACHE_CONTROL,
+        renderSsr
+      );
+    }
+    return cachedSsrResponse(request, ctx, renderSsr);
   },
   async scheduled(_controller: ScheduledController, env: Env) {
     await tickIngest(env);

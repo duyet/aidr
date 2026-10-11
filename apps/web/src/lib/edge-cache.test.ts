@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  bareLocalizedCacheLang,
   cachedLocaleResponse,
   cachedSsrResponse,
   EDGE_CACHE_HEADER,
@@ -271,5 +272,36 @@ describe("cachedLocaleResponse", () => {
       render
     );
     expect(fake.put).not.toHaveBeenCalled();
+  });
+});
+
+describe("bareLocalizedCacheLang", () => {
+  it("keys bare / by the reader's resolved language", () => {
+    expect(bareLocalizedCacheLang(get("https://aidr.today/"))).toBe("vi");
+    expect(
+      bareLocalizedCacheLang(
+        get("https://aidr.today/", { "accept-language": "en-US" })
+      )
+    ).toBe("en");
+    expect(
+      bareLocalizedCacheLang(get("https://aidr.today/?utm_source=x"))
+    ).toBe("vi");
+  });
+  it("leaves canonical, signed-in, and non-HTML requests to other paths", () => {
+    expect(
+      bareLocalizedCacheLang(get("https://aidr.today/?lang=vi"))
+    ).toBeNull();
+    expect(
+      bareLocalizedCacheLang(
+        get("https://aidr.today/", { cookie: "__session=abc" })
+      )
+    ).toBeNull();
+    expect(
+      bareLocalizedCacheLang(
+        new Request("https://aidr.today/", {
+          headers: { accept: "application/json" },
+        })
+      )
+    ).toBeNull();
   });
 });
