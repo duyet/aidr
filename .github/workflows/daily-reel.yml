@@ -88,7 +88,7 @@ jobs:
           path: |
             videos/daily-news/editions/${{ steps.date.outputs.date }}/STATUS.json
             videos/daily-news/editions/${{ steps.date.outputs.date }}/HAND_PUBLISHED
-          key: daily-reel-status-${{ steps.date.outputs.date }}-${{ github.run_id }}
+          key: daily-reel-status-${{ steps.date.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: daily-reel-status-${{ steps.date.outputs.date }}-
 
       # A day an agent already published by hand (on the day page, and no STATUS
@@ -168,7 +168,7 @@ jobs:
           path: |
             videos/daily-news/editions/${{ steps.date.outputs.date }}/STATUS.json
             videos/daily-news/editions/${{ steps.date.outputs.date }}/HAND_PUBLISHED
-          key: daily-reel-status-${{ steps.date.outputs.date }}-${{ github.run_id }}
+          key: daily-reel-status-${{ steps.date.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Fail when the Reel did not post
         if: steps.facebook.outcome == 'failure'

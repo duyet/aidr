@@ -207,6 +207,38 @@ if (steps.includes("render")) {
   save();
 }
 
+// 1b. Gate (before any upload): every render is a real video with sound, and the text is clean. The EN 9:16 Reels copy is also
+// checked against the Reels spec; a Reel-only problem (e.g. over 90 s) is reported here and stops the facebook step.
+if (steps.includes("gate")) {
+  summary("gate", mine.map((r) => r.cut));
+  const hard = [];
+  for (const l of langs) {
+    const file = join(dir, cutFor(l).script);
+    for (const [label, text] of scriptTexts(JSON.parse(readFileSync(file, "utf8")))) hard.push(...lintText(`${cutFor(l).script} ${label}`, text));
+  }
+  if (langs.includes("en") && existsSync(join(dir, "posts.md"))) hard.push(...lintText("posts.md facebook", reelCaption(readFileSync(join(dir, "posts.md"), "utf8"), date, "en")));
+  for (const r of mine) {
+    if (dry) {
+      console.log(`  ffprobe ${r.path}`);
+      continue;
+    }
+    if (!existsSync(r.path)) {
+      hard.push(`${r.cut}: not rendered`);
+      continue;
+    }
+    const p = gateVideo(probeStreams(r.path), "any");
+    hard.push(...p.map((x) => `${r.cut}: ${x}`));
+    if (r.lang === "en" && r.fmt === "9x16" && !p.length) {
+      const reel = reelProblems(makeReelCopy(r.path), "-");
+      r.reelGate = reel.length ? reel : "ok";
+      console.log(`  ${r.cut} reel copy: ${reel.length ? `✗ ${reel.join("; ")}` : "✓"}`);
+    }
+  }
+  save();
+  if (hard.length) throw new Error(`gate failed:\n  ${hard.join("\n  ")}`);
+  console.log("✓ gate");
+}
+
 // 2. Upload, serially, in the owner's Chrome. Stops on the first failure.
 // STATUS.json is local, so first take ids already on the live day page: a date
 // uploaded elsewhere must not get a second public copy.
@@ -280,39 +312,7 @@ if (steps.includes("attach")) {
   }
 }
 
-// 3b. Gate: every render is a real video with sound, and the text is clean. The EN 9:16 Reels copy is also
-// checked against the Reels spec; a Reel-only problem (e.g. over 90 s) is reported here and stops the facebook step.
-if (steps.includes("gate")) {
-  summary("gate", mine.map((r) => r.cut));
-  const hard = [];
-  for (const l of langs) {
-    const file = join(dir, cutFor(l).script);
-    for (const [label, text] of scriptTexts(JSON.parse(readFileSync(file, "utf8")))) hard.push(...lintText(`${cutFor(l).script} ${label}`, text));
-  }
-  if (langs.includes("en") && existsSync(join(dir, "posts.md"))) hard.push(...lintText("posts.md facebook", reelCaption(readFileSync(join(dir, "posts.md"), "utf8"), date, "en")));
-  for (const r of mine) {
-    if (dry) {
-      console.log(`  ffprobe ${r.path}`);
-      continue;
-    }
-    if (!existsSync(r.path)) {
-      hard.push(`${r.cut}: not rendered`);
-      continue;
-    }
-    const p = gateVideo(probeStreams(r.path), "any");
-    hard.push(...p.map((x) => `${r.cut}: ${x}`));
-    if (r.lang === "en" && r.fmt === "9x16" && !p.length) {
-      const reel = reelProblems(makeReelCopy(r.path), "-");
-      r.reelGate = reel.length ? reel : "ok";
-      console.log(`  ${r.cut} reel copy: ${reel.length ? `✗ ${reel.join("; ")}` : "✓"}`);
-    }
-  }
-  save();
-  if (hard.length) throw new Error(`gate failed:\n  ${hard.join("\n  ")}`);
-  console.log("✓ gate");
-}
-
-// 3c. Facebook Reel: the EN 9:16 cut, once. The Page itself is the record (a Reel whose description has the
+// 3b. Facebook Reel: the EN 9:16 cut, once. The Page itself is the record (a Reel whose description has the
 // day link is never posted again, even from a fresh CI checkout); STATUS.json keeps the video id so a rerun
 // after an unclear answer only polls it.
 if (steps.includes("facebook")) {

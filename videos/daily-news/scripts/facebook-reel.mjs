@@ -188,8 +188,23 @@ export async function waitForReel({ token, version, videoId, fetchImpl = fetch, 
 export async function postReel({ file, description, pageId, token, version, fetchImpl = fetch, onVideoId, resumeVideoId, wait = {} }) {
   if (ENGAGEMENT_BAIT.test(description)) throw new Error("refused: the Reel description is engagement bait");
   if (resumeVideoId) {
-    const status = await waitForReel({ token, version, videoId: resumeVideoId, fetchImpl, ...wait });
-    return { videoId: resumeVideoId, status, resumed: true };
+    // A saved id from an earlier run: look once, then finish what that run left, or start over.
+    const r = reelRequest("status", { token, version, videoId: resumeVideoId });
+    const { status } = await call(fetchImpl, "status", r.url, r.init, token);
+    const pub = status?.publishing_phase?.publish_status ?? status?.publishing_phase?.status;
+    const uploaded = status?.uploading_phase?.status === "complete" || ["upload_complete", "processing", "ready"].includes(status?.video_status);
+    if (["published", "complete"].includes(pub) || (pub && pub !== "not_started" && pub !== "error")) {
+      return { videoId: resumeVideoId, status: await waitForReel({ token, version, videoId: resumeVideoId, fetchImpl, ...wait }), resumed: true };
+    }
+    if (uploaded && pub !== "error") {
+      const f = reelRequest("finish", { pageId, token, version, videoId: resumeVideoId, description });
+      await call(fetchImpl, "finish", f.url, f.init, token).catch((e) => {
+        if (!e.ambiguous) throw e;
+      });
+      return { videoId: resumeVideoId, status: await waitForReel({ token, version, videoId: resumeVideoId, fetchImpl, ...wait }), resumed: true };
+    }
+    // Never uploaded, failed or expired: nothing is public, so a new session is safe.
+    console.warn(`! reel ${resumeVideoId} is ${status?.video_status ?? "unknown"}; starting a new upload`);
   }
   const bytes = statSync(file).size;
   const s = reelRequest("start", { pageId, token, version });

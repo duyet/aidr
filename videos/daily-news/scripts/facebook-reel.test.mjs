@@ -103,11 +103,37 @@ test("engagement bait is refused before any request", async () => {
   assert.equal(f.calls.length, 0);
 });
 
-test("a resumed post only polls", async () => {
-  const f = fakeFetch([ok({ status: { video_status: "ready", publishing_phase: { publish_status: "published" } } })]);
-  const out = await postReel({ ...cfg, file: "/nope", description: "d", fetchImpl: f, resumeVideoId: "55" });
+const published = ok({ status: { video_status: "ready", publishing_phase: { publish_status: "published" } } });
+
+test("a resumed post that is already published only polls", async () => {
+  const f = fakeFetch([published, published]);
+  const out = await postReel({ ...cfg, file: "/nope", description: "d", fetchImpl: f, resumeVideoId: "55", wait: { sleep: async () => {} } });
   assert.equal(out.resumed, true);
-  assert.equal(f.calls.length, 1);
+  assert.ok(f.calls.every((c) => c.init.method === "GET"));
+});
+
+test("a resumed post that uploaded but never published is finished once", async () => {
+  const f = fakeFetch([
+    ok({ status: { video_status: "upload_complete", uploading_phase: { status: "complete" }, publishing_phase: { status: "not_started" } } }),
+    ok({ success: true }),
+    published,
+  ]);
+  const out = await postReel({ ...cfg, file: "/nope", description: "d", fetchImpl: f, resumeVideoId: "55", wait: { sleep: async () => {} } });
+  assert.equal(out.videoId, "55");
+  assert.equal(JSON.parse(f.calls[1].init.body).upload_phase, "finish");
+  assert.equal(JSON.parse(f.calls[1].init.body).video_id, "55");
+});
+
+test("a resumed post whose upload failed starts a new session", async () => {
+  const f = fakeFetch([
+    ok({ status: { video_status: "upload_failed", publishing_phase: { status: "not_started" } } }),
+    ok({ video_id: "77" }),
+    ok({ success: true }),
+    ok({ success: true }),
+    published,
+  ]);
+  const out = await postReel({ ...cfg, file: tmpFile("x"), description: "d", fetchImpl: f, resumeVideoId: "55", wait: { sleep: async () => {} } });
+  assert.equal(out.videoId, "77");
 });
 
 test("findReel matches the day link in a Reel description", async () => {

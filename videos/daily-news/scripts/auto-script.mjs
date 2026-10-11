@@ -39,11 +39,19 @@ const numbers = (t) => (String(t ?? "").match(/\d+(?:[.,]\d+)*/g) ?? []).map((n)
 
 const voiceWords = (v) => (Array.isArray(v) ? v.map((p) => p.text ?? p).join(" ") : String(v ?? ""));
 
-/** Estimated length (s) of a script at reading speed, segment by segment, as build.mjs times a no-voice cut. */
+/** Voiced cuts run longer than the reading-speed estimate. Measured on the committed voiced editions
+ *  (timeline.total ÷ estimate with gaps): 2026-10-02 1.04, 10-03 1.02, 10-10 1.09; 1.1 keeps a margin. */
+export const VOICED_FACTOR = 1.1;
+
+/** Estimated length (s): build.mjs's per-segment lead/tail, reading speed, the breath between parts
+ *  (config.voice.gap), scaled by VOICED_FACTOR. */
 export function estimateSeconds(script, config) {
   const wps = config.timing.noVoice.wordsPerSecond.en;
-  const seg = (kind, v) => config.timing[kind].lead + words(voiceWords(v)).length / wps + config.timing[kind].tail;
-  return seg("intro", script.intro.voice) + script.stories.reduce((a, s) => a + seg("story", s.voice), 0) + seg("outro", script.outro.voice);
+  const parts = (v) => (Array.isArray(v) ? v.length : 1);
+  const seg = (kind, v) =>
+    config.timing[kind].lead + words(voiceWords(v)).length / wps + parts(v) * config.voice.gap + config.timing[kind].tail;
+  const raw = seg("intro", script.intro.voice) + script.stories.reduce((a, s) => a + seg("story", s.voice), 0) + seg("outro", script.outro.voice);
+  return raw * VOICED_FACTOR;
 }
 
 /** Problems with a script against its edition (empty = valid). */
@@ -73,6 +81,13 @@ export function validateScript(script, edition) {
   }
   const line2 = script.intro.voice[1]?.text ?? "";
   for (const f of script.intro.focus ?? []) if (!spokenHas(line2, f.word)) p.push(`intro.focus "${f.word}" is not in the intro line`);
+  // The intro line and the post copy (the Reel description) may only use numbers from the stories in the
+  // video, plus the date ("Oct 10, 2026").
+  const inVideo = script.stories.map((s) => byRank[s.rank]).filter(Boolean);
+  const allowed = new Set([...inVideo.flatMap((s) => [...numbers(s.text), ...numbers(s.title)]), ...numbers(script.date)].map((n) => n.replace(/^0+(?=\d)/, "")));
+  const post = script.post ?? {};
+  for (const [label, text] of [["intro", line2], ...["hook", "facebook", "tiktok", "youtubeTitle", "shortsTitle"].map((k) => [`post.${k}`, post[k]])])
+    for (const n of numbers(text)) if (!allowed.has(n.replace(/^0+(?=\d)/, ""))) p.push(`${label}: number ${n} is not in the stories`);
   if ((script.post.youtubeTitle ?? "").length > 100) p.push("post.youtubeTitle over 100 chars");
   if ((script.post.shortsTitle ?? "").length > 92) p.push("post.shortsTitle over 92 chars");
   if ((script.post.tiktok ?? "").length > 150) p.push("post.tiktok over 150 chars");
@@ -214,7 +229,7 @@ export function templateScript(edition, hostKeys, prev) {
       tiktok: `${listOf(top.slice(0, 2))}, and more. Which story matters most? 👇`.slice(0, 150),
       facebook: `Today in AI: ${listOf(top)}.`,
       youtubeTitle: `AI News Today: ${top.slice(0, 2).join("; ")} & more | ${short}`.slice(0, 100),
-      shortsTitle: `${top[0]} + ${edition.stories.length - 1} more AI stories today`.slice(0, 92),
+      shortsTitle: `${top[0]} and more AI stories today`.slice(0, 92),
     },
   });
 }
@@ -304,20 +319,22 @@ export function fitLength(edition, maxSeconds, make, config) {
  * `llm(edition)` returns the raw model text for one model; injected for tests.
  */
 export async function writeScript({ edition, config, hostKeys, prev, maxSeconds, models, llm, log = console.log }) {
+  // Pick the stories first (template length), so the model's intro and post copy name only stories in the video.
+  const fit = fitLength(edition, maxSeconds, (ed) => templateScript(ed, hostKeys, prev), config);
   for (const model of models) {
     try {
-      const text = await llm(model, edition);
-      // The model wrote copy for every story; fitting the length drops whole stories, no rewrite needed.
-      const { script } = fitLength(edition, maxSeconds, (ed) => fromModel(text, ed, hostKeys, prev), config);
-      const problems = validateScript(script, edition);
+      const script = fromModel(await llm(model, fit.edition), fit.edition, hostKeys, prev);
+      const problems = validateScript(script, fit.edition);
+      const est = estimateSeconds(script, config);
+      // The model may run long; a little over the budget still fits the 90 s Reel.
+      if (est > maxSeconds + 5) problems.push(`~${est.toFixed(0)}s is over the ${maxSeconds}s budget`);
       if (!problems.length) return { script, source: model, problems: [] };
       log(`! ${model}: ${problems.length} problem(s): ${problems.slice(0, 4).join("; ")}`);
     } catch (e) {
       log(`! ${model}: ${e.message}`);
     }
   }
-  const { script } = fitLength(edition, maxSeconds, (ed) => templateScript(ed, hostKeys, prev), config);
-  return { script, source: "template", problems: validateScript(script, edition) };
+  return { script: fit.script, source: "template", problems: validateScript(fit.script, fit.edition) };
 }
 
 // --- CLI -----------------------------------------------------------------

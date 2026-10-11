@@ -991,6 +991,9 @@ deliberately non-spammy.
   install's `.env.local`. None of them are committed. The Page token posts.
   The app id and secret only mint a replacement Page token. The secret stays
   in `.env.local`: no Worker or workflow reads it, so nothing syncs it.
+  The daily video Reel on the same Page is not the Worker's: it comes from
+  `.github/workflows/daily-reel.yml` (`videos/daily-news/scripts/facebook-reel.mjs`),
+  once a day, with the same Page token and the same engagement-bait regex.
 
 ### 13. Review gates (LLM, rating ≥ 0.6)
 
