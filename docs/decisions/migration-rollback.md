@@ -289,7 +289,7 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
-## 0057_source_refresh.sql
+## 0058_source_refresh.sql
 
 - Change: upserts the re-declared rows (`reddit-ml`, `reddit-localllama`,
   `reddit-singularity`, `xai`, `ahead-of-ai`, `arstechnica-ai`) and 13 new

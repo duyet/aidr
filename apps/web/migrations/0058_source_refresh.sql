@@ -1,5 +1,5 @@
 -- Source refresh (2026-10-11 audit of /api/system/sources). Mirrors
--- REGISTRY_0057 in apps/web/worker/sources/catalog.ts (a test asserts they
+-- REGISTRY_0058 in apps/web/worker/sources/catalog.ts (a test asserts they
 -- agree); the reasons for each decision are written there.
 --
 -- Disables reddit-ml, reddit-localllama, reddit-singularity, xai (they refuse
