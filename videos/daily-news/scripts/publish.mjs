@@ -5,7 +5,11 @@
 // The runner never writes scripts: script.json (and script.vi.json) must be written first.
 // --steps check needs no script: it exits 3 when every requested cut is already on the live day page
 // (run it before writing scripts; render also skips published cuts).
-// Usage: node scripts/publish.mjs <date> [--lang en,vi] [--steps check|render,upload,attach,telegram]
+// gate and facebook run only when listed in --steps: gate checks every render (video + audio streams, a real
+// duration) and the post/script text (no engagement bait, no TODO), and the Reels copy of the EN 9:16 cut
+// against the Reels spec; facebook posts that copy to the Page as a Reel (needs --prod: there is no staging Page).
+// --render-published renders cuts that are already on the day page (for the Reel on a fresh CI runner).
+// Usage: node scripts/publish.mjs <date> [--lang en,vi] [--steps check|render,gate,upload,attach,facebook,telegram]
 //        [--no-voice] [--chat <telegram chat id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card]
 //        [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
 // Weekly editions (week-YYYY-Www): only `--steps render` (and --dry-run); the other steps are planned, not wired.
@@ -24,26 +28,32 @@ import {
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { cutFor, isWeekly } from "./lang.mjs";
+import { findReel, makeReelCopy, postReel, reelCaption, reelConfig, reelCopyPath, reelEncodeArgs, reelProblems } from "./facebook-reel.mjs";
+import { gateVideo, lintText, probeStreams, scriptTexts } from "./gate.mjs";
 import { envVar, makeTelegramCopy, makeThumbnail, sendVideo, tgCopyPath, tgEncodeArgs, videoCaption, videoReplyMarkup } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const REPO = resolve(ROOT, "../..");
-const STEPS = ["render", "upload", "attach", "telegram"];
+const STEPS = ["render", "gate", "upload", "attach", "facebook", "telegram"];
+// Public steps that have no staging target run only when asked for by name.
+const DEFAULT_STEPS = ["render", "upload", "attach", "telegram"];
 const argv = process.argv.slice(2);
 const date = argv[0];
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") && !isWeekly(date ?? ""))
   throw new Error(
-    "usage: publish.mjs <date | week-YYYY-Www> [--lang en,vi] [--steps render,upload,attach,telegram] [--no-voice] [--chat <id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
+    "usage: publish.mjs <date | week-YYYY-Www> [--lang en,vi] [--steps render,gate,upload,attach,facebook,telegram] [--no-voice] [--chat <id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
   );
 const flag = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);
 const list = (n, all) => (flag(n) ? flag(n).split(",").filter(Boolean) : all);
 const langs = list("--lang", ["en", "vi"]);
-const steps = list("--steps", STEPS);
+const steps = list("--steps", DEFAULT_STEPS);
 const uploader = flag("--uploader") ?? (process.env.YOUTUBE_REFRESH_TOKEN ? "api" : "chrome");
 const privacy = flag("--privacy") ?? "public";
 const dry = argv.includes("--dry-run");
 const prod = argv.includes("--prod");
 const noVoice = argv.includes("--no-voice");
+// Render cuts already on the day page too (the scheduled Reel needs the 9:16 file on a fresh runner).
+const renderPublished = argv.includes("--render-published");
 const tgFmt = flag("--telegram-fmt") ?? "16x9";
 const tgMode = flag("--telegram-mode") ?? "video";
 if (!["16x9", "9x16"].includes(tgFmt)) throw new Error(`--telegram-fmt ${tgFmt}: 16x9 | 9x16`);
@@ -168,12 +178,12 @@ if (checkOnly) {
   process.exit(0);
 }
 
-// 1. Render. A cut already on the live day page is never rendered again.
+// 1. Render. A cut already on the live day page is not rendered again unless --render-published.
 if (steps.includes("render")) {
   await seedFromSite();
   const rendered = new Set();
   for (const l of langs) {
-    const todo = byLang(l).filter((r) => !r.youtube?.id && (!existsSync(r.path) || !existsSync(r.cover)));
+    const todo = byLang(l).filter((r) => (renderPublished || !r.youtube?.id) && (!existsSync(r.path) || !existsSync(r.cover)));
     summary(`render ${l}`, todo.map((r) => r.cut));
     if (!todo.length) continue;
     if (!dry) {
@@ -270,6 +280,80 @@ if (steps.includes("attach")) {
   }
 }
 
+// 3b. Gate: every render is a real video with sound, and the text is clean. The EN 9:16 Reels copy is also
+// checked against the Reels spec; a Reel-only problem (e.g. over 90 s) is reported here and stops the facebook step.
+if (steps.includes("gate")) {
+  summary("gate", mine.map((r) => r.cut));
+  const hard = [];
+  for (const l of langs) {
+    const file = join(dir, cutFor(l).script);
+    for (const [label, text] of scriptTexts(JSON.parse(readFileSync(file, "utf8")))) hard.push(...lintText(`${cutFor(l).script} ${label}`, text));
+  }
+  if (langs.includes("en") && existsSync(join(dir, "posts.md"))) hard.push(...lintText("posts.md facebook", reelCaption(readFileSync(join(dir, "posts.md"), "utf8"), date, "en")));
+  for (const r of mine) {
+    if (dry) {
+      console.log(`  ffprobe ${r.path}`);
+      continue;
+    }
+    if (!existsSync(r.path)) {
+      hard.push(`${r.cut}: not rendered`);
+      continue;
+    }
+    const p = gateVideo(probeStreams(r.path), "any");
+    hard.push(...p.map((x) => `${r.cut}: ${x}`));
+    if (r.lang === "en" && r.fmt === "9x16" && !p.length) {
+      const reel = reelProblems(makeReelCopy(r.path), "-");
+      r.reelGate = reel.length ? reel : "ok";
+      console.log(`  ${r.cut} reel copy: ${reel.length ? `✗ ${reel.join("; ")}` : "✓"}`);
+    }
+  }
+  save();
+  if (hard.length) throw new Error(`gate failed:\n  ${hard.join("\n  ")}`);
+  console.log("✓ gate");
+}
+
+// 3c. Facebook Reel: the EN 9:16 cut, once. The Page itself is the record (a Reel whose description has the
+// day link is never posted again, even from a fresh CI checkout); STATUS.json keeps the video id so a rerun
+// after an unclear answer only polls it.
+if (steps.includes("facebook")) {
+  const target = mine.find((r) => r.lang === "en" && r.fmt === "9x16");
+  if (langs.includes("vi")) console.log("  facebook: the Page is English; the vi cut is not posted");
+  summary("facebook reel (PRODUCTION Page)", target && !target.facebook?.published ? [target.cut] : []);
+  if (target && !target.facebook?.published) {
+    if (!prod && !dry) throw new Error("facebook posts to the real Page (there is no staging Page): add --prod");
+    const description = reelCaption(readFileSync(join(dir, "posts.md"), "utf8"), date, "en");
+    const marker = `aidr.today/date/${date}`;
+    if (dry) {
+      show(process.env.FFMPEG || "ffmpeg", reelEncodeArgs(target.path, reelCopyPath(target.path)));
+      console.log(`  gate ${reelCopyPath(target.path)}; skip if a Page Reel mentions ${marker}; POST video_reels start → rupload → finish PUBLISHED\n  description:\n${description.replace(/^/gm, "    ")}`);
+    } else {
+      if (!existsSync(target.path)) throw new Error(`${target.cut}: not rendered; run --steps render`);
+      const copy = makeReelCopy(target.path);
+      const problems = reelProblems(copy, description);
+      if (problems.length) throw new Error(`${target.cut}: the Reel gate failed, not posting:\n  ${problems.join("\n  ")}`);
+      const cfg = reelConfig(envVar);
+      const found = target.facebook?.video_id ? null : await findReel({ ...cfg, marker });
+      if (found) {
+        console.log(`  ${target.cut}: already on the Page as reel ${found.id}; not posting again`);
+        target.facebook = { id: found.id, published: true, seeded: true };
+      } else {
+        const out = await postReel({
+          ...cfg,
+          file: copy,
+          description,
+          resumeVideoId: target.facebook?.video_id,
+          onVideoId: (id) => {
+            target.facebook = { video_id: id, published: false };
+            save();
+          },
+        });
+        target.facebook = { id: out.videoId, video_id: out.videoId, published: true, url: `https://www.facebook.com/reel/${out.videoId}` };
+      }
+      save();
+    }
+  }
+}
+
 // 4. Telegram, once per language: the video file itself (default) or the Worker's YouTube card.
 // Chats: --chat <id> for every language; else staging; with --prod each language's channel (env, else the wrangler.toml default).
 const PROD_CHATS = { en: ["TELEGRAM_EN_CHAT_ID", "@aidr_today"], vi: ["TELEGRAM_VI_CHAT_ID", "-1004420104760"] };
@@ -328,6 +412,7 @@ for (const r of mine) {
     r.duration && `${r.duration}s ${r.sizeMB}MB`,
     r.youtube?.url,
     r.attached && "attached",
+    r.facebook?.published && `facebook reel ${r.facebook.id}`,
     r.telegram && `telegram ${r.telegram.chat_id}/${r.telegram.message_id}`,
   ].filter(Boolean);
   console.log(`  ${r.cut}: ${bits.join(" · ")}`);
