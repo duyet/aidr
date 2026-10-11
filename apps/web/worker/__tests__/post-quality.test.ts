@@ -8,6 +8,7 @@ import {
   sameEvent,
 } from "../notify/post-quality.js";
 import { canonicalOf } from "../notify/posted-events.js";
+import { sanitizeRunStatsJson } from "../telemetry-safe.js";
 import { hasSourceChrome, stripEmbeddedChrome } from "../translation-terms.js";
 
 const GOOD_SUMMARY =
@@ -125,6 +126,12 @@ describe("sameEvent", () => {
     ).toBe(false);
     expect(
       sameEvent(
+        key("Nvidia signs AI chip deal with Saudi Arabia's Humain"),
+        key("Nvidia Negotiates $25B Reflection AI Deal to Avoid Antitrust")
+      )
+    ).toBe(false);
+    expect(
+      sameEvent(
         key("Nvidia launches Rubin GPU"),
         key("Nvidia stock falls on Rubin delay")
       )
@@ -211,6 +218,26 @@ describe("canonicalOf", () => {
       ["b", "a"],
     ]);
     expect(["a", "b"]).toContain(canonicalOf("a", cycle));
+  });
+});
+
+describe("run stats", () => {
+  it("keeps suppression counts through the stats sanitizer", () => {
+    const stored = JSON.parse(
+      sanitizeRunStatsJson(
+        JSON.stringify({
+          notifyReason: {
+            "telegram-en": {
+              suppressed: { "dedup:event": 2, "gate:chrome": 1 },
+            },
+          },
+        })
+      )
+    );
+    expect(stored.notifyReason["telegram-en"].suppressed).toEqual({
+      "dedup:event": 2,
+      "gate:chrome": 1,
+    });
   });
 });
 

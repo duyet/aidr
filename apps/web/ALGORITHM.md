@@ -901,14 +901,19 @@ deliberately non-spammy.
     chain root. A candidate is dropped when its root matches a posted root
     (`dedup:canonical`), or when its event key matches (`dedup:event`):
     source-title token Jaccard of at least 0.2 with at least 3 shared tokens
-    (`significantTitleTokens`, the merge step's tokenizer) and at least one
-    shared named entity (names from `extractProtectedTerms`, plus a short
-    org list, minus filler like "AI"). 0.2 sits between the 2026-10-08..11
+    (`significantTitleTokens`, the merge step's tokenizer) and at least two
+    shared named entities (names from `extractProtectedTerms`, plus a short
+    org list, minus filler like "AI"; a name found in either title counts
+    once the other title contains it, because a Title Case headline hides its
+    own names from the extractor). 0.2 sits between the 2026-10-08..11
     audit's same-event pairs (0.21 Nvidia/Reflection across outlets, 0.35
     TypeSafe) and its different-story pairs sharing an entity (0.03 to
-    0.10); the 3-token floor stops two short headlines about one company
-    ("Nvidia launches Rubin GPU", "Nvidia stock falls on Rubin delay") from
-    matching on two words. No LLM call.
+    0.10). Two shared names and three shared tokens are there because the
+    ratio alone matches different deals by one company: "Nvidia signs AI chip
+    deal with Saudi Arabia's Humain" vs "Nvidia Negotiates $25B Reflection AI
+    Deal" scores 0.23 on Nvidia, AI and "deal", and short pairs like "Nvidia
+    launches Rubin GPU" / "Nvidia stock falls on Rubin delay" clear 0.2 on two
+    words. No LLM call.
   - **Not in v1**: a repost for a material update (a changed number, a new
     development) is never allowed, because telling an update from a rewrite
     needs more than a title compare and a wrong "update" is a duplicate post.

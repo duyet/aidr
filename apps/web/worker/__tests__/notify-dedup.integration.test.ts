@@ -197,21 +197,27 @@ describe("trending after a digest that already showed the story", () => {
 
   it("still posts a different Nvidia story that shares the entity", async () => {
     addItem({
-      id: "nv-rubin",
+      id: "nv-humain",
       source: "theverge",
+      title: "Nvidia signs AI chip deal with Saudi Arabia's Humain",
+      rank: 10.2,
+    });
+    addItem({
+      id: "nv-rubin",
+      source: "wired",
       title: "Nvidia unveils Rubin Ultra with twice the memory bandwidth",
       rank: 10.1,
     });
 
     const report = await dispatchStoryNotifications(env);
 
-    expect(trendingRows()).toEqual(["nv-rubin"]);
+    expect(trendingRows()).toEqual(["nv-humain"]);
     expect(report.reasons["telegram-en"]?.trending).toBe("sent");
     expect(report.reasons["telegram-en"]?.suppressed).toEqual({
       "dedup:canonical": 1,
       "dedup:event": 2,
     });
-    expect(sendBodies.join("\n")).toContain("Rubin Ultra");
+    expect(sendBodies.join("\n")).toContain("Humain");
   });
 
   it("also dedups against the previous day's digest", async () => {

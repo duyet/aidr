@@ -20,6 +20,12 @@ export const MIN_SUMMARY_CHARS = 80;
  *  while different stories sharing an entity scored 0.03 to 0.10. */
 export const EVENT_TITLE_JACCARD = 0.2;
 
+/** Named entities both titles must mention. One shared name is not enough:
+ *  "Nvidia signs AI chip deal with Saudi Arabia's Humain" and "Nvidia
+ *  Negotiates $25B Reflection AI Deal" share Nvidia, AI and "deal" and clear
+ *  the ratio, yet are different deals. */
+export const EVENT_MIN_SHARED_NAMES = 2;
+
 /** Shared title tokens a pair needs besides the ratio. Two short headlines
  *  about one company ("Nvidia launches Rubin GPU", "Nvidia stock falls on
  *  Rubin delay") clear 0.2 on two tokens; real rewrites share three or more. */
@@ -116,11 +122,27 @@ export function eventKey(title: string): EventKey {
   return { title, entities: [...entities] };
 }
 
-/** Two keys name one event: similar titles and at least one shared entity.
- *  The entity requirement keeps a generic headline pair ("raises $500M for
- *  its agent") from matching on filler words alone. */
+function mentions(title: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`).test(
+    title.toLowerCase()
+  );
+}
+
+/** Two keys name one event: similar titles that both mention at least
+ *  `EVENT_MIN_SHARED_NAMES` of the same named entities. A name found in either
+ *  title counts once the other title contains it, so "Reflection" (a name in
+ *  the sentence-case headline) is shared with the Title Case rewrite where the
+ *  extractor cannot tell it from a common word. The name requirement keeps a
+ *  generic headline pair ("raises $500M for its agent") from matching on
+ *  filler words alone. */
 export function sameEvent(a: EventKey, b: EventKey): boolean {
-  if (!a.entities.some((entity) => b.entities.includes(entity))) return false;
+  const names = new Set([...a.entities, ...b.entities]);
+  let sharedNames = 0;
+  for (const name of names) {
+    if (mentions(a.title, name) && mentions(b.title, name)) sharedNames++;
+  }
+  if (sharedNames < EVENT_MIN_SHARED_NAMES) return false;
   const ta = significantTitleTokens(a.title);
   const tb = significantTitleTokens(b.title);
   let shared = 0;
