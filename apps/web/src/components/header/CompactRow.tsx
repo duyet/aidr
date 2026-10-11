@@ -30,7 +30,7 @@ export function CompactHeaderRow({
         <div className="min-w-0 flex-1">
           <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
         </div>
-        <CalendarButton lang={lang} />
+        <CalendarButton lang={lang} surface="sheet" />
         <GetAIDRMenu compact />
         <PrefsPanel triggerClassName={PHONE_PREFS_TRIGGER_CLASS} />
         <PhoneMenu
