@@ -90,9 +90,19 @@ html[data-density="comfortable"] {
   --leading: 1.7;
 }
 
+html[data-density="relaxed"] {
+  --pad: 0.9rem;
+  --leading: 1.8;
+}
+
 html[data-density="spacious"] {
   --pad: 1.125rem;
   --leading: 1.9;
+}
+
+html[data-density="airy"] {
+  --pad: 1.375rem;
+  --leading: 2;
 }
 
 * {
