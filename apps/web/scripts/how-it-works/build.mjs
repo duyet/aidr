@@ -1096,7 +1096,7 @@ fit();`;
     )
     .replace(
       "</style></head>",
-      "html,body{margin:0;background:transparent!important}.iso-root{background:transparent}.iso-root .iso-page{width:100%;margin:0}</style></head>"
+      "html,body{margin:0;overflow:hidden;background:transparent!important}.iso-root{background:transparent}.iso-root .iso-page{width:100%;margin:0}</style></head>"
     )
     .replace(
       /<body class="iso" data-theme="\w+">/,
