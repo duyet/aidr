@@ -1,8 +1,6 @@
 import type { Metric } from "web-vitals";
 import { track } from "./track";
 
-type PostHog = { capture?: (event: string, props: object) => void };
-
 /**
  * Edge-cache outcome of the document request, read from the Worker's
  * `Server-Timing: aidr-cache;desc=HIT|MISS`. "none" when the response was
@@ -41,15 +39,8 @@ export function metricParams(metric: Metric, cache: string) {
 
 function report(metric: Metric): void {
   const params = metricParams(metric, documentCacheStatus());
+  // track() fans out to GA4 and PostHog.
   track("web_vitals", params);
-  try {
-    (window as Window & { posthog?: PostHog }).posthog?.capture?.(
-      "web_vitals",
-      params
-    );
-  } catch {
-    // never break UI
-  }
 }
 
 /**

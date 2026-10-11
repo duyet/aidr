@@ -50,13 +50,24 @@ function getGtag(): ((...args: unknown[]) => void) | undefined {
   return typeof gtag === "function" ? gtag : undefined;
 }
 
-/** Best-effort GA4 event. Noops when gtag is missing; never throws. */
+function getPosthog():
+  | { capture: (event: string, props: object) => void }
+  | undefined {
+  if (typeof window === "undefined") return undefined;
+  const ph = (window as Window & { posthog?: { capture?: unknown } }).posthog;
+  return typeof ph?.capture === "function"
+    ? (ph as { capture: (event: string, props: object) => void })
+    : undefined;
+}
+
+/** Best-effort GA4 + PostHog event, same name and sanitized params.
+ * Noops for a sink that is not loaded; never throws. */
 export function track(name: string, params?: TrackParams): void {
   try {
     if (!EVENT_NAME_RE.test(name)) return;
-    const gtag = getGtag();
-    if (!gtag) return;
-    gtag("event", name, sanitizeTrackParams(params));
+    const clean = sanitizeTrackParams(params);
+    getGtag()?.("event", name, clean);
+    getPosthog()?.capture(name, clean);
   } catch {
     // never break UI
   }

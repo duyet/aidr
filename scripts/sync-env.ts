@@ -102,6 +102,8 @@ const GITHUB_OPTIONAL = [
   "FACEBOOK_PAGE_ID",
   "FACEBOOK_APP_ID",
   "FACEBOOK_PAGE_ACCESS_TOKEN",
+  "VITE_POSTHOG_PROJECT_TOKEN",
+  "VITE_POSTHOG_HOST",
 ] as const;
 
 const args = new Set(process.argv.slice(2));

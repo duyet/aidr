@@ -96,3 +96,29 @@ describe("track", () => {
     expect(gtag).not.toHaveBeenCalled();
   });
 });
+
+describe("track → PostHog", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("sends the same sanitized event to PostHog so both sinks can drive fixes", () => {
+    const gtag = vi.fn();
+    const capture = vi.fn();
+    vi.stubGlobal("window", { gtag, posthog: { capture } });
+    track("search", { results: 3, query: "secret" });
+    expect(capture).toHaveBeenCalledWith("search", {
+      results: 3,
+      surface: "web",
+    });
+    expect(gtag).toHaveBeenCalledWith("event", "search", {
+      results: 3,
+      surface: "web",
+    });
+  });
+
+  it("still sends to PostHog when GA4 is blocked", () => {
+    const capture = vi.fn();
+    vi.stubGlobal("window", { posthog: { capture } });
+    track("search", { results: 1 });
+    expect(capture).toHaveBeenCalledOnce();
+  });
+});
