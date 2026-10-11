@@ -146,6 +146,27 @@ export async function cachedSsrResponse(
 }
 
 /**
+ * Resolved language for a GET HTML request to a localized page that carries
+ * no canonical `?lang=` (bare `/`), or null when it must not be cached.
+ */
+export function bareLocalizedCacheLang(request: Request): string | null {
+  if (request.method !== "GET") return null;
+  const accept = request.headers.get("accept") || "*/*";
+  if (!/(^|,)\s*(\*\/\*|text\/html)/.test(accept)) return null;
+  if (hasAuthSignal(request)) return null;
+  const url = normalizedCacheUrl(request.url);
+  if (!isLocalizedSsrPath(url.pathname)) return null;
+  if (hasCanonicalLocaleQuery(url.search)) return null;
+  if (isPrivateSsrPath(url.pathname, url.search)) return null;
+  const locale = resolveLocale({
+    search: url.search,
+    cookie: request.headers.get("cookie"),
+    acceptLanguage: request.headers.get("accept-language"),
+  });
+  return locale.ok ? locale.lang : null;
+}
+
+/**
  * Worker-cache a response whose language comes from Cookie/Accept-Language
  * (bare `/feed.xml`). The resolved `lang` joins the key, so readers never
  * share another locale's copy; the client still receives the original
