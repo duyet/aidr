@@ -25,20 +25,27 @@ export function sourceBoost(sourceCount = 0): number {
   return 1 + SOURCE_RANK_WEIGHT * extra;
 }
 
-/** Log-damped reader engagement. `voteNet` sits beside source points inside
- * the same log, so a handful of votes moves rank without drowning HN
- * points. Zero votes leaves the historical term. A negative signal mirrors
- * the log and floors at 0, so downvotes lower the score and rank_score
- * stays non-negative. */
+/** One signed-in aidr reader's vote counts as this many source points. A
+ * vote is a deliberate pick by our own audience, while HN points come from
+ * a much larger crowd, so a raw 1:1 left votes nearly invisible in rank. */
+export const READER_VOTE_WEIGHT = 10;
+
+/** Log-damped reader engagement. Weighted `voteNet` sits beside source
+ * points inside the same log, so votes move rank clearly without one
+ * reader outweighing a front-page HN story. Zero votes leaves the historical term. A negative signal mirrors
+ * the log into a factor in (0, 1), so downvotes lower the score and
+ * rank_score stays positive. */
 export function readerEngagement(
   points: number,
   comments: number,
   voteNet = 0
 ): number {
-  const signal = points + voteNet + 0.5 * comments;
+  const signal = points + READER_VOTE_WEIGHT * voteNet + 0.5 * comments;
   if (!Number.isFinite(signal)) return 1;
   if (signal >= 0) return 1 + Math.log10(1 + signal);
-  return Math.max(0, 1 - Math.log10(1 - signal));
+  // Downvotes shrink the factor toward 0 without reaching it, so a single
+  // weighted downvote lowers a story instead of erasing it.
+  return 1 / (1 + Math.log10(1 - signal));
 }
 
 export function rankScore({
