@@ -113,6 +113,8 @@ function stamp(response: Response, state: "HIT" | "MISS"): Response {
   // Cached and freshly built responses may have immutable headers.
   const out = new Response(response.body, response);
   out.headers.set(EDGE_CACHE_HEADER, state);
+  // Readable by the page (same origin) so web-vitals can split by cache.
+  out.headers.append("server-timing", `aidr-cache;desc=${state}`);
   return out;
 }
 
