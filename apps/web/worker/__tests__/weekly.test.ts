@@ -9,13 +9,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * window, or if a dry run writes the live table.
  */
 
-const llmContent = vi.hoisted(() => ({ value: "" as string | Error }));
+/** `value` answers every call; `queue` (when set) answers calls in order. */
+const llmContent = vi.hoisted(() => ({
+  value: "" as string | Error,
+  queue: [] as (string | Error)[],
+  calls: 0,
+}));
 
 vi.mock("../llm.js", async (original) => ({
   ...(await original<typeof import("../llm.js")>()),
   callAnyrouter: vi.fn(async () => {
-    if (llmContent.value instanceof Error) throw llmContent.value;
-    return { content: llmContent.value, tokens: 77 };
+    llmContent.calls++;
+    const next = llmContent.queue.shift() ?? llmContent.value;
+    if (next instanceof Error) throw next;
+    return { content: next, tokens: 77 };
   }),
 }));
 vi.mock("../translation-knowledge.js", async (original) => ({
@@ -33,6 +40,7 @@ const {
   WEEKLY_RETRY_MS,
 } = await import("../weekly.js");
 const { generateWeekly } = await import("../ingest/publish.js");
+const { evaluateHealth } = await import("../health.js");
 
 import type { IngestContext } from "../ingest/context.js";
 import type { Env } from "../types.js";
@@ -293,9 +301,14 @@ describe("weekly step", () => {
     vi.useFakeTimers();
     vi.setSystemTime(MONDAY);
     llmContent.value = GOOD_COPY;
+    llmContent.queue = [];
+    llmContent.calls = 0;
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("writes last week's edition once, with each language in its own column", async () => {
@@ -344,7 +357,83 @@ describe("weekly step", () => {
     ]);
     const stats = await ensureWeeklyEdition(env(db), MONDAY);
     expect(stats.reason).toMatch(/^kept existing edition/);
-    expect(db.writes).toEqual([]);
+    // Only the retry clock moves; the edition itself is untouched.
+    expect(db.writes).toHaveLength(1);
+    expect(db.writes[0].sql).toMatch(/^UPDATE weekly_snapshots SET updated_at/);
+    expect(db.writes[0].args).toEqual([MONDAY, "2026-W41"]);
+  });
+
+  /** Health issues for a run whose only step is the recorded weekly one. */
+  function healthKeys(ctx: IngestContext) {
+    return evaluateHealth({
+      nowMs: MONDAY,
+      localHour: 10,
+      steps: ctx.steps,
+      telegramLastPostMs: {},
+      llm: { total: 0, failed: 0 },
+      history: [],
+    }).map((i) => i.key);
+  }
+
+  function liveCtx(db: WeeklyD1): IngestContext {
+    return {
+      step: inlineStep,
+      env: env(db),
+      runId: "run-1",
+      steps: [],
+      mode: { dryRun: false, steps: ["weekly"] },
+    };
+  }
+
+  // 2026-W40 (#567): the first hop streamed no token, the other id was down.
+  // The step must store title lines (fallback = 1, retried by the gate),
+  // warn instead of error, and not raise a "step-failed" health alert.
+  it("stores the title fallback and stays quiet when the model chain is exhausted", async () => {
+    llmContent.value = new Error(
+      "anyrouter chain exhausted: openai/gpt-5.6-luna: anyrouter request timed out"
+    );
+    const db = new WeeklyD1([completeRow("2026-W40")]);
+    const ctx = liveCtx(db);
+    const result = await generateWeekly(ctx);
+    expect(result.generated).toBe(true);
+    expect(db.writes).toHaveLength(1);
+    const args = db.writes[0].args;
+    expect(args[0]).toBe("2026-W41");
+    expect(args[5]).toBeNull();
+    expect(JSON.parse(args[7] as string)).toEqual([
+      { item_id: "a", text: "Alpha" },
+    ]);
+    expect(args[9]).toBe(1);
+    // Two passes over the chain before giving up.
+    expect(llmContent.calls).toBe(2);
+    expect(ctx.steps[0].reason).toMatch(/title fallback/);
+    expect(healthKeys(ctx)).toEqual([]);
+    expect(console.warn).toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it("a second pass over the chain recovers from a first-pass timeout", async () => {
+    llmContent.queue = [
+      new Error("anyrouter chain exhausted: m: anyrouter request timed out"),
+    ];
+    const db = new WeeklyD1([completeRow("2026-W40")]);
+    const stats = await ensureWeeklyEdition(env(db), MONDAY);
+    expect(stats.generated).toBe(true);
+    expect(llmContent.calls).toBe(2);
+    expect(db.writes[0].args[9]).toBe(0);
+  });
+
+  // A bug is not a provider outage: one pass, logged as an error, and the
+  // step still trips the health alert.
+  it("still flags the step when the copy fails for a non-provider reason", async () => {
+    llmContent.value = new TypeError("cannot read properties of undefined");
+    const db = new WeeklyD1([completeRow("2026-W40")]);
+    const ctx = liveCtx(db);
+    await generateWeekly(ctx);
+    expect(llmContent.calls).toBe(1);
+    expect(db.writes[0].args[9]).toBe(1);
+    expect(healthKeys(ctx)).toEqual(["step-failed"]);
+    expect(console.error).toHaveBeenCalled();
   });
 
   it("a dry run previews the edition and writes nothing", async () => {

@@ -14,11 +14,13 @@ import {
   weekBounds,
   weekIssue,
 } from "../src/lib/week.js";
+import { isProviderFailure } from "./bugsink.js";
 import { topBullets } from "./digest/edition.js";
 import {
   callAnyrouter,
   parseJson,
   TLDR_SLICE_MAX_MS,
+  TRANSLATE_FIRST_TOKEN_MS,
   VI_STYLE,
 } from "./llm.js";
 import { rankScore } from "./ranking.js";
@@ -37,7 +39,15 @@ const WEEKLY_WINDOW_CANDIDATES = 60;
 export const WEEKLY_RETRY_MS = 6 * 60 * 60 * 1000;
 /** Closed weeks the step looks back over for a missing edition. */
 export const WEEKLY_BACKFILL_WEEKS = 4;
+/** Whole LLM budget, both passes. Inside the 4-minute step (TLDR_STEP)
+ *  with room for the D1 reads, the glossary prompt and the write. */
 const WEEKLY_TIMEOUT_MS = 200_000;
+/** Passes over the model chain. On 2026-10-10 the first hop streamed no
+ *  token in 20s and the other id was down (404 earlier in the run, 502 on
+ *  the retry): the chain gave up with ~175s of budget left. */
+const WEEKLY_PASSES = 2;
+/** A second pass needs at least this much left to be worth a request. */
+const WEEKLY_PASS_MIN_MS = 30_000;
 const WEEKLY_MAX_TOKENS = 4096;
 /** Each day a story led a daily edition adds this much (up to 3 days). */
 const EDITION_DAY_BOOST = 0.25;
@@ -382,49 +392,80 @@ ${JSON.stringify(items)}
 Respond with strict JSON only: {"intro_en":"...","intro_vi":"...","stories":[{"id":"...","en":"...","vi":"..."}]}`;
 }
 
-/** One bilingual call on the TL;DR chain; null when every model failed. */
+/** Up to two passes over the TL;DR chain inside one budget; null output
+ * when every pass failed. `providerFailure` marks a failure the chain
+ * absorbed (timeouts, 5xx, accept misses), as opposed to an app bug. */
 async function generateWeeklyCopy(
   env: Env,
   week: string,
   rows: readonly WeeklyCandidate[]
-): Promise<{ output: WeeklyLlmOutput | null; tokens: number; error?: string }> {
+): Promise<{
+  output: WeeklyLlmOutput | null;
+  tokens: number;
+  error?: string;
+  providerFailure?: boolean;
+}> {
   const ids = new Set(rows.map((r) => r.id));
+  const deadline = Date.now() + WEEKLY_TIMEOUT_MS;
+  let lastError: unknown = null;
   try {
     const system = await viSystemPrompt(
       env,
       VI_STYLE,
       rows.map((r) => `${r.title}\n${r.summary ?? ""}`).join("\n")
     );
-    const { content, tokens } = await callAnyrouter(
-      env,
-      [
-        { role: "system", content: system },
-        { role: "user", content: weeklyPrompt(week, rows) },
-      ],
-      {
-        json: true,
-        modelSpec: env.ANYROUTER_TLDR_MODEL,
-        task: "tldr",
-        sensitive: true,
-        timeoutMs: WEEKLY_TIMEOUT_MS,
-        maxSliceMs: TLDR_SLICE_MAX_MS,
-        maxTokens: WEEKLY_MAX_TOKENS,
-        accept: (raw) => {
-          try {
-            const out = sanitizeWeeklyOutput(parseJson(raw), ids);
-            return Boolean(out.intro_en) && out.en.size > 0;
-          } catch {
-            return false;
+    for (let pass = 1; pass <= WEEKLY_PASSES; pass++) {
+      const remaining = deadline - Date.now();
+      if (pass > 1 && remaining < WEEKLY_PASS_MIN_MS) break;
+      try {
+        const { content, tokens } = await callAnyrouter(
+          env,
+          [
+            { role: "system", content: system },
+            { role: "user", content: weeklyPrompt(week, rows) },
+          ],
+          {
+            json: true,
+            modelSpec: env.ANYROUTER_TLDR_MODEL,
+            task: "tldr",
+            sensitive: true,
+            timeoutMs: remaining,
+            maxSliceMs: TLDR_SLICE_MAX_MS,
+            // The ~14K-char bilingual prompt: 20s to a first token killed
+            // a model that answers in 16-30s on a good run.
+            firstTokenMs: TRANSLATE_FIRST_TOKEN_MS,
+            maxTokens: WEEKLY_MAX_TOKENS,
+            accept: (raw) => {
+              try {
+                const out = sanitizeWeeklyOutput(parseJson(raw), ids);
+                return Boolean(out.intro_en) && out.en.size > 0;
+              } catch {
+                return false;
+              }
+            },
           }
-        },
+        );
+        return {
+          output: sanitizeWeeklyOutput(parseJson(content), ids),
+          tokens,
+        };
+      } catch (error) {
+        lastError = error;
+        // An app bug will not fix itself on a second pass.
+        if (!isProviderFailure(error)) break;
       }
-    );
-    return { output: sanitizeWeeklyOutput(parseJson(content), ids), tokens };
+    }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("weekly edition LLM failed:", error);
-    return { output: null, tokens: 0, error: message };
+    lastError = error;
   }
+  const providerFailure = isProviderFailure(lastError);
+  (providerFailure ? console.warn : console.error)(
+    "weekly edition LLM failed:",
+    lastError
+  );
+  const message =
+    lastError instanceof Error ? lastError.message : String(lastError);
+  return { output: null, tokens: 0, error: message, providerFailure };
 }
 
 export interface WeeklyRunStats {
@@ -449,9 +490,14 @@ async function buildWeeklyEdition(
   if (!edition) {
     return { edition: null, tokens: copy.tokens, reason: "nothing to persist" };
   }
-  const reason = edition.fallback
-    ? `LLM failed (${copy.error ?? "no intro"}); title fallback`
-    : `${edition.stories_en.length} EN / ${edition.stories_vi.length} VI stories`;
+  const reason = !edition.fallback
+    ? `${edition.stories_en.length} EN / ${edition.stories_vi.length} VI stories`
+    : copy.providerFailure
+      ? // Absorbed by the chain and retried by the gate: no failure words,
+        // so health.ts raises no "step-failed" (the LLM failure-rate check
+        // still sees the attempts). Detail is in the console.warn above.
+        `title fallback, model chain unavailable; retry in ${WEEKLY_RETRY_MS / 3_600_000}h`
+      : `LLM failed (${copy.error ?? "no intro"}); title fallback`;
   return { edition, tokens: copy.tokens, reason };
 }
 
@@ -523,6 +569,13 @@ export async function ensureWeeklyEdition(
     }
     // A failed retry must not replace a real edition with title lines.
     if (existing && existing.fallback === 0 && built.edition.fallback) {
+      // Restart the retry clock, or an English-only row passes the gate
+      // (and costs a full LLM call) on every 30-minute run.
+      await env.DB.prepare(
+        "UPDATE weekly_snapshots SET updated_at = ? WHERE week = ?"
+      )
+        .bind(nowMs, week)
+        .run();
       return {
         generated: false,
         tokens,
