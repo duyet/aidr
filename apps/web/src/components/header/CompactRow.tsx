@@ -6,6 +6,7 @@ import type { Lang } from "../../lib/types";
 import { PrefsPanel } from "../PrefsPanel";
 import { SearchBox } from "../SearchBox";
 import { Brand } from "./Brand";
+import { CalendarButton } from "./CalendarButton";
 import { GetAIDRMenu } from "./GetAIDRMenu";
 import { PhoneMenu } from "./PhoneMenu";
 
@@ -29,6 +30,7 @@ export function CompactHeaderRow({
         <div className="min-w-0 flex-1">
           <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
         </div>
+        <CalendarButton lang={lang} />
         <GetAIDRMenu compact />
         <PrefsPanel triggerClassName={PHONE_PREFS_TRIGGER_CLASS} />
         <PhoneMenu
