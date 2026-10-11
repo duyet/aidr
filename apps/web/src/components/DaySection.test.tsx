@@ -87,3 +87,87 @@ describe("day story limit", () => {
     expect(html).not.toContain("Load more");
   });
 });
+
+// Owner picked the dense-table layout: one line per story in fixed columns
+// (rank | title | topic | time | score) under a legend, with a phone
+// fallback that keeps rank | title | score and moves topic + time under the
+// title. These class names are the contract the layout hangs on.
+describe("dense story table", () => {
+  const rows = (n: number): DayGroup => ({
+    ...day,
+    items: Array.from({ length: n }, (_, i) => ({
+      ...item,
+      id: `abcdef12deadbe${String(i).padStart(2, "0")}`,
+    })),
+  });
+
+  it("renders a bilingual aria-hidden legend on the same grid as rows", () => {
+    const vi = renderToStaticMarkup(<DaySection day={day} lang="vi" />);
+    const legend = vi.match(/<div class="story-legend[^"]*"[^>]*>/)?.[0] ?? "";
+    expect(legend).toContain('aria-hidden="true"');
+    expect(legend).toContain(
+      "sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.2rem]"
+    );
+    for (const label of ["#", "Tin", "Chủ đề", "Lúc", "Điểm"]) {
+      expect(vi).toContain(`>${label}<`);
+    }
+    const en = renderToStaticMarkup(<DaySection day={day} lang="en" />);
+    for (const label of ["Story", "Topic", "Time", "Score"]) {
+      expect(en).toContain(`>${label}<`);
+    }
+  });
+
+  it("lays each row out in five columns with a three-column phone fallback", () => {
+    const html = renderToStaticMarkup(<DaySection day={day} lang="en" />);
+    const row = html.match(/<div class="story-row[^"]*"/)?.[0] ?? "";
+    expect(row).toContain("grid-cols-[1.4rem_minmax(0,1fr)_3rem]");
+    expect(row).toContain(
+      "sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.2rem]"
+    );
+    // Desktop: one-line title; topic and time have their own columns.
+    expect(html).toMatch(/class="story-title[^"]*sm:truncate/);
+    expect(html).toMatch(/class="story-topic hidden[^"]*sm:block/);
+    expect(html).toMatch(/class="story-time hidden[^"]*sm:block/);
+    // Phone: topic + time sit under the title and hide from 640px up.
+    expect(html).toMatch(/class="story-meta-phone[^"]*sm:hidden/);
+    // Score column is upvote-only: one control, no down arrow.
+    const score = html.split('class="story-score')[1] ?? "";
+    expect(score.match(/aria-label="Sign in to vote"/g)).toHaveLength(1);
+    expect(score).not.toContain("chevron-down");
+  });
+
+  it("bands only the top 3 rows", () => {
+    const html = renderToStaticMarkup(<DaySection day={rows(5)} lang="en" />);
+    expect(html.match(/story-row-top/g)).toHaveLength(3);
+  });
+
+  it("shortens the Vietnamese time to '7 giờ'", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const html = renderToStaticMarkup(
+      <DaySection
+        day={{
+          ...day,
+          items: [{ ...item, published_at: now - 7 * 3600 - 60 }],
+        }}
+        lang="vi"
+      />
+    );
+    expect(html).toContain("7 giờ<");
+    expect(html).not.toContain("giờ trước");
+  });
+
+  it("shortens the English time to '7h' to match", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const html = renderToStaticMarkup(
+      <DaySection
+        day={{
+          ...day,
+          items: [{ ...item, published_at: now - 7 * 3600 - 60 }],
+        }}
+        lang="en"
+      />
+    );
+    expect(html).toContain(">7h<");
+    expect(html).not.toContain("h ago");
+  });
+});

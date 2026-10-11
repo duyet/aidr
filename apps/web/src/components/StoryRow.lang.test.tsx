@@ -189,7 +189,8 @@ describe("expanded row language switch", () => {
 
 // Owner request: an open row shows its votes at the top of the media column
 // in the details, not in the header meta line. A closed row keeps them in
-// the header, and the votes never vanish from an open row.
+// the header, and the votes never vanish from an open row. The closed row's
+// Score column is upvote-only (one up control); the open row keeps up/down.
 describe("StoryRow vote placement", () => {
   const voteLinks = (root: Element) =>
     Array.from(root.querySelectorAll('a[aria-label="Sign in to vote"]'));
@@ -200,7 +201,7 @@ describe("StoryRow vote placement", () => {
     );
     const header = view.container.querySelector('[role="button"]');
     expect(header).toBeTruthy();
-    expect(voteLinks(header as Element)).toHaveLength(2);
+    expect(voteLinks(header as Element)).toHaveLength(1);
     expect(view.container.querySelector("aside")).toBeNull();
   });
 

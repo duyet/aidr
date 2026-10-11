@@ -543,6 +543,15 @@
   .dark .topic-hl-row {
     background-color: color-mix(in srgb, var(--tc-dark) 14%, transparent);
   }
+
+  /* Dense feed table: the day's top 3 rows get a soft accent band. */
+  .story-row-top {
+    background-color: color-mix(in srgb, var(--accent) 7%, transparent);
+  }
+
+  .dark .story-row-top {
+    background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
 }
 
 /* Horizontal-scroll rows (topics chips, trending chips) that shouldn't show

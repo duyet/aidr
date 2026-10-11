@@ -20,30 +20,48 @@ import { StoryDetail } from "./StoryDetail";
 import { StoryVotes } from "./story/StoryVotes";
 
 /**
- * One title line tall (title is `leading-snug`), content centered in it.
- * Carries no text size of its own, so `em` is the title's font size.
+ * Dense-table columns shared by every row and the day's legend row.
+ * Phone: rank | title (wraps, topic + time under it) | score.
+ * >=640px: rank | title (one line) | topic | time | score.
  */
-const FIRST_LINE = "flex h-[1.375em] shrink-0 items-center";
+export const STORY_ROW_COLS =
+  "grid grid-cols-[1.4rem_minmax(0,1fr)_3rem] gap-x-3 sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.2rem]";
+
+/** Short relative time for the Time column: "7 giờ" / "7h". */
+function shortTimeAgo(epochSec: number, lang: Lang): string {
+  return timeAgo(epochSec, Date.now(), lang).replace(/ (trước|ago)$/, "");
+}
 
 function StoryRowHeader({
   hasDetails,
   expanded,
+  top,
   matchColor,
   onToggle,
   children,
 }: {
   hasDetails: boolean;
   expanded: boolean;
+  /** Top 3 of the day: a soft accent band. */
+  top: boolean;
   matchColor: TopicColor | null;
   onToggle: () => void;
   children: ReactNode;
 }) {
-  const className = `flex items-start gap-3 ${
+  const band = expanded
+    ? "bg-muted/60"
+    : matchColor
+      ? "topic-hl-row"
+      : top
+        ? "story-row-top"
+        : "";
+  const className = `story-row ${STORY_ROW_COLS} items-baseline ${
     hasDetails ? "cursor-pointer" : ""
-  } ${expanded ? "bg-muted/60" : matchColor ? "topic-hl-row" : ""}`;
+  } ${band}`;
+  // Tighter than the reader pad, but it still scales with it.
   const style = {
-    paddingTop: "var(--reader-pad, 0.5rem)",
-    paddingBottom: "var(--reader-pad, 0.5rem)",
+    paddingTop: "calc(var(--reader-pad, 0.5rem) * 0.6)",
+    paddingBottom: "calc(var(--reader-pad, 0.5rem) * 0.6)",
     ...(matchColor && {
       "--tc-light": matchColor.light,
       "--tc-dark": matchColor.dark,
@@ -185,22 +203,25 @@ export function StoryRow({
   };
 
   const detailsOpen = expanded && hasDetails;
+  const host = item.url ? publisherHost(item.url) : null;
+  const time = Number.isFinite(item.published_at)
+    ? shortTimeAgo(item.published_at, lang)
+    : "";
 
   return (
     <div id={`item-${item.id}`}>
       <StoryRowHeader
         hasDetails={hasDetails}
         expanded={expanded}
+        top={index <= 3}
         matchColor={matchColor}
         onToggle={toggleExpanded}
       >
-        <span className={`${FIRST_LINE} w-5 justify-end`}>
-          <span className="text-sm tabular-nums text-muted-foreground">
-            {index}
-          </span>
+        <span className="story-rank text-right text-sm tabular-nums text-muted-foreground">
+          {index}
         </span>
         <span
-          className={`min-w-0 flex-1 leading-snug ${
+          className={`story-title min-w-0 leading-snug sm:truncate ${
             matchColor ? "topic-colored font-medium" : "font-medium"
           }`}
         >
@@ -250,49 +271,47 @@ export function StoryRow({
                 e.stopPropagation();
                 track("story_open", { item_id: item.id });
               }}
-              className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+              className="ml-1 text-xs font-normal text-muted-foreground hover:text-foreground"
               aria-label="Open story link"
             >
               <SpriteIcon
                 name="external-link"
                 className="inline h-3.5 w-3.5 align-baseline"
               />
-              {publisherHost(item.url) && (
-                <span className="ml-1 hidden sm:inline">
-                  {publisherHost(item.url)}
-                </span>
-              )}
+              {host && <span className="ml-1">{host}</span>}
             </a>
           )}
-        </span>
-        {/* Votes, category and time sit on the title's first line in fixed
-            columns, so every row lines up however the title wraps. An open
-            row moves its votes to the top of the details' media column; the
-            empty slot keeps the columns aligned. */}
-        <span className={`${FIRST_LINE} gap-3`}>
-          <span className="flex w-12 justify-center">
-            {!detailsOpen && (
-              <StoryVotes
-                itemId={item.id}
-                voteNet={item.vote_net ?? 0}
-                lang={lang}
-                compact
-              />
-            )}
-          </span>
-          <span className="hidden w-24 truncate text-right text-sm text-muted-foreground sm:block">
+          {/* Phone: topic and time leave their columns for one line here. */}
+          <span className="story-meta-phone mt-0.5 flex flex-wrap gap-x-2 text-xs font-normal text-muted-foreground sm:hidden">
             {item.category ? (
-              <CategoryLabel name={item.category} lang={lang} />
+              <CategoryLabel name={item.category} lang={lang} dot />
             ) : null}
+            <span suppressHydrationWarning>{time}</span>
           </span>
-          <span
-            className="hidden w-[6.5rem] whitespace-nowrap text-right text-sm text-muted-foreground md:block"
-            suppressHydrationWarning
-          >
-            {Number.isFinite(item.published_at)
-              ? timeAgo(item.published_at, Date.now(), lang)
-              : ""}
-          </span>
+        </span>
+        <span className="story-topic hidden truncate text-sm sm:block">
+          {item.category ? (
+            <CategoryLabel name={item.category} lang={lang} dot />
+          ) : null}
+        </span>
+        <span
+          className="story-time hidden whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground sm:block"
+          suppressHydrationWarning
+        >
+          {time}
+        </span>
+        {/* An open row moves its full up/down votes to the top of the
+            details' media column; the empty cell keeps the columns aligned. */}
+        <span className="story-score flex justify-end">
+          {!detailsOpen && (
+            <StoryVotes
+              itemId={item.id}
+              voteNet={item.vote_net ?? 0}
+              lang={lang}
+              compact
+              upOnly
+            />
+          )}
         </span>
       </StoryRowHeader>
 
