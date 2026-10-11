@@ -1,7 +1,7 @@
-import { Skeleton } from "@aidr/ui";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
-import { calendarPath, shiftMonth } from "../../lib/calendar";
+import { SheetClose, Skeleton } from "@aidr/ui";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { calendarPath, currentMonth, shiftMonth } from "../../lib/calendar";
 import { latestArchiveDate } from "../../lib/day-archive";
 import type { Lang } from "../../lib/types";
 import { DayPreview } from "./DayPreview";
@@ -28,30 +28,29 @@ export function CalendarPanel({
   const sheet = surface === "sheet";
   const [month, setMonth] = useState<string | undefined>(undefined);
   const [selected, setSelected] = useState<string | undefined>(undefined);
-  const state = useCalendarMonth(month);
+  const { state, retry } = useCalendarMonth(month);
   const cal = state.status === "ready" ? state.cal : null;
+  // Month bounds outlive a loading or failed month, so the arrows keep working.
+  const bounds = useRef<{ first: string | null; last: string } | null>(null);
+  if (cal) bounds.current = { first: cal.firstMonth, last: cal.lastMonth };
+  const today = latestArchiveDate(Date.now());
+  const shown = month ?? currentMonth(Date.now());
   const preview = sheet
     ? (cal?.days.find((d) => d.date === selected) ?? cal?.days.at(-1))
     : undefined;
-  const prev = cal ? shiftMonth(cal.month, -1) : null;
-  const next = cal ? shiftMonth(cal.month, 1) : null;
-  const hasPrev =
-    cal !== null &&
-    cal.firstMonth !== null &&
-    prev !== null &&
-    prev >= cal.firstMonth;
-  const hasNext = cal !== null && next !== null && next <= cal.lastMonth;
-  const today = latestArchiveDate(Date.now());
+  const prev = shiftMonth(shown, -1);
+  const next = shiftMonth(shown, 1);
+  const first = bounds.current?.first ?? null;
+  const hasPrev = first !== null && prev >= first;
+  const hasNext = next <= (bounds.current?.last ?? shown);
 
   const title = (
     <p className="font-serif text-xl font-medium leading-tight">
-      {cal
-        ? monthTitle(
-            cal.month,
-            lang,
-            !sheet || cal.month.slice(0, 4) !== today.slice(0, 4)
-          )
-        : " "}
+      {monthTitle(
+        shown,
+        lang,
+        !sheet || shown.slice(0, 4) !== today.slice(0, 4)
+      )}
     </p>
   );
   const prevBtn = (
@@ -59,7 +58,7 @@ export function CalendarPanel({
       type="button"
       className={NAV}
       disabled={!hasPrev}
-      onClick={() => prev && setMonth(prev)}
+      onClick={() => setMonth(prev)}
       aria-label={vi ? "Tháng trước" : "Previous month"}
     >
       <ChevronLeft className="size-4" aria-hidden />
@@ -70,7 +69,7 @@ export function CalendarPanel({
       type="button"
       className={NAV}
       disabled={!hasNext}
-      onClick={() => next && setMonth(next)}
+      onClick={() => setMonth(next)}
       aria-label={vi ? "Tháng sau" : "Next month"}
     >
       <ChevronRight className="size-4" aria-hidden />
@@ -78,7 +77,7 @@ export function CalendarPanel({
   );
   const allEditions = (
     <a
-      href={calendarPath(cal?.month ?? month, lang)}
+      href={calendarPath(shown, lang)}
       className="text-sm font-bold underline-offset-2 hover:underline"
     >
       {sheet
@@ -95,10 +94,18 @@ export function CalendarPanel({
     <div>
       {sheet ? (
         <>
-          <div
-            className="mx-auto mb-3 h-1 w-9 rounded-full bg-muted"
-            aria-hidden
-          />
+          <div className="relative mb-3 flex h-6 items-center justify-center">
+            <div className="h-1 w-9 rounded-full bg-muted" aria-hidden />
+            <SheetClose asChild>
+              <button
+                type="button"
+                aria-label={vi ? "Đóng" : "Close"}
+                className="absolute -top-1 right-0 inline-flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </SheetClose>
+          </div>
           <div className="mb-3 flex items-center gap-2">
             {prevBtn}
             <div className="min-w-0 flex-1">{title}</div>
@@ -124,9 +131,18 @@ export function CalendarPanel({
           size={sheet ? "lg" : "sm"}
         />
       ) : state.status === "error" ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          {vi ? "Không tải được lịch." : "The calendar could not be loaded."}
-        </p>
+        <div className="py-6 text-center text-sm text-muted-foreground">
+          <p>
+            {vi ? "Không tải được lịch." : "The calendar could not be loaded."}
+          </p>
+          <button
+            type="button"
+            onClick={retry}
+            className="mt-2 font-bold text-foreground underline-offset-2 hover:underline"
+          >
+            {vi ? "Thử lại" : "Retry"}
+          </button>
+        </div>
       ) : (
         <div
           className="grid grid-cols-7 gap-1"

@@ -55,6 +55,18 @@ export function monthTitle(
   });
 }
 
+/** Localized UTC date: short ("Fri, Oct 9") or long ("Friday, October 9"). */
+export function formatDay(
+  date: string,
+  lang: Lang,
+  style: "short" | "long"
+): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString(
+    lang === "vi" ? "vi-VN" : "en-US",
+    { weekday: style, month: style, day: "numeric", timeZone: "UTC" }
+  );
+}
+
 export function editionsLabel(n: number, lang: Lang): string {
   if (lang === "vi") return `${n} số`;
   return n === 1 ? "1 edition" : `${n} editions`;

@@ -1,14 +1,7 @@
 import type { CalendarDay } from "../../lib/calendar";
 import { dayArchivePath } from "../../lib/day-archive";
 import type { Lang } from "../../lib/types";
-import { dayTitle } from "./shared";
-
-function eyebrowDate(date: string, lang: Lang): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString(
-    lang === "vi" ? "vi-VN" : "en-US",
-    { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }
-  );
-}
+import { dayTitle, formatDay } from "./shared";
 
 /**
  * Phone sheet preview of the selected day: thumbnail, date and story count,
@@ -34,7 +27,7 @@ export function DayPreview({ day, lang }: { day: CalendarDay; lang: Lang }) {
       )}
       <span className="min-w-0">
         <span className="block font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-          {eyebrowDate(day.date, lang)} · {day.count}
+          {formatDay(day.date, lang, "short")} · {day.count}
         </span>
         <span className="mt-1 line-clamp-2 block font-semibold leading-snug">
           {title ??

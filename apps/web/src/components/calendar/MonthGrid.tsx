@@ -3,19 +3,24 @@ import { dayArchivePath } from "../../lib/day-archive";
 import type { Lang } from "../../lib/types";
 import {
   dayTitle,
+  formatDay,
   HEADER_HEAT_CLASS,
   storiesLabel,
   WEEKDAY_INITIALS,
 } from "./shared";
 
 const TILE =
-  "flex aspect-square items-center justify-center rounded-[10px] tabular-nums";
+  "relative flex aspect-square items-center justify-center rounded-[10px] tabular-nums";
 const RING = " ring-2 ring-foreground";
+const DOT =
+  "absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-current";
 
 /**
  * Month heat grid for the header popover and sheet. Edition days link to
- * their day archive (or, on touch, select the day for the sheet's preview);
- * days without an edition are plain numbers.
+ * their day archive, or in the sheet are buttons that select the day for the
+ * preview. Days without an edition are plain numbers. The ring marks the
+ * selected day, or today where nothing is selectable; the sheet marks today
+ * with a dot instead.
  */
 export function MonthGrid({
   cal,
@@ -30,7 +35,7 @@ export function MonthGrid({
   /** Audience-zone `YYYY-MM-DD` of today. */
   today: string;
   selected?: string;
-  /** Present on touch: a tap selects the day instead of navigating. */
+  /** Present in the sheet: days select instead of navigating. */
   onSelect?: (date: string) => void;
   size?: "sm" | "lg";
 }) {
@@ -56,40 +61,50 @@ export function MonthGrid({
           const num = Number(date.slice(8));
           const isToday = date === today;
           const current = isToday ? "date" : undefined;
+          const ring = (onSelect ? date === selected : isToday) ? RING : "";
+          const dot =
+            onSelect && isToday ? <span className={DOT} aria-hidden /> : null;
           const day = byDate.get(date);
           if (!day) {
             return (
               <li key={date}>
                 <span
                   aria-current={current}
-                  className={`${TILE} ${text} text-muted-foreground${isToday ? RING : ""}`}
+                  className={`${TILE} ${text} text-muted-foreground${ring}`}
                 >
                   {num}
+                  {dot}
                 </span>
               </li>
             );
           }
           const title = dayTitle(day, lang);
-          const ring = isToday || date === selected ? RING : "";
+          const label = `${formatDay(date, lang, "long")}: ${storiesLabel(day.count, lang)}${title ? `. ${title}` : ""}`;
+          const className = `${TILE} ${text} font-medium transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${HEADER_HEAT_CLASS[heatLevel(day.count, max)]}${ring}`;
           return (
             <li key={date}>
-              <a
-                href={dayArchivePath(date, lang)}
-                title={title ?? undefined}
-                aria-current={current}
-                aria-label={`${date}: ${storiesLabel(day.count, lang)}${title ? `. ${title}` : ""}`}
-                onClick={
-                  onSelect
-                    ? (e) => {
-                        e.preventDefault();
-                        onSelect(date);
-                      }
-                    : undefined
-                }
-                className={`${TILE} ${text} font-medium transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${HEADER_HEAT_CLASS[heatLevel(day.count, max)]}${ring}`}
-              >
-                {num}
-              </a>
+              {onSelect ? (
+                <button
+                  type="button"
+                  aria-pressed={date === selected}
+                  aria-current={current}
+                  aria-label={label}
+                  onClick={() => onSelect(date)}
+                  className={`${className} w-full`}
+                >
+                  {num}
+                  {dot}
+                </button>
+              ) : (
+                <a
+                  href={dayArchivePath(date, lang)}
+                  aria-current={current}
+                  aria-label={label}
+                  className={className}
+                >
+                  {num}
+                </a>
+              )}
             </li>
           );
         })}
