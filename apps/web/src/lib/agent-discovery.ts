@@ -64,7 +64,7 @@ Use this skill when an agent needs today's ranked AI news, a bilingual TL;DR, or
 - Docs: ${SITE_URL}/mcp?lang=en
 - OpenAPI: ${SITE_URL}/openapi.json
 
-Prefer GET /api/public?lang=en or \`?lang=vi\` for ids, titles, sources, rank, and TL;DR bullets. The JSON remains bilingual and reports \`available_langs: ["en", "vi"]\`; \`lang\` selects the canonical permalink language. For one published story, use the versioned Markdown contract at \`/api/story/{id}.md?lang=en\` or \`?lang=vi\`; it includes the canonical story URL, source links, and a bounded summary, and never fetches an external \`.md\` file.
+Prefer GET /api/public?lang=en or \`?lang=vi\` for ids, titles, sources, rank, and TL;DR bullets. The JSON remains bilingual and reports \`available_langs: ["en", "vi"]\`; \`lang\` selects the canonical permalink language. \`stories\` holds the top 8 plus every story a TL;DR bullet cites (either language), at most 30, so each bullet \`item_ids\` entry resolves there. For one published story, use the versioned Markdown contract at \`/api/story/{id}.md?lang=en\` or \`?lang=vi\`; it includes the canonical story URL, source links, and a bounded summary, and never fetches an external \`.md\` file.
 
 ## Trust boundary
 
