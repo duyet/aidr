@@ -17,7 +17,7 @@ import {
   isDayMarkdownPath,
 } from "./lib/day-markdown";
 import { readSession } from "./lib/db";
-import { cachedSsrResponse } from "./lib/edge-cache";
+import { cachedLocaleResponse, cachedSsrResponse } from "./lib/edge-cache";
 import { withHomepageInlineStylesheets } from "./lib/inline-stylesheet";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import {
@@ -45,7 +45,7 @@ import {
 } from "./lib/news-sitemap";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
-import { handleFeedXmlRequest } from "./lib/rss";
+import { handleFeedXmlRequest, RSS_CACHE_CONTROL } from "./lib/rss";
 import { classifyServerFnPath } from "./lib/server-fn-registry";
 import { isServerFnBasePath, isServerFnPath } from "./lib/server-fn-request";
 import { NEWS_SITEMAP_PATH, RSS_ALIAS_PATH, RSS_FEED_PATH } from "./lib/site";
@@ -202,7 +202,15 @@ export default {
     // `/rss.xml` serves the identical document for readers that hardcode it;
     // `<atom:link rel="self">` always advertises `/feed.xml` as canonical.
     if (path === RSS_FEED_PATH || path === RSS_ALIAS_PATH) {
-      return handleFeedXmlRequest(request, await resolveDb(env));
+      const feedLocale = resolveApiRequestLocale(request);
+      if (!feedLocale.ok) return feedLocale.response;
+      return cachedLocaleResponse(
+        request,
+        ctx,
+        feedLocale.locale.lang,
+        RSS_CACHE_CONTROL,
+        async () => handleFeedXmlRequest(request, await resolveDb(env))
+      );
     }
     // `/feed.json` is a thin alias of the existing JSON feed: same route
     // handler, same bounds, same document. It adds no new JSON format, so it

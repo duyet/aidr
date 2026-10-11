@@ -144,3 +144,58 @@ export async function cachedSsrResponse(
   else await write;
   return stamp(response, "MISS");
 }
+
+/**
+ * Worker-cache a response whose language comes from Cookie/Accept-Language
+ * (bare `/feed.xml`). The resolved `lang` joins the key, so readers never
+ * share another locale's copy; the client still receives the original
+ * private/varied headers, so no downstream cache can mix languages either.
+ */
+export async function cachedLocaleResponse(
+  request: Request,
+  ctx: WaitUntil,
+  lang: string,
+  sharedControl: string,
+  render: () => Promise<Response>
+): Promise<Response> {
+  const cache = edgeCache();
+  if (!cache || request.method !== "GET" || hasAuthSignal(request)) {
+    return render();
+  }
+  const url = normalizedCacheUrl(request.url);
+  url.searchParams.set("__l", lang);
+  url.searchParams.set("__v", EDGE_CACHE_VERSION);
+  const key = new Request(url.toString(), { method: "GET" });
+
+  const hit = await cache.match(key).catch(() => undefined);
+  if (hit) {
+    const out = stamp(hit, "HIT");
+    out.headers.set(
+      "cache-control",
+      out.headers.get("x-aidr-client-cc") ?? "private, no-store"
+    );
+    const vary = out.headers.get("x-aidr-client-vary");
+    if (vary) out.headers.set("vary", vary);
+    out.headers.delete("x-aidr-client-cc");
+    out.headers.delete("x-aidr-client-vary");
+    return out;
+  }
+
+  const response = await render();
+  if (response.status !== 200 || response.headers.has("set-cookie")) {
+    return response;
+  }
+  const stored = new Response(response.clone().body, response);
+  stored.headers.set(
+    "x-aidr-client-cc",
+    response.headers.get("cache-control") ?? "private, no-store"
+  );
+  const vary = response.headers.get("vary");
+  if (vary) stored.headers.set("x-aidr-client-vary", vary);
+  stored.headers.delete("vary");
+  stored.headers.set("cache-control", sharedControl);
+  const write = cache.put(key, stored).catch(() => undefined);
+  if (ctx?.waitUntil) ctx.waitUntil(write);
+  else await write;
+  return stamp(response, "MISS");
+}

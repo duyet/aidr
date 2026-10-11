@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  cachedLocaleResponse,
   cachedSsrResponse,
   EDGE_CACHE_HEADER,
   edgeCacheKey,
@@ -194,6 +195,81 @@ describe("cachedSsrResponse", () => {
     await cachedSsrResponse(get(EXT, { cookie: "__session=x" }), ctx, render);
     await cachedSsrResponse(get("https://aidr.today/"), ctx, render);
     expect(fake.match).not.toHaveBeenCalled();
+    expect(fake.put).not.toHaveBeenCalled();
+  });
+});
+
+describe("cachedLocaleResponse", () => {
+  const store = new Map<string, Response>();
+  const fake = {
+    match: vi.fn(async (req: Request) => store.get(req.url)?.clone()),
+    put: vi.fn(async (req: Request, res: Response) => {
+      store.set(req.url, res);
+    }),
+  };
+  afterEach(() => {
+    store.clear();
+    vi.unstubAllGlobals();
+  });
+  const SHARED = "public, max-age=300, s-maxage=600";
+  const feed = (lang: string) =>
+    new Response(`<rss lang="${lang}"/>`, {
+      headers: {
+        "cache-control": "private, no-store",
+        vary: "Cookie, Accept-Language",
+      },
+    });
+
+  it("keeps one copy per language and never leaks public headers to clients", async () => {
+    vi.stubGlobal("caches", { default: fake });
+    const ctx = { waitUntil: () => undefined };
+    const url = "https://aidr.today/feed.xml?utm_source=x";
+    const vi1 = await cachedLocaleResponse(
+      new Request(url),
+      ctx,
+      "vi",
+      SHARED,
+      async () => feed("vi")
+    );
+    await Promise.resolve();
+    expect(vi1.headers.get(EDGE_CACHE_HEADER)).toBe("MISS");
+    const en = await cachedLocaleResponse(
+      new Request(url),
+      ctx,
+      "en",
+      SHARED,
+      async () => feed("en")
+    );
+    expect(en.headers.get(EDGE_CACHE_HEADER)).toBe("MISS");
+    const render = vi.fn(async () => feed("vi"));
+    const hit = await cachedLocaleResponse(
+      new Request("https://aidr.today/feed.xml"),
+      ctx,
+      "vi",
+      SHARED,
+      render
+    );
+    expect(render).not.toHaveBeenCalled();
+    expect(hit.headers.get(EDGE_CACHE_HEADER)).toBe("HIT");
+    expect(await hit.text()).toBe('<rss lang="vi"/>');
+    // Downstream caches still see the per-reader policy.
+    expect(hit.headers.get("cache-control")).toBe("private, no-store");
+    expect(hit.headers.get("vary")).toBe("Cookie, Accept-Language");
+    expect(hit.headers.get("x-aidr-client-cc")).toBeNull();
+  });
+
+  it("bypasses signed-in readers", async () => {
+    vi.stubGlobal("caches", { default: fake });
+    const render = vi.fn(async () => feed("vi"));
+    await cachedLocaleResponse(
+      new Request("https://aidr.today/feed.xml", {
+        headers: { cookie: "__session=abc" },
+      }),
+      { waitUntil: () => undefined },
+      "vi",
+      SHARED,
+      render
+    );
     expect(fake.put).not.toHaveBeenCalled();
   });
 });
