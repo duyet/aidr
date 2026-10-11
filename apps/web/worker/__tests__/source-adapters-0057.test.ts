@@ -259,3 +259,54 @@ describe("openrouter", () => {
     });
   });
 });
+
+describe("githubreleases auth", () => {
+  it("sends the token as a bearer header when one is configured", async () => {
+    const fetchMock = stubFetch("[]");
+    await adapters.githubreleases.fetchItems({ repo: "ollama/ollama" }, 0, {
+      githubToken: "t0ken",
+    });
+    const [, init] = fetchMock.mock.calls.at(-1) as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(new Headers(init.headers).get("authorization")).toBe("Bearer t0ken");
+  });
+
+  it("sends no Authorization header without a token", async () => {
+    const fetchMock = stubFetch("[]");
+    await adapters.githubreleases.fetchItems({ repo: "ollama/ollama" }, 0);
+    const [, init] = fetchMock.mock.calls.at(-1) as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(new Headers(init.headers).has("authorization")).toBe(false);
+  });
+
+  it("never forwards the token to a different host on redirect", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://example.com/elsewhere" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response("[]", { headers: { "content-type": "application/json" } })
+      );
+    await adapters.githubreleases.fetchItems({ repo: "ollama/ollama" }, 0, {
+      githubToken: "t0ken",
+    });
+    const calls = fetchMock.mock.calls.slice(-2) as unknown as [
+      string,
+      RequestInit,
+    ][];
+    expect(new Headers(calls[0][1].headers).get("authorization")).toBe(
+      "Bearer t0ken"
+    );
+    expect(calls[1][0]).toBe("https://example.com/elsewhere");
+    expect(new Headers(calls[1][1].headers).has("authorization")).toBe(false);
+  });
+});

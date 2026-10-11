@@ -95,7 +95,9 @@ export async function fetchSources(
               const adapter = adapters[source.type];
               if (!adapter) return [];
               const config = JSON.parse(source.config || "{}");
-              return adapter.fetchItems(config, sinceEpochSec);
+              return adapter.fetchItems(config, sinceEpochSec, {
+                githubToken: ctx.env.GITHUB_ALERT_TOKEN,
+              });
             }
           )
           .catch((error: unknown) => {
