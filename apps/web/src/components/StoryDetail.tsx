@@ -92,7 +92,7 @@ export function StoryDetail({
   item: FeedItem;
   lang: Lang;
   bilingual?: boolean;
-  /** Dialog only: feed rows already carry votes in their header. */
+  /** Votes at the top of the meta column (dialog and expanded feed rows). */
   showVotes?: boolean;
 }) {
   const hasVi = Boolean(item.title_vi || item.summary_vi);

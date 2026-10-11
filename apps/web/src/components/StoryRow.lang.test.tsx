@@ -186,3 +186,41 @@ describe("expanded row language switch", () => {
     expect(screen.getByText("Thân trang tin")).toBeTruthy();
   });
 });
+
+// Owner request: an open row shows its votes at the top of the media column
+// in the details, not in the header meta line. A closed row keeps them in
+// the header, and the votes never vanish from an open row.
+describe("StoryRow vote placement", () => {
+  const voteLinks = (root: Element) =>
+    Array.from(root.querySelectorAll('a[aria-label="Sign in to vote"]'));
+
+  it("keeps votes in the header while the row is closed", () => {
+    const view = render(
+      <StoryRow item={story("Body", "Thân")} index={1} lang="en" />
+    );
+    const header = view.container.querySelector('[role="button"]');
+    expect(header).toBeTruthy();
+    expect(voteLinks(header as Element)).toHaveLength(2);
+    expect(view.container.querySelector("aside")).toBeNull();
+  });
+
+  it("moves votes to the top of the details' media column when open", () => {
+    const view = render(
+      <StoryRow item={story("Body", "Thân")} index={1} lang="en" />
+    );
+    const header = view.container.querySelector('[role="button"]') as Element;
+    fireEvent.click(header);
+    expect(header.getAttribute("aria-expanded")).toBe("true");
+    expect(voteLinks(header)).toHaveLength(0);
+
+    const aside = view.container.querySelector("aside") as Element;
+    expect(aside).toBeTruthy();
+    expect(voteLinks(aside)).toHaveLength(2);
+    // First thing in the column, above any media.
+    expect(aside.firstElementChild?.textContent).toContain("Was this useful?");
+
+    // A vote click must not close the row.
+    fireEvent.click(voteLinks(aside)[0] as Element);
+    expect(header.getAttribute("aria-expanded")).toBe("true");
+  });
+});

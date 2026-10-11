@@ -184,6 +184,8 @@ export function StoryRow({
     });
   };
 
+  const detailsOpen = expanded && hasDetails;
+
   return (
     <div id={`item-${item.id}`}>
       <StoryRowHeader
@@ -264,15 +266,19 @@ export function StoryRow({
           )}
         </span>
         {/* Votes, category and time sit on the title's first line in fixed
-            columns, so every row lines up however the title wraps. */}
+            columns, so every row lines up however the title wraps. An open
+            row moves its votes to the top of the details' media column; the
+            empty slot keeps the columns aligned. */}
         <span className={`${FIRST_LINE} gap-3`}>
           <span className="flex w-12 justify-center">
-            <StoryVotes
-              itemId={item.id}
-              voteNet={item.vote_net ?? 0}
-              lang={lang}
-              compact
-            />
+            {!detailsOpen && (
+              <StoryVotes
+                itemId={item.id}
+                voteNet={item.vote_net ?? 0}
+                lang={lang}
+                compact
+              />
+            )}
           </span>
           <span className="hidden w-24 truncate text-right text-sm text-muted-foreground sm:block">
             {item.category ? (
@@ -290,9 +296,9 @@ export function StoryRow({
         </span>
       </StoryRowHeader>
 
-      {expanded && hasDetails && (
+      {detailsOpen && (
         <div className="overflow-hidden rounded-b-2xl border border-border/70 bg-card px-5 py-5 md:px-6 md:py-6">
-          <StoryDetail item={detail ?? item} lang={lang} />
+          <StoryDetail item={detail ?? item} lang={lang} showVotes />
           {item.lazyDetail && !detail && (
             <p className="mt-3 text-xs text-muted-foreground">
               {lang === "vi" ? "Đang tải…" : "Loading…"}
