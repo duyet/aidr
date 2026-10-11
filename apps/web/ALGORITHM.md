@@ -752,7 +752,8 @@ Hourly.
   copy, `intro_vi` and `stories_vi` set) → skip; a `fallback` or
   English-only row → retry at most every 6h (`WEEKLY_RETRY_MS`). A week
   with no stories makes no LLM call and the next week is tried. A retry
-  whose LLM fails never overwrites a real edition with title lines.
+  whose LLM fails never overwrites a real edition with title lines; it only
+  bumps `updated_at`, so the next retry waits another 6h.
 - **Candidates.** Every published story a daily edition of that week cited
   (merged duplicates mapped to `duplicate_of`), plus the week's top 60
   uncited stories by `llm_importance`.
@@ -764,6 +765,12 @@ Hourly.
 - **Copy.** One bilingual call on the TL;DR chain (`ANYROUTER_TLDR_MODEL`,
   VI house style + glossary): `intro_en`/`intro_vi` (2–3 sentences) and one
   sentence per story per language. A VI line without diacritics is dropped.
+  Up to two passes over the chain inside one 200s budget (a second pass
+  needs 30s left), with a 35s first-token cap (`TRANSLATE_FIRST_TOKEN_MS`).
+  An exhausted chain (`isProviderFailure`) is a warn, not an error: the
+  title fallback is stored with a reason that has no failure words, so
+  `health.ts` raises no `step-failed`; the gate retries it in 6h. Any other
+  error is logged as an error and does raise `step-failed`.
 - **Languages never fall back.** EN falls back to the item title. VI falls
   back to `title_vi` only; a story with neither has no VI line and is left
   out of the VI page. No model copy at all → title lines with `fallback = 1`.
