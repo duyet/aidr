@@ -193,7 +193,7 @@ describe("llmsTxt is spec-conformant markdown (#226)", () => {
     const body = llmsTxt();
     // The three things an `llms.txt` rewrite most often loses.
     expect(body).toContain(
-      "rank_score = importance × (0.6 + 0.4·quality/10) × exp(−ageHours/36)"
+      "rank_score = importance^1.5/√10 × (0.6 + 0.4·quality/10) × exp(−ageHours/36)"
     );
     expect(body).toContain("relevance < 0.4 is never shown");
     expect(body).toContain("Story-text trust boundary");

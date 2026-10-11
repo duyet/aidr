@@ -103,28 +103,19 @@ export const DIGEST_MAX_BULLETS = 8;
 /** Give up on a send for a channel after this many failed attempts. */
 export const NOTIFY_MAX_ATTEMPTS = 3;
 
-/** Trending rank bar, relative to the window: rank_score folds importance ×
- *  quality × freshness × reader engagement × independent outlets, and its
- *  scale moves whenever one of those changes (2026-10-01: the importance
- *  rubric and source-family corroboration together left a fixed 30 with no
- *  qualifier for five days). A story must reach the TRENDING_RANK_PERCENTILE
- *  of the last TRENDING_BAR_WINDOW_SEC of published ranks: at 0.995 that is
- *  the top two or so of ~400 items, which gave 1–4 qualifiers a day on
- *  2026-09-27..10-01 (0.99 gave up to 6). 2026-10-03: the rank scale fell
- *  again (72h max ~3–8), so one post went out on 10-02 with 26 importance-7+
- *  stories; 0.98 (top ~8 of ~400) lets the 3/day cap and 3h gap do the
- *  limiting. */
+/** Trending rank bar, relative to the window: a story must reach the
+ *  TRENDING_RANK_PERCENTILE of the last TRENDING_BAR_WINDOW_SEC of published
+ *  ranks, so the bar follows the rank scale instead of a fixed number. 0.98
+ *  is the top ~8 of ~400 items; the daily cap and gap limit the rest. */
 export const TRENDING_RANK_PERCENTILE = 0.98;
 export const TRENDING_BAR_WINDOW_SEC = 72 * 60 * 60;
 /** The bar never drops below this, so a dead window cannot post its best
- *  weak story. A fresh importance-7 story from one outlet with no reader
- *  engagement ranks ~5.6 and stays under it. Lowered to 3 on 2026-10-03:
- *  at 6 the floor, not the percentile, set the bar, and the day's whole
- *  rank range sat below it. */
+ *  weak story. A fresh importance-7 story with no engagement ranks ~5.9 x
+ *  qualityFactor; the floor only matters when the window is nearly empty. */
 export const TRENDING_RANK_FLOOR = 3;
 /** 7, not 8: Jev scores most big stories 7, so at 8 only one story a day
  *  qualified and the channels went silent after the morning digest
- *  (2026-10-01). Rank >= 30 and the daily cap/gap still keep it rare. */
+ *  (2026-10-01). The rank bar and the daily cap/gap still keep it rare. */
 export const TRENDING_MIN_IMPORTANCE = 7;
 /** At most this many trending posts per channel per local day. */
 export const TRENDING_MAX_PER_DAY = 3;

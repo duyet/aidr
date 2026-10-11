@@ -25,30 +25,66 @@ export function sourceBoost(sourceCount = 0): number {
   return 1 + SOURCE_RANK_WEIGHT * extra;
 }
 
-/** One signed-in aidr reader's vote counts as this many source points. A
- * vote is a deliberate pick by our own audience, while HN points come from
- * a much larger crowd, so a raw 1:1 left votes nearly invisible in rank. */
-export const READER_VOTE_WEIGHT = 10;
+/** Importance is raised to this power, then divided by 10^(power - 1) so a
+ * 10 stays a 10. The 7s the scorer clusters on separate from the 9s and 10s:
+ * 7 becomes 5.9, 8 becomes 7.2. */
+export const IMPORTANCE_EXPONENT = 1.5;
 
-/** Log-damped reader engagement. Weighted `voteNet` sits beside source
- * points inside the same log, so votes move rank clearly without one
- * reader outweighing a front-page HN story. Zero votes leaves the historical term. A negative signal mirrors
- * the log into a factor in (0, 1), so downvotes lower the score and
- * rank_score stays positive. */
-export function readerEngagement(
-  points: number,
-  comments: number,
-  voteNet = 0
-): number {
-  const signal = points + READER_VOTE_WEIGHT * voteNet + 0.5 * comments;
-  if (!Number.isFinite(signal)) return 1;
-  if (signal >= 0) return 1 + Math.log10(1 + signal);
-  // Downvotes shrink the factor toward 0 without reaching it, so a single
-  // weighted downvote lowers a story instead of erasing it.
-  return 1 / (1 + Math.log10(1 - signal));
+/** After `DECAY_RAMP_START_HOURS` the freshness decay steepens by an extra
+ * exp(-(age - 24h)/24h). Past a day a story needs several times a fresh
+ * rival's signal to stay ahead of it. */
+export const DECAY_TIME_CONSTANT_HOURS = 36;
+export const DECAY_RAMP_START_HOURS = 24;
+export const DECAY_RAMP_TIME_CONSTANT_HOURS = 24;
+
+/** Ceiling on engagement x sourceBoost. HN points and outlet count each
+ * saturate, so a stale story with both cannot hold the top on volume alone. */
+export const ENGAGEMENT_BOOST_CAP = 3.25;
+
+/** Engagement ceiling for importance below the threshold: a minor item with
+ * a loud thread is still a minor item. */
+export const LOW_IMPORTANCE_THRESHOLD = 4;
+export const LOW_IMPORTANCE_ENGAGEMENT_CAP = 1.3;
+
+/** Importance at or above this earns a boost while the story is fresh. */
+export const BREAKING_IMPORTANCE = 8;
+export const BREAKING_BOOST = 0.4;
+export const BREAKING_TIME_CONSTANT_HOURS = 3;
+
+/** Each reader vote moves the vote factor by this much, up to
+ * `READER_VOTE_CAP` votes: one vote is +20%, five are x2, six or more x2.2.
+ * The factor sits outside the engagement log, so a vote moves a story by the
+ * same ratio whatever its HN points, and a pile of votes cannot outrank a
+ * story whose importance is far higher. A net downvote divides by the same
+ * amount, so the score stays positive. */
+export const READER_VOTE_GAIN = 0.2;
+export const READER_VOTE_CAP = 6;
+
+/** Log-damped source engagement (HN/Lobsters points and comments). */
+export function readerEngagement(points: number, comments: number): number {
+  const signal = points + 0.5 * comments;
+  if (!Number.isFinite(signal) || signal < 0) return 1;
+  return 1 + Math.log10(1 + signal);
 }
 
-export function rankScore({
+/** Multiplier from signed-in reader votes: 1 with none, above 1 for a net
+ * upvote, in (0, 1) for a net downvote, flat beyond `READER_VOTE_CAP`. */
+export function voteFactor(voteNet = 0): number {
+  if (!Number.isFinite(voteNet)) return 1;
+  const steps = READER_VOTE_GAIN * Math.min(READER_VOTE_CAP, Math.abs(voteNet));
+  return voteNet >= 0 ? 1 + steps : 1 / (1 + steps);
+}
+
+/** LLM scores are 0-10; a stray negative, >10 or NaN must not reach the
+ *  power, which is NaN for a negative base and unbounded above 10. */
+function clampScore(value: number): number {
+  return Number.isFinite(value) ? Math.min(10, Math.max(0, value)) : 0;
+}
+
+/** `rankScore` without the fresh-story breaking boost. The weekly edition
+ * scores at age zero, where the boost would lift every importance-8 story
+ * over the importance-7 ones for no reason the week cares about. */
+export function rankScoreWithoutBreaking({
   importance,
   quality,
   points,
@@ -59,12 +95,39 @@ export function rankScore({
   voteNet = 0,
 }: RankScoreInput): number {
   const ageHours = Math.max(0, (now - publishedAt) / (1000 * 60 * 60));
-  const qualityFactor = 0.6 + 0.4 * (quality / 10);
-  const decay = Math.exp(-ageHours / 36);
-  const engagement = readerEngagement(points, comments, voteNet);
-  return (
-    importance * qualityFactor * decay * engagement * sourceBoost(sourceCount)
+  importance = clampScore(importance);
+  const qualityFactor = 0.6 + 0.4 * (clampScore(quality) / 10);
+  let decay = Math.exp(-ageHours / DECAY_TIME_CONSTANT_HOURS);
+  if (ageHours > DECAY_RAMP_START_HOURS) {
+    decay *= Math.exp(
+      -(ageHours - DECAY_RAMP_START_HOURS) / DECAY_RAMP_TIME_CONSTANT_HOURS
+    );
+  }
+  let engagement = readerEngagement(points, comments);
+  if (importance < LOW_IMPORTANCE_THRESHOLD) {
+    engagement = Math.min(engagement, LOW_IMPORTANCE_ENGAGEMENT_CAP);
+  }
+  const crowd = Math.min(
+    engagement * sourceBoost(sourceCount),
+    ENGAGEMENT_BOOST_CAP
   );
+  const weight =
+    importance ** IMPORTANCE_EXPONENT / 10 ** (IMPORTANCE_EXPONENT - 1);
+  const score = weight * qualityFactor * decay * crowd * voteFactor(voteNet);
+  return Number.isFinite(score) ? score : 0;
+}
+
+export function rankScore(input: RankScoreInput): number {
+  const ageHours = Math.max(
+    0,
+    (input.now - input.publishedAt) / (1000 * 60 * 60)
+  );
+  const breaking =
+    clampScore(input.importance) >= BREAKING_IMPORTANCE
+      ? 1 + BREAKING_BOOST * Math.exp(-ageHours / BREAKING_TIME_CONSTANT_HOURS)
+      : 1;
+  const score = rankScoreWithoutBreaking(input) * breaking;
+  return Number.isFinite(score) ? score : 0;
 }
 
 /** True when a source's points/comments are reader votes and discussion. */

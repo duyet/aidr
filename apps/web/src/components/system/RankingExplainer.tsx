@@ -14,7 +14,8 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
   return (
     <div className="space-y-2.5 text-sm">
       <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-foreground">
-        rankScore = importance × qualityFactor × decay × engagement × sources
+        rankScore = importance^1.5 / √10 × qualityFactor × decay ×
+        min(engagement × sources, 3.25) × votes × breaking
       </p>
       <ul className="grid gap-x-4 gap-y-1 text-[11px] leading-relaxed text-muted-foreground sm:grid-cols-2">
         <li>
@@ -22,16 +23,25 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
           0.6 + 0.4 × (quality / 10)
         </li>
         <li>
-          <span className="font-medium text-foreground">decay</span> =
-          exp(−ageHours / 36)
+          <span className="font-medium text-foreground">decay</span> = exp(−age
+          / 36h), and after 24h also × exp(−(age − 24h) / 24h)
         </li>
         <li>
           <span className="font-medium text-foreground">engagement</span> = 1 +
-          log10(1 + points + 0.5 × comments)
+          log10(1 + points + 0.5 × comments), capped at 1.3 when importance &lt;
+          4
         </li>
         <li>
           <span className="font-medium text-foreground">sources</span> = 1 +
-          0.12 × min(sourceCount, 8)
+          0.12 × (min(sourceCount, 8) − 1)
+        </li>
+        <li>
+          <span className="font-medium text-foreground">votes</span> = 1 + 0.2 ×
+          min(net, 6); a net downvote divides by the same amount
+        </li>
+        <li>
+          <span className="font-medium text-foreground">breaking</span> = 1 +
+          0.4 × exp(−age / 3h) for importance ≥ 8
         </li>
       </ul>
       <p className="text-[11px] leading-relaxed text-muted-foreground">
