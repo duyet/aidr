@@ -6,7 +6,8 @@ import {
   isWeekMarkdownPath,
   renderWeekMarkdown,
 } from "./week-markdown";
-import { isWeekEmptyIn, type WeekEdition, weekApiBody } from "./week-queries";
+import { isWeekEmptyIn, type WeekEdition } from "./week-model";
+import { weekApiBody } from "./week-queries";
 
 /**
  * The weekly Markdown and page are generated from model and publisher text,

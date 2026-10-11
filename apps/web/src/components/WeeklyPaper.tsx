@@ -20,7 +20,7 @@ import {
   weekIntro,
   weekStoriesFor,
   weekStoryText,
-} from "../lib/week-queries";
+} from "../lib/week-model";
 
 /** Masthead name per language. */
 export function weeklyTitle(lang: Lang): string {

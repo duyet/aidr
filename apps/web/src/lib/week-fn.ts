@@ -2,12 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { readSession } from "./db";
 import { stripItemDetail } from "./feed-fn";
 import { parseWeek } from "./week";
-import {
-  getWeekEdition,
-  listWeekEditions,
-  type WeekEdition,
-  type WeekSummary,
-} from "./week-queries";
+import type { WeekEdition, WeekSummary } from "./week-model";
+import { getWeekEdition, listWeekEditions } from "./week-queries";
 
 async function db(): Promise<D1Database | undefined> {
   const { env } = await import("cloudflare:workers");
