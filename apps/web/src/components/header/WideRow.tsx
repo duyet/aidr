@@ -5,6 +5,7 @@ import { LangToggle } from "../LangToggle";
 import { PrefsPanel } from "../PrefsPanel";
 import { SearchBox } from "../SearchBox";
 import { Brand } from "./Brand";
+import { CalendarButton } from "./CalendarButton";
 import { GetAIDRMenu } from "./GetAIDRMenu";
 import { HeaderAuth } from "./HeaderAuth";
 import { IntroVideoButton } from "./IntroVideo";
@@ -31,6 +32,7 @@ export function WideHeaderRow({
       <div className="flex shrink-0 items-center gap-1">
         <GetAIDRMenu />
         <IntroVideoButton lang={lang} />
+        <CalendarButton lang={lang} />
         <Separator orientation="vertical" className="mx-1 h-5" />
         <PrefsPanel />
         <LangToggle
