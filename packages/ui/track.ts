@@ -18,7 +18,7 @@ const DROP_KEYS = new Set([
 
 export type TrackParamValue = string | number | boolean;
 export type TrackParams = Record<string, TrackParamValue | null | undefined>;
-export type TrackChannel = "chrome" | "telegram" | "email";
+export type TrackChannel = "chrome" | "telegram" | "facebook" | "email";
 
 export function resolveMeasurementId(envId?: string | null): string {
   const trimmed = typeof envId === "string" ? envId.trim() : "";

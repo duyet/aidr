@@ -20,6 +20,8 @@ export interface CalendarDay {
   /** Vietnamese title; null when not translated (no fallback to English). */
   title_vi: string | null;
   image_url: string | null;
+  /** Top story's tags, for the same keyword highlight as the feed. */
+  tags: string[];
 }
 
 export interface CalendarMonth {

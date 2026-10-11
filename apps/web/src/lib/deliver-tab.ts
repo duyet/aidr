@@ -1,4 +1,9 @@
-export const DELIVER_TABS = ["chrome", "telegram", "email"] as const;
+export const DELIVER_TABS = [
+  "chrome",
+  "telegram",
+  "facebook",
+  "email",
+] as const;
 
 export type DeliverTab = (typeof DELIVER_TABS)[number];
 
