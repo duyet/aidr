@@ -1,0 +1,113 @@
+/**
+ * Homepage rows expand from the title: a plain click opens the row in
+ * place, while modified clicks keep the permalink so readers can still
+ * open it in a new tab. The ↗ link always goes to the original article
+ * and never toggles the row.
+ *
+ * @vitest-environment happy-dom
+ */
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { FeedItem } from "../lib/types";
+import { StoryRow } from "./StoryRow";
+
+vi.mock("./SuggestTranslation", () => ({
+  SuggestTranslation: () => null,
+  SuggestionBadge: () => null,
+}));
+vi.mock("../lib/vote-fn", () => ({
+  castStoryVote: () => Promise.resolve({ myVote: 0, voteNet: 0, rankScore: 0 }),
+  fetchMyVotes: () => Promise.resolve({ votes: {}, nets: {} }),
+}));
+
+const item: FeedItem = {
+  id: "abcdef12deadbeef",
+  url: "https://www.example.com/post",
+  title: "A story",
+  title_vi: null,
+  summary: "Summary",
+  summary_vi: null,
+  category: null,
+  published_at: 1_700_000_000,
+  points: 0,
+  comments: 0,
+  rank_score: 0,
+  source_id: "hn",
+  tags: [],
+  sources: [],
+  llm_tokens: 0,
+  image_url: null,
+  content_log: [],
+};
+
+const bare: FeedItem = { ...item, summary: null };
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => new Promise(() => {}))
+  );
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+const row = () => document.querySelector('[role="button"]') as HTMLElement;
+const title = () => screen.getByText("A story").closest("a") as HTMLElement;
+const chevron = () =>
+  document.querySelector('[data-testid="story-row-chevron"]');
+
+describe("title click expands the row", () => {
+  it("plain click toggles the row instead of navigating", () => {
+    render(<StoryRow item={item} index={1} lang="en" />);
+    expect(title().getAttribute("href")).toBe("/abcdef12?lang=en");
+    // fireEvent returns false when the default (navigation) was prevented.
+    expect(fireEvent.click(title())).toBe(false);
+    expect(row().getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(title());
+    expect(row().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it.each(["ctrlKey", "metaKey", "shiftKey"])(
+    "%s click keeps the permalink navigation",
+    (key) => {
+      render(<StoryRow item={item} index={1} lang="en" />);
+      expect(fireEvent.click(title(), { [key]: true })).toBe(true);
+      expect(row().getAttribute("aria-expanded")).toBe("false");
+    }
+  );
+
+  it("rows without details navigate on title click", () => {
+    render(<StoryRow item={bare} index={1} lang="en" />);
+    expect(row()).toBeNull();
+    expect(fireEvent.click(title())).toBe(true);
+  });
+});
+
+describe("expand chevron", () => {
+  it("shows only for rows with details and tracks expanded state", () => {
+    render(<StoryRow item={item} index={1} lang="en" />);
+    expect(chevron()?.getAttribute("data-expanded")).toBe("false");
+    fireEvent.click(row());
+    expect(chevron()?.getAttribute("data-expanded")).toBe("true");
+    expect(chevron()?.getAttribute("class")).toContain("rotate-180");
+  });
+
+  it("is absent for rows without details", () => {
+    render(<StoryRow item={bare} index={1} lang="en" />);
+    expect(chevron()).toBeNull();
+  });
+});
+
+describe("original article link", () => {
+  it("opens item.url in a new tab and never toggles the row", () => {
+    render(<StoryRow item={item} index={1} lang="vi" />);
+    const link = screen.getByLabelText("Mở bài gốc");
+    expect(link.getAttribute("href")).toBe(item.url);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    fireEvent.click(link);
+    expect(row().getAttribute("aria-expanded")).toBe("false");
+  });
+});

@@ -44,7 +44,7 @@ describe("story source link", () => {
     const html = row({ ...item, url: "" });
     // An empty href would reload the current page.
     expect(html).not.toContain('href=""');
-    expect(html).not.toContain("Open story link");
+    expect(html).not.toContain("Open original");
     // The title still links to the aidr permalink.
     expect(html).toContain('href="/abcdef12?lang=en"');
   });
