@@ -61,6 +61,9 @@ export interface DayGroup {
   date: string; // YYYY-MM-DD
   items: FeedItem[];
   categoryCounts: Record<string, number>;
+  /** Set when the homepage SSR payload carries only the first stories of
+   * this day: the day's true story count. Absent means `items` is whole. */
+  totalItems?: number;
 }
 
 export interface FeedResponse {
@@ -87,4 +90,7 @@ export interface FeedResponse {
   lastFetchedAt: number | null;
   /** True when older published days exist beyond this page. */
   hasMore: boolean;
+  /** Homepage SSR only: digest-linked stories that are not in `days`, so
+   * the AI;DR rows keep their topic colour and highlights. */
+  tldrItems?: Pick<FeedItem, "id" | "category" | "tags" | "image_url">[];
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { emptyFeedCopy } from "../lib/empty-feed";
+import { DAY_STORY_LIMIT, dayFeedQuery } from "../lib/homepage-feed";
 import { withLang } from "../lib/locale-url";
 import type { DayGroup, FeedResponse, Lang } from "../lib/types";
 import { DaySection } from "./DaySection";
@@ -14,6 +15,7 @@ export function FeedDays({
   q,
   selectedCategoryCount,
   onMergeOlder,
+  onLoadDay,
 }: {
   feed: FeedResponse;
   days: DayGroup[];
@@ -22,8 +24,26 @@ export function FeedDays({
   q: string | undefined;
   selectedCategoryCount: number;
   onMergeOlder: (older: FeedResponse) => void;
+  /** Swap in the whole of a day the SSR payload trimmed. */
+  onLoadDay: (day: DayGroup) => void;
 }) {
   const [loadingOlder, setLoadingOlder] = useState(false);
+
+  async function loadDay(day: DayGroup): Promise<boolean> {
+    try {
+      const res = await fetch(
+        withLang(`/api/feed${dayFeedQuery(day.date)}`, lang)
+      );
+      if (!res.ok) return false;
+      const page = (await res.json()) as FeedResponse;
+      const full = page.days.find((d) => d.date === day.date);
+      if (!full) return false;
+      onLoadDay(full);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   return (
     <>
@@ -34,6 +54,8 @@ export function FeedDays({
           lang={lang}
           selectedTag={selectedTag}
           linkToDay
+          limit={DAY_STORY_LIMIT}
+          onLoadAll={loadDay}
         />
       ))}
       {feed.hasMore && (

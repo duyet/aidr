@@ -1,9 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { readSession } from "./db";
 import { getFeed } from "./feed-queries";
+import { shapeHomepageFeed } from "./homepage-feed";
 import type { FeedItem, FeedResponse, Lang } from "./types";
 
-/** Server fn wrapping getFeed so the homepage loader can SSR stories. */
+/** Server fn wrapping getFeed so the homepage loader can SSR stories. A
+ * search page gets every match; the plain homepage gets its first view only
+ * (see shapeHomepageFeed). */
 export const fetchFeed = createServerFn({ method: "GET" })
   .inputValidator((input: { q?: string; days?: number; lang?: Lang }) => input)
   .handler(async ({ data }): Promise<FeedResponse | null> => {
@@ -15,7 +18,9 @@ export const fetchFeed = createServerFn({ method: "GET" })
         q: data.q,
         days: data.days,
       });
-      return feed ? stripExpandableDetail(feed) : null;
+      if (!feed) return null;
+      const stripped = stripExpandableDetail(feed);
+      return data.q ? stripped : shapeHomepageFeed(stripped);
     } catch {
       return null;
     }
