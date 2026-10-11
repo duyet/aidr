@@ -30,6 +30,31 @@ const words = (t) => String(t ?? "").trim().split(/\s+/).filter(Boolean);
 const norm = (t) =>
   t.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "d").toLowerCase().replace(/[^a-z0-9-]/g, "");
 const spokenHas = (text, word) => words(text).some((w) => norm(w).startsWith(norm(word)));
+const MAGNITUDE = { k: 1e3, thousand: 1e3, m: 1e6, mn: 1e6, million: 1e6, b: 1e9, bn: 1e9, billion: 1e9, t: 1e12, trillion: 1e12 };
+// A number with its unit: attached "B"/"%" or the spoken word after it ("billion", "percent").
+const QUANTITY = /(\d[\d,]*(?:\.\d+)?)(?:\s?(%)|\s?(k|mn|bn|m|b|t)\b|\s+(percent|thousand|million|billion|trillion)\b)?/gi;
+/** "$25B", "25 billion dollars", "4.2%" → { num, scale, percent }; one entry per number in the text. */
+const quantities = (t) =>
+  [...String(t ?? "").matchAll(QUANTITY)].map((m) => {
+    const unit = (m[3] ?? m[4] ?? "").toLowerCase();
+    const num = Number(m[1].replace(/,/g, ""));
+    return { num, scale: MAGNITUDE[unit] ?? 1, value: num * (MAGNITUDE[unit] ?? 1), percent: m[2] === "%" || unit === "percent" };
+  });
+const same = (a, b) => Math.abs(a - b) <= 1e-9 * Math.abs(b);
+/** A stat counts as spoken when the voice says the same amount: $25B ≈ "$25 billion" ≈ "25 billion dollars",
+ *  4.2% ≈ "4.2 percent". The amount and the percent flag must match, so a different number still fails.
+ *  A bare number ("25", the first spoken word of the stat) matches the digits whatever unit follows. */
+export const statSpoken = (voice, statWord) => {
+  const wanted = quantities(statWord);
+  if (!wanted.length) return spokenHas(voice, statWord);
+  const said = quantities(voice);
+  return wanted.every((w) =>
+    said.some((s) => {
+      const bare = w.scale === 1 && !w.percent;
+      return bare ? same(s.num, w.num) || same(s.value, w.num) : s.percent === w.percent && same(s.value, w.value);
+    }),
+  );
+};
 const UNIT = { K: "thousand", M: "million", B: "billion", T: "trillion" };
 /** "$870M" → "$870 million": the screen keeps "$870M" in `stat`, the voice reads the unit. */
 export const speakable = (t) => t.replace(/\$([\d.,]+)\s?([KMBT])\b/g, (_, n, u) => `$${n} ${UNIT[u]}`).replace(/~/g, "about ");
@@ -73,7 +98,7 @@ export function validateScript(script, edition) {
     if (kw < 1 || kw > 6) p.push(`story ${s.rank}: kicker has ${kw} words`);
     const hw = words(s.headline.replace(/\*/g, "")).length;
     if (hw < 3 || hw > 12) p.push(`story ${s.rank}: headline has ${hw} words`);
-    if (s.statWord && !spokenHas(voiceWords(s.voice), s.statWord)) p.push(`story ${s.rank}: statWord "${s.statWord}" is not spoken`);
+    if (s.statWord && !statSpoken(voiceWords(s.voice), s.statWord)) p.push(`story ${s.rank}: statWord "${s.statWord}" is not spoken`);
     // Facts: no number on screen or in the voice that the bullet (or its title) does not have.
     const known = new Set([...numbers(src.text), ...numbers(src.title)]);
     for (const n of numbers([s.kicker, s.headline, s.stat, s.statLabel, voiceWords(s.voice)].join(" ")))
