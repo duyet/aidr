@@ -9,7 +9,7 @@ import { parseAidrLayout } from "../lib/aidr-layout";
 import { AIDR_END_ID, AIDR_PAINT_GATE_LINK } from "../lib/aidr-paint-gate";
 import { dayArchivePath } from "../lib/day-archive";
 import { showFeedBrowseChrome } from "../lib/empty-feed";
-import { setCachedFeed } from "../lib/feed-cache";
+import { setCachedFeed, setFeedMeta } from "../lib/feed-cache";
 import { fetchFeed } from "../lib/feed-fn";
 import { headRouteInput } from "../lib/head-route";
 import { mergeRefreshedFeed } from "../lib/homepage-feed";
@@ -97,11 +97,12 @@ function IndexPage() {
     if (loaderFeed) {
       setFeed(loaderFeed);
       setError(false);
-      // Not cached for the header typeahead: the loader carries one trimmed
-      // day (shapeHomepageFeed), and the typeahead fetches /api/feed itself
-      // when the cache is empty.
+      // Rows are not cached for the header typeahead: the loader carries one
+      // trimmed day (shapeHomepageFeed), and the typeahead fetches /api/feed
+      // itself when the cache is empty.
+      if (!q) setFeedMeta(loaderFeed);
     }
-  }, [loaderFeed]);
+  }, [loaderFeed, q]);
 
   // Client refresh (and first paint when the loader had no D1, e.g. prerender).
   useEffect(() => {

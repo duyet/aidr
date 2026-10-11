@@ -128,6 +128,34 @@ describe("mergeRefreshedFeed", () => {
   });
 });
 
+describe("mergeRefreshedFeed digest stories", () => {
+  // /api/feed carries no tldrItems. Without rebuilding them, a refresh two
+  // minutes after load would strip the topic colour from digest rows that
+  // point at yesterday's stories.
+  it("keeps topic fields for digest stories outside the shown days", () => {
+    const tldr = {
+      date: "2026-10-11",
+      bullets_en: [{ text: "a", item_ids: ["old"] }],
+      bullets_vi: [],
+    };
+    const yesterday: DayGroup = {
+      date: "2026-10-10",
+      items: [item("old", { tags: ["Claude"] })],
+      categoryCounts: {},
+    };
+    const prev = shapeHomepageFeed(
+      feed([day("2026-10-11", 2), yesterday], { tldr })
+    );
+    expect(prev.tldrItems?.map((i) => i.id)).toEqual(["old"]);
+    const next = feed([day("2026-10-11", 3), yesterday], { tldr });
+    const out = mergeRefreshedFeed(prev, next);
+    expect(out.days.map((d) => d.date)).toEqual(["2026-10-11"]);
+    expect(out.tldrItems).toEqual([
+      { id: "old", category: "models", tags: ["Claude"], image_url: null },
+    ]);
+  });
+});
+
 describe("dayFeedQuery", () => {
   // getFeed reads the `days` window that ends at `before`'s midnight, so
   // one day ending at the next day's midnight is exactly `date`.

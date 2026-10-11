@@ -95,6 +95,12 @@ export function fetchFeedFreshnessOnce(): Promise<number | null> {
 /** Called by the homepage once it has its own unfiltered (no `q`) fetch. */
 export function setCachedFeed(feed: FeedResponse, lang: Lang): void {
   caches.set(lang, feed);
+  setFeedMeta(feed);
+}
+
+/** Share a feed's freshness and learned keywords without caching its rows:
+ * the homepage SSR feed is trimmed, so the typeahead must not search it. */
+export function setFeedMeta(feed: FeedResponse): void {
   setFreshnessEntry({ lastFetchedAt: feed.lastFetchedAt });
   if (feed.learnedKeywords?.length) setLearnedKeywords(feed.learnedKeywords);
 }

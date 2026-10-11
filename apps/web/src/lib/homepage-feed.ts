@@ -1,5 +1,29 @@
 import type { DayGroup, FeedResponse } from "./types";
 
+type TldrItem = NonNullable<FeedResponse["tldrItems"]>[number];
+
+/** Digest-linked stories missing from `days`, slimmed to the fields the
+ * AI;DR rows read, picked from `pool`. */
+function cutTldrItems(
+  tldr: FeedResponse["tldr"],
+  days: DayGroup[],
+  pool: TldrItem[]
+): TldrItem[] {
+  const shown = new Set(days.flatMap((d) => d.items.map((item) => item.id)));
+  const linked = new Set(
+    [...(tldr?.bullets_en ?? []), ...(tldr?.bullets_vi ?? [])]
+      .flatMap((bullet) => bullet.item_ids ?? [])
+      .filter((id) => !shown.has(id))
+  );
+  const out = new Map<string, TldrItem>();
+  for (const { id, category, tags, image_url } of pool) {
+    if (linked.has(id) && !out.has(id)) {
+      out.set(id, { id, category, tags, image_url });
+    }
+  }
+  return [...out.values()];
+}
+
 /** Stories a day section renders before its "Load more" button. */
 export const DAY_STORY_LIMIT = 30;
 
@@ -28,22 +52,11 @@ export function shapeHomepageFeed(
       : {}),
   };
 
-  const kept = new Set(items.map((item) => item.id));
-  const linked = new Set(
-    [...(feed.tldr?.bullets_en ?? []), ...(feed.tldr?.bullets_vi ?? [])]
-      .flatMap((bullet) => bullet.item_ids ?? [])
-      .filter((id) => !kept.has(id))
+  const tldrItems = cutTldrItems(
+    feed.tldr,
+    [day],
+    feed.days.flatMap((d) => d.items)
   );
-  const tldrItems = feed.days
-    .flatMap((d) => d.items)
-    .filter((item) => linked.has(item.id))
-    .map(({ id, category, tags, image_url }) => ({
-      id,
-      category,
-      tags,
-      image_url,
-    }));
-
   return {
     ...feed,
     days: [day],
@@ -65,10 +78,18 @@ export function mergeRefreshedFeed(
   const fresh = next.days.filter((d) => !oldest || d.date >= oldest);
   const freshDates = new Set(fresh.map((d) => d.date));
   const kept = prev.days.filter((d) => !freshDates.has(d.date));
+  const days = [...fresh, ...kept].sort((a, b) => b.date.localeCompare(a.date));
+  // /api/feed has no tldrItems: rebuild them from the refreshed window so
+  // digest rows keep their topic fields after a refresh.
+  const tldrItems = cutTldrItems(next.tldr, days, [
+    ...next.days.flatMap((d) => d.items),
+    ...(prev.tldrItems ?? []),
+  ]);
   return {
     ...next,
-    days: [...fresh, ...kept].sort((a, b) => b.date.localeCompare(a.date)),
+    days,
     hasMore: prev.hasMore || next.hasMore || fresh.length < next.days.length,
+    tldrItems: tldrItems.length > 0 ? tldrItems : undefined,
   };
 }
 
