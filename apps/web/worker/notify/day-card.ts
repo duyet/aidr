@@ -12,12 +12,15 @@ import { getDayArchive } from "../../src/lib/feed-queries.js";
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { FeedItem, Lang } from "../../src/lib/types.js";
+import { stripEmbeddedChrome } from "../translation-terms.js";
 import type { Env } from "../types.js";
 import { firstSentence } from "./fit-text.js";
 import type { DailyDigest, DigestBullet } from "./types.js";
 
 export interface DayCardPage {
   bullets: DigestBullet[];
+  /** Story ids of `bullets`, in order. */
+  itemIds: string[];
   /** Stable token for the photo URL, so Telegram refetches when the tiles change. */
   version: string;
   /** Second highlight grid. Absent on the lead card. */
@@ -52,9 +55,10 @@ type HighlightCopy = {
 };
 
 function sameLanguageSummary(item: HighlightCopy, lang: Lang): string | null {
-  const raw = (lang === "vi" ? item.summary_vi : item.summary)
-    ?.replace(/\s+/g, " ")
-    .trim();
+  const text = lang === "vi" ? item.summary_vi : item.summary;
+  // Chrome ("← Back to live feed · 1 stories across 1 day") that reached a
+  // stored summary would otherwise become the digest line's clause.
+  const raw = text ? stripEmbeddedChrome(text.replace(/\s+/g, " ")) : "";
   if (!raw) return null;
   if (/^no summary is available\.?$/i.test(raw)) return null;
   // No cross-language copy: an English line never takes a Vietnamese summary.
@@ -137,6 +141,7 @@ export async function loadDayCardPages(
   const pages: DayCardPage[] = [
     {
       bullets: toBullets(lead, lang),
+      itemIds: lead.map((item) => item.id),
       version: dayCardVersion(lead.map((item) => item.id)),
       photo: true,
     },
@@ -144,6 +149,7 @@ export async function loadDayCardPages(
   if (more.length > 0) {
     pages.push({
       bullets: toBullets(more, lang),
+      itemIds: more.map((item) => item.id),
       version: dayCardVersion(more.map((item) => item.id)),
       part: 2,
       headline: moreHeadline(lang, date),

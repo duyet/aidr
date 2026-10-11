@@ -879,6 +879,58 @@ deliberately non-spammy.
   daily cap and gap do the limiting; 0.995 with a floor of 6 left the
   channels silent once the rank scale fell to a 3–8 max (2026-10-02). The
   floor keeps a dead window's weakest stories from posting.
+- *Trending never repeats an event and never posts junk copy*
+  (`worker/notify/post-quality.ts`, `posted-events.ts`). Both checks run on
+  the full candidate query result, before `pickDiverse`, so a rejected story
+  frees its slot for the next one instead of costing the run its post.
+  - **Postability gate** (`postability(story)`, pure): the channel-language
+    summary is rejected when it is missing (`gate:missing`, a title-only
+    post), carries source chrome anywhere (`gate:chrome`: "Back to live
+    feed", "N stories across N day", "Skip to content", "View the full
+    context on <outlet>", the patterns `stripSourceBoilerplate` strips, plus a
+    "5 min read" opener), or is under 80 characters (`gate:short`, which
+    catches the "From <outlet>." stub). Digest lines get the other half: the
+    day card's summary clause and the snapshot bullet text pass through
+    `stripEmbeddedChrome`, so chrome that reaches a stored summary never
+    becomes a digest clause.
+  - **Cross-post dedup**: each `PostedEvent` is
+    `{channelGroup, itemId, canonicalId, eventKey, postedAt, kind}`. The
+    channel's events are its trending posts in the last 48 hours (statuses
+    `sent`, `ambiguous`, `sending`) plus every story its digest carried on the
+    current and previous local dates. `canonicalId` is the `duplicate_of`
+    chain root. A candidate is dropped when its root matches a posted root
+    (`dedup:canonical`), or when its event key matches (`dedup:event`):
+    source-title token Jaccard of at least 0.2 with at least 3 shared tokens
+    (`significantTitleTokens`, the merge step's tokenizer) and at least one
+    shared named entity (names from `extractProtectedTerms`, plus a short
+    org list, minus filler like "AI"). 0.2 sits between the 2026-10-08..11
+    audit's same-event pairs (0.21 Nvidia/Reflection across outlets, 0.35
+    TypeSafe) and its different-story pairs sharing an entity (0.03 to
+    0.10); the 3-token floor stops two short headlines about one company
+    ("Nvidia launches Rubin GPU", "Nvidia stock falls on Rubin delay") from
+    matching on two words. No LLM call.
+  - **Not in v1**: a repost for a material update (a changed number, a new
+    development) is never allowed, because telling an update from a rewrite
+    needs more than a title compare and a wrong "update" is a duplicate post.
+    Two stories about one event with no shared title words ("OpenAI defends
+    firing three safety researchers" and "Fired OpenAI staff dispute
+    misconduct charges", 0.09) still both post. Vietnamese-source titles
+    (VnExpress) only match Vietnamese titles, since the key is the source
+    title.
+  - **What the digest showed**: `notify_digest_items` (migration 0057) holds
+    the story ids of each digest, written when it sends: the day card's
+    stories (what the caption lists), else every id the snapshot's bullets
+    cite. The TL;DR snapshot cannot stand in, because it is rewritten every
+    run and by trending time cites the very stories trending would post.
+    Apply 0057 before deploying; without the table digest dedup is off and the
+    Worker logs it. A channel with no digest row for the date (failed, not yet
+    sent) contributes no digest events.
+  - **Recorded**: `workflow_runs.stats.notifyReason.<channel>.suppressed` is a
+    count per reason (`dedup:canonical`, `dedup:event`, `gate:chrome`,
+    `gate:short`, `gate:missing`) for the candidates that run dropped. A
+    blocked candidate is re-judged and re-counted every run until it ages out
+    of the 24h window. The `notify` step line stays unchanged (240-character
+    cap).
 - *Why this ranks* (story page, "Chi tiết bài viết" aside): `GET /api/story/{id}?ranking=1`
   adds `ranking` from `worker/notify/story-ranking.ts`: UTC-day rank,
   `rank_score`, importance, the live bar (same `trendingRankBar`), and per

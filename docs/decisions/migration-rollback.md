@@ -340,6 +340,20 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   `ALTER TABLE items DROP COLUMN summary_en_revision; ALTER TABLE items DROP COLUMN summary_en;`.
   The summaries are regenerated after a re-apply.
 
+## 0057_notify_digest_items.sql
+
+- Change: new table `notify_digest_items` (channel, local date, item id: the
+  stories each channel's digest carried). Written when a digest sends; read
+  by trending to skip a story the digest already showed. Nothing is seeded;
+  no existing table is touched.
+- Risk: none for the daily pipeline. Before it is applied the digest-item
+  write and read log an error and trending falls back to its own recent
+  posts only, so a trending post may repeat a digest story. Apply it before
+  deploying the Worker.
+- Rollback: roll the Worker back first, then
+  `DROP TABLE IF EXISTS notify_digest_items;`. The rows are a 48-hour dedup
+  memory, so nothing needs exporting.
+
 ## 0056_weekly_snapshots.sql
 
 - Change: new table `weekly_snapshots` (one row per ISO week: ranked item
