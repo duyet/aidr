@@ -15,6 +15,17 @@ interface DayRow {
   title: string;
   title_vi: string | null;
   image_url: string | null;
+  tags: string | null;
+}
+
+/** Stored tags JSON → string[]; malformed or missing rows are untagged. */
+function parseTags(raw: string | null): string[] {
+  try {
+    const v = JSON.parse(raw || "[]");
+    return Array.isArray(v) ? v.filter((t) => typeof t === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function getCalendarMonth(
@@ -28,8 +39,8 @@ export async function getCalendarMonth(
   const [daysRes, firstRes] = await db.batch([
     db
       .prepare(
-        `SELECT d, n, title, title_vi, image_url FROM (
-           SELECT ${dayExpr} AS d, i.title, t.title AS title_vi, i.image_url,
+        `SELECT d, n, title, title_vi, image_url, tags FROM (
+           SELECT ${dayExpr} AS d, i.title, t.title AS title_vi, i.image_url, i.tags,
                   COUNT(*) OVER (PARTITION BY ${dayExpr}) AS n,
                   ROW_NUMBER() OVER (
                     PARTITION BY ${dayExpr} ORDER BY i.rank_score DESC
@@ -52,6 +63,7 @@ export async function getCalendarMonth(
       title: r.title,
       title_vi: r.title_vi?.trim() ? r.title_vi : null,
       image_url: r.image_url || null,
+      tags: parseTags(r.tags),
     })
   );
   const at = (firstRes.results?.[0] as { at: number | null } | undefined)?.at;

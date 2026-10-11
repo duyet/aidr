@@ -15,6 +15,7 @@ import { RSS_FEED_PATH } from "../../lib/site";
 import { ChromeMark } from "../header/ChromeMark";
 import { ChromeChannel } from "./ChromeChannel";
 import { EmailChannel } from "./EmailChannel";
+import { FacebookChannel, FacebookMark } from "./FacebookChannel";
 import { TelegramChannel } from "./TelegramChannel";
 
 export function DeliverPage({
@@ -43,8 +44,8 @@ export function DeliverPage({
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
             {t(
-              "Same ranked feed. Chrome new tab, Telegram, or email digest — pick any, or all three.",
-              "Cùng bảng tin đã xếp hạng. Tab mới Chrome, Telegram, hoặc email — chọn một, hoặc cả ba."
+              "Same ranked feed. Chrome new tab, Telegram, Facebook, or email digest — pick any, or all four.",
+              "Cùng bảng tin đã xếp hạng. Tab mới Chrome, Telegram, Facebook, hoặc email — chọn một, hoặc cả bốn."
             )}
           </p>
         </div>
@@ -55,7 +56,7 @@ export function DeliverPage({
         onValueChange={(next) => onTabChange(parseDeliverTab(next))}
         className="w-full"
       >
-        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-4">
           <TabsTrigger
             value="chrome"
             className="h-11 gap-2 text-sm sm:text-base"
@@ -69,6 +70,13 @@ export function DeliverPage({
           >
             <Send className="size-4" aria-hidden />
             Telegram
+          </TabsTrigger>
+          <TabsTrigger
+            value="facebook"
+            className="h-11 gap-2 text-sm sm:text-base"
+          >
+            <FacebookMark className="size-4" />
+            Facebook
           </TabsTrigger>
           <TabsTrigger
             value="email"
@@ -85,6 +93,10 @@ export function DeliverPage({
 
         <TabsContent value="telegram" className="mt-8">
           <TelegramChannel lang={lang} />
+        </TabsContent>
+
+        <TabsContent value="facebook" className="mt-8">
+          <FacebookChannel lang={lang} />
         </TabsContent>
 
         <TabsContent value="email" className="mt-8">

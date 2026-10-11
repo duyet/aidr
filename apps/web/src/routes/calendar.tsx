@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { HighlightedText } from "../components/HighlightedText";
 import {
   CALENDAR_PATH,
   type CalendarDay,
@@ -63,12 +64,13 @@ export const Route = createFileRoute("/calendar")({
   component: CalendarPage,
 });
 
+/** Heat steps use the feed's accent (the same amber as home highlights). */
 const HEAT_CLASS = [
   "bg-muted/60",
-  "bg-brand/20",
-  "bg-brand/45",
-  "bg-brand/75 text-neutral-950",
-  "bg-brand text-neutral-950",
+  "bg-accent/15",
+  "bg-accent/35",
+  "bg-accent/65 text-accent-foreground",
+  "bg-accent text-accent-foreground",
 ] as const;
 
 const WEEKDAYS: Record<Lang, string[]> = {
@@ -122,11 +124,11 @@ function CalendarPage() {
   return (
     <div className="mx-auto max-w-3xl py-8">
       <header className="mb-6">
-        <p className="font-sans text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
           {vi ? "Các số đã phát hành" : "Past editions"}
         </p>
         <div className="mt-2 flex items-center gap-2">
-          <h1 className="flex-1 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="flex-1 font-serif text-2xl font-medium tracking-tight sm:text-3xl">
             {formatMonthHeading(month, lang)}
           </h1>
           {hasPrev ? (
@@ -154,7 +156,7 @@ function CalendarPage() {
         {WEEKDAYS[lang].map((w) => (
           <span
             key={w}
-            className="pb-1 text-center font-mono text-[0.65rem] uppercase text-muted-foreground"
+            className="pb-1 text-center text-xs text-muted-foreground"
           >
             {w}
           </span>
@@ -182,12 +184,12 @@ function CalendarPage() {
                 href={dayArchivePath(date, lang)}
                 title={title ?? undefined}
                 aria-label={`${date}: ${storiesLabel(day.count, lang)}${title ? `. ${title}` : ""}`}
-                className={`flex aspect-square flex-col justify-between rounded-lg p-1.5 transition-transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground ${HEAT_CLASS[heatLevel(day.count, max)]}`}
+                className={`flex aspect-square flex-col justify-between rounded-lg p-1.5 transition-transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${HEAT_CLASS[heatLevel(day.count, max)]}`}
               >
                 <span className="text-xs font-semibold tabular-nums sm:text-sm">
                   {num}
                 </span>
-                <span className="hidden font-mono text-[0.65rem] opacity-75 sm:block">
+                <span className="hidden text-xs tabular-nums opacity-75 sm:block">
                   {day.count}
                 </span>
               </a>
@@ -215,13 +217,17 @@ function CalendarPage() {
               <li key={day.date}>
                 <a
                   href={dayArchivePath(day.date, lang)}
-                  className="group grid grid-cols-[3rem_1fr_auto] items-center gap-3 py-3"
+                  className="group grid grid-cols-[3rem_1fr_auto] items-center gap-3"
+                  style={{
+                    paddingTop: "var(--reader-pad, 0.5rem)",
+                    paddingBottom: "var(--reader-pad, 0.5rem)",
+                  }}
                 >
                   <span className="text-center">
-                    <span className="block font-serif text-2xl leading-none">
+                    <span className="block font-serif text-xl font-medium leading-none tabular-nums">
                       {Number(day.date.slice(8))}
                     </span>
-                    <span className="font-mono text-[0.65rem] uppercase text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {
                         WEEKDAYS[lang][
                           (firstWeekdayMon0(month) +
@@ -233,13 +239,16 @@ function CalendarPage() {
                     </span>
                   </span>
                   <span className="min-w-0">
-                    <span className="line-clamp-2 font-serif text-base leading-snug group-hover:underline">
-                      {title ??
-                        (vi
-                          ? "Xem các tin trong ngày"
-                          : "See the day's stories")}
+                    <span className="line-clamp-2 leading-[calc(var(--reader-leading,1.55)_-_0.175)] group-hover:underline group-hover:underline-offset-2">
+                      {title ? (
+                        <HighlightedText text={title} tags={day.tags} />
+                      ) : vi ? (
+                        "Xem các tin trong ngày"
+                      ) : (
+                        "See the day's stories"
+                      )}
                     </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                    <span className="mt-0.5 block text-sm text-muted-foreground">
                       {storiesLabel(day.count, lang)}
                     </span>
                   </span>
