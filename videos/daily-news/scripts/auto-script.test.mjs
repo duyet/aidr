@@ -1,0 +1,89 @@
+// node --test videos/daily-news/scripts/*.test.mjs
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { test } from "node:test";
+import { estimateSeconds, fromModel, speakable, templateScript, validateScript, vnToday, writeScript } from "./auto-script.mjs";
+import { castProblems } from "./cast.mjs";
+
+const ROOT = resolve(import.meta.dirname, "..");
+const config = JSON.parse(readFileSync(resolve(ROOT, "config.json"), "utf8"));
+const edition = JSON.parse(readFileSync(resolve(ROOT, "editions/2026-10-10/edition.json"), "utf8"));
+const hosts = ["alex", "allison", "tyler-cruz", "ivanna", "kristen"];
+const quiet = () => {};
+
+test("the template script is valid, fact-checked, and has no draft markers publish.mjs would refuse", () => {
+  const s = templateScript(edition, hosts, null);
+  assert.deepEqual(validateScript(s, edition), []);
+  assert.doesNotMatch(JSON.stringify(s), /TODO|_bullet/);
+  assert.deepEqual(castProblems([...s.intro.voice, ...s.stories.flatMap((x) => x.voice), ...s.outro.voice]), []);
+});
+
+test("a failing model falls back to the template, trimmed to fit the Reel length", async () => {
+  const llm = async () => {
+    throw new Error("anyrouter 503");
+  };
+  const { script, source } = await writeScript({ edition, config, hostKeys: hosts, prev: null, maxSeconds: 80, models: ["m1", "m2"], llm, log: quiet });
+  assert.equal(source, "template");
+  assert.ok(estimateSeconds(script, config) <= 80);
+  assert.ok(script.stories.length >= 3 && script.stories.length < edition.stories.length);
+});
+
+test("a model that invents a number is rejected (facts come only from the bullet)", async () => {
+  const answer = {
+    stories: edition.stories.map((s) => ({
+      rank: s.rank,
+      kicker: "Some company",
+      headline: "*Big news* about something today",
+      stat: "$99B",
+      statLabel: "made up",
+      statWord: "99",
+      voice: ["Some company has $99 billion."],
+    })),
+    introLine: "Big news today.",
+    post: { hook: "h", facebook: "f", youtubeTitle: "t", shortsTitle: "s", tiktok: "k", hashtags: ["AI", "AINews", "X"] },
+  };
+  const { source } = await writeScript({ edition, config, hostKeys: hosts, prev: null, maxSeconds: 200, models: ["m"], llm: async () => JSON.stringify(answer), log: quiet });
+  assert.equal(source, "template");
+  assert.match(validateScript(fromModel(JSON.stringify(answer), edition, hosts, null), edition).join(), /number 99 is not in the bullet/);
+});
+
+test("a valid model answer is used; anchors come from the cast, not the model", async () => {
+  const three = { ...edition, stories: edition.stories.slice(0, 3) };
+  const answer = {
+    stories: three.stories.map((s) => ({
+      rank: s.rank,
+      kicker: "AI news",
+      headline: "*A real headline* for this story",
+      stat: "Today",
+      statLabel: "the state of play",
+      statWord: "This",
+      voice: ["This story is in the bullet.", "It matters for builders."],
+    })),
+    introLine: "Stocks slide today.",
+    focus: [{ rank: 1, word: "stocks" }],
+    thumbRank: 2,
+    post: { hook: "Hook.", facebook: "Today in AI.", youtubeTitle: "AI News Today | Oct 10, 2026", shortsTitle: "AI today #Shorts", tiktok: "What do you think?", hashtags: ["#AI", "AINews", "OpenAI"] },
+  };
+  const { script, source } = await writeScript({
+    edition: three,
+    config,
+    hostKeys: hosts,
+    prev: null,
+    maxSeconds: 200,
+    models: ["m"],
+    llm: async () => `\`\`\`json\n${JSON.stringify(answer)}\n\`\`\``,
+    log: quiet,
+  });
+  assert.equal(source, "m");
+  assert.equal(script.post.shortsTitle, "AI today");
+  assert.deepEqual(script.post.hashtags, ["AI", "AINews", "OpenAI"]);
+  assert.equal(script.thumb.story, 2);
+  assert.ok(script.stories.every((s) => s.voice.every((v) => hosts.includes(v.anchor))));
+});
+
+test("speakable reads money units; vnToday is UTC+7", () => {
+  assert.equal(speakable("raised ~$870M at a $7.5B valuation"), "raised about $870 million at a $7.5 billion valuation");
+  assert.equal(vnToday(new Date("2026-10-10T18:00:00Z")), "2026-10-11");
+  assert.equal(vnToday(new Date("2026-10-10T16:00:00Z")), "2026-10-10");
+});

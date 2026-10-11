@@ -104,6 +104,12 @@ const GITHUB_OPTIONAL = [
   "FACEBOOK_PAGE_ACCESS_TOKEN",
   "VITE_POSTHOG_PROJECT_TOKEN",
   "VITE_POSTHOG_HOST",
+  // .github/workflows/daily-reel.yml: voices (no key → no-voice cut) and the
+  // YouTube Data API upload (missing → the YouTube step is skipped).
+  "ELEVENLABS_API_KEY",
+  "YOUTUBE_CLIENT_ID",
+  "YOUTUBE_CLIENT_SECRET",
+  "YOUTUBE_REFRESH_TOKEN",
 ] as const;
 
 const args = new Set(process.argv.slice(2));

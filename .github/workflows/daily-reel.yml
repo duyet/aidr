@@ -1,0 +1,177 @@
+name: Daily Reel
+
+# Renders the day's English AI;DR Daily Brief and posts it without an agent:
+# script (auto-script.mjs: model, else template) → render (9:16 + 16:9) → gate
+# → YouTube (Data API, only when its OAuth secrets exist) → day page → Facebook
+# Reel → Telegram. Every public step is idempotent (videos/daily-news/README.md
+# "Automated run"). The cron runs after the 08:00 Asia/Ho_Chi_Minh digest.
+# Manual runs default to dry_run: render + gate + print the posting plan.
+on:
+  schedule:
+    - cron: "30 2 * * *" # 09:30 Asia/Ho_Chi_Minh
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Render and gate only; post nothing"
+        type: boolean
+        default: true
+      date:
+        description: "Edition date YYYY-MM-DD (default: today in Asia/Ho_Chi_Minh; past dates need a committed edition.json)"
+        type: string
+        default: ""
+
+concurrency:
+  group: daily-reel
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: production
+    env:
+      CI: "true"
+      AIDR_NO_HEYGEN: "1"
+      # schedule → live; dispatch → live only when dry_run is unticked.
+      LIVE: ${{ github.event_name == 'schedule' || inputs.dry_run == false }}
+      ANYROUTER_API_KEY: ${{ secrets.ANYROUTER_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      NEWS_ADMIN_TOKEN: ${{ secrets.NEWS_ADMIN_TOKEN }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_EN_CHAT_ID: ${{ secrets.TELEGRAM_EN_CHAT_ID }}
+    defaults:
+      run:
+        working-directory: videos/daily-news
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v6
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Install ffmpeg and fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-noto-core fonts-noto-color-emoji
+          ffmpeg -version | head -1
+
+      - name: Resolve date
+        id: date
+        env:
+          INPUT_DATE: ${{ inputs.date }}
+        run: |
+          d="${INPUT_DATE:-$(TZ=Asia/Ho_Chi_Minh date +%F)}"
+          [[ "$d" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "bad date $d" >&2; exit 1; }
+          echo "date=$d" >> "$GITHUB_OUTPUT"
+          echo "date $d · live $LIVE"
+
+      # STATUS.json is gitignored; the cache carries it between runs of the same
+      # day so a rerun never posts Telegram twice (YouTube and Facebook are also
+      # checked against the live day page / the Page itself).
+      - name: Restore STATUS.json
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/STATUS.json
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/HAND_PUBLISHED
+          key: daily-reel-status-${{ steps.date.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: daily-reel-status-${{ steps.date.outputs.date }}-
+
+      # A day an agent already published by hand (on the day page, and no STATUS
+      # from this workflow) still gets its Reel, but never a second Telegram post.
+      - name: Already published by hand?
+        id: check
+        run: |
+          status="editions/${{ steps.date.outputs.date }}/STATUS.json"
+          set +e
+          node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps check
+          code=$?
+          set -e
+          if [ -f "editions/${{ steps.date.outputs.date }}/HAND_PUBLISHED" ] || { [ "$code" = 3 ] && [ ! -f "$status" ]; }; then
+            mkdir -p "editions/${{ steps.date.outputs.date }}" && touch "editions/${{ steps.date.outputs.date }}/HAND_PUBLISHED"
+            echo "hand=true" >> "$GITHUB_OUTPUT"
+            echo "Published by hand: Reel only, no Telegram"
+          elif [ "$code" != 0 ] && [ "$code" != 3 ]; then
+            exit "$code"
+          fi
+
+      - name: Renderer browser
+        run: npx --yes hyperframes@0.8.96 browser ensure
+
+      - name: Write script.json
+        run: node scripts/auto-script.mjs --date "${{ steps.date.outputs.date }}"
+
+      - name: Render
+        run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps render --render-published
+
+      - name: Gate
+        run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps gate
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: daily-reel-${{ steps.date.outputs.date }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/renders/*-reel.mp4
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/renders/*.png
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/script.json
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/script.source.json
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/edition.json
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/posts.md
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/captions.srt
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/STATUS.json
+
+      - name: Posting plan (dry run)
+        if: env.LIVE != 'true'
+        run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps upload,attach,facebook,telegram --uploader api --dry-run
+
+      - name: YouTube upload + day page
+        if: env.LIVE == 'true'
+        run: |
+          if [ -z "$YOUTUBE_REFRESH_TOKEN" ] || [ -z "$YOUTUBE_CLIENT_ID" ] || [ -z "$YOUTUBE_CLIENT_SECRET" ]; then
+            echo "YouTube: no YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKEN secrets; skipping upload and attach"
+            exit 0
+          fi
+          node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps upload,attach --uploader api
+
+      - name: Facebook Reel
+        id: facebook
+        if: env.LIVE == 'true'
+        continue-on-error: true
+        run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps facebook --prod
+
+      - name: Telegram
+        if: env.LIVE == 'true' && steps.check.outputs.hand != 'true'
+        run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps telegram --prod
+
+      - name: Save STATUS.json
+        if: always()
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/STATUS.json
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/HAND_PUBLISHED
+          key: daily-reel-status-${{ steps.date.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Fail when the Reel did not post
+        if: steps.facebook.outcome == 'failure'
+        run: |
+          echo "The Facebook Reel step failed (see its log); YouTube and Telegram ran." >&2
+          exit 1
