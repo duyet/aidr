@@ -84,7 +84,8 @@ function HowItWorksFigure() {
       src="/how-it-works"
       title="How AI;DR works: an interactive machine"
       loading="lazy"
-      className="not-typeset mt-4 block w-full border-0"
+      scrolling="no"
+      className="not-typeset mt-4 block w-full overflow-hidden border-0"
       style={{ height }}
     />
   );
