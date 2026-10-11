@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { afterLcpPaint } from "./after-lcp-paint";
 import { resolveMeasurementId } from "./track";
+import { reportWebVitals } from "./web-vitals";
 
 export type { TrackChannel, TrackParams, TrackParamValue } from "./track";
 export {
@@ -87,6 +88,7 @@ function bootstrapAnalytics(): void {
   }
 
   loadScript("https://j.duyet.net/p.js");
+  void reportWebVitals();
 }
 
 export default function AnalyticWrapper() {
