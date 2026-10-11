@@ -27,9 +27,9 @@ import { StoryVotes } from "./story/StoryVotes";
 export const STORY_ROW_COLS =
   "grid grid-cols-[1.4rem_minmax(0,1fr)_3rem] gap-x-3 sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.2rem]";
 
-/** Short relative time for the Time column: "7 giờ" / "7h ago". */
+/** Short relative time for the Time column: "7 giờ" / "7h". */
 function shortTimeAgo(epochSec: number, lang: Lang): string {
-  return timeAgo(epochSec, Date.now(), lang).replace(/ trước$/, "");
+  return timeAgo(epochSec, Date.now(), lang).replace(/ (trước|ago)$/, "");
 }
 
 function StoryRowHeader({

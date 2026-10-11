@@ -207,7 +207,11 @@ function SignInVotes({
       >
         <VoteIcon direction="up" compact={compact} />
       </a>
-      <VoteCount voteNet={voteNet} lang={lang} compact={compact} />
+      <VoteCount
+        voteNet={upOnly ? Math.max(0, voteNet) : voteNet}
+        lang={lang}
+        compact={compact}
+      />
       {!upOnly && (
         <a
           href={href}
@@ -322,7 +326,11 @@ function SignedInVotes({
       >
         <VoteIcon direction="up" compact={compact} />
       </button>
-      <VoteCount voteNet={net} lang={lang} compact={compact} />
+      <VoteCount
+        voteNet={upOnly ? Math.max(0, net) : net}
+        lang={lang}
+        compact={compact}
+      />
       {!upOnly && (
         <button
           type="button"

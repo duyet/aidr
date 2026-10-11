@@ -155,4 +155,19 @@ describe("dense story table", () => {
     expect(html).toContain("7 giờ<");
     expect(html).not.toContain("giờ trước");
   });
+
+  it("shortens the English time to '7h' to match", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const html = renderToStaticMarkup(
+      <DaySection
+        day={{
+          ...day,
+          items: [{ ...item, published_at: now - 7 * 3600 - 60 }],
+        }}
+        lang="en"
+      />
+    );
+    expect(html).toContain(">7h<");
+    expect(html).not.toContain("h ago");
+  });
 });
