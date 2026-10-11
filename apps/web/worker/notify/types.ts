@@ -47,6 +47,9 @@ export interface DailyDigest {
   /** Local calendar date (YYYY-MM-DD) the digest covers. */
   date: string;
   bullets: DigestBullet[];
+  /** Every story the snapshot's bullets cite, not only each bullet's first.
+   *  Kept for the posted-events record when the day has no card stories. */
+  citedItemIds?: string[];
 }
 
 export interface SendResult {
