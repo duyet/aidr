@@ -4,6 +4,7 @@ import {
   stripSearchParams,
 } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
 import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
@@ -59,6 +60,35 @@ function PipelineDiagram() {
   );
 }
 
+/** The interactive bench-machine figure (public/how-it-works.html, served at /how-it-works). It picks
+ *  up the site theme from this document and posts its height back so the
+ *  frame never scrolls. The ASCII flow below stays as the text version. */
+function HowItWorksFigure() {
+  const [height, setHeight] = useState(560);
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; height?: number };
+      if (
+        data?.type === "aidr-figure-height" &&
+        typeof data.height === "number"
+      )
+        setHeight(Math.ceil(data.height));
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+  return (
+    <iframe
+      src="/how-it-works"
+      title="How AI;DR works: an interactive machine"
+      loading="lazy"
+      className="not-typeset mt-4 block w-full border-0"
+      style={{ height }}
+    />
+  );
+}
+
 function AboutPage() {
   return (
     <div className="py-12" lang="en">
@@ -86,6 +116,7 @@ function AboutPage() {
             Six steps, one run every 30 minutes.
           </p>
         </div>
+        <HowItWorksFigure />
         <PipelineDiagram />
         <p className="typeset typeset-page mt-4 text-muted-foreground">
           The source list is on the{" "}
