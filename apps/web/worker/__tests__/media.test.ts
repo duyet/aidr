@@ -428,3 +428,119 @@ describe("generated share cards", () => {
     );
   });
 });
+
+describe("media dedup identity", () => {
+  const urls = (candidates: Array<{ type: "image" | "video"; url: string }>) =>
+    buildMediaManifest(candidates).assets.map((a) => a.url);
+
+  it("treats http and https of the same file as one asset", () => {
+    expect(
+      urls([
+        { type: "image", url: "http://img.example/a/photo.jpg" },
+        { type: "image", url: "https://img.example/a/photo.jpg" },
+      ])
+    ).toHaveLength(1);
+    expect(
+      urls([
+        { type: "video", url: "http://cdn.example/clip.mp4" },
+        { type: "video", url: "https://cdn.example/clip.mp4" },
+      ])
+    ).toHaveLength(1);
+  });
+
+  it("ignores tracking query parameters", () => {
+    expect(
+      urls([
+        {
+          type: "image",
+          url: "https://img.example/p.jpg?utm_source=x&fbclid=1",
+        },
+        { type: "image", url: "https://img.example/p.jpg?ref=rss" },
+        { type: "image", url: "https://img.example/p.jpg" },
+      ])
+    ).toHaveLength(1);
+  });
+
+  it("collapses WordPress size variants to the base file", () => {
+    expect(
+      urls([
+        {
+          type: "image",
+          url: "https://site.example/wp-content/uploads/2030/10/hero-1024x576.jpg",
+        },
+        {
+          type: "image",
+          url: "https://site.example/wp-content/uploads/2030/10/hero-300x169.jpg",
+        },
+        {
+          type: "image",
+          url: "https://site.example/wp-content/uploads/2030/10/hero-scaled.jpg",
+        },
+        {
+          type: "image",
+          url: "https://site.example/wp-content/uploads/2030/10/hero.jpg",
+        },
+      ])
+    ).toHaveLength(1);
+  });
+
+  it("collapses CDN resize parameters and Jetpack Photon proxies", () => {
+    expect(
+      urls([
+        {
+          type: "image",
+          url: "https://cdn.example/p.jpg?w=1200&q=80&auto=format",
+        },
+        { type: "image", url: "https://cdn.example/p.jpg?width=300" },
+        {
+          type: "image",
+          url: "https://i0.wp.com/cdn.example/p.jpg?resize=640,360",
+        },
+      ])
+    ).toHaveLength(1);
+  });
+
+  it("keeps genuinely distinct files", () => {
+    expect(
+      urls([
+        { type: "image", url: "https://img.example/hero-1.jpg" },
+        { type: "image", url: "https://img.example/hero-2.jpg" },
+        { type: "image", url: "https://img.example/hero-1024x576-b.jpg" },
+        { type: "image", url: "https://other.example/hero-1.jpg" },
+        { type: "image", url: "https://img.example/p.jpg?id=1" },
+        { type: "image", url: "https://img.example/p.jpg?id=2" },
+      ])
+    ).toHaveLength(6);
+  });
+
+  it("drops an image that is a video poster", () => {
+    const manifest = buildMediaManifest([
+      { type: "image", url: "http://img.example/wp/poster-1024x576.jpg" },
+      {
+        type: "video",
+        url: "https://cdn.example/v.mp4",
+        poster_url: "https://img.example/wp/poster.jpg?utm_medium=x",
+      },
+    ]);
+    expect(manifest.assets.map((a) => a.type)).toEqual(["video"]);
+  });
+
+  it("dedupes media merged from clustered duplicate items", () => {
+    const a = buildMediaManifest([
+      { type: "image", url: "https://a.example/wp/hero-1024x576.jpg" },
+      { type: "video", url: "http://a.example/v/demo.mp4" },
+    ]);
+    const b = buildMediaManifest([
+      { type: "image", url: "http://a.example/wp/hero.jpg?utm_source=feed" },
+      { type: "video", url: "https://a.example/v/demo.mp4" },
+      { type: "image", url: "https://b.example/other.jpg" },
+    ]);
+    const merged = mergeMediaManifests(a, b).assets;
+    expect(merged.map((x) => x.type).sort()).toEqual([
+      "image",
+      "image",
+      "video",
+    ]);
+    expect(merged.filter((x) => x.url.includes("b.example"))).toHaveLength(1);
+  });
+});

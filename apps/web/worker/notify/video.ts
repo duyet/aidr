@@ -1,4 +1,4 @@
-import { fetchWithSafeRedirects, redactUrlForLog } from "../enrich.js";
+import { fetchWithSafeRedirectsResolved, redactUrlForLog } from "../enrich.js";
 import {
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
@@ -17,8 +17,12 @@ import type { StoryPayload } from "./types.js";
  * with a reason and delivery falls back to the poster photo, then text.
  */
 
-/** Bot API `sendVideo` by HTTP URL: 20 MB. */
-export const TELEGRAM_VIDEO_URL_BYTES = 20 * 1024 * 1024;
+/**
+ * Bot API `sendVideo` by HTTP URL: "20 MB". Decimal on purpose: a file just
+ * over 20,000,000 bytes but under 20 MiB passed the old 20 MiB check and was
+ * then rejected by Telegram, which sank the whole album (story 7b847b25).
+ */
+export const TELEGRAM_VIDEO_URL_BYTES = 20_000_000;
 /** Total video bytes one album may ask Telegram to fetch. */
 export const TELEGRAM_ALBUM_VIDEO_BYTES = 40 * 1024 * 1024;
 /** Longest clip we post. Telegram has no cap; this keeps the channel tidy. */
@@ -48,6 +52,8 @@ export type VideoSkipReason =
 export interface VideoProbe {
   ok: boolean;
   reason: VideoSkipReason | null;
+  /** The URL that answered after redirects (http -> https upgrade), if any. */
+  url: string | null;
   bytes: number | null;
   durationSeconds: number | null;
 }
@@ -57,6 +63,8 @@ interface RangeResult {
   /** Total resource size from Content-Range / Content-Length, if known. */
   total: number | null;
   contentType: string;
+  /** URL that finally answered, after safe redirects. */
+  url: string;
 }
 
 async function readRange(
@@ -65,15 +73,19 @@ async function readRange(
   length: number
 ): Promise<RangeResult | null> {
   let res: Response;
+  let finalUrl: string;
   try {
-    res = await fetchWithSafeRedirects(url, {
-      method: "GET",
-      headers: {
-        Range: `bytes=${start}-${start + length - 1}`,
-        Accept: MP4_MIME,
-      },
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    });
+    ({ response: res, url: finalUrl } = await fetchWithSafeRedirectsResolved(
+      url,
+      {
+        method: "GET",
+        headers: {
+          Range: `bytes=${start}-${start + length - 1}`,
+          Accept: MP4_MIME,
+        },
+        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+      }
+    ));
   } catch {
     return null;
   }
@@ -112,7 +124,7 @@ async function readRange(
   } catch {
     return null;
   }
-  return { bytes: out.subarray(0, read), total, contentType };
+  return { bytes: out.subarray(0, read), total, contentType, url: finalUrl };
 }
 
 function view(b: Uint8Array): DataView {
@@ -217,10 +229,15 @@ export async function probeVideo(url: string): Promise<VideoProbe> {
     reason: VideoSkipReason,
     bytes: number | null = null,
     durationSeconds: number | null = null
-  ): VideoProbe => ({ ok: false, reason, bytes, durationSeconds });
+  ): VideoProbe => ({ ok: false, reason, url: null, bytes, durationSeconds });
 
-  const safe = canonicalizeMediaUrl(url);
-  if (!safe) return fail("unsafe_url");
+  const canonical = canonicalizeMediaUrl(url);
+  if (!canonical) return fail("unsafe_url");
+  // `isFetchableUrl` refuses clear-text HTTP outside a few source hosts, so an
+  // `http://` video never got past "unreachable" and the story went out as a
+  // photo (story 7b847b25). Hosts that serve video 301 http to https anyway:
+  // probe, and later send, the https form.
+  const safe = canonical.replace(/^http:\/\//i, "https://");
   const head = await readRange(safe, 0, HEAD_BYTES);
   if (!head) return fail("unreachable");
   if (head.total === null) return fail("size_unknown");
@@ -230,7 +247,10 @@ export async function probeVideo(url: string): Promise<VideoProbe> {
   if (head.contentType !== MP4_MIME || !isMp4Container(head.bytes)) {
     return fail("not_mp4", head.total);
   }
-  const duration = await findDuration(safe, head.bytes, head.total);
+  // Later hops and Telegram itself use the URL that answered: an http asset
+  // that 301s to https is sent as https, so Telegram never meets the redirect.
+  const resolved = canonicalizeMediaUrl(head.url) ?? safe;
+  const duration = await findDuration(resolved, head.bytes, head.total);
   if (duration === null) return fail("duration_unknown", head.total);
   if (duration > TELEGRAM_VIDEO_MAX_SECONDS) {
     return fail("too_long", head.total, duration);
@@ -238,6 +258,7 @@ export async function probeVideo(url: string): Promise<VideoProbe> {
   return {
     ok: true,
     reason: null,
+    url: resolved,
     bytes: head.total,
     durationSeconds: Math.max(1, Math.round(duration)),
   };
@@ -280,7 +301,9 @@ async function legalThumbnail(poster: string | null): Promise<string | null> {
  * whole, never truncated. Skips are logged with a redacted origin only.
  */
 export async function planVideoDelivery(
-  story: StoryPayload
+  story: StoryPayload,
+  /** Collects why each video or album was skipped, for `last_error`. */
+  skips: string[] = []
 ): Promise<VideoDelivery | null> {
   const assets: MediaAsset[] = story.media_manifest?.assets ?? [];
   if (!assets.some((asset) => asset.type === "video")) return null;
@@ -306,7 +329,13 @@ export async function planVideoDelivery(
     if (!url || !isNew("video", url) || probes >= MAX_VIDEO_PROBES) continue;
     probes++;
     const probe = await probeVideo(url);
-    if (!probe.ok || probe.bytes === null || probe.durationSeconds === null) {
+    if (
+      !probe.ok ||
+      !probe.url ||
+      probe.bytes === null ||
+      probe.durationSeconds === null
+    ) {
+      skips.push(`video:${probe.reason}`);
       console.warn(
         `telegram video skipped for ${story.id} ${redactUrlForLog(url)}: ${probe.reason}`
       );
@@ -314,7 +343,7 @@ export async function planVideoDelivery(
     }
     const posterUrl = canonicalizeMediaImageUrl(asset.poster_url);
     const video: PlannedVideo = {
-      url,
+      url: probe.url,
       poster: posterUrl && isNew("image", posterUrl) ? posterUrl : null,
       bytes: probe.bytes,
       durationSeconds: probe.durationSeconds,
@@ -344,6 +373,7 @@ export async function planVideoDelivery(
     };
   }
   if (items.length > TELEGRAM_ALBUM_MAX_ITEMS) {
+    skips.push("album:too_many_items");
     console.warn(`telegram album skipped for ${story.id}: too many items`);
     return null;
   }
@@ -352,6 +382,7 @@ export async function planVideoDelivery(
     0
   );
   if (videoBytes > TELEGRAM_ALBUM_VIDEO_BYTES) {
+    skips.push("album:over_byte_budget");
     console.warn(`telegram album skipped for ${story.id}: over byte budget`);
     return null;
   }

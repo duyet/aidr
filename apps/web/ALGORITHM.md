@@ -371,9 +371,18 @@ in query strings) are decoded before storage, so thumbs are real article
 images rather than a broken-src fallback.
 
 - **Media identity is the URL, not the content.** Duplicates are found by
-  `mediaIdentityKey` (host + path, minus resize and tracking variants). No
-  media is downloaded or hashed, so two different URLs that serve the same
-  bytes (a mirror, a renamed copy) stay as two assets.
+  `mediaIdentityKey` and collapse to one asset, in one manifest, across
+  sources, and when a cluster merges (`mergeMediaManifests`). Rules: http and
+  https of a host are one identity; tracking query keys (`utm_*`, `fbclid`,
+  `ref`, ...) and CDN resize keys (`w`, `h`, `q`, `fit`, `auto`, ...) are
+  ignored; image extension and size suffixes are ignored (WordPress
+  `-1024x576` and `-scaled`, `.large`, `-resize-640`); a Jetpack Photon URL
+  (`i0.wp.com/<host>/<path>`) equals its origin file; an image equal to a
+  video's poster is dropped (the video shows it). Signed-CDN query keys and
+  any other query stay part of the identity, so distinct files stay distinct.
+  The story dialog applies the same keys to stored manifests, so no asset
+  renders twice. No media is downloaded or hashed: two different URLs that
+  serve the same bytes (a mirror, a renamed copy) stay two assets.
 - **Generated share cards are a fallback only.** An image whose path is an
   OG generator (`/og/…`, `/api/og`, `og-image`/`og-card` file names, see
   `isGeneratedOgCard`) is dropped from a manifest, including merged
@@ -940,15 +949,31 @@ deliberately non-spammy.
   stays `sendPhoto` so the inline button remains — an album has no
   `reply_markup`, so that link moves into the caption.
 - **Video** (`worker/notify/video.ts`): a manifest video is preflighted with
-  bounded Range requests over `fetchWithSafeRedirects` (never a full
-  download): MP4 container, at most 20 MB, at most 300 s (`mvhd`, faststart
-  or trailing `moov`), size and duration known. Proven video-only stories use
+  bounded Range requests over `fetchWithSafeRedirectsResolved` (never a full
+  download): MP4 container, at most 20,000,000 bytes (Telegram's "20 MB" is
+  decimal, not 20 MiB), at most 300 s (`mvhd`, faststart or trailing `moov`),
+  size and duration known. `http://` videos are probed and sent as `https://`
+  (the fetch policy refuses clear-text HTTP outside a few hosts, so they used
+  to be skipped as unreachable and the story went out as a photo). Up to 3
+  distinct videos are probed in manifest order; the ones that pass are
+  planned. Proven video-only stories use
   `sendVideo` (with the poster as `thumbnail` only when it is a legal JPEG
   thumbnail); video plus images uses one mixed `sendMediaGroup` (primary
   video, its poster, then manifest order, deduped by `mediaIdentityKey`, at
   most 10 items, at most 40 MB of video). An over-cap album is dropped whole,
   never truncated. A skip, or a call Telegram rejects, falls back to the
   photo path, then text. Durable multi-message delivery remains a follow-up.
+- **Fallback reasons are recorded.** Every downgrade (video to photo, photo
+  to text) keeps its reason in `notifications.last_error` on the `sent` row
+  as `fallback ok: <r1>; <r2>` (`fallback failed: ...` when the text send
+  also failed) and in one `telegram_story_fallback` JSON console warning
+  (`story`, `reasons`, `delivered`). Reasons: `video:<unsafe_url|unreachable|
+  size_unknown|oversized|not_mp4|duration_unknown|too_long>` (one per probed
+  video), `album:too_many_items`, `album:over_byte_budget`,
+  `video:plan_failed:<msg>`, `video:none_sendable`, `sendVideo:<Telegram
+  description>`, `sendMediaGroup(video):<description>`, `sendMediaGroup:<d>`,
+  `sendPhoto:<d>`, `sendPhoto(card):<d>`, `photo:none_sent`. Ambiguous and
+  budget-exhausted sends keep their own error.
 - **What is checked before a send.** The poster is fetched and checked
   (JPEG, at most 200 KB, at most 320 px) only when it is about to be used as
   a `sendVideo` thumbnail; a poster that fails is left out and the video

@@ -75,12 +75,22 @@ export function visibleMediaAssets(
         )
       )
     : [];
+  // A video's poster is shown by the video itself; a stored manifest that
+  // predates the build-time rule may still list it again as an image.
+  const posterKeys = new Set<string>();
+  for (const asset of assets) {
+    if (asset?.type !== "video") continue;
+    const poster = gatedPoster(asset.poster_url);
+    const key = poster ? mediaIdentityKey("image", poster) : null;
+    if (key) posterKeys.add(key);
+  }
   for (const asset of assets) {
     if (visible.length >= MAX_MEDIA_ASSETS) break;
     if (!asset || (asset.type !== "image" && asset.type !== "video")) continue;
     if (typeof asset.url !== "string") continue;
     const identity = mediaIdentityKey(asset.type, asset.url);
     if (!identity) continue;
+    if (asset.type === "image" && posterKeys.has(identity)) continue;
     const key = `${asset.type}:${identity}`;
     if (seen.has(key)) continue;
     seen.add(key);

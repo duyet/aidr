@@ -72,6 +72,21 @@ describe("visibleMediaAssets", () => {
     expect(assets[0].index).toBe(1);
   });
 
+  it("renders no asset twice: a stored image equal to a video poster is hidden", () => {
+    const assets = visibleMediaAssets(
+      manifestOf([
+        video("/c.mp4", "/p-1024x576.jpg"),
+        image("/p.jpg"),
+        image("/p.jpg?utm_source=x"),
+        image("/other.jpg"),
+      ])
+    );
+    expect(assets.map((a) => a.url)).toEqual([
+      `${CDN}/c.mp4`,
+      `${CDN}/other.jpg`,
+    ]);
+  });
+
   it("still shows a card when it is the only media", () => {
     const card = "https://marketbrief.now/og/story.png";
     const assets = visibleMediaAssets(
