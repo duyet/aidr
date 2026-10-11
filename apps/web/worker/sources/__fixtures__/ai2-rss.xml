@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0"><channel><title>Ai2 Blog</title>
+<item>
+        <guid isPermaLink="false">https://allenai.org/blog/impactful-scheduling</guid>
+        <title>Impactful scheduling for GPU clusters</title>
+        <link>https://allenai.org/blog/impactful-scheduling</link>
+        <pubDate>2026-10-09T00:00:00-08:00</pubDate>
+        <description>
+          <![CDATA[
+            <div style="display: flex; gap: 12px">
+              <div>We explain how Ai2’s new GPU scheduler uses time budgets, fair-share allocation, and time-slicing to prioritize high-impact research, shorten queue waits, and keep GPUs busy.</div>
+              <img src="https://www.datocms-assets.com/64837/1791481523-impactful-scheduling-for-gpu-clusters-google-docs-image-1-1.png?w=200" width="200" alt="Impactful scheduling for GPU clusters" />
+            </div>
+          ]]>
+        </description>
+      </item>
+<item>
+        <guid isPermaLink="false">https://allenai.org/blog/colm-2026-recap</guid>
+        <title>Ai2 at COLM 2026: Open research, from models to agents for science</title>
+        <link>https://allenai.org/blog/colm-2026-recap</link>
+        <pubDate>2026-10-09T00:00:00-08:00</pubDate>
+        <description>
+          <![CDATA[
+            <div style="display: flex; gap: 12px">
+              <div>Ai2 joined COLM 2026 to share advances in open language models, training infrastructure, and AI for science, including Olmo Hybrid, Asta, and Bolmo, while connecting with the broader research community.</div>
+              <img src="https://www.datocms-assets.com/64837/1791590717-colm-2026-recap-blog-google-docs-image-1.jpg?w=200" width="200" alt="Ai2 at COLM 2026: Open research, from models to agents for science" />
+            </div>
+          ]]>
+        </description>
+      </item>
+</channel></rss>

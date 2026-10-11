@@ -89,6 +89,7 @@ the registry should carry.
 | `sourceLang` | `"vi"` for a genuinely Vietnamese-language source. Explicit metadata that puts the item on the real VI→EN translation-QA path; never inferred from diacritics. |
 | `maxItems` | flood gate: hard cap per fetch, newest-first, applied after the since-window filter |
 | `keywordFilter` | named title pre-filter, currently `"ai"` — the same regex the HN adapter uses |
+| `timezone` | fixed UTC offset (`"+07:00"`) for a feed whose dates carry no zone; a date with a zone is never shifted |
 | `minRequestIntervalMs` | per-host spacing between fetches, for hosts that reject concurrent requests |
 
 **Verify a feed before you add it.** Every source in the registry was checked
@@ -102,6 +103,12 @@ pnpm --filter @aidr/web exec tsx scripts/verify-source-feeds.ts my-new-feed
 It runs the production `parseRssItems` plus the production flood gate, so a
 green result means the Worker can actually read the feed. A source added on
 faith is worse than no source.
+
+### Failing fetches
+
+A source whose last 48 runs all ended in `fetch_failed` (one day) is listed in
+`failing` in `/api/system/sources` and flagged in `/data`, separately from
+`stale`. See ALGORITHM.md section 1b.
 
 ### Staleness
 

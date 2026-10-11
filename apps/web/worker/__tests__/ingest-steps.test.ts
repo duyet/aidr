@@ -317,9 +317,11 @@ describe("per-source health", () => {
     expect(health.fine.skipReason).toBe("");
   });
 
-  it("rehydrates only the emptyRuns streak from the previous run", () => {
-    expect(previousHealthFromStreaks({ hn: 4 })).toEqual({
-      hn: { ...emptySourceHealth(), emptyRuns: 4 },
+  it("rehydrates only the two streaks from the previous run", () => {
+    expect(
+      previousHealthFromStreaks({ hn: { emptyRuns: 4, failedRuns: 2 } })
+    ).toEqual({
+      hn: { ...emptySourceHealth(), emptyRuns: 4, failedRuns: 2 },
     });
   });
 });

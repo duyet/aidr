@@ -266,7 +266,62 @@ plus lab/vendor blogs and newsletters added in migration 0044 (`mistral`,
 `nvidia-blog`, `nvidia-dev`, `microsoft-research`, `apple-ml`,
 `together-ai`, `github-ai`, `latent-space`, `interconnects`, `import-ai`,
 `bens-bites`, `ahead-of-ai`; broad feeds use `keywordFilter: "ai"`, each
-has a 2–4 `maxItems` cap).
+has a 2–4 `maxItems` cap). Migration 0057 (2026-10-11) disables the sources
+that refuse Workers egress and adds the probation sources in the table below.
+
+#### Source table (migration 0057 changes)
+
+| id | adapter | family | state | decision |
+| --- | --- | --- | --- | --- |
+| `reddit-ml`, `reddit-localllama`, `reddit-singularity` | `rss` | `reddit` | disabled | Reddit refuses Workers egress: `fetch_failed` on all 135+ runs, 0 items. |
+| `xai` | `xai` | n/a | disabled | x.ai answers the Worker with HTTP 403: 517 runs, 0 items. |
+| `ahead-of-ai` | `rss` | n/a | disabled | 0 items in 409 runs. The feed is alive (newest post 2026-09-29, one every two to three weeks), so this is a quiet-feed call. |
+| `arstechnica-ai` | `rss` | n/a | enabled | Re-pointed to `feeds.arstechnica.com/arstechnica/technology-lab` with `keywordFilter: "ai"`; the old URL failed on 517 runs. 7 of 20 titles pass the filter. |
+| `mistral` | `rss` | n/a | unchanged | No code bug. The feed parses (89 items); its only post since seeding, Mistral Large 4, was already stored from `docs.mistral.ai`. |
+| `release-ollama`, `release-vllm`, `release-transformers`, `release-codex` | `githubreleases` | `oss-release` | probation, 1 per run | GitHub REST API, `x.y.0` tags only. |
+| `hf-papers` | `hfpapers` | `hf` | probation, 2 per run | Daily papers, top by upvotes; upvotes are not engagement. |
+| `openrouter-models` | `openrouter` | `openrouter` | probation, 2 per run | Models with `created` inside the since-window; `:variant` ids skipped. |
+| `hf-models-qwen`, `-deepseek`, `-moonshotai`, `-zai-org`, `-mistralai` | `hfmodels` | `hf-models` | probation, 2 per run | New release repos of one organization; quantized, adapter, SAE, draft and conversion repos skipped. |
+| `ai2` | `rss` | n/a | probation, official | `allenai.org/rss.xml`. |
+| `genk-ai` | `rss` (`sourceLang: "vi"`, `timezone: "+07:00"`) | `vi-press` | probation, 2 per run | Second Vietnamese row, so the VI→EN path runs again while `vnexpress-tech` is off. |
+
+Decisions behind the table:
+
+- **GitHub releases use the API, not `releases.atom`.** `github.com/robots.txt`
+  disallows `/*.atom$` for `User-agent: *`, and no source may fetch what a
+  robots.txt disallows. `api.github.com` serves no robots.txt. Titles are
+  `"<project> <tag>"` (a bare tag gives the scorer nothing); the body is the
+  summary. llama.cpp is not added (its tags are build numbers such as
+  `b11552`, so no minor release can be told apart) and neither is Claude Code
+  (`2.1.N`, a minor bump almost never happens).
+- **Shared hosts.** `sourceSpecForUrl` maps a link to the registry row whose
+  `homepage` or `feed` host serves it. The github, huggingface and openrouter
+  rows therefore carry no `feed` or `homepage` (they use `repo`, `author`),
+  and none is `official`; an HN link to any github.com page keeps `hn`.
+- **OpenRouter keeps no cursor.** Adapters get only `(config, sinceEpochSec)`
+  and none persists state, so "new since the last run" is `created` inside the
+  26h since-window; a model seen on a previous run has the same URL and
+  ingest drops it as already stored.
+- **Timezone.** `timezone` is a fixed UTC offset applied only to a date that
+  has no zone; `Date.parse` is never used for those, because it reads the host
+  timezone. GenK's live feed already says `+07`, so the key is a guard.
+
+#### Probation
+
+A new source starts with `probation: true` in the catalog. The rule, held by
+`worker/__tests__/source-catalog.test.ts`:
+
+- at most 2 items per run (1 for the `oss-release` family);
+- no `engagement: "reader"`, and no `points` or `comments` from the adapter;
+- `official` only for a first-party feed on its own host (it makes a row the
+  canonical over aggregator rewrites, so a shared-host row never gets it);
+- a `family` for related feeds, so they count once in `sourceCount` and in
+  `pickDiverse`.
+
+A probation source graduates by deleting the flag, once it has delivered
+accepted stories on its own for two weeks (`/api/system/sources`:
+`accepted` against `fetched`). A source that is `failing` or `stale` in that
+time is disabled instead.
 
 The set of sources is **declarative**: one list in
 `worker/sources/catalog.ts` generates the runtime seed, the migration, and
@@ -349,6 +404,19 @@ the registry yet — see `ARXIV_NOT_ADDED_REASON` in
 `worker/sources/catalog.ts`. A disabled source is reported `disabled`,
 never `stale` — off is a decision, not a fault. This is observability
 only: it changes no ranking, no prompt, and no LLM budget.
+
+A second, shorter alarm covers broken fetches. `sourceHealth.failedRuns`
+counts consecutive runs whose skip reason is `fetch_failed` (carried forward
+like `emptyRuns`, reset by any other outcome). At **48 consecutive runs** (one
+day; `FETCH_FAILED_ALERT_RUNS` in `worker/sources/catalog.ts`) the source is
+listed in `failing` beside `stale` in `/api/system/sources`, flagged `failing`
+in the `/data` sources table, and called out first in the Algo tab. The
+336-run empty threshold missed this: a failed fetch is also an empty run, but
+five sources sat at `fetch_failed` for 135 to 517 runs, so `xai` and
+`arstechnica-ai` were flagged only after 336 runs and `reddit-*` never. A
+quiet feed never sets `failedRuns`. Disabled and `push`
+rows are exempt. Runs written before the field existed count from 0, so the
+alarm arms about a day after the deploy.
 
 ### 2. Dedupe
 
