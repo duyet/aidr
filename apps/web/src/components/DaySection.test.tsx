@@ -130,10 +130,10 @@ describe("dense story table", () => {
     expect(html).toMatch(/class="story-time hidden[^"]*sm:block/);
     // Phone: topic + time sit under the title and hide from 640px up.
     expect(html).toMatch(/class="story-meta-phone[^"]*sm:hidden/);
-    // Score column is upvote-only: one control, no down arrow.
+    // Score column: one small thumbs-up button, no down vote.
     const score = html.split('class="story-score')[1] ?? "";
-    expect(score.match(/aria-label="Sign in to vote"/g)).toHaveLength(1);
-    expect(score).not.toContain("chevron-down");
+    expect(score.match(/aria-label="Upvote"/g)).toHaveLength(1);
+    expect(score).not.toContain("lucide-thumbs-down");
   });
 
   it("bands only the top 3 rows", () => {

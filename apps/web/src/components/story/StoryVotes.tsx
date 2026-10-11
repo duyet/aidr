@@ -1,10 +1,10 @@
-import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ThumbsUp } from "lucide-react";
+import { Dialog as DialogPrimitive } from "radix-ui";
+import { useEffect, useRef, useState } from "react";
 import { bearerHeaders, useClerkModule } from "../../lib/clerk-user";
 import { withLang } from "../../lib/locale-url";
 import type { Lang } from "../../lib/types";
 import { castStoryVote, fetchMyVotes } from "../../lib/vote-fn";
-import { SpriteIcon } from "../IconSprite";
 
 type Mine = -1 | 0 | 1;
 
@@ -84,157 +84,112 @@ function signInHref(lang: Lang): string {
   return withLang("/sign-in", lang);
 }
 
-/** Feed rows keep a one-line meta strip; the compact hit box stays inside it. */
-function voteHit(compact: boolean | undefined, pressed = false) {
-  const box = compact
-    ? "inline-flex h-5 w-3.5 items-center justify-center rounded-sm"
-    : "inline-flex h-8 items-center justify-center rounded-full px-3 transition-colors hover:bg-muted disabled:opacity-60";
-  const tone = pressed
-    ? compact
-      ? "text-foreground"
-      : "bg-primary/10 text-primary hover:bg-primary/15"
-    : "text-muted-foreground hover:text-foreground";
-  return `${box} ${tone}`;
-}
-
-function VoteIcon({
-  direction,
-  compact,
-}: {
-  direction: "up" | "down";
-  compact?: boolean;
-}) {
-  if (!compact) {
-    const Thumb = direction === "up" ? ThumbsUp : ThumbsDown;
-    return <Thumb className="h-4 w-4" aria-hidden />;
-  }
-  return (
-    <SpriteIcon
-      name={direction === "up" ? "chevron-up" : "chevron-down"}
-      className="h-3 w-3"
-    />
-  );
-}
+const COPY = {
+  en: {
+    upvote: "Upvote",
+    removeUpvote: "Remove upvote",
+    count: "Reader votes",
+    signInTitle: "Sign in to vote",
+    signInBody: "Votes help good stories rank higher.",
+    signIn: "Sign in",
+    close: "Close",
+  },
+  vi: {
+    upvote: "Thích tin này",
+    removeUpvote: "Bỏ thích tin này",
+    count: "Tổng phiếu",
+    signInTitle: "Đăng nhập để bình chọn",
+    signInBody: "Phiếu bầu giúp tin hay được xếp hạng cao hơn.",
+    signIn: "Đăng nhập",
+    close: "Đóng",
+  },
+} as const;
 
 /** The feed row header is a button. A vote control inside it must not toggle the row. */
 function keepRowClosed(event: { stopPropagation(): void }) {
   event.stopPropagation();
 }
 
-function signInLabel(lang: Lang): string {
-  return lang === "vi" ? "Đăng nhập để bình chọn" : "Sign in to vote";
-}
-
-function voteLabel(lang: Lang, value: 1 | -1, pressed: boolean): string {
-  if (lang === "vi") {
-    if (value === 1) return pressed ? "Bỏ phiếu lên" : "Bình chọn lên";
-    return pressed ? "Bỏ phiếu xuống" : "Bình chọn xuống";
-  }
-  if (value === 1) return pressed ? "Remove upvote" : "Upvote";
-  return pressed ? "Remove downvote" : "Downvote";
-}
-
-function VoteCount({
+/** One small thumbs-up + count, sized to the surrounding meta text. */
+function Thumb({
   voteNet,
   lang,
-  compact,
+  pressed,
+  disabled,
+  onClick,
 }: {
   voteNet: number;
   lang: Lang;
-  compact?: boolean;
+  pressed?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
 }) {
-  const label = lang === "vi" ? "Tổng phiếu" : "Reader votes";
-  const size = compact
-    ? "min-w-4 text-[11px] text-muted-foreground"
-    : "min-w-6 text-sm font-medium text-foreground";
+  const copy = COPY[lang];
   return (
-    <span className={`${size} text-center tabular-nums`}>
-      <span className="sr-only">{label} </span>
-      {voteNet}
-    </span>
+    <button
+      type="button"
+      className={`inline-flex items-center gap-1 text-xs tabular-nums transition-colors disabled:opacity-60 ${
+        pressed ? "text-primary" : "text-muted-foreground hover:text-foreground"
+      }`}
+      aria-pressed={pressed}
+      aria-label={pressed ? copy.removeUpvote : copy.upvote}
+      disabled={disabled}
+      onClick={(event) => {
+        keepRowClosed(event);
+        onClick();
+      }}
+      onKeyDown={keepRowClosed}
+    >
+      <ThumbsUp className="h-3.5 w-3.5" aria-hidden />
+      <span>
+        <span className="sr-only">{copy.count} </span>
+        {Math.max(0, voteNet)}
+      </span>
+    </button>
   );
 }
 
-/** Dialog: a labelled pill so the control reads as feedback, not stray arrows. */
-function VoteGroup({
-  lang,
-  compact,
-  children,
-}: {
-  lang: Lang;
-  compact?: boolean;
-  children: ReactNode;
-}) {
-  if (compact) {
-    return (
-      <span className="inline-flex items-center self-center">{children}</span>
-    );
-  }
+function SignInVotes({ voteNet, lang }: { voteNet: number; lang: Lang }) {
+  const [open, setOpen] = useState(false);
+  const copy = COPY[lang];
   return (
-    <span className="inline-flex items-center gap-3">
-      <span className="text-sm text-muted-foreground">
-        {lang === "vi" ? "Tin này hữu ích?" : "Was this useful?"}
-      </span>
-      <span className="inline-flex items-center rounded-full border border-border bg-background p-0.5">
-        {children}
-      </span>
-    </span>
-  );
-}
-
-function SignInVotes({
-  voteNet,
-  lang,
-  compact,
-  upOnly,
-}: {
-  voteNet: number;
-  lang: Lang;
-  compact?: boolean;
-  upOnly?: boolean;
-}) {
-  const href = signInHref(lang);
-  const label = signInLabel(lang);
-  return (
-    <VoteGroup lang={lang} compact={compact}>
-      <a
-        href={href}
-        className={voteHit(compact)}
-        aria-label={label}
-        title={label}
-        onClick={keepRowClosed}
-        onKeyDown={keepRowClosed}
-      >
-        <VoteIcon direction="up" compact={compact} />
-      </a>
-      <VoteCount
-        voteNet={upOnly ? Math.max(0, voteNet) : voteNet}
+    <>
+      <Thumb
+        voteNet={voteNet}
         lang={lang}
-        compact={compact}
+        pressed={false}
+        onClick={() => setOpen(true)}
       />
-      {!upOnly && (
-        <a
-          href={href}
-          className={voteHit(compact)}
-          aria-label={label}
-          title={label}
-          onClick={keepRowClosed}
-          onKeyDown={keepRowClosed}
-        >
-          <VoteIcon direction="down" compact={compact} />
-        </a>
-      )}
-      {!compact && (
-        <a
-          href={href}
-          className="ml-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          onClick={keepRowClosed}
-          onKeyDown={keepRowClosed}
-        >
-          {label}
-        </a>
-      )}
-    </VoteGroup>
+      <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40" />
+          {/* React events bubble through portals; keep clicks off the row. */}
+          <DialogPrimitive.Content
+            className="fixed top-1/2 left-1/2 z-50 w-[min(calc(100%-2rem),20rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-background p-5 shadow-lg"
+            onClick={keepRowClosed}
+            onKeyDown={keepRowClosed}
+          >
+            <DialogPrimitive.Title className="text-base font-semibold text-foreground">
+              {copy.signInTitle}
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+              {copy.signInBody}
+            </DialogPrimitive.Description>
+            <div className="mt-4 flex justify-end gap-2">
+              <DialogPrimitive.Close className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+                {copy.close}
+              </DialogPrimitive.Close>
+              <a
+                href={signInHref(lang)}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                {copy.signIn}
+              </a>
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    </>
   );
 }
 
@@ -242,15 +197,11 @@ function SignedInVotes({
   itemId,
   voteNet,
   lang,
-  compact,
-  upOnly,
   getToken,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
-  compact?: boolean;
-  upOnly?: boolean;
   getToken: () => Promise<string | null>;
 }) {
   const [net, setNet] = useState(voteNet);
@@ -287,18 +238,20 @@ function SignedInVotes({
     };
   }, [itemId]);
 
-  async function click(value: 1 | -1) {
+  // Upvote only. The server toggles a repeated +1 back to no vote, so the
+  // UI never sends -1. A legacy downvote is replaced by the +1.
+  async function click() {
     if (busy || mine === null) return;
     const prevMine = mine;
     const prevNet = net;
-    const nextMine: Mine = mine === value ? 0 : value;
+    const nextMine: Mine = mine === 1 ? 0 : 1;
     setMine(nextMine);
     setNet(net - mine + nextMine);
     setBusy(true);
     try {
       const token = await getTokenRef.current();
       const result = await castStoryVote({
-        data: { item_id: itemId, value },
+        data: { item_id: itemId, value: 1 },
         ...bearerHeaders(token),
       });
       publish(itemId, result.myVote, result.voteNet);
@@ -311,43 +264,13 @@ function SignedInVotes({
   }
 
   return (
-    <VoteGroup lang={lang} compact={compact}>
-      <button
-        type="button"
-        className={voteHit(compact, mine === 1)}
-        aria-pressed={mine === 1}
-        aria-label={voteLabel(lang, 1, mine === 1)}
-        disabled={busy || mine === null}
-        onClick={(event) => {
-          keepRowClosed(event);
-          void click(1);
-        }}
-        onKeyDown={keepRowClosed}
-      >
-        <VoteIcon direction="up" compact={compact} />
-      </button>
-      <VoteCount
-        voteNet={upOnly ? Math.max(0, net) : net}
-        lang={lang}
-        compact={compact}
-      />
-      {!upOnly && (
-        <button
-          type="button"
-          className={voteHit(compact, mine === -1)}
-          aria-pressed={mine === -1}
-          aria-label={voteLabel(lang, -1, mine === -1)}
-          disabled={busy || mine === null}
-          onClick={(event) => {
-            keepRowClosed(event);
-            void click(-1);
-          }}
-          onKeyDown={keepRowClosed}
-        >
-          <VoteIcon direction="down" compact={compact} />
-        </button>
-      )}
-    </VoteGroup>
+    <Thumb
+      voteNet={net}
+      lang={lang}
+      pressed={mine === 1}
+      disabled={busy || mine === null}
+      onClick={() => void click()}
+    />
   );
 }
 
@@ -355,35 +278,24 @@ function ClerkVotes({
   itemId,
   voteNet,
   lang,
-  compact,
-  upOnly,
   mod,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
-  compact?: boolean;
-  upOnly?: boolean;
   mod: NonNullable<ReturnType<typeof useClerkModule>["mod"]>;
 }) {
   const { SignedIn, SignedOut, useAuth } = mod;
   return (
     <>
       <SignedOut>
-        <SignInVotes
-          voteNet={voteNet}
-          lang={lang}
-          compact={compact}
-          upOnly={upOnly}
-        />
+        <SignInVotes voteNet={voteNet} lang={lang} />
       </SignedOut>
       <SignedIn>
         <AuthedVotes
           itemId={itemId}
           voteNet={voteNet}
           lang={lang}
-          compact={compact}
-          upOnly={upOnly}
           useAuth={useAuth}
         />
       </SignedIn>
@@ -395,15 +307,11 @@ function AuthedVotes({
   itemId,
   voteNet,
   lang,
-  compact,
-  upOnly,
   useAuth,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
-  compact?: boolean;
-  upOnly?: boolean;
   useAuth: () => { getToken: () => Promise<string | null> };
 }) {
   const { getToken } = useAuth();
@@ -412,46 +320,24 @@ function AuthedVotes({
       itemId={itemId}
       voteNet={voteNet}
       lang={lang}
-      compact={compact}
-      upOnly={upOnly}
       getToken={getToken}
     />
   );
 }
 
-/** Up / down and the net (`upOnly`: the dense feed row's Score column, no down arrow). Signed-out controls link to sign-in and store nothing. */
+/** A small thumbs-up and the count (floored at 0). Signed out, the click opens a sign-in dialog and stores nothing. */
 export function StoryVotes({
   itemId,
   voteNet,
   lang,
-  compact,
-  upOnly,
 }: {
   itemId: string;
   voteNet: number;
   lang: Lang;
-  compact?: boolean;
-  upOnly?: boolean;
 }) {
   const { mod, publishableKey } = useClerkModule();
   if (!mod || !publishableKey) {
-    return (
-      <SignInVotes
-        voteNet={voteNet}
-        lang={lang}
-        compact={compact}
-        upOnly={upOnly}
-      />
-    );
+    return <SignInVotes voteNet={voteNet} lang={lang} />;
   }
-  return (
-    <ClerkVotes
-      itemId={itemId}
-      voteNet={voteNet}
-      lang={lang}
-      compact={compact}
-      upOnly={upOnly}
-      mod={mod}
-    />
-  );
+  return <ClerkVotes itemId={itemId} voteNet={voteNet} lang={lang} mod={mod} />;
 }

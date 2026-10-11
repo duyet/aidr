@@ -300,16 +300,14 @@ export function StoryRow({
         >
           {time}
         </span>
-        {/* An open row moves its full up/down votes to the top of the
-            details' media column; the empty cell keeps the columns aligned. */}
+        {/* An open row moves its votes to the top of the details' media
+            column; the empty cell keeps the columns aligned. */}
         <span className="story-score flex justify-end">
           {!detailsOpen && (
             <StoryVotes
               itemId={item.id}
               voteNet={item.vote_net ?? 0}
               lang={lang}
-              compact
-              upOnly
             />
           )}
         </span>
