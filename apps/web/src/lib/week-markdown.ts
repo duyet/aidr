@@ -28,13 +28,13 @@ import {
   weekPath,
 } from "./week";
 import {
-  getWeekEdition,
   isWeekEmptyIn,
   type WeekEdition,
   weekIntro,
   weekStoriesFor,
   weekStoryText,
-} from "./week-queries";
+} from "./week-model";
+import { getWeekEdition } from "./week-queries";
 
 const WEEK_MARKDOWN_PATH_RE = /^\/week\/([^/]*)\.md$/;
 

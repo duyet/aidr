@@ -6,7 +6,7 @@ import { localizedPageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
 import { formatWeekRange, WEEKS_INDEX_PATH, weekPath } from "../lib/week";
 import { fetchWeekIndex } from "../lib/week-fn";
-import type { WeekSummary } from "../lib/week-queries";
+import type { WeekSummary } from "../lib/week-model";
 
 const INDEX_CACHE_CONTROL =
   "public, max-age=300, s-maxage=1800, stale-while-revalidate=3600";

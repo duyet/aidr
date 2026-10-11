@@ -21,7 +21,7 @@ import {
   type WeekEdition,
   weekIntro,
   weekStoriesFor,
-} from "../lib/week-queries";
+} from "../lib/week-model";
 
 type LoaderResult =
   | { kind: "week"; edition: WeekEdition }
