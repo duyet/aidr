@@ -1,14 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  dayTitle,
+  HEAT_CLASS,
+  storiesLabel,
+  WEEKDAYS,
+} from "../components/calendar/shared";
 import { HighlightedText } from "../components/HighlightedText";
 import {
   CALENDAR_PATH,
-  type CalendarDay,
   calendarPath,
-  daysInMonth,
   firstWeekdayMon0,
   formatMonthHeading,
   heatLevel,
+  monthCells,
   shiftMonth,
 } from "../lib/calendar";
 import { fetchCalendarMonth } from "../lib/calendar-fn";
@@ -16,7 +21,6 @@ import { dayArchivePath } from "../lib/day-archive";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import { localizedPageHead } from "../lib/seo";
-import type { Lang } from "../lib/types";
 
 export interface CalendarSearch {
   month?: string;
@@ -64,29 +68,6 @@ export const Route = createFileRoute("/calendar")({
   component: CalendarPage,
 });
 
-/** Heat steps use the feed's accent (the same amber as home highlights). */
-const HEAT_CLASS = [
-  "bg-muted/60",
-  "bg-accent/15",
-  "bg-accent/35",
-  "bg-accent/65 text-accent-foreground",
-  "bg-accent text-accent-foreground",
-] as const;
-
-const WEEKDAYS: Record<Lang, string[]> = {
-  en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-  vi: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"],
-};
-
-function dayTitle(day: CalendarDay, lang: Lang): string | null {
-  return lang === "vi" ? day.title_vi : day.title;
-}
-
-function storiesLabel(n: number, lang: Lang): string {
-  if (lang === "vi") return `${n} tin`;
-  return n === 1 ? "1 story" : `${n} stories`;
-}
-
 function CalendarPage() {
   const { cal } = Route.useLoaderData();
   const lang = useLang();
@@ -107,15 +88,7 @@ function CalendarPage() {
   const next = shiftMonth(month, 1);
   const hasPrev = cal.firstMonth !== null && prev >= cal.firstMonth;
   const hasNext = next <= cal.lastMonth;
-  const lead = firstWeekdayMon0(month);
-  const total = daysInMonth(month);
-  const cells: (string | null)[] = [
-    ...Array.from({ length: lead }, () => null),
-    ...Array.from(
-      { length: total },
-      (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`
-    ),
-  ];
+  const cells = monthCells(month);
   const agenda = [...cal.days].reverse();
 
   const navClass =

@@ -67,6 +67,17 @@ export function firstWeekdayMon0(month: string): number {
   return (dow + 6) % 7;
 }
 
+/** Grid cells for a month, Monday first: null pads, then each `YYYY-MM-DD`. */
+export function monthCells(month: string): (string | null)[] {
+  return [
+    ...Array.from({ length: firstWeekdayMon0(month) }, () => null),
+    ...Array.from(
+      { length: daysInMonth(month) },
+      (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`
+    ),
+  ];
+}
+
 /**
  * Heat level 0–4 for a story count, relative to the busiest day shown, so a
  * quiet month still reads as a ramp.

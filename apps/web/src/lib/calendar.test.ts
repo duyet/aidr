@@ -4,6 +4,7 @@ import {
   daysInMonth,
   firstWeekdayMon0,
   heatLevel,
+  monthCells,
   parseMonth,
   shiftMonth,
 } from "./calendar";
@@ -45,5 +46,23 @@ describe("calendar", () => {
     expect(calendarPath("2026-09", "vi")).toBe(
       "/calendar?month=2026-09&lang=vi"
     );
+  });
+
+  describe("monthCells", () => {
+    it("has 29 days in a leap February", () => {
+      const cells = monthCells("2028-02").filter(Boolean);
+      expect(cells).toHaveLength(29);
+      expect(cells.at(-1)).toBe("2028-02-29");
+    });
+
+    it("pads six cells before a month that starts on Sunday", () => {
+      const cells = monthCells("2026-02");
+      expect(cells.slice(0, 6)).toEqual(Array(6).fill(null));
+      expect(cells[6]).toBe("2026-02-01");
+    });
+
+    it("has no padding for a month that starts on Monday", () => {
+      expect(monthCells("2026-06")[0]).toBe("2026-06-01");
+    });
   });
 });

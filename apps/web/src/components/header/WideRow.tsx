@@ -32,7 +32,7 @@ export function WideHeaderRow({
       <div className="flex shrink-0 items-center gap-1">
         <GetAIDRMenu />
         <IntroVideoButton lang={lang} />
-        <CalendarButton lang={lang} />
+        <CalendarButton lang={lang} surface="popover" />
         <Separator orientation="vertical" className="mx-1 h-5" />
         <PrefsPanel />
         <LangToggle
