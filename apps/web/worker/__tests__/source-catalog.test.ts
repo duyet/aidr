@@ -271,7 +271,7 @@ describe("registry / seed SQL / migration agreement", () => {
     const hnScopeSql = read("0043_hn_model_scope.sql");
     const aiSourcesSql = read("0044_ai_sources_and_aggregator_caps.sql");
     const socialSql = read("0051_social_trending_sources.sql");
-    const refreshSql = read("0057_source_refresh.sql");
+    const refreshSql = read("0058_source_refresh.sql");
     // A later migration replaces the earlier row with the same id; a later
     // `UPDATE sources SET enabled = 0` is a disable, not a row, so it is
     // applied to the merged rows by hand.

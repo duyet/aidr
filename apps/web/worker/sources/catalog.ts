@@ -901,7 +901,7 @@ const WORKERS_BLOCKED_NOTE =
  * `homepage`, so `sourceSpecForUrl` cannot claim an unrelated github.com or
  * huggingface.co link for them, and none is `official`.
  */
-export const REGISTRY_0057: readonly SourceSpec[] = [
+export const REGISTRY_0058: readonly SourceSpec[] = [
   {
     id: "reddit-ml",
     name: "r/MachineLearning",
@@ -1105,7 +1105,7 @@ export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   [HN_SCOPE_SOURCE],
   REGISTRY_0044,
   REGISTRY_0051,
-  REGISTRY_0057
+  REGISTRY_0058
 );
 
 export function registrySourceIds(): string[] {
