@@ -9,18 +9,22 @@ import { ModelAttribution } from "../components/system/ModelAttribution";
 import { OverviewTab } from "../components/system/OverviewTab";
 import { RunsTab } from "../components/system/RunsTab";
 import { SourcesTab } from "../components/system/SourcesTab";
+import { TrendsTab } from "../components/system/TrendsTab";
 import { TAB_PANEL } from "../components/system/tab-spacing";
 import { useAdmin } from "../lib/admin";
-import { type DataTab, parseDataTab } from "../lib/data-tab";
+import { type DataTab, dataTabSearch, parseDataTab } from "../lib/data-tab";
 import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
+import { formatTrack, parseTrack } from "../lib/trends";
 import type { Lang } from "../lib/types";
 
 export interface DataSearch {
   tab?: DataTab;
   /** Deep link from the footer: expand and scroll to this workflow run. */
   run?: string;
+  /** Trends tab: comma-separated pinned topics/models. */
+  track?: string;
 }
 
 export const Route = createFileRoute("/data")({
@@ -30,7 +34,12 @@ export const Route = createFileRoute("/data")({
       typeof search.run === "string" && search.run.trim()
         ? search.run.trim()
         : undefined;
-    return { ...(tab ? { tab } : {}), ...(run ? { run } : {}) };
+    const track = formatTrack(parseTrack(search.track));
+    return {
+      ...(tab ? { tab } : {}),
+      ...(run ? { run } : {}),
+      ...(track ? { track } : {}),
+    };
   },
   search: {
     middlewares: [
@@ -52,6 +61,7 @@ const TABS: { value: DataTab; label: string }[] = [
   { value: "overview", label: "Overview" },
   { value: "audience", label: "Audience" },
   { value: "content", label: "Content" },
+  { value: "trends", label: "Trends" },
   { value: "runs", label: "Runs" },
   { value: "sources", label: "Sources" },
   { value: "llm", label: "LLM" },
@@ -98,7 +108,7 @@ export function SystemPage() {
             if (!parsed) return;
             if (parsed === "admin" && !admin.isAdmin) return;
             void navigate({
-              search: parsed === "overview" ? {} : { tab: parsed },
+              search: dataTabSearch(parsed, search),
               replace: true,
             });
           }}
@@ -130,6 +140,15 @@ export function SystemPage() {
           <AudienceTab lang={lang} />
           <AlgoTab />
           <ContentTab lang={lang} />
+          <TrendsTab
+            track={parseTrack(search.track)}
+            onTrackChange={(next) =>
+              void navigate({
+                search: { tab: "trends", track: formatTrack(next) },
+                replace: true,
+              })
+            }
+          />
           <RunsTab lang={lang} focusRunId={search.run} />
           <SourcesTab />
           <LlmTab />

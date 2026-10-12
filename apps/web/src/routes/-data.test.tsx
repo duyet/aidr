@@ -30,6 +30,11 @@ vi.mock("../components/system/RunsTab", () => ({
     <div data-testid="runs-tab-language">{lang}</div>
   ),
 }));
+vi.mock("../components/system/TrendsTab", () => ({
+  TrendsTab: ({ track }: { track: string[] }) => (
+    <div data-testid="trends-track">{track.join("|")}</div>
+  ),
+}));
 vi.mock("../components/system/SourcesTab", () => ({
   SourcesTab: () => null,
 }));
@@ -61,13 +66,41 @@ describe("/data route localization", () => {
   });
 });
 
+describe("/data trends tracking", () => {
+  it("accepts ?track= and hands the sanitized pins to the Trends tab", () => {
+    const validate = Route.options.validateSearch as (
+      s: Record<string, unknown>
+    ) => unknown;
+    expect(
+      validate({ tab: "trends", track: "Agent,agent,claude-opus-5.5" })
+    ).toEqual({
+      tab: "trends",
+      track: "agent,opus-5.5",
+    });
+    expect(validate({ track: "" })).toEqual({});
+
+    vi.spyOn(Route, "useSearch").mockReturnValue({
+      tab: "trends",
+      track: "agent,opus-5.5",
+    } as never);
+    vi.spyOn(Route, "useNavigate").mockReturnValue((() => undefined) as never);
+    const html = renderToStaticMarkup(
+      <LangContext.Provider value="en">
+        <SystemPage />
+      </LangContext.Provider>
+    );
+    expect(html).toContain('data-testid="trends-track">agent|opus-5.5<');
+  });
+});
+
 describe("/data layout", () => {
-  it("keeps the six reader-facing tabs and hides Admin from non-admins", () => {
+  it("keeps the seven reader-facing tabs and hides Admin from non-admins", () => {
     const html = renderPage();
 
     for (const label of [
       "Overview",
       "Content",
+      "Trends",
       "Runs",
       "Sources",
       "LLM",
