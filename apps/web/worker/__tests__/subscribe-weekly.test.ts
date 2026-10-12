@@ -286,3 +286,16 @@ describe("renderWeeklyEmail", () => {
     expect(text).toContain("See the latest stories on aidr.today");
   });
 });
+
+describe("rolling digest masthead and footer", () => {
+  it("names the window instead of an issue and says one email a week", async () => {
+    const { env } = makeEnv({ subscribers: [], digest: DIGEST_ROW });
+    const mail = await loadWeeklyMail(env, "2026-10-13", "en", 5);
+    const { html } = await renderWeeklyEmail(env, mail!, "en", "tok", "design");
+    expect(html).not.toContain("Issue null");
+    expect(html).not.toContain("#null");
+    expect(html).toContain("Last 7 days");
+    expect(html).toContain("One email a week.");
+    expect(html).not.toContain("One email a day.");
+  });
+});

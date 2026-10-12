@@ -737,7 +737,14 @@ export function storyRow(
  *  the week range, so the weekly reads as its own edition. */
 export function weeklyMasthead(meta: WeeklyMailMeta, lang: MailLang): string {
   const kicker = lang === "vi" ? "Bản tin tuần" : "Weekly edition";
-  const issue = lang === "vi" ? `Số ${meta.issue}` : `Issue ${meta.issue}`;
+  // A rolling 7-day digest (any send day but Monday) has no issue number.
+  const issue = meta.issue
+    ? lang === "vi"
+      ? `Số ${meta.issue}`
+      : `Issue ${meta.issue}`
+    : lang === "vi"
+      ? "7 ngày qua"
+      : "Last 7 days";
   const range = formatWeekRange(meta.start_date, meta.end_date, lang);
   return `<tr>
       <td class="m-pad" bgcolor="${INK}" style="padding:22px ${PAD};background:${INK}">
@@ -909,6 +916,8 @@ interface FooterOpts {
   /** Digest only: the day page. */
   viewInBrowserUrl?: string;
   postalAddress?: string;
+  /** The weekly digest: "one email a week". */
+  weekly?: boolean;
 }
 
 /** Why you get this, the links, "Forwarded this?", the postal address. */
@@ -945,8 +954,8 @@ export function footerBlock(o: FooterOpts): string {
     ),
   ].filter(Boolean);
   const why = vi
-    ? "Bạn nhận email này vì đã đăng ký tại aidr.today. Mỗi ngày một email."
-    : "You get this because you subscribed at aidr.today. One email a day.";
+    ? `Bạn nhận email này vì đã đăng ký tại aidr.today. ${o.weekly ? "Mỗi tuần một email." : "Mỗi ngày một email."}`
+    : `You get this because you subscribed at aidr.today. ${o.weekly ? "One email a week." : "One email a day."}`;
   const forwarded = `${escapeHtml(vi ? "Được chuyển tiếp?" : "Forwarded this?")} ${link(
     withMailUtm(SUBSCRIBE_URL, o.kind, o.lang, { content: "footer-subscribe" }),
     vi ? "Đăng ký" : "Subscribe",
@@ -1141,6 +1150,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
       content: "view-in-browser",
     }),
     postalAddress: input.postalAddress,
+    weekly: Boolean(weekly),
   };
 
   const heading = weekly
@@ -1188,9 +1198,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const homeHref = withMailUtm(SITE_URL, "digest", lang, { content: "header" });
   const header = headerBlock(lang, homeHref, {
     date: input.date,
-    dateLabel: weekly
-      ? `${lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly"} #${weekly.issue}`
-      : undefined,
+    dateLabel: weekly ? weeklyTag(weekly, lang) : undefined,
     count,
     minutes,
     switchHref: withMailUtm(switchUrl, "digest", otherLang, {
