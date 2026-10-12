@@ -1,5 +1,6 @@
 import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { useState } from "react";
+import { ContentPage } from "../components/ContentPage";
 import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
@@ -20,62 +21,42 @@ export const Route = createFileRoute("/brand")({
   component: BrandPage,
 });
 
-const ASSETS = [
+/** `wide` assets get one large light preview; square marks get light + dark. */
+const ASSETS: { path: string; name: string; note: string; wide?: true }[] = [
   {
     path: "/favicon.svg",
     name: "Favicon",
-    note: "Site icon, vector (yellow AI;DR mark). Wordmark is outlined, not <text>, so it renders without fonts.",
-    checker: true,
+    note: "Vector site icon (yellow AI;DR mark). The wordmark is outlined, not <text>, so it renders without fonts.",
   },
   {
     path: "/favicon-120x120.png",
     name: "Favicon 120×120",
-    note: "Raster site icon for search engines that skip SVG (Yandex recommends 120×120)",
-    checker: true,
+    note: "Raster site icon for search engines that skip SVG. Yandex asks for 120×120.",
   },
   {
     path: "/favicon.ico",
     name: "Favicon ICO",
-    note: "Root-convention icon, 16/32/48 packed into one file",
-    checker: true,
+    note: "Root icon with 16, 32, and 48 px sizes in one file.",
   },
   {
     path: "/apple-touch-icon.png",
     name: "Apple touch icon",
-    note: "Square mark 180×180",
-    checker: true,
+    note: "Square mark, 180×180.",
   },
-  {
-    path: "/logo.svg",
-    name: "Logo SVG",
-    note: "Square yellow mark (vector)",
-    checker: true,
-  },
-  {
-    path: "/logo.png",
-    name: "Large logo",
-    note: "Square mark 640×640",
-    checker: true,
-  },
-  {
-    path: "/logo-sm.png",
-    name: "Small logo",
-    note: "Square mark 320×320",
-    checker: true,
-  },
-  {
-    path: "/logo-icon.png",
-    name: "Icon PNG",
-    note: "Square mark 128×128",
-    checker: true,
-  },
+  { path: "/logo.svg", name: "Logo SVG", note: "Square yellow mark, vector." },
+  { path: "/logo.png", name: "Large logo", note: "Square mark, 640×640." },
+  { path: "/logo-sm.png", name: "Small logo", note: "Square mark, 320×320." },
+  { path: "/logo-icon.png", name: "Icon PNG", note: "Square mark, 128×128." },
   {
     path: "/og.jpg",
     name: "Open Graph",
-    note: "Social share image (1200×630)",
-    checker: false,
+    note: "Social share image, 1200×630.",
+    wide: true,
   },
-] as const;
+];
+
+const BUTTON =
+  "rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground hover:bg-muted";
 
 function CopyUrl({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
@@ -91,11 +72,7 @@ function CopyUrl({ url }: { url: string }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={copy}
-      className="rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground hover:bg-muted"
-    >
+    <button type="button" onClick={copy} className={BUTTON}>
       {copied ? "Copied" : "Copy URL"}
     </button>
   );
@@ -114,7 +91,7 @@ function Preview({
     <div
       className={`flex min-h-24 items-center justify-center rounded-lg border border-border/80 p-4 ${
         dark ? "bg-stone-900" : "bg-stone-50"
-      } ${wide ? "col-span-2" : ""}`}
+      }`}
     >
       <a href={src} target="_blank" rel="noopener noreferrer">
         <img
@@ -131,49 +108,36 @@ function Preview({
 
 function BrandPage() {
   return (
-    <article className="typeset typeset-page py-12">
-      <h1>Brand</h1>
-      <p className="text-muted-foreground">
-        Official marks for AI;DR / aidr.today. Download a file or copy its
-        absolute URL for reuse. Do not redraw these marks.
-      </p>
-
+    <ContentPage
+      title="Brand"
+      lede="Official AI;DR and aidr.today marks. Download a file or copy its URL. Please do not redraw them."
+    >
       <div className="mt-8 space-y-8">
-        {ASSETS.map((asset) => {
-          const url = `${SITE_URL}${asset.path}`;
+        {ASSETS.map(({ path, name, note, wide }) => {
+          const url = `${SITE_URL}${path}`;
           return (
-            <section key={asset.path} className="scroll-mt-20">
+            <section key={path}>
               <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {asset.name}
+                {name}
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">{asset.note}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{note}</p>
               <p className="mt-1 font-mono text-xs text-foreground">{url}</p>
               <div
-                className={`mt-3 grid gap-2 ${asset.checker ? "grid-cols-2" : "grid-cols-1"}`}
+                className={`mt-3 grid gap-2 ${wide ? "grid-cols-1" : "grid-cols-2"}`}
               >
-                {asset.checker ? (
-                  <>
-                    <Preview src={asset.path} dark={false} />
-                    <Preview src={asset.path} dark />
-                  </>
-                ) : (
-                  <Preview src={asset.path} dark={false} wide />
-                )}
+                <Preview src={path} dark={false} wide={wide} />
+                {wide ? null : <Preview src={path} dark />}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <CopyUrl url={url} />
-                <a
-                  href={asset.path}
-                  download
-                  className="rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground hover:bg-muted"
-                >
+                <a href={path} download className={BUTTON}>
                   Download
                 </a>
                 <a
-                  href={asset.path}
+                  href={path}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground hover:bg-muted"
+                  className={BUTTON}
                 >
                   Open
                 </a>
@@ -182,6 +146,6 @@ function BrandPage() {
           );
         })}
       </div>
-    </article>
+    </ContentPage>
   );
 }

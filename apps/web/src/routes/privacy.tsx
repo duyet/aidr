@@ -3,6 +3,7 @@ import {
   Link,
   stripSearchParams,
 } from "@tanstack/react-router";
+import { ContentPage, PageSection } from "../components/ContentPage";
 import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
@@ -25,98 +26,105 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <article className="typeset typeset-page py-12">
-      <h1>Privacy</h1>
-      <p className="text-muted-foreground">
-        Effective 4 September 2026. This policy covers the website{" "}
-        <a href={SITE_URL}>{SITE_URL}</a> and the aidr Chrome new-tab extension.
-        Contact: <a href="mailto:me@duyet.net">me@duyet.net</a>.
-      </p>
+    <ContentPage
+      title="Privacy"
+      lede={
+        <>
+          Effective 4 September 2026. This policy covers{" "}
+          <a href={SITE_URL}>{SITE_URL}</a> and the aidr Chrome new-tab
+          extension. Contact <a href="mailto:me@duyet.net">me@duyet.net</a>.
+        </>
+      }
+    >
+      <PageSection title="Single purpose">
+        <p>
+          The extension replaces Chrome's new tab with the public AI;DR digest
+          and top stories from aidr.today. It does nothing else.
+        </p>
+      </PageSection>
 
-      <h2>Single purpose</h2>
-      <p className="text-muted-foreground">
-        The extension replaces Chrome&apos;s new tab with the public AI;DR
-        digest and top stories from aidr.today. That is its only purpose.
-      </p>
+      <PageSection title="What we collect">
+        <ul>
+          <li>
+            <strong className="text-foreground">Website content.</strong> The
+            extension fetches public JSON from{" "}
+            <code>https://aidr.today/api/public</code> and, when available,{" "}
+            <code>/api/feed</code>. It holds story titles, URLs, summaries,
+            tags, and thumbnail URLs already on the site. It is not your
+            browsing history.
+          </li>
+          <li>
+            <strong className="text-foreground">Site traffic totals.</strong>{" "}
+            The website loads Google Analytics 4 to count page views. Once a day
+            we read back page views, daily and monthly active users, top pages,
+            and traffic sources for the Pipeline page. We store only those
+            totals, never IP addresses or visitor IDs. The extension loads no
+            analytics.
+          </li>
+          <li>
+            <strong className="text-foreground">
+              Local settings and cache.
+            </strong>{" "}
+            Theme, language, and a copy of the last digest live in{" "}
+            <code>chrome.storage</code> on your device, so a new tab still shows
+            news when you are offline.
+          </li>
+          <li>
+            <strong className="text-foreground">Email contributions.</strong> If
+            you sign in and mail submit@aidr.today, we keep the text you wrote
+            (not quoted mail or attachments), its links, and the sending address
+            until we acknowledge it. Then we drop the address. Text kept as a
+            comment is cleared after 90 days. Mail from an address with no
+            account keeps no content, only a reason and a hash.
+          </li>
+        </ul>
+        <p>
+          No account, no ads, and no sale of data. We use the data only to show
+          the digest and report traffic totals.
+        </p>
+      </PageSection>
 
-      <h2>What we collect</h2>
-      <ul className="text-muted-foreground">
-        <li>
-          <strong className="text-foreground">Website content.</strong> The
-          extension fetches public JSON from{" "}
-          <code>https://aidr.today/api/public</code> and, when available,{" "}
-          <code>/api/feed</code>. That payload is story titles, URLs, short
-          summaries, tags, and thumbnail URLs already published on the site. It
-          is not your browsing history.
-        </li>
-        <li>
-          <strong className="text-foreground">Aggregate site analytics.</strong>{" "}
-          The website loads Google Analytics 4 to count page views. We read
-          those numbers back on a daily schedule to show aggregate traffic on
-          the Pipeline page &mdash; page views, daily and monthly active users,
-          top pages, and traffic sources. We store only those rolled-up totals,
-          never IP addresses or individual visitor identifiers. The extension
-          loads no analytics.
-        </li>
-        <li>
-          <strong className="text-foreground">Local settings and cache.</strong>{" "}
-          Theme, language, and a short copy of the last digest are stored in{" "}
-          <code>chrome.storage</code> on your device so a new tab still paints
-          if the network is down.
-        </li>
-        <li>
-          <strong className="text-foreground">Email contributions.</strong> If
-          you sign in and send mail to submit@aidr.today, we keep the text you
-          wrote (not quoted mail or attachments), its links and the sending
-          address until we have acknowledged it, then drop the address. Text
-          kept as a comment is cleared after 90 days. Mail from addresses not
-          tied to an account keeps no content, only a reason and a hash.
-        </li>
-      </ul>
-      <p className="text-muted-foreground">
-        There is no account, no advertising, and no sale of data. We do not use
-        the data for purposes other than showing the digest and reporting
-        aggregate traffic.
-      </p>
+      <PageSection title="Permissions">
+        <ul>
+          <li>
+            <code>storage</code> holds settings and the local digest cache.
+          </li>
+          <li>
+            <code>https://aidr.today/*</code> fetches the public digest. No
+            other hosts.
+          </li>
+          <li>
+            Optional <code>localhost</code> and <code>127.0.0.1</code> are only
+            for pointing the extension at a local Worker. Chrome asks first.
+          </li>
+        </ul>
+      </PageSection>
 
-      <h2>Permissions</h2>
-      <ul className="text-muted-foreground">
-        <li>
-          <code>storage</code> — settings and the local digest cache.
-        </li>
-        <li>
-          <code>https://aidr.today/*</code> — fetch the public digest. No other
-          hosts.
-        </li>
-        <li>
-          Optional <code>localhost</code> / <code>127.0.0.1</code> — only if you
-          point the API base at a local Worker. Chrome asks before this is
-          granted.
-        </li>
-      </ul>
+      <PageSection title="Remote code">
+        <p>
+          All extension code ships in the package. New-tab pages never load
+          scripts from the network.
+        </p>
+      </PageSection>
 
-      <h2>Remote code</h2>
-      <p className="text-muted-foreground">
-        All extension logic ships inside the package. New-tab pages do not load
-        or execute scripts from the network.
-      </p>
+      <PageSection title="Sharing and retention">
+        <p>
+          The public JSON request goes to aidr.today, a Cloudflare Worker. We
+          share extension settings with no one. The local cache stays on your
+          device until you clear extension data or uninstall.
+        </p>
+      </PageSection>
 
-      <h2>Sharing and retention</h2>
-      <p className="text-muted-foreground">
-        The public JSON fetch goes to aidr.today (Cloudflare Worker). We do not
-        share extension settings with anyone. Local cache stays on the device
-        until you clear site/extension data or uninstall.
-      </p>
-
-      <h2>Changes</h2>
-      <p className="text-muted-foreground">
-        If data handling changes, this page is updated and the extension listing
-        is updated before the new version ships.
-      </p>
+      <PageSection title="Changes">
+        <p>
+          If data handling changes, we update this page and the extension
+          listing before the new version ships.
+        </p>
+      </PageSection>
 
       <p>
         <Link to="/terms">Terms of use</Link>
       </p>
-    </article>
+    </ContentPage>
   );
 }
