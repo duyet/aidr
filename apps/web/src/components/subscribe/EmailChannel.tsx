@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { DEFAULT_WEEKLY_DAY } from "../../lib/mail-frequency";
+import {
+  DEFAULT_WEEKLY_DAY,
+  type MailFrequency,
+} from "../../lib/mail-frequency";
 import type { Lang } from "../../lib/types";
 import { type DigestPrefs, EmailSubscribeForm } from "../EmailSubscribeForm";
 import { ChannelSplit } from "./ChannelSplit";
@@ -7,13 +10,19 @@ import { DigestPreview } from "./DigestPreview";
 
 /** The form owns no digest settings: they live here so the preview beside it
  *  re-renders the real mail for whatever the form currently says. */
-export function EmailChannel({ lang }: { lang: Lang }) {
+export function EmailChannel({
+  lang,
+  initialFrequency = "daily",
+}: {
+  lang: Lang;
+  initialFrequency?: MailFrequency;
+}) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
   const [prefs, setPrefs] = useState<DigestPrefs>({
     lang,
     size: 5,
     format: "design",
-    frequency: "daily",
+    frequency: initialFrequency,
     weeklyDay: DEFAULT_WEEKLY_DAY,
   });
 

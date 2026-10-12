@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { weeklyTitle } from "../components/WeeklyPaper";
+import { WeeklySubscribeCta } from "../components/WeeklySubscribeCta";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import { localizedPageHead } from "../lib/seo";
@@ -50,6 +51,11 @@ function teaser(week: WeekSummary, lang: Lang): string | null {
   return intro.length > 220 ? `${intro.slice(0, 219)}…` : intro;
 }
 
+export function storyCount(n: number, vi: boolean): string {
+  if (vi) return `${n} tin`;
+  return n === 1 ? "1 story" : `${n} stories`;
+}
+
 function WeeksPage() {
   const { weeks } = Route.useLoaderData();
   const lang = useLang();
@@ -64,11 +70,12 @@ function WeeksPage() {
           {vi ? "Lưu trữ các số báo" : "The archive"}
         </p>
       </header>
+      <WeeklySubscribeCta lang={lang} />
       {weeks.length === 0 ? (
-        <p className="py-16 text-center text-muted-foreground">
+        <p className="py-12 text-center font-serif text-lg italic text-muted-foreground">
           {vi
-            ? "Số đầu tiên sẽ ra sau khi tuần này kết thúc."
-            : "The first issue comes out once this week closes."}
+            ? "Số đầu tiên sẽ ra sau khi tuần này kết thúc. Đăng ký ở trên để nhận ngay khi có."
+            : "The first issue comes out once this week closes. Subscribe above to get it the moment it lands."}
         </p>
       ) : (
         <ol className="divide-y divide-border">
@@ -76,10 +83,13 @@ function WeeksPage() {
             const text = teaser(week, lang);
             return (
               <li key={week.week} className="py-5">
-                <a href={weekPath(week.week, lang)} className="group block">
+                <a
+                  href={weekPath(week.week, lang)}
+                  className="group block rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
+                >
                   <p className="font-sans text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                     {vi ? `Số ${week.issue}` : `Issue No. ${week.issue}`} ·{" "}
-                    {week.week}
+                    {week.week} · {storyCount(week.stories, vi)}
                   </p>
                   <h2 className="mt-1 font-serif text-2xl font-semibold group-hover:underline">
                     {formatWeekRange(week.start_date, week.end_date, lang)}

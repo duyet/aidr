@@ -21,6 +21,7 @@ import {
   weekStoriesFor,
   weekStoryText,
 } from "../lib/week-model";
+import { WeeklySubscribeCta } from "./WeeklySubscribeCta";
 
 /** Masthead name per language. */
 export function weeklyTitle(lang: Lang): string {
@@ -213,7 +214,49 @@ export function WeeklyPaper({
         ) : null}
       </div>
 
-      <footer className="mt-4 border-t-2 border-foreground pt-4 font-sans text-sm text-muted-foreground">
+      <WeeklySubscribeCta lang={lang} />
+
+      <nav
+        aria-label={vi ? "Số trước và số sau" : "Previous and next issue"}
+        className="grid grid-cols-2 gap-3 border-t border-border pt-4 font-sans"
+      >
+        {edition.prevWeek ? (
+          <a
+            href={weekPath(edition.prevWeek, lang)}
+            rel="prev"
+            className="group flex flex-col rounded-sm border border-border px-3 py-2 hover:border-foreground focus-visible:outline-2 focus-visible:outline-foreground"
+          >
+            <span className="inline-flex items-center gap-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              <ChevronLeft className="size-3.5" aria-hidden />
+              {vi ? "Số trước" : "Previous issue"}
+            </span>
+            <span className="mt-1 font-serif text-base font-semibold group-hover:underline">
+              {edition.prevWeek}
+            </span>
+          </a>
+        ) : (
+          <span />
+        )}
+        {edition.nextWeek ? (
+          <a
+            href={weekPath(edition.nextWeek, lang)}
+            rel="next"
+            className="group flex flex-col items-end rounded-sm border border-border px-3 py-2 text-right hover:border-foreground focus-visible:outline-2 focus-visible:outline-foreground"
+          >
+            <span className="inline-flex items-center gap-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              {vi ? "Số sau" : "Next issue"}
+              <ChevronRight className="size-3.5" aria-hidden />
+            </span>
+            <span className="mt-1 font-serif text-base font-semibold group-hover:underline">
+              {edition.nextWeek}
+            </span>
+          </a>
+        ) : (
+          <span />
+        )}
+      </nav>
+
+      <footer className="mt-6 border-t-2 border-foreground pt-4 font-sans text-sm text-muted-foreground">
         <p className="font-semibold uppercase tracking-[0.14em] text-[0.7rem]">
           {vi ? "Bản tin từng ngày" : "Daily editions"}
         </p>
