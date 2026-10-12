@@ -850,6 +850,7 @@ describe("note mails share the digest shell", () => {
     timezone: "Asia/Ho_Chi_Minh",
     digest_size: 10,
     mail_format: "large" as const,
+    frequency: "weekly" as const,
   };
 
   it.each([

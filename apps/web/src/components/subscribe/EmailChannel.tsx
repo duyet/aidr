@@ -12,6 +12,7 @@ export function EmailChannel({ lang }: { lang: Lang }) {
     lang,
     size: 5,
     format: "design",
+    frequency: "daily",
   });
 
   return (
@@ -20,8 +21,8 @@ export function EmailChannel({ lang }: { lang: Lang }) {
         <div className="space-y-6">
           <p className="text-base leading-relaxed text-muted-foreground">
             {t(
-              "Daily digest by email. No account required — you can link one later.",
-              "Bản tin hằng ngày qua email. Không cần tài khoản — có thể liên kết sau."
+              "Daily digest or weekly recap by email. No account required — you can link one later.",
+              "Bản tin hằng ngày hoặc tổng hợp tuần qua email. Không cần tài khoản — có thể liên kết sau."
             )}
           </p>
           <EmailSubscribeForm
@@ -35,7 +36,7 @@ export function EmailChannel({ lang }: { lang: Lang }) {
       preview={
         <DigestPreview
           lang={lang}
-          src={`/api/subscribe/preview?lang=${prefs.lang}&n=${prefs.size}&format=${prefs.format}`}
+          src={`/api/subscribe/preview?lang=${prefs.lang}&n=${prefs.size}&format=${prefs.format}&freq=${prefs.frequency}`}
         />
       }
     />

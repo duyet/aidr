@@ -5,8 +5,14 @@ import {
   type MailFormat,
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
+import {
+  type MailFrequency,
+  normalizeMailFrequency,
+} from "../../src/lib/mail-frequency.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
+import { lastClosedWeek } from "../../src/lib/week.js";
+import { parseJsonArray, parseStoryLines } from "../../src/lib/week-model.js";
 import { reportDeliveryFailure } from "../bugsink.js";
 import {
   type Edition,
@@ -20,6 +26,7 @@ import {
   renderNoteEmail,
   settingsUrl,
   unsubscribeUrl,
+  type WeeklyMailMeta,
 } from "../mail/render.js";
 import { ensureMailSchema } from "../mail/schema.js";
 import { digestFrom, sendSubscriberEmail } from "../mail/send.js";
@@ -43,6 +50,10 @@ export interface SubscriberRow {
   last_sent_date: string | null;
   digest_size?: number | null;
   mail_format?: string | null;
+  /** `daily` (default) or `weekly`; see src/lib/mail-frequency.ts. */
+  frequency?: string | null;
+  /** Last weekly edition (`YYYY-Www`) mailed to this subscriber. */
+  last_weekly_sent?: string | null;
 }
 
 export interface TldrSnapshotRow {
@@ -115,6 +126,35 @@ export function shouldSendForSubscriber(
   return sub.last_sent_date !== localDate;
 }
 
+/** A weekly edition is mailed this many local days after its Sunday at most.
+ *  Past that it is stale: a subscriber who switches to weekly on a Friday
+ *  waits for the next Monday instead of getting last week's news. */
+export const WEEKLY_SEND_WINDOW_DAYS = 3;
+
+function daysBetween(from: string, to: string): number {
+  return Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
+      86_400_000
+  );
+}
+
+/** A weekly subscriber gets an edition once, from DIGEST_LOCAL_HOUR on the
+ *  first local day after the week's Sunday, within WEEKLY_SEND_WINDOW_DAYS.
+ *  A title-only fallback edition waits for the LLM upgrade until the last
+ *  day of the window, so a model outage still ships something. */
+export function shouldSendWeeklyForSubscriber(
+  sub: Pick<SubscriberRow, "last_weekly_sent">,
+  localHour: number,
+  localDate: string,
+  edition: Pick<WeeklyMailMeta, "week" | "end_date"> & { fallback?: boolean }
+): boolean {
+  if (localHour < DIGEST_LOCAL_HOUR) return false;
+  if (sub.last_weekly_sent === edition.week) return false;
+  const days = daysBetween(edition.end_date, localDate);
+  if (!(days >= 1 && days <= WEEKLY_SEND_WINDOW_DAYS)) return false;
+  return !edition.fallback || days === WEEKLY_SEND_WINDOW_DAYS;
+}
+
 /** A snapshot bullet joined with its `items` row (see `loadBulletDetails`). */
 export interface DigestBullet extends TldrBulletLike {
   /** `title` or `title_vi` for the edition's language; never the other one. */
@@ -128,6 +168,8 @@ export interface DigestBullet extends TldrBulletLike {
 export interface DigestExtras {
   video?: DigestVideo | null;
   postalAddress?: string;
+  /** Renders the weekly edition instead of a day (see `renderWeeklyEmail`). */
+  weekly?: WeeklyMailMeta;
 }
 
 /** Builds the plain-text and HTML bodies for a subscriber's daily digest email. */
@@ -163,6 +205,7 @@ export function buildDigestEmail(
     video: extras.video,
     postalAddress: extras.postalAddress,
     feedbackToken: unsubscribeToken,
+    weekly: extras.weekly,
   });
 }
 
@@ -229,6 +272,7 @@ export interface RequestedPrefs {
   timezone: string;
   digest_size: number;
   mail_format: MailFormat;
+  frequency: MailFrequency;
 }
 
 /** The confirm link plus the settings it applies once clicked. The params
@@ -242,6 +286,7 @@ export function settingsChangeUrl(
     set_timezone: prefs.timezone,
     set_digest_size: String(prefs.digest_size),
     set_mail_format: prefs.mail_format,
+    set_frequency: prefs.frequency,
   });
   return `${confirmUrl(token)}&${params.toString()}`;
 }
@@ -258,8 +303,8 @@ export async function sendSettingsChangeEmail(
     ? "Xác nhận thay đổi cài đặt AI;DR"
     : "Confirm your AI;DR settings change";
   const settingsList = vi
-    ? `- Ngôn ngữ: ${prefs.lang}\n- Múi giờ: ${prefs.timezone}\n- Số tin: ${prefs.digest_size}\n- Định dạng: ${prefs.mail_format}\n`
-    : `- Language: ${prefs.lang}\n- Timezone: ${prefs.timezone}\n- Stories: ${prefs.digest_size}\n- Format: ${prefs.mail_format}\n`;
+    ? `- Ngôn ngữ: ${prefs.lang}\n- Múi giờ: ${prefs.timezone}\n- Tần suất: ${prefs.frequency === "weekly" ? "hằng tuần" : "hằng ngày"}\n- Số tin: ${prefs.digest_size}\n- Định dạng: ${prefs.mail_format}\n`
+    : `- Language: ${prefs.lang}\n- Timezone: ${prefs.timezone}\n- Frequency: ${prefs.frequency}\n- Stories: ${prefs.digest_size}\n- Format: ${prefs.mail_format}\n`;
   const bodyMd = vi
     ? `Có người vừa đăng ký lại địa chỉ này với các cài đặt sau:\n\n${settingsList}\nBấm nút bên dưới để áp dụng. Nếu không phải bạn, cứ bỏ qua email này — cài đặt hiện tại sẽ giữ nguyên.\n`
     : `Someone just signed up this address again with these settings:\n\n${settingsList}\nClick the button below to apply them. If this wasn't you, ignore this email — your current settings stay as they are.\n`;
@@ -288,15 +333,25 @@ export async function sendSettingsChangeEmail(
 
 export async function sendWelcomeEmail(
   env: Env,
-  sub: { email: string; lang: string; unsubscribe_token: string }
+  sub: {
+    email: string;
+    lang: string;
+    unsubscribe_token: string;
+    frequency?: string | null;
+  }
 ): Promise<boolean> {
   const vi = sub.lang !== "en";
+  const weekly = normalizeMailFrequency(sub.frequency) === "weekly";
   const subject = vi
     ? "Bạn đã đăng ký AI;DR — aidr.today"
     : "You're subscribed to AI;DR — aidr.today";
-  const bodyMd = vi
-    ? "Cảm ơn bạn đã đăng ký.\n\nMỗi sáng (khoảng 7h theo giờ của bạn) chúng tôi gửi bản tin AI;DR — số tin theo cài đặt của bạn.\n"
-    : "Thanks for subscribing.\n\nEach morning (around 7:00 in your timezone) we send the AI;DR digest — story count follows your settings.\n";
+  const bodyMd = weekly
+    ? vi
+      ? "Cảm ơn bạn đã đăng ký.\n\nMỗi sáng thứ Hai (khoảng 7h theo giờ của bạn) chúng tôi gửi AI;DR Tuần — những tin AI đáng chú ý nhất của tuần trước. Bạn có thể chuyển sang bản tin hằng ngày trong phần cài đặt.\n"
+      : "Thanks for subscribing.\n\nEvery Monday morning (around 7:00 in your timezone) we send AI;DR Weekly — the stories that mattered most last week. You can switch to the daily digest in your settings.\n"
+    : vi
+      ? "Cảm ơn bạn đã đăng ký.\n\nMỗi sáng (khoảng 7h theo giờ của bạn) chúng tôi gửi bản tin AI;DR — số tin theo cài đặt của bạn.\n"
+      : "Thanks for subscribing.\n\nEach morning (around 7:00 in your timezone) we send the AI;DR digest — story count follows your settings.\n";
   const { html, text } = renderNoteEmail({
     subject,
     bodyMd,
@@ -480,6 +535,7 @@ export async function sendEmailLane(
   let stampedDate: string | null = null;
   for (const sub of subscribers) {
     if ((sub.lang === "en" ? "en" : "vi") !== lang) continue;
+    if (normalizeMailFrequency(sub.frequency) === "weekly") continue;
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
     if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
 
@@ -524,6 +580,155 @@ export async function sendEmailLane(
     stampedDate = edition.date;
   }
   return { sent, failed, stampedDate };
+}
+
+/** One weekly edition in one language, as digest bullets. */
+export interface WeeklyMail {
+  meta: WeeklyMailMeta;
+  fallback: boolean;
+  bullets: TldrBulletLike[];
+}
+
+/** The `weekly_snapshots` row for `week` in `lang`, cut to `size` stories.
+ *  Null when there is no row, the table is missing, or `lang` has no lines:
+ *  the other language is never sent in its place. */
+export async function loadWeeklyMail(
+  env: Pick<Env, "DB">,
+  week: string,
+  lang: "en" | "vi",
+  size: number
+): Promise<WeeklyMail | null> {
+  let row: {
+    week: string;
+    issue: number;
+    start_date: string;
+    end_date: string;
+    item_ids: string;
+    intro_en: string | null;
+    intro_vi: string | null;
+    stories_en: string;
+    stories_vi: string;
+    fallback: number;
+  } | null = null;
+  try {
+    row = await env.DB.prepare(
+      `SELECT week, issue, start_date, end_date, item_ids, intro_en, intro_vi,
+         stories_en, stories_vi, fallback
+       FROM weekly_snapshots WHERE week = ? LIMIT 1`
+    )
+      .bind(week)
+      .first();
+  } catch {
+    return null;
+  }
+  if (!row) return null;
+  const lines = parseStoryLines(
+    lang === "en" ? row.stories_en : row.stories_vi
+  );
+  const bullets = parseJsonArray(row.item_ids)
+    .filter((id): id is string => typeof id === "string" && lines.has(id))
+    .slice(0, size)
+    .map((id) => ({ text: lines.get(id) ?? "", item_id: id, item_ids: [id] }));
+  if (bullets.length === 0) return null;
+  return {
+    meta: {
+      week: row.week,
+      issue: row.issue,
+      start_date: row.start_date,
+      end_date: row.end_date,
+      intro: (lang === "en" ? row.intro_en : row.intro_vi)?.trim() || null,
+    },
+    fallback: row.fallback === 1,
+    bullets,
+  };
+}
+
+/** The weekly mail exactly as it is sent; the previews call this too. */
+export async function renderWeeklyEmail(
+  env: Pick<Env, "DB" | "MAIL_POSTAL_ADDRESS">,
+  mail: WeeklyMail,
+  lang: "en" | "vi",
+  unsubscribeToken: string,
+  format: MailFormat
+): Promise<{ subject: string; html: string; text: string }> {
+  const bullets = await loadBulletDetails(env, mail.bullets, lang);
+  return buildDigestEmail(
+    mail.meta.end_date,
+    bullets,
+    lang,
+    unsubscribeToken,
+    bullets.length,
+    format,
+    {
+      postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined,
+      weekly: mail.meta,
+    }
+  );
+}
+
+/** Weekly subscribers, both languages: the last closed week's edition once,
+ *  on the first morning after it closes in their own timezone. A failed send
+ *  is not stamped and is retried on the next run. */
+export async function sendWeeklyLane(
+  env: Env,
+  subscribers: SubscriberRow[],
+  now: number
+): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+  const week = lastClosedWeek(now);
+  const mails = new Map<string, WeeklyMail | null>();
+  for (const sub of subscribers) {
+    if (normalizeMailFrequency(sub.frequency) !== "weekly") continue;
+    if (sub.last_weekly_sent === week) continue;
+    const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
+    if (hour < DIGEST_LOCAL_HOUR) continue;
+    const lang = sub.lang === "en" ? "en" : "vi";
+    const size = digestSizeFor(sub.digest_size);
+    const key = `${lang}:${size}`;
+    let mail = mails.get(key);
+    if (mail === undefined) {
+      mail = await loadWeeklyMail(env, week, lang, size);
+      mails.set(key, mail);
+    }
+    if (!mail) continue;
+    if (
+      !shouldSendWeeklyForSubscriber(sub, hour, localDate, {
+        ...mail.meta,
+        fallback: mail.fallback,
+      })
+    ) {
+      continue;
+    }
+    const { subject, html, text } = await renderWeeklyEmail(
+      env,
+      mail,
+      lang,
+      sub.unsubscribe_token,
+      normalizeMailFormat(sub.mail_format)
+    );
+    const ok = await sendSubscriberEmail(env, {
+      to: sub.email,
+      from: digestFrom(env),
+      subject,
+      html,
+      text,
+      unsubscribeToken: sub.unsubscribe_token,
+      lang,
+      replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
+    });
+    if (!ok) {
+      failed++;
+      continue;
+    }
+    await env.DB.prepare(
+      "UPDATE subscribers SET last_weekly_sent = ? WHERE email = ?"
+    )
+      .bind(mail.meta.week, sub.email)
+      .run();
+    sent++;
+  }
+  return { sent, failed };
 }
 
 /** Admin preview: today's VI and EN digest mail to one address, rendered
@@ -571,7 +776,7 @@ export async function sendDailyTldr(env: Env): Promise<number> {
   await ensureMailSchema(env.DB);
 
   const { results: subscribers } = await env.DB.prepare(
-    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size, mail_format FROM subscribers WHERE confirmed = 1"
+    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size, mail_format, frequency, last_weekly_sent FROM subscribers WHERE confirmed = 1"
   ).all<SubscriberRow>();
 
   if (!subscribers || subscribers.length === 0) return 0;
@@ -580,12 +785,14 @@ export async function sendDailyTldr(env: Env): Promise<number> {
   const editions = new Map<string, Edition | null>();
   const en = await sendEmailLane(env, "en", subscribers, now, editions);
   const vi = await sendEmailLane(env, "vi", subscribers, now, editions);
-  const emailsSent = en.sent + vi.sent;
-  const failed = en.failed + vi.failed;
+  const weekly = await sendWeeklyLane(env, subscribers, now);
+  const emailsSent = en.sent + vi.sent + weekly.sent;
+  const failed = en.failed + vi.failed + weekly.failed;
   const stampedDate = en.stampedDate ?? vi.stampedDate;
   console.info("email-digest", {
     en: en.sent,
     vi: vi.sent,
+    weekly: weekly.sent,
     failed,
   });
   if (failed > 0) {

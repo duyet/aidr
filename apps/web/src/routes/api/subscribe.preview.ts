@@ -2,13 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { editionBullets } from "../../../worker/digest/edition.js";
 import {
   digestSizeFor,
+  loadWeeklyMail,
   renderEditionEmail,
+  renderWeeklyEmail,
   type TldrSnapshotRow,
 } from "../../../worker/subscribe/send.js";
 import type { Env } from "../../../worker/types.js";
 import { resolveApiRequestLocale } from "../../lib/locale-response";
 import { localeCacheControl } from "../../lib/locale-url";
 import { normalizeMailFormat } from "../../lib/mail-format";
+import { normalizeMailFrequency } from "../../lib/mail-frequency";
 import { resolveWorkerEnv } from "../../lib/system-api";
 
 // type alias (not interface): TanStack routeTree.gen must re-export handler
@@ -50,6 +53,8 @@ export const Route = createFileRoute("/api/subscribe/preview")({
         const url = new URL(request.url);
         const size = digestSizeFor(Number(url.searchParams.get("n")));
         const format = normalizeMailFormat(url.searchParams.get("format"));
+        const weekly =
+          normalizeMailFrequency(url.searchParams.get("freq")) === "weekly";
 
         let env: Env | undefined;
         try {
@@ -61,7 +66,28 @@ export const Route = createFileRoute("/api/subscribe/preview")({
         let contentLang = lang;
         let html = pendingHtml(lang);
         let ready = false;
-        if (env?.DB) {
+        if (env?.DB && weekly) {
+          try {
+            // Newest week with a row; an older table without one shows pending.
+            const latest = await env.DB.prepare(
+              "SELECT week FROM weekly_snapshots ORDER BY week DESC LIMIT 1"
+            )
+              .first<{ week: string }>()
+              .catch(() => null);
+            const mail = latest
+              ? await loadWeeklyMail(env, latest.week, lang, size)
+              : null;
+            if (mail) {
+              html = (
+                await renderWeeklyEmail(env, mail, lang, PREVIEW_TOKEN, format)
+              ).html.replace("<head>", '<head><base target="_blank">');
+              ready = true;
+            }
+          } catch (error) {
+            console.error("subscribe preview (weekly):", error);
+            return previewError(lang);
+          }
+        } else if (env?.DB) {
           try {
             const snapshot = await env.DB.prepare(
               "SELECT date, bullets_en, bullets_vi, sent_at FROM tldr_snapshots ORDER BY date DESC LIMIT 1"

@@ -3,8 +3,10 @@ import { track } from "@aidr/ui/track";
 import { useState } from "react";
 import { withLang } from "../lib/locale-url";
 import type { MailFormat } from "../lib/mail-format";
+import type { MailFrequency } from "../lib/mail-frequency";
 import type { Lang } from "../lib/types";
 import { formAnnotationAttributes, webmcpForm } from "../lib/webmcp";
+import { FrequencyField } from "./subscribe/FrequencyField";
 import { MailFormatField } from "./subscribe/MailFormatField";
 
 const DIGEST_SIZES = [3, 5, 10] as const;
@@ -15,6 +17,7 @@ export interface DigestPrefs {
   lang: Lang;
   size: (typeof DIGEST_SIZES)[number];
   format: MailFormat;
+  frequency: MailFrequency;
 }
 
 export function EmailSubscribeForm({
@@ -56,6 +59,7 @@ export function EmailSubscribeForm({
           source,
           digest_size: prefs.size,
           mail_format: prefs.format,
+          frequency: prefs.frequency,
         }),
       });
       if (res.ok) {
@@ -76,8 +80,12 @@ export function EmailSubscribeForm({
       <div className="space-y-3 rounded-md border border-border bg-muted/40 p-4 text-sm">
         <p>
           {t(
-            `Almost done — check your inbox and click the confirmation link. Digests start around 7:00 AM (${timezone}) once confirmed.`,
-            `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin bắt đầu khoảng 7:00 sáng (${timezone}) sau khi xác nhận.`
+            prefs.frequency === "weekly"
+              ? `Almost done — check your inbox and click the confirmation link. The weekly edition arrives Monday around 7:00 AM (${timezone}).`
+              : `Almost done — check your inbox and click the confirmation link. Digests start around 7:00 AM (${timezone}) once confirmed.`,
+            prefs.frequency === "weekly"
+              ? `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Số tuần đến vào sáng thứ Hai, khoảng 7:00 (${timezone}).`
+              : `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin bắt đầu khoảng 7:00 sáng (${timezone}) sau khi xác nhận.`
           )}
         </p>
         <p className="text-muted-foreground">
@@ -123,6 +131,13 @@ export function EmailSubscribeForm({
         />
       </div>
 
+      <FrequencyField
+        lang={lang}
+        name="digest-frequency"
+        value={prefs.frequency}
+        onChange={(frequency) => onPrefsChange({ ...prefs, frequency })}
+      />
+
       <fieldset className="flex flex-wrap gap-4 text-sm">
         <legend className="mb-1 block font-medium">
           {t("Language", "Ngôn ngữ")}
@@ -149,7 +164,7 @@ export function EmailSubscribeForm({
 
       <div>
         <label htmlFor="digest-size" className="mb-1 block text-sm font-medium">
-          {t("Stories per digest", "Số tin mỗi bản tin")}
+          {t("Stories per email", "Số tin mỗi email")}
         </label>
         <select
           id="digest-size"
@@ -179,8 +194,12 @@ export function EmailSubscribeForm({
 
       <p className="text-xs text-muted-foreground">
         {t(
-          `Around 7:00 AM your time (${timezone}). No account required.`,
-          `Khoảng 7:00 sáng theo giờ của bạn (${timezone}). Không cần tài khoản.`
+          prefs.frequency === "weekly"
+            ? `Mondays around 7:00 AM your time (${timezone}). No account required.`
+            : `Around 7:00 AM your time (${timezone}). No account required.`,
+          prefs.frequency === "weekly"
+            ? `Sáng thứ Hai, khoảng 7:00 theo giờ của bạn (${timezone}). Không cần tài khoản.`
+            : `Khoảng 7:00 sáng theo giờ của bạn (${timezone}). Không cần tài khoản.`
         )}
       </p>
 

@@ -176,7 +176,7 @@ describe("EmailChannel", () => {
   it("previews the same settings the form starts with", () => {
     const html = renderToStaticMarkup(<EmailChannel lang="vi" />);
     expect(html).toContain(
-      'src="/api/subscribe/preview?lang=vi&amp;n=5&amp;format=design"'
+      'src="/api/subscribe/preview?lang=vi&amp;n=5&amp;format=design&amp;freq=daily"'
     );
     expect(html).toContain('name="digest-format"');
   });
