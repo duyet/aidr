@@ -170,6 +170,19 @@ function digest(
 
 const VIDEO = { youtubeId: "R3j93-pO9ac", title: null };
 
+function weekly10() {
+  return digest({
+    weekly: {
+      week: "2026-W41",
+      issue: 7,
+      start_date: "2026-10-05",
+      end_date: "2026-10-11",
+      intro: "A big week.",
+    },
+    stories: Array.from({ length: 10 }, (_, i) => story(i + 1)),
+  });
+}
+
 describe("renderNoteEmail", () => {
   it("shares the 600px shell, wordmark, CTA and footer with the digest", () => {
     const { html, text } = renderNoteEmail({
@@ -473,7 +486,7 @@ describe("renderDigestEmail", () => {
       '<meta name="supported-color-schemes" content="light dark">'
     );
     expect(html).toContain("@media (prefers-color-scheme: dark)");
-    expect(html).toContain("@media only screen and (max-width: 480px)");
+    expect(html).toContain("@media only screen and (max-width: 600px)");
     expect(html).not.toMatch(/#[0-9a-fA-F]{8}\b/);
     expect(html).toContain("background-color:#f5c518");
   });
@@ -511,7 +524,7 @@ describe("renderDigestEmail", () => {
       )
     ).toBe(true);
     expect(text).toContain(
-      "2. Company 2 ships model 2\n   Company 2 shipped model 2 to every user today.\n   https://aidr.today/story-2?"
+      "2. Company 2 ships model 2\n   Agents · news2.example.com\n   Company 2 shipped model 2 to every user today.\n   https://aidr.today/story-2?"
     );
     expect(text).toContain("utm_content=s2");
     expect(text).toContain(
@@ -527,6 +540,99 @@ describe("renderDigestEmail", () => {
       stories: Array.from({ length: 10 }, (_, i) => story(i + 1)),
     });
     expect(new TextEncoder().encode(html).length).toBeLessThan(100 * 1024);
+  });
+
+  describe("weekly edition", () => {
+    const WEEKLY = {
+      week: "2026-W41",
+      issue: 7,
+      start_date: "2026-10-05",
+      end_date: "2026-10-11",
+      intro: "A big week for open models and a quiet one for regulators.",
+    };
+    const weekly = (
+      over: Partial<Parameters<typeof renderDigestEmail>[0]> = {}
+    ) =>
+      digest({
+        weekly: WEEKLY,
+        stories: Array.from({ length: 10 }, (_, i) => story(i + 1)),
+        ...over,
+      });
+
+    it("has a masthead, the intro as a pull-quote and an In this issue list of links", () => {
+      const { html } = weekly();
+      const order = [
+        "Weekly edition · Issue 7",
+        "Oct 5 – 11, 2026",
+        'class="m-fg m-quote"',
+        "In this issue",
+        "Lead story",
+        "Also this week",
+      ].map((needle) => html.indexOf(needle));
+      expect(order.every((i) => i >= 0)).toBe(true);
+      expect([...order].sort((a, b) => a - b)).toEqual(order);
+      expect(html).toContain('class="m-fg m-quote"');
+      expect(html).toContain("AI;DR Weekly #7");
+      // The index links to every story, not to in-page anchors.
+      expect(html).not.toContain('href="#');
+      expect(html.match(/utm_content=s10/g)?.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("localizes the masthead for vi", () => {
+      const { html } = weekly({ lang: "vi" });
+      expect(html).toContain("Bản tin tuần · Số 7");
+      expect(html).toContain("Trong số này");
+    });
+
+    it("leaves the index out for a tiny edition and the daily mail", () => {
+      expect(weekly({ stories: [story(1), story(2)] }).html).not.toContain(
+        "In this issue"
+      );
+      const daily = digest().html;
+      expect(daily).not.toContain("In this issue");
+      expect(daily).not.toContain("Weekly edition");
+    });
+
+    it("stays under Gmail's 102 KB clip with ten stories in the design layout", () => {
+      for (const lang of ["en", "vi"] as const) {
+        const { html } = weekly({ format: "design", lang });
+        expect(new TextEncoder().encode(html).length).toBeLessThan(100_000);
+      }
+    });
+  });
+
+  describe("robustness", () => {
+    it("sets lang, an article landmark and presentation roles on every layout table", () => {
+      const { html } = digest({ video: VIDEO });
+      expect(html).toContain('<html lang="en"');
+      expect(html).toContain('role="article"');
+      const tables = html.match(/<table\b[^>]*>/g) ?? [];
+      expect(tables.length).toBeGreaterThan(0);
+      for (const t of tables) expect(t).toContain('role="presentation"');
+    });
+
+    it("gives every image alt text and the dark classes cover the new blocks", () => {
+      const { html } = weekly10();
+      for (const img of html.match(/<img\b[^>]*>/g) ?? []) {
+        expect(img).toMatch(/\balt="[^"]+"/);
+      }
+      for (const cls of ["m-quote", "m-rule", "m-soft", "m-ph"]) {
+        expect(html).toContain(`.${cls} {`);
+        expect(html).toContain(`[data-ogsc] .${cls} {`);
+      }
+    });
+
+    it("pads the preheader so body text does not leak into the inbox preview", () => {
+      const { html } = digest();
+      expect(html).toMatch(/mso-hide:all">[^<]+(&zwnj;&nbsp;){60,}<\/div>/);
+    });
+
+    it("aligns the number column for ten stories in the plain-text part", () => {
+      const { text } = weekly10();
+      expect(text).toContain("\n 1. Company 1 ships model 1\n");
+      expect(text).toContain("\n10. Company 10 ships model 10\n");
+      expect(text).toContain("\n    Agents · news2.example.com\n");
+    });
   });
 
   describe("formats", () => {
