@@ -56,6 +56,27 @@ describe("topBullets", () => {
       topBullets(JSON.stringify([{ text: "hi", item_ids: ["abc", "def"] }]))
     ).toEqual([{ text: "hi", item_id: "abc", item_ids: ["abc", "def"] }]);
   });
+
+  it("drops blank bullets before the cap, so they never cost a slot", () => {
+    const bullets = [
+      { text: "  " },
+      ...["a", "b", "c", "d", "e"].map((t) => ({ text: t })),
+    ];
+    expect(topBullets(JSON.stringify(bullets)).map((b) => b.text)).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+    ]);
+  });
+
+  it("never promotes an empty item id", () => {
+    expect(
+      topBullets(JSON.stringify([{ text: "hi", item_ids: ["", "abc"] }]))[0]
+        ?.item_id
+    ).toBe("abc");
+  });
 });
 
 describe("snapshotHasBullets", () => {

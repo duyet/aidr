@@ -32,21 +32,21 @@ export function topBullets(
   try {
     const parsed = JSON.parse(bulletsJson);
     if (!Array.isArray(parsed)) return [];
+    // Blank bullets are dropped before the cap, so they never cost a slot.
     return parsed
-      .slice(0, max)
       .map((b: Record<string, unknown>) => {
         const itemIds = Array.isArray(b.item_ids)
           ? (b.item_ids as string[])
           : [];
+        const ids = itemIds.filter(
+          (id): id is string => typeof id === "string" && id.length > 0
+        );
         const item_id =
-          typeof b.item_id === "string" && b.item_id ? b.item_id : itemIds[0];
+          typeof b.item_id === "string" && b.item_id ? b.item_id : ids[0];
         const image_url =
           typeof b.image_url === "string" && b.image_url
             ? b.image_url
             : undefined;
-        const ids = itemIds.filter(
-          (id): id is string => typeof id === "string" && id.length > 0
-        );
         const emoji =
           typeof b.emoji === "string" && b.emoji ? b.emoji : undefined;
         return {
@@ -57,7 +57,8 @@ export function topBullets(
           ...(emoji ? { emoji } : {}),
         };
       })
-      .filter((bullet) => bullet.text.length > 0);
+      .filter((bullet) => bullet.text.length > 0)
+      .slice(0, max);
   } catch {
     return [];
   }
