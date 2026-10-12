@@ -23,7 +23,7 @@ import {
   TRANSLATE_FIRST_TOKEN_MS,
   VI_STYLE,
 } from "./llm.js";
-import { rankScoreWithoutBreaking } from "./ranking.js";
+import { rankScoreWithoutBreaking, rowRankSignals } from "./ranking.js";
 import { pickDiverse } from "./source-diversity.js";
 import { looksVietnamese } from "./tldr-lang.js";
 import { viSystemPrompt } from "./translation-knowledge.js";
@@ -293,6 +293,8 @@ interface CandidateRow {
   llm_quality: number | null;
   points: number | null;
   comments: number | null;
+  signal_url: string | null;
+  merged_members: string | null;
   vote_net: number | null;
 }
 
@@ -328,7 +330,10 @@ export async function loadWeeklyCandidates(
   const votes = await itemVotesTableReady(env.DB);
   const select = `SELECT i.id, i.source_id, i.title, tr.title AS title_vi,
       i.summary, i.category, i.llm_importance, i.llm_quality, i.points,
-      i.comments, ${votes ? "COALESCE(vote_sum.vote_net, 0)" : "0"} AS vote_net
+      i.comments, i.url AS signal_url,
+      (SELECT json_group_array(json_array(m.source_id, m.points, m.comments, m.url))
+         FROM items m WHERE m.duplicate_of = i.id AND m.status = 'merged') AS merged_members,
+      ${votes ? "COALESCE(vote_sum.vote_net, 0)" : "0"} AS vote_net
     FROM items i
     LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
     ${votes ? "LEFT JOIN (SELECT item_id, SUM(value) AS vote_net FROM item_votes GROUP BY item_id) AS vote_sum ON vote_sum.item_id = i.id" : ""}
@@ -336,8 +341,13 @@ export async function loadWeeklyCandidates(
   const { from, to } = weekSecBounds(bounds.start, bounds.end);
   const [cited, windowRows] = await Promise.all([
     hits.size > 0
-      ? env.DB.prepare(`${select} AND i.id IN (SELECT value FROM json_each(?))`)
-          .bind(JSON.stringify([...hits.keys()]))
+      ? env.DB.prepare(
+          // Bounded to the week too: a Monday snapshot's rolling 24h can cite
+          // late-Sunday stories, which belong to the previous week's edition.
+          `${select} AND i.id IN (SELECT value FROM json_each(?))
+           AND i.published_at >= ? AND i.published_at < ?`
+        )
+          .bind(JSON.stringify([...hits.keys()]), from, to)
           .all<CandidateRow>()
       : Promise.resolve({ results: [] as CandidateRow[] }),
     env.DB.prepare(
@@ -352,6 +362,9 @@ export async function loadWeeklyCandidates(
   for (const row of [...(cited.results ?? []), ...(windowRows.results ?? [])]) {
     if (byId.has(row.id)) continue;
     const hit = hits.get(row.id);
+    // Reader engagement only, best across the cluster: an aggregator's
+    // author/tweet counts sit in points/comments but are never ranked (§7).
+    const signals = rowRankSignals(row);
     byId.set(row.id, {
       id: row.id,
       source_id: row.source_id,
@@ -361,8 +374,8 @@ export async function loadWeeklyCandidates(
       category: row.category,
       importance: row.llm_importance,
       quality: row.llm_quality,
-      points: row.points ?? 0,
-      comments: row.comments ?? 0,
+      points: signals.points,
+      comments: signals.comments,
       vote_net: row.vote_net ?? 0,
       editionDays: hit?.days ?? 0,
       bestPosition: hit?.best ?? null,

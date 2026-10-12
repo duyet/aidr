@@ -66,10 +66,14 @@ export function pendingRowToNewRow(
 }
 
 /** Hashes every fetched URL into its item id and normalizes `publishedAt`
- * to epoch seconds, which the rest of the pipeline assumes. */
+ * to epoch seconds, which the rest of the pipeline assumes. A date in the
+ * future (a feed that omits its zone) is clamped to now: otherwise the item
+ * ranks as brand new, with the full breaking boost, until that time comes. */
 export async function toCandidates(
-  fetchedBySource: readonly FetchedSource[]
+  fetchedBySource: readonly FetchedSource[],
+  nowMs: number = Date.now()
 ): Promise<NewRow[]> {
+  const nowSec = Math.floor(nowMs / 1000);
   const candidates: NewRow[] = [];
   for (const { source, items } of fetchedBySource) {
     const hashed = await Promise.all(
@@ -78,7 +82,7 @@ export async function toCandidates(
         source,
         item: {
           ...item,
-          publishedAt: toEpochSeconds(item.publishedAt),
+          publishedAt: Math.min(toEpochSeconds(item.publishedAt), nowSec),
         },
       }))
     );
