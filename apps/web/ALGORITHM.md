@@ -1093,7 +1093,8 @@ deliberately non-spammy.
   `rank_score`, importance, the live bar (same `trendingRankBar`), and per
   channel (`telegram`, `telegram-en`) either the `notifications` post time or
   the reason not posted: below_rank / below_importance / too_old /
-  outside_hours / budget_spent / pending. The homepage arrow means only "top
+  outside_hours / budget_spent / pending / send_failed (a failed
+  row at `NOTIFY_MAX_ATTEMPTS`, never retried). The homepage arrow means only "top
   story of its (Vietnam-time) day", not a Telegram trending post.
 - Skip reasons are structured (`digest`: no_snapshot / already_sent /
   before_hour; `trending`: outside_hours / below_min_rank / budget_zero /

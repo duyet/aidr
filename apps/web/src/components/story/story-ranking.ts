@@ -17,6 +17,7 @@ const REASON_COPY = {
     outside_hours: () =>
       "Not posted yet: trending posts only go out 09:00–23:00 local time.",
     budget_spent: () => "Not posted: today's trending cap or gap is used up.",
+    send_failed: () => "Send failed after retries.",
     pending: () => "Qualifies; waiting for the next 30-minute run.",
     ambiguous: () => "Telegram did not confirm delivery; not retried.",
     posted: (at: string) => `Posted ${at}`,
@@ -31,6 +32,7 @@ const REASON_COPY = {
       "Chưa đăng: bài nổi bật chỉ đăng trong 09:00–23:00 giờ địa phương.",
     budget_spent: () =>
       "Chưa đăng: đã hết hạn mức hoặc khoảng cách đăng trong ngày.",
+    send_failed: () => "Gửi thất bại sau nhiều lần thử.",
     pending: () => "Đủ điều kiện; chờ lượt chạy 30 phút tiếp theo.",
     ambiguous: () => "Telegram chưa xác nhận đã gửi; không gửi lại.",
     posted: (at: string) => `Đã đăng ${at}`,

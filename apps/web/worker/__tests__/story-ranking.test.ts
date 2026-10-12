@@ -34,6 +34,30 @@ describe("classifyStoryTrending", () => {
   it("is pending when everything qualifies", () => {
     expect(reason({})).toBe("pending");
   });
+  it("reports send_failed once attempts reach the cap", () => {
+    expect(
+      reason({
+        rankScore: 9,
+        bar: 4,
+        importance: 8,
+        localHour: 10,
+        notification: { status: "failed", attempts: 3, posted_at: 0 },
+      })
+    ).toBe("send_failed");
+  });
+  it("keeps the previous reason for a failed row under the cap", () => {
+    expect(
+      reason({
+        notification: { status: "failed", attempts: 2, posted_at: 0 },
+      })
+    ).toBe("pending");
+    expect(
+      reason({
+        rankScore: 1,
+        notification: { status: "failed", attempts: 1, posted_at: 0 },
+      })
+    ).toBe("below_rank");
+  });
   it("reports the stored post over any re-derivation", () => {
     expect(
       reason({

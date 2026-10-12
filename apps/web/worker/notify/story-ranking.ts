@@ -10,6 +10,7 @@ import {
   buildRankWindowQuery,
   DIGEST_TIMEZONE,
   localDayStartMs,
+  NOTIFY_MAX_ATTEMPTS,
   TRENDING_MIN_IMPORTANCE,
   trendingGapSql,
   trendingImportanceFloor,
@@ -25,7 +26,8 @@ export type TrendingNotPostedReason =
   | "too_old"
   | "outside_hours"
   | "budget_spent"
-  | "pending";
+  | "pending"
+  | "send_failed";
 
 export type TelegramTrendingStatus =
   | { state: "posted"; postedAt: number }
@@ -66,6 +68,8 @@ export function classifyStoryTrending(input: {
     return { state: "ambiguous", postedAt: n.posted_at };
   const notPosted = (reason: TrendingNotPostedReason) =>
     ({ state: "not_posted", reason }) as const;
+  // Retries exhausted: buildTrendingQuery excludes it, so it never posts.
+  if (n && n.attempts >= NOTIFY_MAX_ATTEMPTS) return notPosted("send_failed");
   if (input.nowMs / 1000 - input.publishedAtSec > TRENDING_ELIGIBLE_WINDOW_SEC)
     return notPosted("too_old");
   if (input.rankScore < input.bar) return notPosted("below_rank");
