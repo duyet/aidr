@@ -5,6 +5,7 @@ import {
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
 import { SITE_URL } from "../../src/lib/site.js";
+import { formatWeekRange, weekPath } from "../../src/lib/week.js";
 import { isGeneratedOgCard } from "../media.js";
 import { feedbackUrl } from "./feedback.js";
 import {
@@ -137,6 +138,40 @@ export interface DigestEmailInput {
   postalAddress?: string;
   /** Subscriber token for the Yes / Not really links. Absent: no feedback row. */
   feedbackToken?: string;
+  /** Set for the weekly edition: links, header and copy follow the week
+   *  instead of `date`, and the feedback row (keyed by day) is left out. */
+  weekly?: WeeklyMailMeta;
+}
+
+export interface WeeklyMailMeta {
+  /** `YYYY-Www`. */
+  week: string;
+  issue: number;
+  start_date: string;
+  end_date: string;
+  /** The edition's intro in this language only; null leaves it out. */
+  intro: string | null;
+}
+
+/** `AI;DR Weekly #3 · Oct 5 – 11, 2026`. */
+export function weeklyHeading(meta: WeeklyMailMeta, lang: MailLang): string {
+  const label = lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly";
+  return `${label} #${meta.issue} · ${formatWeekRange(meta.start_date, meta.end_date, lang)}`;
+}
+
+/** Lead headline after the issue tag, trimmed to the inbox width. */
+export function weeklySubjectLine(
+  meta: WeeklyMailMeta,
+  lang: MailLang,
+  leadHeadline?: string
+): string {
+  const tag = `${lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly"} #${meta.issue}`;
+  const head = leadHeadline?.trim();
+  if (!head) return weeklyHeading(meta, lang);
+  const room = SUBJECT_TARGET - tag.length - 3;
+  const cut =
+    head.length > room ? `${head.slice(0, room - 1).trimEnd()}…` : head;
+  return `${tag} — ${cut}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -449,6 +484,8 @@ function tagline(lang: MailLang): string {
 
 interface HeaderMeta {
   date: string;
+  /** Replaces the formatted `date` (the weekly edition shows its range). */
+  dateLabel?: string;
   count: number;
   minutes: number;
   switchHref: string;
@@ -474,7 +511,7 @@ export function headerBlock(
           <tr>
             <td class="m-block" valign="bottom" style="vertical-align:bottom">${brand}</td>
             <td class="m-block m-block-gap" align="right" valign="bottom" style="vertical-align:bottom;text-align:right;font-family:${SANS};padding-left:16px">
-              <div class="m-fg" style="font-size:13px;line-height:1.4;font-weight:600;color:${FG}">${escapeHtml(formatMailDate(meta.date, lang))}</div>
+              <div class="m-fg" style="font-size:13px;line-height:1.4;font-weight:600;color:${FG}">${escapeHtml(meta.dateLabel ?? formatMailDate(meta.date, lang))}</div>
               <div class="m-muted" style="font-size:12px;line-height:1.4;color:${MUTED}">${escapeHtml(countLine(meta.count, meta.minutes, lang))}</div>
               ${link(meta.switchHref, other, `font-family:${SANS};font-size:12px;line-height:1.6;font-weight:600;color:${ACCENT};text-decoration:none`, "m-link m-tap")}
             </td>
@@ -666,6 +703,13 @@ export function storyRow(
           </tr>
         </table>
       </td>
+    </tr>`;
+}
+
+/** The weekly edition's intro paragraph, above the lead story. */
+function introBlock(intro: string): string {
+  return `<tr>
+      <td class="m-pad m-fg" style="padding:24px ${PAD} 4px;font-family:${SERIF};font-size:17px;line-height:1.55;color:${FG}">${escapeHtml(intro)}</td>
     </tr>`;
 }
 
@@ -942,26 +986,33 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const stories = input.stories;
   const count = stories.length;
   const minutes = readMinutes(stories);
-  const video = input.video?.youtubeId ? input.video : null;
+  const weekly = input.weekly ?? null;
+  const video = !weekly && input.video?.youtubeId ? input.video : null;
+  const intro = weekly?.intro?.trim() || null;
   const subject =
     input.subject ??
-    digestSubjectLine(
-      input.date,
-      lang,
-      stories.slice(0, 2).map(storyHeadline),
-      count
-    );
+    (weekly
+      ? weeklySubjectLine(weekly, lang, stories[0] && storyHeadline(stories[0]))
+      : digestSubjectLine(
+          input.date,
+          lang,
+          stories.slice(0, 2).map(storyHeadline),
+          count
+        ));
   const preheader =
     input.preheader ??
-    digestPreheader(input.date, lang, count, minutes, Boolean(video));
+    (weekly
+      ? (intro ?? weeklyHeading(weekly, lang)).slice(0, 140)
+      : digestPreheader(input.date, lang, count, minutes, Boolean(video)));
   const validDate = /^\d{4}-\d{2}-\d{2}$/.test(input.date);
-  const dayUrl = validDate
-    ? absoluteSiteUrl(dayArchivePath(input.date), lang)
-    : absoluteSiteUrl("/", lang);
+  const pagePath = weekly
+    ? weekPath(weekly.week)
+    : validDate
+      ? dayArchivePath(input.date)
+      : "/";
+  const dayUrl = absoluteSiteUrl(pagePath, lang);
   const otherLang: MailLang = lang === "vi" ? "en" : "vi";
-  const switchUrl = validDate
-    ? absoluteSiteUrl(dayArchivePath(input.date), otherLang)
-    : absoluteSiteUrl("/", otherLang);
+  const switchUrl = absoluteSiteUrl(pagePath, otherLang);
   const videoUrl = video
     ? withMailUtm(
         `https://youtu.be/${encodeURIComponent(video.youtubeId)}`,
@@ -977,8 +1028,11 @@ export function renderDigestEmail(input: DigestEmailInput): {
     input.totalStories && input.totalStories >= count
       ? input.totalStories
       : null;
-  const ctaLabel =
-    lang === "vi"
+  const ctaLabel = weekly
+    ? lang === "vi"
+      ? "Đọc cả số tuần trên aidr.today"
+      : "Read the full week on aidr.today"
+    : lang === "vi"
       ? total
         ? `Xem đủ ${total} tin trên aidr.today`
         : "Xem tất cả tin trên aidr.today"
@@ -997,7 +1051,9 @@ export function renderDigestEmail(input: DigestEmailInput): {
     postalAddress: input.postalAddress,
   };
 
-  const heading = `AI;DR — ${formatMailDate(input.date, lang)}`;
+  const heading = weekly
+    ? weeklyHeading(weekly, lang)
+    : `AI;DR — ${formatMailDate(input.date, lang)}`;
   const textStories = stories.map((s, i) => {
     const href = storyHref(s, lang, i === 0 ? "lead" : `s${i + 1}`);
     const summary = i === 0 ? s.text.trim() : storySummary(s);
@@ -1011,6 +1067,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
   });
   const text = [
     `${heading}\n${countLine(count, minutes, lang)}`,
+    intro ?? "",
     textStories.join("\n\n"),
     videoUrl
       ? `${lang === "vi" ? "Xem bản tin video" : "Watch the daily brief"}: ${videoUrl}`
@@ -1024,6 +1081,9 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const homeHref = withMailUtm(SITE_URL, "digest", lang, { content: "header" });
   const header = headerBlock(lang, homeHref, {
     date: input.date,
+    dateLabel: weekly
+      ? formatWeekRange(weekly.start_date, weekly.end_date, lang)
+      : undefined,
     count,
     minutes,
     switchHref: withMailUtm(switchUrl, "digest", otherLang, {
@@ -1051,17 +1111,26 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const rows = [
     header,
     video && videoUrl ? videoBlock(video, videoUrl, lang, showImages) : "",
+    intro ? introBlock(intro) : "",
     lead
       ? leadStory(lead, storyHref(lead, lang, "lead"), lang, showImages)
       : "",
     rest.length > 0
-      ? sectionLabel(lang === "vi" ? "Tin khác hôm nay" : "Also today")
+      ? sectionLabel(
+          weekly
+            ? lang === "vi"
+              ? "Tin khác trong tuần"
+              : "Also this week"
+            : lang === "vi"
+              ? "Tin khác hôm nay"
+              : "Also today"
+        )
       : "",
     ...rest.map((s, i) =>
       storyRow(s, i + 2, storyHref(s, lang, `s${i + 2}`), format, lang)
     ),
     ctaRow(ctaLabel, ctaUrl),
-    input.feedbackToken && validDate
+    !weekly && input.feedbackToken && validDate
       ? feedbackBlock(input.date, lang, input.feedbackToken)
       : "",
     channelsBlock(lang),

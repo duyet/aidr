@@ -2,7 +2,12 @@ import { Button } from "@aidr/ui";
 import { useEffect, useState } from "react";
 import { withLang } from "../../lib/locale-url";
 import { type MailFormat, normalizeMailFormat } from "../../lib/mail-format";
+import {
+  type MailFrequency,
+  normalizeMailFrequency,
+} from "../../lib/mail-frequency";
 import type { Lang } from "../../lib/types";
+import { FrequencyField } from "./FrequencyField";
 import { MailFormatField } from "./MailFormatField";
 import { SettingsPreview } from "./SettingsPreview";
 
@@ -16,6 +21,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
   const [prefLang, setPrefLang] = useState<Lang>("en");
   const [digestSize, setDigestSize] = useState<DigestSize>(5);
   const [format, setFormat] = useState<MailFormat>("design");
+  const [frequency, setFrequency] = useState<MailFrequency>("daily");
   const [save, setSave] = useState<"idle" | "saving" | "done" | "error">(
     "idle"
   );
@@ -30,6 +36,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
           lang: Lang;
           digest_size: number;
           mail_format?: string;
+          frequency?: string;
         }>;
       })
       .then((data) => {
@@ -42,6 +49,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             : 5
         );
         setFormat(normalizeMailFormat(data.mail_format));
+        setFrequency(normalizeMailFrequency(data.frequency));
         setLoad("ready");
       })
       .catch(() => {
@@ -65,6 +73,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             lang: prefLang,
             digest_size: digestSize,
             mail_format: format,
+            frequency,
           }),
         }
       );
@@ -99,6 +108,12 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">{masked}</p>
       <form onSubmit={onSave} className="mt-6 space-y-4">
+        <FrequencyField
+          lang={lang}
+          name="settings-frequency"
+          value={frequency}
+          onChange={setFrequency}
+        />
         <fieldset className="flex gap-4 text-sm">
           <legend className="mb-1 block font-medium">
             {t("Language", "Ngôn ngữ")}
@@ -125,7 +140,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             htmlFor="settings-size"
             className="mb-1 block text-sm font-medium"
           >
-            {t("Stories per digest", "Số tin mỗi bản tin")}
+            {t("Stories per email", "Số tin mỗi email")}
           </label>
           <select
             id="settings-size"
@@ -150,7 +165,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
         />
         <SettingsPreview
           lang={lang}
-          src={`/api/subscribe/preview?lang=${prefLang}&n=${digestSize}&format=${format}`}
+          src={`/api/subscribe/preview?lang=${prefLang}&n=${digestSize}&format=${format}&freq=${frequency}`}
         />
         <Button type="submit" disabled={save === "saving"}>
           {save === "saving" ? t("Saving…", "Đang lưu…") : t("Save", "Lưu")}

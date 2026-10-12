@@ -90,7 +90,16 @@ describe("POST /api/subscribe", () => {
     expect(res.status).toBe(200);
     expect(insert?.sql).toContain("mail_format = excluded.mail_format");
     // A re-subscribe must overwrite the old layout, not keep it.
-    expect(insert?.args.slice(-2)).toEqual([10, "large"]);
+    expect(insert?.args.slice(-3)).toEqual([10, "large", "daily"]);
+  });
+
+  it("stores the weekly frequency chosen in the form", async () => {
+    const { insert } = await post({
+      email: "reader@aidr.today",
+      frequency: "weekly",
+    });
+    expect(insert?.sql).toContain("frequency = excluded.frequency");
+    expect(insert?.args.at(-1)).toBe("weekly");
   });
 
   it("falls back to the default layout for an unknown value", async () => {
@@ -98,7 +107,7 @@ describe("POST /api/subscribe", () => {
       email: "reader@aidr.today",
       mail_format: "huge",
     });
-    expect(insert?.args.at(-1)).toBe("design");
+    expect(insert?.args.at(-2)).toBe("design");
   });
 });
 

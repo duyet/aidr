@@ -2,6 +2,10 @@ import {
   type MailFormat,
   normalizeMailFormat,
 } from "../../src/lib/mail-format.js";
+import {
+  type MailFrequency,
+  normalizeMailFrequency,
+} from "../../src/lib/mail-frequency.js";
 import { ensureMailSchema } from "../mail/schema.js";
 import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import type { Env } from "../types.js";
@@ -131,7 +135,8 @@ export async function subscribe(
   source?: unknown,
   ip?: string | null,
   digestSize?: unknown,
-  mailFormat?: unknown
+  mailFormat?: unknown,
+  frequency?: unknown
 ): Promise<{ ok: true; pending: true } | SubscribeError> {
   if (!isValidEmail(email) || !isDeliverableDomain(email)) {
     return { error: "invalid email", status: 400 };
@@ -143,6 +148,7 @@ export async function subscribe(
   const normalizedSource = normalizeSource(source);
   const size = normalizeDigestSize(digestSize);
   const format = normalizeMailFormat(mailFormat);
+  const cadence = normalizeMailFrequency(frequency);
   const token = await deriveUnsubscribeToken(env, email);
   const now = Date.now();
 
@@ -191,6 +197,7 @@ export async function subscribe(
         timezone: normalizedTimezone,
         digest_size: size,
         mail_format: format,
+        frequency: cadence,
       }
     ).catch((error) => {
       console.error(
@@ -202,13 +209,23 @@ export async function subscribe(
   }
 
   await env.DB.prepare(
-    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format)
-     VALUES (?, ?, ?, ?, 0, ?, ?, ?)
+    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format, frequency)
+     VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)
      ON CONFLICT(email) DO UPDATE SET
        lang = excluded.lang, timezone = excluded.timezone,
-       digest_size = excluded.digest_size, mail_format = excluded.mail_format`
+       digest_size = excluded.digest_size, mail_format = excluded.mail_format,
+       frequency = excluded.frequency`
   )
-    .bind(email, normalizedLang, normalizedTimezone, now, token, size, format)
+    .bind(
+      email,
+      normalizedLang,
+      normalizedTimezone,
+      now,
+      token,
+      size,
+      format,
+      cadence
+    )
     .run();
 
   await env.DB.prepare(
@@ -253,6 +270,7 @@ export function settingsChangeFromParams(
     timezone: params.get("set_timezone"),
     digest_size: params.get("set_digest_size") ?? undefined,
     mail_format: params.get("set_mail_format") ?? undefined,
+    frequency: params.get("set_frequency") ?? undefined,
   };
 }
 
@@ -269,7 +287,7 @@ export async function confirmSubscription(
   }
   await ensureMailSchema(env.DB);
   const row = await env.DB.prepare(
-    `SELECT s.email, s.lang, s.confirmed, src.source
+    `SELECT s.email, s.lang, s.confirmed, s.frequency, src.source
      FROM subscribers s LEFT JOIN subscriber_sources src ON src.email = s.email
      WHERE s.unsubscribe_token = ?`
   )
@@ -278,6 +296,7 @@ export async function confirmSubscription(
       email: string;
       lang: string;
       confirmed: number;
+      frequency: string | null;
       source: string | null;
     }>();
   if (!row) return { error: "not found", status: 404 };
@@ -301,6 +320,7 @@ export async function confirmSubscription(
     email,
     lang: normalizedLang,
     unsubscribe_token: token,
+    frequency: normalizeMailFrequency(prefs?.frequency ?? row.frequency),
   }).catch((error) => {
     console.error(
       "welcome email skipped:",
@@ -350,6 +370,7 @@ export interface SubscriberPrefs {
   timezone: string;
   digest_size: DigestSize;
   mail_format: MailFormat;
+  frequency: MailFrequency;
 }
 
 export async function getPrefsByToken(
@@ -361,7 +382,7 @@ export async function getPrefsByToken(
   }
   await ensureMailSchema(env.DB);
   const row = await env.DB.prepare(
-    "SELECT email, lang, timezone, digest_size, mail_format FROM subscribers WHERE unsubscribe_token = ?"
+    "SELECT email, lang, timezone, digest_size, mail_format, frequency FROM subscribers WHERE unsubscribe_token = ?"
   )
     .bind(token)
     .first<{
@@ -370,6 +391,7 @@ export async function getPrefsByToken(
       timezone: string | null;
       digest_size: number | null;
       mail_format: string | null;
+      frequency: string | null;
     }>();
   if (!row) return { error: "not found", status: 404 };
   return {
@@ -378,6 +400,7 @@ export async function getPrefsByToken(
     timezone: isValidTimezone(row.timezone) ? row.timezone : DEFAULT_TIMEZONE,
     digest_size: normalizeDigestSize(row.digest_size),
     mail_format: normalizeMailFormat(row.mail_format),
+    frequency: normalizeMailFrequency(row.frequency),
   };
 }
 
@@ -389,6 +412,7 @@ export async function updatePrefsByToken(
     timezone?: unknown;
     digest_size?: unknown;
     mail_format?: unknown;
+    frequency?: unknown;
   }
 ): Promise<{ ok: true } | SubscribeError> {
   if (typeof token !== "string" || token.length === 0) {
@@ -412,16 +436,21 @@ export async function updatePrefsByToken(
     prefs.mail_format === undefined
       ? null
       : normalizeMailFormat(prefs.mail_format);
+  const cadence =
+    prefs.frequency === undefined || prefs.frequency === null
+      ? null
+      : normalizeMailFrequency(prefs.frequency);
 
   await env.DB.prepare(
     `UPDATE subscribers SET
        lang = COALESCE(?, lang),
        timezone = COALESCE(?, timezone),
        digest_size = COALESCE(?, digest_size),
-       mail_format = COALESCE(?, mail_format)
+       mail_format = COALESCE(?, mail_format),
+       frequency = COALESCE(?, frequency)
      WHERE unsubscribe_token = ?`
   )
-    .bind(lang, timezone, size, format, token)
+    .bind(lang, timezone, size, format, cadence, token)
     .run();
   return { ok: true };
 }

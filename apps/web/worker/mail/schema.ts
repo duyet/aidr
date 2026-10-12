@@ -61,6 +61,10 @@ export async function ensureMailSchema(db: D1Database): Promise<void> {
   for (const sql of [
     "ALTER TABLE subscribers ADD COLUMN digest_size INTEGER NOT NULL DEFAULT 5",
     "ALTER TABLE subscribers ADD COLUMN mail_format TEXT NOT NULL DEFAULT 'design'",
+    // Daily digest vs weekly edition (src/lib/mail-frequency.ts), and the
+    // last weekly edition (`YYYY-Www`) mailed to this subscriber.
+    "ALTER TABLE subscribers ADD COLUMN frequency TEXT NOT NULL DEFAULT 'daily'",
+    "ALTER TABLE subscribers ADD COLUMN last_weekly_sent TEXT",
   ]) {
     try {
       await db.prepare(sql).run();

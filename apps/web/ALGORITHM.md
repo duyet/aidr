@@ -40,7 +40,7 @@ One ingest run does three jobs. The scheduler starts one every 30 minutes, with 
 
 Publish has two deliveries and they do not share a clock or a table:
 
-- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
+- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. Subscribers with `frequency = weekly` skip these lanes and get the weekly edition on Monday morning instead (§11, idempotency `last_weekly_sent`). A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
 
@@ -939,6 +939,23 @@ Every link carries `utm_content` for its position (`lead`, `s2`…, `cta`,
 `video`, `channel-*`). After the button, a "Was today's edition useful?" row links to `GET /feedback?d=&l=&v=1|0&t=<token>`. That stores one vote per subscriber and date in `email_feedback` (0054); the last click wins. Counts are at `GET /api/admin/mail/feedback` and in `aidr-agent audit`. Layouts: `design` (lead image plus thumbnails),
 `large` (an image per story), `no-images`, `text`. Admin preview:
 `GET /api/admin/mail/preview?date=&lang=&format=`.
+
+**Weekly frequency.** `subscribers.frequency` is `daily` (default) or
+`weekly` (`src/lib/mail-frequency.ts`; the column is added at runtime by
+`ensureMailSchema`). Weekly subscribers are skipped by both daily lanes and
+get the §10b edition instead (`sendWeeklyLane`): the last closed week
+(`lastClosedWeek`), once, from 07:00 local on the first local day after the
+week's Sunday and for at most `WEEKLY_SEND_WINDOW_DAYS` (3) days after it, so
+switching to weekly late in the week waits for the next Monday rather than
+mailing stale news. A title-only `fallback` row waits for the LLM upgrade
+until the window's last day. The story lines come from `stories_vi` or
+`stories_en` only (no cross-language fallback: an empty VI column sends
+nothing and the next run retries), cut to the subscriber's digest size, and
+render through the same `renderDigestEmail` with a `weekly` block: subject
+"AI;DR Weekly #N — lead headline", the week range in the header, the intro
+paragraph, links to `/week/YYYY-Www`, no video and no per-day feedback row.
+Idempotency is `subscribers.last_weekly_sent` (`YYYY-Www`). Preview:
+`GET /api/subscribe/preview?lang=&n=&format=&freq=weekly`.
 
 ### 12. Notify (`worker/notify/`)
 
