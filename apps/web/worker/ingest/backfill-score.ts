@@ -4,7 +4,11 @@ import { type RankSignalRow, rankScore, rowRankSignals } from "../ranking.js";
 import { recordStep } from "../run-stats.js";
 import { normalizeTopics } from "../topics.js";
 import { llmStep } from "../workflow-step.js";
-import { type IngestContext, LLM_STEP } from "./context.js";
+import {
+  type IngestContext,
+  LLM_STEP,
+  RELEVANCE_THRESHOLD,
+} from "./context.js";
 
 interface UnscoredRow extends RankSignalRow {
   id: string;
@@ -67,7 +71,9 @@ export async function backfillScores(
           await env.DB.prepare(
             `UPDATE items SET
                  llm_relevance = ?, llm_importance = ?, llm_quality = ?,
-                 category = ?, tags = ?, rank_score = ?
+                 category = ?, tags = ?, rank_score = ?,
+                 status = CASE WHEN status = 'published' AND ? < ?
+                   THEN 'rejected' ELSE status END
                WHERE id = ?`
           )
             .bind(
@@ -77,6 +83,10 @@ export async function backfillScores(
               result.category,
               JSON.stringify(tags),
               rank,
+              // A row published unscored (its score batch failed) gets the
+              // same relevance gate as a fresh one (ALGORITHM §4).
+              result.relevance,
+              RELEVANCE_THRESHOLD,
               row.id
             )
             .run();
