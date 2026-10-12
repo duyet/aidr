@@ -9,6 +9,7 @@ import {
   rankModels,
   risers,
   type TrendSeries,
+  trackSlots,
   trendInsights,
   windowStat,
 } from "./trends";
@@ -183,5 +184,20 @@ describe("track search param", () => {
   it("round-trips and omits an empty list", () => {
     expect(formatTrack(parseTrack("llm,agent"))).toBe("llm,agent");
     expect(formatTrack([])).toBeUndefined();
+  });
+});
+
+describe("trackSlots", () => {
+  it("keeps a survivor's color when an earlier pin is removed", () => {
+    const before = trackSlots(["agent", "llm", "opus-5.5", "funding"]);
+    const after = trackSlots(["llm", "opus-5.5", "funding"]);
+    for (const [name, slot] of after) expect(slot).toBe(before.get(name));
+  });
+
+  it("probes past a collision so two pins never share a color", () => {
+    const slots = trackSlots(["opus-5.5", "gpt-6.1-sol"]);
+    expect(slots.get("opus-5.5")).not.toBe(slots.get("gpt-6.1-sol"));
+    const six = trackSlots(["a", "b", "c", "d", "e", "f"]);
+    expect(new Set(six.values()).size).toBe(6);
   });
 });

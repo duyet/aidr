@@ -17,6 +17,7 @@ import {
   rankModels,
   risers,
   type SystemTrends,
+  TREND_DAYS,
   type TrendSeries,
   trendInsights,
   type WindowStat,
@@ -36,6 +37,7 @@ export interface TrackProps {
   onTrackChange: (next: string[]) => void;
 }
 
+const PRIOR_DAYS = TREND_DAYS - 1 - COMPARE_WINDOW_DAYS;
 const WINDOW_LABEL = `last ${COMPARE_WINDOW_DAYS} full days vs the ${COMPARE_WINDOW_DAYS} before`;
 
 function signed(n: number): string {
@@ -64,7 +66,7 @@ function InsightRow({ trends }: { trends: SystemTrends }) {
         numeric={false}
         sublabel={
           newEntrant
-            ? `${newEntrant.current} mentions, first seen this week`
+            ? `${newEntrant.current} mentions, none in the prior ${PRIOR_DAYS} days`
             : "No new tag cleared the bar"
         }
       />

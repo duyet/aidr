@@ -5,6 +5,7 @@ import {
   canonicalTrendName,
   MAX_TRACKED,
   type SystemTrends,
+  trackSlots,
   windowStat,
 } from "../../lib/trends";
 import { useSystemData } from "../../lib/use-system-stats";
@@ -23,8 +24,7 @@ import { API } from "./endpoints";
 import type { TrackProps } from "./TrendsTab";
 import { chartDayLabel } from "./token-burn";
 
-/** Color slot follows pin order, so the URL alone reproduces the colors. */
-export const TRACK_COLORS: readonly DitherColor[] = [
+const TRACK_COLORS: readonly DitherColor[] = [
   "blue",
   "orange",
   "green",
@@ -32,6 +32,11 @@ export const TRACK_COLORS: readonly DitherColor[] = [
   "purple",
   "red",
 ];
+
+function trackColors(names: string[]): (name: string) => DitherColor {
+  const slots = trackSlots(names, TRACK_COLORS.length);
+  return (name) => TRACK_COLORS[slots.get(name) ?? 0];
+}
 
 function TrackChart({
   trends,
@@ -41,9 +46,10 @@ function TrackChart({
   names: string[];
 }) {
   const byName = new Map(trends.series.map((s) => [s.name, s]));
+  const colorOf = trackColors(names);
   const config: ChartConfig = {};
   names.forEach((name, i) => {
-    config[`s${i}`] = { label: name, color: TRACK_COLORS[i] };
+    config[`s${i}`] = { label: name, color: colorOf(name) };
   });
   const rows = trends.days.map((date, d) => {
     const row: Record<string, string | number> = {
@@ -77,9 +83,10 @@ function TrackChart({
 }
 
 function Chips({ track, onTrackChange }: TrackProps) {
+  const colorOf = trackColors(track);
   return (
     <ul className="flex flex-wrap gap-1.5">
-      {track.map((name, i) => (
+      {track.map((name) => (
         <li key={name}>
           <button
             type="button"
@@ -90,7 +97,7 @@ function Chips({ track, onTrackChange }: TrackProps) {
             <span
               className="size-2 rounded-[1px]"
               style={{
-                backgroundColor: rgb(seedOfColor(TRACK_COLORS[i]).fill),
+                backgroundColor: rgb(seedOfColor(colorOf(name)).fill),
               }}
             />
             {name}

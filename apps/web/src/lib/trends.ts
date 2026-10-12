@@ -271,3 +271,29 @@ export function parseTrack(raw: unknown): string[] {
 export function formatTrack(names: string[]): string | undefined {
   return names.length > 0 ? names.slice(0, MAX_TRACKED).join(",") : undefined;
 }
+
+function hashName(name: string): number {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+/** Color slot per tracked name: its hashed slot, or the next free one in pin
+ *  order. A name keeps its slot when another pin comes or goes unless the two
+ *  collided, so the URL alone reproduces the colors. */
+export function trackSlots(
+  names: string[],
+  slotCount = MAX_TRACKED
+): Map<string, number> {
+  const taken = new Set<number>();
+  const out = new Map<string, number>();
+  for (const name of names.slice(0, slotCount)) {
+    let slot = hashName(name) % slotCount;
+    while (taken.has(slot)) slot = (slot + 1) % slotCount;
+    taken.add(slot);
+    out.set(name, slot);
+  }
+  return out;
+}

@@ -25,12 +25,12 @@ export function parseDataTab(raw: unknown): DataTab | undefined {
     : undefined;
 }
 
-/** Search for a tab switch: pins survive only on the Trends tab. */
+/** Search for a tab switch. Pins ride along on every tab, so a visit to
+ *  another tab and back keeps the tracked set. */
 export function dataTabSearch(
   tab: DataTab,
   current: { track?: string }
 ): { tab?: DataTab; track?: string } {
-  if (tab === "overview") return {};
-  if (tab === "trends" && current.track) return { tab, track: current.track };
-  return { tab };
+  const track = current.track ? { track: current.track } : {};
+  return tab === "overview" ? track : { tab, ...track };
 }

@@ -16,14 +16,14 @@ describe("parseDataTab", () => {
 });
 
 describe("dataTabSearch", () => {
-  it("keeps pins only while switching to the Trends tab", () => {
-    const current = { tab: "runs" as const, track: "agent,llm" };
-    expect(dataTabSearch("trends", current)).toEqual({
+  it("keeps pins across a round trip through another tab", () => {
+    const onRuns = dataTabSearch("runs", { track: "agent,llm" });
+    expect(onRuns).toEqual({ tab: "runs", track: "agent,llm" });
+    expect(dataTabSearch("trends", onRuns)).toEqual({
       tab: "trends",
       track: "agent,llm",
     });
-    expect(dataTabSearch("runs", current)).toEqual({ tab: "runs" });
-    expect(dataTabSearch("overview", current)).toEqual({});
+    expect(dataTabSearch("overview", onRuns)).toEqual({ track: "agent,llm" });
     expect(dataTabSearch("trends", {})).toEqual({ tab: "trends" });
   });
 });
