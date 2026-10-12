@@ -19,6 +19,10 @@ export const ACCOUNTS_CACHE_CONTROL =
 export const AUDIENCE_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 
+/** Topic trends move once per ingest run (every 30 minutes). */
+export const TRENDS_CACHE_CONTROL =
+  "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
+
 export async function resolveWorkerEnv(context: any): Promise<any> {
   let env =
     context?.cloudflare?.env || context?.env || (globalThis as any).CF_ENV;

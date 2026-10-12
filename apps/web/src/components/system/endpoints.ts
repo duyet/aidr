@@ -10,4 +10,5 @@ export const API = {
   runs: "/api/system/runs",
   llm: "/api/system/llm",
   sources: "/api/system/sources",
+  trends: "/api/system/trends",
 } as const;

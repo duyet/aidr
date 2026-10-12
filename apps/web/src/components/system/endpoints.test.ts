@@ -13,7 +13,7 @@ import { API } from "./endpoints";
 const ROUTES_DIR = fileURLToPath(new URL("../../routes/api", import.meta.url));
 
 describe("system section endpoint map", () => {
-  it("advertises exactly the eight granular sections", () => {
+  it("advertises exactly the nine granular sections", () => {
     expect(Object.keys(API).sort()).toEqual([
       "accounts",
       "activity",
@@ -23,6 +23,7 @@ describe("system section endpoint map", () => {
       "overview",
       "runs",
       "sources",
+      "trends",
     ]);
     for (const path of Object.values(API)) {
       expect(path.startsWith("/api/system/")).toBe(true);
