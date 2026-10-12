@@ -525,22 +525,40 @@ export interface WeeklyRunStats {
   tokens: number;
   reason: string;
   week: string;
+  /** An LLM call was attempted this run, even one that failed (a failed
+   *  call reports 0 tokens). The rolling digest waits when true. */
+  llmCalled?: boolean;
 }
 
 /** Ranks the week and writes its copy without touching D1. */
 async function buildWeeklyEdition(
   env: Env,
   week: string
-): Promise<{ edition: WeeklyEdition | null; tokens: number; reason: string }> {
+): Promise<{
+  edition: WeeklyEdition | null;
+  tokens: number;
+  reason: string;
+  llmCalled: boolean;
+}> {
   const candidates = await loadWeeklyCandidates(env, week);
   const rows = rankWeeklyCandidates(candidates);
   if (rows.length === 0) {
-    return { edition: null, tokens: 0, reason: `no stories in ${week}` };
+    return {
+      edition: null,
+      tokens: 0,
+      reason: `no stories in ${week}`,
+      llmCalled: false,
+    };
   }
   const copy = await generateWeeklyCopy(env, week, rows);
   const edition = composeWeeklyEdition(week, rows, copy.output);
   if (!edition) {
-    return { edition: null, tokens: copy.tokens, reason: "nothing to persist" };
+    return {
+      edition: null,
+      tokens: copy.tokens,
+      reason: "nothing to persist",
+      llmCalled: true,
+    };
   }
   const reason = !edition.fallback
     ? `${edition.stories_en.length} EN / ${edition.stories_vi.length} VI stories`
@@ -550,7 +568,7 @@ async function buildWeeklyEdition(
         // still sees the attempts). Detail is in the console.warn above.
         `title fallback, model chain unavailable; retry in ${WEEKLY_RETRY_MS / 3_600_000}h`
       : `LLM failed (${copy.error ?? "no intro"}); title fallback`;
-  return { edition, tokens: copy.tokens, reason };
+  return { edition, tokens: copy.tokens, reason, llmCalled: true };
 }
 
 interface ExistingWeekRow {
@@ -601,6 +619,7 @@ export async function ensureWeeklyEdition(
 
   let lastReason = "edition already written";
   let tokens = 0;
+  let llmCalled = false;
   for (const week of weeks) {
     const existing = rows.get(week) ?? null;
     const gate = weeklyGateReason({
@@ -614,6 +633,7 @@ export async function ensureWeeklyEdition(
     }
     const built = await buildWeeklyEdition(env, week);
     tokens += built.tokens;
+    if (built.llmCalled) llmCalled = true;
     // No stories that week (no LLM call was made): try the next one.
     if (!built.edition) {
       lastReason = built.reason;
@@ -633,12 +653,19 @@ export async function ensureWeeklyEdition(
         tokens,
         reason: `kept existing edition: ${built.reason}`,
         week,
+        llmCalled,
       };
     }
     await writeWeeklyEdition(env, built.edition, existing, nowMs);
-    return { generated: true, tokens, reason: built.reason, week };
+    return { generated: true, tokens, reason: built.reason, week, llmCalled };
   }
-  return { generated: false, tokens, reason: lastReason, week: latest };
+  return {
+    generated: false,
+    tokens,
+    reason: lastReason,
+    week: latest,
+    llmCalled,
+  };
 }
 
 async function writeWeeklyEdition(

@@ -208,8 +208,9 @@ export async function ensureWeeklyDigest(
     };
   }
   const l = built.lines;
-  await env.DB.prepare(
-    `INSERT INTO weekly_digests (end_date, start_date, item_ids, intro_en,
+  try {
+    await env.DB.prepare(
+      `INSERT INTO weekly_digests (end_date, start_date, item_ids, intro_en,
        intro_vi, stories_en, stories_vi, fallback, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(end_date) DO UPDATE SET
@@ -221,20 +222,29 @@ export async function ensureWeeklyDigest(
        stories_vi = excluded.stories_vi,
        fallback = excluded.fallback,
        updated_at = excluded.updated_at`
-  )
-    .bind(
-      endDate,
-      window.start,
-      JSON.stringify(l.item_ids),
-      l.intro_en,
-      l.intro_vi,
-      JSON.stringify(l.stories_en),
-      JSON.stringify(l.stories_vi),
-      l.fallback ? 1 : 0,
-      existing?.created_at ?? nowMs,
-      nowMs
     )
-    .run();
+      .bind(
+        endDate,
+        window.start,
+        JSON.stringify(l.item_ids),
+        l.intro_en,
+        l.intro_vi,
+        JSON.stringify(l.stories_en),
+        JSON.stringify(l.stories_vi),
+        l.fallback ? 1 : 0,
+        existing?.created_at ?? nowMs,
+        nowMs
+      )
+      .run();
+  } catch (error) {
+    // Migration 0060 not applied yet: report it, never throw after the call.
+    return {
+      generated: false,
+      tokens: built.tokens,
+      reason: `weekly_digests write failed: ${error instanceof Error ? error.message : String(error)}`,
+      endDate,
+    };
+  }
   return {
     generated: true,
     tokens: built.tokens,

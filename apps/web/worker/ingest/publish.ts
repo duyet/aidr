@@ -160,8 +160,8 @@ export async function generateWeekly(ctx: IngestContext): Promise<{
         let tokens = result.tokens;
         // The rolling digest for weekly subscribers shares the step's
         // budget: at most one LLM call per run, so it waits when the
-        // ISO-week edition just spent one.
-        if (result.tokens === 0) {
+        // ISO-week edition just attempted one (a failed call has 0 tokens).
+        if (!result.llmCalled) {
           const digest = await ensureWeeklyDigest(env);
           reason += `; digest ${digest.endDate}: ${digest.reason}`;
           generated ||= digest.generated;

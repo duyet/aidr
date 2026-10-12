@@ -14,6 +14,7 @@ import {
 } from "../../src/lib/mail-frequency.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
+import { weekBounds } from "../../src/lib/week.js";
 import { parseJsonArray, parseStoryLines } from "../../src/lib/week-model.js";
 import { reportDeliveryFailure } from "../bugsink.js";
 import {
@@ -142,10 +143,24 @@ function daysBetween(from: string, to: string): number {
   );
 }
 
+/** A new window may overlap the last one mailed by at most 3 days, so
+ *  moving the send day earlier (Wed → Mon) still mails that week, while
+ *  moving it later in the same week (Mon → Wed) waits for the next one. */
+export const WEEKLY_MIN_GAP_DAYS = 4;
+
+/** `last_weekly_sent` as an end date. Before send days existed it held the
+ *  ISO week key (`YYYY-Www`), whose window ends on that week's Sunday. */
+export function lastWeeklyEndDate(
+  last: string | null | undefined
+): string | null {
+  if (!last) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(last)) return last;
+  return weekBounds(last)?.end ?? null;
+}
+
 /** A weekly subscriber gets the digest on their chosen local weekday, from
  *  DIGEST_LOCAL_HOUR, once per window. `last_weekly_sent` is the end date of
- *  the last window mailed; a new one must end at least 7 days later, so
- *  moving the send day never mails overlapping weeks back to back. */
+ *  the last window mailed; see WEEKLY_MIN_GAP_DAYS for a changed send day. */
 export function shouldSendWeeklyForSubscriber(
   sub: Pick<SubscriberRow, "last_weekly_sent" | "weekly_day">,
   localHour: number,
@@ -157,10 +172,8 @@ export function shouldSendWeeklyForSubscriber(
     return false;
   }
   const { end } = digestWindow(localDate);
-  const last = sub.last_weekly_sent;
-  if (last && /^\d{4}-\d{2}-\d{2}$/.test(last) && daysBetween(last, end) < 7) {
-    return false;
-  }
+  const last = lastWeeklyEndDate(sub.last_weekly_sent);
+  if (last && daysBetween(last, end) < WEEKLY_MIN_GAP_DAYS) return false;
   return !digest?.fallback || localHour >= WEEKLY_FALLBACK_HOUR;
 }
 

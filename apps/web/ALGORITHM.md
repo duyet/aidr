@@ -981,9 +981,12 @@ render through `renderDigestEmail` with a `weekly` block: subject
 "AI;DR Weekly #N — lead headline" (no number for a rolling window), the
 range in the header, the intro paragraph, no video and no per-day feedback
 row. A title-only `fallback` digest waits until 13:00 local for the LLM
-retry. Idempotency is `subscribers.last_weekly_sent` (the end date mailed);
-a new window must end at least 7 days after it, so moving the send day never
-mails overlapping weeks back to back. A failed send is not stamped and
+retry. Idempotency is `subscribers.last_weekly_sent` (the end date mailed; a
+legacy `YYYY-Www` value reads as that week's Sunday). A new window may
+overlap the last one by at most 3 days (`WEEKLY_MIN_GAP_DAYS` = 4), so
+moving the send day earlier still mails that week and moving it later in
+the same week waits for the next one. The digest build waits whenever the
+ISO-week build attempted an LLM call in the run, even a failed one. A failed send is not stamped and
 retries next run. Preview: `GET /api/subscribe/preview?lang=&n=&format=&freq=weekly`
 (newest digest of either kind).
 

@@ -59,7 +59,7 @@ describe("shouldSendWeeklyForSubscriber", () => {
     ).toBe(true);
   });
 
-  it("sends a window once and never overlapping windows back to back", () => {
+  it("sends a window once and overlaps the last one by at most 3 days", () => {
     const sent = (last: string) =>
       shouldSendWeeklyForSubscriber(
         { ...fresh, last_weekly_sent: last },
@@ -67,9 +67,12 @@ describe("shouldSendWeeklyForSubscriber", () => {
         monday
       );
     expect(sent("2026-10-11")).toBe(false); // this window
-    expect(sent("2026-10-07")).toBe(false); // moved from Thursday: overlap
+    expect(sent("2026-10-09")).toBe(false); // moved from Saturday: 5-day overlap
+    expect(sent("2026-10-06")).toBe(true); // moved from Wednesday: 2-day overlap
     expect(sent("2026-10-04")).toBe(true); // last Monday's window
-    expect(sent("2026-W40")).toBe(true); // legacy week key is ignored
+    // A legacy ISO week key maps to that week's Sunday.
+    expect(sent("2026-W41")).toBe(false);
+    expect(sent("2026-W40")).toBe(true);
   });
 
   it("holds a title-only fallback digest until the afternoon", () => {

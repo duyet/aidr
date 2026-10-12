@@ -179,3 +179,26 @@ describe("ensureWeeklyDigest", () => {
     expect(weekly.generateWeeklyCopy).not.toHaveBeenCalled();
   });
 });
+
+describe("ensureWeeklyDigest write guard", () => {
+  it("reports a missing table instead of throwing after the LLM call", async () => {
+    const { env } = fakeDb({ demand: true });
+    const db = (env as { DB: { prepare: (sql: string) => unknown } }).DB;
+    const prepare = db.prepare.bind(db);
+    db.prepare = (sql: string) => {
+      if (sql.includes("INSERT INTO weekly_digests")) {
+        return {
+          bind: () => ({
+            run: async () => {
+              throw new Error("no such table: weekly_digests");
+            },
+          }),
+        };
+      }
+      return prepare(sql);
+    };
+    const out = await ensureWeeklyDigest(env, Date.UTC(2026, 9, 14, 3, 0, 0));
+    expect(out.generated).toBe(false);
+    expect(out.reason).toContain("no such table");
+  });
+});

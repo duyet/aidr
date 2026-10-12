@@ -399,6 +399,9 @@ describe("weekly step", () => {
     const ctx = liveCtx(db);
     const result = await generateWeekly(ctx);
     expect(result.generated).toBe(true);
+    // The failed call reports 0 tokens; the rolling digest must still wait.
+    expect(result.tokens).toBe(0);
+    expect(ctx.steps[0].reason).not.toMatch(/digest/);
     expect(db.writes).toHaveLength(1);
     const args = db.writes[0].args;
     expect(args[0]).toBe("2026-W41");
@@ -422,6 +425,7 @@ describe("weekly step", () => {
     const db = new WeeklyD1([completeRow("2026-W40")]);
     const stats = await ensureWeeklyEdition(env(db), MONDAY);
     expect(stats.generated).toBe(true);
+    expect(stats.llmCalled).toBe(true);
     expect(llmContent.calls).toBe(2);
     expect(db.writes[0].args[9]).toBe(0);
   });
