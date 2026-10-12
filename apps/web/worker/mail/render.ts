@@ -392,10 +392,13 @@ const PREHEADER_PAD = "&zwnj;&nbsp;".repeat(90);
 
 const HEAD_STYLE = `
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  img { -ms-interpolation-mode: bicubic; max-width: 100%; }
   a { text-decoration: none; }
   .mail-cta, .mail-cta span, .mail-cta font { color: ${ACCENT_FG} !important; text-decoration: none !important; border-bottom: 0 !important; }
   u + #body .mail-cta { color: ${ACCENT_FG} !important; text-decoration: none !important; }
-  @media only screen and (max-width: 480px) {
+  @media only screen and (max-width: 600px) {
     .m-wrap { padding: 12px 8px !important; }
     .m-pad { padding-left: 20px !important; padding-right: 20px !important; }
     .m-body { font-size: 16px !important; }
@@ -403,8 +406,12 @@ const HEAD_STYLE = `
     .m-block-gap { padding-top: 12px !important; }
     .m-stack { display: block !important; width: 100% !important; text-align: left !important; padding-left: 0 !important; padding-top: 10px !important; }
     .m-tap { display: inline-block !important; min-height: 44px !important; line-height: 44px !important; }
-    .m-head { font-size: 22px !important; }
+    .m-head { font-size: 24px !important; }
+    .m-mast { font-size: 28px !important; }
     .m-hide { display: none !important; }
+    img[width="${INNER_PX}"] { width: 100% !important; height: auto !important; }
+    td[width="${THUMB_PX}"] { width: 72px !important; padding-left: 12px !important; }
+    img[width="${THUMB_PX}"] { width: 72px !important; max-height: 72px !important; }
   }
   @media (prefers-color-scheme: dark) {
     .m-bg { background: #141413 !important; }
@@ -414,12 +421,18 @@ const HEAD_STYLE = `
     .m-muted { color: #b5b2a8 !important; }
     .m-link { color: #f0a35e !important; }
     .m-rule { border-color: #34332e !important; }
+    .m-quote { border-color: #f0a35e !important; }
+    .m-ph { background-color: #262520 !important; }
   }
   [data-ogsc] .m-bg { background: #141413 !important; }
-  [data-ogsc] .m-card { background: #1f1e1b !important; }
+  [data-ogsc] .m-card { background: #1f1e1b !important; border-color: #34332e !important; }
+  [data-ogsc] .m-soft { background: #262520 !important; }
   [data-ogsc] .m-fg { color: #f2f0ea !important; }
   [data-ogsc] .m-muted { color: #b5b2a8 !important; }
   [data-ogsc] .m-link { color: #f0a35e !important; }
+  [data-ogsc] .m-rule { border-color: #34332e !important; }
+  [data-ogsc] .m-quote { border-color: #f0a35e !important; }
+  [data-ogsc] .m-ph { background-color: #262520 !important; }
 `;
 
 function wrapHtml(opts: {
@@ -439,6 +452,8 @@ function wrapHtml(opts: {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
 <title>${escapeHtml(opts.subject)}</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <link rel="stylesheet" href="${escapeHtml(FONTS_HREF)}">
@@ -446,6 +461,7 @@ function wrapHtml(opts: {
 </head>
 <body id="body" class="m-bg" style="margin:0;padding:0;background:${BG}">
 ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${preheader}${PREHEADER_PAD}</div>` : ""}
+<div role="article" aria-roledescription="email" aria-label="${escapeHtml(opts.subject)}" lang="${opts.lang}">
 <table role="presentation" class="m-bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG}">
   <tr>
     <td class="m-wrap" align="center" style="padding:24px 16px 40px">
@@ -458,6 +474,7 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;m
     </td>
   </tr>
 </table>
+</div>
 </body>
 </html>`;
 }
@@ -547,9 +564,9 @@ export function videoBlock(
       : "Today's stories in under two minutes");
   const safe = escapeHtml(href);
   const thumb = escapeHtml(youtubeThumb(video.youtubeId));
-  const play = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto"><tr><td width="38" height="38" align="center" valign="middle" bgcolor="${INK}" style="width:38px;height:38px;border-radius:19px;background:${INK};color:${ACCENT_FG};font-family:${SANS};font-size:14px;line-height:38px;text-align:center"><a href="${safe}" target="_blank" style="color:${ACCENT_FG};text-decoration:none">&#9654;</a></td></tr></table>`;
+  const play = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto"><tr><td width="38" height="38" align="center" valign="middle" bgcolor="${INK}" style="width:38px;height:38px;border-radius:19px;background:${INK};color:${ACCENT_FG};font-family:${SANS};font-size:14px;line-height:38px;text-align:center"><a href="${safe}" target="_blank" aria-label="${escapeHtml(`${kicker}: ${title}`)}" style="display:block;color:${ACCENT_FG};text-decoration:none">&#9654;</a></td></tr></table>`;
   const media = showImage
-    ? `<td class="m-stack" width="150" height="84" align="center" valign="middle" background="${thumb}" bgcolor="${MARKER}" style="width:150px;height:84px;border-radius:8px;background-color:${MARKER};background-image:url(${thumb});background-size:cover;background-position:center">${play}</td>`
+    ? `<td class="m-stack" width="150" height="84" align="center" valign="middle" background="${thumb}" bgcolor="${MARKER}" style="width:150px;height:84px;border-radius:8px;background-color:${MARKER};background-image:url(${thumb});background-size:cover;background-position:center" role="img" aria-label="${escapeHtml(title)}">${play}</td>`
     : "";
   return `<tr>
       <td class="m-pad" style="padding:22px ${PAD} 6px">
@@ -638,7 +655,7 @@ function largeImage(src: string, alt: string, className: string): string {
 }
 
 function leadImage(src: string, alt: string): string {
-  return `<div style="max-height:${LEAD_MAX_H}px;overflow:hidden;border-radius:10px;background-color:${HAIRLINE}">${largeImage(src, alt, "mail-lead-image")}</div>`;
+  return `<div style="max-height:${LEAD_MAX_H}px;overflow:hidden;border-radius:10px;background-color:${HAIRLINE}" class="m-ph">${largeImage(src, alt, "mail-lead-image")}</div>`;
 }
 
 /** Story 1: large image, category · source, big headline, its summary. */
@@ -655,11 +672,11 @@ export function leadStory(
   const safe = escapeHtml(href);
   return `<tr>
       <td class="m-pad" style="padding:22px ${PAD} 8px">
-        <div class="m-muted" style="padding-bottom:12px;font-family:${SANS};font-size:11px;line-height:1.4;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${MUTED}">${escapeHtml(kicker)}</div>
-        ${image ? `<a href="${safe}" target="_blank" style="text-decoration:none;border:0">${leadImage(image, headline)}</a><div style="height:16px;line-height:16px;font-size:0">&nbsp;</div>` : ""}
+        <div class="m-muted" style="padding-bottom:12px;font-family:${SANS};font-size:11px;line-height:1.4;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${MUTED}"><span style="display:inline-block;width:18px;height:3px;line-height:3px;font-size:0;background-color:${MARKER};vertical-align:middle;margin-right:8px">&nbsp;</span>${escapeHtml(kicker)}</div>
+        ${image ? `<a href="${safe}" target="_blank" style="text-decoration:none;border:0">${leadImage(image, headline)}</a><div style="height:18px;line-height:16px;font-size:0">&nbsp;</div>` : ""}
         ${metaLine(story, true, lang)}
-        <a class="m-fg" href="${safe}" target="_blank" style="display:block;padding-top:6px;font-family:${SERIF};font-size:27px;line-height:1.2;font-weight:600;color:${FG};text-decoration:none"><font class="m-fg" color="${FG}"><span class="m-head">${escapeHtml(headline)}</span></font></a>
-        <div class="m-fg m-body" style="padding-top:8px;font-family:${SANS};font-size:15px;line-height:1.6;color:${BODY}">${escapeHtml(story.text.trim())}</div>
+        <a class="m-fg" href="${safe}" target="_blank" style="display:block;padding-top:6px;font-family:${SERIF};font-size:28px;line-height:1.18;font-weight:600;letter-spacing:-0.005em;color:${FG};text-decoration:none"><font class="m-fg" color="${FG}"><span class="m-head">${escapeHtml(headline)}</span></font></a>
+        <div class="m-fg m-body" style="padding-top:10px;font-family:${SANS};font-size:16px;line-height:1.6;color:${BODY}">${escapeHtml(story.text.trim())}</div>
         ${link(href, readLabel, `display:inline-block;margin-top:12px;font-family:${SANS};font-size:14px;font-weight:600;color:${ACCENT};text-decoration:none`, "m-link m-tap")}
       </td>
     </tr>`;
@@ -684,7 +701,9 @@ export function storyRow(
   n: number,
   href: string,
   format: MailFormat,
-  lang: MailLang
+  lang: MailLang,
+  /** Hairline above the row. Default: every row after the first. */
+  divider = n > 2
 ): string {
   const headline = storyHeadline(story);
   const summary = storySummary(story);
@@ -696,25 +715,69 @@ export function storyRow(
               <a class="m-fg" href="${safe}" target="_blank" style="display:block;padding-top:4px;font-family:${SERIF};font-size:19px;line-height:1.25;font-weight:600;color:${FG};text-decoration:none"><font class="m-fg" color="${FG}">${escapeHtml(headline)}</font></a>
               ${summary ? `<div class="m-fg m-body" style="padding-top:4px;font-family:${SANS};font-size:14px;line-height:1.55;color:${BODY}">${escapeHtml(summary)}</div>` : ""}`;
   return `<tr>
-      <td class="m-pad" style="padding:14px ${PAD}">
+      <td class="m-pad" style="padding:0 ${PAD}">
+        ${divider ? `<div class="m-rule" style="border-top:1px solid ${HAIRLINE};height:0;line-height:0;font-size:0">&nbsp;</div>` : ""}
+        <div style="height:16px;line-height:16px;font-size:0">&nbsp;</div>
         ${large ? `<a href="${safe}" target="_blank" style="text-decoration:none;border:0">${largeImage(large, headline, "mail-large")}</a><div style="height:12px;line-height:12px;font-size:0">&nbsp;</div>` : ""}
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td width="26" valign="top" class="m-link" style="width:26px;vertical-align:top;padding-top:2px;font-family:${SERIF};font-size:26px;line-height:1;color:${ACCENT}">${n}</td>
+            <td width="34" valign="top" align="left" class="m-link" style="width:34px;vertical-align:top;padding-top:1px;font-family:${SERIF};font-size:24px;line-height:1;font-weight:500;color:${ACCENT};text-align:left">${n}</td>
             <td valign="top" style="vertical-align:top">
               ${text}
             </td>
             ${thumb}
           </tr>
         </table>
+        <div style="height:16px;line-height:16px;font-size:0">&nbsp;</div>
       </td>
     </tr>`;
 }
 
-/** The weekly edition's intro paragraph, above the lead story. */
+/** Weekly masthead: a dark band under the header with the issue number and
+ *  the week range, so the weekly reads as its own edition. */
+export function weeklyMasthead(meta: WeeklyMailMeta, lang: MailLang): string {
+  const kicker = lang === "vi" ? "Bản tin tuần" : "Weekly edition";
+  const issue = lang === "vi" ? `Số ${meta.issue}` : `Issue ${meta.issue}`;
+  const range = formatWeekRange(meta.start_date, meta.end_date, lang);
+  return `<tr>
+      <td class="m-pad" bgcolor="${INK}" style="padding:22px ${PAD};background:${INK}">
+        <div style="font-family:${SANS};font-size:11px;line-height:1.4;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${MARKER}"><font color="${MARKER}">${escapeHtml(kicker)} · ${escapeHtml(issue)}</font></div>
+        <div class="m-mast" style="padding-top:6px;font-family:${SERIF};font-size:32px;line-height:1.1;font-weight:600;color:${ACCENT_FG}"><font color="${ACCENT_FG}">${escapeHtml(range)}</font></div>
+      </td>
+    </tr>`;
+}
+
+/** The weekly edition's intro, set as a pull-quote under the masthead. */
 function introBlock(intro: string): string {
   return `<tr>
-      <td class="m-pad m-fg" style="padding:24px ${PAD} 4px;font-family:${SERIF};font-size:17px;line-height:1.55;color:${FG}">${escapeHtml(intro)}</td>
+      <td class="m-pad" style="padding:26px ${PAD} 6px">
+        <div class="m-fg m-quote" style="border-left:3px solid ${ACCENT};padding:2px 0 2px 16px;font-family:${SERIF};font-size:20px;line-height:1.5;font-style:italic;color:${FG}">${escapeHtml(intro)}</div>
+      </td>
+    </tr>`;
+}
+
+/** "In this issue": every headline as a link (anchors are unreliable in
+ *  email, so each goes to the story). Weekly only, three or more stories. */
+export function issueIndexBlock(
+  items: { headline: string; href: string }[],
+  lang: MailLang
+): string {
+  const label = lang === "vi" ? "Trong số này" : "In this issue";
+  const rows = items
+    .map(
+      (it, i) => `<tr>
+            <td width="28" valign="top" class="m-muted" style="width:28px;padding:5px 0;vertical-align:top;font-family:${SANS};font-size:13px;line-height:1.45;font-weight:700;color:${MUTED}">${i + 1}</td>
+            <td valign="top" style="padding:5px 0;vertical-align:top"><a class="m-fg" href="${escapeHtml(it.href)}" target="_blank" style="font-family:${SANS};font-size:15px;line-height:1.45;color:${FG};text-decoration:none"><font class="m-fg" color="${FG}">${escapeHtml(it.headline)}</font></a></td>
+          </tr>`
+    )
+    .join("\n          ");
+  return `<tr>
+      <td class="m-pad" style="padding:20px ${PAD} 6px">
+        <div class="m-muted" style="padding-bottom:6px;font-family:${SANS};font-size:11px;line-height:1.4;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${MUTED}">${escapeHtml(label)}</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${rows}
+        </table>
+      </td>
     </tr>`;
 }
 
@@ -969,6 +1032,24 @@ export function renderNoteEmail(input: NoteEmailInput): {
 /* Digest                                                             */
 /* ------------------------------------------------------------------ */
 
+const TEXT_RULE = "-".repeat(32);
+
+/** Greedy word wrap at 76 columns; every line starts with `indent`. */
+function wrapText(text: string, indent: string, width = 76): string {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    if (line && indent.length + line.length + 1 + word.length > width) {
+      lines.push(`${indent}${line}`);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) lines.push(`${indent}${line}`);
+  return lines.join("\n");
+}
+
 function storyHref(
   story: DigestStory,
   lang: MailLang,
@@ -1065,35 +1146,50 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const heading = weekly
     ? weeklyHeading(weekly, lang)
     : `AI;DR — ${formatMailDate(input.date, lang)}`;
-  const textStories = stories.map((s, i) => {
-    const href = storyHref(s, lang, i === 0 ? "lead" : `s${i + 1}`);
-    const summary = i === 0 ? s.text.trim() : storySummary(s);
+  /** Plain text at a wrap width; the text-only layout shows it unwrapped
+   *  so a phone reflows it instead of breaking each line twice. */
+  const buildText = (width: number): string => {
+    const numWidth = String(count).length;
+    const indent = " ".repeat(numWidth + 2);
+    const textStories = stories.map((st, i) => {
+      const href = storyHref(st, lang, i === 0 ? "lead" : `s${i + 1}`);
+      const summary = i === 0 ? st.text.trim() : storySummary(st);
+      const meta = [
+        st.category ? mailCategoryLabel(st.category, lang) : "",
+        st.source ?? "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return [
+        `${`${i + 1}.`.padStart(numWidth + 1)} ${storyHeadline(st)}`,
+        meta ? `${indent}${meta}` : "",
+        summary ? wrapText(summary, indent, width) : "",
+        `${indent}${href}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    });
     return [
-      `${i + 1}. ${storyHeadline(s)}`,
-      summary ? `   ${summary}` : "",
-      `   ${href}`,
+      `${heading}\n${countLine(count, minutes, lang)}\n${TEXT_RULE}`,
+      intro ? wrapText(intro, "", width) : "",
+      textStories.join("\n\n"),
+      TEXT_RULE,
+      videoUrl
+        ? `${lang === "vi" ? "Xem bản tin video" : "Watch the daily brief"}: ${videoUrl}`
+        : "",
+      `${ctaLabel}: ${ctaUrl}`,
+      `${TEXT_RULE}\n${footerText(footer)}`,
     ]
       .filter(Boolean)
-      .join("\n");
-  });
-  const text = [
-    `${heading}\n${countLine(count, minutes, lang)}`,
-    intro ?? "",
-    textStories.join("\n\n"),
-    videoUrl
-      ? `${lang === "vi" ? "Xem bản tin video" : "Watch the daily brief"}: ${videoUrl}`
-      : "",
-    `${ctaLabel}: ${ctaUrl}`,
-    footerText(footer),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+      .join("\n\n");
+  };
+  const text = buildText(76);
 
   const homeHref = withMailUtm(SITE_URL, "digest", lang, { content: "header" });
   const header = headerBlock(lang, homeHref, {
     date: input.date,
     dateLabel: weekly
-      ? formatWeekRange(weekly.start_date, weekly.end_date, lang)
+      ? `${lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly"} #${weekly.issue}`
       : undefined,
     count,
     minutes,
@@ -1111,7 +1207,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
         subject,
         preheader,
         innerRows: `${header}
-    <tr><td class="m-pad m-fg" style="padding:28px ${PAD};font-family:${SANS};font-size:15px;line-height:1.55;color:${FG};white-space:pre-wrap">${escapeHtml(text)}</td></tr>`,
+    <tr><td class="m-pad m-fg" style="padding:28px ${PAD};font-family:${SANS};font-size:15px;line-height:1.55;color:${FG};white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;word-break:break-word">${escapeHtml(buildText(Number.POSITIVE_INFINITY))}</td></tr>`,
         footerRows: "",
       }),
     };
@@ -1121,8 +1217,18 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const [lead, ...rest] = stories;
   const rows = [
     header,
+    weekly ? weeklyMasthead(weekly, lang) : "",
     video && videoUrl ? videoBlock(video, videoUrl, lang, showImages) : "",
     intro ? introBlock(intro) : "",
+    weekly && count >= 3
+      ? issueIndexBlock(
+          stories.map((st, i) => ({
+            headline: storyHeadline(st),
+            href: storyHref(st, lang, i === 0 ? "lead" : `s${i + 1}`),
+          })),
+          lang
+        )
+      : "",
     lead
       ? leadStory(lead, storyHref(lead, lang, "lead"), lang, showImages)
       : "",
