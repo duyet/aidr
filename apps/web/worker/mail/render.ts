@@ -144,19 +144,24 @@ export interface DigestEmailInput {
 }
 
 export interface WeeklyMailMeta {
-  /** `YYYY-Www`. */
-  week: string;
-  issue: number;
+  /** `YYYY-Www` when the window is a whole ISO week (it then has an edition
+   *  page and an issue number); null for a rolling 7-day digest. */
+  week: string | null;
+  issue: number | null;
   start_date: string;
   end_date: string;
   /** The edition's intro in this language only; null leaves it out. */
   intro: string | null;
 }
 
-/** `AI;DR Weekly #3 · Oct 5 – 11, 2026`. */
-export function weeklyHeading(meta: WeeklyMailMeta, lang: MailLang): string {
+function weeklyTag(meta: WeeklyMailMeta, lang: MailLang): string {
   const label = lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly";
-  return `${label} #${meta.issue} · ${formatWeekRange(meta.start_date, meta.end_date, lang)}`;
+  return meta.issue ? `${label} #${meta.issue}` : label;
+}
+
+/** `AI;DR Weekly #3 · Oct 5 – 11, 2026` (no number for a rolling digest). */
+export function weeklyHeading(meta: WeeklyMailMeta, lang: MailLang): string {
+  return `${weeklyTag(meta, lang)} · ${formatWeekRange(meta.start_date, meta.end_date, lang)}`;
 }
 
 /** Lead headline after the issue tag, trimmed to the inbox width. */
@@ -165,7 +170,7 @@ export function weeklySubjectLine(
   lang: MailLang,
   leadHeadline?: string
 ): string {
-  const tag = `${lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly"} #${meta.issue}`;
+  const tag = weeklyTag(meta, lang);
   const head = leadHeadline?.trim();
   if (!head) return weeklyHeading(meta, lang);
   const room = SUBJECT_TARGET - tag.length - 3;
@@ -1006,7 +1011,9 @@ export function renderDigestEmail(input: DigestEmailInput): {
       : digestPreheader(input.date, lang, count, minutes, Boolean(video)));
   const validDate = /^\d{4}-\d{2}-\d{2}$/.test(input.date);
   const pagePath = weekly
-    ? weekPath(weekly.week)
+    ? weekly.week
+      ? weekPath(weekly.week)
+      : "/"
     : validDate
       ? dayArchivePath(input.date)
       : "/";
@@ -1029,9 +1036,13 @@ export function renderDigestEmail(input: DigestEmailInput): {
       ? input.totalStories
       : null;
   const ctaLabel = weekly
-    ? lang === "vi"
-      ? "Đọc cả số tuần trên aidr.today"
-      : "Read the full week on aidr.today"
+    ? weekly.week
+      ? lang === "vi"
+        ? "Đọc cả số tuần trên aidr.today"
+        : "Read the full week on aidr.today"
+      : lang === "vi"
+        ? "Xem tin mới nhất trên aidr.today"
+        : "See the latest stories on aidr.today"
     : lang === "vi"
       ? total
         ? `Xem đủ ${total} tin trên aidr.today`

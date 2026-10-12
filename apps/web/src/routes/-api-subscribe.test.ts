@@ -90,7 +90,7 @@ describe("POST /api/subscribe", () => {
     expect(res.status).toBe(200);
     expect(insert?.sql).toContain("mail_format = excluded.mail_format");
     // A re-subscribe must overwrite the old layout, not keep it.
-    expect(insert?.args.slice(-3)).toEqual([10, "large", "daily"]);
+    expect(insert?.args.slice(-4)).toEqual([10, "large", "daily", 1]);
   });
 
   it("stores the weekly frequency chosen in the form", async () => {
@@ -99,7 +99,19 @@ describe("POST /api/subscribe", () => {
       frequency: "weekly",
     });
     expect(insert?.sql).toContain("frequency = excluded.frequency");
-    expect(insert?.args.at(-1)).toBe("weekly");
+    expect(insert?.args.at(-2)).toBe("weekly");
+  });
+
+  it("stores the weekly delivery day, Monday when missing or invalid", async () => {
+    const wed = await post({
+      email: "reader@aidr.today",
+      frequency: "weekly",
+      weekly_day: 3,
+    });
+    expect(wed.insert?.sql).toContain("weekly_day = excluded.weekly_day");
+    expect(wed.insert?.args.at(-1)).toBe(3);
+    const bad = await post({ email: "reader@aidr.today", weekly_day: 9 });
+    expect(bad.insert?.args.at(-1)).toBe(1);
   });
 
   it("falls back to the default layout for an unknown value", async () => {
@@ -107,7 +119,7 @@ describe("POST /api/subscribe", () => {
       email: "reader@aidr.today",
       mail_format: "huge",
     });
-    expect(insert?.args.at(-2)).toBe("design");
+    expect(insert?.args.at(-3)).toBe("design");
   });
 });
 

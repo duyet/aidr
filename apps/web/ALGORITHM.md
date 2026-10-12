@@ -915,6 +915,23 @@ Every run (30 minutes).
 - **No delivery yet.** The weekly edition is not emailed, posted to
   Telegram or Facebook; it is a page (and a video script, rendered by hand).
 
+### 10c. Rolling weekly digest (LLM)
+
+`worker/weekly-digest.ts`, table `weekly_digests` (0060), one row per
+`end_date`. Weekly email subscribers pick a weekday (§11); the mail on
+local date D covers D-7..D-1. Built in the ingest `weekly` step after the
+ISO-week edition, only when that step made no LLM call this run (one call
+per run at most), for the window ending yesterday in the audience zone, and
+only when a confirmed weekly subscriber has today's weekday. A window that
+ends on a Sunday is the §10b edition and is never rebuilt here. Candidates,
+ranking and copy are the §10b machinery over the date range
+(`loadRangeCandidates`, `rankWeeklyCandidates`, `generateWeeklyCopy`,
+`composeWeeklyLines`): cited stories plus the window's strongest uncited
+ones, `weeklyScore`, `pickDiverse`, top 10, one bilingual LLM call. A
+title-only fallback is retried after `WEEKLY_RETRY_MS` and never replaces
+real copy. Subscribers east of the audience zone reach D first and get the
+mail once the audience day turns and the row exists.
+
 ### 11. Email digest
 
 Per-subscriber language and digest size (3/5/10
@@ -948,21 +965,27 @@ Every link carries `utm_content` for its position (`lead`, `s2`…, `cta`,
 `GET /api/admin/mail/preview?date=&lang=&format=`.
 
 **Weekly frequency.** `subscribers.frequency` is `daily` (default) or
-`weekly` (`src/lib/mail-frequency.ts`; the column is added at runtime by
-`ensureMailSchema`). Weekly subscribers are skipped by both daily lanes and
-get the §10b edition instead (`sendWeeklyLane`): the last closed week
-(`lastClosedWeek`), once, from 07:00 local on the first local day after the
-week's Sunday and for at most `WEEKLY_SEND_WINDOW_DAYS` (3) days after it, so
-switching to weekly late in the week waits for the next Monday rather than
-mailing stale news. A title-only `fallback` row waits for the LLM upgrade
-until the window's last day. The story lines come from `stories_vi` or
-`stories_en` only (no cross-language fallback: an empty VI column sends
+`weekly`, and `subscribers.weekly_day` (0 = Sunday … 6, default 1 = Monday)
+is the local weekday a weekly subscriber wants the mail
+(`src/lib/mail-frequency.ts`; both columns are added at runtime by
+`ensureMailSchema`). Weekly subscribers are skipped by both daily lanes.
+On their weekday, from 07:00 local, `sendWeeklyLane` mails the digest of
+the 7 audience-zone days before their local date (§10c), read from the
+shared row for that end date: the ISO-week edition (`weekly_snapshots`,
+with issue number and a `/week/YYYY-Www` link) when the window ends on a
+Sunday, else `weekly_digests`. Nothing is built or summarized per
+subscriber; rows are loaded once per (end date, language, size). The story
+lines come from that language's column only (an empty VI column sends
 nothing and the next run retries), cut to the subscriber's digest size, and
-render through the same `renderDigestEmail` with a `weekly` block: subject
-"AI;DR Weekly #N — lead headline", the week range in the header, the intro
-paragraph, links to `/week/YYYY-Www`, no video and no per-day feedback row.
-Idempotency is `subscribers.last_weekly_sent` (`YYYY-Www`). Preview:
-`GET /api/subscribe/preview?lang=&n=&format=&freq=weekly`.
+render through `renderDigestEmail` with a `weekly` block: subject
+"AI;DR Weekly #N — lead headline" (no number for a rolling window), the
+range in the header, the intro paragraph, no video and no per-day feedback
+row. A title-only `fallback` digest waits until 13:00 local for the LLM
+retry. Idempotency is `subscribers.last_weekly_sent` (the end date mailed);
+a new window must end at least 7 days after it, so moving the send day never
+mails overlapping weeks back to back. A failed send is not stamped and
+retries next run. Preview: `GET /api/subscribe/preview?lang=&n=&format=&freq=weekly`
+(newest digest of either kind).
 
 ### 12. Notify (`worker/notify/`)
 

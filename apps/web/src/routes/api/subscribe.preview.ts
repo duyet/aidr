@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { editionBullets } from "../../../worker/digest/edition.js";
 import {
   digestSizeFor,
+  latestWeeklyEndDate,
   loadWeeklyMail,
   renderEditionEmail,
   renderWeeklyEmail,
@@ -68,14 +69,10 @@ export const Route = createFileRoute("/api/subscribe/preview")({
         let ready = false;
         if (env?.DB && weekly) {
           try {
-            // Newest week with a row; an older table without one shows pending.
-            const latest = await env.DB.prepare(
-              "SELECT week FROM weekly_snapshots ORDER BY week DESC LIMIT 1"
-            )
-              .first<{ week: string }>()
-              .catch(() => null);
+            // Newest digest of either kind (ISO week or rolling 7 days).
+            const latest = await latestWeeklyEndDate(env);
             const mail = latest
-              ? await loadWeeklyMail(env, latest.week, lang, size)
+              ? await loadWeeklyMail(env, latest, lang, size)
               : null;
             if (mail) {
               html = (
