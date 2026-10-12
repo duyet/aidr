@@ -6,6 +6,7 @@ export const DATA_TABS = [
   "sources",
   "llm",
   "algo",
+  "trends",
   "admin",
 ] as const;
 
@@ -22,4 +23,14 @@ export function parseDataTab(raw: unknown): DataTab | undefined {
   return (DATA_TABS as readonly string[]).includes(aliased)
     ? (aliased as DataTab)
     : undefined;
+}
+
+/** Search for a tab switch: pins survive only on the Trends tab. */
+export function dataTabSearch(
+  tab: DataTab,
+  current: { track?: string }
+): { tab?: DataTab; track?: string } {
+  if (tab === "overview") return {};
+  if (tab === "trends" && current.track) return { tab, track: current.track };
+  return { tab };
 }
