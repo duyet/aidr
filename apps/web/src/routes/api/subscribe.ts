@@ -137,7 +137,8 @@ export const Route = createFileRoute("/api/subscribe")({
           clientIp(request),
           body?.digest_size,
           body?.mail_format,
-          body?.frequency
+          body?.frequency,
+          body?.weekly_day
         );
         if (isSubscribeError(result)) {
           return withCors(

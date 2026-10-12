@@ -5,6 +5,8 @@ import {
 import {
   type MailFrequency,
   normalizeMailFrequency,
+  normalizeWeeklyDay,
+  type WeeklyDay,
 } from "../../src/lib/mail-frequency.js";
 import { ensureMailSchema } from "../mail/schema.js";
 import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
@@ -136,7 +138,8 @@ export async function subscribe(
   ip?: string | null,
   digestSize?: unknown,
   mailFormat?: unknown,
-  frequency?: unknown
+  frequency?: unknown,
+  weeklyDay?: unknown
 ): Promise<{ ok: true; pending: true } | SubscribeError> {
   if (!isValidEmail(email) || !isDeliverableDomain(email)) {
     return { error: "invalid email", status: 400 };
@@ -149,6 +152,7 @@ export async function subscribe(
   const size = normalizeDigestSize(digestSize);
   const format = normalizeMailFormat(mailFormat);
   const cadence = normalizeMailFrequency(frequency);
+  const day = normalizeWeeklyDay(weeklyDay);
   const token = await deriveUnsubscribeToken(env, email);
   const now = Date.now();
 
@@ -198,6 +202,7 @@ export async function subscribe(
         digest_size: size,
         mail_format: format,
         frequency: cadence,
+        weekly_day: day,
       }
     ).catch((error) => {
       console.error(
@@ -209,12 +214,12 @@ export async function subscribe(
   }
 
   await env.DB.prepare(
-    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format, frequency)
-     VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)
+    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format, frequency, weekly_day)
+     VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
      ON CONFLICT(email) DO UPDATE SET
        lang = excluded.lang, timezone = excluded.timezone,
        digest_size = excluded.digest_size, mail_format = excluded.mail_format,
-       frequency = excluded.frequency`
+       frequency = excluded.frequency, weekly_day = excluded.weekly_day`
   )
     .bind(
       email,
@@ -224,7 +229,8 @@ export async function subscribe(
       token,
       size,
       format,
-      cadence
+      cadence,
+      day
     )
     .run();
 
@@ -271,6 +277,7 @@ export function settingsChangeFromParams(
     digest_size: params.get("set_digest_size") ?? undefined,
     mail_format: params.get("set_mail_format") ?? undefined,
     frequency: params.get("set_frequency") ?? undefined,
+    weekly_day: params.get("set_weekly_day") ?? undefined,
   };
 }
 
@@ -287,7 +294,7 @@ export async function confirmSubscription(
   }
   await ensureMailSchema(env.DB);
   const row = await env.DB.prepare(
-    `SELECT s.email, s.lang, s.confirmed, s.frequency, src.source
+    `SELECT s.email, s.lang, s.confirmed, s.frequency, s.weekly_day, src.source
      FROM subscribers s LEFT JOIN subscriber_sources src ON src.email = s.email
      WHERE s.unsubscribe_token = ?`
   )
@@ -297,6 +304,7 @@ export async function confirmSubscription(
       lang: string;
       confirmed: number;
       frequency: string | null;
+      weekly_day: number | null;
       source: string | null;
     }>();
   if (!row) return { error: "not found", status: 404 };
@@ -321,6 +329,7 @@ export async function confirmSubscription(
     lang: normalizedLang,
     unsubscribe_token: token,
     frequency: normalizeMailFrequency(prefs?.frequency ?? row.frequency),
+    weekly_day: normalizeWeeklyDay(prefs?.weekly_day ?? row.weekly_day),
   }).catch((error) => {
     console.error(
       "welcome email skipped:",
@@ -371,6 +380,7 @@ export interface SubscriberPrefs {
   digest_size: DigestSize;
   mail_format: MailFormat;
   frequency: MailFrequency;
+  weekly_day: WeeklyDay;
 }
 
 export async function getPrefsByToken(
@@ -382,7 +392,7 @@ export async function getPrefsByToken(
   }
   await ensureMailSchema(env.DB);
   const row = await env.DB.prepare(
-    "SELECT email, lang, timezone, digest_size, mail_format, frequency FROM subscribers WHERE unsubscribe_token = ?"
+    "SELECT email, lang, timezone, digest_size, mail_format, frequency, weekly_day FROM subscribers WHERE unsubscribe_token = ?"
   )
     .bind(token)
     .first<{
@@ -392,6 +402,7 @@ export async function getPrefsByToken(
       digest_size: number | null;
       mail_format: string | null;
       frequency: string | null;
+      weekly_day: number | null;
     }>();
   if (!row) return { error: "not found", status: 404 };
   return {
@@ -401,6 +412,7 @@ export async function getPrefsByToken(
     digest_size: normalizeDigestSize(row.digest_size),
     mail_format: normalizeMailFormat(row.mail_format),
     frequency: normalizeMailFrequency(row.frequency),
+    weekly_day: normalizeWeeklyDay(row.weekly_day),
   };
 }
 
@@ -413,6 +425,7 @@ export async function updatePrefsByToken(
     digest_size?: unknown;
     mail_format?: unknown;
     frequency?: unknown;
+    weekly_day?: unknown;
   }
 ): Promise<{ ok: true } | SubscribeError> {
   if (typeof token !== "string" || token.length === 0) {
@@ -440,6 +453,10 @@ export async function updatePrefsByToken(
     prefs.frequency === undefined || prefs.frequency === null
       ? null
       : normalizeMailFrequency(prefs.frequency);
+  const day =
+    prefs.weekly_day === undefined || prefs.weekly_day === null
+      ? null
+      : normalizeWeeklyDay(prefs.weekly_day);
 
   await env.DB.prepare(
     `UPDATE subscribers SET
@@ -447,10 +464,11 @@ export async function updatePrefsByToken(
        timezone = COALESCE(?, timezone),
        digest_size = COALESCE(?, digest_size),
        mail_format = COALESCE(?, mail_format),
-       frequency = COALESCE(?, frequency)
+       frequency = COALESCE(?, frequency),
+       weekly_day = COALESCE(?, weekly_day)
      WHERE unsubscribe_token = ?`
   )
-    .bind(lang, timezone, size, format, cadence, token)
+    .bind(lang, timezone, size, format, cadence, day, token)
     .run();
   return { ok: true };
 }

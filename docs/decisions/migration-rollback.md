@@ -289,6 +289,17 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0060_weekly_digests.sql
+
+- Change: new table `weekly_digests` (one rolling 7-day digest per
+  `end_date` for weekly email subscribers). `ensureMailSchema` also adds
+  `subscribers.weekly_day INTEGER NOT NULL DEFAULT 1` at runtime.
+- Risk: none for existing rows. Weekly subscribers default to Monday, which
+  reads the existing `weekly_snapshots` edition.
+- Rollback: deploy the previous Worker; `DROP TABLE weekly_digests;` and
+  optionally `ALTER TABLE subscribers DROP COLUMN weekly_day;`. Weekly
+  subscribers then get the Monday edition only.
+
 ## 0059_subscriber_frequency.sql
 
 - Change: none in SQL (`SELECT 1`). `ensureMailSchema` adds

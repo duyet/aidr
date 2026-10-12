@@ -241,7 +241,34 @@ export function composeWeeklyEdition(
 ): WeeklyEdition | null {
   const bounds = weekBounds(week);
   const issue = weekIssue(week);
-  if (!bounds || issue === null || rows.length === 0) return null;
+  if (!bounds || issue === null) return null;
+  const lines = composeWeeklyLines(rows, llm);
+  if (!lines) return null;
+  return {
+    week,
+    issue,
+    start_date: bounds.start,
+    end_date: bounds.end,
+    ...lines,
+  };
+}
+
+export interface WeeklyLines {
+  item_ids: string[];
+  intro_en: string | null;
+  intro_vi: string | null;
+  stories_en: WeeklyStoryLine[];
+  stories_vi: WeeklyStoryLine[];
+  fallback: boolean;
+}
+
+/** Story lines and intros for any 7-day window (the ISO-week edition and the
+ *  rolling weekly digest share it). Null when no story has an English line. */
+export function composeWeeklyLines(
+  rows: readonly WeeklyCandidate[],
+  llm: WeeklyLlmOutput | null
+): WeeklyLines | null {
+  if (rows.length === 0) return null;
   const stories_en: WeeklyStoryLine[] = [];
   const stories_vi: WeeklyStoryLine[] = [];
   for (const row of rows) {
@@ -259,10 +286,6 @@ export function composeWeeklyEdition(
   if (stories_en.length === 0) return null;
   const llmUseful = Boolean(llm?.intro_en) && (llm?.en.size ?? 0) > 0;
   return {
-    week,
-    issue,
-    start_date: bounds.start,
-    end_date: bounds.end,
     item_ids: rows.map((r) => r.id),
     intro_en: llm?.intro_en ?? null,
     intro_vi: llm?.intro_vi ?? null,
@@ -272,7 +295,7 @@ export function composeWeeklyEdition(
   };
 }
 
-function weekSecBounds(start: string, end: string) {
+export function weekSecBounds(start: string, end: string) {
   const from = Math.floor(
     Date.parse(`${start}T00:00:00${AUDIENCE_UTC_OFFSET}`) / 1000
   );
@@ -307,6 +330,17 @@ export async function loadWeeklyCandidates(
 ): Promise<WeeklyCandidate[]> {
   const bounds = weekBounds(week);
   if (!bounds) return [];
+  return loadRangeCandidates(env, bounds);
+}
+
+/** Candidates for any run of audience-zone days, `start`..`end` inclusive:
+ *  the stories the daily editions of those days cited plus the window's
+ *  strongest uncited stories. Shared by the ISO-week edition and the rolling
+ *  weekly digest (worker/weekly-digest.ts). Read-only. */
+export async function loadRangeCandidates(
+  env: Pick<Env, "DB">,
+  bounds: { start: string; end: string }
+): Promise<WeeklyCandidate[]> {
   const { results: snaps } = await env.DB.prepare(
     "SELECT date, bullets_en FROM tldr_snapshots WHERE date >= ? AND date <= ? ORDER BY date"
   )
@@ -384,7 +418,11 @@ export async function loadWeeklyCandidates(
   return [...byId.values()];
 }
 
-export function weeklyPrompt(week: string, rows: readonly WeeklyCandidate[]) {
+export function weeklyPrompt(
+  week: string,
+  rows: readonly WeeklyCandidate[],
+  period = `ISO week ${week}`
+) {
   const items = rows.map((r) => ({
     id: r.id,
     title: stripTitleMarker(r.title),
@@ -393,7 +431,7 @@ export function weeklyPrompt(week: string, rows: readonly WeeklyCandidate[]) {
       : undefined,
     title_vi: r.title_vi ?? undefined,
   }));
-  return `These are the ${rows.length} most important AI/tech stories of ISO week ${week}, best first. Write the weekly edition of a news digest, in English and in Vietnamese.
+  return `These are the ${rows.length} most important AI/tech stories of ${period}, best first. Write the weekly edition of a news digest, in English and in Vietnamese.
 
 - "intro_en": 2–3 sentences (at most 450 characters) on what defined the week: name the two or three biggest stories and the thread that connects them. Only facts from the items.
 - "intro_vi": the same intro the way a Vietnamese tech journalist would write it, following the house style above, never word by word.
@@ -408,10 +446,11 @@ Respond with strict JSON only: {"intro_en":"...","intro_vi":"...","stories":[{"i
 /** Up to two passes over the TL;DR chain inside one budget; null output
  * when every pass failed. `providerFailure` marks a failure the chain
  * absorbed (timeouts, 5xx, accept misses), as opposed to an app bug. */
-async function generateWeeklyCopy(
+export async function generateWeeklyCopy(
   env: Env,
   week: string,
-  rows: readonly WeeklyCandidate[]
+  rows: readonly WeeklyCandidate[],
+  period?: string
 ): Promise<{
   output: WeeklyLlmOutput | null;
   tokens: number;
@@ -435,7 +474,7 @@ async function generateWeeklyCopy(
           env,
           [
             { role: "system", content: system },
-            { role: "user", content: weeklyPrompt(week, rows) },
+            { role: "user", content: weeklyPrompt(week, rows, period) },
           ],
           {
             json: true,
@@ -486,22 +525,40 @@ export interface WeeklyRunStats {
   tokens: number;
   reason: string;
   week: string;
+  /** An LLM call was attempted this run, even one that failed (a failed
+   *  call reports 0 tokens). The rolling digest waits when true. */
+  llmCalled?: boolean;
 }
 
 /** Ranks the week and writes its copy without touching D1. */
 async function buildWeeklyEdition(
   env: Env,
   week: string
-): Promise<{ edition: WeeklyEdition | null; tokens: number; reason: string }> {
+): Promise<{
+  edition: WeeklyEdition | null;
+  tokens: number;
+  reason: string;
+  llmCalled: boolean;
+}> {
   const candidates = await loadWeeklyCandidates(env, week);
   const rows = rankWeeklyCandidates(candidates);
   if (rows.length === 0) {
-    return { edition: null, tokens: 0, reason: `no stories in ${week}` };
+    return {
+      edition: null,
+      tokens: 0,
+      reason: `no stories in ${week}`,
+      llmCalled: false,
+    };
   }
   const copy = await generateWeeklyCopy(env, week, rows);
   const edition = composeWeeklyEdition(week, rows, copy.output);
   if (!edition) {
-    return { edition: null, tokens: copy.tokens, reason: "nothing to persist" };
+    return {
+      edition: null,
+      tokens: copy.tokens,
+      reason: "nothing to persist",
+      llmCalled: true,
+    };
   }
   const reason = !edition.fallback
     ? `${edition.stories_en.length} EN / ${edition.stories_vi.length} VI stories`
@@ -511,7 +568,7 @@ async function buildWeeklyEdition(
         // still sees the attempts). Detail is in the console.warn above.
         `title fallback, model chain unavailable; retry in ${WEEKLY_RETRY_MS / 3_600_000}h`
       : `LLM failed (${copy.error ?? "no intro"}); title fallback`;
-  return { edition, tokens: copy.tokens, reason };
+  return { edition, tokens: copy.tokens, reason, llmCalled: true };
 }
 
 interface ExistingWeekRow {
@@ -562,6 +619,7 @@ export async function ensureWeeklyEdition(
 
   let lastReason = "edition already written";
   let tokens = 0;
+  let llmCalled = false;
   for (const week of weeks) {
     const existing = rows.get(week) ?? null;
     const gate = weeklyGateReason({
@@ -575,6 +633,7 @@ export async function ensureWeeklyEdition(
     }
     const built = await buildWeeklyEdition(env, week);
     tokens += built.tokens;
+    if (built.llmCalled) llmCalled = true;
     // No stories that week (no LLM call was made): try the next one.
     if (!built.edition) {
       lastReason = built.reason;
@@ -594,12 +653,19 @@ export async function ensureWeeklyEdition(
         tokens,
         reason: `kept existing edition: ${built.reason}`,
         week,
+        llmCalled,
       };
     }
     await writeWeeklyEdition(env, built.edition, existing, nowMs);
-    return { generated: true, tokens, reason: built.reason, week };
+    return { generated: true, tokens, reason: built.reason, week, llmCalled };
   }
-  return { generated: false, tokens, reason: lastReason, week: latest };
+  return {
+    generated: false,
+    tokens,
+    reason: lastReason,
+    week: latest,
+    llmCalled,
+  };
 }
 
 async function writeWeeklyEdition(

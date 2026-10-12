@@ -377,7 +377,7 @@ export const WEBMCP_FORM_ANNOTATIONS: readonly WebMcpFormAnnotation[] = [
     id: "subscribe-email",
     name: "subscribe_email",
     description:
-      "Subscribe an email address to the daily AI;DR digest (3, 5, or 10 stories). Sends no message from the browser; the confirmation flow is the site's.",
+      "Subscribe an email address to the AI;DR digest: daily, or weekly on a chosen weekday (0 = Sunday … 6 = Saturday), with 3, 5, or 10 stories. Sends no message from the browser; the confirmation flow is the site's.",
     inputSchema: {
       type: "object",
       properties: {
@@ -389,6 +389,12 @@ export const WEBMCP_FORM_ANNOTATIONS: readonly WebMcpFormAnnotation[] = [
           enum: [...MAIL_FORMATS],
           default: "design",
         },
+        frequency: {
+          type: "string",
+          enum: ["daily", "weekly"],
+          default: "daily",
+        },
+        weekly_day: { type: "integer", minimum: 0, maximum: 6, default: 1 },
       },
       required: ["email"],
       additionalProperties: false,

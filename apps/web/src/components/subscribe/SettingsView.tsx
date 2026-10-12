@@ -3,8 +3,11 @@ import { useEffect, useState } from "react";
 import { withLang } from "../../lib/locale-url";
 import { type MailFormat, normalizeMailFormat } from "../../lib/mail-format";
 import {
+  DEFAULT_WEEKLY_DAY,
   type MailFrequency,
   normalizeMailFrequency,
+  normalizeWeeklyDay,
+  type WeeklyDay,
 } from "../../lib/mail-frequency";
 import type { Lang } from "../../lib/types";
 import { FrequencyField } from "./FrequencyField";
@@ -22,6 +25,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
   const [digestSize, setDigestSize] = useState<DigestSize>(5);
   const [format, setFormat] = useState<MailFormat>("design");
   const [frequency, setFrequency] = useState<MailFrequency>("daily");
+  const [weeklyDay, setWeeklyDay] = useState<WeeklyDay>(DEFAULT_WEEKLY_DAY);
   const [save, setSave] = useState<"idle" | "saving" | "done" | "error">(
     "idle"
   );
@@ -37,6 +41,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
           digest_size: number;
           mail_format?: string;
           frequency?: string;
+          weekly_day?: number;
         }>;
       })
       .then((data) => {
@@ -50,6 +55,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
         );
         setFormat(normalizeMailFormat(data.mail_format));
         setFrequency(normalizeMailFrequency(data.frequency));
+        setWeeklyDay(normalizeWeeklyDay(data.weekly_day));
         setLoad("ready");
       })
       .catch(() => {
@@ -74,6 +80,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             digest_size: digestSize,
             mail_format: format,
             frequency,
+            weekly_day: weeklyDay,
           }),
         }
       );
@@ -113,6 +120,8 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
           name="settings-frequency"
           value={frequency}
           onChange={setFrequency}
+          weeklyDay={weeklyDay}
+          onWeeklyDayChange={setWeeklyDay}
         />
         <fieldset className="flex gap-4 text-sm">
           <legend className="mb-1 block font-medium">
