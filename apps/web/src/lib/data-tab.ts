@@ -6,6 +6,7 @@ export const DATA_TABS = [
   "sources",
   "llm",
   "algo",
+  "trends",
   "admin",
 ] as const;
 
@@ -22,4 +23,14 @@ export function parseDataTab(raw: unknown): DataTab | undefined {
   return (DATA_TABS as readonly string[]).includes(aliased)
     ? (aliased as DataTab)
     : undefined;
+}
+
+/** Search for a tab switch. Pins ride along on every tab, so a visit to
+ *  another tab and back keeps the tracked set. */
+export function dataTabSearch(
+  tab: DataTab,
+  current: { track?: string }
+): { tab?: DataTab; track?: string } {
+  const track = current.track ? { track: current.track } : {};
+  return tab === "overview" ? track : { tab, ...track };
 }

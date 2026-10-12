@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.23](https://github.com/duyet/aidr/compare/aidr-v0.1.22...aidr-v0.1.23) (2026-10-12)
+
+
+### ✨ Features
+
+* **extension:** web dialog parity and cached feed ([#561](https://github.com/duyet/aidr/issues/561)) ([9453505](https://github.com/duyet/aidr/commit/9453505d3aad0b1442139418985e362a24d450cf))
+* **header:** calendar popover on desktop, bottom sheet on phone ([#607](https://github.com/duyet/aidr/issues/607)) ([84a0012](https://github.com/duyet/aidr/commit/84a00122c7a01b97c4558a8f4aa5e929f337cd22))
+* **prefs:** add relaxed and airy density levels; extension defaults to spacious ([#578](https://github.com/duyet/aidr/issues/578)) ([eeafb52](https://github.com/duyet/aidr/commit/eeafb5277fb6303d100d671bbd523eacefbc635b))
+
 ## [0.1.22](https://github.com/duyet/aidr/compare/aidr-v0.1.21...aidr-v0.1.22) (2026-10-09)
 
 

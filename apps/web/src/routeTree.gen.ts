@@ -58,6 +58,7 @@ import { Route as ApiSystemRunAttemptsRouteImport } from './routes/api/system.ru
 import { Route as ApiSystemRunItemsRouteImport } from './routes/api/system.run-items'
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
 import { Route as ApiSystemSourcesRouteImport } from './routes/api/system.sources'
+import { Route as ApiSystemTrendsRouteImport } from './routes/api/system.trends'
 import { Route as ApiWebhooksClerkRouteImport } from './routes/api/webhooks.clerk'
 import { Route as ApiWeekWeekRouteImport } from './routes/api/week.$week'
 import { Route as ApiOgDateDateRouteImport } from './routes/api/og.date.$date'
@@ -307,6 +308,11 @@ const ApiSystemSourcesRoute = ApiSystemSourcesRouteImport.update({
   path: '/sources',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiSystemTrendsRoute = ApiSystemTrendsRouteImport.update({
+  id: '/trends',
+  path: '/trends',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 const ApiWebhooksClerkRoute = ApiWebhooksClerkRouteImport.update({
   id: '/api/webhooks/clerk',
   path: '/api/webhooks/clerk',
@@ -373,6 +379,7 @@ export interface FileRoutesByFullPath {
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
+  '/api/system/trends': typeof ApiSystemTrendsRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
   '/api/week/$week': typeof ApiWeekWeekRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
@@ -427,6 +434,7 @@ export interface FileRoutesByTo {
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
+  '/api/system/trends': typeof ApiSystemTrendsRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
   '/api/week/$week': typeof ApiWeekWeekRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
@@ -482,6 +490,7 @@ export interface FileRoutesById {
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
+  '/api/system/trends': typeof ApiSystemTrendsRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
   '/api/week/$week': typeof ApiWeekWeekRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
@@ -538,6 +547,7 @@ export interface FileRouteTypes {
     | '/api/system/run-items'
     | '/api/system/runs'
     | '/api/system/sources'
+    | '/api/system/trends'
     | '/api/webhooks/clerk'
     | '/api/week/$week'
     | '/api/og/date/$date'
@@ -592,6 +602,7 @@ export interface FileRouteTypes {
     | '/api/system/run-items'
     | '/api/system/runs'
     | '/api/system/sources'
+    | '/api/system/trends'
     | '/api/webhooks/clerk'
     | '/api/week/$week'
     | '/api/og/date/$date'
@@ -646,6 +657,7 @@ export interface FileRouteTypes {
     | '/api/system/run-items'
     | '/api/system/runs'
     | '/api/system/sources'
+    | '/api/system/trends'
     | '/api/webhooks/clerk'
     | '/api/week/$week'
     | '/api/og/date/$date'
@@ -1038,6 +1050,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemSourcesRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/system/trends': {
+      id: '/api/system/trends'
+      path: '/trends'
+      fullPath: '/api/system/trends'
+      preLoaderRoute: typeof ApiSystemTrendsRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
     '/api/webhooks/clerk': {
       id: '/api/webhooks/clerk'
       path: '/api/webhooks/clerk'
@@ -1098,6 +1117,7 @@ interface ApiSystemRouteChildren {
   ApiSystemRunItemsRoute: typeof ApiSystemRunItemsRoute
   ApiSystemRunsRoute: typeof ApiSystemRunsRoute
   ApiSystemSourcesRoute: typeof ApiSystemSourcesRoute
+  ApiSystemTrendsRoute: typeof ApiSystemTrendsRoute
 }
 
 const ApiSystemRouteChildren: ApiSystemRouteChildren = {
@@ -1111,6 +1131,7 @@ const ApiSystemRouteChildren: ApiSystemRouteChildren = {
   ApiSystemRunItemsRoute: ApiSystemRunItemsRoute,
   ApiSystemRunsRoute: ApiSystemRunsRoute,
   ApiSystemSourcesRoute: ApiSystemSourcesRoute,
+  ApiSystemTrendsRoute: ApiSystemTrendsRoute,
 }
 
 const ApiSystemRouteWithChildren = ApiSystemRoute._addFileChildren(

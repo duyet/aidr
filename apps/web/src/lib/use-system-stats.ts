@@ -19,6 +19,7 @@ const LONG_TTL_PATHS: Record<string, number> = {
   "/api/system/models": MODELS_TTL_MS,
   "/api/system/accounts": ACCOUNTS_TTL_MS,
   "/api/system/audience": AUDIENCE_TTL_MS,
+  "/api/system/trends": AUDIENCE_TTL_MS,
 };
 
 export interface SystemDataState<T> {
