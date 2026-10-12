@@ -851,6 +851,7 @@ describe("note mails share the digest shell", () => {
     digest_size: 10,
     mail_format: "large" as const,
     frequency: "weekly" as const,
+    weekly_day: 3 as const,
   };
 
   it.each([

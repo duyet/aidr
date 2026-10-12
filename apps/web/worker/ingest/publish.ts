@@ -17,6 +17,7 @@ import {
   previewWeeklyEdition,
   summarizeWeeklyPreview,
 } from "../weekly.js";
+import { ensureWeeklyDigest } from "../weekly-digest.js";
 import { llmStep, safeErrorMessage, safeStep } from "../workflow-step.js";
 import { type IngestContext, TLDR_STEP } from "./context.js";
 import { DRY_RUN_SKIP_REASON } from "./mode.js";
@@ -154,10 +155,22 @@ export async function generateWeekly(ctx: IngestContext): Promise<{
           };
         }
         const result = await ensureWeeklyEdition(env);
+        let reason = `${result.week}: ${result.reason}`;
+        let generated = result.generated;
+        let tokens = result.tokens;
+        // The rolling digest for weekly subscribers shares the step's
+        // budget: at most one LLM call per run, so it waits when the
+        // ISO-week edition just attempted one (a failed call has 0 tokens).
+        if (!result.llmCalled) {
+          const digest = await ensureWeeklyDigest(env);
+          reason += `; digest ${digest.endDate}: ${digest.reason}`;
+          generated ||= digest.generated;
+          tokens += digest.tokens;
+        }
         return {
-          generated: result.generated,
-          tokens: result.tokens,
-          reason: `${result.week}: ${result.reason}`,
+          generated,
+          tokens,
+          reason,
           preview: null as WeeklyPreviewSummary | null,
         };
       } catch (error) {

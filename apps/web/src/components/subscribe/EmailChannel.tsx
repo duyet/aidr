@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DEFAULT_WEEKLY_DAY } from "../../lib/mail-frequency";
 import type { Lang } from "../../lib/types";
 import { type DigestPrefs, EmailSubscribeForm } from "../EmailSubscribeForm";
 import { ChannelSplit } from "./ChannelSplit";
@@ -13,6 +14,7 @@ export function EmailChannel({ lang }: { lang: Lang }) {
     size: 5,
     format: "design",
     frequency: "daily",
+    weeklyDay: DEFAULT_WEEKLY_DAY,
   });
 
   return (
