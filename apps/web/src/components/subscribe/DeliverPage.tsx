@@ -11,6 +11,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Mail, Send } from "lucide-react";
 import { type DeliverTab, parseDeliverTab } from "../../lib/deliver-tab";
 import { useLang } from "../../lib/lang-context";
+import type { MailFrequency } from "../../lib/mail-frequency";
 import { RSS_FEED_PATH } from "../../lib/site";
 import { ChromeMark } from "../header/ChromeMark";
 import { ChromeChannel } from "./ChromeChannel";
@@ -21,9 +22,12 @@ import { TelegramChannel } from "./TelegramChannel";
 export function DeliverPage({
   tab,
   onTabChange,
+  frequency = "daily",
 }: {
   tab: DeliverTab;
   onTabChange: (tab: DeliverTab) => void;
+  /** Preselected email cadence, from `?freq=weekly`. */
+  frequency?: MailFrequency;
 }) {
   const lang = useLang();
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
@@ -100,7 +104,7 @@ export function DeliverPage({
         </TabsContent>
 
         <TabsContent value="email" className="mt-8">
-          <EmailChannel lang={lang} />
+          <EmailChannel lang={lang} initialFrequency={frequency} />
         </TabsContent>
       </Tabs>
 

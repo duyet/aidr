@@ -5,14 +5,28 @@ import { UnsubscribeView } from "../components/subscribe/UnsubscribeView";
 import { type DeliverTab, parseDeliverTab } from "../lib/deliver-tab";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
+import {
+  type MailFrequency,
+  normalizeMailFrequency,
+} from "../lib/mail-frequency";
 import { localizedPageHead } from "../lib/seo";
 
 export const Route = createFileRoute("/subscribe")({
   validateSearch: (
     search: Record<string, unknown>
-  ): { tab?: DeliverTab; unsubscribe?: string; settings?: string } => {
-    const out: { tab?: DeliverTab; unsubscribe?: string; settings?: string } =
-      {};
+  ): {
+    tab?: DeliverTab;
+    freq?: MailFrequency;
+    unsubscribe?: string;
+    settings?: string;
+  } => {
+    const out: {
+      tab?: DeliverTab;
+      freq?: MailFrequency;
+      unsubscribe?: string;
+      settings?: string;
+    } = {};
+    if (search.freq === "weekly") out.freq = "weekly";
     if (typeof search.tab === "string") out.tab = parseDeliverTab(search.tab);
     if (typeof search.unsubscribe === "string")
       out.unsubscribe = search.unsubscribe;
@@ -34,7 +48,7 @@ export const Route = createFileRoute("/subscribe")({
 function SubscribePage() {
   const lang = useLang();
   const navigate = Route.useNavigate();
-  const { tab, unsubscribe, settings } = Route.useSearch();
+  const { tab, freq, unsubscribe, settings } = Route.useSearch();
 
   if (unsubscribe) {
     return <UnsubscribeView token={unsubscribe} lang={lang} />;
@@ -46,9 +60,13 @@ function SubscribePage() {
   return (
     <DeliverPage
       tab={parseDeliverTab(tab)}
+      frequency={normalizeMailFrequency(freq)}
       onTabChange={(next) =>
         void navigate({
-          search: next === "chrome" ? {} : { tab: next },
+          search: {
+            ...(next === "chrome" ? {} : { tab: next }),
+            ...(freq ? { freq } : {}),
+          },
           replace: true,
         })
       }

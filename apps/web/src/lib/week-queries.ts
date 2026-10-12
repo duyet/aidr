@@ -6,12 +6,11 @@
 import type { DbReader } from "./db";
 import { getItemsByIds } from "./feed-queries";
 import { publisherHost } from "./publisher-host";
-import type { FeedItem, Lang } from "./types";
+import type { FeedItem } from "./types";
 import {
   parseJsonArray,
   parseStoryLines,
   type WeekEdition,
-  type WeekStory,
   type WeekSummary,
 } from "./week-model";
 
