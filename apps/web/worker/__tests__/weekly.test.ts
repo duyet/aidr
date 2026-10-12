@@ -34,6 +34,7 @@ const {
   composeWeeklyEdition,
   editionHits,
   ensureWeeklyEdition,
+  loadWeeklyCandidates,
   rankWeeklyCandidates,
   sanitizeWeeklyOutput,
   weeklyGateReason,
@@ -231,7 +232,7 @@ class WeeklyD1 {
         ];
       }
       if (/FROM weekly_snapshots/.test(sql)) return this.existing;
-      if (/duplicate_of/.test(sql)) return [];
+      if (/SELECT id, duplicate_of/.test(sql)) return [];
       if (/FROM items i/.test(sql)) {
         return [
           {
@@ -459,5 +460,82 @@ describe("weekly step", () => {
       name: "weekly",
       action: "preview: 1 stories",
     });
+  });
+});
+
+describe("loadWeeklyCandidates engagement", () => {
+  function db(rows: Record<string, unknown>[]) {
+    const reads: { sql: string; args: unknown[] }[] = [];
+    return {
+      reads,
+      prepare(sql: string) {
+        let args: unknown[] = [];
+        const bound = {
+          all: async () => ({
+            results: /FROM tldr_snapshots/.test(sql)
+              ? [
+                  {
+                    date: "2026-10-06",
+                    bullets_en: JSON.stringify([
+                      { text: "a", item_ids: ["agg"] },
+                    ]),
+                  },
+                ]
+              : /FROM items i/.test(sql)
+                ? rows
+                : [],
+          }),
+          first: async () => null,
+        };
+        return {
+          ...bound,
+          bind: (...a: unknown[]) => {
+            args = a;
+            reads.push({ sql, args });
+            return bound;
+          },
+        };
+      },
+    };
+  }
+  const base = {
+    title: "t",
+    title_vi: null,
+    summary: null,
+    category: null,
+    llm_importance: 7,
+    llm_quality: 7,
+    vote_net: 0,
+    signal_url: null,
+  };
+
+  it("ranks reader engagement only: aggregator author/tweet counts are dropped", async () => {
+    const d = db([
+      {
+        ...base,
+        id: "agg",
+        source_id: "marketbrief",
+        points: 40,
+        comments: 300,
+        merged_members: JSON.stringify([["hn", 120, 30, null]]),
+      },
+    ]);
+    const [c] = await loadWeeklyCandidates(
+      { DB: d as unknown as D1Database },
+      "2026-W41"
+    );
+    // The HN copy merged into it supplies the reader signal.
+    expect(c?.points).toBe(120);
+    expect(c?.comments).toBe(30);
+  });
+
+  it("bounds cited stories to the week", async () => {
+    const d = db([]);
+    await loadWeeklyCandidates({ DB: d as unknown as D1Database }, "2026-W41");
+    const cited = d.reads.find(
+      (r) => /json_each/.test(r.sql) && /FROM items i/.test(r.sql)
+    );
+    expect(cited?.sql).toContain("i.published_at >= ?");
+    expect(cited?.args).toHaveLength(3);
   });
 });

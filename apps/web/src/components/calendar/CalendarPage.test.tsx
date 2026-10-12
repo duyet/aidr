@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { CalendarDay, CalendarMonth } from "../../lib/calendar";
 import { calendarPath } from "../../lib/calendar";
 import { dayArchivePath } from "../../lib/day-archive";
+import { weekPath } from "../../lib/week";
 import { CalendarPage } from "./CalendarPage";
 
 afterEach(cleanup);
@@ -87,10 +88,21 @@ describe("CalendarPage layout", () => {
     expect(
       screen.getByRole("link", { name: "Tháng trước" }).getAttribute("href")
     ).toBe(calendarPath("2026-09", "vi"));
+    expect(screen.queryByRole("link", { name: "Hôm nay" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Tháng sau" })).toBeNull();
+  });
+
+  it("links Today back to the current month from an older one", () => {
+    render(
+      <CalendarPage
+        cal={{ ...OCTOBER, month: "2026-09", firstMonth: "2026-09" }}
+        lang="vi"
+        today="2026-10-11"
+      />
+    );
     expect(
       screen.getByRole("link", { name: "Hôm nay" }).getAttribute("href")
     ).toBe(calendarPath("2026-10", "vi"));
-    expect(screen.queryByRole("link", { name: "Tháng sau" })).toBeNull();
   });
 
   it("drops the previous-month link at the first month", () => {
@@ -198,5 +210,60 @@ describe("CalendarPage agenda", () => {
     expect(rows[0].querySelector("img")?.getAttribute("src")).toBe(
       "https://img.example/2026-10-11.jpg"
     );
+  });
+});
+
+describe("CalendarPage keyboard and extras", () => {
+  it("keeps one tab stop on the previewed tile and moves focus with arrows", () => {
+    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    expect(tile(/October 11:/).getAttribute("tabindex")).toBeNull();
+    expect(tile(/October 10:/).getAttribute("tabindex")).toBe("-1");
+    tile(/October 11:/).focus();
+    fireEvent.keyDown(tile(/October 11:/), { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(tile(/October 10:/));
+    expect(preview().getByRole("heading").textContent).toBe("Lead 2026-10-10");
+    fireEvent.keyDown(tile(/October 10:/), { key: "Home" });
+    expect(document.activeElement).toBe(tile(/October 9:/));
+    fireEvent.keyDown(tile(/October 9:/), { key: "End" });
+    expect(document.activeElement).toBe(tile(/October 11:/));
+    fireEvent.keyDown(tile(/October 11:/), { key: "ArrowRight" });
+    expect(document.activeElement).toBe(tile(/October 11:/));
+  });
+
+  it("labels the legend scale, no-edition and today keys", () => {
+    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    const legend = within(screen.getByTestId("calendar-legend"));
+    expect(legend.getByText(/up to 33/)).toBeTruthy();
+    expect(legend.getByText("No edition")).toBeTruthy();
+    expect(legend.getByText("Today")).toBeTruthy();
+  });
+
+  it("disables Today on the current month", () => {
+    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    expect(
+      screen.getByText("Today", { selector: "span[aria-disabled]" })
+    ).toBeTruthy();
+  });
+
+  it("links closed weeks of the month to their weekly edition", () => {
+    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    const links = within(screen.getByTestId("calendar-weeks")).getAllByRole(
+      "link"
+    );
+    expect(links.map((a) => a.getAttribute("href"))).toEqual([
+      weekPath("2026-W40", "en"),
+    ]);
+    expect(links[0].textContent).toContain("W40");
+  });
+
+  it("omits the weekly strip when no week of the month has an edition", () => {
+    render(
+      <CalendarPage
+        cal={{ ...OCTOBER, month: "2026-08", days: [] }}
+        lang="en"
+        today="2026-10-11"
+      />
+    );
+    expect(screen.queryByTestId("calendar-weeks")).toBeNull();
   });
 });

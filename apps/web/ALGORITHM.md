@@ -40,7 +40,7 @@ One ingest run does three jobs. The scheduler starts one every 30 minutes, with 
 
 Publish has two deliveries and they do not share a clock or a table:
 
-- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
+- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. Subscribers with `frequency = weekly` skip these lanes and get the weekly edition on Monday morning instead (§11, idempotency `last_weekly_sent`). A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
 
@@ -431,7 +431,10 @@ alarm arms about a day after the deploy.
 
 ### 2. Dedupe
 
-Item id = `sha256(url)`; ids already in `items` are dropped.
+Item id = `sha256(url)`; ids already in `items` are dropped. `publishedAt`
+is normalized to epoch seconds and clamped to now (`toCandidates`): a feed
+date in the future (no zone, wrong offset) would otherwise rank as brand new,
+with the breaking boost, and stay in every 24h window for longer.
 
 Exception: an official post already stored as a `merged` row (e.g. HN
 linked it first, so the feed's copy has the same id) is re-run as a new
@@ -512,6 +515,9 @@ Batches of 5.
   chat completions reject Jev and route the decision router to an entity
   extractor.
 - **Hide rule:** `relevance < 0.4` → status `rejected` (never shown).
+  A row written unscored (its `score-N` batch failed, so it was stored at
+  relevance 0.5) gets the same rule when `backfill-score` scores it later:
+  a published row under 0.4 becomes `rejected`.
 - **Optional JEV review panel** (`worker/jev-panel/`), off unless
   `JEV_PANEL_ENABLED` is truthy. When on, two judges from different vendor
   families (`JEV_PANEL_RELEVANCE_MODEL`, `JEV_PANEL_SOURCE_QUALITY_MODEL`)
@@ -773,7 +779,7 @@ SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
   turns it into the multiplier above: ×1.2 per net vote up to six, and
   the inverse for a net downvote, so downvotes lower the score without
   ever zeroing it. A vote re-ranks its item at once (`applyVote`). The
-  hourly re-rank reads the sum through `RANK_SIGNAL_JOIN`. Trending still uses
+  30-minute re-rank reads the sum through `RANK_SIGNAL_JOIN`. Trending still uses
   `rank_score` only. A vote does not change digest or email selection
   except by moving that score.
 
@@ -820,7 +826,7 @@ fallback; the Vietnamese column never reads `summary_en`. Drain on demand
 
 ### 10. TL;DR (LLM)
 
-Hourly.
+Every run (30 minutes).
 
 - Generate today's **local** snapshot (`Asia/Ho_Chi_Minh` date key —
   same identity the Telegram digest looks up for once-per-local-day
@@ -882,8 +888,9 @@ Hourly.
   uncited stories by `llm_importance`.
 - **Rank.** Not stored `rank_score`: it decays 36h and freezes at 72h, so a
   Monday build would favour the weekend. `weeklyScore` is
-  `rankScoreWithoutBreaking` at age zero (importance, quality, points/comments,
-  net votes), × (1 + 0.25 per day in a daily edition, max 3), × 1.15 for a
+  `rankScoreWithoutBreaking` at age zero (importance, quality, reader
+  points/comments via `rowRankSignals` — an aggregator's author/tweet counts
+  never count, as in §7 — and net votes), × (1 + 0.25 per day in a daily edition, max 3), × 1.15 for a
   top-3 spot. Then `pickDiverse` caps source families; top 10.
 - **Copy.** One bilingual call on the TL;DR chain (`ANYROUTER_TLDR_MODEL`,
   VI house style + glossary): `intro_en`/`intro_vi` (2–3 sentences) and one
@@ -939,6 +946,23 @@ Every link carries `utm_content` for its position (`lead`, `s2`…, `cta`,
 `video`, `channel-*`). After the button, a "Was today's edition useful?" row links to `GET /feedback?d=&l=&v=1|0&t=<token>`. That stores one vote per subscriber and date in `email_feedback` (0054); the last click wins. Counts are at `GET /api/admin/mail/feedback` and in `aidr-agent audit`. Layouts: `design` (lead image plus thumbnails),
 `large` (an image per story), `no-images`, `text`. Admin preview:
 `GET /api/admin/mail/preview?date=&lang=&format=`.
+
+**Weekly frequency.** `subscribers.frequency` is `daily` (default) or
+`weekly` (`src/lib/mail-frequency.ts`; the column is added at runtime by
+`ensureMailSchema`). Weekly subscribers are skipped by both daily lanes and
+get the §10b edition instead (`sendWeeklyLane`): the last closed week
+(`lastClosedWeek`), once, from 07:00 local on the first local day after the
+week's Sunday and for at most `WEEKLY_SEND_WINDOW_DAYS` (3) days after it, so
+switching to weekly late in the week waits for the next Monday rather than
+mailing stale news. A title-only `fallback` row waits for the LLM upgrade
+until the window's last day. The story lines come from `stories_vi` or
+`stories_en` only (no cross-language fallback: an empty VI column sends
+nothing and the next run retries), cut to the subscriber's digest size, and
+render through the same `renderDigestEmail` with a `weekly` block: subject
+"AI;DR Weekly #N — lead headline", the week range in the header, the intro
+paragraph, links to `/week/YYYY-Www`, no video and no per-day feedback row.
+Idempotency is `subscribers.last_weekly_sent` (`YYYY-Www`). Preview:
+`GET /api/subscribe/preview?lang=&n=&format=&freq=weekly`.
 
 ### 12. Notify (`worker/notify/`)
 
@@ -1042,13 +1066,13 @@ deliberately non-spammy.
     of the 24h window. The `notify` step line stays unchanged (240-character
     cap).
 - *Why this ranks* (story page, "Chi tiết bài viết" aside): `GET /api/story/{id}?ranking=1`
-  adds `ranking` from `worker/notify/story-ranking.ts`: UTC-day rank,
+  adds `ranking` from `worker/notify/story-ranking.ts`: day rank (Asia/Ho_Chi_Minh day, `archiveDateOfSec`),
   `rank_score`, importance, the live bar (same `trendingRankBar`), and per
   channel (`telegram`, `telegram-en`) either the `notifications` post time or
   the reason not posted: below_rank / below_importance / too_old /
   outside_hours / budget_spent / pending / send_failed (a failed
   row at `NOTIFY_MAX_ATTEMPTS`, never retried). The homepage arrow means only "top
-  story of its UTC day", not a Telegram trending post.
+  story of its (Vietnam-time) day", not a Telegram trending post.
 - Skip reasons are structured (`digest`: no_snapshot / already_sent /
   before_hour; `trending`: outside_hours / below_min_rank / budget_zero /
   none_unposted, with the live 24h max rank and the bar) and

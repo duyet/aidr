@@ -289,6 +289,19 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0059_subscriber_frequency.sql
+
+- Change: none in SQL (`SELECT 1`). `ensureMailSchema` adds
+  `subscribers.frequency TEXT NOT NULL DEFAULT 'daily'` and
+  `subscribers.last_weekly_sent TEXT` at runtime, like `digest_size` (0019).
+- Risk: none for existing rows: every subscriber defaults to `daily` and keeps
+  getting the daily digest. Weekly subscribers get the weekly edition and no
+  daily digest.
+- Rollback: deploy the previous Worker. The columns can stay (unread);
+  to drop them, `ALTER TABLE subscribers DROP COLUMN last_weekly_sent;
+  ALTER TABLE subscribers DROP COLUMN frequency;`. Weekly subscribers then
+  get the daily digest again.
+
 ## 0058_source_refresh.sql
 
 - Change: upserts the re-declared rows (`reddit-ml`, `reddit-localllama`,

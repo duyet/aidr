@@ -636,3 +636,35 @@ describe("collapseSameUrl", () => {
     expect(collapseSameUrl([loud, quiet])).toEqual([loud]);
   });
 });
+
+describe("toCandidates", () => {
+  it("clamps a future publishedAt to now and keeps past dates", async () => {
+    const { toCandidates } = await import("../ingest/dedupe.js");
+    const nowMs = Date.UTC(2026, 9, 12, 3, 0, 0);
+    const nowSec = nowMs / 1000;
+    const rows = await toCandidates(
+      [
+        {
+          source: { id: "rss-x" } as SourceRow,
+          items: [
+            {
+              url: "https://x.dev/future",
+              title: "Future",
+              publishedAt: nowSec + 7 * 3600,
+            },
+            {
+              url: "https://x.dev/past",
+              title: "Past",
+              publishedAt: (nowSec - 3600) * 1000,
+            },
+          ] as never,
+        },
+      ],
+      nowMs
+    );
+    expect(rows.map((r) => r.item.publishedAt)).toEqual([
+      nowSec,
+      nowSec - 3600,
+    ]);
+  });
+});
