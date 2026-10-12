@@ -3,9 +3,11 @@ import { useState } from "react";
 import {
   type CalendarMonth,
   calendarPath,
+  monthWeeks,
   shiftMonth,
 } from "../../lib/calendar";
 import type { Lang } from "../../lib/types";
+import { formatWeekRange, weekBounds, weekPath } from "../../lib/week";
 import { DayCard } from "./DayCard";
 import { MonthAgenda } from "./MonthAgenda";
 import { MonthGrid } from "./MonthGrid";
@@ -42,6 +44,9 @@ export function CalendarPage({
   const next = shiftMonth(month, 1);
   const hasPrev = cal.firstMonth !== null && prev >= cal.firstMonth;
   const hasNext = next <= cal.lastMonth;
+  const onCurrentMonth = month === cal.lastMonth;
+  const max = Math.max(0, ...cal.days.map((d) => d.count));
+  const weeks = monthWeeks(month, today);
 
   return (
     <div className="mx-auto max-w-5xl py-8">
@@ -54,12 +59,21 @@ export function CalendarPage({
             >
               {monthTitle(month, lang, true)}
             </h1>
-            <a
-              href={calendarPath(cal.lastMonth, lang)}
-              className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {vi ? "Hôm nay" : "Today"}
-            </a>
+            {onCurrentMonth ? (
+              <span
+                aria-disabled="true"
+                className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold opacity-40"
+              >
+                {vi ? "Hôm nay" : "Today"}
+              </span>
+            ) : (
+              <a
+                href={calendarPath(cal.lastMonth, lang)}
+                className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {vi ? "Hôm nay" : "Today"}
+              </a>
+            )}
             {hasPrev ? (
               <a
                 href={calendarPath(prev, lang)}
@@ -97,17 +111,75 @@ export function CalendarPage({
             size="xl"
           />
 
-          <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
-            {vi ? "Ít" : "Fewer"}
-            {HEADER_HEAT_CLASS.map((c, i) => (
+          <div
+            data-testid="calendar-legend"
+            className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
+          >
+            <span className="flex items-center gap-1">
+              {vi ? "Ít" : "Fewer"}
+              {HEADER_HEAT_CLASS.map((c, i) => (
+                <i
+                  key={i}
+                  className={`inline-block size-3 rounded-sm ${c || "bg-muted/60"}`}
+                  aria-hidden
+                />
+              ))}
+              {vi ? "Nhiều tin" : "More stories"}
+              {max > 0 ? (
+                <span className="font-mono">
+                  {vi ? ` (tối đa ${max})` : ` (up to ${max})`}
+                </span>
+              ) : null}
+            </span>
+            <span className="flex items-center gap-1">
               <i
-                key={i}
-                className={`inline-block size-3 rounded-sm ${c || "bg-muted/60"}`}
+                className="inline-block size-3 rounded-sm border border-dashed border-border"
                 aria-hidden
               />
-            ))}
-            {vi ? "Nhiều tin" : "More stories"}
+              {vi ? "Chưa có số báo" : "No edition"}
+            </span>
+            <span className="flex items-center gap-1">
+              <i
+                className="inline-block size-1.5 rounded-full bg-foreground"
+                aria-hidden
+              />
+              {vi ? "Hôm nay" : "Today"}
+            </span>
           </div>
+
+          {weeks.length > 0 ? (
+            <nav
+              data-testid="calendar-weeks"
+              aria-label={vi ? "Bản tin tuần" : "Weekly editions"}
+              className="mt-5"
+            >
+              <h2 className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                {vi ? "Bản tin tuần" : "Weekly editions"}
+              </h2>
+              <ul className="flex flex-wrap gap-2">
+                {weeks.map((week) => {
+                  const b = weekBounds(week);
+                  return (
+                    <li key={week}>
+                      <a
+                        href={weekPath(week, lang)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <span className="font-mono text-xs font-semibold">
+                          {week.slice(5)}
+                        </span>
+                        {b ? (
+                          <span className="text-muted-foreground">
+                            {formatWeekRange(b.start, b.end, lang)}
+                          </span>
+                        ) : null}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          ) : null}
         </section>
 
         {preview ? (

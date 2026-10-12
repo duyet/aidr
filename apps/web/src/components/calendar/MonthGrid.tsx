@@ -1,4 +1,10 @@
-import { type CalendarMonth, heatLevel, monthCells } from "../../lib/calendar";
+import type { KeyboardEvent } from "react";
+import {
+  type CalendarMonth,
+  heatLevel,
+  monthCells,
+  moveDay,
+} from "../../lib/calendar";
 import { dayArchivePath } from "../../lib/day-archive";
 import type { Lang } from "../../lib/types";
 import {
@@ -9,6 +15,14 @@ import {
   WEEKDAY_INITIALS,
 } from "./shared";
 
+const ARROWS = new Set([
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+]);
 const TILE =
   "relative flex aspect-square items-center justify-center rounded-[10px] tabular-nums";
 const TILE_PAGE =
@@ -61,6 +75,20 @@ export function MonthGrid({
   const tile = page ? TILE_PAGE : TILE;
   const gap = page ? "gap-1 sm:gap-1.5" : size === "lg" ? "gap-1.5" : "gap-1";
 
+  /** Arrow keys, Home and End move focus between edition tiles. */
+  const onGridKeyDown = (e: KeyboardEvent<HTMLOListElement>) => {
+    const from = (e.target as HTMLElement).dataset?.date;
+    if (!from || !ARROWS.has(e.key)) return;
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const to = moveDay(
+      cal.days.map((d) => d.date),
+      from,
+      e.key
+    );
+    e.preventDefault();
+    e.currentTarget.querySelector<HTMLElement>(`[data-date="${to}"]`)?.focus();
+  };
+
   return (
     <div>
       <div className={`mb-1 grid grid-cols-7 ${gap}`} aria-hidden>
@@ -73,7 +101,10 @@ export function MonthGrid({
           </span>
         ))}
       </div>
-      <ol className={`grid grid-cols-7 ${gap}`}>
+      <ol
+        className={`grid grid-cols-7 ${gap}`}
+        onKeyDown={page ? onGridKeyDown : undefined}
+      >
         {monthCells(cal.month).map((date, i) => {
           if (!date) return <li key={`pad-${i}`} aria-hidden />;
           const num = Number(date.slice(8));
@@ -121,6 +152,8 @@ export function MonthGrid({
               ) : (
                 <a
                   href={dayArchivePath(date, lang)}
+                  data-date={date}
+                  tabIndex={page && date !== selected ? -1 : undefined}
                   aria-current={current}
                   aria-label={label}
                   className={className}

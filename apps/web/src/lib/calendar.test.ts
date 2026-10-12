@@ -5,6 +5,8 @@ import {
   firstWeekdayMon0,
   heatLevel,
   monthCells,
+  monthWeeks,
+  moveDay,
   parseMonth,
   shiftMonth,
 } from "./calendar";
@@ -64,5 +66,41 @@ describe("calendar", () => {
     it("has no padding for a month that starts on Monday", () => {
       expect(monthCells("2026-06")[0]).toBe("2026-06-01");
     });
+  });
+});
+
+describe("moveDay", () => {
+  const days = ["2026-10-02", "2026-10-03", "2026-10-09", "2026-10-11"];
+  it("steps to the nearest edition in each direction", () => {
+    expect(moveDay(days, "2026-10-03", "ArrowRight")).toBe("2026-10-09");
+    expect(moveDay(days, "2026-10-09", "ArrowLeft")).toBe("2026-10-03");
+    expect(moveDay(days, "2026-10-02", "ArrowDown")).toBe("2026-10-09");
+    expect(moveDay(days, "2026-10-09", "ArrowUp")).toBe("2026-10-02");
+  });
+  it("stays put at the edges and for other keys", () => {
+    expect(moveDay(days, "2026-10-11", "ArrowRight")).toBe("2026-10-11");
+    expect(moveDay(days, "2026-10-02", "ArrowLeft")).toBe("2026-10-02");
+    expect(moveDay(days, "2026-10-03", "a")).toBe("2026-10-03");
+    expect(moveDay([], "2026-10-03", "Home")).toBe("2026-10-03");
+  });
+  it("jumps with Home and End", () => {
+    expect(moveDay(days, "2026-10-09", "Home")).toBe("2026-10-02");
+    expect(moveDay(days, "2026-10-09", "End")).toBe("2026-10-11");
+  });
+});
+
+describe("monthWeeks", () => {
+  it("lists closed weekly-edition weeks touching the month", () => {
+    expect(monthWeeks("2026-10", "2026-10-11")).toEqual(["2026-W40"]);
+    expect(monthWeeks("2026-10", "2026-10-26")).toEqual([
+      "2026-W40",
+      "2026-W41",
+      "2026-W42",
+      "2026-W43",
+    ]);
+  });
+  it("skips weeks before the first edition", () => {
+    expect(monthWeeks("2026-09", "2026-10-26")).toEqual(["2026-W40"]);
+    expect(monthWeeks("2026-08", "2026-10-26")).toEqual([]);
   });
 });

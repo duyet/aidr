@@ -6,6 +6,7 @@
 import { latestArchiveDate } from "./day-archive";
 import { withLang } from "./locale-url";
 import type { Lang } from "./types";
+import { isoWeekOfDate, weekIssue } from "./week";
 
 export const CALENDAR_PATH = "/calendar";
 
@@ -105,4 +106,42 @@ export function heatLevel(count: number, max: number): 0 | 1 | 2 | 3 | 4 {
 export function calendarPath(month?: string, lang?: Lang): string {
   const path = month ? `${CALENDAR_PATH}?month=${month}` : CALENDAR_PATH;
   return lang ? withLang(path, lang) : path;
+}
+
+/** ISO weeks (Mon–Sun) touching `month` that have a weekly edition: at or
+ * after `WEEKLY_FIRST_WEEK` and before the week `today` falls in. */
+export function monthWeeks(month: string, today: string): string[] {
+  const current = isoWeekOfDate(today);
+  const weeks = new Set<string>();
+  for (const date of monthCells(month)) {
+    if (!date) continue;
+    const week = isoWeekOfDate(date);
+    if (week < current && weekIssue(week) !== null) weeks.add(week);
+  }
+  return [...weeks];
+}
+
+/**
+ * Where arrow keys go in the month grid. Left/right step one day, up/down
+ * one week, Home/End jump to the first/last edition. Days without an edition
+ * are skipped: the target is the nearest edition in that direction, or
+ * `current` when there is none.
+ */
+export function moveDay(dates: string[], current: string, key: string): string {
+  if (dates.length === 0) return current;
+  if (key === "Home") return dates[0];
+  if (key === "End") return dates[dates.length - 1];
+  const vertical = key === "ArrowUp" || key === "ArrowDown";
+  if (!vertical && key !== "ArrowLeft" && key !== "ArrowRight") return current;
+  const step = key === "ArrowLeft" || key === "ArrowUp" ? -1 : 1;
+  const target = new Date(
+    Date.parse(`${current}T00:00:00Z`) + step * (vertical ? 7 : 1) * 86_400_000
+  )
+    .toISOString()
+    .slice(0, 10);
+  const found =
+    step > 0
+      ? dates.find((d) => d >= target)
+      : [...dates].reverse().find((d) => d <= target);
+  return found ?? current;
 }
