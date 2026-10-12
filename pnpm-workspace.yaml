@@ -43,6 +43,8 @@ minimumReleaseAgeExclude:
   - framer-motion
   - motion-dom
   - motion-utils
+  # Test-only DOM for vitest; never shipped to production bundles.
+  - happy-dom
 
 nodeLinker: hoisted
 shamefullyHoist: true
