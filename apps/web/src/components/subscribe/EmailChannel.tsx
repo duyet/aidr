@@ -14,10 +14,7 @@ export function EmailChannel({ lang }: { lang: Lang }) {
     size: 5,
     format: "design",
     frequency: "daily",
-<<<<<<< HEAD
     weeklyDay: DEFAULT_WEEKLY_DAY,
-=======
->>>>>>> origin/master
   });
 
   return (

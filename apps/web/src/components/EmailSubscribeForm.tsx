@@ -3,15 +3,11 @@ import { track } from "@aidr/ui/track";
 import { useState } from "react";
 import { withLang } from "../lib/locale-url";
 import type { MailFormat } from "../lib/mail-format";
-<<<<<<< HEAD
 import {
   type MailFrequency,
   type WeeklyDay,
   weekdayName,
 } from "../lib/mail-frequency";
-=======
-import type { MailFrequency } from "../lib/mail-frequency";
->>>>>>> origin/master
 import type { Lang } from "../lib/types";
 import { formAnnotationAttributes, webmcpForm } from "../lib/webmcp";
 import { FrequencyField } from "./subscribe/FrequencyField";
@@ -26,10 +22,7 @@ export interface DigestPrefs {
   size: (typeof DIGEST_SIZES)[number];
   format: MailFormat;
   frequency: MailFrequency;
-<<<<<<< HEAD
   weeklyDay: WeeklyDay;
-=======
->>>>>>> origin/master
 }
 
 export function EmailSubscribeForm({
@@ -72,10 +65,7 @@ export function EmailSubscribeForm({
           digest_size: prefs.size,
           mail_format: prefs.format,
           frequency: prefs.frequency,
-<<<<<<< HEAD
           weekly_day: prefs.weeklyDay,
-=======
->>>>>>> origin/master
         }),
       });
       if (res.ok) {
@@ -97,17 +87,10 @@ export function EmailSubscribeForm({
         <p>
           {t(
             prefs.frequency === "weekly"
-<<<<<<< HEAD
               ? `Almost done — check your inbox and click the confirmation link. The weekly digest arrives ${weekdayName(prefs.weeklyDay, "en")} around 7:00 AM (${timezone}).`
               : `Almost done — check your inbox and click the confirmation link. Digests start around 7:00 AM (${timezone}) once confirmed.`,
             prefs.frequency === "weekly"
               ? `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin tuần đến vào sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00 (${timezone}).`
-=======
-              ? `Almost done — check your inbox and click the confirmation link. The weekly edition arrives Monday around 7:00 AM (${timezone}).`
-              : `Almost done — check your inbox and click the confirmation link. Digests start around 7:00 AM (${timezone}) once confirmed.`,
-            prefs.frequency === "weekly"
-              ? `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Số tuần đến vào sáng thứ Hai, khoảng 7:00 (${timezone}).`
->>>>>>> origin/master
               : `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin bắt đầu khoảng 7:00 sáng (${timezone}) sau khi xác nhận.`
           )}
         </p>
@@ -159,13 +142,10 @@ export function EmailSubscribeForm({
         name="digest-frequency"
         value={prefs.frequency}
         onChange={(frequency) => onPrefsChange({ ...prefs, frequency })}
-<<<<<<< HEAD
         weeklyDay={prefs.weeklyDay}
         onWeeklyDayChange={(weeklyDay) =>
           onPrefsChange({ ...prefs, weeklyDay })
         }
-=======
->>>>>>> origin/master
       />
 
       <fieldset className="flex flex-wrap gap-4 text-sm">
@@ -225,17 +205,10 @@ export function EmailSubscribeForm({
       <p className="text-xs text-muted-foreground">
         {t(
           prefs.frequency === "weekly"
-<<<<<<< HEAD
             ? `${weekdayName(prefs.weeklyDay, "en")}s around 7:00 AM your time (${timezone}). No account required.`
             : `Around 7:00 AM your time (${timezone}). No account required.`,
           prefs.frequency === "weekly"
             ? `Sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00 theo giờ của bạn (${timezone}). Không cần tài khoản.`
-=======
-            ? `Mondays around 7:00 AM your time (${timezone}). No account required.`
-            : `Around 7:00 AM your time (${timezone}). No account required.`,
-          prefs.frequency === "weekly"
-            ? `Sáng thứ Hai, khoảng 7:00 theo giờ của bạn (${timezone}). Không cần tài khoản.`
->>>>>>> origin/master
             : `Khoảng 7:00 sáng theo giờ của bạn (${timezone}). Không cần tài khoản.`
         )}
       </p>

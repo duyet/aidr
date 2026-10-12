@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import {
   MAIL_FREQUENCIES,
   type MailFrequency,
@@ -6,9 +5,6 @@ import {
   type WeeklyDay,
   weekdayName,
 } from "../../lib/mail-frequency";
-=======
-import { MAIL_FREQUENCIES, type MailFrequency } from "../../lib/mail-frequency";
->>>>>>> origin/master
 import type { Lang } from "../../lib/types";
 
 const COPY: Record<
@@ -21,14 +17,10 @@ const COPY: Record<
   },
   weekly: {
     title: { en: "Weekly", vi: "Hằng tuần" },
-<<<<<<< HEAD
     hint: {
       en: "Best of 7 days, on your day",
       vi: "Tin hay nhất 7 ngày, vào ngày bạn chọn",
     },
-=======
-    hint: { en: "Monday recap of the week", vi: "Tổng hợp tuần, sáng thứ Hai" },
->>>>>>> origin/master
   },
 };
 
@@ -40,22 +32,16 @@ export function FrequencyField({
   name,
   value,
   onChange,
-<<<<<<< HEAD
   weeklyDay,
   onWeeklyDayChange,
-=======
->>>>>>> origin/master
 }: {
   lang: Lang;
   name: string;
   value: MailFrequency;
   onChange: (frequency: MailFrequency) => void;
-<<<<<<< HEAD
   /** The weekday picker shows only for `weekly`. */
   weeklyDay: WeeklyDay;
   onWeeklyDayChange: (day: WeeklyDay) => void;
-=======
->>>>>>> origin/master
 }) {
   return (
     <fieldset className="text-sm">
@@ -90,7 +76,6 @@ export function FrequencyField({
           );
         })}
       </div>
-<<<<<<< HEAD
       {value === "weekly" && (
         <div
           role="radiogroup"
@@ -144,8 +129,3 @@ const SHORT: Record<"en" | "vi", readonly string[]> = {
 function shortDay(day: WeeklyDay, lang: Lang): string {
   return SHORT[lang === "vi" ? "vi" : "en"][day] ?? "";
 }
-=======
-    </fieldset>
-  );
-}
->>>>>>> origin/master
