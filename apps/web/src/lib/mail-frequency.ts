@@ -12,6 +12,7 @@ export type MailFrequency = (typeof MAIL_FREQUENCIES)[number];
 export function normalizeMailFrequency(value: unknown): MailFrequency {
   return value === "weekly" ? "weekly" : "daily";
 }
+<<<<<<< HEAD
 
 /** Weekday a weekly subscriber gets their digest, in their own timezone,
  *  stored in `subscribers.weekly_day`: 0 = Sunday … 6 = Saturday (the JS
@@ -55,3 +56,5 @@ const WEEKDAY_NAMES: Record<"en" | "vi", readonly string[]> = {
 export function weekdayName(day: WeeklyDay, lang: "en" | "vi"): string {
   return WEEKDAY_NAMES[lang][day] ?? WEEKDAY_NAMES[lang][DEFAULT_WEEKLY_DAY];
 }
+=======
+>>>>>>> origin/master

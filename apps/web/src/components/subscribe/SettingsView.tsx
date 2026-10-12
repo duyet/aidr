@@ -3,11 +3,16 @@ import { useEffect, useState } from "react";
 import { withLang } from "../../lib/locale-url";
 import { type MailFormat, normalizeMailFormat } from "../../lib/mail-format";
 import {
+<<<<<<< HEAD
   DEFAULT_WEEKLY_DAY,
   type MailFrequency,
   normalizeMailFrequency,
   normalizeWeeklyDay,
   type WeeklyDay,
+=======
+  type MailFrequency,
+  normalizeMailFrequency,
+>>>>>>> origin/master
 } from "../../lib/mail-frequency";
 import type { Lang } from "../../lib/types";
 import { FrequencyField } from "./FrequencyField";
@@ -25,7 +30,10 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
   const [digestSize, setDigestSize] = useState<DigestSize>(5);
   const [format, setFormat] = useState<MailFormat>("design");
   const [frequency, setFrequency] = useState<MailFrequency>("daily");
+<<<<<<< HEAD
   const [weeklyDay, setWeeklyDay] = useState<WeeklyDay>(DEFAULT_WEEKLY_DAY);
+=======
+>>>>>>> origin/master
   const [save, setSave] = useState<"idle" | "saving" | "done" | "error">(
     "idle"
   );
@@ -41,7 +49,10 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
           digest_size: number;
           mail_format?: string;
           frequency?: string;
+<<<<<<< HEAD
           weekly_day?: number;
+=======
+>>>>>>> origin/master
         }>;
       })
       .then((data) => {
@@ -55,7 +66,10 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
         );
         setFormat(normalizeMailFormat(data.mail_format));
         setFrequency(normalizeMailFrequency(data.frequency));
+<<<<<<< HEAD
         setWeeklyDay(normalizeWeeklyDay(data.weekly_day));
+=======
+>>>>>>> origin/master
         setLoad("ready");
       })
       .catch(() => {
@@ -80,7 +94,10 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             digest_size: digestSize,
             mail_format: format,
             frequency,
+<<<<<<< HEAD
             weekly_day: weeklyDay,
+=======
+>>>>>>> origin/master
           }),
         }
       );
@@ -120,8 +137,11 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
           name="settings-frequency"
           value={frequency}
           onChange={setFrequency}
+<<<<<<< HEAD
           weeklyDay={weeklyDay}
           onWeeklyDayChange={setWeeklyDay}
+=======
+>>>>>>> origin/master
         />
         <fieldset className="flex gap-4 text-sm">
           <legend className="mb-1 block font-medium">

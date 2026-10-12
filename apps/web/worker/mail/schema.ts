@@ -65,8 +65,11 @@ export async function ensureMailSchema(db: D1Database): Promise<void> {
     // last weekly edition (`YYYY-Www`) mailed to this subscriber.
     "ALTER TABLE subscribers ADD COLUMN frequency TEXT NOT NULL DEFAULT 'daily'",
     "ALTER TABLE subscribers ADD COLUMN last_weekly_sent TEXT",
+<<<<<<< HEAD
     // Weekday (0 = Sunday … 6) a weekly subscriber gets the digest, local.
     "ALTER TABLE subscribers ADD COLUMN weekly_day INTEGER NOT NULL DEFAULT 1",
+=======
+>>>>>>> origin/master
   ]) {
     try {
       await db.prepare(sql).run();
