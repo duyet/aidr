@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
+import { PAGE_LINK, PageSection } from "../components/ContentPage";
 import { headRouteInput } from "../lib/head-route";
 import type { RootSearch } from "../lib/locale-routing";
 import { pageHead } from "../lib/seo";
@@ -91,23 +92,27 @@ function HowItWorksFigure() {
   );
 }
 
+const REPO_LINKS = [
+  ["ALGORITHM.md", GITHUB_ALGORITHM_URL],
+  ["GitHub", GITHUB_URL],
+] as const;
+
 function AboutPage() {
   return (
     <div className="py-12" lang="en">
       <div className="typeset typeset-page">
         <h1>About AI;DR</h1>
         <p>
-          AI;DR is a machine that reads the day's AI news and publishes one
-          ranked edition. The site is also called AI News, AIDR, AIDR Today, and
-          AI;DR Today, and it lives at aidr.today.
+          AI;DR reads the day's AI news and publishes one ranked edition. It is
+          also called AI News, AIDR, AIDR Today, and AI;DR Today, and it lives
+          at aidr.today.
         </p>
         <p className="text-muted-foreground">
-          People do not pick the order. Every 30 minutes the pipeline collects
-          stories, including new model releases, new kinds of models, and new AI
-          labs, processes them, and asks JEV plus an LLM what deserves a place.
-          AnyRouter runs those model calls. The result is combined into one
-          snapshot, then distributed to the site, email, and Telegram. Every
-          story still links back to the original post.
+          No person picks the order. Every 30 minutes the pipeline collects
+          stories, including model releases, new kinds of models, and new AI
+          labs. JEV and an LLM decide what makes the cut, and AnyRouter runs
+          those model calls. The result is one edition on the site, by email,
+          and on Telegram. Every story links to the original post.
         </p>
       </div>
 
@@ -121,63 +126,53 @@ function AboutPage() {
         <HowItWorksFigure />
         <PipelineDiagram />
         <p className="typeset typeset-page mt-4 text-muted-foreground">
-          The source list is on the{" "}
-          <Link
-            to="/data"
-            search={{ tab: "sources" }}
-            className="text-accent underline underline-offset-2 hover:no-underline"
-          >
+          See every source on the{" "}
+          <Link to="/data" search={{ tab: "sources" }} className={PAGE_LINK}>
             data sources page
           </Link>
           .
         </p>
       </section>
 
-      <section className="typeset typeset-page mt-10">
-        <h2>Judgment and models</h2>
-        <p className="text-muted-foreground">
-          JEV is the intent gate: it decides whether an item is actually about
-          this beat before a score is trusted. The LLM then scores relevance and
-          drafts the digest bullets.{" "}
-          <a
-            href={ANYROUTER_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent underline underline-offset-2 hover:no-underline"
-          >
-            AnyRouter
-          </a>{" "}
-          is the router in front of those models, so scoring and the digest
-          share one path with fallbacks.
-        </p>
-        <p className="text-muted-foreground">
-          Stories are machine-curated. Mistakes happen. A signed-in reader can
-          suggest a better line under any story, or email{" "}
-          <a href={`mailto:${SUBMIT_EMAIL}`}>{SUBMIT_EMAIL}</a> from their
-          verified address to forward a story or reply to any AI;DR email with a
-          fix.
-        </p>
-        <p className="not-typeset mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-          <a
-            href={GITHUB_ALGORITHM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:no-underline"
-          >
-            ALGORITHM.md
-            <ExternalLink className="h-3 w-3" aria-hidden />
-          </a>
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-accent underline underline-offset-2 hover:no-underline"
-          >
-            GitHub
-            <ExternalLink className="h-3 w-3" aria-hidden />
-          </a>
-        </p>
-      </section>
+      <div className="typeset typeset-page mt-10">
+        <PageSection title="Judgment and models">
+          <p>
+            JEV checks that a story is really about AI before its score counts.
+            The LLM then scores relevance and writes the digest bullets.{" "}
+            <a
+              href={ANYROUTER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={PAGE_LINK}
+            >
+              AnyRouter
+            </a>{" "}
+            sits in front of those models, so scoring and the digest share one
+            path with fallbacks.
+          </p>
+          <p>
+            A machine picks the stories, so it makes mistakes. Signed-in readers
+            can suggest a better line under any story. You can also email{" "}
+            <a href={`mailto:${SUBMIT_EMAIL}`}>{SUBMIT_EMAIL}</a> from your
+            verified address to send a story, or reply to any AI;DR email with a
+            fix.
+          </p>
+          <p className="not-typeset mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+            {REPO_LINKS.map(([label, href]) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center gap-1 ${PAGE_LINK}`}
+              >
+                {label}
+                <ExternalLink className="h-3 w-3" aria-hidden />
+              </a>
+            ))}
+          </p>
+        </PageSection>
+      </div>
     </div>
   );
 }
