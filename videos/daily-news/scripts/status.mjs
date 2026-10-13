@@ -25,14 +25,11 @@ export function addRows(rows, { date, langs, config, dir }) {
   return rows;
 }
 
-/** Whether a cut goes to YouTube and the day page. visub does not: its YouTube button links the English video. */
-export const onYouTube = (lang) => !cutFor(lang).subs;
-
 /** A cut renders unless its files exist (a visub cover is the English one, made by the English render) or,
  *  without renderPublished, it is already on the day page. */
 export function needsRender(r, { renderPublished = false, exists }) {
   if (!renderPublished && r.youtube?.id) return false;
-  return !exists(r.path) || (onYouTube(r.lang) && !exists(r.cover));
+  return !exists(r.path) || (!cutFor(r.lang).subs && !exists(r.cover));
 }
 
 /** Cuts the telegram step still posts: the requested languages' `fmt` cut without a channel post (`telegram`; a
@@ -41,4 +38,73 @@ export function needsRender(r, { renderPublished = false, exists }) {
 export function telegramTodo(rows, langs, fmt) {
   const viPosted = rows.some((r) => r.lang === "vi" && r.telegram);
   return rows.filter((r) => langs.includes(r.lang) && r.fmt === fmt && !r.telegram && !(r.lang === "visub" && viPosted));
+}
+
+/** Which cut the Vietnamese day page shows: "vi", "visub" or null. `pages` holds the live day pages' ids,
+ *  { en: { "16x9", "9x16" }, vi: { ... } }. A STATUS row with the same id decides; else the shape does: attach sets
+ *  the Vietnamese-voice cut's 16:9 and Short together, and the subtitled cut has a 16:9 only. A Worker without
+ *  per-language videos serves the English ids on ?lang=vi, which is no Vietnamese video. */
+export function viPageCut(pages, rows) {
+  const vi = pages.vi ?? {};
+  const en = pages.en ?? {};
+  const ids = [vi["16x9"], vi["9x16"]].filter(Boolean);
+  if (!ids.length || ids.some((id) => id === en["16x9"] || id === en["9x16"])) return null;
+  const known = rows.find((r) => r.lang !== "en" && ids.includes(r.youtube?.id));
+  if (known) return known.lang;
+  return vi["9x16"] ? "vi" : "visub";
+}
+
+/** The day-page ids a cut's rows may take as already uploaded: its page's ids when that page shows this cut. */
+export function seedIds(lang, pages, rows) {
+  if (cutFor(lang).page === "en") return pages.en ?? {};
+  return viPageCut(pages, rows) === lang ? (pages.vi ?? {}) : {};
+}
+
+/** The Vietnamese page shows one video a day and the Vietnamese-voice cut takes precedence: the subtitled cut is
+ *  not uploaded or attached once the voice cut has a video (STATUS, or the live page: `viPage`) or is in this run. */
+export const voiceFirst = (rows, langs, viPage) =>
+  viPage === "vi" || langs.includes("vi") || rows.some((r) => r.lang === "vi" && r.youtube?.id);
+
+/** Cuts the upload step still uploads: no YouTube id yet (YouTube cannot replace a file). */
+export function uploadTodo(rows, langs, viPage = null) {
+  const skipSubs = voiceFirst(rows, langs, viPage);
+  return rows.filter((r) => langs.includes(r.lang) && !r.youtube?.id && !(r.lang === "visub" && skipSubs));
+}
+
+/** Languages the attach step still attaches: a cut with an id (any, on a dry run) that is not attached yet. */
+export function attachTodo(rows, langs, { viPage = null, dry = false } = {}) {
+  const skipSubs = voiceFirst(rows, langs, viPage);
+  return langs.filter(
+    (l) => !(l === "visub" && skipSubs) && rows.some((r) => r.lang === l && (dry || r.youtube?.id) && !r.attached)
+  );
+}
+
+/** `agent day-video` args for a language's cuts: its page language, and a flag per format it has. visub has no
+ *  Short, so the stored one is kept. */
+export function dayVideoArgs({ date, lang, rows, title }) {
+  const cuts = rows.filter((r) => r.lang === lang);
+  const id = (fmt) => cuts.find((r) => r.fmt === fmt)?.youtube?.id ?? `<${fmt} id>`;
+  const args = ["day-video", date, "--lang", cutFor(lang).page];
+  if (cuts.some((r) => r.fmt === "16x9")) args.push("--video", id("16x9"));
+  if (cuts.some((r) => r.fmt === "9x16")) args.push("--short", id("9x16"));
+  if (title) args.push("--title", title);
+  return args;
+}
+
+/** Uploader args for a row (bin/yt-upload and bin/yt-upload-api.mjs). Metadata: posts.md, or visub's own JSON
+ *  (Vietnamese title and description over English audio). */
+export function uploadArgs(r, dir) {
+  const c = cutFor(r.lang);
+  const kind = r.fmt === "9x16" ? "short" : "long";
+  const meta = join(dir, c.subs?.youtube ?? "posts.md");
+  const args = [r.path, "--meta", meta, "--lang", c.page, "--audio-lang", c.audio, "--kind", kind];
+  if (kind === "long") args.push("--cover", r.cover);
+  return args;
+}
+
+/** What an uploader printed: ID= comes before the thumbnail, playlist and oEmbed steps, so a failed run can still
+ *  have made the video. */
+export function parseUpload(out) {
+  const line = (k) => out.match(new RegExp(`^${k}=(.*)$`, "m"))?.[1]?.trim() || undefined;
+  return { id: line("ID"), url: line("URL"), oembed: line("OEMBED"), fail: out.match(/^FAIL: (.*)$/m)?.[1] };
 }

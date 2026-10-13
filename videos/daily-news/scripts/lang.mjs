@@ -2,7 +2,8 @@
 // with its own voice, output, caption and render files next to the English ones.
 // `--lang visub` is the English cut with Vietnamese subtitles: the English script, voice, mix, timing and
 // 16:9 cover, with only the burned-in captions swapped (captions.visub.json, written by visub.mjs). It renders
-// 16:9 at 1080p for the Vietnamese Telegram channel and never goes to YouTube or Facebook.
+// 16:9 at 1080p for the Vietnamese Telegram channel and YouTube (Vietnamese title and description over English
+// audio, the Vietnamese day page), and never goes to Facebook.
 export const LANGS = ["en", "vi", "visub"];
 
 export function cutOf(argv) {
@@ -21,6 +22,9 @@ export function cutFor(lang) {
     screen: lang,
     // Translated captions over another cut's voice (visub only).
     subs: null,
+    // The day page (`?lang=`) the cut's YouTube video is attached to, and the language of its audio.
+    page: lang,
+    audio: lang,
     // null = every format in config.json.
     formats: null,
     args: lang === "en" ? [] : ["--lang", lang],
@@ -47,7 +51,10 @@ function subsCut() {
     ...en,
     lang: "visub",
     screen: "en",
-    subs: { lang: "vi", json: "captions.visub.json", srt: "captions.visub.srt" },
+    // youtube: the Vietnamese YouTube title, description and tags (visub.mjs).
+    subs: { lang: "vi", json: "captions.visub.json", srt: "captions.visub.srt", youtube: "youtube.visub.json" },
+    page: "vi",
+    audio: "en",
     formats: ["16x9"],
     // Telegram gets a 1080p copy anyway, so the extra render is 1080p, not 4K.
     resolution: { "16x9": "landscape" },

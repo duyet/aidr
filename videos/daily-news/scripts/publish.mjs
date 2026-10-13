@@ -10,7 +10,9 @@
 // against the Reels spec; facebook posts that copy to the Page as a Reel (needs --prod: there is no staging Page).
 // --render-published renders cuts that are already on the day page (for the Reel on a fresh CI runner).
 // --lang visub is the English cut with Vietnamese subtitles (lang.mjs, visub.mjs): render (after the en cut on the same
-// machine), gate and telegram only; it posts to the Vietnamese channel with the English video's YouTube button.
+// machine), gate, upload (Vietnamese title and description, English audio), attach (to the Vietnamese day page) and
+// telegram (the Vietnamese channel; the YouTube button is its own video, else the English one). The Vietnamese page
+// takes one video, so the Vietnamese-voice cut wins: visub is not uploaded or attached once that cut has a video.
 // Telegram: only a --prod post to the real channel marks a cut done (`telegram`); staging and --chat sends are kept
 // as `telegramTest`, so the staging check never blocks the --prod post.
 // Usage: node scripts/publish.mjs <date> [--lang en,vi,visub] [--steps check|render,gate,upload,attach,facebook,telegram]
@@ -34,7 +36,7 @@ import { dirname, join, resolve } from "node:path";
 import { LANGS, cutFor, isWeekly } from "./lang.mjs";
 import { findReel, makeReelCopy, postReel, reelCaption, reelConfig, reelCopyPath, reelEncodeArgs, reelProblems } from "./facebook-reel.mjs";
 import { gateVideo, lintText, probeStreams, scriptTexts } from "./gate.mjs";
-import { addRows, needsRender, onYouTube, telegramTodo } from "./status.mjs";
+import { addRows, attachTodo, dayVideoArgs, needsRender, parseUpload, seedIds, telegramTodo, uploadArgs, uploadTodo, viPageCut } from "./status.mjs";
 import { chatFor, envVar, makeTelegramCopy, makeThumbnail, sendVideo, telegramPost, tgCopyPath, tgEncodeArgs, youtubeIdFor } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -83,11 +85,11 @@ if (weekly && (checkOnly || steps.some((s) => s !== "render") || !argv.includes(
 const dir = join(ROOT, "editions", date);
 const statusPath = join(dir, "STATUS.json");
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
-const FMT_KIND = { "16x9": "long", "9x16": "short" };
 const q = (a) => (/^[\w./:=@,-]+$/.test(a) ? a : JSON.stringify(a));
 const show = (cmd, args) => console.log(`$ ${[cmd, ...args].map(q).join(" ")}`);
 
-// Run a command (or print it with --dry-run). Returns stdout; stdio is shown live on stderr.
+// Run a command (or print it with --dry-run). Returns stdout; stdio is shown live on stderr. A failure's error
+// carries the stdout too (an uploader prints ID= before the steps that can still fail).
 function run(cmd, args, opts = {}) {
   show(cmd, args);
   if (dry) return "";
@@ -98,7 +100,7 @@ function run(cmd, args, opts = {}) {
     maxBuffer: 64 << 20,
   });
   if (r.stdout) process.stdout.write(r.stdout);
-  if (r.status !== 0) throw new Error(`${cmd} exited ${r.status}`);
+  if (r.status !== 0) throw Object.assign(new Error(`${cmd} exited ${r.status}`), { stdout: r.stdout ?? "" });
   return r.stdout;
 }
 
@@ -160,7 +162,7 @@ const summary = (what, targets) =>
 // 0. Check: is the date already published? Cheap, so it runs before any writing or rendering.
 if (checkOnly) {
   await seedFromSite();
-  const left = mine.filter((r) => onYouTube(r.lang) && !r.youtube?.id);
+  const left = mine.filter((r) => !r.youtube?.id);
   if (!left.length) {
     console.log(`✓ ${date}: every cut is already on the day page; nothing to publish`);
     process.exit(3);
@@ -247,17 +249,22 @@ function subsTitle() {
   return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")).title ?? null) : null;
 }
 
-// 2. Upload, serially, in the owner's Chrome. Stops on the first failure.
-// STATUS.json is local, so first take ids already on the live day page: a date
-// uploaded elsewhere must not get a second public copy.
+// A cut's title on the day page and in its Telegram caption.
+const titleFor = (l) => (l === "visub" ? subsTitle() : ytTitle(l));
+
+// 2. Upload, serially (owner's Chrome, or the Data API). Stops on the first failure.
+// STATUS.json is local, so first take ids already on the live day pages: a date uploaded elsewhere must not get
+// a second public copy. The Vietnamese page shows one cut (status.mjs viPageCut), which is returned.
 async function seedFromSite() {
-  if (weekly) return; // no weekly day page yet
-  for (const l of langs.filter(onYouTube)) {
-    const ids = await dayPageIds(l);
+  if (weekly) return null; // no weekly day page yet
+  const pages = { en: await dayPageIds("en") };
+  if (langs.some((l) => cutFor(l).page === "vi")) pages.vi = await dayPageIds("vi");
+  for (const l of langs) {
+    const ids = seedIds(l, pages, rows);
     for (const r of byLang(l)) {
       const id = ids[r.fmt];
       if (!id || r.youtube?.id) continue;
-      // A Worker without per-language videos serves the EN ids on ?lang=vi; one video never serves both cuts.
+      // One video never serves two cuts.
       if (rows.some((o) => o.lang !== l && o.youtube?.id === id)) continue;
       console.log(`  ${r.cut}: already on ${date} day page as ${id}, skipping upload`);
       r.youtube = { id, url: `https://youtu.be/${id}`, seeded: true };
@@ -266,47 +273,76 @@ async function seedFromSite() {
     }
   }
   if (!dry) save();
+  return pages.vi ? viPageCut(pages, rows) : null;
+}
+
+const voiceWins = (r) => console.log(`  ${r.cut}: the Vietnamese-voice cut is the day's Vietnamese video; not uploading or attaching the subtitled cut`);
+
+// The title, languages and description an upload sends (yt-meta.py, as the uploaders read it): the dry-run plan.
+function showMeta(args) {
+  const at = (f) => args[args.indexOf(f) + 1];
+  const meta = at("--meta");
+  if (!existsSync(meta)) return console.log(`  ${meta}: written before the upload`);
+  const bin = join(REPO, ".agents/skills/aidr-youtube-upload/bin/yt-meta.py");
+  const m = JSON.parse(execFileSync("python3", ["-I", bin, meta.endsWith(".json") ? "--json" : "--daily", meta, "--lang", at("--lang"), "--kind", at("--kind")], { encoding: "utf8" }));
+  console.log(`  title: ${m.title}\n  defaultLanguage: ${at("--lang")} · defaultAudioLanguage: ${at("--audio-lang")}\n  tags: ${m.tags}\n  description:\n${m.desc.replace(/^/gm, "    ")}`);
 }
 
 if (steps.includes("upload")) {
-  await seedFromSite();
-  const todo = mine.filter((r) => onYouTube(r.lang) && !r.youtube?.id);
-  if (langs.includes("visub")) console.log("  upload: visub is not uploaded (its button links the English video)");
+  const viPage = await seedFromSite();
+  const todo = uploadTodo(rows, langs, viPage);
+  for (const r of mine.filter((r) => r.lang === "visub" && !r.youtube?.id && !todo.includes(r))) voiceWins(r);
   summary(uploader === "api" ? `upload to YouTube (${privacy}, Data API)` : "upload to YouTube (public, owner's Chrome)", todo.map((r) => r.cut));
   for (const r of todo) {
     if (!dry && !existsSync(r.path)) throw new Error(`${r.cut}: ${r.path} is not rendered; run --steps render`);
-    const kind = FMT_KIND[r.fmt];
-    const args = [r.path, "--meta", join(dir, "posts.md"), "--lang", r.lang, "--kind", kind];
-    if (r.fmt === "16x9") args.push("--cover", r.cover);
+    if (r.lang === "visub") run(process.execPath, [join(ROOT, "scripts/visub.mjs"), date, "--youtube"]);
+    const args = uploadArgs(r, dir);
     const bin = join(REPO, ".agents/skills/aidr-youtube-upload/bin", uploader === "api" ? "yt-upload-api.mjs" : "yt-upload");
     if (uploader === "api") args.push("--privacy", privacy);
-    const out = run(bin, args);
-    if (dry) continue;
-    const id = out.match(/^ID=(\S+)/m)?.[1];
-    const url = out.match(/^URL=(\S+)/m)?.[1];
-    if (!id) throw new Error(`${r.cut}: uploader printed no ID=; stopping`);
-    r.youtube = { id, url, oembed: out.match(/^OEMBED=(.*)$/m)?.[1] };
-    r.state = "uploaded";
+    let out;
+    let failed = null;
+    try {
+      out = run(bin, args);
+    } catch (e) {
+      out = e.stdout ?? "";
+      failed = e;
+    }
+    if (dry) {
+      showMeta(args);
+      continue;
+    }
+    // Record an id even from a failed run: YouTube cannot replace a file, so a rerun must not upload it again.
+    const up = parseUpload(out);
+    if (up.id) {
+      r.youtube = { id: up.id, url: up.url ?? `https://youtu.be/${up.id}`, oembed: up.oembed };
+      r.state = "uploaded";
+    }
+    if (failed || !up.id) {
+      const why = up.fail ?? failed?.message ?? "the uploader printed no ID=";
+      r.uploadError = { at: new Date().toISOString(), why };
+      save();
+      throw new Error(`${r.cut}: upload failed: ${why}${up.id ? ` (video ${up.id} is on YouTube and recorded; a rerun does not upload it again)` : ""}`);
+    }
+    delete r.uploadError;
     save();
   }
 }
 
-// 3. Attach the YouTube ids to the day page, per language (needs both cuts of the language).
+// 3. Attach the YouTube ids to the day page, per language (every cut of the language needs its id). visub goes to
+// the Vietnamese page with its 16:9 only.
 if (steps.includes("attach")) {
-  const todo = langs.filter(onYouTube).filter((l) => byLang(l).some((r) => (dry || r.youtube?.id) && !r.attached));
+  const viPage = await seedFromSite();
+  const todo = attachTodo(rows, langs, { viPage, dry });
+  for (const r of mine.filter((r) => r.lang === "visub" && r.youtube?.id && !r.attached && !todo.includes("visub"))) voiceWins(r);
   summary("attach to the day page", todo);
   for (const l of todo) {
-    const long = byLang(l).find((r) => r.fmt === "16x9");
-    const short = byLang(l).find((r) => r.fmt === "9x16");
-    if (!dry && !(long?.youtube?.id && short?.youtube?.id))
-      throw new Error(`${l}: both YouTube ids are needed to attach; run --steps upload`);
-    const title = ytTitle(l);
-    const args = ["--filter", "@aidr/web", "agent", "day-video", date, "--lang", l, "--video", long?.youtube?.id ?? "<16x9 id>", "--short", short?.youtube?.id ?? "<9x16 id>"];
-    if (title) args.push("--title", title);
-    const out = run("pnpm", args, { cwd: REPO });
+    const page = cutFor(l).page;
+    if (!dry && byLang(l).some((r) => !r.youtube?.id))
+      throw new Error(`${l}: every cut (${byLang(l).map((r) => r.fmt).join(", ")}) needs a YouTube id to attach; run --steps upload`);
+    const out = run("pnpm", ["--filter", "@aidr/web", "agent", ...dayVideoArgs({ date, lang: l, rows: byLang(l), title: titleFor(l) })], { cwd: REPO });
     // A Worker without per-language day videos ignores `lang` and would write VI ids into the EN columns.
-    if (!dry && !out.includes(`"lang": "${l}"`) && !out.includes(`"lang":"${l}"`))
-      throw new Error(`${l}: the day-video response has no lang=${l}; is the per-language Worker (migration 0052) deployed?`);
+    if (!dry && !out.includes(`"lang": "${page}"`) && !out.includes(`"lang":"${page}"`))
+      throw new Error(`${l}: the day-video response has no lang=${page}; is the per-language Worker (migration 0052) deployed?`);
     for (const r of dry ? [] : byLang(l)) {
       r.attached = true;
       if (r.state === "uploaded") r.state = "attached";
@@ -367,8 +403,8 @@ if (steps.includes("telegram")) {
   const real = prod && !override;
   const where = real ? "PRODUCTION channels" : `chat ${override ?? staging ?? "$TELEGRAM_STAGING_CHAT_ID"}${prod ? "" : " (staging)"}`;
   const fmt = tgMode === "card" ? "16x9" : tgFmt;
-  // The card is the Worker's per-language YouTube post; visub has no YouTube video of its own.
-  const tgLangs = tgMode === "card" ? langs.filter(onYouTube) : langs;
+  // The card is the Worker's post of a day page's video; visub shares the Vietnamese page, so it has no card.
+  const tgLangs = tgMode === "card" ? langs.filter((l) => !cutFor(l).subs) : langs;
   const todo = telegramTodo(rows, tgLangs, fmt);
   for (const r of mine.filter((r) => r.lang === "visub" && r.fmt === fmt && !r.telegram && !todo.includes(r)))
     console.log(`  ${r.cut}: the Vietnamese-voice cut is already on the channel; not posting the subtitled cut`);
@@ -396,9 +432,9 @@ if (steps.includes("telegram")) {
       record(target, { chat_id: find(json, "chat_id") ?? chat ?? "prod", message_id });
       continue;
     }
-    // visub: the English video's YouTube id (STATUS, else the live day page) and the translated title.
+    // visub: its own YouTube id, else the English video's (STATUS, else the live day page), and the translated title.
     const youtubeId = youtubeIdFor(target, rows) ?? (l === "visub" ? (await dayPageIds("en"))["16x9"] : undefined);
-    const title = l === "visub" ? subsTitle() : ytTitle(l);
+    const title = titleFor(l);
     const { caption, replyMarkup } = telegramPost({ date, lang: l, title, youtubeId });
     const copy = tgCopyPath(target.path);
     if (dry) {
@@ -423,6 +459,7 @@ for (const r of mine) {
     r.voice !== undefined && (r.voice ? "voice" : "no voice"),
     r.duration && `${r.duration}s ${r.sizeMB}MB`,
     r.youtube?.url,
+    r.uploadError && `upload failed: ${r.uploadError.why}`,
     r.attached && "attached",
     r.facebook?.published && `facebook reel ${r.facebook.id}`,
     r.telegram && `telegram ${r.telegram.chat_id}/${r.telegram.message_id}`,

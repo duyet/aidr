@@ -129,9 +129,10 @@ export function chatFor(lang, { override, prod, staging, env = envVar }) {
   return env(name) ?? fallback;
 }
 
-/** The YouTube id behind a cut's button: its own, or for visub the English 16:9 video. */
+/** The YouTube id behind a cut's button: its own; visub without one (not uploaded, or the upload failed) links the
+ *  English 16:9 video. */
 export const youtubeIdFor = (target, rows) =>
-  target.lang === "visub" ? rows.find((r) => r.lang === "en" && r.fmt === "16x9")?.youtube?.id : target.youtube?.id;
+  target.youtube?.id ?? (target.lang === "visub" ? rows.find((r) => r.lang === "en" && r.fmt === "16x9")?.youtube?.id : undefined);
 
 /** Caption and buttons for a cut. visub reads as a Vietnamese post: its translated title and the Vietnamese buttons. */
 export function telegramPost({ date, lang, title, youtubeId }) {

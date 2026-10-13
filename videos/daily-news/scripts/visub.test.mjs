@@ -1,12 +1,26 @@
 // node --test videos/daily-news/scripts/*.test.mjs
 // The visub cut: the English cut with Vietnamese subtitles, posted to the Vietnamese Telegram channel.
 import assert from "node:assert/strict";
-import { join } from "node:path";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { cutFor } from "./lang.mjs";
-import { addRows, needsRender, telegramTodo } from "./status.mjs";
+import { addRows, attachTodo, dayVideoArgs, needsRender, parseUpload, seedIds, telegramTodo, uploadArgs, uploadTodo, viPageCut } from "./status.mjs";
 import { chatFor, telegramPost, youtubeIdFor } from "./telegram-video.mjs";
-import { formatSrt, houseStyle, parseSrt, retime, splitAcross, spreadWords, subsMismatch, translateCues } from "./visub.mjs";
+import {
+  enPost,
+  formatSrt,
+  houseStyle,
+  parseSrt,
+  retime,
+  splitAcross,
+  spreadWords,
+  subsMismatch,
+  translateCues,
+  translatePost,
+} from "./visub.mjs";
 
 // A slice of the 2026-10-13 captions.srt: cue fragments of whole sentences, one with numbers.
 const EN_SRT = `1
@@ -165,6 +179,7 @@ test("visub posts to the Vietnamese channel with Vietnamese copy and the English
   assert.equal(chatFor("visub", { prod: false, staging: "-100staging", env }), "-100staging");
   assert.equal(chatFor("visub", { prod: true, override: "123", env }), "123");
 
+  // Not uploaded (or the upload failed): the English video.
   const youtubeId = youtubeIdFor(visub, rows);
   assert.equal(youtubeId, "EN16x9abcde");
   const post = telegramPost({ date: "2026-10-13", lang: "visub", title: VI.title, youtubeId });
@@ -174,4 +189,227 @@ test("visub posts to the Vietnamese channel with Vietnamese copy and the English
   assert.equal(day.text, "Trang ngày trên aidr.today");
   assert.match(day.url, /\/date\/2026-10-13\?lang=vi&utm_source=telegram$/);
   assert.equal(telegramPost({ date: "2026-10-13", lang: "visub", title: null }).caption, "<b>Bản tin AI;DR — 2026-10-13</b>");
+});
+
+test("visub's Telegram button links its own YouTube video once it has one", () => {
+  const rows = rowsFor(["en", "visub"]);
+  rows[0].youtube = { id: "EN16x9abcde" };
+  const visub = rows.find((r) => r.lang === "visub");
+  visub.youtube = { id: "VIsub16x9ab" };
+  const id = youtubeIdFor(visub, rows);
+  assert.equal(id, "VIsub16x9ab");
+  const [yt] = telegramPost({ date: "2026-10-13", lang: "visub", title: VI.title, youtubeId: id }).replyMarkup.inline_keyboard[0];
+  assert.deepEqual(yt, { text: "▶ YouTube", url: "https://youtu.be/VIsub16x9ab" });
+});
+
+test("visub is uploaded to YouTube with Vietnamese metadata over English audio, and its STATUS id stops a second upload", () => {
+  const rows = rowsFor(["en", "visub"]);
+  const visub = rows.find((r) => r.lang === "visub");
+  assert.deepEqual(uploadTodo(rows, ["visub"]), [visub]);
+  const args = uploadArgs(visub, dir);
+  const at = (f) => args[args.indexOf(f) + 1];
+  assert.equal(args[0], visub.path);
+  assert.equal(at("--meta"), join(dir, "youtube.visub.json"));
+  assert.equal(at("--lang"), "vi"); // title and description: defaultLanguage
+  assert.equal(at("--audio-lang"), "en"); // the English anchors: defaultAudioLanguage
+  assert.equal(at("--kind"), "long");
+  assert.equal(at("--cover"), join(dir, "renders", "cover-2026-10-13-16x9.png"));
+  // The English cut is unchanged: posts.md, its own language for both.
+  const en = uploadArgs(rows[0], dir);
+  assert.deepEqual([en[en.indexOf("--meta") + 1], en[en.indexOf("--lang") + 1], en[en.indexOf("--audio-lang") + 1]], [join(dir, "posts.md"), "en", "en"]);
+
+  // YouTube cannot replace a file: an id in STATUS (even from a run that failed after ID=) is never uploaded again.
+  const up = parseUpload("ID=VIsub16x9ab\nFAIL: thumbnail (video VIsub16x9ab is uploaded)\n");
+  assert.deepEqual(up, { id: "VIsub16x9ab", url: undefined, oembed: undefined, fail: "thumbnail (video VIsub16x9ab is uploaded)" });
+  visub.youtube = { id: up.id };
+  assert.deepEqual(uploadTodo(rows, ["visub"]), []);
+  assert.deepEqual(parseUpload("FAIL: token (HTTP 400: invalid_grant)\n"), { id: undefined, url: undefined, oembed: undefined, fail: "token (HTTP 400: invalid_grant)" });
+});
+
+test("visub is attached to the Vietnamese day page with its 16:9 only", () => {
+  const rows = rowsFor(["en", "visub"]);
+  const visub = rows.find((r) => r.lang === "visub");
+  assert.deepEqual(attachTodo(rows, ["visub"]), []);
+  assert.deepEqual(attachTodo(rows, ["visub"], { dry: true }), ["visub"]);
+  visub.youtube = { id: "VIsub16x9ab" };
+  assert.deepEqual(attachTodo(rows, ["visub"]), ["visub"]);
+  // No --short: the page keeps whatever Short it has.
+  assert.deepEqual(dayVideoArgs({ date: "2026-10-13", lang: "visub", rows: [visub], title: VI.title }), [
+    "day-video", "2026-10-13", "--lang", "vi", "--video", "VIsub16x9ab", "--title", VI.title,
+  ]);
+  const en = rows.filter((r) => r.lang === "en");
+  en[0].youtube = { id: "EN16x9abcde" };
+  en[1].youtube = { id: "EN9x16abcde" };
+  assert.deepEqual(dayVideoArgs({ date: "2026-10-13", lang: "en", rows: en, title: TITLE }), [
+    "day-video", "2026-10-13", "--lang", "en", "--video", "EN16x9abcde", "--short", "EN9x16abcde", "--title", TITLE,
+  ]);
+  visub.attached = true;
+  assert.deepEqual(attachTodo(rows, ["visub"]), []);
+});
+
+test("the Vietnamese-voice cut wins the Vietnamese page: visub is neither uploaded nor attached over it", () => {
+  const en = { "16x9": "EN16x9abcde", "9x16": "EN9x16abcde" };
+  const voice = { "16x9": "VIvoice16x9", "9x16": "VIvoice9x16" };
+  const subs = { "16x9": "VIsub16x9ab" };
+  // Shape: attach sets the voice cut's 16:9 and Short together; the subtitled cut has a 16:9 only.
+  assert.equal(viPageCut({ en, vi: voice }, []), "vi");
+  assert.equal(viPageCut({ en, vi: subs }, []), "visub");
+  assert.equal(viPageCut({ en, vi: {} }, []), null);
+  // An old Worker serves the English ids on ?lang=vi: no Vietnamese video.
+  assert.equal(viPageCut({ en, vi: en }, []), null);
+  // A STATUS id decides over the shape.
+  assert.equal(viPageCut({ en, vi: { "16x9": "VIvoice16x9" } }, [{ lang: "vi", youtube: { id: "VIvoice16x9" } }]), "vi");
+
+  // Seeding: the voice cut never takes a subtitled 16:9 (it would attach it with a new Short), and the reverse.
+  assert.deepEqual(seedIds("vi", { en, vi: subs }, []), {});
+  assert.deepEqual(seedIds("visub", { en, vi: subs }, []), subs);
+  assert.deepEqual(seedIds("visub", { en, vi: voice }, []), {});
+  assert.deepEqual(seedIds("vi", { en, vi: voice }, []), voice);
+  assert.deepEqual(seedIds("en", { en, vi: voice }, []), en);
+
+  const rows = rowsFor(["en", "visub"]);
+  const visub = rows.find((r) => r.lang === "visub");
+  assert.deepEqual(uploadTodo(rows, ["visub"], "vi"), []);
+  assert.equal(uploadTodo(rows, ["vi", "visub"]).some((r) => r.lang === "visub"), false);
+  assert.deepEqual(uploadTodo([...rows, { lang: "vi", fmt: "16x9", youtube: { id: "VIvoice16x9" } }], ["visub"]), []);
+  visub.youtube = { id: "VIsub16x9ab" };
+  assert.deepEqual(attachTodo(rows, ["visub"], { viPage: "vi" }), []);
+  assert.deepEqual(attachTodo(rows, ["visub"], { viPage: "visub" }), ["visub"]);
+});
+
+const POSTS = `<!-- posts:en -->
+# Posts (EN) — AI;DR Daily 2026-10-13
+
+## YouTube (16:9)
+
+**Title** (56/100)
+
+${TITLE}
+
+**Description**
+
+AI models hide capabilities. Tuesday, October 13, 2026.
+
+1. Nvidia China shipments: Nvidia shipments fall 44% in China
+
+Chapters
+0:00 Intro
+0:43 Nvidia China shipments
+
+Sources
+1. https://www.techmeme.com/261013/p2
+
+Today's stories: https://aidr.today/date/2026-10-13
+Every story, ranked and summarized daily: https://aidr.today
+
+#AI #AINews #Nvidia
+
+**Tags:** AI, AINews, Nvidia, AI;DR
+**Captions:** upload \`captions.srt\` (English).
+
+## YouTube Shorts (9:16)
+
+**Title**
+
+Short #Shorts
+<!-- /posts:en -->
+`;
+const VI_LINES = {
+  "AI models hide capabilities. Tuesday, October 13, 2026.": "Các model AI che giấu năng lực. Thứ Ba, 13/10/2026.",
+  "Nvidia China shipments: Nvidia shipments fall 44% in China": "Nvidia tại Trung Quốc: lượng giao hàng giảm 44%",
+  Chapters: "Chương",
+  Intro: "Mở đầu",
+  "Nvidia China shipments": "Nvidia tại Trung Quốc",
+  Sources: "Nguồn",
+  "Today's stories:": "Tin hôm nay:",
+  "Every story, ranked and summarized daily:": "Mọi tin AI, xếp hạng và tóm tắt mỗi ngày:",
+  "#AI #AINews #Nvidia": "#AI #TinAI #Nvidia",
+  [TITLE]: VI.title,
+};
+const askedLines = (messages) => JSON.parse(messages[1].content.slice(messages[1].content.indexOf("\n\n"))).lines;
+// A model that translates the lines it is asked for, from VI_LINES.
+const postModel = (asked) => async (_model, messages) => {
+  const lines = askedLines(messages);
+  asked.push(...lines);
+  return JSON.stringify({ lines: lines.map((l) => VI_LINES[l]) });
+};
+
+test("visub's YouTube description is the English one in Vietnamese: times, numbers and links kept, aidr.today in Vietnamese", async () => {
+  const asked = [];
+  const chain = () => ({ models: ["m1"], llm: postModel(asked) });
+  const out = await translatePost({ en: enPost(POSTS), title: VI.title, chain, style, log: () => {} });
+  assert.equal(out.model, "m1");
+  assert.equal(out.title, VI.title);
+  assert.equal(
+    out.desc,
+    `Các model AI che giấu năng lực. Thứ Ba, 13/10/2026.
+
+1. Nvidia tại Trung Quốc: lượng giao hàng giảm 44%
+
+Chương
+0:00 Mở đầu
+0:43 Nvidia tại Trung Quốc
+
+Nguồn
+1. https://www.techmeme.com/261013/p2
+
+Tin hôm nay: https://aidr.today/date/2026-10-13?lang=vi
+Mọi tin AI, xếp hạng và tóm tắt mỗi ngày: https://aidr.today/?lang=vi
+
+#AI #TinAI #Nvidia`
+  );
+  assert.equal(out.tags, "AI, AINews, Nvidia, AI;DR, tin AI hôm nay, trí tuệ nhân tạo");
+  assert.ok(!asked.includes(TITLE), "the caption title is reused, not translated again");
+
+  // A re-voiced cut moves the chapter times: the cached lines are reused with no model call.
+  const moved = { ...enPost(POSTS), desc: enPost(POSTS).desc.replace("0:43", "0:47") };
+  const again = await translatePost({ en: moved, title: VI.title, cached: out.lines, chain: () => assert.fail("no model call"), style });
+  assert.equal(again.model, null);
+  assert.match(again.desc, /^0:47 Nvidia tại Trung Quốc$/m);
+
+  // No caption title (a script without post.youtubeTitle): the English title is translated with the lines.
+  const titled = await translatePost({ en: enPost(POSTS), title: null, chain: () => ({ models: ["m1"], llm: postModel([]) }), style, log: () => {} });
+  assert.equal(titled.title, VI.title);
+});
+
+test("a description answer that drops a number or breaks the hashtags goes to the next model", async () => {
+  const bad = async (_model, messages) => {
+    const lines = askedLines(messages);
+    return JSON.stringify({ lines: lines.map((l) => (l.startsWith("#") ? "#AI #tin tức AI #Nvidia" : l.includes("44%") ? "Nvidia giảm mạnh" : VI_LINES[l])) });
+  };
+  const tried = [];
+  const out = await translatePost({
+    en: enPost(POSTS),
+    title: VI.title,
+    chain: () => ({
+      models: ["bad", "good"],
+      llm: (m, msgs) => {
+        tried.push(m);
+        return m === "bad" ? bad(m, msgs) : postModel([])(m, msgs);
+      },
+    }),
+    style,
+    log: () => {},
+  });
+  assert.deepEqual(tried, ["bad", "good"]);
+  assert.equal(out.model, "good");
+  await assert.rejects(
+    translatePost({ en: enPost(POSTS), title: VI.title, chain: () => ({ models: ["bad"], llm: bad }), style, log: () => {} }),
+    /no valid Vietnamese YouTube description[\s\S]*number 44 is missing[\s\S]*hashtags/
+  );
+});
+
+test("yt-meta.py --json gives the uploaders visub's metadata with the Vietnamese channel links before the hashtags", () => {
+  const tmp = mkdtempSync(join(tmpdir(), "visub-meta-"));
+  try {
+    const file = join(tmp, "youtube.visub.json");
+    writeFileSync(file, JSON.stringify({ title: VI.title, desc: "Tóm tắt.\n\nTin hôm nay: https://aidr.today/date/2026-10-13?lang=vi\n\n#AI #TinAI", tags: "AI, tin AI hôm nay" }));
+    const bin = resolve(import.meta.dirname, "../../../.agents/skills/aidr-youtube-upload/bin/yt-meta.py");
+    const m = JSON.parse(execFileSync("python3", ["-I", bin, "--json", file, "--lang", "vi", "--kind", "long"], { encoding: "utf8" }));
+    assert.equal(m.title, VI.title);
+    assert.equal(m.tags, "AI, tin AI hôm nay");
+    assert.match(m.desc, /\?lang=vi\nTiện ích Chrome: \S+\nTelegram: https:\/\/t\.me\/aihomnay\nFacebook: \S+\n\n#AI #TinAI$/);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
