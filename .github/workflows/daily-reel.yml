@@ -181,7 +181,7 @@ jobs:
       - name: Vietnamese subtitles cut
         id: visub
         continue-on-error: true
-        run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps render,gate
+        run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps render,gate --render-published
 
       - name: Vietnamese subtitles posting plan (dry run)
         if: env.LIVE != 'true' && steps.visub.outcome == 'success'
