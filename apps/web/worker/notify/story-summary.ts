@@ -5,7 +5,7 @@ import { firstSentence } from "../sentences.js";
 import { escapePromptPayload } from "../translation-review.js";
 import type { Env } from "../types.js";
 import { dayCardVersion } from "./day-card.js";
-import { normalizeSpace } from "./fit-text.js";
+import { fitSentences, normalizeSpace } from "./fit-text.js";
 
 /**
  * A caption summary that fits its Telegram budget, written once per story and
@@ -104,16 +104,18 @@ function parseSummary(raw: string): string | null {
   }
 }
 
-/** Valid when it is non-empty, inside the budget, finished, and in the
- *  channel's language. Returns the cleaned text or null. */
+/** Valid when its whole leading sentences inside the budget are non-empty,
+ *  finished, and in the channel's language. Returns those sentences or null. */
 export function validCaptionSummary(
   value: string | null,
   lang: Lang,
   budget: number
 ): string | null {
   if (!value) return null;
-  const text = normalizeSpace(value);
-  if (!text || text.length > budget) return null;
+  // Models overshoot a character limit; whole leading sentences of the
+  // answer still beat trimming the long source.
+  const text = fitSentences(normalizeSpace(value), budget);
+  if (!text) return null;
   if (text.includes("…") || text.includes("...")) return null;
   if (!SENTENCE_END.test(text)) return null;
   if (lang === "vi" ? !looksVietnamese(text) : looksVietnamese(text)) {

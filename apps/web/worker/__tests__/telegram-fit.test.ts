@@ -352,6 +352,18 @@ describe("captionSummaryFor", () => {
     expect(writes).toHaveLength(0);
   });
 
+  it("keeps the whole leading sentences of an answer that overshoots the budget", async () => {
+    const first = `${"Broadcom backs a 42 billion USD debt package for Anthropic ".repeat(3).trim()}.`;
+    const overshoot = `${first} ${"Chip stocks fell after the remarks. ".repeat(10).trim()}`;
+    expect(first.length).toBeLessThan(budget);
+    expect(overshoot.length).toBeGreaterThan(budget);
+    completeJson.mockResolvedValueOnce(JSON.stringify({ summary: overshoot }));
+    const out = await captionSummaryFor(env, story(), budget);
+    expect(out?.startsWith(first)).toBe(true);
+    expect(out?.length).toBeLessThanOrEqual(budget);
+    expect(out).toMatch(/\.$/);
+  });
+
   it("returns null, never throws, when the model fails", async () => {
     completeJson.mockRejectedValue(new Error("anyrouter chain exhausted"));
     expect(await captionSummaryFor(env, story(), budget)).toBeNull();

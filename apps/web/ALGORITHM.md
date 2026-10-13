@@ -1233,8 +1233,9 @@ deliberately non-spammy.
   press release speaking as "we", "I" or "you"); else a stored
   rewrite in `notify_summaries` (one LLM call at send time through
   `completeJson`, only for the story about to be posted, keyed by item and
-  language, regenerated when the source summary changes; rejected unless
-  non-empty, in budget, finished, no ellipsis, and in the channel's language);
+  language, regenerated when the source summary changes; an answer over the
+  budget keeps its whole leading sentences that fit; rejected unless
+  non-empty, finished, no ellipsis, and in the channel's language);
   else whole leading sentences with no ellipsis; else whole words plus `…`.
   A failed model call never blocks the send. Raw text is cut first and
   escaped after, so an HTML entity is never split.
