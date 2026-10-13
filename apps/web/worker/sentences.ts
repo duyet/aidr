@@ -92,6 +92,17 @@ function wordBefore(value: string, index: number): string | undefined {
  *  Anything else after the mark ("using the", "dẫn dắt") continues it. */
 const SENTENCE_START = /[\p{Lu}\p{Nd}"'“‘«([{]/u;
 
+/** A link or an `owner/repo` tag also starts a sentence ("… forever? https://…",
+ *  "… shipped. duyet/aidr has the notes"). The owner needs a letter, so a
+ *  fraction or date ("12/10", "2026/10/14") stays inside its sentence. */
+const LINK_START =
+  /(?:https?:\/\/|www\.)\S|(?=[\w.-]*[A-Za-z])[A-Za-z0-9][\w.-]*\/[\w.-]/y;
+
+function startsLink(value: string, index: number): boolean {
+  LINK_START.lastIndex = index;
+  return LINK_START.test(value);
+}
+
 function isAbbreviationPeriod(
   value: string,
   index: number,
@@ -117,7 +128,13 @@ export function sentenceEnds(value: string): number[] {
     let nextAt = end;
     while (nextAt < value.length && /\s/.test(value[nextAt] ?? "")) nextAt++;
     const next = value[nextAt];
-    if (next !== undefined && !SENTENCE_START.test(next)) continue;
+    if (
+      next !== undefined &&
+      !SENTENCE_START.test(next) &&
+      !startsLink(value, nextAt)
+    ) {
+      continue;
+    }
     if (
       value[i] === "." &&
       (isInitialismPeriod(value, i) || isAbbreviationPeriod(value, i, next))
