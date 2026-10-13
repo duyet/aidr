@@ -1191,8 +1191,9 @@ deliberately non-spammy.
   (JPEG, at most 200 KB, at most 320 px) only when it is about to be used as
   a `sendVideo` thumbnail; a poster that fails is left out and the video
   still goes. Gallery photos (`sendPhoto`, album photos) are not
-  preflighted: Telegram fetches them, and if it rejects one the post falls
-  back to the generated card, then text.
+  preflighted: Telegram fetches them, and if it rejects one the post tries
+  the next gallery image (at most 3 photos, in order), then the generated
+  card, then text.
 - **Ambiguous sends are never repeated.** Only a JSON answer from Telegram
   is a definite outcome. `ok: false` posted nothing, so the next transport
   may run and the row is `failed` (retried up to 3 attempts). A timeout, a
@@ -1208,8 +1209,8 @@ deliberately non-spammy.
 - **Media order: story image first, generated card as fallback.** The post
   leads with the story's real photo. The first-party OG card
   `/api/og/{id8}.png?lang=` is used when the story has no usable image, and
-  as a one-shot retry when Telegram rejects the image (hotlink-hostile or
-  dead upstream URLs) — it is 200 by construction, so the post keeps its
+  as a one-shot retry when Telegram rejects the first 3 gallery images
+  (hotlink-hostile or dead upstream URLs) — it is 200 by construction, so the post keeps its
   image instead of dropping to bare text. The card no longer occupies an
   album slot.
 - **Each channel is one language.** `telegram` is `vi` and `telegram-en`

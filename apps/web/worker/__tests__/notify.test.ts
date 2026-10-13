@@ -1158,6 +1158,47 @@ describe("telegramNotifier gating", () => {
     expect(retry.photo).toBe("https://aidr.today/api/og/abcdef12.png?lang=vi");
   });
 
+  it("tries the next gallery images before the generated card", async () => {
+    // A dead lead (the marketbrief bare-URL 404) must not push the post to the
+    // OG card while the story still has working photos.
+    const fail = (description: string) =>
+      new Response(JSON.stringify({ ok: false, description }), { status: 400 });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(fail("WEBPAGE_CURL_FAILED"))
+      .mockResolvedValueOnce(fail("wrong file identifier"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, result: { message_id: 51 } }), {
+          status: 200,
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await telegramNotifier.sendStory(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      story({
+        media_manifest: {
+          version: 1,
+          assets: [
+            { type: "image", url: "https://img.example/dead.jpg" },
+            { type: "image", url: "https://img.example/good1.jpg" },
+            { type: "image", url: "https://img.example/good2.jpg" },
+          ],
+        },
+      })
+    );
+    expect(result).toMatchObject({ ok: true, messageId: "51" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
+    const third = JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string);
+    expect(third.photo).toBe("https://img.example/good1.jpg");
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[1]?.body).includes("/api/og/")
+      )
+    ).toBe(false);
+  });
+
   it("posts once with the card when the story image is over Telegram's photo cap", async () => {
     // Gallery photos are not preflighted: Telegram fetches the URL and refuses
     // a photo over its 5 MB URL limit. That refusal is a definite answer, so
