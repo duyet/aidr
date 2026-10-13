@@ -1227,9 +1227,15 @@ deliberately non-spammy.
 - **Telegram text always fits; nothing is cut mid-word** (`worker/notify/fit-text.ts`).
   A trending caption has 1024 visible characters; the summary gets what the
   title, meta line and album Read link leave (`storySummaryBudget`, at most
-  500). Leading summary sentences that only repeat the title are dropped
-  first. In order: the channel's own summary when it fits and does not read
-  as source copy (an RSS "appeared first on" footer, or a paper, blog or
+  500). Leading summary text that only repeats the title is dropped first
+  (`worker/notify/headline-repeat.ts`): each leading sentence loses its
+  byline ("Robert Hart / The Verge :") and splits into clauses at a spaced
+  dash, and a clause goes only when its content words are nearly all the
+  title's and it adds no number, no name, no hedge, denial or negation
+  ("reportedly", "not", "phủ nhận", "theo"), and names the title's names in
+  the same order. The first clause that adds a fact stays, so a
+  "<headline> — <dek>" summary keeps its dek. In order: the channel's own
+  summary when it fits and does not read as source copy (an RSS "appeared first on" footer, or a paper, blog or
   press release speaking as "we", "chúng tôi", "tôi" or "bạn"); else a stored
   rewrite in `notify_summaries` (one LLM call at send time through
   `completeJson`, only for the story about to be posted, keyed by item and

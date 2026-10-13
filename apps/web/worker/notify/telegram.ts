@@ -15,7 +15,8 @@ import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
 import { digestPage } from "./day-card.js";
 import { fitText, fitWords } from "./fit-text.js";
-import { captionSummaryFor, withoutRestatedHeadline } from "./story-summary.js";
+import { withoutRestatedHeadline } from "./headline-repeat.js";
+import { captionSummaryFor } from "./story-summary.js";
 import {
   type DailyDigest,
   type DigestBullet,
@@ -370,8 +371,9 @@ export function storySummaryBudget(
  *
  *  The summary is `story.caption_summary` (written to fit by
  *  `captionSummaryFor`) when present, else the channel's own summary cut at a
- *  sentence boundary, else at a word boundary. Leading sentences that only
- *  repeat the title are dropped first. Raw text is cut first and escaped
+ *  sentence boundary, else at a word boundary. Leading clauses that only
+ *  repeat the title and add no fact are dropped first
+ *  (`withoutRestatedHeadline`). Raw text is cut first and escaped
  *  after, so an entity is never split. */
 export function buildStoryCaption(
   story: StoryPayload,

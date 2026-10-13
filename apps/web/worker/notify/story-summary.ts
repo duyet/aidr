@@ -1,7 +1,6 @@
 import { looksVietnamese } from "../../src/lib/display-title.js";
 import type { Lang } from "../../src/lib/types.js";
 import { completeJson } from "../llm.js";
-import { firstSentence } from "../sentences.js";
 import { escapePromptPayload } from "../translation-review.js";
 import type { Env } from "../types.js";
 import { dayCardVersion } from "./day-card.js";
@@ -51,43 +50,6 @@ const SOURCE_COPY = [
 
 function readsAsSourceCopy(summary: string): boolean {
   return SOURCE_COPY.some((pattern) => pattern.test(summary));
-}
-
-const WORD = /[\p{L}\p{N}]+/gu;
-
-function words(text: string): Set<string> {
-  return new Set(
-    (text.toLowerCase().match(WORD) ?? []).filter((w) => w.length > 1)
-  );
-}
-
-const RESTATED_TITLE_SHARE = 0.8;
-const RESTATED_NEW_WORD_SHARE = 0.35;
-
-function restatesHeadline(headline: Set<string>, sentence: string): boolean {
-  const own = words(sentence);
-  if (own.size === 0 || headline.size === 0) return false;
-  const repeated = [...headline].filter((w) => own.has(w)).length;
-  const added = [...own].filter((w) => !headline.has(w));
-  if (added.some((w) => /\d/.test(w))) return false;
-  return (
-    repeated / headline.size >= RESTATED_TITLE_SHARE &&
-    added.length / own.size <= RESTATED_NEW_WORD_SHARE
-  );
-}
-
-export function withoutRestatedHeadline(
-  title: string,
-  summary: string
-): string {
-  const headline = words(title);
-  let rest = normalizeSpace(summary);
-  while (rest) {
-    const lead = firstSentence(rest);
-    if (!restatesHeadline(headline, lead)) break;
-    rest = rest.slice(lead.length).trim();
-  }
-  return rest;
 }
 
 function parseSummary(raw: string): string | null {

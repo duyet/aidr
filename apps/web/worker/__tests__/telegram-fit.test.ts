@@ -435,4 +435,210 @@ describe("story caption never restates its headline", () => {
     });
     expect(visible(buildStoryCaption(s))).toContain("built for summarization");
   });
+
+  /** The summary paragraph of a caption, or null when only the title and
+   *  meta line are left. */
+  function summaryOf(s: StoryPayload): string | null {
+    const parts = visible(buildStoryCaption(s)).split("\n\n");
+    return parts.length === 3 ? (parts[1] ?? null) : null;
+  }
+
+  // Production copies shaped "Author / Outlet : <headline> — <dek>". The dek
+  // states a fact the headline lacks, so it stays and the byline goes with
+  // the headline clause.
+  it.each<[string, string, string, string, "en" | "vi"]>([
+    [
+      "eb89e091 en",
+      "Google rolls out Gemini 4 Argon globally via the Gemini API and to Google AI Pro subscribers in the Gemini app and AI Mode, and in Antigravity for Ultra users (Robert Hart/The Verge)",
+      "Robert Hart / The Verge : Google rolls out Gemini 4 Argon globally via the Gemini API and to Google AI Pro subscribers in the Gemini app and AI Mode, and in Antigravity for Ultra users — After months of trailing its rivals, Google says Argon competes with the industry's best.",
+      "After months of trailing its rivals, Google says Argon competes with the industry's best.",
+      "en",
+    ],
+    [
+      "e5d5b6a8 en",
+      "Sources: the US restores the UK AISI's access to the latest US models for safety testing, after ordering OpenAI and Anthropic to stop sharing models last month (Tony Diver/Telegraph)",
+      "Tony Diver / Telegraph : Sources: the US restores the UK AISI's access to the latest US models for safety testing, after ordering OpenAI and Anthropic to stop sharing models last month — US had blocked regulators from reviewing frontier models from Anthropic, OpenAI and Google DeepMind",
+      "US had blocked regulators from reviewing frontier models from Anthropic, OpenAI and Google DeepMind",
+      "en",
+    ],
+    [
+      "6748de17 en",
+      "Sources: Nvidia is in talks to acquire or invest more into US open-weights AI startup Reflection AI; the deal may be an acquihire to avoid antitrust scrutiny (Financial Times)",
+      "Financial Times : Sources: Nvidia is in talks to acquire or invest more into US open-weights AI startup Reflection AI; the deal may be an acquihire to avoid antitrust scrutiny — Donald Trump's administration hopes the company will rival cheap Chinese alternatives such as DeepSeek",
+      "Donald Trump's administration hopes the company will rival cheap Chinese alternatives such as DeepSeek",
+      "en",
+    ],
+    [
+      "fe16e09a en",
+      'Anthropic updates its usage policy to ban "sustained and needless abusive or cruel behavior" toward Claude, ending chats as the primary enforcement mechanism (Hayden Field/The Verge)',
+      "Hayden Field / The Verge : Anthropic updates its usage policy to ban “sustained and needless abusive or cruel behavior” toward Claude, ending chats as the primary enforcement mechanism — The usage policy update also adds new rules addressing propaganda campaigns, surveillance, and weapon development.",
+      "The usage policy update also adds new rules addressing propaganda campaigns, surveillance, and weapon development.",
+      "en",
+    ],
+    [
+      "56129488 en",
+      "Sources: Amazon is in talks to buy AI startup Decart in a deal that could value it at ~$7B; Anthropic had decided against acquiring Decart for ~$6B in September (Wall Street Journal)",
+      "Wall Street Journal : Sources: Amazon is in talks to buy AI startup Decart in a deal that could value it at ~$7B; Anthropic had decided against acquiring Decart for ~$6B in September — San Francisco company's software makes it easier for developers to switch between different AI chips",
+      "San Francisco company's software makes it easier for developers to switch between different AI chips",
+      "en",
+    ],
+    [
+      "a3e8e19d en",
+      "Apple HomeView demo: a square screen with a personalized, iPhone-like experience based on facial recognition, up to six users, Siri AI, and a closed ecosystem (Nicole Nguyen/Wall Street Journal)",
+      "Nicole Nguyen / Wall Street Journal : Apple HomeView demo: a square screen with a personalized, iPhone-like experience based on facial recognition, up to six users, Siri AI, and a closed ecosystem — HomeView is a square-shaped screen for smart home control, hands-free FaceTime calls and access to Siri AI",
+      "HomeView is a square-shaped screen for smart home control, hands-free FaceTime calls and access to Siri AI",
+      "en",
+    ],
+    [
+      "e5c0cec3 en",
+      "A global chip stock sell-off deepens after Broadcom's CEO likened AI investing to a casino, with Samsung down as much as 8.8%, SK Hynix 9.2%, and Micron 4% (Financial Times)",
+      "Financial Times : A global chip stock sell-off deepens after Broadcom's CEO likened AI investing to a casino, with Samsung down as much as 8.8%, SK Hynix 9.2%, and Micron 4% — Declines for Samsung and SK Hynix drag Kospi sharply lower as investors fret over scale of AI investment",
+      "Declines for Samsung and SK Hynix drag Kospi sharply lower as investors fret over scale of AI investment",
+      "en",
+    ],
+    [
+      "8993369f en",
+      'Sources: Epic has delayed the release of an upcoming game, instructing developers to implement an "AI first" production model with "no more hand-written code" (Jason Schreier/Bloomberg)',
+      "Jason Schreier / Bloomberg : Sources: Epic has delayed the release of an upcoming game, instructing developers to implement an “AI first” production model with “no more hand-written code” — The company told the team behind the upcoming shooter that it will now be an ‘AI first’ production",
+      "The company told the team behind the upcoming shooter that it will now be an ‘AI first’ production",
+      "en",
+    ],
+    [
+      "96b8c7ef en",
+      "An interview with Mark Zuckerberg, who says Meta has caught up with rivals at the frontier of AI with its Wonder model and rejects calls for a slowdown (Hannah Murphy/Financial Times)",
+      "Hannah Murphy / Financial Times : An interview with Mark Zuckerberg, who says Meta has caught up with rivals at the frontier of AI with its Wonder model and rejects calls for a slowdown — FT interview: tech billionaire touts release of new Muse Wonder model after vast spending to challenge rivals in AI race",
+      "FT interview: tech billionaire touts release of new Muse Wonder model after vast spending to challenge rivals in AI race",
+      "en",
+    ],
+    [
+      "376196c1 en",
+      'Meta says it plans to power its Muse AI agent with Wonder, starting with subscribers, and will develop specialized models it "can bring to everyone using Muse" (Robert Hart/The Verge)',
+      "Robert Hart / The Verge : Meta says it plans to power its Muse AI agent with Wonder, starting with subscribers, and will develop specialized models it “can bring to everyone using Muse” — Meta says the models compete with the industry's best and will soon power its Muse agent. … Meta is making up for lost time in the AI race.",
+      "Meta says the models compete with the industry's best and will soon power its Muse agent. … Meta is making up for lost time in the AI race.",
+      "en",
+    ],
+    [
+      "f72c187e vi",
+      "Chủ tịch Microsoft Brad Smith kêu gọi thiết lập các quy định an toàn AI toàn cầu, lập luận rằng sữa và máy giặt hiện đang phải đối mặt với các tiêu chuẩn an toàn nghiêm ngặt hơn (Mitchell Labiak/BBC)",
+      "Mitchell Labiak / BBC: Chủ tịch Microsoft Brad Smith kêu gọi các quy định an toàn toàn cầu cho AI, lập luận rằng sữa và máy giặt hiện đang phải đối mặt với các tiêu chuẩn an toàn nghiêm ngặt hơn — Chủ tịch Microsoft cho biết sữa và máy giặt hiện được quản lý chặt chẽ hơn cả AI.",
+      "Chủ tịch Microsoft cho biết sữa và máy giặt hiện được quản lý chặt chẽ hơn cả AI.",
+      "vi",
+    ],
+    [
+      "626a46c9 vi",
+      "Phân tích 857 bản phát hành từ chín phòng thí nghiệm AI Trung Quốc từ năm 2021 đến tháng 9 năm 2026: chỉ 3,6% công bố kết quả an toàn và chỉ 1,1% làm điều đó khi ra mắt (SemiAnalysis)",
+      "SemiAnalysis: Phân tích 857 bản phát hành từ chín phòng thí nghiệm AI Trung Quốc từ năm 2021 đến tháng 9 năm 2026 cho thấy chỉ 3,6% công bố kết quả an toàn và chỉ 1,1% làm vậy ngay khi ra mắt — vấn đề an toàn AI đang vô cùng nóng bỏng. Vào ngày 12 tháng 9 năm 2026, Dario Amodei xuất bản một bài tiểu luận lập luận rằng các phòng thí nghiệm frontier model phải chủ động làm chậm tốc độ cải tiến năng lực mô hình.",
+      "Vấn đề an toàn AI đang vô cùng nóng bỏng. Vào ngày 12 tháng 9 năm 2026, Dario Amodei xuất bản một bài tiểu luận lập luận rằng các phòng thí nghiệm frontier model phải chủ động làm chậm tốc độ cải tiến năng lực mô hình.",
+      "vi",
+    ],
+    [
+      "158de3f7 vi",
+      "AI đang thúc đẩy nền kinh tế lừa đảo trị giá khoảng 442 tỷ USD, quy mô lớn hơn cả thị trường cocaine toàn cầu, khi ngành công nghiệp lừa đảo Trung Quốc lan rộng ra ngoài các khu phức hợp kiên cố ở châu Á (Bloomberg)",
+      "Bloomberg cho biết AI đang thúc đẩy nền kinh tế lừa đảo trị giá khoảng 442 tỷ USD, quy mô lớn hơn cả thị trường cocaine toàn cầu, khi ngành công nghiệp lừa đảo Trung Quốc lan rộng ra ngoài các khu phức hợp kiên cố ở châu Á — thông qua máy tính Samsung, điện thoại Huawei, thiết bị Redmi và hàng chục hộ chiếu Trung Quốc cũng như Malaysia.",
+      "Thông qua máy tính Samsung, điện thoại Huawei, thiết bị Redmi và hàng chục hộ chiếu Trung Quốc cũng như Malaysia.",
+      "vi",
+    ],
+    [
+      "6194e048 vi",
+      "Nguồn tin tiết lộ quyết định ra mắt Muse bất chấp lo ngại an toàn của Mark Zuckerberg, sau khi thấy sản phẩm agent tương tự của startup AI Instinct thu hút được người dùng",
+      "Eli Tan / New York Times: Nguồn tin tiết lộ quyết định ra mắt Muse bất chấp lo ngại an toàn của Mark Zuckerberg, sau khi thấy sản phẩm agent tương tự của startup AI Instinct thu hút được người dùng — Meta từng hoãn phát hành ứng dụng AI agent của mình là Muse trong nhiều tháng do lo ngại an toàn. Sau đó, đối thủ mới xuất hiện đã buộc Mark Zuckerberg phải ra quyết định.",
+      "Meta từng hoãn phát hành ứng dụng AI agent của mình là Muse trong nhiều tháng do lo ngại an toàn. Sau đó, đối thủ mới xuất hiện đã buộc Mark Zuckerberg phải ra quyết định.",
+      "vi",
+    ],
+    [
+      "fc760a40 vi",
+      "Nhà sản xuất Omron của Nhật Bản cho biết sẽ thâu tóm công ty máy tính công nghiệp Mỹ OnLogic cùng công ty mẹ Interlogic với giá 675 triệu USD để thúc đẩy các nỗ lực AI vật lý",
+      "Anton Bridge / Reuters: Nhà sản xuất Omron của Nhật Bản cho biết sẽ thâu tóm công ty máy tính công nghiệp Mỹ OnLogic cùng công ty mẹ Interlogic với giá 675 triệu USD để thúc đẩy các nỗ lực physical AI - nhà sản xuất Omron của Nhật Bản sẽ mua lại công ty máy tính công nghiệp OnLogic ở Mỹ và công ty mẹ Interlogic với giá 675 triệu USD, hãng thông báo hôm thứ Ba.",
+      "Nhà sản xuất Omron của Nhật Bản sẽ mua lại công ty máy tính công nghiệp OnLogic ở Mỹ và công ty mẹ Interlogic với giá 675 triệu USD, hãng thông báo hôm thứ Ba.",
+      "vi",
+    ],
+  ])(
+    "keeps the dek after a restated headline clause (%s)",
+    (_id, title, summary, dek, lang) => {
+      expect(summaryOf(story({ title, summary, lang }))).toBe(dek);
+    }
+  );
+
+  // Each summary repeats the headline and adds one thing: a hedge, a denial,
+  // a negation, a swap of who did what to whom, a number or a name. Dropping
+  // it would lose that fact.
+  it.each<[string, string, string, "en" | "vi"]>([
+    [
+      "denial",
+      "Nvidia is in talks to buy Reflection AI",
+      "Nvidia is in talks to buy Reflection AI, which Reflection denied.",
+      "en",
+    ],
+    [
+      "hedge",
+      "Nvidia is in talks to buy Reflection AI",
+      "Nvidia is reportedly in talks to buy Reflection AI, sources say.",
+      "en",
+    ],
+    [
+      "negation",
+      "Nvidia is in talks to buy Reflection AI",
+      "Nvidia is not in talks to buy Reflection AI.",
+      "en",
+    ],
+    [
+      "role swap",
+      "OpenAI sues Microsoft over its use of GPT models",
+      "Microsoft sues OpenAI over its use of GPT models.",
+      "en",
+    ],
+    [
+      "spelled-out number",
+      "OpenAI fires safety researchers over leaks",
+      "OpenAI fires three safety researchers over leaks.",
+      "en",
+    ],
+    [
+      "name",
+      "Microsoft president says UK is best placed to drive AI regulation",
+      "Microsoft President Brad Smith says the UK is best placed to drive AI regulation.",
+      "en",
+    ],
+    [
+      "vi denial",
+      "Nvidia đàm phán mua lại startup mô hình 'mở' Reflection AI tại Mỹ",
+      "Nvidia đàm phán mua lại startup mô hình 'mở' Reflection AI tại Mỹ, nhưng Reflection đã phủ nhận.",
+      "vi",
+    ],
+    [
+      "vi negation",
+      "Nvidia đàm phán mua lại startup mô hình 'mở' Reflection AI tại Mỹ",
+      "Nvidia không đàm phán mua lại startup mô hình 'mở' Reflection AI tại Mỹ.",
+      "vi",
+    ],
+  ])("keeps a repeat that adds a %s", (_kind, title, summary, lang) => {
+    expect(summaryOf(story({ title, summary, lang }))).toBe(summary);
+  });
+
+  // Production copies that only repeat the headline in other words.
+  it.each<[string, string, string, "en" | "vi"]>([
+    [
+      "4240042e en",
+      "Jev developer TypeSafe AI raised ~$870M led by a16z at a $7.5B valuation with Sequoia and others participating (Bloomberg)",
+      "TypeSafe AI raised approximately $870M in a round led by a16z at a $7.5B valuation, with Sequoia and others participating.",
+      "en",
+    ],
+    [
+      "90b333df en",
+      "Nvidia, Oracle, CoreWeave, and other AI stocks fell after a report that OpenAI's annualized revenue at September's end was $20B less than previously reported (CNBC)",
+      "Nvidia, Oracle, CoreWeave, and other AI stocks fell following a report that OpenAI's annualized revenue at the end of September was $20B less than previously reported.",
+      "en",
+    ],
+    [
+      "a6d1a90b vi",
+      "Công ty nghiên cứu gọi IPO của Anthropic là 'bài kiểm tra chưa từng có về sự nhẹ dạ của nhà đầu tư'",
+      "Một công ty nghiên cứu đã gọi đợt IPO của Anthropic là một bài kiểm tra chưa từng có đối với sự nhẹ dạ của các nhà đầu tư.",
+      "vi",
+    ],
+  ])(
+    "still drops a summary that only rewords the headline (%s)",
+    (_id, title, summary, lang) => {
+      expect(summaryOf(story({ title, summary, lang }))).toBeNull();
+    }
+  );
 });
