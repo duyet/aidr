@@ -11,7 +11,8 @@
 // Output (tracked):         editions/<date>/captions.srt, posts.md, timeline.json
 // With --lang vi: script.vi.json in; voice-vi/, out-vi/, captions.vi.srt, timeline.vi.json and the vi block of posts.md out.
 // With --lang visub: the English script, voice/, timing and out/mix.wav in, captions.visub.json (visub.mjs) burned in
-// instead of the English captions; out-visub/16x9 out. Writes no captions, timeline or posts.md.
+// instead of the English captions and screen.visub.json (visub-screen.mjs) as the screen text; out-visub/16x9 and
+// out-visub/cover-16x9 out. Writes no captions, timeline or posts.md.
 import { execFileSync } from "node:child_process";
 import {
   cpSync,
@@ -27,6 +28,7 @@ import { formatRange, parseWeek } from "./week.mjs";
 import { gridCss } from "./grid.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 import { spreadWords, subsMismatch } from "./visub.mjs";
+import { applyScreen } from "./visub-screen.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const BRAND = resolve(ROOT, "../brand");
@@ -34,14 +36,19 @@ const date = process.argv[2];
 if (!date) throw new Error("usage: build.mjs <date> [--no-audio]");
 const withAudio = !process.argv.includes("--no-audio");
 const cut = cutOf(process.argv);
-// The language of the script, voice and screen (visub: English).
+// The language of the screen text and labels (visub: Vietnamese over the English script and voice).
 const lang = cut.screen;
 
 const read = (p) => JSON.parse(readFileSync(p, "utf8"));
 const config = read(join(ROOT, "config.json"));
 const dir = join(ROOT, "editions", date);
 const edition = read(join(dir, "edition.json"));
-const script = read(join(dir, cut.script));
+if (cut.subs && !existsSync(join(dir, cut.subs.screen)))
+  throw new Error(`${cut.subs.screen} is missing: run scripts/visub-screen.mjs ${date}`);
+// visub: the English script with its screen text in Vietnamese; voice and timing fields stay English.
+const script = cut.subs
+  ? applyScreen(read(join(dir, cut.script)), edition, read(join(dir, cut.subs.screen)).fields)
+  : read(join(dir, cut.script));
 const modeFile = join(dir, cut.voice, "mode.json");
 const noVoice =
   process.argv.includes("--no-voice") ||
@@ -184,7 +191,7 @@ for (const seg of segs) {
     seg.words = estimateWords(
       partsOf(line),
       { wordsPerSecond: config.timing.noVoice.wordsPerSecond, gap: config.voice.gap },
-      lang
+      cut.audio
     );
     seg.voiceDur = seg.words.at(-1).end;
   } else {
@@ -349,7 +356,9 @@ const dateline =
   script.dateline ??
   (WEEKLY
     ? `${lang === "vi" ? "Tuần" : "Week of"} ${formatRange(edition.start_date, edition.end_date, UI.locale)}`
-    : `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`);
+    : lang === "vi"
+      ? `${DOW}, ${DAY} ${MON.toLowerCase()}, ${d.getUTCFullYear()}`
+      : `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`);
 const byRank = Object.fromEntries(edition.stories.map((s) => [s.rank, s]));
 const firstImage = (s) =>
   (s.images ?? byRank[s.rank]?.images?.map((im) => im.local) ?? [])[0];
@@ -721,10 +730,9 @@ for (const fmt of formatsOf(cut, config)) {
     `<script>${motion}</script>`,
   ].join("\n");
 
-  // visub has no cover of its own (the English one).
   for (const [name, html] of [
     [fmt, page(fmt, body, total)],
-    ...(cut.subs ? [] : [[`cover-${fmt}`, coverHtml(fmt)]]),
+    [`cover-${fmt}`, coverHtml(fmt)],
   ]) {
     const out = join(outRoot, name);
     rmSync(out, { recursive: true, force: true });

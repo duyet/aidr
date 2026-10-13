@@ -149,11 +149,12 @@ const dir = "/x/editions/2026-10-13";
 const config = { formats: { "16x9": {}, "9x16": {} } };
 const rowsFor = (langs) => addRows([], { date: "2026-10-13", langs, config, dir });
 
-test("visub is one 16:9 cut that reuses the English cover", () => {
+test("visub is one 16:9 cut with its own Vietnamese cover", () => {
   const rows = rowsFor(["en", "visub"]);
   const visub = rows.filter((r) => r.lang === "visub");
   assert.deepEqual(visub.map((r) => r.cut), ["2026-10-13-visub-16x9"]);
-  assert.equal(visub[0].cover, join(dir, "renders", "cover-2026-10-13-16x9.png"));
+  assert.equal(visub[0].cover, join(dir, "renders", "cover-2026-10-13-visub-16x9.png"));
+  assert.notEqual(visub[0].cover, rows.find((r) => r.cut === "2026-10-13-en-16x9").cover);
   assert.equal(visub[0].path, join(dir, "renders", "aidr-daily-2026-10-13-visub-16x9-1080p.mp4"));
   assert.equal(cutFor("visub").timeline, cutFor("en").timeline);
 });
@@ -161,7 +162,8 @@ test("visub is one 16:9 cut that reuses the English cover", () => {
 test("a visub cut STATUS says is done is skipped: rendered, or posted to the channel", () => {
   const [, , visub] = rowsFor(["en", "visub"]);
   assert.equal(needsRender(visub, { exists: () => false }), true);
-  assert.equal(needsRender(visub, { exists: (p) => p === visub.path }), false);
+  assert.equal(needsRender(visub, { exists: (p) => p === visub.path }), true);
+  assert.equal(needsRender(visub, { exists: (p) => p === visub.path || p === visub.cover }), false);
   assert.deepEqual(telegramTodo([visub], ["visub"], "16x9"), [visub]);
   // A staging send does not count; a channel post does.
   assert.deepEqual(telegramTodo([{ ...visub, telegramTest: { chat_id: 1, message_id: 2 } }], ["visub"], "16x9").length, 1);
@@ -215,7 +217,7 @@ test("visub is uploaded to YouTube with Vietnamese metadata over English audio, 
   assert.equal(at("--lang"), "vi"); // title and description: defaultLanguage
   assert.equal(at("--audio-lang"), "en"); // the English anchors: defaultAudioLanguage
   assert.equal(at("--kind"), "long");
-  assert.equal(at("--cover"), join(dir, "renders", "cover-2026-10-13-16x9.png"));
+  assert.equal(at("--cover"), join(dir, "renders", "cover-2026-10-13-visub-16x9.png")); // its Vietnamese cover is the thumbnail
   // The English cut is unchanged: posts.md, its own language for both.
   const en = uploadArgs(rows[0], dir);
   assert.deepEqual([en[en.indexOf("--meta") + 1], en[en.indexOf("--lang") + 1], en[en.indexOf("--audio-lang") + 1]], [join(dir, "posts.md"), "en", "en"]);
