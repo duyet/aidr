@@ -1,7 +1,7 @@
 import {
   DAY_CARD_CANDIDATES,
   hasDayOgCopy,
-  splitDayHighlights,
+  pickDayCardItems,
 } from "../../src/lib/day-card-pick.js";
 import { readSession } from "../../src/lib/db.js";
 import {
@@ -17,18 +17,15 @@ import type { Env } from "../types.js";
 import { firstSentence } from "./fit-text.js";
 import type { DailyDigest, DigestBullet } from "./types.js";
 
-export interface DayCardPage {
+export interface DayCard {
   bullets: DigestBullet[];
   /** Story ids of `bullets`, in order. */
   itemIds: string[];
-  /** Stable token for the photo URL, so Telegram refetches when the tiles change. */
+  /** Stable token for the card URL, so Telegram refetches when the tiles change. */
   version: string;
-  /** Second highlight grid. Absent on the lead card. */
-  part?: 2;
-  /** Follow-up heading. The lead card keeps the digest's own headline. */
-  headline?: string;
-  /** A thin tail is text. Four or more leftovers get their own card. */
-  photo: boolean;
+  /** That language's day video (16:9, else the Short), for the digest's
+   *  YouTube button. Never the other language's. */
+  youtubeId: string | null;
 }
 
 /** FNV-1a, base36. Padded so a short stamp still matches the R2 key
@@ -44,8 +41,9 @@ export function dayCardVersion(ids: readonly string[]): string {
 }
 
 /** One extra clause after the headline: a whole sentence or nothing. The
- *  caption fitter drops clauses whole when the tiles do not all fit. */
-const HIGHLIGHT_SUMMARY_CAP = 160;
+ *  digest is a 4096-char message, so six lines can each carry a full lead
+ *  sentence; the fitter drops clauses whole when the six do not all fit. */
+const HIGHLIGHT_SUMMARY_CAP = 400;
 
 type HighlightCopy = {
   title: string;
@@ -97,7 +95,7 @@ export function highlightBulletText(item: HighlightCopy, lang: Lang): string {
 }
 
 /** `text` is the full line; `lead` is the headline alone, the shorter copy
- *  the caption fitter falls back to. Absent when there is no clause. */
+ *  the digest fitter falls back to. Absent when there is no clause. */
 function highlightBullet(
   item: HighlightCopy,
   lang: Lang
@@ -114,78 +112,57 @@ function toBullets(items: FeedItem[], lang: Lang): DigestBullet[] {
   }));
 }
 
-function moreHeadline(lang: Lang, date: string): string {
-  return lang === "en"
-    ? `✨ More highlights — ${date}`
-    : `✨ Thêm tin nổi bật — ${date}`;
-}
-
 /**
- * The stories painted on the day's card, then the next highlights when
- * the lead grid cannot hold them. Same archive read as the OG card,
- * including the manifest thumbnail, so the caption names those tiles.
+ * The stories painted on the day's card. Same archive read as the OG card,
+ * including the manifest thumbnail, so the digest names those tiles.
  * Calendar day in the audience zone, not the rolling 24h TL;DR.
  */
-export async function loadDayCardPages(
+export async function loadDayCard(
   env: Pick<Env, "DB">,
   date: string,
   lang: Lang
-): Promise<DayCardPage[] | null> {
+): Promise<DayCard | null> {
   if (!env.DB) return null;
   const archive = await getDayArchive(readSession(env.DB), date);
   const ranked = (archive.day?.items ?? [])
     .filter((item) => hasDayOgCopy(item, lang))
     .slice(0, DAY_CARD_CANDIDATES);
-  const { lead, more, moreIsCard } = splitDayHighlights(ranked);
+  const lead = pickDayCardItems(ranked);
   if (lead.length === 0) return null;
-  const pages: DayCardPage[] = [
-    {
-      bullets: toBullets(lead, lang),
-      itemIds: lead.map((item) => item.id),
-      version: dayCardVersion(lead.map((item) => item.id)),
-      photo: true,
-    },
-  ];
-  if (more.length > 0) {
-    pages.push({
-      bullets: toBullets(more, lang),
-      itemIds: more.map((item) => item.id),
-      version: dayCardVersion(more.map((item) => item.id)),
-      part: 2,
-      headline: moreHeadline(lang, date),
-      photo: moreIsCard,
-    });
-  }
-  return pages;
+  const itemIds = lead.map((item) => item.id);
+  const video = archive.videos[lang];
+  return {
+    bullets: toBullets(lead, lang),
+    itemIds,
+    version: dayCardVersion(itemIds),
+    youtubeId: video?.youtube_id ?? video?.short_id ?? null,
+  };
 }
 
 export interface DigestPage {
   digest: DailyDigest;
+  /** Card token; absent when the edition stands in for the card. */
   version?: string;
-  part?: 2;
-  headline?: string;
-  photo: boolean;
+  youtubeId?: string | null;
 }
 
-/** Caption pages: the day cards when the day has stories, else the edition. */
-export async function digestPages(
+/** The digest's stories: the day card when the day has stories, else the edition. */
+export async function digestPage(
   env: Pick<Env, "DB">,
   digest: DailyDigest
-): Promise<DigestPage[]> {
+): Promise<DigestPage> {
   try {
-    const pages = await loadDayCardPages(env, digest.date, digest.lang);
-    if (!pages) return [{ digest, photo: true }];
-    return pages.map((page) => ({
-      digest: { ...digest, bullets: page.bullets },
-      version: page.version,
-      part: page.part,
-      headline: page.headline,
-      photo: page.photo,
-    }));
+    const card = await loadDayCard(env, digest.date, digest.lang);
+    if (!card) return { digest };
+    return {
+      digest: { ...digest, bullets: card.bullets },
+      version: card.version,
+      youtubeId: card.youtubeId,
+    };
   } catch (error) {
     console.error(
       `telegram day card stories failed for ${digest.date}: ${error instanceof Error ? error.message : "unknown"}`
     );
-    return [{ digest, photo: true }];
+    return { digest };
   }
 }
