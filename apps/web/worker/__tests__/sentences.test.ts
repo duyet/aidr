@@ -241,26 +241,53 @@ describe("a sentence ends before a link or repo tag", () => {
 });
 
 describe("scan cost", () => {
-  const text = "Mr. Smith met Dr. Jones on Oct. 12. It ended. ".repeat(11_000);
+  const unit = "Mr. Smith met Dr. Jones on Oct. 12. It ended. ";
+  const SCALE = 8;
+  // Linear work gives a ratio near 8, quadratic near 64. Comparing two sizes
+  // on the same machine cancels CPU speed and suite load, which an absolute
+  // millisecond bound does not.
+  const MAX_RATIO = 20;
 
-  it("splits 500 KB of text in under 200 ms", () => {
-    expect(text.length).toBeGreaterThan(500_000);
-    const start = performance.now();
-    const parts = splitSentences(text);
-    const elapsed = performance.now() - start;
-    expect(parts.length).toBeGreaterThan(10_000);
-    expect(elapsed).toBeLessThan(200);
+  /** Best of three runs, so one descheduled run cannot skew the result. */
+  function minMs(fn: () => void): number {
+    let best = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < 3; i++) {
+      const start = performance.now();
+      fn();
+      best = Math.min(best, performance.now() - start);
+    }
+    return best;
+  }
+
+  function growth(make: (n: number) => string, run: (s: string) => void) {
+    const small = make(1);
+    const large = make(SCALE);
+    run(small);
+    // Floor the divisor: a sub-timer-resolution small run must not inflate it.
+    return (
+      minMs(() => run(large)) /
+      Math.max(
+        minMs(() => run(small)),
+        0.05
+      )
+    );
+  }
+
+  const prose = (k: number) => unit.repeat(1_400 * k);
+
+  it("splitSentences scales linearly", () => {
+    expect(prose(SCALE).length).toBeGreaterThan(500_000 / 2);
+    expect(splitSentences(prose(SCALE)).length).toBeGreaterThan(5_000);
+    expect(growth(prose, splitSentences)).toBeLessThan(MAX_RATIO);
   });
 
-  it("clipFeedSummary on 500 KB reads only the clip window", () => {
-    const start = performance.now();
-    clipFeedSummary(text);
-    expect(performance.now() - start).toBeLessThan(200);
+  it("clipFeedSummary scales linearly", () => {
+    expect(growth(prose, clipFeedSummary)).toBeLessThan(MAX_RATIO);
   });
 
-  it("a dot-heavy run stays linear", () => {
-    const start = performance.now();
-    sentenceEnds("a.".repeat(250_000));
-    expect(performance.now() - start).toBeLessThan(200);
+  it("a dot-heavy run scales linearly", () => {
+    expect(growth((k) => "a.".repeat(20_000 * k), sentenceEnds)).toBeLessThan(
+      MAX_RATIO
+    );
   });
 });
