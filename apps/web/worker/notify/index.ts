@@ -107,6 +107,11 @@ export const DIGEST_LOCAL_HOUR = 8;
 export const DIGEST_MAX_BULLETS = 8;
 /** Give up on a send for a channel after this many failed attempts. */
 export const NOTIFY_MAX_ATTEMPTS = 3;
+/** The digest highlight goes out within this long of its digest, retries
+ *  included (3 attempts at the 30-minute cadence). Past it, a digest sent
+ *  earlier (by an older deploy, or before a run ran out of subrequests)
+ *  gets no late highlight. */
+export const HIGHLIGHT_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 /** Trending rank bar, relative to the window: a story must reach the
  *  TRENDING_RANK_PERCENTILE of the last TRENDING_BAR_WINDOW_SEC of published
@@ -212,6 +217,7 @@ export function summarizeNotifyReasons(
 interface NotificationRow {
   status: string;
   attempts: number;
+  posted_at?: number | null;
 }
 
 export type StoryRow = Omit<StoryPayload, "media_manifest"> & {
@@ -826,7 +832,7 @@ export async function dispatchStoryNotifications(
 
     // --- 1. Daily TL;DR digest (once per local day) ---
     const existing = await env.DB.prepare(
-      "SELECT status, attempts FROM notifications WHERE channel = ? AND item_id = ?"
+      "SELECT status, attempts, posted_at FROM notifications WHERE channel = ? AND item_id = ?"
     )
       .bind(notifier.id, key)
       .first<NotificationRow>();
@@ -892,12 +898,16 @@ export async function dispatchStoryNotifications(
     }
 
     // --- 1b. The digest's top story, after a digest that surely posted ---
-    // An earlier run's `sent` digest counts, so a failed highlight retries.
+    // A recent `sent` digest from an earlier run counts, so a failed
+    // highlight retries; an older one gets no late highlight.
     let highlight: NotifyChannelReason["highlight"];
+    const recentDigest =
+      existing?.status === "sent" &&
+      now - (existing.posted_at ?? 0) <= HIGHLIGHT_WINDOW_MS;
     if (
       notifier.postsDigestHighlight &&
       !budgetSpent &&
-      (digestReason === "sent" || existing?.status === "sent")
+      (digestReason === "sent" || recentDigest)
     ) {
       const result = await sendDigestHighlight(env, notifier, target, date);
       if (result) {
@@ -1089,12 +1099,15 @@ export async function previewDigest(
       ? `sent ${result.messageId}`
       : `failed: ${result.error}`;
     if (!result.ok) continue;
-    const story = await loadDigestHighlight(env, date, lang);
-    if (typeof story === "string") {
-      out[`${lang}:top`] = `skipped: ${story}`;
-      continue;
-    }
-    const top = await notifier.sendStory(env, story);
+    // The digest is already in the staging chat: a failure here is reported,
+    // not thrown.
+    const top = await attemptSend(async () => {
+      const story = await loadDigestHighlight(env, date, lang);
+      if (typeof story === "string") {
+        return { ok: false, error: `skipped: ${story}` };
+      }
+      return notifier.sendStory(env, story);
+    });
     out[`${lang}:top`] = top.ok
       ? `sent ${top.messageId}`
       : `failed: ${top.error}`;

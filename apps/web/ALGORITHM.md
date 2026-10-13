@@ -1042,9 +1042,11 @@ deliberately non-spammy.
   (`channelCopy`) and must pass the trending postability gate; a day with no
   card stories has no highlight. It is keyed `digest:<date>:top` in
   `notifications`, claimed like every send, and runs only when that day's
-  digest row is `sent`: an `ambiguous` or `sending` digest never triggers
-  it. A definite failure (or no postable top story) retries on later runs
-  up to `NOTIFY_MAX_ATTEMPTS`; the digest is not resent. The `digest:`
+  digest row is `sent`, in the same run or within `HIGHLIGHT_WINDOW_MS`
+  (3h) of it: an `ambiguous` or `sending` digest never triggers it, and an
+  older digest (sent by a previous deploy) gets no late highlight. A
+  definite failure (or no postable top story) retries on later runs up to
+  `NOTIFY_MAX_ATTEMPTS`, inside that window; the digest is not resent. The `digest:`
   prefix keeps it out of trending's daily count, 3h gap and posted-events
   window, and its story is already in `notify_digest_items`. The admin
   force-send follows a sent digest with the highlight under the same key;

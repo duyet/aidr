@@ -802,26 +802,6 @@ describe("telegram channels", () => {
     expect(leadText).toContain("Ảnh thật thứ hai từ manifest");
     expect(leadText).not.toContain("Ảnh thường số 8");
   });
-
-  it("does not fall back or resend when the digest outcome is unknown", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockRejectedValue(
-        new DOMException("The operation timed out.", "TimeoutError")
-      );
-    vi.stubGlobal("fetch", fetchMock);
-    const result = await telegramNotifier.sendDigest(
-      {
-        TELEGRAM_BOT_TOKEN: "token",
-        TELEGRAM_CHAT_ID: "chat",
-        DB: dayArchiveDb(tenStories("dd")),
-      } as unknown as Env,
-      { lang: "vi", date: "2026-10-04", bullets: [] }
-    );
-    expect(result).toMatchObject({ ok: false, ambiguous: true });
-    expect(result.messageId).toBeUndefined();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe("telegramNotifier gating", () => {

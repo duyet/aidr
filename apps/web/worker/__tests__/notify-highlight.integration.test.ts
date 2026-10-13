@@ -215,6 +215,13 @@ describe("digest highlight", () => {
     vi.setSystemTime(new Date(NOW.getTime() + 30 * 60_000));
     await dispatchStoryNotifications(env);
     expect(calls).toEqual([]);
+
+    // A digest sent hours ago (an older deploy) gets no late highlight.
+    sqlite.exec(`DELETE FROM notifications WHERE item_id LIKE '%:top'`);
+    vi.setSystemTime(new Date(NOW.getTime() + 6 * 3600_000));
+    await dispatchStoryNotifications(env);
+    expect(calls).toEqual([]);
+    expect(row("telegram-en", `digest:${TODAY}:top`)).toBeUndefined();
   });
 
   it("does not post the highlight after an ambiguous digest", async () => {
