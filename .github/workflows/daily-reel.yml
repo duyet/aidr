@@ -87,7 +87,7 @@ jobs:
       # day so a rerun never posts Telegram twice (YouTube and Facebook are also
       # checked against the live day page / the Page itself). It also keeps the
       # visub translations, so a rerun burns the same Vietnamese captions and
-      # sends the same Vietnamese YouTube description.
+      # screen text and sends the same Vietnamese YouTube description.
       - name: Restore STATUS.json
         uses: actions/cache/restore@v6
         with:
@@ -96,6 +96,7 @@ jobs:
             videos/daily-news/editions/${{ steps.date.outputs.date }}/HAND_PUBLISHED
             videos/daily-news/editions/${{ steps.date.outputs.date }}/captions.visub.json
             videos/daily-news/editions/${{ steps.date.outputs.date }}/youtube.visub.json
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/screen.visub.json
           key: daily-reel-status-${{ steps.date.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: daily-reel-status-${{ steps.date.outputs.date }}-
 
@@ -213,6 +214,7 @@ jobs:
           path: |
             videos/daily-news/editions/${{ steps.date.outputs.date }}/captions.visub.json
             videos/daily-news/editions/${{ steps.date.outputs.date }}/youtube.visub.json
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/screen.visub.json
             videos/daily-news/editions/${{ steps.date.outputs.date }}/captions.visub.srt
             videos/daily-news/editions/${{ steps.date.outputs.date }}/timeline.json
 
@@ -225,6 +227,7 @@ jobs:
             videos/daily-news/editions/${{ steps.date.outputs.date }}/HAND_PUBLISHED
             videos/daily-news/editions/${{ steps.date.outputs.date }}/captions.visub.json
             videos/daily-news/editions/${{ steps.date.outputs.date }}/youtube.visub.json
+            videos/daily-news/editions/${{ steps.date.outputs.date }}/screen.visub.json
           key: daily-reel-status-${{ steps.date.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Fail when the Vietnamese subtitles cut did not post
