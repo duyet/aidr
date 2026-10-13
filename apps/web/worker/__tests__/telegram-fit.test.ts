@@ -466,6 +466,38 @@ describe("story caption never restates its headline", () => {
     expect(summaryOf(s) !== null).toBe(kept);
   });
 
+  it.each([
+    [
+      "VI hedge",
+      "Nvidia bán chip H20 cho Trung Quốc",
+      "Nvidia được cho là bán chip H20 cho Trung Quốc.",
+      "vi",
+    ],
+    ["VI passive", "Microsoft kiện OpenAI", "Microsoft bị OpenAI kiện.", "vi"],
+    [
+      "VI allowed to",
+      "Nvidia bán chip tại Trung Quốc",
+      "Nvidia được bán chip tại Trung Quốc.",
+      "vi",
+    ],
+    [
+      "EN passive",
+      "Nvidia acquired Reflection AI",
+      "Nvidia acquired by Reflection AI.",
+      "en",
+    ],
+    [
+      "EN plan",
+      "Nvidia buys Reflection AI",
+      "Nvidia to buy Reflection AI.",
+      "en",
+    ],
+  ])("voice and hedge words are content: %s", (_name, title, summary, lang) => {
+    expect(
+      summaryOf(story({ title, summary, lang: lang as "en" | "vi" }))
+    ).not.toBeNull();
+  });
+
   it("keeps a lead that echoes the headline but carries a new number", () => {
     const s = story({
       title:

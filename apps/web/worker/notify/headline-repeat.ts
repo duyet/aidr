@@ -32,15 +32,16 @@ const BYLINE = new RegExp(
  *  prepositions. "một" is read as the article. Tense, aspect, modal, time,
  *  quantity and hedge words are content: "has launched" under "will launch"
  *  says it happened, not that it is planned. So EN "is/was/has/had/be" and VI
- *  "đã/đang/sẽ/vừa" count, as do "will", "after", "over", "about", "just". */
+ *  "đã/đang/sẽ/vừa" count, as do "will", "after", "over", "about", "just".
+ *  Voice and hedge carriers count too: EN "to/by" ("to buy", "acquired by")
+ *  and VI "được/bị" ("được cho là" = reportedly, "bị kiện" = is sued). */
 const STOPWORDS = new Set(
   [
     ...["a", "an", "the", "and", "or", "but", "that", "than", "as"],
-    ...["of", "to", "in", "on", "at", "for", "from", "by", "with", "into"],
+    ...["of", "in", "on", "at", "for", "from", "with", "into"],
     ...["onto", "via"],
     ...["các", "những", "một", "và", "hoặc", "nhưng", "rằng", "mà", "của"],
     ...["với", "để", "trong", "từ", "về", "tại", "ở", "vào", "cho", "là"],
-    ...["được", "bị"],
   ].map(stem)
 );
 
