@@ -548,18 +548,23 @@ async function loadDailyVideo(
 
 /** The digest mail for one edition, exactly as it is sent: joins the
  *  bullets to their items and the day video, then renders. The subscribe
- *  and admin previews call this too, so the preview is the mail that arrives. */
+ *  and admin previews call this too, so the preview is the mail that arrives.
+ *  `preloadedVideo` (null = none) skips the video lookup; the lanes load it
+ *  once per edition. */
 export async function renderEditionEmail(
   env: Pick<Env, "DB" | "MAIL_POSTAL_ADDRESS">,
   edition: Pick<Edition, "date" | "lang" | "bullets">,
   unsubscribeToken: string,
   size: number,
-  format: MailFormat
+  format: MailFormat,
+  preloadedVideo?: DigestVideo | null
 ): Promise<{ subject: string; html: string; text: string }> {
   const lang = edition.lang === "en" ? "en" : "vi";
   const [bullets, video] = await Promise.all([
     loadBulletDetails(env, edition.bullets, lang),
-    loadDailyVideo(env, edition.date, lang),
+    preloadedVideo === undefined
+      ? loadDailyVideo(env, edition.date, lang)
+      : preloadedVideo,
   ]);
   return buildDigestEmail(
     edition.date,
@@ -584,6 +589,7 @@ export async function sendEmailLane(
   let sent = 0;
   let failed = 0;
   let stampedDate: string | null = null;
+  const videos = new Map<string, DigestVideo | null>();
   for (const sub of subscribers) {
     if ((sub.lang === "en" ? "en" : "vi") !== lang) continue;
     if (normalizeMailFrequency(sub.frequency) === "weekly") continue;
@@ -599,12 +605,19 @@ export async function sendEmailLane(
       editions.set(cacheKey, edition);
     }
     if (!edition) continue;
+    const videoKey = `${edition.date}:${lang}`;
+    let video = videos.get(videoKey);
+    if (video === undefined) {
+      video = await loadDailyVideo(env, edition.date, lang);
+      videos.set(videoKey, video);
+    }
     const { subject, html, text } = await renderEditionEmail(
       env,
       edition,
       sub.unsubscribe_token,
       size,
-      format
+      format,
+      video
     );
 
     const ok = await sendSubscriberEmail(env, {
@@ -738,11 +751,13 @@ export async function renderWeeklyEmail(
   mail: WeeklyMail,
   lang: "en" | "vi",
   unsubscribeToken: string,
-  format: MailFormat
+  format: MailFormat,
+  preloadedVideos?: DigestVideo[]
 ): Promise<{ subject: string; html: string; text: string }> {
   const [bullets, videos] = await Promise.all([
     loadBulletDetails(env, mail.bullets, lang),
-    loadDigestVideos(env, mail.meta.start_date, mail.meta.end_date, lang),
+    preloadedVideos ??
+      loadDigestVideos(env, mail.meta.start_date, mail.meta.end_date, lang),
   ]);
   return buildDigestEmail(
     mail.meta.end_date,
@@ -754,7 +769,7 @@ export async function renderWeeklyEmail(
     {
       postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined,
       weekly: mail.meta,
-      weekVideos: videos.reverse(),
+      weekVideos: [...videos].reverse(),
     }
   );
 }
@@ -771,6 +786,7 @@ export async function sendWeeklyLane(
   let sent = 0;
   let failed = 0;
   const mails = new Map<string, WeeklyMail | null>();
+  const weekVideos = new Map<string, DigestVideo[]>();
   for (const sub of subscribers) {
     if (normalizeMailFrequency(sub.frequency) !== "weekly") continue;
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
@@ -795,12 +811,23 @@ export async function sendWeeklyLane(
     // One subscriber's render or send error must not stop the others.
     let ok = false;
     try {
+      let videos = weekVideos.get(key);
+      if (videos === undefined) {
+        videos = await loadDigestVideos(
+          env,
+          mail.meta.start_date,
+          mail.meta.end_date,
+          lang
+        );
+        weekVideos.set(key, videos);
+      }
       const { subject, html, text } = await renderWeeklyEmail(
         env,
         mail,
         lang,
         sub.unsubscribe_token,
-        normalizeMailFormat(sub.mail_format)
+        normalizeMailFormat(sub.mail_format),
+        videos
       );
       ok = await sendSubscriberEmail(env, {
         to: sub.email,
