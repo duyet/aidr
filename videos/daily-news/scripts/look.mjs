@@ -1,6 +1,7 @@
 // The video's look, derived from the edition's date at build time and never stored.
 // Every axis rotates over its `auto` ids so two adjacent days (or weeks) never share a value, with no
 // memory of yesterday: CI never commits, so a look read back from a committed script froze every CI day.
+// When two axes are free they rotate together as combinations, so the whole look never ping-pongs either.
 // `script.theme` pins an axis: a key it sets wins, and an id outside the axis fails the build.
 import { parseWeek } from "./week.mjs";
 
@@ -59,6 +60,20 @@ export function rotate(list, day, axis) {
   return p[day - c * n];
 }
 
+/**
+ * The ids for `day` on two free axes with pools of the same size n >= 3, as one walk over all n*n pairs.
+ * a = day mod n and b = day + floor(day / n) mod n, so a window of n*n days shows every pair once. Both ids
+ * change every day (b steps by 1 inside a block and by 2 across a block edge) and a is never the same two
+ * days apart, so the look never goes A B A B. The sequence has period n*n, which is what a window of n*n
+ * distinct days forces; each pool's order is seeded by its axis name.
+ */
+export function rotatePair(listA, listB, day, axisA, axisB) {
+  const n = listA.length;
+  if (n < 3 || listB.length !== n) throw new Error(`rotatePair needs two pools of the same size >= 3, got ${n} and ${listB.length}`);
+  const [a, b] = [shuffle([...listA].sort(), fnv(axisA)), shuffle([...listB].sort(), fnv(axisB))];
+  return [a[mod(day, n)], b[mod(day + Math.floor(day / n), n)]];
+}
+
 /** { intro, transition, background, accent? } for this edition. Takes no language: build passes script.json for every cut. */
 export function resolveLook(script, edition) {
   const pin = script.theme ?? {};
@@ -68,6 +83,10 @@ export function resolveLook(script, edition) {
     if (!AXES[axis].ids.includes(id)) throw new Error(`script.theme.${axis} "${id}": unknown; use ${AXES[axis].ids.join(" | ")}`);
   }
   const day = dayNumber(edition.date);
-  const look = Object.fromEntries(Object.entries(AXES).map(([axis, { auto }]) => [axis, pin[axis] ?? rotate(auto, day, axis)]));
+  const free = Object.keys(AXES).filter((axis) => !(axis in pin) && AXES[axis].auto.length > 1);
+  const joint = free.length === 2 ? rotatePair(AXES[free[0]].auto, AXES[free[1]].auto, day, ...free) : [];
+  const look = Object.fromEntries(
+    Object.entries(AXES).map(([axis, { auto }]) => [axis, pin[axis] ?? (free.length === 2 && free.includes(axis) ? joint[free.indexOf(axis)] : rotate(auto, day, axis))]),
+  );
   return pin.accent ? { ...look, accent: pin.accent } : look;
 }
