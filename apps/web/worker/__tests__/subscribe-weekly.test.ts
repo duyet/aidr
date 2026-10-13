@@ -3,6 +3,7 @@ import {
   loadWeeklyMail,
   renderWeeklyEmail,
   sendDailyTldr,
+  sendEmailLane,
   shouldSendWeeklyForSubscriber,
   WEEKLY_FALLBACK_HOUR,
 } from "../subscribe/send.js";
@@ -94,6 +95,7 @@ function makeEnv(opts: {
 }) {
   const updates: { sql: string; args: unknown[] }[] = [];
   const reads: { sql: string; args: unknown[] }[] = [];
+  const videoReads = { count: 0 };
   const sent: Array<{ to: string; subject: string; html: string }> = [];
   const db = {
     batch: async () => [],
@@ -105,11 +107,17 @@ function makeEnv(opts: {
           if (sql.includes("FROM weekly_digests")) return opts.digest ?? null;
           return null; // no daily snapshot: only the weekly lane can send
         },
-        all: async () => ({
-          results: sql.includes("FROM items")
-            ? [{ id: "a", title: "Lab A open model", url: "https://a.dev/x" }]
-            : opts.subscribers,
-        }),
+        all: async () => {
+          if (sql.includes("FROM day_videos")) {
+            videoReads.count++;
+            return { results: [] };
+          }
+          return {
+            results: sql.includes("FROM items")
+              ? [{ id: "a", title: "Lab A open model", url: "https://a.dev/x" }]
+              : opts.subscribers,
+          };
+        },
         run: async () => ({ success: true }),
       });
       return {
@@ -130,6 +138,7 @@ function makeEnv(opts: {
     env: { DB: db, EMAIL: email } as unknown as Env,
     updates,
     reads,
+    videoReads,
     sent,
   };
 }
@@ -203,6 +212,48 @@ describe("sendDailyTldr — weekly lane", () => {
         .filter((u) => u.sql.includes("last_weekly_sent"))
         .map((u) => u.args[0])
     ).toEqual(["2026-10-13", "2026-10-13"]);
+  });
+
+  it("loads the week's videos once per window, not once per subscriber", async () => {
+    vi.setSystemTime(wednesdayMorning);
+    const { env, sent, videoReads } = makeEnv({
+      subscribers: [
+        sub({ weekly_day: 3 }),
+        sub({ email: "x@aidr.today", weekly_day: 3 }),
+        sub({ email: "y@aidr.today", weekly_day: 3 }),
+      ],
+      digest: DIGEST_ROW,
+    });
+    expect(await sendDailyTldr(env)).toBe(3);
+    expect(sent).toHaveLength(3);
+    expect(videoReads.count).toBe(1);
+  });
+
+  it("loads the day video once per edition in the daily lane", async () => {
+    const { env, sent, videoReads } = makeEnv({ subscribers: [] });
+    const subs = ["a", "b", "c"].map((n) =>
+      sub({ email: `${n}@aidr.today`, frequency: "daily" })
+    );
+    const editions = new Map([
+      [
+        "2026-10-14:en:5",
+        {
+          lang: "en" as const,
+          date: "2026-10-14",
+          bullets: [{ text: "Lab A ships.", item_id: "a", item_ids: ["a"] }],
+        },
+      ],
+    ]);
+    const out = await sendEmailLane(
+      env,
+      "en",
+      subs as never,
+      Date.UTC(2026, 9, 14, 3, 0, 0),
+      editions
+    );
+    expect(out.sent).toBe(3);
+    expect(sent).toHaveLength(3);
+    expect(videoReads.count).toBe(1);
   });
 
   it("keeps daily subscribers off the weekly lane", async () => {

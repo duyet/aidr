@@ -35,7 +35,12 @@ import { ensureMailSchema } from "../mail/schema.js";
 import { digestFrom, sendSubscriberEmail } from "../mail/send.js";
 import { canonicalizeMediaImageUrl } from "../media.js";
 import type { Env } from "../types.js";
-import { digestWindow, isoWeekOfWindow, weekdayOf } from "../weekly-digest.js";
+import {
+  digestWindow,
+  isoWeekOfWindow,
+  shiftDate,
+  weekdayOf,
+} from "../weekly-digest.js";
 import { DEFAULT_TIMEZONE, isValidTimezone } from "./handlers.js";
 
 export type { TldrBulletLike } from "../digest/edition.js";
@@ -189,6 +194,7 @@ export interface DigestBullet extends TldrBulletLike {
 /** Extras the edition renderer loads beside the bullets. */
 export interface DigestExtras {
   video?: DigestVideo | null;
+  weekVideos?: DigestVideo[];
   postalAddress?: string;
   /** Renders the weekly edition instead of a day (see `renderWeeklyEmail`). */
   weekly?: WeeklyMailMeta;
@@ -225,6 +231,7 @@ export function buildDigestEmail(
     settingsUrl: settingsUrl(unsubscribeToken, mailLang),
     format,
     video: extras.video,
+    weekVideos: extras.weekVideos,
     postalAddress: extras.postalAddress,
     feedbackToken: unsubscribeToken,
     weekly: extras.weekly,
@@ -499,42 +506,65 @@ async function loadBulletDetails(
   }
 }
 
-/** The day's video in `lang` only (`youtube_id`, else `short_id`). A
- *  missing row, column or table means no video block. */
-async function loadDigestVideo(
+/** Day videos from `start` to `end`, newest first, in `lang` only
+ *  (`youtube_id`, else `short_id`); days without one in `lang` are skipped.
+ *  A missing column or table reads as none. */
+async function loadDigestVideos(
+  env: Pick<Env, "DB">,
+  start: string,
+  end: string,
+  lang: "en" | "vi"
+): Promise<DigestVideo[]> {
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT date, youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi
+       FROM day_videos WHERE date BETWEEN ? AND ? ORDER BY date DESC`
+    )
+      .bind(start, end)
+      .all<{ date: string }>();
+    return (results ?? []).flatMap((row) => {
+      const video = parseDayVideoRow(row)[lang];
+      const id = video?.youtube_id ?? video?.short_id;
+      return id
+        ? [{ date: row.date, youtubeId: id, title: video?.title ?? null }]
+        : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Day videos go up in the afternoon, after the morning send, so the daily
+ *  mail takes the newest of its date and the day before. */
+async function loadDailyVideo(
   env: Pick<Env, "DB">,
   date: string,
   lang: "en" | "vi"
 ): Promise<DigestVideo | null> {
-  try {
-    const row = await env.DB.prepare(
-      `SELECT youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi
-       FROM day_videos WHERE date = ? LIMIT 1`
-    )
-      .bind(date)
-      .first();
-    const video = parseDayVideoRow(row)[lang];
-    const id = video?.youtube_id ?? video?.short_id;
-    return id ? { youtubeId: id, title: video?.title ?? null } : null;
-  } catch {
-    return null;
-  }
+  if (Number.isNaN(Date.parse(`${date}T00:00:00Z`))) return null;
+  const videos = await loadDigestVideos(env, shiftDate(date, -1), date, lang);
+  return videos[0] ?? null;
 }
 
 /** The digest mail for one edition, exactly as it is sent: joins the
  *  bullets to their items and the day video, then renders. The subscribe
- *  and admin previews call this too, so the preview is the mail that arrives. */
+ *  and admin previews call this too, so the preview is the mail that arrives.
+ *  `preloadedVideo` (null = none) skips the video lookup; the lanes load it
+ *  once per edition. */
 export async function renderEditionEmail(
   env: Pick<Env, "DB" | "MAIL_POSTAL_ADDRESS">,
   edition: Pick<Edition, "date" | "lang" | "bullets">,
   unsubscribeToken: string,
   size: number,
-  format: MailFormat
+  format: MailFormat,
+  preloadedVideo?: DigestVideo | null
 ): Promise<{ subject: string; html: string; text: string }> {
   const lang = edition.lang === "en" ? "en" : "vi";
   const [bullets, video] = await Promise.all([
     loadBulletDetails(env, edition.bullets, lang),
-    loadDigestVideo(env, edition.date, lang),
+    preloadedVideo === undefined
+      ? loadDailyVideo(env, edition.date, lang)
+      : preloadedVideo,
   ]);
   return buildDigestEmail(
     edition.date,
@@ -559,6 +589,7 @@ export async function sendEmailLane(
   let sent = 0;
   let failed = 0;
   let stampedDate: string | null = null;
+  const videos = new Map<string, DigestVideo | null>();
   for (const sub of subscribers) {
     if ((sub.lang === "en" ? "en" : "vi") !== lang) continue;
     if (normalizeMailFrequency(sub.frequency) === "weekly") continue;
@@ -574,12 +605,19 @@ export async function sendEmailLane(
       editions.set(cacheKey, edition);
     }
     if (!edition) continue;
+    const videoKey = `${edition.date}:${lang}`;
+    let video = videos.get(videoKey);
+    if (video === undefined) {
+      video = await loadDailyVideo(env, edition.date, lang);
+      videos.set(videoKey, video);
+    }
     const { subject, html, text } = await renderEditionEmail(
       env,
       edition,
       sub.unsubscribe_token,
       size,
-      format
+      format,
+      video
     );
 
     const ok = await sendSubscriberEmail(env, {
@@ -713,9 +751,14 @@ export async function renderWeeklyEmail(
   mail: WeeklyMail,
   lang: "en" | "vi",
   unsubscribeToken: string,
-  format: MailFormat
+  format: MailFormat,
+  preloadedVideos?: DigestVideo[]
 ): Promise<{ subject: string; html: string; text: string }> {
-  const bullets = await loadBulletDetails(env, mail.bullets, lang);
+  const [bullets, videos] = await Promise.all([
+    loadBulletDetails(env, mail.bullets, lang),
+    preloadedVideos ??
+      loadDigestVideos(env, mail.meta.start_date, mail.meta.end_date, lang),
+  ]);
   return buildDigestEmail(
     mail.meta.end_date,
     bullets,
@@ -726,6 +769,7 @@ export async function renderWeeklyEmail(
     {
       postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined,
       weekly: mail.meta,
+      weekVideos: [...videos].reverse(),
     }
   );
 }
@@ -742,6 +786,7 @@ export async function sendWeeklyLane(
   let sent = 0;
   let failed = 0;
   const mails = new Map<string, WeeklyMail | null>();
+  const weekVideos = new Map<string, DigestVideo[]>();
   for (const sub of subscribers) {
     if (normalizeMailFrequency(sub.frequency) !== "weekly") continue;
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
@@ -766,12 +811,23 @@ export async function sendWeeklyLane(
     // One subscriber's render or send error must not stop the others.
     let ok = false;
     try {
+      let videos = weekVideos.get(key);
+      if (videos === undefined) {
+        videos = await loadDigestVideos(
+          env,
+          mail.meta.start_date,
+          mail.meta.end_date,
+          lang
+        );
+        weekVideos.set(key, videos);
+      }
       const { subject, html, text } = await renderWeeklyEmail(
         env,
         mail,
         lang,
         sub.unsubscribe_token,
-        normalizeMailFormat(sub.mail_format)
+        normalizeMailFormat(sub.mail_format),
+        videos
       );
       ok = await sendSubscriberEmail(env, {
         to: sub.email,
