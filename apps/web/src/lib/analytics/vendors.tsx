@@ -1,19 +1,15 @@
 import { useEffect } from "react";
 import { afterLcpPaint } from "./after-lcp-paint";
-import {
-  installAnalyticsStubs,
-  posthogArrayScriptUrl,
-} from "./analytics-stubs";
-import { resolveMeasurementId } from "./track";
+import { installAnalyticsStubs, posthogArrayScriptUrl } from "./stubs";
 import { reportWebVitals } from "./web-vitals";
 
-export type { TrackChannel, TrackParams, TrackParamValue } from "./track";
-export {
-  DEFAULT_GA_MEASUREMENT_ID,
-  resolveMeasurementId,
-  track,
-  trackChannelClick,
-} from "./track";
+/** Public GA4 measurement ID (client id, not a secret). */
+export const DEFAULT_GA_MEASUREMENT_ID = "G-HXJPPQVYQN";
+
+export function resolveMeasurementId(envId?: string | null): string {
+  const trimmed = typeof envId === "string" ? envId.trim() : "";
+  return trimmed || DEFAULT_GA_MEASUREMENT_ID;
+}
 
 const importMetaEnv =
   typeof import.meta !== "undefined"
@@ -35,8 +31,8 @@ const SELINE_TOKEN = importMetaEnv?.VITE_SELINE_TOKEN;
 
 /*
  * The queue stubs go in at module init, before React hydrates, so the
- * landing page_view and one-shot campaign events PageViewTracker fires on
- * hydrate are queued rather than dropped. Only the network scripts wait
+ * channel_landing and page_view PageViewTracker fires on hydrate are
+ * queued rather than dropped. Only the network scripts wait
  * for the LCP paint below.
  */
 installAnalyticsStubs({

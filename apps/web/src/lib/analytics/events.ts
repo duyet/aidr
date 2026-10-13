@@ -5,6 +5,7 @@
  * object. To add an event, add a row with its question; if you cannot write
  * the question, do not add the event.
  */
+import type { Metric } from "web-vitals";
 import type { ReaderBg, ReaderDensity, TldrCount } from "../prefs";
 import {
   count,
@@ -255,7 +256,8 @@ export const EVENTS = {
         "back-forward-cache",
         "prerender",
         "restore",
-      ]),
+        "soft-navigation",
+      ] as const satisfies readonly Metric["navigationType"][]),
       edge_cache: dim(oneOf(["HIT", "MISS", "none"])),
       page_path: path(),
     },

@@ -3,19 +3,16 @@
 /**
  * Events fired before the vendor scripts load must be queued, not dropped.
  *
- * `@aidr/ui/Analytics` defers gtag.js and PostHog's array.js past the LCP
+ * `vendors.tsx` defers gtag.js and PostHog's array.js past the LCP
  * paint (1 to 6 s after hydrate), while PageViewTracker fires the one-shot
  * channel_landing and the landing page_view from its first effect. Without
  * the vendors' queue stubs installed up front, both sinks lose those events
  * for good.
  */
-import {
-  installAnalyticsStubs,
-  type PosthogStub,
-} from "@aidr/ui/analytics-stubs";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { track } from "./analytics/track";
+import { installAnalyticsStubs, type PosthogStub } from "./stubs";
+import { track } from "./track";
 
 type QueueWindow = Window & {
   dataLayer?: IArguments[];
@@ -156,10 +153,10 @@ describe("track() before the vendor scripts load", () => {
 
 describe("PageViewTracker landing events at hydrate", () => {
   it("are queued before any vendor script is in the document", async () => {
-    // Nothing is installed by hand here: importing the Analytics module,
-    // as __root.tsx does, must be enough. PostHog's stub needs the token
-    // from import.meta.env, which vi.stubEnv cannot set inside @aidr/ui, so
-    // only the gtag queue is asserted; the PostHog queue is covered above.
+    // Nothing is installed by hand here: importing the vendors module, as
+    // __root.tsx does, must be enough. PostHog's stub needs the token from
+    // import.meta.env at module init, which this test leaves unset, so only
+    // the gtag queue is asserted; the PostHog queue is covered above.
     vi.doMock("@tanstack/react-router", () => ({
       useRouterState: ({
         select,
@@ -173,9 +170,11 @@ describe("PageViewTracker landing events at hydrate", () => {
         }),
     }));
 
-    // Importing the Analytics module is what installs the stubs in the app.
-    await import("@aidr/ui/Analytics");
-    const { PageViewTracker } = await import("../components/PageViewTracker");
+    // Importing the vendors module is what installs the stubs in the app.
+    await import("./vendors");
+    const { PageViewTracker } = await import(
+      "../../components/PageViewTracker"
+    );
     render(<PageViewTracker />);
 
     expect(document.querySelectorAll("script")).toHaveLength(0);

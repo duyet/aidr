@@ -1,7 +1,6 @@
 import "@aidr/ui/styles.css";
 import "../styles.css";
 
-import Analytics from "@aidr/ui/Analytics";
 import ThemeProvider from "@aidr/ui/ThemeProvider";
 import {
   createRootRoute,
@@ -20,6 +19,7 @@ import { NotFoundPage } from "../components/NotFoundPage";
 import { PageViewTracker } from "../components/PageViewTracker";
 import { WebMcpTools } from "../components/WebMcpTools";
 import { track } from "../lib/analytics/track";
+import Analytics from "../lib/analytics/vendors";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
 import { setClientLang } from "../lib/lang";
 import { LangContext } from "../lib/lang-context";
