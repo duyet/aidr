@@ -60,7 +60,6 @@ const QUALIFIERS = [
 interface Token {
   word: string;
   capital: boolean;
-  first: boolean;
 }
 
 interface Headline {
@@ -87,10 +86,9 @@ function stem(word: string): string {
 
 function tokens(text: string): Token[] {
   return [...text.matchAll(WORD)]
-    .map((m, i) => ({
+    .map((m) => ({
       word: stem(m[0].toLowerCase()),
       capital: /^\p{Lu}/u.test(m[0]),
-      first: i === 0,
     }))
     .filter((t) => t.word.length > 1);
 }
@@ -132,7 +130,7 @@ function restates(headline: Headline, clause: string): boolean {
   if (repeated / headline.content.size < RESTATED_TITLE_SHARE) return false;
   const added = content.filter((t) => !headline.words.has(t.word));
   if (added.length / content.length > RESTATED_NEW_WORD_SHARE) return false;
-  if (added.some((t) => isNumber(t) || (t.capital && !t.first))) return false;
+  if (added.some((t) => isNumber(t) || t.capital)) return false;
   if (QUALIFIERS.some((q) => q.test(clause) && !q.test(headline.text))) {
     return false;
   }
@@ -158,6 +156,8 @@ function afterRestatedClauses(headline: Headline, sentence: string): string {
     rest = dash ? rest.slice(dash.index + dash[0].length) : "";
   }
   if (rest === body) return sentence;
+  const lead = /^[\p{L}\p{N}]+/u.exec(rest)?.[0] ?? "";
+  if (lead !== lead.toLowerCase()) return rest;
   return rest.charAt(0).toUpperCase() + rest.slice(1);
 }
 

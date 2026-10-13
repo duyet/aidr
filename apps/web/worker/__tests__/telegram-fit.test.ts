@@ -588,6 +588,12 @@ describe("story caption never restates its headline", () => {
       "en",
     ],
     [
+      "different subject",
+      "Nvidia is in talks to buy Reflection AI",
+      "Microsoft is in talks to buy Reflection AI.",
+      "en",
+    ],
+    [
       "spelled-out number",
       "OpenAI fires safety researchers over leaks",
       "OpenAI fires three safety researchers over leaks.",
