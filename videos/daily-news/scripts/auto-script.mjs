@@ -16,7 +16,7 @@ import { join, resolve } from "node:path";
 import { castProblems, hostOrder, loadCast } from "./cast.mjs";
 import { lintText, scriptTexts } from "./gate.mjs";
 import { download } from "./media.mjs";
-import { requireLlmKey } from "./local-llm-key.mjs";
+import { readEnvLocal, videoScriptKey } from "./local-llm-key.mjs";
 import { envVar } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -384,9 +384,14 @@ async function main() {
 
   const hostKeys = Object.keys(loadCast(config).hosts);
   const noLlm = argv.includes("--no-llm");
-  const apiKey = noLlm ? null : requireLlmKey();
-  const models = noLlm ? [] : (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS).split(",").map((m) => m.trim()).filter(Boolean);
-  if (!models.length) console.log(`! no model (--no-llm): using the template`);
+  const keyed = noLlm ? { fallback: "--no-llm" } : videoScriptKey(process.env, readEnvLocal());
+  if (keyed.error) {
+    console.error(`error: ${keyed.error}`);
+    process.exit(1);
+  }
+  const apiKey = keyed.key ?? null;
+  const models = apiKey ? (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS).split(",").map((m) => m.trim()).filter(Boolean) : [];
+  if (!models.length) console.log(`! no model (${keyed.fallback ?? "empty ANYROUTER_VIDEO_MODEL"}): using the template`);
   const baseUrl = envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";
   const { script, source, problems } = await writeScript({
     edition,

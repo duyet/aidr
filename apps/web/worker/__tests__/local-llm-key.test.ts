@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   readEnvLocal,
   resolveLlmKey,
+  videoScriptKey,
 } from "../../../../videos/daily-news/scripts/local-llm-key.mjs";
 
 const root = path.resolve(import.meta.dirname, "../../../..");
@@ -55,6 +56,25 @@ describe("resolveLlmKey (CI)", () => {
     );
     expect(r.key).toBeUndefined();
     expect(r.error).toContain("ANYROUTER_API_KEY");
+  });
+});
+
+describe("videoScriptKey (daily video script)", () => {
+  it("falls back to the template in CI when the secret is missing, so the day still posts", () => {
+    const r = videoScriptKey({ CI: "true" });
+    expect(r.key).toBeUndefined();
+    expect(r.fallback).toMatch(/ANYROUTER_API_KEY is not set in CI/);
+    expect("error" in r && r.error).toBeFalsy();
+  });
+
+  it("uses the CI secret when present", () => {
+    expect(videoScriptKey({ CI: "true", ANYROUTER_API_KEY: "ci" })).toEqual({ key: "ci" });
+  });
+
+  it("still refuses locally with only the production key", () => {
+    const r = videoScriptKey({ ANYROUTER_API_KEY: "prod" });
+    expect(r.error).toMatch(/ANYROUTER_LOCAL_API_KEY is not set/);
+    expect(r.fallback).toBeUndefined();
   });
 });
 
@@ -122,7 +142,9 @@ describe("local scripts cannot bypass the helper", () => {
       "videos/daily-news/scripts/visub.mjs",
       "videos/daily-news/scripts/visub-screen.mjs",
     ]) {
-      expect(read(f), f).toContain("requireLlmKey()");
+      expect(read(f), f).toMatch(
+        f.endsWith("auto-script.mjs") ? /videoScriptKey\(/ : /requireLlmKey\(\)/
+      );
     }
   });
 });

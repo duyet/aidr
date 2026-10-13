@@ -56,6 +56,17 @@ export function resolveLlmKey(env, fileVars = {}) {
   };
 }
 
+/**
+ * The daily video must post even without a model: in CI a missing key falls
+ * back to the template script (`{ fallback }`) instead of failing the run.
+ * Locally a missing key is still an error, so the production key is never used.
+ */
+export function videoScriptKey(env, fileVars = {}) {
+  const r = resolveLlmKey(env, fileVars);
+  if (r.error && env.CI === "true") return { fallback: r.error };
+  return r;
+}
+
 /** The key for this run, or exit 1 with the reason. Never prints the key. */
 export function requireLlmKey(env = process.env, fileVars = readEnvLocal()) {
   const r = resolveLlmKey(env, fileVars);

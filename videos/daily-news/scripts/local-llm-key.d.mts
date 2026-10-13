@@ -9,3 +9,10 @@ export function requireLlmKey(
   env?: Record<string, string | undefined>,
   fileVars?: Record<string, string>
 ): string;
+export function videoScriptKey(
+  env: Record<string, string | undefined>,
+  fileVars?: Record<string, string>
+):
+  | { key: string; error?: undefined; fallback?: undefined }
+  | { key?: undefined; error: string; fallback?: undefined }
+  | { key?: undefined; error?: undefined; fallback: string };
