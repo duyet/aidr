@@ -158,6 +158,88 @@ describe("a lone capital before a period is an initial", () => {
   });
 });
 
+/** First sentences from production summaries that ran into a link on master
+ *  after the capital-letter rule (#650). */
+describe("a sentence ends before a link or repo tag", () => {
+  const LINKS =
+    "https://cims.nyu.edu/~tristanb/statement.pdf https://cims.nyu.edu/~tristanb/euler.pdf https://github.com/tristanbuckmaster/fluid_lean";
+  const REAL: Array<[string, string]> = [
+    [
+      "Today, Levent Alpöge and I have made public three results: finite-time blowup with smooth forcing for incompressible porous media, for Boussinesq, and for 3d incompressible Euler.",
+      LINKS,
+    ],
+    [
+      "Hôm nay, Levent Alpöge và tôi đã công bố ba kết quả nghiên cứu: hiện tượng bùng nổ thời gian hữu hạn với lực tác động trơn dành cho mô hình truyền thông rỗng không nén được, cho hệ Boussinesq và cho phương trình Euler 3D không nén được.",
+      LINKS,
+    ],
+    [
+      "Today Reuters and the Wall Street Journal both reported about rogue AI agents at OpenAI attacking RubyGems.org.",
+      "https://www.rubyhack.ai/ has an amazing writeup, and you should read it.",
+    ],
+    [
+      'I recently watched the talk by Scott Jenson titled "Are we really going to use the same Desktop UX forever?"',
+      "https://www.youtube.com/watch?v=V7AfAcQwLW0&t=445s.",
+    ],
+    [
+      'Tôi vừa xem bài thuyết trình của Scott Jenson mang tên "Are we really going to use the same Desktop UX forever?"',
+      "https://www.youtube.com/watch?v=V7AfAcQwLW0&t=445s.",
+    ],
+  ];
+
+  it.each(REAL)("firstSentence stops before the link: %s", (first, rest) => {
+    expect(firstSentence(`${first} ${rest}`)).toBe(first);
+    expect(splitSentences(`${first} ${rest}`)[0]).toBe(first);
+  });
+
+  it("keeps the Vietnamese day-card line under the 400-char cap", () => {
+    const [first, rest] = REAL[1] as [string, string];
+    expect(firstSentence(`${first} ${rest}`).length).toBeLessThanOrEqual(400);
+  });
+
+  it.each([
+    ["http://example.com/a"],
+    ["www.example.com"],
+    ["duyet/aidr"],
+    ["vllm-project/vllm"],
+    ["1password/cli"],
+  ])("splits before %s", (token) => {
+    expect(splitSentences(`It shipped today. ${token} has the notes.`)).toEqual(
+      ["It shipped today.", `${token} has the notes.`]
+    );
+  });
+
+  it("splits after ? and ! too", () => {
+    expect(splitSentences("Is it live? https://aidr.today")).toEqual([
+      "Is it live?",
+      "https://aidr.today",
+    ]);
+  });
+
+  it.each([
+    "It rose 12/10 of the way.",
+    "Shipped on 2026/10/14 after review.",
+    "Cut it by 3/4 and rest.",
+  ])("does not split before a fraction or date: %s", (tail) => {
+    expect(splitSentences(`Stocks rose. ${tail}`)).toEqual([
+      "Stocks rose.",
+      tail,
+    ]);
+  });
+
+  it.each([
+    "Mr. acme/tool is the owner.",
+    "See e.g. acme/tool for details.",
+    "Plan B. acme/tool follows.",
+    "Debuts at No. acme/tool soon.",
+  ])("does not split inside an abbreviation: %s", (text) => {
+    expect(splitSentences(text)).toHaveLength(1);
+  });
+
+  it("still joins a lowercase word after a period", () => {
+    expect(splitSentences("It ended. and then it began.")).toHaveLength(1);
+  });
+});
+
 describe("scan cost", () => {
   const text = "Mr. Smith met Dr. Jones on Oct. 12. It ended. ".repeat(11_000);
 
