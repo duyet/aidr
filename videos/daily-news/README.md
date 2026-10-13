@@ -26,6 +26,7 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `scripts/novoice.mjs` | yes | The no-voice helpers: reading-speed word timing, the quota check, `QuotaError` |
 | `scripts/lang.mjs` | yes | The cut's language (`--lang vi`) and its file names |
 | `scripts/cast.mjs` | yes | The voice cast: host keys, seeded host order, the "never twice in a row" check |
+| `scripts/look.mjs` | yes | The day's look (intro, transition, background), derived from the edition's date at build time |
 | `scripts/build.mjs` | yes | Timeline, both compositions, audio mix, captions, covers, post copy |
 | `scripts/grid.mjs` | yes | The summary grid's layout per format and story count (1–8): areas, tracks, and the tile type scale, so frame 0 has no empty cell; an odd count gives the lead story a hero tile (with `grid.test.mjs`) |
 | `scripts/render.mjs` | yes | 4K MP4s and cover PNGs |
@@ -52,7 +53,7 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 From `videos/daily-news/` (on machines where `node`/`npx` are nvm shell functions, put `~/.nvm/versions/node/<v>/bin` on `PATH` and call `command node`):
 
 ```bash
-node scripts/new.mjs                     # fetch edition + media, assets-sheet.jpg, draft script.json (theme rotated vs yesterday)
+node scripts/new.mjs                     # fetch edition + media, assets-sheet.jpg, draft script.json
 # write editions/<date>/script.json      # the agent: replace every TODO, rewrite the voice, delete _bullet
 # in parallel, a sonnet subagent writes script.vi.json from the edition's text_vi (Vietnamese hosts)
 node scripts/publish.mjs <date> --steps render   # daily.mjs --render per language: 4K MP4s + covers, fills STATUS.json
@@ -114,7 +115,7 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
 {
   "date": "2026-10-02",
   "dateline": "Friday, October 2, 2026",
-  "theme": {
+  "theme": {                     // optional pin, only when the owner asks; leave it out (see "Looks" below)
     "intro": "grid",             // grid (default: summary grid on frame 0) | date-slam | countdown | headline-stack
     "transition": "wipe",        // wipe (yellow + rank) | ink (ink panel + yellow rank) | shutter (two halves)
     "background": "paper",       // paper | soft | grid
@@ -141,6 +142,10 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
   "outro": { "voice": [{ "anchor": "kristen", "text": "That's AI DR for today. ..." }, { "anchor": "allison", "text": "See you tomorrow." }], "title": "What's happening in AI today?", "follow": "..." }
 }
 ```
+
+### Looks
+
+The look is derived at build time, never stored. `scripts/look.mjs` `resolveLook(script, edition)` picks the transition and the background from the edition's date (the ISO week for a weekly edition), so the next day always differs on both, with no record of yesterday. The intro is always `grid`. Each key in `script.json` `theme` pins that axis and wins over the rotation; an unknown id fails the build and lists the allowed ones. Every cut reads the pin from `script.json` (a `theme` in `script.vi.json` is ignored), so the English, Vietnamese and `visub` cuts of a day look the same. Adding or removing an id in an axis list in `look.mjs` reshuffles every unpinned day, past ones included. `timeline.json` records the resolved `theme` as a receipt; the build never reads it back. The four committed editions from before this change pin their theme, so they rebuild as they shipped.
 
 Spoken text says "AI DR" and "aidr dot today"; `config.captions.replace` shows them as "AI;DR" and "aidr.today" in captions.
 

@@ -2,7 +2,6 @@
 // Start today's edition: fetch the edition and media, make a contact sheet of the media, and draft
 // script.json from the bullets. The draft is a starting point: the agent rewrites every voice line and
 // screen line (see the aidr-daily-news skill) before voicing.
-// Theme choices rotate against the previous edition so two days in a row never look the same.
 // Weekly edition: `--week [<YYYY-Www>]` (default: the last closed week) fetches editions/week-<week> with
 // fetch-week.mjs and drafts a "AI;DR Weekly" script instead.
 // Usage: node scripts/new.mjs [--count 6] [--force] [--week [2026-W41]]
@@ -101,26 +100,6 @@ if (existsSync(scriptPath) && !process.argv.includes("--force")) {
   process.exit(0);
 }
 
-const prevDate = editions.filter((d) => d < date).at(-1);
-const prev =
-  prevDate && existsSync(join(ROOT, "editions", prevDate, "script.json"))
-    ? JSON.parse(
-        readFileSync(join(ROOT, "editions", prevDate, "script.json"), "utf8")
-      )
-    : null;
-const next = (list, cur) => list[(list.indexOf(cur) + 1) % list.length];
-const theme = {
-  intro: "grid",
-  transition: next(
-    ["wipe", "ink", "shutter"],
-    prev?.theme?.transition ?? "shutter"
-  ),
-  background: next(
-    ["paper", "soft", "grid"],
-    prev?.theme?.background ?? "grid"
-  ),
-};
-
 const d = new Date(`${weekly ? edition.start_date : date}T12:00:00Z`);
 const DOW = d.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
 const MON = d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
@@ -177,7 +156,6 @@ const draft = {
   dateline: weekly
     ? `Week of ${range}`
     : `${DOW}, ${MON} ${d.getUTCDate()}, ${d.getUTCFullYear()}`,
-  theme,
   thumb: { story: thumb.rank, hook: "TODO 3–7 words" },
   post: {
     hook: "TODO one sentence",
@@ -221,5 +199,5 @@ const draft = {
 };
 writeFileSync(scriptPath, `${JSON.stringify(draft, null, 2)}\n`);
 console.log(
-  `✓ editions/${date}/script.json drafted (theme ${theme.transition}/${theme.background}; replace every TODO, rewrite voice, delete _bullet)`
+  `✓ editions/${date}/script.json drafted (replace every TODO, rewrite voice, delete _bullet)`
 );

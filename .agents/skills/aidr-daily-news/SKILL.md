@@ -71,9 +71,9 @@ Read `assets-sheet.jpg` (tiles row by row in the printed file order). Keep each 
 
 ### Make it look different every day
 
-- The opening is always the **summary grid** (`theme.intro: "grid"`): frame 0 shows every story's picture, number and headline with the date, so the first frame works as a thumbnail and the viewer sees the whole show at once. Other intros (`date-slam`, `countdown`, `headline-stack`) exist; use them only when the owner asks.
+- The opening is always the **summary grid** (the default intro): frame 0 shows every story's picture, number and headline with the date, so the first frame works as a thumbnail and the viewer sees the whole show at once. Other intros (`date-slam`, `countdown`, `headline-stack`) exist; pin one with `theme.intro` only when the owner asks.
 - The intro line names one or two stories; set `intro.focus` (`[{ "rank", "word" }]`) so those grid tiles lift on the spoken word — the grid otherwise holds still for the whole intro.
-- `new.mjs` rotates `theme.transition` (`wipe` | `ink` | `shutter`) and `theme.background` (`paper` | `soft` | `grid`) against yesterday; keep or change, but not both the same as yesterday.
+- Leave `theme` out of `script.json`. The build derives `transition` (`wipe` | `ink` | `shutter`) and `background` (`paper` | `soft` | `grid`) from the date (`scripts/look.mjs`), so both change every day. A `theme` key pins that axis on every later rebuild; set one only when the owner asks. An unknown id fails the build.
 - Story `layout`: `split` (image + column), `full` (strong photo full-bleed, card over it), `stat` (the number is the story). `stat` at most twice, `full` only for photos that hold up large, never the same layout three times in a row.
 - `thumb` — the story and a 3–7 word hook for the cover still. Pick the biggest or most surprising story, not always #1. The cover's picture and hook always come from one story: when the thumb story has no image, the build uses the first ranked story with one (its kicker as the hook) and prints `! cover:`; when no story has an image, the thumb story keeps its hook with its paper card. Give the thumb to a story with a picture to keep your hook.
 
