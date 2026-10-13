@@ -226,6 +226,17 @@ thumbnail, text fallback), the `send_day_video_telegram` MCP tool, or
 `agent day-video-telegram <date> --lang en|vi [--chat <id>]`. The player is a
 click-to-play `youtube-nocookie.com` facade.
 
+The Telegram digest gets a second button, "▶ YouTube"
+(`https://youtu.be/<id>`, the language's 16:9 id, else its Short), when the
+day has a video in that channel's language. The video is usually uploaded
+after the 08:00 digest, so a set (and a post to the language's own channel,
+not a `chat_id` override) also edits the sent digest with
+`editMessageReplyMarkup`, using the chat and message id on the digest's
+`notifications` row (`status = 'sent'`). Clearing the video removes the
+button; `DELETE` does not touch it. "message is not modified" counts as done,
+and a failed edit never fails the admin call: the response says what happened
+in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
+
 ## Ops pitfalls
 
 - `LLM_STEP` and `BACKFILL_TRANSLATE_STEP` use `retries: 0` and a 5-minute
@@ -1018,8 +1029,9 @@ deliberately non-spammy.
   / `bullets_en` only, no cross-language fallback). The Vietnamese channel
   (`TELEGRAM_VI_CHAT_ID`, falling back to `TELEGRAM_CHAT_ID`) and the
   English channel (`TELEGRAM_EN_CHAT_ID`, same bot token) each use their
-  own language. Each line links to its story permalink, and the button
-  opens the day page. When the day has no card stories, the message lists
+  own language. Each line links to its story permalink. The first button
+  opens the day page; "▶ YouTube" follows once the day video exists ("Day
+  archive" above). When the day has no card stories, the message lists
   the first six bullets of that language's snapshot and the preview is the
   day page. The send waits up to 45s, like a photo: Telegram may fetch the
   cold card for the preview before it answers.

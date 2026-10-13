@@ -23,6 +23,9 @@ export interface DayCard {
   itemIds: string[];
   /** Stable token for the card URL, so Telegram refetches when the tiles change. */
   version: string;
+  /** That language's day video (16:9, else the Short), for the digest's
+   *  YouTube button. Never the other language's. */
+  youtubeId: string | null;
 }
 
 /** FNV-1a, base36. Padded so a short stamp still matches the R2 key
@@ -126,10 +129,12 @@ export async function loadDayCard(
   const lead = pickDayCardItems(ranked);
   if (lead.length === 0) return null;
   const itemIds = lead.map((item) => item.id);
+  const video = archive.videos[lang];
   return {
     bullets: toBullets(lead, lang),
     itemIds,
     version: dayCardVersion(itemIds),
+    youtubeId: video?.youtube_id ?? video?.short_id ?? null,
   };
 }
 
@@ -137,6 +142,7 @@ export interface DigestPage {
   digest: DailyDigest;
   /** Card token; absent when the edition stands in for the card. */
   version?: string;
+  youtubeId?: string | null;
 }
 
 /** The digest's stories: the day card when the day has stories, else the edition. */
@@ -150,6 +156,7 @@ export async function digestPage(
     return {
       digest: { ...digest, bullets: card.bullets },
       version: card.version,
+      youtubeId: card.youtubeId,
     };
   } catch (error) {
     console.error(

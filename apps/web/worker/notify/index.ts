@@ -38,6 +38,7 @@ import {
   recordDigestItems,
 } from "./posted-events.js";
 import {
+  editDigestReplyMarkup,
   telegramEnNotifier,
   telegramNotifier,
   telegramPreviewNotifier,
@@ -622,6 +623,49 @@ export async function sendDigestHighlight(
     }
   }
   return result;
+}
+
+/**
+ * After a day video is set or posted, edits that language's sent Telegram
+ * digest so its "▶ YouTube" button matches `youtubeId` (null removes it).
+ * The digest's chat and message id are on its `notifications` row. Says
+ * what happened, for the admin response; never throws, so a failed edit
+ * never fails the video change.
+ */
+export async function syncDigestVideoButton(
+  env: Env,
+  date: string,
+  lang: Lang,
+  youtubeId: string | null
+): Promise<string> {
+  const channel = lang === "en" ? telegramEnNotifier : telegramNotifier;
+  try {
+    const row = await env.DB.prepare(
+      `SELECT target, message_id FROM notifications
+       WHERE channel = ? AND item_id = ? AND status = 'sent'`
+    )
+      .bind(channel.id, digestKey(date))
+      .first<{ target: string | null; message_id: string | null }>();
+    if (!row?.target || !row.message_id) return "no sent digest";
+    const result = await editDigestReplyMarkup(
+      env,
+      row.target,
+      row.message_id,
+      { date, lang },
+      youtubeId
+    );
+    if (result.ok) return "updated";
+    console.error(
+      `notify(${channel.id}) digest video button not updated for ${date}: ${result.error}`
+    );
+    return `edit failed: ${result.error ?? "unknown"}`;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(
+      `notify(${channel.id}) digest video button not updated for ${date}: ${message}`
+    );
+    return `edit failed: ${message}`;
+  }
 }
 
 /**

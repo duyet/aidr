@@ -37,6 +37,9 @@ export { escapeHtml };
  *   no second message for the stories that did not make the card. The
  *   rolling TL;DR is not the digest: it still leads with yesterday after
  *   midnight.
+ *   Buttons: the day page, and "▶ YouTube" once the day video exists; the
+ *   video usually comes later, so setting it edits the sent digest's
+ *   buttons (`editDigestReplyMarkup`).
  * - Digest highlight: right after the digest, the top story on the card goes
  *   out once through `sendStory` (`postsDigestHighlight`; the dispatcher
  *   loads the story and records the send).
@@ -281,23 +284,54 @@ export function buildDigestMessage(
   return lines.join("\n\n");
 }
 
+/** The site button, then "▶ YouTube" on its own row when the day has a
+ *  video in this language (`youtubeId`). */
 export function buildDigestReplyMarkup(
-  digest: Pick<DailyDigest, "date" | "lang">
+  digest: Pick<DailyDigest, "date" | "lang">,
+  youtubeId?: string | null
 ): object {
   const lang = digest.lang;
+  const site = {
+    text:
+      lang === "en"
+        ? "Read the full digest on aidr.today →"
+        : "Xem đầy đủ trên aidr.today →",
+    url: digestDayUrl(digest),
+  };
   return {
     inline_keyboard: [
-      [
-        {
-          text:
-            lang === "en"
-              ? "Read the full digest on aidr.today →"
-              : "Xem đầy đủ trên aidr.today →",
-          url: digestDayUrl(digest),
-        },
-      ],
+      [site],
+      ...(youtubeId
+        ? [[{ text: "▶ YouTube", url: dayVideoWatchUrl(youtubeId) }]]
+        : []),
     ],
   };
+}
+
+/**
+ * Sets the sent digest's buttons for the day video as it is now (`youtubeId`,
+ * or none): the video is usually uploaded after the 08:00 digest. Telegram's
+ * "message is not modified" means the buttons already match, so it is a
+ * success.
+ */
+export async function editDigestReplyMarkup(
+  env: Env,
+  chatId: string,
+  messageId: string,
+  digest: Pick<DailyDigest, "date" | "lang">,
+  youtubeId: string | null
+): Promise<SendResult> {
+  const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
+  if (!token) return { ok: false, error: "TELEGRAM_BOT_TOKEN is not set" };
+  const res = await callTelegram(token, "editMessageReplyMarkup", {
+    chat_id: chatId,
+    message_id: Number(messageId),
+    reply_markup: buildDigestReplyMarkup(digest, youtubeId),
+  });
+  if (res.ok || /message is not modified/i.test(res.description ?? "")) {
+    return { ok: true, messageId };
+  }
+  return sendFailure(res);
 }
 
 /** Headlines are one bounded line in the feed; clip before the caption cap. */
@@ -727,7 +761,7 @@ function telegramChannel(options: {
           chat_id: chatId,
           text: buildDigestMessage(fitHighlightDigest(shown)),
           parse_mode: "HTML",
-          reply_markup: buildDigestReplyMarkup(digest),
+          reply_markup: buildDigestReplyMarkup(digest, page.youtubeId),
           link_preview_options: digestLinkPreview(digest, page.version),
         },
         TELEGRAM_MEDIA_TIMEOUT_MS

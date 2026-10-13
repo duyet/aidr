@@ -18,7 +18,7 @@ import {
   withLlmCallContext,
 } from "../llm.js";
 import { createD1LlmCallLogger, flushLlmCallWrites } from "../llm-call-log.js";
-import { forceSendDigest } from "../notify/index.js";
+import { forceSendDigest, syncDigestVideoButton } from "../notify/index.js";
 import { sendDayVideoToTelegram, telegramChatId } from "../notify/telegram.js";
 import {
   RANK_SIGNAL_COLUMNS,
@@ -1165,7 +1165,9 @@ export async function setDayVideo(
   date: unknown,
   input: SetDayVideoInput,
   actor: string | null
-): Promise<{ ok: true; video: DayVideoRecord } | HandlerError> {
+): Promise<
+  { ok: true; video: DayVideoRecord; digest_button: string } | HandlerError
+> {
   if (!validDayVideoDate(date)) {
     return { error: "date must be a real YYYY-MM-DD day", status: 400 };
   }
@@ -1277,7 +1279,14 @@ export async function setDayVideo(
       short_id: next.short_id,
     })
   );
-  return { ok: true, video: next };
+  // The digest usually went out before the video was uploaded.
+  const digest_button = await syncDigestVideoButton(
+    env,
+    date,
+    lang,
+    next.youtube_id ?? next.short_id
+  );
+  return { ok: true, video: next, digest_button };
 }
 
 /**
@@ -1359,7 +1368,10 @@ export async function sendDayVideoTelegram(
   env: Env,
   date: unknown,
   input: SendDayVideoTelegramInput
-): Promise<{ ok: true; chat_id: string; message_id: string } | HandlerError> {
+): Promise<
+  | { ok: true; chat_id: string; message_id: string; digest_button?: string }
+  | HandlerError
+> {
   if (!validDayVideoDate(date)) {
     return { error: "date must be a real YYYY-MM-DD day", status: 400 };
   }
@@ -1421,5 +1433,15 @@ export async function sendDayVideoTelegram(
       message_id: sent.messageId ?? null,
     })
   );
-  return { ok: true, chat_id: chatId, message_id: sent.messageId ?? "" };
+  // Posting to the language's own channel also brings that channel's digest
+  // up to date (its "▶ YouTube" button); a staging chat leaves it alone.
+  const digest_button = chat
+    ? undefined
+    : await syncDigestVideoButton(env, date, lang, stored.youtube_id);
+  return {
+    ok: true,
+    chat_id: chatId,
+    message_id: sent.messageId ?? "",
+    ...(digest_button ? { digest_button } : {}),
+  };
 }

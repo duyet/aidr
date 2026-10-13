@@ -61,8 +61,12 @@ import type { Env } from "../types.js";
 afterEach(() => vi.unstubAllGlobals());
 
 /** Enough of D1 for `getDayArchive`: column probes, the day batch, and the
- *  video read. Rows keep the order they are given. */
-function dayArchiveDb(rows: Array<Record<string, unknown>>) {
+ *  video read (`video` is the day_videos row). Rows keep the order they are
+ *  given. */
+function dayArchiveDb(
+  rows: Array<Record<string, unknown>>,
+  video: Record<string, unknown> | null = null
+) {
   const items = rows.map((row, index) => ({
     url: `https://example.com/${String(row.id ?? index)}`,
     summary: null,
@@ -95,7 +99,7 @@ function dayArchiveDb(rows: Array<Record<string, unknown>>) {
         return resultFor(sql);
       },
       async first() {
-        return null;
+        return sql.includes("FROM day_videos") ? video : null;
       },
     };
     return stmt;
@@ -662,6 +666,39 @@ describe("telegram channels", () => {
         `Tin nổi bật số ${i} về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số ${i}, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày.`
       );
     }
+  });
+
+  it("adds a ▶ YouTube button only when the day has a video in that language", async () => {
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
+          status: 200,
+        })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const send = (video: Record<string, unknown> | null) =>
+      telegramNotifier.sendDigest(
+        {
+          TELEGRAM_BOT_TOKEN: "token",
+          TELEGRAM_CHAT_ID: "chat",
+          DB: dayArchiveDb(tenStories("ac"), video),
+        } as unknown as Env,
+        { lang: "vi", date: "2026-10-04", bullets: [] }
+      );
+    const keyboard = (call: number) =>
+      JSON.parse(fetchMock.mock.calls[call]?.[1]?.body as string).reply_markup
+        .inline_keyboard;
+
+    await send({ youtube_id_vi: "fStNAQhJo3M" });
+    expect(keyboard(0)).toHaveLength(2);
+    expect(keyboard(0)[1]).toEqual([
+      { text: "▶ YouTube", url: "https://youtu.be/fStNAQhJo3M" },
+    ]);
+    // The English video is never the Vietnamese channel's button.
+    await send({ youtube_id: "B3vKYiV7rOw" });
+    expect(keyboard(1)).toHaveLength(1);
+    await send(null);
+    expect(keyboard(2)).toHaveLength(1);
   });
 
   it("caps the edition fallback at six stories and previews the day page", async () => {
