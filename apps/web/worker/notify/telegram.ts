@@ -37,6 +37,9 @@ export { escapeHtml };
  *   no second message for the stories that did not make the card. The
  *   rolling TL;DR is not the digest: it still leads with yesterday after
  *   midnight.
+ * - Digest highlight: right after the digest, the top story on the card goes
+ *   out once through `sendStory` (`postsDigestHighlight`; the dispatcher
+ *   loads the story and records the send).
  * - Trending story: the generated branded card, plus any other story images
  *   Telegram will take in one album (`sendMediaGroup`, 2–10). One image stays
  *   `sendPhoto` so the Read / AI;DR buttons remain. Text is the fallback.
@@ -703,6 +706,7 @@ function telegramChannel(options: {
     lang: options.lang,
     target: options.chatId,
     enabled: options.enabled,
+    postsDigestHighlight: true,
 
     async sendDigest(env: Env, digest: DailyDigest): Promise<SendResult> {
       const token = env.TELEGRAM_BOT_TOKEN as string;

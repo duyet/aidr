@@ -1001,7 +1001,7 @@ deliberately non-spammy.
   `worker/notify/adapters.ts` render Telegram HTML, Slack
   incoming-webhook JSON, or raw JSON.
 - *Daily digest*: one message per local day per channel
-  (Asia/Ho_Chi_Minh, from 08:00), and nothing else for the stories that
+  (Asia/Ho_Chi_Minh, from 08:00), and no message for the stories that
   did not make the card. It is a `sendMessage` (4096 characters, not a
   1024-character photo caption) naming the six stories on the day card,
   each with the first sentence of that language's summary after the title
@@ -1023,6 +1023,20 @@ deliberately non-spammy.
   the first six bullets of that language's snapshot and the preview is the
   day page. The send waits up to 45s, like a photo: Telegram may fetch the
   cold card for the preview before it answers.
+- *Digest highlight* (Telegram, `postsDigestHighlight`): right after the
+  digest, the card's top story goes out once as a normal story post
+  (`sendStory`: its own photo or album, the full caption summary, the Read
+  button). The story is loaded in the channel's language only
+  (`channelCopy`) and must pass the trending postability gate; a day with no
+  card stories has no highlight. It is keyed `digest:<date>:top` in
+  `notifications`, claimed like every send, and runs only when that day's
+  digest row is `sent`: an `ambiguous` or `sending` digest never triggers
+  it. A definite failure (or no postable top story) retries on later runs
+  up to `NOTIFY_MAX_ATTEMPTS`; the digest is not resent. The `digest:`
+  prefix keeps it out of trending's daily count, 3h gap and posted-events
+  window, and its story is already in `notify_digest_items`. The admin
+  force-send follows a sent digest with the highlight under the same key;
+  the staging preview sends both and records neither.
 - *Trending*: an individual post only when the algo flags a story as
   exceptional (`rank_score` at or above the trending bar and
   `llm_importance ≥ 7`), capped at
