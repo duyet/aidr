@@ -297,6 +297,30 @@ describe("captionSummaryFor", () => {
     expect(completeJson).not.toHaveBeenCalled();
   });
 
+  it("rewrites a summary that fits but reads as feed or press-release copy", async () => {
+    // Real VI rows (2026-10): the translation kept an RSS footer, a paper's
+    // "we", and a blogger's "you" that the caption then posted verbatim.
+    const defective: Array<[string, "en" | "vi"]> = [
+      [
+        "Reflection ra mắt Beam. Bài viết về Beam của Reflection xuất hiện lần đầu trên The Decoder.",
+        "vi",
+      ],
+      [
+        "Claude Haiku 5.5 là mô hình nhỏ nhanh nhất và mạnh nhất của chúng tôi.",
+        "vi",
+      ],
+      ["Bạn có thể tìm hiểu thêm về GLM 5.3 trên Amazon Bedrock.", "vi"],
+      ["We release our models to help improve defenses.", "en"],
+    ];
+    for (const [summary, lang] of defective) {
+      const text = lang === "vi" ? "Reflection ra mắt Beam." : "Clean text.";
+      completeJson.mockResolvedValueOnce(JSON.stringify({ summary: text }));
+      const s = story({ summary, lang });
+      expect(await captionSummaryFor(env, s, budget)).toBe(text);
+    }
+    expect(completeJson).toHaveBeenCalledTimes(defective.length);
+  });
+
   it("reuses the stored summary without a second model call", async () => {
     const first = "Stored summary, finished.";
     completeJson.mockResolvedValue(JSON.stringify({ summary: first }));

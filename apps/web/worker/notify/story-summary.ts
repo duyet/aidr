@@ -11,10 +11,11 @@ import { normalizeSpace } from "./fit-text.js";
  * A caption summary that fits its Telegram budget, written once per story and
  * language and stored in `notify_summaries`.
  *
- * Used only when the channel's own summary is longer than the budget. The
- * input is that channel's summary alone (the language columns never fall back
- * to each other), and a failed or invalid answer returns null so the caller
- * trims at a sentence or word boundary instead. It never blocks a send.
+ * Used when the channel's own summary is longer than the budget, or when it
+ * reads as feed or press-release copy (`readsAsSourceCopy`). The input is that
+ * channel's summary alone (the language columns never fall back to each
+ * other), and a failed or invalid answer returns null so the caller trims at
+ * a sentence or word boundary instead. It never blocks a send.
  */
 
 /** Below this there is no room for a useful rewrite; trim instead. */
@@ -38,6 +39,20 @@ function systemPrompt(lang: Lang, target: number): string {
     "Do not repeat the headline. No markdown, no emoji, no ellipsis, no quotes around the answer.",
     'Reply with JSON only: {"summary": "..."}',
   ].join(" ");
+}
+
+/** Copy that came through the feed as written for the publisher's own page:
+ *  an RSS footer, or a paper, blog or press release speaking as "we", "I" or
+ *  "you". A caption speaks as the channel, so these are rewritten even when
+ *  they fit. */
+const SOURCE_COPY = [
+  /appeared first on|xuất hiện lần đầu (?:trên|tại)/i,
+  /\b(?:[Ww]e|[Oo]ur|us|I|[Mm]y)\b/,
+  /(?<![\p{L}])(?:chúng tôi|tôi|bạn)(?![\p{L}])/iu,
+];
+
+function readsAsSourceCopy(summary: string): boolean {
+  return SOURCE_COPY.some((pattern) => pattern.test(summary));
 }
 
 const WORD = /[\p{L}\p{N}]+/gu;
@@ -123,8 +138,8 @@ async function readCached(
 
 /**
  * The stored or newly written summary for `story`, within `budget` characters,
- * or null when the source summary already fits, no budget is left, or the
- * model could not produce a valid one.
+ * or null when the source summary already fits and reads as the channel's
+ * own copy, no budget is left, or the model could not produce a valid one.
  */
 export async function captionSummaryFor(
   env: Env,
@@ -132,7 +147,8 @@ export async function captionSummaryFor(
   budget: number
 ): Promise<string | null> {
   const source = normalizeSpace(story.summary ?? "");
-  if (!source || source.length <= budget || budget < MIN_BUDGET) return null;
+  if (!source || budget < MIN_BUDGET) return null;
+  if (source.length <= budget && !readsAsSourceCopy(source)) return null;
   const hash = dayCardVersion([source]);
   try {
     const cached = validCaptionSummary(
