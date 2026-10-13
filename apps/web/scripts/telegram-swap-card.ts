@@ -17,6 +17,8 @@
  *   rules: no `image_url` and no image or poster in `media_manifest`, read
  *   from the item row as it is now, not as it was at send time. Fallback
  *   notes exist only since #601 (2026-10-11); an older fallback is invisible.
+ *   After 622 deploys, a `sendPhoto:` note can also mean a later gallery
+ *   photo landed; only the size check below tells that post from the card.
  * - Telegram. The forwarded post's largest photo is exactly 1200x630. A real
  *   og:image of that size would pass too; the D1 gate keeps that rare.
  *
@@ -61,6 +63,7 @@ const CHANNEL_LANG: Record<string, Lang> = {
 /** One Telegram story post as production D1 recorded it. */
 export interface StorySend {
   itemId: string;
+  channel: string;
   lang: Lang;
   /** `notifications.target`: the chat the message lives in. */
   chat: string;
@@ -85,6 +88,7 @@ export type PostMedia =
 
 interface PlanBase {
   story: string;
+  channel: string;
   lang: Lang;
   chat: string;
   messageId: number;
@@ -173,6 +177,7 @@ export function buildEditPlan(send: StorySend, facts: PlanFacts): EditPlan {
   const evidence = sendEvidence(send);
   const base = {
     story: send.itemId.slice(0, 8),
+    channel: send.channel,
     lang: send.lang,
     chat: send.chat,
     messageId: send.messageId,
@@ -350,6 +355,7 @@ function loadSends(days: number, only: string | null): StorySend[] {
   );
   return rows.map((row) => ({
     itemId: String(row.item_id),
+    channel: String(row.channel),
     lang: CHANNEL_LANG[String(row.channel)],
     chat: String(row.target),
     messageId: Number(row.message_id),
@@ -559,8 +565,7 @@ async function main() {
     console.log(
       [
         plan.story,
-        plan.lang,
-        plan.chat,
+        plan.channel,
         `#${plan.messageId}`,
         plan.evidence ?? "-",
         describeMedia(plan.media),
@@ -587,30 +592,42 @@ async function main() {
   });
   console.log(`plan audit row: ${planRowId ?? "NOT RECORDED"} (${logFile})`);
 
+  if (apply && planRowId === null) {
+    throw new Error("D1 audit is unreachable; no live edit was attempted");
+  }
   let failed = 0;
   if (apply) {
     for (const plan of plans) {
       if (plan.skip) continue;
       const post = posts.get(plan);
       if (!post) throw new Error(`no live post read for ${plan.story}`);
-      const res = await telegram("editMessageMedia", {
-        chat_id: plan.chat,
-        message_id: plan.messageId,
-        media: photoMedia(plan.to, post),
-        reply_markup: post.replyMarkup,
-      });
-      const result = editResult(res);
+      let result: EditResult;
+      let description: string;
+      try {
+        const res = await telegram("editMessageMedia", {
+          chat_id: plan.chat,
+          message_id: plan.messageId,
+          media: photoMedia(plan.to, post),
+          reply_markup: post.replyMarkup,
+        });
+        result = editResult(res);
+        description = res.description ?? "edited";
+      } catch (error) {
+        // A timeout may still have landed; the next run's size check sees it.
+        result = "failed";
+        description = `threw: ${(error as Error).message}; outcome unknown`;
+      }
       if (result === "failed") failed++;
       const id = audit(
         EDIT_ACTION,
-        editAuditDetail(plan, result, res.description ?? "edited", {
+        editAuditDetail(plan, result, description, {
           runId,
           gitSha: sha,
           captionChars: post.caption?.length ?? 0,
         })
       );
       console.log(
-        `edit ${plan.story} ${plan.lang} #${plan.messageId}: ${result} (audit ${id ?? "NOT RECORDED"})`
+        `edit ${plan.story} ${plan.channel} #${plan.messageId}: ${result} (audit ${id ?? "NOT RECORDED"})`
       );
     }
   }

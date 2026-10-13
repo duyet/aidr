@@ -15,6 +15,7 @@ const FALLBACK_NOTE =
 function send(overrides: Partial<StorySend> = {}): StorySend {
   return {
     itemId: "c920864b9d6591c743fbf5504f6697bb7701dcdbe84218359bc79976742934cd",
+    channel: "telegram",
     lang: "vi",
     chat: "-1004420104760",
     messageId: 255,
