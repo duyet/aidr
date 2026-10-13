@@ -220,7 +220,7 @@ function TrafficCards({ ga4 }: { ga4: Ga4AudienceView }) {
             emptyLabel="No page views in this range yet."
           />
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {ga4UnavailableDetail(ga4)}.
           </p>
         )}
@@ -238,7 +238,7 @@ function TrafficCards({ ga4 }: { ga4: Ga4AudienceView }) {
             emptyLabel="No active users in this range yet."
           />
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {ga4UnavailableDetail(ga4)}.
           </p>
         )}
@@ -331,7 +331,7 @@ export function AudienceTab({ lang }: { lang: Lang }) {
   const state = useSystemData<AudienceStats>(API.audience);
 
   return (
-    <TabsContent value="audience" className={`${TAB_PANEL} space-y-4`}>
+    <TabsContent value="audience" className={TAB_PANEL}>
       <CardData
         className="contents"
         state={state}

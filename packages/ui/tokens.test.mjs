@@ -64,7 +64,7 @@ test("every themed light token has a dark value", () => {
   // Fonts and radius are theme-independent, and white-on-red stays white;
   // every other color must be declared for dark mode.
   const themeless =
-    /^(editorial-font-|content-font-|radius$|destructive-foreground$)/;
+    /^(editorial-font-|content-font-|reader-font-|radius$|destructive-foreground$)/;
   const missing = Object.keys(light).filter(
     (name) => !themeless.test(name) && !(name in dark)
   );

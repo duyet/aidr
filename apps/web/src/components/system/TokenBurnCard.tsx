@@ -16,13 +16,15 @@ export function TokenBurnCard() {
       ? "Tokens per day by task, stacked (14 days)"
       : "Tokens per day by model, stacked (14 days)";
   return (
-    <ChartCard title="Token burn" subtitle={subtitle} className="md:col-span-2">
-      <div className="space-y-3">
-        <BurnSwitch value={by} onChange={setBy} />
-        <CardData state={state} skeleton={<CardSkeleton tall />}>
-          {(l) => <TokenBurnBody rows={l} by={by} />}
-        </CardData>
-      </div>
+    <ChartCard
+      title="Token burn"
+      subtitle={subtitle}
+      className="md:col-span-2"
+      action={<BurnSwitch value={by} onChange={setBy} />}
+    >
+      <CardData state={state} skeleton={<CardSkeleton tall />}>
+        {(l) => <TokenBurnBody rows={l} by={by} />}
+      </CardData>
     </ChartCard>
   );
 }
@@ -55,7 +57,7 @@ function BurnSwitch({
     { id: "model", label: "By Model" },
   ];
   return (
-    <fieldset className="m-0 grid w-full min-w-0 grid-cols-2 gap-1.5 rounded-xl border-0 bg-muted/40 p-1.5 text-muted-foreground">
+    <fieldset className="m-0 inline-flex min-w-0 gap-0.5 rounded-md border border-border/70 p-0.5 text-muted-foreground">
       <legend className="sr-only">Token burn grouping</legend>
       {options.map((option) => {
         const selected = value === option.id;
@@ -64,10 +66,8 @@ function BurnSwitch({
             key={option.id}
             type="button"
             aria-pressed={selected}
-            className={`inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-              selected
-                ? "bg-background text-foreground shadow-2xs"
-                : "hover:text-foreground"
+            className={`inline-flex h-7 items-center justify-center rounded-sm px-2.5 text-xs font-medium transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+              selected ? "bg-muted text-foreground" : "hover:text-foreground"
             }`}
             onClick={() => onChange(option.id)}
           >

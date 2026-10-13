@@ -52,6 +52,15 @@ const CRITICAL_BODY_BUDGET_BYTES = 45_000;
  */
 const TOTAL_BUDGET_BYTES = 115_000;
 
+/**
+ * Source Serif 4 latin (50,936) + vietnamese (13,508) = 64,444 B. Opt-in:
+ * only `[data-reader-font="serif"]` uses the family, so only a reader who
+ * picked serif downloads it. Budgeted on its own so the default page's
+ * total above stays honest.
+ */
+const READER_SERIF_FAMILY = "Source Serif 4";
+const READER_SERIF_BUDGET_BYTES = 70_000;
+
 interface Face {
   family: string;
   display: string;
@@ -130,11 +139,9 @@ if (fontPreloads.length > 0) {
 }
 
 // The metric-matched fallbacks must stay local()-only: they cost zero bytes.
-for (const family of ["Source Sans 3", "EB Garamond"]) {
+for (const family of ["Source Sans 3", "EB Garamond", READER_SERIF_FAMILY]) {
   if (!stylesCss.includes(`"${family} Fallback"`)) {
-    fail(
-      `--content-font-sans / --editorial-font-serif lost "${family} Fallback"`
-    );
+    fail(`a font stack in styles.css lost "${family} Fallback"`);
   }
 }
 
@@ -143,6 +150,7 @@ for (const family of ["Source Sans 3", "EB Garamond"]) {
 if (useBuilt) {
   let total = 0;
   let criticalBody = 0;
+  let readerSerif = 0;
   for (const face of faces) {
     const file = face.url.split("/").pop() ?? "";
     if (!existsSafe(join(distAssets, file))) {
@@ -151,7 +159,8 @@ if (useBuilt) {
     // The fonts are referenced only from the stylesheet, never from JS, so
     // the emitted asset file is the whole contract.
     const bytes = statSync(join(distAssets, file)).size;
-    total += bytes;
+    if (face.family.includes(READER_SERIF_FAMILY)) readerSerif += bytes;
+    else total += bytes;
     const isFirstPaint =
       face.family.includes("Source Sans 3") &&
       /latin-wght|vietnamese-wght/.test(face.url);
@@ -179,6 +188,13 @@ if (useBuilt) {
     fail(
       `${total.toLocaleString()} B is over the ` +
         `${TOTAL_BUDGET_BYTES.toLocaleString()} B total budget`
+    );
+  }
+  console.log(`opt-in reader serif woff2: ${readerSerif.toLocaleString()} B`);
+  if (readerSerif > READER_SERIF_BUDGET_BYTES) {
+    fail(
+      `${readerSerif.toLocaleString()} B of reader serif is over the ` +
+        `${READER_SERIF_BUDGET_BYTES.toLocaleString()} B opt-in budget`
     );
   }
   console.log("budgets — OK");

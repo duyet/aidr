@@ -89,6 +89,11 @@
   --editorial-font-serif:
     "EB Garamond Variable", "EB Garamond", "EB Garamond Fallback", Garamond,
     "Apple Garamond", ui-serif, serif;
+  /* Body serif for the reader "Serif" pref (src/fonts.css explains why it
+     is not EB Garamond). */
+  --reader-font-serif:
+    "Source Serif 4 Variable", "Source Serif 4", "Source Serif 4 Fallback",
+    Georgia, ui-serif, serif;
   --editorial-font-sans:
     "Source Sans 3 Variable", "Source Sans 3", "Source Sans 3 Fallback",
     ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -375,8 +380,8 @@
 }
 
 .news-content[data-reader-font="serif"] .typeset-reader {
-  --typeset-font-body: var(--editorial-font-serif);
-  --typeset-font-heading: var(--editorial-font-serif);
+  --typeset-font-body: var(--reader-font-serif);
+  --typeset-font-heading: var(--reader-font-serif);
 }
 
 .dark .typeset-reader {
@@ -419,7 +424,7 @@
 }
 
 .news-content[data-reader-font="serif"] {
-  font-family: var(--editorial-font-serif);
+  font-family: var(--reader-font-serif);
 }
 
 /* Reader background swatches live on .app-shell (the outer page wrapper

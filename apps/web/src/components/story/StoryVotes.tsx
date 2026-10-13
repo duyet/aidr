@@ -128,7 +128,7 @@ function Thumb({
   return (
     <button
       type="button"
-      className={`inline-flex items-center gap-1 text-xs tabular-nums transition-colors disabled:opacity-60 ${
+      className={`inline-flex items-baseline gap-1 text-sm leading-none tabular-nums transition-colors disabled:opacity-60 ${
         pressed ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
       aria-pressed={pressed}
@@ -140,7 +140,7 @@ function Thumb({
       }}
       onKeyDown={keepRowClosed}
     >
-      <ThumbsUp className="h-3.5 w-3.5" aria-hidden />
+      <ThumbsUp className="h-3.5 w-3.5 shrink-0 self-center" aria-hidden />
       <span>
         <span className="sr-only">{copy.count} </span>
         {Math.max(0, voteNet)}

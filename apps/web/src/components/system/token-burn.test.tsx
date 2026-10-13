@@ -231,9 +231,9 @@ describe("TokenBurnCard", () => {
     const byModel = screen.getByRole("button", { name: "By Model" });
     expect(byTask.getAttribute("aria-pressed")).toBe("true");
     expect(byModel.getAttribute("aria-pressed")).toBe("false");
-    expect(byTask.className).toContain("min-h-11");
-    expect(byTask.className).toContain("bg-background");
-    expect(byModel.className).not.toContain("bg-background");
+    // Compact toggle: selection reads from the muted fill alone.
+    expect(byTask.className).toContain("bg-muted");
+    expect(byModel.className).not.toContain("bg-muted");
     expect(Object.keys(captured?.config ?? {})).toEqual(["score", "translate"]);
     expect(screen.getByText("score")).toBeTruthy();
 

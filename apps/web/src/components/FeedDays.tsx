@@ -59,7 +59,7 @@ export function FeedDays({
         />
       ))}
       {feed.hasMore && (
-        <div className="pt-8 text-center">
+        <div className="pt-10 text-center">
           <button
             type="button"
             disabled={loadingOlder}
@@ -81,7 +81,7 @@ export function FeedDays({
                 setLoadingOlder(false);
               }
             }}
-            className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:border-accent hover:text-accent disabled:opacity-50"
+            className="rounded-full border border-border px-5 py-2 text-sm font-medium text-muted-foreground hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
             {loadingOlder
               ? lang === "vi"

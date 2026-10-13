@@ -18,6 +18,8 @@ test("new tab matches site chrome copy and typefaces", () => {
   assert.doesNotMatch(html, /chromewebstore\.google\.com\/detail\/aidr/);
   assert.match(css, /Source Sans 3/);
   assert.match(css, /EB Garamond/);
+  // Reader serif carries the Vietnamese subset so diacritics render.
+  assert.match(css, /source-serif-4-vietnamese-wght-normal\.woff2/);
   assert.doesNotMatch(js, /story-host/);
   assert.doesNotMatch(js, /story-score/);
   assert.match(js, /story-sources/);
@@ -116,7 +118,11 @@ test("phone menu mirrors the web navigation and closes from its control", () => 
   }
   assert.match(html, /id="phone-intro-label"[^>]*>Video giới thiệu</);
   assert.match(html, /id="close-menu"/);
-  assert.match(css, /\.phone-menu-panel[\s\S]*border-radius:\s*1\.5rem/);
+  // One card radius everywhere (minimal pass): no bubbly 24px panel.
+  assert.match(
+    css,
+    /\.phone-menu-panel \{[^}]*border-radius:\s*var\(--radius-card\)/
+  );
   assert.match(js, /close-menu/);
 });
 
@@ -159,7 +165,9 @@ test("story row meta columns line up on the title's first line", () => {
   assert.match(css, /\.story-head \{[^}]*align-items:\s*flex-start/);
   assert.match(
     css,
-    /\.story-meta \{[^}]*align-items:\s*center;[^}]*height:\s*1lh/
+    // Baseline, not center: votes, category and time share the title's
+    // text baseline instead of floating at different heights.
+    /\.story-meta \{[^}]*align-items:\s*baseline;[^}]*height:\s*1lh/
   );
   assert.match(css, /\.story-votes \{[^}]*width:\s*3rem/);
   // Fixed width so "21 giờ trước" fits and every row's columns share an x.

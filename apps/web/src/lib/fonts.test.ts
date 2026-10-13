@@ -210,6 +210,38 @@ describe("self-hosted font stack (#229)", () => {
     ).toEqual([]);
   });
 
+  it("covers the whole Vietnamese alphabet in the reader serif", () => {
+    // The "Có chân" pref swaps story bodies to this face. A missing subset
+    // would render tone marks in Georgia mid-word, which is the "looks
+    // broken" bug a Vietnamese reader sees first.
+    const serif = webfaces.filter(
+      (f) => f.family === "Source Serif 4 Variable"
+    );
+    expect(serif.length).toBe(2);
+    const uncovered = [...new Set([...vietnameseAlphabet()])].filter(
+      (ch) =>
+        ch.trim() !== "" &&
+        !serif.some((face) => coveredBy(face, ch.codePointAt(0) ?? 0))
+    );
+    expect(uncovered).toEqual([]);
+  });
+
+  it("keeps the reader serif off the first-paint stacks", () => {
+    // 64 KB is affordable only because the default page never asks for it:
+    // the family must be reachable solely through the serif reader pref.
+    const stack = (name: string) =>
+      new RegExp(`${name}:([^;]*);`).exec(stylesCss)?.[1] ?? "";
+    for (const name of ["--content-font-sans", "--editorial-font-serif"]) {
+      expect(stack(name)).not.toContain("Source Serif 4");
+    }
+    expect(stack("--reader-font-serif")).toMatch(
+      /^\s*"Source Serif 4 Variable",[^;]*"Source Serif 4 Fallback"/
+    );
+    expect(stylesCss).toMatch(
+      /\[data-reader-font="serif"\][^{]*\{[^}]*var\(--reader-font-serif\)/
+    );
+  });
+
   it("covers the latin-ext macrons that appear in the live feed", () => {
     // Story titles carry polynesian loanwords ("Māori", "Ōtaki"). The trace
     // of the live homepage showed U+0101 and U+014D on both /?lang=en and
@@ -224,7 +256,11 @@ describe("self-hosted font stack (#229)", () => {
   });
 
   it("declares a metric-matched fallback face for each webfont family", () => {
-    for (const family of ["Source Sans 3 Variable", "EB Garamond Variable"]) {
+    for (const family of [
+      "Source Sans 3 Variable",
+      "EB Garamond Variable",
+      "Source Serif 4 Variable",
+    ]) {
       const fallback = faces.find(
         (f) => f.family === `${family.split(" Variable")[0]} Fallback`
       );
@@ -239,9 +275,11 @@ describe("self-hosted font stack (#229)", () => {
     // Read by scripts/font-metrics.py out of the shipped woff2/ttf files:
     //   Source Sans 3  unitsPerEm=1000 ascent=1024 descent=400  lineGap=0
     //   EB Garamond    unitsPerEm=1000 ascent=1007 descent=298  lineGap=0
+    //   Source Serif 4 unitsPerEm=1000 ascent=1036 descent=335  lineGap=0
     const expected: Record<string, [string, string]> = {
       "Source Sans 3 Fallback": ["102.4%", "40%"],
       "EB Garamond Fallback": ["100.7%", "29.8%"],
+      "Source Serif 4 Fallback": ["103.6%", "33.5%"],
     };
     for (const [family, [ascent, descent]] of Object.entries(expected)) {
       const block = new RegExp(

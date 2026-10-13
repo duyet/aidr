@@ -84,24 +84,27 @@ describe("data tab spacing", () => {
     expect(read("../../routes/data.tsx")).toContain("TAB_PANEL");
   });
 
-  it("leaves the tab strip room around its triggers", () => {
+  it("renders the strip as underline tabs on a hairline, not a filled pill", () => {
     const route = read("../../routes/data.tsx");
-    // Match across lines: the className is on the line after the tag.
-    const tokensOf = (tag: string) =>
-      route
-        .match(new RegExp(`<${tag}[\\s\\S]*?className="([^"]*)"`))?.[1]
-        .split(/\s+/) ?? [];
+    const tokens = (re: RegExp) => route.match(re)?.[1].split(/\s+/) ?? [];
 
-    // Token-exact: a substring check would also match `gap-1.5` and would
-    // keep passing if the padding were reverted to `p-1`.
-    const list = tokensOf("TabsList");
+    // Token-exact so `bg-muted/40` or `rounded-xl` creeping back fails here.
+    const list = tokens(/<TabsList[\s\S]*?className="([^"]*)"/);
     expect(list).toEqual(
-      expect.arrayContaining(["p-1.5", "gap-1.5", "min-h-11"])
+      expect.arrayContaining(["border-b", "bg-transparent", "p-0"])
     );
-    expect(list).not.toContain("p-1");
+    expect(
+      list.some((t) => t.startsWith("rounded-") && t !== "rounded-none")
+    ).toBe(false);
 
-    expect(tokensOf("TabsTrigger")).toEqual(
-      expect.arrayContaining(["px-4", "py-2", "text-sm"])
+    // Active state is the underline, so the active fill must stay off.
+    const trigger = tokens(/const TAB_TRIGGER =\s*"([^"]*)"/);
+    expect(trigger).toEqual(
+      expect.arrayContaining([
+        "border-b-2",
+        "data-[state=active]:border-foreground",
+        "data-[state=active]:bg-transparent",
+      ])
     );
   });
 });

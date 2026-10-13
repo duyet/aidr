@@ -34,7 +34,7 @@ export function CategoryLabel({
 
   return (
     <span
-      className={["inline-flex items-center gap-1.5", className]
+      className={["inline-flex items-baseline gap-1.5", className]
         .filter(Boolean)
         .join(" ")}
       style={style}
@@ -42,7 +42,7 @@ export function CategoryLabel({
       {dot ? (
         <span
           aria-hidden="true"
-          className="category-filter-dot size-1.5 shrink-0 rounded-full"
+          className="category-filter-dot size-1.5 shrink-0 self-center rounded-full"
         />
       ) : null}
       <span className={colored ? "category-colored" : undefined}>

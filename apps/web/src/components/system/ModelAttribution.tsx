@@ -62,7 +62,7 @@ export function ModelAttribution() {
   }
   if (state.error) {
     return (
-      <Card className="min-w-0 border-border/60 bg-muted/20 shadow-none">
+      <Card className="min-w-0 rounded-md border-border/70 bg-card shadow-none">
         <CardContent className="p-4">
           <div role="status" aria-live="polite" className="space-y-1">
             <p className="text-sm font-medium text-foreground">
@@ -82,7 +82,7 @@ export function ModelAttribution() {
       aria-label="Loading model attribution"
       className="min-w-0"
     >
-      <Skeleton className="h-28 w-full rounded-2xl" />
+      <Skeleton className="h-28 w-full rounded-md" />
     </section>
   );
 }
@@ -93,10 +93,10 @@ export function AttributionView({ models }: { models: ModelChains }) {
   const titleId = useId();
 
   return (
-    <Card className="min-w-0 border-border/60 bg-muted/20 shadow-none">
+    <Card className="min-w-0 rounded-md border-border/70 bg-card shadow-none">
       <CardContent className="p-4">
         <section aria-labelledby={titleId}>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             {/* The mark is a sibling of the baseline-aligned title/subtitle
                 pair, not a child of it: an inline box inside a flex item
                 would drag that item's baseline down to the bottom of the

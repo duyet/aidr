@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { dayArchivePath } from "../lib/day-archive";
 import { formatDayHeading } from "../lib/lang";
@@ -106,13 +107,14 @@ export function DaySection({
         ))}
       </div>
       {hidden > 0 && (
-        <div className="pt-4 text-center">
+        <div className="border-t border-border/60">
           <button
             type="button"
             disabled={loading}
             onClick={loadMore}
-            className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:border-accent hover:text-accent disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm px-2 py-2.5 text-sm font-medium text-muted-foreground tabular-nums hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
+            <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
             {loading
               ? t("Loading…", "Đang tải…")
               : t(`Load more (${hidden})`, `Xem thêm (${hidden})`)}

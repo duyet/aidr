@@ -68,6 +68,9 @@ const TABS: { value: DataTab; label: string }[] = [
   { value: "algo", label: "Algo" },
 ];
 
+const TAB_TRIGGER =
+  "-mb-px h-9 rounded-none border-b-2 border-transparent bg-transparent px-3 py-0 text-sm text-muted-foreground shadow-none hover:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none";
+
 export function SystemPage() {
   // /data is an operator page: English only, whatever the site language.
   const lang: Lang = "en";
@@ -113,24 +116,16 @@ export function SystemPage() {
             });
           }}
         >
-          {/* Comfortable pill: p-1.5/gap-1.5 so triggers never touch the
-              strip edge, and a matching TAB_PANEL gap below so no card is
-              glued to the tabs. */}
-          <TabsList className="h-auto min-h-11 w-full flex-wrap justify-start gap-1.5 rounded-xl bg-muted/40 p-1.5">
+          {/* Underline tabs on a hairline: the strip is navigation, not a
+              surface, so it carries no fill; TAB_PANEL sets the gap below. */}
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-0 rounded-none border-b border-border/70 bg-transparent p-0">
             {TABS.map(({ value, label }) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className="rounded-lg px-4 py-2 text-sm"
-              >
+              <TabsTrigger key={value} value={value} className={TAB_TRIGGER}>
                 {label}
               </TabsTrigger>
             ))}
             {admin.isAdmin ? (
-              <TabsTrigger
-                value="admin"
-                className="rounded-lg px-4 py-2 text-sm"
-              >
+              <TabsTrigger value="admin" className={TAB_TRIGGER}>
                 Admin
               </TabsTrigger>
             ) : null}

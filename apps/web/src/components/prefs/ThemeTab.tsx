@@ -18,6 +18,7 @@ import {
   type ReaderFont,
   usePrefs,
 } from "../../lib/prefs";
+import { PREFS_LABEL, Segmented } from "./Segmented";
 
 const BG_SWATCHES: { key: ReaderBg; color: string }[] = [
   { key: "default", color: "var(--background)" },
@@ -80,75 +81,82 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
     setTheme("system");
   };
 
+  const sliderRow =
+    "grid grid-cols-[4.5rem_1fr_2.25rem] items-center gap-2 text-xs";
+
   return (
-    <div className="space-y-4">
-      <div>
-        <span className="mb-1.5 block text-xs text-muted-foreground">
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <span className={`block ${PREFS_LABEL}`}>
           {t("Appearance", "Giao diện")}
         </span>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setDarkMode(false)}
-            aria-pressed={!isDark}
-            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
-              !isDark
-                ? "border-accent bg-muted font-medium"
-                : "border-border hover:bg-muted/60"
-            }`}
-          >
-            <Sun className="size-4" aria-hidden />
-            {t("Light", "Sáng")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setDarkMode(true)}
-            aria-pressed={isDark}
-            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
-              isDark
-                ? "border-accent bg-muted font-medium"
-                : "border-border hover:bg-muted/60"
-            }`}
-          >
-            <Moon className="size-4" aria-hidden />
-            {t("Dark", "Tối")}
-          </button>
-        </div>
+        <Segmented
+          label={t("Appearance", "Giao diện")}
+          value={isDark ? "dark" : "light"}
+          onChange={(v) => setDarkMode(v === "dark")}
+          options={[
+            {
+              value: "light",
+              label: (
+                <>
+                  <Sun className="size-3.5" aria-hidden />
+                  {t("Light", "Sáng")}
+                </>
+              ),
+            },
+            {
+              value: "dark",
+              label: (
+                <>
+                  <Moon className="size-3.5" aria-hidden />
+                  {t("Dark", "Tối")}
+                </>
+              ),
+            },
+          ]}
+        />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {(["sans", "serif"] satisfies ReaderFont[]).map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => {
-              track("prefs_change", { pref: "font" });
-              setPrefs({ font: f });
-            }}
-            aria-pressed={prefs.font === f}
-            className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
-              prefs.font === f
-                ? "border-accent bg-muted"
-                : "border-border hover:bg-muted/60"
-            }`}
-          >
-            <span className={f === "serif" ? "font-serif text-xl" : "text-xl"}>
-              Aa
-            </span>
-            <div className="text-xs text-muted-foreground">
-              {f === "sans" ? t("Sans", "Không chân") : t("Serif", "Có chân")}
-            </div>
-          </button>
-        ))}
+      <div className="space-y-1.5">
+        <span className={`block ${PREFS_LABEL}`}>{t("Font", "Phông chữ")}</span>
+        <Segmented
+          label={t("Font", "Phông chữ")}
+          value={prefs.font}
+          onChange={(f: ReaderFont) => {
+            track("prefs_change", { pref: "font" });
+            setPrefs({ font: f });
+          }}
+          options={(["sans", "serif"] satisfies ReaderFont[]).map((f) => ({
+            value: f,
+            label: (
+              <>
+                <span
+                  className="text-sm leading-none"
+                  style={
+                    f === "serif"
+                      ? { fontFamily: "var(--reader-font-serif)" }
+                      : undefined
+                  }
+                  aria-hidden
+                >
+                  Aa
+                </span>
+                {f === "sans" ? t("Sans", "Không chân") : t("Serif", "Có chân")}
+              </>
+            ),
+          }))}
+        />
       </div>
 
-      <label className="block">
-        <span className="mb-1.5 flex items-baseline justify-between text-xs text-muted-foreground">
-          <span>{t("Text size", "Cỡ chữ")}</span>
-          <span>{Math.round(prefs.fontSize * 100)}%</span>
+      <label className={sliderRow}>
+        <span className="text-muted-foreground">
+          {t("Text size", "Cỡ chữ")}
         </span>
-        <div className="flex items-center gap-2">
-          <AArrowDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="flex items-center gap-1.5">
+          <AArrowDown
+            className="size-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
           <input
             type="range"
             min={0.85}
@@ -162,16 +170,23 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
             className="reader-slider w-full"
             aria-label={t("Text size", "Cỡ chữ")}
           />
-          <AArrowUp className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </div>
+          <AArrowUp
+            className="size-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+        </span>
+        <span className="text-right tabular-nums text-muted-foreground">
+          {Math.round(prefs.fontSize * 100)}%
+        </span>
       </label>
 
-      <label className="block">
-        <span className="mb-1.5 block text-xs text-muted-foreground">
-          {t("Density", "Mật độ")}
-        </span>
-        <div className="flex items-center gap-2">
-          <Rows4 className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <label className={sliderRow}>
+        <span className="text-muted-foreground">{t("Density", "Mật độ")}</span>
+        <span className="flex items-center gap-1.5">
+          <Rows4
+            className="size-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
           <input
             type="range"
             min={0}
@@ -187,15 +202,17 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
             className="reader-slider w-full"
             aria-label={t("Density", "Mật độ")}
           />
-          <Rows2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </div>
+          <Rows2
+            className="size-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+        </span>
+        <span />
       </label>
 
-      <div>
-        <span className="mb-1.5 block text-xs text-muted-foreground">
-          {t("Background", "Nền")}
-        </span>
-        <div className="flex gap-2.5">
+      <div className="grid grid-cols-[4.5rem_1fr] items-center gap-2 text-xs">
+        <span className="text-muted-foreground">{t("Background", "Nền")}</span>
+        <div className="flex gap-2">
           {BG_SWATCHES.map((s) => (
             <button
               key={s.key}
@@ -204,24 +221,27 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
               aria-label={s.key}
               aria-pressed={prefs.bg === s.key}
               style={{ background: s.color }}
-              className={`h-6 w-6 shrink-0 rounded-full border ${
+              className={`size-5 shrink-0 rounded-full border border-border transition-shadow ${
                 prefs.bg === s.key
-                  ? "border-accent ring-2 ring-accent ring-offset-2 ring-offset-background"
-                  : "border-border"
+                  ? "ring-1 ring-foreground/70 ring-offset-2 ring-offset-card"
+                  : "hover:ring-1 hover:ring-border hover:ring-offset-2 hover:ring-offset-card"
               }`}
             />
           ))}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={resetAppearance}
-        disabled={isDefault}
-        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-      >
-        <RotateCcw className="size-4" aria-hidden />
-        {t("Reset to default", "Khôi phục mặc định")}
-      </button>
+
+      <div className="border-t border-border pt-2">
+        <button
+          type="button"
+          onClick={resetAppearance}
+          disabled={isDefault}
+          className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+        >
+          <RotateCcw className="size-3.5" aria-hidden />
+          {t("Reset to default", "Khôi phục mặc định")}
+        </button>
+      </div>
     </div>
   );
 }

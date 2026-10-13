@@ -26,11 +26,11 @@ export function StatTile({
   return (
     <Card
       className={cn(
-        "h-full border-border/70 bg-card shadow-none",
+        "h-full rounded-md border-border/70 bg-card shadow-none",
         STAT_TILE_MIN_HEIGHT
       )}
     >
-      <CardContent className="flex h-full flex-col p-3.5">
+      <CardContent className="flex h-full flex-col p-4">
         <p className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
           {Icon ? (
             <Icon className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
@@ -61,5 +61,5 @@ export function StatTile({
 
 /** Same box as StatTile with no copy, for a section that is still in flight. */
 export function StatTileSkeleton() {
-  return <Skeleton className={cn("rounded-2xl", STAT_TILE_MIN_HEIGHT)} />;
+  return <Skeleton className={cn("rounded-md", STAT_TILE_MIN_HEIGHT)} />;
 }

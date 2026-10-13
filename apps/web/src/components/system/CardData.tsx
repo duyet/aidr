@@ -5,7 +5,7 @@ import type { SystemDataState } from "../../lib/use-system-stats";
 /** Local loading placeholder sized like the card body it replaces, so
  *  content popping in never shifts layout. */
 export function CardSkeleton({ tall }: { tall?: boolean }) {
-  return <Skeleton className={`w-full ${tall ? "h-52" : "h-44"}`} />;
+  return <Skeleton className={`w-full rounded-md ${tall ? "h-52" : "h-44"}`} />;
 }
 
 /** Per-card data state: the card's own skeleton while its endpoint is in

@@ -305,13 +305,13 @@ export function StoryRow({
             >
               <SpriteIcon
                 name="external-link"
-                className="inline h-3.5 w-3.5 align-baseline"
+                className="inline h-3 w-3 align-[-1px]"
               />
               {host && <span className="ml-1">{host}</span>}
             </a>
           )}
           {/* Phone: topic and time leave their columns for one line here. */}
-          <span className="story-meta-phone mt-0.5 flex flex-wrap gap-x-2 text-xs font-normal text-muted-foreground sm:hidden">
+          <span className="story-meta-phone mt-0.5 flex flex-wrap items-baseline gap-x-2 text-xs tabular-nums font-normal text-muted-foreground sm:hidden">
             {item.category ? (
               <CategoryLabel name={item.category} lang={lang} dot />
             ) : null}
@@ -324,14 +324,14 @@ export function StoryRow({
           ) : null}
         </span>
         <span
-          className="story-time hidden whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground sm:block"
+          className="story-time hidden whitespace-nowrap text-right text-sm tabular-nums text-muted-foreground sm:block"
           suppressHydrationWarning
         >
           {time}
         </span>
         {/* An open row moves its votes to the top of the details' media
             column; the empty cell keeps the columns aligned. */}
-        <span className="story-score flex justify-end">
+        <span className="story-score flex items-baseline justify-end">
           {!detailsOpen && (
             <StoryVotes
               itemId={item.id}

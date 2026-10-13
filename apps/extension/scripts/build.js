@@ -91,6 +91,8 @@ const required = [
   "fonts/source-sans-3-latin-700.woff2",
   "fonts/eb-garamond-latin-400.woff2",
   "fonts/eb-garamond-latin-700.woff2",
+  "fonts/source-serif-4-latin-wght-normal.woff2",
+  "fonts/source-serif-4-vietnamese-wght-normal.woff2",
   "_locales/en/messages.json",
   "_locales/vi/messages.json",
 ];

@@ -112,7 +112,7 @@ function ItemsPerDayCard() {
 
 export function OverviewTab() {
   return (
-    <TabsContent value="overview" className={`${TAB_PANEL} space-y-4`}>
+    <TabsContent value="overview" className={TAB_PANEL}>
       <StatTiles />
       <div className="space-y-3">
         <ItemsPerDayCard />

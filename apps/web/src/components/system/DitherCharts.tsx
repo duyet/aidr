@@ -23,8 +23,12 @@ import {
   dateAtHover,
 } from "./token-burn";
 
+/** Room above the tallest bar and beside the y labels, so no chart clips at
+ *  the card edge. Shared by every cartesian chart on /data. */
+const CHART_MARGINS = { top: 16, right: 8, bottom: 24, left: 40 };
+
 function EmptyNote({ label }: { label: string }) {
-  return <p className="text-sm text-muted-foreground">{label}</p>;
+  return <p className="text-xs text-muted-foreground">{label}</p>;
 }
 
 /** Dithered bar chart of stories published per day. */
@@ -45,11 +49,16 @@ export function ItemsAreaChart({
     items: { label: "Items", color: "green" },
   };
   return (
-    <BarChart data={rows} config={config} className="h-44 w-full">
-      <Grid />
+    <BarChart
+      data={rows}
+      config={config}
+      margins={CHART_MARGINS}
+      className="h-44 w-full"
+    >
+      <Grid strokeDasharray="2 4" />
       <XAxis dataKey="day" />
       <YAxis />
-      <Bar dataKey="items" />
+      <Bar dataKey="items" variant="solid" />
       <Tooltip labelKey="date" showTotal />
     </BarChart>
   );
@@ -86,11 +95,16 @@ export function DailyMetricChart({
     [seriesKey]: { label, color },
   };
   return (
-    <BarChart data={rows} config={config} className="h-44 w-full">
-      <Grid />
+    <BarChart
+      data={rows}
+      config={config}
+      margins={CHART_MARGINS}
+      className="h-44 w-full"
+    >
+      <Grid strokeDasharray="2 4" />
       <XAxis dataKey="day" />
       <YAxis />
-      <Bar dataKey={seriesKey} />
+      <Bar dataKey={seriesKey} variant="solid" />
       <Tooltip labelKey="date" showTotal />
     </BarChart>
   );
@@ -116,11 +130,16 @@ export function TokensLineChart({
     tokens: { label: "Tokens", color: "purple" },
   };
   return (
-    <BarChart data={rows} config={config} className="h-44 w-full">
-      <Grid />
+    <BarChart
+      data={rows}
+      config={config}
+      margins={CHART_MARGINS}
+      className="h-44 w-full"
+    >
+      <Grid strokeDasharray="2 4" />
       <XAxis dataKey="day" />
       <YAxis tickFormatter={formatValue} />
-      <Bar dataKey="tokens" />
+      <Bar dataKey="tokens" variant="solid" />
       <Tooltip labelKey="date" showTotal />
     </BarChart>
   );
@@ -196,7 +215,7 @@ export function TokenBurnSection({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {(
           [
             ["tokens", fmt(view.total)],
@@ -228,14 +247,15 @@ export function TokenBurnSection({
         data={rows}
         config={config}
         stackType="stacked"
+        margins={CHART_MARGINS}
         className="h-52 w-full"
         onHoverChange={setHoverIndex}
       >
-        <Grid />
+        <Grid strokeDasharray="2 4" />
         <XAxis dataKey="day" />
         <YAxis tickFormatter={formatValue} />
         {view.series.map((name) => (
-          <Bar key={name} dataKey={name} />
+          <Bar key={name} dataKey={name} variant="solid" />
         ))}
         <Tooltip labelKey="date" showTotal valueFormatter={(n) => fmt(n)} />
       </BarChart>
