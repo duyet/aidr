@@ -16,6 +16,8 @@ const ENRICH_FETCH_TIMEOUT_MS = 8_000;
 /** Read at most this many bytes of the article HTML — og/description meta
  * tags live in <head>, no need to download the whole page. */
 const MAX_HTML_BYTES = 100_000;
+// arXiv HTML renders the whole paper; the first figure can sit past 100 KB.
+const MAX_ARXIV_HTML_BYTES = 400_000;
 
 export interface OgData {
   imageUrl?: string;
@@ -382,6 +384,56 @@ export async function fetchOgData(url: string): Promise<OgData> {
   }
 }
 
+const ARXIV_ABS_RE =
+  /^https?:\/\/(?:www\.)?arxiv\.org\/abs\/([a-z-]+(?:\.[a-z]{2})?\/\d{7}|\d{4}\.\d{4,5})(?:v\d+)?\/?$/i;
+
+/**
+ * arXiv abstract pages carry no og:image. The HTML rendition
+ * (`/html/<id>`) links the paper's figures as `<id>v<n>/<file>`; the first
+ * one is the story picture. Papers without an HTML version resolve to null.
+ */
+export async function fetchArxivFigure(
+  url: string
+): Promise<MediaCandidate | null> {
+  const id = url.match(ARXIV_ABS_RE)?.[1];
+  if (!id) return null;
+  const htmlUrl = `https://arxiv.org/html/${id}`;
+  try {
+    const { response, url: finalUrl } = await fetchWithSafeRedirectsResolved(
+      htmlUrl,
+      {
+        signal: AbortSignal.timeout(ENRICH_FETCH_TIMEOUT_MS),
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; duyet-news-bot/1.0)",
+        },
+      }
+    );
+    if (!response.ok) return null;
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.toLowerCase().includes("text/html")) return null;
+    const html = await readCappedText(response, MAX_ARXIV_HTML_BYTES);
+    const figurePrefix = `${id.toLowerCase()}v`;
+    for (const match of html.matchAll(/<img\b[^>]*?\bsrc=["']([^"']+)["']/gi)) {
+      const src = decodeHtmlEntities(match[1]);
+      const lower = src.toLowerCase();
+      if (
+        !lower.startsWith(figurePrefix) ||
+        !/^\d+\//.test(lower.slice(figurePrefix.length))
+      ) {
+        continue;
+      }
+      return { type: "image", url: new URL(src, finalUrl).toString() };
+    }
+    return null;
+  } catch (error) {
+    console.error(
+      `enrich: arxiv figure fetch failed for ${logSafeUrl(htmlUrl)}:`,
+      logSafeError(error)
+    );
+    return null;
+  }
+}
+
 function mediaCandidatesFromOg(
   data: OgData,
   priority: number
@@ -468,17 +520,26 @@ export async function enrichMissingContent(
         const summary = preferCompleteSummary(item.summary, og.description);
         if (summary) item.summary = summary;
 
-        let manifest = manifestWithoutArticleUrl(
-          buildMediaManifest([
-            ...(item.media ?? []),
-            ...(item.mediaManifest?.assets ?? []),
-            ...(item.imageUrl
-              ? [{ type: "image" as const, url: item.imageUrl, priority: 0 }]
-              : []),
-            ...fetched,
-          ]),
-          item.url
-        );
+        const buildManifest = () =>
+          manifestWithoutArticleUrl(
+            buildMediaManifest([
+              ...(item.media ?? []),
+              ...(item.mediaManifest?.assets ?? []),
+              ...(item.imageUrl
+                ? [{ type: "image" as const, url: item.imageUrl, priority: 0 }]
+                : []),
+              ...fetched,
+            ]),
+            item.url
+          );
+        let manifest = buildManifest();
+        if (!manifest.assets.some((asset) => asset.type === "image")) {
+          const figure = await fetchArxivFigure(item.url);
+          if (figure) {
+            fetched.push({ ...figure, priority: 30 });
+            manifest = buildManifest();
+          }
+        }
         if (originalUrl) {
           manifest = manifestWithoutArticleUrl(manifest, originalUrl);
         }

@@ -219,6 +219,48 @@ describe("enrichMissingContent", () => {
     expect(item.summary).toBe("Fetched description");
   });
 
+  describe("arxiv figures", () => {
+    const abs = "https://arxiv.org/abs/2601.01234v2";
+    const paperHtml = `<html><body>
+      <img src="/static/arxiv-logo.svg">
+      <img src="2601.01234v1/fig1.png" alt="Figure 1">
+      <img src="2601.01234v1/fig2.png">
+    </body></html>`;
+
+    it("uses the first figure of the HTML version when the page has no image", async () => {
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "https://arxiv.org/html/2601.01234") {
+          return htmlResponse(paperHtml);
+        }
+        return htmlResponse("<title>abs</title>");
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const item = makeItem({ url: abs, summary: "A finished summary." });
+      await enrichMissingContent([item]);
+
+      expect(item.imageUrl).toBe(
+        "https://arxiv.org/html/2601.01234v1/fig1.png"
+      );
+      expect(item.mediaManifest?.assets[0]?.url).toBe(item.imageUrl);
+    });
+
+    it("leaves the item alone when the paper has no HTML version", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL) =>
+          String(input).includes("/html/")
+            ? new Response("not found", { status: 404 })
+            : htmlResponse("<title>abs</title>")
+        )
+      );
+      const item = makeItem({ url: abs, summary: "A finished summary." });
+      await enrichMissingContent([item]);
+      expect(item.imageUrl).toBeUndefined();
+    });
+  });
+
   it("replaces an ellipsis blurb with the complete description parseOgTags chose", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       htmlResponse(`

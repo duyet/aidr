@@ -452,6 +452,12 @@ candidates. HTML entities in media URLs (including double-escaped `&amp;`
 in query strings) are decoded before storage, so thumbs are real article
 images rather than a broken-src fallback.
 
+- **arXiv has no og:image.** When an item is an `arxiv.org/abs/<id>` page
+  and the merged manifest still has no image, enrich fetches
+  `arxiv.org/html/<id>` (same safe fetch, timeout, and a 400 KB read cap)
+  and takes the first `<img>` whose `src` starts with `<id>v<n>/`, resolved
+  against the final URL. A paper without an HTML version stays imageless.
+
 - **Media identity is the URL, not the content.** Duplicates are found by
   `mediaIdentityKey` and collapse to one asset, in one manifest, across
   sources, and when a cluster merges (`mergeMediaManifests`). Rules: http and
