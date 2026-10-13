@@ -46,12 +46,13 @@ function systemPrompt(lang: Lang, target: number): string {
 }
 
 /** Copy that came through the feed as written for the publisher's own page:
- *  an RSS footer, or a paper, blog or press release speaking as "we", "I" or
- *  "you". A caption speaks as the channel, so these are rewritten even when
- *  they fit. */
+ *  an RSS footer, or a paper, blog or press release speaking as "we" or, in
+ *  Vietnamese, "chúng tôi", "tôi" or "bạn". English "I" is left out: it also
+ *  matches "Google I/O". A caption speaks as the channel, so these are
+ *  rewritten even when they fit. */
 const SOURCE_COPY = [
   /appeared first on|xuất hiện lần đầu (?:trên|tại)/i,
-  /\b(?:[Ww]e|[Oo]ur|us|I|[Mm]y)\b/,
+  /\b(?:[Ww]e|[Oo]ur)\b/,
   /(?<![\p{L}])(?:chúng tôi|tôi|bạn)(?![\p{L}])/iu,
 ];
 

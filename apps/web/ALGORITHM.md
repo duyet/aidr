@@ -1230,7 +1230,7 @@ deliberately non-spammy.
   500). Leading summary sentences that only repeat the title are dropped
   first. In order: the channel's own summary when it fits and does not read
   as source copy (an RSS "appeared first on" footer, or a paper, blog or
-  press release speaking as "we", "I" or "you"); else a stored
+  press release speaking as "we", "chúng tôi", "tôi" or "bạn"); else a stored
   rewrite in `notify_summaries` (one LLM call at send time through
   `completeJson`, only for the story about to be posted, keyed by item and
   language, regenerated when the source summary changes; an answer over the

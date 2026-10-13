@@ -292,8 +292,15 @@ describe("captionSummaryFor", () => {
   });
 
   it("does not call the model when the summary already fits", async () => {
-    const s = story({ summary: "Short and whole." });
-    expect(await captionSummaryFor(env, s, budget)).toBeNull();
+    // "I/O" and "US" are not a first-person voice.
+    for (const summary of [
+      "Short and whole.",
+      "Google I/O opens in the US on May 20 with Gemini news.",
+    ]) {
+      expect(
+        await captionSummaryFor(env, story({ summary }), budget)
+      ).toBeNull();
+    }
     expect(completeJson).not.toHaveBeenCalled();
   });
 
