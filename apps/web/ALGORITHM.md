@@ -41,7 +41,7 @@ One ingest run does three jobs. The scheduler starts one every 30 minutes, with 
 Publish has two deliveries and they do not share a clock or a table:
 
 - **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. Subscribers with `frequency = weekly` skip these lanes and get the weekly edition on Monday morning instead (§11, idempotency `last_weekly_sent`). A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
-- **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
+- **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, one message with the day card's 6 stories, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
 
 An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next run retries. Email is not a `Notifier`: a notifier is one target plus a trending post.
@@ -1000,22 +1000,29 @@ deliberately non-spammy.
   links, optional health snapshot) is the internal shape. Adapters in
   `worker/notify/adapters.ts` render Telegram HTML, Slack
   incoming-webhook JSON, or raw JSON.
-- *Daily digest*: one highlight post per local day per channel
-  (Asia/Ho_Chi_Minh, from 08:00), plus a follow-up only when more stories
-  are worth sending. The lead photo is the day card
-  (`/api/og/date/{date}.png`) and the caption names those same tiles, with
-  the first sentence of that language's summary after the title when one
-  exists. Every tile still fits: a summary clause is a whole first sentence or left out, and the caption drops clauses (longest first) before it shortens any headline, at a word boundary (`fitHighlightDigest`). Stories that do not
-  fit the lead grid go next: four or more become a second card (`part=2`, its own `v`
-  token, because Telegram caches a photo by URL); one to three are a short
-  text reply. This is that calendar day's ranked stories, photos first,
+- *Daily digest*: one message per local day per channel
+  (Asia/Ho_Chi_Minh, from 08:00), and nothing else for the stories that
+  did not make the card. It is a `sendMessage` (4096 characters, not a
+  1024-character photo caption) naming the six stories on the day card,
+  each with the first sentence of that language's summary after the title
+  when one exists. The card is the link preview, large and above the text:
+  `link_preview_options.url` is the versioned card PNG
+  (`/api/og/date/{date}.png?lang=&v=`, `v` a hash of the tile ids). The Bot
+  API does not need that URL in the text, and pointing at the image instead
+  of the day page keeps Telegram's cached page preview out. Six full lines
+  normally fit. Only when they pass 4000 visible characters does
+  `fitHighlightDigest` drop summary clauses (longest first, a clause is a
+  whole first sentence or nothing) before it shortens any headline, at a
+  word boundary. This is that calendar day's ranked stories, photos first,
   not the rolling 24h TL;DR. Email still sends the snapshot (`bullets_vi`
   / `bullets_en` only, no cross-language fallback). The Vietnamese channel
   (`TELEGRAM_VI_CHAT_ID`, falling back to `TELEGRAM_CHAT_ID`) and the
   English channel (`TELEGRAM_EN_CHAT_ID`, same bot token) each use their
-  own language. Each line links to its story permalink. The site button is
-  on the lead post only. When the day has no card stories, the caption
-  falls back to that language's snapshot.
+  own language. Each line links to its story permalink, and the button
+  opens the day page. When the day has no card stories, the message lists
+  the first six bullets of that language's snapshot and the preview is the
+  day page. The send waits up to 45s, like a photo: Telegram may fetch the
+  cold card for the preview before it answers.
 - *Trending*: an individual post only when the algo flags a story as
   exceptional (`rank_score` at or above the trending bar and
   `llm_importance ≥ 7`), capped at
@@ -1078,9 +1085,10 @@ deliberately non-spammy.
     (VnExpress) only match Vietnamese titles, since the key is the source
     title.
   - **What the digest showed**: `notify_digest_items` (migration 0057) holds
-    the story ids of each digest, written when it sends: the day card's
-    stories (what the caption lists), else every id the snapshot's bullets
-    cite. The TL;DR snapshot cannot stand in, because it is rewritten every
+    the story ids of each digest, written when it sends: the day card's six
+    stories (what the message lists), else every id the snapshot's bullets
+    cite. Ranked stories below the card are not recorded, so trending may
+    still post them. The TL;DR snapshot cannot stand in, because it is rewritten every
     run and by trending time cites the very stories trending would post.
     Apply 0057 before deploying; without the table digest dedup is off and the
     Worker logs it. A channel with no digest row for the date (failed, not yet
@@ -1126,11 +1134,11 @@ deliberately non-spammy.
   for one `{id8}` + `lang` and answers `iv_eligible` with a reason. Run it
   with `verify-aidr doctor iv --id <8hex> --lang vi|en` or
   `GET /api/admin/notify/iv`. It invents no `rhash` and no query template.
-- `sendMessage`/`sendPhoto` set `link_preview_options` explicitly
-  (`is_disabled`) rather than inheriting the API default: a preview would
-  attach to one arbitrary digest bullet or double the photo. Rationale and
-  the rejected `prefer_small_media`/`prefer_large_media`/`show_above_text`
-  values are in `worker/notify/telegram.ts`.
+- `sendMessage`/`sendPhoto` set `link_preview_options` explicitly rather
+  than inheriting the API default. Story posts set `is_disabled`: a preview
+  would attach to one arbitrary link or double the photo. The digest pins
+  its preview to the day card with `prefer_large_media` and
+  `show_above_text`. Rationale per flag is in `worker/notify/telegram.ts`.
 - The trending photo path attaches the **generated** first-party card
   `/api/og/{id8}.png?lang=` (1200×630) — the same `og:image` the card gate
   approves — instead of the upstream thumb, so a link preview can never be

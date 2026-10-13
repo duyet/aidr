@@ -13,7 +13,7 @@ import {
 import { isIvStoryId, ivCardUrl, TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
 import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
-import { digestPages } from "./day-card.js";
+import { digestPage } from "./day-card.js";
 import { fitText, fitWords } from "./fit-text.js";
 import { captionSummaryFor } from "./story-summary.js";
 import {
@@ -31,10 +31,12 @@ export { escapeHtml };
 /**
  * Telegram channel adapter.
  *
- * - Daily digest: a highlight photo of the day's top card. Stories that
- *   do not fit go in a second message (another card, or a short text
- *   reply). The rolling TL;DR is not the caption: it still leads with
- *   yesterday after midnight.
+ * - Daily digest: ONE text message (`sendMessage`, 4096 chars) naming the six
+ *   stories on the day card, each with its summary clause when the six fit.
+ *   The card itself is the link preview, large and above the text. There is
+ *   no second message for the stories that did not make the card. The
+ *   rolling TL;DR is not the digest: it still leads with yesterday after
+ *   midnight.
  * - Trending story: the generated branded card, plus any other story images
  *   Telegram will take in one album (`sendMediaGroup`, 2–10). One image stays
  *   `sendPhoto` so the Read / AI;DR buttons remain. Text is the fallback.
@@ -43,8 +45,11 @@ export { escapeHtml };
  * analytics (Telegram's Bot API exposes no read receipts).
  */
 
-/** Telegram message hard limit is 4096 chars; keep headroom. */
+/** Telegram message hard limit is 4096 chars after entity parsing; keep
+ *  headroom. */
 const MESSAGE_CAP = 4000;
+/** Stories in the daily digest: the day card's 3×2 grid. */
+export const DIGEST_STORIES = 6;
 /** Telegram caption hard limit is 1024 chars (TELEGRAM_IV_LIMITS.captionChars);
  *  the title and meta line are part of the same caption, so the summary cap
  *  is computed from whatever is left rather than fixed at 500. */
@@ -64,7 +69,7 @@ export interface LinkPreviewOptions {
  * - `is_disabled` — SET on story messages. Their links are HTML `<a>`
  *   entities and inline buttons; a preview could only attach to an arbitrary
  *   link, so it is turned off explicitly. The digest instead pins its preview
- *   to the day page (`digestLinkPreview`).
+ *   to the day card image (`digestLinkPreview`).
  * - `prefer_small_media` — not set. There is no small-media affordance to
  *   prefer: the trending post already ships one large generated card.
  * - `prefer_large_media` — set on the digest only, so the day card shows
@@ -91,15 +96,20 @@ export function digestDayUrl(digest: Pick<DailyDigest, "date" | "lang">) {
 }
 
 /**
- * The digest shows the day page's preview above the text: Telegram builds it
- * from the page's `og:image`, the generated day card (`/api/og/date/…`). The
- * preview is pinned to the day URL, so a bullet link can never take its place.
+ * The digest's preview, large and above the text: the versioned day card PNG
+ * (`digestCardUrl`). The Bot API takes any URL here ("If empty, then the first
+ * URL found in the message text will be used"), so it need not be in the text,
+ * and a bullet link can never take its place. Pointing at the image, not the
+ * day page, keeps Telegram's cached page preview (yesterday's card) out, and a
+ * new `v` per grid is a new URL. Without a `version` (the day has no card
+ * stories, so the card would 404) the preview is the day page.
  */
 export function digestLinkPreview(
-  digest: Pick<DailyDigest, "date" | "lang">
+  digest: Pick<DailyDigest, "date" | "lang">,
+  version?: string
 ): LinkPreviewOptions & { url: string } {
   return {
-    url: digestDayUrl(digest),
+    url: version ? digestCardUrl(digest, version) : digestDayUrl(digest),
     prefer_large_media: true,
     show_above_text: true,
   };
@@ -129,53 +139,41 @@ export function storyUrl(
   return new URL(storyPath(story, lang), SITE_URL).toString();
 }
 
-/** TL;DR digest: header + linked bullet list, capped under the message
- *  limit — bullets that would overflow are dropped from the tail. */
-/** Telegram counts a caption's limit on visible text (after entity parsing);
- *  keep headroom under TELEGRAM_IV_LIMITS.captionChars. */
-const DIGEST_CAPTION_CAP = 1000;
-
 /** Day card image for the digest date, e.g. `/api/og/date/2026-10-03.png?lang=vi`.
- *  `version` is the tile-id token. Telegram caches a photo by URL, so a
+ *  `version` is the tile-id token. Telegram caches an image by URL, so a
  *  new grid needs a new URL. */
 export function digestCardUrl(
   digest: Pick<DailyDigest, "date" | "lang">,
-  version?: string,
-  part?: 2
+  version?: string
 ) {
   const url = new URL(
     absoluteSiteUrl(`/api/og/date/${digest.date}.png`, digest.lang)
   );
   if (version) url.searchParams.set("v", version);
-  if (part === 2) url.searchParams.set("part", "2");
   return url.toString();
-}
-
-/** Digest as a photo caption: same lines, capped on visible length. */
-export function buildDigestCaption(
-  digest: DailyDigest,
-  headline?: string
-): string {
-  return buildDigestMessage(digest, DIGEST_CAPTION_CAP, headline);
 }
 
 /** Smallest a headline may be squeezed to before the tail would be dropped. */
 const MIN_HIGHLIGHT_CHARS = 32;
 
-/** Fit every story into one caption. Dropping the tail used to leave stories
- *  on the image that the text never named. Cut in this order, so no line ends
- *  mid-sentence: (1) drop whole summary clauses, longest first, keeping the
- *  headline; (2) only if the headlines alone still overflow, shorten the
- *  longest headlines at a word boundary. */
+/** Fit every story into `cap` visible characters; lines that fit stay whole.
+ *  Dropping the tail used to leave stories on the image that the text never
+ *  named. Cut in this order, so no line ends mid-sentence:
+ *  (1) drop whole summary clauses, longest first, keeping the headline;
+ *  (2) only if the headlines alone still overflow, shorten the longest
+ *  headlines at a word boundary. */
 export function fitHighlightDigest(
   digest: DailyDigest,
-  headline?: string
+  cap = MESSAGE_CAP
 ): DailyDigest {
-  const n = digest.bullets.length;
-  if (n === 0) return digest;
-  const label = headline ?? digestHeadline(digest);
-  // Blank line, mark, spaces, and the arrow, per story.
-  const room = DIGEST_CAPTION_CAP - label.length - n * (2 + 4 + 1 + 2);
+  if (digest.bullets.length === 0) return digest;
+  // Per story, what `buildDigestMessage` adds around the text: the blank
+  // line, the mark and its space, and " →" when the line links.
+  const overhead = digest.bullets.reduce(
+    (sum, b) => sum + 2 + digestMark(b).length + 1 + (b.url ? 2 : 0),
+    0
+  );
+  const room = cap - digestHeadline(digest).length - overhead;
   const bullets = digest.bullets.map((bullet) => ({
     ...bullet,
     text: bullet.text.replace(/\s+/g, " ").trim(),
@@ -254,20 +252,17 @@ function digestHeadline(digest: Pick<DailyDigest, "date" | "lang">): string {
     : `🗞 AI hôm nay có gì — ${digest.date}`;
 }
 
+/** Header + linked story lines. Telegram counts the 4096 limit on visible
+ *  text (after entity parsing), so hrefs and tags do not count; a line that
+ *  would pass `visibleCap` is dropped with everything after it. */
 export function buildDigestMessage(
   digest: DailyDigest,
-  visibleCap = MESSAGE_CAP,
-  headline?: string
+  visibleCap = MESSAGE_CAP
 ): string {
-  const label = headline ?? digestHeadline(digest);
+  const label = digestHeadline(digest);
   // Plain bold: the button and the card already open the day page.
-  const header = `<b>${label}</b>`;
-  const lines: string[] = [header];
-  // Raw HTML length bounds the 4096 message limit; a caption's 1024 is on
-  // visible text, so count that when a smaller cap is asked for.
-  const measure = (raw: string, visible: string) =>
-    visibleCap < MESSAGE_CAP ? visible.length : raw.length;
-  let length = measure(header, label);
+  const lines: string[] = [`<b>${label}</b>`];
+  let length = label.length;
   for (const bullet of digest.bullets) {
     const mark = digestMark(bullet);
     const text = escapeHtml(bullet.text);
@@ -275,7 +270,7 @@ export function buildDigestMessage(
     const line = safeUrl
       ? `${mark} ${text} <a href="${escapeHtml(withUtm(safeUrl, digest.lang))}">→</a>`
       : `${mark} ${text}`;
-    const size = measure(line, `${mark} ${bullet.text}${safeUrl ? " →" : ""}`);
+    const size = `${mark} ${bullet.text}${safeUrl ? " →" : ""}`.length;
     if (length + size + 2 > visibleCap) break;
     lines.push(line);
     length += size + 2;
@@ -575,10 +570,11 @@ async function sendVideoStory(
 export const TELEGRAM_TEXT_TIMEOUT_MS = 15_000;
 /**
  * Media sent by URL is downloaded by Telegram before it answers. The digest
- * card is rendered on demand at that URL (`/api/og/date/…png`, a new `v` per
+ * card is rendered on demand at its URL (`/api/og/date/…png`, a new `v` per
  * edition, so cold on first fetch): tile photos in batches of 6, up to 5s per
  * batch, until the grid fills, then the PNG render. That can pass 15s, and an abort
- * then is an unknown outcome (AIDR-8/9), so media calls wait longer.
+ * then is an unknown outcome (AIDR-8/9), so media calls wait longer. The
+ * digest is a `sendMessage` whose preview is that card, so it waits as long.
  */
 export const TELEGRAM_MEDIA_TIMEOUT_MS = 45_000;
 
@@ -628,7 +624,8 @@ function sendFailure(res: TelegramResponse): SendResult {
 async function callTelegram(
   token: string,
   method: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  timeoutMs = telegramTimeoutMs(method)
 ): Promise<TelegramResponse> {
   let status: number;
   let raw: string;
@@ -637,7 +634,7 @@ async function callTelegram(
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(telegramTimeoutMs(method)),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     status = res.status;
     raw = await res.text();
@@ -710,90 +707,29 @@ function telegramChannel(options: {
     async sendDigest(env: Env, digest: DailyDigest): Promise<SendResult> {
       const token = env.TELEGRAM_BOT_TOKEN as string;
       const chatId = options.chatId(env);
-      // Lead card is the highlight. Leftovers are a second card when they
-      // fill a grid, otherwise a short text reply. The edition is the
-      // fallback when the day has no published stories.
-      const pages = await digestPages(env, digest);
-      let firstId = "";
-      // The lead is already in the channel. A follow-up that did not land
-      // must not be retried as a full digest (that would post the lead
-      // again) and must not be stored as a clean send (the tail is missing).
-      const unresolvedFollowUp = (res: TelegramResponse): SendResult => ({
-        ok: false,
-        ambiguous: true,
-        messageId: firstId,
-        error: res.description ?? "unknown",
-      });
-      for (const [index, page] of pages.entries()) {
-        const fitted = fitHighlightDigest(page.digest, page.headline);
-        const caption = buildDigestCaption(fitted, page.headline);
-        const replyTo =
-          index > 0 && firstId
-            ? {
-                message_id: Number(firstId),
-                allow_sending_without_reply: true,
-              }
-            : undefined;
-        const markup = index === 0 ? buildDigestReplyMarkup(digest) : undefined;
-        const sendCaption = () =>
-          callTelegram(token, "sendMessage", {
-            chat_id: chatId,
-            text: caption,
-            parse_mode: "HTML",
-            link_preview_options: STORY_TEXT_LINK_PREVIEW,
-            reply_parameters: replyTo,
-          });
-        if (!page.photo) {
-          const text = await sendCaption();
-          if (index > 0 && !text.ok) return unresolvedFollowUp(text);
-          if (!text.ok) {
-            console.error(
-              `telegram digest follow-up failed: ${text.description}`
-            );
-          }
-          continue;
-        }
-        const photo = await callTelegram(token, "sendPhoto", {
+      // One message: the day card's stories under the card as its preview.
+      // The edition is the fallback when the day has no published stories.
+      const page = await digestPage(env, digest);
+      const shown = {
+        ...page.digest,
+        bullets: page.digest.bullets.slice(0, DIGEST_STORIES),
+      };
+      // Media timeout: Telegram may fetch the cold card for the preview
+      // before it answers, and an abort is an unknown outcome.
+      const res = await callTelegram(
+        token,
+        "sendMessage",
+        {
           chat_id: chatId,
-          photo: digestCardUrl(digest, page.version, page.part),
-          caption,
-          parse_mode: "HTML",
-          reply_markup: markup,
-          reply_parameters: replyTo,
-        });
-        if (photo.ok) {
-          const id = telegramMessageId(photo.result);
-          if (index === 0) firstId = id;
-          continue;
-        }
-        if (index > 0) {
-          if (photo.ambiguous || photo.budgetExhausted) {
-            return unresolvedFollowUp(photo);
-          }
-          console.error(
-            `telegram digest follow-up photo failed: ${photo.description}; sending text`
-          );
-          const text = await sendCaption();
-          if (!text.ok) return unresolvedFollowUp(text);
-          continue;
-        }
-        // Only a definite rejection may fall back; an ambiguous one may be posted.
-        if (photo.ambiguous || photo.budgetExhausted) return sendFailure(photo);
-        console.error(
-          `telegram digest sendPhoto failed: ${photo.description}; sending text`
-        );
-        const msg = await callTelegram(token, "sendMessage", {
-          chat_id: chatId,
-          text: buildDigestMessage(fitted),
+          text: buildDigestMessage(fitHighlightDigest(shown)),
           parse_mode: "HTML",
           reply_markup: buildDigestReplyMarkup(digest),
-          link_preview_options: digestLinkPreview(digest),
-        });
-        if (!msg.ok) return sendFailure(msg);
-        return { ok: true, messageId: telegramMessageId(msg.result) };
-      }
-      if (!firstId) return { ok: false, error: "digest was not sent" };
-      return { ok: true, messageId: firstId };
+          link_preview_options: digestLinkPreview(digest, page.version),
+        },
+        TELEGRAM_MEDIA_TIMEOUT_MS
+      );
+      if (!res.ok) return sendFailure(res);
+      return { ok: true, messageId: telegramMessageId(res.result) };
     },
 
     async sendStory(env: Env, payload: StoryPayload): Promise<SendResult> {
