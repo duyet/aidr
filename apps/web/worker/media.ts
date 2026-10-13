@@ -427,11 +427,22 @@ export function mediaIdentityKey(
 export function isGenericImageUrl(url: string): boolean {
   if (BLOCKED_IMAGE_URLS.has(url)) return true;
   let pathname: string;
+  let hostname: string;
   try {
-    pathname = new URL(url).pathname.toLowerCase();
+    const parsed = new URL(url);
+    pathname = parsed.pathname.toLowerCase();
+    hostname = parsed.hostname.toLowerCase();
   } catch {
     return true;
   }
+  // Tweet avatars and banners are people, not the story.
+  if (
+    hostname === "pbs.twimg.com" &&
+    /^\/profile_(?:images|banners)\//.test(pathname)
+  ) {
+    return true;
+  }
+  if (/^\/(?:.+\/)?(?:avatars?|profile_images)\//.test(pathname)) return true;
   let filename: string;
   try {
     filename = decodeURIComponent(pathname.split("/").pop() ?? "");

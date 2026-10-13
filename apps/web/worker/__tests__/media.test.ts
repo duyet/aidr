@@ -5,6 +5,7 @@ import {
   decodeUrlEntities,
   firstImageUrl,
   isGeneratedOgCard,
+  isGenericImageUrl,
   MAX_MEDIA_ASSETS,
   MAX_MEDIA_URL_LENGTH,
   manifestWithoutArticleUrl,
@@ -563,5 +564,38 @@ describe("media dedup identity", () => {
       "video",
     ]);
     expect(merged.filter((x) => x.url.includes("b.example"))).toHaveLength(1);
+  });
+});
+
+describe("isGenericImageUrl avatars", () => {
+  it("rejects Twitter profile images and banners", () => {
+    expect(
+      isGenericImageUrl(
+        "https://pbs.twimg.com/profile_images/123/abc_400x400.jpg"
+      )
+    ).toBe(true);
+    expect(
+      isGenericImageUrl("https://pbs.twimg.com/profile_banners/123/1700000000")
+    ).toBe(true);
+  });
+
+  it("rejects avatar directories before the filename", () => {
+    expect(isGenericImageUrl("https://cdn.example/avatars/u/9f3a.jpg")).toBe(
+      true
+    );
+    expect(isGenericImageUrl("https://cdn.example/a/avatar/9f3a.png")).toBe(
+      true
+    );
+  });
+
+  it("keeps real tweet media and card images", () => {
+    expect(
+      isGenericImageUrl(
+        "https://pbs.twimg.com/media/HUbZ91pWoAAH9MC?format=jpg&name=large"
+      )
+    ).toBe(false);
+    expect(
+      isGenericImageUrl("https://pbs.twimg.com/card_img/123/abc?format=jpg")
+    ).toBe(false);
   });
 });

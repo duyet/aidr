@@ -471,6 +471,11 @@ images rather than a broken-src fallback.
   The story dialog applies the same keys to stored manifests, so no asset
   renders twice. No media is downloaded or hashed: two different URLs that
   serve the same bytes (a mirror, a renamed copy) stay two assets.
+- **Avatars are not story images.** `isGenericImageUrl` rejects a
+  filename that is a logo/icon/avatar/placeholder, any `avatar`, `avatars`,
+  or `profile_images` directory before the filename, and `pbs.twimg.com`
+  `/profile_images/` and `/profile_banners/` paths. `pbs.twimg.com/media/…`
+  tweet photos stay.
 - **Generated share cards are a fallback only.** An image whose path is an
   OG generator (`/og/…`, `/api/og`, `og-image`/`og-card` file names, see
   `isGeneratedOgCard`) is dropped from a manifest, including merged
