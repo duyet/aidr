@@ -1,4 +1,7 @@
 name: Daily Reel
+# The day video watchdog (apps/web/worker/day-video-watchdog.ts) reads the
+# date input and the dry-run marker from the title.
+run-name: Daily Reel${{ inputs.date && format(' {0}', inputs.date) || '' }}${{ inputs.dry_run && ' (dry run)' || '' }}
 
 # Renders the day's English AI;DR Daily Brief and posts it without an agent:
 # script (auto-script.mjs: model, else template) → render (9:16 + 16:9) → gate
@@ -125,6 +128,7 @@ jobs:
         run: node scripts/auto-script.mjs --date "${{ steps.date.outputs.date }}"
 
       - name: Render
+        id: render
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps render --render-published
 
       - name: Gate
@@ -175,21 +179,26 @@ jobs:
       # renders one 1080p 16:9. Then YouTube (Vietnamese title and description,
       # English audio) and the Vietnamese day page, unless the Vietnamese-voice
       # cut is that page's video, and the Vietnamese channel; no Facebook. Runs
-      # after every English post; a failure here fails the job at the end and
-      # nothing else. A failed upload still lets the Telegram post go out, its
-      # button linking the English video.
+      # after the English posts and needs only the English render, so a failed
+      # English post does not stop it (`!cancelled()`); a failure here fails the
+      # job at the end and nothing else. A failed upload still lets the Telegram
+      # post go out, its button linking the English video when there is one.
+      # That post is the last one and does not continue on error: the jobs API
+      # reports a failed continue-on-error step as `success`, and the day video
+      # watchdog reads this step's result from that API.
       - name: Vietnamese subtitles cut
         id: visub
+        if: ${{ !cancelled() && steps.render.outcome == 'success' }}
         continue-on-error: true
-        run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps render,gate
+        run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps render,gate --render-published
 
       - name: Vietnamese subtitles posting plan (dry run)
-        if: env.LIVE != 'true' && steps.visub.outcome == 'success'
+        if: ${{ !cancelled() && env.LIVE != 'true' && steps.visub.outcome == 'success' }}
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps upload,attach,telegram --uploader api --prod --dry-run
 
       - name: YouTube upload + day page (Vietnamese subtitles)
         id: visub_youtube
-        if: env.LIVE == 'true' && steps.visub.outcome == 'success'
+        if: ${{ !cancelled() && env.LIVE == 'true' && steps.visub.outcome == 'success' }}
         continue-on-error: true
         run: |
           if [ -z "$YOUTUBE_REFRESH_TOKEN" ] || [ -z "$YOUTUBE_CLIENT_ID" ] || [ -z "$YOUTUBE_CLIENT_SECRET" ]; then
@@ -200,8 +209,7 @@ jobs:
 
       - name: Telegram (Vietnamese subtitles)
         id: visub_telegram
-        if: env.LIVE == 'true' && steps.check.outputs.hand != 'true' && steps.visub.outcome == 'success'
-        continue-on-error: true
+        if: ${{ !cancelled() && env.LIVE == 'true' && steps.check.outputs.hand != 'true' && steps.visub.outcome == 'success' }}
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps telegram --prod
 
       - name: Upload Vietnamese subtitles artifact
@@ -231,13 +239,13 @@ jobs:
           key: daily-reel-status-${{ steps.date.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Fail when the Vietnamese subtitles cut did not post
-        if: steps.visub.outcome == 'failure' || steps.visub_youtube.outcome == 'failure' || steps.visub_telegram.outcome == 'failure'
+        if: ${{ always() && (steps.visub.outcome == 'failure' || steps.visub_youtube.outcome == 'failure' || steps.visub_telegram.outcome == 'failure') }}
         run: |
-          echo "The Vietnamese subtitles cut failed (see the visub steps' log and STATUS.json uploadError); the English posts ran." >&2
+          echo "The Vietnamese subtitles cut failed (see the visub steps' log and STATUS.json uploadError)." >&2
           exit 1
 
       - name: Fail when the Reel did not post
-        if: steps.facebook.outcome == 'failure'
+        if: ${{ always() && steps.facebook.outcome == 'failure' }}
         run: |
-          echo "The Facebook Reel step failed (see its log); YouTube and Telegram ran." >&2
+          echo "The Facebook Reel step failed (see its log)." >&2
           exit 1
