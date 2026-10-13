@@ -14,6 +14,7 @@
     "check:migration-ledger": "tsx scripts/check-migrations.ts --ledger-order",
     "gen:favicon": "tsx scripts/gen-favicon-raster.ts",
     "gen:source-migration": "tsx scripts/gen-source-migration.ts",
+    "analytics:docs": "tsx scripts/analytics-docs.ts",
     "verify:source-feeds": "tsx scripts/verify-source-feeds.ts",
     "bench": "tsx scripts/quality-bench.ts",
     "model-bench": "tsx scripts/model-bench.ts",
