@@ -1,5 +1,9 @@
 import { useEffect } from "react";
 import { afterLcpPaint } from "./after-lcp-paint";
+import {
+  installAnalyticsStubs,
+  posthogArrayScriptUrl,
+} from "./analytics-stubs";
 import { resolveMeasurementId } from "./track";
 import { reportWebVitals } from "./web-vitals";
 
@@ -29,6 +33,19 @@ const POSTHOG_HOST =
 
 const SELINE_TOKEN = importMetaEnv?.VITE_SELINE_TOKEN;
 
+/*
+ * The queue stubs go in at module init, before React hydrates, so the
+ * landing page_view and one-shot campaign events PageViewTracker fires on
+ * hydrate are queued rather than dropped. Only the network scripts wait
+ * for the LCP paint below.
+ */
+installAnalyticsStubs({
+  gaMeasurementId: GA_MEASUREMENT_ID,
+  posthog: POSTHOG_PROJECT_TOKEN
+    ? { token: POSTHOG_PROJECT_TOKEN, host: POSTHOG_HOST }
+    : undefined,
+});
+
 function loadScript(
   src: string,
   attrs?: Record<string, string>
@@ -49,13 +66,6 @@ function loadScript(
   return el;
 }
 
-function loadInlineScript(code: string): HTMLScriptElement {
-  const el = document.createElement("script");
-  el.textContent = code;
-  document.body.appendChild(el);
-  return el;
-}
-
 /*
  * Every one of these is third-party script that contributes nothing to what
  * the visitor is looking at. Running them from a plain useEffect put them on
@@ -69,12 +79,6 @@ function bootstrapAnalytics(): void {
     loadScript(
       `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`
     );
-    loadInlineScript(`
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){window.dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
-    `);
   }
 
   if (SELINE_TOKEN) {
@@ -84,10 +88,7 @@ function bootstrapAnalytics(): void {
   }
 
   if (POSTHOG_PROJECT_TOKEN) {
-    loadInlineScript(`
-      !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return this.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-      posthog.init('${POSTHOG_PROJECT_TOKEN}',{api_host:'${POSTHOG_HOST}',defaults:'2026-05-30',capture_exceptions:true})
-    `);
+    loadScript(posthogArrayScriptUrl(POSTHOG_HOST));
   }
 
   loadScript("https://j.duyet.net/p.js");
