@@ -123,6 +123,10 @@ export function normalizeSource(source: unknown): SubscribeSource {
     : "news";
 }
 
+/** Hands a best-effort job to the request's `waitUntil`, so the runtime keeps
+ * it alive after the response returns. */
+export type Schedule = (job: Promise<unknown>) => void;
+
 /** Inserts a pending subscriber (double opt-in): the row stays
  * `confirmed = 0` until the confirmation link is clicked, and digests only go
  * to confirmed rows. An already-confirmed row is left unchanged; it gets a
@@ -133,13 +137,14 @@ export async function subscribe(
   env: Env,
   email: unknown,
   lang: unknown,
-  timezone?: unknown,
-  source?: unknown,
-  ip?: string | null,
-  digestSize?: unknown,
-  mailFormat?: unknown,
-  frequency?: unknown,
-  weeklyDay?: unknown
+  timezone: unknown,
+  source: unknown,
+  ip: string | null | undefined,
+  digestSize: unknown,
+  mailFormat: unknown,
+  frequency: unknown,
+  weeklyDay: unknown,
+  schedule: Schedule
 ): Promise<{ ok: true; pending: true } | SubscribeError> {
   if (!isValidEmail(email) || !isDeliverableDomain(email)) {
     return { error: "invalid email", status: 400 };
@@ -189,27 +194,29 @@ export async function subscribe(
     .bind(email)
     .first<{ confirmed: number; lang: string; unsubscribe_token: string }>();
   if (existing?.confirmed === 1) {
-    void sendSettingsChangeEmail(
-      env,
-      {
-        email,
-        lang: existing.lang,
-        unsubscribe_token: existing.unsubscribe_token,
-      },
-      {
-        lang: normalizedLang,
-        timezone: normalizedTimezone,
-        digest_size: size,
-        mail_format: format,
-        frequency: cadence,
-        weekly_day: day,
-      }
-    ).catch((error) => {
-      console.error(
-        "settings change email skipped:",
-        error instanceof Error ? error.message : "error"
-      );
-    });
+    schedule(
+      sendSettingsChangeEmail(
+        env,
+        {
+          email,
+          lang: existing.lang,
+          unsubscribe_token: existing.unsubscribe_token,
+        },
+        {
+          lang: normalizedLang,
+          timezone: normalizedTimezone,
+          digest_size: size,
+          mail_format: format,
+          frequency: cadence,
+          weekly_day: day,
+        }
+      ).catch((error) => {
+        console.error(
+          "settings change email skipped:",
+          error instanceof Error ? error.message : "error"
+        );
+      })
+    );
     return { ok: true, pending: true };
   }
 
@@ -251,16 +258,18 @@ export async function subscribe(
 
   // Confirmation mail is best-effort — the row stays pending if EMAIL is down
   // and the subscriber can submit the form again.
-  void sendConfirmEmail(env, {
-    email,
-    lang: normalizedLang,
-    unsubscribe_token: row?.unsubscribe_token ?? token,
-  }).catch((error) => {
-    console.error(
-      "confirm email skipped:",
-      error instanceof Error ? error.message : "error"
-    );
-  });
+  schedule(
+    sendConfirmEmail(env, {
+      email,
+      lang: normalizedLang,
+      unsubscribe_token: row?.unsubscribe_token ?? token,
+    }).catch((error) => {
+      console.error(
+        "confirm email skipped:",
+        error instanceof Error ? error.message : "error"
+      );
+    })
+  );
 
   return { ok: true, pending: true };
 }
@@ -287,7 +296,8 @@ export function settingsChangeFromParams(
 export async function confirmSubscription(
   env: Env,
   token: unknown,
-  prefs?: Parameters<typeof updatePrefsByToken>[2]
+  prefs: Parameters<typeof updatePrefsByToken>[2] | undefined,
+  schedule: Schedule
 ): Promise<{ ok: true; token: string } | SubscribeError> {
   if (typeof token !== "string" || token.length === 0) {
     return { error: "token is required", status: 400 };
@@ -324,37 +334,41 @@ export async function confirmSubscription(
   const normalizedSource = normalizeSource(row.source);
 
   // Welcome mail is best-effort — confirmation still succeeds if EMAIL is down.
-  void sendWelcomeEmail(env, {
-    email,
-    lang: normalizedLang,
-    unsubscribe_token: token,
-    frequency: normalizeMailFrequency(prefs?.frequency ?? row.frequency),
-    weekly_day: normalizeWeeklyDay(prefs?.weekly_day ?? row.weekly_day),
-  }).catch((error) => {
-    console.error(
-      "welcome email skipped:",
-      error instanceof Error ? error.message : "error"
-    );
-  });
-
-  void (async () => {
-    try {
-      const totalRow = await env.DB.prepare(
-        "SELECT COUNT(*) AS c FROM subscribers WHERE confirmed = 1"
-      ).first<{ c: number }>();
-      await notifyOwnerOfNewSubscriber(env, {
-        email,
-        lang: normalizedLang,
-        source: normalizedSource,
-        total: totalRow?.c ?? null,
-      });
-    } catch (error) {
+  schedule(
+    sendWelcomeEmail(env, {
+      email,
+      lang: normalizedLang,
+      unsubscribe_token: token,
+      frequency: normalizeMailFrequency(prefs?.frequency ?? row.frequency),
+      weekly_day: normalizeWeeklyDay(prefs?.weekly_day ?? row.weekly_day),
+    }).catch((error) => {
       console.error(
-        "owner notify skipped:",
+        "welcome email skipped:",
         error instanceof Error ? error.message : "error"
       );
-    }
-  })();
+    })
+  );
+
+  schedule(
+    (async () => {
+      try {
+        const totalRow = await env.DB.prepare(
+          "SELECT COUNT(*) AS c FROM subscribers WHERE confirmed = 1"
+        ).first<{ c: number }>();
+        await notifyOwnerOfNewSubscriber(env, {
+          email,
+          lang: normalizedLang,
+          source: normalizedSource,
+          total: totalRow?.c ?? null,
+        });
+      } catch (error) {
+        console.error(
+          "owner notify skipped:",
+          error instanceof Error ? error.message : "error"
+        );
+      }
+    })()
+  );
 
   return { ok: true, token };
 }
