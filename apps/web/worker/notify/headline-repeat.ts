@@ -1,12 +1,24 @@
+/**
+ * A summary clause that repeats the caption's headline is dropped only when
+ * it adds no new word. Any word the headline lacks, other than an article,
+ * conjunction, preposition or copula, keeps it: a number, a name, a date, a
+ * hedge, "plans", "ended". A share of new words is not enough, because one
+ * changed word under a long headline always stays under the share.
+ *
+ * So a reworded repeat stays: "approximately" for "~" and "following" for
+ * "after" are new words. A repeated clause costs a line; a dropped fact is a
+ * correctness bug.
+ */
 import { firstSentence } from "../sentences.js";
 import { normalizeSpace } from "./fit-text.js";
 
 /** Share of the headline's content words a restating clause repeats. */
 const RESTATED_TITLE_SHARE = 0.8;
-/** Largest share of a restating clause's content words that may be new. */
-const RESTATED_NEW_WORD_SHARE = 0.2;
 
-const WORD = /[\p{L}\p{N}]+/gu;
+/** A number keeps its separators ("1.000", "2,000", "8.8"), so "2.000" never
+ *  matches the "000" of "1.000". */
+const TOKEN = /\d+(?:[.,]\d+)*[\p{L}\p{N}]*|[\p{L}\p{N}]+/gu;
+const POSSESSIVE = /['’]s(?![\p{L}\p{N}])/gu;
 const DASH = /\s+[—–-]\s+/;
 const TRAILING_SOURCE = /\s*\([^()]*\)\s*$/;
 
@@ -16,59 +28,35 @@ const BYLINE = new RegExp(
   "u"
 );
 
+/** The only words a restating clause may add: articles, conjunctions,
+ *  prepositions and copulas. VI "đã" and "đang" mark aspect the way EN "has"
+ *  and "is" do, and "một" is read as the article. Modal, time, quantity and
+ *  hedge words ("will", "sẽ", "after", "over", "about", "just", "vừa") are
+ *  content. */
 const STOPWORDS = new Set(
   [
-    ...["a", "an", "the", "of", "to", "in", "on", "at", "for", "from", "by"],
-    ...["with", "and", "or", "but", "as", "into", "over", "about", "than"],
-    ...["is", "are", "was", "were", "be", "been", "has", "have", "had"],
-    ...["it", "its", "this", "that", "these", "those", "their", "which"],
-    ...["who", "also", "just", "will", "so", "such"],
-    ...["các", "những", "một", "của", "và", "là", "đã", "đang", "sẽ", "với"],
-    ...["này", "đó", "vừa", "để", "trong", "từ", "về", "khi", "tại", "ở"],
-    ...["rằng", "vào", "cũng", "như", "thì", "mà", "được", "bị", "cho"],
+    ...["a", "an", "the", "and", "or", "but", "that", "than", "as"],
+    ...["of", "to", "in", "on", "at", "for", "from", "by", "with", "into"],
+    ...["onto", "via", "is", "are", "was", "were", "be", "been", "being"],
+    ...["am", "has", "have", "had"],
+    ...["các", "những", "một", "và", "hoặc", "nhưng", "rằng", "mà", "của"],
+    ...["với", "để", "trong", "từ", "về", "tại", "ở", "vào", "cho", "là"],
+    ...["được", "bị", "đã", "đang"],
   ].map(stem)
 );
-
-/** Spelled-out numbers count as numbers: "three researchers", "its first". */
-const NUMBER_WORDS = new Set(
-  [
-    ...["one", "two", "three", "four", "five", "six", "seven", "eight"],
-    ...["nine", "ten", "dozen", "hundred", "thousand", "million", "billion"],
-    ...["trillion", "half", "first", "second", "third", "fourth", "fifth"],
-  ].map(stem)
-);
-
-/** Words that turn a repeat into a different claim when the headline lacks
- *  them: a hedge, a denial or a negation. */
-const QUALIFIERS = [
-  ...["not", "no", "never", "none", "nor", "neither", "without", "cannot"],
-  ...["deny", "denies", "denied", "denying", "denial", "reject", "rejects"],
-  ...["rejected", "dispute", "disputes", "disputed", "refute", "refutes"],
-  ...["refuted", "reportedly", "allegedly", "alleged", "alleges"],
-  ...["according to", "source", "sources", "rumor", "rumors", "rumored"],
-  ...["unconfirmed", "may", "might", "could", "possibly", "likely"],
-  ...["unlikely", "không", "chưa", "chẳng", "phủ nhận", "bác bỏ"],
-  ...["được cho là", "cáo buộc", "theo", "có thể", "có lẽ", "dường như"],
-  ...["nguồn tin", "tin đồn"],
-]
-  .map(
-    (phrase) =>
-      new RegExp(`(?<![\\p{L}\\p{N}])${phrase}(?![\\p{L}\\p{N}])`, "iu")
-  )
-  .concat(/n['’]t(?![\p{L}\p{N}])/iu);
 
 interface Token {
   word: string;
-  capital: boolean;
+  /** Has a capital anywhere: "Nvidia", "xAI", "iPhone". */
+  name: boolean;
 }
 
 interface Headline {
-  text: string;
   /** Every word, the trailing "(Author/Outlet)" included. */
   words: Set<string>;
   /** Content words without the trailing source, for coverage. */
   content: Set<string>;
-  /** Capitalized words without the trailing source, in headline order. */
+  /** Names without the trailing source, in headline order. */
   names: string[];
 }
 
@@ -85,36 +73,28 @@ function stem(word: string): string {
 }
 
 function tokens(text: string): Token[] {
-  return [...text.matchAll(WORD)]
-    .map((m) => ({
-      word: stem(m[0].toLowerCase()),
-      capital: /^\p{Lu}/u.test(m[0]),
-    }))
-    .filter((t) => t.word.length > 1);
-}
-
-function isNumber(t: Token): boolean {
-  return /\d/.test(t.word) || NUMBER_WORDS.has(t.word);
+  const plain = text.normalize("NFC").replace(POSSESSIVE, "");
+  return [...plain.matchAll(TOKEN)].map((m) => ({
+    word: stem(m[0].toLowerCase()),
+    name: /\p{Lu}/u.test(m[0]),
+  }));
 }
 
 function readHeadline(title: string): Headline {
   const body = tokens(title.replace(TRAILING_SOURCE, ""));
   return {
-    text: title,
     words: new Set(tokens(title).map((t) => t.word)),
     content: new Set(
       body.filter((t) => !STOPWORDS.has(t.word)).map((t) => t.word)
     ),
-    names: [...new Set(body.filter((t) => t.capital).map((t) => t.word))],
+    names: [...new Set(body.filter((t) => t.name).map((t) => t.word))],
   };
 }
 
 /** Whether the clause names the headline's names in the headline's order,
  *  each by its first mention. */
 function keepsNameOrder(names: string[], own: Token[]): boolean {
-  const mentioned = [
-    ...new Set(own.filter((t) => t.capital).map((t) => t.word)),
-  ];
+  const mentioned = [...new Set(own.filter((t) => t.name).map((t) => t.word))];
   const order = mentioned
     .map((word) => names.indexOf(word))
     .filter((at) => at !== -1);
@@ -122,19 +102,13 @@ function keepsNameOrder(names: string[], own: Token[]): boolean {
 }
 
 function restates(headline: Headline, clause: string): boolean {
-  const own = tokens(clause);
-  const content = own.filter((t) => !STOPWORDS.has(t.word));
+  const content = tokens(clause).filter((t) => !STOPWORDS.has(t.word));
   if (content.length === 0 || headline.content.size === 0) return false;
+  if (content.some((t) => !headline.words.has(t.word))) return false;
   const mine = new Set(content.map((t) => t.word));
   const repeated = [...headline.content].filter((w) => mine.has(w)).length;
   if (repeated / headline.content.size < RESTATED_TITLE_SHARE) return false;
-  const added = content.filter((t) => !headline.words.has(t.word));
-  if (added.length / content.length > RESTATED_NEW_WORD_SHARE) return false;
-  if (added.some((t) => isNumber(t) || t.capital)) return false;
-  if (QUALIFIERS.some((q) => q.test(clause) && !q.test(headline.text))) {
-    return false;
-  }
-  return keepsNameOrder(headline.names, own);
+  return keepsNameOrder(headline.names, content);
 }
 
 function withoutByline(sentence: string): string {
@@ -166,11 +140,11 @@ function afterRestatedClauses(headline: Headline, sentence: string): string {
  * caption does not print the same news twice under its bold title.
  *
  * Each leading sentence loses its byline ("Robert Hart / The Verge :") and is
- * split into clauses at a spaced dash. A clause is dropped only when its
- * content words are nearly all the headline's and it adds no fact: no new
- * number, no new name, no hedge, denial or negation, and the headline's names
- * in the same order ("Microsoft sues OpenAI" is not "OpenAI sues Microsoft").
- * The first clause that adds anything stays, with everything after it.
+ * split into clauses at a spaced dash. A clause is dropped only when every
+ * content word in it is already in the headline, it repeats most of the
+ * headline, and it names the headline's names in the same order ("Microsoft
+ * sues OpenAI" is not "OpenAI sues Microsoft"). The first clause that is
+ * kept stays with everything after it.
  */
 export function withoutRestatedHeadline(
   title: string,

@@ -408,7 +408,7 @@ describe("story caption never restates its headline", () => {
       title:
         "Nvidia đàm phán mua lại startup mô hình 'mở' Reflection AI tại Mỹ",
       summary:
-        "Nvidia đang đàm phán để mua lại Reflection AI, một startup chuyên về mô hình 'mở' tại Mỹ. Thương vụ có thể trị giá 25 tỷ USD.",
+        "Nvidia đang đàm phán để mua lại startup mô hình 'mở' Reflection AI tại Mỹ. Thương vụ có thể trị giá 25 tỷ USD.",
       lang: "vi",
     });
     const caption = visible(buildStoryCaption(s));
@@ -525,37 +525,44 @@ describe("story caption never restates its headline", () => {
       "vi",
     ],
     [
-      "626a46c9 vi",
-      "Phân tích 857 bản phát hành từ chín phòng thí nghiệm AI Trung Quốc từ năm 2021 đến tháng 9 năm 2026: chỉ 3,6% công bố kết quả an toàn và chỉ 1,1% làm điều đó khi ra mắt (SemiAnalysis)",
-      "SemiAnalysis: Phân tích 857 bản phát hành từ chín phòng thí nghiệm AI Trung Quốc từ năm 2021 đến tháng 9 năm 2026 cho thấy chỉ 3,6% công bố kết quả an toàn và chỉ 1,1% làm vậy ngay khi ra mắt — vấn đề an toàn AI đang vô cùng nóng bỏng. Vào ngày 12 tháng 9 năm 2026, Dario Amodei xuất bản một bài tiểu luận lập luận rằng các phòng thí nghiệm frontier model phải chủ động làm chậm tốc độ cải tiến năng lực mô hình.",
-      "Vấn đề an toàn AI đang vô cùng nóng bỏng. Vào ngày 12 tháng 9 năm 2026, Dario Amodei xuất bản một bài tiểu luận lập luận rằng các phòng thí nghiệm frontier model phải chủ động làm chậm tốc độ cải tiến năng lực mô hình.",
-      "vi",
-    ],
-    [
-      "158de3f7 vi",
-      "AI đang thúc đẩy nền kinh tế lừa đảo trị giá khoảng 442 tỷ USD, quy mô lớn hơn cả thị trường cocaine toàn cầu, khi ngành công nghiệp lừa đảo Trung Quốc lan rộng ra ngoài các khu phức hợp kiên cố ở châu Á (Bloomberg)",
-      "Bloomberg cho biết AI đang thúc đẩy nền kinh tế lừa đảo trị giá khoảng 442 tỷ USD, quy mô lớn hơn cả thị trường cocaine toàn cầu, khi ngành công nghiệp lừa đảo Trung Quốc lan rộng ra ngoài các khu phức hợp kiên cố ở châu Á — thông qua máy tính Samsung, điện thoại Huawei, thiết bị Redmi và hàng chục hộ chiếu Trung Quốc cũng như Malaysia.",
-      "Thông qua máy tính Samsung, điện thoại Huawei, thiết bị Redmi và hàng chục hộ chiếu Trung Quốc cũng như Malaysia.",
-      "vi",
-    ],
-    [
       "6194e048 vi",
       "Nguồn tin tiết lộ quyết định ra mắt Muse bất chấp lo ngại an toàn của Mark Zuckerberg, sau khi thấy sản phẩm agent tương tự của startup AI Instinct thu hút được người dùng",
       "Eli Tan / New York Times: Nguồn tin tiết lộ quyết định ra mắt Muse bất chấp lo ngại an toàn của Mark Zuckerberg, sau khi thấy sản phẩm agent tương tự của startup AI Instinct thu hút được người dùng — Meta từng hoãn phát hành ứng dụng AI agent của mình là Muse trong nhiều tháng do lo ngại an toàn. Sau đó, đối thủ mới xuất hiện đã buộc Mark Zuckerberg phải ra quyết định.",
       "Meta từng hoãn phát hành ứng dụng AI agent của mình là Muse trong nhiều tháng do lo ngại an toàn. Sau đó, đối thủ mới xuất hiện đã buộc Mark Zuckerberg phải ra quyết định.",
       "vi",
     ],
-    [
-      "fc760a40 vi",
-      "Nhà sản xuất Omron của Nhật Bản cho biết sẽ thâu tóm công ty máy tính công nghiệp Mỹ OnLogic cùng công ty mẹ Interlogic với giá 675 triệu USD để thúc đẩy các nỗ lực AI vật lý",
-      "Anton Bridge / Reuters: Nhà sản xuất Omron của Nhật Bản cho biết sẽ thâu tóm công ty máy tính công nghiệp Mỹ OnLogic cùng công ty mẹ Interlogic với giá 675 triệu USD để thúc đẩy các nỗ lực physical AI - nhà sản xuất Omron của Nhật Bản sẽ mua lại công ty máy tính công nghiệp OnLogic ở Mỹ và công ty mẹ Interlogic với giá 675 triệu USD, hãng thông báo hôm thứ Ba.",
-      "Nhà sản xuất Omron của Nhật Bản sẽ mua lại công ty máy tính công nghiệp OnLogic ở Mỹ và công ty mẹ Interlogic với giá 675 triệu USD, hãng thông báo hôm thứ Ba.",
-      "vi",
-    ],
   ])(
     "keeps the dek after a restated headline clause (%s)",
     (_id, title, summary, dek, lang) => {
       expect(summaryOf(story({ title, summary, lang }))).toBe(dek);
+    }
+  );
+
+  // The headline clause rewords the headline ("cho biết", "thấy",
+  // "physical"), so it stays in front of the dek.
+  it.each<[string, string, string, "en" | "vi"]>([
+    [
+      "626a46c9 vi",
+      "Phân tích 857 bản phát hành từ chín phòng thí nghiệm AI Trung Quốc từ năm 2021 đến tháng 9 năm 2026: chỉ 3,6% công bố kết quả an toàn và chỉ 1,1% làm điều đó khi ra mắt (SemiAnalysis)",
+      "SemiAnalysis: Phân tích 857 bản phát hành từ chín phòng thí nghiệm AI Trung Quốc từ năm 2021 đến tháng 9 năm 2026 cho thấy chỉ 3,6% công bố kết quả an toàn và chỉ 1,1% làm vậy ngay khi ra mắt — vấn đề an toàn AI đang vô cùng nóng bỏng. Vào ngày 12 tháng 9 năm 2026, Dario Amodei xuất bản một bài tiểu luận lập luận rằng các phòng thí nghiệm frontier model phải chủ động làm chậm tốc độ cải tiến năng lực mô hình.",
+      "vi",
+    ],
+    [
+      "158de3f7 vi",
+      "AI đang thúc đẩy nền kinh tế lừa đảo trị giá khoảng 442 tỷ USD, quy mô lớn hơn cả thị trường cocaine toàn cầu, khi ngành công nghiệp lừa đảo Trung Quốc lan rộng ra ngoài các khu phức hợp kiên cố ở châu Á (Bloomberg)",
+      "Bloomberg cho biết AI đang thúc đẩy nền kinh tế lừa đảo trị giá khoảng 442 tỷ USD, quy mô lớn hơn cả thị trường cocaine toàn cầu, khi ngành công nghiệp lừa đảo Trung Quốc lan rộng ra ngoài các khu phức hợp kiên cố ở châu Á — thông qua máy tính Samsung, điện thoại Huawei, thiết bị Redmi và hàng chục hộ chiếu Trung Quốc cũng như Malaysia.",
+      "vi",
+    ],
+    [
+      "fc760a40 vi",
+      "Nhà sản xuất Omron của Nhật Bản cho biết sẽ thâu tóm công ty máy tính công nghiệp Mỹ OnLogic cùng công ty mẹ Interlogic với giá 675 triệu USD để thúc đẩy các nỗ lực AI vật lý",
+      "Anton Bridge / Reuters: Nhà sản xuất Omron của Nhật Bản cho biết sẽ thâu tóm công ty máy tính công nghiệp Mỹ OnLogic cùng công ty mẹ Interlogic với giá 675 triệu USD để thúc đẩy các nỗ lực physical AI - nhà sản xuất Omron của Nhật Bản sẽ mua lại công ty máy tính công nghiệp OnLogic ở Mỹ và công ty mẹ Interlogic với giá 675 triệu USD, hãng thông báo hôm thứ Ba.",
+      "vi",
+    ],
+  ])(
+    "keeps a reworded headline clause with its dek (%s)",
+    (_id, title, summary, lang) => {
+      expect(summaryOf(story({ title, summary, lang }))).toBe(summary);
     }
   );
 
@@ -621,30 +628,336 @@ describe("story caption never restates its headline", () => {
     expect(summaryOf(story({ title, summary, lang }))).toBe(summary);
   });
 
-  // Production copies that only repeat the headline in other words.
+  // A restatement that adds no word goes: the probe restatements and real
+  // copies from the 2165-copy production scan.
   it.each<[string, string, string, "en" | "vi"]>([
     [
-      "4240042e en",
-      "Jev developer TypeSafe AI raised ~$870M led by a16z at a $7.5B valuation with Sequoia and others participating (Bloomberg)",
-      "TypeSafe AI raised approximately $870M in a round led by a16z at a $7.5B valuation, with Sequoia and others participating.",
+      "past tense",
+      "Nvidia agrees to buy Reflection AI for $2B",
+      "Nvidia agreed to buy Reflection AI for $2B.",
       "en",
     ],
     [
-      "90b333df en",
-      "Nvidia, Oracle, CoreWeave, and other AI stocks fell after a report that OpenAI's annualized revenue at September's end was $20B less than previously reported (CNBC)",
-      "Nvidia, Oracle, CoreWeave, and other AI stocks fell following a report that OpenAI's annualized revenue at the end of September was $20B less than previously reported.",
+      "auxiliary",
+      "Anthropic launches Claude for Chrome to all paid users",
+      "Anthropic has launched Claude for Chrome to all paid users.",
       "en",
     ],
     [
-      "a6d1a90b vi",
-      "Công ty nghiên cứu gọi IPO của Anthropic là 'bài kiểm tra chưa từng có về sự nhẹ dạ của nhà đầu tư'",
-      "Một công ty nghiên cứu đã gọi đợt IPO của Anthropic là một bài kiểm tra chưa từng có đối với sự nhẹ dạ của các nhà đầu tư.",
+      "vi aspect marker",
+      "Nvidia đàm phán mua lại startup mô hình mở Reflection AI tại Mỹ",
+      "Nvidia đang đàm phán mua lại startup mô hình mở Reflection AI tại Mỹ.",
+      "vi",
+    ],
+    [
+      "98a28302 en",
+      "Anthropic launches the Critical Infrastructure Defense Program to provide AI models, threat research, and on-site support, starting with CrowdStrike and others (Sam Sabin/Axios)",
+      "Anthropic launched the Critical Infrastructure Defense Program to provide AI models, threat research, and on-site support, starting with CrowdStrike and others.",
+      "en",
+    ],
+    [
+      "6860d785 en",
+      "A US Senate investigation led by Senators Warren, Van Hollen, and Blumenthal says some hyperscalers misled the public about AI data centers' costs and benefits (Nik Popli/Time)",
+      "A US Senate investigation led by Senators Warren, Van Hollen, and Blumenthal says some hyperscalers misled the public about the costs and benefits of AI data centers.",
+      "en",
+    ],
+    [
+      "606e8d69 vi",
+      "OpenAI vừa công bố 700 bản in trước chứa các chứng minh toán học và phản ví dụ",
+      "OpenAI vừa công bố 700 bản in trước chứa các chứng minh toán học và phản ví dụ.",
+      "vi",
+    ],
+  ])("drops a summary that adds no word (%s)", (_id, title, summary, lang) => {
+    expect(summaryOf(story({ title, summary, lang }))).toBeNull();
+  });
+
+  const decart =
+    "Sources: Amazon is in talks to buy AI startup Decart in a deal that could value it at ~$7B; Anthropic had decided against acquiring Decart in September (Wall Street Journal)";
+
+  // Each summary repeats its headline and changes or adds one word. A share
+  // of new words lets one word through under a long headline, so any new
+  // word keeps the summary.
+  it.each<[string, string, string, "en" | "vi"]>([
+    [
+      "denies report",
+      "Nvidia is in talks to buy Reflection AI",
+      "Nvidia denies report it is in talks to buy Reflection AI.",
+      "en",
+    ],
+    [
+      "says it won't",
+      "OpenAI will release GPT-6 open weights this year",
+      "OpenAI says it won't release GPT-6 open weights this year.",
+      "en",
+    ],
+    [
+      "date: on Tuesday",
+      "Nvidia agrees to buy Reflection AI for its open model team",
+      "Nvidia agreed on Tuesday to buy Reflection AI for its open model team.",
+      "en",
+    ],
+    [
+      "date: last week",
+      "Nvidia agrees to buy Reflection AI for its open model team and chips",
+      "Nvidia agreed last week to buy Reflection AI for its open model team and chips.",
+      "en",
+    ],
+    [
+      "date: yesterday",
+      "Nvidia agrees to buy US startup Reflection AI for its open model research team",
+      "Nvidia agreed yesterday to buy US startup Reflection AI for its open model research team.",
+      "en",
+    ],
+    [
+      "place",
+      "Nvidia opens a new AI research lab for robotics and chips",
+      "Nvidia opens a new AI research lab in Paris for robotics and chips.",
+      "en",
+    ],
+    [
+      "for the first time",
+      "Google lets Gemini users export chat history to other apps",
+      "For the first time, Google lets Gemini users export chat history to other apps.",
+      "en",
+    ],
+    [
+      "after 18 months",
+      "Apple ships its delayed Siri AI upgrade to iPhone users",
+      "Apple ships its delayed Siri AI upgrade to iPhone users after 18 months.",
+      "en",
+    ],
+    [
+      "after twelve months",
+      "Apple finally ships its delayed Siri AI upgrade to all iPhone users worldwide",
+      "Apple finally ships its delayed Siri AI upgrade to all iPhone users worldwide after twelve months.",
+      "en",
+    ],
+    [
+      "after months",
+      "Apple finally ships its delayed Siri AI upgrade to all iPhone users worldwide",
+      "After months of delay, Apple finally ships its Siri AI upgrade to all iPhone users worldwide.",
+      "en",
+    ],
+    [
+      "amount $13B",
+      "Anthropic raises new funding led by Lightspeed",
+      "Anthropic raises $13B in new funding led by Lightspeed.",
+      "en",
+    ],
+    [
+      "amount $5 billion",
+      "Anthropic raises new funding led by Lightspeed and Fidelity",
+      "Anthropic raises $5 billion in new funding led by Lightspeed and Fidelity.",
+      "en",
+    ],
+    [
+      "percentage 7%",
+      "Nvidia shares fall after China export curbs",
+      "Nvidia shares fall 7% after China export curbs.",
+      "en",
+    ],
+    [
+      "percentage 17%",
+      "Nvidia shares fall after China export curbs",
+      "Nvidia shares fall 17% after China export curbs.",
+      "en",
+    ],
+    [
+      "count 3",
+      "OpenAI fires safety researchers over leaks",
+      "OpenAI fires 3 safety researchers over leaks.",
+      "en",
+    ],
+    [
+      "up from $13B",
+      "OpenAI annualized revenue hits $20B",
+      "OpenAI annualized revenue hits $20B, up from $13B.",
+      "en",
+    ],
+    [
+      "up from last year",
+      "OpenAI annualized revenue hits $20B as ChatGPT subscriptions grow strongly",
+      "OpenAI annualized revenue hits $20B, up from last year, as ChatGPT subscriptions grow strongly.",
+      "en",
+    ],
+    [
+      "down from 66%",
+      "Nvidia market share in China slides to 34% amid export curbs",
+      "Nvidia market share in China slides to 34%, down from 66%, amid export curbs.",
+      "en",
+    ],
+    [
+      "plans to",
+      "Apple builds its own AI server chips for data centers",
+      "Apple plans to build its own AI server chips for data centers.",
+      "en",
+    ],
+    [
+      "plans to, long headline",
+      "Apple builds its own AI server chips for data centers to cut its reliance on Nvidia",
+      "Apple plans to build its own AI server chips for data centers to cut its reliance on Nvidia.",
+      "en",
+    ],
+    [
+      "expects to, long headline",
+      "Apple builds its own AI server chips for data centers to cut its reliance on Nvidia",
+      "Apple expects to build its own AI server chips for data centers to cut its reliance on Nvidia.",
+      "en",
+    ],
+    [
+      "could",
+      "Amazon buys AI startup Decart at a $7B valuation",
+      "Amazon could buy AI startup Decart at a $7B valuation.",
+      "en",
+    ],
+    [
+      "may",
+      "Amazon buys AI startup Decart at a $7B valuation",
+      "Amazon may buy AI startup Decart at a $7B valuation.",
+      "en",
+    ],
+    [
+      "in talks, under agrees",
+      "Nvidia agrees to buy Reflection AI",
+      "Nvidia is in talks to buy Reflection AI.",
+      "en",
+    ],
+    [
+      "lowercase-led name iPhone",
+      "Apple brings its Siri AI assistant upgrade to more devices this fall",
+      "Apple brings its Siri AI assistant upgrade to iPhone and more devices this fall.",
+      "en",
+    ],
+    [
+      "lowercase-led name eBay",
+      "OpenAI signs a shopping agent deal with a major online marketplace for checkout",
+      "OpenAI signs a shopping agent deal with eBay, a major online marketplace, for checkout.",
+      "en",
+    ],
+    [
+      "lowercase-led name xAI",
+      "Nvidia invests in a leading AI startup building frontier models for robotics",
+      "Nvidia invests in xAI, a leading AI startup building frontier models for robotics.",
+      "en",
+    ],
+    [
+      "lowercase-led subject xAI",
+      "OpenAI sues Apple over App Store rankings",
+      "xAI sues Apple over App Store rankings.",
+      "en",
+    ],
+    [
+      "long headline, yesterday",
+      decart,
+      "Amazon was in talks yesterday to buy AI startup Decart in a deal that could value it at ~$7B; Anthropic had decided against acquiring Decart in September.",
+      "en",
+    ],
+    [
+      "long headline, xAI",
+      decart,
+      "Amazon is in talks to buy AI startup Decart in a deal that could value it at ~$7B; Anthropic and xAI had decided against acquiring Decart in September.",
+      "en",
+    ],
+    [
+      "long headline, eBay",
+      decart,
+      "Amazon and eBay are in talks to buy AI startup Decart in a deal that could value it at ~$7B; Anthropic had decided against acquiring Decart in September.",
+      "en",
+    ],
+    [
+      "long headline, final talks",
+      decart,
+      "Amazon is in final talks to buy AI startup Decart in a deal that could value it at ~$7B; Anthropic had decided against acquiring Decart in September.",
+      "en",
+    ],
+    [
+      "long headline, all-cash",
+      decart,
+      "Amazon is in talks to buy AI startup Decart in an all-cash deal that could value it at ~$7B; Anthropic had decided against acquiring Decart in September.",
+      "en",
+    ],
+    [
+      "long headline, ended talks",
+      decart,
+      "Amazon ended talks to buy AI startup Decart in a deal that could value it at ~$7B; Anthropic had decided against acquiring Decart in September.",
+      "en",
+    ],
+    [
+      "long headline, talks collapsed",
+      decart,
+      "Amazon talks to buy AI startup Decart in a deal that could value it at ~$7B collapsed; Anthropic had decided against acquiring Decart in September.",
+      "en",
+    ],
+    [
+      "vi 1.000 added",
+      "Meta sa thải nhân viên mảng AI tại Mỹ",
+      "Meta sa thải 1.000 nhân viên mảng AI tại Mỹ.",
+      "vi",
+    ],
+    [
+      "vi 2.000 under 1.000",
+      "Meta sa thải 1.000 nhân viên mảng AI tại Mỹ",
+      "Meta sa thải 2.000 nhân viên mảng AI tại Mỹ.",
+      "vi",
+    ],
+    [
+      "vi 5 tỷ USD",
+      "Anthropic huy động vốn mới do Lightspeed dẫn dắt",
+      "Anthropic huy động 5 tỷ USD vốn mới do Lightspeed dẫn dắt.",
+      "vi",
+    ],
+    [
+      "vi lần đầu",
+      "Nvidia mở văn phòng tại Việt Nam",
+      "Nvidia lần đầu mở văn phòng tại Việt Nam.",
+      "vi",
+    ],
+    [
+      "vi lần đầu, long headline",
+      "Nvidia mở văn phòng nghiên cứu trí tuệ nhân tạo và trung tâm dữ liệu lớn tại Việt Nam",
+      "Nvidia lần đầu mở văn phòng nghiên cứu trí tuệ nhân tạo và trung tâm dữ liệu lớn tại Việt Nam.",
+      "vi",
+    ],
+    [
+      "vi sẽ",
+      "Nvidia mua lại startup mô hình mở Reflection AI",
+      "Nvidia sẽ mua lại startup mô hình mở Reflection AI.",
+      "vi",
+    ],
+    [
+      "vi có thể",
+      "Nvidia mua lại startup mô hình mở Reflection AI",
+      "Nvidia có thể mua lại startup mô hình mở Reflection AI.",
+      "vi",
+    ],
+    [
+      "vi dự kiến",
+      "Nvidia mua lại startup mô hình mở Reflection AI",
+      "Nvidia dự kiến mua lại startup mô hình mở Reflection AI.",
+      "vi",
+    ],
+    [
+      "vi dự kiến, long headline",
+      "Nvidia mua lại startup mô hình mở Reflection AI tại Mỹ để mở rộng đội ngũ nghiên cứu",
+      "Nvidia dự kiến mua lại startup mô hình mở Reflection AI tại Mỹ để mở rộng đội ngũ nghiên cứu.",
+      "vi",
+    ],
+    [
+      "vi place",
+      "Nvidia mở trung tâm nghiên cứu AI mới",
+      "Nvidia mở trung tâm nghiên cứu AI mới tại Hà Nội.",
+      "vi",
+    ],
+    [
+      "vi date",
+      "Nvidia công bố mua lại startup mô hình mở Reflection AI",
+      "Nvidia công bố mua lại startup mô hình mở Reflection AI hôm thứ Ba.",
       "vi",
     ],
   ])(
-    "still drops a summary that only rewords the headline (%s)",
-    (_id, title, summary, lang) => {
-      expect(summaryOf(story({ title, summary, lang }))).toBeNull();
+    "keeps a repeat with one changed word: %s",
+    (_probe, title, summary, lang) => {
+      expect(summaryOf(story({ title, summary, lang }))).toBe(summary);
     }
   );
 });
