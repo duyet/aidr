@@ -598,13 +598,24 @@ function buildMix(outFile) {
 }
 
 // ---------------------------------------------------------------- cover still
+// One story gives the cover both its picture and its hook, so they never come from different stories:
+// the thumb story when it has an image, else the first ranked story with one (its kicker as the hook),
+// else the thumb story with its paper card.
+const thumbStory =
+  script.stories.find((s) => s.rank === (script.thumb?.story ?? 1)) ?? script.stories[0];
+const coverStory = firstImage(thumbStory)
+  ? thumbStory
+  : (script.stories.find(firstImage) ?? thumbStory);
+if (coverStory !== thumbStory && !cut.subs)
+  console.warn(
+    `! cover: thumb story ${thumbStory.rank} has no image; the cover uses story ${coverStory.rank} (${coverStory.kicker})`
+  );
+
 function coverHtml(fmt) {
-  const t = script.thumb ?? {};
-  const lead =
-    script.stories.find((s) => s.rank === (t.story ?? 1)) ?? script.stories[0];
-  // The picture side is never empty: the thumb story's image, else the first story's that has one,
-  // else the thumb story's paper card.
-  const img = firstImage(lead) ?? script.stories.map(firstImage).find(Boolean);
+  const lead = coverStory;
+  const hook =
+    lead === thumbStory ? (script.thumb?.hook ?? lead.kicker) : lead.kicker;
+  const img = firstImage(lead);
   const list = script.stories
     .slice(0, fmt === "9x16" ? 4 : 3)
     .map((s) => `<li><b>${s.rank}</b>${esc(s.kicker)}</li>`)
@@ -648,7 +659,7 @@ function coverHtml(fmt) {
   const body = `<div class="clip cv" id="cover" data-start="0" data-duration="1">
     ${img ? `<img class="img" id="cover-img" src="${esc(img)}" alt="" />` : `<div class="panel"><span>${esc(lead.paper?.venue ?? byRank[lead.rank]?.source ?? "")}</span><b>${esc(lead.paper?.title ?? lead.kicker)}</b></div>`}
     <div class="date">${pad2(DAY)}</div><div class="mon">${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</div>
-    <div class="hook"><span>${esc(t.hook ?? lead.kicker)}</span></div>
+    <div class="hook"><span>${esc(hook)}</span></div>
     <ul>${list}</ul>
     <div class="brand">${logo("")}${esc(UI.daily)}</div></div>
     <script>document.fonts.ready.then(()=>{const h=document.querySelector('.hook');let p=parseFloat(getComputedStyle(h).fontSize);while(h.scrollHeight>p*1.0*3+4&&p>40){p-=2;h.style.fontSize=p+'px'}window.__timelines.main=gsap.timeline({paused:true});});</script>`;
