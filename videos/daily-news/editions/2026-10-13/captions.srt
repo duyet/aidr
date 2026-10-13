@@ -1,0 +1,143 @@
+1
+00:00:00,900 --> 00:00:02,363
+This is AI;DR,
+
+2
+00:00:02,363 --> 00:00:03,303
+your AI news for
+
+3
+00:00:03,303 --> 00:00:03,756
+Tuesday,
+
+4
+00:00:03,756 --> 00:00:05,220
+October thirteenth.
+
+5
+00:00:05,220 --> 00:00:07,449
+Today’s AI stories include
+
+6
+00:00:07,449 --> 00:00:08,970
+Muse Wonder and hidden
+
+7
+00:00:08,970 --> 00:00:10,596
+capabilities.
+
+8
+00:00:11,147 --> 00:00:12,656
+Meta’s Muse Wonder rivals
+
+9
+00:00:12,656 --> 00:00:13,794
+the world’s best AI
+
+10
+00:00:13,794 --> 00:00:15,280
+models and adds features
+
+11
+00:00:15,280 --> 00:00:16,406
+designed to keep agents
+
+12
+00:00:16,406 --> 00:00:17,115
+from going off the
+
+13
+00:00:17,115 --> 00:00:18,241
+rails.
+
+14
+00:00:18,741 --> 00:00:20,982
+Researchers show AI models
+
+15
+00:00:20,982 --> 00:00:23,385
+hide arbitrary computations in
+
+16
+00:00:23,385 --> 00:00:25,057
+encrypted networks,
+
+17
+00:00:25,057 --> 00:00:26,357
+evade audits,
+
+18
+00:00:26,357 --> 00:00:28,935
+and release proof-of-concept models
+
+19
+00:00:28,935 --> 00:00:31,222
+to improve defenses.
+
+20
+00:00:31,722 --> 00:00:33,301
+Epic Games shifts teams
+
+21
+00:00:33,301 --> 00:00:35,971
+toward maximum AI acceleration,
+
+22
+00:00:35,971 --> 00:00:37,481
+telling developers on its
+
+23
+00:00:37,481 --> 00:00:38,746
+Disney shooter to create
+
+24
+00:00:38,746 --> 00:00:41,649
+future content AI-first with
+
+25
+00:00:41,649 --> 00:00:43,414
+human supervision.
+
+26
+00:00:43,915 --> 00:00:45,424
+Nvidia’s AI chip shipments
+
+27
+00:00:45,424 --> 00:00:47,143
+to China fall 44%
+
+28
+00:00:47,143 --> 00:00:48,152
+year over year to
+
+29
+00:00:48,152 --> 00:00:51,578
+678,000 in H1 2026,
+
+30
+00:00:51,578 --> 00:00:52,518
+cutting market share to
+
+31
+00:00:52,518 --> 00:00:54,353
+34%.
+
+32
+00:00:54,703 --> 00:00:56,932
+That's AI;DR for today.
+
+33
+00:00:56,932 --> 00:00:58,023
+Every story,
+
+34
+00:00:58,023 --> 00:00:59,335
+ranked and summarized,
+
+35
+00:00:59,335 --> 00:01:01,345
+at aidr.today.
+
+36
+00:01:01,345 --> 00:01:03,006
+See you tomorrow.

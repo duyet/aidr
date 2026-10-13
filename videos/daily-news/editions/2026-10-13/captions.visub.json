@@ -1,0 +1,224 @@
+{
+  "lang": "vi",
+  "model": "openai/gpt-5.6-luna",
+  "at": "2026-10-13T17:02:37.430Z",
+  "title": "Muse Wonder đưa Meta lên tuyến đầu AI và hơn thế | 2026-10-13",
+  "cues": [
+    {
+      "start": "00:00:00,900",
+      "end": "00:00:02,363",
+      "en": "This is AI;DR,",
+      "vi": "Đây là AI;DR,"
+    },
+    {
+      "start": "00:00:02,363",
+      "end": "00:00:03,303",
+      "en": "your AI news for",
+      "vi": "bản tin AI của bạn"
+    },
+    {
+      "start": "00:00:03,303",
+      "end": "00:00:03,756",
+      "en": "Tuesday,",
+      "vi": "cho thứ Ba,"
+    },
+    {
+      "start": "00:00:03,756",
+      "end": "00:00:05,220",
+      "en": "October thirteenth.",
+      "vi": "ngày 13 tháng 10."
+    },
+    {
+      "start": "00:00:05,220",
+      "end": "00:00:07,449",
+      "en": "Today’s AI stories include",
+      "vi": "Các tin AI hôm nay gồm"
+    },
+    {
+      "start": "00:00:07,449",
+      "end": "00:00:08,970",
+      "en": "Muse Wonder and hidden",
+      "vi": "Muse Wonder và những"
+    },
+    {
+      "start": "00:00:08,970",
+      "end": "00:00:10,596",
+      "en": "capabilities.",
+      "vi": "khả năng ẩn."
+    },
+    {
+      "start": "00:00:11,147",
+      "end": "00:00:12,656",
+      "en": "Meta’s Muse Wonder rivals",
+      "vi": "Muse Wonder của Meta sánh ngang"
+    },
+    {
+      "start": "00:00:12,656",
+      "end": "00:00:13,794",
+      "en": "the world’s best AI",
+      "vi": "các mô hình AI"
+    },
+    {
+      "start": "00:00:13,794",
+      "end": "00:00:15,280",
+      "en": "models and adds features",
+      "vi": "tốt nhất thế giới,"
+    },
+    {
+      "start": "00:00:15,280",
+      "end": "00:00:16,406",
+      "en": "designed to keep agents",
+      "vi": "đồng thời thêm tính năng giúp các"
+    },
+    {
+      "start": "00:00:16,406",
+      "end": "00:00:17,115",
+      "en": "from going off the",
+      "vi": "agent không vượt khỏi kiểm"
+    },
+    {
+      "start": "00:00:17,115",
+      "end": "00:00:18,241",
+      "en": "rails.",
+      "vi": "soát."
+    },
+    {
+      "start": "00:00:18,741",
+      "end": "00:00:20,982",
+      "en": "Researchers show AI models",
+      "vi": "Các nhà nghiên cứu cho thấy mô hình"
+    },
+    {
+      "start": "00:00:20,982",
+      "end": "00:00:23,385",
+      "en": "hide arbitrary computations in",
+      "vi": "AI có thể giấu những phép tính tùy ý"
+    },
+    {
+      "start": "00:00:23,385",
+      "end": "00:00:25,057",
+      "en": "encrypted networks,",
+      "vi": "trong mạng được mã hóa,"
+    },
+    {
+      "start": "00:00:25,057",
+      "end": "00:00:26,357",
+      "en": "evade audits,",
+      "vi": "né kiểm tra và"
+    },
+    {
+      "start": "00:00:26,357",
+      "end": "00:00:28,935",
+      "en": "and release proof-of-concept models",
+      "vi": "công bố các mô hình mẫu chứng minh khả thi để"
+    },
+    {
+      "start": "00:00:28,935",
+      "end": "00:00:31,222",
+      "en": "to improve defenses.",
+      "vi": "cải thiện khả năng phòng thủ."
+    },
+    {
+      "start": "00:00:31,722",
+      "end": "00:00:33,301",
+      "en": "Epic Games shifts teams",
+      "vi": "Epic Games điều chuyển các đội ngũ"
+    },
+    {
+      "start": "00:00:33,301",
+      "end": "00:00:35,971",
+      "en": "toward maximum AI acceleration,",
+      "vi": "sang tăng tốc AI tối đa, yêu cầu nhà"
+    },
+    {
+      "start": "00:00:35,971",
+      "end": "00:00:37,481",
+      "en": "telling developers on its",
+      "vi": "phát triển tựa game bắn súng Disney của"
+    },
+    {
+      "start": "00:00:37,481",
+      "end": "00:00:38,746",
+      "en": "Disney shooter to create",
+      "vi": "hãng tạo nội dung tương lai theo"
+    },
+    {
+      "start": "00:00:38,746",
+      "end": "00:00:41,649",
+      "en": "future content AI-first with",
+      "vi": "hướng ưu tiên AI ngay từ đầu,"
+    },
+    {
+      "start": "00:00:41,649",
+      "end": "00:00:43,414",
+      "en": "human supervision.",
+      "vi": "dưới sự giám sát của con người."
+    },
+    {
+      "start": "00:00:43,915",
+      "end": "00:00:45,424",
+      "en": "Nvidia’s AI chip shipments",
+      "vi": "Lô chip AI Nvidia xuất sang"
+    },
+    {
+      "start": "00:00:45,424",
+      "end": "00:00:47,143",
+      "en": "to China fall 44%",
+      "vi": "Trung Quốc giảm 44%"
+    },
+    {
+      "start": "00:00:47,143",
+      "end": "00:00:48,152",
+      "en": "year over year to",
+      "vi": "so với cùng kỳ,"
+    },
+    {
+      "start": "00:00:48,152",
+      "end": "00:00:51,578",
+      "en": "678,000 in H1 2026,",
+      "vi": "còn 678.000 chiếc trong H1 2026,"
+    },
+    {
+      "start": "00:00:51,578",
+      "end": "00:00:52,518",
+      "en": "cutting market share to",
+      "vi": "kéo thị phần xuống"
+    },
+    {
+      "start": "00:00:52,518",
+      "end": "00:00:54,353",
+      "en": "34%.",
+      "vi": "34%."
+    },
+    {
+      "start": "00:00:54,703",
+      "end": "00:00:56,932",
+      "en": "That's AI;DR for today.",
+      "vi": "Đó là AI;DR hôm nay."
+    },
+    {
+      "start": "00:00:56,932",
+      "end": "00:00:58,023",
+      "en": "Every story,",
+      "vi": "Xem mọi tin,"
+    },
+    {
+      "start": "00:00:58,023",
+      "end": "00:00:59,335",
+      "en": "ranked and summarized,",
+      "vi": "được xếp hạng và tóm tắt,"
+    },
+    {
+      "start": "00:00:59,335",
+      "end": "00:01:01,345",
+      "en": "at aidr.today.",
+      "vi": "tại aidr.today."
+    },
+    {
+      "start": "00:01:01,345",
+      "end": "00:01:03,006",
+      "en": "See you tomorrow.",
+      "vi": "Hẹn gặp lại ngày mai."
+    }
+  ]
+}
