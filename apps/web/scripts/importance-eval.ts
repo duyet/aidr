@@ -59,7 +59,6 @@ interface EvalRow {
 }
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(here, "../../..");
 
 function readEnv(): Env {
   const key = requireLlmKey();
