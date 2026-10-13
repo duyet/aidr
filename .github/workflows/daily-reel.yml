@@ -132,6 +132,7 @@ jobs:
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps render --render-published
 
       - name: Gate
+        id: gate
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps gate
 
       - name: Upload artifact
@@ -156,7 +157,9 @@ jobs:
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps upload,attach,facebook,telegram --uploader api --dry-run
 
       - name: YouTube upload + day page
-        if: env.LIVE == 'true'
+        id: youtube
+        if: ${{ !cancelled() && env.LIVE == 'true' && steps.gate.outcome == 'success' }}
+        continue-on-error: true
         run: |
           if [ -z "$YOUTUBE_REFRESH_TOKEN" ] || [ -z "$YOUTUBE_CLIENT_ID" ] || [ -z "$YOUTUBE_CLIENT_SECRET" ]; then
             echo "YouTube: no YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKEN secrets; skipping upload and attach"
@@ -166,12 +169,12 @@ jobs:
 
       - name: Facebook Reel
         id: facebook
-        if: env.LIVE == 'true'
+        if: ${{ !cancelled() && env.LIVE == 'true' && steps.gate.outcome == 'success' }}
         continue-on-error: true
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps facebook --prod
 
       - name: Telegram
-        if: env.LIVE == 'true' && steps.check.outputs.hand != 'true'
+        if: ${{ !cancelled() && env.LIVE == 'true' && steps.check.outputs.hand != 'true' && steps.gate.outcome == 'success' }}
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps telegram --prod
 
       # Vietnamese subtitles over the English cut: reuses this runner's English
@@ -242,6 +245,12 @@ jobs:
         if: ${{ always() && (steps.visub.outcome == 'failure' || steps.visub_youtube.outcome == 'failure' || steps.visub_telegram.outcome == 'failure') }}
         run: |
           echo "The Vietnamese subtitles cut failed (see the visub steps' log and STATUS.json uploadError)." >&2
+          exit 1
+
+      - name: Fail when the YouTube upload did not post
+        if: ${{ always() && steps.youtube.outcome == 'failure' }}
+        run: |
+          echo "The YouTube upload step failed (see its log)." >&2
           exit 1
 
       - name: Fail when the Reel did not post

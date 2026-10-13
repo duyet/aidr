@@ -32,14 +32,14 @@ function condition(expr) {
 }
 
 /** Run the job: each step's outcome by name ("skipped" when its `if:` is false). `fail` names the steps that fail. */
-function simulate({ live = true, hand = false, fail = [] } = {}) {
+function simulate({ live = true, hand = false, fail = [], cancelled = false } = {}) {
   const byId = new Map();
   const outcomes = new Map();
   let jobFailed = false;
   const S = (id) => byId.get(id) ?? { outcome: "", outputs: {} };
   const E = { LIVE: live ? "true" : "false" };
   for (const step of steps) {
-    const runs = condition(step.if)(S, E, () => true, () => !jobFailed, () => jobFailed, () => false);
+    const runs = condition(step.if)(S, E, () => true, () => !jobFailed, () => jobFailed, () => cancelled);
     const outcome = !runs ? "skipped" : fail.includes(step.name) || step.name.startsWith("Fail when") ? "failure" : "success";
     if (outcome === "failure" && !step.continueOnError) jobFailed = true;
     outcomes.set(step.name, outcome);
@@ -76,6 +76,34 @@ test("the Vietnamese channel still gets its video when an English post fails", (
     const o = simulate({ fail: [failed] });
     for (const name of VI_POSTS) assert.equal(o.get(name), "success", `${name} after ${failed} failed`);
   }
+});
+
+test("a failed YouTube upload still posts the Reel and Telegram, then fails the job naming YouTube", () => {
+  const o = simulate({ fail: ["YouTube upload + day page"] });
+  assert.equal(o.get("Facebook Reel"), "success");
+  assert.equal(o.get("Telegram"), "success");
+  assert.equal(o.get("Telegram (Vietnamese subtitles)"), "success");
+  assert.equal(ran(o, "Fail when the YouTube upload did not post"), true);
+  assert.equal(ran(o, "Fail when the Reel did not post"), false);
+});
+
+test("a failed Facebook Reel or Telegram does not stop the other English posts", () => {
+  for (const failed of ["Facebook Reel", "Telegram"]) {
+    const o = simulate({ fail: [failed] });
+    for (const name of EN_POSTS.filter((n) => n !== failed)) assert.equal(o.get(name), "success", `${name} after ${failed} failed`);
+  }
+});
+
+test("no English post runs when the render or gate fails", () => {
+  for (const failed of ["Render", "Gate"]) {
+    const o = simulate({ fail: [failed] });
+    for (const name of EN_POSTS) assert.equal(ran(o, name), false, `${name} after ${failed} failed`);
+  }
+});
+
+test("a cancelled run posts nothing", () => {
+  const o = simulate({ cancelled: true });
+  for (const name of [...EN_POSTS, ...VI_POSTS]) assert.equal(ran(o, name), false, name);
 });
 
 test("visub needs the English render", () => {
