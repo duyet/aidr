@@ -20,6 +20,9 @@ apps/web/src/fonts/generated/
 # Upstream variable font cached by `gen-og-fonts.py`. The instanced, subset
 # output in apps/web/public/fonts/ is committed; this download is not.
 apps/web/scripts/.be-vietnam-pro/
+
+# Local JSONL copy of telegram-swap-card audit rows (the D1 rows are canonical).
+apps/web/.telegram-edits/
 # Local agent tooling, not project source.
 .opencode/
 .agents/skills/verify-aidr/evidence/**

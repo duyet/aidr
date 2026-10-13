@@ -1,4 +1,3 @@
-import { track } from "@aidr/ui/track";
 import { useId, useState } from "react";
 import {
   MAX_MEDIA_ASSETS,
@@ -6,6 +5,7 @@ import {
   mediaIdentityKey,
   withoutGeneratedCards,
 } from "../../../worker/media.js";
+import { track } from "../../lib/analytics/track";
 import { publisherHost } from "../../lib/publisher-host";
 import type { Lang } from "../../lib/types";
 import {
@@ -198,10 +198,11 @@ function MediaImage({
         onClick={(event) => {
           event.preventDefault();
           setOpen(true);
-          track(
-            "story_media_zoom",
-            itemId ? { item_id: itemId, index: asset.index } : undefined
-          );
+          track("media_open", {
+            media: "image",
+            index: asset.index,
+            ...(itemId ? { item_id: itemId } : {}),
+          });
         }}
         className="group block w-full cursor-zoom-in overflow-hidden rounded-xl border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
@@ -217,14 +218,22 @@ function MediaVideo({
   label,
   lang,
   total,
+  itemId,
 }: {
   asset: Extract<VisibleMediaAsset, { kind: "video" }>;
   label: string;
   lang: Lang;
   total: number;
+  itemId?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const copy = MEDIA_COPY[lang];
+  const trackOpen = () =>
+    track("media_open", {
+      media: "video",
+      index: asset.index,
+      ...(itemId ? { item_id: itemId } : {}),
+    });
 
   // A video that will not load degrades to its poster, then to a localized
   // note. Either way the reader keeps a reserved, non-broken frame and a way
@@ -253,7 +262,7 @@ function MediaVideo({
           href={asset.url}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => track("story_media_open", { index: asset.index })}
+          onClick={trackOpen}
           className="text-[10px] font-medium text-accent underline underline-offset-2"
         >
           {copy.videoLink}
@@ -285,7 +294,7 @@ function MediaVideo({
           href={asset.url}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => track("story_media_open", { index: asset.index })}
+          onClick={trackOpen}
           className="font-medium text-accent underline underline-offset-2"
         >
           {copy.videoLink}
@@ -361,6 +370,7 @@ export function MediaGallery({
             label={copy.videoLabel(asset.index, total, host)}
             lang={lang}
             total={total}
+            itemId={itemId}
           />
         )
       )}

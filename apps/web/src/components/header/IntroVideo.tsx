@@ -1,8 +1,8 @@
 import { Button } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
 import { CirclePlay } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { useState } from "react";
+import { track } from "../../lib/analytics/track";
 import { PHONE_MENU_LINK_CLASS } from "../../lib/chrome";
 import {
   INTRO_VIDEO_COPY,
@@ -37,7 +37,9 @@ export function IntroVideoButton({
       open={open}
       onOpenChange={(next) => {
         if (next) {
-          track("intro_video_open", { from: tile ? "phone_menu" : "header" });
+          track("intro_video_open", {
+            placement: tile ? "phone_menu" : "header",
+          });
         }
         setOpen(next);
       }}

@@ -5,7 +5,7 @@
  *
  * Issue #229 measured a 2,420 ms LCP element render delay with 1,648 ms of
  * total blocking time. The five third-party bootstraps in
- * `@aidr/ui/Analytics` were injected from a plain useEffect — React's commit
+ * `vendors.tsx` were injected from a plain useEffect — React's commit
  * phase — and the trace attributed 247 ms to j.duyet.net/p.js and 167 ms to
  * gtag, all competing with the paint. None of
  * them affect what the visitor is looking at.
@@ -14,9 +14,9 @@
  * third-party is in the document until the LCP paint has happened, and all of
  * it is in the document after.
  */
-import AnalyticWrapper from "@aidr/ui/Analytics";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import AnalyticWrapper from "./vendors";
 
 type Entry = { renderTime: number; loadTime: number; startTime: number };
 type ObserverCallback = (list: { getEntries: () => Entry[] }) => void;
@@ -107,10 +107,11 @@ describe("Analytics deferral (#229)", () => {
     drainIdle();
 
     const injected = thirdPartyScripts().join("\n");
-    // gtag + its inline config, and p.js. pageview.duyet.net and Clarity
-    // are not loaded.
+    // gtag and p.js. The gtag config lives in the dataLayer stub installed
+    // at module init, not in an inline script. pageview.duyet.net and
+    // Clarity are not loaded.
     expect(injected).toContain("googletagmanager.com/gtag/js");
-    expect(injected).toContain("window.dataLayer");
+    expect(injected).not.toContain("window.dataLayer");
     expect(injected).not.toContain("pageview.duyet.net");
     expect(injected).not.toContain("clarity.ms");
     expect(injected).toContain("j.duyet.net/p.js");

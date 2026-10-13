@@ -1,6 +1,6 @@
-import { track } from "@aidr/ui/track";
 import { ExternalLink } from "lucide-react";
 import { useId } from "react";
+import { track } from "../../lib/analytics/track";
 import { publisherHost } from "../../lib/publisher-host";
 import type { FeedItem, ItemSource, Lang } from "../../lib/types";
 import { fmtTime } from "./lib";
@@ -127,7 +127,9 @@ function SourceRow({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => track("story_open", { item_id: itemId })}
+              onClick={() =>
+                track("source_click", { item_id: itemId, placement: "sources" })
+              }
               className="whitespace-normal [overflow-wrap:anywhere] font-medium text-accent underline decoration-border underline-offset-2 hover:decoration-accent focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               aria-label={`${linkLabel}: ${host ?? href}`}
             >

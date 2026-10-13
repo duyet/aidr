@@ -3,7 +3,7 @@ import { fitSentences, fitText, fitWords } from "../notify/fit-text.js";
 import { captionSummaryFor } from "../notify/story-summary.js";
 import {
   buildAlbumCaption,
-  buildDigestCaption,
+  buildDigestMessage,
   buildStoryCaption,
   fitHighlightDigest,
   storySummaryBudget,
@@ -155,7 +155,7 @@ describe("story caption fits without mid-word cuts", () => {
   });
 });
 
-describe("digest caption fits without cutting a line", () => {
+describe("digest message fits without cutting a line", () => {
   const titles = [
     "Stanford DeLM Beats Claude Code Accuracy by 17.5 Percentage Points",
     "Google AI Matches Doctor Diagnoses in 90% of Cases in First Real Clinic Study",
@@ -178,19 +178,47 @@ describe("digest caption fits without cutting a line", () => {
   });
 
   it("drops summary clauses whole and keeps every headline intact", () => {
-    const fitted = fitHighlightDigest(digest(true));
-    const caption = buildDigestCaption(fitted);
-    expect(visible(caption).length).toBeLessThanOrEqual(1024);
-    expectValidHtml(caption);
+    const fitted = fitHighlightDigest(digest(true), 1024);
+    const message = buildDigestMessage(fitted, 1024);
+    expect(visible(message).length).toBeLessThanOrEqual(1024);
+    expectValidHtml(message);
     // All eight stories named; headlines are whole, nothing is cut.
     expect(fitted.bullets).toHaveLength(8);
-    for (const title of titles) expect(caption).toContain(escapeText(title));
-    expect(caption).not.toContain("…");
+    for (const title of titles) expect(message).toContain(escapeText(title));
+    expect(message).not.toContain("…");
     // No half clause survives: a bullet is a headline, or headline + whole clause.
     for (const bullet of fitted.bullets) {
       const tail = bullet.text.split(" — ")[1];
       if (tail) expect(tail.endsWith(`${clause} ${tail.at(-1)}`)).toBe(true);
     }
+  });
+
+  it("shortens six overflowing lines to fit 4000, none cut mid-sentence", () => {
+    // Six long clauses (well past what a real summary sentence is) overflow
+    // the message. The fitter drops whole clauses first, so every line is a
+    // headline or a headline with its whole clause, and all six stay.
+    const sentence = `${"An unusually long but complete summary sentence. ".repeat(14).trim()}`;
+    const six: DailyDigest = {
+      lang: "en",
+      date: "2026-10-10",
+      bullets: titles.slice(0, 6).map((title, i) => ({
+        text: `${title} — ${sentence}`,
+        lead: title,
+        url: `https://aidr.today/abcdef1${i}?utm=${"x".repeat(60)}`,
+      })),
+    };
+    const fitted = fitHighlightDigest(six, 4000);
+    const message = buildDigestMessage(fitted);
+    expect(visible(message).length).toBeLessThanOrEqual(4000);
+    expect(fitted.bullets).toHaveLength(6);
+    expect(message.split("<a href=").length - 1).toBe(6);
+    for (const [i, bullet] of fitted.bullets.entries()) {
+      expect([titles[i], `${titles[i]} — ${sentence}`]).toContain(bullet.text);
+    }
+    // Something was kept whole: the fitter stops once the lines fit.
+    expect(fitted.bullets.some((bullet) => bullet.text.includes(" — "))).toBe(
+      true
+    );
   });
 
   it("shortens headlines at a word boundary only when headlines alone overflow", () => {
@@ -203,10 +231,10 @@ describe("digest caption fits without cutting a line", () => {
         url: `https://aidr.today/abcdef1${i}`,
       })),
     };
-    const fitted = fitHighlightDigest(big);
-    const caption = buildDigestCaption(fitted);
+    const fitted = fitHighlightDigest(big, 1024);
+    const message = buildDigestMessage(fitted, 1024);
     expect(fitted.bullets).toHaveLength(8);
-    expect(visible(caption).length).toBeLessThanOrEqual(1024);
+    expect(visible(message).length).toBeLessThanOrEqual(1024);
     for (const bullet of fitted.bullets) {
       const body = bullet.text.replace(/…$/, "");
       expect(body).toMatch(/word$|word \d$/);

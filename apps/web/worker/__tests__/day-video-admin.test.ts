@@ -16,8 +16,12 @@ type Row = {
   added_by: string | null;
 };
 
-/** Just enough D1 for the day_videos upsert / delete / audit statements. */
-function makeEnv(extra: Record<string, unknown> = {}) {
+/** Just enough D1 for the day_videos upsert / delete / audit statements.
+ *  `digests` are sent Telegram digest rows, keyed `channel|item_id`. */
+function makeEnv(
+  extra: Record<string, unknown> = {},
+  digests: Record<string, { target: string; message_id: string }> = {}
+) {
   const rows = new Map<string, Row>();
   const db = {
     prepare(sql: string) {
@@ -30,6 +34,9 @@ function makeEnv(extra: Record<string, unknown> = {}) {
         async first() {
           if (sql.includes("FROM day_videos")) {
             return rows.get(binds[0] as string) ?? null;
+          }
+          if (sql.includes("FROM notifications")) {
+            return digests[`${binds[0]}|${binds[1]}`] ?? null;
           }
           return null;
         },
@@ -321,7 +328,12 @@ describe("sendDayVideoTelegram", () => {
     const result = await sendDayVideoTelegram(env, "2026-10-02", {
       lang: "vi",
     });
-    expect(result).toEqual({ ok: true, chat_id: "-100vi", message_id: "42" });
+    expect(result).toEqual({
+      ok: true,
+      chat_id: "-100vi",
+      message_id: "42",
+      digest_button: "no sent digest",
+    });
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://api.telegram.org/bottok/sendPhoto");
     expect(calls[0].body).toMatchObject({
@@ -362,7 +374,11 @@ describe("sendDayVideoTelegram", () => {
     const result = await sendDayVideoTelegram(env, "2026-10-02", {
       lang: "en",
     });
-    expect(result).toEqual({ ok: true, chat_id: "-100en", message_id: "9" });
+    expect(result).toMatchObject({
+      ok: true,
+      chat_id: "-100en",
+      message_id: "9",
+    });
     expect(calls.map((c) => c.url.split("/").pop())).toEqual([
       "sendPhoto",
       "sendMessage",
@@ -393,5 +409,118 @@ describe("sendDayVideoTelegram", () => {
     expect(
       await sendDayVideoTelegram(env, "2026-10-02", { lang: "en" })
     ).toMatchObject({ status: 409 });
+  });
+});
+
+describe("day video button on the sent Telegram digest", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stubFetch(description?: string) {
+    const calls: Array<{ url: string; body: Record<string, any> }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        calls.push({ url, body: JSON.parse(String(init.body)) });
+        return new Response(
+          JSON.stringify(
+            description
+              ? { ok: false, description }
+              : { ok: true, result: { message_id: 41 } }
+          )
+        );
+      })
+    );
+    return calls;
+  }
+
+  const sentDigest = {
+    "telegram|digest:2026-10-02": { target: "-100vi", message_id: "41" },
+  };
+
+  it("adds ▶ YouTube to the digest's buttons when the video is set", async () => {
+    // The video goes up after the 08:00 digest, so the button is added to
+    // the message already in the channel, not to a new post.
+    const { env } = makeEnv({ TELEGRAM_BOT_TOKEN: "tok" }, sentDigest);
+    const calls = stubFetch();
+    const result = await setDayVideo(
+      env,
+      "2026-10-02",
+      { lang: "vi", video: "https://youtu.be/fStNAQhJo3M" },
+      null
+    );
+    expect(result).toMatchObject({ ok: true, digest_button: "updated" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe(
+      "https://api.telegram.org/bottok/editMessageReplyMarkup"
+    );
+    expect(calls[0].body).toMatchObject({ chat_id: "-100vi", message_id: 41 });
+    const [site, video] = calls[0].body.reply_markup.inline_keyboard;
+    expect(site[0].url).toMatch(/\/date\/2026-10-02\?.*lang=vi/);
+    expect(video).toEqual([
+      { text: "▶ YouTube", url: "https://youtu.be/fStNAQhJo3M" },
+    ]);
+  });
+
+  it("edits only that language's digest, and only a sent one", async () => {
+    const { env } = makeEnv({ TELEGRAM_BOT_TOKEN: "tok" }, sentDigest);
+    const calls = stubFetch();
+    // English has no sent digest row: nothing to edit, no Telegram call.
+    const en = await setDayVideo(
+      env,
+      "2026-10-02",
+      { lang: "en", video: "B3vKYiV7rOw" },
+      null
+    );
+    expect(en).toMatchObject({ ok: true, digest_button: "no sent digest" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("treats 'message is not modified' as done and never fails the set", async () => {
+    const { env, rows } = makeEnv({ TELEGRAM_BOT_TOKEN: "tok" }, sentDigest);
+    stubFetch(
+      "Bad Request: message is not modified: specified new message content and reply markup are exactly the same"
+    );
+    expect(
+      await setDayVideo(
+        env,
+        "2026-10-02",
+        { lang: "vi", video: "fStNAQhJo3M" },
+        null
+      )
+    ).toMatchObject({ ok: true, digest_button: "updated" });
+    stubFetch("Bad Request: message to edit not found");
+    const failed = await setDayVideo(
+      env,
+      "2026-10-02",
+      { lang: "vi", short: "B3vKYiV7rOw" },
+      null
+    );
+    expect(failed).toMatchObject({ ok: true });
+    expect((failed as { digest_button: string }).digest_button).toMatch(
+      /^edit failed: .*not found/
+    );
+    expect(rows.get("2026-10-02")?.short_id_vi).toBe("B3vKYiV7rOw");
+  });
+
+  it("edits the digest again when the video is posted to the channel", async () => {
+    const { env } = makeEnv(
+      { TELEGRAM_BOT_TOKEN: "tok", TELEGRAM_VI_CHAT_ID: "-100vi" },
+      sentDigest
+    );
+    await setDayVideo(
+      env,
+      "2026-10-02",
+      { lang: "vi", video: "fStNAQhJo3M" },
+      null
+    );
+    const calls = stubFetch();
+    const result = await sendDayVideoTelegram(env, "2026-10-02", {
+      lang: "vi",
+    });
+    expect(result).toMatchObject({ ok: true, digest_button: "updated" });
+    expect(calls.map((call) => call.url.split("/").pop())).toEqual([
+      "sendPhoto",
+      "editMessageReplyMarkup",
+    ]);
   });
 });

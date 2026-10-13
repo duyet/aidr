@@ -1,6 +1,6 @@
 import { Badge, Button } from "@aidr/ui";
-import { trackChannelClick } from "@aidr/ui/track";
 import { Flame, Languages, Newspaper, Send, ShieldCheck } from "lucide-react";
+import { track } from "../../lib/analytics/track";
 import {
   TELEGRAM_EN_HANDLE,
   TELEGRAM_EN_URL,
@@ -39,14 +39,12 @@ const CHANNELS = [
     channel: "vi",
     url: TELEGRAM_URL,
     handle: TELEGRAM_HANDLE,
-    track: "telegram",
     label: { en: "Vietnamese", vi: "Tiếng Việt" },
   },
   {
     channel: "en",
     url: TELEGRAM_EN_URL,
     handle: TELEGRAM_EN_HANDLE,
-    track: "telegram-en",
     label: { en: "English", vi: "Tiếng Anh" },
   },
 ] as const;
@@ -98,7 +96,11 @@ export function TelegramChannel({ lang }: { lang: Lang }) {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() =>
-                      trackChannelClick("telegram", { to: c.track })
+                      track("channel_click", {
+                        channel: "telegram",
+                        placement: "subscribe_page",
+                        lang: c.channel,
+                      })
                     }
                   >
                     <Send className="mr-2 size-5" aria-hidden />

@@ -8,7 +8,6 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { track } from "@aidr/ui/track";
 import {
   cleanup,
   fireEvent,
@@ -17,6 +16,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { track } from "../../lib/analytics/track";
 import { INTRO_VIDEO_COPY, introVideoEmbedUrl } from "../../lib/intro-video";
 import type { Lang } from "../../lib/types";
 import { IntroVideoButton } from "./IntroVideo";
@@ -30,10 +30,7 @@ vi.mock("../../lib/intro-video", async (importOriginal) => ({
   },
 }));
 
-vi.mock("@aidr/ui/track", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@aidr/ui/track")>()),
-  track: vi.fn(),
-}));
+vi.mock("../../lib/analytics/track", () => ({ track: vi.fn() }));
 
 // The test asserts the iframe's attributes; it must not fetch the embed.
 // happy-dom logs each skipped load to stderr; that noise is expected.
@@ -98,7 +95,7 @@ describe("IntroVideoButton", () => {
     );
     expect(iframe?.parentElement?.className).toContain("aspect-video");
     expect(track).toHaveBeenCalledExactlyOnceWith("intro_video_open", {
-      from: "header",
+      placement: "header",
     });
 
     // The dialog is the bare player: the title names it for screen readers

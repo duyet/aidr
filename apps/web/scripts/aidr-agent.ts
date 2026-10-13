@@ -347,10 +347,11 @@ async function dayVideo(args: Args, date: string | undefined): Promise<void> {
   }
   const result = await api<{
     video: { youtube_id: string | null; short_id: string | null };
+    digest_button: string;
   }>(pathname, { method: "PUT", body, admin: true });
   print(
     result,
-    `day-video ${date}${lang ? ` (${lang})` : ""}: video=${result.video.youtube_id ?? "-"} short=${result.video.short_id ?? "-"} → ${base}/date/${date}`
+    `day-video ${date}${lang ? ` (${lang})` : ""}: video=${result.video.youtube_id ?? "-"} short=${result.video.short_id ?? "-"} → ${base}/date/${date} (digest button: ${result.digest_button})`
   );
 }
 
@@ -364,17 +365,18 @@ async function dayVideoTelegram(
   if (lang !== "en" && lang !== "vi") fail("--lang en|vi is required");
   const chat = args.flags.get("chat");
   if (chat === true) fail("--chat needs a value");
-  const result = await api<{ chat_id: string; message_id: string }>(
-    `/api/admin/day-videos/${encodeURIComponent(date)}/telegram`,
-    {
-      method: "POST",
-      body: { lang, ...(chat ? { chat_id: chat } : {}) },
-      admin: true,
-    }
-  );
+  const result = await api<{
+    chat_id: string;
+    message_id: string;
+    digest_button?: string;
+  }>(`/api/admin/day-videos/${encodeURIComponent(date)}/telegram`, {
+    method: "POST",
+    body: { lang, ...(chat ? { chat_id: chat } : {}) },
+    admin: true,
+  });
   print(
     result,
-    `day-video-telegram ${date} (${lang}): message ${result.message_id} in chat ${result.chat_id}`
+    `day-video-telegram ${date} (${lang}): message ${result.message_id} in chat ${result.chat_id}${result.digest_button ? ` (digest button: ${result.digest_button})` : ""}`
   );
 }
 

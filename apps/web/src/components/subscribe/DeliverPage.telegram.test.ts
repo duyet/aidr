@@ -33,16 +33,11 @@ describe("telegram tab preview", () => {
     expect(channelSrc).toContain("TELEGRAM_FEATURES");
   });
 
-  it("offers both channels, each tracked under its own name", () => {
+  it("offers both channels", () => {
     expect(channelSrc).toContain("TELEGRAM_URL");
     expect(channelSrc).toContain("TELEGRAM_EN_URL");
     expect(channelSrc).toContain("TELEGRAM_HANDLE");
     expect(channelSrc).toContain("TELEGRAM_EN_HANDLE");
-    expect(channelSrc).toContain('track: "telegram"');
-    expect(channelSrc).toContain('track: "telegram-en"');
-    expect(channelSrc).toContain(
-      'trackChannelClick("telegram", { to: c.track })'
-    );
   });
 
   it("keeps the preview copy inside the existing en/vi pattern", () => {

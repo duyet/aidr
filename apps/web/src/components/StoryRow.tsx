@@ -1,7 +1,8 @@
-import { track } from "@aidr/ui/track";
 import { ChevronDown, TrendingUp } from "lucide-react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { pageType } from "../lib/analytics/landing";
+import { track } from "../lib/analytics/track";
 import {
   ARTICLE_TITLE_TAG,
   FEED_TITLE_TAG,
@@ -195,11 +196,14 @@ export function StoryRow({
     ) {
       loadDetail(lang);
     }
-    setExpanded((v) => {
-      const next = !v;
-      track(next ? "story_expand" : "story_collapse", { item_id: item.id });
-      return next;
-    });
+    setExpanded(!expanded);
+    if (!expanded) {
+      track("story_view", {
+        item_id: item.id,
+        via: "row",
+        page_type: pageType(window.location.pathname),
+      });
+    }
   };
 
   // Plain primary click on the title toggles the row in place; modified
@@ -298,7 +302,7 @@ export function StoryRow({
               rel="noopener noreferrer"
               onClick={(e) => {
                 e.stopPropagation();
-                track("story_open", { item_id: item.id });
+                track("source_click", { item_id: item.id, placement: "row" });
               }}
               className="ml-1 text-xs font-normal text-muted-foreground hover:text-foreground"
               aria-label={lang === "vi" ? "Mở bài gốc" : "Open original"}

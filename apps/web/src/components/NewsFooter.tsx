@@ -1,6 +1,6 @@
-import { track, trackChannelClick } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { track } from "../lib/analytics/track";
 import {
   fetchFeedFreshnessOnce,
   getCachedFeedFreshness,
@@ -88,7 +88,9 @@ export function NewsFooter() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  onClick={() => track("nav_click", { to: link.to })}
+                  onClick={() =>
+                    track("nav_click", { to: link.to, placement: "footer" })
+                  }
                   className={`block ${linkClass}`}
                 >
                   {link.label}
@@ -103,7 +105,10 @@ export function NewsFooter() {
                 to={EXTENSION_PATH}
                 search={{ lang: navigationLang }}
                 onClick={() =>
-                  trackChannelClick("chrome", { to: EXTENSION_PATH })
+                  track("channel_click", {
+                    channel: "extension",
+                    placement: "footer",
+                  })
                 }
                 className={`block ${linkClass}`}
                 title="Get AI;DR"
@@ -116,7 +121,11 @@ export function NewsFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() =>
-                  trackChannelClick("telegram", { to: "telegram" })
+                  track("channel_click", {
+                    channel: "telegram",
+                    placement: "footer",
+                    lang: "vi",
+                  })
                 }
                 className={`block ${linkClass}`}
               >
@@ -126,7 +135,9 @@ export function NewsFooter() {
                 href={GITHUB_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "github" })}
+                onClick={() =>
+                  track("nav_click", { to: "github", placement: "footer" })
+                }
                 className={`block ${linkClass}`}
               >
                 GitHub
@@ -140,7 +151,9 @@ export function NewsFooter() {
                 href={DUYET_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "duyet.net" })}
+                onClick={() =>
+                  track("nav_click", { to: "duyet.net", placement: "footer" })
+                }
                 className={`block ${linkClass}`}
               >
                 duyet.net
@@ -152,7 +165,12 @@ export function NewsFooter() {
                 href={ANYROUTER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => track("nav_click", { to: "anyrouter.dev" })}
+                onClick={() =>
+                  track("nav_click", {
+                    to: "anyrouter.dev",
+                    placement: "footer",
+                  })
+                }
                 className={`block ${linkClass}`}
                 title="LLM gateway behind AI;DR"
               >
@@ -174,7 +192,12 @@ export function NewsFooter() {
                       ? { tab: "runs", run: latestRun.id }
                       : { tab: "runs" }
                   }
-                  onClick={() => track("nav_click", { to: "/data?tab=runs" })}
+                  onClick={() =>
+                    track("nav_click", {
+                      to: "/data?tab=runs",
+                      placement: "footer",
+                    })
+                  }
                   className="inline-flex items-center gap-1.5 underline-offset-2 hover:text-foreground hover:underline"
                   title={
                     runHealth ? RUN_HEALTH_LABEL[runHealth] : "Pipeline runs"

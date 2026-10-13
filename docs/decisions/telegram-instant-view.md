@@ -389,6 +389,14 @@ gate approves, so the channel post and the link preview agree.
 > longer occupies an album slot, and on the image path the post image is no
 > longer the gate-approved card — so the "post and link preview agree" claim
 > above now holds only when the post falls back to the card.
+>
+> **Superseded in part (digest).** The digest no longer disables its preview.
+> It is one `sendMessage` whose `link_preview_options` point at the versioned
+> day card PNG (`/api/og/date/{date}.png?lang=&v=`) with `prefer_large_media`
+> and `show_above_text`, so the card shows large above the six story lines.
+> The card URL is not in the text; the Bot API uses `url` as given. Story
+> posts still set `is_disabled`. See `digestLinkPreview` in
+> `worker/notify/telegram.ts`.
 
 Neither change touches `lang` as a delivery identity: the digest key is still
 `digest:<local-date>`, a trending post is still keyed by the story id, and

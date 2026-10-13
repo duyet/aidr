@@ -4,7 +4,7 @@
  *
  * Why this exists: issue #229 measured a 2,420 ms LCP element render delay
  * with 1,648 ms of total blocking time, and the third-party analytics
- * bootstraps in Analytics.tsx were a big part of it. They are all injected
+ * bootstraps in vendors.tsx were a big part of it. They are all injected
  * from a plain `useEffect`, which React runs during the commit phase — the
  * same main thread the paint the visitor is waiting for needs. Nothing they
  * do affects first paint.

@@ -63,21 +63,6 @@ export function pickDayCardItems<T extends { image_url?: string | null }>(
   return ordered.slice(0, dayCardTileCount(ranked.length));
 }
 
-/** Ranked stories the caption and the OG card both consider. The lead
- *  grid is six; whatever is left in this window is the follow-up. */
+/** Ranked stories the digest and the OG card both pick the grid from, so a
+ *  story with a photo a little lower down can still take a tile. */
 export const DAY_CARD_CANDIDATES = 18;
-
-/**
- * Lead grid, then the next highlights that did not fit on it.
- * The follow-up is a second card only when it fills a 2×2. A thinner
- * tail is listed as text so the channel does not get a one-tile image.
- */
-export function splitDayHighlights<T extends { image_url?: string | null }>(
-  ranked: readonly T[]
-): { lead: T[]; more: T[]; moreIsCard: boolean } {
-  const lead = pickDayCardItems(ranked);
-  const used = new Set(lead);
-  const rest = ranked.filter((item) => !used.has(item));
-  const more = pickDayCardItems(rest);
-  return { lead, more, moreIsCard: more.length >= 4 };
-}
