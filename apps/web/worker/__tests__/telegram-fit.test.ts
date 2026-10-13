@@ -338,3 +338,56 @@ describe("captionSummaryFor", () => {
     expect(completeJson).not.toHaveBeenCalled();
   });
 });
+
+describe("story caption never restates its headline", () => {
+  // Real Techmeme-style post (2026-10-13): the summary is the headline minus
+  // the outlet, so the channel showed the same sentence twice.
+  const nvidia = story({
+    title:
+      "IDC: Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026, as its market share slid to 34% amid US export curbs and rising domestic competition (Reuters)",
+    summary:
+      "Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026, as its market share slid to 34% amid US export curbs and rising domestic competition.",
+    category: "Chips",
+  });
+
+  it("drops a summary that only repeats the headline", () => {
+    const caption = visible(buildStoryCaption(nvidia));
+    expect(caption.split("\n\n")).toEqual([
+      `🔥 ${nvidia.title}`,
+      "#Chips  ·  ▲ 2",
+    ]);
+  });
+
+  it("drops the restating lead and keeps the sentences that add facts", () => {
+    const s = story({
+      title:
+        "Nvidia đàm phán mua lại startup mô hình 'mở' Reflection AI tại Mỹ",
+      summary:
+        "Nvidia đang đàm phán để mua lại Reflection AI, một startup chuyên về mô hình 'mở' tại Mỹ. Thương vụ có thể trị giá 25 tỷ USD.",
+      lang: "vi",
+    });
+    const caption = visible(buildStoryCaption(s));
+    expect(caption).not.toContain("Nvidia đang đàm phán");
+    expect(caption).toContain("Thương vụ có thể trị giá 25 tỷ USD.");
+  });
+
+  it("keeps a lead that echoes the headline but carries a new number", () => {
+    const s = story({
+      title:
+        "IDC: lượng chip AI của Nvidia xuất sang Trung Quốc giảm 44% YoY trong H1 2026",
+      summary:
+        "Theo IDC, lượng chip AI của Nvidia xuất sang Trung Quốc trong H1 2026 đã giảm 44% YoY xuống còn 678.000 đơn vị. Thị phần của hãng trượt xuống 34%.",
+      lang: "vi",
+    });
+    expect(visible(buildStoryCaption(s))).toContain("678.000 đơn vị");
+  });
+
+  it("keeps a lead that names a short product headline and describes it", () => {
+    const s = story({
+      title: "Claude Haiku 5.5",
+      summary:
+        "Claude Haiku 5.5 is the fastest small model, built for summarization, subagents and browser use.",
+    });
+    expect(visible(buildStoryCaption(s))).toContain("built for summarization");
+  });
+});
