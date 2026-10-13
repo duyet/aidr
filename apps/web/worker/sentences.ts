@@ -52,13 +52,17 @@ const ENDS_BEFORE_CAPITAL = new Set([
   "Inc",
   "Corp",
   "Co",
+  "Cos",
+  "Bros",
+  "Assn",
   "Ltd",
   "etc",
   "approx",
 ]);
 
 /** "U.S." and "Ph.D.": a period after a single capital at a word start, or
- *  after another initial, is not the end of a sentence. */
+ *  after another initial, is not the end of a sentence. This also keeps
+ *  "Plan B. It" and "GTA V. Odyssey" whole, which fit-text always did. */
 function isInitialismPeriod(value: string, index: number): boolean {
   const prev = value[index - 1];
   if (!prev || !/^[A-Z]$/.test(prev)) return false;
@@ -66,16 +70,43 @@ function isInitialismPeriod(value: string, index: number): boolean {
   return before === undefined || before === "." || /\s/.test(before);
 }
 
-function isAbbreviationPeriod(value: string, index: number, end: number) {
-  const word = /([A-Za-z][A-Za-z.]*)$/.exec(value.slice(0, index))?.[1];
-  if (!word) return false;
-  if (NEVER_ENDS.has(word)) return true;
-  if (!ENDS_BEFORE_CAPITAL.has(word)) return false;
-  const next = /\S/.exec(value.slice(end))?.[0];
-  return next !== undefined && !/\p{Lu}/u.test(next);
+/** No listed abbreviation is longer than this. */
+const MAX_ABBREVIATION = 16;
+
+const WORD_CHAR = /[A-Za-z.]/;
+
+/** The letters and dots right before `index`, or undefined when the run is
+ *  too long to be a listed abbreviation. Reads at most MAX_ABBREVIATION
+ *  characters, so the scan never grows with the text. */
+function wordBefore(value: string, index: number): string | undefined {
+  const floor = Math.max(0, index - MAX_ABBREVIATION);
+  let start = index;
+  while (start > floor && WORD_CHAR.test(value[start - 1] ?? "")) start--;
+  if (start === floor && start > 0 && WORD_CHAR.test(value[start - 1] ?? "")) {
+    return undefined;
+  }
+  return value.slice(start, index).replace(/^\.+/, "") || undefined;
 }
 
-/** Index just past each sentence end. */
+/** A sentence starts with a capital, a digit, or an opening quote or bracket.
+ *  Anything else after the mark ("using the", "dẫn dắt") continues it. */
+const SENTENCE_START = /[\p{Lu}\p{Nd}"'“‘«([{]/u;
+
+function isAbbreviationPeriod(
+  value: string,
+  index: number,
+  next: string | undefined
+) {
+  const word = wordBefore(value, index);
+  if (!word) return false;
+  if (NEVER_ENDS.has(word)) return true;
+  return (
+    ENDS_BEFORE_CAPITAL.has(word) &&
+    (next === undefined || !/\p{Lu}/u.test(next))
+  );
+}
+
+/** Index just past each sentence end, in one pass. */
 export function sentenceEnds(value: string): number[] {
   const ends: number[] = [];
   for (let i = 0; i < value.length; i++) {
@@ -83,9 +114,13 @@ export function sentenceEnds(value: string): number[] {
     let end = i + 1;
     while (end < value.length && CLOSERS.test(value[end] ?? "")) end++;
     if (end < value.length && !/\s/.test(value[end] ?? "")) continue;
+    let nextAt = end;
+    while (nextAt < value.length && /\s/.test(value[nextAt] ?? "")) nextAt++;
+    const next = value[nextAt];
+    if (next !== undefined && !SENTENCE_START.test(next)) continue;
     if (
       value[i] === "." &&
-      (isInitialismPeriod(value, i) || isAbbreviationPeriod(value, i, end))
+      (isInitialismPeriod(value, i) || isAbbreviationPeriod(value, i, next))
     ) {
       continue;
     }
@@ -114,11 +149,16 @@ export function firstSentence(value: string): string {
   return splitSentences(value.replace(/\s+/g, " "))[0] ?? "";
 }
 
-/** Index just past the last sentence end at or before `max`, or -1. Decided
- *  on the whole text, so a cut right after "Oct." is not mistaken for an end. */
+/** How far past `max` a mark can sit and still be decided right: enough for
+ *  the closers and the next word's first character. */
+const LOOKAHEAD = 32;
+
+/** Index just past the last sentence end at or before `max`, or -1. Reads only
+ *  the window up to `max` plus a lookahead, so a cut right after "Oct." is not
+ *  mistaken for an end and a long text costs no more than the clip. */
 export function lastSentenceEnd(value: string, max: number): number {
   let best = -1;
-  for (const end of sentenceEnds(value)) {
+  for (const end of sentenceEnds(value.slice(0, max + LOOKAHEAD))) {
     if (end > max) break;
     best = end;
   }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   firstSentence,
   lastSentenceEnd,
+  sentenceEnds,
   splitSentences,
 } from "../sentences.js";
 import { clipFeedSummary } from "../sources/rss.js";
@@ -119,5 +120,65 @@ describe("clipping at a sentence end", () => {
     const text = `${head}. Shares rose on Oct. 12 after the report and kept rising for days to come, analysts said.`;
     const clipped = clipFeedSummary(text);
     expect(clipped).toBe(`${head}.`);
+  });
+});
+
+describe("a sentence ends only before a capital, digit or opening quote", () => {
+  it.each([
+    "Albertsons Cos. is using ChatGPT Enterprise across stores.",
+    'Critics shouted "Cease and desist!" using the Grok AI tool.',
+    "Hawley (R-Mo.) dẫn dắt nhóm nghị sĩ.",
+    "Will it ship? and includes a link to the docs.",
+    "Lagging behind… mostly.",
+  ])("does not cut before lowercase: %s", (text) => {
+    expect(splitSentences(text)).toEqual([text]);
+  });
+
+  it("still splits before a capital, a digit and an opening quote", () => {
+    expect(
+      splitSentences('It ships. "Quoted" next. 2026 follows. Đây là.')
+    ).toEqual(["It ships.", '"Quoted" next.', "2026 follows.", "Đây là."]);
+  });
+
+  it("treats Cos and Bros as company forms", () => {
+    expect(splitSentences("Sold by Warner Bros. The deal closed.")).toEqual([
+      "Sold by Warner Bros.",
+      "The deal closed.",
+    ]);
+  });
+});
+
+describe("a lone capital before a period is an initial", () => {
+  it.each([
+    "Plan B. It covers the gap.",
+    "GTA V. Odyssey claims a record.",
+    "Shares of Class A. The proceeds fund growth.",
+  ])("accepted tradeoff, not a boundary: %s", (text) => {
+    expect(splitSentences(text)).toEqual([text]);
+  });
+});
+
+describe("scan cost", () => {
+  const text = "Mr. Smith met Dr. Jones on Oct. 12. It ended. ".repeat(11_000);
+
+  it("splits 500 KB of text in under 200 ms", () => {
+    expect(text.length).toBeGreaterThan(500_000);
+    const start = performance.now();
+    const parts = splitSentences(text);
+    const elapsed = performance.now() - start;
+    expect(parts.length).toBeGreaterThan(10_000);
+    expect(elapsed).toBeLessThan(200);
+  });
+
+  it("clipFeedSummary on 500 KB reads only the clip window", () => {
+    const start = performance.now();
+    clipFeedSummary(text);
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+
+  it("a dot-heavy run stays linear", () => {
+    const start = performance.now();
+    sentenceEnds("a.".repeat(250_000));
+    expect(performance.now() - start).toBeLessThan(200);
   });
 });
