@@ -125,6 +125,7 @@ jobs:
         run: node scripts/auto-script.mjs --date "${{ steps.date.outputs.date }}"
 
       - name: Render
+        id: render
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps render --render-published
 
       - name: Gate
@@ -175,21 +176,23 @@ jobs:
       # renders one 1080p 16:9. Then YouTube (Vietnamese title and description,
       # English audio) and the Vietnamese day page, unless the Vietnamese-voice
       # cut is that page's video, and the Vietnamese channel; no Facebook. Runs
-      # after every English post; a failure here fails the job at the end and
-      # nothing else. A failed upload still lets the Telegram post go out, its
-      # button linking the English video.
+      # after the English posts and needs only the English render, so a failed
+      # English post does not stop it (`!cancelled()`); a failure here fails the
+      # job at the end and nothing else. A failed upload still lets the Telegram
+      # post go out, its button linking the English video when there is one.
       - name: Vietnamese subtitles cut
         id: visub
+        if: ${{ !cancelled() && steps.render.outcome == 'success' }}
         continue-on-error: true
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps render,gate --render-published
 
       - name: Vietnamese subtitles posting plan (dry run)
-        if: env.LIVE != 'true' && steps.visub.outcome == 'success'
+        if: ${{ !cancelled() && env.LIVE != 'true' && steps.visub.outcome == 'success' }}
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps upload,attach,telegram --uploader api --prod --dry-run
 
       - name: YouTube upload + day page (Vietnamese subtitles)
         id: visub_youtube
-        if: env.LIVE == 'true' && steps.visub.outcome == 'success'
+        if: ${{ !cancelled() && env.LIVE == 'true' && steps.visub.outcome == 'success' }}
         continue-on-error: true
         run: |
           if [ -z "$YOUTUBE_REFRESH_TOKEN" ] || [ -z "$YOUTUBE_CLIENT_ID" ] || [ -z "$YOUTUBE_CLIENT_SECRET" ]; then
@@ -200,7 +203,7 @@ jobs:
 
       - name: Telegram (Vietnamese subtitles)
         id: visub_telegram
-        if: env.LIVE == 'true' && steps.check.outputs.hand != 'true' && steps.visub.outcome == 'success'
+        if: ${{ !cancelled() && env.LIVE == 'true' && steps.check.outputs.hand != 'true' && steps.visub.outcome == 'success' }}
         continue-on-error: true
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps telegram --prod
 
