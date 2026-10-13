@@ -463,6 +463,12 @@ candidates. HTML entities in media URLs (including double-escaped `&amp;`
 in query strings) are decoded before storage, so thumbs are real article
 images rather than a broken-src fallback.
 
+- **arXiv has no og:image.** When an item is an `arxiv.org/abs/<id>` page
+  and the merged manifest still has no image, enrich fetches
+  `arxiv.org/html/<id>` (same safe fetch, timeout, and a 400 KB read cap)
+  and takes the first `<img>` whose `src` starts with `<id>v<n>/`, resolved
+  against the final URL. A paper without an HTML version stays imageless.
+
 - **Media identity is the URL, not the content.** Duplicates are found by
   `mediaIdentityKey` and collapse to one asset, in one manifest, across
   sources, and when a cluster merges (`mergeMediaManifests`). Rules: http and
@@ -476,6 +482,11 @@ images rather than a broken-src fallback.
   The story dialog applies the same keys to stored manifests, so no asset
   renders twice. No media is downloaded or hashed: two different URLs that
   serve the same bytes (a mirror, a renamed copy) stay two assets.
+- **Avatars are not story images.** `isGenericImageUrl` rejects a
+  filename that is a logo/icon/avatar/placeholder, any `avatar`, `avatars`,
+  or `profile_images` directory before the filename, and `pbs.twimg.com`
+  `/profile_images/` and `/profile_banners/` paths. `pbs.twimg.com/media/…`
+  tweet photos stay.
 - **Generated share cards are a fallback only.** An image whose path is an
   OG generator (`/og/…`, `/api/og`, `og-image`/`og-card` file names, see
   `isGeneratedOgCard`) is dropped from a manifest, including merged
@@ -1227,8 +1238,9 @@ deliberately non-spammy.
   (JPEG, at most 200 KB, at most 320 px) only when it is about to be used as
   a `sendVideo` thumbnail; a poster that fails is left out and the video
   still goes. Gallery photos (`sendPhoto`, album photos) are not
-  preflighted: Telegram fetches them, and if it rejects one the post falls
-  back to the generated card, then text.
+  preflighted: Telegram fetches them, and if it rejects one the post tries
+  the next gallery image (at most 3 photos, in order), then the generated
+  card, then text.
 - **Ambiguous sends are never repeated.** Only a JSON answer from Telegram
   is a definite outcome. `ok: false` posted nothing, so the next transport
   may run and the row is `failed` (retried up to 3 attempts). A timeout, a
@@ -1244,10 +1256,13 @@ deliberately non-spammy.
 - **Media order: story image first, generated card as fallback.** The post
   leads with the story's real photo. The first-party OG card
   `/api/og/{id8}.png?lang=` is used when the story has no usable image, and
-  as a one-shot retry when Telegram rejects the image (hotlink-hostile or
-  dead upstream URLs) — it is 200 by construction, so the post keeps its
+  as a one-shot retry when Telegram rejects the first 3 gallery images
+  (hotlink-hostile or dead upstream URLs) — it is 200 by construction, so the post keeps its
   image instead of dropping to bare text. The card no longer occupies an
   album slot.
+  The card itself (`/api/og/{id8}.png`) tries the thumbnail, then the other
+  manifest images (deduped, at most 3 candidates in all), and renders
+  the branded fallback only when every one fails to fetch.
 - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
   is `en`. Digest bullets come from that language's edition
   (`worker/digest/edition.ts`) and never from the other column. Trending
