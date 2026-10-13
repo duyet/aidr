@@ -3,11 +3,16 @@ import { preflight, withCors } from "../../../worker/subscribe/cors.js";
 import {
   getPrefsByToken,
   isSubscribeError,
+  type Schedule,
   subscribe,
   unsubscribe,
   updatePrefsByToken,
 } from "../../../worker/subscribe/handlers.js";
 import type { Env } from "../../../worker/types.js";
+
+async function resolveWaitUntil(): Promise<Schedule> {
+  return (await import("cloudflare:workers")).waitUntil;
+}
 
 async function resolveEnv(context: any): Promise<Env | undefined> {
   let env: any =
@@ -138,7 +143,8 @@ export const Route = createFileRoute("/api/subscribe")({
           body?.digest_size,
           body?.mail_format,
           body?.frequency,
-          body?.weekly_day
+          body?.weekly_day,
+          await resolveWaitUntil()
         );
         if (isSubscribeError(result)) {
           return withCors(

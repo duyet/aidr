@@ -1,4 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const scheduled = vi.hoisted(() => [] as Promise<unknown>[]);
+vi.mock("cloudflare:workers", () => ({
+  env: {},
+  waitUntil: (job: Promise<unknown>) => {
+    scheduled.push(job);
+  },
+}));
+
 import { renderEditionEmail } from "../../worker/subscribe/send";
 import { Route as SubscribeRoute } from "./api/subscribe";
 import { Route as ConfirmRoute } from "./api/subscribe.confirm";
@@ -72,6 +81,13 @@ describe("POST /api/subscribe", () => {
     expect(insert?.sql).toContain("VALUES (?, ?, ?, ?, 0,");
     // Re-submitting the form must never un-confirm an existing reader.
     expect(insert?.sql).not.toMatch(/confirmed\s*=/);
+  });
+
+  it("keeps the confirmation mail alive through the request's waitUntil", async () => {
+    scheduled.length = 0;
+    await post({ email: "reader@aidr.today" });
+    expect(scheduled).toHaveLength(1);
+    await Promise.all(scheduled);
   });
 
   it("rejects reserved domains that can only bounce", async () => {

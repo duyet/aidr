@@ -53,6 +53,8 @@ class SqliteD1 {
   }
 }
 
+const schedule = (job: Promise<unknown>) => void job;
+
 const EMAIL = "reader@aidr-test.dev";
 
 let sqlite: DatabaseSync;
@@ -116,7 +118,10 @@ describe("subscribe with an already-confirmed address (#534)", () => {
       "home",
       null,
       10,
-      "text"
+      "text",
+      undefined,
+      undefined,
+      schedule
     );
     expect(result).toEqual({ ok: true, pending: true });
     expect(settings()).toEqual(before);
@@ -129,7 +134,8 @@ describe("subscribe with an already-confirmed address (#534)", () => {
     const confirmed = await confirmSubscription(
       env,
       link.searchParams.get("token"),
-      settingsChangeFromParams(link.searchParams)
+      settingsChangeFromParams(link.searchParams),
+      schedule
     );
     expect(confirmed).toEqual({ ok: true, token: "tok-confirmed" });
     expect(settings()).toEqual({
@@ -142,8 +148,32 @@ describe("subscribe with an already-confirmed address (#534)", () => {
   });
 
   it("answers exactly as it does for a new address", async () => {
-    const forConfirmed = await subscribe(env, EMAIL, "en");
-    const forNew = await subscribe(env, "new@aidr-test.dev", "en");
+    const forConfirmed = await subscribe(
+      env,
+      EMAIL,
+      "en",
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      schedule
+    );
+    const forNew = await subscribe(
+      env,
+      "new@aidr-test.dev",
+      "en",
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      schedule
+    );
     expect(forConfirmed).toEqual(forNew);
   });
 
@@ -156,7 +186,10 @@ describe("subscribe with an already-confirmed address (#534)", () => {
       "home",
       null,
       3,
-      "text"
+      "text",
+      undefined,
+      undefined,
+      schedule
     );
     expect(
       sqlite
@@ -175,5 +208,72 @@ describe("subscribe with an already-confirmed address (#534)", () => {
     expect(settingsChangeFromParams(lastConfirmLink().searchParams)).toBe(
       undefined
     );
+  });
+});
+
+describe("subscription mails outlive the response (#626)", () => {
+  let jobs: Promise<unknown>[];
+  const collect = (job: Promise<unknown>) => {
+    jobs.push(job);
+  };
+  const failSends = () => {
+    (env.EMAIL as unknown as { send: () => Promise<never> }).send =
+      async () => {
+        throw new Error("EMAIL down");
+      };
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  };
+  const subscribeNew = (address: string) =>
+    subscribe(
+      env,
+      address,
+      "en",
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      collect
+    );
+
+  beforeEach(() => {
+    jobs = [];
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("hands the settings-change mail to waitUntil, and a failed send does not fail the response", async () => {
+    failSends();
+    const result = await subscribeNew(EMAIL);
+    expect(result).toEqual({ ok: true, pending: true });
+    expect(jobs).toHaveLength(1);
+    await expect(Promise.all(jobs)).resolves.toBeDefined();
+  });
+
+  it("hands the confirmation mail to waitUntil, and a failed send does not fail the response", async () => {
+    failSends();
+    const result = await subscribeNew("new@aidr-test.dev");
+    expect(result).toEqual({ ok: true, pending: true });
+    expect(jobs).toHaveLength(1);
+    await expect(Promise.all(jobs)).resolves.toBeDefined();
+  });
+
+  it("hands the welcome mail and the owner notification to waitUntil, and failures do not fail the confirmation", async () => {
+    sqlite
+      .prepare("UPDATE subscribers SET confirmed = 0 WHERE email = ?")
+      .run(EMAIL);
+    failSends();
+    const result = await confirmSubscription(
+      env,
+      "tok-confirmed",
+      undefined,
+      collect
+    );
+    expect(result).toEqual({ ok: true, token: "tok-confirmed" });
+    expect(jobs).toHaveLength(2);
+    await expect(Promise.all(jobs)).resolves.toBeDefined();
   });
 });
