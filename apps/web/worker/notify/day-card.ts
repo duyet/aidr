@@ -41,8 +41,9 @@ export function dayCardVersion(ids: readonly string[]): string {
 }
 
 /** One extra clause after the headline: a whole sentence or nothing. The
- *  digest fitter drops clauses whole when the tiles do not all fit. */
-const HIGHLIGHT_SUMMARY_CAP = 160;
+ *  digest is a 4096-char message, so six lines can each carry a full lead
+ *  sentence; the fitter drops clauses whole when the six do not all fit. */
+const HIGHLIGHT_SUMMARY_CAP = 400;
 
 type HighlightCopy = {
   title: string;
