@@ -3,6 +3,7 @@ import { withLang } from "../../src/lib/locale-url.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
+import { splitSentences } from "../sentences.js";
 import type { Env } from "../types.js";
 import {
   type DailyDigest,
@@ -109,20 +110,6 @@ function oneLine(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-/** Sentences already in the text. A period inside a version or a
- *  decimal stays put because the next word has to look like a new sentence. */
-function sentences(value: string): string[] {
-  const clean = value
-    .replace(/[ \t]*\n+[ \t]*/g, " ")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
-  if (!clean) return [];
-  return clean
-    .split(/(?<=[.!?])\s+(?=[A-Z0-9"“])/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
 /** One paragraph per sentence. Blank lines already in the source stay
  *  as paragraph breaks, and each block is still split into sentences. */
 function asParagraphs(value: string): string[] {
@@ -131,7 +118,7 @@ function asParagraphs(value: string): string[] {
     .split(/\n{2,}/)
     .map((block) => block.trim())
     .filter(Boolean);
-  return blocks.flatMap((block) => sentences(block));
+  return blocks.flatMap((block) => splitSentences(block.replace(/\s+/g, " ")));
 }
 
 /** Join paragraphs. Drop a whole trailing paragraph only if Graph would

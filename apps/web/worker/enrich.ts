@@ -7,6 +7,7 @@ import {
   parseMediaMetadata,
   primaryThumbnailUrl,
 } from "./media.js";
+import { lastSentenceEnd } from "./sentences.js";
 import type { FetchedItem } from "./sources/types.js";
 import { stripSourceBoilerplate } from "./translation-terms.js";
 
@@ -274,12 +275,8 @@ function articleSummary(html: string): string | undefined {
 function clipAtSentence(text: string, max: number): string {
   if (text.length <= max) return text;
   const slice = text.slice(0, max);
-  const boundary = Math.max(
-    slice.lastIndexOf(". "),
-    slice.lastIndexOf("! "),
-    slice.lastIndexOf("? ")
-  );
-  if (boundary > 200) return slice.slice(0, boundary + 1).trim();
+  const boundary = lastSentenceEnd(text, max);
+  if (boundary > 200) return slice.slice(0, boundary).trim();
   const space = slice.lastIndexOf(" ");
   return (space > 200 ? slice.slice(0, space) : slice).trim();
 }

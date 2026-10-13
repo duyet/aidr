@@ -12,9 +12,9 @@ import { getDayArchive } from "../../src/lib/feed-queries.js";
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { FeedItem, Lang } from "../../src/lib/types.js";
+import { firstSentence } from "../sentences.js";
 import { stripEmbeddedChrome } from "../translation-terms.js";
 import type { Env } from "../types.js";
-import { firstSentence } from "./fit-text.js";
 import type { DailyDigest, DigestBullet } from "./types.js";
 
 export interface DayCard {

@@ -11,46 +11,13 @@
  *   3. whole leading words plus "…" (last resort, never mid-word).
  */
 
-const SENTENCE_END = /[.!?…]/;
-const CLOSERS = /["'”’)\]]/;
+import { sentenceEnds } from "../sentences.js";
+
 /** Trailing marks that read badly directly before an ellipsis. */
 const DANGLING = /[\s,;:\-–—([“"']+$/;
 
 export function normalizeSpace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
-}
-
-/** "U.S." and "Ph.D.": a period after a single capital at a word start, or
- *  after another initial, is not the end of a sentence. */
-export function isInitialismPeriod(value: string, index: number): boolean {
-  if (value[index] !== ".") return false;
-  const prev = value[index - 1];
-  if (!prev || !/^[A-Z]$/.test(prev)) return false;
-  const before = value[index - 2];
-  return before === undefined || before === "." || /\s/.test(before);
-}
-
-/** Index just past each sentence end. A mark ends a sentence only when
- *  whitespace (or the end of the text) follows it and any closing quote. */
-function sentenceEnds(value: string): number[] {
-  const ends: number[] = [];
-  for (let i = 0; i < value.length; i++) {
-    if (!SENTENCE_END.test(value[i] ?? "")) continue;
-    if (isInitialismPeriod(value, i)) continue;
-    let end = i + 1;
-    while (end < value.length && CLOSERS.test(value[end] ?? "")) end++;
-    if (end < value.length && !/\s/.test(value[end] ?? "")) continue;
-    ends.push(end);
-  }
-  return ends;
-}
-
-/** The first sentence including its closing mark; the whole text when it
- *  has no sentence end. */
-export function firstSentence(value: string): string {
-  const text = normalizeSpace(value);
-  const end = sentenceEnds(text)[0];
-  return end === undefined ? text : text.slice(0, end).trim();
 }
 
 /** The longest run of whole leading sentences within `budget`, or "". */

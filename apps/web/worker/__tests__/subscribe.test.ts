@@ -438,7 +438,7 @@ describe("digestBulletsWithItems", () => {
   ];
   const bullets = [
     { text: "Bullet A. More.", item_ids: ["a"] },
-    { text: "Bullet B. More.", item_ids: ["b"] },
+    { text: "Bullet beta. More.", item_ids: ["b"] },
   ];
 
   it("joins each bullet to its own item by id, not by position", () => {
@@ -461,7 +461,7 @@ describe("digestBulletsWithItems", () => {
     expect(vi[1]?.headline).toBeUndefined();
     const { html } = buildDigestEmail("2026-08-16", vi, "vi", "tok");
     expect(html).not.toContain("English title B");
-    expect(html).toContain(">Bullet B.</font>");
+    expect(html).toContain(">Bullet beta.</font>");
   });
 });
 
