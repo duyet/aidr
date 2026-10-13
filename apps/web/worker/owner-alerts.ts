@@ -1,4 +1,5 @@
 import { reportPipelineException } from "./bugsink.js";
+import { DAY_VIDEO_ALERT_KEY } from "./day-video-watchdog.js";
 import type { HealthIssue, PriorRun } from "./health.js";
 import { escapeHtml } from "./notify/telegram.js";
 import type { Env } from "./types.js";
@@ -118,6 +119,7 @@ function modelLines(models: ModelStat[]): string[] {
 
 /** Evidence lines for one issue, shared by the DM and the issue body. */
 export function issueEvidence(issue: HealthIssue, ctx: AlertContext): string[] {
+  if (issue.evidence) return issue.evidence;
   if (isLlmIssue(issue)) return modelLines(ctx.models);
   if (issue.key.startsWith("telegram-quiet:")) {
     const channel = issue.key.slice("telegram-quiet:".length);
@@ -132,6 +134,8 @@ function suggestion(issue: HealthIssue): string {
     return "Check the failing model/provider in AnyRouter (status, key, quota) and drop it from the chain if it stays down.";
   if (issue.key.startsWith("telegram-quiet:"))
     return "Check notify reasons on the run page and the bot's rights in the channel.";
+  if (issue.key === DAY_VIDEO_ALERT_KEY)
+    return "Run the rerun command above. Every step checks what is already posted, so it only fills the gaps.";
   if (issue.key === "tldr-failing")
     return "Open the TL;DR step on the run page and check the tldr LLM chain.";
   return "Open the run page and check the failed step's reason.";
@@ -350,8 +354,9 @@ export async function sendOwnerDm(
   }
 }
 
-async function github<T>(
-  token: string,
+/** GitHub REST call. Without a token it reads public data, rate-limited. */
+export async function github<T>(
+  token: string | undefined,
   method: string,
   path: string,
   body?: unknown
@@ -359,7 +364,7 @@ async function github<T>(
   const res = await fetch(`${GITHUB_API}${path}`, {
     method,
     headers: {
-      authorization: `Bearer ${token}`,
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
       accept: "application/vnd.github+json",
       "x-github-api-version": "2022-11-28",
       "user-agent": "aidr-health",

@@ -248,6 +248,16 @@ click-to-play `youtube-nocookie.com` facade.
   `duyet/aidr`. An open issue with the same fingerprint gets a comment at
   most once per 24h instead; max 3 GitHub writes per run. Errors are logged
   and sent to Sentry, never fail the step.
+- Daily video watchdog (`worker/day-video-watchdog.ts`, same step): during
+  20–23h local it confirms the day's English video against each record:
+  `day_videos.youtube_id` and `short_id`, a Page Reel whose caption mentions
+  `aidr.today/date/<date>` (Graph, the Worker's Page token), and a
+  `daily-reel.yml` run of that local date whose `Telegram` step succeeded
+  (GitHub API with `GITHUB_ALERT_TOKEN`, which then also needs Actions:
+  read; unset, it calls GitHub without a token from shared Cloudflare IPs).
+  Anything unconfirmed, a failed lookup included, raises
+  `day-video-missing` once a day, with the rerun command
+  (`gh workflow run daily-reel.yml -f dry_run=false -f date=<date>`).
 - `run()` still upserts at start **before** `pruneLlmCalls` / fetch / LLM.
   Do not wrap `open-run` in `safeStep`.
 - Per-model caps in `worker/llm.ts`: score `SCORE_SLICE_MAX_MS` 70s, TL;DR

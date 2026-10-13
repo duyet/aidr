@@ -32,7 +32,7 @@ import {
  */
 
 const DEFAULT_GRAPH_VERSION = "v26.0";
-const GRAPH_ORIGIN = "https://graph.facebook.com";
+export const GRAPH_ORIGIN = "https://graph.facebook.com";
 /** Graph rejects a feed `message` past this. A normal post never reaches it. */
 const MESSAGE_CAP = 63_206;
 

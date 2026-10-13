@@ -1,5 +1,6 @@
 import { hasFailedStep } from "../src/lib/run-health.js";
 import { reportHealthAlert } from "./bugsink.js";
+import { checkDayVideo, shouldCheckDayVideo } from "./day-video-watchdog.js";
 import { NOT_SELECTED_REASON } from "./ingest/mode.js";
 import { flushLlmCallWrites } from "./llm-call-log.js";
 import type { AlertEvent, AlertSeverity } from "./notify/alert.js";
@@ -56,6 +57,8 @@ export interface HealthIssue {
   severity: AlertSeverity;
   title: string;
   detail: string;
+  /** Lines for the owner DM and the issue body, when the check has them. */
+  evidence?: string[];
 }
 
 export interface PriorRun {
@@ -358,14 +361,19 @@ export async function runHealthCheck(
       readTelegramLastPost(env),
       readLlmCounts(env, input.runId),
     ]);
+    const local = getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE);
     const issues = evaluateHealth({
       nowMs,
-      localHour: getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE).hour,
+      localHour: local.hour,
       steps: input.steps,
       telegramLastPostMs,
       llm,
       history,
     });
+    if (shouldCheckDayVideo(local.hour, history, nowMs)) {
+      const dayVideo = await checkDayVideo(env, local.date, nowMs);
+      if (dayVideo) issues.push(dayVideo);
+    }
     const fresh = applyCooldown(issues, history, nowMs);
     await Promise.all(
       fresh.map((issue) =>
