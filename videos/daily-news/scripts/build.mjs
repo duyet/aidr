@@ -24,6 +24,7 @@ import {
 import { join, resolve } from "node:path";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
 import { formatRange, parseWeek } from "./week.mjs";
+import { gridCss } from "./grid.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 import { spreadWords, subsMismatch } from "./visub.mjs";
 
@@ -350,6 +351,8 @@ const dateline =
     ? `${lang === "vi" ? "Tuần" : "Week of"} ${formatRange(edition.start_date, edition.end_date, UI.locale)}`
     : `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`);
 const byRank = Object.fromEntries(edition.stories.map((s) => [s.rank, s]));
+const firstImage = (s) =>
+  (s.images ?? byRank[s.rank]?.images?.map((im) => im.local) ?? [])[0];
 
 // Wrap *starred* phrases in the yellow marker; default marks the whole headline.
 const marked = (h) =>
@@ -364,16 +367,14 @@ function introHtml() {
     // The summary grid: every story at once, fully drawn on frame 0 (the auto-thumbnail frame).
     const tiles = script.stories
       .map((s) => {
-        const img = (s.images ??
-          byRank[s.rank]?.images?.map((im) => im.local) ??
-          [])[0];
+        const img = firstImage(s);
         const face = img
           ? `<img id="g${s.rank}-img" src="${esc(img)}" alt="" /><div class="tshade"></div>`
           : `<div class="tpaper"><span>${esc(s.paper?.venue ?? byRank[s.rank]?.source ?? "")}</span><b>${esc(s.paper?.title ?? s.kicker)}</b></div>`;
         return `<div class="tile${img ? "" : " noimg"}" data-rank="${s.rank}">${face}<span class="tr">${s.rank}</span><div class="tt"><div class="tk">${esc(s.kicker)}</div><div class="th">${esc(s.headline.replace(/\*/g, ""))}</div></div><span class="tbar"></span></div>`;
       })
       .join("");
-    body = `<div class="ghead"><div class="gdate"><span class="gday">${pad2(DAY)}</span><span class="gmon">${esc(DOW.toUpperCase())}<br/>${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</span></div><div class="gbrand">${logo("")}<span>${esc(UI.daily)}<br/>${esc(UI.topIn(script.stories.length))}</span></div></div><div class="tiles">${tiles}</div><div class="gfoot">${esc(script.intro.title)}</div>`;
+    body = `<div class="ghead"><div class="gdate"><span class="gday">${pad2(DAY)}</span><span class="gmon">${esc(DOW.toUpperCase())}<br/>${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</span></div><div class="gbrand">${logo("")}<span>${esc(UI.daily)}<br/>${esc(UI.topIn(script.stories.length))}</span></div></div><style>${gridCss(script.stories.length)}</style><div class="tiles" data-n="${script.stories.length}">${tiles}</div><div class="gfoot">${esc(script.intro.title)}</div>`;
   } else if (v === "date-slam") {
     body = `<div class="slam"><span class="dow">${esc(DOW.toUpperCase())}</span><span class="day">${pad2(DAY)}</span><span class="mon">${esc(MON.toUpperCase())}</span></div>
       <div class="slam-tail"><div class="title">${esc(script.intro.title)}</div><div class="with">${logo("")}<span>AI;DR ${esc(UI.brief)}</span></div></div>`;
@@ -597,13 +598,24 @@ function buildMix(outFile) {
 }
 
 // ---------------------------------------------------------------- cover still
+// One story gives the cover both its picture and its hook, so they never come from different stories:
+// the thumb story when it has an image, else the first ranked story with one (its kicker as the hook),
+// else the thumb story with its paper card.
+const thumbStory =
+  script.stories.find((s) => s.rank === (script.thumb?.story ?? 1)) ?? script.stories[0];
+const coverStory = firstImage(thumbStory)
+  ? thumbStory
+  : (script.stories.find(firstImage) ?? thumbStory);
+if (coverStory !== thumbStory && !cut.subs)
+  console.warn(
+    `! cover: thumb story ${thumbStory.rank} has no image; the cover uses story ${coverStory.rank} (${coverStory.kicker})`
+  );
+
 function coverHtml(fmt) {
-  const t = script.thumb ?? {};
-  const lead =
-    script.stories.find((s) => s.rank === (t.story ?? 1)) ?? script.stories[0];
-  const img = (lead.images ??
-    byRank[lead.rank]?.images?.map((im) => im.local) ??
-    [])[0];
+  const lead = coverStory;
+  const hook =
+    lead === thumbStory ? (script.thumb?.hook ?? lead.kicker) : lead.kicker;
+  const img = firstImage(lead);
   const list = script.stories
     .slice(0, fmt === "9x16" ? 4 : 3)
     .map((s) => `<li><b>${s.rank}</b>${esc(s.kicker)}</li>`)
@@ -620,7 +632,13 @@ function coverHtml(fmt) {
   .cv li b{font-family:var(--serif);font-weight:600}
   .cv .brand{position:absolute;display:flex;align-items:center;gap:16px;font-weight:800;letter-spacing:.14em;background:var(--ink);color:var(--paper);padding:12px 22px 12px 12px}
   .cv .brand svg{display:block}
-  .f-16x9 .cv .img{right:0;top:0;width:44%;height:100%}
+  .cv .panel{position:absolute;background:var(--soft);display:flex;flex-direction:column;justify-content:center;gap:24px}
+  .cv .panel span{font-weight:800;letter-spacing:.12em;color:#b31b1b}
+  .cv .panel b{font-family:var(--serif);font-weight:500;line-height:1.02;color:var(--ink)}
+  .f-16x9 .cv .img,.f-16x9 .cv .panel{right:0;top:0;width:44%;height:100%}
+  .f-16x9 .cv .panel{padding:0 70px}
+  .f-16x9 .cv .panel span{font-size:28px}
+  .f-16x9 .cv .panel b{font-size:76px}
   .f-16x9 .cv .date{left:70px;top:60px;font-size:330px}
   .f-16x9 .cv .mon{left:84px;top:350px;font-size:48px}
   .f-16x9 .cv .hook{left:70px;top:450px;width:960px;font-size:92px}
@@ -628,7 +646,10 @@ function coverHtml(fmt) {
   .f-16x9 .cv li{padding:6px 0}
   .f-16x9 .cv .brand{right:30px;bottom:30px;font-size:28px}
   .f-16x9 .cv .brand svg{width:56px;height:56px}
-  .f-9x16 .cv .img{left:0;top:0;width:100%;height:36%}
+  .f-9x16 .cv .img,.f-9x16 .cv .panel{left:0;top:0;width:100%;height:36%}
+  .f-9x16 .cv .panel{padding:0 60px}
+  .f-9x16 .cv .panel span{font-size:32px}
+  .f-9x16 .cv .panel b{font-size:80px}
   .f-9x16 .cv .date{left:60px;top:740px;font-size:360px}
   .f-9x16 .cv .mon{left:76px;top:1050px;font-size:52px}
   .f-9x16 .cv .hook{left:60px;top:1150px;width:960px;font-size:96px}
@@ -636,9 +657,9 @@ function coverHtml(fmt) {
   .f-9x16 .cv .brand{left:60px;top:620px;font-size:30px}
   .f-9x16 .cv .brand svg{width:64px;height:64px}`;
   const body = `<div class="clip cv" id="cover" data-start="0" data-duration="1">
-    ${img ? `<img class="img" id="cover-img" src="${esc(img)}" alt="" />` : ""}
+    ${img ? `<img class="img" id="cover-img" src="${esc(img)}" alt="" />` : `<div class="panel"><span>${esc(lead.paper?.venue ?? byRank[lead.rank]?.source ?? "")}</span><b>${esc(lead.paper?.title ?? lead.kicker)}</b></div>`}
     <div class="date">${pad2(DAY)}</div><div class="mon">${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</div>
-    <div class="hook"><span>${esc(t.hook ?? lead.kicker)}</span></div>
+    <div class="hook"><span>${esc(hook)}</span></div>
     <ul>${list}</ul>
     <div class="brand">${logo("")}${esc(UI.daily)}</div></div>
     <script>document.fonts.ready.then(()=>{const h=document.querySelector('.hook');let p=parseFloat(getComputedStyle(h).fontSize);while(h.scrollHeight>p*1.0*3+4&&p>40){p-=2;h.style.fontSize=p+'px'}window.__timelines.main=gsap.timeline({paused:true});});</script>`;

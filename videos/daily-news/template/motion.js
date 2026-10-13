@@ -9,37 +9,56 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 
-  // Shrink a text block until it fits its box (max lines * line-height). Fonts are loaded first.
-  // Clips outside their window are display:none, so the scene is shown while it is measured.
-  function fit(el, maxLines, minPx) {
-    if (!el) return;
+  // Clips outside their window are display:none, so the clip is shown (hidden) while fn measures el.
+  function measured(el, fn) {
     const clip = el.closest("[data-start]");
     const saved = clip.getAttribute("style");
     clip.style.display = "block";
     clip.style.visibility = "hidden";
-    let px = parseFloat(getComputedStyle(el).fontSize);
-    const lh = () => parseFloat(getComputedStyle(el).lineHeight) || px * 1.05;
-    while (el.offsetHeight > lh() * maxLines + 2 && px > minPx) {
-      px -= 2;
-      el.style.fontSize = px + "px";
-    }
+    const out = fn();
     if (saved === null) clip.removeAttribute("style");
     else clip.setAttribute("style", saved);
+    return out;
+  }
+
+  // Shrink a text block until it fits its box (max lines * line-height). Fonts are loaded first.
+  function fit(el, maxLines, minPx) {
+    if (!el) return;
+    measured(el, () => {
+      let px = parseFloat(getComputedStyle(el).fontSize);
+      const lh = () => parseFloat(getComputedStyle(el).lineHeight) || px * 1.05;
+      while (el.offsetHeight > lh() * maxLines + 2 && px > minPx) {
+        px -= 2;
+        el.style.fontSize = px + "px";
+      }
+    });
   }
 
   function fitWidth(el, minPx) {
     if (!el) return;
-    const clip = el.closest("[data-start]");
-    const saved = clip.getAttribute("style");
-    clip.style.display = "block";
-    clip.style.visibility = "hidden";
-    let px = parseFloat(getComputedStyle(el).fontSize);
-    while (el.scrollWidth > el.parentElement.clientWidth && px > minPx) {
-      px -= 1;
-      el.style.fontSize = px + "px";
-    }
-    if (saved === null) clip.removeAttribute("style");
-    else clip.setAttribute("style", saved);
+    measured(el, () => {
+      let px = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > el.parentElement.clientWidth && px > minPx) {
+        px -= 1;
+        el.style.fontSize = px + "px";
+      }
+    });
+  }
+
+  // Shrink a block until it ends a gap above `below`; hide it when even minPx does not clear
+  // (a no-image tile's paper title over its headline, in a short tile).
+  function fitAbove(el, below, gapPx, minPx) {
+    if (!el) return;
+    measured(el, () => {
+      let px = parseFloat(getComputedStyle(el).fontSize);
+      const over = () =>
+        el.getBoundingClientRect().bottom > below.getBoundingClientRect().top - gapPx;
+      while (over() && px > minPx) {
+        px -= 2;
+        el.style.fontSize = px + "px";
+      }
+      if (over()) el.style.display = "none";
+    });
   }
 
   function build() {
@@ -70,6 +89,9 @@
         I.start
       );
       $$(".tile").forEach((tile, i) => {
+        fit($(".th", tile), 3, 20);
+        if (tile.classList.contains("noimg"))
+          fitAbove($(".tpaper b", tile), $(".tt", tile), 16, 22);
         tl.fromTo(
           $(".tbar", tile),
           { scaleX: 0 },
@@ -83,14 +105,19 @@
           I.start
         );
       });
-      // A tile lifts while the intro names its story; the others step back.
+      // A tile lifts while the intro names its story; the others step back. The lift grows a tile by
+      // about 36px whatever its size (1.06 for a six-story tile), so a hero or half-frame tile stays
+      // inside the frame.
       const F = I.focus ?? [];
       F.forEach((f) => {
         const tile = $(`.tile[data-rank="${f.rank}"]`);
         const others = $$(".tile").filter((t) => t !== tile);
+        const lift = measured(tile, () =>
+          Math.min(1.06, 1 + 36 / Math.max(tile.offsetWidth, tile.offsetHeight))
+        );
         tl.to(
           tile,
-          { scale: 1.06, opacity: 1, zIndex: 2, duration: 0.3, ease: LAND },
+          { scale: lift, opacity: 1, zIndex: 2, duration: 0.3, ease: LAND },
           f.at - 0.1
         );
         tl.to(

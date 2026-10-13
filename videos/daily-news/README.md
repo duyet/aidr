@@ -27,6 +27,7 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `scripts/lang.mjs` | yes | The cut's language (`--lang vi`) and its file names |
 | `scripts/cast.mjs` | yes | The voice cast: host keys, seeded host order, the "never twice in a row" check |
 | `scripts/build.mjs` | yes | Timeline, both compositions, audio mix, captions, covers, post copy |
+| `scripts/grid.mjs` | yes | The summary grid's layout per format and story count (1–8): areas, tracks, and the tile type scale, so frame 0 has no empty cell; an odd count gives the lead story a hero tile (with `grid.test.mjs`) |
 | `scripts/render.mjs` | yes | 4K MP4s and cover PNGs |
 | `scripts/publish.mjs` | yes | The one idempotent runner: render → upload → attach → telegram, state in `STATUS.json` |
 | `scripts/auto-script.mjs` | yes | Writes `script.json` without an agent (scheduled run): model via anyrouter, checked, else a template from the bullets; fits the length to the Reel limit |
