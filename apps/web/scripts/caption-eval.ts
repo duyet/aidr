@@ -6,7 +6,8 @@
  * Usage (from apps/web):
  *   pnpm exec tsx scripts/caption-eval.ts fixture --out <file.json> [--limit 30]
  *   pnpm exec tsx scripts/caption-eval.ts run --out <file.json>
- *        [--fixture <file.json>] [--limit N] [--ids id8,id8] [--send <chat id>]
+ *        [--fixture <file.json>] [--limit N] [--ids id8,id8] [--lang en|vi]
+ *        [--send-staging]
  *   pnpm exec tsx scripts/caption-eval.ts summary <run.json>
  *   pnpm exec tsx scripts/caption-eval.ts judge <before.json> <after.json>
  *        [--judge <model>] [--out <file.json>]
@@ -19,9 +20,9 @@
  * (`telegramPreviewNotifier`), so the caption, budget and model rewrite are
  * the Worker's own. The D1 binding is a stub: `notify_summaries` is never
  * read or written. Without `--send`, Telegram calls are intercepted and the
- * caption is recorded instead of posted. With `--send <chat id>` it posts to
- * that chat with TELEGRAM_BOT_TOKEN from the repo-root `.env.local`; use the
- * staging chat only.
+ * caption is recorded instead of posted. With `--send-staging` it posts to
+ * TELEGRAM_STAGING_CHAT_ID with TELEGRAM_BOT_TOKEN, both from the repo-root
+ * `.env.local` (the shell's token can be stale). It never posts elsewhere.
  *
  * `judge` scores two runs blind: each pair is shown to the judge model in
  * both orders, and a caption's score is the mean of the two. Mechanical
@@ -269,9 +270,14 @@ async function run(): Promise<void> {
     readFileSync(arg("--fixture") ?? DEFAULT_FIXTURE, "utf-8")
   );
   const ids = arg("--ids")?.split(",");
+  const lang = arg("--lang");
   const limit = Number(arg("--limit") ?? Infinity);
-  const sendTo = arg("--send");
   const dotenv = readDotEnv();
+  const sendTo = process.argv.includes("--send-staging")
+    ? dotenv.TELEGRAM_STAGING_CHAT_ID
+    : undefined;
+  if (process.argv.includes("--send-staging") && !sendTo)
+    throw new Error("TELEGRAM_STAGING_CHAT_ID missing from .env.local");
   const env: Env = {
     ...benchEnv({}, stubDb()),
     TELEGRAM_BOT_TOKEN: sendTo ? dotenv.TELEGRAM_BOT_TOKEN : "dry-run",
@@ -324,6 +330,7 @@ async function run(): Promise<void> {
   const out: CaptionRecord[] = [];
   const selected = rows
     .filter((r) => !ids || ids.some((id) => r.id.startsWith(id)))
+    .filter((r) => !lang || r.lang === lang)
     .slice(0, limit);
   for (const row of selected) {
     const copy = channelCopy(row, row.lang);
@@ -468,7 +475,10 @@ Caption B:
 """
 ${b}
 """`;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // The judge ids flip between 200 and 404 BYOK on AnyRouter for minutes at
+  // a time, so retries back off instead of giving up a pair.
+  for (let attempt = 0; attempt < 6; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 15_000 * attempt));
     try {
       // A direct call: the Worker's chain sends `temperature`, which the
       // judge models reject, and the judge is not part of the pipeline.
