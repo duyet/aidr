@@ -50,7 +50,9 @@ export function sentences(cues) {
   return out;
 }
 
-/** Split a translated sentence over its cues in proportion to the English cue lengths; every cue gets a word. */
+/** Split a translated sentence over its cues in proportion to the English cue lengths; every cue gets a word.
+ *  A cut within two words of a comma or other clause mark moves to it: Vietnamese words are several
+ *  space-separated syllables, so a blind cut splits words such as "bản | tin". */
 export function splitAcross(vi, enTexts) {
   const words = vi.trim().split(/\s+/).filter(Boolean);
   const n = enTexts.length;
@@ -65,7 +67,13 @@ export function splitAcross(vi, enTexts) {
   for (let k = 0; k < n; k++) {
     acc += weights[k];
     let to = k === n - 1 ? words.length : Math.round((words.length * acc) / total);
-    to = Math.min(Math.max(to, from + 1), words.length - (n - 1 - k));
+    const lo = from + 1;
+    const hi = words.length - (n - 1 - k);
+    to = Math.min(Math.max(to, lo), hi);
+    if (k < n - 1) {
+      const marks = [0, -1, 1, -2, 2].map((d) => to + d).filter((c) => c >= lo && c <= hi && /[,.;:!?]$/.test(words[c - 1]));
+      if (marks.length) to = marks[0];
+    }
     out.push(words.slice(from, to).join(" "));
     from = to;
   }

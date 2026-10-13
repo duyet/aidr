@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { cutFor } from "./lang.mjs";
 import { addRows, needsRender, telegramTodo } from "./status.mjs";
 import { chatFor, telegramPost, youtubeIdFor } from "./telegram-video.mjs";
-import { formatSrt, houseStyle, parseSrt, spreadWords, subsMismatch, translateCues } from "./visub.mjs";
+import { formatSrt, houseStyle, parseSrt, splitAcross, spreadWords, subsMismatch, translateCues } from "./visub.mjs";
 
 // A slice of the 2026-10-13 captions.srt: cue fragments of whole sentences, one with numbers.
 const EN_SRT = `1
@@ -59,6 +59,19 @@ test("subtitles keep every English cue and its exact times, with Vietnamese text
   // The written SRT is the English timing with the Vietnamese text.
   const srt = parseSrt(formatSrt(out.cues.map((c) => ({ start: c.start, end: c.end, text: c.vi }))));
   assert.deepEqual(srt.map((c) => [c.start, c.end]), cues.map((c) => [c.start, c.end]));
+});
+
+test("a cue break moves to a nearby comma instead of splitting a Vietnamese word", () => {
+  const parts = splitAcross("Đây là AI;DR, bản tin AI của bạn cho thứ Ba, ngày 13 tháng 10.", [
+    "This is AI;DR,",
+    "your AI news for",
+    "Tuesday,",
+    "October thirteenth.",
+  ]);
+  assert.equal(parts.length, 4);
+  assert.equal(parts[0], "Đây là AI;DR,");
+  assert.match(parts[2], /thứ Ba,$/);
+  assert.equal(parts.join(" "), "Đây là AI;DR, bản tin AI của bạn cho thứ Ba, ngày 13 tháng 10.");
 });
 
 test("an answer that drops a number or a line goes to the next model; none valid fails loudly", async () => {
