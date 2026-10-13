@@ -15,6 +15,7 @@ import type { Env } from "../types.js";
 import { escapeHtml } from "./alert.js";
 import { digestPage } from "./day-card.js";
 import { fitText, fitWords } from "./fit-text.js";
+import { withoutRestatedHeadline } from "./headline-repeat.js";
 import { captionSummaryFor } from "./story-summary.js";
 import {
   type DailyDigest,
@@ -370,8 +371,10 @@ export function storySummaryBudget(
  *
  *  The summary is `story.caption_summary` (written to fit by
  *  `captionSummaryFor`) when present, else the channel's own summary cut at a
- *  sentence boundary, else at a word boundary. Raw text is cut first and
- *  escaped after, so an entity is never split. */
+ *  sentence boundary, else at a word boundary. Leading clauses that only
+ *  repeat the title and add no fact are dropped first
+ *  (`withoutRestatedHeadline`). Raw text is cut first and escaped
+ *  after, so an entity is never split. */
 export function buildStoryCaption(
   story: StoryPayload,
   reservedVisible = 0
@@ -379,7 +382,10 @@ export function buildStoryCaption(
   const parts = [`<b>🔥 ${escapeHtml(captionTitle(story.title))}</b>`];
   const meta = storyMetaLine(story);
   const summaryCap = storySummaryBudget(story, reservedVisible);
-  const source = story.caption_summary || story.summary;
+  const source = withoutRestatedHeadline(
+    story.title,
+    story.caption_summary || story.summary || ""
+  );
   if (source && summaryCap > 1) {
     const summary = fitText(source, summaryCap);
     if (summary) parts.push(escapeHtml(summary));
