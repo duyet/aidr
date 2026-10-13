@@ -281,6 +281,8 @@
       fit($(".head", sc), S.layout === "stat" ? 2 : vertical ? 3 : 4, 40);
       fitWidth($(".kicker", sc), 22);
       fit($(".stat", sc), 1, 48);
+      // A long (often Vietnamese) paper title would push the abstract out of the card.
+      fit($(".paper .ptitle", sc), vertical ? 3 : 2, 48);
 
       tl.fromTo(
         $(".cam", sc),
