@@ -22,7 +22,7 @@ describe("resolveMeasurementId", () => {
 });
 
 describe("sanitizeTrackParams", () => {
-  it("always sets surface web and drops PII keys", () => {
+  it("defaults surface to web and drops PII keys", () => {
     expect(
       sanitizeTrackParams({
         query_len: 4,
@@ -38,6 +38,13 @@ describe("sanitizeTrackParams", () => {
       item_id: "deadbeef",
       surface: "web",
     });
+  });
+
+  it("keeps a surface the caller passed", () => {
+    expect(sanitizeTrackParams({ surface: "popover" })).toEqual({
+      surface: "popover",
+    });
+    expect(sanitizeTrackParams({ surface: "sheet" }).surface).toBe("sheet");
   });
 
   it("drops nested objects and nulls", () => {
@@ -57,7 +64,7 @@ describe("track", () => {
     vi.unstubAllGlobals();
   });
 
-  it("noops when gtag is missing", () => {
+  it("never throws when analytics is disabled entirely (no stub, no sink)", () => {
     vi.stubGlobal("window", {});
     expect(() => track("page_view")).not.toThrow();
   });
