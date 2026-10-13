@@ -1213,6 +1213,9 @@ deliberately non-spammy.
   (hotlink-hostile or dead upstream URLs) — it is 200 by construction, so the post keeps its
   image instead of dropping to bare text. The card no longer occupies an
   album slot.
+  The card itself (`/api/og/{id8}.png`) tries the thumbnail, then the other
+  manifest images (deduped, at most 3 candidates in all), and renders
+  the branded fallback only when every one fails to fetch.
 - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
   is `en`. Digest bullets come from that language's edition
   (`worker/digest/edition.ts`) and never from the other column. Trending

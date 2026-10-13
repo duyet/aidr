@@ -275,10 +275,36 @@ describe("api/og/$id image boundary", () => {
     currentStory = { ...STORY, image_url: null };
     const response = await call("/api/og/abcdef12deadbeef.png?lang=en");
     expect(response.status).toBe(200);
-    expect(fetchedUrls).toEqual([null]);
+    expect(fetchedUrls).toEqual([]);
     const html = markup();
     expect(html).not.toContain("<img");
     expect(html).toContain("AI NEWS");
+  });
+
+  it("falls through to a manifest image when the thumbnail is dead", async () => {
+    const { fetchStoryOgImage } = await import("../lib/story-og");
+    vi.mocked(fetchStoryOgImage).mockImplementationOnce(async (url) => {
+      fetchedUrls.push(url);
+      return null;
+    });
+    currentStory = {
+      ...STORY,
+      image_url: "https://cdn.example.com/dead.png",
+      media_manifest: {
+        version: 1,
+        assets: [
+          { type: "image", url: "https://cdn.example.com/dead.png" },
+          { type: "image", url: "https://cdn.example.com/good.png" },
+        ],
+      },
+    };
+    const response = await call("/api/og/abcdef12deadbeef.png?lang=en");
+    expect(response.status).toBe(200);
+    expect(fetchedUrls).toEqual([
+      "https://cdn.example.com/dead.png",
+      "https://cdn.example.com/good.png",
+    ]);
+    expect(markup()).toContain("data:image/png;base64,");
   });
 
   it("uses the branded fallback when the bounded fetcher misses", async () => {

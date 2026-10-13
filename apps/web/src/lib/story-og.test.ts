@@ -23,6 +23,7 @@ import {
   STORY_OG_TITLE_MAX_HEIGHT,
   storyOgCard,
   storyOgCopy,
+  storyOgImageCandidates,
   storyOgImageFromBytes,
   storyOgLanguage,
 } from "./story-og";
@@ -228,6 +229,36 @@ describe("story OG image payload boundary", () => {
     const image = storyOgImageFromBytes(PNG_BYTES);
     expect(image?.dataUri).not.toContain("cdn.example.com");
     expect(image?.dataUri).not.toContain("secret");
+  });
+});
+
+describe("storyOgImageCandidates", () => {
+  const img = (url: string) => ({ type: "image" as const, url });
+
+  it("puts the thumbnail first, dedupes, and caps at 3", () => {
+    expect(
+      storyOgImageCandidates({
+        image_url: "https://a.example/1.png",
+        media_manifest: {
+          version: 1,
+          assets: [
+            img("https://a.example/1.png"),
+            { type: "video", url: "https://a.example/v.mp4" },
+            img("https://a.example/2.png"),
+            img("https://a.example/3.png"),
+            img("https://a.example/4.png"),
+          ],
+        },
+      })
+    ).toEqual([
+      "https://a.example/1.png",
+      "https://a.example/2.png",
+      "https://a.example/3.png",
+    ]);
+  });
+
+  it("is empty for a story with no images", () => {
+    expect(storyOgImageCandidates({ image_url: null })).toEqual([]);
   });
 });
 

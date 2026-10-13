@@ -236,6 +236,29 @@ async function readBoundedBody(response: Response): Promise<Uint8Array | null> {
   return bytes;
 }
 
+const MAX_STORY_IMAGE_CANDIDATES = 3;
+
+/**
+ * Thumbnail first, then the manifest's other images, deduped and capped. The
+ * card tries them in order so one dead upstream URL does not drop a story with
+ * working images to the branded fallback.
+ */
+export function storyOgImageCandidates(
+  item: Pick<FeedItem, "image_url" | "media_manifest">
+): string[] {
+  const urls = [
+    item.image_url,
+    ...(item.media_manifest?.assets ?? []).map((asset) =>
+      asset.type === "image" ? asset.url : null
+    ),
+  ];
+  const seen = new Set<string>();
+  for (const url of urls) {
+    if (url) seen.add(url);
+  }
+  return [...seen].slice(0, MAX_STORY_IMAGE_CANDIDATES);
+}
+
 export interface StoryImageFetchOptions {
   fetcher?: typeof fetch;
   timeoutMs?: number;
