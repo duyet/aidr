@@ -3,9 +3,13 @@
 
   yt-meta.py --release videos/releases/<v>/youtube.md --lang en|vi --kind long|short
   yt-meta.py --daily   videos/daily-news/editions/<date>/posts.md --lang en|vi --kind long|short
+  yt-meta.py --json    videos/daily-news/editions/<date>/youtube.visub.json --lang vi --kind long
 
 kind long = the 16:9 video; short = the 9:16 Short (for a release: title and
 caption from the "Vertical" section, the release link lines kept, #Shorts added).
+--json reads a finished {title, desc, tags} (the visub cut's Vietnamese metadata,
+written by videos/daily-news/scripts/visub.mjs --youtube); the daily channel
+links for --lang go in before its hashtags, as for --daily. Long only.
 """
 import argparse
 import json
@@ -64,14 +68,23 @@ def daily(path, lang, kind):
     title = field(p, "Title")
     desc = field(p, "Description")
     tags = re.search(r"\*\*Tags:\*\*\s*(.*)", part("YouTube (16:9)")).group(1).strip()
+    return {"title": title, "desc": with_links(desc, lang, kind), "tags": tags}
+
+
+def with_links(desc, lang, kind):
     links = DAILY_LINKS[lang]
     if kind == "long":
         head, _, hashtags = desc.rpartition("\n\n")
-        desc = head + "\n" + links + "\n\n" + hashtags
-    else:
-        m = re.search(r"^(.*https://\S+)\s+(#.*)$", desc, re.S)
-        desc = m.group(1) + "\n" + links + "\n\n" + m.group(2)
-    return {"title": title, "desc": desc, "tags": tags}
+        return head + "\n" + links + "\n\n" + hashtags
+    m = re.search(r"^(.*https://\S+)\s+(#.*)$", desc, re.S)
+    return m.group(1) + "\n" + links + "\n\n" + m.group(2)
+
+
+def given(path, lang, kind):
+    if kind != "long":
+        sys.exit("yt-meta: --json is a 16:9 (long) cut's metadata")
+    m = json.load(open(path, encoding="utf-8"))
+    return {"title": m["title"], "desc": with_links(m["desc"], lang, kind), "tags": m["tags"]}
 
 
 def main():
@@ -79,13 +92,17 @@ def main():
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--release", metavar="youtube.md")
     src.add_argument("--daily", metavar="posts.md")
+    src.add_argument("--json", metavar="youtube.visub.json")
     ap.add_argument("--lang", choices=["en", "vi"], required=True)
     ap.add_argument("--kind", choices=["long", "short"], required=True)
     a = ap.parse_args()
     try:
-        m = release(a.release, a.lang, a.kind) if a.release else daily(a.daily, a.lang, a.kind)
-    except (AttributeError, IndexError, TypeError) as e:
-        sys.exit("yt-meta: cannot parse %s (%s: %s)" % (a.release or a.daily, type(e).__name__, e))
+        if a.json:
+            m = given(a.json, a.lang, a.kind)
+        else:
+            m = release(a.release, a.lang, a.kind) if a.release else daily(a.daily, a.lang, a.kind)
+    except (AttributeError, IndexError, TypeError, KeyError, ValueError) as e:
+        sys.exit("yt-meta: cannot parse %s (%s: %s)" % (a.release or a.daily or a.json, type(e).__name__, e))
     if not (m["title"] and m["desc"] and m["tags"]):
         sys.exit("yt-meta: empty title, description or tags")
     print(json.dumps(m, ensure_ascii=False))

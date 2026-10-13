@@ -55,17 +55,23 @@ Write it in `videos/<project>/youtube.md` first, then paste from there.
   `STATUS.json` row (`path`), not the "Files:" line in posts.md, which can
   go stale after a re-render. Add the Chrome / Telegram / Facebook link
   lines after the aidr.today links.
-- **Language**: video language English or Vietnamese to match the cut;
-  category Science & Technology.
+- **Language**: video language English or Vietnamese to match the cut's
+  audio; category Science & Technology. The daily `visub` cut (English
+  voice, Vietnamese subtitles) has Vietnamese metadata in
+  `editions/<date>/youtube.visub.json` (`visub.mjs --youtube`) and English
+  audio: `--meta <that json> --lang vi --audio-lang en`.
 - 9:16 renders ≤ 3 min upload as Shorts automatically; give them the same
   title with `#Shorts` and a two-line description with the release link.
 
 ## Upload: run `bin/yt-upload`
 
 ```bash
-bin/yt-upload <mp4> --meta <youtube.md|posts.md> --lang en|vi --kind long|short \
-  [--cover <png>] [--resume-from thumb|playlist] [--no-publish] [--publish-anyway]
+bin/yt-upload <mp4> --meta <youtube.md|posts.md|meta.json> --lang en|vi --kind long|short \
+  [--audio-lang en|vi] [--cover <png>] [--resume-from thumb|playlist] [--no-publish] [--publish-anyway]
 ```
+
+`--lang` is the metadata language and `--audio-lang` (default `--lang`) the
+Studio "Video language". Studio's title/description language is not set.
 
 Examples (from the repo root, one upload at a time, never two on the same Chrome):
 
@@ -77,7 +83,9 @@ $S <daily mp4> --meta videos/daily-news/editions/<date>/posts.md --lang en --kin
 ```
 
 What it does, in order: reads the metadata with `bin/yt-meta.py`
-(`--release youtube.md` or `--daily posts.md`, picked from the file) →
+(`--release youtube.md`, `--daily posts.md` or `--json meta.json`, picked
+from the file; `--json` is a finished `{title, desc, tags}` that gets the
+daily channel links for `--lang` before its hashtags) →
 opens the upload dialog in the Studio tab → uploads the file → title and
 description → thumbnail → playlist **AI;DR** (retries once by reopening
 the picker) → "not made for kids", paid promotion No, AI-content No →
@@ -126,17 +134,19 @@ args and output as `bin/yt-upload`, plus `--privacy private|unlisted|public`
 (default public):
 
 ```bash
-bin/yt-upload-api.mjs <mp4> --meta <youtube.md|posts.md> --lang en|vi --kind long|short [--cover <png>] [--privacy ...]
+bin/yt-upload-api.mjs <mp4> --meta <youtube.md|posts.md|meta.json> --lang en|vi --kind long|short [--audio-lang en|vi] [--cover <png>] [--privacy ...]
 ```
 
 Env: `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN`.
-It reads metadata with `bin/yt-meta.py`, uploads (category 28, language,
+It reads metadata with `bin/yt-meta.py`, uploads (category 28,
+`defaultLanguage` = `--lang`, `defaultAudioLanguage` = `--audio-lang`,
 not made for kids, `containsSyntheticMedia: false` like the Studio "No"),
 sets the thumbnail for long cuts (a cover of 2 MB or more is converted to a
 1920-wide JPEG with `ffmpeg` in a temp dir), adds the video to the **AI;DR**
 playlist, and prints `ID=`, `URL=`, `OEMBED=`. Errors print `FAIL: <step>`
 and exit 1; after the upload step the message names the uploaded video id so
-nothing is uploaded twice. `publish.mjs --uploader api|chrome` picks it
+nothing is uploaded twice (`publish.mjs` records the printed `ID=` even when
+the run exits 1). `publish.mjs --uploader api|chrome` picks it
 (default `api` when `YOUTUBE_REFRESH_TOKEN` is set).
 
 One-time OAuth setup (owner):
