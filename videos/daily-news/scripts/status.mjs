@@ -25,11 +25,10 @@ export function addRows(rows, { date, langs, config, dir }) {
   return rows;
 }
 
-/** A cut renders unless its files exist (a visub cover is the English one, made by the English render) or,
- *  without renderPublished, it is already on the day page. */
+/** A cut renders unless its video and cover exist or, without renderPublished, it is already on the day page. */
 export function needsRender(r, { renderPublished = false, exists }) {
   if (!renderPublished && r.youtube?.id) return false;
-  return !exists(r.path) || (!cutFor(r.lang).subs && !exists(r.cover));
+  return !exists(r.path) || !exists(r.cover);
 }
 
 /** Cuts the telegram step still posts: the requested languages' `fmt` cut without a channel post (`telegram`; a

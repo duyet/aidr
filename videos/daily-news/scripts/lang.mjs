@@ -1,9 +1,10 @@
 // The cut's language. English is the default; `--lang vi` makes the Vietnamese cut from script.vi.json,
 // with its own voice, output, caption and render files next to the English ones.
-// `--lang visub` is the English cut with Vietnamese subtitles: the English script, voice, mix, timing and
-// 16:9 cover, with only the burned-in captions swapped (captions.visub.json, written by visub.mjs). It renders
-// 16:9 at 1080p for the Vietnamese Telegram channel and YouTube (Vietnamese title and description over English
-// audio, the Vietnamese day page), and never goes to Facebook.
+// `--lang visub` is the English cut with Vietnamese subtitles and screen text: the English script, voice, mix and
+// timing, with the burned-in captions (captions.visub.json, visub.mjs) and the screen text (screen.visub.json,
+// visub-screen.mjs) in Vietnamese, and its own cover. It renders 16:9 at 1080p for the Vietnamese Telegram channel
+// and YouTube (Vietnamese title and description over English audio, the Vietnamese day page), and never goes to
+// Facebook.
 export const LANGS = ["en", "vi", "visub"];
 
 export function cutOf(argv) {
@@ -22,7 +23,8 @@ export function cutFor(lang) {
     screen: lang,
     // Translated captions over another cut's voice (visub only).
     subs: null,
-    // The day page (`?lang=`) the cut's YouTube video is attached to, and the language of its audio.
+    // The day page (`?lang=`) the cut's YouTube video is attached to, and the language of its audio (which also
+    // times a no-voice cut).
     page: lang,
     audio: lang,
     // null = every format in config.json.
@@ -50,9 +52,15 @@ function subsCut() {
   return {
     ...en,
     lang: "visub",
-    screen: "en",
-    // youtube: the Vietnamese YouTube title, description and tags (visub.mjs).
-    subs: { lang: "vi", json: "captions.visub.json", srt: "captions.visub.srt", youtube: "youtube.visub.json" },
+    screen: "vi",
+    // youtube: the Vietnamese YouTube title, description and tags (visub.mjs); screen: the screen text (visub-screen.mjs).
+    subs: {
+      lang: "vi",
+      json: "captions.visub.json",
+      srt: "captions.visub.srt",
+      youtube: "youtube.visub.json",
+      screen: "screen.visub.json",
+    },
     page: "vi",
     audio: "en",
     formats: ["16x9"],
@@ -63,8 +71,7 @@ function subsCut() {
     captions: "captions.visub.srt",
     snap: (fmt) => `snap-visub-${fmt}`,
     video: (date, fmt) => `aidr-daily-${date}-visub-${fmt}-1080p.mp4`,
-    // Same screen as the English cut, so the English cover.
-    cover: en.cover,
+    cover: (date, fmt) => `cover-${date}-visub-${fmt}.png`,
   };
 }
 

@@ -4,7 +4,8 @@
 // Voice falls back to a no-voice cut (music bed, read-along captions) when ElevenLabs is out of quota;
 // --no-voice forces it. See voice.mjs.
 // --lang visub (English voice, Vietnamese subtitles) needs the English cut built first: it voices nothing,
-// translates the captions (visub.mjs), then builds, lints, snapshots and renders its 16:9 only.
+// translates the captions (visub.mjs) and the screen text (visub-screen.mjs), then builds, lints, snapshots and
+// renders its 16:9 and cover only.
 // Usage: node scripts/daily.mjs <date> [--lang vi|visub] [--render] [--no-voice]
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -57,8 +58,10 @@ if (!/valid/.test(auth))
   console.warn(
     `! HeyGen sign-in looks expired: run \`npx hyperframes auth login\` if voicing${config.voice.provider === "heygen" ? "" : " falls back to HeyGen and"} fails`
   );
-if (cut.subs) node("visub.mjs");
-else node("voice.mjs", ...(noVoice ? ["--no-voice"] : []));
+if (cut.subs) {
+  node("visub.mjs");
+  node("visub-screen.mjs");
+} else node("voice.mjs", ...(noVoice ? ["--no-voice"] : []));
 node("build.mjs");
 
 // 4. Lint and snapshot both formats.

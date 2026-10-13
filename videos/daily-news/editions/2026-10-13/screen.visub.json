@@ -1,0 +1,125 @@
+{
+  "lang": "vi",
+  "fields": {
+    "s1.category": {
+      "en": "Models",
+      "vi": "Mô hình",
+      "from": "edition"
+    },
+    "s1.kicker": {
+      "en": "Meta’s AI model",
+      "vi": "Mô hình AI của Meta",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s1.headline": {
+      "en": "Muse Wonder *puts Meta* at AI frontier",
+      "vi": "Muse Wonder *đưa Meta* trở lại vị thế dẫn đầu về AI",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s1.stat": {
+      "en": "AI frontier",
+      "vi": "Vị thế dẫn đầu về AI",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s1.statLabel": {
+      "en": "Meta’s release aims to return",
+      "vi": "Bản phát hành nhằm đưa Meta trở lại",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s2.category": {
+      "en": "Research",
+      "vi": "Nghiên cứu",
+      "from": "edition"
+    },
+    "s2.kicker": {
+      "en": "AI safety research",
+      "vi": "Nghiên cứu an toàn AI",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s2.headline": {
+      "en": "Models *hide arbitrary* capabilities from audits",
+      "vi": "Mô hình *giấu năng lực tùy ý* khi kiểm tra",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s2.stat": {
+      "en": "proof-of-concept models",
+      "vi": "Mô hình thử nghiệm",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s2.statLabel": {
+      "en": "Released to improve defenses",
+      "vi": "Phát hành để cải thiện cơ chế phòng vệ",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s2.paper.title": {
+      "en": "AI Models Can Provably Hide Arbitrary Capabilities",
+      "vi": "Mô hình AI có thể chứng minh được khả năng che giấu năng lực tùy ý",
+      "from": "edition"
+    },
+    "s3.category": {
+      "en": "Industry",
+      "vi": "Ngành",
+      "from": "edition"
+    },
+    "s3.kicker": {
+      "en": "Epic Games teams",
+      "vi": "Các đội ngũ Epic Games",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s3.headline": {
+      "en": "Epic shifts teams toward *AI-first* Disney content",
+      "vi": "Epic chuyển đội ngũ sang nội dung Disney *AI trước*",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s3.stat": {
+      "en": "AI-first",
+      "vi": "AI trước",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s3.statLabel": {
+      "en": "Future content development approach",
+      "vi": "Cách phát triển nội dung trong tương lai",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s4.category": {
+      "en": "Chips",
+      "vi": "Chip",
+      "from": "edition"
+    },
+    "s4.kicker": {
+      "en": "Nvidia China shipments",
+      "vi": "Lượng hàng Nvidia sang Trung Quốc",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s4.headline": {
+      "en": "Nvidia shipments *fall 44%* in China",
+      "vi": "Lượng hàng Nvidia *giảm 44%* tại Trung Quốc",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s4.stat": {
+      "en": "678,000",
+      "vi": "678.000",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "s4.statLabel": {
+      "en": "H1 2026 China shipments",
+      "vi": "Lượng hàng sang Trung Quốc trong H1 2026",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "intro.title": {
+      "en": "Four stories that matter today",
+      "vi": "Bốn câu chuyện đáng chú ý hôm nay",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "outro.title": {
+      "en": "What's happening in AI today?",
+      "vi": "Hôm nay AI có gì mới?",
+      "from": "openai/gpt-5.6-luna"
+    },
+    "thumb.hook": {
+      "en": "AI safety research",
+      "vi": "Nghiên cứu an toàn AI",
+      "from": "openai/gpt-5.6-luna"
+    }
+  }
+}

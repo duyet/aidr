@@ -2,7 +2,7 @@
 // Render an edition at 4K: both formats to MP4, and both cover stills to PNG.
 // Writes editions/<date>/renders/ (ignored by git). Renders run one at a time (4K Chrome is heavy).
 // Usage: node scripts/render.mjs 2026-10-02 [--lang vi|visub] [--only 9x16] [--quality draft]
-// --lang visub renders its formats only (16:9), at its own resolution (1080p), and no cover (it uses the English one).
+// --lang visub renders its formats only (16:9) and its cover, at its own resolution (1080p).
 import { execFileSync } from "node:child_process";
 import {
   copyFileSync,
@@ -30,31 +30,29 @@ mkdirSync(renders, { recursive: true });
 for (const fmt of formatsOf(cut, config)) {
   if (arg("--only") && arg("--only") !== fmt) continue;
   const resolution = cut.resolution?.[fmt] ?? config.formats[fmt].resolution;
-  if (!cut.subs) {
-    const cover = join(dir, cut.out, `cover-${fmt}`);
-    const seq = join(dir, cut.out, `cover-${fmt}-frames`);
-    rmSync(seq, { recursive: true, force: true });
-    execFileSync(
-      "npx",
-      [
-        ...HF,
-        "render",
-        "--resolution",
-        resolution,
-        "--format",
-        "png-sequence",
-        "--fps",
-        "1",
-        "--output",
-        seq,
-      ],
-      { cwd: cover, stdio: "inherit" }
-    );
-    const png = readdirSync(seq)
-      .filter((n) => n.endsWith(".png"))
-      .sort()[0];
-    copyFileSync(join(seq, png), join(renders, cut.cover(date, fmt)));
-  }
+  const cover = join(dir, cut.out, `cover-${fmt}`);
+  const seq = join(dir, cut.out, `cover-${fmt}-frames`);
+  rmSync(seq, { recursive: true, force: true });
+  execFileSync(
+    "npx",
+    [
+      ...HF,
+      "render",
+      "--resolution",
+      resolution,
+      "--format",
+      "png-sequence",
+      "--fps",
+      "1",
+      "--output",
+      seq,
+    ],
+    { cwd: cover, stdio: "inherit" }
+  );
+  const png = readdirSync(seq)
+    .filter((n) => n.endsWith(".png"))
+    .sort()[0];
+  copyFileSync(join(seq, png), join(renders, cut.cover(date, fmt)));
 
   const out = join(renders, cut.video(date, fmt));
   execFileSync(
