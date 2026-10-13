@@ -267,8 +267,10 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   token), and a `daily-reel.yml` run of that date whose `Telegram` and
   `Telegram (Vietnamese subtitles)` steps succeeded (GitHub API with
   `GITHUB_ALERT_TOKEN`, which then also needs Actions: read; unset, it calls
-  GitHub without a token from shared Cloudflare IPs). A run's date is the
-  `date` input in its `run-name`, else the local day it was created; runs
+  GitHub without a token from shared Cloudflare IPs). Neither Telegram step
+  may be `continue-on-error`: the jobs API reports such a step as `success`
+  when it fails. A run's date is the `date` input in its `run-name`, else
+  the local day it was created; runs
   titled `(dry run)` are not read, and up to 8 others are. Once every target
   is confirmed, `day-video-ok:<date>` in `stats.alerts` skips the rest of
   the evening's checks. A missing target raises `day-video-missing` once a
@@ -276,9 +278,10 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   (`gh workflow run daily-reel.yml -R duyet/aidr -f dry_run=false -f date=<date>`).
   A failed lookup, or a run of the date still in progress, waits for the
   window's last check (the first run whose next ingest starts after 23h);
-  if that run never comes, it is not reported. A run that uploaded to
-  YouTube and skipped Telegram ran on a hand-published day: the alert says
-  so and gives no rerun for those posts, since `HAND_PUBLISHED` skips them.
+  if that run never comes, it is not reported. A run whose YouTube step
+  reports `success` and that skipped Telegram ran on a hand-published day:
+  the alert says so and gives no rerun for those posts, since
+  `HAND_PUBLISHED` skips them.
 - `run()` still upserts at start **before** `pruneLlmCalls` / fetch / LLM.
   Do not wrap `open-run` in `safeStep`.
 - Per-model caps in `worker/llm.ts`: score `SCORE_SLICE_MAX_MS` 70s, TL;DR

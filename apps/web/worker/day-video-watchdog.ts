@@ -245,7 +245,8 @@ function runDate(run: GhRun): string {
 
 /** Both Telegram posts, from the steps of the date's daily-reel runs. A dry
  *  run skips every posting step, so only a succeeded step counts. A run that
- *  uploaded to YouTube and skipped Telegram ran on a hand-published day. */
+ *  reports the YouTube step `success` and skipped Telegram ran on a
+ *  hand-published day. */
 async function checkTelegram(
   env: Pick<Env, "GITHUB_ALERT_TOKEN">,
   date: string,

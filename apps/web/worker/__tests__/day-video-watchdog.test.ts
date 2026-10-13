@@ -270,6 +270,32 @@ describe("checkDayVideo", () => {
     expect(issue.evidence).toContain("YouTube (vi): not on the day page");
   });
 
+  // The YouTube step may continue on error, and then reports `success` after
+  // a failed upload. Only the day page row proves the video is up.
+  it("counts YouTube from the day page, not the upload step", async () => {
+    const world: World = {
+      ...posted,
+      dayVideo: { ...posted.dayVideo!, youtube_id: null, short_id: null },
+    };
+    serve(world);
+    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
+    expect(issue.detail).toBe(`${DATE}: YouTube 16:9, YouTube Short missing`);
+  });
+
+  it("flags a missing YouTube video on a hand-published day", async () => {
+    const world: World = {
+      ...posted,
+      dayVideo: { ...posted.dayVideo!, youtube_id: null },
+      runs: [{ id: 101, created_at: "2026-10-14T09:40:58Z", steps: BY_HAND }],
+    };
+    serve(world);
+    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
+    expect(issue.detail).toBe(
+      `${DATE}: YouTube 16:9, Telegram (en), Telegram (vi) missing`
+    );
+    expect(issue.evidence).toContain("YouTube 16:9: not on the day page");
+  });
+
   it("flags both Telegram channels when today's only run was a dry run", async () => {
     const world: World = {
       ...posted,
@@ -572,6 +598,19 @@ describe("daily-reel contract", () => {
     for (const step of [YOUTUBE_STEP, TELEGRAM_STEP, TELEGRAM_VI_STEP]) {
       const name = step.replace(/[()+]/g, "\\$&");
       expect(workflow).toMatch(new RegExp(`^\\s+- name: ${name}\\n`, "m"));
+    }
+  });
+
+  // The jobs API reports a failed `continue-on-error` step as `success`, so
+  // the watchdog would count the failed post as sent. YOUTUBE_STEP may
+  // continue on error: it is read only as "the step ran" (a hand-published day).
+  it("sees each Telegram post fail", () => {
+    for (const step of [TELEGRAM_STEP, TELEGRAM_VI_STEP]) {
+      const block = workflow
+        .split(/^ {6}- /m)
+        .find((b) => b.startsWith(`name: ${step}\n`));
+      expect(block, step).toBeDefined();
+      expect(block, step).not.toMatch(/^\s*continue-on-error: true$/m);
     }
   });
 

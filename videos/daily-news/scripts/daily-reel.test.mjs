@@ -96,6 +96,14 @@ test("the log names every channel that failed", () => {
   assert.equal(ran(o, "Fail when the Reel did not post"), true);
 });
 
+test("a failed Vietnamese Telegram post fails the job and still saves the day's state", () => {
+  const o = simulate({ fail: ["Telegram (Vietnamese subtitles)"] });
+  assert.equal(steps.find((s) => s.name === "Telegram (Vietnamese subtitles)").continueOnError, false, "the jobs API would report the failure as success");
+  for (const name of EN_POSTS) assert.equal(o.get(name), "success", name);
+  for (const name of ["Upload Vietnamese subtitles artifact", "Save STATUS.json", "Fail when the Vietnamese subtitles cut did not post"])
+    assert.equal(ran(o, name), true, name);
+});
+
 test("a hand-published day posts no Telegram, in either language", () => {
   const o = simulate({ hand: true });
   assert.equal(ran(o, "Telegram"), false);

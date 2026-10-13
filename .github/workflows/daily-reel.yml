@@ -183,6 +183,9 @@ jobs:
       # English post does not stop it (`!cancelled()`); a failure here fails the
       # job at the end and nothing else. A failed upload still lets the Telegram
       # post go out, its button linking the English video when there is one.
+      # That post is the last one and does not continue on error: the jobs API
+      # reports a failed continue-on-error step as `success`, and the day video
+      # watchdog reads this step's result from that API.
       - name: Vietnamese subtitles cut
         id: visub
         if: ${{ !cancelled() && steps.render.outcome == 'success' }}
@@ -207,7 +210,6 @@ jobs:
       - name: Telegram (Vietnamese subtitles)
         id: visub_telegram
         if: ${{ !cancelled() && env.LIVE == 'true' && steps.check.outputs.hand != 'true' && steps.visub.outcome == 'success' }}
-        continue-on-error: true
         run: node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps telegram --prod
 
       - name: Upload Vietnamese subtitles artifact
