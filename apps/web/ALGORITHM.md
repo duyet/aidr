@@ -1263,6 +1263,11 @@ deliberately non-spammy.
   The card itself (`/api/og/{id8}.png`) tries the thumbnail, then the other
   manifest images (deduped, at most 3 candidates in all), and renders
   the branded fallback only when every one fails to fetch.
+  A post already sent on the card gets its real image later with
+  `pnpm --filter @aidr/web telegram-swap-card` (dry unless `--apply`).
+  It edits only when D1 says the card went out and the live photo is
+  1200x630, tests the image in the staging chat first, and logs every
+  edit to `admin_audit` as `telegram.edit_media`.
 - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
   is `en`. Digest bullets come from that language's edition
   (`worker/digest/edition.ts`) and never from the other column. Trending
