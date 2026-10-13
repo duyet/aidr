@@ -21,6 +21,8 @@ import { envVar } from "./telegram-video.mjs";
 const ROOT = resolve(import.meta.dirname, "..");
 export const DEFAULT_MODELS = "openai/gpt-5.6-luna,google/gemini-3-flash";
 const MIN_STORIES = 3;
+/** Screen text length in words, [min, max]; the visub cut checks its Vietnamese screen text against it too. */
+export const WORD_LIMITS = { kicker: [1, 6], headline: [3, 12] };
 
 /** Today in Asia/Ho_Chi_Minh, the zone the Worker dates editions in. */
 export const vnToday = (now = new Date()) => new Date(now.getTime() + 7 * 3600_000).toISOString().slice(0, 10);
@@ -94,10 +96,10 @@ export function validateScript(script, edition) {
     for (const k of ["kicker", "headline", "stat", "statLabel", "statWord"])
       if (typeof s[k] !== "string" || !s[k].trim()) p.push(`story ${s.rank}: ${k} missing`);
     if (!Array.isArray(s.voice) || !s.voice.length || s.voice.some((v) => !v.text?.trim())) p.push(`story ${s.rank}: voice missing`);
-    const kw = words(s.kicker).length;
-    if (kw < 1 || kw > 6) p.push(`story ${s.rank}: kicker has ${kw} words`);
-    const hw = words(s.headline.replace(/\*/g, "")).length;
-    if (hw < 3 || hw > 12) p.push(`story ${s.rank}: headline has ${hw} words`);
+    for (const [k, [min, max]] of Object.entries(WORD_LIMITS)) {
+      const n = words(String(s[k] ?? "").replace(/\*/g, "")).length;
+      if (n < min || n > max) p.push(`story ${s.rank}: ${k} has ${n} words`);
+    }
     if (s.statWord && !statSpoken(voiceWords(s.voice), s.statWord)) p.push(`story ${s.rank}: statWord "${s.statWord}" is not spoken`);
     // Facts: no number on screen or in the voice that the bullet (or its title) does not have.
     const known = new Set([...numbers(src.text), ...numbers(src.title)]);
