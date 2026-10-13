@@ -94,7 +94,9 @@ describe("evaluateHealth", () => {
 });
 
 describe("applyCooldown", () => {
-  const issue = evaluateHealth(input({ llm: { total: 4, failed: 4, rateLimited: 0 } }));
+  const issue = evaluateHealth(
+    input({ llm: { total: 4, failed: 4, rateLimited: 0 } })
+  );
 
   it("suppresses a key that fired within the cooldown", () => {
     const history: PriorRun[] = [

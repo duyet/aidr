@@ -10,13 +10,14 @@
  *
  * One System One call per item per path (`decision` is `anyrouter/decision`,
  * `jev` is `typesafe/jev`) plus one chat call per 10 items. Reads
- * ANYROUTER_API_KEY from the repo-root `.env.local`; never prints it.
+ * ANYROUTER_LOCAL_API_KEY from the repo-root `.env.local`; never prints it.
  * Expected bands were written before any model run and are the reference,
  * not the old production scores (the chat era scored almost everything 6-9).
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireLlmKey } from "../../../videos/daily-news/scripts/local-llm-key.mjs";
 import {
   BUILDER_CATEGORIES,
   CATEGORY_DEFINITIONS,
@@ -61,16 +62,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../../..");
 
 function readEnv(): Env {
-  const file = path.join(repoRoot, ".env.local");
-  const out: Record<string, string> = {};
-  if (existsSync(file)) {
-    for (const line of readFileSync(file, "utf-8").split("\n")) {
-      const m = /^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-      if (m?.[1]) out[m[1]] = (m[2] ?? "").replace(/^["']|["']$/g, "");
-    }
-  }
-  const key = process.env.ANYROUTER_API_KEY ?? out.ANYROUTER_API_KEY;
-  if (!key) throw new Error("ANYROUTER_API_KEY missing from .env.local");
+  const key = requireLlmKey();
   // Same chat chain as production (`wrangler.toml` [vars]).
   const toml = readFileSync(path.join(here, "../wrangler.toml"), "utf-8");
   const model = /^ANYROUTER_MODEL\s*=\s*"([^"]+)"/m.exec(toml)?.[1];

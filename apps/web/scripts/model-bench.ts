@@ -15,7 +15,7 @@
  * Without --models each step runs the ids in its wrangler.toml chain.
  * Steps: score jev translate-en-vi translate-vi-en review tldr cluster topics.
  * Each model runs alone (no fallback hop), with the failing-model skip list
- * reset between models. Reads ANYROUTER_API_KEY from .env.local; never
+ * reset between models. Reads ANYROUTER_LOCAL_API_KEY from .env.local; never
  * prints it. Makes no D1 writes, sends no email or Telegram.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";

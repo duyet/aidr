@@ -54,7 +54,7 @@ Change the smallest of these, then the test that locks it:
 
 A `VI_STYLE` example must state only facts that are in the bad line. Do not add an AI-safety clause, a hedge, or a word such as `vừa` or `rõ rệt` that the source did not have.
 
-Add a translate model only after a streaming `json_object` probe returns usable Vietnamese JSON. Record the model id, the HTTP status, and that the body was usable. A non-streaming 200 is not enough. Load `ANYROUTER_API_KEY` from `.env.local` without printing it. Do not add an id that 404s or returns an unusable body.
+Add a translate model only after a streaming `json_object` probe returns usable Vietnamese JSON. Record the model id, the HTTP status, and that the body was usable. A non-streaming 200 is not enough. Load `ANYROUTER_LOCAL_API_KEY` from `.env.local` (never the production `ANYROUTER_API_KEY`) without printing it. Do not add an id that 404s or returns an unusable body.
 
 ## Compare models
 

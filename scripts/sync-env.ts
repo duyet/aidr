@@ -187,6 +187,9 @@ function loadEnvFiles(): { env: Record<string, string>; sources: string[] } {
     env.VITE_CLERK_PUBLISHABLE_KEY = env.CLERK_PUBLISHABLE_KEY;
   }
   promoteLegacyTelegramChat(env);
+  // Local-only AnyRouter key (videos/daily-news/scripts/local-llm-key.mjs, #656): it must never
+  // reach the Worker or GitHub, even if an allowlist above grows.
+  delete env.ANYROUTER_LOCAL_API_KEY;
   return { env, sources };
 }
 
