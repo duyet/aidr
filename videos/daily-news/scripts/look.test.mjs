@@ -4,7 +4,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { templateScript } from "./auto-script.mjs";
-import { dayNumber, resolveLook, rotate } from "./look.mjs";
+import { dayNumber, resolveLook, rotate, rotatePair } from "./look.mjs";
 import { isoWeekOf } from "./week.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -67,7 +67,7 @@ test("a theme in script.json pins that axis; the others still rotate", () => {
   const free = resolveLook({}, e13);
   const other = ["wipe", "ink", "shutter"].find((t) => t !== free.transition);
   const look = resolveLook({ theme: { transition: other, intro: "date-slam", accent: "#E0B000" } }, e13);
-  assert.deepEqual(look, { intro: "date-slam", transition: other, background: free.background, accent: "#E0B000" });
+  assert.deepEqual(look, { intro: "date-slam", transition: other, background: rotate(["paper", "soft", "grid"], dayNumber("2026-10-13"), "background"), accent: "#E0B000" });
 });
 
 test("an unknown theme id or axis fails instead of falling back", () => {
@@ -85,4 +85,39 @@ test("a committed script.json theme pins the whole look it shipped with", () => 
   const pinned = scripts.filter(([p]) => read(p).theme);
   assert.ok(pinned.length >= 4, `only ${pinned.length} committed scripts carry a theme`);
   for (const [p, d] of pinned) assert.deepEqual(resolveLook(read(p), read(join(ROOT, "editions", d, "edition.json"))), read(p).theme, p);
+});
+
+const lookOn = (date, theme) => resolveLook(theme ? { theme } : {}, { date });
+const combo = (l) => `${l.transition}/${l.background}`;
+const TWO_YEARS = datesFrom("2026-01-01", 731);
+
+test("the unpinned look changes both transition and background every day, and never goes A B A B", () => {
+  const looks = TWO_YEARS.map((d) => lookOn(d));
+  for (let i = 1; i < looks.length; i++) {
+    assert.notEqual(looks[i].transition, looks[i - 1].transition, TWO_YEARS[i]);
+    assert.notEqual(looks[i].background, looks[i - 1].background, TWO_YEARS[i]);
+  }
+  for (let i = 2; i < looks.length; i++) assert.notEqual(combo(looks[i]), combo(looks[i - 2]), `${TWO_YEARS[i]} repeats the look two days ago`);
+});
+
+test("no whole look repeats within any window of 9 days, so all 9 combinations show before one returns", () => {
+  const combos = TWO_YEARS.map((d) => combo(lookOn(d)));
+  for (let i = 0; i + 9 <= combos.length; i++) assert.equal(new Set(combos.slice(i, i + 9)).size, 9, `window from ${TWO_YEARS[i]}`);
+});
+
+test("the unpinned look is deterministic", () => {
+  for (const d of TWO_YEARS.slice(0, 60)) assert.deepEqual(lookOn(d), lookOn(d));
+});
+
+test("a pin on one axis leaves the other rotating with no adjacent repeats", () => {
+  for (const [axis, id, other] of [["transition", "ink", "background"], ["background", "soft", "transition"]]) {
+    const looks = TWO_YEARS.map((d) => lookOn(d, { [axis]: id }));
+    for (let i = 0; i < looks.length; i++) assert.equal(looks[i][axis], id);
+    for (let i = 1; i < looks.length; i++) assert.notEqual(looks[i][other], looks[i - 1][other], `${axis} pinned, ${TWO_YEARS[i]}`);
+  }
+});
+
+test("rotatePair rejects pools it cannot walk", () => {
+  assert.throws(() => rotatePair(["a", "b"], ["c", "d"], 0, "x", "y"), /same size >= 3/);
+  assert.throws(() => rotatePair(["a", "b", "c"], ["d", "e", "f", "g"], 0, "x", "y"), /same size >= 3/);
 });
