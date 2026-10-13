@@ -403,7 +403,7 @@ describe("story caption never restates its headline", () => {
     ]);
   });
 
-  it("drops the restating lead and keeps the sentences that add facts", () => {
+  it("keeps a lead whose only new word is a tense marker, and the facts after it", () => {
     const s = story({
       title:
         "Nvidia đàm phán mua lại startup mô hình 'mở' Reflection AI tại Mỹ",
@@ -411,9 +411,59 @@ describe("story caption never restates its headline", () => {
         "Nvidia đang đàm phán để mua lại startup mô hình 'mở' Reflection AI tại Mỹ. Thương vụ có thể trị giá 25 tỷ USD.",
       lang: "vi",
     });
+    // "đang" is aspect, so it is content: the lead stays. A repeat costs a
+    // line; a dropped tense could drop a fact.
     const caption = visible(buildStoryCaption(s));
-    expect(caption).not.toContain("Nvidia đang đàm phán");
+    expect(caption).toContain("Nvidia đang đàm phán");
     expect(caption).toContain("Thương vụ có thể trị giá 25 tỷ USD.");
+  });
+
+  it.each([
+    [
+      "EN future headline, past clause",
+      "Meta will launch Muse Wonder",
+      "Meta has launched Muse Wonder.",
+      true,
+    ],
+    [
+      "VI future headline, past clause",
+      "Meta sẽ ra mắt Muse Wonder",
+      "Meta đã ra mắt Muse Wonder.",
+      true,
+    ],
+    // Were "dropped" while "has" and "đang" were stopwords. Tense is content
+    // now, so these stay: a repeat costs a line, a lost tense a fact.
+    [
+      "EN present headline, perfect clause",
+      "Anthropic launches Claude for Chrome to all paid users",
+      "Anthropic has launched Claude for Chrome to all paid users.",
+      true,
+    ],
+    [
+      "VI headline without aspect, clause with đang",
+      "Nvidia đàm phán mua lại startup mô hình mở Reflection AI tại Mỹ",
+      "Nvidia đang đàm phán mua lại startup mô hình mở Reflection AI tại Mỹ.",
+      true,
+    ],
+    [
+      "EN past headline, same-tense restatement",
+      "Meta launched Muse Wonder",
+      "Meta launched Muse Wonder.",
+      false,
+    ],
+    [
+      "VI past headline, same-tense restatement",
+      "Meta đã ra mắt Muse Wonder",
+      "Meta đã ra mắt Muse Wonder.",
+      false,
+    ],
+  ])("tense words are content: %s", (_name, title, summary, kept) => {
+    const s = story({
+      title,
+      summary,
+      lang: /đã|sẽ/.test(title) ? "vi" : "en",
+    });
+    expect(summaryOf(s) !== null).toBe(kept);
   });
 
   it("keeps a lead that echoes the headline but carries a new number", () => {
@@ -636,18 +686,6 @@ describe("story caption never restates its headline", () => {
       "Nvidia agrees to buy Reflection AI for $2B",
       "Nvidia agreed to buy Reflection AI for $2B.",
       "en",
-    ],
-    [
-      "auxiliary",
-      "Anthropic launches Claude for Chrome to all paid users",
-      "Anthropic has launched Claude for Chrome to all paid users.",
-      "en",
-    ],
-    [
-      "vi aspect marker",
-      "Nvidia đàm phán mua lại startup mô hình mở Reflection AI tại Mỹ",
-      "Nvidia đang đàm phán mua lại startup mô hình mở Reflection AI tại Mỹ.",
-      "vi",
     ],
     [
       "98a28302 en",

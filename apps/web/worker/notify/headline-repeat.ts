@@ -28,20 +28,19 @@ const BYLINE = new RegExp(
   "u"
 );
 
-/** The only words a restating clause may add: articles, conjunctions,
- *  prepositions and copulas. VI "đã" and "đang" mark aspect the way EN "has"
- *  and "is" do, and "một" is read as the article. Modal, time, quantity and
- *  hedge words ("will", "sẽ", "after", "over", "about", "just", "vừa") are
- *  content. */
+/** The only words a restating clause may add: articles, conjunctions and
+ *  prepositions. "một" is read as the article. Tense, aspect, modal, time,
+ *  quantity and hedge words are content: "has launched" under "will launch"
+ *  says it happened, not that it is planned. So EN "is/was/has/had/be" and VI
+ *  "đã/đang/sẽ/vừa" count, as do "will", "after", "over", "about", "just". */
 const STOPWORDS = new Set(
   [
     ...["a", "an", "the", "and", "or", "but", "that", "than", "as"],
     ...["of", "to", "in", "on", "at", "for", "from", "by", "with", "into"],
-    ...["onto", "via", "is", "are", "was", "were", "be", "been", "being"],
-    ...["am", "has", "have", "had"],
+    ...["onto", "via"],
     ...["các", "những", "một", "và", "hoặc", "nhưng", "rằng", "mà", "của"],
     ...["với", "để", "trong", "từ", "về", "tại", "ở", "vào", "cho", "là"],
-    ...["được", "bị", "đã", "đang"],
+    ...["được", "bị"],
   ].map(stem)
 );
 
