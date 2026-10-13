@@ -135,6 +135,31 @@ test("a model answer that drops a number, a marker or a name goes to the next mo
   assert.equal(fields["s1.stat"].vi, "678.000");
 });
 
+test("with one model, a failed field is asked again with its problem, and the second answer counts", async () => {
+  const prompts = [];
+  let call = 0;
+  const llm = async (_model, messages) => {
+    prompts.push(messages[1].content);
+    const keys = asked(messages);
+    const kicker = call++ === 0 ? "Lô hàng chip AI của Nvidia sang Trung Quốc" : GOOD["s1.kicker"];
+    return JSON.stringify({ fields: Object.fromEntries(keys.map((k) => [k, k === "s1.kicker" ? kicker : GOOD[k]])) });
+  };
+  const fields = await translateScreen({ script: SCRIPT, edition: EDITION, models: ["m1"], llm, style: STYLE, log: () => {} });
+  assert.equal(prompts.length, 2);
+  assert.match(prompts[1], /"fix": "\\"Lô hàng chip AI của Nvidia sang Trung Quốc\\": s1\.kicker: 9 words, 1-6 allowed"/);
+  assert.deepEqual(asked([{}, { content: prompts[1] }]), ["s1.kicker"]);
+  assert.equal(fields["s1.kicker"].vi, GOOD["s1.kicker"]);
+});
+
+test("a label made of names may stay as written, and 100K may become 100.000", () => {
+  assert.deepEqual(fieldProblems("s1.kicker", "Broadcom x Anthropic", "Broadcom x Anthropic", EDITION), []);
+  assert.deepEqual(fieldProblems("s1.kicker", "ChatGPT for Mac", "ChatGPT for Mac", EDITION), []);
+  assert.match(fieldProblems("s1.headline", "Nvidia shipments fall in China", "Nvidia shipments fall in China", EDITION).join(), /not translated/);
+  assert.deepEqual(fieldProblems("s1.statLabel", "seed · 100K neuro-sensors", "vòng seed · 100.000 cảm biến", EDITION), []);
+  assert.deepEqual(fieldProblems("s1.statLabel", "seed · 100K neuro-sensors", "vòng seed · 100K cảm biến", EDITION), []);
+  assert.match(fieldProblems("s1.statLabel", "seed · 100K neuro-sensors", "vòng seed · 10.000 cảm biến", EDITION).join(), /missing/);
+});
+
 test("no valid answer for a field fails loudly, naming the field", async () => {
   const { llm } = fakeLlm({ m1: { "s1.stat": "nhiều" }, m2: { "s1.stat": "" } });
   await assert.rejects(

@@ -66,9 +66,15 @@ export function storedVi(key, en, edition, categories) {
 const NAME = /\p{Lu}[\p{L}\p{N}+-]*/gu;
 const markers = (t) => [...t.matchAll(/\*([^*]*)\*/g)].map((m) => m[1].trim());
 
+// "100K" may become "100.000" in Vietnamese press style.
+const thousands = (t) => t.replace(/(\d+(?:\.\d+)?)K\b/g, (_, n) => String(Number(n) * 1000));
+// A label made of names ("Broadcom x Anthropic", "ChatGPT for Mac") may stay as it is.
+const onlyNames = (t) => !t.split(/\s+/).some((w) => /^\p{Ll}{4,}/u.test(w));
+
 /** Problems with one translated field (empty = fine). */
 export function fieldProblems(key, en, vi, edition) {
-  const p = lineProblems(key, en, vi);
+  const asIs = typeof vi === "string" && /\d+K\b/.test(vi);
+  const p = lineProblems(key, asIs ? en : thousands(en), vi).filter((x) => !(x.endsWith(": not translated") && onlyNames(en)));
   if (typeof vi !== "string" || !vi.trim()) return p;
   const field = key.split(".").slice(1).join(".");
   const want = markers(en);
@@ -102,15 +108,16 @@ const HOW = {
 };
 
 export function promptFor(items, edition, style = houseStyle()) {
-  const fields = items.map(({ key, en }) => {
+  const fields = items.map(({ key, en, fix }) => {
     const ed = storyOf(key, edition);
     const field = ed ? key.split(".").slice(1).join(".") : key;
-    return { key, en, what: HOW[field], ...(ed ? { site_vi: [ed.title_vi, ed.text_vi].filter(Boolean).join(" ") } : {}) };
+    const site = ed ? [ed.title_vi, ed.text_vi].filter(Boolean).join(". ") : "";
+    return { key, en, what: HOW[field], ...(site ? { site_vi: site } : {}), ...(fix ? { fix } : {}) };
   });
   return [
     {
       role: "system",
-      content: `${style.style}\n\n${style.overview}\n\nNow you write the on-screen text of the AI;DR Daily Brief, an English-language TV news video shown with Vietnamese subtitles. Viewers hear English and read Vietnamese, so every label, headline and title on screen is short Vietnamese that says what the English says. "site_vi" is how aidr.today already says the story in Vietnamese: use its wording and terms. Keep every number (Vietnamese press style: "20 triệu USD", "678.000", "44%"), and keep names, products, companies and labels such as H1, Q3 or GPT-5 as written. Keep "AI;DR" and "aidr.today" exactly. Answer with one JSON object only.`,
+      content: `${style.style}\n\n${style.overview}\n\nNow you write the on-screen text of the AI;DR Daily Brief, an English-language TV news video shown with Vietnamese subtitles. Viewers hear English and read Vietnamese, so every label, headline and title on screen is short Vietnamese that says what the English says. "site_vi" is how aidr.today already says the story in Vietnamese: use its wording and terms. Keep every number (Vietnamese press style: "20 triệu USD", "678.000", "44%"), and keep names, products, companies and labels such as H1, Q3 or GPT-5 as written. Keep "AI;DR" and "aidr.today" exactly. A field with "fix" failed these checks on an earlier answer: correct exactly that. Answer with one JSON object only.`,
     },
     {
       role: "user",
@@ -121,7 +128,8 @@ export function promptFor(items, edition, style = houseStyle()) {
 
 /**
  * The Vietnamese screen text for an English script. Cached fields with the same English are kept, stored copy is
- * taken as is, and the rest goes to the models in turn (each asked only for the fields still missing).
+ * taken as is, and the rest goes to the models in turn, twice over: each call asks only for the fields still
+ * missing, with the problems of the last answer for each.
  * `llm(model, messages)` returns the raw model text (injected for tests). Returns { [key]: { en, vi, from } };
  * throws when a field has no valid answer.
  */
@@ -135,24 +143,29 @@ export async function translateScreen({ script, edition, cached = {}, categories
     else todo.push({ key, en });
   }
   const tried = [];
-  for (const model of todo.length ? models : []) {
+  const fix = {};
+  for (const model of todo.length ? [...models, ...models] : []) {
     const pending = todo.filter((t) => !out[t.key]);
     if (!pending.length) break;
+    let bad = [];
     try {
-      const text = await llm(model, promptFor(pending, edition, style));
+      const text = await llm(model, promptFor(pending.map((t) => ({ ...t, fix: fix[t.key] })), edition, style));
       const answer = JSON.parse(text.replace(/^[\s\S]*?(\{)/, "$1").replace(/\}[^}]*$/, "}")).fields ?? {};
-      const bad = [];
       for (const { key, en } of pending) {
         const vi = typeof answer[key] === "string" ? answer[key].trim() : answer[key];
         const p = fieldProblems(key, en, vi, edition);
-        if (p.length) bad.push(...p);
-        else out[key] = { en, vi, from: model };
+        if (p.length) {
+          fix[key] = `${JSON.stringify(vi ?? null)}: ${p.join("; ")}`;
+          bad.push(...p);
+        } else out[key] = { en, vi, from: model };
       }
-      if (bad.length) tried.push(`${model}: ${bad.slice(0, 4).join("; ")}`);
     } catch (e) {
-      tried.push(`${model}: ${e.message}`);
+      bad = [e.message];
     }
-    if (tried.length) log(`! ${tried.at(-1)}`);
+    if (bad.length) {
+      tried.push(`${model}: ${bad.slice(0, 4).join("; ")}`);
+      log(`! ${tried.at(-1)}`);
+    }
   }
   const missing = todo.filter((t) => !out[t.key]).map((t) => t.key);
   if (missing.length) throw new Error(`no valid Vietnamese screen text for ${missing.join(", ")}:\n  ${tried.join("\n  ") || "no model to translate with (ANYROUTER_API_KEY is not set)"}`);
