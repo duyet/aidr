@@ -13,6 +13,7 @@
   "exports": {
     ".": "./index.tsx",
     "./Analytics": "./Analytics.tsx",
+    "./analytics-stubs": "./analytics-stubs.ts",
     "./track": "./track.ts",
     "./web-vitals": "./web-vitals.ts",
     "./ThemeProvider": "./ThemeProvider.tsx",

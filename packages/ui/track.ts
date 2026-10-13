@@ -39,7 +39,7 @@ export function sanitizeTrackParams(
       }
     }
   }
-  out.surface = "web";
+  if (out.surface === undefined) out.surface = "web";
   return out;
 }
 
@@ -61,7 +61,9 @@ function getPosthog():
 }
 
 /** Best-effort GA4 + PostHog event, same name and sanitized params.
- * Noops for a sink that is not loaded; never throws. */
+ * `@aidr/ui/Analytics` installs the vendors' queue stubs at module init, so
+ * a call before the scripts load is queued, not lost. Noops for a sink that
+ * is disabled; never throws. */
 export function track(name: string, params?: TrackParams): void {
   try {
     if (!EVENT_NAME_RE.test(name)) return;

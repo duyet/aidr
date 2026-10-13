@@ -107,10 +107,11 @@ describe("Analytics deferral (#229)", () => {
     drainIdle();
 
     const injected = thirdPartyScripts().join("\n");
-    // gtag + its inline config, and p.js. pageview.duyet.net and Clarity
-    // are not loaded.
+    // gtag and p.js. The gtag config lives in the dataLayer stub installed
+    // at module init, not in an inline script. pageview.duyet.net and
+    // Clarity are not loaded.
     expect(injected).toContain("googletagmanager.com/gtag/js");
-    expect(injected).toContain("window.dataLayer");
+    expect(injected).not.toContain("window.dataLayer");
     expect(injected).not.toContain("pageview.duyet.net");
     expect(injected).not.toContain("clarity.ms");
     expect(injected).toContain("j.duyet.net/p.js");
