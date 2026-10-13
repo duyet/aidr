@@ -305,10 +305,11 @@ async function run(): Promise<void> {
         });
       }
       const res = await realFetch(input, init);
-      const json = await res
+      type Sent = { message_id?: number };
+      const json = (await res
         .clone()
         .json()
-        .catch(() => null);
+        .catch(() => null)) as { result?: Sent | Sent[] } | null;
       const result = json?.result;
       const id = Array.isArray(result)
         ? result[0]?.message_id
