@@ -35,7 +35,12 @@ import { ensureMailSchema } from "../mail/schema.js";
 import { digestFrom, sendSubscriberEmail } from "../mail/send.js";
 import { canonicalizeMediaImageUrl } from "../media.js";
 import type { Env } from "../types.js";
-import { digestWindow, isoWeekOfWindow, weekdayOf } from "../weekly-digest.js";
+import {
+  digestWindow,
+  isoWeekOfWindow,
+  shiftDate,
+  weekdayOf,
+} from "../weekly-digest.js";
 import { DEFAULT_TIMEZONE, isValidTimezone } from "./handlers.js";
 
 export type { TldrBulletLike } from "../digest/edition.js";
@@ -189,6 +194,7 @@ export interface DigestBullet extends TldrBulletLike {
 /** Extras the edition renderer loads beside the bullets. */
 export interface DigestExtras {
   video?: DigestVideo | null;
+  weekVideos?: DigestVideo[];
   postalAddress?: string;
   /** Renders the weekly edition instead of a day (see `renderWeeklyEmail`). */
   weekly?: WeeklyMailMeta;
@@ -225,6 +231,7 @@ export function buildDigestEmail(
     settingsUrl: settingsUrl(unsubscribeToken, mailLang),
     format,
     video: extras.video,
+    weekVideos: extras.weekVideos,
     postalAddress: extras.postalAddress,
     feedbackToken: unsubscribeToken,
     weekly: extras.weekly,
@@ -499,26 +506,44 @@ async function loadBulletDetails(
   }
 }
 
-/** The day's video in `lang` only (`youtube_id`, else `short_id`). A
- *  missing row, column or table means no video block. */
-async function loadDigestVideo(
+/** Day videos from `start` to `end`, newest first, in `lang` only
+ *  (`youtube_id`, else `short_id`); days without one in `lang` are skipped.
+ *  A missing column or table reads as none. */
+async function loadDigestVideos(
+  env: Pick<Env, "DB">,
+  start: string,
+  end: string,
+  lang: "en" | "vi"
+): Promise<DigestVideo[]> {
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT date, youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi
+       FROM day_videos WHERE date BETWEEN ? AND ? ORDER BY date DESC`
+    )
+      .bind(start, end)
+      .all<{ date: string }>();
+    return (results ?? []).flatMap((row) => {
+      const video = parseDayVideoRow(row)[lang];
+      const id = video?.youtube_id ?? video?.short_id;
+      return id
+        ? [{ date: row.date, youtubeId: id, title: video?.title ?? null }]
+        : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Day videos go up in the afternoon, after the morning send, so the daily
+ *  mail takes the newest of its date and the day before. */
+async function loadDailyVideo(
   env: Pick<Env, "DB">,
   date: string,
   lang: "en" | "vi"
 ): Promise<DigestVideo | null> {
-  try {
-    const row = await env.DB.prepare(
-      `SELECT youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi
-       FROM day_videos WHERE date = ? LIMIT 1`
-    )
-      .bind(date)
-      .first();
-    const video = parseDayVideoRow(row)[lang];
-    const id = video?.youtube_id ?? video?.short_id;
-    return id ? { youtubeId: id, title: video?.title ?? null } : null;
-  } catch {
-    return null;
-  }
+  if (Number.isNaN(Date.parse(`${date}T00:00:00Z`))) return null;
+  const videos = await loadDigestVideos(env, shiftDate(date, -1), date, lang);
+  return videos[0] ?? null;
 }
 
 /** The digest mail for one edition, exactly as it is sent: joins the
@@ -534,7 +559,7 @@ export async function renderEditionEmail(
   const lang = edition.lang === "en" ? "en" : "vi";
   const [bullets, video] = await Promise.all([
     loadBulletDetails(env, edition.bullets, lang),
-    loadDigestVideo(env, edition.date, lang),
+    loadDailyVideo(env, edition.date, lang),
   ]);
   return buildDigestEmail(
     edition.date,
@@ -715,7 +740,10 @@ export async function renderWeeklyEmail(
   unsubscribeToken: string,
   format: MailFormat
 ): Promise<{ subject: string; html: string; text: string }> {
-  const bullets = await loadBulletDetails(env, mail.bullets, lang);
+  const [bullets, videos] = await Promise.all([
+    loadBulletDetails(env, mail.bullets, lang),
+    loadDigestVideos(env, mail.meta.start_date, mail.meta.end_date, lang),
+  ]);
   return buildDigestEmail(
     mail.meta.end_date,
     bullets,
@@ -726,6 +754,7 @@ export async function renderWeeklyEmail(
     {
       postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined,
       weekly: mail.meta,
+      weekVideos: videos.reverse(),
     }
   );
 }

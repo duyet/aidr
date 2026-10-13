@@ -73,7 +73,7 @@ export function youtubeEmbedUrl(id: string): string {
 
 export function youtubeThumbnailUrl(
   id: string,
-  size: "hq" | "maxres" = "hq"
+  size: "mq" | "hq" | "maxres" = "hq"
 ): string {
   return `https://i.ytimg.com/vi/${id}/${size}default.jpg`;
 }
