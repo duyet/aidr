@@ -1,9 +1,9 @@
 import { Button, ErrorBoundary } from "@aidr/ui";
-import { track, trackChannelClick } from "@aidr/ui/track";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { useRef, useState } from "react";
+import { track } from "../../lib/analytics/track";
 import {
   PHONE_LANG_TOGGLE_BUTTON_CLASS,
   PHONE_LANG_TOGGLE_CONTAINER_CLASS,
@@ -77,9 +77,13 @@ export function PhoneMenu({
 
   const trackLinkClick = (link: (typeof SITE_LINKS)[number]) => {
     if (link.channel) {
-      trackChannelClick(link.channel, { to: link.href });
+      track("channel_click", {
+        channel: link.channel,
+        placement: "phone_menu",
+        ...(link.channelLang ? { lang: link.channelLang } : {}),
+      });
     } else {
-      track("nav_click", { to: link.href });
+      track("nav_click", { to: link.href, placement: "phone_menu" });
     }
   };
 

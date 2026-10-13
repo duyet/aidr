@@ -1,6 +1,6 @@
 import { Badge, Button } from "@aidr/ui";
-import { trackChannelClick } from "@aidr/ui/track";
 import { Languages, Newspaper, ShieldCheck } from "lucide-react";
+import { track } from "../../lib/analytics/track";
 import { FACEBOOK_URL } from "../../lib/site";
 import type { Lang } from "../../lib/types";
 import { ChannelSplit } from "./ChannelSplit";
@@ -83,7 +83,11 @@ export function FacebookChannel({ lang }: { lang: Lang }) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() =>
-                trackChannelClick("facebook", { to: "facebook-en" })
+                track("channel_click", {
+                  channel: "facebook",
+                  placement: "subscribe_page",
+                  lang: "en",
+                })
               }
             >
               <FacebookMark className="mr-2 size-5" />

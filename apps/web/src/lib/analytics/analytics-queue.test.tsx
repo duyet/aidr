@@ -3,19 +3,16 @@
 /**
  * Events fired before the vendor scripts load must be queued, not dropped.
  *
- * `@aidr/ui/Analytics` defers gtag.js and PostHog's array.js past the LCP
- * paint (1 to 6 s after hydrate), while PageViewTracker fires the landing
- * page_view and the one-shot extension_landing / telegram_landing /
- * email_click / campaign_touch from its first effect. Without the vendors'
- * queue stubs installed up front, both sinks lose those events for good.
+ * `vendors.tsx` defers gtag.js and PostHog's array.js past the LCP
+ * paint (1 to 6 s after hydrate), while PageViewTracker fires the one-shot
+ * channel_landing and the landing page_view from its first effect. Without
+ * the vendors' queue stubs installed up front, both sinks lose those events
+ * for good.
  */
-import {
-  installAnalyticsStubs,
-  type PosthogStub,
-} from "@aidr/ui/analytics-stubs";
-import { track } from "@aidr/ui/track";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { installAnalyticsStubs, type PosthogStub } from "./stubs";
+import { track } from "./track";
 
 type QueueWindow = Window & {
   dataLayer?: IArguments[];
@@ -68,7 +65,7 @@ afterEach(() => {
 describe("track() before the vendor scripts load", () => {
   it("queues the gtag call in dataLayer behind js and config", () => {
     installAnalyticsStubs({ gaMeasurementId: "G-TEST" });
-    track("page_view", { page_path: "/" });
+    track("page_view", { page_path: "/", page_type: "home" });
 
     const calls = dataLayerCalls();
     expect(calls[0][0]).toBe("js");
@@ -76,7 +73,7 @@ describe("track() before the vendor scripts load", () => {
     expect(calls[2]).toEqual([
       "event",
       "page_view",
-      { page_path: "/", surface: "web" },
+      { page_path: "/", page_type: "home" },
     ]);
     expect(calls).toHaveLength(3);
   });
@@ -86,7 +83,11 @@ describe("track() before the vendor scripts load", () => {
       gaMeasurementId: "G-TEST",
       posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
     });
-    track("telegram_landing", { traffic_source: "telegram" });
+    track("channel_landing", {
+      channel: "telegram",
+      page_type: "home",
+      page_path: "/",
+    });
 
     const stub = w().posthog as PosthogStub;
     expect(stub._i).toEqual([
@@ -103,8 +104,13 @@ describe("track() before the vendor scripts load", () => {
     expect(posthogQueue()).toEqual([
       [
         "capture",
-        "telegram_landing",
-        { traffic_source: "telegram", surface: "web" },
+        "channel_landing",
+        {
+          channel: "telegram",
+          page_type: "home",
+          page_path: "/",
+          surface: "web",
+        },
       ],
     ]);
   });
@@ -114,7 +120,7 @@ describe("track() before the vendor scripts load", () => {
       gaMeasurementId: "G-TEST",
       posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
     });
-    track("page_view", { page_path: "/" });
+    track("source_click", { item_id: "deadbeef", placement: "row" });
 
     const ph = loadFakePosthog();
     expect(ph.capture).toHaveBeenCalledTimes(1);
@@ -127,10 +133,11 @@ describe("track() before the vendor scripts load", () => {
     expect(w().posthog).toBe(ph);
     expect(dataLayerCalls().filter((c) => c[0] === "config")).toHaveLength(1);
 
-    track("story_open", { item_id: "abc" });
+    track("source_click", { item_id: "cafebabe", placement: "dialog" });
     expect(ph.capture).toHaveBeenCalledTimes(2);
-    expect(ph.capture).toHaveBeenLastCalledWith("story_open", {
-      item_id: "abc",
+    expect(ph.capture).toHaveBeenLastCalledWith("source_click", {
+      item_id: "cafebabe",
+      placement: "dialog",
       surface: "web",
     });
     expect(dataLayerCalls().filter((c) => c[0] === "event")).toHaveLength(2);
@@ -138,7 +145,7 @@ describe("track() before the vendor scripts load", () => {
 
   it("installs no PostHog stub when the token is unset", () => {
     installAnalyticsStubs({ gaMeasurementId: "G-TEST" });
-    track("page_view");
+    track("page_view", { page_path: "/", page_type: "home" });
     expect(w().posthog).toBeUndefined();
     expect(dataLayerCalls().filter((c) => c[0] === "event")).toHaveLength(1);
   });
@@ -146,10 +153,10 @@ describe("track() before the vendor scripts load", () => {
 
 describe("PageViewTracker landing events at hydrate", () => {
   it("are queued before any vendor script is in the document", async () => {
-    // Nothing is installed by hand here: importing the Analytics module,
-    // as __root.tsx does, must be enough. PostHog's stub needs the token
-    // from import.meta.env, which vi.stubEnv cannot set inside @aidr/ui, so
-    // only the gtag queue is asserted; the PostHog queue is covered above.
+    // Nothing is installed by hand here: importing the vendors module, as
+    // __root.tsx does, must be enough. PostHog's stub needs the token from
+    // import.meta.env at module init, which this test leaves unset, so only
+    // the gtag queue is asserted; the PostHog queue is covered above.
     vi.doMock("@tanstack/react-router", () => ({
       useRouterState: ({
         select,
@@ -163,9 +170,11 @@ describe("PageViewTracker landing events at hydrate", () => {
         }),
     }));
 
-    // Importing the Analytics module is what installs the stubs in the app.
-    await import("@aidr/ui/Analytics");
-    const { PageViewTracker } = await import("../components/PageViewTracker");
+    // Importing the vendors module is what installs the stubs in the app.
+    await import("./vendors");
+    const { PageViewTracker } = await import(
+      "../../components/PageViewTracker"
+    );
     render(<PageViewTracker />);
 
     expect(document.querySelectorAll("script")).toHaveLength(0);
@@ -174,18 +183,13 @@ describe("PageViewTracker landing events at hydrate", () => {
     const gaEvents = dataLayerCalls()
       .filter((c) => c[0] === "event")
       .map((c) => c[1]);
-    expect(gaEvents).toEqual([
-      "telegram_landing",
-      "campaign_touch",
-      "page_view",
-    ]);
+    expect(gaEvents).toEqual(["channel_landing", "page_view"]);
 
-    const landing = dataLayerCalls().find((c) => c[1] === "telegram_landing");
-    expect(landing?.[2]).toMatchObject({
-      utm_source: "telegram",
-      traffic_source: "telegram",
+    const landing = dataLayerCalls().find((c) => c[1] === "channel_landing");
+    expect(landing?.[2]).toEqual({
+      channel: "telegram",
+      page_type: "home",
       page_path: "/",
-      surface: "web",
     });
   });
 });

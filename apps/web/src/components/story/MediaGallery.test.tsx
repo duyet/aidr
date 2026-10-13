@@ -4,11 +4,15 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MediaManifest } from "../../../worker/media.js";
 import { MAX_MEDIA_ASSETS } from "../../../worker/media.js";
+import { track } from "../../lib/analytics/track";
 import { MediaGallery, visibleMediaAssets } from "./MediaGallery";
 
-vi.mock("@aidr/ui/track", () => ({ track: vi.fn() }));
+vi.mock("../../lib/analytics/track", () => ({ track: vi.fn() }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.mocked(track).mockClear();
+});
 
 const CDN = "https://cdn.example.test";
 const ARTICLE = "https://blog.example.test/posts/one";
@@ -461,6 +465,30 @@ describe("MediaGallery", () => {
       document.querySelector('[role="dialog"]')?.getAttribute("aria-modal")
     ).toBe("true");
     expect(container.querySelectorAll("img")).toHaveLength(1);
+  });
+
+  it("reports an image zoom as media_open with its story and position", () => {
+    const { getByRole } = renderGallery(
+      manifestOf([image("/a.jpg"), image("/b.jpg")])
+    );
+    fireEvent.click(getByRole("button", { name: "Zoom image 2 of 2" }));
+    expect(track).toHaveBeenCalledExactlyOnceWith("media_open", {
+      media: "image",
+      index: 2,
+      item_id: "story-1",
+    });
+  });
+
+  it("reports the video fallback link as media_open with its story", () => {
+    const { container } = renderGallery(
+      manifestOf([image("/a.jpg"), video("/clip.mp4")])
+    );
+    fireEvent.click(container.querySelector("video a") as HTMLAnchorElement);
+    expect(track).toHaveBeenCalledExactlyOnceWith("media_open", {
+      media: "video",
+      index: 2,
+      item_id: "story-1",
+    });
   });
 
   it("never leaks a rejected URL into the DOM", () => {

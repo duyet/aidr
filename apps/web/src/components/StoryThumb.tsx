@@ -1,7 +1,7 @@
-import { track } from "@aidr/ui/track";
 import { Maximize2, X } from "lucide-react";
 import { type ReactElement, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { track } from "../lib/analytics/track";
 import { withLang } from "../lib/locale-url";
 import { resizeCdnImageUrl } from "../lib/tldr-images";
 import type { Lang } from "../lib/types";
@@ -166,7 +166,10 @@ export function StoryThumb({
           e.preventDefault();
           e.stopPropagation();
           setOpen(true);
-          track("thumb_zoom", itemId ? { item_id: itemId } : undefined);
+          track("media_open", {
+            media: "thumb",
+            ...(itemId ? { item_id: itemId } : {}),
+          });
         }}
         className={
           variant === "card"

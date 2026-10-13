@@ -1,4 +1,3 @@
-import { track } from "@aidr/ui/track";
 import {
   CalendarDays,
   Check,
@@ -7,6 +6,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type { ReactElement } from "react";
+import { track } from "../../lib/analytics/track";
 import { type TldrCount, usePrefs } from "../../lib/prefs";
 import { PREFS_LABEL, Segmented } from "./Segmented";
 
@@ -52,7 +52,7 @@ export function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
           label={t("AI;DR items", "Số mục AI;DR")}
           value={prefs.tldrCount}
           onChange={(n: TldrCount) => {
-            track("prefs_change", { pref: "tldrCount" });
+            track("prefs_change", { pref: "tldrCount", pref_value: `${n}` });
             setPrefs({ tldrCount: n });
           }}
           options={TLDR_COUNTS.map((n) => ({ value: n, label: n }))}
@@ -72,7 +72,10 @@ export function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
                 type="button"
                 aria-pressed={on}
                 onClick={() => {
-                  track("prefs_change", { pref: `sections.${key}` });
+                  track("prefs_change", {
+                    pref: `sections.${key}`,
+                    pref_value: on ? "off" : "on",
+                  });
                   setPrefs({
                     sections: { ...prefs.sections, [key]: !on },
                   });

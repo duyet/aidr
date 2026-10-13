@@ -16,6 +16,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { track } from "../../lib/analytics/track";
 import { introVideoEmbedUrl } from "../../lib/intro-video";
 import { GetAIDRMenu } from "./GetAIDRMenu";
 import { PhoneMenu } from "./PhoneMenu";
@@ -30,6 +31,8 @@ vi.mock("../../lib/intro-video", async (importOriginal) => ({
     return introVideo.id;
   },
 }));
+
+vi.mock("../../lib/analytics/track", () => ({ track: vi.fn() }));
 
 vi.mock("@tanstack/react-router", async () => {
   const React = await import("react");
@@ -99,6 +102,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   introVideo.id = null;
+  vi.mocked(track).mockClear();
 });
 
 function renderPhoneMenu() {
@@ -449,6 +453,57 @@ describe("mobile action sizing", () => {
       expect(marker.getAttribute("class")).toContain("ml-auto");
       expect(marker.getAttribute("class")).toContain("!size-3");
     }
+  });
+});
+
+describe("channel click tracking", () => {
+  it("reports the Facebook Page item as an English channel click, not navigation", async () => {
+    render(<GetAIDRMenu />);
+    const trigger = screen.getByRole("button", { name: "Get AI;DR menu" });
+    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.click(trigger);
+    const menu = await screen.findByRole("menu");
+    fireEvent.click(within(menu).getByText("Facebook Page"));
+    expect(track).toHaveBeenCalledExactlyOnceWith("channel_click", {
+      channel: "facebook",
+      placement: "header_menu",
+      lang: "en",
+    });
+  });
+
+  it("reports the phone menu Telegram tile with the channel's language", async () => {
+    render(
+      <PhoneMenu
+        lang="en"
+        onLangChange={() => undefined}
+        langToggleDisabled={false}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("link", { name: "Telegram" }));
+    expect(track).toHaveBeenCalledExactlyOnceWith("channel_click", {
+      channel: "telegram",
+      placement: "phone_menu",
+      lang: "vi",
+    });
+  });
+
+  it("reports the phone menu sign-in as phone_menu, not header", async () => {
+    render(
+      <PhoneMenu
+        lang="en"
+        onLangChange={() => undefined}
+        langToggleDisabled={false}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("link", { name: "Sign in" }));
+    expect(track).toHaveBeenCalledExactlyOnceWith("nav_click", {
+      to: "/sign-in",
+      placement: "phone_menu",
+    });
   });
 });
 

@@ -1,6 +1,6 @@
-import { track } from "@aidr/ui/track";
 import { TrendingUp } from "lucide-react";
 import type { CSSProperties } from "react";
+import { track } from "../lib/analytics/track";
 import { topicColor } from "../lib/topic-color";
 import { useHorizontalScroll } from "../lib/use-horizontal-scroll";
 
@@ -38,7 +38,7 @@ export function TrendingChips({
             type="button"
             onClick={() => {
               const next = selected ? null : t.tag;
-              if (next) track("topic_filter", { tag: next });
+              if (next) track("topic_filter", { tag: next, from: "trending" });
               onSelectTag(next);
             }}
             aria-pressed={selected}

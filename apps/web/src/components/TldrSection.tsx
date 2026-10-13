@@ -1,7 +1,7 @@
-import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import { type ReactElement, useState } from "react";
 import { type AidrLayout, DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
+import { track } from "../lib/analytics/track";
 import { dayOgDateParts } from "../lib/day-og";
 import { timeAgo } from "../lib/lang";
 import { type TldrCount, usePrefs } from "../lib/prefs";
@@ -126,7 +126,7 @@ export function TldrSection({
               lang={lang}
               showImage={preview}
               onChange={(showImage) => {
-                track("tldr_view", { view: showImage ? "image" : "text" });
+                track("tldr_toggle", { view: showImage ? "image" : "text" });
                 setPreview(showImage);
               }}
             />
@@ -138,7 +138,10 @@ export function TldrSection({
                   key={o.nominal}
                   type="button"
                   onClick={() => {
-                    track("prefs_change", { pref: "tldrCount" });
+                    track("prefs_change", {
+                      pref: "tldrCount",
+                      pref_value: `${o.nominal}`,
+                    });
                     setPrefs({ tldrCount: o.nominal });
                   }}
                   aria-pressed={selectedOption === o}
@@ -179,7 +182,10 @@ export function TldrSection({
             <button
               type="button"
               onClick={() => {
-                track("prefs_change", { pref: "tldrCount" });
+                track("prefs_change", {
+                  pref: "tldrCount",
+                  pref_value: `${nextOption.nominal}`,
+                });
                 setPrefs({ tldrCount: nextOption.nominal });
               }}
               className="mt-3 text-xs font-semibold text-accent hover:underline"
@@ -191,7 +197,10 @@ export function TldrSection({
               <button
                 type="button"
                 onClick={() => {
-                  track("prefs_change", { pref: "tldrCount" });
+                  track("prefs_change", {
+                    pref: "tldrCount",
+                    pref_value: `${options[0].nominal}`,
+                  });
                   setPrefs({ tldrCount: options[0].nominal });
                 }}
                 className="mt-3 text-xs font-semibold text-accent hover:underline"

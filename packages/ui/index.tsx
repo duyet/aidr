@@ -1,4 +1,3 @@
-export { default as Analytics } from "./Analytics";
 export {
   DefaultErrorFallback,
   default as ErrorBoundary,

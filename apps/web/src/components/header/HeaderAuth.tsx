@@ -1,8 +1,8 @@
 import { Button } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import { UserRound } from "lucide-react";
 import type { ReactNode } from "react";
+import { track } from "../../lib/analytics/track";
 import { type ClerkModule, useClerkModule } from "../../lib/clerk-user";
 import { useLang } from "../../lib/lang-context";
 import { withLang } from "../../lib/locale-url";
@@ -26,7 +26,10 @@ export function HeaderAuth({
   const navigationLang = useLang();
   const { mod } = useClerkModule();
   const onClick = () => {
-    track("nav_click", { to: "/sign-in" });
+    track("nav_click", {
+      to: "/sign-in",
+      placement: stacked ? "phone_menu" : "header",
+    });
     onSignIn?.();
   };
   const signIn = stacked ? (

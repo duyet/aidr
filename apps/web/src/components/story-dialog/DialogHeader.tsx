@@ -1,6 +1,6 @@
-import { track } from "@aidr/ui/track";
 import { Check, Columns2, Copy, ExternalLink, X } from "lucide-react";
 import { useState } from "react";
+import { track } from "../../lib/analytics/track";
 import { SITE_URL } from "../../lib/site";
 import { storyPath } from "../../lib/slug";
 import type { FeedItem, Lang } from "../../lib/types";
@@ -66,7 +66,9 @@ export function DialogHeader({
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => track("story_open", { item_id: item.id })}
+              onClick={() =>
+                track("source_click", { item_id: item.id, placement: "dialog" })
+              }
               className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -106,7 +108,10 @@ export function DialogHeader({
             type="button"
             aria-pressed={bilingual}
             onClick={() => {
-              track("prefs_change", { pref: "bilingualDialog" });
+              track("prefs_change", {
+                pref: "bilingualDialog",
+                pref_value: bilingual ? "off" : "on",
+              });
               onToggleBilingual();
             }}
             title={

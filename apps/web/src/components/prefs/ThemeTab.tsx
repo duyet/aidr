@@ -1,4 +1,3 @@
-import { track } from "@aidr/ui/track";
 import {
   AArrowDown,
   AArrowUp,
@@ -10,6 +9,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { track } from "../../lib/analytics/track";
 import {
   applyReaderTheme,
   DEFAULT_PREFS,
@@ -42,13 +42,16 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
     (resolvedTheme === "dark" || prefs.bg === "dark" || prefs.bg === "black");
 
   const setBg = (bg: ReaderBg) => {
-    track("prefs_change", { pref: "bg" });
+    track("prefs_change", { pref: "bg", pref_value: bg });
     setPrefs({ bg });
     applyReaderTheme(bg);
   };
 
   const setDarkMode = (dark: boolean) => {
-    track("prefs_change", { pref: "theme" });
+    track("prefs_change", {
+      pref: "theme",
+      pref_value: dark ? "dark" : "light",
+    });
     const bg: ReaderBg = dark
       ? prefs.bg === "black"
         ? "black"
@@ -123,7 +126,7 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
           label={t("Font", "Phông chữ")}
           value={prefs.font}
           onChange={(f: ReaderFont) => {
-            track("prefs_change", { pref: "font" });
+            track("prefs_change", { pref: "font", pref_value: f });
             setPrefs({ font: f });
           }}
           options={(["sans", "serif"] satisfies ReaderFont[]).map((f) => ({
@@ -194,10 +197,9 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
             step={1}
             value={READER_DENSITIES.indexOf(prefs.density)}
             onChange={(e) => {
-              track("prefs_change", { pref: "density" });
-              setPrefs({
-                density: READER_DENSITIES[Number(e.target.value)],
-              });
+              const density = READER_DENSITIES[Number(e.target.value)];
+              track("prefs_change", { pref: "density", pref_value: density });
+              setPrefs({ density });
             }}
             className="reader-slider w-full"
             aria-label={t("Density", "Mật độ")}
