@@ -13,7 +13,7 @@ const hosts = ["alex", "allison", "tyler-cruz", "ivanna", "kristen"];
 const quiet = () => {};
 
 test("the template script is valid, fact-checked, and has no draft markers publish.mjs would refuse", () => {
-  const s = templateScript(edition, hosts, null);
+  const s = templateScript(edition, hosts);
   assert.deepEqual(validateScript(s, edition), []);
   assert.doesNotMatch(JSON.stringify(s), /TODO|_bullet/);
   assert.deepEqual(castProblems([...s.intro.voice, ...s.stories.flatMap((x) => x.voice), ...s.outro.voice]), []);
@@ -23,7 +23,7 @@ test("a failing model falls back to the template, trimmed to fit the Reel length
   const llm = async () => {
     throw new Error("anyrouter 503");
   };
-  const { script, source } = await writeScript({ edition, config, hostKeys: hosts, prev: null, maxSeconds: 80, models: ["m1", "m2"], llm, log: quiet });
+  const { script, source } = await writeScript({ edition, config, hostKeys: hosts, maxSeconds: 80, models: ["m1", "m2"], llm, log: quiet });
   assert.equal(source, "template");
   assert.ok(estimateSeconds(script, config) <= 80);
   assert.ok(script.stories.length >= 3 && script.stories.length < edition.stories.length);
@@ -43,9 +43,9 @@ test("a model that invents a number is rejected (facts come only from the bullet
     introLine: "Big news today.",
     post: { hook: "h", facebook: "f", youtubeTitle: "t", shortsTitle: "s", tiktok: "k", hashtags: ["AI", "AINews", "X"] },
   };
-  const { source } = await writeScript({ edition, config, hostKeys: hosts, prev: null, maxSeconds: 200, models: ["m"], llm: async () => JSON.stringify(answer), log: quiet });
+  const { source } = await writeScript({ edition, config, hostKeys: hosts, maxSeconds: 200, models: ["m"], llm: async () => JSON.stringify(answer), log: quiet });
   assert.equal(source, "template");
-  assert.match(validateScript(fromModel(JSON.stringify(answer), edition, hosts, null), edition).join(), /number 99 is not in the bullet/);
+  assert.match(validateScript(fromModel(JSON.stringify(answer), edition, hosts), edition).join(), /number 99 is not in the bullet/);
 });
 
 test("a valid model answer is used; anchors come from the cast, not the model", async () => {
@@ -69,7 +69,6 @@ test("a valid model answer is used; anchors come from the cast, not the model", 
     edition: three,
     config,
     hostKeys: hosts,
-    prev: null,
     maxSeconds: 200,
     models: ["m"],
     llm: async () => `\`\`\`json\n${JSON.stringify(answer)}\n\`\`\``,

@@ -156,16 +156,6 @@ export function templateStory(s) {
   };
 }
 
-/** Theme rotated against the previous edition, as new.mjs drafts it. */
-function themeAfter(prev) {
-  const next = (list, cur) => list[(list.indexOf(cur) + 1) % list.length];
-  return {
-    intro: "grid",
-    transition: next(["wipe", "ink", "shutter"], prev?.theme?.transition ?? "shutter"),
-    background: next(["paper", "soft", "grid"], prev?.theme?.background ?? "grid"),
-  };
-}
-
 const ORD = ["zeroth", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth", "twentieth", "twenty-first", "twenty-second", "twenty-third", "twenty-fourth", "twenty-fifth", "twenty-sixth", "twenty-seventh", "twenty-eighth", "twenty-ninth", "thirtieth", "thirty-first"];
 const COUNT = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"];
 
@@ -173,7 +163,7 @@ const COUNT = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
  * Assemble a full script.json from per-story copy (`copy[rank]` = templateStory shape) and post copy.
  * Anchors come from the seeded cast order; layouts follow the skill's rules.
  */
-export function assemble({ edition, copy, post, introLine, focus, thumbRank, hostKeys, prev }) {
+export function assemble({ edition, copy, post, introLine, focus, thumbRank, hostKeys }) {
   const date = edition.date;
   const d = new Date(`${date}T12:00:00Z`);
   const DOW = d.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
@@ -212,7 +202,6 @@ export function assemble({ edition, copy, post, introLine, focus, thumbRank, hos
   return {
     date,
     dateline: `${DOW}, ${MON} ${d.getUTCDate()}, ${d.getUTCFullYear()}`,
-    theme: themeAfter(prev),
     thumb: { story: thumbRank, hook: copy[thumbRank].kicker },
     post,
     intro: {
@@ -235,7 +224,7 @@ export function assemble({ edition, copy, post, introLine, focus, thumbRank, hos
 }
 
 /** The template script: no model, only the bullets. Always valid unless the edition is broken. */
-export function templateScript(edition, hostKeys, prev) {
+export function templateScript(edition, hostKeys) {
   const copy = Object.fromEntries(edition.stories.map((s) => [s.rank, templateStory(s)]));
   const top = edition.stories.slice(0, 3).map((s) => copy[s.rank].kicker);
   const d = new Date(`${edition.date}T12:00:00Z`);
@@ -246,7 +235,6 @@ export function templateScript(edition, hostKeys, prev) {
     edition,
     copy,
     hostKeys,
-    prev,
     thumbRank: thumb.rank,
     introLine: `First up: ${copy[first.rank].kicker}.`,
     focus: [{ rank: first.rank, word: words(copy[first.rank].kicker)[0].replace(/[^\p{L}\p{N}-]/gu, "") }],
@@ -299,7 +287,7 @@ export async function complete({ model, messages, apiKey, baseUrl, fetchImpl = f
 }
 
 /** Parse a model answer (tolerates a ```json fence) into a script, or throw. */
-export function fromModel(text, edition, hostKeys, prev) {
+export function fromModel(text, edition, hostKeys) {
   const json = JSON.parse(text.replace(/^[\s\S]*?(\{)/, "$1").replace(/\}[^}]*$/, "}"));
   const copy = {};
   for (const s of edition.stories) {
@@ -315,7 +303,6 @@ export function fromModel(text, edition, hostKeys, prev) {
     edition,
     copy,
     hostKeys,
-    prev,
     thumbRank: ranks.includes(json.thumbRank) ? json.thumbRank : ranks[0],
     introLine: json.introLine,
     focus: (json.focus ?? []).filter((f) => ranks.includes(f.rank)).slice(0, 2),
@@ -345,12 +332,12 @@ export function fitLength(edition, maxSeconds, make, config) {
  * The day's script: each model in the chain, then the template. Returns { script, source, problems }.
  * `llm(edition)` returns the raw model text for one model; injected for tests.
  */
-export async function writeScript({ edition, config, hostKeys, prev, maxSeconds, models, llm, log = console.log }) {
+export async function writeScript({ edition, config, hostKeys, maxSeconds, models, llm, log = console.log }) {
   // Pick the stories first (template length), so the model's intro and post copy name only stories in the video.
-  const fit = fitLength(edition, maxSeconds, (ed) => templateScript(ed, hostKeys, prev), config);
+  const fit = fitLength(edition, maxSeconds, (ed) => templateScript(ed, hostKeys), config);
   for (const model of models) {
     try {
-      const script = fromModel(await llm(model, fit.edition), fit.edition, hostKeys, prev);
+      const script = fromModel(await llm(model, fit.edition), fit.edition, hostKeys);
       const problems = validateScript(script, fit.edition);
       const est = estimateSeconds(script, config);
       // The model may run long; a little over the budget still fits the 90 s Reel.
@@ -394,9 +381,6 @@ async function main() {
   const edition = JSON.parse(readFileSync(join(dir, "edition.json"), "utf8"));
   if (edition.date !== date) throw new Error(`edition.json is dated ${edition.date}, expected ${date}`);
 
-  const prevDate = readdirSync(join(ROOT, "editions")).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d < date).sort().at(-1);
-  const prevPath = prevDate && join(ROOT, "editions", prevDate, "script.json");
-  const prev = prevPath && existsSync(prevPath) ? JSON.parse(readFileSync(prevPath, "utf8")) : null;
   const hostKeys = Object.keys(loadCast(config).hosts);
   const apiKey = envVar("ANYROUTER_API_KEY");
   const models = argv.includes("--no-llm") || !apiKey ? [] : (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS).split(",").map((m) => m.trim()).filter(Boolean);
@@ -406,7 +390,6 @@ async function main() {
     edition,
     config,
     hostKeys,
-    prev,
     maxSeconds,
     models,
     llm: (model, ed) => complete({ model, messages: promptFor(ed), apiKey, baseUrl }),

@@ -24,6 +24,7 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
+import { resolveLook } from "./look.mjs";
 import { formatRange, parseWeek } from "./week.mjs";
 import { gridCss } from "./grid.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
@@ -135,12 +136,7 @@ const UI_WEEKLY = {
 };
 const UI = { ...UI_BASE[lang], ...(WEEKLY ? UI_WEEKLY[lang] : {}) };
 const issueTag = WEEKLY ? ` · ${lang === "vi" ? "Số" : "Issue"} ${edition.issue}` : "";
-const theme = {
-  intro: "grid",
-  transition: "wipe",
-  background: "paper",
-  ...script.theme,
-};
+const theme = resolveLook(script, edition);
 const esc = (s) =>
   String(s ?? "")
     .replace(/&/g, "&amp;")
