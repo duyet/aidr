@@ -12,6 +12,7 @@ import { chatFor, telegramPost, youtubeIdFor } from "./telegram-video.mjs";
 import {
   enPost,
   formatSrt,
+  postLineProblems,
   houseStyle,
   parseSrt,
   retime,
@@ -20,6 +21,7 @@ import {
   subsMismatch,
   translateCues,
   translatePost,
+  viLinks,
 } from "./visub.mjs";
 
 // A slice of the 2026-10-13 captions.srt: cue fragments of whole sentences, one with numbers.
@@ -396,6 +398,21 @@ test("a description answer that drops a number or breaks the hashtags goes to th
   await assert.rejects(
     translatePost({ en: enPost(POSTS), title: VI.title, chain: () => ({ models: ["bad"], llm: bad }), style, log: () => {} }),
     /no valid Vietnamese YouTube description[\s\S]*number 44 is missing[\s\S]*hashtags/
+  );
+  // A link inside a line must survive; a translated title must fit YouTube's 100 characters.
+  assert.ok(postLineProblems("l", "Read https://example.com/a now", "Đọc ngay").includes("l: link https://example.com/a is missing"));
+  assert.deepEqual(postLineProblems("l", "Read https://example.com/a now", "Đọc https://example.com/a ngay"), []);
+  const long = async (_model, messages) => JSON.stringify({ lines: askedLines(messages).map((l) => (l === TITLE ? `${VI.title} ${"x".repeat(60)}` : VI_LINES[l])) });
+  await assert.rejects(
+    translatePost({ en: enPost(POSTS), title: null, chain: () => ({ models: ["long"], llm: long }), style, log: () => {} }),
+    /a title over 100 characters/
+  );
+});
+
+test("aidr.today links in the Vietnamese description open the Vietnamese site", () => {
+  assert.equal(
+    viLinks("https://aidr.today\nhttps://aidr.today/\nhttps://aidr.today/date/2026-10-13\nhttps://www.techmeme.com/261013/p2"),
+    "https://aidr.today/?lang=vi\nhttps://aidr.today/?lang=vi\nhttps://aidr.today/date/2026-10-13?lang=vi\nhttps://www.techmeme.com/261013/p2"
   );
 });
 

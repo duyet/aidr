@@ -161,8 +161,7 @@ const summary = (what, targets) =>
 
 // 0. Check: is the date already published? Cheap, so it runs before any writing or rendering.
 if (checkOnly) {
-  await seedFromSite();
-  const left = mine.filter((r) => !r.youtube?.id);
+  const left = uploadTodo(rows, langs, await seedFromSite());
   if (!left.length) {
     console.log(`✓ ${date}: every cut is already on the day page; nothing to publish`);
     process.exit(3);
@@ -295,14 +294,19 @@ if (steps.includes("upload")) {
   summary(uploader === "api" ? `upload to YouTube (${privacy}, Data API)` : "upload to YouTube (public, owner's Chrome)", todo.map((r) => r.cut));
   for (const r of todo) {
     if (!dry && !existsSync(r.path)) throw new Error(`${r.cut}: ${r.path} is not rendered; run --steps render`);
-    if (r.lang === "visub") run(process.execPath, [join(ROOT, "scripts/visub.mjs"), date, "--youtube"]);
     const args = uploadArgs(r, dir);
     const bin = join(REPO, ".agents/skills/aidr-youtube-upload/bin", uploader === "api" ? "yt-upload-api.mjs" : "yt-upload");
     if (uploader === "api") args.push("--privacy", privacy);
-    let out;
+    let out = "";
     let failed = null;
     try {
-      out = run(bin, args);
+      if (r.lang === "visub") run(process.execPath, [join(ROOT, "scripts/visub.mjs"), date, "--youtube"]);
+    } catch (e) {
+      // Its reason is on stderr, in the log.
+      failed = new Error(`the Vietnamese YouTube metadata (visub.mjs --youtube) failed: ${e.message}; see the log above`);
+    }
+    try {
+      if (!failed) out = run(bin, args);
     } catch (e) {
       out = e.stdout ?? "";
       failed = e;
@@ -459,7 +463,7 @@ for (const r of mine) {
     r.voice !== undefined && (r.voice ? "voice" : "no voice"),
     r.duration && `${r.duration}s ${r.sizeMB}MB`,
     r.youtube?.url,
-    r.uploadError && `upload failed: ${r.uploadError.why}`,
+    r.uploadError && `${r.youtube?.id ? "upload step failed after the upload" : "upload failed"}: ${r.uploadError.why}`,
     r.attached && "attached",
     r.facebook?.published && `facebook reel ${r.facebook.id}`,
     r.telegram && `telegram ${r.telegram.chat_id}/${r.telegram.message_id}`,

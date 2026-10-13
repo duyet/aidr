@@ -231,9 +231,12 @@ export function splitLine(line) {
 
 const HASHTAGS = /^#\S+(\s+#\S+)*$/;
 
-/** Problems with one translated description line. A line of hashtags stays that many plain hashtags. */
+/** Problems with one translated description line: every link kept; a line of hashtags stays that many plain hashtags. */
 export function postLineProblems(label, en, vi) {
-  if (!HASHTAGS.test(en)) return lineProblems(label, en, vi);
+  if (!HASHTAGS.test(en)) {
+    const lost = (en.match(/https?:\/\/\S+/g) ?? []).filter((u) => typeof vi === "string" && !vi.includes(u));
+    return [...lineProblems(label, en, vi), ...lost.map((u) => `${label}: link ${u} is missing`)];
+  }
   const tags = typeof vi === "string" ? vi.trim().split(/\s+/) : [];
   if (tags.length !== en.split(/\s+/).length) return [`${label}: ${tags.length} hashtags for ${en.split(/\s+/).length}`];
   const bad = tags.filter((t) => !/^#[A-Za-z0-9_]+$/.test(t));
@@ -258,7 +261,7 @@ const VI_TAGS = ["tin AI hôm nay", "trí tuệ nhân tạo"];
 
 /** aidr.today links for Vietnamese readers: the day page and home page with ?lang=vi, as build.mjs writes them. */
 export const viLinks = (text) =>
-  text.replace(/https:\/\/aidr\.today(\/date\/\d{4}-\d{2}-\d{2})?(?=\s|$)/gm, (_, day) => `https://aidr.today${day ?? "/"}?lang=vi`);
+  text.replace(/https:\/\/aidr\.today(\/date\/\d{4}-\d{2}-\d{2})?\/?(?=\s|$)/gm, (_, day) => `https://aidr.today${day ?? "/"}?lang=vi`);
 
 /**
  * Vietnamese YouTube metadata for the visub cut. `en` is enPost(posts.md); `title` the translated title (the
@@ -280,7 +283,11 @@ export async function translatePost({ en, title, cached = {}, chain, style, log 
       models,
       llm,
       messages: postPromptFor(todo, style),
-      check: (text) => checkAnswer(text, todo, null, postLineProblems),
+      check: (text) =>
+        checkAnswer(text, todo, null, (label, enLine, vi) => [
+          ...postLineProblems(label, enLine, vi),
+          ...(enLine === en.title && [...String(vi)].length > TITLE_MAX ? [`${label}: a title over ${TITLE_MAX} characters`] : []),
+        ]),
       log,
     });
     todo.forEach((t, i) => {

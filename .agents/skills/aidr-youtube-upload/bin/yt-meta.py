@@ -101,7 +101,7 @@ def main():
             m = given(a.json, a.lang, a.kind)
         else:
             m = release(a.release, a.lang, a.kind) if a.release else daily(a.daily, a.lang, a.kind)
-    except (AttributeError, IndexError, TypeError, KeyError, ValueError) as e:
+    except (AttributeError, IndexError, TypeError, KeyError, ValueError, OSError) as e:
         sys.exit("yt-meta: cannot parse %s (%s: %s)" % (a.release or a.daily or a.json, type(e).__name__, e))
     if not (m["title"] and m["desc"] and m["tags"]):
         sys.exit("yt-meta: empty title, description or tags")
