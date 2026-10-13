@@ -373,7 +373,7 @@ describe("weekly step", () => {
       localHour: 10,
       steps: ctx.steps,
       telegramLastPostMs: {},
-      llm: { total: 0, failed: 0 },
+      llm: { total: 0, failed: 0, rateLimited: 0 },
       history: [],
     }).map((i) => i.key);
   }

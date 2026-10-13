@@ -4,7 +4,7 @@
 // Cues are 1-4 word fragments, so whole sentences (consecutive cues up to . ! ?) are translated and the
 // Vietnamese is split back over the sentence's cues in proportion to the English text. The YouTube title from
 // script.json is translated in the same call (the Vietnamese Telegram caption).
-// Model: the auto-script.mjs chain through anyrouter (ANYROUTER_API_KEY, ANYROUTER_VIDEO_MODEL); the house style
+// Model: the auto-script.mjs chain through anyrouter (a key from local-llm-key.mjs, ANYROUTER_VIDEO_MODEL); the house style
 // is read from the Worker (VI_STYLE and RULES_OVERVIEW in apps/web/worker/llm.ts), never copied here.
 // An answer is checked (same line count, no empty or untranslated line, every number kept, AI;DR and aidr.today
 // kept, the text lint) and the next model is tried; no key or no valid answer exits 1.
@@ -18,6 +18,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { DEFAULT_MODELS, complete } from "./auto-script.mjs";
 import { lintText } from "./gate.mjs";
+import { requireLlmKey } from "./local-llm-key.mjs";
 import { cutFor } from "./lang.mjs";
 import { envVar } from "./telegram-video.mjs";
 
@@ -311,8 +312,7 @@ async function main() {
   const dir = join(ROOT, "editions", date);
   const force = argv.includes("--force");
   const chain = () => {
-    const apiKey = envVar("ANYROUTER_API_KEY");
-    if (!apiKey) throw new Error("ANYROUTER_API_KEY is not set: the visub cut needs a model to translate its captions and YouTube description");
+    const apiKey = requireLlmKey();
     const models = (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS).split(",").map((m) => m.trim()).filter(Boolean);
     const baseUrl = envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";
     return { models, llm: (model, messages) => complete({ model, messages, apiKey, baseUrl }) };

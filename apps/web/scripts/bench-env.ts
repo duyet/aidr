@@ -1,13 +1,14 @@
 /**
  * Shared plumbing for the offline LLM benches (translation-eval, model-bench):
- * the AnyRouter key from `.env.local`, wrangler.toml model chains, a D1
+ * the local AnyRouter key (ANYROUTER_LOCAL_API_KEY), wrangler.toml model chains, a D1
  * stand-in, and the blind back-translation fidelity instrument.
  *
  * Never prints the key.
  */
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireLlmKey } from "../../../videos/daily-news/scripts/local-llm-key.mjs";
 import { callAnyrouter } from "../worker/llm";
 import type { TranslationText } from "../worker/translation-qa";
 import { extractProtectedTerms } from "../worker/translation-terms";
@@ -63,18 +64,9 @@ export function stubDb(rowsFor: (sql: string) => unknown[] = () => []) {
   };
 }
 
+/** The local key (exits when only the production key exists); see videos/daily-news/scripts/local-llm-key.mjs. */
 export function readApiKey(): string {
-  const file = path.join(repoRoot, ".env.local");
-  const out: Record<string, string> = {};
-  if (existsSync(file)) {
-    for (const line of readFileSync(file, "utf-8").split("\n")) {
-      const m = /^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-      if (m?.[1]) out[m[1]] = (m[2] ?? "").replace(/^["']|["']$/g, "");
-    }
-  }
-  const key = process.env.ANYROUTER_API_KEY ?? out.ANYROUTER_API_KEY;
-  if (!key) throw new Error("ANYROUTER_API_KEY missing from .env.local");
-  return key;
+  return requireLlmKey();
 }
 
 /** Env with the wrangler.toml chains, `overrides` on top, and a stub DB. */

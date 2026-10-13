@@ -12,6 +12,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { DEFAULT_MODELS, WORD_LIMITS, complete } from "./auto-script.mjs";
+import { requireLlmKey } from "./local-llm-key.mjs";
 import { cutFor } from "./lang.mjs";
 import { envVar } from "./telegram-video.mjs";
 import { houseStyle, lineProblems } from "./visub.mjs";
@@ -203,13 +204,13 @@ async function main() {
   const edition = read(join(dir, "edition.json"));
   const cached = !argv.includes("--force") && existsSync(file) ? read(file).fields : {};
   const models = (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS).split(",").map((m) => m.trim()).filter(Boolean);
-  const apiKey = envVar("ANYROUTER_API_KEY");
+  const apiKey = requireLlmKey();
   const baseUrl = envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";
   const fields = await translateScreen({
     script,
     edition,
     cached,
-    models: apiKey ? models : [],
+    models,
     llm: (model, messages) => complete({ model, messages, apiKey, baseUrl }),
   });
   const fresh = Object.entries(fields).filter(([k, f]) => f.from !== "edition" && f !== cached[k]).length;

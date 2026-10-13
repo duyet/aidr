@@ -9,13 +9,14 @@
 // so the 9:16 cut stays inside the 90 s Reel limit (gate.mjs still checks the real file).
 // A finished script.json (hand-written by the aidr-daily-news agent) is kept as is unless --force.
 // Usage: node scripts/auto-script.mjs [--date YYYY-MM-DD] [--force] [--no-llm] [--max-seconds 80] [--dry-run]
-// Env: ANYROUTER_API_KEY (no key → template), ANYROUTER_BASE_URL, ANYROUTER_VIDEO_MODEL (comma chain).
+// Env: ANYROUTER_LOCAL_API_KEY locally, ANYROUTER_API_KEY in CI (local-llm-key.mjs; no key → refuses, --no-llm → template), ANYROUTER_BASE_URL, ANYROUTER_VIDEO_MODEL (comma chain).
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { castProblems, hostOrder, loadCast } from "./cast.mjs";
 import { lintText, scriptTexts } from "./gate.mjs";
 import { download } from "./media.mjs";
+import { readEnvLocal, videoScriptKey } from "./local-llm-key.mjs";
 import { envVar } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -382,9 +383,15 @@ async function main() {
   if (edition.date !== date) throw new Error(`edition.json is dated ${edition.date}, expected ${date}`);
 
   const hostKeys = Object.keys(loadCast(config).hosts);
-  const apiKey = envVar("ANYROUTER_API_KEY");
-  const models = argv.includes("--no-llm") || !apiKey ? [] : (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS).split(",").map((m) => m.trim()).filter(Boolean);
-  if (!models.length) console.log(`! no model (${apiKey ? "--no-llm" : "ANYROUTER_API_KEY not set"}): using the template`);
+  const noLlm = argv.includes("--no-llm");
+  const keyed = noLlm ? { fallback: "--no-llm" } : videoScriptKey(process.env, readEnvLocal());
+  if (keyed.error) {
+    console.error(`error: ${keyed.error}`);
+    process.exit(1);
+  }
+  const apiKey = keyed.key ?? null;
+  const models = apiKey ? (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS).split(",").map((m) => m.trim()).filter(Boolean) : [];
+  if (!models.length) console.log(`! no model (${keyed.fallback ?? "empty ANYROUTER_VIDEO_MODEL"}): using the template`);
   const baseUrl = envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";
   const { script, source, problems } = await writeScript({
     edition,

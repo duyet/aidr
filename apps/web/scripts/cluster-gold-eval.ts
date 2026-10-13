@@ -9,7 +9,7 @@
  *
  * One call per rep, shaped like prod: a handful of new items against the
  * rest of the 24h top list. Pair precision/recall over pairs that involve
- * a new item. Reads ANYROUTER_API_KEY from .env.local; never prints it.
+ * a new item. Reads ANYROUTER_LOCAL_API_KEY from .env.local; never prints it.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";

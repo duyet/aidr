@@ -44,6 +44,10 @@ import {
 export const TELEGRAM_QUIET_MS = 26 * 3600 * 1000;
 /** LLM attempt failure rate in one run above which we alert. */
 export const LLM_FAILURE_RATE = 0.5;
+/** Provider 429s in one run at which the owner is told the quota is spent. */
+export const LLM_RATE_LIMIT_BURST = 5;
+/** Alert key for a 429 burst. Starts with `llm`, so it routes to the router repo. */
+export const LLM_RATE_LIMITED_KEY = "llm-rate-limited";
 /** Below this many attempts the rate is noise. */
 export const LLM_MIN_CALLS = 4;
 /** TL;DR failed this many runs in a row (this run included). */
@@ -81,7 +85,7 @@ export interface HealthInput {
   steps: RunStepInfo[];
   /** Newest successful post per Telegram channel, epoch ms. */
   telegramLastPostMs: Record<string, number>;
-  llm: { total: number; failed: number };
+  llm: { total: number; failed: number; rateLimited: number };
   /** Previous runs, newest first, excluding this one. */
   history: PriorRun[];
 }
@@ -120,6 +124,15 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
       severity: "error",
       title: "LLM calls failing",
       detail: `${failed}/${total} LLM attempts failed this run`,
+    });
+  }
+
+  if (input.llm.rateLimited >= LLM_RATE_LIMIT_BURST) {
+    issues.push({
+      key: LLM_RATE_LIMITED_KEY,
+      severity: "error",
+      title: "LLM quota exhausted (HTTP 429)",
+      detail: `${input.llm.rateLimited} LLM calls got HTTP 429 this run; new stories stay unscored and untranslated until the quota window resets`,
     });
   }
 
@@ -240,14 +253,25 @@ async function readTelegramLastPost(env: Env): Promise<Record<string, number>> {
 async function readLlmCounts(
   env: Env,
   runId: string
-): Promise<{ total: number; failed: number }> {
+): Promise<{ total: number; failed: number; rateLimited: number }> {
   await flushLlmCallWrites();
   const row = await env.DB.prepare(
-    "SELECT COUNT(*) AS total, SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS failed FROM llm_calls WHERE run_id = ?"
+    `SELECT COUNT(*) AS total,
+            SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS failed,
+            SUM(CASE WHEN ok = 0 AND error_status = 429 THEN 1 ELSE 0 END) AS rate_limited
+     FROM llm_calls WHERE run_id = ?`
   )
     .bind(runId)
-    .first<{ total: number | null; failed: number | null }>();
-  return { total: row?.total ?? 0, failed: row?.failed ?? 0 };
+    .first<{
+      total: number | null;
+      failed: number | null;
+      rate_limited: number | null;
+    }>();
+  return {
+    total: row?.total ?? 0,
+    failed: row?.failed ?? 0,
+    rateLimited: row?.rate_limited ?? 0,
+  };
 }
 
 async function readModelStats(

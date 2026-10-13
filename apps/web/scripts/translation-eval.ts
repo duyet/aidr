@@ -27,7 +27,7 @@
  * Every run reports generator latency and AnyRouter-billed cost, the
  * reviewer's naturalness, and the VI/EN summary length ratio.
  *
- * Reads ANYROUTER_API_KEY from the repo-root `.env.local`; never prints it.
+ * Reads ANYROUTER_LOCAL_API_KEY from the repo-root `.env.local`; never prints it.
  * Provider failures are counted apart from quality failures.
  */
 import { readFileSync, writeFileSync } from "node:fs";
