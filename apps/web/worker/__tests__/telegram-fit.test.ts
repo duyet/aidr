@@ -352,6 +352,14 @@ describe("captionSummaryFor", () => {
     expect(writes).toHaveLength(0);
   });
 
+  it("accepts an English answer that names Société Générale or Erdős", async () => {
+    // Real EN rewrite (2026-10-13) rejected as Vietnamese for one "é".
+    const text =
+      "Lenders such as MUFG, SMBC and Société Générale cut their exposure. Two Erdős problems fell.";
+    completeJson.mockResolvedValueOnce(JSON.stringify({ summary: text }));
+    expect(await captionSummaryFor(env, story(), budget)).toBe(text);
+  });
+
   it("keeps the whole leading sentences of an answer that overshoots the budget", async () => {
     const first = `${"Broadcom backs a 42 billion USD debt package for Anthropic ".repeat(3).trim()}.`;
     const overshoot = `${first} ${"Chip stocks fell after the remarks. ".repeat(10).trim()}`;

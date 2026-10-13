@@ -27,6 +27,9 @@ const LLM_TIMEOUT_MS = 30_000;
 const LLM_MAX_TOKENS = 2048;
 
 const SENTENCE_END = /[.!?]["'”’)]?$/;
+/** Letters only Vietnamese uses. An English caption may still name Société
+ *  Générale or Erdős, so `looksVietnamese` (any diacritic) is too broad. */
+const VI_ONLY_LETTER = /[ăđơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịĩọỏốồổỗộớờởỡợụủũứừửữựỳỵỷỹ]/i;
 
 function systemPrompt(lang: Lang, target: number): string {
   const language = lang === "vi" ? "Vietnamese" : "English";
@@ -119,7 +122,7 @@ export function validCaptionSummary(
   if (!text) return null;
   if (text.includes("…") || text.includes("...")) return null;
   if (!SENTENCE_END.test(text)) return null;
-  if (lang === "vi" ? !looksVietnamese(text) : looksVietnamese(text)) {
+  if (lang === "vi" ? !looksVietnamese(text) : VI_ONLY_LETTER.test(text)) {
     return null;
   }
   return text;
