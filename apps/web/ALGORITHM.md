@@ -981,13 +981,19 @@ The mail itself (`worker/mail/render.ts`, one function per block): the
 subject leads with the top one or two headlines plus "+N more" (about 60
 characters, localized), with a written preheader. The header has the
 wordmark, the spelled-out date, "N stories · M min read" and a link to the
-other language's day page. Next comes the day's video for that language
-(`day_videos`, `youtube_id` then `short_id`, no fallback across languages;
-the block is left out when there is none). Then the lead story (large image
-that is never a generated OG card, category · source, headline, summary),
-then compact rows (number, category · source, linked headline, one
-sentence, 84px thumbnail). After the rows: one "See all" button, the
-channel strip (Telegram, YouTube, Chrome extension) and the footer (view in
+other language's day page. Then the lead story (large image that is never a
+generated OG card, category · source, headline, summary), then the video
+card, then compact rows (number, category · source, linked headline, one
+sentence, 84px thumbnail hidden on phones). The row sentence is the first
+one that does not restate the headline, checked in both directions so a
+long headline cannot let its own sentence through. The video is the newest
+`day_videos` row in that language dated the edition date or the day before
+(`youtube_id` then `short_id`, no fallback across languages). Videos go up
+around 17:00 ICT, after the morning send, so most mails carry yesterday's.
+The card says "Today's video brief" or "Yesterday's video brief" with the
+video's date and a 16:9 `mqdefault` thumbnail; the preheader says the same.
+An older video, or none, leaves the card out. After the rows: one "See
+all" button, the channel strip (Telegram, YouTube, Chrome extension) and the footer (view in
 browser, settings, unsubscribe, how we rank, "Forwarded this?", and
 `MAIL_POSTAL_ADDRESS` when set). The headline is `items.title` or
 `title_vi` for that language only; without it, the bullet's first sentence.
@@ -1011,8 +1017,10 @@ lines come from that language's column only (an empty VI column sends
 nothing and the next run retries), cut to the subscriber's digest size, and
 render through `renderDigestEmail` with a `weekly` block: subject
 "AI;DR Weekly #N — lead headline" (no number for a rolling window), the
-range in the header, the intro paragraph, no video and no per-day feedback
-row. A title-only `fallback` digest waits until 13:00 local for the LLM
+range in the header, the intro paragraph, and after the stories the
+window's videos in that language as text links in date order
+(`utm_content=video-YYYY-MM-DD`). It has no daily video card and no
+per-day feedback row. A title-only `fallback` digest waits until 13:00 local for the LLM
 retry. Idempotency is `subscribers.last_weekly_sent` (the end date mailed; a
 legacy `YYYY-Www` value reads as that week's Sunday). A new window may
 overlap the last one by at most 3 days (`WEEKLY_MIN_GAP_DAYS` = 4), so

@@ -377,7 +377,11 @@ describe("buildDigestEmail", () => {
   });
 
   it("renders the day video for its language and omits it otherwise", () => {
-    const video = { youtubeId: "R3j93-pO9ac", title: "Today in two minutes" };
+    const video = {
+      date: "2026-08-16",
+      youtubeId: "R3j93-pO9ac",
+      title: "Today in two minutes",
+    };
     const withVideo = buildDigestEmail(
       "2026-08-16",
       bullets,
@@ -388,7 +392,7 @@ describe("buildDigestEmail", () => {
       { video }
     );
     expect(withVideo.html).toContain(
-      "https://i.ytimg.com/vi/R3j93-pO9ac/hqdefault.jpg"
+      "https://i.ytimg.com/vi/R3j93-pO9ac/mqdefault.jpg"
     );
     expect(withVideo.html).toContain("Today in two minutes");
     const without = buildDigestEmail("2026-08-16", bullets, "en", "tok");

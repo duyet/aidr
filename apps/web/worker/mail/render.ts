@@ -1,4 +1,5 @@
 import { dayArchivePath } from "../../src/lib/day-archive.js";
+import { youtubeThumbnailUrl } from "../../src/lib/day-video.js";
 import { absoluteSiteUrl, withSiteLang } from "../../src/lib/locale-url.js";
 import {
   type MailFormat,
@@ -7,6 +8,7 @@ import {
 import { SITE_URL } from "../../src/lib/site.js";
 import { formatWeekRange, weekPath } from "../../src/lib/week.js";
 import { isGeneratedOgCard } from "../media.js";
+import { shiftDate } from "../weekly-digest.js";
 import { feedbackUrl } from "./feedback.js";
 import {
   escapeHtml,
@@ -114,6 +116,8 @@ export interface DigestStory {
 }
 
 export interface DigestVideo {
+  /** The archive day (YYYY-MM-DD) the video covers. */
+  date: string;
   /** YouTube video (or Short) id for this date and language. */
   youtubeId: string;
   title?: string | null;
@@ -131,8 +135,11 @@ export interface DigestEmailInput {
   preheader?: string;
   /** See src/lib/mail-format.ts. Default `design`. */
   format?: MailFormat;
-  /** The day's video in this language; null/absent omits the block. */
+  /** The newest video in this language, for `date` or the day before;
+   *  null/absent or an older date omits the block. */
   video?: DigestVideo | null;
+  /** Weekly only: the window's videos in this language, oldest first. */
+  weekVideos?: DigestVideo[];
   /** Stories on the day page, for "See all N stories". Absent: no number. */
   totalStories?: number;
   postalAddress?: string;
@@ -246,6 +253,50 @@ function weekdayOf(date: string, lang: MailLang): string | null {
   return p ? WEEKDAYS[lang][p.wd] : null;
 }
 
+/** How a daily mail labels its video. Day videos go up in the afternoon,
+ *  after the morning send, so the mail usually carries yesterday's. */
+export type VideoRecency = "today" | "yesterday";
+
+/** Null for any other day, so an older video is never called yesterday's. */
+function videoRecency(
+  videoDate: string,
+  editionDate: string
+): VideoRecency | null {
+  if (!parseIsoDate(editionDate)) return null;
+  if (videoDate === editionDate) return "today";
+  return videoDate === shiftDate(editionDate, -1) ? "yesterday" : null;
+}
+
+const VIDEO_COPY: Record<
+  MailLang,
+  Record<VideoRecency, { kicker: string; title: string; preheader: string }>
+> = {
+  en: {
+    today: {
+      kicker: "Today's video brief",
+      title: "Today's stories in under two minutes",
+      preheader: ", plus today's video brief",
+    },
+    yesterday: {
+      kicker: "Yesterday's video brief",
+      title: "Yesterday's stories in under two minutes",
+      preheader: ", plus yesterday's video brief",
+    },
+  },
+  vi: {
+    today: {
+      kicker: "Video tóm tắt hôm nay",
+      title: "Tin hôm nay trong chưa tới hai phút",
+      preheader: ", kèm video tóm tắt hôm nay",
+    },
+    yesterday: {
+      kicker: "Video tóm tắt hôm qua",
+      title: "Tin hôm qua trong chưa tới hai phút",
+      preheader: ", kèm video tóm tắt hôm qua",
+    },
+  },
+};
+
 /** Reading time at ~200 words a minute, at least one. */
 export function readMinutes(stories: DigestStory[]): number {
   const words = stories
@@ -296,11 +347,11 @@ function tokens(text: string): string[] {
     .filter((t) => t.length > 1);
 }
 
-/** Share of the headline's words that the sentence repeats (0..1). */
-export function headlineOverlap(headline: string, sentence: string): number {
-  const head = new Set(tokens(headline));
+/** Share of the first text's words that the second repeats (0..1). */
+export function headlineOverlap(text: string, other: string): number {
+  const head = new Set(tokens(text));
   if (head.size === 0) return 0;
-  const said = new Set(tokens(sentence));
+  const said = new Set(tokens(other));
   let hit = 0;
   for (const t of head) if (said.has(t)) hit++;
   return hit / head.size;
@@ -310,7 +361,8 @@ export function headlineOverlap(headline: string, sentence: string): number {
 export const SUMMARY_OVERLAP_MAX = 0.7;
 
 /** One sentence under a headline: the first sentence of the bullet that does
- *  not restate the headline, or nothing. */
+ *  not restate the headline, or nothing. Both directions count: a long
+ *  headline can contain a whole sentence while sharing few of its words. */
 export function storySummary(story: DigestStory): string {
   const headline = storyHeadline(story);
   const parts = sentences(story.text);
@@ -318,7 +370,10 @@ export function storySummary(story: DigestStory): string {
     parts.find(
       (part) =>
         part !== headline &&
-        headlineOverlap(headline, part) <= SUMMARY_OVERLAP_MAX
+        Math.max(
+          headlineOverlap(headline, part),
+          headlineOverlap(part, headline)
+        ) <= SUMMARY_OVERLAP_MAX
     ) ?? ""
   );
 }
@@ -369,17 +424,18 @@ export function digestPreheader(
   lang: MailLang,
   count: number,
   minutes: number,
-  hasVideo: boolean
+  video: VideoRecency | null
 ): string {
   const wd = weekdayOf(date, lang);
+  const plus = video ? VIDEO_COPY[lang][video].preheader : "";
   if (lang === "vi") {
     const day = wd
       ? ` ${wd.charAt(0).toLowerCase()}${wd.slice(1)}`
       : " hôm nay";
-    return `${count} tin AI${day} trong ${minutes} phút${hasVideo ? ", kèm video tóm tắt" : ""}. Tiêu đề, nguồn và một câu tóm tắt cho mỗi tin.`;
+    return `${count} tin AI${day} trong ${minutes} phút${plus}. Tiêu đề, nguồn và một câu tóm tắt cho mỗi tin.`;
   }
   const day = wd ? `${wd}'s` : "Today's";
-  return `${day} ${count} AI ${count === 1 ? "story" : "stories"} in ${minutes} ${minutes === 1 ? "minute" : "minutes"}${hasVideo ? ", plus the video brief" : ""}. Headline, source and one line each.`;
+  return `${day} ${count} AI ${count === 1 ? "story" : "stories"} in ${minutes} ${minutes === 1 ? "minute" : "minutes"}${plus}. Headline, source and one line each.`;
 }
 
 /** Hidden filler after the preheader so body text does not leak into the
@@ -410,8 +466,7 @@ const HEAD_STYLE = `
     .m-mast { font-size: 28px !important; }
     .m-hide { display: none !important; }
     img[width="${INNER_PX}"] { width: 100% !important; height: auto !important; }
-    td[width="${THUMB_PX}"] { width: 72px !important; padding-left: 12px !important; }
-    img[width="${THUMB_PX}"] { width: 72px !important; max-height: 72px !important; }
+    .m-thumb { display: none !important; }
   }
   @media (prefers-color-scheme: dark) {
     .m-bg { background: #141413 !important; }
@@ -543,33 +598,38 @@ export function headerBlock(
     </tr>`;
 }
 
-function youtubeThumb(id: string): string {
-  return `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
+function youtubeHref(id: string, lang: MailLang, content: string): string {
+  return withMailUtm(
+    `https://youtu.be/${encodeURIComponent(id)}`,
+    "digest",
+    lang,
+    { content, external: true }
+  );
 }
 
-/** Dark card with the YouTube thumbnail and a play mark. The thumbnail is
- *  a cell background so the play mark sits on it; where backgrounds are
- *  dropped (Outlook desktop) the cell stays yellow with the mark. */
+/** Dark card with the 16:9 YouTube thumbnail (mqdefault always exists;
+ *  hqdefault is 4:3 with black bars), the recency kicker, the title and
+ *  the day the video covers. */
 export function videoBlock(
   video: DigestVideo,
+  recency: VideoRecency,
   href: string,
   lang: MailLang,
   showImage: boolean
 ): string {
-  const kicker = lang === "vi" ? "Xem bản tin video" : "Watch the daily brief";
-  const title =
-    video.title?.trim() ||
-    (lang === "vi"
-      ? "Tin hôm nay trong chưa tới hai phút"
-      : "Today's stories in under two minutes");
+  const copy = VIDEO_COPY[lang][recency];
+  const title = video.title?.trim() || copy.title;
   const safe = escapeHtml(href);
-  const thumb = escapeHtml(youtubeThumb(video.youtubeId));
-  const play = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto"><tr><td width="38" height="38" align="center" valign="middle" bgcolor="${INK}" style="width:38px;height:38px;border-radius:19px;background:${INK};color:${ACCENT_FG};font-family:${SANS};font-size:14px;line-height:38px;text-align:center"><a href="${safe}" target="_blank" aria-label="${escapeHtml(`${kicker}: ${title}`)}" style="display:block;color:${ACCENT_FG};text-decoration:none">&#9654;</a></td></tr></table>`;
+  const thumb = escapeHtml(
+    youtubeThumbnailUrl(encodeURIComponent(video.youtubeId), "mq")
+  );
   const media = showImage
-    ? `<td class="m-stack" width="150" height="84" align="center" valign="middle" background="${thumb}" bgcolor="${MARKER}" style="width:150px;height:84px;border-radius:8px;background-color:${MARKER};background-image:url(${thumb});background-size:cover;background-position:center" role="img" aria-label="${escapeHtml(title)}">${play}</td>`
+    ? `<td class="m-stack" width="160" valign="middle" style="width:160px;vertical-align:middle">
+                    <a href="${safe}" target="_blank" style="display:block;text-decoration:none;border:0"><img src="${thumb}" width="160" height="90" alt="${escapeHtml(title)}" style="display:block;width:160px;height:90px;border:0;outline:none;text-decoration:none;border-radius:8px;background-color:${MARKER};-ms-interpolation-mode:bicubic;${ALT_STYLE}"></a>
+                  </td>`
     : "";
   return `<tr>
-      <td class="m-pad" style="padding:22px ${PAD} 6px">
+      <td class="m-pad" style="padding:14px ${PAD} 4px">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${INK}" style="background:${INK};border-radius:12px">
           <tr>
             <td style="padding:14px">
@@ -578,15 +638,50 @@ export function videoBlock(
                   ${media}
                   <td class="m-stack" valign="middle" style="vertical-align:middle;${showImage ? "padding-left:16px;" : ""}font-family:${SANS}">
                     <a href="${safe}" target="_blank" style="text-decoration:none;color:${ACCENT_FG}">
-                      <div style="font-size:11px;line-height:1.4;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:${MARKER}"><font color="${MARKER}">${escapeHtml(kicker)}</font></div>
+                      <div style="font-size:11px;line-height:1.4;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:${MARKER}"><font color="${MARKER}">&#9654;&nbsp; ${escapeHtml(copy.kicker)}</font></div>
                       <div style="padding-top:4px;font-family:${SERIF};font-size:19px;line-height:1.25;color:${ACCENT_FG}"><font color="${ACCENT_FG}">${escapeHtml(title)}</font></div>
-                      <div style="padding-top:4px;font-size:12px;line-height:1.4;color:${INK_MUTED}"><font color="${INK_MUTED}">YouTube</font></div>
+                      <div style="padding-top:4px;font-size:12px;line-height:1.4;color:${INK_MUTED}"><font color="${INK_MUTED}">YouTube · ${escapeHtml(formatMailDate(video.date, lang))}</font></div>
                     </a>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
+interface WeekVideoLink {
+  day: string;
+  title: string;
+  href: string;
+}
+
+const WEEK_VIDEOS_LABEL: Record<MailLang, string> = {
+  en: "This week's video briefs",
+  vi: "Video tóm tắt trong tuần",
+};
+
+/** Weekly: one text link per day video, no thumbnails. */
+export function weekVideosBlock(
+  videos: WeekVideoLink[],
+  lang: MailLang
+): string {
+  const label = WEEK_VIDEOS_LABEL[lang];
+  const rows = videos
+    .map(
+      (v) => `<tr>
+            <td width="24" valign="top" class="m-link" style="width:24px;padding:5px 0;vertical-align:top;font-family:${SANS};font-size:12px;line-height:22px;color:${ACCENT}">&#9654;</td>
+            <td valign="top" style="padding:5px 0;vertical-align:top;font-family:${SANS};font-size:15px;line-height:1.45"><span class="m-muted" style="font-size:13px;font-weight:700;color:${MUTED}">${escapeHtml(v.day)}</span><span style="color:${FAINT};padding:0 6px">·</span><a class="m-fg" href="${escapeHtml(v.href)}" target="_blank" style="color:${FG};text-decoration:none"><font class="m-fg" color="${FG}">${escapeHtml(v.title)}</font></a></td>
+          </tr>`
+    )
+    .join("\n          ");
+  return `<tr>
+      <td class="m-pad" style="padding:18px ${PAD} 6px">
+        <div class="m-muted m-rule" style="border-top:1px solid ${HAIRLINE};padding-top:18px;padding-bottom:6px;font-family:${SANS};font-size:11px;line-height:1.4;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:${MUTED}">${escapeHtml(label)}</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${rows}
         </table>
       </td>
     </tr>`;
@@ -1083,6 +1178,26 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const minutes = readMinutes(stories);
   const weekly = input.weekly ?? null;
   const video = !weekly && input.video?.youtubeId ? input.video : null;
+  const recency = video ? videoRecency(video.date, input.date) : null;
+  const dayVideo =
+    video && recency
+      ? {
+          video,
+          recency,
+          url: youtubeHref(video.youtubeId, lang, "video"),
+        }
+      : null;
+  const weekVideos: WeekVideoLink[] = weekly
+    ? (input.weekVideos ?? []).map((v) => ({
+        day: weekdayOf(v.date, lang) ?? v.date,
+        title:
+          v.title?.trim() ||
+          (lang === "vi"
+            ? "Tin trong ngày, chưa tới hai phút"
+            : "The day's stories in under two minutes"),
+        href: youtubeHref(v.youtubeId, lang, `video-${v.date}`),
+      }))
+    : [];
   const intro = weekly?.intro?.trim() || null;
   const subject =
     input.subject ??
@@ -1098,7 +1213,13 @@ export function renderDigestEmail(input: DigestEmailInput): {
     input.preheader ??
     (weekly
       ? (intro ?? weeklyHeading(weekly, lang)).slice(0, 140)
-      : digestPreheader(input.date, lang, count, minutes, Boolean(video)));
+      : digestPreheader(
+          input.date,
+          lang,
+          count,
+          minutes,
+          dayVideo?.recency ?? null
+        ));
   const validDate = /^\d{4}-\d{2}-\d{2}$/.test(input.date);
   const pagePath = weekly
     ? weekly.week
@@ -1110,17 +1231,6 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const dayUrl = absoluteSiteUrl(pagePath, lang);
   const otherLang: MailLang = lang === "vi" ? "en" : "vi";
   const switchUrl = absoluteSiteUrl(pagePath, otherLang);
-  const videoUrl = video
-    ? withMailUtm(
-        `https://youtu.be/${encodeURIComponent(video.youtubeId)}`,
-        "digest",
-        lang,
-        {
-          content: "video",
-          external: true,
-        }
-      )
-    : null;
   const total =
     input.totalStories && input.totalStories >= count
       ? input.totalStories
@@ -1184,8 +1294,14 @@ export function renderDigestEmail(input: DigestEmailInput): {
       intro ? wrapText(intro, "", width) : "",
       textStories.join("\n\n"),
       TEXT_RULE,
-      videoUrl
-        ? `${lang === "vi" ? "Xem bản tin video" : "Watch the daily brief"}: ${videoUrl}`
+      dayVideo
+        ? `${VIDEO_COPY[lang][dayVideo.recency].kicker} (${formatMailDate(dayVideo.video.date, lang)}): ${dayVideo.url}`
+        : "",
+      weekVideos.length > 0
+        ? [
+            WEEK_VIDEOS_LABEL[lang],
+            ...weekVideos.map((v) => `${v.day} · ${v.title}: ${v.href}`),
+          ].join("\n")
         : "",
       `${ctaLabel}: ${ctaUrl}`,
       `${TEXT_RULE}\n${footerText(footer)}`,
@@ -1226,7 +1342,6 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const rows = [
     header,
     weekly ? weeklyMasthead(weekly, lang) : "",
-    video && videoUrl ? videoBlock(video, videoUrl, lang, showImages) : "",
     intro ? introBlock(intro) : "",
     weekly && count >= 3
       ? issueIndexBlock(
@@ -1239,6 +1354,15 @@ export function renderDigestEmail(input: DigestEmailInput): {
       : "",
     lead
       ? leadStory(lead, storyHref(lead, lang, "lead"), lang, showImages)
+      : "",
+    dayVideo
+      ? videoBlock(
+          dayVideo.video,
+          dayVideo.recency,
+          dayVideo.url,
+          lang,
+          showImages
+        )
       : "",
     rest.length > 0
       ? sectionLabel(
@@ -1254,6 +1378,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
     ...rest.map((s, i) =>
       storyRow(s, i + 2, storyHref(s, lang, `s${i + 2}`), format, lang)
     ),
+    weekVideos.length > 0 ? weekVideosBlock(weekVideos, lang) : "",
     ctaRow(ctaLabel, ctaUrl),
     !weekly && input.feedbackToken && validDate
       ? feedbackBlock(input.date, lang, input.feedbackToken)

@@ -168,7 +168,8 @@ function digest(
   });
 }
 
-const VIDEO = { youtubeId: "R3j93-pO9ac", title: null };
+/** Same day as the `digest()` edition (2026-10-10). */
+const VIDEO = { date: "2026-10-10", youtubeId: "R3j93-pO9ac", title: null };
 
 function weekly10() {
   return digest({
@@ -294,16 +295,16 @@ describe("formatMailDate", () => {
 });
 
 describe("renderDigestEmail", () => {
-  it("EN with video: header, video, lead, rows, one CTA, channels, footer in order", () => {
+  it("EN with video: header, lead, video, rows, one CTA, channels, footer in order", () => {
     const { html, subject } = digest({ video: VIDEO, totalStories: 8 });
     const order = [
       ">AI;DR</span>",
       "Saturday, October 10, 2026",
       "5 stories · 1 min read",
       ">Đọc bằng Tiếng Việt</a>",
-      "Watch the daily brief",
       "Lead story",
       "Company 1 ships model 1</span>",
+      "Today's video brief",
       "Also today",
       "Company 5 ships model 5",
       "See all 8 stories on aidr.today",
@@ -318,22 +319,80 @@ describe("renderDigestEmail", () => {
 
   it("links the video thumbnail to youtu.be with UTM, in its own language only", () => {
     const { html, text } = digest({ video: VIDEO });
-    expect(html).toContain("https://i.ytimg.com/vi/R3j93-pO9ac/hqdefault.jpg");
+    expect(html).toContain(
+      '<img src="https://i.ytimg.com/vi/R3j93-pO9ac/mqdefault.jpg" width="160" height="90"'
+    );
+    expect(html).not.toContain("hqdefault");
     expect(html).toContain(
       "https://youtu.be/R3j93-pO9ac?utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest&amp;utm_content=video"
     );
     expect(html).toContain("&#9654;");
+    expect(html).toContain("YouTube · Saturday, October 10, 2026");
+    expect(html).toContain("Today's stories in under two minutes");
     expect(text).toContain(
-      "Watch the daily brief: https://youtu.be/R3j93-pO9ac?"
+      "Today's video brief (Saturday, October 10, 2026): https://youtu.be/R3j93-pO9ac?"
     );
   });
 
   it("omits the video block when the day has no video", () => {
     const { html, text } = digest({ video: null });
     expect(html).not.toContain("i.ytimg.com");
-    expect(html).not.toContain("Watch the daily brief");
+    expect(html).not.toContain("'s video brief");
     expect(text).not.toContain("youtu.be");
-    expect(html).not.toContain("plus the video brief");
+  });
+
+  it("labels yesterday's video as yesterday's and drops anything older", () => {
+    const yesterday = digest({ video: { ...VIDEO, date: "2026-10-09" } });
+    expect(yesterday.html).toContain("Yesterday's video brief");
+    expect(yesterday.html).toContain(
+      "Yesterday's stories in under two minutes"
+    );
+    expect(yesterday.html).toContain(", plus yesterday's video brief.");
+    expect(yesterday.html).not.toContain("Today's video brief");
+
+    const older = digest({ video: { ...VIDEO, date: "2026-10-08" } });
+    expect(older.html).not.toContain("i.ytimg.com");
+    expect(older.html).not.toContain("youtu.be");
+    expect(older.html).not.toContain("'s video brief");
+    expect(older.text).not.toContain("youtu.be");
+  });
+
+  it("weekly: lists the week's videos as text links and no daily video card", () => {
+    const { html, text } = digest({
+      weekly: {
+        week: "2026-W41",
+        issue: 7,
+        start_date: "2026-10-05",
+        end_date: "2026-10-11",
+        intro: null,
+      },
+      video: VIDEO,
+      weekVideos: [
+        {
+          date: "2026-10-06",
+          youtubeId: "WeekVideo06",
+          title: "Tuesday brief",
+        },
+        { date: "2026-10-09", youtubeId: "WeekVideo09", title: null },
+      ],
+    });
+    expect(html).not.toContain("i.ytimg.com");
+    expect(html).not.toContain("Today's video brief");
+    const order = [
+      "Company 5 ships model 5",
+      "This week's video briefs",
+      "Tuesday</span>",
+      "Tuesday brief",
+      "Friday</span>",
+      "The day's stories in under two minutes",
+      "Read the full week on aidr.today",
+    ].map((needle) => html.indexOf(needle));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(html).toContain("utm_content=video-2026-10-09");
+    expect(text).toContain(
+      "Tuesday · Tuesday brief: https://youtu.be/WeekVideo06?"
+    );
   });
 
   it("VI: localized header, labels, channel and no English copy", () => {
@@ -348,7 +407,7 @@ describe("renderDigestEmail", () => {
     expect(html).toContain("Thứ Bảy, 10 tháng 10, 2026");
     expect(html).toContain("3 tin · 1 phút đọc");
     expect(html).toContain(">Read in English</a>");
-    expect(html).toContain("Xem bản tin video");
+    expect(html).toContain("Video tóm tắt hôm nay");
     expect(html).toContain("Tin chính");
     expect(html).toContain("Tin khác hôm nay");
     expect(html).toContain("Xem tất cả tin trên aidr.today");
@@ -414,6 +473,24 @@ describe("renderDigestEmail", () => {
     const { html } = digest({ stories: [story(1), story(2, restated)] });
     expect(html).not.toContain("Philadelphia police.</div>");
     expect(html).toContain("The company found out two months later.</div>");
+  });
+
+  it("skips a sentence that a long headline already contains", () => {
+    // 2026-10-14 EN edition: the row repeated its own headline as the summary.
+    expect(
+      storySummary({
+        text: "Character.AI filed for Chapter 11 bankruptcy in the US and agreed to sell some assets to Walt Disney for $20 million.",
+        headline:
+          "Character.AI files for Chapter 11 bankruptcy in the US, agrees to sell some assets to Disney for $20M, and plans to keep operating as it completes the sale",
+      })
+    ).toBe("");
+    expect(
+      storySummary({
+        text: "Anthropic and OpenAI have pushed for substantial control over what external AI evaluators can publish, Reuters reports. Labs cite trade secrets.",
+        headline:
+          "Sources: Anthropic and OpenAI have pushed for substantial control over what external AI evaluators can publish, out of concern that trade secrets could leak",
+      })
+    ).toBe("Labs cite trade secrets.");
   });
 
   it("labels categories in Vietnamese for the Vietnamese mail only", () => {
@@ -505,7 +582,7 @@ describe("renderDigestEmail", () => {
   it("writes a padded preheader instead of story 1's text", () => {
     const { html } = digest({ video: VIDEO });
     expect(html).toContain(
-      "Saturday's 5 AI stories in 1 minute, plus the video brief. Headline, source and one line each.&zwnj;&nbsp;"
+      "Saturday's 5 AI stories in 1 minute, plus today's video brief. Headline, source and one line each.&zwnj;&nbsp;"
     );
   });
 
@@ -650,14 +727,14 @@ describe("renderDigestEmail", () => {
       const { html } = digest({ format: "large" });
       expect(html.match(/class="mail-lead-image"/g)?.length).toBe(1);
       expect(html.match(/class="mail-large"/g)?.length).toBe(4);
-      expect(html).not.toContain("m-thumb");
+      expect(html).not.toContain('class="m-thumb"');
     });
 
     it("no-images: same layout without any story or video image", () => {
       const { html } = digest({ format: "no-images", video: VIDEO });
       expect(imageCount(html)).toBe(0);
       expect(html).not.toContain("i.ytimg.com");
-      expect(html).toContain("Watch the daily brief");
+      expect(html).toContain("Today's video brief");
       expect(html).toContain("Lead story");
       expect(html).toContain("See all stories on aidr.today");
     });
