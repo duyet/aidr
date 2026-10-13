@@ -114,6 +114,32 @@ export function videoReplyMarkup({ date, lang, youtubeId }) {
   return { inline_keyboard: [row] };
 }
 
+/** The real channel per cut language: env var, else the wrangler.toml default. visub goes to the Vietnamese channel. */
+export const PROD_CHATS = {
+  en: ["TELEGRAM_EN_CHAT_ID", "@aidr_today"],
+  vi: ["TELEGRAM_VI_CHAT_ID", "-1004420104760"],
+  visub: ["TELEGRAM_VI_CHAT_ID", "-1004420104760"],
+};
+
+/** The chat a cut posts to: --chat for every cut; else staging; with --prod its language's channel. */
+export function chatFor(lang, { override, prod, staging, env = envVar }) {
+  if (override) return override;
+  if (!prod) return staging;
+  const [name, fallback] = PROD_CHATS[lang];
+  return env(name) ?? fallback;
+}
+
+/** The YouTube id behind a cut's button: its own, or for visub the English 16:9 video. */
+export const youtubeIdFor = (target, rows) =>
+  target.lang === "visub" ? rows.find((r) => r.lang === "en" && r.fmt === "16x9")?.youtube?.id : target.youtube?.id;
+
+/** Caption and buttons for a cut. visub reads as a Vietnamese post: its translated title and the Vietnamese buttons. */
+export function telegramPost({ date, lang, title, youtubeId }) {
+  const l = lang === "visub" ? "vi" : lang;
+  const t = title ?? (l === "vi" ? `Bản tin AI;DR — ${date}` : `AI;DR Daily Brief — ${date}`);
+  return { caption: videoCaption(t), replyMarkup: videoReplyMarkup({ date, lang: l, youtubeId }) };
+}
+
 /** sendVideo with a file upload. Throws with Telegram's own error; never falls back to a link post. */
 export async function sendVideo({ token, chatId, file, thumb, caption, replyMarkup }) {
   const { duration, width, height } = probeMedia(file);

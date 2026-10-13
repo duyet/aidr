@@ -9,7 +9,11 @@
 // duration) and the post/script text (no engagement bait, no TODO), and the Reels copy of the EN 9:16 cut
 // against the Reels spec; facebook posts that copy to the Page as a Reel (needs --prod: there is no staging Page).
 // --render-published renders cuts that are already on the day page (for the Reel on a fresh CI runner).
-// Usage: node scripts/publish.mjs <date> [--lang en,vi] [--steps check|render,gate,upload,attach,facebook,telegram]
+// --lang visub is the English cut with Vietnamese subtitles (lang.mjs, visub.mjs): render (after the en cut on the same
+// machine), gate and telegram only; it posts to the Vietnamese channel with the English video's YouTube button.
+// Telegram: only a --prod post to the real channel marks a cut done (`telegram`); staging and --chat sends are kept
+// as `telegramTest`, so the staging check never blocks the --prod post.
+// Usage: node scripts/publish.mjs <date> [--lang en,vi,visub] [--steps check|render,gate,upload,attach,facebook,telegram]
 //        [--no-voice] [--chat <telegram chat id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card]
 //        [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
 // Weekly editions (week-YYYY-Www): only `--steps render` (and --dry-run); the other steps are planned, not wired.
@@ -27,10 +31,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { cutFor, isWeekly } from "./lang.mjs";
+import { LANGS, cutFor, isWeekly } from "./lang.mjs";
 import { findReel, makeReelCopy, postReel, reelCaption, reelConfig, reelCopyPath, reelEncodeArgs, reelProblems } from "./facebook-reel.mjs";
 import { gateVideo, lintText, probeStreams, scriptTexts } from "./gate.mjs";
-import { envVar, makeTelegramCopy, makeThumbnail, sendVideo, tgCopyPath, tgEncodeArgs, videoCaption, videoReplyMarkup } from "./telegram-video.mjs";
+import { addRows, needsRender, onYouTube, telegramTodo } from "./status.mjs";
+import { chatFor, envVar, makeTelegramCopy, makeThumbnail, sendVideo, telegramPost, tgCopyPath, tgEncodeArgs, youtubeIdFor } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const REPO = resolve(ROOT, "../..");
@@ -41,11 +46,12 @@ const argv = process.argv.slice(2);
 const date = argv[0];
 if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") && !isWeekly(date ?? ""))
   throw new Error(
-    "usage: publish.mjs <date | week-YYYY-Www> [--lang en,vi] [--steps render,gate,upload,attach,facebook,telegram] [--no-voice] [--chat <id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
+    "usage: publish.mjs <date | week-YYYY-Www> [--lang en,vi,visub] [--steps render,gate,upload,attach,facebook,telegram] [--no-voice] [--chat <id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card] [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]"
   );
 const flag = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);
 const list = (n, all) => (flag(n) ? flag(n).split(",").filter(Boolean) : all);
-const langs = list("--lang", ["en", "vi"]);
+// visub runs only when asked for; the English cut always goes before it (visub reuses its build).
+const langs = list("--lang", ["en", "vi"]).sort((a, b) => LANGS.indexOf(a) - LANGS.indexOf(b));
 const steps = list("--steps", DEFAULT_STEPS);
 const uploader = flag("--uploader") ?? (process.env.YOUTUBE_REFRESH_TOKEN ? "api" : "chrome");
 const privacy = flag("--privacy") ?? "public";
@@ -58,7 +64,7 @@ const tgFmt = flag("--telegram-fmt") ?? "16x9";
 const tgMode = flag("--telegram-mode") ?? "video";
 if (!["16x9", "9x16"].includes(tgFmt)) throw new Error(`--telegram-fmt ${tgFmt}: 16x9 | 9x16`);
 if (!["video", "card"].includes(tgMode)) throw new Error(`--telegram-mode ${tgMode}: video | card`);
-for (const l of langs) if (!["en", "vi"].includes(l)) throw new Error(`--lang ${l}: en | vi`);
+for (const l of langs) if (!LANGS.includes(l)) throw new Error(`--lang ${l}: ${LANGS.join(" | ")}`);
 if (!["chrome", "api"].includes(uploader)) throw new Error(`--uploader ${uploader}: chrome | api`);
 if (!["private", "unlisted", "public"].includes(privacy)) throw new Error(`--privacy ${privacy}: private | unlisted | public`);
 const checkOnly = steps.length === 1 && steps[0] === "check";
@@ -117,22 +123,7 @@ if (problems.length) {
 // State.
 const rows = existsSync(statusPath) ? JSON.parse(readFileSync(statusPath, "utf8")) : [];
 const save = () => !dry && !checkOnly && writeFileSync(statusPath, `${JSON.stringify(rows, null, 2)}\n`);
-const cutName = (l, f) => `${date}-${l}-${f}`;
-for (const l of langs)
-  for (const f of Object.keys(config.formats)) {
-    const cut = cutName(l, f);
-    if (!rows.some((r) => r.cut === cut)) {
-      const c = cutFor(l);
-      rows.push({
-        cut,
-        lang: l,
-        fmt: f,
-        path: join(dir, "renders", c.video(date, f)),
-        cover: join(dir, "renders", c.cover(date, f)),
-        state: "queued",
-      });
-    }
-  }
+addRows(rows, { date, langs, config, dir });
 const mine = rows.filter((r) => langs.includes(r.lang));
 const byLang = (l) => mine.filter((r) => r.lang === l);
 const probe = (file, ...a) =>
@@ -169,7 +160,7 @@ const summary = (what, targets) =>
 // 0. Check: is the date already published? Cheap, so it runs before any writing or rendering.
 if (checkOnly) {
   await seedFromSite();
-  const left = mine.filter((r) => !r.youtube?.id);
+  const left = mine.filter((r) => onYouTube(r.lang) && !r.youtube?.id);
   if (!left.length) {
     console.log(`✓ ${date}: every cut is already on the day page; nothing to publish`);
     process.exit(3);
@@ -183,7 +174,7 @@ if (steps.includes("render")) {
   await seedFromSite();
   const rendered = new Set();
   for (const l of langs) {
-    const todo = byLang(l).filter((r) => (renderPublished || !r.youtube?.id) && (!existsSync(r.path) || !existsSync(r.cover)));
+    const todo = byLang(l).filter((r) => needsRender(r, { renderPublished, exists: existsSync }));
     summary(`render ${l}`, todo.map((r) => r.cut));
     if (!todo.length) continue;
     if (!dry) {
@@ -239,19 +230,30 @@ if (steps.includes("gate")) {
   console.log("✓ gate");
 }
 
+// The YouTube ids on the live day page of a language: { "16x9", "9x16" } (empty when the page has none).
+async function dayPageIds(l) {
+  const res = await fetch(`https://aidr.today/date/${date}.md?lang=${l}`);
+  if (!res.ok) return {};
+  const md = await res.text();
+  return {
+    "16x9": md.match(/^- YouTube: \S+watch\?v=([\w-]{11})/m)?.[1],
+    "9x16": md.match(/^- YouTube Shorts: \S+\/shorts\/([\w-]{11})/m)?.[1],
+  };
+}
+
+// The Vietnamese title translated with the visub captions (visub.mjs), if any.
+function subsTitle() {
+  const file = join(dir, cutFor("visub").subs.json);
+  return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")).title ?? null) : null;
+}
+
 // 2. Upload, serially, in the owner's Chrome. Stops on the first failure.
 // STATUS.json is local, so first take ids already on the live day page: a date
 // uploaded elsewhere must not get a second public copy.
 async function seedFromSite() {
   if (weekly) return; // no weekly day page yet
-  for (const l of langs) {
-    const res = await fetch(`https://aidr.today/date/${date}.md?lang=${l}`);
-    if (!res.ok) continue;
-    const md = await res.text();
-    const ids = {
-      "16x9": md.match(/^- YouTube: \S+watch\?v=([\w-]{11})/m)?.[1],
-      "9x16": md.match(/^- YouTube Shorts: \S+\/shorts\/([\w-]{11})/m)?.[1],
-    };
+  for (const l of langs.filter(onYouTube)) {
+    const ids = await dayPageIds(l);
     for (const r of byLang(l)) {
       const id = ids[r.fmt];
       if (!id || r.youtube?.id) continue;
@@ -268,7 +270,8 @@ async function seedFromSite() {
 
 if (steps.includes("upload")) {
   await seedFromSite();
-  const todo = mine.filter((r) => !r.youtube?.id);
+  const todo = mine.filter((r) => onYouTube(r.lang) && !r.youtube?.id);
+  if (langs.includes("visub")) console.log("  upload: visub is not uploaded (its button links the English video)");
   summary(uploader === "api" ? `upload to YouTube (${privacy}, Data API)` : "upload to YouTube (public, owner's Chrome)", todo.map((r) => r.cut));
   for (const r of todo) {
     if (!dry && !existsSync(r.path)) throw new Error(`${r.cut}: ${r.path} is not rendered; run --steps render`);
@@ -290,7 +293,7 @@ if (steps.includes("upload")) {
 
 // 3. Attach the YouTube ids to the day page, per language (needs both cuts of the language).
 if (steps.includes("attach")) {
-  const todo = langs.filter((l) => byLang(l).some((r) => (dry || r.youtube?.id) && !r.attached));
+  const todo = langs.filter(onYouTube).filter((l) => byLang(l).some((r) => (dry || r.youtube?.id) && !r.attached));
   summary("attach to the day page", todo);
   for (const l of todo) {
     const long = byLang(l).find((r) => r.fmt === "16x9");
@@ -355,22 +358,33 @@ if (steps.includes("facebook")) {
 }
 
 // 4. Telegram, once per language: the video file itself (default) or the Worker's YouTube card.
-// Chats: --chat <id> for every language; else staging; with --prod each language's channel (env, else the wrangler.toml default).
-const PROD_CHATS = { en: ["TELEGRAM_EN_CHAT_ID", "@aidr_today"], vi: ["TELEGRAM_VI_CHAT_ID", "-1004420104760"] };
+// Chats (telegram-video.mjs chatFor): --chat <id> for every language; else staging; with --prod each language's channel.
+// Only a --prod post to the real channel marks the cut done; a staging/--chat send is recorded as telegramTest.
 if (steps.includes("telegram")) {
   const override = flag("--chat");
   const staging = envVar("TELEGRAM_STAGING_CHAT_ID");
   if (!prod && !override && !staging && !dry) throw new Error("no staging chat: set TELEGRAM_STAGING_CHAT_ID (.env.local), pass --chat <id>, or --prod");
-  const chatFor = (l) => override ?? (prod ? (envVar(PROD_CHATS[l][0]) ?? PROD_CHATS[l][1]) : staging);
-  const where = prod && !override ? "PRODUCTION channels" : `chat ${override ?? staging ?? "$TELEGRAM_STAGING_CHAT_ID"}${prod ? "" : " (staging)"}`;
+  const real = prod && !override;
+  const where = real ? "PRODUCTION channels" : `chat ${override ?? staging ?? "$TELEGRAM_STAGING_CHAT_ID"}${prod ? "" : " (staging)"}`;
   const fmt = tgMode === "card" ? "16x9" : tgFmt;
-  const todo = langs.filter((l) => byLang(l).some((r) => r.fmt === fmt && !r.telegram));
-  summary(`telegram ${tgMode === "card" ? "card" : `video ${fmt}`} → ${where}`, todo);
+  // The card is the Worker's per-language YouTube post; visub has no YouTube video of its own.
+  const tgLangs = tgMode === "card" ? langs.filter(onYouTube) : langs;
+  const todo = telegramTodo(rows, tgLangs, fmt);
+  for (const r of mine.filter((r) => r.lang === "visub" && r.fmt === fmt && !r.telegram && !todo.includes(r)))
+    console.log(`  ${r.cut}: the Vietnamese-voice cut is already on the channel; not posting the subtitled cut`);
+  summary(`telegram ${tgMode === "card" ? "card" : `video ${fmt}`} → ${where}`, todo.map((r) => r.cut));
   const token = envVar("TELEGRAM_BOT_TOKEN");
   if (tgMode === "video" && todo.length && !token && !dry) throw new Error("TELEGRAM_BOT_TOKEN is not set (env or .env.local)");
-  for (const l of todo) {
-    const target = byLang(l).find((r) => r.fmt === fmt);
-    const chat = chatFor(l);
+  const record = (target, sent) => {
+    if (real) {
+      target.telegram = sent;
+      target.state = "posted";
+    } else target.telegramTest = sent;
+    save();
+  };
+  for (const target of todo) {
+    const l = target.lang;
+    const chat = chatFor(l, { override, prod, staging });
     if (tgMode === "card") {
       const args = ["--filter", "@aidr/web", "agent", "day-video-telegram", date, "--lang", l];
       if (chat) args.push("--chat", chat);
@@ -379,27 +393,25 @@ if (steps.includes("telegram")) {
       const json = lastJson(out);
       const message_id = find(json, "message_id");
       if (message_id === undefined) throw new Error(`${l}: no message_id in day-video-telegram output`);
-      target.telegram = { chat_id: find(json, "chat_id") ?? chat ?? "prod", message_id };
-      target.state = "posted";
-      save();
+      record(target, { chat_id: find(json, "chat_id") ?? chat ?? "prod", message_id });
       continue;
     }
-    const title = ytTitle(l) ?? (l === "vi" ? `Bản tin AI;DR — ${date}` : `AI;DR Daily Brief — ${date}`);
-    const markup = videoReplyMarkup({ date, lang: l, youtubeId: target.youtube?.id });
+    // visub: the English video's YouTube id (STATUS, else the live day page) and the translated title.
+    const youtubeId = youtubeIdFor(target, rows) ?? (l === "visub" ? (await dayPageIds("en"))["16x9"] : undefined);
+    const title = l === "visub" ? subsTitle() : ytTitle(l);
+    const { caption, replyMarkup } = telegramPost({ date, lang: l, title, youtubeId });
     const copy = tgCopyPath(target.path);
     if (dry) {
       show(process.env.FFMPEG || "ffmpeg", tgEncodeArgs(target.path, copy, fmt));
-      console.log(`  sendVideo ${target.cut} → ${chat}: ${videoCaption(title)} ${JSON.stringify(markup)}`);
+      console.log(`  sendVideo ${target.cut} → ${chat}: ${caption} ${JSON.stringify(replyMarkup)}`);
       continue;
     }
     if (!existsSync(target.path) || !existsSync(target.cover)) throw new Error(`${target.cut}: not rendered; run --steps render`);
     const tg = makeTelegramCopy(target.path, fmt);
     const thumb = makeThumbnail(target.cover, join(dirname(tg), `thumb-${target.cut}.jpg`));
     show("sendVideo", [target.cut, "→", String(chat), `${(statSync(tg).size / 1e6).toFixed(1)}MB`]);
-    const sent = await sendVideo({ token, chatId: chat, file: tg, thumb, caption: videoCaption(title), replyMarkup: markup });
-    target.telegram = { ...sent, file: "video" };
-    target.state = "posted";
-    save();
+    const sent = await sendVideo({ token, chatId: chat, file: tg, thumb, caption, replyMarkup });
+    record(target, { ...sent, file: "video" });
   }
 }
 
@@ -414,6 +426,7 @@ for (const r of mine) {
     r.attached && "attached",
     r.facebook?.published && `facebook reel ${r.facebook.id}`,
     r.telegram && `telegram ${r.telegram.chat_id}/${r.telegram.message_id}`,
+    r.telegramTest && `telegram test ${r.telegramTest.chat_id}/${r.telegramTest.message_id}`,
   ].filter(Boolean);
   console.log(`  ${r.cut}: ${bits.join(" · ")}`);
 }
