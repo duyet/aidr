@@ -5,6 +5,7 @@ import {
   type MediaCandidate,
   primaryThumbnailUrl,
 } from "../media.js";
+import { lastSentenceEnd } from "../sentences.js";
 import { parseFeedDate, parseUtcOffset } from "./feed-date.js";
 import { KEYWORD_FILTERS } from "./keywords.js";
 import type { FetchedItem, SourceAdapter, SourceLanguage } from "./types.js";
@@ -147,14 +148,8 @@ const RSS_SUMMARY_MAX_CHARS = 1200;
 export function clipFeedSummary(text: string): string {
   if (text.length <= RSS_SUMMARY_MAX_CHARS) return text;
   const slice = text.slice(0, RSS_SUMMARY_MAX_CHARS);
-  const trimmed = slice.trimEnd();
-  const boundary = Math.max(
-    slice.lastIndexOf(". "),
-    slice.lastIndexOf("! "),
-    slice.lastIndexOf("? "),
-    /[.!?]$/.test(trimmed) ? trimmed.length - 1 : -1
-  );
-  if (boundary >= 0) return slice.slice(0, boundary + 1).trim();
+  const boundary = lastSentenceEnd(text, RSS_SUMMARY_MAX_CHARS);
+  if (boundary > 0) return slice.slice(0, boundary).trim();
   // Leave one character for `…`. A 1200-character slice plus the mark
   // is 1201 and still not a sentence the missing-summary query can see.
   const room = slice.slice(0, RSS_SUMMARY_MAX_CHARS - 1);

@@ -8,6 +8,7 @@ import {
 import { SITE_URL } from "../../src/lib/site.js";
 import { formatWeekRange, weekPath } from "../../src/lib/week.js";
 import { isGeneratedOgCard } from "../media.js";
+import { splitSentences } from "../sentences.js";
 import { shiftDate } from "../weekly-digest.js";
 import { feedbackUrl } from "./feedback.js";
 import {
@@ -313,15 +314,6 @@ function countLine(n: number, minutes: number, lang: MailLang): string {
     : `${n} ${n === 1 ? "story" : "stories"} · ${minutes} min read`;
 }
 
-/** Sentence split that keeps "$7.5B", "U.S." and "13x." intact enough. */
-function sentences(text: string): string[] {
-  return text
-    .trim()
-    .split(/(?<=[.!?])\s+(?=[\p{Lu}\d"“‘'])/u)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 /** Drops a trailing "(Bloomberg)"-style publisher tag from a title. */
 function cleanHeadline(title: string): string {
   return title
@@ -332,7 +324,7 @@ function cleanHeadline(title: string): string {
 
 export function storyHeadline(story: DigestStory): string {
   const h = story.headline ? cleanHeadline(story.headline) : "";
-  return h || sentences(story.text)[0] || story.text.trim();
+  return h || splitSentences(story.text)[0] || story.text.trim();
 }
 
 /** One sentence under a headline. With a stored headline the bullet's first
@@ -365,7 +357,7 @@ export const SUMMARY_OVERLAP_MAX = 0.7;
  *  headline can contain a whole sentence while sharing few of its words. */
 export function storySummary(story: DigestStory): string {
   const headline = storyHeadline(story);
-  const parts = sentences(story.text);
+  const parts = splitSentences(story.text);
   return (
     parts.find(
       (part) =>
