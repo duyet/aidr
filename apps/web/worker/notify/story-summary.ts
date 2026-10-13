@@ -27,8 +27,6 @@ const LLM_TIMEOUT_MS = 30_000;
 const LLM_MAX_TOKENS = 2048;
 
 const SENTENCE_END = /[.!?]["'”’)]?$/;
-/** Letters only Vietnamese uses. An English caption may still name Société
- *  Générale or Erdős, so `looksVietnamese` (any diacritic) is too broad. */
 const VI_ONLY_LETTER = /[ăđơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịĩọỏốồổỗộớờởỡợụủũứừửữựỳỵỷỹ]/i;
 
 function systemPrompt(lang: Lang, target: number): string {
@@ -45,11 +43,6 @@ function systemPrompt(lang: Lang, target: number): string {
   ].join(" ");
 }
 
-/** Copy that came through the feed as written for the publisher's own page:
- *  an RSS footer, or a paper, blog or press release speaking as "we" or, in
- *  Vietnamese, "chúng tôi", "tôi" or "bạn". English "I" is left out: it also
- *  matches "Google I/O". A caption speaks as the channel, so these are
- *  rewritten even when they fit. */
 const SOURCE_COPY = [
   /appeared first on|xuất hiện lần đầu (?:trên|tại)/i,
   /\b(?:[Ww]e|[Oo]ur)\b/,
@@ -68,19 +61,21 @@ function words(text: string): Set<string> {
   );
 }
 
-/** A sentence restates the headline when it repeats most of the headline's
- *  words, adds few of its own, and carries no number the headline lacks. */
+const RESTATED_TITLE_SHARE = 0.8;
+const RESTATED_NEW_WORD_SHARE = 0.35;
+
 function restatesHeadline(headline: Set<string>, sentence: string): boolean {
   const own = words(sentence);
   if (own.size === 0 || headline.size === 0) return false;
   const repeated = [...headline].filter((w) => own.has(w)).length;
   const added = [...own].filter((w) => !headline.has(w));
   if (added.some((w) => /\d/.test(w))) return false;
-  return repeated / headline.size >= 0.8 && added.length / own.size <= 0.35;
+  return (
+    repeated / headline.size >= RESTATED_TITLE_SHARE &&
+    added.length / own.size <= RESTATED_NEW_WORD_SHARE
+  );
 }
 
-/** `summary` without its leading sentences that only repeat `title`; "" when
- *  the whole summary does. A caption shows the title right above. */
 export function withoutRestatedHeadline(
   title: string,
   summary: string
@@ -109,16 +104,12 @@ function parseSummary(raw: string): string | null {
   }
 }
 
-/** Valid when its whole leading sentences inside the budget are non-empty,
- *  finished, and in the channel's language. Returns those sentences or null. */
-export function validCaptionSummary(
+function fitCaptionSummary(
   value: string | null,
   lang: Lang,
   budget: number
 ): string | null {
   if (!value) return null;
-  // Models overshoot a character limit; whole leading sentences of the
-  // answer still beat trimming the long source.
   const text = fitSentences(normalizeSpace(value), budget);
   if (!text) return null;
   if (text.includes("…") || text.includes("...")) return null;
@@ -158,13 +149,12 @@ export async function captionSummaryFor(
   if (source.length <= budget && !readsAsSourceCopy(source)) return null;
   const hash = dayCardVersion([source]);
   try {
-    const cached = validCaptionSummary(
+    const cached = fitCaptionSummary(
       await readCached(env, story.id, story.lang, hash),
       story.lang,
       budget
     );
     if (cached) return cached;
-    // A fitting source is rewritten only to clean it, so it stays as long.
     const target = Math.min(Math.floor(budget * TARGET_MARGIN), source.length);
     const raw = await completeJson(
       env,
@@ -181,7 +171,7 @@ export async function captionSummaryFor(
       ],
       { task: "other", timeoutMs: LLM_TIMEOUT_MS, maxTokens: LLM_MAX_TOKENS }
     );
-    const summary = validCaptionSummary(parseSummary(raw), story.lang, budget);
+    const summary = fitCaptionSummary(parseSummary(raw), story.lang, budget);
     if (!summary) {
       console.warn(`notify summary for ${story.id} rejected; trimming instead`);
       return null;

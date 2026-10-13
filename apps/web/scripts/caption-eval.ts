@@ -12,24 +12,10 @@
  *   pnpm exec tsx scripts/caption-eval.ts judge <before.json> <after.json>
  *        [--judge <model>] [--out <file.json>]
  *
- * `fixture` reads the latest posted stories per channel from production D1
- * (read-only, `cf d1 query`) with the same copy columns the trending query
- * selects.
- *
- * `run` drives each story through the production `sendStory` path
- * (`telegramPreviewNotifier`), so the caption, budget and model rewrite are
- * the Worker's own. The D1 binding is a stub: `notify_summaries` is never
- * read or written. Without `--send`, Telegram calls are intercepted and the
- * caption is recorded instead of posted. With `--send-staging` it posts to
- * TELEGRAM_STAGING_CHAT_ID with TELEGRAM_BOT_TOKEN, both from the repo-root
- * `.env.local` (the shell's token can be stale). It never posts elsewhere.
- *
- * `judge` scores two runs blind: each pair is shown to the judge model in
- * both orders, and a caption's score is the mean of the two. Mechanical
- * checks (fit, ellipsis, title restated, boilerplate, added hype) are
- * computed here, not by the judge.
- *
- * Reads ANYROUTER_API_KEY from `.env.local`; never prints it.
+ * `fixture` reads production D1 read-only. `run` records captions without
+ * posting; with `--send-staging` it posts to TELEGRAM_STAGING_CHAT_ID with
+ * TELEGRAM_BOT_TOKEN from the repo-root `.env.local`, and nowhere else.
+ * Reads ANYROUTER_API_KEY from `.env.local`.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -85,9 +71,7 @@ interface Checks {
   ellipsis: boolean;
   unfinished: boolean;
   titleRestated: boolean;
-  /** Share of the title's words that the blurb's first sentence repeats. */
   titleOverlap: number;
-  /** Share of the blurb's words that are not in the title. */
   novelty: number;
   boilerplate: string[];
   addedHype: string[];
@@ -97,7 +81,6 @@ interface CaptionRecord {
   id: string;
   lang: Lang;
   title: string;
-  /** The channel's own summary: the only input the caption may use. */
   source: string;
   rewrite: "none" | "ok" | "rejected" | "failed";
   rewriteNote: string | null;
@@ -125,8 +108,6 @@ function readDotEnv(): Record<string, string> {
   }
   return out;
 }
-
-// ---- fixture ------------------------------------------------------------
 
 function d1(sql: string): FixtureRow[] {
   const out = execFileSync(
@@ -158,8 +139,6 @@ function fixture(): void {
   writeFileSync(out, `${JSON.stringify(rows, null, 2)}\n`);
   console.log(`wrote ${rows.length} rows to ${out}`);
 }
-
-// ---- mechanical checks --------------------------------------------------
 
 const BOILERPLATE: Array<[string, RegExp]> = [
   ["rss-footer", /appeared first on|xuất hiện lần đầu (?:trên|tại)/i],
@@ -245,8 +224,6 @@ function checksFor(
     overLimit: visible.length > CAPTION_LIMIT,
     ellipsis: /…|\.\.\./.test(blurb),
     unfinished: blurb.length > 0 && !/[.!?]["'”’)]?$/.test(blurb),
-    // A short product-name title is always repeated by a good lead; the
-    // defect is a blurb that repeats the title and adds little else.
     titleRestated: titleOverlap >= 0.8 && novelty < 0.5,
     titleOverlap: Math.round(titleOverlap * 100) / 100,
     novelty: Math.round(novelty * 100) / 100,
@@ -256,8 +233,6 @@ function checksFor(
     ),
   };
 }
-
-// ---- run ----------------------------------------------------------------
 
 interface Captured {
   method: string;
@@ -403,8 +378,6 @@ function summarizeRun(records: CaptionRecord[]): void {
   }
 }
 
-// ---- judge --------------------------------------------------------------
-
 const DIMS = [
   "lead",
   "specifics",
@@ -476,13 +449,11 @@ Caption B:
 """
 ${b}
 """`;
-  // The judge ids flip between 200 and 404 BYOK on AnyRouter for minutes at
-  // a time, so retries back off instead of giving up a pair.
   for (let attempt = 0; attempt < 6; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 15_000 * attempt));
     try {
-      // A direct call: the Worker's chain sends `temperature`, which the
-      // judge models reject, and the judge is not part of the pipeline.
+      // Not the Worker's chain: it sends `temperature`, which current Claude
+      // judge models reject with a 400.
       const res = await fetch("https://anyrouter.dev/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -525,7 +496,6 @@ function mean(xs: number[]): number {
   return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : Number.NaN;
 }
 
-/** 95% interval of the mean paired delta, by bootstrap over items. */
 function bootstrapCi(deltas: number[], rounds = 2000): [number, number] {
   const means: number[] = [];
   for (let r = 0; r < rounds; r++) {
@@ -571,7 +541,6 @@ async function judge(): Promise<void> {
     return a ? [{ before: b, after: a }] : [];
   });
   const results = await pool(pairs, 6, async ({ before: b, after: a }) => {
-    // Both orders: the before caption as A, then as B.
     const [v1, v2] = await Promise.all([
       judgeOnce(model, b, b.visible, a.visible),
       judgeOnce(model, b, a.visible, b.visible),

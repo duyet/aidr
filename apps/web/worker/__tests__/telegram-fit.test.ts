@@ -292,7 +292,6 @@ describe("captionSummaryFor", () => {
   });
 
   it("does not call the model when the summary already fits", async () => {
-    // "I/O" and "US" are not a first-person voice.
     for (const summary of [
       "Short and whole.",
       "Google I/O opens in the US on May 20 with Gemini news.",
@@ -305,8 +304,6 @@ describe("captionSummaryFor", () => {
   });
 
   it("rewrites a summary that fits but reads as feed or press-release copy", async () => {
-    // Real VI rows (2026-10): the translation kept an RSS footer, a paper's
-    // "we", and a blogger's "you" that the caption then posted verbatim.
     const defective: Array<[string, "en" | "vi"]> = [
       [
         "Reflection ra mắt Beam. Bài viết về Beam của Reflection xuất hiện lần đầu trên The Decoder.",
@@ -360,7 +357,6 @@ describe("captionSummaryFor", () => {
   });
 
   it("accepts an English answer that names Société Générale or Erdős", async () => {
-    // Real EN rewrite (2026-10-13) rejected as Vietnamese for one "é".
     const text =
       "Lenders such as MUFG, SMBC and Société Générale cut their exposure. Two Erdős problems fell.";
     completeJson.mockResolvedValueOnce(JSON.stringify({ summary: text }));
@@ -391,8 +387,6 @@ describe("captionSummaryFor", () => {
 });
 
 describe("story caption never restates its headline", () => {
-  // Real Techmeme-style post (2026-10-13): the summary is the headline minus
-  // the outlet, so the channel showed the same sentence twice.
   const nvidia = story({
     title:
       "IDC: Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026, as its market share slid to 34% amid US export curbs and rising domestic competition (Reuters)",
