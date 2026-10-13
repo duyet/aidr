@@ -1,4 +1,3 @@
-import type { TrackChannel } from "@aidr/ui/track";
 import {
   BookOpenText,
   CalendarDays,
@@ -12,7 +11,9 @@ import {
   Send,
 } from "lucide-react";
 import type { AriaAttributes, ComponentType } from "react";
+import type { Channel } from "../../lib/analytics/events";
 import { DUYET_URL, EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
+import type { Lang } from "../../lib/types";
 import { ChromeMark } from "./ChromeMark";
 
 // Routes whose content is English-only — the EN|VI toggle is disabled
@@ -48,7 +49,9 @@ export const SITE_LINKS: {
   label: string;
   internal: boolean;
   icon: LinkIcon;
-  channel?: TrackChannel;
+  channel?: Channel;
+  /** The channel's audience language, when it has one. */
+  channelLang?: Lang;
 }[] = [
   { href: "/", label: "News", internal: true, icon: Newspaper },
   { href: "/weeks", label: "Weekly", internal: true, icon: BookOpenText },
@@ -61,7 +64,7 @@ export const SITE_LINKS: {
     label: "Get AI;DR",
     internal: true,
     icon: ChromeMark,
-    channel: "chrome",
+    channel: "extension",
   },
   {
     href: TELEGRAM_URL,
@@ -69,6 +72,7 @@ export const SITE_LINKS: {
     internal: false,
     icon: Send,
     channel: "telegram",
+    channelLang: "vi",
   },
   { href: "/data", label: "Data", internal: true, icon: Database },
   { href: "/contribute", label: "Contribute", internal: true, icon: Plus },

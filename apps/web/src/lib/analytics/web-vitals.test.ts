@@ -1,15 +1,19 @@
 /** @vitest-environment happy-dom */
-import { metricParams } from "@aidr/ui/web-vitals";
 import { describe, expect, it } from "vitest";
 import type { Metric } from "web-vitals";
+import { metricParams } from "./web-vitals";
 
-const metric = (name: Metric["name"], value: number) =>
+const metric = (
+  name: Metric["name"],
+  value: number,
+  navigationType: Metric["navigationType"] = "navigate"
+) =>
   ({
     name,
     value,
     rating: "good",
     id: "v5-1",
-    navigationType: "navigate",
+    navigationType,
   }) as Metric;
 
 describe("metricParams", () => {

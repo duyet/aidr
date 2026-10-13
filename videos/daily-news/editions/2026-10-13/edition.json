@@ -1,0 +1,135 @@
+{
+  "date": "2026-10-13",
+  "fetchedAt": "2026-10-13T09:41:52.714Z",
+  "stories": [
+    {
+      "rank": 1,
+      "text": "Meta’s Muse Wonder rivals the world’s best AI models and adds features designed to keep agents from going off the rails. The release aims to return Meta to the AI frontier.",
+      "text_vi": "Muse Wonder của Meta cạnh tranh với những mô hình AI tốt nhất thế giới và bổ sung tính năng giúp agent không đi chệch hướng. Sản phẩm nhằm đưa Meta trở lại vị thế dẫn đầu về AI.",
+      "category": "Models",
+      "title": "Muse Wonder Puts Meta Back at the AI Frontier",
+      "title_vi": "Muse Wonder đưa Meta trở lại vị thế dẫn đầu về AI",
+      "url": "https://www.wired.com/story/muse-wonder-puts-meta-back-at-the-ai-frontier/",
+      "source": "wired.com",
+      "permalink": "https://aidr.today/e5bbd114",
+      "images": [
+        {
+          "url": "https://media.wired.com/photos/6accff96fccc4c5244b94f14/master/pass/Muse-Wonder-Puts-Meta-Back-at-the-AI-Frontier-Business-2296209266.jpg",
+          "local": "assets/s1-1.jpg"
+        },
+        {
+          "url": "https://platform.theverge.com/wp-content/uploads/sites/2/2026/10/STKB394_MUSE_AI_CVIRGINIA_D.png?crop=0%2C9.9676601489831%2C100%2C80.064679702034&quality=90&strip=all&w=1200",
+          "local": "assets/s1-2.jpg"
+        },
+        {
+          "url": "https://i.imgur.com/pWABPKr.png",
+          "local": "assets/s1-3.png"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "text": "Researchers show AI models can hide arbitrary computations in encrypted neural networks that evade capability audits, even with full weight access. They released proof-of-concept models to improve defenses.",
+      "text_vi": "Các nhà nghiên cứu cho thấy mô hình AI có thể giấu những phép tính tùy ý trong mạng neural mã hóa, qua mặt việc kiểm tra năng lực ngay cả khi có toàn quyền truy cập trọng số. Họ phát hành mô hình thử nghiệm để cải thiện cơ chế phòng vệ.",
+      "category": "Research",
+      "title": "AI Models Can Provably Hide Arbitrary Capabilities",
+      "title_vi": "Mô hình AI có thể chứng minh được khả năng che giấu năng lực tùy ý",
+      "url": "https://arxiv.org/abs/2610.13928",
+      "source": "arxiv.org",
+      "permalink": "https://aidr.today/b693a6e8",
+      "images": []
+    },
+    {
+      "rank": 3,
+      "text": "Epic Games is shifting teams toward “maximum AI acceleration” and told developers on its upcoming Disney shooter to create all future content AI-first, then supervise it with humans. The goal is more complex content, not layoffs.",
+      "text_vi": "Epic Games đang chuyển các đội ngũ sang “tăng tốc AI tối đa” và yêu cầu nhà phát triển trò chơi bắn súng Disney sắp tới tạo mọi nội dung mới theo hướng AI trước, sau đó để con người giám sát. Mục tiêu là tăng nội dung phức tạp, không phải sa thải.",
+      "category": "Industry",
+      "title": "Epic Games Mandates AI First Content for Upcoming Disney Shooter",
+      "title_vi": "Epic Games yêu cầu nội dung AI đầu tiên cho trò chơi bắn súng sắp tới của Disney",
+      "url": "https://marketbrief.now/ai/epic-games-mandates-ai-first-content-for-upcoming-disney-shooter-c8ac06c8",
+      "source": "marketbrief.now",
+      "permalink": "https://aidr.today/4dc3edb9",
+      "images": [
+        {
+          "url": "https://assets.bwbx.io/images/users/iqjWHBFdfxIU/iossy07bgwis/v0/1200x826.jpg",
+          "local": "assets/s3-1.jpg"
+        },
+        {
+          "url": "https://secure.gravatar.com/avatar/ebce00e81800f3cd0df7944e8982aaf6b8320c99fec1ab2eb41d6222c1367302?d=mm&r=g&s=96",
+          "local": "assets/s3-2.jpg"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "text": "Nvidia’s AI chip shipments to China fell 44% year over year to 678,000 in H1 2026, cutting its market share to 34%, according to IDC and Reuters. US export curbs and domestic rivals drove the decline.",
+      "text_vi": "Lượng chip AI Nvidia xuất sang Trung Quốc giảm 44% so với cùng kỳ, còn 678.000 chip trong H1 2026, khiến thị phần giảm xuống 34%, theo IDC và Reuters. Quy định hạn chế xuất khẩu của Mỹ cùng đối thủ nội địa là nguyên nhân chính.",
+      "category": "Chips",
+      "title": "IDC: Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026, as its market share slid to 34% amid US export curbs and rising domestic competition (Reuters)",
+      "title_vi": "IDC: lượng chip AI của Nvidia xuất sang Trung Quốc giảm 44% YoY trong H1 2026",
+      "url": "https://www.techmeme.com/261013/p2",
+      "source": "techmeme.com",
+      "permalink": "https://aidr.today/376bc2cb",
+      "images": [
+        {
+          "url": "https://www.reuters.com/resizer/v2/XOGCUM2ZIVLJZBGM2MDWWZ7UIY.jpg?auth=ac928372b3254314310a1d8f72fff0959c7cbd49909fb4b194916dd2b12b1726&height=1005&quality=80&smart=true&width=1920",
+          "local": "assets/s4-1.jpg"
+        },
+        {
+          "url": "https://pbs.twimg.com/card_img/2109801244680413185/_cklUqKY?format=webp&name=medium",
+          "local": "assets/s4-2.webp"
+        },
+        {
+          "url": "https://pbs.twimg.com/profile_images/1191943129823399936/ZvfTRAlg_400x400.jpg",
+          "local": "assets/s4-3.jpg"
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "text": "Janas streamed experts from SSD storage to run the 48 GB Qwen3-Next-80B on a 32 GB laptop at 37 tok/s with drafts, versus 2.8 for llama.cpp. It was faster on all 13 models tested in Q4_K_M.",
+      "text_vi": "Janas stream expert từ SSD để chạy Qwen3-Next-80B 48 GB trên laptop 32 GB với tốc độ 37 tok/s khi dùng drafts, so với 2,8 tok/s của llama.cpp. Cách này nhanh hơn trên cả 13 model được thử nghiệm ở Q4_K_M.",
+      "category": "Open Source",
+      "title": "Janas: Run LLMs larger than RAM by streaming experts from SSD",
+      "title_vi": "Janas: chạy LLM lớn hơn RAM bằng cách stream expert từ SSD",
+      "url": "https://github.com/prabanta-dev/janas",
+      "source": "github.com",
+      "permalink": "https://aidr.today/a6f0cc31",
+      "images": [
+        {
+          "url": "https://opengraph.githubassets.com/50c04c0a0a71e121206c0d33345bc5d8390e52033e9aa3601a3a57fc47a133f5/prabanta-dev/janas",
+          "local": "assets/s5-1.png"
+        },
+        {
+          "url": "https://opengraph.githubassets.com/3b40902eb3cfed0299416bf416e8311957b234e5f6a58b276a9f81213e78e014/prabanta-dev/janas",
+          "local": "assets/s5-2.png"
+        },
+        {
+          "url": "https://opengraph.githubassets.com/89badf63f0a111fd51059ddab38ce4d7123cbce7121c1fb27a29e8f40dee3898/prabanta-dev/janas",
+          "local": "assets/s5-3.png"
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "text": "Character.AI filed for Chapter 11 bankruptcy in the US and agreed to sell some assets to Walt Disney for $20 million. The company plans to keep operating while the sale is completed, Reuters reported.",
+      "text_vi": "Character.AI nộp đơn xin phá sản theo Chapter 11 tại Mỹ và đồng ý bán một số tài sản cho Walt Disney với giá 20 triệu USD. Công ty dự định tiếp tục hoạt động trong lúc hoàn tất thương vụ, theo Reuters.",
+      "category": "Industry",
+      "title": "Character.AI files for Chapter 11 bankruptcy in the US, agrees to sell some assets to Disney for $20M, and plans to keep operating as it completes the sale (Rhea Rose Abraham/Reuters)",
+      "title_vi": "Character.AI nộp đơn xin phá sản theo Chapter 11 tại Mỹ, đồng ý bán một số tài sản cho Disney với giá 20 triệu USD",
+      "url": "https://www.techmeme.com/261013/p3",
+      "source": "techmeme.com",
+      "permalink": "https://aidr.today/fd4035d8",
+      "images": [
+        {
+          "url": "https://www.reuters.com/resizer/v2/K5D6MJZAYVNDNKA2OIDZATV2J4.jpg?auth=1dcac374ef92b34c3d2570f3b0e9fe1b06597837930ac742309577fa69e78c7d&height=1005&quality=80&smart=true&width=1920",
+          "local": "assets/s6-1.jpg"
+        },
+        {
+          "url": "https://pbs.twimg.com/card_img/2108079914029072384/paKi-nHA?format=webp&name=medium",
+          "local": "assets/s6-2.webp"
+        }
+      ]
+    }
+  ]
+}

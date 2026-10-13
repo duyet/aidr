@@ -9,7 +9,6 @@
  * looks right because the component under test was replaced.
  */
 
-import { track } from "@aidr/ui/track";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -20,6 +19,7 @@ import {
 } from "@tanstack/react-router";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { track } from "../../lib/analytics/track";
 import { LangContext } from "../../lib/lang-context";
 import {
   preserveRootLangFromMiddleware,
@@ -28,7 +28,7 @@ import {
 import type { Lang } from "../../lib/types";
 import { Brand } from "./Brand";
 
-vi.mock("@aidr/ui/track", () => ({ track: vi.fn() }));
+vi.mock("../../lib/analytics/track", () => ({ track: vi.fn() }));
 
 /**
  * The app's real root search contract, minus the SSR-only `beforeLoad` that
@@ -204,7 +204,10 @@ describe("Brand home navigation", () => {
     expect(location.href).toBe("/?lang=vi");
     expect(JSON.stringify(location.state ?? {})).not.toContain("payload");
     expect(JSON.stringify(location.state ?? {})).not.toContain("locale");
-    expect(track).toHaveBeenCalledWith("nav_click", { to: "/" });
+    expect(track).toHaveBeenCalledExactlyOnceWith("nav_click", {
+      to: "/",
+      placement: "header",
+    });
   });
 
   it("keeps the logo destination stable as the current locale flips", async () => {

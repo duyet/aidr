@@ -7,6 +7,7 @@
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { track } from "../lib/analytics/track";
 import type { TldrBullet } from "../lib/types";
 import { TldrSection } from "./TldrSection";
 
@@ -16,6 +17,7 @@ vi.mock("./SuggestTranslation", () => ({
   SuggestTranslation: () => null,
   SuggestionBadge: () => null,
 }));
+vi.mock("../lib/analytics/track", () => ({ track: vi.fn() }));
 vi.mock("../lib/vote-fn", () => ({
   castStoryVote: () => Promise.resolve({ myVote: 0, voteNet: 0, rankScore: 0 }),
   fetchMyVotes: () => Promise.resolve({ votes: {}, nets: {} }),
@@ -42,7 +44,10 @@ function renderSection() {
   );
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.mocked(track).mockClear();
+});
 
 describe("day card image view", () => {
   it("shows the card in place of the list and keeps the footer", () => {
@@ -85,5 +90,15 @@ describe("day card image view", () => {
         .getByRole("button", { name: "Show text" })
         .getAttribute("aria-pressed")
     ).toBe("true");
+  });
+
+  it("reports each switch as tldr_toggle with the view chosen", () => {
+    renderSection();
+    fireEvent.click(screen.getByRole("button", { name: "Show day card" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show text" }));
+    expect(vi.mocked(track).mock.calls).toEqual([
+      ["tldr_toggle", { view: "image" }],
+      ["tldr_toggle", { view: "text" }],
+    ]);
   });
 });

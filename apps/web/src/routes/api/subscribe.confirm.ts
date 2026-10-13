@@ -2,10 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   confirmSubscription,
   isSubscribeError,
+  type Schedule,
   settingsChangeFromParams,
 } from "../../../worker/subscribe/handlers.js";
 import type { Env } from "../../../worker/types.js";
 import { SITE_URL } from "../../lib/site.js";
+
+async function resolveWaitUntil(): Promise<Schedule> {
+  return (await import("cloudflare:workers")).waitUntil;
+}
 
 async function resolveEnv(context: any): Promise<Env | undefined> {
   let env: any =
@@ -45,7 +50,8 @@ export const Route = createFileRoute("/api/subscribe/confirm")({
         const result = await confirmSubscription(
           env,
           token,
-          settingsChangeFromParams(params)
+          settingsChangeFromParams(params),
+          await resolveWaitUntil()
         );
         if (isSubscribeError(result)) {
           return redirect(`${SITE_URL}/subscribe`);

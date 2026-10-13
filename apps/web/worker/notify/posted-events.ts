@@ -7,7 +7,7 @@
 
 import type { Lang } from "../../src/lib/types.js";
 import type { Env } from "../types.js";
-import { loadDayCardPages } from "./day-card.js";
+import { loadDayCard } from "./day-card.js";
 import { eventKey, type PostedEvent } from "./post-quality.js";
 
 export const POSTED_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -34,8 +34,8 @@ export async function digestItemIds(
   lang: Lang,
   snapshotIds: readonly string[]
 ): Promise<string[]> {
-  const pages = await loadDayCardPages(env, date, lang).catch(() => null);
-  const ids = pages ? pages.flatMap((page) => page.itemIds) : [...snapshotIds];
+  const card = await loadDayCard(env, date, lang).catch(() => null);
+  const ids = card ? card.itemIds : [...snapshotIds];
   return [...new Set(ids)];
 }
 

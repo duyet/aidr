@@ -1,0 +1,149 @@
+{
+  "date": "2026-10-13",
+  "dateline": "Tuesday, October 13, 2026",
+  "theme": {
+    "intro": "grid",
+    "transition": "wipe",
+    "background": "paper"
+  },
+  "thumb": {
+    "story": 2,
+    "hook": "AI safety research"
+  },
+  "post": {
+    "hook": "AI models hide capabilities, while Meta and Epic push new AI strategies.",
+    "hashtags": [
+      "AI",
+      "AINews",
+      "Meta",
+      "EpicGames",
+      "Nvidia",
+      "MachineLearning"
+    ],
+    "tiktok": "Meta’s Muse Wonder, hidden model capabilities, Epic’s AI-first content, and Nvidia’s China shipments—what stands out?",
+    "facebook": "Meta’s Muse Wonder rivals the world’s best AI models. Researchers show models can hide arbitrary computations from capability audits.",
+    "youtubeTitle": "Muse Wonder puts Meta at AI frontier & more | 2026-10-13",
+    "shortsTitle": "Meta’s Muse Wonder and hidden AI capabilities"
+  },
+  "intro": {
+    "voice": [
+      {
+        "anchor": "alex",
+        "text": "This is AI DR, your AI news for Tuesday, October thirteenth."
+      },
+      {
+        "anchor": "ivanna",
+        "text": "Today’s AI stories include Muse Wonder and hidden capabilities."
+      }
+    ],
+    "title": "Four stories that matter today",
+    "focus": [
+      {
+        "rank": 1,
+        "word": "Muse"
+      },
+      {
+        "rank": 2,
+        "word": "capabilities"
+      }
+    ]
+  },
+  "stories": [
+    {
+      "rank": 1,
+      "category": "Models",
+      "kicker": "Meta’s AI model",
+      "headline": "Muse Wonder *puts Meta* at AI frontier",
+      "stat": "AI frontier",
+      "statLabel": "Meta’s release aims to return",
+      "statWord": "AI",
+      "layout": "split",
+      "images": [
+        "assets/s1-1.jpg",
+        "assets/s1-2.jpg",
+        "assets/s1-3.png"
+      ],
+      "voice": [
+        {
+          "anchor": "allison",
+          "text": "Meta’s Muse Wonder rivals the world’s best AI models and adds features designed to keep agents from going off the rails."
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "category": "Research",
+      "kicker": "AI safety research",
+      "headline": "Models *hide arbitrary* capabilities from audits",
+      "stat": "proof-of-concept models",
+      "statLabel": "Released to improve defenses",
+      "statWord": "proof-of-concept",
+      "layout": "split",
+      "images": [],
+      "paper": {
+        "venue": "arxiv.org",
+        "title": "AI Models Can Provably Hide Arbitrary Capabilities"
+      },
+      "voice": [
+        {
+          "anchor": "kristen",
+          "text": "Researchers show AI models hide arbitrary computations in encrypted networks, evade audits, and release proof-of-concept models to improve defenses."
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "category": "Industry",
+      "kicker": "Epic Games teams",
+      "headline": "Epic shifts teams toward *AI-first* Disney content",
+      "stat": "AI-first",
+      "statLabel": "Future content development approach",
+      "statWord": "AI-first",
+      "layout": "full",
+      "images": [
+        "assets/s3-1.jpg",
+        "assets/s3-2.jpg"
+      ],
+      "voice": [
+        {
+          "anchor": "tyler-cruz",
+          "text": "Epic Games shifts teams toward maximum AI acceleration, telling developers on its Disney shooter to create future content AI-first with human supervision."
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "category": "Chips",
+      "kicker": "Nvidia China shipments",
+      "headline": "Nvidia shipments *fall 44%* in China",
+      "stat": "678,000",
+      "statLabel": "H1 2026 China shipments",
+      "statWord": "678,000",
+      "layout": "full",
+      "images": [
+        "assets/s4-1.jpg",
+        "assets/s4-2.webp",
+        "assets/s4-3.jpg"
+      ],
+      "voice": [
+        {
+          "anchor": "alex",
+          "text": "Nvidia’s AI chip shipments to China fall 44% year over year to 678,000 in H1 2026, cutting market share to 34%."
+        }
+      ]
+    }
+  ],
+  "outro": {
+    "voice": [
+      {
+        "anchor": "ivanna",
+        "text": "That's AI DR for today. Every story, ranked and summarized, at aidr dot today."
+      },
+      {
+        "anchor": "allison",
+        "text": "See you tomorrow."
+      }
+    ],
+    "title": "What's happening in AI today?"
+  }
+}

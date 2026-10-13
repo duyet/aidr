@@ -1,8 +1,8 @@
 import { Input } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
 import { useNavigate } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { track } from "../lib/analytics/track";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
 import {
   type FilterSuggestion,
@@ -91,7 +91,7 @@ export function SearchBox({
 
   const selectFilter = () => {
     if (!filterMatch) return;
-    track("topic_filter", { tag: filterMatch.value });
+    track("topic_filter", { tag: filterMatch.value, from: "search" });
     setOpen(false);
     setQ("");
     navigate({

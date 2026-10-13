@@ -11,10 +11,23 @@ import { idPrefixFromSlug } from "../../lib/slug";
 import {
   fetchStoryOgImage,
   imagesBindingTranscoder,
+  type StoryImageFetchOptions,
   storyOgCard,
+  storyOgImageCandidates,
   storyOgLanguage,
 } from "../../lib/story-og";
 import { getStory } from "../../lib/story-queries";
+
+async function firstStoryOgImage(
+  item: Parameters<typeof storyOgImageCandidates>[0],
+  transcodeWebp: StoryImageFetchOptions["transcodeWebp"]
+) {
+  for (const url of storyOgImageCandidates(item)) {
+    const image = await fetchStoryOgImage(url, { transcodeWebp });
+    if (image) return image;
+  }
+  return null;
+}
 
 /** Story OG cards are deterministic per item id; rendered PNGs are
  * edge-cacheable for a week. */
@@ -75,9 +88,7 @@ export const Route = createFileRoute("/api/og/$id")({
             );
             const [fonts, image] = await Promise.all([
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
-              fetchStoryOgImage(item.image_url, {
-                transcodeWebp: imagesBindingTranscoder(env?.IMAGES),
-              }),
+              firstStoryOgImage(item, imagesBindingTranscoder(env?.IMAGES)),
             ]);
             return await ImageResponse.async(storyOgCard(item, image, lang), {
               ...storyOgRenderOptions(fonts),

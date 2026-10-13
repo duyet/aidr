@@ -41,7 +41,7 @@ One ingest run does three jobs. The scheduler starts one every 30 minutes, with 
 Publish has two deliveries and they do not share a clock or a table:
 
 - **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. Subscribers with `frequency = weekly` skip these lanes and get the weekly edition on Monday morning instead (§11, idempotency `last_weekly_sent`). A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
-- **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, 8 bullets, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
+- **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, one message with the day card's 6 stories, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
 
 An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next run retries. Email is not a `Notifier`: a notifier is one target plus a trending post.
@@ -225,6 +225,17 @@ server-side. Post a language's video to Telegram with
 thumbnail, text fallback), the `send_day_video_telegram` MCP tool, or
 `agent day-video-telegram <date> --lang en|vi [--chat <id>]`. The player is a
 click-to-play `youtube-nocookie.com` facade.
+
+The Telegram digest gets a second button, "▶ YouTube"
+(`https://youtu.be/<id>`, the language's 16:9 id, else its Short), when the
+day has a video in that channel's language. The video is usually uploaded
+after the 08:00 digest, so a set (and a post to the language's own channel,
+not a `chat_id` override) also edits the sent digest with
+`editMessageReplyMarkup`, using the chat and message id on the digest's
+`notifications` row (`status = 'sent'`). Clearing the video removes the
+button; `DELETE` does not touch it. "message is not modified" counts as done,
+and a failed edit never fails the admin call: the response says what happened
+in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
 
 ## Ops pitfalls
 
@@ -462,6 +473,12 @@ candidates. HTML entities in media URLs (including double-escaped `&amp;`
 in query strings) are decoded before storage, so thumbs are real article
 images rather than a broken-src fallback.
 
+- **arXiv has no og:image.** When an item is an `arxiv.org/abs/<id>` page
+  and the merged manifest still has no image, enrich fetches
+  `arxiv.org/html/<id>` (same safe fetch, timeout, and a 400 KB read cap)
+  and takes the first `<img>` whose `src` starts with `<id>v<n>/`, resolved
+  against the final URL. A paper without an HTML version stays imageless.
+
 - **Media identity is the URL, not the content.** Duplicates are found by
   `mediaIdentityKey` and collapse to one asset, in one manifest, across
   sources, and when a cluster merges (`mergeMediaManifests`). Rules: http and
@@ -475,6 +492,11 @@ images rather than a broken-src fallback.
   The story dialog applies the same keys to stored manifests, so no asset
   renders twice. No media is downloaded or hashed: two different URLs that
   serve the same bytes (a mirror, a renamed copy) stay two assets.
+- **Avatars are not story images.** `isGenericImageUrl` rejects a
+  filename that is a logo/icon/avatar/placeholder, any `avatar`, `avatars`,
+  or `profile_images` directory before the filename, and `pbs.twimg.com`
+  `/profile_images/` and `/profile_banners/` paths. `pbs.twimg.com/media/…`
+  tweet photos stay.
 - **Generated share cards are a fallback only.** An image whose path is an
   OG generator (`/og/…`, `/api/og`, `og-image`/`og-card` file names, see
   `isGeneratedOgCard`) is dropped from a manifest, including merged
@@ -1010,22 +1032,46 @@ deliberately non-spammy.
   links, optional health snapshot) is the internal shape. Adapters in
   `worker/notify/adapters.ts` render Telegram HTML, Slack
   incoming-webhook JSON, or raw JSON.
-- *Daily digest*: one highlight post per local day per channel
-  (Asia/Ho_Chi_Minh, from 08:00), plus a follow-up only when more stories
-  are worth sending. The lead photo is the day card
-  (`/api/og/date/{date}.png`) and the caption names those same tiles, with
-  the first sentence of that language's summary after the title when one
-  exists. Every tile still fits: a summary clause is a whole first sentence or left out, and the caption drops clauses (longest first) before it shortens any headline, at a word boundary (`fitHighlightDigest`). Stories that do not
-  fit the lead grid go next: four or more become a second card (`part=2`, its own `v`
-  token, because Telegram caches a photo by URL); one to three are a short
-  text reply. This is that calendar day's ranked stories, photos first,
+- *Daily digest*: one message per local day per channel
+  (Asia/Ho_Chi_Minh, from 08:00), and no message for the stories that
+  did not make the card. It is a `sendMessage` (4096 characters, not a
+  1024-character photo caption) naming the six stories on the day card,
+  each with the first sentence of that language's summary after the title
+  when one exists. The card is the link preview, large and above the text:
+  `link_preview_options.url` is the versioned card PNG
+  (`/api/og/date/{date}.png?lang=&v=`, `v` a hash of the tile ids). The Bot
+  API does not need that URL in the text, and pointing at the image instead
+  of the day page keeps Telegram's cached page preview out. Six full lines
+  normally fit. Only when they pass 4000 visible characters does
+  `fitHighlightDigest` drop summary clauses (longest first, a clause is a
+  whole first sentence or nothing) before it shortens any headline, at a
+  word boundary. This is that calendar day's ranked stories, photos first,
   not the rolling 24h TL;DR. Email still sends the snapshot (`bullets_vi`
   / `bullets_en` only, no cross-language fallback). The Vietnamese channel
   (`TELEGRAM_VI_CHAT_ID`, falling back to `TELEGRAM_CHAT_ID`) and the
   English channel (`TELEGRAM_EN_CHAT_ID`, same bot token) each use their
-  own language. Each line links to its story permalink. The site button is
-  on the lead post only. When the day has no card stories, the caption
-  falls back to that language's snapshot.
+  own language. Each line links to its story permalink. The first button
+  opens the day page; "▶ YouTube" follows once the day video exists ("Day
+  archive" above). When the day has no card stories, the message lists
+  the first six bullets of that language's snapshot and the preview is the
+  day page. The send waits up to 45s, like a photo: Telegram may fetch the
+  cold card for the preview before it answers.
+- *Digest highlight* (Telegram, `postsDigestHighlight`): right after the
+  digest, the card's top story goes out once as a normal story post
+  (`sendStory`: its own photo or album, the full caption summary, the Read
+  button). The story is loaded in the channel's language only
+  (`channelCopy`) and must pass the trending postability gate; a day with no
+  card stories has no highlight. It is keyed `digest:<date>:top` in
+  `notifications`, claimed like every send, and runs only when that day's
+  digest row is `sent`, in the same run or within `HIGHLIGHT_WINDOW_MS`
+  (3h) of it: an `ambiguous` or `sending` digest never triggers it, and an
+  older digest (sent by a previous deploy) gets no late highlight. A
+  definite failure (or no postable top story) retries on later runs up to
+  `NOTIFY_MAX_ATTEMPTS`, inside that window; the digest is not resent. The `digest:`
+  prefix keeps it out of trending's daily count, 3h gap and posted-events
+  window, and its story is already in `notify_digest_items`. The admin
+  force-send follows a sent digest with the highlight under the same key;
+  the staging preview sends both and records neither.
 - *Trending*: an individual post only when the algo flags a story as
   exceptional (`rank_score` at or above the trending bar and
   `llm_importance ≥ 7`), capped at
@@ -1088,9 +1134,10 @@ deliberately non-spammy.
     (VnExpress) only match Vietnamese titles, since the key is the source
     title.
   - **What the digest showed**: `notify_digest_items` (migration 0057) holds
-    the story ids of each digest, written when it sends: the day card's
-    stories (what the caption lists), else every id the snapshot's bullets
-    cite. The TL;DR snapshot cannot stand in, because it is rewritten every
+    the story ids of each digest, written when it sends: the day card's six
+    stories (what the message lists), else every id the snapshot's bullets
+    cite. Ranked stories below the card are not recorded, so trending may
+    still post them. The TL;DR snapshot cannot stand in, because it is rewritten every
     run and by trending time cites the very stories trending would post.
     Apply 0057 before deploying; without the table digest dedup is off and the
     Worker logs it. A channel with no digest row for the date (failed, not yet
@@ -1136,11 +1183,11 @@ deliberately non-spammy.
   for one `{id8}` + `lang` and answers `iv_eligible` with a reason. Run it
   with `verify-aidr doctor iv --id <8hex> --lang vi|en` or
   `GET /api/admin/notify/iv`. It invents no `rhash` and no query template.
-- `sendMessage`/`sendPhoto` set `link_preview_options` explicitly
-  (`is_disabled`) rather than inheriting the API default: a preview would
-  attach to one arbitrary digest bullet or double the photo. Rationale and
-  the rejected `prefer_small_media`/`prefer_large_media`/`show_above_text`
-  values are in `worker/notify/telegram.ts`.
+- `sendMessage`/`sendPhoto` set `link_preview_options` explicitly rather
+  than inheriting the API default. Story posts set `is_disabled`: a preview
+  would attach to one arbitrary link or double the photo. The digest pins
+  its preview to the day card with `prefer_large_media` and
+  `show_above_text`. Rationale per flag is in `worker/notify/telegram.ts`.
 - The trending photo path attaches the **generated** first-party card
   `/api/og/{id8}.png?lang=` (1200×630) — the same `og:image` the card gate
   approves — instead of the upstream thumb, so a link preview can never be
@@ -1201,8 +1248,9 @@ deliberately non-spammy.
   (JPEG, at most 200 KB, at most 320 px) only when it is about to be used as
   a `sendVideo` thumbnail; a poster that fails is left out and the video
   still goes. Gallery photos (`sendPhoto`, album photos) are not
-  preflighted: Telegram fetches them, and if it rejects one the post falls
-  back to the generated card, then text.
+  preflighted: Telegram fetches them, and if it rejects one the post tries
+  the next gallery image (at most 3 photos, in order), then the generated
+  card, then text.
 - **Ambiguous sends are never repeated.** Only a JSON answer from Telegram
   is a definite outcome. `ok: false` posted nothing, so the next transport
   may run and the row is `failed` (retried up to 3 attempts). A timeout, a
@@ -1218,10 +1266,18 @@ deliberately non-spammy.
 - **Media order: story image first, generated card as fallback.** The post
   leads with the story's real photo. The first-party OG card
   `/api/og/{id8}.png?lang=` is used when the story has no usable image, and
-  as a one-shot retry when Telegram rejects the image (hotlink-hostile or
-  dead upstream URLs) — it is 200 by construction, so the post keeps its
+  as a one-shot retry when Telegram rejects the first 3 gallery images
+  (hotlink-hostile or dead upstream URLs) — it is 200 by construction, so the post keeps its
   image instead of dropping to bare text. The card no longer occupies an
   album slot.
+  The card itself (`/api/og/{id8}.png`) tries the thumbnail, then the other
+  manifest images (deduped, at most 3 candidates in all), and renders
+  the branded fallback only when every one fails to fetch.
+  A post already sent on the card gets its real image later with
+  `pnpm --filter @aidr/web telegram-swap-card` (dry unless `--apply`).
+  It edits only when D1 says the card went out and the live photo is
+  1200x630, tests the image in the staging chat first, and logs every
+  edit to `admin_audit` as `telegram.edit_media`.
 - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
   is `en`. Digest bullets come from that language's edition
   (`worker/digest/edition.ts`) and never from the other column. Trending

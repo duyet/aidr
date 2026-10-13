@@ -1,12 +1,16 @@
 import type { Metric } from "web-vitals";
+import type { EventParams } from "./events";
 import { track } from "./track";
+
+type VitalsParams = EventParams<"web_vitals">;
+type EdgeCache = VitalsParams["edge_cache"];
 
 /**
  * Edge-cache outcome of the document request, read from the Worker's
  * `Server-Timing: aidr-cache;desc=HIT|MISS`. "none" when the response was
  * not cache-eligible (or the browser hides server timing).
  */
-export function documentCacheStatus(): string {
+export function documentCacheStatus(): EdgeCache {
   try {
     const nav = performance.getEntriesByType("navigation")[0] as
       | (PerformanceNavigationTiming & {
@@ -14,14 +18,15 @@ export function documentCacheStatus(): string {
         })
       | undefined;
     const entry = nav?.serverTiming?.find((t) => t.name === "aidr-cache");
-    return entry?.description || "none";
+    const desc = entry?.description;
+    return desc === "HIT" || desc === "MISS" ? desc : "none";
   } catch {
     return "none";
   }
 }
 
 /** One metric → GA4 event + PostHog event, same name and dimensions. */
-export function metricParams(metric: Metric, cache: string) {
+export function metricParams(metric: Metric, cache: EdgeCache): VitalsParams {
   return {
     metric_name: metric.name,
     // GA4 sums `value`; CLS is unitless, so scale it to keep precision.
@@ -38,9 +43,7 @@ export function metricParams(metric: Metric, cache: string) {
 }
 
 function report(metric: Metric): void {
-  const params = metricParams(metric, documentCacheStatus());
-  // track() fans out to GA4 and PostHog.
-  track("web_vitals", params);
+  track("web_vitals", metricParams(metric, documentCacheStatus()));
 }
 
 /**

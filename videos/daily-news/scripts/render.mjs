@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Render an edition at 4K: both formats to MP4, and both cover stills to PNG.
 // Writes editions/<date>/renders/ (ignored by git). Renders run one at a time (4K Chrome is heavy).
-// Usage: node scripts/render.mjs 2026-10-02 [--lang vi] [--only 9x16] [--quality draft]
+// Usage: node scripts/render.mjs 2026-10-02 [--lang vi|visub] [--only 9x16] [--quality draft]
+// --lang visub renders its formats only (16:9) and its cover, at its own resolution (1080p).
 import { execFileSync } from "node:child_process";
 import {
   copyFileSync,
@@ -11,7 +12,7 @@ import {
   rmSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { cutOf } from "./lang.mjs";
+import { cutOf, formatsOf } from "./lang.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const HF = ["--yes", "hyperframes@0.8.96"];
@@ -26,8 +27,9 @@ const dir = join(ROOT, "editions", date);
 const renders = join(dir, "renders");
 mkdirSync(renders, { recursive: true });
 
-for (const [fmt, f] of Object.entries(config.formats)) {
+for (const fmt of formatsOf(cut, config)) {
   if (arg("--only") && arg("--only") !== fmt) continue;
+  const resolution = cut.resolution?.[fmt] ?? config.formats[fmt].resolution;
   const cover = join(dir, cut.out, `cover-${fmt}`);
   const seq = join(dir, cut.out, `cover-${fmt}-frames`);
   rmSync(seq, { recursive: true, force: true });
@@ -37,7 +39,7 @@ for (const [fmt, f] of Object.entries(config.formats)) {
       ...HF,
       "render",
       "--resolution",
-      f.resolution,
+      resolution,
       "--format",
       "png-sequence",
       "--fps",
@@ -59,7 +61,7 @@ for (const [fmt, f] of Object.entries(config.formats)) {
       ...HF,
       "render",
       "--resolution",
-      f.resolution,
+      resolution,
       "--quality",
       arg("--quality") ?? "high",
       "--fps",

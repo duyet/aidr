@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@aidr/ui";
-import { trackChannelClick } from "@aidr/ui/track";
 import {
   CheckCircle2,
   Languages,
@@ -15,6 +14,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
+import { track } from "../../lib/analytics/track";
 import { EXTENSION_VERSION } from "../../lib/extension-release";
 import { CHROME_WEB_STORE_URL } from "../../lib/site";
 import type { Lang } from "../../lib/types";
@@ -84,7 +84,10 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() =>
-                trackChannelClick("chrome", { to: "chrome_web_store" })
+                track("channel_click", {
+                  channel: "extension",
+                  placement: "subscribe_page",
+                })
               }
             >
               <ChromeMark className="mr-2 size-5" aria-hidden />
