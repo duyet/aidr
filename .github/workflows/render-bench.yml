@@ -54,7 +54,11 @@ jobs:
       - name: Host
         run: nproc; free -m; uptime
       - name: Build (no voice)
-        run: node scripts/daily.mjs "$DATE" --no-voice
+        run: |
+          node scripts/voice.mjs "$DATE" --no-voice
+          node scripts/build.mjs "$DATE"
+          du -sh "editions/$DATE"/*
+          ( cd "editions/$DATE/out/16x9" && npx --yes hyperframes@0.8.96 lint > ../../lint-16x9.log 2>&1; echo "lint 16x9 exit $?"; grep -v "nested_structure\|Fix: \|too_dense" ../../lint-16x9.log | tail -30 )
       - name: Render ${{ matrix.name }}
         env:
           FMT: ${{ matrix.fmt }}
