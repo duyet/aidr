@@ -1529,10 +1529,17 @@ guard enforces, and instructs a full sentence-by-sentence translation with
 no condensing or added facts (Vietnamese summary ≥ ~80% of the source
 length). `VI_STYLE` also fixes headline sentence case, exact magnitudes
 (B = tỷ, M = triệu, T = nghìn tỷ; model sizes like "7B" stay), and lists
-known calques as bad → good examples.
+known calques as bad → good examples. The translate card (`RULES_OVERVIEW`)
+also asks for third-person news voice: a press release's, paper's, or
+blog's "we", "our", or "I" becomes the company or author the text names,
+else "nhóm tác giả" (paper), "tác giả" (blog) or "hãng" (company
+announcement); "you" becomes "người dùng" or is
+dropped; the first person stays only inside a direct quote.
 Ingest strips the "appeared first on" feed footer
 (`stripSourceBoilerplate`), and `sentSource` strips it again from rows
 stored before that.
+`scripts/retranslate-source-copy.ts` (dry run by default) re-translates
+stored VI rows that still carry a footer or source voice.
 
 Right after generation, `worker/translation-draft-check.ts` runs a
 deterministic check against the exact (stripped, clipped) source the model

@@ -894,7 +894,7 @@ Translate every summary sentence. Merging two clauses is allowed only when every
 Write a Vietnamese headline in sentence case: the first word and proper names only. Returning the English title unchanged is a failed translation, unless that title is already Vietnamese.
 No English gloss in parentheses. Write "RAG", not "RAG (Retrieval-Augmented Generation)". A year, a percent, or a bare label such as "(SEC)" or "(YC S22)" may stay.
 A vague word is not a number. "Countless" is not "hàng triệu". Do not swap who did what: if A accuses B, do not write B's thing of A.
-Write news in the third person, not the source's own voice. For "we", "our", or "I", name who it is from the title or text, else write "nhóm tác giả", "tác giả", or "hãng". "You" the reader becomes "người dùng" or is dropped. Keep the first person only inside a direct quote.`
+Write news in the third person, not the source's own voice. For "we", "our", or "I", name who it is from the title or text; otherwise write "nhóm tác giả" for a paper or study, "tác giả" for a blog post, "hãng" for a company announcement. "You" the reader becomes "người dùng" or is dropped. Keep the first person only inside a direct quote.`
     );
   });
 
