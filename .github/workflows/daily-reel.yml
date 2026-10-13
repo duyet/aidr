@@ -1,4 +1,7 @@
 name: Daily Reel
+# The day video watchdog (apps/web/worker/day-video-watchdog.ts) reads the
+# date input and the dry-run marker from the title.
+run-name: Daily Reel${{ inputs.date && format(' {0}', inputs.date) || '' }}${{ inputs.dry_run && ' (dry run)' || '' }}
 
 # Renders the day's English AI;DR Daily Brief and posts it without an agent:
 # script (auto-script.mjs: model, else template) → render (9:16 + 16:9) → gate

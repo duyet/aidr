@@ -5,8 +5,8 @@ import {
   DAY_VIDEO_ALERT_KEY,
   DAY_VIDEO_CHECK_HOUR_END,
   DAY_VIDEO_CHECK_HOUR_START,
-  DRY_RUN_TITLE,
   type DayVideoVerdict,
+  DRY_RUN_TITLE,
   dayVideoConfirmedKey,
   isLastDayVideoCheck,
   reelMarker,
@@ -346,9 +346,7 @@ describe("checkDayVideo", () => {
     expect(await checkDayVideo(env(world), DATE, NOW)).toEqual({
       kind: "confirmed",
     });
-    expect(jobRequests().some((r) => r.url.includes("/runs/300/"))).toBe(
-      false
-    );
+    expect(jobRequests().some((r) => r.url.includes("/runs/300/"))).toBe(false);
   });
 
   it("waits for a run still in progress, and reports it at the last check", async () => {
@@ -375,6 +373,28 @@ describe("checkDayVideo", () => {
     );
     expect(issue.evidence).toContain(
       `Latest daily-reel run: in_progress ${RUN_URL}`
+    );
+  });
+
+  it("does not wait for a dry run, which cannot post", async () => {
+    const world: World = {
+      ...posted,
+      dayVideo: null,
+      runs: [
+        {
+          id: 300,
+          created_at: "2026-10-14T13:20:00Z",
+          status: "in_progress",
+          title: `Daily Reel ${DATE} ${DRY_RUN_TITLE}`,
+          steps: {},
+        },
+        { id: 101, created_at: "2026-10-14T09:40:58Z", steps: LIVE },
+      ],
+    };
+    serve(world);
+    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
+    expect(issue.detail).toBe(
+      `${DATE}: YouTube 16:9, YouTube Short, YouTube (vi) missing`
     );
   });
 
