@@ -1,3 +1,4 @@
+import { withStoryMediaSuffix } from "../media.js";
 import { toEpochSeconds } from "../time.js";
 import { fetchStoryDetailByUrl, resolve } from "./huggingnews.js";
 import { SourceFetchError } from "./rss.js";
@@ -62,8 +63,20 @@ function topicList(config: Record<string, unknown>): string[] {
   return DEFAULT_TOPICS;
 }
 
+function withMediaSuffix(url: string): string {
+  try {
+    const parsed = new URL(url);
+    withStoryMediaSuffix(parsed);
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 function imageUrl(value: unknown): string | undefined {
-  if (typeof value === "string" && /^https?:\/\//i.test(value)) return value;
+  if (typeof value === "string" && /^https?:\/\//i.test(value)) {
+    return withMediaSuffix(value);
+  }
   if (value && typeof value === "object") {
     const url = pick(value as Record<string, unknown>, [
       "url",
@@ -71,7 +84,9 @@ function imageUrl(value: unknown): string | undefined {
       "small",
       "href",
     ]);
-    if (typeof url === "string" && /^https?:\/\//i.test(url)) return url;
+    if (typeof url === "string" && /^https?:\/\//i.test(url)) {
+      return withMediaSuffix(url);
+    }
   }
   return undefined;
 }

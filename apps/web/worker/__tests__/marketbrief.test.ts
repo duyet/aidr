@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   marketBriefAdapter,
   parseMarketBriefPayload,
+  storyToItem,
 } from "../sources/marketbrief.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -27,6 +28,32 @@ describe("parseMarketBriefPayload", () => {
       points: 3,
       externalId: "story-live",
     });
+  });
+});
+
+describe("storyToItem images", () => {
+  const base = {
+    title: "T",
+    slug: "t-abc",
+    publishedAt: "2024-01-01T00:00:00Z",
+  };
+
+  it("appends -large.jpg to a bare story-media image URL", () => {
+    // The bare `<tweetId>/<hash>` path is a 404 upstream; only the sized file exists.
+    const item = storyToItem({
+      ...base,
+      image: { url: "https://static.marketbrief.now/story-media/123/abcdef" },
+    });
+    const want =
+      "https://static.marketbrief.now/story-media/123/abcdef-large.jpg";
+    expect(item?.imageUrl).toBe(want);
+    expect(item?.media?.[0]?.url).toBe(want);
+  });
+
+  it("leaves an image that already has an extension alone", () => {
+    const url =
+      "https://static.marketbrief.now/story-media/123/abcdef-large.jpg";
+    expect(storyToItem({ ...base, image: url })?.imageUrl).toBe(url);
   });
 });
 

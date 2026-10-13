@@ -334,6 +334,23 @@ function removeQueryKeys(url: URL, keys: Set<string>): void {
   url.searchParams.sort();
 }
 
+const STORY_MEDIA_HOSTS = new Set([
+  "static.marketbrief.now",
+  "static.huggingnews.com",
+]);
+
+/**
+ * marketbrief serves `/story-media/<tweetId>/<hash>` only with a size suffix:
+ * the bare path is a 404, `<hash>-large.jpg` is the image. Applied to every
+ * canonical media URL, so rows stored with the bare path still render.
+ */
+export function withStoryMediaSuffix(url: URL): void {
+  if (url.hostname.toLowerCase() !== "static.marketbrief.now") return;
+  if (!url.pathname.startsWith("/story-media/")) return;
+  const last = url.pathname.split("/").pop() ?? "";
+  if (last && !last.includes(".")) url.pathname += "-large.jpg";
+}
+
 /** Validate and normalize one external media URL for storage/display. */
 export function canonicalizeMediaUrl(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
@@ -355,6 +372,7 @@ export function canonicalizeMediaUrl(raw: unknown): string | null {
   if (isPrivateHostname(parsed.hostname)) return null;
 
   parsed.hash = "";
+  withStoryMediaSuffix(parsed);
   removeQueryKeys(parsed, TRACKING_QUERY_KEYS);
   const normalized = parsed.toString();
   return normalized.length <= MAX_MEDIA_URL_LENGTH ? normalized : null;
@@ -382,6 +400,12 @@ export function mediaIdentityKey(
   if (photon) {
     host = photon[1].toLowerCase();
     pathname = photon[2];
+  }
+  // marketbrief and huggingnews serve the same `<tweetId>/<hash>` story media.
+  if (STORY_MEDIA_HOSTS.has(host) && pathname.startsWith("/story-media/")) {
+    host = "static.huggingnews.com";
+    if (type === "image")
+      pathname = pathname.replace(/-large(?=\.[^/.]+$)/i, "");
   }
   if (type === "image") {
     pathname = pathname

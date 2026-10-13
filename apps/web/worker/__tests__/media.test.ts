@@ -433,6 +433,27 @@ describe("media dedup identity", () => {
   const urls = (candidates: Array<{ type: "image" | "video"; url: string }>) =>
     buildMediaManifest(candidates).assets.map((a) => a.url);
 
+  it("rewrites bare marketbrief story-media paths when canonicalizing stored rows", () => {
+    expect(
+      canonicalizeMediaUrl("https://static.marketbrief.now/story-media/9/ab12")
+    ).toBe("https://static.marketbrief.now/story-media/9/ab12-large.jpg");
+  });
+
+  it("dedupes story-media shared by marketbrief and huggingnews", () => {
+    expect(
+      urls([
+        {
+          type: "image",
+          url: "https://static.marketbrief.now/story-media/9/ab12",
+        },
+        {
+          type: "image",
+          url: "https://static.huggingnews.com/story-media/9/ab12",
+        },
+      ])
+    ).toHaveLength(1);
+  });
+
   it("treats http and https of the same file as one asset", () => {
     expect(
       urls([
