@@ -3,11 +3,13 @@
 // (with --render) render both formats at 4K.
 // Voice falls back to a no-voice cut (music bed, read-along captions) when ElevenLabs is out of quota;
 // --no-voice forces it. See voice.mjs.
-// Usage: node scripts/daily.mjs <date> [--lang vi] [--render] [--no-voice]
+// --lang visub (English voice, Vietnamese subtitles) needs the English cut built first: it voices nothing,
+// translates the captions (visub.mjs), then builds, lints, snapshots and renders its 16:9 only.
+// Usage: node scripts/daily.mjs <date> [--lang vi|visub] [--render] [--no-voice]
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { cutOf } from "./lang.mjs";
+import { cutOf, formatsOf } from "./lang.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const HF = ["--yes", "hyperframes@0.8.96"];
@@ -44,7 +46,7 @@ const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
 // Unattended runs (AIDR_NO_HEYGEN=1 or CI) have no HeyGen fallback, so skip its sign-in check.
 const noHeygen = process.env.AIDR_NO_HEYGEN === "1" || process.env.CI === "true";
 const auth = (() => {
-  if (noHeygen || noVoice) return "valid";
+  if (noHeygen || noVoice || cut.subs) return "valid";
   try {
     return hf(ROOT, "auth", "status");
   } catch (e) {
@@ -55,7 +57,8 @@ if (!/valid/.test(auth))
   console.warn(
     `! HeyGen sign-in looks expired: run \`npx hyperframes auth login\` if voicing${config.voice.provider === "heygen" ? "" : " falls back to HeyGen and"} fails`
   );
-node("voice.mjs", ...(noVoice ? ["--no-voice"] : []));
+if (cut.subs) node("visub.mjs");
+else node("voice.mjs", ...(noVoice ? ["--no-voice"] : []));
 node("build.mjs");
 
 // 4. Lint and snapshot both formats.
@@ -67,7 +70,7 @@ const at = [
     .map((s) => (s.start + s.dur * 0.7).toFixed(1)),
   (timeline.total - 1).toFixed(1),
 ].join(",");
-for (const fmt of Object.keys(config.formats)) {
+for (const fmt of formatsOf(cut, config)) {
   const cwd = join(dir, cut.out, fmt);
   const lint = hf(cwd, "lint");
   const errors = Number(lint.match(/(\d+) error/)?.[1] ?? 0);

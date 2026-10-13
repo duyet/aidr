@@ -10,6 +10,8 @@
 //                           editions/<date>/out/cover-<fmt>/  one-frame project for the cover still
 // Output (tracked):         editions/<date>/captions.srt, posts.md, timeline.json
 // With --lang vi: script.vi.json in; voice-vi/, out-vi/, captions.vi.srt, timeline.vi.json and the vi block of posts.md out.
+// With --lang visub: the English script, voice/, timing and out/mix.wav in, captions.visub.json (visub.mjs) burned in
+// instead of the English captions; out-visub/16x9 out. Writes no captions, timeline or posts.md.
 import { execFileSync } from "node:child_process";
 import {
   cpSync,
@@ -20,9 +22,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { cutOf } from "./lang.mjs";
+import { cutFor, cutOf, formatsOf } from "./lang.mjs";
 import { formatRange, parseWeek } from "./week.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
+import { spreadWords, subsMismatch } from "./visub.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const BRAND = resolve(ROOT, "../brand");
@@ -30,6 +33,8 @@ const date = process.argv[2];
 if (!date) throw new Error("usage: build.mjs <date> [--no-audio]");
 const withAudio = !process.argv.includes("--no-audio");
 const cut = cutOf(process.argv);
+// The language of the script, voice and screen (visub: English).
+const lang = cut.screen;
 
 const read = (p) => JSON.parse(readFileSync(p, "utf8"));
 const config = read(join(ROOT, "config.json"));
@@ -120,8 +125,8 @@ const UI_WEEKLY = {
     daily2: "Mọi tin AI, xếp hạng và tóm tắt:",
   },
 };
-const UI = { ...UI_BASE[cut.lang], ...(WEEKLY ? UI_WEEKLY[cut.lang] : {}) };
-const issueTag = WEEKLY ? ` · ${cut.lang === "vi" ? "Số" : "Issue"} ${edition.issue}` : "";
+const UI = { ...UI_BASE[lang], ...(WEEKLY ? UI_WEEKLY[lang] : {}) };
+const issueTag = WEEKLY ? ` · ${lang === "vi" ? "Số" : "Issue"} ${edition.issue}` : "";
 const theme = {
   intro: "grid",
   transition: "wipe",
@@ -178,7 +183,7 @@ for (const seg of segs) {
     seg.words = estimateWords(
       partsOf(line),
       { wordsPerSecond: config.timing.noVoice.wordsPerSecond, gap: config.voice.gap },
-      cut.lang
+      lang
     );
     seg.voiceDur = seg.words.at(-1).end;
   } else {
@@ -279,21 +284,39 @@ function captionChunks(segList) {
   return out;
 }
 const allCaps = captionChunks(segs);
-const burnCaps = allCaps.filter((c) => c.seg.startsWith("s"));
 
 const srtTime = (t) => {
   const ms = Math.round(t * 1000);
   return `${pad2(Math.floor(ms / 3600000))}:${pad2(Math.floor(ms / 60000) % 60)}:${pad2(Math.floor(ms / 1000) % 60)},${String(ms % 1000).padStart(3, "0")}`;
 };
-writeFileSync(
-  join(dir, cut.captions),
-  allCaps
-    .map(
-      (c, i) =>
-        `${i + 1}\n${srtTime(c.start)} --> ${srtTime(c.end)}\n${c.words.map((w) => w.text).join(" ")}\n`
-    )
-    .join("\n")
-);
+if (cut.subs) {
+  // Translated captions: same cues and times as the English build, Vietnamese words spread over each cue.
+  const file = join(dir, cut.subs.json);
+  if (!existsSync(file))
+    throw new Error(`${cut.subs.json} is missing: run scripts/visub.mjs ${date}`);
+  const tr = read(file).cues;
+  const en = allCaps.map((c) => ({
+    start: srtTime(c.start),
+    end: srtTime(c.end),
+    text: c.words.map((w) => w.text).join(" "),
+  }));
+  const bad = subsMismatch(tr, en);
+  if (bad)
+    throw new Error(`${cut.subs.json} does not match this build (${bad}): rerun scripts/visub.mjs ${date}`);
+  allCaps.forEach((c, i) => {
+    c.words = spreadWords(tr[i].vi, c.start, c.words.at(-1).e);
+  });
+} else
+  writeFileSync(
+    join(dir, cut.captions),
+    allCaps
+      .map(
+        (c, i) =>
+          `${i + 1}\n${srtTime(c.start)} --> ${srtTime(c.end)}\n${c.words.map((w) => w.text).join(" ")}\n`
+      )
+      .join("\n")
+  );
+const burnCaps = allCaps.filter((c) => c.seg.startsWith("s"));
 
 // ---------------------------------------------------------------- html pieces
 const fontFaces = readFileSync(join(BRAND, "frame.md"), "utf8")
@@ -312,7 +335,7 @@ const logo = (cls) => logoSvg.replace("<svg ", `<svg class="${cls}" `);
 // Weekly: the date parts become the week (WEEK / 41 / OCT 5–11) and the dateline the week range.
 const d = new Date(`${WEEKLY ? edition.start_date : date}T12:00:00Z`);
 const DOW = WEEKLY
-  ? cut.lang === "vi" ? "Tuần" : "Week"
+  ? lang === "vi" ? "Tuần" : "Week"
   : d.toLocaleDateString(UI.locale, {
       weekday: "long",
       timeZone: "UTC",
@@ -324,7 +347,7 @@ const DAY = WEEKLY ? parseWeek(edition.week).n : d.getUTCDate();
 const dateline =
   script.dateline ??
   (WEEKLY
-    ? `${cut.lang === "vi" ? "Tuần" : "Week of"} ${formatRange(edition.start_date, edition.end_date, UI.locale)}`
+    ? `${lang === "vi" ? "Tuần" : "Week of"} ${formatRange(edition.start_date, edition.end_date, UI.locale)}`
     : `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`);
 const byRank = Object.fromEntries(edition.stories.map((s) => [s.rank, s]));
 
@@ -381,7 +404,7 @@ function storyHtml(seg, i) {
       `<div class="shade"></div><div class="credit">${esc(source)}</div>`;
   } else {
     const p = s.paper ?? {};
-    media = `<div class="paper"><div class="venue">${esc(p.venue ?? source)}</div><div class="ptitle">${esc(p.title ?? (cut.lang === "en" ? ed.title : ed.title_vi) ?? s.kicker)}</div><div class="rule"></div><div class="abs">${esc(p.abstract ?? (cut.lang === "en" ? ed.text : ed.text_vi) ?? "")}</div></div>`;
+    media = `<div class="paper"><div class="venue">${esc(p.venue ?? source)}</div><div class="ptitle">${esc(p.title ?? (lang === "en" ? ed.title : ed.title_vi) ?? s.kicker)}</div><div class="rule"></div><div class="abs">${esc(p.abstract ?? (lang === "en" ? ed.text : ed.text_vi) ?? "")}</div></div>`;
   }
   const stat =
     layout === "stat" ? `<span class="hl">${esc(s.stat)}</span>` : esc(s.stat);
@@ -452,7 +475,7 @@ function capsHtml() {
 function page(fmt, body, duration, extraHead = "") {
   const f = config.formats[fmt];
   return `<!doctype html>
-<html lang="${cut.lang}">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=${f.width}, height=${f.height}" />
@@ -626,10 +649,17 @@ function coverHtml(fmt) {
 const outRoot = join(dir, cut.out);
 const mixShared = join(outRoot, "mix.wav");
 mkdirSync(outRoot, { recursive: true });
-if (withAudio) buildMix(mixShared);
+if (withAudio && cut.subs) {
+  // The English cut's own mix, so the voice is the very same audio; its timeline must be this one.
+  const enMix = join(dir, cutFor("en").out, "mix.wav");
+  const enTotal = existsSync(join(dir, cut.timeline)) ? read(join(dir, cut.timeline)).total : null;
+  if (!existsSync(enMix) || enTotal !== total)
+    throw new Error(`the English build is missing or stale (${enMix}, timeline ${enTotal}s vs ${total}s): build the en cut first`);
+  cpSync(enMix, mixShared);
+} else if (withAudio) buildMix(mixShared);
 
 const motion = readFileSync(join(ROOT, "template/motion.js"), "utf8");
-for (const fmt of Object.keys(config.formats)) {
+for (const fmt of formatsOf(cut, config)) {
   const D = {
     fmt,
     total,
@@ -670,9 +700,10 @@ for (const fmt of Object.keys(config.formats)) {
     `<script>${motion}</script>`,
   ].join("\n");
 
+  // visub has no cover of its own (the English one).
   for (const [name, html] of [
     [fmt, page(fmt, body, total)],
-    [`cover-${fmt}`, coverHtml(fmt)],
+    ...(cut.subs ? [] : [[`cover-${fmt}`, coverHtml(fmt)]]),
   ]) {
     const out = join(outRoot, name);
     rmSync(out, { recursive: true, force: true });
@@ -694,6 +725,11 @@ for (const fmt of Object.keys(config.formats)) {
   }
 }
 
+if (cut.subs) {
+  console.log(`✓ ${date} ${cut.lang}: ${total}s · ${allCaps.length} cues from ${cut.subs.json} · ${formatsOf(cut, config).map((f) => `${cut.out}/${f}`).join(", ")}`);
+  process.exit(0);
+}
+
 // ---------------------------------------------------------------- timeline + posts
 const mmss = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
 writeFileSync(
@@ -711,7 +747,7 @@ const hashtags = (n) =>
     .join(" ");
 const shortDate = WEEKLY
   ? edition.week
-  : cut.lang === "en"
+  : lang === "en"
     ? `${MON.slice(0, 3)} ${DAY}, ${d.getUTCFullYear()}`
     : `${DAY}/${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`;
 const list = script.stories

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Upload one AI;DR cut through the YouTube Data API v3 (headless; no Chrome).
 //
-//   yt-upload-api.mjs <mp4> --meta <youtube.md|posts.md> --lang en|vi --kind long|short
-//                     [--cover <png>] [--privacy private|unlisted|public]
+//   yt-upload-api.mjs <mp4> --meta <youtube.md|posts.md|meta.json> --lang en|vi --kind long|short
+//                     [--audio-lang en|vi] [--cover <png>] [--privacy private|unlisted|public]
 //
 // Same args and output as bin/yt-upload (ID=, URL=, OEMBED=), default public.
+// --lang is the metadata language (defaultLanguage), --audio-lang the audio (defaultAudioLanguage, default --lang).
 // Env: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
 // (mint the token once with bin/yt-oauth.mjs). Metadata comes from bin/yt-meta.py.
 // Steps: refresh token -> resumable upload -> thumbnail (long only) -> playlist
@@ -22,7 +23,7 @@ const PLAYLIST = "AI;DR";
 const THUMB_MAX = 2_000_000; // YouTube limit is 2 MB
 const log = (...a) => console.error("[yt-upload-api]", ...a);
 const usage = () => {
-  console.error(readFileSync(import.meta.filename, "utf8").split("\n").slice(1, 11).map((l) => l.replace(/^\/\/ ?/, "")).join("\n"));
+  console.error(readFileSync(import.meta.filename, "utf8").split("\n").slice(1, 12).map((l) => l.replace(/^\/\/ ?/, "")).join("\n"));
   process.exit(2);
 };
 const fail = (step, detail) => {
@@ -32,11 +33,12 @@ const fail = (step, detail) => {
 
 // --- args ---------------------------------------------------------------
 const argv = process.argv.slice(2);
-let mp4 = "", metaSrc = "", lang = "", kind = "", cover = "", privacy = "public";
+let mp4 = "", metaSrc = "", lang = "", audioLang = "", kind = "", cover = "", privacy = "public";
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === "--meta") metaSrc = argv[++i];
   else if (a === "--lang") lang = argv[++i];
+  else if (a === "--audio-lang") audioLang = argv[++i];
   else if (a === "--kind") kind = argv[++i];
   else if (a === "--cover") cover = argv[++i];
   else if (a === "--privacy") privacy = argv[++i];
@@ -44,7 +46,8 @@ for (let i = 0; i < argv.length; i++) {
   else mp4 = a;
 }
 if (!(mp4 && existsSync(mp4) && metaSrc && existsSync(metaSrc))) usage();
-if (!["en", "vi"].includes(lang) || !["long", "short"].includes(kind)) usage();
+audioLang ||= lang;
+if (!["en", "vi"].includes(lang) || !["en", "vi"].includes(audioLang) || !["long", "short"].includes(kind)) usage();
 if (!["private", "unlisted", "public"].includes(privacy)) usage();
 if (cover && !existsSync(cover)) {
   console.error(`cover not found: ${cover}`);
@@ -55,7 +58,7 @@ mp4 = resolve(mp4);
 // --- metadata (same parser as yt-upload) --------------------------------
 let meta;
 try {
-  const flag = readFileSync(metaSrc, "utf8").includes("<!-- posts:") ? "--daily" : "--release";
+  const flag = metaSrc.endsWith(".json") ? "--json" : readFileSync(metaSrc, "utf8").includes("<!-- posts:") ? "--daily" : "--release";
   meta = JSON.parse(
     execFileSync("python3", ["-I", join(BIN, "yt-meta.py"), flag, metaSrc, "--lang", lang, "--kind", kind], {
       encoding: "utf8",
@@ -125,7 +128,7 @@ const CHANNEL = process.env.YOUTUBE_CHANNEL_ID || "UCGDB5uD8znydgMg2XLOj04w";
 const size = statSync(mp4).size;
 log(`upload ${basename(mp4)} (${(size / 1e6).toFixed(1)} MB) as ${privacy}`);
 const resource = {
-  snippet: { title, description: desc, tags, categoryId: "28", defaultLanguage: lang, defaultAudioLanguage: lang },
+  snippet: { title, description: desc, tags, categoryId: "28", defaultLanguage: lang, defaultAudioLanguage: audioLang },
   // yt-upload answers "No" to the altered/synthetic-content question for AI;DR films.
   status: { privacyStatus: privacy, selfDeclaredMadeForKids: false, containsSyntheticMedia: false },
 };

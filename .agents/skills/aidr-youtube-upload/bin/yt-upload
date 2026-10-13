@@ -1,9 +1,12 @@
 #!/bin/bash
 # Upload one AI;DR cut to YouTube Studio in the user's running Chrome.
 #
-#   yt-upload <mp4> --meta <youtube.md|posts.md> --lang en|vi --kind long|short
-#             [--cover <png>] [--resume-from thumb|playlist] [--no-publish]
-#             [--publish-anyway]
+#   yt-upload <mp4> --meta <youtube.md|posts.md|meta.json> --lang en|vi --kind long|short
+#             [--audio-lang en|vi] [--cover <png>] [--resume-from thumb|playlist]
+#             [--no-publish] [--publish-anyway]
+#
+# --lang is the metadata language; Studio's "Video language" is the audio,
+# --audio-lang (default --lang). Studio's title/description language is left as is.
 #
 # Opens the upload dialog, uploads the file, fills title / description /
 # thumbnail / playlist "AI;DR" / audience / paid promotion / AI-content answer /
@@ -25,13 +28,14 @@ POLL_S=30
 POLL_MAX=20   # 20 x 30 s = 10 min (Go back / retry loop)
 CHECK_MAX=36  # 36 x 30 s = 18 min (wait for "Checks complete")
 
-usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
-MP4=""; META_SRC=""; LANGC=""; KIND=""; COVER="-"; FROM=""; NOPUB=0; ANYWAY=0
+MP4=""; META_SRC=""; LANGC=""; AUDIO=""; KIND=""; COVER="-"; FROM=""; NOPUB=0; ANYWAY=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --meta) META_SRC=$2; shift 2 ;;
     --lang) LANGC=$2; shift 2 ;;
+    --audio-lang) AUDIO=$2; shift 2 ;;
     --kind) KIND=$2; shift 2 ;;
     --cover) COVER=$2; shift 2 ;;
     --resume-from) FROM=$2; shift 2 ;;
@@ -42,7 +46,8 @@ while [[ $# -gt 0 ]]; do
     *) MP4=$1; shift ;;
   esac
 done
-[[ -f "$MP4" && -f "$META_SRC" && $LANGC =~ ^(en|vi)$ && $KIND =~ ^(long|short)$ ]] || usage
+AUDIO=${AUDIO:-$LANGC}
+[[ -f "$MP4" && -f "$META_SRC" && $LANGC =~ ^(en|vi)$ && $AUDIO =~ ^(en|vi)$ && $KIND =~ ^(long|short)$ ]] || usage
 [[ -z $FROM || $FROM =~ ^(thumb|playlist)$ ]] || usage
 [[ $COVER == - || -f $COVER ]] || { echo "cover not found: $COVER" >&2; exit 2; }
 for t in jq curl python3 base64; do command -v $t >/dev/null || { echo "missing tool: $t" >&2; exit 2; }; done
@@ -51,7 +56,7 @@ MP4=$(cd "$(dirname "$MP4")" && pwd)/$(basename "$MP4")
 
 META=$(mktemp "${TMPDIR:-/tmp}/yt-meta.XXXXXX")
 trap 'rm -f "$META"' EXIT
-if grep -q '<!-- posts:' "$META_SRC"; then SRCFLAG=--daily; else SRCFLAG=--release; fi
+if [[ $META_SRC == *.json ]]; then SRCFLAG=--json; elif grep -q '<!-- posts:' "$META_SRC"; then SRCFLAG=--daily; else SRCFLAG=--release; fi
 python3 -I "$BIN/yt-meta.py" $SRCFLAG "$META_SRC" --lang "$LANGC" --kind "$KIND" > "$META" || exit 1
 
 b64() { printf '%s' "$1" | base64 | tr -d '\n'; }
@@ -172,7 +177,7 @@ lang_pick() {
 }
 lang_step() {
   local want cur
-  want=$([[ $LANGC == en ]] && echo English || echo Vietnamese)
+  want=$([[ $AUDIO == en ]] && echo English || echo Vietnamese)
   for i in 1 2 3; do
     cur=$(lang_cur)
     [[ $cur == *"Video language $want"* ]] && { log "language $want"; return 0; }
