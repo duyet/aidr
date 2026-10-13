@@ -68,7 +68,9 @@ describe("videoScriptKey (daily video script)", () => {
   });
 
   it("uses the CI secret when present", () => {
-    expect(videoScriptKey({ CI: "true", ANYROUTER_API_KEY: "ci" })).toEqual({ key: "ci" });
+    expect(videoScriptKey({ CI: "true", ANYROUTER_API_KEY: "ci" })).toEqual({
+      key: "ci",
+    });
   });
 
   it("still refuses locally with only the production key", () => {
