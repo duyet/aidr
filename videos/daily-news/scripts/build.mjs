@@ -24,6 +24,7 @@ import {
 import { join, resolve } from "node:path";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
 import { formatRange, parseWeek } from "./week.mjs";
+import { gridCss } from "./grid.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 import { spreadWords, subsMismatch } from "./visub.mjs";
 
@@ -373,7 +374,7 @@ function introHtml() {
         return `<div class="tile${img ? "" : " noimg"}" data-rank="${s.rank}">${face}<span class="tr">${s.rank}</span><div class="tt"><div class="tk">${esc(s.kicker)}</div><div class="th">${esc(s.headline.replace(/\*/g, ""))}</div></div><span class="tbar"></span></div>`;
       })
       .join("");
-    body = `<div class="ghead"><div class="gdate"><span class="gday">${pad2(DAY)}</span><span class="gmon">${esc(DOW.toUpperCase())}<br/>${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</span></div><div class="gbrand">${logo("")}<span>${esc(UI.daily)}<br/>${esc(UI.topIn(script.stories.length))}</span></div></div><div class="tiles">${tiles}</div><div class="gfoot">${esc(script.intro.title)}</div>`;
+    body = `<div class="ghead"><div class="gdate"><span class="gday">${pad2(DAY)}</span><span class="gmon">${esc(DOW.toUpperCase())}<br/>${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</span></div><div class="gbrand">${logo("")}<span>${esc(UI.daily)}<br/>${esc(UI.topIn(script.stories.length))}</span></div></div><style>${gridCss(script.stories.length)}</style><div class="tiles" data-n="${script.stories.length}">${tiles}</div><div class="gfoot">${esc(script.intro.title)}</div>`;
   } else if (v === "date-slam") {
     body = `<div class="slam"><span class="dow">${esc(DOW.toUpperCase())}</span><span class="day">${pad2(DAY)}</span><span class="mon">${esc(MON.toUpperCase())}</span></div>
       <div class="slam-tail"><div class="title">${esc(script.intro.title)}</div><div class="with">${logo("")}<span>AI;DR ${esc(UI.brief)}</span></div></div>`;

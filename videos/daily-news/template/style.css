@@ -970,6 +970,8 @@ body {
 .field ~ .cam .gbrand svg path {
   fill: var(--ink);
 }
+/* Columns, rows and areas per story count come from scripts/grid.mjs (build.mjs inlines them), and so
+   does --type, the scale of each tile's text and badge (1 = the six-story grid). */
 .tiles {
   position: absolute;
   display: grid;
@@ -979,8 +981,6 @@ body {
   right: 60px;
   top: 174px;
   bottom: 46px;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, 1fr);
   gap: 18px;
 }
 /* The grid ends by 72% and clears the right-side buttons of TikTok, Reels and Shorts. */
@@ -989,8 +989,6 @@ body {
   right: 120px;
   top: 340px;
   bottom: 560px;
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(3, 1fr);
   gap: 16px;
 }
 .tile {
@@ -1017,21 +1015,21 @@ body {
 .tpaper {
   position: absolute;
   inset: 0;
-  padding: 70px 26px 0;
+  padding: calc(70px * var(--type)) calc(26px * var(--type)) 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: calc(10px * var(--type));
 }
 .tpaper span {
   font-weight: 800;
-  font-size: 18px;
+  font-size: calc(18px * var(--type));
   letter-spacing: 0.12em;
   color: #b31b1b;
 }
 .tpaper b {
   font-family: var(--serif);
   font-weight: 500;
-  font-size: 46px;
+  font-size: calc(46px * var(--type));
   line-height: 1;
   color: var(--ink);
 }
@@ -1039,26 +1037,26 @@ body {
   position: absolute;
   left: 0;
   top: 0;
-  width: 64px;
-  height: 64px;
+  width: calc(64px * var(--type));
+  height: calc(64px * var(--type));
   background: var(--yellow);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--serif);
   font-weight: 600;
-  font-size: 44px;
+  font-size: calc(44px * var(--type));
   line-height: 1;
 }
 .tt {
   position: absolute;
-  left: 22px;
-  right: 22px;
-  bottom: 22px;
+  left: calc(22px * var(--type));
+  right: calc(22px * var(--type));
+  bottom: calc(22px * var(--type));
 }
 .tk {
   font-weight: 800;
-  font-size: 20px;
+  font-size: calc(20px * var(--type));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--yellow);
@@ -1066,10 +1064,10 @@ body {
 .th {
   font-family: var(--serif);
   font-weight: 500;
-  font-size: 34px;
+  font-size: calc(34px * var(--type));
   line-height: 1.05;
   color: var(--paper);
-  margin-top: 6px;
+  margin-top: calc(6px * var(--type));
 }
 .noimg .tk {
   color: var(--amber);
@@ -1078,20 +1076,20 @@ body {
   color: var(--ink);
 }
 .f-9x16 .th {
-  font-size: 32px;
+  font-size: calc(32px * var(--type));
 }
 .f-9x16 .tpaper b {
-  font-size: 38px;
+  font-size: calc(38px * var(--type));
 }
 .f-9x16 .tk {
-  font-size: 21px;
+  font-size: calc(21px * var(--type));
 }
 .tbar {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 8px;
+  height: calc(8px * var(--type));
   background: var(--yellow);
   transform-origin: 0 50%;
   display: block;
