@@ -136,7 +136,8 @@ const UI_WEEKLY = {
 };
 const UI = { ...UI_BASE[lang], ...(WEEKLY ? UI_WEEKLY[lang] : {}) };
 const issueTag = WEEKLY ? ` · ${lang === "vi" ? "Số" : "Issue"} ${edition.issue}` : "";
-const theme = resolveLook(script, edition);
+// One look per day for every cut: a pin is read from the English script.json, never script.vi.json.
+const theme = resolveLook(read(join(dir, "script.json")), edition);
 const esc = (s) =>
   String(s ?? "")
     .replace(/&/g, "&amp;")

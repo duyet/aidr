@@ -59,7 +59,7 @@ export function rotate(list, day, axis) {
   return p[day - c * n];
 }
 
-/** { intro, transition, background, accent? } for this edition. Takes no language: every cut of a day looks the same. */
+/** { intro, transition, background, accent? } for this edition. Takes no language: build passes script.json for every cut. */
 export function resolveLook(script, edition) {
   const pin = script.theme ?? {};
   for (const [axis, id] of Object.entries(pin)) {

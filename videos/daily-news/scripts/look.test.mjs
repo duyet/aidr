@@ -78,10 +78,10 @@ test("an unknown theme id or axis fails instead of falling back", () => {
   assert.throws(() => resolveLook({}, { date: "2026-13" }), /look key "2026-13"/);
 });
 
-test("every committed script with a theme still renders the look it shipped with", () => {
-  const scripts = readdirSync(join(ROOT, "editions")).flatMap((d) =>
-    ["script.json", "script.vi.json"].map((f) => join(ROOT, "editions", d, f)).filter(existsSync).map((p) => [p, d])
-  );
+test("a committed script.json theme pins the whole look it shipped with", () => {
+  const scripts = readdirSync(join(ROOT, "editions"))
+    .map((d) => [join(ROOT, "editions", d, "script.json"), d])
+    .filter(([p]) => existsSync(p));
   const pinned = scripts.filter(([p]) => read(p).theme);
   assert.ok(pinned.length >= 4, `only ${pinned.length} committed scripts carry a theme`);
   for (const [p, d] of pinned) assert.deepEqual(resolveLook(read(p), read(join(ROOT, "editions", d, "edition.json"))), read(p).theme, p);
