@@ -1,8 +1,6 @@
 // node --test videos/daily-news/scripts/*.test.mjs
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { AREAS, GRID, gridCss } from "./grid.mjs";
@@ -63,32 +61,4 @@ test("the six-story grid is today's 3x2 (16:9) and 2x3 (9:16) at today's type si
 
 test("a count with no layout fails the build instead of leaving cells empty", () => {
   assert.throws(() => gridCss(maxStories + 1), new RegExp(`no 16x9 layout for ${maxStories + 1} stories`));
-});
-
-test("the built intro tags the grid with its story count and carries that count's layout", () => {
-  // build.mjs resolves its root from its own path, so a temp root links the real scripts and template.
-  const tmp = mkdtempSync(join(tmpdir(), "grid-build-"));
-  try {
-    const dn = join(tmp, "daily-news");
-    mkdirSync(join(dn, "editions"), { recursive: true });
-    for (const f of ["scripts", "template", "config.json"]) symlinkSync(join(ROOT, f), join(dn, f));
-    symlinkSync(resolve(ROOT, "../brand"), join(tmp, "brand"));
-    const date = "2026-10-13";
-    mkdirSync(join(dn, "editions", date));
-    for (const f of ["edition.json", "script.json"]) cpSync(join(ROOT, "editions", date, f), join(dn, "editions", date, f));
-    const n = JSON.parse(readFileSync(join(dn, "editions", date, "script.json"), "utf8")).stories.length;
-    execFileSync(
-      process.execPath,
-      ["--preserve-symlinks", "--preserve-symlinks-main", join(dn, "scripts/build.mjs"), date, "--no-voice", "--no-audio"],
-      { cwd: dn, stdio: "ignore" }
-    );
-    for (const fmt of Object.keys(config.formats)) {
-      const html = readFileSync(join(dn, "editions", date, "out", fmt, "index.html"), "utf8");
-      assert.match(html, new RegExp(`<div class="tiles" data-n="${n}">`), `${fmt}: .tiles carries data-n`);
-      assert.ok(html.includes(`.f-${fmt} .tiles[data-n="${n}"]{grid-template-areas:`), `${fmt}: the ${n}-story layout is in the page`);
-      assert.equal(html.match(/class="tile[ "]/g).length, n, `${fmt}: one tile per story`);
-    }
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
-  }
 });

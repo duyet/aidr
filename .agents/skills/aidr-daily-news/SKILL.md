@@ -75,7 +75,7 @@ Read `assets-sheet.jpg` (tiles row by row in the printed file order). Keep each 
 - The intro line names one or two stories; set `intro.focus` (`[{ "rank", "word" }]`) so those grid tiles lift on the spoken word — the grid otherwise holds still for the whole intro.
 - `new.mjs` rotates `theme.transition` (`wipe` | `ink` | `shutter`) and `theme.background` (`paper` | `soft` | `grid`) against yesterday; keep or change, but not both the same as yesterday.
 - Story `layout`: `split` (image + column), `full` (strong photo full-bleed, card over it), `stat` (the number is the story). `stat` at most twice, `full` only for photos that hold up large, never the same layout three times in a row.
-- `thumb` — the story and a 3–7 word hook for the cover still. Pick the biggest or most surprising story, not always #1.
+- `thumb` — the story and a 3–7 word hook for the cover still. Pick the biggest or most surprising story, not always #1. When that story has no image, the cover shows the first story image in rank order, or the story's paper card when no story has one.
 
 ## Captions and post copy
 
