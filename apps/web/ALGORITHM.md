@@ -260,15 +260,28 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   most once per 24h instead; max 3 GitHub writes per run. Errors are logged
   and sent to Sentry, never fail the step.
 - Daily video watchdog (`worker/day-video-watchdog.ts`, same step): during
-  20–23h local it confirms the day's English video against each record:
-  `day_videos.youtube_id` and `short_id`, a Page Reel whose caption mentions
-  `aidr.today/date/<date>` (Graph, the Worker's Page token), and a
-  `daily-reel.yml` run of that local date whose `Telegram` step succeeded
-  (GitHub API with `GITHUB_ALERT_TOKEN`, which then also needs Actions:
-  read; unset, it calls GitHub without a token from shared Cloudflare IPs).
-  Anything unconfirmed, a failed lookup included, raises
-  `day-video-missing` once a day, with the rerun command
-  (`gh workflow run daily-reel.yml -f dry_run=false -f date=<date>`).
+  20–23h local it confirms the day's video against each record:
+  `day_videos.youtube_id`, `short_id` and `youtube_id_vi` (the Vietnamese
+  page's video, the subtitled or the Vietnamese-voice cut), a Page Reel
+  whose caption mentions `aidr.today/date/<date>` (Graph, the Worker's Page
+  token), and a `daily-reel.yml` run of that date whose `Telegram` and
+  `Telegram (Vietnamese subtitles)` steps succeeded (GitHub API with
+  `GITHUB_ALERT_TOKEN`, which then also needs Actions: read; unset, it calls
+  GitHub without a token from shared Cloudflare IPs). Neither Telegram step
+  may be `continue-on-error`: the jobs API reports such a step as `success`
+  when it fails. A run's date is the `date` input in its `run-name`, else
+  the local day it was created; runs
+  titled `(dry run)` are not read, and up to 8 others are. Once every target
+  is confirmed, `day-video-ok:<date>` in `stats.alerts` skips the rest of
+  the evening's checks. A missing target raises `day-video-missing` once a
+  day, with the rerun command
+  (`gh workflow run daily-reel.yml -R duyet/aidr -f dry_run=false -f date=<date>`).
+  A failed lookup, or a run of the date still in progress, waits for the
+  window's last check (the first run whose next ingest starts after 23h);
+  if that run never comes, it is not reported. A run whose YouTube step
+  reports `success` and that skipped Telegram ran on a hand-published day:
+  the alert says so and gives no rerun for those posts, since
+  `HAND_PUBLISHED` skips them.
 - `run()` still upserts at start **before** `pruneLlmCalls` / fetch / LLM.
   Do not wrap `open-run` in `safeStep`.
 - Per-model caps in `worker/llm.ts`: score `SCORE_SLICE_MAX_MS` 70s, TL;DR

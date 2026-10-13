@@ -1,6 +1,11 @@
 import { hasFailedStep } from "../src/lib/run-health.js";
 import { reportHealthAlert } from "./bugsink.js";
-import { checkDayVideo, shouldCheckDayVideo } from "./day-video-watchdog.js";
+import {
+  checkDayVideo,
+  DAY_VIDEO_CONFIRMED_PREFIX,
+  dayVideoConfirmedKey,
+  shouldCheckDayVideo,
+} from "./day-video-watchdog.js";
 import { NOT_SELECTED_REASON } from "./ingest/mode.js";
 import { flushLlmCallWrites } from "./llm-call-log.js";
 import type { AlertEvent, AlertSeverity } from "./notify/alert.js";
@@ -47,6 +52,8 @@ export const TLDR_FAIL_STREAK = 3;
 export const ALERT_COOLDOWN_MS = 6 * 3600 * 1000;
 /** Previous runs read for the TL;DR streak and the cooldown. */
 const HISTORY_RUNS = 12;
+/** `stats.alerts` keys that record a finished check, not a problem. */
+const MARKER_PREFIXES = ["daily-summary:", DAY_VIDEO_CONFIRMED_PREFIX];
 
 const FAILURE_RE = /\b(fail(ed|ure|s)?|errors?)\b/i;
 /** Steps with their own rule, or bookkeeping, excluded from "step failed". */
@@ -312,7 +319,7 @@ async function readDailySummary(
     else summary.runsOk++;
     summary.itemsNew += run.items_new ?? 0;
     for (const key of parsePriorRun(run).alerts) {
-      if (key.startsWith("daily-summary:")) continue;
+      if (MARKER_PREFIXES.some((prefix) => key.startsWith(prefix))) continue;
       summary.warnings[key] = (summary.warnings[key] ?? 0) + 1;
     }
   }
@@ -370,9 +377,12 @@ export async function runHealthCheck(
       llm,
       history,
     });
-    if (shouldCheckDayVideo(local.hour, history, nowMs)) {
+    const markers: string[] = [];
+    if (shouldCheckDayVideo(local.hour, local.date, history, nowMs)) {
       const dayVideo = await checkDayVideo(env, local.date, nowMs);
-      if (dayVideo) issues.push(dayVideo);
+      if (dayVideo.kind === "alert") issues.push(dayVideo.issue);
+      if (dayVideo.kind === "confirmed")
+        markers.push(dayVideoConfirmedKey(local.date));
     }
     const fresh = applyCooldown(issues, history, nowMs);
     await Promise.all(
@@ -380,7 +390,7 @@ export async function runHealthCheck(
         reportHealthAlert(env, healthAlertEvent(issue, nowMs), issue.key)
       )
     );
-    const keys = fresh.map((issue) => issue.key);
+    const keys = [...fresh.map((issue) => issue.key), ...markers];
     if (
       fresh.length > 0 &&
       (env.TELEGRAM_OWNER_CHAT_ID || env.GITHUB_ALERT_TOKEN)
