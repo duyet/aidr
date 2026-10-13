@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { cutFor } from "./lang.mjs";
 import { addRows, needsRender, telegramTodo } from "./status.mjs";
 import { chatFor, telegramPost, youtubeIdFor } from "./telegram-video.mjs";
-import { formatSrt, houseStyle, parseSrt, splitAcross, spreadWords, subsMismatch, translateCues } from "./visub.mjs";
+import { formatSrt, houseStyle, parseSrt, retime, splitAcross, spreadWords, subsMismatch, translateCues } from "./visub.mjs";
 
 // A slice of the 2026-10-13 captions.srt: cue fragments of whole sentences, one with numbers.
 const EN_SRT = `1
@@ -99,6 +99,18 @@ test("the cache is reused only for the same English cues", async () => {
   const retimed = cues.map((c, i) => (i === 4 ? { ...c, end: "00:00:46,100" } : c));
   assert.match(subsMismatch(out.cues, retimed), /cue 5 differs/);
   assert.match(subsMismatch(out.cues, cues.slice(1)), /6 cached cues, 5/);
+});
+
+test("a re-voiced cut (same cue texts, new times) moves the cache onto the new times instead of translating again", async () => {
+  const cues = parseSrt(EN_SRT);
+  const out = await translateCues({ cues, title: TITLE, models: ["m1"], llm: answer(VI), style, log: () => {} });
+  const revoiced = cues.map((c, i) => ({ ...c, start: `00:00:0${i},500`, end: `00:00:0${i},900` }));
+  const moved = retime(out.cues, revoiced);
+  assert.deepEqual(moved.map((c) => [c.start, c.end]), revoiced.map((c) => [c.start, c.end]));
+  assert.deepEqual(moved.map((c) => c.vi), out.cues.map((c) => c.vi));
+  assert.equal(subsMismatch(moved, revoiced), null);
+  // A wording change is a new script: translate again.
+  assert.equal(retime(out.cues, cues.map((c, i) => (i === 2 ? { ...c, text: "Wednesday." } : c))), null);
 });
 
 test("burned words share the cue's span in order", () => {

@@ -8,7 +8,8 @@
 // is read from the Worker (VI_STYLE and RULES_OVERVIEW in apps/web/worker/llm.ts), never copied here.
 // An answer is checked (same line count, no empty or untranslated line, every number kept, AI;DR and aidr.today
 // kept, the text lint) and the next model is tried; no key or no valid answer exits 1.
-// The json is the cache: a rerun with the same English cues reuses it (--force translates again).
+// The json is the cache: a rerun with the same English cues reuses it, and the same cue texts at new times (a
+// re-voiced cut) are retimed without a model call (--force translates again).
 // Usage: node scripts/visub.mjs <date> [--force]
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -99,6 +100,13 @@ export function subsMismatch(cached, enCues) {
   if (cached.length !== enCues.length) return `${cached.length} cached cues, ${enCues.length} in the English captions`;
   const i = enCues.findIndex((c, k) => cached[k].start !== c.start || cached[k].end !== c.end || cached[k].en !== c.text);
   return i < 0 ? null : `cue ${i + 1} differs`;
+}
+
+/** A cache moved onto new cue times when only the times changed (same cues, same English text), else null.
+ *  A re-voiced cut (a fresh CI runner keeps no voice files) times the same script differently. */
+export function retime(cached, enCues) {
+  if (!Array.isArray(cached) || cached.length !== enCues.length || cached.some((c, k) => c.en !== enCues[k].text)) return null;
+  return cached.map((c, k) => ({ ...c, start: enCues[k].start, end: enCues[k].end }));
 }
 
 /** The Worker's Vietnamese house style (VI_STYLE with its KEEP_ENGLISH_PROSE, and RULES_OVERVIEW), read from source. */
@@ -197,7 +205,12 @@ async function main() {
   const jsonPath = join(dir, cut.subs.json);
   const cached = existsSync(jsonPath) ? JSON.parse(readFileSync(jsonPath, "utf8")) : null;
   let subs = cached;
-  if (argv.includes("--force") || !cached || subsMismatch(cached.cues, cues)) {
+  const moved = !argv.includes("--force") && cached && subsMismatch(cached.cues, cues) ? retime(cached.cues, cues) : null;
+  if (moved) {
+    subs = { ...cached, cues: moved };
+    writeFileSync(jsonPath, `${JSON.stringify(subs, null, 2)}\n`);
+    console.log(`= editions/${date}/${cut.subs.json}: same English cues at new times; retimed, not translated again`);
+  } else if (argv.includes("--force") || !cached || subsMismatch(cached.cues, cues)) {
     if (cached && !argv.includes("--force")) console.log(`  ${cut.subs.json}: ${subsMismatch(cached.cues, cues)}; translating again`);
     const apiKey = envVar("ANYROUTER_API_KEY");
     if (!apiKey) throw new Error("ANYROUTER_API_KEY is not set: the visub cut needs a model to translate its captions");
