@@ -23,6 +23,7 @@ import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "../time.js";
 import { stripEmbeddedChrome } from "../translation-terms.js";
 import type { Env } from "../types.js";
+import { loadDayCard } from "./day-card.js";
 import { facebookEnNotifier } from "./facebook.js";
 import {
   countSuppression,
@@ -37,6 +38,7 @@ import {
   recordDigestItems,
 } from "./posted-events.js";
 import {
+  editDigestReplyMarkup,
   telegramEnNotifier,
   telegramNotifier,
   telegramPreviewNotifier,
@@ -55,13 +57,16 @@ import { webhookNotifier } from "./webhook.js";
  * Channel-agnostic dispatch, deliberately non-spammy. Two kinds of posts:
  *
  * 1. Daily TL;DR digest — ONE message per local day per channel, that
- *    channel's language edition, each bullet linked to its story.
+ *    channel's language edition, each bullet linked to its story. A channel
+ *    with `postsDigestHighlight` (Telegram) then posts the digest's top
+ *    story on its own, once, and only after a digest that surely posted.
  * 2. Trending stories — individual posts only when the ranking algo
  *    flags a story as exceptional (rank + importance bar), capped per day
  *    and spaced by a minimum gap.
  *
  * Delivery state lives in the `notifications` table: digest rows keyed
- * `digest:<date>`, story rows keyed by item id. Failed sends retry on
+ * `digest:<date>`, the highlight `digest:<date>:top`, story rows keyed by
+ * item id. Failed sends retry on
  * later hourly runs up to NOTIFY_MAX_ATTEMPTS. An `ambiguous` send (no usable
  * answer, so the message may be posted) is never retried.
  *
@@ -102,6 +107,11 @@ export const DIGEST_LOCAL_HOUR = 8;
 export const DIGEST_MAX_BULLETS = 8;
 /** Give up on a send for a channel after this many failed attempts. */
 export const NOTIFY_MAX_ATTEMPTS = 3;
+/** The digest highlight goes out within this long of its digest, retries
+ *  included (3 attempts at the 30-minute cadence). Past it, a digest sent
+ *  earlier (by an older deploy, or before a run ran out of subrequests)
+ *  gets no late highlight. */
+export const HIGHLIGHT_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 /** Trending rank bar, relative to the window: a story must reach the
  *  TRENDING_RANK_PERCENTILE of the last TRENDING_BAR_WINDOW_SEC of published
@@ -140,6 +150,14 @@ export function digestKey(localDate: string): string {
   return `digest:${localDate}`;
 }
 
+/** The `notifications.item_id` of the post that repeats the digest's top
+ *  story. It sits under `digest:` so trending's daily count, gap and
+ *  posted-events window leave it out; the story itself is already in
+ *  `notify_digest_items`, which keeps trending from posting it again. */
+export function highlightKey(localDate: string): string {
+  return `${digestKey(localDate)}:top`;
+}
+
 /** A previous send timed out with no answer (`outcome_unknown`): it may be
  *  posted, so it is never retried, but it is not a confirmed delivery either. */
 export type DigestSkipReason =
@@ -168,6 +186,8 @@ export interface NotifyChannelReason {
   localHour: number;
   localDate: string;
   digestError?: string;
+  /** The digest's top-story post, when this run tried it. */
+  highlight?: "sent" | "send_failed" | "outcome_unknown";
   /** Trending candidates this run dropped before sending, by reason
    *  (`dedup:canonical`, `dedup:event`, `gate:chrome`, `gate:short`,
    *  `gate:missing`). A candidate that stays blocked is counted again on
@@ -197,6 +217,7 @@ export function summarizeNotifyReasons(
 interface NotificationRow {
   status: string;
   attempts: number;
+  posted_at?: number | null;
 }
 
 export type StoryRow = Omit<StoryPayload, "media_manifest"> & {
@@ -337,6 +358,23 @@ export function channelCopy<T extends ChannelCopyRow>(
   return { ...rest, title: source_title, summary: source_summary, lang };
 }
 
+/** Story columns for a post, as `ChannelCopyRow` plus `StoryRow`: the
+ *  source copy and the channel-language translation (`channelCopy`). */
+function storyCopySql(lang: Lang): { columns: string; join: string } {
+  const trLang = lang === "en" ? "en" : "vi";
+  return {
+    columns: `i.id, i.url,
+                 i.title AS source_title,
+                 ${enSummarySql("i")} AS source_summary,
+                 i.source_lang AS source_lang,
+                 tr.title AS tr_title,
+                 tr.summary AS tr_summary,
+                 i.image_url, i.media_manifest, i.category,
+                 i.points, i.comments, i.rank_score, i.llm_importance`,
+    join: `LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = '${trLang}'`,
+  };
+}
+
 /** Pure query builder: unposted trending candidates for a channel, with the
  *  source copy and that channel's translation (see `channelCopy`). */
 export function buildTrendingQuery(
@@ -346,23 +384,15 @@ export function buildTrendingQuery(
   minImportance: number = TRENDING_MIN_IMPORTANCE,
   minRank: number = TRENDING_RANK_FLOOR
 ): { sql: string; binds: [string, number, number, number] } {
-  const trLang = lang === "en" ? "en" : "vi";
-  const copy = `i.title AS source_title,
-                 ${enSummarySql("i")} AS source_summary,
-                 i.source_lang AS source_lang,
-                 tr.title AS tr_title,
-                 tr.summary AS tr_summary`;
-  const translationJoin = `LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = '${trLang}'\n          `;
+  const copy = storyCopySql(lang);
   return {
-    sql: `SELECT i.id, i.url,
-                 ${copy},
-                 i.image_url, i.media_manifest, i.category,
-                 i.points, i.comments, i.rank_score, i.llm_importance,
+    sql: `SELECT ${copy.columns},
                  i.source_id, i.duplicate_of
           FROM items i
           LEFT JOIN notifications n ON n.item_id = i.id AND n.channel = ?
             AND (n.status IN ('sent', 'ambiguous', 'sending') OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
-          ${translationJoin}WHERE i.status = 'published'
+          ${copy.join}
+          WHERE i.status = 'published'
             AND i.published_at >= ?
             AND i.rank_score >= ?
             AND i.llm_importance >= ?
@@ -536,6 +566,115 @@ async function loadDigest(
 }
 
 /**
+ * The story behind the digest's first line, as this channel would post it:
+ * the day card's top tile, in the channel's language only (`channelCopy`),
+ * through the same postability gate as trending. A string says why there is
+ * none; a day with no card stories has no highlight.
+ */
+async function loadDigestHighlight(
+  env: Env,
+  date: string,
+  lang: Lang
+): Promise<StoryPayload | string> {
+  const id = (await loadDayCard(env, date, lang))?.itemIds[0];
+  if (!id) return "no day card stories";
+  const copy = storyCopySql(lang);
+  const row = await env.DB.prepare(
+    `SELECT ${copy.columns} FROM items i ${copy.join} WHERE i.id = ?`
+  )
+    .bind(id)
+    .first<Omit<StoryRow, "title" | "summary" | "lang"> & ChannelCopyRow>();
+  if (!row) return `top story ${id} not found`;
+  const story = channelCopy(row, lang);
+  if (!story) return `top story ${id} has no ${lang} copy`;
+  const gate = postability(story);
+  if (!gate.ok) return `top story ${id} gate:${gate.reason}`;
+  return hydrateStory(story);
+}
+
+/**
+ * Posts the digest's top story through `sendStory`, once per channel and
+ * local date (`highlightKey`), claimed like every send. Call it only once the
+ * day's digest is `sent`: an ambiguous digest may not be in the channel, and
+ * its highlight would be a stray post. A definite failure (or no postable
+ * top story) is retried by later runs up to NOTIFY_MAX_ATTEMPTS. Null when
+ * the highlight is already claimed: sent, ambiguous, in flight or given up.
+ */
+export async function sendDigestHighlight(
+  env: Env,
+  notifier: Notifier,
+  target: string,
+  date: string
+): Promise<SendResult | null> {
+  const key = highlightKey(date);
+  if (!(await claimDelivery(env, notifier.id, target, key))) return null;
+  let story: StoryPayload | string = "not loaded";
+  const result = await attemptSend(async () => {
+    story = await loadDigestHighlight(env, date, notifier.lang);
+    if (typeof story === "string") {
+      return { ok: false, error: `skipped: ${story}` };
+    }
+    return notifier.sendStory(env, story);
+  });
+  await recordDelivery(env, notifier.id, target, key, result);
+  if (!result.ok && !result.budgetExhausted) {
+    const message = `${notifier.id} highlight ${failureLabel(result)}: ${result.error ?? "unknown"}`;
+    console.error(`notify(${message})`);
+    // No postable top story is a quiet skip, not a delivery failure.
+    if (typeof story !== "string") {
+      await reportDeliveryFailure(env, message, {
+        channel: notifier.id,
+        kind: "highlight",
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * After a day video is set or posted, edits that language's sent Telegram
+ * digest so its "▶ YouTube" button matches `youtubeId` (null removes it).
+ * The digest's chat and message id are on its `notifications` row. Says
+ * what happened, for the admin response; never throws, so a failed edit
+ * never fails the video change.
+ */
+export async function syncDigestVideoButton(
+  env: Env,
+  date: string,
+  lang: Lang,
+  youtubeId: string | null
+): Promise<string> {
+  const channel = lang === "en" ? telegramEnNotifier : telegramNotifier;
+  try {
+    const row = await env.DB.prepare(
+      `SELECT target, message_id FROM notifications
+       WHERE channel = ? AND item_id = ? AND status = 'sent'`
+    )
+      .bind(channel.id, digestKey(date))
+      .first<{ target: string | null; message_id: string | null }>();
+    if (!row?.target || !row.message_id) return "no sent digest";
+    const result = await editDigestReplyMarkup(
+      env,
+      row.target,
+      row.message_id,
+      { date, lang },
+      youtubeId
+    );
+    if (result.ok) return "updated";
+    console.error(
+      `notify(${channel.id}) digest video button not updated for ${date}: ${result.error}`
+    );
+    return `edit failed: ${result.error ?? "unknown"}`;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(
+      `notify(${channel.id}) digest video button not updated for ${date}: ${message}`
+    );
+    return `edit failed: ${message}`;
+  }
+}
+
+/**
  * Claims one delivery before its send. Inserts a `sending` row, or moves a
  * retryable `failed` row to `sending`, in ONE statement; D1 runs it
  * atomically, so of two concurrent dispatches exactly one sees a changed
@@ -693,7 +832,7 @@ export async function dispatchStoryNotifications(
 
     // --- 1. Daily TL;DR digest (once per local day) ---
     const existing = await env.DB.prepare(
-      "SELECT status, attempts FROM notifications WHERE channel = ? AND item_id = ?"
+      "SELECT status, attempts, posted_at FROM notifications WHERE channel = ? AND item_id = ?"
     )
       .bind(notifier.id, key)
       .first<NotificationRow>();
@@ -754,6 +893,30 @@ export async function dispatchStoryNotifications(
         if (result.ok || result.ambiguous) {
           await recordDigestItems(env, notifier.id, digest.date, shownIds);
         }
+        if (result.ok) sent[notifier.id]++;
+      }
+    }
+
+    // --- 1b. The digest's top story, after a digest that surely posted ---
+    // A recent `sent` digest from an earlier run counts, so a failed
+    // highlight retries; an older one gets no late highlight.
+    let highlight: NotifyChannelReason["highlight"];
+    const recentDigest =
+      existing?.status === "sent" &&
+      now - (existing.posted_at ?? 0) <= HIGHLIGHT_WINDOW_MS;
+    if (
+      notifier.postsDigestHighlight &&
+      !budgetSpent &&
+      (digestReason === "sent" || recentDigest)
+    ) {
+      const result = await sendDigestHighlight(env, notifier, target, date);
+      if (result) {
+        if (result.budgetExhausted) budgetSpent = true;
+        highlight = result.ok
+          ? "sent"
+          : result.ambiguous
+            ? "outcome_unknown"
+            : "send_failed";
         if (result.ok) sent[notifier.id]++;
       }
     }
@@ -905,6 +1068,7 @@ export async function dispatchStoryNotifications(
       localHour: hour,
       localDate: date,
       digestError,
+      ...(highlight ? { highlight } : {}),
       suppressed,
     };
   }
@@ -914,8 +1078,9 @@ export async function dispatchStoryNotifications(
   return report;
 }
 
-/** Admin preview: today's VI and EN digests to one chat (staging). Nothing
- *  is recorded, so the real 08:00 send is unaffected. */
+/** Admin preview: today's VI and EN digests, each followed by its top-story
+ *  post, to one chat (staging). Nothing is recorded, so the real 08:00 send
+ *  is unaffected. */
 export async function previewDigest(
   env: Env,
   chatId: string
@@ -928,13 +1093,24 @@ export async function previewDigest(
       out[lang] = `no ${lang} snapshot for ${date}`;
       continue;
     }
-    const result = await telegramPreviewNotifier(lang, chatId).sendDigest(
-      env,
-      digest
-    );
+    const notifier = telegramPreviewNotifier(lang, chatId);
+    const result = await notifier.sendDigest(env, digest);
     out[lang] = result.ok
       ? `sent ${result.messageId}`
       : `failed: ${result.error}`;
+    if (!result.ok) continue;
+    // The digest is already in the staging chat: a failure here is reported,
+    // not thrown.
+    const top = await attemptSend(async () => {
+      const story = await loadDigestHighlight(env, date, lang);
+      if (typeof story === "string") {
+        return { ok: false, error: `skipped: ${story}` };
+      }
+      return notifier.sendStory(env, story);
+    });
+    out[`${lang}:top`] = top.ok
+      ? `sent ${top.messageId}`
+      : `failed: ${top.error}`;
   }
   return out;
 }
@@ -982,6 +1158,9 @@ export async function forceSendDigest(
           digest.citedItemIds ?? []
         )
       );
+    }
+    if (result.ok && notifier.postsDigestHighlight) {
+      await sendDigestHighlight(env, notifier, target, date);
     }
     if (result.ok) sent++;
     else return { sent, reason: result.error ?? "send failed" };

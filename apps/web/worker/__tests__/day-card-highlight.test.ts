@@ -51,7 +51,7 @@ describe("highlightBulletText", () => {
       {
         title: "Short title",
         title_vi: null,
-        summary: `${"word ".repeat(40)}tail. Next sentence.`,
+        summary: `${"word ".repeat(90)}tail. Next sentence.`,
         summary_vi: "Đây là tiếng Việt trong bản tóm tắt.",
       },
       "en"
@@ -64,6 +64,23 @@ describe("highlightBulletText", () => {
     expect(text).not.toContain("tail");
     expect(text).not.toContain("Next sentence");
     expect(text).not.toContain("tiếng Việt");
+  });
+
+  it("keeps a typical long lead sentence, so digest lines carry a summary", () => {
+    // 2026-10-14's dropped VI leads ran 173–206 chars; a lead that long must
+    // still reach the 4096-char digest instead of leaving a bare headline.
+    const lead = `IMF ${"cảnh báo rằng chi tiêu cho AI ".repeat(6)}đang tăng nhanh.`;
+    expect(lead.length).toBeGreaterThan(180);
+    const text = highlightBulletText(
+      {
+        title: "IMF cảnh báo về AI",
+        title_vi: "IMF cảnh báo về AI",
+        summary: null,
+        summary_vi: `${lead} Câu sau.`,
+      },
+      "vi"
+    );
+    expect(text).toBe(`IMF cảnh báo về AI — ${lead}`);
   });
 
   it("leaves an English highlight as the title when its summary is Vietnamese", () => {
