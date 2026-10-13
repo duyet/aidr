@@ -13,7 +13,7 @@ import { StorySources } from "./StorySources";
 
 const { trackMock } = vi.hoisted(() => ({ trackMock: vi.fn() }));
 
-vi.mock("@aidr/ui/track", () => ({ track: trackMock }));
+vi.mock("../../lib/analytics/track", () => ({ track: trackMock }));
 
 afterEach(() => {
   cleanup();
@@ -106,8 +106,9 @@ describe("StorySources", () => {
     expect(document.activeElement).toBe(link);
 
     fireEvent.click(link);
-    expect(trackMock).toHaveBeenCalledWith("story_open", {
+    expect(trackMock).toHaveBeenCalledExactlyOnceWith("source_click", {
       item_id: "story-123",
+      placement: "sources",
     });
   });
 

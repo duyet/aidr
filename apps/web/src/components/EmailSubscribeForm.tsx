@@ -1,6 +1,7 @@
 import { Button } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
 import { useState } from "react";
+import type { EventParams } from "../lib/analytics/events";
+import { track } from "../lib/analytics/track";
 import { withLang } from "../lib/locale-url";
 import type { MailFormat } from "../lib/mail-format";
 import {
@@ -25,6 +26,15 @@ export interface DigestPrefs {
   weeklyDay: WeeklyDay;
 }
 
+/** Maps the /api/subscribe POST statuses (worker/subscribe/handlers.ts). */
+function subscribeErrorReason(
+  status: number
+): EventParams<"subscribe_error">["reason"] {
+  if (status === 400) return "invalid";
+  if (status === 429) return "rate_limited";
+  return "server";
+}
+
 export function EmailSubscribeForm({
   lang,
   source,
@@ -32,7 +42,7 @@ export function EmailSubscribeForm({
   onPrefsChange,
 }: {
   lang: Lang;
-  source: string;
+  source: EventParams<"subscribe_submit">["source"];
   prefs: DigestPrefs;
   onPrefsChange: (prefs: DigestPrefs) => void;
 }) {
@@ -52,7 +62,7 @@ export function EmailSubscribeForm({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
-    track("subscribe_submit", { channel: "email", source });
+    track("subscribe_submit", { source });
     try {
       const res = await fetch("/api/subscribe", {
         method: "POST",
@@ -69,14 +79,17 @@ export function EmailSubscribeForm({
         }),
       });
       if (res.ok) {
-        track("subscribe_success", { channel: "email", source });
+        track("subscribe_success", { source });
         setStatus("done");
       } else {
-        track("subscribe_error", { channel: "email", source });
+        track("subscribe_error", {
+          source,
+          reason: subscribeErrorReason(res.status),
+        });
         setStatus("error");
       }
     } catch {
-      track("subscribe_error", { channel: "email", source });
+      track("subscribe_error", { source, reason: "network" });
       setStatus("error");
     }
   };

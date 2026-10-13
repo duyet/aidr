@@ -7,7 +7,9 @@
  * @vitest-environment happy-dom
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { track } from "../lib/analytics/track";
 import type { FeedItem } from "../lib/types";
 import { StoryRow } from "./StoryRow";
 
@@ -15,6 +17,7 @@ vi.mock("./SuggestTranslation", () => ({
   SuggestTranslation: () => null,
   SuggestionBadge: () => null,
 }));
+vi.mock("../lib/analytics/track", () => ({ track: vi.fn() }));
 vi.mock("../lib/vote-fn", () => ({
   castStoryVote: () => Promise.resolve({ myVote: 0, voteNet: 0, rankScore: 0 }),
   fetchMyVotes: () => Promise.resolve({ votes: {}, nets: {} }),
@@ -51,6 +54,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.mocked(track).mockClear();
 });
 
 const row = () => document.querySelector('[role="button"]') as HTMLElement;
@@ -109,5 +113,36 @@ describe("original article link", () => {
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
     fireEvent.click(link);
     expect(row().getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("story_view", () => {
+  it("fires once per expand under StrictMode and never on collapse", () => {
+    history.replaceState({}, "", "/");
+    render(
+      <StrictMode>
+        <StoryRow item={item} index={1} lang="en" />
+      </StrictMode>
+    );
+    fireEvent.click(row());
+    fireEvent.click(row());
+    fireEvent.click(row());
+    const view = [
+      "story_view",
+      { item_id: "abcdef12deadbeef", via: "row", page_type: "home" },
+    ];
+    expect(vi.mocked(track).mock.calls).toEqual([view, view]);
+  });
+
+  it("reports the page the row was opened on", () => {
+    history.replaceState({}, "", "/date/2026-10-01");
+    render(<StoryRow item={item} index={1} lang="en" />);
+    fireEvent.click(row());
+    expect(track).toHaveBeenCalledExactlyOnceWith("story_view", {
+      item_id: "abcdef12deadbeef",
+      via: "row",
+      page_type: "day",
+    });
+    history.replaceState({}, "", "/");
   });
 });

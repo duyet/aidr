@@ -1,63 +1,22 @@
-import { track } from "@aidr/ui/track";
 import { useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import {
-  campaignTrackParams,
-  isEmailCampaign,
-  isExtensionCampaign,
-  isTelegramCampaign,
-  resolveCampaign,
-} from "../lib/campaign";
+import { landingFromUrl, pageType } from "../lib/analytics/landing";
+import { track } from "../lib/analytics/track";
 
 export function PageViewTracker() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const search = useRouterState({ select: (s) => s.location.searchStr });
-  const first = useRef(true);
-  const landedExt = useRef(false);
-  const landedTelegram = useRef(false);
-  const landedEmail = useRef(false);
+  const landed = useRef(false);
 
   useEffect(() => {
-    const campaign = resolveCampaign({ search, pathname });
-    const campaignParams = campaignTrackParams(campaign);
-
-    if (!landedExt.current && isExtensionCampaign(campaign)) {
-      landedExt.current = true;
-      track("extension_landing", {
-        ...campaignParams,
-        page_path: pathname,
-      });
+    // The language switch re-navigates with the same search, so only the
+    // first run may count as a landing.
+    if (!landed.current) {
+      landed.current = true;
+      const landing = landingFromUrl(search, pathname);
+      if (landing) track("channel_landing", landing);
     }
-
-    if (!landedTelegram.current && isTelegramCampaign(campaign)) {
-      landedTelegram.current = true;
-      track("telegram_landing", {
-        ...campaignParams,
-        page_path: pathname,
-      });
-    }
-
-    if (!landedEmail.current && isEmailCampaign(campaign)) {
-      landedEmail.current = true;
-      track("email_click", {
-        ...campaignParams,
-        page_path: pathname,
-      });
-    }
-
-    const initialView = first.current;
-    first.current = false;
-    if (initialView && campaign && Object.keys(campaignParams).length > 0) {
-      track("campaign_touch", {
-        ...campaignParams,
-        page_path: pathname,
-      });
-    }
-
-    track("page_view", {
-      page_path: pathname,
-      ...campaignParams,
-    });
+    track("page_view", { page_path: pathname, page_type: pageType(pathname) });
   }, [pathname, search]);
 
   return null;

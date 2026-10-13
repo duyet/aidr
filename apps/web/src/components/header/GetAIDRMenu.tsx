@@ -6,7 +6,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@aidr/ui";
-import { track, trackChannelClick } from "@aidr/ui/track";
 import { Link } from "@tanstack/react-router";
 import {
   ChevronDown,
@@ -18,6 +17,7 @@ import {
   Send,
   Workflow,
 } from "lucide-react";
+import { track } from "../../lib/analytics/track";
 import {
   PHONE_DROPDOWN_ITEM_CLASS,
   PHONE_GET_AIDR_TRIGGER_CLASS,
@@ -73,7 +73,12 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           <Link
             to={EXTENSION_PATH}
             search={{ lang: navigationLang }}
-            onClick={() => trackChannelClick("chrome", { to: EXTENSION_PATH })}
+            onClick={() =>
+              track("channel_click", {
+                channel: "extension",
+                placement: "header_menu",
+              })
+            }
           >
             <ChromeMark aria-hidden />
             Chrome Extension
@@ -84,7 +89,13 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             href={TELEGRAM_URL}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => trackChannelClick("telegram", { to: "telegram" })}
+            onClick={() =>
+              track("channel_click", {
+                channel: "telegram",
+                placement: "header_menu",
+                lang: "vi",
+              })
+            }
           >
             <Send aria-hidden />
             Telegram Channel (Vietnamese)
@@ -96,7 +107,13 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             href={TELEGRAM_EN_URL}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => trackChannelClick("telegram", { to: "telegram-en" })}
+            onClick={() =>
+              track("channel_click", {
+                channel: "telegram",
+                placement: "header_menu",
+                lang: "en",
+              })
+            }
           >
             <Send aria-hidden />
             Telegram Channel (English)
@@ -108,7 +125,13 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             href={FACEBOOK_URL}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => track("nav_click", { to: "facebook" })}
+            onClick={() =>
+              track("channel_click", {
+                channel: "facebook",
+                placement: "header_menu",
+                lang: "en",
+              })
+            }
           >
             <FacebookMark />
             Facebook Page
@@ -120,7 +143,10 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             to="/subscribe"
             search={{ tab: "email", lang: navigationLang }}
             onClick={() =>
-              trackChannelClick("email", { to: "/subscribe?tab=email" })
+              track("channel_click", {
+                channel: "email",
+                placement: "header_menu",
+              })
             }
           >
             <Mail aria-hidden />
@@ -132,14 +158,24 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           <Link
             to="/contribute"
             search={{ lang: navigationLang }}
-            onClick={() => track("nav_click", { to: "/contribute" })}
+            onClick={() =>
+              track("nav_click", {
+                to: "/contribute",
+                placement: "header_menu",
+              })
+            }
           >
             <Plus aria-hidden />
             Contribute
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className={itemClassName}>
-          <Link to="/data" onClick={() => track("nav_click", { to: "/data" })}>
+          <Link
+            to="/data"
+            onClick={() =>
+              track("nav_click", { to: "/data", placement: "header_menu" })
+            }
+          >
             <Database aria-hidden />
             Data Analytics
           </Link>
@@ -148,7 +184,12 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           <Link
             to="/data"
             search={{ tab: "algo" }}
-            onClick={() => track("nav_click", { to: "/data?tab=algo" })}
+            onClick={() =>
+              track("nav_click", {
+                to: "/data?tab=algo",
+                placement: "header_menu",
+              })
+            }
           >
             <Workflow aria-hidden />
             Algorithms
@@ -159,7 +200,9 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           <Link
             to="/about"
             search={{ lang: navigationLang }}
-            onClick={() => track("nav_click", { to: "/about" })}
+            onClick={() =>
+              track("nav_click", { to: "/about", placement: "header_menu" })
+            }
           >
             <Info aria-hidden />
             About

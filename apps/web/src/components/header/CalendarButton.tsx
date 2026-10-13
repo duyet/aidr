@@ -1,8 +1,8 @@
 import { Button, Sheet, SheetContent, SheetTitle } from "@aidr/ui";
-import { track } from "@aidr/ui/track";
 import { CalendarDays } from "lucide-react";
 import { Popover as PopoverPrimitive } from "radix-ui";
 import { type MouseEvent, useId, useRef, useState } from "react";
+import { track } from "../../lib/analytics/track";
 import { calendarPath } from "../../lib/calendar";
 import { PHONE_TAP_TARGET_CLASS } from "../../lib/chrome";
 import type { Lang } from "../../lib/types";
@@ -29,7 +29,7 @@ export function CalendarButton({
 
   const changeOpen = (next: boolean) => {
     setOpen(next);
-    if (next) track("calendar_open", { surface });
+    if (next) track("calendar_open", { placement: surface });
   };
   const onClick = (e: MouseEvent) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {

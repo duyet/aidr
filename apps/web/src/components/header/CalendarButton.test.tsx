@@ -1,7 +1,6 @@
 /**
  * @vitest-environment happy-dom
  */
-import { track } from "@aidr/ui/track";
 import {
   cleanup,
   fireEvent,
@@ -11,6 +10,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { track } from "../../lib/analytics/track";
 import type { CalendarDay, CalendarMonth } from "../../lib/calendar";
 import { calendarPath } from "../../lib/calendar";
 import { fetchCalendarMonth } from "../../lib/calendar-fn";
@@ -19,10 +19,7 @@ import { clearCalendarMonthCache } from "../calendar/useCalendarMonth";
 import { CalendarButton } from "./CalendarButton";
 
 vi.mock("../../lib/calendar-fn", () => ({ fetchCalendarMonth: vi.fn() }));
-vi.mock("@aidr/ui/track", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@aidr/ui/track")>()),
-  track: vi.fn(),
-}));
+vi.mock("../../lib/analytics/track", () => ({ track: vi.fn() }));
 
 const day = (date: string, count: number): CalendarDay => ({
   date,
@@ -88,7 +85,7 @@ describe("CalendarButton popover", () => {
       screen.getByRole("link", OPEN_EN).getAttribute("aria-expanded")
     ).toBe("true");
     expect(track).toHaveBeenCalledExactlyOnceWith("calendar_open", {
-      surface: "popover",
+      placement: "popover",
     });
     await within(dialog).findByText("October 2026");
 
@@ -248,7 +245,7 @@ describe("CalendarButton phone sheet", () => {
       within(dialog).getByRole("link", { name: "All editions →" })
     ).toBeTruthy();
     expect(track).toHaveBeenCalledExactlyOnceWith("calendar_open", {
-      surface: "sheet",
+      placement: "sheet",
     });
   });
 });
