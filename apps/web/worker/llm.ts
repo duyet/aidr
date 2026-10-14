@@ -1581,13 +1581,20 @@ export interface TranslateInput {
   sourceLang?: "en" | "vi";
 }
 
-export interface TranslateResult {
+/** One parsed row of a translate response. */
+export interface TranslatedRow {
   i: number;
   title: string;
   summary: string;
   /** This batch's total token usage, attributed evenly across the batch's
    * requested items (not just the ones the model actually returned). */
   tokens: number;
+}
+
+export interface TranslateResult extends TranslatedRow {
+  /** The model that wrote this text (the repair's, when a repair replaced
+   *  the draft). Null for a Vietnamese source passed through as is. */
+  model: string | null;
 }
 
 /** Same defense as sanitizeScoreResults, for translations: keep only entries
@@ -1598,11 +1605,11 @@ export function sanitizeTranslateResults(
   raw: unknown,
   batch: TranslateInput[],
   tokensPerItem: number
-): TranslateResult[] {
+): TranslatedRow[] {
   if (!Array.isArray(raw)) return [];
   const validIndexes = new Set(batch.map((b) => b.i));
   const seen = new Set<number>();
-  const out: TranslateResult[] = [];
+  const out: TranslatedRow[] = [];
   const take = (i: number, e: Record<string, unknown>) => {
     if (!Number.isInteger(i) || !validIndexes.has(i) || seen.has(i)) return;
     const title = typeof e.title === "string" ? e.title.trim() : "";
@@ -1753,7 +1760,11 @@ export async function translateBatch(
     VI_STYLE,
     batch.map((item) => `${item.title}\n${item.summary ?? ""}`).join("\n")
   );
-  const { content: raw, tokens } = await callAnyrouter(
+  const {
+    content: raw,
+    tokens,
+    model,
+  } = await callAnyrouter(
     env,
     [
       { role: "system", content: system },
@@ -1784,7 +1795,7 @@ export async function translateBatch(
     parseTranslateRows(raw),
     batch,
     Math.ceil(tokens / batch.length)
-  );
+  ).map((row) => ({ ...row, model }));
 }
 
 /** Under this much budget a repair call would only starve later batches. */
@@ -1875,6 +1886,7 @@ export async function translateItems(
         title: item.title.trim(),
         summary: item.summary?.trim() ?? "",
         tokens: 0,
+        model: null,
       });
     } else {
       needLlm.push(item);

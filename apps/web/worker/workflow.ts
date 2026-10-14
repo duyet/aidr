@@ -67,6 +67,11 @@ import {
 import type { SourceRunHealth } from "./source-health.js";
 import { sanitizeError } from "./telemetry-safe.js";
 import { toEpochSeconds } from "./time.js";
+import {
+  mergeViEnglish,
+  tallyViEnglish,
+  type ViEnglishTally,
+} from "./translation-english.js";
 import type { Env } from "./types.js";
 import {
   ingestRunId,
@@ -100,6 +105,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     let backfilledSummaries = 0;
     let backfilledTranslations = 0;
     let backfillTranslateTokens = 0;
+    /** EN→VI rows written this run, per model, with English left in. */
+    let viEnglish: ViEnglishTally = {};
     let qaRated = 0;
     let qaAdjusted = 0;
     let qaTokens = 0;
@@ -189,6 +196,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       /** Per-source health is only whole (outcomes, skip reasons, carried
        *  streaks) once the chain reached translate. */
       sourceHealthComplete: boolean;
+      viEnglish: ViEnglishTally;
     }> => {
       const result = {
         itemsFetched: 0,
@@ -198,6 +206,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         rejected: 0,
         tokens: 0,
         sourceHealthComplete: false,
+        viEnglish: {} as ViEnglishTally,
       };
 
       // 1. Consume sources.
@@ -271,6 +280,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           canonicalTagsByItem,
           now,
         });
+        result.viEnglish = tallyViEnglish(translated.values());
       }
       return result;
     };
@@ -288,6 +298,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         published = fresh.published;
         rejected = fresh.rejected;
         scoreAndTranslateTokens += fresh.tokens;
+        viEnglish = fresh.viEnglish;
       }
 
       // 4. Drain backlogs and review queues.
@@ -299,6 +310,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         const backfillTranslate = await backfillTranslations(ctx);
         backfilledTranslations = backfillTranslate.translated;
         backfillTranslateTokens = backfillTranslate.tokens;
+        viEnglish = mergeViEnglish(viEnglish, backfillTranslate.viEnglish);
       }
 
       // After backfill-content (a replaced teaser re-queues) and before
@@ -380,7 +392,13 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         step,
         "health-check",
         [] as string[],
-        () => runHealthCheck(this.env, { runId, steps, dryRun: mode.dryRun }),
+        () =>
+          runHealthCheck(this.env, {
+            runId,
+            steps,
+            viEnglish,
+            dryRun: mode.dryRun,
+          }),
         { steps }
       );
       recordStep(steps, "close-run", "recording");
@@ -403,6 +421,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
           weeklyTokens,
         backfilledSummaries,
         backfilledTranslations,
+        viEnglish,
         qaRated,
         qaAdjusted,
         suggestionsReviewed,

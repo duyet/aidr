@@ -1516,6 +1516,7 @@ describe("model fallback chain", () => {
         title: "GLM-5.3 hòa Kimi K3 mô hình nguồn mở thông minh nhất",
         summary: "Tóm tắt sẵn có.",
         tokens: 0,
+        model: null,
       },
     ]);
   });
@@ -1631,6 +1632,9 @@ describe("model fallback chain", () => {
     expect(modelsOf(fetchMock)).toEqual(["empty/model", "ok/model"]);
     expect(results).toHaveLength(1);
     expect(results[0].title).toBe("Tin mới");
+    // The English-in-VI health check counts rows per model that wrote them,
+    // not per chain head.
+    expect(results[0].model).toBe("ok/model");
   });
 });
 
@@ -3003,6 +3007,27 @@ describe("translateItems draft repair", () => {
     const [out] = await translateItems(withRules, [item]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(out.title).toBe(draft);
+  });
+
+  it("credits a kept repair to the model that wrote the repair", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(rows(draft))
+      .mockResolvedValueOnce(new Response("busy", { status: 500 }))
+      .mockResolvedValueOnce(
+        rows("Clef ra mắt các decision model open-weight")
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [out] = await translateItems(
+      { ...withRules, ANYROUTER_TRANSLATE_MODEL: "draft/model,repair/model" },
+      [item]
+    );
+    expect(
+      fetchMock.mock.calls.map((call) => JSON.parse(call[1].body).model)
+    ).toEqual(["draft/model", "draft/model", "repair/model"]);
+    expect(out.title).toBe("Clef ra mắt các decision model open-weight");
+    expect(out.model).toBe("repair/model");
   });
 
   it("makes no repair call for a clean draft", async () => {

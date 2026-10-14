@@ -273,6 +273,20 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   LLM attempts failed (min 4), TL;DR failed 3 runs in a row, a step failed, or the run errored. Fired keys go
   in `stats.alerts`; the same key is silent for 6h. External uptime
   monitors poll `GET /api/health` (503 when the newest run is down).
+- English left in Vietnamese (`worker/translation-english.ts`, same step,
+  no model call): the translate and backfill-translate steps count the
+  EN→VI rows they write per served model (a kept repair counts for the
+  repair's model) in `stats.viEnglish`, with the rows whose title or
+  summary has no Vietnamese diacritics (`looksVietnamese`). The check sums
+  the last 24h of live runs plus this one and raises
+  `translation-english:<model>` (warning, GitHub issue in `duyet/aidr`)
+  when a model wrote ≥ 40 rows and > 15% kept English. A key fires once per
+  24h: the check reads the window's `stats.alerts`, not the 6h cooldown.
+  Baseline, 7 days to 2026-10-14, items attributed by fetch run: gemini
+  7/561 (1.2%), Laguna 5/78 (6.4%), gemma-latest 3/36 (8.3%, two version
+  strings and a paper title); no 24h window reached 15%. Most hits are
+  English titles the prompt keeps (paper titles), and a half-translated
+  summary is not counted. The daily summary lists each model's 24h count.
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
   with evidence and the run link, plus one daily summary in the first run
@@ -1670,8 +1684,24 @@ one trailing `]` or `}`; the reviewer's output gets no such allowance.
 
 Every attempt also has a first-token cutoff (`FIRST_TOKEN_MAX_MS`, 20s): a
 model that streams nothing by then is logged as a timeout and the chain
-moves on, so one hang cannot eat most of a batch budget. Pick chain models
-with a streaming probe: production always sends `stream: true` with
+moves on, so one hang cannot eat most of a batch budget. TL;DR and the
+VI→EN generator keep 20s (#679). In the 7 days to 2026-10-14 all 37 TL;DR
+timeouts (luna 12, `anyrouter/auto` 11, Laguna 10, gemini 4) died at 20s,
+none at the 135s slice. Hangs came in runs: in 5 runs Laguna and
+`anyrouter/auto` hung back to back, retry included, and 3 of 6 luna
+retries hung again; the other 3 served, so a fresh call can rescue a
+hang. On translate, where the cap is 35s, Laguna hung to the full 35s 9
+times in 7 days. Of the 24 translate calls it led (a slice of 50s or more,
+so the 35s window applied), 20 served with no sign of a slow start
+(duration minus output time at its p90 speed: median 2.9s, max 19.2s) and
+3 hung to 35s; a small sample. A
+35s cap fits the shared 230s TL;DR budget (four hung attempts take 140s
+instead of 80s), but when hangs come in runs it only delays the same
+headline fallback by a minute. The VI→EN generator served 16 of 61
+attempts in 7 days, all within 6s; 6 died at the 20s first-token cap and
+39 were 5xx, 404 or invalid output. A higher cap there would also need a
+slice above its 25s default.
+Pick chain models with a streaming probe: production always sends `stream: true` with
 `response_format: json_object`, and some models (Nemotron 3 120B / Super)
 answer fine without streaming but never stream a token. `wrangler.toml`
 keeps the probe results behind each pick.

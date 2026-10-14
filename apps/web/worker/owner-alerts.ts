@@ -2,6 +2,11 @@ import { reportPipelineException } from "./bugsink.js";
 import { DAY_VIDEO_ALERT_KEY } from "./day-video-watchdog.js";
 import type { HealthIssue, PriorRun } from "./health.js";
 import { escapeHtml } from "./notify/telegram.js";
+import {
+  VI_ENGLISH_KEY_PREFIX,
+  type ViEnglishTally,
+  viEnglishLines,
+} from "./translation-english.js";
 import type { Env } from "./types.js";
 
 /**
@@ -54,6 +59,8 @@ export interface DailySummary {
   models: ModelStat[];
   /** Alert key -> runs that raised it. */
   warnings: Record<string, number>;
+  /** EN→VI rows per model and how many kept English. */
+  viEnglish: ViEnglishTally;
 }
 
 export function runUrl(runId: string): string {
@@ -136,6 +143,8 @@ function suggestion(issue: HealthIssue): string {
     return "Check notify reasons on the run page and the bot's rights in the channel.";
   if (issue.key === DAY_VIDEO_ALERT_KEY)
     return "Run the rerun command above. Every step checks what is already posted, so it only fills the gaps.";
+  if (issue.key.startsWith(VI_ENGLISH_KEY_PREFIX))
+    return "Read that model's recent Vietnamese titles and summaries. If it keeps English, move it down ANYROUTER_TRANSLATE_MODEL in wrangler.toml.";
   if (issue.key === "tldr-failing")
     return "Open the TL;DR step on the run page and check the tldr LLM chain.";
   return "Open the run page and check the failed step's reason.";
@@ -184,6 +193,11 @@ export function formatDailySummary(s: DailySummary): string {
         `  ${escapeHtml(m.model)}: ${pct(m.total - m.failed, m.total)} (${m.total - m.failed}/${m.total})`
       );
     }
+  }
+  const viEnglish = viEnglishLines(s.viEnglish);
+  if (viEnglish.length) {
+    lines.push("VI rows left in English:");
+    for (const line of viEnglish) lines.push(`  ${escapeHtml(line)}`);
   }
   const warnings = Object.entries(s.warnings)
     .sort((a, b) => b[1] - a[1])

@@ -2,6 +2,12 @@ import { buildMissingTranslationQuery } from "../backfill.js";
 import { prepareLoggedTranslationUpsert } from "../d1-bind.js";
 import { TRANSLATE_BATCH_SIZE, translateItems } from "../llm.js";
 import { recordStep } from "../run-stats.js";
+import {
+  mergeViEnglish,
+  tallyViEnglish,
+  type ViEnglishRow,
+  type ViEnglishTally,
+} from "../translation-english.js";
 import { llmStep, safeStep } from "../workflow-step.js";
 import {
   backfillSourceLang,
@@ -25,7 +31,7 @@ interface MissingTranslationRow {
  */
 export async function backfillTranslations(
   ctx: IngestContext
-): Promise<{ translated: number; tokens: number }> {
+): Promise<{ translated: number; tokens: number; viEnglish: ViEnglishTally }> {
   const { step, env, runId, steps } = ctx;
   const missingTranslations = await safeStep(
     step,
@@ -41,18 +47,22 @@ export async function backfillTranslations(
 
   let translatedCount = 0;
   let tokens = 0;
+  let viEnglish: ViEnglishTally = {};
   for (const offset of sliceOffsets(
     missingTranslations.length,
     TRANSLATE_BATCH_SIZE
   )) {
-    let part = { count: 0, tokens: 0 };
+    let part: { count: number; tokens: number; viEnglish?: ViEnglishTally } = {
+      count: 0,
+      tokens: 0,
+    };
     try {
       part = await llmStep(
         step,
         env,
         runId,
         `backfill-translate-${offset}`,
-        { count: 0, tokens: 0 },
+        { count: 0, tokens: 0, viEnglish: {} },
         async () => {
           const rows = missingTranslations.slice(
             offset,
@@ -60,6 +70,7 @@ export async function backfillTranslations(
           );
           let count = 0;
           let partTokens = 0;
+          const written: ViEnglishRow[] = [];
           try {
             const translated = await translateItems(
               env,
@@ -88,11 +99,16 @@ export async function backfillTranslations(
                 })
               );
               count++;
+              written.push({ model: result.model, title, summary });
             }
           } catch (error) {
             console.error("backfill-translate batch failed:", error);
           }
-          return { count, tokens: partTokens };
+          return {
+            count,
+            tokens: partTokens,
+            viEnglish: tallyViEnglish(written),
+          };
         },
         { config: BACKFILL_TRANSLATE_STEP }
       );
@@ -101,6 +117,8 @@ export async function backfillTranslations(
     }
     translatedCount += part.count;
     tokens += part.tokens;
+    // A step cached before this field existed replays without it.
+    viEnglish = mergeViEnglish(viEnglish, part.viEnglish ?? {});
   }
 
   const { summary, detail } = backfillTranslateSummary(
@@ -108,5 +126,5 @@ export async function backfillTranslations(
     translatedCount
   );
   recordStep(steps, "backfill-translate", summary, detail);
-  return { translated: translatedCount, tokens };
+  return { translated: translatedCount, tokens, viEnglish };
 }

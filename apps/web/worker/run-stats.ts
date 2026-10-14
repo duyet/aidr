@@ -1,6 +1,7 @@
 import type { SourceRunHealth } from "./source-health.js";
 import { emptySourceHealth } from "./source-health.js";
 import { sanitizeRunStats } from "./telemetry-safe.js";
+import type { ViEnglishTally } from "./translation-english.js";
 
 /**
  * Per-run telemetry persisted as a single JSON column on `workflow_runs`
@@ -43,6 +44,10 @@ export interface RunStats {
   tokens: number;
   backfilledSummaries: number;
   backfilledTranslations: number;
+  /** EN→VI rows written this run (ingest and backfill), per served model,
+   *  and how many kept English. The health check sums 24h of these (see
+   *  `worker/translation-english.ts`). Absent when nothing was translated. */
+  viEnglish?: ViEnglishTally;
   qaRated: number;
   qaAdjusted: number;
   suggestionsReviewed: number;
@@ -93,6 +98,9 @@ export function buildRunStats(partial: Partial<RunStats> = {}): RunStats {
     tokens: partial.tokens ?? 0,
     backfilledSummaries: partial.backfilledSummaries ?? 0,
     backfilledTranslations: partial.backfilledTranslations ?? 0,
+    ...(partial.viEnglish && Object.keys(partial.viEnglish).length
+      ? { viEnglish: partial.viEnglish }
+      : {}),
     qaRated: partial.qaRated ?? 0,
     qaAdjusted: partial.qaAdjusted ?? 0,
     suggestionsReviewed: partial.suggestionsReviewed ?? 0,
