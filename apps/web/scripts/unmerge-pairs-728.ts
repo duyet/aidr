@@ -21,6 +21,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isTitleNearDuplicate, significantTitleTokens } from "../worker/dedupe";
+import { aggregatorSlugHash } from "../worker/unmerge/twins";
 import { wranglerSelect, wranglerSelectTotals } from "./cf-d1";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -31,9 +32,6 @@ const EXCLUDED: Record<string, string> = {
     "270d2009 is OpenAI's 'Sharing AI progress in mathematics'; 'OpenAI Releases 722 Math Proofs' is the same story. Only the Allen AI pair under it is wrong.",
   dc6ed771: "marketbrief twin of 4d732c5c, same story as 270d2009.",
 };
-
-const AGGREGATOR_SLUG =
-  /^https?:\/\/(?:www\.)?(?:huggingnews\.com|marketbrief\.now)\/.*-([0-9a-f]{8})\/?$/i;
 
 interface Row {
   id: string;
@@ -61,8 +59,6 @@ function lowOverlap(canonical: Row, member: Row): boolean {
     sharedTokens(canonical.title, member.title) <= 1
   );
 }
-
-const slugHash = (url: string) => AGGREGATOR_SLUG.exec(url)?.[1] ?? null;
 
 function main(): void {
   const labels = readFileSync(
@@ -129,7 +125,7 @@ function main(): void {
   }
 
   const groupOf = (m: Row) => {
-    const hash = slugHash(m.url);
+    const hash = aggregatorSlugHash(m.url);
     return hash ? `slug:${hash}` : m.id;
   };
   const labelledGroups = new Set(

@@ -199,6 +199,15 @@ const TWIN_CARD = `https://huggingnews.com/og/${crocSlug}.png?v=2`;
 const WRONG_PHOTO =
   "https://techcrunch.com/wp-content/uploads/2026/09/openai-getty.jpg";
 
+// Production 7c2855a6 / ba4fcea9: the marketbrief copy went into the wrong
+// canonical, then the huggingnews copy published on its own, because ingest
+// clusters only against published rows.
+const LIVE = id(0xb2);
+const HIDDEN = id(0xa6);
+const AUS_SLUG = "anthropic-backs-australian-laws-86d58e08";
+const AUS_TITLE =
+  "Anthropic Backs Australian Laws for AI Agent Breach Reporting";
+
 const TAGS = new Map([
   [C, ["anthropic", "llm"]],
   [HUG, ["nvidia", "funding"]],
@@ -206,7 +215,37 @@ const TAGS = new Map([
   [CROC, ["safety"]],
   [CROC_TWIN, ["safety", "crime"]],
   [WRONG, ["crime", "openai"]],
+  [LIVE, ["anthropic", "policy"]],
+  [HIDDEN, ["anthropic", "security"]],
 ]);
+
+function australiaCopies(publishedAt: number) {
+  const card = (host: string) =>
+    `https://${host}/og/${AUS_SLUG}.png?v=${host.length}`;
+  const copy = (rowId: string, sourceId: string, host: string) =>
+    row(rowId, sourceId, {
+      url: `https://${host}/ai/${AUS_SLUG}`,
+      title: AUS_TITLE,
+      publishedAt,
+      points: 2,
+      imageUrl: card(host),
+      mediaManifest: {
+        version: 1,
+        assets: [{ type: "image", url: card(host) }],
+      },
+      sources: [
+        {
+          kind: "source",
+          url: `https://${host}/ai/${AUS_SLUG}`,
+          postedAt: publishedAt,
+        },
+      ],
+    });
+  return {
+    hidden: copy(HIDDEN, "marketbrief", "marketbrief.now"),
+    live: copy(LIVE, "huggingnews", "huggingnews.com"),
+  };
+}
 
 async function writeCanonical(
   db: DatabaseSync,
@@ -566,6 +605,65 @@ describe("unmerge", () => {
     const again = await undoUnmerge(env, { batchId, dryRun: false });
     if ("error" in again) throw new Error(again.error);
     expect(again.plan.canonicals.map((c) => c.state)).toEqual(["noop"]);
+    expect(tables(db)).toEqual(preApply);
+  });
+
+  it("merges a story already live into its live copy, as ingest would have, and publishes nothing new", async () => {
+    const { hidden, live } = australiaCopies(OLD + 7000);
+    await writeCluster(db, [hidden], { id: C, row: canonical }, OLD + 9600);
+    await writeCanonical(db, live, OLD + 9700);
+    const published = () =>
+      db
+        .prepare("SELECT id FROM items WHERE status = 'published' ORDER BY id")
+        .all();
+    const publishedBefore = published();
+
+    // What ingest writes when the marketbrief copy meets the live one.
+    const oracle = migratedDb();
+    await writeCanonical(oracle, live, OLD + 9700);
+    await writeCluster(oracle, [hidden], { id: LIVE, row: live }, OLD + 9800);
+
+    const result = await unmergeItems(env, {
+      pairs: [{ canonicalId: C, mergedId: HIDDEN }],
+      dryRun: false,
+    });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.plan.canonicals[0].pairs[0].outcome).toEqual({
+      action: "repoint",
+      twinId: LIVE,
+      rule: "aggregator-slug",
+    });
+    expect(published()).toEqual(publishedBefore);
+    for (const rowId of [HIDDEN, LIVE]) {
+      expect(shape(db, rowId)).toEqual(shape(oracle, rowId));
+      expect(sources(db, rowId)).toEqual(sources(oracle, rowId));
+    }
+    // The canonical gives the copy's source row and tags back.
+    expect(sources(db, C).map((s) => (s as { url: string }).url)).not.toContain(
+      hidden.item.url
+    );
+    expect(shape(db, C)).toMatchObject({
+      tags: JSON.stringify(["anthropic", "llm", "nvidia", "funding"]),
+    });
+    oracle.close();
+  });
+
+  it("undo reverses a merge into a live copy too", async () => {
+    const { hidden, live } = australiaCopies(OLD + 7000);
+    await writeCluster(db, [hidden], { id: C, row: canonical }, OLD + 9600);
+    await writeCanonical(db, live, OLD + 9700);
+    const preApply = tables(db);
+    const applied = await unmergeItems(env, {
+      pairs: [...pairs, { canonicalId: C, mergedId: HIDDEN }],
+      dryRun: false,
+    });
+    if ("error" in applied) throw new Error(applied.error);
+    expect(applied.counts.repointed).toBe(1);
+    const undone = await undoUnmerge(env, {
+      batchId: applied.applied?.batchId,
+      dryRun: false,
+    });
+    if ("error" in undone) throw new Error(undone.error);
     expect(tables(db)).toEqual(preApply);
   });
 

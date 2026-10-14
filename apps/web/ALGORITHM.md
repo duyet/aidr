@@ -235,6 +235,23 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   with a picture of its own keeps it and takes no twin's picture, so a
   twin's better-tier image (an expiring `pbs.twimg.com/card_img`) never
   replaces the lead's working card.
+- A restored story can already be live: the aggregator twin that arrived
+  after the wrong merge publishes on its own, since ingest clusters only
+  against published rows. Before restoring a group, the plan reads the
+  published rows within `MERGE_LOOKBACK_SEC` of it (`worker/unmerge/twins.ts`).
+  A row with the same canonical URL, the same huggingnews/marketbrief slug
+  hash, the same vnexpress article id, or the same normalized title from
+  another source is the same story: the group stays `merged`, re-pointed
+  to that row (`repoint`), which takes the group's sources, topics, reader
+  engagement and corroboration as ingest's merge into a published canonical
+  would. A live row with a picture of its own keeps it. A row whose title is
+  only a near-duplicate (the title pass's rule) is likely the same event, so
+  the group waits as `needs-decision` until the pairs file says
+  `"sameAs": "<id>"` (re-point to that row) or `"distinct": true`
+  (publish). A group under the relevance bar restores as `rejected` and
+  needs no decision. A live twin inside the quiet window, written by
+  another batch of the request, or restored by an earlier group of the
+  same request defers the group to a rerun.
 - The canonical loses the sources, assets, tags and points attributable to
   the removed items. Source rows are attributed by URL, by an HN/Lobsters
   discussion's `posted_at`, and by position (a tweet run belongs to the

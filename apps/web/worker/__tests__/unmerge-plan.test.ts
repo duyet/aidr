@@ -46,6 +46,14 @@ function item(
   };
 }
 
+const storyRef = (row: UnmergeItemRow) => ({
+  id: row.id,
+  source_id: row.source_id,
+  url: row.url,
+  title: row.title,
+  published_at: row.published_at,
+});
+
 const tweet = (handle: string): StoredSource => ({
   kind: "support",
   author: `@${handle}`,
@@ -94,6 +102,36 @@ describe("parseUnmergePairs", () => {
         { canonicalId: b, mergedId: c },
       ])
     ).toHaveProperty("error");
+  });
+
+  it("rejects a decision that cannot be applied", () => {
+    for (const extra of [
+      { sameAs: "abc" },
+      { distinct: false },
+      { sameAs: c, distinct: true },
+    ]) {
+      expect(
+        parseUnmergePairs([{ canonicalId: a, mergedId: b, ...extra }])
+      ).toHaveProperty("error");
+    }
+    expect(
+      parseUnmergePairs([
+        { canonicalId: a, mergedId: b, group: "g", distinct: true },
+        { canonicalId: a, mergedId: hex(4), group: "g", sameAs: c },
+      ])
+    ).toHaveProperty("error");
+    expect(
+      parseUnmergePairs([{ canonicalId: a, mergedId: b, sameAs: c }])
+    ).toEqual({
+      pairs: [
+        {
+          canonicalId: a,
+          mergedId: b,
+          group: b,
+          decision: { kind: "same-as", twinId: c },
+        },
+      ],
+    });
   });
 
   it("defaults a pair's group to its merged id", () => {
@@ -252,6 +290,7 @@ describe("planUnmerge", () => {
   const snapshot = (rows: UnmergeItemRow[], sources: StoredSource[] = []) => ({
     items: new Map(rows.map((r) => [r.id as string, r])),
     sources: new Map([[canonical.id as string, sources]]),
+    published: rows.filter((r) => r.status === "published").map(storyRef),
   });
 
   it("restores a VI-source row with the native translations row ingest writes", () => {
@@ -495,5 +534,188 @@ describe("planUnmerge", () => {
       NOW_MS + 2 * 3600 * 1000
     );
     expect(later.canonicals[0].pairs[0].outcome.action).toBe("restore");
+  });
+});
+
+describe("planUnmerge: a restored story already live as another row", () => {
+  const canonical = item(1, "hn", "https://example.test/c", {
+    status: "published",
+    duplicate_of: null,
+    title: "Anthropic founders keep voting power after IPO",
+    rank_score: 0.5,
+  });
+  const live = (n: number, sourceId: string, url: string, title: string) =>
+    item(n, sourceId, url, {
+      status: "published",
+      duplicate_of: null,
+      title,
+      fetched_at: OLD + 1800,
+      rank_score: 0.4,
+    });
+  const plan = (
+    rows: UnmergeItemRow[],
+    pairs: Record<string, unknown>[],
+    sources: StoredSource[] = []
+  ) => {
+    const parsed = parseUnmergePairs(pairs);
+    if ("error" in parsed) throw new Error(parsed.error);
+    return planUnmerge(
+      parsed.pairs,
+      {
+        items: new Map(rows.map((r) => [r.id as string, r])),
+        sources: new Map([[canonical.id as string, sources]]),
+        published: rows.filter((r) => r.status === "published").map(storyRef),
+      },
+      NOW_MS
+    );
+  };
+  const pair = (merged: UnmergeItemRow, extra = {}) => ({
+    canonicalId: canonical.id,
+    mergedId: merged.id,
+    ...extra,
+  });
+
+  // Production 7c2855a6 (marketbrief, merged into 310ebe3d) and ba4fcea9
+  // (huggingnews, published on its own an hour later).
+  const title = "Anthropic Backs Australian Laws for AI Agent Breach Reporting";
+  const slug = "anthropic-backs-australian-laws-for-ai-agent-breach-86d58e08";
+  const hidden = item(30, "marketbrief", `https://marketbrief.now/ai/${slug}`, {
+    title,
+  });
+  const twin = live(
+    31,
+    "huggingnews",
+    `https://huggingnews.com/ai/${slug}`,
+    title
+  );
+
+  it("re-points it to its published aggregator twin instead of publishing a second copy", () => {
+    const result = plan(
+      [canonical, hidden, twin],
+      [pair(hidden)],
+      [self(hidden.url)]
+    ).canonicals[0];
+    expect(result.pairs[0].outcome).toEqual({
+      action: "repoint",
+      twinId: twin.id,
+      rule: "aggregator-slug",
+    });
+    expect(result.rows.find((r) => r.id === hidden.id)?.changes).toEqual([
+      { column: "duplicate_of", before: canonical.id, after: twin.id },
+    ]);
+    expect(
+      result.rows.flatMap((r) => r.changes).filter((c) => c.column === "status")
+    ).toEqual([]);
+    expect(result.sources.find((s) => s.itemId === twin.id)?.after).toEqual([
+      self(hidden.url),
+    ]);
+    // The canonical gives the story's source row back.
+    expect(
+      result.sources.find((s) => s.itemId === canonical.id)?.after
+    ).toEqual([]);
+  });
+
+  it("re-points one vnexpress article under a second slug (production 1e98238c)", () => {
+    const vnHidden = item(
+      32,
+      "vnexpress-tech",
+      "https://vnexpress.net/tau-spacex-lap-ky-luc-bay-nhanh-nhat-den-tram-iss-5127535.html",
+      { title: "Tàu SpaceX lập kỷ lục bay nhanh nhất đến trạm ISS" }
+    );
+    const vnLive = live(
+      33,
+      "vnexpress-tech",
+      "https://vnexpress.net/spacex-lap-ky-luc-tau-vu-tru-my-bay-nhanh-nhat-den-tram-iss-5127535.html",
+      "SpaceX lập kỷ lục tàu vũ trụ Mỹ bay nhanh nhất đến trạm ISS"
+    );
+    const result = plan([canonical, vnHidden, vnLive], [pair(vnHidden)]);
+    expect(result.canonicals[0].pairs[0].outcome).toMatchObject({
+      action: "repoint",
+      twinId: vnLive.id,
+      rule: "article-id",
+    });
+    expect(result.canonicals[0].translations).toEqual([]);
+  });
+
+  // Production ff6e8971 and the-decoder's 3b1a6af7: one event, two URLs.
+  const moonshot = item(
+    34,
+    "marketbrief",
+    "https://marketbrief.now/ai/openai-disrupts-moonshot-ai-campaign-69cd8eaa",
+    { title: "OpenAI Disrupts Moonshot AI Campaign to Extract Model Reasoning" }
+  );
+  const decoder = live(
+    35,
+    "the-decoder",
+    "https://the-decoder.com/openai-says-it-stopped-a-campaign/",
+    "OpenAI says it stopped a campaign to steal its models' reasoning, but the trick still worked on Azure"
+  );
+
+  it("holds a likely same event with a different URL for a human decision", () => {
+    const result = plan([canonical, moonshot, decoder], [pair(moonshot)]);
+    expect(result.canonicals[0].pairs[0].outcome).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+    });
+    expect(result.canonicals[0].rows).toEqual([]);
+  });
+
+  it("follows the pair's decision: distinct publishes it, sameAs re-points it", () => {
+    const distinct = plan(
+      [canonical, moonshot, decoder],
+      [pair(moonshot, { distinct: true })]
+    );
+    expect(distinct.canonicals[0].pairs[0].outcome).toMatchObject({
+      action: "restore",
+      status: "published",
+    });
+    const same = plan(
+      [canonical, moonshot, decoder],
+      [pair(moonshot, { sameAs: decoder.id })]
+    );
+    expect(same.canonicals[0].pairs[0].outcome).toEqual({
+      action: "repoint",
+      twinId: decoder.id,
+      rule: "same-as",
+    });
+  });
+
+  it("never treats a feed's reused title as the same story", () => {
+    const today = item(36, "latent-space", "https://example.test/ainews-2", {
+      title: "AINews: not much happened today",
+    });
+    const yesterday = live(
+      37,
+      "latent-space",
+      "https://example.test/ainews-1",
+      "AINews: not much happened today"
+    );
+    const result = plan(
+      [canonical, today, { ...yesterday, published_at: OLD - 86_400 }],
+      [pair(today)]
+    );
+    expect(result.canonicals[0].pairs[0].outcome.action).not.toBe("repoint");
+  });
+
+  it("defers the second of two restored copies of one story until the first is live", () => {
+    const other = item(2, "techcrunch-ai", "https://example.test/c2", {
+      status: "published",
+      duplicate_of: null,
+      title: "Unrelated canonical",
+      rank_score: 0.5,
+    });
+    const copy = item(38, "huggingnews", `https://huggingnews.com/ai/${slug}`, {
+      title,
+      duplicate_of: other.id,
+    });
+    const result = plan(
+      [canonical, other, hidden, copy],
+      [pair(hidden), { canonicalId: other.id, mergedId: copy.id }]
+    );
+    expect(result.canonicals[0].pairs[0].outcome.action).toBe("restore");
+    expect(result.canonicals[1].pairs[0].outcome).toMatchObject({
+      action: "skip",
+      reason: "twin-restores-first",
+    });
   });
 });

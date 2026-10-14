@@ -18,14 +18,23 @@
  * attributable to a removed item.
  */
 import { MAX_SOURCES_PER_ITEM } from "../d1-bind.js";
-import { buildMergePlan, type CanonicalUpdate } from "../dedupe.js";
+import {
+  buildMergePlan,
+  type CanonicalUpdate,
+  type MergePlan,
+  unionSources,
+} from "../dedupe.js";
 import {
   RANK_RECOMPUTE_WINDOW_SEC,
   RELEVANCE_THRESHOLD,
 } from "../ingest/context.js";
-import { buildMergeCandidates } from "../ingest/merge.js";
+import { buildMergeCandidates, toExistingCandidates } from "../ingest/merge.js";
 import type { ItemScore } from "../ingest/score.js";
-import { parseTagsJson, planNewItemWrite } from "../ingest/write-plan.js";
+import {
+  parseTagsJson,
+  planExistingCanonicalMedia,
+  planNewItemWrite,
+} from "../ingest/write-plan.js";
 import {
   buildMediaManifest,
   canonicalizeMediaUrl,
@@ -52,6 +61,12 @@ import type {
 } from "../sources/types.js";
 import { MAX_MERGED_TOPICS } from "../topics.js";
 import { DIGEST_WINDOW_DAYS } from "../weekly-digest.js";
+import {
+  type StoryRef,
+  sameStoryRule,
+  type TwinRule,
+  twinMatches,
+} from "./twins.js";
 
 export type ItemId = string & { readonly __itemId: unique symbol };
 
@@ -66,11 +81,40 @@ export function parseItemId(value: unknown): ItemId | null {
 /** One wrong merge to reverse. Pairs that share `group` under one canonical
  * are one story (huggingnews/marketbrief twins) and come back as one
  * published row with the rest merged into it; `group` defaults to the
- * merged id, so a lone pair comes back on its own. */
+ * merged id, so a lone pair comes back on its own.
+ *
+ * `decision` settles a group the plan holds as `needs-decision`: `sameAs`
+ * re-points it to that published row, `distinct` publishes it on its own.
+ * The pairs file spells them `"sameAs": "<id>"` and `"distinct": true`. */
 export interface UnmergePair {
   canonicalId: ItemId;
   mergedId: ItemId;
   group: string;
+  decision?: TwinDecision;
+}
+
+export type TwinDecision =
+  | { kind: "same-as"; twinId: ItemId }
+  | { kind: "distinct" };
+
+function parseDecision(
+  record: Record<string, unknown>
+): TwinDecision | undefined | { error: string } {
+  if (record.sameAs !== undefined && record.distinct !== undefined) {
+    return { error: "sameAs and distinct are exclusive" };
+  }
+  if (record.sameAs !== undefined) {
+    const twinId = parseItemId(record.sameAs);
+    return twinId
+      ? { kind: "same-as", twinId }
+      : { error: "sameAs must be a 64-char hex item id" };
+  }
+  if (record.distinct !== undefined) {
+    return record.distinct === true
+      ? { kind: "distinct" }
+      : { error: "distinct must be true" };
+  }
+  return undefined;
 }
 
 export const MAX_UNMERGE_PAIRS = 500;
@@ -117,13 +161,32 @@ export function parseUnmergePairs(
       };
     }
     groupCanonical.set(group, canonicalId);
-    pairs.push({ canonicalId, mergedId, group });
+    const decision = parseDecision(record);
+    if (decision && "error" in decision) {
+      return { error: `pairs[${index}]: ${decision.error}` };
+    }
+    pairs.push({
+      canonicalId,
+      mergedId,
+      group,
+      ...(decision ? { decision } : {}),
+    });
   }
   for (const pair of pairs) {
     if (seen.has(pair.canonicalId)) {
       return {
         error: `canonical ${pair.canonicalId} is also listed as a merged item`,
       };
+    }
+    const disagree = pairs.find(
+      (other) =>
+        other.group === pair.group &&
+        other.decision !== undefined &&
+        pair.decision !== undefined &&
+        JSON.stringify(other.decision) !== JSON.stringify(pair.decision)
+    );
+    if (disagree) {
+      return { error: `group ${pair.group} has two decisions` };
     }
   }
   return { pairs };
@@ -169,8 +232,13 @@ export interface StoredSource {
 export interface UnmergeSnapshot {
   /** Canonicals, every item merged into them, and every paired id. */
   items: ReadonlyMap<string, UnmergeItemRow>;
-  /** `item_sources` in position order, for canonicals and paired ids. */
+  /** `item_sources` in position order, for canonicals, paired ids and the
+   * published rows a restored story matches. */
   sources: ReadonlyMap<string, readonly StoredSource[]>;
+  /** Published rows within `MERGE_LOOKBACK_SEC` of a paired row: where a
+   * restored story's live twin would be (`twinMatches`). Each one that
+   * matches has its full row, its merged items and its sources above. */
+  published: readonly StoryRef[];
 }
 
 /** Restored rows and canonicals inside this window are left alone: every
@@ -187,6 +255,9 @@ export const UNMERGE_QUIET_SEC = Math.max(
 export type PairOutcome =
   | { action: "restore"; leadId: ItemId; status: "published" | "rejected" }
   | { action: "regroup"; leadId: ItemId }
+  /** The story is already live as `twinId`: the row stays merged, now into
+   * it, as ingest would have merged it had the wrong canonical not existed. */
+  | { action: "repoint"; twinId: ItemId; rule: TwinRule | "same-as" }
   | { action: "noop"; reason: "already-unmerged" }
   | {
       action: "skip";
@@ -196,9 +267,27 @@ export type PairOutcome =
         | "canonical-not-published"
         | "merged-elsewhere"
         | "inside-quiet-window"
-        | "demoted-canonical";
+        | "demoted-canonical"
+        /** A published row is likely the same event under another URL; set
+         * `sameAs` or `distinct` on the pair. */
+        | "needs-decision"
+        /** The live twin is the wrong canonical itself: not a wrong merge. */
+        | "twin-is-canonical"
+        /** The live twin is written by another batch of this request (a
+         * canonical, or another group's twin); a rerun picks it up. */
+        | "twin-busy"
+        /** Another group of this request restores the same story; a rerun
+         * after that apply re-points this one to it. */
+        | "twin-restores-first";
       detail: string;
     };
+
+/** Pair actions that write. */
+export const MOVED_ACTIONS: ReadonlySet<PairOutcome["action"]> = new Set([
+  "restore",
+  "regroup",
+  "repoint",
+]);
 
 export interface ColumnChange {
   column: string;
@@ -228,7 +317,9 @@ export function rowState(row: UnmergeItemRow): RowState {
 
 export interface RowTarget {
   id: ItemId;
-  role: "canonical" | "lead" | "twin";
+  /** `twin`: merged into a restored lead. `repointed`: merged into a live
+   * twin. `live-twin`: the published row that absorbs a re-pointed story. */
+  role: "canonical" | "lead" | "twin" | "repointed" | "live-twin";
   /** The row is written only while it still holds every one of these
    * values: the plan derived its writes from all of them. */
   guard: RowState;
@@ -284,11 +375,11 @@ export interface ChangeSet {
 export interface CanonicalPlan extends ChangeSet {
   pairs: { pair: UnmergePair; outcome: PairOutcome }[];
   attribution: AttributedSource[];
-  /** The lead image a reader sees (`displayLead`) on the canonical and on
-   * each restored row, before and after. */
+  /** The lead image a reader sees (`displayLead`) on the canonical, each
+   * restored row and each live twin, before and after. */
   leads: {
     id: ItemId;
-    role: "canonical" | "lead";
+    role: "canonical" | "lead" | "live-twin";
     before: string | null;
     after: string | null;
   }[];
@@ -613,13 +704,165 @@ export function planUnmerge(
     .sort((a, b) => a - b);
   const restoredScale =
     scales.length > 0 ? scales[Math.floor(scales.length / 2)] : 1;
+  const state: PlanState = {
+    snapshot,
+    nowMs,
+    restoredScale,
+    canonicalIds: new Set(byCanonical.keys()),
+    claimedTwins: new Set(),
+    restored: [],
+  };
   return {
     nowMs,
     restoredScale,
     canonicals: [...byCanonical].map(([canonicalId, list]) =>
-      planCanonical(canonicalId, list, snapshot, nowMs, restoredScale)
+      planCanonical(canonicalId, list, state)
     ),
   };
+}
+
+/** What the plan's canonicals share, so one request never writes a live twin
+ * from two batches or restores one story twice. */
+interface PlanState {
+  snapshot: UnmergeSnapshot;
+  nowMs: number;
+  restoredScale: number;
+  canonicalIds: ReadonlySet<string>;
+  /** Live twins an earlier group of this request re-points into. */
+  claimedTwins: Set<string>;
+  /** Rows of the groups this request publishes so far. */
+  restored: StoryRef[];
+}
+
+const storyRef = (row: UnmergeItemRow): StoryRef => ({
+  id: row.id,
+  source_id: row.source_id,
+  url: row.url,
+  title: row.title,
+  published_at: row.published_at,
+});
+
+const short = (id: string) => id.slice(0, 8);
+
+type GroupRoute =
+  | { kind: "restore" }
+  | { kind: "repoint"; twin: UnmergeItemRow; rule: TwinRule | "same-as" }
+  | { kind: "skip"; reason: SkipReason; detail: string };
+
+/** Whether a group publishes, joins its live twin, or waits: identity with a
+ * published row re-points it, likely the same event holds it for a human,
+ * and the same story restored by an earlier group defers it to a rerun. */
+function routeGroup(
+  state: PlanState,
+  canonical: UnmergeItemRow,
+  rows: readonly UnmergeItemRow[],
+  decision: TwinDecision | undefined
+): GroupRoute {
+  const refs = rows.map(storyRef);
+  if (decision?.kind === "same-as") {
+    return repointRoute(state, canonical, rows, decision.twinId, "same-as");
+  }
+  if (decision?.kind !== "distinct") {
+    const matches = twinMatches(refs, state.snapshot.published);
+    const same = matches.filter((m) => m.rule !== null);
+    const sameIds = [...new Set(same.map((m) => m.ref.id))];
+    if (sameIds.length > 1) {
+      return {
+        kind: "skip",
+        reason: "needs-decision",
+        detail: `the same story as several live rows (${sameIds.map(short).join(", ")}); set sameAs`,
+      };
+    }
+    if (same.length > 0) {
+      return repointRoute(
+        state,
+        canonical,
+        rows,
+        same[0].ref.id as ItemId,
+        same[0].rule as TwinRule
+      );
+    }
+    const restoredSame = twinMatches(refs, state.restored).find(
+      (m) => m.rule !== null
+    );
+    if (restoredSame) {
+      return {
+        kind: "skip",
+        reason: "twin-restores-first",
+        detail: `the same story (${restoredSame.rule}) as ${short(restoredSame.ref.id)}, which this request restores; rerun after the apply to re-point it`,
+      };
+    }
+    // A row under the relevance bar restores as rejected and is never shown.
+    const publishes = rows.some(
+      (row) => asNumber(row.llm_relevance, 0.5) >= RELEVANCE_THRESHOLD
+    );
+    const likely = [
+      ...matches.filter((m) => m.ref.id !== canonical.id),
+      ...twinMatches(refs, state.restored),
+    ];
+    if (publishes && likely.length > 0) {
+      return {
+        kind: "skip",
+        reason: "needs-decision",
+        detail: `likely the same event as ${likely
+          .map(
+            (m) => `${short(m.ref.id)} [${m.ref.source_id}] "${m.ref.title}"`
+          )
+          .join("; ")}; set sameAs or distinct on the pair`,
+      };
+    }
+  }
+  state.restored.push(...refs);
+  return { kind: "restore" };
+}
+
+function repointRoute(
+  state: PlanState,
+  canonical: UnmergeItemRow,
+  rows: readonly UnmergeItemRow[],
+  twinId: ItemId,
+  rule: TwinRule | "same-as"
+): GroupRoute {
+  const skip = (reason: SkipReason, detail: string): GroupRoute => ({
+    kind: "skip",
+    reason,
+    detail,
+  });
+  if (twinId === canonical.id) {
+    return skip(
+      "twin-is-canonical",
+      `the same story (${rule}) as its canonical: the merge was right; drop the pair`
+    );
+  }
+  const twin = state.snapshot.items.get(twinId);
+  if (!twin) return skip("missing-item", `no items row for twin ${twinId}`);
+  if (twin.status !== "published") {
+    return skip(
+      "needs-decision",
+      `twin ${short(twinId)} is ${twin.status}, not published`
+    );
+  }
+  if (state.canonicalIds.has(twinId) || state.claimedTwins.has(twinId)) {
+    return skip(
+      "twin-busy",
+      `twin ${short(twinId)} is written by another batch of this request; rerun after the apply`
+    );
+  }
+  const quietSince = Math.floor(state.nowMs / 1000) - UNMERGE_QUIET_SEC;
+  if (twin.published_at > quietSince) {
+    return skip(
+      "inside-quiet-window",
+      `twin ${short(twinId)} is inside the send window; eligible after ${new Date((twin.published_at + UNMERGE_QUIET_SEC) * 1000).toISOString()}`
+    );
+  }
+  if (ingestMergeInto(twin, rows, () => []).demoted.size > 0) {
+    return skip(
+      "needs-decision",
+      `an official row would take over live twin ${short(twinId)}`
+    );
+  }
+  state.claimedTwins.add(twinId);
+  return { kind: "repoint", twin, rule };
 }
 
 function membersOf(
@@ -674,6 +917,7 @@ interface CanonicalContext {
    * so one canonical's odd stored score does not lift its restored rows. */
   restoredScale: number;
   outcomes: Map<string, PairOutcome>;
+  snapshot: UnmergeSnapshot;
 }
 
 type SkipReason = Extract<PairOutcome, { action: "skip" }>["reason"];
@@ -681,10 +925,9 @@ type SkipReason = Extract<PairOutcome, { action: "skip" }>["reason"];
 function planCanonical(
   canonicalId: ItemId,
   pairs: readonly UnmergePair[],
-  snapshot: UnmergeSnapshot,
-  nowMs: number,
-  restoredScale: number
+  state: PlanState
 ): CanonicalPlan {
+  const { snapshot, nowMs, restoredScale } = state;
   const plan: CanonicalPlan = {
     canonicalId,
     pairs: [],
@@ -714,6 +957,27 @@ function planCanonical(
 
   const outcomes = new Map<string, PairOutcome>();
   const groups = restorableGroups(canonical, pairs, snapshot, nowMs, outcomes);
+  const routes = new Map<string, GroupRoute>();
+  for (const [group, ids] of groups) {
+    const route = routeGroup(
+      state,
+      canonical,
+      ids.map((id) => snapshot.items.get(id) as UnmergeItemRow),
+      pairs.find((p) => p.group === group && p.decision)?.decision
+    );
+    if (route.kind === "skip") {
+      for (const id of ids) {
+        outcomes.set(id, {
+          action: "skip",
+          reason: route.reason,
+          detail: route.detail,
+        });
+      }
+      groups.delete(group);
+    } else {
+      routes.set(group, route);
+    }
+  }
   const members = membersOf(snapshot, canonicalId);
   const groupOf = new Map<string, string>();
   for (const [group, ids] of groups)
@@ -739,8 +1003,16 @@ function planCanonical(
       canonicalScale: storedScale(snapshot, canonicalId, nowMs) ?? 1,
       restoredScale,
       outcomes,
+      snapshot,
     };
-    for (const ids of groups.values()) planRestoredGroup(ctx, ids);
+    for (const [group, ids] of groups) {
+      const route = routes.get(group);
+      if (route?.kind === "repoint") {
+        planRepointGroup(ctx, ids, route.twin, route.rule);
+      } else {
+        planRestoredGroup(ctx, ids);
+      }
+    }
     planShrunkCanonical(ctx);
   }
 
@@ -791,7 +1063,8 @@ function restorableGroups(
       item.status !== "merged" ||
       pairs.some(
         (o) => o.group === pair.group && o.mergedId === item.duplicate_of
-      )
+      ) ||
+      mergedIntoLiveTwin(item, pairs, pair.group, snapshot)
     ) {
       outcomes.set(pair.mergedId, {
         action: "noop",
@@ -828,6 +1101,20 @@ function restorableGroups(
   return groups;
 }
 
+/** An earlier apply re-pointed `item` to its live twin. */
+function mergedIntoLiveTwin(
+  item: UnmergeItemRow,
+  pairs: readonly UnmergePair[],
+  group: string,
+  snapshot: UnmergeSnapshot
+): boolean {
+  const decision = pairs.find((p) => p.group === group && p.decision)?.decision;
+  if (decision?.kind === "same-as")
+    return item.duplicate_of === decision.twinId;
+  const twin = snapshot.published.find((ref) => ref.id === item.duplicate_of);
+  return twin !== undefined && sameStoryRule(storyRef(item), twin) !== null;
+}
+
 /** `rankScore` of a row and its merged members at the 72h point. */
 function clusterScore(
   row: UnmergeItemRow,
@@ -855,6 +1142,162 @@ function clusterScore(
   });
 }
 
+/** The group's rows as merge candidates, as the ingest run that fetched them
+ * saw them. */
+function replayRows(
+  rows: readonly UnmergeItemRow[],
+  sourcesOf: (row: UnmergeItemRow) => FetchedItemSource[]
+) {
+  const newRows = rows.map((row) => ({
+    id: row.id,
+    source: { id: row.source_id, type: "", config: "{}", enabled: 1 },
+    item: fetchedItem(row, sourcesOf(row)),
+  }));
+  const scored = new Map<string, ItemScore>();
+  for (const row of rows) {
+    const score = itemScore(row);
+    if (score) scored.set(row.id, score);
+  }
+  const tags = new Map(
+    rows.map((row) => [row.id as string, parseTagsJson(row.tags)])
+  );
+  const replayNow = Math.max(...rows.map((row) => row.fetched_at)) * 1000;
+  return {
+    newRows,
+    scored,
+    tags,
+    candidates: buildMergeCandidates(newRows, scored, tags, replayNow),
+  };
+}
+
+/** Ingest's merge plan for the group clustered with its live twin. */
+function ingestMergeInto(
+  twin: UnmergeItemRow,
+  rows: readonly UnmergeItemRow[],
+  sourcesOf: (row: UnmergeItemRow) => FetchedItemSource[]
+): MergePlan {
+  const { candidates } = replayRows(rows, sourcesOf);
+  return buildMergePlan(
+    [{ new: candidates.map((c) => c.i), existing: [twin.id] }],
+    candidates,
+    toExistingCandidates([
+      {
+        ...twin,
+        points: asNumber(twin.points),
+        comments: asNumber(twin.comments),
+      },
+    ]),
+    MAX_SOURCES_PER_ITEM,
+    MAX_MERGED_TOPICS
+  );
+}
+
+/** A planned number that equals the stored one keeps the stored value, so
+ * NULL does not become 0. */
+const settled = (before: number | null, value: number) =>
+  asNumber(before) === value ? before : value;
+
+/** Merges the group into its live twin as ingest's merge into a published
+ * canonical (`existingCanonicalStatements`) would have: the twin takes the
+ * group's sources, topics, reader engagement and corroboration, and the
+ * rows stay merged, now into it. Like a restored lead, a twin with a
+ * picture of its own keeps it. */
+function planRepointGroup(
+  ctx: CanonicalContext,
+  ids: readonly ItemId[],
+  twin: UnmergeItemRow,
+  rule: TwinRule | "same-as"
+): void {
+  const { plan, nowMs, outcomes, snapshot } = ctx;
+  const rows = ids.map(
+    (id) => ctx.members.find((m) => m.id === id) as UnmergeItemRow
+  );
+  const update = withoutTwinPictures(
+    ingestMergeInto(twin, rows, (row) =>
+      ownFetchedSources(ctx, row)
+    ).canonicalUpdates.get(twin.id),
+    parseMediaManifest(twin.media_manifest, twin.image_url, twin.url)
+  );
+  if (update) {
+    const media = planExistingCanonicalMedia(twin, update);
+    const after =
+      update.extraMedia?.length || update.extraImageUrls?.length
+        ? {
+            media_manifest: serializeMediaManifest(media.manifest),
+            image_url: media.imageUrl,
+            url: twin.url,
+          }
+        : twin;
+    const tags =
+      JSON.stringify(media.topics) === JSON.stringify(parseTagsJson(twin.tags))
+        ? twin.tags
+        : JSON.stringify(media.topics);
+    const twinSources = [...(snapshot.sources.get(twin.id) ?? [])];
+    const sourcesAfter = unionSources(
+      twinSources.map(toFetchedSource),
+      update.extraSources,
+      MAX_SOURCES_PER_ITEM,
+      twin.url
+    ).map(toStoredSource);
+    if (!sameSources(sourcesAfter, twinSources)) {
+      plan.sources.push({
+        itemId: twin.id,
+        before: twinSources,
+        after: sourcesAfter,
+      });
+    }
+    const rank =
+      clusterScore(
+        twin,
+        [...membersOf(snapshot, twin.id), ...rows],
+        update.maxPoints,
+        update.maxComments,
+        nowMs
+      ) * (storedScale(snapshot, twin.id, nowMs) ?? ctx.restoredScale);
+    plan.rows.push({
+      id: twin.id,
+      role: "live-twin",
+      guard: rowState(twin),
+      changes: [
+        ...change(
+          "points",
+          twin.points,
+          settled(twin.points, update.maxPoints)
+        ),
+        ...change(
+          "comments",
+          twin.comments,
+          settled(twin.comments, update.maxComments)
+        ),
+        ...change("tags", twin.tags, tags),
+        ...change("image_url", twin.image_url, after.image_url),
+        ...change("media_manifest", twin.media_manifest, after.media_manifest),
+        ...change("rank_score", twin.rank_score, rank),
+      ],
+    });
+    plan.leads.push({
+      id: twin.id,
+      role: "live-twin",
+      before: displayLead(twin),
+      after: displayLead(after),
+    });
+  }
+  for (const row of rows) {
+    if (row.notifications > 0) {
+      plan.lossy.push(
+        `${short(row.id)} already has ${row.notifications} notifications row(s)`
+      );
+    }
+    plan.rows.push({
+      id: row.id,
+      role: "repointed",
+      guard: rowState(row),
+      changes: change("duplicate_of", row.duplicate_of, twin.id),
+    });
+    outcomes.set(row.id, { action: "repoint", twinId: twin.id, rule });
+  }
+}
+
 /** Replays the group as the ingest run would have written it with no
  * canonical to join: the merge planner picks the lead among the group and
  * folds the rest in; `planNewItemWrite` writes the lead's row. */
@@ -866,21 +1309,9 @@ function planRestoredGroup(
   const rows = ids.map(
     (id) => ctx.members.find((m) => m.id === id) as UnmergeItemRow
   );
-  const newRows = rows.map((row) => ({
-    id: row.id,
-    source: { id: row.source_id, type: "", config: "{}", enabled: 1 },
-    item: fetchedItem(row, ownFetchedSources(ctx, row)),
-  }));
-  const scored = new Map<string, ItemScore>();
-  for (const row of rows) {
-    const score = itemScore(row);
-    if (score) scored.set(row.id, score);
-  }
-  const tags = new Map(
-    rows.map((row) => [row.id as string, parseTagsJson(row.tags)])
+  const { newRows, scored, tags, candidates } = replayRows(rows, (row) =>
+    ownFetchedSources(ctx, row)
   );
-  const replayNow = Math.max(...rows.map((row) => row.fetched_at)) * 1000;
-  const candidates = buildMergeCandidates(newRows, scored, tags, replayNow);
   const mergePlan =
     rows.length > 1
       ? buildMergePlan(

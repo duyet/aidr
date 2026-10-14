@@ -3,6 +3,7 @@
  * validated hex ids inlined, so the Worker binding and a local
  * `wrangler d1 execute --remote` (the CLI dry run) run the same statements.
  */
+import { MERGE_LOOKBACK_SEC } from "../ingest/context.js";
 import type {
   ItemId,
   StoredSource,
@@ -10,6 +11,7 @@ import type {
   UnmergePair,
   UnmergeSnapshot,
 } from "./plan.js";
+import { twinMatches } from "./twins.js";
 
 export type SelectRows = (sql: string) => Promise<Record<string, unknown>[]>;
 
@@ -50,19 +52,23 @@ export function unmergeSourcesSql(itemIds: readonly ItemId[]): string {
   ORDER BY item_id, position`;
 }
 
+/** Published rows in `[from, to]` (epoch seconds), as story identities. */
+export function publishedWindowSql(from: number, to: number): string {
+  return `SELECT id, source_id, url, title, published_at FROM items
+  WHERE status = 'published' AND published_at BETWEEN ${Math.floor(from)} AND ${Math.floor(to)}`;
+}
+
 export async function loadUnmergeSnapshot(
   select: SelectRows,
   pairs: readonly UnmergePair[]
 ): Promise<UnmergeSnapshot> {
-  const canonicalIds = [...new Set(pairs.map((p) => p.canonicalId))];
   const items = new Map<string, UnmergeItemRow>();
   const sources = new Map<string, StoredSource[]>();
-  for (const canonicals of chunks(canonicalIds, ID_CHUNK)) {
-    const inChunk = new Set<string>(canonicals);
-    const paired = pairs
-      .filter((p) => inChunk.has(p.canonicalId))
-      .map((p) => p.mergedId);
-    for (const row of await select(unmergeItemsSql(canonicals, paired))) {
+  const loadRows = async (
+    canonicalIds: readonly ItemId[],
+    pairedIds: readonly ItemId[]
+  ) => {
+    for (const row of await select(unmergeItemsSql(canonicalIds, pairedIds))) {
       const item = row as unknown as UnmergeItemRow;
       items.set(item.id, {
         ...item,
@@ -71,7 +77,7 @@ export async function loadUnmergeSnapshot(
         has_vi: Number(item.has_vi ?? 0),
       });
     }
-    for (const row of await select(unmergeSourcesSql(canonicals))) {
+    for (const row of await select(unmergeSourcesSql(canonicalIds))) {
       const itemId = String(row.item_id);
       const list = sources.get(itemId) ?? [];
       list.push({
@@ -83,8 +89,51 @@ export async function loadUnmergeSnapshot(
       });
       sources.set(itemId, list);
     }
+  };
+
+  const canonicalIds = [...new Set(pairs.map((p) => p.canonicalId))];
+  for (const canonicals of chunks(canonicalIds, ID_CHUNK)) {
+    const inChunk = new Set<string>(canonicals);
+    await loadRows(
+      canonicals,
+      pairs.filter((p) => inChunk.has(p.canonicalId)).map((p) => p.mergedId)
+    );
   }
-  return { items, sources };
+
+  // Where a restored story could already be live: published rows within the
+  // merge lookback of a paired row. Rows that match, and every `sameAs`,
+  // load in full, as canonicals (their merged items and sources too).
+  const paired = pairs
+    .map((p) => items.get(p.mergedId))
+    .filter((row): row is UnmergeItemRow => row !== undefined);
+  if (paired.length === 0) return { items, sources, published: [] };
+  const times = paired.map((row) => row.published_at);
+  const published = (
+    await select(
+      publishedWindowSql(
+        Math.min(...times) - MERGE_LOOKBACK_SEC,
+        Math.max(...times) + MERGE_LOOKBACK_SEC
+      )
+    )
+  ).map((row) => ({
+    id: String(row.id),
+    source_id: String(row.source_id),
+    url: String(row.url),
+    title: String(row.title),
+    published_at: Number(row.published_at),
+  }));
+  const twinIds = new Set<ItemId>();
+  for (const row of paired) {
+    for (const { ref } of twinMatches([row], published)) {
+      twinIds.add(ref.id as ItemId);
+    }
+  }
+  for (const pair of pairs) {
+    if (pair.decision?.kind === "same-as") twinIds.add(pair.decision.twinId);
+  }
+  const missing = [...twinIds].filter((id) => !items.has(id));
+  for (const twins of chunks(missing, ID_CHUNK)) await loadRows(twins, []);
+  return { items, sources, published };
 }
 
 /** The Worker's D1 binding as a `SelectRows`. */

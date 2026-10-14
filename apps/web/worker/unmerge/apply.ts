@@ -17,6 +17,7 @@ import { INSERT_ITEM_SOURCE_SQL } from "../ingest/write.js";
 import {
   type ChangeSet,
   type ItemId,
+  MOVED_ACTIONS,
   ROW_STATE_COLUMNS,
   type RowTarget,
   type SourcesTarget,
@@ -259,15 +260,15 @@ export async function applyChangeSets(
   return result;
 }
 
-const MOVED = new Set(["restore", "regroup"]);
-
 /** Statements for one canonical's plan; empty when nothing moves. */
 export function canonicalStatements(
   db: D1Database,
   plan: UnmergePlan["canonicals"][number],
   ts: number
 ): D1PreparedStatement[] {
-  const moved = plan.pairs.filter(({ outcome }) => MOVED.has(outcome.action));
+  const moved = plan.pairs.filter(({ outcome }) =>
+    MOVED_ACTIONS.has(outcome.action)
+  );
   if (moved.length === 0) return [];
   return changeSetStatements(db, plan, ts, "unmerge", {
     pairs: moved,
