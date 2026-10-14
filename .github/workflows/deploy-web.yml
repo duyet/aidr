@@ -113,6 +113,12 @@ jobs:
           echo "Smoke failed after $max_attempts attempts" >&2
           exit 1
 
+      # Cached HTML from the previous build must still find its /assets/*
+      # chunks (issue #702). The canonical URLs are what the CDN and Worker
+      # caches serve; the cache-busted ones are this build's own HTML.
+      - name: Smoke — referenced /assets/* load
+        run: pnpm --filter @aidr/web run smoke:assets
+
       # Fail-closed check for CLERK_SECRET_KEY in the Worker environment.
       # Worker secrets are pushed by `pnpm sync-env` (wrangler secret bulk),
       # not by this workflow, so their absence is invisible until a request
