@@ -296,6 +296,41 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   `failed`. If a response is lost, the batch ids are
   `SELECT DISTINCT ts FROM admin_audit WHERE action LIKE 'unmerge.%' ORDER BY ts DESC`.
 
+### Tag backfill (admin)
+
+`POST /api/admin/tags/backfill` with `{ dryRun? }` re-tags published
+stories stored with `tags = '[]'` before ingest had fallback tags. It also
+re-tags the canonicals an unmerge leaves untagged (#758), so run it after an
+unmerge apply reports `untaggedCanonicals`. It is a dry run unless
+`dryRun: false`. `agent backfill-tags` plans locally from production D1
+through `wrangler d1 execute`, SELECT only, and `--apply` posts to the
+endpoint, which re-plans from live rows. Neither calls a model.
+
+- Each untagged published story gets `fallbackTags` on its own title and
+  source. The plan sorts the stories into three lists:
+  - `tag`: stories it names something for, with the tags to write;
+  - `noMatch`: stories it names nothing for, which stay `[]`;
+  - `recent`: stories younger than `RANK_RECOMPUTE_WINDOW_SEC` (72h).
+    Every ingest rewrites their `rank_score`, which would turn their undo
+    into a conflict, so they wait for a rerun after they age out.
+- The apply writes only `items.tags`. It uses the unmerge's guarded batch
+  (`changeSetStatements`), one batch per story under one batch id. Each
+  story gets an `unmerge.row` audit row whose guard holds every
+  `ROW_STATE_COLUMNS` value, and an `unmerge.canonical` row with
+  `tagBackfill`. A story changed after the plan read it is not written
+  and is listed in `stale`. A rerun finds only the stories still untagged.
+- Undo is `agent unmerge --undo <batchId> [--apply]`, the same endpoint as
+  an unmerge undo. It puts `[]` back on each story that still holds the
+  tags the backfill wrote. A story a later write changed (a merge added
+  tags) is a `conflict` and is left alone.
+- Not written, so undo does not touch them either: `topics` counts,
+  `topic_daily`, `learned_keywords` and `/trends`. A story counts there on
+  the day ingest saw it. `?tag=` filters, card topics, title highlight,
+  RSS categories and trending chips read `items.tags`, so they change.
+- After a backfill re-tags an unmerge's canonical, that unmerge's undo
+  reports `conflict` for it until the backfill batch is undone. Undo the
+  newest batch first, as for unmerges.
+
 ## Day archive (`/date/YYYY-MM-DD`)
 
 Read-only page per **audience day** (`Asia/Ho_Chi_Minh`, the key
@@ -774,6 +809,38 @@ Batches of 5.
   `topic_daily` each ingest (~15 min). One mapping call asks about at
   most 100 unseen tags (`MAX_UNSEEN_TOPICS_IN_PROMPT`); tags past that
   become their own canonical, the same as after a failed call.
+- **Fallback tags (#770).** Jev answers `none` for both entity and theme on
+  about 9% of stories (Airbnb, Samsung, Vietnamese public-sector news),
+  which used to publish with `tags = []` and drop out of `?tag=` pages and
+  trending chips. `normalizeTopics` gives a story with no scorer tags
+  `fallbackTags` (`worker/tag-fallback.ts`), so ingest, `backfill-score`
+  and reprocess all apply it. It calls no model. It reads the `topics`
+  rows normalize already loads and returns only names that are their own
+  canonical, so the mapping call never sees them. The rules, in order:
+  - headline names on a fixed entity list (labs, companies, products, a
+    few people and countries), matched on capitalised ASCII words with the
+    longest name first, so Vietnamese words never match;
+  - six explicit aliases (iPhone → `apple`, Starship → `spacex`, AWS →
+    `amazon`, …). `topics` alias rows are not used, because some are
+    wrong for a headline (`autonomous-vehicles` → `waymo`);
+  - English and Vietnamese theme keywords (`chips`, `robotics`,
+    `data-center`, `smartphone`, `vietnam`, `innovation`, …);
+  - `research` for arXiv and HF papers.
+
+  At most 3 tags, entities first, because the card topic is `tags[0]`.
+  A story it names nothing for stays `[]`. Fallback tags count in `topics`
+  and reach `topic_daily` through learn-topics like scorer tags. When the
+  normalize-topics step itself fails, ingest still stores `[]` (#771).
+  Measured on production, 2026-10-15:
+  - it tags 115 of the 233 untagged published stories;
+  - on a random 40 of them, 52 of 55 tags were right, 54 counting a
+    company the headline names only as a rival;
+  - on 1,438 chat-rubric rows, 88% of its tags were already among the
+    row's 3-6 tags.
+
+  Keyword rules for `security`, `energy`, `stock-market` and `research`,
+  and generic topic words (`model`, `cloud`, `memory`), were dropped as
+  too often wrong.
 - Emerging entity/model names that clear a frequency/growth bar promote
   into `learned_keywords` for title highlight and growth-boosted
   homepage trending chips (`worker/topic-learning.ts`).

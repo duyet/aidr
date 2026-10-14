@@ -37,6 +37,9 @@ import {
 import type { Env } from "../types.js";
 import { weeklyPrompt } from "../weekly.js";
 
+/** A scored story with these raw tags and a headline that names nothing. */
+const story = (tags: string[]) => ({ tags, title: "", sourceId: "hn" });
+
 /** A non-streaming chat body as the SSE stream callAnyrouter reads:
  *  each choice's `message` becomes a `delta`. */
 function asStream(body: {
@@ -364,7 +367,7 @@ describe("prompt injection: input side", () => {
     quiet();
     const canonicals = await normalizeTopics(
       topicsEnv([]),
-      new Map([["item-1", [ATTACK, "Open Source"]]]),
+      new Map([["item-1", story([ATTACK, "Open Source"])]]),
       1
     );
     expect(prompts.length).toBe(1);
@@ -569,7 +572,7 @@ describe("prompt injection: output side", () => {
     );
     const canonicals = await normalizeTopics(
       topicsEnv([{ name: "llm", canonical: "llm" }]),
-      new Map([["item-1", ["LLMs", "Rust"]]]),
+      new Map([["item-1", story(["LLMs", "Rust"])]]),
       1
     );
     expect(canonicals.get("item-1")).toEqual(["llm", "rust"]);

@@ -2,7 +2,7 @@ import { BACKFILL_SCORE_CAP, buildUnscoredItemsQuery } from "../backfill.js";
 import { scoreItems } from "../llm.js";
 import { type RankSignalRow, rankScore, rowRankSignals } from "../ranking.js";
 import { recordStep } from "../run-stats.js";
-import { normalizeTopics } from "../topics.js";
+import { normalizeTopics, type ScoredStoryTags } from "../topics.js";
 import { llmStep } from "../workflow-step.js";
 import {
   type IngestContext,
@@ -49,13 +49,19 @@ export async function backfillScores(
             source: row.source_id,
           }))
         );
-        const rawTagsByItem = new Map<string, string[]>();
+        const storiesById = new Map<string, ScoredStoryTags>();
         for (const result of scoredRows) {
           tokens += result.tokens;
           const row = rows[result.i];
-          if (row) rawTagsByItem.set(row.id, result.tags);
+          if (row) {
+            storiesById.set(row.id, {
+              tags: result.tags,
+              title: row.title,
+              sourceId: row.source_id,
+            });
+          }
         }
-        const canonical = await normalizeTopics(env, rawTagsByItem, Date.now());
+        const canonical = await normalizeTopics(env, storiesById, Date.now());
         const now = Date.now();
         for (const result of scoredRows) {
           const row = rows[result.i];

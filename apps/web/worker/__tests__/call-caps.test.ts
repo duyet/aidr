@@ -50,6 +50,9 @@ import { ratePendingTranslations } from "../translation-qa.js";
 import { QA_MAX_CALLS } from "../translation-review.js";
 import type { Env } from "../types.js";
 
+/** A scored story with these raw tags and a headline that names nothing. */
+const story = (tags: string[]) => ({ tags, title: "", sourceId: "hn" });
+
 /** A non-streaming chat body as the SSE stream callAnyrouter reads:
  *  each choice's `message` becomes a `delta`. */
 function asStream(body: {
@@ -695,7 +698,10 @@ describe("dedupe and topics caps per run", () => {
       batch: async () => [],
     } as unknown as D1Database;
     const tags = new Map(
-      Array.from({ length: 200 }, (_, i) => [`item-${i}`, [`fresh-tag-${i}a`]])
+      Array.from({ length: 200 }, (_, i) => [
+        `item-${i}`,
+        story([`fresh-tag-${i}a`]),
+      ])
     );
     await normalizeTopics({ ...env, DB: db }, tags, 1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -737,7 +743,10 @@ describe("dedupe and topics caps per run", () => {
       batch: async () => [],
     } as unknown as D1Database;
     const tags = new Map(
-      Array.from({ length: cap + 40 }, (_, i) => [`item-${i}`, [`fresh-${i}`]])
+      Array.from({ length: cap + 40 }, (_, i) => [
+        `item-${i}`,
+        story([`fresh-${i}`]),
+      ])
     );
     const canonical = await normalizeTopics({ ...env, DB: db }, tags, 1);
     expect(fetchMock).toHaveBeenCalledTimes(1);

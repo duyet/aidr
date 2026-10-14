@@ -9,12 +9,24 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  backfillTags,
+  reprocessToday,
+  undoUnmerge,
+} from "../admin/handlers.js";
+import { backfillScores } from "../ingest/backfill-score.js";
 import type { IngestContext, NewRow } from "../ingest/context.js";
 import { EMPTY_MERGE_PLAN } from "../ingest/merge.js";
 import { scoreNewRows } from "../ingest/score.js";
 import { normalizeNewRowTopics } from "../ingest/topics.js";
 import { writeItems } from "../ingest/write.js";
+import {
+  applyTagBackfill,
+  loadTagBackfill,
+  planTagBackfill,
+} from "../tag-backfill.js";
 import type { Env } from "../types.js";
+import { d1Select } from "../unmerge/load.js";
 
 const migrationsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -84,14 +96,19 @@ const SAMSUNG = id(0x770);
 const PROMO = id(0x771);
 const OPENAI = id(0x772);
 
-function newRow(rowId: string, sourceId: string, title: string): NewRow {
+function newRow(
+  rowId: string,
+  sourceId: string,
+  title: string,
+  publishedAt = NOW_SEC - 600
+): NewRow {
   return {
     id: rowId,
     source: { id: sourceId, type: "rss", config: "{}", enabled: 1 },
     item: {
       url: `https://example.test/${rowId.slice(-4)}`,
       title,
-      publishedAt: NOW_SEC - 600,
+      publishedAt,
     },
   };
 }
@@ -179,9 +196,11 @@ afterEach(() => {
 
 const tagsOf = (rowId: string): string[] =>
   JSON.parse(
-    (db.prepare("SELECT tags FROM items WHERE id = ?").get(rowId) as {
-      tags: string;
-    }).tags
+    (
+      db.prepare("SELECT tags FROM items WHERE id = ?").get(rowId) as {
+        tags: string;
+      }
+    ).tags
   );
 
 describe("ingest tags a story Jev answers none/none for (#770)", () => {
@@ -208,8 +227,160 @@ describe("ingest tags a story Jev answers none/none for (#770)", () => {
     expect(tagsOf(SAMSUNG)).toEqual(["samsung", "smartphone"]);
     expect(tagsOf(PROMO)).toEqual([]);
     expect(tagsOf(OPENAI)).toEqual(["openai", "llm"]);
-    expect(modelCalls.every((call) => call.startsWith("/api/v1/systemone"))).toBe(
-      true
+    expect(
+      modelCalls.every((call) => call.startsWith("/api/v1/systemone"))
+    ).toBe(true);
+  });
+});
+
+/** Writes rows the way ingest did when a score batch failed: unscored, no
+ * tags, published. */
+async function writeUnscored(rows: NewRow[]) {
+  await writeItems(context(db), {
+    newRows: rows,
+    scored: new Map(),
+    translated: new Map(),
+    mergePlan: EMPTY_MERGE_PLAN,
+    canonicalTagsByItem: new Map(),
+    now: NOW.getTime(),
+  });
+}
+
+describe("every scoring path gets the fallback (#770)", () => {
+  it("backfill-score", async () => {
+    await writeUnscored(ROWS);
+    expect(tagsOf(SAMSUNG)).toEqual([]);
+
+    expect((await backfillScores(context(db))).scoredCount).toBe(3);
+    expect(tagsOf(SAMSUNG)).toEqual(["samsung", "smartphone"]);
+    expect(tagsOf(PROMO)).toEqual([]);
+    expect(tagsOf(OPENAI)).toEqual(["openai", "llm"]);
+    expect(
+      modelCalls.every((call) => call.startsWith("/api/v1/systemone"))
+    ).toBe(true);
+  });
+
+  it("reprocess", async () => {
+    await writeUnscored(ROWS);
+
+    const result = await reprocessToday(env(db), { steps: ["score"] });
+    expect(result).toMatchObject({ scored: 3 });
+    expect(tagsOf(SAMSUNG)).toEqual(["samsung", "smartphone"]);
+    expect(tagsOf(PROMO)).toEqual([]);
+    expect(tagsOf(OPENAI)).toEqual(["openai", "llm"]);
+    expect(
+      modelCalls.every((call) => call.startsWith("/api/v1/systemone"))
+    ).toBe(true);
+  });
+});
+
+describe("backfill-tags repairs stories published with no tags", () => {
+  const OLD = NOW_SEC - 10 * 86_400;
+  const OLD_SAMSUNG = id(0x780);
+  const OLD_PROMO = id(0x781);
+  const RECENT = id(0x782);
+  const TAGGED = id(0x783);
+  const STORIES = [
+    newRow(OLD_SAMSUNG, "marketbrief", "Samsung Posts Record Q3 Profit", OLD),
+    newRow(
+      OLD_PROMO,
+      "techcrunch-ai",
+      "6 days to TechCrunch Disrupt 2026",
+      OLD
+    ),
+    newRow(RECENT, "marketbrief", "Samsung Cuts Phone Output by 30%"),
+    newRow(TAGGED, "hn", "Samsung ships an OpenAI phone", OLD),
+  ];
+
+  const tables = () =>
+    ["items", "topics", "topic_daily", "learned_keywords"].map((table) =>
+      db.prepare(`SELECT * FROM ${table} ORDER BY 1, 2`).all()
     );
+  const audit = () =>
+    db.prepare("SELECT ts, action, detail FROM admin_audit ORDER BY id").all();
+
+  beforeEach(async () => {
+    await writeUnscored(STORIES);
+    db.prepare("UPDATE items SET tags = ? WHERE id = ?").run(
+      '["openai"]',
+      TAGGED
+    );
+    vi.stubGlobal("fetch", () => {
+      throw new Error("backfill-tags calls no model");
+    });
+  });
+
+  it("plans with reads only", async () => {
+    const before = [tables(), audit()];
+    const dry = await backfillTags(env(db), {});
+    if ("error" in dry) throw new Error(dry.error);
+
+    expect(dry.dryRun).toBe(true);
+    expect(dry.counts).toEqual({ tag: 1, noMatch: 1, recent: 1 });
+    expect(dry.plan.tag.map(({ id, tags }) => ({ id, tags }))).toEqual([
+      { id: OLD_SAMSUNG, tags: ["samsung"] },
+    ]);
+    expect(dry.plan.noMatch.map((s) => s.id)).toEqual([OLD_PROMO]);
+    expect(dry.plan.recent.map((s) => s.id)).toEqual([RECENT]);
+    expect([tables(), audit()]).toEqual(before);
+  });
+
+  it("writes only the tags, once, and undo puts [] back", async () => {
+    const [items, ...rest] = tables();
+    const result = await backfillTags(env(db), { dryRun: false });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.applied).toMatchObject({ canonicals: 1, stale: [] });
+
+    expect(tables()).toEqual([
+      (items as Record<string, unknown>[]).map((row) =>
+        row.id === OLD_SAMSUNG ? { ...row, tags: '["samsung"]' } : row
+      ),
+      ...rest,
+    ]);
+    const afterApply = [tables(), audit()];
+    const again = await backfillTags(env(db), { dryRun: false });
+    if ("error" in again) throw new Error(again.error);
+    expect(again.counts.tag).toBe(0);
+    expect([tables(), audit()]).toEqual(afterApply);
+
+    vi.setSystemTime(NOW.getTime() + 60_000);
+    const batchId = result.applied?.batchId;
+    const undone = await undoUnmerge(env(db), { batchId, dryRun: false });
+    if ("error" in undone) throw new Error(undone.error);
+    expect(undone.plan.canonicals.map((c) => c.state)).toEqual(["undo"]);
+    expect(tables()).toEqual([items, ...rest]);
+
+    const twice = await undoUnmerge(env(db), { batchId });
+    if ("error" in twice) throw new Error(twice.error);
+    expect(twice.plan.canonicals.map((c) => c.state)).toEqual(["noop"]);
+  });
+
+  it("does not write a story that changed after the plan read it", async () => {
+    const d1 = env(db).DB;
+    const { rows, known } = await loadTagBackfill(d1Select(d1));
+    const plan = planTagBackfill(rows, known, NOW.getTime());
+    db.prepare("UPDATE items SET points = 99 WHERE id = ?").run(OLD_SAMSUNG);
+
+    const applied = await applyTagBackfill(d1, plan);
+    expect(applied).toMatchObject({ canonicals: 0, stale: [OLD_SAMSUNG] });
+    expect(tagsOf(OLD_SAMSUNG)).toEqual([]);
+  });
+
+  it("undo leaves a story alone once a later write changed it", async () => {
+    const result = await backfillTags(env(db), { dryRun: false });
+    if ("error" in result) throw new Error(result.error);
+    db.prepare("UPDATE items SET tags = ? WHERE id = ?").run(
+      '["samsung","chips"]',
+      OLD_SAMSUNG
+    );
+
+    vi.setSystemTime(NOW.getTime() + 60_000);
+    const undone = await undoUnmerge(env(db), {
+      batchId: result.applied?.batchId,
+      dryRun: false,
+    });
+    if ("error" in undone) throw new Error(undone.error);
+    expect(undone.plan.canonicals.map((c) => c.state)).toEqual(["conflict"]);
+    expect(tagsOf(OLD_SAMSUNG)).toEqual(["samsung", "chips"]);
   });
 });
