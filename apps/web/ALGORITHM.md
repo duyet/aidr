@@ -829,9 +829,9 @@ deterministic pass.
   tướng: Phải đo đếm đóng góp của công nghệ vào tăng trưởng" under a new
   headline, and shares too few words for the title rule. Replayed over
   the 3,245 merges of 2026-08-15 to 10-14 the pass now splits 27 the old
-  rule allowed (the 11 #749 pairs, 15 more different stories, and two
-  different articles on liability for rogue AI agents) and merges none it
-  did not. Over 1.14M published pairs within 72h it flags 176 instead of
+  rule allowed (the 11 #749 pairs, 15 more different stories, and one
+  pair of different articles on liability for rogue AI agents) and merges
+  none it did not. Over 1.14M published pairs within 72h it flags 176 instead of
   185; the 9 dropped pairs are all different stories.
 - Cluster gate (`worker/cluster-gate.ts`, #733): an existing id stays in
   a model cluster only when one of the cluster's new items shares
