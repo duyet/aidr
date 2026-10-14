@@ -66,7 +66,9 @@ body {
   --tick: 34px;
 }
 /* 9:16: TikTok, Reels and Shorts cover the bottom ~28% with their own text and buttons, so the
-   story copy ends above ~1130px, captions sit at 60–67% and the ticker ends by 72%. */
+   story copy ends above ~1130px, captions sit at 60–67% and the ticker ends by 72%.
+   The rank box sits top right, ending at the media's right edge, in every layout. Top left, the story
+   camera push carries it into the logo tile, and the paper card's venue line sits under it. */
 .f-9x16 {
   --pad: 56px;
   --bar-top: 72px;
@@ -76,9 +78,9 @@ body {
   --media-y: 180px;
   --media-w: 1000px;
   --media-h: 470px;
-  --rank: 150px;
-  --rank-x: 20px;
-  --rank-y: 140px;
+  --rank: 130px;
+  --rank-x: 910px;
+  --rank-y: 190px;
   --text-x: 64px;
   --text-y: 690px;
   --text-w: 952px;
@@ -639,10 +641,6 @@ body {
   left: auto;
   right: 72px;
   top: 170px;
-}
-.f-9x16 .l-full .rank {
-  left: 40px;
-  top: 210px;
 }
 .f-16x9 .l-full .statrow {
   display: flex;
