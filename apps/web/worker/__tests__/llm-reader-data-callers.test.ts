@@ -226,24 +226,27 @@ function enclosingFunction(ancestors: AstNode[]): string {
   return "<top level>";
 }
 
-/** True when an object-literal argument has `sensitive: true` as a real
- *  property. Comments, spreads, shorthand and variables do not count. */
+/** True when an object-literal argument ends up with `sensitive: true`.
+ *  The last property that could set `sensitive` decides, so a spread or
+ *  computed key after it, shorthand, variables and comments do not count. */
 function passesSensitive(call: AstNode): boolean {
-  return list(call, "arguments").some(
-    (arg) =>
-      arg.type === "ObjectExpression" &&
-      list(arg, "properties").some((prop) => {
-        const value = child(prop, "value");
-        return (
-          prop.type === "Property" &&
-          !prop.computed &&
-          !prop.shorthand &&
-          nameOf(child(prop, "key")) === "sensitive" &&
-          value?.type === "Literal" &&
-          value.value === true
-        );
-      })
-  );
+  return list(call, "arguments").some((arg) => {
+    if (arg.type !== "ObjectExpression") return false;
+    const last = list(arg, "properties").findLast(
+      (prop) =>
+        prop.type !== "Property" ||
+        prop.computed ||
+        nameOf(child(prop, "key")) === "sensitive"
+    );
+    const value = last && child(last, "value");
+    return (
+      last?.type === "Property" &&
+      !last.computed &&
+      !last.shorthand &&
+      value?.type === "Literal" &&
+      value.value === true
+    );
+  });
 }
 
 /** Places a bound name can sit without being a use of the function. */
@@ -450,6 +453,18 @@ describe("the call-site scan fails closed", () => {
       "llm.ts"
     );
     expect(scan.indirect).toEqual(["llm.ts:2"]);
+  });
+
+  it.each([
+    ["a spread overriding it", "{ sensitive: true, ...{ sensitive: false } }"],
+    ["a spread of other options", "{ sensitive: true, ...opts }"],
+  ])("does not count sensitive: true followed by %s", (_, options) => {
+    const scan = scanSnippet(
+      `${IMPORT}export function probe(opts) { return completeJson(env, [], ${options}); }`
+    );
+    expect(scan.sites).toEqual([
+      { key: "zz-probe.ts#probe", sensitive: false },
+    ]);
   });
 
   it("follows calls it can classify", () => {
