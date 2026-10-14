@@ -97,9 +97,13 @@ const TOKEN_COUNTERS: ReadonlySet<string> = new Set([
 ]);
 const COUNT_VALUE = /^\d{1,7}(?:\.\d{1,9})?$/;
 
+function isTokenCounter(key: string): boolean {
+  return TOKEN_COUNTERS.has(key.toLowerCase().replace(/[-_]/g, ""));
+}
+
 function isSecretValue(key: string, value: string): boolean {
   return !(
-    TOKEN_COUNTERS.has(key.toLowerCase().replace(/[-_]/g, "")) &&
+    isTokenCounter(key) &&
     COUNT_VALUE.test(value.replace(/^(["'])(.*)\1$/, "$2"))
   );
 }
@@ -162,7 +166,10 @@ function redactValue(value: unknown, key = ""): unknown {
       )
     );
   }
-  if (typeof value === "number" && !Number.isFinite(value)) return null;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    if (SECRET_KEY.test(key) && !isTokenCounter(key)) return "[redacted]";
+  }
   return value;
 }
 
