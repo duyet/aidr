@@ -25,6 +25,7 @@ import {
   planAssetCarry,
   readBuildAssets,
   timedFetch,
+  uncarriableAssets,
   writeCarriedAsset,
 } from "./deploy-assets";
 
@@ -98,6 +99,29 @@ async function carry(base: string, extra: Partial<CarryOptions> = {}) {
 const HOME_EN = `<a href="/date/2026-10-14?lang=en"></a><a href="/74c9e10c?lang=en"></a>`;
 
 describe("planAssetCarry", () => {
+  it("lists the newest retired files first, ties by path", () => {
+    const t0 = 1_000 * HOUR;
+    const plan = planAssetCarry(
+      ["assets/index-new.js"],
+      {
+        built: ["assets/z-live.js", "assets/b-live.js"],
+        retired: {
+          "assets/a-47h.js": t0 - 47 * HOUR,
+          "assets/m-1h.js": t0 - HOUR,
+          "assets/c-47h.js": t0 - 47 * HOUR,
+        },
+      },
+      t0
+    );
+    expect(plan.carry).toEqual([
+      "assets/b-live.js",
+      "assets/z-live.js",
+      "assets/m-1h.js",
+      "assets/a-47h.js",
+      "assets/c-47h.js",
+    ]);
+  });
+
   it("re-ships a previous build's chunk that the new build dropped", () => {
     const t0 = 1_000 * HOUR;
     const live = {
@@ -531,6 +555,43 @@ describe("carryLiveAssets", () => {
     );
   });
 
+  // 2,000 old files plus the 5 the deploy just replaced, at 10 ms a file and a
+  // 1.5 s deadline: the replaced build's files must be tried before the
+  // 47-hour-old ones that sort ahead of them by name.
+  it("tries the just-replaced build's files before older ones at the deadline", {
+    timeout: 10_000,
+  }, async () => {
+    const old = Array.from({ length: 2_000 }, (_, i) => `assets/a-${i}.js`);
+    const fresh = Array.from({ length: 5 }, (_, i) => `assets/z-live-${i}.js`);
+    const routes: Record<string, Reply> = {
+      "/asset-history.json": {
+        status: 200,
+        type: "application/json",
+        body: JSON.stringify({
+          built: fresh,
+          retired: Object.fromEntries(old.map((p) => [p, now - 47 * HOUR])),
+        }),
+      },
+    };
+    for (const path of [...old, ...fresh]) routes[`/${path}`] = js("x()");
+    const base = await liveSite(routes);
+    const savedPaths: string[] = [];
+    const result = await carry(base, {
+      deadlineMs: 1_500,
+      save: (path) => {
+        savedPaths.push(path);
+        const until = Date.now() + 10;
+        while (Date.now() < until);
+      },
+    });
+    expect(result.attempted).toBe(2_005);
+    expect(result.warnings).toContainEqual(
+      expect.stringMatching(/stopped carrying at the 1.5s deadline/)
+    );
+    expect(result.carried).toBeLessThan(2_005);
+    expect(savedPaths).toEqual(expect.arrayContaining(fresh));
+  });
+
   it("keeps a file that failed transiently, after waiting between attempts", {
     timeout: 10_000,
   }, async () => {
@@ -616,6 +677,35 @@ describe("carryLiveAssets", () => {
       expect.stringMatching(/streamed-old\.js: \d+ bytes is over/),
     ]);
     expect(sleeps).toEqual([]);
+  });
+});
+
+describe("uncarriableAssets", () => {
+  it.each([
+    "assets/index-a.js.map",
+    "assets/engine-a.wasm",
+    "assets/data-a.json",
+    "assets/worker-a.mjs",
+    "assets/clip-a.mp4",
+    "assets/noext",
+  ])("flags %s, which the carry would drop", (path) => {
+    expect(uncarriableAssets(["assets/index-a.js", path])).toEqual([path]);
+  });
+
+  it("passes every extension assetBodyProblem accepts", () => {
+    const files = ["js", "css", "woff2", "woff", "ttf", "otf", "png", "jpg"]
+      .concat(["jpeg", "gif", "webp", "avif", "ico", "svg"])
+      .map((ext) => `assets/a-1.${ext}`);
+    expect(uncarriableAssets(files)).toEqual([]);
+  });
+
+  it("agrees with the carry's own refusal", () => {
+    for (const path of ["assets/a.map", "assets/a.js"]) {
+      const refused = assetBodyProblem(path, "text/javascript", 1)?.startsWith(
+        "no expected content type"
+      );
+      expect(uncarriableAssets([path]).length === 1).toBe(Boolean(refused));
+    }
   });
 });
 
