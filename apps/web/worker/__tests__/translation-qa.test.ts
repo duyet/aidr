@@ -234,9 +234,6 @@ describe("translation review contracts", () => {
     ).toBeNull();
   });
 
-  // Laguna S 2.1 leads the VI→EN chain and often ends a JSON answer with one
-  // stray closer (probe 2026-10-01). Rejecting it costs the whole attempt.
-  // The candidate is a production `translations` row (lang en).
   describe("VI→EN candidate with a stray closer", () => {
     const candidate = {
       title:

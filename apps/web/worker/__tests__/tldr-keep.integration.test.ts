@@ -1,11 +1,3 @@
-/**
- * A TL;DR refresh whose model chain fails degrades to a headline-only
- * digest. On 2026-10-09 that fallback replaced the model digest written
- * three hours earlier, and the email, both Telegram channels and Facebook
- * sent headlines. Real SQLite with every migration and the real
- * ensureDailyTldr; only the model call is stubbed.
- */
-
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -57,10 +49,8 @@ class SqliteD1 {
   }
 }
 
-// 2026-10-09 09:59 in Ho Chi Minh City: run 69c94bba wrote a model digest.
 const FIRST_WRITE = new Date("2026-10-09T02:59:36Z");
 const DATE = "2026-10-09";
-/** Run 748c576f, 3.5 h later: both TL;DR hops timed out. */
 const CHAIN_DOWN =
   "anyrouter chain exhausted: poolside/laguna-s-2.1: anyrouter request timed out | anyrouter/auto: anyrouter request timed out";
 
@@ -175,7 +165,6 @@ describe("TL;DR refresh that degrades to headlines", () => {
       bullets_en: GOOD.bullets_en,
       bullets_vi: GOOD.bullets_vi,
     });
-    // The run log says the refresh degraded and why; health reads this text.
     expect(stats.generated).toBe(false);
     expect(stats.reason).toMatch(/^kept model digest/);
     expect(stats.reason).toContain(CHAIN_DOWN);
@@ -189,7 +178,6 @@ describe("TL;DR refresh that degrades to headlines", () => {
     tldrResult.next = FAILED;
     await ensureDailyTldr(env);
 
-    // The next run, 30 min later, must not pay for another TL;DR call.
     at(failedAt + 30 * 60_000);
     expect(await ensureDailyTldr(env)).toMatchObject({ generated: false });
     expect(generateTldr).toHaveBeenCalledTimes(2);
@@ -199,9 +187,6 @@ describe("TL;DR refresh that degrades to headlines", () => {
     expect(await ensureDailyTldr(env)).toMatchObject({ generated: true });
   });
 
-  // A model digest written when the window held 3 stories is thin once it
-  // holds 8, and refreshes every run. Keeping it on a failed refresh would
-  // pay for TL;DR every 30 minutes and leave readers 3 bullets.
   it("replaces a model digest too thin for the current stories", async () => {
     sqlite
       .prepare(

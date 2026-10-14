@@ -910,7 +910,7 @@ Every run (30 minutes).
   EN-only or English in VI (those refresh every run, so keeping them would
   retry every run). The model digest stays, only `created_at` moves, so the
   retry waits 3 hours as it would after storing headlines, and the step
-  reason reads `kept model digest from <time>: LLM thin (<error>)`. Rows
+  reason reads `kept model digest: LLM thin (<error>)`. Rows
   from before 0061 and rows the homepage inserts have `fallback` NULL and
   are replaced; a homepage rebuild of an existing row keeps its flag.
   From 2026-10-07 to 10-14, 4 of 6 title-fallback writes replaced a model

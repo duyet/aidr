@@ -123,26 +123,31 @@ export function shouldRefreshExistingSnapshot(opts: {
   hasTitleVi?: boolean;
 }): boolean {
   if (!opts.existing) return true;
-  if (isThinTldr(opts.existing, opts.itemCount)) return true;
+  if (snapshotNeedsRebuild(opts.existing, opts.itemCount, opts.hasTitleVi))
+    return true;
+  return (
+    opts.nowMs - (opts.existing.created_at ?? 0) >=
+    (opts.refreshMs ?? TLDR_REFRESH_MS)
+  );
+}
+
+/** True when a stored snapshot must be rebuilt now, whatever its age. */
+export function snapshotNeedsRebuild(
+  existing: { bullets_en: unknown[]; bullets_vi: unknown[] },
+  itemCount: number,
+  hasTitleVi = false
+): boolean {
+  if (isThinTldr(existing, itemCount)) return true;
   // EN-only snapshot: bilingual generate timed out / fell back. Refresh
   // immediately so a healthier chain can fill bullets_vi (otherwise the
   // 3h useful-snapshot gate leaves English TL;DR on the VI homepage).
-  if (
-    opts.existing.bullets_en.length > 0 &&
-    opts.existing.bullets_vi.length === 0
-  ) {
+  if (existing.bullets_en.length > 0 && existing.bullets_vi.length === 0) {
     return true;
   }
   // Frozen EN copies in bullets_vi (title-fallback before title_vi, or
   // bilingual LLM that restated English). Rebuild as soon as translations
   // exist — do not wait out TLDR_REFRESH_MS.
-  if (opts.hasTitleVi && isEnglishOnlyViTldr(opts.existing.bullets_vi)) {
-    return true;
-  }
-  return (
-    opts.nowMs - (opts.existing.created_at ?? 0) >=
-    (opts.refreshMs ?? TLDR_REFRESH_MS)
-  );
+  return hasTitleVi && isEnglishOnlyViTldr(existing.bullets_vi);
 }
 
 /**
@@ -228,21 +233,15 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
   if (!composed.ok) return composed.stats;
   const { bullets_en, bullets_vi } = composed;
 
-  // A failed refresh must not replace a useful model digest with headlines.
-  // Only the refresh clock moves, so the retry waits TLDR_REFRESH_MS as it
-  // would after storing headlines. A digest that would refresh regardless of
-  // age (thin, EN-only, English VI) is replaced, or every run would retry.
   if (
     composed.degraded &&
     existing?.fallback === 0 &&
     existingParsed &&
-    !shouldRefreshExistingSnapshot({
-      existing: existingParsed,
-      itemCount: results.length,
-      nowMs,
-      refreshMs: Number.POSITIVE_INFINITY,
-      hasTitleVi: itemsHaveTitleVi(results),
-    })
+    !snapshotNeedsRebuild(
+      existingParsed,
+      results.length,
+      itemsHaveTitleVi(results)
+    )
   ) {
     await env.DB.prepare(
       "UPDATE tldr_snapshots SET created_at = ? WHERE date = ?"
@@ -252,7 +251,7 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
     return {
       generated: false,
       tokens: composed.tokens,
-      reason: `kept model digest from ${new Date(existingParsed.created_at).toISOString()}: ${composed.degraded}`,
+      reason: `kept model digest: ${composed.degraded}`,
     };
   }
 
@@ -288,8 +287,6 @@ type ComposedTldr =
       bullets_vi: TldrBullet[];
       tokens: number;
       persistReason?: string;
-      /** Why the bullets are item titles instead of the model digest.
-       *  Absent when the model wrote the digest. */
       degraded?: string;
     }
   | { ok: false; stats: TldrRunStats };

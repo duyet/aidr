@@ -2541,9 +2541,6 @@ describe("404 circuit breaker", () => {
     ]);
   });
 
-  // Run 1f3851a2 (2026-10-10): gemini 404'd on translate, so the TL;DR chain
-  // never tried it when luna hung, and a headline-only digest shipped. A 404
-  // says nothing about another task's request.
   it("does not skip an id for TL;DR after a translate 404", async () => {
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
       const { model } = JSON.parse(String(init.body));
@@ -2578,8 +2575,6 @@ describe("404 circuit breaker", () => {
     ]);
   });
 
-  // 2026-10-13 21:00-24:00 UTC: every 429 in 14 days, across 9 models and 5
-  // tasks, was the account quota. A 429 must keep every task off the id.
   it("still skips an id for TL;DR after a translate 429", async () => {
     const fetchMock = vi.fn(async () => new Response("quota", { status: 429 }));
     vi.stubGlobal("fetch", fetchMock);
@@ -2712,8 +2707,6 @@ describe("per-run timeout breaker", () => {
     expect(slowCount(fetchMock)).toBe(RUN_TIMEOUT_BREAKER_THRESHOLD + 1);
   });
 
-  // Review prompts hang where TL;DR prompts do not (#663). Tripping the id
-  // for TL;DR would move the digest onto its fallback for the whole run.
   it("does not trip an id for TL;DR after review timeouts", async () => {
     const fetchMock = slowFirst();
     vi.stubGlobal("fetch", fetchMock);

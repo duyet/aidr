@@ -136,6 +136,10 @@ function hasUnsafeControlCharacters(value: string): boolean {
   });
 }
 
+interface StrictJsonOptions {
+  allowStrayCloser?: boolean;
+}
+
 /**
  * Small strict JSON parser. JSON.parse silently accepts duplicate object keys
  * by keeping the last value, and the shared salvage parser intentionally accepts
@@ -148,7 +152,7 @@ class StrictJsonParser {
 
   constructor(
     private readonly text: string,
-    private readonly allowStrayCloser = false
+    private readonly options: StrictJsonOptions = {}
   ) {}
 
   parse(): unknown {
@@ -156,7 +160,7 @@ class StrictJsonParser {
     const value = this.parseValue(0);
     this.skipWhitespace();
     const next = this.text[this.index];
-    if (this.allowStrayCloser && (next === "]" || next === "}")) {
+    if (this.options.allowStrayCloser && (next === "]" || next === "}")) {
       this.index++;
       this.skipWhitespace();
     }
@@ -316,11 +320,11 @@ class StrictJsonParser {
 export function parseExactJson(
   raw: string,
   maxChars = QA_MAX_JSON_CHARS,
-  allowStrayCloser = false
+  options: StrictJsonOptions = {}
 ): unknown | null {
   if (typeof raw !== "string" || raw.length > maxChars) return null;
   try {
-    return new StrictJsonParser(raw, allowStrayCloser).parse();
+    return new StrictJsonParser(raw, options).parse();
   } catch {
     return null;
   }
@@ -329,9 +333,9 @@ export function parseExactJson(
 function parseRecord(
   raw: string,
   maxChars = QA_MAX_JSON_CHARS,
-  allowStrayCloser = false
+  options: StrictJsonOptions = {}
 ): Record<string, unknown> | null {
-  const parsed = parseExactJson(raw, maxChars, allowStrayCloser);
+  const parsed = parseExactJson(raw, maxChars, options);
   return isRecord(parsed) ? parsed : null;
 }
 
@@ -408,13 +412,13 @@ export function parseTranslationReview(
   };
 }
 
-/** Generator output, not review output: Laguna S 2.1 often ends its JSON with
- *  one stray `]` or `}` (probe 2026-10-01), so exactly one is dropped. */
 export function parseRepairCandidate(
   raw: string,
   maxChars = QA_MAX_JSON_CHARS
 ): TranslationText | null {
-  return parseTextRecord(parseRecord(raw, maxChars, true));
+  return parseTextRecord(
+    parseRecord(raw, maxChars, { allowStrayCloser: true })
+  );
 }
 
 function parseTextRecord(parsed: unknown): TranslationText | null {

@@ -801,56 +801,43 @@ export function raceTimeout<T>(
   });
 }
 
-/** A 404 from AnyRouter (model_not_found, or model_unavailable for a
- *  BYOK-only id) skips the id for later calls of the same task in this
- *  isolate instead of each batch paying for it again. Other tasks keep it:
- *  a 404 is not model-wide (gemma-latest served other tasks after 5 of 5
- *  cluster 404s), and a translate 404 cost TL;DR its fallback in run
- *  1f3851a2. A 429 is the account quota or the id's capacity
- *  (billing_concurrency_limited hit @preset/aidr 27x in one run), which
- *  every task shares, so it skips the id briefly for every task.
- *  5xx and timeouts never trip it. */
-const SKIP_RULES: Record<number, { ttlMs: number; perTask: boolean }> = {
-  404: { ttlMs: 15 * 60_000, perTask: true },
-  429: { ttlMs: 2 * 60_000, perTask: false },
-};
-/** Keyed by model for a model-wide skip, by taskModelKey for a per-task one. */
-const skippedUntil = new Map<string, number>();
+const NOT_FOUND_SKIP_MS = 15 * 60_000;
+const RATE_LIMITED_SKIP_MS = 2 * 60_000;
+const notFoundUntil = new Map<string, number>();
+const rateLimitedUntil = new Map<string, number>();
 
-/** Model ids never contain a space, so this never equals a bare model id. */
 function taskModelKey(task: LlmTask, model: string): string {
   return `${task} ${model}`;
 }
 
-function isSkipped(key: string): boolean {
-  const until = skippedUntil.get(key);
+function isSkipped(skips: Map<string, number>, key: string): boolean {
+  const until = skips.get(key);
   if (until === undefined) return false;
   if (until > Date.now()) return true;
-  skippedUntil.delete(key);
+  skips.delete(key);
   return false;
 }
 
 function isUnavailable(task: LlmTask, model: string): boolean {
-  return isSkipped(model) || isSkipped(taskModelKey(task, model));
+  return (
+    isSkipped(rateLimitedUntil, model) ||
+    isSkipped(notFoundUntil, taskModelKey(task, model))
+  );
 }
 
 function markUnavailable(task: LlmTask, model: string, status: number): void {
-  const rule = SKIP_RULES[status];
-  if (!rule) return;
-  const key = rule.perTask ? taskModelKey(task, model) : model;
-  skippedUntil.set(key, Date.now() + rule.ttlMs);
+  if (status === 404)
+    notFoundUntil.set(
+      taskModelKey(task, model),
+      Date.now() + NOT_FOUND_SKIP_MS
+    );
+  if (status === 429)
+    rateLimitedUntil.set(model, Date.now() + RATE_LIMITED_SKIP_MS);
 }
 
-/** Timeouts come in bursts where every hop of a chain hangs together, and
- *  each hung hop burns its full slice (15-30s) on every call of the run.
- *  After this many consecutive timeouts of one task within one run
- *  (withLlmCallContext), the id is skipped for that task for the rest of
- *  the run. Other tasks keep it: review prompts hang where TL;DR prompts do
- *  not (#663). A success resets the count. Calls outside a run never trip it. */
 export const RUN_TIMEOUT_BREAKER_THRESHOLD = 3;
 /** Runs tracked at once; the oldest is dropped past this (concurrent runs). */
 const RUN_BREAKER_MAX_RUNS = 8;
-/** Run id → taskModelKey → consecutive timeouts. */
 const runTimeoutStreaks = new Map<string, Map<string, number>>();
 
 function runStreaks(runId: string): Map<string, number> {
@@ -898,7 +885,8 @@ function recordRunOutcome(
 
 /** Test hook: forget every skipped id. */
 export function resetUnavailableModels(): void {
-  skippedUntil.clear();
+  notFoundUntil.clear();
+  rateLimitedUntil.clear();
   runTimeoutStreaks.clear();
 }
 
