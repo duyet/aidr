@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LLM_RATE_LIMIT_BURST } from "../health.js";
 import { LLM_STEP } from "../ingest/context.js";
 import type { LlmCallLogEntry } from "../llm.js";
 import {
@@ -2599,6 +2600,92 @@ describe("404 circuit breaker", () => {
       "google/gemma-latest",
       "openai/gpt-5.6-luna",
     ]);
+  });
+
+  // Run 23b4ed50 (2026-10-13): once every translate id sat in the 429 skip,
+  // the fail-open re-sent each item's full chain: 225 429s in 88 s.
+  describe("a chain-wide 429", () => {
+    const chain =
+      "google/gemini-3-flash,google/gemma-latest,poolside/laguna-s-2.1,google/gemma-4-31b";
+    const translate = () =>
+      callAnyrouter(env, messages, {
+        modelSpec: chain,
+        task: "translate",
+        json: true,
+      });
+    const rows: LlmCallLogEntry[] = [];
+
+    beforeEach(() => {
+      rows.length = 0;
+      setLlmCallLogger((entry) => {
+        rows.push(entry);
+      });
+    });
+    afterEach(() => {
+      setLlmCallLogger(null);
+      vi.restoreAllMocks();
+    });
+
+    async function burst(fetchMock: ReturnType<typeof vi.fn>) {
+      await expect(
+        callAnyrouter(env, messages, {
+          modelSpec: "google/gemma-latest",
+          task: "cluster",
+          json: true,
+        })
+      ).rejects.toThrow(/chain exhausted/);
+      const wave = await Promise.allSettled([
+        translate(),
+        translate(),
+        translate(),
+      ]);
+      expect(wave.map((r) => r.status)).toEqual([
+        "rejected",
+        "rejected",
+        "rejected",
+      ]);
+      return fetchMock.mock.calls.length;
+    }
+
+    it("sends nothing more until the cooldown ends", async () => {
+      const fetchMock = vi.fn(
+        async () => new Response("quota", { status: 429 })
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const afterWave = await burst(fetchMock);
+      const later = await Promise.allSettled(
+        Array.from({ length: 54 }, () => translate())
+      );
+
+      expect(afterWave).toBe(1 + 3 * 3);
+      expect(fetchMock.mock.calls.length - afterWave).toBe(0);
+      for (const r of later) {
+        expect(r.status).toBe("rejected");
+        if (r.status === "rejected")
+          expect(String(r.reason)).toMatch(/chain exhausted/);
+      }
+      // The quota alert reads real 429 rows, and the wave still leaves enough.
+      expect(rows.length).toBe(fetchMock.mock.calls.length);
+      expect(
+        rows.filter((r) => /429/.test(r.error ?? "")).length
+      ).toBeGreaterThanOrEqual(LLM_RATE_LIMIT_BURST);
+    });
+
+    it("probes every id again once the cooldown ends", async () => {
+      const fetchMock = vi.fn(
+        async () => new Response("quota", { status: 429 })
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      const afterWave = await burst(fetchMock);
+      vi.spyOn(Date, "now").mockReturnValue(Date.now() + 2 * 60_000 + 1);
+      fetchMock.mockImplementation(async () => ok());
+      await translate();
+
+      expect(requested(fetchMock).slice(afterWave)).toEqual([
+        "google/gemini-3-flash",
+      ]);
+    });
   });
 
   // 5xx is transient upstream state; the id must stay in the chain.
