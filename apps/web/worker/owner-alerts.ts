@@ -405,7 +405,9 @@ interface GhComment {
 
 /**
  * Create or update one GitHub issue per alert. Returns alert key -> issue
- * URL for the ones that were filed or already open.
+ * URL for the ones that were filed or already open. Without
+ * `GITHUB_ALERT_TOKEN` it files nothing and the Telegram DM is the only
+ * report; it says so once per call (one call per run), not once per alert.
  */
 export async function fileGithubIssues(
   env: Pick<Env, "GITHUB_ALERT_TOKEN">,
@@ -414,7 +416,13 @@ export async function fileGithubIssues(
 ): Promise<Record<string, string>> {
   const token = env.GITHUB_ALERT_TOKEN;
   const urls: Record<string, string> = {};
-  if (!token || issues.length === 0) return urls;
+  if (issues.length === 0) return urls;
+  if (!token) {
+    console.warn(
+      `owner-alert: GITHUB_ALERT_TOKEN is not set, no GitHub issue filed for ${issues.map((i) => i.key).join(", ")}`
+    );
+    return urls;
+  }
   const openByRepo = new Map<string, GhIssue[]>();
   let writes = 0;
   for (const issue of issues) {

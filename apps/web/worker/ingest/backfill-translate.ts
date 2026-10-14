@@ -99,7 +99,7 @@ export async function backfillTranslations(
                 })
               );
               count++;
-              written.push({ model: result.model, title, summary });
+              written.push({ model: result.model, summary });
             }
           } catch (error) {
             console.error("backfill-translate batch failed:", error);

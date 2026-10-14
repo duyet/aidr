@@ -42,8 +42,8 @@ describe("backfill-translate English-in-VI tally", () => {
       { i: 0, title: "Tin mới", summary: "Tóm tắt.", tokens: 1, model: "a/m" },
       {
         i: 1,
-        title: "Byte Language Models",
-        summary: "Tóm tắt.",
+        title: "Tin dở",
+        summary: "A summary left in English.",
         tokens: 1,
         model: "a/m",
       },
