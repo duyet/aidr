@@ -18,6 +18,8 @@
  *     --lang en|vi [--chat <id>]   (sends a real Telegram message)
  *   pnpm --filter @aidr/web agent day-video-posted <YYYY-MM-DD>
  *     --channel telegram-en|telegram-vi --ref <chat_id>/<message_id>
+ *   pnpm --filter @aidr/web agent unmerge <pairs.json> [--apply]
+ *     (dry run reads prod D1 with SELECTs only; --apply writes, sends nothing)
  *
  * `run` and `rerun` are dry runs unless `--live` is passed. A dry run sends
  * no email, Telegram or owner alert and only previews the TL;DR, but still
@@ -36,7 +38,12 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { latestArchiveDate } from "../src/lib/day-archive";
+import type { UnmergeResult } from "../worker/admin/handlers";
 import { isPipelineStep, PIPELINE_STEPS } from "../worker/ingest/mode";
+import { loadUnmergeSnapshot } from "../worker/unmerge/load";
+import { parseUnmergePairs, planUnmerge } from "../worker/unmerge/plan";
+import { countUnmerge } from "../worker/unmerge/report";
+import { wranglerSelect, wranglerSelectTotals } from "./cf-d1";
 
 const DEFAULT_BASE = "https://aidr.today";
 const WAIT_INTERVAL_MS = 15_000;
@@ -318,6 +325,43 @@ async function tldrPreview(): Promise<void> {
   );
 }
 
+/** Plan (default) or apply an unmerge. The dry run reads production D1
+ * through `wrangler d1 execute` with SELECTs only, so it needs no deploy;
+ * `--apply` posts the pairs to the admin endpoint, which re-plans from live
+ * rows and writes. */
+async function unmerge(args: Args, file: string | undefined): Promise<void> {
+  if (!file) fail("unmerge needs a pairs JSON file");
+  const raw: unknown = JSON.parse(readFileSync(file, "utf-8"));
+  const parsed = parseUnmergePairs(
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as { pairs?: unknown }).pairs
+      : raw
+  );
+  if ("error" in parsed) fail(parsed.error);
+  if (args.flags.has("apply")) {
+    const result = await api<UnmergeResult>("/api/admin/unmerge", {
+      method: "POST",
+      admin: true,
+      body: { pairs: parsed.pairs, dryRun: false },
+    });
+    print(
+      result,
+      `unmerge: applied ${result.applied?.canonicals ?? 0} canonical(s), ${JSON.stringify(result.counts.pairs)}`
+    );
+    return;
+  }
+  const snapshot = await loadUnmergeSnapshot(
+    async (sql) => wranglerSelect(sql),
+    parsed.pairs
+  );
+  const plan = planUnmerge(parsed.pairs, snapshot, Date.now());
+  const counts = countUnmerge(plan);
+  print(
+    { dryRun: true, readOnly: wranglerSelectTotals, counts, plan },
+    `unmerge dry run (nothing written; ${wranglerSelectTotals.queries} read-only queries): ${JSON.stringify(counts.pairs)}`
+  );
+}
+
 /** Rebuild one date's TL;DR row. Always uses the dated route, which a
  * server without it answers 404, so nothing is written there. */
 async function tldrRegenerate(args: Args): Promise<void> {
@@ -543,9 +587,11 @@ async function main(): Promise<void> {
       return dayVideoTelegram(args, stepArg);
     case "day-video-posted":
       return dayVideoPosted(args, stepArg);
+    case "unmerge":
+      return unmerge(args, stepArg);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id>"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply]"
       );
   }
 }

@@ -52,3 +52,65 @@ export function d1ResultRows(output: string): unknown {
   }
   return parsed;
 }
+
+/** Queries and rows read by `wranglerSelect` in this process; each one
+ * reported `changed_db: false` and `rows_written: 0`. */
+export const wranglerSelectTotals = { queries: 0, rowsRead: 0 };
+
+/**
+ * One read-only query against production D1 through
+ * `wrangler d1 execute --remote` (`cf d1 query` answers 403 for some tokens).
+ * Refuses anything but a single SELECT, and throws if D1 reports a write.
+ */
+export function wranglerSelect(sql: string): Record<string, unknown>[] {
+  if (!/^\s*(SELECT|WITH)\s/i.test(sql) || sql.includes(";")) {
+    throw new Error("wranglerSelect runs one SELECT only");
+  }
+  let out: string;
+  try {
+    out = execFileSync(
+      "pnpm",
+      [
+        "exec",
+        "wrangler",
+        "d1",
+        "execute",
+        "DB",
+        "--remote",
+        "--json",
+        "--command",
+        sql,
+      ],
+      {
+        cwd: webRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 256 * 1024 * 1024,
+        timeout: 120_000,
+        env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
+      }
+    );
+  } catch (error) {
+    const stderr =
+      error && typeof error === "object" && "stderr" in error
+        ? String((error as { stderr?: unknown }).stderr ?? "")
+        : "";
+    throw new Error(stderr.trim() || "wrangler d1 execute failed");
+  }
+  const parsed = JSON.parse(out.slice(out.indexOf("["))) as {
+    results?: Record<string, unknown>[];
+    meta?: { changed_db?: boolean; rows_read?: number; rows_written?: number };
+  }[];
+  const result = parsed[0];
+  if (
+    result?.meta?.changed_db !== false ||
+    (result.meta.rows_written ?? 0) !== 0
+  ) {
+    throw new Error(
+      `D1 reported a write for a read-only query: ${JSON.stringify(result?.meta)}`
+    );
+  }
+  wranglerSelectTotals.queries++;
+  wranglerSelectTotals.rowsRead += result.meta.rows_read ?? 0;
+  return result.results ?? [];
+}
