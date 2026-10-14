@@ -57,18 +57,23 @@ function boundedText(value: string, maxLength: number): string {
 }
 
 function redactText(value: string): string {
-  return value
-    .replace(/https?:\/\/[^\s<>"']+/gi, "[url redacted]")
-    .replace(/\bBearer\s+[^\s,;]+/gi, "Bearer [redacted]")
-    .replace(/\b(?:sk|pk|anyrouter)[-_][A-Za-z0-9._-]{8,}\b/gi, "[redacted]")
-    .replace(
-      /\b(authorization|api[-_ ]?key|apikey|access[-_ ]?token|refresh[-_ ]?token|client[-_ ]?secret|token|secret|password)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^,;}\s]+)/gi,
-      "$1: [redacted]"
-    )
-    .replace(
-      /\b(prompt|messages?|content|input|body|response|request|payload|raw)\b\s*[:=]\s*.+/gi,
-      "$1: [redacted]"
-    );
+  return (
+    value
+      .replace(/https?:\/\/[^\s<>"']+/gi, "[url redacted]")
+      .replace(/\bBearer\s+[^\s,;"'}]+/gi, "Bearer [redacted]")
+      .replace(/\b(?:sk|pk|anyrouter)[-_][A-Za-z0-9._-]{8,}\b/gi, "[redacted]")
+      .replace(
+        /\b(authorization|x-api-key|api[-_ ]?key|apikey|access[-_ ]?token|refresh[-_ ]?token|client[-_ ]?secret|token|secret|password)\b(["']?)\s*(?:[:=]|%3D)\s*(?:"[^"]*"|'[^']*'|[^,;}\s]+)/gi,
+        "$1$2: [redacted]"
+      )
+      // These values can echo the prompt, so everything after the key goes.
+      // A quoted "message" is a provider error's own text, the part worth
+      // keeping, so only the bare `message:` form matches.
+      .replace(
+        /\b(flagged_input|prompt|messages|message(?!["'])|content|input|body|response|request|payload|raw)\b(["']?)\s*[:=]\s*.+/gi,
+        "$1$2: [redacted]"
+      )
+  );
 }
 
 function redactValue(value: unknown, key = ""): unknown {
@@ -289,11 +294,75 @@ const SNIPPET_GAP = " … ";
 /** Redaction runs on a bounded window so a huge body costs nothing. */
 const SNIPPET_WINDOW = 2000;
 
+/** Two lowercase-to-uppercase steps: base64 and random ids, not words. */
+const MIXED_CASE = /[a-z][A-Z].*[a-z][A-Z]/;
+
+function redactPhone(match: string): string {
+  const groups = match.match(/\d+/g) ?? [];
+  if (groups.join("").length < 7) return match;
+  const long = groups.filter((group) => group.length >= 3).length;
+  // A dial prefix, or three groups with two long ones; a date or a year
+  // range ("2025-2026") is neither.
+  return /[+(]/.test(match) || (groups.length >= 3 && long >= 2)
+    ? "[phone redacted]"
+    : match;
+}
+
+/**
+ * Snippet-only rules, on top of `redactText`. They stay out of
+ * `sanitizeText`, whose step reasons carry dates, times and slugs that the
+ * phone and token rules would eat. Order matters: base64 before opaque ids,
+ * so `==` padding goes with its token.
+ */
+const SNIPPET_RULES: ReadonlyArray<
+  readonly [RegExp, string | ((match: string) => string)]
+> = [
+  [
+    /[A-Za-z0-9._%+-]+(?:@|%40)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
+    "[email redacted]",
+  ],
+  [
+    /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]*)?/g,
+    "[redacted]",
+  ],
+  [/\bAKIA[0-9A-Z]{16}\b/g, "[redacted]"],
+  [/\b(Set-Cookie|Cookie)\s*:\s*.+/gi, "$1: [redacted]"],
+  [
+    /\b(account[-_]?id|user[-_]?id|org(?:anization)?[-_]?id|request[-_]?id)\b(["']?)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^,;}\s]+)/gi,
+    "$1$2: [redacted]",
+  ],
+  [/\breq_[A-Za-z0-9]{8,}\b/g, "[redacted]"],
+  [
+    /(?<![\w.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?!\w|\.\d)/g,
+    "[ip redacted]",
+  ],
+  [
+    /(?<![\w:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,7}:(?:[0-9a-f]{1,4}(?::[0-9a-f]{1,4}){0,6})?)(?![\w:])/gi,
+    (match) => (/\d/.test(match) ? "[ip redacted]" : match),
+  ],
+  [/\b[\w-]+(?:\.[\w-]+)*\.(?:local|internal)\b/gi, "[host redacted]"],
+  [
+    /(?<![\w+])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)[\s.-]?)?\d{2,4}(?:[\s.-]\d{2,4}){1,4}(?!\w)/g,
+    redactPhone,
+  ],
+  [
+    /(?<![\w+/=-])[A-Za-z0-9+/]{32,}={0,2}(?![\w+/=-])/g,
+    (match) =>
+      MIXED_CASE.test(match) || /[+=]/.test(match) ? "[redacted]" : match,
+  ],
+  [
+    /(?<![\w-])[A-Za-z0-9_-]{32,}(?![\w-])/g,
+    (match) =>
+      /\d/.test(match) || MIXED_CASE.test(match) ? "[redacted]" : match,
+  ],
+];
+
 /**
  * Short, sanitized excerpt of a failed model output or provider error body
  * for `llm_calls.response_snippet`: first 160 and last 80 characters after
- * secrets, tokens, emails and URLs are redacted. Idempotent, so the two
- * redaction passes (logLlmCall, then the D1 sink) leave it unchanged.
+ * secrets, tokens, ids, addresses and contact details are redacted.
+ * Idempotent, so the two redaction passes (logLlmCall, then the D1 sink)
+ * leave it unchanged.
  */
 export function sanitizeLlmSnippet(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -301,16 +370,13 @@ export function sanitizeLlmSnippet(value: unknown): string | null {
     value.length > SNIPPET_WINDOW * 2
       ? `${value.slice(0, SNIPPET_WINDOW)} ${value.slice(-SNIPPET_WINDOW)}`
       : value;
-  const text = redactText(boundedText(window, window.length))
-    .replace(
-      /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
-      "[email redacted]"
-    )
-    .replace(
-      /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]*)?/g,
-      "[redacted]"
-    )
-    .replace(/\b(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{32,}\b/g, "[redacted]");
+  const text = SNIPPET_RULES.reduce(
+    (out, [pattern, replacement]) =>
+      typeof replacement === "string"
+        ? out.replace(pattern, replacement)
+        : out.replace(pattern, replacement),
+    redactText(boundedText(window, window.length))
+  );
   if (!text) return null;
   if (text.length <= SNIPPET_HEAD + SNIPPET_TAIL + SNIPPET_GAP.length) {
     return text;
