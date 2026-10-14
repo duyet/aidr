@@ -636,6 +636,29 @@ A vague word is not a number. "Countless" is not "hàng triệu". Do not swap wh
     );
   });
 
+  // #652: stored rows read "Bài viết … xuất hiện lần đầu trên The Decoder."
+  // because the footer was part of the text sent to the translator.
+  it("never sends the translator a feed footer", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(chatResponse(JSON.stringify({ results: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await translateItems(env, [
+      {
+        i: 0,
+        title: "Odyssey-3 is a new generative world model",
+        summary:
+          "Odyssey is making Odyssey-3 available as a public research preview. The article Odyssey-3 is a new generative world model appeared first on The Decoder .",
+      },
+    ]);
+
+    const { messages } = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const user = messages[1].content as string;
+    expect(user).toContain("available as a public research preview.");
+    expect(user).not.toContain("appeared first on");
+  });
+
   it("puts that overview in the translate user message and keeps the 80% rule", async () => {
     const fetchMock = vi
       .fn()

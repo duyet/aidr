@@ -666,6 +666,9 @@ no condensing or added facts (Vietnamese summary ≥ ~80% of the source
 length). `VI_STYLE` also fixes headline sentence case, exact magnitudes
 (B = tỷ, M = triệu, T = nghìn tỷ; model sizes like "7B" stay), and lists
 known calques as bad → good examples.
+Ingest strips the "appeared first on" feed footer
+(`stripSourceBoilerplate`), and `sentSource` strips it again from rows
+stored before that.
 
 Right after generation, `worker/translation-draft-check.ts` runs a
 deterministic check against the exact (stripped, clipped) source the model
@@ -712,7 +715,8 @@ then independently reviews that candidate. The review path lives in
   `entities`/`terminology`. Polarity and uncertainty are one-way: a source
   negation or hedge must survive; additions are the reviewer's `addition`
   call. Feed chrome (aggregator "Back to live feed" lines, arXiv listing
-  headers) is stripped before every guard.
+  headers, "The post/article … appeared first on …" footers) is stripped
+  before every guard.
 - Prompt data is delimiter-escaped and output must be one exact bounded
   JSON object; prose, fences, duplicate keys, and oversized responses are
   rejected.

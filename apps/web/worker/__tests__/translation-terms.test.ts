@@ -136,6 +136,50 @@ describe("protected English terms", () => {
     }
   });
 
+  // #652: 156 stored summaries ended in a feed footer, and the Vietnamese
+  // translator turned it into "Bài viết … xuất hiện lần đầu trên The
+  // Decoder." Real tails from each source that sends one.
+  it("strips the 'appeared first on' footer feeds append", () => {
+    for (const [body, footer] of [
+      [
+        "Odyssey is making its world model Odyssey-3 available as a public research preview. Odyssey claims top scores on physics benchmarks, though the methodology behind those results has limits.",
+        "The article Odyssey-3 is a new generative world model that you can try for free appeared first on The Decoder .",
+      ],
+      [
+        "Gboard already uses it for English and Japanese next-word prediction.",
+        "The post Google Research Moves Federated Learning Into TEEs: Gboard Now Trains With Externally Verifiable Differential Privacy appeared first on MarkTechPost .",
+      ],
+      [
+        "It models how individuals may engage with tutors.",
+        "The post Simulating student learning for better AI tutoring appeared first on Microsoft Research .",
+      ],
+      [
+        "GitHub’s context-aware secret classifier raises weighted acceptance by 11.5%, and reduces median scan execution time by 86%.",
+        "The post GitHub’s model for secret detection: Finding more secrets with less noise appeared first on The GitHub Blog .",
+      ],
+      [
+        'Jordan calls it "grand moralizing performance."',
+        'The article Machine learning pioneer Michael I. Jordan dismantles AI doom rhetoric as "grand moralizing performance" appeared first on The Decoder .',
+      ],
+    ]) {
+      expect(stripSourceBoilerplate(`${body} ${footer}`)).toBe(body);
+    }
+  });
+
+  it("strips only the footer, not article text that resembles it", () => {
+    expect(
+      stripSourceBoilerplate(
+        "The article argues models plateau. The post-training gains hold. The article Models plateau appeared first on The Decoder ."
+      )
+    ).toBe("The article argues models plateau. The post-training gains hold.");
+    for (const text of [
+      "The disruptions first appeared on Sept 29, when the company reported elevated error rates.",
+      "The post appeared first on Hacker News before it went viral on X.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
   it("keeps article text that merely looks like chrome", () => {
     for (const text of [
       "3 stories dominated the week: OpenAI shipped.",

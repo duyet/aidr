@@ -49,4 +49,20 @@ describe("feed chrome in summaries", () => {
       "OpenAI had notified more than 100 organizations by Sept. 26."
     );
   });
+
+  // #652, item 7b847b25: The Decoder's footer was stored, summarized and
+  // translated as if it were the story's last sentence.
+  it("strips the feed footer before storage", () => {
+    const item = normalizeFetchedItem({
+      title:
+        "Odyssey-3 is a new generative world model that you can try for free",
+      url: "https://the-decoder.com/odyssey-3",
+      publishedAt: 0,
+      summary:
+        "Odyssey is making its world model Odyssey-3 available as a public research preview. The article Odyssey-3 is a new generative world model that you can try for free appeared first on The Decoder .",
+    });
+    expect(item.summary).toBe(
+      "Odyssey is making its world model Odyssey-3 available as a public research preview."
+    );
+  });
 });

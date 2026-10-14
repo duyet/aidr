@@ -447,12 +447,33 @@ function stripLeadingChrome(text: string): string {
   return out;
 }
 
-/** Feed chrome that ingest leaves at the start of some summaries: arXiv
- * listing headers and aggregator navigation ("← Back to live feed · 1
- * stories across 1 day"). It is not article text: it must not reach the
- * stored English summary, the translator, or any guard. */
+/** Footers a feed appends after the excerpt, matched only at the very end.
+ * The title between the opening words and "appeared first on" may not
+ * contain the opening words again, so article text that starts "The
+ * article …" earlier is kept. */
+const FEED_FOOTERS: readonly RegExp[] = [
+  // WordPress default: MarkTechPost, The GitHub Blog, Microsoft Research.
+  /\s*\bThe post (?:(?!\bThe post ).)+? appeared first on [^\n]{1,60}?$/s,
+  // The Decoder.
+  /\s*\bThe article (?:(?!\bThe article ).)+? appeared first on [^\n]{1,60}?$/s,
+];
+
+function stripFeedFooter(text: string): string {
+  const trimmed = text.trimEnd();
+  for (const footer of FEED_FOOTERS) {
+    const next = trimmed.replace(footer, "");
+    if (next !== trimmed) return next;
+  }
+  return text;
+}
+
+/** Feed chrome that ingest leaves in some summaries: arXiv listing headers
+ * and aggregator navigation ("← Back to live feed · 1 stories across 1
+ * day") at the start, an "appeared first on" footer at the end. It is not
+ * article text: it must not reach the stored English summary, the
+ * translator, or any guard. */
 export function stripSourceBoilerplate(text: string): string {
-  return stripLeadingChrome(text)
+  return stripFeedFooter(stripLeadingChrome(text))
     .replace(/^\s*arXiv:\S+\s+Announce Type:\s*\S+\s+Abstract:\s*/i, "")
     .replace(/^\s*See what[’']s happening and join the conversation\s*$/i, "");
 }
