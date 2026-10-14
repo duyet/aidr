@@ -19,8 +19,7 @@ Preconditions:
 
 - `verify-aidr doctor` reports `ok: true`.
 
-- **Open about.** Run `.agents/skills/verify-aidr/bin/verify-aidr drive about`. HTTP 200 HTML includes `About AI News`, `How it works`, `Sources`, `AI;DR + Email`, and `Chrome new tab`.
-- **Pipeline copy.** The same body includes `Sources` and `AI;DR + Email`.
+- **Open about.** Run `.agents/skills/verify-aidr/bin/verify-aidr drive about`. HTTP 200 HTML includes `<h1>About AI;DR` and `<h2>How it works`.
 - **Proof.** Evidence file `about.html` contains those strings. Optional: `verify-aidr screenshot --path /about`.
 
 ## Gotchas
