@@ -123,23 +123,63 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const ELEMENT_HREF = /href="([^"]*)"/g;
 
+/** Node attributes rrweb records that hold a link of the page. */
+const LINK_ATTRIBUTES = ["href", "src", "action"];
+
+/** A same-site URL: absolute on this origin, or relative (no scheme). */
+function scrubSiteUrl(value: string, origin: string): string {
+  if (isOwnAbsoluteUrl(value, origin)) return dropUnsafeParams(value);
+  if (!/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value) && !/\s/.test(value)) {
+    return dropUnsafeParams(value);
+  }
+  return value;
+}
+
 /**
- * rrweb events in a `$snapshot`: only the meta event's page URL is ours to
- * clean. Everything else is the recorded page, which must replay as it was.
+ * Walks an rrweb event body: full-snapshot nodes (`node`, `childNodes`) and
+ * mutations (`adds[].node`, `attributes[].attributes`). Every `attributes`
+ * record has its link-valued entries cleaned. Text content and every other
+ * value is left as recorded.
+ */
+function scrubRecordedNode(value: unknown, origin: string): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => scrubRecordedNode(item, origin));
+  }
+  if (!isRecord(value)) return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(value)) {
+    if (key === "attributes" && isRecord(v)) {
+      const attrs: Record<string, unknown> = { ...v };
+      for (const name of LINK_ATTRIBUTES) {
+        const link = attrs[name];
+        if (typeof link === "string") attrs[name] = scrubSiteUrl(link, origin);
+      }
+      out[key] = attrs;
+    } else {
+      out[key] = scrubRecordedNode(v, origin);
+    }
+  }
+  return out;
+}
+
+/**
+ * rrweb events in a `$snapshot`. The meta event carries the page URL. Full
+ * snapshots and mutations carry the DOM, whose links (`href`, `src`,
+ * `action`) can hold a token or search text. Everything else replays as
+ * recorded.
  */
 function scrubRecording(events: unknown, origin: string): unknown {
   if (!Array.isArray(events)) return events;
-  return events.map((e) =>
-    isRecord(e) &&
-    e.type === 4 &&
-    isRecord(e.data) &&
-    typeof e.data.href === "string"
-      ? {
-          ...e,
-          data: { ...e.data, href: scrubString(e.data.href, "href", origin) },
-        }
-      : e
-  );
+  return events.map((e) => {
+    if (!isRecord(e) || !isRecord(e.data)) return e;
+    if (e.type === 4 && typeof e.data.href === "string") {
+      return {
+        ...e,
+        data: { ...e.data, href: scrubString(e.data.href, "href", origin) },
+      };
+    }
+    return { ...e, data: scrubRecordedNode(e.data, origin) };
+  });
 }
 
 /**
@@ -147,7 +187,7 @@ function scrubRecording(events: unknown, origin: string): unknown {
  * any absolute same-origin URL, and root-relative values under the keys
  * PostHog uses for URLs (`$current_url`, `$pathname`, `$referrer`, the
  * `$initial_*` and `$session_entry_*` values, autocaptured link hrefs).
- * Free text, links to other sites, and recorded page content are left alone.
+ * Free text, links to other sites, and recorded text are left alone.
  */
 export function scrubPosthogEvent<E>(event: E): E {
   const origin = window.location.origin;
@@ -248,6 +288,13 @@ function bootUrlPrivacy(
 
 /** The inline script the Worker puts first in <head> (ssr-head.ts). */
 export const URL_PRIVACY_BOOT_SCRIPT = `(${bootUrlPrivacy})(${sanitizeUrl},${JSON.stringify(SAFE_PARAMS)},${JSON.stringify(SUBSCRIBE_LINK_GLOBAL)});`;
+
+/** The history state that carries `link` onto a new entry. */
+export function subscribeLinkState(
+  link: SubscribeLink
+): Record<string, unknown> {
+  return { [SUBSCRIBE_LINK_STATE]: link };
+}
 
 /** The history state key that carries a subscribe link on its entry. */
 const SUBSCRIBE_LINK_STATE = "aidrSubscribeLink";

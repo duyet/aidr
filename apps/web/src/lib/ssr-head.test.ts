@@ -104,3 +104,21 @@ describe("withSsrHead inlines the homepage stylesheet", () => {
     expect(await res.text()).toContain(`<style>${CSS}</style>`);
   });
 });
+
+describe("withSsrHead leaves API responses alone", () => {
+  it("passes /api/* HTML through byte for byte, with no boot script", async () => {
+    // 0xff is not valid UTF-8: a decode/encode pass would turn it into U+FFFD.
+    const enc = new TextEncoder();
+    const bytes = new Uint8Array([
+      ...enc.encode("<html><head></head><body>"),
+      0xff,
+      ...enc.encode("</body></html>"),
+    ]);
+    const res = withSsrHead(
+      new Request("https://aidr.today/api/subscribe/preview?lang=en"),
+      new Response(bytes, { headers: { "Content-Type": "text/html" } }),
+      assets(CSS)
+    );
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+  });
+});

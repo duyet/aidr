@@ -69,7 +69,7 @@ function rewriteHeadStream(
 }
 
 /**
- * Every page gets the boot script first. The homepage also inlines its
+ * Every page (not `/api/*`) gets the boot script first. The homepage also inlines its
  * stylesheet (issue #229: it is the LCP page); other routes keep the
  * cacheable blocking link.
  */
@@ -79,6 +79,9 @@ export function withSsrHead(
   assets: AssetsFetcher | undefined
 ): Response {
   const path = new URL(request.url).pathname;
+  // API responses are not pages. `/api/subscribe/preview` returns email
+  // HTML, which must reach the preview iframe byte for byte.
+  if (path === "/api" || path.startsWith("/api/")) return response;
   const sheets = path === "/" || path === "" ? assets : undefined;
   return rewriteHeadStream(response, async (head) => {
     const first = withBootScriptFirst(head);

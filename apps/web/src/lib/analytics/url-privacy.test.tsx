@@ -158,15 +158,58 @@ describe("the PostHog scrub rewrites only URLs of this site", () => {
     expect(JSON.stringify(sent)).toContain(`${origin}/`);
   });
 
-  it("does not rewrite a session recording, apart from its page URL", () => {
+  it("cleans the links in a session recording and leaves the rest as recorded", () => {
     const origin = location.origin;
-    const recorded = {
+    const a = (href: string, text = "Unsubscribe") => ({
+      type: 2,
+      tagName: "a",
+      attributes: { href, title: "/ 50% off" },
+      childNodes: [{ type: 3, textContent: text }],
+    });
+    const fullSnapshot = {
       type: 2,
       data: {
         node: {
-          attributes: { href: "/?q=typed", title: "/ 50% off" },
-          textContent: "/tag/tiếng việt",
+          type: 0,
+          childNodes: [
+            a("/subscribe?unsubscribe=SECRET&lang=vi"),
+            a(`${origin}/?q=john&tag=ai`, "/?q=as-typed"),
+            a("https://other.example/?q=keep"),
+            {
+              type: 2,
+              tagName: "form",
+              attributes: { action: "/search?q=john" },
+              childNodes: [],
+            },
+            {
+              type: 2,
+              tagName: "iframe",
+              attributes: {
+                src: "/api/subscribe/preview?freq=daily&settings=SECRET",
+              },
+              childNodes: [],
+            },
+          ],
         },
+        initialOffset: { top: 0, left: 0 },
+      },
+    };
+    const mutation = {
+      type: 3,
+      data: {
+        source: 0,
+        texts: [{ id: 4, value: "/?q=typed" }],
+        attributes: [
+          { id: 7, attributes: { href: "/subscribe?settings=SECRET" } },
+        ],
+        removes: [],
+        adds: [
+          {
+            parentId: 1,
+            nextId: null,
+            node: a("/subscribe?unsubscribe=SECRET"),
+          },
+        ],
       },
     };
     const sent = beforeSend()({
@@ -175,20 +218,27 @@ describe("the PostHog scrub rewrites only URLs of this site", () => {
         $session_id: "s1",
         $snapshot_data: [
           { type: 4, data: { href: `${origin}/?q=john&lang=en`, width: 1 } },
-          recorded,
+          fullSnapshot,
+          mutation,
         ],
       },
-    });
-    expect(sent).toEqual({
-      event: "$snapshot",
-      properties: {
-        $session_id: "s1",
-        $snapshot_data: [
-          { type: 4, data: { href: `${origin}/?lang=en`, width: 1 } },
-          recorded,
-        ],
-      },
-    });
+    }) as { properties: { $snapshot_data: any[] } };
+    expect(JSON.stringify(sent)).not.toContain("SECRET");
+
+    const [meta, full, mut] = sent.properties.$snapshot_data;
+    expect(meta.data.href).toBe(`${origin}/?lang=en`);
+    const nodes = full.data.node.childNodes;
+    expect(nodes[0].attributes.href).toBe("/subscribe?lang=vi");
+    expect(nodes[1].attributes.href).toBe(`${origin}/?tag=ai`);
+    expect(nodes[2].attributes.href).toBe("https://other.example/?q=keep");
+    expect(nodes[3].attributes.action).toBe("/search");
+    expect(nodes[4].attributes.src).toBe("/api/subscribe/preview?freq=daily");
+    // Not links: text and other attributes replay as recorded.
+    expect(nodes[1].childNodes[0].textContent).toBe("/?q=as-typed");
+    expect(nodes[0].attributes.title).toBe("/ 50% off");
+    expect(mut.data.texts).toEqual([{ id: 4, value: "/?q=typed" }]);
+    expect(mut.data.attributes[0].attributes.href).toBe("/subscribe");
+    expect(mut.data.adds[0].node.attributes.href).toBe("/subscribe");
   });
 });
 
