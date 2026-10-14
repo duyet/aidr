@@ -1,17 +1,24 @@
 /** @vitest-environment happy-dom */
 
 /**
- * The Cloudflare Google tag gateway puts `gtag('config', …)` at the top of
- * <head>, before any app code, and gtag.js sends that config's page_view
- * with whatever the URL was. Only the inline boot script runs early enough
- * to clean it up: it moves a subscribe token out of the URL and gives the
- * queued config a sanitized page_location.
+ * The Cloudflare Google tag gateway inlines `gtag('config', …)` at the top
+ * of <head>, and gtag.js sends that config's page_view with whatever the URL
+ * was. The Worker puts the boot script ahead of the gateway (ssr-head.ts),
+ * so the boot script moves a subscribe token out of the URL and queues a
+ * sanitized page_location before that config. If the gateway still comes
+ * first, the boot script patches the config already queued.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  createBrowserHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gaHits, gatewaySnippet } from "../__fixtures__/gtag";
 import { installAnalyticsStubs } from "./stubs";
 import { track } from "./track";
-import { bootSubscribeLink, URL_PRIVACY_BOOT_SCRIPT } from "./url-privacy";
+import { URL_PRIVACY_BOOT_SCRIPT } from "./url-privacy";
 
 const LEAK = /SECRET|john|salary/i;
 
@@ -22,9 +29,28 @@ function runBootScript(): void {
   new Function(URL_PRIVACY_BOOT_SCRIPT)();
 }
 
-/** The history index TanStack Router stamps on each entry. */
-function atEntry(index: number): void {
-  history.replaceState({ __TSR_index: index }, "");
+const histories: { destroy: () => void }[] = [];
+
+/**
+ * A page load on the client: a fresh module (its per-load state) and a
+ * router on the current history entry, handed the boot script's link the
+ * way `getRouter` does.
+ */
+async function startRouter() {
+  vi.resetModules();
+  const privacy = await import("./url-privacy");
+  const root = createRootRoute();
+  const routeTree = root.addChildren([
+    createRoute({ getParentRoute: () => root, path: "/" }),
+    createRoute({ getParentRoute: () => root, path: "/subscribe" }),
+  ]);
+  const browserHistory = createBrowserHistory();
+  // It wraps window.history's methods; unwrap after the test.
+  histories.push(browserHistory);
+  const router = createRouter({ routeTree, history: browserHistory });
+  privacy.adoptSubscribeLink();
+  await router.load();
+  return { router, privacy };
 }
 
 beforeEach(() => {
@@ -33,6 +59,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  for (const h of histories.splice(0).reverse()) h.destroy();
   history.replaceState(null, "", "/");
 });
 
@@ -42,17 +69,18 @@ describe("GA4 never sees subscribe tokens or search text", () => {
     "/subscribe?settings=SECRET&lang=vi",
     "/?q=john+salary",
   ]) {
-    for (const gateway of [true, false]) {
-      it(`${path}, ${gateway ? "with" : "without"} the tag gateway`, () => {
+    for (const gateway of ["after", "before", "without"] as const) {
+      it(`${path}, ${gateway} the tag gateway`, () => {
         history.replaceState(null, "", path);
-        if (gateway) gatewaySnippet();
+        if (gateway === "before") gatewaySnippet();
         runBootScript();
+        if (gateway === "after") gatewaySnippet();
         installAnalyticsStubs({ gaMeasurementId: "G-HXJPPQVYQN" });
         track("page_view", { page_path: location.pathname, page_type: "home" });
 
         const hits = gaHits();
         expect(hits.map((h) => h.en)).toEqual(
-          gateway ? ["page_view", "page_view"] : ["page_view"]
+          gateway === "without" ? ["page_view"] : ["page_view", "page_view"]
         );
         expect(JSON.stringify(hits)).not.toMatch(LEAK);
       });
@@ -79,32 +107,84 @@ describe("the subscribe token leaves the URL before any vendor loads", () => {
     ["/subscribe?unsubscribe=SECRET", "unsubscribe", ""],
     ["/subscribe?settings=SECRET&lang=vi", "settings", "?lang=vi"],
   ] as const) {
-    it(`${kind}: the page still gets the token`, () => {
+    it(`${kind}: the page still gets the token`, async () => {
       history.replaceState(null, "", path);
       runBootScript();
       expect(location.pathname + location.search).toBe(`/subscribe${search}`);
-      atEntry(0);
-      expect(bootSubscribeLink()).toEqual({ kind, token: "SECRET" });
+      const { router, privacy } = await startRouter();
+      expect(
+        privacy.subscribeLinkToRender(router.state.location.state, false)
+      ).toEqual({ kind, token: "SECRET" });
     });
   }
 
-  it("leaves the same params alone on other pages", () => {
+  it("leaves the same params alone on other pages", async () => {
     history.replaceState(null, "", "/?settings=x");
     runBootScript();
     expect(location.search).toBe("?settings=x");
-    atEntry(99);
-    expect(bootSubscribeLink()).toBeUndefined();
+    const { router, privacy } = await startRouter();
+    expect(
+      privacy.subscribeLinkOf(router.state.location.state)
+    ).toBeUndefined();
+  });
+});
+
+describe("the subscribe link stays with the history entry it arrived on", () => {
+  const link = { kind: "settings", token: "SECRET" };
+
+  async function arrive() {
+    history.replaceState(null, "", "/subscribe?settings=SECRET&lang=en");
+    runBootScript();
+    return startRouter();
+  }
+
+  it("a link to the same URL (the footer's Get AI;DR) opens the plain page", async () => {
+    const { router, privacy } = await arrive();
+    const length = history.length;
+    await router.navigate({ to: "/subscribe", search: { lang: "en" } });
+    expect(location.pathname + location.search).toBe("/subscribe?lang=en");
+    expect(history.length).toBe(length + 1);
+    expect(
+      privacy.subscribeLinkOf(router.state.location.state)
+    ).toBeUndefined();
   });
 
-  it("stays with the entry it arrived on, so a later visit starts clean", () => {
-    history.replaceState(null, "", "/subscribe?unsubscribe=SECRET");
-    runBootScript();
-    const link = { kind: "unsubscribe", token: "SECRET" };
-    atEntry(3);
-    expect(bootSubscribeLink()).toEqual(link);
-    // The tree remounts once Clerk loads, and back returns to the entry.
-    expect(bootSubscribeLink()).toEqual(link);
-    atEntry(4);
-    expect(bootSubscribeLink()).toBeUndefined();
+  it("a language switch keeps it", async () => {
+    const { router, privacy } = await arrive();
+    await router.navigate({
+      href: "/subscribe?lang=vi",
+      replace: true,
+      state: true,
+    });
+    expect(privacy.subscribeLinkOf(router.state.location.state)).toEqual(link);
   });
+
+  it("after a reload it shows once hydrated, as the server rendered the plain page", async () => {
+    await arrive();
+    // A reload keeps the entry's state; the URL no longer has the token.
+    const { router, privacy } = await startRouter();
+    const state = router.state.location.state;
+    expect(privacy.subscribeLinkToRender(state, false)).toBeUndefined();
+    expect(privacy.subscribeLinkToRender(state, true)).toEqual(link);
+  });
+});
+
+describe("a dataLayer the boot script cannot use", () => {
+  for (const [name, make] of [
+    ["frozen", () => Object.freeze([])],
+    ["a plain object", () => ({})],
+    ["a number", () => 7],
+  ] as const) {
+    it(`${name}: the token still leaves the URL and nothing throws`, async () => {
+      history.replaceState(null, "", "/subscribe?settings=SECRET&lang=vi");
+      (w as { dataLayer?: unknown }).dataLayer = make();
+      expect(runBootScript).not.toThrow();
+      expect(location.search).toBe("?lang=vi");
+      const { router, privacy } = await startRouter();
+      expect(privacy.subscribeLinkOf(router.state.location.state)).toEqual({
+        kind: "settings",
+        token: "SECRET",
+      });
+    });
+  }
 });

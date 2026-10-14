@@ -1,5 +1,7 @@
 import { Button } from "@aidr/ui";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { subscribeLinkState } from "../../lib/analytics/url-privacy";
 import { withLang } from "../../lib/locale-url";
 import { type MailFormat, normalizeMailFormat } from "../../lib/mail-format";
 import {
@@ -19,6 +21,7 @@ type DigestSize = (typeof DIGEST_SIZES)[number];
 
 export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
+  const navigate = useNavigate();
   const [load, setLoad] = useState<"loading" | "ready" | "error">("loading");
   const [masked, setMasked] = useState("");
   const [prefLang, setPrefLang] = useState<Lang>("en");
@@ -200,15 +203,20 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
         </a>
       </p>
       <p className="mt-4 text-xs">
-        <a
-          href={withLang(
-            `/subscribe?unsubscribe=${encodeURIComponent(token)}`,
-            lang
-          )}
+        <button
+          type="button"
+          onClick={() =>
+            // The token rides in history state, not the href: a recorded
+            // link would put it in front of analytics vendors.
+            void navigate({
+              href: withLang("/subscribe", lang),
+              state: subscribeLinkState({ kind: "unsubscribe", token }),
+            })
+          }
           className="text-muted-foreground underline-offset-2 hover:underline"
         >
           {t("Unsubscribe", "Hủy đăng ký")}
-        </a>
+        </button>
       </p>
     </div>
   );

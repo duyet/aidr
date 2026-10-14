@@ -72,22 +72,122 @@ export function gaPageFields(): {
   return { page_location: page.url, page_referrer: page.referrer };
 }
 
-/** An absolute or root-relative URL on this site, sanitized; anything else unchanged. */
-function sanitizeOwnUrl(raw: string, origin: string): string {
-  if (raw.startsWith(origin)) return sanitizeUrl(raw, SAFE_PARAMS);
-  if (raw.startsWith("/") && !raw.startsWith("//")) {
-    return sanitizeUrl(origin + raw, SAFE_PARAMS).slice(origin.length);
+/**
+ * Drops the query params outside SAFE_PARAMS from a URL as written. The
+ * rest (path encoding, hash) is kept byte for byte, and a URL with nothing
+ * to drop comes back unchanged.
+ */
+function dropUnsafeParams(raw: string): string {
+  const hash = raw.indexOf("#");
+  const query = raw.indexOf("?");
+  if (query === -1 || (hash !== -1 && hash < query)) return raw;
+  const end = hash === -1 ? raw.length : hash;
+  const pairs = raw.slice(query + 1, end).split("&");
+  const kept = pairs.filter((pair) => {
+    const key = new URLSearchParams(pair).keys().next().value;
+    return key !== undefined && SAFE_PARAMS.includes(key);
+  });
+  if (kept.length === pairs.length) return raw;
+  return (
+    raw.slice(0, query) +
+    (kept.length ? `?${kept.join("&")}` : "") +
+    raw.slice(end)
+  );
+}
+
+/** Property names whose values PostHog fills with a URL or path. */
+const URL_KEY =
+  /^(?:href|attr__href|\$referrer)$|(?:_url|_referrer|pathname|_path)$/;
+
+function isOwnAbsoluteUrl(value: string, origin: string): boolean {
+  return (
+    value.startsWith(origin) &&
+    /^(?:[/?#]|$)/.test(value.slice(origin.length)) &&
+    !/\s/.test(value)
+  );
+}
+
+function scrubString(value: string, key: string, origin: string): string {
+  if (isOwnAbsoluteUrl(value, origin)) return dropUnsafeParams(value);
+  if (URL_KEY.test(key) && value.startsWith("/") && !value.startsWith("//")) {
+    return dropUnsafeParams(value);
   }
-  return raw;
+  return value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 const ELEMENT_HREF = /href="([^"]*)"/g;
 
+/** Node attributes rrweb records that hold a link of the page. */
+const LINK_ATTRIBUTES = ["href", "src", "action"];
+
+/** A same-site URL: absolute on this origin, or relative (no scheme). */
+function scrubSiteUrl(value: string, origin: string): string {
+  if (isOwnAbsoluteUrl(value, origin)) return dropUnsafeParams(value);
+  if (!/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value) && !/\s/.test(value)) {
+    return dropUnsafeParams(value);
+  }
+  return value;
+}
+
 /**
- * PostHog `before_send`. Rewrites every URL on this site anywhere in the
- * event: `$current_url`, `$referrer`, `$session_entry_url`, the `$set_once`
- * initial values, and link hrefs in autocaptured `$elements_chain` and
- * `$elements`. Links to other sites keep their query.
+ * Walks an rrweb event body: full-snapshot nodes (`node`, `childNodes`) and
+ * mutations (`adds[].node`, `attributes[].attributes`). Every `attributes`
+ * record has its link-valued entries cleaned. Text content and every other
+ * value is left as recorded.
+ */
+function scrubRecordedNode(value: unknown, origin: string): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => scrubRecordedNode(item, origin));
+  }
+  if (!isRecord(value)) return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(value)) {
+    if (key === "attributes" && isRecord(v)) {
+      const attrs: Record<string, unknown> = { ...v };
+      for (const name of LINK_ATTRIBUTES) {
+        const link = attrs[name];
+        if (typeof link === "string") attrs[name] = scrubSiteUrl(link, origin);
+      }
+      out[key] = attrs;
+    } else {
+      out[key] = scrubRecordedNode(v, origin);
+    }
+  }
+  return out;
+}
+
+/**
+ * rrweb events in a `$snapshot`. The meta event carries the page URL. Full
+ * snapshots and mutations carry the DOM, whose links (`href`, `src`,
+ * `action`) can hold a token or search text. Everything else replays as
+ * recorded.
+ */
+function scrubRecording(events: unknown, origin: string): unknown {
+  if (!Array.isArray(events)) return events;
+  return events.map((e) => {
+    if (!isRecord(e) || !isRecord(e.data)) return e;
+    if (e.type === 4 && typeof e.data.href === "string") {
+      return {
+        ...e,
+        data: { ...e.data, href: scrubString(e.data.href, "href", origin) },
+      };
+    }
+    return { ...e, data: scrubRecordedNode(e.data, origin) };
+  });
+}
+
+/**
+ * PostHog `before_send`. Drops unsafe query params from URLs of this site:
+ * any absolute same-origin URL, and root-relative values under the keys
+ * PostHog uses for URLs (`$current_url`, `$pathname`, `$referrer`, the
+ * `$initial_*` and `$session_entry_*` values, autocaptured link hrefs).
+ * Free text, links to other sites, and recorded text are left alone.
  */
 export function scrubPosthogEvent<E>(event: E): E {
   const origin = window.location.origin;
@@ -96,17 +196,22 @@ export function scrubPosthogEvent<E>(event: E): E {
       if (key === "$elements_chain") {
         return value.replace(
           ELEMENT_HREF,
-          (_match, href: string) => `href="${sanitizeOwnUrl(href, origin)}"`
+          (_match, href: string) =>
+            `href="${scrubString(href, "href", origin)}"`
         );
       }
-      return sanitizeOwnUrl(value, origin);
+      return scrubString(value, key, origin);
     }
+    if (key === "$snapshot_data") return scrubRecording(value, origin);
     if (Array.isArray(value)) return value.map((item) => visit(item, key));
-    // Only plain objects: the event also carries values like a Date
-    // timestamp, which must pass through as they are.
-    if (value && Object.getPrototypeOf(value) === Object.prototype) {
+    // Only plain records: the event also carries values like a Date
+    // timestamp, which must pass through as they are. Keys can be URLs too
+    // (`$heatmap_data` is keyed by page URL).
+    if (isRecord(value)) {
       const out: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(value)) out[k] = visit(v, k);
+      for (const [k, v] of Object.entries(value)) {
+        out[scrubString(k, "", origin)] = visit(v, k);
+      }
       return out;
     }
     return value;
@@ -122,17 +227,18 @@ export type SubscribeLink = {
 const SUBSCRIBE_LINK_GLOBAL = "__aidrSubscribeLink";
 
 /**
- * Runs inline in <head>, after the Cloudflare tag gateway's snippet and
- * before any vendor script executes. Self-contained, because its source is
- * inlined.
+ * The first script in <head>, ahead of the Cloudflare tag gateway's snippet
+ * (the Worker puts it there, ssr-head.ts). Self-contained, because its
+ * source is inlined.
  *
  * 1. Moves a subscribe token out of the URL into a window global, so no
  *    vendor ever reads it. Stripping it later is too late: once gtag.js has
  *    loaded, the `replaceState` sends a history page_view whose referrer is
  *    the tokened URL.
- * 2. Gives the gateway's queued `config` a sanitized page_location. A
- *    `gtag('set')` does not reach the page_view of a `config` queued before
- *    it, and the gateway's `config` is the first thing in <head>.
+ * 2. Queues a sanitized page_location with `gtag('set')`, which reaches the
+ *    page_view of every `config` queued after it. A `config` already queued
+ *    (the gateway ran first) gets it patched in, since a later `set` does
+ *    not reach that page_view.
  */
 function bootUrlPrivacy(
   sanitize: typeof sanitizeUrl,
@@ -163,6 +269,9 @@ function bootUrlPrivacy(
   };
   w.dataLayer = w.dataLayer || [];
   const dataLayer = w.dataLayer;
+  // Someone else's dataLayer that cannot be read or pushed to: gtag.js
+  // cannot use it either, so there is no hit to clean up.
+  if (!Array.isArray(dataLayer) || !Object.isExtensible(dataLayer)) return;
   for (const entry of dataLayer) {
     const args = entry as { [i: number]: unknown; length: number } | null;
     if (args && args[0] === "config") {
@@ -177,29 +286,67 @@ function bootUrlPrivacy(
   gtag("set", page);
 }
 
-/** The inline <head> script the root route renders. */
+/** The inline script the Worker puts first in <head> (ssr-head.ts). */
 export const URL_PRIVACY_BOOT_SCRIPT = `(${bootUrlPrivacy})(${sanitizeUrl},${JSON.stringify(SAFE_PARAMS)},${JSON.stringify(SUBSCRIBE_LINK_GLOBAL)});`;
 
-let claimed: { entry: number; link: SubscribeLink } | undefined;
+/** The history state that carries `link` onto a new entry. */
+export function subscribeLinkState(
+  link: SubscribeLink
+): Record<string, unknown> {
+  return { [SUBSCRIBE_LINK_STATE]: link };
+}
+
+/** The history state key that carries a subscribe link on its entry. */
+const SUBSCRIBE_LINK_STATE = "aidrSubscribeLink";
+
+/** Set once the boot script handed over a link from this page load's URL. */
+let arrivedInUrl = false;
 
 /**
- * The subscribe token the boot script took out of the URL, while the current
- * history entry is the one it arrived on. The first call (once the router
- * has indexed the entry) claims it for that entry's index, so it survives a
- * remount (the tree remounts once Clerk loads), a replace navigation and
- * back/forward, while a later visit to /subscribe in the same tab starts
- * clean.
+ * Client only, once, after the router has created its history and before it
+ * hydrates. Moves the link the boot script took out of the URL onto the
+ * history entry it arrived on. That state survives a remount, a reload and
+ * back/forward to the entry, and the router compares it, so a link to the
+ * same URL (the footer's "Get AI;DR") pushes a fresh entry without it.
  */
-export function bootSubscribeLink(): SubscribeLink | undefined {
-  if (typeof window === "undefined") return undefined;
-  const state = window.history.state as { __TSR_index?: number } | null;
-  const entry = state?.__TSR_index;
-  if (entry === undefined) return undefined;
-  const w = window as unknown as Record<string, SubscribeLink | undefined>;
-  const found = w[SUBSCRIBE_LINK_GLOBAL];
-  if (found) {
-    claimed = { entry, link: found };
-    delete w[SUBSCRIBE_LINK_GLOBAL];
+export function adoptSubscribeLink(): void {
+  const w = window as unknown as Record<string, unknown>;
+  const link = subscribeLinkOf({
+    [SUBSCRIBE_LINK_STATE]: w[SUBSCRIBE_LINK_GLOBAL],
+  });
+  delete w[SUBSCRIBE_LINK_GLOBAL];
+  if (!link) return;
+  arrivedInUrl = true;
+  window.history.replaceState(
+    { ...window.history.state, [SUBSCRIBE_LINK_STATE]: link },
+    ""
+  );
+}
+
+/** The subscribe link a history entry's state carries, if well formed. */
+export function subscribeLinkOf(state: unknown): SubscribeLink | undefined {
+  const link = (state as Record<string, unknown> | null)?.[
+    SUBSCRIBE_LINK_STATE
+  ] as Partial<SubscribeLink> | undefined;
+  if (
+    (link?.kind === "unsubscribe" || link?.kind === "settings") &&
+    typeof link.token === "string" &&
+    link.token
+  ) {
+    return { kind: link.kind, token: link.token };
   }
-  return claimed?.entry === entry ? claimed.link : undefined;
+  return undefined;
+}
+
+/**
+ * The link to render for a history entry. Before hydration completes, only
+ * if this page load's URL carried it: the server then saw the token and
+ * rendered the same view. After a reload the server rendered the plain
+ * page, so the entry's link shows once hydrated.
+ */
+export function subscribeLinkToRender(
+  state: unknown,
+  hydrated: boolean
+): SubscribeLink | undefined {
+  return hydrated || arrivedInUrl ? subscribeLinkOf(state) : undefined;
 }

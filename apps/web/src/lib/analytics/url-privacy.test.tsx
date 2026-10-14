@@ -99,6 +99,149 @@ describe("PostHog never sees subscribe tokens or search text", () => {
   }
 });
 
+describe("the PostHog scrub rewrites only URLs of this site", () => {
+  function beforeSend(): (event: object) => object {
+    installAnalyticsStubs({
+      gaMeasurementId: "",
+      posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
+    });
+    const config = w.posthog?._i[0]?.[1] as {
+      before_send: (event: object) => object;
+    };
+    return config.before_send;
+  }
+
+  it("leaves free text that starts with a slash alone", () => {
+    const props = {
+      title: "/ 50% off",
+      tag: "/tag/tiếng việt",
+      note: "/subscribe?settings=is how the link looks",
+    };
+    const sent = beforeSend()({ event: "promo_click", properties: props });
+    expect(sent).toEqual({ event: "promo_click", properties: props });
+  });
+
+  it("drops only the unsafe params and keeps the URL as written", () => {
+    const origin = location.origin;
+    const sent = beforeSend()({
+      event: "$pageview",
+      properties: {
+        $current_url: `${origin}/story/abc?q=john&lang=vi#comments`,
+        $pathname: "/tag/ti%E1%BA%BFng%20vi%E1%BB%87t",
+        $referrer: `${origin}/tag/ti%E1%BA%BFng%20vi%E1%BB%87t?lang=vi`,
+        $prev_pageview_url: "/?q=salary#top",
+        $external_click_url: "https://example.com/?q=theirs",
+        lookalike: `${origin}.evil.example/?q=john`,
+      },
+    });
+    expect(sent).toEqual({
+      event: "$pageview",
+      properties: {
+        $current_url: `${origin}/story/abc?lang=vi#comments`,
+        $pathname: "/tag/ti%E1%BA%BFng%20vi%E1%BB%87t",
+        $referrer: `${origin}/tag/ti%E1%BA%BFng%20vi%E1%BB%87t?lang=vi`,
+        $prev_pageview_url: "/#top",
+        $external_click_url: "https://example.com/?q=theirs",
+        lookalike: `${origin}.evil.example/?q=john`,
+      },
+    });
+  });
+
+  it("scrubs objects without a prototype and URL-keyed maps", () => {
+    const origin = location.origin;
+    const properties = Object.assign(Object.create(null), {
+      $current_url: `${origin}/?q=john`,
+      $heatmap_data: { [`${origin}/?q=salary`]: [{ x: 1, y: 2 }] },
+    });
+    const sent = beforeSend()({ event: "$$heatmap", properties });
+    expect(JSON.stringify(sent)).not.toMatch(LEAK);
+    expect(JSON.stringify(sent)).toContain(`${origin}/`);
+  });
+
+  it("cleans the links in a session recording and leaves the rest as recorded", () => {
+    const origin = location.origin;
+    const a = (href: string, text = "Unsubscribe") => ({
+      type: 2,
+      tagName: "a",
+      attributes: { href, title: "/ 50% off" },
+      childNodes: [{ type: 3, textContent: text }],
+    });
+    const fullSnapshot = {
+      type: 2,
+      data: {
+        node: {
+          type: 0,
+          childNodes: [
+            a("/subscribe?unsubscribe=SECRET&lang=vi"),
+            a(`${origin}/?q=john&tag=ai`, "/?q=as-typed"),
+            a("https://other.example/?q=keep"),
+            {
+              type: 2,
+              tagName: "form",
+              attributes: { action: "/search?q=john" },
+              childNodes: [],
+            },
+            {
+              type: 2,
+              tagName: "iframe",
+              attributes: {
+                src: "/api/subscribe/preview?freq=daily&settings=SECRET",
+              },
+              childNodes: [],
+            },
+          ],
+        },
+        initialOffset: { top: 0, left: 0 },
+      },
+    };
+    const mutation = {
+      type: 3,
+      data: {
+        source: 0,
+        texts: [{ id: 4, value: "/?q=typed" }],
+        attributes: [
+          { id: 7, attributes: { href: "/subscribe?settings=SECRET" } },
+        ],
+        removes: [],
+        adds: [
+          {
+            parentId: 1,
+            nextId: null,
+            node: a("/subscribe?unsubscribe=SECRET"),
+          },
+        ],
+      },
+    };
+    const sent = beforeSend()({
+      event: "$snapshot",
+      properties: {
+        $session_id: "s1",
+        $snapshot_data: [
+          { type: 4, data: { href: `${origin}/?q=john&lang=en`, width: 1 } },
+          fullSnapshot,
+          mutation,
+        ],
+      },
+    }) as { properties: { $snapshot_data: any[] } };
+    expect(JSON.stringify(sent)).not.toContain("SECRET");
+
+    const [meta, full, mut] = sent.properties.$snapshot_data;
+    expect(meta.data.href).toBe(`${origin}/?lang=en`);
+    const nodes = full.data.node.childNodes;
+    expect(nodes[0].attributes.href).toBe("/subscribe?lang=vi");
+    expect(nodes[1].attributes.href).toBe(`${origin}/?tag=ai`);
+    expect(nodes[2].attributes.href).toBe("https://other.example/?q=keep");
+    expect(nodes[3].attributes.action).toBe("/search");
+    expect(nodes[4].attributes.src).toBe("/api/subscribe/preview?freq=daily");
+    // Not links: text and other attributes replay as recorded.
+    expect(nodes[1].childNodes[0].textContent).toBe("/?q=as-typed");
+    expect(nodes[0].attributes.title).toBe("/ 50% off");
+    expect(mut.data.texts).toEqual([{ id: 4, value: "/?q=typed" }]);
+    expect(mut.data.attributes[0].attributes.href).toBe("/subscribe");
+    expect(mut.data.adds[0].node.attributes.href).toBe("/subscribe");
+  });
+});
+
 describe("Jitsu never sees subscribe tokens or search text", () => {
   beforeEach(() => {
     vi.useFakeTimers();

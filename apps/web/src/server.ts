@@ -22,7 +22,6 @@ import {
   cachedLocaleResponse,
   cachedSsrResponse,
 } from "./lib/edge-cache";
-import { withHomepageInlineStylesheets } from "./lib/inline-stylesheet";
 import { llmsTxtResponse } from "./lib/llms-txt";
 import {
   apiErrorResponse,
@@ -71,6 +70,7 @@ import {
   staticSitemapUrls,
 } from "./lib/sitemap";
 import { legacyStoryRedirectPath } from "./lib/slug";
+import { withSsrHead } from "./lib/ssr-head";
 import {
   handleStoryMarkdownRequest,
   isStoryMarkdownPath,
@@ -327,7 +327,7 @@ export default {
             handleSubscribeCors(request, async () =>
               withHomepageHeaders(
                 request,
-                withHomepageInlineStylesheets(
+                withSsrHead(
                   request,
                   applyNotFoundHttpStatus(await handler.fetch(request)),
                   env.ASSETS

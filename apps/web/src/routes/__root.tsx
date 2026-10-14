@@ -7,7 +7,6 @@ import {
   HeadContent,
   Outlet,
   redirect,
-  ScriptOnce,
   Scripts,
   useNavigate,
 } from "@tanstack/react-router";
@@ -20,7 +19,6 @@ import { NotFoundPage } from "../components/NotFoundPage";
 import { PageViewTracker } from "../components/PageViewTracker";
 import { WebMcpTools } from "../components/WebMcpTools";
 import { track } from "../lib/analytics/track";
-import { URL_PRIVACY_BOOT_SCRIPT } from "../lib/analytics/url-privacy";
 import Analytics from "../lib/analytics/vendors";
 import { splatOwnsDocumentTitle } from "../lib/html-title";
 import { setClientLang } from "../lib/lang";
@@ -208,7 +206,9 @@ function RootComponent() {
         `${current.pathname}${current.search}${current.hash}`,
         next
       );
-      void navigate({ href, replace: true });
+      // Same entry in another language: keep its history state, which can
+      // carry a subscribe link (url-privacy.ts).
+      void navigate({ href, replace: true, state: true });
     }
   };
 
@@ -233,9 +233,8 @@ function RootComponent() {
   return (
     <html lang={lang} suppressHydrationWarning>
       <head>
-        {/* Runs while <head> parses, before any vendor script can read the
-            URL. See url-privacy.ts. */}
-        <ScriptOnce>{URL_PRIVACY_BOOT_SCRIPT}</ScriptOnce>
+        {/* The Worker puts the URL privacy boot script ahead of this head
+            (ssr-head.ts), before any vendor script can read the URL. */}
         <HeadContent />
       </head>
       <body>

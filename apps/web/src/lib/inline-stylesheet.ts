@@ -6,14 +6,16 @@
  * load (a partial critical sheet did, #291: CLS 0.764).
  *
  * The sheet's hash is only known after the build, so the Worker reads the
- * built file from the ASSETS binding and rewrites the streamed head. Hashed
- * files never change, so each isolate fetches a given sheet once.
+ * built file from the ASSETS binding and rewrites the streamed head
+ * (`ssr-head.ts`). Hashed files never change, so each isolate fetches a given
+ * sheet once.
  */
 
-type AssetsFetcher = { fetch: (request: Request) => Promise<Response> };
+export type AssetsFetcher = {
+  fetch: (request: Request) => Promise<Response>;
+};
 
 const STYLESHEET_LINK = /<link\b[^>]*\brel="stylesheet"[^>]*>/g;
-const HEAD_END = "</head>";
 
 const sheets = new Map<string, Promise<string | null>>();
 
@@ -86,68 +88,4 @@ export async function inlineStylesheets(
     out = out.replace(tag, () => `<style>${css}</style>${off}`);
   }
   return out;
-}
-
-/**
- * Rewrite only the `<head>` of a streamed HTML response. Bytes are held until
- * `</head>` arrives (it comes in the first chunk), then the rest streams
- * through untouched.
- */
-export function withInlineStylesheets(
-  response: Response,
-  assets: AssetsFetcher
-): Response {
-  const type = response.headers.get("Content-Type") ?? "";
-  if (!response.body || !type.includes("text/html")) return response;
-
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-  let held = "";
-  let headDone = false;
-
-  const rewrite = new TransformStream<Uint8Array, Uint8Array>({
-    async transform(chunk, controller) {
-      const text = decoder.decode(chunk, { stream: true });
-      if (headDone) {
-        controller.enqueue(encoder.encode(text));
-        return;
-      }
-      held += text;
-      const end = held.indexOf(HEAD_END);
-      if (end === -1) return;
-      const cut = end + HEAD_END.length;
-      headDone = true;
-      const head = await inlineStylesheets(held.slice(0, cut), assets);
-      controller.enqueue(encoder.encode(head + held.slice(cut)));
-      held = "";
-    },
-    flush(controller) {
-      // No `</head>` seen: emit what we held, unchanged.
-      held += decoder.decode();
-      if (held) controller.enqueue(encoder.encode(held));
-    },
-  });
-
-  const headers = new Headers(response.headers);
-  headers.delete("Content-Length");
-  return new Response(response.body.pipeThrough(rewrite), {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
-
-/**
- * Homepage only: it is the LCP page issue #229 tracks. Other routes keep the
- * cacheable blocking link.
- */
-export function withHomepageInlineStylesheets(
-  request: Request,
-  response: Response,
-  assets: AssetsFetcher | undefined
-): Response {
-  if (!assets) return response;
-  const path = new URL(request.url).pathname;
-  if (path !== "/" && path !== "") return response;
-  return withInlineStylesheets(response, assets);
 }
