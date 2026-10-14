@@ -513,39 +513,49 @@ const REPORTER_NAME_RE = new RegExp(
  * the English credit does, so a word with one of these is a translated noun:
  * "Trung Quốc", "Bộ Công Thương", "Nhà Trắng", "Thủ Tướng". */
 const VIETNAMESE_LETTER_RE = /[ăĂđĐĩĨũŨơƠưƯẠ-ỹ]/u;
-/** Name-shaped words that make the name a speaker or a date, not a reporter:
- * "President Trump", "Mr. Musk", "Ông Trump", "Black Friday", "Labor Day". */
-const NOT_REPORTER_WORDS: ReadonlySet<string> = new Set(
-  [
-    // Titles and roles. Vietnamese titles with a Vietnamese-only letter
-    // ("Thủ Tướng", "Chủ Tịch", "Giám Đốc") fail VIETNAMESE_LETTER_RE.
-    "Mr. Mrs. Ms. Dr. Prof. Sir Dame Lord Lady Ông Bà Ngài",
-    "President Chairman Chairwoman Chair Chief Founder Cofounder Co-founder",
-    "Director Minister Secretary Senator Sen. Rep. Governor Gov. Mayor",
-    "Judge Justice King Queen Prince Princess Pope General Gen. Professor",
-    "Spokesperson Spokesman Spokeswoman Commissioner Chancellor Ambassador",
-    "Deputy",
-    // Institutions.
-    "Ministry Department Bureau Agency Commission Council Congress Senate",
-    "Parliament Government Court Committee University Institute Bank",
-    "Federal National House",
-    // Days, months, seasons.
-    "Monday Tuesday Wednesday Thursday Friday Saturday Sunday January",
-    "February March April May June July August September October November",
-    "December Day Week Weekend Month Year Quarter Today Tonight Tomorrow",
-    "Yesterday Morning Afternoon Evening Night Christmas Easter Thanksgiving",
-    "Tháng Ngày Quý",
-  ]
-    .join(" ")
-    .split(" ")
+const words = (...lines: string[]): ReadonlySet<string> =>
+  new Set(lines.join(" ").split(" "));
+/** A title stands before a name ("President Trump", "Mr. Musk", "Ông
+ * Trump") and is a surname at the end of one ("Ian King"). Vietnamese titles
+ * with a Vietnamese-only letter ("Thủ Tướng", "Giám Đốc") fail
+ * VIETNAMESE_LETTER_RE. */
+const TITLE_WORDS = words(
+  "Mr. Mrs. Ms. Dr. Prof. Mr Mrs Ms Dr Prof Sir Dame Lord Lady Ông Bà Ngài",
+  "President Chairman Chairwoman Chair Chief Founder Cofounder Co-founder",
+  "Director Minister Secretary Senator Sen. Rep. Governor Gov. Mayor",
+  "Judge Justice King Queen Prince Princess Pope General Gen. Professor",
+  "Spokesperson Spokesman Spokeswoman Commissioner Chancellor Ambassador",
+  "Deputy"
+);
+/** A month is a first name at the start ("April Glaser") and a date after
+ * it ("Mid March"). */
+const MONTH_WORDS = words(
+  "January February March April May June July August September October",
+  "November December"
+);
+/** Institutions and dates anywhere: "Commerce Department", "Black Friday",
+ * "Lunar New Year". "Day", "Court", "House" and "Bank" are left out: they end
+ * a reporter's name ("Matt Day", "Emma Court") as often as a holiday or an
+ * institution. */
+const NON_NAME_WORDS = words(
+  "Ministry Department Bureau Agency Commission Council Congress Senate",
+  "Parliament Government Committee University Institute Federal National",
+  "Monday Tuesday Wednesday Thursday Friday Saturday Sunday Week Weekend",
+  "Month Year Quarter Today Tonight Tomorrow Yesterday Morning Afternoon",
+  "Evening Night Christmas Easter Thanksgiving Tháng Ngày Quý"
 );
 
-/** A reporter's name, not a speaker's: see `REPORTER_NAME_RE`. */
+/** A reporter's name, not a speaker's or a date: see `REPORTER_NAME_RE`. */
 function isReporterName(name: string): boolean {
-  return (
-    REPORTER_NAME_RE.test(name) &&
-    !VIETNAMESE_LETTER_RE.test(name) &&
-    !name.split(/\s+/).some((word) => NOT_REPORTER_WORDS.has(word))
+  if (!REPORTER_NAME_RE.test(name) || VIETNAMESE_LETTER_RE.test(name)) {
+    return false;
+  }
+  const parts = name.split(/\s+/);
+  return parts.every(
+    (word, i) =>
+      !NON_NAME_WORDS.has(word) &&
+      !(i < parts.length - 1 && TITLE_WORDS.has(word)) &&
+      !(i > 0 && MONTH_WORDS.has(word))
   );
 }
 
