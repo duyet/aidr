@@ -90,6 +90,14 @@ const SOURCE_THEMES: Readonly<Record<string, string>> = {
   "hf-papers": "research",
 };
 
+/** Every theme the fallback can name. Fallback tags reach `topic_daily`, so
+ * each must stay out of learned keywords and trending chips
+ * (`LEARNING_THEME_DENYLIST`), except `vietnam`, which is a country. */
+export const FALLBACK_THEMES: readonly string[] = [
+  ...THEME_KEYWORDS.map(([topic]) => topic),
+  ...Object.values(SOURCE_THEMES),
+];
+
 const LONGEST_NAME_WORDS = 3;
 
 /** A headline word that can be part of a name: ASCII, with a capital

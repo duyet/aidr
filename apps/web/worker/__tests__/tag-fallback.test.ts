@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { fallbackTags } from "../tag-fallback.js";
+import { FALLBACK_THEMES, fallbackTags } from "../tag-fallback.js";
+import {
+  isLearnableEntityTopic,
+  isSpecificTrendingTopic,
+} from "../topic-learning.js";
 
 /** A slice of production `topics` (name → canonical), aliases included. */
 const KNOWN = new Map<string, string>([
@@ -147,5 +151,17 @@ describe("fallbackTags", () => {
         "Trump, Samsung and AMD Back China Data Center Robots With AI Agents"
       )
     ).toEqual(["trump", "samsung", "amd"]);
+  });
+
+  it("names no theme that could become a highlight keyword or a chip", () => {
+    // A week of innovation-festival stories must not put an "innovation"
+    // chip on the homepage or highlight the word in every headline.
+    for (const theme of FALLBACK_THEMES) {
+      expect([theme, isLearnableEntityTopic(theme)]).toEqual([
+        theme,
+        theme === "vietnam",
+      ]);
+      expect([theme, isSpecificTrendingTopic(theme)]).toEqual([theme, false]);
+    }
   });
 });

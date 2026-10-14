@@ -829,7 +829,11 @@ Batches of 5.
 
   At most 3 tags, entities first, because the card topic is `tags[0]`.
   A story it names nothing for stays `[]`. Fallback tags count in `topics`
-  and reach `topic_daily` through learn-topics like scorer tags. When the
+  and reach `topic_daily` through learn-topics like scorer tags. Its
+  entities can then become learned keywords and trending chips, as scorer
+  entities can. Its themes cannot: each is on `LEARNING_THEME_DENYLIST`
+  (`healthcare`, `education`, `smartphone`, `innovation` and `economy`
+  were added for it), except `vietnam`, which is a country. When the
   normalize-topics step itself fails, ingest still stores `[]` (#771).
   Measured on production, 2026-10-15:
   - it tags 115 of the 233 untagged published stories;

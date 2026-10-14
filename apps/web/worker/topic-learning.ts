@@ -125,6 +125,12 @@ export const LEARNING_THEME_DENYLIST = new Set([
   "policy",
   "llms",
   "agentic",
+  // Themes `fallbackTags` names from headline keywords (#770).
+  "healthcare",
+  "education",
+  "smartphone",
+  "innovation",
+  "economy",
   // Builder categories and the themes the tagger pairs with them.
   "tools",
   "frameworks",
