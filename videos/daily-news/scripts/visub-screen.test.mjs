@@ -1,10 +1,10 @@
 // node --test videos/daily-news/scripts/*.test.mjs
 // The visub cut's screen text: Vietnamese over the English script, voice and timing unchanged.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { after, test } from "node:test";
+import { runBuild, scratchRoot } from "./scratch-root.mjs";
 import { applyScreen, categoryLabels, fieldProblems, screenFields, translateScreen } from "./visub-screen.mjs";
 import { parseSrt } from "./visub.mjs";
 
@@ -216,17 +216,19 @@ test("applyScreen swaps only screen text: voice, statWord and focus stay English
 });
 
 // --- build.mjs end to end on a scratch edition (no voice, no audio) ------------------------------
-const ROOT = resolve(import.meta.dirname, "..");
 const DATE = EDITION.date;
-const DIR = join(ROOT, "editions", DATE);
-after(() => rmSync(DIR, { recursive: true, force: true }));
+const scratch = scratchRoot();
+const DIR = join(scratch.dn, "editions", DATE);
+after(scratch.cleanup);
 
-const build = (...args) => execFileSync(process.execPath, [join(ROOT, "scripts/build.mjs"), DATE, "--no-voice", "--no-audio", ...args], { stdio: "pipe" });
+const build = (...args) => {
+  const run = runBuild(scratch.dn, [DATE, "--no-voice", "--no-audio", ...args]);
+  if (run.status !== 0) throw new Error(run.stderr);
+};
 const html = (out, name) => readFileSync(join(DIR, out, name, "index.html"), "utf8");
 const duration = (page) => page.match(/id="root"[^>]*data-duration="([\d.]+)"/)[1];
 
 test("the visub build shows Vietnamese labels, dateline and screen text, has its own cover, and keeps the English timing", async () => {
-  assert.ok(!existsSync(DIR), `${DIR} is scratch and must not exist`);
   mkdirSync(DIR, { recursive: true });
   writeFileSync(join(DIR, "edition.json"), JSON.stringify(EDITION));
   writeFileSync(join(DIR, "script.json"), JSON.stringify(SCRIPT));
