@@ -1,3 +1,11 @@
+import {
+  type ClusterGateTally,
+  type GatedClusters,
+  type GateHeadline,
+  gateLlmClusters,
+  parseClusterGate,
+  tallyClusterGate,
+} from "../cluster-gate.js";
 import { MAX_SOURCES_PER_ITEM } from "../d1-bind.js";
 import {
   buildMergePlan,
@@ -250,108 +258,160 @@ async function readDemotedDetails(
   return details;
 }
 
+/** The merge-similar step's result: the plan, and this run's cluster-gate
+ *  tally (absent on steps recorded before the gate). */
+type MergeStepResult = SerializedMergePlan & { clusterGate?: ClusterGateTally };
+
+function logGateRejections(
+  model: string | null,
+  gated: GatedClusters,
+  newItems: ReadonlyMap<number, GateHeadline>,
+  existing: ReadonlyMap<string, GateHeadline>
+): void {
+  for (const { existingId, newIndices } of gated.rejected) {
+    const titles = newIndices.map((i) => newItems.get(i)?.title ?? `#${i}`);
+    console.warn(
+      `cluster gate: ${model ?? "unknown model"} linked ${existingId.slice(0, 8)} "${existing.get(existingId)?.title ?? ""}" to unrelated ${JSON.stringify(titles)}; kept apart`
+    );
+  }
+}
+
 /** Clusters new items with each other and with recently published items
- * (LLM + title similarity), then plans which ones fold into a canonical. */
+ * (LLM + title similarity), then plans which ones fold into a canonical. The
+ * LLM's links to existing items pass the cluster gate (`cluster-gate.ts`)
+ * first; `clusterGate` counts what it proposed and what the gate rejected. */
 export async function planMerges(
   ctx: IngestContext,
   newRows: readonly NewRow[],
   scored: ReadonlyMap<string, ItemScore>,
   canonicalTagsByItem: ReadonlyMap<string, string[]>,
   now: number
-): Promise<MergePlan> {
+): Promise<{ plan: MergePlan; clusterGate: ClusterGateTally }> {
   const { step, env, runId } = ctx;
-  return restoreMergePlan(
-    await llmStep(
-      step,
-      env,
-      runId,
-      "merge-similar",
-      serializeMergePlan(EMPTY_MERGE_PLAN),
-      async () => {
-        if (newRows.length === 0) return serializeMergePlan(EMPTY_MERGE_PLAN);
-        try {
-          const { results: recentForClustering } = await env.DB.prepare(
-            `SELECT id, source_id, url, title, published_at, tags, points, comments,
+  const noMerges: MergeStepResult = serializeMergePlan(EMPTY_MERGE_PLAN);
+  const result = await llmStep(
+    step,
+    env,
+    runId,
+    "merge-similar",
+    noMerges,
+    async () => {
+      if (newRows.length === 0) return noMerges;
+      let clusterGate: ClusterGateTally = {};
+      const withGate = (plan: MergePlan): MergeStepResult => ({
+        ...serializeMergePlan(plan),
+        clusterGate,
+      });
+      try {
+        const { results: recentForClustering } = await env.DB.prepare(
+          `SELECT id, source_id, url, title, published_at, tags, points, comments,
                   image_url, media_manifest FROM items
            WHERE status = 'published' AND published_at >= ?
            ORDER BY published_at DESC
            LIMIT ${MERGE_CANDIDATE_LIMIT}`
-          )
-            .bind(toEpochSeconds(now) - MERGE_LOOKBACK_SEC)
-            .all<RecentClusterRow>();
+        )
+          .bind(toEpochSeconds(now) - MERGE_LOOKBACK_SEC)
+          .all<RecentClusterRow>();
+        const recent = recentForClustering ?? [];
 
-          const newForCluster = newRows.map((row, i) => ({
+        const newForCluster = newRows.map((row, i) => ({
+          i,
+          title: row.item.title,
+          url: row.item.url,
+          source: row.source.id,
+        }));
+        const existingForCluster = recent.map((r) => ({
+          id: r.id,
+          title: r.title,
+        }));
+        const llm = await clusterSimilar(
+          env,
+          newForCluster,
+          existingForCluster
+        );
+        const newHeadlines = new Map<number, GateHeadline>(
+          newRows.map((row, i) => [
             i,
-            title: row.item.title,
-            url: row.item.url,
-            source: row.source.id,
-          }));
-          const existingForCluster = (recentForClustering ?? []).map((r) => ({
+            {
+              title: row.item.title,
+              sourceId: row.source.id,
+              url: row.item.url,
+            },
+          ])
+        );
+        const existingHeadlines = new Map<string, GateHeadline>(
+          recent.map((r) => [
+            r.id,
+            { title: r.title, sourceId: r.source_id, url: r.url },
+          ])
+        );
+        const gated = gateLlmClusters(
+          llm.clusters,
+          newHeadlines,
+          existingHeadlines
+        );
+        logGateRejections(llm.model, gated, newHeadlines, existingHeadlines);
+        clusterGate = tallyClusterGate(llm.model, gated);
+        const titleClusters = clusterByTitleSimilarity(
+          newForCluster,
+          existingForCluster
+        );
+        const officialClusters = clusterOfficialRewrites(
+          newRows.map((row, i) => ({
+            i,
+            ...headlineOf(
+              row.source.id,
+              row.item.url,
+              row.item.title,
+              row.item.publishedAt
+            ),
+          })),
+          recent.map((r) => ({
             id: r.id,
-            title: r.title,
-          }));
-          const llmClusters = await clusterSimilar(
-            env,
-            newForCluster,
-            existingForCluster
-          );
-          const titleClusters = clusterByTitleSimilarity(
-            newForCluster,
-            existingForCluster
-          );
-          const officialClusters = clusterOfficialRewrites(
-            newRows.map((row, i) => ({
-              i,
-              ...headlineOf(
-                row.source.id,
-                row.item.url,
-                row.item.title,
-                row.item.publishedAt
-              ),
-            })),
-            (recentForClustering ?? []).map((r) => ({
-              id: r.id,
-              ...headlineOf(r.source_id, r.url, r.title, r.published_at),
-            }))
-          );
-          const clusters = mergeClusters([
-            llmClusters,
-            titleClusters,
-            officialClusters,
-          ]);
-          if (clusters.length === 0) return EMPTY_MERGE_PLAN;
+            ...headlineOf(r.source_id, r.url, r.title, r.published_at),
+          }))
+        );
+        const clusters = mergeClusters([
+          gated.clusters,
+          titleClusters,
+          officialClusters,
+        ]);
+        if (clusters.length === 0) return withGate(EMPTY_MERGE_PLAN);
 
-          const existing = toExistingCandidates(recentForClustering ?? []);
-          const plan = buildMergePlan(
-            clusters,
-            buildMergeCandidates(newRows, scored, canonicalTagsByItem, now),
-            existing,
-            MAX_SOURCES_PER_ITEM,
-            MAX_MERGED_TOPICS
+        const existing = toExistingCandidates(recent);
+        const plan = buildMergePlan(
+          clusters,
+          buildMergeCandidates(newRows, scored, canonicalTagsByItem, now),
+          existing,
+          MAX_SOURCES_PER_ITEM,
+          MAX_MERGED_TOPICS
+        );
+        if (plan.demoted.size === 0) return withGate(plan);
+        try {
+          return withGate(
+            foldDemotedCanonicals(
+              plan,
+              await readDemotedDetails(env.DB, plan.demoted, existing),
+              MAX_SOURCES_PER_ITEM
+            )
           );
-          if (plan.demoted.size === 0) return serializeMergePlan(plan);
-          try {
-            return serializeMergePlan(
-              foldDemotedCanonicals(
-                plan,
-                await readDemotedDetails(env.DB, plan.demoted, existing),
-                MAX_SOURCES_PER_ITEM
-              )
-            );
-          } catch (error) {
-            // The write step still re-points the merged items in SQL; only
-            // the copied sources and the corroboration in the first rank
-            // are lost until the next re-rank.
-            console.error("merge-similar demoted read failed:", error);
-            return serializeMergePlan(plan);
-          }
         } catch (error) {
-          if (isMediaManifestSchemaError(error)) throw error;
-          console.error("merge-similar step failed:", error);
-          return serializeMergePlan(EMPTY_MERGE_PLAN);
+          // The write step still re-points the merged items in SQL; only
+          // the copied sources and the corroboration in the first rank
+          // are lost until the next re-rank.
+          console.error("merge-similar demoted read failed:", error);
+          return withGate(plan);
         }
-      },
-      { config: LLM_STEP }
-    )
+      } catch (error) {
+        if (isMediaManifestSchemaError(error)) throw error;
+        console.error("merge-similar step failed:", error);
+        return withGate(EMPTY_MERGE_PLAN);
+      }
+    },
+    { config: LLM_STEP }
   );
+  return {
+    plan: restoreMergePlan(result),
+    clusterGate: parseClusterGate(result?.clusterGate),
+  };
 }

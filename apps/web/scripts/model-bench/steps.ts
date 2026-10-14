@@ -527,7 +527,7 @@ const clusterStep: StepDef = {
   primary: "same-story F1 vs duplicate_of (silver)",
   units: one,
   async run(env, [c]) {
-    const clusters = await clusterSimilar(env, c.newItems, c.existing);
+    const { clusters } = await clusterSimilar(env, c.newItems, c.existing);
     const canonical = c.existing[0].id;
     const predicted = new Set(
       clusters

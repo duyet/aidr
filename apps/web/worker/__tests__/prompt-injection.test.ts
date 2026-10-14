@@ -341,7 +341,7 @@ describe("prompt injection: input side", () => {
   it("dedupe clustering prompt keeps hostile title, url and source inside JSON", async () => {
     const prompts = capturePrompts();
     quiet();
-    const clusters = await clusterSimilar(
+    const { clusters } = await clusterSimilar(
       env,
       [
         {
@@ -511,7 +511,7 @@ describe("prompt injection: output side", () => {
         })
       )
     );
-    const clusters = await clusterSimilar(
+    const { clusters } = await clusterSimilar(
       env,
       [
         { i: 0, title: "a" },
@@ -537,14 +537,16 @@ describe("prompt injection: output side", () => {
         vi.fn(async () => asStream({ choices: [{ message: { content } }] }))
       );
       expect(
-        await clusterSimilar(
-          env,
-          [
-            { i: 0, title: "a" },
-            { i: 1, title: "b" },
-          ],
-          []
-        )
+        (
+          await clusterSimilar(
+            env,
+            [
+              { i: 0, title: "a" },
+              { i: 1, title: "b" },
+            ],
+            []
+          )
+        ).clusters
       ).toEqual([]);
     }
   });
@@ -602,7 +604,7 @@ describe("prompt injection: every LLM call site is covered", () => {
     ".."
   );
   const CALLS =
-    /\b(?:callAnyrouter|callAnyrouterForClustering|completeJson|callSystemOne)\(|\/chat\/completions`|\/systemone`/;
+    /\b(?:callAnyrouter|callAnyrouterForClustering|completeJson|completeJsonWithModel|callSystemOne)\(|\/chat\/completions`|\/systemone`/;
 
   function sourceFiles(dir: string): string[] {
     return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

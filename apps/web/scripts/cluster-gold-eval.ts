@@ -75,7 +75,7 @@ async function main() {
       resetUnavailableModels();
       const env = benchEnv({ ANYROUTER_MODEL: model });
       const t0 = Date.now();
-      const clusters = await clusterSimilar(env, newItems, existing);
+      const { clusters } = await clusterSimilar(env, newItems, existing);
       ms.push(Date.now() - t0);
       if (clusters.length === 0) fails++;
       const predicted = pairs(

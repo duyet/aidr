@@ -1,3 +1,4 @@
+import type { ClusterGateTally } from "./cluster-gate.js";
 import type { SourceRunHealth } from "./source-health.js";
 import { emptySourceHealth } from "./source-health.js";
 import { sanitizeRunStats } from "./telemetry-safe.js";
@@ -48,6 +49,10 @@ export interface RunStats {
    *  and how many kept English. The health check sums 24h of these (see
    *  `worker/translation-english.ts`). Absent when nothing was translated. */
   viEnglish?: ViEnglishTally;
+  /** LLM cluster links to existing items this run, per served model, and
+   *  how many the cluster gate rejected. The health check sums 24h of these
+   *  (see `worker/cluster-gate.ts`). Absent when the model linked none. */
+  clusterGate?: ClusterGateTally;
   qaRated: number;
   qaAdjusted: number;
   suggestionsReviewed: number;
@@ -100,6 +105,9 @@ export function buildRunStats(partial: Partial<RunStats> = {}): RunStats {
     backfilledTranslations: partial.backfilledTranslations ?? 0,
     ...(partial.viEnglish && Object.keys(partial.viEnglish).length
       ? { viEnglish: partial.viEnglish }
+      : {}),
+    ...(partial.clusterGate && Object.keys(partial.clusterGate).length
+      ? { clusterGate: partial.clusterGate }
       : {}),
     qaRated: partial.qaRated ?? 0,
     qaAdjusted: partial.qaAdjusted ?? 0,

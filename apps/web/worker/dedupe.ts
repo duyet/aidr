@@ -1,4 +1,4 @@
-import { completeJson, parseJson } from "./llm.js";
+import { completeJsonWithModel, parseJson } from "./llm.js";
 import {
   buildMediaManifest,
   canonicalizeMediaUrl,
@@ -425,18 +425,27 @@ function normalizeClusters(
   return out;
 }
 
+/** The model's clusters and the chain id that served them (null when no
+ *  model answered). */
+export interface LlmClusters {
+  clusters: Cluster[];
+  model: string | null;
+}
+
+const NO_LLM_CLUSTERS: LlmClusters = { clusters: [], model: null };
+
 /**
  * One LLM call asking which new items report the same underlying story as
  * each other or as a recently-published existing item. Any failure
- * (network, malformed/unexpected JSON) resolves to `[]` — no merging, every
- * item stays independent.
+ * (network, malformed/unexpected JSON) resolves to no clusters — no
+ * merging, every item stays independent.
  */
 export async function clusterSimilar(
   env: Env,
   newItems: ClusterNewInput[],
   recentItems: ClusterExistingInput[]
-): Promise<Cluster[]> {
-  if (newItems.length === 0) return [];
+): Promise<LlmClusters> {
+  if (newItems.length === 0) return NO_LLM_CLUSTERS;
   // Input order: nothing ranks items by how likely they are to be duplicates.
   const shown = newItems.slice(0, MAX_NEW_ITEMS_IN_CLUSTER_PROMPT);
 
@@ -466,7 +475,7 @@ Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]
     // first-token cutoff, the failing-model skip and llm_calls logging all
     // apply. A direct call to the first chain id silently returned no
     // merges whenever that id failed, publishing same-event duplicates.
-    const content = await completeJson(
+    const served = await completeJsonWithModel(
       env,
       [{ role: "user", content: prompt }],
       {
@@ -476,14 +485,15 @@ Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]
         maxTokens: MAX_TOKENS,
       }
     );
-    return normalizeClusters(
-      parseJson<unknown>(content),
+    const clusters = normalizeClusters(
+      parseJson<unknown>(served.content),
       new Set(shown.map((item) => item.i)),
       new Set(recentItems.map((item) => item.id))
     );
+    return { clusters, model: served.model };
   } catch (error) {
     console.error("clusterSimilar failed:", error);
-    return [];
+    return NO_LLM_CLUSTERS;
   }
 }
 

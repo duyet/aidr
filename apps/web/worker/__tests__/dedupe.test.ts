@@ -61,7 +61,7 @@ describe("clusterSimilar", () => {
         )
     );
 
-    const clusters = await clusterSimilar(
+    const { clusters } = await clusterSimilar(
       env,
       [
         { i: 0, title: "OpenAI ships GPT-6" },
@@ -86,7 +86,7 @@ describe("clusterSimilar", () => {
       )
     );
 
-    const clusters = await clusterSimilar(
+    const { clusters } = await clusterSimilar(
       env,
       [
         { i: 0, title: "A" },
@@ -113,7 +113,7 @@ describe("clusterSimilar", () => {
       )
     );
 
-    const clusters = await clusterSimilar(
+    const { clusters } = await clusterSimilar(
       env,
       [
         { i: 0, title: "A" },
@@ -126,7 +126,7 @@ describe("clusterSimilar", () => {
 
   it("returns [] and never throws on a network failure", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
-    const clusters = await clusterSimilar(env, [{ i: 0, title: "A" }], []);
+    const { clusters } = await clusterSimilar(env, [{ i: 0, title: "A" }], []);
     expect(clusters).toEqual([]);
   });
 
@@ -135,14 +135,18 @@ describe("clusterSimilar", () => {
       "fetch",
       vi.fn().mockResolvedValue(chatResponse("not json at all"))
     );
-    const clusters = await clusterSimilar(env, [{ i: 0, title: "A" }], []);
+    const { clusters } = await clusterSimilar(env, [{ i: 0, title: "A" }], []);
     expect(clusters).toEqual([]);
   });
 
   it("returns [] immediately without calling fetch when there are no new items", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const clusters = await clusterSimilar(env, [], [{ id: "x", title: "X" }]);
+    const { clusters } = await clusterSimilar(
+      env,
+      [],
+      [{ id: "x", title: "X" }]
+    );
     expect(clusters).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -593,13 +597,15 @@ describe("clusterSimilar fallback", () => {
         })
       );
     vi.stubGlobal("fetch", fetchMock);
-    const clusters = await clusterSimilar(
+    const { clusters, model } = await clusterSimilar(
       { ...env, ANYROUTER_MODEL: "first/fails,second/works" },
       [{ i: 0, title: "OpenAI launches Dots" }],
       [{ id: "abc123", title: "Introducing dots" }]
     );
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(clusters).toEqual([{ new: [0], existing: ["abc123"] }]);
+    // The cluster gate tallies rejections against the model that answered.
+    expect(model).toBe("second/works");
   });
 });
 

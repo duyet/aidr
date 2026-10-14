@@ -57,7 +57,10 @@ vi.mock("../ingest/topics.js", () => ({
   learnTopics: vi.fn(async () => {}),
 }));
 vi.mock("../ingest/merge.js", () => ({
-  planMerges: vi.fn(async () => ({ merged: new Set() })),
+  planMerges: vi.fn(async () => ({
+    plan: { merged: new Set() },
+    clusterGate: {},
+  })),
 }));
 vi.mock("../ingest/source-health.js", () => ({
   tallySourceOutcomes: vi.fn(),
@@ -96,7 +99,9 @@ vi.mock("../ingest/publish.js", () => ({
   notifyChannels: vi.fn(async () => ({ sent: {}, reasons: {} })),
 }));
 
+import { runHealthCheck } from "../health.js";
 import { backfillTranslations } from "../ingest/backfill-translate.js";
+import { planMerges } from "../ingest/merge.js";
 import { translatePublishedRows } from "../ingest/translate.js";
 import type { Env } from "../types.js";
 import { NewsIngestWorkflow } from "../workflow.js";
@@ -175,5 +180,23 @@ describe("ingest Workflow stores the English-in-VI tally", () => {
     });
     const stats = await runWorkflow();
     expect(stats.viEnglish?.[LAGUNA]).toEqual({ translated: 3, english: 2 });
+  });
+});
+
+describe("ingest Workflow stores the cluster gate tally", () => {
+  // The cluster-unrelated alert reads stats.clusterGate back out of
+  // workflow_runs, and this run's own tally reaches the health check
+  // directly. Dropping either leaves the alert blind to the model.
+  it("saves the merge step's tally and hands it to the health check", async () => {
+    const tally = { [LAGUNA]: { proposed: 4, rejected: 1 } };
+    vi.mocked(planMerges).mockResolvedValueOnce({
+      plan: { merged: new Set() },
+      clusterGate: tally,
+    } as never);
+    const stats = (await runWorkflow()) as { clusterGate?: unknown };
+    expect(stats.clusterGate).toEqual(tally);
+    expect(vi.mocked(runHealthCheck).mock.calls.at(-1)?.[1]).toMatchObject({
+      clusterGate: tally,
+    });
   });
 });

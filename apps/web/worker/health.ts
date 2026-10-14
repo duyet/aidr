@@ -1,6 +1,12 @@
 import { hasFailedStep } from "../src/lib/run-health.js";
 import { reportHealthAlert } from "./bugsink.js";
 import {
+  type ClusterGateTally,
+  evaluateClusterGate,
+  mergeClusterGate,
+  parseClusterGate,
+} from "./cluster-gate.js";
+import {
   checkDayVideo,
   DAY_VIDEO_CONFIRMED_PREFIX,
   dayVideoConfirmedKey,
@@ -379,32 +385,44 @@ function alertKeys(json: unknown): string[] {
   }
 }
 
-/** `stats.viEnglish` and `stats.alerts` of every live run in the last 24h,
- *  this one excluded. A failed read only skips this check. */
-async function readViEnglishWindow(
+/** `stats.viEnglish`, `stats.clusterGate` and `stats.alerts` of every live
+ *  run in the last 24h (`VI_ENGLISH_WINDOW_MS`, the window of both rate
+ *  checks), this one excluded. A failed read only skips those checks. */
+async function readRateWindow(
   env: Env,
   runId: string,
   nowMs: number
-): Promise<{ tally: ViEnglishTally; alerted: Set<string> }> {
-  const tally: ViEnglishTally[] = [];
+): Promise<{
+  viEnglish: ViEnglishTally;
+  clusterGate: ClusterGateTally;
+  alerted: Set<string>;
+}> {
+  const viEnglish: ViEnglishTally[] = [];
+  const clusterGate: ClusterGateTally[] = [];
   const alerted = new Set<string>();
   try {
     const { results } = await env.DB.prepare(
       `SELECT ${STATS_FIELD_SQL("viEnglish")} AS vi_english,
+              ${STATS_FIELD_SQL("clusterGate")} AS cluster_gate,
               ${STATS_FIELD_SQL("alerts")} AS alerts
        FROM workflow_runs
        WHERE id != ? AND ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} >= ? AND ${NOT_DRY_RUN_SQL}`
     )
       .bind(runId, Math.floor((nowMs - VI_ENGLISH_WINDOW_MS) / 1000))
-      .all<{ vi_english: unknown; alerts: unknown }>();
+      .all<{ vi_english: unknown; cluster_gate: unknown; alerts: unknown }>();
     for (const row of results ?? []) {
-      tally.push(parseViEnglish(row.vi_english));
+      viEnglish.push(parseViEnglish(row.vi_english));
+      clusterGate.push(parseClusterGate(row.cluster_gate));
       for (const key of alertKeys(row.alerts)) alerted.add(key);
     }
   } catch (error) {
-    console.error("health-check vi-english read failed:", error);
+    console.error("health-check rate window read failed:", error);
   }
-  return { tally: mergeViEnglish(...tally), alerted };
+  return {
+    viEnglish: mergeViEnglish(...viEnglish),
+    clusterGate: mergeClusterGate(...clusterGate),
+    alerted,
+  };
 }
 
 async function readModelStats(
@@ -511,6 +529,8 @@ export async function runHealthCheck(
     steps: RunStepInfo[];
     /** This run's EN→VI rows per model; absent when it translated none. */
     viEnglish?: ViEnglishTally;
+    /** This run's LLM cluster links per model; absent when it made none. */
+    clusterGate?: ClusterGateTally;
     dryRun?: boolean;
   }
 ): Promise<string[]> {
@@ -519,11 +539,11 @@ export async function runHealthCheck(
   if (input.dryRun) return [];
   try {
     const nowMs = Date.now();
-    const [history, telegramLastPostMs, llm, viEnglish] = await Promise.all([
+    const [history, telegramLastPostMs, llm, window] = await Promise.all([
       readHistory(env, input.runId),
       readTelegramLastPost(env),
       readLlmCounts(env, input.runId),
-      readViEnglishWindow(env, input.runId, nowMs),
+      readRateWindow(env, input.runId, nowMs),
     ]);
     const local = getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE);
     const issues = evaluateHealth({
@@ -536,8 +556,12 @@ export async function runHealthCheck(
     });
     issues.push(
       ...evaluateViEnglish(
-        mergeViEnglish(viEnglish.tally, input.viEnglish ?? {}),
-        viEnglish.alerted
+        mergeViEnglish(window.viEnglish, input.viEnglish ?? {}),
+        window.alerted
+      ),
+      ...evaluateClusterGate(
+        mergeClusterGate(window.clusterGate, input.clusterGate ?? {}),
+        window.alerted
       )
     );
     const markers: string[] = [];
