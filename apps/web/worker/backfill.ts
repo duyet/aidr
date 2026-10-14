@@ -1,8 +1,7 @@
 import { preferCompleteSummary } from "./enrich.js";
 import {
+  buildMediaManifest,
   type MediaManifest,
-  manifestWithoutArticleUrl,
-  mergeMediaManifests,
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "./media.js";
@@ -140,17 +139,19 @@ export function planBackfillUpdate(
     typeof existing.summary === "string" ? existing.summary.trim() : "";
   const existingManifest = parseMediaManifest(
     existing.mediaManifest,
-    existing.imageUrl
+    existing.imageUrl,
+    existing.articleUrl
   );
   const fetchedManifest = parseMediaManifest(
     fetched.mediaManifest,
-    fetched.imageUrl
+    fetched.imageUrl,
+    existing.articleUrl
   );
   const hasFetchedMedia = fetchedManifest.assets.length > 0;
   if (!fetchedSummary && !hasFetchedMedia) return null;
-  const manifest = manifestWithoutArticleUrl(
-    mergeMediaManifests(existingManifest, fetchedManifest),
-    existing.articleUrl
+  const manifest = buildMediaManifest(
+    [...existingManifest.assets, ...fetchedManifest.assets],
+    { articleUrls: [existing.articleUrl] }
   );
   return {
     summary: preferCompleteSummary(existingSummary, fetchedSummary) ?? null,

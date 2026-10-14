@@ -9,7 +9,6 @@ import { enSummarySql } from "../en-summary.js";
 import {
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
-  manifestWithoutArticleUrl,
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../media.js";
@@ -229,8 +228,9 @@ export type StoryRow = Omit<StoryPayload, "media_manifest"> & {
 };
 
 export function hydrateStory(row: StoryRow): StoryPayload {
-  const manifest = manifestWithoutArticleUrl(
-    parseMediaManifest(row.media_manifest, row.image_url),
+  const manifest = parseMediaManifest(
+    row.media_manifest,
+    row.image_url,
     row.url
   );
   const story = { ...row };

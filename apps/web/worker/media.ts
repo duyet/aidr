@@ -496,28 +496,39 @@ function imageTier(url: string): number {
   return isGeneratedOgCard(url) ? 2 : 0;
 }
 
+/** The tier of the picture an asset gives, or null for a video without a
+ * poster, which gives none. A video's picture is its poster. */
+function pictureTier(asset: {
+  type: string;
+  url: string;
+  poster_url?: string | null;
+}): number | null {
+  if (asset.type === "image") return imageTier(asset.url);
+  return asset.poster_url ? imageTier(asset.poster_url) : null;
+}
+
 /**
- * Keep only the best tier of image that the assets offer. A cluster merges
- * several pages, and aggregators (marketbrief, huggingnews) each add their
- * own card for the same story; those are noise next to the original
- * article's image, but still better than nothing when they are all we have.
- * A video with a poster counts as a real image. A video without one gives
- * no picture, so it stays without costing the story its fallback image,
- * which then sorts after it.
+ * Keep only the best tier of image that the assets offer, and lead with it.
+ * A cluster merges several pages, and aggregators (marketbrief,
+ * huggingnews) each add their own card for the same story; those are noise
+ * next to the original article's image, but still better than nothing when
+ * they are all we have. A video is never dropped. It ranks by its poster, so
+ * a video whose poster is a share card sorts after an imgur image, and a
+ * video without a poster neither counts as a picture nor costs the story its
+ * fallback image.
  */
 export function withoutFallbackImages<
   T extends { type: string; url: string; poster_url?: string | null },
 >(assets: readonly T[]): T[] {
-  const tier = (asset: T) =>
-    asset.type === "image" ? imageTier(asset.url) : 0;
-  const pictured = assets.filter(
-    (asset) => asset.type === "image" || Boolean(asset.poster_url)
-  );
+  const pictured = assets
+    .map(pictureTier)
+    .filter((tier): tier is number => tier !== null);
   if (pictured.length === 0) return [...assets];
-  const best = Math.min(...pictured.map(tier));
+  const best = Math.min(...pictured);
+  const rank = (asset: T) => pictureTier(asset) ?? 0;
   return assets
-    .filter((asset) => tier(asset) <= best)
-    .sort((a, b) => tier(a) - tier(b));
+    .filter((asset) => asset.type !== "image" || imageTier(asset.url) <= best)
+    .sort((a, b) => rank(a) - rank(b));
 }
 
 function normalizeCandidate(
@@ -551,6 +562,43 @@ function assetIdentity(asset: MediaAsset): string {
   return `${asset.type}:${mediaIdentityKey(asset.type, asset.url) ?? asset.url}`;
 }
 
+export interface BuildMediaOptions {
+  /**
+   * The story's own page URLs (the article, its source post). A page is not
+   * story media. It leaves before ranking, because the fallback rule would
+   * otherwise drop an imgur image or a share card for an asset that is then
+   * removed too. Matched by content identity, so `?w=600` and http variants
+   * of the page go as well.
+   */
+  articleUrls?: readonly unknown[];
+}
+
+function articleIdentities(urls: readonly unknown[] = []): Set<string> {
+  const identities = new Set<string>();
+  for (const raw of urls) {
+    const url = canonicalizeMediaUrl(raw);
+    if (!url) continue;
+    identities.add(`image:${mediaIdentityKey("image", url)}`);
+    identities.add(`video:${mediaIdentityKey("video", url)}`);
+  }
+  return identities;
+}
+
+function withoutArticle(
+  asset: MediaAsset,
+  articles: Set<string>
+): MediaAsset | null {
+  if (articles.has(assetIdentity(asset))) return null;
+  if (
+    asset.type === "video" &&
+    asset.poster_url &&
+    articles.has(`image:${mediaIdentityKey("image", asset.poster_url)}`)
+  ) {
+    return { type: "video", url: asset.url };
+  }
+  return asset;
+}
+
 function compareCandidates(
   a: { asset: MediaAsset; priority: number; order: number },
   b: { asset: MediaAsset; priority: number; order: number }
@@ -573,11 +621,14 @@ function compareCandidates(
  * variants and canonical URL duplicates are removed by content identity.
  */
 export function buildMediaManifest(
-  candidates: readonly MediaCandidate[] = []
+  candidates: readonly MediaCandidate[] = [],
+  options: BuildMediaOptions = {}
 ): MediaManifest {
+  const articles = articleIdentities(options.articleUrls);
   const normalized = candidates
     .map((candidate, order) => {
-      const asset = normalizeCandidate(candidate);
+      const normal = normalizeCandidate(candidate);
+      const asset = normal && withoutArticle(normal, articles);
       return asset
         ? { asset, priority: candidatePriority(candidate), order }
         : null;
@@ -645,19 +696,22 @@ function emptyManifest(): MediaManifest {
   return { version: MEDIA_MANIFEST_VERSION, assets: [] };
 }
 
-function legacyImageManifest(raw: unknown): MediaManifest {
-  const url = canonicalizeMediaImageUrl(raw);
-  return url
-    ? { version: MEDIA_MANIFEST_VERSION, assets: [{ type: "image", url }] }
-    : emptyManifest();
+function legacyImageUrlFor(
+  raw: unknown,
+  options: BuildMediaOptions
+): string | null {
+  return typeof raw === "string"
+    ? firstImageUrl(buildMediaManifest([{ type: "image", url: raw }], options))
+    : null;
 }
 
 function mergeLegacyImage(
   manifest: MediaManifest,
-  legacyImageUrl: unknown
+  legacyImageUrl: unknown,
+  options: BuildMediaOptions
 ): MediaManifest {
-  const legacy = legacyImageManifest(legacyImageUrl);
-  if (legacy.assets.length === 0) return manifest;
+  const legacy = legacyImageUrlFor(legacyImageUrl, options);
+  if (!legacy) return manifest;
   // A stored manifest is authoritative once it has a usable thumbnail. Do
   // not let a stale/raw image_url win over a current image or video poster.
   if (
@@ -669,14 +723,10 @@ function mergeLegacyImage(
   ) {
     return manifest;
   }
-  return buildMediaManifest([
-    ...manifest.assets,
-    {
-      type: "image",
-      url: legacy.assets[0].type === "image" ? legacy.assets[0].url : "",
-      priority: -1,
-    },
-  ]);
+  return buildMediaManifest(
+    [...manifest.assets, { type: "image", url: legacy, priority: -1 }],
+    options
+  );
 }
 
 function assetToCandidate(value: unknown): MediaCandidate | null {
@@ -697,21 +747,24 @@ function assetToCandidate(value: unknown): MediaCandidate | null {
 /**
  * Parse a stored manifest defensively. Invalid JSON, unknown versions, and
  * malformed entries are ignored. A legacy image_url is used as a fallback
- * image when the manifest is absent or has no usable image.
+ * image when the manifest is absent or has no usable image. The row's
+ * `articleUrl` is removed from both (see `BuildMediaOptions`).
  */
 export function parseMediaManifest(
   raw: unknown,
-  legacyImageUrl?: unknown
+  legacyImageUrl?: unknown,
+  articleUrl?: unknown
 ): MediaManifest {
+  const options = { articleUrls: [articleUrl] };
   let value = raw;
   if (typeof raw === "string") {
     if (!raw.trim() || raw.length > MAX_MEDIA_MANIFEST_JSON_LENGTH) {
-      return mergeLegacyImage(emptyManifest(), legacyImageUrl);
+      return mergeLegacyImage(emptyManifest(), legacyImageUrl, options);
     }
     try {
       value = JSON.parse(raw);
     } catch {
-      return mergeLegacyImage(emptyManifest(), legacyImageUrl);
+      return mergeLegacyImage(emptyManifest(), legacyImageUrl, options);
     }
   }
 
@@ -733,8 +786,8 @@ export function parseMediaManifest(
     }
   }
 
-  const manifest = buildMediaManifest(candidates);
-  return mergeLegacyImage(manifest, legacyImageUrl);
+  const manifest = buildMediaManifest(candidates, options);
+  return mergeLegacyImage(manifest, legacyImageUrl, options);
 }
 
 export function serializeMediaManifest(
@@ -762,56 +815,24 @@ export function firstImageUrl(
 }
 
 /** Shared image/video thumbnail contract: image asset, video poster, then
- * the normalized legacy image_url fallback. */
-export function manifestWithoutArticleUrl(
-  manifest: MediaManifest | null | undefined,
-  articleUrl: unknown
-): MediaManifest {
-  const article = canonicalizeMediaUrl(articleUrl);
-  const assets = Array.isArray(manifest?.assets) ? manifest.assets : [];
-  if (!article) return buildMediaManifest(assets);
-  // Remove the article before building, so the fallback rule never counts it.
-  return buildMediaManifest(
-    assets.flatMap((asset) => {
-      if (canonicalizeMediaUrl(asset.url) === article) return [];
-      if (
-        asset.type === "video" &&
-        canonicalizeMediaUrl(asset.poster_url) === article
-      ) {
-        return [{ type: "video" as const, url: asset.url }];
-      }
-      return [asset];
-    })
-  );
-}
-
+ * the normalized legacy image_url fallback. The article URL is never one. */
 export function primaryThumbnailUrl(
   manifest: MediaManifest | null | undefined,
   legacyImageUrl?: unknown,
   articleUrl?: unknown
 ): string | null {
-  const usable = manifestWithoutArticleUrl(manifest, articleUrl);
+  const options = { articleUrls: [articleUrl] };
+  const usable = buildMediaManifest(
+    Array.isArray(manifest?.assets) ? manifest.assets : [],
+    options
+  );
   const primary = usable.assets[0];
   if (primary?.type === "image") return canonicalizeMediaImageUrl(primary.url);
   if (primary?.type === "video" && primary.poster_url) {
     return canonicalizeMediaImageUrl(primary.poster_url);
   }
   // A manifest with a video but no poster may still have an image alternate.
-  const legacy = canonicalizeMediaImageUrl(legacyImageUrl);
-  if (!legacy || canonicalizeMediaUrl(articleUrl) === legacy) {
-    return firstImageUrl(usable);
-  }
-  return firstImageUrl(usable) ?? legacy;
-}
-
-export function mergeMediaManifests(
-  ...manifests: Array<MediaManifest | null | undefined>
-): MediaManifest {
-  return buildMediaManifest(
-    manifests.flatMap((manifest) =>
-      Array.isArray(manifest?.assets) ? manifest.assets : []
-    )
-  );
+  return firstImageUrl(usable) ?? legacyImageUrlFor(legacyImageUrl, options);
 }
 
 /** Keep public responses small and useful without exposing a raw candidate list. */

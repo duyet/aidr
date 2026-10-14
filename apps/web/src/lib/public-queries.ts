@@ -1,10 +1,10 @@
 import {
   boundedPublicManifest,
+  buildMediaManifest,
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
   MAX_PUBLIC_MEDIA_URL_LENGTH,
   type MediaManifest,
-  manifestWithoutArticleUrl,
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../../worker/media.js";
@@ -181,8 +181,9 @@ function parseTldrRow(
 }
 
 function toPublicStory(row: StoryRow): PublicStory {
-  const manifest = manifestWithoutArticleUrl(
-    parseMediaManifest(row.media_manifest, row.image_url),
+  const manifest = parseMediaManifest(
+    row.media_manifest,
+    row.image_url,
     row.url
   );
   const exposedManifest = boundedPublicManifest(manifest);
@@ -339,7 +340,9 @@ export function boundPublicDigest(digest: PublicDigest): PublicDigest {
     );
     if (story.media_manifest) {
       const manifest = boundedPublicManifest(
-        manifestWithoutArticleUrl(story.media_manifest, story.url)
+        buildMediaManifest(story.media_manifest.assets, {
+          articleUrls: [story.url],
+        })
       );
       if (manifest) story.media_manifest = manifest;
       else delete story.media_manifest;
@@ -446,8 +449,9 @@ async function loadImagesForIds(
       }>();
     return imageUrlByItemId(
       (results ?? []).map((row) => {
-        const manifest = manifestWithoutArticleUrl(
-          parseMediaManifest(row.media_manifest, row.image_url),
+        const manifest = parseMediaManifest(
+          row.media_manifest,
+          row.image_url,
           row.url
         );
         return {
@@ -486,8 +490,9 @@ async function loadImagesForIds(
           }>();
         return imageUrlByItemId(
           (results ?? []).map((row) => {
-            const manifest = manifestWithoutArticleUrl(
-              parseMediaManifest(row.media_manifest),
+            const manifest = parseMediaManifest(
+              row.media_manifest,
+              undefined,
               row.url
             );
             return {

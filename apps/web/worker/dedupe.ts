@@ -709,6 +709,10 @@ export function buildMergePlan(
     const members: RankMember[] = [];
     const extraMedia: MediaAsset[] = [];
     const extraImageUrls: string[] = [];
+    const canonicalUrl =
+      canonical.type === "existing"
+        ? existingById.get(canonical.id)?.url
+        : byIndex.get(canonical.index)?.url;
     const absorbedExistingId =
       canonical.type === "existing" ? canonical.id : canonical.demotes;
     if (absorbedExistingId !== undefined) {
@@ -812,10 +816,10 @@ export function buildMergePlan(
       members: [...(existingUpdate?.members ?? []), ...members],
       ...(extraMedia.length || existingUpdate?.extraMedia?.length
         ? {
-            extraMedia: buildMediaManifest([
-              ...(existingUpdate?.extraMedia ?? []),
-              ...extraMedia,
-            ]).assets,
+            extraMedia: buildMediaManifest(
+              [...(existingUpdate?.extraMedia ?? []), ...extraMedia],
+              { articleUrls: [canonicalUrl] }
+            ).assets,
           }
         : {}),
       ...(extraImageUrls.length || existingUpdate?.extraImageUrls?.length

@@ -60,7 +60,11 @@ export function pendingRowToNewRow(
       comments: row.comments,
       imageUrl: row.image_url ?? undefined,
       sourceLang: row.source_lang,
-      mediaManifest: parseMediaManifest(row.media_manifest, row.image_url),
+      mediaManifest: parseMediaManifest(
+        row.media_manifest,
+        row.image_url,
+        row.url
+      ),
     },
   };
 }

@@ -495,7 +495,8 @@ images rather than a broken-src fallback.
 
 - **Media identity is the URL, not the content.** Duplicates are found by
   `mediaIdentityKey` and collapse to one asset, in one manifest, across
-  sources, and when a cluster merges (`mergeMediaManifests`). Rules: http and
+  sources, and when a cluster merges (`buildMediaManifest` over every
+  member's assets). Rules: http and
   https of a host are one identity; tracking query keys (`utm_*`, `fbclid`,
   `ref`, ...) and CDN resize keys (`w`, `h`, `q`, `fit`, `auto`, ...) are
   ignored; image extension and size suffixes are ignored (WordPress
@@ -512,21 +513,30 @@ images rather than a broken-src fallback.
   `/profile_images/` and `/profile_banners/` paths. `pbs.twimg.com/media/…`
   tweet photos stay.
 - **Images are ranked in three tiers, and a manifest keeps only the best
-  tier it has** (`withoutFallbackImages`). Tier 0 is real media: any other
-  image, and any video with a poster. Tier 1 is an imgur upload
-  (`isImageHostUpload`). Tier 2 is a generated share card, an image whose
-  path is an OG generator (`/og/…`, `/api/og`, `og-image`/`og-card` file
-  names, see `isGeneratedOgCard`). So a real image drops both, and an imgur
-  capture drops the card: it still shows the story, while the card only
-  shows the headline. A video without a poster gives no picture, so it does
-  not count. It stays, and the best fallback image stays after it. The rule
+  tier it has** (`withoutFallbackImages`). Tier 0 is real media. Tier 1 is
+  an imgur upload (`isImageHostUpload`). Tier 2 is a generated share card,
+  an image whose path is an OG generator (`/og/…`, `/api/og`,
+  `og-image`/`og-card` file names, see `isGeneratedOgCard`). So a real image
+  drops both, and an imgur capture drops the card: it still shows the story,
+  while the card only shows the headline. A video is never dropped. It
+  ranks by its poster's tier, so a video whose poster is a share card sorts
+  after an imgur image. A video without a poster gives no picture, so it
+  does not count, and the best fallback image stays after it. The rule
   applies to merged cluster manifests too. Techmeme and HN posts link imgur
   screen captures that carry the capturing desktop's window bars and
   tooltips. A `Screenshot-…` file name is not a signal: publishers
   (TechCrunch, The Verge) use it for clean editorial images. The story
   dialog applies the same rule to stored manifests at render time.
-  `manifestWithoutArticleUrl` removes the article's own URL before the rule
-  runs, so an article-URL asset never costs the story its fallback.
+- **The story's own page is not story media.** Every build that can see
+  the article URL takes it: `buildMediaManifest(…, { articleUrls })`,
+  `parseMediaManifest(raw, imageUrl, url)` and
+  `primaryThumbnailUrl(…, url)`. That covers the RSS parse, `parseOgTags`
+  (the fetched page), enrich (the item URL and its source-kind URL), the
+  cluster merge, the D1 write and every read path. The page leaves before
+  ranking, matched by `mediaIdentityKey`, so `?w=600` and `http://` variants
+  go too. A video whose poster is the page keeps the video and loses the
+  poster. Removing the page after the tier rule ran would drop an imgur
+  image or a share card for an asset that is then removed as well.
 - **A video poster is only URL-checked here.** At collection time the
   poster URL passes the same URL policy as any image and nothing is
   fetched. Its bytes are checked later, at Telegram send time (see Notify).
@@ -1302,7 +1312,10 @@ deliberately non-spammy.
   `sendVideo` (with the poster as `thumbnail` only when it is a legal JPEG
   thumbnail); video plus images uses one mixed `sendMediaGroup` (primary
   video, its poster, then manifest order, deduped by `mediaIdentityKey`, at
-  most 10 items, at most 40 MB of video). An over-cap album is dropped whole,
+  most 10 items, at most 40 MB of video). A generated share card never goes
+  out with a video, as a still or as the poster, so a story with a video and
+  only a share card sends the video alone. Email and the site still use the
+  card as the story's image. An over-cap album is dropped whole,
   never truncated. A skip, or a call Telegram rejects, falls back to the
   photo path, then text. Durable multi-message delivery remains a follow-up.
 - **Fallback reasons are recorded.** Every downgrade (video to photo, photo

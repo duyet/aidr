@@ -3,7 +3,6 @@ import {
   isPrivateHostname,
   type MediaCandidate,
   type MediaManifest,
-  manifestWithoutArticleUrl,
   parseMediaMetadata,
   primaryThumbnailUrl,
 } from "./media.js";
@@ -281,8 +280,10 @@ function clipAtSentence(text: string, max: number): string {
   return (space > 200 ? slice.slice(0, space) : slice).trim();
 }
 
-export function parseOgTags(html: string): OgData {
-  const manifest = buildMediaManifest(parseMediaMetadata(html));
+export function parseOgTags(html: string, pageUrl?: string): OgData {
+  const manifest = buildMediaManifest(parseMediaMetadata(html), {
+    articleUrls: [pageUrl],
+  });
   const imageUrl = primaryThumbnailUrl(manifest) ?? undefined;
 
   const rawDescription =
@@ -371,7 +372,7 @@ export async function fetchOgData(url: string): Promise<OgData> {
     if (!contentType.toLowerCase().includes("text/html")) return {};
 
     const html = await readCappedText(res, MAX_HTML_BYTES);
-    return parseOgTags(html);
+    return parseOgTags(html, url);
   } catch (error) {
     console.error(
       `enrich: og fetch failed for ${logSafeUrl(url)}:`,
@@ -444,30 +445,34 @@ function mediaCandidatesFromOg(
   return data.imageUrl ? [{ type: "image", url: data.imageUrl, priority }] : [];
 }
 
+/** The source-kind page an aggregator item points at, if any. */
+function originalSourceUrl(item: FetchedItem): string | undefined {
+  return item.sources?.find((source) => source.kind === "source" && source.url)
+    ?.url;
+}
+
 function normalizeExistingMedia(item: FetchedItem): void {
-  const supplied = manifestWithoutArticleUrl(
-    buildMediaManifest([
-      ...(item.media ?? []),
-      ...(item.mediaManifest?.assets ?? []),
-    ]),
-    item.url
+  const options = { articleUrls: [item.url, originalSourceUrl(item)] };
+  const supplied = buildMediaManifest(
+    [...(item.media ?? []), ...(item.mediaManifest?.assets ?? [])],
+    options
   );
   const hasUsableThumbnail = supplied.assets.some(
     (asset) =>
       asset.type === "image" ||
       (asset.type === "video" && Boolean(asset.poster_url))
   );
-  const existing = manifestWithoutArticleUrl(
-    hasUsableThumbnail
-      ? supplied
-      : buildMediaManifest([
+  const existing = hasUsableThumbnail
+    ? supplied
+    : buildMediaManifest(
+        [
           ...supplied.assets,
           ...(item.imageUrl
             ? [{ type: "image" as const, url: item.imageUrl, priority: -1 }]
             : []),
-        ]),
-    item.url
-  );
+        ],
+        options
+      );
   const legacyImageUrl = item.imageUrl;
   item.mediaManifest = existing;
   item.imageUrl =
@@ -502,9 +507,7 @@ export async function enrichMissingContent(
     await Promise.all(
       batch.map(async (item) => {
         const fetched: MediaCandidate[] = [];
-        const originalUrl = item.sources?.find(
-          (source) => source.kind === "source" && source.url
-        )?.url;
+        const originalUrl = originalSourceUrl(item);
         if (originalUrl && originalUrl !== item.url) {
           const sourceOg = await fetchOgData(originalUrl);
           fetched.push(...mediaCandidatesFromOg(sourceOg, 10));
@@ -518,16 +521,16 @@ export async function enrichMissingContent(
         if (summary) item.summary = summary;
 
         const buildManifest = () =>
-          manifestWithoutArticleUrl(
-            buildMediaManifest([
+          buildMediaManifest(
+            [
               ...(item.media ?? []),
               ...(item.mediaManifest?.assets ?? []),
               ...(item.imageUrl
                 ? [{ type: "image" as const, url: item.imageUrl, priority: 0 }]
                 : []),
               ...fetched,
-            ]),
-            item.url
+            ],
+            { articleUrls: [item.url, originalUrl] }
           );
         let manifest = buildManifest();
         if (!manifest.assets.some((asset) => asset.type === "image")) {
@@ -536,9 +539,6 @@ export async function enrichMissingContent(
             fetched.push({ ...figure, priority: 30 });
             manifest = buildManifest();
           }
-        }
-        if (originalUrl) {
-          manifest = manifestWithoutArticleUrl(manifest, originalUrl);
         }
         if (manifest.assets.length > 0) {
           item.mediaManifest = manifest;

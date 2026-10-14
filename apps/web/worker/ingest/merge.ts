@@ -167,7 +167,7 @@ export function toExistingCandidates(
         points: r.points,
         comments: r.comments,
         imageUrl: r.image_url,
-        mediaManifest: parseMediaManifest(r.media_manifest, r.image_url),
+        mediaManifest: parseMediaManifest(r.media_manifest, r.image_url, r.url),
         sourceId: r.source_id,
         url: r.url,
         topics: parseTagsJson(r.tags),
