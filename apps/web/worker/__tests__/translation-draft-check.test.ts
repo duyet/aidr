@@ -484,3 +484,153 @@ describe("translationDraftIssues English echo", () => {
     expect(issues).toEqual([]);
   });
 });
+
+describe("translationDraftIssues version numbers", () => {
+  const titleOnly = (source: string, vi: string) =>
+    translationDraftIssues(
+      { title: source, summary: "" },
+      { title: vi, summary: "" },
+      [],
+      true
+    );
+
+  // Prod 2026-09-02, item c4c7ba8f (#781): an HN title with no summary, so
+  // the title is all a Vietnamese reader sees.
+  it("flags a title that changes the model version", () => {
+    expect(titleOnly("Gemini 3.8 Flash", "Gemini 1.5 Flash")).toEqual([
+      'keep "Gemini 3.8" as the source writes it, not "Gemini 1.5"',
+    ]);
+  });
+
+  // Prod rows found by the same scan over every VI translation.
+  it("flags a model id or product number swapped for another", () => {
+    expect(
+      titleOnly(
+        "OpenAI begins rolling out GPT-6 Astra",
+        "OpenAI bắt đầu triển khai GPT-4o Astra"
+      )
+    ).toEqual(['keep "GPT-6" as the source writes it, not "GPT-4o"']);
+    expect(
+      titleOnly(
+        "SpaceX Targets 250kW Average Power for VR72 With Nvidia",
+        "SpaceX hợp tác cùng Nvidia phát triển VR70 đạt 250kW"
+      )
+    ).toEqual(['keep "VR72" as the source writes it, not "VR70"']);
+    expect(
+      titleOnly(
+        "Qwen 3.8 27B available on Cerebras at 1500 tok/SEC",
+        "Cerebras hỗ trợ Qwen 2.5 27B với tốc độ 1.500 token/giây"
+      )
+    ).toEqual(['keep "Qwen 3.8" as the source writes it, not "Qwen 2.5"']);
+  });
+
+  it("flags a title that drops a dotted version", () => {
+    expect(
+      titleOnly(
+        "Z.ai Reveals Ox Alpha as GLM-5.3-Flash, Biggest Model Yet on OpenRouter",
+        "Z.ai ra mắt Ox Alpha, mô hình lớn nhất trên OpenRouter"
+      )
+    ).toEqual(['the title drops "GLM-5.3"; keep the name and its version']);
+  });
+
+  it("flags a summary that swaps a version", () => {
+    const issues = translationDraftIssues(
+      {
+        title: "Scrimshaw Jukebox",
+        summary:
+          "I wanted to see if Claude Opus 5.5 could compose music, so I asked it for video game music.",
+      },
+      {
+        title: "Scrimshaw Jukebox",
+        summary:
+          "Tôi muốn xem Claude Opus 4.5 có sáng tác nhạc được không nên đã nhờ nó viết nhạc trò chơi điện tử.",
+      },
+      [],
+      false
+    );
+    expect(issues).toEqual([
+      'keep "Opus 5.5" as the source writes it, not "Opus 4.5"',
+    ]);
+  });
+
+  // Conversions the prompt asks for, and prod titles that read correctly.
+  // None may cost a repair call.
+  it("passes money, counts, percentages and magnitudes in Vietnamese form", () => {
+    const pairs: [string, string][] = [
+      [
+        "OpenAI Commits $200B to US Data Centers",
+        "OpenAI cam kết chi 200 tỷ USD cho trung tâm dữ liệu Mỹ",
+      ],
+      ["Meta Hires 1,000 AI Engineers", "Meta tuyển 1.000 kỹ sư AI"],
+      [
+        "Salesforce Shares Jump 15% on AI Demand",
+        "Cổ phiếu Salesforce tăng 15% nhờ nhu cầu AI",
+      ],
+      [
+        "AI Data Center Debt Could Reach 1 trillion Dollars",
+        "Nợ trung tâm dữ liệu AI có thể đạt 1 nghìn tỷ USD",
+      ],
+      [
+        "OpenAI Sets $1.4T Valuation for New $30B Fundraise",
+        "OpenAI định giá 1.400 tỷ USD cho đợt gọi vốn mới trị giá 30 tỷ USD",
+      ],
+      [
+        "Anthropic Revenue Surpasses OpenAI for First Time With $11.6 Billion in Q2",
+        "Doanh thu của Anthropic lần đầu vượt qua OpenAI với 11,6 tỷ USD trong quý 2",
+      ],
+      [
+        "Dell Raises FY27 Revenue Guide to $192 Billion on $95 Billion AI Backlog",
+        "Dell nâng dự báo doanh thu năm tài chính 2027 lên 192 tỷ USD",
+      ],
+      [
+        "Foxconn Beats Q3 Revenue Forecasts With 47.1% Growth",
+        "Foxconn vượt dự báo doanh thu quý 3 với mức tăng trưởng 47,1%",
+      ],
+      [
+        "OpenAI's First Custom AI Chip Beats Nvidia GB300 by 1.9x on Power Efficiency",
+        "Chip AI tùy chỉnh đầu tiên của OpenAI vượt mặt Nvidia GB300 về hiệu suất năng lượng",
+      ],
+      [
+        "Horizon TACC Receives 4,000 GB200s for Largest Academic Supercomputer",
+        "Horizon TACC trở thành siêu máy tính học thuật lớn nhất nhờ 4.000 chip GB200",
+      ],
+      [
+        "Run Qwen 3.8 Flash Next (125B) on consumer hardware (RTX 4090) at 100T/s",
+        "Chạy Qwen3.8-Flash-Next (125B) trên phần cứng phổ thông (RTX 4090) đạt tốc độ 100T/s",
+      ],
+      [
+        "ABC-130K Tops All Open Teleop Datasets With 130,000 Episodes",
+        "abc-130k đứng đầu mọi open teleop dataset với 130.000 episode",
+      ],
+      [
+        "Vercel Open Sources 6.3MB Coding Agent 20 Times Smaller Than Major CLIs",
+        "Vercel mã nguồn mở coding agent 6,3MB, nhỏ hơn 20 lần so với các CLI phổ biến",
+      ],
+      ["llm-gemini 0.35", "llm-gemini 0.35"],
+    ];
+    for (const [source, vi] of pairs) {
+      expect(titleOnly(source, vi), source).toEqual([]);
+    }
+  });
+
+  // Prod 41eeccef: the title says 0.6.0, the summary 0.6.
+  it("passes a version the summary writes the way the title does", () => {
+    const issues = translationDraftIssues(
+      {
+        title:
+          "LangChain Automates Slack Provisioning in Managed Deep Agents 0.6.0",
+        summary:
+          "Deep Agents 0.6 now provisions Slack apps without manual OAuth.",
+      },
+      {
+        title:
+          "LangChain tự động hóa việc cấp quyền Slack trong Managed Deep Agents 0.6.0",
+        summary:
+          "Deep Agents 0.6.0 giờ tự cấp phép ứng dụng Slack mà không cần thiết lập OAuth thủ công.",
+      },
+      [],
+      false
+    );
+    expect(issues).toEqual([]);
+  });
+});

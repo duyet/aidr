@@ -3313,6 +3313,40 @@ describe("translateItems draft repair", () => {
     });
   });
 
+  describe("a title that changes the model version", () => {
+    // Prod 2026-09-02, item c4c7ba8f (#781): HN title, no summary.
+    const gemini = { i: 0, title: "Gemini 3.8 Flash" };
+
+    it("gets a repair call and stores the source version", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(rows("Gemini 1.5 Flash"))
+        .mockResolvedValueOnce(rows("Gemini 3.8 Flash"));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const [out] = await translateItems(withRules, [gemini]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const repairPrompt = JSON.parse(fetchMock.mock.calls[1][1].body)
+        .messages[1].content as string;
+      expect(repairPrompt).toContain('keep \\"Gemini 3.8\\"');
+      expect(out.title).toBe("Gemini 3.8 Flash");
+    });
+
+    // A repair that keeps the wrong version is no better, so the draft
+    // stands; the operator re-translates the row (see #781).
+    it("keeps the draft when the repair keeps the wrong version", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(rows("Gemini 1.5 Flash"))
+        .mockResolvedValueOnce(rows("Gemini 1.5 Flash"));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const [out] = await translateItems(withRules, [gemini]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(out.title).toBe("Gemini 1.5 Flash");
+    });
+  });
+
   it("makes no repair call for a clean draft", async () => {
     const fetchMock = vi
       .fn()
