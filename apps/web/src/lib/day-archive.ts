@@ -16,9 +16,13 @@ const DAY_SEC = 86_400;
 /** Ranks still move for 72h after publish (ALGORITHM.md §7); then a day freezes. */
 const DAY_ARCHIVE_SETTLE_DAYS = 3;
 
-/** Settled past days: the stories and digest no longer change. */
+/**
+ * Settled past days: the stories and digest no longer change. The cached HTML
+ * still names a build's `/assets/*` chunks, so s-maxage plus
+ * stale-while-revalidate stays inside `ASSET_RETENTION_MS` (html-cache.test.ts).
+ */
 export const DAY_ARCHIVE_SETTLED_CACHE_CONTROL =
-  "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";
+  "public, max-age=3600, s-maxage=86400, stale-while-revalidate=43200";
 /** Today and the last few days: ranks and the digest still update hourly. */
 export const DAY_ARCHIVE_RECENT_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
