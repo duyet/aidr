@@ -3,6 +3,7 @@ import { type LlmCallLogEntry, redactLlmCallEntry } from "../llm.js";
 import { sanitizeLlmSnippet, sanitizeText } from "../telemetry-safe.js";
 import {
   API_KEY,
+  BASIC,
   BEARER,
   fakeArKey,
   fakeAwsKeyId,
@@ -12,6 +13,7 @@ import {
   fakeGithubToken,
   fakeGoogleKey,
   fakeJwt,
+  fakePem,
   fakeSkKey,
   X_API_KEY,
 } from "./fake-secrets.js";
@@ -34,6 +36,11 @@ const blob = fakeBase64Blob();
 const opaque = "AbCdEfGhIjKlMnOp".repeat(3);
 const sessionValue = fakeBody(12);
 const reqId = `req_${"01HZY8K2".repeat(3)}`;
+/** Below the 32-char opaque-token floor: only a keyed rule catches it. */
+const shortValue = fakeBody(20);
+const pem = fakePem();
+const pemBody = pem.split("\n")[1]!;
+const basicCredential = btoa(`reader:${"pw".repeat(6)}`);
 
 /**
  * `llm_calls.response_snippet` keeps provider error bodies and rejected model
@@ -214,6 +221,65 @@ const LEAK_CASES: Record<
     input: `${"A".repeat(300)} secret ${projKey} ${"B".repeat(300)}`,
     leaks: [projKey.slice(8)],
   },
+  // Second verifier round: shapes that still leaked after #748.
+  cookieQuotedKey: {
+    input: JSON.stringify({ headers: { cookie: `__session=${sessionValue}` } }),
+    leaks: [sessionValue],
+  },
+  sessionToken: {
+    input: `refresh failed, session_token=${shortValue}`,
+    leaks: [shortValue],
+  },
+  idTokenJson: {
+    input: JSON.stringify({ id_token: shortValue, expires_in: 3600 }),
+    leaks: [shortValue],
+  },
+  authToken: { input: `auth_token: ${shortValue}`, leaks: [shortValue] },
+  secretKeyCamel: {
+    input: JSON.stringify({ error: "bad signature", secretKey: shortValue }),
+    leaks: [shortValue],
+    keeps: ["bad signature"],
+  },
+  privateKeyJson: {
+    input: JSON.stringify({ type: "service_account", private_key: pem }),
+    leaks: [pemBody, "PRIVATE KEY"],
+    keeps: ["service_account"],
+  },
+  pemBlock: {
+    input: `loaded key\n${pem}\nthen failed`,
+    leaks: [pemBody, "PRIVATE KEY"],
+    keeps: ["then failed"],
+  },
+  basicAuth: {
+    input: `Authorization: ${BASIC} ${basicCredential}`,
+    leaks: [basicCredential],
+  },
+  basicAuthJson: {
+    input: JSON.stringify({
+      headers: { Authorization: `${BASIC} ${basicCredential}` },
+    }),
+    leaks: [basicCredential],
+  },
+  bareArKeyShort: {
+    input: `key ${fakeArKey(10)} is invalid`,
+    leaks: [fakeArKey(10).slice(6)],
+    keeps: ["is invalid"],
+  },
+  bareArKeyMedium: {
+    input: `key ${fakeArKey(20)} is invalid`,
+    leaks: [fakeArKey(20).slice(6)],
+  },
+  queryKeyNoScheme: {
+    input: `GET generativelanguage.example.com/v1/models?key=${shortValue}&alt=json`,
+    leaks: [shortValue],
+    keeps: ["alt=json"],
+  },
+  querySecretNoScheme: {
+    input: `see cdn.example.com/f?secret=${shortValue}`,
+    leaks: [shortValue],
+  },
+  ipKeyed: { input: "client ip: 10.1.2.3 blocked", leaks: ["10.1.2.3"] },
+  ipBare: { input: "connect to 10.1.2.3 failed", leaks: ["10.1.2.3"] },
 };
 
 /** Ordinary provider and model text that must come through as written. */
@@ -232,6 +298,18 @@ const READABLE: string[] = [
   '{"error":{"message":"Model is overloaded, retry later","code":503}}',
   "Giá 15.000.000 đồng, vốn 1.500.000.000 VND, quỹ 12 500 000 USD.",
   "Lương 10.000-20.000 USD, at 2026-10-14 12:30 UTC.",
+  // Second verifier round: model ids, papers, versions and ids that the
+  // phone, IP and opaque-token rules ate.
+  "served by anthropic/claude-opus-4-5-20251101 in 2.1s",
+  "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B-Instruct timed out",
+  "openai/gpt-4o-2024-08-06 and gemini-2.0-flash-exp-0827",
+  "See arXiv:2410.12345 and arxiv.org/abs/2410.12345v2 for details.",
+  "Published as doi:10.1038/s41586-024-07421-0 and DOI 10.1145/3292500.3330701.",
+  "Upgraded to version 1.2.3.4, v1.2.3.4, nginx/1.25.3.1 and pkg@2.0.0.1.",
+  "gpt-5-1-codex-max-2025-11-19-preview-release-notes-2",
+  "llama-3.1-405b-instruct-turbo-fp8-2024-07-23-v2-final",
+  "fixed in commit 9fceb02d0ae598e95dc970b74767f19372d61af8 yesterday",
+  "item 550e8400-e29b-41d4-a716-446655440000 was skipped",
 ];
 
 function viaEntry(raw: string): string | null {
@@ -287,5 +365,13 @@ describe("sanitizeText quoted keys", () => {
     );
     expect(out).not.toContain(arKey);
     expect(out).not.toContain(shortKey);
+  });
+
+  it("redacts prefixed token keys and the Basic credential", () => {
+    const out = sanitizeText(
+      `retry with session_token=${shortValue} and Authorization: ${BASIC} ${basicCredential}`
+    );
+    expect(out).not.toContain(shortValue);
+    expect(out).not.toContain(basicCredential);
   });
 });
