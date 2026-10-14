@@ -809,9 +809,22 @@ deterministic pass.
   last 72h of published titles. It sees at most 100 new items
   (`MAX_NEW_ITEMS_IN_CLUSTER_PROMPT`, input order) and 300 published
   ones; new items past that are left to the title pass below.
-- A deterministic title-similarity pass (normalized headlines / high
-  token overlap, including short-headline-inside-long) runs alongside
-  so same-story URLs the model misses still collapse.
+- A deterministic title-similarity pass (`isTitleNearDuplicate`) runs
+  alongside so same-story URLs the model misses still collapse. It merges
+  equal normalized headlines, and headlines with high token overlap
+  (3+ shared words at half overlap, or 2+ when the shorter one is 72%
+  inside the longer) that also share one evidence token (the gate's
+  tokens below). The evidence check can be skipped only when every word of
+  a 3+ word headline is in the other ("'AI' is Not a Tool" in "'AI' Is
+  Not a Tool by Rich Hickey"). Before #749 overlap on common words alone
+  ("Show HN", "AI", "agent", "System One Model") and on Vietnamese
+  fragments merged unrelated stories: normalization turned each diacritic
+  into a space ("triệu" -> "trie u"); it now folds whole words
+  ("trieu"). Replayed over the 3,245 merges of 2026-08-15 to 10-14 the
+  rule now splits 28 the old rule allowed (the 11 #749 pairs, 15 more
+  different stories, 2 unclear) and merges none it did not; over 1.14M
+  published pairs within 72h it flags 175 instead of 185, all 10 dropped
+  pairs different stories.
 - Cluster gate (`worker/cluster-gate.ts`, #733): an existing id stays in
   a model cluster only when one of the cluster's new items shares
   evidence with it: a headline that names an org the other item is the
@@ -824,7 +837,7 @@ deterministic pass.
   and AI nouns such as "agent", "model", "launch", "data"); numbers of
   100+ that are not years; numbers with a unit ("13b", "b300"). In a
   Vietnamese title, diacritics fold per whole syllable ("triệu" ->
-  "trieu", not dedupe's "trie u"), a word with no diacritics that is not
+  "trieu"), a word with no diacritics that is not
   a Vietnamese syllable ("Google", "Gemini", "robot") counts alone as a
   name, and other syllables count as adjacent pairs ("thiet ke"), minus
   function syllables and common pairs ("mo hinh", "du lieu", "viet

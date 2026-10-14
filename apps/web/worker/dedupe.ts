@@ -8,6 +8,7 @@ import {
 import { hasReaderEngagement, type RankMember } from "./ranking.js";
 import { officialSourceFor } from "./sources/catalog.js";
 import type { FetchedItemSource } from "./sources/types.js";
+import { looksVietnamese } from "./tldr-lang.js";
 import { extractTitleEntities } from "./topic-learning.js";
 import { unionTopics } from "./topics.js";
 import type { Env } from "./types.js";
@@ -83,11 +84,16 @@ const TITLE_STOPWORDS = new Set([
   "vs",
 ]);
 
-/** Lowercase, strip UPDATE:, fold $8 billion → 8b / 5x → 5, drop punctuation. */
+/** "triệu" -> "trieu", whole. Turning the marks into spaces split it into
+ *  "trie u", and fragments like "gia" or "nha" then matched in a quarter
+ *  of unrelated Vietnamese headlines (#749). */
+const fold = (text: string) =>
+  text.normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d");
+
+/** Lowercase, fold diacritics, strip UPDATE:, fold $8 billion → 8b / 5x → 5,
+ *  drop punctuation. */
 export function normalizeTitleForDedupe(title: string): string {
-  return title
-    .normalize("NFKD")
-    .toLowerCase()
+  return fold(title.normalize("NFKD").toLowerCase())
     .replace(/^update:\s*/i, "")
     .replace(/[“”"'`’]/g, "")
     .replace(/[$€£]/g, "")
@@ -111,6 +117,115 @@ export function significantTitleTokens(title: string): Set<string> {
   return out;
 }
 
+const wordSet = (list: string) => new Set(list.trim().split(/\s+/));
+
+/** Function words, plus headline verbs and AI nouns common enough to tie
+ *  unrelated stories. The headline verbs and AI nouns, with their
+ *  inflections, are each in 0.5% or more of the English titles published
+ *  2026-09-30 to 10-14 ("agent", "model" over 5%); the function words are
+ *  listed whatever their rate.
+ *  Company names stay evidence although "openai" is in 9%: without them the
+ *  gate blocked two correct #728 merges, follow-ups that share only
+ *  "OpenAI" with the first story (#745). */
+const COMMON_WORDS = wordSet(`
+a an the for to of in on at its it and or over more than since by with from
+as is are times time into after before about vs
+new first says say said your you that this these those via how what why who
+when where which use uses used using can could will would may might not now
+out just has have had help helps without their they them his her our own but
+all also most next back top real need needs find turn end get gets make makes
+one two three year years day days week weeks month here heres there then still
+even only other some any every many much very like
+agent agents agentic model models data launch launches launched release
+releases released tool tools system systems llm llms user users code language
+learning intelligence machine source center ais show report reports
+raise raises raised hit hits cut cuts beat beats run runs warn warns add adds
+debut debuts introduce introduces introducing
+build builds building plan plans usd
+`);
+
+/** Vietnamese function syllables, diacritics folded ("của", "cho", "trong",
+ *  "mới"). A Vietnamese word is mostly two syllables, so `evidenceTokens`
+ *  compares adjacent pairs; a pair with one of these is not a word. */
+const VIETNAMESE_FUNCTION_SYLLABLES = wordSet(`
+cua cac cho va voi la duoc co trong nhung mot nay do da se khi khong tu tai ve
+theo de bang sau ai nhu thi ma vi den len vao hon nhieu dang cung van chi lai
+rat moi ra usd ty trieu nam ngay thang
+`);
+
+/** Vietnamese words as common in headlines as COMMON_WORDS ("mô hình" model,
+ *  "dữ liệu" data, "Việt Nam" in a Vietnamese outlet). */
+const VIETNAMESE_COMMON_PAIRS = new Set(
+  `mo hinh, du lieu, xay dung, dau tien, trung tam, tam du, phat trien,
+  nghien cuu, nha nghien, huy dong, cong cu, nguoi dung, tinh nang, cong nghe,
+  ung dung, su dung, he thong, ma nguon, nguon mo, ngon ngu, ke hoach, ho tro,
+  cong bo, gioi thieu, phat hanh, tri tue, nhan tao, bao cao, show hn,
+  viet nam, trung quoc, sang tao`
+    .split(",")
+    .map((pair) => pair.trim().replace(/\s+/g, " "))
+);
+
+/** A word with no diacritics that is still a Vietnamese syllable ("trong",
+ *  "cho", "tin", "gia"): initial consonant, one to three vowels, final.
+ *  "Google", "Gemini", "robot" or "Trump" in a Vietnamese headline fail it
+ *  and stand alone as names. */
+const VIETNAMESE_SYLLABLE =
+  /^(ngh|ng|nh|ch|gh|gi|kh|ph|qu|th|tr|[bcdghklmnprstvx])?[aeiouy]{1,3}(ch|ng|nh|[cmnpt])?$/;
+const NUMBER = /^\d+$/;
+const YEAR = /^(19|20)\d\d$/;
+
+/** A word that counts alone: a number of 100+ that is not a year ("722",
+ *  "250"), a number with a unit ("13b", "b300", "128gb"), or a word of 3+
+ *  letters not in COMMON_WORDS, with a plural "s" dropped. */
+function standalone(word: string): string | undefined {
+  if (NUMBER.test(word)) {
+    return Number(word) >= 100 && !YEAR.test(word) ? word : undefined;
+  }
+  if (/\d/.test(word)) return word;
+  if (word.length < 3 || COMMON_WORDS.has(word)) return undefined;
+  const stem = word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word;
+  return COMMON_WORDS.has(stem) ? undefined : stem;
+}
+
+/** A headline's evidence: its standalone words, and in Vietnamese also its
+ *  adjacent syllable pairs. */
+export function evidenceTokens(title: string): Set<string> {
+  const out = new Set<string>();
+  const vietnamese = looksVietnamese(title);
+  const text = title
+    .toLowerCase()
+    .replace(/^update:\s*/, "")
+    .replace(/[“”"'`’]/g, "")
+    .replace(/\b(\d+(?:\.\d+)?)\s*(?:billion|bn)\b/g, "$1b")
+    .replace(/\b(\d+(?:\.\d+)?)\s*(?:million|mn)\b/g, "$1m");
+  for (const phrase of text.split(/[^\p{L}\p{N}\s]+/u)) {
+    const words = phrase.split(/\s+/).filter(Boolean);
+    for (const word of words) {
+      if (
+        vietnamese &&
+        (looksVietnamese(word) || VIETNAMESE_SYLLABLE.test(word))
+      ) {
+        continue;
+      }
+      const token = standalone(fold(word));
+      if (token) out.add(token);
+    }
+    if (!vietnamese) continue;
+    const folded = words.map(fold);
+    for (let i = 1; i < folded.length; i++) {
+      const pair = [folded[i - 1], folded[i]];
+      if (
+        pair.some((w) => VIETNAMESE_FUNCTION_SYLLABLES.has(w) || NUMBER.test(w))
+      ) {
+        continue;
+      }
+      const joined = pair.join(" ");
+      if (!VIETNAMESE_COMMON_PAIRS.has(joined)) out.add(joined);
+    }
+  }
+  return out;
+}
+
 export function titleSimilarity(a: string, b: string): number {
   const na = normalizeTitleForDedupe(a);
   const nb = normalizeTitleForDedupe(b);
@@ -126,7 +241,11 @@ export function titleSimilarity(a: string, b: string): number {
   return inter / (ta.size + tb.size - inter);
 }
 
-/** Same underlying headline: exact normalized match, or high token overlap. */
+/** Same underlying headline: exact normalized match, or high token overlap
+ *  that includes a shared `evidenceTokens` token. Overlap on common words
+ *  alone ("Show HN", "AI", "agent", "system one model") merged unrelated
+ *  stories (#749), except when every word of one headline is in the other
+ *  ("'AI' is Not a Tool" in "'AI' Is Not a Tool by Rich Hickey"). */
 export function isTitleNearDuplicate(a: string, b: string): boolean {
   const na = normalizeTitleForDedupe(a);
   const nb = normalizeTitleForDedupe(b);
@@ -138,18 +257,22 @@ export function isTitleNearDuplicate(a: string, b: string): boolean {
   for (const t of ta) {
     if (tb.has(t)) inter++;
   }
+  const smaller = Math.min(ta.size, tb.size);
   const jaccard = inter / (ta.size + tb.size - inter);
-  const overlap = inter / Math.min(ta.size, tb.size);
-  if (
-    inter >= TITLE_DUP_MIN_SHARED &&
-    (jaccard >= TITLE_DUP_JACCARD || overlap >= TITLE_DUP_JACCARD)
-  ) {
-    return true;
+  const overlap = inter / smaller;
+  const similar =
+    (inter >= TITLE_DUP_MIN_SHARED &&
+      (jaccard >= TITLE_DUP_JACCARD || overlap >= TITLE_DUP_JACCARD)) ||
+    // HN vs original: shorter headline is almost entirely inside the longer one.
+    (inter >= TITLE_DUP_STRONG_MIN_SHARED &&
+      overlap >= TITLE_DUP_STRONG_OVERLAP);
+  if (!similar) return false;
+  if (inter >= TITLE_DUP_MIN_SHARED && inter === smaller) return true;
+  const evidence = evidenceTokens(a);
+  for (const token of evidenceTokens(b)) {
+    if (evidence.has(token)) return true;
   }
-  // HN vs original: shorter headline is almost entirely inside the longer one.
-  return (
-    inter >= TITLE_DUP_STRONG_MIN_SHARED && overlap >= TITLE_DUP_STRONG_OVERLAP
-  );
+  return false;
 }
 
 type UfKey = string;
