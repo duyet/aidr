@@ -190,6 +190,25 @@ describe("1. an image at the article URL never costs the story its imgur image",
     expect(telegram(storyRow(row)).gallery).toEqual([IMGUR]);
   });
 
+  // A finished summary with media is never fetched, so the adapter's own
+  // media is all enrich sees.
+  it("enrich: an item that needs no fetch", async () => {
+    stubFetchHtml({});
+    const item: FetchedItem = {
+      url: ARTICLE,
+      title: "A story",
+      summary: "A finished summary.",
+      publishedAt: 1_700_000_000,
+      media: [
+        { type: "image", url: IMGUR },
+        { type: "image", url: ARTICLE },
+      ],
+    };
+    await enrichMissingContent([item]);
+    expect(item.imageUrl).toBe(IMGUR);
+    expect(item.mediaManifest?.assets).toEqual([{ type: "image", url: IMGUR }]);
+  });
+
   it("enrich: the article page's own og tags (#693)", async () => {
     stubFetchHtml({
       [ARTICLE]: `<meta property="og:image" content="${IMGUR}">
