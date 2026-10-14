@@ -86,17 +86,27 @@ export function requireClerkProxyUrl(value: string | undefined): string {
 /**
  * The proxy URL Vite bakes into both bundles for `mode`. `canonicalUrl` is
  * wrangler.toml's value; every build must match it exactly.
+ *
+ * Development uses only an explicit loopback proxy. Any other value,
+ * including the production URL that .env.example carries, means no proxy.
+ * The production proxy forwards with the live secret and cannot complete a
+ * development instance's handshake (#630); without a proxy, dev keys talk
+ * to their own Clerk Frontend API.
  */
 export function clerkProxyUrlForMode(
   mode: string,
   configuredUrl: string | undefined,
   canonicalUrl: string
 ): string | undefined {
-  if (configuredUrl === undefined) return canonicalUrl;
+  if (mode === "development") {
+    if (configuredUrl === undefined) return undefined;
+    const url = requireClerkProxyUrl(configuredUrl);
+    return isLoopbackHostname(new URL(url).hostname) ? url : undefined;
+  }
 
-  const normalizedUrl = requireClerkProxyUrl(configuredUrl);
-  if (mode !== "development" && normalizedUrl !== canonicalUrl) {
+  if (configuredUrl === undefined) return canonicalUrl;
+  if (requireClerkProxyUrl(configuredUrl) !== canonicalUrl) {
     throw new Error("CLERK_PROXY_URL must match wrangler.toml for this build");
   }
-  return normalizedUrl;
+  return canonicalUrl;
 }
