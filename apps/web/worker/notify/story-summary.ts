@@ -132,9 +132,13 @@ export async function captionSummaryFor(
         },
       ],
       {
-        task: "other",
+        task: "caption",
         timeoutMs: LLM_TIMEOUT_MS,
         maxTokens: LLM_MAX_TOKENS,
+        // An over-long answer is cut to its whole sentences and kept, so it
+        // logs ok. bad_output means the answer was thrown away and the
+        // caption trims the source instead: no sentence fits, an ellipsis,
+        // no end mark, the wrong language, or unparseable JSON.
         validate: (content) =>
           fitCaptionSummary(parseSummary(content), story.lang, budget) !== null,
       }

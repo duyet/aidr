@@ -232,6 +232,7 @@ export type LlmTask =
   | "cluster"
   | "review"
   | "mail"
+  | "caption"
   | "other";
 
 /** One row of the `llm_calls` observability log: one entry per model
