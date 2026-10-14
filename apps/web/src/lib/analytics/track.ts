@@ -6,6 +6,7 @@ import {
   SINKS,
 } from "./events";
 import { normalizeParams } from "./schema";
+import { gaPageFields } from "./url-privacy";
 
 type Gtag = (...args: unknown[]) => void;
 type Posthog = { capture: (event: string, props: object) => void };
@@ -40,7 +41,14 @@ export function track<N extends BrowserEventName>(
       params as Record<string, unknown>
     );
     const sinks: readonly string[] = "sinks" in spec ? spec.sinks : SINKS;
-    if (sinks.includes("ga4")) getGtag()?.("event", name, clean);
+    const gtag = sinks.includes("ga4") ? getGtag() : undefined;
+    if (gtag) {
+      // gtag.js would otherwise read location.href, query string and all.
+      // The `set` also reaches the gateway's own hits (scroll, engagement)
+      // that follow, and moves with each SPA navigation.
+      gtag("set", gaPageFields());
+      gtag("event", name, clean);
+    }
     // `surface` tells browser events apart from future Worker events; GA4
     // only ever sees browser events, so only PostHog gets it.
     if (sinks.includes("posthog")) {

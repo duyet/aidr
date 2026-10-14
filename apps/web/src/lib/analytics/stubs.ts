@@ -10,6 +10,8 @@
  * the LCP paint (`afterLcpPaint`) while hydrate-time events still land.
  */
 
+import { scrubPosthogEvent } from "./url-privacy";
+
 export const POSTHOG_STUB_METHODS =
   "capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onSessionId".split(
     " "
@@ -103,6 +105,7 @@ function installPosthogStub(w: AnalyticsWindow, cfg: PosthogStubConfig): void {
     api_host: cfg.host,
     defaults: "2026-05-30",
     capture_exceptions: true,
+    before_send: scrubPosthogEvent,
   });
 }
 

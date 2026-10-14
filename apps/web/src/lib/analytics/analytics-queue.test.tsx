@@ -13,6 +13,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installAnalyticsStubs, type PosthogStub } from "./stubs";
 import { track } from "./track";
+import { scrubPosthogEvent } from "./url-privacy";
 
 type QueueWindow = Window & {
   dataLayer?: IArguments[];
@@ -71,11 +72,15 @@ describe("track() before the vendor scripts load", () => {
     expect(calls[0][0]).toBe("js");
     expect(calls[1]).toEqual(["config", "G-TEST", { send_page_view: false }]);
     expect(calls[2]).toEqual([
+      "set",
+      { page_location: `${location.origin}/`, page_referrer: "" },
+    ]);
+    expect(calls[3]).toEqual([
       "event",
       "page_view",
       { page_path: "/", page_type: "home" },
     ]);
-    expect(calls).toHaveLength(3);
+    expect(calls).toHaveLength(4);
   });
 
   it("queues the PostHog capture with the init the library replays", () => {
@@ -97,6 +102,7 @@ describe("track() before the vendor scripts load", () => {
           api_host: "https://us.i.posthog.com",
           defaults: "2026-05-30",
           capture_exceptions: true,
+          before_send: scrubPosthogEvent,
         },
         "posthog",
       ],

@@ -144,8 +144,15 @@ Turn these off in GA4 Admin > Data streams > Enhanced measurement:
 - Page changes based on browser history events. \`page_view\` is sent by the app on every route change, so this would count each one twice. It also reads the raw URL, including \`?q=\`.
 - Site search. It copies \`?q=\` into \`search_term\`, which puts reader search text in GA4.
 - Outbound clicks. \`source_click\` already records source-link clicks with the item id.
+- Form interactions. \`form_submit\` copies the form's URL, including \`?q=\`, into \`form_destination\`.
+
+App code cannot change what these send, because they read the browser URL themselves.
 
 PostHog captures its own \`$pageview\`, so \`page_view\` goes to GA4 only.
+
+## Page URLs
+
+The app hands every vendor a sanitized page URL. GA4 \`page_location\` and \`page_referrer\`, PostHog URL properties and autocaptured link hrefs, and the Jitsu page event keep only the query params in \`SAFE_PARAMS\` (\`apps/web/src/lib/analytics/url-privacy.ts\`). Search text (\`q\`) and the subscribe tokens are dropped. An inline \`<head>\` script moves a subscribe token out of the URL before any vendor script runs.
 `;
 }
 

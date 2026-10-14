@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DeliverPage } from "../components/subscribe/DeliverPage";
 import { SettingsView } from "../components/subscribe/SettingsView";
 import { UnsubscribeView } from "../components/subscribe/UnsubscribeView";
+import {
+  bootSubscribeLink,
+  type SubscribeLink,
+} from "../lib/analytics/url-privacy";
 import { type DeliverTab, parseDeliverTab } from "../lib/deliver-tab";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
@@ -49,12 +53,20 @@ function SubscribePage() {
   const lang = useLang();
   const navigate = Route.useNavigate();
   const { tab, freq, unsubscribe, settings } = Route.useSearch();
+  // The server sees the emailed token in the URL. In the browser the head
+  // boot script has already moved it out, before any analytics vendor reads
+  // the URL, so it comes from there.
+  const link: SubscribeLink | undefined = unsubscribe
+    ? { kind: "unsubscribe", token: unsubscribe }
+    : settings
+      ? { kind: "settings", token: settings }
+      : bootSubscribeLink();
 
-  if (unsubscribe) {
-    return <UnsubscribeView token={unsubscribe} lang={lang} />;
+  if (link?.kind === "unsubscribe") {
+    return <UnsubscribeView token={link.token} lang={lang} />;
   }
-  if (settings) {
-    return <SettingsView token={settings} lang={lang} />;
+  if (link?.kind === "settings") {
+    return <SettingsView token={link.token} lang={lang} />;
   }
 
   return (
