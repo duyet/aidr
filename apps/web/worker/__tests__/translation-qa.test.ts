@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetUnavailableModels } from "../llm.js";
 import {
   assertTranslationReviewSchema,
   buildEnglishCandidatePrompt,
@@ -965,6 +966,26 @@ describe("translation QA runtime", () => {
       writes.some((write) => write.args.includes("human_review")),
       "attempt 1 must not jump straight to the terminal human state"
     ).toBe(false);
+  });
+
+  it("keeps the rate-limit signal in the reason once the chain is in cooldown", async () => {
+    resetUnavailableModels();
+    const { db, writes } = makeDb({
+      rows: Array.from({ length: 8 }, (_, i) => row({ id: `item-${i}` })),
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("quota", { status: 429 }))
+    );
+    await ratePendingTranslations({ ...env, DB: db });
+    resetUnavailableModels();
+
+    const reasons = writes
+      .filter((write) => write.sql.includes("translation_review_attempts"))
+      .flatMap((write) => write.args)
+      .filter((arg): arg is string => typeof arg === "string");
+    expect(reasons).toContain("provider rate limited (cooldown)");
+    expect(reasons.join("\n")).not.toMatch(/quota|chain exhausted/);
   });
 
   it("leaves a VI item's Vietnamese title intact when EN generation itself fails", async () => {

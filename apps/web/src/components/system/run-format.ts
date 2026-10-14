@@ -365,6 +365,7 @@ const FAILURE_HINT =
 
 export type RunFallbackKind =
   | "chain_exhausted"
+  | "chain_cooldown"
   | "http_error"
   | "timeout"
   | "rate_limited"
@@ -379,10 +380,19 @@ export interface RunFallbackNote {
   detail: string;
 }
 
+/** The worker throws this without a request when every id in the chain is in
+ * its 429 cooldown, so no model was actually tried. */
+export const COOLED_CHAIN = /chain exhausted.*rate limit cooldown/i;
+
+function isCooledChain(text: string): boolean {
+  return COOLED_CHAIN.test(text);
+}
+
 /** Reuse the telemetry classifier so the disclosure shows the same safe
  * summary the worker would have stored, with the fallback chain kept distinct
  * from a single failed request. */
 function classifyFallback(text: string): RunFallbackKind {
+  if (isCooledChain(text)) return "chain_cooldown";
   if (/chain exhausted/i.test(text)) return "chain_exhausted";
   const safe = sanitizeError(text);
   switch (safe?.code) {
@@ -422,6 +432,7 @@ export function stepFallbackNotes(steps: RunStepInfo[]): RunFallbackNote[] {
 const FALLBACK_KIND_LABEL = {
   en: {
     chain_exhausted: "Fallback chain exhausted",
+    chain_cooldown: "Rate-limit cooldown, no call made",
     http_error: "Provider request failed",
     timeout: "Provider request timed out",
     rate_limited: "Provider rate limit reached",
@@ -431,6 +442,7 @@ const FALLBACK_KIND_LABEL = {
   },
   vi: {
     chain_exhausted: "Chuỗi fallback đã cạn",
+    chain_cooldown: "Đang chờ giới hạn tần suất, chưa gọi mô hình",
     http_error: "Yêu cầu tới nhà cung cấp thất bại",
     timeout: "Yêu cầu tới nhà cung cấp bị hết thời gian",
     rate_limited: "Bị giới hạn tần suất từ nhà cung cấp",
