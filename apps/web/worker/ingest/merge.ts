@@ -97,6 +97,8 @@ export interface RecentClusterRow {
   comments: number;
   image_url: string | null;
   media_manifest: string | null;
+  /** `translations.title` in the other language, for the cluster gate. */
+  translation: string | null;
 }
 
 /** An item's headline facts for the official-rewrite rule
@@ -166,7 +168,7 @@ export function buildMergeCandidates(
 }
 
 export function toExistingCandidates(
-  rows: readonly RecentClusterRow[]
+  rows: readonly Omit<RecentClusterRow, "translation">[]
 ): Map<string, ExistingCandidate> {
   return new Map<string, ExistingCandidate>(
     rows.map((r) => [
@@ -304,10 +306,14 @@ export async function planMerges(
       });
       try {
         const { results: recentForClustering } = await env.DB.prepare(
-          `SELECT id, source_id, url, title, published_at, tags, points, comments,
-                  image_url, media_manifest FROM items
-           WHERE status = 'published' AND published_at >= ?
-           ORDER BY published_at DESC
+          `SELECT i.id, i.source_id, i.url, i.title, i.published_at, i.tags,
+                  i.points, i.comments, i.image_url, i.media_manifest,
+                  t.title AS translation
+           FROM items i
+           LEFT JOIN translations t ON t.item_id = i.id
+             AND t.lang = CASE i.source_lang WHEN 'vi' THEN 'en' ELSE 'vi' END
+           WHERE i.status = 'published' AND i.published_at >= ?
+           ORDER BY i.published_at DESC
            LIMIT ${MERGE_CANDIDATE_LIMIT}`
         )
           .bind(toEpochSeconds(now) - MERGE_LOOKBACK_SEC)
@@ -342,7 +348,12 @@ export async function planMerges(
         const existingHeadlines = new Map<string, GateHeadline>(
           recent.map((r) => [
             r.id,
-            { title: r.title, sourceId: r.source_id, url: r.url },
+            {
+              title: r.title,
+              sourceId: r.source_id,
+              url: r.url,
+              translation: r.translation,
+            },
           ])
         );
         const gated = gateLlmClusters(

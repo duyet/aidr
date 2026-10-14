@@ -41,6 +41,7 @@ function existing(id: string, sourceId: string, url: string, title: string) {
     comments: 0,
     image_url: null,
     media_manifest: null,
+    translation: null,
   } satisfies RecentClusterRow;
 }
 

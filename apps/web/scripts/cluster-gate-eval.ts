@@ -3,7 +3,9 @@
  * Confusion table for the cluster gate (`worker/cluster-gate.ts`, #733) on
  * the #728 hand labels (`scripts/fixtures/cluster-gate-733.json`): every
  * merge pair whose titles share at most one significant word, labelled per
- * canonical W (wrong), L (correct) or A (unclear). No model call, no D1.
+ * canonical W (wrong), L (correct) or A (unclear). Each canonical carries
+ * its stored other-language translation, as the gate reads it in
+ * production (#745). No model call, no D1.
  *
  * Usage (from apps/web): pnpm exec tsx scripts/cluster-gate-eval.ts [--list]
  * `--list` prints each blocked L/A pair and each allowed W pair.

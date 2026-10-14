@@ -98,6 +98,77 @@ const WRONG: [string, GateHeadline, GateHeadline][] = [
       "Đài quan sát 250 triệu USD của NASA sắp rơi xuống Trái Đất"
     ),
   ],
+  [
+    // #745: "định giá" (valuation) and "đấu giá" (auction) shared "gia"
+    // once each diacritic split a syllable.
+    "genk-auction",
+    h(
+      "genk-ai",
+      "https://genk.vn/duoc-dinh-gia-ty-usd-co-12-trieu-nguoi-dung-tai-sao-startup-chatbot-ai-nay-van-phai-de-don-xin-pha-san-165261014145541313.chn",
+      "Được định giá tỷ USD, có 12 triệu người dùng, tại sao startup chatbot AI này vẫn phải đệ đơn xin phá sản?"
+    ),
+    h(
+      "vnexpress-tech",
+      "https://vnexpress.net/dau-so-di-dong-moi-075-sap-dau-gia-khoi-diem-2-5-ty-dong-5129358.html",
+      "Đầu số di động mới 075 sắp đấu giá, khởi điểm 2,5 tỷ đồng"
+    ),
+  ],
+  [
+    // #745: shares only "that".
+    "b19a7eb5",
+    h(
+      "theverge-ai",
+      "https://www.theverge.com/ai-artificial-intelligence/1004096/openai-chatgpt-dots-hands-on-agent",
+      "OpenAI’s Dot agent is enterprise software that can also order your dinner"
+    ),
+    h(
+      "the-decoder",
+      "https://the-decoder.com/anthropic-co-founder-reportedly-told-religious-leaders-he-fears-having-created-something-that-suffers-perpetually/",
+      'Anthropic co-founder reportedly told religious leaders he fears having created something that "suffers perpetually"'
+    ),
+  ],
+  [
+    // #745: shares only "model".
+    "b5bca482",
+    h(
+      "marketbrief",
+      "https://marketbrief.now/ai/perplexity-new-v11-decision-model-tops-hugging-face-index-at-002-per-mil-eae6b882",
+      "Perplexity New v1.1 Decision Model Tops Hugging Face Index at $0.02 per Million Tokens"
+    ),
+    h(
+      "huggingnews",
+      "https://huggingnews.com/ai/openrouter-adds-elevenlabs-models-with-50percent-launch-discount-a9b393d5",
+      "OpenRouter Adds ElevenLabs Models with 50% Launch Discount"
+    ),
+  ],
+  [
+    // #745: shares only "run".
+    "eacb7fc5",
+    h(
+      "hn",
+      "https://github.com/Vibra-Ingenn/Janus",
+      "Show HN: Janus – Go binary that runs GGUF models via Vulkan on AMD/Intel/Nvidia"
+    ),
+    h(
+      "hn",
+      "https://dwarfstar.sh/",
+      "From the creator of Redis; run LLM locally with ds4"
+    ),
+  ],
+  [
+    // #745: shares only the year.
+    "gateways-summit",
+    h(
+      "marktechpost",
+      "https://www.marktechpost.com/2026/10/14/best-ai-gateways-2026/",
+      "9 Best AI Gateways in 2026: Bifrost, Portkey, LiteLLM, Kong and 5 More Ranked"
+    ),
+    h(
+      "lobsters",
+      "https://lwn.net/SubscriberLink/1099594/fba1c2268c3e2fb5/",
+      "The 2026 Maintainers Summit"
+    ),
+  ],
 ];
 
 // Hand-labelled correct merges whose titles share at most one word.
@@ -156,16 +227,32 @@ const RIGHT: [string, GateHeadline, GateHeadline][] = [
     ),
   ],
   [
-    "45765a5a",
+    // #745: "not" and "tool" are common words, but the title pass merges a
+    // near-duplicate anyway, so the gate must not count it as rejected.
+    "de2c7446",
     h(
-      "vnexpress-tech",
-      "https://vnexpress.net/tong-thong-my-doi-ten-ai-thanh-sieu-tri-tue-5126433.html",
-      "Tổng thống Mỹ đổi tên AI thành 'siêu trí tuệ'"
+      "lobsters",
+      "https://www.linkedin.com/pulse/ai-tool-rich-hickey-kjl8e",
+      "'AI' is Not a Tool"
     ),
     h(
-      "huggingnews",
-      "https://huggingnews.com/us-politics/update-trumps-super-intelligence-order-triggers-slovenia-domain-wave-52f5154d",
-      "Trump's Super Intelligence Order Triggers Slovenia Domain Wave"
+      "hn",
+      "https://gist.github.com/svieira/619d60dea942a8d4498cba3bb6b11c02",
+      "'AI' Is Not a Tool by Rich Hickey"
+    ),
+  ],
+  [
+    // #745: one story in two Vietnamese headlines shares whole words.
+    "eb0e0003",
+    h(
+      "vnexpress-tech",
+      "https://vnexpress.net/tac-nhan-ai-trung-quoc-cung-gian-lan-trong-thu-nghiem-5126382.html",
+      "Tác nhân AI Trung Quốc cũng gian lận trong thử nghiệm"
+    ),
+    h(
+      "vnexpress-tech",
+      "https://vnexpress.net/tac-nhan-ai-trung-quoc-gian-lan-trong-thu-nghiem-5126382.html",
+      "Tác nhân AI Trung Quốc gian lận trong thử nghiệm"
     ),
   ],
   [
@@ -195,13 +282,139 @@ describe("backsExisting", () => {
   // vouch for an English story the English members share nothing with.
   it("judges the members in the story's language, not a Vietnamese copy", () => {
     const [, shopping, gpu] = WRONG[0];
-    const gpuVi = h(
+    const copy = h(
       "vnexpress-tech",
-      "https://vnexpress.net/anjney-midha-ra-mat-nut-gpu",
-      "Anjney Midha ra mắt nút GPU B300 giá 4 USD cho chính phủ"
+      "https://vnexpress.net/claude-chatgpt-bao-gia-theo-muc-giau-co",
+      "Claude và ChatGPT đưa ra giá mua sắm khác nhau theo mức giàu có"
     );
-    expect(backsExisting([gpu, gpuVi], shopping)).toBe(false);
-    expect(backsExisting([gpuVi], shopping)).toBe(true);
+    expect(backsExisting([gpu, copy], shopping)).toBe(false);
+    expect(backsExisting([copy], shopping)).toBe(true);
+  });
+});
+
+// #745: a link across languages is judged against the story's stored
+// translation (`translations.title`) and the names a Vietnamese headline
+// keeps in English. Production merges from 2026-09-30 to 10-14.
+describe("backsExisting across languages", () => {
+  const tr = (headline: GateHeadline, translation: string): GateHeadline => ({
+    ...headline,
+    translation,
+  });
+  const geminiVi = h(
+    "vnexpress-tech",
+    "https://vnexpress.net/google-ra-gemini-4-argon-manh-nhat-cua-cong-ty-5126995.html",
+    "Google ra Gemini 4 Argon mạnh nhất của công ty"
+  );
+
+  it.each([
+    [
+      "an English item that shares nothing with a Vietnamese story's translation",
+      tr(
+        geminiVi,
+        "Google Unveils Gemini 4 Argon, the Company's Most Powerful Model"
+      ),
+      h(
+        "huggingnews",
+        "https://huggingnews.com/ai/grok-47-launches-in-general-apps-after-limited-release-eb1f6886",
+        "Grok 4.7 Launches in General Apps After Limited Release"
+      ),
+    ],
+    [
+      "a Vietnamese item that shares nothing with an English story's translation",
+      tr(
+        h(
+          "hn",
+          "https://www.reddit.com/r/GeminiAI/comments/1wwalmc/wtf_google_getting_rid_of_free_gemini_flash_and/",
+          "Gemini ending free use of Flash and Pro models"
+        ),
+        "Gemini chấm dứt sử dụng miễn phí các mô hình Flash và Pro"
+      ),
+      h(
+        "vnexpress-tech",
+        "https://vnexpress.net/google-dung-chuong-trinh-trao-thuong-tim-loi-ma-nguon-mo-vi-rac-ai-5128078.html",
+        "Google dừng chương trình trao thưởng tìm lỗi mã nguồn mở vì 'rác' AI"
+      ),
+    ],
+    [
+      // "trong" carries no diacritic but is a Vietnamese word ("in"), and
+      // the year is no evidence.
+      "a Vietnamese syllable or a year read as a shared name",
+      h(
+        "lobsters",
+        "https://lwn.net/SubscriberLink/1099594/fba1c2268c3e2fb5/",
+        "The 2026 Maintainers Summit: trong, a new allocator"
+      ),
+      h(
+        "vnexpress-tech",
+        "https://vnexpress.net/bat-dau-ngay-hoi-doi-moi-sang-tao-quoc-gia-2026-5127769.html",
+        "Bắt đầu Ngày hội Đổi mới sáng tạo quốc gia 2026 trong ba ngày"
+      ),
+    ],
+  ])("rejects %s", (_case, story, item) => {
+    expect(backsExisting([item], story)).toBe(false);
+  });
+
+  it.each([
+    [
+      "an English item by a Vietnamese story's translation",
+      tr(
+        h(
+          "vnexpress-tech",
+          "https://vnexpress.net/startup-my-bi-yeu-cau-dung-to-chuc-dau-nguoi-robot-5129690.html",
+          "Startup Mỹ bị yêu cầu dừng tổ chức đấu người - robot"
+        ),
+        "US startup asked to stop organizing human-robot fights"
+      ),
+      h(
+        "theverge-ai",
+        "https://www.theverge.com/tech/1008401/california-shut-down-rek-fighting-robot-company-human",
+        "California is trying to shut down robot vs. human cage matches"
+      ),
+    ],
+    [
+      "an English item that shares a word only with the translation",
+      tr(
+        h(
+          "vnexpress-tech",
+          "https://vnexpress.net/tong-thong-my-doi-ten-ai-thanh-sieu-tri-tue-5126433.html",
+          "Tổng thống Mỹ đổi tên AI thành 'siêu trí tuệ'"
+        ),
+        "US President renames AI to 'super intelligence'"
+      ),
+      h(
+        "huggingnews",
+        "https://huggingnews.com/us-politics/update-trumps-super-intelligence-order-triggers-slovenia-domain-wave-52f5154d",
+        "Trump's Super Intelligence Order Triggers Slovenia Domain Wave"
+      ),
+    ],
+    [
+      "a Vietnamese item by an English story's translation",
+      tr(
+        h(
+          "marketbrief",
+          "https://marketbrief.now/cybersecurity/openai-rogue-agents-maliciously-edit-millions-of-wikipedia-pages-12624476",
+          "OpenAI Rogue Agents Maliciously Edit Millions of Wikipedia Pages"
+        ),
+        "AI agent của OpenAI phá hoại hàng triệu trang Wikipedia"
+      ),
+      h(
+        "vnexpress-tech",
+        "https://vnexpress.net/tac-nhan-bat-hao-cua-openai-tan-cong-wikipedia-5129191.html",
+        "Tác nhân 'bất hảo' của OpenAI tấn công Wikipedia"
+      ),
+    ],
+    [
+      // No translation stored: the names stay in English.
+      "a Vietnamese item by the names it keeps in English",
+      h(
+        "techcrunch-ai",
+        "https://techcrunch.com/2026/09/30/google-releases-gemini-4-argon-called-its-most-powerful-model-yet/",
+        "Google releases Gemini 4 Argon, called its most powerful model yet"
+      ),
+      geminiVi,
+    ],
+  ])("keeps %s", (_case, story, item) => {
+    expect(backsExisting([item], story)).toBe(true);
   });
 });
 

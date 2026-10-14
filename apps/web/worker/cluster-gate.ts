@@ -20,7 +20,6 @@ import {
   type Cluster,
   isTitleNearDuplicate,
   normalizeTitleForDedupe,
-  significantTitleTokens,
 } from "./dedupe.js";
 import type { HealthIssue } from "./health.js";
 import { officialSourceFor } from "./sources/catalog.js";
@@ -31,16 +30,121 @@ export interface GateHeadline {
   title: string;
   sourceId: string;
   url: string;
+  /** The title in the other language (`translations.title`: Vietnamese for
+   *  an English source, English for a Vietnamese one). Published rows have
+   *  one; new items are translated after the merge, so theirs is absent. */
+  translation?: string | null;
 }
 
-/** Shorter tokens ("ai", "no", "yc", the "ng" left of a Vietnamese word
- *  by `normalizeTitleForDedupe`) are shared by unrelated headlines too. */
-const MIN_EVIDENCE_TOKEN_LENGTH = 3;
+const wordSet = (list: string) => new Set(list.trim().split(/\s+/));
 
+/** Function words, plus headline verbs and AI nouns common enough to tie
+ *  unrelated stories: each, with its inflections, is in 0.5% or more of the
+ *  English titles published 2026-09-30 to 10-14 ("agent", "model" over 5%).
+ *  Company names stay evidence although "openai" is in 9%: without them the
+ *  gate blocked two correct #728 merges, follow-ups that share only
+ *  "OpenAI" with the first story (#745). */
+const COMMON_WORDS = wordSet(`
+a an the for to of in on at its it and or over more than since by with from
+as is are times time into after before about vs
+new first says say said your you that this these those via how what why who
+when where which use uses used using can could will would may might not now
+out just has have had help helps without their they them his her our own but
+all also most next back top real need needs find turn end get gets make makes
+one two three year years day days week weeks month here heres there then still
+even only other some any every many much very like
+agent agents agentic model models data launch launches launched release
+releases released tool tools system systems llm llms user users code language
+learning intelligence machine source center ais show report reports
+raise raises raised hit hits cut cuts beat beats run runs warn warns add adds
+debut debuts introduce introduces introducing
+build builds building plan plans usd
+`);
+
+/** Vietnamese function syllables, diacritics folded ("của", "cho", "trong",
+ *  "mới"). A Vietnamese word is mostly two syllables, so the gate compares
+ *  adjacent pairs; a pair with one of these is not a word. */
+const VIETNAMESE_FUNCTION_SYLLABLES = wordSet(`
+cua cac cho va voi la duoc co trong nhung mot nay do da se khi khong tu tai ve
+theo de bang sau ai nhu thi ma vi den len vao hon nhieu dang cung van chi lai
+rat moi ra usd ty trieu nam ngay thang
+`);
+
+/** Vietnamese words as common in headlines as COMMON_WORDS ("mô hình" model,
+ *  "dữ liệu" data, "Việt Nam" in a Vietnamese outlet). */
+const VIETNAMESE_COMMON_PAIRS = new Set(
+  `mo hinh, du lieu, xay dung, dau tien, trung tam, tam du, phat trien,
+  nghien cuu, nha nghien, huy dong, cong cu, nguoi dung, tinh nang, cong nghe,
+  ung dung, su dung, he thong, ma nguon, nguon mo, ngon ngu, ke hoach, ho tro,
+  cong bo, gioi thieu, phat hanh, tri tue, nhan tao, bao cao, show hn,
+  viet nam, trung quoc, sang tao`
+    .split(",")
+    .map((pair) => pair.trim().replace(/\s+/g, " "))
+);
+
+/** A word with no diacritics that is still a Vietnamese syllable ("trong",
+ *  "cho", "tin", "gia"): initial consonant, one to three vowels, final.
+ *  "Google", "Gemini", "robot" or "Trump" in a Vietnamese headline fail it
+ *  and stand alone as names. */
+const VIETNAMESE_SYLLABLE =
+  /^(ngh|ng|nh|ch|gh|gi|kh|ph|qu|th|tr|[bcdghklmnprstvx])?[aeiouy]{1,3}(ch|ng|nh|[cmnpt])?$/;
+const NUMBER = /^\d+$/;
+const YEAR = /^(19|20)\d\d$/;
+
+/** "triệu" -> "trieu", whole: `normalizeTitleForDedupe` splits it at the
+ *  diacritic into "trie u", and fragments like "gia" or "nha" then match
+ *  in a quarter of unrelated Vietnamese headlines. */
+const fold = (word: string) =>
+  word.normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d");
+
+/** A word that counts alone: a number of 100+ that is not a year ("722",
+ *  "250"), a number with a unit ("13b", "b300", "128gb"), or a word of 3+
+ *  letters not in COMMON_WORDS, with a plural "s" dropped. */
+function standalone(word: string): string | undefined {
+  if (NUMBER.test(word)) {
+    return Number(word) >= 100 && !YEAR.test(word) ? word : undefined;
+  }
+  if (/\d/.test(word)) return word;
+  if (word.length < 3 || COMMON_WORDS.has(word)) return undefined;
+  const stem = word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word;
+  return COMMON_WORDS.has(stem) ? undefined : stem;
+}
+
+/** A headline's evidence: its standalone words, and in Vietnamese also its
+ *  adjacent syllable pairs. */
 function evidenceTokens(title: string): Set<string> {
   const out = new Set<string>();
-  for (const token of significantTitleTokens(title)) {
-    if (token.length >= MIN_EVIDENCE_TOKEN_LENGTH) out.add(token);
+  const vietnamese = looksVietnamese(title);
+  const text = title
+    .toLowerCase()
+    .replace(/^update:\s*/, "")
+    .replace(/[“”"'`’]/g, "")
+    .replace(/\b(\d+(?:\.\d+)?)\s*(?:billion|bn)\b/g, "$1b")
+    .replace(/\b(\d+(?:\.\d+)?)\s*(?:million|mn)\b/g, "$1m");
+  for (const phrase of text.split(/[^\p{L}\p{N}\s]+/u)) {
+    const words = phrase.split(/\s+/).filter(Boolean);
+    for (const word of words) {
+      if (
+        vietnamese &&
+        (looksVietnamese(word) || VIETNAMESE_SYLLABLE.test(word))
+      ) {
+        continue;
+      }
+      const token = standalone(fold(word));
+      if (token) out.add(token);
+    }
+    if (!vietnamese) continue;
+    const folded = words.map(fold);
+    for (let i = 1; i < folded.length; i++) {
+      const pair = [folded[i - 1], folded[i]];
+      if (
+        pair.some((w) => VIETNAMESE_FUNCTION_SYLLABLES.has(w) || NUMBER.test(w))
+      ) {
+        continue;
+      }
+      const joined = pair.join(" ");
+      if (!VIETNAMESE_COMMON_PAIRS.has(joined)) out.add(joined);
+    }
   }
   return out;
 }
@@ -58,23 +162,36 @@ function namesOfficialOrg(title: string, item: GateHeadline): boolean {
   });
 }
 
-/** A near-duplicate title, a shared significant word of 3+ letters, or one
- *  headline naming an organization the other is the official source of. */
-function sharesStoryEvidence(a: GateHeadline, b: GateHeadline): boolean {
-  if (isTitleNearDuplicate(a.title, b.title)) return true;
-  const tokensB = evidenceTokens(b.title);
-  for (const token of evidenceTokens(a.title)) {
-    if (tokensB.has(token)) return true;
-  }
-  return namesOfficialOrg(a.title, b) || namesOfficialOrg(b.title, a);
+/** One headline naming an organization the other is the official source
+ *  of, or the member's title against the target's title or its stored
+ *  translation: a near-duplicate (the title pass merges those anyway, so
+ *  the gate never rejects a link that lands), or a shared evidence token.
+ *  A Vietnamese title's standalone words are names and numbers ("Google",
+ *  "Gemini", "722"), so they match an English title too; its syllable
+ *  pairs match the translation of an English one. */
+function sharesStoryEvidence(
+  member: GateHeadline,
+  target: GateHeadline
+): boolean {
+  if (namesOfficialOrg(member.title, target)) return true;
+  if (namesOfficialOrg(target.title, member)) return true;
+  const tokens = evidenceTokens(member.title);
+  return [target.title, target.translation].some((headline) => {
+    if (!headline) return false;
+    if (isTitleNearDuplicate(member.title, headline)) return true;
+    for (const token of evidenceTokens(headline)) {
+      if (tokens.has(token)) return true;
+    }
+    return false;
+  });
 }
 
 /**
  * True when `members`, items the model put in one story, back linking it
- * to `target`. Only members in the target's language are judged: one of
- * them has to share evidence with it. A Vietnamese headline shares no words
- * with an English one even when it is the same story, so when every member
- * is in the other language the link is allowed.
+ * to `target`: one of them shares evidence with it. When some members are
+ * in the target's language only those are judged, so a Vietnamese copy in
+ * the cluster cannot vouch for an English story its English members share
+ * nothing with.
  */
 export function backsExisting(
   members: readonly GateHeadline[],
@@ -84,8 +201,8 @@ export function backsExisting(
   const comparable = members.filter(
     (m) => looksVietnamese(m.title) === vietnamese
   );
-  if (comparable.length === 0) return members.length > 0;
-  return comparable.some((m) => sharesStoryEvidence(m, target));
+  const judged = comparable.length > 0 ? comparable : members;
+  return judged.some((m) => sharesStoryEvidence(m, target));
 }
 
 /** One existing id the gate removed from an LLM cluster. */
@@ -158,7 +275,11 @@ export const CLUSTER_GATE_MIN_PROPOSED = 20;
  *  never above 5%. See ALGORITHM.md for the series. A model at gemma's 1.1% false-fires 0.12% of 20-link
  *  windows and 0.01% of 45-link ones; one at Laguna's era mean (45 of 432,
  *  10.4%) fires 35% to 51% of them, and one at Laguna's p90 (25%) 91% to
- *  99%. Alerts fire once per model per 24h. */
+ *  99%. Alerts fire once per model per 24h. Re-measured with the #745
+ *  gate over 2026-09-30 to 10-14 (431 links): Laguna windows above 10%
+ *  rise from 63 to 120 of 371, Laguna by `llm_calls` (10-07 to 10-10)
+ *  max 6.7% -> 9.1%, and the windows from 10-10 14:00 (gemma-latest,
+ *  glm-latest) stay at median 0%, max 4.3%, none above 10%. */
 export const CLUSTER_GATE_ALERT_RATE = 0.1;
 
 /** Not `llm…`: a cluster model that links unrelated stories is a model
