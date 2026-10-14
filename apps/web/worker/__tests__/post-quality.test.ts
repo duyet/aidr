@@ -90,8 +90,12 @@ describe("stripEmbeddedChrome", () => {
   });
 });
 
+const ENGLISH = { url: null, sourceLang: null };
+const VIETNAMESE = { url: null, sourceLang: "vi" };
+
 describe("sameEvent", () => {
-  const key = eventKey;
+  const key = (title: string) => eventKey(title, ENGLISH);
+  const viKey = (title: string) => eventKey(title, VIETNAMESE);
 
   it("matches one deal reported by two outlets (audit pair, 0.21)", () => {
     expect(
@@ -163,7 +167,7 @@ describe("sameEvent", () => {
       "Nhiều hoạt động hưởng ứng Ngày Chuyển đổi số Quốc gia 2026",
     ],
   ])("keeps different Vietnamese stories apart: %s / %s", (a, b) => {
-    expect(sameEvent(key(a), key(b))).toBe(false);
+    expect(sameEvent(viKey(a), viKey(b))).toBe(false);
   });
 
   // #756: counted in syllables, two headlines on one prize shared too small
@@ -182,7 +186,86 @@ describe("sameEvent", () => {
       "Hành trình giải mã bí ẩn phân tử của chủ nhân Nobel Hóa học 2026",
     ],
   ])("matches two Vietnamese headlines on one Nobel prize: %s / %s", (a, b) => {
-    expect(sameEvent(key(a), key(b))).toBe(true);
+    expect(sameEvent(viKey(a), viKey(b))).toBe(true);
+  });
+
+  // #765: one vnexpress article (5128002) and its live page, both published.
+  // The headlines share only the topic phrase, so only the id ties them.
+  const opening = "Khai mạc Ngày hội Đổi mới sáng tạo Quốc gia 2026";
+  const speech =
+    "Phó thủ tướng Hồ Quốc Dũng: Chuyển từ 'có hoạt động' sang 'có kết quả' đổi mới sáng tạo";
+  const vnexpress = (slug: string) => ({
+    url: `https://vnexpress.net/${slug}.html`,
+    sourceLang: "vi",
+  });
+
+  it("matches a vnexpress article and its live page on the article id", () => {
+    expect(
+      sameEvent(
+        eventKey(
+          opening,
+          vnexpress("khai-mac-ngay-hoi-doi-moi-sang-tao-quoc-gia-2026-5128002")
+        ),
+        eventKey(
+          speech,
+          vnexpress(
+            "khai-mac-ngay-hoi-doi-moi-sang-tao-quoc-gia-2026-5128002-tong-thuat"
+          )
+        )
+      )
+    ).toBe(true);
+  });
+
+  it("keeps the same two headlines apart under different article ids", () => {
+    expect(
+      sameEvent(
+        eventKey(opening, vnexpress("khai-mac-ngay-hoi-5128002")),
+        eventKey(speech, vnexpress("pho-thu-tuong-ho-quoc-dung-5128011"))
+      )
+    ).toBe(false);
+  });
+
+  // #766: "Société Générale" carries Vietnamese-range accents, so the
+  // diacritic test read these English headlines as Vietnamese words, where
+  // the rewrite scored 0.16 and a channel could post both.
+  it("compares an English headline with accented names as English", () => {
+    expect(
+      sameEvent(
+        key("Nvidia and Société Générale team up on AI data centers in France"),
+        key(
+          "Société Générale partners with Nvidia to build French AI data centers"
+        )
+      )
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      "Beyoncé deepfake spreads on X as Grok generates explicit images",
+      "Grok Generates Explicit Beyoncé Deepfake on X",
+    ],
+    [
+      "Ángel Cabrera named CEO of Mistral",
+      "Mistral Names Ángel Cabrera As CEO",
+    ],
+  ])("reads accented English like its unaccented spelling: %s / %s", (a, b) => {
+    const plain = (title: string) =>
+      key(title.normalize("NFD").replace(/\p{M}/gu, ""));
+    expect(sameEvent(key(a), key(b))).toBe(sameEvent(plain(a), plain(b)));
+  });
+
+  it("matches a decomposed (NFD) title against its composed form", () => {
+    const a = "Nhà khoa học đầu tiên 'độc chiếm' giải Nobel Vật lý sau 34 năm";
+    const b = "Giải Nobel Vật lý 2026 trao cho nghiên cứu về 'hạt ma'";
+    expect(sameEvent(viKey(a.normalize("NFD")), viKey(b))).toBe(true);
+  });
+
+  // #766: one RegExp per name, each scanning the whole title, is quadratic.
+  it("compares two titles of 10,000 names well inside a second", () => {
+    const title = `Tin ${Array.from({ length: 10_000 }, (_, i) => `Tên${i}`).join(" ")}`;
+    const started = performance.now();
+    expect(sameEvent(viKey(title), viKey(title))).toBe(true);
+    expect(performance.now() - started).toBeLessThan(1000);
   });
 });
 
@@ -195,14 +278,14 @@ describe("dedupReason", () => {
     channelGroup: "telegram-en",
     itemId,
     canonicalId,
-    eventKey: eventKey(title),
+    eventKey: eventKey(title, ENGLISH),
     postedAt: 0,
     kind: "trending",
   });
   const candidate = (id: string, canonicalId: string, title: string) => ({
     itemId: id,
     canonicalId,
-    eventKey: eventKey(title),
+    eventKey: eventKey(title, ENGLISH),
   });
 
   it("matches on the shared canonical id first", () => {

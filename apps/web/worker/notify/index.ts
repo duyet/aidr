@@ -1086,7 +1086,6 @@ export async function dispatchStoryNotifications(
       // candidate frees its slot for the next one instead of leaving the
       // run with nothing.
       const postable = (results ?? []).flatMap((row) => {
-        const sourceTitle = row.source_title;
         const copy = channelCopy(row, notifier.lang);
         if (!copy) return [];
         const gate = postability(copy);
@@ -1094,7 +1093,11 @@ export async function dispatchStoryNotifications(
           countSuppression(suppressed, `gate:${gate.reason}`);
           return [];
         }
-        return [{ copy, source_id: copy.source_id, sourceTitle }];
+        const event = eventKey(row.source_title, {
+          url: row.url,
+          sourceLang: row.source_lang ?? null,
+        });
+        return [{ copy, source_id: copy.source_id, event }];
       });
       let fresh = postable;
       if (postable.length > 0) {
@@ -1102,12 +1105,12 @@ export async function dispatchStoryNotifications(
           date,
           getLocalHourAndDate(now - 24 * 60 * 60 * 1000, DIGEST_TIMEZONE).date,
         ]);
-        fresh = postable.filter(({ copy, sourceTitle }) => {
+        fresh = postable.filter(({ copy, event }) => {
           const reason = dedupReason(
             {
               itemId: copy.id,
               canonicalId: copy.duplicate_of ?? copy.id,
-              eventKey: eventKey(sourceTitle),
+              eventKey: event,
             },
             posted
           );

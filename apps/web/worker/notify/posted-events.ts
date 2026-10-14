@@ -22,6 +22,8 @@ const MAX_CANONICAL_HOPS = 3;
 interface ItemRow {
   id: string;
   title: string;
+  url: string;
+  source_lang: string | null;
   duplicate_of: string | null;
 }
 
@@ -71,7 +73,7 @@ async function loadItems(
   let frontier = [...new Set(ids)];
   for (let hop = 0; hop <= MAX_CANONICAL_HOPS && frontier.length > 0; hop++) {
     const { results } = await env.DB.prepare(
-      `SELECT id, title, duplicate_of FROM items
+      `SELECT id, title, url, source_lang, duplicate_of FROM items
        WHERE id IN (SELECT value FROM json_each(?))`
     )
       .bind(JSON.stringify(frontier))
@@ -164,7 +166,10 @@ export async function loadPostedEvents(
         channelGroup: channel,
         itemId: row.item_id,
         canonicalId: canonicalOf(row.item_id, duplicateOf),
-        eventKey: eventKey(item.title),
+        eventKey: eventKey(item.title, {
+          url: item.url,
+          sourceLang: item.source_lang,
+        }),
         postedAt: row.posted_at,
         kind: row.kind,
       },

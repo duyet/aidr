@@ -1510,7 +1510,10 @@ deliberately non-spammy.
     `sent`, `ambiguous`, `sending`) plus every story its digest carried on the
     current and previous local dates. `canonicalId` is the `duplicate_of`
     chain root. A candidate is dropped when its root matches a posted root
-    (`dedup:canonical`), or when its event key matches (`dedup:event`):
+    (`dedup:canonical`), or when its event key matches (`dedup:event`). Two
+    stories with one publisher article id (`articleId`, a vnexpress article
+    and its `-tong-thuat` live page) are one event whatever their titles say
+    (#765). Otherwise the key needs a
     source-title token Jaccard of at least 0.2 with at least 3 shared tokens
     (`significantTitleTokens`, the merge step's tokenizer) and at least two
     shared named entities (names from `extractProtectedTerms`, plus a short
@@ -1525,9 +1528,14 @@ deliberately non-spammy.
     deal with Saudi Arabia's Humain" vs "Nvidia Negotiates $25B Reflection AI
     Deal" scores 0.23 on Nvidia, AI and "deal", and short pairs like "Nvidia
     launches Rubin GPU" / "Nvidia stock falls on Rubin delay" clear 0.2 on two
-    words. A Vietnamese title's names are its capitalized words after each
-    sentence's first, because `extractProtectedTerms` reads English and cut
-    "Việt Nam" into "vi" and "nam". Two Vietnamese titles compare
+    words. The `source_lang` column picks the Vietnamese rules, not a
+    diacritic, so "Société Générale" stays English (#766). A Vietnamese
+    title's names are its capitalized words after each sentence's first,
+    because `extractProtectedTerms` reads English and cut "Việt Nam" into
+    "vi" and "nam". An English title's names are read and matched with
+    diacritics folded, since the same extractor cut "Société" to "soci"; a
+    Vietnamese title keeps its marks, or the "Nam" of Việt Nam would match
+    every "năm". Titles are NFC first. Two Vietnamese-source titles compare
     `evidenceTokens` words instead of syllables, with the same 3 and 0.2. In
     syllables, headlines on one Nobel prize scored 0.18 and different stories
     sharing "Việt Nam" and "công nghệ" 0.21 to 0.25 (#756). No LLM call.
