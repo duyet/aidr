@@ -66,12 +66,20 @@ const SECRET_KEY_VALUE = new RegExp(
   "gi"
 );
 
-/** Usage counters (`input_token: 512`) share the `token` suffix. */
-const TOKEN_COUNT_KEY =
-  /^(?:input|output|prompt|completion|total|max|cached|reasoning)[-_]token$/i;
+/** Usage and cost counters (`input_token: 512`, `cost_per_token: 0.000002`)
+ *  share the `token` suffix with credentials. A short plain number is kept
+ *  unless the word before `token` names a credential. */
+const TOKEN_COUNT_KEY = /[-_]tokens?$/i;
+const CREDENTIAL_TOKEN_KEY =
+  /(?:^|[-_])(?:access|refresh|session|id|auth|csrf|xsrf|bearer|api)[-_]tokens?$/i;
+const COUNT_VALUE = /^\d{1,7}(?:\.\d{1,9})?$/;
 
 function isSecretValue(key: string, value: string): boolean {
-  return !(TOKEN_COUNT_KEY.test(key) && /^\d{1,7}$/.test(value));
+  return !(
+    TOKEN_COUNT_KEY.test(key) &&
+    !CREDENTIAL_TOKEN_KEY.test(key) &&
+    COUNT_VALUE.test(value.replace(/^(["'])(.*)\1$/, "$2"))
+  );
 }
 
 function redactText(value: string): string {

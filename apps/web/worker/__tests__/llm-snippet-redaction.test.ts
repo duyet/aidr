@@ -575,6 +575,22 @@ describe("sanitizeText for step reasons", () => {
     );
   });
 
+  it.each([
+    "cost_per_token: 0.000002",
+    "num_token: 12",
+    "cache_read_token: 50",
+    "max_new_token=4096",
+    "time_to_first_token=412",
+  ])("keeps the counter %s", (text) => {
+    expect(sanitizeText(text)).toBe(text);
+  });
+
+  it("still redacts a short number after a credential token key", () => {
+    for (const key of ["access_token", "refresh_token", "id_token"]) {
+      expect(sanitizeText(`${key}=123456`)).not.toContain("123456");
+    }
+  });
+
   it("keeps query params that only end in a key word", () => {
     expect(sanitizeText("see /buy?fruit=1&monkey=banana")).toBe(
       "see /buy?fruit=1&monkey=banana"
