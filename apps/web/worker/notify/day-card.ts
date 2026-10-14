@@ -15,6 +15,7 @@ import type { FeedItem, Lang } from "../../src/lib/types.js";
 import { firstSentence } from "../sentences.js";
 import { stripEmbeddedChrome } from "../translation-terms.js";
 import type { Env } from "../types.js";
+import { withoutRestatedHeadline } from "./headline-repeat.js";
 import type { DailyDigest, DigestBullet } from "./types.js";
 
 export interface DayCard {
@@ -64,49 +65,61 @@ function sameLanguageSummary(item: HighlightCopy, lang: Lang): string | null {
   return raw;
 }
 
-/** The headline, and the first sentence of that language's summary when it
- *  fits whole. A long first sentence is left out rather than cut. */
-export function highlightParts(
+/** A headline's trailing "(@handle)" or "(Source)" is attribution, not words
+ *  the summary would repeat. */
+const TRAILING_ATTRIBUTION = /\s*\([^()]*\)\s*$/;
+
+/** The summary's first sentence when it opens with the headline word for
+ *  word and carries on in the same sentence. It already holds the headline
+ *  and the new detail, so it stands alone on the line. */
+function sentenceExtendingHeadline(
+  title: string,
+  summary: string
+): string | null {
+  const head = title.replace(TRAILING_ATTRIBUTION, "").trim().toLowerCase();
+  const sentence = firstSentence(summary);
+  if (!head || sentence.length > HIGHLIGHT_SUMMARY_CAP) return null;
+  if (!sentence.toLowerCase().startsWith(head)) return null;
+  const after = sentence.slice(head.length);
+  // The headline must end on a word boundary, and something real must follow.
+  if (/^[\p{L}\p{N}]/u.test(after)) return null;
+  const tail = after.replace(/^\s*\([^()]*\)/, "");
+  return /[\p{L}\p{N}]/u.test(tail) ? sentence : null;
+}
+
+/** The digest line for one story. `lead` is the headline alone, the shorter
+ *  copy the fitter falls back to; absent when the line is only the headline.
+ *
+ *  A first summary sentence that extends the headline replaces it. Otherwise
+ *  the headline gets the first sentence of that language's summary when it
+ *  fits whole; a long first sentence is left out rather than cut. Leading
+ *  summary text that only repeats the headline is dropped by the same rule
+ *  as story captions (`withoutRestatedHeadline`). */
+function highlightLine(
   item: HighlightCopy,
   lang: Lang
-): { title: string; extra: string | null } {
+): Pick<DigestBullet, "text" | "lead"> {
   const title = localizedTitle(item, lang).text.replace(/\s+/g, " ").trim();
   const summary = sameLanguageSummary(item, lang);
-  if (!summary) return { title, extra: null };
-  let extra = summary;
-  if (extra.toLowerCase().startsWith(title.toLowerCase())) {
-    extra = extra.slice(title.length).replace(/^[\s.:;—–-]+/, "");
+  if (!summary) return { text: title };
+  const extended = sentenceExtendingHeadline(title, summary);
+  if (extended) return { text: extended, lead: title };
+  const rest = withoutRestatedHeadline(title, summary);
+  const sentence = rest ? firstSentence(rest) : "";
+  if (!sentence || sentence.length > HIGHLIGHT_SUMMARY_CAP) {
+    return { text: title };
   }
-  const sentence = extra ? firstSentence(extra) : "";
-  if (
-    !sentence ||
-    sentence.length > HIGHLIGHT_SUMMARY_CAP ||
-    sentence.toLowerCase() === title.toLowerCase()
-  ) {
-    return { title, extra: null };
-  }
-  return { title, extra: sentence };
+  return { text: `${title} — ${sentence}`, lead: title };
 }
 
 /** Headline, plus the first sentence of that language's summary. */
 export function highlightBulletText(item: HighlightCopy, lang: Lang): string {
-  const { title, extra } = highlightParts(item, lang);
-  return extra ? `${title} — ${extra}` : title;
-}
-
-/** `text` is the full line; `lead` is the headline alone, the shorter copy
- *  the digest fitter falls back to. Absent when there is no clause. */
-function highlightBullet(
-  item: HighlightCopy,
-  lang: Lang
-): Pick<DigestBullet, "text" | "lead"> {
-  const { title, extra } = highlightParts(item, lang);
-  return extra ? { text: `${title} — ${extra}`, lead: title } : { text: title };
+  return highlightLine(item, lang).text;
 }
 
 function toBullets(items: FeedItem[], lang: Lang): DigestBullet[] {
   return items.map((item) => ({
-    ...highlightBullet(item, lang),
+    ...highlightLine(item, lang),
     url: absoluteSiteUrl(storyPath(item, lang), lang),
     category: item.category,
   }));

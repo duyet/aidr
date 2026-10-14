@@ -97,6 +97,43 @@ describe("highlightBulletText", () => {
     ).toBe("Pop!_OS bans AI-generated code");
   });
 
+  it("drops a summary that repeats a headline ending in its source", () => {
+    // 2026-10-14 EN digest, bullet 1: the summary is the headline without
+    // "(@openainewsroom)", so a prefix check missed it and the line said the
+    // same news twice.
+    const title =
+      "OpenAI says the FBI arrested one of its staffers after the company found a hidden recording device in its offices and used its models to identify who placed it (@openainewsroom)";
+    expect(
+      highlightBulletText(
+        {
+          title,
+          title_vi: null,
+          summary:
+            "OpenAI says the FBI arrested one of its staffers after the company found a hidden recording device in its offices and used its models to identify who placed it.",
+          summary_vi: null,
+        },
+        "en"
+      )
+    ).toBe(title);
+  });
+
+  it("keeps the next sentence when the first only repeats the headline", () => {
+    expect(
+      highlightBulletText(
+        {
+          title: "Pop!_OS bans AI-generated code",
+          title_vi: null,
+          summary:
+            "Pop!_OS bans AI-generated code. System76 says the rule covers the desktop and its installer.",
+          summary_vi: null,
+        },
+        "en"
+      )
+    ).toBe(
+      "Pop!_OS bans AI-generated code — System76 says the rule covers the desktop and its installer."
+    );
+  });
+
   it("does not end the sentence at an initialism", () => {
     expect(
       highlightBulletText(
@@ -110,6 +147,123 @@ describe("highlightBulletText", () => {
         "en"
       )
     ).toBe("Export rule — U.S. officials approved the export rule today.");
+  });
+
+  describe("a first sentence that extends the headline", () => {
+    // The six production lines of 2026-10-08..14 whose summary opens with the
+    // headline word for word and keeps going. Each line is that sentence alone:
+    // no "headline — headline ..." and no leading fragment ("— ,").
+    const cases: {
+      id: string;
+      lang: "en" | "vi";
+      title: string;
+      sentence: string;
+    }[] = [
+      {
+        id: "cdb1d51f",
+        lang: "en",
+        title: "Claude Haiku 5.5",
+        sentence:
+          "Claude Haiku 5.5 is described as the fastest and most capable small model, built for high-volume tasks such as summarization, subagents, and browser use.",
+      },
+      {
+        id: "cdb1d51f",
+        lang: "vi",
+        title: "Claude Haiku 5.5",
+        sentence:
+          "Claude Haiku 5.5 là mô hình nhỏ nhanh nhất và mạnh nhất của chúng tôi, được xây dựng cho các công việc có khối lượng lớn như tóm tắt, subagent và sử dụng trình duyệt.",
+      },
+      {
+        id: "a9f66086",
+        lang: "en",
+        title: "Normalizing Trajectory Models",
+        sentence:
+          "Normalizing Trajectory Models (NTM) model each reverse step as a conditional normalizing flow with exact likelihood training, combining shallow invertible blocks with a deep parallel predictor, and enable self-distillation for high-quality samples in four steps while matching or outperforming image generation baselines on text-to-image benchmarks.",
+      },
+      {
+        id: "43fd2a19",
+        lang: "en",
+        title:
+          "An Anthropic AI model sent a false homicide tip to Philadelphia police",
+        sentence:
+          "An Anthropic AI model sent a false homicide tip to Philadelphia police, a behavior Anthropic did not discover until over two months later.",
+      },
+      {
+        id: "f02a8c81",
+        lang: "vi",
+        title:
+          "Chúng tôi biến EmbeddingGemma thành một mô hình chuyển đổi giọng nói thành văn bản",
+        sentence:
+          "Chúng tôi biến EmbeddingGemma thành một mô hình chuyển đổi giọng nói thành văn bản bằng cách tận dụng khả năng biểu diễn embedding vốn có của nó.",
+      },
+      {
+        id: "3027ecc1",
+        lang: "en",
+        title:
+          "Google Play now supports private, vibe-coded apps built just for you",
+        sentence:
+          "Google Play now supports private, vibe-coded apps built just for you without requiring public availability on the Play Store.",
+      },
+    ];
+
+    it.each(cases)(
+      "$id ($lang) prints the sentence alone",
+      ({ lang, title, sentence }) => {
+        const item = {
+          title,
+          title_vi: title,
+          summary: `${sentence} A second sentence stays off the line.`,
+          summary_vi: `${sentence} Câu sau không được đưa vào.`,
+        };
+        const text = highlightBulletText(item, lang);
+        expect(text).toBe(sentence);
+        expect(text).not.toContain(" — ");
+      }
+    );
+
+    it("ignores a trailing (@handle) or (Source) on the headline, any case", () => {
+      expect(
+        highlightBulletText(
+          {
+            title: "OpenAI Ships Codex Cloud (TechCrunch)",
+            title_vi: null,
+            summary:
+              "openai ships codex cloud to all paid plans. Later sentence.",
+            summary_vi: null,
+          },
+          "en"
+        )
+      ).toBe("openai ships codex cloud to all paid plans.");
+    });
+
+    it("does not treat a longer first word as the end of the headline", () => {
+      expect(
+        highlightBulletText(
+          {
+            title: "Open model",
+            title_vi: null,
+            summary: "Open models now run on phones. Later sentence.",
+            summary_vi: null,
+          },
+          "en"
+        )
+      ).toBe("Open model — Open models now run on phones.");
+    });
+
+    it("keeps the headline-only line when the sentence adds only the attribution", () => {
+      const title = "Pop!_OS bans AI-generated code (@system76)";
+      expect(
+        highlightBulletText(
+          {
+            title,
+            title_vi: null,
+            summary: "Pop!_OS bans AI-generated code (@system76).",
+            summary_vi: null,
+          },
+          "en"
+        )
+      ).toBe(title);
+    });
   });
 });
 
