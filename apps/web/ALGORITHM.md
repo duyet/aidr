@@ -375,6 +375,24 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   difference was kept titles, so a paper-heavy day could have false-alerted.
   No 24h window reached 10% either way. At 10% a model whose true rate is 2.6% false-fires 0.37% of 40-row windows and 0.024% of 80-row windows, while one at 10% fires 37-41% of them (15% would catch it only 5-10%). The daily summary lists each
   model's 24h count.
+- Cluster model linking unrelated stories (`worker/cluster-gate.ts`, same
+  step, no model call): the check sums `stats.clusterGate` over the same
+  24h window plus this run and raises `cluster-unrelated:<model>`
+  (warning, routed to `duyet/aidr`) when a model proposed ≥ 20 links to
+  existing stories and the gate rejected > 10% of them. Once per model
+  per 24h, like `translation-english`. Baseline from rolling 24h windows
+  every 30 min with 20+ links, 2026-09-28 to 10-14. The denominator is
+  links into existing stories that merged, title-pass links included, not
+  the links the model proposed. `llm_calls` starts 10-07, so links before
+  it count as Laguna (every recorded cluster call before #541 is
+  Laguna). Laguna over the whole era: median 6%, p90 25%, max 36%, above
+  10% in 172 of 494 windows, all ending between 09-30 18:00 and 10-04
+  11:30 UTC (the merges of 09-30 to 10-03). Laguna
+  attributed by `llm_calls` (10-07 to 10-10): median 2.6%, max exactly
+  10%, so this rule would not have fired then. gemma-latest: median 0%,
+  max 2.7%, 1 of 95 links overall. A model at 1.1% false-fires 0.12% of
+  20-link windows; one at Laguna's era mean (10.4%) fires 35-51% of them,
+  one at 25% fires 91-99%.
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
   with evidence and the run link, plus one daily summary in the first run
@@ -787,6 +805,27 @@ deterministic pass.
 - A deterministic title-similarity pass (normalized headlines / high
   token overlap, including short-headline-inside-long) runs alongside
   so same-story URLs the model misses still collapse.
+- Cluster gate (`worker/cluster-gate.ts`, #733): an existing id stays in
+  a model cluster only when one of the cluster's new items shares
+  evidence with it: a near-duplicate title, a shared significant title
+  word of 3+ letters, or a headline that names an org the other item is
+  the official source of ("Google DeepMind …" against a deepmind post,
+  also through an HN link's URL). Only new items in the existing story's
+  language are judged; when all of them are in the other language
+  (Vietnamese against English) the link is allowed. The rest of the
+  cluster is kept, so correctly paired twins still fold together; a
+  cluster with no new item is dropped. The Laguna era attached paired
+  huggingnews/marketbrief twins to unrelated published stories. On the
+  #728 hand labels (`scripts/cluster-gate-eval.ts`) the gate blocks 56 of
+  86 wrong pairs (37 of 56 wrong canonicals fully) and 0 of 17 correct
+  low-overlap pairs. Over every merge into an existing story from
+  2026-09-28 to 10-14 it blocks 46 of 552 links: 44 clearly different
+  stories, 1 labelled unclear (`af4c8dc5`) and 1 judged different on
+  review (`a7af6f12`, US and UK regulators vs the AI Safety Institute).
+  Misses are same-company stories that share the company name, and
+  cross-language pairs. Each rejection logs `cluster gate: <model> linked
+  …` and counts in `stats.clusterGate` (per served model: links
+  proposed, links rejected).
 - The prompt merges different outlets' first-day coverage of one
   announcement whatever the headline angle, and keeps later developments
   (market reaction, failed demo, wider rollout, a later benchmark)

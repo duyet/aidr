@@ -1076,18 +1076,21 @@ async function callAnyrouter(
   );
 }
 
-/** JSON chat completion for callers outside scoring/translate/tldr. */
-export async function completeJson(
+interface CompleteJsonOptions {
+  task?: LlmTask;
+  timeoutMs?: number;
+  maxTokens?: number;
+  /** Per-model cap for long prompts (default MODEL_SLICE_MAX_MS). */
+  maxSliceMs?: number;
+}
+
+/** `completeJson` plus the chain id that served the answer, for callers
+ *  that judge the output per model (the cluster gate). */
+export async function completeJsonWithModel(
   env: Env,
   messages: ChatMessage[],
-  opts: {
-    task?: LlmTask;
-    timeoutMs?: number;
-    maxTokens?: number;
-    /** Per-model cap for long prompts (default MODEL_SLICE_MAX_MS). */
-    maxSliceMs?: number;
-  } = {}
-): Promise<string> {
+  opts: CompleteJsonOptions = {}
+): Promise<{ content: string; model: string }> {
   const result = await callAnyrouter(env, messages, {
     json: true,
     task: opts.task ?? "other",
@@ -1095,7 +1098,16 @@ export async function completeJson(
     maxTokens: opts.maxTokens,
     maxSliceMs: opts.maxSliceMs,
   });
-  return result.content;
+  return { content: result.content, model: result.model };
+}
+
+/** JSON chat completion for callers outside scoring/translate/tldr. */
+export async function completeJson(
+  env: Env,
+  messages: ChatMessage[],
+  opts: CompleteJsonOptions = {}
+): Promise<string> {
+  return (await completeJsonWithModel(env, messages, opts)).content;
 }
 
 /**

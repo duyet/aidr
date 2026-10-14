@@ -11,6 +11,7 @@ import {
   type WorkflowStep,
 } from "cloudflare:workers";
 import { bindSentry, reportPipelineException } from "./bugsink.js";
+import type { ClusterGateTally } from "./cluster-gate.js";
 import { runHealthCheck } from "./health.js";
 import { backfillContent } from "./ingest/backfill.js";
 import { backfillEnSummaries } from "./ingest/backfill-en-summary.js";
@@ -107,6 +108,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     let backfillTranslateTokens = 0;
     /** EN→VI rows written this run, per model, with English left in. */
     let viEnglish: ViEnglishTally = {};
+    /** LLM cluster links to existing items, per model, and the rejected. */
+    let clusterGate: ClusterGateTally = {};
     let qaRated = 0;
     let qaAdjusted = 0;
     let qaTokens = 0;
@@ -197,6 +200,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
        *  streaks) once the chain reached translate. */
       sourceHealthComplete: boolean;
       viEnglish: ViEnglishTally;
+      clusterGate: ClusterGateTally;
     }> => {
       const result = {
         itemsFetched: 0,
@@ -207,6 +211,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         tokens: 0,
         sourceHealthComplete: false,
         viEnglish: {} as ViEnglishTally,
+        clusterGate: {} as ClusterGateTally,
       };
 
       // 1. Consume sources.
@@ -238,13 +243,14 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         now
       );
       await learnTopics(ctx, newRows, canonicalTagsByItem, now);
-      const mergePlan = await planMerges(
+      const { plan: mergePlan, clusterGate: gate } = await planMerges(
         ctx,
         newRows,
         scored,
         canonicalTagsByItem,
         now
       );
+      result.clusterGate = gate;
       if (!runChainStep(ctx, "translate")) return result;
 
       const publishedRows = selectPublishedRows(newRows, scored, mergePlan);
@@ -299,6 +305,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         rejected = fresh.rejected;
         scoreAndTranslateTokens += fresh.tokens;
         viEnglish = fresh.viEnglish;
+        clusterGate = fresh.clusterGate;
       }
 
       // 4. Drain backlogs and review queues.
@@ -397,6 +404,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             runId,
             steps,
             viEnglish,
+            clusterGate,
             dryRun: mode.dryRun,
           }),
         { steps }
@@ -422,6 +430,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         backfilledSummaries,
         backfilledTranslations,
         viEnglish,
+        clusterGate,
         qaRated,
         qaAdjusted,
         suggestionsReviewed,

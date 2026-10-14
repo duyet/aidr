@@ -651,7 +651,7 @@ describe("dedupe and topics caps per run", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     vi.spyOn(console, "log").mockImplementation(() => {});
-    const clusters = await clusterSimilar(
+    const { clusters } = await clusterSimilar(
       env,
       Array.from({ length: cap + 50 }, (_, i) => ({ i, title: `new ${i}` })),
       [{ id: "e0", title: "old 0" }]

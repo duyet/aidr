@@ -1,4 +1,5 @@
 import { reportPipelineException } from "./bugsink.js";
+import { CLUSTER_GATE_KEY_PREFIX } from "./cluster-gate.js";
 import { DAY_VIDEO_ALERT_KEY } from "./day-video-watchdog.js";
 import type { HealthIssue, PriorRun } from "./health.js";
 import { escapeHtml } from "./notify/telegram.js";
@@ -143,6 +144,8 @@ function suggestion(issue: HealthIssue): string {
     return "Check notify reasons on the run page and the bot's rights in the channel.";
   if (issue.key === DAY_VIDEO_ALERT_KEY)
     return "Run the rerun command above. Every step checks what is already posted, so it only fills the gaps.";
+  if (issue.key.startsWith(CLUSTER_GATE_KEY_PREFIX))
+    return "Search the Worker logs for `cluster gate:` to see the rejected links. If the model keeps linking unrelated stories, re-run the cluster gold set (scripts/cluster-gold-eval.ts) and move it down ANYROUTER_MODEL in wrangler.toml.";
   if (issue.key.startsWith(VI_ENGLISH_KEY_PREFIX))
     return "Read that model's recent Vietnamese titles and summaries. If it keeps English, move it down ANYROUTER_TRANSLATE_MODEL in wrangler.toml.";
   if (issue.key === "tldr-failing")
