@@ -137,8 +137,10 @@ describe("live AnyRouter model chains", () => {
 
   // Production llm_calls, 7 days to 2026-10-14: space-bunny-alpha reviewed
   // 0 of 484 (98 404s in the last 24h alone). Every review attempt in a
-  // run failed while it held the fallback slot (#655).
-  const KNOWN_DEAD = ["stealth/space-bunny-alpha"];
+  // run failed while it held the fallback slot (#655). gemma-4-31b served
+  // 16 of 542 translate and summarize calls, none after 2026-10-12 03:16
+  // UTC (#663).
+  const KNOWN_DEAD = ["stealth/space-bunny-alpha", "google/gemma-4-31b"];
 
   it("keeps known-dead model ids off every chain", () => {
     for (const name of chains) {
@@ -176,19 +178,30 @@ describe("live AnyRouter model chains", () => {
     expect(wrangler).toMatch(/^TRANSLATION_REVIEW_ENABLED = "false"$/m);
   });
 
-  // Order follows 7-day prod success rate (2026-10-11): Laguna 39% beat
-  // gemma-4-31b 30%; gemma-4-26b (24%, mostly timeouts) was dropped.
-  it("orders the translate chain by measured success rate", () => {
+  // Prod llm_calls since 2026-10-14 00:00 UTC, 429s excluded (#663):
+  // gemini-3-flash served 0 of 21 translate and summarize calls (404, 502).
+  // Laguna served 19 of 22 and gemma-latest 22 of 44. Summarize runs on
+  // this chain too, and Laguna served it 772 of 987 over 7 days. Gemini is
+  // off the tail as well: a 502 is never skipped, so a third id cuts the
+  // head's slice from 50s to 30s, under Laguna's 32.5s translate p95.
+  it("orders the translate chains by measured success rate", () => {
     expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual([
-      "google/gemini-3-flash",
-      "google/gemma-latest",
       "poolside/laguna-s-2.1",
-      "google/gemma-4-31b",
+      "google/gemma-latest",
     ]);
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
-      "google/gemini-3-flash",
+      "poolside/laguna-s-2.1",
       "google/gemma-latest",
-      "google/gemma-4-31b",
+    ]);
+  });
+
+  // Over 7 days to 2026-10-14, gemini-3-flash served 1 of 6 TL;DR fallback
+  // attempts after a luna hang, and none since. Laguna served 21 of 32
+  // TL;DR attempts (p95 105s), which fits the 135s slice left after a 20s
+  // luna first-token hang (#663).
+  it("falls back from luna to Laguna on TL;DR", () => {
+    expect(idsOf("ANYROUTER_TLDR_MODEL")).toEqual([
+      "openai/gpt-5.6-luna",
       "poolside/laguna-s-2.1",
     ]);
   });
