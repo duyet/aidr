@@ -392,7 +392,7 @@ describe("planNewItemWrite", () => {
         sources: [{ kind: "source" as const, url: "https://a" }],
       }).item,
       score: score(0.9, { tags: ["raw"] }),
-      translation: { i: 0, title: "T", summary: "S", tokens: 5 },
+      translation: { i: 0, title: "T", summary: "S", tokens: 5, model: "m/a" },
       mergeEntry: undefined,
       canonicalTags: ["llm"],
       now: NOW,

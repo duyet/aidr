@@ -21,6 +21,13 @@ import {
 import type { RunStepInfo } from "./run-stats.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "./time.js";
+import {
+  evaluateViEnglish,
+  mergeViEnglish,
+  parseViEnglish,
+  VI_ENGLISH_WINDOW_MS,
+  type ViEnglishTally,
+} from "./translation-english.js";
 import type { Env } from "./types.js";
 import {
   NOT_DRY_RUN_SQL,
@@ -355,6 +362,51 @@ async function readLlmCounts(
   };
 }
 
+/** One top-level `stats` field as JSON text; NULL for unreadable stats, so
+ *  one bad row cannot fail the whole query. */
+const STATS_FIELD_SQL = (field: string) =>
+  `CASE WHEN json_valid(stats) THEN json_extract(stats, '$.${field}') END`;
+
+function alertKeys(json: unknown): string[] {
+  if (typeof json !== "string") return [];
+  try {
+    const value = JSON.parse(json) as unknown;
+    return Array.isArray(value)
+      ? value.filter((a): a is string => typeof a === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/** `stats.viEnglish` and `stats.alerts` of every live run in the last 24h,
+ *  this one excluded. A failed read only skips this check. */
+async function readViEnglishWindow(
+  env: Env,
+  runId: string,
+  nowMs: number
+): Promise<{ tally: ViEnglishTally; alerted: Set<string> }> {
+  const tally: ViEnglishTally[] = [];
+  const alerted = new Set<string>();
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT ${STATS_FIELD_SQL("viEnglish")} AS vi_english,
+              ${STATS_FIELD_SQL("alerts")} AS alerts
+       FROM workflow_runs
+       WHERE id != ? AND ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} >= ? AND ${NOT_DRY_RUN_SQL}`
+    )
+      .bind(runId, Math.floor((nowMs - VI_ENGLISH_WINDOW_MS) / 1000))
+      .all<{ vi_english: unknown; alerts: unknown }>();
+    for (const row of results ?? []) {
+      tally.push(parseViEnglish(row.vi_english));
+      for (const key of alertKeys(row.alerts)) alerted.add(key);
+    }
+  } catch (error) {
+    console.error("health-check vi-english read failed:", error);
+  }
+  return { tally: mergeViEnglish(...tally), alerted };
+}
+
 async function readModelStats(
   env: Env,
   where: string,
@@ -377,13 +429,15 @@ async function readDailySummary(
   const sinceMs = nowMs - 24 * 3600 * 1000;
   const [runs, posts, models] = await Promise.all([
     env.DB.prepare(
-      "SELECT error, items_new, stats FROM workflow_runs WHERE started_at >= ?"
+      `SELECT error, items_new, stats, ${STATS_FIELD_SQL("viEnglish")} AS vi_english
+       FROM workflow_runs WHERE started_at >= ?`
     )
       .bind(Math.floor(sinceMs / 1000))
       .all<{
         error: string | null;
         items_new: number | null;
         stats: unknown;
+        vi_english: unknown;
       }>(),
     env.DB.prepare(
       `SELECT channel, COUNT(*) AS n FROM notifications
@@ -402,11 +456,16 @@ async function readDailySummary(
     telegramPosts: {},
     models,
     warnings: {},
+    viEnglish: {},
   };
   for (const run of runs.results ?? []) {
     if (run.error) summary.runsFailed++;
     else summary.runsOk++;
     summary.itemsNew += run.items_new ?? 0;
+    summary.viEnglish = mergeViEnglish(
+      summary.viEnglish,
+      parseViEnglish(run.vi_english)
+    );
     for (const key of parsePriorRun(run).alerts) {
       if (MARKER_PREFIXES.some((prefix) => key.startsWith(prefix))) continue;
       summary.warnings[key] = (summary.warnings[key] ?? 0) + 1;
@@ -445,17 +504,24 @@ async function maybeSendDailySummary(
  */
 export async function runHealthCheck(
   env: Env,
-  input: { runId: string; steps: RunStepInfo[]; dryRun?: boolean }
+  input: {
+    runId: string;
+    steps: RunStepInfo[];
+    /** This run's EN→VI rows per model; absent when it translated none. */
+    viEnglish?: ViEnglishTally;
+    dryRun?: boolean;
+  }
 ): Promise<string[]> {
   // A dry run skips email/notify on purpose and must never page the owner
   // (Bugsink, Telegram DM, GitHub issue, daily summary) about it.
   if (input.dryRun) return [];
   try {
     const nowMs = Date.now();
-    const [history, telegramLastPostMs, llm] = await Promise.all([
+    const [history, telegramLastPostMs, llm, viEnglish] = await Promise.all([
       readHistory(env, input.runId),
       readTelegramLastPost(env),
       readLlmCounts(env, input.runId),
+      readViEnglishWindow(env, input.runId, nowMs),
     ]);
     const local = getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE);
     const issues = evaluateHealth({
@@ -466,6 +532,12 @@ export async function runHealthCheck(
       llm,
       history,
     });
+    issues.push(
+      ...evaluateViEnglish(
+        mergeViEnglish(viEnglish.tally, input.viEnglish ?? {}),
+        viEnglish.alerted
+      )
+    );
     const markers: string[] = [];
     if (shouldCheckDayVideo(local.hour, local.date, history, nowMs)) {
       const dayVideo = await checkDayVideo(env, local.date, nowMs);

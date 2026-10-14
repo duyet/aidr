@@ -1016,7 +1016,7 @@ describe("reprocessToday", () => {
     seedPublished(env, "item-2", todaySec);
 
     vi.spyOn(llm, "translateItems").mockResolvedValue([
-      { i: 0, title: "Tiêu đề", summary: "Tóm tắt", tokens: 5 },
+      { i: 0, title: "Tiêu đề", summary: "Tóm tắt", tokens: 5, model: "m/a" },
     ]);
 
     const result = await reprocessToday(env, { steps: ["translate"] });

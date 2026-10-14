@@ -114,7 +114,7 @@ describe("formatting", () => {
     expect(body).toContain("Next step:");
   });
 
-  it("daily summary lists runs, posts, model success and top warnings", () => {
+  it("daily summary lists runs, posts, model success, VI English and top warnings", () => {
     const text = formatDailySummary({
       date: "2026-09-29",
       runsOk: 23,
@@ -123,8 +123,14 @@ describe("formatting", () => {
       telegramPosts: { telegram: 6, "telegram-en": 5 },
       models: [{ model: "glm", total: 10, failed: 1, statuses: {} }],
       warnings: { "step-failed": 2, "llm-failure-rate": 1 },
+      viEnglish: {
+        "poolside/laguna-s-2.1": { translated: 78, english: 5 },
+        "google/gemma-latest": { translated: 36, english: 3 },
+      },
     });
     expect(text).toContain("23 ok, 1 failed");
+    expect(text).toContain("poolside/laguna-s-2.1: 5/78 (6%)");
+    expect(text).toContain("google/gemma-latest: 3/36 (8%)");
     expect(text).toContain("New items: 140");
     expect(text).toContain("telegram 6, telegram-en 5");
     expect(text).toContain("glm: 90% (9/10)");
