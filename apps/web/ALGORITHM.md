@@ -138,7 +138,8 @@ acknowledgements sent).
 - **`dryRun: true`** — `sendEmailDigest` and `notifyChannels` return before
   calling `sendDailyTldr` / `dispatchStoryNotifications` and record
   `skipped` / `dry run: no email or telegram`. The TL;DR step runs as
-  `tldr-preview`: same items, LLM and fallbacks as `ensureDailyTldr`, no
+  `tldr-preview`: same items, LLM, fallbacks and keep rule as `ensureDailyTldr`
+  (a kept model digest reports `kept`, not headlines), no
   `tldr_snapshots` upsert; `stats.tldrPreview` keeps the bullet count and
   the first 3 bullets per language. The weekly step runs as
   `weekly-preview`: it builds last closed week's edition, ignores the gate,

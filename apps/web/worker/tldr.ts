@@ -180,23 +180,50 @@ export interface TldrRunStats {
   reason: string;
 }
 
+interface StoredTldr {
+  date: string;
+  created_at: number;
+  bullets_en: string | null;
+  bullets_vi: string | null;
+  fallback: number | null;
+}
+
+async function loadStoredTldr(
+  env: Env,
+  date: string
+): Promise<StoredTldr | null> {
+  return env.DB.prepare(
+    "SELECT date, created_at, bullets_en, bullets_vi, fallback FROM tldr_snapshots WHERE date = ?"
+  )
+    .bind(date)
+    .first<StoredTldr>();
+}
+
+/** True when a degraded refresh must leave the stored model digest alone.
+ * Shared by the real write and the dry-run preview so they cannot disagree. */
+function keepsModelDigest(
+  composed: Extract<ComposedTldr, { ok: true }>,
+  existing: StoredTldr | null,
+  results: ItemRow[]
+): boolean {
+  if (!composed.degraded || existing?.fallback !== 0) return false;
+  return !snapshotNeedsRebuild(
+    {
+      bullets_en: parseStoredBullets(existing.bullets_en),
+      bullets_vi: parseStoredBullets(existing.bullets_vi),
+    },
+    results.length,
+    itemsHaveTitleVi(results)
+  );
+}
+
 /** Idempotent daily gate: generates today's snapshot if missing or thin,
  * or refreshes a useful one when the last write is older than `TLDR_REFRESH_MS`. */
 export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
   const nowMs = Date.now();
   const date = tldrSnapshotDate(nowMs);
 
-  const existing = await env.DB.prepare(
-    "SELECT date, created_at, bullets_en, bullets_vi, fallback FROM tldr_snapshots WHERE date = ?"
-  )
-    .bind(date)
-    .first<{
-      date: string;
-      created_at: number;
-      bullets_en: string | null;
-      bullets_vi: string | null;
-      fallback: number | null;
-    }>();
+  const existing = await loadStoredTldr(env, date);
 
   const results = await loadTopItems(env, nowMs);
 
@@ -235,16 +262,7 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
   if (!composed.ok) return composed.stats;
   const { bullets_en, bullets_vi } = composed;
 
-  if (
-    composed.degraded &&
-    existing?.fallback === 0 &&
-    existingParsed &&
-    !snapshotNeedsRebuild(
-      existingParsed,
-      results.length,
-      itemsHaveTitleVi(results)
-    )
-  ) {
+  if (keepsModelDigest(composed, existing, results)) {
     await env.DB.prepare(
       "UPDATE tldr_snapshots SET created_at = ? WHERE date = ?"
     )
@@ -315,8 +333,9 @@ export function cleanTldrRows<T extends ItemRow>(rows: T[]): T[] {
   }));
 }
 
-/** LLM digest plus the thin / English-only-VI fallbacks: exactly the
- * bullets `ensureDailyTldr` would persist, without touching D1. */
+/** LLM digest plus the thin / English-only-VI fallbacks, without touching
+ * D1. These are the bullets before the keep rule: when `degraded` is set,
+ * `ensureDailyTldr` may keep the stored model digest instead of writing them. */
 async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
   const results = cleanTldrRows(rows);
   const tldr = await generateTldr(
@@ -384,9 +403,10 @@ export interface TldrPreview extends TldrRunStats {
   bullets_vi: TldrBullet[];
 }
 
-/** The edition a run would write right now, ignoring the refresh gate.
- * Reads D1 and calls the LLM; never writes `tldr_snapshots`. Used by dry
- * runs and the admin preview. */
+/** The edition a run would leave stored right now, ignoring the refresh
+ * gate and applying the same keep rule as `ensureDailyTldr`. Reads D1 and
+ * calls the LLM; never writes `tldr_snapshots`. Used by dry runs and the
+ * admin preview. */
 export async function previewDailyTldr(env: Env): Promise<TldrPreview> {
   const nowMs = Date.now();
   const date = tldrSnapshotDate(nowMs);
@@ -407,6 +427,18 @@ export async function previewDailyTldr(env: Env): Promise<TldrPreview> {
   }
   const composed = await composeTldr(env, results);
   if (!composed.ok) return { ...empty, ...composed.stats };
+  const existing = await loadStoredTldr(env, date);
+  if (existing && keepsModelDigest(composed, existing, results)) {
+    return {
+      ...empty,
+      generated: false,
+      kept: true,
+      tokens: composed.tokens,
+      reason: `preview: kept model digest: ${composed.degraded}`,
+      bullets_en: parseStoredBullets(existing.bullets_en) as TldrBullet[],
+      bullets_vi: parseStoredBullets(existing.bullets_vi) as TldrBullet[],
+    };
+  }
   return {
     ...empty,
     generated: true,
