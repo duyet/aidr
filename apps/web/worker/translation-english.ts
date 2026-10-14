@@ -35,17 +35,18 @@ export interface ViEnglishRow {
   summary: string;
 }
 
-/** Below this many rows in 24h a rate is noise. If Laguna's true rate is
- *  its measured 6.4%, one 24h window of 40 rows passes 15% about 1 time in
- *  80 by chance, and one of ~120 rows (a day with Laguna leading translate)
- *  about 1 in 4,000. 5/78 only bounds the true rate to 3-14% (Wilson 95%);
- *  at 12% a 120-row window fires about 1 time in 8. */
+/** Below this many rows in 24h a rate is noise. The alert fires when more
+ *  than 10% of rows are English: 5 of 40, 9 of 80, 13 of 120. Binomial
+ *  chance per window: a model at Laguna's measured 2.6% false-fires 0.37% of
+ *  windows at 40 rows, 0.024% at 80 and 0.0016% at 120. A model that really
+ *  writes 10% English fires 37% / 41% / 42% of windows, and one at 12% fires
+ *  53% / 63% / 69%. At the old 15% a 10% model fired only 10% / 5% / 3%. */
 export const VI_ENGLISH_MIN_ROWS = 40;
 /** 7 days to 2026-10-14, summaries only: gemini 0.2% (1/558), Laguna 2.6%
  *  (2/78), gemma-latest 0% (0/36). Judging titles too read 1.3%, 6.4% and
- *  8.3%, all of the difference titles kept English on purpose. 15% is far
- *  above both; no 24h window that week reached it either way. */
-export const VI_ENGLISH_ALERT_RATE = 0.15;
+ *  8.3%, all of the difference titles kept English on purpose. 10% is well
+ *  above all three; 15% hid a model stuck at 10% (see the floor above). */
+export const VI_ENGLISH_ALERT_RATE = 0.1;
 /** One alert per model per window; the rate is a 24h sum, so it stays high
  *  for most of a day after a burst. */
 export const VI_ENGLISH_WINDOW_MS = 24 * 3600 * 1000;

@@ -97,11 +97,25 @@ describe("evaluateViEnglish", () => {
   });
 
   it("stays quiet at the measured baselines and at the threshold itself", () => {
-    // 7 days to 2026-10-14: gemini 1.2%, Laguna 6.4%, gemma-latest 8.3%.
+    // 7 days to 2026-10-14 incl. titles: gemini 1.3%, Laguna 6.4%, gemma-latest 8.3%.
     expect(fired(at(120, 8))).toEqual([]);
     expect(fired({ [GEMMA]: { translated: 120, english: 10 } })).toEqual([]);
-    expect(VI_ENGLISH_ALERT_RATE * 40).toBe(6);
-    expect(fired(at(40, 6))).toEqual([]);
+    expect(fired(at(40, 4))).toEqual([]);
+    expect(fired(at(80, 8))).toEqual([]);
+  });
+
+  it("fires just above 10%, so a model stuck near 10% is caught", () => {
+    expect(VI_ENGLISH_ALERT_RATE).toBe(0.1);
+    expect(fired(at(40, 5))).toEqual([viEnglishKey(LAGUNA)]);
+    expect(fired(at(41, 5))).toEqual([viEnglishKey(LAGUNA)]);
+    expect(fired(at(80, 9))).toEqual([viEnglishKey(LAGUNA)]);
+    expect(fired(at(120, 13))).toEqual([viEnglishKey(LAGUNA)]);
+    expect(fired(at(41, 4))).toEqual([]);
+  });
+
+  it("honours the 40-row floor at the edge", () => {
+    expect(fired(at(VI_ENGLISH_MIN_ROWS, 5))).toEqual([viEnglishKey(LAGUNA)]);
+    expect(fired(at(VI_ENGLISH_MIN_ROWS - 1, 5))).toEqual([]);
   });
 
   it("stays quiet below the minimum rows, however bad the rate", () => {
