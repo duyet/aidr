@@ -421,7 +421,9 @@ async function readModelStats(
   return foldModelStats(results ?? []);
 }
 
-async function readDailySummary(
+/** Live runs only: a dry run still translates and writes D1, so its tally
+ *  and item count would inflate the day. */
+export async function readDailySummary(
   env: Env,
   nowMs: number,
   date: string
@@ -430,7 +432,7 @@ async function readDailySummary(
   const [runs, posts, models] = await Promise.all([
     env.DB.prepare(
       `SELECT error, items_new, stats, ${STATS_FIELD_SQL("viEnglish")} AS vi_english
-       FROM workflow_runs WHERE started_at >= ?`
+       FROM workflow_runs WHERE started_at >= ? AND ${NOT_DRY_RUN_SQL}`
     )
       .bind(Math.floor(sinceMs / 1000))
       .all<{

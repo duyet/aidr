@@ -24,30 +24,37 @@ const GEMMA = "google/gemma-latest";
 const VI = { title: "Mô hình mới", summary: "Tóm tắt tiếng Việt." };
 
 describe("tallyViEnglish", () => {
-  it("counts a row whose title or summary has no Vietnamese, per model", () => {
+  it("counts a row whose summary has no Vietnamese, per model", () => {
     expect(
       tallyViEnglish([
         { model: LAGUNA, ...VI },
-        // Prod 2026-10-12: a paper title kept in English.
-        {
-          model: LAGUNA,
-          title: "Byte Language Models: Scaling, Emergent Abstractions",
-          summary: "Bài báo đề xuất mô hình byte.",
-        },
-        { model: LAGUNA, title: "Mô hình mới", summary: "An English summary." },
+        { model: LAGUNA, summary: "An English summary." },
         { model: GEMMA, ...VI },
       ])
     ).toEqual({
-      [LAGUNA]: { translated: 3, english: 2 },
+      [LAGUNA]: { translated: 2, english: 1 },
       [GEMMA]: { translated: 1, english: 0 },
+    });
+  });
+
+  // The prompt keeps a paper title it cannot render, and product names with
+  // versions, in English on purpose. Prod 2026-10: 12 of the 20 hits in 7 days
+  // were an English title over a Vietnamese summary.
+  it("does not count an English title over a Vietnamese summary", () => {
+    const rows = [
+      "Byte Language Models: Scaling, Emergent Abstractions",
+      "llm-gemini 0.35",
+    ].map((title) => ({ model: LAGUNA, ...VI, title }));
+    expect(tallyViEnglish(rows)).toEqual({
+      [LAGUNA]: { translated: 2, english: 0 },
     });
   });
 
   it("skips Vietnamese passthrough rows and does not count an empty summary", () => {
     expect(
       tallyViEnglish([
-        { model: null, title: "Already English", summary: "" },
-        { model: LAGUNA, title: "Tiêu đề", summary: "" },
+        { model: null, summary: "Already English" },
+        { model: LAGUNA, summary: "" },
       ])
     ).toEqual({ [LAGUNA]: { translated: 1, english: 0 } });
   });

@@ -165,6 +165,22 @@ describe("side effects", () => {
     expect(calls).toEqual([]);
   });
 
+  it("logs once per call, naming every alert, when no token skips the issues", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockFetch(() => ({}));
+    await fileGithubIssues({}, [llmIssue, quietIssue], ctx);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain("GITHUB_ALERT_TOKEN is not set");
+    expect(warn.mock.calls[0]?.[0]).toContain(llmIssue.key);
+    expect(warn.mock.calls[0]?.[0]).toContain(quietIssue.key);
+  });
+
+  it("stays silent without a token when there is no alert", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await fileGithubIssues({}, [], ctx);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   // AIDR-10: a bare "owner DM HTTP 400" hid why Telegram refused the DM.
   // After TELEGRAM_BOT_TOKEN moves to another bot, the owner has not started
   // it, and the fix is a human action, so the error must say so.

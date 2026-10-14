@@ -4,10 +4,15 @@
  * the health check sums the last 24h and alerts the owner when one model's
  * rate passes `VI_ENGLISH_ALERT_RATE`. No model call and no extra table.
  *
- * A row counts when its title or summary has no Vietnamese diacritics
- * (`looksVietnamese`, the same test the TL;DR and day card use). It misses a
- * half-translated summary, and it counts English titles the prompt keeps on
- * purpose (paper titles, "llm-gemini 0.35"), so the baseline is not zero.
+ * A row counts when its summary has no Vietnamese diacritics
+ * (`looksVietnamese`, the same test the TL;DR and day card use). Titles are
+ * not judged: the prompt keeps a paper title it cannot render, and product
+ * names with versions ("llm-gemini 0.35"), in English on purpose, so an
+ * English title over a Vietnamese summary is the expected shape, and those
+ * rows cluster by source (arxiv-research, hf-papers) and swing with the
+ * day's mix. A summary is prose the model has to translate. The cost is a
+ * model that leaves every title English under a Vietnamese summary goes
+ * unseen. A half-translated summary is not counted either.
  */
 
 import type { HealthIssue } from "./health.js";
@@ -16,17 +21,17 @@ import { looksVietnamese } from "./tldr-lang.js";
 export interface ModelViEnglish {
   /** EN→VI rows this model wrote. */
   translated: number;
-  /** Of those, rows whose title or summary has no Vietnamese diacritics. */
+  /** Of those, rows whose summary has no Vietnamese diacritics. */
   english: number;
 }
 
 /** Served model id -> counts. */
 export type ViEnglishTally = Record<string, ModelViEnglish>;
 
-/** One written EN→VI row. `model` is null for a Vietnamese passthrough. */
+/** One written EN→VI row. `model` is null for a Vietnamese passthrough. The
+ *  title is left out on purpose (see the file comment). */
 export interface ViEnglishRow {
   model: string | null;
-  title: string;
   summary: string;
 }
 
@@ -36,9 +41,10 @@ export interface ViEnglishRow {
  *  about 1 in 4,000. 5/78 only bounds the true rate to 3-14% (Wilson 95%);
  *  at 12% a 120-row window fires about 1 time in 8. */
 export const VI_ENGLISH_MIN_ROWS = 40;
-/** 7 days to 2026-10-14: gemini 1.2% (7/561), Laguna 6.4% (5/78),
- *  gemma-latest 8.3% (3/36: two version strings, one paper title). 15% is
- *  over twice Laguna's rate; no 24h window that week reached it. */
+/** 7 days to 2026-10-14, summaries only: gemini 0.2% (1/558), Laguna 2.6%
+ *  (2/78), gemma-latest 0% (0/36). Judging titles too read 1.3%, 6.4% and
+ *  8.3%, all of the difference titles kept English on purpose. 15% is far
+ *  above both; no 24h window that week reached it either way. */
 export const VI_ENGLISH_ALERT_RATE = 0.15;
 /** One alert per model per window; the rate is a 24h sum, so it stays high
  *  for most of a day after a burst. */
@@ -68,8 +74,10 @@ export function tallyViEnglish(rows: Iterable<ViEnglishRow>): ViEnglishTally {
   const tally: ViEnglishTally = {};
   for (const row of rows) {
     if (!row.model) continue;
-    const english = isEnglish(row.title) || isEnglish(row.summary);
-    add(tally, row.model, { translated: 1, english: english ? 1 : 0 });
+    add(tally, row.model, {
+      translated: 1,
+      english: isEnglish(row.summary) ? 1 : 0,
+    });
   }
   return tally;
 }
@@ -140,7 +148,7 @@ export function evaluateViEnglish(
       key,
       severity: "warning",
       title: "Vietnamese translations keep English",
-      detail: `${model} left English in ${m.english} of ${m.translated} Vietnamese titles or summaries in 24h (${pct(m)}, alert above ${VI_ENGLISH_ALERT_RATE * 100}%)`,
+      detail: `${model} left English in ${m.english} of ${m.translated} Vietnamese summaries in 24h (${pct(m)}, alert above ${VI_ENGLISH_ALERT_RATE * 100}%)`,
       evidence: viEnglishLines(tally),
     });
   }

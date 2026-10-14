@@ -158,7 +158,9 @@ acknowledgements sent).
   and never push the 30-minute alarm back, so they do not delay the next real
   run. A forced dry run can still overlap a real run.
 - **History** — health-check history and the source empty-run streak carry
-  skip dry-run rows (`NOT_DRY_RUN_SQL`). `sourceHealth` is only stored when
+  skip dry-run rows (`NOT_DRY_RUN_SQL`), as do the 24h English-in-Vietnamese
+  window and the daily summary (a dry run translates and writes D1, so its
+  `stats.viEnglish` and `items_new` would inflate both). `sourceHealth` is only stored when
   the chain reached translate.
 
 What a dry run **still does** (it gates distribution, not D1):
@@ -276,23 +278,32 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
 - English left in Vietnamese (`worker/translation-english.ts`, same step,
   no model call): the translate and backfill-translate steps count the
   EN→VI rows they write per served model (a kept repair counts for the
-  repair's model) in `stats.viEnglish`, with the rows whose title or
-  summary has no Vietnamese diacritics (`looksVietnamese`). The check sums
+  repair's model) in `stats.viEnglish`, with the rows whose **summary** has
+  no Vietnamese diacritics (`looksVietnamese`). Titles are not judged: the
+  prompt keeps a paper title it cannot render, and product names with
+  versions, in English on purpose, and those cluster by source (arxiv-research,
+  hf-papers) and swing with the day's mix. The blind spot is a model that
+  leaves every title English under a Vietnamese summary; a half-translated
+  summary is not counted either. The check sums
   the last 24h of live runs plus this one and raises
-  `translation-english:<model>` (warning, GitHub issue in `duyet/aidr`)
+  `translation-english:<model>` (warning; Telegram DM, and a GitHub issue in
+  `duyet/aidr` only when `GITHUB_ALERT_TOKEN` is set, see below)
   when a model wrote ≥ 40 rows and > 15% kept English. A key fires once per
   24h: the check reads the window's `stats.alerts`, not the 6h cooldown.
-  Baseline, 7 days to 2026-10-14, items attributed by fetch run: gemini
-  7/561 (1.2%), Laguna 5/78 (6.4%), gemma-latest 3/36 (8.3%, two version
-  strings and a paper title); no 24h window reached 15%. Most hits are
-  English titles the prompt keeps (paper titles), and a half-translated
-  summary is not counted. The daily summary lists each model's 24h count.
+  Baseline, 7 days to 2026-10-14, items attributed by fetch run, summaries
+  only: gemini 1/558 (0.2%), Laguna 2/78 (2.6%), gemma-latest 0/36. Judging
+  titles too read 7/558 (1.3%), 5/78 (6.4%) and 3/36 (8.3%); all the
+  difference was kept titles, so a paper-heavy day could have false-alerted.
+  No 24h window reached 15% either way. The daily summary lists each
+  model's 24h count.
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
   with evidence and the run link, plus one daily summary in the first run
   between 09–12h local (`daily-summary:<date>` in `stats.alerts` makes it
   once per day). `GITHUB_ALERT_TOKEN` (fine-grained PAT, Issues read/write)
-  files `aidr-alert` issues: LLM keys → `duyet/anyrouter`, others →
+  files `aidr-alert` issues, and only when it is set (it is not set on the
+  Worker today, so the Telegram DM is the only report; a run that fires
+  alerts logs one `GITHUB_ALERT_TOKEN is not set` warning naming them): LLM keys → `duyet/anyrouter`, others →
   `duyet/aidr`. An open issue with the same fingerprint gets a comment at
   most once per 24h instead; max 3 GitHub writes per run. Errors are logged
   and sent to Sentry, never fail the step.
