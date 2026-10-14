@@ -363,9 +363,11 @@ export async function planMerges(
         );
         logGateRejections(llm.model, gated, newHeadlines, existingHeadlines);
         clusterGate = tallyClusterGate(llm.model, gated);
+        // URLs stay out of the existing list the model sees: 300 more URLs
+        // per prompt for a rule the title pass already applies.
         const titleClusters = clusterByTitleSimilarity(
           newForCluster,
-          existingForCluster
+          recent.map((r) => ({ id: r.id, title: r.title, url: r.url }))
         );
         const officialClusters = clusterOfficialRewrites(
           newRows.map((row, i) => ({

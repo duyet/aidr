@@ -351,9 +351,9 @@ describe("backsExisting across languages", () => {
       ),
     ],
     [
-      // #749: normalizeTitleForDedupe splits Vietnamese at each diacritic, so
-      // this headline reads as a near-duplicate of the translation. Only the
-      // story's own title may count as one.
+      // Before #749 the title rule read this headline as a near-duplicate of
+      // the translation on diacritic-split fragments. Only the story's own
+      // title may count as one.
       "a Vietnamese item that only fragment-matches an English story's translation",
       tr(
         h(
