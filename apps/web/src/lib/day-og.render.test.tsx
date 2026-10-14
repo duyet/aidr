@@ -95,6 +95,10 @@ describe("dayOgCard renders every layout inside the card", () => {
     ["-", "single"],
     ["PP", "split"],
     ["P--", "lead-list"],
+    // Thin days whose photos partly failed: one or two tall list rows.
+    ["P-", "lead-list"],
+    ["-P", "headlines"],
+    ["-PP", "headlines"],
     ["PPPPPP", "mosaic"],
     ["PPP---", "mosaic"],
     ["------", "headlines"],

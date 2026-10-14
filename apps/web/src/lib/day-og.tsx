@@ -327,31 +327,36 @@ interface BlockText {
   sizes: number[];
   maxLines: number;
   kickerSize?: number;
+  /** Text band height in lines, shared by a group so photo bottoms align. */
+  bandLines?: number;
 }
 
 function bandPadding(w: number) {
   return w >= 400 ? { padX: 22, padY: 18 } : { padX: 14, padY: 12 };
 }
 
-/** `text.sizes` narrowed to the one size that fits every block's headline. */
+/** `text.sizes` narrowed to the one size that fits every block's headline,
+ *  with the band as tall as the longest of them. */
 function sharedBlockText(
   stories: readonly DayCardStory[],
   w: number,
   text: BlockText
 ): BlockText {
-  const width = w - bandPadding(w).padX * 2;
-  const size = sharedSize(
-    stories.map((s) => ({
-      text: s.title,
-      box: {
-        width,
-        height: 10_000,
-        sizes: text.sizes,
-        maxLines: text.maxLines,
-      },
-    }))
+  const box = {
+    width: w - bandPadding(w).padX * 2,
+    height: 10_000,
+    sizes: text.sizes,
+    maxLines: text.maxLines,
+  };
+  const size = sharedSize(stories.map((s) => ({ text: s.title, box })));
+  const bandLines = Math.max(
+    ...stories.map(
+      (s) =>
+        fitText(s.title, { ...box, sizes: [size], lineHeight: LINE_HEIGHT })
+          .lines
+    )
   );
-  return { ...text, sizes: [size] };
+  return { ...text, sizes: [size], bandLines };
 }
 
 /** A photo with its headline on an ink band below: screenshots of other
@@ -363,7 +368,7 @@ function photoBlock(
   text: BlockText
 ) {
   const { padX, padY } = bandPadding(w);
-  const kickerH = text.kickerSize && story.kicker ? text.kickerSize + 8 : 0;
+  const kickerH = text.kickerSize ? text.kickerSize + 8 : 0;
   const titleW = w - padX * 2;
   const fit = fitText(story.title, {
     width: titleW,
@@ -372,8 +377,9 @@ function photoBlock(
     lineHeight: LINE_HEIGHT,
     maxLines: text.maxLines,
   });
+  const lines = Math.max(fit.lines, text.bandLines ?? 0);
   const bandH =
-    Math.ceil(fit.fontSize * LINE_HEIGHT * fit.lines) + padY * 2 + kickerH;
+    Math.ceil(fit.fontSize * LINE_HEIGHT * lines) + padY * 2 + kickerH;
   const image = story.image as StoryOgImage;
   return (
     <div
@@ -414,12 +420,16 @@ function photoBlock(
   );
 }
 
-const ROW_SIZES = [30, 28, 26, 25, 24, 23];
+/** A short list (a thin day) gets fewer, taller rows: the headline grows
+ *  with the row instead of floating in it. */
+const ROW_SIZES = [44, 40, 36, 32, 30, 28, 26, 25, 24, 23];
 
 function rowBox(story: DayCardStory, w: number, h: number) {
   const numW = 48;
-  const thumbH = h - 18;
-  const thumbW = story.image ? Math.min(150, Math.round(thumbH * 1.5)) : 0;
+  // 3:2, never taller than a thumbnail: a tall row would otherwise get a
+  // portrait strip of a landscape photo.
+  const thumbH = Math.min(h - 18, 100);
+  const thumbW = story.image ? Math.round(thumbH * 1.5) : 0;
   return {
     numW,
     thumbW,
@@ -428,7 +438,7 @@ function rowBox(story: DayCardStory, w: number, h: number) {
       width: w - numW - (thumbW ? thumbW + 18 : 0),
       height: h - 10,
       sizes: ROW_SIZES,
-      maxLines: 2,
+      maxLines: h >= 300 ? 6 : h >= 200 ? 4 : 2,
     },
   };
 }
