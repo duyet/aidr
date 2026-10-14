@@ -1,3 +1,4 @@
+import { dayBoundsSec } from "../src/lib/day-archive.js";
 import { stripTitleMarker } from "../src/lib/plain-text.js";
 import { generateTldr, type TldrBullet } from "./llm.js";
 import { pickDiverse } from "./source-diversity.js";
@@ -34,7 +35,7 @@ export interface ItemRow {
 const TOP_ITEMS_SQL = `SELECT i.id, i.source_id, i.title, i.summary, tr.title AS title_vi
      FROM items i
      LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-     WHERE i.status = 'published' AND i.published_at >= ?
+     WHERE i.status = 'published' AND i.published_at >= ? AND i.published_at < ?
      ORDER BY i.rank_score DESC
      LIMIT ${TLDR_CANDIDATE_LIMIT}`;
 
@@ -42,24 +43,41 @@ const TOP_ITEMS_SQL = `SELECT i.id, i.source_id, i.title, i.summary, tr.title AS
  * Pure query builder for the top-items candidate pool, so the gating logic
  * (published, fresh, ranked) can be verified without a D1
  * binding. `nowMs` is epoch milliseconds; `items.published_at` is stored
- * as epoch seconds, so the bound `since` value is normalized to seconds.
+ * as epoch seconds, so the bounds are normalized to seconds.
+ *
+ * The window `[since, until)` is the rolling 24h before the date's last
+ * run: now for today, the date's last ICT instant for a closed date (so
+ * that window is the ICT day). `until` is the date's ICT end either way.
  */
-export function buildTopItemsQuery(nowMs: number): {
+export function buildTopItemsQuery(
+  nowMs: number,
+  date: string = tldrSnapshotDate(nowMs)
+): {
   sql: string;
   since: number;
+  until: number;
 } {
+  const until = dayBoundsSec(date).end;
   return {
     sql: TOP_ITEMS_SQL,
-    since: toEpochSeconds(nowMs) - 24 * 60 * 60,
+    since: Math.min(toEpochSeconds(nowMs), until) - 24 * 60 * 60,
+    until,
   };
 }
 
-/** The edition's stories: the top TLDR_MAX_ITEMS of the 24h window by rank,
- * with no source family over its share (`pickDiverse`). Shared by the
- * hourly write and the dry-run preview so both pick the same items. */
-async function loadTopItems(env: Env, nowMs: number): Promise<ItemRow[]> {
-  const { sql, since } = buildTopItemsQuery(nowMs);
-  const { results } = await env.DB.prepare(sql).bind(since).all<ItemRow>();
+/** The edition's stories: the top TLDR_MAX_ITEMS of the date's window by
+ * rank, with no source family over its share (`pickDiverse`). Shared by the
+ * hourly write, the dry-run preview and the admin regenerate so all pick
+ * the same items. */
+async function loadTopItems(
+  env: Env,
+  nowMs: number,
+  date: string
+): Promise<ItemRow[]> {
+  const { sql, since, until } = buildTopItemsQuery(nowMs, date);
+  const { results } = await env.DB.prepare(sql)
+    .bind(since, until)
+    .all<ItemRow>();
   return pickDiverse(results ?? [], { limit: TLDR_MAX_ITEMS });
 }
 
@@ -225,7 +243,7 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
 
   const existing = await loadStoredTldr(env, date);
 
-  const results = await loadTopItems(env, nowMs);
+  const results = await loadTopItems(env, nowMs, date);
 
   const existingParsed = existing
     ? {
@@ -260,7 +278,6 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
 
   const composed = await composeTldr(env, results);
   if (!composed.ok) return composed.stats;
-  const { bullets_en, bullets_vi } = composed;
 
   if (keepsModelDigest(composed, existing, results)) {
     await env.DB.prepare(
@@ -276,6 +293,21 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
     };
   }
 
+  await writeSnapshot(env, date, composed);
+
+  return {
+    generated: true,
+    tokens: composed.tokens,
+    reason: composeReason(composed),
+  };
+}
+
+/** Upserts the date's row; `sent_at` is left as it was. */
+async function writeSnapshot(
+  env: Env,
+  date: string,
+  composed: Extract<ComposedTldr, { ok: true }>
+): Promise<void> {
   await env.DB.prepare(
     `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback)
      VALUES (?, ?, ?, ?, ?)
@@ -287,18 +319,12 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
   )
     .bind(
       date,
-      JSON.stringify(bullets_en),
-      JSON.stringify(bullets_vi),
+      JSON.stringify(composed.bullets_en),
+      JSON.stringify(composed.bullets_vi),
       Date.now(),
       composed.degraded ? 1 : 0
     )
     .run();
-
-  return {
-    generated: true,
-    tokens: composed.tokens,
-    reason: composeReason(composed),
-  };
 }
 
 type ComposedTldr =
@@ -308,7 +334,10 @@ type ComposedTldr =
       bullets_vi: TldrBullet[];
       tokens: number;
       persistReason?: string;
+      /** EN fell back to headlines (and VI with it). */
       degraded?: string;
+      /** Only VI fell back to `title_vi` headlines. */
+      viFallback?: string;
     }
   | { ok: false; stats: TldrRunStats };
 
@@ -352,6 +381,7 @@ async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
   let bullets_vi = tldr.bullets_vi;
   let persistReason: string | undefined;
   let degraded: string | undefined;
+  let viFallback: string | undefined;
 
   // Never write an empty or thin snapshot: a 1-bullet row would satisfy
   // the `existing` gate above and freeze a leftover line for TLDR_REFRESH_MS
@@ -382,7 +412,8 @@ async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
     // once title_vi exists. Title-fallback uses title_vi || title.
     const fallback = fallbackTldrFromItems(results);
     bullets_vi = fallback.bullets_vi;
-    persistReason = `LLM VI was English-only; persisted ${fallback.bullets_vi.length} title_vi fallback bullets`;
+    viFallback = "LLM VI was English-only";
+    persistReason = `${viFallback}; persisted ${fallback.bullets_vi.length} title_vi fallback bullets`;
     console.error(persistReason);
   }
 
@@ -393,6 +424,7 @@ async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
     tokens: tldr.tokens,
     persistReason,
     degraded,
+    viFallback,
   };
 }
 
@@ -410,7 +442,7 @@ export interface TldrPreview extends TldrRunStats {
 export async function previewDailyTldr(env: Env): Promise<TldrPreview> {
   const nowMs = Date.now();
   const date = tldrSnapshotDate(nowMs);
-  const results = await loadTopItems(env, nowMs);
+  const results = await loadTopItems(env, nowMs, date);
   const empty = {
     date,
     itemCount: results.length,
@@ -444,6 +476,70 @@ export async function previewDailyTldr(env: Env): Promise<TldrPreview> {
     generated: true,
     tokens: composed.tokens,
     reason: `preview: ${composeReason(composed)}`,
+    bullets_en: composed.bullets_en,
+    bullets_vi: composed.bullets_vi,
+  };
+}
+
+export interface TldrRegenerateResult extends TldrPreview {
+  /** The row now holds these bullets; false for a dry run or a refusal. */
+  written: boolean;
+}
+
+/**
+ * Rebuilds the edition stored for `date` (today or a closed date) from that
+ * date's window, ignoring the refresh gate. It writes only a model digest in
+ * both languages, as `fallback = 0`: when the model fails, is thin, or
+ * leaves VI English-only, the stored row stays exactly as it was, whatever
+ * it holds. `dryRun` composes and reports without writing. Reads D1 and
+ * calls the LLM; sends nothing.
+ */
+export async function regenerateDailyTldr(
+  env: Env,
+  date: string,
+  opts: { dryRun?: boolean } = {}
+): Promise<TldrRegenerateResult> {
+  const results = await loadTopItems(env, Date.now(), date);
+  const empty = {
+    date,
+    itemCount: results.length,
+    bullets_en: [],
+    bullets_vi: [],
+    written: false,
+  };
+  const unchanged = "stored row unchanged";
+  if (results.length === 0) {
+    return {
+      ...empty,
+      generated: false,
+      tokens: 0,
+      reason: `no published items in window; ${unchanged}`,
+    };
+  }
+  const composed = await composeTldr(env, results);
+  if (!composed.ok) {
+    return {
+      ...empty,
+      ...composed.stats,
+      reason: `${composed.stats.reason}; ${unchanged}`,
+    };
+  }
+  const notModel = composed.degraded ?? composed.viFallback;
+  if (notModel) {
+    return {
+      ...empty,
+      generated: false,
+      tokens: composed.tokens,
+      reason: `not a model digest: ${notModel}; ${unchanged}`,
+    };
+  }
+  if (!opts.dryRun) await writeSnapshot(env, date, composed);
+  return {
+    ...empty,
+    generated: true,
+    written: !opts.dryRun,
+    tokens: composed.tokens,
+    reason: `${opts.dryRun ? "dry run: would write" : "wrote"} model digest, ${composeReason(composed)}`,
     bullets_en: composed.bullets_en,
     bullets_vi: composed.bullets_vi,
   };

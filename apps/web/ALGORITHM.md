@@ -180,6 +180,19 @@ Read-only previews: `GET /api/admin/preview/ranking?limit=N`
 `POST /api/admin/preview/tldr` (`preview_tldr`: en/vi bullets, LLM calls
 under a `tldr-preview-…` operation id, no D1 writes besides `llm_calls`).
 
+Admin regenerate: `POST /api/admin/tldr/regenerate` (today) or
+`POST /api/admin/tldr/regenerate/YYYY-MM-DD` (a date up to 14 days back,
+not after today ICT; else 400), optional body `{ dryRun? }`
+(`regenerateDailyTldr` in `worker/tldr.ts`). It skips the refresh gate and
+composes from that date's window: the rolling 24h before the date's last
+run, so now for today and the ICT day for a closed date. It upserts the row
+(`fallback = 0`, `sent_at` kept) only for a model digest in both
+languages. A failed or thin model, or English-only VI, leaves the stored row
+exactly as it was, whatever it holds, and the response says why
+(`written: false`). A dry run returns the bullets and writes nothing. It
+never sends: notify and email read only the current local day's row on their
+own schedule, and dedupe per channel or subscriber and date.
+
 Ranking replay: `pnpm --filter @aidr/web rank-replay [--days 14] [--cache f]
 [--formulas current,D+I+B,final]` reads the last 14 days of published items,
 merged members, vote nets and TL;DR snapshots from prod D1 (`cf d1 query`,
@@ -191,8 +204,10 @@ their final values, not their values at each hour, and the TL;DR snapshot was
 picked under the formula live then, so treat it as a comparison between
 formulas, not a forecast. Run it before changing `worker/ranking.ts`.
 
-Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|run|rerun>`
+Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|tldr-regenerate|run|rerun>`
 (`apps/web/scripts/aidr-agent.ts`). `run` / `rerun` are dry unless `--live`.
+`tldr-regenerate [--date YYYY-MM-DD] [--dry-run]` always calls the dated
+route, which a server without it answers 404.
 
 ## Day archive (`/date/YYYY-MM-DD`)
 

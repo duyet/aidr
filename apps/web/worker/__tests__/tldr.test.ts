@@ -71,6 +71,13 @@ describe("buildTopItemsQuery", () => {
     expect(since).toBeLessThan(ictMidnightSec);
     expect(tldrSnapshotDate(afterIctMidnight)).toBe("2026-08-19");
   });
+
+  it("bounds a closed date's window to that ICT day", () => {
+    const now = Date.UTC(2026, 9, 14, 5, 0, 0);
+    const { since, until } = buildTopItemsQuery(now, "2026-10-13");
+    expect(since).toBe(Date.UTC(2026, 9, 12, 17, 0, 0) / 1000);
+    expect(until).toBe(Date.UTC(2026, 9, 13, 17, 0, 0) / 1000);
+  });
 });
 
 describe("TLDR_REFRESH_MS", () => {

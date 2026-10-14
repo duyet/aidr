@@ -91,6 +91,25 @@ async function parseJsonBody(request: Request) {
   }
 }
 
+/** An optional JSON object body: none (or blank) is `{}`. */
+async function parseOptionalJsonObject(
+  request: Request
+): Promise<
+  { body: Record<string, unknown>; error: null } | { body: null; error: string }
+> {
+  const text = await request.text();
+  if (!text.trim()) return { body: {}, error: null };
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { body: null, error: "body must be a JSON object" };
+    }
+    return { body: parsed as Record<string, unknown>, error: null };
+  } catch {
+    return { body: null, error: "invalid JSON body" };
+  }
+}
+
 async function handle(
   method: string,
   splat: string,
@@ -356,22 +375,9 @@ async function handle(
   if (method === "POST" && segments.length === 1 && segments[0] === "ingest") {
     // The GitHub watchdog posts no body; `?force=1` stays supported and
     // a JSON body `{ force?, dryRun?, steps? }` adds the dry-run/rerun knobs.
-    const text = await request.text();
-    let body: Record<string, unknown> = {};
-    if (text.trim()) {
-      try {
-        const parsed: unknown = JSON.parse(text);
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          return Response.json(
-            { error: "body must be a JSON object" },
-            { status: 400 }
-          );
-        }
-        body = parsed as Record<string, unknown>;
-      } catch {
-        return Response.json({ error: "invalid JSON body" }, { status: 400 });
-      }
-    }
+    const { body, error: bodyError } = await parseOptionalJsonObject(request);
+    if (bodyError !== null)
+      return Response.json({ error: bodyError }, { status: 400 });
     const queryForce = new URL(request.url).searchParams.get("force") === "1";
     try {
       const result = await triggerIngest(env, {
@@ -475,13 +481,27 @@ async function handle(
     });
   }
 
+  // `tldr/regenerate` is today; `tldr/regenerate/YYYY-MM-DD` a recent closed
+  // date. Optional body `{ dryRun? }`. The dated path 404s on a server
+  // without it, so an early CLI call cannot rewrite today by mistake.
   if (
     method === "POST" &&
-    segments.length === 2 &&
+    (segments.length === 2 || segments.length === 3) &&
     segments[0] === "tldr" &&
     segments[1] === "regenerate"
   ) {
-    const result = await regenerateTldr(env);
+    const { body, error } = await parseOptionalJsonObject(request);
+    if (error !== null) return Response.json({ error }, { status: 400 });
+    const result = await regenerateTldr(env, {
+      date: segments[2],
+      dryRun: body.dryRun,
+    });
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
     return Response.json(result);
   }
 

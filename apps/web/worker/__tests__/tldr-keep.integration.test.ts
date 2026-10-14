@@ -15,7 +15,23 @@ vi.mock("../llm.js", async (original) => ({
   }),
 }));
 
+vi.mock("../subscribe/send.js", async (original) => ({
+  ...(await original<typeof import("../subscribe/send.js")>()),
+  sendDailyTldr: vi.fn(),
+}));
+
+vi.mock("../notify/index.js", async (original) => ({
+  ...(await original<typeof import("../notify/index.js")>()),
+  dispatchStoryNotifications: vi.fn(),
+  forceSendDigest: vi.fn(),
+}));
+
 const { generateTldr } = await import("../llm.js");
+const { sendDailyTldr } = await import("../subscribe/send.js");
+const { dispatchStoryNotifications, forceSendDigest } = await import(
+  "../notify/index.js"
+);
+const { isHandlerError, regenerateTldr } = await import("../admin/handlers.js");
 const { ensureDailyTldr, previewDailyTldr, TLDR_REFRESH_MS } = await import(
   "../tldr.js"
 );
@@ -432,5 +448,159 @@ describe("TL;DR dry-run preview", () => {
     expect(preview.bullets_en.map((b) => b.text)).toEqual(
       STORIES.map((story) => story.title)
     );
+  });
+});
+
+describe("admin TL;DR regenerate", () => {
+  const DAY_MS = 86_400_000;
+  const row = () =>
+    sqlite.prepare("SELECT * FROM tldr_snapshots WHERE date = ?").get(DATE);
+  const headlines = (lang: "en" | "vi"): TldrBullet[] =>
+    STORIES.map((story) => ({
+      text: lang === "en" ? story.title : story.titleVi,
+      item_ids: [story.id],
+    }));
+  const seedRow = (
+    bullets: { bullets_en: TldrBullet[]; bullets_vi: TldrBullet[] },
+    fallback: number | null
+  ) =>
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback, sent_at) VALUES (?, ?, ?, ?, ?, ?)"
+      )
+      .run(
+        DATE,
+        JSON.stringify(bullets.bullets_en),
+        JSON.stringify(bullets.bullets_vi),
+        FIRST_WRITE.getTime() - 60_000,
+        fallback,
+        FIRST_WRITE.getTime() - 30_000
+      );
+  const HEADLINES = {
+    bullets_en: headlines("en"),
+    bullets_vi: headlines("vi"),
+  };
+
+  // Today is DATE itself; "a closed date" is DATE seen two days later.
+  const WHEN = [
+    { label: "today", laterMs: 10 * 60_000, input: {} },
+    { label: "a closed date", laterMs: 2 * DAY_MS, input: { date: DATE } },
+  ];
+
+  it("writes a closed date's model digest from that date's stories only", async () => {
+    seedRow(HEADLINES, null);
+    const nextDay = {
+      id: "d000000044444444",
+      title: "Next-day story that belongs to 2026-10-10",
+      titleVi: "Tin của ngày hôm sau",
+    };
+    const dayBefore = {
+      id: "e000000055555555",
+      title: "Previous-day story that belongs to 2026-10-08",
+      titleVi: "Tin của ngày hôm trước",
+    };
+    // 2026-10-10 00:30 ICT and 2026-10-08 23:30 ICT.
+    insertStory(nextDay, 99, Date.parse("2026-10-09T17:30:00Z") / 1000);
+    insertStory(dayBefore, 98, Date.parse("2026-10-08T16:30:00Z") / 1000);
+    at(FIRST_WRITE.getTime() + 2 * DAY_MS);
+    tldrResult.next = GOOD;
+
+    const result = await regenerateTldr(env, { date: DATE });
+
+    expect(result).toMatchObject({ date: DATE, written: true });
+    const sent = vi.mocked(generateTldr).mock.calls[0]?.[1] ?? [];
+    expect(sent.map((item) => item.id).sort()).toEqual(
+      STORIES.map((story) => story.id).sort()
+    );
+    expect(row()).toMatchObject({
+      bullets_en: JSON.stringify(GOOD.bullets_en),
+      bullets_vi: JSON.stringify(GOOD.bullets_vi),
+      fallback: 0,
+      sent_at: FIRST_WRITE.getTime() - 30_000,
+    });
+    expect(sendDailyTldr).not.toHaveBeenCalled();
+    expect(dispatchStoryNotifications).not.toHaveBeenCalled();
+    expect(forceSendDigest).not.toHaveBeenCalled();
+  });
+
+  it.each(WHEN)(
+    "leaves a good model digest untouched when $label degrades",
+    async ({ laterMs, input }) => {
+      seedRow(GOOD, 0);
+      const before = row();
+      at(FIRST_WRITE.getTime() + laterMs);
+      tldrResult.next = FAILED;
+
+      const result = await regenerateTldr(env, input);
+
+      expect(generateTldr).toHaveBeenCalledTimes(1);
+      expect(row()).toEqual(before);
+      expect(result).toMatchObject({ written: false });
+      if (isHandlerError(result)) throw new Error(result.error);
+      expect(result.reason).toContain(CHAIN_DOWN);
+    }
+  );
+
+  it.each(WHEN)(
+    "leaves a headline row unchanged when $label degrades",
+    async ({ laterMs, input }) => {
+      seedRow(HEADLINES, null);
+      const before = row();
+      at(FIRST_WRITE.getTime() + laterMs);
+      tldrResult.next = FAILED;
+
+      await regenerateTldr(env, input);
+
+      expect(generateTldr).toHaveBeenCalledTimes(1);
+      expect(row()).toEqual(before);
+    }
+  );
+
+  it("does not write a digest whose Vietnamese fell back to headlines", async () => {
+    seedRow(HEADLINES, null);
+    const before = row();
+    at(FIRST_WRITE.getTime() + 2 * DAY_MS);
+    tldrResult.next = { ...GOOD, bullets_vi: GOOD.bullets_en };
+
+    const result = await regenerateTldr(env, { date: DATE });
+
+    expect(result).toMatchObject({ written: false });
+    expect(row()).toEqual(before);
+  });
+
+  it("dry run shows the model digest and writes nothing", async () => {
+    seedRow(HEADLINES, null);
+    const before = row();
+    at(FIRST_WRITE.getTime() + 2 * DAY_MS);
+    tldrResult.next = GOOD;
+
+    const result = await regenerateTldr(env, { date: DATE, dryRun: true });
+
+    expect(result).toMatchObject({
+      date: DATE,
+      generated: true,
+      written: false,
+      bullets_en: GOOD.bullets_en,
+      bullets_vi: GOOD.bullets_vi,
+    });
+    expect(row()).toEqual(before);
+  });
+
+  it.each([
+    { label: "tomorrow", input: { date: "2026-10-10" } },
+    { label: "an impossible day", input: { date: "2026-02-30" } },
+    { label: "a non-ISO date", input: { date: "10/09/2026" } },
+    { label: "15 days back", input: { date: "2026-09-24" } },
+    { label: "a non-boolean dryRun", input: { date: DATE, dryRun: "yes" } },
+  ])("rejects $label without calling the model", async ({ input }) => {
+    seedRow(GOOD, 0);
+    const before = row();
+    tldrResult.next = FAILED;
+
+    const result = await regenerateTldr(env, input);
+
+    expect(result).toMatchObject({ status: 400 });
+    expect(generateTldr).not.toHaveBeenCalled();
+    expect(row()).toEqual(before);
   });
 });

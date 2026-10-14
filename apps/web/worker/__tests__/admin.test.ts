@@ -1021,7 +1021,7 @@ describe("regenerateTldr", () => {
     vi.restoreAllMocks();
   });
 
-  it("deletes today's snapshot then regenerates it", async () => {
+  it("rewrites today's snapshot in place", async () => {
     const env = makeEnv();
     const db = env.DB as unknown as FakeD1;
     const today = tldrSnapshotDate();
@@ -1047,7 +1047,7 @@ describe("regenerateTldr", () => {
     });
 
     const result = await regenerateTldr(env);
-    expect(result.generated).toBe(true);
+    expect(result).toMatchObject({ generated: true, written: true });
     expect(db.tldrSnapshots.has(today)).toBe(true);
     expect(
       JSON.parse(db.tldrSnapshots.get(today)?.bullets_en as string)
