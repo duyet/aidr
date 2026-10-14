@@ -18,6 +18,11 @@ vi.mock("../llm.js", async (original) => ({
 const { generateTldr } = await import("../llm.js");
 const { ensureDailyTldr, TLDR_REFRESH_MS } = await import("../tldr.js");
 const { getFeed } = await import("../../src/lib/feed-queries.js");
+const { generateTldr: tldrStep } = await import("../ingest/publish.js");
+const { stepState } = await import("../../src/components/system/run-format.js");
+
+import type { WorkflowStep } from "cloudflare:workers";
+import type { IngestContext } from "../ingest/context.js";
 
 import type { Env } from "../types.js";
 
@@ -173,6 +178,27 @@ describe("TL;DR refresh that degrades to headlines", () => {
     expect(stats.generated).toBe(false);
     expect(stats.reason).toMatch(/^kept model digest/);
     expect(stats.reason).toContain(CHAIN_DOWN);
+  });
+
+  it("shows a kept digest as degraded in the run log", async () => {
+    tldrResult.next = GOOD;
+    await ensureDailyTldr(env);
+    at(FIRST_WRITE.getTime() + TLDR_REFRESH_MS + 60_000);
+    tldrResult.next = FAILED;
+    const ctx: IngestContext = {
+      step: {
+        do: async (_name: string, a: unknown, b?: unknown) =>
+          (typeof a === "function" ? a : (b as () => unknown))(),
+      } as unknown as WorkflowStep,
+      env,
+      runId: "run-1",
+      steps: [],
+      mode: { dryRun: false, steps: ["tldr"] },
+    };
+
+    await tldrStep(ctx);
+
+    expect(ctx.steps.map(stepState)).toEqual(["degraded"]);
   });
 
   it("waits the refresh interval before retrying a kept digest", async () => {
