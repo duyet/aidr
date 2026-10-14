@@ -280,6 +280,8 @@ export type PairOutcome =
          * after that apply re-points this one to it. */
         | "twin-restores-first";
       detail: string;
+      /** For `needs-decision`: the rows a `sameAs` can name, in full. */
+      candidates?: StoryRef[];
     };
 
 /** Pair actions that write. */
@@ -744,10 +746,19 @@ const storyRef = (row: UnmergeItemRow): StoryRef => ({
 
 const short = (id: string) => id.slice(0, 8);
 
+const uniqueRefs = (matches: readonly { ref: StoryRef }[]): StoryRef[] => [
+  ...new Map(matches.map((m) => [m.ref.id, m.ref])).values(),
+];
+
 type GroupRoute =
   | { kind: "restore" }
   | { kind: "repoint"; twin: UnmergeItemRow; rule: TwinRule | "same-as" }
-  | { kind: "skip"; reason: SkipReason; detail: string };
+  | {
+      kind: "skip";
+      reason: SkipReason;
+      detail: string;
+      candidates?: StoryRef[];
+    };
 
 /** Whether a group publishes, joins its live twin, or waits: identity with a
  * published row re-points it, likely the same event holds it for a human,
@@ -771,6 +782,7 @@ function routeGroup(
         kind: "skip",
         reason: "needs-decision",
         detail: `the same story as several live rows (${sameIds.map(short).join(", ")}); set sameAs`,
+        candidates: uniqueRefs(same),
       };
     }
     if (same.length > 0) {
@@ -809,6 +821,7 @@ function routeGroup(
             (m) => `${short(m.ref.id)} [${m.ref.source_id}] "${m.ref.title}"`
           )
           .join("; ")}; set sameAs or distinct on the pair`,
+        candidates: uniqueRefs(likely),
       };
     }
   }
@@ -971,6 +984,7 @@ function planCanonical(
           action: "skip",
           reason: route.reason,
           detail: route.detail,
+          ...(route.candidates ? { candidates: route.candidates } : {}),
         });
       }
       groups.delete(group);
@@ -1379,8 +1393,15 @@ function planRestoredGroup(
   const leadSources = (write.writeSources ? (write.item.sources ?? []) : [])
     .slice(0, MAX_SOURCES_PER_ITEM)
     .map(toStoredSource);
-  if (leadSources.length > 0) {
-    plan.sources.push({ itemId: lead.id, before: [], after: leadSources });
+  // A merged row has no `item_sources` rows of its own (the merge wrote its
+  // sources onto the canonical); whatever it holds is still the before.
+  const leadBefore = [...(ctx.snapshot.sources.get(lead.id) ?? [])];
+  if (leadSources.length > 0 && !sameSources(leadBefore, leadSources)) {
+    plan.sources.push({
+      itemId: lead.id,
+      before: leadBefore,
+      after: leadSources,
+    });
   }
   if (write.translation && lead.has_vi === 0) {
     plan.translations.push({

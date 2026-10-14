@@ -11,7 +11,11 @@
  * pass's near-duplicate rule, which is similarity, not identity, so the
  * unmerge holds the row for a human decision.
  */
-import { isTitleNearDuplicate, normalizeTitleForDedupe } from "../dedupe.js";
+import {
+  isTitleNearDuplicate,
+  normalizeTitleForDedupe,
+  significantTitleTokens,
+} from "../dedupe.js";
 import { MERGE_LOOKBACK_SEC } from "../ingest/context.js";
 import { canonicalizeMediaUrl } from "../media.js";
 
@@ -55,7 +59,32 @@ function articleId(url: string): string | null {
   return null;
 }
 
-const urlKey = (url: string) => canonicalizeMediaUrl(url) ?? url;
+/** A ref's identity keys, computed once: a plan compares each paired row
+ * with about 2,000 published rows. */
+interface StoryKeys {
+  url: string;
+  slug: string | null;
+  article: string | null;
+  title: string;
+  tokens: Set<string>;
+}
+
+const keyCache = new WeakMap<StoryRef, StoryKeys>();
+
+function keysOf(ref: StoryRef): StoryKeys {
+  let keys = keyCache.get(ref);
+  if (!keys) {
+    keys = {
+      url: canonicalizeMediaUrl(ref.url) ?? ref.url,
+      slug: aggregatorSlugHash(ref.url),
+      article: articleId(ref.url),
+      title: normalizeTitleForDedupe(ref.title),
+      tokens: significantTitleTokens(ref.title),
+    };
+    keyCache.set(ref, keys);
+  }
+  return keys;
+}
 
 const withinLookback = (a: StoryRef, b: StoryRef) =>
   Math.abs(a.published_at - b.published_at) <= MERGE_LOOKBACK_SEC;
@@ -64,17 +93,14 @@ const withinLookback = (a: StoryRef, b: StoryRef) =>
  * sources: one feed reuses a title for a new post ("AINews: not much
  * happened today"). */
 export function sameStoryRule(a: StoryRef, b: StoryRef): TwinRule | null {
-  if (urlKey(a.url) === urlKey(b.url)) return "url";
-  const slug = aggregatorSlugHash(a.url);
-  if (slug !== null && slug === aggregatorSlugHash(b.url)) {
-    return "aggregator-slug";
-  }
-  const article = articleId(a.url);
-  if (article !== null && article === articleId(b.url)) return "article-id";
-  const title = normalizeTitleForDedupe(a.title);
+  const ka = keysOf(a);
+  const kb = keysOf(b);
+  if (ka.url === kb.url) return "url";
+  if (ka.slug !== null && ka.slug === kb.slug) return "aggregator-slug";
+  if (ka.article !== null && ka.article === kb.article) return "article-id";
   if (
-    title !== "" &&
-    title === normalizeTitleForDedupe(b.title) &&
+    ka.title !== "" &&
+    ka.title === kb.title &&
     a.source_id !== b.source_id &&
     withinLookback(a, b)
   ) {
@@ -88,7 +114,15 @@ export function sameStoryRule(a: StoryRef, b: StoryRef): TwinRule | null {
  * flagged 30 of the #728 pairs, mostly unrelated stories that share "AI",
  * "data center" or Vietnamese syllables. */
 export function isLikelySameEvent(a: StoryRef, b: StoryRef): boolean {
-  return withinLookback(a, b) && isTitleNearDuplicate(a.title, b.title);
+  if (!withinLookback(a, b)) return false;
+  const ka = keysOf(a);
+  const kb = keysOf(b);
+  if (ka.title !== "" && ka.title === kb.title) return true;
+  // `isTitleNearDuplicate` needs two shared significant tokens beyond an
+  // exact match; most pairs share fewer, so skip its re-tokenizing.
+  let shared = 0;
+  for (const token of ka.tokens) if (kb.tokens.has(token)) shared++;
+  return shared >= 2 && isTitleNearDuplicate(a.title, b.title);
 }
 
 export interface TwinMatch {

@@ -354,7 +354,7 @@ async function unmerge(args: Args, file: string | undefined): Promise<void> {
     });
     print(
       result,
-      `unmerge: applied ${result.applied?.canonicals ?? 0} canonical(s) as batch ${result.applied?.batchId} (undo: --undo ${result.applied?.batchId}), ${JSON.stringify(result.counts.pairs)}${result.applied?.remaining ? `; ${result.applied.remaining} canonical(s) over the statement budget, rerun --apply` : ""}${result.applied?.stale.length ? `; ${result.applied.stale.length} canonical(s) changed since planning and were not written, rerun --apply` : ""}`
+      `unmerge: applied ${result.applied?.canonicals ?? 0} canonical(s) as batch ${result.applied?.batchId} (undo: --undo ${result.applied?.batchId}), ${JSON.stringify(result.counts.pairs)}${result.applied?.remaining ? `; ${result.applied.remaining} canonical(s) over the statement budget, rerun --apply` : ""}${result.applied?.stale.length ? `; ${result.applied.stale.length} canonical(s) changed since planning and were not written, rerun --apply` : ""}${result.applied?.failed ? `; stopped at ${result.applied.failed.canonicalId}: ${result.applied.failed.error}` : ""}`
     );
     return;
   }
@@ -384,7 +384,7 @@ async function undoUnmergeBatch(args: Args): Promise<void> {
     });
     print(
       result,
-      `unmerge undo of ${batchId}: wrote ${result.applied?.canonicals ?? 0} canonical(s), ${result.applied?.stale.length ?? 0} changed since planning`
+      `unmerge undo of ${batchId}: wrote ${result.applied?.canonicals ?? 0} canonical(s), ${result.applied?.stale.length ?? 0} changed since planning${result.applied?.failed ? `; stopped at ${result.applied.failed.canonicalId}: ${result.applied.failed.error}` : ""}`
     );
     return;
   }

@@ -77,7 +77,9 @@ export async function loadUnmergeSnapshot(
         has_vi: Number(item.has_vi ?? 0),
       });
     }
-    for (const row of await select(unmergeSourcesSql(canonicalIds))) {
+    for (const row of await select(
+      unmergeSourcesSql([...canonicalIds, ...pairedIds])
+    )) {
       const itemId = String(row.item_id);
       const list = sources.get(itemId) ?? [];
       list.push({

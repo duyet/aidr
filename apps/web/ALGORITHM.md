@@ -288,7 +288,13 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   target still holds what the apply wrote (`undo`); one already back is a
   `noop`, and anything else is a `conflict` that writes nothing. Undo does
   not touch what later jobs wrote, such as `backfill-translate` and
-  `backfill-en-summary` rows for the restored items.
+  `backfill-en-summary` rows for the restored items. Each apply request is
+  its own batch, and a later batch can write rows an earlier one wrote (a
+  rerun re-points into a lead the first batch restored), so undo the newest
+  batch first. A batch that fails for a reason other than a guard stops the
+  request; the response still carries `batchId` and names the canonical in
+  `failed`. If a response is lost, the batch ids are
+  `SELECT DISTINCT ts FROM admin_audit WHERE action LIKE 'unmerge.%' ORDER BY ts DESC`.
 
 ## Day archive (`/date/YYYY-MM-DD`)
 

@@ -547,6 +547,27 @@ describe("unmerge", () => {
     expect(result).toMatchObject({ canonicals: 0, stale: [C] });
   });
 
+  it("stops at a batch that fails for another reason and still returns the batch id", async () => {
+    const plan = planUnmerge(
+      parsePairs(pairs),
+      await loadUnmergeSnapshot(d1Select(env.DB), parsePairs(pairs)),
+      NOW.getTime()
+    );
+    const before = dump(db);
+    const failing = {
+      prepare: (sql: string) => env.DB.prepare(sql),
+      batch: async () => {
+        throw new Error("D1_ERROR: Network connection lost.");
+      },
+    } as unknown as D1Database;
+    expect(await applyUnmerge(failing, plan)).toMatchObject({
+      batchId: NOW.getTime(),
+      canonicals: 0,
+      failed: { canonicalId: C, error: expect.stringContaining("Network") },
+    });
+    expect(dump(db)).toEqual(before);
+  });
+
   it("records every write in admin_audit: the lead's new sources and its VI translation too", async () => {
     await writeVietnameseLoser();
     const result = await unmergeItems(env, {

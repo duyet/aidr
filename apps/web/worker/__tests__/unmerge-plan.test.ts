@@ -653,9 +653,11 @@ describe("planUnmerge: a restored story already live as another row", () => {
 
   it("holds a likely same event with a different URL for a human decision", () => {
     const result = plan([canonical, moonshot, decoder], [pair(moonshot)]);
+    // The full id, so the owner can paste it into `sameAs`.
     expect(result.canonicals[0].pairs[0].outcome).toMatchObject({
       action: "skip",
       reason: "needs-decision",
+      candidates: [storyRef(decoder)],
     });
     expect(result.canonicals[0].rows).toEqual([]);
   });

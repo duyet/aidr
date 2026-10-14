@@ -219,12 +219,17 @@ export interface BatchResult {
   /** Canonicals whose rows changed after the plan read them: a guard failed
    * and the batch wrote nothing. A rerun re-plans them from fresh rows. */
   stale: ItemId[];
+  /** Set when a batch failed for another reason. That canonical wrote
+   * nothing and the request stopped there; earlier ones committed under
+   * `batchId`. */
+  failed?: { canonicalId: ItemId; error: string };
 }
 
 const GUARD_FAILED = "NOT NULL constraint failed: admin_audit.action";
 
 /** One atomic batch per change set, so a failure leaves that canonical as it
- * was and a rerun picks it up again. */
+ * was and a rerun picks it up again. Never throws after a batch committed,
+ * so the response always carries the batch id undo needs. */
 export async function applyChangeSets(
   db: D1Database,
   batches: readonly {
@@ -250,9 +255,12 @@ export async function applyChangeSets(
     try {
       await db.batch(statements);
     } catch (error) {
-      if (!String(error).includes(GUARD_FAILED)) throw error;
-      result.stale.push(canonicalId);
-      continue;
+      if (String(error).includes(GUARD_FAILED)) {
+        result.stale.push(canonicalId);
+        continue;
+      }
+      result.failed = { canonicalId, error: String(error) };
+      return result;
     }
     result.canonicals++;
     result.statements += statements.length;
