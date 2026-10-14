@@ -1837,8 +1837,8 @@ a plain word or lone number shown as `*`). A text body keeps its first 60
 characters only when they are plain words (nginx's `502 Bad Gateway`);
 otherwise the row says `non-json error body (N bytes)`. A rejected answer
 keeps only its shape: length, first-character class, whether
-`parseJson` reads it (or the error position), up to ten top-level keys,
-whether it is fenced, and whether it used every allowed token. Transport
+`parseJson` reads it (or the error position), up to ten top-level keys
+(a key no aidr prompt asks for is stored as `*`), whether it is fenced, and whether it used every allowed token. Transport
 failures and timeouts keep none; `error_code` covers them. Ok rows,
 `review` rows and `sensitive` calls keep none, and the logger drops any
 snippet that is not a descriptor (`canonicalLlmSnippet`). Every call

@@ -404,23 +404,62 @@ describe("model output snippets store a shape, never content", () => {
   });
 
   it("prose wrapped around JSON parses the way callers parse it", () => {
-    expect(JSON.parse(outputOf('Sure! {"a":1,"b":[2]}')!)).toMatchObject({
+    expect(JSON.parse(outputOf('Sure! {"results":1,"b":[2]}')!)).toMatchObject({
       startsWith: "letter",
       jsonParse: "ok",
-      topKeys: ["a", "b"],
+      topKeys: ["results", "*"],
     });
   });
 
-  it("keeps the first ten keys and hides keys that are not identifiers", () => {
+  it("keeps the first ten keys", () => {
     const keys = Object.fromEntries(
-      Array.from({ length: 12 }, (_, i) => [`k${i}`, i])
+      Array.from({ length: 11 }, (_, i) => [`k${i}`, i])
     );
     const out = JSON.parse(
-      outputOf(JSON.stringify({ "Dear jane@x.io": 1, ...keys }))!
+      outputOf(JSON.stringify({ "Dear jane@x.io": 1, results: [], ...keys }))!
     );
-    expect(out.topKeys).toHaveLength(10);
-    expect(out.topKeys[0]).toBe("[redacted]");
-    expect(out.topKeys[1]).toBe("k0");
+    expect(out.topKeys).toEqual(["*", "results", ...Array(8).fill("*")]);
+  });
+
+  it("hides model-chosen key names that no aidr prompt asks for", () => {
+    const secretKey = ["sk", "live", fakeBody(20)].join("_");
+    const content = JSON.stringify({
+      [secretKey]: 1,
+      JohnSmith: 2,
+      john_doe_at_example: 3,
+    });
+    const built = outputOf(content) ?? "";
+    const forged = canonicalLlmSnippet({
+      kind: "model_output",
+      topKeys: [secretKey, "JohnSmith", "john_doe_at_example"],
+    });
+    for (const out of [built, forged ?? ""]) {
+      for (const leak of [secretKey, "JohnSmith", "john_doe"]) {
+        expect(out).not.toContain(leak);
+      }
+      expect(JSON.parse(out).topKeys).toEqual(["*", "*", "*"]);
+    }
+  });
+
+  it.each([
+    ["score", { results: [] }],
+    ["TL;DR", { bullets_en: [], bullets_vi: [] }],
+    ["weekly", { intro_en: "", intro_vi: "", stories: [] }],
+    ["mail wrap", { subject: "", preheader: "", body_md: "", cta_url: "" }],
+    [
+      "translation review",
+      {
+        schema_version: 3,
+        direction: "en_vi",
+        verdict: "accept",
+        checks: {},
+        back_translation: "",
+      },
+    ],
+  ])("keeps the keys of a %s answer", (_, answer) => {
+    const out = JSON.parse(outputOf(`${JSON.stringify(answer)} trailing`)!);
+    expect(out.jsonParse).toBe("ok");
+    expect(out.topKeys).toEqual(Object.keys(answer));
   });
 
   it("never stores a word of the output", () => {

@@ -345,7 +345,8 @@ export function sanitizeRunError(value: unknown): string | null {
 const MESSAGE_MAX = 120;
 const TEXT_MAX = 60;
 const TOP_KEYS_MAX = 10;
-const HIDDEN = "[redacted]";
+/** Stands in for a top-level key no aidr prompt asks for. */
+const UNKNOWN_KEY = "*";
 
 /** `Bad`, `API`, `OpenRouter`, `rate-limit`, `max_tokens`, with light
  *  punctuation. Mixed-case runs, digits inside words and long tokens are
@@ -479,7 +480,69 @@ const STARTS_WITH = new Set([
   "empty",
 ]);
 const JSON_PARSE = /^(?:ok|not-json|error|error at pos \d{1,9})$/;
-const KEY_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,31}$/;
+/** Root keys of the JSON answers the prompts and validators in `worker/`
+ *  ask for. Any other key name is the model's own text. */
+const SCHEMA_KEYS: ReadonlySet<string> = new Set([
+  // score, translate, English summary
+  "results",
+  "translations",
+  "summaries",
+  "items",
+  // TL;DR and its repair
+  "bullets",
+  "bullets_en",
+  "bullets_vi",
+  "en",
+  "vi",
+  // weekly edition
+  "intro_en",
+  "intro_vi",
+  "stories",
+  // cluster, topics
+  "clusters",
+  "mappings",
+  // submission and suggestion review
+  "relevance",
+  "note",
+  "valid",
+  "rating",
+  "edits",
+  "translation",
+  // translation knowledge
+  "reusable",
+  "kind",
+  "source_term",
+  "vi_term",
+  "bad_vi",
+  // Jev panel
+  "vote",
+  "confidence",
+  "score",
+  "category",
+  "claims",
+  "rationale",
+  // translation review and repair
+  "schema_version",
+  "direction",
+  "verdict",
+  "fidelity",
+  "naturalness",
+  "checks",
+  "reason",
+  "back_translation",
+  "title",
+  "summary",
+  // mail wrap
+  "subject",
+  "preheader",
+  "body_md",
+  "cta_label",
+  "cta_url",
+]);
+
+function schemaKey(key: unknown): string {
+  return typeof key === "string" && SCHEMA_KEYS.has(key) ? key : UNKNOWN_KEY;
+}
 
 function canonicalModelOutput(raw: Record<string, unknown>) {
   const len =
@@ -487,11 +550,7 @@ function canonicalModelOutput(raw: Record<string, unknown>) {
       ? raw.len
       : undefined;
   const topKeys = Array.isArray(raw.topKeys)
-    ? raw.topKeys
-        .slice(0, TOP_KEYS_MAX)
-        .map((key) =>
-          typeof key === "string" && KEY_NAME.test(key) ? key : HIDDEN
-        )
+    ? raw.topKeys.slice(0, TOP_KEYS_MAX).map(schemaKey)
     : undefined;
   const pick = <T>(value: T, ok: boolean) => (ok ? value : undefined);
   return {
@@ -591,7 +650,9 @@ export function modelOutputSnippet(
     try {
       const parsed = opts.parse(content);
       jsonParse = "ok";
-      if (isRecord(parsed)) topKeys = Object.keys(parsed);
+      if (isRecord(parsed)) {
+        topKeys = Object.keys(parsed).slice(0, TOP_KEYS_MAX).map(schemaKey);
+      }
     } catch (error) {
       const at = /at position (\d+)/.exec(
         error instanceof Error ? error.message : ""
