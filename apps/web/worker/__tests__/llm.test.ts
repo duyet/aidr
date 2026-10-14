@@ -3264,6 +3264,55 @@ describe("translateItems draft repair", () => {
     expect(out.model).toBe("repair/model");
   });
 
+  describe("an English echo of the source", () => {
+    // Prod 2026-10-14, item 8eb3e0ba: Laguna's draft was the source as is.
+    const banks = {
+      i: 0,
+      title:
+        "Banks are now trying to offload the AI data center debt they just underwrote",
+      summary:
+        "Banks including JPMorgan and MUFG are shopping AI data center debt tied to Oracle as credit default swaps spike and bond order books thin out.",
+    };
+    const viRow = {
+      title:
+        "Các ngân hàng đang tìm cách bán bớt khoản nợ trung tâm dữ liệu AI mà chính họ vừa bảo lãnh",
+      summary:
+        "Các ngân hàng, trong đó có JPMorgan và MUFG, đang chào bán khoản nợ trung tâm dữ liệu AI gắn với Oracle khi phí hoán đổi rủi ro tín dụng tăng vọt và sổ lệnh trái phiếu mỏng dần.",
+    };
+    const reply = (row: { title: string; summary: string }) =>
+      chatResponse(JSON.stringify({ results: [{ i: 0, ...row }] }));
+
+    it("gets a repair call and stores the Vietnamese repair", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(reply(banks))
+        .mockResolvedValueOnce(reply(viRow));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const [out] = await translateItems(withRules, [banks]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const repairPrompt = JSON.parse(fetchMock.mock.calls[1][1].body)
+        .messages[1].content as string;
+      expect(repairPrompt).toContain("still the English source");
+      expect(out).toMatchObject(viRow);
+    });
+
+    // Pinned on purpose: a second echo is no better, so the draft stands
+    // and the row is written in English. Repairing it later is an operator
+    // step (see #777).
+    it("keeps the draft when the repair echoes again", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(reply(banks))
+        .mockResolvedValueOnce(reply(banks));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const [out] = await translateItems(withRules, [banks]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(out).toMatchObject({ title: banks.title, summary: banks.summary });
+    });
+  });
+
   it("makes no repair call for a clean draft", async () => {
     const fetchMock = vi
       .fn()

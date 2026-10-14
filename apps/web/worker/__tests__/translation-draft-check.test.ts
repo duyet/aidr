@@ -366,3 +366,121 @@ describe("new keep-English terms", () => {
     );
   });
 });
+
+describe("translationDraftIssues English echo", () => {
+  // Prod 2026-10-14, item 8eb3e0ba (#2 of the 2026-10-15 edition): Laguna
+  // returned the English title and summary as the Vietnamese row.
+  const BANKS = {
+    title:
+      "Banks are now trying to offload the AI data center debt they just underwrote",
+    summary:
+      "Banks including JPMorgan and MUFG are shopping AI data center debt tied to Oracle as credit default swaps spike and bond order books thin out.",
+  };
+
+  it("flags a draft that is the English source unchanged, title included", () => {
+    expect(translationDraftIssues(BANKS, BANKS, [], false)).toEqual([
+      "the title and summary are still the English source; translate both into Vietnamese",
+    ]);
+  });
+
+  // Prod 2026-10-11, item 1af7ebf2: only "for" became "cho".
+  it("flags an English summary under a Vietnamese title", () => {
+    const issues = translationDraftIssues(
+      {
+        title: "JulianFlux: Electrodynamic vector retrieval for AI",
+        summary:
+          "Electrodynamic field retrieval and causal routing for AI agents. - julianjohnson-web/julianflux-research",
+      },
+      {
+        title: "JulianFlux: truy xuất vector điện động lực học cho AI",
+        summary:
+          "Electrodynamic field retrieval and causal routing cho AI agent. - julianjohnson-web/julianflux-research",
+      },
+      [],
+      false
+    );
+    expect(issues).toEqual([
+      "the summary is still English; translate it into Vietnamese",
+    ]);
+  });
+
+  it("passes the Vietnamese translation of the same story", () => {
+    const issues = translationDraftIssues(
+      BANKS,
+      {
+        title:
+          "Các ngân hàng đang tìm cách bán bớt khoản nợ trung tâm dữ liệu AI mà chính họ vừa bảo lãnh",
+        summary:
+          "Các ngân hàng, trong đó có JPMorgan và MUFG, đang chào bán khoản nợ trung tâm dữ liệu AI gắn với Oracle khi phí hoán đổi rủi ro tín dụng tăng vọt và sổ lệnh trái phiếu mỏng dần.",
+      },
+      [],
+      false
+    );
+    expect(issues).toEqual([]);
+  });
+
+  // Prod rows the owner triaged as fine: a paper or package name kept as
+  // the title over a Vietnamese summary, and a feed "summary" that is only
+  // a name. Neither may cost a repair call.
+  it("passes a kept paper or package title over a Vietnamese summary", () => {
+    const dosa = translationDraftIssues(
+      {
+        title: "DoSA: Dots Sparse Attention",
+        summary:
+          "Sparse attention visits few keys, yet finding them can still require scoring every key with every indexer head.",
+      },
+      {
+        title: "DoSA: Dots Sparse Attention",
+        summary:
+          "Sparse Attention chỉ truy cập vào ít key, nhưng việc tìm kiếm chúng vẫn có thể yêu cầu tính điểm mọi key với mọi indexer head.",
+      },
+      [],
+      false
+    );
+    expect(dosa).toEqual([]);
+
+    const phyProbe = translationDraftIssues(
+      {
+        title:
+          "PhyProbe: Rethinking Physical Consistency Evaluation in Generated Videos",
+        summary:
+          "Evaluating the physical consistency of generated videos remains a fundamental challenge.",
+      },
+      {
+        title:
+          "PhyProbe: Rethinking Physical Consistency Evaluation in Generated Videos",
+        summary:
+          "Đánh giá tính nhất quán vật lý của video được tạo ra vẫn là một thách thức cơ bản.",
+      },
+      [],
+      false
+    );
+    expect(phyProbe).toEqual([]);
+
+    const release = translationDraftIssues(
+      { title: "llm-gemini 0.35", summary: "" },
+      { title: "llm-gemini 0.35", summary: "" },
+      [],
+      true
+    );
+    expect(release).toEqual([]);
+  });
+
+  it("passes a name-only summary kept as written", () => {
+    const issues = translationDraftIssues(
+      {
+        title:
+          "Putting Earth AI to work: Geospatial agents for our planet's biggest challenges",
+        summary: "Earth AI",
+      },
+      {
+        title:
+          "Đưa Earth AI vào thực tiễn: Các agent địa phương cho những thách thức lớn nhất của hành tinh",
+        summary: "Earth AI",
+      },
+      [],
+      false
+    );
+    expect(issues).toEqual([]);
+  });
+});
