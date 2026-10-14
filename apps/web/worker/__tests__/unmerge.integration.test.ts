@@ -216,7 +216,7 @@ const TAGS = new Map([
   [CROC_TWIN, ["safety", "crime"]],
   [WRONG, ["crime", "openai"]],
   [LIVE, ["anthropic", "policy"]],
-  [HIDDEN, ["anthropic", "security"]],
+  [HIDDEN, ["anthropic", "policy"]],
 ]);
 
 function australiaCopies(publishedAt: number) {
@@ -667,6 +667,22 @@ describe("unmerge", () => {
       tags: JSON.stringify(["anthropic", "llm", "nvidia", "funding"]),
     });
     oracle.close();
+  });
+
+  it("writes nothing when the live copy was taken down after the plan was read", async () => {
+    const { hidden, live } = australiaCopies(OLD + 7000);
+    await writeCluster(db, [hidden], { id: C, row: canonical }, OLD + 9600);
+    await writeCanonical(db, live, OLD + 9700);
+    const repoint = parsePairs([{ canonicalId: C, mergedId: HIDDEN }]);
+    const plan = planUnmerge(
+      repoint,
+      await loadUnmergeSnapshot(d1Select(env.DB), repoint),
+      NOW.getTime()
+    );
+    db.prepare("UPDATE items SET status = 'rejected' WHERE id = ?").run(LIVE);
+    const before = dump(db);
+    expect(await applyUnmerge(env.DB, plan)).toMatchObject({ stale: [C] });
+    expect(dump(db)).toEqual(before);
   });
 
   it("undo reverses a merge into a live copy too", async () => {

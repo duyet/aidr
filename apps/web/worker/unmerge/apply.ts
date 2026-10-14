@@ -162,13 +162,15 @@ export function changeSetStatements(
   prefix: AuditPrefix,
   summary: Record<string, unknown>
 ): D1PreparedStatement[] {
-  const rows = set.rows.filter((row) => row.changes.length > 0);
-  if (rows.length + set.sources.length + set.translations.length === 0) {
+  const changed = set.rows.filter((row) => row.changes.length > 0);
+  if (changed.length + set.sources.length + set.translations.length === 0) {
     return [];
   }
   const base = { batchId: ts, canonicalId: set.canonicalId };
+  // Every planned row is guarded, written or not: a live twin that gains
+  // only merged rows must still be the published row the plan read.
   return [
-    ...rows.map((target) =>
+    ...set.rows.map((target) =>
       guardedAudit(
         db,
         ts,
@@ -195,7 +197,7 @@ export function changeSetStatements(
         translationGuard(target)
       )
     ),
-    ...rows.map((row) => rowUpdate(db, row)),
+    ...changed.map((row) => rowUpdate(db, row)),
     ...set.sources.flatMap((target) => sourcesWrite(db, target)),
     ...set.translations.map((target) => translationWrite(db, target)),
     db
