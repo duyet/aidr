@@ -2681,12 +2681,11 @@ describe("404 circuit breaker", () => {
       vi.stubGlobal("fetch", fetchMock);
       const afterWave = await burst(fetchMock);
       vi.spyOn(Date, "now").mockReturnValue(Date.now() + 2 * 60_000 + 1);
-      fetchMock.mockImplementation(async () => ok());
-      await translate();
+      await expect(translate()).rejects.toThrow(/chain exhausted/);
 
-      expect(requested(fetchMock).slice(afterWave)).toEqual([
-        "google/gemini-3-flash",
-      ]);
+      expect(requested(fetchMock).slice(afterWave).sort()).toEqual(
+        chain.split(",").sort()
+      );
     });
   });
 

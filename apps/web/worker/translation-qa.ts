@@ -1098,6 +1098,8 @@ function safeError(error: unknown): string {
   const status = message.match(/anyrouter request failed:\s*(\d{3})/i)?.[1];
   if (status) return `anyrouter request failed: ${status}`;
   if (/timed out after \d+ms/i.test(message)) return "provider timeout";
+  if (/chain exhausted.*rate limit cooldown/i.test(message))
+    return "provider rate limited (cooldown)";
   if (/chain exhausted/i.test(message)) return "provider chain exhausted";
   return "review provider failed";
 }

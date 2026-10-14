@@ -4,6 +4,7 @@ import { ModelLogo } from "./ModelLogo";
 import { RunAttemptRows } from "./RunAttemptRows";
 import { RunStepList } from "./RunStepList";
 import {
+  COOLED_CHAIN,
   formatSafeDetail,
   groupFailedAttempts,
   type StepState,
@@ -56,6 +57,10 @@ const STEP_HINTS: { match: RegExp; hint: string }[] = [
   {
     match: /^\w[\w-]* step failed$/,
     hint: "The workflow engine failed this step, not the step's own code: usually a deploy restarted the run mid-step. TL;DR now retries once.",
+  },
+  {
+    match: COOLED_CHAIN,
+    hint: "Every model in the fallback chain was in its rate-limit cooldown, so no call was made; the step kept a fallback result.",
   },
   {
     match: /chain exhausted/i,

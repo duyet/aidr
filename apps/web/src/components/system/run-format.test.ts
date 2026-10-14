@@ -429,6 +429,22 @@ describe("stepFallbackNotes (#189)", () => {
     expect(notes[0]?.detail).toContain("anyrouter chain exhausted");
   });
 
+  it("labels a chain skipped by its 429 cooldown as no call made", () => {
+    const [note] = stepFallbackNotes([
+      {
+        name: "tldr",
+        action: "skipped",
+        reason:
+          "anyrouter chain exhausted: openai/gpt-4o: rate limit cooldown | google/gemini: rate limit cooldown",
+      },
+    ]);
+
+    expect(note?.kind).toBe("chain_cooldown");
+    expect(runFallbackKindLabel(note!.kind, "en")).toBe(
+      "Rate-limit cooldown, no call made"
+    );
+  });
+
   it("classifies a provider status inside a step reason", () => {
     const [note] = stepFallbackNotes([
       {
