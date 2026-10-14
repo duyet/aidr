@@ -121,7 +121,6 @@ describe("whole-chain task failure alert through the health check", () => {
       all: async () => ({
         results: /GROUP BY task\b/.test(q) ? taskRows : [],
       }),
-      first: async () => ({ total: 31, failed: 8, rate_limited: 0 }),
     });
     const env = {
       DB: {
@@ -155,7 +154,8 @@ describe("whole-chain task failure alert through the health check", () => {
   it("stays quiet when every task has a success", async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     const { env, dms } = setup([
-      { task: "review", total: 8, ok: 1, rate_limited: 0, models: "x/a" },
+      { task: "score", total: 23, ok: 23, rate_limited: 0, models: "x/a" },
+      { task: "review", total: 8, ok: 1, rate_limited: 0, models: "x/b" },
     ]);
     const fired = await runHealthCheck(env, { runId: "r1", steps: [] });
     expect(fired).toEqual([]);

@@ -48,6 +48,12 @@ export const LLM_FAILURE_RATE = 0.5;
 export const LLM_RATE_LIMIT_BURST = 5;
 /** Alert key for a 429 burst. Starts with `llm`, so it routes to the router repo. */
 export const LLM_RATE_LIMITED_KEY = "llm-rate-limited";
+/** Non-429 attempts of one task, all failed, at which its chain is down. */
+export const LLM_TASK_FAILING_MIN_ATTEMPTS = 3;
+/** Per-task key, so each task keeps its own cooldown. Starts with `llm`. */
+export function llmTaskFailingKey(task: string): string {
+  return `llm-task-failing:${task}`;
+}
 /** Below this many attempts the rate is noise. */
 export const LLM_MIN_CALLS = 4;
 /** TL;DR failed this many runs in a row (this run included). */
@@ -78,6 +84,15 @@ export interface PriorRun {
   alerts: string[];
 }
 
+export interface LlmTaskCount {
+  task: string;
+  total: number;
+  ok: number;
+  rateLimited: number;
+  /** Models the task tried this run. */
+  models: string[];
+}
+
 export interface HealthInput {
   nowMs: number;
   /** Local audience hour (0-23). */
@@ -85,7 +100,12 @@ export interface HealthInput {
   steps: RunStepInfo[];
   /** Newest successful post per Telegram channel, epoch ms. */
   telegramLastPostMs: Record<string, number>;
-  llm: { total: number; failed: number; rateLimited: number };
+  llm: {
+    total: number;
+    failed: number;
+    rateLimited: number;
+    tasks: LlmTaskCount[];
+  };
   /** Previous runs, newest first, excluding this one. */
   history: PriorRun[];
 }
@@ -133,6 +153,19 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
       severity: "error",
       title: "LLM quota exhausted (HTTP 429)",
       detail: `${input.llm.rateLimited} LLM calls got HTTP 429 this run; new stories stay unscored and untranslated until the quota window resets`,
+    });
+  }
+
+  for (const t of input.llm.tasks) {
+    // 429s belong to the quota alert above; counting them here would page
+    // once per task for the same spent quota.
+    const attempts = t.total - t.rateLimited;
+    if (t.ok > 0 || attempts < LLM_TASK_FAILING_MIN_ATTEMPTS) continue;
+    issues.push({
+      key: llmTaskFailingKey(t.task),
+      severity: "error",
+      title: `LLM ${t.task} chain down`,
+      detail: `All ${attempts} ${t.task} attempts failed this run (${t.models.join(", ")})`,
     });
   }
 
@@ -250,27 +283,41 @@ async function readTelegramLastPost(env: Env): Promise<Record<string, number>> {
   return last;
 }
 
+/** Per-task counts for this run; the run totals are their sums. */
 async function readLlmCounts(
   env: Env,
   runId: string
-): Promise<{ total: number; failed: number; rateLimited: number }> {
+): Promise<HealthInput["llm"]> {
   await flushLlmCallWrites();
-  const row = await env.DB.prepare(
-    `SELECT COUNT(*) AS total,
-            SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS failed,
-            SUM(CASE WHEN ok = 0 AND error_status = 429 THEN 1 ELSE 0 END) AS rate_limited
-     FROM llm_calls WHERE run_id = ?`
+  const { results } = await env.DB.prepare(
+    `SELECT task, COUNT(*) AS total, SUM(ok) AS ok,
+            SUM(CASE WHEN ok = 0 AND error_status = 429 THEN 1 ELSE 0 END) AS rate_limited,
+            GROUP_CONCAT(DISTINCT model) AS models
+     FROM llm_calls WHERE run_id = ? GROUP BY task`
   )
     .bind(runId)
-    .first<{
-      total: number | null;
-      failed: number | null;
-      rate_limited: number | null;
+    .all<{
+      task: string;
+      total: number;
+      ok: number;
+      rate_limited: number;
+      models: string | null;
     }>();
+  const tasks: LlmTaskCount[] = (results ?? []).map((r) => ({
+    task: r.task,
+    total: r.total,
+    ok: r.ok,
+    rateLimited: r.rate_limited,
+    models: r.models ? r.models.split(",") : [],
+  }));
+  const sum = (pick: (t: LlmTaskCount) => number) =>
+    tasks.reduce((n, t) => n + pick(t), 0);
+  const total = sum((t) => t.total);
   return {
-    total: row?.total ?? 0,
-    failed: row?.failed ?? 0,
-    rateLimited: row?.rate_limited ?? 0,
+    total,
+    failed: total - sum((t) => t.ok),
+    rateLimited: sum((t) => t.rateLimited),
+    tasks,
   };
 }
 

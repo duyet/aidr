@@ -24,7 +24,7 @@ const healthy: HealthInput = {
   localHour: 14,
   steps: [{ name: "tldr", action: "generated" }],
   telegramLastPostMs: { telegram: NOW - HOUR },
-  llm: { total: 60, failed: 0, rateLimited: 0 },
+  llm: { total: 60, failed: 0, rateLimited: 0, tasks: [] },
   history: [],
 };
 
@@ -42,7 +42,7 @@ describe("429 burst alert", () => {
   it("fires even when the failure rate is under the rate alert's bar", () => {
     const issues = evaluateHealth({
       ...healthy,
-      llm: { total: 100, failed: 5, rateLimited: 5 },
+      llm: { total: 100, failed: 5, rateLimited: 5, tasks: [] },
     });
     expect(issues.map((i) => i.key)).toEqual([LLM_RATE_LIMITED_KEY]);
   });
@@ -69,9 +69,15 @@ describe("429 burst alert through the health check", () => {
     );
     const query = (q: string) => ({
       all: async () => ({
-        results: q.includes("FROM workflow_runs") ? history : [],
+        results: q.includes("FROM workflow_runs")
+          ? history
+          : /GROUP BY task\b/.test(q)
+            ? [
+                { task: "score", total: 25, ok: 0, rate_limited: 25 },
+                { task: "translate", total: 15, ok: 0, rate_limited: 13 },
+              ]
+            : [],
       }),
-      first: async () => ({ total: 40, failed: 40, rate_limited: 37 }),
     });
     const env = {
       DB: {

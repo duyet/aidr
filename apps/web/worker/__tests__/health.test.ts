@@ -21,7 +21,7 @@ function input(patch: Partial<HealthInput> = {}): HealthInput {
       { name: "tldr", action: "generated" },
     ],
     telegramLastPostMs: { telegram: NOW - HOUR },
-    llm: { total: 10, failed: 1, rateLimited: 0 },
+    llm: { total: 10, failed: 1, rateLimited: 0, tasks: [] },
     history: [],
     ...patch,
   };
@@ -61,12 +61,16 @@ describe("evaluateHealth", () => {
   });
 
   it("flags only a run where more than half the LLM attempts failed", () => {
-    expect(keys({ llm: { total: 10, failed: 6, rateLimited: 0 } })).toEqual([
-      "llm-failure-rate",
-    ]);
-    expect(keys({ llm: { total: 10, failed: 5, rateLimited: 0 } })).toEqual([]);
+    expect(
+      keys({ llm: { total: 10, failed: 6, rateLimited: 0, tasks: [] } })
+    ).toEqual(["llm-failure-rate"]);
+    expect(
+      keys({ llm: { total: 10, failed: 5, rateLimited: 0, tasks: [] } })
+    ).toEqual([]);
     // Too few calls to judge.
-    expect(keys({ llm: { total: 2, failed: 2, rateLimited: 0 } })).toEqual([]);
+    expect(
+      keys({ llm: { total: 2, failed: 2, rateLimited: 0, tasks: [] } })
+    ).toEqual([]);
   });
 
   it("flags TL;DR only after 3 failed runs in a row", () => {
@@ -95,7 +99,7 @@ describe("evaluateHealth", () => {
 
 describe("applyCooldown", () => {
   const issue = evaluateHealth(
-    input({ llm: { total: 4, failed: 4, rateLimited: 0 } })
+    input({ llm: { total: 4, failed: 4, rateLimited: 0, tasks: [] } })
   );
 
   it("suppresses a key that fired within the cooldown", () => {
