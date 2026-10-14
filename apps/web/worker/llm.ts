@@ -937,7 +937,7 @@ async function callAnyrouter(
   if (models.length === 0)
     throw new Error(
       "anyrouter chain exhausted: " +
-        configured.map((model) => `${model}: 429 cooldown`).join(" | ")
+        configured.map((model) => `${model}: rate limit cooldown`).join(" | ")
     );
 
   // One budget for the whole chain, so a long chain cannot outlive the

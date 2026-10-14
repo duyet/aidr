@@ -2662,8 +2662,10 @@ describe("404 circuit breaker", () => {
       expect(fetchMock.mock.calls.length - afterWave).toBe(0);
       for (const r of later) {
         expect(r.status).toBe("rejected");
-        if (r.status === "rejected")
+        if (r.status === "rejected") {
           expect(String(r.reason)).toMatch(/chain exhausted/);
+          expect(sanitizeError(r.reason)?.code).toBe("rate_limited");
+        }
       }
       // The quota alert reads real 429 rows, and the wave still leaves enough.
       expect(rows.length).toBe(fetchMock.mock.calls.length);
