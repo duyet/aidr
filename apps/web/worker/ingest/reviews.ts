@@ -14,10 +14,12 @@ export interface QaStats {
   adjusted: number;
   tokens: number;
   error?: string;
+  paused?: boolean;
 }
 
 export function qaStepSummary(stats: QaStats): string {
   if (stats.error) return stats.error;
+  if (stats.paused) return "review paused";
   return stats.rated === 0
     ? "0 pending translations"
     : `rated ${stats.rated} translations, adjusted ${stats.adjusted}`;
@@ -33,7 +35,7 @@ export async function qaTranslations(ctx: IngestContext): Promise<QaStats> {
     runId,
     "qa-translations",
     { rated: 0, adjusted: 0, tokens: 0, error: "" } as QaStats,
-    async () => {
+    async (): Promise<QaStats> => {
       try {
         return await ratePendingTranslations(env);
       } catch (error) {

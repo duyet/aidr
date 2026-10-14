@@ -39,7 +39,7 @@ export interface JevPanelWorkflowConfig {
 }
 
 const TRUTHY = new Set(["1", "true", "yes", "on", "enabled"]);
-const FALSY = new Set(["0", "false", "no", "off", "disabled", ""]);
+export const FALSY = new Set(["0", "false", "no", "off", "disabled", ""]);
 
 /** Matches the concrete-model-id rule already used by translation QA. */
 const CONCRETE_MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;

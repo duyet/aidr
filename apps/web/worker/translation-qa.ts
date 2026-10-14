@@ -7,6 +7,7 @@
  */
 import { nn, prepareContentChangeLogs } from "./d1-bind.js";
 import { sha256Hex } from "./hash.js";
+import { FALSY } from "./jev-panel/config.js";
 import { callAnyrouter, VI_STYLE } from "./llm.js";
 import {
   buildGlossaryBlock,
@@ -273,6 +274,14 @@ export function resolveIndependentReviewerChain(
     };
   }
   return { chain, spec: chain.join(","), reason: "" };
+}
+
+/** Unset keeps review on; only an explicit falsy value pauses it. */
+export function translationReviewEnabled(
+  env: Pick<Env, "TRANSLATION_REVIEW_ENABLED">
+): boolean {
+  const flag = (env.TRANSLATION_REVIEW_ENABLED ?? "").trim().toLowerCase();
+  return flag === "" || !FALSY.has(flag);
 }
 
 export function resolveEnglishGeneratorChain(
@@ -1104,6 +1113,8 @@ export interface TranslationQaStats {
   englishCandidates: number;
   stale: number;
   error?: string;
+  /** Review was off (`TRANSLATION_REVIEW_ENABLED`); nothing was reviewed. */
+  paused?: boolean;
 }
 
 const NO_QA_WORK: TranslationQaStats = {
@@ -1157,8 +1168,11 @@ export async function ratePendingTranslations(
   cap = QA_CAP
 ): Promise<TranslationQaStats> {
   await assertTranslationReviewSchema(env.DB);
-  const reviewer = resolveIndependentReviewerChain(env);
-  if (!reviewer.spec) {
+  // Null while paused: the reviewer config is then neither needed nor checked.
+  const reviewer = translationReviewEnabled(env)
+    ? resolveIndependentReviewerChain(env)
+    : null;
+  if (reviewer && !reviewer.spec) {
     console.error(
       JSON.stringify({
         event: "translation_review.skipped",
@@ -1191,6 +1205,17 @@ export async function ratePendingTranslations(
     stats,
     deadline
   );
+  // VI→EN candidates above are generation the English surfaces read, so
+  // they run while review is paused; only review and repair calls stop.
+  if (!reviewer?.spec) {
+    console.log(
+      JSON.stringify({
+        event: "translation_review.paused",
+        englishCandidates: stats.englishCandidates,
+      })
+    );
+    return { ...stats, paused: true };
+  }
 
   const { results } = await env.DB.prepare(
     buildPendingQaQuery(scanCap)
