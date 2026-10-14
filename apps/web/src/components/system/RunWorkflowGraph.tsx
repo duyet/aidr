@@ -50,6 +50,7 @@ const STEP_TASK: Record<string, string> = {
   "review-submissions": "review",
   tldr: "tldr",
   email: "mail",
+  notify: "caption",
 };
 
 /** Plain-words cause for step reasons that only name the symptom. */

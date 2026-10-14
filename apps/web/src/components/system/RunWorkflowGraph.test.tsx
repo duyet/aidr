@@ -86,4 +86,24 @@ describe("RunWorkflowGraph", () => {
     expect(el.textContent).toContain("typesafe/jev");
     expect(el.textContent).not.toContain("x/hang");
   });
+
+  // The Telegram caption summary is the notify step's only LLM call.
+  it("shows caption calls on the notify step", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    root = createRoot(el);
+    act(() =>
+      root?.render(
+        <RunWorkflowGraph
+          steps={[{ name: "notify", action: "sent 3 stories" }]}
+          attempts={[call("caption", "x/caption-model", false)]}
+        />
+      )
+    );
+    const notify = [...el.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("notify")
+    );
+    act(() => notify?.click());
+    expect(el.textContent).toContain("x/caption-model");
+  });
 });
