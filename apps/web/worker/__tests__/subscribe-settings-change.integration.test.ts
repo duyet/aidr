@@ -16,6 +16,7 @@ import {
   confirmSubscription,
   settingsChangeFromParams,
   subscribe,
+  unsubscribe,
 } from "../subscribe/handlers.js";
 import type { Env } from "../types.js";
 
@@ -275,5 +276,89 @@ describe("subscription mails outlive the response (#626)", () => {
     expect(result).toEqual({ ok: true, token: "tok-confirmed" });
     expect(jobs).toHaveLength(2);
     await expect(Promise.all(jobs)).resolves.toBeDefined();
+  });
+});
+
+describe("unsubscribe, then subscribe again (#723)", () => {
+  const ADDRESS = "again@aidr-test.dev";
+  const signUp = async () => {
+    await subscribe(
+      env,
+      ADDRESS,
+      "en",
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      schedule
+    );
+    const { unsubscribe_token: token } = sqlite
+      .prepare("SELECT unsubscribe_token FROM subscribers WHERE email = ?")
+      .get(ADDRESS) as { unsubscribe_token: string };
+    await confirmSubscription(env, token, undefined, schedule);
+    return token;
+  };
+  const row = () =>
+    sqlite
+      .prepare("SELECT confirmed FROM subscribers WHERE email = ?")
+      .get(ADDRESS);
+
+  it("a link from the old subscription cannot remove the new one", async () => {
+    env = { ...env, NEWS_UNSUBSCRIBE_SECRET: "test-secret" };
+    const first = await signUp();
+    await unsubscribe(env, first);
+    expect(row()).toBeUndefined();
+
+    await signUp();
+    await unsubscribe(env, first);
+    expect(row()).toEqual({ confirmed: 1 });
+  });
+});
+
+describe("signing up again while pending (#723)", () => {
+  const ADDRESS = "pending@aidr-test.dev";
+  const signUp = () =>
+    subscribe(
+      env,
+      ADDRESS,
+      "en",
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      schedule
+    );
+  const storedToken = () =>
+    (
+      sqlite
+        .prepare("SELECT unsubscribe_token FROM subscribers WHERE email = ?")
+        .get(ADDRESS) as { unsubscribe_token: string }
+    ).unsubscribe_token;
+  const flushMail = () => new Promise((resolve) => setTimeout(resolve, 10));
+
+  it("keeps the stored token, mails it both times, and it still confirms", async () => {
+    env = { ...env, NEWS_UNSUBSCRIBE_SECRET: "test-secret" };
+
+    await signUp();
+    await flushMail();
+    const first = storedToken();
+    expect(first).toMatch(/^[0-9a-f]{64}$/);
+    expect(lastConfirmLink().searchParams.get("token")).toBe(first);
+
+    await signUp();
+    await flushMail();
+    expect(sent).toHaveLength(2);
+    expect(storedToken()).toBe(first);
+    expect(lastConfirmLink().searchParams.get("token")).toBe(first);
+
+    await expect(
+      confirmSubscription(env, first, undefined, schedule)
+    ).resolves.toEqual({ ok: true, token: first });
   });
 });

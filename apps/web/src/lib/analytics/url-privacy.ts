@@ -358,6 +358,29 @@ export function subscribeLinkOf(state: unknown): SubscribeLink | undefined {
   return undefined;
 }
 
+/** The history state key that holds the token an entry has unsubscribed. */
+const UNSUBSCRIBED_STATE = "aidrUnsubscribed";
+
+/**
+ * Records on the current history entry that `token` has unsubscribed, so a
+ * reload of the entry or Back to it shows the result instead of sending the
+ * DELETE again, which could remove a subscription made since under the same
+ * token (#723). Does nothing once the reader has left the entry that carries
+ * the link.
+ */
+export function markUnsubscribed(token: string): void {
+  const state = window.history.state;
+  if (subscribeLinkOf(state)?.token !== token) return;
+  window.history.replaceState({ ...state, [UNSUBSCRIBED_STATE]: token }, "");
+}
+
+/** Whether a history entry has already unsubscribed `token`. */
+export function wasUnsubscribed(state: unknown, token: string): boolean {
+  return (
+    (state as Record<string, unknown> | null)?.[UNSUBSCRIBED_STATE] === token
+  );
+}
+
 /**
  * The link to render for a history entry. Before hydration completes, only
  * if this page load's URL carried it: the server then saw the token and
