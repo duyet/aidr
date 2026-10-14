@@ -22,11 +22,10 @@
  *    the carry refuses (`MEDIA_TYPES`, e.g. `.map`, `.wasm`) fails here too,
  *    since the carry would silently drop that file after deploy.
  *
- * 4. With `--require-production-build` (the deploy), `dist/server` must not
- *    carry the dev-only Clerk skip from `src/start.ts`. Vite fixes
- *    `import.meta.env.DEV` from NODE_ENV at build time, so a deploy from a
- *    shell exporting NODE_ENV=development would ship the skip to production.
- *    Off in `validate:deploy-artifact`, whose CI step builds with NODE_ENV=test.
+ * 4. With `--require-production-build` (the deploy and the PR gate),
+ *    `dist/server` must not carry the dev-only Clerk skip from `src/start.ts`.
+ *    Vite fixes `import.meta.env.DEV` from NODE_ENV at build time, so a build
+ *    from a shell exporting NODE_ENV=development or test would ship the skip.
  *
  * Runs in `validate:deploy-artifact`, so it is the same check locally and in
  * CI, after the same build. The deploy runs it again after its own build.
@@ -35,7 +34,7 @@ import { statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readBuildAssets, uncarriableAssets } from "../src/lib/deploy-assets";
-import { devClerkSkipFiles } from "../src/lib/dev-build-guard";
+import { devBuildMessage, devClerkSkipFiles } from "../src/lib/dev-build-guard";
 import { STORY_OG_FONT_SOURCES } from "../src/lib/og-fonts";
 
 const webRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -93,10 +92,7 @@ try {
 if (process.argv.includes("--require-production-build")) {
   const devFiles = devClerkSkipFiles(join(webRoot, "dist/server"));
   if (devFiles.length > 0) {
-    const names = devFiles.map((file) => relative(webRoot, file)).join(", ");
-    fail(
-      `dist/server carries the dev-only Clerk skip (${names}). The build ran with NODE_ENV=${process.env.NODE_ENV ?? "(unset)"}; deploy only a build made with NODE_ENV=production or unset.`
-    );
+    fail(devBuildMessage(devFiles.map((file) => relative(webRoot, file))));
   }
   console.log("Verified dist/server has no dev-only Clerk skip");
 }

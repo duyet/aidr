@@ -109,10 +109,13 @@ jobs:
           fi
           echo "No new unmet peer dependencies."
 
+      # NODE_ENV=production, as in deploy-web.yml: Vite derives
+      # import.meta.env.DEV from it, so any other value builds a different
+      # artifact from the one that ships. No step in this job runs vitest.
       - name: Build and deploy gates
         run: pnpm run validate:deploy-artifact
         env:
-          NODE_ENV: test
+          NODE_ENV: production
           CI: true
 
       # The build is the point of this workflow, so assert the artifact it
@@ -122,7 +125,7 @@ jobs:
       # This is a script rather than inline shell, so the local and CI gates
       # stay one check instead of two lists that drift apart.
       - name: Assert the deploy artifact was produced
-        run: pnpm --filter @aidr/web exec tsx scripts/assert-deploy-artifact.ts
+        run: pnpm --filter @aidr/web exec tsx scripts/assert-deploy-artifact.ts --require-production-build
         env:
-          NODE_ENV: test
+          NODE_ENV: production
           CI: true
