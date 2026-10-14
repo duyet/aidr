@@ -262,28 +262,42 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   most once per 24h instead; max 3 GitHub writes per run. Errors are logged
   and sent to Sentry, never fail the step.
 - Daily video watchdog (`worker/day-video-watchdog.ts`, same step): during
-  20–23h local it confirms the day's video against each record:
-  `day_videos.youtube_id`, `short_id` and `youtube_id_vi` (the Vietnamese
-  page's video, the subtitled or the Vietnamese-voice cut), a Page Reel
-  whose caption mentions `aidr.today/date/<date>` (Graph, the Worker's Page
-  token), and a `daily-reel.yml` run of that date whose `Telegram` and
-  `Telegram (Vietnamese subtitles)` steps succeeded (GitHub API with
-  `GITHUB_ALERT_TOKEN`, which then also needs Actions: read; unset, it calls
-  GitHub without a token from shared Cloudflare IPs). Neither Telegram step
-  may be `continue-on-error`: the jobs API reports such a step as `success`
-  when it fails. A run's date is the `date` input in its `run-name`, else
-  the local day it was created; runs
-  titled `(dry run)` are not read, and up to 8 others are. Once every target
-  is confirmed, `day-video-ok:<date>` in `stats.alerts` skips the rest of
-  the evening's checks. A missing target raises `day-video-missing` once a
-  day, with the rerun command
+  20–23h local (13:00–16:00 UTC) it confirms the day's video against each
+  record: `day_videos.youtube_id`, `short_id` and `youtube_id_vi` (the
+  Vietnamese page's video, the subtitled or the Vietnamese-voice cut), a
+  Page Reel whose caption mentions `aidr.today/date/<date>` (Graph, the
+  Worker's Page token), and a `day_video_posts` row per Telegram channel
+  (`telegram-en`, `telegram-vi`; migration 0062). Telegram cannot be read
+  back, so the post path writes that row: `publish.mjs --steps telegram
+  --prod` after each channel post (`agent day-video-posted` →
+  `PUT /api/admin/day-videos/:date/posts`, an upsert; every --prod run
+  records the posts already in `STATUS.json` again, so a failed record is
+  filled in by the next run), and the Worker's card post
+  (`POST /api/admin/day-videos/:date/telegram` without `chat_id`). The
+  20h start is the deadline: the 02:30 UTC cron fired 7 h late on 10-12 and
+  10-13, this repo's 06:17 UTC `live-budget` cron fired up to 9 h late, and
+  the English posts took under 20 minutes, so even a 9 h late run has
+  posted by 13:00 UTC. The
+  `daily-reel.yml` runs of the date (GitHub API, with `GITHUB_ALERT_TOKEN`
+  when set, else without a token from shared Cloudflare IPs) are context
+  only: the latest run's link in the alert, and a live run (not titled
+  `(dry run)`) still in progress waits. A run's date is the `date` input in
+  its `run-name`, else the local day it was created. A failed GitHub lookup
+  only loses that context. Once every target is confirmed,
+  `day-video-ok:<date>` in `stats.alerts` skips the rest of the evening's
+  checks. A missing target raises `day-video-missing` once a day, with the
+  rerun command
   (`gh workflow run daily-reel.yml -R duyet/aidr -f dry_run=false -f date=<date>`).
   A failed lookup, or a run of the date still in progress, waits for the
   window's last check (the first run whose next ingest starts after 23h);
-  if that run never comes, it is not reported. A run whose YouTube step
-  reports `success` and that skipped Telegram ran on a hand-published day:
-  the alert says so and gives no rerun for those posts, since
-  `HAND_PUBLISHED` skips them.
+  if that run never comes, it is not reported. The rerun skips every post
+  already made (the cached `STATUS.json`, the day page, the Page's Reels),
+  so it fills only the gaps; rerun before local midnight, since a past date
+  needs a committed `videos/daily-news/editions/<date>/edition.json`. On a
+  hand-published day (`HAND_PUBLISHED`) the workflow skips Telegram, so a
+  missing Telegram post there is posted by hand:
+  `node scripts/publish.mjs <date> --lang en --steps telegram --prod`
+  (`--lang visub` for the Vietnamese channel), which records it.
 - `run()` still upserts at start **before** `pruneLlmCalls` / fetch / LLM.
   Do not wrap `open-run` in `safeStep`.
 - Per-model caps in `worker/llm.ts`: score `SCORE_SLICE_MAX_MS` 70s, TL;DR

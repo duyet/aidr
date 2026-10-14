@@ -49,6 +49,7 @@ import {
   addRows,
   attachTodo,
   dayVideoArgs,
+  dayVideoPostedArgs,
   needsRender,
   parseUpload,
   seedIds,
@@ -710,6 +711,25 @@ if (steps.includes("telegram")) {
     });
     record(target, { ...sent, file: "video" });
   }
+  // After the posts, every --prod post (this run's and earlier ones) is recorded on the Worker (`day_video_posts`) for
+  // the day video watchdog. The record is an upsert, so a rerun fills in one that failed.
+  const unrecorded = [];
+  for (const r of real ? mine.filter((r) => r.telegram) : []) {
+    try {
+      run(
+        "pnpm",
+        ["--filter", "@aidr/web", "agent", ...dayVideoPostedArgs(date, r)],
+        { cwd: REPO }
+      );
+    } catch (error) {
+      console.error(`  ${r.cut}: posted, but not recorded: ${error.message}`);
+      unrecorded.push(r.cut);
+    }
+  }
+  if (unrecorded.length)
+    throw new Error(
+      `${unrecorded.join(", ")}: posted, but not recorded for the day video watchdog; rerun --steps telegram --prod to record`
+    );
 }
 
 // Report.

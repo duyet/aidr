@@ -1,5 +1,8 @@
 import {
+  DAY_VIDEO_POST_CHANNELS,
   DAY_VIDEO_TITLE_MAX,
+  type DayVideoPostChannel,
+  isDayVideoPostChannel,
   parseYoutubeId,
 } from "../../src/lib/day-video.js";
 import type { Lang } from "../../src/lib/types.js";
@@ -1353,6 +1356,55 @@ export async function deleteDayVideo(
   return { ok: true, date, lang: scope, deleted: true };
 }
 
+export interface RecordDayVideoPostInput {
+  channel?: unknown;
+  /** `<chat_id>/<message_id>` of the post. */
+  ref?: unknown;
+}
+
+const DAY_VIDEO_POST_REF_MAX = 100;
+
+/**
+ * Record that the day's video reached a channel the Worker cannot read back
+ * (Telegram), for the day video watchdog. Idempotent: a repeat keeps the
+ * first `recorded_at` and stores the latest ref.
+ */
+export async function recordDayVideoPost(
+  env: Env,
+  date: unknown,
+  input: RecordDayVideoPostInput
+): Promise<
+  | { ok: true; date: string; channel: DayVideoPostChannel; ref: string }
+  | HandlerError
+> {
+  if (!validDayVideoDate(date)) {
+    return { error: "date must be a real YYYY-MM-DD day", status: 400 };
+  }
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return { error: "body must be an object", status: 400 };
+  }
+  if (!isDayVideoPostChannel(input.channel)) {
+    return {
+      error: `channel must be one of ${DAY_VIDEO_POST_CHANNELS.join(", ")}`,
+      status: 400,
+    };
+  }
+  const ref = typeof input.ref === "string" ? input.ref.trim() : "";
+  if (!ref || ref.length > DAY_VIDEO_POST_REF_MAX) {
+    return {
+      error: `ref must be a non-empty string of at most ${DAY_VIDEO_POST_REF_MAX} characters`,
+      status: 400,
+    };
+  }
+  await env.DB.prepare(
+    `INSERT INTO day_video_posts (date, channel, ref, recorded_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(date, channel) DO UPDATE SET ref = excluded.ref`
+  )
+    .bind(date, input.channel, ref, Date.now())
+    .run();
+  return { ok: true, date, channel: input.channel, ref };
+}
+
 export interface SendDayVideoTelegramInput {
   lang?: unknown;
   /** Override target chat (e.g. the staging channel); default is the
@@ -1369,7 +1421,14 @@ export async function sendDayVideoTelegram(
   date: unknown,
   input: SendDayVideoTelegramInput
 ): Promise<
-  | { ok: true; chat_id: string; message_id: string; digest_button?: string }
+  | {
+      ok: true;
+      chat_id: string;
+      message_id: string;
+      digest_button?: string;
+      /** Whether the channel post was recorded in `day_video_posts`. */
+      recorded?: boolean;
+    }
   | HandlerError
 > {
   if (!validDayVideoDate(date)) {
@@ -1433,8 +1492,23 @@ export async function sendDayVideoTelegram(
       message_id: sent.messageId ?? null,
     })
   );
-  // Posting to the language's own channel also brings that channel's digest
-  // up to date (its "▶ YouTube" button); a staging chat leaves it alone.
+  // Posting to the language's own channel also records the post for the
+  // watchdog and brings that channel's digest up to date (its "▶ YouTube"
+  // button); a staging chat leaves both alone. The post is out, so a failed
+  // record is reported in the result, never as an error a caller retries.
+  let recorded: boolean | undefined;
+  if (!chat && sent.messageId) {
+    try {
+      await recordDayVideoPost(env, date, {
+        channel: `telegram-${lang}`,
+        ref: `${chatId}/${sent.messageId}`,
+      });
+      recorded = true;
+    } catch (error) {
+      console.error("day video post record failed:", error);
+      recorded = false;
+    }
+  }
   const digest_button = chat
     ? undefined
     : await syncDigestVideoButton(env, date, lang, stored.youtube_id);
@@ -1443,5 +1517,6 @@ export async function sendDayVideoTelegram(
     chat_id: chatId,
     message_id: sent.messageId ?? "",
     ...(digest_button ? { digest_button } : {}),
+    ...(recorded === undefined ? {} : { recorded }),
   };
 }

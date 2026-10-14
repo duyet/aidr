@@ -14,6 +14,8 @@
  *     [--clear-short] [--delete]
  *   pnpm --filter @aidr/web agent day-video-telegram <YYYY-MM-DD>
  *     --lang en|vi [--chat <id>]   (sends a real Telegram message)
+ *   pnpm --filter @aidr/web agent day-video-posted <YYYY-MM-DD>
+ *     --channel telegram-en|telegram-vi --ref <chat_id>/<message_id>
  *
  * `run` and `rerun` are dry runs unless `--live` is passed. A dry run sends
  * no email, Telegram or owner alert and only previews the TL;DR, but still
@@ -132,6 +134,8 @@ function takesValue(flag: string): boolean {
     "title",
     "lang",
     "chat",
+    "channel",
+    "ref",
   ].includes(flag);
 }
 
@@ -380,6 +384,23 @@ async function dayVideoTelegram(
   );
 }
 
+/** Record a Telegram post of the day's video for the day video watchdog. */
+async function dayVideoPosted(
+  args: Args,
+  date: string | undefined
+): Promise<void> {
+  if (!date) fail("day-video-posted needs a YYYY-MM-DD date");
+  const channel = args.flags.get("channel");
+  const ref = args.flags.get("ref");
+  if (typeof channel !== "string" || typeof ref !== "string")
+    fail("day-video-posted needs --channel and --ref");
+  const result = await api<{ channel: string; ref: string }>(
+    `/api/admin/day-videos/${encodeURIComponent(date)}/posts`,
+    { method: "PUT", body: { channel, ref }, admin: true }
+  );
+  print(result, `day-video-posted ${date}: ${result.channel} ${result.ref}`);
+}
+
 function parseSteps(raw: string | true | undefined): string[] | undefined {
   if (raw === undefined) return undefined;
   if (raw === true) fail("--steps needs a comma-separated list");
@@ -488,9 +509,11 @@ async function main(): Promise<void> {
       return dayVideo(args, stepArg);
     case "day-video-telegram":
       return dayVideoTelegram(args, stepArg);
+    case "day-video-posted":
+      return dayVideoPosted(args, stepArg);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id>"
       );
   }
 }
