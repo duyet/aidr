@@ -430,6 +430,61 @@ describe("generated share cards", () => {
   });
 });
 
+describe("image-host uploads", () => {
+  const wired =
+    "https://media.wired.com/photos/6accff96fccc4c5244b94f14/master/pass/Muse-Wonder-Puts-Meta-Back-at-the-AI-Frontier-Business-2296209266.jpg";
+  const verge =
+    "https://platform.theverge.com/wp-content/uploads/sites/2/2026/10/STKB394_MUSE_AI_CVIRGINIA_D.png?crop=0%2C9.9676601489831%2C100%2C80.064679702034&quality=90&strip=all&w=1200";
+  const imgur = "https://i.imgur.com/pWABPKr.png";
+
+  // 2026-10-13 story 1: a Techmeme duplicate merged a desktop screenshot with
+  // a browser tooltip baked in, and the video showed it as the third image.
+  it("drops an imgur screenshot from a stored manifest that has article images", () => {
+    const stored = JSON.stringify({
+      version: 1,
+      assets: [
+        { type: "image", url: wired },
+        { type: "image", url: verge },
+        { type: "image", url: imgur },
+        {
+          type: "image",
+          url: "https://pbs.twimg.com/amplify_video_thumb/2109669234620186624/img/I0IcBVeH6IpRclrm?format=webp&name=large",
+        },
+      ],
+    });
+    const manifest = parseMediaManifest(stored, wired);
+    expect(manifest.assets.map((asset) => asset.url)).toEqual([
+      wired,
+      verge,
+      "https://pbs.twimg.com/amplify_video_thumb/2109669234620186624/img/I0IcBVeH6IpRclrm?format=webp&name=large",
+    ]);
+    expect(primaryThumbnailUrl(manifest, wired)).toBe(wired);
+  });
+
+  it("keeps an imgur image when the story has nothing else", () => {
+    const manifest = parseMediaManifest(
+      JSON.stringify({ version: 1, assets: [{ type: "image", url: imgur }] }),
+      imgur
+    );
+    expect(manifest.assets).toEqual([{ type: "image", url: imgur }]);
+    expect(primaryThumbnailUrl(manifest, imgur)).toBe(imgur);
+  });
+
+  it("matches the imgur host, not lookalike hosts", () => {
+    const lookalikes = [
+      "https://notimgur.com/a.png",
+      "https://imgur.com.example.net/a.png",
+    ];
+    const manifest = buildMediaManifest(
+      [wired, ...lookalikes].map((url) => ({ type: "image" as const, url }))
+    );
+    expect(manifest.assets.map((asset) => asset.url)).toEqual([
+      wired,
+      ...lookalikes,
+    ]);
+  });
+});
+
 describe("media dedup identity", () => {
   const urls = (candidates: Array<{ type: "image" | "video"; url: string }>) =>
     buildMediaManifest(candidates).assets.map((a) => a.url);

@@ -473,18 +473,34 @@ export function isGeneratedOgCard(url: string): boolean {
 }
 
 /**
- * Drop generated share cards when any real media remains. A cluster merges
- * several pages, and aggregators (marketbrief, huggingnews) each add their
- * own card for the same story; those are noise next to the original
- * article's image, but still better than nothing when they are all we have.
+ * An image uploaded to imgur. Techmeme and HN posts carry these, and they are
+ * raw screen captures with the capturing desktop's window bars, dock and
+ * hover tooltips in the pixels, so they are only a fallback picture.
  */
-export function withoutGeneratedCards<T extends { type: string; url: string }>(
+export function isImageHostUpload(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "imgur.com" || host.endsWith(".imgur.com");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Drop generated share cards and image-host uploads when any other media
+ * remains. A cluster merges several pages, and aggregators (marketbrief,
+ * huggingnews) each add their own card for the same story; those are noise
+ * next to the original article's image, but still better than nothing when
+ * they are all we have.
+ */
+export function withoutFallbackImages<T extends { type: string; url: string }>(
   assets: readonly T[]
 ): T[] {
-  const isCard = (asset: T) =>
-    asset.type === "image" && isGeneratedOgCard(asset.url);
-  return assets.some((asset) => !isCard(asset))
-    ? assets.filter((asset) => !isCard(asset))
+  const isFallback = (asset: T) =>
+    asset.type === "image" &&
+    (isGeneratedOgCard(asset.url) || isImageHostUpload(asset.url));
+  return assets.some((asset) => !isFallback(asset))
+    ? assets.filter((asset) => !isFallback(asset))
     : [...assets];
 }
 
@@ -599,7 +615,7 @@ export function buildMediaManifest(
       )
       .filter((identity): identity is string => identity !== null)
   );
-  const assets = withoutGeneratedCards(ranked.map(({ asset }) => asset))
+  const assets = withoutFallbackImages(ranked.map(({ asset }) => asset))
     .filter((asset) => {
       if (asset.type !== "image") return true;
       return !posterIdentities.has(mediaIdentityKey("image", asset.url) ?? "");

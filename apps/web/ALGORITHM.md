@@ -511,11 +511,16 @@ images rather than a broken-src fallback.
   or `profile_images` directory before the filename, and `pbs.twimg.com`
   `/profile_images/` and `/profile_banners/` paths. `pbs.twimg.com/media/…`
   tweet photos stay.
-- **Generated share cards are a fallback only.** An image whose path is an
-  OG generator (`/og/…`, `/api/og`, `og-image`/`og-card` file names, see
-  `isGeneratedOgCard`) is dropped from a manifest, including merged
-  cluster manifests, whenever any other image or video remains. The story
-  dialog applies the same rule to stored manifests at render time.
+- **Generated share cards and imgur uploads are a fallback only.** An image
+  whose path is an OG generator (`/og/…`, `/api/og`, `og-image`/`og-card`
+  file names, see `isGeneratedOgCard`), or that is hosted on imgur
+  (`isImageHostUpload`), is dropped from a manifest, including merged
+  cluster manifests, whenever any other image or video remains. Techmeme
+  and HN posts link imgur screen captures that carry the capturing
+  desktop's window bars and tooltips. A `Screenshot-…` file name is not a
+  signal: publishers (TechCrunch, The Verge) use it for clean editorial
+  images. The story dialog applies the same rule to stored manifests at
+  render time.
 - **A video poster is only URL-checked here.** At collection time the
   poster URL passes the same URL policy as any image and nothing is
   fetched. Its bytes are checked later, at Telegram send time (see Notify).
