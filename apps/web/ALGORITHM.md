@@ -582,7 +582,9 @@ images rather than a broken-src fallback.
   while the card only shows the headline. A video is never dropped. It
   ranks by its poster's tier, so a video whose poster is a share card sorts
   after an imgur image. A video without a poster gives no picture, so it
-  does not count, and the best fallback image stays after it. The rule
+  does not count, and the best fallback image stays after it. When the best
+  tier is the card tier, only the first (highest-ranked) card stays, since
+  aggregator cards for one story are near-identical. The rule
   applies to merged cluster manifests too. Techmeme and HN posts link imgur
   screen captures that carry the capturing desktop's window bars and
   tooltips. A `Screenshot-…` file name is not a signal: publishers

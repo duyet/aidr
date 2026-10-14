@@ -12,6 +12,7 @@ import {
   parseMediaMetadata,
   primaryThumbnailUrl,
   serializeMediaManifest,
+  withoutFallbackImages,
 } from "../media.js";
 
 describe("decodeUrlEntities", () => {
@@ -396,16 +397,34 @@ describe("generated share cards", () => {
     expect(merged.assets).toEqual([{ type: "image", url: original }]);
   });
 
-  it("keeps cards as the fallback when nothing else exists", () => {
+  it("keeps one card, the highest ranked, when cards are all there is", () => {
     const merged = buildMediaManifest(
       [marketbrief, huggingnews].flatMap(
         (url) => buildMediaManifest([{ type: "image", url }]).assets
       )
     );
-    expect(merged.assets.map((asset) => asset.url)).toEqual([
-      marketbrief,
-      huggingnews,
+    expect(merged.assets).toEqual([{ type: "image", url: marketbrief }]);
+  });
+
+  it("keeps one card next to a posterless video", () => {
+    const video = { type: "video" as const, url: "https://example.com/a.mp4" };
+    const manifest = buildMediaManifest([
+      { type: "image", url: marketbrief },
+      { type: "image", url: huggingnews },
+      video,
     ]);
+    expect(manifest.assets).toEqual([
+      video,
+      { type: "image", url: marketbrief },
+    ]);
+  });
+
+  it("applies the one-card rule to stored manifests at render time", () => {
+    const assets = [
+      { type: "image", url: marketbrief },
+      { type: "image", url: huggingnews },
+    ];
+    expect(withoutFallbackImages(assets)).toEqual([assets[0]]);
   });
 
   it("treats a video with a poster as better media than a card", () => {
@@ -545,6 +564,25 @@ describe("image-host uploads", () => {
         { type: "image", url: wired },
       ],
       { articleUrls: [tracked] }
+    );
+    expect(manifest.assets).toEqual([{ type: "image", url: wired }]);
+  });
+
+  it("keeps a real image that only shares the page path plus an extension", () => {
+    const avatar = "https://github.com/openai.png";
+    const manifest = buildMediaManifest([{ type: "image", url: avatar }], {
+      articleUrls: ["https://github.com/openai"],
+    });
+    expect(manifest.assets).toEqual([{ type: "image", url: avatar }]);
+  });
+
+  it("still drops resize and http variants of the article URL", () => {
+    const manifest = buildMediaManifest(
+      [
+        { type: "image", url: "http://example.com/story?w=600" },
+        { type: "image", url: wired },
+      ],
+      { articleUrls: ["https://example.com/story"] }
     );
     expect(manifest.assets).toEqual([{ type: "image", url: wired }]);
   });
