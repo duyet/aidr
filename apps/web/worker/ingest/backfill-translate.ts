@@ -19,7 +19,7 @@ import { BACKFILL_TRANSLATE_STEP, type IngestContext } from "./context.js";
 interface MissingTranslationRow {
   id: string;
   title: string;
-  summary: string;
+  summary: string | null;
   source_lang: string;
 }
 
@@ -77,7 +77,7 @@ export async function backfillTranslations(
               rows.map((row, i) => ({
                 i,
                 title: row.title,
-                summary: row.summary,
+                summary: row.summary ?? undefined,
                 sourceLang: backfillSourceLang(row.source_lang),
               }))
             );

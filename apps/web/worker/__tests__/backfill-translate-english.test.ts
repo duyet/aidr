@@ -12,7 +12,7 @@ const step = {
     (rest.at(-1) as () => Promise<unknown>)(),
 } as unknown as WorkflowStep;
 
-function ctx(missing: { id: string; title: string; summary: string }[]) {
+function ctx(missing: { id: string; title: string; summary: string | null }[]) {
   const stmt = {
     bind: () => stmt,
     all: async () => ({
@@ -62,5 +62,29 @@ describe("backfill-translate English-in-VI tally", () => {
       "a/m": { translated: 2, english: 1 },
       "b/m": { translated: 1, english: 0 },
     });
+  });
+});
+
+describe("backfill-translate source without a summary", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  // D1 returns NULL for a title-only story (HN). Passed on as null, it made
+  // the summary batch throw, and every story in that batch was retried
+  // titles-only, which stored their Vietnamese summaries as empty.
+  it("sends a NULL source summary as no summary", async () => {
+    const translate = vi.spyOn(llm, "translateItems").mockResolvedValue([]);
+
+    await backfillTranslations(
+      ctx([
+        { id: "title-only", title: "Gemini 3.8 Flash", summary: null },
+        { id: "full", title: "Story", summary: "An English summary." },
+      ])
+    );
+
+    const [, sent] = translate.mock.calls[0];
+    expect(sent.map((item) => item.summary)).toEqual([
+      undefined,
+      "An English summary.",
+    ]);
   });
 });

@@ -131,6 +131,101 @@ function magnitudeIssues(sourceText: string, viText: string): string[] {
   return issues;
 }
 
+/** A product name and the number written with it: "Gemini 3.8", "GPT-4o",
+ * "VR72", "GLM-5.3-Flash" (GLM 5.3), "GB200s" (GB200). */
+interface VersionedName {
+  text: string;
+  /** Lowercased: "gemini", "gpt". */
+  name: string;
+  /** Lowercased number with its suffix letter: "3.8", "4o", "72". */
+  version: string;
+}
+
+const VERSIONED_NAME_RE =
+  /(?<![\p{L}\p{N}$€£.,-])([A-Z][A-Za-z]*)([ -]?)(\d+(?:\.\d+)*)([a-z]?)(?![\p{N}]|[.,]\p{N})/gu;
+/** "1.9x", "19.6%", "70B", "3.5 billion": an amount, not a version. */
+const AMOUNT_AFTER_RE =
+  /^\s*-?(?:%|percent\b|(?:trillion|billion|million|thousand|tn|bn|mn|[TBMK])(?![\p{L}\p{N}]))/iu;
+
+function versionedNames(text: string): VersionedName[] {
+  const names: VersionedName[] = [];
+  const nfc = text.normalize("NFC");
+  for (const match of nfc.matchAll(VERSIONED_NAME_RE)) {
+    const [whole, name, joint, digits, suffix] = match;
+    if (suffix === "x") continue;
+    const after = nfc.slice((match.index ?? 0) + whole.length);
+    if (!suffix && AMOUNT_AFTER_RE.test(after)) continue;
+    // "GB200s" is the plural of GB200.
+    const letter = suffix === "s" ? "" : suffix;
+    names.push({
+      text: `${name}${joint}${digits}${letter}`,
+      name: name.toLowerCase(),
+      version: `${digits}${letter}`.toLowerCase(),
+    });
+  }
+  return names;
+}
+
+const keyOf = (v: VersionedName) => `${v.name} ${v.version}`;
+
+/** "3.8" written in the Vietnamese text, glued to a name or not ("Qwen3.8").
+ * A decimal comma counts: it is an amount the prompt asked to convert. */
+function hasVersionNumber(viText: string, version: string): boolean {
+  const forms = /^\d+\.\d+$/.test(version)
+    ? [version, version.replace(".", ",")]
+    : [version];
+  return new RegExp(
+    `(?<![\\p{N}.,])(?:${forms.map(escapeRegex).join("|")})(?![\\p{N}]|[.,]\\p{N})`,
+    "iu"
+  ).test(viText.normalize("NFC"));
+}
+
+/** A version the translation changed or lost: "Gemini 3.8 Flash" as
+ * "Gemini 1.5 Flash" (prod c4c7ba8f, #781), "GPT-6" as "GPT-4o". A swap is
+ * the same name with a number the source never writes. A drop counts only
+ * for a dotted version in the source title that neither Vietnamese field
+ * keeps: a shortened headline whose summary keeps the version reads fine
+ * (prod 5a022d30), a summary drop was mostly condensed or clipped text, and
+ * an integer ("Gemini 4", "Q2", "FY27") is too often rewritten to judge. */
+function versionIssues(
+  source: TranslationText,
+  candidate: TranslationText
+): string[] {
+  const inSource = new Set(
+    versionedNames(`${source.title}\n${source.summary}`).map(keyOf)
+  );
+  const viText = `${candidate.title}\n${candidate.summary}`;
+  const issues = new Set<string>();
+  const fields: [string, string, boolean][] = [
+    [source.title, candidate.title, true],
+    [source.summary, candidate.summary, false],
+  ];
+  for (const [src, vi, isTitle] of fields) {
+    const viNames = versionedNames(vi);
+    const kept = new Set(viNames.map(keyOf));
+    for (const want of versionedNames(src)) {
+      if (kept.has(keyOf(want))) continue;
+      const swap = viNames.find(
+        (v) => v.name === want.name && !inSource.has(keyOf(v))
+      );
+      if (swap) {
+        issues.add(
+          `keep "${want.text}" as the source writes it, not "${swap.text}"`
+        );
+      } else if (
+        isTitle &&
+        want.version.includes(".") &&
+        !hasVersionNumber(viText, want.version)
+      ) {
+        issues.add(
+          `the title drops "${want.text}"; keep the name and its version`
+        );
+      }
+    }
+  }
+  return [...issues];
+}
+
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -272,6 +367,7 @@ export function translationDraftIssues(
   issues.push(...avoidIssues(src, cand, rules));
   const viText = `${cand.title}\n${cand.summary}`;
   issues.push(...magnitudeIssues(`${src.title}\n${src.summary}`, viText));
+  issues.push(...versionIssues(src, cand));
   issues.push(...glossIssues(viText));
   issues.push(...stutterIssues(viText));
   if (isTitleCaseVi(cand.title, src.title)) {
