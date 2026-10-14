@@ -146,6 +146,44 @@ describe("sameEvent", () => {
       )
     ).toBe(false);
   });
+
+  // #756: the English name extractor read "Việt Nam" as "vi" and "nam" and
+  // "Quốc" as "qu", so any two headlines naming Việt Nam shared two names.
+  it.each([
+    [
+      "Chuyên gia bày cách để Việt Nam nâng cao năng lực công nghệ",
+      "Thứ trưởng Trần Trung Tính: Công nghệ là chìa khóa để Việt Nam vươn ra biển lớn",
+    ],
+    [
+      "Chuyên gia chia sẻ cách để Việt Nam nâng cao năng lực công nghệ",
+      "Thứ trưởng Trần Trung Tính: Công nghệ là chìa khóa để Việt Nam vươn ra biển lớn",
+    ],
+    [
+      "Phó thủ tướng Hồ Quốc Dũng: Chuyển từ 'có hoạt động' sang 'có kết quả' đổi mới sáng tạo",
+      "Nhiều hoạt động hưởng ứng Ngày Chuyển đổi số Quốc gia 2026",
+    ],
+  ])("keeps different Vietnamese stories apart: %s / %s", (a, b) => {
+    expect(sameEvent(key(a), key(b))).toBe(false);
+  });
+
+  // #756: counted in syllables, two headlines on one prize shared too small
+  // a share of their tokens, so a channel could post both.
+  it.each([
+    [
+      "Nhà khoa học đầu tiên 'độc chiếm' giải Nobel Vật lý sau 34 năm",
+      "Giải Nobel Vật lý 2026 trao cho nghiên cứu về 'hạt ma'",
+    ],
+    [
+      "Nhà khoa học đầu tiên 'độc chiếm' giải Nobel Vật lý sau 34 năm",
+      "Tại sao nghiên cứu về 'hạt ma' đoạt giải Nobel Vật lý?",
+    ],
+    [
+      "Nobel Hóa học 2026 vinh danh nghiên cứu tổng hợp hữu cơ",
+      "Hành trình giải mã bí ẩn phân tử của chủ nhân Nobel Hóa học 2026",
+    ],
+  ])("matches two Vietnamese headlines on one Nobel prize: %s / %s", (a, b) => {
+    expect(sameEvent(key(a), key(b))).toBe(true);
+  });
 });
 
 describe("dedupReason", () => {
