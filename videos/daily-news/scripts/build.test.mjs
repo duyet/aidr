@@ -14,7 +14,11 @@ after(() => {
 });
 
 // Builds a committed edition (no voice, no audio) in a temp root and returns the page reader.
-function build(date, edit = (script, edition) => [script, edition]) {
+function build(
+  date,
+  edit = (script, edition) => [script, edition],
+  missing = []
+) {
   const { dn, cleanup } = scratchRoot();
   cleanups.push(cleanup);
   mkdirSync(join(dn, "editions", date), { recursive: true });
@@ -22,12 +26,21 @@ function build(date, edit = (script, edition) => [script, edition]) {
   const [script, edition] = edit(read(join(src, "script.json")), read(join(src, "edition.json")));
   writeFileSync(join(dn, "editions", date, "script.json"), JSON.stringify(script));
   writeFileSync(join(dn, "editions", date, "edition.json"), JSON.stringify(edition));
+  // Assets are not committed, and build drops an image whose file is missing: stand in an empty file for each.
+  mkdirSync(join(dn, "editions", date, "assets"));
+  for (const f of new Set([
+    ...script.stories.flatMap((s) => s.images ?? []),
+    ...edition.stories.flatMap((s) => s.images.map((im) => im.local)),
+  ]))
+    if (!missing.includes(f)) writeFileSync(join(dn, "editions", date, f), "");
   const run = runBuild(dn, [date, "--no-voice", "--no-audio"]);
   assert.equal(run.status, 0, run.stderr);
   return {
     script,
+    stdout: run.stdout,
     stderr: run.stderr,
     page: (name) => readFileSync(join(dn, "editions", date, "out", name, "index.html"), "utf8"),
+    timeline: () => read(join(dn, "editions", date, "timeline.json")),
   };
 }
 
@@ -42,6 +55,40 @@ test("the built intro tags the grid with its story count and carries that count'
     assert.ok(html.includes(`.f-${fmt} .tiles[data-n="${n}"]{grid-template-areas:`), `${fmt}: the ${n}-story layout is in the page`);
     assert.equal(html.match(/class="tile[ "]/g).length, n, `${fmt}: one tile per story`);
   }
+});
+
+test("a story whose image files are missing shows no picture and loses its full layout", () => {
+  // 2026-10-13 pins story 3 to full; with its files gone it follows two splits, so it takes stat.
+  const { script, page, stdout, timeline } = build("2026-10-13", undefined, [
+    "assets/s3-1.jpg",
+    "assets/s3-2.jpg",
+  ]);
+  assert.match(
+    stdout,
+    /! look: story 3: layout "full" needs an image; chose stat/
+  );
+  for (const fmt of FORMATS) {
+    const html = page(fmt);
+    assert.match(html, /<section id="story-3" class="clip scene l-stat"/, fmt);
+    assert.match(
+      html,
+      /<div class="tile noimg" data-rank="3">/,
+      `${fmt}: the grid tile shows the paper card`
+    );
+    assert.doesNotMatch(
+      html,
+      /assets\/s3-/,
+      `${fmt}: nothing points at a missing file`
+    );
+    assert.match(
+      html,
+      /<section id="story-4" class="clip scene l-full"/,
+      `${fmt}: story 4 keeps its pin`
+    );
+  }
+  const { theme, layouts } = timeline();
+  assert.deepEqual(theme, script.theme, "theme holds the day axes only");
+  assert.deepEqual(layouts, { 1: "split", 2: "split", 3: "stat", 4: "full" });
 });
 
 const coverHook = (html) => html.match(/<div class="hook"><span>([^<]*)<\/span>/)?.[1];

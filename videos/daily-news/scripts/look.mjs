@@ -12,6 +12,11 @@ const AXES = {
   background: { ids: ["paper", "soft", "grid"], auto: ["paper", "soft", "grid"] },
 };
 const PIN_ONLY = ["accent"];
+// Story layouts are chosen per story from what the story has, not rotated by date. Only `full` needs an image:
+// `stat` shows the paper card in its media box when it has none.
+const LAYOUTS = { split: { image: false, max: Infinity }, full: { image: true, max: Infinity }, stat: { image: false, max: 2 } };
+/** A dollar figure ("$40B"): a story whose English bullet names one leads with it. auto-script reads its stat with it. */
+export const MONEY = /\$[\d.,]+\s?[KMBT]?\b/;
 
 const DAY = 86400000;
 const mod = (a, n) => ((a % n) + n) % n;
@@ -74,7 +79,44 @@ export function rotatePair(listA, listB, day, axisA, axisB) {
   return [a[mod(day, n)], b[mod(day + Math.floor(day / n), n)]];
 }
 
-/** { intro, transition, background, accent? } for this edition. Takes no language: build passes script.json for every cut. */
+/**
+ * { [rank]: layout id } in script order, plus a note for each request it could not honour.
+ * Priority: an eligible `story.layout` pin, then the image requirement, then `max`, then no three of one id in a
+ * row, then the defaults. `images` must be the files that exist; `money` reads the English bullet only, because
+ * visub rewrites the screen text and both cuts must get the same layouts.
+ */
+function chooseLayouts(stories, edition) {
+  const layouts = {};
+  const notes = [];
+  const history = [];
+  for (const [index, story] of stories.entries()) {
+    const { rank, layout: pin } = story;
+    const images = story.images?.length ?? 0;
+    const money = MONEY.test(edition.stories?.find((s) => s.rank === rank)?.text ?? "");
+    const fits = (id) => images > 0 || !LAYOUTS[id].image;
+    let id;
+    if (pin !== undefined) {
+      if (!LAYOUTS[pin]) throw new Error(`script.stories rank ${rank} layout "${pin}": unknown; use ${Object.keys(LAYOUTS).join(" | ")}`);
+      if (fits(pin)) id = pin;
+    }
+    if (!id) {
+      const alt = index % 2 ? "full" : "split";
+      const other = alt === "full" ? "split" : "full";
+      const prefs = images === 0 ? ["split", "stat"] : money ? ["stat", alt, other] : [alt, other];
+      const eligible = prefs.filter((p) => fits(p) && history.filter((h) => h === p).length < LAYOUTS[p].max);
+      id = eligible.find((p) => !(history.at(-1) === p && history.at(-2) === p)) ?? eligible[0];
+      if (pin !== undefined) notes.push(`story ${rank}: layout "${pin}" needs an image; chose ${id}`);
+    }
+    layouts[rank] = id;
+    history.push(id);
+  }
+  return { layouts, notes };
+}
+
+/**
+ * { intro, transition, background, accent?, layouts, notes } for this edition. Takes no language: build passes
+ * script.json for every cut, with each story's images already filtered to the files that exist.
+ */
 export function resolveLook(script, edition) {
   const pin = script.theme ?? {};
   for (const [axis, id] of Object.entries(pin)) {
@@ -88,5 +130,5 @@ export function resolveLook(script, edition) {
   const look = Object.fromEntries(
     Object.entries(AXES).map(([axis, { auto }]) => [axis, pin[axis] ?? (free.length === 2 && free.includes(axis) ? joint[free.indexOf(axis)] : rotate(auto, day, axis))]),
   );
-  return pin.accent ? { ...look, accent: pin.accent } : look;
+  return { ...look, ...(pin.accent ? { accent: pin.accent } : {}), ...chooseLayouts(script.stories ?? [], edition) };
 }

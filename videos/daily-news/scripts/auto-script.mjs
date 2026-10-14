@@ -17,6 +17,7 @@ import { castProblems, hostOrder, loadCast } from "./cast.mjs";
 import { lintText, scriptTexts } from "./gate.mjs";
 import { download } from "./media.mjs";
 import { readEnvLocal, videoScriptKey } from "./local-llm-key.mjs";
+import { MONEY } from "./look.mjs";
 import { envVar } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -61,7 +62,7 @@ export const statSpoken = (voice, statWord) => {
 const UNIT = { K: "thousand", M: "million", B: "billion", T: "trillion" };
 /** "$870M" → "$870 million": the screen keeps "$870M" in `stat`, the voice reads the unit. */
 export const speakable = (t) => t.replace(/\$([\d.,]+)\s?([KMBT])\b/g, (_, n, u) => `$${n} ${UNIT[u]}`).replace(/~/g, "about ");
-const money = (t) => t.match(/\$[\d.,]+\s?[KMBT]?\b/)?.[0]?.replace(/\s/g, "");
+const money = (t) => t.match(MONEY)?.[0]?.replace(/\s/g, "");
 /** Digit runs in a text ("$7.5B" → ["7.5"]); the fact check compares these with the bullet. */
 const numbers = (t) => (String(t ?? "").match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => n.replace(/,/g, ""));
 
@@ -162,7 +163,7 @@ const COUNT = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
 
 /**
  * Assemble a full script.json from per-story copy (`copy[rank]` = templateStory shape) and post copy.
- * Anchors come from the seeded cast order; layouts follow the skill's rules.
+ * Anchors come from the seeded cast order; build.mjs chooses layouts (look.mjs) once the images are known.
  */
 export function assemble({ edition, copy, post, introLine, focus, thumbRank, hostKeys }) {
   const date = edition.date;
@@ -173,14 +174,8 @@ export function assemble({ edition, copy, post, introLine, focus, thumbRank, hos
   let turn = 0;
   const host = () => order[turn++ % order.length];
   const intro = [host(), host()];
-  const layouts = [];
-  let stats = 0;
   const stories = edition.stories.map((s) => {
     const c = copy[s.rank];
-    let layout = !s.images.length ? "split" : money(s.text) && stats < 2 ? "stat" : layouts.length % 2 ? "full" : "split";
-    if (layouts.length >= 2 && layouts.at(-1) === layout && layouts.at(-2) === layout) layout = layout === "split" ? (s.images.length ? "full" : "split") : "split";
-    if (layout === "stat") stats++;
-    layouts.push(layout);
     const voice = c.voice.map((text) => ({ anchor: host(), text }));
     const statWord = c.statWord || words(voice[0].text)[0].replace(/[^\p{L}\p{N}$-]/gu, "");
     return {
@@ -191,7 +186,6 @@ export function assemble({ edition, copy, post, introLine, focus, thumbRank, hos
       stat: c.stat,
       statLabel: c.statLabel,
       statWord,
-      layout,
       images: s.images.map((im) => im.local),
       ...(s.images.length ? {} : { paper: { venue: s.source ?? "aidr.today", title: s.title ?? c.kicker } }),
       voice,

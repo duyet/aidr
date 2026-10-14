@@ -26,7 +26,7 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `scripts/novoice.mjs` | yes | The no-voice helpers: reading-speed word timing, the quota check, `QuotaError` |
 | `scripts/lang.mjs` | yes | The cut's language (`--lang vi`) and its file names |
 | `scripts/cast.mjs` | yes | The voice cast: host keys, seeded host order, the "never twice in a row" check |
-| `scripts/look.mjs` | yes | The day's look (intro, transition, background), derived from the edition's date at build time |
+| `scripts/look.mjs` | yes | The day's look (intro, transition, background) from the edition's date, and each story's layout from the images on disk, resolved at build time |
 | `scripts/build.mjs` | yes | Timeline, both compositions, audio mix, captions, covers, post copy |
 | `scripts/grid.mjs` | yes | The summary grid's layout per format and story count (1–8): areas, tracks, and the tile type scale, so frame 0 has no empty cell; an odd count gives the lead story a hero tile (with `grid.test.mjs`) |
 | `scripts/render.mjs` | yes | 4K MP4s and cover PNGs |
@@ -132,7 +132,7 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
     "headline": "*Open-weight decision models*, now on Workers AI",  // *stars* = yellow marker; auto-fits
     "stat": "Clef + Clef-flash", "statLabel": "plus an RL fine-tuning platform",
     "statWord": "clef",                      // the stat lands when this word is spoken
-    "layout": "split",                       // split | full (image full-bleed, card lower third) | stat (giant number)
+    "layout": "split",                       // optional request: split | full (image full-bleed, card lower third) | stat (giant number); see "Looks"
     "images": ["assets/s1-1.png"],           // curated from assets/; several = crossfade; [] = typographic card
     "paper": { "venue": "arXiv:2609.37725", "title": "..." },  // the no-image card
     "source": "blog.cloudflare.com",         // optional override of the credit
@@ -145,7 +145,16 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
 
 ### Looks
 
-The look is derived at build time, never stored. `scripts/look.mjs` `resolveLook(script, edition)` picks the transition and the background from the edition's date (the ISO week for a weekly edition), so the next day always differs on both, with no record of yesterday. The intro is always `grid`. Each key in `script.json` `theme` pins that axis and wins over the rotation; an unknown id fails the build and lists the allowed ones. Every cut reads the pin from `script.json` (a `theme` in `script.vi.json` is ignored), so the English, Vietnamese and `visub` cuts of a day look the same. Adding or removing an id in an axis list in `look.mjs` reshuffles every unpinned day, past ones included. `timeline.json` records the resolved `theme` as a receipt; the build never reads it back. The four committed editions from before this change pin their theme, so they rebuild as they shipped.
+The look is derived at build time, never stored. `scripts/look.mjs` `resolveLook(script, edition)` picks the transition and the background from the edition's date (the ISO week for a weekly edition), so the next day always differs on both, with no record of yesterday. The intro is always `grid`. Each key in `script.json` `theme` pins that axis and wins over the rotation; an unknown id fails the build and lists the allowed ones. Every cut reads the pin from `script.json` (a `theme` in `script.vi.json` is ignored), so the English, Vietnamese and `visub` cuts of a day look the same. Adding or removing an id in an axis list in `look.mjs` reshuffles every unpinned day, past ones included. `timeline.json` records the resolved `theme` and `layouts` as a receipt; the build never reads it back. The four committed editions from before this change pin their theme and every story's layout, so they rebuild as they shipped.
+
+Story layouts (`split`, `full`, `stat`) are chosen in the same `resolveLook` call, after the build drops every image that is not on disk (a failed download, or a path that no longer exists). So a story's layout always matches the images it really shows, and a `full` never ships without one. The rules, in priority order:
+
+1. A story's `layout` in `script.json` wins when it can render: `full` needs at least one image. An unknown id fails the build. A `full` with no image falls back to the rules below, and the build prints `! look:`.
+2. `full` needs an image. `stat` shows at most twice a day; it puts the paper card in the media box when the story has no image.
+3. No layout shows three times in a row when another one can render.
+4. Defaults: a story with no image gets `split`; a story whose bullet has a dollar amount gets `stat`; the others alternate `split` and `full` by position.
+
+The layouts read the English bullet and the image lists only, never the screen text, so the English, Vietnamese and `visub` cuts of a day get the same layouts. `auto-script.mjs` and `new.mjs` write no `layout`.
 
 Spoken text says "AI DR" and "aidr dot today"; `config.captions.replace` shows them as "AI;DR" and "aidr.today" in captions.
 

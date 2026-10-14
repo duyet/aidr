@@ -114,20 +114,10 @@ const introHosts = [host(), host()];
 const money = (t) => t.match(/\$[\d.,]+\s?[BMKT]?/)?.[0];
 const thumb = edition.stories.find((s) => money(s.text)) ?? edition.stories[0];
 
-let lastLayout = "";
-const stories = edition.stories.map((s, i) => {
+const stories = edition.stories.map((s) => {
   const sentences = s.text
     .split(/(?<=[.!?])\s+|,\s(?=plus|while|as|and)\s?/)
     .filter(Boolean);
-  let layout = !s.images.length
-    ? "split"
-    : money(s.text)
-      ? "stat"
-      : i % 2
-        ? "full"
-        : "split";
-  if (layout === lastLayout && layout !== "split") layout = "split";
-  lastLayout = layout;
   return {
     rank: s.rank,
     category: s.category,
@@ -136,7 +126,6 @@ const stories = edition.stories.map((s, i) => {
     stat: money(s.text) ?? "TODO",
     statLabel: "TODO",
     statWord: "TODO",
-    layout,
     images: s.images.map((im) => im.local),
     ...(s.images.length ? {} : { paper: { venue: s.source, title: s.title } }),
     voice: sentences.map((text) => ({

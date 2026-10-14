@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { templateScript } from "./auto-script.mjs";
 import { dayNumber, resolveLook, rotate, rotatePair } from "./look.mjs";
+import { applyScreen } from "./visub-screen.mjs";
 import { isoWeekOf } from "./week.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -67,7 +68,14 @@ test("a theme in script.json pins that axis; the others still rotate", () => {
   const free = resolveLook({}, e13);
   const other = ["wipe", "ink", "shutter"].find((t) => t !== free.transition);
   const look = resolveLook({ theme: { transition: other, intro: "date-slam", accent: "#E0B000" } }, e13);
-  assert.deepEqual(look, { intro: "date-slam", transition: other, background: rotate(["paper", "soft", "grid"], dayNumber("2026-10-13"), "background"), accent: "#E0B000" });
+  assert.deepEqual(look, {
+    intro: "date-slam",
+    transition: other,
+    background: rotate(["paper", "soft", "grid"], dayNumber("2026-10-13"), "background"),
+    accent: "#E0B000",
+    layouts: {},
+    notes: [],
+  });
 });
 
 test("an unknown theme id or axis fails instead of falling back", () => {
@@ -78,13 +86,112 @@ test("an unknown theme id or axis fails instead of falling back", () => {
   assert.throws(() => resolveLook({}, { date: "2026-13" }), /look key "2026-13"/);
 });
 
-test("a committed script.json theme pins the whole look it shipped with", () => {
-  const scripts = readdirSync(join(ROOT, "editions"))
+const committed = () =>
+  readdirSync(join(ROOT, "editions"))
     .map((d) => [join(ROOT, "editions", d, "script.json"), d])
-    .filter(([p]) => existsSync(p));
-  const pinned = scripts.filter(([p]) => read(p).theme);
+    .filter(([p]) => existsSync(p))
+    .map(([p, d]) => [p, read(p), read(join(ROOT, "editions", d, "edition.json"))]);
+const dayAxes = ({ layouts, notes, ...axes }) => axes;
+
+test("a committed script.json theme pins the whole look it shipped with", () => {
+  const pinned = committed().filter(([, script]) => script.theme);
   assert.ok(pinned.length >= 4, `only ${pinned.length} committed scripts carry a theme`);
-  for (const [p, d] of pinned) assert.deepEqual(resolveLook(read(p), read(join(ROOT, "editions", d, "edition.json"))), read(p).theme, p);
+  for (const [p, script, edition] of pinned) assert.deepEqual(dayAxes(resolveLook(script, edition)), script.theme, p);
+});
+
+test("every committed script.json resolves to the story layouts it shipped with", () => {
+  const scripts = committed();
+  assert.ok(scripts.length >= 4, `only ${scripts.length} committed scripts`);
+  for (const [p, script, edition] of scripts) {
+    const look = resolveLook(script, edition);
+    assert.deepEqual(look.layouts, Object.fromEntries(script.stories.map((s) => [s.rank, s.layout])), p);
+    assert.deepEqual(look.notes, [], p);
+  }
+});
+
+const e13 = () => read(join(ROOT, "editions/2026-10-13/edition.json"));
+const withStory = (script, rank, patch) => ({ ...script, stories: script.stories.map((s) => (s.rank === rank ? { ...s, ...patch } : s)) });
+const unpinned = (script) => ({ ...script, theme: undefined, stories: script.stories.map(({ layout: _, ...s }) => s) });
+/** Layout ids in script order, after checking there is exactly one per story. */
+function layoutIds(script, edition) {
+  const { layouts } = resolveLook(script, edition);
+  const ranks = script.stories.map((s) => s.rank);
+  assert.deepEqual(Object.keys(layouts ?? {}).map(Number).sort(), [...ranks].sort(), "one layout per story");
+  return ranks.map((r) => layouts[r]);
+}
+
+test("a story whose images all failed never gets full, even when its script asks for it", () => {
+  const edition = e13();
+  const script = templateScript(edition, hosts);
+  for (const s of script.stories) assert.equal("layout" in s, false, `the template wrote a layout for story ${s.rank}`);
+  assert.equal(resolveLook(script, edition).layouts?.[3], "full", "story 3 with its images follows two splits");
+  assert.equal(resolveLook(withStory(script, 3, { images: [] }), edition).layouts?.[3], "stat");
+
+  const pinned = resolveLook(withStory(script, 3, { images: [], layout: "full" }), edition);
+  assert.equal(pinned.layouts?.[3], "stat");
+  assert.deepEqual(pinned.notes, ['story 3: layout "full" needs an image; chose stat']);
+});
+
+test("a pinned layout wins over the rules, and an unknown one fails the build", () => {
+  const edition = e13();
+  const script = templateScript(edition, hosts);
+  assert.equal(resolveLook(script, edition).layouts?.[1], "split", "the rules give story 1 split");
+  const look = resolveLook(withStory(script, 1, { layout: "stat" }), edition);
+  assert.equal(look.layouts?.[1], "stat");
+  assert.deepEqual(look.notes, []);
+  assert.throws(() => resolveLook(withStory(script, 2, { layout: "fullbleed" }), edition), /script\.stories rank 2 layout "fullbleed": unknown; use split \| full \| stat/);
+
+  const stats = { stories: [1, 2, 3].map((rank) => ({ rank, images: ["assets/a.jpg"], layout: "stat" })) };
+  const over = resolveLook(stats, { date: "2026-10-13", stories: [1, 2, 3].map((rank) => ({ rank, text: "A plain story." })) });
+  assert.deepEqual(over.layouts, { 1: "stat", 2: "stat", 3: "stat" }, "a pin beats max and the three-in-a-row rule");
+  assert.deepEqual(over.notes, []);
+});
+
+/** Three of one id in a row only when no other id is eligible; stat at most twice. */
+function assertSpread(ids, script, label) {
+  let stats = 0;
+  for (const [i, id] of ids.entries()) {
+    if (i >= 2 && id === ids[i - 1] && id === ids[i - 2]) {
+      const imageless = !script.stories[i].images?.length;
+      assert.ok(id === "split" && imageless && stats >= 2, `${label}: ${id} three times in a row at story ${script.stories[i].rank} (${ids.join(" ")})`);
+    }
+    if (id === "stat") stats++;
+  }
+  assert.ok(stats <= 2, `${label}: ${stats} stat layouts (${ids.join(" ")})`);
+}
+
+test("no layout shows three times in a row while another fits, and stat shows at most twice unless pinned", () => {
+  for (const [p, script, edition] of committed()) assertSpread(layoutIds(unpinned(script), edition), script, p);
+
+  const day = (stories) => [{ stories: stories.map(({ rank, images }) => ({ rank, images })) }, { date: "2026-10-13", stories: stories.map(({ rank, text }) => ({ rank, text })) }];
+  const many = (story) => Array.from({ length: 9 }, (_, i) => ({ rank: i + 1, ...story }));
+  const cases = {
+    "all image-less": many({ images: [], text: "A plain story." }),
+    "all with images": many({ images: ["assets/a.jpg"], text: "A plain story." }),
+    "all money": many({ images: ["assets/a.jpg"], text: "It raised $40B today." }),
+    "all money, image-less": many({ images: [], text: "It raised $40B today." }),
+  };
+  for (const [label, stories] of Object.entries(cases)) {
+    const [script, edition] = day(stories);
+    assertSpread(layoutIds(script, edition), script, label);
+  }
+
+  const [script, edition] = day([
+    { rank: 1, images: ["assets/a.jpg"], text: "A plain story." },
+    { rank: 2, images: [], text: "A paper." },
+    { rank: 3, images: [], text: "Another paper." },
+  ]);
+  assert.deepEqual(layoutIds(script, edition), ["split", "split", "stat"], "an image-less story after two splits takes the paper card in stat");
+});
+
+test("the English and visub cuts get the same layouts", () => {
+  const date = "2026-10-13";
+  const edition = read(join(ROOT, "editions", date, "edition.json"));
+  const en = unpinned(read(join(ROOT, "editions", date, "script.json")));
+  const vi = applyScreen(en, edition, read(join(ROOT, "editions", date, "screen.visub.json")).fields);
+  assert.deepEqual(layoutIds(vi, edition), layoutIds(en, edition));
+  const dollars = withStory(en, 1, { stat: "$40B", headline: "It raised *$40B*" });
+  assert.deepEqual(layoutIds(dollars, edition), layoutIds(en, edition), "money reads the edition's English bullet, not the screen text");
 });
 
 const lookOn = (date, theme) => resolveLook(theme ? { theme } : {}, { date });
