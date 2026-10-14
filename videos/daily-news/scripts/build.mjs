@@ -46,10 +46,26 @@ const dir = join(ROOT, "editions", date);
 const edition = read(join(dir, "edition.json"));
 if (cut.subs && !existsSync(join(dir, cut.subs.screen)))
   throw new Error(`${cut.subs.screen} is missing: run scripts/visub-screen.mjs ${date}`);
+const byRank = Object.fromEntries(edition.stories.map((s) => [s.rank, s]));
+// Each story keeps only the image files that exist, so a failed download never reaches the grid, the story, the
+// cover or the layout choice.
+const withImages = (sc) => ({
+  ...sc,
+  stories: sc.stories.map((s) => ({
+    ...s,
+    images: (
+      s.images ??
+      byRank[s.rank]?.images?.map((im) => im.local) ??
+      []
+    ).filter((f) => existsSync(join(dir, f))),
+  })),
+});
 // visub: the English script with its screen text in Vietnamese; voice and timing fields stay English.
-const script = cut.subs
-  ? applyScreen(read(join(dir, cut.script)), edition, read(join(dir, cut.subs.screen)).fields)
-  : read(join(dir, cut.script));
+const script = withImages(
+  cut.subs
+    ? applyScreen(read(join(dir, cut.script)), edition, read(join(dir, cut.subs.screen)).fields)
+    : read(join(dir, cut.script))
+);
 const modeFile = join(dir, cut.voice, "mode.json");
 const noVoice =
   process.argv.includes("--no-voice") ||
@@ -137,7 +153,8 @@ const UI_WEEKLY = {
 const UI = { ...UI_BASE[lang], ...(WEEKLY ? UI_WEEKLY[lang] : {}) };
 const issueTag = WEEKLY ? ` · ${lang === "vi" ? "Số" : "Issue"} ${edition.issue}` : "";
 // One look per day for every cut: a pin is read from the English script.json, never script.vi.json.
-const theme = resolveLook(read(join(dir, "script.json")), edition);
+const look = resolveLook(withImages(read(join(dir, "script.json"))), edition);
+for (const n of look.notes) console.log(`! look: ${n}`);
 const esc = (s) =>
   String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -356,9 +373,7 @@ const dateline =
     : lang === "vi"
       ? `${DOW}, ${DAY} ${MON.toLowerCase()}, ${d.getUTCFullYear()}`
       : `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`);
-const byRank = Object.fromEntries(edition.stories.map((s) => [s.rank, s]));
-const firstImage = (s) =>
-  (s.images ?? byRank[s.rank]?.images?.map((im) => im.local) ?? [])[0];
+const firstImage = (s) => s.images[0];
 
 // Wrap *starred* phrases in the yellow marker; default marks the whole headline.
 const marked = (h) =>
@@ -367,7 +382,7 @@ const marked = (h) =>
     : `<span class="mk">${esc(h)}</span>`;
 
 function introHtml() {
-  const v = theme.intro;
+  const v = look.intro;
   let body;
   if (v === "grid") {
     // The summary grid: every story at once, fully drawn on frame 0 (the auto-thumbnail frame).
@@ -397,13 +412,14 @@ function introHtml() {
 function storyHtml(seg, i) {
   const s = seg.story;
   const ed = byRank[s.rank] ?? {};
-  const layout = s.layout ?? "split";
-  const images = s.images ?? ed.images?.map((im) => im.local) ?? [];
+  const layout = look.layouts[s.rank];
+  if (!layout)
+    throw new Error(`story ${s.rank}: no layout resolved for this cut's rank`);
   const source = s.source ?? ed.source ?? "";
   let media;
-  if (images.length) {
+  if (s.images.length) {
     media =
-      images
+      s.images
         .map(
           (src, k) => `<img id="s${s.rank}-img${k}" src="${esc(src)}" alt="" />`
         )
@@ -459,9 +475,9 @@ function wipesHtml() {
   return wipes
     .map((w, i) => {
       const inner =
-        theme.transition === "shutter"
+        look.transition === "shutter"
           ? `<div class="half top"></div><div class="half bot"></div>`
-          : theme.transition === "ink"
+          : look.transition === "ink"
             ? `<div class="ink-panel"><span class="n">${esc(w.label)}</span><div class="edge" style="background:#f5c518"></div></div>`
             : `<div class="panel"><span class="n">${esc(w.label)}</span><div class="edge"></div></div>`;
       return `<div id="wipe-${i}" class="clip wipe" data-start="${r3(w.at - 0.34)}" data-duration="0.82" data-track-index="5">${inner}</div>`;
@@ -491,12 +507,12 @@ function page(fmt, body, duration, extraHead = "") {
 <style>
 ${fontFaces}
 ${readFileSync(join(ROOT, "template/style.css"), "utf8")}
-${theme.accent ? `:root{--yellow:${theme.accent}}` : ""}
+${look.accent ? `:root{--yellow:${look.accent}}` : ""}
 </style>
 ${extraHead}
 </head>
 <body>
-<div id="root" class="f-${fmt} bg-${theme.background}" data-composition-id="main" data-start="0" data-duration="${duration}" data-width="${f.width}" data-height="${f.height}" data-fps="${config.fps}">
+<div id="root" class="f-${fmt} bg-${look.background}" data-composition-id="main" data-start="0" data-duration="${duration}" data-width="${f.width}" data-height="${f.height}" data-fps="${config.fps}">
 <div class="ground"></div>
 ${body}
 </div>
@@ -528,18 +544,18 @@ function buildMix(outFile) {
     ...storySegs.map((s) => [C.statHit, s.statAt + 0.1, 0.5]),
     [C.outro, outro.start + 0.4, 0.8],
   ];
-  if (theme.intro === "countdown")
+  if (look.intro === "countdown")
     for (const [i] of script.stories.entries())
       cues.push([C.tick, 1.3 + i * 0.2 + 0.1, 0.7]);
-  if (theme.intro === "headline-stack")
+  if (look.intro === "headline-stack")
     for (const [i] of script.stories.entries())
       cues.push([C.tick, 0.25 + i * 0.22 + 0.1, 0.7]);
-  if (theme.intro === "grid") {
+  if (look.intro === "grid") {
     for (const [i] of script.stories.entries())
       cues.push([C.tick, 0.8 + i * 0.3, 0.7]);
     for (const f of introFocus) cues.push([C.tick, f.at - 0.05, 0.8]);
   }
-  if (theme.intro === "date-slam") cues.push([C.rankHit, 0.45, 0.9]);
+  if (look.intro === "date-slam") cues.push([C.rankHit, 0.45, 0.9]);
 
   const inputs = [];
   const filters = [];
@@ -690,9 +706,9 @@ for (const fmt of formatsOf(cut, config)) {
   const D = {
     fmt,
     total,
-    transition: theme.transition,
+    transition: look.transition,
     intro: {
-      variant: theme.intro,
+      variant: look.intro,
       start: 0,
       dur: r3(intro.dur),
       focus: introFocus,
@@ -701,7 +717,7 @@ for (const fmt of formatsOf(cut, config)) {
     stories: storySegs.map((s) => ({
       start: r3(s.start),
       dur: r3(s.dur),
-      layout: s.story.layout ?? "split",
+      layout: look.layouts[s.story.rank],
       statAt: r3(s.statAt),
     })),
     outro: { start: r3(outro.start), dur: r3(outro.dur) },
@@ -758,9 +774,10 @@ if (cut.subs) {
 
 // ---------------------------------------------------------------- timeline + posts
 const mmss = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
+const { layouts, notes, ...theme } = look;
 writeFileSync(
   join(dir, cut.timeline),
-  `${JSON.stringify({ date, total, voice: !noVoice, theme, segments: segs.map((s) => ({ id: s.id, start: r3(s.start), dur: r3(s.dur), voice: r3(s.voiceDur) })) }, null, 2)}\n`
+  `${JSON.stringify({ date, total, voice: !noVoice, theme, layouts, segments: segs.map((s) => ({ id: s.id, start: r3(s.start), dur: r3(s.dur), voice: r3(s.voiceDur) })) }, null, 2)}\n`
 );
 
 const P = script.post ?? {};
@@ -914,7 +931,7 @@ writeFileSync(
 );
 
 console.log(
-  `✓ ${date}: ${total}s${noVoice ? " · NO VOICE (estimated read-along timing)" : ""} · intro=${theme.intro} · transition=${theme.transition} · bg=${theme.background}`
+  `✓ ${date}: ${total}s${noVoice ? " · NO VOICE (estimated read-along timing)" : ""} · intro=${look.intro} · transition=${look.transition} · bg=${look.background}`
 );
 console.log(
   `  ${cut.out}/${Object.keys(config.formats).join(`, ${cut.out}/`)} · ${cut.captions} (${allCaps.length} cues) · posts.md (${cut.lang})`
