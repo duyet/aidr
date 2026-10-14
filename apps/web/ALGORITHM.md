@@ -427,7 +427,10 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   Do not wrap `open-run` in `safeStep`.
 - Per-model caps in `worker/llm.ts`: score `SCORE_SLICE_MAX_MS` 70s, TL;DR
   `TLDR_SLICE_MAX_MS` 135s, translate first token `TRANSLATE_FIRST_TOKEN_MS`
-  35s.
+  35s. Cluster (`worker/dedupe.ts`): `CLUSTER_SLICE_MAX_MS` 45s inside the
+  120s `CLUSTER_TIMEOUT_MS`. Served cluster calls finish within 30s; at 90s
+  a stalled first hop left each later id 13.3s, under the 20s first-token
+  cutoff (#672).
 - Do not treat GitHub Actions SUCCESS as a finished ingest. Poll
   `GET /api/system` (no-store) until `lastRun.id` matches the POST `id`
   (or at least is no longer the previous id) and `runsToday > 0`.
