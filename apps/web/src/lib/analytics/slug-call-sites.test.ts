@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SITE_LINKS } from "../../components/header/lib";
-import { EVENTS } from "./events";
+import { EVENTS, NAV_TARGETS } from "./events";
 import { readCampaign } from "./landing";
 import { SLUG_RE } from "./schema";
 
@@ -29,7 +29,8 @@ function literalSlugParams() {
       const spec = EVENTS[event as keyof typeof EVENTS];
       if (!spec) continue;
       for (const [param, kind] of Object.entries(spec.params)) {
-        if (kind.kind !== "slug") continue;
+        const isNavTarget = event === "nav_click" && param === "to";
+        if (kind.kind !== "slug" && !isNavTarget) continue;
         const literal = body.match(new RegExp(`\\b${param}:\\s*"([^"]*)"`));
         if (literal) {
           found.push({
@@ -54,13 +55,18 @@ describe("slug params written in source", () => {
     );
   });
 
-  it("passes SLUG_RE for every literal, so normalizeParams never drops it", () => {
-    const rejected = found.filter((f) => !SLUG_RE.test(f.value));
+  it("is a listed NAV_TARGET or passes SLUG_RE for every literal, so normalizeParams never drops it", () => {
+    const rejected = found.filter(
+      (f) =>
+        !SLUG_RE.test(f.value) &&
+        !(NAV_TARGETS as readonly string[]).includes(f.value)
+    );
     expect(rejected).toEqual([]);
   });
 
-  it("passes SLUG_RE for every SITE_LINKS id", () => {
-    expect(SITE_LINKS.filter((l) => !SLUG_RE.test(l.id))).toEqual([]);
+  it("lists every SITE_LINKS id in NAV_TARGETS", () => {
+    const listed: readonly string[] = NAV_TARGETS;
+    expect(SITE_LINKS.filter((l) => !listed.includes(l.id))).toEqual([]);
   });
 
   it("keeps the two /data tab links distinguishable", () => {

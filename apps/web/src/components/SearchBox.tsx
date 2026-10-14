@@ -2,6 +2,7 @@ import { Input } from "@aidr/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { feedTag } from "../lib/analytics/schema";
 import { track } from "../lib/analytics/track";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
 import {
@@ -91,7 +92,11 @@ export function SearchBox({
 
   const selectFilter = () => {
     if (!filterMatch) return;
-    track("topic_filter", { tag: filterMatch.value, from: "search" });
+    const tag = feedTag(filterMatch.value, [
+      ...(feed?.categories.map((c) => c.name) ?? []),
+      ...(feed?.trending.map((t) => t.tag) ?? []),
+    ]);
+    if (tag) track("topic_filter", { tag, from: "search" });
     setOpen(false);
     setQ("");
     navigate({

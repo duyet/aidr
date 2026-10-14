@@ -6,6 +6,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { ReaderBg, ReaderDensity, TldrCount } from "../prefs";
 import type { EventParams, PREF_VALUES } from "./events";
+import { feedTag, parseSlug, type Slug } from "./schema";
 import { track } from "./track";
 
 describe("track() types", () => {
@@ -63,5 +64,48 @@ describe("track() types", () => {
     expectTypeOf<EventParams<"lang_change">["lang"]>().toEqualTypeOf<
       "vi" | "en"
     >();
+  });
+
+  it("rejects free text for a label param, accepts a feed tag or UI label", () => {
+    const query: string = "a reader's search text";
+    // @ts-expect-error a plain string is not a FeedTag
+    track("topic_filter", { tag: query, from: "search" });
+    // @ts-expect-error a string literal that is not a UI label
+    track("topic_filter", { tag: "Open Source", from: "nav" });
+    track("topic_filter", { tag: "all", from: "nav" });
+    const tag = feedTag(query, ["Open Source"]);
+    if (tag) track("topic_filter", { tag, from: "search" });
+  });
+
+  it("rejects free text for a slug param, accepts a parsed slug", () => {
+    const campaign: string = "digest-2026-10-14";
+    track("channel_landing", {
+      channel: "email",
+      page_type: "home",
+      page_path: "/",
+      // @ts-expect-error a plain string is not a Slug
+      utm_campaign: campaign,
+    });
+    const utm_campaign = parseSlug(campaign);
+    if (utm_campaign) {
+      track("channel_landing", {
+        channel: "email",
+        page_type: "home",
+        page_path: "/",
+        utm_campaign,
+      });
+    }
+    expectTypeOf<EventParams<"web_vitals">["metric_id"]>().toEqualTypeOf<
+      Slug | undefined
+    >();
+  });
+
+  it("limits nav_click.to to the NAV_TARGETS list", () => {
+    const href: string = "/search?q=jane doe";
+    // @ts-expect-error a plain string is not a nav target
+    track("nav_click", { to: href, placement: "header" });
+    // @ts-expect-error not a listed target
+    track("nav_click", { to: "/search", placement: "header" });
+    track("nav_click", { to: "/data/runs", placement: "footer" });
   });
 });

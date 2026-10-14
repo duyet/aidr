@@ -1,3 +1,4 @@
+import { feedTag } from "../lib/analytics/schema";
 import { track } from "../lib/analytics/track";
 import type { Lang } from "../lib/types";
 import { useHorizontalScroll } from "../lib/use-horizontal-scroll";
@@ -15,6 +16,7 @@ export function CategoryNav({
   lang: Lang;
 }) {
   const scrollRef = useHorizontalScroll<HTMLElement>();
+  const names = categories.map((c) => c.name);
 
   if (categories.length === 0) return null;
 
@@ -45,7 +47,8 @@ export function CategoryNav({
             key={c.name}
             type="button"
             onClick={() => {
-              track("topic_filter", { tag: c.name, from: "nav" });
+              const tag = feedTag(c.name, names);
+              if (tag) track("topic_filter", { tag, from: "nav" });
               onToggle(c.name);
             }}
             aria-pressed={isSelected}

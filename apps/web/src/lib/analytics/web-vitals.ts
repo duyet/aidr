@@ -1,5 +1,6 @@
 import type { Metric } from "web-vitals";
 import type { EventParams } from "./events";
+import { parseSlug } from "./schema";
 import { track } from "./track";
 
 type VitalsParams = EventParams<"web_vitals">;
@@ -39,7 +40,7 @@ export function metricParams(
     ),
     metric_value: metric.value,
     metric_rating: metric.rating,
-    metric_id: metric.id,
+    metric_id: parseSlug(metric.id),
     navigation_type: metric.navigationType,
     edge_cache: cache,
     page_path: pagePath,

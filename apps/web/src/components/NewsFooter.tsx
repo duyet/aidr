@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import type { NavTarget } from "../lib/analytics/events";
 import { track } from "../lib/analytics/track";
 import {
   fetchFeedFreshnessOnce,
@@ -24,7 +25,7 @@ import {
 } from "../lib/site";
 
 // Footer is always English, regardless of site language.
-const FOOTER_LINKS: { to: string; label: string }[] = [
+const FOOTER_LINKS = [
   { to: "/about", label: "About" },
   { to: "/weeks", label: "Weekly edition" },
   { to: "/data", label: "Data / Pipeline" },
@@ -32,7 +33,7 @@ const FOOTER_LINKS: { to: string; label: string }[] = [
   { to: "/release", label: "Release notes" },
   { to: "/privacy", label: "Privacy" },
   { to: "/terms", label: "Terms" },
-];
+] as const satisfies readonly { to: NavTarget; label: string }[];
 
 const linkClass =
   "text-sm text-muted-foreground transition-colors hover:text-foreground";

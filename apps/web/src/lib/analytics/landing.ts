@@ -5,14 +5,14 @@ import {
   type EventParams,
   type PageType,
 } from "./events";
-import { SLUG_RE } from "./schema";
+import { parseSlug, type Slug } from "./schema";
 
 export type CampaignAttribution = {
   ref?: string;
   utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  utm_content?: string;
+  utm_medium?: Slug;
+  utm_campaign?: Slug;
+  utm_content?: Slug;
 };
 
 const ALLOWED = new Set([
@@ -23,12 +23,11 @@ const ALLOWED = new Set([
   "utm_content",
 ]);
 
-function clean(value: string | null | undefined): string | undefined {
+function clean(value: string | null | undefined): Slug | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim().slice(0, 64);
   if (!trimmed) return undefined;
-  if (!SLUG_RE.test(trimmed)) return undefined;
-  return trimmed;
+  return parseSlug(trimmed);
 }
 
 /** Parse campaign params from a query string. */
