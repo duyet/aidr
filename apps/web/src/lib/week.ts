@@ -9,6 +9,7 @@
  * all compute the same key, or one of them asks for a week nobody stored.
  */
 import { AUDIENCE_TIMEZONE, localCalendarDate } from "../../worker/time.js";
+import { DAY_ARCHIVE_SETTLED_CACHE_CONTROL } from "./day-archive";
 import { withLang } from "./locale-url";
 import type { Lang } from "./types";
 
@@ -163,9 +164,10 @@ export function formatWeekRange(
 
 /** Settled weeks never change (their days are past the rank-settle window
  * and the edition is written once); the newest week may still be upgraded
- * from a title fallback, so it caches briefly. */
+ * from a title fallback, so it caches briefly. Settled pages share the day
+ * archive's cap, which keeps cached HTML inside `ASSET_RETENTION_MS`. */
 export function weekCacheControl(week: string, nowMs: number): string {
   return week === lastClosedWeek(nowMs)
     ? "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
-    : "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";
+    : DAY_ARCHIVE_SETTLED_CACHE_CONTROL;
 }
