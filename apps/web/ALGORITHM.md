@@ -1527,7 +1527,7 @@ uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer
 (`openai/gpt-5.6-luna`, then `z-ai/glm-4.6`) shares no id with any
 generator chain and gets a 45s budget (`QA_REVIEW_TIMEOUT_MS`), 30s max for
 the first hop. On 2026-10-14 (#655) `stealth/space-bunny-alpha` was removed
-after 0 of 484 reviews in 7 days, and `glm-4.6` (12 of 277 in 24 hours, now
+after 0 of 484 reviews in 7 days, and `glm-4.6` (12 of 259 in 24 hours, now
 timing out rather than failing fast) moved behind TL;DR's `gpt-5.6-luna`;
 see the dated note in `wrangler.toml`.
 

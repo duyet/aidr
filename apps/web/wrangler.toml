@@ -178,8 +178,8 @@ ANYROUTER_ENGLISH_TRANSLATE_MODEL = "google/gemini-3-flash,google/gemma-latest,g
 # laguna-xs-2.1 invalid JSON 4/4; ling-3.0-flash-sante fails accept 3/4;
 # longcat-2.5-preview and nemotron-3.5-lightning time out 4/4.
 # 2026-10-14 (#655, prod llm_calls, review ok/n): space-bunny-alpha 0/484
-# over 7d (404, timeouts), removed. glm-4.6 866/1425 over 7d but 12/277 in
-# the last 24h; its failures now average 16.5s (timeouts, 502), not a fast
+# over 7d (404, timeouts), removed. glm-4.6 866/1425 over 7d but 12/259 in
+# the last 24h; its 7d failures average 16.5s (timeouts, 502), not a fast
 # 404, so it moves to the fallback slot. gpt-5.6-luna leads: it is the only
 # id disjoint from every generator chain still succeeding today (tldr 29/40
 # over 7d with json_object; 11 failures are 20s first-token timeouts on
