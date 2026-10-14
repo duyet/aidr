@@ -317,3 +317,48 @@ describe("unsubscribe, then subscribe again (#723)", () => {
     expect(row()).toEqual({ confirmed: 1 });
   });
 });
+
+describe("signing up again while pending (#723)", () => {
+  const ADDRESS = "pending@aidr-test.dev";
+  const signUp = () =>
+    subscribe(
+      env,
+      ADDRESS,
+      "en",
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      schedule
+    );
+  const storedToken = () =>
+    (
+      sqlite
+        .prepare("SELECT unsubscribe_token FROM subscribers WHERE email = ?")
+        .get(ADDRESS) as { unsubscribe_token: string }
+    ).unsubscribe_token;
+  const flushMail = () => new Promise((resolve) => setTimeout(resolve, 10));
+
+  it("keeps the stored token, mails it both times, and it still confirms", async () => {
+    env = { ...env, NEWS_UNSUBSCRIBE_SECRET: "test-secret" };
+
+    await signUp();
+    await flushMail();
+    const first = storedToken();
+    expect(first).toMatch(/^[0-9a-f]{64}$/);
+    expect(lastConfirmLink().searchParams.get("token")).toBe(first);
+
+    await signUp();
+    await flushMail();
+    expect(sent).toHaveLength(2);
+    expect(storedToken()).toBe(first);
+    expect(lastConfirmLink().searchParams.get("token")).toBe(first);
+
+    await expect(
+      confirmSubscription(env, first, undefined, schedule)
+    ).resolves.toEqual({ ok: true, token: first });
+  });
+});
