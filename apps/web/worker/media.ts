@@ -477,7 +477,7 @@ export function isGeneratedOgCard(url: string): boolean {
  * raw screen captures with the capturing desktop's window bars, dock and
  * hover tooltips in the pixels, so they are only a fallback picture.
  */
-export function isImageHostUpload(url: string): boolean {
+function isImageHostUpload(url: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();
     return host === "imgur.com" || host.endsWith(".imgur.com");
