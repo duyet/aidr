@@ -58,7 +58,7 @@ function boundedText(value: string, maxLength: number): string {
 
 /** `OPENAI_API_KEY`, `stripeSecretKey`, `session_id`, `idToken`. */
 const SECRET_KEY_NAME =
-  "(?:[a-z0-9]+[-_])*(?:[a-z0-9]*(?:api[-_ ]?key|apikey|(?:secret|private|access)[-_]?key)|authorization|client[-_ ]?secret|session[-_]?id|credentials?|passphrase|[a-z]*(?:token|secret|password|passwd))";
+  "(?:[a-z0-9]+[-_])*(?:[a-z0-9]*(?:api[-_ ]?key|apikey|(?:secret|private|access)[-_]?key)|authorization|client[-_ ]?secret|session[-_]?id|credentials?|passphrase|[a-z]*(?:tokens?|secret|password|passwd))";
 const SECRET_KEY = new RegExp(`^${SECRET_KEY_NAME}$`, "i");
 /** A scheme word (`Basic`, `Bearer`) goes with its credential. */
 const SECRET_KEY_VALUE = new RegExp(
@@ -67,17 +67,39 @@ const SECRET_KEY_VALUE = new RegExp(
 );
 
 /** Usage and cost counters (`input_token: 512`, `cost_per_token: 0.000002`)
- *  share the `token` suffix with credentials. A short plain number is kept
- *  unless the word before `token` names a credential. */
-const TOKEN_COUNT_KEY = /_tokens?$/i;
-const CREDENTIAL_TOKEN_KEY =
-  /(?:^|[-_])(?:access|refresh|session|id|auth|csrf|xsrf|bearer|api)[-_]tokens?$/i;
+ *  share the `token` suffix with credentials, and a 6-7 digit one-time code
+ *  looks the same as a count. Only the counter names the worker emits or
+ *  providers return keep a short plain number; every other `*_token(s)` key
+ *  is redacted. Names are compared with case and `-`/`_` dropped, so
+ *  `promptTokens`, `prompt_tokens` and `prompt-tokens` are one counter. */
+const TOKEN_COUNTERS: ReadonlySet<string> = new Set([
+  "tokens",
+  "llmtokens",
+  "totaltokens",
+  "prompttokens",
+  "completiontokens",
+  "cachedtokens",
+  "reasoningtokens",
+  "inputtoken",
+  "inputtokens",
+  "outputtoken",
+  "outputtokens",
+  "maxtokens",
+  "maxoutputtokens",
+  "maxnewtoken",
+  "maxnewtokens",
+  "numtoken",
+  "numtokens",
+  "cachereadtoken",
+  "cachereadtokens",
+  "costpertoken",
+  "timetofirsttoken",
+]);
 const COUNT_VALUE = /^\d{1,7}(?:\.\d{1,9})?$/;
 
 function isSecretValue(key: string, value: string): boolean {
   return !(
-    TOKEN_COUNT_KEY.test(key) &&
-    !CREDENTIAL_TOKEN_KEY.test(key) &&
+    TOKEN_COUNTERS.has(key.toLowerCase().replace(/[-_]/g, "")) &&
     COUNT_VALUE.test(value.replace(/^(["'])(.*)\1$/, "$2"))
   );
 }
