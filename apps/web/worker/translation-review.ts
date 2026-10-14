@@ -146,12 +146,20 @@ function hasUnsafeControlCharacters(value: string): boolean {
 class StrictJsonParser {
   private index = 0;
 
-  constructor(private readonly text: string) {}
+  constructor(
+    private readonly text: string,
+    private readonly allowStrayCloser = false
+  ) {}
 
   parse(): unknown {
     this.skipWhitespace();
     const value = this.parseValue(0);
     this.skipWhitespace();
+    const next = this.text[this.index];
+    if (this.allowStrayCloser && (next === "]" || next === "}")) {
+      this.index++;
+      this.skipWhitespace();
+    }
     if (this.index !== this.text.length) this.fail("trailing content");
     return value;
   }
@@ -307,11 +315,12 @@ class StrictJsonParser {
 
 export function parseExactJson(
   raw: string,
-  maxChars = QA_MAX_JSON_CHARS
+  maxChars = QA_MAX_JSON_CHARS,
+  allowStrayCloser = false
 ): unknown | null {
   if (typeof raw !== "string" || raw.length > maxChars) return null;
   try {
-    return new StrictJsonParser(raw).parse();
+    return new StrictJsonParser(raw, allowStrayCloser).parse();
   } catch {
     return null;
   }
@@ -319,9 +328,10 @@ export function parseExactJson(
 
 function parseRecord(
   raw: string,
-  maxChars = QA_MAX_JSON_CHARS
+  maxChars = QA_MAX_JSON_CHARS,
+  allowStrayCloser = false
 ): Record<string, unknown> | null {
-  const parsed = parseExactJson(raw, maxChars);
+  const parsed = parseExactJson(raw, maxChars, allowStrayCloser);
   return isRecord(parsed) ? parsed : null;
 }
 
@@ -398,11 +408,13 @@ export function parseTranslationReview(
   };
 }
 
+/** Generator output, not review output: Laguna S 2.1 often ends its JSON with
+ *  one stray `]` or `}` (probe 2026-10-01), so exactly one is dropped. */
 export function parseRepairCandidate(
   raw: string,
   maxChars = QA_MAX_JSON_CHARS
 ): TranslationText | null {
-  return parseTextRecord(parseRecord(raw, maxChars));
+  return parseTextRecord(parseRecord(raw, maxChars, true));
 }
 
 function parseTextRecord(parsed: unknown): TranslationText | null {

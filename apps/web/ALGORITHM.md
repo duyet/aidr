@@ -1565,7 +1565,9 @@ skipped, the chain is tried in full. 5xx and timeouts never skip.
 `parseJson` drops stray closers when a plain parse fails: Laguna often ends
 with an extra `]`, or closes the root `}` before `,"bullets_vi":[...]`.
 Without that, a translate batch is lost and a TL;DR keeps only
-`bullets_en`, so VI falls back to titles.
+`bullets_en`, so VI falls back to titles. The VI→EN generator and the
+translation repair parse strictly (`parseRepairCandidate`) but drop exactly
+one trailing `]` or `}`; the reviewer's output gets no such allowance.
 
 Every attempt also has a first-token cutoff (`FIRST_TOKEN_MAX_MS`, 20s): a
 model that streams nothing by then is logged as a timeout and the chain
