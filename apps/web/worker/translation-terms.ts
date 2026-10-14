@@ -488,10 +488,11 @@ function stripFeedFooter(text: string): string {
 /** A capitalised name or handle: "Bloomberg", "The Information",
  * "@openainewsroom", "Goldman Sachs and Reuters". Capitalised words only, so a
  * sentence that goes on ("Theo dự báo từ …", "From Nvidia to Obvious Ventures
- * …") is not a name. */
+ * …") is not a name. A name with "/", "từ", "trên" or "thuộc" in it is a
+ * byline, judged by `isByline`. */
 const ATTRIBUTION_WORD = String.raw`[@\p{Lu}\p{N}][\p{L}\p{N}_.'’&@-]*`;
 const ATTRIBUTION_NAME_RE = new RegExp(
-  String.raw`^${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|and|of|the|và|từ|trên|thuộc|[/&])){0,6}$`,
+  String.raw`^${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|and|of|the|và|&)){0,6}$`,
   "u"
 );
 const AUTHOR_RE = new RegExp(
@@ -499,6 +500,54 @@ const AUTHOR_RE = new RegExp(
   "u"
 );
 const HANDLE_RE = /^@[\p{L}\p{N}_.@-]+$/u;
+
+/** "Ina Fried", "Jeff John Roberts", "Camila Grigera Naón", "Donald J.
+ * Trump": two to four words, each a capital then lowercase letters, or an
+ * initial. "CEO", "AI" and "2027" are not name words. */
+const NAME_WORD = String.raw`\p{Lu}(?:[\p{Ll}'’][\p{L}'’-]*|\.)`;
+const REPORTER_NAME_RE = new RegExp(
+  String.raw`^${NAME_WORD}(?:\s+${NAME_WORD}){1,3}$`,
+  "u"
+);
+/** Letters only Vietnamese writes. Stored bylines spell the reporter the way
+ * the English credit does, so a word with one of these is a translated noun:
+ * "Trung Quốc", "Bộ Công Thương", "Nhà Trắng", "Thủ Tướng". */
+const VIETNAMESE_LETTER_RE = /[ăĂđĐĩĨũŨơƠưƯẠ-ỹ]/u;
+/** Name-shaped words that make the name a speaker or a date, not a reporter:
+ * "President Trump", "Mr. Musk", "Ông Trump", "Black Friday", "Labor Day". */
+const NOT_REPORTER_WORDS: ReadonlySet<string> = new Set(
+  [
+    // Titles and roles. Vietnamese titles with a Vietnamese-only letter
+    // ("Thủ Tướng", "Chủ Tịch", "Giám Đốc") fail VIETNAMESE_LETTER_RE.
+    "Mr. Mrs. Ms. Dr. Prof. Sir Dame Lord Lady Ông Bà Ngài",
+    "President Chairman Chairwoman Chair Chief Founder Cofounder Co-founder",
+    "Director Minister Secretary Senator Sen. Rep. Governor Gov. Mayor",
+    "Judge Justice King Queen Prince Princess Pope General Gen. Professor",
+    "Spokesperson Spokesman Spokeswoman Commissioner Chancellor Ambassador",
+    "Deputy",
+    // Institutions.
+    "Ministry Department Bureau Agency Commission Council Congress Senate",
+    "Parliament Government Court Committee University Institute Bank",
+    "Federal National House",
+    // Days, months, seasons.
+    "Monday Tuesday Wednesday Thursday Friday Saturday Sunday January",
+    "February March April May June July August September October November",
+    "December Day Week Weekend Month Year Quarter Today Tonight Tomorrow",
+    "Yesterday Morning Afternoon Evening Night Christmas Easter Thanksgiving",
+    "Tháng Ngày Quý",
+  ]
+    .join(" ")
+    .split(" ")
+);
+
+/** A reporter's name, not a speaker's: see `REPORTER_NAME_RE`. */
+function isReporterName(name: string): boolean {
+  return (
+    REPORTER_NAME_RE.test(name) &&
+    !VIETNAMESE_LETTER_RE.test(name) &&
+    !name.split(/\s+/).some((word) => NOT_REPORTER_WORDS.has(word))
+  );
+}
 
 /** Outlets that Techmeme and the stored "Theo X." rows credit, taken from
  * production rows. A credit to an outlet missing here keeps its sentence,
@@ -612,23 +661,32 @@ function isSourceList(name: string): boolean {
 }
 
 /** "Ina Fried / Axios", "Sarah Hilton từ Bloomberg", "Brian Krebs / Krebs on
- * Security": capitalised words, then sources. The author is never checked
- * against a list, so the sources after it carry the whole decision: "Elon
- * Musk / Tesla on Monday" and "Mỹ thuộc Nvidia" are claims. */
-function isByline(name: string, joiners = true): boolean {
+ * Security", "Reuters / Bloomberg": an author or a source, then sources.
+ * "Elon Musk / Tesla on Monday" and "Mỹ thuộc Nvidia" are claims, and "CEO
+ * Jensen Huang trên CNBC" names a speaker (#722). */
+function isByline(
+  name: string,
+  joiners = true,
+  author: (name: string) => boolean = isReporterName
+): boolean {
   const joiner = joiners
     ? String.raw`(?:\s*\/\s*|\s+(?:từ|trên|thuộc)\s+)`
     : String.raw`\s*\/\s*`;
   const match = new RegExp(`^(.+?)${joiner}(.+)$`, "u").exec(name);
-  return match !== null && AUTHOR_RE.test(match[1]) && isSourceList(match[2]);
+  return (
+    match !== null &&
+    (author(match[1]) || isSource(match[1])) &&
+    isSourceList(match[2])
+  );
 }
 
-/** Each way a sentence opens a credit, and the bare name it accepts besides
- * a byline. */
+/** Each way a sentence opens a credit, the bare name it accepts besides a
+ * byline, and who may write the byline (a reporter unless given). */
 const ATTRIBUTION_LEADS: readonly {
   lead: string;
   bare: (name: string) => boolean;
   joiners?: boolean;
+  author?: (name: string) => boolean;
 }[] = [
   {
     lead: String.raw`(?:(?:[Tt]in|[Bb]ài)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?`,
@@ -645,7 +703,12 @@ const ATTRIBUTION_LEADS: readonly {
     bare: (name) => HANDLE_RE.test(name) || isOutletDomain(name),
     joiners: false,
   },
-  { lead: "[Tt]ác giả", bare: () => false },
+  // "Tác giả" is "author": the lead itself says the name wrote the story.
+  {
+    lead: "[Tt]ác giả",
+    bare: () => false,
+    author: (name) => AUTHOR_RE.test(name),
+  },
 ];
 
 /** A whole sentence that only names where the story came from: "Từ The
@@ -654,20 +717,23 @@ const ATTRIBUTION_LEADS: readonly {
  * byline, or the same in parentheses. A sentence that carries a claim ("Theo
  * Reuters, Nvidia …") has more after the name, so it does not match. */
 const ATTRIBUTION_SENTENCES = ATTRIBUTION_LEADS.map(
-  ({ lead, bare, joiners }) => ({
+  ({ lead, bare, joiners, author }) => ({
     pattern: new RegExp(
       String.raw`^\(?\s*(?:${lead})\s+(.+?)\s*[.!]?\s*\)?\.?$`,
       "u"
     ),
     bare,
     joiners,
+    author,
   })
 );
 
 function isAttributionSentence(sentence: string): boolean {
-  return ATTRIBUTION_SENTENCES.some(({ pattern, bare, joiners }) => {
+  return ATTRIBUTION_SENTENCES.some(({ pattern, bare, joiners, author }) => {
     const name = pattern.exec(sentence)?.[1];
-    return name !== undefined && (bare(name) || isByline(name, joiners));
+    return (
+      name !== undefined && (bare(name) || isByline(name, joiners, author))
+    );
   });
 }
 
