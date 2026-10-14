@@ -392,6 +392,7 @@ describe("protected English terms", () => {
     "Theo CEO Jensen Huang trên CNBC.",
     "Theo Bộ Công Thương / Reuters.",
     "By Monday / Bloomberg.",
+    "By Monday / @monday.",
     "By 2027 / Bloomberg.",
     "By Black Friday / Bloomberg.",
     "By President Trump / CNBC.",
@@ -440,6 +441,33 @@ describe("protected English terms", () => {
     }
   );
 
+  // A name made only of Vietnamese syllables is a place as often as a
+  // person, and none of these letters is Vietnamese-only (#759). "Theo Thái
+  // Lan / Reuters." is "according to Thailand". "Lan Anh" and "Phuong
+  // Nguyen" have the same shape as "Ba Lan" and "Na Uy".
+  it.each([
+    "Theo Thái Lan / Reuters.",
+    "Theo Ba Lan / Reuters.",
+    "Theo Hà Lan trên Reuters.",
+    "Theo Tây Ban Nha / Reuters.",
+    "Theo Na Uy / Bloomberg.",
+    "Theo Thái Lan / VnExpress.",
+    "Theo Ba Lan / VnExpress.",
+    "Theo Hà Lan / GeekWire.",
+    "Theo Na Uy / SiliconANGLE.",
+    "Theo Ba Lan trên Euronews.",
+    "Theo Liên Minh Châu Âu / Reuters.",
+    "Thông tin từ Châu Âu / Reuters.",
+    "Tin từ Gia Lai / VnExpress.",
+    "Bởi Na Uy / Reuters.",
+    "By Ho Chi Minh / Reuters.",
+    "Theo Lan Anh / VnExpress.",
+    "By Phuong Nguyen / Reuters.",
+  ])("keeps a Vietnamese place or name before an outlet: %s", (fragment) => {
+    const text = `Giá chip tăng 5%. ${fragment}`;
+    expect(stripSourceBoilerplate(text)).toBe(text);
+  });
+
   // A sentence that only looks like a byline goes on, or has no outlet.
   it.each([
     "By May, the company had shipped a million units.",
@@ -474,11 +502,15 @@ describe("protected English terms", () => {
     "By Robert Smith Jr. / Axios.",
     "By OpenAI / @OpenAI.",
     "By Anthropic / @AnthropicAI.",
-    "Theo Lan Anh / VnExpress.",
     "By Todd Bishop / GeekWire.",
     "By Duncan Riley / SiliconANGLE.",
     "By Luca Bertuzzi / Euronews.",
     "Bởi Todd Bishop / GeekWire.",
+    // #759: one word that is also a Vietnamese syllable is not enough.
+    "Theo Tim Cook / Reuters.",
+    "By Brenda Goh / Reuters.",
+    "By Anniek Bao / Bloomberg.",
+    "By Li Yuan / New York Times.",
   ])("drops a reporter byline to a known outlet: %s", (fragment) => {
     expect(stripSourceBoilerplate(`Giá chip tăng 5%. ${fragment}`)).toBe(
       "Giá chip tăng 5%."
