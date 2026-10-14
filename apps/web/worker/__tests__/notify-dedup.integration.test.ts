@@ -451,7 +451,26 @@ describe("digest bookkeeping", () => {
     ).toEqual({ n: 0 });
     expect(await forceSendDigest(env)).toEqual({
       sent: 0,
-      reason: `every TL;DR bullet for ${TODAY} is only an outlet credit`,
+      reason: `every TL;DR bullet for ${TODAY} is only an outlet credit on telegram, telegram-en`,
+    });
+  });
+
+  // Vietnamese has no bullets yet, so only the English channel was emptied by
+  // the strip. The reason must not blame the Vietnamese channel's bullets.
+  it("names only the channels whose bullets the strip emptied", async () => {
+    addItem({ id: "credit", title: "Credit only", rank: 2, importance: 5 });
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at) VALUES (?, ?, NULL, ?)"
+      )
+      .run(
+        TODAY,
+        JSON.stringify([{ text: "From Bloomberg.", item_ids: ["credit"] }]),
+        NOW.getTime()
+      );
+    expect(await forceSendDigest(env)).toEqual({
+      sent: 0,
+      reason: `every TL;DR bullet for ${TODAY} is only an outlet credit on telegram-en`,
     });
   });
 });

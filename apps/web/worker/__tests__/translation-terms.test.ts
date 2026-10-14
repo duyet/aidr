@@ -356,6 +356,45 @@ describe("protected English terms", () => {
     expect(stripSourceBoilerplate("Via theverge.com.")).toBe("");
   });
 
+  // A credit names a known outlet, an @handle or an outlet's domain. A name
+  // that only looks like an author, an outlet or a domain is a claim (#653).
+  it("keeps a closing sentence whose source is not a known outlet", () => {
+    for (const fragment of [
+      "By Labor Day / Thanksgiving in the US.",
+      "By Christmas Day / New Year in Europe.",
+      "By Lunar New Year / Tet in Vietnam.",
+      "By Black Friday / Cyber Monday in the US.",
+      "By End Of Year / Q1 in 2027.",
+      "By Monday / Tuesday.",
+      "By Elon Musk / Tesla on Monday.",
+      "Theo Elon Musk / Tesla on Monday.",
+      "Theo Nvidia thuộc Mỹ.",
+      "Tác giả ChatGPT thuộc OpenAI.",
+      "Tác giả Mỹ thuộc Nvidia.",
+      "Tác giả Mỹ thuộc Apple.",
+      "From socket.io.",
+      "Theo socket.io.",
+      "Via x.com.",
+      "From me.com.",
+    ]) {
+      const text = `Nvidia expects the new fab to ship volume parts. ${fragment}`;
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
+  it("drops a credit that lists several known outlets", () => {
+    for (const fragment of [
+      "From Bloomberg / Reuters / AP.",
+      "Theo Bloomberg / Politico / New York Times.",
+      "Theo Reuters và Bloomberg.",
+      "By Reuters / Bloomberg.",
+    ]) {
+      expect(stripSourceBoilerplate(`Giá chip tăng 5%. ${fragment}`)).toBe(
+        "Giá chip tăng 5%."
+      );
+    }
+  });
+
   it("keeps a sentence that carries a claim or a mid-text từ", () => {
     for (const text of [
       "Theo Reuters, Nvidia sẽ ra chip mới vào tháng 3.",
