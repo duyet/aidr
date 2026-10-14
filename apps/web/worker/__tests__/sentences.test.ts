@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   firstSentence,
   lastSentenceEnd,
+  readScanOps,
+  resetScanOps,
   sentenceEnds,
   splitSentences,
 } from "../sentences.js";
@@ -243,51 +245,38 @@ describe("a sentence ends before a link or repo tag", () => {
 describe("scan cost", () => {
   const unit = "Mr. Smith met Dr. Jones on Oct. 12. It ended. ";
   const SCALE = 8;
-  // Linear work gives a ratio near 8, quadratic near 64. Comparing two sizes
-  // on the same machine cancels CPU speed and suite load, which an absolute
-  // millisecond bound does not.
-  const MAX_RATIO = 20;
 
-  /** Best of three runs, so one descheduled run cannot skew the result. */
-  function minMs(fn: () => void): number {
-    let best = Number.POSITIVE_INFINITY;
-    for (let i = 0; i < 3; i++) {
-      const start = performance.now();
-      fn();
-      best = Math.min(best, performance.now() - start);
-    }
-    return best;
+  /** Positions the scanner examined for one call. Counting work instead of
+   *  timing it keeps the check exact under any suite load. */
+  function ops(input: string, run: (s: string) => unknown): number {
+    resetScanOps();
+    run(input);
+    return readScanOps();
   }
 
-  function growth(make: (n: number) => string, run: (s: string) => void) {
-    const small = make(1);
-    const large = make(SCALE);
-    run(small);
-    // Floor the divisor: a sub-timer-resolution small run must not inflate it.
-    return (
-      minMs(() => run(large)) /
-      Math.max(
-        minMs(() => run(small)),
-        0.05
-      )
-    );
+  function growth(make: (n: number) => string, run: (s: string) => unknown) {
+    return ops(make(SCALE), run) / ops(make(1), run);
   }
 
   const prose = (k: number) => unit.repeat(1_400 * k);
 
+  // Linear work gives a ratio of 8, quadratic 64.
   it("splitSentences scales linearly", () => {
     expect(prose(SCALE).length).toBeGreaterThan(500_000 / 2);
     expect(splitSentences(prose(SCALE)).length).toBeGreaterThan(5_000);
-    expect(growth(prose, splitSentences)).toBeLessThan(MAX_RATIO);
+    const ratio = growth(prose, splitSentences);
+    expect(ratio).toBeGreaterThan(6);
+    expect(ratio).toBeLessThan(10);
   });
 
-  it("clipFeedSummary scales linearly", () => {
-    expect(growth(prose, clipFeedSummary)).toBeLessThan(MAX_RATIO);
+  // The clip reads a fixed window, so work must not grow with the text at all.
+  it("clipFeedSummary reads a bounded window", () => {
+    expect(growth(prose, clipFeedSummary)).toBeLessThan(1.5);
   });
 
   it("a dot-heavy run scales linearly", () => {
-    expect(growth((k) => "a.".repeat(20_000 * k), sentenceEnds)).toBeLessThan(
-      MAX_RATIO
-    );
+    const ratio = growth((k) => "a.".repeat(20_000 * k), sentenceEnds);
+    expect(ratio).toBeGreaterThan(6);
+    expect(ratio).toBeLessThan(10);
   });
 });

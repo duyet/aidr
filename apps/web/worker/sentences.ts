@@ -7,6 +7,19 @@
  * not: "Debuts at No. 2", "on Oct. 12", "Mr. Smith", "U.S. officials".
  */
 
+/** Characters and positions the scanner has examined since the last
+ *  `resetScanOps()`. Tests assert how this grows with input size, which is
+ *  deterministic where a timing ratio is not. */
+let scanOps = 0;
+
+export function resetScanOps(): void {
+  scanOps = 0;
+}
+
+export function readScanOps(): number {
+  return scanOps;
+}
+
 const SENTENCE_END = /[.!?…]/;
 const CLOSERS = /["'”’)\]]/;
 
@@ -81,7 +94,10 @@ const WORD_CHAR = /[A-Za-z.]/;
 function wordBefore(value: string, index: number): string | undefined {
   const floor = Math.max(0, index - MAX_ABBREVIATION);
   let start = index;
-  while (start > floor && WORD_CHAR.test(value[start - 1] ?? "")) start--;
+  while (start > floor && WORD_CHAR.test(value[start - 1] ?? "")) {
+    scanOps++;
+    start--;
+  }
   if (start === floor && start > 0 && WORD_CHAR.test(value[start - 1] ?? "")) {
     return undefined;
   }
@@ -99,6 +115,7 @@ const LINK_START =
   /(?:https?:\/\/|www\.)\S|(?=[\w.-]*[A-Za-z])[A-Za-z0-9][\w.-]*\/[\w.-]/y;
 
 function startsLink(value: string, index: number): boolean {
+  scanOps++;
   LINK_START.lastIndex = index;
   return LINK_START.test(value);
 }
@@ -121,12 +138,19 @@ function isAbbreviationPeriod(
 export function sentenceEnds(value: string): number[] {
   const ends: number[] = [];
   for (let i = 0; i < value.length; i++) {
+    scanOps++;
     if (!SENTENCE_END.test(value[i] ?? "")) continue;
     let end = i + 1;
-    while (end < value.length && CLOSERS.test(value[end] ?? "")) end++;
+    while (end < value.length && CLOSERS.test(value[end] ?? "")) {
+      scanOps++;
+      end++;
+    }
     if (end < value.length && !/\s/.test(value[end] ?? "")) continue;
     let nextAt = end;
-    while (nextAt < value.length && /\s/.test(value[nextAt] ?? "")) nextAt++;
+    while (nextAt < value.length && /\s/.test(value[nextAt] ?? "")) {
+      scanOps++;
+      nextAt++;
+    }
     const next = value[nextAt];
     if (
       next !== undefined &&
