@@ -22,6 +22,9 @@
  *     (dry run reads prod D1 with SELECTs only; --apply writes, sends nothing)
  *   pnpm --filter @aidr/web agent unmerge --undo <batchId> [--apply]
  *     (reverses one apply from its admin_audit rows; dry run by default)
+ *   pnpm --filter @aidr/web agent unmerge --retag <batchId> [--apply]
+ *     (re-tags the canonicals that apply left with no tags; the dry run
+ *     reads prod D1 with SELECTs only, --apply calls the scorer)
  *
  * `run` and `rerun` are dry runs unless `--live` is passed. A dry run sends
  * no email, Telegram or owner alert and only previews the TL;DR, but still
@@ -41,6 +44,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { latestArchiveDate } from "../src/lib/day-archive";
 import type {
+  RetagUnmergedResult,
   UndoUnmergeResult,
   UnmergeResult,
 } from "../worker/admin/handlers";
@@ -52,6 +56,7 @@ import {
   toWirePair,
 } from "../worker/unmerge/plan";
 import { countUnmerge } from "../worker/unmerge/report";
+import { loadRetag, planRetag } from "../worker/unmerge/retag";
 import { loadUndo, parseBatchId, planUndo } from "../worker/unmerge/undo";
 import { wranglerSelect, wranglerSelectTotals } from "./cf-d1";
 
@@ -160,6 +165,7 @@ function takesValue(flag: string): boolean {
     "ref",
     "date",
     "undo",
+    "retag",
   ].includes(flag);
 }
 
@@ -342,6 +348,7 @@ async function tldrPreview(): Promise<void> {
  * rows and writes. */
 async function unmerge(args: Args, file: string | undefined): Promise<void> {
   if (args.flags.has("undo")) return undoUnmergeBatch(args);
+  if (args.flags.has("retag")) return retagUnmergeBatch(args);
   if (!file) fail("unmerge needs a pairs JSON file");
   const raw: unknown = JSON.parse(readFileSync(file, "utf-8"));
   const parsed = parseUnmergePairs(
@@ -358,7 +365,7 @@ async function unmerge(args: Args, file: string | undefined): Promise<void> {
     });
     print(
       result,
-      `unmerge: applied ${result.applied?.canonicals ?? 0} canonical(s) as batch ${result.applied?.batchId} (undo: --undo ${result.applied?.batchId}), ${JSON.stringify(result.counts.pairs)}${result.applied?.remaining ? `; ${result.applied.remaining} canonical(s) over the statement budget, rerun --apply` : ""}${result.applied?.stale.length ? `; ${result.applied.stale.length} canonical(s) changed since planning and were not written, rerun --apply` : ""}${result.applied?.failed ? `; stopped at ${result.applied.failed.canonicalId}: ${result.applied.failed.error}` : ""}`
+      `unmerge: applied ${result.applied?.canonicals ?? 0} canonical(s) as batch ${result.applied?.batchId} (undo: --undo ${result.applied?.batchId}), ${JSON.stringify(result.counts.pairs)}${result.applied?.remaining ? `; ${result.applied.remaining} canonical(s) over the statement budget, rerun --apply` : ""}${result.applied?.stale.length ? `; ${result.applied.stale.length} canonical(s) changed since planning and were not written, rerun --apply` : ""}${result.applied?.failed ? `; stopped at ${result.applied.failed.canonicalId}: ${result.applied.failed.error}` : ""}${result.counts.untaggedCanonicals.length ? `; ${result.counts.untaggedCanonicals.length} canonical(s) left with no tags, re-tag: unmerge --retag ${result.applied?.batchId}` : ""}`
     );
     return;
   }
@@ -403,6 +410,34 @@ async function undoUnmergeBatch(args: Args): Promise<void> {
   print(
     { dryRun: true, readOnly: wranglerSelectTotals, plan },
     `unmerge undo dry run of ${batchId} (nothing written; ${wranglerSelectTotals.queries} read-only queries): ${JSON.stringify(states)}`
+  );
+}
+
+async function retagUnmergeBatch(args: Args): Promise<void> {
+  const batchId = parseBatchId(args.flags.get("retag"));
+  if (batchId === null) fail("--retag needs the unmerge apply's batch id");
+  if (args.flags.has("apply")) {
+    const result = await api<RetagUnmergedResult>("/api/admin/unmerge/retag", {
+      method: "POST",
+      admin: true,
+      body: { batchId, dryRun: false },
+    });
+    const applied = result.applied;
+    print(
+      result,
+      `unmerge retag of ${batchId}: tagged ${applied?.canonicals ?? 0} canonical(s) as batch ${applied?.batchId} (undo: --undo ${applied?.batchId}), ${applied?.stillUntagged.length ?? 0} still untagged, ${applied?.stale.length ?? 0} changed since planning${applied?.failed ? `; stopped at ${applied.failed.canonicalId}: ${applied.failed.error}` : ""}`
+    );
+    return;
+  }
+  const { records, items } = await loadRetag(
+    async (sql) => wranglerSelect(sql),
+    batchId
+  );
+  if (records.length === 0) fail(`no unmerge audit rows for batch ${batchId}`);
+  const plan = planRetag(batchId, records, items);
+  print(
+    { dryRun: true, readOnly: wranglerSelectTotals, plan },
+    `unmerge retag dry run of ${batchId} (nothing written, no model call; ${wranglerSelectTotals.queries} read-only queries): ${plan.candidates.length} untagged canonical(s) to score, ${plan.skipped.length} skipped`
   );
 }
 
@@ -635,7 +670,7 @@ async function main(): Promise<void> {
       return unmerge(args, stepArg);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --undo <batchId> [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --undo <batchId> [--apply] | unmerge --retag <batchId> [--apply]"
       );
   }
 }

@@ -60,6 +60,14 @@ import {
 } from "../unmerge/plan.js";
 import { countUnmerge, type UnmergeCounts } from "../unmerge/report.js";
 import {
+  applyRetag,
+  loadRetag,
+  planRetag,
+  type RetagCandidate,
+  type RetagPlan,
+  type RetagResult,
+} from "../unmerge/retag.js";
+import {
   applyUndo,
   loadUndo,
   parseBatchId,
@@ -538,6 +546,73 @@ export async function undoUnmerge(
     plan,
     applied: await applyUndo(env.DB, plan, Date.now()),
   };
+}
+
+export interface RetagUnmergedResult {
+  dryRun: boolean;
+  plan: RetagPlan;
+  applied?: RetagResult;
+}
+
+/**
+ * Re-tags the canonicals one unmerge apply left with no tags (#758). Body
+ * `{ batchId, dryRun? }`, where `batchId` is the unmerge's
+ * `applied.batchId`. A dry run (the default) lists the candidates and calls
+ * no model. The apply scores them with the ingest tag step and writes only
+ * `tags`, as its own undoable batch. See ALGORITHM.md, "Unmerge".
+ */
+export async function retagUnmerged(
+  env: Env,
+  input: { batchId?: unknown; dryRun?: unknown }
+): Promise<RetagUnmergedResult | HandlerError> {
+  const batchId = parseBatchId(input.batchId);
+  if (batchId === null) {
+    return { error: "batchId must be a positive integer", status: 400 };
+  }
+  if (input.dryRun !== undefined && typeof input.dryRun !== "boolean") {
+    return { error: "dryRun must be a boolean", status: 400 };
+  }
+  const { records, items } = await loadRetag(d1Select(env.DB), batchId);
+  if (records.length === 0) {
+    return { error: `no unmerge audit rows for batch ${batchId}`, status: 404 };
+  }
+  const plan = planRetag(batchId, records, items);
+  if (input.dryRun !== false) return { dryRun: true, plan };
+  const operationId = operationRunId("unmerge-retag");
+  setLlmCallLogger(createD1LlmCallLogger(env));
+  try {
+    const applied = await applyRetag(
+      env.DB,
+      plan,
+      (candidates) =>
+        withLlmCallContext(operationId, () => ingestTags(env, candidates)),
+      Date.now()
+    );
+    return { dryRun: false, plan, applied };
+  } finally {
+    await flushLlmCallWrites();
+  }
+}
+
+async function ingestTags(
+  env: Env,
+  candidates: readonly RetagCandidate[]
+): Promise<Map<string, string[]>> {
+  const scored = await scoreItems(
+    env,
+    candidates.map((c, i) => ({
+      i,
+      title: c.title,
+      summary: c.summary ?? undefined,
+      source: c.sourceId,
+    }))
+  );
+  const rawTagsByItem = new Map<string, string[]>();
+  for (const result of scored) {
+    const candidate = candidates[result.i];
+    if (candidate) rawTagsByItem.set(candidate.id, result.tags);
+  }
+  return normalizeTopics(env, rawTagsByItem, Date.now());
 }
 
 /**

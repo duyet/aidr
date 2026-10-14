@@ -9,7 +9,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { undoUnmerge, unmergeItems } from "../admin/handlers.js";
+import { retagUnmerged, undoUnmerge, unmergeItems } from "../admin/handlers.js";
 import { MAX_SOURCES_PER_ITEM } from "../d1-bind.js";
 import { buildMergePlan, type ExistingCandidate } from "../dedupe.js";
 import type { IngestContext, NewRow } from "../ingest/context.js";
@@ -33,6 +33,12 @@ import {
   UNMERGE_QUIET_SEC,
   type UnmergePair,
 } from "../unmerge/plan.js";
+
+const scoreItems = vi.hoisted(() => vi.fn());
+vi.mock("../llm.js", async (original) => ({
+  ...(await original<typeof import("../llm.js")>()),
+  scoreItems,
+}));
 
 function parsePairs(raw: unknown): UnmergePair[] {
   const parsed = parseUnmergePairs(raw);
@@ -250,14 +256,15 @@ function australiaCopies(publishedAt: number) {
 async function writeCanonical(
   db: DatabaseSync,
   newRow: NewRow,
-  nowSec: number
+  nowSec: number,
+  tags = TAGS
 ) {
   await writeItems(ingest(db), {
     newRows: [newRow],
     scored: new Map([[newRow.id, score(6)]]),
     translated: new Map(),
     mergePlan: EMPTY_MERGE_PLAN,
-    canonicalTagsByItem: TAGS,
+    canonicalTagsByItem: tags,
     now: nowSec * 1000,
   });
 }
@@ -269,7 +276,8 @@ async function writeCluster(
   newRows: NewRow[],
   existing: { id: string; row: NewRow } | null,
   nowSec: number,
-  importance = 5
+  importance = 5,
+  tags = TAGS
 ) {
   const scored = new Map(newRows.map((r) => [r.id, score(importance)]));
   const existingById = new Map<string, ExistingCandidate>(
@@ -284,13 +292,13 @@ async function writeCluster(
               mediaManifest: existing.row.item.mediaManifest ?? null,
               sourceId: existing.row.source.id,
               url: existing.row.item.url,
-              topics: TAGS.get(existing.id),
+              topics: tags.get(existing.id),
             },
           ],
         ]
       : []
   );
-  const candidates = buildMergeCandidates(newRows, scored, TAGS, nowSec * 1000);
+  const candidates = buildMergeCandidates(newRows, scored, tags, nowSec * 1000);
   const mergePlan = buildMergePlan(
     [
       {
@@ -308,7 +316,7 @@ async function writeCluster(
     scored,
     translated: new Map(),
     mergePlan,
-    canonicalTagsByItem: TAGS,
+    canonicalTagsByItem: tags,
     now: nowSec * 1000,
   });
 }
@@ -918,5 +926,168 @@ describe("unmerge", () => {
     const before = read();
     await unmergeItems(env, { pairs, dryRun: false });
     expect(read()).toEqual(before);
+  });
+});
+
+function seedKnownTopicsSoNormalizeMakesNoModelCall(
+  db: DatabaseSync,
+  names: string[]
+) {
+  const insert = db.prepare(
+    "INSERT INTO topics (name, canonical, count, last_seen) VALUES (?, ?, 1, 1)"
+  );
+  for (const name of names) insert.run(name, name);
+}
+
+describe("re-tag after unmerge (#758)", () => {
+  const UNTAGGED = new Map([...TAGS, [C, []]]);
+  const tagsOf = (rowId: string) =>
+    (
+      db.prepare("SELECT tags FROM items WHERE id = ?").get(rowId) as {
+        tags: string;
+      }
+    ).tags;
+  const audit = () =>
+    db.prepare("SELECT ts, action, detail FROM admin_audit ORDER BY id").all();
+
+  async function unmergeUntaggedCanonical(): Promise<number> {
+    const applied = await unmergeItems(env, { pairs, dryRun: false });
+    if ("error" in applied) throw new Error(applied.error);
+    expect(applied.counts.untaggedCanonicals).toEqual([C]);
+    vi.setSystemTime(NOW.getTime() + 60_000);
+    return applied.applied?.batchId as number;
+  }
+
+  beforeEach(async () => {
+    db.close();
+    db = migratedDb();
+    await writeCanonical(db, canonical, OLD + 600, UNTAGGED);
+    await writeCluster(
+      db,
+      twins(OLD + 8000),
+      { id: C, row: canonical },
+      OLD + 9000,
+      5,
+      UNTAGGED
+    );
+    env = { DB: new SqliteD1(db) as unknown as D1Database } as Env;
+    seedKnownTopicsSoNormalizeMakesNoModelCall(db, ["anthropic", "agent"]);
+    vi.stubGlobal("fetch", () => {
+      throw new Error("no network in tests");
+    });
+    scoreItems.mockReset();
+    scoreItems.mockImplementation(async (_env, items: { i: number }[]) =>
+      items.map(({ i }) => ({
+        i,
+        relevance: 0.1,
+        importance: 1,
+        quality: 1,
+        category: "Funding",
+        tags: ["Anthropic", "agent"],
+        tokens: 1,
+      }))
+    );
+  });
+
+  it("an unmerge leaves the canonical with no tags", async () => {
+    expect(JSON.parse(tagsOf(C))).toEqual(["nvidia", "funding"]);
+    await unmergeUntaggedCanonical();
+    expect(tagsOf(C)).toBe("[]");
+  });
+
+  it("re-tags that canonical from its own title with the ingest tag step", async () => {
+    const batchId = await unmergeUntaggedCanonical();
+    const before = tables(db);
+    const beforeAudit = audit();
+
+    const dry = await retagUnmerged(env, { batchId });
+    if ("error" in dry) throw new Error(dry.error);
+    expect(dry.dryRun).toBe(true);
+    expect(dry.plan.candidates.map((c) => c.id)).toEqual([C]);
+    expect(scoreItems).not.toHaveBeenCalled();
+    expect(tables(db)).toEqual(before);
+    expect(audit()).toEqual(beforeAudit);
+
+    const result = await retagUnmerged(env, { batchId, dryRun: false });
+    if ("error" in result) throw new Error(result.error);
+    expect(scoreItems).toHaveBeenCalledTimes(1);
+    expect(scoreItems.mock.calls[0][1]).toEqual([
+      { i: 0, title: canonical.item.title, summary: undefined, source: "hn" },
+    ]);
+    expect(result.applied).toMatchObject({ canonicals: 1, stale: [] });
+    expect(JSON.parse(tagsOf(C))).toEqual(["anthropic", "agent"]);
+
+    const [items] = tables(db) as Record<string, unknown>[][];
+    const [itemsBefore] = before as Record<string, unknown>[][];
+    expect(items).toEqual(
+      itemsBefore.map((row) =>
+        row.id === C ? { ...row, tags: '["anthropic","agent"]' } : row
+      )
+    );
+  });
+
+  it("a rerun scores nothing and writes nothing", async () => {
+    const batchId = await unmergeUntaggedCanonical();
+    await retagUnmerged(env, { batchId, dryRun: false });
+    const after = [tables(db), audit()];
+
+    const again = await retagUnmerged(env, { batchId, dryRun: false });
+    if ("error" in again) throw new Error(again.error);
+    expect(again.plan.candidates).toEqual([]);
+    expect(again.plan.skipped).toEqual([{ id: C, reason: "tagged" }]);
+    expect(scoreItems).toHaveBeenCalledTimes(1);
+    expect([tables(db), audit()]).toEqual(after);
+  });
+
+  it("undo puts the empty tags back, then the unmerge undoes as before", async () => {
+    const preApply = tables(db);
+    const batchId = await unmergeUntaggedCanonical();
+    const unmerged = tables(db);
+    const result = await retagUnmerged(env, { batchId, dryRun: false });
+    if ("error" in result) throw new Error(result.error);
+    const retagBatch = result.applied?.batchId as number;
+    expect(retagBatch).not.toBe(batchId);
+
+    const blocked = await undoUnmerge(env, { batchId });
+    if ("error" in blocked) throw new Error(blocked.error);
+    expect(blocked.plan.canonicals.map((c) => c.state)).toEqual(["conflict"]);
+
+    const undone = await undoUnmerge(env, {
+      batchId: retagBatch,
+      dryRun: false,
+    });
+    if ("error" in undone) throw new Error(undone.error);
+    expect(undone.plan.canonicals.map((c) => c.state)).toEqual(["undo"]);
+    expect(tables(db)).toEqual(unmerged);
+    const again = await undoUnmerge(env, { batchId: retagBatch });
+    if ("error" in again) throw new Error(again.error);
+    expect(again.plan.canonicals.map((c) => c.state)).toEqual(["noop"]);
+
+    await undoUnmerge(env, { batchId, dryRun: false });
+    expect(tables(db)).toEqual(preApply);
+  });
+
+  it("writes nothing when the tag step finds no tags", async () => {
+    const batchId = await unmergeUntaggedCanonical();
+    scoreItems.mockImplementation(async (_env, items: { i: number }[]) =>
+      items.map(({ i }) => ({
+        i,
+        relevance: 0.9,
+        importance: 5,
+        quality: 5,
+        category: "Industry",
+        tags: [],
+        tokens: 1,
+      }))
+    );
+    const before = [tables(db), audit()];
+    const result = await retagUnmerged(env, { batchId, dryRun: false });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.applied).toMatchObject({
+      canonicals: 0,
+      statements: 0,
+      stillUntagged: [C],
+    });
+    expect([tables(db), audit()]).toEqual(before);
   });
 });

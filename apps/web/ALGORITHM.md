@@ -295,6 +295,24 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   request; the response still carries `batchId` and names the canonical in
   `failed`. If a response is lost, the batch ids are
   `SELECT DISTINCT ts FROM admin_audit WHERE action LIKE 'unmerge.%' ORDER BY ts DESC`.
+- A canonical whose own score gave no tags (Jev answered `none` twice)
+  either carried only the merged rows' tags, which the unmerge drops, or
+  had none before it. Either way it is left at `[]`
+  (`counts.untaggedCanonicals`), and the card topic, title highlight, RSS
+  categories and trending chips, which read `items.tags`, have nothing for
+  it. `POST /api/admin/unmerge/retag` with
+  `{ batchId, dryRun? }` (`agent unmerge --retag <batchId> [--apply]`; the
+  apply prints this command when it leaves one) re-tags them: the batch's
+  `unmerge.row` canonicals that are still published with no tags, nothing
+  else. The dry run reads with SELECTs only and calls no model. The apply
+  runs ingest's tag step on each row's own title, summary and source
+  (`scoreItems`, then `normalizeTopics`, which counts the names in `topics`
+  as ingest does) and writes only `tags`. It uses the guarded batch above
+  under its own batch id, so `--undo <that id>` puts `[]` back. A row the
+  scorer again gives no tags is listed in `stillUntagged` and not written.
+  A rerun skips every tagged row and scores only the ones still untagged.
+  `topic_daily` is not written, because it counts a story on the day ingest
+  saw it.
 
 ## Day archive (`/date/YYYY-MM-DD`)
 
