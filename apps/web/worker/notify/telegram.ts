@@ -12,6 +12,7 @@ import {
 } from "../media.js";
 import { isIvStoryId, ivCardUrl, TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
 import type { Env } from "../types.js";
+import { digestCampaign, STORY_CAMPAIGN, withUtm } from "../utm.js";
 import { escapeHtml } from "./alert.js";
 import { digestPage } from "./day-card.js";
 import { fitText, fitWords } from "./fit-text.js";
@@ -95,10 +96,15 @@ export interface LinkPreviewOptions {
  * shared `SITE_NAME` as `og:site_name` (#231).
  */
 /** Day page for the digest date, e.g. `/date/2026-10-03?lang=vi`. */
-export function digestDayUrl(digest: Pick<DailyDigest, "date" | "lang">) {
-  return withUtm(
+export function digestDayUrl(
+  digest: Pick<DailyDigest, "date" | "lang">,
+  content: TelegramSlot = "button"
+) {
+  return withTelegramUtm(
     new URL(dayArchivePath(digest.date), SITE_URL).toString(),
-    digest.lang
+    digest.lang,
+    digestCampaign(digest.date),
+    content
   );
 }
 
@@ -116,7 +122,9 @@ export function digestLinkPreview(
   version?: string
 ): LinkPreviewOptions & { url: string } {
   return {
-    url: version ? digestCardUrl(digest, version) : digestDayUrl(digest),
+    url: version
+      ? digestCardUrl(digest, version)
+      : digestDayUrl(digest, "preview"),
     prefer_large_media: true,
     show_above_text: true,
   };
@@ -128,14 +136,24 @@ export const STORY_PHOTO_LINK_PREVIEW: LinkPreviewOptions = {
   is_disabled: true,
 };
 
-export function withUtm(url: string, lang: Lang = DEFAULT_LANG): string {
-  try {
-    const u = new URL(withSiteLang(url, lang));
-    u.searchParams.set("utm_source", "telegram");
-    return u.toString();
-  } catch {
-    return url;
-  }
+/** `utm_content` for a Telegram link: the day or story button, a text link
+ *  (digest bullet, album caption), or the link-preview fallback. */
+export type TelegramSlot = "button" | "link" | "preview";
+
+/** Locale first, then UTM, so `lang` is never replaced. Third-party URLs and
+ *  URLs that already carry utm params come back unchanged. */
+export function withTelegramUtm(
+  url: string,
+  lang: Lang,
+  campaign: string,
+  content: TelegramSlot
+): string {
+  return withUtm(withSiteLang(url, lang), {
+    source: "telegram",
+    medium: "social",
+    campaign,
+    content,
+  });
 }
 
 /** Canonical story permalink with the Telegram channel's selected locale. */
@@ -275,7 +293,7 @@ export function buildDigestMessage(
     const text = escapeHtml(bullet.text);
     const safeUrl = bullet.url ? canonicalizeMediaUrl(bullet.url) : null;
     const line = safeUrl
-      ? `${mark} ${text} <a href="${escapeHtml(withUtm(safeUrl, digest.lang))}">→</a>`
+      ? `${mark} ${text} <a href="${escapeHtml(withTelegramUtm(safeUrl, digest.lang, digestCampaign(digest.date), "link"))}">→</a>`
       : `${mark} ${text}`;
     const size = `${mark} ${bullet.text}${safeUrl ? " →" : ""}`.length;
     if (length + size + 2 > visibleCap) break;
@@ -408,7 +426,14 @@ function albumLinkReserve(lang: Lang): number {
  *  line under the story caption. */
 export function buildAlbumCaption(story: StoryPayload): string {
   const caption = buildStoryCaption(story, albumLinkReserve(story.lang));
-  const href = escapeHtml(withUtm(storyUrl(story, story.lang), story.lang));
+  const href = escapeHtml(
+    withTelegramUtm(
+      storyUrl(story, story.lang),
+      story.lang,
+      STORY_CAMPAIGN,
+      "link"
+    )
+  );
   const label = escapeHtml(albumReadLabel(story.lang));
   return `${caption}\n\n<a href="${href}">${label}</a>`;
 }
@@ -472,7 +497,12 @@ export function buildStoryReplyMarkup(story: StoryPayload): object {
       [
         {
           text: story.lang === "en" ? "Read →" : "Đọc bài →",
-          url: withUtm(storyUrl(story, story.lang), story.lang),
+          url: withTelegramUtm(
+            storyUrl(story, story.lang),
+            story.lang,
+            STORY_CAMPAIGN,
+            "button"
+          ),
         },
       ],
     ],

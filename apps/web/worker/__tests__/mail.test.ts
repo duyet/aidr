@@ -324,7 +324,7 @@ describe("renderDigestEmail", () => {
     );
     expect(html).not.toContain("hqdefault");
     expect(html).toContain(
-      "https://youtu.be/R3j93-pO9ac?utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest&amp;utm_content=video"
+      "https://youtu.be/R3j93-pO9ac?utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest-2026-10-10&amp;utm_content=video"
     );
     expect(html).toContain("&#9654;");
     expect(html).toContain("YouTube · Saturday, October 10, 2026");

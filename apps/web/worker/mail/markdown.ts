@@ -21,14 +21,18 @@ export function safeHref(raw: string): string | null {
   }
 }
 
-function inline(text: string): string {
+/** Rewrites each link href, e.g. to add UTM params. */
+export type HrefTagger = (href: string) => string;
+
+function inline(text: string, tagHref: HrefTagger): string {
   let html = escapeHtml(text);
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
     (_match, label: string, href: string) => {
       const safe = safeHref(href.replace(/&amp;/g, "&"));
       if (!safe) return label;
-      return `<a href="${escapeHtml(safe)}" style="color:#0a0a0a;text-decoration:underline">${label}</a>`;
+      const tagged = tagHref(safe);
+      return `<a href="${escapeHtml(tagged)}" style="color:#0a0a0a;text-decoration:underline">${label}</a>`;
     }
   );
   html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
@@ -59,19 +63,29 @@ const HEADING_STYLE: Record<number, string> = {
   3: "margin:20px 0 8px;font-size:16px;line-height:1.35;font-weight:500;color:#0a0a0a",
 };
 
-function listHtml(lines: string[], ordered: boolean): string {
+function listHtml(
+  lines: string[],
+  ordered: boolean,
+  tagHref: HrefTagger
+): string {
   const tag = ordered ? "ol" : "ul";
   const items = lines
     .map((line) =>
       ordered ? line.replace(/^\d+\.\s+/, "") : line.replace(/^[-*]\s+/, "")
     )
-    .map((item) => `<li style="margin:0 0 8px;padding:0">${inline(item)}</li>`)
+    .map(
+      (item) =>
+        `<li style="margin:0 0 8px;padding:0">${inline(item, tagHref)}</li>`
+    )
     .join("");
   return `<${tag} style="margin:0 0 20px;padding:0 0 0 22px;color:#0a0a0a;font-size:16px;line-height:1.65">${items}</${tag}>`;
 }
 
 /** Turns campaign markdown into table-safe email HTML fragments. */
-export function markdownToEmailHtml(md: string): string {
+export function markdownToEmailHtml(
+  md: string,
+  tagHref: HrefTagger = (href) => href
+): string {
   const lines = md.replace(/\r\n/g, "\n").split("\n");
   const blocks: string[] = [];
   let i = 0;
@@ -86,7 +100,7 @@ export function markdownToEmailHtml(md: string): string {
       const text = line.replace(/^#{1,3}\s+/, "");
       const tag = `h${level}` as "h1" | "h2" | "h3";
       blocks.push(
-        `<${tag} style="${HEADING_STYLE[level]}">${inline(text)}</${tag}>`
+        `<${tag} style="${HEADING_STYLE[level]}">${inline(text, tagHref)}</${tag}>`
       );
       i++;
       continue;
@@ -101,7 +115,7 @@ export function markdownToEmailHtml(md: string): string {
         group.push(lines[i]);
         i++;
       }
-      blocks.push(listHtml(group, ordered));
+      blocks.push(listHtml(group, ordered, tagHref));
       continue;
     }
     const para: string[] = [];
@@ -116,20 +130,26 @@ export function markdownToEmailHtml(md: string): string {
       i++;
     }
     blocks.push(
-      `<p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:#0a0a0a">${inline(para.join(" "))}</p>`
+      `<p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:#0a0a0a">${inline(para.join(" "), tagHref)}</p>`
     );
   }
   return blocks.join("\n");
 }
 
-export function markdownToPlainText(md: string): string {
+export function markdownToPlainText(
+  md: string,
+  tagHref: HrefTagger = (href) => href
+): string {
   return md
     .replace(/\r\n/g, "\n")
     .replace(/^#{1,3}\s+/gm, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)")
+    .replace(
+      /\[([^\]]+)\]\(([^)]+)\)/g,
+      (_m, label: string, href: string) => `${label} (${tagHref(href)})`
+    )
     .replace(/^[-*]\s+/gm, "• ")
     .replace(/^\d+\.\s+/gm, (match) => match)
     .trim();

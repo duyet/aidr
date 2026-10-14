@@ -123,6 +123,20 @@ GA4 reports a param only after it is registered as a custom dimension, and regis
 | --- | --- | --- | --- |
 ${dims.join("\n")}
 
+## Outgoing link tags
+
+\`channel_landing\` reads the UTM params below from the landing URL. Every aidr.today link we post carries all four, built by \`apps/web/worker/utm.ts\`. Third-party URLs, URLs that already have \`utm_*\`, and links with a subscriber token (settings, unsubscribe, feedback) are never tagged. \`lang\` is kept as its own param.
+
+| Channel | \`utm_source\` | \`utm_medium\` | \`utm_campaign\` | \`utm_content\` |
+| --- | --- | --- | --- | --- |
+| Email digest | \`email\` | \`digest\` | \`digest-YYYY-MM-DD\`, \`weekly-YYYY-Www\` | \`lead\`, \`s2\`..., \`cta\`, \`header\`, \`view-in-browser\`, \`lang-switch\`, \`video\`, \`channel-*\`, \`footer-data\`, \`footer-subscribe\` |
+| Email welcome, notes | \`email\` | \`welcome\`, \`notes\` | same as medium | \`cta\`, \`header\`, \`body\`, \`footer-*\` |
+| Telegram | \`telegram\` | \`social\` | \`digest-YYYY-MM-DD\` or \`story\` | \`button\`, \`link\`, \`preview\` |
+| Facebook | \`facebook\` | \`social\` | \`digest-YYYY-MM-DD\` or \`story\` | \`post\` |
+| Extension | \`extension\` | \`newtab\` | \`aidr_ext\` | placement (\`brand\`, \`tldr\`, ...) |
+
+\`social\` is GA4's default-channel-group medium for Organic Social. Email keeps the mail kind as medium, and the edition is the campaign.
+
 ## GA4 Enhanced Measurement
 
 Turn these off in GA4 Admin > Data streams > Enhanced measurement:

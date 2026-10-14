@@ -23,6 +23,28 @@ describe("landingFromUrl", () => {
     });
   });
 
+  it("reads the per-edition campaign every channel now sends", () => {
+    for (const [source, medium, content] of [
+      ["telegram", "social", "button"],
+      ["facebook", "social", "post"],
+      ["email", "digest", "lead"],
+    ]) {
+      expect(
+        landingFromUrl(
+          `?lang=vi&utm_source=${source}&utm_medium=${medium}&utm_campaign=digest-2026-10-14&utm_content=${content}`,
+          "/date/2026-10-14"
+        )
+      ).toEqual({
+        channel: source,
+        page_type: "day",
+        page_path: "/date/2026-10-14",
+        utm_medium: medium,
+        utm_campaign: "digest-2026-10-14",
+        utm_content: content,
+      });
+    }
+  });
+
   it("classifies a YouTube landing", () => {
     expect(landingFromUrl("?utm_source=youtube&utm_medium=video", "/")).toEqual(
       {
