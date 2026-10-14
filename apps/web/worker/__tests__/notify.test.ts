@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { layoutStories } from "../../src/lib/day-card-layout.js";
 import {
   DAY_CARD_CANDIDATES,
   hasDayOgCopy,
   pickDayCardItems,
 } from "../../src/lib/day-card-pick.js";
+import { dayCardModel } from "../../src/lib/day-og.js";
 import { readSession } from "../../src/lib/db.js";
 import { getDayArchive } from "../../src/lib/feed-queries.js";
+import type { StoryOgImage } from "../../src/lib/story-og.js";
 import { dayCardVersion, loadDayCard } from "../notify/day-card.js";
 import {
   assertNotifyConfig,
@@ -819,6 +822,50 @@ describe("telegram channels", () => {
     expect(leadText).toContain("Ảnh thật từ manifest dẫn đầu");
     expect(leadText).toContain("Ảnh thật thứ hai từ manifest");
     expect(leadText).not.toContain("Ảnh thường số 8");
+  });
+
+  it("paints the digest's stories in the digest's order, whichever photos load", async () => {
+    // The caption lists `itemIds` and the card URL carries their version, so
+    // the image must show exactly those stories in that order. Photo
+    // failures change the layout, never the selection.
+    const rows = [
+      { id: "bb00000111111111", title: "No photo, top rank", image_url: null },
+      ...Array.from({ length: 6 }, (_, i) => ({
+        id: `bb00000${i + 2}11111111`,
+        title: `Photo story ${i + 2}`,
+        image_url: `https://cdn.example/p-${i + 2}.jpg`,
+      })),
+    ];
+    const db = dayArchiveDb(rows);
+    const card = await loadDayCard(
+      { DB: db } as unknown as Env,
+      "2026-10-04",
+      "en"
+    );
+    const archive = await getDayArchive(
+      readSession(db as unknown as D1Database),
+      "2026-10-04"
+    );
+    const photo = { dataUri: "data:,", mimeType: "image/png", byteLength: 1 };
+    for (const loads of [
+      () => true,
+      () => false,
+      (url: string) => url.endsWith("3.jpg"),
+    ]) {
+      const model = await dayCardModel({
+        date: "2026-10-04",
+        lang: "en",
+        items: archive.day?.items ?? [],
+        today: false,
+        fetchPhoto: async (url) =>
+          (loads(url) ? photo : null) as StoryOgImage | null,
+      });
+      expect(layoutStories(model.layout).map((s) => s.id)).toEqual(
+        card?.itemIds
+      );
+    }
+    expect(card?.itemIds).toHaveLength(6);
+    expect(card?.version).toBe(dayCardVersion(card?.itemIds ?? []));
   });
 });
 

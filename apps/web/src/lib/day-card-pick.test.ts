@@ -26,6 +26,14 @@ describe("pickDayCardItems", () => {
     ]);
   });
 
+  it("keeps every story of a five-story day, so the card and digest show all five", () => {
+    const items = Array.from({ length: 5 }, (_, i) => ({
+      id: `photo-${i}`,
+      image_url: `https://cdn.example/${i}.jpg`,
+    }));
+    expect(pickDayCardItems(items)).toHaveLength(5);
+  });
+
   it("fills a short day with text tiles after the photos", () => {
     const items = [
       { id: "text", image_url: null },
