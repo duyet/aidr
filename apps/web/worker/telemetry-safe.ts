@@ -13,6 +13,7 @@ const SAFE_ERROR_CODES = new Set([
   "rate_limited",
   "auth_error",
   "invalid_response",
+  "bad_output",
   "not_configured",
   "provider_error",
   "unknown_error",
@@ -220,6 +221,9 @@ export function sanitizeError(value: unknown): SafeError | null {
   ) {
     code = "auth_error";
     message = "Provider authentication failed";
+  } else if (/\bbad output\b/.test(lower)) {
+    code = "bad_output";
+    message = "Provider output was not usable";
   } else if (
     /\b(?:response missing|failed accept|invalid response|bad json|unusable)\b/.test(
       lower
@@ -277,4 +281,39 @@ export function sanitizeRunStatsJson(raw: string): string {
 
 export function sanitizeRunError(value: unknown): string | null {
   return sanitizeError(value)?.message ?? null;
+}
+
+const SNIPPET_HEAD = 160;
+const SNIPPET_TAIL = 80;
+const SNIPPET_GAP = " … ";
+/** Redaction runs on a bounded window so a huge body costs nothing. */
+const SNIPPET_WINDOW = 2000;
+
+/**
+ * Short, sanitized excerpt of a failed model output or provider error body
+ * for `llm_calls.response_snippet`: first 160 and last 80 characters after
+ * secrets, tokens, emails and URLs are redacted. Idempotent, so the two
+ * redaction passes (logLlmCall, then the D1 sink) leave it unchanged.
+ */
+export function sanitizeLlmSnippet(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const window =
+    value.length > SNIPPET_WINDOW * 2
+      ? `${value.slice(0, SNIPPET_WINDOW)} ${value.slice(-SNIPPET_WINDOW)}`
+      : value;
+  const text = redactText(boundedText(window, window.length))
+    .replace(
+      /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
+      "[email redacted]"
+    )
+    .replace(
+      /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]*)?/g,
+      "[redacted]"
+    )
+    .replace(/\b(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{32,}\b/g, "[redacted]");
+  if (!text) return null;
+  if (text.length <= SNIPPET_HEAD + SNIPPET_TAIL + SNIPPET_GAP.length) {
+    return text;
+  }
+  return `${text.slice(0, SNIPPET_HEAD)}${SNIPPET_GAP}${text.slice(-SNIPPET_TAIL)}`;
 }

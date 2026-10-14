@@ -131,7 +131,13 @@ export async function captionSummaryFor(
           })}\n</untrusted_story>`,
         },
       ],
-      { task: "other", timeoutMs: LLM_TIMEOUT_MS, maxTokens: LLM_MAX_TOKENS }
+      {
+        task: "other",
+        timeoutMs: LLM_TIMEOUT_MS,
+        maxTokens: LLM_MAX_TOKENS,
+        validate: (content) =>
+          fitCaptionSummary(parseSummary(content), story.lang, budget) !== null,
+      }
     );
     const summary = fitCaptionSummary(parseSummary(raw), story.lang, budget);
     if (!summary) {

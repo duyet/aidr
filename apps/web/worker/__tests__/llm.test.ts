@@ -7,6 +7,7 @@ import type { LlmCallLogEntry } from "../llm.js";
 import {
   buildRoute,
   callAnyrouter,
+  completeJson,
   _extractLastJsonObjectForTests as extractLastJsonObject,
   generateTldr,
   logLlmCall,
@@ -18,6 +19,7 @@ import {
   RULES_OVERVIEW,
   RUN_TIMEOUT_BREAKER_THRESHOLD,
   raceTimeout,
+  redactLlmCallEntry,
   resetUnavailableModels,
   SCORE_CHAT_TIMEOUT_MS,
   SCORE_DECISION_TIMEOUT_MS,
@@ -55,7 +57,7 @@ const env: Env = {
 beforeEach(() => resetUnavailableModels());
 
 describe("LLM observability redaction", () => {
-  it("suppresses sensitive reviewer snippets and provider response bodies", () => {
+  it("suppresses reviewer snippets and provider response bodies", () => {
     const entries: LlmCallLogEntry[] = [];
     const logger = (entry: LlmCallLogEntry) => {
       entries.push(entry);
@@ -124,6 +126,136 @@ describe("LLM observability redaction", () => {
     });
     setLlmCallLogger(null);
     expect(entries[0]?.responseSnippet).toBeNull();
+  });
+});
+
+function failedEntry(
+  overrides: Partial<LlmCallLogEntry> = {}
+): LlmCallLogEntry {
+  return {
+    ts: 1,
+    task: "cluster",
+    model: "m/a",
+    ok: false,
+    tokens: 0,
+    promptTokens: null,
+    completionTokens: null,
+    cachedTokens: null,
+    durationMs: 1,
+    error: "anyrouter request failed: 500",
+    promptChars: 10,
+    responseSnippet: null,
+    ...overrides,
+  };
+}
+
+function logged(entry: LlmCallLogEntry): LlmCallLogEntry {
+  const entries: LlmCallLogEntry[] = [];
+  setLlmCallLogger((e) => {
+    entries.push(e);
+  });
+  logLlmCall(entry);
+  setLlmCallLogger(null);
+  return entries[0]!;
+}
+
+describe("llm_calls failure snippets", () => {
+  it("keeps a bounded head and tail of a failed output", () => {
+    const body = `${"a".repeat(160)}${"MIDDLE".repeat(200)}${"z".repeat(80)}`;
+    const snippet = logged(failedEntry({ responseSnippet: body }))
+      .responseSnippet as string;
+    expect(snippet.startsWith("a".repeat(160))).toBe(true);
+    expect(snippet.endsWith("z".repeat(80))).toBe(true);
+    expect(snippet.length).toBeLessThanOrEqual(160 + 80 + 3);
+  });
+
+  it("strips secrets, tokens and emails", () => {
+    const snippet = logged(
+      failedEntry({
+        responseSnippet:
+          "mail reader@example.com Bearer abc123def sk-live_1234567890abcdef api_key=hunter2 tok 0123456789abcdef0123456789abcdef0123 see https://x.test/p?t=1",
+      })
+    ).responseSnippet as string;
+    for (const leak of [
+      "reader@example.com",
+      "abc123def",
+      "sk-live_1234567890abcdef",
+      "hunter2",
+      "0123456789abcdef0123456789abcdef0123",
+      "https://x.test",
+    ]) {
+      expect(snippet).not.toContain(leak);
+    }
+  });
+
+  it("is stable under the second redaction pass in the D1 sink", () => {
+    const once = logged(failedEntry({ responseSnippet: "x".repeat(400) }));
+    expect(redactLlmCallEntry(once).responseSnippet).toBe(once.responseSnippet);
+  });
+
+  it("stores nothing for ok, sensitive and review rows", () => {
+    expect(
+      logged(failedEntry({ ok: true, error: null, responseSnippet: "out" }))
+        .responseSnippet
+    ).toBeNull();
+    expect(
+      logged(failedEntry({ sensitive: true, responseSnippet: "out" }))
+        .responseSnippet
+    ).toBeNull();
+    expect(
+      logged(failedEntry({ task: "review", responseSnippet: "out" }))
+        .responseSnippet
+    ).toBeNull();
+  });
+
+  describe("bad_output", () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("logs an unparseable answer as failed bad_output, returns it, and logs no ok row", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation(async () => chatResponse("not json at all"))
+      );
+      const entries: LlmCallLogEntry[] = [];
+      setLlmCallLogger((e) => {
+        entries.push(e);
+      });
+      const out = await completeJson(env, [{ role: "user", content: "q" }], {
+        task: "cluster",
+        validate: (c) => {
+          parseJson(c);
+          return true;
+        },
+      }).finally(() => setLlmCallLogger(null));
+      expect(out).toBe("not json at all");
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({
+        ok: false,
+        error: "anyrouter bad output",
+        responseSnippet: "not json at all",
+      });
+      expect(sanitizeError(entries[0]?.error)?.code).toBe("bad_output");
+    });
+
+    it("logs a usable answer as ok with no snippet", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation(async () => chatResponse('{"a":1}'))
+      );
+      const entries: LlmCallLogEntry[] = [];
+      setLlmCallLogger((e) => {
+        entries.push(e);
+      });
+      await completeJson(env, [{ role: "user", content: "q" }], {
+        validate: (c) => {
+          parseJson(c);
+          return true;
+        },
+      }).finally(() => setLlmCallLogger(null));
+      expect(entries[0]).toMatchObject({ ok: true, responseSnippet: null });
+    });
   });
 });
 

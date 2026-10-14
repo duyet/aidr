@@ -487,6 +487,10 @@ Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]
         timeoutMs: CLUSTER_TIMEOUT_MS,
         maxSliceMs: CLUSTER_SLICE_MAX_MS,
         maxTokens: MAX_TOKENS,
+        validate: (content) => {
+          parseJson<unknown>(content);
+          return true;
+        },
       }
     );
     const clusters = normalizeClusters(

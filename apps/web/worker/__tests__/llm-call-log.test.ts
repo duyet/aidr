@@ -42,7 +42,7 @@ describe("D1 LLM call telemetry", () => {
       error:
         "anyrouter request failed: 502 prompt=secret https://provider.test/raw",
       promptChars: 100,
-      responseSnippet: "raw response",
+      responseSnippet: "bad reply from reader@example.com Bearer tok123",
     });
 
     const insert = statements.find((s) =>
@@ -53,8 +53,36 @@ describe("D1 LLM call telemetry", () => {
     expect(insert?.args).toContain("Provider request failed (502)");
     expect(insert?.args).toContain("provider_error");
     expect(insert?.args).toContain(502);
-    expect(insert?.args).not.toContain("raw response");
+    expect(insert?.args).toContain(
+      "bad reply from [email redacted] Bearer [redacted]"
+    );
     expect(insert?.args).not.toContain("secret");
+  });
+
+  it("writes no snippet for an ok row", async () => {
+    resetLlmCallLogSchemaCache();
+    const { env, statements } = fakeEnv();
+    await createD1LlmCallLogger(
+      env,
+      "r"
+    )({
+      ts: 1,
+      task: "score",
+      model: "m",
+      ok: true,
+      tokens: 1,
+      promptTokens: null,
+      completionTokens: null,
+      cachedTokens: null,
+      durationMs: 1,
+      error: null,
+      promptChars: 1,
+      responseSnippet: "served answer",
+    });
+    const insert = statements.find((s) =>
+      s.sql.includes("INSERT INTO llm_calls")
+    );
+    expect(insert?.args).not.toContain("served answer");
   });
 
   it("uses async context identity for concurrent operations", async () => {
