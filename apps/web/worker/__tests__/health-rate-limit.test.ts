@@ -57,7 +57,6 @@ describe("429 burst alert through the health check", () => {
 
   function setup(history: { started_at: number; stats: string }[]) {
     const dms: string[] = [];
-    const sql: string[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string, init?: RequestInit) => {
@@ -73,23 +72,21 @@ describe("429 burst alert through the health check", () => {
           ? history
           : /GROUP BY task\b/.test(q)
             ? [
-                { task: "score", total: 25, ok: 0, rate_limited: 25 },
-                { task: "translate", total: 15, ok: 0, rate_limited: 13 },
+                { task: "score", model: "x/a", ok: 0, status: 429, n: 25 },
+                { task: "translate", model: "x/b", ok: 0, status: 429, n: 13 },
+                { task: "translate", model: "x/b", ok: 0, status: 502, n: 2 },
               ]
             : [],
       }),
     });
     const env = {
       DB: {
-        prepare: (q: string) => {
-          sql.push(q);
-          return { ...query(q), bind: () => query(q) };
-        },
+        prepare: (q: string) => ({ ...query(q), bind: () => query(q) }),
       },
       TELEGRAM_BOT_TOKEN: "t",
       TELEGRAM_OWNER_CHAT_ID: "12345",
     } as unknown as Env;
-    return { env, dms, sql };
+    return { env, dms };
   }
 
   it("DMs the owner once, then stays quiet inside the cooldown", async () => {
@@ -98,7 +95,6 @@ describe("429 burst alert through the health check", () => {
     const fired = await runHealthCheck(first.env, { runId: "r1", steps: [] });
     expect(fired).toContain(LLM_RATE_LIMITED_KEY);
     expect(first.dms.filter((d) => d.includes("429"))).toHaveLength(1);
-    expect(first.sql.some((q) => q.includes("error_status = 429"))).toBe(true);
 
     const next = setup([
       {

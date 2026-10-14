@@ -13,29 +13,47 @@ import {
   llmTaskFailingKey,
   runHealthCheck,
 } from "../health.js";
-import { resetOwnerDmRejections } from "../owner-alerts.js";
+import {
+  fingerprint,
+  issueEvidence,
+  type ModelStat,
+  resetOwnerDmRejections,
+} from "../owner-alerts.js";
 import type { Env } from "../types.js";
 
 /** 14:00 local, outside the daily-summary and day-video windows. */
 const NOW = Date.UTC(2026, 9, 14, 7, 0);
 const HOUR = 3600 * 1000;
-const REVIEW_CHAIN = ["z-ai/glm-4.6", "stealth/space-bunny-alpha"];
+const REVIEW_CHAIN = ["z-ai/glm-4.6", "z-ai/glm-5.2"];
 
 const ok = (task: string, n: number): LlmTaskCount => ({
   task,
   total: n,
   ok: n,
   rateLimited: 0,
-  models: ["google/gemini-3-flash"],
+  models: [
+    { model: "google/gemini-3-flash", total: n, failed: 0, statuses: {} },
+  ],
 });
 
-const review = (total: number, okCount = 0, rateLimited = 0): LlmTaskCount => ({
-  task: "review",
-  total,
-  ok: okCount,
-  rateLimited,
-  models: REVIEW_CHAIN,
-});
+/** Attempts alternate across the review chain; the 429s land on the head. */
+function review(total: number, okCount = 0, rateLimited = 0): LlmTaskCount {
+  const models: ModelStat[] = REVIEW_CHAIN.map((model) => ({
+    model,
+    total: 0,
+    failed: 0,
+    statuses: {},
+  }));
+  for (let i = 0; i < total; i++) {
+    const m = models[i % models.length]!;
+    m.total++;
+    if (i < okCount) continue;
+    m.failed++;
+    const status = i < okCount + rateLimited ? "429" : "error";
+    m.statuses[status] = (m.statuses[status] ?? 0) + 1;
+  }
+  return { task: "review", total, ok: okCount, rateLimited, models };
+}
 
 function input(tasks: LlmTaskCount[]): HealthInput {
   const total = tasks.reduce((n, t) => n + t.total, 0);
@@ -97,6 +115,34 @@ describe("whole-chain task failure alert", () => {
       keys([ok("score", 20), { ...review(3), task: "summarize" }, review(4)])
     ).toEqual([llmTaskFailingKey("summarize"), llmTaskFailingKey("review")]);
   });
+
+  // The GitHub fingerprint picks the issue an alert comments on. Built from
+  // the run's worst model, a review outage would land on whichever model
+  // failed most for some other task in the same run.
+  it("fingerprints and evidences the failing task's own models", () => {
+    const [issue] = evaluateHealth(input([ok("score", 20), review(4)]));
+    const runWide: ModelStat[] = [
+      {
+        model: "google/gemma-latest",
+        total: 30,
+        failed: 12,
+        statuses: { "502": 12 },
+      },
+      ...review(4).models,
+    ];
+    const ctx = {
+      runId: "r1",
+      nowMs: NOW,
+      models: runWide,
+      telegramQuietHours: {},
+    };
+    expect(fingerprint(issue!, ctx)).toBe(
+      "llm:model=z-ai/glm-4.6:status=error"
+    );
+    const evidence = issueEvidence(issue!, ctx).join("\n");
+    expect(evidence).toContain("z-ai/glm-4.6: 0/2 ok");
+    expect(evidence).not.toContain("gemma-latest");
+  });
 });
 
 describe("whole-chain task failure alert through the health check", () => {
@@ -106,7 +152,16 @@ describe("whole-chain task failure alert through the health check", () => {
     resetOwnerDmRejections();
   });
 
-  function setup(taskRows: Record<string, unknown>[]) {
+  /** Rows for `GROUP BY task, model, ok, error_status`. */
+  type CallRow = {
+    task: string;
+    model: string;
+    ok: number;
+    status: number | null;
+    n: number;
+  };
+
+  function setup(rows: CallRow[]) {
     const dms: string[] = [];
     vi.stubGlobal(
       "fetch",
@@ -117,9 +172,22 @@ describe("whole-chain task failure alert through the health check", () => {
         return new Response("{}", { status: 200 });
       })
     );
+    const runWide = (): Omit<CallRow, "task">[] => {
+      const byKey = new Map<string, Omit<CallRow, "task">>();
+      for (const { task: _task, ...r } of rows) {
+        const key = `${r.model}|${r.ok}|${r.status}`;
+        const seen = byKey.get(key);
+        byKey.set(key, { ...r, n: (seen?.n ?? 0) + r.n });
+      }
+      return [...byKey.values()];
+    };
     const query = (q: string) => ({
       all: async () => ({
-        results: /GROUP BY task\b/.test(q) ? taskRows : [],
+        results: /GROUP BY task\b/.test(q)
+          ? rows
+          : /GROUP BY model\b/.test(q)
+            ? runWide()
+            : [],
       }),
     });
     const env = {
@@ -132,33 +200,42 @@ describe("whole-chain task failure alert through the health check", () => {
     return { env, dms };
   }
 
-  it("DMs the owner naming the dead task and its models", async () => {
+  it("DMs the owner naming the dead task and only its models", async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     const { env, dms } = setup([
-      { task: "score", total: 23, ok: 23, rate_limited: 0, models: "x/a" },
-      {
-        task: "review",
-        total: 8,
-        ok: 0,
-        rate_limited: 0,
-        models: REVIEW_CHAIN.join(","),
-      },
+      { task: "score", model: "x/a", ok: 1, status: null, n: 20 },
+      { task: "score", model: "x/a", ok: 0, status: 502, n: 3 },
+      { task: "review", model: REVIEW_CHAIN[0]!, ok: 0, status: null, n: 5 },
+      { task: "review", model: REVIEW_CHAIN[1]!, ok: 0, status: 504, n: 3 },
     ]);
     const fired = await runHealthCheck(env, { runId: "r1", steps: [] });
     expect(fired).toEqual([llmTaskFailingKey("review")]);
     expect(dms).toHaveLength(1);
-    expect(dms[0]).toContain("review");
-    expect(dms[0]).toContain("stealth/space-bunny-alpha");
+    expect(dms[0]).toContain("All 8 review attempts failed");
+    expect(dms[0]).toContain(`${REVIEW_CHAIN[0]}: 0/5 ok (error×5)`);
+    expect(dms[0]).toContain(`${REVIEW_CHAIN[1]}: 0/3 ok (504×3)`);
+    expect(dms[0]).not.toContain("x/a");
   });
 
   it("stays quiet when every task has a success", async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     const { env, dms } = setup([
-      { task: "score", total: 23, ok: 23, rate_limited: 0, models: "x/a" },
-      { task: "review", total: 8, ok: 1, rate_limited: 0, models: "x/b" },
+      { task: "score", model: "x/a", ok: 1, status: null, n: 23 },
+      { task: "review", model: "x/b", ok: 1, status: null, n: 1 },
+      { task: "review", model: "x/b", ok: 0, status: null, n: 7 },
     ]);
     const fired = await runHealthCheck(env, { runId: "r1", steps: [] });
     expect(fired).toEqual([]);
     expect(dms).toEqual([]);
+  });
+
+  it("subtracts 429s per task from the attempts the alert counts", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    const { env } = setup([
+      { task: "score", model: "x/a", ok: 1, status: null, n: 20 },
+      { task: "review", model: "x/b", ok: 0, status: 429, n: 2 },
+      { task: "review", model: "x/b", ok: 0, status: null, n: 2 },
+    ]);
+    expect(await runHealthCheck(env, { runId: "r1", steps: [] })).toEqual([]);
   });
 });

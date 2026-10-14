@@ -76,6 +76,9 @@ export interface HealthIssue {
   detail: string;
   /** Lines for the owner DM and the issue body, when the check has them. */
   evidence?: string[];
+  /** The models an LLM issue is about. Its GitHub fingerprint and evidence
+   * use these instead of every model the run called. */
+  models?: ModelStat[];
 }
 
 export interface PriorRun {
@@ -89,8 +92,8 @@ export interface LlmTaskCount {
   total: number;
   ok: number;
   rateLimited: number;
-  /** Models the task tried this run. */
-  models: string[];
+  /** This task's attempts per model this run. */
+  models: ModelStat[];
 }
 
 export interface HealthInput {
@@ -165,7 +168,8 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
       key: llmTaskFailingKey(t.task),
       severity: "error",
       title: `LLM ${t.task} chain down`,
-      detail: `All ${attempts} ${t.task} attempts failed this run (${t.models.join(", ")})`,
+      detail: `All ${attempts} ${t.task} attempts failed this run (${t.models.map((m) => m.model).join(", ")})`,
+      models: t.models,
     });
   }
 
@@ -283,6 +287,34 @@ async function readTelegramLastPost(env: Env): Promise<Record<string, number>> {
   return last;
 }
 
+interface ModelStatRow {
+  model: string;
+  ok: number;
+  status: number | null;
+  n: number;
+}
+
+/** Folds (model, ok, status) counts into per-model stats, busiest first. */
+function foldModelStats(rows: ModelStatRow[]): ModelStat[] {
+  const byModel = new Map<string, ModelStat>();
+  for (const row of rows) {
+    const m = byModel.get(row.model) ?? {
+      model: row.model,
+      total: 0,
+      failed: 0,
+      statuses: {},
+    };
+    m.total += row.n;
+    if (!row.ok) {
+      m.failed += row.n;
+      const status = row.status === null ? "error" : String(row.status);
+      m.statuses[status] = (m.statuses[status] ?? 0) + row.n;
+    }
+    byModel.set(row.model, m);
+  }
+  return [...byModel.values()].sort((a, b) => b.total - a.total);
+}
+
 /** Per-task counts for this run; the run totals are their sums. */
 async function readLlmCounts(
   env: Env,
@@ -290,26 +322,28 @@ async function readLlmCounts(
 ): Promise<HealthInput["llm"]> {
   await flushLlmCallWrites();
   const { results } = await env.DB.prepare(
-    `SELECT task, COUNT(*) AS total, SUM(ok) AS ok,
-            SUM(CASE WHEN ok = 0 AND error_status = 429 THEN 1 ELSE 0 END) AS rate_limited,
-            GROUP_CONCAT(DISTINCT model) AS models
-     FROM llm_calls WHERE run_id = ? GROUP BY task`
+    `SELECT task, model, ok, error_status AS status, COUNT(*) AS n
+     FROM llm_calls WHERE run_id = ? GROUP BY task, model, ok, error_status`
   )
     .bind(runId)
-    .all<{
-      task: string;
-      total: number;
-      ok: number;
-      rate_limited: number;
-      models: string | null;
-    }>();
-  const tasks: LlmTaskCount[] = (results ?? []).map((r) => ({
-    task: r.task,
-    total: r.total,
-    ok: r.ok,
-    rateLimited: r.rate_limited,
-    models: r.models ? r.models.split(",") : [],
-  }));
+    .all<ModelStatRow & { task: string }>();
+  const rowsByTask = new Map<string, ModelStatRow[]>();
+  for (const row of results ?? []) {
+    const rows = rowsByTask.get(row.task) ?? [];
+    rows.push(row);
+    rowsByTask.set(row.task, rows);
+  }
+  const tasks: LlmTaskCount[] = [...rowsByTask].map(([task, rows]) => {
+    const models = foldModelStats(rows);
+    const total = models.reduce((n, m) => n + m.total, 0);
+    return {
+      task,
+      total,
+      ok: total - models.reduce((n, m) => n + m.failed, 0),
+      rateLimited: models.reduce((n, m) => n + (m.statuses["429"] ?? 0), 0),
+      models,
+    };
+  });
   const sum = (pick: (t: LlmTaskCount) => number) =>
     tasks.reduce((n, t) => n + pick(t), 0);
   const total = sum((t) => t.total);
@@ -331,24 +365,8 @@ async function readModelStats(
      WHERE ${where} GROUP BY model, ok, error_status`
   )
     .bind(bind)
-    .all<{ model: string; ok: number; status: number | null; n: number }>();
-  const byModel = new Map<string, ModelStat>();
-  for (const row of results ?? []) {
-    const m = byModel.get(row.model) ?? {
-      model: row.model,
-      total: 0,
-      failed: 0,
-      statuses: {},
-    };
-    m.total += row.n;
-    if (!row.ok) {
-      m.failed += row.n;
-      const status = row.status === null ? "error" : String(row.status);
-      m.statuses[status] = (m.statuses[status] ?? 0) + row.n;
-    }
-    byModel.set(row.model, m);
-  }
-  return [...byModel.values()].sort((a, b) => b.total - a.total);
+    .all<ModelStatRow>();
+  return foldModelStats(results ?? []);
 }
 
 async function readDailySummary(
