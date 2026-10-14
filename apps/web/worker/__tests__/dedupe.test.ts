@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildMergePlan,
   type Cluster,
@@ -15,6 +15,11 @@ import {
 } from "../dedupe.js";
 import type { NewRow, SourceRow } from "../ingest/context.js";
 import { collapseSameUrl } from "../ingest/dedupe.js";
+import {
+  type LlmCallLogEntry,
+  resetUnavailableModels,
+  setLlmCallLogger,
+} from "../llm.js";
 import type { FetchedItemSource } from "../sources/types.js";
 import type { Env } from "../types.js";
 
@@ -666,5 +671,94 @@ describe("toCandidates", () => {
       nowSec,
       nowSec - 3600,
     ]);
+  });
+});
+
+/** One SSE token, then silence until the attempt is aborted. */
+function tokenThenStall(signal: AbortSignal | null | undefined): Response {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(
+        new TextEncoder().encode(
+          'data: {"choices":[{"delta":{"content":"{"}}]}\n\n'
+        )
+      );
+      const abort = () =>
+        controller.error(
+          new DOMException("The operation was aborted.", "AbortError")
+        );
+      if (signal?.aborted) abort();
+      else signal?.addEventListener("abort", abort, { once: true });
+    },
+  });
+  return new Response(stream, { status: 200 });
+}
+
+/** No response at all; rejects once the attempt is aborted. */
+function silentUntilAbort(signal: AbortSignal | null | undefined) {
+  return new Promise<never>((_, reject) => {
+    signal?.addEventListener("abort", () =>
+      reject(new DOMException("The operation was aborted.", "AbortError"))
+    );
+  });
+}
+
+describe("clusterSimilar chain budget", () => {
+  afterEach(() => {
+    setLlmCallLogger(null);
+    resetUnavailableModels();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  // Prod call 895d1b10 (2026-10-14 04:12, Bugsink AIDR-18): gemma-latest
+  // streamed and then stalled for its whole 80s slice, leaving glm-latest,
+  // the preset and auto 13.3s each, under the 20s first-token window. glm
+  // answers cluster prompts in up to 16.0s (call 89ba359e: 16,030ms).
+  it("leaves the second hop time to answer after the first hop stalls", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    const glmAnswerMs = 16_030;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => {
+        const { model } = JSON.parse(String(init?.body)) as { model: string };
+        if (model === "google/gemma-latest")
+          return Promise.resolve(tokenThenStall(init?.signal));
+        if (model === "z-ai/glm-latest")
+          return new Promise<Response>((resolve) =>
+            setTimeout(
+              () =>
+                resolve(
+                  chatResponse('{"clusters":[{"new":[0],"existing":["abc"]}]}')
+                ),
+              glmAnswerMs
+            )
+          );
+        return silentUntilAbort(init?.signal);
+      })
+    );
+
+    const pending = clusterSimilar(
+      {
+        ...env,
+        ANYROUTER_MODEL:
+          "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anyrouter/auto",
+      },
+      [{ i: 0, title: "OpenAI launches Dots" }],
+      [{ id: "abc", title: "Introducing dots" }]
+    );
+    await vi.advanceTimersByTimeAsync(120_000);
+    await pending;
+
+    const glm = entries.find((e) => e.model === "z-ai/glm-latest");
+    expect(glm?.error ?? null).toBeNull();
+    expect(glm?.ok).toBe(true);
   });
 });
