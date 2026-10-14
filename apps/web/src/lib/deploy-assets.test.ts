@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   ASSET_RETENTION_MS,
@@ -358,6 +360,42 @@ describe("carryLiveAssets", () => {
       expect.stringMatching(/gone-old\.js failed after 3 attempts: HTTP 404/),
     ]);
   });
+});
+
+describe("deploy-web.yml", () => {
+  const workflow = readFileSync(
+    fileURLToPath(
+      new URL("../../../../.github/workflows/deploy-web.yml", import.meta.url)
+    ),
+    "utf-8"
+  );
+  const steps = new Map(
+    workflow
+      .split(/\n {6}- name: /)
+      .slice(1)
+      .map((block) => [block.slice(0, block.indexOf("\n")), block])
+  );
+  const condition = (name: string) =>
+    /\n {8}if: (.+)/.exec(steps.get(name) ?? "")?.[1];
+
+  // The Clerk checks sit after the asset smoke step. A broken chunk must not
+  // hide whether sign-in and the webhook secret still work, but none of them
+  // mean anything when the deploy itself failed.
+  it.each([
+    "Smoke — /__clerk/v1/environment",
+    "Smoke — /api/webhooks/clerk configured",
+  ])(
+    "runs %s after a failed asset smoke, not after a failed deploy",
+    (name) => {
+      expect(steps.get("Deploy @aidr/web")).toMatch(/\n {8}id: deploy\n/);
+      expect([...steps.keys()].indexOf(name)).toBeGreaterThan(
+        [...steps.keys()].indexOf("Smoke — referenced /assets/* load")
+      );
+      expect(condition(name)).toBe(
+        `\${{ !cancelled() && steps.deploy.outcome == 'success' }}`
+      );
+    }
+  );
 });
 
 describe("timedFetch", () => {

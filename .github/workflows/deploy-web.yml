@@ -77,6 +77,7 @@ jobs:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
 
       - name: Deploy @aidr/web
+        id: deploy
         run: pnpm --filter @aidr/web run deploy
         env:
           NODE_ENV: production
@@ -127,7 +128,9 @@ jobs:
       # no fallback that used to mask a missing secret. Assert the status only
       # and never echo the body or the key. `pnpm run smoke` (local
       # cf:deploy:prod path) asserts the same endpoint plus auth_config.
+      # Runs after a failed smoke step above, but not after a failed deploy.
       - name: Smoke — /__clerk/v1/environment
+        if: ${{ !cancelled() && steps.deploy.outcome == 'success' }}
         run: |
           max_attempts=5
           attempt=1
@@ -159,6 +162,7 @@ jobs:
       # ever regressed, this could not write a row into clerk_users and
       # inflate the public signup count. Assert the status only, never the body.
       - name: Smoke — /api/webhooks/clerk configured
+        if: ${{ !cancelled() && steps.deploy.outcome == 'success' }}
         run: |
           max_attempts=5
           attempt=1
