@@ -72,6 +72,20 @@ describe("buildTopItemsQuery", () => {
     expect(tldrSnapshotDate(afterIctMidnight)).toBe("2026-08-19");
   });
 
+  it("caps today's window at the end of the ICT day", () => {
+    // 12:00 ICT on 2026-10-14; today ends at 2026-10-14T17:00:00Z.
+    const now = Date.UTC(2026, 9, 14, 5, 0, 0);
+    const { sql, since, until } = buildTopItemsQuery(now);
+    const endOfTodaySec = Date.UTC(2026, 9, 14, 17, 0, 0) / 1000;
+    expect(tldrSnapshotDate(now)).toBe("2026-10-14");
+    expect(until).toBe(endOfTodaySec);
+    expect(sql).toContain("published_at < ?");
+    // A story stamped after today's end fails the bound the query binds.
+    const publishedAt = endOfTodaySec + 60;
+    expect(publishedAt >= since && publishedAt < until).toBe(false);
+    expect(endOfTodaySec - 1 >= since && endOfTodaySec - 1 < until).toBe(true);
+  });
+
   it("bounds a closed date's window to that ICT day", () => {
     const now = Date.UTC(2026, 9, 14, 5, 0, 0);
     const { since, until } = buildTopItemsQuery(now, "2026-10-13");

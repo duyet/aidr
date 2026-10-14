@@ -26,6 +26,21 @@ import {
   type RateDraft,
 } from "./admin/lib";
 
+/** One-line outcome of a TL;DR regenerate: the stored row changed only when
+ *  `written` is true, so a refusal must not read as success. */
+function describeTldrRegenerate(data: unknown): string {
+  const r = (data ?? {}) as {
+    written?: boolean;
+    reason?: string;
+    date?: string;
+    itemCount?: number;
+    bullets_en?: unknown[];
+    bullets_vi?: unknown[];
+  };
+  if (!r.written) return `not written: ${r.reason ?? "no reason returned"}`;
+  return `written ${r.date ?? ""}: ${r.bullets_en?.length ?? 0} EN / ${r.bullets_vi?.length ?? 0} VI bullets from ${r.itemCount ?? 0} stories`;
+}
+
 export function AdminPanel({ admin }: { admin: AdminState }) {
   const [ingestBusy, setIngestBusy] = useState(false);
   const [ingestResult, setIngestResult] = useState<string | null>(null);
@@ -348,7 +363,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
       const data = await res.json().catch(() => null);
       setTldrResult(
         res.ok
-          ? `ok — ${JSON.stringify(data)}`
+          ? describeTldrRegenerate(data)
           : `error (${res.status}) — ${JSON.stringify(data)}`
       );
       await loadStatus();

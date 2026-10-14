@@ -397,7 +397,8 @@ interface RankingPreviewRow extends RankSignalRow {
 
 /**
  * Read-only view of the ranking the TL;DR and homepage consume: the same
- * last-24h published window `ensureDailyTldr` reads, ordered by stored
+ * published window `ensureDailyTldr` reads (`buildTopItemsQuery`: the last
+ * 24h, capped at the end of today ICT), ordered by stored
  * `rank_score`, with every `rankScore` input and the score it would get if
  * re-ranked now (the hourly write step re-ranks today only). No writes.
  */
@@ -408,16 +409,16 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
       ? Math.min(Math.floor(parsed), MAX_PREVIEW_RANKING_LIMIT)
       : DEFAULT_PREVIEW_RANKING_LIMIT;
   const now = Date.now();
-  const { since } = buildTopItemsQuery(now);
+  const { since, until } = buildTopItemsQuery(now);
   const { results } = await env.DB.prepare(
     `SELECT id, title, published_at,
             llm_relevance, llm_importance, llm_quality, rank_score,
             ${RANK_SIGNAL_COLUMNS}
      FROM items ${RANK_SIGNAL_JOIN}
-     WHERE status = 'published' AND published_at >= ?
+     WHERE status = 'published' AND published_at >= ? AND published_at < ?
      ORDER BY rank_score DESC LIMIT ?`
   )
-    .bind(since, limit)
+    .bind(since, until, limit)
     .all<RankingPreviewRow>();
   return {
     since,
