@@ -1,0 +1,240 @@
+{
+  "source": "#749 and #754: wrong merges made by the old deterministic title pass (clusterByTitleSimilarity), hand-labelled in the #754 measurement. 7afadede<=586b7f43 (same article) and 9b848647<=7dfb6f4d (different articles, split correctly by #754) are not wrong merges and are not listed.",
+  "canonicals": 23,
+  "pairs": [
+    {
+      "canonicalId": "01b10eb425f337daa516368047ffb9f837a0cb746e8e7a15d513d56fc8edc93c",
+      "mergedId": "76873a97251acec57ff9a8ab1783c0ccefdec54d3f9f1a00da0d2bf9437fb418",
+      "group": "76873a97251acec57ff9a8ab1783c0ccefdec54d3f9f1a00da0d2bf9437fb418",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng của Microsoft",
+      "merged": "[vnexpress-tech] YouTuber tố trợ lý AI của Meta dẫn người lạ đến nhà"
+    },
+    {
+      "canonicalId": "0722c0ec3b54a1f000d599035d49aa9f4efeda85649e45b2d14bae2e0801abbc",
+      "mergedId": "e5d9f05ec1fff73fe40c290ca17cd16bb264abd9ba197ec83368513b1ea600c3",
+      "group": "e5d9f05ec1fff73fe40c290ca17cd16bb264abd9ba197ec83368513b1ea600c3",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Show HN: Geiger – See every AI agent on your machine and what it can touch",
+      "merged": "[hn] Show HN: Hacker News, without AI"
+    },
+    {
+      "canonicalId": "1ecc827b054bafd12b4d13d4350ca9c011f6f34203d9cdbed19e0dded36436ea",
+      "mergedId": "e887070a6030a93edb8220d5b24c360994bdaeae2a14b19727bb87fb41a72f6b",
+      "group": "e887070a6030a93edb8220d5b24c360994bdaeae2a14b19727bb87fb41a72f6b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Loạt kết quả từ hợp tác công nghệ Việt Nam - Australia",
+      "merged": "[vnexpress-tech] Lý do Việt Nam có Ngày hội Đổi mới sáng tạo quốc gia"
+    },
+    {
+      "canonicalId": "28cb7568d8e68af899f22622c30661c2bb66ccb95ec4650895151ec7430ddc35",
+      "mergedId": "55fb34d32e37451b32ad1e8cf70904caa45a9c7969d139e64eea33f04e8bb0e2",
+      "group": "55fb34d32e37451b32ad1e8cf70904caa45a9c7969d139e64eea33f04e8bb0e2",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] VnExpress khảo sát thói quen dùng AI của độc giả",
+      "merged": "[vnexpress-tech] 22 nhà nghiên cứu hàng đầu kêu gọi giám sát khẩn cấp AI"
+    },
+    {
+      "canonicalId": "38c32af152f6e098a6595d2656c6acf62dc549dc8da9ab3618f5499f897a10fd",
+      "mergedId": "34c146c1bc5c134d7c9dd1457e4ce67bc9ae07ac7148a4036388dff076327551",
+      "group": "34c146c1bc5c134d7c9dd1457e4ce67bc9ae07ac7148a4036388dff076327551",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Show HN: Radix – Visual UI for agentic programming",
+      "merged": "[hn] Show HN: Agentic CUDA Kernel Optimizer"
+    },
+    {
+      "canonicalId": "38d6b6f15cfc66e9cb60ef50af54d53c6bafaa5f69ce8d8ca7c707ff87651393",
+      "mergedId": "bb42bddf00d902144569f6938fb15fcee67834f40360494b99721663e33072b2",
+      "group": "bb42bddf00d902144569f6938fb15fcee67834f40360494b99721663e33072b2",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[lobsters] AI Has No Wisdom and Neither Will You",
+      "merged": "[hn] AI has no intent and no motivation"
+    },
+    {
+      "canonicalId": "428780b8a2485408d9014d786b57581f01c59514ae8b12b7b59d3247562d7a59",
+      "mergedId": "642bcf284e93595e1679f95c8aeed5e73df6f4d88900f08680e00d5ac5cbf5ec",
+      "group": "642bcf284e93595e1679f95c8aeed5e73df6f4d88900f08680e00d5ac5cbf5ec",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Lợi dụng sức hút iPhone 18 Pro và 18 Pro Max để lừa đảo",
+      "merged": "[vnexpress-tech] Một số iPhone 18 Pro gặp lỗi âm thanh"
+    },
+    {
+      "canonicalId": "4e724b013687bd2ae9880f08851000f2032eb0d9aaebf6c3c1e5adcbd7565c73",
+      "mergedId": "b7186fe91b5d4cdac2d052b5698d0bd9d6fa1c914a9e057b0f9fdc23efc3028d",
+      "group": "b7186fe91b5d4cdac2d052b5698d0bd9d6fa1c914a9e057b0f9fdc23efc3028d",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Tính năng hút người dùng của dòng smartphone gập Samsung",
+      "merged": "[vnexpress-tech] Tính năng ẩn giải phóng bộ nhớ smartphone không gây mất dữ liệu"
+    },
+    {
+      "canonicalId": "4e724b013687bd2ae9880f08851000f2032eb0d9aaebf6c3c1e5adcbd7565c73",
+      "mergedId": "e091a3ecd34543aa5910777899572b2a3b8db47c97acba49690e6e43eec5266e",
+      "group": "e091a3ecd34543aa5910777899572b2a3b8db47c97acba49690e6e43eec5266e",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Tính năng hút người dùng của dòng smartphone gập Samsung",
+      "merged": "[vnexpress-tech] Threads mở tính năng giám sát người dùng trẻ tại Việt Nam"
+    },
+    {
+      "canonicalId": "5491381d6c82ab641c1ef0a6967919932ed0cfb67cb35581872ede3835f17ac2",
+      "mergedId": "20557fb9552c5b2ba9f014920f97ae649388de87440dea1dac8b5ef92c48ff3f",
+      "group": "20557fb9552c5b2ba9f014920f97ae649388de87440dea1dac8b5ef92c48ff3f",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Khai mạc Ngày hội Đổi mới sáng tạo Quốc gia 2026",
+      "merged": "[vnexpress-tech] Nền tảng quang học siêu phổ thắng giải nhất Sáng kiến Khoa học 2026"
+    },
+    {
+      "canonicalId": "5491381d6c82ab641c1ef0a6967919932ed0cfb67cb35581872ede3835f17ac2",
+      "mergedId": "fc2695bb5d18c48345eeba01006900c7ab4c9011f85a79d8386449bf0ed64f45",
+      "group": "fc2695bb5d18c48345eeba01006900c7ab4c9011f85a79d8386449bf0ed64f45",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Khai mạc Ngày hội Đổi mới sáng tạo Quốc gia 2026",
+      "merged": "[vnexpress-tech] Nhiều hoạt động hưởng ứng Ngày Chuyển đổi số Quốc gia 2026"
+    },
+    {
+      "canonicalId": "5c95d17b450c271f56a5596989b211762369d4ce6425e4e1621bdb1a806a65ff",
+      "mergedId": "e75ae79079b7d88741885e19d870b5ae8f89168cd1e73740eea1c0609417efb9",
+      "group": "e75ae79079b7d88741885e19d870b5ae8f89168cd1e73740eea1c0609417efb9",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Bắt đầu vòng Chung kết AI Awards 2026",
+      "merged": "[vnexpress-tech] Soundcore AeroClip 2 - tai nghe kẹp vành tai xử lý giọng nói bằng AI"
+    },
+    {
+      "canonicalId": "740fe06183518f78e4043ab48c9dd83a01fa42e3e67fa72881b1b9df7e440e40",
+      "mergedId": "feb8ab8ab26f328db71455f67b7f6b386390c92d5475e9aae6a02698d3585356",
+      "group": "feb8ab8ab26f328db71455f67b7f6b386390c92d5475e9aae6a02698d3585356",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[lobsters] AI Agents Push Humans Out of the Loop",
+      "merged": "[hn] Show HN: TinyAIArena watch AI agents battle it out"
+    },
+    {
+      "canonicalId": "7afadeded3464c3a898f533eb209a92b9faf23adf43ebff78c043f04d8f6dd8c",
+      "mergedId": "3c52de96207feb358d04015815ca178db83ea6ec04a59baf986335ede2311355",
+      "group": "3c52de96207feb358d04015815ca178db83ea6ec04a59baf986335ede2311355",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Thủ tướng: Phải đo đếm đóng góp của công nghệ vào tăng trưởng",
+      "merged": "[vnexpress-tech] Công nghệ lau con lăn tự giặt tức thì trên robot tầm trung của Ecovacs"
+    },
+    {
+      "canonicalId": "8f664b85206c3e1ed2cfd05b516fe592f69b924caecd1c5ef4800b66766f6f3d",
+      "mergedId": "13dde8a751158b1645ac63f69bd40d63b8c3e06b54dc09bca4fcce09205acc2b",
+      "group": "13dde8a751158b1645ac63f69bd40d63b8c3e06b54dc09bca4fcce09205acc2b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Show HN: Sokoban AI Solver",
+      "merged": "[hn] Show HN: PantheonGPU – GPU health testing and AI workload benchmarking"
+    },
+    {
+      "canonicalId": "99a754aef972430b4286c5b5a45b242e8725e49ddc42bb9b87ba5a53d7ff3b00",
+      "mergedId": "53d5b3cd41ef540a39b52fce3543f1ff26bc9a503a23822548eeacf4eeb4dba3",
+      "group": "53d5b3cd41ef540a39b52fce3543f1ff26bc9a503a23822548eeacf4eeb4dba3",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Nữ tướng công nghệ đầu tiên dẫn dắt công ty đạt 1.000 tỷ USD",
+      "merged": "[vnexpress-tech] Hà Nội tiếp tục dẫn đầu cả nước về đổi mới sáng tạo"
+    },
+    {
+      "canonicalId": "99fd7a048e947da1b224e6ea182d9c58bd021a7d05f19b41840aaac9899f7bf0",
+      "mergedId": "a992673d9b55beb587ea0238737ee9fa3be38484461c4359b81cb34ab3160347",
+      "group": "a992673d9b55beb587ea0238737ee9fa3be38484461c4359b81cb34ab3160347",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] 15 công trình thắng giải Sáng kiến khoa học 2026",
+      "merged": "[vnexpress-tech] Hôm nay công bố giải Nobel Vật lý 2026"
+    },
+    {
+      "canonicalId": "99fd7a048e947da1b224e6ea182d9c58bd021a7d05f19b41840aaac9899f7bf0",
+      "mergedId": "e610f167949ac66142660f3a2f661b41a1a10331e4de5cff944cdbff32b47855",
+      "group": "e610f167949ac66142660f3a2f661b41a1a10331e4de5cff944cdbff32b47855",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] 15 công trình thắng giải Sáng kiến khoa học 2026",
+      "merged": "[vnexpress-tech] Hôm nay công bố giải Nobel Hóa học 2026"
+    },
+    {
+      "canonicalId": "a4fc34b7908d0b559e32c5362da7e74259ad45d44b3cdaaac32d2e937bc20ee3",
+      "mergedId": "c4c77d3b0503b3a755f2f9f4259be84f7250a3d54f828326d1578a6553be45d6",
+      "group": "c4c77d3b0503b3a755f2f9f4259be84f7250a3d54f828326d1578a6553be45d6",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hf-papers] Jeva: System One Models from First Principles",
+      "merged": "[hf-papers] VideoJev: System One Model for Video Understanding and Interaction"
+    },
+    {
+      "canonicalId": "ae84984ca193e523023d8e0b40292548705a513eec263714a1f708edeb56b1fd",
+      "mergedId": "5ccb3374286dd6136f55298ac5b8ecdd95ed0c57b0fefe0463837c5d5f718a38",
+      "group": "5ccb3374286dd6136f55298ac5b8ecdd95ed0c57b0fefe0463837c5d5f718a38",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Phó thủ tướng Hồ Quốc Dũng: Chuyển từ 'có hoạt động' sang 'có kết quả' đổi mới sáng tạo",
+      "merged": "[vnexpress-tech] Bí ẩn sông thủy ngân trong mộ Tần Thủy Hoàng"
+    },
+    {
+      "canonicalId": "b856de0518197d6e33476c27b8041def6c4b4c6e6b6d7d7f8f9474de250c1adb",
+      "mergedId": "44dc45513a84d09d8c18a52dc4bc588ef56ae5d75b389e741cd35c84c211c40e",
+      "group": "44dc45513a84d09d8c18a52dc4bc588ef56ae5d75b389e741cd35c84c211c40e",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Show HN: Agent.reviews – Where AI agents read and write reviews on tools",
+      "merged": "[hn] Show HN: I Put an AI Agent on a Nokia 110"
+    },
+    {
+      "canonicalId": "d6f9a664be8eed06fd4049fa9853ef431097069556dd9a16edecd9af4ef42d46",
+      "mergedId": "994d69bf84065725d07847fb9dac3d59c77ae93f09475a447382106c5a3f06cb",
+      "group": "994d69bf84065725d07847fb9dac3d59c77ae93f09475a447382106c5a3f06cb",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[the-decoder] Anthropic's Claude can now orchestrate up to 1,000 AI agents in parallel through dynamic workflows",
+      "merged": "[hn] AI agents in a stand-up call"
+    },
+    {
+      "canonicalId": "e483d8eddbddd9986b3d3089cc340dfe05dd365210b752905dc8b56c73c75e13",
+      "mergedId": "0bca5653ef88da33997dc0a3144516afb0ab222c4ce30e5acc018a2449ca0649",
+      "group": "0bca5653ef88da33997dc0a3144516afb0ab222c4ce30e5acc018a2449ca0649",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] 'Bão bài đăng' về Muse của tỷ phú AI Alexandr Wang",
+      "merged": "[vnexpress-tech] Các tỷ phú công nghệ sắp ăn trưa tại Nhà Trắng, tìm cách 'cân bằng AI'"
+    },
+    {
+      "canonicalId": "eab13fd1725ee8c5dfcf32807da79a8ad6202bf7c2892d5e2105790ad240bf30",
+      "mergedId": "1ef1b38c39d016087ddd34b7f05b42bdde86fa8750d3eeffe3f1785094f6de7d",
+      "group": "1ef1b38c39d016087ddd34b7f05b42bdde86fa8750d3eeffe3f1785094f6de7d",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Show HN: Vote on which of Hacker News' challenges for AI have been met",
+      "merged": "[hn] Show HN: Germany's new sovereign AI model Kolibri"
+    },
+    {
+      "canonicalId": "efb71726a02682db3984e9c83960169cacbbf201cc508ea7ca8128cb1a2b5a28",
+      "mergedId": "54fd75e9f6223cc4b610d12b8985706826e6ffd03c21fc68feebd06f529426cf",
+      "group": "54fd75e9f6223cc4b610d12b8985706826e6ffd03c21fc68feebd06f529426cf",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Chuyên gia bán dẫn: 'Việt Nam cần làm thật, không đầu tư dàn trải'",
+      "merged": "[vnexpress-tech] Việt Nam sẽ lập ba khu thử nghiệm UAV cấp quốc gia"
+    },
+    {
+      "canonicalId": "f4028e121e7435416cce2b8063ee09053a409005e1990f1e45b53c5ac90cb36a",
+      "mergedId": "8d2d5449e7e5b392493a1f331bff2de64fa4179f7d1d169b477d1866b54ebb1c",
+      "group": "8d2d5449e7e5b392493a1f331bff2de64fa4179f7d1d169b477d1866b54ebb1c",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Can AI Shopping Agents Be Trusted?",
+      "merged": "[hn] CEO of Mistral: AI is software. It can be controlled"
+    }
+  ]
+}
