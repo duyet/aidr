@@ -54,6 +54,19 @@ export function wrapLines(words: readonly string[], maxEm: number): string[][] {
   return lines;
 }
 
+export const NBSP = " ";
+
+/**
+ * The wrapped rows of `text`, each with its words joined by a no-break space.
+ * Satori draws a plain space after some words ("YouTube", "CoreWeave",
+ * "Tencent") twice as wide, wherever the line breaks; a no-break space draws
+ * at the normal width. Breaking the rows here, with the same wrap the fit
+ * used, leaves the renderer nothing to wrap.
+ */
+export function headlineRows(text: string, maxEm: number): string[] {
+  return wrapLines(text.split(" "), maxEm).map((row) => row.join(NBSP));
+}
+
 export interface FitBox {
   width: number;
   height: number;

@@ -12,7 +12,7 @@ import {
   pickDayCardItems,
 } from "./day-card-pick";
 import { localizedTitle } from "./display-title";
-import { type FitBox, fitText } from "./og-text-fit";
+import { type FitBox, fitText, headlineRows } from "./og-text-fit";
 import type { StoryOgImage } from "./story-og";
 import type { FeedItem, Lang } from "./types";
 
@@ -225,8 +225,8 @@ function header(date: string, lang: Lang, count: number) {
 
 const LINE_HEIGHT = 1.22;
 
-/** A fitted headline. The clamp and max-height are backstops; `fitText`
- *  already sized the text to the box. */
+/** A fitted headline, one div per row (see `headlineRows`). The max-height is
+ *  a backstop; `fitText` already sized the text to the box. */
 function headline(
   text: string,
   box: Omit<FitBox, "lineHeight">,
@@ -236,10 +236,8 @@ function headline(
   return (
     <div
       style={{
-        display: "-webkit-box",
-        WebkitBoxOrient: "vertical",
-        WebkitLineClamp: fit.lines,
-        textOverflow: "ellipsis",
+        display: "flex",
+        flexDirection: "column",
         overflow: "hidden",
         width: `${box.width}px`,
         maxHeight: `${Math.ceil(fit.fontSize * LINE_HEIGHT * fit.lines) + 4}px`,
@@ -250,7 +248,11 @@ function headline(
         wordBreak: "break-word",
       }}
     >
-      {fit.text}
+      {headlineRows(fit.text, box.width / fit.fontSize).map((row) => (
+        <div key={row} style={{ display: "flex" }}>
+          {row}
+        </div>
+      ))}
     </div>
   );
 }

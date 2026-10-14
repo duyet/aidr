@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { fitText, textWidthEm, wrapLines } from "./og-text-fit";
+import {
+  fitText,
+  headlineRows,
+  NBSP,
+  textWidthEm,
+  wrapLines,
+} from "./og-text-fit";
 
 const BOX = { width: 500, height: 120, lineHeight: 1.2 };
 
@@ -75,5 +81,37 @@ describe("textWidthEm", () => {
     for (const [glyph, em] of measured) {
       expect(textWidthEm(glyph)).toBeGreaterThanOrEqual(em);
     }
+  });
+});
+
+describe("headlineRows", () => {
+  // Satori draws an ordinary space after some words ("YouTube", "CoreWeave",
+  // "Tencent") twice as wide. A no-break space between the words of a row
+  // draws at the normal width, so each row is built whole here.
+  const TITLES = [
+    "YouTube Music launches new labels as AI-generated music floods streaming platforms",
+    "Cổ phiếu CoreWeave giảm hơn 15% và lãi suất trái phiếu gần 15%",
+    "Tencent AI agent lands in WeChat",
+  ];
+
+  it.each(TITLES)(
+    "joins the words of each row without a plain space: %s",
+    (title) => {
+      for (const row of headlineRows(title, 14)) expect(row).not.toMatch(/ /);
+    }
+  );
+
+  it.each(TITLES)("keeps every word, in order: %s", (title) => {
+    const words = headlineRows(title, 14).flatMap((row) => row.split(NBSP));
+    expect(words).toEqual(title.split(" "));
+  });
+
+  it("breaks rows where wrapLines does", () => {
+    const title = TITLES[0];
+    const rows = headlineRows(title, 14);
+    expect(rows.map((row) => row.split(NBSP))).toEqual(
+      wrapLines(title.split(" "), 14)
+    );
+    expect(rows.length).toBeGreaterThan(1);
   });
 });
