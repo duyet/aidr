@@ -8,8 +8,6 @@ import {
   isGenericImageUrl,
   MAX_MEDIA_ASSETS,
   MAX_MEDIA_URL_LENGTH,
-  manifestWithoutArticleUrl,
-  mergeMediaManifests,
   parseMediaManifest,
   parseMediaMetadata,
   primaryThumbnailUrl,
@@ -79,12 +77,12 @@ describe("canonicalizeMediaUrl", () => {
 describe("buildMediaManifest", () => {
   it("removes an article URL accidentally classified as a media asset", () => {
     const articleUrl = "https://example.com/article?utm_source=rss";
-    const manifest = manifestWithoutArticleUrl(
-      buildMediaManifest([
+    const manifest = buildMediaManifest(
+      [
         { type: "image", url: articleUrl },
         { type: "image", url: "https://img.example/real.jpg" },
-      ]),
-      articleUrl
+      ],
+      { articleUrls: [articleUrl] }
     );
     expect(manifest.assets).toEqual([
       { type: "image", url: "https://img.example/real.jpg" },
@@ -105,7 +103,9 @@ describe("buildMediaManifest", () => {
     const incoming = buildMediaManifest([
       { type: "image", url: "https://img.example/alternate.jpg" },
     ]);
-    expect(mergeMediaManifests(existing, incoming).assets).toEqual([
+    expect(
+      buildMediaManifest([...existing.assets, ...incoming.assets]).assets
+    ).toEqual([
       {
         type: "video",
         url: "https://example.com/story.mp4",
@@ -388,18 +388,19 @@ describe("generated share cards", () => {
   // headline-on-card image per story, which says nothing the dialog does
   // not already say; only the original article's picture belongs there.
   it("drops aggregator cards when the cluster has a real image", () => {
-    const merged = mergeMediaManifests(
-      buildMediaManifest([{ type: "image", url: marketbrief }]),
-      buildMediaManifest([{ type: "image", url: huggingnews }]),
-      buildMediaManifest([{ type: "image", url: original }])
+    const merged = buildMediaManifest(
+      [marketbrief, huggingnews, original].flatMap(
+        (url) => buildMediaManifest([{ type: "image", url }]).assets
+      )
     );
     expect(merged.assets).toEqual([{ type: "image", url: original }]);
   });
 
   it("keeps cards as the fallback when nothing else exists", () => {
-    const merged = mergeMediaManifests(
-      buildMediaManifest([{ type: "image", url: marketbrief }]),
-      buildMediaManifest([{ type: "image", url: huggingnews }])
+    const merged = buildMediaManifest(
+      [marketbrief, huggingnews].flatMap(
+        (url) => buildMediaManifest([{ type: "image", url }]).assets
+      )
     );
     expect(merged.assets.map((asset) => asset.url)).toEqual([
       marketbrief,
@@ -407,14 +408,17 @@ describe("generated share cards", () => {
     ]);
   });
 
-  it("treats a video as better media than a card", () => {
+  it("treats a video with a poster as better media than a card", () => {
+    const video = {
+      type: "video" as const,
+      url: "https://example.com/demo.mp4",
+      poster_url: "https://example.com/demo.jpg",
+    };
     const manifest = buildMediaManifest([
       { type: "image", url: "https://example.com/api/og?title=x" },
-      { type: "video", url: "https://example.com/demo.mp4" },
+      video,
     ]);
-    expect(manifest.assets).toEqual([
-      { type: "video", url: "https://example.com/demo.mp4" },
-    ]);
+    expect(manifest.assets).toEqual([video]);
   });
 
   it("recognises generator paths, not ordinary article images", () => {
@@ -427,6 +431,136 @@ describe("generated share cards", () => {
     expect(isGeneratedOgCard("https://example.com/blog/logo-design.png")).toBe(
       false
     );
+  });
+});
+
+describe("image-host uploads", () => {
+  const wired =
+    "https://media.wired.com/photos/6accff96fccc4c5244b94f14/master/pass/Muse-Wonder-Puts-Meta-Back-at-the-AI-Frontier-Business-2296209266.jpg";
+  const verge =
+    "https://platform.theverge.com/wp-content/uploads/sites/2/2026/10/STKB394_MUSE_AI_CVIRGINIA_D.png?crop=0%2C9.9676601489831%2C100%2C80.064679702034&quality=90&strip=all&w=1200";
+  const imgur = "https://i.imgur.com/pWABPKr.png";
+
+  // 2026-10-13 story 1: a Techmeme duplicate merged a desktop screenshot with
+  // a browser tooltip baked in, and the video showed it as the third image.
+  it("drops an imgur screenshot from a stored manifest that has article images", () => {
+    const stored = JSON.stringify({
+      version: 1,
+      assets: [
+        { type: "image", url: wired },
+        { type: "image", url: verge },
+        { type: "image", url: imgur },
+        {
+          type: "image",
+          url: "https://pbs.twimg.com/amplify_video_thumb/2109669234620186624/img/I0IcBVeH6IpRclrm?format=webp&name=large",
+        },
+      ],
+    });
+    const manifest = parseMediaManifest(stored, wired);
+    expect(manifest.assets.map((asset) => asset.url)).toEqual([
+      wired,
+      verge,
+      "https://pbs.twimg.com/amplify_video_thumb/2109669234620186624/img/I0IcBVeH6IpRclrm?format=webp&name=large",
+    ]);
+    expect(primaryThumbnailUrl(manifest, wired)).toBe(wired);
+  });
+
+  it("keeps an imgur image when the story has nothing else", () => {
+    const manifest = parseMediaManifest(
+      JSON.stringify({ version: 1, assets: [{ type: "image", url: imgur }] }),
+      imgur
+    );
+    expect(manifest.assets).toEqual([{ type: "image", url: imgur }]);
+    expect(primaryThumbnailUrl(manifest, imgur)).toBe(imgur);
+  });
+
+  const ogCard = "https://marketbrief.example.com/og/story-card.png";
+  const article = "https://example.com/story";
+  const posterless = {
+    type: "video" as const,
+    url: "https://example.com/demo.mp4",
+  };
+
+  // The owner wants a real picture over the generic share card. An imgur
+  // capture is still a photo of the story; the card is the headline as text.
+  it("leads with an imgur image over a generated card", () => {
+    const manifest = buildMediaManifest([
+      { type: "image", url: ogCard },
+      { type: "image", url: imgur },
+    ]);
+    expect(manifest.assets).toEqual([{ type: "image", url: imgur }]);
+    expect(primaryThumbnailUrl(manifest)).toBe(imgur);
+  });
+
+  // A posterless video gives Telegram, email and the story card no picture,
+  // so it must not cost the story its only image.
+  it("keeps the fallback image next to a video with no poster", () => {
+    const manifest = buildMediaManifest([
+      { type: "image", url: imgur },
+      posterless,
+    ]);
+    expect(manifest.assets).toEqual([
+      posterless,
+      { type: "image", url: imgur },
+    ]);
+    expect(primaryThumbnailUrl(manifest)).toBe(imgur);
+
+    const withCard = buildMediaManifest([
+      { type: "image", url: ogCard },
+      posterless,
+    ]);
+    expect(withCard.assets).toEqual([
+      posterless,
+      { type: "image", url: ogCard },
+    ]);
+    expect(primaryThumbnailUrl(withCard)).toBe(ogCard);
+
+    const both = buildMediaManifest([
+      { type: "image", url: ogCard },
+      { type: "image", url: imgur },
+      posterless,
+    ]);
+    expect(both.assets).toEqual([posterless, { type: "image", url: imgur }]);
+  });
+
+  // The article URL is not story media. Removing it after the fallback rule
+  // ran would drop imgur for an asset that is then removed too.
+  it("keeps imgur when the only other image is the article URL", () => {
+    const manifest = buildMediaManifest(
+      [
+        { type: "image", url: imgur },
+        { type: "image", url: article },
+      ],
+      { articleUrls: [article] }
+    );
+    expect(manifest.assets).toEqual([{ type: "image", url: imgur }]);
+    expect(primaryThumbnailUrl(manifest, undefined, article)).toBe(imgur);
+  });
+
+  it("matches the article URL after canonicalizing tracking params", () => {
+    const tracked = "https://example.com/story.png?utm_source=feed";
+    const manifest = buildMediaManifest(
+      [
+        { type: "image", url: tracked },
+        { type: "image", url: wired },
+      ],
+      { articleUrls: [tracked] }
+    );
+    expect(manifest.assets).toEqual([{ type: "image", url: wired }]);
+  });
+
+  it("matches the imgur host, not lookalike hosts", () => {
+    const lookalikes = [
+      "https://notimgur.com/a.png",
+      "https://imgur.com.example.net/a.png",
+    ];
+    const manifest = buildMediaManifest(
+      [wired, ...lookalikes].map((url) => ({ type: "image" as const, url }))
+    );
+    expect(manifest.assets.map((asset) => asset.url)).toEqual([
+      wired,
+      ...lookalikes,
+    ]);
   });
 });
 
@@ -557,7 +691,7 @@ describe("media dedup identity", () => {
       { type: "video", url: "https://a.example/v/demo.mp4" },
       { type: "image", url: "https://b.example/other.jpg" },
     ]);
-    const merged = mergeMediaManifests(a, b).assets;
+    const merged = buildMediaManifest([...a.assets, ...b.assets]).assets;
     expect(merged.map((x) => x.type).sort()).toEqual([
       "image",
       "image",

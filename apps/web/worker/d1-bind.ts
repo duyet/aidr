@@ -1,5 +1,5 @@
 import {
-  manifestWithoutArticleUrl,
+  buildMediaManifest,
   primaryThumbnailUrl,
   serializeMediaManifest,
 } from "./media.js";
@@ -50,9 +50,9 @@ export function buildItemBindArgs(args: {
     llmTokens,
     duplicateOf,
   } = args;
-  const normalizedManifest = manifestWithoutArticleUrl(
-    item.mediaManifest,
-    item.url
+  const normalizedManifest = buildMediaManifest(
+    item.mediaManifest?.assets ?? [],
+    { articleUrls: [item.url] }
   );
   return [
     nn(id),

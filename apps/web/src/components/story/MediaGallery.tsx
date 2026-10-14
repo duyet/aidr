@@ -3,7 +3,7 @@ import {
   MAX_MEDIA_ASSETS,
   type MediaManifest,
   mediaIdentityKey,
-  withoutGeneratedCards,
+  withoutFallbackImages,
 } from "../../../worker/media.js";
 import { track } from "../../lib/analytics/track";
 import { publisherHost } from "../../lib/publisher-host";
@@ -67,9 +67,9 @@ export function visibleMediaAssets(
 ): VisibleMediaAsset[] {
   const visible: VisibleMediaAsset[] = [];
   const seen = new Set<string>();
-  // Stored manifests predate the build-time card filter, so apply it here too.
+  // Stored manifests predate the build-time fallback filter, so apply it here too.
   const assets = Array.isArray(manifest?.assets)
-    ? withoutGeneratedCards(
+    ? withoutFallbackImages(
         manifest.assets.filter(
           (asset) => asset && typeof asset.url === "string"
         )

@@ -348,7 +348,7 @@ export function parseRssItems(
       ? clipFeedSummary(stripHtml(rawSummary))
       : undefined;
     const media = mediaCandidatesFromBlock(chunk);
-    const mediaManifest = buildMediaManifest(media);
+    const mediaManifest = buildMediaManifest(media, { articleUrls: [url] });
     const imageUrl = primaryThumbnailUrl(mediaManifest);
     items.push({
       url,

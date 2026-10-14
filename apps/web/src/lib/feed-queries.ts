@@ -4,7 +4,6 @@ import {
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
   MAX_PUBLIC_MEDIA_URL_LENGTH,
-  manifestWithoutArticleUrl,
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../../worker/media.js";
@@ -134,10 +133,7 @@ function toFeedItem(row: ItemRow): FeedItem {
     // malformed tags JSON from an old pipeline run — treat as untagged
   }
   const { media_manifest: rawManifest, ...item } = row;
-  const manifest = manifestWithoutArticleUrl(
-    parseMediaManifest(rawManifest, row.image_url),
-    row.url
-  );
+  const manifest = parseMediaManifest(rawManifest, row.image_url, row.url);
   const exposedManifest = boundedPublicManifest(manifest);
   const articleUrl = canonicalizeMediaUrl(row.url);
   return {

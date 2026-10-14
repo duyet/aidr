@@ -8,7 +8,6 @@ import {
 import { callAnyrouter, parseJson } from "./llm.js";
 import {
   canonicalizeMediaUrl,
-  manifestWithoutArticleUrl,
   parseMediaManifest,
   primaryThumbnailUrl,
   serializeMediaManifest,
@@ -284,8 +283,7 @@ function normalizedOgImage(
   imageUrl: string | null;
   mediaManifest: ReturnType<typeof parseMediaManifest>;
 } {
-  const parsed = parseMediaManifest(mediaManifest, imageUrl);
-  const manifest = manifestWithoutArticleUrl(parsed, articleUrl);
+  const manifest = parseMediaManifest(mediaManifest, imageUrl, articleUrl);
   return {
     imageUrl: primaryThumbnailUrl(manifest, imageUrl, articleUrl),
     mediaManifest: manifest,

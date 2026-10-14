@@ -410,6 +410,24 @@ describe("trending story message", () => {
     );
   });
 
+  it("posts the imgur image, not a source's share card, when that is all there is", () => {
+    const imgur = "https://i.imgur.com/pWABPKr.png";
+    const hydrated = hydrateStory({
+      ...story(),
+      media_manifest: JSON.stringify({
+        version: 1,
+        assets: [
+          {
+            type: "image",
+            url: "https://marketbrief.example.com/og/story-card.png",
+          },
+          { type: "image", url: imgur },
+        ],
+      }),
+    });
+    expect(resolveStoryMedia(hydrated).gallery).toEqual([imgur]);
+  });
+
   it("falls back to the generated card when the story has no usable image", () => {
     const imageless = story({ image_url: null, media_manifest: null });
     expect(storyImageCount(imageless)).toBe(0);

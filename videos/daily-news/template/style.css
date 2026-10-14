@@ -48,7 +48,8 @@ body {
   --media-h: 640px;
   --rank: 148px;
   --rank-x: 40px;
-  --rank-y: 112px;
+  /* The story camera push lifts the box about 11px, so a top under ~115px reaches the logo tile. */
+  --rank-y: 120px;
   --text-x: 1176px;
   --text-y: 170px;
   --text-w: 672px;

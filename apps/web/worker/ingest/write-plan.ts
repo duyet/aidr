@@ -13,8 +13,6 @@ import {
 import {
   buildMediaManifest,
   type MediaManifest,
-  manifestWithoutArticleUrl,
-  mergeMediaManifests,
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../media.js";
@@ -113,12 +111,13 @@ export function planNewItemWrite(input: {
           url,
         }))
       : [];
-  const combinedMedia = manifestWithoutArticleUrl(
-    mergeMediaManifests(item.mediaManifest, {
-      version: 1,
-      assets: [...extraMedia, ...extraLegacyImages],
-    }),
-    item.url
+  const combinedMedia = buildMediaManifest(
+    [
+      ...(item.mediaManifest?.assets ?? []),
+      ...extraMedia,
+      ...extraLegacyImages,
+    ],
+    { articleUrls: [item.url] }
   );
   const effectiveItem: FetchedItem = {
     ...item,
@@ -218,11 +217,15 @@ export function planExistingCanonicalMedia(
     MAX_MERGED_TOPICS
   );
 
-  const existingManifest = manifestWithoutArticleUrl(
-    parseMediaManifest(existing?.media_manifest, existing?.image_url),
+  const articleUrls = [existing?.url];
+  const existingManifest = parseMediaManifest(
+    existing?.media_manifest,
+    existing?.image_url,
     existing?.url
   );
-  const incomingMedia = buildMediaManifest(update.extraMedia ?? []);
+  const incomingMedia = buildMediaManifest(update.extraMedia ?? [], {
+    articleUrls,
+  });
   const hasIncomingThumbnail = Boolean(primaryThumbnailUrl(incomingMedia));
   const existingThumbnail = primaryThumbnailUrl(
     existingManifest,
@@ -236,12 +239,9 @@ export function planExistingCanonicalMedia(
           url,
         }))
       : [];
-  const manifest = manifestWithoutArticleUrl(
-    mergeMediaManifests(existingManifest, {
-      version: 1,
-      assets: [...(incomingMedia.assets ?? []), ...extraLegacyImages],
-    }),
-    existing?.url
+  const manifest = buildMediaManifest(
+    [...existingManifest.assets, ...incomingMedia.assets, ...extraLegacyImages],
+    { articleUrls }
   );
   const imageUrl = primaryThumbnailUrl(
     manifest,

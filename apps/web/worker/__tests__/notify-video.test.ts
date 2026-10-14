@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { hydrateStory } from "../notify/index.js";
 import { telegramNotifier } from "../notify/telegram.js";
 import type { StoryPayload } from "../notify/types.js";
 import {
@@ -385,6 +386,45 @@ describe("Telegram video delivery", () => {
       ])
     );
     expect(f.tg()[0].url).toContain("/sendVideo");
+  });
+
+  // The share card is the headline as an image. Email and the site still
+  // need it as the story's still, but Telegram sends the video alone.
+  it("sends the video alone, not in an album with the story's share card", async () => {
+    const card = "https://marketbrief.example.com/og/story-card.png";
+    const hydrated = hydrateStory({
+      ...story([]),
+      media_manifest: JSON.stringify({
+        version: 1,
+        assets: [
+          { type: "image", url: card },
+          { type: "video", url: VIDEO },
+        ],
+      }),
+    });
+    expect(hydrated.image_url).toBe(card);
+    const f = stubFetch({ [VIDEO]: { file: mp4(30, true) } });
+    await telegramNotifier.sendStory(env, hydrated);
+    expect(f.tg()).toHaveLength(1);
+    expect(f.tg()[0].url).toContain("/sendVideo");
+  });
+
+  it("keeps a share-card poster out of the album", async () => {
+    const card = "https://marketbrief.example.com/og/story-card.png";
+    const photo = "https://img.example/a.jpg";
+    const f = stubFetch({ [VIDEO]: { file: mp4(30, true) } });
+    await telegramNotifier.sendStory(
+      env,
+      story([
+        { type: "video", url: VIDEO, poster_url: card },
+        { type: "image", url: photo },
+      ])
+    );
+    const media = f.tg()[0].body?.media as Array<Record<string, unknown>>;
+    expect(media.map((m) => [m.type, m.media])).toEqual([
+      ["video", VIDEO],
+      ["photo", photo],
+    ]);
   });
 
   it("falls back to the poster photo when the video is over the byte cap", async () => {

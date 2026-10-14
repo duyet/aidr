@@ -2,6 +2,7 @@ import { fetchWithSafeRedirectsResolved, redactUrlForLog } from "../enrich.js";
 import {
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
+  isGeneratedOgCard,
   type MediaAsset,
   mediaIdentityKey,
 } from "../media.js";
@@ -295,6 +296,14 @@ async function legalThumbnail(poster: string | null): Promise<string | null> {
   return ok ? poster : null;
 }
 
+/** A still that may ride along with a video. A generated share card is the
+ * headline as an image: email and the site keep it as the story's still, but
+ * next to a video it adds nothing, so the video goes alone. */
+function albumStill(raw: string | null | undefined): string | null {
+  const url = canonicalizeMediaImageUrl(raw);
+  return url && !isGeneratedOgCard(url) ? url : null;
+}
+
 /**
  * Decide how to deliver a story that has video, or null to use the existing
  * photo/text path. Fails closed: an album over the item or byte cap is dropped
@@ -321,7 +330,7 @@ export async function planVideoDelivery(
   let primary: PlannedVideo | null = null;
   for (const asset of assets) {
     if (asset.type === "image") {
-      const url = canonicalizeMediaImageUrl(asset.url);
+      const url = albumStill(asset.url);
       if (url && isNew("image", url)) items.push({ type: "photo", url });
       continue;
     }
@@ -341,7 +350,7 @@ export async function planVideoDelivery(
       );
       continue;
     }
-    const posterUrl = canonicalizeMediaImageUrl(asset.poster_url);
+    const posterUrl = albumStill(asset.poster_url);
     const video: PlannedVideo = {
       url: probe.url,
       poster: posterUrl && isNew("image", posterUrl) ? posterUrl : null,

@@ -4,7 +4,6 @@ import {
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
   MAX_PUBLIC_MEDIA_URL_LENGTH,
-  manifestWithoutArticleUrl,
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../../worker/media.js";
@@ -95,8 +94,9 @@ function mapStoryRow(
   if (!id) return null;
   const rawArticleUrl = asString(row.url);
   const legacyImageUrl = asNullableString(row.image_url);
-  const manifest = manifestWithoutArticleUrl(
-    parseMediaManifest(asNullableString(row.media_manifest), legacyImageUrl),
+  const manifest = parseMediaManifest(
+    asNullableString(row.media_manifest),
+    legacyImageUrl,
     rawArticleUrl
   );
   const exposedManifest = boundedPublicManifest(manifest);
