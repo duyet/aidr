@@ -567,7 +567,11 @@ export async function getFeed(
   // Persist a rebuilt last-24h fallback so Telegram and the next request
   // see the ranked digest, not a leftover or English-copied bullets_vi.
   // Stamp created_at as already stale so the next ingest still tries the LLM.
-  if (resolved && shouldRebuildTldrForDisplay(tldr, items)) {
+  if (
+    resolved &&
+    resolved !== tldr &&
+    shouldRebuildTldrForDisplay(tldr, items)
+  ) {
     try {
       await db
         .prepare(

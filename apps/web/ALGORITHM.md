@@ -139,7 +139,8 @@ acknowledgements sent).
   calling `sendDailyTldr` / `dispatchStoryNotifications` and record
   `skipped` / `dry run: no email or telegram`. The TL;DR step runs as
   `tldr-preview`: same items, LLM, fallbacks and keep rule as `ensureDailyTldr`
-  (a kept model digest reports `kept`, not headlines), no
+  (a kept model digest reports `kept`, rated degraded like the live run, and its
+  bullets show in the preview, not headlines), no
   `tldr_snapshots` upsert; `stats.tldrPreview` keeps the bullet count and
   the first 3 bullets per language. The weekly step runs as
   `weekly-preview`: it builds last closed week's edition, ignores the gate,

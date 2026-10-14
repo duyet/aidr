@@ -82,6 +82,7 @@ async function previewTldr(ctx: IngestContext): Promise<{
     {
       generated: false,
       tokens: 0,
+      kept: false,
       reason: "tldr preview failed",
       preview: undefined as TldrPreviewSummary | undefined,
     },
@@ -92,15 +93,18 @@ async function previewTldr(ctx: IngestContext): Promise<{
           generated: preview.generated,
           tokens: preview.tokens,
           reason: preview.reason,
-          preview: preview.generated
-            ? summarizeTldrPreview(preview)
-            : undefined,
+          kept: preview.kept === true,
+          preview:
+            preview.generated || preview.kept
+              ? summarizeTldrPreview(preview)
+              : undefined,
         };
       } catch (error) {
         console.error("tldr preview failed:", error);
         return {
           generated: false,
           tokens: 0,
+          kept: false,
           reason: sanitizeError(error)?.message ?? "tldr preview failed",
           preview: undefined,
         };
@@ -111,7 +115,11 @@ async function previewTldr(ctx: IngestContext): Promise<{
   recordStep(
     steps,
     "tldr",
-    stats.preview ? `preview: ${stats.preview.bullets} bullets` : "skipped",
+    stats.kept
+      ? "kept"
+      : stats.preview
+        ? `preview: ${stats.preview.bullets} bullets`
+        : "skipped",
     `dry run, live snapshot untouched: ${stats.reason}`
   );
   // Never report a preview as a generated edition.

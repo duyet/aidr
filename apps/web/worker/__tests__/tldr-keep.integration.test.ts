@@ -324,6 +324,31 @@ describe("TL;DR refresh that degrades to headlines", () => {
     );
   });
 
+  it("leaves a stored digest alone when the homepage has nothing to rebuild it from", async () => {
+    sqlite.prepare("DELETE FROM items WHERE id <> ?").run(STORIES[0].id);
+    const createdAt = FIRST_WRITE.getTime() - 60_000;
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback) VALUES (?, ?, ?, ?, 0)"
+      )
+      .run(
+        DATE,
+        JSON.stringify(GOOD.bullets_en),
+        JSON.stringify(GOOD.bullets_en),
+        createdAt
+      );
+
+    await getFeed(env.DB);
+
+    expect(
+      sqlite
+        .prepare(
+          "SELECT created_at, fallback FROM tldr_snapshots WHERE date = ?"
+        )
+        .get(DATE)
+    ).toEqual({ created_at: createdAt, fallback: 0 });
+  });
+
   it("overwrites a pre-migration row whose fallback is NULL", async () => {
     sqlite
       .prepare(
@@ -370,6 +395,31 @@ describe("TL;DR dry-run preview", () => {
     expect(preview.bullets_vi).toEqual(GOOD.bullets_vi);
     expect(createdAt()).toBe(before);
     expect(storedDigest().bullets_en).toEqual(GOOD.bullets_en);
+  });
+
+  it("rates a kept dry-run digest degraded and shows its bullets", async () => {
+    tldrResult.next = GOOD;
+    await ensureDailyTldr(env);
+    at(FIRST_WRITE.getTime() + TLDR_REFRESH_MS + 60_000);
+    tldrResult.next = FAILED;
+    const ctx: IngestContext = {
+      step: {
+        do: async (_name: string, a: unknown, b?: unknown) =>
+          (typeof a === "function" ? a : (b as () => unknown))(),
+      } as unknown as WorkflowStep,
+      env,
+      runId: "run-1",
+      steps: [],
+      mode: { dryRun: true, steps: ["tldr"] },
+    };
+
+    const result = await tldrStep(ctx);
+
+    expect(ctx.steps[0]?.action).toBe("kept");
+    expect(ctx.steps.map(stepState)).toEqual(["degraded"]);
+    expect(result.generated).toBe(false);
+    expect(result.preview?.bullets).toBe(STORIES.length);
+    expect(result.preview?.en[0]).toBe(GOOD.bullets_en[0].text);
   });
 
   it("still previews headlines when there is no model digest to keep", async () => {
