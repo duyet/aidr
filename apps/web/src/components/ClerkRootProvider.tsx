@@ -69,7 +69,11 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
     </ClerkModuleContext.Provider>
   );
 
-  if (!mod || !publishableKey || !proxyUrl) return withoutProvider;
+  // Local dev may run without the proxy (clerkProxyUrlForMode); deployed
+  // builds always carry one.
+  if (!mod || !publishableKey || (!proxyUrl && !import.meta.env.DEV)) {
+    return withoutProvider;
+  }
 
   return (
     <ErrorBoundary fallback={withoutProvider}>

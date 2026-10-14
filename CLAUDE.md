@@ -23,6 +23,8 @@ cp .env.example .env.local
 pnpm --filter @aidr/web dev
 ```
 
+With no Clerk keys the dev server skips Clerk and pages render signed out. README "Local development" covers dev keys, the local D1 schema, and the mixed-instance trap when the root `.env.local` holds live keys.
+
 ## Verify
 
 Narrowest first: `pnpm exec biome lint <path>`, then `pnpm --filter @aidr/web test` / `check-types`. Root: `pnpm run lint`, `pnpm run test`, `pnpm run check-types`.
