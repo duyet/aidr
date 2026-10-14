@@ -228,15 +228,21 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
   if (!composed.ok) return composed.stats;
   const { bullets_en, bullets_vi } = composed;
 
-  // A failed refresh must not replace a model digest with headlines. Only
-  // the refresh clock moves, so the retry waits TLDR_REFRESH_MS as it would
-  // after storing headlines.
+  // A failed refresh must not replace a useful model digest with headlines.
+  // Only the refresh clock moves, so the retry waits TLDR_REFRESH_MS as it
+  // would after storing headlines. A digest that would refresh regardless of
+  // age (thin, EN-only, English VI) is replaced, or every run would retry.
   if (
     composed.degraded &&
     existing?.fallback === 0 &&
     existingParsed &&
-    existingParsed.bullets_en.length > 0 &&
-    existingParsed.bullets_vi.length > 0
+    !shouldRefreshExistingSnapshot({
+      existing: existingParsed,
+      itemCount: results.length,
+      nowMs,
+      refreshMs: Number.POSITIVE_INFINITY,
+      hasTitleVi: itemsHaveTitleVi(results),
+    })
   ) {
     await env.DB.prepare(
       "UPDATE tldr_snapshots SET created_at = ? WHERE date = ?"

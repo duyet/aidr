@@ -905,12 +905,14 @@ Every run (30 minutes).
   title-fallback snapshot is persisted (EN from item titles; VI from
   `title_vi` or the English title if no translation — never invented
   prose), with `fallback = 1` (0061).
-- A refresh that degrades to that title fallback never replaces a model
-  digest already stored for the date (`fallback = 0`, both languages
-  present). The model digest stays, only `created_at` moves, so the retry
-  waits 3 hours as it would after storing headlines, and the step reason
-  reads `kept model digest from <time>: LLM thin (<error>)`. Rows from
-  before 0061 and homepage rebuilds have `fallback` NULL and are replaced.
+- A refresh that degrades to that title fallback never replaces a useful
+  model digest already stored for the date: `fallback = 0`, and not thin,
+  EN-only or English in VI (those refresh every run, so keeping them would
+  retry every run). The model digest stays, only `created_at` moves, so the
+  retry waits 3 hours as it would after storing headlines, and the step
+  reason reads `kept model digest from <time>: LLM thin (<error>)`. Rows
+  from before 0061 and rows the homepage inserts have `fallback` NULL and
+  are replaced; a homepage rebuild of an existing row keeps its flag.
   From 2026-10-07 to 10-14, 4 of 6 title-fallback writes replaced a model
   digest; on 10-09 the email, both Telegram channels and Facebook sent the
   headlines.

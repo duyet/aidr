@@ -295,8 +295,8 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   1 for a headline-only digest and 0 for a model digest; nothing is
   backfilled.
 - Risk: the Worker selects and writes the column, so apply it before
-  deploying. Existing rows stay NULL and are replaced by the next refresh
-  as before.
+  deploying. Existing rows and rows the homepage inserts stay NULL and are
+  replaced by the next refresh as before.
 - Rollback: roll the Worker back first, then
   `ALTER TABLE tldr_snapshots DROP COLUMN fallback;`. A failed refresh then
   overwrites the model digest with headlines again.
