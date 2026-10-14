@@ -135,6 +135,18 @@ describe("live AnyRouter model chains", () => {
     }
   });
 
+  // Production llm_calls, 7 days to 2026-10-14: space-bunny-alpha reviewed
+  // 0 of 484 (98 404s in the last 24h alone). Every review attempt in a
+  // run failed while it held the fallback slot (#655).
+  const KNOWN_DEAD = ["stealth/space-bunny-alpha"];
+
+  it("keeps known-dead model ids off every chain", () => {
+    for (const name of chains) {
+      for (const dead of KNOWN_DEAD)
+        expect(idsOf(name), name).not.toContain(dead);
+    }
+  });
+
   it("keeps the translation reviewer explicit and disjoint from generators", () => {
     const reviewer = idsOf("ANYROUTER_REVIEW_MODEL");
     const generators = new Set([
