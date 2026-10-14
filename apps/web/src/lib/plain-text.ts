@@ -1,20 +1,4 @@
-/** Named entities feeds actually put in titles and summaries. Unknown names
- *  are left as written. */
-const NAMED_ENTITIES: Record<string, string> = {
-  amp: "&",
-  lt: "<",
-  gt: ">",
-  quot: '"',
-  apos: "'",
-  nbsp: " ",
-  mdash: "—",
-  ndash: "–",
-  hellip: "…",
-  rsquo: "’",
-  lsquo: "‘",
-  rdquo: "”",
-  ldquo: "“",
-};
+import { NAMED_ENTITIES } from "./html-entities";
 
 const ENTITY_RE = /&(#\d+|#x[0-9a-f]+|[a-z]+);/gi;
 
@@ -33,11 +17,7 @@ function codePointText(cp: number, whole: string): string {
  */
 export function decodeHtmlEntitiesOnce(text: string): string {
   return text.replace(ENTITY_RE, (whole, body: string) => {
-    if (body[0] !== "#") {
-      return (
-        NAMED_ENTITIES[body] ?? NAMED_ENTITIES[body.toLowerCase()] ?? whole
-      );
-    }
+    if (body[0] !== "#") return NAMED_ENTITIES[body] ?? whole;
     const hex = body[1] === "x" || body[1] === "X";
     const cp = hex
       ? Number.parseInt(body.slice(2), 16)

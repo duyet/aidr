@@ -32,6 +32,49 @@ describe("source adapter normalization", () => {
   });
 });
 
+// Issue #714: Techmeme descriptions arrive with named accent entities that
+// the decoder skipped, so the stored summary read "Na&oacute;n" and the
+// byline never matched the attribution strip.
+describe("accented entities in Techmeme summaries", () => {
+  const TECHMEME = `<?xml version="1.0"?><rss><channel>
+<item>
+  <title>Causa Prima raised a $20M seed (Camila Grigera Na&oacute;n/Fortune)</title>
+  <link>https://example.com/causa</link>
+  <description>&lt;p&gt;By Camila Grigera Na&amp;oacute;n / Fortune.&lt;/p&gt; Gen&amp;eacute; Teare / Crunchbase News : Europe up &amp;amp; away</description>
+  <pubDate>Wed, 14 Oct 2026 03:10:00 GMT</pubDate>
+</item>
+</channel></rss>`;
+
+  it("stores the accented letters, never the entity", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(TECHMEME, { status: 200 }))
+    );
+    const [item] = await adapters.rss.fetchItems(
+      { feed: "https://www.techmeme.com/feed.xml" },
+      0
+    );
+    expect(item?.title).toContain("Naón");
+    expect(item?.summary).toContain("Naón");
+    expect(item?.summary).toContain("Gené Teare");
+    expect(`${item?.title}${item?.summary}`).not.toMatch(/&[a-z]+;/i);
+  });
+
+  it("leaves a summary with a literal ampersand alone", () => {
+    const item = normalizeFetchedItem({
+      id: "x",
+      title: "AT&T buys AI lab",
+      url: "https://example.com/att",
+      summary: "AT&T & friends: R&D at 5% - Q&A",
+      publishedAt: 1,
+      points: 0,
+      comments: 0,
+    } as never);
+    expect(item.title).toBe("AT&T buys AI lab");
+    expect(item.summary).toBe("AT&T & friends: R&D at 5% - Q&A");
+  });
+});
+
 // Story a60e74fc: a digest bullet opened with "← Back to live feed · 1
 // stories across 1 day", page chrome stored as the summary's first words.
 // Ingest must store the article text only, or every later prompt (score,
