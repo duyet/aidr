@@ -26,12 +26,20 @@ describe("pickDayCardItems", () => {
     ]);
   });
 
-  it("keeps every story of a five-story day, so the card and digest show all five", () => {
-    const items = Array.from({ length: 5 }, (_, i) => ({
-      id: `photo-${i}`,
-      image_url: `https://cdn.example/${i}.jpg`,
-    }));
-    expect(pickDayCardItems(items)).toHaveLength(5);
+  it("keeps the Telegram digest's 6/4/3 story counts for 1 to 8 stories", () => {
+    // The digest lists these stories, and its format changes only after a
+    // staging preview, so a 4 or 5 story day stays at 4.
+    const expected = [1, 2, 3, 4, 4, 6, 6, 6];
+    const counts = expected.map(
+      (_, i) =>
+        pickDayCardItems(
+          Array.from({ length: i + 1 }, (_, j) => ({
+            id: `s-${j}`,
+            image_url: `https://cdn.example/${j}.jpg`,
+          }))
+        ).length
+    );
+    expect(counts).toEqual(expected);
   });
 
   it("fills a short day with text tiles after the photos", () => {
