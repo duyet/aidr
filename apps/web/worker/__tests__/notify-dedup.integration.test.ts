@@ -10,7 +10,10 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dispatchStoryNotifications } from "../notify/index.js";
+import {
+  dispatchStoryNotifications,
+  forceSendDigest,
+} from "../notify/index.js";
 import type { Env } from "../types.js";
 
 const migrationsDir = path.resolve(
@@ -446,5 +449,9 @@ describe("digest bookkeeping", () => {
         .prepare("SELECT COUNT(*) AS n FROM notifications WHERE item_id = ?")
         .get(`digest:${TODAY}`)
     ).toEqual({ n: 0 });
+    expect(await forceSendDigest(env)).toEqual({
+      sent: 0,
+      reason: `every TL;DR bullet for ${TODAY} is only an outlet credit`,
+    });
   });
 });
