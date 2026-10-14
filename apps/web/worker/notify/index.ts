@@ -1240,7 +1240,7 @@ export async function forceSendDigest(
   const key = digestKey(date);
   let sent = 0;
   let sawDigest = false;
-  let unavailable: DigestUnavailable = "no_snapshot";
+  const emptied: string[] = [];
   let enabled = 0;
   for (const notifier of notifiers) {
     // A channel that is off (no Facebook token, no webhook) must not abort
@@ -1250,7 +1250,7 @@ export async function forceSendDigest(
     enabled++;
     const digest = await loadDigest(env, date, notifier.lang);
     if (typeof digest === "string") {
-      if (digest === "empty_after_strip") unavailable = digest;
+      if (digest === "empty_after_strip") emptied.push(notifier.id);
       continue;
     }
     sawDigest = true;
@@ -1292,9 +1292,9 @@ export async function forceSendDigest(
     return {
       sent: 0,
       reason:
-        unavailable === "no_snapshot"
+        emptied.length === 0
           ? `no TL;DR snapshot for ${date}`
-          : `every TL;DR bullet for ${date} is only an outlet credit`,
+          : `every TL;DR bullet for ${date} is only an outlet credit on ${emptied.join(", ")}`,
     };
   }
   return { sent, reason: sent > 0 ? `sent digest ${date}` : "no channel sent" };

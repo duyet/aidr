@@ -485,39 +485,27 @@ function stripFeedFooter(text: string): string {
   return text;
 }
 
-/** Top-level domains a credited site ends in. "Node.js" and "v1.2" end in
- * something else, so they are not domains. */
-const DOMAIN_TLD =
-  "com|org|net|io|ai|co|dev|app|news|gov|edu|info|me|tv|uk|vn|rs|social";
-const DOMAIN_TAIL = String.raw`[\p{L}\p{N}-]*(?:\.[\p{L}\p{N}-]+)*\.(?:${DOMAIN_TLD})(?![\p{L}\p{N}-])`;
-const DOMAIN_RE = new RegExp(String.raw`^[\p{L}\p{N}]${DOMAIN_TAIL}$`, "iu");
+/** A capitalised name or handle: "Bloomberg", "The Information",
+ * "@openainewsroom", "Goldman Sachs and Reuters". Capitalised words only, so a
+ * sentence that goes on ("Theo dự báo từ …", "From Nvidia to Obvious Ventures
+ * …") is not a name. */
+const ATTRIBUTION_WORD = String.raw`[@\p{Lu}\p{N}][\p{L}\p{N}_.'’&@-]*`;
+const ATTRIBUTION_NAME_RE = new RegExp(
+  String.raw`^${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|and|of|the|và|từ|trên|thuộc|[/&])){0,6}$`,
+  "u"
+);
+const AUTHOR_RE = new RegExp(
+  String.raw`^${ATTRIBUTION_WORD}(?:\s+${ATTRIBUTION_WORD}){0,5}$`,
+  "u"
+);
+const HANDLE_RE = /^@[\p{L}\p{N}_.@-]+$/u;
 
-/** A source name or handle: "Bloomberg", "The Information", "@openainewsroom",
- * "techcrunch.com", "Goldman Sachs and Reuters". Capitalised words or a
- * lowercase domain only, so a sentence that goes on ("Theo dự báo từ …",
- * "From Nvidia to Obvious Ventures …") is not a name. */
-const ATTRIBUTION_WORD = String.raw`(?:[@\p{Lu}\p{N}][\p{L}\p{N}_.'’&@-]*|\p{Ll}${DOMAIN_TAIL})`;
-const NAME_JOINER = "and|of|the|và|từ|trên|thuộc|&";
-const NAME_WORDS = String.raw`${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|${NAME_JOINER})){0,6}`;
-const ATTRIBUTION_NAME = String.raw`${NAME_WORDS}(?:\s+\/\s+${NAME_WORDS})?`;
-
-/** An author's name: two or more capitalised words, "Donald J. Trump". */
-const PERSON = String.raw`\p{Lu}[\p{L}.'’-]*(?:\s+\p{Lu}[\p{L}.'’-]*){1,5}`;
-const PERSON_BYLINE_RE = new RegExp(String.raw`^${PERSON}\s+\/\s`, "u");
-
-/** "Brian Krebs / Krebs on Security": after an author's "/", the outlet may
- * keep a lowercase word. After anything else the word starts a claim: "From
- * OpenAI / Anthropic on Monday." */
-const OUTLET_JOINER = `${NAME_JOINER}|on|in|for|at|de|la`;
-const BYLINE_NAME = String.raw`${PERSON}\s+\/\s+${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|${OUTLET_JOINER})){0,6}|${ATTRIBUTION_NAME}`;
-
-/** Outlets, and first-party publishers, that credit a story by name alone.
- * Seeded from production Techmeme credits ("From Apple.") and stored "Theo X."
- * rows. A missing name only keeps its credit sentence. */
+/** Outlets that Techmeme and the stored "Theo X." rows credit, taken from
+ * production rows. A credit to an outlet missing here keeps its sentence,
+ * which loses nothing. A publisher that is also the subject of claims (Apple,
+ * OpenAI) does not belong here: "Tác giả Mỹ thuộc Apple." is a claim. */
 const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
-  "Anthropic",
   "AP",
-  "Apple",
   "Axios",
   "BBC",
   "Bloomberg",
@@ -527,10 +515,14 @@ const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
   "CNBC",
   "CNN",
   "Cointelegraph",
+  "Command Line",
+  "Daring Fireball",
   "Engadget",
+  "Fierce Healthcare",
   "Financial Times",
   "Forbes",
   "Fortune",
+  "Krebs on Security",
   "MacRumors",
   "MarkTechPost",
   "NBC News",
@@ -540,6 +532,7 @@ const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
   "Reuters",
   "Semafor",
   "SemiAnalysis",
+  "Shtetl-Optimized",
   "TechCrunch",
   "Techmeme",
   "The Decoder",
@@ -556,58 +549,59 @@ const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
   "ZDNET",
 ]);
 
-/** "Ina Fried / Axios", "Sarah Hilton từ Bloomberg": an author and an outlet. */
-function isByline(name: string): boolean {
-  return /\s(?:\/|từ|trên|thuộc)\s/u.test(name);
+const outletKey = (name: string) =>
+  name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+const KNOWN_OUTLET_KEYS = new Set([...KNOWN_OUTLETS].map(outletKey));
+
+/** "techcrunch.com", "www.theverge.com": a known outlet's own domain.
+ * "x.com", "me.com" and "socket.io" name a product, not an outlet. */
+function isOutletDomain(name: string): boolean {
+  const label = /^(?:www\.)?([\p{L}\p{N}-]+)(?:\.\p{L}{2,})+$/u.exec(name)?.[1];
+  return label !== undefined && KNOWN_OUTLET_KEYS.has(outletKey(label));
 }
 
-/** "Ina Fried / Axios", "Donald J. Trump / @realDonaldTrump": an author's
- * name before the "/". "Apple / Google" is not one. */
-function isAuthorByline(name: string): boolean {
-  return PERSON_BYLINE_RE.test(name);
-}
-
-/** A name that can only be a source. "Theo" also opens "Theo Mỹ." or "Theo
- * Trung Quốc." (according to a country), so a capitalised name alone is not
- * enough. */
-function isSourceName(name: string): boolean {
+/** One source: a known outlet, an @handle, or an outlet's domain. */
+function isSource(name: string): boolean {
   return (
-    isByline(name) ||
-    KNOWN_OUTLETS.has(name) ||
-    name.startsWith("@") ||
-    DOMAIN_RE.test(name)
+    KNOWN_OUTLETS.has(name) || HANDLE_RE.test(name) || isOutletDomain(name)
   );
 }
 
-/** Each way a sentence opens a credit, the name pattern after it, and what
- * that name must be. */
+/** "Reuters và Bloomberg", "Bloomberg / Politico / New York Times": every
+ * part is a source. */
+function isSourceList(name: string): boolean {
+  return name.split(/\s*\/\s*|\s+(?:và|and|&)\s+/u).every(isSource);
+}
+
+/** "Ina Fried / Axios", "Sarah Hilton từ Bloomberg", "Brian Krebs / Krebs on
+ * Security": capitalised words, then sources. The author is never checked
+ * against a list, so the sources after it carry the whole decision: "Elon
+ * Musk / Tesla on Monday" and "Mỹ thuộc Nvidia" are claims. */
+function isByline(name: string): boolean {
+  const match = /^(.+?)(?:\s*\/\s*|\s+(?:từ|trên|thuộc)\s+)(.+)$/u.exec(name);
+  return match !== null && AUTHOR_RE.test(match[1]) && isSourceList(match[2]);
+}
+
+/** Each way a sentence opens a credit, and the bare name it accepts besides
+ * a byline. */
 const ATTRIBUTION_LEADS: readonly {
   lead: string;
-  name: string;
-  accepts: (name: string) => boolean;
+  bare: (name: string) => boolean;
 }[] = [
   {
-    lead: String.raw`(?:(?:[Tt]in|[Bb]ài|[Tt]hông tin)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?`,
-    name: ATTRIBUTION_NAME,
-    accepts: () => true,
+    lead: String.raw`(?:(?:[Tt]in|[Bb]ài)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?`,
+    bare: (name) => ATTRIBUTION_NAME_RE.test(name) || isSourceList(name),
   },
-  // "By" also opens a deadline or an adverb: "By March.", "By Default.". That
-  // list never ends, so only a known name or an author byline is a credit.
-  {
-    lead: "[Bb]y",
-    name: BYLINE_NAME,
-    accepts: (name) => KNOWN_OUTLETS.has(name) || isAuthorByline(name),
-  },
-  { lead: "[Tt]ác giả", name: BYLINE_NAME, accepts: isByline },
-  { lead: "[Tt]heo", name: BYLINE_NAME, accepts: isSourceName },
-  // "Bởi" is also "because": "Bởi Mỹ.", "Bởi Nvidia thuộc Mỹ." and even
-  // "Bởi Time." are claims. Every stored Bởi credit is an author byline.
+  // "Theo" also cites a country or a ministry: "Theo Mỹ.", "Theo Trung Quốc.".
+  { lead: "[Tt]heo|[Tt]hông tin từ", bare: isSourceList },
+  // "By" also opens a deadline or an adverb: "By March.", "By @sama.".
+  { lead: "[Bb]y", bare: (name) => KNOWN_OUTLETS.has(name) },
+  // "Bởi" is also "because": "Bởi Time." is a claim.
   {
     lead: "[Bb]ởi",
-    name: ATTRIBUTION_NAME,
-    accepts: (name) =>
-      isAuthorByline(name) || name.startsWith("@") || DOMAIN_RE.test(name),
+    bare: (name) => HANDLE_RE.test(name) || isOutletDomain(name),
   },
+  { lead: "[Tt]ác giả", bare: () => false },
 ];
 
 /** A whole sentence that only names where the story came from: "Từ The
@@ -615,22 +609,18 @@ const ATTRIBUTION_LEADS: readonly {
  * "From Bloomberg.", "Via @x.", "Source: X.", Techmeme's "By Ina Fried / Axios."
  * byline, or the same in parentheses. A sentence that carries a claim ("Theo
  * Reuters, Nvidia …") has more after the name, so it does not match. */
-const ATTRIBUTION_SENTENCES = ATTRIBUTION_LEADS.map(
-  ({ lead, name, accepts }) => ({
-    pattern: new RegExp(
-      String.raw`^\(?\s*(?:${lead})\s+(${name})\s*[.!]?\s*\)?\.?$`,
-      "u"
-    ),
-    accepts,
-  })
-);
+const ATTRIBUTION_SENTENCES = ATTRIBUTION_LEADS.map(({ lead, bare }) => ({
+  pattern: new RegExp(
+    String.raw`^\(?\s*(?:${lead})\s+(.+?)\s*[.!]?\s*\)?\.?$`,
+    "u"
+  ),
+  bare,
+}));
 
 function isAttributionSentence(sentence: string): boolean {
-  return ATTRIBUTION_SENTENCES.some(({ pattern, accepts }) => {
-    // A word may end in "." ("Donald J."), so the closing period can land in
-    // the name.
-    const name = pattern.exec(sentence)?.[1]?.replace(/\.$/, "");
-    return name !== undefined && accepts(name);
+  return ATTRIBUTION_SENTENCES.some(({ pattern, bare }) => {
+    const name = pattern.exec(sentence)?.[1];
+    return name !== undefined && (bare(name) || isByline(name));
   });
 }
 

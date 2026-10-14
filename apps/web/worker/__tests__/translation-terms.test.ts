@@ -253,9 +253,6 @@ describe("protected English terms", () => {
       "Theo Brian Krebs / Krebs on Security. Xem toàn bộ nội dung trên Techmeme.",
       // d415b9354c
       "Thông tin từ Bloomberg. Xem bối cảnh đầy đủ trên Techmeme.",
-      // Synthetic: no stored row has it. Techmeme credits a first-party post
-      // "(Apple)", and a bare byline would read like this.
-      "By Apple.",
     ]) {
       expect(stripSourceBoilerplate(text)).toBe("");
     }
@@ -342,8 +339,9 @@ describe("protected English terms", () => {
     }
   });
 
-  // An outlet keeps a lowercase word ("Krebs on Security") only in an author
-  // byline. Elsewhere the word starts a claim.
+  // A lowercase word after a name is part of a source only when the whole
+  // source is a known outlet ("Krebs on Security"). Elsewhere it starts a
+  // claim.
   it("keeps a credit-led sentence that goes on after the outlet", () => {
     for (const fragment of [
       "From OpenAI / Anthropic on Monday.",
