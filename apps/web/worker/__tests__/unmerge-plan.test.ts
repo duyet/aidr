@@ -5,6 +5,7 @@ import {
   parseUnmergePairs,
   planUnmerge,
   type StoredSource,
+  toWirePair,
   UNMERGE_QUIET_SEC,
   type UnmergeItemRow,
 } from "../unmerge/plan.js";
@@ -138,6 +139,25 @@ describe("parseUnmergePairs", () => {
     expect(parseUnmergePairs([{ canonicalId: a, mergedId: b }])).toEqual({
       pairs: [{ canonicalId: a, mergedId: b, group: b }],
     });
+  });
+});
+
+describe("toWirePair", () => {
+  it("keeps sameAs and distinct decisions through the CLI apply body and the endpoint re-parse", () => {
+    const file = [
+      { canonicalId: hex(1), mergedId: hex(2), group: "g1", sameAs: hex(3) },
+      { canonicalId: hex(1), mergedId: hex(4), group: "g2", distinct: true },
+    ];
+    const cli = parseUnmergePairs(file);
+    if ("error" in cli) throw new Error(cli.error);
+    const body = JSON.parse(
+      JSON.stringify({ pairs: cli.pairs.map(toWirePair) })
+    );
+    expect(parseUnmergePairs(body.pairs)).toEqual(cli);
+    expect(cli.pairs.map((p) => p.decision?.kind)).toEqual([
+      "same-as",
+      "distinct",
+    ]);
   });
 });
 

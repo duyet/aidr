@@ -117,6 +117,17 @@ function parseDecision(
   return undefined;
 }
 
+/** The request shape `parseUnmergePairs` reads, the inverse of
+ * `parseDecision`. Post this, not an `UnmergePair`: the endpoint re-parses
+ * and reads only `sameAs`/`distinct`, so a parsed `decision` is dropped. */
+export function toWirePair(pair: UnmergePair): Record<string, unknown> {
+  const { decision, ...rest } = pair;
+  if (!decision) return rest;
+  return decision.kind === "same-as"
+    ? { ...rest, sameAs: decision.twinId }
+    : { ...rest, distinct: true };
+}
+
 export const MAX_UNMERGE_PAIRS = 500;
 
 export function parseUnmergePairs(

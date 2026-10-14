@@ -46,7 +46,11 @@ import type {
 } from "../worker/admin/handlers";
 import { isPipelineStep, PIPELINE_STEPS } from "../worker/ingest/mode";
 import { loadUnmergeSnapshot } from "../worker/unmerge/load";
-import { parseUnmergePairs, planUnmerge } from "../worker/unmerge/plan";
+import {
+  parseUnmergePairs,
+  planUnmerge,
+  toWirePair,
+} from "../worker/unmerge/plan";
 import { countUnmerge } from "../worker/unmerge/report";
 import { loadUndo, parseBatchId, planUndo } from "../worker/unmerge/undo";
 import { wranglerSelect, wranglerSelectTotals } from "./cf-d1";
@@ -350,7 +354,7 @@ async function unmerge(args: Args, file: string | undefined): Promise<void> {
     const result = await api<UnmergeResult>("/api/admin/unmerge", {
       method: "POST",
       admin: true,
-      body: { pairs: parsed.pairs, dryRun: false },
+      body: { pairs: parsed.pairs.map(toWirePair), dryRun: false },
     });
     print(
       result,
