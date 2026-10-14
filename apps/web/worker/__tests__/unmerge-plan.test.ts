@@ -255,6 +255,22 @@ describe("planUnmerge", () => {
     });
   });
 
+  it("refuses a demoted canonical, whose notifications and votes already moved", () => {
+    const demoted = item(11, "techcrunch-ai", "https://example.test/old", {
+      fetched_at: canonical.fetched_at - 3600,
+    });
+    const plan = planUnmerge(
+      [{ canonicalId: canonical.id, mergedId: demoted.id, group: demoted.id }],
+      snapshot([canonical, demoted]),
+      NOW_MS
+    );
+    expect(plan.canonicals[0].pairs[0].outcome).toMatchObject({
+      action: "skip",
+      reason: "demoted-canonical",
+    });
+    expect(plan.canonicals[0].rows).toEqual([]);
+  });
+
   it("waits while the story is inside the send window, then restores it", () => {
     const recent = item(10, "techcrunch-ai", "https://example.test/recent", {
       published_at: NOW_MS / 1000 - UNMERGE_QUIET_SEC + 3600,

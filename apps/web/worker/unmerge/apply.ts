@@ -118,25 +118,38 @@ export function canonicalStatements(
   return statements;
 }
 
+/** Every statement in a batch counts toward D1's per-invocation query
+ * limit; this leaves room for the snapshot reads under it. */
+export const UNMERGE_MAX_STATEMENTS = 800;
+
 export interface UnmergeApplyResult {
   canonicals: number;
   statements: number;
+  /** Canonicals left for a rerun because the request hit
+   * `UNMERGE_MAX_STATEMENTS`. */
+  remaining: number;
 }
 
 /** One atomic batch per canonical, so a failure leaves that canonical as it
  * was and a rerun picks it up again. */
 export async function applyUnmerge(
   db: D1Database,
-  plan: UnmergePlan
+  plan: UnmergePlan,
+  maxStatements = UNMERGE_MAX_STATEMENTS
 ): Promise<UnmergeApplyResult> {
   let canonicals = 0;
   let statements = 0;
+  let remaining = 0;
   for (const canonical of plan.canonicals) {
     const batch = canonicalStatements(db, canonical, plan.nowMs);
     if (batch.length === 0) continue;
+    if (statements + batch.length > maxStatements) {
+      remaining++;
+      continue;
+    }
     await db.batch(batch);
     canonicals++;
     statements += batch.length;
   }
-  return { canonicals, statements };
+  return { canonicals, statements, remaining };
 }

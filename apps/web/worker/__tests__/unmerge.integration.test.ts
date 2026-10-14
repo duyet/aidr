@@ -21,10 +21,23 @@ import type { FetchedItem } from "../sources/types.js";
 import { MAX_MERGED_TOPICS } from "../topics.js";
 import type { Env } from "../types.js";
 import {
+  applyUnmerge,
   UNMERGE_AUDIT_CANONICAL,
   UNMERGE_AUDIT_PAIR,
 } from "../unmerge/apply.js";
-import { UNMERGE_QUIET_SEC } from "../unmerge/plan.js";
+import { d1Select, loadUnmergeSnapshot } from "../unmerge/load.js";
+import {
+  parseUnmergePairs,
+  planUnmerge,
+  UNMERGE_QUIET_SEC,
+  type UnmergePair,
+} from "../unmerge/plan.js";
+
+function parsePairs(raw: unknown): UnmergePair[] {
+  const parsed = parseUnmergePairs(raw);
+  if ("error" in parsed) throw new Error(parsed.error);
+  return parsed.pairs;
+}
 
 const migrationsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -402,8 +415,31 @@ describe("unmerge", () => {
     const again = await unmergeItems(env, { pairs, dryRun: false });
     if ("error" in again) throw new Error(again.error);
     expect(again.counts.pairs).toEqual({ "noop:already-unmerged": 2 });
-    expect(again.applied).toEqual({ canonicals: 0, statements: 0 });
+    expect(again.applied).toEqual({
+      canonicals: 0,
+      statements: 0,
+      remaining: 0,
+    });
     expect(dump(db)).toEqual(after);
+  });
+
+  it("stops at the statement budget without a partial canonical; a rerun finishes", async () => {
+    const before = dump(db);
+    const plan = planUnmerge(
+      parsePairs(pairs),
+      await loadUnmergeSnapshot(d1Select(env.DB), parsePairs(pairs)),
+      NOW.getTime()
+    );
+    expect(await applyUnmerge(env.DB, plan, 1)).toEqual({
+      canonicals: 0,
+      statements: 0,
+      remaining: 1,
+    });
+    expect(dump(db)).toEqual(before);
+    const rerun = await unmergeItems(env, { pairs, dryRun: false });
+    if ("error" in rerun) throw new Error(rerun.error);
+    expect(rerun.applied?.remaining).toBe(0);
+    expect(shape(db, C)).toEqual(preMerge.shape);
   });
 
   it("posts nothing: restored rows are outside every send window, recent ones wait", async () => {

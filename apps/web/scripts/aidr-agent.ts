@@ -346,7 +346,7 @@ async function unmerge(args: Args, file: string | undefined): Promise<void> {
     });
     print(
       result,
-      `unmerge: applied ${result.applied?.canonicals ?? 0} canonical(s), ${JSON.stringify(result.counts.pairs)}`
+      `unmerge: applied ${result.applied?.canonicals ?? 0} canonical(s), ${JSON.stringify(result.counts.pairs)}${result.applied?.remaining ? `; ${result.applied.remaining} canonical(s) over the statement budget, rerun --apply` : ""}`
     );
     return;
   }
