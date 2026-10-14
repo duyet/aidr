@@ -98,15 +98,18 @@ async function hmacUnsubscribeToken(
   const mac = await crypto.subtle.sign(
     "HMAC",
     key,
-    new TextEncoder().encode(email.toLowerCase())
+    new TextEncoder().encode(`${email.toLowerCase()}:${crypto.randomUUID()}`)
   );
   return [...new Uint8Array(mac)]
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
-/** HMAC(email, secret) when configured; legacy UUID otherwise. Pre-existing
- * rows keep their stored token until the subscriber re-subscribes. */
+/** A new token for each signup: HMAC(email and a nonce, secret) when
+ * configured, UUID otherwise. Unsubscribing deletes the row, so a later
+ * signup inserts a new one, and a token that repeated per address would let
+ * links in the earlier signup's mail remove it (#723). Stored rows keep
+ * their token. */
 export async function deriveUnsubscribeToken(
   env: Env,
   email: string
