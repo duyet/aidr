@@ -16,7 +16,11 @@ const MAX_TOKENS = 4096;
 /** The clustering prompt carries up to MERGE_CANDIDATE_LIMIT titles (~15k
  *  tokens), so one model may need well past the default 25s slice. */
 const CLUSTER_TIMEOUT_MS = 120_000;
-const CLUSTER_SLICE_MAX_MS = 90_000;
+/** Every served cluster call from 10-07 to 10-14 finished within 30s
+ *  (gemma-latest max 29,955ms). A 90s cap let a stalled stream take 80s and
+ *  left the next ids 13.3s each, under FIRST_TOKEN_MAX_MS (#672). At 45s
+ *  each later id in a 4-id chain still gets at least 20s. */
+const CLUSTER_SLICE_MAX_MS = 45_000;
 /** Bounds the clustering prompt's new-item side (the existing side is bounded
  * by MERGE_CANDIDATE_LIMIT). 300 existing rows are already ~15k tokens; 100
  * new rows with URLs add ~7k, which still fits a 32k-context model. New items
