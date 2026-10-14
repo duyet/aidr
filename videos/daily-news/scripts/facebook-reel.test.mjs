@@ -1,15 +1,18 @@
 // node --test videos/daily-news/scripts/*.test.mjs
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { DEFAULT_GRAPH_VERSION, findReel, graphVersion, postReel, reelCaption, reelLink, reelRequest } from "./facebook-reel.mjs";
 
 const cfg = { pageId: "123456", token: "PAGE_TOKEN", version: "v26.0" };
 const ok = (body) => ({ ok: true, status: 200, text: async () => JSON.stringify(body) });
+const scratch = mkdtempSync(join(tmpdir(), "reel-"));
+after(() => rmSync(scratch, { recursive: true, force: true }));
+let tmpCount = 0;
 const tmpFile = (content) => {
-  const file = join(mkdtempSync(join(tmpdir(), "reel-")), "r.mp4");
+  const file = join(scratch, `r${tmpCount++}.mp4`);
   writeFileSync(file, content);
   return file;
 };
