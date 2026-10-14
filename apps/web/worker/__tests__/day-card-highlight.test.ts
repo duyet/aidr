@@ -28,6 +28,16 @@ describe("highlightBulletText", () => {
     expect(text).not.toContain("second sentence");
   });
 
+  it("falls back to the headline when the summary is only an attribution", () => {
+    const only = {
+      ...item,
+      summary: "From The Information. View the full context on Techmeme.",
+      summary_vi: "Từ The Information. Xem toàn bộ ngữ cảnh trên Techmeme.",
+    };
+    expect(highlightBulletText(only, "vi")).toBe(item.title_vi);
+    expect(highlightBulletText(only, "en")).toBe(item.title);
+  });
+
   it("keeps a headline when that language has no real summary", () => {
     expect(
       highlightBulletText(

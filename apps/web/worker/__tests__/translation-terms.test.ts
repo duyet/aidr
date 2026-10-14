@@ -221,6 +221,38 @@ describe("protected English terms", () => {
     }
   });
 
+  // Production Techmeme rows: the outlet is already in the meta line, and the
+  // digest line took "Từ The Information." as its summary clause (#669).
+  it("drops a trailing attribution sentence and the Techmeme pointer", () => {
+    for (const [text, kept] of [
+      ["Từ The Information. Xem toàn bộ ngữ cảnh trên Techmeme.", ""],
+      ["Tin từ @openainewsroom. Xem toàn bộ nội dung trên Techmeme.", ""],
+      ["Theo Gao Yuan từ Bloomberg. Xem toàn bộ ngữ cảnh trên Techmeme.", ""],
+      ["Bởi Maria Curi / Axios. Xem toàn bộ ngữ cảnh trên Techmeme.", ""],
+      ["From Bloomberg. View the full context on Techmeme.", ""],
+      ["From @openainewsroom.", ""],
+      ["By Ina Fried / Axios.", ""],
+      ["Nvidia công bố chip mới. Nguồn: Reuters.", "Nvidia công bố chip mới."],
+      ["Nvidia ships a new chip. Via @sama.", "Nvidia ships a new chip."],
+      ["Chạy tốt trên Qwen. (Nguồn: MarkTechPost)", "Chạy tốt trên Qwen."],
+    ] as const) {
+      expect(stripSourceBoilerplate(text)).toBe(kept);
+    }
+  });
+
+  it("keeps a sentence that carries a claim or a mid-text từ", () => {
+    for (const text of [
+      "Theo Reuters, Nvidia sẽ ra chip mới vào tháng 3.",
+      "Nvidia đã nhận đơn đặt hàng từ Microsoft. Theo Reuters, giá tăng 5%.",
+      "Theo dự báo từ Goldman Sachs...",
+      "Chip mới nhận đơn từ Microsoft và Meta.",
+      "From Nvidia and Chime to Obvious Ventures, investors piled in.",
+      "Tin từ Microsoft cho thấy giá tăng.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
   it("demands a kept term verbatim and leaves open-source to Vietnamese", () => {
     const missing = missingProtectedTerms(
       {

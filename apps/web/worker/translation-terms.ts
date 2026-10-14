@@ -6,6 +6,8 @@
  * demands a term the style tells the generator to translate.
  */
 
+import { sentenceEnds } from "./sentences.js";
+
 /** Jargon Vietnamese tech readers already use in English. Each entry is a
  * stem matched on word boundaries; plural/inflected forms pass. */
 export const KEEP_ENGLISH_TERMS = [
@@ -395,6 +397,8 @@ const CHROME_ANYWHERE = [
   "Skip to (?:main )?content",
   // "From Bloomberg. View the full context on Techmeme."
   "View the full context on [A-Z][\\w.]*(?: [A-Z][\\w.]*){0,2}\\.?",
+  // The Vietnamese rendering: "Xem toàn bộ ngữ cảnh trên Techmeme."
+  "Xem [^.]{0,40}? trên Techmeme\\.?",
 ];
 
 const CHROME_SEPARATOR = "\\s*[·•|:—–-]?\\s*";
@@ -431,10 +435,12 @@ export function hasSourceChrome(text: string): boolean {
  * summary clause, so chrome lands mid-line, not at the start where
  * `stripSourceBoilerplate` looks. */
 export function stripEmbeddedChrome(text: string): string {
-  return stripSourceBoilerplate(text)
-    .replace(EMBEDDED_CHROME_RE, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+  return stripTrailingAttribution(
+    stripSourceBoilerplate(text)
+      .replace(EMBEDDED_CHROME_RE, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim()
+  );
 }
 
 /** Strips every leading chrome segment, however many are chained. */
@@ -479,15 +485,60 @@ function stripFeedFooter(text: string): string {
   return text;
 }
 
+/** A source name or handle: "Bloomberg", "The Information", "@openainewsroom",
+ * "Goldman Sachs and Reuters". Capitalised words only, so a sentence that goes
+ * on ("Theo dự báo từ …", "From Nvidia to Obvious Ventures …") is not a name. */
+const ATTRIBUTION_WORD = String.raw`[@\p{Lu}\p{N}][\p{L}\p{N}_.'’&@-]*`;
+const ATTRIBUTION_NAME = `${ATTRIBUTION_WORD}(?:\\s+(?:${ATTRIBUTION_WORD}|and|of|the|và|từ|trên|thuộc|[/&])){0,6}`;
+
+/** A whole sentence that only names where the story came from: "Từ The
+ * Information.", "Tin từ @openainewsroom.", "Theo Reuters.", "Nguồn: Axios.",
+ * "From Bloomberg.", "Via @x.", "Source: X.", Techmeme's "By Ina Fried / Axios."
+ * byline, or the same in parentheses. A
+ * sentence that carries a claim ("Theo Reuters, Nvidia …") has more after the
+ * name, so it does not match. */
+const ATTRIBUTION_SENTENCE_RE = new RegExp(
+  String.raw`^\(?\s*(?:(?:(?:[Tt]in|[Bb]ài)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Tt]heo|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?|(?:[Bb]y|[Bb]ởi|[Tt]ác giả)(?=[^/]*\/))\s+${ATTRIBUTION_NAME}\s*[.!]?\s*\)?\.?$`,
+  "u"
+);
+
+/** The Techmeme "see the page" pointer, English or Vietnamese. */
+const CONTEXT_LINK_SENTENCE_RE =
+  /^(?:View the full context on|Xem [^.]{0,40}? trên) Techmeme\.?$/;
+
+/** Drops trailing sentences that are only an attribution or a Techmeme
+ * context pointer. Summaries from aggregators end "From Bloomberg. View the
+ * full context on Techmeme."; the source already shows in the meta line. Only
+ * the last sentence is judged, and only when nothing but the attribution is in
+ * it, so "Theo Reuters, Nvidia …" and a mid-text "từ" stay. A summary that is
+ * only attribution becomes "" and callers fall back to the headline. */
+export function stripTrailingAttribution(text: string): string {
+  const original = text.trimEnd();
+  let out = original;
+  for (;;) {
+    const start = sentenceEnds(out).findLast((end) => end < out.length) ?? 0;
+    const last = out.slice(start).trim();
+    if (
+      !ATTRIBUTION_SENTENCE_RE.test(last) &&
+      !CONTEXT_LINK_SENTENCE_RE.test(last)
+    ) {
+      return out === original ? text : out;
+    }
+    out = out.slice(0, start).trimEnd();
+  }
+}
+
 /** Feed chrome that ingest leaves in some summaries: arXiv listing headers
  * and aggregator navigation ("← Back to live feed · 1 stories across 1
  * day") at the start, an "appeared first on" footer at the end. It is not
  * article text: it must not reach the stored English summary, the
  * translator, or any guard. */
 export function stripSourceBoilerplate(text: string): string {
-  return stripFeedFooter(stripLeadingChrome(text))
-    .replace(/^\s*arXiv:\S+\s+Announce Type:\s*\S+\s+Abstract:\s*/i, "")
-    .replace(/^\s*See what[’']s happening and join the conversation\s*$/i, "");
+  return stripTrailingAttribution(
+    stripFeedFooter(stripLeadingChrome(text))
+      .replace(/^\s*arXiv:\S+\s+Announce Type:\s*\S+\s+Abstract:\s*/i, "")
+      .replace(/^\s*See what[’']s happening and join the conversation\s*$/i, "")
+  );
 }
 
 export interface ProtectedTerms {
