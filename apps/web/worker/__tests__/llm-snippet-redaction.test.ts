@@ -683,6 +683,45 @@ describe("sanitizeText for step reasons", () => {
     }
   });
 
+  it.each([
+    "access_token",
+    "bot_token",
+    "reset-token",
+    "verifyToken",
+    "BOT_TOKENS",
+    "password",
+    "client_secret",
+    "session_id",
+    "credentials",
+  ])("redacts a number under the credential key %s", (key) => {
+    expect(sanitizeRunStats({ [key]: 123456 })).toEqual({
+      [key]: "[redacted]",
+    });
+    expect(JSON.parse(sanitizeText(`{"${key}":1234567}`) ?? "{}")).toEqual({
+      [key]: "[redacted]",
+    });
+    expect(sanitizeRunStats({ a: { b: [{ [key]: 123456 }] } })).toEqual({
+      a: { b: [{ [key]: "[redacted]" }] },
+    });
+  });
+
+  it.each([
+    "tokens",
+    "llm_tokens",
+    "prompt_tokens",
+    "completion_tokens",
+    "input_token",
+    "max_tokens",
+    "cost_per_token",
+    "time_to_first_token",
+    "promptTokens",
+  ])("keeps a number under the counter %s", (key) => {
+    expect(sanitizeRunStats({ [key]: 512, n: { [key]: 0 } })).toEqual({
+      [key]: 512,
+      n: { [key]: 0 },
+    });
+  });
+
   it("keeps query params that only end in a key word", () => {
     expect(sanitizeText("see /buy?fruit=1&monkey=banana")).toBe(
       "see /buy?fruit=1&monkey=banana"
