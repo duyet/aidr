@@ -15,6 +15,7 @@ import {
   learnedKeywordsStmt,
   learningDayKey,
   rankTrendingWithGrowth,
+  readableLearnedKeywords,
   topicDailyCountsStmt,
 } from "../../worker/topic-learning.js";
 import { itemVotesTableReady } from "../../worker/votes.js";
@@ -212,9 +213,9 @@ async function attachSourcesAndTopics(
         });
       }
     }
-    learnedKeywords = (
+    learnedKeywords = readableLearnedKeywords(
       (batched[sourceStmtCount]?.results ?? []) as { keyword: string }[]
-    ).map((r) => r.keyword);
+    );
     yesterdayCounts = new Map(
       (
         (batched[sourceStmtCount + 1]?.results ?? []) as {
