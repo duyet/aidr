@@ -507,6 +507,25 @@ describe("channel click tracking", () => {
   });
 });
 
+describe("nav click tracking", () => {
+  it("reports a link's route id, not its href", async () => {
+    render(
+      <PhoneMenu
+        lang="en"
+        onLangChange={() => undefined}
+        langToggleDisabled={false}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("link", { name: "duyet.net" }));
+    expect(track).toHaveBeenCalledExactlyOnceWith("nav_click", {
+      to: "duyet.net",
+      placement: "phone_menu",
+    });
+  });
+});
+
 describe("intro video tile", () => {
   // The test asserts the iframe's src; it must not fetch the embed.
   (

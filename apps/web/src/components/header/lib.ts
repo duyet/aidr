@@ -45,6 +45,8 @@ type LinkIcon = ComponentType<{
 }>;
 
 export const SITE_LINKS: {
+  /** Static slug sent as `nav_click.to`; never an href. */
+  id: string;
   href: string;
   label: string;
   internal: boolean;
@@ -53,13 +55,32 @@ export const SITE_LINKS: {
   /** The channel's audience language, when it has one. */
   channelLang?: Lang;
 }[] = [
-  { href: "/", label: "News", internal: true, icon: Newspaper },
-  { href: "/weeks", label: "Weekly", internal: true, icon: BookOpenText },
-  { href: "/calendar", label: "Calendar", internal: true, icon: CalendarDays },
-  { href: "/about", label: "About", internal: true, icon: Info },
-  { href: "/brand", label: "Brand", internal: true, icon: Palette },
-  { href: "/mcp", label: "MCP", internal: true, icon: Plug },
+  { id: "/", href: "/", label: "News", internal: true, icon: Newspaper },
   {
+    id: "/weeks",
+    href: "/weeks",
+    label: "Weekly",
+    internal: true,
+    icon: BookOpenText,
+  },
+  {
+    id: "/calendar",
+    href: "/calendar",
+    label: "Calendar",
+    internal: true,
+    icon: CalendarDays,
+  },
+  { id: "/about", href: "/about", label: "About", internal: true, icon: Info },
+  {
+    id: "/brand",
+    href: "/brand",
+    label: "Brand",
+    internal: true,
+    icon: Palette,
+  },
+  { id: "/mcp", href: "/mcp", label: "MCP", internal: true, icon: Plug },
+  {
+    id: "extension",
     href: EXTENSION_PATH,
     label: "Get AI;DR",
     internal: true,
@@ -67,6 +88,7 @@ export const SITE_LINKS: {
     channel: "extension",
   },
   {
+    id: "telegram",
     href: TELEGRAM_URL,
     label: "Telegram",
     internal: false,
@@ -74,7 +96,19 @@ export const SITE_LINKS: {
     channel: "telegram",
     channelLang: "vi",
   },
-  { href: "/data", label: "Data", internal: true, icon: Database },
-  { href: "/contribute", label: "Contribute", internal: true, icon: Plus },
-  { href: DUYET_URL, label: "duyet.net", internal: false, icon: Globe },
+  { id: "/data", href: "/data", label: "Data", internal: true, icon: Database },
+  {
+    id: "/contribute",
+    href: "/contribute",
+    label: "Contribute",
+    internal: true,
+    icon: Plus,
+  },
+  {
+    id: "duyet.net",
+    href: DUYET_URL,
+    label: "duyet.net",
+    internal: false,
+    icon: Globe,
+  },
 ];

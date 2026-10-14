@@ -26,7 +26,11 @@ export function documentCacheStatus(): EdgeCache {
 }
 
 /** One metric → GA4 event + PostHog event, same name and dimensions. */
-export function metricParams(metric: Metric, cache: EdgeCache): VitalsParams {
+export function metricParams(
+  metric: Metric,
+  cache: EdgeCache,
+  pagePath: string
+): VitalsParams {
   return {
     metric_name: metric.name,
     // GA4 sums `value`; CLS is unitless, so scale it to keep precision.
@@ -38,12 +42,30 @@ export function metricParams(metric: Metric, cache: EdgeCache): VitalsParams {
     metric_id: metric.id,
     navigation_type: metric.navigationType,
     edge_cache: cache,
-    page_path: location.pathname,
+    page_path: pagePath,
   };
 }
 
+/**
+ * The library reports LCP, CLS and INP late (first input, page hide), often
+ * after an SPA navigation. The path is recorded each time a value changes,
+ * so the report names the page the value was observed on.
+ */
+const observedPath = new Map<Metric["name"], string>();
+
+function observe(metric: Metric): void {
+  observedPath.set(metric.name, location.pathname);
+}
+
 function report(metric: Metric): void {
-  track("web_vitals", metricParams(metric, documentCacheStatus()));
+  track(
+    "web_vitals",
+    metricParams(
+      metric,
+      documentCacheStatus(),
+      observedPath.get(metric.name) ?? location.pathname
+    )
+  );
 }
 
 /**
@@ -54,11 +76,10 @@ function report(metric: Metric): void {
 export async function reportWebVitals(): Promise<void> {
   try {
     const { onCLS, onFCP, onINP, onLCP, onTTFB } = await import("web-vitals");
-    onLCP(report);
-    onCLS(report);
-    onINP(report);
-    onFCP(report);
-    onTTFB(report);
+    for (const on of [onLCP, onCLS, onINP, onFCP, onTTFB]) {
+      on(observe, { reportAllChanges: true });
+      on(report);
+    }
   } catch {
     // never break UI
   }

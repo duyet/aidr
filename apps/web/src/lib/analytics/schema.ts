@@ -70,7 +70,7 @@ export type ParamsOf<P extends Record<string, Spec>> = {
 export type ParamValue = string | number;
 
 const ITEM_ID_RE = /^[0-9a-f]{8,64}$/;
-const SLUG_RE = /^[A-Za-z0-9_.:/?=&-]{1,100}$/;
+export const SLUG_RE = /^[A-Za-z0-9_./-]{1,100}$/;
 const LABEL_RE = /^[\p{L}\p{N}][\p{L}\p{M}\p{N} .&+#'/-]{0,99}$/u;
 
 function parseValue(spec: Spec, value: unknown): ParamValue | undefined {

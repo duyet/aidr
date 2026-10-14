@@ -24,7 +24,7 @@ async function submitWith(fetchImpl: () => Promise<Response>) {
   render(
     <EmailSubscribeForm
       lang="en"
-      source="home"
+      source="news"
       prefs={{
         lang: "en",
         size: 5,
@@ -56,7 +56,7 @@ describe("subscribe_error reason", () => {
     const call = await submitWith(async () =>
       Response.json({ error: "x" }, { status })
     );
-    expect(call).toEqual(["subscribe_error", { source: "home", reason }]);
+    expect(call).toEqual(["subscribe_error", { source: "news", reason }]);
   });
 
   it("reports a failed request as a network error", async () => {
@@ -65,7 +65,7 @@ describe("subscribe_error reason", () => {
     });
     expect(call).toEqual([
       "subscribe_error",
-      { source: "home", reason: "network" },
+      { source: "news", reason: "network" },
     ]);
   });
 
@@ -73,7 +73,7 @@ describe("subscribe_error reason", () => {
     await submitWith(async () => Response.json({ ok: true }));
     expect(vi.mocked(track).mock.calls[0]).toEqual([
       "subscribe_submit",
-      { source: "home" },
+      { source: "news" },
     ]);
   });
 });

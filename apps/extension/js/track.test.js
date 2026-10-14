@@ -24,6 +24,12 @@ test("trackUrl tags /api/extension with campaign params", () => {
   assert.equal(url.searchParams.get("utm_content"), "nav_click_submit");
 });
 
+test("lang_change reports the new language as `lang`, like the web event", () => {
+  assert.equal(trackContent("lang_change", { lang: "en" }), "lang_change_en");
+  const url = new URL(trackUrl("https://aidr.today/", "lang_change", { lang: "en" }));
+  assert.equal(url.searchParams.get("utm_content"), "lang_change_en");
+});
+
 test("channel clicks keep the channel in the campaign content", () => {
   assert.equal(
     trackContent("channel_click", { channel: "telegram", to: "telegram" }),

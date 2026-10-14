@@ -83,7 +83,7 @@ export function PhoneMenu({
         ...(link.channelLang ? { lang: link.channelLang } : {}),
       });
     } else {
-      track("nav_click", { to: link.href, placement: "phone_menu" });
+      track("nav_click", { to: link.id, placement: "phone_menu" });
     }
   };
 

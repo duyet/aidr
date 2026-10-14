@@ -21,7 +21,7 @@ import {
   slug,
 } from "./schema";
 
-export type Sender = "browser" | "worker";
+export type Sender = "browser" | "worker" | "extension";
 export type Sink = "ga4" | "posthog";
 export const SINKS = ["ga4", "posthog"] as const satisfies readonly Sink[];
 
@@ -66,7 +66,7 @@ const LINK_PLACEMENTS = [
   "subscribe_page",
 ] as const;
 /** Mirrors SUBSCRIBE_SOURCES in worker/subscribe/handlers.ts (test-enforced). */
-export const SUBSCRIBE_SOURCES = ["blog", "news", "home", "extension"] as const;
+export const SUBSCRIBE_SOURCES = ["news", "extension"] as const;
 
 const ON_OFF = ["on", "off"] as const;
 const NO_VALUE = [] as const;
@@ -142,7 +142,8 @@ export const EVENTS = {
   },
   nav_click: {
     sender: "browser",
-    question: "Which navigation links get used, from which placement?",
+    question:
+      "`to` is a static slug id (route path like `/weeks` or `/data/runs`, or a bare name like `github`, never an href or query). Which navigation links get used, from which placement?",
     params: { to: slug(), placement: dim(oneOf(LINK_PLACEMENTS)) },
   },
   channel_click: {
@@ -261,6 +262,48 @@ export const EVENTS = {
       edge_cache: dim(oneOf(["HIT", "MISS", "none"])),
       page_path: path(),
     },
+  },
+} as const satisfies Record<string, EventSpec>;
+
+const EXTENSION_CHANNELS = ["chrome", "telegram", "email"] as const;
+
+/**
+ * Events the Chrome extension's new tab sends (`apps/extension/js/track.js`).
+ * It has no analytics SDK (privacy policy). Each event is one GET to
+ * `/api/extension`, tagged `ref=extension` and `utm_*`, with the event name
+ * and its params joined into `utm_content` (`trackContent`). The route
+ * ignores the query and answers the release JSON, so these show only in
+ * Cloudflare request logs, never in GA4 or PostHog. Names match the web rows
+ * where the question is the same; the param sets are the extension's own.
+ */
+export const EXTENSION_EVENTS = {
+  page_view: {
+    sender: "extension",
+    sinks: [],
+    question: "How often is the extension's new tab opened?",
+    params: {},
+  },
+  lang_change: {
+    sender: "extension",
+    sinks: [],
+    question: "How often do new-tab readers switch language, and to which?",
+    params: { lang: oneOf(LANGS) },
+  },
+  prefs_change: {
+    sender: "extension",
+    sinks: [],
+    // `to` is `pref_value` on the web row; the extension keeps its own name.
+    question: "Which new-tab sections do readers turn on or off?",
+    params: {
+      pref: oneOf(["categories", "trending", "tldr", "days"]),
+      to: oneOf(ON_OFF),
+    },
+  },
+  channel_click: {
+    sender: "extension",
+    sinks: [],
+    question: "Which follow or install link on the new tab gets clicked?",
+    params: { channel: oneOf(EXTENSION_CHANNELS), to: slug() },
   },
 } as const satisfies Record<string, EventSpec>;
 

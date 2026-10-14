@@ -8,12 +8,18 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { EVENTS, type EventName } from "../src/lib/analytics/events";
+import {
+  EVENTS,
+  type EventName,
+  EXTENSION_EVENTS,
+} from "../src/lib/analytics/events";
 import type { Spec } from "../src/lib/analytics/schema";
+import { VENDOR_EVENTS } from "../src/lib/analytics/vendor-events";
 
 const webDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repoDir = join(webDir, "..", "..");
 export const SRC_DIR = join(webDir, "src");
+export const EXTENSION_DIR = join(repoDir, "apps", "extension", "js");
 export const DOC_PATH = join(repoDir, "docs", "analytics-events.md");
 export const REGENERATE = "pnpm --filter @aidr/web analytics:docs";
 
@@ -30,6 +36,32 @@ export function findCallSites(srcDir = SRC_DIR): Map<string, string[]> {
       const files = sites.get(name) ?? new Set<string>();
       files.add(relative(repoDir, join(srcDir, file)));
       sites.set(name, files);
+    }
+  }
+  return new Map([...sites].map(([name, files]) => [name, [...files].sort()]));
+}
+
+const EXTENSION_CALL_RES = [
+  /\btrack\(\s*"([a-z0-9_]+)"/g,
+  // trackChannelClick(channel, params) sends the channel_click event.
+  /\b(trackChannelClick)\(/g,
+];
+
+/** Extension event name -> sorted repo-relative files that send it. */
+export function findExtensionCallSites(
+  dir = EXTENSION_DIR
+): Map<string, string[]> {
+  const sites = new Map<string, Set<string>>();
+  for (const entry of readdirSync(dir)) {
+    if (!/\.js$/.test(entry) || /\.test\.js$/.test(entry)) continue;
+    const text = readFileSync(join(dir, entry), "utf8");
+    for (const re of EXTENSION_CALL_RES) {
+      for (const [, found] of text.matchAll(re)) {
+        const name = found === "trackChannelClick" ? "channel_click" : found;
+        const files = sites.get(name) ?? new Set<string>();
+        files.add(relative(repoDir, join(dir, entry)));
+        sites.set(name, files);
+      }
     }
   }
   return new Map([...sites].map(([name, files]) => [name, [...files].sort()]));
@@ -90,13 +122,25 @@ function dimensions(): Dimension[] {
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function renderEventsDoc(callSites: Map<string, string[]>): string {
+export function renderEventsDoc(
+  callSites: Map<string, string[]>,
+  extensionSites: Map<string, string[]> = findExtensionCallSites()
+): string {
   const rows = (Object.keys(EVENTS) as EventName[]).map((name) => {
     const row = EVENTS[name];
     const sinks = "sinks" in row ? row.sinks.join(", ") : "ga4, posthog";
     const files = (callSites.get(name) ?? []).map((f) => `\`${f}\``);
     return `| \`${name}\` | ${row.sender} | ${sinks} | ${paramsCell(row.params)} | ${files.join("<br>")} | ${cell(row.question)} |`;
   });
+  const extensionRows = Object.entries(EXTENSION_EVENTS).map(([name, row]) => {
+    const files = (extensionSites.get(name) ?? []).map((f) => `\`${f}\``);
+    const params = paramsCell(row.params as Record<string, Spec>) || "none";
+    return `| \`${name}\` | ${params} | ${files.join("<br>")} | ${cell(row.question)} |`;
+  });
+  const vendorRows = VENDOR_EVENTS.map(
+    (e) =>
+      `| ${e.vendor} | \`${e.event}\` | ${cell(e.fires)} | ${cell(e.handling)} |`
+  );
   const dims = dimensions().map(
     (d) =>
       `| \`${d.name}\` | Event | ${describeSpec(d.spec)} | ${d.events.map((e) => `\`${e}\``).join(", ")} |`
@@ -105,7 +149,7 @@ export function renderEventsDoc(callSites: Map<string, string[]>): string {
 
 Generated from \`apps/web/src/lib/analytics/events.ts\` by \`${REGENERATE}\`. Do not edit by hand.
 
-Every event the site sends is a row in the registry. \`track(name, params)\` accepts only registry names and their exact params, so a wrong name, a missing or extra param, or an enum value outside its list fails \`check-types\`. At runtime, keys outside the row are dropped and each value must pass its kind. No kind accepts free text: a param holds an item id, an enum value, a number, a pathname without its query, a slug written in code, or a category or tag name from the feed. PostHog events also carry \`surface: "web"\`.
+Every event the app sends is a row in the registry. Two kinds are not rows in the table below: events the Chrome extension sends, listed under Extension events, and events a vendor script sends by itself, listed under Vendor automatic events. \`track(name, params)\` accepts only registry names and their exact params, so a wrong name, a missing or extra param, or an enum value outside its list fails \`check-types\`. At runtime, keys outside the row are dropped and each value must pass its kind. No kind accepts free text: a param holds an item id, an enum value, a number, a pathname without its query, a slug written in code, or a category or tag name from the feed. PostHog events also carry \`surface: "web"\`.
 
 To add an event, add a row with the product question it answers, call \`track()\`, and rerun the command above.
 
@@ -114,6 +158,24 @@ To add an event, add a row with the product question it answers, call \`track()\
 | Event | Sender | Sinks | Params | Fires from | Question |
 | --- | --- | --- | --- | --- | --- |
 ${rows.join("\n")}
+
+## Extension events
+
+The Chrome extension has no analytics SDK (its privacy policy forbids one). It sends each event as a GET to \`/api/extension\`, tagged \`ref=extension\` and the \`utm_*\` params listed under Outgoing link tags, with the event name and its params joined into \`utm_content\`. The route ignores the query and returns the release JSON, so these events reach no vendor and exist only in Cloudflare request logs. Rows are \`EXTENSION_EVENTS\` in the registry file. Where a name matches a web event, the param set is the extension's own: \`prefs_change\` uses \`to\` where the web row uses \`pref_value\`, and \`channel_click\` has no \`placement\`.
+
+| Event | Params | Fires from | Question |
+| --- | --- | --- | --- |
+${extensionRows.join("\n")}
+
+## Vendor automatic events
+
+These are sent by vendor scripts without a \`track()\` call, so they are not registry rows and app code cannot change their params. The list is \`VENDOR_EVENTS\` in \`apps/web/src/lib/analytics/vendor-events.ts\`.
+
+| Vendor | Event | Fires | Handling |
+| --- | --- | --- | --- |
+${vendorRows.join("\n")}
+
+Seline loads only when \`VITE_SELINE_TOKEN\` is set and records its own page views. No custom event goes to it.
 
 ## GA4 custom dimensions
 
