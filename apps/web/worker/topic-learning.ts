@@ -775,10 +775,16 @@ export async function promoteEmergingTopics(
   return promoted;
 }
 
+/** Rows read per kept keyword. The denylist is applied after the read
+ * (`readableLearnedKeywords`), so the SELECT over-fetches to keep the list
+ * full when top-ranked rows are dropped. */
+const LEARNED_KEYWORD_OVERFETCH = 2;
+
 /** Prepared SELECT for active learned keywords. Exported at statement
  * level so read paths (the feed) can ride it in the same `db.batch` as
  * other queries — one D1 round-trip instead of one per SELECT. Callers
- * must run `ensureTopicLearningSchema` first (module-cached). */
+ * must run `ensureTopicLearningSchema` first (module-cached) and pass the
+ * rows through `readableLearnedKeywords`. */
 export function learnedKeywordsStmt(
   db: DbReader,
   limit = 80
@@ -790,7 +796,21 @@ export function learnedKeywordsStmt(
        ORDER BY hit_count DESC, last_seen DESC
        LIMIT ?`
     )
-    .bind(limit);
+    .bind(limit * LEARNED_KEYWORD_OVERFETCH);
+}
+
+/** Keywords to use from `learnedKeywordsStmt` rows. A row learned before a
+ * theme joined `LEARNING_THEME_DENYLIST` ("Data Center", "Innovation") stays
+ * `active` in D1 but is not read, so the denylist retires it with no data
+ * write and un-denylisting brings it back. */
+export function readableLearnedKeywords(
+  rows: readonly { keyword: string }[],
+  limit = 80
+): string[] {
+  return rows
+    .map((r) => r.keyword)
+    .filter(isLearnableEntityTopic)
+    .slice(0, limit);
 }
 
 /** Prepared SELECT for one day's per-topic counts — same batching note
@@ -814,7 +834,7 @@ export async function loadLearnedKeywords(
     const { results } = await learnedKeywordsStmt(db, limit).all<{
       keyword: string;
     }>();
-    return (results ?? []).map((r) => r.keyword);
+    return readableLearnedKeywords(results ?? [], limit);
   } catch {
     return [];
   }

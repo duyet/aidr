@@ -68,4 +68,47 @@ describe("normalizeNewRowTopics fallback", () => {
     expect(out.get("a")).toEqual(["open-source", "llm"]);
     expect(out.get("b")).toEqual([]);
   });
+
+  it("gives an untagged story the deterministic fallback when the step fails", async () => {
+    const rows = [row("a"), row("b")];
+    rows[0].item.title = "Samsung unveils a new smartphone";
+    const scored = new Map([
+      ["a", score([])],
+      ["b", score(["llm"])],
+    ]);
+    const known = [
+      { name: "samsung", canonical: "samsung" },
+      { name: "smartphone", canonical: "smartphone" },
+    ];
+    const ctx = ctxFor(failingStep());
+    ctx.env = {
+      DB: {
+        prepare: () => ({
+          all: async () => ({ results: known }),
+        }),
+      },
+    } as unknown as Env;
+
+    const out = await normalizeNewRowTopics(
+      ctx,
+      rows,
+      scored,
+      1_700_000_000_000
+    );
+
+    expect(out.get("a")).toEqual(["samsung", "smartphone"]);
+    expect(out.get("b")).toEqual(["llm"]);
+  });
+
+  it("stores [] and logs when the topics table cannot be read", async () => {
+    const rows = [row("a")];
+    rows[0].item.title = "Samsung unveils a new smartphone";
+    const out = await normalizeNewRowTopics(
+      ctxFor(failingStep()),
+      rows,
+      new Map([["a", score([])]]),
+      1_700_000_000_000
+    );
+    expect(out.get("a")).toEqual([]);
+  });
 });

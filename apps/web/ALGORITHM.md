@@ -834,7 +834,10 @@ Batches of 5.
   entities can. Its themes cannot: each is on `LEARNING_THEME_DENYLIST`
   (`healthcare`, `education`, `smartphone`, `innovation` and `economy`
   were added for it), except `vietnam`, which is a country. When the
-  normalize-topics step itself fails, ingest still stores `[]` (#771).
+  normalize-topics step itself fails, a story keeps the scorer's tags
+  (#773), and a story with none gets `fallbackTags` from a fresh read of
+  `topics`. It stores `[]` only when that read also fails, or the fallback
+  names nothing.
   Measured on production, 2026-10-15:
   - it tags 115 of the 233 untagged published stories;
   - on a random 40 of them, 52 of 55 tags were right, 54 counting a
@@ -847,7 +850,11 @@ Batches of 5.
   too often wrong.
 - Emerging entity/model names that clear a frequency/growth bar promote
   into `learned_keywords` for title highlight and growth-boosted
-  homepage trending chips (`worker/topic-learning.ts`).
+  homepage trending chips (`worker/topic-learning.ts`). Nothing retires a
+  row: `status` only ever becomes `active`. The denylist is therefore also
+  applied when keywords are read (`readableLearnedKeywords`): a row learned
+  before its theme was denylisted ("Data Center", "Innovation") stays in D1
+  but is not highlighted, and returns if the theme leaves the list.
 - Homepage trending prefers versioned model/product names extracted
   from headlines (e.g. GPT-6 Astra, Fable 5.1) over generic themes like
   `llm` / `agent`. Headline extraction (`extractTitleEntities`) uses

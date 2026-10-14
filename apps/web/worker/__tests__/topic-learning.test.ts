@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { DbReader } from "../../src/lib/db";
 import {
   collectTrendingCandidates,
   displayKeywordFromTopic,
@@ -6,7 +7,9 @@ import {
   isLearnableEntityTopic,
   isSpecificTrendingTopic,
   learningDayKey,
+  loadLearnedKeywords,
   rankTrendingWithGrowth,
+  readableLearnedKeywords,
   trendingKey,
   trendingSourceWeight,
 } from "../topic-learning.js";
@@ -426,5 +429,45 @@ describe("collectTrendingCandidates", () => {
       new Map()
     );
     expect(ranked[0]?.tag).toBe("GPT-6 Astra");
+  });
+});
+
+describe("learned keywords stay under the denylist at read time", () => {
+  const stored = [
+    "OpenAI",
+    "Data Center",
+    "Innovation",
+    "Claude Code",
+    "Valuation",
+    "Vietnam",
+  ].map((keyword) => ({ keyword }));
+
+  it("drops active keywords whose topic is now a denylisted theme", () => {
+    expect(readableLearnedKeywords(stored, 80)).toEqual([
+      "OpenAI",
+      "Claude Code",
+      "Vietnam",
+    ]);
+  });
+
+  it("fills the limit from keywords below the dropped ones", () => {
+    expect(readableLearnedKeywords(stored, 2)).toEqual([
+      "OpenAI",
+      "Claude Code",
+    ]);
+  });
+
+  it("loadLearnedKeywords never returns a retired-by-denylist keyword", async () => {
+    const db = {
+      batch: async () => [],
+      prepare: () => ({
+        bind: () => ({ all: async () => ({ results: stored }) }),
+      }),
+    } as unknown as DbReader;
+    expect(await loadLearnedKeywords(db, 80)).toEqual([
+      "OpenAI",
+      "Claude Code",
+      "Vietnam",
+    ]);
   });
 });
