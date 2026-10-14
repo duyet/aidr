@@ -30,9 +30,11 @@ export interface ViEnglishRow {
   summary: string;
 }
 
-/** Below this many rows in 24h a rate is noise. At Laguna's measured 6.4%
- *  a 40-row day passes 15% about 1 time in 80 by chance; at ~120 rows a
- *  day (the volume once Laguna leads translate) about 1 in 4,000. */
+/** Below this many rows in 24h a rate is noise. If Laguna's true rate is
+ *  its measured 6.4%, one 24h window of 40 rows passes 15% about 1 time in
+ *  80 by chance, and one of ~120 rows (a day with Laguna leading translate)
+ *  about 1 in 4,000. 5/78 only bounds the true rate to 3-14% (Wilson 95%);
+ *  at 12% a 120-row window fires about 1 time in 8. */
 export const VI_ENGLISH_MIN_ROWS = 40;
 /** 7 days to 2026-10-14: gemini 1.2% (7/561), Laguna 6.4% (5/78),
  *  gemma-latest 8.3% (3/36: two version strings, one paper title). 15% is
@@ -86,16 +88,15 @@ export function mergeViEnglish(
 const count = (v: unknown): number =>
   typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : 0;
 
-/** Reads `stats.viEnglish` (an object, or its JSON text from
- *  `json_extract`). Anything malformed reads as no rows. */
-export function parseViEnglish(raw: unknown): ViEnglishTally {
-  let value = raw;
-  if (typeof value === "string") {
-    try {
-      value = JSON.parse(value) as unknown;
-    } catch {
-      return {};
-    }
+/** Reads `stats.viEnglish` as JSON text (`json_extract`). Anything
+ *  malformed reads as no rows. */
+export function parseViEnglish(json: unknown): ViEnglishTally {
+  if (typeof json !== "string") return {};
+  let value: unknown;
+  try {
+    value = JSON.parse(json);
+  } catch {
+    return {};
   }
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const tally: ViEnglishTally = {};

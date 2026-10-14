@@ -55,7 +55,7 @@ describe("tallyViEnglish", () => {
   it("survives the run-stats JSON round trip", () => {
     const viEnglish = { [LAGUNA]: { translated: 7, english: 2 } };
     const stats = JSON.parse(serializeRunStats(buildRunStats({ viEnglish })));
-    expect(parseViEnglish(stats.viEnglish)).toEqual(viEnglish);
+    expect(parseViEnglish(JSON.stringify(stats.viEnglish))).toEqual(viEnglish);
     expect(
       JSON.parse(serializeRunStats(buildRunStats({ viEnglish: {} })))
     ).not.toHaveProperty("viEnglish");

@@ -1691,8 +1691,10 @@ none at the 135s slice. Hangs came in runs: in 5 runs Laguna and
 `anyrouter/auto` hung back to back, retry included, and 3 of 6 luna
 retries hung again; the other 3 served, so a fresh call can rescue a
 hang. On translate, where the cap is 35s, Laguna hung to the full 35s 9
-times in 7 days, and its 102 successes show no slow start
-(duration minus output time at its p90 speed: median 3.6s, max 18.5s). A
+times in 7 days. Of the 24 translate calls it led (a slice of 50s or more,
+so the 35s window applied), 20 served with no sign of a slow start
+(duration minus output time at its p90 speed: median 2.9s, max 19.2s) and
+3 hung to 35s; a small sample. A
 35s cap fits the shared 230s TL;DR budget (four hung attempts take 140s
 instead of 80s), but when hangs come in runs it only delays the same
 headline fallback by a minute. The VI→EN generator served 16 of 61
