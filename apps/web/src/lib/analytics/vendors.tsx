@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { afterLcpPaint } from "./after-lcp-paint";
 import { installAnalyticsStubs, posthogArrayScriptUrl } from "./stubs";
+import { sanitizedPage } from "./url-privacy";
 import { reportWebVitals } from "./web-vitals";
 
 /** Public GA4 measurement ID (client id, not a secret). */
@@ -50,16 +51,38 @@ function loadScript(
   el.src = src;
   el.async = true;
   if (attrs) {
-    for (const [k, v] of Object.entries(attrs)) {
-      if (k.startsWith("data-")) {
-        el.dataset[k.slice(5)] = v;
-      } else {
-        el.setAttribute(k, v);
-      }
-    }
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   }
   document.body.appendChild(el);
   return el;
+}
+
+type JitsuWindow = Window & {
+  jitsuQ?: ((jitsu: { page: (properties: object) => void }) => void)[];
+};
+
+/*
+ * p.js reads location.href for its automatic page event, so that event is
+ * off (`data-init-only`) and the page event goes through its callback queue
+ * with a sanitized URL instead. `context.page` is set as well: p.js fills it
+ * from `properties.search || location.search`, so an empty sanitized search
+ * on its own would fall back to the real one.
+ */
+function loadJitsu(): void {
+  const w = window as JitsuWindow;
+  w.jitsuQ = w.jitsuQ || [];
+  w.jitsuQ.push((jitsu) => {
+    const { url, path, search, referrer } = sanitizedPage();
+    jitsu.page({
+      url,
+      path,
+      search,
+      hash: "",
+      referrer,
+      context: { page: { url, path, search, referrer } },
+    });
+  });
+  loadScript("https://j.duyet.net/p.js", { "data-init-only": "true" });
 }
 
 /*
@@ -87,7 +110,7 @@ function bootstrapAnalytics(): void {
     loadScript(posthogArrayScriptUrl(POSTHOG_HOST));
   }
 
-  loadScript("https://j.duyet.net/p.js");
+  loadJitsu();
   void reportWebVitals();
 }
 

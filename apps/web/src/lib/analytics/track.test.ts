@@ -4,8 +4,18 @@ import { track } from "./track";
 function sinks() {
   const gtag = vi.fn();
   const capture = vi.fn();
-  vi.stubGlobal("window", { gtag, posthog: { capture } });
+  vi.stubGlobal("window", {
+    gtag,
+    posthog: { capture },
+    location: { href: "https://aidr.today/" },
+    document: { referrer: "" },
+  });
   return { gtag, capture };
+}
+
+/** The `event` calls, without the `set` of page fields before each. */
+function events(gtag: ReturnType<typeof vi.fn>): unknown[][] {
+  return gtag.mock.calls.filter((c) => c[0] === "event");
 }
 
 afterEach(() => {
@@ -74,7 +84,7 @@ describe("track", () => {
     const { gtag } = sinks();
     track("topic_filter", { tag: "Open Source", from: "nav" });
     track("topic_filter", { tag: "<script>", from: "nav" });
-    expect(gtag.mock.calls.map((c) => c[2])).toEqual([
+    expect(events(gtag).map((c) => c[2])).toEqual([
       { tag: "Open Source", from: "nav" },
       { from: "nav" },
     ]);
@@ -83,7 +93,7 @@ describe("track", () => {
   it("sends page_view to GA4 only; PostHog captures its own $pageview", () => {
     const { gtag, capture } = sinks();
     track("page_view", { page_path: "/", page_type: "home" });
-    expect(gtag).toHaveBeenCalledOnce();
+    expect(events(gtag)).toHaveLength(1);
     expect(capture).not.toHaveBeenCalled();
   });
 
