@@ -57,6 +57,33 @@ export const PAGE_TYPES = [
 ] as const;
 export type PageType = (typeof PAGE_TYPES)[number];
 
+/**
+ * Every internal route or external link id `nav_click.to` may carry. A fixed
+ * list, so a typo or a href with a query string fails type-check.
+ */
+export const NAV_TARGETS = [
+  "/",
+  "/weeks",
+  "/calendar",
+  "/about",
+  "/brand",
+  "/mcp",
+  "/data",
+  "/data/algo",
+  "/data/runs",
+  "/contribute",
+  "/release",
+  "/privacy",
+  "/terms",
+  "/sign-in",
+  "extension",
+  "telegram",
+  "github",
+  "duyet.net",
+  "anyrouter.dev",
+] as const;
+export type NavTarget = (typeof NAV_TARGETS)[number];
+
 const LANGS = ["vi", "en"] as const;
 const LINK_PLACEMENTS = [
   "header",
@@ -143,8 +170,8 @@ export const EVENTS = {
   nav_click: {
     sender: "browser",
     question:
-      "`to` is a static slug id (route path like `/weeks` or `/data/runs`, or a bare name like `github`, never an href or query). Which navigation links get used, from which placement?",
-    params: { to: slug(), placement: dim(oneOf(LINK_PLACEMENTS)) },
+      "`to` is one of `NAV_TARGETS` (route path like `/weeks`, or a bare name like `github`, never an href or query). Which navigation links get used, from which placement?",
+    params: { to: oneOf(NAV_TARGETS), placement: dim(oneOf(LINK_PLACEMENTS)) },
   },
   channel_click: {
     sender: "browser",
@@ -249,7 +276,7 @@ export const EVENTS = {
       value: count(),
       metric_value: num(),
       metric_rating: dim(oneOf(["good", "needs-improvement", "poor"])),
-      metric_id: slug(),
+      metric_id: opt(slug()),
       navigation_type: oneOf([
         "navigate",
         "reload",

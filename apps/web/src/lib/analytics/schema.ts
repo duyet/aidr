@@ -13,6 +13,39 @@ export const GA4_LIMITS = {
   paramsPerEvent: 25,
 } as const;
 
+declare const brand: unique symbol;
+type Brand<B extends string> = string & { readonly [brand]: B };
+
+/**
+ * A trending-tag or category name that appears in the feed's own tag list.
+ * Only `feedTag` makes one, so a reader's search text cannot reach `track()`
+ * as a label: it is a plain `string`, which does not type-check.
+ */
+export type FeedTag = Brand<"FeedTag">;
+
+/** Fixed UI labels, written in code, that `label` params may carry. */
+export type UiLabel = "all";
+
+export type AnalyticsLabel = FeedTag | UiLabel;
+
+/**
+ * A campaign or library id that matched `SLUG_RE`. Only `parseSlug` makes
+ * one. Static link targets are not slugs: they are the `NAV_TARGETS` enum.
+ */
+export type Slug = Brand<"Slug">;
+
+/** `name` as a `FeedTag` when `feedTags` contains it, else undefined. */
+export function feedTag(
+  name: string,
+  feedTags: readonly string[]
+): FeedTag | undefined {
+  return feedTags.includes(name) ? (name as FeedTag) : undefined;
+}
+
+export function parseSlug(value: string): Slug | undefined {
+  return SLUG_RE.test(value) ? (value as Slug) : undefined;
+}
+
 export type ParamSpec =
   /** sha256 hex of the source URL, or its 8+ char prefix. */
   | { kind: "item_id" }
@@ -23,9 +56,9 @@ export type ParamSpec =
   | { kind: "number" }
   /** Pathname only; query and hash are cut off before sending. */
   | { kind: "path" }
-  /** Static link targets and utm tokens written by our code. */
+  /** utm tokens and library ids that passed `SLUG_RE` (`parseSlug`). */
   | { kind: "slug" }
-  /** Category and trending-tag names from the feed, never reader input. */
+  /** A `FeedTag` from the feed's own tag list, or a fixed `UiLabel`. */
   | { kind: "label" };
 
 export type Spec = ParamSpec & { optional: boolean; dimension: boolean };
@@ -59,7 +92,11 @@ export type ValueOf<S> = S extends {
   ? V
   : S extends { kind: "count" | "number" }
     ? number
-    : string;
+    : S extends { kind: "label" }
+      ? AnalyticsLabel
+      : S extends { kind: "slug" }
+        ? Slug
+        : string;
 
 export type ParamsOf<P extends Record<string, Spec>> = {
   [K in keyof P as P[K]["optional"] extends true ? never : K]: ValueOf<P[K]>;

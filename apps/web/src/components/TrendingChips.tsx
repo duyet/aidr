@@ -1,5 +1,6 @@
 import { TrendingUp } from "lucide-react";
 import type { CSSProperties } from "react";
+import { feedTag } from "../lib/analytics/schema";
 import { track } from "../lib/analytics/track";
 import { topicColor } from "../lib/topic-color";
 import { useHorizontalScroll } from "../lib/use-horizontal-scroll";
@@ -16,6 +17,7 @@ export function TrendingChips({
   onSelectTag: (tag: string | null) => void;
 }) {
   const scrollRef = useHorizontalScroll<HTMLDivElement>();
+  const tags = trending.map((t) => t.tag);
 
   if (trending.length === 0) return null;
   return (
@@ -38,7 +40,8 @@ export function TrendingChips({
             type="button"
             onClick={() => {
               const next = selected ? null : t.tag;
-              if (next) track("topic_filter", { tag: next, from: "trending" });
+              const tag = next ? feedTag(next, tags) : undefined;
+              if (tag) track("topic_filter", { tag, from: "trending" });
               onSelectTag(next);
             }}
             aria-pressed={selected}

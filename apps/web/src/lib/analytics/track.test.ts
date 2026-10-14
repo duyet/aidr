@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { type FeedTag, feedTag } from "./schema";
 import { track } from "./track";
 
 function sinks() {
@@ -82,8 +83,14 @@ describe("track", () => {
 
   it("keeps a feed label with spaces and drops one that is not a label", () => {
     const { gtag } = sinks();
-    track("topic_filter", { tag: "Open Source", from: "nav" });
-    track("topic_filter", { tag: "<script>", from: "nav" });
+    const feed = ["Open Source"];
+    track("topic_filter", {
+      tag: feedTag("Open Source", feed) as FeedTag,
+      from: "nav",
+    });
+    // Forged past the brand, as an `as` cast in a caller would: the runtime
+    // guard is the second line of defense.
+    track("topic_filter", { tag: "<script>" as FeedTag, from: "nav" });
     expect(events(gtag).map((c) => c[2])).toEqual([
       { tag: "Open Source", from: "nav" },
       { from: "nav" },

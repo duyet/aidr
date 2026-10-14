@@ -11,7 +11,7 @@ import {
   Send,
 } from "lucide-react";
 import type { AriaAttributes, ComponentType } from "react";
-import type { Channel } from "../../lib/analytics/events";
+import type { Channel, NavTarget } from "../../lib/analytics/events";
 import { DUYET_URL, EXTENSION_PATH, TELEGRAM_URL } from "../../lib/site";
 import type { Lang } from "../../lib/types";
 import { ChromeMark } from "./ChromeMark";
@@ -46,7 +46,7 @@ type LinkIcon = ComponentType<{
 
 export const SITE_LINKS: {
   /** Static slug sent as `nav_click.to`; never an href. */
-  id: string;
+  id: NavTarget;
   href: string;
   label: string;
   internal: boolean;
