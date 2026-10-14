@@ -813,6 +813,7 @@ describe("package.json deploy scripts", () => {
       "pnpm run check:migrations",
       "pnpm run verify:translation-schema",
       "pnpm run build",
+      "tsx scripts/assert-deploy-artifact.ts --require-production-build",
       "tsx scripts/assert-clerk-proxy-config.ts --require-live-key",
       "tsx scripts/carry-live-assets.ts",
       "pnpm exec wrangler deploy --config dist/server/wrangler.json",
