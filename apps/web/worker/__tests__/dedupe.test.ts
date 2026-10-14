@@ -131,6 +131,33 @@ describe("clusterSimilar", () => {
     expect(clusters).toEqual([{ new: [0, 1], existing: ["x"] }]);
   });
 
+  it("drops an existing id that was not in the request, so no merge points at a missing row (#790)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        chatResponse(
+          JSON.stringify({
+            clusters: [
+              { new: [0, 1], existing: ["22", "abc123", "x"] },
+              { new: [2], existing: ["22"] },
+            ],
+          })
+        )
+      )
+    );
+
+    const { clusters } = await clusterSimilar(
+      env,
+      [
+        { i: 0, title: "A" },
+        { i: 1, title: "B" },
+        { i: 2, title: "C" },
+      ],
+      [{ id: "x", title: "X" }]
+    );
+    expect(clusters).toEqual([{ new: [0, 1], existing: ["x"] }]);
+  });
+
   it("returns [] and never throws on a network failure", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
     const { clusters } = await clusterSimilar(env, [{ i: 0, title: "A" }], []);
