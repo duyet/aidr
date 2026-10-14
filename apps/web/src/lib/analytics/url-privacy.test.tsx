@@ -77,8 +77,10 @@ describe("PostHog never sees subscribe tokens or search text", () => {
         before_send?: (event: object) => object | null;
       };
       const beforeSend = config.before_send ?? ((event: object) => event);
+      const timestamp = new Date(0);
       const sent = beforeSend({
         event: "$autocapture",
+        timestamp,
         properties: {
           $current_url: href,
           $pathname: new URL(href).pathname,
@@ -92,6 +94,7 @@ describe("PostHog never sees subscribe tokens or search text", () => {
       });
       expect(JSON.stringify(sent)).toContain(new URL(href).pathname);
       expect(JSON.stringify(sent)).not.toMatch(LEAK);
+      expect((sent as { timestamp?: unknown }).timestamp).toBe(timestamp);
     });
   }
 });

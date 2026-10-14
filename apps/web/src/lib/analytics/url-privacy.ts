@@ -102,7 +102,9 @@ export function scrubPosthogEvent<E>(event: E): E {
       return sanitizeOwnUrl(value, origin);
     }
     if (Array.isArray(value)) return value.map((item) => visit(item, key));
-    if (value && typeof value === "object") {
+    // Only plain objects: the event also carries values like a Date
+    // timestamp, which must pass through as they are.
+    if (value && Object.getPrototypeOf(value) === Object.prototype) {
       const out: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(value)) out[k] = visit(v, k);
       return out;
