@@ -60,6 +60,15 @@ cp .env.example .env.local   # fill values (gitignored)
 pnpm --filter @aidr/web dev  # http://localhost:3014
 ```
 
+The local D1 starts empty. Apply the schema once with `cd apps/web && pnpm exec wrangler d1 migrations apply aidr --local`.
+
+Clerk is optional locally. With no `CLERK_SECRET_KEY`, the dev server skips Clerk and every page renders signed out. To sign in locally, use a Clerk development instance (`pk_test_` / `sk_test_`):
+
+- `apps/web/.dev.vars`: `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`, for the Worker.
+- `apps/web/.env.local`: `VITE_CLERK_PUBLISHABLE_KEY`, the same `pk_test_` key, for the browser. Vite does not read `.dev.vars`.
+
+Vite also reads the repo-root `.env.local`. If that file holds production (`pk_live_`) keys, override `VITE_CLERK_PUBLISHABLE_KEY` in `apps/web/.env.local`, or the browser and the Worker use different Clerk instances. Local dev never uses the production proxy: an unset or non-loopback `CLERK_PROXY_URL` means dev keys talk to Clerk directly. Set `CLERK_PROXY_URL=http://localhost:3014/__clerk` to test the `/__clerk` proxy itself.
+
 Extension (unpacked):
 
 1. `chrome://extensions` → Developer mode
