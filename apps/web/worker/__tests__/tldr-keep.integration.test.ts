@@ -199,6 +199,32 @@ describe("TL;DR refresh that degrades to headlines", () => {
     expect(await ensureDailyTldr(env)).toMatchObject({ generated: true });
   });
 
+  // A model digest written when the window held 3 stories is thin once it
+  // holds 8, and refreshes every run. Keeping it on a failed refresh would
+  // pay for TL;DR every 30 minutes and leave readers 3 bullets.
+  it("replaces a model digest too thin for the current stories", async () => {
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback) VALUES (?, ?, ?, ?, 0)"
+      )
+      .run(
+        DATE,
+        JSON.stringify(GOOD.bullets_en.slice(0, 3)),
+        JSON.stringify(GOOD.bullets_vi.slice(0, 3)),
+        FIRST_WRITE.getTime() - 60_000
+      );
+    tldrResult.next = FAILED;
+
+    expect(await ensureDailyTldr(env)).toMatchObject({ generated: true });
+    expect(storedDigest().bullets_en.map((b) => b.text)).toEqual(
+      STORIES.map((story) => story.title)
+    );
+
+    at(FIRST_WRITE.getTime() + 30 * 60_000);
+    await ensureDailyTldr(env);
+    expect(generateTldr).toHaveBeenCalledTimes(1);
+  });
+
   it("stores the headlines when the date has no digest yet", async () => {
     tldrResult.next = FAILED;
     const stats = await ensureDailyTldr(env);
