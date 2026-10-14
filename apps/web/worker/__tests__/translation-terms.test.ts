@@ -240,6 +240,56 @@ describe("protected English terms", () => {
     }
   });
 
+  // Production rows the #671 strip missed (#673): a "Tác giả" byline joined
+  // by từ/trên, a lowercase word inside the outlet, and "Thông tin từ".
+  it("drops the residual Techmeme byline shapes", () => {
+    for (const text of [
+      // 281ca0f32b
+      "Tác giả Sarah Hilton từ Bloomberg. Xem toàn bộ ngữ cảnh trên Techmeme.",
+      // 7eea0490cf
+      "Tác giả David Pierce trên The Verge. Xem toàn bộ bối cảnh trên Techmeme.",
+      // bc1b223920, EN and VI
+      "By Brian Krebs / Krebs on Security. View the full context on Techmeme.",
+      "Theo Brian Krebs / Krebs on Security. Xem toàn bộ nội dung trên Techmeme.",
+      // d415b9354c
+      "Thông tin từ Bloomberg. Xem bối cảnh đầy đủ trên Techmeme.",
+      // Synthetic: no stored row has it. Techmeme credits a first-party post
+      // "(Apple)", and a bare byline would read like this.
+      "By Apple.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe("");
+    }
+  });
+
+  // "Theo" also opens a claim about a country or an institution. Only a
+  // source-shaped name after it is an attribution.
+  it("keeps a closing Theo sentence whose name is not a source", () => {
+    for (const text of [
+      "Hàn Quốc siết xuất khẩu chip AI sang Trung Quốc. Theo Mỹ.",
+      "Nhật Bản tạm dừng thương vụ bán chip cho Huawei. Theo Trung Quốc.",
+      "Bộ Thương mại công bố danh sách công ty bị hạn chế. Theo Hoa Kỳ.",
+      "Lệnh cấm có hiệu lực từ tuần sau. Theo Nhà Trắng.",
+      "Tác giả huấn luyện một world model quy mô nhỏ theo kiến trúc JEPA trên Pokémon Red.",
+      "Nvidia expects the new fab to ship volume parts. By 2030.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
+  it("drops a closing Theo sentence that names a source", () => {
+    for (const [text, kept] of [
+      ["Giá chip tăng 5%. Theo Bloomberg.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo Politico.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo New York Times.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo Janice Huang / Bloomberg.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo Gao Yuan từ Bloomberg.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo @openainewsroom.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo techcrunch.com.", "Giá chip tăng 5%."],
+    ] as const) {
+      expect(stripSourceBoilerplate(text)).toBe(kept);
+    }
+  });
+
   it("keeps a sentence that carries a claim or a mid-text từ", () => {
     for (const text of [
       "Theo Reuters, Nvidia sẽ ra chip mới vào tháng 3.",
