@@ -350,6 +350,25 @@ describe("backsExisting across languages", () => {
         "Bắt đầu Ngày hội Đổi mới sáng tạo quốc gia 2026 trong ba ngày"
       ),
     ],
+    [
+      // #749: normalizeTitleForDedupe splits Vietnamese at each diacritic, so
+      // this headline reads as a near-duplicate of the translation. Only the
+      // story's own title may count as one.
+      "a Vietnamese item that only fragment-matches an English story's translation",
+      tr(
+        h(
+          "marketbrief",
+          "https://marketbrief.now/business/moonshot-ai-negotiates-700m-settlement-before-hong-kong-ipo-ffd5f3d4",
+          "Moonshot AI Negotiates $700M Settlement Before Hong Kong IPO"
+        ),
+        "Moonshot AI đàm phán giải quyết 700 triệu USD trước IPO tại Hồng Kông"
+      ),
+      h(
+        "genk-ai",
+        "https://genk.vn/duoc-dinh-gia-ty-usd-co-12-trieu-nguoi-dung-tai-sao-startup-chatbot-ai-nay-van-phai-de-don-xin-pha-san-165261014145541313.chn",
+        "Được định giá tỷ USD, có 12 triệu người dùng, tại sao startup chatbot AI này vẫn phải đệ đơn xin phá sản?"
+      ),
+    ],
   ])("rejects %s", (_case, story, item) => {
     expect(backsExisting([item], story)).toBe(false);
   });
@@ -415,6 +434,56 @@ describe("backsExisting across languages", () => {
     ],
   ])("keeps %s", (_case, story, item) => {
     expect(backsExisting([item], story)).toBe(true);
+  });
+});
+
+// A fresh story has no stored translation yet (it is translated after the
+// merge), so a cross-language link to it is judged on the headlines alone: a
+// shared Latin name, a number or a unit allows it, and nothing shared blocks
+// it. Intended: the gate never rejects on a missing translation alone, and
+// never allows on one.
+describe("backsExisting across languages without a translation", () => {
+  const geminiVi = h(
+    "vnexpress-tech",
+    "https://vnexpress.net/google-ra-gemini-4-argon-manh-nhat-cua-cong-ty-5126995.html",
+    "Google ra Gemini 4 Argon mạnh nhất của công ty"
+  );
+  const geminiEn = h(
+    "techcrunch-ai",
+    "https://techcrunch.com/2026/09/30/google-releases-gemini-4-argon-called-its-most-powerful-model-yet/",
+    "Google releases Gemini 4 Argon, called its most powerful model yet"
+  );
+  const grokEn = h(
+    "huggingnews",
+    "https://huggingnews.com/ai/grok-47-launches-in-general-apps-after-limited-release-eb1f6886",
+    "Grok 4.7 Launches in General Apps After Limited Release"
+  );
+  const unrelatedVi = h(
+    "vnexpress-tech",
+    "https://vnexpress.net/bat-dau-ngay-hoi-doi-moi-sang-tao-quoc-gia-2026-5127769.html",
+    "Bắt đầu Ngày hội Đổi mới sáng tạo quốc gia 2026 trong ba ngày"
+  );
+
+  it.each([
+    ["an English item to a Vietnamese story", geminiVi, geminiEn],
+    ["a Vietnamese item to an English story", geminiEn, geminiVi],
+  ])("allows %s that shares a Latin name", (_case, story, item) => {
+    expect(story.translation).toBeUndefined();
+    expect(backsExisting([item], story)).toBe(true);
+  });
+
+  it.each([
+    ["an English item to a Vietnamese story", geminiVi, grokEn],
+    ["a Vietnamese item to an English story", geminiEn, unrelatedVi],
+  ])("blocks %s that shares nothing", (_case, story, item) => {
+    expect(story.translation).toBeUndefined();
+    expect(backsExisting([item], story)).toBe(false);
+  });
+
+  it("treats an explicit null translation the same", () => {
+    const story = { ...geminiVi, translation: null };
+    expect(backsExisting([geminiEn], story)).toBe(true);
+    expect(backsExisting([grokEn], story)).toBe(false);
   });
 });
 
