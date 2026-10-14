@@ -130,22 +130,23 @@ export function isLanguageNeutralSsrPath(pathname: string): boolean {
   );
 }
 
+/** An emailed `/subscribe` link whose URL carries a subscription token. */
+export function isSubscribeTokenPath(pathname: string, search = ""): boolean {
+  if (normalizedPath(pathname) !== "/subscribe") return false;
+  const params = new URLSearchParams(
+    search.startsWith("?") ? search.slice(1) : search
+  );
+  return params.has("unsubscribe") || params.has("settings");
+}
+
 /** User-specific/authenticated surfaces must never become edge-cacheable. */
 export function isPrivateSsrPath(pathname: string, search = ""): boolean {
   const path = normalizedPath(pathname);
-  if (
+  return (
     path === "/mail" ||
-    PRIVATE_NEUTRAL_SSR_PREFIXES.some((root) => isPathOrChild(path, root))
-  ) {
-    return true;
-  }
-  if (path === "/subscribe") {
-    const params = new URLSearchParams(
-      search.startsWith("?") ? search.slice(1) : search
-    );
-    return params.has("unsubscribe") || params.has("settings");
-  }
-  return false;
+    PRIVATE_NEUTRAL_SSR_PREFIXES.some((root) => isPathOrChild(path, root)) ||
+    isSubscribeTokenPath(path, search)
+  );
 }
 
 export function isLocaleAwareApiPath(pathname: string): boolean {

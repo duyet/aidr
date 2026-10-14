@@ -94,4 +94,19 @@ describe("Clerk request middleware", () => {
       expect(outcome.reachedApp).toBe(true);
     }
   );
+
+  it("builds start options in the client bundle, where Clerk is a stub", async () => {
+    vi.resetModules();
+    vi.stubEnv("DEV", false);
+    vi.doMock(
+      "@clerk/tanstack-react-start/server",
+      () => import("./lib/clerk-server-stub")
+    );
+    try {
+      const { startInstance } = await import("./start");
+      await expect(startInstance.getOptions()).resolves.toBeDefined();
+    } finally {
+      vi.doUnmock("@clerk/tanstack-react-start/server");
+    }
+  });
 });
