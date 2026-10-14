@@ -87,13 +87,13 @@ const TITLE_STOPWORDS = new Set([
 /** "triệu" -> "trieu", whole. Turning the marks into spaces split it into
  *  "trie u", and fragments like "gia" or "nha" then matched in a quarter
  *  of unrelated Vietnamese headlines (#749). */
-const fold = (text: string) =>
+export const foldDiacritics = (text: string) =>
   text.normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d");
 
 /** Lowercase, fold diacritics, strip UPDATE:, fold $8 billion → 8b / 5x → 5,
  *  drop punctuation. */
 export function normalizeTitleForDedupe(title: string): string {
-  return fold(title.normalize("NFKD").toLowerCase())
+  return foldDiacritics(title.normalize("NFKD").toLowerCase())
     .replace(/^update:\s*/i, "")
     .replace(/[“”"'`’]/g, "")
     .replace(/[$€£]/g, "")
@@ -209,11 +209,11 @@ export function evidenceTokens(title: string): Set<string> {
       ) {
         continue;
       }
-      const token = standalone(fold(word));
+      const token = standalone(foldDiacritics(word));
       if (token) out.add(token);
     }
     if (!vietnamese) continue;
-    const folded = words.map(fold);
+    const folded = words.map(foldDiacritics);
     for (let i = 1; i < folded.length; i++) {
       const pair = [folded[i - 1], folded[i]];
       if (

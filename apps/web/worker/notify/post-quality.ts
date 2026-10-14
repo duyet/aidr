@@ -4,8 +4,12 @@
  * history these functions compare against.
  */
 
-import { evidenceTokens, significantTitleTokens } from "../dedupe.js";
-import { looksVietnamese } from "../tldr-lang.js";
+import {
+  articleId,
+  evidenceTokens,
+  foldDiacritics,
+  significantTitleTokens,
+} from "../dedupe.js";
 import {
   extractProtectedTerms,
   hasSourceChrome,
@@ -104,15 +108,33 @@ const GENERIC_ENTITIES = new Set([
   "us",
 ]);
 
+/** The source fields of a story, besides its title, that key its event. */
+export interface EventSource {
+  url: string | null;
+  /** The `source_lang` column; only an explicit `vi` is Vietnamese. */
+  sourceLang: string | null;
+}
+
 export interface EventKey {
-  /** The story's source title, the same text on both sides of a compare. */
+  /** The story's source title in NFC, the same text on both sides of a
+   *  compare. */
   title: string;
+  vietnamese: boolean;
+  /** The publisher's article id (`articleId`), shared by an article and its
+   *  live page. */
+  article: string | null;
   /** Lowercase named entities: org names, products, acronyms, and the
    *  capitalized words of a Vietnamese title. */
   entities: readonly string[];
+  /** The lowercase text names are looked up in, and where each of its words
+   *  starts. */
+  nameText: string;
+  wordStarts: ReadonlyMap<string, readonly number[]>;
 }
 
 const WORD = /[\p{L}\p{N}]+/gu;
+const LEADING_WORD = /^[\p{L}\p{N}]+/u;
+const WORD_CHAR_AT = /[\p{L}\p{N}]/uy;
 
 /** A Vietnamese headline capitalizes only names ("Trần Trung Tính", "Nobel
  *  Vật lý"), so each capitalized word after a sentence's first is one.
@@ -125,29 +147,59 @@ function vietnameseNames(title: string): string[] {
     .filter((word) => /^\p{Lu}/u.test(word));
 }
 
-export function eventKey(title: string): EventKey {
+/** The source language picks the rules, not a diacritic: "Société Générale"
+ *  carries Vietnamese-range accents (#766). An English title's names are read
+ *  and matched with diacritics folded, because `extractProtectedTerms` reads
+ *  ASCII and cut "Société" to "soci". A Vietnamese title keeps its marks:
+ *  folded, the "Nam" of Việt Nam would match every "năm". NFC first, since a
+ *  decomposed "ệ" is "e" plus a mark and splits the word. */
+export function eventKey(rawTitle: string, source: EventSource): EventKey {
+  const title = rawTitle.normalize("NFC");
+  const vietnamese = source.sourceLang === "vi";
+  const nameText = vietnamese
+    ? title.toLowerCase()
+    : foldDiacritics(title.toLowerCase());
+  const wordStarts = new Map<string, number[]>();
+  for (const match of nameText.matchAll(WORD)) {
+    const starts = wordStarts.get(match[0]);
+    if (starts) starts.push(match.index);
+    else wordStarts.set(match[0], [match.index]);
+  }
   const entities = new Set<string>();
-  const names = looksVietnamese(title)
+  const names = vietnamese
     ? vietnameseNames(title)
-    : extractProtectedTerms({ title, summary: "" }).names;
+    : extractProtectedTerms({ title: foldDiacritics(title), summary: "" })
+        .names;
   for (const name of names) {
     entities.add(name.replace(/['’]s$/i, "").toLowerCase());
   }
-  for (const token of title.toLowerCase().match(WORD) ?? []) {
-    if (KNOWN_ORGS.has(token)) entities.add(token);
+  for (const word of wordStarts.keys()) {
+    if (KNOWN_ORGS.has(word)) entities.add(word);
   }
   for (const generic of GENERIC_ENTITIES) entities.delete(generic);
-  return { title, entities: [...entities] };
+  return {
+    title,
+    vietnamese,
+    article: source.url ? articleId(source.url) : null,
+    entities: [...entities],
+    nameText,
+    wordStarts,
+  };
 }
 
-/** `name` as a whole word of `title`. A Vietnamese letter is part of the
- *  word, so "vi" is not in "việt". */
-function mentions(title: string, name: string): boolean {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(
-    `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,
-    "u"
-  ).test(title.toLowerCase());
+/** `entity` as a whole word or run of words of the key's title. A Vietnamese
+ *  letter is part of the word, so "vi" is not in "việt". Only the places
+ *  where the name's first word starts are checked, so a pair costs time in
+ *  proportion to its names, not names times title length (#766). */
+function mentions(key: EventKey, entity: string): boolean {
+  const name = key.vietnamese ? entity : foldDiacritics(entity);
+  const first = LEADING_WORD.exec(name)?.[0];
+  if (!first) return false;
+  return (key.wordStarts.get(first) ?? []).some((start) => {
+    if (!key.nameText.startsWith(name, start)) return false;
+    WORD_CHAR_AT.lastIndex = start + name.length;
+    return !WORD_CHAR_AT.test(key.nameText);
+  });
 }
 
 /** Two keys name one event: similar titles that both mention at least
@@ -161,18 +213,21 @@ function mentions(title: string, name: string): boolean {
  *  Two Vietnamese titles compare words (`evidenceTokens`), not syllables.
  *  In syllables, headlines on one Nobel prize scored 0.18 and different
  *  stories sharing "Việt Nam" and "công nghệ" 0.21 to 0.25; in words the
- *  first score 0.21 to 0.40 and the second 0 to 0.07 (#756). */
+ *  first score 0.21 to 0.40 and the second 0 to 0.07 (#756).
+ *
+ *  One publisher article id is one event whatever the titles say: a
+ *  vnexpress live page shares its article's id but rarely its headline
+ *  words (#765). */
 export function sameEvent(a: EventKey, b: EventKey): boolean {
+  if (a.article !== null && a.article === b.article) return true;
   const names = new Set([...a.entities, ...b.entities]);
   let sharedNames = 0;
   for (const name of names) {
-    if (mentions(a.title, name) && mentions(b.title, name)) sharedNames++;
+    if (mentions(a, name) && mentions(b, name)) sharedNames++;
   }
   if (sharedNames < EVENT_MIN_SHARED_NAMES) return false;
   const words =
-    looksVietnamese(a.title) && looksVietnamese(b.title)
-      ? evidenceTokens
-      : significantTitleTokens;
+    a.vietnamese && b.vietnamese ? evidenceTokens : significantTitleTokens;
   const ta = words(a.title);
   const tb = words(b.title);
   let shared = 0;
