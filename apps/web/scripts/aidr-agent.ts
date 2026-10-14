@@ -7,6 +7,8 @@
  *   pnpm --filter @aidr/web agent audit [--run <id>] [--runs N]
  *   pnpm --filter @aidr/web agent ranking [--limit N]
  *   pnpm --filter @aidr/web agent tldr-preview
+ *   pnpm --filter @aidr/web agent tldr-regenerate [--date YYYY-MM-DD]
+ *     [--dry-run]   (writes the row only if it is a model digest)
  *   pnpm --filter @aidr/web agent run [--steps a,b] [--force] [--wait]
  *   pnpm --filter @aidr/web agent rerun <step> [--force] [--wait]
  *   pnpm --filter @aidr/web agent day-video <YYYY-MM-DD> [--video <url|id>]
@@ -22,6 +24,8 @@
  * writes fetched items to D1 (see apps/web/ALGORITHM.md, "Dry runs").
  * `rerun weekly --wait` previews last week's weekly edition (`weeklyPreview`
  * in the run summary) without writing `weekly_snapshots`.
+ * `tldr-regenerate` rebuilds one date's TL;DR row (default today, ICT) and
+ * sends nothing; see apps/web/ALGORITHM.md, "Admin regenerate".
  *
  * Reads NEWS_ADMIN_TOKEN and optional AIDR_BASE_URL (default
  * https://aidr.today) from the environment or the repo-root `.env.local`.
@@ -31,6 +35,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { latestArchiveDate } from "../src/lib/day-archive";
 import { isPipelineStep, PIPELINE_STEPS } from "../worker/ingest/mode";
 
 const DEFAULT_BASE = "https://aidr.today";
@@ -136,6 +141,7 @@ function takesValue(flag: string): boolean {
     "chat",
     "channel",
     "ref",
+    "date",
   ].includes(flag);
 }
 
@@ -309,6 +315,30 @@ async function tldrPreview(): Promise<void> {
   print(
     result,
     `tldr-preview: ${result.bullets_en.length} en / ${result.bullets_vi.length} vi bullets (${result.reason}); LLM calls under ${result.operationId}; nothing written or sent`
+  );
+}
+
+/** Rebuild one date's TL;DR row. Always uses the dated route, which a
+ * server without it answers 404, so nothing is written there. */
+async function tldrRegenerate(args: Args): Promise<void> {
+  const raw = args.flags.get("date");
+  if (raw === true) fail("--date needs a YYYY-MM-DD value");
+  const date = raw ?? latestArchiveDate(Date.now());
+  const dryRun = args.flags.has("dry-run");
+  const result = await api<{
+    written: boolean;
+    reason: string;
+    bullets_en: unknown[];
+    bullets_vi: unknown[];
+    operationId: string;
+  }>(`/api/admin/tldr/regenerate/${encodeURIComponent(date)}`, {
+    method: "POST",
+    body: dryRun ? { dryRun: true } : {},
+    admin: true,
+  });
+  print(
+    result,
+    `tldr-regenerate ${date}${dryRun ? " (dry run)" : ""}: ${result.written ? "written" : "not written"}, ${result.bullets_en.length} en / ${result.bullets_vi.length} vi bullets (${result.reason}); LLM calls under ${result.operationId}; nothing sent`
   );
 }
 
@@ -500,6 +530,8 @@ async function main(): Promise<void> {
       return ranking(args);
     case "tldr-preview":
       return tldrPreview();
+    case "tldr-regenerate":
+      return tldrRegenerate(args);
     case "run":
       return trigger(args, parseSteps(args.flags.get("steps")));
     case "rerun":
@@ -513,7 +545,7 @@ async function main(): Promise<void> {
       return dayVideoPosted(args, stepArg);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id>"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id>"
       );
   }
 }

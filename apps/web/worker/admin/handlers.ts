@@ -1,3 +1,4 @@
+import { parseArchiveDate } from "../../src/lib/day-archive.js";
 import {
   DAY_VIDEO_POST_CHANNELS,
   DAY_VIDEO_TITLE_MAX,
@@ -40,9 +41,10 @@ import {
 } from "../telemetry-safe.js";
 import {
   buildTopItemsQuery,
-  ensureDailyTldr,
   previewDailyTldr,
+  regenerateDailyTldr,
   type TldrPreview,
+  type TldrRegenerateResult,
   tldrSnapshotDate,
 } from "../tldr.js";
 import { captureAndLearnTopics } from "../topic-learning.js";
@@ -931,34 +933,58 @@ export async function updateItem(
   return (updated ?? {}) as Record<string, unknown>;
 }
 
-export interface TldrRegenerateResult {
-  generated: boolean;
-  tokens: number;
-}
+/** How far back an admin regenerate may rewrite a closed date. */
+export const TLDR_REGENERATE_MAX_DAYS = 14;
 
 /**
- * Deletes today's tldr_snapshots row (if any) and re-runs ensureDailyTldr,
- * which then regenerates and re-upserts today's snapshot. Idempotent: the
- * snapshot table's primary key is `date`, so replacing today's row never
- * adds a duplicate.
+ * Rebuilds the TL;DR row for `date` (default today, ICT) through
+ * `regenerateDailyTldr`: written only when it is a model digest, otherwise
+ * the stored row is left as it was. `dryRun` writes nothing. Never sends
+ * email, Telegram or Facebook; those read the current local day's row on
+ * their own schedule. LLM attempts are logged under a `tldr-…` operation id.
  */
-export async function regenerateTldr(env: Env): Promise<TldrRegenerateResult> {
+export async function regenerateTldr(
+  env: Env,
+  input: { date?: unknown; dryRun?: unknown } = {}
+): Promise<(TldrRegenerateResult & { operationId: string }) | HandlerError> {
+  const nowMs = Date.now();
+  const today = tldrSnapshotDate(nowMs);
+  const oldest = tldrSnapshotDate(
+    nowMs - TLDR_REGENERATE_MAX_DAYS * 86_400_000
+  );
+  const date =
+    input.date === undefined ? today : parseArchiveDate(input.date, nowMs);
+  if (!date) {
+    return {
+      error: `date must be a YYYY-MM-DD day no later than today (${today})`,
+      status: 400,
+    };
+  }
+  if (date < oldest) {
+    return {
+      error: `date must be within the last ${TLDR_REGENERATE_MAX_DAYS} days (${oldest} or later)`,
+      status: 400,
+    };
+  }
+  if (input.dryRun !== undefined && typeof input.dryRun !== "boolean") {
+    return { error: "dryRun must be a boolean", status: 400 };
+  }
+  const dryRun = input.dryRun === true;
+
   const operationId = operationRunId("tldr");
   // Keep the sink unscoped; the explicit context below carries this id.
   setLlmCallLogger(createD1LlmCallLogger(env));
-  const date = tldrSnapshotDate();
-  await env.DB.prepare("DELETE FROM tldr_snapshots WHERE date = ?")
-    .bind(date)
-    .run();
-  const result = await withLlmCallContext(operationId, () =>
-    ensureDailyTldr(env)
-  );
-  await writeAudit(
-    env,
-    "tldr.regenerate",
-    result.generated ? `ok ${date}` : result.reason
-  );
-  return result;
+  try {
+    const result = await withLlmCallContext(operationId, () =>
+      regenerateDailyTldr(env, date, { dryRun })
+    );
+    if (!dryRun) {
+      await writeAudit(env, "tldr.regenerate", `${date}: ${result.reason}`);
+    }
+    return { ...result, operationId };
+  } finally {
+    await flushLlmCallWrites();
+  }
 }
 
 export async function listPendingSuggestions(

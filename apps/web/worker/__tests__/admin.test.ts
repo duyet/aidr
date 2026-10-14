@@ -1021,7 +1021,7 @@ describe("regenerateTldr", () => {
     vi.restoreAllMocks();
   });
 
-  it("deletes today's snapshot then regenerates it", async () => {
+  it("rewrites today's snapshot in place", async () => {
     const env = makeEnv();
     const db = env.DB as unknown as FakeD1;
     const today = tldrSnapshotDate();
@@ -1042,12 +1042,12 @@ describe("regenerateTldr", () => {
 
     vi.spyOn(llm, "generateTldr").mockResolvedValue({
       bullets_en: [{ text: "bullet", item_ids: ["t1"] }],
-      bullets_vi: [{ text: "bullet vi", item_ids: ["t1"] }],
+      bullets_vi: [{ text: "Tin nổi bật hôm nay", item_ids: ["t1"] }],
       tokens: 3,
     });
 
     const result = await regenerateTldr(env);
-    expect(result.generated).toBe(true);
+    expect(result).toMatchObject({ generated: true, written: true });
     expect(db.tldrSnapshots.has(today)).toBe(true);
     expect(
       JSON.parse(db.tldrSnapshots.get(today)?.bullets_en as string)
