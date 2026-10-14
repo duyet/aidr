@@ -20,7 +20,7 @@ function token(value) {
 
 /** utm_content slug for a track event (matches web event names). */
 export function trackContent(name, params = {}) {
-  const bits = [name, params.channel, params.source, params.pref, params.to, params.stale]
+  const bits = [name, params.channel, params.source, params.pref, params.lang, params.to, params.stale]
     .map(token)
     .filter(Boolean);
   return bits.join("_").slice(0, 64) || name;

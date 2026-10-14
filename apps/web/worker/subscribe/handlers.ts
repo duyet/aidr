@@ -66,7 +66,7 @@ export function isSubscribeError(value: unknown): value is SubscribeError {
   );
 }
 
-export const SUBSCRIBE_SOURCES = ["blog", "news", "home", "extension"] as const;
+export const SUBSCRIBE_SOURCES = ["news", "extension"] as const;
 export type SubscribeSource = (typeof SUBSCRIBE_SOURCES)[number];
 export const DIGEST_SIZES = [3, 5, 10] as const;
 export type DigestSize = (typeof DIGEST_SIZES)[number];

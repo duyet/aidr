@@ -1388,7 +1388,7 @@ async function main() {
   bindLangToggle(
     () => settings,
     async (next) => {
-      track("lang_change", { to: next.language }, settings.apiBase);
+      track("lang_change", { lang: next.language }, settings.apiBase);
       settings = await saveSettings(next);
       applyAppearance(settings);
       render(settings, digest);

@@ -2,7 +2,7 @@
 
 Generated from `apps/web/src/lib/analytics/events.ts` by `pnpm --filter @aidr/web analytics:docs`. Do not edit by hand.
 
-Every event the site sends is a row in the registry. `track(name, params)` accepts only registry names and their exact params, so a wrong name, a missing or extra param, or an enum value outside its list fails `check-types`. At runtime, keys outside the row are dropped and each value must pass its kind. No kind accepts free text: a param holds an item id, an enum value, a number, a pathname without its query, a slug written in code, or a category or tag name from the feed. PostHog events also carry `surface: "web"`.
+Every event the app sends is a row in the registry. Two kinds are not rows in the table below: events the Chrome extension sends, listed under Extension events, and events a vendor script sends by itself, listed under Vendor automatic events. `track(name, params)` accepts only registry names and their exact params, so a wrong name, a missing or extra param, or an enum value outside its list fails `check-types`. At runtime, keys outside the row are dropped and each value must pass its kind. No kind accepts free text: a param holds an item id, an enum value, a number, a pathname without its query, a slug written in code, or a category or tag name from the feed. PostHog events also carry `surface: "web"`.
 
 To add an event, add a row with the product question it answers, call `track()`, and rerun the command above.
 
@@ -24,10 +24,37 @@ To add an event, add a row with the product question it answers, call `track()`,
 | `media_open` | browser | ga4, posthog | `item_id?`: item id (hex)<br>`media`: `thumb`, `image`, `video`<br>`index?`: integer ≥ 0 | `apps/web/src/components/StoryThumb.tsx`<br>`apps/web/src/components/story/MediaGallery.tsx` | Is story media worth its bytes? |
 | `prefs_change` | browser | ga4, posthog | `pref`: `bg`, `theme`, `font`, `fontSize`, `density`, `reset`, `tldrCount`, `bilingualDialog`, `sections.trending`, `sections.tldr`, `sections.days`, `sections.categories`<br>`pref_value?`: `default`, `cream`, `gray`, `dark`, `black`, `light`, `sans`, `serif`, `dense`, `compact`, `medium`, `comfortable`, `relaxed`, `spacious`, `airy`, `8`, `12`, `16`, `on`, `off` | `apps/web/src/components/TldrSection.tsx`<br>`apps/web/src/components/prefs/SettingsTab.tsx`<br>`apps/web/src/components/prefs/ThemeTab.tsx`<br>`apps/web/src/components/story-dialog/DialogHeader.tsx` | Which reader settings get changed, and to what? |
 | `lang_change` | browser | ga4, posthog | `lang`: `vi`, `en` | `apps/web/src/routes/__root.tsx` | How often do readers switch language, and to which? |
-| `subscribe_submit` | browser | ga4, posthog | `source`: `blog`, `news`, `home`, `extension` | `apps/web/src/components/EmailSubscribeForm.tsx` | Who starts an email signup, from which form? |
-| `subscribe_success` | browser | ga4, posthog | `source`: `blog`, `news`, `home`, `extension` | `apps/web/src/components/EmailSubscribeForm.tsx` | Which forms turn into a signup request? |
-| `subscribe_error` | browser | ga4, posthog | `source`: `blog`, `news`, `home`, `extension`<br>`reason`: `invalid`, `rate_limited`, `network`, `server` | `apps/web/src/components/EmailSubscribeForm.tsx` | Why do signups fail? |
+| `subscribe_submit` | browser | ga4, posthog | `source`: `news`, `extension` | `apps/web/src/components/EmailSubscribeForm.tsx` | Who starts an email signup, from which form? |
+| `subscribe_success` | browser | ga4, posthog | `source`: `news`, `extension` | `apps/web/src/components/EmailSubscribeForm.tsx` | Which forms turn into a signup request? |
+| `subscribe_error` | browser | ga4, posthog | `source`: `news`, `extension`<br>`reason`: `invalid`, `rate_limited`, `network`, `server` | `apps/web/src/components/EmailSubscribeForm.tsx` | Why do signups fail? |
 | `web_vitals` | browser | ga4, posthog | `metric_name`: `LCP`, `CLS`, `INP`, `FCP`, `TTFB`<br>`value`: integer ≥ 0<br>`metric_value`: number<br>`metric_rating`: `good`, `needs-improvement`, `poor`<br>`metric_id`: code slug<br>`navigation_type`: `navigate`, `reload`, `back-forward`, `back-forward-cache`, `prerender`, `restore`, `soft-navigation`<br>`edge_cache`: `HIT`, `MISS`, `none`<br>`page_path`: pathname | `apps/web/src/lib/analytics/web-vitals.ts` | Are Core Web Vitals healthy, by edge cache state? |
+
+## Extension events
+
+The Chrome extension has no analytics SDK (its privacy policy forbids one). It sends each event as a GET to `/api/extension`, tagged `ref=extension` and the `utm_*` params listed under Outgoing link tags, with the event name and its params joined into `utm_content`. The route ignores the query and returns the release JSON, so these events reach no vendor and exist only in Cloudflare request logs. Rows are `EXTENSION_EVENTS` in the registry file. Where a name matches a web event, the param set is the extension's own: `prefs_change` uses `to` where the web row uses `pref_value`, and `channel_click` has no `placement`.
+
+| Event | Params | Fires from | Question |
+| --- | --- | --- | --- |
+| `page_view` | none | `apps/extension/js/newtab.js` | How often is the extension's new tab opened? |
+| `lang_change` | `lang`: `vi`, `en` | `apps/extension/js/newtab.js` | How often do new-tab readers switch language, and to which? |
+| `prefs_change` | `pref`: `categories`, `trending`, `tldr`, `days`<br>`to`: `on`, `off` | `apps/extension/js/settings-panel.js` | Which new-tab sections do readers turn on or off? |
+| `channel_click` | `channel`: `chrome`, `telegram`, `email`<br>`to`: code slug | `apps/extension/js/newtab.js`<br>`apps/extension/js/track.js` | Which follow or install link on the new tab gets clicked? |
+
+## Vendor automatic events
+
+These are sent by vendor scripts without a `track()` call, so they are not registry rows and app code cannot change their params. The list is `VENDOR_EVENTS` in `apps/web/src/lib/analytics/vendor-events.ts`.
+
+| Vendor | Event | Fires | Handling |
+| --- | --- | --- | --- |
+| posthog | `$pageview` | On load and on every history change. | Kept; this is why `page_view` goes to GA4 only. URL properties are sanitized in `before_send`. |
+| posthog | `$autocapture` | On clicks, form changes and submits on interactive elements. | Kept; link hrefs and page URLs are sanitized in `before_send`. |
+| posthog | `$exception` | On uncaught errors and unhandled rejections (`capture_exceptions`). | Kept; page URLs are sanitized in `before_send`. |
+| ga4 | `session_start, first_visit, user_engagement` | Sent by gtag.js on its own for every session. | Kept. They carry the sanitized `page_location`. |
+| ga4 | `scroll, click, view_search_results, form_start, form_submit` | Enhanced Measurement: 90% scroll, outbound clicks, site search, form interactions. | Must be off in GA4 Admin, see GA4 Enhanced Measurement below. App code cannot change what they send. |
+| ga4 | `page_view (history change)` | Enhanced Measurement: page changes based on browser history. | Must be off in GA4 Admin. The app sends its own `page_view` on every route change. |
+| jitsu | `page` | Once per full page load, queued through `jitsuQ`. | p.js runs with `data-init-only`, so only the app's call with a sanitized URL is sent. |
+
+Seline loads only when `VITE_SELINE_TOKEN` is set and records its own page views. No custom event goes to it.
 
 ## GA4 custom dimensions
 
@@ -47,7 +74,7 @@ GA4 reports a param only after it is registered as a custom dimension, and regis
 | `pref` | Event | `bg`, `theme`, `font`, `fontSize`, `density`, `reset`, `tldrCount`, `bilingualDialog`, `sections.trending`, `sections.tldr`, `sections.days`, `sections.categories` | `prefs_change` |
 | `pref_value` | Event | `default`, `cream`, `gray`, `dark`, `black`, `light`, `sans`, `serif`, `dense`, `compact`, `medium`, `comfortable`, `relaxed`, `spacious`, `airy`, `8`, `12`, `16`, `on`, `off` | `prefs_change` |
 | `reason` | Event | `invalid`, `rate_limited`, `network`, `server` | `subscribe_error` |
-| `source` | Event | `blog`, `news`, `home`, `extension` | `subscribe_submit`, `subscribe_success`, `subscribe_error` |
+| `source` | Event | `news`, `extension` | `subscribe_submit`, `subscribe_success`, `subscribe_error` |
 | `via` | Event | `row` | `story_view` |
 | `view` | Event | `image`, `text` | `tldr_toggle` |
 
