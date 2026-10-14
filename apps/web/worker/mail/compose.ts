@@ -123,7 +123,12 @@ ${input.source.trim() || "(empty)"}`;
         { role: "system", content: SYSTEM },
         { role: "user", content: user },
       ],
-      { task: "mail", timeoutMs: 45_000, maxTokens: 2048 }
+      {
+        task: "mail",
+        timeoutMs: 45_000,
+        maxTokens: 2048,
+        validate: (content) => parseWrapJson(content) !== null,
+      }
     );
     const parsed = parseWrapJson(raw);
     if (parsed) return parsed;

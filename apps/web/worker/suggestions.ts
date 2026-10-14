@@ -353,6 +353,8 @@ async function retranslateFieldWithGuidance(
     const { content, tokens } = await callAnyrouter(env, messages, {
       json: true,
       modelSpec: env.ANYROUTER_TRANSLATE_MODEL,
+      task: "review",
+      sensitive: true,
     });
     const parsed = parseJson<{ translation?: unknown }>(content);
     const translation =

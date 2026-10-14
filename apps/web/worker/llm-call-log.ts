@@ -172,7 +172,7 @@ export function createD1LlmCallLogger(
               safeEntry.durationMs,
               safeError?.message ?? null,
               safeEntry.promptChars,
-              null,
+              safeEntry.responseSnippet,
               safeEntry.promptTokens,
               safeEntry.completionTokens,
               safeEntry.cachedTokens,
@@ -208,7 +208,7 @@ export function createD1LlmCallLogger(
               safeEntry.durationMs,
               safeError?.message ?? null,
               safeEntry.promptChars,
-              null,
+              safeEntry.responseSnippet,
               safeEntry.promptTokens,
               safeEntry.completionTokens,
               safeEntry.cachedTokens,
@@ -242,7 +242,7 @@ export function createD1LlmCallLogger(
               safeEntry.durationMs,
               safeError?.message ?? null,
               safeEntry.promptChars,
-              null,
+              safeEntry.responseSnippet,
               safeEntry.promptTokens,
               safeEntry.completionTokens,
               safeEntry.cachedTokens,
@@ -275,7 +275,7 @@ export function createD1LlmCallLogger(
               safeEntry.durationMs,
               safeError?.message ?? null,
               safeEntry.promptChars,
-              null,
+              safeEntry.responseSnippet,
               safeEntry.promptTokens,
               safeEntry.completionTokens,
               safeEntry.cachedTokens,
@@ -306,7 +306,7 @@ export function createD1LlmCallLogger(
               safeEntry.durationMs,
               safeError?.message ?? null,
               safeEntry.promptChars,
-              null,
+              safeEntry.responseSnippet,
               runId,
               safeError?.code ?? null,
               safeError?.status ?? null
@@ -329,7 +329,7 @@ export function createD1LlmCallLogger(
             safeEntry.durationMs,
             safeError?.message ?? null,
             safeEntry.promptChars,
-            null
+            safeEntry.responseSnippet
           )
           .run();
       } catch (error) {
