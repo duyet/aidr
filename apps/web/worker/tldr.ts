@@ -45,9 +45,11 @@ const TOP_ITEMS_SQL = `SELECT i.id, i.source_id, i.title, i.summary, tr.title AS
  * binding. `nowMs` is epoch milliseconds; `items.published_at` is stored
  * as epoch seconds, so the bounds are normalized to seconds.
  *
- * The window `[since, until)` is the rolling 24h before the date's last
- * run: now for today, the date's last ICT instant for a closed date (so
- * that window is the ICT day). `until` is the date's ICT end either way.
+ * The window is `[since, until)`. `until` is the end of the date's ICT day,
+ * for today too, so a story stamped later than today's end stays out. For
+ * today `since` is 24h before now (rolling). For a closed date it is 24h
+ * before that day's end, so the window is exactly the ICT calendar day
+ * (matching /date/<d>).
  */
 export function buildTopItemsQuery(
   nowMs: number,

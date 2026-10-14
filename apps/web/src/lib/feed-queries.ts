@@ -652,7 +652,7 @@ export function parseDayVideoRow(row: unknown): Record<Lang, DayVideo | null> {
 /**
  * Read-only archive of one audience-zone (ICT) day: its published stories (bounded), the
  * snapshot stored under that date, the optional day video, and the nearest
- * neighbouring days. Unlike `getFeed` it never writes: an archive read must
+ * neighbouring days. Like `getFeed` it never writes: an archive read must
  * not rebuild or persist a TL;DR snapshot. No source-share cap — the page
  * lists the whole day.
  */

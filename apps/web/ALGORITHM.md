@@ -184,8 +184,9 @@ Admin regenerate: `POST /api/admin/tldr/regenerate` (today) or
 `POST /api/admin/tldr/regenerate/YYYY-MM-DD` (a date up to 14 days back,
 not after today ICT; else 400), optional body `{ dryRun? }`
 (`regenerateDailyTldr` in `worker/tldr.ts`). It skips the refresh gate and
-composes from that date's window: the rolling 24h before the date's last
-run, so now for today and the ICT day for a closed date. It upserts the row
+composes from that date's window: the rolling 24h up to now for today,
+capped at the end of the ICT day, and the whole ICT calendar day for a closed
+date (the same stories as /date/<d>). It upserts the row
 (`fallback = 0`, `sent_at` kept) only for a model digest in both
 languages: each column at the useful floor, VI in Vietnamese, no headline
 fallback. Anything else leaves the stored row
@@ -193,6 +194,10 @@ exactly as it was, whatever it holds, and the response says why
 (`written: false`). A dry run returns the bullets and writes nothing. It
 never sends: notify and email read only the current local day's row on their
 own schedule, and dedupe per channel or subscriber and date.
+
+To inspect the stored row before or after a regenerate, query D1 with
+Wrangler (`cf d1 query` currently returns 403), from `apps/web`:
+`pnpm exec wrangler d1 execute DB --remote --command "SELECT date, fallback, created_at FROM tldr_snapshots WHERE date = '2026-10-13'"`.
 
 Ranking replay: `pnpm --filter @aidr/web rank-replay [--days 14] [--cache f]
 [--formulas current,D+I+B,final]` reads the last 14 days of published items,
