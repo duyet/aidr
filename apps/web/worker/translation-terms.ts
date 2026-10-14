@@ -485,21 +485,39 @@ function stripFeedFooter(text: string): string {
   return text;
 }
 
-/** A source name or handle: "Bloomberg", "The Information", "@openainewsroom",
- * "techcrunch.com", "Goldman Sachs and Reuters". Capitalised words only, so a
- * sentence that goes on ("Theo dự báo từ …", "From Nvidia to Obvious Ventures
- * …") is not a name. After a byline's "/", the outlet may keep a lowercase
- * word: "Brian Krebs / Krebs on Security". */
-const ATTRIBUTION_WORD = String.raw`(?:[@\p{Lu}\p{N}][\p{L}\p{N}_.'’&@-]*|[\p{Ll}\p{N}][\p{L}\p{N}-]*(?:\.[\p{L}\p{N}-]+)+)`;
-const NAME_JOINER = "and|of|the|và|từ|trên|thuộc|&";
-const OUTLET_JOINER = `${NAME_JOINER}|on|in|for|at|de|la`;
-const ATTRIBUTION_NAME = String.raw`${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|${NAME_JOINER})){0,6}(?:\s+\/\s+${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|${OUTLET_JOINER})){0,6})?`;
+/** Top-level domains a credited site ends in. "Node.js" and "v1.2" end in
+ * something else, so they are not domains. */
+const DOMAIN_TLD =
+  "com|org|net|io|ai|co|dev|app|news|gov|edu|info|me|tv|uk|vn|rs|social";
+const DOMAIN_TAIL = String.raw`[\p{L}\p{N}-]*(?:\.[\p{L}\p{N}-]+)*\.(?:${DOMAIN_TLD})(?![\p{L}\p{N}-])`;
+const DOMAIN_RE = new RegExp(String.raw`^[\p{L}\p{N}]${DOMAIN_TAIL}$`, "iu");
 
-/** Outlets that credit a story by name alone. Seeded from production
- * Techmeme credits and stored "Theo X." rows. A missing outlet only keeps its
- * credit sentence. */
+/** A source name or handle: "Bloomberg", "The Information", "@openainewsroom",
+ * "techcrunch.com", "Goldman Sachs and Reuters". Capitalised words or a
+ * lowercase domain only, so a sentence that goes on ("Theo dự báo từ …",
+ * "From Nvidia to Obvious Ventures …") is not a name. */
+const ATTRIBUTION_WORD = String.raw`(?:[@\p{Lu}\p{N}][\p{L}\p{N}_.'’&@-]*|\p{Ll}${DOMAIN_TAIL})`;
+const NAME_JOINER = "and|of|the|và|từ|trên|thuộc|&";
+const NAME_WORDS = String.raw`${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|${NAME_JOINER})){0,6}`;
+const ATTRIBUTION_NAME = String.raw`${NAME_WORDS}(?:\s+\/\s+${NAME_WORDS})?`;
+
+/** An author's name: two or more capitalised words, "Donald J. Trump". */
+const PERSON = String.raw`\p{Lu}[\p{L}.'’-]*(?:\s+\p{Lu}[\p{L}.'’-]*){1,5}`;
+const PERSON_BYLINE_RE = new RegExp(String.raw`^${PERSON}\s+\/\s`, "u");
+
+/** "Brian Krebs / Krebs on Security": after an author's "/", the outlet may
+ * keep a lowercase word. After anything else the word starts a claim: "From
+ * OpenAI / Anthropic on Monday." */
+const OUTLET_JOINER = `${NAME_JOINER}|on|in|for|at|de|la`;
+const BYLINE_NAME = String.raw`${PERSON}\s+\/\s+${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|${OUTLET_JOINER})){0,6}|${ATTRIBUTION_NAME}`;
+
+/** Outlets, and first-party publishers, that credit a story by name alone.
+ * Seeded from production Techmeme credits ("From Apple.") and stored "Theo X."
+ * rows. A missing name only keeps its credit sentence. */
 const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
+  "Anthropic",
   "AP",
+  "Apple",
   "Axios",
   "BBC",
   "Bloomberg",
@@ -543,6 +561,12 @@ function isByline(name: string): boolean {
   return /\s(?:\/|từ|trên|thuộc)\s/u.test(name);
 }
 
+/** "Ina Fried / Axios", "Donald J. Trump / @realDonaldTrump": an author's
+ * name before the "/". "Apple / Google" is not one. */
+function isAuthorByline(name: string): boolean {
+  return PERSON_BYLINE_RE.test(name);
+}
+
 /** A name that can only be a source. "Theo" also opens "Theo Mỹ." or "Theo
  * Trung Quốc." (according to a country), so a capitalised name alone is not
  * enough. */
@@ -551,23 +575,39 @@ function isSourceName(name: string): boolean {
     isByline(name) ||
     KNOWN_OUTLETS.has(name) ||
     name.startsWith("@") ||
-    /\p{L}\.\p{L}{2,}/u.test(name)
+    DOMAIN_RE.test(name)
   );
 }
 
-/** Each way a sentence opens a credit, and what the name after it must be. */
+/** Each way a sentence opens a credit, the name pattern after it, and what
+ * that name must be. */
 const ATTRIBUTION_LEADS: readonly {
   lead: string;
+  name: string;
   accepts: (name: string) => boolean;
 }[] = [
   {
     lead: String.raw`(?:(?:[Tt]in|[Bb]ài|[Tt]hông tin)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?`,
+    name: ATTRIBUTION_NAME,
     accepts: () => true,
   },
-  // "By Apple." but not "By 2030."
-  { lead: "[Bb]y", accepts: (name) => /^[@\p{L}]/u.test(name) },
-  { lead: "[Tt]ác giả", accepts: isByline },
-  { lead: "[Tt]heo|[Bb]ởi", accepts: isSourceName },
+  // "By" also opens a deadline or an adverb: "By March.", "By Default.". That
+  // list never ends, so only a known name or an author byline is a credit.
+  {
+    lead: "[Bb]y",
+    name: BYLINE_NAME,
+    accepts: (name) => KNOWN_OUTLETS.has(name) || isAuthorByline(name),
+  },
+  { lead: "[Tt]ác giả", name: BYLINE_NAME, accepts: isByline },
+  { lead: "[Tt]heo", name: BYLINE_NAME, accepts: isSourceName },
+  // "Bởi" is also "because": "Bởi Mỹ.", "Bởi Nvidia thuộc Mỹ." and even
+  // "Bởi Time." are claims. Every stored Bởi credit is an author byline.
+  {
+    lead: "[Bb]ởi",
+    name: ATTRIBUTION_NAME,
+    accepts: (name) =>
+      isAuthorByline(name) || name.startsWith("@") || DOMAIN_RE.test(name),
+  },
 ];
 
 /** A whole sentence that only names where the story came from: "Từ The
@@ -575,13 +615,15 @@ const ATTRIBUTION_LEADS: readonly {
  * "From Bloomberg.", "Via @x.", "Source: X.", Techmeme's "By Ina Fried / Axios."
  * byline, or the same in parentheses. A sentence that carries a claim ("Theo
  * Reuters, Nvidia …") has more after the name, so it does not match. */
-const ATTRIBUTION_SENTENCES = ATTRIBUTION_LEADS.map(({ lead, accepts }) => ({
-  pattern: new RegExp(
-    String.raw`^\(?\s*(?:${lead})\s+(${ATTRIBUTION_NAME})\s*[.!]?\s*\)?\.?$`,
-    "u"
-  ),
-  accepts,
-}));
+const ATTRIBUTION_SENTENCES = ATTRIBUTION_LEADS.map(
+  ({ lead, name, accepts }) => ({
+    pattern: new RegExp(
+      String.raw`^\(?\s*(?:${lead})\s+(${name})\s*[.!]?\s*\)?\.?$`,
+      "u"
+    ),
+    accepts,
+  })
+);
 
 function isAttributionSentence(sentence: string): boolean {
   return ATTRIBUTION_SENTENCES.some(({ pattern, accepts }) => {

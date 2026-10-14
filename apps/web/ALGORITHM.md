@@ -44,7 +44,7 @@ Publish has two deliveries and they do not share a clock or a table:
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, one message with the day card's 6 stories, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
 
-An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next run retries. Notifiers strip page chrome and a trailing outlet credit from each bullet (`stripEmbeddedChrome`), drop a bullet that strips to nothing, and only then take the top `DIGEST_MAX_BULLETS`. Email is not a `Notifier`: a notifier is one target plus a trending post.
+An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next run retries. Notifiers strip page chrome and a trailing outlet credit from each bullet (`stripEmbeddedChrome`), drop a bullet that strips to nothing, and only then take the top `DIGEST_MAX_BULLETS`. A snapshot whose every bullet strips to nothing skips as `empty_after_strip`, not `no_snapshot`. Email is not a `Notifier`: a notifier is one target plus a trending post.
 
 ## Scheduling & coalesce
 
@@ -1271,8 +1271,8 @@ deliberately non-spammy.
   outside_hours / budget_spent / pending / send_failed (a failed
   row at `NOTIFY_MAX_ATTEMPTS`, never retried). The homepage arrow means only "top
   story of its (Vietnam-time) day", not a Telegram trending post.
-- Skip reasons are structured (`digest`: no_snapshot / already_sent /
-  before_hour; `trending`: outside_hours / below_min_rank / budget_zero /
+- Skip reasons are structured (`digest`: no_snapshot / empty_after_strip /
+  already_sent / before_hour; `trending`: outside_hours / below_min_rank / budget_zero /
   none_unposted, with the live 24h max rank and the bar) and
   `console.info`'d plus stored on
   `workflow_runs.stats.notifyReason`.
