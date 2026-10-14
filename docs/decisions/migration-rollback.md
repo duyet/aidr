@@ -289,6 +289,18 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0062_day_video_posts.sql
+
+- Change: new table `day_video_posts` (one row per date and Telegram
+  channel the day's video was posted to), written by
+  `PUT /api/admin/day-videos/:date/posts` and the Worker's card post, read
+  by the day video watchdog.
+- Risk: none for existing rows. Apply it and deploy the Worker before a
+  `publish.mjs` with `day-video-posted` posts to Telegram: until then the
+  record call fails after the post, and the next `--prod` run records it.
+- Rollback: deploy the previous Worker; `DROP TABLE day_video_posts;`. The
+  previous watchdog reads Telegram from the daily-reel jobs API instead.
+
 ## 0061_tldr_snapshot_fallback.sql
 
 - Change: adds nullable `tldr_snapshots.fallback`. `ensureDailyTldr` writes

@@ -109,6 +109,19 @@ export function dayVideoArgs({ date, lang, rows, title }) {
   return args;
 }
 
+/** `agent day-video-posted` args for a cut's channel post: the channel of its page language (visub posts to the
+ *  Vietnamese channel). The day video watchdog reads this record; Telegram cannot be read back. */
+export function dayVideoPostedArgs(date, r) {
+  return [
+    "day-video-posted",
+    date,
+    "--channel",
+    `telegram-${cutFor(r.lang).page}`,
+    "--ref",
+    `${r.telegram.chat_id}/${r.telegram.message_id}`,
+  ];
+}
+
 /** Uploader args for a row (bin/yt-upload and bin/yt-upload-api.mjs). Metadata: posts.md, or visub's own JSON
  *  (Vietnamese title and description over English audio). */
 export function uploadArgs(r, dir) {

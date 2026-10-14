@@ -25,6 +25,7 @@ import {
   previewRanking,
   previewTldr,
   pushItems,
+  recordDayVideoPost,
   regenerateTldr,
   reprocessToday,
   retryTelegramDigest,
@@ -319,6 +320,29 @@ async function handle(
       env,
       segments[1],
       body as Parameters<typeof sendDayVideoTelegram>[2]
+    );
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result);
+  }
+
+  // Record a post the Worker cannot read back: { channel, ref }.
+  if (
+    method === "PUT" &&
+    segments.length === 3 &&
+    segments[0] === "day-videos" &&
+    segments[2] === "posts"
+  ) {
+    const { body, error } = await parseJsonBody(request);
+    if (error) return Response.json({ error }, { status: 400 });
+    const result = await recordDayVideoPost(
+      env,
+      segments[1],
+      body as Parameters<typeof recordDayVideoPost>[2]
     );
     if (isHandlerError(result)) {
       return Response.json(

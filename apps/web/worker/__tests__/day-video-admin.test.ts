@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   deleteDayVideo,
+  recordDayVideoPost,
   sendDayVideoTelegram,
   setDayVideo,
 } from "../admin/handlers.js";
@@ -23,6 +24,8 @@ function makeEnv(
   digests: Record<string, { target: string; message_id: string }> = {}
 ) {
   const rows = new Map<string, Row>();
+  /** `day_video_posts`, keyed `date|channel`. */
+  const posts = new Map<string, { ref: string; recorded_at: number }>();
   const db = {
     prepare(sql: string) {
       let binds: unknown[] = [];
@@ -91,6 +94,20 @@ function makeEnv(
             }
             return { meta: { changes: row ? 1 : 0 } };
           }
+          if (sql.startsWith("INSERT INTO day_video_posts")) {
+            const [date, channel, ref, recorded_at] = binds as [
+              string,
+              string,
+              string,
+              number,
+            ];
+            const key = `${date}|${channel}`;
+            posts.set(key, {
+              ref,
+              recorded_at: posts.get(key)?.recorded_at ?? recorded_at,
+            });
+            return { meta: { changes: 1 } };
+          }
           if (sql.startsWith("DELETE FROM day_videos")) {
             const had = rows.delete(binds[0] as string);
             return { meta: { changes: had ? 1 : 0 } };
@@ -101,7 +118,7 @@ function makeEnv(
       return stmt;
     },
   };
-  return { env: { DB: db, ...extra } as unknown as Env, rows };
+  return { env: { DB: db, ...extra } as unknown as Env, rows, posts };
 }
 
 describe("setDayVideo", () => {
@@ -275,8 +292,60 @@ describe("deleteDayVideo with lang", () => {
   });
 });
 
+describe("recordDayVideoPost", () => {
+  it("keeps one row per date and channel, with the first time and the latest ref", async () => {
+    const { env, posts } = makeEnv();
+    expect(
+      await recordDayVideoPost(env, "2026-10-14", {
+        channel: "telegram-en",
+        ref: "-100en/113",
+      })
+    ).toEqual({
+      ok: true,
+      date: "2026-10-14",
+      channel: "telegram-en",
+      ref: "-100en/113",
+    });
+    const first = posts.get("2026-10-14|telegram-en")?.recorded_at;
+    await recordDayVideoPost(env, "2026-10-14", {
+      channel: "telegram-en",
+      ref: " -100en/114 ",
+    });
+    expect([...posts]).toEqual([
+      ["2026-10-14|telegram-en", { ref: "-100en/114", recorded_at: first }],
+    ]);
+  });
+
+  it("rejects a bad date, channel or ref without writing", async () => {
+    const { env, posts } = makeEnv();
+    const ok = { channel: "telegram-vi", ref: "-100vi/1" };
+    expect(await recordDayVideoPost(env, "2026-02-30", ok)).toMatchObject({
+      status: 400,
+    });
+    expect(
+      await recordDayVideoPost(env, "2026-10-14", {
+        ...ok,
+        channel: "facebook",
+      })
+    ).toMatchObject({ status: 400 });
+    expect(
+      await recordDayVideoPost(env, "2026-10-14", { ...ok, ref: "  " })
+    ).toMatchObject({ status: 400 });
+    expect(
+      await recordDayVideoPost(env, "2026-10-14", {
+        ...ok,
+        ref: "x".repeat(101),
+      })
+    ).toMatchObject({ status: 400 });
+    expect(posts.size).toBe(0);
+  });
+});
+
 describe("sendDayVideoTelegram", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   const telegramEnv = {
     TELEGRAM_BOT_TOKEN: "tok",
@@ -333,6 +402,7 @@ describe("sendDayVideoTelegram", () => {
       chat_id: "-100vi",
       message_id: "42",
       digest_button: "no sent digest",
+      recorded: true,
     });
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://api.telegram.org/bottok/sendPhoto");
@@ -353,8 +423,37 @@ describe("sendDayVideoTelegram", () => {
     );
   });
 
-  it("uses the English title (escaped), an explicit chat_id and the en id", async () => {
+  it("records a post to the language's channel for the day video watchdog", async () => {
+    const { env, posts } = await seeded();
+    stubTelegram([{ ok: true, id: 42 }]);
+    await sendDayVideoTelegram(env, "2026-10-02", { lang: "vi" });
+    expect([...posts]).toEqual([
+      [
+        "2026-10-02|telegram-vi",
+        { ref: "-100vi/42", recorded_at: expect.any(Number) },
+      ],
+    ]);
+  });
+
+  // Telegram cannot unpost: an error here would make publish.mjs or an MCP
+  // caller send the same post again.
+  it("still returns the sent post when recording it fails", async () => {
     const { env } = await seeded();
+    const prepare = env.DB.prepare.bind(env.DB);
+    env.DB.prepare = ((sql: string) => {
+      if (sql.startsWith("INSERT INTO day_video_posts"))
+        throw new Error("D1_ERROR: no such table: day_video_posts");
+      return prepare(sql);
+    }) as typeof env.DB.prepare;
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    stubTelegram([{ ok: true, id: 42 }]);
+    expect(
+      await sendDayVideoTelegram(env, "2026-10-02", { lang: "en" })
+    ).toMatchObject({ ok: true, message_id: "42", recorded: false });
+  });
+
+  it("uses the English title (escaped), an explicit chat_id and the en id", async () => {
+    const { env, posts } = await seeded();
     const calls = stubTelegram([{ ok: true }]);
     const result = await sendDayVideoTelegram(env, "2026-10-02", {
       lang: "en",
@@ -363,6 +462,8 @@ describe("sendDayVideoTelegram", () => {
     expect(result).toMatchObject({ ok: true, chat_id: "-100staging" });
     expect(calls[0].body.photo).toContain("/B3vKYiV7rOw/");
     expect(calls[0].body.caption).toContain("EN &lt;brief&gt;");
+    // A staging send is not the channel post the watchdog looks for.
+    expect(posts.size).toBe(0);
   });
 
   it("falls back to sendMessage when sendPhoto is rejected", async () => {

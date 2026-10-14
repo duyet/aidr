@@ -26,6 +26,16 @@ const YOUTUBE_HOSTS = new Set([
 /** Day video titles are display text; keep them short. */
 export const DAY_VIDEO_TITLE_MAX = 200;
 
+/** Channels whose day video post is recorded in `day_video_posts`. */
+export const DAY_VIDEO_POST_CHANNELS = ["telegram-en", "telegram-vi"] as const;
+export type DayVideoPostChannel = (typeof DAY_VIDEO_POST_CHANNELS)[number];
+
+export function isDayVideoPostChannel(
+  value: unknown
+): value is DayVideoPostChannel {
+  return (DAY_VIDEO_POST_CHANNELS as readonly unknown[]).includes(value);
+}
+
 export function isYoutubeId(value: unknown): value is string {
   return typeof value === "string" && YOUTUBE_ID_RE.test(value);
 }
