@@ -1,6 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  DAY_VIDEO_POST_CHANNELS,
+  type DayVideoPostChannel,
+} from "../../src/lib/day-video.js";
+import {
   checkDayVideo,
   DAY_VIDEO_ALERT_KEY,
   DAY_VIDEO_CHECK_HOUR_END,
@@ -12,9 +16,6 @@ import {
   reelMarker,
   rerunCommand,
   shouldCheckDayVideo,
-  TELEGRAM_STEP,
-  TELEGRAM_VI_STEP,
-  YOUTUBE_STEP,
 } from "../day-video-watchdog.js";
 import { type PriorRun, runHealthCheck } from "../health.js";
 import { formatAlertDm, resetOwnerDmRejections } from "../owner-alerts.js";
@@ -28,26 +29,6 @@ const LAST = Date.UTC(2026, 9, 14, 15, 30);
 const RUN_URL = "https://github.com/duyet/aidr/actions/runs/101";
 const TOKEN = "page-token-secret";
 
-type Steps = Record<string, string>;
-const LIVE: Steps = {
-  [YOUTUBE_STEP]: "success",
-  "Facebook Reel": "success",
-  [TELEGRAM_STEP]: "success",
-  [TELEGRAM_VI_STEP]: "success",
-};
-const DRY: Steps = {
-  [YOUTUBE_STEP]: "skipped",
-  "Facebook Reel": "skipped",
-  [TELEGRAM_STEP]: "skipped",
-  [TELEGRAM_VI_STEP]: "skipped",
-};
-/** Live, on a day an agent already published: the workflow skips both Telegram posts. */
-const BY_HAND: Steps = {
-  ...LIVE,
-  [TELEGRAM_STEP]: "skipped",
-  [TELEGRAM_VI_STEP]: "skipped",
-};
-
 interface Run {
   id: number;
   created_at: string;
@@ -55,7 +36,6 @@ interface Run {
   conclusion?: string | null;
   /** `display_title`; runs before the date `run-name` are all "Daily Reel". */
   title?: string;
-  steps: Steps;
 }
 
 interface World {
@@ -64,6 +44,8 @@ interface World {
     short_id: string | null;
     youtube_id_vi: string | null;
   } | null;
+  /** `day_video_posts` channels recorded for DATE. */
+  posts: DayVideoPostChannel[] | "down";
   reels: { description: string }[] | { status: number };
   runs: Run[] | "down";
   /** Prior Worker runs (`workflow_runs` rows), newest first. */
@@ -76,20 +58,33 @@ const posted: World = {
     short_id: "Vt8vV-f8kCA",
     youtube_id_vi: "Qw3rTyUi0pA",
   },
+  posts: ["telegram-en", "telegram-vi"],
   reels: [
     {
       description: `Today\nhttps://aidr.today/date/${DATE}?utm_source=facebook`,
     },
   ],
-  runs: [{ id: 101, created_at: "2026-10-14T09:40:58Z", steps: LIVE }],
+  runs: [{ id: 101, created_at: "2026-10-14T09:40:58Z" }],
 };
 
-/** D1 with the day video row and the prior runs; every other query is empty. */
+/** D1 with the day video row, the recorded posts and the prior runs; every
+ *  other query is empty. */
 function env(world: World, extra: Partial<Env> = {}): Env {
   const query = (sql: string, args: unknown[]) => ({
-    all: async () => ({
-      results: sql.includes("FROM workflow_runs") ? (world.history ?? []) : [],
-    }),
+    all: async () => {
+      if (sql.includes("FROM day_video_posts")) {
+        if (world.posts === "down") throw new Error("D1_ERROR: no such table");
+        return {
+          results:
+            args[0] === DATE ? world.posts.map((channel) => ({ channel })) : [],
+        };
+      }
+      return {
+        results: sql.includes("FROM workflow_runs")
+          ? (world.history ?? [])
+          : [],
+      };
+    },
     first: async () =>
       sql.includes("FROM day_videos")
         ? args[0] === DATE
@@ -111,8 +106,6 @@ function env(world: World, extra: Partial<Env> = {}): Env {
 }
 
 const requests: { url: string; init?: RequestInit }[] = [];
-const jobRequests = () =>
-  requests.filter((r) => /\/actions\/runs\/\d+\/jobs$/.test(r.url));
 
 function serve(world: World) {
   vi.stubGlobal(
@@ -127,7 +120,7 @@ function serve(world: World) {
           : json({ data: world.reels });
       }
       if (url.includes("/actions/workflows/daily-reel.yml/runs")) {
-        if (world.runs === "down") return json({}, 503);
+        if (world.runs === "down") return json({}, 403);
         return json({
           workflow_runs: world.runs.map((r) => ({
             id: r.id,
@@ -143,14 +136,6 @@ function serve(world: World) {
             html_url: `https://github.com/duyet/aidr/actions/runs/${r.id}`,
           })),
         });
-      }
-      const job = url.match(/\/actions\/runs\/(\d+)\/jobs$/);
-      if (job && world.runs !== "down") {
-        const run = world.runs.find((r) => r.id === Number(job[1]));
-        const steps = Object.entries(run?.steps ?? {}).map(
-          ([name, conclusion]) => ({ name, conclusion })
-        );
-        return json({ jobs: [{ steps }] });
       }
       if (url.startsWith("https://api.telegram.org/"))
         return json({ ok: true });
@@ -235,6 +220,7 @@ describe("checkDayVideo", () => {
   it("names every target and the rerun when nothing posted (2026-10-11)", async () => {
     const world: World = {
       dayVideo: null,
+      posts: [],
       reels: [{ description: "https://aidr.today/date/2026-10-13" }],
       runs: [],
     };
@@ -247,8 +233,14 @@ describe("checkDayVideo", () => {
     expect(issue.evidence).toContain(
       "No daily-reel run today: the GitHub cron has not fired"
     );
-    expect(issue.evidence?.at(-1)).toBe(
+    expect(issue.evidence).toContain(
       `Rerun (idempotent, skips what is posted): ${rerunCommand(DATE)}`
+    );
+    expect(issue.evidence).toContainEqual(
+      expect.stringContaining(`editions/${DATE}/edition.json`)
+    );
+    expect(issue.evidence?.at(-1)).toMatch(
+      new RegExp(`publish.mjs ${DATE} --lang en,visub --steps telegram --prod$`)
     );
   });
 
@@ -256,18 +248,18 @@ describe("checkDayVideo", () => {
     const world: World = {
       ...posted,
       dayVideo: { ...posted.dayVideo!, youtube_id_vi: null },
-      runs: [
-        {
-          id: 101,
-          created_at: "2026-10-14T09:40:58Z",
-          steps: { ...LIVE, [TELEGRAM_VI_STEP]: "failure" },
-        },
-      ],
+      posts: ["telegram-en"],
     };
     serve(world);
     const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
     expect(issue.detail).toBe(`${DATE}: YouTube (vi), Telegram (vi) missing`);
     expect(issue.evidence).toContain("YouTube (vi): not on the day page");
+    expect(issue.evidence).toContain(
+      "Telegram (vi): no post recorded for this date"
+    );
+    expect(issue.evidence?.at(-1)).toMatch(
+      /--lang visub --steps telegram --prod$/
+    );
   });
 
   // The YouTube step may continue on error, and then reports `success` after
@@ -280,27 +272,13 @@ describe("checkDayVideo", () => {
     serve(world);
     const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
     expect(issue.detail).toBe(`${DATE}: YouTube 16:9, YouTube Short missing`);
+    expect(issue.evidence?.join("\n")).not.toContain("--steps telegram");
   });
 
-  it("flags a missing YouTube video on a hand-published day", async () => {
-    const world: World = {
-      ...posted,
-      dayVideo: { ...posted.dayVideo!, youtube_id: null },
-      runs: [{ id: 101, created_at: "2026-10-14T09:40:58Z", steps: BY_HAND }],
-    };
-    serve(world);
-    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
-    expect(issue.detail).toBe(
-      `${DATE}: YouTube 16:9, Telegram (en), Telegram (vi) missing`
-    );
-    expect(issue.evidence).toContain("YouTube 16:9: not on the day page");
-  });
-
-  it("flags both Telegram channels when today's only run was a dry run", async () => {
-    const world: World = {
-      ...posted,
-      runs: [{ id: 101, created_at: "2026-10-14T09:40:58Z", steps: DRY }],
-    };
+  // A successful run proves nothing about Telegram: the step can be skipped
+  // (a hand-published day) or the post can fail after continue-on-error.
+  it("counts Telegram from the recorded post, not a successful run", async () => {
+    const world: World = { ...posted, posts: [] };
     serve(world);
     const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
     expect(issue.detail).toBe(`${DATE}: Telegram (en), Telegram (vi) missing`);
@@ -309,84 +287,60 @@ describe("checkDayVideo", () => {
     );
   });
 
-  it("does not count yesterday evening's run for today", async () => {
+  // A post made by hand, with no workflow run at all, is still a post.
+  it("confirms posts recorded without any daily-reel run", async () => {
+    const world: World = { ...posted, runs: [] };
+    serve(world);
+    expect(await checkDayVideo(env(world), DATE, NOW)).toEqual({
+      kind: "confirmed",
+    });
+  });
+
+  it("does not take yesterday evening's run for today's", async () => {
     const world: World = {
       ...posted,
-      runs: [{ id: 99, created_at: "2026-10-13T10:00:03Z", steps: LIVE }],
+      dayVideo: null,
+      runs: [{ id: 99, created_at: "2026-10-13T10:00:03Z" }],
     };
     serve(world);
     const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
-    expect(issue.detail).toBe(`${DATE}: Telegram (en), Telegram (vi) missing`);
+    expect(issue.evidence).toContain(
+      "No daily-reel run today: the GitHub cron has not fired"
+    );
   });
 
   it("matches a run by its date input, not the day it started", async () => {
     const world: World = {
       ...posted,
+      dayVideo: null,
       runs: [
         {
           id: 102,
           created_at: "2026-10-14T12:00:00Z",
           title: "Daily Reel 2026-10-12",
-          steps: LIVE,
         },
         {
           id: 99,
           created_at: "2026-10-13T16:30:00Z",
           title: `Daily Reel ${DATE}`,
-          steps: LIVE,
         },
       ],
     };
     serve(world);
-    expect(await checkDayVideo(env(world), DATE, NOW)).toEqual({
-      kind: "confirmed",
-    });
-    expect(jobRequests().map((r) => r.url)).toEqual([
-      expect.stringMatching(/\/runs\/99\/jobs$/),
-    ]);
-  });
-
-  it("finds the live run behind later dry runs, without reading the dry ones it can name", async () => {
-    const oldDry = (id: number): Run => ({
-      id,
-      created_at: `2026-10-14T${8 + id - 200}:00:00Z`,
-      steps: DRY,
-    });
-    const world: World = {
-      ...posted,
-      runs: [
-        {
-          id: 300,
-          created_at: "2026-10-14T13:25:00Z",
-          title: `Daily Reel ${DATE} ${DRY_RUN_TITLE}`,
-          steps: DRY,
-        },
-        oldDry(205),
-        oldDry(204),
-        oldDry(203),
-        oldDry(202),
-        { id: 101, created_at: "2026-10-14T09:40:58Z", steps: LIVE },
-      ],
-    };
-    serve(world);
-    expect(await checkDayVideo(env(world), DATE, NOW)).toEqual({
-      kind: "confirmed",
-    });
-    expect(jobRequests().some((r) => r.url.includes("/runs/300/"))).toBe(false);
+    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
+    expect(issue.evidence).toContain(
+      "Latest daily-reel run: success https://github.com/duyet/aidr/actions/runs/99"
+    );
   });
 
   it("waits for a run still in progress, and reports it at the last check", async () => {
     const world: World = {
       ...posted,
       dayVideo: null,
+      posts: [],
       reels: [],
       runs: [
-        {
-          id: 101,
-          created_at: "2026-10-14T13:20:00Z",
-          status: "in_progress",
-          steps: { [YOUTUBE_STEP]: "", [TELEGRAM_STEP]: "" },
-        },
+        { id: 101, created_at: "2026-10-14T13:20:00Z", status: "in_progress" },
       ],
     };
     serve(world);
@@ -412,9 +366,8 @@ describe("checkDayVideo", () => {
           created_at: "2026-10-14T13:20:00Z",
           status: "in_progress",
           title: `Daily Reel ${DATE} ${DRY_RUN_TITLE}`,
-          steps: {},
         },
-        { id: 101, created_at: "2026-10-14T09:40:58Z", steps: LIVE },
+        { id: 101, created_at: "2026-10-14T09:40:58Z" },
       ],
     };
     serve(world);
@@ -424,19 +377,39 @@ describe("checkDayVideo", () => {
     );
   });
 
-  it("reports a failed GitHub lookup only at the last check", async () => {
+  // The Worker has no GITHUB_ALERT_TOKEN, so the runs lookup goes out
+  // without a token from shared Cloudflare IPs and can be rate limited.
+  it("needs no GitHub to confirm the day", async () => {
     const world: World = { ...posted, runs: "down" };
+    serve(world);
+    expect(await checkDayVideo(env(world), DATE, NOW)).toEqual({
+      kind: "confirmed",
+    });
+  });
+
+  it("loses only the run line when GitHub is down", async () => {
+    const world: World = { ...posted, posts: ["telegram-vi"], runs: "down" };
+    serve(world);
+    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
+    expect(issue.detail).toBe(`${DATE}: Telegram (en) missing`);
+    expect(issue.evidence).toContainEqual(
+      expect.stringMatching(
+        /^daily-reel runs unknown: GitHub GET .* HTTP 403 \(GITHUB_ALERT_TOKEN is not set on the Worker\)$/
+      )
+    );
+  });
+
+  it("reports a failed post lookup only at the last check", async () => {
+    const world: World = { ...posted, posts: "down" };
     serve(world);
     expect(await checkDayVideo(env(world), DATE, NOW)).toEqual({
       kind: "wait",
     });
     const issue = alertOf(await checkDayVideo(env(world), DATE, LAST));
     expect(issue.detail).toBe(`${DATE}: Telegram (en), Telegram (vi) missing`);
-    expect(issue.evidence?.[0]).toMatch(
-      /^Telegram \(en\): check failed: GitHub GET .* HTTP 503 /
+    expect(issue.evidence?.[0]).toBe(
+      "Telegram (en): check failed: D1_ERROR: no such table"
     );
-    expect(issue.evidence?.[0]).toContain("GITHUB_ALERT_TOKEN is not set");
-    expect(issue.evidence?.join("\n")).not.toContain("cron has not fired");
   });
 
   it("reports a failed Graph lookup only at the last check", async () => {
@@ -449,40 +422,6 @@ describe("checkDayVideo", () => {
     expect(issue.detail).toBe(`${DATE}: Facebook Reel missing`);
     expect(issue.evidence).toContain(
       "Facebook Reel: check failed: Graph HTTP 400"
-    );
-  });
-
-  it("says a hand-published day skips Telegram, with no rerun that cannot post", async () => {
-    const world: World = {
-      ...posted,
-      runs: [{ id: 101, created_at: "2026-10-14T09:40:58Z", steps: BY_HAND }],
-    };
-    serve(world);
-    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
-    expect(issue.detail).toBe(`${DATE}: Telegram (en), Telegram (vi) missing`);
-    expect(issue.evidence?.[0]).toBe(
-      "Telegram (en): published by hand; daily-reel skips this post on purpose, so a rerun cannot post it"
-    );
-    expect(issue.evidence?.join("\n")).not.toContain("gh workflow run");
-  });
-
-  it("does not take a cancelled run for a hand-published day", async () => {
-    const world: World = {
-      ...posted,
-      runs: [
-        {
-          id: 101,
-          created_at: "2026-10-14T09:40:58Z",
-          conclusion: "cancelled",
-          steps: BY_HAND,
-        },
-      ],
-    };
-    serve(world);
-    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
-    expect(issue.evidence?.join("\n")).not.toContain("published by hand");
-    expect(issue.evidence?.at(-1)).toBe(
-      `Rerun (idempotent, skips what is posted): ${rerunCommand(DATE)}`
     );
   });
 
@@ -521,6 +460,34 @@ describe("runHealthCheck", () => {
     expect(keys).toEqual([DAY_VIDEO_ALERT_KEY]);
     expect(dms()).toHaveLength(1);
     expect(dms()[0]).toContain(rerunCommand(DATE));
+  });
+
+  it("does not DM the same gap again later that evening", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    const world: World = { ...posted, dayVideo: null };
+    serve(world);
+    const keys = await runHealthCheck(env(world, owner), {
+      runId: "run-1",
+      steps: [],
+    });
+    expect(dms()).toHaveLength(1);
+
+    requests.length = 0;
+    vi.setSystemTime(NOW + 30 * 60_000);
+    const later: World = {
+      ...world,
+      history: [
+        {
+          started_at: Math.floor(NOW / 1000),
+          stats: JSON.stringify({ alerts: keys }),
+        },
+      ],
+    };
+    serve(later);
+    expect(
+      await runHealthCheck(env(later, owner), { runId: "run-2", steps: [] })
+    ).toEqual([]);
+    expect(dms()).toEqual([]);
   });
 
   it("records a confirmed day, and later checks skip the lookups", async () => {
@@ -594,26 +561,6 @@ describe("daily-reel contract", () => {
   const read = (path: string) => readFileSync(new URL(path, root), "utf8");
   const workflow = read(".github/workflows/daily-reel.yml");
 
-  it("runs every step the watchdog reads by name", () => {
-    for (const step of [YOUTUBE_STEP, TELEGRAM_STEP, TELEGRAM_VI_STEP]) {
-      const name = step.replace(/[()+]/g, "\\$&");
-      expect(workflow).toMatch(new RegExp(`^\\s+- name: ${name}\\n`, "m"));
-    }
-  });
-
-  // The jobs API reports a failed `continue-on-error` step as `success`, so
-  // the watchdog would count the failed post as sent. YOUTUBE_STEP may
-  // continue on error: it is read only as "the step ran" (a hand-published day).
-  it("sees each Telegram post fail", () => {
-    for (const step of [TELEGRAM_STEP, TELEGRAM_VI_STEP]) {
-      const block = workflow
-        .split(/^ {6}- /m)
-        .find((b) => b.startsWith(`name: ${step}\n`));
-      expect(block, step).toBeDefined();
-      expect(block, step).not.toMatch(/^\s*continue-on-error: true$/m);
-    }
-  });
-
   it("names each run after its date input and dry run", () => {
     const runName = workflow.match(/^run-name: (.+)$/m)?.[1];
     expect(runName).toContain("inputs.date");
@@ -632,11 +579,33 @@ describe("daily-reel contract", () => {
     expect(read("apps/web/ALGORITHM.md")).toContain(rerunCommand("<date>"));
   });
 
-  it("reads the Vietnamese day video from a real column", () => {
+  it("reads the day videos and posts from real tables", () => {
     const migrations = readdirSync(new URL("apps/web/migrations/", root))
       .map((f) => read(`apps/web/migrations/${f}`))
       .join("\n");
     expect(migrations).toMatch(/\byoutube_id_vi TEXT\b/);
+    expect(migrations).toMatch(
+      /CREATE TABLE IF NOT EXISTS day_video_posts \(\s+date TEXT NOT NULL,\s+channel TEXT NOT NULL,/
+    );
+  });
+
+  it("records every Telegram cut on a channel the watchdog reads", async () => {
+    const status = await import(
+      new URL("videos/daily-news/scripts/status.mjs", root).href
+    );
+    const channelOf = (lang: string) => {
+      const args: string[] = status.dayVideoPostedArgs(DATE, {
+        lang,
+        telegram: { chat_id: "-100", message_id: 7 },
+      });
+      return args[args.indexOf("--channel") + 1];
+    };
+    expect(["en", "vi", "visub"].map(channelOf)).toEqual([
+      "telegram-en",
+      "telegram-vi",
+      "telegram-vi",
+    ]);
+    expect(DAY_VIDEO_POST_CHANNELS).toEqual(["telegram-en", "telegram-vi"]);
   });
 
   it("finds the Reel by the marker publish.mjs uses", () => {

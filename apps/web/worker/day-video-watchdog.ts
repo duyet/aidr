@@ -1,3 +1,4 @@
+import type { DayVideoPostChannel } from "../src/lib/day-video.js";
 import type { HealthIssue, PriorRun } from "./health.js";
 import { INGEST_ALARM_INTERVAL_MS } from "./ingest-schedule.js";
 import {
@@ -15,7 +16,8 @@ import type { Env } from "./types.js";
  * Telegram in English, and the Vietnamese day page and channel every day
  * (`.github/workflows/daily-reel.yml`). Each target is confirmed against its
  * own record, never against the workflow's own success, so a run that never
- * started is caught too.
+ * started is caught too. Telegram cannot be read back, so its record is the
+ * `day_video_posts` row the post path writes.
  */
 
 export const DAY_VIDEO_ALERT_KEY = "day-video-missing";
@@ -26,13 +28,8 @@ export const DAY_VIDEO_CONFIRMED_PREFIX = "day-video-ok:";
 export const DAY_VIDEO_CHECK_HOUR_START = 20;
 export const DAY_VIDEO_CHECK_HOUR_END = 23;
 const DAILY_REEL_WORKFLOW = "daily-reel.yml";
-export const YOUTUBE_STEP = "YouTube upload + day page";
-export const TELEGRAM_STEP = "Telegram";
-export const TELEGRAM_VI_STEP = "Telegram (Vietnamese subtitles)";
 /** The end of a dry run's `run-name`. */
 export const DRY_RUN_TITLE = "(dry run)";
-/** Jobs payloads read per check, newest run first, in parallel. */
-const MAX_RUNS_READ = 8;
 const TIMEOUT_MS = 10_000;
 
 const DAY_VIDEO_TARGETS = {
@@ -47,12 +44,11 @@ type DayVideoTarget = keyof typeof DAY_VIDEO_TARGETS;
 
 /**
  * What a target's record says. `unsure` (a run of the date is still going, or
- * the lookup failed) waits for the window's last check; `by-hand` is missing
- * on purpose, so a rerun cannot post it.
+ * the lookup failed) waits for the window's last check.
  */
 type TargetState =
   | { state: "posted" }
-  | { state: "missing" | "unsure" | "by-hand"; why: string };
+  | { state: "missing" | "unsure"; why: string };
 type DayVideoChecks = Record<DayVideoTarget, TargetState>;
 
 export type DayVideoVerdict =
@@ -64,10 +60,6 @@ const POSTED: TargetState = { state: "posted" };
 const RUNNING: TargetState = {
   state: "unsure",
   why: "a daily-reel run of this date is still running",
-};
-const BY_HAND: TargetState = {
-  state: "by-hand",
-  why: "published by hand; daily-reel skips this post on purpose, so a rerun cannot post it",
 };
 
 export function rerunCommand(date: string): string {
@@ -120,7 +112,7 @@ export function isLastDayVideoCheck(nowMs: number): boolean {
 function dayVideoVerdict(
   date: string,
   checks: DayVideoChecks,
-  runLine: string | null,
+  runLine: string,
   last: boolean
 ): DayVideoVerdict {
   const open = (Object.keys(DAY_VIDEO_TARGETS) as DayVideoTarget[]).flatMap(
@@ -131,7 +123,13 @@ function dayVideoVerdict(
   );
   if (open.length === 0) return { kind: "confirmed" };
   if (!last && open.every((t) => t.state === "unsure")) return { kind: "wait" };
-  const rerun = open.some((t) => t.state !== "by-hand");
+  const telegramLangs = open.flatMap((t) =>
+    t.target === "telegram"
+      ? ["en"]
+      : t.target === "telegramVi"
+        ? ["visub"]
+        : []
+  );
   return {
     kind: "alert",
     issue: {
@@ -141,19 +139,23 @@ function dayVideoVerdict(
       detail: `${date}: ${open.map((t) => DAY_VIDEO_TARGETS[t.target]).join(", ")} missing`,
       evidence: [
         ...open.map((t) => `${DAY_VIDEO_TARGETS[t.target]}: ${t.why}`),
-        ...(runLine ? [runLine] : []),
-        ...(rerun
-          ? [`Rerun (idempotent, skips what is posted): ${rerunCommand(date)}`]
+        runLine,
+        `Rerun (idempotent, skips what is posted): ${rerunCommand(date)}`,
+        `Rerun before local midnight: a past date needs a committed videos/daily-news/editions/${date}/edition.json`,
+        ...(telegramLangs.length
+          ? [
+              `A HAND_PUBLISHED day's rerun skips Telegram; post it from videos/daily-news after checking the channel: node scripts/publish.mjs ${date} --lang ${telegramLangs.join(",")} --steps telegram --prod`,
+            ]
           : []),
       ],
     },
   };
 }
 
-function lookupFailed(error: unknown, hint = ""): TargetState {
+function lookupFailed(error: unknown): TargetState {
   return {
     state: "unsure",
-    why: `check failed: ${error instanceof Error ? error.message : String(error)}${hint}`,
+    why: `check failed: ${error instanceof Error ? error.message : String(error)}`,
   };
 }
 
@@ -220,18 +222,40 @@ async function checkFacebookReel(env: Env, date: string): Promise<TargetState> {
   }
 }
 
+/** Both Telegram channels, from the posts that publish.mjs and the Worker's
+ *  card post record in `day_video_posts`. */
+async function checkTelegram(
+  env: Env,
+  date: string
+): Promise<Pick<DayVideoChecks, "telegram" | "telegramVi">> {
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT channel FROM day_video_posts WHERE date = ?"
+    )
+      .bind(date)
+      .all<{ channel: string }>();
+    const recorded = new Set((results ?? []).map((row) => row.channel));
+    const onChannel = (channel: DayVideoPostChannel): TargetState =>
+      recorded.has(channel)
+        ? POSTED
+        : { state: "missing", why: "no post recorded for this date" };
+    return {
+      telegram: onChannel("telegram-en"),
+      telegramVi: onChannel("telegram-vi"),
+    };
+  } catch (error) {
+    const failed = lookupFailed(error);
+    return { telegram: failed, telegramVi: failed };
+  }
+}
+
 interface GhRun {
-  id: number;
   html_url: string;
   status: string;
   conclusion: string | null;
   created_at: string;
   /** The workflow's `run-name`: `Daily Reel[ <date input>][ (dry run)]`. */
   display_title: string;
-}
-
-interface GhJobs {
-  jobs: { steps?: { name: string; conclusion: string | null }[] }[];
 }
 
 /** The run's `date` input from its title; else (scheduled runs, and runs
@@ -243,20 +267,14 @@ function runDate(run: GhRun): string {
   );
 }
 
-/** Both Telegram posts, from the steps of the date's daily-reel runs. A dry
- *  run skips every posting step, so only a succeeded step counts. A run that
- *  reports the YouTube step `success` and skipped Telegram ran on a
- *  hand-published day. */
-async function checkTelegram(
+/** The date's daily-reel runs, for the alert's context and to wait while a
+ *  live one is still posting. Not a record of any target: a failed lookup
+ *  only loses that context. */
+async function readDailyReelRuns(
   env: Pick<Env, "GITHUB_ALERT_TOKEN">,
   date: string,
   nowMs: number
-): Promise<{
-  telegram: TargetState;
-  telegramVi: TargetState;
-  running: boolean;
-  runLine: string | null;
-}> {
+): Promise<{ running: boolean; runLine: string }> {
   try {
     const since = new Date(nowMs - 30 * 3600 * 1000).toISOString();
     const { workflow_runs } = await github<{ workflow_runs: GhRun[] }>(
@@ -266,58 +284,21 @@ async function checkTelegram(
     );
     const ofDate = workflow_runs.filter((run) => runDate(run) === date);
     const latest = ofDate[0];
-    const runLine = latest
-      ? `Latest daily-reel run: ${latest.conclusion ?? latest.status} ${latest.html_url}`
-      : "No daily-reel run today: the GitHub cron has not fired";
-    const mayPost = ofDate.filter(
-      (run) => !run.display_title.endsWith(DRY_RUN_TITLE)
-    );
-    const runs = await Promise.all(
-      mayPost.slice(0, MAX_RUNS_READ).map(async (run) => {
-        const { jobs } = await github<GhJobs>(
-          env.GITHUB_ALERT_TOKEN,
-          "GET",
-          `/repos/${AIDR_REPO}/actions/runs/${run.id}/jobs`
-        );
-        const steps = jobs.flatMap((job) => job.steps ?? []);
-        const step = (name: string) =>
-          steps.find((s) => s.name === name)?.conclusion;
-        const byHand =
-          run.conclusion !== "cancelled" &&
-          step(YOUTUBE_STEP) === "success" &&
-          step(TELEGRAM_STEP) === "skipped";
-        return { step, byHand };
-      })
-    );
-    const channel = (name: string): TargetState => {
-      if (runs.some((run) => run.step(name) === "success")) return POSTED;
-      if (runs.some((run) => run.byHand && run.step(name) === "skipped"))
-        return BY_HAND;
-      return {
-        state: "missing",
-        why: latest
-          ? `no ${DAILY_REEL_WORKFLOW} run of this date posted it (step "${name}")`
-          : `no ${DAILY_REEL_WORKFLOW} run of this date`,
-      };
-    };
     return {
-      telegram: channel(TELEGRAM_STEP),
-      telegramVi: channel(TELEGRAM_VI_STEP),
-      running: mayPost.some((run) => run.status !== "completed"),
-      runLine,
+      running: ofDate.some(
+        (run) =>
+          run.status !== "completed" &&
+          !run.display_title.endsWith(DRY_RUN_TITLE)
+      ),
+      runLine: latest
+        ? `Latest daily-reel run: ${latest.conclusion ?? latest.status} ${latest.html_url}`
+        : "No daily-reel run today: the GitHub cron has not fired",
     };
   } catch (error) {
-    const failed = lookupFailed(
-      error,
-      env.GITHUB_ALERT_TOKEN
-        ? ""
-        : " (GITHUB_ALERT_TOKEN is not set on the Worker)"
-    );
+    const why = error instanceof Error ? error.message : String(error);
     return {
-      telegram: failed,
-      telegramVi: failed,
       running: false,
-      runLine: null,
+      runLine: `daily-reel runs unknown: ${why}${env.GITHUB_ALERT_TOKEN ? "" : " (GITHUB_ALERT_TOKEN is not set on the Worker)"}`,
     };
   }
 }
@@ -329,15 +310,20 @@ export async function checkDayVideo(
   date: string,
   nowMs: number
 ): Promise<DayVideoVerdict> {
-  const [page, facebook, { telegram, telegramVi, running, runLine }] =
-    await Promise.all([
-      checkDayPage(env, date),
-      checkFacebookReel(env, date),
-      checkTelegram(env, date, nowMs),
-    ]);
-  const checks: DayVideoChecks = { ...page, facebook, telegram, telegramVi };
-  if (running)
+  const [page, telegram, facebook, runs] = await Promise.all([
+    checkDayPage(env, date),
+    checkTelegram(env, date),
+    checkFacebookReel(env, date),
+    readDailyReelRuns(env, date, nowMs),
+  ]);
+  const checks: DayVideoChecks = { ...page, ...telegram, facebook };
+  if (runs.running)
     for (const target of Object.keys(checks) as DayVideoTarget[])
       if (checks[target].state !== "posted") checks[target] = RUNNING;
-  return dayVideoVerdict(date, checks, runLine, isLastDayVideoCheck(nowMs));
+  return dayVideoVerdict(
+    date,
+    checks,
+    runs.runLine,
+    isLastDayVideoCheck(nowMs)
+  );
 }

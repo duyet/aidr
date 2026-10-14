@@ -186,7 +186,7 @@ test("a failed Vietnamese Telegram post fails the job and still saves the day's 
     steps.find((s) => s.name === "Telegram (Vietnamese subtitles)")
       .continueOnError,
     false,
-    "the jobs API would report the failure as success"
+    "a failed post fails its own step"
   );
   for (const name of EN_POSTS) assert.equal(o.get(name), "success", name);
   for (const name of [
