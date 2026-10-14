@@ -291,6 +291,71 @@ describe("protected English terms", () => {
     }
   });
 
+  // "Bởi" is also "because", so "Bởi Nvidia thuộc Mỹ." ("because Nvidia is
+  // American") is a claim. Every stored Bởi credit is an author byline.
+  it("drops a closing Bởi sentence only when it is a byline, handle or domain", () => {
+    for (const text of [
+      "Lệnh cấm không áp dụng cho chip H20. Bởi Nvidia thuộc Mỹ.",
+      "Lệnh cấm có hiệu lực từ tuần sau. Bởi Mỹ từ Trung Quốc.",
+      "Công cụ chạy được trên mọi máy chủ. Bởi Node.js.",
+      "Ông được chọn là nhân vật của năm. Bởi Time.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+    for (const [text, kept] of [
+      ["Giá chip tăng 5%. Bởi Felix Ng / Cointelegraph.", "Giá chip tăng 5%."],
+      [
+        "Giá chip tăng 5%. Bởi Heather Landi / Fierce Healthcare.",
+        "Giá chip tăng 5%.",
+      ],
+      ["Giá chip tăng 5%. Bởi @openainewsroom.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Bởi techcrunch.com.", "Giá chip tăng 5%."],
+    ] as const) {
+      expect(stripSourceBoilerplate(text)).toBe(kept);
+    }
+  });
+
+  // "By" opens a deadline or an adverb as often as a credit. A credit is a
+  // known outlet or an author byline.
+  it("keeps a closing By sentence that is a date or an adverb", () => {
+    for (const fragment of [
+      "By Q3 2026.",
+      "By December 2026.",
+      "By March.",
+      "By Contrast.",
+      "By Default.",
+      "By Then.",
+      "By Tuesday's Close.",
+      "By AI.",
+      "By @sama.",
+      "By numpy.org.",
+      "By Apple / Google on Android.",
+    ]) {
+      const text = `Nvidia expects the new fab to ship volume parts. ${fragment}`;
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+    for (const text of [
+      "By Bloomberg.",
+      "By Donald J. Trump / @realDonaldTrump@truthsocial.com. View the full context on Techmeme.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe("");
+    }
+  });
+
+  // An outlet keeps a lowercase word ("Krebs on Security") only in an author
+  // byline. Elsewhere the word starts a claim.
+  it("keeps a credit-led sentence that goes on after the outlet", () => {
+    for (const fragment of [
+      "From OpenAI / Anthropic on Monday.",
+      "Via v1.2.",
+      "From gpt-4.1.",
+    ]) {
+      const text = `The rollout reaches every paid plan. ${fragment}`;
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+    expect(stripSourceBoilerplate("Via theverge.com.")).toBe("");
+  });
+
   it("keeps a sentence that carries a claim or a mid-text từ", () => {
     for (const text of [
       "Theo Reuters, Nvidia sẽ ra chip mới vào tháng 3.",

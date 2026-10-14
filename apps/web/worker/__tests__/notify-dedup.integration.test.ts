@@ -421,4 +421,30 @@ describe("digest bookkeeping", () => {
       "a7",
     ]);
   });
+
+  // The snapshot exists, so "no_snapshot" would send ops looking for a TL;DR
+  // run that did happen.
+  it("tells a digest the strip emptied apart from a missing snapshot", async () => {
+    addItem({ id: "credit", title: "Credit only", rank: 2, importance: 5 });
+    const credit = JSON.stringify([
+      { text: "From Bloomberg.", item_ids: ["credit"] },
+    ]);
+
+    const missing = await dispatchStoryNotifications(env);
+    expect(missing.reasons["telegram-en"]?.digest).toBe("no_snapshot");
+
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at) VALUES (?, ?, ?, ?)"
+      )
+      .run(TODAY, credit, credit, NOW.getTime());
+    const empty = await dispatchStoryNotifications(env);
+    expect(empty.reasons["telegram-en"]?.digest).toBe("empty_after_strip");
+    expect(empty.reasons.telegram?.digest).toBe("empty_after_strip");
+    expect(
+      sqlite
+        .prepare("SELECT COUNT(*) AS n FROM notifications WHERE item_id = ?")
+        .get(`digest:${TODAY}`)
+    ).toEqual({ n: 0 });
+  });
 });
