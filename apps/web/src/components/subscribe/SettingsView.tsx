@@ -213,7 +213,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
               state: subscribeLinkState({ kind: "unsubscribe", token }),
             })
           }
-          className="text-muted-foreground underline-offset-2 hover:underline"
+          className="cursor-pointer text-muted-foreground underline-offset-2 hover:underline"
         >
           {t("Unsubscribe", "Hủy đăng ký")}
         </button>
