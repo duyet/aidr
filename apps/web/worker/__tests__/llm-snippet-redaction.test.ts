@@ -634,6 +634,49 @@ describe("sanitizeText for step reasons", () => {
     expect(sanitizeText(text)).not.toContain(value);
   });
 
+  it.each([
+    ["bot_token=123456", "123456"],
+    ["reset_token=1234567", "1234567"],
+    ["verify_token=123456", "123456"],
+    ["BOT_TOKEN=1234567", "1234567"],
+    ["x-reset_token=1234567", "1234567"],
+    ["bot-push_token=123456", "123456"],
+    ["bot-tokens: 123456", "123456"],
+    ["reset_tokens=1234567", "1234567"],
+    ["verifyToken=123456", "123456"],
+    ['{"bot_token":"123456"}', "123456"],
+    ['{"reset_tokens":"1234567"}', "1234567"],
+  ])("redacts the one-time code in %s", (text, value) => {
+    expect(sanitizeText(text)).not.toContain(value);
+  });
+
+  it.each([
+    "prompt_tokens",
+    "completion_tokens",
+    "cached_tokens",
+    "reasoning_tokens",
+    "total_tokens",
+    "input_token",
+    "input_tokens",
+    "output_tokens",
+    "max_tokens",
+    "max_new_token",
+    "cost_per_token",
+    "num_token",
+    "cache_read_token",
+    "time_to_first_token",
+    "promptTokens",
+    "completionTokens",
+    "cachedTokens",
+  ])("keeps the numeric value after the counter %s", (key) => {
+    expect(sanitizeText(`${key}: 512`)).toBe(`${key}: 512`);
+    expect(sanitizeText(`{"${key}":"512"}`)).toBe(`{"${key}":"512"}`);
+  });
+
+  it("redacts a non-numeric value after a counter name", () => {
+    expect(sanitizeText("prompt_tokens: n1a2b3")).not.toContain("n1a2b3");
+  });
+
   it("still redacts a short number after a credential token key", () => {
     for (const key of ["access_token", "refresh_token", "id_token"]) {
       expect(sanitizeText(`${key}=123456`)).not.toContain("123456");
